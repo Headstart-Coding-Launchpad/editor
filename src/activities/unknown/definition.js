@@ -21,4 +21,10 @@ export default defineActivity({
   isGraded: () => false,
   teacherEditable: false,
   storage: { persist: false, filename: null },
+  // Reports name the activityType the lesson asked for, not the fallback's id.
+  report: {
+    typeFields: (task) => ({ taskType: 'activity', activityType: task?.activityType ?? 'unknown' }),
+    normalizeSubmission: (task, submission) => submission ?? null,
+    summaryFields: () => ({}),
+  },
 })

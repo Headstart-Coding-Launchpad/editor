@@ -114,7 +114,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TeacherSandboxBanner.jsx` | Status banner shown in sandbox staging/live mode with action buttons |
 | `TeacherEndSessionModal.jsx` | Confirmation modal for ending a live session, with End and End+Home actions |
 | `TeacherFeedbackModal.jsx` | Two-tab modal for submitting lesson feedback (per-task, stored in Firestore subcollection) or platform feedback (stored in `platformFeedback` collection) |
-| `TeacherReportModal.jsx` | Post-session report modal shown right after ending a session: per-student per-task results (including any live `teacherRating` on a task), distinct attempts, YAML export via `reportToYamlText`; when `onSaveFeedback` is supplied and no feedback is saved yet, shows an editable star-rating/notes form that calls it (used only for the just-ended session's report, not historical ones) |
+| `TeacherReportModal.jsx` | Post-session report modal shown right after ending a session: per-student per-task results (including any live `teacherRating` on a task), distinct attempts, activity item progress, YAML export via `reportToYamlText`; when `onSaveFeedback` is supplied and no feedback is saved yet, shows an editable star-rating/notes form that calls it (used only for the just-ended session's report, not historical ones) |
 | `StarRatingFeedbackFields.jsx` | Shared 1-5 star rating input/display + "what worked well"/"what didn't work" textareas, used by both `TeacherReportModal`'s end-of-session lesson rating and `TaskRatingPanel`'s live per-task rating |
 | `TeacherReportsPanel.jsx` | Persistent list of past session reports for a lesson, reachable any time from the Reports button; queries `sessionReports` ordered by `startedAt` desc and opens `TeacherReportModal` per report |
 | `EditLessonModal.jsx` | Reuses the builder's `TaskList`/`TaskEditor`/`GroupEditor`/`useBuilderState` to edit a lesson's tasks from TeacherView; "Apply for This Session" broadcasts via the session's `lessonOverrideTasks` (teacher and admin), "Save Permanently" (admin only) also writes Firestore |
@@ -203,7 +203,8 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | File | Role |
 |---|---|
 | `lessonUtils.js` | Builder lesson validation — the shared core (`src/shared/lessonValidation.js`) plus the Builder-only extras (duplicate task-id warnings, browser-only module rules such as Scratch toolbox XML, the untested-check reminder) — and export normalisation rules |
-| `printLesson.js` | `buildPrintHtml(lesson)` — generates printable HTML string from lesson JSON (no DOM) |
+| `printLesson.js` | `buildPrintHtml(lesson)` — generates printable HTML string from lesson JSON (no DOM); quizzes and activities print their own fields (`printHtml`), activities also their name and description |
+| `taskFormat.js` | Builder format switching: `COMMON_TASK_FIELDS` / `commonTaskFields` (kept across formats) and `convertTaskToActivity` (UI `builderConvert` or `defaultTask`) |
 
 ---
 
@@ -222,8 +223,8 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 |---|---|
 | `LessonMetaPanel.jsx` | Lesson-level metadata: id, type, title, description, level, topic summary/proposals, assets, sandbox config modals |
 | `LessonTopicSummary.jsx` | Derived existing/missing/unused topic report and editor for lesson-level topic proposals |
-| `TaskList.jsx` | Left sidebar: task/group tree with drag-reorder, selection, creation, validation summary |
-| `TaskEditor.jsx` | Task editor composition root: orchestrates sub-components and workspace panels; dispatches to lesson-type `BuilderWorkspace` via registry; delegates run/check state to `useTaskEditorState`; re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
+| `TaskList.jsx` | Left sidebar: task/group tree with drag-reorder, selection, creation, validation summary; task icons/tooltips for quizzes and activities come from the activity registry |
+| `TaskEditor.jsx` | Task editor composition root: orchestrates sub-components and workspace panels; task format grid Code / Information / Quiz / Activity (+ Arrange in composed lessons) via `getTaskFormat`, with the quiz picker, activity gallery and quiz `BuilderEditor`s from the activity registry; dispatches to lesson-type `BuilderWorkspace` via registry; delegates run/check state to `useTaskEditorState`; re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
 | `ExplainerEditor.jsx` | Markdown editor with Edit/Preview tabs; live rendering via MarkdownRenderer |
 | `FileManager.jsx` | HTML file list: add/delete/type-change, entry file picker, HTML+CSS+JS template generator |
 | `BuilderOutputPanel.jsx` | Output panel with check results, retro typing animation (via `useTypewriterOutput`), and `input()` prompt for builder |
@@ -249,7 +250,9 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | File | Role |
 |---|---|
 | `TaskEditorFields.jsx` | Shared primitives: `Field`, `QuizTypeIcon`, `TaskFormatIcon`, `CodeWorkspaceTabs`, `Modal`, `CarryThroughPicker`, `SpriteManager`, `CostumeManager`, `BackdropManager` |
-| `QuizEditors.jsx` | Quiz-type builders: `QuizTypePicker`, `MatchPairsBuilder`, `FillBlankBuilder`, `ShortAnswerBuilder`, `QuizOptionsBuilder` |
+| `QuizEditors.jsx` | Thin re-export for older imports: `QuizTypePicker` (from `ActivityPickers.jsx`) and each quiz sub-type's editor (now in `src/activities/quiz_*/ui.jsx`) |
+| `ActivityPickers.jsx` | Registry-driven `QuizTypePicker` (category `quiz` activities) and `ActivityGallery` (every `taskType: 'activity'` activity: icon, label, description; unknown-activity hint) |
+| `ActivitySection.jsx` | Builder section for an activity task: gallery, description field, the activity's `BuilderEditor`, and the `ActivityPreview` student preview |
 | `CodeArrangeEditor.jsx` | Visual Builder authoring + live preview for `taskType: code_arrange`: a reorderable line list where every line uses the same "parts composer" (fixed-text and blank-slot chips; a line with just one blank is the whole-line case), one shared task-level distractor-tile list, entry file for HTML, the module's ordinary `CheckEditor`, and a drag-and-run preview using `getLessonModule(...).runtime` directly |
 | `CheckEditors.jsx` | Check utilities and editors: `subjectOpFromType`, `typeFromSubjectOp`, `getOperatorOptions`, `makeCheckSkeleton`, `CheckValueEditor`, `CheckListEditor`, feedback priority/stage-offer controls, and `CheckFeedbackControls` (the shared feedback mode/show pair, also used by the electronics, filesystem and scratch check editors) |
 | `TestsEditor.jsx` | Builder sub-module: `TestsEditor` — CRUD UI for Python task test cases (inputs + check per test) |
@@ -424,7 +427,7 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 |---|---|
 | `defineActivity.js` | Activity contract: validates a pure activity definition and fills defaults (storage in the `__activity_state__` aux file, live state on `currentAnswer`, report type fields) |
 | `resolve.js` | `getActivityId(task)`: maps stored tasks to activity ids without changing formats (`quiz` + `quizType` → `quiz_<type>`, `code_arrange`, `activity` + `activityType`) |
-| `registry.pure.js` | Node-safe activity registry (`getActivityDefinition(s)`, `getTaskActivity`, `ACTIVITY_IDS`, YAML type lookup, `isHostedActivityTask`, `isLegacyQuizTask`); unknown `activityType` / `quizType` values resolve to the fallback |
+| `registry.pure.js` | Node-safe activity registry (`getActivityDefinition(s)`, `getTaskActivity`, `ACTIVITY_IDS`, YAML shorthand lookup both ways (`activityIdForYamlType`, `yamlTypeForActivityTask`), `isHostedActivityTask`, `isLegacyQuizTask`, `isCodeArrangeTask`, Builder helpers `getTaskFormat`, `getQuizActivityDefinitions`, `getGalleryActivityDefinitions`); unknown `activityType` / `quizType` values resolve to the fallback |
 | `quiz/quizActivity.js` | Shared pure logic for the five quiz activities: `defineQuizActivity` (legacy shape, shared validation, `currentAnswer` formats, `{ taskType: 'quiz', quizType }` report fields), attempt submissions (`buildQuizSubmission`), feedback (`getQuizSuggestion`), item progress, report normalisers and per-item failure summaries, print tables |
 | `quiz/QuizActivityViews.jsx` | Quiz activity UI: `QuizActivityStudentView` hosts `QuizTask` (in-progress change → `onChange`, final answer → `onSubmit(answer, { passedOverride })`; teacher variant shows verdict + correct answers) and the StudentCard summaries (`ChoiceCardSummary`, items progress text, short-answer text, confidence badge) |
 | `quiz_multiple_choice/definition.js` | Multiple-choice quiz activity: option-id state, graded by the `answer_equals` check, option feedback, print options table |
@@ -432,7 +435,9 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `quiz_fill_blank/definition.js` | Fill-in-the-gaps quiz activity: tile-id (drag) or typed-text map, auto-marked (drag) / Submit (type), teacher-editable, item progress, `blankFailures` report summary, print text/blanks/distractors |
 | `quiz_short_answer/definition.js` | Short-answer quiz activity: free text, graded by its `answer_*` check or (ungraded) any non-blank answer |
 | `quiz_confidence/definition.js` | Confidence quiz activity: `"1"`..`"5"` rating, never marked (`completion: 'none'`), `ratingDistribution` report summary |
-| `quiz_*/ui.jsx` | Per-sub-type UI entries: `QuizActivityStudentView`, the matching `CardSummary`, `ownsLayout` (no activity header/frame) |
+| `quiz_*/ui.jsx` | Per-sub-type UI entries: `QuizActivityStudentView`, the matching `CardSummary`, `ownsLayout` (no activity header/frame), and the Builder parts: `BuilderEditor` (the sub-type's editor, moved from `QuizEditors.jsx`), `BuilderIcon`, `builderHint`, `builderConvert` |
+| `quiz/quizBuilder.js` | Builder conversions for quizzes: `toQuizTask` (choosing the Quiz format) and `switchQuizType` (changing quiz sub-type), unchanged from the old TaskEditor handlers |
+| `quiz/QuizTypeIcon.jsx` | SVG icons for the Builder's quiz-type picker |
 | `binary/definition.js` | Binary activity definition wrapping `binary.js`: default task, validation, state, grading, progress, card summary, print |
 | `keyboard/keyboard.js` | Pure Keyboard activity logic (`type_text`, `find_key`, `symbols`, `shortcuts`; UK layout): validation incl. untypeable characters and browser-reserved shortcuts, grading from stored per-item results (Shift vs Caps Lock, optional accuracy/WPM targets, keys vs menu, hardware-only items) |
 | `keyboard/definition.js` | Keyboard activity definition: needs a physical keyboard with an on-screen fallback; keystrokes classified as continuous, finished items as discrete |
@@ -445,12 +450,18 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `state.js` | Pure helpers reading an activity's state from its serialised form (`deserializeActivityState`, `solutionOrInitialState`, `readActivityAnswer`, `summarizeActivityAnswer` for the teacher card) |
 | `device.js` | Pure device helpers: `describeActivityDevice(state)` (touch / on-screen keyboard badge from the activity's own state) and `effectiveCapabilities` (keyboard override, tablets treated as keyboard-less) |
 | `binary/ui.jsx` | Binary StudentView: bit tiles (switches) with place values, decimal answer box, carry row for addition, one item at a time |
+| `binary/BinaryBuilderEditor.jsx` | Binary `BuilderEditor`: mode (keeps item ids, drops options the mode doesn't use), bits, display options (place values, running decimal, carries, ASCII code format/table, picture size), per-mode items incl. a pixel-grid editor |
+| `keyboard/KeyboardBuilderEditor.jsx` | Keyboard `BuilderEditor`: mode, fixed UK layout note, `type_text` options (Shift capitals, min accuracy, target WPM), per-mode items with `hardwareOnly`; reserved-shortcut errors inline |
+| `mouse/MouseBuilderEditor.jsx` | Mouse `BuilderEditor`: touch policy, targets (label/emoji/x/y/size; renaming updates items) with a click-to-place stage preview, items (action/target/to/prompt) |
+| `ui/builderKit.jsx` | Building blocks for activity BuilderEditors: `useActivityValidation` / `splitValidation` (validateTask messages next to their item or target), `ValidationMessages`, `RowListEditor`, `InlineField`, `ChoiceCards`, `nextItemId`, `readNumber` |
+| `ui/BuilderField.jsx` | The labelled `Field` row shared by the Builder task editor and activity editors |
+| `ActivityPreview.jsx` | Builder student preview: plays a task through `ActivityHost` with in-memory state (kept per task while the page is open, restarted on edit), grades on Check, Start again / Show answers; writes nothing |
 | `keyboard/ui.jsx` | Keyboard StudentView: `type_text` target overlay with accuracy/WPM (`typingStats`), `find_key` / `symbols` with the keyboard picture and hints, `shortcuts` practice box (keys vs right-click menu detection); on-screen keyboard input when there is no physical keyboard |
 | `keyboard/OnScreenKeyboard.jsx` | UK on-screen keyboard: interactive fallback emitting virtual key events (one-shot Shift/Ctrl) or a non-interactive picture highlighting hinted keys |
 | `mouse/ui.jsx` | Mouse StudentView: stage of positioned `data-input-id` targets, Pointer Events recording (incl. touch drag via `elementsFromPoint`), `recognizeGestures`, no native context menu on the stage, hover dwell timer (skipped on touch), `state.device.touch` |
 | `ui/ItemNav.jsx` | Shared "Question n of m" item navigation with per-item done/wrong markers |
 | `ui/ActivityDeviceBadge.jsx` | Teacher badge (card and modal) showing a touch-screen or on-screen-keyboard attempt |
-| `binary/binary.js` | Pure Binary activity logic for `make_number`, `to_binary`, `to_decimal`, `add`: bit conversion, place values, carries, shared authoring validation, per-item grading with child-friendly hints, whole-task progress |
+| `binary/binary.js` | Pure Binary activity logic for `make_number`, `to_binary`, `to_decimal`, `add`, `overflow`, `hex`, `ascii`, `pixels`: bit conversion, place values, carries, shared authoring validation, per-item grading with child-friendly hints, whole-task progress |
 | `_template/definition.js`, `_template/template_activity.js`, `_template/ui.jsx` | Activity scaffold copied by `npm run new:activity` (`scripts/new-activity.mjs`): a working "type the answer" activity with `TODO(new-activity)` markers, its tests (pure, UI, StudentView click-through that skips while unregistered) and `doc.md.tmpl`. Never registered; the registry, interface and validation-doc tests skip `_`-prefixed folders |
 
 ---
@@ -484,7 +495,7 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `MarkdownFieldEditor.jsx` | Markdown editor with Edit/Preview tabs, formatting toolbar, topic-library link picker, Scratch block insertion, and asset image picker; exports `MarkdownFieldEditor` and `getInlineCodeOptions` (the toolbar is internal) |
 | `scratchBlockCatalog.js` | Shared Scratch block metadata for markdown rendering, markdown toolbar insertion, and the Scratch toolbox picker |
 | `lessonBlocksCodec.js` | Encodes/decodes Firestore-incompatible lesson fields as JSON strings: Scratch block trees for nested depth and Arcade Kit designs for nested sprite-frame arrays |
-| `lessonReport.js` | `buildSessionReport()` — builds a session report from an in-memory session + lesson (roster, per-task attempt history, overrides, carry fallbacks, support reveals, live per-task teacher ratings, task summary); `attachTeacherFeedback()` merges the teacher's optional end-of-session star rating and notes onto a built report; `reportToYamlText()` for YAML export |
+| `lessonReport.js` | `buildSessionReport()` — builds a session report from an in-memory session + lesson (roster, per-task attempt history, overrides, carry fallbacks, support reveals, live per-task teacher ratings, task summary; quiz and activity type fields, submissions and summaries come from each activity definition, plus `itemProgress` / `avgItemProgress` for activities); `attachTeacherFeedback()` merges the teacher's optional end-of-session star rating and notes onto a built report; `reportToYamlText()` for YAML export |
 | `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder, returns `{ join, solo, teacher, preview }` (bare smart-join URL, plus `?solo=true`, `?teacher=true` and `?preview=true` links); used by TeacherView, LessonPanel and SessionsPanel |
 | `lessonLevels.js` | Reusable level reference helpers: level Firestore collection name, scope derivation, legacy migration, display title resolution, and sorting |
 | `lessonForks.js` | Deterministic class-fork helpers: class record normalization, fork ID/title creation, stock lesson copy, and task lineage construction |
@@ -577,7 +588,7 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | `cli/capabilities.mjs` | `buildCapabilities()` — JSON catalogue of modules, activities and check types read from the registries, printed by `lessons capabilities` for lesson agents (no Firebase) |
 | `cli/check-tests.mjs` | `testLessonChecks(lesson, casesFile)` — source-code case harness using the shared runtime check evaluator, including feedback-match reporting |
 | `cli/topic-utils.mjs` | Standalone topic-library normalization and validation helpers used by CLI conversion/publish commands |
-| `cli/yaml-converter.mjs` | YAML conversion helpers for lessons and topic libraries, including lesson/topic JSON-to-YAML serialization |
+| `cli/yaml-converter.mjs` | YAML conversion helpers for lessons and topic libraries, including lesson/topic JSON-to-YAML serialization and the `type: <activity>` shorthand (both directions, via the activity registry) |
 | `cli/structured-input.mjs` | JSON/YAML input detection for CLI files and stdin; lesson YAML is passed through the lesson shorthand converter |
 | `cli/lessons.mjs` | Exports async functions: `listLessons`, `getLesson`, `getLessonSkeleton`, `getTask`, `upsertTask`, `appendTask`, `upsertLesson`, `deleteLesson`, `yamlToLesson`, `publishYamlLesson` |
 | `cli/topics.mjs` | Exports topic Firestore functions plus bulk topic-library YAML/JSON publish helpers |
@@ -599,6 +610,7 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | `src/test/studentCodeStateHarness.js` | Test harness for `useStudentCodeState`: renders the hook with `vi.fn` session writers, storage-key helpers, and runtime fakes (see `docs/TESTING.md`) |
 | `src/test/studentCodeStateMocks.js` | Dependency-free `vi.mock` factories (Pyodide, type/lesson storage assets) used by the `useStudentCodeState` characterization tests |
 | `src/test/fixtures/studentCodeStateLessons.js` | Per-module-type (and composed) lesson fixtures for the `useStudentCodeState` characterization tests |
+| `src/test/activityBuilderHarness.jsx` | Test harness rendering an activity `BuilderEditor` with the task held in state (`renderBuilderEditor`), so tests edit through the UI and read the resulting task |
 | `src/test/activityUiHarness.jsx` | Test harness rendering an activity StudentView with a real state store (`renderActivityUi`), so UI tests exercise updater-style `onChange` like `useActivityState` |
 | `src/test/fixtures/legacyActivityTasks.js` | Test-only fixtures: one valid task per quiz sub-type, Python/HTML `code_arrange` tasks, and invalid variants, shared by the Phase 0 characterisation tests that pin quiz/code_arrange behaviour before the Activity migration (`docs/architecture/modular-activities-plan.md`) |
 | `package.json` | Dependencies and scripts |

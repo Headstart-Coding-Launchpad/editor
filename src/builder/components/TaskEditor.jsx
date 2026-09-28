@@ -13,13 +13,12 @@ import {
   SpriteManager,
   BackdropManager,
 } from './task-editor/TaskEditorFields'
-import {
-  QuizTypePicker,
-  MatchPairsBuilder,
-  FillBlankBuilder,
-  ShortAnswerBuilder,
-  QuizOptionsBuilder,
-} from './task-editor/QuizEditors'
+import { QuizTypePicker, ActivityGallery } from './task-editor/ActivityPickers'
+import ActivitySection from './task-editor/ActivitySection'
+import { getTaskFormat } from '../../activities/registry.pure.js'
+import { getTaskActivityUi } from '../../activities/registry.js'
+import { toQuizTask } from '../../activities/quiz/quizBuilder.js'
+import { commonTaskFields, convertTaskToActivity } from '../taskFormat'
 import CodeArrangeEditor from './task-editor/CodeArrangeEditor'
 import { ScratchToolboxPicker } from '../../modules/scratch/scratchEditors'
 import { useTaskEditorState } from '../hooks/useTaskEditorState'
@@ -79,9 +78,17 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
   const isScratch = lessonMod?.type === 'scratch'
   const isFilesystem = lessonMod?.type === 'filesystem'
   const supportsCopyCode = lessonMod?.supportsCopyCode === true
-  const isQuiz = task.taskType === 'quiz'
-  const isInformation = task.taskType === 'information'
-  const isCodeArrange = task.taskType === 'code_arrange'
+  // Task format from the activity registry: 'information', 'quiz', 'activity', 'code_arrange'
+  // or 'code' (drafts keep their own taskType and edit like code tasks, as before).
+  const taskFormat = getTaskFormat(task)
+  const isQuiz = taskFormat === 'quiz'
+  const isInformation = taskFormat === 'information'
+  const isCodeArrange = taskFormat === 'code_arrange'
+  const isActivity = taskFormat === 'activity'
+  // Choosing the Activity format opens the gallery; the task converts once one is picked.
+  const [choosingActivityFor, setChoosingActivityFor] = useState(null)
+  const choosingActivity = !isActivity && choosingActivityFor === task.id
+  const showsActivity = isActivity || choosingActivity
   const isCompleteTab = !usesUnifiedCodeStages && codeTab === 'complete'
   const stageTabMatch = codeTab.match(/^stage_(\d+)$/)
   const activeStageIndex = stageTabMatch ? parseInt(stageTabMatch[1], 10) : null
@@ -109,6 +116,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
     !isQuiz &&
     !isInformation &&
     !isCodeArrange &&
+    !showsActivity &&
     ((lesson.type === 'html' && !Array.isArray(task.starterFiles)) ||
       (lesson.type === 'filesystem' && !task.starterFs) ||
       (lesson.type === 'desktop' && !task.starterDesktop) ||
@@ -286,48 +294,34 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
     )
   }
 
-  function makeDefaultQuizOptions() {
-    return [
-      { id: 'a', text: '' },
-      { id: 'b', text: '' },
-    ]
-  }
-
-  function renumberQuizOptions(options) {
-    return options.map((option, index) => ({ ...option, id: String.fromCharCode(97 + index) }))
-  }
-
   function handleTaskTypeChange(taskType) {
     resetRunState()
     setQuizSelectedAnswer('')
 
+    if (taskType === 'activity') {
+      // Pick from the gallery first; an activity task re-shows its gallery.
+      if (!isActivity) setChoosingActivityFor(task.id)
+      return
+    }
+    setChoosingActivityFor(null)
+    // Closing the gallery by choosing the task's own format again leaves the task as it is.
+    if (
+      choosingActivity &&
+      taskType === (isQuiz || isInformation || isCodeArrange ? taskFormat : 'code')
+    ) {
+      return
+    }
+    // Leaving an activity keeps only the fields every task format shares.
+    const base = isActivity ? commonTaskFields(task) : task
+
     if (taskType === 'quiz') {
-      const quizType =
-        task.taskType === 'quiz' ? (task.quizType ?? 'multiple_choice') : 'multiple_choice'
-      const options = task.options?.length
-        ? renumberQuizOptions(task.options)
-        : makeDefaultQuizOptions()
-      const answer = options.some((option) => option.id === task.check?.value)
-        ? task.check.value
-        : ''
-      const { copyCode: _copyCode, ...rest } = task
-      onUpdate({
-        ...rest,
-        taskType: 'quiz',
-        quizType,
-        options,
-        check: answer ? { type: 'answer_equals', value: answer } : null,
-        carryCodeFrom: null,
-        carryBlocksFrom: null,
-        carryFsFrom: null,
-        carryCircuitFrom: null,
-      })
+      onUpdate(toQuizTask(base))
       return
     }
 
     if (taskType === 'code_arrange') {
-      const nextModuleType = ['python', 'html'].includes(task.moduleType)
-        ? task.moduleType
+      const nextModuleType = ['python', 'html'].includes(base.moduleType)
+        ? base.moduleType
         : 'python'
       const {
         copyCode: _copyCode,
@@ -337,25 +331,25 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
         carryFsFrom: _c3,
         carryCircuitFrom: _c4,
         ...rest
-      } = task
+      } = base
       onUpdate({
         ...rest,
         taskType: 'code_arrange',
         moduleType: nextModuleType,
-        moduleId: task.moduleId,
-        lines: task.lines?.length
-          ? task.lines
+        moduleId: base.moduleId,
+        lines: base.lines?.length
+          ? base.lines
           : [
               { id: 'line-1', parts: [{ type: 'slot', id: 'line-1-slot-1', code: '' }] },
               { id: 'line-2', parts: [{ type: 'slot', id: 'line-2-slot-1', code: '' }] },
             ],
-        distractors: task.distractors ?? [],
+        distractors: base.distractors ?? [],
         ...(nextModuleType === 'html'
           ? {
-              entryFile: task.entryFile ?? 'index.html',
-              starterFiles: task.starterFiles?.length
-                ? task.starterFiles
-                : [{ name: task.entryFile ?? 'index.html', type: 'html', content: '' }],
+              entryFile: base.entryFile ?? 'index.html',
+              starterFiles: base.starterFiles?.length
+                ? base.starterFiles
+                : [{ name: base.entryFile ?? 'index.html', type: 'html', content: '' }],
             }
           : {}),
         check: null,
@@ -393,12 +387,12 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
         lines: _lines,
         distractors: _distractors,
         ...rest
-      } = task
+      } = base
       onUpdate({
         ...rest,
         taskType: 'information',
-        informationType: task.informationType ?? 'standard',
-        explainer: task.explainer ?? '',
+        informationType: base.informationType ?? 'standard',
+        explainer: base.explainer ?? '',
       })
       return
     }
@@ -410,8 +404,8 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
       lines: _l2,
       distractors: _d2,
       ...rest
-    } = task
-    const typeFields = lessonMod?.makeCodeTaskFields(task) ?? {}
+    } = base
+    const typeFields = lessonMod?.makeCodeTaskFields(base) ?? {}
     onUpdate({ ...rest, ...typeFields, check: null })
   }
 
@@ -427,62 +421,17 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
     setRunStatus(null)
   }
 
-  function handleQuizTypeChange(quizType) {
+  // A quiz sub-type or a gallery activity was chosen: the activity converts the task itself
+  // (quizzes keep the fields they share; other activities start from their defaultTask).
+  function handleActivityChange(definition) {
     setQuizSelectedAnswer('')
     setCheckResults(null)
     setRunStatus(null)
-
-    if (quizType === 'multiple_choice') {
-      const options = task.options?.length ? task.options : makeDefaultQuizOptions()
-      const answer = options.some((o) => o.id === task.check?.value) ? task.check.value : ''
-      onUpdate({
-        ...task,
-        quizType: 'multiple_choice',
-        options,
-        check: answer ? { type: 'answer_equals', value: answer } : null,
-      })
-      return
-    }
-    if (quizType === 'match') {
-      const defaultPairs = [
-        { id: 'p1', prompt: '', answer: '' },
-        { id: 'p2', prompt: '', answer: '' },
-      ]
-      onUpdate({
-        ...task,
-        quizType: 'match',
-        pairs: task.pairs?.length ? task.pairs : defaultPairs,
-        check: null,
-      })
-      return
-    }
-    if (quizType === 'fill_blank') {
-      onUpdate({
-        ...task,
-        quizType: 'fill_blank',
-        mode: task.mode ?? 'drag',
-        text: task.text ?? '',
-        blanks: task.blanks ?? [],
-        check: null,
-      })
-      return
-    }
-    if (quizType === 'short_answer') {
-      const existing = task.check?.type?.startsWith('answer_') ? task.check : null
-      onUpdate({ ...task, quizType: 'short_answer', check: existing ?? null })
-      return
-    }
-    if (quizType === 'confidence') {
-      onUpdate({
-        ...task,
-        quizType: 'confidence',
-        options: undefined,
-        pairs: undefined,
-        blanks: undefined,
-        text: undefined,
-        check: null,
-      })
-    }
+    setChoosingActivityFor(null)
+    // Re-choosing the current activity keeps the task (a quiz re-applies its type, as before).
+    if (!definition.legacy && getTaskActivityUi(task)?.id === definition.id) return
+    const base = isActivity ? commonTaskFields(task) : task
+    onUpdate(convertTaskToActivity(base, definition))
   }
 
   function handleResetCompleteToStarter() {
@@ -672,23 +621,23 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
             },
             { value: 'information', label: 'Information', iconType: 'information' },
             { value: 'quiz', label: 'Quiz', iconType: 'quiz' },
+            { value: 'activity', label: 'Activity', iconType: 'activity' },
             ...(composedLesson?.type === 'composed'
               ? [{ value: 'code_arrange', label: 'Arrange', iconType: 'code_arrange' }]
               : []),
           ].map(({ value, label, iconType }) => {
             const active =
               value ===
-              (isQuiz
-                ? 'quiz'
-                : isInformation
-                  ? 'information'
-                  : isCodeArrange
-                    ? 'code_arrange'
-                    : 'code')
+              (showsActivity
+                ? 'activity'
+                : isQuiz || isInformation || isCodeArrange
+                  ? taskFormat
+                  : 'code')
             return (
               <button
                 key={value}
                 type="button"
+                aria-pressed={active}
                 className={
                   active ? 'te-task-format-btn te-task-format-btn--active' : 'te-task-format-btn'
                 }
@@ -702,7 +651,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
         </div>
       </Field>
 
-      {!isInformation && !isQuiz && composedLesson?.type === 'composed' && (
+      {!isInformation && !isQuiz && !showsActivity && composedLesson?.type === 'composed' && (
         <Field
           label="Code task module"
           hint="Choose the workspace for this task. Changing it clears code, checks, stages, and carry-through settings."
@@ -822,7 +771,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
         </div>
       )}
 
-      {!isQuiz && !isInformation && supportsCopyCode && (
+      {!isQuiz && !isInformation && !showsActivity && supportsCopyCode && (
         <Field label="Copy code panel" hint="optional">
           <div style={s.copyCodeEditor}>
             <label className="te-check-toggle" style={{ alignSelf: 'flex-start' }}>
@@ -859,7 +808,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
         </TaskPreviewPanel>
       )}
 
-      {!isQuiz && !isInformation && !isCodeArrange && (
+      {!isQuiz && !isInformation && !isCodeArrange && !showsActivity && (
         <TaskOptionsSection
           task={task}
           lesson={lessonWithStorageAssets}
@@ -877,31 +826,14 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
 
       {isInformation ? null : isQuiz ? (
         <>
-          <QuizTypePicker task={task} onQuizTypeChange={handleQuizTypeChange} />
-          {!task.quizType || task.quizType === 'multiple_choice' ? (
-            <QuizOptionsBuilder task={task} onUpdate={onUpdate} lessonType={lesson.type} />
-          ) : task.quizType === 'match' ? (
-            <MatchPairsBuilder task={task} onUpdate={onUpdate} lessonType={lesson.type} />
-          ) : task.quizType === 'fill_blank' ? (
-            <FillBlankBuilder task={task} onUpdate={onUpdate} lessonType={lesson.type} />
-          ) : task.quizType === 'short_answer' ? (
-            <ShortAnswerBuilder task={task} onUpdate={onUpdate} lessonType={lesson.type} />
-          ) : task.quizType === 'confidence' ? (
-            <div
-              style={{
-                padding: '10px 12px',
-                background: '#f9fafb',
-                border: '1px solid #e5e7eb',
-                borderRadius: 8,
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.86rem',
-                color: '#6b7280',
-              }}
-            >
-              Students rate their confidence 1–5 (red to green). No options or check needed — any
-              rating counts as complete.
-            </div>
-          ) : null}
+          <QuizTypePicker task={task} onSelect={handleActivityChange} />
+          {(() => {
+            // Each quiz sub-type's editor lives in its activity's ui.jsx (BuilderEditor).
+            const QuizEditor = getTaskActivityUi(task)?.BuilderEditor
+            return QuizEditor ? (
+              <QuizEditor task={task} onUpdate={onUpdate} lessonType={lesson.type} />
+            ) : null
+          })()}
           <TaskPreviewPanel task={task} draft={lesson.draft}>
             <QuizTask
               task={task}
@@ -939,6 +871,17 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
               })()}
           </TaskPreviewPanel>
         </>
+      ) : showsActivity ? (
+        isActivity ? (
+          <ActivitySection
+            task={task}
+            lesson={lesson}
+            onUpdate={onUpdate}
+            onChooseActivity={handleActivityChange}
+          />
+        ) : (
+          <ActivityGallery task={task} onSelect={handleActivityChange} />
+        )
       ) : isCodeArrange ? (
         <CodeArrangeEditor task={task} onUpdate={onUpdate} />
       ) : incompleteDraftWorkspace ? (

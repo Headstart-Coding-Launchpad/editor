@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import KeyboardBuilderEditor from './KeyboardBuilderEditor.jsx'
 import ItemNav from '../ui/ItemNav.jsx'
 import OnScreenKeyboard, { codesForKey } from './OnScreenKeyboard.jsx'
 import { NAMED_KEYS, describeItem, gradeKeyboardItem } from './keyboard.js'
@@ -400,4 +401,5 @@ export function KeyboardStudentView({
 
 export default {
   StudentView: KeyboardStudentView,
+  BuilderEditor: KeyboardBuilderEditor,
 }

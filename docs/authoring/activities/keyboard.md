@@ -5,7 +5,9 @@ sandbox, no sharing or carry-through; saved on the device and marked for the tea
 practise typing lines of text, finding keys, typing symbols on a **UK** keyboard, and using
 shortcuts such as Ctrl+C.
 
-Set `taskType: activity` and `activityType: keyboard` on the task.
+Write `type: keyboard` on the task (the YAML shorthand for `taskType: activity` +
+`activityType: keyboard`, which also works). In the Builder, choose the **Activity** format and pick
+**Keyboard skills**.
 
 ## Complete example
 
@@ -16,8 +18,7 @@ title: Keyboard Skills
 description: Capital letters with Shift, UK symbols and the copy/paste shortcuts.
 tasks:
   - title: Type with capitals
-    taskType: activity
-    activityType: keyboard
+    type: keyboard
     description: Hold **Shift** for each capital letter. Don't use Caps Lock!
     mode: type_text
     requireShiftForCapitals: true
@@ -28,8 +29,7 @@ tasks:
       - id: b
         text: My name is Sam.
   - title: Find the keys
-    taskType: activity
-    activityType: keyboard
+    type: keyboard
     mode: find_key
     items:
       - id: a
@@ -39,8 +39,7 @@ tasks:
         key: Backspace
         hardwareOnly: true
   - title: Symbols
-    taskType: activity
-    activityType: keyboard
+    type: keyboard
     description: Some symbols need Shift. On a UK keyboard `@` is Shift + '.
     mode: symbols
     items:
@@ -51,8 +50,7 @@ tasks:
       - id: c
         char: '"'
   - title: Copy and paste
-    taskType: activity
-    activityType: keyboard
+    type: keyboard
     mode: shortcuts
     items:
       - id: a
@@ -74,8 +72,7 @@ tasks:
 
 | Field | Required | Notes |
 |---|:---:|---|
-| `taskType` | Yes | `activity` |
-| `activityType` | Yes | `keyboard` |
+| `type` | Yes | `keyboard` in YAML (JSON: `taskType: activity` + `activityType: keyboard`) |
 | `mode` | Yes | `type_text`, `find_key`, `symbols` or `shortcuts`. |
 | `layout` | No | `uk` (the only layout so far, and the default). |
 | `items` | Yes | One or more items, each with a unique `id`. |

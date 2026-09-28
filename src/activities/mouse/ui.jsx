@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import MouseBuilderEditor from './MouseBuilderEditor.jsx'
 import { activeMouseItems, describeMouseItem, gradeMouseItem } from './mouse.js'
 import {
   DEFAULT_GESTURE_OPTIONS,
@@ -436,4 +437,5 @@ export function MouseStudentView({
 
 export default {
   StudentView: MouseStudentView,
+  BuilderEditor: MouseBuilderEditor,
 }

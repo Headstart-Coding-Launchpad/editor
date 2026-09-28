@@ -1,8 +1,9 @@
 import { isPlainObject } from './textUtils.js'
+import { LEGACY_QUIZ_TYPES } from '../activities/resolve.js'
 
 // Code tasks leave taskType out. 'activity' tasks name their activity in `activityType`.
 const TASK_TYPES = new Set(['information', 'quiz', 'code_arrange', 'activity'])
-const QUIZ_TYPES = new Set(['multiple_choice', 'match', 'fill_blank', 'short_answer', 'confidence'])
+const QUIZ_TYPES = new Set(LEGACY_QUIZ_TYPES)
 
 function requireArrayOfObjects(value, label, errors) {
   if (value != null && (!Array.isArray(value) || value.some((item) => !isPlainObject(item)))) {

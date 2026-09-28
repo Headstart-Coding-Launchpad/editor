@@ -8,7 +8,9 @@ and the Workspace-module-vs-Activity decision test are in
 [keyboard](../authoring/activities/keyboard.md), [mouse](../authoring/activities/mouse.md)).
 
 Status: Binary, Keyboard and Mouse run through the host (plan step 2.3a), and so do quizzes
-(steps 2.2 / 2.3b, see [Quizzes](#quizzes-legacy-activities)). `code_arrange` still uses
+(steps 2.2 / 2.3b, see [Quizzes](#quizzes-legacy-activities)). The Builder authors every
+activity from the registry and previews it through the host (step 2.4, see [Builder](#builder)),
+and YAML has the `type: <activity>` shorthand. `code_arrange` still uses
 `CodeArrangeTaskContainer` and is only *resolved* to an activity id (`resolve.js`); it moves onto
 the host in step 4.9.
 
@@ -18,7 +20,7 @@ the host in step 4.9.
 |---|---|---|
 | Pure definition | `src/activities/<id>/definition.js` | Contract from `defineActivity.js`: `initialState`, `solutionState`, `serialize` / `deserialize` (tolerant), `storage`, `classifyChange`, `completion`, `grade`, `isGraded`, `buildSubmission`, `getProgress`, `summarize`, `requires`, `touchFallback`, `teacherEditable`, `submitsAnswers`, `previewState`, `report` (`typeFields`, `normalizeSubmission`, `summaryFields`), `printHtml`, `validateTask`. Node-safe (CLI, validation, reports, print). |
 | Pure registry | `src/activities/registry.pure.js` | `getTaskActivity(task)` (unknown `activityType` / `quizType` → `unknown` fallback), `isHostedActivityTask`, `isLegacyQuizTask`, `allowsStudentBroadcast`. |
-| UI | `src/activities/<id>/ui.jsx` | `{ StudentView, TeacherLiveView?, CardSummary?, ownsLayout? }`. Views are controlled: `state`, `onChange(nextOrUpdater)`, `onSubmit(state?)`, `readOnly`, `device`, `teacher`, `result` (`{ submitted, passed }` of the answer shown). |
+| UI | `src/activities/<id>/ui.jsx` | `{ StudentView, TeacherLiveView?, CardSummary?, ownsLayout?, BuilderEditor?, BuilderIcon?, builderHint?, builderConvert? }` (see [Builder](#builder)). Views are controlled: `state`, `onChange(nextOrUpdater)`, `onSubmit(state?)`, `readOnly`, `device`, `teacher`, `result` (`{ submitted, passed }` of the answer shown). |
 | UI registry | `src/activities/registry.js` | Merges definition + UI (`getTaskActivityUi`). Never imported by the CLI. |
 | State hook | `src/app/hooks/useActivityState.js` | Owned by `useStudentCodeState` (exposed as `cs.activity`). All persistence, sync, grading, reset and teacher-edit rules. |
 | Host | `src/activities/ActivityHost.jsx` | Chooses which state to show and applies the device rules. `ActivityView` is the presentational surface reused by the teacher. |
@@ -153,7 +155,58 @@ definition carries `legacy: { taskType: 'quiz', quizType }`. An unknown `quizTyp
 - Quiz-only rules kept via `isLegacyQuizTask`: the feedback banner shows only for a quiz with a
   `check` or an auto-marked match / fill-in-the-gaps; the StudentModal hides the stage dropdown
   and Edit Code on quizzes.
-- The Builder's quiz editors and preview are unchanged (plan 2.4).
+- Each quiz sub-type's Builder editor is its `BuilderEditor` (moved unchanged from
+  `QuizEditors.jsx`, now a thin re-export); the Builder's quiz preview still uses `QuizTask`
+  directly.
+
+## Builder
+
+The Builder's task-format grid is **Code / Information / Quiz / Activity** (+ **Arrange** in
+composed lessons). Everything past the grid comes from the registries, so a new activity needs no
+Builder change:
+
+- `getTaskFormat(task)` (`registry.pure.js`) picks the format; `TaskEditor` makes no inline
+  task-type comparisons for quizzes or activities.
+- **Quiz** shows the quiz-type picker (`getQuizActivityDefinitions()`: label from the definition,
+  `BuilderIcon` / `builderHint` from the UI). Choosing a type calls the UI's `builderConvert`
+  (`src/activities/quiz/quizBuilder.js`), which keeps the legacy `taskType: 'quiz'` + `quizType`
+  shape and the fields the types share, exactly as before.
+- **Activity** opens the gallery (`getGalleryActivityDefinitions()`: icon, label, description);
+  nothing changes until one is picked. `convertTaskToActivity` (`src/builder/taskFormat.js`)
+  keeps the common fields (`COMMON_TASK_FIELDS`: title, description, explainer, priority,
+  authoring metadata…) and takes the rest from the definition's `defaultTask`, so fields of the
+  previous format are stripped. Leaving an activity for another format also keeps only the
+  common fields.
+- `ActivitySection` renders the description field, the activity's `BuilderEditor({ task,
+  onUpdate, lessonType })` and a student preview. Editors are built from
+  `src/activities/ui/builderKit.jsx`: `useActivityValidation` runs the definition's
+  `validateTask` and `splitValidation` shows each message next to the item or target it names
+  (`Task n item i: …`), task-level messages at the top. An activity without a `BuilderEditor`
+  shows a "edit this task in YAML" note.
+- `ActivityPreview` (`src/activities/ActivityPreview.jsx`) plays the task through the real
+  `ActivityHost` with in-memory state (kept per task while the page is open, restarted when the
+  task is edited). Check grades with the definition and shows the verdict; **Start again** and
+  **Show answers** load `initialState` / `solutionState`. Nothing is written to Firebase or
+  localStorage.
+- `TaskList` icons and tooltips come from the registry (activity emoji, "Binary activity",
+  "Match quiz").
+
+## YAML
+
+`cli/yaml-converter.mjs` maps `type: <activity>` (any non-legacy definition's `yaml.type`) to
+`taskType: 'activity'` + `activityType`, and exports known activities back to the shorthand
+(placed right after `title`). An unknown `activityType` keeps its explicit fields; quizzes keep
+`type: quiz`. A `type:` equal to the lesson type is still a code task.
+
+## Reports
+
+`lessonReport.js` reports every hosted task through its definition: quizzes keep
+`{ taskType: 'quiz', quizType }` (unchanged, pinned by the Phase 0 tests); activities report
+`{ taskType: 'activity', activityType }` (they reported as code before 2.4). The default
+`report.normalizeSubmission` parses the JSON attempt submission back into the state object.
+Activities also get `itemProgress: { correct, total }` per student (from the latest attempt,
+via `getProgress`) and `avgItemProgress` (mean share of items right) in the task summary;
+`TeacherReportModal` shows "2/3 items right" and "…, 75% of items right".
 
 ## Unknown activities
 

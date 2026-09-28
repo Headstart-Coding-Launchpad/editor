@@ -17,6 +17,18 @@ function fail(id, message) {
 
 const jsonSerialize = (state) => JSON.stringify(state ?? null)
 
+// Session reports read the attempt log, where a submission is stored as JSON text: show it as
+// the structured state again (anything that isn't a JSON object or array is kept as it is).
+function parseJsonSubmission(task, submission) {
+  if (typeof submission !== 'string' || !submission) return submission ?? null
+  try {
+    const parsed = JSON.parse(submission)
+    return parsed && typeof parsed === 'object' ? parsed : submission
+  } catch {
+    return submission
+  }
+}
+
 export function defineActivity(def) {
   if (!def || typeof def !== 'object') fail(undefined, 'definition must be an object')
   const { id } = def
@@ -78,7 +90,7 @@ export function defineActivity(def) {
     previewState: 'solution',
     report: {
       typeFields: () => ({ taskType: 'activity', activityType: id }),
-      normalizeSubmission: (task, submission) => submission,
+      normalizeSubmission: parseJsonSubmission,
       // Extra per-task summary fields for the session report (e.g. the confidence rating
       // distribution, per-blank failures).
       summaryFields: () => ({}),

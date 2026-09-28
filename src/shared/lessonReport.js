@@ -12,12 +12,39 @@ function isReportableTask(task) {
   return !!task && task.taskType !== 'information'
 }
 
-// Quiz tasks report through their activity definition (report.typeFields, normalizeSubmission,
-// summaryFields), which keeps the stored report shape `{ taskType: 'quiz', quizType }`. Other
-// tasks (code, and for now `taskType: 'activity'`) report as code.
+// Quiz and activity tasks report through their activity definition (report.typeFields,
+// normalizeSubmission, summaryFields): quizzes keep the stored shape `{ taskType: 'quiz',
+// quizType }`, activities report `{ taskType: 'activity', activityType }`. Code tasks (and
+// code_arrange, not yet on the activity contract) report as code.
 function getReportActivity(task) {
+  return getTaskActivity(task)
+}
+
+// A `taskType: 'activity'` task (not a legacy quiz): its report also carries item progress.
+function getItemActivity(task) {
   const activity = getTaskActivity(task)
-  return activity?.legacy ? activity : null
+  return activity && !activity.legacy ? activity : null
+}
+
+// { correct, total } items right in a submitted activity state, or null.
+function getItemProgress(task, submission) {
+  const activity = getItemActivity(task)
+  if (!activity || submission == null || typeof submission !== 'object') return null
+  try {
+    const progress = activity.getProgress(task, submission)
+    if (!progress || !Number.isFinite(progress.total) || progress.total <= 0) return null
+    return { correct: Number(progress.correct) || 0, total: progress.total }
+  } catch {
+    return null
+  }
+}
+
+// Mean fraction of items right across the students who submitted (latest attempt each).
+function summarizeItemProgress(perStudent) {
+  const scored = perStudent.map((t) => t.itemProgress).filter(Boolean)
+  if (scored.length === 0) return {}
+  const mean = scored.reduce((sum, p) => sum + p.correct / p.total, 0) / scored.length
+  return { avgItemProgress: Number(mean.toFixed(2)) }
 }
 
 function getTypeFields(task) {
@@ -309,6 +336,10 @@ export function buildSessionReport({ session, lesson }) {
       )
       const attempts = countAttempts(entries)
       const completed = getCompleted(task, entries, override)
+      const itemProgress =
+        entries.length > 0
+          ? getItemProgress(task, normalizeSubmission(task, entries[entries.length - 1].submission))
+          : null
 
       // Time on task: elapsed time between the task becoming current and either the
       // moment a passing attempt/override was logged, or (if not yet completed) the latest attempt.
@@ -334,6 +365,7 @@ export function buildSessionReport({ session, lesson }) {
         ...(passingEntry?.teacherAssisted ? { teacherAssisted: true } : {}),
         ...(carryFallback ? { carryFallback } : {}),
         ...(supportReveals.length > 0 ? { supportReveals } : {}),
+        ...(itemProgress ? { itemProgress } : {}),
         distinctAttempts: entries.map((entry) => ({
           attemptNumber: entry.attemptNumber,
           passed: entryReportPassed(task, entry),
@@ -425,9 +457,14 @@ export function buildSessionReport({ session, lesson }) {
       ...summarizeSupportReveals(perStudent),
       ...(teacherRating ? { teacherRating } : {}),
     }
-    // Per-item failures for match (pairFailures) and fill-in-the-gaps (blankFailures).
+    // Per-item failures for match (pairFailures) and fill-in-the-gaps (blankFailures); the
+    // average share of items right for activities.
     return reportActivity
-      ? { ...summary, ...reportActivity.report.summaryFields(task, perStudent) }
+      ? {
+          ...summary,
+          ...reportActivity.report.summaryFields(task, perStudent),
+          ...(getItemActivity(task) ? summarizeItemProgress(perStudent) : {}),
+        }
       : summary
   })
 

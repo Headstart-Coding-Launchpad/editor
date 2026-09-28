@@ -8,8 +8,10 @@ lesson, between code tasks of any module. There is no Run button, no personal sa
 sharing and no carry-through. Progress is saved on the device, mirrored to the teacher's student
 card, and marked when the student presses **Check answers**.
 
-Set `taskType: activity` and `activityType: template_activity` on the task. The task's `title` and
-`description` / `explainer` show above the activity.
+Write `type: template_activity` on the task (the YAML shorthand for `taskType: activity` +
+`activityType: template_activity`, which also works). In the Builder, choose the **Activity**
+format and pick **Template Activity**. The task's `title` and `description` / `explainer` show
+above the activity.
 
 ## Complete example
 
@@ -20,8 +22,7 @@ title: "Template Activity example"
 description: A short lesson using the Template Activity activity.
 tasks:
   - title: Answer the questions
-    taskType: activity
-    activityType: template_activity
+    type: template_activity
     description: Type your answer, then press Check answers.
     items:
       - id: a
@@ -36,8 +37,7 @@ tasks:
 
 | Field | Required | Notes |
 |---|:---:|---|
-| `taskType` | Yes | `activity` |
-| `activityType` | Yes | `template_activity` |
+| `type` | Yes | `template_activity` in YAML (JSON: `taskType: activity` + `activityType: template_activity`) |
 | `items` | Yes | One or more questions. Each needs a unique `id` (keeps saved progress attached to the right question). |
 
 ## Item fields

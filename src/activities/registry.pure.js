@@ -64,7 +64,49 @@ export function getTaskActivity(task) {
 // YAML `type:` shorthand → activity id (e.g. `type: binary`). Legacy quizzes keep their own
 // `type: quiz` + `quizType` YAML (cli/yaml-converter.mjs), so they are not shorthands.
 export function activityIdForYamlType(type) {
-  return ACTIVITIES.find((activity) => !activity.legacy && activity.yaml?.type === type)?.id ?? null
+  if (typeof type !== 'string' || !type) return null
+  return (
+    getActivityDefinitions().find((activity) => !activity.legacy && activity.yaml?.type === type)
+      ?.id ?? null
+  )
+}
+
+// The YAML `type:` shorthand for a stored `taskType: 'activity'` task, or null when the task
+// isn't one this bundle knows (an unknown activityType keeps its explicit fields).
+export function yamlTypeForActivityTask(task) {
+  if (task?.taskType !== 'activity') return null
+  const activity = BY_ID.get(task.activityType)
+  if (!activity || activity.legacy || activity.id === UNKNOWN_ACTIVITY_ID) return null
+  return activity.yaml?.type ?? null
+}
+
+// The Builder's quiz-type picker: the legacy quiz sub-types (category 'quiz'), in registry order.
+export function getQuizActivityDefinitions() {
+  return getActivityDefinitions().filter((activity) => activity.category === 'quiz')
+}
+
+// The Builder's activity gallery: every `taskType: 'activity'` activity (not the quizzes).
+export function getGalleryActivityDefinitions() {
+  return getActivityDefinitions().filter(
+    (activity) => !activity.legacy && activity.category !== 'quiz'
+  )
+}
+
+// A code_arrange task (still its own surface until plan 4.9).
+export function isCodeArrangeTask(task) {
+  return getActivityId(task) === CODE_ARRANGE_ID
+}
+
+// The Builder task format a stored task belongs to: 'information', 'quiz' (legacy quiz
+// sub-types), 'activity' (taskType 'activity', including an unknown activityType),
+// 'code_arrange' or 'code'. 'draft' tasks report their own taskType.
+export function getTaskFormat(task) {
+  if (!task) return 'code'
+  if (task.taskType === 'information' || task.taskType === 'draft') return task.taskType
+  if (isCodeArrangeTask(task)) return 'code_arrange'
+  if (isLegacyQuizTask(task)) return 'quiz'
+  if (getTaskActivity(task)) return 'activity'
+  return 'code'
 }
 
 // Tasks rendered by ActivityHost: a full-screen activity surface, never a code task (no Run,

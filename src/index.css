@@ -1671,6 +1671,246 @@ select {
   color: rgba(255, 255, 255, 0.82);
 }
 
+/* Activity gallery and activity editors (Builder, plan step 2.4) */
+.te-activity-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+.te-activity-card {
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px;
+  border: 2px solid var(--ui-border-neutral);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--colour-text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--ui-motion),
+    background var(--ui-motion);
+}
+.te-activity-card:hover {
+  border-color: var(--colour-primary);
+}
+.te-activity-card--active {
+  border-color: var(--colour-primary);
+  background: var(--ui-surface-tint);
+}
+.te-activity-card__icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.te-activity-card__label {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--colour-primary);
+}
+.te-activity-card__desc {
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: var(--colour-muted);
+}
+.te-activity-gallery__hint,
+.te-act-note {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--colour-muted);
+}
+.te-act-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.te-act-description {
+  min-height: 64px;
+  resize: vertical;
+}
+.te-act-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.te-act-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-border-neutral);
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface);
+}
+.te-act-row__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.te-act-row__head .te-remove-btn {
+  margin-left: auto;
+}
+.te-act-row__fields,
+.te-act-inline-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 14px;
+}
+.te-act-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--colour-muted);
+}
+.te-act-inline--wide {
+  flex: 1 1 240px;
+}
+.te-act-id {
+  width: 110px;
+  font-family: var(--font-code);
+}
+.te-act-narrow {
+  width: 96px;
+}
+.te-act-code {
+  font-family: var(--font-code);
+}
+.te-act-messages {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.te-act-message {
+  padding: 6px 10px;
+  border-radius: var(--ui-radius-sm);
+  border: 1px solid;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+.te-act-message--error {
+  background: var(--colour-error-bg);
+  border-color: var(--colour-error-edge);
+  color: var(--colour-error-text);
+}
+.te-act-message--warning {
+  background: var(--colour-warning-bg);
+  border-color: var(--colour-warning-edge);
+  color: var(--colour-warning-text);
+}
+.te-act-pixels {
+  display: grid;
+  gap: 2px;
+  width: max-content;
+}
+.te-act-pixel {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--ui-border-neutral-strong);
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+}
+.te-act-pixel--on {
+  background: var(--colour-ink-strong);
+}
+.te-act-pixel:focus-visible,
+.te-act-stage-target:focus-visible,
+.te-activity-card:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus);
+}
+.te-act-stage-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.te-act-stage {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  aspect-ratio: 16 / 9;
+  border: 1px dashed var(--ui-border-strong);
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface-soft);
+  overflow: hidden;
+  cursor: crosshair;
+}
+.te-act-stage-target {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border: 2px solid transparent;
+  border-radius: var(--ui-radius);
+  background: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+.te-act-stage-target--medium {
+  font-size: 1.25rem;
+}
+.te-act-stage-target--small {
+  font-size: 1rem;
+}
+.te-act-stage-target--selected {
+  border-color: var(--colour-primary);
+}
+.te-act-stage-label {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  color: var(--colour-muted);
+}
+.te-activity-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.te-activity-preview__actions {
+  display: flex;
+  gap: 8px;
+}
+.te-activity-preview__verdict {
+  padding: 10px 14px;
+  border: 1px solid;
+  border-radius: var(--ui-radius);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.te-activity-preview__verdict--pass {
+  background: var(--colour-success-bg);
+  border-color: var(--colour-success-edge);
+  color: var(--colour-success-text);
+}
+.te-activity-preview__verdict--fail {
+  background: var(--colour-warning-bg);
+  border-color: var(--colour-warning-edge);
+  color: var(--colour-warning-text);
+}
+@media (prefers-reduced-motion: reduce) {
+  .te-activity-card {
+    transition: none;
+  }
+}
+
 /* Quiz options */
 .te-quiz-options {
   display: flex;

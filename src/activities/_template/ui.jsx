@@ -101,6 +101,10 @@ export function TemplateActivityStudentView({ task, state, onChange, onSubmit, r
 
 // Optional: TeacherLiveView (teacher surfaces fall back to StudentView with readOnly). The card
 // summary text comes from definition.summarize.
+// TODO(new-activity): add a BuilderEditor ({ task, onUpdate }) for the Builder's Activity
+// gallery (without one the Builder says to edit the task in YAML). Build it from
+// ../ui/builderKit.jsx (RowListEditor, inline validateTask messages), like
+// ../binary/BinaryBuilderEditor.jsx.
 export default {
   StudentView: TemplateActivityStudentView,
 }
