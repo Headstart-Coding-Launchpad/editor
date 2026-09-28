@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { buildQuizSubmission, getQuizSuggestion } from '../studentQuizContent'
+import {
+  CONFIDENCE_TASK,
+  FILL_BLANK_DRAG_TASK,
+  FILL_BLANK_TYPE_TASK,
+  MATCH_TASK,
+  MULTIPLE_CHOICE_TASK,
+  OPEN_SHORT_ANSWER_TASK,
+  SHORT_ANSWER_TASK,
+} from '../../test/fixtures/legacyActivityTasks'
 
 const mcTask = {
   quizType: 'multiple_choice',
@@ -144,5 +153,91 @@ describe('buildQuizSubmission', () => {
     expect(buildQuizSubmission({ quizType: 'short_answer' }, 'I think print shows text')).toBe(
       'I think print shows text'
     )
+  })
+})
+
+// Phase 0 characterisation (docs/architecture/modular-activities-plan.md step 0.3):
+// pins today's submission/suggestion shapes per quiz sub-type using the shared
+// legacy fixtures, before quiz moves onto the Activity plugin contract.
+describe('characterisation: legacy quiz fixtures', () => {
+  it('multiple_choice submits the raw option id (string-coerced) and suggests option feedback', () => {
+    expect(buildQuizSubmission(MULTIPLE_CHOICE_TASK, 'b')).toBe('b')
+    expect(buildQuizSubmission(MULTIPLE_CHOICE_TASK, null)).toBe('')
+    expect(buildQuizSubmission(MULTIPLE_CHOICE_TASK, { a: 1 })).toBe('[object Object]')
+    expect(getQuizSuggestion(MULTIPLE_CHOICE_TASK, 'b')).toBe('input() asks the user a question.')
+    // Option c has no feedback/hint and the task has no feedback: falls to check.hint.
+    expect(getQuizSuggestion(MULTIPLE_CHOICE_TASK, 'c')).toBe('Think about showing text.')
+    expect(getQuizSuggestion(MULTIPLE_CHOICE_TASK, 'zzz')).toBe('Think about showing text.')
+  })
+
+  it('match submits per-pair detail from an object or its JSON string, and suggests task feedback', () => {
+    const answer = { p1: 'p1', p2: 'p3' }
+    const expected = {
+      p1: { prompt: 'print()', value: 'Shows text', expected: 'Shows text', correct: true },
+      p2: { prompt: 'input()', value: 'Counts items', expected: 'Asks a question', correct: false },
+      p3: { prompt: 'len()', value: '', expected: 'Counts items', correct: false },
+    }
+    expect(buildQuizSubmission(MATCH_TASK, answer)).toEqual(expected)
+    expect(buildQuizSubmission(MATCH_TASK, JSON.stringify(answer))).toEqual(expected)
+    // An unknown placed id is reported verbatim as the value.
+    expect(buildQuizSubmission(MATCH_TASK, { p1: 'ghost' }).p1).toEqual({
+      prompt: 'print()',
+      value: 'ghost',
+      expected: 'Shows text',
+      correct: false,
+    })
+    expect(getQuizSuggestion(MATCH_TASK, answer)).toBe('Check each pair again.')
+  })
+
+  it('fill_blank drag maps tile ids to tile text; unfilled blanks are empty strings', () => {
+    expect(buildQuizSubmission(FILL_BLANK_DRAG_TASK, '{"b1":"b1","b2":"d1"}')).toEqual({
+      b1: { value: 'print', expected: 'print', correct: true },
+      b2: { value: 'len', expected: 'input', correct: false },
+    })
+    expect(buildQuizSubmission(FILL_BLANK_DRAG_TASK, '')).toEqual({
+      b1: { value: '', expected: 'print', correct: false },
+      b2: { value: '', expected: 'input', correct: false },
+    })
+    // A dragged tile id that is not in the pool is kept verbatim (drag mode is
+    // an exact text comparison, so a raw id that equals the answer passes).
+    expect(buildQuizSubmission(FILL_BLANK_DRAG_TASK, { b1: 'print' }).b1).toEqual({
+      value: 'print',
+      expected: 'print',
+      correct: true,
+    })
+    expect(getQuizSuggestion(FILL_BLANK_DRAG_TASK, {})).toBe('')
+  })
+
+  it('fill_blank type mode keeps raw text and compares trimmed + case-insensitively', () => {
+    expect(buildQuizSubmission(FILL_BLANK_TYPE_TASK, { t1: '  loop ' })).toEqual({
+      t1: { value: '  loop ', expected: 'Loop', correct: true },
+    })
+    expect(buildQuizSubmission(FILL_BLANK_TYPE_TASK, { t1: 'loops' })).toEqual({
+      t1: { value: 'loops', expected: 'Loop', correct: false },
+    })
+  })
+
+  it('short_answer submits text and suggests the first failing check hint', () => {
+    expect(buildQuizSubmission(SHORT_ANSWER_TASK, 'It shows text')).toBe('It shows text')
+    expect(buildQuizSubmission(SHORT_ANSWER_TASK, 42)).toBe('42')
+    expect(buildQuizSubmission(SHORT_ANSWER_TASK, undefined)).toBe('')
+    expect(getQuizSuggestion(SHORT_ANSWER_TASK, 'It prints')).toBe('Mention what print shows.')
+    expect(getQuizSuggestion(SHORT_ANSWER_TASK, 'It shows text')).toBe('')
+    expect(getQuizSuggestion(OPEN_SHORT_ANSWER_TASK, 'anything')).toBe('')
+  })
+
+  it('confidence submits an integer 1-5, otherwise the raw answer unchanged', () => {
+    expect(buildQuizSubmission(CONFIDENCE_TASK, '3')).toBe(3)
+    expect(buildQuizSubmission(CONFIDENCE_TASK, 5)).toBe(5)
+    expect(buildQuizSubmission(CONFIDENCE_TASK, '6')).toBe('6')
+    expect(buildQuizSubmission(CONFIDENCE_TASK, '2.5')).toBe('2.5')
+    expect(buildQuizSubmission(CONFIDENCE_TASK, '')).toBe('')
+    expect(getQuizSuggestion(CONFIDENCE_TASK, '3')).toBe('')
+  })
+
+  it('an unknown quizType falls through to string coercion and task feedback', () => {
+    const task = { quizType: 'mystery', feedback: ' Try again ' }
+    expect(buildQuizSubmission(task, { x: 1 })).toBe('[object Object]')
+    expect(getQuizSuggestion(task, 'x')).toBe('Try again')
   })
 })

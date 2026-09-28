@@ -553,6 +553,7 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | `src/test/studentCodeStateHarness.js` | Test harness for `useStudentCodeState`: renders the hook with `vi.fn` session writers, storage-key helpers, and runtime fakes (see `docs/TESTING.md`) |
 | `src/test/studentCodeStateMocks.js` | Dependency-free `vi.mock` factories (Pyodide, type/lesson storage assets) used by the `useStudentCodeState` characterization tests |
 | `src/test/fixtures/studentCodeStateLessons.js` | Per-module-type (and composed) lesson fixtures for the `useStudentCodeState` characterization tests |
+| `src/test/fixtures/legacyActivityTasks.js` | Test-only fixtures: one valid task per quiz sub-type, Python/HTML `code_arrange` tasks, and invalid variants, shared by the Phase 0 characterisation tests that pin quiz/code_arrange behaviour before the Activity migration (`docs/architecture/modular-activities-plan.md`) |
 | `package.json` | Dependencies and scripts |
 | `index.html` | Classroom app HTML shell |
 | `builder/index.html` | Lesson builder HTML shell |

@@ -7,6 +7,15 @@ import {
   encodeSessionReportForFirestore,
   reportToYamlText,
 } from '../lessonReport'
+import { buildQuizSubmission } from '../../app/studentQuizContent'
+import {
+  ALL_LEGACY_ACTIVITY_TASKS,
+  CONFIDENCE_TASK,
+  FILL_BLANK_DRAG_TASK,
+  FILL_BLANK_TYPE_TASK,
+  MATCH_TASK,
+  legacyActivityLesson,
+} from '../../test/fixtures/legacyActivityTasks'
 
 const lesson = {
   id: 'demo-lesson',
@@ -810,5 +819,594 @@ describe('encodeSessionReportForFirestore', () => {
     expect(taskById(bob.tasks, 5)).toMatchObject({ completed: true, teacherAssisted: true })
     expect(taskById(report.taskSummary, 5).teacherAssistedCount).toBe(1)
     expect(taskById(report.taskSummary, 1).teacherAssistedCount).toBe(0)
+  })
+})
+
+// Phase 0 characterisation (docs/architecture/modular-activities-plan.md step 0.3):
+// the full per-task summary for quiz and code_arrange tasks, built from attempt
+// entries shaped exactly as useSession.logAttempt writes them (submission is
+// always a string: JSON.stringify(buildQuizSubmission(...)) for object shapes).
+describe('characterisation: buildSessionReport for legacy quiz + code_arrange tasks', () => {
+  function attempt(submission, passed, extra = {}) {
+    return {
+      submission: typeof submission === 'string' ? submission : JSON.stringify(submission),
+      passed,
+      suggestion: null,
+      retries: 0,
+      ...extra,
+    }
+  }
+  function entries(...list) {
+    return Object.fromEntries(list.map((entry, i) => [`k${i}`, { attemptNumber: i + 1, ...entry }]))
+  }
+
+  const fixtureLesson = legacyActivityLesson(Object.values(ALL_LEGACY_ACTIVITY_TASKS))
+  const matchWrong = buildQuizSubmission(MATCH_TASK, { p1: 'p2', p2: 'p1', p3: 'p3' })
+  const matchRight = buildQuizSubmission(MATCH_TASK, { p1: 'p1', p2: 'p2', p3: 'p3' })
+  const fillWrong = buildQuizSubmission(FILL_BLANK_DRAG_TASK, { b1: 'b1', b2: 'd1' })
+  const fillBothWrong = buildQuizSubmission(FILL_BLANK_DRAG_TASK, { b1: 'b2', b2: 'd1' })
+
+  const fixtureSession = {
+    lessonId: 'legacy-activities',
+    startedAt: 1000,
+    endedAt: 9000,
+    taskStartTimes: { 1: 1000, 2: 2000, 7: 7000, 8: 8000 },
+    students: { alice: { displayName: 'Alice' }, bob: { displayName: 'Bob' } },
+    attemptLog: {
+      alice: {
+        1: entries(
+          attempt('b', false, {
+            suggestion: 'input() asks the user a question.',
+            retries: 2,
+            loggedAt: 1100,
+          }),
+          attempt('a', true, { loggedAt: 1400, passedAt: 1400 })
+        ),
+        2: entries(
+          attempt(matchWrong, false, { suggestion: 'Check each pair again.', loggedAt: 2100 }),
+          attempt(matchRight, true, { teacherAssisted: true, loggedAt: 2500, passedAt: 2500 })
+        ),
+        3: entries(attempt(fillWrong, false, { suggestion: '' })),
+        4: entries(attempt(buildQuizSubmission(FILL_BLANK_TYPE_TASK, { t1: 'loop' }), true)),
+        6: entries(attempt('I learned about loops', true)),
+        7: entries(
+          attempt(JSON.stringify(buildQuizSubmission(CONFIDENCE_TASK, '3')), true, {
+            loggedAt: 7100,
+          }),
+          attempt(JSON.stringify(buildQuizSubmission(CONFIDENCE_TASK, '4')), true, {
+            loggedAt: 7200,
+          })
+        ),
+        8: entries(
+          attempt('for i in range(10):\n    print(i * 2)', false, {
+            suggestion: 'Check the output',
+            loggedAt: 8100,
+          }),
+          attempt('for i in range(5):\n    print(i * 2)', true, { loggedAt: 8300, passedAt: 8300 })
+        ),
+      },
+      bob: {
+        1: entries(attempt('c', false, { suggestion: 'Think about showing text.' })),
+        2: entries(attempt(matchWrong, false, { suggestion: 'Check each pair again.' })),
+        3: entries(attempt(fillBothWrong, false)),
+        5: entries(attempt('It prints', false, { suggestion: 'Mention what print shows.' })),
+        7: entries(attempt('5', true)),
+      },
+    },
+  }
+
+  it('pins the task summary for every sub-type', () => {
+    const report = buildSessionReport({ session: fixtureSession, lesson: fixtureLesson })
+    expect(report.taskSummary).toMatchInlineSnapshot(`
+      [
+        {
+          "avgAttempts": 2.5,
+          "avgTimeOnTaskMs": 400,
+          "carryFallbackCount": 0,
+          "carryFallbacks": [],
+          "commonFailures": [
+            {
+              "count": 1,
+              "suggestion": "input() asks the user a question.",
+            },
+            {
+              "count": 1,
+              "suggestion": "Think about showing text.",
+            },
+          ],
+          "completedCount": 1,
+          "completionRate": 0.5,
+          "overriddenFailedCount": 0,
+          "overriddenUnattemptedCount": 0,
+          "overrideCount": 0,
+          "priority": "core",
+          "quizType": "multiple_choice",
+          "supportRevealCount": 0,
+          "supportRevealSources": {
+            "student": 0,
+            "teacher": 0,
+          },
+          "supportRevealStudentCount": 0,
+          "taskId": 1,
+          "taskType": "quiz",
+          "teacherAssistedCount": 0,
+          "title": "Pick the output function",
+          "totalStudents": 2,
+        },
+        {
+          "avgAttempts": 1.5,
+          "avgTimeOnTaskMs": 500,
+          "carryFallbackCount": 0,
+          "carryFallbacks": [],
+          "commonFailures": [
+            {
+              "count": 2,
+              "suggestion": "Check each pair again.",
+            },
+          ],
+          "completedCount": 1,
+          "completionRate": 0.5,
+          "overriddenFailedCount": 0,
+          "overriddenUnattemptedCount": 0,
+          "overrideCount": 0,
+          "pairFailures": [
+            {
+              "count": 2,
+              "expected": "Shows text",
+              "pairId": "p1",
+              "prompt": "print()",
+              "values": [
+                {
+                  "count": 2,
+                  "value": "Asks a question",
+                },
+              ],
+            },
+            {
+              "count": 2,
+              "expected": "Asks a question",
+              "pairId": "p2",
+              "prompt": "input()",
+              "values": [
+                {
+                  "count": 2,
+                  "value": "Shows text",
+                },
+              ],
+            },
+          ],
+          "priority": "core",
+          "quizType": "match",
+          "supportRevealCount": 0,
+          "supportRevealSources": {
+            "student": 0,
+            "teacher": 0,
+          },
+          "supportRevealStudentCount": 0,
+          "taskId": 2,
+          "taskType": "quiz",
+          "teacherAssistedCount": 1,
+          "title": "Match each function",
+          "totalStudents": 2,
+        },
+        {
+          "avgAttempts": 1,
+          "avgTimeOnTaskMs": null,
+          "blankFailures": [
+            {
+              "blankId": "b2",
+              "count": 2,
+              "expected": "input",
+              "values": [
+                {
+                  "count": 2,
+                  "value": "len",
+                },
+              ],
+            },
+            {
+              "blankId": "b1",
+              "count": 1,
+              "expected": "print",
+              "values": [
+                {
+                  "count": 1,
+                  "value": "input",
+                },
+              ],
+            },
+          ],
+          "carryFallbackCount": 0,
+          "carryFallbacks": [],
+          "commonFailures": [],
+          "completedCount": 0,
+          "completionRate": 0,
+          "overriddenFailedCount": 0,
+          "overriddenUnattemptedCount": 0,
+          "overrideCount": 0,
+          "priority": "core",
+          "quizType": "fill_blank",
+          "supportRevealCount": 0,
+          "supportRevealSources": {
+            "student": 0,
+            "teacher": 0,
+          },
+          "supportRevealStudentCount": 0,
+          "taskId": 3,
+          "taskType": "quiz",
+          "teacherAssistedCount": 0,
+          "title": "Fill the gaps (drag)",
+          "totalStudents": 2,
+        },
+        {
+          "avgAttempts": 1,
+          "avgTimeOnTaskMs": null,
+          "blankFailures": [],
+          "carryFallbackCount": 0,
+          "carryFallbacks": [],
+          "commonFailures": [],
+          "completedCount": 1,
+          "completionRate": 0.5,
+          "overriddenFailedCount": 0,
+          "overriddenUnattemptedCount": 0,
+          "overrideCount": 0,
+          "priority": "core",
+          "quizType": "fill_blank",
+          "supportRevealCount": 0,
+          "supportRevealSources": {
+            "student": 0,
+            "teacher": 0,
+          },
+          "supportRevealStudentCount": 0,
+          "taskId": 4,
+          "taskType": "quiz",
+          "teacherAssistedCount": 0,
+          "title": "Fill the gap (typed)",
+          "totalStudents": 2,
+        },
+        {
+          "avgAttempts": 1,
+          "avgTimeOnTaskMs": null,
+          "carryFallbackCount": 0,
+          "carryFallbacks": [],
+          "commonFailures": [
+            {
+              "count": 1,
+              "suggestion": "Mention what print shows.",
+            },
+          ],
+          "completedCount": 0,
+          "completionRate": 0,
+          "overriddenFailedCount": 0,
+          "overriddenUnattemptedCount": 0,
+          "overrideCount": 0,
+          "priority": "core",
+          "quizType": "short_answer",
+          "supportRevealCount": 0,
+          "supportRevealSources": {
+            "student": 0,
+            "teacher": 0,
+          },
+          "supportRevealStudentCount": 0,
+          "taskId": 5,
+          "taskType": "quiz",
+          "teacherAssistedCount": 0,
+          "title": "Explain print",
+          "totalStudents": 2,
+        },
+        {
+          "avgTimeOnTaskMs": null,
+          "carryFallbackCount": 0,
+          "carryFallbacks": [],
+          "commonFailures": [],
+          "overriddenFailedCount": 0,
+          "overriddenUnattemptedCount": 0,
+          "overrideCount": 0,
+          "priority": "core",
+          "quizType": "short_answer",
+          "respondedCount": 1,
+          "supportRevealCount": 0,
+          "supportRevealSources": {
+            "student": 0,
+            "teacher": 0,
+          },
+          "supportRevealStudentCount": 0,
+          "taskId": 6,
+          "taskType": "quiz",
+          "title": "Reflect",
+          "totalStudents": 2,
+        },
+        {
+          "avgTimeOnTaskMs": 100,
+          "carryFallbackCount": 0,
+          "carryFallbacks": [],
+          "commonFailures": [],
+          "overriddenFailedCount": 0,
+          "overriddenUnattemptedCount": 0,
+          "overrideCount": 0,
+          "priority": "core",
+          "quizType": "confidence",
+          "ratingDistribution": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 1,
+            "5": 1,
+          },
+          "respondedCount": 2,
+          "supportRevealCount": 0,
+          "supportRevealSources": {
+            "student": 0,
+            "teacher": 0,
+          },
+          "supportRevealStudentCount": 0,
+          "taskId": 7,
+          "taskType": "quiz",
+          "title": "How confident are you?",
+          "totalStudents": 2,
+        },
+        {
+          "avgAttempts": 2,
+          "avgTimeOnTaskMs": 300,
+          "carryFallbackCount": 0,
+          "carryFallbacks": [],
+          "commonFailures": [
+            {
+              "count": 1,
+              "suggestion": "Check the output",
+            },
+          ],
+          "completedCount": 1,
+          "completionRate": 0.5,
+          "overriddenFailedCount": 0,
+          "overriddenUnattemptedCount": 0,
+          "overrideCount": 0,
+          "priority": "core",
+          "supportRevealCount": 0,
+          "supportRevealSources": {
+            "student": 0,
+            "teacher": 0,
+          },
+          "supportRevealStudentCount": 0,
+          "taskId": 8,
+          "taskType": "code",
+          "teacherAssistedCount": 0,
+          "title": "Print the first five even numbers",
+          "totalStudents": 2,
+        },
+        {
+          "avgAttempts": 0,
+          "avgTimeOnTaskMs": null,
+          "carryFallbackCount": 0,
+          "carryFallbacks": [],
+          "commonFailures": [],
+          "completedCount": 0,
+          "completionRate": 0,
+          "overriddenFailedCount": 0,
+          "overriddenUnattemptedCount": 0,
+          "overrideCount": 0,
+          "priority": "core",
+          "supportRevealCount": 0,
+          "supportRevealSources": {
+            "student": 0,
+            "teacher": 0,
+          },
+          "supportRevealStudentCount": 0,
+          "taskId": 9,
+          "taskType": "code",
+          "teacherAssistedCount": 0,
+          "title": "Arrange a heading and paragraph",
+          "totalStudents": 2,
+        },
+      ]
+    `)
+  })
+
+  it("pins each quiz/code_arrange row for one student's report", () => {
+    const report = buildSessionReport({ session: fixtureSession, lesson: fixtureLesson })
+    const alice = studentByLabel(report, 'Student 1')
+    expect(
+      alice.tasks.map((task) => ({
+        taskId: task.taskId,
+        taskType: task.taskType,
+        quizType: task.quizType,
+        completed: task.completed,
+        finalResult: task.finalResult,
+        teacherAssisted: task.teacherAssisted,
+        submissions: task.distinctAttempts.map((a) => [a.passed, a.submission]),
+      }))
+    ).toMatchInlineSnapshot(`
+      [
+        {
+          "completed": true,
+          "finalResult": "passed",
+          "quizType": "multiple_choice",
+          "submissions": [
+            [
+              false,
+              "b",
+            ],
+            [
+              true,
+              "a",
+            ],
+          ],
+          "taskId": 1,
+          "taskType": "quiz",
+          "teacherAssisted": undefined,
+        },
+        {
+          "completed": true,
+          "finalResult": "passed",
+          "quizType": "match",
+          "submissions": [
+            [
+              false,
+              {
+                "p1": {
+                  "correct": false,
+                  "expected": "Shows text",
+                  "prompt": "print()",
+                  "value": "Asks a question",
+                },
+                "p2": {
+                  "correct": false,
+                  "expected": "Asks a question",
+                  "prompt": "input()",
+                  "value": "Shows text",
+                },
+                "p3": {
+                  "correct": true,
+                  "expected": "Counts items",
+                  "prompt": "len()",
+                  "value": "Counts items",
+                },
+              },
+            ],
+            [
+              true,
+              {
+                "p1": {
+                  "correct": true,
+                  "expected": "Shows text",
+                  "prompt": "print()",
+                  "value": "Shows text",
+                },
+                "p2": {
+                  "correct": true,
+                  "expected": "Asks a question",
+                  "prompt": "input()",
+                  "value": "Asks a question",
+                },
+                "p3": {
+                  "correct": true,
+                  "expected": "Counts items",
+                  "prompt": "len()",
+                  "value": "Counts items",
+                },
+              },
+            ],
+          ],
+          "taskId": 2,
+          "taskType": "quiz",
+          "teacherAssisted": true,
+        },
+        {
+          "completed": false,
+          "finalResult": "failed",
+          "quizType": "fill_blank",
+          "submissions": [
+            [
+              false,
+              {
+                "b1": {
+                  "correct": true,
+                  "expected": "print",
+                  "value": "print",
+                },
+                "b2": {
+                  "correct": false,
+                  "expected": "input",
+                  "value": "len",
+                },
+              },
+            ],
+          ],
+          "taskId": 3,
+          "taskType": "quiz",
+          "teacherAssisted": undefined,
+        },
+        {
+          "completed": true,
+          "finalResult": "passed",
+          "quizType": "fill_blank",
+          "submissions": [
+            [
+              true,
+              {
+                "t1": {
+                  "correct": true,
+                  "expected": "Loop",
+                  "value": "loop",
+                },
+              },
+            ],
+          ],
+          "taskId": 4,
+          "taskType": "quiz",
+          "teacherAssisted": undefined,
+        },
+        {
+          "completed": false,
+          "finalResult": "not_attempted",
+          "quizType": "short_answer",
+          "submissions": [],
+          "taskId": 5,
+          "taskType": "quiz",
+          "teacherAssisted": undefined,
+        },
+        {
+          "completed": true,
+          "finalResult": "not_applicable",
+          "quizType": "short_answer",
+          "submissions": [
+            [
+              null,
+              "I learned about loops",
+            ],
+          ],
+          "taskId": 6,
+          "taskType": "quiz",
+          "teacherAssisted": undefined,
+        },
+        {
+          "completed": true,
+          "finalResult": "not_applicable",
+          "quizType": "confidence",
+          "submissions": [
+            [
+              null,
+              3,
+            ],
+            [
+              null,
+              4,
+            ],
+          ],
+          "taskId": 7,
+          "taskType": "quiz",
+          "teacherAssisted": undefined,
+        },
+        {
+          "completed": true,
+          "finalResult": "passed",
+          "quizType": undefined,
+          "submissions": [
+            [
+              false,
+              "for i in range(10):
+          print(i * 2)",
+            ],
+            [
+              true,
+              "for i in range(5):
+          print(i * 2)",
+            ],
+          ],
+          "taskId": 8,
+          "taskType": "code",
+          "teacherAssisted": undefined,
+        },
+        {
+          "completed": false,
+          "finalResult": "not_attempted",
+          "quizType": undefined,
+          "submissions": [],
+          "taskId": 9,
+          "taskType": "code",
+          "teacherAssisted": undefined,
+        },
+      ]
+    `)
   })
 })

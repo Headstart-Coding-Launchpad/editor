@@ -245,4 +245,64 @@ describe('deriveStudentLiveDisplay', () => {
     expect(broadcastSource.isLiveCopyBlocked).toBe(false)
     expect(noBroadcast.isLiveCopyBlocked).toBe(false)
   })
+
+  // Phase 0 characterisation (docs/architecture/modular-activities-plan.md step 0.3):
+  // a student Go Live on a quiz task publishes teacherLive.answer (see
+  // useStudentCodeState handleQuizSelect), but the display model has no answer
+  // field, so a classmate watching the broadcast never sees the quiz answer.
+  it('derives no display field from a broadcast quiz answer', () => {
+    const quizBroadcast = {
+      active: true,
+      source: 'student',
+      sourceStudentId: 'student-2',
+      taskId: 1,
+      code: '',
+      answer: '{"p1":"p1"}',
+      runStatus: 'submitted',
+      checkPassed: true,
+      checkAttempted: true,
+      checkSuggestion: '',
+    }
+    const display = deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: false,
+      phase: 'lesson',
+      teacherLive: quizBroadcast,
+      identityId: 'student-1',
+      currentTaskId: 1,
+      viewingTaskId: null,
+    })
+    expect(display.isStudentGoLiveViewer).toBe(true)
+    expect(Object.keys(display).sort()).toEqual([
+      'displayActiveFile',
+      'displayActivity',
+      'displayArcadeDesign',
+      'displayBlockDrag',
+      'displayCheckAttempted',
+      'displayCheckPassed',
+      'displayCheckSuggestion',
+      'displayCode',
+      'displayCodeArrangeCursor',
+      'displayCodeArrangeSlots',
+      'displayCursor',
+      'displayFiles',
+      'displayOutput',
+      'displayOutputCollapsed',
+      'displayRunStatus',
+      'displaySelection',
+      'displaySpriteState',
+      'displayTurtleResult',
+      'displayedTaskId',
+      'isForcedTeacherLive',
+      'isLiveCopyBlocked',
+      'isPresentationStudentViewer',
+      'isStudentGoLiveViewer',
+      'isTeacherLiveActive',
+      'isTeacherLiveViewer',
+    ])
+    expect(Object.values(display)).not.toContain(quizBroadcast.answer)
+    // The marked result does carry through.
+    expect(display.displayRunStatus).toBe('submitted')
+    expect(display.displayCheckPassed).toBe(true)
+  })
 })
