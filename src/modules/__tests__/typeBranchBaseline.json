@@ -26,7 +26,7 @@
   "src/builder/components/LessonMetaPanel.jsx": 2,
   "src/builder/components/task-editor/CodeArrangeEditor.jsx": 6,
   "src/builder/components/task-editor/TaskEditorFields.jsx": 3,
-  "src/builder/components/TaskEditor.jsx": 24,
+  "src/builder/components/TaskEditor.jsx": 23,
   "src/builder/components/TaskList.jsx": 1,
   "src/builder/hooks/useBuilderState.js": 7,
   "src/builder/lessonUtils.js": 5,

@@ -7,12 +7,36 @@ import {
   isLegacyDraftTask,
 } from '../../shared/taskUtils'
 import { TaskFormatIcon } from './task-editor/TaskEditorFields'
+import { getTaskActivity, getTaskFormat } from '../../activities/registry.pure.js'
+import { UNKNOWN_ACTIVITY_ID } from '../../activities/resolve.js'
 
 function taskIconType(task) {
-  if (task.taskType === 'information') return 'information'
-  if (task.taskType === 'quiz') return 'quiz'
+  const format = getTaskFormat(task)
+  if (format === 'information' || format === 'quiz' || format === 'activity') return format
   if (task.toolbox || task.starterBlocks || task.completeBlocks) return 'scratch'
   return 'code'
+}
+
+// Icon and tooltip for a task row. Quizzes and activities take their label (and, for
+// activities, their icon) from the activity registry.
+function TaskTypeIcon({ task }) {
+  const iconType = taskIconType(task)
+  const activity = getTaskActivity(task)
+  const known = activity && activity.id !== UNKNOWN_ACTIVITY_ID
+  const title = known
+    ? `${activity.label} ${activity.legacy ? 'quiz' : 'activity'}`
+    : `${iconType} task`
+  return (
+    <span style={s.taskTypeIcon} title={title} aria-label={title}>
+      {iconType === 'activity' ? (
+        <span aria-hidden="true" style={s.activityEmoji}>
+          {(known && activity.icon) || '🧩'}
+        </span>
+      ) : (
+        <TaskFormatIcon type={iconType} size={15} />
+      )}
+    </span>
+  )
 }
 
 function PriorityBadge({ priority }) {
@@ -358,9 +382,7 @@ export default function TaskList({
                           onClick={() => onSelect(subtask.id)}
                         >
                           <span style={s.subtaskNum}>{taskGlobalNums[subtask.id]}</span>
-                          <span style={s.taskTypeIcon} title={`${taskIconType(subtask)} task`}>
-                            <TaskFormatIcon type={taskIconType(subtask)} size={15} />
-                          </span>
+                          <TaskTypeIcon task={subtask} />
                           <span style={s.title}>
                             {subtask.title || <em style={{ opacity: 0.5 }}>Untitled</em>}
                           </span>
@@ -448,9 +470,7 @@ export default function TaskList({
               onClick={() => onSelect(item.id)}
             >
               <span style={s.num}>{taskGlobalNums[item.id]}</span>
-              <span style={s.taskTypeIcon} title={`${taskIconType(item)} task`}>
-                <TaskFormatIcon type={taskIconType(item)} size={15} />
-              </span>
+              <TaskTypeIcon task={item} />
               <span style={s.title}>
                 {item.title || <em style={{ opacity: 0.5 }}>Untitled</em>}
               </span>
@@ -613,6 +633,7 @@ const s = {
     justifyContent: 'center',
     flexShrink: 0,
   },
+  activityEmoji: { fontSize: 13, lineHeight: 1 },
   actions: { display: 'flex', gap: 2, flexShrink: 0 },
   iconBtn: {
     background: 'transparent',

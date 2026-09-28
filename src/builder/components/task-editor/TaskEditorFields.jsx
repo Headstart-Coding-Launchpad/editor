@@ -9,6 +9,8 @@ import { createSpriteFromPreset } from '../../../shared/spritePresets'
 import { flattenTasks, getStageRole, STAGE_ROLES } from '../../../shared/taskUtils'
 import { getLessonModule } from '../../../modules/registry'
 import { getModuleCarrySourceIds } from '../../../shared/composedLesson'
+import { Field } from '../../../activities/ui/BuilderField.jsx'
+import { QuizTypeIcon } from '../../../activities/quiz/QuizTypeIcon.jsx'
 
 function CodeWorkspaceTabs({
   activeTab,
@@ -271,34 +273,20 @@ function TaskFormatIcon({ type, size = 24 }) {
         <path d="M12 17h.01" />
       </svg>
     )
+  if (type === 'activity')
+    return (
+      <svg {...common}>
+        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+        <circle cx="17.5" cy="6.5" r="3.5" />
+        <path d="M6.5 14l3.5 7H3z" />
+        <rect x="14" y="14" width="7" height="7" rx="3.5" />
+      </svg>
+    )
   return (
     <svg {...common}>
       <polyline points="16 18 22 12 16 6" />
       <polyline points="8 6 2 12 8 18" />
     </svg>
-  )
-}
-
-function Field({ label, hint, children }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <span
-        style={{
-          fontFamily: 'var(--font-body)',
-          fontWeight: 600,
-          fontSize: '0.88rem',
-          color: 'var(--colour-text)',
-        }}
-      >
-        {label}
-        {hint && (
-          <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: '0.82rem', marginLeft: 4 }}>
-            ({hint})
-          </span>
-        )}
-      </span>
-      {children}
-    </div>
   )
 }
 
@@ -335,65 +323,6 @@ function StageMetadataEditor({ stage, onChange }) {
         </select>
       </label>
     </div>
-  )
-}
-
-function QuizTypeIcon({ type }) {
-  const common = {
-    width: 22,
-    height: 22,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: '2',
-    strokeLinecap: 'round',
-    strokeLinejoin: 'round',
-  }
-  if (type === 'match')
-    return (
-      <svg {...common}>
-        <path d="M7 7h.01" />
-        <path d="M7 17h.01" />
-        <path d="M17 7h.01" />
-        <path d="M17 17h.01" />
-        <path d="M8 7h8" />
-        <path d="M8 17h8" />
-      </svg>
-    )
-  if (type === 'blank')
-    return (
-      <svg {...common}>
-        <path d="M4 7h16" />
-        <path d="M4 12h6" />
-        <path d="M14 12h6" />
-        <path d="M4 17h16" />
-      </svg>
-    )
-  if (type === 'answer')
-    return (
-      <svg {...common}>
-        <path d="M4 5h16" />
-        <path d="M4 12h10" />
-        <path d="M4 19h7" />
-        <path d="M15 18l2 2 4-5" />
-      </svg>
-    )
-  if (type === 'confidence')
-    return (
-      <svg {...common}>
-        <rect x="3" y="14" width="3" height="6" rx="1" />
-        <rect x="8" y="10" width="3" height="10" rx="1" />
-        <rect x="13" y="6" width="3" height="14" rx="1" />
-        <rect x="18" y="2" width="3" height="18" rx="1" />
-      </svg>
-    )
-  return (
-    <svg {...common}>
-      <circle cx="7" cy="7" r="2" />
-      <path d="M11 7h8" />
-      <circle cx="7" cy="17" r="2" />
-      <path d="M11 17h8" />
-    </svg>
   )
 }
 

@@ -5,7 +5,9 @@ sandbox, no sharing or carry-through; saved on the device and marked for the tea
 practise clicking, double-clicking, right-clicking, dragging, scrolling and hovering on a stage of
 large, friendly targets. Touch screens use the touch equivalents.
 
-Set `taskType: activity` and `activityType: mouse` on the task.
+Write `type: mouse` on the task (the YAML shorthand for `taskType: activity` +
+`activityType: mouse`, which also works). In the Builder, choose the **Activity** format and pick
+**Mouse skills**.
 
 ## Complete example
 
@@ -16,8 +18,7 @@ title: Mouse Skills
 description: Click, double-click, right-click, drag and scroll, then run a program.
 tasks:
   - title: Mouse practice
-    taskType: activity
-    activityType: mouse
+    type: mouse
     description: Follow each instruction. The target you need has a coloured border.
     touch: equivalent
     targets:
@@ -69,8 +70,7 @@ tasks:
 
 | Field | Required | Notes |
 |---|:---:|---|
-| `taskType` | Yes | `activity` |
-| `activityType` | Yes | `mouse` |
+| `type` | Yes | `mouse` in YAML (JSON: `taskType: activity` + `activityType: mouse`) |
 | `targets` | Yes | Things on the stage (see below). |
 | `items` | Yes | Instructions, done one at a time in order. |
 | `touch` | No | What happens on a touch screen: `equivalent` (default: touch gestures count, hover items are skipped), `skip` (the same, without the hover warning), or `block` (a "needs a mouse" notice instead of the stage). |

@@ -11,6 +11,7 @@ import {
   placeValues,
 } from './binary.js'
 import { emptyItemState } from './definition.js'
+import BinaryBuilderEditor from './BinaryBuilderEditor.jsx'
 
 // Binary activity UI. State shape (see definition.js): { v, items: { [id]: { bits, carries } } }
 // for make_number / to_binary / add, and { answer } for to_decimal. The follow-up modes add
@@ -679,4 +680,5 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
 // One-line card summary text comes from definition.summarize; no custom card needed.
 export default {
   StudentView: BinaryStudentView,
+  BuilderEditor: BinaryBuilderEditor,
 }

@@ -7,9 +7,9 @@ is no Run button, no personal sandbox, no sharing and no carry-through. Progress
 device, mirrored to the teacher's student card, and marked when the student presses
 **Check answers**.
 
-Set `taskType: activity` and `activityType: binary` on the task (the `type: binary` YAML shorthand
-arrives with the Builder activity gallery; for now write both fields). The task's `title` and
-`description` / `explainer` show above the activity.
+Write `type: binary` on the task (the YAML shorthand for `taskType: activity` +
+`activityType: binary`, which also works). In the Builder, choose the **Activity** format and
+pick **Binary**. The task's `title` and `description` / `explainer` show above the activity.
 
 ## Complete example
 
@@ -20,8 +20,7 @@ title: Binary Basics
 description: Count in binary, convert both ways, then print a binary number in Python.
 tasks:
   - title: Make the numbers
-    taskType: activity
-    activityType: binary
+    type: binary
     description: Click the bits to turn them on. Make each number.
     mode: make_number
     bits: 4
@@ -33,8 +32,7 @@ tasks:
       - id: c
         target: 15
   - title: Binary to decimal
-    taskType: activity
-    activityType: binary
+    type: binary
     description: What number do these bits make?
     mode: to_decimal
     bits: 8
@@ -44,8 +42,7 @@ tasks:
       - id: b
         value: "01000001"
   - title: Add in binary
-    taskType: activity
-    activityType: binary
+    type: binary
     description: Add the two numbers. Remember 1 + 1 = 10, so carry the 1.
     mode: add
     bits: 4
@@ -67,8 +64,7 @@ tasks:
 
 | Field | Required | Notes |
 |---|:---:|---|
-| `taskType` | Yes | `activity` |
-| `activityType` | Yes | `binary` |
+| `type` | Yes | `binary` in YAML (JSON: `taskType: activity` + `activityType: binary`) |
 | `mode` | Yes | `make_number`, `to_binary`, `to_decimal`, `add`, `overflow`, `hex`, `ascii` or `pixels` (see below). |
 | `bits` | No | Number of bit columns, 1–16. Default `8`. Not used by `ascii` (always 8-bit codes) or `pixels`. |
 | `showPlaceValues` | No | Show 128 / 64 / … above each column. Default `true`. |
@@ -142,8 +138,7 @@ title: Beyond Binary
 description: Overflow, hexadecimal, ASCII codes and pixel pictures.
 tasks:
   - title: Too big to fit
-    taskType: activity
-    activityType: binary
+    type: binary
     description: Add the numbers. Only 4 bits fit, so what happens to the last carry?
     mode: overflow
     bits: 4
@@ -155,8 +150,7 @@ tasks:
         a: "1111"
         b: "0001"
   - title: Hexadecimal
-    taskType: activity
-    activityType: binary
+    type: binary
     description: Each hex digit stands for 4 bits.
     mode: hex
     bits: 8
@@ -178,8 +172,7 @@ tasks:
         from: decimal
         to: hex
   - title: Secret messages
-    taskType: activity
-    activityType: binary
+    type: binary
     description: Computers store each letter as a number called its ASCII code.
     mode: ascii
     codeFormat: binary
@@ -192,8 +185,7 @@ tasks:
         text: "OK!"
         direction: decode
   - title: Pixel pictures
-    taskType: activity
-    activityType: binary
+    type: binary
     description: 1 means a filled square and 0 means an empty one.
     mode: pixels
     width: 5

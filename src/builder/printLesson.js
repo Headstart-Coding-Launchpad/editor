@@ -298,9 +298,17 @@ export function buildPrintHtml(lesson) {
       `<h3 class="task-title"><span class="task-num">${taskNumber}</span> ${esc(task.title || '(untitled)')}</h3>`
     )
 
+    // A `taskType: 'activity'` task (not a legacy quiz) names its activity and prints its
+    // description (shown above the activity when there is no explainer).
+    const activity = getTaskActivity(task)
+    const itemActivity = activity && !activity.legacy ? activity : null
     const badges = []
     if (task.taskType) badges.push(`<span class="badge badge-type">${esc(task.taskType)}</span>`)
     if (task.quizType) badges.push(`<span class="badge">${esc(task.quizType)}</span>`)
+    if (itemActivity) {
+      const name = task.activityType === itemActivity.id ? itemActivity.label : task.activityType
+      badges.push(`<span class="badge">${esc(name ?? '')}</span>`)
+    }
     if (task.informationType) badges.push(`<span class="badge">${esc(task.informationType)}</span>`)
     if (!task.taskType) {
       badges.push(
@@ -316,6 +324,11 @@ export function buildPrintHtml(lesson) {
         `<div class="field"><div class="field-label">Explainer</div><div class="field-value markdown">${mdToHtml(task.explainer)}</div></div>`
       )
     }
+    if (itemActivity && !task.explainer && task.description) {
+      parts.push(
+        `<div class="field"><div class="field-label">Description</div><div class="field-value markdown">${mdToHtml(task.description)}</div></div>`
+      )
+    }
     if (task.leftContent) {
       parts.push(
         `<div class="field"><div class="field-label">Left Content (Recap)</div><div class="field-value markdown">${mdToHtml(task.leftContent)}</div></div>`
@@ -323,7 +336,7 @@ export function buildPrintHtml(lesson) {
     }
 
     // Quizzes and activities print their own fields (definition.printHtml).
-    const activityHtml = getTaskActivity(task)?.printHtml?.(task, { esc, mdToHtml })
+    const activityHtml = activity?.printHtml?.(task, { esc, mdToHtml })
     if (activityHtml) parts.push(activityHtml)
 
     if (!task.taskType) {

@@ -3,7 +3,7 @@ import { defineActivity } from '../defineActivity.js'
 import { DEFAULT_LAYOUT, getKeyForChar } from '../../shared/input/index.js'
 import { gradeKeyboardTask, validateKeyboardTask } from './keyboard.js'
 
-const MODE_LABELS = {
+export const KEYBOARD_MODE_LABELS = {
   type_text: 'Type the text',
   find_key: 'Find the key',
   symbols: 'Type the symbols',
@@ -106,6 +106,6 @@ export default defineActivity({
       const prompt = item.prompt ? ` — ${esc(item.prompt)}` : ''
       return `<li><code>${esc(text)}</code>${prompt}</li>`
     })
-    return `<p><strong>${esc(MODE_LABELS[task.mode] ?? 'Keyboard')}</strong></p><ol>${rows.join('')}</ol>`
+    return `<p><strong>${esc(KEYBOARD_MODE_LABELS[task.mode] ?? 'Keyboard')}</strong></p><ol>${rows.join('')}</ol>`
   },
 })

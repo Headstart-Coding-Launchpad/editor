@@ -9,7 +9,7 @@ import {
   validateBinaryTask,
 } from './binary.js'
 
-const MODE_LABELS = {
+export const BINARY_MODE_LABELS = {
   make_number: 'Make the number',
   to_binary: 'Convert to binary',
   to_decimal: 'Convert to decimal',
@@ -134,7 +134,7 @@ export default defineActivity({
       const { question, answer } = printItem(task, item, bits, esc)
       return `<li>${question} <em>(answer: ${answer})</em></li>`
     })
-    return `<p><strong>${esc(MODE_LABELS[task.mode] ?? 'Binary')}</strong></p><ol>${rows.join('')}</ol>`
+    return `<p><strong>${esc(BINARY_MODE_LABELS[task.mode] ?? 'Binary')}</strong></p><ol>${rows.join('')}</ol>`
   },
 })
 

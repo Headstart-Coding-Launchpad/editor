@@ -20,6 +20,25 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-28
 
+### Activities in YAML (`type: binary`) and in the Builder
+
+- YAML shorthand: `type: binary`, `type: keyboard` or `type: mouse` on a task (any activity's
+  YAML type) becomes `taskType: activity` + `activityType: <id>`. The explicit two-field form
+  still works; `lessons export` now writes the shorthand. An `activityType` this version doesn't
+  know is exported explicitly. Quizzes keep `type: quiz` + `quizType`. See
+  [lesson-schema-yaml.md](lesson-schema-yaml.md#activity-tasks) and the pages in
+  [activities/](activities/), whose examples now use the shorthand.
+- Builder: the task format grid is **Code / Information / Quiz / Activity** (+ Arrange in
+  composed lessons). **Activity** opens a gallery of the activities; each has its own editor
+  with validation shown next to the item it is about, and a playable student preview.
+  Switching format keeps the title and description (and priority, explainer, authoring
+  metadata) and drops fields the new format doesn't use. Quiz editing is unchanged; the quiz
+  types' labels now come from the activity registry ("Fill in the gaps", "Confidence check").
+- Session reports: activity tasks now report `taskType: activity` + `activityType` (they were
+  reported as `code`), with each student's `itemProgress` (`correct` / `total`) and the task's
+  `avgItemProgress`. Quiz reports are unchanged.
+- Print: activity tasks show the activity's name and their `description`.
+
 ### Binary activity: overflow, hex, ASCII and pixels modes
 
 - Four new Binary `mode`s (see [activities/binary.md](activities/binary.md), which has a
