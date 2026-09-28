@@ -184,6 +184,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `studentOutputBuffer.js` | Buffered output helper used by student run state to batch streaming output updates |
 | `createStudentPersistence.js` | Conditional localStorage save helpers: routes each write to the sandbox or normal task key based on `inPersonalSandboxRef` |
 | `useTeacherLivePublish.js` | Teacher-live broadcast helpers (`canPublishTeacherLive`, `currentTeacherLivePayload`, `publishTeacherLive`), `teacherLiveIframeSrc` and `htmlPreviewCollapsed` state, and the two teacher-live sync effects; `publishOutputCollapsed(collapsed)` merge-updates just `teacherLive.outputCollapsed`, standalone from the main payload, so a source's output/preview panel collapse state mirrors continuously to forced-live viewers |
+| `useActivityState.js` | State, persistence and live sync for hosted activity tasks (owned by `useStudentCodeState`): loads/saves the `__activity_state__` aux file, discrete changes mirror `currentAnswer` debounced, continuous changes only while `activeStudentView` is this student (throttled, flushed when the teacher starts watching), submit/auto grading → `applyCheckFeedback` + `writeStudentRun` + `logAttempt`, `remoteResetAction` starter/complete, `teacherAnswerEdit`, teacher-live `answer` payload |
 | `useTileDragAndDrop.js` | Shared drag-and-drop + tap-to-place hook for tile-based quizzes (MatchQuiz, FillBlankQuiz); also exports `setLiftedDragImage` and `removeTileFromState` |
 
 ---
@@ -417,7 +418,7 @@ Each `index.js` exports a default object with the following properties. UI surfa
 
 ## Activities (`src/activities/`)
 
-Self-contained exercises that can sit anywhere in a lesson (see `docs/architecture/modular-activities-plan.md`). The pure registry is in place; the activity host and UI registry arrive with plan steps 2.2–2.4.
+Self-contained exercises that can sit anywhere in a lesson (see `docs/architecture/modular-activities-plan.md` and `docs/architecture/activities.md`). New activities (`taskType: 'activity'`) run through `ActivityHost`; quizzes and code_arrange keep their own surfaces until plan steps 2.3b / 4.9.
 
 | File | Role |
 |---|---|
@@ -431,6 +432,16 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `mouse/definition.js` | Mouse activity definition: grades with the device recorded in state (touch equivalents accepted, hover skipped on touch) |
 | `legacyValidation.js` | Pure quiz (`validateQuizTask`) and code_arrange (`validateCodeArrangeTask`) validation plus starter/check-value helpers, looked up by `getLegacyTaskValidation(task)` from `src/shared/lessonValidation.js` until plan steps 2.2 / 4.9 move them into activity definitions |
 | `unknown/definition.js` | Fallback for an `activityType` this bundle doesn't know: ungraded "not available" notice, validation error pointing at `lessons capabilities` |
+| `registry.js` | UI activity registry: merges each pure definition with its `ui.jsx` (`getActivityUi`, `getTaskActivityUi`). Classroom only, never imported by the CLI |
+| `ActivityHost.jsx` | Classroom host for a hosted activity task: picks the student's own state, an earlier task's saved state (review) or the teacher's broadcast (`teacherLive.answer`); applies `requires` / `touchFallback` (on-screen keyboard banner, "needs a mouse" block, touch notice, "I have a keyboard" override); unknown-activity notice. Also exports `ActivityView` (header + StudentView/TeacherLiveView) used by StudentModal and TeacherEditorPanel |
+| `state.js` | Pure helpers reading an activity's state from its serialised form (`deserializeActivityState`, `solutionOrInitialState`, `readActivityAnswer`, `summarizeActivityAnswer` for the teacher card) |
+| `device.js` | Pure device helpers: `describeActivityDevice(state)` (touch / on-screen keyboard badge from the activity's own state) and `effectiveCapabilities` (keyboard override, tablets treated as keyboard-less) |
+| `binary/ui.jsx` | Binary StudentView: bit tiles (switches) with place values, decimal answer box, carry row for addition, one item at a time |
+| `keyboard/ui.jsx` | Keyboard StudentView: `type_text` target overlay with accuracy/WPM (`typingStats`), `find_key` / `symbols` with the keyboard picture and hints, `shortcuts` practice box (keys vs right-click menu detection); on-screen keyboard input when there is no physical keyboard |
+| `keyboard/OnScreenKeyboard.jsx` | UK on-screen keyboard: interactive fallback emitting virtual key events (one-shot Shift/Ctrl) or a non-interactive picture highlighting hinted keys |
+| `mouse/ui.jsx` | Mouse StudentView: stage of positioned `data-input-id` targets, Pointer Events recording (incl. touch drag via `elementsFromPoint`), `recognizeGestures`, no native context menu on the stage, hover dwell timer (skipped on touch), `state.device.touch` |
+| `ui/ItemNav.jsx` | Shared "Question n of m" item navigation with per-item done/wrong markers |
+| `ui/ActivityDeviceBadge.jsx` | Teacher badge (card and modal) showing a touch-screen or on-screen-keyboard attempt |
 | `binary/binary.js` | Pure Binary activity logic for `make_number`, `to_binary`, `to_decimal`, `add`: bit conversion, place values, carries, shared authoring validation, per-item grading with child-friendly hints, whole-task progress |
 
 ---
@@ -509,6 +520,7 @@ Pure, Node-safe input library for the Keyboard and Mouse activities and, later, 
 | `gestures.js` | `recognizeGestures`: click, double-click, right-click, drag, scroll, hover and the touch forms tap, double-tap, long-press; `TOUCH_EQUIVALENTS`, `gestureSatisfies` |
 | `summary.js` | `typedCharacters` (Shift vs Caps Lock per capital), `summarizeInput` (small serialisable counts), `typingStats` (accuracy, WPM) |
 | `recorder.js` | `createInputRecorder`: bounded in-memory event ring buffer, never persisted |
+| `useInputCapabilities.js` | React hook over `detectInputCapabilities`, upgraded when a hardware keydown proves a physical keyboard (kept out of `index.js` so the library stays Node-safe) |
 | `capabilities.js` | `detectInputCapabilities` (fine pointer, hover, touch), `withKeyEvidence` (physical keyboard learned from a hardware keydown), `unmetRequirements` |
 
 ---
@@ -577,6 +589,7 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | `src/test/studentCodeStateHarness.js` | Test harness for `useStudentCodeState`: renders the hook with `vi.fn` session writers, storage-key helpers, and runtime fakes (see `docs/TESTING.md`) |
 | `src/test/studentCodeStateMocks.js` | Dependency-free `vi.mock` factories (Pyodide, type/lesson storage assets) used by the `useStudentCodeState` characterization tests |
 | `src/test/fixtures/studentCodeStateLessons.js` | Per-module-type (and composed) lesson fixtures for the `useStudentCodeState` characterization tests |
+| `src/test/activityUiHarness.jsx` | Test harness rendering an activity StudentView with a real state store (`renderActivityUi`), so UI tests exercise updater-style `onChange` like `useActivityState` |
 | `src/test/fixtures/legacyActivityTasks.js` | Test-only fixtures: one valid task per quiz sub-type, Python/HTML `code_arrange` tasks, and invalid variants, shared by the Phase 0 characterisation tests that pin quiz/code_arrange behaviour before the Activity migration (`docs/architecture/modular-activities-plan.md`) |
 | `package.json` | Dependencies and scripts |
 | `index.html` | Classroom app HTML shell |

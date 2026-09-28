@@ -57,6 +57,11 @@ Design intent and contract for `src/modules/<type>/` lesson modules, including s
 
 **Load when:** adding or changing a lesson type, changing the module interface, or touching registry-driven classroom/builder behavior.
 
+### [architecture/activities.md](architecture/activities.md)
+How hosted activities (`taskType: 'activity'`: Binary, Keyboard, Mouse) run in the classroom: `ActivityHost`, `useActivityState`, the UI registry, data flow to `currentAnswer`, the discrete/continuous write rules, teacher card/modal/edit/reset surfaces, teacher-only Go Live, device requirements and fallbacks, and the unknown-activity fallback.
+
+**Load when:** changing the activity host, activity persistence or live sync, teacher views of activities, or adding a new activity.
+
 ### [architecture/composed-lessons-spec.md](architecture/composed-lessons-spec.md)
 Implemented technical specification for backward-compatible multi-workspace composed lessons, lesson-module-scoped carry-through and sandboxes, plus local-only Python, Arcade Kit, Electronics, and Scratch playgrounds — this is the shipped default multi-workspace mechanism, not a proposal.
 
@@ -228,6 +233,21 @@ Turtle module code-task authoring reference: the single-file task model, support
 Detailed reference for all five quiz sub-types: multiple-choice, match, fill-in-the-blank, short-answer, and confidence rating. Covers all sub-type-specific fields and YAML syntax.
 
 **Load when:** authoring or editing a quiz task.
+
+### [authoring/activities/binary.md](authoring/activities/binary.md)
+Binary activity reference: `make_number`, `to_binary`, `to_decimal`, `add` modes, `bits` and display fields, item fields, marking and hints, teacher tools, and a complete validated example lesson.
+
+**Load when:** authoring or editing a Binary activity task.
+
+### [authoring/activities/keyboard.md](authoring/activities/keyboard.md)
+Keyboard activity reference: `type_text` (Shift vs Caps Lock, accuracy, optional WPM), `find_key`, `symbols` (UK layout), `shortcuts` (browser-reserved combos rejected), `hardwareOnly`, the on-screen keyboard fallback, and a complete validated example lesson.
+
+**Load when:** authoring or editing a Keyboard activity task.
+
+### [authoring/activities/mouse.md](authoring/activities/mouse.md)
+Mouse activity reference: stage targets (positions, sizes), click / double-click / right-click / drag / scroll / hover items, the `touch` policy and touch equivalents, marking and hints, and a complete validated example lesson.
+
+**Load when:** authoring or editing a Mouse activity task.
 
 ### [authoring/python-tasks.md](authoring/python-tasks.md)
 Python code task field reference: `starterCode`, `completeCode`, role-based `codeStages`, `carryCodeFrom`, `interactionMode`, and the `tests` array (automated `input()`-driven test cases). Includes a minimal full-lesson example.
