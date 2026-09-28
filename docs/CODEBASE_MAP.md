@@ -412,10 +412,15 @@ Each `index.js` exports a default object with the following properties. UI surfa
 
 ## Activities (`src/activities/`)
 
-Self-contained exercises that can sit anywhere in a lesson (see `docs/architecture/modular-activities-plan.md`). The activity registry and host arrive in Phase 2; until then these folders hold pure logic only.
+Self-contained exercises that can sit anywhere in a lesson (see `docs/architecture/modular-activities-plan.md`). The pure registry is in place; the activity host and UI registry arrive with plan steps 2.2–2.4.
 
 | File | Role |
 |---|---|
+| `defineActivity.js` | Activity contract: validates a pure activity definition and fills defaults (storage in the `__activity_state__` aux file, live state on `currentAnswer`, report type fields) |
+| `resolve.js` | `getActivityId(task)`: maps stored tasks to activity ids without changing formats (`quiz` + `quizType` → `quiz_<type>`, `code_arrange`, `activity` + `activityType`) |
+| `registry.pure.js` | Node-safe activity registry (`getActivityDefinition(s)`, `getTaskActivity`, `ACTIVITY_IDS`, YAML type lookup); unknown `activityType` values resolve to the fallback |
+| `binary/definition.js` | Binary activity definition wrapping `binary.js`: default task, validation, state, grading, progress, card summary, print |
+| `unknown/definition.js` | Fallback for an `activityType` this bundle doesn't know: ungraded "not available" notice, validation error pointing at `lessons capabilities` |
 | `binary/binary.js` | Pure Binary activity logic for `make_number`, `to_binary`, `to_decimal`, `add`: bit conversion, place values, carries, shared authoring validation, per-item grading with child-friendly hints, whole-task progress |
 
 ---
