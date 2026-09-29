@@ -247,7 +247,13 @@ describe('recorder and capabilities', () => {
   it('detects pointer capabilities and learns about keyboards from hardware keys', () => {
     const matchMedia = (q) => ({ matches: q === '(any-pointer: coarse)' })
     const caps = detectInputCapabilities({ matchMedia, maxTouchPoints: 5 })
-    expect(caps).toEqual({ finePointer: false, hover: false, touch: true, physicalKeyboard: null })
+    expect(caps).toEqual({
+      finePointer: false,
+      hover: false,
+      touch: true,
+      physicalKeyboard: null,
+      platform: 'other',
+    })
     expect(withKeyEvidence(caps, { source: 'virtual' }).physicalKeyboard).toBeNull()
     expect(withKeyEvidence(caps, { source: 'hardware' }).physicalKeyboard).toBe(true)
     expect(

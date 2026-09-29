@@ -39,6 +39,21 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-09-29
 
+### Mac and Chromebook keys and right-click
+
+- Keyboard prompts, hints and the key picture name keys as the student's computer does (Mac
+  **delete** for Backspace and **fn + delete** for Delete, **Cmd** for Ctrl; Chromebook
+  **Alt + Backspace** for Delete, **Alt + Search** for Caps Lock). Those presses already counted,
+  because the browser reports them as the Windows key; now the words match the keyboard.
+- Fixes: on a Mac, turning Caps Lock *off* now counts for `find_key: CapsLock` (Macs send no
+  keydown then), and `edit_text` treats Cmd + ← / → as Home / End.
+- Teachers see a **Mac** or **Chromebook** badge on Keyboard and Mouse work. Mac Ctrl + click and
+  Chromebook Alt + click count as right-click. Known gap: `symbols` hints use the UK Windows
+  layout, which differs on a UK Mac. See
+  [activities/keyboard.md](activities/keyboard.md#mac-and-chromebook-keyboards).
+- Affects: keyboard, mouse, desktop · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-09-29-mac-and-chromebook-equivalents-for-taught-keys-and-right-cli.md
+
 ### Keyboard `edit_text` mode: fix a line without retyping it
 
 - New Keyboard mode `edit_text`. Each item has `start` (the line with mistakes) and `target`

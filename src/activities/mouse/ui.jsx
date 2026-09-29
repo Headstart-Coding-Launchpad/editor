@@ -112,7 +112,11 @@ export function MouseStudentView({
   function setItemResult(item, via) {
     onChange?.((prev) => ({
       ...(prev ?? { v: 1 }),
-      device: prev?.device ?? { touch: false },
+      // The platform (Mac, Chromebook…) lets the teacher see how right-click was done.
+      device: {
+        ...(prev?.device ?? { touch: false }),
+        ...(device.platform ? { platform: device.platform } : {}),
+      },
       items: { ...(prev?.items ?? {}), [item.id]: { via } },
     }))
   }

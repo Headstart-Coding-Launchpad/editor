@@ -178,6 +178,7 @@ export default function ActivityHost({
     touch: !!effective.touch && !effective.finePointer,
     physicalKeyboard: effective.physicalKeyboard,
     virtualKeyboard: unmet.includes('physicalKeyboard') && fallback === 'virtual_keyboard',
+    platform: effective.platform ?? 'other',
   }
 
   if (blocked) {

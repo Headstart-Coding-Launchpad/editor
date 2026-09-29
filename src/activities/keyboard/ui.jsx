@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import KeyboardBuilderEditor from './KeyboardBuilderEditor.jsx'
 import ItemNav from '../ui/ItemNav.jsx'
 import OnScreenKeyboard, { codesForKey } from './OnScreenKeyboard.jsx'
-import { NAMED_KEYS, describeItem, gradeKeyboardItem } from './keyboard.js'
+import { NAMED_KEYS, describeComboPart, describeItem, gradeKeyboardItem } from './keyboard.js'
 import { applyEditKey, initialEditModel } from './editText.js'
 import {
   DEFAULT_LAYOUT,
@@ -43,9 +43,11 @@ const TAB_FIELDS = ['First name', 'Last name', 'Class']
 
 const MODE_PROMPTS = {
   type_text: () => 'Type this line',
-  find_key: (task, item) => item.prompt ?? `Find and press the ${describeItem(task, item)} key`,
+  find_key: (task, item, platform) =>
+    item.prompt ?? `Find and press the ${describeItem(task, item, platform)} key`,
   symbols: (task, item) => item.prompt ?? `Type the ${item.char} symbol`,
-  shortcuts: (task, item) => item.prompt ?? `Use the shortcut ${describeItem(task, item)}`,
+  shortcuts: (task, item, platform) =>
+    item.prompt ?? `Use the shortcut ${describeItem(task, item, platform)}`,
   edit_text: (task, item) => item.prompt ?? 'Fix the mistakes in this line',
 }
 
@@ -57,10 +59,10 @@ function isItemFinished(mode, result) {
   return !!result.performed
 }
 
-function describeCombo(combo) {
+function describeCombo(combo, platform) {
   return String(combo ?? '')
     .split('+')
-    .map((part) => (part === 'mod' ? 'Ctrl' : part.length === 1 ? part.toUpperCase() : part))
+    .map((part) => describeComboPart(part, platform))
     .join(' + ')
 }
 
@@ -146,7 +148,10 @@ export function KeyboardStudentView({
   const current = items[Math.min(index, items.length - 1)]
   const result = current ? (state?.items?.[current.id] ?? {}) : {}
   const finished = isItemFinished(mode, result)
-  const grade = current ? gradeKeyboardItem(task, current, result) : null
+  // Keys are named as the student's keyboard names them: this device's platform while working,
+  // the student's recorded one in the teacher's read-only view.
+  const platform = readOnly ? state?.device?.platform : device.platform
+  const grade = current ? gradeKeyboardItem(task, current, result, { platform }) : null
   const virtualKeyboard = !!device.virtualKeyboard && !readOnly
   const currentId = current?.id
   const targetCombo = mode === 'shortcuts' ? normalizeCombo(current?.combo) : ''
@@ -180,7 +185,14 @@ export function KeyboardStudentView({
     let produced = null
     onChange?.((prev) => {
       produced = produce(prev?.items?.[current.id] ?? {})
-      return { ...(prev ?? { v: 1 }), items: { ...(prev?.items ?? {}), [current.id]: produced } }
+      return {
+        ...(prev ?? { v: 1 }),
+        // Recorded so the teacher sees which computer (Mac, Chromebook…) the work was done on.
+        ...(device.platform
+          ? { device: { ...(prev?.device ?? {}), platform: device.platform } }
+          : {}),
+        items: { ...(prev?.items ?? {}), [current.id]: produced },
+      }
     })
     return produced
   }
@@ -320,7 +332,7 @@ export function KeyboardStudentView({
       // browser's own dialog.
       return !NATIVE_TEXT_COMBOS.has(target) && !tabPractice
     }
-    miss(`You pressed ${describeCombo(combo)}.`)
+    miss(`You pressed ${describeCombo(combo, platform)}.`)
     return !NATIVE_TEXT_COMBOS.has(combo)
   }
 
@@ -341,6 +353,14 @@ export function KeyboardStudentView({
     if (mode === 'symbols') return handleSymbols(event)
     if (mode === 'shortcuts') return handleShortcut(event)
     return false
+  }
+
+  // A Mac only sends a Caps Lock keydown when turning it on; turning it off sends just a keyup,
+  // so a find_key Caps Lock item also counts the keyup.
+  function onPracticeKeyUp(domEvent) {
+    if (readOnly || finished || mode !== 'find_key' || current.key !== 'CapsLock') return
+    const event = normalizeKeyEvent(domEvent)
+    if (event.key === 'CapsLock') finishItem({ pressed: true, source: event.source })
   }
 
   function onPracticeKeyDown(domEvent) {
@@ -383,7 +403,7 @@ export function KeyboardStudentView({
   const statusFor = (item) => {
     const itemResult = state?.items?.[item.id]
     if (!isItemFinished(mode, itemResult)) return null
-    return gradeKeyboardItem(task, item, itemResult).correct ? 'done' : 'wrong'
+    return gradeKeyboardItem(task, item, itemResult, { platform }).correct ? 'done' : 'wrong'
   }
 
   const missCount = misses[current.id] ?? 0
@@ -403,7 +423,7 @@ export function KeyboardStudentView({
         statusFor={statusFor}
         noun={mode === 'type_text' || mode === 'edit_text' ? 'Line' : 'Step'}
       />
-      <p className="act-prompt">{MODE_PROMPTS[mode]?.(task, current) ?? 'Keyboard'}</p>
+      <p className="act-prompt">{MODE_PROMPTS[mode]?.(task, current, platform) ?? 'Keyboard'}</p>
 
       {mode === 'type_text' && (
         <TargetText text={String(current.text ?? '')} typed={String(result.typed ?? '')} />
@@ -493,6 +513,7 @@ export function KeyboardStudentView({
           }
           data-testid="keyboard-practice"
           onKeyDown={onPracticeKeyDown}
+          onKeyUp={onPracticeKeyUp}
         >
           {mode === 'type_text' ? (
             <span style={{ whiteSpace: 'pre-wrap' }}>
@@ -520,7 +541,8 @@ export function KeyboardStudentView({
       {lastWrong && !finished && <p role="status">{lastWrong}</p>}
       {showHint && (
         <p className="act-hint" role="status">
-          💡 Look for {describeItem(task, current) ?? 'the key'} — it is lit up on the keyboard.
+          💡 Look for {describeItem(task, current, platform) ?? 'the key'} — it is lit up on the
+          keyboard.
         </p>
       )}
       {finished && grade && !grade.correct && grade.hint && (
@@ -540,6 +562,7 @@ export function KeyboardStudentView({
           interactive={virtualKeyboard}
           highlightCodes={highlightCodes}
           showCtrl={mode === 'shortcuts'}
+          platform={platform}
           onKey={(event) => {
             handleKeyEvent(event)
           }}
