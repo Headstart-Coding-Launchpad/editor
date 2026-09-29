@@ -51,6 +51,10 @@ const teacherAnswerNoticeStyle = {
   fontWeight: 600,
 }
 
+// Registered in the capture phase: CodeMirror's own copy/cut/dragstart handlers
+// (on its content element, below this wrapper) write the selection to the
+// clipboard themselves, so cancelling the event after it bubbles back out is
+// too late. Stopping it on the way down means CodeMirror never sees it.
 function blockClipboardEvent(event) {
   event.preventDefault()
   event.stopPropagation()
@@ -428,8 +432,9 @@ export default function LessonTaskContent({
     <div
       style={useSideExplainer ? s.sideExplainerShell : undefined}
       className={isLiveCopyBlocked ? 'live-copy-blocked' : undefined}
-      onCopy={isLiveCopyBlocked ? blockClipboardEvent : undefined}
-      onCut={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+      onCopyCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+      onCutCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+      onDragStartCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
     >
       {useSideExplainer && (
         <CollapseTabButton
@@ -666,7 +671,8 @@ export default function LessonTaskContent({
   // teacher's (or a pinned peer's) code can't be lifted out of it. CSS user-select alone
   // doesn't cover CodeMirror: its content stays contenteditable while read-only, so
   // Ctrl+A / Ctrl+C still builds a real selection the browser will happily copy.
-  // Cancelling copy/cut as they bubble out of the workspace closes that route (and
+  // Cancelling copy/cut/dragstart on their way into the workspace (capture phase,
+  // before CodeMirror's own handlers fill the clipboard) closes that route (and
   // right-click Copy) in one place, silently, rather than per module.
   // Large pastes into a code editor are flagged to the teacher (cs.handleEditorPaste);
   // copies/cuts from the student's own editor are remembered so moving their own
@@ -700,8 +706,11 @@ export default function LessonTaskContent({
           .join(' ')
           .trim() || undefined
       }
-      onCopy={isLiveCopyBlocked ? blockClipboardEvent : handleOwnCopy}
-      onCut={isLiveCopyBlocked ? blockClipboardEvent : handleOwnCopy}
+      onCopyCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+      onCutCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+      onDragStartCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+      onCopy={isLiveCopyBlocked ? undefined : handleOwnCopy}
+      onCut={isLiveCopyBlocked ? undefined : handleOwnCopy}
       onPaste={isLiveCopyBlocked ? undefined : handleWorkspacePaste}
     >
       {workspaceContent}

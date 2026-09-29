@@ -720,6 +720,32 @@ describe('LessonTaskContent live copy blocking', () => {
     expect(copyEvent.defaultPrevented).toBe(true)
   })
 
+  it("stops copy, cut and drag before CodeMirror's own handler can fill the clipboard", () => {
+    // Stands in for CodeMirror, which listens on its content element and writes the
+    // selection to the clipboard itself — cancelling afterwards would be too late.
+    const editorHandler = vi.fn((event) => event.clipboardData?.setData('text/plain', 'secret'))
+    function EditorStub() {
+      const ref = React.useRef(null)
+      React.useEffect(() => {
+        const el = ref.current
+        ;['copy', 'cut', 'dragstart'].forEach((type) => el.addEventListener(type, editorHandler))
+      }, [])
+      return <div ref={ref} data-testid="cm-content" />
+    }
+    getLessonModule.mockReturnValue({ ...PYTHON_MODULE, StudentWorkspace: EditorStub })
+    render(<LessonTaskContent {...baseProps} isLiveCopyBlocked />)
+    const content = screen.getByTestId('cm-content')
+
+    for (const type of ['copy', 'cut', 'dragstart']) {
+      const event = new Event(type, { bubbles: true, cancelable: true })
+      event.clipboardData = { setData: vi.fn() }
+      content.dispatchEvent(event)
+      expect(event.defaultPrevented).toBe(true)
+      expect(event.clipboardData.setData).not.toHaveBeenCalled()
+    }
+    expect(editorHandler).not.toHaveBeenCalled()
+  })
+
   it('also copy-blocks the explainer panel beside the mirrored workspace', () => {
     getLessonModule.mockReturnValue(PYTHON_MODULE)
     const { container } = render(
