@@ -6,7 +6,6 @@ import {
   CARRY_THROUGH_FIELDS,
   getModuleDefinition,
   getModuleLabel,
-  getModuleTypesWhere,
   getModuleTypesWithCapability,
 } from '../definitions.js'
 import { resolveRemoteResetTarget } from '../../app/studentTaskContent'
@@ -14,11 +13,20 @@ import {
   TEACHER_LIVE_REFERENCE_TYPES,
   teacherLiveReferenceDisplayState,
 } from '../../app/studentLiveDisplay'
+import {
+  initialSandboxWorkByKind,
+  onSandboxFilesChannel,
+  readSessionSandboxWork,
+  sandboxStarterWork,
+  sandboxWireFields,
+  sandboxWorkKind,
+} from '../../app/teacherSandboxWork'
+import { encodeFileKey } from '../../shared/fileKeys'
 import { buildStageOptions, deriveTaskContext } from '../../shared/taskUtils'
 import { getCodeBlockOptions, getInlineCodeOptions } from '../../shared/markdown/editorOptions'
 import { validateLesson } from '../../builder/lessonUtils'
 import { validateLessonForMcp } from '../../../cli/validate.mjs'
-import { comparedLiterals, readRepoFile, repoFileExists } from './helpers/sourceLiterals'
+import { readRepoFile, repoFileExists } from './helpers/sourceLiterals'
 
 // Every registered module type must be understood by the hand-maintained type lists
 // scattered across the app. Turtle shipped missing from several of them (CLI type list,
@@ -44,8 +52,6 @@ const KNOWN_GAPS = {
   },
   html: {
     PLAYGROUND_LESSON_TYPES: 'Intentional: HTML has no playground (see composedLesson.js).',
-    'TeacherView sandbox state':
-      'Implicit: handled by the final `else` (files) branch rather than an explicit one — any unknown type falls into it too.',
   },
   scratch: {
     MODULE_PANES_TYPES: 'Intentional: Scratch reports panes through its own dedicated plumbing.',
@@ -86,24 +92,43 @@ const KNOWN_GAPS = {
 // (non-exported) literals are read from source text with ./helpers/sourceLiterals so this
 // test never needs production code to change; the helper throws a clear error if a
 // literal stops being a literal (e.g. once it is derived from the registry — then swap the
-// entry to import the value).
-
-const src = (relPath) => ({ relPath, text: readRepoFile(relPath) })
-const TEACHER_VIEW = src('src/app/views/TeacherView.jsx')
-
-const comparedIn = (file, fn, identifier) =>
-  comparedLiterals(file.text, fn, identifier, file.relPath)
+// entry to import the value). Since plan step 4.6 every entry reads the registry or runs the
+// behaviour, so no private literal is read any more.
 
 // Lists derived from module definitions since plan 1.2 (each consumer's use of the
 // derivation is pinned in derivedTypeLists.test.js).
 const SIDE_EXPLAINER_TYPES = getModuleTypesWithCapability('sideExplainer')
 const MODULE_PANES_TYPES = getModuleTypesWithCapability('modulePanes')
-const CODE_STRING_TYPES = getModuleTypesWhere(
-  (definition) => definition.capabilities.sandboxState === 'code'
-)
-const TEACHER_SANDBOX_BRANCH_TYPES = [
-  ...TEACHER_VIEW.text.matchAll(/activeSandboxLesson\.type\s*===\s*'([^']+)'/g),
-].map((m) => m[1])
+// The teacher sandbox's work as it travels: a filename → content map on the files channel,
+// else the `sandboxCode` string.
+function sandboxWireSnapshot(definition, work) {
+  const fields = sandboxWireFields(definition, work)
+  return onSandboxFilesChannel(definition)
+    ? JSON.stringify(Object.fromEntries(fields.files.map((file) => [file.name, file.content])))
+    : fields.code
+}
+// Plan step 4.6: TeacherView keeps and sends sandbox work through the module's definition
+// (src/app/teacherSandboxWork.js). A type is covered when its sandbox kind has a slot and its
+// starter survives the trip to the session (enter / push) and back (reload / module switch).
+function teacherSandboxRoundTrips(type) {
+  const definition = getModuleDefinition(type)
+  if (!Object.hasOwn(initialSandboxWorkByKind(), sandboxWorkKind(definition))) return false
+  const work = sandboxStarterWork(definition, { type }, starterTaskFor(type))
+  const fields = sandboxWireFields(definition, work)
+  const session = onSandboxFilesChannel(definition)
+    ? {
+        state: 'sandbox',
+        sandboxFiles: Object.fromEntries(
+          fields.files.map((file) => [encodeFileKey(file.name), file.content])
+        ),
+      }
+    : { state: 'sandbox', sandboxCode: fields.code }
+  const readBack = readSessionSandboxWork(definition, session)
+  return (
+    readBack != null &&
+    sandboxWireSnapshot(definition, readBack) === sandboxWireSnapshot(definition, work)
+  )
+}
 // A stage carrying every module's state shape; a type is covered if stageToText finds text.
 const SAMPLE_STAGE = {
   code: 'x = 1',
@@ -142,10 +167,7 @@ const PARITY_LISTS = {
   TEACHER_LIVE_REFERENCE_TYPES: (mod) => TEACHER_LIVE_REFERENCE_TYPES.includes(mod.type),
   teacherLiveReferenceDisplayState: (mod) =>
     teacherLiveReferenceDisplayState(TEACHER_LIVE_SAMPLE, mod.type) != null,
-  // TeacherView keeps sandbox work either as a code string (CODE_STRING_TYPES) or in an
-  // explicit per-type branch; a type in neither silently falls into the last `else`.
-  'TeacherView sandbox state': (mod) =>
-    CODE_STRING_TYPES.includes(mod.type) || TEACHER_SANDBOX_BRANCH_TYPES.includes(mod.type),
+  'TeacherView sandbox state': (mod) => teacherSandboxRoundTrips(mod.type),
   // Stage labels and the legacy complete field come from the definition since plan 1.2.
   STAGE_OPTION_METADATA: (mod) =>
     typeof getModuleDefinition(mod.type)?.completeField === 'string' &&
@@ -189,7 +211,7 @@ const PARITY_LISTS = {
 
 describe('registry-driven module parity', () => {
   it('reads every private list from source (guards the source-text parser)', () => {
-    for (const list of [TEACHER_SANDBOX_BRANCH_TYPES, FEATURE_MATRIX_ROW_NAMES]) {
+    for (const list of [FEATURE_MATRIX_ROW_NAMES]) {
       expect(list.length).toBeGreaterThan(0)
     }
     expect(LESSON_SCHEMA_MODULE_TYPE_ROW).not.toBe('')

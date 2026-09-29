@@ -2,10 +2,11 @@ import { useRef, useState } from 'react'
 import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { useTeacherLivePublish } from '../useTeacherLivePublish'
+import { getModuleDefinition } from '../../../modules/definitions.js'
 
-// Scratch never routes edits through the generic `code` state (it publishes
-// directly from handleScratchChange instead — see useStudentCodeState.js's
-// scratch branch of loadTaskContent). Regression test for the bug this caused:
+// Scratch never routes edits through the generic `code` state: its work is what
+// the workspace last reported, read from the work slot (readWorkValue) and sent
+// through its wire codec. Regression test for the bug publishing `code` caused:
 // starting a broadcast (or switching the live task) published whatever stale/
 // empty `code` was left over from the generic state, wiping the watching
 // mirror's Blockly workspace until the presenter's next real edit resynced it
@@ -27,12 +28,10 @@ function useHarness({
   const currentTaskIdRef = useRef(currentTaskId)
   const codeRef = useRef(code)
   const scratchCodeRef = useRef(scratchCode)
-  const arcadeDesignRef = useRef(null)
   const filesRef = useRef([])
   const activeFileRef = useRef('')
   const outputRef = useRef('')
   const runStatusRef = useRef(null)
-  const fsStateRef = useRef(null)
   const editorSelectionRef = useRef(null)
   const editorActivityRef = useRef(null)
 
@@ -46,13 +45,16 @@ function useHarness({
     lessonRef,
     currentTaskIdRef,
     codeRef,
-    scratchCodeRef,
-    arcadeDesignRef,
     filesRef,
     activeFileRef,
     outputRef,
     runStatusRef,
-    fsStateRef,
+    // The work slot as useStudentCodeState provides it: the Scratch workspace's last reported
+    // project, else the code string.
+    readWorkValue: (type) =>
+      getModuleDefinition(type).capabilities.sandboxState === 'blocks'
+        ? getModuleDefinition(type).wire.fromCode(scratchCodeRef.current)
+        : codeRef.current,
     editorSelectionRef,
     editorActivityRef,
     lesson,
@@ -67,7 +69,6 @@ function useHarness({
     checkPassed: false,
     checkAttempted: false,
     checkSuggestion: null,
-    fsState: null,
     updateTeacherLive,
     setTeacherLiveReference,
   })

@@ -38,21 +38,17 @@ describe('Desktop remote reset', () => {
 
 describe('Desktop sandbox push', () => {
   it('loads the pushed desktop state', () => {
-    const setDesktopState = vi.fn()
+    const onPushedWork = vi.fn()
     const pushed = desktop('pushed')
     renderHook(() =>
       useSandboxCodePush({
         phase: 'sandbox',
         lesson: { type: 'desktop' },
         session: { sandboxCode: JSON.stringify(pushed), sandboxCodePushedAt: 1 },
-        setCode: vi.fn(),
-        setFiles: vi.fn(),
-        setActiveFile: vi.fn(),
-        setFsState: vi.fn(),
-        setDesktopState,
-        setScratchSandboxProject: vi.fn(),
+        onPushedWork,
+        onPushedFiles: vi.fn(),
       })
     )
-    expect(setDesktopState).toHaveBeenCalledWith(pushed)
+    expect(onPushedWork).toHaveBeenCalledWith(pushed)
   })
 })

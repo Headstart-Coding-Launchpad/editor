@@ -67,7 +67,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `studentLiveDisplay.js` | Pure student teacher-live/view display selection and live HTML file conversion helpers; `displayOutputCollapsed` mirrors the broadcast source's output/preview panel collapse state to a forced-live viewer (`null` when not forced-live) |
 | `studentQuizContent.js` | Adapter re-exporting the quiz activities' `buildQuizSubmission` / `getQuizSuggestion` (`src/activities/quiz/quizActivity.js`) |
 | `studentCodeExports.js` | Pure selection of browser-saved Python code tasks for `.launchpad` backup exports |
-| `teacherSandboxContent.js` | Pure teacher sandbox starter/configured content selection and fallback rules |
+| `teacherSandboxWork.js` | Pure teacher-sandbox work helpers for TeacherView (plan step 4.6): the per-`capabilities.sandboxState` work slots, restore order (draft, then the live session via `wire.fromCode` / decoded `sandboxFiles`, then `lifecycle.sandboxStarter`), draft copies, and the `enterSandbox` / `pushSandboxCode` / `pushSandboxFiles` fields via `wire.toCode` on the module's `wire.sandboxChannel` |
 | `teacherLivePayload.js` | Pure student-to-teacherLive broadcast payload construction |
 | `throttledMirrorWriter.js` | Leading + trailing throttle for mirrored "latest value" writes (watched student output); re-checks nothing itself — callers gate on watch state per write |
 | `taskItemProgress.js` | Pure teacher-only filled/correct item counts for Match and Fill in the Gaps quizzes (via the quiz activity's `getProgress`) and filled-slot counts for Code Arrange (StudentCard + StudentModal header) |
@@ -179,7 +179,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `runWithRuntime.js` | `runWithRuntime(ctx)` — the `'runtime'` branch of `handleRun` (Pyodide / MicroPython): output streaming and throttled teacher mirror, `input()` prompts, stop handling, the task check with feedback, the run-record save, `writeStudentRun` and the attempt log. Per-module differences come from the definition's `runResult` flags and `checking.buildContext` |
 | `useLatestRef.js` | `useLatestRef(value)` — a ref holding the latest render's value, for stale-closure-safe reads inside async handlers, timers and event listeners |
 | `useStudentPresenceReporting.js` | Reports this student's window state to the teacher: connected, focused, fullscreen, recently active. Presentation windows report nothing and remove themselves from the roster |
-| `useSandboxCodePush.js` | Loads content the teacher pushes into the sandbox into whichever state that lesson type keeps its work in, keyed off the session's push timestamps |
+| `useSandboxCodePush.js` | Loads content the teacher pushes into the sandbox, keyed off the session's push timestamps: on the module's code channel `wire.fromCode(sandboxCode)` → `onPushedWork(work)`, on the files channel the decoded `sandboxFiles` (else the lesson's `sandboxStarterFiles`) → `onPushedFiles(files)` |
 | `useTypewriterOutput.js` | `useTypewriterOutput(output)` — reveals program output with the retro typing animation, chunking faster as the remaining text grows; shared by `OutputPanel` and `BuilderOutputPanel` |
 | `useCheckFeedback.js` | Check result state (`checkPassed`, `checkAttempted`, `checkSuggestion`, `repeatedSuggestionCount`, `testResults`); `resetCheckFeedback` / `applyCheckFeedback`; teacher check-override effect |
 | `studentOutputBuffer.js` | Buffered output helper used by student run state to batch streaming output updates |

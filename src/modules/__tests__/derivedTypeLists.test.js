@@ -11,6 +11,11 @@ import {
 import pythonDefinition from '../python/definition.js'
 import { PLAYGROUND_LESSON_TYPES } from '../../shared/composedLesson'
 import { TEACHER_LIVE_REFERENCE_TYPES } from '../../app/studentLiveDisplay'
+import {
+  initialSandboxWorkByKind,
+  onSandboxFilesChannel,
+  sandboxWorkKind,
+} from '../../app/teacherSandboxWork'
 import { buildStageOptions, deriveTaskContext } from '../../shared/taskUtils'
 import { getCodeBlockOptions, getInlineCodeOptions } from '../../shared/markdown/editorOptions'
 import { getCodeLanguageLabel } from '../../shared/codeLanguages'
@@ -66,6 +71,15 @@ describe('derived module-type lists', () => {
       desktop: 'desktop',
       electronics: 'code',
     })
+  })
+
+  // Plan step 4.6: TeacherView keeps and sends sandbox work by the definition (its
+  // sandboxState kind and wire channel, src/app/teacherSandboxWork.js), not a type list.
+  it.each(MODULE_TYPES)('the teacher sandbox reads %s work from its definition', (type) => {
+    const definition = getModuleDefinition(type)
+    expect(sandboxWorkKind(definition)).toBe(definition.capabilities.sandboxState)
+    expect(onSandboxFilesChannel(definition)).toBe(definition.wire.sandboxChannel === 'files')
+    expect(Object.keys(initialSandboxWorkByKind())).toContain(sandboxWorkKind(definition))
   })
 
   it('unified-stage types come from capabilities.unifiedStages', () => {
@@ -264,7 +278,9 @@ describe('consumers read the derived values (no hand-written lists left)', () =>
     ['src/app/components/LessonTaskContent.jsx', "getModuleTypesWithCapability('sideExplainer')"],
     ['src/app/components/LessonTaskContent.jsx', "getModuleTypesWithCapability('modulePanes')"],
     ['src/app/studentLiveDisplay.js', "getModuleTypesWithCapability('teacherLiveReference')"],
-    ['src/app/views/TeacherView.jsx', "capabilities.sandboxState === 'code'"],
+    // Plan step 4.6: sandbox work by kind and wire channel (see the behaviour test above).
+    ['src/app/views/TeacherView.jsx', 'sandboxWorkKind(definition)'],
+    ['src/app/views/TeacherView.jsx', 'sandboxWireFields(definition, work)'],
     ['src/shared/taskUtils.js', 'capabilities.unifiedStages'],
     ['src/shared/taskUtils.js', 'definition?.completeField'],
     ['src/builder/lessonUtils.js', 'CARRY_THROUGH_FIELDS'],
@@ -285,7 +301,10 @@ describe('consumers read the derived values (no hand-written lists left)', () =>
   })
 
   it('the old literal lists are gone', () => {
-    expect(readRepoFile('src/app/views/TeacherView.jsx')).not.toMatch(/CODE_STRING_TYPES = \[/)
+    expect(readRepoFile('src/app/views/TeacherView.jsx')).not.toMatch(/CODE_STRING_TYPES/)
+    expect(readRepoFile('src/app/views/TeacherView.jsx')).not.toMatch(
+      /(?:activeSandboxLesson|editorLesson\??)\.type\s*===/
+    )
     expect(readRepoFile('src/shared/taskUtils.js')).not.toContain('STAGE_OPTION_METADATA')
     expect(readRepoFile('src/builder/printLesson.js')).not.toContain('TYPE_LABELS')
     expect(readRepoFile('cli/validate.mjs')).not.toMatch(/'carryCircuitFrom'/)

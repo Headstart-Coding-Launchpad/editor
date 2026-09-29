@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { resolveSnapshotContext, snapshotFiles } from './SharedWorkspacePreview'
-import { parseScratchState } from '../../shared/workspaceData'
+import { getModuleDefinition } from '../../modules/definitions.js'
 import { ephemeralStorage } from '../studentStorage'
 import { useStudentCodeState } from '../hooks/useStudentCodeState'
 import LessonTaskContent from './LessonTaskContent'
@@ -65,34 +65,34 @@ export function shareViewerLessonId(shareId) {
   return `shared-workspace::${shareId}`
 }
 
-// Write the snapshot where the module's own loadTaskContent will look for it.
+// Write the snapshot where the module's own loadTaskContent will look for it: the snapshot's
+// work decoded by the module's wire codec (files on the files channel, `wire.fromCode(code)`
+// otherwise — a JSON state that doesn't decode is skipped), written as the module's task
+// record(s) by its storage adapter (`storage.toTaskRecord`), plus Arcade's design.
 export function seedSharedWorkspace({ shareLessonId, taskId, moduleType, snapshot }) {
   const actor = SHARE_VIEWER_ACTOR
-  if (moduleType === 'html') {
+  const definition = getModuleDefinition(moduleType)
+  if (!definition) {
+    ephemeralStorage.saveCode(shareLessonId, taskId, actor, { code: snapshot?.code ?? '' })
+    return
+  }
+  const { storage, wire } = definition
+  if (storage.layout === 'perFile') {
     for (const file of snapshotFiles(snapshot)) {
-      ephemeralStorage.saveFile(shareLessonId, taskId, file.name, actor, file.content)
+      ephemeralStorage.saveFileRecord(
+        shareLessonId,
+        taskId,
+        file.name,
+        actor,
+        storage.toTaskRecord(file.content)
+      )
     }
     return
   }
-  if (moduleType === 'scratch') {
-    const state = parseScratchState(snapshot?.code)
-    if (state) ephemeralStorage.saveCode(shareLessonId, taskId, actor, { state })
-    return
-  }
-  // Filesystem and Desktop snapshots carry their state as a JSON string in `code`.
-  const saveJsonState = {
-    filesystem: ephemeralStorage.saveFsState,
-    desktop: ephemeralStorage.saveDesktopState,
-  }
-  if (Object.hasOwn(saveJsonState, moduleType)) {
-    const state = parseScratchState(snapshot?.code)
-    if (state) saveJsonState[moduleType](shareLessonId, taskId, actor, state)
-    return
-  }
-  ephemeralStorage.saveCode(shareLessonId, taskId, actor, {
-    code: snapshot?.code ?? '',
-    ...(snapshot?.arcadeDesign ? { arcadeDesign: snapshot.arcadeDesign } : {}),
-  })
+  const work = wire.fromCode(snapshot?.code ?? '')
+  if (work == null || (definition.capabilities.sandboxState !== 'code' && !work)) return
+  const meta = snapshot?.arcadeDesign ? { arcadeDesign: snapshot.arcadeDesign } : {}
+  ephemeralStorage.saveCode(shareLessonId, taskId, actor, storage.toTaskRecord(work, meta))
 }
 
 export default function SharedWorkspaceViewer({
