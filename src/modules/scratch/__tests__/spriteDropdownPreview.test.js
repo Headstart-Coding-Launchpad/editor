@@ -4,6 +4,7 @@ import {
   loadBlocklyModules,
   setCostumeContext,
   setSpriteContext,
+  setWorkspaceBlocklyContext,
   spriteDropdownLabel,
 } from '../scratch'
 
@@ -105,5 +106,64 @@ describe('switch costume dropdown', () => {
     expect(dropdown.constructor).not.toBe(Blockly.FieldDropdown)
     dropdown.setValue('jump')
     expect(dropdown.getText()).toBe('jump')
+  })
+})
+
+// Two Scratch editors can be mounted at once (the leaving panel of a task slide transition
+// alongside the new task). Each workspace's menus must list its own costumes and sprites,
+// whichever editor last wrote the shared fallback context.
+describe('per-workspace dropdown context', () => {
+  let Blockly
+  const workspaces = []
+
+  beforeAll(async () => {
+    ;({ Blockly } = await loadBlocklyModules())
+  })
+
+  afterEach(() => {
+    workspaces.splice(0).forEach((ws) => ws.dispose())
+    setCostumeContext([])
+    setSpriteContext([])
+  })
+
+  function workspaceWith(ctx) {
+    const ws = new Blockly.Workspace()
+    workspaces.push(ws)
+    setWorkspaceBlocklyContext(ws, () => ctx)
+    return ws
+  }
+
+  const optionValues = (field) => field.getOptions(false).map(([, value]) => value)
+
+  it('lists each workspace its own costumes regardless of the global context', () => {
+    const task17 = workspaceWith({ costumes: [{ name: 'cat-a' }, { name: 'cat-b' }] })
+    const task18 = workspaceWith({ costumes: [{ name: 'dog-a' }, { name: 'dog-b' }] })
+    // The leaving editor wrote the fallback last.
+    setCostumeContext([{ name: 'cat-a' }, { name: 'cat-b' }])
+
+    const field17 = task17.newBlock('looks_switchcostumeto').getField('COSTUME')
+    const field18 = task18.newBlock('looks_switchcostumeto').getField('COSTUME')
+    expect(optionValues(field17)).toEqual(['cat-a', 'cat-b'])
+    expect(optionValues(field18)).toEqual(['dog-a', 'dog-b'])
+  })
+
+  it('lists each workspace its own sprites', () => {
+    const a = workspaceWith({ sprites: [{ id: 'cat', name: 'Cat' }] })
+    const b = workspaceWith({ sprites: [{ id: 'dog', name: 'Dog' }] })
+    setSpriteContext([{ id: 'cat', name: 'Cat' }])
+
+    expect(optionValues(a.newBlock('motion_goto').getField('TO'))).toContain('cat')
+    const bOptions = optionValues(b.newBlock('motion_goto').getField('TO'))
+    expect(bOptions).toContain('dog')
+    expect(bOptions).not.toContain('cat')
+  })
+
+  it('falls back to the global context for unregistered workspaces', () => {
+    setCostumeContext([{ name: 'fallback' }])
+    const ws = new Blockly.Workspace()
+    workspaces.push(ws)
+    expect(optionValues(ws.newBlock('looks_switchcostumeto').getField('COSTUME'))).toEqual([
+      'fallback',
+    ])
   })
 })

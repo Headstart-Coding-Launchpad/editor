@@ -48,6 +48,30 @@ export function setCostumeContext(costumes) {
   _currentCostumes = costumes ?? []
 }
 
+// Per-workspace dropdown context. The globals above are last-writer-wins, so when two
+// Scratch editors are mounted at once (e.g. the leaving task panel during a task slide
+// transition) one editor's menus would list the other's costumes and sprites. Each
+// injected workspace registers a getter here, and the dropdown generators resolve it
+// from the field's own block — flyout blocks via the flyout's target workspace —
+// falling back to the globals for fields not (yet) on a registered workspace.
+const _workspaceContexts = new WeakMap()
+
+export function setWorkspaceBlocklyContext(workspace, getContext) {
+  if (workspace) _workspaceContexts.set(workspace, getContext)
+}
+
+function blocklyContextFor(field) {
+  let ws = field?.getSourceBlock?.()?.workspace
+  if (ws?.isFlyout && ws.targetWorkspace) ws = ws.targetWorkspace
+  const ctx = (ws && _workspaceContexts.get(ws)?.()) ?? {}
+  return {
+    sprites: ctx.sprites ?? _currentSprites,
+    backdrops: ctx.backdrops ?? _currentBackdrops,
+    costumes: ctx.costumes ?? _currentCostumes,
+    variables: ctx.variables ?? _currentVariables,
+  }
+}
+
 // Human-readable dropdown option for a costume: the thumbnail beside the name when an
 // image is available (drawn on the block by `field_sprite_dropdown`), otherwise the
 // emoji and name, or the plain name.
@@ -80,8 +104,8 @@ export function spriteDropdownLabel(sp) {
   return label
 }
 
-function spriteDropdownOptions() {
-  return _currentSprites.map((sp) => [spriteDropdownLabel(sp), sp.id])
+function spriteDropdownOptions(field) {
+  return blocklyContextFor(field).sprites.map((sp) => [spriteDropdownLabel(sp), sp.id])
 }
 
 export function setVariableContext(variables) {
@@ -331,11 +355,13 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
           {
             type: 'field_sprite_dropdown',
             name: 'TO',
-            options: () => [
-              ['random position', '_random_'],
-              ['mouse pointer', '_mouse_'],
-              ...spriteDropdownOptions(),
-            ],
+            options: function () {
+              return [
+                ['random position', '_random_'],
+                ['mouse pointer', '_mouse_'],
+                ...spriteDropdownOptions(this),
+              ]
+            },
           },
         ]),
         previousStatement: null,
@@ -360,11 +386,13 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
           {
             type: 'field_sprite_dropdown',
             name: 'TO',
-            options: () => [
-              ['random position', '_random_'],
-              ['mouse pointer', '_mouse_'],
-              ...spriteDropdownOptions(),
-            ],
+            options: function () {
+              return [
+                ['random position', '_random_'],
+                ['mouse pointer', '_mouse_'],
+                ...spriteDropdownOptions(this),
+              ]
+            },
           },
         ]),
         previousStatement: null,
@@ -467,10 +495,12 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
           {
             type: 'field_sprite_dropdown',
             name: 'COSTUME',
-            options: () =>
-              _currentCostumes.length
-                ? _currentCostumes.map((c) => [costumeDropdownLabel(c), c.name])
-                : [['costume1', 'costume1']],
+            options: function () {
+              const costumes = blocklyContextFor(this).costumes
+              return costumes.length
+                ? costumes.map((c) => [costumeDropdownLabel(c), c.name])
+                : [['costume1', 'costume1']]
+            },
           },
         ]),
         previousStatement: null,
@@ -490,10 +520,12 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
           {
             type: 'field_dropdown',
             name: 'BACKDROP',
-            options: () =>
-              _currentBackdrops.length
-                ? _currentBackdrops.map((b) => [b.name, b.name])
-                : [['Backdrop 1', 'Backdrop 1']],
+            options: function () {
+              const backdrops = blocklyContextFor(this).backdrops
+              return backdrops.length
+                ? backdrops.map((b) => [b.name, b.name])
+                : [['Backdrop 1', 'Backdrop 1']]
+            },
           },
         ]),
         previousStatement: null,
@@ -512,10 +544,12 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
           {
             type: 'field_dropdown',
             name: 'BACKDROP',
-            options: () =>
-              _currentBackdrops.length
-                ? _currentBackdrops.map((b) => [b.name, b.name])
-                : [['Backdrop 1', 'Backdrop 1']],
+            options: function () {
+              const backdrops = blocklyContextFor(this).backdrops
+              return backdrops.length
+                ? backdrops.map((b) => [b.name, b.name])
+                : [['Backdrop 1', 'Backdrop 1']]
+            },
           },
         ]),
         nextStatement: null,
@@ -602,7 +636,9 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
           {
             type: 'field_sprite_dropdown',
             name: 'CLONE_OPTION',
-            options: () => [['myself', '_myself_'], ...spriteDropdownOptions()],
+            options: function () {
+              return [['myself', '_myself_'], ...spriteDropdownOptions(this)]
+            },
           },
         ]),
         previousStatement: null,
@@ -655,11 +691,13 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
           {
             type: 'field_sprite_dropdown',
             name: 'TOUCHINGOBJECTMENU',
-            options: () => [
-              ['mouse-pointer', '_mouse_'],
-              ['edge', '_edge_'],
-              ...spriteDropdownOptions(),
-            ],
+            options: function () {
+              return [
+                ['mouse-pointer', '_mouse_'],
+                ['edge', '_edge_'],
+                ...spriteDropdownOptions(this),
+              ]
+            },
           },
         ]),
         output: 'Boolean',
@@ -934,7 +972,9 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
           {
             type: 'field_sprite_dropdown',
             name: 'DISTANCETOMENU',
-            options: () => [['mouse-pointer', '_mouse_'], ...spriteDropdownOptions()],
+            options: function () {
+              return [['mouse-pointer', '_mouse_'], ...spriteDropdownOptions(this)]
+            },
           },
         ]),
         output: 'Number',
@@ -1078,9 +1118,8 @@ function blockStop(type, message0) {
 }
 
 function variableOptions() {
-  return _currentVariables.length
-    ? _currentVariables.map((v) => [v.name, v.name])
-    : [['score', 'score']]
+  const variables = blocklyContextFor(this).variables
+  return variables.length ? variables.map((v) => [v.name, v.name]) : [['score', 'score']]
 }
 
 function variableReporter() {
