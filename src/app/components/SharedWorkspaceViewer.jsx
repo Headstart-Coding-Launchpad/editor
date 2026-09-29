@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { resolveSnapshotContext, snapshotFiles } from './SharedWorkspacePreview'
 import { getModuleDefinition } from '../../modules/definitions.js'
+import { isModuleHostedActivityTask } from '../../activities/registry.pure.js'
 import { ephemeralStorage } from '../studentStorage'
 import { useStudentCodeState } from '../hooks/useStudentCodeState'
 import LessonTaskContent from './LessonTaskContent'
@@ -234,7 +235,7 @@ export default function SharedWorkspaceViewer({
           isQuizTask={false}
           isAutoEvaluatedQuiz={false}
           isInformationTask={false}
-          isCodeArrangeTask={task?.taskType === 'code_arrange'}
+          isCodeArrangeTask={isModuleHostedActivityTask(task)}
           isTeacherEditing={false}
           presenterLayout="both"
         />

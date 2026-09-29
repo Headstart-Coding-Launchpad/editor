@@ -3,7 +3,7 @@
 // (ActivityHost, teacher views) — never by the CLI.
 //
 // To add an activity: add its definition import to registry.pure.js and its ui import here.
-import { getActivityDefinition, getTaskActivity } from './registry.pure.js'
+import { getActivityDefinition, getModuleHostedActivity, getTaskActivity } from './registry.pure.js'
 import binaryUi from './binary/ui.jsx'
 import keyboardUi from './keyboard/ui.jsx'
 import mouseUi from './mouse/ui.jsx'
@@ -12,6 +12,7 @@ import quizMatchUi from './quiz_match/ui.jsx'
 import quizFillBlankUi from './quiz_fill_blank/ui.jsx'
 import quizShortAnswerUi from './quiz_short_answer/ui.jsx'
 import quizConfidenceUi from './quiz_confidence/ui.jsx'
+import codeArrangeUi from './code_arrange/ui.jsx'
 
 export const ACTIVITY_UIS = Object.freeze({
   binary: binaryUi,
@@ -22,6 +23,7 @@ export const ACTIVITY_UIS = Object.freeze({
   quiz_fill_blank: quizFillBlankUi,
   quiz_short_answer: quizShortAnswerUi,
   quiz_confidence: quizConfidenceUi,
+  code_arrange: codeArrangeUi,
 })
 
 const merged = new Map()
@@ -45,4 +47,10 @@ export function getActivityUi(id) {
 // renders ActivityHost's "not available" notice), or null for a non-activity task.
 export function getTaskActivityUi(task) {
   return withUi(getTaskActivity(task))
+}
+
+// The merged definition + UI of a module-hosted activity (code_arrange: `ModuleWorkspace`,
+// `TeacherLiveView`, ...), or null for every other task.
+export function getModuleHostedActivityUi(task) {
+  return withUi(getModuleHostedActivity(task))
 }

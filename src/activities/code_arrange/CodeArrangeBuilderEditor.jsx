@@ -1,10 +1,10 @@
 import React, { useRef, useState } from 'react'
-import { getLessonModule } from '../../../modules/registry'
+import { getLessonModule } from '../../modules/registry'
 import {
   evaluateFeedbackCheckResults,
   evaluateSingleCheck,
   normalizeChecks,
-} from '../../../modules/checks'
+} from '../../modules/checks'
 import {
   assembleCodeArrangement,
   buildSolutionSlotState,
@@ -12,10 +12,10 @@ import {
   getCodeArrangeEntryFile,
   getSlotIds,
   isArrangementComplete,
-} from '../../../shared/codeArrange'
-import CodeArrangeTask from '../../../app/components/CodeArrangeTask'
-import { Field } from './TaskEditorFields'
-import TaskPreviewPanel from './TaskPreviewPanel'
+} from '../../shared/codeArrange'
+import CodeArrangeTask from './CodeArrangeTask'
+import { Field } from '../../builder/components/task-editor/TaskEditorFields'
+import TaskPreviewPanel from '../../builder/components/task-editor/TaskPreviewPanel'
 
 let nextFragmentSeq = 1
 function makeFragmentId(prefix) {

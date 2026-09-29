@@ -1,6 +1,7 @@
 import yaml from 'js-yaml'
 import { flattenTasks, getTaskPriority } from './taskUtils.js'
 import { getTaskActivity } from '../activities/registry.pure.js'
+import { normalizeCodeSubmission } from './codeSubmission.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
 
@@ -14,8 +15,9 @@ function isReportableTask(task) {
 
 // Quiz and activity tasks report through their activity definition (report.typeFields,
 // normalizeSubmission, summaryFields): quizzes keep the stored shape `{ taskType: 'quiz',
-// quizType }`, activities report `{ taskType: 'activity', activityType }`. Code tasks (and
-// code_arrange, not yet on the activity contract) report as code.
+// quizType }`, activities report `{ taskType: 'activity', activityType }`, and code_arrange (an
+// activity hosted in the python / html module) keeps `{ taskType: 'code' }`. Code tasks report
+// as code.
 function getReportActivity(task) {
   return getTaskActivity(task)
 }
@@ -57,20 +59,8 @@ function isNotApplicableTask(task) {
   return !!activity && !activity.isGraded(task)
 }
 
-// logAttempt now always writes submission as a JSON-safe string (see useSession.js), so an
-// object-shaped submission (Scratch workspace state, a filesystem tree, an HTML file map)
-// round-trips through the attempt log as text. Parse it back to its original shape here so
-// the report reads as structured data rather than an escaped JSON blob; plain code strings
-// (Python, etc.) simply fail to parse as an object and are left as-is.
-function normalizeCodeSubmission(submission) {
-  if (typeof submission !== 'string' || !submission) return submission ?? null
-  try {
-    const parsed = JSON.parse(submission)
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed
-  } catch {}
-  return submission
-}
-
+// Code submissions (normalizeCodeSubmission, src/shared/codeSubmission.js) are parsed back to
+// their object shape when they are JSON; activities normalise their own.
 function normalizeSubmission(task, submission) {
   const activity = getReportActivity(task)
   return activity

@@ -10,18 +10,18 @@ and the Workspace-module-vs-Activity decision test are in
 Status: Binary, Keyboard and Mouse run through the host (plan step 2.3a), and so do quizzes
 (steps 2.2 / 2.3b, see [Quizzes](#quizzes-legacy-activities)). The Builder authors every
 activity from the registry and previews it through the host (step 2.4, see [Builder](#builder)),
-and YAML has the `type: <activity>` shorthand. `code_arrange` still uses
-`CodeArrangeTaskContainer` and is only *resolved* to an activity id (`resolve.js`); it moves onto
-the host in step 4.9.
+and YAML has the `type: <activity>` shorthand. `code_arrange` is an activity **hosted by a
+workspace module** rather than by `ActivityHost` (step 4.9, see
+[Code Arrange](#code-arrange-an-activity-hosted-in-a-module)).
 
 ## Pieces
 
 | Piece | File | Job |
 |---|---|---|
 | Pure definition | `src/activities/<id>/definition.js` | Contract from `defineActivity.js`: `initialState`, `solutionState`, `serialize` / `deserialize` (tolerant), `storage`, `classifyChange`, `completion`, `grade`, `isGraded`, `buildSubmission`, `getProgress`, `summarize`, `requires`, `touchFallback`, `teacherEditable`, `submitsAnswers`, `previewState`, `report` (`typeFields`, `normalizeSubmission`, `summaryFields`), `printHtml`, `validateTask`. Node-safe (CLI, validation, reports, print). |
-| Pure registry | `src/activities/registry.pure.js` | `getTaskActivity(task)` (unknown `activityType` / `quizType` → `unknown` fallback), `isHostedActivityTask`, `isLegacyQuizTask`, `allowsStudentBroadcast`. |
+| Pure registry | `src/activities/registry.pure.js` | `getTaskActivity(task)` (unknown `activityType` / `quizType` → `unknown` fallback), `isHostedActivityTask` (ActivityHost tasks), `getModuleHostedActivity` / `isModuleHostedActivityTask` (activities with `hostModules`), `isLegacyQuizTask`, `allowsStudentBroadcast`. |
 | UI | `src/activities/<id>/ui.jsx` | `{ StudentView, TeacherLiveView?, CardSummary?, ownsLayout?, BuilderEditor?, BuilderIcon?, builderHint?, builderConvert? }` (see [Builder](#builder)). Views are controlled: `state`, `onChange(nextOrUpdater)`, `onSubmit(state?)`, `readOnly`, `device`, `teacher`, `result` (`{ submitted, passed }` of the answer shown). |
-| UI registry | `src/activities/registry.js` | Merges definition + UI (`getTaskActivityUi`). Never imported by the CLI. |
+| UI registry | `src/activities/registry.js` | Merges definition + UI (`getTaskActivityUi`, `getModuleHostedActivityUi`). Never imported by the CLI. |
 | State hook | `src/app/hooks/useActivityState.js` | Owned by `useStudentCodeState` (exposed as `cs.activity`). All persistence, sync, grading, reset and teacher-edit rules. |
 | Host | `src/activities/ActivityHost.jsx` | Chooses which state to show and applies the device rules. `ActivityView` is the presentational surface reused by the teacher. |
 | Helpers | `src/activities/state.js`, `src/activities/device.js` | Reading serialised state (card summary, modal, broadcast); device badge; effective capabilities. |
@@ -159,10 +159,48 @@ definition carries `legacy: { taskType: 'quiz', quizType }`. An unknown `quizTyp
   `QuizEditors.jsx`, now a thin re-export); the Builder's quiz preview still uses `QuizTask`
   directly.
 
+## Code Arrange: an activity hosted in a module
+
+`code_arrange` (`src/activities/code_arrange/`) is on the activity contract but runs inside its
+host workspace module: the student assembles a program from tiles, and that program is the
+python / html task's code, run and checked by the module exactly like any other code task. So it
+declares `hostModules: ['python', 'html']`, and:
+
+- `isHostedActivityTask` is **false** for it (it is not an ActivityHost task, `useActivityState`
+  ignores it, and it stays a code task: Run, session sandbox, share, carry source, module
+  lifecycle). `getModuleHostedActivity(task)` / `isModuleHostedActivityTask(task)` find it;
+  `allowsStudentBroadcast` keeps student Go Live for it.
+- `LessonTaskContent` renders the UI's `ModuleWorkspace` (`CodeArrangeTaskContainer`) in place of
+  the module's StudentWorkspace. It is a thin adapter over `useStudentCodeState` (`cs`): each
+  complete arrangement is pushed through `cs.handleCodeChange` (python) or `cs.handleFileChange`
+  on the entry file (html), Run is `cs.handleRun`, and the teacher's remote Run, reset and stages
+  are the module's.
+- The arrangement itself keeps its legacy storage (no Firebase model change): the definition's
+  `storage` (`__code_arrange_slots__` aux file), `serialize` / `deserialize` (a JSON slot map
+  `{ slotId: tileId }`; anything else loads as an empty board) and `liveChannel:
+  'codeArrangeSlots'` (`students/{id}/currentCodeArrangeSlots` on every placement, watched or
+  not; `teacherLive.codeArrangeSlots` / `codeArrangeCursor` while broadcasting; the watch-start
+  flush; `teacherAnswerEdit.codeArrangeSlots` for Edit answers). `studentStateField(definition)`
+  (`state.js`) maps the channel to the student record field.
+- Teacher surfaces: `TeacherLiveView` is the StudentModal board (from the live slot mirror,
+  editable with Edit answers); `TeacherEditorPanel` shows the solution through the read-only
+  `StudentView`. The StudentCard / StudentModal badge is `getProgress` ("X/N slots filled",
+  `progressUnit: 'slots'`, never correctness).
+- Validation still runs the shared legacy rules (`validateCodeArrangeTask` via
+  `getLegacyTaskValidation`, then the host module's own `validateTask`); the definition's
+  `validateTask` wraps the same rules. Reports keep `{ taskType: 'code' }` with the code
+  submission (`report.typeFields`, `normalizeCodeSubmission`); `printHtml` prints nothing of its
+  own. `grade` only answers "is this the authored arrangement" — the classroom marks it by
+  running the program.
+- The Builder offers it as the **Arrange** format where `availableIn(lesson)` allows (composed
+  lessons only), converts with the UI's `builderConvert` and edits with its `BuilderEditor`; the
+  module picker lists its `hostModules`.
+
 ## Builder
 
 The Builder's task-format grid is **Code / Information / Quiz / Activity** (+ **Arrange** in
-composed lessons). Everything past the grid comes from the registries, so a new activity needs no
+composed lessons, from `getModuleHostedActivityDefinitions()` and each definition's
+`availableIn`). Everything past the grid comes from the registries, so a new activity needs no
 Builder change:
 
 - `getTaskFormat(task)` (`registry.pure.js`) picks the format; `TaskEditor` makes no inline

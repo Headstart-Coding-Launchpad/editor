@@ -25,6 +25,21 @@ export function readActivityAnswer(task, raw) {
   return deserializeActivityState(getTaskActivity(task), task, raw)
 }
 
+// The students/{id} field an activity mirrors its live state to: `currentAnswer` for the
+// default 'answer' channel, `current<Channel>` otherwise (code_arrange's 'codeArrangeSlots'
+// channel → `currentCodeArrangeSlots`).
+export function studentStateField(definition) {
+  const channel = definition?.liveChannel || 'answer'
+  return `current${channel[0].toUpperCase()}${channel.slice(1)}`
+}
+
+// The state a student's mirrored record holds for a task, or null for non-activity tasks.
+export function readStudentActivityState(task, student) {
+  const definition = getTaskActivity(task)
+  if (!definition) return null
+  return deserializeActivityState(definition, task, student?.[studentStateField(definition)])
+}
+
 // Teacher-card summary ({ text, tone }) of a student's mirrored answer, or null.
 export function summarizeActivityAnswer(task, raw) {
   const definition = getTaskActivity(task)

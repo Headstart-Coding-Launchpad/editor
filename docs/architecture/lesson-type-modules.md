@@ -118,7 +118,7 @@ The teacher-side module data travels through the same hooks, with the Realtime D
 
 Two optional groups put a module on `useStudentCodeState`'s generic work slot. A module declares both or neither (`defineModule` rejects one without the other; absent groups are `null`). A slot stores one record and travels on the `'code'` wire channel, or stores per file (`'perFile'`) and travels on the `'files'` channel (html); `defineModule` rejects any other pairing.
 
-Migration status: every module is on the slot — filesystem and desktop (step 4.3), python, turtle, arcade and electronics (step 4.4), html (per-file work) and scratch (workspace-owned work and checks, via `reportRun`) (step 4.5). The hook no longer branches on a module type for its work; the type-branch ratchet for `useStudentCodeState.js` fell from 27 to 3 (two `code_arrange` task-type checks, plan step 4.9, and the python/html support-stage offer rule).
+Migration status: every module is on the slot — filesystem and desktop (step 4.3), python, turtle, arcade and electronics (step 4.4), html (per-file work) and scratch (workspace-owned work and checks, via `reportRun`) (step 4.5). The hook no longer branches on a module type for its work; the type-branch ratchet for `useStudentCodeState.js` fell from 27 to 3, and to 1 (the python/html support-stage offer rule) once the two `code_arrange` task-type checks became activity-registry lookups (`isModuleHostedActivityTask`, plan step 4.9). `code_arrange` is an activity hosted by the python / html modules: see [activities.md](activities.md#code-arrange-an-activity-hosted-in-a-module).
 
 `checking` — when and how the task check runs against the work:
 

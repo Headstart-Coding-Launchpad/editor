@@ -4,9 +4,12 @@ import path from 'node:path'
 import {
   ACTIVITY_IDS,
   activityIdForYamlType,
+  allowsStudentBroadcast,
   getActivityDefinition,
   getActivityDefinitions,
+  getModuleHostedActivity,
   getTaskActivity,
+  isHostedActivityTask,
 } from '../registry.pure.js'
 import { getActivityId, isActivityTask, UNKNOWN_ACTIVITY_ID } from '../resolve.js'
 import { defineActivity } from '../defineActivity.js'
@@ -109,12 +112,43 @@ describe('resolve', () => {
     )
   })
 
-  it('claims legacy quiz tasks, but not code_arrange until it migrates (plan 4.9)', () => {
+  it('claims legacy quiz and code_arrange tasks', () => {
     expect(getTaskActivity({ taskType: 'quiz', quizType: 'match' })?.id).toBe('quiz_match')
     expect(getTaskActivity({ taskType: 'quiz' })?.id).toBe('quiz_multiple_choice')
     expect(getTaskActivity({ taskType: 'quiz', quizType: 'poll' })?.id).toBe(UNKNOWN_ACTIVITY_ID)
-    expect(getTaskActivity({ taskType: 'code_arrange' })).toBeNull()
+    expect(getTaskActivity({ taskType: 'code_arrange' })?.id).toBe('code_arrange')
     expect(getTaskActivity({ taskType: 'information' })).toBeNull()
+  })
+
+  // code_arrange is the one activity hosted by workspace modules (plan 4.9): its program runs
+  // through the python / html module, so it keeps the legacy storage, live channel and report
+  // shape instead of the activity defaults, and is not an ActivityHost task.
+  it('keeps code_arrange on its stored shape, hosted by the python and html modules', () => {
+    const activity = getActivityDefinition('code_arrange')
+    const task = { taskType: 'code_arrange', moduleType: 'python' }
+    expect(activity.legacy).toEqual({ taskType: 'code_arrange' })
+    expect(activity.hostModules).toEqual(['python', 'html'])
+    expect(activity.storage).toEqual({ persist: true, filename: '__code_arrange_slots__' })
+    expect(activity.liveChannel).toBe('codeArrangeSlots')
+    expect(activity.report.typeFields(task)).toEqual({ taskType: 'code' })
+    expect(getModuleHostedActivity(task)?.id).toBe('code_arrange')
+    expect(isHostedActivityTask(task)).toBe(false)
+    expect(getModuleHostedActivity({ taskType: 'quiz' })).toBeNull()
+    expect(allowsStudentBroadcast(task)).toBe(true)
+    expect(activity.availableIn({ type: 'composed' })).toBe(true)
+    expect(activity.availableIn({ type: 'python' })).toBe(false)
+    expect(activityIdForYamlType('code_arrange')).toBeNull()
+  })
+
+  it('reads and writes the code_arrange slot map exactly as stored', () => {
+    const activity = getActivityDefinition('code_arrange')
+    expect(activity.serialize({ S1: 'S1d1', L2: 'L2' })).toBe('{"S1":"S1d1","L2":"L2"}')
+    expect(activity.deserialize('{"S1":"S1"}')).toEqual({ S1: 'S1' })
+    // The RTDB mirror (currentCodeArrangeSlots) is already an object.
+    expect(activity.deserialize({ S1: 'S1' })).toEqual({ S1: 'S1' })
+    for (const bad of ['null', '[1]', '"x"', '{nope', undefined, null]) {
+      expect(activity.deserialize(bad)).toEqual({})
+    }
   })
 
   it('keeps each legacy quiz sub-type on its stored shape', () => {

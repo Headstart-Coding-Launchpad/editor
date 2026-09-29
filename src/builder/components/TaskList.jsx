@@ -7,7 +7,11 @@ import {
   isLegacyDraftTask,
 } from '../../shared/taskUtils'
 import { TaskFormatIcon } from './task-editor/TaskEditorFields'
-import { getTaskActivity, getTaskFormat } from '../../activities/registry.pure.js'
+import {
+  getTaskActivity,
+  getTaskFormat,
+  isHostedActivityTask,
+} from '../../activities/registry.pure.js'
 import { UNKNOWN_ACTIVITY_ID } from '../../activities/resolve.js'
 
 function taskIconType(task) {
@@ -18,10 +22,11 @@ function taskIconType(task) {
 }
 
 // Icon and tooltip for a task row. Quizzes and activities take their label (and, for
-// activities, their icon) from the activity registry.
+// activities, their icon) from the activity registry. Module-hosted activities (Arrange) are
+// code tasks here.
 function TaskTypeIcon({ task }) {
   const iconType = taskIconType(task)
-  const activity = getTaskActivity(task)
+  const activity = isHostedActivityTask(task) ? getTaskActivity(task) : null
   const known = activity && activity.id !== UNKNOWN_ACTIVITY_ID
   const title = known
     ? `${activity.label} ${activity.legacy ? 'quiz' : 'activity'}`

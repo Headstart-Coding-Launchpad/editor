@@ -6,7 +6,7 @@ import SplitPane from '../../shared/SplitPane'
 import ExplainerPanel from './ExplainerPanel'
 import InformationTask from './InformationTask'
 import LessonCompleteScreen from './LessonCompleteScreen'
-import CodeArrangeTaskContainer from './CodeArrangeTaskContainer'
+import { getModuleHostedActivityUi } from '../../activities/registry.js'
 import ActivityHost from '../../activities/ActivityHost.jsx'
 import CheckFeedbackBanner from './CheckFeedbackBanner'
 import TaskSlideTransition from './TaskSlideTransition'
@@ -193,6 +193,11 @@ export default function LessonTaskContent({
   // Quizzes and activities share the no-workspace layout: no explainer rail, no stage
   // references, no module StudentWorkspace.
   const isQuizLike = isQuizTask || isActivityTask
+  // An activity hosted by this module (code_arrange, isCodeArrangeTask): its ModuleWorkspace
+  // replaces the module's StudentWorkspace and drives the module's work slot and Run via `cs`.
+  const ModuleActivityWorkspace = isCodeArrangeTask
+    ? (getModuleHostedActivityUi(task)?.ModuleWorkspace ?? null)
+    : null
   const lessonMod = getLessonModule(lesson.type)
   const StudentWorkspace = lessonMod?.StudentWorkspace
   const modStyles = lessonMod?.getLayoutStyles(isMobile) ?? {}
@@ -562,10 +567,10 @@ export default function LessonTaskContent({
             }
           />
         </>
-      ) : !isSandbox && isCodeArrangeTask ? (
+      ) : !isSandbox && ModuleActivityWorkspace ? (
         <>
           <TeacherAnswerNotice at={isViewingPrev ? null : cs.teacherAnswerNoticeAt} />
-          <CodeArrangeTaskContainer
+          <ModuleActivityWorkspace
             task={task}
             cs={cs}
             viewingTaskId={viewingTaskId}

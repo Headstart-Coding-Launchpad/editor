@@ -25,6 +25,7 @@ import {
   getTaskActivity,
   isHostedActivityTask,
   isLegacyQuizTask,
+  isModuleHostedActivityTask,
 } from '../../activities/registry.pure.js'
 import TopBar from '../components/TopBar'
 import NameEntry from '../components/NameEntry'
@@ -870,7 +871,9 @@ export default function StudentView({
   const isQuizTask = isLegacyQuizTask(task)
   const isAutoEvaluatedQuiz = isQuizTask && getTaskActivity(task)?.completion === 'auto'
   const isInformationTask = task?.taskType === 'information'
-  const isCodeArrangeTask = task?.taskType === 'code_arrange'
+  // An activity hosted by the task's workspace module (code_arrange): still a code task (Run,
+  // sandbox, share), with the activity's ModuleWorkspace in place of the module's workspace.
+  const isCodeArrangeTask = isModuleHostedActivityTask(task)
   // Hosted activities (taskType 'activity' and quizzes) are not code tasks: no Run, personal
   // sandbox, share or carry. ActivityHost renders them (see LessonTaskContent).
   const isActivityTask = isHostedActivityTask(task)

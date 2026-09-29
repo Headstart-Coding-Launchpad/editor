@@ -37,6 +37,12 @@ describe('lessons capabilities', () => {
       yamlType: 'binary',
       taskShape: { taskType: 'activity', activityType: 'binary' },
     })
+    expect(binary).not.toHaveProperty('hostModules')
+    expect(capabilities.activities.find((a) => a.id === 'code_arrange')).toMatchObject({
+      yamlType: 'code_arrange',
+      taskShape: { taskType: 'code_arrange' },
+      hostModules: ['python', 'html'],
+    })
     expect(capabilities.requests).toMatch(/authoring-requests/)
   })
 
