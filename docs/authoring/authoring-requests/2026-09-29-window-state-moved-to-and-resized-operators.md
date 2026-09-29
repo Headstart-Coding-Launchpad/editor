@@ -1,6 +1,6 @@
 # window_state moved_to and resized operators
 
-- **Status:** open
+- **Status:** planned
 - **Kind:** check type
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-09-29
 - **Lessons blocked:** none yet
@@ -55,4 +55,4 @@ Course: Mouse and Keyboard Skills ('Computer Confidence'), ages 7+. Effort estim
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Branch `feature/window-state-moved-resized`: `window_state` `moved_to` (zones) and `resized` (`size`, fractional min/max limits, 15% area margin); the desktop state records the measured `viewport` and each window's `startWidth`/`startHeight`; `windows_arranged_side_by_side` uses the real desktop size. Docs: [desktop.md](../desktop.md#moving-and-resizing-windows).

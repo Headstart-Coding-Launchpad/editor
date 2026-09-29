@@ -20,6 +20,22 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-29
 
+### Desktop `window_state` `moved_to` and `resized`
+
+- New `window_state` operators. `moved_to` passes when the window's centre is in `zone`
+  (`left_half`, `right_half`, `top_half`, `bottom_half` or a quarter such as `top_right`).
+  `resized` passes when the window is `size: smaller` / `larger` than it started (15% or more in
+  area), meets `minWidth` / `minHeight` / `maxWidth` / `maxHeight` (fractions of the desktop), or,
+  with neither, changed by 15% or more. Minimised or maximised windows never count.
+- Window geometry is now judged against the student's real desktop size, recorded on each window
+  interaction. `windows_arranged_side_by_side` no longer assumes a 1200px viewport, so a layout
+  that fills a smaller screen now passes.
+- New validator errors for a missing `appId`, unknown `zone` / `size`, and out-of-range limits.
+  See [desktop.md](desktop.md#moving-and-resizing-windows) and
+  [validation-errors.md](validation-errors.md).
+- Affects: desktop · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-09-29-window-state-moved-to-and-resized-operators.md
+
 ### Scratch Support stages: `markdown` for students, `blocks` for replacing (docs fix)
 
 - No platform change; the docs contradicted each other. A Scratch Support stage's `markdown` is

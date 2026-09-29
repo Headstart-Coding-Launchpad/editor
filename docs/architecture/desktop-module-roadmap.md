@@ -24,7 +24,7 @@ Verified: full `npm test` suite (127 files / 1724 tests, zero regressions), `npm
 
 - `SandboxStarterModal.jsx` (the Builder's lesson-level sandbox-starter authoring UI) was not extended to Desktop — a lesson-level `sandboxStarterDesktop` works at runtime but must be hand-edited as JSON; there's no visual editor for it yet.
 - `printLesson.js` (PDF lesson export) was not extended — a Desktop lesson exports without its starter/complete desktop fields rendered.
-- `windows_arranged_side_by_side` assumes a fixed 1200px viewport rather than the student's actual window size.
+- ~~`windows_arranged_side_by_side` assumes a fixed 1200px viewport rather than the student's actual window size.~~ Fixed 2026-09-29: WindowManager stamps the measured desktop size (`viewport`) onto the desktop state on each window interaction, and geometry checks use it. The same change added `window_state` `moved_to` / `resized`.
 - The support-stage hint-reveal ladder is not available for Desktop tasks, matching the Filesystem module's current behaviour.
 
 ## Phase 2 — Text Editor + Image Viewer — shipped

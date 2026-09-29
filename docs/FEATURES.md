@@ -51,7 +51,7 @@ Checks can verify:
 - **Python only**: variable existence, type, and value (including lists and dicts)
 - **Scratch**: block usage, sprite position/size/direction/visibility, variable values
 - **Filesystem**: file and directory existence, which directory is currently open
-- **Desktop**: filesystem checks (as above) plus Recycle Bin membership, window open/closed/minimized/maximized state, two windows arranged side by side, simulated-browser page visits, and search-engine query matching
+- **Desktop**: filesystem checks (as above) plus Recycle Bin membership, window open/closed/minimized/maximized state, a window moved into a screen zone or resized, two windows arranged side by side, simulated-browser page visits, and search-engine query matching
 - **Quiz**: correct answer match
 
 After the same hint appears twice in a row, solo students can optionally view the complete reference code (if defined on the task).
