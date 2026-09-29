@@ -10,6 +10,7 @@ import {
   publishLessonTasks,
   saveSessionReport,
 } from '../../shared/lessonService'
+import { prepareClassroomLesson } from '../studentTaskContent'
 import { attachTeacherFeedback, buildSessionReport } from '../../shared/lessonReport'
 import { decodeLessonBlocksFromFirestore } from '../../shared/lessonBlocksCodec'
 import EditLessonModal from '../components/EditLessonModal'
@@ -133,10 +134,13 @@ export default function TeacherView({ lessonId }) {
   } = useSession(lessonId)
 
   const [baseLesson, setBaseLesson] = useState(null)
-  const lesson = useMemo(
+  // The authored lesson (with any session override) is what the Edit Lesson modal edits and
+  // saves; everything else uses the classroom copy with line-hint markers stripped.
+  const authoredLesson = useMemo(
     () => applyLessonOverride(baseLesson, session?.lessonOverrideTasks),
     [baseLesson, session?.lessonOverrideTasks]
   )
+  const lesson = useMemo(() => prepareClassroomLesson(authoredLesson), [authoredLesson])
   const [lessonLoading, setLessonLoading] = useState(true)
   const { topics } = useTopicLibrary(isComposedLesson(lesson) ? null : lesson?.type, !!lesson)
   const [lessonError, setLessonError] = useState(false)
@@ -818,7 +822,7 @@ export default function TeacherView({ lessonId }) {
 
       {showEditLessonModal && (
         <EditLessonModal
-          lesson={lesson}
+          lesson={authoredLesson}
           role={role}
           currentTaskId={session?.currentTaskId ?? currentTaskId}
           onApplySession={handleApplySessionLessonEdit}

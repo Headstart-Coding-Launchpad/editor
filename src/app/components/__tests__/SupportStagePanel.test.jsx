@@ -1,7 +1,39 @@
 import React from 'react'
 import { createEvent, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import SupportStagePanel, { stageToText } from '../SupportStagePanel'
+import SupportStagePanel, { stageHintsByLine, stageToText } from '../SupportStagePanel'
+
+describe('SupportStagePanel line hints', () => {
+  it('shows each hint as faded text after its line', () => {
+    render(
+      <SupportStagePanel
+        stage={{ label: 'Support', code: 'x = 1\ncolour = "red"' }}
+        lessonType="python"
+        revealed
+        lineHintsFor={(file) => (file == null ? [{ line: 2, text: 'Change the colour' }] : [])}
+      />
+    )
+    expect(screen.getByText('Change the colour')).toHaveAttribute('title', 'Change the colour')
+    const code = screen.getByLabelText('Support stage reference').querySelector('code')
+    expect(code.textContent).toBe('x = 1\ncolour = "red"Change the colour')
+  })
+
+  it('places an HTML file hint after its file header in a files stage', () => {
+    const stage = {
+      label: 'Support',
+      files: [
+        { name: 'index.html', content: '<h1>Hi</h1>' },
+        { name: 'style.css', content: 'h1 {\n}' },
+      ],
+    }
+    const byLine = stageHintsByLine(stage, 'html', (file) =>
+      file === 'style.css' ? [{ line: 2, text: 'Close it' }] : []
+    )
+    // Lines: /* index.html */, <h1>Hi</h1>, '', /* style.css */, h1 {, }
+    expect(stageToText(stage, 'html').split('\n')[5]).toBe('}')
+    expect([...byLine.entries()]).toEqual([[5, 'Close it']])
+  })
+})
 
 describe('SupportStagePanel', () => {
   it('does not show its reference content until its parent marks the stage revealed', () => {

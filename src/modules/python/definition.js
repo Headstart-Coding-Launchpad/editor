@@ -55,6 +55,8 @@ export default defineModule({
     sandboxState: 'code',
     teacherUnifiedStageTabs: true,
     run: 'runtime',
+    // Authors hint at starter lines with `#> …` marker lines (src/shared/lineHints.js).
+    lineHints: 'python',
   },
   // Pyodide reports the failing line on stderr; the editor highlights it.
   runResult: { errorLine: true, turtle: false, liveCode: false },

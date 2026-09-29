@@ -14,6 +14,7 @@ import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControl
 import PanelTabs from './PanelTabs'
 import SupportStagePanel from './SupportStagePanel'
 import { getCompleteStage, getRevealableStages } from '../../shared/taskUtils'
+import { getStageLineHints } from '../../shared/lineHints'
 import {
   TEACHER_LIVE_REFERENCE_TYPES,
   teacherLiveReferenceDisplayState,
@@ -540,14 +541,23 @@ export default function LessonTaskContent({
                 : reveal?.source === 'teacher' || reveal?.source === 'teacher-auto'
                   ? 'Opened by your teacher'
                   : 'Shown after a failed attempt'
+          const referenceStage =
+            completeReferenceStage ??
+            targetedReferenceStage ??
+            teacherLiveReferenceStage ??
+            activeSupportStage.stage
+          // Authored stages show their line hints; the teacher's live code has none.
+          const referenceStageIndex = task?.codeStages?.indexOf(referenceStage) ?? -1
+          const lineHintsFor =
+            referenceStageIndex >= 0
+              ? (file) => getStageLineHints(task, referenceStageIndex, file)
+              : referenceStage === completeReferenceStage
+                ? (file) => getStageLineHints(task, 'complete', file)
+                : undefined
           return (
             <SupportStagePanel
-              stage={
-                completeReferenceStage ??
-                targetedReferenceStage ??
-                teacherLiveReferenceStage ??
-                activeSupportStage.stage
-              }
+              stage={referenceStage}
+              lineHintsFor={lineHintsFor}
               lessonType={lesson.type}
               revealed={
                 completeReferenceStage || targetedReferenceStage || teacherLiveReferenceStage

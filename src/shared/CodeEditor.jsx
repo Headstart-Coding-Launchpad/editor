@@ -3,7 +3,7 @@
  * Accepts the language type, current value, an onChange callback, and a readOnly flag.
  * Creates a single EditorView and updates it imperatively to avoid full re-mounts.
  */
-import React, { useEffect, useImperativeHandle, useRef } from 'react'
+import React, { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { EditorState, StateEffect, StateField } from '@codemirror/state'
 import { Decoration, EditorView, WidgetType, keymap } from '@codemirror/view'
 import { indentUnit } from '@codemirror/language'
@@ -16,7 +16,10 @@ import {
   getLanguageExtension,
   getTabSize,
   getIndentUnit,
+  lineHintsExtension,
+  setLineHints,
 } from './codemirror'
+import { chooseLineHints } from './lineHints'
 
 const setRemoteSelection = StateEffect.define()
 
@@ -215,6 +218,10 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     teacherHighlights = [],
     onHighlightDismiss,
     errorLine = null,
+    // Author line hints for this content: an array of hint sets (getTaskLineHintSets). The set
+    // that fits the loaded text best is shown, re-anchored whenever the value is replaced from
+    // outside (task switch, reset, saved code) — see chooseLineHints in ./lineHints.js.
+    lineHints = null,
     onRunShortcut,
     style,
   },
@@ -232,6 +239,11 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
   onActivityRef.current = onActivity
   onHighlightDismissRef.current = onHighlightDismiss
   onRunShortcutRef.current = onRunShortcut
+  const lineHintSetsRef = useRef(lineHints)
+  lineHintSetsRef.current = lineHints
+  // Callers build the sets inline, so compare by content: a new array with the same hints must
+  // not re-anchor (and so resurrect) hints the student has deleted.
+  const lineHintsKey = useMemo(() => JSON.stringify(lineHints ?? []), [lineHints])
 
   // Mount the editor once
   useEffect(() => {
@@ -245,6 +257,7 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
           remoteSelectionField,
           teacherHighlightsField,
           errorLineField,
+          lineHintsExtension(),
           keymap.of([
             {
               key: 'Mod-Enter',
@@ -326,9 +339,18 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     if (current !== value) {
       view.dispatch({
         changes: { from: 0, to: current.length, insert: value ?? '' },
+        effects: setLineHints.of(chooseLineHints(value ?? '', lineHintSetsRef.current)),
       })
     }
   }, [value])
+
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    view.dispatch({
+      effects: setLineHints.of(chooseLineHints(view.state.doc.toString(), lineHintSetsRef.current)),
+    })
+  }, [lineHintsKey])
 
   useEffect(() => {
     const view = viewRef.current

@@ -20,6 +20,21 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-29
 
+### Line hints in starter code (`#> …` / `<!--> … -->`)
+
+- Python, Turtle and HTML starter code, code stages and complete code can carry **line hints**
+  instead of instruction comments: a line whose trimmed text starts with `#>` (Python, Turtle)
+  or is `<!--> … -->` (HTML) is removed from the student's code and shown beside the next line
+  (a 💡 in the gutter plus faded text after the line). Consecutive markers stack on one line.
+- Marker lines are stripped before the code is shown, saved, run, checked (including
+  `code_contains` / regex checks and the validator's complete-solution check), carried or
+  mirrored. Existing lessons are unaffected unless a line already starts with `#>` or is
+  `<!--> … -->`.
+- New validator warning: `Task … has a line hint with no line after it (…) — it shows on the
+  last line`. See [python.md](python.md#line-hints), [turtle.md](turtle.md#line-hints),
+  [html.md](html.md#line-hints) and
+  [validation-errors.md](validation-errors.md#module-starter-state).
+
 ### Keyboard shortcuts, binary answers and validation messages
 
 - Keyboard `shortcuts` items can now use Shift with a non-typing key (`Shift+Tab`,

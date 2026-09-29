@@ -1,6 +1,10 @@
-import { EditorState, Compartment } from '@codemirror/state'
+import { EditorState, Compartment, RangeSet, StateEffect, StateField } from '@codemirror/state'
 import {
+  Decoration,
   EditorView,
+  GutterMarker,
+  WidgetType,
+  gutter,
   keymap,
   lineNumbers,
   highlightActiveLine,
@@ -181,4 +185,158 @@ export function createBaseExtensions(type = 'python', readOnly = false) {
     indentUnitCompartment.of(indentUnit.of(getIndentUnit(type))),
     readOnlyCompartment.of(EditorState.readOnly.of(readOnly)),
   ]
+}
+
+// ─── Line hints ──────────────────────────────────────────────────────────────
+// Author hints attached to lines of starter code (see ./lineHints.js for the authoring syntax
+// and anchoring). Each hinted line gets a 💡 gutter marker whose title is the hint, and the hint
+// as faded ghost text after the line's content. Neither is part of the document, so hints never
+// reach the student's code, the clipboard or the undo history. A hint follows its line through
+// edits and disappears when the line itself is deleted (its text and a line break removed);
+// clearing the line's text keeps it, so the student can rewrite the line with the hint in view.
+//
+// Dispatch `setLineHints.of([{ line, text }])` (1-based lines, already anchored — see
+// chooseLineHints) to replace the hints; `[]` or null clears them.
+export const setLineHints = StateEffect.define()
+
+// Whether a change removed the whole line [from, to] together with a line break next to it.
+function lineRemoved(changes, from, to) {
+  let removed = false
+  changes.iterChangedRanges((fromA, toA) => {
+    if (fromA <= from && toA >= to && (fromA < from || toA > to)) removed = true
+  })
+  return removed
+}
+
+// Holds the hints as `[{ pos, text }]`, `pos` the start of the hinted line.
+export const lineHintsField = StateField.define({
+  create() {
+    return []
+  },
+  update(hints, transaction) {
+    let next = hints
+    if (transaction.docChanged && hints.length > 0) {
+      next = []
+      for (const hint of hints) {
+        const line = transaction.startState.doc.lineAt(hint.pos)
+        if (lineRemoved(transaction.changes, line.from, line.to)) continue
+        const mapped = transaction.changes.mapPos(line.from, 1)
+        next.push({ pos: transaction.state.doc.lineAt(mapped).from, text: hint.text })
+      }
+    }
+    for (const effect of transaction.effects) {
+      if (!effect.is(setLineHints)) continue
+      const { doc } = transaction.state
+      next = (effect.value ?? [])
+        .filter(
+          (hint) =>
+            Number.isInteger(hint?.line) &&
+            hint.line >= 1 &&
+            hint.line <= doc.lines &&
+            typeof hint.text === 'string' &&
+            hint.text
+        )
+        .map((hint) => ({ pos: doc.line(hint.line).from, text: hint.text }))
+    }
+    return next
+  },
+})
+
+// The hints grouped by line: `[{ line, texts }]` in document order.
+function hintsByLine(state) {
+  const byLine = new Map()
+  for (const hint of state.field(lineHintsField)) {
+    const line = state.doc.lineAt(hint.pos)
+    if (!byLine.has(line.from)) byLine.set(line.from, { line, texts: [] })
+    byLine.get(line.from).texts.push(hint.text)
+  }
+  return [...byLine.values()].sort((a, b) => a.line.from - b.line.from)
+}
+
+// What a state's hints show as `[{ line, text }]` (texts joined per line).
+export function getLineHints(state) {
+  if (!state.field(lineHintsField, false)) return []
+  return hintsByLine(state).map(({ line, texts }) => ({
+    line: line.number,
+    text: texts.join(' · '),
+  }))
+}
+
+class LineHintGhostWidget extends WidgetType {
+  constructor(text) {
+    super()
+    this.text = text
+  }
+  eq(other) {
+    return other.text === this.text
+  }
+  toDOM() {
+    const ghost = document.createElement('span')
+    ghost.className = 'cm-lineHintGhost'
+    ghost.textContent = this.text
+    ghost.title = this.text
+    return ghost
+  }
+}
+
+class LineHintGutterMarker extends GutterMarker {
+  constructor(text) {
+    super()
+    this.text = text
+  }
+  eq(other) {
+    return other.text === this.text
+  }
+  toDOM() {
+    const icon = document.createElement('span')
+    icon.className = 'cm-lineHintIcon'
+    icon.textContent = '💡'
+    icon.title = this.text
+    icon.setAttribute('role', 'img')
+    icon.setAttribute('aria-label', `Hint: ${this.text}`)
+    return icon
+  }
+}
+
+const lineHintDecorations = EditorView.decorations.compute([lineHintsField], (state) =>
+  Decoration.set(
+    hintsByLine(state).map(({ line, texts }) =>
+      Decoration.widget({ widget: new LineHintGhostWidget(texts.join(' · ')), side: 2 }).range(
+        line.to
+      )
+    )
+  )
+)
+
+const lineHintGutter = gutter({
+  class: 'cm-lineHintGutter',
+  markers: (view) =>
+    RangeSet.of(
+      hintsByLine(view.state).map(({ line, texts }) =>
+        new LineHintGutterMarker(texts.join('\n')).range(line.from)
+      )
+    ),
+})
+
+const lineHintTheme = EditorView.baseTheme({
+  '.cm-lineHintGutter .cm-gutterElement': {
+    padding: '0 2px',
+    cursor: 'help',
+    fontSize: '0.8em',
+  },
+  '.cm-lineHintGhost': {
+    marginLeft: '1.5em',
+    color: '#9ca3af',
+    fontStyle: 'italic',
+    fontFamily: 'var(--font-body, sans-serif)',
+    fontSize: '0.88em',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    pointerEvents: 'none',
+  },
+})
+
+// The line-hint extension: add it to an editor, then dispatch setLineHints.
+export function lineHintsExtension() {
+  return [lineHintsField, lineHintDecorations, lineHintGutter, lineHintTheme]
 }

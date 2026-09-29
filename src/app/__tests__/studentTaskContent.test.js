@@ -6,7 +6,52 @@ import {
   selectPythonTaskCode,
   selectScratchInitialProject,
   selectScratchToolboxSnippets,
+  prepareClassroomLesson,
 } from '../studentTaskContent'
+import { getTaskLineHintSets } from '../../shared/lineHints'
+
+describe('prepareClassroomLesson', () => {
+  it('strips line-hint markers from what students load, by each task module type', () => {
+    const lesson = prepareClassroomLesson({
+      type: 'composed',
+      tasks: [
+        { id: 1, moduleType: 'python', starterCode: '#> Change me\ncolour = "red"' },
+        {
+          id: 2,
+          moduleType: 'html',
+          starterFiles: [{ name: 'index.html', content: '<!--> Add a heading -->\n<h1></h1>' }],
+        },
+      ],
+    })
+    const [pythonTask, htmlTask] = lesson.tasks
+    expect(
+      selectPythonTaskCode({
+        tasks: lesson.tasks,
+        task: pythonTask,
+        taskId: 1,
+        phase: 'lesson',
+        readSavedCode: () => null,
+      })
+    ).toBe('colour = "red"')
+    expect(
+      selectHtmlTaskFiles({
+        tasks: lesson.tasks,
+        task: htmlTask,
+        taskId: 2,
+        phase: 'lesson',
+        readSavedFile: () => null,
+      })[0].content
+    ).toBe('<h1></h1>')
+    expect(getTaskLineHintSets(pythonTask)).toEqual([
+      [{ line: 1, text: 'Change me', target: 'colour = "red"' }],
+    ])
+  })
+
+  it('leaves a lesson without markers as it is', () => {
+    const lesson = { type: 'python', tasks: [{ id: 1, starterCode: 'x = 1' }] }
+    expect(prepareClassroomLesson(lesson)).toBe(lesson)
+  })
+})
 
 const groupedTasks = [
   {

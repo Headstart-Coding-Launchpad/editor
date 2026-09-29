@@ -63,6 +63,8 @@ export default defineModule({
     teacherUnifiedStageTabs: true,
     // Run builds the preview iframe from the files.
     run: 'preview',
+    // Authors hint at starter lines with `<!--> … -->` marker lines (src/shared/lineHints.js).
+    lineHints: 'html',
   },
 
   getDisplayState: (task, stage, liveState, tab) => {

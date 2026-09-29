@@ -59,6 +59,34 @@ Author starter and complete code as `codeStages` entries with `role: starter` / 
 
 ---
 
+## Line Hints
+
+Put instructions **next to** a line of starter code instead of in a comment the student has to read around, delete or accidentally break. A line whose trimmed text starts with `#>` is a **line hint**: it is removed from the code and its text is shown beside the next line — a 💡 in the editor gutter (hover for the text) and the text in faded grey after the line. The hint is never part of the student's code.
+
+```yaml
+    codeStages:
+      - role: starter
+        label: Starter
+        code: |
+          #> Change "red" to your favourite colour
+          colour = "red"
+          for i in range(3):
+              #> Print the colour here
+              #> Use the colour variable, not the word
+              pass
+```
+
+- A marker attaches to the **next non-marker line**; its own indentation (and the target line's) doesn't matter.
+- Several markers in a row stack onto the same line.
+- A marker on the empty line where students should write works: put `#> Write your loop here` above a blank line.
+- A marker with no line after it attaches to the last line, and the validator warns (`… has a line hint with no line after it …`).
+- Markers work in `codeStages` of every role and in the legacy `starterCode` / `completeCode`. Support stages shown as a read-only reference show their hints too.
+- Markers are stripped before the code is shown, saved, run, checked (`code_contains`, regex and every other check see the code without them), carried to a later task or mirrored to the teacher. The Builder's editor shows the raw markers so you can edit them; its Run and check buttons strip them.
+- Hints show while the editor holds the starter (or a stage). When a student comes back to saved code, each hint re-attaches to the line that still reads the same (ignoring indentation) — if that line was deleted, or several lines now match, the hint is dropped. Deleting a hinted line removes its hint.
+- An ordinary comment (`# …`) or a `#>` after code on the same line is left alone.
+
+---
+
 ## Automated Tests
 
 ```yaml

@@ -20,6 +20,7 @@ export default function PythonEditor({
   pyodideStatus,
   editorStyle,
   errorLine = null,
+  lineHints = null,
   onRunShortcut,
 }) {
   const editorRef = useRef(null)
@@ -65,6 +66,7 @@ export default function PythonEditor({
         teacherHighlights={teacherHighlights}
         onHighlightDismiss={onHighlightDismiss}
         errorLine={errorLine}
+        lineHints={lineHints}
         onRunShortcut={onRunShortcut}
         style={{ flex: 1, minHeight: 240, ...editorStyle }}
       />

@@ -19,6 +19,8 @@ export default function HtmlEditor({
   storageAssets,
   attachedTop = false,
   errorLine = null,
+  // fileName → the author line-hint sets for that file (getTaskLineHintSets), or omitted.
+  lineHintSetsFor,
   onRunShortcut,
 }) {
   const [showAssets, setShowAssets] = useState(false)
@@ -90,6 +92,7 @@ export default function HtmlEditor({
           teacherHighlights={teacherHighlights}
           onHighlightDismiss={onHighlightDismiss}
           errorLine={errorLine}
+          lineHints={lineHintSetsFor?.(current.name) ?? null}
           onRunShortcut={onRunShortcut}
           style={{ flex: 1, minHeight: 240, ...(attachedTop ? s.editorAttachedTop : {}) }}
         />

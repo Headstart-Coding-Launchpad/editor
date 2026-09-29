@@ -186,6 +186,7 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … has no HTML file to use as entry point` | No `.html` file among the starter files. | Add an HTML file. |
 | `Task … stage … has no … state` | A Filesystem stage has no `fs` (`… has no filesystem state`), or a Desktop stage has no `desktop` object (`… has no desktop state`). | Add the stage's filesystem map, or its desktop state (see `desktop.md`). |
 | `Task … has no starter breadboard` | An Electronics task has no `starterCircuit` with `components`. | Add `starterCircuit: { components: [], wires: [] }` at minimum. |
+| `Task … has a line hint with no line after it (…) — it shows on the last line` (warning) | A [line hint](python.md#line-hints) marker (`#> …` in Python/Turtle, `<!--> … -->` in HTML) is the last line of the starter code, a stage or a file (named in brackets, e.g. `starter code`, `stage 2`, `starter file index.html`), so it has no line to attach to and shows on the last line instead. | Move the marker above the line it describes, or add a blank line after it for students to write on. |
 
 ## Checks
 

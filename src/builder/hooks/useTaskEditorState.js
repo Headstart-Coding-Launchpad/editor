@@ -7,12 +7,13 @@ import {
   resolveTestCheck,
 } from '../../modules/checks'
 import { resolveAssetsPath } from '../../shared/assetPaths'
+import { stripLineHints } from '../../shared/lineHints'
 
 export function useTaskEditorState({
   task,
   lesson,
-  activePythonCode,
-  activeFiles,
+  activePythonCode: authoredPythonCode,
+  activeFiles: authoredFiles,
   activeEntryFile,
   // From the module's authoring.builderRun: 'pyodide' runs the active code in Pyodide, 'none'
   // runs nothing (the workspace has its own stage), anything else builds the HTML preview.
@@ -21,6 +22,13 @@ export function useTaskEditorState({
   set,
   iframeStorageAssets = null,
 }) {
+  // Runs and checks see the code the way students get it: line-hint markers stripped.
+  const activePythonCode = stripLineHints(authoredPythonCode, 'python')
+  const activeFiles = (authoredFiles ?? []).map((file) =>
+    typeof file?.content === 'string'
+      ? { ...file, content: stripLineHints(file.content, 'html') }
+      : file
+  )
   const pythonMod = getLessonModule('python')
   const htmlMod = getLessonModule('html')
   const [output, setOutput] = useState('')

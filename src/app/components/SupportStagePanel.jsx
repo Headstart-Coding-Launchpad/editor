@@ -34,9 +34,37 @@ export function stageToText(stage, lessonType) {
   return stageReferenceFor(lessonType)?.text(stage) ?? ''
 }
 
-export default function SupportStagePanel({ stage, lessonType, revealed, sourceLabel }) {
+// The author line hints of a stage's text (stageToText) by 0-based line: `lineHintsFor(file)`
+// gives a code stage's hints (file null) or one file's ([{ line, text }], 1-based lines in that
+// code); a files stage's hints are shifted past each file's `/* name */` header.
+export function stageHintsByLine(stage, lessonType, lineHintsFor) {
+  const byLine = new Map()
+  if (!stage || !lineHintsFor) return byLine
+  const add = (index, text) =>
+    byLine.set(index, byLine.has(index) ? `${byLine.get(index)} · ${text}` : text)
+  const kind = getModuleDefinition(lessonType)?.capabilities?.sandboxState
+  if (kind === 'code' || (kind === 'files' && stage.code != null)) {
+    for (const hint of lineHintsFor(null) ?? []) add(hint.line - 1, hint.text)
+  } else if (kind === 'files') {
+    let offset = 0
+    for (const file of stage.files ?? []) {
+      for (const hint of lineHintsFor(file.name) ?? []) add(offset + hint.line, hint.text)
+      offset += 1 + String(file.content ?? '').split('\n').length + 1
+    }
+  }
+  return byLine
+}
+
+export default function SupportStagePanel({
+  stage,
+  lessonType,
+  revealed,
+  sourceLabel,
+  lineHintsFor,
+}) {
   const text = stageToText(stage, lessonType)
   if (!revealed || !text.trim()) return null
+  const hintsByLine = stageHintsByLine(stage, lessonType, lineHintsFor)
 
   const title = stage?.label || 'Stage reference'
   const languageLabel = getLanguageLabel(lessonType)
@@ -63,7 +91,21 @@ export default function SupportStagePanel({ stage, lessonType, revealed, sourceL
         </div>
       ) : (
         <pre style={s.pre}>
-          <code style={s.code}>{text}</code>
+          <code style={s.code}>
+            {hintsByLine.size === 0
+              ? text
+              : text.split('\n').map((line, index, lines) => (
+                  <React.Fragment key={index}>
+                    {line}
+                    {hintsByLine.has(index) && (
+                      <span style={s.lineHint} title={hintsByLine.get(index)}>
+                        {hintsByLine.get(index)}
+                      </span>
+                    )}
+                    {index < lines.length - 1 ? '\n' : null}
+                  </React.Fragment>
+                ))}
+          </code>
         </pre>
       )}
     </section>
@@ -143,4 +185,11 @@ const s = {
     fontFeatureSettings: '"liga" 0, "calt" 0',
   },
   markdown: { overflow: 'auto', padding: '10px 12px', background: '#f8fafc' },
+  lineHint: {
+    marginLeft: '1.5em',
+    color: '#9ca3af',
+    fontStyle: 'italic',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.92em',
+  },
 }
