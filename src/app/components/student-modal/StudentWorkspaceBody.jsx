@@ -260,6 +260,9 @@ export default function StudentWorkspaceBody({
             inputPrompt={student.currentInputPrompt ?? null}
             inputReadOnly
             mirroredInputValue={student.currentInput ?? ''}
+            // The teacher opened this modal to watch the student, so the
+            // student's run output should appear without an extra click.
+            openOnOutput
           />
         )}
       </>

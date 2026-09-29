@@ -26,6 +26,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
       "sandboxExplainer": "string | null",
       "explainerShowComplete": false,
       "fullscreenRequestedAt": "1234567890 | null",
+      "nudgeAwayPushedAt": "1234567890 | null (class-wide nudge; only students whose window is unfocused react)",
       "videoCallLink": "string | null (http(s) URL only, validated at the write boundary; ephemeral — reset to null on createSession/restartSession/endSession, so the teacher re-enters it each session)",
       "teacherLive": {
         "active": true,
@@ -175,6 +176,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
           "sentToTopicPushedAt": "number | null",
           "teacherMessage": "string | null",
           "teacherMessagePushedAt": "number | null",
+          "nudgePushedAt": "number | null (teacher nudge for this student — see useNudgeAlert)",
           "windowFocused": "boolean | null",
           "lastActivityAt": "number | null",
           "isFullscreen": "boolean | null",
@@ -236,6 +238,7 @@ Teacher writes:
 - `sandboxExplainer` (pushed via `pushSandboxExplainer`, cleared on `createSession`/`endSession`/entering sandbox) and `explainerShowComplete` (toggled via `setExplainerShowComplete`; reset to `false` on `setTaskId`, `createSession`, `endSession` — see `docs/agents/classroom-behaviours.md` for the student-facing "Complete Code" reveal this gates)
 - `lessonOverrideTasks` (session-only task edits from `EditLessonModal`; `pushLessonOverride`/`clearLessonOverride`) — reset to `null` on `createSession`/`endSession`. Task IDs inside it are never renumbered, so they stay valid against `currentTaskId`, carry-through references, and student per-task localStorage keys
 - `fullscreenRequestedAt` (stamped by `requestFullscreenForAll`, reset to `null` on `createSession`/`endSession`) — a class-wide "please go fullscreen" broadcast. The Fullscreen API only fires from a direct user gesture, so this cannot force students into fullscreen; each student client (`StudentView`) shows a centred modal prompt with a "Go Fullscreen" button that calls `document.documentElement.requestFullscreen()` from the student's own click when this timestamp changes. Once `phase` becomes `'ended'`, `StudentView` renders `SessionEndedScreen` instead (the prompt naturally disappears) and calls `document.exitFullscreen()` so a student isn't left stuck in fullscreen
+- `nudgeAwayPushedAt` (stamped by `nudgeAwayStudents` from the "🔔 Nudge Away" button in `StudentGrid`, reset to `null` on `createSession`/`endSession`) — a class-wide nudge. Each student client's `useNudgeAlert` only reacts if its window is unfocused when the new timestamp arrives. The per-student equivalent is `students/{id}/nudgePushedAt` (`nudgeStudent`, from the 🔔 button on an Away `StudentCard` or the StudentModal header), which always alerts that student. Timestamps already present when a student's session first loads are a baseline and never replay. The alert shows an in-page banner and plays a Web Audio chime; if the window is unfocused it also flashes the tab title and favicon until the window regains focus, and shows an OS `Notification` when permission was already granted (students opt in once via `NudgePermissionPrompt`)
 - any student's `displayName`
 - student node removal
 
@@ -521,6 +524,7 @@ Do not deviate from these key formats.
 | `headstart_{lessonId}_module_{moduleId}_sandbox_{anonymousId}` | Composed lessons: the personal sandbox for one lesson module, same value shapes as `personalsandbox` |
 | `headstart_{lessonId}_module_{moduleId}_sandbox_{filename}_{anonymousId}` | Composed lessons: per-file HTML personal sandbox for one lesson module |
 | `headstart_builder_current` | Full lesson JSON object |
+| `headstart_nudge_notifications_dismissed` | `'1'` once a student chose "Not now" on the nudge notification prompt (`NudgePermissionPrompt`); stops the prompt reappearing |
 
 ## LaunchPad Code Files
 

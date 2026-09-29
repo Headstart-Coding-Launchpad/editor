@@ -35,6 +35,8 @@ import VideoCallPrompt from '../components/VideoCallPrompt'
 import RecordingWidget from '../components/RecordingWidget'
 import TaskProgressDots from '../components/TaskProgressDots'
 import TeacherMessageToast from '../components/TeacherMessageToast'
+import { NudgeBanner, NudgePermissionPrompt } from '../components/NudgeBanner'
+import useNudgeAlert from '../hooks/useNudgeAlert'
 import LoadingScreen from '../components/LoadingScreen'
 import SessionEndedScreen from '../components/SessionEndedScreen'
 import StudentStatusBanners from '../components/StudentStatusBanners'
@@ -289,6 +291,16 @@ export default function StudentView({
     !teacherPresentation &&
     !!fullscreenRequestedAt &&
     fullscreenRequestedAt !== fullscreenDismissedAt
+
+  // Teacher nudges (tab flash, chime, OS notification) — live lessons only.
+  const nudgeEnabled =
+    (phase === 'lesson' || phase === 'sandbox') && !teacherPresentation && !!identity?.anonymousId
+  const { nudgeBannerVisible, dismissNudge } = useNudgeAlert({
+    ready: !!session,
+    enabled: nudgeEnabled,
+    studentPushedAt: session?.students?.[identity?.anonymousId]?.nudgePushedAt ?? null,
+    classPushedAt: session?.nudgeAwayPushedAt ?? null,
+  })
 
   function handleGoFullscreen() {
     document.documentElement.requestFullscreen?.().catch(() => {})
@@ -1187,6 +1199,8 @@ export default function StudentView({
           pushedAt={session?.students?.[identity?.anonymousId]?.teacherMessagePushedAt}
         />
       )}
+      {nudgeBannerVisible && <NudgeBanner onDismiss={dismissNudge} />}
+      {nudgeEnabled && <NudgePermissionPrompt />}
       {showTeacherEditConsent && (
         <div style={s.consentOverlay}>
           <div style={s.consentModal}>

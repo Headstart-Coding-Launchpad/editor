@@ -65,6 +65,37 @@ describe('TeacherReportModal', () => {
     expect(screen.getByText('optional')).toBeInTheDocument()
   })
 
+  it('shows how many references were opened per task and per student', () => {
+    const reveals = [
+      { taskId: 1, stageIndex: 1, stageLabel: 'Hint', source: 'teacher' },
+      { taskId: 1, stageIndex: 2, stageLabel: 'Solution', source: 'student' },
+    ]
+    const referenceReport = {
+      ...report,
+      students: [
+        {
+          ...report.students[0],
+          tasks: [{ ...report.students[0].tasks[0], supportReveals: reveals }],
+        },
+      ],
+      taskSummary: [
+        {
+          ...report.taskSummary[0],
+          supportRevealCount: 2,
+          supportRevealStudentCount: 1,
+          supportRevealSources: { teacher: 1, student: 1 },
+        },
+      ],
+    }
+    render(<TeacherReportModal report={referenceReport} onClose={vi.fn()} />)
+    expect(screen.getByText('References')).toBeInTheDocument()
+    expect(screen.getByText('2 opened by 1 student (1 teacher, 1 student)')).toBeInTheDocument()
+    expect(screen.getByText(/2 references opened/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Student 1'))
+    expect(screen.getByText('📖 2 references: Hint, Solution')).toBeInTheDocument()
+  })
+
   it('renders override counts and per-student override detail', () => {
     const overriddenReport = {
       ...report,

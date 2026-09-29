@@ -92,6 +92,8 @@ export default function TeacherView({ lessonId }) {
     setPaused,
     requestFullscreenForAll,
     requestFullscreenForStudent,
+    nudgeStudent,
+    nudgeAwayStudents,
     setActiveStudentView,
     setTeacherLive,
     renameStudent,
@@ -765,6 +767,8 @@ export default function TeacherView({ lessonId }) {
             onTogglePaused={() => setPaused(!session?.isPaused)}
             onRequestFullscreenAll={requestFullscreenForAll}
             onRequestFullscreenStudent={requestFullscreenForStudent}
+            onNudgeStudent={nudgeStudent}
+            onNudgeAway={nudgeAwayStudents}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed((v) => !v)}
           />

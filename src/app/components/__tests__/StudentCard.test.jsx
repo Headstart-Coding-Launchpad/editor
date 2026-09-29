@@ -67,6 +67,25 @@ describe('StudentCard', () => {
     expect(screen.getByText('Jamie')).toBeInTheDocument()
   })
 
+  describe('nudge', () => {
+    it('offers a nudge button only while the student is Away', () => {
+      const { unmount } = render(<StudentCard {...mkProps({ onNudge: vi.fn() })} />)
+      expect(screen.queryByRole('button', { name: 'Nudge Jamie' })).not.toBeInTheDocument()
+      unmount()
+      render(<StudentCard {...mkProps({ onNudge: vi.fn() }, { windowFocused: false })} />)
+      expect(screen.getByRole('button', { name: 'Nudge Jamie' })).toBeInTheDocument()
+    })
+
+    it('nudges without expanding the card', async () => {
+      const user = userEvent.setup()
+      const props = mkProps({ onNudge: vi.fn() }, { windowFocused: false })
+      render(<StudentCard {...props} />)
+      await user.click(screen.getByRole('button', { name: 'Nudge Jamie' }))
+      expect(props.onNudge).toHaveBeenCalledWith('student-1')
+      expect(props.onExpand).not.toHaveBeenCalled()
+    })
+  })
+
   describe('presence badge', () => {
     // Online is the default and is already carried by the status dot. Spending a badge
     // on it put a green pill on every card in the column, which is the same noise the

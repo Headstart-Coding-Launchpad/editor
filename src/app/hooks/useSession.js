@@ -111,6 +111,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       supportRevealLog: null,
       taskRatingLog: null,
       fullscreenRequestedAt: null,
+      nudgeAwayPushedAt: null,
       videoCallLink: null,
       sharedWorkspaces: null,
     })
@@ -153,6 +154,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       supportRevealLog: null,
       taskRatingLog: null,
       fullscreenRequestedAt: null,
+      nudgeAwayPushedAt: null,
       videoCallLink: null,
       sharedWorkspaces: null,
     })
@@ -402,6 +404,20 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
       fullscreenRequestedAt: Date.now(),
     })
+  }
+
+  // Nudges draw an Away student's attention back to the lesson: the student's
+  // client flashes its tab title/favicon, plays a chime and (if permission was
+  // granted) shows an OS notification — see useNudgeAlert. The class-wide
+  // version only alerts students whose window is unfocused when it arrives.
+  async function nudgeStudent(anonymousId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      nudgePushedAt: Date.now(),
+    })
+  }
+
+  async function nudgeAwayStudents() {
+    await update(ref(db, `sessions/${lessonId}`), { nudgeAwayPushedAt: Date.now() })
   }
 
   async function setExplainerShowComplete(showComplete) {
@@ -1156,6 +1172,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
     setPaused,
     requestFullscreenForAll,
     requestFullscreenForStudent,
+    nudgeStudent,
+    nudgeAwayStudents,
     setExplainerShowComplete,
     setActiveStudentView,
     setTeacherLive,

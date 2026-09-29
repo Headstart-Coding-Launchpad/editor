@@ -45,12 +45,22 @@ export default function StudentGrid({
   onRequestShareSnapshot,
   onRequestFullscreenAll,
   onRequestFullscreenStudent,
+  onNudgeStudent,
+  onNudgeAway,
   collapsed,
   onToggle,
 }) {
   const [expandedStudentId, setExpandedStudentId] = useState(null)
   const [showTopicsDialog, setShowTopicsDialog] = useState(false)
   const [fullscreenRequested, setFullscreenRequested] = useState(false)
+  const [nudgedAway, setNudgedAway] = useState(false)
+  const awayCount = students.filter((st) => st.online && st.windowFocused === false).length
+
+  function handleNudgeAway() {
+    onNudgeAway?.()
+    setNudgedAway(true)
+    setTimeout(() => setNudgedAway(false), 2000)
+  }
 
   function handleRequestFullscreenAll() {
     onRequestFullscreenAll?.()
@@ -186,6 +196,15 @@ export default function StudentGrid({
             </span>
           )}
           <span style={s.count}>{students.length}</span>
+          {onNudgeAway && (awayCount > 0 || nudgedAway) && (
+            <button
+              style={s.topicsBtn}
+              onClick={handleNudgeAway}
+              title="Flash the tab and chime for every student whose window isn't focused"
+            >
+              {nudgedAway ? '✓ Nudged' : `🔔 Nudge Away (${awayCount})`}
+            </button>
+          )}
           {onRequestFullscreenAll && students.length > 0 && (
             <button
               style={s.topicsBtn}
@@ -236,6 +255,7 @@ export default function StudentGrid({
               onRename={onRename}
               onRemove={onRemove}
               onExpand={handleExpand}
+              onNudge={onNudgeStudent}
             />
           ))}
         </div>
@@ -307,6 +327,7 @@ export default function StudentGrid({
           onDeclineShare={onDeclineShare}
           onRequestShareSnapshot={onRequestShareSnapshot}
           onRequestFullscreen={onRequestFullscreenStudent}
+          onNudge={onNudgeStudent}
         />
       )}
     </div>

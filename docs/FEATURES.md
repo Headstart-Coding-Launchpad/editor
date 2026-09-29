@@ -75,6 +75,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Share a live join link with students
 - Lesson elapsed timer and per-task countdown that flashes when time expires
 - Ending a session ends it immediately for students; the report shown afterwards offers an optional 1-5 star rating plus "what worked well" / "what didn't work, or was broken" notes, saved onto that session's report
+- The session report shows how many references (support stages) were opened per task — count, students, and teacher vs student — and which ones each student opened
 - Rate any task live, while teaching it: a collapsible "Rate This Task" panel above the check conditions lets the teacher give the current task a 1-5 star rating plus "what worked well" / "what didn't work" notes as the class works through it, rather than waiting until the session ends. Each task's rating is folded into that task's row in the session report
 
 ### Task Navigator
@@ -100,11 +101,14 @@ After the same hint appears twice in a row, solo students can optionally view th
 ### Student Grid
 - Cards per student: name, online status, run status, check status, code/output/quiz preview
 - Click to expand to full student workspace view
+- "Away" badge when a connected student's window isn't focused, with a 🔔 button to nudge them; "🔔 Nudge Away (n)" in the grid header nudges every Away student at once. A nudge shows the student a banner and plays a chime, and while their window is unfocused flashes the tab title/favicon and (if they allowed it) shows an OS notification
 
 ### Student Actions (per student)
 - Go Live / Stop Live — one-to-one keystroke streaming with selection highlight and activity indicators
 - Remote Reset — silently replace student's code with starter code, complete code, or a named intermediate stage
 - Rename and remove students
+- Nudge (🔔 in the modal header) — draw the student's attention back to the lesson
+- The output panel in the student modal opens automatically when the student's run produces output or asks for input
 - Approve or decline a student's request to share their workspace with the class, after previewing the exact snapshot
 - Share a student's workspace with the class without them asking ("Share this with the class")
 

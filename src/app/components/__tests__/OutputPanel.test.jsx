@@ -149,6 +149,14 @@ describe('OutputPanel input prompt focus', () => {
     )
     await waitFor(() => expect(screen.getByText('Hide')).toBeInTheDocument())
   })
+
+  it('opens for an input() prompt that arrives before any output when openOnOutput is set', async () => {
+    const { rerender } = render(<OutputPanel title="Console" openOnOutput inputReadOnly />)
+    expect(screen.getByText('Show')).toBeInTheDocument()
+
+    rerender(<OutputPanel title="Console" openOnOutput inputReadOnly inputPrompt="Name? " />)
+    await waitFor(() => expect(screen.getByText('Hide')).toBeInTheDocument())
+  })
 })
 
 describe('splitEmojiRuns', () => {

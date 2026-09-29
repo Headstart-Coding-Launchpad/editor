@@ -82,6 +82,12 @@ export default function OutputPanel({
     prevOutputRef.current = output
   }, [output, openOnOutput])
 
+  // A program that asks for input() before printing anything still needs
+  // the panel open, otherwise the prompt row is hidden inside it.
+  useEffect(() => {
+    if (openOnOutput && inputPrompt !== null) setIsCollapsed(false)
+  }, [inputPrompt, openOnOutput])
+
   useEffect(() => {
     if (preRef.current) preRef.current.scrollTop = preRef.current.scrollHeight
   }, [displayedOutput, inputPrompt])
