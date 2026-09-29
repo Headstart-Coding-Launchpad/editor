@@ -78,7 +78,14 @@ modules:
 
 ## Sprite Object
 
-**Stage object:** `role` may be `starter`, `support`, or `complete`; omitted `role` defaults to `support`. The first Starter is the default, and teachers may apply any Starter to a class or individual learner. Starter stages carry `blocks`, `predefinedBlocks`, and `prebuiltStacks`. Every Support stage is an offerable read-only reference; it uses `markdown` and renders fenced or inline Scratch blocks. A Complete stage can be revealed read-only before the student or teacher explicitly takes it over, using the same preview-then-replace flow as a Support stage. Legacy `core` and `extension` roles remain readable as Support, and `solution` remains readable as Complete.
+**Stage object:** `role` may be `starter`, `support`, or `complete`; omitted `role` defaults to `support`. The first Starter is the default, and teachers may apply any Starter to a class or individual learner. Starter stages carry `blocks`, `predefinedBlocks`, and `prebuiltStacks`. Every Support stage is an offerable read-only reference and carries two fields with different jobs:
+
+| Support stage field | What it's for | If it's missing |
+| --- | --- | --- |
+| `markdown` | **What the student sees.** The read-only reference panel opened after a failed attempt, by the teacher from the roster, or by a `stageOffer` `preview`. Renders fenced or inline Scratch blocks ([Scratch Markdown Block Reference](scratch-markdown-blocks.md)). | The student's reference panel opens **empty**. |
+| `blocks` | **What gets loaded** when the stage replaces the student's work (a teacher's stage push, a `stageOffer` `replace`, or a reset to that stage), and what the teacher's stage tab shows. Same shape as `starterBlocks`. | Replacing loads the task's `starterBlocks`; the teacher's stage tab is empty. |
+
+Write `markdown` on every Support stage. Add `blocks` too when the stage may be pushed to students or linked from a `stageOffer` `replace`. The Builder edits both: the notes box is `markdown`, the stage workspace is `blocks`. A Complete stage can be revealed read-only before the student or teacher explicitly takes it over, using the same preview-then-replace flow as a Support stage. Legacy `core` and `extension` roles remain readable as Support, and `solution` remains readable as Complete.
 
 ```yaml
 sprites:
@@ -239,13 +246,15 @@ the key `__stage__`.
 
 Use that object (or its JSON string) as `starterBlocks`, `completeBlocks`, or a
 stage’s `blocks` value; the Builder and CLI serialise it when saving. For example, this support stage supplies a connected
-green-flag-and-say stack for `sprite1`; a `solution` stage uses the identical
-shape and differs only in `role`.
+green-flag-and-say stack for `sprite1` (loaded if the stage replaces the student's work) plus
+the `markdown` the student reads in the reference panel; a `solution` stage uses the identical
+`blocks` shape and differs only in `role`.
 
 ```json
 {
   "label": "Run a greeting",
   "role": "support",
+  "markdown": "Start with a hat block, then add a say block:\n\n```scratch\nwhen green flag clicked\nsay [Hello!] for (2) seconds\n```",
   "blocks": {
     "sprite1": {
       "blocks": {

@@ -145,7 +145,7 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 ## Code Stage Reveal
 
 - Python, HTML, Arcade Kit, Electronics, and Scratch code stages use `starter`, `support`, and `complete` roles. Multiple Starter stages are permitted; the first is the default and teachers can apply another Starter to an individual or the class. Legacy `core`, `extension`, and `solution` roles remain readable for existing lessons.
-- Support stages are read-only references. Arcade Kit and Electronics show code only; Scratch support content is Markdown rendered with the Scratch-block renderer. They never replace the student's editor.
+- Support stages are read-only references. Arcade Kit and Electronics show code only; Scratch support content is the stage's `markdown`, rendered with the Scratch-block renderer (an empty panel if the stage has none). Revealing never replaces the student's editor; a Scratch stage's `blocks` are only loaded by an explicit replace (teacher stage push, `stageOffer` `replace`, stage reset).
 - Revealing a Support stage displays a read-only reference panel and never writes to the student's editor or files.
 - Students are offered one Support stage after each failed run or check (including runtime and syntax errors). The offer remains until used or the student succeeds; repeated failures do not skip an unused reference. Only the newest revealed stage is displayed; a passing run/check hides it, and a later failure offers the next Support stage. Teachers can also reveal a stage reference for one student from `StudentModal`.
 - Reveals write `supportRevealLog/{anonymousId}/{taskId}/{stageIndex}` with `source`, `stageLabel`, `attemptNumber`, and `revealedAt`.

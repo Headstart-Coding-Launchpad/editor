@@ -1,6 +1,6 @@
 # Scratch Support stage: docs say markdown, every live lesson uses blocks
 
-- **Status:** open
+- **Status:** planned
 - **Kind:** docs
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-09-29
 - **Lessons blocked:** none yet
@@ -33,4 +33,4 @@ Migrated from Lesson Info/Missing Information.md (entry dated 2026-09-07).
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Branch `fix/scratch-support-stage-docs`: scratch.md Sprite Object now has a Support stage field table (`markdown` = student reference, `blocks` = replace + teacher tab); lesson-schema.md, classroom-behaviours.md and CHANGELOG updated. Checked 2026-09-29 with `lessons get`: scratch-1-3 has 8 and scratch-1-4 has 9 Support stages, none with `markdown`, so students currently get an empty reference panel from all 17. Those lessons need `markdown` added.
