@@ -1,7 +1,7 @@
 // What device an activity attempt ran on, read back from the activity's own state so the
 // teacher sees it without any extra Firebase field. Activities record `state.device`
-// ({ touch, virtualKeyboard }) and per-item `source: 'virtual'` when the on-screen keyboard
-// was used. Pure.
+// ({ touch, virtualKeyboard, platform }) and per-item `source: 'virtual'` when the on-screen
+// keyboard was used. Pure.
 
 export function describeActivityDevice(state) {
   if (!state || typeof state !== 'object') return null
@@ -12,6 +12,11 @@ export function describeActivityDevice(state) {
     return { id: 'virtual_keyboard', icon: '⌨️', label: 'On-screen keyboard' }
   }
   if (state.device?.touch) return { id: 'touch', icon: '📱', label: 'Touch screen' }
+  // Macs and Chromebooks name (or lack) some taught keys; Windows is the reference layout.
+  if (state.device?.platform === 'mac') return { id: 'mac', icon: '💻', label: 'Mac' }
+  if (state.device?.platform === 'chromeos') {
+    return { id: 'chromeos', icon: '💻', label: 'Chromebook' }
+  }
   return null
 }
 

@@ -206,10 +206,47 @@ Additional Desktop-only check types:
 | Type | Operators | Fields | Notes |
 |---|---|---|---|
 | `fs_recycle_bin` | `is_in`, `not_in` | `path` | Whether an item (matched by its original path) is currently in the Recycle Bin |
-| `window_state` | `opened`, `closed`, `minimized`, `maximized` | `appId` | State of the named app's window (`fileManager`, `textEditor`, `imageViewer`, `paint`, or `browser`) |
-| `windows_arranged_side_by_side` | `is_arranged` | `appIds` (two app IDs) | Tolerant geometry check: both windows visible, each occupying a meaningful share of the screen, minimal overlap. Assesses "arranged side by side" as an outcome, not exact pixel positions |
+| `window_state` | `opened`, `closed`, `minimized`, `maximized`, `moved_to`, `resized` | `appId`; `zone` (`moved_to`); `size`, `minWidth`, `minHeight`, `maxWidth`, `maxHeight` (`resized`) | State of the named app's window (`fileManager`, `textEditor`, `imageViewer`, `paint`, or `browser`). `moved_to` and `resized` are described below |
+| `windows_arranged_side_by_side` | `is_arranged` | `appIds` (two app IDs) | Tolerant geometry check: both windows visible, each occupying a meaningful share of the student's desktop, minimal overlap. Assesses "arranged side by side" as an outcome, not exact pixel positions |
 | `browser_visited` | `visited`, `not_visited` | `pageId` | Whether the student has ever navigated to that `siteGraph` page id, in any Browser window |
 | `search_query` | `contains`, `not_contains`, `equals` | `text` | Compares the most recent search-engine query (case-insensitive) against `text` |
+
+### Moving and resizing windows
+
+`moved_to` and `resized` are outcome checks measured against the student's **real desktop area**
+(recorded the moment they interact with a window), so they work at any screen size. A minimised
+or maximised window never counts as moved or resized.
+
+- **`moved_to`** passes when the window's centre is inside `zone`: `left_half`, `right_half`,
+  `top_half`, `bottom_half`, `top_left`, `top_right`, `bottom_left` or `bottom_right`.
+- **`resized`** compares the window with the size it had before the student first resized it:
+  - `size: smaller` / `size: larger`: its area changed by at least 15% in that direction.
+  - `minWidth`, `minHeight`, `maxWidth`, `maxHeight`: fractions of the desktop (more than 0, up
+    to 1), e.g. `maxWidth: 0.5` means at most half the desktop wide.
+  - With neither, any change of at least 15% in area counts. `size` and limits can be combined;
+    all must hold.
+- Add `input_gesture` `drag` with `targetKind: window` to require that the window was dragged.
+
+```yaml
+- title: Window Wrangler
+  type: desktop
+  availableApps: [textEditor, browser]
+  check:
+    - type: window_state
+      appId: textEditor
+      operator: moved_to
+      zone: right_half
+    - type: window_state
+      appId: browser
+      operator: resized
+      size: smaller
+    - type: input_gesture
+      gesture: drag
+      targetKind: window
+```
+
+A `resized` check can't be judged against a Complete desktop (it has no "before" size), so the
+validator's complete-desktop warning skips it.
 
 ---
 
@@ -234,6 +271,12 @@ check in a `check` list so the task needs both.
 - **Touch screens:** unless `strict: true`, a touch equivalent counts — a double-tap for
   `double_click`, a long-press for `right_click`. `hover` has no touch equivalent; avoid it in
   lessons that may run on tablets.
+- **Mac and Chromebook:** a right-click by Ctrl + click / two-finger click (Mac) or Alt + click /
+  two-finger tap (Chromebook) counts as `right_click`, including with `strict: true`, because
+  each opens the browser's context menu. `combo: delete` accepts fn + delete (Mac) and
+  Alt + Backspace (Chromebook), which the browser reports as Delete. See
+  [activities/keyboard.md](activities/keyboard.md#mac-and-chromebook-keyboards) for the full
+  table; the Chromebook and fn combinations are not yet checked on real devices.
 - **Ctrl and Cmd are the same** in `combo` (`ctrl+c` also accepts Cmd+C on a Mac). Shortcuts the
   browser keeps for itself (`ctrl+w`, `ctrl+t`, `ctrl+n`, `alt+f4`, `alt+tab`, …) are rejected —
   teach those with a quiz. Shift+letter is typing, not a shortcut: use `input_modifier`.
@@ -367,4 +410,6 @@ tasks:
   localStorage/RTDB fields as other module types — it does not survive a browser or device switch
   for anonymous students, the same caveat that already applies to Python `.launchpad` backups.
 - The support-stage reveal ladder (progressive hints) is not available for Desktop tasks yet, matching the Filesystem module's current behaviour.
-- `windows_arranged_side_by_side` compares window geometry against an assumed 1200px-wide viewport rather than the student's actual window size.
+- Window geometry checks (`moved_to`, `resized`, `windows_arranged_side_by_side`) use the desktop
+  size recorded at the student's last window interaction. Before any interaction, or in a
+  Complete desktop, they assume a 1200×700 desktop.

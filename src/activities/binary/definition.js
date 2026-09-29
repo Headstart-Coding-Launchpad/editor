@@ -2,6 +2,11 @@
 import { defineActivity } from '../defineActivity.js'
 import {
   DEFAULT_BITS,
+  BINARY_MODES,
+  HEX_BASES,
+  ASCII_DIRECTIONS,
+  ASCII_CODE_FORMATS,
+  PIXEL_DIRECTIONS,
   asciiCode,
   gradeItem,
   gradeTask,
@@ -57,6 +62,84 @@ export default defineActivity({
   description:
     'Toggle bits to make numbers, convert between binary, decimal and hex, add in binary, spot overflow, and use ASCII codes and pixel pictures.',
   yaml: { type: 'binary' },
+
+  fields: {
+    modeField: 'mode',
+    task: [
+      { name: 'mode', type: 'string', required: true, values: BINARY_MODES },
+      { name: 'bits', type: 'number', description: '1 to 16 (default 8).' },
+      {
+        name: 'width',
+        type: 'number',
+        required: true,
+        modes: ['pixels'],
+        description: '1 to 16 pixels.',
+      },
+      { name: 'height', type: 'number', required: true, modes: ['pixels'] },
+      { name: 'codeFormat', type: 'string', values: ASCII_CODE_FORMATS, modes: ['ascii'] },
+      { name: 'showTable', type: 'boolean', modes: ['ascii'] },
+      { name: 'showPlaceValues', type: 'boolean' },
+      { name: 'showDecimal', type: 'boolean' },
+      { name: 'requireCarries', type: 'boolean', modes: ['add', 'overflow'] },
+      {
+        name: 'items',
+        type: 'array',
+        required: true,
+        authored: true,
+        itemFields: [
+          { name: 'id', type: 'string', required: true },
+          {
+            name: 'target',
+            type: 'number',
+            required: true,
+            authored: true,
+            modes: ['make_number', 'to_binary'],
+          },
+          {
+            name: 'value',
+            type: 'string',
+            required: true,
+            authored: true,
+            modes: ['to_decimal', 'hex'],
+            description: 'A bit string (to_decimal) or a number in the `from` base (hex).',
+          },
+          {
+            name: 'a',
+            type: 'string',
+            required: true,
+            authored: true,
+            modes: ['add', 'overflow'],
+          },
+          {
+            name: 'b',
+            type: 'string',
+            required: true,
+            authored: true,
+            modes: ['add', 'overflow'],
+          },
+          { name: 'from', type: 'string', required: true, values: HEX_BASES, modes: ['hex'] },
+          { name: 'to', type: 'string', required: true, values: HEX_BASES, modes: ['hex'] },
+          { name: 'text', type: 'string', required: true, authored: true, modes: ['ascii'] },
+          {
+            name: 'rows',
+            type: 'array',
+            required: true,
+            authored: true,
+            modes: ['pixels'],
+            description: '`height` strings of `width` bits.',
+          },
+          {
+            name: 'direction',
+            type: 'string',
+            required: true,
+            values: [...new Set([...ASCII_DIRECTIONS, ...PIXEL_DIRECTIONS])],
+            modes: ['ascii', 'pixels'],
+            description: 'ascii: encode | decode; pixels: draw | encode.',
+          },
+        ],
+      },
+    ],
+  },
 
   defaultTask: (prev = {}) => ({
     id: prev.id,

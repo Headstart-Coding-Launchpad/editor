@@ -76,6 +76,62 @@ export default defineActivity({
   availableIn: (lesson) => lesson?.type === 'composed',
   hostModules: CODE_ARRANGE_MODULE_TYPES,
 
+  fields: {
+    task: [
+      {
+        name: 'moduleType',
+        type: 'string',
+        required: true,
+        values: CODE_ARRANGE_MODULE_TYPES,
+      },
+      {
+        name: 'lines',
+        type: 'array',
+        required: true,
+        authored: true,
+        itemFields: [
+          { name: 'id', type: 'string', required: true },
+          {
+            name: 'parts',
+            type: 'array',
+            required: true,
+            authored: true,
+            description: 'At least one slot across the task.',
+            itemFields: [
+              { name: 'type', type: 'string', required: true, values: ['text', 'slot'] },
+              { name: 'text', type: 'string', authored: true, description: 'Text parts.' },
+              { name: 'id', type: 'string', description: 'Slot parts; unique.' },
+              {
+                name: 'code',
+                type: 'string',
+                authored: true,
+                description: 'Slot parts: the answer tile.',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        name: 'distractors',
+        type: 'array',
+        authored: true,
+        itemFields: [
+          { name: 'id', type: 'string', required: true },
+          { name: 'code', type: 'string', required: true, authored: true },
+        ],
+      },
+      {
+        name: 'check',
+        type: 'object',
+        required: true,
+        authored: true,
+        description: "The host module's completion check.",
+      },
+      { name: 'entryFile', type: 'string', description: 'HTML only.' },
+      { name: 'starterFiles', type: 'array', authored: true, description: 'HTML only.' },
+    ],
+  },
+
   defaultTask: (prev = {}) => ({
     id: prev.id,
     title: prev.title ?? '',

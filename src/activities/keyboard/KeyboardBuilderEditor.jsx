@@ -1,6 +1,7 @@
 import React from 'react'
 import definition, { KEYBOARD_MODE_LABELS } from './definition.js'
 import { KEYBOARD_MODES, NAMED_KEYS } from './keyboard.js'
+import { EDIT_REQUIRE_KEYS } from './editText.js'
 import { DEFAULT_LAYOUT } from '../../shared/input/index.js'
 import {
   Field,
@@ -17,6 +18,8 @@ import {
 // browser-reserved shortcut) show under the item they are about.
 
 const TYPE_TEXT_OPTIONS = ['requireShiftForCapitals', 'minAccuracy', 'targetWpm']
+const EDIT_TEXT_OPTIONS = ['minKept', 'showTarget']
+const REQUIRE_KEY_LABELS = { select: 'Shift selection' }
 
 export function defaultKeyboardItem(mode, id) {
   switch (mode) {
@@ -26,6 +29,8 @@ export function defaultKeyboardItem(mode, id) {
       return { id, char: '@' }
     case 'shortcuts':
       return { id, combo: 'Ctrl+C', prompt: 'Select a word and copy it' }
+    case 'edit_text':
+      return { id, start: 'the cat sat on teh mat', target: 'The cat sat on the mat.' }
     default:
       return { id, text: 'Hello World' }
   }
@@ -35,6 +40,7 @@ export function defaultKeyboardItem(mode, id) {
 export function changeKeyboardMode(task, mode) {
   const next = { ...task, mode }
   if (mode !== 'type_text') for (const field of TYPE_TEXT_OPTIONS) delete next[field]
+  if (mode !== 'edit_text') for (const field of EDIT_TEXT_OPTIONS) delete next[field]
   const items = (task.items ?? []).filter((item) => item?.id != null && item.id !== '')
   next.items = (items.length ? items : [{ id: 'a' }]).map((item) => ({
     ...defaultKeyboardItem(mode, item.id),
@@ -110,6 +116,47 @@ function ItemFields({ mode, item, update, index }) {
         </InlineField>
         {prompt}
         {hardwareOnly}
+      </>
+    )
+  }
+  if (mode === 'edit_text') {
+    const required = new Set(item.requireKeys ?? [])
+    const toggleKey = (key, on) => {
+      const next = EDIT_REQUIRE_KEYS.filter((k) => (k === key ? on : required.has(k)))
+      update({ requireKeys: next.length ? next : undefined })
+    }
+    return (
+      <>
+        <InlineField label="Starts as (with mistakes)" wide>
+          <TextInput
+            code
+            value={item.start}
+            ariaLabel={`Item ${n} start`}
+            onChange={(start) => update({ start })}
+          />
+        </InlineField>
+        <InlineField label="Fixed line" wide>
+          <TextInput
+            code
+            value={item.target}
+            ariaLabel={`Item ${n} target`}
+            onChange={(target) => update({ target })}
+          />
+        </InlineField>
+        {prompt}
+        <fieldset className="te-act-inline-row" aria-label={`Item ${n} keys to use`}>
+          <span className="te-act-note">Must use:</span>
+          {EDIT_REQUIRE_KEYS.map((key) => (
+            <label key={key} className="te-check-toggle">
+              <input
+                type="checkbox"
+                checked={required.has(key)}
+                onChange={(e) => toggleKey(key, e.target.checked)}
+              />
+              {REQUIRE_KEY_LABELS[key] ?? key}
+            </label>
+          ))}
+        </fieldset>
       </>
     )
   }
@@ -228,6 +275,38 @@ export default function KeyboardBuilderEditor({ task, onUpdate }) {
               />
             </InlineField>
           </div>
+        </Field>
+      )}
+
+      {mode === 'edit_text' && (
+        <Field label="Editing options">
+          <div className="te-act-inline-row">
+            <label className="te-check-toggle">
+              <input
+                type="checkbox"
+                checked={task.showTarget !== false}
+                onChange={(e) => setOptional('showTarget', e.target.checked ? undefined : false)}
+              />
+              Show the fixed line to students
+            </label>
+            <InlineField label="Must keep (0–1)">
+              <input
+                className="te-input te-act-narrow"
+                type="number"
+                min="0.05"
+                max="1"
+                step="0.05"
+                value={task.minKept ?? ''}
+                placeholder="0.9"
+                aria-label="Share of original characters to keep"
+                onChange={(e) => setOptional('minKept', readNumber(e.target.value))}
+              />
+            </InlineField>
+          </div>
+          <span className="te-act-note">
+            Retyping the line fails: students must keep this share of the letters that were already
+            right. Items need a real keyboard (the on-screen keyboard has no arrow keys).
+          </span>
         </Field>
       )}
 

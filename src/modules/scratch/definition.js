@@ -1,5 +1,6 @@
 // Node-safe half of the Scratch module (see ../defineModule.js). UI lives in index.js.
 import { defineModule } from '../defineModule.js'
+import { codeStagesField } from '../../shared/taskFields.js'
 import {
   anyCheckHasValue,
   validateScratchChecks,
@@ -107,6 +108,36 @@ export default defineModule({
 
   defaultCheck: () => [{ type: 'block_used', evaluation: 'after_run', opcode: 'motion_movesteps' }],
 
+  taskFields: [
+    { name: 'starterBlocks', type: 'object', authored: true },
+    { name: 'completeBlocks', type: 'object', authored: true },
+    codeStagesField([
+      { name: 'blocks', type: 'object', authored: true },
+      { name: 'predefinedBlocks', type: 'object', authored: true },
+      { name: 'prebuiltStacks', type: 'array', authored: true },
+      {
+        name: 'markdown',
+        type: 'string',
+        authored: true,
+        description: 'Support stages: the reference the student reads.',
+      },
+    ]),
+    { name: 'sprites', type: 'array', authored: true },
+    { name: 'backdrops', type: 'array', authored: true },
+    { name: 'variables', type: 'array', authored: true },
+    { name: 'toolbox', type: 'string', authored: true },
+    { name: 'predefinedBlocks', type: 'object', authored: true },
+    { name: 'prebuiltStacks', type: 'array', authored: true },
+    { name: 'allowAddSprite', type: 'boolean' },
+    { name: 'addSpritePresetIds', type: 'array' },
+    { name: 'allowAddBackdrop', type: 'boolean' },
+    { name: 'addBackdropPresetIds', type: 'array' },
+    { name: 'allowCreateVariable', type: 'boolean' },
+    { name: 'allowRemoveSprite', type: 'boolean' },
+    { name: 'allowRemoveStarterSprites', type: 'boolean' },
+    { name: 'enableStageCode', type: 'boolean' },
+    { name: 'carryBlocksFrom', type: 'string' },
+  ],
   carryThroughField: 'carryBlocksFrom',
   completeField: 'completeBlocks',
   carryThroughLabel: 'Carry blocks from task',

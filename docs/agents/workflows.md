@@ -27,6 +27,15 @@ gh pr create --title "<Feature title>" --body "<summary, decisions, verification
 
 Do not merge the PR.
 
+## Versioning
+
+The Admin Portal footer shows `LaunchPad vMAJOR.MINOR.BUILD · <commit> · built <date>`.
+
+- **BUILD** is the commit count on `main` (`git rev-list --count HEAD`), computed at build time by `scripts/build-info.mjs`. It goes up on every merge with no manual step. CI and deploy check out with `fetch-depth: 0` so the count is real; a shallow clone shows `MAJOR.MINOR` only.
+- **MAJOR.MINOR** comes from `package.json` and is bumped by hand for milestones (a new module, a batch of notable features): `npm version minor --no-git-tag-version` (or `major`) on the feature branch.
+- A MAJOR.MINOR bump must add a matching entry at the top of `RELEASE_NOTES` in `src/admin/releaseNotes.js`; `AppVersionFooter.test.jsx` fails otherwise. Admins read these notes from the footer's "What's new" toggle.
+- Optionally tag milestone merges on `main` (`git tag v1.1`) for easy diffs between releases.
+
 ## PR Review Comments
 
 When asked to address a PR comment, reply directly to that thread before starting work. After committing, post a follow-up on the same thread with the commit SHA and what changed.
@@ -123,6 +132,16 @@ After significant changes, update relevant docs:
 - `docs/agents/project-rules.md` when CLI commands or auth setup changes.
 - `docs/authoring/AUTHORING_GUIDE.md`, `docs/authoring/validation-errors.md` or `docs/authoring/feedback-cli.md` when content-authoring workflows change.
 - `AGENTS.md` and `docs/agents/*.md` when agent-facing rules, Firebase model, localStorage keys, URLs, session states, or key behaviours change.
+
+### Authoring CHANGELOG entries
+
+When a change affects how lessons, tasks, topics, checks, assets or lesson Markdown are written, add an entry to `docs/authoring/CHANGELOG.md` (newest first, under today's date) that ends with the tag line described in its "Entry format" section:
+
+```markdown
+- Affects: scratch · Existing lessons: no changes needed · Resolves: authoring-requests/2026-09-29-<slug>.md
+```
+
+`Resolves:` names the authoring request(s) the change ships (or `none`); set that request's **Status** and **Resolution** in the same PR.
 
 **All project docs live under `docs/`.** `AGENTS.md` and `CLAUDE.md` are the only doc files at the repo root.
 

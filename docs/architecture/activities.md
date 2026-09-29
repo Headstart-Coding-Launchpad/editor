@@ -18,7 +18,7 @@ workspace module** rather than by `ActivityHost` (step 4.9, see
 
 | Piece | File | Job |
 |---|---|---|
-| Pure definition | `src/activities/<id>/definition.js` | Contract from `defineActivity.js`: `initialState`, `solutionState`, `serialize` / `deserialize` (tolerant), `storage`, `classifyChange`, `completion`, `grade`, `isGraded`, `buildSubmission`, `getProgress`, `summarize`, `requires`, `touchFallback`, `teacherEditable`, `submitsAnswers`, `previewState`, `report` (`typeFields`, `normalizeSubmission`, `summaryFields`), `printHtml`, `validateTask`. Node-safe (CLI, validation, reports, print). |
+| Pure definition | `src/activities/<id>/definition.js` | Contract from `defineActivity.js`: `initialState`, `solutionState`, `serialize` / `deserialize` (tolerant), `storage`, `classifyChange`, `completion`, `grade`, `isGraded`, `buildSubmission`, `getProgress`, `summarize`, `requires`, `touchFallback`, `teacherEditable`, `submitsAnswers`, `previewState`, `report` (`typeFields`, `normalizeSubmission`, `summaryFields`), `printHtml`, `validateTask`, `fields` (the task shape as data: `modeField`, task fields with `required` / `authored` / `values` / `modes` / `itemFields`; see `src/shared/fieldSpec.js`, listed by `lessons capabilities`). Node-safe (CLI, validation, reports, print). |
 | Pure registry | `src/activities/registry.pure.js` | `getTaskActivity(task)` (unknown `activityType` / `quizType` → `unknown` fallback), `isHostedActivityTask` (ActivityHost tasks), `getModuleHostedActivity` / `isModuleHostedActivityTask` (activities with `hostModules`), `isLegacyQuizTask`, `allowsStudentBroadcast`. |
 | UI | `src/activities/<id>/ui.jsx` | `{ StudentView, TeacherLiveView?, CardSummary?, ownsLayout?, BuilderEditor?, BuilderIcon?, builderHint?, builderConvert? }` (see [Builder](#builder)). Views are controlled: `state`, `onChange(nextOrUpdater)`, `onSubmit(state?)`, `readOnly`, `device`, `teacher`, `result` (`{ submitted, passed }` of the answer shown). |
 | UI registry | `src/activities/registry.js` | Merges definition + UI (`getTaskActivityUi`, `getModuleHostedActivityUi`). Never imported by the CLI. |
@@ -120,8 +120,10 @@ with `useInputCapabilities()` (media queries; a hardware keydown proves a keyboa
 | `block` | any | "Needs a keyboard / mouse" notice instead of the activity |
 
 A touch-only device with no keyboard evidence counts as having no physical keyboard. Activities
-record the device in their state (`state.device`, per-item `source: 'virtual'`) so grading and
-the teacher badge need no extra Firebase field.
+record the device in their state (`state.device`: `touch`, `virtualKeyboard`, and `platform`
+`mac` / `chromeos` / `windows` / `other` from `src/shared/input/platform.js`; per-item `source:
+'virtual'`) so grading and the teacher badge need no extra Firebase field. The host passes
+`device.platform` so activities name keys as the student's keyboard does.
 
 ## Quizzes (legacy activities)
 

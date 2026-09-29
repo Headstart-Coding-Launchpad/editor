@@ -262,14 +262,18 @@ export function warnCompleteFs(task, n, warnings) {
 }
 
 // Window rules only: the complete-desktop editor sets files and windows, never browser history,
-// so browser_visited / search_query checks could never pass against it.
+// so browser_visited / search_query checks could never pass against it. A `resized` window_state
+// compares against the size the student's window started at, which a complete state can't show.
 const DESKTOP_STATE_CHECK_TYPES = ['window_state', 'windows_arranged_side_by_side']
+const isCompleteDesktopCheck = (c) =>
+  DESKTOP_STATE_CHECK_TYPES.includes(c.type) &&
+  !(c.type === 'window_state' && c.operator === 'resized')
 
 export function warnCompleteDesktop(task, n, warnings) {
   if (!task.check || !task.completeDesktop || typeof task.completeDesktop !== 'object') return
   const context = { fs: task.completeDesktop.fs, desktop: task.completeDesktop }
   const desktopChecks = normalizeChecks(task.check).filter(
-    (c) => isStateFsCheck(c) || DESKTOP_STATE_CHECK_TYPES.includes(c.type)
+    (c) => isStateFsCheck(c) || isCompleteDesktopCheck(c)
   )
   if (desktopChecks.some((c) => !evaluateSingleCheck(c, '', context))) {
     warnings.push(

@@ -6,6 +6,17 @@ import { defineQuizActivity, gradeAnswerCheck, gradeResult } from '../quiz/quizA
 export default defineQuizActivity('short_answer', {
   description: 'Type a short written answer, optionally marked by an answer check.',
 
+  fields: {
+    task: [
+      {
+        name: 'check',
+        type: 'object',
+        authored: true,
+        description: 'Optional answer_* check with a value; without it any answer is accepted.',
+      },
+    ],
+  },
+
   defaultTask: (prev = {}) => ({
     id: prev.id,
     title: prev.title ?? '',

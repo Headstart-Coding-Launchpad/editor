@@ -72,6 +72,13 @@ const ROWS = [
   ['ControlLeft', 'Space'],
 ]
 
+// Mac and Chromebook keyboards label some of these keys differently (see
+// src/shared/input/platform.js); the picture uses the student's names.
+const PLATFORM_LABELS = {
+  mac: { Backspace: '⌫ delete', Enter: 'return ↵', CapsLock: 'caps lock', ControlLeft: '⌘ Cmd' },
+  chromeos: { CapsLock: '🔍 Search' },
+}
+
 const NAMED = {
   Backspace: { key: 'Backspace', label: '⌫ Backspace' },
   Tab: { key: 'Tab', label: 'Tab' },
@@ -111,6 +118,7 @@ export default function OnScreenKeyboard({
   highlightCodes = [],
   onKey,
   showCtrl = false,
+  platform = null,
 }) {
   const [shift, setShift] = React.useState(false)
   const [ctrl, setCtrl] = React.useState(false)
@@ -184,7 +192,8 @@ export default function OnScreenKeyboard({
                 ((code === 'ShiftLeft' || code === 'ShiftRight') && shift) ||
                 (code === 'ControlLeft' && ctrl)
               const content = named ? (
-                named.label
+                // The picture of the student's own keyboard uses its key names.
+                (!interactive && PLATFORM_LABELS[platform]?.[code]) || named.label
               ) : (
                 <>
                   {entry?.shifted && entry.shifted.toLowerCase() !== entry.plain && (

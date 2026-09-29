@@ -51,7 +51,7 @@ Checks can verify:
 - **Python only**: variable existence, type, and value (including lists and dicts)
 - **Scratch**: block usage, sprite position/size/direction/visibility, variable values
 - **Filesystem**: file and directory existence, which directory is currently open
-- **Desktop**: filesystem checks (as above) plus Recycle Bin membership, window open/closed/minimized/maximized state, two windows arranged side by side, simulated-browser page visits, and search-engine query matching
+- **Desktop**: filesystem checks (as above) plus Recycle Bin membership, window open/closed/minimized/maximized state, a window moved into a screen zone or resized, two windows arranged side by side, simulated-browser page visits, and search-engine query matching
 - **Quiz**: correct answer match
 
 After the same hint appears twice in a row, solo students can optionally view the complete reference code (if defined on the task).
@@ -223,6 +223,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - **Session management**: see every live or waiting session left open across the platform (lesson, state, paused flag, student/online counts, how long it's been open) and close any of them remotely, for cases where a teacher left a session running without ending it
 - **Topic library**: create, edit, and delete topics with full Markdown description and syntax fields; type filters come from the lesson module registry
 - **Shared assets**: manage lesson-type-wide Firebase Storage files and Scratch default sprites, shared across every lesson of a given type
+- **Version footer**: the bottom of every Admin tab shows `LaunchPad vMAJOR.MINOR.BUILD · commit · built date` (BUILD rises on every merge to `main`), with a Copy button for bug reports; clicking the version opens "What's new" milestone release notes
 
 ---
 

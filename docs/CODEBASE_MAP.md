@@ -40,6 +40,8 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TopicLibraryPanel.jsx` | Firestore `topicLibrary` CRUD editor: searchable topic list, full topic form with MarkdownFieldEditor for description/syntax fields |
 | `FeedbackPanel.jsx` | Firestore `platformFeedback` real-time list; displays date, teacher email, lesson/task context, and feedback text |
 | `SharedAssetsPanel.jsx` | `lessonTypeAssets` Firestore CRUD: per-type Firebase Storage file upload/delete and Scratch default sprite/backdrop library editors (`DefaultSpritesEditor`, `DefaultBackdropsEditor`) |
+| `AppVersionFooter.jsx` | Admin Portal footer showing `LaunchPad vMAJOR.MINOR.BUILD · commit · built date` (from `shared/appVersion.js`) with a Copy button; clicking the label toggles the "What's new" list from `releaseNotes.js` |
+| `releaseNotes.js` | `RELEASE_NOTES`: milestone release notes, newest first; the newest entry must match MAJOR.MINOR in `package.json` (enforced by `AppVersionFooter.test.jsx`) |
 
 ---
 
@@ -450,7 +452,8 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `quiz/quizBuilder.js` | Builder conversions for quizzes: `toQuizTask` (choosing the Quiz format) and `switchQuizType` (changing quiz sub-type), unchanged from the old TaskEditor handlers |
 | `quiz/QuizTypeIcon.jsx` | SVG icons for the Builder's quiz-type picker |
 | `binary/definition.js` | Binary activity definition wrapping `binary.js`: default task, validation, state, grading, progress, card summary, print |
-| `keyboard/keyboard.js` | Pure Keyboard activity logic (`type_text`, `find_key`, `symbols`, `shortcuts`; UK layout): validation incl. untypeable characters and browser-reserved shortcuts, grading from stored per-item results (Shift vs Caps Lock, optional accuracy/WPM targets, keys vs menu, hardware-only items) |
+| `keyboard/keyboard.js` | Pure Keyboard activity logic (`type_text`, `find_key`, `symbols`, `shortcuts`, `edit_text`; UK layout): validation incl. untypeable characters and browser-reserved shortcuts, grading from stored per-item results (Shift vs Caps Lock, optional accuracy/WPM targets, keys vs menu, hardware-only items) |
+| `keyboard/editText.js` | Pure `edit_text` logic: the edit model (`text`, per-character `orig` mask, `caret`, `anchor`) and `applyEditKey` (arrows, Home/End, Shift selection, Ctrl+A, Backspace, Delete, typing), `lcsLength` / `keptShare` (edited-not-retyped, `minKept`), `editSolution`, `gradeEditItem` hints, `validateEditItem`, `EDIT_REQUIRE_KEYS` |
 | `keyboard/definition.js` | Keyboard activity definition: needs a physical keyboard with an on-screen fallback; keystrokes classified as continuous, finished items as discrete |
 | `mouse/mouse.js` | Pure Mouse activity logic: stage targets (0-1 positions), click/double-click/right-click/drag/scroll/hover items, touch policy (`equivalent`/`skip`/`block`), grading by the gesture that completed each item |
 | `mouse/definition.js` | Mouse activity definition: grades with the device recorded in state (touch equivalents accepted, hover skipped on touch) |
@@ -507,6 +510,8 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `lessonValidation.js` | Pure, Node-safe lesson validation core shared by the Builder (`validateLesson`) and the CLI (`validateLessonForMcp`), one wording for both: envelope, groups, task shape, feedback checks, carry-through; delegates type rules by each task's effective module type to the module definition's `validateTask`, `taskType: 'activity'` to the activity registry, and quiz / code_arrange to `activities/legacyValidation.js`. `validateLessonCore(lesson, { envelope, beforeTasks, afterTask })` hooks add each validator's own extras (ADR 0008) |
 | `fileKeys.js` | Pure helpers for Firebase file key encoding: `encodeFileKey(name)` and `decodeFileKey(key)` — dots encoded as `__dot__` |
 | `codemirror.js` | CodeMirror config: `createBaseExtensions(type, readOnly)`, `getTabSize(type)`, `getLanguageExtension(type)` (editor-language maps; unknown languages get Python and a 2-space tab) — `headstartTheme` and `headstartHighlight` are internal-only, applied inside `createBaseExtensions`. Also the line-hint extension: `lineHintsExtension()` (💡 gutter marker + faded ghost-text widget per hinted line, never part of the document or undo history), driven by `setLineHints`; `lineHintsField` maps hints through edits and drops one when its line is deleted; `getLineHints(state)` reads what shows |
+| `fieldSpec.js` | Pure field declarations (a task shape as data): `normaliseFieldSpecs` (validates and freezes `{ name, type, required, authored, values, modes, itemFields }`), `authoredFieldPaths`, `fieldsForMode`, `describeFieldSpecs`. Used by `defineActivity` (`fields`), `defineModule` (`taskFields`) and `taskFields.js` |
+| `taskFields.js` | `COMMON_TASK_FIELDS`, `TASK_TYPE_FIELDS` (information, group) and the `codeStagesField(payload)` helper modules use in their `taskFields` |
 | `lineHints.js` | Pure, import-free author line hints (`#> …` / `<!--> … -->` marker lines; a module opts in with `capabilities.lineHints`): `parseLineHints(code, syntax)` → `{ code, hints, trailingMarker }`, `stripLineHints`, `anchorLineHints` / `chooseLineHints` (re-anchor hints onto saved code by trimmed line text), `stripTaskLineHints` / `stripLessonLineHints` (strip a task/lesson, recording runtime-only `task.lineHintSets`), `getTaskLineHintSets` / `getStageLineHints` (what editors and stage references show), `findTrailingLineHintMarkers` (validator warning) |
 | `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions`, `storage` |
 | `markdown.jsx` | Markdown renderer: tables, callouts, fenced code blocks, Scratch block pills, topic links, `InlineMarkdown` |
@@ -532,6 +537,7 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `draftLesson.js` | Shared structural validation for incomplete lesson-level draft tasks. |
 | `lessonAudit.js` | Current-state lesson/task version and change-timestamp helper with no-op detection. |
 | `lessonService.js` | Shared lesson loading and publishing helpers: `fetchLessonById()`, `fetchLessonList()`, `publishLesson()`, `publishLessonTasks()`, `deletePublishedLesson()`, `publishLessonFork()`, `applyLessonOverride()`; class helpers; publishing migrates legacy scalar levels; session report helpers: `saveSessionReport()`, `fetchSessionReports()` |
+| `appVersion.js` | Reads the `__APP_BUILD_INFO__` build constant injected by `vite.config.js` (null under Vitest) and formats the version label (`formatAppVersion`, `formatVersionNumber`, `formatBuildDate`) |
 | `timeAgo.js` | Pure short relative-time label (`formatTimeAgo`) shared by the student grid and the shared-work gallery |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
@@ -555,6 +561,7 @@ Pure, Node-safe input library for the Keyboard and Mouse activities and the Desk
 
 | File | Role |
 |---|---|
+| `platform.js` | `detectPlatform` (Mac / Chromebook / Windows / other from the user agent; iPad = other), `keyName` (a taught key as labelled on that keyboard: Mac delete, fn + delete, Chromebook Alt + Backspace, Alt + Search…), `modKeyName` (Cmd on a Mac), `PLATFORM_LABELS`; part of `detectInputCapabilities` |
 | `index.js` | Re-exports the whole library |
 | `layouts.js` | Character → `{ code, shift }` tables (UK only for now), `describeCharKeys` ("Shift + 2"), key labels |
 | `events.js` | `normalizeKeyEvent` (modifiers, Caps Lock, hardware vs virtual source), `normalizePointerEvent` (`data-input-id` targets plus their `data-input-kind`, 0-1 positions), canonical combos (`mod+c`, Ctrl and Cmd alike), browser-reserved combos |
@@ -587,6 +594,7 @@ Pure, Node-safe input library for the Keyboard and Mouse activities and the Desk
 | `scripts/new-activity.mjs` | `npm run new:activity -- <id> "<Label>" [--category …] [--dry-run]`: scaffolds an activity from `src/activities/_template/`, registers it in `registry.pure.js` / `registry.js`, writes `docs/authoring/activities/<id>.md` and indexes it in `docs/README.md`, this map and `validation-errors.md`; validates the id, refuses to overwrite, prettier-formats generated code (tested by `scripts/__tests__/newActivity.test.mjs`) |
 | `scripts/new-module.mjs` | `npm run new:module -- <type> "<Label>" [--dry-run]`: scaffolds a workspace module from `src/modules/_template/` (registry order after the last module), registers it in `definitions.js`, `registry.js` and `checks.js`, adds the type to the type-branch ratchet and the ESLint rule, records the scaffold's deliberate parity gaps in `moduleTypeParity`'s `KNOWN_GAPS`, adds its `StudentViewModules` click-through, writes `docs/authoring/<type>.md` and indexes it in `docs/README.md`, this map, `validation-errors.md`, `AGENTS.md`, `lesson-schema.md`, `task-types.md` and `MODULE_FEATURE_MATRIX.md`; validates the type (reserved words, activities, names core code already compares against), refuses to overwrite (tested by `scripts/__tests__/newModule.test.mjs`) |
 | `scripts/scaffold-utils.mjs` | Shared plan/apply plumbing for both kits: template listing, prettier formatting, anchored inserts, line-ending preservation, `applyPlan` (refuses to overwrite or apply a stale plan) and `describePlan` |
+| `scripts/build-info.mjs` | `getBuildInfo({ packageVersion })`: build metadata for the app version label — MAJOR.MINOR from `package.json`, build number = `git rev-list --count HEAD` (null in a shallow clone), short commit and build time; used by `vite.config.js` (tested by `scripts/__tests__/buildInfo.test.mjs`) |
 
 ---
 
@@ -611,7 +619,8 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | `cli/cli.mjs` | Entry point: yargs CLI with lesson topic audit/preflight/check-case testing plus `lessons`, `tasks`, `topics`, `feedback`, and `assets` subcommand groups |
 | `cli/firebase.mjs` | Firebase Admin SDK init via `GOOGLE_APPLICATION_CREDENTIALS`; exports `db` (Firestore) and `storage`; exits on missing credentials |
 | `cli/validate.mjs` | `validateLessonForMcp(lesson)` — standalone lesson validation (no Firebase dependency): the shared core (`src/shared/lessonValidation.js`) plus the CLI-only `description is required` rule |
-| `cli/capabilities.mjs` | `buildCapabilities()` — JSON catalogue of modules, activities and check types read from the registries, printed by `lessons capabilities` for lesson agents (no Firebase) |
+| `cli/capabilities.mjs` | `buildCapabilities()` — JSON catalogue printed by `lessons capabilities` for lesson agents (no Firebase): modules (with their `taskFields`), activities (modes, `fields`, `fieldsByMode`, `authoredFields` from each definition's `fields`), the common / information / group task fields (`src/shared/taskFields.js`), check types, and `requests` |
+| `cli/authoring-requests.mjs` | `readAuthoringRequests()` / `parseAuthoringRequest()` — reads `docs/authoring/authoring-requests/*.md` headers into `{ file, title, kind, status, requestedBy, lessonsBlocked }` for `lessons capabilities` |
 | `cli/check-tests.mjs` | `testLessonChecks(lesson, casesFile)` — source-code case harness using the shared runtime check evaluator, including feedback-match reporting |
 | `cli/topic-utils.mjs` | Standalone topic-library normalization and validation helpers used by CLI conversion/publish commands |
 | `cli/yaml-converter.mjs` | YAML conversion helpers for lessons and topic libraries, including lesson/topic JSON-to-YAML serialization and the `type: <activity>` shorthand (both directions, via the activity registry) |
@@ -631,7 +640,7 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 
 | File | Role |
 |---|---|
-| `vite.config.js` | Vite build config for both classroom and builder apps |
+| `vite.config.js` | Vite build config for both classroom and builder apps; injects `__APP_BUILD_INFO__` (see `scripts/build-info.mjs`) |
 | `src/test/setup.js` | Vitest/jsdom shared test setup: jest-dom matchers and browser API mocks used across component and hook tests |
 | `src/test/studentCodeStateHarness.js` | Test harness for `useStudentCodeState`: renders the hook with `vi.fn` session writers, storage-key helpers, and runtime fakes (see `docs/TESTING.md`) |
 | `src/test/studentCodeStateMocks.js` | Dependency-free `vi.mock` factories (Pyodide, type/lesson storage assets) used by the `useStudentCodeState` characterization tests |

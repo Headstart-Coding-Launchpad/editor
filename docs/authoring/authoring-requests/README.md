@@ -1,8 +1,13 @@
 # Authoring Requests
 
-Lesson agents (and people) file a request here when a lesson needs something the platform can't do yet: a new activity, a new workspace module, a new check type, or a new mode for an existing activity. Claude's `new-activity` / `new-module` skills start from these files.
+Lesson agents (and people) file a request here for anything a lesson needs from the platform side:
 
-**Before filing:** run `node cli/cli.mjs lessons capabilities`. It lists every module, activity and check type the platform has right now, read straight from the registries. Most gaps turn out to be a check or mode on something that exists.
+- **New capabilities:** a new activity, a new workspace module, a new check type, or a new mode for an existing activity. Claude's `new-activity` / `new-module` skills start from these files.
+- **Bugs:** the platform doesn't do what the docs say, or a check fails a correct answer.
+- **Docs:** an authoring page is wrong, missing or contradicts itself or the live lessons.
+- **Tooling:** a CLI command or machine-readable output that lesson authoring needs.
+
+**Before filing:** run `node cli/cli.mjs lessons capabilities`. It lists every module, activity (with its modes and fields) and check type the platform has right now, read straight from the registries, plus a `requests` array of the requests already in this folder (`file`, `title`, `kind`, `status`). Most gaps turn out to be a check or mode on something that exists, or something already requested.
 
 ## How to file
 
@@ -16,18 +21,21 @@ Request files don't need a `docs/README.md` entry (`npm run docs:check` skips th
 # <Short name of what's needed>
 
 - **Status:** open            <!-- open | planned | shipped | declined -->
-- **Kind:** activity          <!-- activity | module | check type | activity mode -->
-- **Requested by:** <agent or person>, <yyyy-mm-dd>
+- **Kind:** activity          <!-- activity | module | check type | activity mode | bug | docs | tooling -->
+- **Requested by:** <agent or person> (approved by <person>), <yyyy-mm-dd>   <!-- "(approved by …)" is optional -->
 - **Lessons blocked:** <lesson ids or titles, or "none yet">
 
 ## Need
 
 What must the lesson teach, and why can't existing capabilities do it? Name the closest
 existing module/activity/check from `lessons capabilities` and what it's missing.
+For a bug: what you did, what happened, what should have happened (a lesson id or YAML
+snippet that reproduces it). For docs: the page and section, and what it should say.
+For tooling: the command or output wanted and what it replaces.
 
 ## Example task
 
-The YAML you wish you could write:
+The YAML you wish you could write (omit for bug, docs and tooling requests unless it helps):
 
     - type: <activity or module>
       title: ...
@@ -53,10 +61,16 @@ Anything else: age range, links to course plans, screenshots.
 
 ## How requests are handled
 
-1. The builder applies the **workspace module vs activity** test from `docs/architecture/modular-activities-plan.md`: if a later task builds on what the student made, a teacher would demo freely in it, or there's a real free-play mode, it's a module; otherwise it's an activity.
-2. Status moves `open` → `planned` (with the PR link) → `shipped` (with docs link), or `declined` with a reason.
-3. Shipped capabilities appear in `lessons capabilities` and get an authoring doc under `docs/authoring/`.
+1. Status moves `open` → `planned` (with the PR link) → `shipped` (with docs link), or `declined` with a reason. The lesson workspace reads the **Status** line back automatically, so keep those exact words and fill in **Resolution** when it ships. The change's CHANGELOG entry names the request on its `Resolves:` line (see the CHANGELOG's "Entry format").
+2. Each kind is handled differently:
 
+   | Kind | How it's handled | Done when |
+   | --- | --- | --- |
+   | `activity`, `module` | Apply the **workspace module vs activity** test from `docs/architecture/modular-activities-plan.md`: if a later task builds on what the student made, a teacher would demo freely in it, or there's a real free-play mode, it's a module; otherwise it's an activity. Then follow the steps below (activity) or the `new-module` skill. | It appears in `lessons capabilities` and has an authoring doc under `docs/authoring/`. |
+   | `activity mode`, `check type` | Built in the existing activity's or module's folder (no scaffold), with tests, validation and a row in its authoring page. | The mode or check is documented and listed by `lessons capabilities`. |
+   | `bug` | Reproduce it (a failing test first where possible), fix it, and add a CHANGELOG entry if it changes how lessons behave or should be written. If the docs were right, no docs change is needed. | The fix is merged and the repro test passes. |
+   | `docs` | Confirm the real behaviour against the code or a live lesson, then fix the page. If the code is what's wrong, refile or relabel it as a `bug`. | The page is corrected; add a CHANGELOG entry if authors should write lessons differently. |
+   | `tooling` | Changes to `cli/` (commands, `lessons capabilities` output) or other machine-readable outputs, with tests. | The command ships and is documented in the relevant `docs/authoring/` page. |
 ### How a request becomes an activity
 
 Claude Code's `new-activity` skill (`.claude/skills/new-activity/SKILL.md`) does this; people can follow the same steps.

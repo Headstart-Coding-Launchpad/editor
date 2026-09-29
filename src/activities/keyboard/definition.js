@@ -1,13 +1,20 @@
 // Keyboard activity definition (pure). Wraps ./keyboard.js in the activity contract.
 import { defineActivity } from '../defineActivity.js'
 import { DEFAULT_LAYOUT, getKeyForChar } from '../../shared/input/index.js'
-import { gradeKeyboardTask, validateKeyboardTask } from './keyboard.js'
+import {
+  gradeKeyboardItem,
+  gradeKeyboardTask,
+  validateKeyboardTask,
+  KEYBOARD_MODES,
+} from './keyboard.js'
+import { EDIT_REQUIRE_KEYS, editSolution } from './editText.js'
 
 export const KEYBOARD_MODE_LABELS = {
   type_text: 'Type the text',
   find_key: 'Find the key',
   symbols: 'Type the symbols',
   shortcuts: 'Keyboard shortcuts',
+  edit_text: 'Fix the text',
 }
 
 function solutionItem(task, item) {
@@ -31,6 +38,8 @@ function solutionItem(task, item) {
       }
     case 'shortcuts':
       return { performed: true, via: 'keyboard', source: 'hardware' }
+    case 'edit_text':
+      return editSolution(item)
     default:
       return {}
   }
@@ -48,6 +57,116 @@ export default defineActivity({
   // Tablets without a keyboard get the built-in on-screen keyboard; items marked hardwareOnly
   // still need a real one.
   touchFallback: 'virtual_keyboard',
+
+  fields: {
+    modeField: 'mode',
+    task: [
+      { name: 'mode', type: 'string', required: true, values: KEYBOARD_MODES },
+      { name: 'layout', type: 'string', values: ['uk'], description: 'Defaults to uk.' },
+      {
+        name: 'requireShiftForCapitals',
+        type: 'boolean',
+        modes: ['type_text'],
+        description: 'Capitals must be typed with Shift, not Caps Lock (default true).',
+      },
+      { name: 'minAccuracy', type: 'number', modes: ['type_text'], description: '0 to 1.' },
+      { name: 'targetWpm', type: 'number', modes: ['type_text'] },
+      {
+        name: 'minKept',
+        type: 'number',
+        modes: ['edit_text'],
+        description:
+          'Share (0 to 1, default 0.9) of the characters start and target share that must never be deleted and retyped.',
+      },
+      {
+        name: 'showTarget',
+        type: 'boolean',
+        modes: ['edit_text'],
+        description: 'Show the corrected line above the edit box (default true).',
+      },
+      {
+        name: 'items',
+        type: 'array',
+        required: true,
+        authored: true,
+        itemFields: [
+          { name: 'id', type: 'string', required: true },
+          {
+            name: 'text',
+            type: 'string',
+            required: true,
+            authored: true,
+            modes: ['type_text'],
+            description: 'Up to 200 characters, typeable on the layout.',
+          },
+          {
+            name: 'key',
+            type: 'string',
+            required: true,
+            authored: true,
+            modes: ['find_key'],
+            description: 'One character or a named key (Enter, Backspace, Delete, …).',
+          },
+          {
+            name: 'char',
+            type: 'string',
+            required: true,
+            authored: true,
+            modes: ['symbols'],
+          },
+          {
+            name: 'combo',
+            type: 'string',
+            required: true,
+            authored: true,
+            modes: ['shortcuts'],
+            description: 'e.g. Ctrl+C.',
+          },
+          {
+            name: 'start',
+            type: 'string',
+            required: true,
+            authored: true,
+            modes: ['edit_text'],
+            description: 'The line with mistakes the student starts from.',
+          },
+          {
+            name: 'target',
+            type: 'string',
+            required: true,
+            authored: true,
+            modes: ['edit_text'],
+            description: 'The corrected line.',
+          },
+          {
+            name: 'requireKeys',
+            type: 'array',
+            values: EDIT_REQUIRE_KEYS,
+            modes: ['edit_text'],
+            description: 'Keys that must be used while editing; select = any Shift selection.',
+          },
+          {
+            name: 'prompt',
+            type: 'string',
+            authored: true,
+            modes: ['find_key', 'symbols', 'shortcuts', 'edit_text'],
+          },
+          { name: 'practiceText', type: 'string', authored: true, modes: ['shortcuts'] },
+          {
+            name: 'requireShiftForCapitals',
+            type: 'boolean',
+            modes: ['type_text'],
+            description: 'Per-item override of the task setting.',
+          },
+          {
+            name: 'hardwareOnly',
+            type: 'boolean',
+            description: 'Needs a physical keyboard; the on-screen keyboard skips it.',
+          },
+        ],
+      },
+    ],
+  },
 
   defaultTask: (prev = {}) => ({
     id: prev.id,
@@ -97,12 +216,26 @@ export default defineActivity({
 
   summarize: (task, state) => {
     const { total, correct } = gradeKeyboardTask(task, state)
-    return { text: `${correct}/${total} done`, tone: correct === total ? 'success' : 'neutral' }
+    // edit_text: say how many finished lines were typed out again instead of edited.
+    const retyped =
+      task?.mode === 'edit_text'
+        ? (task.items ?? []).filter((item) => {
+            const result = state?.items?.[item.id]
+            return result?.done && gradeKeyboardItem(task, item, result).retyped
+          }).length
+        : 0
+    return {
+      text: `${correct}/${total} done${retyped ? ` · ${retyped} retyped` : ''}`,
+      tone: correct === total ? 'success' : 'neutral',
+    }
   },
 
   printHtml: (task, { esc }) => {
     const rows = (task.items ?? []).map((item) => {
-      const text = item.text ?? item.key ?? item.char ?? item.combo ?? ''
+      const text =
+        item.start != null
+          ? `${item.start} → ${item.target ?? ''}`
+          : (item.text ?? item.key ?? item.char ?? item.combo ?? '')
       const prompt = item.prompt ? ` — ${esc(item.prompt)}` : ''
       return `<li><code>${esc(text)}</code>${prompt}</li>`
     })

@@ -1,6 +1,7 @@
 // Node-safe half of the HTML module (see ../defineModule.js). UI and preview runtime live in
 // index.js.
 import { defineModule } from '../defineModule.js'
+import { codeStagesField } from '../../shared/taskFields.js'
 import {
   filesStarterPresent,
   validateCodeChecks,
@@ -135,6 +136,29 @@ export default defineModule({
       ? [{ type: 'code_contains', value: '' }]
       : [{ type: 'output_contains', value: '' }],
 
+  taskFields: [
+    {
+      name: 'starterFiles',
+      type: 'array',
+      required: true,
+      authored: true,
+      itemFields: [
+        { name: 'name', type: 'string', required: true },
+        { name: 'type', type: 'string' },
+        { name: 'content', type: 'string', authored: true },
+      ],
+    },
+    { name: 'entryFile', type: 'string' },
+    { name: 'completeFiles', type: 'array', authored: true },
+    { name: 'completeEntryFile', type: 'string' },
+    codeStagesField([
+      { name: 'files', type: 'array', authored: true },
+      { name: 'entryFile', type: 'string' },
+    ]),
+    { name: 'copyCode', type: 'string', authored: true, description: 'Read-only code to copy.' },
+    { name: 'interactionMode', type: 'string', values: ['run', 'submit'] },
+    { name: 'carryCodeFrom', type: 'string' },
+  ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeFiles',
   carryThroughLabel: 'Carry code from task',

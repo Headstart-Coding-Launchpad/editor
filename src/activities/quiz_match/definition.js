@@ -13,6 +13,23 @@ import {
 
 export default defineQuizActivity('match', {
   description: 'Drag each answer to the prompt it matches.',
+
+  fields: {
+    task: [
+      {
+        name: 'pairs',
+        type: 'array',
+        required: true,
+        authored: true,
+        description: 'At least 2.',
+        itemFields: [
+          { name: 'id', type: 'string', required: true },
+          { name: 'prompt', type: 'string', required: true, authored: true },
+          { name: 'answer', type: 'string', required: true, authored: true },
+        ],
+      },
+    ],
+  },
   completion: 'auto',
   teacherEditable: true,
 

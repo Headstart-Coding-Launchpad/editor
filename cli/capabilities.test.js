@@ -1,5 +1,5 @@
 import { buildCapabilities } from './capabilities.mjs'
-import { MODULE_TYPES } from '../src/modules/definitions.js'
+import { MODULE_TYPES, getModuleDefinitions } from '../src/modules/definitions.js'
 import { ACTIVITY_IDS } from '../src/activities/registry.pure.js'
 import { checkRegistry } from '../src/modules/checks.js'
 
@@ -43,7 +43,62 @@ describe('lessons capabilities', () => {
       taskShape: { taskType: 'code_arrange' },
       hostModules: ['python', 'html'],
     })
-    expect(capabilities.requests).toMatch(/authoring-requests/)
+    expect(capabilities.requestsHowTo).toMatch(/authoring-requests/)
+  })
+
+  it('lists activity modes, fields per mode and authored-content paths', () => {
+    const keyboard = capabilities.activities.find((a) => a.id === 'keyboard')
+    expect(keyboard.modeField).toBe('mode')
+    expect(keyboard.modes).toEqual(['type_text', 'find_key', 'symbols', 'shortcuts', 'edit_text'])
+    expect(keyboard.fields.find((f) => f.name === 'mode')).toMatchObject({ required: true })
+    const findKeyItems = keyboard.fieldsByMode.find_key.find((f) => f.name === 'items')
+    expect(findKeyItems.itemFields.map((f) => f.name)).toEqual(
+      expect.arrayContaining(['id', 'key', 'prompt'])
+    )
+    expect(findKeyItems.itemFields.map((f) => f.name)).not.toContain('text')
+    expect(keyboard.authoredFields).toEqual(expect.arrayContaining(['items[].text', 'items[].key']))
+    expect(keyboard.authoredFields).not.toContain('mode')
+
+    const mouse = capabilities.activities.find((a) => a.id === 'mouse')
+    expect(mouse.modes).toEqual([])
+    expect(mouse).not.toHaveProperty('fieldsByMode')
+    expect(mouse.fields.map((f) => f.name)).toEqual(['touch', 'targets', 'items'])
+  })
+
+  it("lists each module's own task fields, including its complete and carry fields", () => {
+    for (const module of capabilities.modules) {
+      const names = module.fields.map((f) => f.name)
+      const definition = getModuleDefinitions().find((d) => d.type === module.type)
+      expect(names, module.type).toEqual(
+        expect.arrayContaining([
+          definition.completeField,
+          definition.carryThroughField,
+          'codeStages',
+        ])
+      )
+      expect(module.authoredFields, module.type).toContain(definition.completeField)
+      expect(module.authoredFields, module.type).not.toContain(definition.carryThroughField)
+    }
+    const html = capabilities.modules.find((m) => m.type === 'html')
+    expect(html.fields.find((f) => f.name === 'starterFiles')).toMatchObject({ required: true })
+  })
+
+  it('lists the common task fields and the non-module task types', () => {
+    expect(Object.keys(capabilities.taskFields)).toEqual(['common', 'information', 'group'])
+    expect(capabilities.taskFields.common.authoredFields).toEqual(
+      expect.arrayContaining(['title', 'explainer', 'check'])
+    )
+    expect(capabilities.taskFields.common.authoredFields).not.toContain('estimatedMinutes')
+    expect(capabilities.taskFields.information.authoredFields).toContain('explainer')
+  })
+
+  it('lists authoring requests from the folder, or the ones passed in', () => {
+    expect(capabilities.requests.length).toBeGreaterThan(0)
+    expect(capabilities.requests[0]).toEqual(
+      expect.objectContaining({ file: expect.any(String), title: expect.any(String) })
+    )
+    const request = { file: 'x.md', title: 'X', kind: 'bug', status: 'open' }
+    expect(buildCapabilities({ requests: [request] }).requests).toEqual([request])
   })
 
   it('is plain JSON', () => {

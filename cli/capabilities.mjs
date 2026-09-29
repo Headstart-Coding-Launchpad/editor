@@ -1,9 +1,12 @@
 // `lessons capabilities`: machine-readable catalogue of what lessons can use, built from the
 // real registries (module definitions, activity definitions, check-type registry) so lesson
-// agents read ground truth instead of prose. Pure: no Firebase.
+// agents read ground truth instead of prose. No Firebase; reads the authoring-requests folder.
 import { getModuleDefinitions } from '../src/modules/definitions.js'
 import { getActivityDefinitions } from '../src/activities/registry.pure.js'
 import { checkRegistry } from '../src/modules/checks.js'
+import { authoredFieldPaths, describeFieldSpecs, fieldsForMode } from '../src/shared/fieldSpec.js'
+import { COMMON_TASK_FIELDS, TASK_TYPE_FIELDS } from '../src/shared/taskFields.js'
+import { readAuthoringRequests } from './authoring-requests.mjs'
 
 const MODULE_FLAGS = [
   'supportsInteractionMode',
@@ -24,6 +27,9 @@ function describeModule(def) {
       MODULE_FLAGS.filter((flag) => typeof def[flag] === 'boolean').map((flag) => [flag, def[flag]])
     ),
     ...(def.capabilities ? { capabilities: def.capabilities } : {}),
+    // The module's own task fields (the common ones are under taskFields.common).
+    fields: describeFieldSpecs(def.taskFields),
+    authoredFields: authoredFieldPaths(def.taskFields),
     checkTypes: checkRegistry
       .list()
       .filter(
@@ -49,6 +55,39 @@ function describeActivity(def) {
     requires: def.requires,
     teacherEditable: def.teacherEditable,
     checkTypes: (def.checks ?? []).map((check) => check.type),
+    ...describeActivityFields(def.fields),
+  }
+}
+
+// Modes, task fields (with required / authored flags and per-item fields), the fields of each
+// mode, and the authored-content paths, from the definition's `fields` declaration.
+function describeActivityFields(fields) {
+  if (!fields) return {}
+  return {
+    ...(fields.modeField ? { modeField: fields.modeField } : {}),
+    modes: [...fields.modes],
+    fields: describeFieldSpecs(fields.task),
+    ...(fields.modes.length
+      ? {
+          fieldsByMode: Object.fromEntries(
+            fields.modes.map((mode) => [mode, describeFieldSpecs(fieldsForMode(fields.task, mode))])
+          ),
+        }
+      : {}),
+    authoredFields: authoredFieldPaths(fields.task),
+  }
+}
+
+function describeTaskFields() {
+  const describe = (specs) => ({
+    fields: describeFieldSpecs(specs),
+    authoredFields: authoredFieldPaths(specs),
+  })
+  return {
+    common: describe(COMMON_TASK_FIELDS),
+    ...Object.fromEntries(
+      Object.entries(TASK_TYPE_FIELDS).map(([type, specs]) => [type, describe(specs)])
+    ),
   }
 }
 
@@ -66,12 +105,16 @@ function describeCheck(def) {
   }
 }
 
-export function buildCapabilities() {
+export function buildCapabilities({ requests = readAuthoringRequests() } = {}) {
   return {
     modules: getModuleDefinitions().map(describeModule),
     activities: getActivityDefinitions().map(describeActivity),
+    // Fields every task can carry, and the non-module task types (information, group).
+    taskFields: describeTaskFields(),
     checkTypes: checkRegistry.list().map(describeCheck),
-    requests:
-      'Missing something? Add docs/authoring/authoring-requests/<yyyy-mm-dd>-<slug>.md (template in that folder).',
+    // What is already asked for: { file, title, kind, status, requestedBy, lessonsBlocked }.
+    requests,
+    requestsHowTo:
+      'Missing something? Check `requests` first, then add docs/authoring/authoring-requests/<yyyy-mm-dd>-<slug>.md (template in that folder).',
   }
 }

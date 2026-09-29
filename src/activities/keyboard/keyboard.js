@@ -8,10 +8,13 @@ import {
   getKeyForChar,
   isReservedCombo,
   isSupportedLayout,
+  keyName,
+  modKeyName,
   normalizeCombo,
 } from '../../shared/input/index.js'
+import { gradeEditItem, validateEditItem } from './editText.js'
 
-export const KEYBOARD_MODES = ['type_text', 'find_key', 'symbols', 'shortcuts']
+export const KEYBOARD_MODES = ['type_text', 'find_key', 'symbols', 'shortcuts', 'edit_text']
 
 // Named keys a find_key item may ask for, besides any typeable character.
 export const NAMED_KEYS = [
@@ -52,6 +55,9 @@ export function validateKeyboardTask(task, n) {
   if (task.targetWpm != null && !(Number.isFinite(task.targetWpm) && task.targetWpm > 0)) {
     errors.push(`${where}: targetWpm must be a positive number.`)
   }
+  if (task.minKept != null && !(task.minKept > 0 && task.minKept <= 1)) {
+    errors.push(`${where}: minKept must be a number above 0 and at most 1.`)
+  }
   const items = Array.isArray(task.items) ? task.items : []
   if (items.length === 0) errors.push(`${where}: keyboard task needs at least one item.`)
   const seen = new Set()
@@ -87,6 +93,9 @@ export function validateKeyboardTask(task, n) {
           `${label}: char must be one character that can be typed on a ${layout.toUpperCase()} keyboard.`
         )
       }
+    } else if (task.mode === 'edit_text') {
+      const isTypeable = (c) => !!getKeyForChar(c, layout)
+      errors.push(...validateEditItem(item, label, isTypeable, MAX_TEXT_LENGTH))
     } else if (task.mode === 'shortcuts') {
       const combo = normalizeCombo(item?.combo)
       const parts = combo.split('+')
@@ -115,18 +124,33 @@ function isTypedKey(key) {
   return key.length === 1 || key === 'space'
 }
 
-// What the student has to press, in words ("Shift + 2"), for prompts and hints.
-export function describeItem(task, item) {
+// Named keys by their lower-case combo part ('delete' → 'Delete').
+const NAMED_BY_PART = Object.fromEntries(
+  [...NAMED_KEYS, 'Home', 'End'].map((key) => [key.toLowerCase(), key])
+)
+
+// A combo part as it's labelled on the student's keyboard ('mod' → Ctrl, or Cmd on a Mac).
+export function describeComboPart(part, platform) {
+  if (part === 'mod') return modKeyName(platform)
+  if (NAMED_BY_PART[part]) return keyName(NAMED_BY_PART[part], platform)
+  return part.length === 1 ? part.toUpperCase() : part
+}
+
+// What the student has to press, in words ("Shift + 2"), for prompts and hints. `platform`
+// (src/shared/input/platform.js) names keys as the student's own keyboard does.
+export function describeItem(task, item, platform) {
   const layout = task?.layout ?? DEFAULT_LAYOUT
   switch (task?.mode) {
     case 'symbols':
       return describeCharKeys(item.char, layout)
     case 'find_key':
-      return NAMED_KEYS.includes(item.key) ? item.key : describeCharKeys(item.key, layout)
+      return NAMED_KEYS.includes(item.key)
+        ? keyName(item.key, platform)
+        : describeCharKeys(item.key, layout)
     case 'shortcuts':
       return normalizeCombo(item.combo)
         .split('+')
-        .map((part) => (part === 'mod' ? 'Ctrl' : part.length === 1 ? part.toUpperCase() : part))
+        .map((part) => describeComboPart(part, platform))
         .join(' + ')
     default:
       return null
@@ -138,9 +162,13 @@ export function describeItem(task, item) {
 //   find_key:  { pressed }
 //   symbols:   { typedChar, shift }
 //   shortcuts: { performed, via }   (via: 'keyboard' | 'menu')
-export function gradeKeyboardItem(task, item, result = {}) {
+//   edit_text: { text, orig, caret, anchor, used, source, done }   (see editText.js)
+// `platform` names the keys in hints as the student's keyboard does (Mac, Chromebook).
+export function gradeKeyboardItem(task, item, result = {}, { platform } = {}) {
   const hardwareOk = !item.hardwareOnly || result.source !== 'virtual'
   switch (task?.mode) {
+    case 'edit_text':
+      return gradeEditItem(task, item, result, platform)
     case 'type_text': {
       const typed = String(result.typed ?? '')
       const minAccuracy = task.minAccuracy ?? 1
@@ -153,7 +181,7 @@ export function gradeKeyboardItem(task, item, result = {}) {
       if (needsShift && (result.capsLockCapitals ?? 0) > 0) {
         return {
           correct: false,
-          hint: 'Try holding Shift for capital letters instead of Caps Lock.',
+          hint: `Try holding Shift for capital letters instead of ${platform === 'chromeos' ? 'Caps Lock (Alt + Search)' : 'Caps Lock'}.`,
         }
       }
       if (task.targetWpm && (result.wpm ?? 0) < task.targetWpm) {
@@ -168,7 +196,7 @@ export function gradeKeyboardItem(task, item, result = {}) {
     case 'find_key':
       return result.pressed && hardwareOk
         ? { correct: true, hint: null }
-        : { correct: false, hint: `Look for the ${describeItem(task, item)} key.` }
+        : { correct: false, hint: `Look for the ${describeItem(task, item, platform)} key.` }
     case 'symbols': {
       const key = getKeyForChar(item.char, task.layout ?? DEFAULT_LAYOUT)
       if (result.typedChar === item.char && (!key?.shift || result.shift) && hardwareOk) {
@@ -180,8 +208,8 @@ export function gradeKeyboardItem(task, item, result = {}) {
       if (result.performed && result.via === 'keyboard' && hardwareOk)
         return { correct: true, hint: null }
       return result.performed
-        ? { correct: false, hint: `Use the keys this time: ${describeItem(task, item)}.` }
-        : { correct: false, hint: `Press ${describeItem(task, item)}.` }
+        ? { correct: false, hint: `Use the keys this time: ${describeItem(task, item, platform)}.` }
+        : { correct: false, hint: `Press ${describeItem(task, item, platform)}.` }
     default:
       return { correct: false, hint: null }
   }
@@ -189,7 +217,11 @@ export function gradeKeyboardItem(task, item, result = {}) {
 
 export function gradeKeyboardTask(task, state = {}) {
   const items = task?.items ?? []
-  const results = items.map((item) => gradeKeyboardItem(task, item, state.items?.[item.id]))
+  // The student's platform (recorded by the view) names keys in the hints.
+  const options = { platform: state?.device?.platform }
+  const results = items.map((item) =>
+    gradeKeyboardItem(task, item, state?.items?.[item.id], options)
+  )
   const correct = results.filter((r) => r.correct).length
   const firstWrong = results.find((r) => !r.correct)
   return {

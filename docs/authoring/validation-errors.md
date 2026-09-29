@@ -133,10 +133,11 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 
 | Message | Meaning | Fix |
 |---|---|---|
-| `Task …: keyboard mode must be one of ….` | `mode` is missing or unknown. | Use `type_text`, `find_key`, `symbols` or `shortcuts`. |
+| `Task …: keyboard mode must be one of ….` | `mode` is missing or unknown. | Use `type_text`, `find_key`, `symbols`, `shortcuts` or `edit_text`. |
 | `Task …: keyboard layout "…" is not supported (use "uk").` | Only the UK layout exists so far. | Remove `layout` or set it to `uk`. |
 | `Task …: minAccuracy must be a number above 0 and at most 1.` | `minAccuracy` is a fraction, not a percentage. | Use e.g. `0.9` for 90%. |
 | `Task …: targetWpm must be a positive number.` | `targetWpm` is zero, negative or not a number. | Use a positive number, or remove it to skip the speed goal. |
+| `Task …: minKept must be a number above 0 and at most 1.` | `edit_text` `minKept` is a fraction, not a percentage. | Use e.g. `0.9`, or remove it for the default. |
 | `Task …: keyboard task needs at least one item.` | `items` is empty. | Add at least one item. |
 | `Task … item …: text is required.` | A `type_text` item has no `text`. | Add the line to type. |
 | `Task … item …: text must be at most … characters.` | A `type_text` line is over 200 characters. | Split it into several items. |
@@ -146,6 +147,12 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … item …: combo must be a shortcut like "Ctrl+C".` | A `shortcuts` `combo` is missing or has no modifier. | Write it as `Ctrl+C`, `Ctrl+Shift+Z`, … (`Ctrl` also means Cmd on a Mac). |
 | `Task … item …: "…" just types a character. Use Ctrl, Cmd or Alt, or Shift with a key like Tab or an arrow key.` | The `combo` is Shift plus a character key (`Shift+A`), which types a capital rather than doing a shortcut. | Add Ctrl/Cmd or Alt, or use a non-typing key (`Shift+Tab`, `Shift+ArrowLeft`). To practise capitals, use `type_text` or `symbols` mode. |
 | `Task … item …: "…" is kept by the browser, so students can't press it here. Teach it with a quiz question instead.` | The browser handles that shortcut itself (Ctrl+W, Ctrl+T, Ctrl+N, Ctrl+Q, Ctrl+Tab, Ctrl+Shift+T/N, Alt+F4), so the page never sees it. | Use a different shortcut, or ask about it in a quiz task. |
+| `Task … item …: … is required.` | An `edit_text` item has no `start` (the line with mistakes) or no `target` (the fixed line); the message names which. | Add both. |
+| `Task … item …: … must be at most … characters.` | An `edit_text` `start` or `target` is over 200 characters. | Use a shorter line, or split it into items. |
+| `Task … item …: … has characters that can't be typed: …` | An `edit_text` `start` or `target` has characters with no key on the layout (curly quotes, emoji). | Use plain keyboard characters: students must be able to type every fix. |
+| `Task … item …: start and target are the same, so there is nothing to fix.` | The `edit_text` line has no mistakes. | Put the mistakes in `start`. |
+| `Task … item …: requireKeys must be a list, such as [Delete] or [Backspace, select].` | `requireKeys` is a single value, not a list. | Write it as a YAML list: `requireKeys: [Delete]`. |
+| `Task … item …: requireKeys has keys it can't check (…). Use ….` | `requireKeys` names a key other than `Backspace`, `Delete`, `ArrowLeft`, `ArrowRight`, `Home`, `End` or `select`. | Use those names (`select` means any Shift selection). |
 | `Task … item …: add a prompt telling students what the shortcut does.` (warning) | A `shortcuts` item has no `prompt`; students only see the keys. | Add `prompt:` such as "Copy the selected word". |
 
 ### Mouse ([activities/mouse.md](activities/mouse.md))
@@ -217,6 +224,11 @@ message says `feedback check` where it would say `check` (that part is shown as 
 | `Task … has a Scratch costume … but no costume name` | `costume_is` has no `value`. | Add the costume name. |
 | `Task … has invalid toolbox XML` (**Builder only**) | A Scratch task's `toolbox` isn't well-formed XML. | Fix the XML (see `scratch-toolbox-xml.md`). |
 | `Task … has a filesystem … but no path` | A Filesystem or Desktop `fs_*` check has no `path`. | Add `path:`. |
+| `Task … has a window_state … but no appId` | A Desktop `window_state` check doesn't name the app. | Add `appId:` (`fileManager`, `textEditor`, `imageViewer`, `paint` or `browser`). |
+| `Task … has a window_state moved_to … with zone "…" — use one of: …` | `moved_to` has no `zone`, or an unknown one. | Use `left_half`, `right_half`, `top_half`, `bottom_half`, `top_left`, `top_right`, `bottom_left` or `bottom_right` (see `desktop.md`). |
+| `Task … has a window_state resized … with size "…" — use one of: smaller, larger` | `size` is not `smaller` or `larger`. | Use one of those, or remove `size` to accept any change of 15% or more. |
+| `Task … has a window_state resized … whose … is not a fraction of the desktop (more than 0, up to 1)` | `minWidth`, `minHeight`, `maxWidth` or `maxHeight` is a pixel value or out of range. | Give a fraction, e.g. `maxWidth: 0.5` for half the desktop. |
+| `Task … has a window_state resized … whose min… is more than its max…` | A minimum is larger than the matching maximum, so the check can never pass. | Swap or fix the limits. |
 | `Task … has a file-content … but no expected value` | `fs_file_content` (or legacy `fs_content_contains`) has no `value`. | Add the text to compare. |
 | `Task … has a file line-count … but no expected count` | `fs_file_line_count` has no `value`. | Add a number. |
 | `Task … has a file-location … but no parent folder` | `fs_file_location` (or legacy `fs_file_in_dir`) has no `dir`. | Add `dir:`. |
@@ -265,7 +277,7 @@ See the module docs for each check's required fields.
 | `Task … has output checks — open the Complete tab and run to verify the complete solution` | Output checks need a real run, which the CLI can't do. | Open the task in the Builder and run the complete solution. |
 | `Task … has element/output checks — open the Complete tab and run to verify the complete solution` | Same for HTML element checks. | Run it in the Builder. |
 | `Task … complete filesystem does not satisfy a check — review the complete filesystem` | The complete filesystem fails a check. | Fix the complete state or the check. |
-| `Task … complete desktop does not satisfy a check — review the complete desktop` | The complete Desktop state fails a file or window check (`browser_visited` and `search_query` are not tested against it). | Fix the complete state or the check. |
+| `Task … complete desktop does not satisfy a check — review the complete desktop` | The complete Desktop state fails a file or window check (`browser_visited`, `search_query` and `window_state` `resized` are not tested against it). | Fix the complete state or the check. |
 | `Task … complete breadboard does not satisfy a check — review the complete circuit` | The complete Electronics circuit fails a circuit check. | Fix the complete circuit or the check. |
 | `Task … has a completion check that hasn't been tested — run the task to verify it` (**Builder only**) | The check hasn't been run against the task since it was edited. | Run the task in the Builder. |
 

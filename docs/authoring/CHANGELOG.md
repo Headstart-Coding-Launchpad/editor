@@ -18,7 +18,106 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## Entry format
+
+Every new entry ends with one tag line, so lesson agents can tell at a glance what an entry
+touches without reading all of it:
+
+```markdown
+- Affects: <modules / activities / areas> · Existing lessons: <no changes needed | what to change> ·
+  Resolves: authoring-requests/<yyyy-mm-dd>-<slug>.md
+```
+
+- **Affects:** module types (`python`, `scratch`, `desktop`, …), activity ids (`keyboard`,
+  `quiz_match`, …), or an area (`cli`, `markdown`, `topics`, `all`), comma-separated.
+- **Existing lessons:** `no changes needed`, or the change authors must make (for example "add
+  `markdown` to blocks-only Support stages").
+- **Resolves:** the authoring request(s) the change ships, comma-separated; `none` when there
+  isn't one.
+
+Entries written before 2026-09-29 are not tagged.
+
 ## 2026-09-29
+
+### Mac and Chromebook keys and right-click
+
+- Keyboard prompts, hints and the key picture name keys as the student's computer does (Mac
+  **delete** for Backspace and **fn + delete** for Delete, **Cmd** for Ctrl; Chromebook
+  **Alt + Backspace** for Delete, **Alt + Search** for Caps Lock). Those presses already counted,
+  because the browser reports them as the Windows key; now the words match the keyboard.
+- Fixes: on a Mac, turning Caps Lock *off* now counts for `find_key: CapsLock` (Macs send no
+  keydown then), and `edit_text` treats Cmd + ← / → as Home / End.
+- Teachers see a **Mac** or **Chromebook** badge on Keyboard and Mouse work. Mac Ctrl + click and
+  Chromebook Alt + click count as right-click. Known gap: `symbols` hints use the UK Windows
+  layout, which differs on a UK Mac. See
+  [activities/keyboard.md](activities/keyboard.md#mac-and-chromebook-keyboards).
+- Affects: keyboard, mouse, desktop · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-09-29-mac-and-chromebook-equivalents-for-taught-keys-and-right-cli.md
+
+### Keyboard `edit_text` mode: fix a line without retyping it
+
+- New Keyboard mode `edit_text`. Each item has `start` (the line with mistakes) and `target`
+  (the fixed line); the student edits in place with the arrow keys, Home/End, Shift selection,
+  Backspace and Delete. The line finishes when it matches `target` exactly.
+- It passes only if it was **edited, not retyped**: at least `minKept` (default `0.9`) of the
+  characters `start` and `target` share must never have been deleted and typed again. Optional
+  per-item `requireKeys` (`Backspace`, `Delete`, `ArrowLeft`, `ArrowRight`, `Home`, `End`,
+  `select`) must each be used. `showTarget: false` hides the fixed line.
+- Needs a real keyboard: the on-screen keyboard shows a note instead. The teacher card adds
+  `· n retyped`. New validation messages are in [validation-errors.md](validation-errors.md).
+  See [activities/keyboard.md](activities/keyboard.md).
+- Affects: keyboard · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-09-29-keyboard-edit-text-mode-fix-the-text-without-retyping-it.md
+
+### CHANGELOG entries carry a tag line
+
+- From today every entry ends with `Affects: … · Existing lessons: … · Resolves: …`, naming the
+  modules/activities it touches, whether existing lessons need changing, and the authoring
+  request it ships. Read the tag line first to decide whether an entry matters to a lesson.
+  Older entries are not tagged. See [Entry format](#entry-format).
+- Affects: all (changelog format) · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-09-29-tag-changelog-entries-with-affected-modules-lesson-impact-an.md
+
+### `lessons capabilities`: activity modes and fields, content fields, open requests
+
+- Each activity now lists `modes`, `fields` (task fields with `required`, `authored`, `values`,
+  `modes` and per-item `itemFields`), `fieldsByMode`, and `authoredFields` (content paths such
+  as `items[].text`). Each module lists its own task `fields` / `authoredFields`, and a new
+  `taskFields` section covers the common task fields plus `information` and `group`.
+- `requests` is now an array of the requests in `docs/authoring/authoring-requests/`
+  (`file`, `title`, `kind`, `status`, `requestedBy`, `lessonsBlocked`); the old hint text moved
+  to `requestsHowTo`. Lesson tooling can drop hand-kept field lists and read these instead.
+- No lesson changes. See [AUTHORING_GUIDE.md](AUTHORING_GUIDE.md).
+- Affects: all activities and modules (capabilities output only) · Existing lessons: no changes
+  needed · Resolves: authoring-requests/2026-09-29-lessons-capabilities-per-activity-modes-and-fields-and-open-.md,
+  authoring-requests/2026-09-29-machine-readable-content-field-map-per-task-type.md
+
+### Desktop `window_state` `moved_to` and `resized`
+
+- New `window_state` operators. `moved_to` passes when the window's centre is in `zone`
+  (`left_half`, `right_half`, `top_half`, `bottom_half` or a quarter such as `top_right`).
+  `resized` passes when the window is `size: smaller` / `larger` than it started (15% or more in
+  area), meets `minWidth` / `minHeight` / `maxWidth` / `maxHeight` (fractions of the desktop), or,
+  with neither, changed by 15% or more. Minimised or maximised windows never count.
+- Window geometry is now judged against the student's real desktop size, recorded on each window
+  interaction. `windows_arranged_side_by_side` no longer assumes a 1200px viewport, so a layout
+  that fills a smaller screen now passes.
+- New validator errors for a missing `appId`, unknown `zone` / `size`, and out-of-range limits.
+  See [desktop.md](desktop.md#moving-and-resizing-windows) and
+  [validation-errors.md](validation-errors.md).
+- Affects: desktop · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-09-29-window-state-moved-to-and-resized-operators.md
+
+### Scratch Support stages: `markdown` for students, `blocks` for replacing (docs fix)
+
+- No platform change; the docs contradicted each other. A Scratch Support stage's `markdown` is
+  the read-only reference the student sees, and the panel opens empty without it. Its optional
+  `blocks` are only loaded when the stage replaces the student's work (teacher stage push,
+  `stageOffer` `replace`, stage reset) and are what the teacher's stage tab shows.
+- Lessons whose Scratch Support stages carry only `blocks` should add `markdown`. See
+  [scratch.md](scratch.md#sprite-object).
+- Affects: scratch · Existing lessons: add `markdown` to blocks-only Support stages ·
+  Resolves: authoring-requests/2026-09-29-scratch-support-stage-docs-say-markdown-every-live-lesson-us.md
 
 ### Line hints in starter code (`#> …` / `<!--> … -->`)
 
