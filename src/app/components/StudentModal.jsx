@@ -13,12 +13,10 @@ import {
 } from '../../shared/taskUtils'
 import PresenceBadge from './PresenceBadge'
 import ScratchWorkspace from '../../modules/scratch/ScratchWorkspace.jsx'
-import HtmlTeacherLiveView from '../../modules/html/TeacherLiveView.jsx'
-import ArcadeTeacherLiveView from '../../modules/arcade/TeacherLiveView.jsx'
-import ElectronicsTeacherLiveView from '../../modules/electronics/TeacherLiveView.jsx'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
 import { MarkdownRenderer } from '../../shared/markdown'
 import { getLessonModule } from '../../modules/registry'
+import { getModuleDefinition } from '../../modules/definitions'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { TEACHER_LIVE_REFERENCE_TYPES } from '../studentLiveDisplay'
 import DropdownMenu from './student-modal/DropdownMenu'
@@ -125,25 +123,23 @@ export default function StudentModal({
         setTeacherCode(initialCode)
         setTeacherFiles(files)
         setTeacherArcadeDesign(student.currentArcadeDesign ?? null)
-        setTeacherWorkspace(isElectronics ? 'breadboard' : 'code')
-        if (isScratch) {
+        setTeacherWorkspace(teacherEditor?.workspace ?? 'code')
+        if (teacherEditor?.surface === 'blocks') {
           setTeacherScratchState(parseScratchState(initialCode))
         }
         setTeacherEditState('editing')
         setDeclinedNotice(false)
         onPushTeacherLiveCode?.(
           student.anonymousId,
-          isHtml
+          teacherEditor?.surface === 'files'
             ? { files, activeFile: files[0]?.name ?? null }
-            : isArcade
-              ? {
-                  code: initialCode,
-                  arcadeDesign: student.currentArcadeDesign ?? null,
-                  workspace: 'code',
-                }
-              : isElectronics
-                ? { code: initialCode, workspace: 'breadboard' }
-                : { code: initialCode }
+            : {
+                code: initialCode,
+                ...(teacherEditor?.design
+                  ? { arcadeDesign: student.currentArcadeDesign ?? null }
+                  : {}),
+                ...(teacherEditor?.workspace ? { workspace: teacherEditor.workspace } : {}),
+              }
         )
       } else if (!student.teacherEditRequestedAt) {
         setTeacherEditState('idle')
@@ -248,13 +244,13 @@ export default function StudentModal({
 
   function handleCommitEdit() {
     clearTimeout(pushDebounceRef.current)
-    if (isScratch) {
+    if (teacherEditor?.surface === 'blocks') {
       onCommitTeacherEdit?.(student.anonymousId, { code: JSON.stringify(teacherScratchState) })
       setTeacherScratchState(null)
-    } else if (isHtml) {
+    } else if (teacherEditor?.surface === 'files') {
       onCommitTeacherEdit?.(student.anonymousId, { files: teacherFiles })
       setTeacherFiles([])
-    } else if (isArcade) {
+    } else if (teacherEditor?.design) {
       onCommitTeacherEdit?.(student.anonymousId, {
         code: teacherCode,
         arcadeDesign: teacherArcadeDesign,
@@ -347,19 +343,21 @@ export default function StudentModal({
   const task = findTaskById(lesson?.tasks, session?.currentTaskId)
   const taskLesson = getEffectiveLessonForTask(lesson, task)
   const {
-    isPython,
-    isScratch,
-    isFilesystem,
-    isElectronics,
-    isArcade,
-    isHtml,
-    isTurtle,
+    moduleType,
     isQuiz,
     isInformation,
     isActivity: isActivityTask,
     activity,
     isSessionSandbox,
   } = deriveTaskContext(taskLesson, task, session)
+  // The task's module (null on a hosted activity outside a session sandbox): its capabilities
+  // gate the teacher controls below.
+  const moduleDefinition = getModuleDefinition(moduleType)
+  const moduleCaps = moduleDefinition?.capabilities ?? null
+  // How the student's work is mirrored (capabilities.studentMirror): see StudentWorkspaceBody.
+  const mirror = moduleCaps?.studentMirror ?? null
+  // What the teacher live-edits in (capabilities.teacherEditor); null = no live edit.
+  const teacherEditor = moduleCaps?.teacherEditor ?? null
   const isCodeArrangeTask = task?.taskType === 'code_arrange' && !isSessionSandbox
   // Hosted activity tasks show the activity (read-only, or editable via Edit answers) in place
   // of a workspace; quiz-like everywhere else in the header (no reveal, pane focus or share).
@@ -371,13 +369,15 @@ export default function StudentModal({
   // student's answer directly (pushed live, see pushTeacherAnswerEdit).
   const supportsAnswerEdit =
     !!onTeacherAnswerEdit && (!!itemProgress || (isActivity && !!activity?.teacherEditable))
-  // Runs the student's current code on the student's own device.
+  // Runs the student's current code on the student's own device: any module with a Run
+  // (capabilities.run is not 'none').
   const supportsRemoteRun =
     !!onRemoteRun &&
     !isQuiz &&
     !isInformation &&
     task?.interactionMode !== 'submit' &&
-    (isPython || isTurtle || isArcade || isHtml || isScratch || isElectronics)
+    !!moduleCaps &&
+    moduleCaps.run !== 'none'
 
   function handleRemoteRun() {
     onRemoteRun?.(student.anonymousId)
@@ -388,30 +388,32 @@ export default function StudentModal({
     student.teacherAssistedTaskId != null &&
     String(student.teacherAssistedTaskId) === String(session?.currentTaskId)
   // Turtle edits go through the plain code editor below and commit as { code }.
-  const supportsTeacherEdit =
-    isPython || isScratch || isHtml || isArcade || isElectronics || isTurtle
+  const supportsTeacherEdit = !!teacherEditor
   const lessonModule = getLessonModule(taskLesson?.type)
-  const ModuleTeacherLiveView =
-    !isPython && !isScratch && !isHtml ? lessonModule?.TeacherLiveView : null
+  // The module's own TeacherLiveView renders the 'blocks' and 'view' mirrors and the 'files'
+  // and 'view' live-edit surfaces.
+  const ModuleTeacherLiveView = lessonModule?.TeacherLiveView ?? null
   // Memoized on the raw code string: `student` is a live RTDB-fed object that
   // updates on every throttled cursor/block-drag tick while a Scratch student is
   // being watched, far more often than currentCode itself changes. Without this,
   // ScratchWorkspace's "load external state" effect (keyed on object identity)
   // reloads the mirrored workspace on every one of those renders, stomping the
   // live block-drag mirror's in-progress moveTo() with a stale reload.
+  const isBlocksMirror = mirror === 'blocks'
   const scratchState = useMemo(
-    () => (isScratch ? parseScratchState(student.currentCode) : null),
-    [isScratch, student.currentCode]
+    () => (isBlocksMirror ? parseScratchState(student.currentCode) : null),
+    [isBlocksMirror, student.currentCode]
   )
-  const spriteState = isScratch ? (student.currentSpriteState ?? null) : null
-  const cursorState = isScratch ? (student.currentCursor ?? null) : null
-  const blockDragState = isScratch ? (student.currentBlockDrag ?? null) : null
-  const moduleDisplayState = ModuleTeacherLiveView
-    ? getModuleDisplayState(lessonModule, student.currentCode)
-    : null
+  const spriteState = isBlocksMirror ? (student.currentSpriteState ?? null) : null
+  const cursorState = isBlocksMirror ? (student.currentCursor ?? null) : null
+  const blockDragState = isBlocksMirror ? (student.currentBlockDrag ?? null) : null
+  const moduleDisplayState =
+    mirror === 'view' && ModuleTeacherLiveView
+      ? getModuleDisplayState(lessonModule, student.currentCode)
+      : null
   const iframeSrc =
-    isHtml && !isQuiz && files.length
-      ? getLessonModule('html').runtime.buildPreviewSrc(
+    mirror === 'files' && !isQuiz && files.length
+      ? lessonModule.runtime.buildPreviewSrc(
           { files, entryFile: task?.entryFile ?? 'index.html' },
           task
         )
@@ -429,7 +431,7 @@ export default function StudentModal({
 
   const hasOverride = !!student.checkOverridePushedAt
   const remoteSelection =
-    !isLive || (!isPython && student.currentSelection?.file !== activeFile)
+    !isLive || (mirror !== 'code' && student.currentSelection?.file !== activeFile)
       ? null
       : student.currentSelection
 
@@ -438,17 +440,15 @@ export default function StudentModal({
     !isInformation &&
     !isQuiz &&
     !isCodeArrangeTask &&
-    (isPython || isHtml) &&
-    !isScratch &&
-    !isFilesystem &&
+    !!moduleCaps?.highlights &&
     teacherEditState === 'idle'
   const highlightsForActiveFile = useMemo(() => {
     const raw = student.teacherHighlights
     if (!raw) return []
     return Object.entries(raw)
-      .filter(([, h]) => (isPython ? true : decodeFileKey(h.file) === activeFile))
+      .filter(([, h]) => (mirror === 'code' ? true : decodeFileKey(h.file) === activeFile))
       .map(([id, h]) => ({ id, from: h.from, to: h.to, emoji: h.emoji, note: h.note }))
-  }, [student.teacherHighlights, isPython, activeFile])
+  }, [student.teacherHighlights, mirror, activeFile])
 
   useEffect(() => {
     const liveFile =
@@ -463,12 +463,8 @@ export default function StudentModal({
   ])
 
   const stageOptions = buildStageOptions(task, taskLesson?.type)
-  const supportsStageReveal =
-    isPython ||
-    isHtml ||
-    taskLesson?.type === 'arcade' ||
-    taskLesson?.type === 'electronics' ||
-    taskLesson?.type === 'scratch'
+  // The Reveal menu's support / complete stages (capabilities.teacherStageReveal).
+  const supportsStageReveal = !!moduleCaps?.teacherStageReveal
   const revealableStages =
     !isInformation && !isQuizLike && supportsStageReveal ? getRevealableStages(task) : []
   const completeStage =
@@ -817,7 +813,7 @@ export default function StudentModal({
                               handleStartEdit()
                             }}
                           >
-                            {isScratch ? '✏ Edit Blocks' : '✏ Edit Code'}
+                            ✏ {moduleDefinition?.meta.teacherEditCopy?.action}
                           </button>
                         )}
                         {hasTopic && (
@@ -941,16 +937,16 @@ export default function StudentModal({
                     ? s.bodyQuiz
                     : isCodeArrangeTask
                       ? s.bodyCodeArrange
-                      : isPython
+                      : mirror === 'code'
                         ? s.bodyPython
-                        : isScratch
+                        : mirror === 'blocks'
                           ? s.bodyScratch
-                          : ModuleTeacherLiveView
+                          : mirror === 'view' && ModuleTeacherLiveView
                             ? s.bodyFilesystem
                             : s.bodyHtml
               }
             >
-              {teacherEditState === 'editing' && isScratch ? (
+              {teacherEditState === 'editing' && teacherEditor?.surface === 'blocks' ? (
                 <ScratchWorkspace
                   key={`teacher-edit-scratch-${student.anonymousId}-${session?.currentTaskId}`}
                   task={task}
@@ -959,16 +955,23 @@ export default function StudentModal({
                   initialState={parseScratchState(student.currentCode)}
                   onStateChange={handleScratchStateChange}
                 />
-              ) : teacherEditState === 'editing' && isHtml ? (
-                <HtmlTeacherLiveView
+              ) : teacherEditState === 'editing' &&
+                teacherEditor?.surface === 'files' &&
+                ModuleTeacherLiveView ? (
+                <ModuleTeacherLiveView
                   lesson={taskLesson}
                   displayState={{ files: teacherFiles }}
                   readOnly={false}
                   onChange={handleTeacherFileChange}
                   onTabChange={handleTeacherHtmlTabChange}
                 />
-              ) : teacherEditState === 'editing' && isArcade ? (
-                <ArcadeTeacherLiveView
+              ) : teacherEditState === 'editing' &&
+                teacherEditor?.surface === 'view' &&
+                ModuleTeacherLiveView ? (
+                // The module's own view over the code string. Arcade reads the design and its
+                // workspace tab (activeWorkspace / onWorkspaceChange); Electronics reports its
+                // Breadboard/MicroPython tab through onTabChange.
+                <ModuleTeacherLiveView
                   task={task}
                   student={student}
                   displayState={teacherCode}
@@ -978,13 +981,6 @@ export default function StudentModal({
                   onChange={handleTeacherCodeChange}
                   onDesignChange={handleTeacherArcadeDesignChange}
                   onWorkspaceChange={handleTeacherWorkspaceChange}
-                />
-              ) : teacherEditState === 'editing' && isElectronics ? (
-                <ElectronicsTeacherLiveView
-                  task={task}
-                  displayState={teacherCode}
-                  readOnly={false}
-                  onChange={handleTeacherCodeChange}
                   onTabChange={handleTeacherWorkspaceChange}
                 />
               ) : teacherEditState === 'editing' ? (
@@ -1008,9 +1004,7 @@ export default function StudentModal({
                   isActivity={isActivity}
                   activityState={activityState}
                   isSessionSandbox={isSessionSandbox}
-                  isPython={isPython}
-                  isScratch={isScratch}
-                  isHtml={isHtml}
+                  mirror={mirror}
                   isCodeArrangeTask={isCodeArrangeTask}
                   ModuleTeacherLiveView={ModuleTeacherLiveView}
                   moduleDisplayState={moduleDisplayState}

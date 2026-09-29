@@ -15,11 +15,14 @@ import {
   codeStringWire,
   codeWorkSlot,
   recordStorage,
+  TEACHER_EDIT_CODE_COPY,
+  alwaysPersonalSandbox,
 } from '../moduleContract.js'
 
 export default defineModule({
   type: 'python',
   meta: {
+    teacherEditCopy: TEACHER_EDIT_CODE_COPY,
     label: 'Python',
     order: 0,
     shortLabel: 'Python',
@@ -29,6 +32,15 @@ export default defineModule({
     playground: true,
   },
   capabilities: {
+    stageReveal: 'progressive',
+    teacherStageReveal: true,
+    highlights: true,
+    downloadCode: true,
+    fixedExplainer: false,
+    topicLibrary: true,
+    studentMirror: 'code',
+    cardSummary: 'output',
+    teacherEditor: { surface: 'code' },
     sideExplainer: true,
     modulePanes: true,
     teacherLiveReference: true,
@@ -126,6 +138,7 @@ export default defineModule({
 
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
   lifecycle: {
+    hasPersonalSandbox: alwaysPersonalSandbox,
     resetTarget: codeResetTarget,
     hasComplete: codeHasComplete,
     // Complete lives in the unified code stages, not a separate teacher tab.

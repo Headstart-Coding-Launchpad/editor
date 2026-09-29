@@ -24,11 +24,17 @@ import {
   recordStorage,
   stageForAction,
   starterStageOf,
+  personalSandboxWhenLessonHas,
 } from '../moduleContract.js'
 
 export default defineModule({
   type: 'electronics',
   meta: {
+    teacherEditCopy: {
+      action: 'Edit Code',
+      consent:
+        'Your teacher would like to edit your breadboard to help you. You will see their changes live.',
+    },
     label: 'Electronics',
     order: 7,
     shortLabel: 'Electronics',
@@ -38,6 +44,19 @@ export default defineModule({
     playground: true,
   },
   capabilities: {
+    stageReveal: 'offer',
+    teacherStageReveal: true,
+    highlights: false,
+    downloadCode: false,
+    fixedExplainer: false,
+    topicLibrary: true,
+    studentMirror: 'view',
+    cardSummary: 'output',
+    focusPanes: [
+      { id: 'breadboard', label: 'Breadboard' },
+      { id: 'code', label: 'MicroPython' },
+    ],
+    teacherEditor: { surface: 'view', workspace: 'breadboard' },
     sideExplainer: true,
     modulePanes: true,
     teacherLiveReference: true,
@@ -127,6 +146,7 @@ export default defineModule({
 
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
   lifecycle: {
+    hasPersonalSandbox: personalSandboxWhenLessonHas('sandboxStarterCircuit'),
     resetTarget: (task, action, ctx = {}) => {
       const { stage } = stageForAction(task, action)
       if (action === 'complete') {

@@ -184,7 +184,7 @@ export function getProgressItems(tasks) {
 export function deriveTaskContext(lesson, task, session) {
   // moduleType is the registered module type of the (effective, per-task) lesson, or null for
   // anything else (e.g. an unresolved 'composed' lesson). The is<Type> flags are kept for
-  // existing callers; prefer moduleType + the module definition for new code.
+  // existing callers; prefer moduleType + its definition's capabilities (getModuleDefinition) for new code.
   const isQuiz = isLegacyQuizTask(task)
   const isInformation = task?.taskType === 'information'
   const isSessionSandbox = session?.state === 'sandbox'

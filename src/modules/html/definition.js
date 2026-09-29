@@ -16,6 +16,7 @@ import {
   perFileStorage,
   stageForAction,
   starterStageOf,
+  TEACHER_EDIT_CODE_COPY,
 } from '../moduleContract.js'
 import { getCompleteStage } from '../../shared/taskStages.js'
 
@@ -28,6 +29,7 @@ const DEFAULT_HTML_FILE = {
 export default defineModule({
   type: 'html',
   meta: {
+    teacherEditCopy: TEACHER_EDIT_CODE_COPY,
     label: 'HTML',
     order: 4,
     shortLabel: 'HTML',
@@ -38,6 +40,14 @@ export default defineModule({
     surfaceLabels: { lessonIntro: 'Web Dev', builderMeta: 'Web', print: 'Web (HTML/CSS/JS)' },
   },
   capabilities: {
+    stageReveal: 'progressive',
+    teacherStageReveal: true,
+    highlights: true,
+    downloadCode: false,
+    fixedExplainer: false,
+    topicLibrary: true,
+    studentMirror: 'files',
+    teacherEditor: { surface: 'files' },
     sideExplainer: true,
     modulePanes: true,
     teacherLiveReference: true,
@@ -166,6 +176,7 @@ export default defineModule({
 
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
   lifecycle: {
+    hasPersonalSandbox: (lesson) => !!(lesson?.sandboxStarterFiles?.length > 0),
     resetTarget: (task, action) => {
       const { stage } = stageForAction(task, action)
       const starter = starterStageOf(task)

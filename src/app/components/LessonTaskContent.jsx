@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import Banner from '../../shared/Banner'
 import { getLessonModule } from '../../modules/registry'
-import { getModuleTypesWithCapability } from '../../modules/definitions'
+import { getModuleDefinition, getModuleTypesWithCapability } from '../../modules/definitions'
 import SplitPane from '../../shared/SplitPane'
 import ExplainerPanel from './ExplainerPanel'
 import InformationTask from './InformationTask'
@@ -59,12 +59,17 @@ function blockClipboardEvent(event) {
 // Adapts Presentation View's independent live-reference broadcast
 // (sessions/{lessonId}/teacherLiveReference — separate from teacherLive, which drives
 // the all-or-nothing "Go Live" force takeover) into the {label, code|files|fs} shape
-// SupportStagePanel's stageToText expects per lesson type.
+// SupportStagePanel's stageToText expects per lesson type: a files module's files, else the
+// module's work under its code-stage field (`workSlot.stageField`, e.g. filesystem's `fs`),
+// `code` by default.
 function teacherLiveReferenceStageFrom(teacherLive, lessonType) {
   const displayState = teacherLiveReferenceDisplayState(teacherLive, lessonType)
   if (displayState == null) return null
-  if (lessonType === 'html') return { label: "Teacher's live code", files: displayState.files }
-  const shapeKey = lessonType === 'filesystem' ? 'fs' : 'code'
+  const definition = getModuleDefinition(lessonType)
+  if (definition?.wire.sandboxChannel === 'files') {
+    return { label: "Teacher's live code", files: displayState.files }
+  }
+  const shapeKey = definition?.workSlot?.stageField ?? 'code'
   return { label: "Teacher's live code", [shapeKey]: displayState }
 }
 
@@ -192,7 +197,11 @@ export default function LessonTaskContent({
   const StudentWorkspace = lessonMod?.StudentWorkspace
   const modStyles = lessonMod?.getLayoutStyles(isMobile) ?? {}
   const supportsSideExplainer = SIDE_EXPLAINER_TYPES.includes(lessonMod?.type ?? lesson.type)
-  const isScratchLesson = (lessonMod?.type ?? lesson.type) === 'scratch'
+  const moduleCaps = getModuleDefinition(lessonMod?.type ?? lesson.type)?.capabilities ?? null
+  // Scratch's layout (capabilities.fixedExplainer): a fixed-width explainer column that tabs
+  // away behind Instructions/Code tabs when the task panel is narrow, with the workspace's own
+  // Blocks/Stage panes reported through the dedicated scratchCodePanes state below.
+  const isFixedExplainerLesson = !!moduleCaps?.fixedExplainer
   const supportsModulePanes = MODULE_PANES_TYPES.includes(lessonMod?.type ?? lesson.type)
   const taskPanelMeasured = taskPanelSize.width > 0
   // Width-only: giving Code its own tab doesn't add height (explainer and code already
@@ -200,7 +209,7 @@ export default function LessonTaskContent({
   // own compact detection (which checks height too) rather than tabbing Instructions away
   // for no benefit.
   const taskPanelCompact =
-    isScratchLesson &&
+    isFixedExplainerLesson &&
     taskPanelMeasured &&
     taskPanelSize.width < EXPLAINER_FIXED_WIDTH + SCRATCH_SPLIT_GAP + SCRATCH_CODE_WIDE_WIDTH
   const showsCompleteCode = !!explainerShowsComplete && !!task?.completeCode
@@ -238,7 +247,7 @@ export default function LessonTaskContent({
         ? !explainerCollapsed
         : !accordionExplainerCollapsed
   const codePaneVisible = !taskPanelCompact || taskPanelTab === 'code'
-  const visiblePanes = isScratchLesson
+  const visiblePanes = isFixedExplainerLesson
     ? [
         ...(instructionsPaneVisible ? ['instructions'] : []),
         ...(codePaneVisible ? scratchCodePanes : []),
@@ -254,12 +263,12 @@ export default function LessonTaskContent({
   const instructionsHighlighted = !!highlightedPanes?.includes('instructions')
 
   useEffect(() => {
-    if (isScratchLesson || supportsModulePanes || hasTaskExplainer)
+    if (isFixedExplainerLesson || supportsModulePanes || hasTaskExplainer)
       onVisiblePanesChange?.(visiblePanes)
     // visiblePanes is rebuilt every render; visiblePanesKey is its stable dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    isScratchLesson,
+    isFixedExplainerLesson,
     supportsModulePanes,
     hasTaskExplainer,
     visiblePanesKey,
@@ -296,14 +305,8 @@ export default function LessonTaskContent({
   }
   const showExplainerPane = presenterLayout !== 'code'
   const showCodePane = presenterLayout !== 'explainer'
-  const supportsStageReveal = [
-    'python',
-    'html',
-    'arcade',
-    'turtle',
-    'electronics',
-    'scratch',
-  ].includes(lessonMod?.type ?? lesson.type)
+  // Modules on the unified code-stage model show a revealed support stage as a reference.
+  const supportsStageReveal = !!moduleCaps?.unifiedStages
   const activeSupportStage =
     !isSandbox &&
     !cs.inPersonalSandbox &&
@@ -348,10 +351,10 @@ export default function LessonTaskContent({
     !isForcedTeacherLive &&
     !isTeacherEditing &&
     cs.completePreviewShown &&
-    ['python', 'html'].includes(lesson.type) &&
+    getModuleDefinition(lesson.type)?.capabilities.stageReveal === 'progressive' &&
     (authoredCompleteStage || task?.completeCode || task?.completeFiles?.length)
       ? (authoredCompleteStage ??
-        (lesson.type === 'html'
+        (getModuleDefinition(lesson.type).wire.sandboxChannel === 'files'
           ? {
               label: 'Complete solution',
               files: task.completeFiles ?? [],
@@ -432,7 +435,7 @@ export default function LessonTaskContent({
               : task.explainer
         }
         topicType={lesson.type}
-        showLibrary={!isScratchLesson}
+        showLibrary={moduleCaps?.topicLibrary ?? true}
         onTopicOpen={onTopicOpen}
         onTopicClose={onTopicClose}
         openTopicId={openTopicId}
@@ -620,7 +623,11 @@ export default function LessonTaskContent({
           teacherLiveWorkspace={teacherLiveWorkspace}
           teacherLiveArcadeDesign={teacherLiveArcadeDesign}
           onVisiblePanesChange={
-            isScratchLesson ? setScratchCodePanes : supportsModulePanes ? setModulePanes : undefined
+            isFixedExplainerLesson
+              ? setScratchCodePanes
+              : supportsModulePanes
+                ? setModulePanes
+                : undefined
           }
           highlightedPanes={highlightedPanes}
           forcedPaneCommand={forcedPaneCommand}
@@ -688,7 +695,7 @@ export default function LessonTaskContent({
 
       {feedbackBanner}
 
-      {useSideExplainer && showExplainerPane && showCodePane && isScratchLesson ? (
+      {useSideExplainer && showExplainerPane && showCodePane && isFixedExplainerLesson ? (
         // Explainer and code panes are ALWAYS the same two divs, in the same tree
         // position, in both compact (tabbed) and split (fixed-width) modes — only their
         // `style` (and, for the explainer, whether it shows the rail) changes between

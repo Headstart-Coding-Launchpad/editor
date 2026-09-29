@@ -42,6 +42,23 @@ export function codeHasComplete(task) {
   return !!(getCompleteStage(task)?.stage?.code ?? task?.completeCode)
 }
 
+// lifecycle.hasPersonalSandbox builders: the personal sandbox is always offered (python,
+// arcade, turtle), or only when the lesson sets the given sandbox-starter field.
+export function alwaysPersonalSandbox() {
+  return true
+}
+
+export function personalSandboxWhenLessonHas(field) {
+  return (lesson) => lesson?.[field] != null
+}
+
+// Teacher live-edit copy (meta.teacherEditCopy) shared by the text-code modules.
+export const TEACHER_EDIT_CODE_COPY = Object.freeze({
+  action: 'Edit Code',
+  consent:
+    'Your teacher would like to edit your code to help you. They will type in your editor and you will see their changes live.',
+})
+
 // ── Storage ──────────────────────────────────────────────────────────────────
 
 function pickPresent(source, keys) {

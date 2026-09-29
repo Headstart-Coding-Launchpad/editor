@@ -12,11 +12,17 @@ import {
   recordStorage,
   stageForAction,
   starterStageOf,
+  personalSandboxWhenLessonHas,
 } from '../moduleContract.js'
 
 export default defineModule({
   type: 'scratch',
   meta: {
+    teacherEditCopy: {
+      action: 'Edit Blocks',
+      consent:
+        'Your teacher would like to edit your Scratch blocks to help you. You will see their changes live.',
+    },
     label: 'Scratch',
     order: 3,
     shortLabel: 'Scratch',
@@ -26,6 +32,19 @@ export default defineModule({
     playground: true,
   },
   capabilities: {
+    stageReveal: 'offer',
+    teacherStageReveal: true,
+    highlights: false,
+    downloadCode: false,
+    fixedExplainer: true,
+    topicLibrary: false,
+    studentMirror: 'blocks',
+    cardSummary: 'blocks',
+    focusPanes: [
+      { id: 'blocks', label: 'Blocks' },
+      { id: 'stage', label: 'Stage' },
+    ],
+    teacherEditor: { surface: 'blocks' },
     sideExplainer: true,
     modulePanes: false,
     teacherLiveReference: false,
@@ -132,6 +151,7 @@ export default defineModule({
 
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
   lifecycle: {
+    hasPersonalSandbox: personalSandboxWhenLessonHas('sandboxStarter'),
     // Only a stage reset leaves a stage active; starter and complete clear it.
     resetTarget: (task, action) => {
       if (action === 'complete') return { blocks: task.completeBlocks ?? null, stageIndex: null }

@@ -10,6 +10,8 @@ import {
   codeStringWire,
   codeWorkSlot,
   recordStorage,
+  TEACHER_EDIT_CODE_COPY,
+  alwaysPersonalSandbox,
 } from '../moduleContract.js'
 import { compactTurtleResultForSync } from './sync.js'
 
@@ -19,6 +21,7 @@ const DEFAULT_STARTER_CODE =
 export default defineModule({
   type: 'turtle',
   meta: {
+    teacherEditCopy: TEACHER_EDIT_CODE_COPY,
     label: 'Python Turtle',
     order: 2,
     shortLabel: 'Turtle',
@@ -29,6 +32,14 @@ export default defineModule({
     surfaceLabels: { stageReference: 'Python' },
   },
   capabilities: {
+    stageReveal: 'offer',
+    teacherStageReveal: false,
+    highlights: false,
+    downloadCode: false,
+    fixedExplainer: false,
+    topicLibrary: true,
+    studentMirror: 'view',
+    teacherEditor: { surface: 'code' },
     sideExplainer: true,
     modulePanes: true,
     teacherLiveReference: true,
@@ -109,6 +120,7 @@ export default defineModule({
 
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
   lifecycle: {
+    hasPersonalSandbox: alwaysPersonalSandbox,
     resetTarget: codeResetTarget,
     hasComplete: codeHasComplete,
     teacherCompleteTab: () => false,

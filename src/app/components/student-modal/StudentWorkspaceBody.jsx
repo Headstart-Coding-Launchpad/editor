@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { CodeEditor } from '../../../shared/CodeEditor'
-import ScratchTeacherLiveView from '../../../modules/scratch/TeacherLiveView.jsx'
 import CodeArrangeTask from '../CodeArrangeTask'
 import { deriveSlotStateFromCode, getCodeArrangeEntryFile } from '../../../shared/codeArrange'
 import ExplainerPanel from '../ExplainerPanel'
@@ -53,9 +52,11 @@ export default function StudentWorkspaceBody({
   isActivity = false,
   activityState = null,
   isSessionSandbox,
-  isPython,
-  isScratch,
-  isHtml,
+  // How the student's work is mirrored — the module's capabilities.studentMirror ('code',
+  // 'files', 'blocks' or 'view'), null when no module applies. 'blocks' and 'view' render the
+  // module's own TeacherLiveView (ModuleTeacherLiveView) with the Scratch mirrors or the
+  // module display state respectively.
+  mirror = null,
   isCodeArrangeTask,
   ModuleTeacherLiveView,
   moduleDisplayState,
@@ -143,6 +144,9 @@ export default function StudentWorkspaceBody({
     </div>
   )
 
+  // A code_arrange task's code comes from its entry file on a files module (html).
+  const isFilesMirror = mirror === 'files'
+
   if (isInformation)
     return (
       <ExplainerPanel
@@ -210,7 +214,7 @@ export default function StudentWorkspaceBody({
     // otherwise show stale code from a previous task while the student is
     // still mid-arrangement.
     const entryFile = getCodeArrangeEntryFile(task)
-    const code = isHtml
+    const code = isFilesMirror
       ? (files.find((f) => f.name === entryFile)?.content ?? '')
       : (student.currentCode ?? '')
     const liveSlots = answerEditing ? editableSlots : student.currentCodeArrangeSlots
@@ -219,7 +223,7 @@ export default function StudentWorkspaceBody({
     return (
       <CodeArrangeTask
         task={task}
-        moduleType={isHtml ? 'html' : 'python'}
+        moduleType={isFilesMirror ? 'html' : 'python'}
         selectedAnswer={selectedAnswer}
         output={student.currentOutput ?? ''}
         runStatus={student.lastRunStatus}
@@ -240,7 +244,7 @@ export default function StudentWorkspaceBody({
     )
   }
 
-  if (isPython)
+  if (mirror === 'code')
     return (
       <>
         {highlightComposer}
@@ -274,9 +278,9 @@ export default function StudentWorkspaceBody({
       </>
     )
 
-  if (isScratch) {
+  if (mirror === 'blocks' && ModuleTeacherLiveView) {
     return (
-      <ScratchTeacherLiveView
+      <ModuleTeacherLiveView
         key={`student-scratch-${student.anonymousId}-${session?.currentTaskId}`}
         task={task}
         lesson={lesson}
@@ -290,7 +294,7 @@ export default function StudentWorkspaceBody({
     )
   }
 
-  if (ModuleTeacherLiveView) {
+  if (mirror === 'view' && ModuleTeacherLiveView) {
     return (
       <ModuleTeacherLiveView
         task={task}
@@ -307,7 +311,7 @@ export default function StudentWorkspaceBody({
     )
   }
 
-  if (isHtml)
+  if (isFilesMirror)
     return (
       <>
         <div style={s.htmlEditorPane}>

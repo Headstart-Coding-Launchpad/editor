@@ -13,7 +13,12 @@ import {
   serializeDesktop,
   deserializeDesktop,
 } from './desktopState.js'
-import { jsonWire, recordStorage, stageForAction } from '../moduleContract.js'
+import {
+  jsonWire,
+  recordStorage,
+  stageForAction,
+  personalSandboxWhenLessonHas,
+} from '../moduleContract.js'
 import { INPUT_CHECK_TYPES } from '../../shared/input/checks.js'
 
 export default defineModule({
@@ -28,6 +33,13 @@ export default defineModule({
     playground: false,
   },
   capabilities: {
+    stageReveal: 'offer',
+    teacherStageReveal: false,
+    highlights: false,
+    downloadCode: false,
+    fixedExplainer: false,
+    topicLibrary: true,
+    studentMirror: 'view',
     sideExplainer: false,
     modulePanes: false,
     teacherLiveReference: false,
@@ -97,6 +109,7 @@ export default defineModule({
 
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
   lifecycle: {
+    hasPersonalSandbox: personalSandboxWhenLessonHas('sandboxStarterDesktop'),
     resetTarget: (task, action, ctx = {}) => {
       const { stage } = stageForAction(task, action)
       if (action === 'complete') {

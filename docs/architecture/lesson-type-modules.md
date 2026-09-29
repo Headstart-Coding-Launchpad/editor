@@ -36,9 +36,23 @@ Core code no longer keeps its own module-type lists or label/icon maps; it deriv
 - `sideExplainer` — explainer renders as a side rail (`LessonTaskContent.jsx`); otherwise an accordion above the workspace.
 - `modulePanes` — `StudentWorkspace` reports `visiblePanes` through the generic `modulePanes` state.
 - `teacherLiveReference` — teacher live code can be the support-stage reference (`TEACHER_LIVE_REFERENCE_TYPES`); membership alone is not enough, `teacherLiveReferenceDisplayState` must also adapt the payload.
-- `unifiedStages` — remote reset uses the unified Starter/Complete stage selector (`buildStageOptions`).
+- `unifiedStages` — remote reset uses the unified Starter/Complete stage selector (`buildStageOptions`), and the student shows a revealed support stage as a read-only reference (`LessonTaskContent`).
 - `sandboxState` — `'code' | 'blocks' | 'fs' | 'desktop' | 'files'`, where TeacherView keeps teacher sandbox work (`'code'` = the single code-string slot).
 - `run` (plan step 4.4) — what the student's Run (`useStudentCodeState.handleRun`) does: `'runtime'` runs the code through the module's runtime (`runWithRuntime`: python, turtle via Pyodide, electronics via MicroPython), `'preview'` builds the HTML preview iframe (html), `'workspace'` leaves it to the workspace, which runs the work itself and reports back through its own handler (Arcade's game iframe via `handleWorkspaceRun`, Scratch's stage via `handleScratchCheck` → `reportRun`), `'none'` has nothing to run (filesystem, desktop). A definition may omit it; `defineModule` defaults it to `'none'` (desktop relies on this). `handleRun` dispatches on it and never on the lesson type, so a new module can't fall into another module's Run branch.
+
+UI gates (plan step 4.7) — StudentView, StudentModal, StudentWorkspaceBody, StudentCard, LessonTaskContent and PaneFocusDropdown read these instead of comparing lesson types. They are looked up by the task's effective module (`getEffectiveLessonForTask` / `deriveTaskContext().moduleType`), never a composed lesson's raw `type`; `moduleDefinitions.test.js` pins every module's values.
+
+- `stageReveal` — how a student reaches the code stages on their own: `'progressive'` (python, html) reveals support stages as read-only references and previews the complete solution read-only before offering to load it; `'offer'` (the rest) offers to load the next stage, then the complete one, after two failed checks.
+- `teacherStageReveal` — StudentModal's Reveal menu lists the task's support stages and complete stage (python, arcade, scratch, html, electronics; turtle has never had it).
+- `highlights` — the teacher can highlight code in StudentModal's mirror (python, html); needs a `'code'` or `'files'` `studentMirror`.
+- `studentMirror` — how StudentModal / StudentWorkspaceBody mirror the watched student: `'code'` (the modal's read-only code editor and output; python), `'files'` (file tabs, editor and preview iframe; html — exactly the `'files'` wire channel), `'blocks'` (the module's `TeacherLiveView` fed the Blockly project and sprite / cursor / block-drag mirrors; scratch) or `'view'` (the module's `TeacherLiveView` fed its display state; arcade, turtle, filesystem, desktop, electronics). StudentModal passes the registry's `TeacherLiveView` down; core code no longer imports a module's view directly.
+- `teacherEditor` (optional, null) — the teacher's live edit, declared exactly when `workSlot.teacherEdit` is: `surface` `'code'` (a plain Python editor; python, turtle), `'files'` (the module's `TeacherLiveView` over the files; html), `'blocks'` (an editable Scratch workspace) or `'view'` (the module's `TeacherLiveView` over the code string; arcade, electronics); `workspace` is the workspace tab the edit opens on and pushes (arcade `'code'`, electronics `'breadboard'`); `design` adds the Arcade design to the edit and its commit. Its copy is `meta.teacherEditCopy` (`action` for the "✏ …" menu item, `consent` for the student's prompt).
+- `downloadCode` — the student can download the task or sandbox code as a `.launchpad` file (python).
+- `fixedExplainer` — the side explainer is a fixed-width column that tabs away behind Instructions / Code tabs on a narrow panel, the workspace reports its own panes through a dedicated state, and in solo the hidden explainer becomes a nav pseudo-task (scratch); needs `sideExplainer` and no `modulePanes`.
+- `topicLibrary` — the explainer offers the topic library (every module but scratch).
+- `cardSummary` (optional, null) — what a StudentCard shows for the work: `'output'` (first lines of console output; python, arcade, electronics), `'blocks'` (scratch), `'fs'` (filesystem), or null for the generic "HTML project" / "No run yet" line (html, turtle, desktop).
+- `focusPanes` (optional, `[]`) — module panes the teacher can highlight or force besides Instructions (`PaneFocusDropdown`): electronics Breadboard / MicroPython, scratch Blocks / Stage.
+- Reused: remote run ("▶ Run on student") is offered when `run` is not `'none'`; the personal sandbox is offered when `lifecycle.hasPersonalSandbox(lesson)`.
 
 A `'runtime'` module also declares `runResult` (and only runtime modules may): `errorLine` (a stderr line number highlights the editor line — python), `turtle` (the run's drawing is written with the run through `writeStudentTurtleResult` — turtle) and `liveCode` (the runtime rewrites the work while it runs through `onCodeUpdate`, and a stopped run is still saved as `{ code, output }` — electronics). `moduleRunCapability.test.js` pins every module's values and checks them against the UI half's `runtime`.
 
@@ -71,6 +85,7 @@ Three required, frozen hook groups on every definition, validated by `defineModu
 - `teacherCompleteTab(task)` — whether TeacherEditorPanel shows a separate Complete tab (`false` for python, html, arcade and turtle, whose complete lives in the unified code stages).
 - `sandboxStarter(lesson, task)` — the teacher sandbox starter (TeacherView). `getSandboxState` is its alias.
 - `composedSandboxFields(firstTask)` — the lesson-level sandbox fields (`sandboxStarter`, `sandboxStarterFiles`, `sandboxStarterFs`, `sandboxStarterDesktop`, `sandboxStarterCircuit`) a composed lesson's module derives from its first code task in `getEffectiveLessonForModule`. Turtle returns `{}`, as before.
+- `hasPersonalSandbox(lesson)` (plan step 4.7) — whether StudentView offers the personal sandbox after a passed task: always for python, arcade and turtle (`alwaysPersonalSandbox`), else when the lesson has the module's sandbox starter (`personalSandboxWhenLessonHas(field)`; html needs a non-empty `sandboxStarterFiles`).
 
 `storage` — how the module's work maps onto the localStorage record shapes in `docs/agents/runtime-model.md` (which must not change):
 
@@ -87,7 +102,7 @@ Three required, frozen hook groups on every definition, validated by `defineModu
 - `liveExtras({ arcadeDesign, turtleResult })` — always returns both teacherLive extras, explicit `null` for the ones the module lacks (teacherLive is an `update()` merge). Arcade passes its design; Turtle compacts its result with `compactTurtleResultForSync`.
 - `submission(work)` — the value logged with an attempt (the work itself; html a filename → content map).
 
-Call sites using the hooks today: `studentTaskContent.resolveRemoteResetTarget`, `StudentView` (`hasCompleteSolution`), `TeacherEditorPanel` (Complete tab), `TeacherView` (`lifecycle.sandboxStarter`), `composedLesson.getEffectiveLessonForModule`, `useTeacherLivePublish` (live extras and the work-slot code string), and `sharedWorkspacePayload` (snapshot code/arcade design and share copy, keyed by `capabilities.sandboxState`). TeacherView's sandbox branches move in step 4.6.
+Call sites using the hooks today: `studentTaskContent.resolveRemoteResetTarget`, `StudentView` (`hasCompleteSolution`, `hasPersonalSandbox`), `TeacherEditorPanel` (Complete tab), `TeacherView` (`lifecycle.sandboxStarter`), `composedLesson.getEffectiveLessonForModule`, `useTeacherLivePublish` (live extras and the work-slot code string), and `sharedWorkspacePayload` (snapshot code/arcade design and share copy, keyed by `capabilities.sandboxState`). TeacherView's sandbox branches move in step 4.6.
 
 ### Contract v2: checking and the generic work slot (plan steps 4.3–4.5)
 

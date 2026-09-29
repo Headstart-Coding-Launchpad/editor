@@ -246,11 +246,15 @@ export default function StudentView({
   }, [viewingTaskId, currentTaskId])
 
   const isMobile = useIsMobile()
-  const currentPythonTask = useMemo(() => {
-    if (activeLesson?.type !== 'python') return null
+  // The current task when its module's code can be downloaded as a .launchpad file
+  // (capabilities.downloadCode: python).
+  const activeModuleCaps = getModuleDefinition(activeLesson?.type)?.capabilities ?? null
+  const canDownloadCode = !!activeModuleCaps?.downloadCode
+  const currentDownloadableTask = useMemo(() => {
+    if (!canDownloadCode) return null
     const task = flattenTasks(lesson.tasks).find((item) => item.id === currentTaskId)
     return isPythonCodeTask(task) ? task : null
-  }, [lesson, activeLesson?.type, currentTaskId])
+  }, [lesson, canDownloadCode, currentTaskId])
   // Only shown on the session-ended screen — gating on phase avoids rescanning localStorage
   // on every keystroke while the student is still working.
   const savedPythonTasks = useMemo(() => {
@@ -303,11 +307,11 @@ export default function StudentView({
   }
 
   function handleDownloadCurrentCode() {
-    if (!currentPythonTask) return
+    if (!currentDownloadableTask) return
     cs.saveCurrentWork()
     downloadTasks(
-      [{ id: currentPythonTask.id, title: currentPythonTask.title, code: cs.code }],
-      currentPythonTask.title
+      [{ id: currentDownloadableTask.id, title: currentDownloadableTask.title, code: cs.code }],
+      currentDownloadableTask.title
     )
   }
 
@@ -429,9 +433,10 @@ export default function StudentView({
   // lesson.type — activeLesson is already the effective, composed-aware lesson for
   // currentTaskId (see getEffectiveLessonForTask), same as everything else in this
   // component that needs to know the current task's real module type.
+  // Only the fixed-width explainer (capabilities.fixedExplainer: Scratch) tabs away like this.
   const rawExplainerHidden =
     phase === 'solo' &&
-    activeLesson?.type === 'scratch' &&
+    !!activeModuleCaps?.fixedExplainer &&
     !!explainerPseudoCandidateTask?.explainer &&
     explainerPseudoCandidateTask?.taskType !== 'information' &&
     !isHostedActivityTask(explainerPseudoCandidateTask) &&
@@ -752,8 +757,10 @@ export default function StudentView({
   })
   const task = flatTasks.find((t) => t.id === displayedTaskId)
   const displayedLesson = getEffectiveLessonForTask(lesson, displayedTaskId)
+  const displayedModule = getModuleDefinition(displayedLesson.type)
+  // A forced teacher-live broadcast of a filesystem / desktop module carries its state as JSON.
   const displayFs =
-    isForcedTeacherLive && displayedLesson.type === 'filesystem'
+    isForcedTeacherLive && displayedModule?.capabilities.sandboxState === 'fs'
       ? (() => {
           try {
             return JSON.parse(session?.teacherLive?.code ?? '')
@@ -763,7 +770,7 @@ export default function StudentView({
         })()
       : cs.fsState
   const displayDesktop =
-    isForcedTeacherLive && displayedLesson.type === 'desktop'
+    isForcedTeacherLive && displayedModule?.capabilities.sandboxState === 'desktop'
       ? (() => {
           try {
             return JSON.parse(session?.teacherLive?.code ?? '')
@@ -913,19 +920,22 @@ export default function StudentView({
   // Each module's lifecycle.hasComplete decides; a non-module type (e.g. a composed lesson's
   // information task) keeps the historical files-based rule, which is HTML's.
   const hasCompleteSolution = (
-    getModuleDefinition(displayedLesson.type) ?? getModuleDefinition('html')
+    displayedModule ?? getModuleDefinition('html')
   ).lifecycle.hasComplete(task)
   const taskCodeStages = task?.codeStages ?? []
+  // capabilities.stageReveal: 'progressive' modules (python, html) reveal support stages as
+  // read-only references and preview the complete solution before offering to load it; the
+  // others ('offer') offer the next stage to load after two failed checks.
+  const revealsProgressively = displayedModule?.capabilities.stageReveal === 'progressive'
   const hasUnifiedCodeStages =
-    ['python', 'html'].includes(displayedLesson.type) &&
+    revealsProgressively &&
     taskCodeStages.some((stage) => ['starter', 'complete'].includes(stage?.role))
   const revealableStages = getRevealableStages(task)
-  const hasProgressiveReferences =
-    ['python', 'html'].includes(displayedLesson.type) && revealableStages.length > 0
+  const hasProgressiveReferences = revealsProgressively && revealableStages.length > 0
   const nextStageIndex = cs.offeredStageIndex + 1
   const canOfferNextStage =
     isSolo &&
-    !['python', 'html'].includes(displayedLesson.type) &&
+    !revealsProgressively &&
     !hasProgressiveReferences &&
     !displayCheckPassed &&
     cs.checkFailCount >= 2 &&
@@ -946,27 +956,13 @@ export default function StudentView({
   // to load it into the editor. Other lesson types have no such preview yet, so they
   // keep the original single-step "load complete solution" offer.
   const canOfferCompletePreview =
-    ['python', 'html'].includes(displayedLesson.type) && stagesExhausted && !cs.completePreviewShown
-  const canOfferCompleteSolution = ['python', 'html'].includes(displayedLesson.type)
+    revealsProgressively && stagesExhausted && !cs.completePreviewShown
+  const canOfferCompleteSolution = revealsProgressively
     ? stagesExhausted && cs.completePreviewShown
     : stagesExhausted
   const explainerShowsComplete = false
-  const hasPersonalSandbox =
-    activeLesson.type === 'python' ||
-    activeLesson.type === 'arcade' ||
-    activeLesson.type === 'turtle'
-      ? true
-      : activeLesson.type === 'html'
-        ? !!(activeLesson.sandboxStarterFiles?.length > 0)
-        : activeLesson.type === 'scratch'
-          ? !!(activeLesson.sandboxStarter != null)
-          : activeLesson.type === 'filesystem'
-            ? !!(activeLesson.sandboxStarterFs != null)
-            : activeLesson.type === 'desktop'
-              ? !!(activeLesson.sandboxStarterDesktop != null)
-              : activeLesson.type === 'electronics'
-                ? !!(activeLesson.sandboxStarterCircuit != null)
-                : false
+  const activeModule = getModuleDefinition(activeLesson.type)
+  const hasPersonalSandbox = !!activeModule?.lifecycle.hasPersonalSandbox(activeLesson)
   const canOfferPersonalSandbox =
     (phase === 'lesson' || isSolo) &&
     hasPersonalSandbox &&
@@ -979,13 +975,8 @@ export default function StudentView({
     !isForcedTeacherLive && (phase === 'lesson' || phase === 'sandbox') && session?.isPaused
 
   const myStudentTeacherEdit = session?.students?.[identity?.anonymousId]
-  const canTeacherEditType =
-    activeLesson?.type === 'python' ||
-    activeLesson?.type === 'html' ||
-    activeLesson?.type === 'arcade' ||
-    activeLesson?.type === 'scratch' ||
-    activeLesson?.type === 'electronics' ||
-    activeLesson?.type === 'turtle'
+  // Modules a teacher can live-edit declare capabilities.teacherEditor (and its consent copy).
+  const canTeacherEditType = !!activeModuleCaps?.teacherEditor
   const isTeacherEditing =
     !teacherPresentation &&
     !!myStudentTeacherEdit?.teacherEditAcceptedAt &&
@@ -1134,7 +1125,7 @@ export default function StudentView({
         </span>
       )}
       {taskProgressControl}
-      {isSandbox && activeLesson.type === 'python' ? (
+      {isSandbox && canDownloadCode ? (
         <button
           className="btn-ghost"
           style={s.downloadCodeBtn}
@@ -1145,7 +1136,7 @@ export default function StudentView({
       ) : (
         !isSolo &&
         !isForcedTeacherLive &&
-        currentPythonTask && (
+        currentDownloadableTask && (
           <button
             className="btn-ghost"
             style={s.downloadCodeBtn}
@@ -1210,13 +1201,7 @@ export default function StudentView({
               <span style={s.consentTitle}>Your teacher wants to help</span>
             </div>
             <div style={s.consentBody}>
-              <p style={s.consentText}>
-                {activeLesson?.type === 'scratch'
-                  ? 'Your teacher would like to edit your Scratch blocks to help you. You will see their changes live.'
-                  : activeLesson?.type === 'electronics'
-                    ? 'Your teacher would like to edit your breadboard to help you. You will see their changes live.'
-                    : 'Your teacher would like to edit your code to help you. They will type in your editor and you will see their changes live.'}
-              </p>
+              <p style={s.consentText}>{activeModule?.meta.teacherEditCopy?.consent}</p>
             </div>
             <div style={s.consentFooter}>
               <button

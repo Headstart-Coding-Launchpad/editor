@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { findTaskById, deriveTaskContext } from '../../shared/taskUtils'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
+import { getModuleDefinition } from '../../modules/definitions'
 import PresenceBadge from './PresenceBadge'
 import { formatTimeAgo } from '../../shared/timeAgo'
 import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
@@ -73,11 +74,7 @@ export default function StudentCard({
   // 28 published lessons) fell through to the HTML fallback and showed "No run yet".
   const taskLesson = getEffectiveLessonForTask(lesson, currentTask)
   const {
-    isPython,
-    isScratch,
-    isElectronics,
-    isArcade,
-    isFilesystem,
+    moduleType,
     isQuiz,
     isInformation,
     isActivity: isActivityTask,
@@ -94,9 +91,11 @@ export default function StudentCard({
       : null
   const activityState = isActivity ? readActivityAnswer(currentTask, student.currentAnswer) : null
   const activitySubmitted = isActivity && student.lastRunStatus === 'submitted'
-  // Python, Arcade and Electronics all run code that prints to a console, so the teacher
-  // wants the same first-few-lines-of-output snippet for all three.
-  const hasConsoleOutput = isPython || isArcade || isElectronics
+  // What the card shows for the module's work (capabilities.cardSummary): the first lines of
+  // console output (python, arcade, electronics), whether blocks were edited (scratch) or the
+  // file tree changed (filesystem); anything else gets the generic "HTML project" line.
+  const cardSummary = getModuleDefinition(moduleType)?.capabilities.cardSummary ?? null
+  const hasConsoleOutput = cardSummary === 'output'
   const itemProgress = isSessionSandbox ? null : getTaskItemProgress(currentTask, student)
   // A rating (confidence check) is never right or wrong, so it has no pass/fail badge.
   const isNeverMarked = activity?.completion === 'none'
@@ -418,13 +417,13 @@ export default function StudentCard({
             )}
           </pre>
         )
-      ) : isScratch ? (
+      ) : cardSummary === 'blocks' ? (
         <div style={s.iframeThumb}>
           <span style={{ color: student.currentCode ? '#6b7280' : '#9ca3af', fontSize: 12 }}>
             {student.currentCode ? 'Blocks edited' : 'No blocks yet'}
           </span>
         </div>
-      ) : isFilesystem ? (
+      ) : cardSummary === 'fs' ? (
         <div style={s.iframeThumb}>
           <span style={{ color: student.currentCode ? '#6b7280' : '#9ca3af', fontSize: 12 }}>
             {student.currentCode ? 'Filesystem project' : 'No changes yet'}

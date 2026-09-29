@@ -19,6 +19,8 @@ import {
   completeCodeOf,
   recordStorage,
   starterCodeOf,
+  TEACHER_EDIT_CODE_COPY,
+  alwaysPersonalSandbox,
 } from '../moduleContract.js'
 
 // The work-slot value: the code plus the sprite/sound design that rides alongside it.
@@ -27,6 +29,7 @@ const EMPTY_ARCADE_WORK = Object.freeze({ code: '', arcadeDesign: null })
 export default defineModule({
   type: 'arcade',
   meta: {
+    teacherEditCopy: TEACHER_EDIT_CODE_COPY,
     label: 'Arcade Kit',
     order: 1,
     shortLabel: 'Arcade Kit',
@@ -37,6 +40,15 @@ export default defineModule({
     surfaceLabels: { stageReference: 'Python' },
   },
   capabilities: {
+    stageReveal: 'offer',
+    teacherStageReveal: true,
+    highlights: false,
+    downloadCode: false,
+    fixedExplainer: false,
+    topicLibrary: true,
+    studentMirror: 'view',
+    cardSummary: 'output',
+    teacherEditor: { surface: 'view', workspace: 'code', design: true },
     sideExplainer: true,
     modulePanes: true,
     teacherLiveReference: true,
@@ -121,6 +133,7 @@ export default defineModule({
   deserializeState: (raw) => (typeof raw === 'string' ? raw : ''),
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
   lifecycle: {
+    hasPersonalSandbox: alwaysPersonalSandbox,
     resetTarget: codeResetTarget,
     hasComplete: codeHasComplete,
     teacherCompleteTab: () => false,
