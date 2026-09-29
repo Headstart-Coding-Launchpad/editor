@@ -12,10 +12,11 @@ import { MODULE_TYPES, getModuleDefinition, getModuleDefinitions } from '../defi
 import { getLessonModule, getLessonModules } from '../registry.js'
 import { LESSON_MODULE_TYPES } from '../../shared/composedLesson.js'
 import pythonDefinition from '../python/definition.js'
+import { builtInOnly } from './helpers/builtInModules.js'
 
 describe('module definitions', () => {
-  it('registers all eight module types in registry order', () => {
-    expect(MODULE_TYPES).toEqual([
+  it('registers the eight built-in module types in registry order', () => {
+    expect(builtInOnly(MODULE_TYPES)).toEqual([
       'python',
       'arcade',
       'turtle',
@@ -36,7 +37,7 @@ describe('module definitions', () => {
   })
 
   it('keeps LESSON_MODULE_TYPES in its legacy order with the same members', () => {
-    expect(LESSON_MODULE_TYPES).toEqual([
+    expect(builtInOnly(LESSON_MODULE_TYPES)).toEqual([
       'python',
       'arcade',
       'turtle',
@@ -215,11 +216,11 @@ describe('defineUiModule', () => {
 // StudentModal, StudentWorkspaceBody, StudentCard and LessonTaskContent. Each value pins the
 // inline rule it replaced, so a definition edit that changes a classroom gate is visible here.
 describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
+  // Pins the built-in modules' values (see ./helpers/builtInModules.js).
+  const TYPES = builtInOnly(MODULE_TYPES)
   const pick = (key) =>
-    Object.fromEntries(
-      MODULE_TYPES.map((type) => [type, getModuleDefinition(type).capabilities[key]])
-    )
-  const typesWith = (key) => MODULE_TYPES.filter((type) => pick(key)[type])
+    Object.fromEntries(TYPES.map((type) => [type, getModuleDefinition(type).capabilities[key]]))
+  const typesWith = (key) => TYPES.filter((type) => pick(key)[type])
 
   it('stageReveal: python and html reveal progressively, the rest offer the next stage', () => {
     expect(pick('stageReveal')).toEqual({
@@ -280,7 +281,7 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
   })
 
   it('remote run is offered exactly for the modules with a Run', () => {
-    expect(MODULE_TYPES.filter((type) => pick('run')[type] !== 'none')).toEqual([
+    expect(TYPES.filter((type) => pick('run')[type] !== 'none')).toEqual([
       'python',
       'arcade',
       'turtle',
@@ -342,7 +343,7 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
 
   it('lifecycle.hasPersonalSandbox follows each module sandbox-starter rule', () => {
     const offered = (lesson) =>
-      MODULE_TYPES.filter((type) => getModuleDefinition(type).lifecycle.hasPersonalSandbox(lesson))
+      TYPES.filter((type) => getModuleDefinition(type).lifecycle.hasPersonalSandbox(lesson))
     expect(offered({})).toEqual(['python', 'arcade', 'turtle'])
     expect(
       offered({
@@ -352,7 +353,7 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
         sandboxStarterDesktop: {},
         sandboxStarterCircuit: {},
       })
-    ).toEqual(MODULE_TYPES)
+    ).toEqual(TYPES)
     expect(offered({ sandboxStarterFiles: [], sandboxStarter: null })).toEqual([
       'python',
       'arcade',
@@ -423,10 +424,11 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
 // Plan step 4.8: the knobs that replaced the last inline type comparisons outside src/builder.
 describe('core-surface capabilities (plan step 4.8)', () => {
   const typesWith = (predicate) =>
-    getModuleDefinitions()
-      .filter(predicate)
-      .map((definition) => definition.type)
-      .sort()
+    builtInOnly(
+      getModuleDefinitions()
+        .filter(predicate)
+        .map((definition) => definition.type)
+    ).sort()
 
   it.each([
     ['teacherFillHeight', ['desktop', 'electronics', 'filesystem', 'html', 'scratch']],

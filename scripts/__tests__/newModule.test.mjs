@@ -165,8 +165,8 @@ describe('planNewModule', () => {
       "import { CHECKS as DEMO_WIDGET_CHECKS } from './demo_widget/checks.js'"
     )
     expect(read(plan, PATHS.checks)).toMatch(/\.\.\.DEMO_WIDGET_CHECKS,\n\]\)/)
-    expect(read(plan, PATHS.ratchet)).toMatch(/'code_arrange',\n {2}'demo_widget',\n\]/)
-    expect(read(plan, PATHS.eslint)).toContain('|code_arrange|demo_widget)$/')
+    expect(read(plan, PATHS.ratchet)).toMatch(/\n {2}'demo_widget',\n\]/)
+    expect(read(plan, PATHS.eslint)).toContain('|demo_widget)$/')
     expect(read(plan, PATHS.parity)).toMatch(/ {2}demo_widget: \{\n {4}PLAYGROUND_LESSON_TYPES:/)
     expect(read(plan, PATHS.clickThrough)).toMatch(/ {2}demo_widget: async \(\) => \{/)
 
@@ -180,8 +180,8 @@ describe('planNewModule', () => {
     )
     expect(errorsDoc.indexOf("### Pupil's Demo")).toBeLessThan(errorsDoc.indexOf('## Checks'))
     expect(read(plan, PATHS.agents)).toContain('`docs/authoring/demo_widget.md`')
-    expect(read(plan, PATHS.lessonSchema)).toContain('`desktop`, `electronics`, or `demo_widget`.')
-    expect(read(plan, PATHS.taskTypes)).toContain("Desktop, Electronics, or Pupil's Demo — but")
+    expect(read(plan, PATHS.lessonSchema)).toMatch(/`electronics`, (.*, )?or `demo_widget`./)
+    expect(read(plan, PATHS.taskTypes)).toMatch(/Electronics, (.*, )?or Pupil's Demo — but/)
     expect(read(plan, PATHS.featureMatrix)).toContain("| Pupil's Demo | TODO(new-module)")
     const doc = read(plan, 'docs/authoring/demo_widget.md')
     expect(doc).toMatch(/^type: demo_widget$/m)

@@ -7,6 +7,7 @@ import { MODULE_TYPES, getModuleDefinition } from '../definitions.js'
 import { getLessonModule } from '../registry'
 import htmlDefinition from '../html/definition.js'
 import pythonDefinition from '../python/definition.js'
+import { builtInOnly } from './helpers/builtInModules.js'
 
 const EXPECTED_RUN = {
   python: 'runtime',
@@ -21,8 +22,8 @@ const EXPECTED_RUN = {
 
 describe('capabilities.run', () => {
   it('every module declares (or defaults to) its run kind', () => {
-    expect(Object.keys(EXPECTED_RUN).sort()).toEqual([...MODULE_TYPES].sort())
-    for (const type of MODULE_TYPES) {
+    expect(Object.keys(EXPECTED_RUN).sort()).toEqual(builtInOnly([...MODULE_TYPES]).sort())
+    for (const type of builtInOnly(MODULE_TYPES)) {
       expect(getModuleDefinition(type).capabilities.run, type).toBe(EXPECTED_RUN[type])
       expect(RUN_KINDS).toContain(getModuleDefinition(type).capabilities.run)
     }

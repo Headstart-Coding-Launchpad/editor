@@ -11,6 +11,10 @@ import {
 } from '../../shared/workspaceData'
 import { decodeFileKey, encodeFileKey } from '../../shared/fileKeys'
 import { getStarterStage } from '../../shared/taskStages'
+import { builtInOnly } from '../../modules/__tests__/helpers/builtInModules.js'
+
+// The legacy oracles below describe the built-in modules; a module added later has no old branch.
+const LEGACY_TYPES = builtInOnly(MODULE_TYPES)
 import {
   cloneSandboxWork,
   hasSandboxWork,
@@ -191,13 +195,13 @@ function sessionFromFields(fields) {
     : { state: 'sandbox', sandboxCode: fields.code }
 }
 
-const CASES = MODULE_TYPES.flatMap((type) =>
+const CASES = LEGACY_TYPES.flatMap((type) =>
   SAMPLE_WORK[type].map((work, index) => [type, index, work])
 )
 
 describe('teacher sandbox work through the module definitions (plan step 4.6)', () => {
   it('covers every registered module', () => {
-    expect(Object.keys(SAMPLE_WORK).sort()).toEqual([...MODULE_TYPES].sort())
+    expect(Object.keys(SAMPLE_WORK).sort()).toEqual([...LEGACY_TYPES].sort())
   })
 
   it('starts each kind from the same empty work the old per-kind states did', () => {
@@ -266,7 +270,7 @@ describe('teacher sandbox work through the module definitions (plan step 4.6)', 
     })
   })
 
-  describe.each(MODULE_TYPES)('%s', (type) => {
+  describe.each(LEGACY_TYPES)('%s', (type) => {
     const definition = getModuleDefinition(type)
     const configured = definition.lifecycle.sandboxStarter(lessonFor(type), TASK)
 
@@ -365,7 +369,7 @@ const STARTER_TAB_TASKS = [
 ]
 
 describe("TeacherView's Starter-tab work (plan step 4.8)", () => {
-  describe.each([...MODULE_TYPES, 'not-a-module'])('%s', (type) => {
+  describe.each([...LEGACY_TYPES, 'not-a-module'])('%s', (type) => {
     it.each(STARTER_TAB_TASKS.map((task) => [task.id, task]))(
       'task %i matches the old per-type chain',
       (_id, task) => {

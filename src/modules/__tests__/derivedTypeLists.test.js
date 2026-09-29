@@ -20,13 +20,17 @@ import { buildStageOptions, deriveTaskContext } from '../../shared/taskUtils'
 import { getCodeBlockOptions, getInlineCodeOptions } from '../../shared/markdown/editorOptions'
 import { getCodeLanguageLabel } from '../../shared/codeLanguages'
 import { readRepoFile } from './helpers/sourceLiterals'
+import { builtInOnly } from './helpers/builtInModules.js'
 
 // Plan 1.2: module-type lists and label/icon maps that used to be hand-maintained in core
 // files are now derived from each module's definition.js (`meta` + `capabilities`). These
 // tests pin the derived values to what the hand-written lists contained (plus the drift
 // fixes), so a definition edit that changes classroom behaviour is a visible test change.
 
-const sorted = (list) => [...list].sort()
+// The values pinned here are the built-in modules' (./helpers/builtInModules.js); a module added
+// later is covered by the registry-driven tests instead.
+const BUILT_IN_TYPES = builtInOnly(MODULE_TYPES)
+const sorted = (list) => builtInOnly([...list]).sort()
 
 describe('derived module-type lists', () => {
   it('PLAYGROUND_LESSON_TYPES comes from meta.playground', () => {
@@ -59,7 +63,7 @@ describe('derived module-type lists', () => {
     ).toEqual(sorted(['python', 'arcade', 'electronics', 'turtle']))
     expect(
       Object.fromEntries(
-        MODULE_TYPES.map((type) => [type, getModuleDefinition(type).capabilities.sandboxState])
+        BUILT_IN_TYPES.map((type) => [type, getModuleDefinition(type).capabilities.sandboxState])
       )
     ).toEqual({
       python: 'code',
@@ -147,7 +151,7 @@ describe('deriveTaskContext', () => {
     expect(context.isFilesystem).toBe(false)
   })
 
-  it.each(MODULE_TYPES)('sets exactly one module flag for %s', (type) => {
+  it.each(BUILT_IN_TYPES)('sets exactly one module flag for %s', (type) => {
     const context = deriveTaskContext({ type }, { id: 1 }, null)
     expect(context.moduleType).toBe(type)
     const moduleFlags = Object.entries(context).filter(
@@ -165,7 +169,7 @@ describe('deriveTaskContext', () => {
 
 describe('module labels', () => {
   const table = (surface) =>
-    Object.fromEntries(MODULE_TYPES.map((type) => [type, getModuleLabel(type, surface)]))
+    Object.fromEntries(BUILT_IN_TYPES.map((type) => [type, getModuleLabel(type, surface)]))
 
   it('meta.label is the default on every surface', () => {
     expect(table()).toEqual({
@@ -203,7 +207,7 @@ describe('module labels', () => {
 
   it('Builder module picker icons, labels and hints come from meta', () => {
     const picker = Object.fromEntries(
-      MODULE_TYPES.map((type) => {
+      BUILT_IN_TYPES.map((type) => {
         const { icon, shortLabel, pickerHint } = getModuleDefinition(type).meta
         return [type, `${icon} ${shortLabel} | ${pickerHint}`]
       })
@@ -223,7 +227,7 @@ describe('module labels', () => {
   it('meta.language names the code language, or null for non-code modules', () => {
     expect(
       Object.fromEntries(
-        MODULE_TYPES.map((type) => [type, getModuleDefinition(type).meta.language])
+        BUILT_IN_TYPES.map((type) => [type, getModuleDefinition(type).meta.language])
       )
     ).toEqual({
       python: 'python',

@@ -293,6 +293,8 @@ export function editParityGaps(source, names) {
     `    MODULE_PANES_TYPES: 'Intentional: scaffold default, the workspace reports no panes.',\n` +
     `    CopyCodePanel: 'Intentional: scaffold default, no copy-code panel.',\n` +
     `    'editorOptions getCodeBlockOptions': 'Intentional: scaffold default, no meta.language.',\n` +
+    `    deriveTaskContext:\n` +
+    `      'Intentional: read deriveTaskContext().moduleType and the capabilities, not an is<Type> flag.',\n` +
     `  },`
   return insertAt(source, close, block)
 }

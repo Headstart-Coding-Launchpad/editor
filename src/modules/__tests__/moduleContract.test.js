@@ -3,6 +3,7 @@ import { MODULE_TYPES, getModuleDefinition } from '../definitions.js'
 import { NO_LIVE_EXTRAS } from '../moduleContract.js'
 import { getCompleteStage } from '../../shared/taskStages.js'
 import { compactTurtleResultForSync } from '../turtle/sync.js'
+import { builtInOnly } from './helpers/builtInModules.js'
 
 // Contract v2 hooks (lifecycle / storage / wire) must reproduce today's behaviour exactly.
 // The legacy oracles below are verbatim copies of the inline branches the hooks replaced, so
@@ -78,7 +79,9 @@ const TASKS = [
 ]
 
 describe('lifecycle hooks match the inline branches they replaced', () => {
-  for (const type of MODULE_TYPES) {
+  // The oracles describe the built-in modules (./helpers/builtInModules.js); later modules have no
+  // inline branch to match.
+  for (const type of builtInOnly(MODULE_TYPES)) {
     it(`${type}: hasComplete`, () => {
       for (const task of TASKS) {
         expect(def(type).lifecycle.hasComplete(task), JSON.stringify(task)).toBe(
@@ -148,7 +151,9 @@ const RECORD_CASES = {
 
 describe('storage adapters', () => {
   it('covers every module type', () => {
-    expect([...Object.keys(RECORD_CASES), 'html'].sort()).toEqual([...MODULE_TYPES].sort())
+    expect([...Object.keys(RECORD_CASES), 'html'].sort()).toEqual(
+      builtInOnly([...MODULE_TYPES]).sort()
+    )
   })
 
   for (const [type, { work, meta, task, sandbox }] of Object.entries(RECORD_CASES)) {
