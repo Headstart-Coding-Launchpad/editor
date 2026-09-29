@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { auth } from '../shared/firebase'
 import { useAuth } from '../auth/useAuth'
 import LoadingScreen from '../app/components/LoadingScreen'
+import AppVersionFooter from './AppVersionFooter'
 
 const AccountManagement = lazy(() => import('./AccountManagement'))
 const FeedbackPanel = lazy(() => import('./FeedbackPanel'))
@@ -92,6 +93,8 @@ export default function AdminPortal() {
           )}
         </Suspense>
       </main>
+
+      <AppVersionFooter />
     </div>
   )
 }
