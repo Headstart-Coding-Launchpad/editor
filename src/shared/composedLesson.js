@@ -4,15 +4,12 @@ import { isHostedActivityTask } from '../activities/registry.pure.js'
 
 // Membership comes from the module definitions (src/modules/definitions.js), so a new module
 // type is accepted here, by the Builder and by the CLI without editing this file. The order
-// (Builder composed-module picker, CLI "type must be one of" message) predates the registry
-// order and differs only in html/scratch; it is kept to stay behaviour-neutral. Unlisted types
-// append in registry order.
-const LEGACY_PICKER_ORDER = ['python', 'arcade', 'turtle', 'html', 'scratch']
-
-export const LESSON_MODULE_TYPES = [
-  ...LEGACY_PICKER_ORDER.filter((type) => MODULE_TYPES.includes(type)),
-  ...MODULE_TYPES.filter((type) => !LEGACY_PICKER_ORDER.includes(type)),
-]
+// (Builder composed-module picker, CLI "type must be one of" message) is each definition's
+// `meta.pickerOrder` (defaulting to `meta.order`; it predates the registry order and differs
+// only in html/scratch). The sort is stable, so ties keep registry order.
+export const LESSON_MODULE_TYPES = [...MODULE_TYPES].sort(
+  (a, b) => getModuleDefinition(a).meta.pickerOrder - getModuleDefinition(b).meta.pickerOrder
+)
 
 // Module types with a standalone /playground/:type route (src/app/views/PlaygroundView.jsx),
 // declared by each definition's `meta.playground`.

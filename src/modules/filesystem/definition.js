@@ -57,6 +57,7 @@ export default defineModule({
     teacherLiveReference: true,
     unifiedStages: false,
     sandboxState: 'fs',
+    teacherFillHeight: true,
     // Nothing to run: every change is checked (checking.trigger 'change').
     run: 'none',
   },

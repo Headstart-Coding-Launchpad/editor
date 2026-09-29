@@ -12,10 +12,11 @@ import { MODULE_TYPES, getModuleDefinition, getModuleDefinitions } from '../defi
 import { getLessonModule, getLessonModules } from '../registry.js'
 import { LESSON_MODULE_TYPES } from '../../shared/composedLesson.js'
 import pythonDefinition from '../python/definition.js'
+import { builtInOnly } from './helpers/builtInModules.js'
 
 describe('module definitions', () => {
-  it('registers all eight module types in registry order', () => {
-    expect(MODULE_TYPES).toEqual([
+  it('registers the eight built-in module types in registry order', () => {
+    expect(builtInOnly(MODULE_TYPES)).toEqual([
       'python',
       'arcade',
       'turtle',
@@ -36,7 +37,7 @@ describe('module definitions', () => {
   })
 
   it('keeps LESSON_MODULE_TYPES in its legacy order with the same members', () => {
-    expect(LESSON_MODULE_TYPES).toEqual([
+    expect(builtInOnly(LESSON_MODULE_TYPES)).toEqual([
       'python',
       'arcade',
       'turtle',
@@ -215,11 +216,11 @@ describe('defineUiModule', () => {
 // StudentModal, StudentWorkspaceBody, StudentCard and LessonTaskContent. Each value pins the
 // inline rule it replaced, so a definition edit that changes a classroom gate is visible here.
 describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
+  // Pins the built-in modules' values (see ./helpers/builtInModules.js).
+  const TYPES = builtInOnly(MODULE_TYPES)
   const pick = (key) =>
-    Object.fromEntries(
-      MODULE_TYPES.map((type) => [type, getModuleDefinition(type).capabilities[key]])
-    )
-  const typesWith = (key) => MODULE_TYPES.filter((type) => pick(key)[type])
+    Object.fromEntries(TYPES.map((type) => [type, getModuleDefinition(type).capabilities[key]]))
+  const typesWith = (key) => TYPES.filter((type) => pick(key)[type])
 
   it('stageReveal: python and html reveal progressively, the rest offer the next stage', () => {
     expect(pick('stageReveal')).toEqual({
@@ -280,7 +281,7 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
   })
 
   it('remote run is offered exactly for the modules with a Run', () => {
-    expect(MODULE_TYPES.filter((type) => pick('run')[type] !== 'none')).toEqual([
+    expect(TYPES.filter((type) => pick('run')[type] !== 'none')).toEqual([
       'python',
       'arcade',
       'turtle',
@@ -342,7 +343,7 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
 
   it('lifecycle.hasPersonalSandbox follows each module sandbox-starter rule', () => {
     const offered = (lesson) =>
-      MODULE_TYPES.filter((type) => getModuleDefinition(type).lifecycle.hasPersonalSandbox(lesson))
+      TYPES.filter((type) => getModuleDefinition(type).lifecycle.hasPersonalSandbox(lesson))
     expect(offered({})).toEqual(['python', 'arcade', 'turtle'])
     expect(
       offered({
@@ -352,7 +353,7 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
         sandboxStarterDesktop: {},
         sandboxStarterCircuit: {},
       })
-    ).toEqual(MODULE_TYPES)
+    ).toEqual(TYPES)
     expect(offered({ sandboxStarterFiles: [], sandboxStarter: null })).toEqual([
       'python',
       'arcade',
@@ -417,5 +418,81 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
         })
       ).toThrow(/lifecycle\.hasPersonalSandbox/)
     })
+  })
+})
+
+// Plan step 4.8: the knobs that replaced the last inline type comparisons outside src/builder.
+describe('core-surface capabilities (plan step 4.8)', () => {
+  const typesWith = (predicate) =>
+    builtInOnly(
+      getModuleDefinitions()
+        .filter(predicate)
+        .map((definition) => definition.type)
+    ).sort()
+
+  it.each([
+    ['teacherFillHeight', ['desktop', 'electronics', 'filesystem', 'html', 'scratch']],
+    ['teacherSandboxRow', ['html', 'scratch']],
+    ['teacherUnifiedStageTabs', ['html', 'python']],
+    ['explainerBlockMenu', ['scratch']],
+  ])('%s is declared exactly by %j', (capability, types) => {
+    expect(typesWith((definition) => definition.capabilities[capability] === true)).toEqual(types)
+    for (const definition of getModuleDefinitions()) {
+      expect(typeof definition.capabilities[capability]).toBe('boolean')
+    }
+  })
+
+  it('lifecycle.playgroundTask exists exactly for the playground modules', () => {
+    expect(
+      typesWith((definition) => typeof definition.lifecycle.playgroundTask === 'function')
+    ).toEqual(typesWith((definition) => definition.meta.playground))
+    expect(getModuleDefinition('python').lifecycle.playgroundTask()).toEqual({
+      id: 1,
+      title: 'Python playground',
+      starterCode: '',
+    })
+  })
+
+  it('workSlot.teacherStarter defaults to starter (electronics overrides it)', () => {
+    for (const definition of getModuleDefinitions()) {
+      const { workSlot } = definition
+      if (definition.type === 'electronics') {
+        expect(workSlot.teacherStarter).not.toBe(workSlot.starter)
+      } else {
+        expect(workSlot.teacherStarter).toBe(workSlot.starter)
+      }
+    }
+  })
+
+  it('meta.pickerOrder defaults to meta.order (html and scratch swap in the picker)', () => {
+    expect(getModuleDefinition('python').meta.pickerOrder).toBe(0)
+    expect(getModuleDefinition('html').meta.pickerOrder).toBe(3)
+    expect(getModuleDefinition('scratch').meta.pickerOrder).toBe(4)
+    const electronics = getModuleDefinition('electronics')
+    expect(electronics.meta.pickerOrder).toBe(electronics.meta.order)
+  })
+
+  it('rejects a playground module without lifecycle.playgroundTask, and a stray one', () => {
+    const base = {
+      ...pythonDefinition,
+      meta: { ...pythonDefinition.meta },
+      getSandboxState: undefined,
+    }
+    const lifecycle = { ...pythonDefinition.lifecycle, playgroundTask: undefined }
+    expect(() => defineModule({ ...base, lifecycle })).toThrow(/lifecycle\.playgroundTask/)
+    expect(() => defineModule({ ...base, meta: { ...base.meta, playground: false } })).toThrow(
+      /lifecycle\.playgroundTask/
+    )
+  })
+
+  it('rejects a non-boolean optional capability', () => {
+    expect(() =>
+      defineModule({
+        ...pythonDefinition,
+        meta: { ...pythonDefinition.meta },
+        capabilities: { ...pythonDefinition.capabilities, teacherFillHeight: 'yes' },
+        getSandboxState: undefined,
+      })
+    ).toThrow(/capabilities\.teacherFillHeight/)
   })
 })

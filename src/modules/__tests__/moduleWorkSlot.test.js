@@ -7,6 +7,7 @@ import filesystemDefinition from '../filesystem/definition.js'
 import htmlDefinition from '../html/definition.js'
 import scratchDefinition from '../scratch/definition.js'
 import { perFileStorage } from '../moduleContract.js'
+import { builtInOnly } from './helpers/builtInModules.js'
 import { DEFAULT_FS } from '../filesystem/filesystem.js'
 import { makeDefaultDesktop, normaliseDesktop } from '../desktop/desktopState.js'
 
@@ -27,7 +28,7 @@ const triggerOf = (type) =>
 describe('work-slot definitions', () => {
   it('every module is on the generic work slot', () => {
     const onSlot = MODULE_TYPES.filter((type) => getModuleDefinition(type).workSlot != null)
-    expect(onSlot.sort()).toEqual([...WORK_SLOT_TYPES].sort())
+    expect(builtInOnly(onSlot).sort()).toEqual([...WORK_SLOT_TYPES].sort())
     expect(onSlot.sort()).toEqual([...MODULE_TYPES].sort())
     for (const type of MODULE_TYPES) {
       const definition = getModuleDefinition(type)

@@ -6,26 +6,32 @@ function getLanguageLabel(lessonType) {
   return getModuleLabel(lessonType, 'stageReference') ?? 'Code'
 }
 
-// Text for a revealed stage, by the module's state kind (capabilities.sandboxState).
-export function stageToText(stage, lessonType) {
-  if (!stage) return ''
-  switch (getModuleDefinition(lessonType)?.capabilities?.sandboxState) {
-    case 'code':
-      return stage.code ?? ''
-    case 'files':
+// How a revealed stage reads, by the module's state kind (capabilities.sandboxState): its text,
+// and whether that text is Markdown (a blocks stage's notes) rather than code.
+const STAGE_REFERENCE_BY_KIND = {
+  code: { text: (stage) => stage.code ?? '' },
+  files: {
+    text: (stage) => {
       if (stage.code != null) return stage.code
       return (stage.files ?? [])
         .map((file) => `/* ${file.name} */\n${file.content ?? ''}`)
         .join('\n\n')
-    case 'fs':
-      return JSON.stringify(stage.fs ?? {}, null, 2)
-    case 'desktop':
-      return JSON.stringify(stage.desktop ?? {}, null, 2)
-    case 'blocks':
-      return stage.markdown ?? ''
-    default:
-      return ''
-  }
+    },
+  },
+  fs: { text: (stage) => JSON.stringify(stage.fs ?? {}, null, 2) },
+  desktop: { text: (stage) => JSON.stringify(stage.desktop ?? {}, null, 2) },
+  blocks: { text: (stage) => stage.markdown ?? '', markdown: true },
+}
+
+function stageReferenceFor(lessonType) {
+  const kind = getModuleDefinition(lessonType)?.capabilities?.sandboxState
+  return Object.hasOwn(STAGE_REFERENCE_BY_KIND, kind ?? '') ? STAGE_REFERENCE_BY_KIND[kind] : null
+}
+
+// Text for a revealed stage, by the module's state kind (capabilities.sandboxState).
+export function stageToText(stage, lessonType) {
+  if (!stage) return ''
+  return stageReferenceFor(lessonType)?.text(stage) ?? ''
 }
 
 export default function SupportStagePanel({ stage, lessonType, revealed, sourceLabel }) {
@@ -51,9 +57,9 @@ export default function SupportStagePanel({ stage, lessonType, revealed, sourceL
           {sourceLabel && <span style={s.source}>{sourceLabel}</span>}
         </div>
       </div>
-      {lessonType === 'scratch' ? (
+      {stageReferenceFor(lessonType)?.markdown ? (
         <div style={s.markdown}>
-          <MarkdownRenderer content={text} topicType="scratch" disableCopy />
+          <MarkdownRenderer content={text} topicType={lessonType} disableCopy />
         </div>
       ) : (
         <pre style={s.pre}>

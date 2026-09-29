@@ -31,15 +31,20 @@ These areas are known to drift because the same concept appears in multiple surf
 
 Changes include adding a lesson type, adding a module capability, changing student/builder/teacher behavior for a type, or changing carry-through/sandbox behavior.
 
+Since module contract v2 (plan step 4.8, [ADR 0010](../adr/0010-module-contract-v2-and-work-slot.md)) this is mostly a **single-folder change**: core code reads the definition and never compares against a type name (ratchet at zero everywhere outside the plugin folders, Builder included; ESLint `no-restricted-syntax`).
+
+- **Adding a lesson type:** `npm run new:module -- <type> "<Label>"` (`.claude/skills/new-module/SKILL.md`). It writes `src/modules/<type>/` and every registration and index line; then the work is in that folder, `docs/authoring/<type>.md`, the module's `KNOWN_GAPS` entries in `moduleTypeParity.test.js` and its `StudentViewModules.test.jsx` click-through.
+- **Changing one module's behaviour:** `src/modules/<type>/` (definition groups, workspaces, checks, tests) and `docs/authoring/<type>.md`.
+- **A new difference between modules** (a new capability or hook): `src/modules/defineModule.js` (validation + default), `src/modules/_template/definition.js`, every definition that turns it on, the one core consumer that reads it, `src/modules/__tests__/moduleDefinitions.test.js`, and `docs/architecture/lesson-type-modules.md`.
+
 Usually changes with:
 
 - `src/modules/<type>/`
-- `src/modules/registry.js`
-- `src/modules/__tests__/moduleInterface.test.js`
-- `src/app/components/LessonTaskContent.jsx`
-- `src/app/views/teacher/TeacherEditorPanel.jsx`
-- `src/builder/components/TaskEditor.jsx`
-- `src/builder/components/task-editor/TaskOptionsSection.jsx`
+- `src/modules/defineModule.js`, `src/modules/moduleContract.js`, `src/modules/_template/`
+- `src/modules/definitions.js`, `src/modules/registry.js`, `src/modules/checks.js` (registration lines; the generator writes them)
+- `src/modules/__tests__/moduleDefinitions.test.js`, `moduleTypeParity.test.js`, `moduleInterface.test.js`
+- `src/app/views/__tests__/StudentViewModules.test.jsx`
+- Builder behaviour comes from the definition's `authoring` group; `src/builder/` changes only for a new kind of Builder hook
 - `docs/architecture/lesson-type-modules.md`
 - `docs/authoring/<type>.md`
 - `docs/FEATURES.md`

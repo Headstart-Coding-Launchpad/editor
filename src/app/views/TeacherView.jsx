@@ -4,12 +4,7 @@ import { firestore } from '../../shared/firebase'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
 import { useSession } from '../hooks/useSession'
-import {
-  findTaskById,
-  flattenTasks,
-  filterTasksByMode,
-  getStarterStage,
-} from '../../shared/taskUtils'
+import { findTaskById, flattenTasks, filterTasksByMode } from '../../shared/taskUtils'
 import {
   applyLessonOverride,
   publishLessonTasks,
@@ -33,9 +28,6 @@ import TeacherReportsPanel from '../components/TeacherReportsPanel'
 import CheckConditionsPanel from './teacher/CheckConditionsPanel'
 import TaskRatingPanel from './teacher/TaskRatingPanel'
 import TeacherEditorPanel from './teacher/TeacherEditorPanel'
-import { DEFAULT_FS } from '../../modules/filesystem'
-import { DEFAULT_CIRCUIT, serializeCircuit } from '../../modules/electronics/circuit'
-import { makeDefaultDesktop, normaliseDesktop } from '../../modules/desktop/desktopState'
 import { cloneFiles } from '../../shared/workspaceData'
 import {
   cloneSandboxWork,
@@ -48,6 +40,7 @@ import {
   sandboxStarterWork,
   sandboxWireFields,
   sandboxWorkKind,
+  taskStarterWork,
 } from '../teacherSandboxWork'
 import {
   getEffectiveLessonForModule,
@@ -222,29 +215,13 @@ export default function TeacherView({ lessonId }) {
     const task = flattenTasks(lesson?.tasks ?? []).find((t) => t.id === taskId)
     if (!task) return
     const taskLesson = getEffectiveLessonForTask(lesson, task)
-    // The displayed task's Starter-tab work. Not routed through workSlot.starter yet: that
-    // prefers an electronics task's starter-stage circuit, where this view has always shown
-    // `starterCircuit`.
+    // The displayed task's Starter-tab work, in its module's sandbox kind: workSlot.teacherStarter
+    // (electronics shows `starterCircuit`, not a starter stage's circuit).
     if (task.taskType === 'information' || isHostedActivityTask(task)) {
       setKindWork({ code: '', files: [], blocks: null })
-    } else if (
-      taskLesson.type === 'python' ||
-      taskLesson.type === 'arcade' ||
-      taskLesson.type === 'turtle'
-    ) {
-      setKindWork({ code: getStarterStage(task)?.stage?.code ?? task.starterCode ?? '' })
-    } else if (taskLesson.type === 'scratch') {
-      setKindWork({ blocks: task.starterBlocks ?? null })
-    } else if (taskLesson.type === 'filesystem') {
-      setKindWork({ fs: task.starterFs ?? DEFAULT_FS })
-    } else if (taskLesson.type === 'desktop') {
-      setKindWork({
-        desktop: normaliseDesktop(task.starterDesktop ?? makeDefaultDesktop(task.availableApps)),
-      })
-    } else if (taskLesson.type === 'electronics') {
-      setKindWork({ code: serializeCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT) })
     } else {
-      setKindWork({ files: getStarterStage(task)?.stage?.files ?? task.starterFiles ?? [] })
+      const definition = getModuleDefinition(taskLesson.type)
+      setKindWork({ [sandboxWorkKind(definition)]: taskStarterWork(definition, task) })
     }
   }
 
@@ -576,18 +553,14 @@ export default function TeacherView({ lessonId }) {
     )
   }
 
-  // Fill-height module workspaces (Scratch, HTML, etc.) are sized to the centre
+  // Fill-height module workspaces (capabilities.teacherFillHeight) are sized to the centre
   // column, which clips instead of scrolling. Everything else scrolls the column,
   // and the editor must then keep its own minimum height rather than collapsing
   // under the panels below it (TaskRatingPanel, CheckConditionsPanel) — see
   // TeacherEditorPanel's `fillHeight` prop.
   const centreFillsHeight =
     (isInformationTask ||
-      displayedLesson.type === 'html' ||
-      displayedLesson.type === 'scratch' ||
-      displayedLesson.type === 'filesystem' ||
-      displayedLesson.type === 'desktop' ||
-      displayedLesson.type === 'electronics') &&
+      !!getModuleDefinition(displayedLesson.type)?.capabilities.teacherFillHeight) &&
     !(currentTask?.check != null && !isInSandbox)
 
   return (

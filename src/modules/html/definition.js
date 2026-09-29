@@ -40,6 +40,8 @@ export default defineModule({
     pickerHint: 'Workspace',
     language: 'html',
     playground: false,
+    // The composed-lesson picker has always listed HTML before Scratch.
+    pickerOrder: 3,
     surfaceLabels: { lessonIntro: 'Web Dev', builderMeta: 'Web', print: 'Web (HTML/CSS/JS)' },
   },
   capabilities: {
@@ -56,6 +58,9 @@ export default defineModule({
     teacherLiveReference: true,
     unifiedStages: true,
     sandboxState: 'files',
+    teacherFillHeight: true,
+    teacherSandboxRow: true,
+    teacherUnifiedStageTabs: true,
     // Run builds the preview iframe from the files.
     run: 'preview',
   },

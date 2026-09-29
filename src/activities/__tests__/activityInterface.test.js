@@ -10,6 +10,9 @@ import {
   getModuleHostedActivity,
   getTaskActivity,
   isHostedActivityTask,
+  legacyTaskTypeForYamlType,
+  usesYamlAnswerShorthand,
+  yamlTypeForLegacyTaskType,
 } from '../registry.pure.js'
 import { getActivityId, isActivityTask, UNKNOWN_ACTIVITY_ID } from '../resolve.js'
 import { defineActivity } from '../defineActivity.js'
@@ -45,6 +48,31 @@ describe('activity registry', () => {
   it('maps YAML type shorthands to activity ids', () => {
     expect(activityIdForYamlType('binary')).toBe('binary')
     expect(activityIdForYamlType('nope')).toBeNull()
+  })
+
+  // Plan step 4.8: the YAML converter reads the legacy task types from the registry.
+  it('maps the legacy YAML types to their task types and back', () => {
+    expect(legacyTaskTypeForYamlType('quiz')).toBe('quiz')
+    expect(legacyTaskTypeForYamlType('code_arrange')).toBe('code_arrange')
+    expect(legacyTaskTypeForYamlType('binary')).toBeNull()
+    expect(legacyTaskTypeForYamlType('information')).toBeNull()
+    expect(yamlTypeForLegacyTaskType('quiz')).toBe('quiz')
+    expect(yamlTypeForLegacyTaskType('code_arrange')).toBe('code_arrange')
+    expect(yamlTypeForLegacyTaskType('activity')).toBeNull()
+  })
+
+  it('uses the YAML answer shorthand only for legacy multiple-choice answer checks', () => {
+    const check = { type: 'answer_equals', value: 'a' }
+    expect(usesYamlAnswerShorthand({ taskType: 'quiz', check })).toBe(true)
+    expect(usesYamlAnswerShorthand({ taskType: 'quiz', quizType: 'multiple_choice', check })).toBe(
+      true
+    )
+    expect(usesYamlAnswerShorthand({ taskType: 'quiz', quizType: 'match', check })).toBe(false)
+    expect(usesYamlAnswerShorthand({ taskType: 'quiz', quizType: 'nope', check })).toBe(false)
+    expect(
+      usesYamlAnswerShorthand({ taskType: 'activity', activityType: 'quiz_multiple_choice', check })
+    ).toBe(false)
+    expect(usesYamlAnswerShorthand({ taskType: 'quiz', check: { type: 'answer_in' } })).toBe(false)
   })
 })
 

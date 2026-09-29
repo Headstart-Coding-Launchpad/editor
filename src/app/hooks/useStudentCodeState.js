@@ -70,11 +70,14 @@ function workSlotDefinition(type) {
   return definition?.workSlot ? definition : null
 }
 
-// Whether a work-slot module's work is code the student writes (it has a code language: python,
-// turtle, arcade, electronics, html) rather than a structured state (scratch, filesystem,
-// desktop). An information task clears code work.
+// Whether a work-slot module's work is code the student writes — a code string or files
+// (capabilities.sandboxState 'code' / 'files': python, turtle, arcade, electronics, html) — rather
+// than a structured state (scratch, filesystem, desktop). An information task clears code work.
+// (Plan step 4.8: read from the sandbox kind rather than `meta.language`, which is the same set
+// for every built-in module, so a text module without a code language still speaks `code`.)
 function isCodeWork(definition) {
-  return definition?.meta.language != null
+  const kind = definition?.capabilities.sandboxState
+  return kind === 'code' || kind === 'files'
 }
 
 // Whether the work is one code string on the code channel (python, turtle, arcade, electronics):
@@ -2246,7 +2249,8 @@ export function useStudentCodeState({
       !['lesson', 'solo'].includes(phaseRef.current)
     )
       return
-    if (!['python', 'html'].includes(lesson?.type)) return
+    // Support-stage offers belong to the progressively revealing modules (python, html).
+    if (getModuleDefinition(lesson?.type)?.capabilities.stageReveal !== 'progressive') return
 
     if (passed) {
       setSupportStageVisibility((prev) => ({ ...prev, [currentTaskId]: null }))

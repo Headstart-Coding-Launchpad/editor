@@ -18,3 +18,7 @@ Each lesson type owns a module under `src/modules/<type>/` and registers through
 - New module properties require updates to the module contract test and `docs/architecture/lesson-type-modules.md`.
 - Authoring docs, feature docs, and codebase inventory should change with new or changed lesson types.
 
+
+## Note
+
+Extended by [ADR 0010](0010-module-contract-v2-and-work-slot.md): the module definition now carries every behaviour core code needs (contract v2), and core code never compares against a type name.

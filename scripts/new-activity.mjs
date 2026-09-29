@@ -9,10 +9,22 @@
 // `vite build` pass on the untouched scaffold. It refuses to overwrite anything and writes
 // nothing until every planned edit has been worked out. See docs/architecture/activities.md
 // ("Adding an activity") and .claude/skills/new-activity/SKILL.md.
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import * as prettier from 'prettier'
+import {
+  applyPlan,
+  describePlan,
+  formatCode,
+  freeIdentifier,
+  insertAt,
+  lastMatchEnd,
+  listTemplateFiles,
+  requireAnchor as requireAnchorFor,
+  withLineEndingsOf,
+} from './scaffold-utils.mjs'
+
+export { applyPlan, describePlan }
 
 export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 export const TEMPLATE_DIR = 'src/activities/_template'
@@ -123,14 +135,6 @@ export function validateRequest(root, { id, label, category }) {
   return errors
 }
 
-function listTemplateFiles(dir, prefix = '') {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const rel = prefix ? `${prefix}/${entry.name}` : entry.name
-    if (entry.isDirectory()) return listTemplateFiles(path.join(dir, entry.name), rel)
-    return rel === DOC_TEMPLATE ? [] : [rel]
-  })
-}
-
 // Replaces the template placeholders. In JS, string literals holding the label are re-quoted
 // with JSON.stringify (a label may contain an apostrophe); prettier restores the house quotes.
 function fillPlaceholders(text, names, label, { js }) {
@@ -147,28 +151,8 @@ function fillPlaceholders(text, names, label, { js }) {
     .replaceAll(TOKEN.label, label)
 }
 
-async function formatCode(root, relPath, source) {
-  const filepath = path.join(root, relPath)
-  const config = (await prettier.resolveConfig(filepath)) ?? {}
-  return prettier.format(source, { ...config, filepath })
-}
-
-function lastMatchEnd(text, pattern) {
-  let end = -1
-  for (const match of text.matchAll(pattern)) end = match.index + match[0].length
-  return end
-}
-
-function insertAt(text, index, insertion) {
-  return text.slice(0, index) + insertion + text.slice(index)
-}
-
-function freeIdentifier(source, base, suffix) {
-  return new RegExp(`\\b${base}\\b`).test(source) ? `${base}${suffix}` : base
-}
-
 function requireAnchor(found, file, what) {
-  if (!found) throw new Error(`${file}: could not find ${what}. Add the activity by hand.`)
+  requireAnchorFor(found, file, what, 'the activity')
 }
 
 export function editPureRegistry(source, names) {
@@ -259,7 +243,7 @@ export async function planNewActivity({ root = REPO_ROOT, id, label, category = 
   const templateDir = path.join(root, TEMPLATE_DIR)
   const files = []
 
-  for (const rel of listTemplateFiles(templateDir)) {
+  for (const rel of listTemplateFiles(templateDir, [DOC_TEMPLATE])) {
     const target = `${PATHS.folder(id)}/${rel.replaceAll(TOKEN.id, id)}`
     const js = /\.(js|jsx|mjs)$/.test(rel)
     const source = readFileSync(path.join(templateDir, rel), 'utf8')
@@ -287,52 +271,11 @@ export async function planNewActivity({ root = REPO_ROOT, id, label, category = 
     const before = read(rel)
     let content = edit(before)
     if (js) content = await formatCode(root, rel, content)
-    // Keep the file's own line endings (a Windows checkout may have CRLF).
-    content = content.replace(/\r?\n/g, before.includes('\r\n') ? '\r\n' : '\n')
+    content = withLineEndingsOf(before, content)
     files.push({ path: rel, action: 'update', before, content })
   }
 
   return { id, label, category, names, files, checklist: nextSteps(id, label) }
-}
-
-export function applyPlan(root, plan) {
-  // Re-check just before writing so a second run can never overwrite the first.
-  for (const file of plan.files) {
-    if (file.action === 'create' && existsSync(path.join(root, file.path))) {
-      throw new Error(`${file.path} already exists. Refusing to overwrite.`)
-    }
-    if (
-      file.action === 'update' &&
-      readFileSync(path.join(root, file.path), 'utf8') !== file.before
-    ) {
-      throw new Error(`${file.path} changed while planning. Run the command again.`)
-    }
-  }
-  for (const file of plan.files) {
-    const target = path.join(root, file.path)
-    mkdirSync(path.dirname(target), { recursive: true })
-    writeFileSync(target, file.content)
-  }
-}
-
-function addedLines(before, after) {
-  const old = new Set(before.split(/\r?\n/))
-  return after.split(/\r?\n/).filter((line) => line.trim() && !old.has(line))
-}
-
-export function describePlan(plan) {
-  const lines = []
-  for (const file of plan.files) {
-    if (file.action === 'create') {
-      lines.push(`  create  ${file.path} (${file.content.split('\n').length} lines)`)
-    } else {
-      lines.push(`  update  ${file.path}`)
-      for (const line of addedLines(file.before, file.content)) {
-        lines.push(`            + ${line.length > 110 ? `${line.slice(0, 107)}...` : line}`)
-      }
-    }
-  }
-  return lines.join('\n')
 }
 
 function nextSteps(id, label) {

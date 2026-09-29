@@ -1,242 +1,266 @@
 # Lesson Type Modules
 
-Lesson types are intentionally isolated behind `src/modules/registry.js`. The classroom, teacher view, and builder should ask the registry for behavior instead of branching directly on every lesson type.
+A lesson type (python, arcade, turtle, scratch, html, filesystem, desktop, electronics) is a
+**workspace module**: one folder, `src/modules/<type>/`, whose definition tells the classroom,
+teacher view, Builder, CLI and validators everything they need. This page is the reference for
+the module contract (v2). Why it is shaped this way: [ADR 0004](../adr/0004-lesson-type-module-registry.md)
+and [ADR 0010](../adr/0010-module-contract-v2-and-work-slot.md). Bounded exercises are
+**activities** instead ([activities.md](activities.md), [ADR 0009](../adr/0009-activity-registry.md));
+the decision test is in [modular-activities-plan.md](modular-activities-plan.md).
 
-## Design Intent
-
-The module boundary keeps new lesson types from spreading changes through `LessonTaskContent.jsx`, `TaskEditor.jsx`, and teacher live-view code. A type owns its state shape, editor surfaces, check editor, display-state selection, sandbox defaults, and optional runtime bridge.
-
-Core app code may branch for broad task classes such as quiz or information tasks, but code lesson behavior should live in `src/modules/<type>/`.
+**The rule:** core code never compares against a module or task type name. It reads the
+definition (`getModuleDefinition(type)` from `src/modules/definitions.js`, or the UI module from
+`registry.js`) looked up by the task's **effective** module (`getEffectiveLessonForTask` /
+`deriveTaskContext().moduleType`) — never a composed lesson's raw `type`. Outside
+`src/modules/**` and `src/activities/**` (Builder included) the type-branch ratchet is at zero and ESLint rejects a
+new comparison (see [Guard rails](#guard-rails)). A behaviour that differs between modules
+becomes a definition field with a default in `defineModule.js`.
 
 ## Contract
 
-Each `src/modules/<type>/index.js` exports a default object. The complete inventory is mirrored in `docs/CODEBASE_MAP.md`; this page explains the intent behind the fields.
+Each module is split in two:
 
-Each module is split in two (modular activities plan, step 1.1):
+| File | Holds | Imported by |
+|---|---|---|
+| `definition.js` | `defineModule({...})`: pure data and hooks. No JSX, React, DOM or runtimes; explicit `.js` extensions on relative imports. | `src/modules/definitions.js` → CLI, validation, shared type lists, the app |
+| `index.js` | `defineUiModule(definition, { StudentWorkspace, BuilderWorkspace, CheckEditor, FeedbackCheckEditor?, TeacherLiveView, getLayoutStyles, runtime })` | `src/modules/registry.js` → the app |
+| `checks.js` | `CHECKS`: module-owned check types | `src/modules/checks.js` (the check registry) |
 
-- `definition.js` is pure and Node-ESM-safe: no JSX, React, DOM access or runtimes (Pyodide, Blockly), and explicit `.js` extensions on every relative import. It holds `type`, `meta`, `capabilities`, the authoring, carry-through, state, sandbox and display hooks, and the capability flags, wrapped in `defineModule()` (`src/modules/defineModule.js`), which throws on a missing required field.
-- `index.js` adds the UI half with `defineUiModule(definition, { StudentWorkspace, BuilderWorkspace, CheckEditor, FeedbackCheckEditor?, TeacherLiveView, getLayoutStyles, runtime })`. The merged object has the same shape the app consumed before the split.
+`defineModule` (`src/modules/defineModule.js`) validates every field below, fills the optional
+ones with defaults and freezes the result; a missing or ill-typed field throws with its name.
+`definitions.js` exposes `MODULE_TYPES` (ordered by `meta.order`), `getModuleDefinition`,
+`getModuleTypesWhere`, `getModuleTypesWithCapability`, `CARRY_THROUGH_FIELDS`,
+`getModuleLabel(type, surface)`, `getModuleAuthoring(type)` and `SPRITE_LIBRARY_MODULE_TYPE`;
+`src/modules/moduleContract.js` and `moduleAuthoring.js` hold the shared builders the
+definitions use. `moduleDefinitionsNode.test.js` loads every definition in a real Node process.
 
-`src/modules/definitions.js` collects every definition (`MODULE_TYPES`, `getModuleDefinition`) so the CLI, validation and shared type lists (`LESSON_MODULE_TYPES` in `src/shared/composedLesson.js`) can read module metadata under plain Node without importing React. `registry.js` takes its order and labels from it. `moduleDefinitionsNode.test.js` loads every definition in a real Node process to keep the split honest.
+## Contract v2 reference
 
-### Metadata and capabilities (plan step 1.2)
+### `meta`
 
-Core code no longer keeps its own module-type lists or label/icon maps; it derives them from the definitions with `getModuleTypesWhere`, `getModuleTypesWithCapability`, `CARRY_THROUGH_FIELDS` and `getModuleLabel(type, surface)` (all in `definitions.js`). A new module declares these once, and `defineModule` rejects a definition that omits one. `derivedTypeLists.test.js` pins the derived values.
+| Field | Meaning |
+|---|---|
+| `label`, `order` | Canonical name; registry order (admin lists, `MODULE_TYPES`). |
+| `shortLabel`, `icon`, `pickerHint` | Builder composed-lesson module picker. |
+| `pickerOrder` (optional) | Position in that picker and the CLI's type list (`LESSON_MODULE_TYPES`); defaults to `order`. |
+| `language` | `'python'` \| `'html'` \| null: explainer code blocks and editors. |
+| `playground` | Has a `/playground/:type` route; needs `lifecycle.playgroundTask`. |
+| `surfaceLabels` (optional) | Wording per surface: `lessonIntro`, `builderMeta`, `print`, `stageReference`. |
+| `teacherEditCopy` | `{ action, consent }` for the teacher's live edit; required with `capabilities.teacherEditor`. |
 
-`meta`:
+### `capabilities`
 
-- `label` — canonical name (registry, admin lists, playground title, Builder "Create a lesson" copy); `order` — registry order.
-- `shortLabel`, `icon`, `pickerHint` — the Builder's composed-lesson module picker (`TaskEditor.jsx`).
-- `language` — `'python' | 'html' | null`, the module's code language.
-- `playground` — has a `/playground/:type` route (`PLAYGROUND_LESSON_TYPES`).
-- `surfaceLabels` (optional) — per-surface wording that differs from `label`: `lessonIntro` (InformationTask Introduction slide), `builderMeta` (LessonMetaPanel), `print` (printLesson), `stageReference` (SupportStagePanel kicker).
+Required booleans: `sideExplainer` (explainer as a side rail, else an accordion), `modulePanes`
+(the workspace reports `visiblePanes`), `teacherLiveReference` (teacher live code can be a
+student's stage reference), `unifiedStages` (Starter/Complete live in `codeStages` roles; the
+unified remote-reset selector and read-only support references), `teacherStageReveal`
+(StudentModal's Reveal menu), `highlights` (teacher code highlights; needs a `'code'`/`'files'`
+mirror), `downloadCode` (`.launchpad` download), `fixedExplainer` (Scratch's fixed column; needs
+`sideExplainer`, no `modulePanes`), `topicLibrary`.
 
-`capabilities`:
+Optional booleans (default false): `teacherFillHeight` (TeacherView's centre column fills and
+clips), `teacherSandboxRow` (the teacher sandbox workspace fills a plain flex row),
+`teacherUnifiedStageTabs` (teacher code tabs show stage roles with no Starter/Complete tabs),
+`explainerBlockMenu` (explainer editor's Scratch block-reference menu).
 
-- `sideExplainer` — explainer renders as a side rail (`LessonTaskContent.jsx`); otherwise an accordion above the workspace.
-- `modulePanes` — `StudentWorkspace` reports `visiblePanes` through the generic `modulePanes` state.
-- `teacherLiveReference` — teacher live code can be the support-stage reference (`TEACHER_LIVE_REFERENCE_TYPES`); membership alone is not enough, `teacherLiveReferenceDisplayState` must also adapt the payload.
-- `unifiedStages` — remote reset uses the unified Starter/Complete stage selector (`buildStageOptions`), and the student shows a revealed support stage as a read-only reference (`LessonTaskContent`).
-- `sandboxState` — `'code' | 'blocks' | 'fs' | 'desktop' | 'files'`, where TeacherView keeps teacher sandbox work (`'code'` = the single code-string slot).
-- `run` (plan step 4.4) — what the student's Run (`useStudentCodeState.handleRun`) does: `'runtime'` runs the code through the module's runtime (`runWithRuntime`: python, turtle via Pyodide, electronics via MicroPython), `'preview'` builds the HTML preview iframe (html), `'workspace'` leaves it to the workspace, which runs the work itself and reports back through its own handler (Arcade's game iframe via `handleWorkspaceRun`, Scratch's stage via `handleScratchCheck` → `reportRun`), `'none'` has nothing to run (filesystem, desktop). A definition may omit it; `defineModule` defaults it to `'none'` (desktop relies on this). `handleRun` dispatches on it and never on the lesson type, so a new module can't fall into another module's Run branch.
+| Field | Values |
+|---|---|
+| `stageReveal` | `'progressive'` (support stages as read-only references, complete previewed first; python, html) \| `'offer'` (offer the next stage after two failed checks) |
+| `studentMirror` | How StudentModal mirrors a watched student: `'code'`, `'files'` (= the files wire channel), `'blocks'`, `'view'` (the module's `TeacherLiveView`) |
+| `cardSummary` (optional) | StudentCard line: `'output'`, `'blocks'`, `'fs'`, null |
+| `focusPanes` (optional) | Extra `{ id, label }` panes the teacher can highlight/force |
+| `teacherEditor` (optional) | `{ surface: 'code'\|'files'\|'blocks'\|'view', workspace?, design? }`, declared exactly when `workSlot.teacherEdit` is |
+| `sandboxState` | Teacher sandbox work kind: `'code'` (one code string), `'blocks'`, `'fs'`, `'desktop'`, `'files'` |
+| `run` | What Run does (`handleRun` dispatches on it): `'runtime'` (needs `runResult` and a UI `runtime`), `'preview'` (html iframe), `'workspace'` (the workspace runs/checks and reports), `'none'` (default). Remote "Run on student" is offered when not `'none'`. |
 
-UI gates (plan step 4.7) — StudentView, StudentModal, StudentWorkspaceBody, StudentCard, LessonTaskContent and PaneFocusDropdown read these instead of comparing lesson types. They are looked up by the task's effective module (`getEffectiveLessonForTask` / `deriveTaskContext().moduleType`), never a composed lesson's raw `type`; `moduleDefinitions.test.js` pins every module's values.
+`runResult` (exactly for `'runtime'`): `errorLine`, `turtle`, `liveCode` booleans.
+`moduleDefinitions.test.js` / `moduleRunCapability.test.js` pin the built-in values.
 
-- `stageReveal` — how a student reaches the code stages on their own: `'progressive'` (python, html) reveals support stages as read-only references and previews the complete solution read-only before offering to load it; `'offer'` (the rest) offers to load the next stage, then the complete one, after two failed checks.
-- `teacherStageReveal` — StudentModal's Reveal menu lists the task's support stages and complete stage (python, arcade, scratch, html, electronics; turtle has never had it).
-- `highlights` — the teacher can highlight code in StudentModal's mirror (python, html); needs a `'code'` or `'files'` `studentMirror`.
-- `studentMirror` — how StudentModal / StudentWorkspaceBody mirror the watched student: `'code'` (the modal's read-only code editor and output; python), `'files'` (file tabs, editor and preview iframe; html — exactly the `'files'` wire channel), `'blocks'` (the module's `TeacherLiveView` fed the Blockly project and sprite / cursor / block-drag mirrors; scratch) or `'view'` (the module's `TeacherLiveView` fed its display state; arcade, turtle, filesystem, desktop, electronics). StudentModal passes the registry's `TeacherLiveView` down; core code no longer imports a module's view directly.
-- `teacherEditor` (optional, null) — the teacher's live edit, declared exactly when `workSlot.teacherEdit` is: `surface` `'code'` (a plain Python editor; python, turtle), `'files'` (the module's `TeacherLiveView` over the files; html), `'blocks'` (an editable Scratch workspace) or `'view'` (the module's `TeacherLiveView` over the code string; arcade, electronics); `workspace` is the workspace tab the edit opens on and pushes (arcade `'code'`, electronics `'breadboard'`); `design` adds the Arcade design to the edit and its commit. Its copy is `meta.teacherEditCopy` (`action` for the "✏ …" menu item, `consent` for the student's prompt).
-- `downloadCode` — the student can download the task or sandbox code as a `.launchpad` file (python).
-- `fixedExplainer` — the side explainer is a fixed-width column that tabs away behind Instructions / Code tabs on a narrow panel, the workspace reports its own panes through a dedicated state, and in solo the hidden explainer becomes a nav pseudo-task (scratch); needs `sideExplainer` and no `modulePanes`.
-- `topicLibrary` — the explainer offers the topic library (every module but scratch).
-- `cardSummary` (optional, null) — what a StudentCard shows for the work: `'output'` (first lines of console output; python, arcade, electronics), `'blocks'` (scratch), `'fs'` (filesystem), or null for the generic "HTML project" / "No run yet" line (html, turtle, desktop).
-- `focusPanes` (optional, `[]`) — module panes the teacher can highlight or force besides Instructions (`PaneFocusDropdown`): electronics Breadboard / MicroPython, scratch Blocks / Stage.
-- Reused: remote run ("▶ Run on student") is offered when `run` is not `'none'`; the personal sandbox is offered when `lifecycle.hasPersonalSandbox(lesson)`.
+### Authoring, state and validation hooks
 
-A `'runtime'` module also declares `runResult` (and only runtime modules may): `errorLine` (a stderr line number highlights the editor line — python), `turtle` (the run's drawing is written with the run through `writeStudentTurtleResult` — turtle) and `liveCode` (the runtime rewrites the work while it runs through `onCodeUpdate`, and a stopped run is still saved as `{ code, output }` — electronics). `moduleRunCapability.test.js` pins every module's values and checks them against the UI half's `runtime`.
+- Builder: `makeCodeTaskFields`, `makeNewStage`, `initCompleteTab`/`initStageTab` (optional),
+  `defaultCheck`, `carryThroughField` / `carryThroughLabel` / `getCarryThroughUpdates` /
+  `getNewStarterUpdates`, `completeField`, `stageLabels`, `explainerInlineCodeLanguages`,
+  `explainerCodeBlockLanguages`, `supportsInteractionMode` / `supportsIncorrectChecks` /
+  `supportsTests` / `supportsVariableChecks` / `supportsDomChecks` (and optional
+  `supportsCopyCode`, `supportsOutputChecks`), `inheritsCheckTypes` (check types owned elsewhere
+  the module can evaluate).
+- State: `defaultState`, `initialState(task)`, `serializeState` / `deserializeState`,
+  `getDisplayState(task, stage, liveState, tab)` (what the teacher tabs show).
+- Validation, shared by the Builder and the CLI (`src/shared/lessonValidation.js`):
+  `validateTask(task, { n, lesson, errors, warnings })`, `hasStarterContent`, `hasCheckValue`,
+  `validateTaskInBrowser` (Builder only). Every message is documented in
+  `docs/authoring/validation-errors.md` (`validationErrorsDoc.test.js`).
 
-Top-level fields added alongside: `completeField` (the legacy non-stage Complete field, e.g. `completeCode`; an array field counts when non-empty) with `stageLabels` for stage options, and `explainerCodeBlockLanguages` (the explainer editor's code-block menu; empty = a generic block) next to `explainerInlineCodeLanguages`.
+### `authoring` (the Builder)
 
-Required identity and surfaces:
+Everything the Builder used to decide by comparing lesson types, so `src/builder/` never branches
+on a module type (`getModuleAuthoring(type)` in `definitions.js`; null for an unregistered type,
+so each call site keeps its old fallback). Shared builders: `src/modules/moduleAuthoring.js`,
+`src/modules/printHelpers.js`, each module's `print.js`.
 
-- `type` matches the lesson `type` value.
-- `StudentWorkspace` renders the student-facing task surface.
-- `BuilderWorkspace` renders the builder task editor surface.
-- `CheckEditor` renders the check configuration UI.
-- `TeacherLiveView` renders the teacher-side live/sandbox view, or is `null` if the student workspace can be reused read-only.
+| Field | Meaning |
+|---|---|
+| `defaultTypeFields(prevTask, { defaultSprites })` | Module fields of a new task, seeded from the task it follows (`codeDefaultTypeFields` for code strings) |
+| `missingStarter(task)`, `missingStarterLabel` | A draft task with no starter work yet shows TaskEditor's "This draft task has no {label} yet" notice |
+| `copyStarterToComplete(task)` | "Reset to starter code" updates (`{}` = nothing) |
+| `printTask(task, { esc })` | The module's section of the printable lesson (`''` = none) |
+| `sandboxStarterEditor` | Sandbox starter modal editor: `'code'`, `'blocks'`, `'fs'`, `'circuit'`, `'files'` |
+| `builderRun` | TaskEditor's Run: `'pyodide'`, `'preview'`, `'none'` |
+| `codeFormat` (optional) | The Code task-format button `{ label, icon }` |
+| `copyCodePlaceholder` | Copy code panel placeholder (required with `supportsCopyCode`) |
+| Flags (default false) | `fileTabs`, `sharedTypeAssets`, `previewTypeAssets` (the preview always includes the type's shared assets, so Shared Assets offers no per-asset "Web editor" toggle), `spriteLibrary` (the type's assets hold the default sprites/backdrops: Builder, Shared Assets, EditLessonModal, the `type-assets` CLI) |
 
-State and display hooks:
+`moduleAuthoring.test.js` and `builderAuthoringParity.test.jsx` compare the built-in hooks with
+verbatim copies of the Builder branches they replaced.
 
-- `initialState(task)` creates the student state for a task.
-- `defaultState` is the fallback when no task-specific state exists.
-- `serializeState(state)` and `deserializeState(raw)` protect localStorage and RTDB from type-specific state details.
-- `getDisplayState(task, stage, liveState, tab)` chooses what teachers see for starter, stage, complete, sandbox, and live states.
-- `getSandboxState(lesson, task)` creates the initial personal or teacher sandbox state. Since contract v2 it is an alias `defineModule` sets from `lifecycle.sandboxStarter`; definitions declare only the latter.
+### `lifecycle`
 
-### Contract v2: lifecycle, storage, wire (plan steps 4.1–4.2)
+`resetTarget(task, action, ctx)` (the state a teacher remote reset — `starter`, `complete`,
+`stage_<n>` — puts in front of the student, in the module's shape), `hasComplete(task)`,
+`teacherCompleteTab(task)`, `sandboxStarter(lesson, task)` (`getSandboxState` is its alias),
+`composedSandboxFields(firstTask)`, `hasPersonalSandbox(lesson)` (`alwaysPersonalSandbox`, or
+`personalSandboxWhenLessonHas(field)`), and optional `playgroundTask()` (the playground's one
+task; exactly when `meta.playground`).
 
-Three required, frozen hook groups on every definition, validated by `defineModule` (`LIFECYCLE_HOOKS`, `STORAGE_HOOKS`, `WIRE_HOOKS`). The shared builders live in `src/modules/moduleContract.js` (pure). They reproduce today's behaviour exactly; `src/modules/__tests__/moduleContract.test.js` compares them against verbatim copies of the inline branches they replaced, and the Phase 0 `useStudentCodeState.*` characterisation suites pin the resulting localStorage/RTDB bytes.
+### `storage`
 
-`lifecycle` — what a task or lesson means for the module's work:
+Adapters onto the localStorage shapes in `docs/agents/runtime-model.md`, which must not change:
+`layout: 'record'` via `recordStorage({ workKey, taskMeta, sandboxMeta })` (one
+`headstart_{lessonId}_{taskId}_{anonymousId}` record; meta fields written only when passed, in
+declared order) or `layout: 'perFile'` via `perFileStorage()` (html, `{ content }` per file).
+Hooks: `toTaskRecord` / `fromTaskRecord`, `toSandboxRecord` / `fromSandboxRecord`.
+`createStudentPersistence` routes `saveWork` / `readWork` / `saveSandboxWork` /
+`readSandboxWork` through them (personal sandbox, presentation's in-memory store, else
+localStorage).
 
-- `resetTarget(task, action, ctx)` — the state a teacher remote reset (`starter`, `complete`, `stage_<n>`) puts in front of the student, in the module's own shape (`{ code }`, `{ files, entryFile }`, `{ blocks, stageIndex }`, `{ fs }`, `{ desktop }`, `{ circuit }`); `ctx` carries the fallbacks (`fs`, `circuit`, `desktop`). `resolveRemoteResetTarget` in `src/app/studentTaskContent.js` is now a dispatcher over this hook.
-- `hasComplete(task)` — whether a complete solution exists to offer the student (StudentView `hasCompleteSolution`; a non-module type keeps HTML's files rule).
-- `teacherCompleteTab(task)` — whether TeacherEditorPanel shows a separate Complete tab (`false` for python, html, arcade and turtle, whose complete lives in the unified code stages).
-- `sandboxStarter(lesson, task)` — the teacher sandbox starter (TeacherView). `getSandboxState` is its alias.
-- `composedSandboxFields(firstTask)` — the lesson-level sandbox fields (`sandboxStarter`, `sandboxStarterFiles`, `sandboxStarterFs`, `sandboxStarterDesktop`, `sandboxStarterCircuit`) a composed lesson's module derives from its first code task in `getEffectiveLessonForModule`. Turtle returns `{}`, as before.
-- `hasPersonalSandbox(lesson)` (plan step 4.7) — whether StudentView offers the personal sandbox after a passed task: always for python, arcade and turtle (`alwaysPersonalSandbox`), else when the lesson has the module's sandbox starter (`personalSandboxWhenLessonHas(field)`; html needs a non-empty `sandboxStarterFiles`).
+### `wire`
 
-`storage` — how the module's work maps onto the localStorage record shapes in `docs/agents/runtime-model.md` (which must not change):
+How work travels over Realtime Database: `sandboxChannel` `'code'` (`currentCode` /
+`sandboxCode` string) or `'files'` (html; `sandboxFiles`, must match `sandboxState: 'files'`),
+`toCode` / `fromCode` (`codeStringWire` identity, `jsonWire` JSON, `filesWire` null plus
+`toFilesMap`), `liveExtras` (always both teacherLive extras, explicit `null`s — teacherLive is an
+`update()` merge) and `submission(work)` (logged with an attempt).
 
-- `layout: 'record'` (one `headstart_{lessonId}_{taskId}_{anonymousId}` record) built with `recordStorage({ workKey, taskMeta, sandboxMeta })`: python/turtle `{ code, output, runStatus }`, arcade adds `arcadeDesign` (task and sandbox), electronics `{ code }`, scratch `{ state }`, filesystem `{ fs }`, desktop `{ desktop }`. Meta fields are written only when passed, in declared order.
-- `layout: 'perFile'` (one `…_{filename}_{anonymousId}` record per file) built with `perFileStorage()`: html `{ content }`.
-- `toTaskRecord(work, meta)` / `fromTaskRecord(record)` and `toSandboxRecord` / `fromSandboxRecord`; the readers return `{ work, meta }` (meta holds only fields the record had) or null.
+### Checking and the generic work slot
 
-`createStudentPersistence` exposes the adapter-driven `saveWork(type, actorId, taskId, work, meta)`, `readWork(type, actorId, taskId, { filename })`, `saveSandboxWork(type, actorId, work, meta)` and `readSandboxWork(type, actorId, { filename })`, routed exactly like the named savers (personal sandbox, in-memory store in presentation/preview, else localStorage). The named per-type functions (`savePythonCode`, `saveScratch`, …) remain: `useStudentCodeState` still calls `savePythonCode` (tests, submit), `saveHtmlFile` (the code_arrange aux file), `readSavedCode` and `readSavedFile`, and the others are the byte-for-byte references `createStudentPersistence.work.test.js` holds the generic calls to; both share one `routeSave`. `createStudentPersistence.work.test.js` proves the generic calls write the same keys and bytes.
+Every module declares `checking` and `workSlot` together; `useStudentCodeState` keeps one work
+slot, `{ moduleType, taskId, value }`, read through `workValueFor(moduleType)` (the module's
+stable default when the slot holds another module's work, so a composed lesson never saves,
+publishes or checks a leftover value).
 
-`wire` — how the work travels over Realtime Database:
+`checking.trigger`: `'change'` (every edit writes a run and is checked — only for discrete
+edits; filesystem, desktop), `'run'` (checked when the work runs: runtime modules, html's
+preview or Submit, a `'workspace'`-run module's report through `handleWorkspaceRun`),
+`'workspace'` (the workspace evaluates and reports through `reportRun`; scratch).
+`checking.buildContext(work, extras)` builds the evaluator context (`codeCheckContext` gives
+`{ ...extras, code }`).
 
-- `sandboxChannel` — `'code'` (`sandboxCode` / `currentCode` string) or `'files'` (html; must match `capabilities.sandboxState === 'files'`).
-- `toCode(work)` / `fromCode(code)` — identity for code-string modules (`codeStringWire`), `JSON.stringify` / tolerant parse for scratch, filesystem and desktop (`jsonWire`); html returns null (`filesWire`, which also offers `toFilesMap`). Callers keep their own null handling (e.g. Scratch's `{}` for an empty sandbox).
-- `liveExtras({ arcadeDesign, turtleResult })` — always returns both teacherLive extras, explicit `null` for the ones the module lacks (teacherLive is an `update()` merge). Arcade passes its design; Turtle compacts its result with `compactTurtleResultForSync`.
-- `submission(work)` — the value logged with an attempt (the work itself; html a filename → content map).
+`workSlot`, field form (`starterField`, `sandboxField`, `stageField`; the source hooks are
+derived) or hook form (`starter`, `stage`, `complete`, `sandbox`, `fromResetTarget`, `stored`,
+`fromStored`; `codeWorkSlot()` and `filesWorkSlot()` build them), plus `empty(task)`,
+`normalise(work)` (applied whenever work is restored, never to the student's own edits),
+`kind` (`'code'`: own save restored only in solo, carry via `carryCodeFrom`, restoring clears
+the run output; `'state'`: own save always restored, carry via `carryThroughField`), the flags
+`taskReset`, `teacherSandboxReset`, `remoteResetPersists`, `teacherEdit`, `workspaceOwned`
+(scratch; the workspace loads its own work and receives restored work as pushed state), and
+optional `teacherStarter(task)` (TeacherView's Starter-tab work; defaults to `starter`,
+electronics shows `starterCircuit`). A slot on the `'code'` channel stores one record; on
+`'files'` it stores per file.
 
-Call sites using the hooks today: `studentTaskContent.resolveRemoteResetTarget`, `StudentView` (`hasCompleteSolution`, `hasPersonalSandbox`), `TeacherEditorPanel` (Complete tab), `TeacherView` (`lifecycle.sandboxStarter`), `composedLesson.getEffectiveLessonForModule`, `useTeacherLivePublish` (live extras and the work-slot code string), and `sharedWorkspacePayload` (snapshot code/arcade design and share copy, keyed by `capabilities.sandboxState`). TeacherView's sandbox branches move in step 4.6.
+The one pipeline: `handleWorkChange(next, { moduleType, interaction })` (per trigger: save,
+teacherLive, `writeStudentCode` **only while watched**, idle feedback; the preview is never
+rebuilt per keystroke), `evaluateAndReport`, `handleRun` → `runWithRuntime` / the preview,
+`handleWorkspaceRun(work)`, `reportRun({ passed, suggestion, work })`. Loading (own save, carry,
+starter), the personal sandbox, remote reset, show stage/complete, Reset, teacher-edit apply,
+sandbox push, watch-start writes, the teacherLive payload and the share snapshot all read the
+definition. A module whose sandbox kind is `'code'` or `'files'` is code work: the `code` /
+`files` aliases, `handleCodeChange` / `handleFileChange` speak it and an information task clears
+it. Runtime state (`output`, `runStatus`, `turtleResult`, `inputPrompt`, `errorLine`, html's
+`iframeSrc`) stays outside the slot. `moduleWorkSlot.test.js` and the Phase 0
+`useStudentCodeState.*` characterisation suites pin the bytes written.
 
-### Contract v2: Builder authoring (plan steps 4.1 / 4.8)
+### Teacher surfaces
 
-`authoring` is a required, frozen group that holds everything the Builder used to decide by comparing lesson types, so `src/builder/` never branches on a module type (the type-branch ratchet holds every Builder file at 0). `defineModule` validates it (`AUTHORING_HOOKS`, `SANDBOX_STARTER_EDITORS`, `BUILDER_RUN_KINDS`, `AUTHORING_FLAGS`); `getModuleAuthoring(type)` in `definitions.js` returns it, or null for an unregistered type so each call site keeps its old fallback. Shared builders live in `src/modules/moduleAuthoring.js` and `src/modules/printHelpers.js`; each module's print section is in its own `print.js` (html, scratch, filesystem, electronics). `src/modules/__tests__/moduleAuthoring.test.js` compares every module's hooks against verbatim copies of the Builder branches they replaced (`helpers/legacyBuilderAuthoring.js`), and `src/builder/components/__tests__/builderAuthoringParity.test.jsx` does the same for the Sandbox starter summary and the task-format icons.
+- **TeacherView** (`src/app/teacherSandboxWork.js`) keeps one work value per
+  `capabilities.sandboxState` kind plus a draft; stage / module switch / reload restore the draft,
+  else the session's work (`wire.fromCode(sandboxCode)` or the decoded `sandboxFiles`), else
+  `lifecycle.sandboxStarter`; Go Live / Push / Reset write through the wire. The displayed task's
+  Starter tab uses `workSlot.teacherStarter`. Layout reads `teacherFillHeight`;
+  `TeacherEditorPanel` reads `teacherUnifiedStageTabs`, `teacherSandboxRow` and
+  `lifecycle.teacherCompleteTab`.
+- **Student sandbox push** (`useSandboxCodePush`), **teacherLive** display and publish
+  (`useTeacherLivePublish`, explicit null extras), **workspace sharing** (snapshot, seed, copy)
+  and **StudentModal / StudentCard / StudentWorkspaceBody** all go through `wire`, `storage` and
+  the capabilities above; StudentModal takes the registry's `TeacherLiveView`.
 
-Pure hooks:
+### UI half
 
-- `defaultTypeFields(prevTask, { defaultSprites })` — the module fields of a new task (`useBuilderState` add task / group / subtask), seeded from the task it follows (null for the first): code modules copy the complete-else-starter code and carry it (`codeDefaultTypeFields`); html copies the files and entry file (the first task gets the "HTML" template, `html/fileTemplates.js`); scratch deep-copies blocks, sprites, backdrops and variables (the first task gets the sprite library's first sprite); electronics clones the circuit and microcontroller; filesystem and desktop copy their state. An unregistered lesson type gets HTML's fields, as before.
-- `missingStarter(task)` + `missingStarterLabel` — a draft task with no starter work yet (html `starterFiles`, filesystem `starterFs`, desktop `starterDesktop`, electronics `starterCircuit`) shows the TaskEditor's "This draft task has no {label} yet" notice instead of the workspace. Always false (label null) for the other modules.
-- `copyStarterToComplete(task)` — "Reset to starter code" (`lessonUtils.copyStarterToComplete`): python and arcade copy `completeCode`, html the files and entry file, electronics the circuit; the rest (turtle included, as before) copy nothing.
-- `printTask(task, { esc })` — the module's section of the printable lesson (`printLesson.js`, code tasks only), byte-identical to the old per-type blocks. Desktop prints nothing, as before.
-
-Data:
-
-- `sandboxStarterEditor` — the lesson sandbox-starter editor and summary in the Builder's Sandbox starter modal: `'code'` (python, turtle, arcade), `'blocks'` (scratch), `'fs'` (filesystem), `'circuit'` (electronics), `'files'` (html; desktop has always fallen through to it too).
-- `builderRun` — the TaskEditor's Run (`useTaskEditorState`): `'pyodide'` (python), `'none'` (scratch, whose stage runs itself), `'preview'` (the HTML preview; html, and — as the old fallthrough — every other module, whose Builder workspaces run their own previews).
-- `codeFormat` (optional, `{ label: 'Code', icon: 'code' }`) — the Code task-format button (scratch: `Scratch` / the blocks icon).
-- `copyCodePlaceholder` — the Copy code panel placeholder, required for `supportsCopyCode` modules (python `Code students can copy...`, the others the HTML comment form).
-- Flags (default false): `fileTabs` (html — Reset to starter reselects the complete entry file and closes the preview), `sharedTypeAssets` (html, arcade — the lesson meta panel offers the module's shared type assets), `previewTypeAssets` (html — the Builder preview includes the selected shared assets), `spriteLibrary` (scratch — the module's type assets are the default sprite library; `SPRITE_LIBRARY_MODULE_TYPE`).
-
-The TaskEditor also reads `capabilities.unifiedStages` for its stage tabs, and task formats come from the activity registry (`getTaskFormat`, `TASK_FORMATS`, `isLegacyQuizRecord` in `src/activities/resolve.js` for export normalisation), never a `taskType` comparison.
-
-### Contract v2: teacher surfaces (plan step 4.6)
-
-The teacher-side module data travels through the same hooks, with the Realtime Database shapes unchanged (`sandboxCode` / `sandboxFiles`, `teacherLive.*`), so mixed-version tabs keep reading and writing identical payloads:
-
-- **TeacherView sandbox** (`src/app/teacherSandboxWork.js`, pure): TeacherView keeps one work value per `capabilities.sandboxState` kind (`workByKind`), each in the module's stored-work form (a code string, the Scratch project, a filesystem tree, a desktop state, html's files), and a matching per-kind draft. Stage / module switch / reload restore the draft, else the live session's work (`readSessionSandboxWork`: `wire.fromCode(sandboxCode)`, or the decoded `sandboxFiles` on the files channel), else `lifecycle.sandboxStarter` (`sandboxStarterWork`; a files module's `{ files }`), through `workSlot.normalise` (`restoreSandboxWork`). Go Live, Push and Reset write `sandboxWireFields` / `sandboxCodeFor` — `wire.toCode(work)` on the code channel (a structured module with no work sends `'{}'`, Scratch's old rule), the files on the files channel. The editor's `liveState` is the kind's work (`{ files, entryFile }` on the files channel) and `onChange` sets it and the draft (`cloneSandboxWork`). The module is always the sandbox module's effective lesson (`getEffectiveLessonForModule`), never the raw lesson type. `teacherSandboxWork.test.js` compares every module against verbatim copies of the old per-type chains and `TeacherView.sandboxWire.test.jsx` drives stage → edit → go live → push → reset → leave (and reload, and a composed lesson's module switch) through the real view. The Starter-tab work for the displayed task (`loadCurrentTaskContent`) still branches per type: `workSlot.starter` prefers an electronics task's starter-stage circuit, where this view has always shown `starterCircuit`.
-- **Student sandbox push** (`useSandboxCodePush({ phase, lesson, session, onPushedWork, onPushedFiles })`): on the code channel the push is `wire.fromCode(sandboxCode)` (a string that doesn't decode is ignored); on the files channel the decoded `sandboxFiles` (else the lesson's `sandboxStarterFiles`). `useStudentCodeState` restores the work into the slot (a `workspaceOwned` module's push is held for its workspace as `scratchSandboxProject`; pushed files replace the files and open the first).
-- **Teacher-live display** (`teacherLiveReferenceDisplayState`): files channel → `{ files, entryFile }`, a code-string module → the code, structured state → `wire.fromCode(code)` (`{}` for a malformed snapshot).
-- **teacherLive publish** (`useTeacherLivePublish`): every module reads its work through `readWorkValue` (now required) and the wire; extras always come from `wire.liveExtras` with explicit nulls. The old Scratch-only `scratchCodeRef` / `arcadeDesignRef` fallbacks are gone.
-- **Workspace sharing**: `seedSharedWorkspace` (SharedWorkspaceViewer) decodes the snapshot with `wire.fromCode` and writes the module's task record through `storage.toTaskRecord` (per file for a `perFile` module); `applySharedWorkspaceCopy` decodes with `wire.fromCode`. `buildSharedWorkspaceSnapshot` keeps its per-kind parameters (pinned by the Phase 0 share tests).
-
-### Contract v2: checking and the generic work slot (plan steps 4.3–4.5)
-
-Two optional groups put a module on `useStudentCodeState`'s generic work slot. A module declares both or neither (`defineModule` rejects one without the other; absent groups are `null`). A slot stores one record and travels on the `'code'` wire channel, or stores per file (`'perFile'`) and travels on the `'files'` channel (html); `defineModule` rejects any other pairing.
-
-Migration status: every module is on the slot — filesystem and desktop (step 4.3), python, turtle, arcade and electronics (step 4.4), html (per-file work) and scratch (workspace-owned work and checks, via `reportRun`) (step 4.5). The hook no longer branches on a module type for its work; the type-branch ratchet for `useStudentCodeState.js` fell from 27 to 3, and to 1 (the python/html support-stage offer rule) once the two `code_arrange` task-type checks became activity-registry lookups (`isModuleHostedActivityTask`, plan step 4.9). `code_arrange` is an activity hosted by the python / html modules: see [activities.md](activities.md#code-arrange-an-activity-hosted-in-a-module).
-
-`checking` — when and how the task check runs against the work:
-
-- `trigger` — `'change'` (every edit and every workspace interaction; filesystem, desktop), `'run'` (when the work runs: python, turtle, electronics through the runtime, arcade when its workspace reports "Run game", html when Run builds the preview or on Submit), `'submit'` or `'workspace'` (the workspace evaluates the checks itself and reports the outcome through `reportRun`; scratch). `'change'`, `'run'` and `'workspace'` are wired.
-- `buildContext(work, extras)` — the context handed to the check evaluators: filesystem `{ fs, ...interaction }`, desktop `{ fs: desktop.fs, desktop, ...interaction, input }` (`input` is the in-memory input summary the Desktop workspace sends on its interaction for the `input_*` checks; `null` when none); the code modules `{ ...extras, code }` (`codeCheckContext`; after a run the extras are `{ status, variables, turtle }`, for idle feedback `{ status }`), electronics adding `circuit: code` so a generic `code` check reads the Micro Controller's MicroPython source; html takes its files and checks their joined contents as `code` (a preview run adds `iframeDoc` for element checks, idle feedback `output`). Optional for a `'workspace'` trigger (scratch declares none). `buildCodeCheckContext` (`src/app/codeCheckContext.js`) defers to it for code-channel `'run'` modules.
-
-`workSlot` — the work value and where it comes from. Either the **field form** (filesystem, desktop) or the **hook form** (the code modules, html and scratch):
-
-- Field form: `starterField`, `sandboxField`, `stageField` — the task, lesson and code-stage fields holding starting work (`starterFs` / `sandboxStarterFs` / `fs`; `starterDesktop` / `sandboxStarterDesktop` / `desktop`). `defineModule` derives the source hooks below from them (`fieldWorkSlotHooks` in `moduleContract.js`): the complete value is the module's `completeField` and a reset target carries the work under `storage.workKey`.
-- Hook form: `starter(task)`, `stage(task, stageIndex)`, `complete(task)`, `sandbox(lesson)` (the personal-sandbox starter) and `fromResetTarget(target, task, action)` (a `lifecycle.resetTarget` result as work), plus `stored(value)` → `{ work, meta }`, the value as the `storage` / `wire` hooks take it (`work`) with the module's extra record fields (`meta`), and its inverse `fromStored(stored, fallback)`, which fills what `stored` lacks from `fallback`. Python and turtle use `codeWorkSlot()` (the value is the code string); Arcade's value is `{ code, arcadeDesign }`, stored as the code plus the record's `arcadeDesign` field (a stored design is cloned; a missing one keeps the fallback's — the starter design on task load, none in the personal sandbox, the current one for a teacher edit or push); electronics' value is the serialised circuit string (`empty()` is `''`, as the old `code` state started). html uses `filesWorkSlot()`: the value is `{ files, activeFile }`, the `files` array being the storage / wire work (one `{ content }` record per file, a filename → content map on the files channel) and `activeFile` the editor tab (the task's `entryFile`, a stage's or the complete entry file, else the first file); every source copies its files. Scratch's value is the Blockly workspace states its workspace last reported (`empty()` is `null`); its `starter` is `starterBlocks` (what the Reset button has always restored).
-- `empty(task)` — the work when nothing else applies, and the stable default `workValueFor` returns when the slot holds another module's work.
-- `normalise(work)` — applied whenever work is restored (task load, remote reset, show stage, show complete, personal sandbox, teacher edit, teacher sandbox push), never to the student's own edits (identity except desktop's `normaliseDesktop`).
-- `kind` — `'code'` (python, turtle, arcade, html: code with code stages) or `'state'` (the default; electronics, scratch, filesystem, desktop). A code module's own save is restored only in solo and carry-through uses `carryCodeFrom` (`selectPythonTaskCode`, or per file `selectHtmlTaskFiles` for a per-file module), its extras (Arcade's design) coming from the task's own record in any phase; restoring its work (stage, complete, a persisting remote reset) clears the run output (and html's preview) and saves the cleared run with the code (html: every file); task load keeps the check feedback. A state module's own save is always restored and carry uses `carryThroughField`; task load resets the check feedback; restoring keeps the run output.
-- Flags, each preserving one module's existing behaviour: `taskReset` (the Reset button restores the starter outside the personal sandbox — the code modules, html, scratch and electronics; filesystem and desktop reset only inside it), `teacherSandboxReset` (in a teacher sandbox Reset restores the teacher's pushed code — python, turtle), `remoteResetPersists` (a teacher remote reset saves the restored work and, while watched, mirrors its extras — arcade, whose design has no other save on reset), `teacherEdit` (a teacher's live edit replaces the work: `teacherEditApplyCode`, or `teacherEditApplyFiles` on the files channel — every module but filesystem and desktop) and `workspaceOwned` (scratch; needs the `'workspace'` trigger): the workspace loads its own work — own save, carry (`carryBlocksFrom`) or starter, through `selectScratchInitialProject`, lazily, once the previous task's workspace has flushed its last save — and reads its own personal sandbox; restored work (Reset, remote reset, stage, complete, teacher edit) is pushed to it as external state (`scratchExternalState`, with the stage it came from as `scratchActiveStageIndex`) and a teacher sandbox push as `scratchSandboxProject`; the slot holds only what the workspace last reported (null after task load), so nothing is snapshotted on task change and watch start mirrors the task's saved record.
-
-In `useStudentCodeState` the slot is one `work` state, `{ moduleType, taskId, value }`, plus an `interactions` map keyed by module type (`{ currentDir, openFile }`; a carrying task keeps the previous directory). `workRef` / `interactionsRef` are updated synchronously on every set (including the MicroPython runtime's mid-run circuit updates), so a handler that runs straight after another in the same event reads what was just set. Readers go through `workValueFor(moduleType)`, which returns the module's stable default when the slot holds another module's work, so a composed lesson switching modules never publishes, saves, mirrors or shares a leftover value. An information or activity task clears a code module's work, html's included (the old `setCode('')` / `setFiles([])`). One pipeline replaces the per-module handlers:
-
-- `handleWorkChange(next, { moduleType, interaction, suppressFailFeedback })` — for a `'change'` module: set work (and/or interaction) → `persistence.saveWork` → teacherLive (published by `useTeacherLivePublish`'s effect, which tracks the stored work) → evaluate now → idle feedback; an interaction-only call re-checks with fail feedback suppressed. For a `'run'` module: set work → publish teacherLive → `persistence.saveRunRecord` (the work with the current output / run status and the module's extras; the personal sandbox keeps only the code) → `writeStudentCode` only while this student is watched → idle feedback against the code (with the last run status for `'code'` kinds). For a files module (html, `handleFilesWorkChange`; `handleFileChange(filename, content)` is its one-file entry point): set work → publish teacherLive (the file map and the edited file) → save only the changed files → `writeStudentFiles` only while watched → idle feedback limited to the checks allowed on submit. The preview iframe is only built by Run, never per keystroke. For a `'workspace'` module (scratch, `handleScratchChange`): set work (not when the lesson has since moved to another module: a workspace flushes its last report as it unmounts) → publish teacherLive → `persistence.saveWork` (the work alone) → `writeStudentCode` only while watched.
-- `evaluateAndReport({ moduleType, work, context }, { suppressFailFeedback })` — evaluates the task check, applies local feedback, and in a live lesson outside the personal sandbox writes the run (`code` = `wire.toCode(work)`) and, while unsolved, the attempt (`wire.submission(work)`).
-- `handleRun` dispatches on `capabilities.run`; its `'runtime'` branch is `runWithRuntime` (`src/app/hooks/runWithRuntime.js`), which reads and sets the work's code through the slot, and its `'preview'` branch builds html's iframe from the slot's files. `handleWorkspaceRun(runCode)` takes a `'workspace'`-run, `'run'`-checked module's own run report (Arcade's "Run game": code checks only, as there is no captured output).
-- `reportRun({ passed, suggestion, work })` — a `'workspace'`-checked module (Scratch, whose `handleScratchCheck(passed, snapshot)` delegates to it) reports a check it evaluated: local feedback (the workspace's suggestion, else the first check hint), then in a live lesson, the teacher sandbox or while watched the run (`code` = `wire.toCode(work)`, the reported work else the task's saved work) and, in a live lesson while unsolved, the attempt (`wire.submission(work)`).
-
-Loading (own save, carry, starter), `saveCurrentWork`, the personal sandbox, remote reset, show stage / complete, the Reset button, teacher-edit apply (`workSlot.teacherEdit` modules only), the teacher sandbox push, watch-start writes (a code-channel `'run'` module also mirrors its output and pending `input()` prompt; a files module writes its file map and active file), the teacherLive payload (on the code channel `wire.toCode(stored.work)`, `''` for no work; on the files channel the file map and active file with an empty `code`; plus `wire.liveExtras` fed from the stored `meta`, explicit nulls included) and the share snapshot all read the definition instead of branching on the type. Runtime-specific state (`output`, `runStatus`, `turtleResult`, `inputPrompt`, `errorLine`, html's `iframeSrc` / `htmlErrorLocation`) stays outside the slot.
-
-`cs.work`, `cs.handleWorkChange`, `cs.handleWorkspaceRun`, `cs.reportRun` and `cs.readSavedTaskWork(moduleType, taskId)` are exposed; the per-module names the workspaces use remain as thin aliases: `code` (the code of the code-string module the slot holds, `''` on html and scratch tasks), `files` / `activeFile` (the files module's work, `[]` / `''` otherwise), `handleFileChange`, `handleFileTabChange`, `handleScratchChange`, `handleScratchCheck`, `scratchExternalState`, `scratchActiveStageIndex`, `scratchSandboxProject`, `arcadeDesign`, `handleCodeChange`, `handleArcadeDesignChange` (the design saves with the code and publishes at once but mirrors to a watching teacher on its own 600 ms debounced channel), `handleArcadeRun`, `fsState`, `desktopState`, `fsInteraction`, `desktopInteraction`, `handleFsChange`, `handleDesktopChange`, `handleFsInteraction`, `handleDesktopInteraction`, `readSavedTaskFs`, `readSavedTaskDesktop` — as do `buildSharedWorkspaceSnapshot`'s per-kind parameters (`useSandboxCodePush` takes generic `onPushedWork` / `onPushedFiles` since step 4.6).
-
-Builder hooks:
-
-- `makeCodeTaskFields(task)` creates type-specific fields when a task becomes a code task.
-- `makeNewStage(task, existing)` creates a new stage state.
-- `initCompleteTab(task, ctx)` and `initStageTab(stage, ctx)` lazily populate builder tabs.
-- `getCarryThroughUpdates(sourceTask)` and `getNewStarterUpdates(task)` keep carry-through logic type-owned.
-
-Validation hooks (pure; shared by the Builder and the CLI through `src/shared/lessonValidation.js`):
-
-- `validateTask(task, { n, lesson, errors, warnings })` pushes the module's own rules (check fields, starter state, stages, complete-solution warnings). It runs for code tasks and for `code_arrange` tasks hosted by the module, looked up by the task's effective module type.
-- `hasStarterContent(task)` (optional; `null` = no empty-editor warning), `hasCheckValue(task)` (optional; the Builder's untested-check reminder) and `validateTaskInBrowser(task, ctx)` (optional; Builder-only rules that need browser APIs).
-
-Capability flags:
-
-- `supportsInteractionMode` controls Run/Submit mode UI.
-- `supportsIncorrectChecks` controls feedback-check UI.
-- `supportsTests` and `supportsVariableChecks` control Python-style test/variable checks.
-- `supportsDomChecks` controls HTML element checks.
-- `runtime` exposes optional async execution helpers such as Pyodide or MicroPython.
-
-## Runtime Flow
-
-```mermaid
-flowchart TD
-  Lesson["Lesson type"] --> Registry["src/modules/registry.js"]
-  Registry --> Student["StudentWorkspace"]
-  Registry --> Builder["BuilderWorkspace"]
-  Registry --> Teacher["TeacherLiveView"]
-  Registry --> Checks["CheckEditor + module checks"]
-  Student --> Persist["storage adapters (saveWork / readWork)"]
-  Student --> Wire["wire codec (toCode / liveExtras)"]
-  Teacher --> Display["getDisplayState"]
-  Builder --> Stages["makeNewStage / initCompleteTab"]
-```
+`StudentWorkspace` (props from `LessonTaskContent`: `lesson`, `task`, `cs`, viewing / forced /
+teacher-edit flags, `display*` states; edits only through `cs`), `BuilderWorkspace` (TaskEditor's
+tab state and handlers), `CheckEditor` (+ optional `FeedbackCheckEditor`), `TeacherLiveView`
+(`displayState`, `readOnly`, `onChange` in the sandbox), `getLayoutStyles()` (`sharedStyles.js`),
+`runtime` (`{ init, isReady, stop, provideInput, run, buildPreviewSrc, waitForPreviewText }` for
+a `'runtime'` module, else null).
 
 ## Check-Type Registry
 
-Check evaluation is registry-driven. `src/modules/checkRegistry.js` (pure, Node-safe) exports `createCheckRegistry(defs)`; `src/modules/checks.js` builds one `checkRegistry` from `CORE_CHECKS` plus each module's exported `CHECKS` array (`filesystem`, `desktop`, `python`, `html`, `electronics`, `turtle`) and the shared input checks (`src/shared/input/checks.js`). A definition is:
+`src/modules/checkRegistry.js` (pure) builds one registry in `src/modules/checks.js` from
+`CORE_CHECKS`, every module's `CHECKS` and the shared input checks. A definition is
+`{ type, owner, subject?, operators?, fields?, aliases?, timing, requiresRun, submitAllowed,
+contextKey?, evaluate(check, output, ctx), validate?(check, ctx) }`; `owner` is `core`,
+`module:<type>` or `input`; duplicate ids throw. `evaluateSingleCheck` normalises core aliases,
+looks up and calls `evaluate` (unknown types are `false`); `RUN_REQUIRED` / `SUBMIT_ALLOWED` are
+derived. Scratch evaluates its own checks in the workspace. `checkRegistryParity.test.js` holds
+parity with the frozen pre-registry dispatcher.
 
-`{ type, owner, subject?, operators?, fields?, aliases?, timing, requiresRun, submitAllowed, contextKey?, evaluate(check, output, ctx), validate?(check, ctx) }`
+## Guard rails
 
-- `owner` is `core`, `module:<type>`, `input` (`input_gesture`, `input_shortcut`, `input_modifier`, evaluated against `ctx.input`), and later `activity:<id>`. Every canonical type and alias has exactly one owner; registering a duplicate id throws.
-- A module that can evaluate check types owned elsewhere lists them in its definition's optional `inheritsCheckTypes` (Desktop: the `input_*` types). `lessons capabilities` lists them under the module, and `validateRegisteredChecks` passes the task's effective module as `ctx.moduleDefinition` so a type's `validate()` can reject modules that don't inherit it.
-- `aliases` are legacy ids that resolve to the definition (`output_contains` → `output`, `element_value_equals` → `html_element_value`, `fs_content_contains` → `fs_file_content`). Core aliases are rewritten by `normalizeCheckShape` before lookup; module evaluators normalise their own aliases.
-- `evaluateSingleCheck` normalises core aliases, looks the type up, and calls `evaluate`; unknown types return `false`. The electronics override (a generic `code` check reads the Micro Controller's MicroPython source when `ctx.circuit` is set) lives in the core `code` definition.
-- `CHECK_TYPES.RUN_REQUIRED` and `SUBMIT_ALLOWED` (used by `checkRequiresRun` / `checkAllowedForSubmit`, the Builder and the CLI) are derived from `requiresRun` / `submitAllowed`, including aliases.
-- Scratch checks are not registered: they are evaluated inside the Scratch workspace by `evaluateScratchCheck`.
-- `validate` is reserved for per-type authoring validation (still in `src/shared/checkAuthoringValidation.js`); Builder check editors do not yet render from `fields`.
+- `src/modules/__tests__/typeBranchRatchet.test.js` counts literal type comparisons (and inline
+  type arrays) per file outside the plugin folders; every file is at zero (the baseline is
+  empty), and a match that is not type branching goes on its reasoned, self-checking allowlist
+  (empty today; prefer a named constant or map). A new module's type joins its name list.
+- `eslint.config.js` `no-restricted-syntax` rejects `=== / !== / case` against a type name in
+  `src/**` and `cli/**` outside `src/modules/**`, `src/activities/**` and tests (the generator
+  adds a new module's type to its pattern).
+- Registry-driven tests fail when a module misses a surface: `moduleInterface`,
+  `moduleTypeParity` (every parity list or an honest `KNOWN_GAPS` reason),
+  `StudentViewModules` (real click-through per module), `moduleDefinitionsNode` (every folder
+  registered and Node-safe), `authoringDocExamples`, `validationErrorsDoc`. Value pins describe
+  the built-in modules (`__tests__/helpers/builtInModules.js`).
 
-To add a check type, add a definition to the owning module's `CHECKS`. `src/modules/__tests__/checkRegistryParity.test.js` asserts ownership and parity with the frozen pre-registry dispatcher (`legacyCheckDispatcher.js`).
+## Adding a module
+
+Use the kit; the `new-module` skill (`.claude/skills/new-module/SKILL.md`) walks the whole loop
+from an authoring request to the real-browser checks.
+
+```bash
+npm run new:module -- <type> "<Label>" [--dry-run]
+```
+
+`scripts/new-module.mjs` copies `src/modules/_template/` (a working "write text, press Check"
+module: `run: 'workspace'`, `trigger: 'run'`, `codeWorkSlot`, core code checks, every group
+filled with safe defaults and `TODO(new-module)` markers) to `src/modules/<type>/`, registers it
+in `definitions.js`, `registry.js` and `checks.js`, adds the type to the ratchet and ESLint rule,
+records the scaffold's deliberate parity gaps in `KNOWN_GAPS`, adds its `StudentViewModules`
+click-through, writes `docs/authoring/<type>.md` (with a validated example) and indexes it in
+`docs/README.md`, `docs/CODEBASE_MAP.md`, `validation-errors.md`, `AGENTS.md`,
+`lesson-schema.md`, `task-types.md` and `MODULE_FEATURE_MATRIX.md`. It rejects reserved and
+taken types (and names core code already compares against), refuses to overwrite and writes
+nothing until every edit is planned. The untouched scaffold passes `npm test`, lint, format,
+`docs:check` and `vite build`; `scripts/__tests__/newModule.test.mjs` tests the generator.
+
+Then decide each definition group, build the real workspaces, add module checks, update the
+tests (keep the click-through; Run then Stop for a runtime module), resolve the `KNOWN_GAPS`
+entries, rewrite the docs, and verify in a real browser.
 
 ## Usually Changes With
 
-When this contract changes, also check:
-
-- `src/modules/__tests__/moduleInterface.test.js`
-- `src/app/components/LessonTaskContent.jsx`
-- `src/app/views/teacher/TeacherEditorPanel.jsx`
-- `src/builder/components/TaskEditor.jsx`
-- `src/builder/components/task-editor/TaskOptionsSection.jsx`
-- `docs/architecture/feature-impact-map.md`
-- `docs/authoring/<type>.md`
-- `docs/CODEBASE_MAP.md`
-- `docs/TESTING.md`
-
-## Adding A New Type
-
-1. Add `src/modules/<type>/definition.js` (including the `lifecycle`, `storage` and `wire` groups, usually from the `src/modules/moduleContract.js` builders, and the Builder `authoring` group, from `src/modules/moduleAuthoring.js` / `printHelpers.js`), `index.js`, `StudentWorkspace.jsx`, `BuilderWorkspace.jsx`, and `CheckEditor.jsx`.
-2. Add type-specific `checks.js` if the type needs custom checks, exporting `CHECKS` definitions and adding them to `checkRegistry` in `src/modules/checks.js`.
-3. Register the definition in `src/modules/definitions.js` and the module in `src/modules/registry.js`.
-4. Add authoring documentation and examples.
-5. Add module contract tests and focused behavior tests.
-6. Update `docs/CODEBASE_MAP.md`, `docs/FEATURES.md`, and this page if the contract changes.
-
+- `src/modules/defineModule.js`, `src/modules/moduleContract.js` and `src/modules/_template/`
+  (a new field needs a default and a template entry)
+- `src/modules/__tests__/moduleDefinitions.test.js`, `moduleInterface.test.js`,
+  `moduleTypeParity.test.js`, `derivedTypeLists.test.js`
+- `src/app/hooks/useStudentCodeState.js`, `src/app/teacherSandboxWork.js`,
+  `src/app/components/LessonTaskContent.jsx`, `src/app/views/teacher/TeacherEditorPanel.jsx`
+- `docs/architecture/feature-impact-map.md`, `docs/authoring/<type>.md`, `docs/CODEBASE_MAP.md`,
+  `docs/TESTING.md`

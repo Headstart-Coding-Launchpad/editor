@@ -63,6 +63,7 @@ export default defineModule({
     teacherLiveReference: true,
     unifiedStages: true,
     sandboxState: 'code',
+    teacherFillHeight: true,
     run: 'runtime',
   },
   // MicroPython drives the circuit while it runs (onCodeUpdate), so the work changes mid-run.
@@ -170,6 +171,12 @@ export default defineModule({
   },
 
   lifecycle: {
+    playgroundTask: () => ({
+      id: 1,
+      title: 'Electronics playground',
+      starterCircuit: cloneCircuit(DEFAULT_CIRCUIT),
+      microcontroller: { enabled: false, boardType: null, starterCode: '' },
+    }),
     hasPersonalSandbox: personalSandboxWhenLessonHas('sandboxStarterCircuit'),
     resetTarget: (task, action, ctx = {}) => {
       const { stage } = stageForAction(task, action)
@@ -207,6 +214,9 @@ export default defineModule({
       serializeCircuit(
         getStarterStage(task)?.stage?.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
       ),
+    // TeacherView's Starter tab has always shown the task's `starterCircuit`, not a starter
+    // stage's circuit.
+    teacherStarter: (task) => serializeCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT),
     stage: (task, stageIndex) =>
       serializeCircuit(
         task?.codeStages?.[stageIndex]?.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT

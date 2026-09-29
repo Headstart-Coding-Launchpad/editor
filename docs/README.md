@@ -122,6 +122,12 @@ Decision to use the custom Scratch runtime in `src/modules/scratch/`.
 ### [adr/0008-split-cli-and-builder-validation.md](adr/0008-split-cli-and-builder-validation.md)
 Decision to keep CLI validation and Builder validation separate.
 
+### [adr/0009-activity-registry.md](adr/0009-activity-registry.md)
+Decision to model bounded exercises (quizzes, code_arrange, Binary, Keyboard, Mouse) as activities in a pure + UI registry, with legacy task types mapped by a resolver and one host for persistence, sync and grading.
+
+### [adr/0010-module-contract-v2-and-work-slot.md](adr/0010-module-contract-v2-and-work-slot.md)
+Decision that module definitions describe everything core code needs (meta, capabilities, lifecycle, storage, wire, checking, work slot), that the student hook keeps one generic work slot, and that core code never compares against a type name (ratchet + ESLint rule).
+
 ---
 
 ## Agent reference docs (`docs/agents/`)

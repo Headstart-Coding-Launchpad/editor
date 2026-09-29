@@ -1,6 +1,44 @@
 # Modular Activities & Modules Plan
 
-Status: **Accepted plan, not started** (agreed 2026-09-28). Execute phase by phase; each numbered step is one focused PR that ships on its own with tests green and **no change to stored data formats**.
+Status: **Implemented** on `feature/modular-activities` (agreed 2026-09-28; every phase below is done, see [Status](#status)). Each numbered step shipped as one focused PR with tests green and **no change to stored data formats**. What is left is real-browser verification.
+
+## Status
+
+| Phase | State |
+|---|---|
+| 0 — Safety net (0.1–0.5) | Done: CI `vite build` + Node import test, characterisation suites, registry parity + StudentView click-through, type-branch ratchet. |
+| 1 — Shared foundations (1.1–1.5) | Done: `definition.js` / `index.js` split, derived type lists, check-type registry, shared `validateTask`, drift fixes. |
+| 2 — Activity tier + kit (2.1–2.7) | Done: activity registry and resolver, quizzes and Binary (all eight modes) as activities, `ActivityHost`, Builder/YAML, `npm run new:activity`, `lessons capabilities`, authoring requests, [ADR 0009](../adr/0009-activity-registry.md). |
+| 3 — Input, Keyboard, Mouse (3.1–3.3) | Done. |
+| 4 — Module contract v2 (4.1–4.9) | Done: lifecycle, storage, wire, generic work slot for every module, teacher surfaces, capability gates, Builder `authoring`, type branches at **zero** outside the plugin folders (ratchet + ESLint `no-restricted-syntax`), `src/modules/_template/` + `npm run new:module` + the `new-module` skill, [lesson-type-modules.md](lesson-type-modules.md) rewritten for v2, [ADR 0010](../adr/0010-module-contract-v2-and-work-slot.md); `code_arrange` on the activity contract. |
+| 5 — Learning carries into Desktop (5.1) | Done: Desktop records input and exposes the `input_*` checks. |
+
+### Outstanding real-browser checks
+
+jsdom cannot catch pointer stacking, layout, iframe, Blockly or touch problems, so these still
+need a person in a real browser (a teacher tab plus a student tab, ideally one on a tablet):
+
+- **Quizzes as activities:** answers persist across reload; teacher card/modal show answers;
+  Edit answers; Start again / show answers; Go Live only broadcasts the teacher's own quiz and
+  it renders the state; composed lesson with a quiz between code tasks.
+- **Binary / Keyboard / Mouse:** every mode by mouse, keyboard and touch; the on-screen keyboard
+  and `hardwareOnly` items; device badge; teacher view/edit/reset; Builder preview.
+- **Module contract v2 (4.3–4.7), per module:** edit/run/check in solo and live; reload keeps
+  work; carry-through; personal sandbox; teacher tabs (Starter / stages / Complete), Send to all,
+  remote reset to each stage, Run on student, teacher live edit (python, turtle, arcade, scratch,
+  html, electronics), teacher sandbox go live / push / reset / leave, share with class, the
+  presentation broadcast, StudentModal mirrors and highlights, focus panes (scratch,
+  electronics); a composed lesson switching modules.
+- **Plan 4.8 (behaviour-neutral, confirm nothing moved):** TeacherView centre column fill vs
+  scroll for each module and the Starter tab's work (electronics shows `starterCircuit`); the
+  teacher sandbox layout for scratch and html; the four playgrounds; admin Shared Assets
+  (Scratch sprites/backdrops, no "Web editor" toggle on HTML); the explainer editor's Scratch
+  Blocks menu; no topic library on Scratch; the support-stage reference panel for each module;
+  the Builder for every module (new task, draft notices, Run, print, sandbox starter modal).
+- **Code arrange** in a python and an html lesson (drag, Run, teacher mirror).
+- **Desktop input checks** (double-click vs single click, drag, shortcuts).
+- **A scaffolded module** (`npm run new:module`, then removed): the template module renders,
+  saves, checks and mirrors in a real browser before a real module is built on it.
 
 ## Why
 

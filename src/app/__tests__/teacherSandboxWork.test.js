@@ -10,6 +10,11 @@ import {
   parseScratchState,
 } from '../../shared/workspaceData'
 import { decodeFileKey, encodeFileKey } from '../../shared/fileKeys'
+import { getStarterStage } from '../../shared/taskStages'
+import { builtInOnly } from '../../modules/__tests__/helpers/builtInModules.js'
+
+// The legacy oracles below describe the built-in modules; a module added later has no old branch.
+const LEGACY_TYPES = builtInOnly(MODULE_TYPES)
 import {
   cloneSandboxWork,
   hasSandboxWork,
@@ -20,6 +25,7 @@ import {
   sandboxStarterWork,
   sandboxWireFields,
   sandboxWorkKind,
+  taskStarterWork,
 } from '../teacherSandboxWork'
 
 // Plan step 4.6: TeacherView's teacher-sandbox chains (enter / push / reset / leave / restore,
@@ -189,13 +195,13 @@ function sessionFromFields(fields) {
     : { state: 'sandbox', sandboxCode: fields.code }
 }
 
-const CASES = MODULE_TYPES.flatMap((type) =>
+const CASES = LEGACY_TYPES.flatMap((type) =>
   SAMPLE_WORK[type].map((work, index) => [type, index, work])
 )
 
 describe('teacher sandbox work through the module definitions (plan step 4.6)', () => {
   it('covers every registered module', () => {
-    expect(Object.keys(SAMPLE_WORK).sort()).toEqual([...MODULE_TYPES].sort())
+    expect(Object.keys(SAMPLE_WORK).sort()).toEqual([...LEGACY_TYPES].sort())
   })
 
   it('starts each kind from the same empty work the old per-kind states did', () => {
@@ -264,7 +270,7 @@ describe('teacher sandbox work through the module definitions (plan step 4.6)', 
     })
   })
 
-  describe.each(MODULE_TYPES)('%s', (type) => {
+  describe.each(LEGACY_TYPES)('%s', (type) => {
     const definition = getModuleDefinition(type)
     const configured = definition.lifecycle.sandboxStarter(lessonFor(type), TASK)
 
@@ -310,4 +316,68 @@ describe('teacher sandbox work through the module definitions (plan step 4.6)', 
       expect(readSessionSandboxWork(definition, session)).toBeNull()
     }
   )
+})
+
+// Plan step 4.8: TeacherView's Starter-tab work for the displayed task (loadCurrentTaskContent)
+// now comes from `workSlot.teacherStarter`. `legacyStarterTabWork` is a verbatim copy of the
+// per-type chain it replaced (information / hosted-activity tasks keep their own branch).
+function legacyStarterTabWork(type, task) {
+  if (type === 'python' || type === 'arcade' || type === 'turtle') {
+    return { code: getStarterStage(task)?.stage?.code ?? task.starterCode ?? '' }
+  } else if (type === 'scratch') {
+    return { blocks: task.starterBlocks ?? null }
+  } else if (type === 'filesystem') {
+    return { fs: task.starterFs ?? DEFAULT_FS }
+  } else if (type === 'desktop') {
+    return {
+      desktop: normaliseDesktop(task.starterDesktop ?? makeDefaultDesktop(task.availableApps)),
+    }
+  } else if (type === 'electronics') {
+    return { code: serializeCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT) }
+  }
+  return { files: getStarterStage(task)?.stage?.files ?? task.starterFiles ?? [] }
+}
+
+const STARTER_TAB_TASKS = [
+  { id: 1 },
+  {
+    id: 2,
+    starterCode: 'print(1)',
+    starterBlocks: { blocks: { languageVersion: 0, blocks: [] } },
+    starterFs: { type: 'folder', name: '/', children: [] },
+    starterDesktop: { fs: { type: 'folder', name: '/', children: [] }, windows: [] },
+    starterCircuit: { ...DEFAULT_CIRCUIT, components: [] },
+    starterFiles: HTML_FILES,
+    availableApps: ['files'],
+  },
+  {
+    id: 3,
+    starterCode: 'legacy',
+    starterCircuit: { ...DEFAULT_CIRCUIT, components: [] },
+    starterFiles: HTML_FILES,
+    codeStages: [
+      {
+        role: 'starter',
+        label: 'Starter',
+        code: 'print("stage")',
+        files: [{ name: 'index.html', type: 'html', content: '<p>stage</p>' }],
+        circuit: { ...DEFAULT_CIRCUIT, components: [{ id: 'led1', type: 'led' }] },
+      },
+    ],
+  },
+  { id: 4, availableApps: ['files', 'notepad'] },
+]
+
+describe("TeacherView's Starter-tab work (plan step 4.8)", () => {
+  describe.each([...LEGACY_TYPES, 'not-a-module'])('%s', (type) => {
+    it.each(STARTER_TAB_TASKS.map((task) => [task.id, task]))(
+      'task %i matches the old per-type chain',
+      (_id, task) => {
+        const definition = getModuleDefinition(type)
+        expect({ [sandboxWorkKind(definition)]: taskStarterWork(definition, task) }).toEqual(
+          legacyStarterTabWork(type, task)
+        )
+      }
+    )
+  })
 })

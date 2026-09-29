@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { MarkdownRenderer } from './markdown'
+import { getModuleDefinition } from '../modules/definitions'
 import { findAllTopicSuggestions, searchTopics, useTopicLibrary } from './topicLibrary'
 import {
   IMAGE_EXTENSIONS,
@@ -513,8 +514,8 @@ function MarkdownToolbar({
         ⇥
       </button>
 
-      {/* Scratch blocks — only for scratch lessons */}
-      {lessonType === 'scratch' && (
+      {/* Scratch block references — capabilities.explainerBlockMenu (scratch) */}
+      {!!getModuleDefinition(lessonType)?.capabilities.explainerBlockMenu && (
         <>
           <span style={s.sep} />
           <div style={s.toolbarGroup}>
@@ -524,12 +525,12 @@ function MarkdownToolbar({
               style={{ ...s.toolbarBtn, color: '#b45309' }}
               onMouseDown={(e) => {
                 e.preventDefault()
-                setOpenDropdown((d) => (d === 'scratch' ? null : 'scratch'))
+                setOpenDropdown((d) => (d === 'blocks' ? null : 'blocks'))
               }}
             >
               Blocks ▾
             </button>
-            {openDropdown === 'scratch' && (
+            {openDropdown === 'blocks' && (
               <div style={{ ...s.dropdown, width: 230, maxHeight: 280, overflowY: 'auto' }}>
                 {SCRATCH_BLOCK_CATEGORIES.map((cat) => (
                   <div key={cat.label}>

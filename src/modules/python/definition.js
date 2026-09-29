@@ -53,6 +53,7 @@ export default defineModule({
     teacherLiveReference: true,
     unifiedStages: true,
     sandboxState: 'code',
+    teacherUnifiedStageTabs: true,
     run: 'runtime',
   },
   // Pyodide reports the failing line on stderr; the editor highlights it.
@@ -156,6 +157,7 @@ export default defineModule({
 
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
   lifecycle: {
+    playgroundTask: () => ({ id: 1, title: 'Python playground', starterCode: '' }),
     hasPersonalSandbox: alwaysPersonalSandbox,
     resetTarget: codeResetTarget,
     hasComplete: codeHasComplete,

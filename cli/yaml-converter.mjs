@@ -1,5 +1,11 @@
 import yaml from 'js-yaml'
-import { activityIdForYamlType, yamlTypeForActivityTask } from '../src/activities/registry.pure.js'
+import {
+  activityIdForYamlType,
+  legacyTaskTypeForYamlType,
+  usesYamlAnswerShorthand,
+  yamlTypeForActivityTask,
+  yamlTypeForLegacyTaskType,
+} from '../src/activities/registry.pure.js'
 
 /**
  * Parse YAML lesson text and return a full lesson JSON object.
@@ -157,10 +163,9 @@ function convertTask(raw, id, lessonType) {
 
   if (type === 'information') {
     task.taskType = 'information'
-  } else if (type === 'quiz') {
-    task.taskType = 'quiz'
-  } else if (type === 'code_arrange') {
-    task.taskType = 'code_arrange'
+  } else if (legacyTaskTypeForYamlType(type)) {
+    // Legacy activity task types keep their own YAML type (`type: quiz`, `type: code_arrange`).
+    task.taskType = legacyTaskTypeForYamlType(type)
   } else if (type === 'draft') {
     task.taskType = 'draft'
   } else if (type !== lessonType && activityIdForYamlType(type)) {
@@ -194,11 +199,8 @@ function taskToYamlObject(task) {
   if (out.taskType === 'information') {
     out.type = 'information'
     delete out.taskType
-  } else if (out.taskType === 'quiz') {
-    out.type = 'quiz'
-    delete out.taskType
-  } else if (out.taskType === 'code_arrange') {
-    out.type = 'code_arrange'
+  } else if (yamlTypeForLegacyTaskType(out.taskType)) {
+    out.type = yamlTypeForLegacyTaskType(out.taskType)
     delete out.taskType
   } else if (out.taskType === 'draft') {
     out.type = 'draft'
@@ -211,11 +213,7 @@ function taskToYamlObject(task) {
     out = { ...(title !== undefined ? { title } : {}), type: shorthand, ...fields }
   }
 
-  if (
-    out.type === 'quiz' &&
-    (out.quizType == null || out.quizType === 'multiple_choice') &&
-    out.check?.type === 'answer_equals'
-  ) {
+  if (usesYamlAnswerShorthand(task)) {
     out.answer = out.check.value
     delete out.check
   }

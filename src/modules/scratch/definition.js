@@ -37,6 +37,7 @@ export default defineModule({
     pickerHint: 'Workspace',
     language: null,
     playground: true,
+    pickerOrder: 4,
   },
   capabilities: {
     stageReveal: 'offer',
@@ -57,6 +58,9 @@ export default defineModule({
     teacherLiveReference: false,
     unifiedStages: true,
     sandboxState: 'blocks',
+    teacherFillHeight: true,
+    teacherSandboxRow: true,
+    explainerBlockMenu: true,
     // The stage runs inside the workspace, which reports its checks (handleScratchCheck).
     run: 'workspace',
   },
@@ -192,6 +196,14 @@ export default defineModule({
 
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
   lifecycle: {
+    playgroundTask: () => ({
+      id: 1,
+      title: 'Scratch playground',
+      starterBlocks: null,
+      allowAddSprite: true,
+      allowRemoveSprite: true,
+      allowRemoveStarterSprites: true,
+    }),
     hasPersonalSandbox: personalSandboxWhenLessonHas('sandboxStarter'),
     // Only a stage reset leaves a stage active; starter and complete clear it.
     resetTarget: (task, action) => {

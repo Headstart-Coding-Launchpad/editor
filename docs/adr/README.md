@@ -12,4 +12,6 @@ ADRs capture decisions that should not have to be rediscovered from code. Keep t
 - [ADR 0006: Sandboxed iframe web preview](0006-sandboxed-iframe-web-preview.md)
 - [ADR 0007: Custom Scratch runtime](0007-custom-scratch-runtime.md)
 - [ADR 0008: Split CLI and Builder validation](0008-split-cli-and-builder-validation.md)
+- [ADR 0009: Activity registry](0009-activity-registry.md)
+- [ADR 0010: Module contract v2 and the generic work slot](0010-module-contract-v2-and-work-slot.md)
 

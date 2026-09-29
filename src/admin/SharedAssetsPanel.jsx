@@ -3,6 +3,7 @@ import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { firestore, storage } from '../shared/firebase'
 import { getLessonModules } from '../modules/registry'
+import { getModuleAuthoring } from '../modules/definitions'
 import { spriteVisualMode } from '../shared/spriteVisuals'
 
 const LESSON_TYPES = getLessonModules().map((module) => ({ id: module.type, label: module.label }))
@@ -52,7 +53,11 @@ function TypeAssetsEditor({ lessonType }) {
   const [typeData, setTypeData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [uploads, setUploads] = useState({})
-  const isScratch = lessonType === 'scratch'
+  // Default sprites / backdrops: the sprite-library module (authoring.spriteLibrary; scratch).
+  const hasSpriteDefaults = !!getModuleAuthoring(lessonType)?.spriteLibrary
+  // A module whose preview always includes its shared type assets (authoring.previewTypeAssets;
+  // html) has no per-asset "Web editor" toggle.
+  const showsWebEditorToggle = !getModuleAuthoring(lessonType)?.previewTypeAssets
 
   useEffect(() => {
     return onSnapshot(
@@ -181,7 +186,7 @@ function TypeAssetsEditor({ lessonType }) {
             >
               {asset.name}
             </a>
-            {lessonType !== 'html' && (
+            {showsWebEditorToggle && (
               <label style={s.showInEditorLabel}>
                 <input
                   type="checkbox"
@@ -204,7 +209,7 @@ function TypeAssetsEditor({ lessonType }) {
         ))}
       </div>
 
-      {isScratch && (
+      {hasSpriteDefaults && (
         <DefaultSpritesEditor
           sprites={defaultSprites}
           storageAssets={storageAssets}
@@ -212,7 +217,7 @@ function TypeAssetsEditor({ lessonType }) {
         />
       )}
 
-      {isScratch && (
+      {hasSpriteDefaults && (
         <DefaultBackdropsEditor
           backdrops={defaultBackdrops}
           storageAssets={storageAssets}
