@@ -138,8 +138,36 @@ describe('Keyboard UI: shortcuts', () => {
     const box = screen.getByRole('textbox', { name: /Practice box/ })
     press(box, 'ArrowLeft', { code: 'ArrowLeft', shiftKey: true })
     expect(state().items.a).toEqual({ performed: true, via: 'keyboard', source: 'hardware' })
-    const notCancelled = fireEvent.keyDown(box, { key: 'Tab', code: 'Tab', shiftKey: true })
-    expect(notCancelled).toBe(false)
+    // Shift+Tab is practised in a row of fields, and focus is left free to move back one.
+    const fields = screen.getAllByRole('textbox')
+    expect(screen.getByTestId('keyboard-tab-fields')).toBeInTheDocument()
+    expect(fields).toHaveLength(3)
+    expect(document.activeElement).toBe(fields[2])
+    const notCancelled = fireEvent.keyDown(fields[2], { key: 'Tab', code: 'Tab', shiftKey: true })
+    expect(notCancelled).toBe(true)
+    expect(state().items.b).toEqual({ performed: true, via: 'keyboard', source: 'hardware' })
+  })
+
+  it('catches the shortcut pressed outside the practice box, but not copy', () => {
+    const task = {
+      ...SHORTCUT,
+      items: [
+        { id: 'a', combo: 'Ctrl+C', prompt: 'Copy' },
+        { id: 'b', combo: 'Ctrl+S', prompt: 'Save' },
+      ],
+    }
+    const { state } = renderKeyboard(task)
+    // Copy acts on text, so outside the box it is left to the browser and not counted.
+    const copyOutside = fireEvent.keyDown(document.body, { key: 'c', code: 'KeyC', ctrlKey: true })
+    expect(copyOutside).toBe(true)
+    expect(state().items.a ?? {}).not.toHaveProperty('performed')
+    press(screen.getByRole('textbox', { name: /Practice box/ }), 'c', {
+      code: 'KeyC',
+      ctrlKey: true,
+    })
+    // Ctrl+S anywhere on the page counts and never opens the browser's save dialog.
+    const saveOutside = fireEvent.keyDown(document.body, { key: 's', code: 'KeyS', ctrlKey: true })
+    expect(saveOutside).toBe(false)
     expect(state().items.b).toEqual({ performed: true, via: 'keyboard', source: 'hardware' })
   })
 

@@ -36,6 +36,8 @@ const NATIVE_TEXT_COMBOS = new Set([
   'mod+shift+z',
 ])
 const CLIPBOARD_COMBOS = { copy: 'mod+c', cut: 'mod+x', paste: 'mod+v' }
+// A Tab shortcut (Shift+Tab) is practised in a row of fields, so focus has somewhere to move.
+const TAB_FIELDS = ['First name', 'Last name', 'Class']
 
 const MODE_PROMPTS = {
   type_text: () => 'Type this line',
@@ -118,6 +120,9 @@ export function KeyboardStudentView({
   const grade = current ? gradeKeyboardItem(task, current, result) : null
   const virtualKeyboard = !!device.virtualKeyboard && !readOnly
   const currentId = current?.id
+  const targetCombo = mode === 'shortcuts' ? normalizeCombo(current?.combo) : ''
+  const tabPractice = targetCombo.split('+').pop() === 'tab'
+  const pageKeyRef = useRef(null)
 
   // A new item starts a new recording and puts the caret back in the practice area.
   useEffect(() => {
@@ -128,6 +133,15 @@ export function KeyboardStudentView({
       practiceRef.current.focus({ preventScroll: true })
     }
   }, [currentId, readOnly])
+
+  // A shortcut pressed anywhere on the page, not just in the practice area, still counts, and
+  // the browser must not act on it (Ctrl+S would open its save dialog). See pageKeyRef below.
+  useEffect(() => {
+    if (readOnly || mode !== 'shortcuts') return undefined
+    const onPageKeyDown = (domEvent) => pageKeyRef.current?.(domEvent)
+    window.addEventListener('keydown', onPageKeyDown)
+    return () => window.removeEventListener('keydown', onPageKeyDown)
+  }, [mode, readOnly])
 
   if (!current) return <p>This keyboard task has no items yet.</p>
 
@@ -227,9 +241,10 @@ export function KeyboardStudentView({
     lastComboRef.current = { combo, at: event.t }
     if (combo === target) {
       finishItem({ performed: true, via: 'keyboard', source: event.source })
-      // Native text shortcuts (copy, paste…) still happen in the practice box; anything else
-      // (Ctrl+S, Ctrl+P…) must not open the browser's own dialog.
-      return !NATIVE_TEXT_COMBOS.has(target)
+      // Native text shortcuts (copy, paste…) still happen in the practice box, and Shift+Tab
+      // really moves focus back a field; anything else (Ctrl+S, Ctrl+P…) must not open the
+      // browser's own dialog.
+      return !NATIVE_TEXT_COMBOS.has(target) && !tabPractice
     }
     miss(`You pressed ${describeCombo(combo)}.`)
     return !NATIVE_TEXT_COMBOS.has(combo)
@@ -253,10 +268,18 @@ export function KeyboardStudentView({
   function onPracticeKeyDown(domEvent) {
     const event = normalizeKeyEvent(domEvent)
     // Tab must still be able to leave the practice area unless it is the key being practised.
-    const practisesTab =
-      (mode === 'find_key' && current.key === 'Tab') ||
-      (mode === 'shortcuts' && normalizeCombo(current.combo).split('+').pop() === 'tab')
+    const practisesTab = (mode === 'find_key' && current.key === 'Tab') || tabPractice
     if (event.key === 'Tab' && !practisesTab) return
+    if (handleKeyEvent(event)) domEvent.preventDefault()
+  }
+
+  // Keys pressed outside the practice area (which handles its own): only the current shortcut is
+  // caught. Copy/paste and friends act on text, so they only count in the practice box.
+  pageKeyRef.current = (domEvent) => {
+    if (domEvent.defaultPrevented || domEvent.target?.closest?.('[data-keyboard-practice]')) return
+    if (finished || !targetCombo || NATIVE_TEXT_COMBOS.has(targetCombo) || tabPractice) return
+    const event = normalizeKeyEvent(domEvent)
+    if (comboOf(event) !== targetCombo) return
     if (handleKeyEvent(event)) domEvent.preventDefault()
   }
 
@@ -306,8 +329,33 @@ export function KeyboardStudentView({
         <TargetText text={String(current.text ?? '')} typed={String(result.typed ?? '')} />
       )}
 
-      {mode === 'shortcuts' ? (
+      {tabPractice ? (
+        <div
+          className="act-row"
+          role="group"
+          aria-label="Practice fields: use the shortcut here"
+          data-keyboard-practice="true"
+          data-testid="keyboard-tab-fields"
+        >
+          <p style={{ flexBasis: '100%', margin: 0 }}>
+            {readOnly ? 'Practice fields' : 'Click in the last box, then use the shortcut.'}
+          </p>
+          {TAB_FIELDS.map((label, i) => (
+            <label key={label} style={{ display: 'grid', gap: 4 }}>
+              <span>{label}</span>
+              <input
+                ref={i === TAB_FIELDS.length - 1 ? practiceRef : undefined}
+                type="text"
+                className="act-practice act-practice--field"
+                readOnly={readOnly}
+                onKeyDown={onPracticeKeyDown}
+              />
+            </label>
+          ))}
+        </div>
+      ) : mode === 'shortcuts' ? (
         <textarea
+          data-keyboard-practice="true"
           ref={practiceRef}
           className="act-practice"
           aria-label="Practice box: use the shortcut here"

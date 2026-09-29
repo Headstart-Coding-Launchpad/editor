@@ -123,7 +123,7 @@ have different codes, so `Hi` and `hi` are different answers.
 | Field | Notes |
 |---|---|
 | `rows` | Exactly `height` strings of exactly `width` binary digits, top row first. `1` = filled square. Quote each row in YAML. |
-| `direction` | `draw`: the student clicks or taps squares (arrow keys move, Space fills or clears) to match the rows. `encode`: the picture is shown and the student types each row's bits. |
+| `direction` | `draw`: each row's bits are shown beside an empty grid, and the student clicks or taps squares (arrow keys move, Space fills or clears) to match them. `encode`: the picture is shown and the student types each row's bits. |
 
 `width` and `height` are set on the task and are at most 16. A task's finished answers must stay
 small enough to sync (about four full 16 × 16 pictures); validation reports a task that is too

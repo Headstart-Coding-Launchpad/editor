@@ -31,6 +31,9 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - The "complete desktop does not satisfy a check" warning no longer tests `browser_visited` or
   `search_query` checks, which the complete desktop can't hold.
 - A missing task or group title is reported once instead of twice.
+- Keyboard `shortcuts`: the item's shortcut now counts anywhere on the page (Ctrl+S no longer
+  opens the browser's save dialog outside the practice box), and `Shift+Tab` items are practised
+  in a row of fields. Binary `pixels` draw items now show each row's bits beside the grid.
 
 ## 2026-09-28
 

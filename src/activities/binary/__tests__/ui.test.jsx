@@ -93,6 +93,31 @@ describe('Binary UI', () => {
     expect(screen.queryByText(/Correct/)).not.toBeInTheDocument()
   })
 
+  it('shows the question a teacher edit changed, without writing anything back', () => {
+    const onChange = vi.fn()
+    const start = binary.initialState(MAKE)
+    const { rerender } = render(<BinaryStudentView task={MAKE} state={start} onChange={onChange} />)
+    expect(screen.getByText('Make the number 5')).toBeInTheDocument()
+    // The teacher sets question 2 (target 3 = 0011) while the student is on question 1.
+    const edited = { ...start, items: { ...start.items, b: { ...start.items.b, bits: '0011' } } }
+    rerender(<BinaryStudentView task={MAKE} state={edited} onChange={onChange} />)
+    expect(screen.getByText('Make the number 3')).toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('leaves questions the student has not started unmarked when they check', async () => {
+    renderBinary(MAKE)
+    // Answer question 1 correctly (5 = 0101) and check; question 2 is untouched.
+    fireEvent.click(screen.getByRole('switch', { name: 'Bits 4 column' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Bits 1 column' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Check answers' }))
+    expect(await screen.findByRole('button', { name: 'Question 1, done' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Question 2' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /not right yet/ })).not.toBeInTheDocument()
+    // It still moves on to the unanswered question.
+    expect(screen.getByText('Make the number 3')).toBeInTheDocument()
+  })
+
   it('navigates between questions', () => {
     renderBinary(MAKE)
     expect(screen.getByText('Question 1 of 2')).toBeInTheDocument()

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import ItemNav from '../ui/ItemNav.jsx'
 import {
   ASCII_MAX_TEXT,
@@ -355,10 +355,27 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
   // grade work live and vanish when anything changes it (an edit, a teacher reset, Start again,
   // or the author editing the answer).
   const [results, setResults] = useState({})
+  // A teacher edit or reset changes answers from outside this view, often on a question the
+  // student isn't looking at. Show the first question that changed. Read-only: never calls
+  // onChange, which would replace the teacher's edit.
+  const seenStateRef = useRef(state)
+  useEffect(() => {
+    const previous = seenStateRef.current
+    seenStateRef.current = state
+    if (readOnly || previous === state) return
+    const same = (item) =>
+      JSON.stringify(itemStateOf(previous, item, task)) ===
+      JSON.stringify(itemStateOf(state, item, task))
+    const changed = items.findIndex((item) => !same(item))
+    if (changed >= 0) setIndex(changed)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state])
   const current = items[Math.min(index, items.length - 1)]
   if (!current) return <p>This binary task has no questions yet.</p>
   const itemState = itemStateOf(state, current, task)
   const snapshotOf = (item) => JSON.stringify([item, itemStateOf(state, item, task)])
+  const isUnanswered = (item) =>
+    JSON.stringify(itemStateOf(state, item, task)) === JSON.stringify(itemStateOf(null, item, task))
   const checkedResult = (item) => {
     const result = results[item.id]
     return result && result.snapshot === snapshotOf(item) ? result : undefined
@@ -380,6 +397,8 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
     const outcome = await onSubmit?.()
     const next = {}
     for (const item of items) {
+      // Questions the student hasn't started stay unmarked; the one on screen is always marked.
+      if (item !== current && isUnanswered(item)) continue
       next[item.id] = {
         ...gradeItem(task, item, itemStateOf(state, item, task)),
         snapshot: snapshotOf(item),
@@ -387,14 +406,18 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
     }
     setResults(next)
     if (!outcome?.passed) {
-      const firstWrong = items.findIndex((item) => !next[item.id]?.correct)
-      if (firstWrong >= 0) setIndex(firstWrong)
+      const firstOpen = items.findIndex(
+        (item) => !gradeItem(task, item, itemStateOf(state, item, task)).correct
+      )
+      if (firstOpen >= 0) setIndex(firstOpen)
     }
   }
 
   const statusFor = (item) => {
     const result = readOnly
-      ? gradeItem(task, item, itemStateOf(state, item, task))
+      ? isUnanswered(item)
+        ? null
+        : gradeItem(task, item, itemStateOf(state, item, task))
       : checkedResult(item)
     if (!result) return null
     return result.correct ? 'done' : 'wrong'
@@ -566,15 +589,38 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
         </div>
       )
     }
+    // Draw: the rows of bits to draw from sit beside the grid, one per grid row.
     return (
-      <PixelGrid
-        rows={itemState.cells}
-        label="Drawing grid"
-        readOnly={readOnly}
-        onToggle={(r, c) =>
-          update({ cells: replaceAt(itemState.cells, r, flip(itemState.cells[r], c)) })
-        }
-      />
+      <div className="act-row" style={{ alignItems: 'flex-start', gap: 16 }}>
+        <PixelGrid
+          rows={itemState.cells}
+          label="Drawing grid"
+          readOnly={readOnly}
+          onToggle={(r, c) =>
+            update({ cells: replaceAt(itemState.cells, r, flip(itemState.cells[r], c)) })
+          }
+        />
+        <div
+          style={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+          data-testid="pixel-codes"
+        >
+          {rows.map((row, r) => (
+            <span
+              key={r}
+              aria-label={`Row ${r + 1} bits: ${row}`}
+              style={{
+                height: CELL,
+                lineHeight: `${CELL}px`,
+                fontFamily: 'var(--font-code)',
+                fontWeight: 600,
+                letterSpacing: '0.15em',
+              }}
+            >
+              {row}
+            </span>
+          ))}
+        </div>
+      </div>
     )
   }
 

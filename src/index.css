@@ -3583,6 +3583,12 @@ select {
   background: var(--ui-surface-soft);
 }
 
+.act-practice--field {
+  min-height: 44px;
+  width: 10em;
+  padding: 6px 10px;
+}
+
 .act-practice:focus,
 .act-practice:focus-visible {
   outline: none;

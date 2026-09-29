@@ -131,6 +131,9 @@ describe('Binary UI: pixels', () => {
   it('draws by clicking cells, with arrow keys moving across the grid', async () => {
     const { state } = renderBinary(task)
     expect(screen.getByText('Draw the picture: fill the squares that are 1')).toBeInTheDocument()
+    // The rows to draw from are shown beside the grid.
+    expect(screen.getByTestId('pixel-codes')).toHaveTextContent('010101')
+    expect(screen.getByLabelText('Row 2 bits: 101')).toBeInTheDocument()
     const cell = (r, c) => screen.getByRole('switch', { name: `Row ${r}, column ${c}` })
     expect(screen.getAllByRole('switch')).toHaveLength(6)
     fireEvent.click(cell(1, 2))
