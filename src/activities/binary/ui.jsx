@@ -600,10 +600,7 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
             update({ cells: replaceAt(itemState.cells, r, flip(itemState.cells[r], c)) })
           }
         />
-        <div
-          style={{ display: 'flex', flexDirection: 'column', gap: 2 }}
-          data-testid="pixel-codes"
-        >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }} data-testid="pixel-codes">
           {rows.map((row, r) => (
             <span
               key={r}
