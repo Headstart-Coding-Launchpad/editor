@@ -133,6 +133,13 @@ export default defineModule({
   deserializeState: (raw) => (typeof raw === 'string' ? raw : ''),
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
   lifecycle: {
+    playgroundTask: () => ({
+      id: 1,
+      title: 'Arcade playground',
+      starterCode:
+        'from headstart_arcade import game, Sprite, keys\n\n# Write your game here.\n\ngame.run()\n',
+      arcadeTools: 'both',
+    }),
     hasPersonalSandbox: alwaysPersonalSandbox,
     resetTarget: codeResetTarget,
     hasComplete: codeHasComplete,

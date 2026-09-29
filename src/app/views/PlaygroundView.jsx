@@ -2,43 +2,14 @@ import React, { useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import StudentView from './StudentView'
 import LoadingScreen from '../components/LoadingScreen'
-import { DEFAULT_CIRCUIT, cloneCircuit } from '../../modules/electronics/circuit'
 import { PLAYGROUND_LESSON_TYPES } from '../../shared/composedLesson'
-import { getModuleLabel } from '../../modules/definitions'
+import { getModuleDefinition, getModuleLabel } from '../../modules/definitions'
 
 const PLAYGROUND_TYPES = new Set(PLAYGROUND_LESSON_TYPES)
 
 function makeLesson(type) {
-  const task =
-    type === 'arcade'
-      ? {
-          id: 1,
-          title: 'Arcade playground',
-          starterCode:
-            'from headstart_arcade import game, Sprite, keys\n\n# Write your game here.\n\ngame.run()\n',
-          arcadeTools: 'both',
-        }
-      : type === 'electronics'
-        ? {
-            id: 1,
-            title: 'Electronics playground',
-            starterCircuit: cloneCircuit(DEFAULT_CIRCUIT),
-            microcontroller: { enabled: false, boardType: null, starterCode: '' },
-          }
-        : type === 'scratch'
-          ? {
-              id: 1,
-              title: 'Scratch playground',
-              starterBlocks: null,
-              allowAddSprite: true,
-              allowRemoveSprite: true,
-              allowRemoveStarterSprites: true,
-            }
-          : {
-              id: 1,
-              title: 'Python playground',
-              starterCode: '',
-            }
+  // Each playground module declares its one task (lifecycle.playgroundTask in its definition.js).
+  const task = getModuleDefinition(type).lifecycle.playgroundTask()
 
   const playgroundTitle = getModuleLabel(type) ?? 'Python'
 

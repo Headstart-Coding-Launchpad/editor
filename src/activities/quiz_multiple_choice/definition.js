@@ -13,6 +13,8 @@ function optionIds(task) {
 
 export default defineQuizActivity('multiple_choice', {
   description: 'Pick one answer from a list of options.',
+  // `answer: <option-id>` in YAML is this quiz's `check: { type: answer_equals }`.
+  yaml: Object.freeze({ type: 'quiz', quizType: 'multiple_choice', answerShorthand: true }),
 
   defaultTask: (prev = {}) => ({
     id: prev.id,

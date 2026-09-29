@@ -14,6 +14,7 @@
 import { getModuleDefinitions } from '../modules/definitions.js'
 import { cloneFiles, decodeSessionFiles } from '../shared/workspaceData'
 import { decodeFileKey } from '../shared/fileKeys'
+import { getStarterStage } from '../shared/taskStages'
 
 // A lesson type without a definition (none today) was handled by the old chains' final
 // `else`: html's files.
@@ -52,6 +53,19 @@ export function initialSandboxWorkByKind() {
 export function sandboxStarterWork(definition, lesson, task) {
   const configured = definition.lifecycle.sandboxStarter(lesson, task)
   return onSandboxFilesChannel(definition) ? (configured?.files ?? []) : configured
+}
+
+/**
+ * The displayed task's Starter-tab work (TeacherView's loadCurrentTaskContent) as stored work:
+ * `workSlot.teacherStarter` (the slot's `starter`, except electronics, whose tab has always
+ * shown `starterCircuit` rather than a starter stage's circuit), normalised (desktop). A type
+ * without a definition keeps the old chains' final `else`: the starter stage's files, else the
+ * task's `starterFiles`.
+ */
+export function taskStarterWork(definition, task) {
+  const workSlot = definition?.workSlot
+  if (!workSlot) return getStarterStage(task)?.stage?.files ?? task?.starterFiles ?? []
+  return workSlot.stored(workSlot.normalise(workSlot.teacherStarter(task))).work
 }
 
 /**

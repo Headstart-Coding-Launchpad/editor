@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { db, storage } from './firebase.mjs'
 import { mergeStorageAssets } from '../src/shared/storageAssets.js'
+import { getModuleDefinition, getModuleTypesWithCapability } from '../src/modules/definitions.js'
 import {
   buildDownloadUrl,
   validateFilename,
@@ -30,9 +31,13 @@ function normalizeListInput(input, key) {
   throw new Error(`Expected an array or an object with a "${key}" array`)
 }
 
+// Default sprites / backdrops exist only for types with capabilities.typeSpriteDefaults
+// (scratch).
 function assertScratchType(type, feature) {
-  if (type !== 'scratch')
-    throw new Error(`${feature} is only supported for the 'scratch' lesson type`)
+  if (!getModuleDefinition(type)?.capabilities.typeSpriteDefaults) {
+    const types = getModuleTypesWithCapability('typeSpriteDefaults').map((t) => `'${t}'`)
+    throw new Error(`${feature} is only supported for the ${types.join(' / ')} lesson type`)
+  }
 }
 
 export async function listTypeAssets(type) {

@@ -45,6 +45,7 @@ export default defineModule({
     teacherLiveReference: false,
     unifiedStages: false,
     sandboxState: 'desktop',
+    teacherFillHeight: true,
   },
 
   getDisplayState: (task, stage, liveState, tab) => {

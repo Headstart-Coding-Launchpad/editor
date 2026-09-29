@@ -1,16 +1,4 @@
 {
-  "cli/type-assets.mjs": 1,
-  "cli/yaml-converter.mjs": 5,
-  "src/admin/SharedAssetsPanel.jsx": 2,
-  "src/app/components/EditLessonModal.jsx": 1,
-  "src/app/components/SharedWorkspacePreview.jsx": 2,
-  "src/app/components/SupportStagePanel.jsx": 2,
-  "src/app/hooks/useStudentCodeState.js": 1,
-  "src/app/studentCodeExports.js": 2,
-  "src/app/views/PlaygroundView.jsx": 3,
-  "src/app/views/StudentView.jsx": 1,
-  "src/app/views/teacher/TeacherEditorPanel.jsx": 4,
-  "src/app/views/TeacherView.jsx": 12,
   "src/builder/components/FileManager.jsx": 1,
   "src/builder/components/lesson-meta/SandboxStarterModal.jsx": 10,
   "src/builder/components/LessonMetaPanel.jsx": 2,
@@ -20,10 +8,5 @@
   "src/builder/hooks/useBuilderState.js": 7,
   "src/builder/lessonUtils.js": 5,
   "src/builder/printLesson.js": 7,
-  "src/builder/views/BuilderView.jsx": 1,
-  "src/shared/codemirror.js": 3,
-  "src/shared/composedLesson.js": 1,
-  "src/shared/launchpadCodeFile.js": 1,
-  "src/shared/MarkdownFieldEditor.jsx": 3,
-  "src/shared/topicLibrary.js": 2
+  "src/builder/views/BuilderView.jsx": 1
 }

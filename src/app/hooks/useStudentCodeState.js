@@ -2246,7 +2246,8 @@ export function useStudentCodeState({
       !['lesson', 'solo'].includes(phaseRef.current)
     )
       return
-    if (!['python', 'html'].includes(lesson?.type)) return
+    // Support-stage offers belong to the progressively revealing modules (python, html).
+    if (getModuleDefinition(lesson?.type)?.capabilities.stageReveal !== 'progressive') return
 
     if (passed) {
       setSupportStageVisibility((prev) => ({ ...prev, [currentTaskId]: null }))

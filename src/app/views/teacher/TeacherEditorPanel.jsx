@@ -32,7 +32,7 @@ export default function TeacherEditorPanel({
   fillHeight = false,
 }) {
   const mod = getLessonModule(lesson?.type)
-  const usesUnifiedStages = mod?.type === 'python' || mod?.type === 'html'
+  const usesUnifiedStages = !!mod?.capabilities?.teacherUnifiedStageTabs
 
   if (!isInSandbox && isInformationTask) return <InformationTask task={task} lesson={lesson} fill />
   // Activities show their answers read-only; quizzes (previewState 'initial') show just the
@@ -97,11 +97,7 @@ export default function TeacherEditorPanel({
     ? styles.codeWorkspaceStack
     : { ...styles.codeWorkspaceStack, minHeight: 'auto' }
   const wrapStyle =
-    mod.type === 'scratch' || mod.type === 'html'
-      ? isInSandbox
-        ? styles.scratchWrap
-        : codeWorkspaceStack
-      : codeWorkspaceStack
+    isInSandbox && mod.capabilities?.teacherSandboxRow ? styles.sandboxRow : codeWorkspaceStack
 
   return (
     <div style={wrapStyle}>
@@ -140,7 +136,7 @@ export default function TeacherEditorPanel({
 }
 
 const styles = {
-  scratchWrap: {
+  sandboxRow: {
     flex: 1,
     minHeight: 0,
     display: 'flex',

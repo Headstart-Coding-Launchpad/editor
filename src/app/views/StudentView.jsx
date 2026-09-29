@@ -760,26 +760,17 @@ export default function StudentView({
   const displayedLesson = getEffectiveLessonForTask(lesson, displayedTaskId)
   const displayedModule = getModuleDefinition(displayedLesson.type)
   // A forced teacher-live broadcast of a filesystem / desktop module carries its state as JSON.
-  const displayFs =
-    isForcedTeacherLive && displayedModule?.capabilities.sandboxState === 'fs'
-      ? (() => {
-          try {
-            return JSON.parse(session?.teacherLive?.code ?? '')
-          } catch {
-            return cs.fsState
-          }
-        })()
-      : cs.fsState
-  const displayDesktop =
-    isForcedTeacherLive && displayedModule?.capabilities.sandboxState === 'desktop'
-      ? (() => {
-          try {
-            return JSON.parse(session?.teacherLive?.code ?? '')
-          } catch {
-            return cs.desktopState
-          }
-        })()
-      : cs.desktopState
+  const forcedLiveKind = isForcedTeacherLive ? displayedModule?.capabilities.sandboxState : null
+  const forcedLiveState = (kind, fallback) => {
+    if (forcedLiveKind !== kind) return fallback
+    try {
+      return JSON.parse(session?.teacherLive?.code ?? '')
+    } catch {
+      return fallback
+    }
+  }
+  const displayFs = forcedLiveState('fs', cs.fsState)
+  const displayDesktop = forcedLiveState('desktop', cs.desktopState)
   const isViewingPrev = viewingTaskId !== null && viewingTaskId !== currentTaskId
   const isSandbox = phase === 'sandbox'
   const isSolo = phase === 'solo'

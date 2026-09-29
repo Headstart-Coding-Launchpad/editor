@@ -65,6 +65,19 @@ const REQUIRED_CAPABILITY_BOOLEANS = [
   'fixedExplainer', // the side explainer is a fixed-width column that tabs away (see below)
   'topicLibrary', // the explainer offers the topic library
 ]
+// Optional capability booleans (plan step 4.8; default false). Each replaced an inline
+// lesson-type comparison in core code:
+export const OPTIONAL_CAPABILITY_BOOLEANS = Object.freeze([
+  'teacherFillHeight', // TeacherView's centre column is sized to the workspace and clips instead
+  // of scrolling (html, scratch, filesystem, desktop, electronics)
+  'teacherSandboxRow', // in the teacher sandbox the workspace fills a plain flex row instead of
+  // the code-tab stack (scratch, html)
+  'teacherUnifiedStageTabs', // the teacher's code tabs list starter / complete as stage roles
+  // with no separate Starter / Complete tabs (python, html)
+  'explainerBlockMenu', // the explainer editor offers the Scratch block-reference menu (scratch)
+  'typeSpriteDefaults', // Shared Assets keeps default sprites / backdrops for the type in
+  // lessonTypeAssets/{type} (admin panel, `type-assets` CLI, EditLessonModal; scratch)
+])
 // How the student reaches a task's code stages on their own (StudentView, LessonTaskContent):
 // - 'progressive' reveals support stages as read-only references and previews the complete
 //   solution read-only before offering to load it (python, html)
@@ -130,6 +143,8 @@ export const RUN_RESULT_FLAGS = Object.freeze(['errorLine', 'turtle', 'liveCode'
 // - hasPersonalSandbox(lesson) → whether a student who passed a task is offered the personal
 //   sandbox (StudentView): always for python, arcade and turtle, else when the lesson has a
 //   sandbox starter.
+// Optional: playgroundTask() → the single task of the /playground/:type lesson (PlaygroundView);
+// required exactly when `meta.playground` is true, else null.
 export const LIFECYCLE_HOOKS = Object.freeze([
   'resetTarget',
   'hasComplete',
@@ -200,6 +215,9 @@ export const CHECKING_HOOKS = Object.freeze(['buildContext'])
 //   restored work (reset, stage, complete, teacher edit and push) as pushed state; the slot holds
 //   only what the workspace last reported (scratch, whose Blockly workspace owns its state).
 //   Needs the 'workspace' checking trigger.
+// - teacherStarter(task) (optional; defaults to `starter`): the work TeacherView's Starter tab
+//   shows for the displayed task. Electronics overrides it: that tab has always shown
+//   `starterCircuit`, while `starter` prefers a starter stage's circuit.
 //
 // Plan step 4.5 adds per-file slots (html): a slot on the 'files' wire channel stores per file
 // (storage layout 'perFile') and its value is `{ files, activeFile }` (filesWorkSlot in
@@ -384,6 +402,14 @@ export function defineModule(def) {
       fail(type, `missing required boolean "capabilities.${key}"`)
     }
   }
+  for (const key of OPTIONAL_CAPABILITY_BOOLEANS) {
+    if (def.capabilities[key] != null && typeof def.capabilities[key] !== 'boolean') {
+      fail(type, `"capabilities.${key}" must be a boolean`)
+    }
+  }
+  if (def.meta.pickerOrder != null && typeof def.meta.pickerOrder !== 'number') {
+    fail(type, '"meta.pickerOrder" must be a number')
+  }
   if (!SANDBOX_STATE_KINDS.includes(def.capabilities.sandboxState)) {
     fail(type, `"capabilities.sandboxState" must be one of: ${SANDBOX_STATE_KINDS.join(', ')}`)
   }
@@ -413,6 +439,11 @@ export function defineModule(def) {
     if (typeof def.lifecycle[key] !== 'function') {
       fail(type, `missing required function "lifecycle.${key}"`)
     }
+  }
+  // lifecycle.playgroundTask() → the one task of the module's /playground/:type lesson; declared
+  // exactly when meta.playground is true (PlaygroundView).
+  if (def.meta.playground !== (typeof def.lifecycle.playgroundTask === 'function')) {
+    fail(type, '"lifecycle.playgroundTask" is declared exactly when "meta.playground" is true')
   }
   if (def.getSandboxState != null && def.getSandboxState !== def.lifecycle.sandboxStarter) {
     fail(type, '"getSandboxState" is an alias of "lifecycle.sandboxStarter"; declare only that')
@@ -479,6 +510,9 @@ export function defineModule(def) {
         fail(type, `missing required function "workSlot.${key}"`)
       }
     }
+    if (def.workSlot.teacherStarter != null && typeof def.workSlot.teacherStarter !== 'function') {
+      fail(type, '"workSlot.teacherStarter" must be a function')
+    }
     const kind = def.workSlot.kind ?? 'state'
     if (!WORK_SLOT_KINDS.includes(kind)) {
       fail(type, `"workSlot.kind" must be one of: ${WORK_SLOT_KINDS.join(', ')}`)
@@ -499,14 +533,17 @@ export function defineModule(def) {
     if (def.workSlot.workspaceOwned && def.checking.trigger !== 'workspace') {
       fail(type, 'a "workSlot.workspaceOwned" module uses the "workspace" checking trigger')
     }
+    const sourceHooks = hookForm
+      ? {}
+      : fieldWorkSlotHooks(def.workSlot, {
+          completeField: def.completeField,
+          workKey: def.storage.workKey,
+        })
     workSlot = Object.freeze({
-      ...(hookForm
-        ? {}
-        : fieldWorkSlotHooks(def.workSlot, {
-            completeField: def.completeField,
-            workKey: def.storage.workKey,
-          })),
+      ...sourceHooks,
       ...def.workSlot,
+      // The work TeacherView's Starter tab shows for the displayed task; defaults to `starter`.
+      teacherStarter: def.workSlot.teacherStarter ?? def.workSlot.starter ?? sourceHooks.starter,
       kind,
       ...Object.fromEntries(WORK_SLOT_FLAGS.map((key) => [key, def.workSlot[key] ?? false])),
     })
@@ -542,6 +579,9 @@ export function defineModule(def) {
     ...def,
     meta: Object.freeze({
       ...def.meta,
+      // Position in the Builder's composed-lesson module picker and the CLI's "type must be one
+      // of" list (LESSON_MODULE_TYPES); defaults to `order`.
+      pickerOrder: def.meta.pickerOrder ?? def.meta.order,
       ...(def.meta.surfaceLabels
         ? { surfaceLabels: Object.freeze({ ...def.meta.surfaceLabels }) }
         : {}),
@@ -553,13 +593,14 @@ export function defineModule(def) {
         : null,
     }),
     capabilities: Object.freeze({
+      ...Object.fromEntries(OPTIONAL_CAPABILITY_BOOLEANS.map((key) => [key, false])),
       ...def.capabilities,
       run: runKind,
       cardSummary: def.capabilities.cardSummary ?? null,
       focusPanes,
       teacherEditor,
     }),
-    lifecycle: Object.freeze({ ...def.lifecycle }),
+    lifecycle: Object.freeze({ playgroundTask: null, ...def.lifecycle }),
     storage: Object.freeze({ ...def.storage }),
     wire: Object.freeze({ ...def.wire }),
     checking: hasChecking ? Object.freeze({ ...def.checking }) : null,

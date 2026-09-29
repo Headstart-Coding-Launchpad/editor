@@ -1,5 +1,7 @@
 export const LAUNCHPAD_CODE_FILE_FORMAT = 'headstart-launchpad-code'
 export const LAUNCHPAD_CODE_FILE_VERSION = 1
+// The file format's code language (the file carries Python code only), not a lesson type.
+export const LAUNCHPAD_CODE_FILE_LANGUAGE = 'python'
 const LAUNCHPAD_CODE_FILE_EXTENSION = '.launchpad'
 
 function normaliseTask(task, index) {
@@ -21,7 +23,7 @@ export function createLaunchpadCodeFile(tasks, { exportedAt = new Date().toISOSt
   return {
     format: LAUNCHPAD_CODE_FILE_FORMAT,
     version: LAUNCHPAD_CODE_FILE_VERSION,
-    language: 'python',
+    language: LAUNCHPAD_CODE_FILE_LANGUAGE,
     exportedAt,
     tasks: normalisedTasks,
   }
@@ -39,7 +41,7 @@ export function parseLaunchpadCodeFile(text) {
     !parsed ||
     parsed.format !== LAUNCHPAD_CODE_FILE_FORMAT ||
     parsed.version !== LAUNCHPAD_CODE_FILE_VERSION ||
-    parsed.language !== 'python'
+    parsed.language !== LAUNCHPAD_CODE_FILE_LANGUAGE
   ) {
     throw new Error('That file is not a supported LaunchPad Python code file.')
   }

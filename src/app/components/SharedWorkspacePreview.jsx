@@ -18,9 +18,10 @@ export function snapshotFiles(snapshot) {
 }
 
 export function snapshotDisplayState(snapshot, moduleType) {
-  if (moduleType === 'html') return { files: snapshotFiles(snapshot) }
-  const raw = snapshot?.code ?? ''
   const mod = getLessonModule(moduleType)
+  // A files-channel module (html) shares its files; everything else a code string.
+  if (mod?.wire?.sandboxChannel === 'files') return { files: snapshotFiles(snapshot) }
+  const raw = snapshot?.code ?? ''
   if (mod?.deserializeState) return mod.deserializeState(raw)
   return raw
 }
@@ -48,9 +49,11 @@ export default function SharedWorkspacePreview({ lesson, snapshot, showOutput = 
 
   // Memoized so ScratchWorkspace's "load external state" effect, which keys on
   // object identity, does not reload the workspace on every parent render.
+  // Only a 'blocks' mirror (scratch) takes the Blockly project.
+  const blocksMirror = module?.capabilities?.studentMirror === 'blocks'
   const scratchState = useMemo(
-    () => (moduleType === 'scratch' ? parseScratchState(snapshot?.code) : null),
-    [moduleType, snapshot?.code]
+    () => (blocksMirror ? parseScratchState(snapshot?.code) : null),
+    [blocksMirror, snapshot?.code]
   )
 
   if (!snapshot) return null

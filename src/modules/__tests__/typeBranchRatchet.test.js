@@ -11,8 +11,24 @@ import baseline from './typeBranchBaseline.json'
 // same PR: run `UPDATE_TYPE_BRANCH_BASELINE=1 npx vitest run typeBranchRatchet` and commit
 // src/modules/__tests__/typeBranchBaseline.json. Never raise a count to get a PR green: route
 // the behaviour through the registry instead.
+//
+// Plan step 4.8 took every file outside src/builder to zero; the ESLint rule
+// `no-restricted-syntax` in eslint.config.js now forbids new comparisons there as you type. Only
+// src/builder/** may still appear in the baseline (it is being zeroed on its own branch; once
+// it merges, drop ZERO_EXEMPT_PREFIXES and the rule's src/builder ignore).
 
 const root = path.resolve(__dirname, '../../..')
+
+// Files still allowed a non-zero count. Everything else must stay at zero.
+const ZERO_EXEMPT_PREFIXES = ['src/builder/']
+
+// Matches that are not module/task-type branching (e.g. a comparison against a name that only
+// coincides with a type). Each entry removes one exact `pattern` occurrence from `file`'s count
+// and must say why; a test fails once the pattern is gone so stale entries get removed. Prefer a
+// named constant or a map over an entry here (codemirror.js, launchpadCodeFile.js did that).
+const TYPE_BRANCH_ALLOWLIST = [
+  // { file: 'src/…', pattern: "x === 'python'", reason: 'why this is not type branching' },
+]
 
 const TYPE_NAMES = [
   'python',
@@ -59,13 +75,28 @@ function walk(dir, files) {
   return files
 }
 
+function countMatches(text) {
+  return (text.match(COMPARISON) || []).length + (text.match(TYPE_ARRAY) || []).length
+}
+
+// Counted matches the allowlist excuses in `relPath`: each occurrence of an entry's pattern.
+function allowlistedMatches(relPath, text) {
+  let excused = 0
+  for (const entry of TYPE_BRANCH_ALLOWLIST) {
+    if (entry.file !== relPath) continue
+    excused += (text.split(entry.pattern).length - 1) * countMatches(entry.pattern)
+  }
+  return excused
+}
+
 function countTypeBranches() {
   const counts = {}
   for (const dir of SCANNED_DIRS) {
     for (const file of walk(path.join(root, dir), [])) {
       const text = readFileSync(file, 'utf8')
-      const total = (text.match(COMPARISON) || []).length + (text.match(TYPE_ARRAY) || []).length
-      if (total > 0) counts[path.relative(root, file).split(path.sep).join('/')] = total
+      const relPath = path.relative(root, file).split(path.sep).join('/')
+      const total = countMatches(text) - allowlistedMatches(relPath, text)
+      if (total > 0) counts[relPath] = total
     }
   }
   return Object.fromEntries(Object.entries(counts).sort(([a], [b]) => a.localeCompare(b)))
@@ -111,5 +142,24 @@ describe('lesson-type branch ratchet', () => {
       stale,
       'Run UPDATE_TYPE_BRANCH_BASELINE=1 npx vitest run typeBranchRatchet and commit the baseline'
     ).toEqual([])
+  })
+
+  it('is at zero outside the exempt folders (plan step 4.8)', () => {
+    const exempt = (file) => ZERO_EXEMPT_PREFIXES.some((prefix) => file.startsWith(prefix))
+    expect(
+      Object.keys(current).filter((file) => !exempt(file)),
+      'Ask the module/activity registry instead of comparing type names'
+    ).toEqual([])
+    expect(Object.keys(baseline).filter((file) => !exempt(file))).toEqual([])
+  })
+
+  it('keeps every allowlist entry justified and still present', () => {
+    for (const entry of TYPE_BRANCH_ALLOWLIST) {
+      const label = `${entry.file}: ${entry.pattern}`
+      expect(typeof entry.reason === 'string' && entry.reason.trim().length > 0, label).toBe(true)
+      expect(countMatches(entry.pattern), `${label} matches no counted pattern`).toBeGreaterThan(0)
+      const text = readFileSync(path.join(root, entry.file), 'utf8')
+      expect(text.includes(entry.pattern), `${label} is gone: remove the entry`).toBe(true)
+    }
   })
 })

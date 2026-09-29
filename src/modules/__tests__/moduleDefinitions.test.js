@@ -419,3 +419,79 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
     })
   })
 })
+
+// Plan step 4.8: the knobs that replaced the last inline type comparisons outside src/builder.
+describe('core-surface capabilities (plan step 4.8)', () => {
+  const typesWith = (predicate) =>
+    getModuleDefinitions()
+      .filter(predicate)
+      .map((definition) => definition.type)
+      .sort()
+
+  it.each([
+    ['teacherFillHeight', ['desktop', 'electronics', 'filesystem', 'html', 'scratch']],
+    ['teacherSandboxRow', ['html', 'scratch']],
+    ['teacherUnifiedStageTabs', ['html', 'python']],
+    ['explainerBlockMenu', ['scratch']],
+    ['typeSpriteDefaults', ['scratch']],
+  ])('%s is declared exactly by %j', (capability, types) => {
+    expect(typesWith((definition) => definition.capabilities[capability] === true)).toEqual(types)
+    for (const definition of getModuleDefinitions()) {
+      expect(typeof definition.capabilities[capability]).toBe('boolean')
+    }
+  })
+
+  it('lifecycle.playgroundTask exists exactly for the playground modules', () => {
+    expect(
+      typesWith((definition) => typeof definition.lifecycle.playgroundTask === 'function')
+    ).toEqual(typesWith((definition) => definition.meta.playground))
+    expect(getModuleDefinition('python').lifecycle.playgroundTask()).toEqual({
+      id: 1,
+      title: 'Python playground',
+      starterCode: '',
+    })
+  })
+
+  it('workSlot.teacherStarter defaults to starter (electronics overrides it)', () => {
+    for (const definition of getModuleDefinitions()) {
+      const { workSlot } = definition
+      if (definition.type === 'electronics') {
+        expect(workSlot.teacherStarter).not.toBe(workSlot.starter)
+      } else {
+        expect(workSlot.teacherStarter).toBe(workSlot.starter)
+      }
+    }
+  })
+
+  it('meta.pickerOrder defaults to meta.order (html and scratch swap in the picker)', () => {
+    expect(getModuleDefinition('python').meta.pickerOrder).toBe(0)
+    expect(getModuleDefinition('html').meta.pickerOrder).toBe(3)
+    expect(getModuleDefinition('scratch').meta.pickerOrder).toBe(4)
+    const electronics = getModuleDefinition('electronics')
+    expect(electronics.meta.pickerOrder).toBe(electronics.meta.order)
+  })
+
+  it('rejects a playground module without lifecycle.playgroundTask, and a stray one', () => {
+    const base = {
+      ...pythonDefinition,
+      meta: { ...pythonDefinition.meta },
+      getSandboxState: undefined,
+    }
+    const lifecycle = { ...pythonDefinition.lifecycle, playgroundTask: undefined }
+    expect(() => defineModule({ ...base, lifecycle })).toThrow(/lifecycle\.playgroundTask/)
+    expect(() => defineModule({ ...base, meta: { ...base.meta, playground: false } })).toThrow(
+      /lifecycle\.playgroundTask/
+    )
+  })
+
+  it('rejects a non-boolean optional capability', () => {
+    expect(() =>
+      defineModule({
+        ...pythonDefinition,
+        meta: { ...pythonDefinition.meta },
+        capabilities: { ...pythonDefinition.capabilities, teacherFillHeight: 'yes' },
+        getSandboxState: undefined,
+      })
+    ).toThrow(/capabilities\.teacherFillHeight/)
+  })
+})

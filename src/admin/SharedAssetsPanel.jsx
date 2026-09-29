@@ -3,6 +3,7 @@ import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { firestore, storage } from '../shared/firebase'
 import { getLessonModules } from '../modules/registry'
+import { getModuleDefinition } from '../modules/definitions'
 import { spriteVisualMode } from '../shared/spriteVisuals'
 
 const LESSON_TYPES = getLessonModules().map((module) => ({ id: module.type, label: module.label }))
@@ -52,7 +53,11 @@ function TypeAssetsEditor({ lessonType }) {
   const [typeData, setTypeData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [uploads, setUploads] = useState({})
-  const isScratch = lessonType === 'scratch'
+  // Default sprites / backdrops (capabilities.typeSpriteDefaults; scratch).
+  const hasSpriteDefaults = !!getModuleDefinition(lessonType)?.capabilities.typeSpriteDefaults
+  // A module whose Run is the web preview (html) always gets every shared asset of its type in
+  // the preview, so the per-asset "Web editor" toggle is only offered for the other types.
+  const showsWebEditorToggle = getModuleDefinition(lessonType)?.capabilities.run !== 'preview'
 
   useEffect(() => {
     return onSnapshot(
@@ -181,7 +186,7 @@ function TypeAssetsEditor({ lessonType }) {
             >
               {asset.name}
             </a>
-            {lessonType !== 'html' && (
+            {showsWebEditorToggle && (
               <label style={s.showInEditorLabel}>
                 <input
                   type="checkbox"
@@ -204,7 +209,7 @@ function TypeAssetsEditor({ lessonType }) {
         ))}
       </div>
 
-      {isScratch && (
+      {hasSpriteDefaults && (
         <DefaultSpritesEditor
           sprites={defaultSprites}
           storageAssets={storageAssets}
@@ -212,7 +217,7 @@ function TypeAssetsEditor({ lessonType }) {
         />
       )}
 
-      {isScratch && (
+      {hasSpriteDefaults && (
         <DefaultBackdropsEditor
           backdrops={defaultBackdrops}
           storageAssets={storageAssets}

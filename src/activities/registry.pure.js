@@ -90,6 +90,36 @@ export function activityIdForYamlType(type) {
   )
 }
 
+// Legacy task types keep their own YAML `type:` (`type: quiz` + `quizType`, `type: code_arrange`):
+// the legacy activities' `yaml.type` ↔ `legacy.taskType`. Null for anything else.
+export function legacyTaskTypeForYamlType(type) {
+  if (typeof type !== 'string' || !type) return null
+  return (
+    getActivityDefinitions().find((activity) => activity.legacy && activity.yaml?.type === type)
+      ?.legacy.taskType ?? null
+  )
+}
+
+export function yamlTypeForLegacyTaskType(taskType) {
+  if (typeof taskType !== 'string' || !taskType) return null
+  return (
+    getActivityDefinitions().find((activity) => activity.legacy?.taskType === taskType)?.yaml
+      ?.type ?? null
+  )
+}
+
+// Whether a stored task exports its answer check as the YAML `answer:` shorthand: a legacy task
+// whose activity declares `yaml.answerShorthand` (multiple-choice quizzes, including those with
+// no quizType) and whose check is `answer_equals`.
+export function usesYamlAnswerShorthand(task) {
+  const activity = getTaskActivity(task)
+  return (
+    !!activity?.yaml?.answerShorthand &&
+    activity.legacy?.taskType === task.taskType &&
+    task.check?.type === 'answer_equals'
+  )
+}
+
 // The YAML `type:` shorthand for a stored `taskType: 'activity'` task, or null when the task
 // isn't one this bundle knows (an unknown activityType keeps its explicit fields).
 export function yamlTypeForActivityTask(task) {

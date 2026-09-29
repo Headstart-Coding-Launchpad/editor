@@ -142,23 +142,19 @@ export const indentUnitCompartment = new Compartment()
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// Editor language name → CodeMirror language support. Unknown names get Python.
+const LANGUAGE_EXTENSIONS = { python, html, css, javascript }
+// Tab width per editor language (PEP 8's four spaces for Python); every other language uses 2.
+const TAB_SIZES = { python: 4 }
+const DEFAULT_TAB_SIZE = 2
+
 export function getLanguageExtension(type) {
-  switch (type) {
-    case 'python':
-      return python()
-    case 'html':
-      return html()
-    case 'css':
-      return css()
-    case 'javascript':
-      return javascript()
-    default:
-      return python()
-  }
+  const language = Object.hasOwn(LANGUAGE_EXTENSIONS, type ?? '') ? type : 'python'
+  return LANGUAGE_EXTENSIONS[language]()
 }
 
 export function getTabSize(type) {
-  return type === 'python' ? 4 : 2
+  return Object.hasOwn(TAB_SIZES, type ?? '') ? TAB_SIZES[type] : DEFAULT_TAB_SIZE
 }
 
 export function getIndentUnit(type) {
