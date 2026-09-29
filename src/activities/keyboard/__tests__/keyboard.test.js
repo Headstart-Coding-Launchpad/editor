@@ -147,6 +147,6 @@ describe('grading', () => {
       done: false,
       hint: `Look for the Shift + ' key.`,
     })
-    expect(describeItem({ mode: 'shortcuts' }, { combo: 'cmd+shift+z' })).toBe('Ctrl + shift + Z')
+    expect(describeItem({ mode: 'shortcuts' }, { combo: 'cmd+shift+z' })).toBe('Ctrl + Shift + Z')
   })
 })

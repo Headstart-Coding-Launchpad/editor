@@ -6,6 +6,8 @@ function detectNow() {
   return detectInputCapabilities({
     matchMedia: typeof window.matchMedia === 'function' ? window.matchMedia.bind(window) : null,
     maxTouchPoints: window.navigator?.maxTouchPoints ?? 0,
+    userAgent: window.navigator?.userAgent ?? '',
+    userAgentData: window.navigator?.userAgentData ?? null,
   })
 }
 

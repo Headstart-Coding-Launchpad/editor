@@ -558,6 +558,7 @@ Pure, Node-safe input library for the Keyboard and Mouse activities and the Desk
 
 | File | Role |
 |---|---|
+| `platform.js` | `detectPlatform` (Mac / Chromebook / Windows / other from the user agent; iPad = other), `keyName` (a taught key as labelled on that keyboard: Mac delete, fn + delete, Chromebook Alt + Backspace, Alt + Search…), `modKeyName` (Cmd on a Mac), `PLATFORM_LABELS`; part of `detectInputCapabilities` |
 | `index.js` | Re-exports the whole library |
 | `layouts.js` | Character → `{ code, shift }` tables (UK only for now), `describeCharKeys` ("Shift + 2"), key labels |
 | `events.js` | `normalizeKeyEvent` (modifiers, Caps Lock, hardware vs virtual source), `normalizePointerEvent` (`data-input-id` targets plus their `data-input-kind`, 0-1 positions), canonical combos (`mod+c`, Ctrl and Cmd alike), browser-reserved combos |

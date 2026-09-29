@@ -120,8 +120,10 @@ with `useInputCapabilities()` (media queries; a hardware keydown proves a keyboa
 | `block` | any | "Needs a keyboard / mouse" notice instead of the activity |
 
 A touch-only device with no keyboard evidence counts as having no physical keyboard. Activities
-record the device in their state (`state.device`, per-item `source: 'virtual'`) so grading and
-the teacher badge need no extra Firebase field.
+record the device in their state (`state.device`: `touch`, `virtualKeyboard`, and `platform`
+`mac` / `chromeos` / `windows` / `other` from `src/shared/input/platform.js`; per-item `source:
+'virtual'`) so grading and the teacher badge need no extra Firebase field. The host passes
+`device.platform` so activities name keys as the student's keyboard does.
 
 ## Quizzes (legacy activities)
 

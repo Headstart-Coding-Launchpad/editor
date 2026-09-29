@@ -271,6 +271,12 @@ check in a `check` list so the task needs both.
 - **Touch screens:** unless `strict: true`, a touch equivalent counts — a double-tap for
   `double_click`, a long-press for `right_click`. `hover` has no touch equivalent; avoid it in
   lessons that may run on tablets.
+- **Mac and Chromebook:** a right-click by Ctrl + click / two-finger click (Mac) or Alt + click /
+  two-finger tap (Chromebook) counts as `right_click`, including with `strict: true`, because
+  each opens the browser's context menu. `combo: delete` accepts fn + delete (Mac) and
+  Alt + Backspace (Chromebook), which the browser reports as Delete. See
+  [activities/keyboard.md](activities/keyboard.md#mac-and-chromebook-keyboards) for the full
+  table; the Chromebook and fn combinations are not yet checked on real devices.
 - **Ctrl and Cmd are the same** in `combo` (`ctrl+c` also accepts Cmd+C on a Mac). Shortcuts the
   browser keeps for itself (`ctrl+w`, `ctrl+t`, `ctrl+n`, `alt+f4`, `alt+tab`, …) are rejected —
   teach those with a quiz. Shift+letter is typing, not a shortcut: use `input_modifier`.

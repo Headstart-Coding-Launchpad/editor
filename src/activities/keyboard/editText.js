@@ -1,3 +1,5 @@
+import { keyName } from '../../shared/input/platform.js'
+
 // Pure logic for the Keyboard activity's edit_text mode: the student starts with a line
 // containing mistakes (`start`) and fixes it in place until it reads `target`, editing rather
 // than retyping. Node-safe.
@@ -71,6 +73,14 @@ export function applyEditKey(model, event) {
   const mod = !!event.mods?.mod
   const selection = selectionOf(model)
 
+  // Cmd + ← / → is how a Mac jumps to the start / end of a line (Home / End elsewhere).
+  if ((key === 'ArrowLeft' || key === 'ArrowRight') && event.mods?.meta && !event.mods?.ctrl) {
+    const caret = key === 'ArrowLeft' ? 0 : model.text.length
+    return {
+      model: moveTo(model, caret, shift),
+      used: shift ? 'select' : key === 'ArrowLeft' ? 'Home' : 'End',
+    }
+  }
   if (key === 'ArrowLeft' || key === 'ArrowRight') {
     const left = key === 'ArrowLeft'
     if (shift) {
@@ -157,19 +167,33 @@ export function editSolution(item) {
   }
 }
 
-const REQUIRE_HINTS = {
-  Delete: 'Put the cursor just before the extra letter and press Delete.',
-  Backspace: 'Put the cursor just after the mistake and press Backspace.',
-  ArrowLeft: 'Use the arrow keys to move the cursor to the mistake.',
-  ArrowRight: 'Use the arrow keys to move the cursor to the mistake.',
-  Home: 'Press Home to jump to the start of the line.',
-  End: 'Press End to jump to the end of the line.',
-  select: 'Hold Shift and press an arrow key to select letters, then delete them.',
+// Hints name keys as the student's keyboard does (`platform`: src/shared/input/platform.js).
+function requireHint(key, platform) {
+  const name = (k) => keyName(k, platform)
+  switch (key) {
+    case 'Delete':
+      return `Put the cursor just before the extra letter and press ${name('Delete')}.`
+    case 'Backspace':
+      return `Put the cursor just after the mistake and press ${name('Backspace')}.`
+    case 'Home':
+      return `Press ${name('Home')} to jump to the start of the line.`
+    case 'End':
+      return `Press ${name('End')} to jump to the end of the line.`
+    case 'select':
+      return 'Hold Shift and press an arrow key to select letters, then delete them.'
+    default:
+      return 'Use the arrow keys to move the cursor to the mistake.'
+  }
+}
+
+function deleteKeysReminder(platform) {
+  const backspace = keyName('Backspace', platform)
+  return `${backspace[0].toUpperCase()}${backspace.slice(1)} deletes to the left, ${keyName('Delete', platform)} deletes to the right.`
 }
 
 // Grade one edit_text item from its stored result
 // { text, orig, caret, anchor, used, source, done }.
-export function gradeEditItem(task, item, result = {}) {
+export function gradeEditItem(task, item, result = {}, platform) {
   if (String(result.text ?? item.start ?? '') !== String(item.target ?? '')) {
     return { correct: false, hint: 'Keep going: make the line match exactly.' }
   }
@@ -186,7 +210,7 @@ export function gradeEditItem(task, item, result = {}) {
   if (missing) {
     return {
       correct: false,
-      hint: `${REQUIRE_HINTS[missing]} Backspace deletes to the left, Delete deletes to the right.`,
+      hint: `${requireHint(missing, platform)} ${deleteKeysReminder(platform)}`,
     }
   }
   if (result.source === 'virtual')

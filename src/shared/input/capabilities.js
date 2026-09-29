@@ -1,8 +1,14 @@
 // What input the student's device offers. Pointer and hover support come from media queries;
 // a physical keyboard can't be detected up front, so it is unknown until a hardware keydown
 // arrives (or the student says they have one). Pure: pass in matchMedia for testing.
+import { detectPlatform } from './platform.js'
 
-export function detectInputCapabilities({ matchMedia, maxTouchPoints = 0 } = {}) {
+export function detectInputCapabilities({
+  matchMedia,
+  maxTouchPoints = 0,
+  userAgent = '',
+  userAgentData = null,
+} = {}) {
   const query = (q) => {
     try {
       return typeof matchMedia === 'function' ? !!matchMedia(q)?.matches : false
@@ -15,6 +21,8 @@ export function detectInputCapabilities({ matchMedia, maxTouchPoints = 0 } = {})
     hover: query('(any-hover: hover)'),
     touch: maxTouchPoints > 0 || query('(any-pointer: coarse)'),
     physicalKeyboard: null,
+    // Mac / Chromebook / Windows: which names the taught keys have (./platform.js).
+    platform: detectPlatform({ userAgent, userAgentData, maxTouchPoints }),
   }
 }
 

@@ -1,6 +1,6 @@
 # Mac and Chromebook equivalents for taught keys and right-click
 
-- **Status:** open
+- **Status:** planned
 - **Kind:** bug
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-09-29
 - **Lessons blocked:** none yet
@@ -46,4 +46,7 @@ Course: Mouse and Keyboard Skills ('Computer Confidence'), ages 7+. New on 29 Se
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Branch `feature/mac-chromebook-key-equivalents`.
+- Behaviour documented in [activities/keyboard.md](../activities/keyboard.md#mac-and-chromebook-keyboards), [activities/mouse.md](../activities/mouse.md#mac-and-chromebook) and desktop.md: checks match `event.key` / the `contextmenu` event, so each platform's equivalent already counts as the Windows key.
+- Built: platform detection (`src/shared/input/platform.js`); platform-named prompts, hints and key picture; Mac Caps Lock keyup counts for find_key; Cmd + ←/→ = Home/End in edit_text; the platform is recorded in the activity state (`state.device.platform`) and shown as a Mac / Chromebook badge. That replaces the planned presence field: it needs no Firebase change.
+- Still to do: check the Chromebook (Alt + Search, Search + arrows, Alt + Backspace) and Mac fn combinations on real devices. Known gap: `symbols` uses the UK Windows layout; a UK Mac differs (`@`, `"`, `#`).

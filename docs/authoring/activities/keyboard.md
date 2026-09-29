@@ -124,6 +124,31 @@ on-screen keyboard doesn't have yet (those items show a "needs a real keyboard" 
 key proves a keyboard is there. The teacher's card and modal show an "On-screen keyboard" badge
 for work done this way.
 
+## Mac and Chromebook keyboards
+
+Families use their own computers, so the keys being taught may be named differently or be
+missing. The browser reports each platform's equivalent as the Windows key, so the same item
+passes on every machine. Prompts, hints and the keyboard picture use the student's own names
+(the platform comes from the browser; iPads count as "other"):
+
+| Taught as | Mac | Chromebook | Counts in |
+|---|---|---|---|
+| Backspace | the key labelled **delete** | Backspace | `find_key`, `type_text`, `edit_text` |
+| Delete | **fn + delete** | **Alt + Backspace** | `find_key`, `edit_text` `requireKeys` |
+| Caps Lock | caps lock (turning it *off* counts too) | **Alt + Search** | `find_key`, `requireShiftForCapitals` |
+| Home / End | **fn + ← / →** or **Cmd + ← / →** | **Search + ← / →** | `edit_text` |
+| Enter | return | Enter | `find_key` |
+| Ctrl in shortcuts | Cmd | Ctrl | `shortcuts` (`Ctrl` matches Cmd) |
+
+- The teacher's card and modal show a **Mac** or **Chromebook** badge for work done on one
+  (recorded in the activity's own state, like the on-screen keyboard badge).
+- **Not yet checked on real devices:** Chromebook Alt + Search (Caps Lock) and Search + arrows
+  (Home / End) rely on ChromeOS turning them into Caps Lock / Home / End before the browser sees
+  them; Mac fn combinations likewise. Report anything that doesn't register.
+- **Known gap:** `symbols` mode uses the UK Windows layout. A UK Mac keyboard puts some symbols
+  elsewhere (`@` is Shift + 2, `"` is Shift + ', `#` is Alt + 3), so the key picture and "Press
+  Shift + '" hints can be wrong on a Mac.
+
 ## Marking and hints
 
 - Keyboard items finish themselves (a line typed, a key found, a shortcut used). When every item

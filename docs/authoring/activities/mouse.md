@@ -109,6 +109,13 @@ tasks:
 Instructions switch to touch words ("Tap the star") on a touch-only device, and the teacher sees
 a "Touch screen" badge on the card and in the modal.
 
+## Mac and Chromebook
+
+Right-click counts however the student's computer does it, because each one opens the browser's
+context menu: **Ctrl + click** or a **two-finger click** on a Mac trackpad, **Alt + click** or a
+**two-finger tap** on a Chromebook. This holds with `touch: block` too. The teacher's card shows
+a **Mac** or **Chromebook** badge for work done on one. (Not yet checked on real devices.)
+
 ## Marking and hints
 
 - Each instruction completes when the right gesture happens on the right target; the next one is
