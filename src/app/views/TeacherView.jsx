@@ -94,6 +94,7 @@ export default function TeacherView({ lessonId }) {
     requestFullscreenForStudent,
     nudgeStudent,
     nudgeAwayStudents,
+    setAutoRevealStage,
     setActiveStudentView,
     setTeacherLive,
     renameStudent,
@@ -769,6 +770,7 @@ export default function TeacherView({ lessonId }) {
             onRequestFullscreenStudent={requestFullscreenForStudent}
             onNudgeStudent={nudgeStudent}
             onNudgeAway={nudgeAwayStudents}
+            onSetAutoReveal={setAutoRevealStage}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed((v) => !v)}
           />

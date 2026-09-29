@@ -47,6 +47,7 @@ export default function StudentGrid({
   onRequestFullscreenStudent,
   onNudgeStudent,
   onNudgeAway,
+  onSetAutoReveal,
   collapsed,
   onToggle,
 }) {
@@ -328,6 +329,7 @@ export default function StudentGrid({
           onRequestShareSnapshot={onRequestShareSnapshot}
           onRequestFullscreen={onRequestFullscreenStudent}
           onNudge={onNudgeStudent}
+          onSetAutoReveal={onSetAutoReveal}
         />
       )}
     </div>

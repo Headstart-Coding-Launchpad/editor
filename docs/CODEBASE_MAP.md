@@ -518,7 +518,8 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `lessonLevels.js` | Reusable level reference helpers: level Firestore collection name, scope derivation, legacy migration, display title resolution, and sorting |
 | `lessonForks.js` | Deterministic class-fork helpers: class record normalization, fork ID/title creation, stock lesson copy, and task lineage construction |
 | `youtube.js` | Pure YouTube URL parsing for the `recordingUrl` lesson field: `extractYouTubeId()`, `isValidRecordingUrl()`, `buildYouTubeEmbedSrc()`. Dependency-free (only the built-in `URL`) so it's shared between the browser widget/Builder field and the Node CLI validator |
-| `taskStages.js` | Pure code-stage role helpers (`STAGE_ROLES`, `getStageRole`, `getStarterStage`, `getCompleteStage`, revealable stages) with no imports, so module definitions can use them; re-exported by `taskUtils.js` |
+| `pasteDetection.js` | Large-paste thresholds (40 chars / 3 lines) and helpers used by `handleEditorPaste` to flag pastes to the teacher |
+| `taskStages.js` | Pure code-stage role helpers (`STAGE_ROLES`, `getStageRole`, `getStarterStage`, `getCompleteStage`, revealable stages, `SUPPORT_REVEAL_SOURCES`, `AUTO_REVEAL_MODES`) with no imports, so module definitions can use them; re-exported by `taskUtils.js` |
 | `codeLanguages.js` | `CODE_LANGUAGE_LABELS` / `getCodeLanguageLabel` for code-fence languages (CopyCodePanel, explainer code-block menu) |
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration and priority totals/formatting; `deriveTaskContext` (incl. `moduleType`) and `buildStageOptions` read module definitions. `flattenTaskTree()` expands groups as authored; `flattenTasks()` is that with legacy draft tasks filtered out |
 | `textUtils.js` | Small string helpers shared across modules: `escapeRegExp()`, `stableHash()` (deterministic 32-bit hash for stable ids and shuffle seeds), `isPlainObject()`, `fileExtension()` |

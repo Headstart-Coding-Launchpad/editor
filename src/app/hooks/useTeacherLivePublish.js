@@ -186,6 +186,8 @@ export function useTeacherLivePublish({
           assets: liveLesson?.assets ?? [],
           assetsPath: resolveAssetsPath(liveLesson?.assetsPath),
           storageAssets: iframeStorageAssets ?? liveLesson?.storageAssets ?? [],
+          // Only viewers build this src (presentation windows bail out above).
+          copyProtect: true,
         }
       )
     )

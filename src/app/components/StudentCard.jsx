@@ -45,6 +45,7 @@ export default function StudentCard({
   const [nameValue, setNameValue] = useState(student.displayName)
   const [isActive, setIsActive] = useState(false)
   const [nudged, setNudged] = useState(false)
+  const pasteRecord = student.pasteLog?.[session?.currentTaskId] ?? null
   const [, setTick] = useState(0)
 
   // Show typing dots for 4 seconds after lastActivityAt updates, then clear
@@ -254,6 +255,14 @@ export default function StudentCard({
             >
               {nudged ? '✓' : '🔔'}
             </button>
+          )}
+          {pasteRecord?.count > 0 && (
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgePasted }}
+              title={`Pasted ${pasteRecord.chars} characters into the editor on this task`}
+            >
+              📋 Pasted{pasteRecord.count > 1 ? ` ×${pasteRecord.count}` : ''}
+            </span>
           )}
           {student.isFullscreen && (
             <span
@@ -593,6 +602,11 @@ const s = {
     background: '#f3f4f6',
     color: '#6b7280',
     border: '1px solid #d1d5db',
+  },
+  checkBadgePasted: {
+    background: '#fef3c7',
+    color: '#92400e',
+    border: '1px solid #fcd34d',
   },
   nudgeBtn: {
     background: '#fffbeb',

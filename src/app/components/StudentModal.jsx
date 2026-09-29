@@ -35,6 +35,14 @@ import {
 import { readActivityAnswer } from '../../activities/state.js'
 import ActivityDeviceBadge from '../../activities/ui/ActivityDeviceBadge.jsx'
 
+// Modes match AUTO_REVEAL_MODES (src/shared/taskStages.js); null turns it off.
+const AUTO_REVEAL_OPTIONS = [
+  { mode: null, label: 'Off' },
+  { mode: 'first', label: 'First hint' },
+  { mode: 'support', label: 'All hints (no solution)' },
+  { mode: 'solution', label: 'Solution' },
+]
+
 function getModuleDisplayState(module, raw) {
   if (!module) return null
   if (raw != null && raw !== '') return module.deserializeState ? module.deserializeState(raw) : raw
@@ -84,6 +92,7 @@ export default function StudentModal({
   onRequestShareSnapshot,
   onRequestFullscreen,
   onNudge,
+  onSetAutoReveal,
 }) {
   const overlayRef = useRef(null)
   const iframeRef = useRef(null)
@@ -482,6 +491,9 @@ export default function StudentModal({
   const completeStage =
     !isInformation && !isQuizLike && supportsStageReveal ? getCompleteStage(task) : null
   const revealedSupportStages = session?.supportRevealLog?.[student.anonymousId]?.[task?.id] ?? {}
+  // "Every task" reference: re-applied by the student's client on each task.
+  const canSetAutoReveal = !!onSetAutoReveal && supportsStageReveal
+  const autoRevealStage = student.autoRevealStage ?? null
 
   const supportsTeacherLiveReference = TEACHER_LIVE_REFERENCE_TYPES.includes(taskLesson?.type)
   const teacherLiveReferenceVisible = !!student.teacherLiveReferenceVisible
@@ -559,6 +571,22 @@ export default function StudentModal({
                 Help Needed — Helped ✓
               </button>
             )}
+            {student.pasteLog?.[task?.id]?.count > 0 && (
+              <span
+                style={s.supportBadge}
+                title={`Pasted ${student.pasteLog[task.id].chars} characters into the editor on this task`}
+              >
+                📋 Pasted ×{student.pasteLog[task.id].count}
+              </span>
+            )}
+            {autoRevealStage && (
+              <span
+                style={s.supportBadge}
+                title="A reference opens automatically for this student on every task"
+              >
+                📖 Every task: {AUTO_REVEAL_OPTIONS.find((o) => o.mode === autoRevealStage)?.label}
+              </span>
+            )}
             {Object.keys(revealedSupportStages).length > 0 && (
               <span style={s.supportBadge} title="Student has opened a stage reference">
                 Reference opened
@@ -599,6 +627,7 @@ export default function StudentModal({
 
             {/* Stage reference reveal dropdown */}
             {((onRevealSupportStage && revealableStages.length > 0) ||
+              canSetAutoReveal ||
               (onSetTeacherLiveReference &&
                 !isInformation &&
                 !isQuizLike &&
@@ -662,6 +691,25 @@ export default function StudentModal({
                       >
                         Reveal solution: {completeStage.stage.label || 'Complete'}
                       </button>
+                    )}
+                    {canSetAutoReveal && (
+                      <>
+                        <div style={s.autoRevealHeading}>Show on every task</div>
+                        {AUTO_REVEAL_OPTIONS.map(({ mode, label }) => (
+                          <button
+                            key={mode ?? 'off'}
+                            style={sTo.toolBtn}
+                            aria-pressed={autoRevealStage === mode}
+                            onClick={() => {
+                              close()
+                              onSetAutoReveal(student.anonymousId, mode)
+                            }}
+                          >
+                            {autoRevealStage === mode ? '✓ ' : ''}
+                            {label}
+                          </button>
+                        ))}
+                      </>
                     )}
                   </>
                 )}
@@ -1174,6 +1222,16 @@ const s = {
     whiteSpace: 'nowrap',
   },
   checkBadge: { fontSize: '1rem' },
+  autoRevealHeading: {
+    borderTop: '1px solid #e5e7eb',
+    marginTop: 4,
+    padding: '6px 10px 2px',
+    fontSize: '0.7rem',
+    fontWeight: 700,
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+  },
   nudgeBtn: {
     fontSize: '0.75rem',
     padding: '2px 8px',

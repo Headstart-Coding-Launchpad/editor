@@ -43,7 +43,7 @@ let _lastErrorContext = null
 export function buildIframeSrc(
   files,
   entryFile = 'index.html',
-  { assets = [], assetsPath = '', storageAssets = [] } = {}
+  { assets = [], assetsPath = '', storageAssets = [], copyProtect = false } = {}
 ) {
   if (!files || files.length === 0) return null
 
@@ -80,7 +80,7 @@ export function buildIframeSrc(
   // Inject security (CSP + console interceptor + text reporter)
   const loadId = Math.random().toString(36).slice(2)
   _lastLoadId = loadId
-  const injected = _injectSecurity(html, loadId)
+  const injected = _injectSecurity(html, loadId, { copyProtect })
 
   // Return new Blob URL for the rewritten HTML
   const rewrittenBlob = new Blob([injected.html], { type: 'text/html' })
@@ -180,11 +180,19 @@ function getMime(typeOrName) {
   return 'text/plain'
 }
 
+// A student watching a broadcast sees the teacher's (or a pinned peer's) page:
+// no selecting, copying, dragging or right-click (which offers "View frame
+// source"). A deterrent, like the editor's live-copy-blocked class — dev tools
+// still show everything.
+const COPY_PROTECT_SNIPPET =
+  '<style>*{-webkit-user-select:none!important;user-select:none!important}</style>' +
+  "<script>['copy','cut','contextmenu','dragstart'].forEach(function(t){document.addEventListener(t,function(e){e.preventDefault()},true)})</script>"
+
 // Returns { html, offsetLines } — offsetLines is how many extra lines the
 // injected CSP + console interceptor add ahead of the student's own markup,
 // so a browser-reported error line in this document can be translated back
 // to the original entry file's line number (see resolveIframeErrorLocation).
-function _injectSecurity(html, loadId) {
+function _injectSecurity(html, loadId, { copyProtect = false } = {}) {
   // CSP blocks all outbound network requests (fetch, XHR, WebSocket).
   // blob: and 'unsafe-inline'/'unsafe-eval' are needed for the virtual filesystem
   // and typical student code patterns.
@@ -207,12 +215,14 @@ function _injectSecurity(html, loadId) {
     html = injected + html
   }
 
-  // Inject text reporter before </body> (or append if no </body>) — this comes
-  // after any student script, so it never shifts a script's own line numbers.
+  // Inject text reporter (and any copy protection) before </body> (or append if
+  // no </body>) — this comes after any student script, so it never shifts a
+  // script's own line numbers.
+  const tail = textReporter + (copyProtect ? COPY_PROTECT_SNIPPET : '')
   if (/<\/body>/i.test(html)) {
-    html = html.replace(/<\/body>/i, textReporter + '</body>')
+    html = html.replace(/<\/body>/i, tail + '</body>')
   } else {
-    html += textReporter
+    html += tail
   }
 
   return { html, offsetLines }

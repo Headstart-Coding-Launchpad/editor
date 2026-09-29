@@ -416,6 +416,24 @@ describe('useSession', () => {
     })
   })
 
+  describe('setAutoRevealStage', () => {
+    it('writes a known mode, and null for anything else', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.setAutoRevealStage('student-abc', 'support')
+        await result.current.setAutoRevealStage('student-abc', 'bogus')
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { autoRevealStage: 'support' }
+      )
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { autoRevealStage: null }
+      )
+    })
+  })
+
   describe('nudges', () => {
     it('nudgeStudent stamps nudgePushedAt on just that student', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))

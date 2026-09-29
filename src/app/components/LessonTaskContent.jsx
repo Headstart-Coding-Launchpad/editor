@@ -51,9 +51,19 @@ const teacherAnswerNoticeStyle = {
   fontWeight: 600,
 }
 
+// Registered in the capture phase: CodeMirror's own copy/cut/dragstart handlers
+// (on its content element, below this wrapper) write the selection to the
+// clipboard themselves, so cancelling the event after it bubbles back out is
+// too late. Stopping it on the way down means CodeMirror never sees it.
 function blockClipboardEvent(event) {
   event.preventDefault()
   event.stopPropagation()
+}
+
+// Clipboard traffic in a CodeMirror editor (not a text input, quiz box, etc.).
+function codeEditorClipboardText(event) {
+  if (!event.target?.closest?.('.cm-editor')) return null
+  return event.clipboardData?.getData('text/plain') || window.getSelection?.()?.toString() || ''
 }
 
 // Adapts Presentation View's independent live-reference broadcast
@@ -416,8 +426,16 @@ export default function LessonTaskContent({
     ? { ...taskContentStyle, ...s.fluidTaskContent }
     : taskContentStyle
 
+  // The explainer is copy-blocked alongside the workspace while watching a
+  // broadcast: it can carry a pushed sandbox explainer or the complete-code reveal.
   const taskExplainer = hasTaskExplainer ? (
-    <div style={useSideExplainer ? s.sideExplainerShell : undefined}>
+    <div
+      style={useSideExplainer ? s.sideExplainerShell : undefined}
+      className={isLiveCopyBlocked ? 'live-copy-blocked' : undefined}
+      onCopyCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+      onCutCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+      onDragStartCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+    >
       {useSideExplainer && (
         <CollapseTabButton
           onClick={() => setExplainerCollapsed(true)}
@@ -519,7 +537,7 @@ export default function LessonTaskContent({
               ? 'Shown for your feedback'
               : teacherLiveReferenceStage
                 ? "Live from your teacher's screen"
-                : reveal?.source === 'teacher'
+                : reveal?.source === 'teacher' || reveal?.source === 'teacher-auto'
                   ? 'Opened by your teacher'
                   : 'Shown after a failed attempt'
           return (
@@ -653,8 +671,21 @@ export default function LessonTaskContent({
   // teacher's (or a pinned peer's) code can't be lifted out of it. CSS user-select alone
   // doesn't cover CodeMirror: its content stays contenteditable while read-only, so
   // Ctrl+A / Ctrl+C still builds a real selection the browser will happily copy.
-  // Cancelling copy/cut as they bubble out of the workspace closes that route (and
+  // Cancelling copy/cut/dragstart on their way into the workspace (capture phase,
+  // before CodeMirror's own handlers fill the clipboard) closes that route (and
   // right-click Copy) in one place, silently, rather than per module.
+  // Large pastes into a code editor are flagged to the teacher (cs.handleEditorPaste);
+  // copies/cuts from the student's own editor are remembered so moving their own
+  // code around isn't flagged.
+  function handleOwnCopy(event) {
+    const text = codeEditorClipboardText(event)
+    if (text) cs.handleEditorCopy?.(text)
+  }
+  function handleWorkspacePaste(event) {
+    const text = codeEditorClipboardText(event)
+    if (text) cs.handleEditorPaste?.(text)
+  }
+
   const editorArea = (
     <div
       style={
@@ -675,8 +706,12 @@ export default function LessonTaskContent({
           .join(' ')
           .trim() || undefined
       }
-      onCopy={isLiveCopyBlocked ? blockClipboardEvent : undefined}
-      onCut={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+      onCopyCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+      onCutCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+      onDragStartCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+      onCopy={isLiveCopyBlocked ? undefined : handleOwnCopy}
+      onCut={isLiveCopyBlocked ? undefined : handleOwnCopy}
+      onPaste={isLiveCopyBlocked ? undefined : handleWorkspacePaste}
     >
       {workspaceContent}
     </div>

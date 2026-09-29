@@ -13,6 +13,7 @@ import {
 import { db } from '../../shared/firebase'
 import { encodeFileKey, decodeFileKey } from '../../shared/fileKeys'
 import { compactTurtleResultForSync } from '../../modules/turtle/sync.js'
+import { AUTO_REVEAL_MODES, SUPPORT_REVEAL_SOURCES } from '../../shared/taskStages.js'
 import {
   buildShareIndexEntry,
   isSnapshotWithinLimit,
@@ -413,6 +414,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
   async function nudgeStudent(anonymousId) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
       nudgePushedAt: Date.now(),
+    })
+  }
+
+  // Teacher's per-student "every task" reference: 'first' | 'support' | 'solution',
+  // or null to turn it off. Applied by the student's client as each task loads
+  // (see autoRevealStage in useStudentCodeState).
+  async function setAutoRevealStage(anonymousId, mode) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      autoRevealStage: AUTO_REVEAL_MODES.includes(mode) ? mode : null,
     })
   }
 
@@ -1038,11 +1048,24 @@ export function useSession(lessonId, { enabled = true } = {}) {
         taskId,
         stageIndex,
         stageLabel: stageLabel || null,
-        source: source === 'teacher' ? 'teacher' : 'student',
+        source: SUPPORT_REVEAL_SOURCES.includes(source) ? source : 'student',
         attemptNumber: attemptNumber ?? countedAttempts,
         revealedAt: serverTimestamp(),
       }
     )
+  }
+
+  // A large paste into this student's editor (see handleEditorPaste in
+  // useStudentCodeState). Lives on the student's own node so students can write
+  // it; per task, so the report can say where it happened.
+  async function recordStudentPaste(anonymousId, taskId, { chars = 0 } = {}) {
+    if (!anonymousId || taskId == null) return
+    const prev = session?.students?.[anonymousId]?.pasteLog?.[taskId]
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}/pasteLog/${taskId}`), {
+      count: (prev?.count ?? 0) + 1,
+      chars: (prev?.chars ?? 0) + chars,
+      lastAt: Date.now(),
+    })
   }
 
   // Teacher-authored, task-scoped rating captured live during the session (see
@@ -1174,6 +1197,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     requestFullscreenForStudent,
     nudgeStudent,
     nudgeAwayStudents,
+    setAutoRevealStage,
     setExplainerShowComplete,
     setActiveStudentView,
     setTeacherLive,
@@ -1235,6 +1259,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     writeStudentInteraction,
     recordStudentCarryFallback,
     recordSupportStageReveal,
+    recordStudentPaste,
     setTaskRating,
     writeStudentPersonalSandbox,
     setTeacherLiveReferenceForStudent,

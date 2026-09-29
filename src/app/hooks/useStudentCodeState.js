@@ -15,12 +15,14 @@ import {
 import {
   flattenTasks,
   findTaskById,
+  getCompleteStage,
   getNextRevealableStage,
   getRevealableStages,
   getStageRole,
   isRevealableStage,
 } from '../../shared/taskUtils'
 import { resolveAssetsPath } from '../../shared/assetPaths'
+import { isFlaggablePaste, isSamePasteText, measurePaste } from '../../shared/pasteDetection'
 import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesystem'
 import { DEFAULT_CIRCUIT } from '../../modules/electronics/circuit'
 import { makeDefaultDesktop } from '../../modules/desktop/desktopState'
@@ -146,6 +148,7 @@ export function useStudentCodeState({
   writeStudentInteraction,
   recordStudentCarryFallback,
   recordSupportStageReveal,
+  recordStudentPaste,
   writeStudentPersonalSandbox,
   writeStudentPresence,
   registerPresence,
@@ -947,6 +950,28 @@ export function useStudentCodeState({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, currentTaskId, effectiveIdentity?.anonymousId])
+
+  // The teacher's "every task" reference (students.{id}.autoRevealStage) is
+  // re-applied as each task loads, so a student who needs it doesn't depend on
+  // the teacher reopening it by hand every turn. Session-only: the setting lives
+  // on the student's session node. Runs after the load effect above, whose
+  // resetCheckFeedback would otherwise hide an auto-shown solution.
+  const autoRevealStage = myStudentData?.autoRevealStage ?? null
+  const autoRevealAppliedRef = useRef(null)
+  useEffect(() => {
+    if (phase !== 'lesson' || teacherPresentation || !autoRevealStage || !effectiveIdentity) {
+      autoRevealAppliedRef.current = null
+      return
+    }
+    const key = `${currentTaskId}|${autoRevealStage}`
+    if (autoRevealAppliedRef.current === key) return
+    autoRevealAppliedRef.current = key
+    const task = findTaskById(lesson?.tasks, currentTaskId)
+    if (!task || task.taskType === 'information' || isHostedActivityTask(task)) return
+    if (!getModuleDefinition(lesson?.type)?.capabilities.unifiedStages) return
+    applyAutoReveal(task, autoRevealStage)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, currentTaskId, autoRevealStage, teacherPresentation, effectiveIdentity?.anonymousId])
 
   // When phase leaves lesson/solo, exit personal sandbox silently
   useEffect(() => {
@@ -2220,6 +2245,47 @@ export function useStudentCodeState({
     }
   }
 
+  // 'first' = the first support stage; 'support' = every support stage (never the
+  // solution); 'solution' = the complete stage, falling back to every support
+  // stage on a task that has no complete stage.
+  function applyAutoReveal(task, mode) {
+    const supportStages = getRevealableStages(task).filter(
+      ({ index }) => !Object.prototype.hasOwnProperty.call(supportStageReveals, index)
+    )
+    const completeStage = mode === 'solution' ? getCompleteStage(task) : null
+    if (completeStage) {
+      recordSupportStageReveal?.(
+        effectiveIdentity.anonymousId,
+        currentTaskId,
+        completeStage.index,
+        {
+          source: 'teacher-auto',
+          stageLabel: completeStage.stage.label || 'Complete',
+        }
+      )
+      setCompletePreviewShown(true)
+      return
+    }
+    const toReveal = mode === 'first' ? getRevealableStages(task).slice(0, 1) : supportStages
+    toReveal
+      .filter(({ index }) => !Object.prototype.hasOwnProperty.call(supportStageReveals, index))
+      .forEach(({ index }) => handleRevealSupportStage(index, 'teacher-auto', 0))
+  }
+
+  // Large pastes into the editor are flagged to the teacher, not blocked. Text the
+  // student copied or cut from their own editor doesn't count.
+  const ownClipboardRef = useRef('')
+  function handleEditorCopy(text) {
+    if (text) ownClipboardRef.current = text
+  }
+  function handleEditorPaste(text) {
+    if (phase !== 'lesson' || teacherPresentation || previewMode || inPersonalSandboxRef.current)
+      return
+    if (!effectiveIdentity?.anonymousId || !isFlaggablePaste(text)) return
+    if (isSamePasteText(text, ownClipboardRef.current)) return
+    recordStudentPaste?.(effectiveIdentity.anonymousId, currentTaskId, measurePaste(text))
+  }
+
   function handleHtmlRuntimeError(src, errorMeta) {
     const supportAttempt = htmlSupportAttemptsRef.current.get(src)
     if (!supportAttempt) return
@@ -2448,6 +2514,8 @@ export function useStudentCodeState({
     pyodideStatus,
     iframeSrc,
     teacherLiveIframeSrc,
+    handleEditorCopy,
+    handleEditorPaste,
     htmlPreviewCollapsed,
     setHtmlPreviewCollapsed,
     publishOutputCollapsed,
