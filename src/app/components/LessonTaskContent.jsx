@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react'
 import Banner from '../../shared/Banner'
 import { getLessonModule } from '../../modules/registry'
+import { getModuleDefinition, getModuleTypesWithCapability } from '../../modules/definitions'
 import SplitPane from '../../shared/SplitPane'
 import ExplainerPanel from './ExplainerPanel'
 import InformationTask from './InformationTask'
 import LessonCompleteScreen from './LessonCompleteScreen'
-import QuizTask from './QuizTask'
-import CodeArrangeTaskContainer from './CodeArrangeTaskContainer'
+import { getModuleHostedActivityUi } from '../../activities/registry.js'
+import ActivityHost from '../../activities/ActivityHost.jsx'
 import CheckFeedbackBanner from './CheckFeedbackBanner'
 import TaskSlideTransition from './TaskSlideTransition'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
@@ -22,7 +23,7 @@ import { loadLayoutTab, saveLayoutTab } from '../studentStorage'
 import { NARROW_BREAKPOINT as SCRATCH_CODE_WIDE_WIDTH } from '../../modules/scratch/ScratchWorkspace'
 
 // Brief "your teacher changed your answer" note, shown when a teacher edits
-// this student's quiz answer or Code Arrange tiles from StudentModal.
+// this student's quiz answer, activity or Code Arrange tiles from StudentModal.
 function TeacherAnswerNotice({ at }) {
   const [visibleAt, setVisibleAt] = React.useState(null)
   React.useEffect(() => {
@@ -58,20 +59,28 @@ function blockClipboardEvent(event) {
 // Adapts Presentation View's independent live-reference broadcast
 // (sessions/{lessonId}/teacherLiveReference — separate from teacherLive, which drives
 // the all-or-nothing "Go Live" force takeover) into the {label, code|files|fs} shape
-// SupportStagePanel's stageToText expects per lesson type.
+// SupportStagePanel's stageToText expects per lesson type: a files module's files, else the
+// module's work under its code-stage field (`workSlot.stageField`, e.g. filesystem's `fs`),
+// `code` by default.
 function teacherLiveReferenceStageFrom(teacherLive, lessonType) {
   const displayState = teacherLiveReferenceDisplayState(teacherLive, lessonType)
   if (displayState == null) return null
-  if (lessonType === 'html') return { label: "Teacher's live code", files: displayState.files }
-  const shapeKey = lessonType === 'filesystem' ? 'fs' : 'code'
+  const definition = getModuleDefinition(lessonType)
+  if (definition?.wire.sandboxChannel === 'files') {
+    return { label: "Teacher's live code", files: displayState.files }
+  }
+  const shapeKey = definition?.workSlot?.stageField ?? 'code'
   return { label: "Teacher's live code", [shapeKey]: displayState }
 }
 
-const SIDE_EXPLAINER_TYPES = ['python', 'arcade', 'turtle', 'html', 'scratch', 'electronics']
+// Lesson types whose explainer renders as a side rail beside the workspace (others use the
+// accordion above it) — each module's `capabilities.sideExplainer`.
+const SIDE_EXPLAINER_TYPES = getModuleTypesWithCapability('sideExplainer')
 // Lesson types whose module StudentWorkspace reports its own visiblePanes (a togglable
 // pane/tab/run-state that's meaningful to show on the teacher's student list) via the
-// generic `modulePanes` state below, rather than the Scratch-specific plumbing.
-const MODULE_PANES_TYPES = ['electronics', 'python', 'arcade', 'turtle', 'html']
+// generic `modulePanes` state below, rather than the Scratch-specific plumbing — each
+// module's `capabilities.modulePanes`.
+const MODULE_PANES_TYPES = getModuleTypesWithCapability('modulePanes')
 // Scratch's explainer is a fixed, non-resizable width (no drag-to-resize) rather than a
 // percentage split — Scratch explainers often carry block-pill images/markdown that need
 // real width, and a fixed size is simpler and more predictable than a shrinking one.
@@ -108,9 +117,15 @@ export default function LessonTaskContent({
   isForcedTeacherLive,
   isLiveCopyBlocked = false,
   isMobile,
+  // Legacy quiz tasks are hosted activities too (isActivityTask); isQuizTask only keeps their
+  // feedback-banner rule (banner for a check or an auto-evaluated match / fill-in-the-gaps).
   isQuizTask,
   isAutoEvaluatedQuiz,
   isInformationTask,
+  // Hosted activity (taskType 'activity' or a quiz): a full-width surface rendered by
+  // ActivityHost. displayAnswer is the teacher's broadcast activity state while forced-live.
+  isActivityTask = false,
+  displayAnswer = null,
   isViewingExplainerSlide,
   isViewingCompletionScreen,
   onOpenPlayground,
@@ -175,11 +190,23 @@ export default function LessonTaskContent({
   // generic `modulePanes` state instead — see MODULE_PANES_TYPES above.
   const [scratchCodePanes, setScratchCodePanes] = useState(['blocks', 'stage'])
   const [modulePanes, setModulePanes] = useState([])
+  // Quizzes and activities share the no-workspace layout: no explainer rail, no stage
+  // references, no module StudentWorkspace.
+  const isQuizLike = isQuizTask || isActivityTask
+  // An activity hosted by this module (code_arrange, isCodeArrangeTask): its ModuleWorkspace
+  // replaces the module's StudentWorkspace and drives the module's work slot and Run via `cs`.
+  const ModuleActivityWorkspace = isCodeArrangeTask
+    ? (getModuleHostedActivityUi(task)?.ModuleWorkspace ?? null)
+    : null
   const lessonMod = getLessonModule(lesson.type)
   const StudentWorkspace = lessonMod?.StudentWorkspace
   const modStyles = lessonMod?.getLayoutStyles(isMobile) ?? {}
   const supportsSideExplainer = SIDE_EXPLAINER_TYPES.includes(lessonMod?.type ?? lesson.type)
-  const isScratchLesson = (lessonMod?.type ?? lesson.type) === 'scratch'
+  const moduleCaps = getModuleDefinition(lessonMod?.type ?? lesson.type)?.capabilities ?? null
+  // Scratch's layout (capabilities.fixedExplainer): a fixed-width explainer column that tabs
+  // away behind Instructions/Code tabs when the task panel is narrow, with the workspace's own
+  // Blocks/Stage panes reported through the dedicated scratchCodePanes state below.
+  const isFixedExplainerLesson = !!moduleCaps?.fixedExplainer
   const supportsModulePanes = MODULE_PANES_TYPES.includes(lessonMod?.type ?? lesson.type)
   const taskPanelMeasured = taskPanelSize.width > 0
   // Width-only: giving Code its own tab doesn't add height (explainer and code already
@@ -187,7 +214,7 @@ export default function LessonTaskContent({
   // own compact detection (which checks height too) rather than tabbing Instructions away
   // for no benefit.
   const taskPanelCompact =
-    isScratchLesson &&
+    isFixedExplainerLesson &&
     taskPanelMeasured &&
     taskPanelSize.width < EXPLAINER_FIXED_WIDTH + SCRATCH_SPLIT_GAP + SCRATCH_CODE_WIDE_WIDTH
   const showsCompleteCode = !!explainerShowsComplete && !!task?.completeCode
@@ -199,7 +226,7 @@ export default function LessonTaskContent({
     ((!!task?.explainer || showsCompleteCode) &&
       !isSandbox &&
       !cs.inPersonalSandbox &&
-      !isQuizTask &&
+      !isQuizLike &&
       !isInformationTask &&
       !isViewingExplainerSlide &&
       !isViewingCompletionScreen)
@@ -209,7 +236,7 @@ export default function LessonTaskContent({
     supportsSideExplainer &&
     !isMobile &&
     (isSandbox ||
-      (!isQuizTask && !isInformationTask && !isViewingExplainerSlide && !isViewingCompletionScreen))
+      (!isQuizLike && !isInformationTask && !isViewingExplainerSlide && !isViewingCompletionScreen))
   const useSideExplainer = hasTaskExplainer && useFluidWorkspace
 
   // What's actually on screen right now, for the teacher's student list — see the
@@ -225,7 +252,7 @@ export default function LessonTaskContent({
         ? !explainerCollapsed
         : !accordionExplainerCollapsed
   const codePaneVisible = !taskPanelCompact || taskPanelTab === 'code'
-  const visiblePanes = isScratchLesson
+  const visiblePanes = isFixedExplainerLesson
     ? [
         ...(instructionsPaneVisible ? ['instructions'] : []),
         ...(codePaneVisible ? scratchCodePanes : []),
@@ -241,12 +268,12 @@ export default function LessonTaskContent({
   const instructionsHighlighted = !!highlightedPanes?.includes('instructions')
 
   useEffect(() => {
-    if (isScratchLesson || supportsModulePanes || hasTaskExplainer)
+    if (isFixedExplainerLesson || supportsModulePanes || hasTaskExplainer)
       onVisiblePanesChange?.(visiblePanes)
     // visiblePanes is rebuilt every render; visiblePanesKey is its stable dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    isScratchLesson,
+    isFixedExplainerLesson,
     supportsModulePanes,
     hasTaskExplainer,
     visiblePanesKey,
@@ -283,18 +310,12 @@ export default function LessonTaskContent({
   }
   const showExplainerPane = presenterLayout !== 'code'
   const showCodePane = presenterLayout !== 'explainer'
-  const supportsStageReveal = [
-    'python',
-    'html',
-    'arcade',
-    'turtle',
-    'electronics',
-    'scratch',
-  ].includes(lessonMod?.type ?? lesson.type)
+  // Modules on the unified code-stage model show a revealed support stage as a reference.
+  const supportsStageReveal = !!moduleCaps?.unifiedStages
   const activeSupportStage =
     !isSandbox &&
     !cs.inPersonalSandbox &&
-    !isQuizTask &&
+    !isQuizLike &&
     !isInformationTask &&
     !isViewingExplainerSlide &&
     !isViewingCompletionScreen &&
@@ -312,7 +333,7 @@ export default function LessonTaskContent({
   const teacherLiveReferenceStage =
     !isSandbox &&
     !cs.inPersonalSandbox &&
-    !isQuizTask &&
+    !isQuizLike &&
     !isInformationTask &&
     !isViewingExplainerSlide &&
     !isViewingCompletionScreen &&
@@ -327,7 +348,7 @@ export default function LessonTaskContent({
   const completeReferenceStage =
     !isSandbox &&
     !cs.inPersonalSandbox &&
-    !isQuizTask &&
+    !isQuizLike &&
     !isInformationTask &&
     !isViewingExplainerSlide &&
     !isViewingCompletionScreen &&
@@ -335,10 +356,10 @@ export default function LessonTaskContent({
     !isForcedTeacherLive &&
     !isTeacherEditing &&
     cs.completePreviewShown &&
-    ['python', 'html'].includes(lesson.type) &&
+    getModuleDefinition(lesson.type)?.capabilities.stageReveal === 'progressive' &&
     (authoredCompleteStage || task?.completeCode || task?.completeFiles?.length)
       ? (authoredCompleteStage ??
-        (lesson.type === 'html'
+        (getModuleDefinition(lesson.type).wire.sandboxChannel === 'files'
           ? {
               label: 'Complete solution',
               files: task.completeFiles ?? [],
@@ -349,7 +370,7 @@ export default function LessonTaskContent({
   const targetedReferenceStage =
     !isSandbox &&
     !cs.inPersonalSandbox &&
-    !isQuizTask &&
+    !isQuizLike &&
     !isInformationTask &&
     !isViewingExplainerSlide &&
     !isViewingCompletionScreen &&
@@ -373,14 +394,14 @@ export default function LessonTaskContent({
       : null
 
   const taskContentStyle =
-    !isSandbox && isQuizTask
+    !isSandbox && isQuizLike
       ? s.taskContentQuiz
       : !isSandbox && (isInformationTask || isViewingExplainerSlide || isViewingCompletionScreen)
         ? s.taskContentInfo
         : (modStyles.taskContentStyle ?? s.taskContentFallback)
 
   const editorAreaStyle =
-    !isSandbox && isQuizTask
+    !isSandbox && isQuizLike
       ? s.editorAreaQuiz
       : !isSandbox && (isInformationTask || isViewingExplainerSlide || isViewingCompletionScreen)
         ? s.editorAreaInfo
@@ -419,7 +440,7 @@ export default function LessonTaskContent({
               : task.explainer
         }
         topicType={lesson.type}
-        showLibrary={!isScratchLesson}
+        showLibrary={moduleCaps?.topicLibrary ?? true}
         onTopicOpen={onTopicOpen}
         onTopicClose={onTopicClose}
         openTopicId={openTopicId}
@@ -438,7 +459,8 @@ export default function LessonTaskContent({
     !isSandbox &&
     !cs.inPersonalSandbox &&
     !isForcedTeacherLive &&
-    (((task?.check || isAutoEvaluatedQuiz) && displayCheckAttempted) ||
+    (((task?.check || isAutoEvaluatedQuiz || (isActivityTask && !isQuizTask)) &&
+      displayCheckAttempted) ||
       cs.offeredSupportStageIndex != null)
   const feedbackBanner = shouldShowFeedbackBanner ? (
     <CheckFeedbackBanner
@@ -447,7 +469,7 @@ export default function LessonTaskContent({
       // re-render of this component.
       key={`${currentTaskId}-${displayCheckPassed}-${cs.checkFailCount}-${cs.offeredSupportStageIndex}`}
       passed={cs.offeredSupportStageIndex != null ? false : displayCheckPassed}
-      failureMessage={isQuizTask ? 'Not quite right, try again.' : undefined}
+      failureMessage={isQuizLike ? 'Not quite right, try again.' : undefined}
       suggestion={displayCheckSuggestion}
       onShowCodeStage={
         targetedOfferStage
@@ -529,24 +551,26 @@ export default function LessonTaskContent({
         />
       ) : !isSandbox && (isInformationTask || isViewingExplainerSlide) ? (
         <InformationTask task={task} lesson={lesson} fill disableCopy />
-      ) : !isSandbox && isQuizTask ? (
+      ) : !isSandbox && isActivityTask ? (
         <>
           <TeacherAnswerNotice at={isViewingPrev ? null : cs.teacherAnswerNoticeAt} />
-          <QuizTask
+          <ActivityHost
             task={task}
-            showQuestion
-            selectedAnswer={cs.selectedAnswer}
-            onSelectAnswer={isViewingPrev ? undefined : cs.handleQuizSelect}
-            submitted={cs.runStatus === 'submitted'}
-            checkPassed={cs.checkPassed}
-            disabled={isViewingPrev}
-            showResult={false}
+            activity={cs.activity}
+            broadcastAnswer={isForcedTeacherLive ? (displayAnswer ?? null) : undefined}
+            reviewing={isViewingPrev}
+            lessonType={lesson.type}
+            result={
+              isForcedTeacherLive
+                ? { submitted: displayRunStatus === 'submitted', passed: displayCheckPassed }
+                : { submitted: cs.runStatus === 'submitted', passed: cs.checkPassed }
+            }
           />
         </>
-      ) : !isSandbox && isCodeArrangeTask ? (
+      ) : !isSandbox && ModuleActivityWorkspace ? (
         <>
           <TeacherAnswerNotice at={isViewingPrev ? null : cs.teacherAnswerNoticeAt} />
-          <CodeArrangeTaskContainer
+          <ModuleActivityWorkspace
             task={task}
             cs={cs}
             viewingTaskId={viewingTaskId}
@@ -604,7 +628,11 @@ export default function LessonTaskContent({
           teacherLiveWorkspace={teacherLiveWorkspace}
           teacherLiveArcadeDesign={teacherLiveArcadeDesign}
           onVisiblePanesChange={
-            isScratchLesson ? setScratchCodePanes : supportsModulePanes ? setModulePanes : undefined
+            isFixedExplainerLesson
+              ? setScratchCodePanes
+              : supportsModulePanes
+                ? setModulePanes
+                : undefined
           }
           highlightedPanes={highlightedPanes}
           forcedPaneCommand={forcedPaneCommand}
@@ -672,7 +700,7 @@ export default function LessonTaskContent({
 
       {feedbackBanner}
 
-      {useSideExplainer && showExplainerPane && showCodePane && isScratchLesson ? (
+      {useSideExplainer && showExplainerPane && showCodePane && isFixedExplainerLesson ? (
         // Explainer and code panes are ALWAYS the same two divs, in the same tree
         // position, in both compact (tabbed) and split (fixed-width) modes — only their
         // `style` (and, for the explainer, whether it shows the rail) changes between

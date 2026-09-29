@@ -116,6 +116,23 @@ global.URL.revokeObjectURL = vi.fn()
 
 **Coverage target:** 70%+ branch coverage on hooks; 80%+ on components.
 
+#### `useStudentCodeState` characterization suite
+
+`src/app/hooks/__tests__/useStudentCodeState.*.test.js` (`load`, `changes`, `run`, `reset`, `sandbox`, `live`, `persistence`) pins the hook's current behaviour for all eight module types ahead of the module-registry refactor (`docs/architecture/modular-activities-plan.md`, step 0.2): exact localStorage keys and JSON records, and the exact arguments passed to the session writers (`writeStudentRun`, `writeStudentCode`, `logAttempt`, `updateTeacherLive`, …). Treat a failure there as a behaviour change to confirm, not a test to update casually.
+
+- **Harness:** `src/test/studentCodeStateHarness.js` — `renderStudentCodeState({ lesson, currentTaskId, phase, session, teacherPresentation, previewMode, … })` renders the hook with every writer as a `vi.fn` (`h.writers.*`), feeds composed lessons through `getEffectiveLessonForTask` like `StudentView`, and exposes `update` / `updateStudent` / `updateSession` for re-renders; plus storage-key helpers (`taskKey`, `fileKey`, `personalSandboxKey`), `mockModuleRun(type, script)` and `mockHtmlPreview()`.
+- **Module mocks:** `src/test/studentCodeStateMocks.js` holds dependency-free `vi.mock` factories (Pyodide, `useTypeAssets`, `useLessonStorageAssets`); each test file declares the three `vi.mock` calls itself.
+- **Fixtures:** `src/test/fixtures/studentCodeStateLessons.js` — one lesson per module type (starter / stage / complete content all distinct, a carry task) plus a composed lesson.
+- **Known bugs** are recorded with `it.fails(...)`; when a fix lands the test starts passing and Vitest fails it, so flip it to `it(...)` in the same PR.
+- **Generic work slot:** `useStudentCodeState.workSlot.test.js` covers what the slot adds on top of the pinned bytes (plan step 4.3): a composed lesson switching python → filesystem → desktop → filesystem never publishes, mirrors or shares the previous module's work, and handlers read the work they have just set (`workRef`), e.g. Desktop's change-then-interaction in one event. `src/modules/__tests__/moduleWorkSlot.test.js` holds the `checking` / `workSlot` definition groups to their `defineModule` rules. `useStudentCodeState.codeWorkSlot.test.js` covers the code modules on the slot (plan step 4.4): a composed python → arcade → electronics → python lesson never publishes a leftover code, design or file map; `handleRun` dispatches on `capabilities.run` (runtime / preview / nothing for workspace and none modules); and `runWithRuntime` stopping mid-run (Stop, a task change, and an Electronics circuit update read back at once and saved on stop). `src/modules/__tests__/moduleRunCapability.test.js` pins each module's `capabilities.run` and `runResult` and their agreement with the UI half's `runtime`. `useStudentCodeState.filesScratchWorkSlot.test.js` covers html and scratch on the slot (plan step 4.5): a composed python → html → scratch → html lesson never publishes (or shares) a leftover code, file map or active file; a Scratch workspace's unmount flush after the lesson moved on is saved to its own task without replacing the new module's work; html's preview iframe is only built by Run (file edits, tab changes and `handleWorkChange` never rebuild it); `handleWorkChange` saves only a files module's changed files; and Scratch's `reportRun` path (reported or saved work, suggestion else first hint, pushed restores never set as reported work).
+
+#### Module parity and click-through safety net
+
+Both suites iterate the module registry (`getLessonModules()`), so registering a new module type makes them fail until the rest of the app knows about it.
+
+- `src/modules/__tests__/moduleTypeParity.test.js` checks every registered type against each hand-maintained type list/map outside the registry (`LESSON_MODULE_TYPES`, `PLAYGROUND_LESSON_TYPES`, `SIDE_EXPLAINER_TYPES`, `MODULE_PANES_TYPES`, `TEACHER_LIVE_REFERENCE_TYPES`, TeacherView sandbox branches, `STAGE_OPTION_METADATA`, `TASK_CARRY_FIELDS`, label maps, `editorOptions`, `deriveTaskContext` flags) and the per-module docs. A type missing from a list must have an entry in the `KNOWN_GAPS` allowlist at the top of the file (`Drift:`, `Intentional:` or `Implicit:` plus a reason); an entry that is no longer a gap also fails, so the allowlist only shrinks. Private (non-exported) literals are read from source text with `src/modules/__tests__/helpers/sourceLiterals.js`, not by exporting them. `moduleInterface.test.js` holds every registered module to the module contract. `moduleDefinitions.test.js` also requires every contract v2 `lifecycle` / `storage` / `wire` hook, and `moduleContract.test.js` compares those hooks with verbatim copies of the inline branches they replaced and round-trips each storage adapter against the exact record shapes in `docs/agents/runtime-model.md`; `src/app/hooks/__tests__/createStudentPersistence.work.test.js` proves `saveWork` / `saveSandboxWork` write the same localStorage keys and bytes as the named per-type savers.
+- `src/app/views/__tests__/StudentViewModules.test.jsx` renders the real `StudentView` for each module plus a composed Python → Filesystem lesson and clicks the primary action (Run/Stop for Python, Turtle, Electronics and Arcade; Run for HTML; New Folder for Filesystem and Desktop; the green flag for Scratch). It asserts the `writeStudentRun` payload and that no error, unhandled rejection or React error was raised. Only the Pyodide worker, the HTML/Arcade iframe builders and Firebase-backed hooks are mocked; module `StudentWorkspace`s, `useStudentCodeState` and Blockly are real, and jsdom's missing Range rects and canvas 2D context are shimmed. It catches the "passed unit tests, crashed on the first Run click" class of bug, such as a module falling into the wrong `handleRun` branch.
+
 ---
 
 ### Layer 3 — E2E Tests (Playwright)
@@ -211,6 +228,34 @@ Run with `npm run test:rules`. This needs `firebase-tools` installed globally an
 
 Add a test whenever you change a rules file.
 
+## Type-Branch Ratchet
+
+`src/modules/__tests__/typeBranchRatchet.test.js` counts inline lesson-type and task-type
+comparisons (`lesson.type === 'turtle'`, `case 'scratch':`, `['python', 'html'].includes(...)`)
+in `src/` and `cli/` outside the plugin folders (`src/modules/`, `src/activities/`). Each file's
+count may only go down against `typeBranchBaseline.json`. When a PR removes branches, lower the
+baseline in the same PR with `UPDATE_TYPE_BRANCH_BASELINE=1 npx vitest run typeBranchRatchet`.
+Never raise a count: route new behaviour through the module or activity registry. See
+`docs/architecture/modular-activities-plan.md`.
+
+Since plan step 4.8 every file is at zero (the baseline is `{}`), and the ESLint rule
+`no-restricted-syntax` in `eslint.config.js` rejects a new `===` / `!==` / `case` against a type
+name outside `src/modules/**`, `src/activities/**` and tests. A match that is genuinely not type
+branching goes on the test's `TYPE_BRANCH_ALLOWLIST` (`{ file, pattern, reason }`; a test fails
+once the pattern is gone) — prefer a named constant or map. `npm run new:module` adds the new
+type to both name lists.
+
+## Module value pins and the kits
+
+Tests that pin exact per-module values (`moduleDefinitions`, `derivedTypeLists`, `registry`,
+`moduleRunCapability`, `moduleWorkSlot`) and the legacy-oracle comparisons (`moduleContract`, `moduleAuthoring`, `builderAuthoringParity`,
+`teacherSandboxWork`) describe the eight built-in modules
+(`src/modules/__tests__/helpers/builtInModules.js`), so a scaffolded module doesn't have to edit
+them; the registry-driven tests (`moduleTypeParity`, `StudentViewModules`,
+`moduleDefinitionsNode`, `moduleInterface`, `authoringDocExamples`, `validationErrorsDoc`) cover
+every registered module. `scripts/__tests__/newActivity.test.mjs` and `newModule.test.mjs` test
+the generators (planning against the repo, applying in a temporary copy).
+
 ## Continuous Integration
 
 `.github/workflows/ci.yml` runs on every pull request and every push to `main`:
@@ -221,9 +266,16 @@ Add a test whenever you change a rules file.
 4. `npm run format:check`: Prettier, code only (Markdown is ignored)
 5. `npm run test:coverage`: fails if a coverage floor is missed; the report is uploaded as
    the `coverage` artifact
+6. `npx vite build`: the production build, so a PR can't pass CI and then break the deploy.
+   Rollup rejects a missing named export that Vitest silently resolves to `undefined`.
+
+`src/modules/__tests__/nodeEsmImports.test.js` covers the same gap from the test suite: it loads
+every pure `cli/*.mjs` file, `src/modules/checks.js`, each `src/modules/<type>/checks.js` and the
+shared validation modules in a real Node process, so a broken import in the CLI's graph fails
+`npm test`.
 
 The deploy workflow still runs `vitest run` through `prebuild` before building.
 
 ---
 
-*Last updated: September 2026: coverage floors now match the measured suite, and CI runs on pushes to main.*
+*Last updated: September 2026: CI now runs the production build, and a Node ESM import test guards the CLI's import graph.*

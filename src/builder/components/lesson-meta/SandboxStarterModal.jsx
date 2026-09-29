@@ -18,43 +18,49 @@ import {
   getLessonModules,
   isComposedLesson,
 } from '../../../shared/composedLesson'
+import { getModuleAuthoring } from '../../../modules/definitions'
+import { isHtmlFileType } from '../../../modules/html/fileTemplates.js'
 import Modal from './Modal'
 import { s } from './styles'
 
-function isPythonLikeType(type) {
-  return type === 'python' || type === 'arcade' || type === 'turtle'
+// The module's sandbox-starter editor kind (authoring.sandboxStarterEditor); an unregistered type
+// gets the starter-files editor, as before.
+function sandboxStarterEditorKind(lesson) {
+  return getModuleAuthoring(lesson.type)?.sandboxStarterEditor ?? 'files'
 }
 
-function getSandboxStarterSummaryForType(lesson) {
-  const sandboxLineCount = (lesson.sandboxStarter ?? '').trim()
-    ? (lesson.sandboxStarter ?? '').split('\n').length
-    : 0
-  const sandboxFileCount = lesson.sandboxStarterFiles?.length ?? 0
-  const sandboxFsCount = lesson.sandboxStarterFs
-    ? Object.keys(lesson.sandboxStarterFs).length - 1
-    : 0
-
-  if (isPythonLikeType(lesson.type)) {
+// The Lesson meta panel's one-line summary of the lesson sandbox starter, per editor kind.
+const SANDBOX_STARTER_SUMMARIES = {
+  code: (lesson) => {
+    const sandboxLineCount = (lesson.sandboxStarter ?? '').trim()
+      ? (lesson.sandboxStarter ?? '').split('\n').length
+      : 0
     return sandboxLineCount
       ? `${sandboxLineCount} lines configured`
       : 'No sandbox starter code set.'
-  }
-  if (lesson.type === 'scratch') {
-    return lesson.sandboxStarter
+  },
+  blocks: (lesson) =>
+    lesson.sandboxStarter
       ? 'Scratch sandbox starter configured.'
-      : 'No Scratch sandbox starter set.'
-  }
-  if (lesson.type === 'filesystem') {
+      : 'No Scratch sandbox starter set.',
+  fs: (lesson) => {
+    const sandboxFsCount = lesson.sandboxStarterFs
+      ? Object.keys(lesson.sandboxStarterFs).length - 1
+      : 0
     return sandboxFsCount ? `${sandboxFsCount} items configured` : 'No sandbox filesystem set.'
-  }
-  if (lesson.type === 'electronics') {
-    return lesson.sandboxStarterCircuit
-      ? 'Sandbox breadboard configured.'
-      : 'No sandbox breadboard set.'
-  }
-  return sandboxFileCount
-    ? `${sandboxFileCount} starter files configured`
-    : 'No sandbox starter files set.'
+  },
+  circuit: (lesson) =>
+    lesson.sandboxStarterCircuit ? 'Sandbox breadboard configured.' : 'No sandbox breadboard set.',
+  files: (lesson) => {
+    const sandboxFileCount = lesson.sandboxStarterFiles?.length ?? 0
+    return sandboxFileCount
+      ? `${sandboxFileCount} starter files configured`
+      : 'No sandbox starter files set.'
+  },
+}
+
+function getSandboxStarterSummaryForType(lesson) {
+  return SANDBOX_STARTER_SUMMARIES[sandboxStarterEditorKind(lesson)](lesson)
 }
 
 export function getSandboxStarterSummary(lesson) {
@@ -141,72 +147,71 @@ function ComposedSandboxStarterModal({ lesson, onSetModuleSandboxField, onClose 
   )
 }
 
-function SandboxStarterEditor({ lesson, onSetField }) {
-  const isPython = isPythonLikeType(lesson.type)
-  const isScratch = lesson.type === 'scratch'
-  const isFilesystem = lesson.type === 'filesystem'
-  const isElectronics = lesson.type === 'electronics'
+// The lesson sandbox-starter editor for each authoring.sandboxStarterEditor kind.
+const SANDBOX_STARTER_EDITORS = {
+  code: ({ lesson, onSetField }) => (
+    <div style={s.modalEditor}>
+      <CodeEditor
+        value={lesson.sandboxStarter ?? ''}
+        language="python"
+        onChange={(v) => onSetField('sandboxStarter', v || undefined)}
+        style={s.modalCodeEditor}
+      />
+    </div>
+  ),
+  blocks: ({ lesson, onSetField }) => (
+    <ScratchSandboxStarter
+      value={lesson.sandboxStarter}
+      toolbox={lesson.sandboxToolbox ?? ''}
+      sprites={lesson.sandboxSprites?.length > 0 ? lesson.sandboxSprites : DEFAULT_SPRITES}
+      backdrops={
+        lesson.sandboxBackdrops?.length > 0
+          ? lesson.sandboxBackdrops
+          : [{ id: 'backdrop1', name: 'Backdrop 1', colour: '#ffffff' }]
+      }
+      assetsPath={lesson.assetsPath ?? ''}
+      storageAssets={lesson.storageAssets ?? []}
+      lessonId={lesson.id}
+      lessonType={lesson.type}
+      onChange={(state) => onSetField('sandboxStarter', state ? JSON.stringify(state) : undefined)}
+      onToolboxChange={(v) => onSetField('sandboxToolbox', v || undefined)}
+      onSpritesChange={(sprites) => onSetField('sandboxSprites', sprites)}
+      onBackdropsChange={(backdrops) => onSetField('sandboxBackdrops', backdrops)}
+    />
+  ),
+  fs: ({ lesson, onSetField }) => (
+    <div style={{ padding: '12px 0' }}>
+      <FsTreeEditor
+        label="Sandbox starting filesystem"
+        fs={lesson.sandboxStarterFs ?? { '/': { type: 'dir' } }}
+        onFsChange={(newFs) => onSetField('sandboxStarterFs', newFs)}
+        storageAssets={lesson.storageAssets ?? []}
+      />
+    </div>
+  ),
+  circuit: ({ lesson, onSetField }) => (
+    <div style={s.modalEditor}>
+      <ElectronicsWorkspace
+        circuit={parseCircuit(lesson.sandboxStarterCircuit, DEFAULT_CIRCUIT)}
+        onChange={(circuit) =>
+          onSetField('sandboxStarterCircuit', JSON.parse(serializeCircuit(circuit)))
+        }
+        setupMode
+        title="Sandbox breadboard"
+      />
+    </div>
+  ),
+  files: ({ lesson, onSetField }) => (
+    <SandboxStarterFiles
+      files={lesson.sandboxStarterFiles ?? []}
+      onChange={(files) => onSetField('sandboxStarterFiles', files.length ? files : undefined)}
+    />
+  ),
+}
 
-  return (
-    <>
-      {isPython ? (
-        <div style={s.modalEditor}>
-          <CodeEditor
-            value={lesson.sandboxStarter ?? ''}
-            language="python"
-            onChange={(v) => onSetField('sandboxStarter', v || undefined)}
-            style={s.modalCodeEditor}
-          />
-        </div>
-      ) : isScratch ? (
-        <ScratchSandboxStarter
-          value={lesson.sandboxStarter}
-          toolbox={lesson.sandboxToolbox ?? ''}
-          sprites={lesson.sandboxSprites?.length > 0 ? lesson.sandboxSprites : DEFAULT_SPRITES}
-          backdrops={
-            lesson.sandboxBackdrops?.length > 0
-              ? lesson.sandboxBackdrops
-              : [{ id: 'backdrop1', name: 'Backdrop 1', colour: '#ffffff' }]
-          }
-          assetsPath={lesson.assetsPath ?? ''}
-          storageAssets={lesson.storageAssets ?? []}
-          lessonId={lesson.id}
-          lessonType={lesson.type}
-          onChange={(state) =>
-            onSetField('sandboxStarter', state ? JSON.stringify(state) : undefined)
-          }
-          onToolboxChange={(v) => onSetField('sandboxToolbox', v || undefined)}
-          onSpritesChange={(sprites) => onSetField('sandboxSprites', sprites)}
-          onBackdropsChange={(backdrops) => onSetField('sandboxBackdrops', backdrops)}
-        />
-      ) : isFilesystem ? (
-        <div style={{ padding: '12px 0' }}>
-          <FsTreeEditor
-            label="Sandbox starting filesystem"
-            fs={lesson.sandboxStarterFs ?? { '/': { type: 'dir' } }}
-            onFsChange={(newFs) => onSetField('sandboxStarterFs', newFs)}
-            storageAssets={lesson.storageAssets ?? []}
-          />
-        </div>
-      ) : isElectronics ? (
-        <div style={s.modalEditor}>
-          <ElectronicsWorkspace
-            circuit={parseCircuit(lesson.sandboxStarterCircuit, DEFAULT_CIRCUIT)}
-            onChange={(circuit) =>
-              onSetField('sandboxStarterCircuit', JSON.parse(serializeCircuit(circuit)))
-            }
-            setupMode
-            title="Sandbox breadboard"
-          />
-        </div>
-      ) : (
-        <SandboxStarterFiles
-          files={lesson.sandboxStarterFiles ?? []}
-          onChange={(files) => onSetField('sandboxStarterFiles', files.length ? files : undefined)}
-        />
-      )}
-    </>
-  )
+function SandboxStarterEditor({ lesson, onSetField }) {
+  const Editor = SANDBOX_STARTER_EDITORS[sandboxStarterEditorKind(lesson)]
+  return <Editor lesson={lesson} onSetField={onSetField} />
 }
 
 function parseScratchStarter(value) {
@@ -369,7 +374,7 @@ function SandboxStarterFiles({ files, onChange }) {
       left={
         <FileManager
           files={files}
-          entryFile={files.find((f) => f.type === 'html')?.name ?? files[0]?.name ?? ''}
+          entryFile={files.find(isHtmlFileType)?.name ?? files[0]?.name ?? ''}
           selectedFile={selectedFile}
           onSelectFile={setSelectedFile}
           onAddFile={(f) => {

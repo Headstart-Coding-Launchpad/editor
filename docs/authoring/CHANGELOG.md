@@ -18,6 +18,142 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## 2026-09-29
+
+### Keyboard shortcuts, binary answers and validation messages
+
+- Keyboard `shortcuts` items can now use Shift with a non-typing key (`Shift+Tab`,
+  `Shift+ArrowLeft`); students can complete them. `Shift+<character>` (e.g. `Shift+A`) is now a
+  validation error because it just types a capital. See
+  [activities/keyboard.md](activities/keyboard.md).
+- Binary `to_decimal` answers are compared as numbers, so `05` is accepted for `5` (matching hex
+  mode's decimal answers).
+- The "complete desktop does not satisfy a check" warning no longer tests `browser_visited` or
+  `search_query` checks, which the complete desktop can't hold.
+- A missing task or group title is reported once instead of twice.
+- Keyboard `shortcuts`: the item's shortcut now counts anywhere on the page (Ctrl+S no longer
+  opens the browser's save dialog outside the practice box), and `Shift+Tab` items are practised
+  in a row of fields. Binary `pixels` draw items now show each row's bits beside the grid.
+
+## 2026-09-28
+
+### Desktop input checks (`input_gesture`, `input_shortcut`, `input_modifier`)
+
+- Desktop tasks can now check **how** the student did something: `input_gesture` (click,
+  double-click, right-click, drag, scroll, hover — optionally on a `file`, `folder`, `window` or
+  desktop `icon`, and for drags onto a `dropTargetKind`), `input_shortcut` (`combo: ctrl+c`,
+  `via: keyboard | menu | any`) and `input_modifier` (Shift vs Caps Lock capitals). Put them in a
+  `check` list next to an outcome check. Only Desktop tasks record input; the validator rejects
+  them elsewhere, and rejects browser-reserved shortcuts such as `ctrl+w`. Only counts are
+  recorded, in memory, for the current attempt. See
+  [desktop.md](desktop.md#input-checks-how-it-was-done) and the new rows in
+  [validation-errors.md](validation-errors.md#checks).
+
+### Activities in YAML (`type: binary`) and in the Builder
+
+- YAML shorthand: `type: binary`, `type: keyboard` or `type: mouse` on a task (any activity's
+  YAML type) becomes `taskType: activity` + `activityType: <id>`. The explicit two-field form
+  still works; `lessons export` now writes the shorthand. An `activityType` this version doesn't
+  know is exported explicitly. Quizzes keep `type: quiz` + `quizType`. See
+  [lesson-schema-yaml.md](lesson-schema-yaml.md#activity-tasks) and the pages in
+  [activities/](activities/), whose examples now use the shorthand.
+- Builder: the task format grid is **Code / Information / Quiz / Activity** (+ Arrange in
+  composed lessons). **Activity** opens a gallery of the activities; each has its own editor
+  with validation shown next to the item it is about, and a playable student preview.
+  Switching format keeps the title and description (and priority, explainer, authoring
+  metadata) and drops fields the new format doesn't use. Quiz editing is unchanged; the quiz
+  types' labels now come from the activity registry ("Fill in the gaps", "Confidence check").
+- Session reports: activity tasks now report `taskType: activity` + `activityType` (they were
+  reported as `code`), with each student's `itemProgress` (`correct` / `total`) and the task's
+  `avgItemProgress`. Quiz reports are unchanged.
+- Print: activity tasks show the activity's name and their `description`.
+
+### Binary activity: overflow, hex, ASCII and pixels modes
+
+- Four new Binary `mode`s (see [activities/binary.md](activities/binary.md), which has a
+  complete example lesson):
+  - `overflow`: items `a`, `b` whose sum does **not** fit in `bits`; students set the bits that
+    are left and answer "Did it overflow?".
+  - `hex`: items `value`, `from`, `to` (`binary` / `hex` / `decimal`, different); binary is shown
+    in groups of 4 bits and hex answers are marked ignoring case.
+  - `ascii`: items `text` (1–16 printable ASCII characters) and `direction` (`encode` /
+    `decode`); task options `codeFormat` (`binary` default, or `decimal`) and `showTable`.
+  - `pixels`: task `width` / `height` (1–16), items `rows` (quoted bit strings) and
+    `direction` (`draw` / `encode`).
+- `requireCarries` now also applies to `overflow`.
+- The `add` message for a sum that is too big now reads "a + b is too big for … bits (use mode:
+  overflow for that)." New messages are listed in [validation-errors.md](validation-errors.md),
+  including a size limit on a task's saved answers for the new modes.
+- Existing `make_number`, `to_binary`, `to_decimal` and `add` tasks are unchanged.
+
+### Quiz answers are kept after a reload
+
+- Quizzes now run as activities in the classroom (one per quiz sub-type). A student's quiz
+  answer is saved on their device as they answer, so it survives a page reload and is still
+  there when they return to the task. Only the answer comes back — the right/wrong banner
+  starts fresh and the student can answer again. See [quiz-tasks.md](quiz-tasks.md).
+- Nothing changes in the lesson format: keep writing `type: quiz` (`taskType: quiz`) with
+  `quizType`. Validation messages, session reports and printed quizzes are unchanged. Printed
+  lessons now also include each activity's own section (e.g. a Binary task's questions and
+  answers).
+- When the teacher's own Presentation View broadcast is live on a quiz task, students now see
+  the teacher's selected answer (read-only), like other activities.
+
+### Binary, Keyboard and Mouse activities run in the classroom
+
+- Tasks with `taskType: activity` and `activityType: binary`, `keyboard` or `mouse` now render
+  as full-screen activities for students, anywhere in a lesson (any lesson type, including
+  composed lessons). They have no Run button, personal sandbox, sharing or carry-through.
+  Progress is saved on the device and shown on the teacher's student card; the teacher can
+  view, edit, reset ("Start again") or complete ("Complete (show answers)") a student's
+  activity from the student modal.
+- New authoring pages with complete, validated example lessons:
+  [activities/binary.md](activities/binary.md), [activities/keyboard.md](activities/keyboard.md),
+  [activities/mouse.md](activities/mouse.md). Every Binary / Keyboard / Mouse validation message
+  is now listed in [validation-errors.md](validation-errors.md). Write `taskType: activity` +
+  `activityType: …` in YAML; the `type: binary` shorthand arrives with the Builder activity
+  gallery.
+- Go Live: on quiz and activity tasks the teacher can no longer broadcast a *student's* answers
+  to the class ("Go Live for All" is hidden there). The teacher's own Presentation View
+  broadcast of an activity now shows the class the teacher's activity state. Lessons need no
+  changes.
+
+### Builder and CLI validation share one rule set and one wording
+
+- `lessons validate` (and `yaml-to-json`, `upsert`, `publish-yaml`) now runs the same rules as
+  the Builder, with the same messages. Lessons that only passed the CLI before may now get:
+  feedback-check errors (`… has feedback checks but no completion check`, priority and
+  stage-offer rules) and the `blocking feedback check with no hint` warning; the full Scratch
+  check rules; Python/HTML/Arcade check-field rules (`… but no CSS selector`,
+  `… enabled but no check value`, submit mode with run-only checks, …); Python `tests` rules;
+  `… references task … for carry-through but that task does not exist`; the
+  `complete breadboard` warning; and the empty-editor warning for quiz and code-arrange tasks.
+  The Builder now also checks `recordingUrl`, Electronics stage labels, and `browser_visited` /
+  `search_query` checks against the complete Desktop state.
+- Reworded messages (one wording for both): Builder full stops dropped from quiz and
+  code-arrange messages (`… has an empty option text field.` → `… has an empty option text`);
+  Builder envelope/fork messages now use the CLI wording (`Lesson ID is required` →
+  `id is required`, `Lesson must have at least one task` → `tasks is required and must be an
+  array` / `tasks must contain at least one task or group`, `Forked lesson ID must be …` →
+  `forked lesson id must be '…'`, …); the Builder's `may only carry work from an earlier task`
+  → `Task … carryCodeFrom must reference an earlier task in the same lesson module`; the CLI's
+  Scratch and Desktop check messages now use the Builder wording (`sprite check is missing a
+  property` → `has a Scratch sprite-property check with missing property, operator, or value`,
+  `file-in-dir check but no parent folder` → `file-location check but no parent folder`, …);
+  `Group "…" has no subtasks — add at least one subtask` in both.
+- `taskType: activity` (with `activityType`) is accepted and validated by the activity's own
+  rules; an unknown `activityType` is an error. Still-builder-only: invalid Scratch toolbox XML,
+  duplicate task ids and the untested-check reminder. CLI-only: `description is required`.
+  See [validation-errors.md](validation-errors.md).
+
+### Explainer code-block menu offers Python for Arcade Kit, Python Turtle and Electronics
+
+- The Builder explainer editor's code-block button now inserts a ```` ```python ```` fence
+  for Arcade Kit, Python Turtle and Electronics tasks (it previously only offered an
+  unlabelled generic block there). Existing Markdown is unaffected. The same change makes
+  the Builder label Python Turtle lessons correctly (they were shown as "Web") and prints
+  Desktop lessons as "Desktop". See [markdown-renderer.md](markdown-renderer.md).
+
 ## 2026-09-17
 
 ### Arcade Kit direction keys also respond to WASD

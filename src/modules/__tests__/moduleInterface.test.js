@@ -1,19 +1,16 @@
 import { describe, it, expect } from 'vitest'
-import { getLessonModule } from '../registry.js'
+import { getLessonModule, getLessonModules } from '../registry.js'
 import { buildMicroPythonProgram } from '../electronics/index.js'
 
-const LESSON_TYPES = [
-  'python',
-  'arcade',
-  'turtle',
-  'html',
-  'scratch',
-  'filesystem',
-  'electronics',
-  'desktop',
-]
+// Driven by the registry so a newly registered module is held to the contract without
+// anyone remembering to add it here.
+const LESSON_TYPES = getLessonModules().map((mod) => mod.type)
 
 describe('module interface contract', () => {
+  it('finds registered modules to check', () => {
+    expect(LESSON_TYPES.length).toBeGreaterThan(0)
+  })
+
   for (const type of LESSON_TYPES) {
     describe(`${type} module`, () => {
       const mod = getLessonModule(type)

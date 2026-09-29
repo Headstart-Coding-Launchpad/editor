@@ -1,4 +1,6 @@
 import { getTaskModuleType } from '../shared/composedLesson'
+import { getModuleDefinition } from '../modules/definitions.js'
+import { noLiveExtras } from '../modules/moduleContract.js'
 
 // Workspace sharing captures a frozen snapshot of a student's work at one
 // moment. Live-only interaction state (cursor, block drag, sprite runtime,
@@ -20,6 +22,7 @@ export function buildSharedWorkspaceSnapshot({
   code,
   scratchCode,
   fsState,
+  desktopState,
   arcadeDesign,
   files,
   activeFile,
@@ -29,24 +32,32 @@ export function buildSharedWorkspaceSnapshot({
   // Always resolve the module from the task, never from lesson.type — a
   // composed lesson's tasks can each be a different module.
   const moduleType = getTaskModuleType(lesson, taskId) ?? lesson?.type ?? null
-  const isFilesystem = moduleType === 'filesystem'
+  const definition = getModuleDefinition(moduleType)
+  const stateKind = definition?.capabilities.sandboxState
+  // Filesystem and Desktop state travels as a JSON string in `code` (their wire.toCode), like
+  // everywhere else.
+  const jsonStateByKind = { fs: fsState, desktop: desktopState }
+  const isJsonState = Object.hasOwn(jsonStateByKind, stateKind ?? '')
   // Scratch never routes edits through the generic `code` state, so reading
   // `code` here would capture whatever an earlier non-Scratch task left behind.
   // Same reasoning as currentTeacherLivePayload in useTeacherLivePublish.js.
-  const isScratch = moduleType === 'scratch'
+  const isScratch = stateKind === 'blocks'
+  const { arcadeDesign: liveArcadeDesign } = (definition?.wire.liveExtras ?? noLiveExtras)({
+    arcadeDesign,
+  })
 
   return {
     lessonType: moduleType,
     taskId: taskId ?? null,
-    code: isFilesystem
-      ? JSON.stringify(fsState ?? null)
+    code: isJsonState
+      ? definition.wire.toCode(jsonStateByKind[stateKind] ?? null)
       : isScratch
         ? (scratchCode ?? '')
         : (code ?? ''),
-    arcadeDesign: moduleType === 'arcade' ? (arcadeDesign ?? null) : null,
+    arcadeDesign: liveArcadeDesign ?? null,
     // Raw filenames here; useSession encodes file keys at the write boundary,
     // the same way it does for teacherLive.
-    files: isFilesystem
+    files: isJsonState
       ? {}
       : Object.fromEntries((files ?? []).map((f) => [f.name, f.content ?? ''])),
     activeFile: activeFile ?? '',
@@ -99,4 +110,26 @@ export function describeShareError(err) {
   }
   if (/too large to share/i.test(raw)) return raw
   return 'Could not share this workspace. Try again in a moment.'
+}
+
+// Copy a shared snapshot into the student's own work through their normal change handlers, so
+// it persists exactly like their own edits. Scratch, Filesystem and Desktop carry their state
+// as a JSON string in `code` (decoded with their wire.fromCode; a malformed one is skipped);
+// HTML carries files; everything else is plain code.
+export function applySharedWorkspaceCopy({ code, files, moduleType }, handlers) {
+  const definition = getModuleDefinition(moduleType)
+  const stateKind = definition?.capabilities.sandboxState
+  const applyJsonState = {
+    blocks: handlers.handleScratchChange,
+    fs: handlers.handleFsChange,
+    desktop: handlers.handleDesktopChange,
+  }
+  if (definition?.wire.sandboxChannel === 'files') {
+    for (const file of files ?? []) handlers.handleFileChange(file.name, file.content)
+  } else if (Object.hasOwn(applyJsonState, stateKind ?? '')) {
+    const parsed = definition.wire.fromCode(code)
+    if (parsed) applyJsonState[stateKind](parsed)
+  } else {
+    handlers.handleCodeChange(code ?? '')
+  }
 }

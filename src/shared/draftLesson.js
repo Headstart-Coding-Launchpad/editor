@@ -1,7 +1,9 @@
 import { isPlainObject } from './textUtils.js'
+import { LEGACY_QUIZ_TYPES } from '../activities/resolve.js'
 
-const TASK_TYPES = new Set(['information', 'quiz', 'code_arrange'])
-const QUIZ_TYPES = new Set(['multiple_choice', 'match', 'fill_blank', 'short_answer', 'confidence'])
+// Code tasks leave taskType out. 'activity' tasks name their activity in `activityType`.
+const TASK_TYPES = new Set(['information', 'quiz', 'code_arrange', 'activity'])
+const QUIZ_TYPES = new Set(LEGACY_QUIZ_TYPES)
 
 function requireArrayOfObjects(value, label, errors) {
   if (value != null && (!Array.isArray(value) || value.some((item) => !isPlainObject(item)))) {
@@ -17,7 +19,9 @@ function validateTaskShape(task, label, draft, errors) {
   if (typeof task.title !== 'string' || !task.title.trim())
     errors.push(`${label} is missing a title`)
   if (task.taskType != null && !TASK_TYPES.has(task.taskType)) {
-    errors.push(`${label} taskType must be information or quiz when provided`)
+    errors.push(
+      `${label} taskType must be information, quiz, code_arrange or activity when provided`
+    )
   }
   if (draft && (typeof task.intent !== 'string' || !task.intent.trim()))
     errors.push(`${label} intent must be a non-empty Markdown string while lesson draft is enabled`)

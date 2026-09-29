@@ -18,6 +18,7 @@ import {
   isComposedLesson,
   getComposedModuleTypes,
 } from '../../shared/composedLesson'
+import { getModuleAuthoring, getModuleLabel } from '../../modules/definitions'
 import LessonTopicSummary from './LessonTopicSummary'
 import AssetSummary from './lesson-meta/AssetSummary'
 import Field from './lesson-meta/Field'
@@ -32,9 +33,9 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
   const { lessonAssets, loading: assetsLoading } = useAssets()
   const { storageAssets: lessonStorageAssets, refresh: refreshLessonStorageAssets } =
     useLessonStorageAssets(lesson.id, lesson.storageAssets ?? [])
-  const { typeStorageAssets } = useTypeAssets(
-    ['html', 'arcade'].includes(lesson.type) ? lesson.type : null
-  )
+  // Modules whose shared type assets a lesson can opt into (authoring.sharedTypeAssets).
+  const offersSharedTypeAssets = getModuleAuthoring(lesson.type)?.sharedTypeAssets === true
+  const { typeStorageAssets } = useTypeAssets(offersSharedTypeAssets ? lesson.type : null)
   const lastAutoKeyRef = useRef('')
   const { role } = useAuth()
   const [levels, setLevels] = useState([])
@@ -309,7 +310,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
           />
         )}
 
-        {['html', 'arcade'].includes(lesson.type) && typeStorageAssets.length > 0 && (
+        {offersSharedTypeAssets && typeStorageAssets.length > 0 && (
           <SharedAssetsSelector
             typeStorageAssets={typeStorageAssets}
             sharedAssetNames={lesson.sharedAssetNames ?? null}
@@ -343,13 +344,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
 }
 
 function singleModuleLabel(type) {
-  if (type === 'python') return 'Python'
-  if (type === 'arcade') return 'Arcade Kit'
-  if (type === 'scratch') return 'Scratch'
-  if (type === 'filesystem') return 'Files & Folders'
-  if (type === 'desktop') return 'Desktop'
-  if (type === 'electronics') return 'Electronics'
-  return 'Web'
+  return getModuleLabel(type, 'builderMeta') ?? 'Web'
 }
 
 // A composed lesson's own `.type` is just 'composed' — describe it by the

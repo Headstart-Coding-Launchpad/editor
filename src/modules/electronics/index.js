@@ -3,12 +3,9 @@ import BuilderWorkspace from './BuilderWorkspace.jsx'
 import CheckEditor from './CheckEditor.jsx'
 import TeacherLiveView from './TeacherLiveView.jsx'
 import {
-  DEFAULT_AVAILABLE_COMPONENTS,
   DEFAULT_CIRCUIT,
   applyI2cLcdEvent,
   applyMicrocontrollerGpioValues,
-  cloneCircuit,
-  evaluateElectronicsCheck,
   getMicrocontrollerCode,
   getMicrocontrollerInputValues,
   parseCircuit,
@@ -16,6 +13,8 @@ import {
 } from './circuit'
 import { initPyodide, isPyodideReady, runPython, stopPython, provideInput } from '../python/pyodide'
 import { scrollLayoutStyles } from '../sharedStyles.js'
+import { defineUiModule } from '../defineModule.js'
+import definition from './definition.js'
 
 const { taskContentStyle, editorAreaStyle } = scrollLayoutStyles
 
@@ -195,92 +194,16 @@ function clearMicrocontrollerGpioValues(circuitLike) {
   return next
 }
 
-const electronicsModule = {
-  type: 'electronics',
+// Pure data and hooks (incl. evaluateCheck) live in ./definition.js; this file adds the UI
+// and the MicroPython runtime bridge.
+const electronicsModule = defineUiModule(definition, {
   StudentWorkspace,
   BuilderWorkspace,
   CheckEditor,
   FeedbackCheckEditor: CheckEditor,
   TeacherLiveView,
 
-  getDisplayState: (task, stage, liveState, tab) => {
-    if (tab === 'complete')
-      return serializeCircuit(task?.completeCircuit ?? task?.starterCircuit ?? DEFAULT_CIRCUIT)
-    if (tab?.startsWith('stage_'))
-      return serializeCircuit(stage?.circuit ?? task?.starterCircuit ?? DEFAULT_CIRCUIT)
-    return liveState
-  },
-
   getLayoutStyles: () => ({ taskContentStyle, editorAreaStyle }),
-
-  makeCodeTaskFields: (task) => ({
-    starterCircuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT),
-    availableComponents: task.availableComponents ?? [...DEFAULT_AVAILABLE_COMPONENTS],
-    carryCircuitFrom: task.carryCircuitFrom ?? null,
-    microcontroller: task.microcontroller ?? { enabled: false, boardType: null, starterCode: '' },
-    codeStages: task.codeStages ?? [
-      {
-        label: 'Starter',
-        role: 'starter',
-        circuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT),
-      },
-    ],
-  }),
-
-  makeNewStage: (task, existing) =>
-    existing.length === 0
-      ? {
-          label: 'Starter',
-          role: 'starter',
-          circuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT),
-        }
-      : {
-          label: `Support ${existing.filter((stage) => stage.role === 'support').length + 1}`,
-          role: 'support',
-          code: '',
-        },
-
-  initCompleteTab: (task, { onUpdate }) => {
-    if (!task.completeCircuit)
-      onUpdate({ ...task, completeCircuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT) })
-  },
-
-  initStageTab: null,
-  defaultCheck: () => [{ type: 'circuit_no_short' }],
-
-  carryThroughField: 'carryCircuitFrom',
-  carryThroughLabel: 'Carry circuit from task',
-  // Also patches codeStages[0].circuit (see python/index.js's getCarryThroughUpdates for why).
-  getCarryThroughUpdates: (sourceTask, targetTask) => {
-    const circuit = cloneCircuit(
-      sourceTask.completeCircuit ?? sourceTask.starterCircuit ?? DEFAULT_CIRCUIT
-    )
-    const updates = { starterCircuit: circuit }
-    if (targetTask?.codeStages?.length) {
-      updates.codeStages = targetTask.codeStages.map((stage, i) =>
-        i === 0 ? { ...stage, circuit: cloneCircuit(circuit) } : stage
-      )
-    }
-    return updates
-  },
-  getNewStarterUpdates: () => ({ starterCircuit: cloneCircuit(DEFAULT_CIRCUIT) }),
-
-  supportsInteractionMode: false,
-  supportsIncorrectChecks: true,
-  supportsTests: false,
-  supportsVariableChecks: false,
-  supportsDomChecks: false,
-
-  stageLabels: { starterLabel: 'Starter board', completeLabel: 'Complete board' },
-  explainerInlineCodeLanguages: ['python'],
-
-  defaultState: serializeCircuit(DEFAULT_CIRCUIT),
-  initialState: (task) => serializeCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT),
-  serializeState: (state) => (typeof state === 'string' ? state : serializeCircuit(state)),
-  deserializeState: (raw) => serializeCircuit(parseCircuit(raw, DEFAULT_CIRCUIT)),
-
-  getSandboxState: (lesson, task) =>
-    serializeCircuit(lesson?.sandboxStarterCircuit ?? task?.starterCircuit ?? DEFAULT_CIRCUIT),
 
   runtime: {
     init: initPyodide,
@@ -348,8 +271,6 @@ const electronicsModule = {
     buildPreviewSrc: null,
     waitForPreviewText: null,
   },
-
-  evaluateCheck: evaluateElectronicsCheck,
-}
+})
 
 export default electronicsModule

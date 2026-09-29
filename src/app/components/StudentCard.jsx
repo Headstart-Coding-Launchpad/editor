@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
-import { getQuizOptionText, CONFIDENCE_COLOURS } from './QuizTask'
-import { InlineMarkdown } from '../../shared/markdown'
 import { findTaskById, deriveTaskContext } from '../../shared/taskUtils'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
+import { getModuleDefinition } from '../../modules/definitions'
 import PresenceBadge from './PresenceBadge'
 import { formatTimeAgo } from '../../shared/timeAgo'
 import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
+import { readActivityAnswer, summarizeActivityAnswer } from '../../activities/state.js'
+import { getTaskActivityUi } from '../../activities/registry.js'
+import ActivityDeviceBadge from '../../activities/ui/ActivityDeviceBadge.jsx'
 
 const formatLastRun = formatTimeAgo
 
@@ -72,30 +74,31 @@ export default function StudentCard({
   // 28 published lessons) fell through to the HTML fallback and showed "No run yet".
   const taskLesson = getEffectiveLessonForTask(lesson, currentTask)
   const {
-    isPython,
-    isScratch,
-    isElectronics,
-    isArcade,
-    isFilesystem,
+    moduleType,
     isQuiz,
     isInformation,
+    isActivity: isActivityTask,
+    activity,
     isSessionSandbox,
   } = deriveTaskContext(taskLesson, currentTask, session)
-  // Python, Arcade and Electronics all run code that prints to a console, so the teacher
-  // wants the same first-few-lines-of-output snippet for all three.
-  const hasConsoleOutput = isPython || isArcade || isElectronics
-  const quizType = isQuiz ? (currentTask?.quizType ?? 'multiple_choice') : null
-  const isShortAnswer = quizType === 'short_answer'
-  const isMatchOrFillBlank = quizType === 'match' || quizType === 'fill_blank'
-  const isConfidence = quizType === 'confidence'
-  const quizAnswerText =
-    isQuiz && !isShortAnswer && !isMatchOrFillBlank && !isConfidence
-      ? getQuizOptionText(currentTask, student.currentAnswer)
-      : ''
-  const quizSubmitted = isQuiz && student.lastRunStatus === 'submitted'
+  // Hosted activity (quizzes included): the card shows the activity's own summary of
+  // currentAnswer — its CardSummary (the quizzes' answer / rating / progress) or one line.
+  const isActivity = isActivityTask && !isSessionSandbox
+  const activityUi = isActivity ? getTaskActivityUi(currentTask) : null
+  const activitySummary =
+    isActivity && !activityUi?.CardSummary
+      ? summarizeActivityAnswer(currentTask, student.currentAnswer)
+      : null
+  const activityState = isActivity ? readActivityAnswer(currentTask, student.currentAnswer) : null
+  const activitySubmitted = isActivity && student.lastRunStatus === 'submitted'
+  // What the card shows for the module's work (capabilities.cardSummary): the first lines of
+  // console output (python, arcade, electronics), whether blocks were edited (scratch) or the
+  // file tree changed (filesystem); anything else gets the generic "HTML project" line.
+  const cardSummary = getModuleDefinition(moduleType)?.capabilities.cardSummary ?? null
+  const hasConsoleOutput = cardSummary === 'output'
   const itemProgress = isSessionSandbox ? null : getTaskItemProgress(currentTask, student)
-  const confidenceLevel =
-    isConfidence && student.currentAnswer ? parseInt(student.currentAnswer) : null
+  // A rating (confidence check) is never right or wrong, so it has no pass/fail badge.
+  const isNeverMarked = activity?.completion === 'none'
 
   // The dot is presence, which is what a dot beside a name means everywhere else. It
   // used to carry run status while the pill next to it carried presence - two dots one
@@ -117,13 +120,14 @@ export default function StudentCard({
         : 'Offline'
 
   // Confidence tasks have no pass/fail check — teacher just sees the submitted level
-  // For match/fill_blank quizzes, checkPassed comes from internal quiz logic rather than task.check
+  // For match/fill_blank quizzes and activities, checkPassed comes from the activity's own
+  // marking rather than task.check.
   // Sandbox runs aren't scored against the task the session was on, so there is no
   // pass/fail to show (a stale result from before the sandbox would read as "failed").
   const hasCheck =
-    !isConfidence &&
+    !isNeverMarked &&
     !isSessionSandbox &&
-    (currentTask?.check != null || (isQuiz && quizSubmitted && student.checkPassed != null))
+    (currentTask?.check != null || (activitySubmitted && student.checkPassed != null))
   const checkAttempted = student.lastRunStatus != null
   const hasActiveOverride = !!student.checkOverridePushedAt
   const supportRevealCount = Object.keys(
@@ -144,7 +148,6 @@ export default function StudentCard({
       : checkFailed
         ? s.cardCheckFailed
         : null
-  const hasAnswer = student.currentAnswer != null && student.currentAnswer !== ''
 
   const expandable = !isInformation
   const openStudent = () => {
@@ -193,7 +196,7 @@ export default function StudentCard({
               {student.displayName}
             </span>
           )}
-          {!isQuiz && !isInformation && student.lastRunAt && (
+          {!isQuiz && !isInformation && !isActivity && student.lastRunAt && (
             <span style={s.lastRunLabel} title="Last run">
               ▶ {formatLastRun(student.lastRunAt)}
             </span>
@@ -370,45 +373,32 @@ export default function StudentCard({
         <div style={s.iframeThumb}>
           <span style={{ color: '#6b7280', fontSize: 12 }}>Information task</span>
         </div>
-      ) : isQuiz && !isSessionSandbox ? (
-        <div style={s.quizAnswer}>
-          {hasAnswer ? (
-            isConfidence ? (
-              <span
-                style={{
-                  ...s.confidenceBadge,
-                  background:
-                    confidenceLevel >= 1 && confidenceLevel <= 5
-                      ? CONFIDENCE_COLOURS[confidenceLevel - 1]
-                      : '#9ca3af',
-                }}
-              >
-                {confidenceLevel}/5
-              </span>
-            ) : isShortAnswer ? (
-              <span style={s.shortAnswerText}>{student.currentAnswer}</span>
-            ) : isMatchOrFillBlank ? (
-              <span style={s.matchSummaryText}>
-                {student.checkPassed === true
-                  ? '✓ All correct'
-                  : student.checkPassed === false && quizSubmitted
-                    ? '✗ Some incorrect'
-                    : quizSubmitted
-                      ? 'Answered'
-                      : 'In progress…'}
-              </span>
-            ) : (
-              <>
-                <span style={s.quizAnswerId}>{student.currentAnswer}</span>
-                <span style={s.quizAnswerText}>
-                  {quizAnswerText ? <InlineMarkdown content={quizAnswerText} /> : 'Selected answer'}
-                </span>
-              </>
-            )
-          ) : (
-            <span style={{ color: '#9ca3af', fontSize: 12 }}>No answer yet</span>
-          )}
-        </div>
+      ) : isActivity ? (
+        activityUi?.CardSummary ? (
+          <div style={s.quizAnswer}>
+            <activityUi.CardSummary
+              task={currentTask}
+              raw={student.currentAnswer}
+              state={activityState}
+              submitted={activitySubmitted}
+              passed={student.checkPassed}
+            />
+          </div>
+        ) : (
+          <div style={s.quizAnswer} data-testid="activity-summary">
+            <span
+              style={{
+                ...s.matchSummaryText,
+                ...(activitySummary?.tone === 'success'
+                  ? { color: 'var(--colour-success-text)' }
+                  : null),
+              }}
+            >
+              {activitySummary?.text ?? 'Activity'}
+            </span>
+            <ActivityDeviceBadge state={activityState} />
+          </div>
+        )
       ) : hasConsoleOutput ? (
         isSubmitMode ? (
           <pre style={s.snippet}>
@@ -427,13 +417,13 @@ export default function StudentCard({
             )}
           </pre>
         )
-      ) : isScratch ? (
+      ) : cardSummary === 'blocks' ? (
         <div style={s.iframeThumb}>
           <span style={{ color: student.currentCode ? '#6b7280' : '#9ca3af', fontSize: 12 }}>
             {student.currentCode ? 'Blocks edited' : 'No blocks yet'}
           </span>
         </div>
-      ) : isFilesystem ? (
+      ) : cardSummary === 'fs' ? (
         <div style={s.iframeThumb}>
           <span style={{ color: student.currentCode ? '#6b7280' : '#9ca3af', fontSize: 12 }}>
             {student.currentCode ? 'Filesystem project' : 'No changes yet'}
@@ -667,67 +657,12 @@ const s = {
     gap: 8,
     overflow: 'hidden',
   },
-  quizAnswerId: {
-    width: 24,
-    height: 24,
-    borderRadius: 5,
-    background: 'var(--colour-primary)',
-    color: '#fff',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    fontFamily: 'var(--font-title)',
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    fontSize: '0.78rem',
-  },
-  quizAnswerText: {
-    minWidth: 0,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    display: '-webkit-box',
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical',
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.8rem',
-    lineHeight: 1.3,
-    color: 'var(--colour-text)',
-    fontWeight: 600,
-  },
-  shortAnswerText: {
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.8rem',
-    lineHeight: 1.4,
-    color: 'var(--colour-text)',
-    fontWeight: 500,
-    overflow: 'hidden',
-    display: '-webkit-box',
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical',
-    whiteSpace: 'pre-wrap',
-    overflowWrap: 'anywhere',
-    fontStyle: 'italic',
-  },
   matchSummaryText: {
     fontFamily: 'var(--font-body)',
     fontSize: '0.8rem',
     lineHeight: 1.4,
     color: 'var(--colour-text)',
     fontWeight: 600,
-  },
-  confidenceBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    color: '#fff',
-    fontFamily: 'var(--font-title)',
-    fontWeight: 700,
-    fontSize: '0.9rem',
-    flexShrink: 0,
   },
   lastRunLabel: {
     fontFamily: 'var(--font-body)',

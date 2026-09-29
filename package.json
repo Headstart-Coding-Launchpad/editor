@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "docs:check": "node scripts/check-docs.mjs",
+    "new:activity": "node scripts/new-activity.mjs",
+    "new:module": "node scripts/new-module.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

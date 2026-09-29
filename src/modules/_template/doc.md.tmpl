@@ -1,0 +1,68 @@
+# Template Module Module
+
+<!-- TODO(new-module): rewrite this page for the real module. The example lesson below must stay
+complete and valid: authoringDocExamples.test.js parses and validates it. -->
+
+A Template Module lesson (or a composed-lesson task with `moduleType: template_module`) is a
+**workspace module**: students build up work that is saved on the device, carries through to
+later tasks, and can be reset, revealed and shared by the teacher. The student writes in the
+Template Module workspace and presses **Check**; the task's checks mark the work.
+
+Write `type: template_module` on the lesson, or `moduleType: template_module` on a code task in a
+`type: composed` lesson. In the Builder, create a **Template Module** lesson (or pick it in a
+composed lesson's module picker).
+
+## Complete example
+
+```yaml
+id: template-module-example
+type: template_module
+title: "Template Module example"
+description: A short lesson using the Template Module workspace.
+tasks:
+  - title: Say hello
+    description: Finish the sentence so it says hello, then press Check.
+    starterCode: "say "
+    completeCode: "say hello"
+    check:
+      type: code_contains
+      value: hello
+  - title: Say it again
+    description: Your work from the last task carries through. Add a second hello.
+    carryCodeFrom: 1
+    check:
+      type: code_contains
+      value: hello hello
+```
+
+## Task fields
+
+| Field | Required | Notes |
+|---|:---:|---|
+| `starterCode` | No | The work the task starts with. |
+| `codeStages` | No | Starter / support / complete stages; each stage's work is in `code`. |
+| `completeCode` | No | The finished work: shown by the teacher's **Complete** tab and offered to the student after two failed checks. |
+| `carryCodeFrom` | No | A previous task's `id`: start from the student's saved work on that task. |
+| `check` | No | One check or a list. Only code checks (`code`, `code_contains`, `code_equals`, …) are evaluated, against the work text, when the student presses **Check**. |
+
+Lesson fields: `sandboxStarter` (text) turns on the personal sandbox after a passed task and is
+the teacher's sandbox starter.
+
+## Checks
+
+| Type | Passes when |
+|---|---|
+| `code_contains` / `code_does_not_contain` | the work contains / does not contain `value` |
+| `code_equals` / `code_not_equals` | the work is / is not exactly `value` |
+
+## Teacher tools
+
+- **Starter / stage / Complete tabs** show the task's authored work; **Send to all** pushes a stage.
+- **Student card** and **watch** mirror the student's work (read-only).
+- **Reset** (Starter / a stage / Complete) replaces a student's work.
+- **Sandbox**: the teacher's shared sandbox is editable and can be pushed to the class.
+
+## Validation
+
+Messages specific to this module are listed under **Template Module** in
+[validation-errors.md](validation-errors.md); the shared check messages apply too.

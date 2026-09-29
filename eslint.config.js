@@ -5,6 +5,15 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import globals from 'globals'
 import prettierConfig from 'eslint-config-prettier'
 
+// Module and task type names core code must not compare against: ask the module registry
+// (src/modules/definitions.js — meta, capabilities, lifecycle, wire, workSlot) or the activity
+// registry (src/activities/registry.pure.js) instead. The same names as the type-branch ratchet
+// (src/modules/__tests__/typeBranchRatchet.test.js), which also counts inline type arrays.
+const TYPE_NAME_PATTERN =
+  '/^(python|turtle|html|scratch|filesystem|desktop|electronics|arcade|quiz|code_arrange)$/'
+const TYPE_BRANCH_MESSAGE =
+  'Do not compare against a module/task type name outside src/modules and src/activities; read the definition (capabilities, lifecycle, wire, workSlot) or the activity registry instead. See docs/architecture/lesson-type-modules.md.'
+
 export default [
   {
     ignores: [
@@ -146,6 +155,33 @@ export default [
     },
     rules: {
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    },
+  },
+
+  // No lesson-type branching outside the plugin folders (plan step 4.8). The ratchet test keeps
+  // the per-file counts at zero; this catches a new comparison as it is written.
+  {
+    files: ['src/**/*.{js,jsx}', 'cli/**/*.mjs'],
+    ignores: [
+      'src/modules/**',
+      'src/activities/**',
+      'src/test/**',
+      '**/__tests__/**',
+      '**/*.test.{js,jsx,mjs}',
+      'src/**/*.worker.js',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: `BinaryExpression[operator=/^[!=]==?$/] > Literal[value=${TYPE_NAME_PATTERN}]`,
+          message: TYPE_BRANCH_MESSAGE,
+        },
+        {
+          selector: `SwitchCase > Literal.test[value=${TYPE_NAME_PATTERN}]`,
+          message: TYPE_BRANCH_MESSAGE,
+        },
+      ],
     },
   },
 

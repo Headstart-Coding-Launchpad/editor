@@ -1,8 +1,10 @@
 # Validation Errors and Warnings
 
 What each message from `node cli/cli.mjs lessons validate`, `yaml-to-json`, `upsert` and
-`publish-yaml` means, and how to fix it. The Builder shows the same messages for the rules both
-share.
+`publish-yaml` means, and how to fix it. The Builder and the CLI run the same rules with the same
+wording (`src/shared/lessonValidation.js` plus each module's `validateTask`; see
+[ADR 0008](../adr/0008-split-cli-and-builder-validation.md)). A few rows are marked
+**CLI only** or **Builder only**: those depend on where the lesson is being validated.
 
 - **Errors** block publishing. **Warnings** don't, but usually point at something students
   will notice.
@@ -24,7 +26,7 @@ isn't listed here, so add a row whenever you add a message.
 | `type is required` | No lesson `type`. | New lessons use `type: composed`. |
 | `type must be one of: …` | Unknown lesson type. | Use `composed`, or a legacy single-module type from the list. |
 | `title is required` | No lesson `title`. | Add a title. |
-| `description is required` | No `description` (shown on the entry screen). | Add a one-sentence description. |
+| `description is required` (**CLI only**) | No `description` (shown on the entry screen). | Add a one-sentence description. |
 | `recordingUrl must be a YouTube link (youtube.com or youtu.be)` | `recordingUrl` isn't a YouTube URL. | Use an unlisted YouTube link, or remove the field. |
 | `tasks is required and must be an array` | `tasks` is missing or not a list. | Add `tasks:` with at least one task. |
 | `tasks must contain at least one task or group` | `tasks` is empty. | Add a task. |
@@ -36,7 +38,7 @@ isn't listed here, so add a row whenever you add a message.
 | Message | Meaning | Fix |
 |---|---|---|
 | `Group … is missing a title` | A `type: group` item has no title. | Add `title:` to the group. |
-| `Group "…" has no subtasks` | The group's `subtasks` list is empty. | Add subtasks or remove the group. |
+| `Group "…" has no subtasks — add at least one subtask` | The group's `subtasks` list is empty. | Add subtasks or remove the group. |
 | `Group … subtasks must be an array` | `subtasks` isn't a list. | Write `subtasks:` as a YAML list. |
 
 ## Task shape
@@ -45,7 +47,7 @@ isn't listed here, so add a row whenever you add a message.
 |---|---|---|
 | `Task … is missing a title` / `… is missing a title` | A task has no `title`. | Add a title. |
 | `… must be an object` | A task entry is not a mapping (e.g. a bare string). | Write each task as `- title: …` with fields under it. |
-| `… taskType must be information or quiz when provided` | `taskType` has an unsupported value. Allowed: `information`, `quiz`, `code_arrange`; leave it out for code tasks. | Fix the value or remove `taskType`. In YAML, `type: information` / `type: quiz` also work. |
+| `… taskType must be information, quiz, code_arrange or activity when provided` | `taskType` has an unsupported value. Allowed: `information`, `quiz`, `code_arrange`, `activity`; leave it out for code tasks. | Fix the value or remove `taskType`. In YAML, `type: information` / `type: quiz` also work. |
 | `… has an invalid task-type value` | The YAML `type:` shorthand isn't a known task type. | Use `information`, `quiz` or `group`, or omit it for a code task. |
 | `… has an invalid quiz type` | `quizType` isn't one of the five quiz types. | Use `multiple_choice`, `match`, `fill_blank`, `short_answer` or `confidence`. |
 | `… intent must be a non-empty Markdown string while lesson draft is enabled` | Draft lessons need an `intent` on every real task. | Add `intent:` describing what the task is for. |
@@ -61,6 +63,7 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … allowSharing is not supported on quiz or information tasks` | Only code tasks have a workspace to share. | Remove `allowSharing` from that task. |
 | `Task … stage … role must be one of: …` | A `codeStages` entry has an unknown `role`. | Use `starter`, `support` or `complete`. |
 | `Task … stage … is missing a label` | A code stage has no `label`. | Add `label:` to the stage. |
+| `Task ID … is used by … and … - renumber task IDs before publishing` (warning, **Builder only**) | Two tasks share an `id`. | Renumber the task ids. |
 
 ## Composed lessons and carry-through
 
@@ -69,7 +72,8 @@ isn't listed here, so add a row whenever you add a message.
 | `Code task "…" must select a workspace module` | A code task in a composed lesson has no `moduleType` (or `moduleId`). | Add `moduleType: python` (or `turtle`, `html`, `scratch`, …). |
 | `Code task "…" has an unknown workspace module` | `moduleType`/`moduleId` doesn't match a module. | Use a supported module type, or define the module in `modules:`. |
 | `Code task "…" has a module ID and module type that do not match` | Both are set and they disagree. | Remove one, or make them agree. |
-| `Task … … must reference an earlier task in the same lesson module` | A `carryCodeFrom`/`carryBlocksFrom`/`carryFsFrom`/`carryCircuitFrom` points at a later task or a task using a different module. | Carry only from an earlier task with the same `moduleType`. |
+| `Task … … must reference an earlier task in the same lesson module` | A `carryCodeFrom`/`carryBlocksFrom`/`carryFsFrom`/`carryCircuitFrom`/`carryDesktopFrom` points at a later task or a task using a different module. | Carry only from an earlier task with the same `moduleType`. |
+| `Task … references task … for carry-through but that task does not exist` | The task's module carry field (`carryCodeFrom`, `carryBlocksFrom`, `carryFsFrom`, `carryCircuitFrom` or `carryDesktopFrom`) names a task id that isn't in the lesson. | Use the id of an earlier task, or remove the field. |
 
 ## Information and quiz tasks
 
@@ -85,6 +89,78 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … is a fill-in-the-blank quiz but has no blank answers` | `blanks` is empty. | Add an answer per blank. |
 | `Task … is a fill-in-the-blank quiz but has an empty answer` | A blank has no answer. | Fill it in. |
 | `Task … is a short-answer quiz with a check enabled but no check value` | The short-answer check has no `value`. | Add the expected answer, or remove the check for an ungraded question. |
+
+## Activity tasks
+
+Tasks with `taskType: activity` are checked by their activity's own rules (messages start
+`Task …:`).
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `` Task …: unknown activityType "…". Run `lessons capabilities` to list activities. `` | `activityType` is missing or isn't an activity this version knows. | Fix the `activityType`. |
+
+Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mouse targets too):
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task … item …: needs an id.` / `Task … target …: needs an id.` | An item (or Mouse target) has no `id`. Ids keep each student's saved progress attached to the right item. | Give every item a short unique `id` (`a`, `b`, …). |
+| `Task … item …: id "…" is used more than once.` | Two items (or two targets) share an id. | Make the ids unique. |
+
+### Binary ([activities/binary.md](activities/binary.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: binary mode must be one of ….` | `mode` is missing or unknown. | Use `make_number`, `to_binary`, `to_decimal`, `add`, `overflow`, `hex`, `ascii` or `pixels`. |
+| `Task …: binary bits must be a whole number from … to ….` | `bits` is outside 1–16. | Use a whole number from 1 to 16 (default 8). |
+| `Task …: binary task needs at least one item.` | `items` is empty. | Add at least one item. |
+| `Task … item …: target must be a whole number from 0 to ….` | A `make_number` / `to_binary` target doesn't fit in `bits`. | Lower the target or raise `bits` (4 bits → 0–15, 8 bits → 0–255). |
+| `Task … item …: value must be … binary digits (0s and 1s).` | A `to_decimal` value (or a `hex` value with `from: binary`) isn't exactly `bits` long, or has other characters. | Pad with leading zeros to the full width, e.g. `"0101"` for 4 bits. Quote it in YAML. |
+| `Task … item …: a and b must each be … binary digits (0s and 1s).` | An `add` / `overflow` item's `a` / `b` isn't exactly `bits` long. | Pad both to the full width and quote them in YAML. |
+| `Task … item …: a + b is too big for … bits (use mode: overflow for that).` | An `add` sum doesn't fit in `bits`. | Pick smaller numbers, raise `bits`, or make it an `overflow` task. |
+| `Task … item …: a + b fits in … bits, so it does not overflow.` | An `overflow` item's sum fits, so there is no overflow to spot. | Pick bigger numbers (the sum must be more than 2^bits − 1), or make it an `add` task. |
+| `Task … item …: from and to must be two different bases: binary, hex or decimal.` | A `hex` item's `from` / `to` is missing, unknown, or the same. | Set `from` and `to` to two different values out of `binary`, `hex` and `decimal`. |
+| `Task … item …: value must be a hex number (0-9, A-F) from 0 to ….` | A `hex` item with `from: hex` has other characters, or is too big for `bits` (8 bits → at most `FF`). | Use only 0-9 and A-F, quote it in YAML, and keep it within `bits`. |
+| `Task … item …: value must be a whole number from 0 to ….` | A `hex` item with `from: decimal` isn't a whole number, or doesn't fit in `bits`. | Lower the value or raise `bits`. |
+| `Task …: binary codeFormat must be binary or decimal.` | An `ascii` task's `codeFormat` is something else. | Use `binary` (default) or `decimal`. |
+| `Task … item …: text must be 1 to … printable ASCII characters (letters, digits, spaces and symbols).` | An `ascii` item's `text` is empty, too long (over 16), or has characters outside codes 32–126 (accents, emoji, tabs, new lines). | Shorten it and use plain keyboard characters only. |
+| `Task … item …: ascii direction must be encode or decode.` | An `ascii` item's `direction` is missing or unknown. | Use `encode` (type the codes) or `decode` (type the text). |
+| `Task …: binary pixels width and height must be whole numbers from 1 to ….` | A `pixels` task has no `width` / `height`, or one is over 16. | Set both on the task, each from 1 to 16. |
+| `Task … item …: pixels direction must be draw or encode.` | A `pixels` item's `direction` is missing or unknown. | Use `draw` (click the squares) or `encode` (type the bits). |
+| `Task … item …: rows must be … rows of … binary digits (0s and 1s).` | A `pixels` item doesn't have exactly `height` rows, or a row isn't exactly `width` 0s and 1s. | Give one quoted string per row, each exactly `width` long. |
+| `Task …: binary task has too much to save (… characters of answers, limit …). Use fewer or smaller items.` | An `overflow` / `hex` / `ascii` / `pixels` task's finished answers are too big to sync to the teacher (roughly more than four 16 × 16 pictures). | Split the items across two tasks, or use smaller pictures / shorter text. |
+
+### Keyboard ([activities/keyboard.md](activities/keyboard.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: keyboard mode must be one of ….` | `mode` is missing or unknown. | Use `type_text`, `find_key`, `symbols` or `shortcuts`. |
+| `Task …: keyboard layout "…" is not supported (use "uk").` | Only the UK layout exists so far. | Remove `layout` or set it to `uk`. |
+| `Task …: minAccuracy must be a number above 0 and at most 1.` | `minAccuracy` is a fraction, not a percentage. | Use e.g. `0.9` for 90%. |
+| `Task …: targetWpm must be a positive number.` | `targetWpm` is zero, negative or not a number. | Use a positive number, or remove it to skip the speed goal. |
+| `Task …: keyboard task needs at least one item.` | `items` is empty. | Add at least one item. |
+| `Task … item …: text is required.` | A `type_text` item has no `text`. | Add the line to type. |
+| `Task … item …: text must be at most … characters.` | A `type_text` line is over 200 characters. | Split it into several items. |
+| `Task … item …: can't be typed on a … keyboard: …` | The text has characters with no key on the layout (listed at the end), such as curly quotes or emoji. | Replace them with plain keyboard characters. |
+| `Task … item …: key must be a character or one of ….` | A `find_key` `key` is neither a typeable character nor a named key. | Use one character (`a`, `7`, `?`) or a named key such as `Enter`, `Space`, `Backspace`, `Shift`. |
+| `Task … item …: char must be one character that can be typed on a … keyboard.` | A `symbols` `char` is empty, longer than one character or not on the layout. | Use a single symbol such as `@`, `£` or `"`. |
+| `Task … item …: combo must be a shortcut like "Ctrl+C".` | A `shortcuts` `combo` is missing or has no modifier. | Write it as `Ctrl+C`, `Ctrl+Shift+Z`, … (`Ctrl` also means Cmd on a Mac). |
+| `Task … item …: "…" just types a character. Use Ctrl, Cmd or Alt, or Shift with a key like Tab or an arrow key.` | The `combo` is Shift plus a character key (`Shift+A`), which types a capital rather than doing a shortcut. | Add Ctrl/Cmd or Alt, or use a non-typing key (`Shift+Tab`, `Shift+ArrowLeft`). To practise capitals, use `type_text` or `symbols` mode. |
+| `Task … item …: "…" is kept by the browser, so students can't press it here. Teach it with a quiz question instead.` | The browser handles that shortcut itself (Ctrl+W, Ctrl+T, Ctrl+N, Ctrl+Q, Ctrl+Tab, Ctrl+Shift+T/N, Alt+F4), so the page never sees it. | Use a different shortcut, or ask about it in a quiz task. |
+| `Task … item …: add a prompt telling students what the shortcut does.` (warning) | A `shortcuts` item has no `prompt`; students only see the keys. | Add `prompt:` such as "Copy the selected word". |
+
+### Mouse ([activities/mouse.md](activities/mouse.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: mouse task needs at least one target.` | `targets` is empty. | Add targets to the stage. |
+| `Task … target …: x and y must be between 0 and 1 (fractions of the stage).` | A target position is missing or outside the stage. | Use fractions: `x: 0.5, y: 0.5` is the middle. |
+| `Task … target …: size must be one of ….` | Unknown `size`. | Use `large`, `medium` or `small` (default `large`). |
+| `Task …: touch must be one of ….` | Unknown `touch` policy. | Use `equivalent`, `skip` or `block`. |
+| `Task …: mouse task needs at least one item.` | `items` is empty. | Add at least one item. |
+| `Task … item …: action must be one of ….` | Unknown `action`. | Use `click`, `double_click`, `right_click`, `drag`, `scroll` or `hover`. |
+| `Task … item …: target "…" is not on the stage.` | The item's `target` isn't the `id` of any target. | Use a target `id` from `targets`. |
+| `Task … item …: a drag needs a "to" target that is on the stage.` | A `drag` item has no `to`, or `to` isn't a target id. | Add `to:` with the id of the drop target. |
+| `Task … item …: touch screens can't hover, so this item is skipped on touch devices.` (warning) | Hover items are skipped for students on tablets when `touch` is `equivalent`. | Fine if other items cover the skill; set `touch: block` if hovering is essential. |
 
 ## Code-arrange tasks
 
@@ -108,24 +184,42 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … has no files` | An HTML task has no `starterFiles` (or starter stage files). | Add at least `index.html`. |
 | `Task … has duplicate filenames` | Two starter files share a name. | Rename one. |
 | `Task … has no HTML file to use as entry point` | No `.html` file among the starter files. | Add an HTML file. |
-| `Task … stage … has no filesystem state` | A Filesystem stage has no `fs`. | Add the stage's filesystem map. |
-| `Task … stage … has no desktop state` | A Desktop stage has no `desktop` object. | Add the stage's desktop state (see `desktop.md`). |
+| `Task … stage … has no … state` | A Filesystem stage has no `fs` (`… has no filesystem state`), or a Desktop stage has no `desktop` object (`… has no desktop state`). | Add the stage's filesystem map, or its desktop state (see `desktop.md`). |
 | `Task … has no starter breadboard` | An Electronics task has no `starterCircuit` with `components`. | Add `starterCircuit: { components: [], wires: [] }` at minimum. |
 
 ## Checks
 
+Check rules apply to the completion `check` and to `feedbackChecks`; for a feedback check the
+message says `feedback check` where it would say `check` (that part is shown as `…`).
+
 | Message | Meaning | Fix |
 |---|---|---|
-| `Task … sprite check is missing a property` / `Task … sprite check is missing an operator` / `Task … sprite check is missing a value` | A Scratch `sprite_property` check is incomplete. | Set `property`, `operator` and `value`. |
-| `Task … block-used check is missing a block opcode` | A Scratch `block_used` check has no `opcode`. | Add `opcode:` (see `scratch.md` for opcodes). |
-| `Task … has a filesystem … but no path` | A Filesystem check has no `path`. | Add `path:`. |
-| `Task … has a file-content … but no expected value` | `fs_file_content` has no `value`. | Add the text to compare. |
+| `Task … has feedback checks but no completion check` | `feedbackChecks` are set but `check` isn't. | Add the completion `check`. |
+| `Task … has a blocking feedback check with no hint` (warning) | A blocking feedback check has no `hint`, so students are stopped without being told why. | Add a `hint`, or make the check non-blocking. |
+| `Task … feedback check … priority must be a positive whole number` | `priority` is 0, negative or not a whole number. | Use 1, 2, 3, … or remove it. |
+| `Task … feedback check … references a code stage that does not exist` | `stageOffer.stageIndex` is outside `codeStages`. | Point it at an existing stage (0-based). |
+| `Task … feedback check … stage offer action must be preview or replace` | Unknown `stageOffer.action`. | Use `preview` or `replace`. |
+| `Task … feedback check … stage offer threshold must be a positive whole number` | `stageOffer.afterMatches` is 0, negative or not a whole number. | Use 1, 2, 3, … or remove it. |
+| `Task … uses submit mode but has a … that requires running the code` | `interactionMode: submit` tasks never run, so output/variable/element checks can't pass. | Use code checks, or remove submit mode. |
+| `Task … has an element … but no CSS selector` | An HTML element check has no `selector`. | Add `selector:`. |
+| `Task … has an element attribute … but no attribute name` | `html_element_attribute` has no `attribute`. | Add `attribute:`. |
+| `Task … has an element style … but no CSS property` | `html_element_style_property` has no `property`. | Add `property:`. |
+| `Task … has a variable … but no variable name` | A Python variable check has no `name`. | Add `name:`. |
+| `Task … has a dictionary key-value … but no key` | `variable_dict_key_value` has no `key`. | Add `key:`. |
+| `Task … has an array N-th item … but no valid index` | `variable_array_nth_item` has no (or a negative) `index`. | Add a 0-based `index`. |
+| `Task … has a … enabled but no check value` | A Python, HTML or Arcade check that compares against a value has no `value`. | Add `value:`. |
+| `Task … has a Scratch … but no block opcode` | `block_used`, `block_run` or `block_count` has no `opcode`. | Add `opcode:` (see `scratch.md` for opcodes). |
+| `Task … has a Scratch block-order … but no block sequence` / `Task … has a Scratch block-order … with an empty block opcode` | `blocks_in_order` has no `sequence`, or an entry has no opcode. | List the opcodes in order. |
+| `Task … has a Scratch sprite-property … with missing property, operator, or value` | A `sprite_property` or `sprite_property_delta` check is incomplete. | Set `property`, `operator` and `value`. |
+| `Task … has a Scratch sprite-changed … but no property` | `sprite_property_changed` has no `property`. | Add `property:`. |
+| `Task … has a Scratch variable … but no variable name` / `Task … has a Scratch variable … but no expected value` / `Task … has a Scratch variable … but no operator` | A Scratch `variable_equals` / `variable_compare` check is incomplete. | Set `variableName`, `value` and (for compare) `operator`. |
+| `Task … has a Scratch costume … but no costume name` | `costume_is` has no `value`. | Add the costume name. |
+| `Task … has invalid toolbox XML` (**Builder only**) | A Scratch task's `toolbox` isn't well-formed XML. | Fix the XML (see `scratch-toolbox-xml.md`). |
+| `Task … has a filesystem … but no path` | A Filesystem or Desktop `fs_*` check has no `path`. | Add `path:`. |
+| `Task … has a file-content … but no expected value` | `fs_file_content` (or legacy `fs_content_contains`) has no `value`. | Add the text to compare. |
 | `Task … has a file line-count … but no expected count` | `fs_file_line_count` has no `value`. | Add a number. |
-| `Task … has a file-location … but no parent folder` | `fs_file_location` has no `dir`. | Add `dir:`. |
+| `Task … has a file-location … but no parent folder` | `fs_file_location` (or legacy `fs_file_in_dir`) has no `dir`. | Add `dir:`. |
 | `Task … has a folder-count … but no expected count` | `fs_folder_count` has no `value`. | Add a number. |
-| `Task … has a filesystem check but no path` | A Desktop task's `fs_*` check has no `path`. | Add `path:`. |
-| `Task … has a file content check but no expected value` | A Desktop `fs_content_contains` check has no `value`. | Add the text to look for. |
-| `Task … has a file-in-dir check but no parent folder` | A Desktop `fs_file_in_dir` check has no `dir`. | Add `dir:`. |
 | `Task … has a part-exists … but no part type or label` | An Electronics part check can't identify a part. | Add `component: { type: led }` or a label/id. |
 | `Task … has a powered-part … but no part type or label` | Same, for powered/unpowered checks. | Identify the part. |
 | `Task … has a control … but no control or controlled part` | `circuit_control_affects_power` is missing one side. | Set both `control` and `component`. |
@@ -138,9 +232,27 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … has a turtle … but no check value` | A heading/count/length check has no `value`. | Add `value:`. |
 | `Task … has a turtle command … with no valid command (one of: …)` | `turtle_command_used` names an unknown command. | Use one of the listed names, e.g. `forward`, `turn`, `circle`. |
 | `Task … has a turtle colour … but no colour` | `turtle_color_used` has no `color`. | Add the colour exactly as students will write it. |
+| `Task … has an … …, but … tasks don't record input — input checks work in Desktop tasks` | An `input_gesture`, `input_shortcut` or `input_modifier` check is on a task whose module doesn't record how the student works (only Desktop does). | Move the check to a Desktop task, or check the outcome instead. |
+| `Task … has an … … whose min is not a positive whole number` | An input check's `min` is 0, negative or not a whole number. | Use 1, 2, 3, … or remove `min` (it defaults to 1). |
+| `Task … has an input_gesture … with gesture "…" — use one of: …` | `gesture` is missing or unknown. | Use `click`, `double_click`, `right_click`, `drag`, `scroll` or `hover` (see `desktop.md`). |
+| `Task … has an input_gesture … with … "…" — use one of: …` | `targetKind` or `dropTargetKind` isn't a Desktop target kind. | Use `file`, `folder`, `window` or `icon`, or remove the field to match anything. |
+| `Task … has an input_gesture … with a dropTargetKind but its gesture is not drag` | Only drags have a drop target. | Set `gesture: drag`, or remove `dropTargetKind`. |
+| `Task … has an input_shortcut … but no combo (e.g. ctrl+c)` | `input_shortcut` has no `combo`. | Add `combo: ctrl+c` (`ctrl` and `cmd` both mean Ctrl on Windows/ChromeOS and Cmd on a Mac). |
+| `Task … has an input_shortcut … for "…", which the browser keeps for itself — students can't perform it in a lesson (teach it with a quiz instead)` | The combo is one the browser or OS never passes to a web page (e.g. `ctrl+w`, `ctrl+t`, `ctrl+n`, `alt+f4`, `alt+tab`). | Teach that shortcut with a quiz task, and check a different one here. |
+| `Task … has an input_shortcut … for "…" — a shortcut needs ctrl/cmd or alt (or is F1–F12 or Delete)` | The combo is ordinary typing (e.g. `shift+a`, `enter`). | Add `ctrl`/`alt`, or use `input_modifier` for Shift capitals. |
+| `Task … has an input_shortcut … with via "…" — use one of: …` | Unknown `via`. | Use `keyboard` (default), `menu` or `any`. |
+| `Task … has an input_modifier … with modifier "…" — use one of: …` | `modifier` is missing or unknown. | Use `shift` or `caps_lock`. |
+| `Task … has an input_modifier … that requires Caps Lock and forbids it (notCapsLock)` | `notCapsLock: true` only makes sense with `modifier: shift`. | Remove `notCapsLock`, or use `modifier: shift`. |
 
-Python, HTML and code checks with missing values are validated in the Builder. See the module
-docs for each check's required fields.
+See the module docs for each check's required fields.
+
+## Python tests
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task … test … has no inputs — consider adding at least one input` (warning) | A `tests` entry has no `inputs`. | Add inputs, or drop the test. |
+| `Task … test … has an input with no name — it can still run, but {placeholder} substitution won't work` (warning) | An input has no `name`. | Name it so `{name}` placeholders in the check are replaced. |
+| `Task … test … has no check — add an output check for this test case` | A `tests` entry has no `check`. | Add a `check`, usually on output. |
 
 ## Warnings about the solution
 
@@ -152,7 +264,9 @@ docs for each check's required fields.
 | `Task … has output checks — open the Complete tab and run to verify the complete solution` | Output checks need a real run, which the CLI can't do. | Open the task in the Builder and run the complete solution. |
 | `Task … has element/output checks — open the Complete tab and run to verify the complete solution` | Same for HTML element checks. | Run it in the Builder. |
 | `Task … complete filesystem does not satisfy a check — review the complete filesystem` | The complete filesystem fails a check. | Fix the complete state or the check. |
-| `Task … complete desktop does not satisfy a check — review the complete desktop` | The complete Desktop state fails a check. | Fix the complete state or the check. |
+| `Task … complete desktop does not satisfy a check — review the complete desktop` | The complete Desktop state fails a file or window check (`browser_visited` and `search_query` are not tested against it). | Fix the complete state or the check. |
+| `Task … complete breadboard does not satisfy a check — review the complete circuit` | The complete Electronics circuit fails a circuit check. | Fix the complete circuit or the check. |
+| `Task … has a completion check that hasn't been tested — run the task to verify it` (**Builder only**) | The check hasn't been run against the task since it was edited. | Run the task in the Builder. |
 
 ## Class forks
 

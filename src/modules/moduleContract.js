@@ -1,0 +1,308 @@
+// Pure building blocks for the workspace-module contract v2 hooks every definition.js declares
+// (see ./defineModule.js and docs/architecture/lesson-type-modules.md, "Contract v2"):
+//
+// - lifecycle — what a task/lesson means for this module's work (remote reset targets, whether
+//   a complete solution exists, the teacher sandbox starter, composed-lesson sandbox fields).
+// - storage   — how the module's work maps onto its localStorage record shapes (the shapes in
+//   docs/agents/runtime-model.md; they must never change).
+// - wire      — how the work travels over Realtime Database strings (`currentCode`,
+//   `sandboxCode`, teacherLive extras, logged submissions).
+//
+// "Work" is the value the student hook holds for the module: a code string (python, turtle,
+// arcade, electronics's serialised circuit), the Scratch workspace states, a filesystem tree, a
+// desktop state, or (html) an array of files. Node-safe: no JSX, React, DOM or runtimes.
+import { getCompleteStage, getStarterStage } from '../shared/taskStages.js'
+
+// ── Lifecycle ────────────────────────────────────────────────────────────────
+
+// A remote-reset action names the state to restore: 'starter', 'complete', or 'stage_<n>' for
+// one of the task's authored code stages.
+export function stageForAction(task, action) {
+  const match = String(action ?? '').match(/^stage_(\d+)$/)
+  if (!match) return { stage: null, stageIndex: null }
+  const stageIndex = parseInt(match[1], 10)
+  return { stage: (task?.codeStages ?? [])[stageIndex] ?? null, stageIndex }
+}
+
+export function starterStageOf(task) {
+  return getStarterStage(task)?.stage
+}
+
+// Shared by the code-string modules (python, arcade, turtle): `{ code }`.
+export function codeResetTarget(task, action) {
+  const { stage } = stageForAction(task, action)
+  const starter = starterStageOf(task)
+  if (action === 'complete') return { code: task.completeCode ?? '' }
+  if (action === 'starter') return { code: starter?.code ?? task.starterCode ?? '' }
+  return { code: stage?.code ?? starter?.code ?? task.starterCode ?? '' }
+}
+
+// Shared by the code-string modules: a complete stage's code, else the legacy completeCode.
+export function codeHasComplete(task) {
+  return !!(getCompleteStage(task)?.stage?.code ?? task?.completeCode)
+}
+
+// lifecycle.hasPersonalSandbox builders: the personal sandbox is always offered (python,
+// arcade, turtle), or only when the lesson sets the given sandbox-starter field.
+export function alwaysPersonalSandbox() {
+  return true
+}
+
+export function personalSandboxWhenLessonHas(field) {
+  return (lesson) => lesson?.[field] != null
+}
+
+// Teacher live-edit copy (meta.teacherEditCopy) shared by the text-code modules.
+export const TEACHER_EDIT_CODE_COPY = Object.freeze({
+  action: 'Edit Code',
+  consent:
+    'Your teacher would like to edit your code to help you. They will type in your editor and you will see their changes live.',
+})
+
+// ── Storage ──────────────────────────────────────────────────────────────────
+
+function pickPresent(source, keys) {
+  const picked = {}
+  for (const key of keys) {
+    if (source && Object.prototype.hasOwnProperty.call(source, key)) picked[key] = source[key]
+  }
+  return picked
+}
+
+/**
+ * A storage adapter for modules whose work lives in one record per task
+ * (`headstart_{lessonId}_{taskId}_{anonymousId}`) and one per personal sandbox.
+ *
+ * - `workKey`   the record field holding the work (`code`, `state`, `fs`, `desktop`).
+ * - `taskMeta`  extra fields a task record may carry, in record order (e.g. `output`,
+ *               `runStatus`, `arcadeDesign`); each is written only when `meta` has it, so a
+ *               caller that passes no meta writes exactly `{ [workKey]: work }`.
+ * - `sandboxMeta` the same for the personal-sandbox record.
+ *
+ * `fromTaskRecord` / `fromSandboxRecord` return `{ work, meta }` (meta holds only the fields the
+ * record actually had), or null when there is no record.
+ */
+export function recordStorage({ workKey, taskMeta = [], sandboxMeta = [] }) {
+  const toRecord = (metaKeys) => (work, meta) => ({
+    [workKey]: work,
+    ...pickPresent(meta, metaKeys),
+  })
+  const fromRecord = (metaKeys) => (record) => {
+    if (record == null || typeof record !== 'object') return null
+    return { work: record[workKey], meta: pickPresent(record, metaKeys) }
+  }
+  return {
+    layout: 'record',
+    workKey,
+    toTaskRecord: toRecord(taskMeta),
+    fromTaskRecord: fromRecord(taskMeta),
+    toSandboxRecord: toRecord(sandboxMeta),
+    fromSandboxRecord: fromRecord(sandboxMeta),
+  }
+}
+
+/**
+ * A storage adapter for modules that store one record per file
+ * (`headstart_{lessonId}_{taskId}_{filename}_{anonymousId}` → `{ content }`). The record hooks
+ * map a single file's content; `saveWork` / `readWork` in createStudentPersistence.js walk the
+ * files.
+ */
+export function perFileStorage() {
+  const toRecord = (content) => ({ content })
+  const fromRecord = (record) => {
+    if (record == null || typeof record !== 'object') return null
+    return { work: record.content, meta: {} }
+  }
+  return {
+    layout: 'perFile',
+    workKey: 'content',
+    toTaskRecord: toRecord,
+    fromTaskRecord: fromRecord,
+    toSandboxRecord: toRecord,
+    fromSandboxRecord: fromRecord,
+  }
+}
+
+// ── Wire ─────────────────────────────────────────────────────────────────────
+
+// teacherLive is a Firebase update() merge, so every payload names every extra explicitly —
+// null when the module has none — or a previous module's value would linger.
+export const NO_LIVE_EXTRAS = Object.freeze({ arcadeDesign: null, turtleResult: null })
+
+export function noLiveExtras() {
+  return { ...NO_LIVE_EXTRAS }
+}
+
+function parseJson(code) {
+  if (typeof code !== 'string' || !code) return null
+  try {
+    return JSON.parse(code)
+  } catch {
+    return null
+  }
+}
+
+// The work already is the `currentCode` string (python, turtle, arcade, electronics).
+export function codeStringWire(overrides = {}) {
+  return {
+    sandboxChannel: 'code',
+    toCode: (work) => work,
+    fromCode: (code) => code,
+    liveExtras: noLiveExtras,
+    submission: (work) => work,
+    ...overrides,
+  }
+}
+
+// The work travels as a JSON string in `currentCode` / `sandboxCode` (scratch, filesystem,
+// desktop). Callers keep their own null handling (e.g. `JSON.stringify(state ?? {})`).
+export function jsonWire(overrides = {}) {
+  return {
+    sandboxChannel: 'code',
+    toCode: (work) => JSON.stringify(work),
+    fromCode: parseJson,
+    liveExtras: noLiveExtras,
+    submission: (work) => work,
+    ...overrides,
+  }
+}
+
+// ── Checking + work slot (plan steps 4.3–4.4) ──────────────────────────────────
+
+// The check context for a code-string module: the run extras ({ status, variables, turtle }
+// after a run, { status } for idle feedback) plus the code. Mirrors the old
+// buildCodeCheckContext in src/app/codeCheckContext.js key for key.
+export function codeCheckContext(code, extras = {}) {
+  return { ...extras, code }
+}
+
+// Work slots whose value already is the storage/wire work (everything except Arcade, whose
+// value also carries its design).
+export function identityStored(value) {
+  return { work: value, meta: {} }
+}
+
+export function identityFromStored(stored, fallback) {
+  return stored?.work ?? fallback
+}
+
+// The task starter code: a starter stage's code, else the legacy starterCode.
+export function starterCodeOf(task) {
+  return starterStageOf(task)?.code ?? task?.starterCode ?? ''
+}
+
+// The complete code: a complete-role stage's code, else the legacy completeCode.
+export function completeCodeOf(task) {
+  return getCompleteStage(task)?.stage?.code ?? task?.completeCode ?? ''
+}
+
+/**
+ * The work slot shared by the plain code-string modules (python, turtle): the value is the code
+ * string itself. `kind: 'code'` — see WORK_SLOT_KINDS in ./defineModule.js.
+ */
+export function codeWorkSlot(overrides = {}) {
+  return {
+    kind: 'code',
+    starter: starterCodeOf,
+    stage: (task, stageIndex) => task?.codeStages?.[stageIndex]?.code ?? '',
+    complete: completeCodeOf,
+    sandbox: (lesson) => lesson?.sandboxStarter ?? '',
+    fromResetTarget: (target) => target.code,
+    empty: () => '',
+    normalise: (value) => value,
+    stored: identityStored,
+    fromStored: identityFromStored,
+    taskReset: true,
+    teacherSandboxReset: false,
+    remoteResetPersists: false,
+    teacherEdit: true,
+    ...overrides,
+  }
+}
+
+// ── Files work (html; plan step 4.5) ─────────────────────────────────────────
+
+const copyFiles = (files) => (files ?? []).map((file) => ({ ...file }))
+
+// The files' contents joined into one string: what a code check reads for a files module.
+export function joinFileContents(files) {
+  return (files ?? []).map((file) => file.content).join('\n')
+}
+
+// A files work value: `{ files, activeFile }`, the active file defaulting to the first file.
+function filesValue(files, activeFile) {
+  return { files, activeFile: activeFile ?? files[0]?.name ?? '' }
+}
+
+/**
+ * The work slot of a files module (html): the value is `{ files, activeFile }` — the `files`
+ * array (`{ name, type, content }`) is the storage / wire work (one `{ content }` record per file,
+ * the `files` wire channel) and `activeFile` the editor tab. `kind: 'code'`: the own save is
+ * restored only in solo and carry-through (`carryCodeFrom`) runs per file (selectHtmlTaskFiles).
+ * Every source copies its files, so an edit never mutates the lesson.
+ */
+export function filesWorkSlot(overrides = {}) {
+  return {
+    kind: 'code',
+    starter: (task) =>
+      filesValue(copyFiles(starterStageOf(task)?.files ?? task?.starterFiles), task?.entryFile),
+    stage: (task, stageIndex) => {
+      const stage = task?.codeStages?.[stageIndex]
+      return filesValue(copyFiles(stage?.files), stage?.entryFile ?? task?.entryFile)
+    },
+    complete: (task) => {
+      const completeStage = getCompleteStage(task)?.stage
+      return filesValue(
+        copyFiles(completeStage?.files ?? task?.completeFiles),
+        completeStage?.entryFile ?? task?.completeEntryFile ?? task?.entryFile
+      )
+    },
+    sandbox: (lesson) => filesValue(copyFiles(lesson?.sandboxStarterFiles)),
+    fromResetTarget: (target) => filesValue(copyFiles(target.files), target.entryFile),
+    empty: () => ({ files: [], activeFile: '' }),
+    normalise: (value) => value,
+    stored: (value) => ({ work: value?.files ?? [], meta: {} }),
+    // Stored files replace the fallback's; the fallback keeps its active file.
+    fromStored: (stored, fallback) =>
+      stored?.work != null ? { files: stored.work, activeFile: fallback.activeFile } : fallback,
+    taskReset: true,
+    teacherSandboxReset: false,
+    remoteResetPersists: false,
+    teacherEdit: true,
+    ...overrides,
+  }
+}
+
+/**
+ * The hooks a field-declared work slot (`starterField` / `sandboxField` / `stageField`, e.g.
+ * filesystem and desktop) gets from defineModule: every source reads the named field, falling
+ * back to `empty`. `completeField` is the module's top-level complete field and `workKey` its
+ * storage work key (the field a remote-reset target carries the work in).
+ */
+export function fieldWorkSlotHooks(workSlot, { completeField, workKey }) {
+  const { starterField, sandboxField, stageField, empty } = workSlot
+  return {
+    starter: (task) => task?.[starterField] ?? empty(task),
+    stage: (task, stageIndex) => task?.codeStages?.[stageIndex]?.[stageField] ?? empty(task),
+    complete: (task) => task?.[completeField] ?? empty(task),
+    sandbox: (lesson) => lesson?.[sandboxField] ?? empty(),
+    fromResetTarget: (target) => target[workKey],
+    stored: identityStored,
+    fromStored: identityFromStored,
+  }
+}
+
+// The work travels as a `{ filename: content }` map on the files channel (html).
+export function filesWire(overrides = {}) {
+  const toFilesMap = (files) => Object.fromEntries((files ?? []).map((f) => [f.name, f.content]))
+  return {
+    sandboxChannel: 'files',
+    // html never uses the code channel for its work.
+    toCode: () => null,
+    fromCode: () => null,
+    toFilesMap,
+    liveExtras: noLiveExtras,
+    submission: toFilesMap,
+    ...overrides,
+  }
+}

@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { resolveAssetsPath } from '../../shared/assetPaths'
-import { flattenTasks } from '../../shared/taskUtils'
+import { findTaskById, flattenTasks } from '../../shared/taskUtils'
+import { allowsStudentBroadcast } from '../../activities/registry.pure.js'
 import { toTeacherLiveFiles } from '../studentLiveDisplay'
 import { getLessonModule } from '../../modules/registry'
-import { getEffectiveLessonForTask, getTaskModuleType } from '../../shared/composedLesson'
-import { compactTurtleResultForSync } from '../../modules/turtle/sync.js'
+import { getEffectiveLessonForTask } from '../../shared/composedLesson'
+import { getModuleDefinition } from '../../modules/definitions.js'
+import { noLiveExtras } from '../../modules/moduleContract.js'
 
 /**
  * Owns the teacher-live broadcast helpers and the two related effects:
@@ -18,16 +20,18 @@ export function useTeacherLivePublish({
   sessionRef,
   lessonRef,
   currentTaskIdRef,
+  // codeRef / filesRef / activeFileRef: what a lesson type without a module definition (none
+  // today) publishes.
   codeRef,
-  scratchCodeRef,
-  arcadeDesignRef,
   turtleResultRef,
   filesRef,
   activeFileRef,
   outputRef,
   runStatusRef,
-  fsStateRef,
-  desktopStateRef,
+  // Generic work slot (every module since plan step 4.5): readWorkValue(moduleType) returns
+  // that module's latest work (or its default when the slot holds another module's work). The
+  // payload's code / files / activeFile and extras come from it through the module's wire.
+  readWorkValue,
   editorSelectionRef,
   editorActivityRef,
   // Reactive values — used by the sync dep array and payload snapshot
@@ -43,9 +47,12 @@ export function useTeacherLivePublish({
   checkPassed,
   checkAttempted,
   checkSuggestion,
-  fsState,
-  desktopState,
+  // The current module's work-slot value (null for other modules): a publish trigger.
+  workValue = null,
   iframeStorageAssets = null,
+  // Optional ref to a function returning extra payload fields for the current task (the
+  // activity host adds `answer`, the serialised activity state, on activity tasks).
+  extraPayloadRef = null,
   // Callbacks
   updateTeacherLive,
   setTeacherLiveReference,
@@ -64,22 +71,42 @@ export function useTeacherLivePublish({
     const s = sessionRef.current
     if (!s?.teacherLive?.active) return false
     if (teacherPresentation) return s?.teacherLive?.source !== 'student'
-    return s.teacherLive.sourceStudentId === identityRef.current?.anonymousId
+    if (s.teacherLive.sourceStudentId !== identityRef.current?.anonymousId) return false
+    // Quiz and activity tasks are teacher-only broadcasts: a student's answers are never
+    // pushed to the class, even if a broadcast of their earlier code task is still running.
+    return allowsStudentBroadcast(findTaskById(lessonRef.current?.tasks, currentTaskIdRef.current))
   }
 
   function currentTeacherLivePayload(extra = {}) {
-    const isFilesystem = lessonRef.current?.type === 'filesystem'
-    const isDesktop = lessonRef.current?.type === 'desktop'
-    // Scratch never routes edits through the generic `code` state (see
-    // loadTaskContent's scratch branch in useStudentCodeState.js) — codeRef.current
-    // would otherwise still hold whatever an earlier non-Scratch task left behind,
-    // or an empty string, wiping out the mirror's blocks the moment a broadcast
-    // starts (or the live task changes) until the next real edit resyncs it.
-    const isScratch = getTaskModuleType(lessonRef.current, currentTaskIdRef.current) === 'scratch'
-    const filesMap =
-      isFilesystem || isDesktop
-        ? {}
-        : Object.fromEntries(filesRef.current.map((f) => [f.name, f.content]))
+    const lessonType = lessonRef.current?.type
+    const definition = getModuleDefinition(lessonType)
+    // Work-slot modules publish their work through the wire: on the code channel as
+    // wire.toCode — the code string, or a JSON string for scratch/filesystem/desktop ('' while
+    // Scratch has reported nothing) — with their extras (Arcade's design) and no files; on the
+    // files channel (html) as a filename → content map with an empty code.
+    // Scratch publishes what its workspace last reported, never codeRef, which may still hold
+    // whatever an earlier non-Scratch task left behind (that would wipe the mirror's blocks the
+    // moment a broadcast starts, until the next real edit resynced it).
+    const isWorkSlot = definition?.workSlot != null
+    const stored = isWorkSlot ? definition.workSlot.stored(readWorkValue(lessonType)) : null
+    const onFilesChannel = isWorkSlot && definition.wire.sandboxChannel === 'files'
+    // teacherLive is an update() merge, so every module sends both extras (explicit nulls
+    // for the ones it doesn't have) — see each definition's wire.liveExtras. A module's own
+    // extras come with its work (Arcade's design); Turtle's drawing is a run result.
+    const { arcadeDesign, turtleResult } = (definition?.wire.liveExtras ?? noLiveExtras)({
+      turtleResult: turtleResultRef?.current,
+      ...stored?.meta,
+    })
+    const filesMap = !isWorkSlot
+      ? Object.fromEntries(filesRef.current.map((f) => [f.name, f.content]))
+      : onFilesChannel
+        ? definition.wire.toFilesMap(stored.work)
+        : {}
+    const slotCode = !isWorkSlot
+      ? null
+      : onFilesChannel || stored.work == null
+        ? ''
+        : definition.wire.toCode(stored.work)
     const sourceStudentId = teacherPresentation ? null : identityRef.current?.anonymousId
     const sourceStudentName = teacherPresentation ? null : identityRef.current?.displayName
     return {
@@ -89,20 +116,16 @@ export function useTeacherLivePublish({
       sourceStudentName,
       taskId: currentTaskIdRef.current,
       lessonType: lessonRef.current?.type,
-      code: isFilesystem
-        ? JSON.stringify(fsStateRef.current)
-        : isDesktop
-          ? JSON.stringify(desktopStateRef.current)
-          : isScratch
-            ? scratchCodeRef.current
-            : codeRef.current,
-      arcadeDesign: lessonRef.current?.type === 'arcade' ? arcadeDesignRef.current : null,
-      turtleResult:
-        lessonRef.current?.type === 'turtle'
-          ? compactTurtleResultForSync(turtleResultRef.current)
-          : null,
+      code: isWorkSlot ? slotCode : codeRef.current,
+      arcadeDesign,
+      turtleResult,
       files: filesMap,
-      activeFile: activeFileRef.current,
+      // A files module's own active file; no other module has one (never a leftover).
+      activeFile: !isWorkSlot
+        ? activeFileRef.current
+        : onFilesChannel
+          ? (readWorkValue(lessonType)?.activeFile ?? '')
+          : '',
       output: outputRef.current,
       runStatus: runStatusRef.current,
       checkPassed: checkPassedRef.current,
@@ -110,6 +133,7 @@ export function useTeacherLivePublish({
       checkSuggestion: checkSuggestionRef.current,
       selection: editorSelectionRef.current,
       activity: editorActivityRef.current,
+      ...(extraPayloadRef?.current?.() ?? {}),
       ...extra,
     }
   }
@@ -192,9 +216,14 @@ export function useTeacherLivePublish({
     checkPassed,
     checkAttempted,
     checkSuggestion,
-    fsState,
-    desktopState,
+    workValue,
   ])
+
+  // The reference channel only follows work of modules that offer a teacher-live reference
+  // (filesystem, not desktop), as it did when each module had its own state.
+  const referenceWorkValue = getModuleDefinition(lesson?.type)?.capabilities.teacherLiveReference
+    ? workValue
+    : null
 
   // Publish the soft support-reference channel whenever Presentation View is open,
   // independent of whether the "Go Live" force takeover (teacherLive) is toggled on —
@@ -203,7 +232,7 @@ export function useTeacherLivePublish({
     if (!teacherPresentation || !setTeacherLiveReference) return
     setTeacherLiveReference(currentTeacherLivePayload())
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherPresentation, currentTaskId, code, JSON.stringify(files), fsState])
+  }, [teacherPresentation, currentTaskId, code, JSON.stringify(files), referenceWorkValue])
 
   // Clear it the moment Presentation View closes, so it never outlives the window.
   // setTeacherLiveReference is deliberately excluded from the deps below — like every

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { deriveStudentLiveDisplay, toTeacherLiveFiles } from '../studentLiveDisplay'
+import {
+  deriveStudentLiveDisplay,
+  teacherLiveReferenceDisplayState,
+  toTeacherLiveFiles,
+} from '../studentLiveDisplay'
 
 const localWorkspace = {
   code: 'local code',
@@ -244,5 +248,81 @@ describe('deriveStudentLiveDisplay', () => {
     expect(presentingTeacher.isLiveCopyBlocked).toBe(false)
     expect(broadcastSource.isLiveCopyBlocked).toBe(false)
     expect(noBroadcast.isLiveCopyBlocked).toBe(false)
+  })
+
+  // Phase 0 characterisation (docs/architecture/modular-activities-plan.md step 0.3),
+  // deliberately updated in plan 2.3: the broadcast answer is now exposed as
+  // displayAnswer so ActivityHost can render a teacher's activity broadcast. Quiz tasks
+  // still don't render it (and student-source Go Live is no longer offered on quiz or
+  // activity tasks — see allowsStudentBroadcast).
+  it('exposes a broadcast answer only as displayAnswer', () => {
+    const quizBroadcast = {
+      active: true,
+      source: 'student',
+      sourceStudentId: 'student-2',
+      taskId: 1,
+      code: '',
+      answer: '{"p1":"p1"}',
+      runStatus: 'submitted',
+      checkPassed: true,
+      checkAttempted: true,
+      checkSuggestion: '',
+    }
+    const display = deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: false,
+      phase: 'lesson',
+      teacherLive: quizBroadcast,
+      identityId: 'student-1',
+      currentTaskId: 1,
+      viewingTaskId: null,
+    })
+    expect(display.isStudentGoLiveViewer).toBe(true)
+    expect(Object.keys(display).sort()).toEqual([
+      'displayActiveFile',
+      'displayActivity',
+      'displayAnswer',
+      'displayArcadeDesign',
+      'displayBlockDrag',
+      'displayCheckAttempted',
+      'displayCheckPassed',
+      'displayCheckSuggestion',
+      'displayCode',
+      'displayCodeArrangeCursor',
+      'displayCodeArrangeSlots',
+      'displayCursor',
+      'displayFiles',
+      'displayOutput',
+      'displayOutputCollapsed',
+      'displayRunStatus',
+      'displaySelection',
+      'displaySpriteState',
+      'displayTurtleResult',
+      'displayedTaskId',
+      'isForcedTeacherLive',
+      'isLiveCopyBlocked',
+      'isPresentationStudentViewer',
+      'isStudentGoLiveViewer',
+      'isTeacherLiveActive',
+      'isTeacherLiveViewer',
+    ])
+    expect(display.displayAnswer).toBe(quizBroadcast.answer)
+    const { displayAnswer: _answer, ...others } = display
+    expect(Object.values(others)).not.toContain(quizBroadcast.answer)
+    // The marked result does carry through.
+    expect(display.displayRunStatus).toBe('submitted')
+    expect(display.displayCheckPassed).toBe(true)
+  })
+})
+
+describe('teacherLiveReferenceDisplayState by state kind (plan 1.5)', () => {
+  it('shows a Turtle broadcast as code, like Python', () => {
+    expect(teacherLiveReferenceDisplayState({ code: 'forward(50)' }, 'turtle')).toBe('forward(50)')
+  })
+
+  it('still returns null for types without a live reference', () => {
+    expect(teacherLiveReferenceDisplayState({ code: '{}' }, 'scratch')).toBeNull()
+    expect(teacherLiveReferenceDisplayState({ code: '{}' }, 'desktop')).toBeNull()
+    expect(teacherLiveReferenceDisplayState(null, 'python')).toBeNull()
   })
 })

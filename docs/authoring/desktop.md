@@ -213,6 +213,110 @@ Additional Desktop-only check types:
 
 ---
 
+## Input Checks (how it was done)
+
+The checks above test the **outcome** (the file is in the folder). Input checks test the
+**method** — so the skills from the Keyboard and Mouse activities carry into real desktop work:
+"move the file by *dragging* it", "copy it with *Ctrl+C*", "open it with a *double-click*". They
+are shared check types (owner `input`, defined in `src/shared/input/checks.js`); only Desktop
+tasks record input, so the validator rejects them anywhere else. Combine them with an outcome
+check in a `check` list so the task needs both.
+
+| Type | Fields | Passes when |
+|---|---|---|
+| `input_gesture` | `gesture` (`click`, `double_click`, `right_click`, `drag`, `scroll`, `hover`); optional `targetKind` (`file`, `folder`, `window`, `icon`), `dropTargetKind` (drags only, same kinds), `min` (default 1), `strict` | The student made that gesture (on that kind of target, `min` times). A drag with `dropTargetKind` counts only drags dropped onto that kind of target. |
+| `input_shortcut` | `combo` (e.g. `ctrl+c`, `ctrl+shift+z`, `f2`, `delete`); optional `via` (`keyboard` default, `menu`, `any`), `min` | The shortcut was pressed (`keyboard`), its menu/toolbar equivalent was used (`menu` — File Manager's right-click or toolbar Copy/Cut/Paste count as `ctrl+c`/`ctrl+x`/`ctrl+v`), or either (`any`). |
+| `input_modifier` | `modifier` (`shift`, `caps_lock`); optional `notCapsLock` (with `shift`), `min` | The student typed `min` capital letters with Shift (or Caps Lock). `notCapsLock: true` fails the check once Caps Lock has made a capital. |
+
+- **Target kinds:** `file` and `folder` are File Manager items (grid and folder tree), `window`
+  is anywhere else inside an app window (title bar included — double-clicking it maximises),
+  and `icon` is a desktop app icon.
+- **Touch screens:** unless `strict: true`, a touch equivalent counts — a double-tap for
+  `double_click`, a long-press for `right_click`. `hover` has no touch equivalent; avoid it in
+  lessons that may run on tablets.
+- **Ctrl and Cmd are the same** in `combo` (`ctrl+c` also accepts Cmd+C on a Mac). Shortcuts the
+  browser keeps for itself (`ctrl+w`, `ctrl+t`, `ctrl+n`, `alt+f4`, `alt+tab`, …) are rejected —
+  teach those with a quiz. Shift+letter is typing, not a shortcut: use `input_modifier`.
+- **What's recorded:** only counts (gestures per target kind, drags per source/drop kind,
+  shortcuts by keyboard vs menu, Shift/Caps Lock capitals) — never what was typed. The summary
+  lives in memory for the current task attempt only: it isn't saved with the desktop, isn't sent
+  to the teacher, and starts empty again after a reload or when the task changes. A student who
+  reloads mid-task repeats the gesture.
+- Input checks re-evaluate as the student works, like every Desktop check. In `feedbackChecks`
+  they make good nudges: pair a completion check `{ type: input_gesture, gesture: drag }` with a
+  feedback check `{ type: input_shortcut, combo: ctrl+x, via: any, hint: "Try dragging it
+  instead of cutting and pasting." }`.
+
+```yaml
+id: desktop-input-methods
+type: composed
+title: Mouse and Keyboard on the Desktop
+description: Move and copy files the way you practised with the mouse and keyboard.
+level: 1
+modules:
+  - id: desktop-input
+    type: desktop
+tasks:
+  - title: Drag it into the folder
+    moduleType: desktop
+    explainer: Open **File Manager** and **drag** `notes.txt` onto the **Homework** folder.
+    availableApps: [fileManager]
+    starterDesktop:
+      fs:
+        "/":
+          type: dir
+        "/Homework/":
+          type: dir
+        "/notes.txt":
+          type: file
+          content: My notes
+      recycleBin: []
+      windows: []
+    check:
+      - type: fs_path
+        operator: exists
+        itemType: file
+        path: /Homework/notes.txt
+      - type: input_gesture
+        gesture: drag
+        targetKind: file
+        dropTargetKind: folder
+        hint: Press on the file, keep holding, and let go over the folder.
+    feedbackChecks:
+      - type: input_shortcut
+        combo: ctrl+x
+        via: any
+        mode: nudge
+        hint: Cutting and pasting works too — but this time, try dragging it.
+  - title: Copy with the keyboard
+    moduleType: desktop
+    explainer: Select `plan.txt`, press **Ctrl+C**, open **Homework**, then press **Ctrl+V**.
+    availableApps: [fileManager]
+    starterDesktop:
+      fs:
+        "/":
+          type: dir
+        "/Homework/":
+          type: dir
+        "/plan.txt":
+          type: file
+          content: The plan
+      recycleBin: []
+      windows: []
+    check:
+      - type: fs_path
+        operator: exists
+        itemType: file
+        path: /Homework/plan.txt
+      - type: input_shortcut
+        combo: ctrl+c
+      - type: input_shortcut
+        combo: ctrl+v
+        hint: Use the keyboard shortcut Ctrl+V rather than the Paste menu.
+```
+
+---
+
 ## Minimal JSON Example
 
 ```json

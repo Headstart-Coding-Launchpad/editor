@@ -1,7 +1,7 @@
 import React from 'react'
 import { createEvent, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import SupportStagePanel from '../SupportStagePanel'
+import SupportStagePanel, { stageToText } from '../SupportStagePanel'
 
 describe('SupportStagePanel', () => {
   it('does not show its reference content until its parent marks the stage revealed', () => {
@@ -43,5 +43,20 @@ describe('SupportStagePanel', () => {
     expect(cutEvent.defaultPrevented).toBe(true)
     expect(dragEvent.defaultPrevented).toBe(true)
     expect(contextEvent.defaultPrevented).toBe(true)
+  })
+})
+
+describe('stageToText', () => {
+  it('reads each module by its state kind', () => {
+    expect(stageToText({ code: 'forward(50)' }, 'turtle')).toBe('forward(50)')
+    expect(stageToText({ code: 'x = 1' }, 'electronics')).toBe('x = 1')
+    expect(stageToText({ files: [{ name: 'index.html', content: '<p>' }] }, 'html')).toBe(
+      '/* index.html */\n<p>'
+    )
+    expect(stageToText({ fs: { '/': { type: 'dir' } } }, 'filesystem')).toContain('"type": "dir"')
+    expect(stageToText({ desktop: { windows: [] } }, 'desktop')).toContain('"windows": []')
+    expect(stageToText({ markdown: 'blocks' }, 'scratch')).toBe('blocks')
+    expect(stageToText({ code: 'x' }, 'unknown-type')).toBe('')
+    expect(stageToText(null, 'python')).toBe('')
   })
 })

@@ -3,6 +3,16 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import StudentCard from '../StudentCard'
+import {
+  CONFIDENCE_TASK,
+  FILL_BLANK_DRAG_TASK,
+  FILL_BLANK_TYPE_TASK,
+  LEGACY_QUIZ_TASKS,
+  MATCH_TASK,
+  MULTIPLE_CHOICE_TASK,
+  PYTHON_CODE_ARRANGE_TASK,
+  SHORT_ANSWER_TASK,
+} from '../../../test/fixtures/legacyActivityTasks'
 
 vi.mock('../QuizTask', () => ({
   getQuizOptionText: (_task, answer) => (answer ? `Text for ${answer}` : ''),
@@ -451,6 +461,109 @@ describe('StudentCard', () => {
     it('is absent for ordinary code tasks', () => {
       render(<StudentCard {...mkProps()} />)
       expect(screen.queryByTestId('item-progress')).not.toBeInTheDocument()
+    })
+  })
+
+  // Phase 0 characterisation (docs/architecture/modular-activities-plan.md step 0.3):
+  // what the teacher's card shows from the mirrored currentAnswer /
+  // currentCodeArrangeSlots for each legacy fixture. (getQuizOptionText is mocked
+  // file-wide above, so multiple choice shows "Text for <id>".)
+  describe('characterisation: legacy quiz + code_arrange fixtures', () => {
+    const fixtureLesson = {
+      type: 'python',
+      tasks: [...Object.values(LEGACY_QUIZ_TASKS), PYTHON_CODE_ARRANGE_TASK],
+    }
+    function renderTask(taskId, student = {}, session = { state: 'active' }) {
+      return render(
+        <StudentCard
+          {...mkProps(
+            { lesson: fixtureLesson, session: { ...session, currentTaskId: taskId } },
+            student
+          )}
+        />
+      )
+    }
+
+    it('shows "No answer yet" for every quiz sub-type with a null or empty answer', () => {
+      for (const task of Object.values(LEGACY_QUIZ_TASKS)) {
+        for (const currentAnswer of [null, '']) {
+          const { unmount } = renderTask(task.id, { currentAnswer })
+          expect(screen.getByText('No answer yet')).toBeInTheDocument()
+          unmount()
+        }
+      }
+    })
+
+    it('multiple_choice shows the option id and its text; submitted results badge the card', () => {
+      renderTask(MULTIPLE_CHOICE_TASK.id, {
+        currentAnswer: 'b',
+        lastRunStatus: 'submitted',
+        checkPassed: false,
+      })
+      expect(screen.getByText('b')).toBeInTheDocument()
+      expect(screen.getByText('Text for b')).toBeInTheDocument()
+      expect(screen.getByText('Failed')).toBeInTheDocument()
+    })
+
+    it.each([
+      [{ lastRunStatus: null, checkPassed: null }, 'In progress…'],
+      [{ lastRunStatus: 'submitted', checkPassed: null }, 'Answered'],
+      [{ lastRunStatus: 'submitted', checkPassed: false }, '✗ Some incorrect'],
+      [{ lastRunStatus: 'submitted', checkPassed: true }, '✓ All correct'],
+      // checkPassed true wins even before a submitted run status.
+      [{ lastRunStatus: null, checkPassed: true }, '✓ All correct'],
+    ])('match / fill_blank summarise %o as %s', (student, label) => {
+      for (const [task, currentAnswer] of [
+        [MATCH_TASK, '{"p1":"p1"}'],
+        [FILL_BLANK_DRAG_TASK, '{"b1":"b1"}'],
+        [FILL_BLANK_TYPE_TASK, '{"t1":"loop"}'],
+      ]) {
+        const { unmount } = renderTask(task.id, { currentAnswer, ...student })
+        expect(screen.getByText(label)).toBeInTheDocument()
+        unmount()
+      }
+    })
+
+    it('match / fill_blank show per-item progress from the mirrored answer', () => {
+      const { unmount } = renderTask(MATCH_TASK.id, { currentAnswer: '{"p1":"p1","p2":"p3"}' })
+      expect(screen.getByTestId('item-progress')).toHaveTextContent('🧩 2/3 filled · 1 correct')
+      unmount()
+      renderTask(FILL_BLANK_DRAG_TASK.id, { currentAnswer: '{"b1":"b1","b2":"d1"}' })
+      expect(screen.getByTestId('item-progress')).toHaveTextContent('🧩 2/2 filled · 1 correct')
+    })
+
+    it('short_answer shows the raw answer text', () => {
+      renderTask(SHORT_ANSWER_TASK.id, { currentAnswer: 'It shows text' })
+      expect(screen.getByText('It shows text')).toBeInTheDocument()
+    })
+
+    it('confidence shows the level out of 5, and no pass/fail badge even once submitted', () => {
+      const { unmount } = renderTask(CONFIDENCE_TASK.id, {
+        currentAnswer: '4',
+        lastRunStatus: 'submitted',
+        checkPassed: true,
+      })
+      expect(screen.getByText('4/5')).toBeInTheDocument()
+      expect(screen.queryByText('Passed')).not.toBeInTheDocument()
+      unmount()
+      // A non-numeric answer is not guarded.
+      renderTask(CONFIDENCE_TASK.id, { currentAnswer: 'abc' })
+      expect(screen.getByText('NaN/5')).toBeInTheDocument()
+    })
+
+    it('hides the quiz answer area during a teacher-started sandbox', () => {
+      renderTask(SHORT_ANSWER_TASK.id, { currentAnswer: 'It shows text' }, { state: 'sandbox' })
+      expect(screen.queryByText('It shows text')).not.toBeInTheDocument()
+      expect(screen.queryByText('No answer yet')).not.toBeInTheDocument()
+    })
+
+    it('code_arrange shows slot progress from currentCodeArrangeSlots, not a quiz answer', () => {
+      renderTask(PYTHON_CODE_ARRANGE_TASK.id, {
+        currentCodeArrangeSlots: { S1: 'S1' },
+        currentAnswer: 'ignored',
+      })
+      expect(screen.getByTestId('item-progress')).toHaveTextContent('🧩 1/2 slots filled')
+      expect(screen.queryByText('ignored')).not.toBeInTheDocument()
     })
   })
 })

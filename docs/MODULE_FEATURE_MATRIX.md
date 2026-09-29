@@ -1,6 +1,6 @@
 # Lesson Module Feature Matrix
 
-This is a product-facing overview of the seven lesson modules registered in `src/modules/`. It records features that differ by module and clarifies the distinction between a **landing-page playground**, a **lesson sandbox**, and a teacher editing a student's current work.
+This is a product-facing overview of the eight lesson modules registered in `src/modules/`. It records features that differ by module and clarifies the distinction between a **landing-page playground**, a **lesson sandbox**, and a teacher editing a student's current work.
 
 ## At a glance
 
@@ -12,6 +12,7 @@ This is a product-facing overview of the seven lesson modules registered in `src
 | HTML/CSS/JS | Multi-file editor and sandboxed webpage preview | No | Yes | Yes | No | Yes | Yes | Yes | Yes | Yes | Yes |
 | Scratch | Block editor, sprites, and stage canvas | Yes | Yes | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes |
 | Filesystem | Virtual file-manager workspace | No | Yes | Yes | No | Yes | Yes | No | Yes | Yes | Yes |
+| Desktop | Windowed desktop shell with File Manager, Text Editor, Image Viewer, Paint, and Browser apps | No | Yes | Yes | No | Yes | Yes | No | Yes | Yes | No |
 | Electronics | Breadboard, wiring, components, and optional MicroPython | Yes | Yes | Yes | No | Yes | Yes | No | Yes | Yes | Yes |
 
 **Yes** means the feature is implemented. **No** means it is not currently available for that module.
@@ -27,9 +28,9 @@ This is a product-facing overview of the seven lesson modules registered in `src
 | Teacher-editable shared sandbox | In teacher-forced sandbox mode, the teacher can edit module state and push it to the whole class. This edits shared sandbox content, not an individual student's task work. |
 | Code stages | Authors can define starter, support-stage, and complete states. Teachers can inspect stages and send an authored stage to the class. The state format is module-specific: code, files, blocks, filesystem, or circuit. |
 | Student self-serve stage reference | After unsuccessful work, Python and HTML can offer an authored Support stage as a read-only reference. For other modules, stages remain author/teacher tools rather than an automatic student reference panel. |
-| Automatic completion checks | Each module supplies its own check editor and evaluator: Python/code checks, HTML element checks, Turtle drawing + code checks, Scratch block/state checks, filesystem checks, or circuit + Micro Controller code checks. Arcade Kit evaluates code checks on Run game; game-state checks aren't supported yet (see `docs/authoring/arcade.md`). |
-| Carry work to a later task | A later task can use a previous task's completed state as its starter: source code for Python/Arcade, files for HTML, blocks for Scratch, filesystem state for Filesystem, and circuit state for Electronics. |
-| Share workspace with the class | On a task authored with `allowSharing`, a student can offer their workspace to the whole class. The teacher previews and approves each share; classmates then open it as a non-destructive copy they can run and edit. Available for every module except Python Turtle, which shared workspaces do not support yet. Quiz and information tasks are excluded because they have no workspace to share. |
+| Automatic completion checks | Each module supplies its own check editor and evaluator: Python/code checks, HTML element checks, Turtle drawing + code checks, Scratch block/state checks, filesystem checks, desktop file/window checks, or circuit + Micro Controller code checks. Arcade Kit evaluates code checks on Run game; game-state checks aren't supported yet (see `docs/authoring/arcade.md`). |
+| Carry work to a later task | A later task can use a previous task's completed state as its starter: source code for Python/Arcade, files for HTML, blocks for Scratch, filesystem state for Filesystem, desktop state for Desktop, and circuit state for Electronics. |
+| Share workspace with the class | On a task authored with `allowSharing`, a student can offer their workspace to the whole class. The teacher previews and approves each share; classmates then open it as a non-destructive copy they can run and edit. Available for every module except Python Turtle and Desktop, which shared workspaces do not support yet. Quiz and information tasks are excluded because they have no workspace to share. |
 
 ## Module-specific notes
 
@@ -41,11 +42,12 @@ This is a product-facing overview of the seven lesson modules registered in `src
 | HTML/CSS/JS | Supports multiple files and a Blob-backed, sandboxed iframe preview; completion checks can inspect page elements. |
 | Scratch | Supports multi-sprite Blockly workspaces, costumes/backdrops, custom toolbox choices, and an in-browser Scratch-style runtime. |
 | Filesystem | Simulates a Windows Explorer-style workspace with folders, files, rename, move, drag-and-drop, and text-file editing. |
+| Desktop | Windowed desktop shell (icons, taskbar, draggable/resizable windows) around File Manager, Text Editor, Image Viewer, Paint, and a simulated Browser; checks cover files, the Recycle Bin, and window state. See `docs/authoring/desktop.md`. |
 | Electronics | Supports a visual breadboard, wiring, circuit simulation/checks, configurable components, and optional MicroPython GPIO control. |
 
 ## Shared lesson and classroom features
 
-All seven modules participate in the same lesson builder, teacher dashboard, student progress flow, session controls, session-only task editing, check feedback, personal sandbox flow, and teacher live broadcast infrastructure. The module determines the workspace and state type; the classroom features are shared.
+All eight modules participate in the same lesson builder, teacher dashboard, student progress flow, session controls, session-only task editing, check feedback, personal sandbox flow, and teacher live broadcast infrastructure. The module determines the workspace and state type; the classroom features are shared.
 
 ## Sources of truth
 

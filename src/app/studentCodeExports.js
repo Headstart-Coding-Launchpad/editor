@@ -1,9 +1,16 @@
 import { flattenTasks } from '../shared/taskUtils'
 import { loadSavedCode } from './studentStorage'
-import { getTaskModuleType } from '../shared/composedLesson'
+import { getTaskModuleType, isCodeTask } from '../shared/composedLesson'
+import { getModuleDefinition } from '../modules/definitions'
 
+// Modules whose task code downloads as a `.launchpad` file (capabilities.downloadCode; python).
+function downloadsCode(type) {
+  return getModuleDefinition(type)?.capabilities.downloadCode === true
+}
+
+// Code tasks only: information, quiz and hosted activity tasks have no code to download.
 export function isPythonCodeTask(task) {
-  return task?.taskType !== 'information' && task?.taskType !== 'quiz'
+  return isCodeTask(task)
 }
 
 // Shared traversal for both getSavedPythonTasks and getSavedNonPythonTaskCount below:
@@ -21,7 +28,7 @@ export function getSavedPythonTasks({ lesson, anonymousId, readSavedCode = loadS
     lesson,
     anonymousId,
     readSavedCode,
-    includeModuleType: (type) => type === 'python',
+    includeModuleType: downloadsCode,
   })
     .filter(({ saved }) => saved && typeof saved.code === 'string')
     .map(({ task, saved }) => ({ id: task.id, title: task.title, code: saved.code }))
@@ -37,6 +44,6 @@ export function getSavedNonPythonTaskCount({ lesson, anonymousId, readSavedCode 
     lesson,
     anonymousId,
     readSavedCode,
-    includeModuleType: (type) => !!type && type !== 'python',
+    includeModuleType: (type) => !!type && !downloadsCode(type),
   }).filter(({ saved }) => !!saved).length
 }

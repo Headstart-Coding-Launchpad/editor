@@ -147,6 +147,32 @@ Desktop specifically, it's a separate, scoped follow-up — not a gap in today's
   through how a lesson is authored — that part isn't a platform gap, just an authoring choice.
 - Needed for Lesson 12's consolidation challenge (combines file management, Recycle Bin, browsing, search, downloads in one scenario) and general polish.
 
+## Input checks (modular-activities plan step 5.1) — shipped
+
+Desktop tasks can check **how** something was done, not just the outcome, so the Keyboard and
+Mouse activities' skills carry into desktop work.
+
+- `StudentWorkspace.jsx` records input on the desktop surface with
+  `useSurfaceInputRecorder` (`src/shared/input/`) — capture-phase key and pointer listeners, only
+  when the task has an `input_*` check and isn't read-only. Elements carry `data-input-id` /
+  `data-input-kind`: File Manager grid items and tree nodes (`file` / `folder`, in
+  `FilesystemTask.jsx`), app windows (`window`, `Window.jsx`) and desktop icons (`icon`,
+  `Desktop.jsx`). File Manager reports menu/toolbar Copy/Cut/Paste through `onCommand`, recorded
+  as the `ctrl+c`/`x`/`v` shortcut's `menu` equivalent.
+- The recorder folds events into a tiny capped summary (`targetSummary.js`: gestures per target
+  kind, drags by source > drop kind, shortcuts by keyboard vs menu, Shift/Caps Lock capitals) and
+  reports it only when it changes. It rides on the desktop **interaction**
+  (`handleDesktopInteraction`, like `currentDir`/`openFile`) — in memory only, never persisted,
+  published or written to Firebase — and `checking.buildContext` exposes it as `ctx.input`.
+- Check types `input_gesture`, `input_shortcut`, `input_modifier` (owner `input`,
+  `src/shared/input/checks.js`) are registered in the shared check registry; Desktop opts in via
+  `inheritsCheckTypes` and each type's `validate()` rejects modules that don't. Builder fields
+  live in `desktopEditors.jsx`. Authoring: `docs/authoring/desktop.md` "Input Checks".
+- Known gaps: the summary resets on reload/task change (a student who reloads repeats the
+  gesture); keyboard shortcuts count the key press even if the app ignored it (e.g. Ctrl+C with
+  nothing selected); Text Editor/Paint/Browser have no menu commands reported yet (only File
+  Manager's clipboard); `input_accuracy` / `input_wpm` from the plan aren't Desktop checks yet.
+
 ## Usually changes with
 
 Per `docs/architecture/feature-impact-map.md`'s "Lesson Type Modules" pattern: `src/modules/desktop/`, `src/modules/registry.js`, `src/modules/__tests__/moduleInterface.test.js`, `src/app/hooks/useStudentCodeState.js`, `src/app/hooks/useTeacherLivePublish.js`, `src/app/views/StudentView.jsx`, `src/app/views/TeacherView.jsx`, `src/app/views/teacher/TeacherEditorPanel.jsx`, `src/builder/lessonUtils.js`, `cli/validate.mjs`, `src/shared/composedLesson.js`, `src/shared/taskUtils.js`, `docs/authoring/desktop.md`, `docs/authoring/CHANGELOG.md`, and this file.

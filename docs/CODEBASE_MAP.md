@@ -61,16 +61,16 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 | File | Role |
 |---|---|
-| `studentStorage.js` | Student task/file localStorage key construction and saved-work persistence helpers; personal sandbox load/save helpers |
-| `codeCheckContext.js` | `buildCodeCheckContext()` — the check-evaluation context for code tasks (Run, idle feedback, Check/Submit, Arcade Run game); adds `circuit` for Electronics so code checks read the MicroPython source |
-| `studentTaskContent.js` | Pure student task-content selection and authored carry-chain precedence helpers, plus `resolveRemoteResetTarget()` — what a teacher's remote reset/complete action should put in front of the student, per lesson type |
+| `studentStorage.js` | Student task/file localStorage key construction and saved-work persistence helpers; personal sandbox load/save helpers; raw per-file record helpers (`loadSavedFileRecord`, `saveFileRecord`, `loadPersonalSandboxFileRecord`, `savePersonalSandboxFileRecord`, ephemeral equivalents) for the storage adapters |
+| `codeCheckContext.js` | `buildCodeCheckContext()` — the check-evaluation context for code tasks (Check/Submit); defers to a run-checked module's `checking.buildContext` (Electronics adds `circuit` so code checks read the MicroPython source), else `{ ...extras, code }` |
+| `studentTaskContent.js` | Pure student task-content selection and authored carry-chain precedence helpers, plus `resolveRemoteResetTarget()` — what a teacher's remote reset/complete action should put in front of the student, dispatched to each module's `lifecycle.resetTarget` |
 | `studentLiveDisplay.js` | Pure student teacher-live/view display selection and live HTML file conversion helpers; `displayOutputCollapsed` mirrors the broadcast source's output/preview panel collapse state to a forced-live viewer (`null` when not forced-live) |
-| `studentQuizContent.js` | Pure quiz suggestion helpers: maps wrong answers to option/task/check hint feedback |
+| `studentQuizContent.js` | Adapter re-exporting the quiz activities' `buildQuizSubmission` / `getQuizSuggestion` (`src/activities/quiz/quizActivity.js`) |
 | `studentCodeExports.js` | Pure selection of browser-saved Python code tasks for `.launchpad` backup exports |
-| `teacherSandboxContent.js` | Pure teacher sandbox starter/configured content selection and fallback rules |
+| `teacherSandboxWork.js` | Pure teacher-sandbox work helpers for TeacherView (plan step 4.6): the per-`capabilities.sandboxState` work slots, restore order (draft, then the live session via `wire.fromCode` / decoded `sandboxFiles`, then `lifecycle.sandboxStarter`), draft copies, and the `enterSandbox` / `pushSandboxCode` / `pushSandboxFiles` fields via `wire.toCode` on the module's `wire.sandboxChannel`; `taskStarterWork` is the displayed task's Starter-tab work (`workSlot.teacherStarter`, step 4.8) |
 | `teacherLivePayload.js` | Pure student-to-teacherLive broadcast payload construction |
 | `throttledMirrorWriter.js` | Leading + trailing throttle for mirrored "latest value" writes (watched student output); re-checks nothing itself — callers gate on watch state per write |
-| `taskItemProgress.js` | Pure teacher-only filled/correct item counts for Match and Fill in the Gaps quizzes and filled-slot counts for Code Arrange (StudentCard + StudentModal header) |
+| `taskItemProgress.js` | Pure teacher-only filled/correct item counts for Match and Fill in the Gaps quizzes (via the quiz activity's `getProgress`) and filled-slot counts for Code Arrange (StudentCard + StudentModal header) |
 | `sharedWorkspacePayload.js` | Pure workspace-share snapshot construction, size limit, index entry building, and newest-first share sorting |
 
 ---
@@ -89,8 +89,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `IframePreview.jsx` | Sandboxed iframe output with console log capture tab (receives postMessage from iframe) |
 | `CollapsibleIframePreview.jsx` | Slide-in toggle wrapper around IframePreview |
 | `QuizTask.jsx` | Polymorphic quiz: multiple-choice (grid), match (drag-drop), fill-blank (drag/type), short-answer, confidence (1–5 rating) |
-| `CodeArrangeTask.jsx` | `taskType: code_arrange` presentational workspace: renders each authored line as either a whole-line drop slot or fixed text with small inline blanks in place (via `useTileDragAndDrop`), all fed from the one shared "Code tiles" pool below the program, Run button, Python output panel or HTML iframe preview. Reused by both the student container and the Builder preview |
-| `CodeArrangeTaskContainer.jsx` | Wires `CodeArrangeTask` to `useStudentCodeState` (`cs`): persists the tile arrangement, pushes assembled code into `cs.handleCodeChange`/`handleFileChange`, and runs via `cs.handleRun` — the real Python/HTML pipeline, unmodified |
+| `CodeArrangeTask.jsx`, `CodeArrangeTaskContainer.jsx` | Thin re-exports of the code_arrange activity's tile board and module workspace (moved to `src/activities/code_arrange/`) |
 | `CheckFeedbackBanner.jsx` | Pass/fail popup (floating, top-center, auto-dismisses after 45s or via its own close button — not inline in the layout) with optional hint and "see complete code" action; no longer hosts its own Need Help button (see StudentView's top bar) |
 | `WaitingRoom.jsx` | Full-screen modal: lesson title + animated "your teacher is getting ready" message; shows a "📹 Join Video Call" link when the session's `videoCallLink` is set |
 | `ChoiceScreen.jsx` | `choice`-phase screen: Join a Live Lesson or Go Solo (shown when no active session exists and the student hasn't committed to solo) |
@@ -101,11 +100,11 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `NameEntry.jsx` | Student name input with duplicate-suffix handling and solo fallback |
 | `StudentGrid.jsx` | Grid of StudentCards with collapse toggle and check conditions display |
 | `PresenceBadge.jsx` | Shared online/offline/waiting badge used by StudentCard and StudentModal |
-| `StudentCard.jsx` | Compact card: name, online/run/check/support/sharing badges, teacher-only item progress badge (`taskItemProgress.js`), code/output/quiz snippet, expand button |
+| `StudentCard.jsx` | Compact card: name, online/run/check/support/sharing badges, teacher-only item progress badge (`taskItemProgress.js`), code/output snippet (per the module's `capabilities.cardSummary`) or the activity/quiz answer summary (the activity UI's `CardSummary`), expand button |
 | `SharedWorkspacePreview.jsx` | Read-only render of a frozen share snapshot; maps a snapshot to each module's TeacherLiveView props |
 | `SharedWorkspacePanel.jsx` | Student-facing "Shared work" gallery button, new-share toast, and share list |
 | `SharedWorkspaceViewer.jsx` | Non-destructive editable copy of a classmate's shared workspace; renders the student's own `LessonTaskContent` surface via a throwaway `useStudentCodeState` (previewMode, namespaced lessonId, no-op session writers), seeded from the snapshot; optional "Copy to my editor" |
-| `StudentModal.jsx` | Full-width modal: student workspace view + teacher actions (Go Live, Remote Reset, Check Override, Rename, Remove, Send Video Call Link) |
+| `StudentModal.jsx` | Full-width modal: student workspace view + teacher actions (Go Live, Remote Reset, Check Override, Rename, Remove, Send Video Call Link); remote run, live edit (`capabilities.teacherEditor`, rendered through the module's `TeacherLiveView`), code highlights and the stage Reveal menu are gated by the task module's capabilities |
 | `TeacherMessageToast.jsx` | Friendly dismissible toast shown to a student when a teacher sends them a personal message |
 | `TeacherTimers.jsx` | Timer strip for elapsed lesson time, planned duration, and active-task countdown |
 | `TeacherSessionControls.jsx` | Teacher top-bar task navigation, presentation/share links, session action controls, and a "📹 Video Call" popover to set/edit the session's `videoCallLink` |
@@ -114,7 +113,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TeacherSandboxBanner.jsx` | Status banner shown in sandbox staging/live mode with action buttons |
 | `TeacherEndSessionModal.jsx` | Confirmation modal for ending a live session, with End and End+Home actions |
 | `TeacherFeedbackModal.jsx` | Two-tab modal for submitting lesson feedback (per-task, stored in Firestore subcollection) or platform feedback (stored in `platformFeedback` collection) |
-| `TeacherReportModal.jsx` | Post-session report modal shown right after ending a session: per-student per-task results (including any live `teacherRating` on a task), distinct attempts, YAML export via `reportToYamlText`; when `onSaveFeedback` is supplied and no feedback is saved yet, shows an editable star-rating/notes form that calls it (used only for the just-ended session's report, not historical ones) |
+| `TeacherReportModal.jsx` | Post-session report modal shown right after ending a session: per-student per-task results (including any live `teacherRating` on a task), distinct attempts, activity item progress, YAML export via `reportToYamlText`; when `onSaveFeedback` is supplied and no feedback is saved yet, shows an editable star-rating/notes form that calls it (used only for the just-ended session's report, not historical ones) |
 | `StarRatingFeedbackFields.jsx` | Shared 1-5 star rating input/display + "what worked well"/"what didn't work" textareas, used by both `TeacherReportModal`'s end-of-session lesson rating and `TaskRatingPanel`'s live per-task rating |
 | `TeacherReportsPanel.jsx` | Persistent list of past session reports for a lesson, reachable any time from the Reports button; queries `sessionReports` ordered by `startedAt` desc and opens `TeacherReportModal` per report |
 | `EditLessonModal.jsx` | Reuses the builder's `TaskList`/`TaskEditor`/`GroupEditor`/`useBuilderState` to edit a lesson's tasks from TeacherView; "Apply for This Session" broadcasts via the session's `lessonOverrideTasks` (teacher and admin), "Save Permanently" (admin only) also writes Firestore |
@@ -150,8 +149,8 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `OverrideDropdown.jsx` | Teacher check-override menu and fail-hint modal |
 | `MessageCompose.jsx` | Personal teacher message composer for one student |
 | `StageDropdown.jsx` | Teacher request menu for sending starter/stage/complete code to a student |
-| `PaneFocusDropdown.jsx` | Checkbox picker + Highlight/Force actions for `teacherPaneCommand` — reused per-student (StudentModal, "Focus") and whole-class (TeacherView, "Focus Class") |
-| `StudentWorkspaceBody.jsx` | Lesson-type-specific student workspace display inside the teacher modal; Python's `OutputPanel` mirrors `currentInputPrompt`/`currentInput` read-only while a watched student has a pending `input()` prompt |
+| `PaneFocusDropdown.jsx` | Checkbox picker + Highlight/Force actions for `teacherPaneCommand` — reused per-student (StudentModal, "Focus") and whole-class (TeacherView, "Focus Class"); options are Instructions plus the module's `capabilities.focusPanes` |
+| `StudentWorkspaceBody.jsx` | Student workspace display inside the teacher modal, chosen by the module's `capabilities.studentMirror` (`code` / `files` inline editors, `blocks` / `view` through the module's `TeacherLiveView` passed in by StudentModal); the `code` mirror's `OutputPanel` mirrors `currentInputPrompt`/`currentInput` read-only while a watched student has a pending `input()` prompt |
 | `ShareRequestPanel.jsx` | Teacher review of a pending workspace share: fetches the frozen snapshot, previews it read-only, approves or declines |
 | `constants.js` | StudentModal highlight emoji options and shared modal constants |
 
@@ -175,15 +174,17 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `useSession.js` | Firebase session listener and full command layer: session lifecycle, student sync, sandbox, teacherLive, remote reset, carry fallback/support reveal/task rating logging (`setTaskRating`), session-only lesson task override (`pushLessonOverride`/`clearLessonOverride`), workspace share request/approve/remove |
 | `useLessonLoader.js` | Firestore lesson fetch (or lessonProp pass-through); returns `{ lesson, lessonLoading, firstTaskId }` |
 | `useStudentPhase.js` | Student phase state machine (loading → choice → waiting → name-entry → lesson → sandbox → solo → ended); owns `phase`, `currentTaskId`, `viewingTaskId` |
-| `useStudentCodeState.js` | All student editor/code workspace state: code, files, output, check results, personal sandbox, run/stop handlers, and the Pyodide warm-up effect; composes the sub-hooks below |
+| `useStudentCodeState.js` | All student editor/code workspace state: code, files, output, check results, personal sandbox, run/stop handlers, and the Pyodide warm-up effect; composes the sub-hooks below. Every module shares the generic `work` slot and `handleWorkChange` pipeline driven by its definition (html's per-file `{ files, activeFile }`, Scratch's workspace-owned states with `reportRun` for its own checks) — `cs.code` / `cs.arcadeDesign` / `cs.files` / `cs.activeFile` / `handleCodeChange` / `handleFileChange` / `handleScratchChange` / `handleScratchCheck` / `handleArcadeRun` / `scratchExternalState` are aliases over it (`docs/architecture/lesson-type-modules.md`, "checking and the generic work slot"); `handleRun` dispatches on `capabilities.run` |
+| `runWithRuntime.js` | `runWithRuntime(ctx)` — the `'runtime'` branch of `handleRun` (Pyodide / MicroPython): output streaming and throttled teacher mirror, `input()` prompts, stop handling, the task check with feedback, the run-record save, `writeStudentRun` and the attempt log. Per-module differences come from the definition's `runResult` flags and `checking.buildContext` |
 | `useLatestRef.js` | `useLatestRef(value)` — a ref holding the latest render's value, for stale-closure-safe reads inside async handlers, timers and event listeners |
 | `useStudentPresenceReporting.js` | Reports this student's window state to the teacher: connected, focused, fullscreen, recently active. Presentation windows report nothing and remove themselves from the roster |
-| `useSandboxCodePush.js` | Loads content the teacher pushes into the sandbox into whichever state that lesson type keeps its work in, keyed off the session's push timestamps |
+| `useSandboxCodePush.js` | Loads content the teacher pushes into the sandbox, keyed off the session's push timestamps: on the module's code channel `wire.fromCode(sandboxCode)` → `onPushedWork(work)`, on the files channel the decoded `sandboxFiles` (else the lesson's `sandboxStarterFiles`) → `onPushedFiles(files)` |
 | `useTypewriterOutput.js` | `useTypewriterOutput(output)` — reveals program output with the retro typing animation, chunking faster as the remaining text grows; shared by `OutputPanel` and `BuilderOutputPanel` |
 | `useCheckFeedback.js` | Check result state (`checkPassed`, `checkAttempted`, `checkSuggestion`, `repeatedSuggestionCount`, `testResults`); `resetCheckFeedback` / `applyCheckFeedback`; teacher check-override effect |
 | `studentOutputBuffer.js` | Buffered output helper used by student run state to batch streaming output updates |
-| `createStudentPersistence.js` | Conditional localStorage save helpers: routes each write to the sandbox or normal task key based on `inPersonalSandboxRef` |
+| `createStudentPersistence.js` | Conditional localStorage save helpers: routes each write (one shared `routeSave`) to the sandbox or normal task key based on `inPersonalSandboxRef`, or the in-memory store in presentation/preview. Adapter-driven `saveWork` / `readWork` / `saveSandboxWork` / `readSandboxWork` map a module's work through its definition's `storage` adapter; `saveRunRecord` writes the code editor / run record (`{ code, ...fields }`, sandbox keeps only the code); the per-type named savers/readers remain for existing callers |
 | `useTeacherLivePublish.js` | Teacher-live broadcast helpers (`canPublishTeacherLive`, `currentTeacherLivePayload`, `publishTeacherLive`), `teacherLiveIframeSrc` and `htmlPreviewCollapsed` state, and the two teacher-live sync effects; `publishOutputCollapsed(collapsed)` merge-updates just `teacherLive.outputCollapsed`, standalone from the main payload, so a source's output/preview panel collapse state mirrors continuously to forced-live viewers |
+| `useActivityState.js` | State, persistence and live sync for hosted activity and quiz tasks (owned by `useStudentCodeState`): loads/saves the `__activity_state__` aux file, discrete changes mirror `currentAnswer` debounced, continuous changes only while `activeStudentView` is this student (throttled, flushed when the teacher starts watching), submit/auto grading → `applyCheckFeedback` + `writeStudentRun` + `logAttempt`, `remoteResetAction` starter/complete, `teacherAnswerEdit`, teacher-live `answer` payload |
 | `useTileDragAndDrop.js` | Shared drag-and-drop + tap-to-place hook for tile-based quizzes (MatchQuiz, FillBlankQuiz); also exports `setLiftedDragImage` and `removeTileFromState` |
 
 ---
@@ -201,8 +202,9 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 | File | Role |
 |---|---|
-| `lessonUtils.js` | Pure builder lesson validation and export normalisation rules |
-| `printLesson.js` | `buildPrintHtml(lesson)` — generates printable HTML string from lesson JSON (no DOM) |
+| `lessonUtils.js` | Builder lesson validation — the shared core (`src/shared/lessonValidation.js`) plus the Builder-only extras (duplicate task-id warnings, browser-only module rules such as Scratch toolbox XML, the untested-check reminder) — and export normalisation rules |
+| `printLesson.js` | `buildPrintHtml(lesson)` — generates printable HTML string from lesson JSON (no DOM); quizzes and activities print their own fields (`printHtml`), activities also their name and description; a code task's module section comes from its module's `authoring.printTask` |
+| `taskFormat.js` | Builder format switching: `COMMON_TASK_FIELDS` / `commonTaskFields` (kept across formats) and `convertTaskToActivity` (UI `builderConvert` or `defaultTask`) |
 
 ---
 
@@ -211,7 +213,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | File | Role |
 |---|---|
 | `useBuilderState.js` | Task CRUD state and handlers (add, duplicate, delete, reorder, subtasks) plus derived state (errors, warnings, flatTasks, selectedTask/Group) — no DOM, independently unit-testable |
-| `useTaskEditorState.js` | Run/check/output state and handlers for the task editor: `handleRun`, `handleRunTests`, `handleStop`, `handleTestChecks`, `handleQuizPreviewSelect`, `handleInputSubmit`, `resetRunState` |
+| `useTaskEditorState.js` | Run/check/output state and handlers for the task editor: `handleRun`, `handleRunTests`, `handleStop`, `handleTestChecks`, `handleQuizPreviewSelect`, `handleInputSubmit`, `resetRunState`; what Run does comes from the module's `authoring.builderRun` (`runsPyodide` / `runsNothing`, else the HTML preview) |
 
 ---
 
@@ -219,12 +221,12 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 | File | Role |
 |---|---|
-| `LessonMetaPanel.jsx` | Lesson-level metadata: id, type, title, description, level, topic summary/proposals, assets, sandbox config modals |
+| `LessonMetaPanel.jsx` | Lesson-level metadata: id, type, title, description, level, topic summary/proposals, assets (shared type assets for `authoring.sharedTypeAssets` modules), sandbox config modals |
 | `LessonTopicSummary.jsx` | Derived existing/missing/unused topic report and editor for lesson-level topic proposals |
-| `TaskList.jsx` | Left sidebar: task/group tree with drag-reorder, selection, creation, validation summary |
-| `TaskEditor.jsx` | Task editor composition root: orchestrates sub-components and workspace panels; dispatches to lesson-type `BuilderWorkspace` via registry; delegates run/check state to `useTaskEditorState`; re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
+| `TaskList.jsx` | Left sidebar: task/group tree with drag-reorder, selection, creation, validation summary; task icons/tooltips for quizzes and activities come from the activity registry |
+| `TaskEditor.jsx` | Task editor composition root: orchestrates sub-components and workspace panels; task format grid Code / Information / Quiz / Activity (+ Arrange in composed lessons) via `getTaskFormat`, with the quiz picker, activity gallery and quiz `BuilderEditor`s from the activity registry; dispatches to lesson-type `BuilderWorkspace` via registry; module gates (stage tabs, draft notice, Code button, copy-code placeholder, preview assets, reset-to-starter) come from the definition's `capabilities.unifiedStages` and `authoring` group; delegates run/check state to `useTaskEditorState`; re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
 | `ExplainerEditor.jsx` | Markdown editor with Edit/Preview tabs; live rendering via MarkdownRenderer |
-| `FileManager.jsx` | HTML file list: add/delete/type-change, entry file picker, HTML+CSS+JS template generator |
+| `FileManager.jsx` | HTML file list: add/delete/type-change, entry file picker, HTML+CSS+JS template generator (templates from `modules/html/fileTemplates.js`; re-exports `HTML_ONLY`) |
 | `BuilderOutputPanel.jsx` | Output panel with check results, retro typing animation (via `useTypewriterOutput`), and `input()` prompt for builder |
 | `GroupEditor.jsx` | Inline editor for a task group's title and subtask count summary |
 | `ValidationPanel.jsx` | Collapsible errors/warnings panel with tabbed view and per-warning ignore action |
@@ -235,7 +237,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 | File | Role |
 |---|---|
-| `SandboxStarterModal.jsx` | Type-specific sandbox starter editor for Python, HTML, Scratch, Filesystem, and Electronics lessons |
+| `SandboxStarterModal.jsx` | Lesson sandbox starter editor and summary, chosen by the module's `authoring.sandboxStarterEditor` (`code`, `blocks`, `fs`, `circuit`, `files`); composed lessons get one tab per module |
 | `StorageAssetUploader.jsx` | Firebase Storage upload/delete UI for lesson-level assets |
 | `SharedAssetsSelector.jsx` | Lesson-level selector for type-wide shared HTML assets |
 | `AssetSummary.jsx` | Lesson asset summary and embedded read-only asset browser |
@@ -248,8 +250,9 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | File | Role |
 |---|---|
 | `TaskEditorFields.jsx` | Shared primitives: `Field`, `QuizTypeIcon`, `TaskFormatIcon`, `CodeWorkspaceTabs`, `Modal`, `CarryThroughPicker`, `SpriteManager`, `CostumeManager`, `BackdropManager` |
-| `QuizEditors.jsx` | Quiz-type builders: `QuizTypePicker`, `MatchPairsBuilder`, `FillBlankBuilder`, `ShortAnswerBuilder`, `QuizOptionsBuilder` |
-| `CodeArrangeEditor.jsx` | Visual Builder authoring + live preview for `taskType: code_arrange`: a reorderable line list where every line uses the same "parts composer" (fixed-text and blank-slot chips; a line with just one blank is the whole-line case), one shared task-level distractor-tile list, entry file for HTML, the module's ordinary `CheckEditor`, and a drag-and-run preview using `getLessonModule(...).runtime` directly |
+| `QuizEditors.jsx` | Thin re-export for older imports: `QuizTypePicker` (from `ActivityPickers.jsx`) and each quiz sub-type's editor (now in `src/activities/quiz_*/ui.jsx`) |
+| `ActivityPickers.jsx` | Registry-driven `QuizTypePicker` (category `quiz` activities) and `ActivityGallery` (every `taskType: 'activity'` activity: icon, label, description; unknown-activity hint) |
+| `ActivitySection.jsx` | Builder section for an activity task: gallery, description field, the activity's `BuilderEditor`, and the `ActivityPreview` student preview |
 | `CheckEditors.jsx` | Check utilities and editors: `subjectOpFromType`, `typeFromSubjectOp`, `getOperatorOptions`, `makeCheckSkeleton`, `CheckValueEditor`, `CheckListEditor`, feedback priority/stage-offer controls, and `CheckFeedbackControls` (the shared feedback mode/show pair, also used by the electronics, filesystem and scratch check editors) |
 | `TestsEditor.jsx` | Builder sub-module: `TestsEditor` — CRUD UI for Python task test cases (inputs + check per test) |
 | `TaskPreviewPanel.jsx` | Titled wrapper panel used to render the student-facing quiz/information preview in the builder |
@@ -273,15 +276,23 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 ## Lesson Type Modules (`src/modules/`)
 
-Each lesson type is a self-contained module folder. Adding a new type requires only a new folder and one line in the registry.
+Each lesson type is a self-contained module folder. Adding a new type requires only a new folder plus one line each in `definitions.js` and `registry.js`.
 
 | File | Role |
 |---|---|
 | `registry.js` | Maps `lesson.type` strings → module objects; exports `getLessonModule`, `getStudentWorkspace`, `getBuilderWorkspace`, `getCheckEditor` |
-| `checks.js` | Check evaluation dispatcher: canonical `type` + `operator` aliases, feedback-check precedence, `evaluateSingleCheck`, `evaluateCheck`, `evaluateCheckResults`, `evaluateCheckWithFeedback`, `normalizeChecks` — delegates filesystem, Python variable, HTML element, and electronics `circuit_*` checks to their module evaluators; also routes generic `code` checks to the electronics evaluator when `context.circuit` is present, so they run against Micro Controller MicroPython source instead of raw circuit JSON |
+| `checks.js` | Check evaluation dispatcher: canonical `type` + `operator` aliases, feedback-check precedence, `evaluateSingleCheck`, `evaluateCheck`, `evaluateCheckResults`, `evaluateCheckWithFeedback`, `normalizeChecks`. Builds `checkRegistry` from `CORE_CHECKS` + every module's `CHECKS`; `evaluateSingleCheck` normalises core aliases then does a registry lookup + call, and `CHECK_TYPES.RUN_REQUIRED` / `SUBMIT_ALLOWED` are derived from the definitions. The core `code` definition routes to the electronics evaluator when `context.circuit` is present, so it runs against Micro Controller MicroPython source instead of raw circuit JSON |
+| `checkRegistry.js` | Pure, Node-safe check-type registry: `createCheckRegistry(defs)` validates definitions (`type`, `owner`, `timing`, `requiresRun`, `submitAllowed`, `evaluate`, optional `aliases`/`subject`/`operators`/`fields`/`contextKey`/`validate`), throws on duplicate type ids or aliases, and provides alias-aware `get`/`has`/`canonicalType`/`typeIds`/`evaluate` |
 | `sharedStyles.js` | Shared lesson-module layout style factories used by scroll-style modules |
+| `defineModule.js` | Pure: `defineModule(def)` validates a module definition (type, `meta` — `label`, `order`, `shortLabel`, `icon`, `pickerHint`, `language`, `playground`, optional `surfaceLabels` / `pickerOrder` (defaults to `order`) — `capabilities` (including `run`: `runtime` / `preview` / `workspace` / `none`, defaulting to `none`, with `runResult` flags for runtime modules, and the step 4.7 UI gates `stageReveal`, `teacherStageReveal`, `highlights`, `downloadCode`, `fixedExplainer`, `topicLibrary`, `studentMirror`, optional `cardSummary` / `focusPanes` / `teacherEditor` — the last paired with `workSlot.teacherEdit` and `meta.teacherEditCopy` — and the step 4.8 optional booleans `teacherFillHeight`, `teacherSandboxRow`, `teacherUnifiedStageTabs`, `explainerBlockMenu`, defaulting to false), required hooks and flags, the contract v2 `lifecycle` (plus optional `playgroundTask`, required exactly for `meta.playground` modules) / `storage` / `wire` groups, the Builder `authoring` group (`defaultTypeFields`, `missingStarter`, `copyStarterToComplete`, `printTask`, `sandboxStarterEditor`, `builderRun`, optional `codeFormat` / `copyCodePlaceholder` / flags), and the optional paired `checking` / `workSlot` groups that put a module on the generic work slot (hook form, or field form whose source hooks it derives; a record slot on the code channel or a per-file slot on the files channel; `workspaceOwned` needs the `workspace` trigger; optional `teacherStarter` defaults to `starter`) — `getSandboxState` is set as an alias of `lifecycle.sandboxStarter`) and freezes it; `defineUiModule(def, ui)` merges the UI half (workspaces, check editors, `getLayoutStyles`, `runtime`) into the object the registry returns |
+| `moduleTaskValidation.js` | Pure building blocks for each module definition's `validateTask`: check-field rules (`validateCodeChecks`, `validateScratchChecks`), stage-state and HTML starter-file rules, Python test rules, complete-solution warnings, starter/check-value helpers, and `validateRegisteredChecks` (calls a check-registry definition's optional `validate`) |
+| `moduleContract.js` | Pure builders for the contract v2 hook groups: lifecycle helpers (`stageForAction`, `codeResetTarget`, `codeHasComplete`, `alwaysPersonalSandbox`, `personalSandboxWhenLessonHas(field)`), `TEACHER_EDIT_CODE_COPY`, storage adapters (`recordStorage({ workKey, taskMeta, sandboxMeta })`, `perFileStorage()`) mapping work onto the runtime-model localStorage shapes, wire codecs (`codeStringWire`, `jsonWire`, `filesWire`, `noLiveExtras`), and work-slot builders (`codeWorkSlot`, `codeCheckContext`, `starterCodeOf` / `completeCodeOf`, `identityStored` / `identityFromStored`, `fieldWorkSlotHooks`) |
+| `moduleAuthoring.js` | Pure builders for the `authoring` group: `codeDefaultTypeFields`, `codeCopyStarterToComplete`, `never`, `noUpdates`, the copy-code placeholders |
+| `printHelpers.js` | Pure helpers for `authoring.printTask`: `printCodeStringTask` (python, turtle, arcade), `printCarryFrom`, `printCopyCode`, `printNothing`, and the shared `parseObjectLike` / `sortByPath` / `snippet` / `formatSummary` |
+| `definitions.js` | Pure, Node-safe registry of every `<type>/definition.js`: `MODULE_TYPES` (registry order), `getModuleDefinitions()`, `getModuleDefinition(type)`, plus the derivation helpers core code uses instead of hand-maintained type lists — `getModuleTypesWhere(predicate)`, `getModuleTypesWithCapability(name)`, `CARRY_THROUGH_FIELDS`, `getModuleLabel(type, surface)`, `getModuleAuthoring(type)`, `SPRITE_LIBRARY_MODULE_TYPE`; used by `registry.js`, `src/shared/composedLesson.js`, `taskUtils.js` and the CLI |
+| `<type>/definition.js` | Pure, Node-safe half of each module (python, html, scratch, filesystem, electronics, arcade, turtle, desktop): `meta`, authoring/carry-through/state/sandbox/display hooks, the contract v2 `lifecycle` (`resetTarget`, `hasComplete`, `teacherCompleteTab`, `sandboxStarter`, `composedSandboxFields`, `hasPersonalSandbox`), `storage` and `wire` groups, the Builder `authoring` group, the `checking` / `workSlot` groups (every module), and capability flags; no JSX, React, DOM or runtimes, and explicit `.js` import extensions. `<type>/index.js` wraps it with `defineUiModule` |
 | `python/index.js` | Python module: layout styles, `makeCodeTaskFields`, `makeNewStage`, `initCompleteTab`, `defaultCheck`, capability flags |
-| `python/checks.js` | Python-exclusive check evaluation: `PYTHON_CHECK_TYPES`, `evaluatePythonCheck` — all `variable_*` types |
+| `python/checks.js` | Python-exclusive check evaluation: `PYTHON_CHECK_TYPES`, `evaluatePythonCheck`, registry `CHECKS` — all `variable_*` types |
 | `python/PythonEditor.jsx` | Python CodeEditor wrapper with Pyodide loading/error status; shows a tap-to-insert row of common Python symbols above the editor on touch devices (`useIsTouchDevice`) plus an always-visible `EmojiPickerButton`, both while interactive, inserting via `CodeEditor`'s `insertAtCursor` ref API. Shared by Turtle, Arcade, and Electronics student/live views since they reuse this component for their Python/MicroPython code |
 | `python/StudentWorkspace.jsx` | Student Python editor + Run/Stop/Output panel (extracted from `LessonTaskContent`) |
 | `python/BuilderWorkspace.jsx` | Re-export of `PythonTaskWorkspace` |
@@ -289,14 +300,17 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `python/pyodide.js` | Pyodide Web Worker manager: `initPyodide()`, `runPython()`, `stopPython()`, `provideInput()`, `isPyodideReady()` |
 | `python/pyodide.worker.js` | Web Worker: Pyodide loader, AST-based async `input()` transform, stdout/stderr event streaming (via `createUtf8ByteDecoder()`, a streaming UTF-8 decoder — Pyodide's raw callbacks deliver one byte at a time, so multi-byte characters like emoji or `£` must be reassembled rather than decoded byte-by-byte); `formatPythonError()` parses the failing `<student>` line for the error-line highlight |
 | `html/index.js` | HTML module definition |
-| `html/checks.js` | HTML-exclusive check evaluation: `HTML_CHECK_TYPES`, `evaluateHtmlCheck` — all `element_*` types |
+| `html/checks.js` | HTML-exclusive check evaluation: `HTML_CHECK_TYPES`, `evaluateHtmlCheck`, registry `CHECKS` (canonical `html_*` types own the legacy `element_*` ids as aliases) |
 | `html/iframe.js` | `buildIframeSrc()`: Blob URL filesystem, cross-reference rewriting, CSP + console interceptor injection; `resolveIframeErrorLocation()` maps a reported runtime error back to `{ file, line }` for the error-line highlight |
 | `html/HtmlEditor.jsx` | Tabbed HTML/CSS/JS editor with optional asset browser drawer; shows an `EmojiPickerButton` above the editor while interactive |
 | `html/StudentWorkspace.jsx` | Student HTML editor + iframe preview; handles mobile/desktop split; owns `useTypeAssets` call |
 | `html/BuilderWorkspace.jsx` | Re-export of `HtmlTaskWorkspace` |
 | `html/CheckEditor.jsx` | `CheckListEditor` wrapper with HTML flags; includes `allowDomChecks` |
+| `html/fileTemplates.js` | Pure: `HTML_FILE_TYPE`, `isHtmlFileType`, `isHtmlEntryCandidate`, and the `HTML_ONLY` / `HTML_WITH_CSS` / `HTML_WITH_CSS_JS` file templates (Builder file manager, sandbox starter editor, `authoring.defaultTypeFields`) |
+| `html/print.js` | Pure: `printHtmlTask` — the HTML module's printable-lesson section |
 | `scratch/index.js` | Scratch module definition |
 | `scratch/checks.js` | Pure Scratch check evaluation: `evaluateScratchCheck`, `compare`, `createSpriteState`, `DEFAULT_SPRITES`, `normalizeSequenceItem` |
+| `scratch/print.js` | Pure: `printScratchTask` — the Scratch module's printable-lesson section |
 | `scratch/scratch.js` | Custom Scratch interpreter: block definitions, multi-sprite state, broadcast, sounds, `CREATE_VARIABLE_CALLBACK_KEY`/`addCreateVariableButtonToToolbox` flyout button injection; re-exports check/state helpers from `checks.js` and persistence helpers from `scratchPersistence.js` |
 | `scratch/scratchEditors.jsx` | Scratch toolbox data, `buildScratchToolboxXml`, `parseScratchToolboxXml`, `ScratchToolboxPicker`, `ScratchCheckListEditor`, `ScratchCheckEditor`, variables, and prebuilt stack editors |
 | `scratch/graphicEffects.js` | Draws Scratch graphic effects (`effect_*` sprite state) on the stage: `applyGraphicEffectsToPixels` ports Scratch 3's sprite shader maths for all seven effects; `drawSpriteWithGraphicEffects` renders a sprite through an offscreen canvas, falling back to canvas alpha/CSS filters when a cross-origin costume taints the canvas |
@@ -307,8 +321,9 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `scratch/BuilderWorkspace.jsx` | Re-export of `ScratchTaskSetup` |
 | `scratch/CheckEditor.jsx` | `ScratchCheckListEditor` wrapper |
 | `filesystem/index.js` | Filesystem module definition |
-| `filesystem/checks.js` | Filesystem check evaluation: `FS_CHECK_TYPES`, `evaluateFsCheck` — all `fs_*` types |
+| `filesystem/checks.js` | Filesystem check evaluation: `FS_CHECK_TYPES`, `FS_CHECK_DEFINITIONS`, `evaluateFsCheck`, registry `CHECKS` — all `fs_*` types |
 | `filesystem/filesystem.js` | Virtual filesystem engine: flat path-map state, CRUD helpers, path normalization, and parent/child lookup |
+| `filesystem/print.js` | Pure: `printFilesystemTask` — the Filesystem module's printable-lesson section (path/type/snippet tables) |
 | `filesystem/filesystemEditors.jsx` | Builder sub-module: `FsTreeEditor` visual starter/complete editor and `FsCheckListEditor` filesystem check builder |
 | `filesystem/FilesystemTask.jsx` | Student-facing Windows Explorer-style virtual filesystem UI: folder tree, icon grid, drag-and-drop move, inline rename, CodeMirror file editor |
 | `filesystem/StudentWorkspace.jsx` | `FilesystemTask` wrapper with initialDir derivation |
@@ -316,8 +331,8 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `filesystem/CheckEditor.jsx` | `FsCheckListEditor` wrapper |
 | `desktop/index.js` | Desktop module definition |
 | `desktop/desktopState.js` | Desktop state shape (`{ fs, recycleBin, windows }`), window CRUD helpers (`openWindow` — dedupes by `(appId, filePath)`, `moveWindow`, `resizeWindow`, `setWindowMinimized`, `setWindowMaximized`, `closeWindow`, `focusWindow`, `arrangeSideBySide`, `isWindowDirty`), serialize/deserialize |
-| `desktop/checks.js` | Desktop check evaluation: `DESKTOP_CHECK_TYPES`, `evaluateDesktopCheck` — `fs_recycle_bin`, `window_state`, `windows_arranged_side_by_side` (`fs_*` checks route through the filesystem module's evaluator via `context.fs`) |
-| `desktop/desktopEditors.jsx` | Builder check editor: `DesktopCheckListEditor`, unified over filesystem `fs_*` and desktop-specific check definitions |
+| `desktop/checks.js` | Desktop check evaluation: `DESKTOP_CHECK_TYPES`, `DESKTOP_CHECK_DEFINITIONS`, `evaluateDesktopCheck`, registry `CHECKS` — `fs_recycle_bin`, `window_state`, `windows_arranged_side_by_side` (`fs_*` checks route through the filesystem module's evaluator via `context.fs`) |
+| `desktop/desktopEditors.jsx` | Builder check editor: `DesktopCheckListEditor`, unified over filesystem `fs_*`, desktop-specific and `input_*` check definitions (gesture/target/drop-target/combo/via/modifier/min fields) |
 | `desktop/Desktop.jsx` | Desktop shell: background, app icon grid, taskbar with clock and open-window buttons |
 | `desktop/WindowManager.jsx` | Renders open windows for the current desktop state, wires drag/resize/minimize/maximize/close/focus to `desktopState.js` |
 | `desktop/Window.jsx` | Window chrome: draggable title bar, resize handle, minimize/maximize/close controls |
@@ -329,12 +344,14 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `desktop/apps/browser/BrowserApp.jsx` | Browser "app": simulated browser chrome (Back/Forward/Refresh/Home, address bar), search engine, and downloads over a lesson-authored `siteGraph` |
 | `desktop/apps/browser/siteGraph.js` | Pure helpers for the Browser's lesson-authored site graph: normalise, page lookup, free-text search ranking, URL lookup |
 | `desktop/apps/paint/PaintApp.jsx` | Paint "app": freehand canvas (brush/eraser, palette, sizes, undo, clear) with Text Editor's explicit Open/Save/Save As model; saves a PNG `data:` URL onto the file entry's `content` |
-| `desktop/StudentWorkspace.jsx` | Mounts `Desktop` for the student, wiring `cs.handleDesktopChange`/`handleDesktopInteraction` and the file-open-to-app-window handler |
+| `desktop/StudentWorkspace.jsx` | Mounts `Desktop` for the student, wiring `cs.handleDesktopChange`/`handleDesktopInteraction` and the file-open-to-app-window handler; when the task has `input_*` checks, records input on the surface (`useSurfaceInputRecorder`) and sends the summary as `interaction.input` (in memory only) |
 | `desktop/BuilderWorkspace.jsx` | Re-export of `DesktopTaskWorkspace` |
 | `desktop/CheckEditor.jsx` | `DesktopCheckListEditor` wrapper |
 | `desktop/TeacherLiveView.jsx` | Reuses `Desktop` read-only or sandbox-editable against `displayState` |
 | `electronics/index.js` | Electronics module definition: breadboard state helpers, builder/student/teacher workspaces, checks, carry-through, sandbox state, and MicroPython runtime bridge |
+| `electronics/checks.js` | Electronics registry `CHECKS` for the `circuit_*` check types (evaluators live in `circuit.js`) |
 | `electronics/circuit.js` | Pure electronics circuit model helpers: default board, clone/parse/serialize, component creation, connectivity, short detection, simulated states, `circuit_*` check evaluation, and generic `code`-family check evaluation against the Micro Controller's MicroPython source |
+| `electronics/print.js` | Pure: `printElectronicsTask` — the Electronics module's printable-lesson section (parts, components, wires, MicroPython) |
 | `electronics/ElectronicsWorkspace.jsx` | Shared breadboard UI shell: board state, selection, drag/drop, wiring interaction, fit-to-pane zoom, tabs, MicroPython Code tab, and output panel - draws on the five modules below |
 | `electronics/Inspector.jsx` | Right-hand panel for the selected wire or part: electrical readout, part properties, runtime controls, Micro Controller GPIO editing; handlers arrive bundled as `actions` |
 | `electronics/ComponentArt.jsx` | How parts are drawn: palette glyphs, the part on the board with its live state and on-canvas controls, and the inspector's state readout. Keeps literal colours - it draws real components |
@@ -359,16 +376,17 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `turtle/engine.js` | Pure turtle-graphics state machine (forward/turn/goto/home), no DOM/Pyodide — unit tested directly |
 | `turtle/shim.js` | Python-side fake `turtle` module (source-line array + `buildTurtleProgram`), same technique as `electronics`'s `MICROPYTHON_SHIM`, backed by `__hsTurtle*` bridge functions on the shared Pyodide worker |
 | `turtle/draw.js` | Shared canvas renderer: maps the fixed logical turtle world onto a responsive canvas (`drawTurtleCommands`, `sizeCanvasToDisplay`) and draws the 🐢 position/heading marker (`turtleMarkerTransform`) |
-| `turtle/checks.js` | `turtle_position`/`turtle_heading`/`turtle_path_closed`/`turtle_segment_count`/`turtle_path_length`/`turtle_command_used`/`turtle_color_used`/`turtle_stamp_count` check evaluators |
+| `turtle/checks.js` | Registry `CHECKS` + `turtle_position`/`turtle_heading`/`turtle_path_closed`/`turtle_segment_count`/`turtle_path_length`/`turtle_command_used`/`turtle_color_used`/`turtle_stamp_count` check evaluators |
 | `turtle/sync.js` | `compactTurtleResultForSync` — rounds coordinates and caps the command log before a run result is synced live to a teacher, shared by both `useTeacherLivePublish.js` and `useSession.js`'s `writeStudentTurtleResult` |
 | `turtle/StudentWorkspace.jsx` | Student Turtle workspace: Python editor, canvas, Run/Stop controls, collapsible output panel |
 | `turtle/BuilderWorkspace.jsx` | Builder Turtle code-stage editor with a self-contained on-demand drawing preview (own Pyodide run, like Arcade Kit's Builder preview) |
 | `turtle/CheckEditor.jsx` | Turtle check list editor with a Turtle/Code subject picker; code checks reuse `CheckValueEditor` and `checkEditorUtils.js` |
 | `turtle/TeacherLiveView.jsx` | Teacher's read-only code + canvas view of a student's turtle task, driven by the synced `currentTurtleResult`/`turtleResult` |
+| `_template/definition.js`, `_template/index.js`, `_template/StudentWorkspace.jsx`, `_template/BuilderWorkspace.jsx`, `_template/CheckEditor.jsx`, `_template/TeacherLiveView.jsx`, `_template/checks.js` | Module scaffold copied by `npm run new:module` (`scripts/new-module.mjs`): a working "write text, press Check" module on the generic work slot (`run: 'workspace'`, `checking.trigger: 'run'`, `codeWorkSlot`, core code checks) with every contract v2 group filled with safe defaults and `TODO(new-module)` markers, its tests (definition, workspace UI, StudentView click-through that skips while unregistered) and `doc.md.tmpl`. Never registered; `moduleDefinitionsNode` / `validationErrorsDoc` skip `_`-prefixed folders (the definition still loads under Node) |
 
 ### Module interface
 
-Each `index.js` exports a default object with:
+Each `index.js` exports a default object with the following properties. UI surfaces (`StudentWorkspace`, `BuilderWorkspace`, `CheckEditor`, `FeedbackCheckEditor`, `TeacherLiveView`, `getLayoutStyles`, `runtime`) are declared in `index.js`; everything else comes from `definition.js` (plus `meta: { label, order }`).
 
 | Property | Type | Purpose |
 |---|---|---|
@@ -401,7 +419,64 @@ Each `index.js` exports a default object with:
 | `serializeState(state)` | `fn \| null` | Optional persistence serializer |
 | `deserializeState(raw)` | `fn \| null` | Optional persistence deserializer |
 | `getSandboxState(lesson, task)` | `fn` | Initial sandbox state |
+| `validateTask(task, { n, lesson, errors, warnings })` | `fn` | Pure type-specific lesson validation shared by the Builder and the CLI (pushes messages); see `src/shared/lessonValidation.js` |
+| `hasStarterContent(task)` | `fn \| null` | Optional: whether the task has starter content (`null` = never warn about an empty editor) |
+| `hasCheckValue(task)` | `fn \| null` | Optional: whether the completion check is worth the Builder's untested-check reminder (`null` = the generic code-check rule) |
+| `validateTaskInBrowser(task, { n, errors, warnings })` | `fn \| null` | Optional Builder-only rules needing browser APIs (Scratch toolbox XML via `DOMParser`); the CLI never calls it |
 | `runtime` | `object \| null` | Optional runtime bridge with `init`, `isReady`, `stop`, and module-specific helpers |
+
+---
+
+## Activities (`src/activities/`)
+
+Self-contained exercises that can sit anywhere in a lesson (see `docs/architecture/modular-activities-plan.md` and `docs/architecture/activities.md`). New activities (`taskType: 'activity'`) and legacy quizzes (`taskType: 'quiz'` + `quizType`, one activity per sub-type) run through `ActivityHost`. code_arrange (`taskType: 'code_arrange'`) is an activity hosted by a workspace module (`hostModules: ['python', 'html']`): its board replaces the module's StudentWorkspace and the assembled program runs through the module's own work slot and Run (plan step 4.9).
+
+| File | Role |
+|---|---|
+| `defineActivity.js` | Activity contract: validates a pure activity definition and fills defaults (storage in the `__activity_state__` aux file, live state on `currentAnswer`, report type fields) |
+| `resolve.js` | `getActivityId(task)`: maps stored tasks to activity ids without changing formats (`quiz` + `quizType` → `quiz_<type>`, `code_arrange`, `activity` + `activityType`); `LEGACY_QUIZ_TASK_TYPE`, `isLegacyQuizRecord(task)` (any stored quiz, known quizType or not) |
+| `registry.pure.js` | Node-safe activity registry (`getActivityDefinition(s)`, `getTaskActivity`, `ACTIVITY_IDS`, YAML shorthand lookup both ways (`activityIdForYamlType`, `yamlTypeForActivityTask`), `isHostedActivityTask` (ActivityHost tasks only), module-hosted activities (`getModuleHostedActivity`, `isModuleHostedActivityTask`, `getModuleHostedActivityDefinitions`), `isLegacyQuizTask`, `allowsStudentBroadcast`, Builder helpers `TASK_FORMATS`, `getTaskFormat`, `getQuizActivityDefinitions`, `getGalleryActivityDefinitions`); unknown `activityType` / `quizType` values resolve to the fallback |
+| `quiz/quizActivity.js` | Shared pure logic for the five quiz activities: `defineQuizActivity` (legacy shape, shared validation, `currentAnswer` formats, `{ taskType: 'quiz', quizType }` report fields), attempt submissions (`buildQuizSubmission`), feedback (`getQuizSuggestion`), item progress, report normalisers and per-item failure summaries, print tables |
+| `quiz/QuizActivityViews.jsx` | Quiz activity UI: `QuizActivityStudentView` hosts `QuizTask` (in-progress change → `onChange`, final answer → `onSubmit(answer, { passedOverride })`; teacher variant shows verdict + correct answers) and the StudentCard summaries (`ChoiceCardSummary`, items progress text, short-answer text, confidence badge) |
+| `quiz_multiple_choice/definition.js` | Multiple-choice quiz activity: option-id state, graded by the `answer_equals` check, option feedback, print options table |
+| `quiz_match/definition.js` | Match quiz activity: pair map state, auto-marked when every tile is placed, teacher-editable, item progress, `pairFailures` report summary, print pairs table |
+| `quiz_fill_blank/definition.js` | Fill-in-the-gaps quiz activity: tile-id (drag) or typed-text map, auto-marked (drag) / Submit (type), teacher-editable, item progress, `blankFailures` report summary, print text/blanks/distractors |
+| `quiz_short_answer/definition.js` | Short-answer quiz activity: free text, graded by its `answer_*` check or (ungraded) any non-blank answer |
+| `quiz_confidence/definition.js` | Confidence quiz activity: `"1"`..`"5"` rating, never marked (`completion: 'none'`), `ratingDistribution` report summary |
+| `quiz_*/ui.jsx` | Per-sub-type UI entries: `QuizActivityStudentView`, the matching `CardSummary`, `ownsLayout` (no activity header/frame), and the Builder parts: `BuilderEditor` (the sub-type's editor, moved from `QuizEditors.jsx`), `BuilderIcon`, `builderHint`, `builderConvert` |
+| `quiz/quizBuilder.js` | Builder conversions for quizzes: `toQuizTask` (choosing the Quiz format) and `switchQuizType` (changing quiz sub-type), unchanged from the old TaskEditor handlers |
+| `quiz/QuizTypeIcon.jsx` | SVG icons for the Builder's quiz-type picker |
+| `binary/definition.js` | Binary activity definition wrapping `binary.js`: default task, validation, state, grading, progress, card summary, print |
+| `keyboard/keyboard.js` | Pure Keyboard activity logic (`type_text`, `find_key`, `symbols`, `shortcuts`; UK layout): validation incl. untypeable characters and browser-reserved shortcuts, grading from stored per-item results (Shift vs Caps Lock, optional accuracy/WPM targets, keys vs menu, hardware-only items) |
+| `keyboard/definition.js` | Keyboard activity definition: needs a physical keyboard with an on-screen fallback; keystrokes classified as continuous, finished items as discrete |
+| `mouse/mouse.js` | Pure Mouse activity logic: stage targets (0-1 positions), click/double-click/right-click/drag/scroll/hover items, touch policy (`equivalent`/`skip`/`block`), grading by the gesture that completed each item |
+| `mouse/definition.js` | Mouse activity definition: grades with the device recorded in state (touch equivalents accepted, hover skipped on touch) |
+| `legacyValidation.js` | Pure quiz (`validateQuizTask`) and code_arrange (`validateCodeArrangeTask`) validation plus starter/check-value helpers, looked up by `getLegacyTaskValidation(task)` from `src/shared/lessonValidation.js`; the quiz and code_arrange activity definitions' `validateTask` wrap the same rules |
+| `code_arrange/definition.js` | Code Arrange activity (legacy `taskType: 'code_arrange'`), hosted by the python / html modules (`hostModules`): slot-map state, `__code_arrange_slots__` aux file, `codeArrangeSlots` live channel (`currentCodeArrangeSlots`), slot progress ("X/N slots filled", `progressUnit`), `{ taskType: 'code' }` report fields, prints nothing of its own, offered only in composed lessons (`availableIn`); `hostModuleFor` |
+| `code_arrange/ui.jsx` | Code Arrange UI: `ModuleWorkspace` (the container below, rendered by `LessonTaskContent` in place of the module's StudentWorkspace), `StudentView` (controlled tile board; the teacher's task panel shows the solution with it), `TeacherLiveView` (StudentModal board from `currentCodeArrangeSlots`, editable with Edit answers), `BuilderEditor`, `builderConvert` |
+| `code_arrange/CodeArrangeTask.jsx` | Presentational tile board: renders each authored line as either a whole-line drop slot or fixed text with small inline blanks in place (via `useTileDragAndDrop`), all fed from the one shared "Code tiles" pool below the program, Run button, Python output panel or HTML iframe preview. Reused by the student container, teacher views and the Builder preview |
+| `code_arrange/CodeArrangeTaskContainer.jsx` | Wires `CodeArrangeTask` to `useStudentCodeState` (`cs`): persists the tile arrangement (definition `storage` / `serialize`), pushes assembled code into `cs.handleCodeChange`/`handleFileChange`, and runs via `cs.handleRun` — the real Python/HTML pipeline, unmodified |
+| `code_arrange/CodeArrangeBuilderEditor.jsx` | Visual Builder authoring + live preview for Arrange tasks: a reorderable line list where every line uses the same "parts composer" (fixed-text and blank-slot chips; a line with just one blank is the whole-line case), one shared task-level distractor-tile list, entry file for HTML, the module's ordinary `CheckEditor`, and a drag-and-run preview using `getLessonModule(...).runtime` directly |
+| `code_arrange/codeArrangeBuilder.js` | `convertToCodeArrange`: the Builder's conversion into the Arrange format (unchanged from the old TaskEditor handler) |
+| `unknown/definition.js` | Fallback for an `activityType` this bundle doesn't know: ungraded "not available" notice, validation error pointing at `lessons capabilities` |
+| `registry.js` | UI activity registry: merges each pure definition with its `ui.jsx` (`getActivityUi`, `getTaskActivityUi`, `getModuleHostedActivityUi`). Classroom only, never imported by the CLI |
+| `ActivityHost.jsx` | Classroom host for a hosted activity task: picks the student's own state, an earlier task's saved state (review) or the teacher's broadcast (`teacherLive.answer`); applies `requires` / `touchFallback` (on-screen keyboard banner, "needs a mouse" block, touch notice, "I have a keyboard" override); unknown-activity notice. Also exports `ActivityView` (header + StudentView/TeacherLiveView) used by StudentModal and TeacherEditorPanel |
+| `state.js` | Pure helpers reading an activity's state from its serialised form (`deserializeActivityState`, `solutionOrInitialState`, `readActivityAnswer`, `readStudentActivityState` / `studentStateField` for the student record field of the activity's `liveChannel`, `summarizeActivityAnswer` for the teacher card) |
+| `device.js` | Pure device helpers: `describeActivityDevice(state)` (touch / on-screen keyboard badge from the activity's own state) and `effectiveCapabilities` (keyboard override, tablets treated as keyboard-less) |
+| `binary/ui.jsx` | Binary StudentView: bit tiles (switches) with place values, decimal answer box, carry row for addition, one item at a time |
+| `binary/BinaryBuilderEditor.jsx` | Binary `BuilderEditor`: mode (keeps item ids, drops options the mode doesn't use), bits, display options (place values, running decimal, carries, ASCII code format/table, picture size), per-mode items incl. a pixel-grid editor |
+| `keyboard/KeyboardBuilderEditor.jsx` | Keyboard `BuilderEditor`: mode, fixed UK layout note, `type_text` options (Shift capitals, min accuracy, target WPM), per-mode items with `hardwareOnly`; reserved-shortcut errors inline |
+| `mouse/MouseBuilderEditor.jsx` | Mouse `BuilderEditor`: touch policy, targets (label/emoji/x/y/size; renaming updates items) with a click-to-place stage preview, items (action/target/to/prompt) |
+| `ui/builderKit.jsx` | Building blocks for activity BuilderEditors: `useActivityValidation` / `splitValidation` (validateTask messages next to their item or target), `ValidationMessages`, `RowListEditor`, `InlineField`, `ChoiceCards`, `nextItemId`, `readNumber` |
+| `ui/BuilderField.jsx` | The labelled `Field` row shared by the Builder task editor and activity editors |
+| `ActivityPreview.jsx` | Builder student preview: plays a task through `ActivityHost` with in-memory state (kept per task while the page is open, restarted on edit), grades on Check, Start again / Show answers; writes nothing |
+| `keyboard/ui.jsx` | Keyboard StudentView: `type_text` target overlay with accuracy/WPM (`typingStats`), `find_key` / `symbols` with the keyboard picture and hints, `shortcuts` practice box (keys vs right-click menu detection); on-screen keyboard input when there is no physical keyboard |
+| `keyboard/OnScreenKeyboard.jsx` | UK on-screen keyboard: interactive fallback emitting virtual key events (one-shot Shift/Ctrl) or a non-interactive picture highlighting hinted keys |
+| `mouse/ui.jsx` | Mouse StudentView: stage of positioned `data-input-id` targets, Pointer Events recording (incl. touch drag via `elementsFromPoint`), `recognizeGestures`, no native context menu on the stage, hover dwell timer (skipped on touch), `state.device.touch` |
+| `ui/ItemNav.jsx` | Shared "Question n of m" item navigation with per-item done/wrong markers |
+| `ui/ActivityDeviceBadge.jsx` | Teacher badge (card and modal) showing a touch-screen or on-screen-keyboard attempt |
+| `binary/binary.js` | Pure Binary activity logic for `make_number`, `to_binary`, `to_decimal`, `add`, `overflow`, `hex`, `ascii`, `pixels`: bit conversion, place values, carries, shared authoring validation, per-item grading with child-friendly hints, whole-task progress |
+| `_template/definition.js`, `_template/template_activity.js`, `_template/ui.jsx` | Activity scaffold copied by `npm run new:activity` (`scripts/new-activity.mjs`): a working "type the answer" activity with `TODO(new-activity)` markers, its tests (pure, UI, StudentView click-through that skips while unregistered) and `doc.md.tmpl`. Never registered; the registry, interface and validation-doc tests skip `_`-prefixed folders |
 
 ---
 
@@ -425,20 +500,24 @@ Each `index.js` exports a default object with:
 | `topicAudit.js` | Shared topic-reference parsing, grouped-task audit, proposal matching, and lesson-stage publication rules |
 | `TopicLibraryView.jsx` | Topic hover-card and searchable dialog presentation used by Markdown explanations |
 | `checkHelpers.js` | Generic check primitives: `wildcardContains`, `wildcardEquals`, `normalizeOutput`, `parseCheckValue`, `valueEquals`, `getVariableEntry`, `evaluateCodeCheck` (shared `code`-family evaluation reused by both `modules/checks.js` and `electronics/circuit.js`, avoiding a circular import), and related helpers — used by `modules/checks.js` and sub-module evaluators |
-| `checkAuthoringValidation.js` | `validateFilesystemChecks`/`validateElectronicsChecks` (check-field-completeness validation) plus their shared target-selector helpers — imported by both `builder/lessonUtils.js` and `cli/validate.mjs` so the Builder and the CLI publish path can't validate filesystem/electronics checks differently |
+| `checkAuthoringValidation.js` | `validateFilesystemChecks`/`validateElectronicsChecks`/`validateTurtleChecks` (check-field-completeness validation) plus their shared target-selector helpers — called from the module definitions' `validateTask`, so the Builder and the CLI can't validate these checks differently |
+| `lessonValidation.js` | Pure, Node-safe lesson validation core shared by the Builder (`validateLesson`) and the CLI (`validateLessonForMcp`), one wording for both: envelope, groups, task shape, feedback checks, carry-through; delegates type rules by each task's effective module type to the module definition's `validateTask`, `taskType: 'activity'` to the activity registry, and quiz / code_arrange to `activities/legacyValidation.js`. `validateLessonCore(lesson, { envelope, beforeTasks, afterTask })` hooks add each validator's own extras (ADR 0008) |
 | `fileKeys.js` | Pure helpers for Firebase file key encoding: `encodeFileKey(name)` and `decodeFileKey(key)` — dots encoded as `__dot__` |
-| `codemirror.js` | CodeMirror config: `createBaseExtensions(type, readOnly)`, `getTabSize(type)`, `getLanguageExtension(type)` — `headstartTheme` and `headstartHighlight` are internal-only, applied inside `createBaseExtensions` |
+| `codemirror.js` | CodeMirror config: `createBaseExtensions(type, readOnly)`, `getTabSize(type)`, `getLanguageExtension(type)` (editor-language maps; unknown languages get Python and a 2-space tab) — `headstartTheme` and `headstartHighlight` are internal-only, applied inside `createBaseExtensions` |
 | `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions`, `storage` |
 | `markdown.jsx` | Markdown renderer: tables, callouts, fenced code blocks, Scratch block pills, topic links, `InlineMarkdown` |
 | `MarkdownFieldEditor.jsx` | Markdown editor with Edit/Preview tabs, formatting toolbar, topic-library link picker, Scratch block insertion, and asset image picker; exports `MarkdownFieldEditor` and `getInlineCodeOptions` (the toolbar is internal) |
 | `scratchBlockCatalog.js` | Shared Scratch block metadata for markdown rendering, markdown toolbar insertion, and the Scratch toolbox picker |
 | `lessonBlocksCodec.js` | Encodes/decodes Firestore-incompatible lesson fields as JSON strings: Scratch block trees for nested depth and Arcade Kit designs for nested sprite-frame arrays |
-| `lessonReport.js` | `buildSessionReport()` — builds a session report from an in-memory session + lesson (roster, per-task attempt history, overrides, carry fallbacks, support reveals, live per-task teacher ratings, task summary); `attachTeacherFeedback()` merges the teacher's optional end-of-session star rating and notes onto a built report; `reportToYamlText()` for YAML export |
+| `lessonReport.js` | `buildSessionReport()` — builds a session report from an in-memory session + lesson (roster, per-task attempt history, overrides, carry fallbacks, support reveals, live per-task teacher ratings, task summary; quiz and activity type fields, submissions and summaries come from each activity definition, plus `itemProgress` / `avgItemProgress` for activities); `attachTeacherFeedback()` merges the teacher's optional end-of-session star rating and notes onto a built report; `reportToYamlText()` for YAML export |
+| `codeSubmission.js` | `normalizeCodeSubmission()`: parses a JSON code submission from the attempt log back to its object shape (HTML file map, Scratch state), leaving plain code strings; shared by the session report and the code_arrange activity's report |
 | `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder, returns `{ join, solo, teacher, preview }` (bare smart-join URL, plus `?solo=true`, `?teacher=true` and `?preview=true` links); used by TeacherView, LessonPanel and SessionsPanel |
 | `lessonLevels.js` | Reusable level reference helpers: level Firestore collection name, scope derivation, legacy migration, display title resolution, and sorting |
 | `lessonForks.js` | Deterministic class-fork helpers: class record normalization, fork ID/title creation, stock lesson copy, and task lineage construction |
 | `youtube.js` | Pure YouTube URL parsing for the `recordingUrl` lesson field: `extractYouTubeId()`, `isValidRecordingUrl()`, `buildYouTubeEmbedSrc()`. Dependency-free (only the built-in `URL`) so it's shared between the browser widget/Builder field and the Node CLI validator |
-| `taskUtils.js` | Task flattening/group helpers plus estimated-duration and priority totals/formatting. `flattenTaskTree()` expands groups as authored; `flattenTasks()` is that with legacy draft tasks filtered out |
+| `taskStages.js` | Pure code-stage role helpers (`STAGE_ROLES`, `getStageRole`, `getStarterStage`, `getCompleteStage`, revealable stages) with no imports, so module definitions can use them; re-exported by `taskUtils.js` |
+| `codeLanguages.js` | `CODE_LANGUAGE_LABELS` / `getCodeLanguageLabel` for code-fence languages (CopyCodePanel, explainer code-block menu) |
+| `taskUtils.js` | Task flattening/group helpers plus estimated-duration and priority totals/formatting; `deriveTaskContext` (incl. `moduleType`) and `buildStageOptions` read module definitions. `flattenTaskTree()` expands groups as authored; `flattenTasks()` is that with legacy draft tasks filtered out |
 | `textUtils.js` | Small string helpers shared across modules: `escapeRegExp()`, `stableHash()` (deterministic 32-bit hash for stable ids and shuffle seeds), `isPlainObject()`, `fileExtension()` |
 | `quizAnswers.js` | Reading a stored quiz answer: `parseQuizAnswerState()` (object, or the JSON string it was persisted as) and `answerTextMatches()` (case- and whitespace-insensitive compare) — shared by the quiz components, submission building and lesson reports |
 | `spriteVisuals.js` | `spriteVisualMode(sprite)` — whether a Scratch sprite is drawn from a costume image, an emoji, or a preset; used by the admin shared-asset panel and the Builder sprite editor |
@@ -464,6 +543,24 @@ Each `index.js` exports a default object with:
 | `ScratchBlocks.jsx` | SVG/path Scratch block renderer and fenced-stack parser used by MarkdownRenderer |
 | `tableParser.js` | Pure Markdown table parser used before handing content to ReactMarkdown |
 
+### Input Recorder (`src/shared/input/`)
+
+Pure, Node-safe input library for the Keyboard and Mouse activities and the Desktop's `input_*` checks (plan: `docs/architecture/modular-activities-plan.md`, Phases 3 and 5). Raw events stay on the device; only summaries are checked or synced.
+
+| File | Role |
+|---|---|
+| `index.js` | Re-exports the whole library |
+| `layouts.js` | Character → `{ code, shift }` tables (UK only for now), `describeCharKeys` ("Shift + 2"), key labels |
+| `events.js` | `normalizeKeyEvent` (modifiers, Caps Lock, hardware vs virtual source), `normalizePointerEvent` (`data-input-id` targets plus their `data-input-kind`, 0-1 positions), canonical combos (`mod+c`, Ctrl and Cmd alike), browser-reserved combos |
+| `gestures.js` | `recognizeGestures`: click, double-click, right-click, drag (pointer or HTML5 drag-and-drop, with source/drop target kinds), scroll, hover and the touch forms tap, double-tap, long-press; `TOUCH_EQUIVALENTS`, `gestureSatisfies` |
+| `summary.js` | `typedCharacters` (Shift vs Caps Lock per capital), `summarizeInput` (small serialisable counts), `typingStats` (accuracy, WPM) |
+| `recorder.js` | `createInputRecorder`: bounded in-memory event ring buffer, never persisted |
+| `targetSummary.js` | `summarizeTargetedInput` / `createInputTally`: capped, serialisable per-surface summary for `input_*` checks — gestures per target kind (`file`/`folder`/`window`/`icon`), drags by source>drop kind, shortcuts by keyboard vs menu, Shift/Caps Lock capitals; the tally folds finished segments into running totals so the ring buffer never loses gestures |
+| `checks.js` | Owner-`input` check types `input_gesture`, `input_shortcut`, `input_modifier` (registered in `src/modules/checks.js`): evaluate against `ctx.input`; `validate()` rejects modules without them in `inheritsCheckTypes`, browser-reserved combos, unknown gestures/kinds; `inputChecksOf` / `inputSummaryCapFor` |
+| `useSurfaceInputRecorder.js` | React hook: capture-phase key/pointer/drag listeners on a surface element feeding a tally; calls `onSummary` only when the capped summary changes; returns `recordCommand(combo, via)` for menu equivalents (used by Desktop `StudentWorkspace`) |
+| `useInputCapabilities.js` | React hook over `detectInputCapabilities`, upgraded when a hardware keydown proves a physical keyboard (kept out of `index.js` so the library stays Node-safe) |
+| `capabilities.js` | `detectInputCapabilities` (fine pointer, hover, touch), `withKeyEvidence` (physical keyboard learned from a hardware keydown), `unmetRequirements` |
+
 ---
 
 ## Cloud Functions (`functions/`)
@@ -481,6 +578,9 @@ Each `index.js` exports a default object with:
 |---|---|
 | `scripts/download-scratch-sprites.mjs` | One-off tool: downloads Scratch's official sprite/costume assets from the Scratch CDN into `public/scratch-assets/sprites/` |
 | `scripts/check-docs.mjs` | Dependency-free documentation hygiene check: validates local Markdown links, `docs/README.md` inventory, and source-file coverage in this map |
+| `scripts/new-activity.mjs` | `npm run new:activity -- <id> "<Label>" [--category …] [--dry-run]`: scaffolds an activity from `src/activities/_template/`, registers it in `registry.pure.js` / `registry.js`, writes `docs/authoring/activities/<id>.md` and indexes it in `docs/README.md`, this map and `validation-errors.md`; validates the id, refuses to overwrite, prettier-formats generated code (tested by `scripts/__tests__/newActivity.test.mjs`) |
+| `scripts/new-module.mjs` | `npm run new:module -- <type> "<Label>" [--dry-run]`: scaffolds a workspace module from `src/modules/_template/` (registry order after the last module), registers it in `definitions.js`, `registry.js` and `checks.js`, adds the type to the type-branch ratchet and the ESLint rule, records the scaffold's deliberate parity gaps in `moduleTypeParity`'s `KNOWN_GAPS`, adds its `StudentViewModules` click-through, writes `docs/authoring/<type>.md` and indexes it in `docs/README.md`, this map, `validation-errors.md`, `AGENTS.md`, `lesson-schema.md`, `task-types.md` and `MODULE_FEATURE_MATRIX.md`; validates the type (reserved words, activities, names core code already compares against), refuses to overwrite (tested by `scripts/__tests__/newModule.test.mjs`) |
+| `scripts/scaffold-utils.mjs` | Shared plan/apply plumbing for both kits: template listing, prettier formatting, anchored inserts, line-ending preservation, `applyPlan` (refuses to overwrite or apply a stale plan) and `describePlan` |
 
 ---
 
@@ -504,10 +604,11 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | `cli/package.json` | Sub-package manifest (`type: module`); deps: `firebase-admin`, `js-yaml`, `yargs` |
 | `cli/cli.mjs` | Entry point: yargs CLI with lesson topic audit/preflight/check-case testing plus `lessons`, `tasks`, `topics`, `feedback`, and `assets` subcommand groups |
 | `cli/firebase.mjs` | Firebase Admin SDK init via `GOOGLE_APPLICATION_CREDENTIALS`; exports `db` (Firestore) and `storage`; exits on missing credentials |
-| `cli/validate.mjs` | `validateLessonForMcp(lesson)` — standalone lesson validation (no Firebase dependency) |
+| `cli/validate.mjs` | `validateLessonForMcp(lesson)` — standalone lesson validation (no Firebase dependency): the shared core (`src/shared/lessonValidation.js`) plus the CLI-only `description is required` rule |
+| `cli/capabilities.mjs` | `buildCapabilities()` — JSON catalogue of modules, activities and check types read from the registries, printed by `lessons capabilities` for lesson agents (no Firebase) |
 | `cli/check-tests.mjs` | `testLessonChecks(lesson, casesFile)` — source-code case harness using the shared runtime check evaluator, including feedback-match reporting |
 | `cli/topic-utils.mjs` | Standalone topic-library normalization and validation helpers used by CLI conversion/publish commands |
-| `cli/yaml-converter.mjs` | YAML conversion helpers for lessons and topic libraries, including lesson/topic JSON-to-YAML serialization |
+| `cli/yaml-converter.mjs` | YAML conversion helpers for lessons and topic libraries, including lesson/topic JSON-to-YAML serialization and the `type: <activity>` shorthand (both directions, via the activity registry) |
 | `cli/structured-input.mjs` | JSON/YAML input detection for CLI files and stdin; lesson YAML is passed through the lesson shorthand converter |
 | `cli/lessons.mjs` | Exports async functions: `listLessons`, `getLesson`, `getLessonSkeleton`, `getTask`, `upsertTask`, `appendTask`, `upsertLesson`, `deleteLesson`, `yamlToLesson`, `publishYamlLesson` |
 | `cli/topics.mjs` | Exports topic Firestore functions plus bulk topic-library YAML/JSON publish helpers |
@@ -526,6 +627,12 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 |---|---|
 | `vite.config.js` | Vite build config for both classroom and builder apps |
 | `src/test/setup.js` | Vitest/jsdom shared test setup: jest-dom matchers and browser API mocks used across component and hook tests |
+| `src/test/studentCodeStateHarness.js` | Test harness for `useStudentCodeState`: renders the hook with `vi.fn` session writers, storage-key helpers, and runtime fakes (see `docs/TESTING.md`) |
+| `src/test/studentCodeStateMocks.js` | Dependency-free `vi.mock` factories (Pyodide, type/lesson storage assets) used by the `useStudentCodeState` characterization tests |
+| `src/test/fixtures/studentCodeStateLessons.js` | Per-module-type (and composed) lesson fixtures for the `useStudentCodeState` characterization tests |
+| `src/test/activityBuilderHarness.jsx` | Test harness rendering an activity `BuilderEditor` with the task held in state (`renderBuilderEditor`), so tests edit through the UI and read the resulting task |
+| `src/test/activityUiHarness.jsx` | Test harness rendering an activity StudentView with a real state store (`renderActivityUi`), so UI tests exercise updater-style `onChange` like `useActivityState` |
+| `src/test/fixtures/legacyActivityTasks.js` | Test-only fixtures: one valid task per quiz sub-type, Python/HTML `code_arrange` tasks, and invalid variants, shared by the Phase 0 characterisation tests that pin quiz/code_arrange behaviour before the Activity migration (`docs/architecture/modular-activities-plan.md`) |
 | `package.json` | Dependencies and scripts |
 | `index.html` | Classroom app HTML shell |
 | `builder/index.html` | Lesson builder HTML shell |

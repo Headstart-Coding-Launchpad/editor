@@ -344,28 +344,25 @@ Groups may not be nested. `carryCodeFrom` / `carryBlocksFrom` references from wi
 
 ## Validation Rules
 
-Two separate validators exist and they do not enforce the same rules. `cli lessons validate|upsert|publish-yaml` runs `cli/validate.mjs` (`validateLessonForMcp`); the Lesson Builder runs a stricter, browser-only validator in `src/builder/lessonUtils.js`. A lesson can pass CLI validation and still trip builder-only rules — publish through the builder at least once, or check by hand, if you need those covered.
+`cli lessons validate|upsert|publish-yaml` (`cli/validate.mjs`, `validateLessonForMcp`) and the Lesson Builder (`src/builder/lessonUtils.js`, `validateLesson`) run **the same rules with the same messages**: both call the shared core in `src/shared/lessonValidation.js`, which hands type-specific rules to each task's workspace module (`validateTask` in `src/modules/<type>/definition.js`, chosen by the task's own `moduleType` in composed lessons) and `taskType: activity` tasks to their activity definition. See ADR 0008 and `docs/authoring/validation-errors.md` for every message.
 
-**Enforced by both the CLI and the builder:**
+**Enforced by both the CLI and the builder** (highlights):
 
-- Lesson `id`, `title`, and at least one task are required.
-- Every task needs a `title`.
+- Lesson `id`, `type`, `title`, and at least one task are required; `recordingUrl` must be a YouTube link.
+- Every task needs a `title`; `estimatedMinutes`, `priority`, `allowSharing` and stage `role`s must be valid.
+- Carry fields (`carryCodeFrom`, `carryBlocksFrom`, `carryFsFrom`, `carryCircuitFrom`, `carryDesktopFrom`) must reference an existing, earlier task in the same lesson module.
 - Information tasks need an `explainer` unless `informationType` is `introduction`.
-- Multiple-choice quiz tasks need at least two non-empty options and an `answer_equals` check; match/fill-blank/short-answer quizzes have their own required-field rules.
-- HTML code tasks should have files with unique filenames and an HTML entry file.
-- Scratch `sprite_property` and `block_used` checks need their type-specific fields (`property`/`operator`/`value`, `opcode`) filled in.
-- Filesystem checks (`fs_*`, including legacy aliases) need their type-specific fields — a `path`, an expected `value`/count where applicable, a parent `dir` for location checks.
-- Electronics tasks need a starter breadboard (`starterCircuit` or a Starter-role `codeStages` entry — though write `starterCircuit` regardless, or the Builder shows a "no starter breadboard yet" banner the validator does not). Electronics checks (`circuit_*`) need a real target — a component/control selector (`type`, `label`, or `id`) and, for connection checks, an endpoint `pin`. Neither validator inspects wire endpoints, so a wire naming a missing pin — or written as a `{ component, pin }` object instead of a `componentId.pin` string — passes validation while connecting nothing; see `docs/authoring/electronics.md`.
+- Quiz tasks: multiple-choice needs at least two non-empty options and an `answer_equals` check; match/fill-blank/short-answer quizzes have their own required-field rules. Code-arrange tasks need lines, blanks, unique ids and a completion check, in the Python or HTML module.
+- HTML code tasks should have files with unique filenames and an HTML entry file. Electronics tasks need a starter breadboard (`starterCircuit` or a Starter-role `codeStages` entry — though write `starterCircuit` regardless, or the Builder shows a "no starter breadboard yet" banner the validator does not). Filesystem and Desktop stages need their state.
+- Check fields, for the completion check and every feedback check: Python/HTML/Arcade checks (submit mode cannot use run-required checks; DOM checks need a `selector`, attribute checks an `attribute`, style checks a `property`; variable checks a `name`, `variable_dict_key_value` a `key`, `variable_array_nth_item` a valid `index`; value checks a `value`, except `code_no_error`, `output_not_empty`, `output_empty`, `element_exists`, `element_attribute`, `element_style_property`, `variable_exists`), Scratch checks (see `docs/authoring/scratch.md`), Turtle checks, filesystem checks (`fs_*`, including legacy aliases) and Electronics checks (`circuit_*` need a real component/control selector and, for connection checks, an endpoint `pin`). Neither validator inspects Electronics wire endpoints, so a wire naming a missing pin — or written as a `{ component, pin }` object instead of a `componentId.pin` string — passes validation while connecting nothing; see `docs/authoring/electronics.md`.
+- Feedback checks need a completion check, valid `priority` and `stageOffer`; a blocking feedback check without a `hint` is a warning.
+- Python `tests` entries need a `check` (missing or unnamed inputs are warnings).
+- Warnings when the authored complete solution fails a static check, or when run-time checks still need a run in the Builder.
 
-Both validators share the same filesystem/electronics check-field logic (`src/shared/checkAuthoringValidation.js`) so they can't drift apart the way they used to — a lesson published via the CLI alone can no longer ship a filesystem or electronics check the Builder would have flagged as broken.
+**CLI only:** `description` is required.
 
-**Builder-only (not checked by the CLI):**
+**Builder only** (they need browser APIs or Builder editing state):
 
-- `carryCodeFrom` / `carryBlocksFrom` must reference an existing task ID.
-- Submit mode cannot use run-required checks.
-- DOM checks (`html_element_*`, legacy `element_*`) need a CSS `selector`; attribute checks need an `attribute` name; style-property checks need a `property` name.
-- Variable checks (`variable_*`) need a `name`; `variable_dict_key_value` needs a `key`; `variable_array_nth_item` needs a valid `index`.
-- Checks requiring a value must provide one (exceptions: `code_no_error`, `output_not_empty`, `output_empty`, `element_exists`, `element_attribute`, `element_style_property`, `variable_exists`).
-- Feedback checks are validated against the same field rules as completion checks; blocking feedback without a `hint` is a builder warning.
 - Scratch toolbox XML must parse if provided.
-- Scratch checks have their own required fields — see `docs/authoring/scratch.md`.
+- Duplicate task ids are a warning (the Builder renumbers them on export).
+- A completion check that hasn't been run since it was edited (`_checkTested`) is a warning.

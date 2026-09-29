@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { CodeEditor } from '../../../shared/CodeEditor'
-import ScratchTeacherLiveView from '../../../modules/scratch/TeacherLiveView.jsx'
-import CodeArrangeTask from '../CodeArrangeTask'
-import { deriveSlotStateFromCode, getCodeArrangeEntryFile } from '../../../shared/codeArrange'
 import ExplainerPanel from '../ExplainerPanel'
 import IframePreview from '../IframePreview'
 import OutputPanel from '../OutputPanel'
-import QuizTask from '../QuizTask'
+import { ActivityView } from '../../../activities/ActivityHost.jsx'
+import { getTaskActivity } from '../../../activities/registry.pure.js'
+import { getModuleHostedActivityUi } from '../../../activities/registry.js'
+import { readActivityAnswer, studentStateField } from '../../../activities/state.js'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './constants'
 
 function answerKey(value) {
@@ -48,10 +48,14 @@ export default function StudentWorkspaceBody({
   session,
   isInformation,
   isQuiz,
+  isActivity = false,
+  activityState = null,
   isSessionSandbox,
-  isPython,
-  isScratch,
-  isHtml,
+  // How the student's work is mirrored — the module's capabilities.studentMirror ('code',
+  // 'files', 'blocks' or 'view'), null when no module applies. 'blocks' and 'view' render the
+  // module's own TeacherLiveView (ModuleTeacherLiveView) with the Scratch mirrors or the
+  // module display state respectively.
+  mirror = null,
   isCodeArrangeTask,
   ModuleTeacherLiveView,
   moduleDisplayState,
@@ -88,6 +92,9 @@ export default function StudentWorkspaceBody({
     student.currentCodeArrangeSlots ?? null,
     answerEditing
   )
+  // Teacher edits of an activity chain on the latest edited state, not the last render's, so
+  // an activity UI that updates several times in one event never loses a step.
+  const activityEditRef = useRef(null)
 
   const highlightComposer = canHighlight && (
     <div style={s.highlightComposer}>
@@ -147,67 +154,84 @@ export default function StudentWorkspaceBody({
       />
     )
 
-  if (isQuiz && !isSessionSandbox)
+  // Quizzes and activities: the student's mirrored answer, read-only, or editable with
+  // "Edit answers" (pushed live, see pushTeacherAnswerEdit).
+  if ((isQuiz && !isSessionSandbox) || isActivity) {
+    const definition = getTaskActivity(task)
+    const shownState = answerEditing
+      ? readActivityAnswer(task, editableAnswer)
+      : (activityState ?? readActivityAnswer(task, student.currentAnswer ?? ''))
+    activityEditRef.current = shownState
+    // A partial edit just updates the student's state, like dragging one quiz tile. It is
+    // marked on the student's screen when it is final: a passing change for activities, or
+    // the verdict the quiz UI gives an answer it submits (`submitsAnswers`: true / false when
+    // every tile is placed, none — so unmarked — for a chosen option).
+    const pushEdit = (update, final, verdict) => {
+      if (!definition) return
+      const prev = activityEditRef.current
+      const next = typeof update === 'function' ? update(prev) : update
+      if (next == null || (!final && next === prev)) return
+      activityEditRef.current = next
+      const serialized = definition.serialize(next)
+      pushEditableAnswer(serialized)
+      let passed = null
+      if (final) passed = verdict
+      else if (
+        !definition.submitsAnswers &&
+        definition.isGraded(task) &&
+        definition.grade(task, next).passed
+      )
+        passed = true
+      onEditAnswer?.({ answer: serialized, passed })
+    }
     return (
-      <QuizTask
+      <ActivityView
         task={task}
-        showQuestion
-        selectedAnswer={answerEditing ? editableAnswer : (student.currentAnswer ?? '')}
-        onSelectAnswer={
-          answerEditing
-            ? (next, allCorrect) => {
-                const serialized = typeof next === 'string' ? next : JSON.stringify(next)
-                pushEditableAnswer(serialized)
-                onEditAnswer?.({ answer: serialized, passed: allCorrect })
-              }
+        state={shownState}
+        teacher
+        readOnly={!answerEditing}
+        lessonType={lesson?.type}
+        result={{ submitted: student.lastRunStatus === 'submitted', passed: student.checkPassed }}
+        onChange={(update) => pushEdit(update, false)}
+        onSubmit={
+          definition?.submitsAnswers
+            ? (next, meta) => pushEdit(next ?? activityEditRef.current, true, meta?.passedOverride)
             : undefined
         }
-        submitted={student.lastRunStatus === 'submitted'}
-        checkPassed={student.checkPassed}
-        disabled={!answerEditing}
-        showCorrectAnswer
-      />
-    )
-
-  if (isCodeArrangeTask) {
-    // currentCodeArrangeSlots mirrors every tile placement live (see
-    // CodeArrangeTaskContainer.jsx / useStudentCodeState.js
-    // handleCodeArrangeSlotsChange) — prefer it over currentCode/currentFiles,
-    // which only update once the arrangement is fully assembled and would
-    // otherwise show stale code from a previous task while the student is
-    // still mid-arrangement.
-    const entryFile = getCodeArrangeEntryFile(task)
-    const code = isHtml
-      ? (files.find((f) => f.name === entryFile)?.content ?? '')
-      : (student.currentCode ?? '')
-    const liveSlots = answerEditing ? editableSlots : student.currentCodeArrangeSlots
-    const selectedAnswer =
-      liveSlots && typeof liveSlots === 'object' ? liveSlots : deriveSlotStateFromCode(task, code)
-    return (
-      <CodeArrangeTask
-        task={task}
-        moduleType={isHtml ? 'html' : 'python'}
-        selectedAnswer={selectedAnswer}
-        output={student.currentOutput ?? ''}
-        runStatus={student.lastRunStatus}
-        checkPassed={student.checkPassed}
-        iframeSrc={iframeSrc}
-        iframeRef={iframeRef}
-        onSelectAnswer={
-          answerEditing
-            ? (next) => {
-                pushEditableSlots(next)
-                onEditAnswer?.({ codeArrangeSlots: next })
-              }
-            : undefined
-        }
-        disabled={!answerEditing}
-        showQuestion={false}
       />
     )
   }
 
-  if (isPython)
+  // A module-hosted activity (code_arrange): its TeacherLiveView shows the watched student's
+  // board from the live slot mirror (students/{id}/current<liveChannel>), or from the teacher's
+  // own edits while editing the student's answer.
+  if (isCodeArrangeTask) {
+    const moduleActivity = getModuleHostedActivityUi(task)
+    const TeacherLiveView = moduleActivity?.TeacherLiveView
+    if (TeacherLiveView) {
+      return (
+        <TeacherLiveView
+          task={task}
+          student={student}
+          mirror={mirror}
+          files={files}
+          slots={answerEditing ? editableSlots : student[studentStateField(moduleActivity)]}
+          iframeSrc={iframeSrc}
+          iframeRef={iframeRef}
+          onEditSlots={
+            answerEditing
+              ? (next) => {
+                  pushEditableSlots(next)
+                  onEditAnswer?.({ [moduleActivity.liveChannel]: next })
+                }
+              : undefined
+          }
+        />
+      )
+    }
+  }
+
+  if (mirror === 'code')
     return (
       <>
         {highlightComposer}
@@ -241,9 +265,9 @@ export default function StudentWorkspaceBody({
       </>
     )
 
-  if (isScratch) {
+  if (mirror === 'blocks' && ModuleTeacherLiveView) {
     return (
-      <ScratchTeacherLiveView
+      <ModuleTeacherLiveView
         key={`student-scratch-${student.anonymousId}-${session?.currentTaskId}`}
         task={task}
         lesson={lesson}
@@ -257,7 +281,7 @@ export default function StudentWorkspaceBody({
     )
   }
 
-  if (ModuleTeacherLiveView) {
+  if (mirror === 'view' && ModuleTeacherLiveView) {
     return (
       <ModuleTeacherLiveView
         task={task}
@@ -274,7 +298,7 @@ export default function StudentWorkspaceBody({
     )
   }
 
-  if (isHtml)
+  if (mirror === 'files')
     return (
       <>
         <div style={s.htmlEditorPane}>

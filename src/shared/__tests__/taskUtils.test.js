@@ -528,6 +528,7 @@ describe('deriveTaskContext', () => {
   it('handles null lesson and task gracefully', () => {
     const ctx = deriveTaskContext(null, null)
     expect(ctx).toEqual({
+      moduleType: null,
       isPython: false,
       isScratch: false,
       isFilesystem: false,
@@ -535,10 +536,22 @@ describe('deriveTaskContext', () => {
       isArcade: false,
       isHtml: false,
       isTurtle: false,
+      isDesktop: false,
       isQuiz: false,
       isInformation: false,
+      isActivity: false,
+      activity: null,
       isSessionSandbox: false,
     })
+  })
+
+  it('turns module flags off on a hosted activity task, except in a session sandbox', () => {
+    const task = { id: 3, taskType: 'activity', activityType: 'binary', mode: 'make_number' }
+    const ctx = deriveTaskContext({ type: 'python' }, task)
+    expect(ctx).toMatchObject({ moduleType: null, isPython: false, isActivity: true })
+    expect(ctx.activity?.id).toBe('binary')
+    const sandbox = deriveTaskContext({ type: 'python' }, task, { state: 'sandbox' })
+    expect(sandbox).toMatchObject({ moduleType: 'python', isPython: true, isActivity: true })
   })
 })
 
@@ -658,10 +671,17 @@ describe('buildStageOptions', () => {
     expect(opts[opts.length - 1]).toEqual({ value: 'complete', label: 'Complete' })
   })
 
-  it('returns only [starter] for quiz tasks regardless of other fields', () => {
+  // Deliberately changed in plan step 2.3b (was: "returns only [starter] for quiz tasks"):
+  // quizzes are activities now, so they get the activity options — none for a quiz the teacher
+  // can't edit, "Start again" / "Complete (show answers)" for match and fill-in-the-gaps. The
+  // StudentModal still hides the stage dropdown on quiz tasks, so no teacher sees a change.
+  it('returns activity reset options for quiz tasks, ignoring code fields', () => {
     const task = { taskType: 'quiz', completeCode: 'x', codeStages: [{}] }
-    const opts = buildStageOptions(task, 'python')
-    expect(opts).toEqual([{ value: 'starter', label: 'Starter' }])
+    expect(buildStageOptions(task, 'python')).toEqual([])
+    expect(buildStageOptions({ ...task, quizType: 'match' }, 'python')).toEqual([
+      { value: 'starter', label: 'Start again' },
+      { value: 'complete', label: 'Complete (show answers)' },
+    ])
   })
 
   it('handles null task gracefully', () => {

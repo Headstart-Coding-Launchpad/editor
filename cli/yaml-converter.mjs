@@ -1,4 +1,11 @@
 import yaml from 'js-yaml'
+import {
+  activityIdForYamlType,
+  legacyTaskTypeForYamlType,
+  usesYamlAnswerShorthand,
+  yamlTypeForActivityTask,
+  yamlTypeForLegacyTaskType,
+} from '../src/activities/registry.pure.js'
 
 /**
  * Parse YAML lesson text and return a full lesson JSON object.
@@ -6,6 +13,8 @@ import yaml from 'js-yaml'
  * Differences from plain JSON:
  * - Task `id` fields are auto-assigned sequentially (starting at 1).
  * - `type: information` / `type: quiz` on a task maps to `taskType`.
+ * - `type: <activity>` (any activity's `yaml.type`, e.g. `type: binary`) maps to
+ *   `taskType: activity` + `activityType: <id>`; export writes the shorthand back.
  * - `type: <lesson-type>` on a task is treated as a code task and ignored.
  * - `answer: <option-id>` on a multiple_choice quiz becomes `check: { type: answer_equals, value }`.
  * - `checks:` (plural array) is an alias for the `check:` field.
@@ -154,12 +163,15 @@ function convertTask(raw, id, lessonType) {
 
   if (type === 'information') {
     task.taskType = 'information'
-  } else if (type === 'quiz') {
-    task.taskType = 'quiz'
-  } else if (type === 'code_arrange') {
-    task.taskType = 'code_arrange'
+  } else if (legacyTaskTypeForYamlType(type)) {
+    // Legacy activity task types keep their own YAML type (`type: quiz`, `type: code_arrange`).
+    task.taskType = legacyTaskTypeForYamlType(type)
   } else if (type === 'draft') {
     task.taskType = 'draft'
+  } else if (type !== lessonType && activityIdForYamlType(type)) {
+    // Activity shorthand: `type: binary` → taskType activity + activityType binary.
+    task.taskType = 'activity'
+    task.activityType = activityIdForYamlType(type)
   }
   // type === lessonType or undefined → code task, no taskType added
 
@@ -177,7 +189,7 @@ function convertTask(raw, id, lessonType) {
 }
 
 function taskToYamlObject(task) {
-  const out = { ...task }
+  let out = { ...task }
   delete out.id
 
   if (out.carryCodeFrom === null) delete out.carryCodeFrom
@@ -187,22 +199,21 @@ function taskToYamlObject(task) {
   if (out.taskType === 'information') {
     out.type = 'information'
     delete out.taskType
-  } else if (out.taskType === 'quiz') {
-    out.type = 'quiz'
-    delete out.taskType
-  } else if (out.taskType === 'code_arrange') {
-    out.type = 'code_arrange'
+  } else if (yamlTypeForLegacyTaskType(out.taskType)) {
+    out.type = yamlTypeForLegacyTaskType(out.taskType)
     delete out.taskType
   } else if (out.taskType === 'draft') {
     out.type = 'draft'
     delete out.taskType
+  } else if (yamlTypeForActivityTask(out)) {
+    // Known activities export as the `type: <activity>` shorthand; an unknown activityType
+    // keeps its explicit taskType + activityType.
+    const { taskType: _taskType, activityType: _activityType, title, ...fields } = out
+    const shorthand = yamlTypeForActivityTask(out)
+    out = { ...(title !== undefined ? { title } : {}), type: shorthand, ...fields }
   }
 
-  if (
-    out.type === 'quiz' &&
-    (out.quizType == null || out.quizType === 'multiple_choice') &&
-    out.check?.type === 'answer_equals'
-  ) {
+  if (usesYamlAnswerShorthand(task)) {
     out.answer = out.check.value
     delete out.check
   }

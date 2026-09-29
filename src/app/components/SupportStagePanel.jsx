@@ -1,29 +1,37 @@
 import React from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
+import { getModuleDefinition, getModuleLabel } from '../../modules/definitions'
 
-function getLanguageLabel(language) {
-  if (language === 'python') return 'Python'
-  if (language === 'html') return 'HTML'
-  if (language === 'filesystem') return 'Filesystem'
-  if (language === 'scratch') return 'Scratch'
-  if (language === 'electronics') return 'Electronics'
-  return 'Code'
+function getLanguageLabel(lessonType) {
+  return getModuleLabel(lessonType, 'stageReference') ?? 'Code'
 }
 
-function stageToText(stage, lessonType) {
+// How a revealed stage reads, by the module's state kind (capabilities.sandboxState): its text,
+// and whether that text is Markdown (a blocks stage's notes) rather than code.
+const STAGE_REFERENCE_BY_KIND = {
+  code: { text: (stage) => stage.code ?? '' },
+  files: {
+    text: (stage) => {
+      if (stage.code != null) return stage.code
+      return (stage.files ?? [])
+        .map((file) => `/* ${file.name} */\n${file.content ?? ''}`)
+        .join('\n\n')
+    },
+  },
+  fs: { text: (stage) => JSON.stringify(stage.fs ?? {}, null, 2) },
+  desktop: { text: (stage) => JSON.stringify(stage.desktop ?? {}, null, 2) },
+  blocks: { text: (stage) => stage.markdown ?? '', markdown: true },
+}
+
+function stageReferenceFor(lessonType) {
+  const kind = getModuleDefinition(lessonType)?.capabilities?.sandboxState
+  return Object.hasOwn(STAGE_REFERENCE_BY_KIND, kind ?? '') ? STAGE_REFERENCE_BY_KIND[kind] : null
+}
+
+// Text for a revealed stage, by the module's state kind (capabilities.sandboxState).
+export function stageToText(stage, lessonType) {
   if (!stage) return ''
-  if (lessonType === 'python') return stage.code ?? ''
-  if (lessonType === 'arcade') return stage.code ?? ''
-  if (lessonType === 'html') {
-    if (stage.code != null) return stage.code
-    return (stage.files ?? [])
-      .map((file) => `/* ${file.name} */\n${file.content ?? ''}`)
-      .join('\n\n')
-  }
-  if (lessonType === 'filesystem') return JSON.stringify(stage.fs ?? {}, null, 2)
-  if (lessonType === 'scratch') return stage.markdown ?? ''
-  if (lessonType === 'electronics') return stage.code ?? ''
-  return ''
+  return stageReferenceFor(lessonType)?.text(stage) ?? ''
 }
 
 export default function SupportStagePanel({ stage, lessonType, revealed, sourceLabel }) {
@@ -49,9 +57,9 @@ export default function SupportStagePanel({ stage, lessonType, revealed, sourceL
           {sourceLabel && <span style={s.source}>{sourceLabel}</span>}
         </div>
       </div>
-      {lessonType === 'scratch' ? (
+      {stageReferenceFor(lessonType)?.markdown ? (
         <div style={s.markdown}>
-          <MarkdownRenderer content={text} topicType="scratch" disableCopy />
+          <MarkdownRenderer content={text} topicType={lessonType} disableCopy />
         </div>
       ) : (
         <pre style={s.pre}>

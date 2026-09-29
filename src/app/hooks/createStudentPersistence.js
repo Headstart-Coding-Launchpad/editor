@@ -11,8 +11,14 @@ import {
   savePersonalSandboxFile,
   savePersonalSandboxFs,
   savePersonalSandboxDesktop,
+  loadSavedFileRecord,
+  saveFileRecord,
+  loadPersonalSandboxCode,
+  loadPersonalSandboxFileRecord,
+  savePersonalSandboxFileRecord,
   ephemeralStorage,
 } from '../studentStorage'
+import { getModuleDefinition } from '../../modules/definitions.js'
 
 /**
  * Handles the conditional "sandbox vs. normal task" branching for all
@@ -24,6 +30,11 @@ import {
  * works while presenting/previewing without polluting real student storage.
  * Personal sandbox saves are skipped entirely in those modes (sandbox reads
  * elsewhere go straight to localStorage, so writing ephemerally would desync).
+ *
+ * Generic API (module contract v2): saveWork / readWork / saveSandboxWork / readSandboxWork take
+ * a module type and the module's work, and map it onto today's record shapes through that
+ * module's `storage` adapter (src/modules/moduleContract.js). The per-type named functions
+ * below remain for existing callers; both share the same routing.
  */
 export function createStudentPersistence({
   lessonId,
@@ -48,28 +59,43 @@ export function createStudentPersistence({
     sandboxModuleId
       ? savePersonalSandboxDesktop(lessonId, actorId, desktop, sandboxModuleId)
       : savePersonalSandboxDesktop(lessonId, actorId, desktop)
+  const saveSandboxRecord = (actorId, record) =>
+    sandboxModuleId
+      ? savePersonalSandboxCode(lessonId, actorId, record, sandboxModuleId)
+      : savePersonalSandboxCode(lessonId, actorId, record)
+  const saveSandboxFileRecord = (filename, actorId, record) =>
+    sandboxModuleId
+      ? savePersonalSandboxFileRecord(lessonId, filename, actorId, record, sandboxModuleId)
+      : savePersonalSandboxFileRecord(lessonId, filename, actorId, record)
   const ephemeral = teacherPresentation || previewMode
 
-  function savePythonCode(actorId, taskId, data) {
+  // The one routing rule for every save: personal sandbox (skipped while presenting or
+  // previewing), else the in-memory store while presenting or previewing, else localStorage.
+  function routeSave({ toSandbox, toEphemeral, toLocalStorage }) {
     if (inPersonalSandboxRef.current) {
       if (ephemeral) return
-      saveSandboxCode(actorId, { code: data.code })
+      toSandbox()
     } else if (ephemeral) {
-      ephemeralStorage.saveCode(lessonId, taskId, actorId, data)
+      toEphemeral()
     } else {
-      saveCode(lessonId, taskId, actorId, data)
+      toLocalStorage()
     }
   }
 
+  function savePythonCode(actorId, taskId, data) {
+    routeSave({
+      toSandbox: () => saveSandboxCode(actorId, { code: data.code }),
+      toEphemeral: () => ephemeralStorage.saveCode(lessonId, taskId, actorId, data),
+      toLocalStorage: () => saveCode(lessonId, taskId, actorId, data),
+    })
+  }
+
   function saveHtmlFile(actorId, taskId, filename, content) {
-    if (inPersonalSandboxRef.current) {
-      if (ephemeral) return
-      saveSandboxFile(filename, actorId, content)
-    } else if (ephemeral) {
-      ephemeralStorage.saveFile(lessonId, taskId, filename, actorId, content)
-    } else {
-      saveFile(lessonId, taskId, filename, actorId, content)
-    }
+    routeSave({
+      toSandbox: () => saveSandboxFile(filename, actorId, content),
+      toEphemeral: () => ephemeralStorage.saveFile(lessonId, taskId, filename, actorId, content),
+      toLocalStorage: () => saveFile(lessonId, taskId, filename, actorId, content),
+    })
   }
 
   function saveHtmlFiles(actorId, taskId, files) {
@@ -77,36 +103,28 @@ export function createStudentPersistence({
   }
 
   function saveScratch(actorId, taskId, workspaceStates) {
-    if (inPersonalSandboxRef.current) {
-      if (ephemeral) return
-      saveSandboxCode(actorId, { state: workspaceStates })
-    } else if (ephemeral) {
-      ephemeralStorage.saveCode(lessonId, taskId, actorId, { state: workspaceStates })
-    } else {
-      saveCode(lessonId, taskId, actorId, { state: workspaceStates })
-    }
+    routeSave({
+      toSandbox: () => saveSandboxCode(actorId, { state: workspaceStates }),
+      toEphemeral: () =>
+        ephemeralStorage.saveCode(lessonId, taskId, actorId, { state: workspaceStates }),
+      toLocalStorage: () => saveCode(lessonId, taskId, actorId, { state: workspaceStates }),
+    })
   }
 
   function saveFs(actorId, taskId, newFs) {
-    if (inPersonalSandboxRef.current) {
-      if (ephemeral) return
-      saveSandboxFs(actorId, newFs)
-    } else if (ephemeral) {
-      ephemeralStorage.saveFsState(lessonId, taskId, actorId, newFs)
-    } else {
-      saveFsState(lessonId, taskId, actorId, newFs)
-    }
+    routeSave({
+      toSandbox: () => saveSandboxFs(actorId, newFs),
+      toEphemeral: () => ephemeralStorage.saveFsState(lessonId, taskId, actorId, newFs),
+      toLocalStorage: () => saveFsState(lessonId, taskId, actorId, newFs),
+    })
   }
 
   function saveDesktop(actorId, taskId, newDesktop) {
-    if (inPersonalSandboxRef.current) {
-      if (ephemeral) return
-      saveSandboxDesktop(actorId, newDesktop)
-    } else if (ephemeral) {
-      ephemeralStorage.saveDesktopState(lessonId, taskId, actorId, newDesktop)
-    } else {
-      saveDesktopState(lessonId, taskId, actorId, newDesktop)
-    }
+    routeSave({
+      toSandbox: () => saveSandboxDesktop(actorId, newDesktop),
+      toEphemeral: () => ephemeralStorage.saveDesktopState(lessonId, taskId, actorId, newDesktop),
+      toLocalStorage: () => saveDesktopState(lessonId, taskId, actorId, newDesktop),
+    })
   }
 
   // Task-save readers matching the write routing above, so carry-through and
@@ -135,7 +153,104 @@ export function createStudentPersistence({
       : loadSavedDesktop(lessonId, taskId, actorId)
   }
 
+  // ── Generic, adapter-driven API ─────────────────────────────────────────────
+  // `work` is the module's own value (a code string, Scratch workspace states, an fs tree, a
+  // desktop state, or — for per-file modules such as html — an array of `{ name, content }`
+  // files). `meta` carries the extra record fields the module's adapter knows (python/turtle
+  // `output` / `runStatus`, arcade also `arcadeDesign`); fields not in `meta` are not written.
+
+  function storageFor(type) {
+    const storage = getModuleDefinition(type)?.storage
+    if (!storage) throw new Error(`No storage adapter for module type "${type}"`)
+    return storage
+  }
+
+  // Task save, routed like the named savers (personal sandbox → sandbox record).
+  function saveWork(type, actorId, taskId, work, meta = {}) {
+    const storage = storageFor(type)
+    if (storage.layout === 'perFile') {
+      for (const file of work ?? []) {
+        const taskRecord = storage.toTaskRecord(file.content, meta)
+        routeSave({
+          toSandbox: () =>
+            saveSandboxFileRecord(file.name, actorId, storage.toSandboxRecord(file.content, meta)),
+          toEphemeral: () =>
+            ephemeralStorage.saveFileRecord(lessonId, taskId, file.name, actorId, taskRecord),
+          toLocalStorage: () => saveFileRecord(lessonId, taskId, file.name, actorId, taskRecord),
+        })
+      }
+      return
+    }
+    const taskRecord = storage.toTaskRecord(work, meta)
+    routeSave({
+      toSandbox: () => saveSandboxRecord(actorId, storage.toSandboxRecord(work, meta)),
+      toEphemeral: () => ephemeralStorage.saveCode(lessonId, taskId, actorId, taskRecord),
+      toLocalStorage: () => saveCode(lessonId, taskId, actorId, taskRecord),
+    })
+  }
+
+  // The record the code editor, a run and a teacher edit write for a code-channel module:
+  // `{ [workKey]: work, ...fields }`, the fields written as given (e.g. `output`, `runStatus`,
+  // then the module's extras such as `arcadeDesign`) whatever the adapter's taskMeta, while the
+  // personal sandbox keeps only the work. This is the shape savePythonCode always wrote (so an
+  // edit saves electronics' output/runStatus, and an Arcade sandbox edit keeps only its code).
+  function saveRunRecord(type, actorId, taskId, work, fields = {}) {
+    const { workKey } = storageFor(type)
+    const data = { [workKey]: work, ...fields }
+    routeSave({
+      toSandbox: () => saveSandboxRecord(actorId, { [workKey]: work }),
+      toEphemeral: () => ephemeralStorage.saveCode(lessonId, taskId, actorId, data),
+      toLocalStorage: () => saveCode(lessonId, taskId, actorId, data),
+    })
+  }
+
+  // Task read, from the same store the saves above target. Returns `{ work, meta }` or null.
+  // Per-file modules read one file at a time: pass `{ filename }`.
+  function readWork(type, actorId, taskId, { filename } = {}) {
+    const storage = storageFor(type)
+    if (storage.layout === 'perFile') {
+      if (filename == null) return null
+      const record = ephemeral
+        ? ephemeralStorage.loadSavedFileRecord(lessonId, taskId, filename, actorId)
+        : loadSavedFileRecord(lessonId, taskId, filename, actorId)
+      return storage.fromTaskRecord(record)
+    }
+    return storage.fromTaskRecord(readSavedCode(actorId, taskId))
+  }
+
+  // Personal-sandbox save regardless of inPersonalSandboxRef; skipped while presenting or
+  // previewing, like every sandbox save.
+  function saveSandboxWork(type, actorId, work, meta = {}) {
+    if (ephemeral) return
+    const storage = storageFor(type)
+    if (storage.layout === 'perFile') {
+      for (const file of work ?? []) {
+        saveSandboxFileRecord(file.name, actorId, storage.toSandboxRecord(file.content, meta))
+      }
+      return
+    }
+    saveSandboxRecord(actorId, storage.toSandboxRecord(work, meta))
+  }
+
+  // Personal-sandbox read; always localStorage (see the note above createStudentPersistence).
+  function readSandboxWork(type, actorId, { filename } = {}) {
+    const storage = storageFor(type)
+    const moduleArgs = sandboxModuleId ? [sandboxModuleId] : []
+    if (storage.layout === 'perFile') {
+      if (filename == null) return null
+      return storage.fromSandboxRecord(
+        loadPersonalSandboxFileRecord(lessonId, filename, actorId, ...moduleArgs)
+      )
+    }
+    return storage.fromSandboxRecord(loadPersonalSandboxCode(lessonId, actorId, ...moduleArgs))
+  }
+
   return {
+    saveWork,
+    saveRunRecord,
+    readWork,
+    saveSandboxWork,
+    readSandboxWork,
     savePythonCode,
     saveHtmlFile,
     saveHtmlFiles,

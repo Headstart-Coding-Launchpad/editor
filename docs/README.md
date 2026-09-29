@@ -57,6 +57,11 @@ Design intent and contract for `src/modules/<type>/` lesson modules, including s
 
 **Load when:** adding or changing a lesson type, changing the module interface, or touching registry-driven classroom/builder behavior.
 
+### [architecture/activities.md](architecture/activities.md)
+How hosted activities (`taskType: 'activity'`: Binary, Keyboard, Mouse) run in the classroom: `ActivityHost`, `useActivityState`, the UI registry, data flow to `currentAnswer`, the discrete/continuous write rules, teacher card/modal/edit/reset surfaces, teacher-only Go Live, device requirements and fallbacks, and the unknown-activity fallback.
+
+**Load when:** changing the activity host, activity persistence or live sync, teacher views of activities, or adding a new activity.
+
 ### [architecture/composed-lessons-spec.md](architecture/composed-lessons-spec.md)
 Implemented technical specification for backward-compatible multi-workspace composed lessons, lesson-module-scoped carry-through and sandboxes, plus local-only Python, Arcade Kit, Electronics, and Scratch playgrounds — this is the shipped default multi-workspace mechanism, not a proposal.
 
@@ -66,6 +71,11 @@ Implemented technical specification for backward-compatible multi-workspace comp
 Status and phased roadmap for the `desktop` lesson module (windowed desktop shell + File Manager, replacing/superseding the plain `filesystem` panel for the Digital Literacy Foundations course). Tracks what Phase 1 shipped and what Phases 2–4 (Text Editor/Image Viewer, simulated Browser/search engine, Paint/hints/accessibility) still need.
 
 **Load when:** picking up or planning further Desktop module work, or checking what's built vs. outstanding.
+
+### [architecture/modular-activities-plan.md](architecture/modular-activities-plan.md)
+Accepted phased plan for making lesson capabilities modular: an Activity plugin tier (quiz sub-types, code_arrange, Binary, Keyboard, Mouse), a shared check-type registry and input recorder, workspace module contract v2, the scaffold/skill kit Claude uses to build new activities and modules, and the `docs/authoring/authoring-requests/` intake for lesson agents.
+
+**Load when:** building a new activity or module, working on any phase of the plan, or deciding whether an idea should be an Activity or a workspace module.
 
 ### [architecture/runtime-flows.md](architecture/runtime-flows.md)
 High-level route, student phase, persistence, teacher-live, and Firebase ownership diagrams.
@@ -111,6 +121,12 @@ Decision to use the custom Scratch runtime in `src/modules/scratch/`.
 
 ### [adr/0008-split-cli-and-builder-validation.md](adr/0008-split-cli-and-builder-validation.md)
 Decision to keep CLI validation and Builder validation separate.
+
+### [adr/0009-activity-registry.md](adr/0009-activity-registry.md)
+Decision to model bounded exercises (quizzes, code_arrange, Binary, Keyboard, Mouse) as activities in a pure + UI registry, with legacy task types mapped by a resolver and one host for persistence, sync and grading.
+
+### [adr/0010-module-contract-v2-and-work-slot.md](adr/0010-module-contract-v2-and-work-slot.md)
+Decision that module definitions describe everything core code needs (meta, capabilities, lifecycle, storage, wire, checking, work slot), that the student hook keeps one generic work slot, and that core code never compares against a type name (ratchet + ESLint rule).
 
 ---
 
@@ -184,6 +200,11 @@ Durable CLI contract for listing, uploading, and deleting lesson files in Fireba
 
 **Load when:** adding, replacing, listing, or removing a lesson asset.
 
+### [authoring/authoring-requests/README.md](authoring/authoring-requests/README.md)
+Intake for capability requests from lesson agents and people: when a lesson needs a new activity, module, check type or activity mode. Includes the request template and how requests move from open to shipped. Individual request files live in the same folder.
+
+**Load when:** a lesson needs something `lessons capabilities` doesn't list, or you are picking up a request to build.
+
 ### [authoring/validation-errors.md](authoring/validation-errors.md)
 Every lesson validation error and warning from the CLI and shared validators, with what it means and how to fix it. A test fails if a validator gains a message that isn't listed.
 
@@ -218,6 +239,21 @@ Turtle module code-task authoring reference: the single-file task model, support
 Detailed reference for all five quiz sub-types: multiple-choice, match, fill-in-the-blank, short-answer, and confidence rating. Covers all sub-type-specific fields and YAML syntax.
 
 **Load when:** authoring or editing a quiz task.
+
+### [authoring/activities/binary.md](authoring/activities/binary.md)
+Binary activity reference: `make_number`, `to_binary`, `to_decimal`, `add` modes, `bits` and display fields, item fields, marking and hints, teacher tools, and a complete validated example lesson.
+
+**Load when:** authoring or editing a Binary activity task.
+
+### [authoring/activities/keyboard.md](authoring/activities/keyboard.md)
+Keyboard activity reference: `type_text` (Shift vs Caps Lock, accuracy, optional WPM), `find_key`, `symbols` (UK layout), `shortcuts` (browser-reserved combos rejected), `hardwareOnly`, the on-screen keyboard fallback, and a complete validated example lesson.
+
+**Load when:** authoring or editing a Keyboard activity task.
+
+### [authoring/activities/mouse.md](authoring/activities/mouse.md)
+Mouse activity reference: stage targets (positions, sizes), click / double-click / right-click / drag / scroll / hover items, the `touch` policy and touch equivalents, marking and hints, and a complete validated example lesson.
+
+**Load when:** authoring or editing a Mouse activity task.
 
 ### [authoring/python-tasks.md](authoring/python-tasks.md)
 Python code task field reference: `starterCode`, `completeCode`, role-based `codeStages`, `carryCodeFrom`, `interactionMode`, and the `tests` array (automated `input()`-driven test cases). Includes a minimal full-lesson example.

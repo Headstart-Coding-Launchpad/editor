@@ -56,8 +56,13 @@ function formatSummaryCompletion(task) {
       : ''
   const assistedLabel =
     task.teacherAssistedCount > 0 ? `, ${task.teacherAssistedCount} teacher assisted` : ''
+  // Activities (Binary, Keyboard, Mouse...) also report the average share of items right.
+  const itemsLabel =
+    typeof task.avgItemProgress === 'number'
+      ? `, ${Math.round(task.avgItemProgress * 100)}% of items right`
+      : ''
   if (typeof task.completionRate === 'number') {
-    return `${task.completedCount}/${task.totalStudents} (${Math.round(task.completionRate * 100)}%)${overrideLabel}${assistedLabel}`
+    return `${task.completedCount}/${task.totalStudents} (${Math.round(task.completionRate * 100)}%)${overrideLabel}${assistedLabel}${itemsLabel}`
   }
   if (typeof task.respondedCount === 'number') {
     return `${task.respondedCount}/${task.totalStudents} responded${overrideLabel}`
@@ -111,6 +116,11 @@ function StudentTaskRow({ task }) {
             {task.attempts > 0 ? `${task.attempts} attempt${task.attempts === 1 ? '' : 's'}` : ''}
             {task.attempts > 0 && task.timeOnTaskMs != null ? ' · ' : ''}
             {task.timeOnTaskMs != null ? formatDuration(task.timeOnTaskMs) : ''}
+          </span>
+        )}
+        {task.itemProgress && (
+          <span style={s.attemptsCount}>
+            {task.itemProgress.correct}/{task.itemProgress.total} items right
           </span>
         )}
         {task.override && <span style={s.overrideNote}>{formatOverrideDetail(task)}</span>}

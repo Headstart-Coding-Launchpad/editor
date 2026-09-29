@@ -1,17 +1,11 @@
 import { decodeFileKey } from '../shared/fileKeys'
+import { getModuleDefinition, getModuleTypesWithCapability } from '../modules/definitions'
 
 // Lesson types whose live code is representable as the Presentation View support
-// reference (sessions/{lessonId}/teacherLiveReference). Scratch's live "code" is a
-// serialized Blockly project, not text, so it's excluded — see
-// docs/agents/classroom-behaviours.md.
-export const TEACHER_LIVE_REFERENCE_TYPES = [
-  'python',
-  'html',
-  'arcade',
-  'turtle',
-  'electronics',
-  'filesystem',
-]
+// reference (sessions/{lessonId}/teacherLiveReference) — each module's
+// `capabilities.teacherLiveReference`. Scratch's live "code" is a serialized Blockly
+// project, not text, so it's excluded — see docs/agents/classroom-behaviours.md.
+export const TEACHER_LIVE_REFERENCE_TYPES = getModuleTypesWithCapability('teacherLiveReference')
 
 export function toTeacherLiveFiles(files) {
   return files
@@ -27,30 +21,26 @@ export function toTeacherLiveFiles(files) {
 }
 
 // Adapts a teacherLiveReference payload into the same shape each module's
-// getDisplayState returns for its other tabs (a code string for python/arcade/
-// electronics, {files, entryFile} for html, an fs object for filesystem) — used
-// both for the student-side support-stage reference and the teacher's own
-// read-only "Live" tab. Returns null for an inactive/unsupported payload.
+// getDisplayState returns for its other tabs, through the module's wire codec: on the
+// files channel {files, entryFile} (html); on the code channel `wire.fromCode(code)` — the
+// code string itself for code-string modules (capabilities.sandboxState 'code'), a parsed
+// object for structured state (fs). Used both for the student-side support-stage
+// reference and the teacher's own read-only "Live" tab. Returns null for an
+// inactive/unsupported payload.
 export function teacherLiveReferenceDisplayState(payload, lessonType) {
   if (!payload || !TEACHER_LIVE_REFERENCE_TYPES.includes(lessonType)) return null
-  if (lessonType === 'python' || lessonType === 'arcade' || lessonType === 'electronics') {
-    return payload.code ?? ''
-  }
-  if (lessonType === 'html') {
+  const definition = getModuleDefinition(lessonType)
+  if (!definition) return null
+  const { wire } = definition
+  if (wire.sandboxChannel === 'files') {
     return {
       files: toTeacherLiveFiles(payload.files),
       entryFile: payload.activeFile || 'index.html',
     }
   }
-  if (lessonType === 'filesystem') {
-    try {
-      return JSON.parse(payload.code || '{}')
-    } catch {
-      // Malformed/partial snapshot mid-broadcast — show nothing rather than throw.
-      return {}
-    }
-  }
-  return null
+  if (definition.capabilities.sandboxState === 'code') return wire.fromCode(payload.code ?? '')
+  // Structured state: a malformed/partial snapshot mid-broadcast shows nothing rather than throw.
+  return wire.fromCode(payload.code || '{}') ?? {}
 }
 
 export function deriveStudentLiveDisplay({
@@ -131,6 +121,9 @@ export function deriveStudentLiveDisplay({
       ? (teacherLive.checkSuggestion ?? '')
       : checkSuggestion,
     displaySelection: isForcedTeacherLive ? (teacherLive.selection ?? null) : null,
+    // The broadcast's serialised activity state (teacherLive.answer). Activity tasks render it
+    // read-only through ActivityHost; null when not forced-live (the viewer's own state shows).
+    displayAnswer: isForcedTeacherLive ? (teacherLive.answer ?? null) : null,
     displayActivity: isForcedTeacherLive ? (teacherLive.activity ?? null) : editorActivity,
     // A forced-live viewer's output/preview panel mirrors the source's
     // expanded/collapsed state continuously (locked, not just a one-time

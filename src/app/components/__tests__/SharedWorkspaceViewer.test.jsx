@@ -185,6 +185,19 @@ describe('SharedWorkspaceViewer', () => {
       })
     })
 
+    it('seeds desktop state through the desktop slot', () => {
+      const shareLessonId = shareViewerLessonId('s5')
+      seedSharedWorkspace({
+        shareLessonId,
+        taskId: 4,
+        moduleType: 'desktop',
+        snapshot: { code: '{"windows":[]}' },
+      })
+      expect(
+        ephemeralStorage.loadSavedDesktop(shareLessonId, 4, 'shared-workspace-viewer')
+      ).toEqual({ windows: [] })
+    })
+
     it('carries an arcade design alongside the code', () => {
       const shareLessonId = shareViewerLessonId('s5')
       seedSharedWorkspace({

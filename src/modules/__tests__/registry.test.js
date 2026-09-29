@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { getLessonModule, getLessonModules } from '../registry.js'
+import { isBuiltInModule } from './helpers/builtInModules.js'
 
 describe('getLessonModule', () => {
   it('returns a module for each known lesson type', () => {
@@ -31,7 +32,8 @@ describe('getLessonModule', () => {
   })
 
   it('exposes ordered module labels for admin and authoring UI', () => {
-    expect(getLessonModules().map((module) => [module.type, module.label])).toEqual([
+    const builtIns = getLessonModules().filter((module) => isBuiltInModule(module.type))
+    expect(builtIns.map((module) => [module.type, module.label])).toEqual([
       ['python', 'Python'],
       ['arcade', 'Arcade Kit'],
       ['turtle', 'Python Turtle'],

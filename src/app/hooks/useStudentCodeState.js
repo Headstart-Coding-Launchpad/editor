@@ -15,28 +15,19 @@ import {
 import {
   flattenTasks,
   findTaskById,
-  getCompleteStage,
   getNextRevealableStage,
   getRevealableStages,
   getStageRole,
-  getStarterStage,
   isRevealableStage,
 } from '../../shared/taskUtils'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesystem'
-import { DEFAULT_CIRCUIT, serializeCircuit } from '../../modules/electronics/circuit'
-import { makeDefaultDesktop, normaliseDesktop } from '../../modules/desktop/desktopState'
+import { DEFAULT_CIRCUIT } from '../../modules/electronics/circuit'
+import { makeDefaultDesktop } from '../../modules/desktop/desktopState'
 import { decodeFileKey } from '../../shared/fileKeys'
 import {
-  loadSavedCode,
-  loadPersonalSandboxCode,
   savePersonalSandboxCode,
-  loadPersonalSandboxFile,
-  savePersonalSandboxFile,
-  loadPersonalSandboxFs,
-  savePersonalSandboxFs,
-  loadPersonalSandboxDesktop,
-  savePersonalSandboxDesktop,
+  savePersonalSandboxFileRecord,
   clearEphemeralStorage,
 } from '../studentStorage'
 import {
@@ -45,24 +36,80 @@ import {
   selectHtmlTaskFiles,
   selectPythonTaskCode,
 } from '../studentTaskContent'
-import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
+import { decodeSessionFiles } from '../../shared/workspaceData'
 import { resolveIframeErrorLocation } from '../../modules/html/iframe'
-import { buildQuizSubmission, getQuizSuggestion } from '../studentQuizContent'
-import { parseQuizAnswerState } from '../../shared/quizAnswers'
 import { buildCodeCheckContext } from '../codeCheckContext'
 import { useCheckFeedback } from './useCheckFeedback'
 import { useLatestRef } from './useLatestRef'
-import { createThrottledMirrorWriter } from '../throttledMirrorWriter'
 import { useSandboxCodePush } from './useSandboxCodePush'
 import { useStudentPresenceReporting } from './useStudentPresenceReporting'
 import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
+import { useActivityState } from './useActivityState'
+import { isHostedActivityTask, isModuleHostedActivityTask } from '../../activities/registry.pure.js'
 import { buildSharedWorkspaceSnapshot } from '../sharedWorkspacePayload'
 import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { getLessonModule } from '../../modules/registry'
-import { appendStudentOutput, createStudentOutputBuffer } from './studentOutputBuffer'
-import { cloneArcadeDesign, designForCodeTab } from '../../modules/arcade/design'
+import { getModuleDefinition } from '../../modules/definitions.js'
+import { cloneArcadeDesign } from '../../modules/arcade/design'
+import { runWithRuntime } from './runWithRuntime'
+
+// The generic work slot before any module has loaded work into it.
+const EMPTY_WORK = Object.freeze({ moduleType: null, taskId: null, value: null })
+// A work-slot module's interaction before its workspace has reported one.
+const DEFAULT_INTERACTION = Object.freeze({ currentDir: '/', openFile: null })
+
+// A files module's work before any has loaded, and while the slot holds another module's.
+const NO_FILES_WORK = Object.freeze({ files: Object.freeze([]), activeFile: '' })
+
+// The module definition when `type` is on the generic work slot (declares `workSlot`), else null.
+// Every module is since plan step 4.5.
+function workSlotDefinition(type) {
+  const definition = getModuleDefinition(type)
+  return definition?.workSlot ? definition : null
+}
+
+// Whether a work-slot module's work is code the student writes — a code string or files
+// (capabilities.sandboxState 'code' / 'files': python, turtle, arcade, electronics, html) — rather
+// than a structured state (scratch, filesystem, desktop). An information task clears code work.
+// (Plan step 4.8: read from the sandbox kind rather than `meta.language`, which is the same set
+// for every built-in module, so a text module without a code language still speaks `code`.)
+function isCodeWork(definition) {
+  const kind = definition?.capabilities.sandboxState
+  return kind === 'code' || kind === 'files'
+}
+
+// Whether the work is one code string on the code channel (python, turtle, arcade, electronics):
+// what the `code` alias and the code editor's handleCodeChange speak.
+function isCodeStringWork(definition) {
+  return isCodeWork(definition) && definition.wire.sandboxChannel === 'code'
+}
+
+// Whether the module's work travels on the files channel (html): its value is
+// `{ files, activeFile }` (filesWorkSlot in src/modules/moduleContract.js).
+function isFilesWork(definition) {
+  return definition?.wire.sandboxChannel === 'files'
+}
+
+// The `code` alias: the code of the code-string module the slot holds, '' otherwise.
+function codeOfSlot(slot) {
+  const definition = workSlotDefinition(slot.moduleType)
+  return isCodeStringWork(definition) ? definition.workSlot.stored(slot.value).work : ''
+}
+
+// The `files` / `activeFile` aliases: the files module's work the slot holds, else none.
+function filesWorkOfSlot(slot) {
+  return isFilesWork(workSlotDefinition(slot.moduleType)) ? slot.value : NO_FILES_WORK
+}
+
+// A module's work as its teacherLive / run fields: `{ code }` on the code channel, `{ files }`
+// (a filename → content map) on the files channel.
+function liveWorkFields(definition, stored) {
+  return isFilesWork(definition)
+    ? { files: definition.wire.toFilesMap(stored) }
+    : { code: definition.wire.toCode(stored) }
+}
 
 /**
  * Owns all student editor/code workspace state: code, files, output, checks, personal sandbox,
@@ -110,10 +157,6 @@ export function useStudentCodeState({
   clearTeacherAnswerEdit,
   clearRemoteRun,
 }) {
-  const [code, setCode] = useState('')
-  const [arcadeDesign, setArcadeDesign] = useState(null)
-  const [files, setFiles] = useState([])
-  const [activeFile, setActiveFile] = useState('')
   const [output, setOutput] = useState('')
   const [runStatus, setRunStatus] = useState(null)
   // Turtle module only: the { state, commands, calls } snapshot from the most recent run,
@@ -124,14 +167,25 @@ export function useStudentCodeState({
   const [runningTests, setRunningTests] = useState(false)
   const [iframeSrc, setIframeSrc] = useState(null)
   const [inputPrompt, setInputPrompt] = useState(null)
-  const [selectedAnswer, setSelectedAnswer] = useState('')
-  const [scratchSandboxProject, setScratchSandboxProject] = useState(null)
-  const [scratchExternalState, setScratchExternalState] = useState(null)
-  const [scratchActiveStageIndex, setScratchActiveStageIndex] = useState(null)
-  const [fsState, setFsState] = useState(DEFAULT_FS)
-  const [fsInteraction, setFsInteraction] = useState({ currentDir: '/', openFile: null })
-  const [desktopState, setDesktopState] = useState(() => makeDefaultDesktop())
-  const [desktopInteraction, setDesktopInteraction] = useState({ currentDir: '/', openFile: null })
+  // Workspace-owned modules (workSlot.workspaceOwned: Scratch) keep their work in the
+  // workspace. Restored work (reset, stage, complete, teacher edit) is pushed to it as
+  // `pushedWork` with the code stage it came from (`pushedStageIndex`, null = none); a teacher
+  // sandbox push lands in `sandboxPushedWork`. Aliased as scratchExternalState,
+  // scratchActiveStageIndex and scratchSandboxProject.
+  const [sandboxPushedWork, setSandboxPushedWork] = useState(null)
+  const [pushedWork, setPushedWork] = useState(null)
+  const [pushedStageIndex, setPushedStageIndex] = useState(null)
+  // Generic work slot (module contract v2, plan steps 4.3–4.5) — every module's definition
+  // declares `workSlot` + `checking`: the work value tagged with the module and task it belongs
+  // to — a code string, Arcade's `{ code, arcadeDesign }`, html's `{ files, activeFile }`,
+  // Scratch's reported workspace states, a filesystem tree or a desktop state. Readers only
+  // trust `value` for the module named in `moduleType` (see workValueFor), so a composed lesson
+  // switching modules can never publish, save or check the previous module's work. The old
+  // `code` / `arcadeDesign` / `files` / `activeFile` names are derived from it (codeOfSlot,
+  // filesWorkOfSlot). `interactions` keeps each module's latest workspace interaction
+  // ({ currentDir, openFile }) — carry keeps the directory.
+  const [work, setWorkState] = useState(EMPTY_WORK)
+  const [interactions, setInteractionsState] = useState({})
   const [editorSelection, setEditorSelection] = useState(null)
   const [editorActivity, setEditorActivity] = useState(null)
   // Runtime error-line highlight (see src/shared/CodeEditor.jsx errorLineField).
@@ -164,7 +218,6 @@ export function useStudentCodeState({
   // Bumped when the teacher presses Run for this student; each module
   // workspace reacts via useRemoteRunTrigger with its own Run action.
   const [remoteRunToken, setRemoteRunToken] = useState(null)
-  const writeAnswerDebounceRef = useRef(null)
   // Latest in-progress input() state, kept regardless of whether a teacher is
   // watching, so opening StudentModal mid-prompt can publish it immediately.
   const inputPromptRef = useRef(null)
@@ -187,13 +240,6 @@ export function useStudentCodeState({
   const lessonRef = useLatestRef(lesson)
   const currentTaskIdRef = useLatestRef(currentTaskId)
   const phaseRef = useLatestRef(phase)
-  const codeRef = useLatestRef(code)
-  // Scratch never routes through the generic `code` state (see loadTaskContent's
-  // scratch branch) — handleScratchChange stashes the latest Blockly JSON here
-  // instead, so the teacher-live payload publishes real block state rather than
-  // whatever `code` happens to be left over from a previous non-Scratch task.
-  const scratchCodeRef = useRef('')
-  const arcadeDesignRef = useLatestRef(arcadeDesign)
   // Turtle module only — mirrors turtleResult so currentTeacherLivePayload (built inside
   // useTeacherLivePublish, which only receives refs) can read the latest snapshot without
   // a stale closure. See setTurtleResult(result.turtle ?? null) below: it's set in the same
@@ -203,7 +249,6 @@ export function useStudentCodeState({
   const arcadeDesignWriteTimerRef = useRef(null)
   const spriteStateLastSentRef = useRef(0)
   const spriteStatePendingTimerRef = useRef(null)
-  const filesRef = useLatestRef(files)
   const outputRef = useLatestRef(output)
   const runStatusRef = useLatestRef(runStatus)
   const sessionRef = useLatestRef(session)
@@ -211,11 +256,152 @@ export function useStudentCodeState({
   const editorSelectionRef = useLatestRef(editorSelection)
   const editorActivityRef = useLatestRef(editorActivity)
   const inPersonalSandboxRef = useLatestRef(inPersonalSandbox)
-  const fsStateRef = useLatestRef(fsState)
-  const activeFileRef = useLatestRef(activeFile)
-  const fsInteractionRef = useLatestRef(fsInteraction)
-  const desktopStateRef = useLatestRef(desktopState)
-  const desktopInteractionRef = useLatestRef(desktopInteraction)
+  // Updated synchronously by setWork / setInteraction (not on render), so a handler that runs
+  // straight after another in the same event — e.g. Desktop opening a file calls
+  // handleDesktopChange then handleDesktopInteraction, or a MicroPython run rewriting the
+  // circuit — sees the work it just set.
+  const workRef = useRef(work)
+  const interactionsRef = useRef(interactions)
+  // The old `codeRef`, now read through the slot (always as fresh as workRef): handed to
+  // useTeacherLivePublish and read by handlers that still speak in code strings.
+  const [codeRef] = useState(() => ({
+    get current() {
+      return codeOfSlot(workRef.current)
+    },
+  }))
+  // The old `filesRef` / `activeFileRef`, likewise read through the slot (files modules: html).
+  const [filesRef] = useState(() => ({
+    get current() {
+      return filesWorkOfSlot(workRef.current).files
+    },
+  }))
+  const [activeFileRef] = useState(() => ({
+    get current() {
+      return filesWorkOfSlot(workRef.current).activeFile
+    },
+  }))
+  // Each module's fallback work, created once per hook instance (a stable reference, like the
+  // old per-module useState initialisers).
+  const defaultWorkRef = useRef({})
+
+  function defaultWorkFor(moduleType) {
+    const slot = getModuleDefinition(moduleType)?.workSlot
+    if (!slot) return null
+    if (!Object.hasOwn(defaultWorkRef.current, moduleType)) {
+      defaultWorkRef.current[moduleType] = slot.empty()
+    }
+    return defaultWorkRef.current[moduleType]
+  }
+
+  // The latest work for `moduleType`, or that module's default when the slot holds another
+  // module's (or no) work.
+  function workValueFor(moduleType) {
+    const current = workRef.current
+    return current.moduleType === moduleType ? current.value : defaultWorkFor(moduleType)
+  }
+
+  // workValueFor for render: from the rendered `work` state rather than the ref.
+  function renderedWorkFor(moduleType) {
+    return work.moduleType === moduleType ? work.value : defaultWorkFor(moduleType)
+  }
+
+  function setWork(moduleType, value) {
+    const current = workRef.current
+    const taskId = currentTaskIdRef.current ?? null
+    if (current.moduleType === moduleType && current.value === value && current.taskId === taskId)
+      return
+    const next = { moduleType, taskId, value }
+    workRef.current = next
+    setWorkState(next)
+  }
+
+  // An information or activity task has no work: the slot forgets the code it held.
+  function clearWork() {
+    if (workRef.current === EMPTY_WORK) return
+    workRef.current = EMPTY_WORK
+    setWorkState(EMPTY_WORK)
+  }
+
+  // Restored work (load, reset, stage, complete, sandbox, teacher edit and push) goes through
+  // the module's normalise; the student's own edits are stored as the workspace reported them.
+  // A workspace-owned module's restored work is pushed to its workspace instead (which reports
+  // it back as an edit), with the code stage it came from when `stageIndex` is given (null for
+  // the starter or complete). Returns the value restored.
+  function restoreWork(moduleType, value, { stageIndex } = {}) {
+    const { workSlot } = getModuleDefinition(moduleType)
+    const restored = workSlot.normalise(value)
+    if (workSlot.workspaceOwned) {
+      setPushedWork(restored)
+      if (stageIndex !== undefined) setPushedStageIndex(stageIndex)
+    } else {
+      setWork(moduleType, restored)
+    }
+    return restored
+  }
+
+  // A module's work as its storage and wire hooks take it: `{ work, meta }` (Arcade: the code,
+  // plus `{ arcadeDesign }`).
+  function storedWork(moduleType, value = workValueFor(moduleType)) {
+    return getModuleDefinition(moduleType).workSlot.stored(value)
+  }
+
+  // The work with `code` as its storage/wire work, the rest (Arcade's design) kept from `base`.
+  function withCode(moduleType, code, base = workValueFor(moduleType)) {
+    return getModuleDefinition(moduleType).workSlot.fromStored({ work: code, meta: {} }, base)
+  }
+
+  // Code modules treat the run as part of the code: restoring their work clears it (and html's
+  // preview).
+  function clearRunFor(moduleType) {
+    if (getModuleDefinition(moduleType).workSlot.kind !== 'code') return
+    setOutput('')
+    setTurtleResult(null)
+    setRunStatus(null)
+    setIframeSrc(null)
+  }
+
+  // Saves restored work (show stage, show complete, a persisting remote reset, the Reset
+  // button of a state module): code-string modules save the cleared run alongside the code,
+  // the shape savePythonCode wrote; others (html's files, one record per file) save the work
+  // through their storage adapter. Nothing is saved for missing work (a Scratch stage without
+  // blocks).
+  function persistRestoredWork(moduleType, value) {
+    const definition = getModuleDefinition(moduleType)
+    const { workSlot } = definition
+    const { work: stored, meta } = workSlot.stored(value)
+    if (stored == null) return
+    const actorId = effectiveIdentity?.anonymousId
+    if (workSlot.kind === 'code' && definition.storage.layout === 'record') {
+      persistence.saveRunRecord(moduleType, actorId, currentTaskId, stored, {
+        output: '',
+        runStatus: null,
+        ...meta,
+      })
+    } else {
+      persistence.saveWork(moduleType, actorId, currentTaskId, stored, meta)
+    }
+  }
+
+  function interactionFor(moduleType) {
+    return interactionsRef.current[moduleType] ?? DEFAULT_INTERACTION
+  }
+
+  function setInteraction(moduleType, interaction) {
+    const next = { ...interactionsRef.current, [moduleType]: interaction }
+    interactionsRef.current = next
+    setInteractionsState(next)
+  }
+
+  // Render-time names derived from the slot: the old `code`, `files` and `activeFile` state,
+  // and the current module's stored work, which useTeacherLivePublish tracks as a publish
+  // trigger (null for a workspace-owned module, which publishes each report itself).
+  const code = codeOfSlot(work)
+  const { files, activeFile } = filesWorkOfSlot(work)
+  const lessonSlotDefinition = workSlotDefinition(lesson?.type)
+  const renderedStoredWork =
+    lessonSlotDefinition && !lessonSlotDefinition.workSlot.workspaceOwned
+      ? storedWork(lesson.type, renderedWorkFor(lesson.type)).work
+      : null
 
   // ─── Runtime status ───────────────────────────────────────────────────────
 
@@ -356,6 +542,7 @@ export function useStudentCodeState({
   } = useCheckFeedback({ myStudentData })
 
   const sandboxModuleId = lesson?.lessonModule?.id ?? null
+  const activityLivePayloadRef = useRef(null)
   const persistence = createStudentPersistence({
     lessonId,
     teacherPresentation,
@@ -379,15 +566,14 @@ export function useStudentCodeState({
     lessonRef,
     currentTaskIdRef,
     codeRef,
-    scratchCodeRef,
-    arcadeDesignRef,
     turtleResultRef,
     filesRef,
     activeFileRef,
     outputRef,
     runStatusRef,
-    fsStateRef,
-    desktopStateRef,
+    // Generic work slot: read at payload time (refs), and its stored work (the code string for
+    // code modules, so an Arcade design edit adds no publish) as the publish trigger.
+    readWorkValue: workValueFor,
     editorSelectionRef,
     editorActivityRef,
     lesson,
@@ -402,11 +588,38 @@ export function useStudentCodeState({
     checkPassed,
     checkAttempted,
     checkSuggestion,
-    fsState,
-    desktopState,
+    workValue: renderedStoredWork,
     iframeStorageAssets: htmlIframeStorageAssets,
+    extraPayloadRef: activityLivePayloadRef,
     updateTeacherLive,
     setTeacherLiveReference,
+  })
+
+  // Hosted activity tasks (taskType 'activity' and legacy quizzes): state, persistence, live
+  // sync, grading, reset and teacher edits. See useActivityState.js for the write rules.
+  const activity = useActivityState({
+    lesson,
+    currentTaskId,
+    viewingTaskId,
+    phase,
+    teacherPresentation,
+    identity,
+    effectiveIdentity,
+    session,
+    myStudentData,
+    persistence,
+    writeStudentAnswer,
+    writeStudentRun,
+    logAttempt,
+    clearTeacherAnswerEdit,
+    applyCheckFeedback,
+    resetCheckFeedback,
+    setRunStatus,
+    canPublishTeacherLive,
+    publishTeacherLive,
+    teacherAssistedTaskIdsRef,
+    onTeacherAnswerApplied: setTeacherAnswerNoticeAt,
+    livePayloadRef: activityLivePayloadRef,
   })
 
   const isAlreadySolved = () => checkPassedRef.current && !inPersonalSandboxRef.current
@@ -485,84 +698,54 @@ export function useStudentCodeState({
     if (inPersonalSandboxRef.current) return
 
     const task = flattenTasks(currentLesson.tasks).find((t) => t.id === taskId)
-    if (task?.taskType === 'quiz' || task?.taskType === 'information') return
+    if (task?.taskType === 'information') return
+    // Activities (quizzes included) save every change themselves (useActivityState).
+    if (isHostedActivityTask(task)) return
 
-    if (currentLesson.type === 'python' || currentLesson.type === 'turtle') {
-      persistence.savePythonCode(id.anonymousId, taskId, {
-        code: codeRef.current,
-        output: outputRef.current,
-        runStatus: runStatusRef.current,
-      })
-    } else if (currentLesson.type === 'arcade') {
-      persistence.savePythonCode(id.anonymousId, taskId, {
-        code: codeRef.current,
-        output: outputRef.current,
-        runStatus: runStatusRef.current,
-        arcadeDesign: arcadeDesignRef.current,
-      })
-    } else if (currentLesson.type === 'html') {
-      persistence.saveHtmlFiles(id.anonymousId, taskId, filesRef.current)
-    } else if (currentLesson.type === 'filesystem') {
-      persistence.saveFs(id.anonymousId, taskId, fsStateRef.current)
-    } else if (currentLesson.type === 'desktop') {
-      persistence.saveDesktop(id.anonymousId, taskId, desktopStateRef.current)
-    } else if (currentLesson.type === 'electronics') {
-      persistence.savePythonCode(id.anonymousId, taskId, { code: codeRef.current })
-    }
-    // Scratch: blocks are saved immediately in handleScratchChange — no snapshot needed
+    const definition = workSlotDefinition(currentLesson.type)
+    // A workspace-owned module (Scratch) saves every change as it reports it — no snapshot.
+    if (!definition || definition.workSlot.workspaceOwned) return
+    // The storage adapter picks the record fields: python/turtle keep the run, Arcade adds its
+    // design, electronics/filesystem/desktop save the work alone, html one record per file.
+    const { work: stored, meta } = storedWork(currentLesson.type)
+    persistence.saveWork(currentLesson.type, id.anonymousId, taskId, stored, {
+      output: outputRef.current,
+      runStatus: runStatusRef.current,
+      ...meta,
+    })
   }
 
   function savePersonalSandboxSnapshot() {
     const id = identityRef.current
     const currentLesson = lessonRef.current
     if (!id || teacherPresentation || !currentLesson) return
-    if (currentLesson.type === 'python' || currentLesson.type === 'turtle') {
-      savePersonalSandboxCode(
-        lessonId,
-        id.anonymousId,
-        { code: codeRef.current },
-        currentLesson.lessonModule?.id ?? null
-      )
-    } else if (currentLesson.type === 'arcade') {
-      savePersonalSandboxCode(
-        lessonId,
-        id.anonymousId,
-        { code: codeRef.current, arcadeDesign: arcadeDesignRef.current },
-        currentLesson.lessonModule?.id ?? null
-      )
-    } else if (currentLesson.type === 'html') {
-      filesRef.current.forEach((f) =>
-        savePersonalSandboxFile(
+    const slotDefinition = workSlotDefinition(currentLesson.type)
+    // A workspace-owned module (Scratch) saves incrementally as it reports each change.
+    if (!slotDefinition || slotDefinition.workSlot.workspaceOwned) return
+    // Written directly (not persistence.saveSandboxWork, which also skips builder preview) to
+    // keep this snapshot's existing preview behaviour. Arcade's sandbox record keeps its design;
+    // html writes one record per file.
+    const { storage } = slotDefinition
+    const { work: stored, meta } = storedWork(currentLesson.type)
+    const moduleId = currentLesson.lessonModule?.id ?? null
+    if (storage.layout === 'perFile') {
+      for (const file of stored) {
+        savePersonalSandboxFileRecord(
           lessonId,
-          f.name,
+          file.name,
           id.anonymousId,
-          f.content,
-          currentLesson.lessonModule?.id ?? null
+          storage.toSandboxRecord(file.content, meta),
+          moduleId
         )
-      )
-    } else if (currentLesson.type === 'filesystem') {
-      savePersonalSandboxFs(
-        lessonId,
-        id.anonymousId,
-        fsStateRef.current,
-        currentLesson.lessonModule?.id ?? null
-      )
-    } else if (currentLesson.type === 'desktop') {
-      savePersonalSandboxDesktop(
-        lessonId,
-        id.anonymousId,
-        desktopStateRef.current,
-        currentLesson.lessonModule?.id ?? null
-      )
-    } else if (currentLesson.type === 'electronics') {
+      }
+    } else {
       savePersonalSandboxCode(
         lessonId,
         id.anonymousId,
-        { code: codeRef.current },
-        currentLesson.lessonModule?.id ?? null
+        storage.toSandboxRecord(stored, meta),
+        moduleId
       )
     }
-    // Scratch: saves incrementally via handleScratchChange
   }
 
   function recordCarryFallback(fallback) {
@@ -586,139 +769,91 @@ export function useStudentCodeState({
     if (!lesson || !activeIdentity) return
     const task = flattenTasks(lesson.tasks).find((t) => t.id === taskId)
     if (!task) return
-    if (task.taskType === 'quiz' || task.taskType === 'information') {
-      setCode('')
-      setFiles([])
-      setActiveFile('')
-      setSelectedAnswer('')
+    if (task.taskType === 'information' || isHostedActivityTask(task)) {
+      // No code for an information or activity task (the old `setCode('')` / `setFiles([])`); a
+      // state module's work (scratch, filesystem, desktop) is left as it was.
+      if (isCodeWork(workSlotDefinition(workRef.current.moduleType))) clearWork()
       resetCheckFeedback()
       return
     }
-    if (lesson.type === 'python' || lesson.type === 'turtle') {
-      setCode(
-        selectPythonTaskCode({
-          tasks: lesson.tasks,
-          task,
-          taskId,
-          phase,
-          readSavedCode: (sourceTaskId) =>
-            persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
-          onCarryFallback: recordCarryFallback,
-        })
-      )
-    } else if (lesson.type === 'arcade') {
-      const saved = persistence.readSavedCode(activeIdentity.anonymousId, taskId)
-      setCode(
-        selectPythonTaskCode({
-          tasks: lesson.tasks,
-          task,
-          taskId,
-          phase,
-          readSavedCode: (sourceTaskId) =>
-            persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
-          onCarryFallback: recordCarryFallback,
-        })
-      )
-      setArcadeDesign(
-        saved?.arcadeDesign
-          ? cloneArcadeDesign(saved.arcadeDesign)
-          : designForCodeTab(task, 'starter')
-      )
-    } else if (lesson.type === 'scratch') {
-      setFiles([])
-      setActiveFile('')
-      setScratchActiveStageIndex(null)
-      scratchCodeRef.current = ''
+    if (workSlotDefinition(lesson.type)) loadWorkSlotTask(task, taskId, activeIdentity)
+  }
+
+  // Loads a work-slot module's work for a task, per its workSlot.kind:
+  // - workspaceOwned (scratch): the workspace loads its own save, carry or starter once the
+  //   previous task's workspace has flushed its save; the slot starts empty (until the
+  //   workspace reports), with no pushed stage, and check feedback is reset.
+  // - 'code' (python, turtle, arcade, html): the own save only in solo, else carry-through
+  //   (carryCodeFrom), else the starter — selectPythonTaskCode, or per file selectHtmlTaskFiles
+  //   for a per-file module. The module's extras (Arcade's design) come from the task's own
+  //   record in any phase, else the starter's; html's active file is the task's entry file.
+  //   Check feedback is left alone.
+  // - 'state' (electronics, filesystem, desktop): the own save, else the carry source when the
+  //   task carries (carryThroughField), else the starter; the interaction keeps the previous
+  //   directory only when carrying; check feedback is reset.
+  function loadWorkSlotTask(task, taskId, activeIdentity) {
+    const moduleType = lesson.type
+    const definition = workSlotDefinition(moduleType)
+    const { workSlot } = definition
+    const readStored = (sourceTaskId, filename) =>
+      persistence.readWork(moduleType, activeIdentity.anonymousId, sourceTaskId, { filename })
+    if (workSlot.workspaceOwned) {
+      setWork(moduleType, workSlot.empty(task))
+      setPushedStageIndex(null)
       resetCheckFeedback()
-    } else if (lesson.type === 'filesystem') {
-      const carryId = task.carryFsFrom ?? null
-      const ownSaved = persistence.readSavedFs(activeIdentity.anonymousId, taskId)
-      const carried = resolveSavedCarrySource({
-        tasks: lesson.tasks,
-        taskId,
-        carryFromId: carryId,
-        carryField: 'carryFsFrom',
-        readSavedState: (sourceTaskId) =>
-          persistence.readSavedFs(activeIdentity.anonymousId, sourceTaskId),
-        hasSavedState: (fs) => fs != null,
-      })
-      if (ownSaved == null) recordCarryFallback(carried.fallback)
-      const initialFs =
-        carryId != null
-          ? (ownSaved ?? carried.saved ?? task.starterFs ?? DEFAULT_FS)
-          : (ownSaved ?? task.starterFs ?? DEFAULT_FS)
-      setFsState(initialFs)
-      const defaultDir = task.startsInDir ? normaliseDirPath(task.startsInDir) : '/'
-      setFsInteraction({
-        currentDir: carryId ? (fsInteractionRef.current?.currentDir ?? defaultDir) : defaultDir,
-        openFile: null,
-      })
-      resetCheckFeedback()
-    } else if (lesson.type === 'desktop') {
-      const carryId = task.carryDesktopFrom ?? null
-      const ownSaved = persistence.readSavedDesktop(activeIdentity.anonymousId, taskId)
-      const carried = resolveSavedCarrySource({
-        tasks: lesson.tasks,
-        taskId,
-        carryFromId: carryId,
-        carryField: 'carryDesktopFrom',
-        readSavedState: (sourceTaskId) =>
-          persistence.readSavedDesktop(activeIdentity.anonymousId, sourceTaskId),
-        hasSavedState: (desktop) => desktop != null,
-      })
-      if (ownSaved == null) recordCarryFallback(carried.fallback)
-      const initialDesktop =
-        carryId != null
-          ? (ownSaved ??
-            carried.saved ??
-            task.starterDesktop ??
-            makeDefaultDesktop(task.availableApps))
-          : (ownSaved ?? task.starterDesktop ?? makeDefaultDesktop(task.availableApps))
-      setDesktopState(normaliseDesktop(initialDesktop))
-      const defaultDir = task.startsInDir ? normaliseDirPath(task.startsInDir) : '/'
-      setDesktopInteraction({
-        currentDir: carryId
-          ? (desktopInteractionRef.current?.currentDir ?? defaultDir)
-          : defaultDir,
-        openFile: null,
-      })
-      resetCheckFeedback()
-    } else if (lesson.type === 'electronics') {
-      const carryId = task.carryCircuitFrom ?? null
-      const ownSaved = persistence.readSavedCode(activeIdentity.anonymousId, taskId)?.code ?? null
-      const carried = resolveSavedCarrySource({
-        tasks: lesson.tasks,
-        taskId,
-        carryFromId: carryId,
-        carryField: 'carryCircuitFrom',
-        readSavedState: (sourceTaskId) =>
-          persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
-        hasSavedState: (saved) =>
-          saved != null && Object.prototype.hasOwnProperty.call(saved, 'code'),
-      })
-      if (ownSaved == null) recordCarryFallback(carried.fallback)
-      const starter = serializeCircuit(
-        getStarterStage(task)?.stage?.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
-      )
-      setCode(
-        carryId != null ? (ownSaved ?? carried.saved?.code ?? starter) : (ownSaved ?? starter)
-      )
-      setFiles([])
-      setActiveFile('')
-      resetCheckFeedback()
-    } else {
-      const taskFiles = selectHtmlTaskFiles({
-        tasks: lesson.tasks,
-        task,
-        taskId,
-        phase,
-        readSavedFile: (sourceTaskId, filename) =>
-          persistence.readSavedFile(activeIdentity.anonymousId, sourceTaskId, filename),
-        onCarryFallback: recordCarryFallback,
-      })
-      setFiles(taskFiles)
-      setActiveFile(task.entryFile ?? taskFiles[0]?.name ?? '')
+      return
     }
+    if (workSlot.kind === 'code') {
+      const perFile = definition.storage.layout === 'perFile'
+      const loaded = perFile
+        ? selectHtmlTaskFiles({
+            tasks: lesson.tasks,
+            task,
+            taskId,
+            phase,
+            readSavedFile: (sourceTaskId, filename) =>
+              readStored(sourceTaskId, filename)?.work ?? null,
+            onCarryFallback: recordCarryFallback,
+          })
+        : selectPythonTaskCode({
+            tasks: lesson.tasks,
+            task,
+            taskId,
+            phase,
+            readSavedCode: (sourceTaskId) =>
+              persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
+            onCarryFallback: recordCarryFallback,
+          })
+      const own = perFile ? null : readStored(taskId)
+      restoreWork(
+        moduleType,
+        workSlot.fromStored({ work: loaded, meta: own?.meta ?? {} }, workSlot.starter(task))
+      )
+      return
+    }
+    const carryField = definition.carryThroughField
+    const readSavedWork = (sourceTaskId) => readStored(sourceTaskId)?.work ?? null
+    const carryId = task[carryField] ?? null
+    const ownSaved = readSavedWork(taskId)
+    const carried = resolveSavedCarrySource({
+      tasks: lesson.tasks,
+      taskId,
+      carryFromId: carryId,
+      carryField,
+      readSavedState: readSavedWork,
+      hasSavedState: (saved) => saved != null,
+    })
+    if (ownSaved == null) recordCarryFallback(carried.fallback)
+    const starter = workSlot.starter(task)
+    const initialWork =
+      carryId != null ? (ownSaved ?? carried.saved ?? starter) : (ownSaved ?? starter)
+    restoreWork(moduleType, initialWork)
+    const defaultDir = task.startsInDir ? normaliseDirPath(task.startsInDir) : '/'
+    setInteraction(moduleType, {
+      currentDir: carryId ? (interactionFor(moduleType).currentDir ?? defaultDir) : defaultDir,
+      openFile: null,
+    })
+    resetCheckFeedback()
   }
 
   // Exposed to StudentView for coordination (save before task change, navigation)
@@ -739,11 +874,10 @@ export function useStudentCodeState({
     setTargetedStageOffer(null)
     setTargetedPreviewStageIndex(null)
     targetedStageOfferMatchCountsRef.current = {}
-    setSelectedAnswer('')
     setIframeSrc(null)
-    // Clear any pushed scratch state (reset/stage/solution/teacher edit) so it
-    // can't overwrite the next task's initial blocks after the workspace remounts.
-    setScratchExternalState(null)
+    // Clear any work pushed to a workspace-owned module (reset/stage/solution/teacher edit) so
+    // it can't overwrite the next task's initial blocks after the workspace remounts.
+    setPushedWork(null)
   }
 
   function updateTargetedStageOffer(task, evaluation, passed) {
@@ -797,8 +931,11 @@ export function useStudentCodeState({
 
   // ─── Effects ──────────────────────────────────────────────────────────────
 
+  // A preview module (html) starts each task with its preview collapsed.
   useEffect(() => {
-    if (lesson?.type === 'html') setHtmlPreviewCollapsed(true)
+    if (getModuleDefinition(lesson?.type)?.capabilities.run === 'preview') {
+      setHtmlPreviewCollapsed(true)
+    }
   }, [lesson?.type, currentTaskId])
 
   // Load task content when task or phase changes.
@@ -836,12 +973,21 @@ export function useStudentCodeState({
     phase,
     lesson,
     session,
-    setCode,
-    setFiles,
-    setActiveFile,
-    setFsState,
-    setDesktopState: (desktop) => setDesktopState(normaliseDesktop(desktop)),
-    setScratchSandboxProject,
+    // The pushed work (decoded by the module's wire) replaces the slot's work; Arcade keeps its
+    // current design. A workspace-owned module's push (Scratch) is held for the workspace, which
+    // owns its blocks. Pushed files replace the files and open the first one.
+    onPushedWork: (pushed) => {
+      if (getModuleDefinition(lesson.type).workSlot.workspaceOwned) setSandboxPushedWork(pushed)
+      else restoreWork(lesson.type, withCode(lesson.type, pushed))
+    },
+    onPushedFiles: (pushed) => {
+      const current = workValueFor(lesson.type)
+      restoreWork(lesson.type, {
+        ...current,
+        files: pushed,
+        activeFile: pushed.length > 0 ? pushed[0].name : current.activeFile,
+      })
+    },
   })
 
   // When teacher starts live-viewing this student, publish the current in-memory editor state
@@ -850,45 +996,51 @@ export function useStudentCodeState({
     if (!identity?.anonymousId || session?.activeStudentView !== identity.anonymousId) return
     if (phase !== 'lesson' && phase !== 'sandbox') return
     if (!lesson || viewingTaskId !== null) return
+    // Activity and quiz tasks flush their own state (useActivityState); there is no code to
+    // mirror. In a session sandbox the student works in the lesson's workspace whatever task
+    // the session is parked on, so its code is still flushed there.
+    if (phase !== 'sandbox' && isHostedActivityTask(findTaskById(lesson.tasks, currentTaskId)))
+      return
 
-    if (
-      lesson.type === 'python' ||
-      lesson.type === 'arcade' ||
-      lesson.type === 'electronics' ||
-      lesson.type === 'turtle'
-    ) {
-      writeStudentCode(identity.anonymousId, code)
-      writeStudentOutput(identity.anonymousId, output)
-      writeStudentInputState(identity.anonymousId, {
-        prompt: inputPromptRef.current,
-        value: inputPromptRef.current !== null ? inputValueRef.current : '',
-      })
-    } else if (lesson.type === 'html') {
+    const slotDefinition = workSlotDefinition(lesson.type)
+    if (slotDefinition?.workSlot.workspaceOwned) {
+      // The workspace holds the work (the slot only has what it last reported, if anything), so
+      // mirror the task's saved record.
+      const saved = persistence.readWork(lesson.type, identity.anonymousId, currentTaskId)?.work
+      if (saved) writeStudentCode(identity.anonymousId, slotDefinition.wire.toCode(saved))
+    } else if (isFilesWork(slotDefinition)) {
       writeStudentFiles(
         identity.anonymousId,
-        Object.fromEntries(files.map((f) => [f.name, f.content]))
+        slotDefinition.wire.toFilesMap(storedWork(lesson.type).work)
       )
-    } else if (lesson.type === 'scratch') {
-      const saved = loadSavedCode(lessonId, currentTaskId, identity.anonymousId)
-      if (saved?.state) writeStudentCode(identity.anonymousId, JSON.stringify(saved.state))
-    } else if (lesson.type === 'filesystem') {
-      writeStudentCode(identity.anonymousId, JSON.stringify(fsStateRef.current))
-    } else if (lesson.type === 'desktop') {
-      writeStudentCode(identity.anonymousId, JSON.stringify(desktopStateRef.current))
+    } else if (slotDefinition) {
+      writeStudentCode(
+        identity.anonymousId,
+        slotDefinition.wire.toCode(storedWork(lesson.type).work)
+      )
+      // Modules checked on Run also mirror the run: its output and any pending input() prompt.
+      // Modules checked on every change (filesystem, desktop) have no run to mirror.
+      if (slotDefinition.checking.trigger !== 'change') {
+        writeStudentOutput(identity.anonymousId, output)
+        writeStudentInputState(identity.anonymousId, {
+          prompt: inputPromptRef.current,
+          value: inputPromptRef.current !== null ? inputValueRef.current : '',
+        })
+      }
     }
-    // code_arrange is a taskType flag layered on python/html, not its own
-    // lesson.type, so it needs its own branch here too — without it, a
-    // teacher opening the modal mid-arrangement sees a blank board (no
-    // currentCodeArrangeSlots has ever been written for this student/task
-    // yet) that then jumps straight to whatever the student had already
-    // placed the moment they drop their next tile, instead of reflecting
-    // their in-progress board right away.
-    if (findTaskById(lesson.tasks, currentTaskId)?.taskType === 'code_arrange') {
+    // code_arrange is an activity hosted by python/html (its definition's
+    // hostModules), not its own lesson.type, so it needs its own branch here
+    // too — without it, a teacher opening the modal mid-arrangement sees a
+    // blank board (no currentCodeArrangeSlots has ever been written for this
+    // student/task yet) that then jumps straight to whatever the student had
+    // already placed the moment they drop their next tile, instead of
+    // reflecting their in-progress board right away.
+    if (isModuleHostedActivityTask(findTaskById(lesson.tasks, currentTaskId))) {
       writeStudentCodeArrangeSlots?.(identity.anonymousId, codeArrangeSlotStateRef.current)
     }
     writeStudentInteraction(identity.anonymousId, {
       selection: editorSelectionRef.current,
-      activeFile: lesson.type === 'html' ? activeFile : undefined,
+      activeFile: isFilesWork(slotDefinition) ? activeFile : undefined,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.activeStudentView])
@@ -900,6 +1052,8 @@ export function useStudentCodeState({
     const action = myStudentData.remoteResetAction
     const task = findTaskById(lesson?.tasks, currentTaskId)
     if (!task || !action) return
+    // Activity resets are applied by useActivityState.
+    if (isHostedActivityTask(task)) return
 
     const revealMatch = action.match(/^reveal_stage_(\d+)$/)
     if (revealMatch) {
@@ -917,50 +1071,38 @@ export function useStudentCodeState({
     })
     if (!target) return
 
-    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
-      setCode(target.code)
-      if (lesson.type === 'arcade') {
-        const resetDesign = designForCodeTab(task, action)
-        setArcadeDesign(resetDesign)
-        persistence.savePythonCode(effectiveIdentity?.anonymousId, currentTaskId, {
-          code: target.code,
-          output: '',
-          runStatus: null,
-          arcadeDesign: resetDesign,
-        })
-        if (identity?.anonymousId && sessionRef.current?.activeStudentView === identity.anonymousId)
-          writeStudentArcadeDesign?.(identity.anonymousId, resetDesign)
+    const slotDefinition = workSlotDefinition(lesson.type)
+    if (slotDefinition) {
+      // A workspace-owned module (Scratch) also learns which stage is now active (null for the
+      // starter or complete).
+      const restored = restoreWork(
+        lesson.type,
+        slotDefinition.workSlot.fromResetTarget(target, task, action),
+        { stageIndex: target.stageIndex }
+      )
+      // Only a module whose extras have no other save on reset (Arcade's design) persists the
+      // reset and, while watched, mirrors the extras; everyone else's record is left until the
+      // next edit or snapshot.
+      if (slotDefinition.workSlot.remoteResetPersists) {
+        persistRestoredWork(lesson.type, restored)
+        const { meta } = storedWork(lesson.type, restored)
+        if (
+          Object.hasOwn(meta, 'arcadeDesign') &&
+          identity?.anonymousId &&
+          sessionRef.current?.activeStudentView === identity.anonymousId
+        )
+          writeStudentArcadeDesign?.(identity.anonymousId, meta.arcadeDesign)
       }
-      setOutput('')
-      setTurtleResult(null)
-      setRunStatus(null)
-      resetCheckFeedback()
-    } else if (lesson.type === 'html') {
-      setFiles(target.files.map((f) => ({ ...f })))
-      setActiveFile(target.entryFile ?? target.files[0]?.name ?? '')
-      setIframeSrc(null)
-      setRunStatus(null)
-      resetCheckFeedback()
-    } else if (lesson.type === 'scratch') {
-      setScratchActiveStageIndex(target.stageIndex)
-      setScratchExternalState(target.blocks)
-    } else if (lesson.type === 'filesystem') {
-      setFsState(target.fs)
-      resetCheckFeedback()
-    } else if (lesson.type === 'desktop') {
-      setDesktopState(normaliseDesktop(target.desktop))
-      resetCheckFeedback()
-    } else if (lesson.type === 'electronics') {
-      setCode(serializeCircuit(target.circuit))
-      resetCheckFeedback()
+      clearRunFor(lesson.type)
+      // A workspace-owned module's feedback stays until its workspace reports its next check.
+      if (!slotDefinition.workSlot.workspaceOwned) resetCheckFeedback()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.remoteResetPushedAt])
 
-  // Apply a teacher's edit to this student's Match / Fill in the Gaps answer or
-  // Code Arrange tiles (StudentModal "Edit answers"). Quiz answers go through
-  // the normal handleQuizSelect path so marking, the Firebase mirror, and the
-  // attempt log behave exactly as if the student had placed them — the only
+  // Apply a teacher's edit to this student's Code Arrange tiles (StudentModal "Edit answers").
+  // Quiz and activity answer edits are applied by useActivityState, so marking, the Firebase
+  // mirror and the attempt log behave exactly as if the student had answered — the only
   // difference is the teacherAssisted flag on the logged attempt.
   useEffect(() => {
     const edit = myStudentData?.teacherAnswerEdit
@@ -974,16 +1116,9 @@ export function useStudentCodeState({
     if (edit.taskId != null && String(edit.taskId) !== String(currentTaskIdRef.current)) return
     if (viewingTaskId !== null) return
     const task = findTaskById(lesson.tasks, currentTaskId)
-    if (task?.taskType === 'code_arrange' && edit.codeArrangeSlots) {
+    if (isModuleHostedActivityTask(task) && edit.codeArrangeSlots) {
       teacherAssistedTaskIdsRef.current.add(currentTaskId)
       setTeacherCodeArrangeEdit({ slots: edit.codeArrangeSlots, at: edit.at })
-      setTeacherAnswerNoticeAt(edit.at)
-    } else if (task?.taskType === 'quiz' && edit.answer != null) {
-      teacherAssistedTaskIdsRef.current.add(currentTaskId)
-      const answer = parseQuizAnswerState(edit.answer)
-      handleQuizSelect(answer, typeof edit.passed === 'boolean' ? edit.passed : null, {
-        fromTeacher: true,
-      })
       setTeacherAnswerNoticeAt(edit.at)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1014,52 +1149,55 @@ export function useStudentCodeState({
     const newCode = myStudentData?.teacherEditApplyCode
     const newFiles = myStudentData?.teacherEditApplyFiles
     const newArcadeDesign = myStudentData?.teacherEditApplyArcadeDesign
-    if (lesson?.type === 'html' && newFiles) {
-      const nextFiles = decodeSessionFiles(newFiles, decodeFileKey, 'html')
-      setFiles(nextFiles)
-      setActiveFile((current) =>
-        nextFiles.some((file) => file.name === current) ? current : (nextFiles[0]?.name ?? '')
+    // Modules without workSlot.teacherEdit (filesystem, desktop) never apply teacher edits.
+    const slotDefinition = workSlotDefinition(lesson?.type)
+    if (!slotDefinition?.workSlot.teacherEdit) return
+    const actorId = effectiveIdentity?.anonymousId
+    if (isFilesWork(slotDefinition)) {
+      // A files module (html) takes the teacher's files, keeping the active file while it
+      // still exists; a teacher code edit means nothing to it.
+      if (!newFiles) return
+      const nextFiles = decodeSessionFiles(newFiles, decodeFileKey, slotDefinition.meta.language)
+      const { activeFile: current } = workValueFor(lesson.type)
+      restoreWork(lesson.type, {
+        files: nextFiles,
+        activeFile: nextFiles.some((file) => file.name === current)
+          ? current
+          : (nextFiles[0]?.name ?? ''),
+      })
+      setOutput('')
+      setTurtleResult(null)
+      setRunStatus(null)
+      resetCheckFeedback()
+      if (actorId) persistence.saveWork(lesson.type, actorId, currentTaskId, nextFiles)
+    } else if (newCode !== undefined && slotDefinition.workSlot.workspaceOwned) {
+      // The teacher edited Scratch blocks: pushed to the workspace and saved.
+      const newState = slotDefinition.wire.fromCode(newCode)
+      restoreWork(lesson.type, newState)
+      resetCheckFeedback()
+      if (actorId && newState) persistence.saveWork(lesson.type, actorId, currentTaskId, newState)
+    } else if (newCode !== undefined) {
+      // The teacher edited code: a code module takes it (Arcade also the design the teacher
+      // sent, else keeps its own).
+      const { workSlot } = slotDefinition
+      const restored = restoreWork(
+        lesson.type,
+        workSlot.fromStored(
+          { work: newCode ?? '', meta: { arcadeDesign: newArcadeDesign } },
+          workValueFor(lesson.type)
+        )
       )
       setOutput('')
       setTurtleResult(null)
       setRunStatus(null)
       resetCheckFeedback()
-      if (effectiveIdentity?.anonymousId) {
-        persistence.saveHtmlFiles(effectiveIdentity.anonymousId, currentTaskId, nextFiles)
-      }
-    } else if (
-      newCode !== undefined &&
-      (lesson?.type === 'python' ||
-        lesson?.type === 'arcade' ||
-        lesson?.type === 'electronics' ||
-        lesson?.type === 'turtle')
-    ) {
-      setCode(newCode ?? '')
-      setOutput('')
-      setTurtleResult(null)
-      setRunStatus(null)
-      resetCheckFeedback()
-      const nextDesign =
-        lesson?.type === 'arcade'
-          ? newArcadeDesign
-            ? cloneArcadeDesign(newArcadeDesign)
-            : arcadeDesignRef.current
-          : null
-      if (lesson?.type === 'arcade') setArcadeDesign(nextDesign)
-      if (effectiveIdentity?.anonymousId) {
-        persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
-          code: newCode ?? '',
+      if (actorId) {
+        const { work: stored, meta } = storedWork(lesson.type, restored)
+        persistence.saveRunRecord(lesson.type, actorId, currentTaskId, stored, {
           output: '',
           runStatus: null,
-          ...(lesson?.type === 'arcade' ? { arcadeDesign: nextDesign } : {}),
+          ...meta,
         })
-      }
-    } else if (newCode !== undefined && lesson?.type === 'scratch') {
-      const newState = parseScratchState(newCode)
-      setScratchExternalState(newState)
-      resetCheckFeedback()
-      if (effectiveIdentity?.anonymousId && newState) {
-        persistence.saveScratch(effectiveIdentity.anonymousId, currentTaskId, newState)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1070,33 +1208,10 @@ export function useStudentCodeState({
   function handleEnterPersonalSandbox() {
     if (!identity || teacherPresentation || !lesson) return
     const id = identity.anonymousId
-    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
-      const saved = loadPersonalSandboxCode(lessonId, id, sandboxModuleId)
-      setCode(saved?.code ?? lesson.sandboxStarter ?? '')
-      if (lesson.type === 'arcade') {
-        setArcadeDesign(saved?.arcadeDesign ? cloneArcadeDesign(saved.arcadeDesign) : null)
-      }
-    } else if (lesson.type === 'html') {
-      const starterFiles = lesson.sandboxStarterFiles ?? []
-      const sandboxFiles = starterFiles.map((f) => {
-        const savedContent = loadPersonalSandboxFile(lessonId, f.name, id, sandboxModuleId)
-        return { ...f, content: savedContent ?? f.content }
-      })
-      const withContent =
-        sandboxFiles.length > 0 ? sandboxFiles : starterFiles.map((f) => ({ ...f }))
-      setFiles(withContent)
-      setActiveFile(withContent[0]?.name ?? '')
-    } else if (lesson.type === 'filesystem') {
-      const savedFs = loadPersonalSandboxFs(lessonId, id, sandboxModuleId)
-      setFsState(savedFs ?? lesson.sandboxStarterFs ?? DEFAULT_FS)
-    } else if (lesson.type === 'desktop') {
-      const savedDesktop = loadPersonalSandboxDesktop(lessonId, id, sandboxModuleId)
-      setDesktopState(
-        normaliseDesktop(savedDesktop ?? lesson.sandboxStarterDesktop ?? makeDefaultDesktop())
-      )
-    } else if (lesson.type === 'electronics') {
-      const saved = loadPersonalSandboxCode(lessonId, id, sandboxModuleId)
-      setCode(saved?.code ?? serializeCircuit(lesson.sandboxStarterCircuit ?? DEFAULT_CIRCUIT))
+    const slotDefinition = workSlotDefinition(lesson.type)
+    // A workspace-owned module's workspace (Scratch) reads its own sandbox work.
+    if (slotDefinition && !slotDefinition.workSlot.workspaceOwned) {
+      restoreWork(lesson.type, readPersonalSandboxWork(slotDefinition, id))
     }
     setOutput('')
     setTurtleResult(null)
@@ -1105,6 +1220,22 @@ export function useStudentCodeState({
     resetCheckFeedback()
     setInPersonalSandbox(true)
     if (session) writeStudentPersonalSandbox(id, true)
+  }
+
+  // The saved personal-sandbox work (Arcade: with its saved design), else the lesson's sandbox
+  // starter. A per-file module (html) reads each starter file's saved sandbox record.
+  function readPersonalSandboxWork(definition, actorId) {
+    const { type, workSlot } = definition
+    const starter = workSlot.sandbox(lesson)
+    if (definition.storage.layout !== 'perFile') {
+      return workSlot.fromStored(persistence.readSandboxWork(type, actorId), starter)
+    }
+    const files = workSlot.stored(starter).work.map((file) => ({
+      ...file,
+      content:
+        persistence.readSandboxWork(type, actorId, { filename: file.name })?.work ?? file.content,
+    }))
+    return workSlot.fromStored({ work: files, meta: {} }, starter)
   }
 
   function handleLeavePersonalSandbox() {
@@ -1126,13 +1257,23 @@ export function useStudentCodeState({
     const actor = effectiveIdentity
     if (!actor || running) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
-    const mod = getLessonModule(lesson?.type)
+    const moduleType = lesson?.type
+    const mod = getLessonModule(moduleType)
+    const definition = getModuleDefinition(moduleType)
     const isWatched = session?.activeStudentView === actor.anonymousId
     // Checked live on every mirror write, not captured once at run start: a
     // teacher can open (or close) StudentModal while the program is running.
     const isWatchedNow = () =>
       !teacherPresentation && activeStudentViewRef.current === actor.anonymousId
     const alreadySolved = isAlreadySolved()
+    // Dispatch on the module's declared run capability. 'workspace' modules (Arcade, Scratch)
+    // run inside their own workspace and 'none' modules (Filesystem, Desktop) have nothing to
+    // run, so bail out before touching `running`; a 'preview' module needs its preview builder.
+    const runKind = definition?.capabilities.run ?? 'none'
+    const runsHere =
+      runKind === 'runtime' ||
+      (runKind === 'preview' && typeof mod?.runtime?.buildPreviewSrc === 'function')
+    if (!runsHere) return
 
     setRunning(true)
     setOutput('')
@@ -1143,266 +1284,70 @@ export function useStudentCodeState({
     setHtmlErrorLocation(null)
     if (!alreadySolved) resetRunFeedback()
 
-    if (lesson.type === 'python' || lesson.type === 'electronics' || lesson.type === 'turtle') {
-      if (outputRafIdRef.current !== null) {
-        cancelAnimationFrame(outputRafIdRef.current)
-        outputRafIdRef.current = null
-      }
-      outputMirrorRef.current?.cancel()
-      inputPromptRef.current = null
-      inputValueRef.current = ''
-      // Clear the previous run's mirrored output/prompt up front — otherwise a
-      // program that asks for input() (or is slow) before printing anything
-      // shows the watching teacher the last run's output under the new run.
-      if (isWatchedNow()) {
-        writeStudentInputState(actor.anonymousId, { prompt: null, value: '', output: '' })
-      }
-      let outputBuffer = createStudentOutputBuffer()
-      // Leading + trailing throttle (200ms) so the tail of a burst of output
-      // always reaches the teacher instead of waiting for the run to end.
-      const outputMirror = createThrottledMirrorWriter({
-        write: (raw) => {
-          if (canPublishTeacherLive()) updateTeacherLive(currentTeacherLivePayload({ output: raw }))
-          if (isWatchedNow()) writeStudentOutput(actor.anonymousId, raw)
+    if (runKind === 'runtime') {
+      await runWithRuntime({
+        actor,
+        task,
+        definition,
+        runtime: mod.runtime,
+        startCode: storedWork(moduleType).work,
+        currentTaskId,
+        isWatched,
+        isWatchedNow,
+        alreadySolved,
+        teacherPresentation,
+        // Through the slot, so a MicroPython update is visible to the next read at once.
+        readCode: () => storedWork(moduleType).work,
+        setCode: (nextCode) => setWork(moduleType, withCode(moduleType, nextCode)),
+        refs: {
+          outputRafIdRef,
+          outputMirrorRef,
+          inputPromptRef,
+          inputValueRef,
+          submitInputEchoRef,
+          appendOutputRef,
+          runtimeCodeRafIdRef,
+          pendingRuntimeCodeRef,
+          lastRuntimeCodeWriteRef,
+          currentTaskIdRef,
+          phaseRef,
+          inPersonalSandboxRef,
+          teacherAssistedTaskIdsRef,
         },
-      })
-      outputMirrorRef.current = outputMirror
-      const appendLocalOutput = (text) => {
-        const nextOutputBuffer = appendStudentOutput(outputBuffer, text)
-        if (nextOutputBuffer === outputBuffer) return false
-        outputBuffer = nextOutputBuffer
-        // Throttle React re-renders to one per animation frame (~60fps max).
-        // outputBuffer is a closure var so the RAF always reads the latest value.
-        if (outputRafIdRef.current === null) {
-          outputRafIdRef.current = requestAnimationFrame(() => {
-            outputRafIdRef.current = null
-            setOutput(outputBuffer.display)
-          })
-        }
-        return true
-      }
-      const echoOutput = (text) => {
-        if (appendLocalOutput(text)) outputMirror.push(outputBuffer.raw)
-      }
-      submitInputEchoRef.current = (value) => {
-        appendLocalOutput(value + '\n')
-        outputMirror.markWritten()
-        if (canPublishTeacherLive())
-          updateTeacherLive(currentTeacherLivePayload({ output: outputBuffer.raw }))
-        // One update: the echoed line lands in the output at the same moment
-        // the prompt row disappears, so the teacher never sees the typed text
-        // vanish (or linger) while the echo waits on the throttle.
-        if (isWatchedNow()) {
-          writeStudentInputState(actor.anonymousId, {
-            prompt: null,
-            value: '',
-            output: outputBuffer.raw,
-          })
-        }
-      }
-      let latestRuntimeCode = code
-      const flushRuntimeCodeUpdate = () => {
-        if (runtimeCodeRafIdRef.current !== null) {
-          cancelAnimationFrame(runtimeCodeRafIdRef.current)
-          runtimeCodeRafIdRef.current = null
-        }
-        const pending = pendingRuntimeCodeRef.current
-        pendingRuntimeCodeRef.current = null
-        if (typeof pending !== 'string') return
-        latestRuntimeCode = pending
-        codeRef.current = pending
-        setCode(pending)
-        const now = Date.now()
-        if (now - lastRuntimeCodeWriteRef.current >= 200) {
-          lastRuntimeCodeWriteRef.current = now
-          if (canPublishTeacherLive())
-            updateTeacherLive(currentTeacherLivePayload({ code: pending }))
-          if (isWatched) writeStudentCode(actor.anonymousId, pending)
-        }
-      }
-      const scheduleRuntimeCodeUpdate = (nextCode) => {
-        if (
-          lesson.type !== 'electronics' ||
-          typeof nextCode !== 'string' ||
-          nextCode === latestRuntimeCode
-        )
-          return
-        latestRuntimeCode = nextCode
-        pendingRuntimeCodeRef.current = nextCode
-        if (runtimeCodeRafIdRef.current !== null) return
-        runtimeCodeRafIdRef.current = requestAnimationFrame(flushRuntimeCodeUpdate)
-      }
-      appendOutputRef.current = echoOutput
-      const result = await mod.runtime.run(code, task, {
-        onOutput: (text, kind, line) => {
-          echoOutput(text)
-          if (lesson.type === 'python' && kind === 'stderr' && typeof line === 'number') {
-            setErrorLine(line)
-          }
+        setters: {
+          setOutput,
+          setInputPrompt,
+          setErrorLine,
+          setRunStatus,
+          setTurtleResult,
+          setRunning,
         },
-        onInputRequired: (prompt) => {
-          inputPromptRef.current = prompt
-          inputValueRef.current = ''
-          setInputPrompt(prompt)
-          if (isWatchedNow()) {
-            // Bundle any output still waiting on the throttle (usually the
-            // prompt text itself) with the prompt row appearing.
-            outputMirror.markWritten()
-            if (canPublishTeacherLive())
-              updateTeacherLive(currentTeacherLivePayload({ output: outputBuffer.raw }))
-            writeStudentInputState(actor.anonymousId, {
-              prompt,
-              value: '',
-              output: outputBuffer.raw,
-            })
-          } else {
-            outputMirror.flush()
-          }
+        writers: {
+          writeStudentInputState,
+          writeStudentOutput,
+          writeStudentCode,
+          writeStudentRun,
+          writeStudentTurtleResult,
+          logAttempt,
         },
-        onCodeUpdate: scheduleRuntimeCodeUpdate,
-        getRuntimeCode: () => codeRef.current,
+        live: {
+          canPublishTeacherLive,
+          updateTeacherLive,
+          currentTeacherLivePayload,
+          publishTeacherLive,
+        },
+        feedback: { applyCheckFeedback, updateTargetedStageOffer, updateSupportStageForAttempt },
+        saveRunRecord: (taskId, runCode, fields) =>
+          persistence.saveRunRecord(moduleType, actor.anonymousId, taskId, runCode, fields),
       })
-      submitInputEchoRef.current = null
-      outputMirror.cancel()
-      if (outputMirrorRef.current === outputMirror) outputMirrorRef.current = null
-      inputPromptRef.current = null
-      inputValueRef.current = ''
-      setInputPrompt(null)
-      if (isWatchedNow()) writeStudentInputState(actor.anonymousId, { prompt: null, value: '' })
-
-      // Cancel any pending RAF and sync final output immediately
-      if (outputRafIdRef.current !== null) {
-        cancelAnimationFrame(outputRafIdRef.current)
-        outputRafIdRef.current = null
-      }
-
-      if (result.status === 'stopped') {
-        flushRuntimeCodeUpdate()
-        // Only repaint the buffered output if the student is still on the task that
-        // produced it — a stop triggered by navigating away must not overwrite the
-        // freshly reset state for the task they moved to.
-        if (currentTaskId === currentTaskIdRef.current) setOutput(outputBuffer.display)
-        if (lesson.type === 'electronics')
-          persistence.savePythonCode(actor.anonymousId, currentTaskId, {
-            code: latestRuntimeCode,
-            output: outputBuffer.raw,
-          })
-        if (canPublishTeacherLive())
-          updateTeacherLive(
-            currentTeacherLivePayload({ code: latestRuntimeCode, output: outputBuffer.raw })
-          )
-        if (isWatchedNow()) {
-          writeStudentCode(actor.anonymousId, latestRuntimeCode)
-          writeStudentOutput(actor.anonymousId, outputBuffer.raw)
-        }
-        setRunning(false)
-        return
-      }
-
-      flushRuntimeCodeUpdate()
-      setOutput(outputBuffer.display)
-      const status = result.status
-      setRunStatus(status)
-      const nextCode =
-        typeof result.updatedCode === 'string' ? result.updatedCode : latestRuntimeCode
-      if (nextCode !== code) setCode(nextCode)
-
-      setTurtleResult(result.turtle ?? null)
-      const checkContext = buildCodeCheckContext(lesson.type, nextCode, {
-        status,
-        variables: result.variables ?? {},
-        turtle: result.turtle ?? null,
-      })
-      // A teacher-started or personal sandbox is free play: the session still points at a
-      // lesson task, but sandbox code has nothing to do with that task's check, so scoring
-      // it reported a "failed" run to the teacher on every sandbox Run.
-      const isFreePlay = phaseRef.current === 'sandbox' || inPersonalSandboxRef.current
-      const checkTask = isFreePlay ? null : task
-      const hasTests = checkTask?.tests?.length > 0
-      let passed = alreadySolved
-        ? true
-        : status === 'error' || hasTests || isFreePlay
-          ? false
-          : evaluateCheckWithFeedback(checkTask, outputBuffer.raw, checkContext).passed
-      let suggestion = ''
-      if (!alreadySolved && !isFreePlay) {
-        // Feedback checks can diagnose code even when Python could not run (for
-        // example, `print(hello)` raises NameError). Keep completion failed on a
-        // runtime error, but still evaluate the feedback checks and their stage
-        // offers against the submitted code/output.
-        const evaluation =
-          !hasTests && checkTask?.check
-            ? evaluateCheckWithFeedback(checkTask, outputBuffer.raw, checkContext, {
-                completionPassed:
-                  status !== 'error' &&
-                  evaluateCheck(checkTask.check, outputBuffer.raw, checkContext),
-              })
-            : null
-        if (evaluation) {
-          passed = evaluation.passed
-          suggestion = evaluation.suggestion
-          updateTargetedStageOffer(checkTask, evaluation, passed)
-        }
-        if (!hasTests && checkTask?.check) applyCheckFeedback(passed, suggestion)
-        updateSupportStageForAttempt(status !== 'error' && (!checkTask?.check || passed))
-      }
-
-      if (canPublishTeacherLive()) {
-        publishTeacherLive({
-          code: nextCode,
-          output: outputBuffer.raw,
-          runStatus: status,
-          checkPassed: passed,
-          checkAttempted: !alreadySolved && !hasTests && !!checkTask?.check,
-          checkSuggestion: suggestion,
-        })
-      }
-      persistence.savePythonCode(actor.anonymousId, currentTaskId, {
-        code: nextCode,
-        output: outputBuffer.raw,
-        runStatus: status,
-      })
-      if (
-        !teacherPresentation &&
-        (phaseRef.current === 'lesson' ||
-          phaseRef.current === 'sandbox' ||
-          inPersonalSandboxRef.current ||
-          isWatched)
-      ) {
-        await writeStudentRun(actor.anonymousId, {
-          code: nextCode,
-          output: outputBuffer.raw,
-          status,
-          checkPassed: hasTests || isFreePlay ? undefined : passed,
-        })
-        // Turtle's canvas is a run RESULT (like output), not an editing-tool state like
-        // Arcade's design — so it's synced here alongside writeStudentRun, not only on
-        // explicit edits. Lets a teacher open StudentModal and see the student's actual
-        // drawing, not just their code.
-        if (lesson.type === 'turtle')
-          writeStudentTurtleResult(actor.anonymousId, result.turtle ?? null)
-      }
-      if (
-        !teacherPresentation &&
-        phaseRef.current === 'lesson' &&
-        !alreadySolved &&
-        !hasTests &&
-        checkTask?.check
-      ) {
-        logAttempt(actor.anonymousId, currentTaskId, {
-          submission: nextCode,
-          passed,
-          suggestion,
-          teacherAssisted: teacherAssistedTaskIdsRef.current.has(currentTaskId),
-        })
-      }
-      setRunning(false)
       return
     }
 
-    // HTML — build iframe
+    // 'preview' (HTML) — build the iframe from the slot's files. The iframe is only ever rebuilt
+    // here, on Run, never per keystroke.
     setHtmlPreviewCollapsed(false)
-    const currentFiles = filesRef.current
+    const currentFiles = storedWork(moduleType).work
+    const { wire } = definition
     const src = mod.runtime.buildPreviewSrc(
       { files: currentFiles, entryFile: task?.entryFile ?? 'index.html' },
       task,
@@ -1426,9 +1371,12 @@ export function useStudentCodeState({
       let passed,
         suggestion = ''
       if (!alreadySolved) {
-        const codeStr = currentFiles.map((f) => f.content).join('\n')
         const iframeDoc = iframeRef.current?.contentDocument ?? null
-        const evaluation = evaluateCheckWithFeedback(task, text, { code: codeStr, iframeDoc })
+        const evaluation = evaluateCheckWithFeedback(
+          task,
+          text,
+          definition.checking.buildContext(currentFiles, { iframeDoc })
+        )
         passed = evaluation.passed
         suggestion = task?.check ? evaluation.suggestion : ''
         updateTargetedStageOffer(task, evaluation, passed)
@@ -1449,7 +1397,7 @@ export function useStudentCodeState({
           checkPassed: passed,
           checkAttempted: !alreadySolved && !!task?.check,
           checkSuggestion: suggestion,
-          files: Object.fromEntries(currentFiles.map((f) => [f.name, f.content])),
+          files: wire.toFilesMap(currentFiles),
         })
       }
       if (
@@ -1460,9 +1408,8 @@ export function useStudentCodeState({
           isWatched)
       ) {
         if (taskIdAtRunTime === currentTaskIdRef.current) {
-          const filesMap = Object.fromEntries(currentFiles.map((f) => [f.name, f.content]))
           writeStudentRun(actor.anonymousId, {
-            files: filesMap,
+            files: wire.toFilesMap(currentFiles),
             status: 'success',
             checkPassed: passed,
           })
@@ -1475,15 +1422,14 @@ export function useStudentCodeState({
         task?.check &&
         taskIdAtRunTime === currentTaskIdRef.current
       ) {
-        const filesMap = Object.fromEntries(currentFiles.map((f) => [f.name, f.content]))
         logAttempt(actor.anonymousId, taskIdAtRunTime, {
-          submission: filesMap,
+          submission: wire.submission(currentFiles),
           passed,
           suggestion,
           teacherAssisted: teacherAssistedTaskIdsRef.current.has(taskIdAtRunTime),
         })
       }
-      persistence.saveHtmlFiles(actor.anonymousId, taskIdAtRunTime, currentFiles)
+      persistence.saveWork(moduleType, actor.anonymousId, taskIdAtRunTime, currentFiles)
       setRunning(false)
     })
   }
@@ -1632,53 +1578,29 @@ export function useStudentCodeState({
 
   // ─── Editor change handlers ────────────────────────────────────────────────
 
+  // The code editor's change handler (python, turtle, arcade, electronics — the latter sends
+  // its serialised circuit): the new code replaces the code module's code, keeping the rest of
+  // its work (Arcade's design), through the work-slot pipeline.
   function handleCodeChange(newCode) {
-    setCode(newCode)
     if (errorLine != null) setErrorLine(null)
-    if (canPublishTeacherLive()) publishTeacherLive({ code: newCode })
-    if (
-      effectiveIdentity &&
-      (lesson?.type === 'python' ||
-        lesson?.type === 'arcade' ||
-        lesson?.type === 'electronics' ||
-        lesson?.type === 'turtle')
-    ) {
-      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
-        code: newCode,
-        output,
-        runStatus,
-        ...(lesson?.type === 'arcade' ? { arcadeDesign: arcadeDesignRef.current } : {}),
-      })
-    }
-    if (identity && session?.activeStudentView === identity.anonymousId) {
-      writeStudentCode(identity.anonymousId, newCode)
-    }
-    if (
-      lesson?.type === 'python' ||
-      lesson?.type === 'arcade' ||
-      lesson?.type === 'electronics' ||
-      lesson?.type === 'turtle'
-    ) {
-      scheduleIdleFeedback(() => {
-        const type = lessonRef.current?.type
-        return buildCodeCheckContext(
-          type,
-          newCode,
-          type === 'electronics' ? {} : { status: runStatusRef.current }
-        )
-      })
-    }
+    const moduleType = lesson?.type
+    if (!isCodeStringWork(workSlotDefinition(moduleType))) return
+    handleWorkChange(withCode(moduleType, newCode), { moduleType })
   }
 
+  // Arcade's sprite/sound design editor. The design is part of Arcade's work; it is saved with
+  // the code and published at once, but mirrored to a watching teacher on its own debounced
+  // channel (writeStudentArcadeDesign) rather than with the code.
   function handleArcadeDesignChange(nextDesign) {
     const next = cloneArcadeDesign(nextDesign)
-    setArcadeDesign(next)
-    if (effectiveIdentity && lesson?.type === 'arcade') {
-      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
-        code: codeRef.current,
+    const value = { ...workValueFor('arcade'), arcadeDesign: next }
+    setWork('arcade', value)
+    if (effectiveIdentity) {
+      const { work: stored, meta } = storedWork('arcade', value)
+      persistence.saveRunRecord('arcade', effectiveIdentity.anonymousId, currentTaskId, stored, {
         output: outputRef.current,
         runStatus: runStatusRef.current,
-        arcadeDesign: next,
+        ...meta,
       })
     }
     if (canPublishTeacherLive()) publishTeacherLive({ arcadeDesign: next })
@@ -1692,13 +1614,22 @@ export function useStudentCodeState({
     }
   }
 
-  // ArcadeKit runs its game inside its own iframe (ArcadePreview), never through handleRun,
-  // and produces no captured text output — so on "Run game" only the task's generic code
-  // checks can be evaluated. Other check types saved on an Arcade task are ignored here
-  // (the Builder warns about them) rather than failing every attempt.
-  function handleArcadeRun(runCode) {
+  // A 'workspace'-run module on the work slot (Arcade: "Run game") reports a run it made in
+  // its own iframe. There is no captured text output, so on a run only the task's generic code
+  // checks can be evaluated; other check types saved on the task are ignored here (the Builder
+  // warns about them) rather than failing every attempt.
+  function handleWorkspaceRun(runCode) {
     const actor = effectiveIdentity
-    if (!actor || lesson?.type !== 'arcade') return
+    const moduleType = lesson?.type
+    const definition = workSlotDefinition(moduleType)
+    // Only a workspace-run module checked on Run (Arcade); Scratch reports checked runs through
+    // reportRun.
+    if (
+      !actor ||
+      definition?.capabilities.run !== 'workspace' ||
+      definition.checking.trigger !== 'run'
+    )
+      return
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const alreadySolved = isAlreadySolved()
     const codeChecks = normalizeChecks(task?.check).filter(isCodeCheck)
@@ -1719,7 +1650,7 @@ export function useStudentCodeState({
     let suggestion = ''
     if (!alreadySolved) {
       if (hasCheck) {
-        const context = buildCodeCheckContext(lesson.type, runCode, { status: 'success' })
+        const context = definition.checking.buildContext(runCode, { status: 'success' })
         const evaluation = evaluateCheckWithFeedback(checkTask, '', context)
         passed = evaluation.passed
         suggestion = evaluation.suggestion
@@ -1738,11 +1669,10 @@ export function useStudentCodeState({
         checkSuggestion: suggestion,
       })
     }
-    persistence.savePythonCode(actor.anonymousId, currentTaskId, {
-      code: runCode,
+    persistence.saveRunRecord(moduleType, actor.anonymousId, currentTaskId, runCode, {
       output: outputRef.current,
       runStatus: 'success',
-      arcadeDesign: arcadeDesignRef.current,
+      ...storedWork(moduleType).meta,
     })
     const isWatched = session?.activeStudentView === actor.anonymousId
     if (
@@ -1795,7 +1725,10 @@ export function useStudentCodeState({
   }
 
   function handleFileTabChange(filename) {
-    setActiveFile(filename)
+    const definition = workSlotDefinition(lesson?.type)
+    if (isFilesWork(definition)) {
+      setWork(definition.type, { ...workValueFor(definition.type), activeFile: filename })
+    }
     editorSelectionRef.current = null
     setEditorSelection(null)
     if (canPublishTeacherLive()) publishTeacherLive({ activeFile: filename, selection: null })
@@ -1804,46 +1737,25 @@ export function useStudentCodeState({
     }
   }
 
+  // A files module's (html) editor change to one file, through the files pipeline (see
+  // handleFilesWorkChange): only that file is saved. The file need not be one of the work's
+  // files (code_arrange saves its assembled entry file this way).
   function handleFileChange(filename, content) {
-    const nextFiles = filesRef.current.map((f) => (f.name === filename ? { ...f, content } : f))
-    setFiles(nextFiles)
+    const definition = workSlotDefinition(lesson?.type)
+    if (!isFilesWork(definition)) return
+    const current = workValueFor(definition.type)
+    const nextFiles = current.files.map((f) => (f.name === filename ? { ...f, content } : f))
     if (htmlErrorLocation?.file === filename) setHtmlErrorLocation(null)
-    if (canPublishTeacherLive()) {
-      publishTeacherLive({
-        files: Object.fromEntries(nextFiles.map((f) => [f.name, f.content])),
-        activeFile: filename,
-      })
-    }
-    if (effectiveIdentity && lesson?.type === 'html') {
-      persistence.saveHtmlFile(effectiveIdentity.anonymousId, currentTaskId, filename, content)
-    }
-    if (identity && session?.activeStudentView === identity.anonymousId) {
-      const filesMap = Object.fromEntries(
-        filesRef.current.map((f) => [f.name, f.name === filename ? content : f.content])
-      )
-      writeStudentFiles(identity.anonymousId, filesMap)
-    }
-    if (lesson?.type === 'html') {
-      scheduleIdleFeedback(
-        () => ({
-          code: nextFiles.map((f) => f.content).join('\n'),
-          output: outputRef.current,
-          iframeDoc: iframeRef.current?.contentDocument ?? null,
-        }),
-        { feedbackFilter: checkAllowedForSubmit }
-      )
-    }
+    handleFilesWorkChange(
+      definition,
+      { ...current, files: nextFiles },
+      { changed: [{ name: filename, content }], editedFile: filename }
+    )
   }
 
+  // Scratch's workspace reports its blocks after every settled edit.
   function handleScratchChange(workspaceStates) {
-    const serialized = JSON.stringify(workspaceStates)
-    scratchCodeRef.current = serialized
-    if (canPublishTeacherLive()) publishTeacherLive({ code: serialized })
-    if (!effectiveIdentity) return
-    persistence.saveScratch(effectiveIdentity.anonymousId, currentTaskId, workspaceStates)
-    if (identity && activeStudentViewRef.current === identity.anonymousId) {
-      writeStudentCode(identity.anonymousId, serialized)
-    }
+    handleWorkChange(workspaceStates, { moduleType: 'scratch' })
   }
 
   const SPRITE_STATE_THROTTLE_MS = 120
@@ -1924,40 +1836,64 @@ export function useStudentCodeState({
     if (canPublishTeacherLive()) publishTeacherLive({ codeArrangeCursor: payload })
   }
 
-  function handleScratchCheck(passed, snapshot) {
+  /**
+   * A 'workspace'-checked module (Scratch) evaluated the task check itself and reports the
+   * outcome: `passed`, the workspace's own `suggestion` (else the first check hint is used), and
+   * the `work` it checked (else the task's saved work). Applies local feedback; then, in a live
+   * lesson, the teacher sandbox or while watched, writes the run (the work as `code` via
+   * wire.toCode) and, in a live lesson while unsolved, the attempt (wire.submission).
+   */
+  function reportRun({ passed, suggestion: reportedSuggestion, work: reportedWork } = {}) {
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const alreadySolved = isAlreadySolved()
     const effectivePassed = alreadySolved ? true : passed
     const checks = Array.isArray(task?.check) ? task.check : task?.check ? [task.check] : []
     const suggestion = effectivePassed
       ? ''
-      : String(snapshot?.suggestion ?? '').trim() ||
+      : String(reportedSuggestion ?? '').trim() ||
         String(checks.find((c) => c?.hint)?.hint ?? '').trim()
     if (!alreadySolved && task?.check) applyCheckFeedback(passed, suggestion)
-    if (!identity || lesson?.type !== 'scratch') return
+    const definition = workSlotDefinition(lesson?.type)
+    if (!identity || definition?.checking.trigger !== 'workspace') return
     if (
       phase === 'lesson' ||
       phase === 'sandbox' ||
       activeStudentViewRef.current === identity.anonymousId
     ) {
-      const states =
-        snapshot?.workspaceStates ??
-        loadSavedCode(lessonId, currentTaskId, identity.anonymousId)?.state ??
+      const { wire } = definition
+      const checkedWork =
+        reportedWork ??
+        persistence.readWork(lesson.type, identity.anonymousId, currentTaskId)?.work ??
         null
       writeStudentRun(identity.anonymousId, {
-        code: states ? JSON.stringify(states) : undefined,
+        code: checkedWork ? wire.toCode(checkedWork) : undefined,
         status: 'success',
         checkPassed: effectivePassed,
       })
       if (!teacherPresentation && phase === 'lesson' && !alreadySolved && task?.check) {
-        logAttempt(identity.anonymousId, currentTaskId, { submission: states, passed, suggestion })
+        logAttempt(identity.anonymousId, currentTaskId, {
+          submission: wire.submission(checkedWork),
+          passed,
+          suggestion,
+        })
       }
     }
   }
 
-  // ─── Filesystem handlers ───────────────────────────────────────────────────
+  // The Scratch workspace's check report: onCheckResult(passed, { suggestion, workspaceStates }).
+  function handleScratchCheck(passed, snapshot) {
+    reportRun({ passed, suggestion: snapshot?.suggestion, work: snapshot?.workspaceStates })
+  }
 
-  function applyFsCheckAndPublish(context, { suppressFailFeedback = false } = {}) {
+  // ─── Generic work slot handlers ──────────────────────────────────────────────
+
+  // Evaluates the task check against a work-slot module's work and reports the outcome: local
+  // feedback (a failing interaction-only re-check stays quiet), then — in a live lesson, outside
+  // the personal sandbox — the run record (the work as `code` via wire.toCode) and, while the
+  // task is unsolved, the attempt log (wire.submission).
+  function evaluateAndReport({ moduleType, work: workValue, context }, opts = {}) {
+    const { suppressFailFeedback = false } = opts
+    const { wire } = getModuleDefinition(moduleType)
     const alreadySolved = isAlreadySolved()
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const completionPassed = task?.check ? evaluateCheck(task.check, null, context) : false
@@ -1981,13 +1917,13 @@ export function useStudentCodeState({
       effectiveIdentity?.anonymousId
     ) {
       writeStudentRun(effectiveIdentity.anonymousId, {
-        code: JSON.stringify(context.fs),
+        code: wire.toCode(workValue),
         status: task?.check ? (evaluatedPassed ? 'success' : 'error') : null,
         checkPassed: evaluatedPassed,
       })
       if (!alreadySolved && task?.check) {
         logAttempt(effectiveIdentity.anonymousId, currentTaskId, {
-          submission: context.fs,
+          submission: wire.submission(workValue),
           passed: evaluatedPassed,
           suggestion,
         })
@@ -1995,95 +1931,157 @@ export function useStudentCodeState({
     }
   }
 
-  function handleFsChange(newFs) {
-    setFsState(newFs)
-    persistence.saveFs(effectiveIdentity?.anonymousId, currentTaskId, newFs)
-    applyFsCheckAndPublish({ fs: newFs, ...fsInteractionRef.current })
-    scheduleIdleFeedback(() => ({ fs: fsStateRef.current, ...fsInteractionRef.current }))
+  // The check context for a work-slot module's latest work and interaction (read from refs, so
+  // idle feedback evaluates whatever is current when its timer fires).
+  function currentWorkCheckContext(moduleType) {
+    return getModuleDefinition(moduleType).checking.buildContext(
+      workValueFor(moduleType),
+      interactionFor(moduleType)
+    )
   }
 
-  const handleFsInteraction = useCallback(
-    (interaction) => {
-      setFsInteraction(interaction)
-      applyFsCheckAndPublish(
-        { fs: fsStateRef.current, ...interaction },
-        { suppressFailFeedback: true }
+  /**
+   * The one change pipeline for work-slot modules. `next` is the new work (undefined for an
+   * interaction-only update); `interaction` the workspace's new { currentDir, openFile }.
+   * What follows the set depends on the module's `checking.trigger`:
+   *
+   *   'change' (filesystem, desktop): set work → persistence.saveWork → teacherLive (published
+   *   by useTeacherLivePublish's effect, which tracks the work value) → no watched-only mirror
+   *   (every change already writes a run) → evaluate now, with fail feedback suppressed for
+   *   interaction-only re-checks → idle feedback.
+   *
+   *   'run' (python, turtle, arcade, electronics; checked when the code runs): set work →
+   *   teacherLive now → the run record (the work with the current output / run status and the
+   *   module's extras) → writeStudentCode only while this student is watched (no per-keystroke
+   *   Firebase write otherwise) → idle feedback against the code.
+   *
+   *   'run' on the files channel (html): see handleFilesWorkChange.
+   *
+   *   'workspace' (scratch; the workspace checks and reports through reportRun): set work →
+   *   teacherLive now → the work saved alone → writeStudentCode only while watched.
+   */
+  function handleWorkChange(next, options = {}) {
+    const {
+      moduleType = lesson?.type,
+      interaction,
+      suppressFailFeedback = next === undefined,
+    } = options
+    const definition = workSlotDefinition(moduleType)
+    if (!definition) return
+    if (definition.checking.trigger !== 'change') {
+      if (next === undefined) return
+      if (isFilesWork(definition)) {
+        handleFilesWorkChange(definition, next, { changed: changedFiles(moduleType, next) })
+      } else {
+        handleCodeWorkChange(definition, next)
+      }
+      return
+    }
+    if (interaction !== undefined) setInteraction(moduleType, interaction)
+    if (next !== undefined) {
+      setWork(moduleType, next)
+      persistence.saveWork(moduleType, effectiveIdentity?.anonymousId, currentTaskId, next)
+    }
+    evaluateAndReport(
+      { moduleType, work: workValueFor(moduleType), context: currentWorkCheckContext(moduleType) },
+      { suppressFailFeedback }
+    )
+    scheduleIdleFeedback(() => currentWorkCheckContext(moduleType))
+  }
+
+  // handleWorkChange for code-channel modules checked on Run or by their workspace (see above).
+  function handleCodeWorkChange(definition, next) {
+    const moduleType = definition.type
+    const { trigger } = definition.checking
+    // A workspace flushes its last report as it unmounts; in a composed lesson that can be
+    // after the lesson has moved to another module. The report is still saved to its own task
+    // (this handler's), but it never replaces the new module's work in the slot.
+    if (trigger !== 'workspace' || lessonRef.current?.type === moduleType) setWork(moduleType, next)
+    const { work: stored, meta } = definition.workSlot.stored(next)
+    const wireCode = definition.wire.toCode(stored)
+    if (canPublishTeacherLive()) publishTeacherLive({ code: wireCode })
+    const actorId = effectiveIdentity?.anonymousId
+    if (trigger === 'workspace') {
+      // A workspace-checked module saves its work alone (Scratch: `{ state }`), and without an
+      // actor reports nothing further.
+      if (!actorId) return
+      persistence.saveWork(moduleType, actorId, currentTaskId, stored, meta)
+    } else if (actorId) {
+      persistence.saveRunRecord(moduleType, actorId, currentTaskId, stored, {
+        output,
+        runStatus,
+        ...meta,
+      })
+    }
+    if (identity && activeStudentViewRef.current === identity.anonymousId) {
+      writeStudentCode(identity.anonymousId, wireCode)
+    }
+    if (trigger !== 'run') return
+    // Code modules' idle feedback also sees the last run's status; a state module's (the
+    // electronics circuit) sees the work alone.
+    scheduleIdleFeedback(() =>
+      definition.checking.buildContext(
+        stored,
+        definition.workSlot.kind === 'code' ? { status: runStatusRef.current } : {}
       )
-      scheduleIdleFeedback(() => ({ fs: fsStateRef.current, ...interaction }))
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    },
-    [lesson, currentTaskId, teacherPresentation, phase, effectiveIdentity]
-  )
+    )
+  }
 
-  // ─── Desktop handlers ───────────────────────────────────────────────────────
+  // The files names of `next` whose content differs from the current work (or that are new).
+  function changedFiles(moduleType, next) {
+    const before = new Map(workValueFor(moduleType).files.map((f) => [f.name, f.content]))
+    return next.files.filter((f) => before.get(f.name) !== f.content)
+  }
 
-  function applyDesktopCheckAndPublish(context, { suppressFailFeedback = false } = {}) {
-    const alreadySolved = isAlreadySolved()
-    const task = findTaskById(lesson?.tasks, currentTaskId)
-    const completionPassed = task?.check ? evaluateCheck(task.check, null, context) : false
-    const evaluation = task?.check
-      ? evaluateCheckWithFeedback(task, '', context, {
-          completionPassed,
-          feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT,
-        })
-      : { passed: false, suggestion: '' }
-    const evaluatedPassed = evaluation.passed
-    const passed = alreadySolved ? true : evaluatedPassed
-    const suggestion = passed ? '' : evaluation.suggestion
-    if (!alreadySolved && task?.check && (evaluatedPassed || !suppressFailFeedback)) {
-      applyCheckFeedback(evaluatedPassed, suggestion)
-      updateTargetedStageOffer(task, evaluation, evaluatedPassed)
+  /**
+   * handleWorkChange for a files module (html, checked on Run): set work → teacherLive now
+   * (the files map and the edited file as the active file) → save the `changed` files only (one
+   * `{ content }` record each) → writeStudentFiles only while this student is watched → idle
+   * feedback, limited to the checks allowed on submit (no preview has run). The preview iframe
+   * is never rebuilt here — only Run (handleRun) builds it.
+   */
+  function handleFilesWorkChange(definition, next, { changed, editedFile = next.activeFile }) {
+    const moduleType = definition.type
+    const { wire } = definition
+    setWork(moduleType, next)
+    if (canPublishTeacherLive()) {
+      publishTeacherLive({ files: wire.toFilesMap(next.files), activeFile: editedFile })
     }
-    if (
-      !teacherPresentation &&
-      phase === 'lesson' &&
-      !inPersonalSandboxRef.current &&
-      effectiveIdentity?.anonymousId
-    ) {
-      writeStudentRun(effectiveIdentity.anonymousId, {
-        code: JSON.stringify(context.desktop),
-        status: task?.check ? (evaluatedPassed ? 'success' : 'error') : null,
-        checkPassed: evaluatedPassed,
-      })
-      if (!alreadySolved && task?.check) {
-        logAttempt(effectiveIdentity.anonymousId, currentTaskId, {
-          submission: context.desktop,
-          passed: evaluatedPassed,
-          suggestion,
-        })
-      }
+    if (effectiveIdentity) {
+      persistence.saveWork(moduleType, effectiveIdentity.anonymousId, currentTaskId, changed)
     }
+    if (identity && session?.activeStudentView === identity.anonymousId) {
+      writeStudentFiles(identity.anonymousId, wire.toFilesMap(next.files))
+    }
+    scheduleIdleFeedback(
+      () =>
+        definition.checking.buildContext(next.files, {
+          output: outputRef.current,
+          iframeDoc: iframeRef.current?.contentDocument ?? null,
+        }),
+      { feedbackFilter: checkAllowedForSubmit }
+    )
+  }
+
+  // Legacy per-module names the workspaces (and sharedWorkspacePayload) call. Interaction
+  // handlers stay memoised, as before, so workspace effects keyed on them don't re-fire.
+  function handleFsChange(newFs) {
+    handleWorkChange(newFs, { moduleType: 'filesystem' })
   }
 
   function handleDesktopChange(newDesktop) {
-    setDesktopState(newDesktop)
-    persistence.saveDesktop(effectiveIdentity?.anonymousId, currentTaskId, newDesktop)
-    applyDesktopCheckAndPublish({
-      fs: newDesktop.fs,
-      desktop: newDesktop,
-      ...desktopInteractionRef.current,
-    })
-    scheduleIdleFeedback(() => ({
-      fs: desktopStateRef.current.fs,
-      desktop: desktopStateRef.current,
-      ...desktopInteractionRef.current,
-    }))
+    handleWorkChange(newDesktop, { moduleType: 'desktop' })
   }
 
+  const handleFsInteraction = useCallback(
+    (interaction) => handleWorkChange(undefined, { moduleType: 'filesystem', interaction }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lesson, currentTaskId, teacherPresentation, phase, effectiveIdentity]
+  )
+
   const handleDesktopInteraction = useCallback(
-    (interaction) => {
-      setDesktopInteraction(interaction)
-      applyDesktopCheckAndPublish(
-        { fs: desktopStateRef.current.fs, desktop: desktopStateRef.current, ...interaction },
-        { suppressFailFeedback: true }
-      )
-      scheduleIdleFeedback(() => ({
-        fs: desktopStateRef.current.fs,
-        desktop: desktopStateRef.current,
-        ...interaction,
-      }))
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    },
+    (interaction) => handleWorkChange(undefined, { moduleType: 'desktop', interaction }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [lesson, currentTaskId, teacherPresentation, phase, effectiveIdentity]
   )
 
@@ -2093,85 +2091,73 @@ export function useStudentCodeState({
     if (inPersonalSandboxRef.current) {
       if (!window.confirm('Reset sandbox to the starter code? Your sandbox work will be lost.'))
         return
-      if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
-        setCode(lesson.sandboxStarter ?? '')
-        if (lesson.type === 'arcade') setArcadeDesign(null)
-        setOutput('')
-        setTurtleResult(null)
-        setRunStatus(null)
-      } else if (lesson.type === 'html') {
-        const starterFiles = (lesson.sandboxStarterFiles ?? []).map((f) => ({ ...f }))
-        setFiles(starterFiles)
-        setActiveFile(starterFiles[0]?.name ?? '')
-        setIframeSrc(null)
-        setRunStatus(null)
-      } else if (lesson.type === 'filesystem') {
-        setFsState(lesson.sandboxStarterFs ?? DEFAULT_FS)
-        resetCheckFeedback()
-      } else if (lesson.type === 'desktop') {
-        setDesktopState(normaliseDesktop(lesson.sandboxStarterDesktop ?? makeDefaultDesktop()))
-        resetCheckFeedback()
-      } else if (lesson.type === 'electronics') {
-        setCode(serializeCircuit(lesson.sandboxStarterCircuit ?? DEFAULT_CIRCUIT))
-        setOutput('')
-        setTurtleResult(null)
-        setRunStatus(null)
-        resetCheckFeedback()
+      const slotDefinition = workSlotDefinition(lesson.type)
+      // A workspace-owned module's sandbox (Scratch) is its workspace's to reset.
+      if (slotDefinition && !slotDefinition.workSlot.workspaceOwned) {
+        restoreWork(lesson.type, slotDefinition.workSlot.sandbox(lesson))
+        // As before: modules checked on Run drop their run (and html its preview); state
+        // modules reset feedback.
+        if (slotDefinition.checking.trigger !== 'change') {
+          setOutput('')
+          setTurtleResult(null)
+          setRunStatus(null)
+          setIframeSrc(null)
+        }
+        if (slotDefinition.workSlot.kind === 'state') resetCheckFeedback()
       }
       return
     }
     if (!window.confirm('Reset your code to the starter code? Your current work will be lost.'))
       return
     const task = findTaskById(lesson?.tasks, currentTaskId)
-    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
-      // In a teacher-started sandbox the session still points at a lesson task, but the
-      // student's starting point is what the teacher sent, not that task's starter code.
-      const starterCode =
-        phaseRef.current === 'sandbox' && lesson.type !== 'arcade'
-          ? (session?.sandboxCode ?? lesson.sandboxStarter ?? '')
-          : (getStarterStage(task)?.stage?.code ?? task?.starterCode ?? '')
-      setCode(starterCode)
-      if (lesson.type === 'arcade') handleArcadeDesignChange(designForCodeTab(task, 'starter'))
-      if (canPublishTeacherLive())
-        publishTeacherLive({
-          code: starterCode,
-          output: '',
-          runStatus: null,
-          checkPassed: false,
-          checkAttempted: false,
-        })
-      setOutput('')
-      setTurtleResult(null)
-      setRunStatus(null)
-      resetCheckFeedback()
-    } else if (lesson.type === 'html') {
-      const taskFiles = (getStarterStage(task)?.stage?.files ?? task?.starterFiles ?? []).map(
-        (f) => ({ ...f })
-      )
-      setFiles(taskFiles)
-      if (canPublishTeacherLive())
-        publishTeacherLive({
-          files: Object.fromEntries(taskFiles.map((f) => [f.name, f.content])),
-          output: '',
-          runStatus: null,
-          checkPassed: false,
-          checkAttempted: false,
-        })
-      setActiveFile(task?.entryFile ?? taskFiles[0]?.name ?? '')
-      setIframeSrc(null)
-      setRunStatus(null)
-      resetCheckFeedback()
-    } else if (lesson.type === 'scratch') {
-      setScratchExternalState(task?.starterBlocks ?? null)
-      setScratchActiveStageIndex(null)
-    } else if (lesson.type === 'electronics') {
-      const starter = serializeCircuit(
-        getStarterStage(task)?.stage?.circuit ?? task?.starterCircuit ?? DEFAULT_CIRCUIT
-      )
-      setCode(starter)
-      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, { code: starter })
-      resetCheckFeedback()
+    const slotDefinition = workSlotDefinition(lesson.type)
+    if (slotDefinition?.workSlot.taskReset) resetWorkToStarter(slotDefinition, task)
+    // Filesystem and desktop (no workSlot.taskReset) only reset inside the personal sandbox.
+  }
+
+  // The Reset button for a work-slot module outside the personal sandbox.
+  // - A workspace-owned module (scratch) has the starter pushed to its workspace, with no
+  //   active stage; the workspace reports (and so saves) the change itself.
+  // - 'code' modules restore the starter (in a teacher sandbox, a teacherSandboxReset module
+  //   restores the teacher's pushed code instead) without saving it, republish, and drop the
+  //   run (html: and the preview). Extras reset through their own pipeline first: Arcade's
+  //   design goes through handleArcadeDesignChange, which saves it with the code as it was
+  //   before the reset.
+  // - 'state' modules (electronics) restore and save the starter.
+  function resetWorkToStarter(definition, task) {
+    const moduleType = definition.type
+    const { workSlot } = definition
+    if (workSlot.workspaceOwned) {
+      restoreWork(moduleType, workSlot.starter(task), { stageIndex: null })
+      return
     }
+    if (workSlot.kind === 'state') {
+      persistRestoredWork(moduleType, restoreWork(moduleType, workSlot.starter(task)))
+      resetCheckFeedback()
+      return
+    }
+    // In a teacher-started sandbox the session still points at a lesson task, but the
+    // student's starting point is what the teacher sent, not that task's starter code.
+    const starter =
+      workSlot.teacherSandboxReset && phaseRef.current === 'sandbox'
+        ? workSlot.fromStored({ work: session?.sandboxCode, meta: {} }, workSlot.sandbox(lesson))
+        : workSlot.starter(task)
+    const { work: starterWork, meta } = workSlot.stored(starter)
+    if (Object.hasOwn(meta, 'arcadeDesign')) handleArcadeDesignChange(meta.arcadeDesign)
+    restoreWork(moduleType, starter)
+    if (canPublishTeacherLive())
+      publishTeacherLive({
+        ...liveWorkFields(definition, starterWork),
+        output: '',
+        runStatus: null,
+        checkPassed: false,
+        checkAttempted: false,
+      })
+    setOutput('')
+    setTurtleResult(null)
+    setRunStatus(null)
+    setIframeSrc(null)
+    resetCheckFeedback()
   }
 
   function handleShowCodeStage(stageIndex) {
@@ -2181,48 +2167,13 @@ export function useStudentCodeState({
     const stage = task.codeStages?.[stageIndex]
     if (!stage) return
 
-    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
-      const stageCode = stage.code ?? ''
-      setCode(stageCode)
-      if (lesson.type === 'arcade') setArcadeDesign(designForCodeTab(task, `stage_${stageIndex}`))
-      setOutput('')
-      setTurtleResult(null)
-      setRunStatus(null)
-      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
-        code: stageCode,
-        output: '',
-        runStatus: null,
-        ...(lesson.type === 'arcade'
-          ? { arcadeDesign: designForCodeTab(task, `stage_${stageIndex}`) }
-          : {}),
+    const slotDefinition = workSlotDefinition(lesson.type)
+    if (slotDefinition) {
+      const restored = restoreWork(lesson.type, slotDefinition.workSlot.stage(task, stageIndex), {
+        stageIndex,
       })
-    } else if (lesson.type === 'html') {
-      const stageFiles = (stage.files ?? []).map((f) => ({ ...f }))
-      setFiles(stageFiles)
-      setActiveFile(stage.entryFile ?? task.entryFile ?? stageFiles[0]?.name ?? '')
-      setIframeSrc(null)
-      setRunStatus(null)
-      persistence.saveHtmlFiles(effectiveIdentity.anonymousId, currentTaskId, stageFiles)
-    } else if (lesson.type === 'scratch') {
-      const stageBlocks = stage.blocks ?? null
-      setScratchExternalState(stageBlocks)
-      setScratchActiveStageIndex(stageIndex)
-      if (stageBlocks)
-        persistence.saveScratch(effectiveIdentity.anonymousId, currentTaskId, stageBlocks)
-    } else if (lesson.type === 'filesystem') {
-      const stageFs = stage.fs ?? DEFAULT_FS
-      setFsState(stageFs)
-      persistence.saveFs(effectiveIdentity.anonymousId, currentTaskId, stageFs)
-    } else if (lesson.type === 'desktop') {
-      const stageDesktop = normaliseDesktop(stage.desktop ?? makeDefaultDesktop(task.availableApps))
-      setDesktopState(stageDesktop)
-      persistence.saveDesktop(effectiveIdentity.anonymousId, currentTaskId, stageDesktop)
-    } else if (lesson.type === 'electronics') {
-      const stageCircuit = serializeCircuit(stage.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT)
-      setCode(stageCircuit)
-      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
-        code: stageCircuit,
-      })
+      clearRunFor(lesson.type)
+      persistRestoredWork(lesson.type, restored)
     }
     setOfferedStageIndex(stageIndex)
   }
@@ -2236,8 +2187,9 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const stage = task?.codeStages?.[stageIndex]
     if (!stage) return
-    if (!['python', 'html', 'arcade', 'turtle', 'electronics', 'scratch'].includes(lesson?.type))
-      return
+    // Support stages belong to the modules with unified code stages (all but filesystem and
+    // desktop).
+    if (!getModuleDefinition(lesson?.type)?.capabilities.unifiedStages) return
     if (!isRevealableStage(stage)) return
 
     const record = {
@@ -2297,7 +2249,8 @@ export function useStudentCodeState({
       !['lesson', 'solo'].includes(phaseRef.current)
     )
       return
-    if (!['python', 'html'].includes(lesson?.type)) return
+    // Support-stage offers belong to the progressively revealing modules (python, html).
+    if (getModuleDefinition(lesson?.type)?.capabilities.stageReveal !== 'progressive') return
 
     if (passed) {
       setSupportStageVisibility((prev) => ({ ...prev, [currentTaskId]: null }))
@@ -2358,80 +2311,40 @@ export function useStudentCodeState({
     if (!effectiveIdentity) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
     if (!task) return
+    const slotDefinition = workSlotDefinition(lesson.type)
 
-    if (lesson.type === 'python' || lesson.type === 'arcade' || lesson.type === 'turtle') {
-      const completeCode = getCompleteStage(task)?.stage?.code ?? task.completeCode ?? ''
-      setCode(completeCode)
-      setOutput('')
-      setTurtleResult(null)
-      setRunStatus(null)
-      applyCheckFeedback(true)
-      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
-        code: completeCode,
-        output: '',
-        runStatus: null,
+    if (slotDefinition) {
+      // The complete work (Arcade: with the complete design, like Show stage and remote reset;
+      // html: the complete entry file; Scratch: no active stage).
+      const restored = restoreWork(lesson.type, slotDefinition.workSlot.complete(task), {
+        stageIndex: null,
       })
-    } else if (lesson.type === 'html') {
-      const completeStage = getCompleteStage(task)?.stage
-      const completeFiles = (completeStage?.files ?? task.completeFiles ?? []).map((f) => ({
-        ...f,
-      }))
-      setFiles(completeFiles)
-      setActiveFile(
-        completeStage?.entryFile ??
-          task.completeEntryFile ??
-          task.entryFile ??
-          completeFiles[0]?.name ??
-          ''
-      )
-      setIframeSrc(null)
-      setRunStatus(null)
+      clearRunFor(lesson.type)
       applyCheckFeedback(true)
-      persistence.saveHtmlFiles(effectiveIdentity.anonymousId, currentTaskId, completeFiles)
-    } else if (lesson.type === 'scratch') {
-      const completeBlocks = task.completeBlocks ?? null
-      setScratchExternalState(completeBlocks)
-      setScratchActiveStageIndex(null)
-      applyCheckFeedback(true)
-      if (completeBlocks)
-        persistence.saveScratch(effectiveIdentity.anonymousId, currentTaskId, completeBlocks)
-    } else if (lesson.type === 'filesystem') {
-      const completeFs = task.completeFs ?? DEFAULT_FS
-      setFsState(completeFs)
-      applyCheckFeedback(true)
-      persistence.saveFs(effectiveIdentity.anonymousId, currentTaskId, completeFs)
-    } else if (lesson.type === 'desktop') {
-      const completeDesktop = normaliseDesktop(
-        task.completeDesktop ?? makeDefaultDesktop(task.availableApps)
-      )
-      setDesktopState(completeDesktop)
-      applyCheckFeedback(true)
-      persistence.saveDesktop(effectiveIdentity.anonymousId, currentTaskId, completeDesktop)
-    } else if (lesson.type === 'electronics') {
-      const completeCircuit = serializeCircuit(
-        task.completeCircuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
-      )
-      setCode(completeCircuit)
-      applyCheckFeedback(true)
-      persistence.savePythonCode(effectiveIdentity.anonymousId, currentTaskId, {
-        code: completeCircuit,
-      })
+      persistRestoredWork(lesson.type, restored)
     }
   }
 
-  // ─── Submit (HTML submit-mode / quiz) ──────────────────────────────────────
+  // ─── Submit (HTML / Python submit-mode) ──────────────────────────────────────
 
   async function handleSubmit() {
     const actor = effectiveIdentity
     if (!actor) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
-    const isHtml = lesson?.type === 'html'
+    // A files module (html) submits its files as a filename → content map, checked against
+    // their joined contents; a code module its code.
+    const definition = workSlotDefinition(lesson?.type)
+    const isFiles = isFilesWork(definition)
+    const submittedFiles = isFiles ? storedWork(lesson.type).work : null
+    const filesMap = isFiles ? definition.wire.toFilesMap(submittedFiles) : undefined
     const alreadySolved = isAlreadySolved()
     let passed,
       suggestion = ''
     if (!alreadySolved) {
-      const codeForCheck = isHtml ? files.map((f) => f.content).join('\n') : code
-      const checkContext = buildCodeCheckContext(lesson?.type, codeForCheck)
+      const checkContext = isFiles
+        ? definition.checking.buildContext(submittedFiles)
+        : buildCodeCheckContext(lesson?.type, code)
+      const codeForCheck = checkContext.code
       const completionPassed = task?.check
         ? evaluateCheckWithCode(task.check, codeForCheck, checkContext)
         : false
@@ -2449,17 +2362,17 @@ export function useStudentCodeState({
     setRunStatus('submitted')
     if (canPublishTeacherLive()) {
       publishTeacherLive({
-        code: isHtml ? undefined : code,
-        files: isHtml ? Object.fromEntries(files.map((f) => [f.name, f.content])) : undefined,
-        output: isHtml ? undefined : '',
+        code: isFiles ? undefined : code,
+        files: filesMap,
+        output: isFiles ? undefined : '',
         runStatus: 'submitted',
         checkPassed: passed,
         checkAttempted: !alreadySolved && !!task?.check,
         checkSuggestion: suggestion,
       })
     }
-    if (isHtml) {
-      persistence.saveHtmlFiles(actor.anonymousId, currentTaskId, files)
+    if (isFiles) {
+      persistence.saveWork(lesson.type, actor.anonymousId, currentTaskId, submittedFiles)
     } else {
       persistence.savePythonCode(actor.anonymousId, currentTaskId, {
         code,
@@ -2468,91 +2381,45 @@ export function useStudentCodeState({
       })
     }
     if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox')) {
-      const filesMap = isHtml
-        ? Object.fromEntries(files.map((f) => [f.name, f.content]))
-        : undefined
       await writeStudentRun(actor.anonymousId, {
-        code: isHtml ? undefined : code,
+        code: isFiles ? undefined : code,
         files: filesMap,
-        output: isHtml ? undefined : '',
+        output: isFiles ? undefined : '',
         status: 'submitted',
         checkPassed: passed,
       })
     }
     if (!teacherPresentation && phase === 'lesson' && !alreadySolved && task?.check) {
-      const submission = isHtml ? Object.fromEntries(files.map((f) => [f.name, f.content])) : code
+      const submission = isFiles ? definition.wire.submission(submittedFiles) : code
       logAttempt(actor.anonymousId, currentTaskId, { submission, passed, suggestion })
     }
   }
 
-  async function handleQuizSelect(answer, passedOverride, { fromTeacher = false } = {}) {
-    const actor = effectiveIdentity
-    if (!actor) return
-    if (!fromTeacher) supersedeTeacherAnswerEdit()
-    const serializedAnswer = typeof answer === 'string' ? answer : JSON.stringify(answer)
-
-    if (passedOverride === null) {
-      setSelectedAnswer(answer)
-      if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox')) {
-        clearTimeout(writeAnswerDebounceRef.current)
-        writeAnswerDebounceRef.current = setTimeout(() => {
-          writeStudentAnswer?.(actor.anonymousId, serializedAnswer)
-        }, 300)
-      }
-      return
-    }
-
-    const task = findTaskById(lesson?.tasks, currentTaskId)
-    const passed =
-      typeof passedOverride === 'boolean'
-        ? passedOverride
-        : task?.check
-          ? evaluateCheck(task.check, answer, { answer: typeof answer === 'string' ? answer : '' })
-          : task?.quizType === 'short_answer'
-            ? !!(typeof answer === 'string' ? answer.trim() : false)
-            : false
-    const suggestion = passed ? '' : getQuizSuggestion(task, answer)
-
-    setSelectedAnswer(answer)
-    applyCheckFeedback(passed, suggestion)
-    setRunStatus('submitted')
-    if (canPublishTeacherLive()) {
-      publishTeacherLive({
-        answer: serializedAnswer,
-        runStatus: 'submitted',
-        checkPassed: passed,
-        checkAttempted: true,
-        checkSuggestion: suggestion,
-      })
-    }
-    if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox')) {
-      await writeStudentRun(actor.anonymousId, {
-        answer: serializedAnswer,
-        status: 'submitted',
-        checkPassed: passed,
-      })
-    }
-    if (!teacherPresentation && phase === 'lesson') {
-      logAttempt(actor.anonymousId, currentTaskId, {
-        submission: buildQuizSubmission(task, answer),
-        passed,
-        suggestion,
-        teacherAssisted: teacherAssistedTaskIdsRef.current.has(currentTaskId),
-      })
-    }
+  // A work-slot module's saved work for another task (mode-aware: localStorage normally,
+  // in-memory in presentation/preview), e.g. for viewing an earlier task.
+  function readSavedTaskWork(moduleType, taskId) {
+    if (!effectiveIdentity) return null
+    return persistence.readWork(moduleType, effectiveIdentity.anonymousId, taskId)?.work ?? null
   }
 
   // Workspace sharing captures the student's own current state. Built here
-  // rather than in the view because the module-specific sources (Scratch's
-  // scratchCodeRef, filesystem's fsStateRef) only exist inside this hook.
+  // rather than in the view because its source, the generic work slot, only
+  // exists inside this hook.
   function buildShareSnapshot() {
+    const scratchWork = storedWork('scratch').work
     return buildSharedWorkspaceSnapshot({
       lesson: lessonRef.current,
       taskId: currentTaskIdRef.current,
       code: codeRef.current,
-      scratchCode: scratchCodeRef.current,
-      fsState: fsStateRef.current,
-      arcadeDesign: arcadeDesignRef.current,
+      // What the Scratch workspace last reported ('' before any report).
+      scratchCode:
+        scratchWork == null ? '' : getModuleDefinition('scratch').wire.toCode(scratchWork),
+      // The snapshot picks the entry for the task's module (buildSharedWorkspaceSnapshot keeps
+      // its per-kind parameters, pinned by the Phase 0 share tests, and encodes them with the
+      // module's wire).
+      fsState: workValueFor('filesystem'),
+      desktopState: workValueFor('desktop'),
+      arcadeDesign: storedWork('arcade').meta.arcadeDesign,
       files: filesRef.current,
       activeFile: activeFileRef.current,
       output: outputRef.current,
@@ -2561,14 +2428,15 @@ export function useStudentCodeState({
   }
 
   return {
-    // State
+    // State. `code`, `arcadeDesign`, `files` and `activeFile` are aliases derived from the
+    // generic work slot.
     code,
     teacherCodeArrangeEdit,
     teacherAnswerNoticeAt,
     remoteRunToken,
     acknowledgeRemoteRun: (token) =>
       setRemoteRunToken((current) => (current === token ? null : current)),
-    arcadeDesign,
+    arcadeDesign: storedWork('arcade', renderedWorkFor('arcade')).meta.arcadeDesign,
     files,
     activeFile,
     output,
@@ -2598,14 +2466,16 @@ export function useStudentCodeState({
     teacherLiveReferenceActive,
     targetedStageOffer,
     targetedPreviewStageIndex,
-    selectedAnswer,
-    scratchSandboxProject,
-    scratchExternalState,
-    scratchActiveStageIndex,
-    fsState,
-    fsInteraction,
-    desktopState,
-    desktopInteraction,
+    // A workspace-owned module's (Scratch's) pushed work, under its old names.
+    scratchSandboxProject: sandboxPushedWork,
+    scratchExternalState: pushedWork,
+    scratchActiveStageIndex: pushedStageIndex,
+    // Generic work slot, and the per-module names the workspaces read (thin aliases).
+    work,
+    fsState: renderedWorkFor('filesystem'),
+    fsInteraction: interactions.filesystem ?? DEFAULT_INTERACTION,
+    desktopState: renderedWorkFor('desktop'),
+    desktopInteraction: interactions.desktop ?? DEFAULT_INTERACTION,
     editorSelection,
     editorActivity,
     inPersonalSandbox,
@@ -2620,10 +2490,11 @@ export function useStudentCodeState({
     handleStop,
     handleRunTests,
     handleSubmit,
-    handleQuizSelect,
     handleCodeChange,
     handleArcadeDesignChange,
-    handleArcadeRun,
+    handleWorkspaceRun,
+    // Arcade's name for handleWorkspaceRun ("Run game").
+    handleArcadeRun: handleWorkspaceRun,
     handleFileChange,
     handleFileTabChange,
     handleEditorSelection,
@@ -2636,6 +2507,8 @@ export function useStudentCodeState({
     handleCodeArrangeDragCursor,
     handleScratchChange,
     handleScratchCheck,
+    reportRun,
+    handleWorkChange,
     handleFsChange,
     handleFsInteraction,
     handleDesktopChange,
@@ -2661,12 +2534,9 @@ export function useStudentCodeState({
       effectiveIdentity
         ? persistence.readSavedFile(effectiveIdentity.anonymousId, taskId, filename)
         : null,
-    readSavedTaskFs: (taskId) =>
-      effectiveIdentity ? persistence.readSavedFs(effectiveIdentity.anonymousId, taskId) : null,
-    readSavedTaskDesktop: (taskId) =>
-      effectiveIdentity
-        ? persistence.readSavedDesktop(effectiveIdentity.anonymousId, taskId)
-        : null,
+    readSavedTaskWork,
+    readSavedTaskFs: (taskId) => readSavedTaskWork('filesystem', taskId),
+    readSavedTaskDesktop: (taskId) => readSavedTaskWork('desktop', taskId),
     // Generic per-task auxiliary storage (mode-aware, same key format as
     // readSavedTaskFile/saveHtmlFile). Used by task types that need to persist
     // something alongside their code that isn't itself a code file — for
@@ -2682,6 +2552,8 @@ export function useStudentCodeState({
     exitPersonalSandbox,
     currentTeacherLivePayload,
     buildShareSnapshot,
+    // Activity and quiz task state and handlers (null definition on other tasks).
+    activity,
     canPublishTeacherLive,
     publishTeacherLive,
     updateTeacherLiveFn: updateTeacherLive,

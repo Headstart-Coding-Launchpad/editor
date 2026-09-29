@@ -59,6 +59,8 @@ export default function Desktop({ state, onStateChange, apps, availableApps, dis
           {iconApps.map((appId) => (
             <button
               key={appId}
+              data-input-id={`icon:${appId}`}
+              data-input-kind="icon"
               onClick={() => openOrFocusApp(appId)}
               disabled={disabled}
               style={{

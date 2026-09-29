@@ -1,10 +1,11 @@
 import React from 'react'
 import InformationTask from '../../components/InformationTask'
-import QuizTask from '../../components/QuizTask'
-import CodeArrangeTask from '../../components/CodeArrangeTask'
 import TeacherCodeTabs from '../../components/TeacherCodeTabs'
 import { getLessonModule } from '../../../modules/registry'
-import { buildSolutionSlotState } from '../../../shared/codeArrange'
+import { ActivityView } from '../../../activities/ActivityHost.jsx'
+import { getTaskActivity, isHostedActivityTask } from '../../../activities/registry.pure.js'
+import { getModuleHostedActivityUi } from '../../../activities/registry.js'
+import { solutionOrInitialState } from '../../../activities/state.js'
 import {
   TEACHER_LIVE_REFERENCE_TYPES,
   teacherLiveReferenceDisplayState,
@@ -31,25 +32,44 @@ export default function TeacherEditorPanel({
   fillHeight = false,
 }) {
   const mod = getLessonModule(lesson?.type)
-  const usesUnifiedStages = mod?.type === 'python' || mod?.type === 'html'
+  const usesUnifiedStages = !!mod?.capabilities?.teacherUnifiedStageTabs
 
   if (!isInSandbox && isInformationTask) return <InformationTask task={task} lesson={lesson} fill />
-  if (!isInSandbox && task?.taskType === 'quiz')
-    return <QuizTask task={task} showQuestion disabled />
-  // Arrange tasks assemble from drag-and-drop tiles, not starter/stage code —
-  // showing the authored solution as a read-only tile board (mirroring how
-  // other task types show their Complete state) instead of falling through to
-  // the module's code editor, which would just show an empty starter box.
-  if (!isInSandbox && task?.taskType === 'code_arrange')
+  // Activities show their answers read-only; quizzes (previewState 'initial') show just the
+  // question, since the teacher's screen is often projected.
+  if (!isInSandbox && isHostedActivityTask(task)) {
+    const activity = getTaskActivity(task)
     return (
-      <CodeArrangeTask
+      <ActivityView
         task={task}
-        moduleType={mod?.type === 'html' ? 'html' : 'python'}
-        selectedAnswer={buildSolutionSlotState(task)}
-        disabled
-        showQuestion={false}
+        state={
+          activity.previewState === 'initial'
+            ? activity.initialState(task)
+            : solutionOrInitialState(activity, task)
+        }
+        teacher
+        readOnly
+        lessonType={lesson?.type}
       />
     )
+  }
+  // Module-hosted activities (Arrange tasks) assemble from drag-and-drop tiles,
+  // not starter/stage code — showing the authored solution as a read-only tile
+  // board (mirroring how other task types show their Complete state) instead
+  // of falling through to the module's code editor, which would just show an
+  // empty starter box.
+  const moduleActivity = isInSandbox ? null : getModuleHostedActivityUi(task)
+  if (moduleActivity?.StudentView) {
+    const ModuleActivityView = moduleActivity.StudentView
+    return (
+      <ModuleActivityView
+        task={task}
+        state={solutionOrInitialState(moduleActivity, task)}
+        readOnly
+        lessonType={mod?.type}
+      />
+    )
+  }
   if (!mod?.TeacherLiveView) return null
 
   // Presentation View's live-reference broadcast, shown read-only via the "Live" tab —
@@ -65,14 +85,8 @@ export default function TeacherEditorPanel({
     : mod.getDisplayState(task, activeTeacherStage, liveState, teacherCodeTab)
   const readOnly = !isInSandbox
   const LiveView = mod.TeacherLiveView
-  const showCompleteTab =
-    !usesUnifiedStages &&
-    (mod.type === 'python' ||
-      mod.type === 'html' ||
-      (mod.type === 'scratch' && task?.completeBlocks != null) ||
-      (mod.type === 'filesystem' && !!task?.completeFs) ||
-      (mod.type === 'desktop' && !!task?.completeDesktop) ||
-      (mod.type === 'electronics' && !!task?.completeCircuit))
+  // Modules whose complete solution lives in the unified code stages answer false.
+  const showCompleteTab = mod.lifecycle.teacherCompleteTab(task)
 
   // In a scrolling centre column the stack must not shrink below its content:
   // with `minHeight: 0` it collapsed when TaskRatingPanel expanded, and the
@@ -83,11 +97,7 @@ export default function TeacherEditorPanel({
     ? styles.codeWorkspaceStack
     : { ...styles.codeWorkspaceStack, minHeight: 'auto' }
   const wrapStyle =
-    mod.type === 'scratch' || mod.type === 'html'
-      ? isInSandbox
-        ? styles.scratchWrap
-        : codeWorkspaceStack
-      : codeWorkspaceStack
+    isInSandbox && mod.capabilities?.teacherSandboxRow ? styles.sandboxRow : codeWorkspaceStack
 
   return (
     <div style={wrapStyle}>
@@ -126,7 +136,7 @@ export default function TeacherEditorPanel({
 }
 
 const styles = {
-  scratchWrap: {
+  sandboxRow: {
     flex: 1,
     minHeight: 0,
     display: 'flex',

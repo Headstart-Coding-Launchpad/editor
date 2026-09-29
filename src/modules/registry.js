@@ -6,6 +6,7 @@ import electronicsModule from './electronics/index.js'
 import arcadeModule from './arcade/index.js'
 import turtleModule from './turtle/index.js'
 import desktopModule from './desktop/index.js'
+import { MODULE_TYPES, getModuleDefinition } from './definitions.js'
 
 const MODULES = {
   python: pythonModule,
@@ -18,33 +19,13 @@ const MODULES = {
   desktop: desktopModule,
 }
 
-const MODULE_ORDER = [
-  'python',
-  'arcade',
-  'turtle',
-  'scratch',
-  'html',
-  'filesystem',
-  'desktop',
-  'electronics',
-]
-const MODULE_LABELS = {
-  python: 'Python',
-  scratch: 'Scratch',
-  html: 'HTML',
-  filesystem: 'Filesystem',
-  electronics: 'Electronics',
-  arcade: 'Arcade Kit',
-  turtle: 'Python Turtle',
-  desktop: 'Desktop',
-}
-
+// Order and labels come from each module's definition.js (meta.order / meta.label).
 export function getLessonModules() {
-  return MODULE_ORDER.map((type) => MODULES[type])
+  return MODULE_TYPES.map((type) => MODULES[type])
     .filter(Boolean)
     .map((module) => ({
       ...module,
-      label: module.label ?? MODULE_LABELS[module.type] ?? module.type,
+      label: module.label ?? getModuleDefinition(module.type)?.meta.label ?? module.type,
     }))
 }
 

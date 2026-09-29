@@ -1,14 +1,42 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 // docs/authoring/validation-errors.md explains every validation message to lesson authors
 // (mostly the CLI authoring agent). This keeps it complete: any errors.push()/warnings.push()
 // message in the validators must appear in the doc, with `…` in place of each ${...}.
+// The shared rules live in src/shared/lessonValidation.js and each module definition's
+// validateTask; cli/validate.mjs and src/builder/lessonUtils.js hold only their own extras.
+
+const MODULE_DEFINITION_FILES = readdirSync(resolve(process.cwd(), 'src/modules'), {
+  withFileTypes: true,
+})
+  .filter((entry) => entry.isDirectory() && !entry.name.startsWith('_'))
+  .map((entry) => `src/modules/${entry.name}/definition.js`)
+  .filter((file) => existsSync(resolve(process.cwd(), file)))
+
+// Each activity's pure files (definition.js and its logic module, e.g. binary/binary.js) hold
+// its validateTask messages. UI files (.jsx) are skipped.
+const ACTIVITY_DEFINITION_FILES = readdirSync(resolve(process.cwd(), 'src/activities'), {
+  withFileTypes: true,
+})
+  .filter((entry) => entry.isDirectory() && !entry.name.startsWith('_') && entry.name !== 'ui')
+  .flatMap((entry) =>
+    readdirSync(resolve(process.cwd(), 'src/activities', entry.name), { withFileTypes: true })
+      .filter((file) => file.isFile() && file.name.endsWith('.js'))
+      .map((file) => `src/activities/${entry.name}/${file.name}`)
+  )
 
 const VALIDATOR_FILES = [
   'cli/validate.mjs',
+  'src/builder/lessonUtils.js',
+  'src/shared/lessonValidation.js',
+  'src/modules/moduleTaskValidation.js',
+  'src/activities/legacyValidation.js',
+  ...MODULE_DEFINITION_FILES,
+  ...ACTIVITY_DEFINITION_FILES,
   'src/shared/checkAuthoringValidation.js',
+  'src/shared/input/checks.js',
   'src/shared/composedLesson.js',
   'src/shared/draftLesson.js',
   'src/shared/topicAudit.js',
@@ -36,6 +64,14 @@ describe('validation errors doc', () => {
 
   it('finds the validator messages it is meant to check', () => {
     expect(validatorMessages().length).toBeGreaterThan(80)
+    expect(ACTIVITY_DEFINITION_FILES).toEqual(
+      expect.arrayContaining([
+        'src/activities/binary/binary.js',
+        'src/activities/keyboard/keyboard.js',
+        'src/activities/mouse/mouse.js',
+        'src/activities/unknown/definition.js',
+      ])
+    )
   })
 
   it.each(validatorMessages())('documents "%s"', (message) => {

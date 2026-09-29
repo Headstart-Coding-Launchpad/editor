@@ -48,9 +48,20 @@ export function loadSavedFile(lessonId, taskId, filename, anonymousId) {
 }
 
 export function saveFile(lessonId, taskId, filename, anonymousId, content) {
+  saveFileRecord(lessonId, taskId, filename, anonymousId, { content })
+}
+
+// Raw per-file records (the `{ content }` object itself), for the module storage adapters
+// (src/modules/moduleContract.js perFileStorage) used by createStudentPersistence's
+// saveWork / readWork. Task records need no extra pair: loadSavedCode / saveCode are raw.
+export function loadSavedFileRecord(lessonId, taskId, filename, anonymousId) {
+  return safeParse(studentFileStorageKey(lessonId, taskId, filename, anonymousId))
+}
+
+export function saveFileRecord(lessonId, taskId, filename, anonymousId, record) {
   localStorage.setItem(
     studentFileStorageKey(lessonId, taskId, filename, anonymousId),
-    JSON.stringify({ content })
+    JSON.stringify(record)
   )
 }
 
@@ -73,9 +84,24 @@ export function loadPersonalSandboxFile(lessonId, filename, anonymousId, moduleI
 }
 
 export function savePersonalSandboxFile(lessonId, filename, anonymousId, content, moduleId = null) {
+  savePersonalSandboxFileRecord(lessonId, filename, anonymousId, { content }, moduleId)
+}
+
+// Raw personal-sandbox per-file records (see loadSavedFileRecord).
+export function loadPersonalSandboxFileRecord(lessonId, filename, anonymousId, moduleId = null) {
+  return safeParse(personalSandboxFileStorageKey(lessonId, filename, anonymousId, moduleId))
+}
+
+export function savePersonalSandboxFileRecord(
+  lessonId,
+  filename,
+  anonymousId,
+  record,
+  moduleId = null
+) {
   localStorage.setItem(
     personalSandboxFileStorageKey(lessonId, filename, anonymousId, moduleId),
-    JSON.stringify({ content })
+    JSON.stringify(record)
   )
 }
 
@@ -99,10 +125,7 @@ export function saveFsState(lessonId, taskId, anonymousId, fs) {
 }
 
 export function loadPersonalSandboxDesktop(lessonId, anonymousId, moduleId = null) {
-  const raw = localStorage.getItem(personalSandboxStorageKey(lessonId, anonymousId, moduleId))
-  if (!raw) return null
-  const parsed = JSON.parse(raw)
-  return parsed.desktop ?? null
+  return safeParse(personalSandboxStorageKey(lessonId, anonymousId, moduleId))?.desktop ?? null
 }
 
 export function savePersonalSandboxDesktop(lessonId, anonymousId, desktop, moduleId = null) {
@@ -113,10 +136,7 @@ export function savePersonalSandboxDesktop(lessonId, anonymousId, desktop, modul
 }
 
 export function loadSavedDesktop(lessonId, taskId, anonymousId) {
-  const raw = localStorage.getItem(studentTaskStorageKey(lessonId, taskId, anonymousId))
-  if (!raw) return null
-  const parsed = JSON.parse(raw)
-  return parsed.desktop ?? null
+  return safeParse(studentTaskStorageKey(lessonId, taskId, anonymousId))?.desktop ?? null
 }
 
 export function saveDesktopState(lessonId, taskId, anonymousId, desktop) {
@@ -169,6 +189,10 @@ export const ephemeralStorage = {
     ephemeralGet(studentFileStorageKey(lessonId, taskId, filename, anonymousId))?.content ?? null,
   saveFile: (lessonId, taskId, filename, anonymousId, content) =>
     ephemeralSet(studentFileStorageKey(lessonId, taskId, filename, anonymousId), { content }),
+  loadSavedFileRecord: (lessonId, taskId, filename, anonymousId) =>
+    ephemeralGet(studentFileStorageKey(lessonId, taskId, filename, anonymousId)),
+  saveFileRecord: (lessonId, taskId, filename, anonymousId, record) =>
+    ephemeralSet(studentFileStorageKey(lessonId, taskId, filename, anonymousId), record),
   loadSavedFs: (lessonId, taskId, anonymousId) =>
     ephemeralGet(studentTaskStorageKey(lessonId, taskId, anonymousId))?.fs ?? null,
   saveFsState: (lessonId, taskId, anonymousId, fs) =>

@@ -89,3 +89,15 @@ export function evaluatePythonCheck(check, output, context = {}) {
 
   return false
 }
+
+// Check-type registry definitions (see ../checkRegistry.js). Evaluated against the
+// variables captured after a run (`context.variables`).
+export const CHECKS = PYTHON_CHECK_TYPES.map((type) => ({
+  type,
+  owner: 'module:python',
+  timing: 'on_run',
+  requiresRun: true,
+  submitAllowed: false,
+  contextKey: 'variables',
+  evaluate: evaluatePythonCheck,
+}))

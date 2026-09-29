@@ -16,14 +16,12 @@ function lesson(type, tasks) {
 describe('validateLesson', () => {
   it('reports a missing task list instead of throwing', () => {
     const result = validateLesson({ id: 'no-tasks', title: 'No tasks', type: 'composed' })
-    expect(result.errors).toContain('Lesson must have at least one task')
+    expect(result.errors).toContain('tasks is required and must be an array')
   })
 
   it('rejects an unknown lesson type, matching the CLI', () => {
     const result = validateLesson(lesson('bogus', [{ id: 1, title: 'Task', starterCode: 'x' }]))
-    expect(result.errors.some((error) => error.startsWith('Lesson type must be one of:'))).toBe(
-      true
-    )
+    expect(result.errors.some((error) => error.startsWith('type must be one of:'))).toBe(true)
   })
 
   it('captures Python starter, check, carry-through and timing issues', () => {
@@ -206,9 +204,9 @@ describe('validateLesson', () => {
     expect(invalid.errors).toEqual(
       expect.arrayContaining([
         'Task 1 is a code-arrange task but must use the Python or HTML module',
-        'Task 1 line 1 blank 1 has no correct value.',
-        'Task 1 is a code-arrange task but has duplicate blank/distractor ids.',
-        'Task 1 is a code-arrange task but has no completion check.',
+        'Task 1 line 1 blank 1 has no correct value',
+        'Task 1 is a code-arrange task but has duplicate blank/distractor ids',
+        'Task 1 is a code-arrange task but has no completion check',
       ])
     )
 
@@ -226,7 +224,7 @@ describe('validateLesson', () => {
     )
     expect(noLines.errors).toEqual(
       expect.arrayContaining([
-        'Task 1 is a code-arrange task but has no lines.',
+        'Task 1 is a code-arrange task but has no lines',
         'Task 1 has no files',
       ])
     )
@@ -272,8 +270,8 @@ describe('validateLesson', () => {
     )
     expect(invalid.errors).toEqual(
       expect.arrayContaining([
-        'Task 1 line 1 has no parts.',
-        'Task 1 is a code-arrange task but has no blanks.',
+        'Task 1 line 1 has no parts',
+        'Task 1 is a code-arrange task but has no blanks',
       ])
     )
 
@@ -309,8 +307,8 @@ describe('validateLesson', () => {
     )
     expect(blankWithNoCode.errors).toEqual(
       expect.arrayContaining([
-        'Task 1 line 1 blank 1 has no id.',
-        'Task 1 line 1 blank 1 has no correct value.',
+        'Task 1 line 1 blank 1 has no id',
+        'Task 1 line 1 blank 1 has no correct value',
       ])
     )
   })
@@ -516,8 +514,8 @@ describe('validateLesson', () => {
     })
     expect(invalid.errors).toEqual(
       expect.arrayContaining([
-        'Forked lesson ID must be test-lesson-maple',
-        'Fork task links must be an array',
+        "forked lesson id must be 'test-lesson-maple'",
+        'fork.taskLinks must be an array when provided',
       ])
     )
   })
@@ -540,6 +538,18 @@ describe('draft lesson metadata', () => {
 
     const exported = normalizeTasksForExport(draft.tasks, { preserveIds: true })
     expect(exported).toMatchObject([{ id: 31, intent: 'Explain loops in **Markdown**.' }])
+  })
+
+  it('reports a missing task or group title once, in drafts and normal lessons', () => {
+    const draft = lesson('python', [{ id: 1, intent: 'Untitled plan' }])
+    draft.draft = true
+    expect(validateLesson(draft).errors).toEqual(['Task 1 is missing a title'])
+    const grouped = lesson('python', [
+      { type: 'group', subtasks: [{ id: 1, title: 'T', starterCode: 'x' }] },
+    ])
+    expect(
+      validateLesson(grouped).errors.filter((error) => error.includes('missing a title'))
+    ).toEqual(['Group 1 is missing a title'])
   })
 
   it('requires normal task fields when draft is cleared', () => {
@@ -672,6 +682,21 @@ describe('complete solution validation', () => {
       ])
     )
     expect(warnings.some((w) => w.includes('complete filesystem'))).toBe(false)
+  })
+
+  it('does not test browser checks against the complete desktop (it has no browser history)', () => {
+    const task = {
+      id: 1,
+      title: 'Desktop',
+      _checkTested: true,
+      check: [
+        { type: 'browser_visited', state: 'visited', pageId: 'home' },
+        { type: 'search_query', value: 'cats' },
+      ],
+      completeDesktop: { fs: { '/': { type: 'dir' } }, windows: [] },
+    }
+    const { warnings } = validateLesson(lesson('desktop', [task]))
+    expect(warnings.some((w) => w.includes('complete desktop'))).toBe(false)
   })
 })
 

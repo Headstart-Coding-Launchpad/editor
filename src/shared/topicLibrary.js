@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { escapeRegExp } from './textUtils.js'
 import { collection, getDocs } from 'firebase/firestore'
 import { firestore } from './firebase'
+import { getModuleDefinition } from '../modules/definitions.js'
 
 let cachedTopics = null
 let fetchPromise = null
@@ -55,11 +56,17 @@ function loadTopics() {
   return fetchPromise
 }
 
-// The topic library is not offered for Scratch lessons at all (no inline topic links, no
-// browse dialog) — Scratch's explainer content doesn't use it, and the topic reference UI
-// (built for reading dense text explanations) doesn't fit Scratch's block-based teaching.
+// The topic library is not offered for modules without `capabilities.topicLibrary` at all (no
+// inline topic links, no browse dialog) — Scratch's explainer content doesn't use it, and the
+// topic reference UI (built for reading dense text explanations) doesn't fit Scratch's
+// block-based teaching. Unknown types (composed lessons, none) keep it.
+function offersTopicLibrary(lessonType) {
+  return getModuleDefinition(lessonType)?.capabilities.topicLibrary ?? true
+}
+
 export function useTopicLibrary(lessonType = null, enabled = true) {
-  const shouldFetch = enabled && lessonType !== 'scratch'
+  const offered = offersTopicLibrary(lessonType)
+  const shouldFetch = enabled && offered
   const [topics, setTopics] = useState(cachedTopics ?? [])
   const [loading, setLoading] = useState(shouldFetch && !cachedTopics)
   const [error, setError] = useState(null)
@@ -85,12 +92,11 @@ export function useTopicLibrary(lessonType = null, enabled = true) {
       })
   }, [shouldFetch])
 
-  const filteredTopics =
-    lessonType === 'scratch'
-      ? []
-      : lessonType
-        ? topics.filter((topic) => topic.types.length === 0 || topic.types.includes(lessonType))
-        : topics
+  const filteredTopics = !offered
+    ? []
+    : lessonType
+      ? topics.filter((topic) => topic.types.length === 0 || topic.types.includes(lessonType))
+      : topics
 
   return { topics: filteredTopics, allTopics: topics, loading, error }
 }

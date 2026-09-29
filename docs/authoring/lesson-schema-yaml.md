@@ -92,8 +92,9 @@ tasks:
       Describe the learning goal and intended task.
     taskActivity: Code Task, Complete Example  # optional plain text; author-only
     # taskType is not set directly in YAML — use `type: information`, `type: quiz`,
-    # or `type: code_arrange` (drag-and-drop runnable code — see lesson-schema.md's
-    # "Code Arrange Task Fields"); omit it entirely for a normal code task.
+    # `type: code_arrange` (drag-and-drop runnable code — see lesson-schema.md's
+    # "Code Arrange Task Fields") or an activity (`type: binary`, `type: keyboard`,
+    # `type: mouse`); omit it entirely for a normal code task.
     moduleType: python          # required for every code task in a new composed lesson
     moduleId: python-practice   # optional — named workspace instance from `modules`
     check: {}                   # optional — completion check, see the lesson-type docs
@@ -174,7 +175,7 @@ Carry-through stays inside the same named module: use the existing type-specific
 
 ## Draft workflow and managed metadata
 
-`draft` is a lesson-level boolean. It is the only Draft marker: a Draft task remains a normal code, information, quiz, or group task. In YAML, omit task `type` for a code task; use `type: information` or `type: quiz` for those task types. Do not use lesson stages, `taskType: draft` / `type: draft`, intended-type fields, or review-note metadata.
+`draft` is a lesson-level boolean. It is the only Draft marker: a Draft task remains a normal code, information, quiz, activity, or group task. In YAML, omit task `type` for a code task; use `type: information`, `type: quiz` or `type: <activity>` (e.g. `type: binary`) for those task types. Do not use lesson stages, `taskType: draft` / `type: draft`, intended-type fields, or review-note metadata.
 
 When `draft: true`, every task must have a title, its normal real task type, and a non-empty Markdown `intent`. Draft deliberately permits omitted learner-facing and task-specific fields, but it still rejects malformed field shapes and invalid task/type values. When Draft is false or omitted, all ordinary validation rules apply again. `intent` remains stored after Draft is cleared and is never rendered to students.
 
@@ -201,7 +202,42 @@ A task is a code task by default. Set `type:` on the task to switch to a differe
 | _(omitted)_ | Code task — its `moduleType` selects Python, Arcade Kit, HTML, Scratch, Filesystem, or Electronics | See the matching module code-task guide linked above |
 | `information` | Explainer-only slide | See below |
 | `quiz` | Knowledge check | `docs/authoring/quiz-tasks.md` |
+| `binary`, `keyboard`, `mouse` | Activity (`taskType: activity` + `activityType` in JSON) | See [Activity Tasks](#activity-tasks) |
 | _(n/a — use `group:` instead)_ | Task group | See below |
+
+## Activity Tasks
+
+An activity is a bounded exercise that can sit anywhere in a lesson (no Run, sandbox, sharing or
+carry-through). Write `type: <activity>` on the task; the converter turns it into
+`taskType: activity` + `activityType: <activity>`, and exporting to YAML writes the shorthand back.
+The explicit `taskType: activity` + `activityType:` form still works. `node cli/cli.mjs lessons
+capabilities` lists every activity; each has an authoring page in
+[activities/](activities/) ([binary](activities/binary.md), [keyboard](activities/keyboard.md),
+[mouse](activities/mouse.md)). Quizzes keep `type: quiz` + `quizType`.
+
+```yaml
+id: activity-shorthand
+type: composed
+title: Activity shorthand
+description: One Binary activity between two code tasks.
+tasks:
+  - title: Print a number
+    moduleType: python
+    starterCode: |
+      print(5)
+  - title: Make the numbers
+    type: binary                # → taskType: activity, activityType: binary
+    description: Click the bits to turn them on. Make each number.
+    mode: make_number
+    bits: 4
+    items:
+      - id: a
+        target: 5
+  - title: Print it in binary
+    moduleType: python
+    starterCode: |
+      print(bin(5))
+```
 
 ---
 
@@ -259,9 +295,9 @@ The legacy `_customTitle` field is no longer needed. Builder saves and exports s
 
 ## Validation Rules
 
-Two separate validators exist and they do not enforce the same rules. `cli lessons validate|upsert|publish-yaml` runs `cli/validate.mjs`; the Lesson Builder runs its browser-side final validation when Draft is cleared or a final lesson is saved. A lesson can pass CLI validation and still trip builder-only rules.
+`cli lessons validate|upsert|publish-yaml` and the Lesson Builder (when Draft is cleared or a final lesson is saved) run the same rules with the same messages. Only a few extras differ: the CLI requires a `description`; the Builder also parses Scratch toolbox XML and warns about duplicate task ids and untested checks.
 
-See `docs/authoring/lesson-schema.md` (**Validation Rules**) for the full list of rules enforced by each validator.
+See `docs/authoring/lesson-schema.md` (**Validation Rules**) for the rules and `docs/authoring/validation-errors.md` for every message.
 
 ---
 

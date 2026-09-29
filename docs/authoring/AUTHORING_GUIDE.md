@@ -168,6 +168,41 @@ For full quiz detail and all answer check types see `docs/authoring/quiz-tasks.m
 
 ---
 
+## Activity Tasks
+
+An activity is a bounded exercise that can sit anywhere in a lesson, between code tasks of any
+module: no Run button, sandbox, sharing or carry-through. Progress is saved on the device, shown
+on the teacher's student card and marked when the student checks their answers.
+
+```yaml
+  - type: binary              # sets taskType: "activity", activityType: "binary" in JSON
+    title: Make the numbers
+    description: Click the bits to turn them on.
+    mode: make_number
+    bits: 4
+    items:
+      - id: a
+        target: 5
+```
+
+| Activity | YAML `type:` | Authoring page |
+|---|---|---|
+| Binary (bits, conversions, addition, overflow, hex, ASCII, pixels) | `binary` | [activities/binary.md](activities/binary.md) |
+| Keyboard skills (typing, Shift capitals, UK symbols, shortcuts) | `keyboard` | [activities/keyboard.md](activities/keyboard.md) |
+| Mouse skills (click, double-click, right-click, drag, scroll, hover) | `mouse` | [activities/mouse.md](activities/mouse.md) |
+
+- The explicit JSON form `taskType: activity` + `activityType: <id>` also works in YAML;
+  `lessons export` writes the `type:` shorthand. Quizzes stay `type: quiz` + `quizType`.
+- `node cli/cli.mjs lessons capabilities` lists every activity with its fields.
+- In the **Builder**, choose the **Activity** task format and pick from the gallery. Each
+  activity has its own editor (modes, items, options) with validation shown next to the field it
+  is about, and a student preview you can play. Switching format keeps the title and
+  description and drops the fields the new format doesn't use.
+- An `activityType` this version doesn't know is a validation error; students would see a
+  "not available" notice.
+
+---
+
 ## Checks
 
 ### Check shape
@@ -253,6 +288,7 @@ Groups cannot be nested. Group IDs are auto-generated.
 | `id` omitted | Auto-assigned sequential integers (1, 2, 3 …) |
 | `type: information` on a task | `taskType: "information"` |
 | `type: quiz` on a task | `taskType: "quiz"` |
+| `type: binary` (any activity) on a task | `taskType: "activity"`, `activityType: "binary"` |
 | `group: "Title"` + `tasks:` | Group object with auto-generated ID |
 | `checks:` (plural array) | `check:` (the JSON field name) |
 | `answer: a` on a multiple_choice quiz | `check: { type: "answer_equals", value: "a" }` |

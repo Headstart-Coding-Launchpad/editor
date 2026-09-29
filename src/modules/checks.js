@@ -1,9 +1,12 @@
-import { evaluateFsCheck, FS_CHECK_TYPES } from './filesystem/checks.js'
-import { evaluatePythonCheck, PYTHON_CHECK_TYPES } from './python/checks.js'
-import { evaluateHtmlCheck, HTML_CHECK_TYPES } from './html/checks.js'
+import { createCheckRegistry } from './checkRegistry.js'
+import { CHECKS as FS_CHECKS, FS_CHECK_TYPES } from './filesystem/checks.js'
+import { CHECKS as PYTHON_CHECKS } from './python/checks.js'
+import { CHECKS as HTML_CHECKS } from './html/checks.js'
 import { ELECTRONICS_CHECK_TYPES, evaluateElectronicsCheck } from './electronics/circuit.js'
-import { TURTLE_CHECK_TYPES, evaluateTurtleCheck } from './turtle/checks.js'
-import { DESKTOP_CHECK_TYPES, evaluateDesktopCheck } from './desktop/checks.js'
+import { CHECKS as ELECTRONICS_CHECKS } from './electronics/checks.js'
+import { CHECKS as TURTLE_CHECKS, TURTLE_CHECK_TYPES } from './turtle/checks.js'
+import { CHECKS as DESKTOP_CHECKS, DESKTOP_CHECK_TYPES } from './desktop/checks.js'
+import { CHECKS as INPUT_CHECKS, INPUT_CHECK_TYPES } from '../shared/input/checks.js'
 import {
   normalizeOutput,
   normalizeExactOutput,
@@ -182,51 +185,124 @@ export function isCodeCheck(check) {
   return CODE_CHECK_TYPES.includes(check?.type)
 }
 
-const CHECK_TYPES = {
-  RUN_REQUIRED: [
-    'output',
-    'code_no_error',
-    'output_contains',
-    'output_equals',
-    'output_not_contains',
-    'output_not_equals',
-    'output_matches_regex',
-    'output_not_matches_regex',
-    'output_line_count',
-    'output_line_count_at_least',
-    'output_not_empty',
-    'output_empty',
-    'element_exists',
-    'html_element',
-    'html_element_value',
-    'html_element_count',
-    'html_element_attribute',
-    'html_element_style_property',
-    'element_count',
-    'element_value',
-    'element_value_equals',
-    'element_value_not_contains',
-    'element_value_not_equals',
-    'element_value_matches_regex',
-    'element_value_not_matches_regex',
-    'element_attribute',
-    'element_style_property',
-    'variable_exists',
-    'variable_type',
-    'variable_equals',
-    'variable_not_equals',
-    'variable_dict_contains',
-    'variable_dict_equals',
-    'variable_dict_key_value',
-    'variable_array_contains',
-    'variable_array_equals',
-    'variable_array_nth_item',
-  ],
-  SUBMIT_ALLOWED: CODE_CHECK_TYPES,
+function coreAliasesFor(type) {
+  return Object.keys(CORE_LEGACY_CHECK_ALIASES).filter(
+    (alias) => CORE_LEGACY_CHECK_ALIASES[alias].type === type
+  )
+}
+
+function coreCheck(type, extra) {
+  const def = CORE_CHECK_DEFINITIONS[type]
+  return {
+    type,
+    owner: 'core',
+    subject: def?.subject,
+    operators: def?.operators,
+    fields: def?.fields,
+    aliases: coreAliasesFor(type),
+    timing: def?.evaluate ?? 'on_run',
+    requiresRun: false,
+    submitAllowed: def?.submitAllowed === true,
+    ...extra,
+  }
+}
+
+// Generic checks shared by every code-based module. Legacy aliases (output_contains,
+// code_equals, answer_contains, ...) are rewritten to their canonical type + operator
+// by normalizeCheckShape before lookup; they are listed as aliases so each id has
+// exactly one owner and RUN_REQUIRED / SUBMIT_ALLOWED can be derived from the defs.
+export const CORE_CHECKS = [
+  coreCheck('output', {
+    requiresRun: true,
+    evaluate: (check, output) => {
+      if (check.value == null) return false
+      return (
+        compareText(output, check.operator, check.value, {
+          normalizeEquals: normalizeExactOutput,
+          normalizeRegex: (value) => normalizeOutput(value, true),
+          flags: check.flags,
+        }) ?? false
+      )
+    },
+  }),
+  coreCheck('output_line_count', {
+    requiresRun: true,
+    evaluate: (check, output) => {
+      if (check.value == null) return false
+      return compareValues(countOutputLines(output), check.operator ?? 'equals', check.value)
+    },
+  }),
+  coreCheck('output_not_empty', {
+    requiresRun: true,
+    evaluate: (_check, output) => normalizeOutput(output).length > 0,
+  }),
+  coreCheck('output_empty', {
+    requiresRun: true,
+    evaluate: (_check, output) => normalizeOutput(output).length === 0,
+  }),
+  coreCheck('code_no_error', {
+    requiresRun: true,
+    contextKey: 'status',
+    evaluate: (_check, _output, context = {}) => context.status === 'success',
+  }),
+  coreCheck('code', {
+    contextKey: 'code',
+    evaluate: (check, _output, context = {}) => {
+      // Generic `code` checks are shared across Python/HTML/Arcade/Turtle. When
+      // evaluated in an electronics context (a circuit is available), route them
+      // through the electronics evaluator so they run against the Micro Controller's
+      // MicroPython source rather than the raw serialized circuit that `context.code`
+      // holds there.
+      if (context.circuit !== undefined) return evaluateElectronicsCheck(check, context.circuit)
+      if (check.value == null) return false
+      return evaluateCodeCheck(check, context.code)
+    },
+  }),
+  coreCheck('answer', {
+    contextKey: 'answer',
+    evaluate: (check, output, context = {}) => {
+      if (check.value == null) return false
+      return (
+        compareText(context.answer ?? output, check.operator, check.value, {
+          normalizeEquals: normalizeExactOutput,
+          flags: check.flags,
+        }) ?? false
+      )
+    },
+  }),
+]
+
+// One registry for every check type evaluateSingleCheck can dispatch. Scratch checks
+// are evaluated inside the Scratch workspace (evaluateScratchCheck needs the live
+// Blockly workspace and sprite state) and are deliberately not registered here —
+// Scratch's `variable_equals` would also collide with Python's.
+export const checkRegistry = createCheckRegistry([
+  ...CORE_CHECKS,
+  ...FS_CHECKS,
+  ...DESKTOP_CHECKS,
+  ...PYTHON_CHECKS,
+  ...HTML_CHECKS,
+  ...ELECTRONICS_CHECKS,
+  ...TURTLE_CHECKS,
+  // Owner 'input': "how was it done" checks against ctx.input (src/shared/input/checks.js).
+  ...INPUT_CHECKS,
+])
+
+// The registered definition for a check type or alias (null when unknown).
+export function getCheckDefinition(type) {
+  return checkRegistry.get(type)
+}
+
+// Derived from the registry: every id (canonical + aliases) whose definition needs a
+// run / is allowed in submit-mode tasks.
+export const CHECK_TYPES = {
+  RUN_REQUIRED: checkRegistry.typeIds((def) => def.requiresRun),
+  SUBMIT_ALLOWED: checkRegistry.typeIds((def) => def.submitAllowed),
   FS: FS_CHECK_TYPES,
   ELECTRONICS: ELECTRONICS_CHECK_TYPES,
   TURTLE: TURTLE_CHECK_TYPES,
   DESKTOP: DESKTOP_CHECK_TYPES,
+  INPUT: INPUT_CHECK_TYPES,
 }
 
 export function checkRequiresRun(check) {
@@ -236,10 +312,7 @@ export function checkRequiresRun(check) {
 
 export function checkAllowedForSubmit(check) {
   const normalized = normalizeCheckShape(check)
-  return (
-    CHECK_TYPES.SUBMIT_ALLOWED.includes(normalized?.type) ||
-    CORE_CHECK_DEFINITIONS[normalized?.type]?.submitAllowed === true
-  )
+  return CHECK_TYPES.SUBMIT_ALLOWED.includes(normalized?.type)
 }
 
 export function filterChecksForInteraction(check, interactionMode) {
@@ -248,86 +321,13 @@ export function filterChecksForInteraction(check, interactionMode) {
   return checks.filter(checkAllowedForSubmit)
 }
 
+// Normalise core legacy aliases, then look the type up in the registry and call its
+// evaluator. Module-level aliases (element_*, fs_content_*, ...) resolve to their
+// canonical definition, whose evaluator normalises them itself. Unknown → false.
 export function evaluateSingleCheck(check, output, context = {}) {
   check = normalizeCheckShape(check)
   if (!check?.type) return false
-
-  if (FS_CHECK_TYPES.includes(check.type)) {
-    return evaluateFsCheck(check, context.fs, context)
-  }
-
-  if (DESKTOP_CHECK_TYPES.includes(check.type)) {
-    return evaluateDesktopCheck(check, context.desktop, context)
-  }
-
-  if (PYTHON_CHECK_TYPES.includes(check.type)) {
-    return evaluatePythonCheck(check, output, context)
-  }
-
-  if (HTML_CHECK_TYPES.includes(check.type)) {
-    return evaluateHtmlCheck(check, output, context)
-  }
-
-  if (ELECTRONICS_CHECK_TYPES.includes(check.type)) {
-    return evaluateElectronicsCheck(check, context.circuit ?? context.code)
-  }
-
-  if (TURTLE_CHECK_TYPES.includes(check.type)) {
-    return evaluateTurtleCheck(check, context)
-  }
-
-  // Generic `code` checks are shared across Python/HTML/Arcade. When evaluated
-  // in an electronics context (a circuit is available), route them through the
-  // electronics evaluator so they run against the Micro Controller's MicroPython
-  // source rather than the raw serialized circuit that `context.code` holds there.
-  if (check.type === 'code' && context.circuit !== undefined) {
-    return evaluateElectronicsCheck(check, context.circuit)
-  }
-
-  if (check.type === 'code_no_error') {
-    return context.status === 'success'
-  }
-
-  if (check.type === 'output_not_empty') {
-    return normalizeOutput(output).length > 0
-  }
-
-  if (check.type === 'output_empty') {
-    return normalizeOutput(output).length === 0
-  }
-
-  if (check.value == null) return false
-
-  if (check.type === 'answer') {
-    const result = compareText(context.answer ?? output, check.operator, check.value, {
-      normalizeEquals: normalizeExactOutput,
-      flags: check.flags,
-    })
-    if (result !== null) return result
-  }
-
-  if (check.type === 'output') {
-    const result = compareText(output, check.operator, check.value, {
-      normalizeEquals: normalizeExactOutput,
-      normalizeRegex: (value) => normalizeOutput(value, true),
-      flags: check.flags,
-    })
-    if (result !== null) return result
-  }
-
-  if (check.type === 'output_line_count') {
-    return compareValues(countOutputLines(output), check.operator ?? 'equals', check.value)
-  }
-
-  if (check.type === 'output_line_count_at_least') {
-    return countOutputLines(output) >= Number(check.value)
-  }
-
-  if (check.type === 'code') {
-    return evaluateCodeCheck(check, context.code)
-  }
-
-  return false
+  return checkRegistry.evaluate(check, output, context)
 }
 
 export function evaluateCheck(check, output, context = {}) {

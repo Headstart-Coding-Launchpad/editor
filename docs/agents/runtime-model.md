@@ -34,8 +34,10 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
         "sourceStudentName": "Jamie | null",
         "taskId": 1,
         "lessonType": "python",
-        "code": "...",
+        "code": "... (JSON string for Scratch, Filesystem, Desktop and Electronics state)",
         "files": { "index__dot__html": "..." },
+        "arcadeDesign": "object | null (Arcade only; sent as explicit null for other types because teacherLive is an update() merge)",
+        "turtleResult": "object | null (Turtle only, compacted with compactTurtleResultForSync; explicit null for other types)",
         "output": "...",
         "runStatus": "success | error | stopped | submitted | null",
         "checkPassed": true,
@@ -140,6 +142,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
           "online": true,
           "currentCode": "string",
           "currentArcadeDesign": "object | null (watched Arcade student's throttled sprite/map snapshot)",
+          "currentTurtleResult": "object | null (Turtle student's compacted drawing result, written on Run via writeStudentTurtleResult)",
           "currentSpriteState": "object | null ({ spriteStates, cloneStates, backdropName, updatedAt } — watched Scratch student's throttled runtime snapshot, ~8Hz)",
           "currentCursor": "object | null ({ target: 'stage' | 'workspace', spriteId, x, y, at } — watched Scratch student's throttled live pointer position, ~20Hz; stage coords are origin-centred same as sprite x/y, workspace coords are that sprite's Blockly workspace units)",
           "currentBlockDrag": "object | null ({ spriteId, blockId, x, y, at } — the top block of an in-progress drag, live position in that sprite's Blockly workspace units, cleared to null when the drag ends)",
@@ -179,7 +182,13 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
           "teacherEditRequestedAt": "number | null",
           "teacherEditAcceptedAt": "number | null",
           "teacherLiveCode": "string | null",
+          "teacherLiveFiles": "object | null (HTML: encodeFileKey'd files the teacher is typing)",
+          "teacherLiveActiveFile": "string | null",
+          "teacherLiveWorkspace": "object | null",
+          "teacherLiveArcadeDesign": "object | null",
           "teacherEditApplyCode": "string | null",
+          "teacherEditApplyFiles": "object | null",
+          "teacherEditApplyArcadeDesign": "object | null",
           "teacherEditAppliedAt": "number | null",
           "teacherStageRequestedAt": "number | null",
           "teacherStagePendingAction": "string | null",
@@ -232,7 +241,7 @@ Teacher writes:
 
 Teacher per-student actions:
 
-- Teacher answer edit (`pushTeacherAnswerEdit`) writes `currentAnswer` or `currentCodeArrangeSlots`, `teacherAnswerEdit`, and `teacherAssistedTaskId` in one update. The student's tab applies the edit through its normal answer path (`handleQuizSelect` / Code Arrange slot change) and clears `teacherAnswerEdit` (`clearTeacherAnswerEdit`) the next time the student changes the answer themselves, so a reload never re-applies a superseded edit. Attempts logged on that task afterwards carry `teacherAssisted: true`. `setTaskId` clears both fields.
+- Teacher answer edit (`pushTeacherAnswerEdit`) writes `currentAnswer` or `currentCodeArrangeSlots`, `teacherAnswerEdit`, and `teacherAssistedTaskId` in one update. The student's tab applies the edit through its normal answer path (`useActivityState` for quizzes and activities / Code Arrange slot change) and clears `teacherAnswerEdit` (`clearTeacherAnswerEdit`) the next time the student changes the answer themselves, so a reload never re-applies a superseded edit. Attempts logged on that task afterwards carry `teacherAssisted: true`. `setTaskId` clears both fields.
 - Remote Run (`pushRemoteRun`) writes `remoteRunPushedAt` and `remoteRunTaskId`. The student's tab (lesson or sandbox phase, not reviewing an earlier task) clears `remoteRunPushedAt` (`clearRemoteRun`) and, if the task matches, hands it to the module workspace as `cs.remoteRunToken`. `setTaskId` clears both fields.
 - Remote reset writes `remoteResetAction` and `remoteResetPushedAt`. For Arcade tasks, the student resets both code and the matching Starter/Stage/Complete visual design.
 - Check override writes `checkOverridePassed`, `checkOverrideHint`, and `checkOverridePushedAt`; a manual pass also writes `overrideLog/{anonymousId}/{taskId}` when the student has no real passing attempt. The per-student visible override fields are cleared by `setTaskId`; `overrideLog` is not, so the end-of-session report can read it.
@@ -254,7 +263,8 @@ Student writes:
 - When watched, HTML: `currentFiles` per active-tab keystroke, `currentActiveFile`, `currentSelection`, `currentActivity`.
 - `code_arrange` tasks (Python or HTML module), watched or not during a lesson/sandbox: `currentCodeArrangeSlots` on every tile placement/move (a discrete action like a quiz answer, not a keystroke — needed for the teacher's per-card "X/N slots filled" count), independent of the Python/HTML rules above — `currentCode`/`currentFiles` for the task only update once the arrangement is fully assembled (see `CodeArrangeTaskContainer.jsx`).
 - When watched, Scratch: `currentCode` (settled block state) on change, `currentActivity` for block drags/clicks/green-flag/stop/sprite-drag notices, a throttled (~120ms) `currentSpriteState` snapshot of sprite/clone/backdrop runtime state so the mirror renders live stage motion instead of authored starting positions, and a throttled (~50ms) `currentCursor` live pointer position covering both the stage and each sprite's block workspace. While a block is actively being dragged, its live in-progress position (not just the settled `currentCode` state on drop) also streams as `currentBlockDrag`, read directly off Blockly's own drag-tracked coordinates — the mirror repositions that block (if it already has it from the last settled sync) via Blockly's `moveTo`, without treating it as a real drag. The broadcast direction (`teacherLive`) mirrors the same fields (`code`, `activity`, `spriteState`, `cursor`, `blockDrag`); the mirror's visible sprite tab follows the source's tab automatically whenever a workspace-target cursor is live, and a cursor with no update for 2s fades out rather than freezing in place.
-- Quiz: `currentAnswer` on submit; also written incrementally for match and fill-blank as tiles are placed.
+- Quiz: `currentAnswer` on submit; also written incrementally (debounced ~300ms, watched or not) for match and fill-blank as tiles are placed or gaps typed. Quizzes run through `useActivityState.js` like the hosted activities below, keeping their legacy `currentAnswer` strings (option id, `{"p1":"p2"}` map, typed text, `"1"`..`"5"`); the answer is flushed once when the teacher starts watching (if the student has answered). In the session sandbox, answers and runs are mirrored but no attempt is logged.
+- Hosted activities (`taskType: 'activity'`, `useActivityState.js`): the serialised activity state (JSON, `activity.serialize`) on `currentAnswer`. *Discrete* changes (a bit toggled, an item finished) write debounced (~300ms) whether or not the teacher watches, like quiz answers; *continuous* changes (keystrokes, typing a number) write throttled (~250ms) only while `activeStudentView` is this student, and the latest state is flushed once when the teacher starts watching. Submit writes `writeStudentRun({ answer, status: 'submitted', checkPassed })` and `logAttempt`. `remoteResetAction` `starter` / `complete` load the activity's initial / solution state; `teacherAnswerEdit.answer` is the serialised state. See `docs/architecture/activities.md`.
 - Quiz attempts are reportable even when the task has no explicit `check`. The attempt log stores structured submissions for fill-blank and match, numeric ratings for confidence, and text for open short-answer. Confidence and open short-answer use the internal passed flag only as a UI completion signal; reports translate them to `finalResult: not_applicable` and `passed: null`.
 - Carry-through walk-back: when a live lesson task carries from a skipped source and resolves to an earlier saved source in the authored carry chain, the student writes own `carryFallbackLog/{taskId}` with the carry field, requested source, resolved source, skipped source ids, and server timestamp. Empty saved state is not skipped.
 - Personal sandbox: own `inPersonalSandbox` set to `true` on entry and `null` on exit.
@@ -291,7 +301,7 @@ Two nodes, deliberately split. Do not collapse them into one.
 
 **Why the split.** Every client subscribes to the whole session node (`onValue(ref(db, 'sessions/{lessonId}'))` in `useSession.js`), so anything stored there is pushed to the teacher and all 30 students on every unrelated session write. `sharedWorkspaces` is therefore an index only — a few hundred bytes per entry, enough to render the gallery list, the toast, and the teacher's manage-shares popover. The workspace content lives in the top-level `sharedWorkspacePayloads` node, which nobody subscribes to and which is read one entry at a time with `get()`.
 
-**Why the student writes the snapshot.** `students/{id}/currentCode` and `currentFiles` are only fresh while `activeStudentView` matches that student, and a student pressing Share is almost never the watched one. The teacher therefore cannot build a snapshot. Every snapshot is written by the sharer's own client via `buildShareSnapshot()` (`useStudentCodeState.js`), which reads the module-specific sources — Scratch's `scratchCodeRef`, filesystem's `fsStateRef` — that only exist inside that hook.
+**Why the student writes the snapshot.** `students/{id}/currentCode` and `currentFiles` are only fresh while `activeStudentView` matches that student, and a student pressing Share is almost never the watched one. The teacher therefore cannot build a snapshot. Every snapshot is written by the sharer's own client via `buildShareSnapshot()` (`useStudentCodeState.js`), which reads the source that only exists inside that hook — the generic work slot (the code, Arcade's design, html's files and active file, Scratch's last reported workspace, the filesystem tree or desktop state).
 
 Snapshot shape (file keys encoded with `encodeFileKey` at the write boundary, exactly like `teacherLive`):
 
@@ -502,10 +512,14 @@ Do not deviate from these key formats.
 | Key | Value |
 |---|---|
 | `headstart_identity` | `{ anonymousId, displayName, lastSessionTimestamp }` |
-| `headstart_{lessonId}_{taskId}_{anonymousId}` | `{ code?, output?, runStatus?, state? }` for Python/Scratch |
+| `headstart_{lessonId}_{taskId}_{anonymousId}` | `{ code, output, runStatus }` for Python/Turtle; plus `arcadeDesign` for Arcade; `{ code }` for Electronics (serialised circuit); `{ state }` for Scratch; `{ fs }` for Filesystem; `{ desktop }` for Desktop |
 | `headstart_{lessonId}_{taskId}_{filename}_{anonymousId}` | `{ content }` for HTML per-file |
-| `headstart_{lessonId}_personalsandbox_{anonymousId}` | `{ code?, state? }` for personal sandbox Python/Scratch; `{ fs }` for Filesystem |
+| `headstart_{lessonId}_{taskId}___code_arrange_slots___{anonymousId}` | `{ content }` Code Arrange tile placements (a per-task aux file, same shape as an HTML file) |
+| `headstart_{lessonId}_{taskId}___activity_state___{anonymousId}` | `{ content }` hosted activity state for `taskType: 'activity'` tasks (serialised JSON) and quiz tasks (the `currentAnswer` string: option id, JSON answer map, typed text or `"1"`..`"5"`); restored on reload and on returning to the task; in-memory only in presentation/preview |
+| `headstart_{lessonId}_personalsandbox_{anonymousId}` | `{ code }` for personal sandbox Python/Turtle/Electronics; `{ code, arcadeDesign }` for Arcade; `{ state }` for Scratch; `{ fs }` for Filesystem; `{ desktop }` for Desktop |
 | `headstart_{lessonId}_personalsandbox_{filename}_{anonymousId}` | `{ content }` for personal sandbox HTML per-file |
+| `headstart_{lessonId}_module_{moduleId}_sandbox_{anonymousId}` | Composed lessons: the personal sandbox for one lesson module, same value shapes as `personalsandbox` |
+| `headstart_{lessonId}_module_{moduleId}_sandbox_{filename}_{anonymousId}` | Composed lessons: per-file HTML personal sandbox for one lesson module |
 | `headstart_builder_current` | Full lesson JSON object |
 
 ## LaunchPad Code Files

@@ -1,26 +1,28 @@
 import { findTaskById, flattenTasks } from './taskUtils.js'
+import { MODULE_TYPES, getModuleDefinition, getModuleTypesWhere } from '../modules/definitions.js'
+import { isHostedActivityTask } from '../activities/registry.pure.js'
 
-export const LESSON_MODULE_TYPES = [
-  'python',
-  'arcade',
-  'turtle',
-  'html',
-  'scratch',
-  'filesystem',
-  'desktop',
-  'electronics',
-]
+// Membership comes from the module definitions (src/modules/definitions.js), so a new module
+// type is accepted here, by the Builder and by the CLI without editing this file. The order
+// (Builder composed-module picker, CLI "type must be one of" message) is each definition's
+// `meta.pickerOrder` (defaulting to `meta.order`; it predates the registry order and differs
+// only in html/scratch). The sort is stable, so ties keep registry order.
+export const LESSON_MODULE_TYPES = [...MODULE_TYPES].sort(
+  (a, b) => getModuleDefinition(a).meta.pickerOrder - getModuleDefinition(b).meta.pickerOrder
+)
 
-// Module types with a standalone /playground/:type route (src/app/views/PlaygroundView.jsx).
-// HTML and Filesystem lessons have no playground today.
-export const PLAYGROUND_LESSON_TYPES = ['python', 'arcade', 'electronics', 'scratch']
+// Module types with a standalone /playground/:type route (src/app/views/PlaygroundView.jsx),
+// declared by each definition's `meta.playground`.
+export const PLAYGROUND_LESSON_TYPES = Object.freeze(
+  getModuleTypesWhere((definition) => definition.meta.playground)
+)
 
 export function isComposedLesson(lesson) {
   return lesson?.type === 'composed'
 }
 
 export function isCodeTask(task) {
-  return task?.taskType !== 'information' && task?.taskType !== 'quiz'
+  return task?.taskType !== 'information' && !isHostedActivityTask(task)
 }
 
 export function getLessonModules(lesson) {
@@ -81,20 +83,10 @@ function firstCodeTask(lesson, moduleId) {
   )
 }
 
+// Lesson-level sandbox starter fields a composed lesson's module derives from its first code
+// task (each module's `lifecycle.composedSandboxFields`); an authored `module.sandbox` wins.
 function sandboxFields(moduleType, fallbackTask) {
-  if (moduleType === 'python' || moduleType === 'arcade')
-    return { sandboxStarter: fallbackTask?.starterCode ?? '' }
-  if (moduleType === 'html') return { sandboxStarterFiles: fallbackTask?.starterFiles ?? [] }
-  if (moduleType === 'scratch') {
-    const blocks = fallbackTask?.starterBlocks ?? null
-    return { sandboxStarter: blocks == null ? null : JSON.stringify(blocks) }
-  }
-  if (moduleType === 'filesystem') return { sandboxStarterFs: fallbackTask?.starterFs ?? null }
-  if (moduleType === 'desktop')
-    return { sandboxStarterDesktop: fallbackTask?.starterDesktop ?? null }
-  if (moduleType === 'electronics')
-    return { sandboxStarterCircuit: fallbackTask?.starterCircuit ?? null }
-  return {}
+  return getModuleDefinition(moduleType)?.lifecycle.composedSandboxFields(fallbackTask) ?? {}
 }
 
 export function getEffectiveLessonForModule(lesson, moduleId) {
@@ -145,7 +137,8 @@ export function validateComposedStructure(lesson) {
   if (!isComposedLesson(lesson)) return []
   const errors = []
   for (const task of flattenTasks(lesson.tasks ?? [])) {
-    if (task?.taskType === 'information' || task?.taskType === 'quiz') continue
+    // Information, quiz and activity tasks have no workspace module to select.
+    if (!isCodeTask(task)) continue
     const type = getTaskModuleType(lesson, task)
     if (!type)
       errors.push(
