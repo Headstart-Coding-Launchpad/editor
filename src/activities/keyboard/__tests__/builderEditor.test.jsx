@@ -80,3 +80,27 @@ describe('Keyboard BuilderEditor', () => {
     expect(errorsOf(task())).toEqual([])
   })
 })
+
+describe('Keyboard BuilderEditor: edit_text', () => {
+  it('edits start, target, required keys and the editing options', async () => {
+    const user = userEvent.setup()
+    const { task } = renderBuilderEditor(ui.BuilderEditor, changeKeyboardMode(start(), 'edit_text'))
+    fireEvent.change(screen.getByLabelText('Item 1 start'), { target: { value: 'teh cat' } })
+    fireEvent.change(screen.getByLabelText('Item 1 target'), { target: { value: 'the cat' } })
+    const keys = screen.getByRole('group', { name: 'Item 1 keys to use' })
+    await user.click(within(keys).getByLabelText('Delete'))
+    await user.click(within(keys).getByLabelText('Shift selection'))
+    await user.click(screen.getByLabelText('Show the fixed line to students'))
+    fireEvent.change(screen.getByLabelText('Share of original characters to keep'), {
+      target: { value: '0.8' },
+    })
+    expect(task()).toMatchObject({
+      mode: 'edit_text',
+      showTarget: false,
+      minKept: 0.8,
+      items: [{ id: 'a', start: 'teh cat', target: 'the cat', requireKeys: ['Delete', 'select'] }],
+    })
+    expect(errorsOf(task())).toEqual([])
+    expect(changeKeyboardMode(task(), 'type_text')).not.toHaveProperty('minKept')
+  })
+})

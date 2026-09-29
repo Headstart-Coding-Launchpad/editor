@@ -39,6 +39,21 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-09-29
 
+### Keyboard `edit_text` mode: fix a line without retyping it
+
+- New Keyboard mode `edit_text`. Each item has `start` (the line with mistakes) and `target`
+  (the fixed line); the student edits in place with the arrow keys, Home/End, Shift selection,
+  Backspace and Delete. The line finishes when it matches `target` exactly.
+- It passes only if it was **edited, not retyped**: at least `minKept` (default `0.9`) of the
+  characters `start` and `target` share must never have been deleted and typed again. Optional
+  per-item `requireKeys` (`Backspace`, `Delete`, `ArrowLeft`, `ArrowRight`, `Home`, `End`,
+  `select`) must each be used. `showTarget: false` hides the fixed line.
+- Needs a real keyboard: the on-screen keyboard shows a note instead. The teacher card adds
+  `· n retyped`. New validation messages are in [validation-errors.md](validation-errors.md).
+  See [activities/keyboard.md](activities/keyboard.md).
+- Affects: keyboard · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-09-29-keyboard-edit-text-mode-fix-the-text-without-retyping-it.md
+
 ### CHANGELOG entries carry a tag line
 
 - From today every entry ends with `Affects: … · Existing lessons: … · Resolves: …`, naming the

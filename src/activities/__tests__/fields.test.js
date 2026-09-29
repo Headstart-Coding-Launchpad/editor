@@ -61,7 +61,13 @@ describe('activity field declarations', () => {
 
   it('modes come from the mode field declared on the task', () => {
     const keyboard = definitions.find((def) => def.id === 'keyboard')
-    expect(keyboard.fields.modes).toEqual(['type_text', 'find_key', 'symbols', 'shortcuts'])
+    expect(keyboard.fields.modes).toEqual([
+      'type_text',
+      'find_key',
+      'symbols',
+      'shortcuts',
+      'edit_text',
+    ])
     const findKeyItems = fieldsForMode(keyboard.fields.task, 'find_key').find(
       (spec) => spec.name === 'items'
     )
