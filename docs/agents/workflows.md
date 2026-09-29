@@ -124,6 +124,16 @@ After significant changes, update relevant docs:
 - `docs/authoring/AUTHORING_GUIDE.md`, `docs/authoring/validation-errors.md` or `docs/authoring/feedback-cli.md` when content-authoring workflows change.
 - `AGENTS.md` and `docs/agents/*.md` when agent-facing rules, Firebase model, localStorage keys, URLs, session states, or key behaviours change.
 
+### Authoring CHANGELOG entries
+
+When a change affects how lessons, tasks, topics, checks, assets or lesson Markdown are written, add an entry to `docs/authoring/CHANGELOG.md` (newest first, under today's date) that ends with the tag line described in its "Entry format" section:
+
+```markdown
+- Affects: scratch · Existing lessons: no changes needed · Resolves: authoring-requests/2026-09-29-<slug>.md
+```
+
+`Resolves:` names the authoring request(s) the change ships (or `none`); set that request's **Status** and **Resolution** in the same PR.
+
 **All project docs live under `docs/`.** `AGENTS.md` and `CLAUDE.md` are the only doc files at the repo root.
 
 A significant change includes a new component, hook, or module; Firebase field change; URL parameter change; or change to a documented key behaviour.

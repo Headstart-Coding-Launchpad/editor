@@ -18,7 +18,35 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## Entry format
+
+Every new entry ends with one tag line, so lesson agents can tell at a glance what an entry
+touches without reading all of it:
+
+```markdown
+- Affects: <modules / activities / areas> · Existing lessons: <no changes needed | what to change> ·
+  Resolves: authoring-requests/<yyyy-mm-dd>-<slug>.md
+```
+
+- **Affects:** module types (`python`, `scratch`, `desktop`, …), activity ids (`keyboard`,
+  `quiz_match`, …), or an area (`cli`, `markdown`, `topics`, `all`), comma-separated.
+- **Existing lessons:** `no changes needed`, or the change authors must make (for example "add
+  `markdown` to blocks-only Support stages").
+- **Resolves:** the authoring request(s) the change ships, comma-separated; `none` when there
+  isn't one.
+
+Entries written before 2026-09-29 are not tagged.
+
 ## 2026-09-29
+
+### CHANGELOG entries carry a tag line
+
+- From today every entry ends with `Affects: … · Existing lessons: … · Resolves: …`, naming the
+  modules/activities it touches, whether existing lessons need changing, and the authoring
+  request it ships. Read the tag line first to decide whether an entry matters to a lesson.
+  Older entries are not tagged. See [Entry format](#entry-format).
+- Affects: all (changelog format) · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-09-29-tag-changelog-entries-with-affected-modules-lesson-impact-an.md
 
 ### `lessons capabilities`: activity modes and fields, content fields, open requests
 
