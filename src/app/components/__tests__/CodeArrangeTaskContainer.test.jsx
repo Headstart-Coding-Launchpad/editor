@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import CodeArrangeTaskContainer from '../CodeArrangeTaskContainer'
+import TaskSlideTransition from '../TaskSlideTransition'
 
 const PYTHON_TASK = {
   id: 1,
@@ -473,4 +474,60 @@ describe('CodeArrangeTaskContainer — teacher answer edit (characterisation)', 
     expect(cs.saveTaskAuxFile).not.toHaveBeenCalled()
     expect(cs.handleCodeArrangeSlotsChange).not.toHaveBeenCalled()
   })
+})
+
+// TaskSlideTransition remounts the previous task's element tree in its leaving panel, with that
+// task's stale props and callbacks, after the next task's work has loaded. Moving on from a
+// completed arrangement, the remounted board must not push its assembled program into the
+// shared code slot (the next task's editor), save, or re-publish its slots.
+describe('CodeArrangeTaskContainer — leaving task slide', () => {
+  function arrangeBoard(cs, task = PYTHON_TASK) {
+    return (
+      <CodeArrangeTaskContainer
+        task={task}
+        cs={cs}
+        currentTaskId={task.id}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+  }
+
+  it.each([
+    ['python', PYTHON_TASK, { L1: 'L1', L2: 'L2' }, 'for i in range(5): print(i * 2)'],
+    ['html', HTML_TASK, { L1: 'L1' }, '<h1>Hello</h1>'],
+  ])(
+    'does not write the %s arrangement onto the next task when remounted as the leaving slide',
+    (_label, task, saved, tileText) => {
+      const cs = makeCs({
+        readSavedTaskFile: vi.fn(() => JSON.stringify(saved)),
+        teacherCodeArrangeEdit: { slots: saved, at: 5 },
+      })
+      const { rerender } = render(
+        <TaskSlideTransition transitionKey="lesson-1">{arrangeBoard(cs, task)}</TaskSlideTransition>
+      )
+      // While current, the arrangement assembles its program into its own task's slot.
+      expect(
+        cs.handleCodeChange.mock.calls.length + cs.handleFileChange.mock.calls.length
+      ).toBeGreaterThan(0)
+      vi.clearAllMocks()
+
+      // Next: the code task is now current and the arrange board slides out.
+      rerender(
+        <TaskSlideTransition transitionKey="lesson-99">
+          <div>next code task</div>
+        </TaskSlideTransition>
+      )
+
+      // The leaving snapshot still shows the arrangement...
+      expect(screen.getByText(tileText)).toBeInTheDocument()
+      // ...but writes nothing onto the new task.
+      expect(cs.handleCodeChange).not.toHaveBeenCalled()
+      expect(cs.handleFileChange).not.toHaveBeenCalled()
+      expect(cs.saveTaskAuxFile).not.toHaveBeenCalled()
+      expect(cs.handleCodeArrangeSlotsChange).not.toHaveBeenCalled()
+    }
+  )
 })

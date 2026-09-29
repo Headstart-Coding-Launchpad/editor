@@ -7,6 +7,7 @@ import {
 } from '../../shared/codeArrange'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import definition from './definition.js'
+import { useIsLeavingTaskSlide } from '../../app/components/TaskSlideTransition'
 
 // Synthetic filename used to persist the student's own tile arrangement
 // alongside the ordinary per-task saved code, using the exact same
@@ -85,7 +86,16 @@ export default function CodeArrangeTaskContainer({
   const entryFile = getCodeArrangeEntryFile(task)
   const isLiveMirror = isForcedTeacherLive || isTeacherEditing
   const taskId = isViewingPrev ? viewingTaskId : currentTaskId
+  // Outgoing slide of a task transition (TaskSlideTransition remounts the previous task's tree
+  // with its stale props and callbacks, after the next task has loaded): a purely visual
+  // snapshot. Otherwise the remounted board reloads its saved arrangement and pushes the
+  // assembled program through cs.handleCodeChange / handleFileChange into the shared code slot,
+  // i.e. into the NEXT task's editor, and re-publishes its slots onto that task.
+  const isLeavingSlide = useIsLeavingTaskSlide()
   const readOnly = isViewingPrev || isLiveMirror
+  // No saves, live mirroring, assembled-code pushes or remote Runs (readOnly also changes
+  // what is displayed; the leaving snapshot keeps the student's own display).
+  const detached = readOnly || isLeavingSlide
   const [slotState, setSlotState] = useState({})
   const loadedForTaskRef = useRef(null)
 
@@ -103,13 +113,13 @@ export default function CodeArrangeTaskContainer({
     // A missing or malformed saved arrangement loads as an empty board.
     const saved = definition.deserialize(raw, task)
     setSlotState(saved)
-    cs.handleCodeArrangeSlotsChange?.(saved)
+    if (!isLeavingSlide) cs.handleCodeArrangeSlotsChange?.(saved)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, isLiveMirror])
 
   function handleSlotStateChange(next, options) {
     setSlotState(next)
-    if (!readOnly) {
+    if (!detached) {
       cs.saveTaskAuxFile(taskId, CODE_ARRANGE_SLOTS_FILENAME, definition.serialize(next))
       if (options) cs.handleCodeArrangeSlotsChange?.(next, options)
       else cs.handleCodeArrangeSlotsChange?.(next)
@@ -122,7 +132,7 @@ export default function CodeArrangeTaskContainer({
   // superseding the teacher's edit.
   const teacherEditAt = cs.teacherCodeArrangeEdit?.at ?? null
   useEffect(() => {
-    if (!teacherEditAt || readOnly) return
+    if (!teacherEditAt || detached) return
     const slots = cs.teacherCodeArrangeEdit?.slots
     if (!slots || typeof slots !== 'object' || Array.isArray(slots)) return
     handleSlotStateChange(slots, { fromTeacher: true })
@@ -135,11 +145,11 @@ export default function CodeArrangeTaskContainer({
     () => {
       if (!cs.running && isArrangementComplete(task, slotState)) cs.handleRun()
     },
-    { enabled: !readOnly, onHandled: cs.acknowledgeRemoteRun }
+    { enabled: !detached, onHandled: cs.acknowledgeRemoteRun }
   )
 
   function handleAssembledCodeChange(assembledCode) {
-    if (readOnly) return
+    if (detached) return
     if (isHtml) {
       cs.handleFileChange(entryFile, assembledCode)
     } else {
@@ -211,21 +221,21 @@ export default function CodeArrangeTaskContainer({
       task={task}
       moduleType={task.moduleType}
       selectedAnswer={selectedAnswer}
-      onSelectAnswer={readOnly ? undefined : handleSlotStateChange}
-      onAssembledCodeChange={readOnly ? undefined : handleAssembledCodeChange}
+      onSelectAnswer={detached ? undefined : handleSlotStateChange}
+      onAssembledCodeChange={detached ? undefined : handleAssembledCodeChange}
       output={output}
       runStatus={runStatus}
       inputPrompt={inputPrompt}
-      onInputSubmit={readOnly ? undefined : cs.handleInputSubmit}
+      onInputSubmit={detached ? undefined : cs.handleInputSubmit}
       running={readOnly ? false : cs.running}
       checkPassed={checkPassed}
       checkAttempted={checkAttempted}
       pyodideStatus={cs.pyodideStatus}
       iframeSrc={iframeSrc}
       iframeRef={cs.iframeRef}
-      onRun={readOnly ? undefined : cs.handleRun}
-      onStop={readOnly ? undefined : cs.handleStop}
-      onDragCursor={readOnly ? undefined : cs.handleCodeArrangeDragCursor}
+      onRun={detached ? undefined : cs.handleRun}
+      onStop={detached ? undefined : cs.handleStop}
+      onDragCursor={detached ? undefined : cs.handleCodeArrangeDragCursor}
       externalDragCursor={isForcedTeacherLive ? displayCodeArrangeCursor : null}
       disabled={readOnly}
       showQuestion={false}
