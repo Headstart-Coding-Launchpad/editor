@@ -1,6 +1,7 @@
 import yaml from 'js-yaml'
 import { flattenTasks, getTaskPriority } from './taskUtils.js'
 import { getTaskActivity } from '../activities/registry.pure.js'
+import { SUPPORT_REVEAL_SOURCES } from './taskStages.js'
 import { normalizeCodeSubmission } from './codeSubmission.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
@@ -207,7 +208,7 @@ function normalizeSupportRevealRecord(raw, taskId, stageIndex) {
     taskId,
     stageIndex: Number.isFinite(numericStageIndex) ? numericStageIndex : (raw.stageIndex ?? null),
     stageLabel: raw.stageLabel ?? null,
-    source: raw.source === 'teacher' ? 'teacher' : 'student',
+    source: SUPPORT_REVEAL_SOURCES.includes(raw.source) ? raw.source : 'student',
     attemptNumber: Number.isFinite(raw.attemptNumber) ? raw.attemptNumber : 0,
     revealedAt: raw.revealedAt ?? raw.timestamp ?? null,
   }
@@ -219,6 +220,22 @@ function normalizeSupportReveals(raw, taskId) {
     .map(([stageIndex, reveal]) => normalizeSupportRevealRecord(reveal, taskId, stageIndex))
     .filter(Boolean)
     .sort((a, b) => (a.stageIndex ?? 0) - (b.stageIndex ?? 0))
+}
+
+// Large pastes into the editor (students.{id}.pasteLog.{taskId}, see
+// recordStudentPaste). Only present when something was pasted.
+function normalizePasteRecord(raw) {
+  if (!raw || !(raw.count > 0)) return null
+  return { count: raw.count, chars: Number.isFinite(raw.chars) ? raw.chars : 0 }
+}
+
+function summarizePastes(perStudent) {
+  const pasted = perStudent.filter((task) => task.pastes)
+  if (pasted.length === 0) return {}
+  return {
+    pasteCount: pasted.reduce((n, task) => n + task.pastes.count, 0),
+    pastedStudentCount: pasted.length,
+  }
 }
 
 function summarizeSupportReveals(perStudent) {
@@ -324,6 +341,7 @@ export function buildSessionReport({ session, lesson }) {
         supportRevealLog?.[anonymousId]?.[task.id],
         task.id
       )
+      const pastes = normalizePasteRecord(studentsSnapshot[anonymousId]?.pasteLog?.[task.id])
       const attempts = countAttempts(entries)
       const completed = getCompleted(task, entries, override)
       const itemProgress =
@@ -355,6 +373,7 @@ export function buildSessionReport({ session, lesson }) {
         ...(passingEntry?.teacherAssisted ? { teacherAssisted: true } : {}),
         ...(carryFallback ? { carryFallback } : {}),
         ...(supportReveals.length > 0 ? { supportReveals } : {}),
+        ...(pastes ? { pastes } : {}),
         ...(itemProgress ? { itemProgress } : {}),
         distinctAttempts: entries.map((entry) => ({
           attemptNumber: entry.attemptNumber,
@@ -418,6 +437,7 @@ export function buildSessionReport({ session, lesson }) {
         overriddenUnattemptedCount: 0,
         ...summarizeCarryFallbacks(perStudent),
         ...summarizeSupportReveals(perStudent),
+        ...summarizePastes(perStudent),
         ...(teacherRating ? { teacherRating } : {}),
       }
     }
@@ -445,6 +465,7 @@ export function buildSessionReport({ session, lesson }) {
       ),
       ...summarizeCarryFallbacks(perStudent),
       ...summarizeSupportReveals(perStudent),
+      ...summarizePastes(perStudent),
       ...(teacherRating ? { teacherRating } : {}),
     }
     // Per-item failures for match (pairFailures) and fill-in-the-gaps (blankFailures); the

@@ -108,6 +108,8 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Remote Reset — silently replace student's code with starter code, complete code, or a named intermediate stage
 - Rename and remove students
 - Nudge (🔔 in the modal header) — draw the student's attention back to the lesson
+- "Show on every task" reference (in the Reveal menu): first hint, all hints, or the solution opens automatically for that student on every task for the rest of the session
+- "📋 Pasted" badge when a student pastes a large chunk (40+ characters or 3+ lines) into their editor — flagged, not blocked; also counted in the session report
 - The output panel in the student modal opens automatically when the student's run produces output or asks for input
 - Approve or decline a student's request to share their workspace with the class, after previewing the exact snapshot
 - Share a student's workspace with the class without them asking ("Share this with the class")

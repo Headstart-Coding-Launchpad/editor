@@ -120,7 +120,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
               "taskId": 3,
               "stageIndex": 0,
               "stageLabel": "With a variable already created",
-              "source": "teacher | student",
+              "source": "teacher | student | teacher-auto",
               "attemptNumber": 2,
               "revealedAt": "ServerValue.TIMESTAMP"
             }
@@ -177,6 +177,10 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
           "teacherMessage": "string | null",
           "teacherMessagePushedAt": "number | null",
           "nudgePushedAt": "number | null (teacher nudge for this student — see useNudgeAlert)",
+          "autoRevealStage": "'first' | 'support' | 'solution' | null (teacher's \"Show on every task\" reference for this student — see below)",
+          "pasteLog": {
+            "{taskId}": { "count": 2, "chars": 180, "lastAt": 1234567890 }
+          },
           "windowFocused": "boolean | null",
           "lastActivityAt": "number | null",
           "isFullscreen": "boolean | null",
@@ -255,6 +259,7 @@ Teacher per-student actions:
 - Remote edit (Python/Scratch only): `requestTeacherEdit` sets `teacherEditRequestedAt` and clears `teacherEditAcceptedAt`/`teacherLiveCode`/`teacherEditApplyCode`/`teacherEditAppliedAt`, prompting the student for consent. Once accepted, `pushTeacherLiveCode` streams `teacherLiveCode` as the teacher types; `commitTeacherEdit` writes the final code to `teacherEditApplyCode` + `teacherEditAppliedAt` and directly to the student's `currentCode`; `cancelTeacherEdit` clears the request without committing. All eight `teacherEdit*`/`teacherLiveCode` fields are cleared by `setTaskId`.
 - Remote stage push: `requestTeacherStage` sets `teacherStageRequestedAt` and `teacherStagePendingAction` (a reset-action string, same shape as `remoteResetAction`) and clears `teacherStageAcceptedAt`, prompting the student for consent before the stage change is applied; `clearTeacherStage` clears all three fields. Cleared by `setTaskId`.
 - Stage reference reveal: `recordSupportStageReveal` writes `supportRevealLog/{anonymousId}/{taskId}/{stageIndex}` with `source: "teacher"`, stage label, attempt count, and server timestamp. This reveals a read-only Python/HTML stage reference to that one student and does not write to their editor.
+- "Show on every task" reference: `setAutoRevealStage` writes the student's `autoRevealStage` (`'first'` = first support stage, `'support'` = every support stage, `'solution'` = the complete stage, falling back to every support stage where a task has none; `null` = off). The student's client (`useStudentCodeState`) re-applies it as each task loads in a live lesson, logging each reveal with `source: "teacher-auto"` so the report counts it separately. Session-only: it lives on the student node, which `createSession`/`endSession` clear. Not cleared by `setTaskId`.
 - Send video call link: `sendVideoCallLink(anonymousId)` stamps that student's own `videoCallLinkPushedAt`, from the "📹 Send Video Call Link" action in `StudentModal.jsx`'s "More" menu — pops `VideoCallPrompt.jsx` for that one student. Independent of the session-level `videoCallLink`; the teacher can target one student mid-lesson even outside the waiting room.
 
 Student writes:
@@ -276,6 +281,7 @@ Student writes:
 - Dismiss a teacher highlight: removes one `teacherHighlights/{highlightId}` entry on their own node (same `removeTeacherHighlight` call the teacher uses to retract one).
 - Presence: own `windowFocused`, `lastActivityAt`, `isFullscreen`, and `visiblePanes` via `writeStudentPresence`, independent of the `online` onDisconnect key. `isFullscreen` mirrors `document.fullscreenElement` (updated on the browser's `fullscreenchange` event) and drives the "⛶ Fullscreen" badge on `StudentCard` — it reflects actual fullscreen state, not whether `fullscreenRequestedAt` was acted on. `visiblePanes` is written by `LessonTaskContent.jsx` on every change (debounced by identity, not per-keystroke) and reflects the info/explainer pane's open/closed state uniformly across all lesson types, plus each module's own internal panes for Electronics/Python/HTML/Arcade (`modulePanes`) or Scratch's Blocks/Stage split.
 - Remote edit/stage consent: `acceptTeacherEdit`/`acceptTeacherStage` set their own `teacherEditAcceptedAt`/`teacherStageAcceptedAt`; `declineTeacherEdit`/`declineTeacherStage` clear the corresponding request fields without accepting.
+- Large pastes: own `pasteLog/{taskId}` via `recordStudentPaste` (`{ count, chars, lastAt }`, see `docs/agents/classroom-behaviours.md`). Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `pastes` and the task summary's `pasteCount`/`pastedStudentCount`.
 - Stage reference reveal: after a failed attempt, students can reveal their own Python/HTML Support `codeStages` entries. The same `supportRevealLog` record stores `source: "student"`, stage label, attempt count, and server timestamp. Revealing does not change editor contents.
 
 Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields, `overrideLog`, and `supportRevealLog`. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, their own `attemptLog/{anonymousId}` node, their own `carryFallbackLog/{anonymousId}` node, and their own `supportRevealLog/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers).

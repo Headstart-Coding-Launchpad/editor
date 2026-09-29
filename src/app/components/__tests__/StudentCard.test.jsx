@@ -67,6 +67,16 @@ describe('StudentCard', () => {
     expect(screen.getByText('Jamie')).toBeInTheDocument()
   })
 
+  it('flags a large paste on the current task only', () => {
+    const { unmount } = render(
+      <StudentCard {...mkProps({}, { pasteLog: { 1: { count: 2, chars: 120 } } })} />
+    )
+    expect(screen.getByText('📋 Pasted ×2')).toBeInTheDocument()
+    unmount()
+    render(<StudentCard {...mkProps({}, { pasteLog: { 7: { count: 1, chars: 50 } } })} />)
+    expect(screen.queryByText(/Pasted/)).not.toBeInTheDocument()
+  })
+
   describe('nudge', () => {
     it('offers a nudge button only while the student is Away', () => {
       const { unmount } = render(<StudentCard {...mkProps({ onNudge: vi.fn() })} />)

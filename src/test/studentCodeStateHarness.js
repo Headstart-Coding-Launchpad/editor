@@ -77,6 +77,7 @@ export const WRITER_NAMES = [
   'writeStudentInteraction',
   'recordStudentCarryFallback',
   'recordSupportStageReveal',
+  'recordStudentPaste',
   'writeStudentPersonalSandbox',
   'writeStudentPresence',
   'registerPresence',

@@ -720,6 +720,47 @@ describe('LessonTaskContent live copy blocking', () => {
     expect(copyEvent.defaultPrevented).toBe(true)
   })
 
+  it('also copy-blocks the explainer panel beside the mirrored workspace', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    const { container } = render(
+      <LessonTaskContent
+        {...baseProps}
+        task={{ ...baseProps.task, explainer: 'Read this **carefully**' }}
+        isLiveCopyBlocked
+      />
+    )
+    const blocked = container.querySelectorAll('.live-copy-blocked')
+    expect(blocked.length).toBe(2)
+    const explainer = [...blocked].find((el) => !el.classList.contains('live-view-active'))
+    const copyEvent = new Event('copy', { bubbles: true, cancelable: true })
+    ;(explainer.querySelector('*') ?? explainer).dispatchEvent(copyEvent)
+    expect(copyEvent.defaultPrevented).toBe(true)
+  })
+
+  it('reports pastes into a code editor, and copies from it, to the code state', () => {
+    const cs = { handleEditorPaste: vi.fn(), handleEditorCopy: vi.fn() }
+    getLessonModule.mockReturnValue({
+      ...PYTHON_MODULE,
+      StudentWorkspace: () => (
+        <div className="cm-editor">
+          <div data-testid="cm-content">code</div>
+        </div>
+      ),
+    })
+    render(<LessonTaskContent {...baseProps} cs={cs} isForcedTeacherLive={false} />)
+    const target = screen.getByTestId('cm-content')
+
+    const paste = new Event('paste', { bubbles: true })
+    paste.clipboardData = { getData: () => 'pasted text' }
+    target.dispatchEvent(paste)
+    expect(cs.handleEditorPaste).toHaveBeenCalledWith('pasted text')
+
+    const copy = new Event('copy', { bubbles: true })
+    copy.clipboardData = { getData: () => 'my own code' }
+    target.dispatchEvent(copy)
+    expect(cs.handleEditorCopy).toHaveBeenCalledWith('my own code')
+  })
+
   it('leaves the workspace selectable for a presenting teacher watching a student', () => {
     const editorArea = renderWorkspace({ isLiveCopyBlocked: false })
 

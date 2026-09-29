@@ -620,6 +620,43 @@ describe('buildSessionReport', () => {
     })
   })
 
+  it('keeps "every task" (teacher-auto) reveals as their own source', () => {
+    const withAuto = {
+      ...session,
+      supportRevealLog: {
+        alice: {
+          1: { 0: { taskId: 1, stageIndex: 0, stageLabel: 'Hint', source: 'teacher-auto' } },
+        },
+      },
+    }
+    const report = buildSessionReport({ session: withAuto, lesson })
+    expect(taskById(studentByLabel(report, 'Student 1').tasks, 1).supportReveals[0].source).toBe(
+      'teacher-auto'
+    )
+    expect(taskById(report.taskSummary, 1).supportRevealSources).toEqual({
+      teacher: 0,
+      student: 0,
+      'teacher-auto': 1,
+    })
+  })
+
+  it('reports large pastes per student task and per task summary', () => {
+    const withPastes = {
+      ...session,
+      students: {
+        ...session.students,
+        alice: { ...session.students.alice, pasteLog: { 1: { count: 2, chars: 180, lastAt: 1 } } },
+      },
+    }
+    const report = buildSessionReport({ session: withPastes, lesson })
+    expect(taskById(studentByLabel(report, 'Student 1').tasks, 1).pastes).toEqual({
+      count: 2,
+      chars: 180,
+    })
+    expect(taskById(studentByLabel(report, 'Student 2').tasks, 1).pastes).toBeUndefined()
+    expect(taskById(report.taskSummary, 1)).toMatchObject({ pasteCount: 2, pastedStudentCount: 1 })
+  })
+
   it("folds a live per-task teacher rating into that task's summary", () => {
     const withTaskRating = {
       ...session,

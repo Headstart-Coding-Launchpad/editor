@@ -303,3 +303,35 @@ describe('resolveIframeErrorLocation', () => {
     expect(resolveIframeErrorLocation(loadId, entrySrc, 1)).toBeNull()
   })
 })
+
+// ─── copyProtect — broadcast viewers ─────────────────────────────────────────
+
+describe('buildIframeSrc copyProtect', () => {
+  async function renderedHtml(options) {
+    const blobs = []
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
+      blobs.push(blob)
+      return `blob:test-${blobs.length}`
+    })
+    buildIframeSrc(
+      [{ name: 'index.html', type: 'html', content: '<html><body><p>Hi</p></body></html>' }],
+      'index.html',
+      options
+    )
+    return blobs[blobs.length - 1].text()
+  }
+
+  it('blocks selection, copy and the context menu inside a broadcast preview', async () => {
+    const html = await renderedHtml({ copyProtect: true })
+    expect(html).toContain('user-select:none')
+    expect(html).toContain("'contextmenu'")
+    // Injected at the end of the body so student line numbers are unaffected.
+    expect(html.indexOf("'contextmenu'")).toBeGreaterThan(html.indexOf('<p>Hi</p>'))
+  })
+
+  it('leaves a normal preview untouched', async () => {
+    const html = await renderedHtml()
+    expect(html).not.toContain('user-select:none')
+    expect(html).not.toContain("'contextmenu'")
+  })
+})

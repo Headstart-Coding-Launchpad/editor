@@ -104,6 +104,12 @@ function formatSummaryFailures(task) {
   return parts.length > 0 ? parts.join('; ') : '-'
 }
 
+const REVEAL_SOURCE_LABELS = {
+  teacher: 'teacher',
+  student: 'student',
+  'teacher-auto': 'every-task',
+}
+
 // How often students needed a reference (support stage) for this task, and
 // who opened it — "3 opened by 2 students (2 teacher, 1 student)".
 function formatSummaryReferences(task) {
@@ -112,10 +118,16 @@ function formatSummaryReferences(task) {
   const studentCount = task.supportRevealStudentCount ?? 0
   const sources = Object.entries(task.supportRevealSources ?? {})
     .filter(([, n]) => n > 0)
-    .map(([source, n]) => `${n} ${source}`)
+    .map(([source, n]) => `${n} ${REVEAL_SOURCE_LABELS[source] ?? source}`)
   return `${count} opened by ${studentCount} student${studentCount === 1 ? '' : 's'}${
     sources.length > 0 ? ` (${sources.join(', ')})` : ''
   }`
+}
+
+function formatSummaryPastes(task) {
+  if (!task.pastedStudentCount) return '-'
+  const n = task.pastedStudentCount
+  return `${n} student${n === 1 ? '' : 's'} (${task.pasteCount} paste${task.pasteCount === 1 ? '' : 's'})`
 }
 
 function formatTaskReferences(task) {
@@ -146,6 +158,11 @@ function StudentTaskRow({ task }) {
         )}
         {formatTaskReferences(task) && (
           <span style={s.attemptsCount}>{formatTaskReferences(task)}</span>
+        )}
+        {task.pastes && (
+          <span style={s.attemptsCount}>
+            📋 Pasted ×{task.pastes.count} ({task.pastes.chars} chars)
+          </span>
         )}
         {task.override && <span style={s.overrideNote}>{formatOverrideDetail(task)}</span>}
         {task.distinctAttempts.length > 0 && (
@@ -324,6 +341,7 @@ export default function TeacherReportModal({ report, onClose, onSaveFeedback }) 
                     'Avg Time',
                     'Common Failures',
                     'References',
+                    'Pasted',
                     'Teacher Rating',
                   ].map((h) => (
                     <th key={h} style={s.th}>
@@ -348,6 +366,7 @@ export default function TeacherReportModal({ report, onClose, onSaveFeedback }) 
                     <td style={s.td}>{formatDuration(task.avgTimeOnTaskMs)}</td>
                     <td style={s.td}>{formatSummaryFailures(task)}</td>
                     <td style={s.td}>{formatSummaryReferences(task)}</td>
+                    <td style={s.td}>{formatSummaryPastes(task)}</td>
                     <td style={s.td}>
                       {task.teacherRating ? (
                         <div style={s.teacherRatingCell}>

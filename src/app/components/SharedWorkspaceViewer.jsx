@@ -53,6 +53,7 @@ const NOOP_SESSION_WRITES = {
   writeStudentInteraction: NOOP_ASYNC,
   recordStudentCarryFallback: NOOP_ASYNC,
   recordSupportStageReveal: NOOP_ASYNC,
+  recordStudentPaste: NOOP_ASYNC,
   writeStudentPersonalSandbox: NOOP_ASYNC,
   writeStudentPresence: NOOP_ASYNC,
   registerPresence: NOOP,

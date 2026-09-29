@@ -12,6 +12,14 @@ const LEGACY_STAGE_ROLE_ALIASES = {
   solution: 'complete',
 }
 
+// Who opened a support-stage reference (supportRevealLog entries):
+// 'teacher-auto' is the teacher's per-student "every task" reference.
+export const SUPPORT_REVEAL_SOURCES = ['student', 'teacher', 'teacher-auto']
+
+// students.{id}.autoRevealStage values: the first support stage, every support
+// stage, or the complete (solution) stage.
+export const AUTO_REVEAL_MODES = ['first', 'support', 'solution']
+
 export function isValidStageRole(role) {
   return (
     STAGE_ROLES.includes(role) ||

@@ -499,6 +499,22 @@ describe('StudentModal', () => {
       })
       expect(props.onRemoteReset).toHaveBeenCalledWith('student-1', 'reveal_stage_1')
     })
+
+    it('sets and shows the "every task" reference for this student', async () => {
+      const user = userEvent.setup()
+      const props = mkProps({ lesson: LESSON_WITH_COMPLETE_STAGE, onSetAutoReveal: vi.fn() })
+      const { rerender } = render(<StudentModal {...props} />)
+      await user.click(screen.getByRole('button', { name: /^Reveal/i }))
+      expect(screen.getByText('Show on every task')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'First hint' }))
+      expect(props.onSetAutoReveal).toHaveBeenCalledWith('student-1', 'first')
+
+      rerender(<StudentModal {...props} student={{ ...props.student, autoRevealStage: 'first' }} />)
+      expect(screen.getByText(/Every task: First hint/)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /^Reveal/i }))
+      await user.click(screen.getByRole('button', { name: 'Off' }))
+      expect(props.onSetAutoReveal).toHaveBeenLastCalledWith('student-1', null)
+    })
   })
 
   describe('video call link', () => {
