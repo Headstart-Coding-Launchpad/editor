@@ -126,6 +126,23 @@ describe('Keyboard UI: shortcuts', () => {
     expect(screen.getByText(/Use the keys this time: Ctrl \+ C/)).toBeInTheDocument()
   })
 
+  it('counts Shift with a non-typing key, including Shift+Tab', () => {
+    const task = {
+      ...SHORTCUT,
+      items: [
+        { id: 'a', combo: 'Shift+ArrowLeft', prompt: 'Select a letter' },
+        { id: 'b', combo: 'Shift+Tab', prompt: 'Go back a field' },
+      ],
+    }
+    const { state } = renderKeyboard(task)
+    const box = screen.getByRole('textbox', { name: /Practice box/ })
+    press(box, 'ArrowLeft', { code: 'ArrowLeft', shiftKey: true })
+    expect(state().items.a).toEqual({ performed: true, via: 'keyboard', source: 'hardware' })
+    const notCancelled = fireEvent.keyDown(box, { key: 'Tab', code: 'Tab', shiftKey: true })
+    expect(notCancelled).toBe(false)
+    expect(state().items.b).toEqual({ performed: true, via: 'keyboard', source: 'hardware' })
+  })
+
   it('stops the browser acting on a non-text shortcut', () => {
     const task = { ...SHORTCUT, items: [{ id: 'a', combo: 'Ctrl+S', prompt: 'Save' }] }
     renderKeyboard(task)

@@ -470,8 +470,11 @@ export function gradeItem(task, item, itemState = {}) {
     }
     case 'to_decimal': {
       const answer = String(itemState.answer ?? '').trim()
-      if (answer === solution.answer) return { correct: true, hint: null }
       if (!/^\d+$/.test(answer)) return { correct: false, hint: 'Type a whole number.' }
+      // Compared as numbers (like hex mode's decimal answers), so "05" is 5.
+      if (parseInt(answer, 10) === parseInt(solution.answer, 10)) {
+        return { correct: true, hint: null }
+      }
       return {
         correct: false,
         hint: 'Not quite. Add up the place values of the columns with a 1.',

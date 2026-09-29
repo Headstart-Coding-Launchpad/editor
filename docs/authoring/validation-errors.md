@@ -144,6 +144,7 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … item …: key must be a character or one of ….` | A `find_key` `key` is neither a typeable character nor a named key. | Use one character (`a`, `7`, `?`) or a named key such as `Enter`, `Space`, `Backspace`, `Shift`. |
 | `Task … item …: char must be one character that can be typed on a … keyboard.` | A `symbols` `char` is empty, longer than one character or not on the layout. | Use a single symbol such as `@`, `£` or `"`. |
 | `Task … item …: combo must be a shortcut like "Ctrl+C".` | A `shortcuts` `combo` is missing or has no modifier. | Write it as `Ctrl+C`, `Ctrl+Shift+Z`, … (`Ctrl` also means Cmd on a Mac). |
+| `Task … item …: "…" just types a character. Use Ctrl, Cmd or Alt, or Shift with a key like Tab or an arrow key.` | The `combo` is Shift plus a character key (`Shift+A`), which types a capital rather than doing a shortcut. | Add Ctrl/Cmd or Alt, or use a non-typing key (`Shift+Tab`, `Shift+ArrowLeft`). To practise capitals, use `type_text` or `symbols` mode. |
 | `Task … item …: "…" is kept by the browser, so students can't press it here. Teach it with a quiz question instead.` | The browser handles that shortcut itself (Ctrl+W, Ctrl+T, Ctrl+N, Ctrl+Q, Ctrl+Tab, Ctrl+Shift+T/N, Alt+F4), so the page never sees it. | Use a different shortcut, or ask about it in a quiz task. |
 | `Task … item …: add a prompt telling students what the shortcut does.` (warning) | A `shortcuts` item has no `prompt`; students only see the keys. | Add `prompt:` such as "Copy the selected word". |
 
@@ -263,7 +264,7 @@ See the module docs for each check's required fields.
 | `Task … has output checks — open the Complete tab and run to verify the complete solution` | Output checks need a real run, which the CLI can't do. | Open the task in the Builder and run the complete solution. |
 | `Task … has element/output checks — open the Complete tab and run to verify the complete solution` | Same for HTML element checks. | Run it in the Builder. |
 | `Task … complete filesystem does not satisfy a check — review the complete filesystem` | The complete filesystem fails a check. | Fix the complete state or the check. |
-| `Task … complete desktop does not satisfy a check — review the complete desktop` | The complete Desktop state fails a check. | Fix the complete state or the check. |
+| `Task … complete desktop does not satisfy a check — review the complete desktop` | The complete Desktop state fails a file or window check (`browser_visited` and `search_query` are not tested against it). | Fix the complete state or the check. |
 | `Task … complete breadboard does not satisfy a check — review the complete circuit` | The complete Electronics circuit fails a circuit check. | Fix the complete circuit or the check. |
 | `Task … has a completion check that hasn't been tested — run the task to verify it` (**Builder only**) | The check hasn't been run against the task since it was edited. | Run the task in the Builder. |
 

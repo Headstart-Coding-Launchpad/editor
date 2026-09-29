@@ -18,6 +18,20 @@ Use this changelog when a platform or documentation change alters the lesson aut
 - UI polish that does not affect saved lesson fields or authoring workflow.
 - Test-only, tooling-only, or deployment-only changes that authors do not need to know about.
 
+## 2026-09-29
+
+### Keyboard shortcuts, binary answers and validation messages
+
+- Keyboard `shortcuts` items can now use Shift with a non-typing key (`Shift+Tab`,
+  `Shift+ArrowLeft`); students can complete them. `Shift+<character>` (e.g. `Shift+A`) is now a
+  validation error because it just types a capital. See
+  [activities/keyboard.md](activities/keyboard.md).
+- Binary `to_decimal` answers are compared as numbers, so `05` is accepted for `5` (matching hex
+  mode's decimal answers).
+- The "complete desktop does not satisfy a check" warning no longer tests `browser_visited` or
+  `search_query` checks, which the complete desktop can't hold.
+- A missing task or group title is reported once instead of twice.
+
 ## 2026-09-28
 
 ### Desktop input checks (`input_gesture`, `input_shortcut`, `input_modifier`)

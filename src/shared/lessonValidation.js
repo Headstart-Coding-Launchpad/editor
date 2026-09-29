@@ -101,7 +101,6 @@ function validateLessonEnvelope(lesson, errors, extraRules) {
 function validateGroups(tasks, errors) {
   tasks.forEach((item, i) => {
     if (item?.type !== 'group') return
-    if (!item.title) errors.push(`Group ${i + 1} is missing a title`)
     if (!item.subtasks || item.subtasks.length === 0) {
       errors.push(`Group "${item.title || i + 1}" has no subtasks — add at least one subtask`)
     }
@@ -198,7 +197,7 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
     }
   }
 
-  if (!task.title) errors.push(`Task ${n} is missing a title`)
+  // Missing titles are reported once, by validateDraftLessonStructure (it runs for every lesson).
   if (
     task.estimatedMinutes != null &&
     (!Number.isFinite(Number(task.estimatedMinutes)) || Number(task.estimatedMinutes) <= 0)

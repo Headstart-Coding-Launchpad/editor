@@ -540,6 +540,18 @@ describe('draft lesson metadata', () => {
     expect(exported).toMatchObject([{ id: 31, intent: 'Explain loops in **Markdown**.' }])
   })
 
+  it('reports a missing task or group title once, in drafts and normal lessons', () => {
+    const draft = lesson('python', [{ id: 1, intent: 'Untitled plan' }])
+    draft.draft = true
+    expect(validateLesson(draft).errors).toEqual(['Task 1 is missing a title'])
+    const grouped = lesson('python', [
+      { type: 'group', subtasks: [{ id: 1, title: 'T', starterCode: 'x' }] },
+    ])
+    expect(
+      validateLesson(grouped).errors.filter((error) => error.includes('missing a title'))
+    ).toEqual(['Group 1 is missing a title'])
+  })
+
   it('requires normal task fields when draft is cleared', () => {
     const draft = lesson('python', [
       { id: 31, title: 'Read', taskType: 'information', intent: 'Brief' },
@@ -670,6 +682,21 @@ describe('complete solution validation', () => {
       ])
     )
     expect(warnings.some((w) => w.includes('complete filesystem'))).toBe(false)
+  })
+
+  it('does not test browser checks against the complete desktop (it has no browser history)', () => {
+    const task = {
+      id: 1,
+      title: 'Desktop',
+      _checkTested: true,
+      check: [
+        { type: 'browser_visited', state: 'visited', pageId: 'home' },
+        { type: 'search_query', value: 'cats' },
+      ],
+      completeDesktop: { fs: { '/': { type: 'dir' } }, windows: [] },
+    }
+    const { warnings } = validateLesson(lesson('desktop', [task]))
+    expect(warnings.some((w) => w.includes('complete desktop'))).toBe(false)
   })
 })
 

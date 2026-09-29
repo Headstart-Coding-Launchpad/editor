@@ -43,6 +43,18 @@ describe('validateKeyboardTask', () => {
     ])
   })
 
+  it('accepts Shift with a non-typing key but rejects Shift with a character', () => {
+    const task = (combo) => ({ mode: 'shortcuts', items: [{ id: 'a', combo, prompt: 'Do it' }] })
+    expect(validateKeyboardTask(task('Shift+ArrowLeft'), 1).errors).toEqual([])
+    expect(validateKeyboardTask(task('Shift+Tab'), 1).errors).toEqual([])
+    expect(validateKeyboardTask(task('Shift+A'), 1).errors).toEqual([
+      'Task 1 item 1: "Shift+A" just types a character. Use Ctrl, Cmd or Alt, or Shift with a key like Tab or an arrow key.',
+    ])
+    expect(validateKeyboardTask(task('Ctrl+Shift'), 1).errors).toEqual([
+      'Task 1 item 1: combo must be a shortcut like "Ctrl+C".',
+    ])
+  })
+
   it('reports untypeable text, bad layouts, bad settings and duplicate ids', () => {
     expect(
       validateKeyboardTask({ ...typeText, items: [{ id: 'a', text: 'Price €5' }] }, 1).errors

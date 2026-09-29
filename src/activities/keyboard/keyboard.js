@@ -89,8 +89,15 @@ export function validateKeyboardTask(task, n) {
       }
     } else if (task.mode === 'shortcuts') {
       const combo = normalizeCombo(item?.combo)
-      if (!combo || !combo.includes('+')) {
+      const parts = combo.split('+')
+      const key = parts[parts.length - 1]
+      if (!combo || parts.length < 2 || ['mod', 'alt', 'shift'].includes(key)) {
         errors.push(`${label}: combo must be a shortcut like "Ctrl+C".`)
+      } else if (parts.slice(0, -1).every((mod) => mod === 'shift') && isTypedKey(key)) {
+        // Shift with a character key just types it (Shift+A is "A"), so it is never a shortcut.
+        errors.push(
+          `${label}: "${item.combo}" just types a character. Use Ctrl, Cmd or Alt, or Shift with a key like Tab or an arrow key.`
+        )
       } else if (isReservedCombo(combo)) {
         errors.push(
           `${label}: "${item.combo}" is kept by the browser, so students can't press it here. Teach it with a quiz question instead.`
@@ -101,6 +108,11 @@ export function validateKeyboardTask(task, n) {
     }
   })
   return { errors, warnings }
+}
+
+// A combo key part that types a character rather than doing something ('a', '2', 'space').
+function isTypedKey(key) {
+  return key.length === 1 || key === 'space'
 }
 
 // What the student has to press, in words ("Shift + 2"), for prompts and hints.

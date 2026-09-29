@@ -102,6 +102,7 @@ describe('grading', () => {
   it('marks to_decimal answers', () => {
     const task = { mode: 'to_decimal', bits: 4, items: [{ id: 'a', value: '1011' }] }
     expect(gradeItem(task, task.items[0], { answer: ' 11 ' }).correct).toBe(true)
+    expect(gradeItem(task, task.items[0], { answer: '011' }).correct).toBe(true)
     expect(gradeItem(task, task.items[0], { answer: 'eleven' }).hint).toBe('Type a whole number.')
     expect(gradeItem(task, task.items[0], { answer: '12' }).correct).toBe(false)
   })

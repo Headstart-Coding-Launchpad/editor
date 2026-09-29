@@ -350,21 +350,23 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
   const showDecimal =
     typeof task?.showDecimal === 'boolean' ? task.showDecimal : mode === 'make_number'
   const [index, setIndex] = useState(0)
-  // Results captured when Check was pressed: { [itemId]: { correct, hint } }. An item's result
-  // is cleared as soon as the student changes it, so marks never grade work live.
+  // Results captured when Check was pressed: { [itemId]: { correct, hint, snapshot } }. A result
+  // only shows while the item and the student's entry still match its snapshot, so marks never
+  // grade work live and vanish when anything changes it (an edit, a teacher reset, Start again,
+  // or the author editing the answer).
   const [results, setResults] = useState({})
   const current = items[Math.min(index, items.length - 1)]
   if (!current) return <p>This binary task has no questions yet.</p>
   const itemState = itemStateOf(state, current, task)
-  const liveResult = readOnly ? gradeItem(task, current, itemState) : results[current.id]
+  const snapshotOf = (item) => JSON.stringify([item, itemStateOf(state, item, task)])
+  const checkedResult = (item) => {
+    const result = results[item.id]
+    return result && result.snapshot === snapshotOf(item) ? result : undefined
+  }
+  const liveResult = readOnly ? gradeItem(task, current, itemState) : checkedResult(current)
 
   function update(patch) {
     if (readOnly) return
-    setResults((prev) => {
-      if (!(current.id in prev)) return prev
-      const { [current.id]: _dropped, ...rest } = prev
-      return rest
-    })
     onChange?.((prev) => ({
       ...(prev ?? { v: 1 }),
       items: {
@@ -378,7 +380,10 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
     const outcome = await onSubmit?.()
     const next = {}
     for (const item of items) {
-      next[item.id] = gradeItem(task, item, itemStateOf(state, item, task))
+      next[item.id] = {
+        ...gradeItem(task, item, itemStateOf(state, item, task)),
+        snapshot: snapshotOf(item),
+      }
     }
     setResults(next)
     if (!outcome?.passed) {
@@ -390,7 +395,7 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
   const statusFor = (item) => {
     const result = readOnly
       ? gradeItem(task, item, itemStateOf(state, item, task))
-      : results[item.id]
+      : checkedResult(item)
     if (!result) return null
     return result.correct ? 'done' : 'wrong'
   }

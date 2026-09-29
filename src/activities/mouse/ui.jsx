@@ -25,6 +25,8 @@ const TOUCH_WORDS = {
   hover: 'Hover over',
 }
 const DOUBLE_TAP_MS = 350
+// How long after a drag or press-and-hold completes an item its trailing click is ignored.
+const POST_GESTURE_CLICK_MS = 100
 
 function targetName(task, id) {
   return task?.targets?.find((target) => target.id === id)?.label ?? id
@@ -70,6 +72,9 @@ export function MouseStudentView({
   const lastPointerTypeRef = useRef('mouse')
   const lastTapRef = useRef({ targetId: null, at: 0 })
   const hoverTimersRef = useRef(new Map())
+  // Resetting the recorder also drops the recogniser's "ignore the click after a drag" guard,
+  // so the view keeps its own window for the click the browser sends after the pointerup.
+  const suppressClickUntilRef = useRef(0)
   const latestRef = useRef({})
   latestRef.current = { current, state, touch }
 
@@ -121,6 +126,8 @@ export function MouseStudentView({
       if (handledRef.current.has(key)) continue
       handledRef.current.add(key)
       if (!item || readOnly) continue
+      // Resting the pointer on a target is only an answer when the item asks for a hover.
+      if (gesture.gesture === 'hover' && item.action !== 'hover') continue
       if (gesture.targetId !== item.target) {
         if (gesture.targetId)
           setMessage(
@@ -142,6 +149,9 @@ export function MouseStudentView({
       setMessage(null)
       setItemResult(item, gesture.gesture)
       if (gestureSatisfies(item.action, gesture.gesture, { allowTouchEquivalent: allowTouch })) {
+        if (gesture.gesture === 'drag' || gesture.gesture === 'long_press') {
+          suppressClickUntilRef.current = Date.now() + POST_GESTURE_CLICK_MS
+        }
         recorderRef.current.reset()
         handledRef.current.clear()
         const remaining = items.filter((other) => other !== item && !isDone(other))
@@ -240,6 +250,7 @@ export function MouseStudentView({
 
   // ─── Click family (stage, bubbling from targets) ──────────────────────────
   function onStageClick(event) {
+    if (Date.now() <= suppressClickUntilRef.current) return
     const targetId = event.target?.closest?.('[data-input-id]')?.getAttribute('data-input-id')
     // A keyboard "click" (Enter/Space on a focused target) has no pointer behind it.
     if (event.detail === 0 && targetId) {

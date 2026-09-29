@@ -259,12 +259,9 @@ export function warnCompleteFs(task, n, warnings) {
   }
 }
 
-const DESKTOP_STATE_CHECK_TYPES = [
-  'window_state',
-  'windows_arranged_side_by_side',
-  'browser_visited',
-  'search_query',
-]
+// Window rules only: the complete-desktop editor sets files and windows, never browser history,
+// so browser_visited / search_query checks could never pass against it.
+const DESKTOP_STATE_CHECK_TYPES = ['window_state', 'windows_arranged_side_by_side']
 
 export function warnCompleteDesktop(task, n, warnings) {
   if (!task.check || !task.completeDesktop || typeof task.completeDesktop !== 'object') return

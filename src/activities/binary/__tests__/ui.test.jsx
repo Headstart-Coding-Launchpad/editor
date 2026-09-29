@@ -1,5 +1,6 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import React from 'react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { BinaryStudentView } from '../ui.jsx'
 import binary from '../definition.js'
 import { renderActivityUi } from '../../../test/activityUiHarness.jsx'
@@ -59,6 +60,37 @@ describe('Binary UI', () => {
     // The hint clears as soon as the student changes the item.
     fireEvent.click(screen.getByRole('switch', { name: 'Bits 8 column' }))
     expect(screen.queryByText(/too big/)).not.toBeInTheDocument()
+  })
+
+  it('drops check marks when the state or the answer changes from outside', async () => {
+    const task = { ...MAKE, items: [{ id: 'a', target: 8 }] }
+    const checked = { v: 1, items: { a: { bits: '1000' } } }
+    const onSubmit = vi.fn(() => Promise.resolve({ passed: true }))
+    const { rerender } = render(
+      <BinaryStudentView task={task} state={checked} onChange={() => {}} onSubmit={onSubmit} />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Check answers' }))
+    expect(await screen.findByText(/Correct/)).toBeInTheDocument()
+    // A teacher reset (or Start again) replaces the state without a student edit.
+    rerender(
+      <BinaryStudentView
+        task={task}
+        state={binary.initialState(task)}
+        onChange={() => {}}
+        onSubmit={onSubmit}
+      />
+    )
+    expect(screen.queryByText(/Correct/)).not.toBeInTheDocument()
+    // Back to the checked entry, but the author has changed the answer.
+    rerender(
+      <BinaryStudentView
+        task={{ ...task, items: [{ id: 'a', target: 4 }] }}
+        state={checked}
+        onChange={() => {}}
+        onSubmit={onSubmit}
+      />
+    )
+    expect(screen.queryByText(/Correct/)).not.toBeInTheDocument()
   })
 
   it('navigates between questions', () => {

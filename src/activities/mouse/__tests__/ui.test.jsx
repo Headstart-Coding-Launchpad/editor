@@ -164,6 +164,35 @@ describe('Mouse UI', () => {
     expect(screen.queryByTestId('mouse-stage')).not.toBeInTheDocument()
   })
 
+  it('ignores the click the browser sends after a drag completes an item', () => {
+    const task = taskWith([
+      { id: 'a', action: 'drag', target: 'star', to: 'box' },
+      { id: 'b', action: 'click', target: 'star' },
+    ])
+    const { state } = renderMouse(task)
+    const box = target('box')
+    document.elementFromPoint = () => box
+    const star = target('star')
+    fireEvent.pointerDown(star, { pointerId: 1, pointerType: 'mouse', clientX: 10, clientY: 10 })
+    fireEvent.pointerMove(star, { pointerId: 1, pointerType: 'mouse', clientX: 60, clientY: 12 })
+    fireEvent.pointerUp(star, { pointerId: 1, pointerType: 'mouse', clientX: 200, clientY: 12 })
+    fireEvent.click(star, { detail: 1 })
+    expect(state().items.a).toEqual({ via: 'drag' })
+    expect(state().items.b).toEqual({})
+    expect(screen.queryByText(/That was the/)).not.toBeInTheDocument()
+  })
+
+  it('does not count resting on the target as the answer to a click item', async () => {
+    const task = taskWith([{ id: 'a', action: 'click', target: 'star' }])
+    const { state } = renderMouse(task)
+    fireEvent.pointerEnter(target('star'), { pointerType: 'mouse' })
+    await new Promise((resolve) => setTimeout(resolve, 900))
+    expect(state().items.a).toEqual({})
+    expect(screen.queryByText(/hover/i)).not.toBeInTheDocument()
+    fireEvent.click(target('star'), { detail: 1 })
+    expect(state().items.a).toEqual({ via: 'click' })
+  })
+
   it('completes a hover after the dwell time without leaving the target', async () => {
     const task = taskWith([{ id: 'a', action: 'hover', target: 'box' }])
     const { state } = renderMouse(task)

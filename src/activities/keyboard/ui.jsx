@@ -221,7 +221,8 @@ export function KeyboardStudentView({
 
   function handleShortcut(event) {
     const combo = comboOf(event)
-    if (!combo || !(event.mods.mod || event.mods.alt)) return false
+    // comboOf only adds a '+' for a real modifier (Shift counts only with a non-typing key).
+    if (!combo || !combo.includes('+')) return false
     const target = normalizeCombo(current.combo)
     lastComboRef.current = { combo, at: event.t }
     if (combo === target) {
@@ -252,7 +253,10 @@ export function KeyboardStudentView({
   function onPracticeKeyDown(domEvent) {
     const event = normalizeKeyEvent(domEvent)
     // Tab must still be able to leave the practice area unless it is the key being practised.
-    if (event.key === 'Tab' && !(mode === 'find_key' && current.key === 'Tab')) return
+    const practisesTab =
+      (mode === 'find_key' && current.key === 'Tab') ||
+      (mode === 'shortcuts' && normalizeCombo(current.combo).split('+').pop() === 'tab')
+    if (event.key === 'Tab' && !practisesTab) return
     if (handleKeyEvent(event)) domEvent.preventDefault()
   }
 

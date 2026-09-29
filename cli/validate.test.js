@@ -114,7 +114,6 @@ describe('characterisation: quiz + code_arrange validation messages', () => {
         ],
         "quiz_missing_title": [
           "Task 1 is missing a title",
-          "Task 1 is missing a title",
         ],
         "short_answer_empty_check_value": [
           "Task 1 is a short-answer quiz with a check enabled but no check value",
