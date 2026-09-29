@@ -970,17 +970,21 @@ export function useStudentCodeState({
     phase,
     lesson,
     session,
-    // useSandboxCodePush keeps its per-module setters until plan step 4.6 routes it via `wire`.
-    // The pushed code replaces the code module's code; Arcade keeps its current design. Pushed
-    // html files replace the files (then the active file); a Scratch push is held for the
-    // workspace, which owns its blocks.
-    setCode: (pushed) => restoreWork(lesson.type, withCode(lesson.type, pushed)),
-    setFiles: (pushed) => restoreWork(lesson.type, { ...workValueFor(lesson.type), files: pushed }),
-    setActiveFile: (name) =>
-      setWork(lesson.type, { ...workValueFor(lesson.type), activeFile: name }),
-    setFsState: (fs) => restoreWork('filesystem', fs),
-    setDesktopState: (desktop) => restoreWork('desktop', desktop),
-    setScratchSandboxProject: setSandboxPushedWork,
+    // The pushed work (decoded by the module's wire) replaces the slot's work; Arcade keeps its
+    // current design. A workspace-owned module's push (Scratch) is held for the workspace, which
+    // owns its blocks. Pushed files replace the files and open the first one.
+    onPushedWork: (pushed) => {
+      if (getModuleDefinition(lesson.type).workSlot.workspaceOwned) setSandboxPushedWork(pushed)
+      else restoreWork(lesson.type, withCode(lesson.type, pushed))
+    },
+    onPushedFiles: (pushed) => {
+      const current = workValueFor(lesson.type)
+      restoreWork(lesson.type, {
+        ...current,
+        files: pushed,
+        activeFile: pushed.length > 0 ? pushed[0].name : current.activeFile,
+      })
+    },
   })
 
   // When teacher starts live-viewing this student, publish the current in-memory editor state
@@ -2406,8 +2410,9 @@ export function useStudentCodeState({
       // What the Scratch workspace last reported ('' before any report).
       scratchCode:
         scratchWork == null ? '' : getModuleDefinition('scratch').wire.toCode(scratchWork),
-      // The snapshot picks the entry for the task's module (sharedWorkspacePayload keeps its
-      // per-kind parameters until plan step 4.6).
+      // The snapshot picks the entry for the task's module (buildSharedWorkspaceSnapshot keeps
+      // its per-kind parameters, pinned by the Phase 0 share tests, and encodes them with the
+      // module's wire).
       fsState: workValueFor('filesystem'),
       desktopState: workValueFor('desktop'),
       arcadeDesign: storedWork('arcade').meta.arcadeDesign,

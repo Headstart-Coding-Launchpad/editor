@@ -1,5 +1,4 @@
 import { getTaskModuleType } from '../shared/composedLesson'
-import { parseScratchState } from '../shared/workspaceData'
 import { getModuleDefinition } from '../modules/definitions.js'
 import { noLiveExtras } from '../modules/moduleContract.js'
 
@@ -115,18 +114,20 @@ export function describeShareError(err) {
 
 // Copy a shared snapshot into the student's own work through their normal change handlers, so
 // it persists exactly like their own edits. Scratch, Filesystem and Desktop carry their state
-// as a JSON string in `code`; HTML carries files; everything else is plain code.
+// as a JSON string in `code` (decoded with their wire.fromCode; a malformed one is skipped);
+// HTML carries files; everything else is plain code.
 export function applySharedWorkspaceCopy({ code, files, moduleType }, handlers) {
-  const stateKind = getModuleDefinition(moduleType)?.capabilities.sandboxState
+  const definition = getModuleDefinition(moduleType)
+  const stateKind = definition?.capabilities.sandboxState
   const applyJsonState = {
     blocks: handlers.handleScratchChange,
     fs: handlers.handleFsChange,
     desktop: handlers.handleDesktopChange,
   }
-  if (stateKind === 'files') {
+  if (definition?.wire.sandboxChannel === 'files') {
     for (const file of files ?? []) handlers.handleFileChange(file.name, file.content)
   } else if (Object.hasOwn(applyJsonState, stateKind ?? '')) {
-    const parsed = parseScratchState(code)
+    const parsed = definition.wire.fromCode(code)
     if (parsed) applyJsonState[stateKind](parsed)
   } else {
     handlers.handleCodeChange(code ?? '')

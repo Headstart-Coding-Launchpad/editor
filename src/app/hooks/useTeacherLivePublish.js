@@ -4,7 +4,7 @@ import { findTaskById, flattenTasks } from '../../shared/taskUtils'
 import { allowsStudentBroadcast } from '../../activities/registry.pure.js'
 import { toTeacherLiveFiles } from '../studentLiveDisplay'
 import { getLessonModule } from '../../modules/registry'
-import { getEffectiveLessonForTask, getTaskModuleType } from '../../shared/composedLesson'
+import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { getModuleDefinition } from '../../modules/definitions.js'
 import { noLiveExtras } from '../../modules/moduleContract.js'
 
@@ -20,18 +20,18 @@ export function useTeacherLivePublish({
   sessionRef,
   lessonRef,
   currentTaskIdRef,
+  // codeRef / filesRef / activeFileRef: what a lesson type without a module definition (none
+  // today) publishes.
   codeRef,
-  scratchCodeRef,
-  arcadeDesignRef,
   turtleResultRef,
   filesRef,
   activeFileRef,
   outputRef,
   runStatusRef,
   // Generic work slot (every module since plan step 4.5): readWorkValue(moduleType) returns
-  // that module's latest work (or its default when the slot holds another module's work).
-  // Without it, every module publishes from the refs above.
-  readWorkValue = null,
+  // that module's latest work (or its default when the slot holds another module's work). The
+  // payload's code / files / activeFile and extras come from it through the module's wire.
+  readWorkValue,
   editorSelectionRef,
   editorActivityRef,
   // Reactive values — used by the sync dep array and payload snapshot
@@ -84,22 +84,16 @@ export function useTeacherLivePublish({
     // wire.toCode — the code string, or a JSON string for scratch/filesystem/desktop ('' while
     // Scratch has reported nothing) — with their extras (Arcade's design) and no files; on the
     // files channel (html) as a filename → content map with an empty code.
-    const isWorkSlot = definition?.workSlot != null && readWorkValue != null
+    // Scratch publishes what its workspace last reported, never codeRef, which may still hold
+    // whatever an earlier non-Scratch task left behind (that would wipe the mirror's blocks the
+    // moment a broadcast starts, until the next real edit resynced it).
+    const isWorkSlot = definition?.workSlot != null
     const stored = isWorkSlot ? definition.workSlot.stored(readWorkValue(lessonType)) : null
     const onFilesChannel = isWorkSlot && definition.wire.sandboxChannel === 'files'
-    // Without a work slot (readWorkValue), Scratch publishes scratchCodeRef — codeRef.current
-    // would otherwise still hold whatever an earlier non-Scratch task left behind, or an empty
-    // string, wiping out the mirror's blocks the moment a broadcast starts (or the live task
-    // changes) until the next real edit resyncs it.
-    const isScratch =
-      getModuleDefinition(getTaskModuleType(lessonRef.current, currentTaskIdRef.current))
-        ?.capabilities.sandboxState === 'blocks'
     // teacherLive is an update() merge, so every module sends both extras (explicit nulls
-    // for the ones it doesn't have) — see each definition's wire.liveExtras.
+    // for the ones it doesn't have) — see each definition's wire.liveExtras. A module's own
+    // extras come with its work (Arcade's design); Turtle's drawing is a run result.
     const { arcadeDesign, turtleResult } = (definition?.wire.liveExtras ?? noLiveExtras)({
-      // Optional refs: only the module that owns an extra ever needed its ref. A work-slot
-      // module's own extras come with its work.
-      arcadeDesign: arcadeDesignRef?.current,
       turtleResult: turtleResultRef?.current,
       ...stored?.meta,
     })
@@ -122,7 +116,7 @@ export function useTeacherLivePublish({
       sourceStudentName,
       taskId: currentTaskIdRef.current,
       lessonType: lessonRef.current?.type,
-      code: isWorkSlot ? slotCode : isScratch ? scratchCodeRef?.current : codeRef.current,
+      code: isWorkSlot ? slotCode : codeRef.current,
       arcadeDesign,
       turtleResult,
       files: filesMap,

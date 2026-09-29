@@ -146,7 +146,7 @@ Usually changes with:
 - `src/app/hooks/useSession.js`
 - `src/app/hooks/useTeacherLivePublish.js`
 - `src/app/teacherLivePayload.js`
-- `src/app/teacherSandboxContent.js`
+- `src/app/teacherSandboxWork.js`
 - `src/app/studentLiveDisplay.js`
 - `src/app/views/TeacherView.jsx`
 - `src/app/views/teacher/TeacherEditorPanel.jsx`

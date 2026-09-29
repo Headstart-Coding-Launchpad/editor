@@ -21,32 +21,26 @@ export function toTeacherLiveFiles(files) {
 }
 
 // Adapts a teacherLiveReference payload into the same shape each module's
-// getDisplayState returns for its other tabs, chosen by the module's state kind
-// (capabilities.sandboxState): a code string for code modules, {files, entryFile} for
-// html, a parsed object for fs/desktop. Used both for the student-side support-stage
+// getDisplayState returns for its other tabs, through the module's wire codec: on the
+// files channel {files, entryFile} (html); on the code channel `wire.fromCode(code)` — the
+// code string itself for code-string modules (capabilities.sandboxState 'code'), a parsed
+// object for structured state (fs). Used both for the student-side support-stage
 // reference and the teacher's own read-only "Live" tab. Returns null for an
 // inactive/unsupported payload.
 export function teacherLiveReferenceDisplayState(payload, lessonType) {
   if (!payload || !TEACHER_LIVE_REFERENCE_TYPES.includes(lessonType)) return null
-  switch (getModuleDefinition(lessonType)?.capabilities?.sandboxState) {
-    case 'code':
-      return payload.code ?? ''
-    case 'files':
-      return {
-        files: toTeacherLiveFiles(payload.files),
-        entryFile: payload.activeFile || 'index.html',
-      }
-    case 'fs':
-    case 'desktop':
-      try {
-        return JSON.parse(payload.code || '{}')
-      } catch {
-        // Malformed/partial snapshot mid-broadcast — show nothing rather than throw.
-        return {}
-      }
-    default:
-      return null
+  const definition = getModuleDefinition(lessonType)
+  if (!definition) return null
+  const { wire } = definition
+  if (wire.sandboxChannel === 'files') {
+    return {
+      files: toTeacherLiveFiles(payload.files),
+      entryFile: payload.activeFile || 'index.html',
+    }
   }
+  if (definition.capabilities.sandboxState === 'code') return wire.fromCode(payload.code ?? '')
+  // Structured state: a malformed/partial snapshot mid-broadcast shows nothing rather than throw.
+  return wire.fromCode(payload.code || '{}') ?? {}
 }
 
 export function deriveStudentLiveDisplay({
