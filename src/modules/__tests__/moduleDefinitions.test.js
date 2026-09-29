@@ -210,3 +210,212 @@ describe('defineUiModule', () => {
     ).toThrow(/duplicates/)
   })
 })
+
+// Plan step 4.7: the capabilities that replaced the per-type gates in StudentView,
+// StudentModal, StudentWorkspaceBody, StudentCard and LessonTaskContent. Each value pins the
+// inline rule it replaced, so a definition edit that changes a classroom gate is visible here.
+describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
+  const pick = (key) =>
+    Object.fromEntries(
+      MODULE_TYPES.map((type) => [type, getModuleDefinition(type).capabilities[key]])
+    )
+  const typesWith = (key) => MODULE_TYPES.filter((type) => pick(key)[type])
+
+  it('stageReveal: python and html reveal progressively, the rest offer the next stage', () => {
+    expect(pick('stageReveal')).toEqual({
+      python: 'progressive',
+      arcade: 'offer',
+      turtle: 'offer',
+      scratch: 'offer',
+      html: 'progressive',
+      filesystem: 'offer',
+      desktop: 'offer',
+      electronics: 'offer',
+    })
+  })
+
+  it('teacherStageReveal matches the StudentModal Reveal menu (turtle has never had it)', () => {
+    expect(typesWith('teacherStageReveal')).toEqual([
+      'python',
+      'arcade',
+      'scratch',
+      'html',
+      'electronics',
+    ])
+  })
+
+  it.each([
+    ['highlights', ['python', 'html']],
+    ['downloadCode', ['python']],
+    ['fixedExplainer', ['scratch']],
+    [
+      'topicLibrary',
+      ['python', 'arcade', 'turtle', 'html', 'filesystem', 'desktop', 'electronics'],
+    ],
+  ])('%s is set for %j', (key, types) => {
+    expect(typesWith(key)).toEqual(types)
+  })
+
+  it('studentMirror and cardSummary', () => {
+    expect(pick('studentMirror')).toEqual({
+      python: 'code',
+      arcade: 'view',
+      turtle: 'view',
+      scratch: 'blocks',
+      html: 'files',
+      filesystem: 'view',
+      desktop: 'view',
+      electronics: 'view',
+    })
+    expect(pick('cardSummary')).toEqual({
+      python: 'output',
+      arcade: 'output',
+      turtle: null,
+      scratch: 'blocks',
+      html: null,
+      filesystem: 'fs',
+      desktop: null,
+      electronics: 'output',
+    })
+  })
+
+  it('remote run is offered exactly for the modules with a Run', () => {
+    expect(MODULE_TYPES.filter((type) => pick('run')[type] !== 'none')).toEqual([
+      'python',
+      'arcade',
+      'turtle',
+      'scratch',
+      'html',
+      'electronics',
+    ])
+  })
+
+  it('focusPanes are the extra highlight/force panes (Electronics, Scratch)', () => {
+    expect(pick('focusPanes')).toEqual({
+      python: [],
+      arcade: [],
+      turtle: [],
+      scratch: [
+        { id: 'blocks', label: 'Blocks' },
+        { id: 'stage', label: 'Stage' },
+      ],
+      html: [],
+      filesystem: [],
+      desktop: [],
+      electronics: [
+        { id: 'breadboard', label: 'Breadboard' },
+        { id: 'code', label: 'MicroPython' },
+      ],
+    })
+  })
+
+  it('teacherEditor is declared exactly for workSlot.teacherEdit modules, with its copy', () => {
+    const code = { surface: 'code', workspace: null, design: false }
+    expect(pick('teacherEditor')).toEqual({
+      python: code,
+      arcade: { surface: 'view', workspace: 'code', design: true },
+      turtle: code,
+      scratch: { surface: 'blocks', workspace: null, design: false },
+      html: { surface: 'files', workspace: null, design: false },
+      filesystem: null,
+      desktop: null,
+      electronics: { surface: 'view', workspace: 'breadboard', design: false },
+    })
+    for (const type of MODULE_TYPES) {
+      const definition = getModuleDefinition(type)
+      expect(definition.capabilities.teacherEditor !== null, type).toBe(
+        definition.workSlot.teacherEdit
+      )
+    }
+    const copy = (type) => getModuleDefinition(type).meta.teacherEditCopy
+    expect(copy('scratch').action).toBe('Edit Blocks')
+    expect(copy('scratch').consent).toMatch(/Scratch blocks/)
+    expect(copy('electronics').action).toBe('Edit Code')
+    expect(copy('electronics').consent).toMatch(/breadboard/)
+    for (const type of ['python', 'arcade', 'turtle', 'html']) {
+      expect(copy(type).action, type).toBe('Edit Code')
+      expect(copy(type).consent, type).toMatch(/They will type in your editor/)
+    }
+    expect(copy('filesystem')).toBeNull()
+    expect(copy('desktop')).toBeNull()
+  })
+
+  it('lifecycle.hasPersonalSandbox follows each module sandbox-starter rule', () => {
+    const offered = (lesson) =>
+      MODULE_TYPES.filter((type) => getModuleDefinition(type).lifecycle.hasPersonalSandbox(lesson))
+    expect(offered({})).toEqual(['python', 'arcade', 'turtle'])
+    expect(
+      offered({
+        sandboxStarter: '',
+        sandboxStarterFiles: [{ name: 'index.html' }],
+        sandboxStarterFs: {},
+        sandboxStarterDesktop: {},
+        sandboxStarterCircuit: {},
+      })
+    ).toEqual(MODULE_TYPES)
+    expect(offered({ sandboxStarterFiles: [], sandboxStarter: null })).toEqual([
+      'python',
+      'arcade',
+      'turtle',
+    ])
+  })
+
+  describe('defineModule validation', () => {
+    const redefine = (overrides = {}, base = pythonDefinition) =>
+      defineModule({
+        ...base,
+        meta: { ...base.meta, ...(overrides.meta ?? {}) },
+        capabilities: { ...base.capabilities, ...(overrides.capabilities ?? {}) },
+        getSandboxState: undefined,
+      })
+
+    it('accepts every registered definition unchanged', () => {
+      for (const type of MODULE_TYPES) {
+        expect(() => redefine({}, getModuleDefinition(type))).not.toThrow()
+      }
+    })
+
+    it.each([
+      [{ capabilities: { stageReveal: 'always' } }, /capabilities\.stageReveal/],
+      [{ capabilities: { studentMirror: 'canvas' } }, /capabilities\.studentMirror/],
+      [{ capabilities: { studentMirror: 'files' } }, /studentMirror.*wire\.sandboxChannel/],
+      [{ capabilities: { studentMirror: 'view' } }, /highlights.*"code" or "files"/],
+      [{ capabilities: { highlights: undefined } }, /capabilities\.highlights/],
+      [{ capabilities: { fixedExplainer: true } }, /fixedExplainer/],
+      [{ capabilities: { cardSummary: 'console' } }, /capabilities\.cardSummary/],
+      [{ capabilities: { focusPanes: [{ id: 'instructions', label: 'Info' }] } }, /focusPanes/],
+      [{ capabilities: { focusPanes: [{ id: 'code' }] } }, /focusPanes/],
+      [{ capabilities: { teacherEditor: { surface: 'canvas' } } }, /teacherEditor\.surface/],
+      [{ capabilities: { teacherEditor: { surface: 'files' } } }, /teacherEditor\.surface/],
+      [{ capabilities: { teacherEditor: null } }, /workSlot\.teacherEdit/],
+      [{ meta: { teacherEditCopy: null } }, /meta\.teacherEditCopy/],
+    ])('rejects %j', (overrides, message) => {
+      expect(() => redefine(overrides)).toThrow(message)
+    })
+
+    it('rejects a teacherEditor on a module whose work slot has no teacher edit', () => {
+      expect(() =>
+        redefine(
+          {
+            capabilities: { teacherEditor: { surface: 'view' } },
+            meta: { teacherEditCopy: { action: 'Edit', consent: 'May I?' } },
+          },
+          getModuleDefinition('filesystem')
+        )
+      ).toThrow(/workSlot\.teacherEdit/)
+    })
+
+    it('rejects a missing lifecycle.hasPersonalSandbox', () => {
+      const lifecycle = { ...pythonDefinition.lifecycle }
+      delete lifecycle.hasPersonalSandbox
+      expect(() =>
+        defineModule({
+          ...pythonDefinition,
+          meta: { ...pythonDefinition.meta },
+          getSandboxState: undefined,
+          lifecycle,
+        })
+      ).toThrow(/lifecycle\.hasPersonalSandbox/)
+    })
+  })
+})

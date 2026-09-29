@@ -8,7 +8,12 @@ import {
 } from '../moduleTaskValidation.js'
 import { validateFilesystemChecks } from '../../shared/checkAuthoringValidation.js'
 import { DEFAULT_FS } from './filesystem.js'
-import { jsonWire, recordStorage, stageForAction } from '../moduleContract.js'
+import {
+  jsonWire,
+  recordStorage,
+  stageForAction,
+  personalSandboxWhenLessonHas,
+} from '../moduleContract.js'
 
 function sandboxStarterFs(lesson, task) {
   if (lesson?.sandboxStarterFs != null) {
@@ -37,6 +42,14 @@ export default defineModule({
     surfaceLabels: { builderMeta: 'Files & Folders' },
   },
   capabilities: {
+    stageReveal: 'offer',
+    teacherStageReveal: false,
+    highlights: false,
+    downloadCode: false,
+    fixedExplainer: false,
+    topicLibrary: true,
+    studentMirror: 'view',
+    cardSummary: 'fs',
     sideExplainer: false,
     modulePanes: false,
     teacherLiveReference: true,
@@ -112,6 +125,7 @@ export default defineModule({
 
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
   lifecycle: {
+    hasPersonalSandbox: personalSandboxWhenLessonHas('sandboxStarterFs'),
     resetTarget: (task, action, ctx = {}) => {
       const { stage } = stageForAction(task, action)
       if (action === 'complete') return { fs: task.completeFs ?? task.starterFs ?? ctx.fs }

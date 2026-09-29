@@ -1,29 +1,17 @@
 import React, { useState } from 'react'
 import DropdownMenu from './DropdownMenu'
+import { getModuleDefinition } from '../../../modules/definitions'
 
 // Which tabs/panels a teacher can highlight or force-switch, per lesson type. Every type
-// gets "Instructions" (the info/explainer pane); Electronics and Scratch additionally get
-// the module-specific tab pairs this feature was built for (Breadboard/MicroPython,
-// Blocks/Stage) — see ElectronicsWorkspace's highlightedTabs/forcedTab and
-// ScratchWorkspace's highlightedPanes/forcedPane props. Other lesson types only expose
-// Instructions for now; their own internal tabs (HTML files, Python console, …) aren't
-// wired into the highlight/force plumbing yet.
-const PANE_OPTIONS_BY_TYPE = {
-  electronics: [
-    { id: 'instructions', label: 'Instructions' },
-    { id: 'breadboard', label: 'Breadboard' },
-    { id: 'code', label: 'MicroPython' },
-  ],
-  scratch: [
-    { id: 'instructions', label: 'Instructions' },
-    { id: 'blocks', label: 'Blocks' },
-    { id: 'stage', label: 'Stage' },
-  ],
-}
-const DEFAULT_PANE_OPTIONS = [{ id: 'instructions', label: 'Instructions' }]
+// gets "Instructions" (the info/explainer pane), plus the module's own
+// `capabilities.focusPanes` — the tabs its StudentWorkspace wires into the highlight/force
+// plumbing (Electronics' Breadboard/MicroPython via highlightedTabs/forcedTab, Scratch's
+// Blocks/Stage via highlightedPanes/forcedPane). Other modules only expose Instructions for
+// now; their own internal tabs (HTML files, Python console, …) aren't wired in yet.
+const INSTRUCTIONS_PANE = { id: 'instructions', label: 'Instructions' }
 
 export function getPaneOptionsForLessonType(lessonType) {
-  return PANE_OPTIONS_BY_TYPE[lessonType] ?? DEFAULT_PANE_OPTIONS
+  return [INSTRUCTIONS_PANE, ...(getModuleDefinition(lessonType)?.capabilities.focusPanes ?? [])]
 }
 
 // label/buttonStyle let TeacherView reuse this for the whole-class version with its own

@@ -56,8 +56,45 @@ const REQUIRED_CAPABILITY_BOOLEANS = [
   'sideExplainer', // explainer renders as a side rail (LessonTaskContent) instead of an accordion
   'modulePanes', // StudentWorkspace reports visiblePanes through the generic modulePanes state
   'teacherLiveReference', // teacher live code can be shown as the support-stage reference
-  'unifiedStages', // remote reset uses the unified Starter/Complete stage selector
+  'unifiedStages', // remote reset uses the unified Starter/Complete stage selector; the student
+  // shows a revealed support stage as a read-only reference (LessonTaskContent)
+  // Plan step 4.7 — gates in the student and teacher-monitoring UI:
+  'teacherStageReveal', // StudentModal's Reveal menu offers the task's support / complete stages
+  'highlights', // the teacher can highlight code in StudentModal's mirror (needs a code/files mirror)
+  'downloadCode', // the student can download the task / sandbox code as a .launchpad file
+  'fixedExplainer', // the side explainer is a fixed-width column that tabs away (see below)
+  'topicLibrary', // the explainer offers the topic library
 ]
+// How the student reaches a task's code stages on their own (StudentView, LessonTaskContent):
+// - 'progressive' reveals support stages as read-only references and previews the complete
+//   solution read-only before offering to load it (python, html)
+// - 'offer'       after two failed checks offers to load the next stage, then the complete one
+export const STAGE_REVEAL_KINDS = Object.freeze(['progressive', 'offer'])
+// How StudentModal mirrors the student's work while the teacher watches:
+// - 'code'  the modal's read-only code editor and output panel (python)
+// - 'files' the modal's file tabs, editor and preview iframe (html; the 'files' wire channel)
+// - 'blocks' the module's TeacherLiveView fed the Blockly project and the sprite, cursor and
+//            block-drag mirrors (scratch)
+// - 'view'  the module's TeacherLiveView fed its display state (arcade, turtle, filesystem,
+//           desktop, electronics)
+export const STUDENT_MIRROR_KINDS = Object.freeze(['code', 'files', 'blocks', 'view'])
+// What a StudentCard shows under the name for a code task (optional; null = the generic
+// "HTML project" / "No run yet" line): the first lines of console output ('output'), whether
+// blocks were edited ('blocks') or whether the file tree changed ('fs').
+export const CARD_SUMMARY_KINDS = Object.freeze(['output', 'blocks', 'fs', null])
+// `capabilities.teacherEditor` (optional; null = the teacher cannot live-edit this module's work,
+// and must be non-null exactly when `workSlot.teacherEdit` is set). `surface` is what the teacher
+// edits in StudentModal:
+// - 'code'  a plain Python code editor; commits { code } (python, turtle)
+// - 'files' the module's TeacherLiveView over the files; commits { files } (html)
+// - 'blocks' an editable Blockly workspace; commits { code: <project JSON> } (scratch)
+// - 'view'  the module's TeacherLiveView over the code string; commits { code } (arcade,
+//           electronics)
+// `workspace` is the workspace tab the edit opens on and pushes with it (null = none: arcade
+// 'code', electronics 'breadboard'); `design` adds the Arcade design to the edit and commit.
+// Its copy is `meta.teacherEditCopy`: `action` (the "✏ …" menu item) and `consent` (the
+// student's consent prompt).
+export const TEACHER_EDIT_SURFACES = Object.freeze(['code', 'files', 'blocks', 'view'])
 // Where the teacher's sandbox work lives in TeacherView state: a single code string, the
 // Scratch project, a filesystem tree, a desktop state, or HTML files.
 export const SANDBOX_STATE_KINDS = Object.freeze(['code', 'blocks', 'fs', 'desktop', 'files'])
@@ -90,12 +127,16 @@ export const RUN_RESULT_FLAGS = Object.freeze(['errorLine', 'turtle', 'liveCode'
 // - sandboxStarter(lesson, task) → the teacher sandbox starter (getSandboxState is its alias).
 // - composedSandboxFields(firstTask) → the lesson-level sandbox fields a composed lesson's
 //   module derives from its first code task.
+// - hasPersonalSandbox(lesson) → whether a student who passed a task is offered the personal
+//   sandbox (StudentView): always for python, arcade and turtle, else when the lesson has a
+//   sandbox starter.
 export const LIFECYCLE_HOOKS = Object.freeze([
   'resetTarget',
   'hasComplete',
   'teacherCompleteTab',
   'sandboxStarter',
   'composedSandboxFields',
+  'hasPersonalSandbox',
 ])
 // storage: record adapters onto today's localStorage shapes (docs/agents/runtime-model.md).
 export const STORAGE_LAYOUTS = Object.freeze(['record', 'perFile'])
@@ -217,6 +258,93 @@ function fail(type, message) {
 
 function isFnOrNull(value) {
   return value === null || typeof value === 'function'
+}
+
+// Plan step 4.7: the capabilities that replaced per-type gates in StudentView, StudentModal,
+// StudentWorkspaceBody, StudentCard and LessonTaskContent. Returns the normalised optional
+// values (frozen `focusPanes`, frozen `teacherEditor` or null).
+function validateUiGates(type, def, workSlot) {
+  const caps = def.capabilities
+  if (!STAGE_REVEAL_KINDS.includes(caps.stageReveal)) {
+    fail(type, `"capabilities.stageReveal" must be one of: ${STAGE_REVEAL_KINDS.join(', ')}`)
+  }
+  if (!STUDENT_MIRROR_KINDS.includes(caps.studentMirror)) {
+    fail(type, `"capabilities.studentMirror" must be one of: ${STUDENT_MIRROR_KINDS.join(', ')}`)
+  }
+  const filesChannel = def.wire.sandboxChannel === 'files'
+  if ((caps.studentMirror === 'files') !== filesChannel) {
+    fail(type, '"capabilities.studentMirror" is "files" exactly when "wire.sandboxChannel" is')
+  }
+  if (caps.highlights && !['code', 'files'].includes(caps.studentMirror)) {
+    fail(type, '"capabilities.highlights" needs a "code" or "files" studentMirror')
+  }
+  if (caps.fixedExplainer && (!caps.sideExplainer || caps.modulePanes)) {
+    fail(type, '"capabilities.fixedExplainer" needs "sideExplainer" and no "modulePanes"')
+  }
+  if (!CARD_SUMMARY_KINDS.includes(caps.cardSummary ?? null)) {
+    fail(type, `"capabilities.cardSummary" must be one of: ${CARD_SUMMARY_KINDS.join(', ')}`)
+  }
+  const panes = caps.focusPanes ?? []
+  if (
+    !Array.isArray(panes) ||
+    panes.some(
+      (pane) =>
+        typeof pane?.id !== 'string' ||
+        !pane.id ||
+        pane.id === 'instructions' ||
+        typeof pane.label !== 'string' ||
+        !pane.label
+    )
+  ) {
+    fail(
+      type,
+      '"capabilities.focusPanes" must be an array of { id, label } (Instructions is always offered)'
+    )
+  }
+  const editor = caps.teacherEditor ?? null
+  if (editor !== null) {
+    if (typeof editor !== 'object') fail(type, '"capabilities.teacherEditor" must be an object')
+    if (!TEACHER_EDIT_SURFACES.includes(editor.surface)) {
+      fail(
+        type,
+        `"capabilities.teacherEditor.surface" must be one of: ${TEACHER_EDIT_SURFACES.join(', ')}`
+      )
+    }
+    if ((editor.surface === 'files') !== filesChannel) {
+      fail(type, '"capabilities.teacherEditor.surface" is "files" exactly when the wire channel is')
+    }
+    if (editor.workspace != null && (typeof editor.workspace !== 'string' || !editor.workspace)) {
+      fail(type, '"capabilities.teacherEditor.workspace" must be a workspace id or null')
+    }
+    if (editor.design != null && typeof editor.design !== 'boolean') {
+      fail(type, '"capabilities.teacherEditor.design" must be a boolean')
+    }
+    const copy = def.meta.teacherEditCopy
+    if (
+      typeof copy?.action !== 'string' ||
+      !copy.action ||
+      typeof copy.consent !== 'string' ||
+      !copy.consent
+    ) {
+      fail(type, 'a "capabilities.teacherEditor" module declares "meta.teacherEditCopy"')
+    }
+  }
+  if (workSlot && (editor !== null) !== workSlot.teacherEdit) {
+    fail(type, '"capabilities.teacherEditor" is declared exactly when "workSlot.teacherEdit" is')
+  }
+  return {
+    focusPanes: Object.freeze(
+      panes.map((pane) => Object.freeze({ id: pane.id, label: pane.label }))
+    ),
+    teacherEditor:
+      editor === null
+        ? null
+        : Object.freeze({
+            surface: editor.surface,
+            workspace: editor.workspace ?? null,
+            design: editor.design ?? false,
+          }),
+  }
 }
 
 export function defineModule(def) {
@@ -383,6 +511,7 @@ export function defineModule(def) {
       ...Object.fromEntries(WORK_SLOT_FLAGS.map((key) => [key, def.workSlot[key] ?? false])),
     })
   }
+  const { focusPanes, teacherEditor } = validateUiGates(type, def, workSlot)
   for (const key of REQUIRED_BOOLEANS) {
     if (typeof def[key] !== 'boolean') fail(type, `missing required boolean "${key}"`)
   }
@@ -416,8 +545,20 @@ export function defineModule(def) {
       ...(def.meta.surfaceLabels
         ? { surfaceLabels: Object.freeze({ ...def.meta.surfaceLabels }) }
         : {}),
+      teacherEditCopy: teacherEditor
+        ? Object.freeze({
+            action: def.meta.teacherEditCopy.action,
+            consent: def.meta.teacherEditCopy.consent,
+          })
+        : null,
     }),
-    capabilities: Object.freeze({ ...def.capabilities, run: runKind }),
+    capabilities: Object.freeze({
+      ...def.capabilities,
+      run: runKind,
+      cardSummary: def.capabilities.cardSummary ?? null,
+      focusPanes,
+      teacherEditor,
+    }),
     lifecycle: Object.freeze({ ...def.lifecycle }),
     storage: Object.freeze({ ...def.storage }),
     wire: Object.freeze({ ...def.wire }),
