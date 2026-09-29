@@ -40,6 +40,8 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TopicLibraryPanel.jsx` | Firestore `topicLibrary` CRUD editor: searchable topic list, full topic form with MarkdownFieldEditor for description/syntax fields |
 | `FeedbackPanel.jsx` | Firestore `platformFeedback` real-time list; displays date, teacher email, lesson/task context, and feedback text |
 | `SharedAssetsPanel.jsx` | `lessonTypeAssets` Firestore CRUD: per-type Firebase Storage file upload/delete and Scratch default sprite/backdrop library editors (`DefaultSpritesEditor`, `DefaultBackdropsEditor`) |
+| `AppVersionFooter.jsx` | Admin Portal footer showing `LaunchPad vMAJOR.MINOR.BUILD · commit · built date` (from `shared/appVersion.js`) with a Copy button; clicking the label toggles the "What's new" list from `releaseNotes.js` |
+| `releaseNotes.js` | `RELEASE_NOTES`: milestone release notes, newest first; the newest entry must match MAJOR.MINOR in `package.json` (enforced by `AppVersionFooter.test.jsx`) |
 
 ---
 
@@ -535,6 +537,7 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `draftLesson.js` | Shared structural validation for incomplete lesson-level draft tasks. |
 | `lessonAudit.js` | Current-state lesson/task version and change-timestamp helper with no-op detection. |
 | `lessonService.js` | Shared lesson loading and publishing helpers: `fetchLessonById()`, `fetchLessonList()`, `publishLesson()`, `publishLessonTasks()`, `deletePublishedLesson()`, `publishLessonFork()`, `applyLessonOverride()`; class helpers; publishing migrates legacy scalar levels; session report helpers: `saveSessionReport()`, `fetchSessionReports()` |
+| `appVersion.js` | Reads the `__APP_BUILD_INFO__` build constant injected by `vite.config.js` (null under Vitest) and formats the version label (`formatAppVersion`, `formatVersionNumber`, `formatBuildDate`) |
 | `timeAgo.js` | Pure short relative-time label (`formatTimeAgo`) shared by the student grid and the shared-work gallery |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
@@ -591,6 +594,7 @@ Pure, Node-safe input library for the Keyboard and Mouse activities and the Desk
 | `scripts/new-activity.mjs` | `npm run new:activity -- <id> "<Label>" [--category …] [--dry-run]`: scaffolds an activity from `src/activities/_template/`, registers it in `registry.pure.js` / `registry.js`, writes `docs/authoring/activities/<id>.md` and indexes it in `docs/README.md`, this map and `validation-errors.md`; validates the id, refuses to overwrite, prettier-formats generated code (tested by `scripts/__tests__/newActivity.test.mjs`) |
 | `scripts/new-module.mjs` | `npm run new:module -- <type> "<Label>" [--dry-run]`: scaffolds a workspace module from `src/modules/_template/` (registry order after the last module), registers it in `definitions.js`, `registry.js` and `checks.js`, adds the type to the type-branch ratchet and the ESLint rule, records the scaffold's deliberate parity gaps in `moduleTypeParity`'s `KNOWN_GAPS`, adds its `StudentViewModules` click-through, writes `docs/authoring/<type>.md` and indexes it in `docs/README.md`, this map, `validation-errors.md`, `AGENTS.md`, `lesson-schema.md`, `task-types.md` and `MODULE_FEATURE_MATRIX.md`; validates the type (reserved words, activities, names core code already compares against), refuses to overwrite (tested by `scripts/__tests__/newModule.test.mjs`) |
 | `scripts/scaffold-utils.mjs` | Shared plan/apply plumbing for both kits: template listing, prettier formatting, anchored inserts, line-ending preservation, `applyPlan` (refuses to overwrite or apply a stale plan) and `describePlan` |
+| `scripts/build-info.mjs` | `getBuildInfo({ packageVersion })`: build metadata for the app version label — MAJOR.MINOR from `package.json`, build number = `git rev-list --count HEAD` (null in a shallow clone), short commit and build time; used by `vite.config.js` (tested by `scripts/__tests__/buildInfo.test.mjs`) |
 
 ---
 
@@ -636,7 +640,7 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 
 | File | Role |
 |---|---|
-| `vite.config.js` | Vite build config for both classroom and builder apps |
+| `vite.config.js` | Vite build config for both classroom and builder apps; injects `__APP_BUILD_INFO__` (see `scripts/build-info.mjs`) |
 | `src/test/setup.js` | Vitest/jsdom shared test setup: jest-dom matchers and browser API mocks used across component and hook tests |
 | `src/test/studentCodeStateHarness.js` | Test harness for `useStudentCodeState`: renders the hook with `vi.fn` session writers, storage-key helpers, and runtime fakes (see `docs/TESTING.md`) |
 | `src/test/studentCodeStateMocks.js` | Dependency-free `vi.mock` factories (Pyodide, type/lesson storage assets) used by the `useStudentCodeState` characterization tests |

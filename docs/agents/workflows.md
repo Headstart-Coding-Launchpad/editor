@@ -27,6 +27,15 @@ gh pr create --title "<Feature title>" --body "<summary, decisions, verification
 
 Do not merge the PR.
 
+## Versioning
+
+The Admin Portal footer shows `LaunchPad vMAJOR.MINOR.BUILD · <commit> · built <date>`.
+
+- **BUILD** is the commit count on `main` (`git rev-list --count HEAD`), computed at build time by `scripts/build-info.mjs`. It goes up on every merge with no manual step. CI and deploy check out with `fetch-depth: 0` so the count is real; a shallow clone shows `MAJOR.MINOR` only.
+- **MAJOR.MINOR** comes from `package.json` and is bumped by hand for milestones (a new module, a batch of notable features): `npm version minor --no-git-tag-version` (or `major`) on the feature branch.
+- A MAJOR.MINOR bump must add a matching entry at the top of `RELEASE_NOTES` in `src/admin/releaseNotes.js`; `AppVersionFooter.test.jsx` fails otherwise. Admins read these notes from the footer's "What's new" toggle.
+- Optionally tag milestone merges on `main` (`git tag v1.1`) for easy diffs between releases.
+
 ## PR Review Comments
 
 When asked to address a PR comment, reply directly to that thread before starting work. After committing, post a follow-up on the same thread with the commit SHA and what changed.
