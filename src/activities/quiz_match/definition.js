@@ -31,6 +31,8 @@ export default defineQuizActivity('match', {
 
   initialState: () => ({}),
   solutionState: (task) => Object.fromEntries((task?.pairs ?? []).map((p) => [p.id, p.id])),
+  // Each pair holds its prompt and its answer together.
+  sealedFields: ['pairs'],
   serialize: (state) => JSON.stringify(state ?? {}),
   deserialize: (raw) => parseQuizAnswerState(raw),
 

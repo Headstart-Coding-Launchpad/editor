@@ -206,6 +206,13 @@ Shows a read-only complete solution in the same reference panel as Support, with
 - Existing task IDs are never renumbered by this flow (`normalizeTasksForExport(tasks, { preserveIds: true })`) — `session.currentTaskId`, carry-through references, and student per-task localStorage keys all key off the original IDs and would desync if they changed mid-session. Only brand-new tasks get fresh IDs.
 - "Reset to Original" calls `clearLessonOverride()`, reverting both views back to the canonical Firestore lesson.
 - The override clears automatically on `createSession`/`endSession`, so a session restart always starts from the published lesson.
+- The override tasks are sealed like the lesson document (`pushLessonOverride` seals, `applyLessonOverride` unseals); see the next section.
+
+## Sealed Lesson Answers: obfuscation, not security
+
+- Task answers (complete code and stages, checks, feedback checks, tests, quiz answers, code_arrange blanks) are stored sealed in `task._sealed` on the public `lessons/{id}` document and in `lessonOverrideTasks` (format: `docs/agents/runtime-model.md` "Sealed Task Answers"). This stops casual snooping in the Network tab or a raw Firestore payload. It is **not** security: the key ships in the app bundle, and the classroom unseals the whole lesson at load, so React DevTools (or a determined student) can still see the answers.
+- Anything the classroom needs keeps working because every consumer reads through `decodeLessonFromFirestore` / `applyLessonOverride`; never read `lessons` docs or `lessonOverrideTasks` without them.
+- The teacher's live broadcast (`teacherLive.code` / `files`, and a forced Complete reset or answer edit) still travels in plain text: the student client must render and run that code, so it cannot be sealed usefully.
 
 ## Personal Sandbox
 

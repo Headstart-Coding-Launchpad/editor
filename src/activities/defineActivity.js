@@ -71,6 +71,9 @@ export function defineActivity(def) {
     requires: {},
     touchFallback: 'equivalent',
     solutionState: null,
+    // Task fields that give the answer away, sealed at the Firestore boundary on top of the
+    // shared list (check, feedbackChecks, tests, codeStages, complete*): src/shared/lessonSeal.js.
+    sealedFields: [],
     serialize: jsonSerialize,
     storage: { persist: true, filename: ACTIVITY_STATE_FILENAME },
     liveChannel: 'answer',

@@ -32,6 +32,8 @@ export default defineQuizActivity('fill_blank', {
   }),
 
   initialState: () => ({}),
+  // Each blank holds its answer.
+  sealedFields: ['blanks'],
   solutionState: (task) =>
     Object.fromEntries(
       (task?.blanks ?? []).map((blank) => [

@@ -31,6 +31,8 @@ export default defineQuizActivity('multiple_choice', {
 
   initialState: () => '',
   solutionState: (task) => (task?.check?.type === 'answer_equals' ? (task.check.value ?? '') : ''),
+  // The answer is in `check`; per-option `feedback` often gives it away too.
+  sealedFields: ['options'],
   serialize: (state) => (typeof state === 'string' ? state : ''),
   // Only an id the task still offers is an answer (an option removed since is dropped).
   deserialize: (raw, task) => (typeof raw === 'string' && optionIds(task).includes(raw) ? raw : ''),

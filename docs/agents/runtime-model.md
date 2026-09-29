@@ -68,7 +68,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
       "sandboxFiles": { "index__dot__html": "..." },
       "sandboxFilesUpdatedAt": 1234567890,
       "sandboxPreviousTaskId": "string | number | null (currentTaskId to restore on exitSandbox, when handleGoLiveSandbox moved it for a composed-lesson module switch)",
-      "lessonOverrideTasks": "Task[] | null",
+      "lessonOverrideTasks": "Task[] | null (answer fields sealed into task._sealed; see Sealed Task Answers)",
       "joiningStudents": {
         "{tempId}": { "joinedAt": 1234567890 }
       },
@@ -364,6 +364,21 @@ Security rules (`database.rules.json`): `sharedWorkspaces` inherits teacher/admi
 - Session node is deleted when the teacher calls `endSession()` and disconnects.
 - `joiningStudents/{tempId}` key is removed on disconnect with `onDisconnect().remove()`.
 - `sharedWorkspacePayloads/{lessonId}` is removed when the teacher disconnects. It sits outside the session node, so the session's own removal does not cover it.
+
+## Sealed Task Answers (`lessons/{lessonId}` tasks and `lessonOverrideTasks`)
+
+A deliberate data-model change approved by the product owner (September 2026). `lessons/{id}` is public-read, so each stored task keeps its answer fields in one encoded string instead of plain JSON:
+
+```json
+{ "id": 3, "title": "Say hi", "explainer": "...", "starterCode": "...", "_sealed": "v1:<base64>" }
+```
+
+- **Format:** `_sealed = 'v1:' + base64(UTF-8 JSON of { field: value } XOR a fixed key)`. The `v1:` prefix is the version; a new key or encoding needs a new version (`decodeSealPayload` returns null for versions it does not know, and the task is then kept as stored).
+- **Sealed fields:** `TASK_SEALED_FIELDS` in `src/shared/lessonSeal.js` (`codeStages` (all stages, starter included), `completeCode`, `completeFiles`, `completeEntryFile`, `completeBlocks`, `completeFs`, `completeDesktop`, `completeCircuit`, `completeArcadeDesign`, `check`, `feedbackChecks`, `incorrectChecks`, `tests`) plus the task's activity `sealedFields` (multiple choice `options`, match `pairs`, fill-blank `blanks`, code_arrange `lines`). Group objects are not sealed; their subtasks are. A task with none of these fields gets no `_sealed`.
+- **Boundary:** every write to `lessons` goes through `encodeLessonForFirestore` (blocks codec, then seal) and every read through `decodeLessonFromFirestore` (unseal, then blocks codec) in `src/shared/lessonBlocksCodec.js`, in the web app and the CLI. Everything past the boundary sees the plain task shape, so validation, audit/`version` comparisons, CLI `get`/export and reports are unchanged.
+- **Compatibility:** a task without `_sealed` passes through unchanged. A lesson stored before sealing is rewritten sealed on its next Builder save or CLI publish/upsert/append, even when the content is unchanged (`lessonNeedsSealing`); its `version` is not bumped for that.
+- **Session overrides:** `sessions/{lessonId}/lessonOverrideTasks` holds sealed tasks too (`pushLessonOverride` seals, `applyLessonOverride` unseals; a plain override still works).
+- **Not security:** the key ships in the app bundle and the classroom decodes the lesson at load. See `docs/agents/classroom-behaviours.md`.
 
 ## Session Reports (`lessons/{lessonId}/sessionReports` subcollection)
 

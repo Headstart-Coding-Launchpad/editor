@@ -7,6 +7,8 @@ Full JSON field reference for cross-cutting fields. For YAML authoring see `docs
 
 Lessons live in the Firestore `lessons/` collection. Each document ID is the lesson `id`. Use `node cli/cli.mjs lessons upsert <file>` to save a JSON or YAML lesson.
 
+**Stored form differs from authored form (sealed answers).** Authors always write the plain fields below. When a lesson is saved (Builder or CLI), each task's answer fields are moved into one obfuscated string, `task._sealed = "v1:<base64>"`, and restored when the lesson is read, so `lessons get`, the Builder and exports show the plain shape again. Sealed: `codeStages`, `completeCode`, `completeFiles`, `completeEntryFile`, `completeBlocks`, `completeFs`, `completeDesktop`, `completeCircuit`, `completeArcadeDesign`, `check`, `feedbackChecks`, `incorrectChecks`, `tests`, and the quiz/activity answer fields (multiple choice `options`, match `pairs`, fill-blank `blanks`, code_arrange `lines`). Never write `_sealed` yourself. It is obfuscation, not security. Format: `docs/agents/runtime-model.md` "Sealed Task Answers".
+
 ---
 
 ## Lesson Envelope

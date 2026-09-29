@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 import { getLessonLinks } from '../shared/lessonLinks'
+import { decodeLessonFromFirestore } from '../shared/lessonBlocksCodec'
 import {
   deletePublishedLesson,
   publishLesson,
@@ -217,7 +218,7 @@ export default function LessonPanel({ view = 'lessons' }) {
     return onSnapshot(
       collection(firestore, 'lessons'),
       (snap) => {
-        setLessons(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+        setLessons(snap.docs.map((d) => ({ id: d.id, ...decodeLessonFromFirestore(d.data()) })))
         setLoading(false)
         setError(null)
       },

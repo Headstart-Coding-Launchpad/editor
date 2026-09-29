@@ -104,6 +104,8 @@ export default defineActivity({
 
   initialState: () => ({}),
   solutionState: (task) => buildSolutionSlotState(task),
+  // Each slot part's `code` is its answer.
+  sealedFields: ['lines'],
   serialize: (state) => JSON.stringify(state ?? {}),
   deserialize: (raw) => deserializeSlots(raw),
   storage: Object.freeze({ persist: true, filename: CODE_ARRANGE_SLOTS_FILENAME }),

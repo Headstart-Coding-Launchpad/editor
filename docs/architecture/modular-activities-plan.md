@@ -111,7 +111,7 @@ src/activities/
   <id>/definition.js, <id>/ui.jsx, <id>/__tests__/
 ```
 
-`definition.js`: `id, label, category, icon, description`, `legacy?`, `yaml { type, toTask, fromTask }`, `availableIn(lesson)`, `hostModules?`, `requires? { physicalKeyboard, finePointer, hover }`, `touchFallback`, `defaultTask`, `validateTask` (shared Builder + CLI), `hasStarter`, `hasCheckValue`, `initialState`, `solutionState`, `serialize` / `deserialize` (tolerant), `storage { persist, filename }`, `liveChannel`, `classifyChange(prev,next) → 'discrete'|'continuous'`, `completion`, `grade`, `isGraded`, `checks`, `buildSubmission`, `getProgress`, `summarize`, `teacherEditable`, `report`, `printHtml`.
+`definition.js`: `id, label, category, icon, description`, `legacy?`, `yaml { type, toTask, fromTask }`, `availableIn(lesson)`, `hostModules?`, `requires? { physicalKeyboard, finePointer, hover }`, `touchFallback`, `defaultTask`, `validateTask` (shared Builder + CLI), `hasStarter`, `hasCheckValue`, `initialState`, `solutionState`, `sealedFields` (answer-bearing task fields obfuscated in the stored lesson, see `src/shared/lessonSeal.js`), `serialize` / `deserialize` (tolerant), `storage { persist, filename }`, `liveChannel`, `classifyChange(prev,next) → 'discrete'|'continuous'`, `completion`, `grade`, `isGraded`, `checks`, `buildSubmission`, `getProgress`, `summarize`, `teacherEditable`, `report`, `printHtml`.
 
 `ui.jsx`: `StudentView`, optional `TeacherLiveView` (defaults to read-only `StudentView`; editable variant is the teacher force/edit surface), `BuilderEditor`, optional `CardSummary`.
 

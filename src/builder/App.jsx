@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 import { fetchLessonList } from '../shared/lessonService'
-import { decodeLessonBlocksFromFirestore } from '../shared/lessonBlocksCodec'
+import { decodeLessonFromFirestore } from '../shared/lessonBlocksCodec'
 import { useAuth } from '../auth/useAuth'
 import BuilderView from './views/BuilderView'
 import { LESSON_MODULE_TYPES } from '../shared/composedLesson'
@@ -50,7 +50,7 @@ export default function BuilderApp() {
       getDoc(doc(firestore, 'lessons', loadId))
         .then((snap) => {
           if (snap.exists()) {
-            setLesson(normalizeLoadedLesson(decodeLessonBlocksFromFirestore(snap.data())))
+            setLesson(normalizeLoadedLesson(decodeLessonFromFirestore(snap.data())))
           } else {
             alert(`Lesson "${loadId}" not found in Firestore.`)
           }
@@ -276,7 +276,7 @@ function FirestoreLessonPicker({ onLoad, onClose }) {
         alert('Lesson not found.')
         return
       }
-      onLoad(normalizeLoadedLesson(decodeLessonBlocksFromFirestore(snap.data())))
+      onLoad(normalizeLoadedLesson(decodeLessonFromFirestore(snap.data())))
     } catch (err) {
       alert('Could not load lesson: ' + err.message)
     } finally {

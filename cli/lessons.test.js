@@ -143,6 +143,56 @@ describe('CLI lesson Firestore encoding', () => {
     expect(state.set).toHaveBeenCalledTimes(1)
   })
 
+  const pythonLesson = {
+    id: 'sealed-python',
+    type: 'python',
+    title: 'Sealed',
+    description: 'Answers are sealed',
+    tasks: [
+      {
+        id: 1,
+        title: 'Say hi',
+        explainer: 'Print hi',
+        starterCode: '# start',
+        completeCode: 'print("SECRET-ANSWER")',
+        check: { type: 'output', operator: 'contains', value: 'SECRET-ANSWER' },
+      },
+    ],
+  }
+
+  it('seals task answers on write and unseals them on read (verify sees plain content)', async () => {
+    const result = await upsertLesson(pythonLesson)
+    expect(result.success).toBe(true)
+    const stored = state.records.get('lessons/sealed-python')
+    expect(JSON.stringify(stored)).not.toContain('SECRET-ANSWER')
+    expect(stored.tasks[0]._sealed).toMatch(/^v1:/)
+    expect(stored.tasks[0].starterCode).toBe('# start')
+
+    const read = await getLesson('sealed-python')
+    expect(read.tasks[0]).toMatchObject(pythonLesson.tasks[0])
+    expect(read.tasks[0]._sealed).toBeUndefined()
+    expect(await upsertLesson(pythonLesson)).toMatchObject({ success: true, noOp: true })
+    expect(state.set).toHaveBeenCalledTimes(1)
+  })
+
+  it('converts a lesson stored before sealing on an unchanged republish, without a new version', async () => {
+    await upsertLesson(pythonLesson)
+    const { tasks, ...stored } = state.records.get('lessons/sealed-python')
+    const [{ _sealed, ...plainTask }] = tasks
+    state.records.set('lessons/sealed-python', {
+      ...stored,
+      tasks: [{ ...plainTask, ...pythonLesson.tasks[0] }],
+    })
+    state.set.mockReset()
+
+    const result = await upsertLesson(pythonLesson)
+    expect(result).toMatchObject({ success: true, noOp: true, version: stored.version })
+    expect(state.set).toHaveBeenCalledTimes(1)
+    const resealed = state.records.get('lessons/sealed-python')
+    expect(JSON.stringify(resealed)).not.toContain('SECRET-ANSWER')
+    expect(resealed.version).toBe(stored.version)
+  })
+
   it('clears session reports and feedback when deleting a lesson, like the web app', async () => {
     await upsertLesson(scratchLesson)
     state.records.set('lessons/deep-scratch/sessionReports/r1', { id: 'r1' })
