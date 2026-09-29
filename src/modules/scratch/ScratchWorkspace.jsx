@@ -25,6 +25,7 @@ import {
   setBackdropContext,
   setCostumeContext,
   setVariableContext,
+  setWorkspaceBlocklyContext,
   addCreateVariableButtonToToolbox,
   CREATE_VARIABLE_CALLBACK_KEY,
 } from './scratch'
@@ -1026,14 +1027,51 @@ export default function ScratchWorkspace({
   onCheckResultRef.current = onCheckResult
   onVisiblePanesChangeRef.current = onVisiblePanesChange
 
-  // ── Sync Blockly context globals (lazy — only read when dropdowns open) ──────
+  // ── Blockly dropdown context (lazy — only read when dropdowns open) ──────────
+  // Each injected workspace reads this instance's context through
+  // setWorkspaceBlocklyContext, so a second mounted editor (e.g. the leaving panel of a
+  // task slide transition) can't swap in its own costumes or sprites. The globals are
+  // kept as the fallback for fields that aren't on a registered workspace.
+  const dropdownSprites = useMemo(
+    () => sprites.map((sp) => ({ ...sp, thumbUrl: spriteDropdownThumbUrl(sp, assetsPath) })),
+    [sprites, assetsPath]
+  )
+  const costumesBySpriteId = useMemo(
+    () =>
+      Object.fromEntries(
+        sprites.map((sp) => [
+          sp.id,
+          (sp.costumes ?? []).map((c) => ({
+            ...c,
+            imageUrl: c.image ? resolveAssetFileUrl(assetsPath, c.image) : undefined,
+          })),
+        ])
+      ),
+    [sprites, assetsPath]
+  )
+  const blocklyContextRef = useRef(null)
+  blocklyContextRef.current = {
+    sprites: dropdownSprites,
+    backdrops,
+    variables,
+    costumesBySpriteId,
+    firstSpriteId: sprites[0]?.id,
+  }
+  function blocklyContextForWorkspace(spriteId) {
+    const ctx = blocklyContextRef.current
+    return {
+      sprites: ctx.sprites,
+      backdrops: ctx.backdrops,
+      variables: ctx.variables,
+      costumes: ctx.costumesBySpriteId[spriteId] ?? ctx.costumesBySpriteId[ctx.firstSpriteId] ?? [],
+    }
+  }
+
   useEffect(() => {
-    setSpriteContext(
-      sprites.map((sp) => ({ ...sp, thumbUrl: spriteDropdownThumbUrl(sp, assetsPath) }))
-    )
+    setSpriteContext(dropdownSprites)
     setBackdropContext(backdrops)
     setVariableContext(variables)
-  }, [sprites, backdrops, variables, assetsPath])
+  }, [dropdownSprites, backdrops, variables])
 
   // ── Report which of Blocks/Stage are actually on screen ──────────────────────
   // Mirrors the rendering conditions above (compact tab switcher, hideStage, and the
@@ -1068,15 +1106,10 @@ export default function ScratchWorkspace({
   }, [forcedPane, forcedPaneToken])
 
   useEffect(() => {
-    const costumes =
-      (sprites.find((sp) => sp.id === selectedSpriteId) ?? sprites[0])?.costumes ?? []
     setCostumeContext(
-      costumes.map((c) => ({
-        ...c,
-        imageUrl: c.image ? resolveAssetFileUrl(assetsPath, c.image) : undefined,
-      }))
+      costumesBySpriteId[selectedSpriteId] ?? costumesBySpriteId[sprites[0]?.id] ?? []
     )
-  }, [sprites, selectedSpriteId, assetsPath])
+  }, [costumesBySpriteId, selectedSpriteId, sprites])
 
   useEffect(() => {
     if (controlledSpriteId !== null) return
@@ -1623,6 +1656,7 @@ export default function ScratchWorkspace({
       readOnly,
     })
     workspaceRefs.current[spriteId] = ws
+    setWorkspaceBlocklyContext(ws, () => blocklyContextForWorkspace(spriteId))
     Blockly.svgResize(ws)
     if (canCreateVariable && !readOnly) {
       try {
