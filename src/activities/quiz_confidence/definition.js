@@ -7,6 +7,9 @@ const RATING = /^[1-5]$/
 
 export default defineQuizActivity('confidence', {
   description: 'Students rate how confident they feel, from 1 to 5.',
+
+  // The question is the task's explainer; there are no other fields.
+  fields: { task: [] },
   completion: 'none',
 
   defaultTask: (prev = {}) => ({

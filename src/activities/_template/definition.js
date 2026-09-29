@@ -24,6 +24,26 @@ export default defineActivity({
   // requires: { physicalKeyboard: true },
   // touchFallback: 'virtual_keyboard',
 
+  // TODO(new-activity): the task shape as data (src/shared/fieldSpec.js), listed by `lessons
+  // capabilities`. Keep it in step with validateTask (fields.test.js checks every `required`
+  // field) and the doc page's first "| Field | Required |" table. With modes, add
+  // `modeField: 'mode'` and give mode-specific fields `modes: [...]`.
+  fields: {
+    task: [
+      {
+        name: 'items',
+        type: 'array',
+        required: true,
+        authored: true,
+        itemFields: [
+          { name: 'id', type: 'string', required: true },
+          { name: 'prompt', type: 'string', required: true, authored: true },
+          { name: 'answer', type: 'string', required: true, authored: true },
+        ],
+      },
+    ],
+  },
+
   // The task the Builder creates and the contract tests validate. It must pass validateTask.
   defaultTask: (prev = {}) => ({
     id: prev.id,

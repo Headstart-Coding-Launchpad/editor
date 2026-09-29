@@ -20,6 +20,20 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-29
 
+### `lessons capabilities`: activity modes and fields, content fields, open requests
+
+- Each activity now lists `modes`, `fields` (task fields with `required`, `authored`, `values`,
+  `modes` and per-item `itemFields`), `fieldsByMode`, and `authoredFields` (content paths such
+  as `items[].text`). Each module lists its own task `fields` / `authoredFields`, and a new
+  `taskFields` section covers the common task fields plus `information` and `group`.
+- `requests` is now an array of the requests in `docs/authoring/authoring-requests/`
+  (`file`, `title`, `kind`, `status`, `requestedBy`, `lessonsBlocked`); the old hint text moved
+  to `requestsHowTo`. Lesson tooling can drop hand-kept field lists and read these instead.
+- No lesson changes. See [AUTHORING_GUIDE.md](AUTHORING_GUIDE.md).
+- Affects: all activities and modules (capabilities output only) · Existing lessons: no changes
+  needed · Resolves: authoring-requests/2026-09-29-lessons-capabilities-per-activity-modes-and-fields-and-open-.md,
+  authoring-requests/2026-09-29-machine-readable-content-field-map-per-task-type.md
+
 ### Desktop `window_state` `moved_to` and `resized`
 
 - New `window_state` operators. `moved_to` passes when the window's centre is in `zone`

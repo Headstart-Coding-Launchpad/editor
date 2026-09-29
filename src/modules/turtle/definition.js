@@ -1,6 +1,7 @@
 // Node-safe half of the Python Turtle module (see ../defineModule.js). UI and the Pyodide
 // runtime bridge live in index.js.
 import { defineModule } from '../defineModule.js'
+import { codeStagesField } from '../../shared/taskFields.js'
 import { codeStarterPresent, validateTaskChecks } from '../moduleTaskValidation.js'
 import { validateTurtleChecks } from '../../shared/checkAuthoringValidation.js'
 import {
@@ -93,6 +94,13 @@ export default defineModule({
     { type: 'turtle_segment_count', operator: 'greater_than_or_equal', value: '1' },
   ],
 
+  taskFields: [
+    { name: 'starterCode', type: 'string', authored: true },
+    { name: 'completeCode', type: 'string', authored: true },
+    codeStagesField([{ name: 'code', type: 'string', authored: true }]),
+    { name: 'copyCode', type: 'string', authored: true, description: 'Read-only code to copy.' },
+    { name: 'carryCodeFrom', type: 'string' },
+  ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeCode',
   carryThroughLabel: 'Carry code from task',

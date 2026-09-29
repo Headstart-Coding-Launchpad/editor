@@ -1,5 +1,6 @@
 // Node-safe half of the Python module (see ../defineModule.js). UI lives in index.js.
 import { defineModule } from '../defineModule.js'
+import { codeStagesField } from '../../shared/taskFields.js'
 import {
   codeStarterPresent,
   validateCodeChecks,
@@ -103,6 +104,25 @@ export default defineModule({
       ? [{ type: 'code_contains', value: '' }]
       : [{ type: 'output_contains', value: '' }],
 
+  taskFields: [
+    { name: 'starterCode', type: 'string', authored: true },
+    { name: 'completeCode', type: 'string', authored: true },
+    codeStagesField([{ name: 'code', type: 'string', authored: true }]),
+    { name: 'copyCode', type: 'string', authored: true, description: 'Read-only code to copy.' },
+    { name: 'interactionMode', type: 'string', values: ['run', 'submit'] },
+    {
+      name: 'tests',
+      type: 'array',
+      authored: true,
+      itemFields: [
+        { name: 'id', type: 'string', required: true },
+        { name: 'name', type: 'string', authored: true },
+        { name: 'inputs', type: 'array', authored: true },
+        { name: 'check', type: 'object', required: true, authored: true },
+      ],
+    },
+    { name: 'carryCodeFrom', type: 'string' },
+  ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeCode',
   carryThroughLabel: 'Carry code from task',

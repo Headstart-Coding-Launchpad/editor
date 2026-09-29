@@ -5,6 +5,8 @@
 //
 // Pure: no JSX, React or DOM.
 
+import { normaliseFieldSpecs } from '../shared/fieldSpec.js'
+
 export const ACTIVITY_CATEGORIES = ['quiz', 'code', 'computing', 'digital_skills']
 export const COMPLETION_MODES = ['on_submit', 'auto', 'none']
 export const ACTIVITY_STATE_FILENAME = '__activity_state__'
@@ -27,6 +29,30 @@ function parseJsonSubmission(task, submission) {
   } catch {
     return submission
   }
+}
+
+// `fields` (optional) declares the activity's authored task shape as data (see
+// ../shared/fieldSpec.js), so `lessons capabilities` and the docs checks read it instead of prose:
+//   fields: {
+//     modeField?: 'mode',   // the task field whose `values` are the activity's modes
+//     task: [FieldSpec],    // task-level fields besides title/description/explainer/hint
+//   }
+// Tests check that every `required` field really is required by validateTask.
+function normaliseFields(id, fields) {
+  if (fields == null) return null
+  if (typeof fields !== 'object') fail(id, 'fields must be an object')
+  const modeField = fields.modeField ?? null
+  const modeSpec = modeField ? (fields.task ?? []).find((f) => f.name === modeField) : null
+  if (modeField && !modeSpec?.values?.length) {
+    fail(id, `fields.modeField "${modeField}" must name a task field with values`)
+  }
+  const modes = modeSpec ? [...modeSpec.values] : []
+  const task = normaliseFieldSpecs(fields.task ?? [], {
+    where: 'fields.task',
+    modes,
+    fail: (message) => new Error(`defineActivity(${id}): ${message}`),
+  })
+  return Object.freeze({ modeField, modes: Object.freeze(modes), task })
 }
 
 export function defineActivity(def) {
@@ -100,6 +126,7 @@ export function defineActivity(def) {
     },
     printHtml: null,
     ...def,
+    fields: normaliseFields(id, def.fields),
     completion,
     deserialize,
   })

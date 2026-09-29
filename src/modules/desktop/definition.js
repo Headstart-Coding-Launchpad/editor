@@ -1,5 +1,6 @@
 // Node-safe half of the Desktop module (see ../defineModule.js). UI lives in index.js.
 import { defineModule } from '../defineModule.js'
+import { codeStagesField } from '../../shared/taskFields.js'
 import {
   anyCheckHasValue,
   validateStageStates,
@@ -77,6 +78,15 @@ export default defineModule({
 
   defaultCheck: () => [{ type: 'fs_path', operator: 'exists', itemType: 'file', path: '' }],
 
+  taskFields: [
+    { name: 'starterDesktop', type: 'object', authored: true },
+    { name: 'completeDesktop', type: 'object', authored: true },
+    codeStagesField([{ name: 'desktop', type: 'object', required: true, authored: true }]),
+    { name: 'siteGraph', type: 'object', authored: true, description: 'Simulated Browser pages.' },
+    { name: 'availableApps', type: 'array', description: 'Default [fileManager].' },
+    { name: 'startsInDir', type: 'string' },
+    { name: 'carryDesktopFrom', type: 'string' },
+  ],
   carryThroughField: 'carryDesktopFrom',
   completeField: 'completeDesktop',
   carryThroughLabel: 'Carry desktop from task',

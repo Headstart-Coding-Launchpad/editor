@@ -1,6 +1,6 @@
 # lessons capabilities: per-activity modes and fields, and open requests
 
-- **Status:** open
+- **Status:** planned
 - **Kind:** tooling
 - **Requested by:** Ryan (approved by Ryan), 2026-09-29
 - **Lessons blocked:** none yet
@@ -26,4 +26,4 @@ capabilities lists, per activity: modes, task fields (with required flag), item 
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Branch `feature/capabilities-fields-and-requests` (with the content-field map request): activity definitions declare `fields` (`src/shared/fieldSpec.js`); `lessons capabilities` lists per activity `modes`, `fields` (required / authored / values / modes / itemFields), `fieldsByMode`, `authoredFields`, and a `requests` array parsed from this folder. Tests keep declarations honest against `validateTask` and the doc tables.

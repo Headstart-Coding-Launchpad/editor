@@ -1,5 +1,6 @@
 // Node-safe half of the Filesystem module (see ../defineModule.js). UI lives in index.js.
 import { defineModule } from '../defineModule.js'
+import { codeStagesField } from '../../shared/taskFields.js'
 import {
   anyCheckHasValue,
   validateStageStates,
@@ -85,6 +86,13 @@ export default defineModule({
 
   defaultCheck: () => [{ type: 'fs_path', operator: 'exists', itemType: 'file', path: '' }],
 
+  taskFields: [
+    { name: 'starterFs', type: 'object', authored: true },
+    { name: 'completeFs', type: 'object', authored: true },
+    codeStagesField([{ name: 'fs', type: 'object', required: true, authored: true }]),
+    { name: 'startsInDir', type: 'string' },
+    { name: 'carryFsFrom', type: 'string' },
+  ],
   carryThroughField: 'carryFsFrom',
   completeField: 'completeFs',
   carryThroughLabel: 'Carry filesystem from task',

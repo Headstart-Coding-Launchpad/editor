@@ -195,7 +195,10 @@ on the teacher's student card and marked when the student checks their answers.
 
 - The explicit JSON form `taskType: activity` + `activityType: <id>` also works in YAML;
   `lessons export` writes the `type:` shorthand. Quizzes stay `type: quiz` + `quizType`.
-- `node cli/cli.mjs lessons capabilities` lists every activity with its fields.
+- `node cli/cli.mjs lessons capabilities` lists every activity with its modes and fields
+  (`fields`, `fieldsByMode`, and `authoredFields` for the content paths such as
+  `items[].text`), each module's own task fields, the common task fields (`taskFields`), every
+  check type, and the open authoring requests (`requests`).
 - In the **Builder**, choose the **Activity** task format and pick from the gallery. Each
   activity has its own editor (modes, items, options) with validation shown next to the field it
   is about, and a student preview you can play. Switching format keeps the title and

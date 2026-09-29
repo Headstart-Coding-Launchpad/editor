@@ -57,21 +57,25 @@ Decide every group, keeping the file pure (no JSX/React/DOM/runtimes, `.js` impo
    summary, focus panes, teacher editor, topic library, teacher layout flags) and `run`
    (`'runtime'` + `runResult` + a UI `runtime`, `'preview'`, `'workspace'`, `'none'`). Core code
    reads these instead of your type name, so never add a branch on `'<type>'` outside the folder.
-3. **Work shape**: pick the storage record (`recordStorage({ workKey, taskMeta })`, or
+3. **`taskFields`**: the module's own task fields as data (`src/shared/fieldSpec.js`; use
+   `codeStagesField([...stage payload])` from `src/shared/taskFields.js`), marking `authored`
+   content and `required` fields. Include the complete field, the carry field and `codeStages`;
+   `lessons capabilities` lists them and `cli/capabilities.test.js` checks those three.
+4. **Work shape**: pick the storage record (`recordStorage({ workKey, taskMeta })`, or
    `perFileStorage()` for files) and wire (`codeStringWire`, `jsonWire`, `filesWire`) from
    `moduleContract.js`; the localStorage/RTDB shapes are then fixed (runtime-model.md).
-4. **`lifecycle`**: `resetTarget`, `hasComplete`, `teacherCompleteTab`, `sandboxStarter`,
+5. **`lifecycle`**: `resetTarget`, `hasComplete`, `teacherCompleteTab`, `sandboxStarter`,
    `composedSandboxFields`, `hasPersonalSandbox`, `playgroundTask`.
-5. **`checking` + `workSlot`**: trigger (`'change'` for discrete edits only — every change writes
+6. **`checking` + `workSlot`**: trigger (`'change'` for discrete edits only — every change writes
    a run; `'run'`; `'workspace'`), `buildContext`, and the slot (field form for a structured
    state, hook form / `codeWorkSlot` / `filesWorkSlot` otherwise) with its flags (`taskReset`,
    `teacherEdit` ⇔ `capabilities.teacherEditor`, …; `teacherStarter` only if the teacher's
    Starter tab must differ from `starter`).
-6. **`authoring`** (the Builder, which never branches on a type): `defaultTypeFields`,
+7. **`authoring`** (the Builder, which never branches on a type): `defaultTypeFields`,
    `missingStarter` / `missingStarterLabel`, `copyStarterToComplete`, `printTask`,
    `sandboxStarterEditor`, `builderRun`, optional `codeFormat`, `copyCodePlaceholder` and flags
    (`moduleAuthoring.js`, `printHelpers.js`).
-7. **Task fields + validation**: `makeCodeTaskFields`, stages, carry-through, `validateTask`
+8. **Task fields + validation**: `makeCodeTaskFields`, stages, carry-through, `validateTask`
    (messages worded `Task N …`), `hasStarterContent`, `hasCheckValue`.
 
 ## 4. Workspace and teacher UIs

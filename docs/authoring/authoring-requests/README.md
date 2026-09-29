@@ -7,7 +7,7 @@ Lesson agents (and people) file a request here for anything a lesson needs from 
 - **Docs:** an authoring page is wrong, missing or contradicts itself or the live lessons.
 - **Tooling:** a CLI command or machine-readable output that lesson authoring needs.
 
-**Before filing:** run `node cli/cli.mjs lessons capabilities`. It lists every module, activity and check type the platform has right now, read straight from the registries. Most gaps turn out to be a check or mode on something that exists.
+**Before filing:** run `node cli/cli.mjs lessons capabilities`. It lists every module, activity (with its modes and fields) and check type the platform has right now, read straight from the registries, plus a `requests` array of the requests already in this folder (`file`, `title`, `kind`, `status`). Most gaps turn out to be a check or mode on something that exists, or something already requested.
 
 ## How to file
 
