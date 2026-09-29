@@ -1,6 +1,6 @@
 # Tag CHANGELOG entries with affected modules, lesson impact and resolved requests
 
-- **Status:** open
+- **Status:** planned
 - **Kind:** docs
 - **Requested by:** Ryan (approved by Ryan), 2026-09-29
 - **Lessons blocked:** none yet
@@ -25,4 +25,4 @@ Each entry carries a short line such as 'Affects: arcade, turtle · Existing les
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Branch `feature/changelog-entry-tags`: CHANGELOG "Entry format" section defines the `Affects · Existing lessons · Resolves` tag line for new entries (no backfill); `docs/agents/workflows.md`, `AGENTS.md` and the authoring-requests README point to it. The 2026-09-29 entries for the other requests already use it.

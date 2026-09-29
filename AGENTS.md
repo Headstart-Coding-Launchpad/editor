@@ -88,7 +88,7 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 - Preserve unrelated user changes in the worktree.
 - Add or update tests when behaviour changes.
 - Update relevant docs after significant changes.
-- Update `docs/authoring/CHANGELOG.md` when a change affects how lessons, tasks, topics, checks, assets, or lesson Markdown should be written.
+- Update `docs/authoring/CHANGELOG.md` when a change affects how lessons, tasks, topics, checks, assets, or lesson Markdown should be written, ending the entry with its `Affects · Existing lessons · Resolves` tag line.
 - Run `npm run docs:check` when docs, source files, or documented behaviours change.
 - Run `npm test` before handing work back.
 
