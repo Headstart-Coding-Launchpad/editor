@@ -7,7 +7,7 @@ import ValidationPanel from '../../builder/components/ValidationPanel'
 import { normalizeTasksForExport } from '../../builder/lessonUtils'
 import { applyTaskUpdate } from '../../shared/taskUtils'
 import { useTypeAssets } from '../../shared/useTypeAssets'
-import { getModuleDefinition } from '../../modules/definitions'
+import { getModuleAuthoring } from '../../modules/definitions'
 
 // Reuses the builder's task-editing components (TaskList, TaskEditor,
 // GroupEditor, useBuilderState) inside a modal so teachers/admins can edit a
@@ -24,9 +24,9 @@ export default function EditLessonModal({
 }) {
   const [draftLesson, setDraftLesson] = useState(() => lesson)
   const [saving, setSaving] = useState(false)
-  // Only a type with default sprites (capabilities.typeSpriteDefaults; scratch) loads them.
+  // Only the sprite-library module (authoring.spriteLibrary; scratch) loads default sprites.
   const { defaultSprites } = useTypeAssets(
-    getModuleDefinition(draftLesson.type)?.capabilities.typeSpriteDefaults ? draftLesson.type : null
+    getModuleAuthoring(draftLesson.type)?.spriteLibrary ? draftLesson.type : null
   )
 
   const {

@@ -238,6 +238,24 @@ baseline in the same PR with `UPDATE_TYPE_BRANCH_BASELINE=1 npx vitest run typeB
 Never raise a count: route new behaviour through the module or activity registry. See
 `docs/architecture/modular-activities-plan.md`.
 
+Since plan step 4.8 every file is at zero (the baseline is `{}`), and the ESLint rule
+`no-restricted-syntax` in `eslint.config.js` rejects a new `===` / `!==` / `case` against a type
+name outside `src/modules/**`, `src/activities/**` and tests. A match that is genuinely not type
+branching goes on the test's `TYPE_BRANCH_ALLOWLIST` (`{ file, pattern, reason }`; a test fails
+once the pattern is gone) — prefer a named constant or map. `npm run new:module` adds the new
+type to both name lists.
+
+## Module value pins and the kits
+
+Tests that pin exact per-module values (`moduleDefinitions`, `derivedTypeLists`, `registry`,
+`moduleRunCapability`, `moduleWorkSlot`) and the legacy-oracle comparisons (`moduleContract`,
+`teacherSandboxWork`) describe the eight built-in modules
+(`src/modules/__tests__/helpers/builtInModules.js`), so a scaffolded module doesn't have to edit
+them; the registry-driven tests (`moduleTypeParity`, `StudentViewModules`,
+`moduleDefinitionsNode`, `moduleInterface`, `authoringDocExamples`, `validationErrorsDoc`) cover
+every registered module. `scripts/__tests__/newActivity.test.mjs` and `newModule.test.mjs` test
+the generators (planning against the repo, applying in a temporary copy).
+
 ## Continuous Integration
 
 `.github/workflows/ci.yml` runs on every pull request and every push to `main`:

@@ -12,15 +12,11 @@ import baseline from './typeBranchBaseline.json'
 // src/modules/__tests__/typeBranchBaseline.json. Never raise a count to get a PR green: route
 // the behaviour through the registry instead.
 //
-// Plan step 4.8 took every file outside src/builder to zero; the ESLint rule
-// `no-restricted-syntax` in eslint.config.js now forbids new comparisons there as you type. Only
-// src/builder/** may still appear in the baseline (it is being zeroed on its own branch; once
-// it merges, drop ZERO_EXEMPT_PREFIXES and the rule's src/builder ignore).
+// Plan step 4.8 took every file to zero (the baseline is empty); the ESLint rule
+// `no-restricted-syntax` in eslint.config.js forbids new comparisons as you type, and this test
+// keeps the regex-level guard (it also counts inline type arrays, which ESLint does not).
 
 const root = path.resolve(__dirname, '../../..')
-
-// Files still allowed a non-zero count. Everything else must stay at zero.
-const ZERO_EXEMPT_PREFIXES = ['src/builder/']
 
 // Matches that are not module/task-type branching (e.g. a comparison against a name that only
 // coincides with a type). Each entry removes one exact `pattern` occurrence from `file`'s count
@@ -144,13 +140,12 @@ describe('lesson-type branch ratchet', () => {
     ).toEqual([])
   })
 
-  it('is at zero outside the exempt folders (plan step 4.8)', () => {
-    const exempt = (file) => ZERO_EXEMPT_PREFIXES.some((prefix) => file.startsWith(prefix))
+  it('is at zero outside the plugin folders (plan step 4.8)', () => {
     expect(
-      Object.keys(current).filter((file) => !exempt(file)),
+      Object.keys(current),
       'Ask the module/activity registry instead of comparing type names'
     ).toEqual([])
-    expect(Object.keys(baseline).filter((file) => !exempt(file))).toEqual([])
+    expect(baseline).toEqual({})
   })
 
   it('keeps every allowlist entry justified and still present', () => {

@@ -298,5 +298,6 @@ Then, in the new folder:
 5. Verify pointer, drag, keyboard and touch behaviour, and the teacher surfaces, in a real
    browser — jsdom can't.
 
-Workspace modules have no scaffold yet (plan step 4.8); `.claude/skills/new-module/SKILL.md`
-holds the manual checklist.
+Workspace modules have the matching kit: `npm run new:module -- <type> "<Label>"` and the
+`new-module` skill ([lesson-type-modules.md](lesson-type-modules.md#adding-a-module)). Both
+generators share `scripts/scaffold-utils.mjs`.

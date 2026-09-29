@@ -496,7 +496,7 @@ export async function planNewModule({ root = REPO_ROOT, type, label }) {
 function nextSteps(type, label) {
   return [
     `Search src/modules/${type}/, docs/authoring/${type}.md and the edited test files for TODO(new-module).`,
-    `Decide every group in src/modules/${type}/definition.js (meta, capabilities, run, lifecycle, storage, wire, checking, workSlot); see docs/architecture/lesson-type-modules.md.`,
+    `Decide every group in src/modules/${type}/definition.js (meta, capabilities, run, authoring, lifecycle, storage, wire, checking, workSlot); see docs/architecture/lesson-type-modules.md.`,
     `Build the real StudentWorkspace, BuilderWorkspace, CheckEditor and TeacherLiveView (>= 44px controls, keyboard access, docs/UI_STYLE_GUIDE.md); never write to Firebase from them.`,
     `Add module check types to src/modules/${type}/checks.js if the core checks are not enough.`,
     `Update the tests in src/modules/${type}/__tests__/ (keep the StudentView click-through; Run then Stop for a runtime module) and the ${type} entry in ${PATHS.clickThrough}.`,

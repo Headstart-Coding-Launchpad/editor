@@ -160,14 +160,11 @@ export default [
 
   // No lesson-type branching outside the plugin folders (plan step 4.8). The ratchet test keeps
   // the per-file counts at zero; this catches a new comparison as it is written.
-  // TODO(module-kit): remove the src/builder/** ignore once the Builder branch that zeroes
-  // src/builder merges.
   {
     files: ['src/**/*.{js,jsx}', 'cli/**/*.mjs'],
     ignores: [
       'src/modules/**',
       'src/activities/**',
-      'src/builder/**',
       'src/test/**',
       '**/__tests__/**',
       '**/*.test.{js,jsx,mjs}',

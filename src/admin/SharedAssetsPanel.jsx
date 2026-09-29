@@ -3,7 +3,7 @@ import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { firestore, storage } from '../shared/firebase'
 import { getLessonModules } from '../modules/registry'
-import { getModuleDefinition } from '../modules/definitions'
+import { getModuleAuthoring } from '../modules/definitions'
 import { spriteVisualMode } from '../shared/spriteVisuals'
 
 const LESSON_TYPES = getLessonModules().map((module) => ({ id: module.type, label: module.label }))
@@ -53,11 +53,11 @@ function TypeAssetsEditor({ lessonType }) {
   const [typeData, setTypeData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [uploads, setUploads] = useState({})
-  // Default sprites / backdrops (capabilities.typeSpriteDefaults; scratch).
-  const hasSpriteDefaults = !!getModuleDefinition(lessonType)?.capabilities.typeSpriteDefaults
-  // A module whose Run is the web preview (html) always gets every shared asset of its type in
-  // the preview, so the per-asset "Web editor" toggle is only offered for the other types.
-  const showsWebEditorToggle = getModuleDefinition(lessonType)?.capabilities.run !== 'preview'
+  // Default sprites / backdrops: the sprite-library module (authoring.spriteLibrary; scratch).
+  const hasSpriteDefaults = !!getModuleAuthoring(lessonType)?.spriteLibrary
+  // A module whose preview always includes its shared type assets (authoring.previewTypeAssets;
+  // html) has no per-asset "Web editor" toggle.
+  const showsWebEditorToggle = !getModuleAuthoring(lessonType)?.previewTypeAssets
 
   useEffect(() => {
     return onSnapshot(

@@ -9,6 +9,8 @@
 // and explicit `.js` extensions on relative imports (the CLI loads it under plain Node).
 import { defineModule } from '../defineModule.js'
 import { isCodeCheck, normalizeChecks } from '../checks.js'
+import { codeCopyStarterToComplete, codeDefaultTypeFields, never } from '../moduleAuthoring.js'
+import { printCodeStringTask } from '../printHelpers.js'
 import {
   codeStarterPresent,
   validateCodeChecks,
@@ -76,7 +78,6 @@ export default defineModule({
     teacherSandboxRow: false, // teacher sandbox workspace fills a plain flex row
     teacherUnifiedStageTabs: false, // teacher code tabs show stage roles, no Starter/Complete tabs
     explainerBlockMenu: false, // explainer editor offers Scratch block references
-    typeSpriteDefaults: false, // Shared Assets default sprites / backdrops for the type
   },
   // runResult: { errorLine, turtle, liveCode } — required exactly when run is 'runtime'.
 
@@ -132,6 +133,25 @@ export default defineModule({
   initialState: (task) => starterCodeOf(task),
   serializeState: (state) => state,
   deserializeState: (raw) => (typeof raw === 'string' ? raw : ''),
+
+  // ── Builder authoring (see ../moduleAuthoring.js and ../printHelpers.js) ──────────
+  // TODO(new-module): what the Builder does with this module's tasks.
+  authoring: {
+    // A new task starts from the previous task's complete (else starter) work and carries it.
+    defaultTypeFields: codeDefaultTypeFields,
+    // Whether a draft task has no starter work yet (and missingStarterLabel names it).
+    missingStarter: never,
+    // "Reset to starter code" copies the starter into completeCode.
+    copyStarterToComplete: codeCopyStarterToComplete,
+    // The module's section of the printable lesson.
+    printTask: printCodeStringTask,
+    // The Sandbox starter modal's editor: 'code' | 'blocks' | 'fs' | 'circuit' | 'files'.
+    sandboxStarterEditor: 'code',
+    // The TaskEditor's Run: 'pyodide' | 'preview' | 'none' (nothing to run in the Builder).
+    builderRun: 'none',
+    // Optional: codeFormat { label, icon }, copyCodePlaceholder (with supportsCopyCode), and the
+    // flags fileTabs, sharedTypeAssets, previewTypeAssets, spriteLibrary.
+  },
 
   // ── Contract v2 (see ../moduleContract.js for the shared builders) ─────────────
   lifecycle: {

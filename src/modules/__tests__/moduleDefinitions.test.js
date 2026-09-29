@@ -435,7 +435,6 @@ describe('core-surface capabilities (plan step 4.8)', () => {
     ['teacherSandboxRow', ['html', 'scratch']],
     ['teacherUnifiedStageTabs', ['html', 'python']],
     ['explainerBlockMenu', ['scratch']],
-    ['typeSpriteDefaults', ['scratch']],
   ])('%s is declared exactly by %j', (capability, types) => {
     expect(typesWith((definition) => definition.capabilities[capability] === true)).toEqual(types)
     for (const definition of getModuleDefinitions()) {

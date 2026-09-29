@@ -67,8 +67,12 @@ Decide every group, keeping the file pure (no JSX/React/DOM/runtimes, `.js` impo
    state, hook form / `codeWorkSlot` / `filesWorkSlot` otherwise) with its flags (`taskReset`,
    `teacherEdit` ⇔ `capabilities.teacherEditor`, …; `teacherStarter` only if the teacher's
    Starter tab must differ from `starter`).
-6. **Authoring + validation**: task fields, stages, carry-through, `validateTask` (messages
-   worded `Task N …`), `hasStarterContent`, `hasCheckValue`.
+6. **`authoring`** (the Builder, which never branches on a type): `defaultTypeFields`,
+   `missingStarter` / `missingStarterLabel`, `copyStarterToComplete`, `printTask`,
+   `sandboxStarterEditor`, `builderRun`, optional `codeFormat`, `copyCodePlaceholder` and flags
+   (`moduleAuthoring.js`, `printHelpers.js`).
+7. **Task fields + validation**: `makeCodeTaskFields`, stages, carry-through, `validateTask`
+   (messages worded `Task N …`), `hasStarterContent`, `hasCheckValue`.
 
 ## 4. Workspace and teacher UIs
 

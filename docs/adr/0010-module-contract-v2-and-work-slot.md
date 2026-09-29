@@ -21,6 +21,8 @@ frozen by `defineModule`) describes everything core code needs, in named groups:
 - `meta` and `capabilities` — labels, icons, picker order, code language, and every UI gate the
   student, teacher and Builder surfaces read (explainer layout, stage reveal, mirrors, teacher
   editor, run kind, teacher layout flags).
+- `authoring` — what the Builder does with the module's tasks (new-task fields, print, sandbox
+  starter editor, Builder run, draft notices).
 - `lifecycle` — reset targets, complete solutions, sandbox starters, composed-lesson fields,
   personal sandbox, playground task.
 - `storage` and `wire` — adapters onto the unchanged localStorage record shapes and Realtime
@@ -34,8 +36,8 @@ TeacherView, the sandbox push, teacherLive publishing and sharing go through the
 
 Outside `src/modules/**` and `src/activities/**`, core code never compares against a module or
 task type name: the type-branch ratchet (`typeBranchRatchet.test.js`) is at zero there, and an
-ESLint `no-restricted-syntax` rule rejects new comparisons (Builder files are exempt until their
-own migration merges). New modules are scaffolded with `npm run new:module` from
+ESLint `no-restricted-syntax` rule rejects new comparisons (the Builder included, through the
+`authoring` group). New modules are scaffolded with `npm run new:module` from
 `src/modules/_template/`.
 
 ## Consequences

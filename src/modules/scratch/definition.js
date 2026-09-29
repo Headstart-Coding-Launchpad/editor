@@ -61,7 +61,6 @@ export default defineModule({
     teacherFillHeight: true,
     teacherSandboxRow: true,
     explainerBlockMenu: true,
-    typeSpriteDefaults: true,
     // The stage runs inside the workspace, which reports its checks (handleScratchCheck).
     run: 'workspace',
   },
