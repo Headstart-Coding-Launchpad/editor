@@ -217,6 +217,11 @@ message says `feedback check` where it would say `check` (that part is shown as 
 | `Task … has a Scratch costume … but no costume name` | `costume_is` has no `value`. | Add the costume name. |
 | `Task … has invalid toolbox XML` (**Builder only**) | A Scratch task's `toolbox` isn't well-formed XML. | Fix the XML (see `scratch-toolbox-xml.md`). |
 | `Task … has a filesystem … but no path` | A Filesystem or Desktop `fs_*` check has no `path`. | Add `path:`. |
+| `Task … has a window_state … but no appId` | A Desktop `window_state` check doesn't name the app. | Add `appId:` (`fileManager`, `textEditor`, `imageViewer`, `paint` or `browser`). |
+| `Task … has a window_state moved_to … with zone "…" — use one of: …` | `moved_to` has no `zone`, or an unknown one. | Use `left_half`, `right_half`, `top_half`, `bottom_half`, `top_left`, `top_right`, `bottom_left` or `bottom_right` (see `desktop.md`). |
+| `Task … has a window_state resized … with size "…" — use one of: smaller, larger` | `size` is not `smaller` or `larger`. | Use one of those, or remove `size` to accept any change of 15% or more. |
+| `Task … has a window_state resized … whose … is not a fraction of the desktop (more than 0, up to 1)` | `minWidth`, `minHeight`, `maxWidth` or `maxHeight` is a pixel value or out of range. | Give a fraction, e.g. `maxWidth: 0.5` for half the desktop. |
+| `Task … has a window_state resized … whose min… is more than its max…` | A minimum is larger than the matching maximum, so the check can never pass. | Swap or fix the limits. |
 | `Task … has a file-content … but no expected value` | `fs_file_content` (or legacy `fs_content_contains`) has no `value`. | Add the text to compare. |
 | `Task … has a file line-count … but no expected count` | `fs_file_line_count` has no `value`. | Add a number. |
 | `Task … has a file-location … but no parent folder` | `fs_file_location` (or legacy `fs_file_in_dir`) has no `dir`. | Add `dir:`. |
@@ -265,7 +270,7 @@ See the module docs for each check's required fields.
 | `Task … has output checks — open the Complete tab and run to verify the complete solution` | Output checks need a real run, which the CLI can't do. | Open the task in the Builder and run the complete solution. |
 | `Task … has element/output checks — open the Complete tab and run to verify the complete solution` | Same for HTML element checks. | Run it in the Builder. |
 | `Task … complete filesystem does not satisfy a check — review the complete filesystem` | The complete filesystem fails a check. | Fix the complete state or the check. |
-| `Task … complete desktop does not satisfy a check — review the complete desktop` | The complete Desktop state fails a file or window check (`browser_visited` and `search_query` are not tested against it). | Fix the complete state or the check. |
+| `Task … complete desktop does not satisfy a check — review the complete desktop` | The complete Desktop state fails a file or window check (`browser_visited`, `search_query` and `window_state` `resized` are not tested against it). | Fix the complete state or the check. |
 | `Task … complete breadboard does not satisfy a check — review the complete circuit` | The complete Electronics circuit fails a circuit check. | Fix the complete circuit or the check. |
 | `Task … has a completion check that hasn't been tested — run the task to verify it` (**Builder only**) | The check hasn't been run against the task since it was edited. | Run the task in the Builder. |
 

@@ -1,3 +1,5 @@
+import { DEFAULT_VIEWPORT } from './desktopState.js'
+
 export const DESKTOP_CHECK_TYPES = [
   'fs_recycle_bin',
   'window_state',
@@ -15,8 +17,8 @@ export const DESKTOP_CHECK_DEFINITIONS = {
   },
   window_state: {
     subject: 'Window state',
-    operators: ['opened', 'closed', 'minimized', 'maximized'],
-    fields: ['appId'],
+    operators: ['opened', 'closed', 'minimized', 'maximized', 'moved_to', 'resized'],
+    fields: ['appId', 'zone', 'size', 'minWidth', 'minHeight', 'maxWidth', 'maxHeight'],
     evaluate: 'on_change',
   },
   windows_arranged_side_by_side: {
@@ -47,11 +49,68 @@ const MIN_WINDOW_WIDTH_SHARE = 0.3
 const MIN_COMBINED_WIDTH_SHARE = 0.75
 const MAX_OVERLAP_SHARE = 0.15
 
+// Screen zones for `window_state` `moved_to`, as [left, top, right, bottom] fractions of the
+// desktop. A window is in a zone when its centre is.
+export const WINDOW_ZONES = {
+  left_half: [0, 0, 0.5, 1],
+  right_half: [0.5, 0, 1, 1],
+  top_half: [0, 0, 1, 0.5],
+  bottom_half: [0, 0.5, 1, 1],
+  top_left: [0, 0, 0.5, 0.5],
+  top_right: [0.5, 0, 1, 0.5],
+  bottom_left: [0, 0.5, 0.5, 1],
+  bottom_right: [0.5, 0.5, 1, 1],
+}
+
+export const WINDOW_RESIZE_SIZES = ['smaller', 'larger']
+const WINDOW_SIZE_LIMIT_FIELDS = ['minWidth', 'minHeight', 'maxWidth', 'maxHeight']
+
+// How much a window's area must change from its starting size to count as resized.
+const MIN_RESIZE_AREA_CHANGE = 0.15
+
+// The desktop area window geometry refers to: the size WindowManager measured and stored on the
+// desktop, else one passed in the check context, else the assumed default.
+function viewportOf(desktop, context) {
+  const stored = desktop?.viewport ?? context?.viewport
+  return stored?.width > 0 && stored?.height > 0 ? stored : DEFAULT_VIEWPORT
+}
+
 function findWindow(windows, appId) {
   return (windows ?? []).find((w) => w.appId === appId) ?? null
 }
 
-function evaluateWindowState(check, windows) {
+function isFreeWindow(win) {
+  return !!win && !win.minimized && !win.maximized
+}
+
+function evaluateMovedTo(check, win, viewport) {
+  const zone = WINDOW_ZONES[check.zone]
+  if (!zone || !isFreeWindow(win)) return false
+  const cx = (win.x + win.width / 2) / viewport.width
+  const cy = (win.y + win.height / 2) / viewport.height
+  const [left, top, right, bottom] = zone
+  return cx >= left && cx <= right && cy >= top && cy <= bottom
+}
+
+function evaluateResized(check, win, viewport) {
+  if (!isFreeWindow(win)) return false
+  const startArea = (win.startWidth ?? win.width) * (win.startHeight ?? win.height)
+  const ratio = startArea > 0 ? (win.width * win.height) / startArea : 1
+  const limits = WINDOW_SIZE_LIMIT_FIELDS.filter((field) => check[field] != null)
+  if (check.size === 'smaller' && ratio > 1 - MIN_RESIZE_AREA_CHANGE) return false
+  if (check.size === 'larger' && ratio < 1 + MIN_RESIZE_AREA_CHANGE) return false
+  // No direction and no limits: any meaningful change counts.
+  if (!check.size && limits.length === 0) return Math.abs(ratio - 1) >= MIN_RESIZE_AREA_CHANGE
+  const width = win.width / viewport.width
+  const height = win.height / viewport.height
+  if (check.minWidth != null && width < Number(check.minWidth)) return false
+  if (check.minHeight != null && height < Number(check.minHeight)) return false
+  if (check.maxWidth != null && width > Number(check.maxWidth)) return false
+  if (check.maxHeight != null && height > Number(check.maxHeight)) return false
+  return true
+}
+
+function evaluateWindowState(check, windows, viewport) {
   const win = findWindow(windows, check.appId)
   switch (check.operator) {
     case 'opened':
@@ -62,6 +121,10 @@ function evaluateWindowState(check, windows) {
       return !!win?.minimized
     case 'maximized':
       return !!win?.maximized
+    case 'moved_to':
+      return evaluateMovedTo(check, win, viewport)
+    case 'resized':
+      return evaluateResized(check, win, viewport)
     default:
       return false
   }
@@ -75,7 +138,7 @@ function evaluateArrangedSideBySide(check, windows, context) {
   if (!winA || !winB || winA.minimized || winB.minimized || winA.maximized || winB.maximized)
     return false
 
-  const viewportWidth = context?.viewport?.width ?? 1200
+  const viewportWidth = viewportOf(context?.desktop, context).width
   if (winA.width / viewportWidth < MIN_WINDOW_WIDTH_SHARE) return false
   if (winB.width / viewportWidth < MIN_WINDOW_WIDTH_SHARE) return false
 
@@ -128,9 +191,9 @@ export function evaluateDesktopCheck(check, desktop, context = {}) {
       return check.operator === 'not_in' ? !isIn : isIn
     }
     case 'window_state':
-      return evaluateWindowState(check, windows)
+      return evaluateWindowState(check, windows, viewportOf(desktop, context))
     case 'windows_arranged_side_by_side':
-      return evaluateArrangedSideBySide(check, windows, context)
+      return evaluateArrangedSideBySide(check, windows, { ...context, desktop })
     case 'browser_visited':
       return evaluateBrowserVisited(check, browserVisited)
     case 'search_query':
@@ -139,6 +202,48 @@ export function evaluateDesktopCheck(check, desktop, context = {}) {
       return false
   }
 }
+
+// Authoring rules for window_state (the registry's `validate`, run for the Builder and CLI).
+function validateWindowState(check, { n, kind }) {
+  const label = kind === 'feedback' ? 'feedback check' : 'check'
+  const errors = []
+  if (!String(check.appId ?? '').trim()) {
+    errors.push(`Task ${n} has a window_state ${label} but no appId`)
+  }
+  if (check.operator === 'moved_to' && !WINDOW_ZONES[check.zone]) {
+    errors.push(
+      `Task ${n} has a window_state moved_to ${label} with zone "${check.zone ?? ''}" — use one of: ${Object.keys(WINDOW_ZONES).join(', ')}`
+    )
+  }
+  if (check.operator !== 'resized') return errors
+  if (check.size != null && !WINDOW_RESIZE_SIZES.includes(check.size)) {
+    errors.push(
+      `Task ${n} has a window_state resized ${label} with size "${check.size}" — use one of: ${WINDOW_RESIZE_SIZES.join(', ')}`
+    )
+  }
+  for (const field of WINDOW_SIZE_LIMIT_FIELDS) {
+    if (check[field] == null) continue
+    const value = Number(check[field])
+    if (!(value > 0 && value <= 1)) {
+      errors.push(
+        `Task ${n} has a window_state resized ${label} whose ${field} is not a fraction of the desktop (more than 0, up to 1)`
+      )
+    }
+  }
+  for (const [min, max] of [
+    ['minWidth', 'maxWidth'],
+    ['minHeight', 'maxHeight'],
+  ]) {
+    if (check[min] != null && check[max] != null && Number(check[min]) > Number(check[max])) {
+      errors.push(
+        `Task ${n} has a window_state resized ${label} whose ${min} is more than its ${max}`
+      )
+    }
+  }
+  return errors
+}
+
+const VALIDATORS = { window_state: validateWindowState }
 
 // Check-type registry definitions (see ../checkRegistry.js). fs_* checks used in
 // Desktop lessons are owned by the filesystem module's CHECKS.
@@ -156,5 +261,6 @@ export const CHECKS = DESKTOP_CHECK_TYPES.map((type) => {
     contextKey: 'desktop',
     evaluate: (check, _output, context = {}) =>
       evaluateDesktopCheck(check, context.desktop, context),
+    ...(VALIDATORS[type] ? { validate: VALIDATORS[type] } : {}),
   }
 })

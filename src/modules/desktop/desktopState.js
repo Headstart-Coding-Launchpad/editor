@@ -5,17 +5,30 @@ import { DEFAULT_FS } from '../filesystem/filesystem.js'
 // {
 //   fs: { "/": { type: 'dir' }, "/Downloads/": { type: 'dir' }, ... }, // same flat map as filesystem.js
 //   recycleBin: [{ path, entry, deletedAt, originalParent }],
-//   windows: [{ id, appId, x, y, width, height, minimized, maximized, zIndex, filePath? }],
+//   windows: [{ id, appId, x, y, width, height, minimized, maximized, zIndex, filePath?,
+//               startWidth?, startHeight? }],
 //   browserVisited: ['pageId', ...],   // every simulated-browser page ever visited (dedup log)
 //   lastSearchQuery: 'free text' | null, // most recent query submitted to the simulated search engine
+//   viewport?: { width, height },      // the student's desktop area the window x/y/size refer to
 // }
 //
 // `filePath` is optional and only meaningful for apps that can show several windows at
 // once (Text Editor); it's the path of the file that window is displaying/editing.
+// `startWidth`/`startHeight` are the window's size before its first resize (stamped by the
+// operations that change size), used by the `window_state` `resized` check.
+// `viewport` is stamped by WindowManager on each interaction once it has measured the desktop,
+// so geometry checks (`moved_to`, `resized`, side by side) use the student's real desktop size.
 
 export const DEFAULT_DESKTOP_FS = { ...DEFAULT_FS, '/Downloads/': { type: 'dir' } }
 
 export const DEFAULT_WINDOW = { x: 80, y: 60, width: 640, height: 420 }
+
+// Assumed desktop size until WindowManager has measured the real one.
+export const DEFAULT_VIEWPORT = { width: 1200, height: 700 }
+
+function isViewport(value) {
+  return value?.width > 0 && value?.height > 0
+}
 
 // Only the first available app starts open — the rest wait for the student to launch them
 // from a desktop icon (or, for Text Editor/Image Viewer, from opening a file in File
@@ -56,6 +69,9 @@ export function normaliseDesktop(raw) {
     windows: Array.isArray(raw.windows) ? raw.windows : makeDefaultWindows(),
     browserVisited: Array.isArray(raw.browserVisited) ? raw.browserVisited : [],
     lastSearchQuery: typeof raw.lastSearchQuery === 'string' ? raw.lastSearchQuery : null,
+    ...(isViewport(raw.viewport)
+      ? { viewport: { width: raw.viewport.width, height: raw.viewport.height } }
+      : {}),
   }
 }
 
@@ -88,11 +104,28 @@ export function moveWindow(state, windowId, x, y) {
   }
 }
 
+// Keeps a window's pre-resize size the first time its size changes (see `startWidth`).
+function withStartSize(win) {
+  return win.startWidth != null && win.startHeight != null
+    ? win
+    : { ...win, startWidth: win.width, startHeight: win.height }
+}
+
 export function resizeWindow(state, windowId, width, height) {
   return {
     ...state,
-    windows: state.windows.map((w) => (w.id === windowId ? { ...w, width, height } : w)),
+    windows: state.windows.map((w) =>
+      w.id === windowId ? { ...withStartSize(w), width, height } : w
+    ),
   }
+}
+
+// Records the measured desktop size (rounded); a no-op when it hasn't changed.
+export function setDesktopViewport(state, viewport) {
+  if (!isViewport(viewport)) return state
+  const next = { width: Math.round(viewport.width), height: Math.round(viewport.height) }
+  if (state.viewport?.width === next.width && state.viewport?.height === next.height) return state
+  return { ...state, viewport: next }
 }
 
 export function setWindowMinimized(state, windowId, minimized) {
@@ -165,17 +198,12 @@ export function recordSearchQuery(state, query) {
 }
 
 // Arranges two windows side by side across the given viewport width/height.
-export function arrangeSideBySide(
-  state,
-  windowIdA,
-  windowIdB,
-  viewport = { width: 1200, height: 700 }
-) {
+export function arrangeSideBySide(state, windowIdA, windowIdB, viewport = DEFAULT_VIEWPORT) {
   const half = Math.floor(viewport.width / 2)
   let windows = state.windows.map((w) => {
     if (w.id === windowIdA)
       return {
-        ...w,
+        ...withStartSize(w),
         x: 0,
         y: 0,
         width: half,
@@ -185,7 +213,7 @@ export function arrangeSideBySide(
       }
     if (w.id === windowIdB)
       return {
-        ...w,
+        ...withStartSize(w),
         x: half,
         y: 0,
         width: viewport.width - half,

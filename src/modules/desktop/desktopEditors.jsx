@@ -1,5 +1,5 @@
 import { FS_CHECK_DEFINITIONS } from '../filesystem/checks.js'
-import { DESKTOP_CHECK_DEFINITIONS } from './checks.js'
+import { DESKTOP_CHECK_DEFINITIONS, WINDOW_ZONES, WINDOW_RESIZE_SIZES } from './checks.js'
 import {
   INPUT_CHECK_DEFINITIONS,
   INPUT_GESTURES,
@@ -232,6 +232,69 @@ function DesktopSingleCheckEditor({ check, onChange, onRemove, feedbackEditor = 
               style={{ ...s.input, fontFamily: 'var(--font-code)', fontSize: '0.82rem' }}
             />
           </label>
+        )}
+
+        {fields.includes('zone') && check.operator === 'moved_to' && (
+          <label style={{ ...s.label, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            Zone (the window's centre must be in it)
+            <select
+              aria-label="Zone"
+              value={check.zone ?? ''}
+              onChange={(e) => setField('zone', e.target.value || undefined)}
+              style={s.input}
+            >
+              <option value="">Choose a zone…</option>
+              {Object.keys(WINDOW_ZONES).map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone.replace('_', ' ')}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {fields.includes('size') && check.operator === 'resized' && (
+          <>
+            <label style={{ ...s.label, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              Size compared with when it opened
+              <select
+                aria-label="Size"
+                value={check.size ?? ''}
+                onChange={(e) => setField('size', e.target.value || undefined)}
+                style={s.input}
+              >
+                <option value="">Any change (15% or more)</option>
+                {WINDOW_RESIZE_SIZES.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {['minWidth', 'maxWidth', 'minHeight', 'maxHeight'].map((field) => (
+                <label
+                  key={field}
+                  style={{ ...s.label, display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}
+                >
+                  {field}
+                  <input
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    aria-label={field}
+                    value={check[field] ?? ''}
+                    onChange={(e) =>
+                      setField(field, e.target.value === '' ? undefined : Number(e.target.value))
+                    }
+                    placeholder="0–1"
+                    style={{ ...s.input, minWidth: 70 }}
+                  />
+                </label>
+              ))}
+            </div>
+          </>
         )}
 
         {fields.includes('appIds') && (
