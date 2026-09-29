@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { getSandboxStarterSummary } from '../lesson-meta/SandboxStarterModal'
 import { TaskFormatIcon } from '../task-editor/TaskEditorFields'
 import { MODULE_TYPES } from '../../../modules/definitions'
+import { builtInOnly } from '../../../modules/__tests__/helpers/builtInModules.js'
 import { legacySandboxStarterSummary } from '../../../modules/__tests__/helpers/legacyBuilderAuthoring.js'
 
 vi.mock('../../../shared/useTypeAssets', () => ({
@@ -80,7 +81,8 @@ const SANDBOX_LESSONS = [
 
 describe('Builder surfaces keep their old per-type output', () => {
   it('getSandboxStarterSummary matches the old per-type summary', () => {
-    for (const type of [...MODULE_TYPES, 'nope', undefined]) {
+    // The oracle describes the built-in modules; a module added later has no old summary.
+    for (const type of [...builtInOnly(MODULE_TYPES), 'nope', undefined]) {
       for (const fields of SANDBOX_LESSONS) {
         const lesson = { type, tasks: [], ...fields }
         expect(getSandboxStarterSummary(lesson)).toBe(legacySandboxStarterSummary(lesson))

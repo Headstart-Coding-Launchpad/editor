@@ -7,6 +7,7 @@ import {
   SPRITE_LIBRARY_MODULE_TYPE,
 } from '../definitions.js'
 import pythonDefinition from '../python/definition.js'
+import { builtInOnly } from './helpers/builtInModules.js'
 import { copyStarterToComplete } from '../../builder/lessonUtils.js'
 import {
   esc,
@@ -152,7 +153,9 @@ const PRINT_TASKS = [
 const UNKNOWN = ['composed', 'nope', undefined]
 
 describe('module authoring hooks reproduce the old Builder branches', () => {
-  describe.each(MODULE_TYPES)('%s', (type) => {
+  // The oracles describe the built-in modules (./helpers/builtInModules.js); a module added later
+  // has no old Builder branch to match.
+  describe.each(builtInOnly(MODULE_TYPES))('%s', (type) => {
     const authoring = getModuleAuthoring(type)
     const lesson = { type }
 

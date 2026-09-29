@@ -248,7 +248,7 @@ type to both name lists.
 ## Module value pins and the kits
 
 Tests that pin exact per-module values (`moduleDefinitions`, `derivedTypeLists`, `registry`,
-`moduleRunCapability`, `moduleWorkSlot`) and the legacy-oracle comparisons (`moduleContract`,
+`moduleRunCapability`, `moduleWorkSlot`) and the legacy-oracle comparisons (`moduleContract`, `moduleAuthoring`, `builderAuthoringParity`,
 `teacherSandboxWork`) describe the eight built-in modules
 (`src/modules/__tests__/helpers/builtInModules.js`), so a scaffolded module doesn't have to edit
 them; the registry-driven tests (`moduleTypeParity`, `StudentViewModules`,
