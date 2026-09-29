@@ -14,6 +14,13 @@ import {
   alwaysPersonalSandbox,
 } from '../moduleContract.js'
 import { compactTurtleResultForSync } from './sync.js'
+import {
+  codeDefaultTypeFields,
+  MARKUP_COPY_CODE_PLACEHOLDER,
+  never,
+  noUpdates,
+} from '../moduleAuthoring.js'
+import { printCodeStringTask } from '../printHelpers.js'
 
 const DEFAULT_STARTER_CODE =
   'import turtle\n\nturtle.forward(100)\nturtle.left(90)\nturtle.forward(100)\n'
@@ -119,6 +126,20 @@ export default defineModule({
   deserializeState: (raw) => (typeof raw === 'string' ? raw : ''),
 
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
+  // ── Builder authoring hooks (see ../defineModule.js, "authoring") ─────────────
+  authoring: {
+    defaultTypeFields: codeDefaultTypeFields,
+    missingStarter: never,
+    // "Reset to starter code" has never copied anything for turtle (its complete code lives in
+    // the unified code stages).
+    copyStarterToComplete: noUpdates,
+    printTask: printCodeStringTask,
+    sandboxStarterEditor: 'code',
+    // The Builder's Run has always taken the preview path for turtle; its workspace runs itself.
+    builderRun: 'preview',
+    copyCodePlaceholder: MARKUP_COPY_CODE_PLACEHOLDER,
+  },
+
   lifecycle: {
     hasPersonalSandbox: alwaysPersonalSandbox,
     resetTarget: codeResetTarget,

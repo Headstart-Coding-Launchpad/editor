@@ -18,7 +18,7 @@ import {
   isComposedLesson,
   getComposedModuleTypes,
 } from '../../shared/composedLesson'
-import { getModuleLabel } from '../../modules/definitions'
+import { getModuleAuthoring, getModuleLabel } from '../../modules/definitions'
 import LessonTopicSummary from './LessonTopicSummary'
 import AssetSummary from './lesson-meta/AssetSummary'
 import Field from './lesson-meta/Field'
@@ -33,9 +33,9 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
   const { lessonAssets, loading: assetsLoading } = useAssets()
   const { storageAssets: lessonStorageAssets, refresh: refreshLessonStorageAssets } =
     useLessonStorageAssets(lesson.id, lesson.storageAssets ?? [])
-  const { typeStorageAssets } = useTypeAssets(
-    ['html', 'arcade'].includes(lesson.type) ? lesson.type : null
-  )
+  // Modules whose shared type assets a lesson can opt into (authoring.sharedTypeAssets).
+  const offersSharedTypeAssets = getModuleAuthoring(lesson.type)?.sharedTypeAssets === true
+  const { typeStorageAssets } = useTypeAssets(offersSharedTypeAssets ? lesson.type : null)
   const lastAutoKeyRef = useRef('')
   const { role } = useAuth()
   const [levels, setLevels] = useState([])
@@ -310,7 +310,7 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
           />
         )}
 
-        {['html', 'arcade'].includes(lesson.type) && typeStorageAssets.length > 0 && (
+        {offersSharedTypeAssets && typeStorageAssets.length > 0 && (
           <SharedAssetsSelector
             typeStorageAssets={typeStorageAssets}
             sharedAssetNames={lesson.sharedAssetNames ?? null}

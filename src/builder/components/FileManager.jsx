@@ -1,40 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react'
+import {
+  HTML_ONLY,
+  HTML_WITH_CSS,
+  HTML_WITH_CSS_JS,
+  isHtmlEntryCandidate,
+} from '../../modules/html/fileTemplates.js'
 
-export const HTML_ONLY = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>My Page</title>
-</head>
-<body>
-
-</body>
-</html>`
-
-const HTML_WITH_CSS = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>My Page</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-</body>
-</html>`
-
-const HTML_WITH_CSS_JS = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>My Page</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-  <script src="script.js"></script>
-</body>
-</html>`
+// Re-exported for existing imports; the templates live with the HTML module.
+export { HTML_ONLY }
 
 const TEMPLATES = [
   {
@@ -172,13 +145,11 @@ export default function FileManager({
               value={entryFile ?? files[0]?.name ?? ''}
               onChange={(e) => onChangeEntryFile?.(e.target.value)}
             >
-              {files
-                .filter((f) => f.type === 'html' || f.name.endsWith('.html'))
-                .map((f) => (
-                  <option key={f.name} value={f.name}>
-                    {f.name}
-                  </option>
-                ))}
+              {files.filter(isHtmlEntryCandidate).map((f) => (
+                <option key={f.name} value={f.name}>
+                  {f.name}
+                </option>
+              ))}
             </select>
           </label>
         </div>

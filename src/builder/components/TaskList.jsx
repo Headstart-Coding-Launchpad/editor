@@ -11,12 +11,18 @@ import {
   getTaskActivity,
   getTaskFormat,
   isHostedActivityTask,
+  TASK_FORMATS,
 } from '../../activities/registry.pure.js'
 import { UNKNOWN_ACTIVITY_ID } from '../../activities/resolve.js'
 
 function taskIconType(task) {
   const format = getTaskFormat(task)
-  if (format === 'information' || format === 'quiz' || format === 'activity') return format
+  if (
+    format === TASK_FORMATS.information ||
+    format === TASK_FORMATS.quiz ||
+    format === TASK_FORMATS.activity
+  )
+    return format
   if (task.toolbox || task.starterBlocks || task.completeBlocks) return 'scratch'
   return 'code'
 }

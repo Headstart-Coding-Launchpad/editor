@@ -18,6 +18,13 @@ import {
   TEACHER_EDIT_CODE_COPY,
   alwaysPersonalSandbox,
 } from '../moduleContract.js'
+import {
+  codeCopyStarterToComplete,
+  codeDefaultTypeFields,
+  never,
+  PYTHON_COPY_CODE_PLACEHOLDER,
+} from '../moduleAuthoring.js'
+import { printCodeStringTask } from '../printHelpers.js'
 
 export default defineModule({
   type: 'python',
@@ -135,6 +142,17 @@ export default defineModule({
   initialState: (task) => getStarterStage(task)?.stage?.code ?? task.starterCode ?? '',
   serializeState: (state) => state,
   deserializeState: (raw) => (typeof raw === 'string' ? raw : ''),
+
+  // ── Builder authoring hooks (see ../defineModule.js, "authoring") ─────────────
+  authoring: {
+    defaultTypeFields: codeDefaultTypeFields,
+    missingStarter: never,
+    copyStarterToComplete: codeCopyStarterToComplete,
+    printTask: printCodeStringTask,
+    sandboxStarterEditor: 'code',
+    builderRun: 'pyodide',
+    copyCodePlaceholder: PYTHON_COPY_CODE_PLACEHOLDER,
+  },
 
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
   lifecycle: {

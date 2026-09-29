@@ -46,6 +46,17 @@ export function getModuleTypesWithCapability(name) {
   return getModuleTypesWhere((definition) => definition.capabilities[name] === true)
 }
 
+// The Builder authoring group for a module type (see "authoring" in ./defineModule.js), or null
+// for an unregistered type so each caller keeps its own fallback.
+export function getModuleAuthoring(type) {
+  return BY_TYPE.get(type)?.authoring ?? null
+}
+
+// The module whose shared type assets hold the Builder's default sprite library (Scratch), or
+// null when no module declares `authoring.spriteLibrary`.
+export const SPRITE_LIBRARY_MODULE_TYPE =
+  DEFINITIONS.find((definition) => definition.authoring.spriteLibrary)?.type ?? null
+
 // Every distinct carry-through field (`carryCodeFrom`, `carryBlocksFrom`, …), in registry
 // order. Builder id remapping and both validators loop over these.
 export const CARRY_THROUGH_FIELDS = Object.freeze([

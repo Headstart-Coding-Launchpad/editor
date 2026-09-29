@@ -111,18 +111,27 @@ export function getGalleryActivityDefinitions() {
   )
 }
 
+// The Builder's task formats (the format buttons' values). A module-hosted activity's format is
+// its own id ('code_arrange'), and a draft task reports its own taskType.
+export const TASK_FORMATS = Object.freeze({
+  code: 'code',
+  information: 'information',
+  quiz: 'quiz',
+  activity: 'activity',
+})
+
 // The Builder task format a stored task belongs to: 'information', 'quiz' (legacy quiz
 // sub-types), 'activity' (taskType 'activity', including an unknown activityType), a
 // module-hosted activity's own id ('code_arrange') or 'code'. 'draft' tasks report their own
 // taskType.
 export function getTaskFormat(task) {
-  if (!task) return 'code'
+  if (!task) return TASK_FORMATS.code
   if (task.taskType === 'information' || task.taskType === 'draft') return task.taskType
   const moduleHosted = getModuleHostedActivity(task)
   if (moduleHosted) return moduleHosted.id
-  if (isLegacyQuizTask(task)) return 'quiz'
-  if (getTaskActivity(task)) return 'activity'
-  return 'code'
+  if (isLegacyQuizTask(task)) return TASK_FORMATS.quiz
+  if (getTaskActivity(task)) return TASK_FORMATS.activity
+  return TASK_FORMATS.code
 }
 
 // Tasks rendered by ActivityHost: a full-screen activity surface, never a code task (no Run,

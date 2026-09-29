@@ -22,6 +22,13 @@ import {
   TEACHER_EDIT_CODE_COPY,
   alwaysPersonalSandbox,
 } from '../moduleContract.js'
+import {
+  codeCopyStarterToComplete,
+  codeDefaultTypeFields,
+  MARKUP_COPY_CODE_PLACEHOLDER,
+  never,
+} from '../moduleAuthoring.js'
+import { printCodeStringTask } from '../printHelpers.js'
 
 // The work-slot value: the code plus the sprite/sound design that rides alongside it.
 const EMPTY_ARCADE_WORK = Object.freeze({ code: '', arcadeDesign: null })
@@ -132,6 +139,19 @@ export default defineModule({
   serializeState: (state) => state,
   deserializeState: (raw) => (typeof raw === 'string' ? raw : ''),
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
+  // ── Builder authoring hooks (see ../defineModule.js, "authoring") ─────────────
+  authoring: {
+    defaultTypeFields: codeDefaultTypeFields,
+    missingStarter: never,
+    copyStarterToComplete: codeCopyStarterToComplete,
+    printTask: printCodeStringTask,
+    sandboxStarterEditor: 'code',
+    // The Builder's Run has always taken the preview path for arcade; its workspace runs itself.
+    builderRun: 'preview',
+    copyCodePlaceholder: MARKUP_COPY_CODE_PLACEHOLDER,
+    sharedTypeAssets: true,
+  },
+
   lifecycle: {
     hasPersonalSandbox: alwaysPersonalSandbox,
     resetTarget: codeResetTarget,

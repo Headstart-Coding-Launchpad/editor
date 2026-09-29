@@ -14,8 +14,10 @@ export function useTaskEditorState({
   activePythonCode,
   activeFiles,
   activeEntryFile,
-  isPython,
-  isScratch,
+  // From the module's authoring.builderRun: 'pyodide' runs the active code in Pyodide, 'none'
+  // runs nothing (the workspace has its own stage), anything else builds the HTML preview.
+  runsPyodide,
+  runsNothing,
   set,
   iframeStorageAssets = null,
 }) {
@@ -38,7 +40,7 @@ export function useTaskEditorState({
   const appendOutputRef = useRef(null)
 
   useEffect(() => {
-    if (!isPython && !isScratch) setHtmlPreviewOpen(false)
+    if (!runsPyodide && !runsNothing) setHtmlPreviewOpen(false)
   }, [task.id, lesson.type])
 
   function resetRunState() {
@@ -141,7 +143,7 @@ export function useTaskEditorState({
     setTestResults(null)
     setIframeSrc(null)
 
-    if (isPython) {
+    if (runsPyodide) {
       try {
         await ensurePyodideReady()
 
@@ -188,7 +190,7 @@ export function useTaskEditorState({
       return
     }
 
-    if (!isScratch) {
+    if (!runsNothing) {
       setHtmlPreviewOpen(true)
       const src = htmlMod.runtime.buildPreviewSrc(
         { files: activeFiles, entryFile: activeEntryFile },
@@ -237,7 +239,7 @@ export function useTaskEditorState({
   function handleTestChecks() {
     const checksToEval = normalizeChecks(task.check)
     if (checksToEval.length === 0) return
-    const codeStr = isPython ? activePythonCode : activeFiles.map((f) => f.content).join('\n')
+    const codeStr = runsPyodide ? activePythonCode : activeFiles.map((f) => f.content).join('\n')
     const results = checksToEval.map((c) => ({
       ...c,
       passed: evaluateSingleCheck(c, '', { code: codeStr }),

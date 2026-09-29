@@ -8,6 +8,7 @@ import { spriteVisualMode } from '../../../shared/spriteVisuals'
 import { createSpriteFromPreset } from '../../../shared/spritePresets'
 import { flattenTasks, getStageRole, STAGE_ROLES } from '../../../shared/taskUtils'
 import { getLessonModule } from '../../../modules/registry'
+import { getModuleAuthoring } from '../../../modules/definitions'
 import { getModuleCarrySourceIds } from '../../../shared/composedLesson'
 import { Field } from '../../../activities/ui/BuilderField.jsx'
 import { QuizTypeIcon } from '../../../activities/quiz/QuizTypeIcon.jsx'
@@ -237,6 +238,47 @@ function CarryThroughPicker({ task, lesson, onUpdate, lessonMod }) {
   )
 }
 
+// Icon shapes by icon id: a task format, or a module's `authoring.codeFormat.icon`. Anything
+// else (including a module-hosted activity's id) gets the code icon.
+const TASK_FORMAT_ICON_SHAPES = {
+  scratch: (
+    <>
+      <rect x="2" y="2" width="9" height="9" rx="1.5" />
+      <rect x="13" y="2" width="9" height="9" rx="1.5" />
+      <rect x="2" y="13" width="9" height="9" rx="1.5" />
+      <rect x="13" y="13" width="9" height="9" rx="1.5" />
+    </>
+  ),
+  information: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4" />
+      <path d="M12 8h.01" />
+    </>
+  ),
+  quiz: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
+    </>
+  ),
+  activity: (
+    <>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <circle cx="17.5" cy="6.5" r="3.5" />
+      <path d="M6.5 14l3.5 7H3z" />
+      <rect x="14" y="14" width="7" height="7" rx="3.5" />
+    </>
+  ),
+  code: (
+    <>
+      <polyline points="16 18 22 12 16 6" />
+      <polyline points="8 6 2 12 8 18" />
+    </>
+  ),
+}
+
 function TaskFormatIcon({ type, size = 24 }) {
   const common = {
     width: size,
@@ -248,46 +290,8 @@ function TaskFormatIcon({ type, size = 24 }) {
     strokeLinecap: 'round',
     strokeLinejoin: 'round',
   }
-  if (type === 'scratch')
-    return (
-      <svg {...common}>
-        <rect x="2" y="2" width="9" height="9" rx="1.5" />
-        <rect x="13" y="2" width="9" height="9" rx="1.5" />
-        <rect x="2" y="13" width="9" height="9" rx="1.5" />
-        <rect x="13" y="13" width="9" height="9" rx="1.5" />
-      </svg>
-    )
-  if (type === 'information')
-    return (
-      <svg {...common}>
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 16v-4" />
-        <path d="M12 8h.01" />
-      </svg>
-    )
-  if (type === 'quiz')
-    return (
-      <svg {...common}>
-        <circle cx="12" cy="12" r="10" />
-        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-        <path d="M12 17h.01" />
-      </svg>
-    )
-  if (type === 'activity')
-    return (
-      <svg {...common}>
-        <rect x="3" y="3" width="7" height="7" rx="1.5" />
-        <circle cx="17.5" cy="6.5" r="3.5" />
-        <path d="M6.5 14l3.5 7H3z" />
-        <rect x="14" y="14" width="7" height="7" rx="3.5" />
-      </svg>
-    )
-  return (
-    <svg {...common}>
-      <polyline points="16 18 22 12 16 6" />
-      <polyline points="8 6 2 12 8 18" />
-    </svg>
-  )
+  const shape = TASK_FORMAT_ICON_SHAPES[type] ?? TASK_FORMAT_ICON_SHAPES.code
+  return <svg {...common}>{shape}</svg>
 }
 
 const STAGE_ROLE_HINTS = {
@@ -337,7 +341,7 @@ export function SpriteAddPicker({ sprites, onChange, lessonType }) {
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const pickerWrapRef = React.useRef(null)
   const { defaultSprites: typeDefaultSprites, loading: typesLoading } = useTypeAssets(
-    lessonType === 'scratch' ? 'scratch' : null
+    getModuleAuthoring(lessonType)?.spriteLibrary ? lessonType : null
   )
   const hasLibrarySprites = !typesLoading && typeDefaultSprites.length > 0
 

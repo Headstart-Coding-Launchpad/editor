@@ -224,6 +224,97 @@ export const WORK_SLOT_FLAGS = Object.freeze([
   'workspaceOwned',
 ])
 
+// authoring (plan steps 4.1 / 4.8) — what the Builder does with the module's tasks, so the
+// Builder never compares lesson types. Pure / Node-safe hooks:
+// - defaultTypeFields(prevTask, { defaultSprites }) → the module fields of a new task, seeded
+//   from the task it follows (`prevTask`, or null for the first task); `defaultSprites` are the
+//   shared sprite-library presets (spriteLibrary modules).
+// - missingStarter(task) → whether a draft task has no starter work yet, so the TaskEditor shows
+//   the "choose the Code format" notice instead of the workspace (`missingStarterLabel` names
+//   what is missing, e.g. 'starter files'; null when missingStarter is always false).
+// - copyStarterToComplete(task) → the updates "Reset to starter code" applies ({} = nothing).
+// - printTask(task, { esc }) → the module's section of the printable lesson (HTML, '' = none).
+// Data:
+// - sandboxStarterEditor: the lesson sandbox-starter editor in the Builder's Sandbox starter
+//   modal: 'code' (a Python editor on `sandboxStarter`), 'blocks' (the Scratch starter blocks,
+//   toolbox, sprites and backdrops), 'fs' (a filesystem tree on `sandboxStarterFs`), 'circuit'
+//   (a breadboard on `sandboxStarterCircuit`) or 'files' (starter files on `sandboxStarterFiles`).
+// - builderRun: what the TaskEditor's Run does: 'pyodide' runs the active code in Pyodide,
+//   'preview' builds the HTML preview from the active files and 'none' runs nothing (the
+//   workspace has its own stage).
+// - codeFormat (optional, default { label: 'Code', icon: 'code' }): the Code task-format button.
+// - copyCodePlaceholder: the Copy code panel's placeholder (required for supportsCopyCode).
+// - flags (optional booleans, default false): fileTabs (the Builder edits the work as file tabs
+//   with an HTML preview), sharedTypeAssets (the lesson meta panel offers the module's shared
+//   type assets), previewTypeAssets (the Builder preview includes the selected shared type
+//   assets), spriteLibrary (the module's type assets supply the default sprites).
+export const AUTHORING_HOOKS = Object.freeze([
+  'defaultTypeFields',
+  'missingStarter',
+  'copyStarterToComplete',
+  'printTask',
+])
+export const SANDBOX_STARTER_EDITORS = Object.freeze(['code', 'blocks', 'fs', 'circuit', 'files'])
+export const BUILDER_RUN_KINDS = Object.freeze(['pyodide', 'preview', 'none'])
+export const AUTHORING_FLAGS = Object.freeze([
+  'fileTabs',
+  'sharedTypeAssets',
+  'previewTypeAssets',
+  'spriteLibrary',
+])
+const DEFAULT_CODE_FORMAT = Object.freeze({ label: 'Code', icon: 'code' })
+
+function validateAuthoring(type, def) {
+  const authoring = def.authoring
+  if (!authoring || typeof authoring !== 'object') fail(type, 'missing required object "authoring"')
+  for (const key of AUTHORING_HOOKS) {
+    if (typeof authoring[key] !== 'function') {
+      fail(type, `missing required function "authoring.${key}"`)
+    }
+  }
+  if (!SANDBOX_STARTER_EDITORS.includes(authoring.sandboxStarterEditor)) {
+    fail(
+      type,
+      `"authoring.sandboxStarterEditor" must be one of: ${SANDBOX_STARTER_EDITORS.join(', ')}`
+    )
+  }
+  if (!BUILDER_RUN_KINDS.includes(authoring.builderRun)) {
+    fail(type, `"authoring.builderRun" must be one of: ${BUILDER_RUN_KINDS.join(', ')}`)
+  }
+  const label = authoring.missingStarterLabel ?? null
+  if (label !== null && (typeof label !== 'string' || !label)) {
+    fail(type, '"authoring.missingStarterLabel" must be a non-empty string or null')
+  }
+  const codeFormat = authoring.codeFormat ?? DEFAULT_CODE_FORMAT
+  if (
+    typeof codeFormat.label !== 'string' ||
+    !codeFormat.label ||
+    typeof codeFormat.icon !== 'string' ||
+    !codeFormat.icon
+  ) {
+    fail(type, '"authoring.codeFormat" must be { label, icon }')
+  }
+  const placeholder = authoring.copyCodePlaceholder ?? null
+  if (placeholder !== null && typeof placeholder !== 'string') {
+    fail(type, '"authoring.copyCodePlaceholder" must be a string or null')
+  }
+  if (def.supportsCopyCode === true && !placeholder) {
+    fail(type, 'a "supportsCopyCode" module declares "authoring.copyCodePlaceholder"')
+  }
+  for (const key of AUTHORING_FLAGS) {
+    if (authoring[key] != null && typeof authoring[key] !== 'boolean') {
+      fail(type, `"authoring.${key}" must be a boolean`)
+    }
+  }
+  return Object.freeze({
+    ...authoring,
+    missingStarterLabel: label,
+    codeFormat: Object.freeze({ label: codeFormat.label, icon: codeFormat.icon }),
+    copyCodePlaceholder: placeholder,
+    ...Object.fromEntries(AUTHORING_FLAGS.map((key) => [key, authoring[key] ?? false])),
+  })
+}
+
 // Hooks that may be omitted; they default to null (the app treats null as "not provided").
 // Validation hooks (see src/shared/lessonValidation.js):
 // - hasStarterContent(task) → boolean; null = no "empty editor" warning for this module.
@@ -512,6 +603,7 @@ export function defineModule(def) {
     })
   }
   const { focusPanes, teacherEditor } = validateUiGates(type, def, workSlot)
+  const authoring = validateAuthoring(type, def)
   for (const key of REQUIRED_BOOLEANS) {
     if (typeof def[key] !== 'boolean') fail(type, `missing required boolean "${key}"`)
   }
@@ -562,6 +654,7 @@ export function defineModule(def) {
     lifecycle: Object.freeze({ ...def.lifecycle }),
     storage: Object.freeze({ ...def.storage }),
     wire: Object.freeze({ ...def.wire }),
+    authoring,
     checking: hasChecking ? Object.freeze({ ...def.checking }) : null,
     workSlot,
     runResult: def.runResult ? Object.freeze({ ...def.runResult }) : null,
