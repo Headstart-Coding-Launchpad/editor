@@ -133,10 +133,11 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 
 | Message | Meaning | Fix |
 |---|---|---|
-| `Task …: keyboard mode must be one of ….` | `mode` is missing or unknown. | Use `type_text`, `find_key`, `symbols` or `shortcuts`. |
+| `Task …: keyboard mode must be one of ….` | `mode` is missing or unknown. | Use `type_text`, `find_key`, `symbols`, `shortcuts` or `edit_text`. |
 | `Task …: keyboard layout "…" is not supported (use "uk").` | Only the UK layout exists so far. | Remove `layout` or set it to `uk`. |
 | `Task …: minAccuracy must be a number above 0 and at most 1.` | `minAccuracy` is a fraction, not a percentage. | Use e.g. `0.9` for 90%. |
 | `Task …: targetWpm must be a positive number.` | `targetWpm` is zero, negative or not a number. | Use a positive number, or remove it to skip the speed goal. |
+| `Task …: minKept must be a number above 0 and at most 1.` | `edit_text` `minKept` is a fraction, not a percentage. | Use e.g. `0.9`, or remove it for the default. |
 | `Task …: keyboard task needs at least one item.` | `items` is empty. | Add at least one item. |
 | `Task … item …: text is required.` | A `type_text` item has no `text`. | Add the line to type. |
 | `Task … item …: text must be at most … characters.` | A `type_text` line is over 200 characters. | Split it into several items. |
@@ -146,6 +147,12 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … item …: combo must be a shortcut like "Ctrl+C".` | A `shortcuts` `combo` is missing or has no modifier. | Write it as `Ctrl+C`, `Ctrl+Shift+Z`, … (`Ctrl` also means Cmd on a Mac). |
 | `Task … item …: "…" just types a character. Use Ctrl, Cmd or Alt, or Shift with a key like Tab or an arrow key.` | The `combo` is Shift plus a character key (`Shift+A`), which types a capital rather than doing a shortcut. | Add Ctrl/Cmd or Alt, or use a non-typing key (`Shift+Tab`, `Shift+ArrowLeft`). To practise capitals, use `type_text` or `symbols` mode. |
 | `Task … item …: "…" is kept by the browser, so students can't press it here. Teach it with a quiz question instead.` | The browser handles that shortcut itself (Ctrl+W, Ctrl+T, Ctrl+N, Ctrl+Q, Ctrl+Tab, Ctrl+Shift+T/N, Alt+F4), so the page never sees it. | Use a different shortcut, or ask about it in a quiz task. |
+| `Task … item …: … is required.` | An `edit_text` item has no `start` (the line with mistakes) or no `target` (the fixed line); the message names which. | Add both. |
+| `Task … item …: … must be at most … characters.` | An `edit_text` `start` or `target` is over 200 characters. | Use a shorter line, or split it into items. |
+| `Task … item …: … has characters that can't be typed: …` | An `edit_text` `start` or `target` has characters with no key on the layout (curly quotes, emoji). | Use plain keyboard characters: students must be able to type every fix. |
+| `Task … item …: start and target are the same, so there is nothing to fix.` | The `edit_text` line has no mistakes. | Put the mistakes in `start`. |
+| `Task … item …: requireKeys must be a list, such as [Delete] or [Backspace, select].` | `requireKeys` is a single value, not a list. | Write it as a YAML list: `requireKeys: [Delete]`. |
+| `Task … item …: requireKeys has keys it can't check (…). Use ….` | `requireKeys` names a key other than `Backspace`, `Delete`, `ArrowLeft`, `ArrowRight`, `Home`, `End` or `select`. | Use those names (`select` means any Shift selection). |
 | `Task … item …: add a prompt telling students what the shortcut does.` (warning) | A `shortcuts` item has no `prompt`; students only see the keys. | Add `prompt:` such as "Copy the selected word". |
 
 ### Mouse ([activities/mouse.md](activities/mouse.md))

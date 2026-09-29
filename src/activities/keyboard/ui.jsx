@@ -3,6 +3,7 @@ import KeyboardBuilderEditor from './KeyboardBuilderEditor.jsx'
 import ItemNav from '../ui/ItemNav.jsx'
 import OnScreenKeyboard, { codesForKey } from './OnScreenKeyboard.jsx'
 import { NAMED_KEYS, describeItem, gradeKeyboardItem } from './keyboard.js'
+import { applyEditKey, initialEditModel } from './editText.js'
 import {
   DEFAULT_LAYOUT,
   comboOf,
@@ -22,6 +23,7 @@ import {
 //   find_key:  { pressed, source }
 //   symbols:   { typedChar, shift, source }
 //   shortcuts: { performed, via: 'keyboard' | 'menu', source }
+//   edit_text: { text, orig, caret, anchor, used, source, done }   (see editText.js)
 // Keystrokes are continuous changes (synced only while the teacher watches); finishing an
 // item is discrete (see classifyChange in definition.js).
 
@@ -44,11 +46,12 @@ const MODE_PROMPTS = {
   find_key: (task, item) => item.prompt ?? `Find and press the ${describeItem(task, item)} key`,
   symbols: (task, item) => item.prompt ?? `Type the ${item.char} symbol`,
   shortcuts: (task, item) => item.prompt ?? `Use the shortcut ${describeItem(task, item)}`,
+  edit_text: (task, item) => item.prompt ?? 'Fix the mistakes in this line',
 }
 
 function isItemFinished(mode, result) {
   if (!result) return false
-  if (mode === 'type_text') return !!result.done
+  if (mode === 'type_text' || mode === 'edit_text') return !!result.done
   if (mode === 'find_key') return !!result.pressed
   if (mode === 'symbols') return !!result.typedChar
   return !!result.performed
@@ -68,6 +71,32 @@ function pressesKey(event, itemKey, layout) {
   const target = getKeyForChar(itemKey, layout)
   if (target && event.code === target.code) return true
   return String(event.key).toLowerCase() === String(itemKey).toLowerCase()
+}
+
+// The edit_text line: every character, the text cursor and any Shift selection. Clicking a
+// character puts the cursor before it.
+function EditLine({ model, readOnly, onPlaceCaret }) {
+  const chars = [...model.text]
+  const from = model.anchor == null ? model.caret : Math.min(model.anchor, model.caret)
+  const to = model.anchor == null ? model.caret : Math.max(model.anchor, model.caret)
+  const caret = !readOnly && <span className="act-caret" aria-hidden="true" />
+  return (
+    <span className="act-edit-line" style={{ whiteSpace: 'pre' }}>
+      {chars.map((char, index) => (
+        <React.Fragment key={index}>
+          {index === model.caret && caret}
+          <span
+            aria-hidden="true"
+            className={index >= from && index < to ? 'act-char--selected' : undefined}
+            onPointerDown={readOnly ? undefined : () => onPlaceCaret(index)}
+          >
+            {char}
+          </span>
+        </React.Fragment>
+      ))}
+      {model.caret >= chars.length && caret}
+    </span>
+  )
 }
 
 function TargetText({ text, typed }) {
@@ -214,6 +243,51 @@ export function KeyboardStudentView({
     return true
   }
 
+  // The line as the student has left it (their saved result, or the item's start).
+  function editModelOf(itemResult) {
+    return itemResult?.text != null
+      ? {
+          text: itemResult.text,
+          orig: itemResult.orig ?? '',
+          caret: itemResult.caret ?? itemResult.text.length,
+          anchor: itemResult.anchor ?? null,
+        }
+      : initialEditModel(current)
+  }
+
+  function handleEditText(event) {
+    let handled = false
+    let justFinished = false
+    const next = updateResult((prevResult) => {
+      if (prevResult.done) return prevResult
+      const applied = applyEditKey(editModelOf(prevResult), event)
+      if (!applied) return prevResult
+      handled = true
+      const used = new Set(prevResult.used ?? [])
+      if (applied.used) used.add(applied.used)
+      const done = applied.model.text === String(current.target ?? '')
+      justFinished = done
+      return {
+        ...applied.model,
+        used: [...used],
+        source:
+          prevResult.source === 'virtual' || event.source === 'virtual' ? 'virtual' : 'hardware',
+        done,
+      }
+    })
+    if (justFinished) advanceAfter({ ...(state?.items ?? {}), [current.id]: next })
+    return handled
+  }
+
+  function placeCaret(caret) {
+    practiceRef.current?.focus?.({ preventScroll: true })
+    updateResult((prevResult) =>
+      prevResult.done
+        ? prevResult
+        : { ...prevResult, ...editModelOf(prevResult), caret, anchor: null }
+    )
+  }
+
   function handleFindKey(event) {
     if (pressesKey(event, current.key, layout)) {
       finishItem({ pressed: true, source: event.source })
@@ -257,6 +331,10 @@ export function KeyboardStudentView({
     if (mode === 'type_text') {
       if (finished) return false
       return handleTypeText(event)
+    }
+    if (mode === 'edit_text') {
+      if (finished) return false
+      return handleEditText(event)
     }
     if (finished) return false
     if (mode === 'find_key') return handleFindKey(event)
@@ -313,6 +391,8 @@ export function KeyboardStudentView({
   const hintKey = mode === 'find_key' ? current.key : mode === 'symbols' ? current.char : null
   const highlightCodes = showHint && hintKey ? codesForKey(hintKey, layout) : []
   const showPicture = !virtualKeyboard && (mode === 'find_key' || mode === 'symbols')
+  // edit_text needs arrow keys and Delete, which the on-screen keyboard doesn't have (v1).
+  const needsRealKeyboard = mode === 'edit_text' && virtualKeyboard
 
   return (
     <div className="act-panel" data-testid="keyboard-activity">
@@ -321,7 +401,7 @@ export function KeyboardStudentView({
         currentIndex={index}
         onSelect={setIndex}
         statusFor={statusFor}
-        noun={mode === 'type_text' ? 'Line' : 'Step'}
+        noun={mode === 'type_text' || mode === 'edit_text' ? 'Line' : 'Step'}
       />
       <p className="act-prompt">{MODE_PROMPTS[mode]?.(task, current) ?? 'Keyboard'}</p>
 
@@ -329,7 +409,38 @@ export function KeyboardStudentView({
         <TargetText text={String(current.text ?? '')} typed={String(result.typed ?? '')} />
       )}
 
-      {tabPractice ? (
+      {mode === 'edit_text' && task.showTarget !== false && (
+        <p className="act-target-text">
+          <span className="act-edit-label">Make it say: </span>
+          {String(current.target ?? '')}
+        </p>
+      )}
+
+      {needsRealKeyboard ? (
+        <p className="act-hint" role="status" data-testid="keyboard-needs-keyboard">
+          ⌨️ This one needs a real keyboard with arrow keys and a Delete key.
+        </p>
+      ) : mode === 'edit_text' ? (
+        <div
+          ref={practiceRef}
+          className="act-practice act-practice--edit"
+          role="textbox"
+          tabIndex={readOnly ? -1 : 0}
+          aria-readonly={readOnly || undefined}
+          aria-label={`Edit box: ${editModelOf(result).text}. Use the arrow keys, Backspace and Delete to fix it.`}
+          data-keyboard-practice="true"
+          data-testid="keyboard-edit"
+          onKeyDown={onPracticeKeyDown}
+          onPaste={(e) => e.preventDefault()}
+          onDrop={(e) => e.preventDefault()}
+        >
+          <EditLine
+            model={editModelOf(result)}
+            readOnly={readOnly || finished}
+            onPlaceCaret={placeCaret}
+          />
+        </div>
+      ) : tabPractice ? (
         <div
           className="act-row"
           role="group"
@@ -423,7 +534,7 @@ export function KeyboardStudentView({
         </p>
       )}
 
-      {(showPicture || virtualKeyboard) && (
+      {(showPicture || virtualKeyboard) && !needsRealKeyboard && (
         <OnScreenKeyboard
           layout={layout}
           interactive={virtualKeyboard}

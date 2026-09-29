@@ -49,7 +49,7 @@ describe('lessons capabilities', () => {
   it('lists activity modes, fields per mode and authored-content paths', () => {
     const keyboard = capabilities.activities.find((a) => a.id === 'keyboard')
     expect(keyboard.modeField).toBe('mode')
-    expect(keyboard.modes).toEqual(['type_text', 'find_key', 'symbols', 'shortcuts'])
+    expect(keyboard.modes).toEqual(['type_text', 'find_key', 'symbols', 'shortcuts', 'edit_text'])
     expect(keyboard.fields.find((f) => f.name === 'mode')).toMatchObject({ required: true })
     const findKeyItems = keyboard.fieldsByMode.find_key.find((f) => f.name === 'items')
     expect(findKeyItems.itemFields.map((f) => f.name)).toEqual(

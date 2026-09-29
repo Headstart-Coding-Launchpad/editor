@@ -10,8 +10,9 @@ import {
   isSupportedLayout,
   normalizeCombo,
 } from '../../shared/input/index.js'
+import { gradeEditItem, validateEditItem } from './editText.js'
 
-export const KEYBOARD_MODES = ['type_text', 'find_key', 'symbols', 'shortcuts']
+export const KEYBOARD_MODES = ['type_text', 'find_key', 'symbols', 'shortcuts', 'edit_text']
 
 // Named keys a find_key item may ask for, besides any typeable character.
 export const NAMED_KEYS = [
@@ -52,6 +53,9 @@ export function validateKeyboardTask(task, n) {
   if (task.targetWpm != null && !(Number.isFinite(task.targetWpm) && task.targetWpm > 0)) {
     errors.push(`${where}: targetWpm must be a positive number.`)
   }
+  if (task.minKept != null && !(task.minKept > 0 && task.minKept <= 1)) {
+    errors.push(`${where}: minKept must be a number above 0 and at most 1.`)
+  }
   const items = Array.isArray(task.items) ? task.items : []
   if (items.length === 0) errors.push(`${where}: keyboard task needs at least one item.`)
   const seen = new Set()
@@ -87,6 +91,9 @@ export function validateKeyboardTask(task, n) {
           `${label}: char must be one character that can be typed on a ${layout.toUpperCase()} keyboard.`
         )
       }
+    } else if (task.mode === 'edit_text') {
+      const isTypeable = (c) => !!getKeyForChar(c, layout)
+      errors.push(...validateEditItem(item, label, isTypeable, MAX_TEXT_LENGTH))
     } else if (task.mode === 'shortcuts') {
       const combo = normalizeCombo(item?.combo)
       const parts = combo.split('+')
@@ -138,9 +145,12 @@ export function describeItem(task, item) {
 //   find_key:  { pressed }
 //   symbols:   { typedChar, shift }
 //   shortcuts: { performed, via }   (via: 'keyboard' | 'menu')
+//   edit_text: { text, orig, caret, anchor, used, source, done }   (see editText.js)
 export function gradeKeyboardItem(task, item, result = {}) {
   const hardwareOk = !item.hardwareOnly || result.source !== 'virtual'
   switch (task?.mode) {
+    case 'edit_text':
+      return gradeEditItem(task, item, result)
     case 'type_text': {
       const typed = String(result.typed ?? '')
       const minAccuracy = task.minAccuracy ?? 1
