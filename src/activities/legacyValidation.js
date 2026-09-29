@@ -1,7 +1,7 @@
 // Shared Builder + CLI validation for the legacy activity task formats (`taskType: 'quiz'` +
 // `quizType`, and `taskType: 'code_arrange'`). Pure and Node-safe. Both validators call these
-// through src/shared/lessonValidation.js (see getLegacyTaskValidation below); plan step 2.2 moves the quiz rules into
-// src/activities/quiz_*/definition.js and step 4.9 moves code_arrange onto the activity contract.
+// through src/shared/lessonValidation.js (see getLegacyTaskValidation below); the quiz_*
+// and code_arrange activity definitions' validateTask wrap the same rules.
 
 // Module types a code-arrange task can run in.
 export const CODE_ARRANGE_MODULE_TYPES = Object.freeze(['python', 'html'])

@@ -28,7 +28,10 @@ import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
 import ShareRequestPanel from './student-modal/ShareRequestPanel'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
 import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
-import { allowsStudentBroadcast } from '../../activities/registry.pure.js'
+import {
+  allowsStudentBroadcast,
+  isModuleHostedActivityTask,
+} from '../../activities/registry.pure.js'
 import { readActivityAnswer } from '../../activities/state.js'
 import ActivityDeviceBadge from '../../activities/ui/ActivityDeviceBadge.jsx'
 
@@ -358,7 +361,8 @@ export default function StudentModal({
   const mirror = moduleCaps?.studentMirror ?? null
   // What the teacher live-edits in (capabilities.teacherEditor); null = no live edit.
   const teacherEditor = moduleCaps?.teacherEditor ?? null
-  const isCodeArrangeTask = task?.taskType === 'code_arrange' && !isSessionSandbox
+  // A module-hosted activity (code_arrange) shows its board, not the module's mirror.
+  const isCodeArrangeTask = isModuleHostedActivityTask(task) && !isSessionSandbox
   // Hosted activity tasks show the activity (read-only, or editable via Edit answers) in place
   // of a workspace; quiz-like everywhere else in the header (no reveal, pane focus or share).
   const isActivity = isActivityTask && !isSessionSandbox

@@ -1,13 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { CodeEditor } from '../../../shared/CodeEditor'
-import CodeArrangeTask from '../CodeArrangeTask'
-import { deriveSlotStateFromCode, getCodeArrangeEntryFile } from '../../../shared/codeArrange'
 import ExplainerPanel from '../ExplainerPanel'
 import IframePreview from '../IframePreview'
 import OutputPanel from '../OutputPanel'
 import { ActivityView } from '../../../activities/ActivityHost.jsx'
 import { getTaskActivity } from '../../../activities/registry.pure.js'
-import { readActivityAnswer } from '../../../activities/state.js'
+import { getModuleHostedActivityUi } from '../../../activities/registry.js'
+import { readActivityAnswer, studentStateField } from '../../../activities/state.js'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './constants'
 
 function answerKey(value) {
@@ -144,9 +143,6 @@ export default function StudentWorkspaceBody({
     </div>
   )
 
-  // A code_arrange task's code comes from its entry file on a files module (html).
-  const isFilesMirror = mirror === 'files'
-
   if (isInformation)
     return (
       <ExplainerPanel
@@ -206,42 +202,33 @@ export default function StudentWorkspaceBody({
     )
   }
 
+  // A module-hosted activity (code_arrange): its TeacherLiveView shows the watched student's
+  // board from the live slot mirror (students/{id}/current<liveChannel>), or from the teacher's
+  // own edits while editing the student's answer.
   if (isCodeArrangeTask) {
-    // currentCodeArrangeSlots mirrors every tile placement live (see
-    // CodeArrangeTaskContainer.jsx / useStudentCodeState.js
-    // handleCodeArrangeSlotsChange) — prefer it over currentCode/currentFiles,
-    // which only update once the arrangement is fully assembled and would
-    // otherwise show stale code from a previous task while the student is
-    // still mid-arrangement.
-    const entryFile = getCodeArrangeEntryFile(task)
-    const code = isFilesMirror
-      ? (files.find((f) => f.name === entryFile)?.content ?? '')
-      : (student.currentCode ?? '')
-    const liveSlots = answerEditing ? editableSlots : student.currentCodeArrangeSlots
-    const selectedAnswer =
-      liveSlots && typeof liveSlots === 'object' ? liveSlots : deriveSlotStateFromCode(task, code)
-    return (
-      <CodeArrangeTask
-        task={task}
-        moduleType={isFilesMirror ? 'html' : 'python'}
-        selectedAnswer={selectedAnswer}
-        output={student.currentOutput ?? ''}
-        runStatus={student.lastRunStatus}
-        checkPassed={student.checkPassed}
-        iframeSrc={iframeSrc}
-        iframeRef={iframeRef}
-        onSelectAnswer={
-          answerEditing
-            ? (next) => {
-                pushEditableSlots(next)
-                onEditAnswer?.({ codeArrangeSlots: next })
-              }
-            : undefined
-        }
-        disabled={!answerEditing}
-        showQuestion={false}
-      />
-    )
+    const moduleActivity = getModuleHostedActivityUi(task)
+    const TeacherLiveView = moduleActivity?.TeacherLiveView
+    if (TeacherLiveView) {
+      return (
+        <TeacherLiveView
+          task={task}
+          student={student}
+          mirror={mirror}
+          files={files}
+          slots={answerEditing ? editableSlots : student[studentStateField(moduleActivity)]}
+          iframeSrc={iframeSrc}
+          iframeRef={iframeRef}
+          onEditSlots={
+            answerEditing
+              ? (next) => {
+                  pushEditableSlots(next)
+                  onEditAnswer?.({ [moduleActivity.liveChannel]: next })
+                }
+              : undefined
+          }
+        />
+      )
+    }
   }
 
   if (mirror === 'code')
@@ -311,7 +298,7 @@ export default function StudentWorkspaceBody({
     )
   }
 
-  if (isFilesMirror)
+  if (mirror === 'files')
     return (
       <>
         <div style={s.htmlEditorPane}>

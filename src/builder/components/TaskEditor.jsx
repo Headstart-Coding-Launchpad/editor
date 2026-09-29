@@ -15,11 +15,17 @@ import {
 } from './task-editor/TaskEditorFields'
 import { QuizTypePicker, ActivityGallery } from './task-editor/ActivityPickers'
 import ActivitySection from './task-editor/ActivitySection'
-import { getTaskFormat } from '../../activities/registry.pure.js'
-import { getTaskActivityUi } from '../../activities/registry.js'
+import {
+  getModuleHostedActivityDefinitions,
+  getTaskFormat,
+} from '../../activities/registry.pure.js'
+import {
+  getActivityUi,
+  getModuleHostedActivityUi,
+  getTaskActivityUi,
+} from '../../activities/registry.js'
 import { toQuizTask } from '../../activities/quiz/quizBuilder.js'
 import { commonTaskFields, convertTaskToActivity } from '../taskFormat'
-import CodeArrangeEditor from './task-editor/CodeArrangeEditor'
 import { ScratchToolboxPicker } from '../../modules/scratch/scratchEditors'
 import { useTaskEditorState } from '../hooks/useTaskEditorState'
 import TaskPreviewPanel from './task-editor/TaskPreviewPanel'
@@ -78,12 +84,15 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
   const isScratch = lessonMod?.type === 'scratch'
   const isFilesystem = lessonMod?.type === 'filesystem'
   const supportsCopyCode = lessonMod?.supportsCopyCode === true
-  // Task format from the activity registry: 'information', 'quiz', 'activity', 'code_arrange'
-  // or 'code' (drafts keep their own taskType and edit like code tasks, as before).
+  // Task format from the activity registry: 'information', 'quiz', 'activity', a
+  // module-hosted activity's id ('code_arrange') or 'code' (drafts keep their own taskType and
+  // edit like code tasks, as before).
   const taskFormat = getTaskFormat(task)
   const isQuiz = taskFormat === 'quiz'
   const isInformation = taskFormat === 'information'
-  const isCodeArrange = taskFormat === 'code_arrange'
+  // A module-hosted activity (Arrange): edited with its BuilderEditor, inside a host module.
+  const moduleActivity = getModuleHostedActivityUi(task)
+  const isCodeArrange = !!moduleActivity
   const isActivity = taskFormat === 'activity'
   // Choosing the Activity format opens the gallery; the task converts once one is picked.
   const [choosingActivityFor, setChoosingActivityFor] = useState(null)
@@ -319,41 +328,10 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
       return
     }
 
-    if (taskType === 'code_arrange') {
-      const nextModuleType = ['python', 'html'].includes(base.moduleType)
-        ? base.moduleType
-        : 'python'
-      const {
-        copyCode: _copyCode,
-        codeStages: _codeStages,
-        carryCodeFrom: _c1,
-        carryBlocksFrom: _c2,
-        carryFsFrom: _c3,
-        carryCircuitFrom: _c4,
-        ...rest
-      } = base
-      onUpdate({
-        ...rest,
-        taskType: 'code_arrange',
-        moduleType: nextModuleType,
-        moduleId: base.moduleId,
-        lines: base.lines?.length
-          ? base.lines
-          : [
-              { id: 'line-1', parts: [{ type: 'slot', id: 'line-1-slot-1', code: '' }] },
-              { id: 'line-2', parts: [{ type: 'slot', id: 'line-2-slot-1', code: '' }] },
-            ],
-        distractors: base.distractors ?? [],
-        ...(nextModuleType === 'html'
-          ? {
-              entryFile: base.entryFile ?? 'index.html',
-              starterFiles: base.starterFiles?.length
-                ? base.starterFiles
-                : [{ name: base.entryFile ?? 'index.html', type: 'html', content: '' }],
-            }
-          : {}),
-        check: null,
-      })
+    // A module-hosted activity's format (Arrange): the activity converts the task itself.
+    const targetActivity = getActivityUi(taskType)
+    if (targetActivity?.hostModules) {
+      onUpdate(targetActivity.builderConvert(base))
       return
     }
 
@@ -622,9 +600,15 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
             { value: 'information', label: 'Information', iconType: 'information' },
             { value: 'quiz', label: 'Quiz', iconType: 'quiz' },
             { value: 'activity', label: 'Activity', iconType: 'activity' },
-            ...(composedLesson?.type === 'composed'
-              ? [{ value: 'code_arrange', label: 'Arrange', iconType: 'code_arrange' }]
-              : []),
+            // Module-hosted activity formats (Arrange), where the activity allows them
+            // (availableIn: composed lessons for code_arrange).
+            ...getModuleHostedActivityDefinitions()
+              .filter((definition) => definition.availableIn(composedLesson))
+              .map((definition) => ({
+                value: definition.id,
+                label: definition.label,
+                iconType: definition.id,
+              })),
           ].map(({ value, label, iconType }) => {
             const active =
               value ===
@@ -657,7 +641,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
           hint="Choose the workspace for this task. Changing it clears code, checks, stages, and carry-through settings."
         >
           <div className="te-info-type-grid">
-            {(isCodeArrange ? ['python', 'html'] : LESSON_MODULE_TYPES).map((moduleType) => {
+            {(moduleActivity?.hostModules ?? LESSON_MODULE_TYPES).map((moduleType) => {
               const active = task.moduleType === moduleType
               const { icon, shortLabel, pickerHint } = getModuleDefinition(moduleType).meta
               return (
@@ -882,8 +866,8 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
         ) : (
           <ActivityGallery task={task} onSelect={handleActivityChange} />
         )
-      ) : isCodeArrange ? (
-        <CodeArrangeEditor task={task} onUpdate={onUpdate} />
+      ) : moduleActivity?.BuilderEditor ? (
+        <moduleActivity.BuilderEditor task={task} onUpdate={onUpdate} lessonType={lesson.type} />
       ) : incompleteDraftWorkspace ? (
         <div style={s.incompleteDraft}>
           This draft task has no{' '}

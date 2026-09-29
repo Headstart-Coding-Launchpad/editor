@@ -12,6 +12,7 @@ import quizMatch from './quiz_match/definition.js'
 import quizFillBlank from './quiz_fill_blank/definition.js'
 import quizShortAnswer from './quiz_short_answer/definition.js'
 import quizConfidence from './quiz_confidence/definition.js'
+import codeArrange from './code_arrange/definition.js'
 import unknown from './unknown/definition.js'
 import { UNKNOWN_ACTIVITY_ID, getActivityId } from './resolve.js'
 
@@ -24,10 +25,9 @@ const ACTIVITIES = [
   quizFillBlank,
   quizShortAnswer,
   quizConfidence,
+  codeArrange,
   unknown,
 ]
-
-const CODE_ARRANGE_ID = 'code_arrange'
 
 const BY_ID = new Map()
 for (const activity of ACTIVITIES) {
@@ -51,14 +51,33 @@ export function getActivityDefinition(id) {
 
 // The definition for a stored task. Tasks resolving to an id this bundle doesn't have get the
 // fallback; tasks that aren't activities (code, information, draft) get null. Legacy quiz tasks
-// resolve to their quiz_<type> definition; code_arrange resolves to null until it moves onto the
-// activity contract (plan 4.9).
+// resolve to their quiz_<type> definition and code_arrange tasks to code_arrange (hosted by a
+// workspace module, see getModuleHostedActivity).
 export function getTaskActivity(task) {
   const id = getActivityId(task)
   if (id === null) return null
-  if (BY_ID.has(id)) return BY_ID.get(id)
   // An activityType (or quizType) this bundle doesn't know gets the "not available" fallback.
-  return id === CODE_ARRANGE_ID ? null : BY_ID.get(UNKNOWN_ACTIVITY_ID)
+  return BY_ID.get(id) ?? BY_ID.get(UNKNOWN_ACTIVITY_ID)
+}
+
+// An activity that runs inside a workspace module (its definition's `hostModules`) rather than
+// ActivityHost: code_arrange's assembled program goes through the python / html module's own
+// work slot, Run and checks, so the task stays a code task (Run, sandbox, share, carry-through
+// source) with the activity's surface in place of the module's StudentWorkspace. Null for
+// every other task.
+export function getModuleHostedActivity(task) {
+  const activity = getTaskActivity(task)
+  return activity?.hostModules ? activity : null
+}
+
+export function isModuleHostedActivityTask(task) {
+  return getModuleHostedActivity(task) !== null
+}
+
+// The Builder's extra task formats (Arrange): module-hosted activities, each offered where its
+// definition's availableIn(lesson) allows (composed lessons for code_arrange).
+export function getModuleHostedActivityDefinitions() {
+  return getActivityDefinitions().filter((activity) => activity.hostModules)
 }
 
 // YAML `type:` shorthand → activity id (e.g. `type: binary`). Legacy quizzes keep their own
@@ -92,28 +111,27 @@ export function getGalleryActivityDefinitions() {
   )
 }
 
-// A code_arrange task (still its own surface until plan 4.9).
-export function isCodeArrangeTask(task) {
-  return getActivityId(task) === CODE_ARRANGE_ID
-}
-
 // The Builder task format a stored task belongs to: 'information', 'quiz' (legacy quiz
-// sub-types), 'activity' (taskType 'activity', including an unknown activityType),
-// 'code_arrange' or 'code'. 'draft' tasks report their own taskType.
+// sub-types), 'activity' (taskType 'activity', including an unknown activityType), a
+// module-hosted activity's own id ('code_arrange') or 'code'. 'draft' tasks report their own
+// taskType.
 export function getTaskFormat(task) {
   if (!task) return 'code'
   if (task.taskType === 'information' || task.taskType === 'draft') return task.taskType
-  if (isCodeArrangeTask(task)) return 'code_arrange'
+  const moduleHosted = getModuleHostedActivity(task)
+  if (moduleHosted) return moduleHosted.id
   if (isLegacyQuizTask(task)) return 'quiz'
   if (getTaskActivity(task)) return 'activity'
   return 'code'
 }
 
 // Tasks rendered by ActivityHost: a full-screen activity surface, never a code task (no Run,
-// personal sandbox, share or carry) — `taskType: 'activity'` and legacy quiz tasks.
-// code_arrange keeps its own surface until it migrates onto the host (plan 4.9).
+// personal sandbox, share or carry) — `taskType: 'activity'` and legacy quiz tasks. Activities
+// hosted by a workspace module (code_arrange) are code tasks and are not included.
 export function isHostedActivityTask(task) {
-  return !!task && getTaskActivity(task) !== null
+  if (!task) return false
+  const activity = getTaskActivity(task)
+  return activity !== null && !activity.hostModules
 }
 
 // A legacy `taskType: 'quiz'` task (any quizType). Quizzes keep a few quiz-only surfaces (the
@@ -124,9 +142,9 @@ export function isLegacyQuizTask(task) {
 }
 
 // Whether a teacher may broadcast a STUDENT's work to the class ("Go Live for All") on this
-// task. Quiz and activity tasks only allow the teacher's own broadcast; code_arrange keeps
-// student broadcast because its tile board is code the class can learn from.
+// task. Quiz and activity tasks only allow the teacher's own broadcast; module-hosted activities
+// (code_arrange) keep student broadcast because their board is code the class can learn from.
 export function allowsStudentBroadcast(task) {
-  const id = getActivityId(task)
-  return id === null || id === 'code_arrange'
+  const activity = getTaskActivity(task)
+  return activity === null || !!activity.hostModules
 }

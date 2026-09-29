@@ -46,7 +46,7 @@ import { useStudentPresenceReporting } from './useStudentPresenceReporting'
 import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
 import { useActivityState } from './useActivityState'
-import { isHostedActivityTask } from '../../activities/registry.pure.js'
+import { isHostedActivityTask, isModuleHostedActivityTask } from '../../activities/registry.pure.js'
 import { buildSharedWorkspaceSnapshot } from '../sharedWorkspacePayload'
 import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
@@ -1025,14 +1025,14 @@ export function useStudentCodeState({
         })
       }
     }
-    // code_arrange is a taskType flag layered on python/html, not its own
-    // lesson.type, so it needs its own branch here too — without it, a
-    // teacher opening the modal mid-arrangement sees a blank board (no
-    // currentCodeArrangeSlots has ever been written for this student/task
-    // yet) that then jumps straight to whatever the student had already
-    // placed the moment they drop their next tile, instead of reflecting
-    // their in-progress board right away.
-    if (findTaskById(lesson.tasks, currentTaskId)?.taskType === 'code_arrange') {
+    // code_arrange is an activity hosted by python/html (its definition's
+    // hostModules), not its own lesson.type, so it needs its own branch here
+    // too — without it, a teacher opening the modal mid-arrangement sees a
+    // blank board (no currentCodeArrangeSlots has ever been written for this
+    // student/task yet) that then jumps straight to whatever the student had
+    // already placed the moment they drop their next tile, instead of
+    // reflecting their in-progress board right away.
+    if (isModuleHostedActivityTask(findTaskById(lesson.tasks, currentTaskId))) {
       writeStudentCodeArrangeSlots?.(identity.anonymousId, codeArrangeSlotStateRef.current)
     }
     writeStudentInteraction(identity.anonymousId, {
@@ -1113,7 +1113,7 @@ export function useStudentCodeState({
     if (edit.taskId != null && String(edit.taskId) !== String(currentTaskIdRef.current)) return
     if (viewingTaskId !== null) return
     const task = findTaskById(lesson.tasks, currentTaskId)
-    if (task?.taskType === 'code_arrange' && edit.codeArrangeSlots) {
+    if (isModuleHostedActivityTask(task) && edit.codeArrangeSlots) {
       teacherAssistedTaskIdsRef.current.add(currentTaskId)
       setTeacherCodeArrangeEdit({ slots: edit.codeArrangeSlots, at: edit.at })
       setTeacherAnswerNoticeAt(edit.at)
