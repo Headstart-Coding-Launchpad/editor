@@ -1,5 +1,6 @@
 // Node-safe half of the Arcade Kit module (see ../defineModule.js). UI lives in index.js.
 import { defineModule } from '../defineModule.js'
+import { codeStagesField } from '../../shared/taskFields.js'
 import {
   codeStarterPresent,
   collectFeedbackChecks,
@@ -108,6 +109,20 @@ export default defineModule({
   },
   initStageTab: null,
   defaultCheck: () => [{ type: 'code_contains', value: '' }],
+  taskFields: [
+    { name: 'starterCode', type: 'string', authored: true },
+    { name: 'completeCode', type: 'string', authored: true },
+    { name: 'arcadeDesign', type: 'object', authored: true, description: 'Sprites and tilemaps.' },
+    { name: 'completeArcadeDesign', type: 'object', authored: true },
+    codeStagesField([
+      { name: 'code', type: 'string', authored: true },
+      { name: 'arcadeDesign', type: 'object', authored: true },
+    ]),
+    { name: 'copyCode', type: 'string', authored: true, description: 'Read-only code to copy.' },
+    { name: 'arcadeTools', type: 'string', values: ['none', 'sprites', 'tilemaps', 'both'] },
+    { name: 'interactionMode', type: 'string', values: ['run', 'submit'] },
+    { name: 'carryCodeFrom', type: 'string' },
+  ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeCode',
   carryThroughLabel: 'Carry code from task',

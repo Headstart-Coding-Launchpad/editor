@@ -1,7 +1,7 @@
 // Keyboard activity definition (pure). Wraps ./keyboard.js in the activity contract.
 import { defineActivity } from '../defineActivity.js'
 import { DEFAULT_LAYOUT, getKeyForChar } from '../../shared/input/index.js'
-import { gradeKeyboardTask, validateKeyboardTask } from './keyboard.js'
+import { gradeKeyboardTask, validateKeyboardTask, KEYBOARD_MODES } from './keyboard.js'
 
 export const KEYBOARD_MODE_LABELS = {
   type_text: 'Type the text',
@@ -48,6 +48,80 @@ export default defineActivity({
   // Tablets without a keyboard get the built-in on-screen keyboard; items marked hardwareOnly
   // still need a real one.
   touchFallback: 'virtual_keyboard',
+
+  fields: {
+    modeField: 'mode',
+    task: [
+      { name: 'mode', type: 'string', required: true, values: KEYBOARD_MODES },
+      { name: 'layout', type: 'string', values: ['uk'], description: 'Defaults to uk.' },
+      {
+        name: 'requireShiftForCapitals',
+        type: 'boolean',
+        modes: ['type_text'],
+        description: 'Capitals must be typed with Shift, not Caps Lock (default true).',
+      },
+      { name: 'minAccuracy', type: 'number', modes: ['type_text'], description: '0 to 1.' },
+      { name: 'targetWpm', type: 'number', modes: ['type_text'] },
+      {
+        name: 'items',
+        type: 'array',
+        required: true,
+        authored: true,
+        itemFields: [
+          { name: 'id', type: 'string', required: true },
+          {
+            name: 'text',
+            type: 'string',
+            required: true,
+            authored: true,
+            modes: ['type_text'],
+            description: 'Up to 200 characters, typeable on the layout.',
+          },
+          {
+            name: 'key',
+            type: 'string',
+            required: true,
+            authored: true,
+            modes: ['find_key'],
+            description: 'One character or a named key (Enter, Backspace, Delete, …).',
+          },
+          {
+            name: 'char',
+            type: 'string',
+            required: true,
+            authored: true,
+            modes: ['symbols'],
+          },
+          {
+            name: 'combo',
+            type: 'string',
+            required: true,
+            authored: true,
+            modes: ['shortcuts'],
+            description: 'e.g. Ctrl+C.',
+          },
+          {
+            name: 'prompt',
+            type: 'string',
+            authored: true,
+            modes: ['find_key', 'symbols', 'shortcuts'],
+          },
+          { name: 'practiceText', type: 'string', authored: true, modes: ['shortcuts'] },
+          {
+            name: 'requireShiftForCapitals',
+            type: 'boolean',
+            modes: ['type_text'],
+            description: 'Per-item override of the task setting.',
+          },
+          {
+            name: 'hardwareOnly',
+            type: 'boolean',
+            description: 'Needs a physical keyboard; the on-screen keyboard skips it.',
+          },
+        ],
+      },
+    ],
+  },
 
   defaultTask: (prev = {}) => ({
     id: prev.id,

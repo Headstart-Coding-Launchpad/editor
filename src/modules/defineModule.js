@@ -8,6 +8,7 @@
 // See docs/architecture/lesson-type-modules.md ("Contract").
 import { fieldWorkSlotHooks } from './moduleContract.js'
 import { LINE_HINT_SYNTAXES, isLineHintSyntax } from '../shared/lineHints.js'
+import { normaliseFieldSpecs } from '../shared/fieldSpec.js'
 
 const REQUIRED_FUNCTIONS = [
   'getDisplayState',
@@ -705,6 +706,14 @@ export function defineModule(def) {
     workSlot,
     runResult: def.runResult ? Object.freeze({ ...def.runResult }) : null,
     inheritsCheckTypes: Object.freeze([...(def.inheritsCheckTypes ?? [])]),
+    // The module's own task fields as data (../shared/fieldSpec.js), beside the common task
+    // fields every task has (../shared/taskFields.js): read by `lessons capabilities`.
+    taskFields: def.taskFields
+      ? normaliseFieldSpecs(def.taskFields, {
+          where: 'taskFields',
+          fail: (message) => new Error(`defineModule(${type}): ${message}`),
+        })
+      : null,
     // Pre-v2 name, kept so existing callers and module authors keep working.
     getSandboxState: def.lifecycle.sandboxStarter,
   }

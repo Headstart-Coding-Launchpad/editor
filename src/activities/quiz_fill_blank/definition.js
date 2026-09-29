@@ -15,6 +15,44 @@ import {
 
 export default defineQuizActivity('fill_blank', {
   description: 'Drag tiles (or type words) into the gaps in a passage or code.',
+
+  fields: {
+    modeField: 'mode',
+    task: [
+      {
+        name: 'mode',
+        type: 'string',
+        values: ['drag', 'type'],
+        description: 'drag tiles (default) or type the words.',
+      },
+      {
+        name: 'text',
+        type: 'string',
+        required: true,
+        authored: true,
+        description: 'The passage, with ___ for each blank.',
+      },
+      {
+        name: 'blanks',
+        type: 'array',
+        required: true,
+        authored: true,
+        itemFields: [
+          { name: 'id', type: 'string', required: true },
+          { name: 'answer', type: 'string', required: true, authored: true },
+        ],
+      },
+      {
+        name: 'distractors',
+        type: 'array',
+        authored: true,
+        itemFields: [
+          { name: 'id', type: 'string' },
+          { name: 'text', type: 'string', required: true, authored: true },
+        ],
+      },
+    ],
+  },
   completion: 'auto',
   teacherEditable: true,
 

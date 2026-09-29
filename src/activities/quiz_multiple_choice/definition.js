@@ -13,6 +13,32 @@ function optionIds(task) {
 
 export default defineQuizActivity('multiple_choice', {
   description: 'Pick one answer from a list of options.',
+
+  fields: {
+    task: [
+      {
+        name: 'options',
+        type: 'array',
+        required: true,
+        authored: true,
+        description: 'At least 2.',
+        itemFields: [
+          { name: 'id', type: 'string', required: true },
+          { name: 'text', type: 'string', required: true, authored: true },
+          { name: 'feedback', type: 'string', authored: true },
+          { name: 'hint', type: 'string', authored: true },
+        ],
+      },
+      {
+        name: 'check',
+        type: 'object',
+        required: true,
+        authored: true,
+        description: '{ type: answer_equals, value: <option id> }; YAML shorthand `answer`.',
+      },
+      { name: 'feedback', type: 'string', authored: true, description: 'Fallback feedback.' },
+    ],
+  },
   // `answer: <option-id>` in YAML is this quiz's `check: { type: answer_equals }`.
   yaml: Object.freeze({ type: 'quiz', quizType: 'multiple_choice', answerShorthand: true }),
 

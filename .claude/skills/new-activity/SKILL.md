@@ -53,6 +53,11 @@ anything. Every place to change is marked `TODO(new-activity)`.
    `summarize`, `printHtml`. Set `completion: 'auto'` only if the activity finishes itself.
    List any task field that stores the answer (not the question) in `sealedFields`, so it is
    obfuscated in the public lesson document (`src/shared/lessonSeal.js`).
+   Declare the task shape in `fields` (`src/shared/fieldSpec.js`): every task field, with
+   `required` / `authored`, `values`, per-item `itemFields`, and `modeField` + `modes` for an
+   activity with modes. `lessons capabilities` prints it for lesson agents;
+   `src/activities/__tests__/fields.test.js` checks each `required` field against
+   `validateTask` and the doc page's first `| Field | Required |` table against `fields.task`.
 3. **`ui.jsx`:** controlled `StudentView({ task, state, onChange, onSubmit, readOnly, device })`.
    Never write to Firebase or storage. Controls ≥ 44px, full keyboard access, visible focus,
    `prefers-reduced-motion`, `act-` classes (add new ones to `src/index.css` in the `act-`

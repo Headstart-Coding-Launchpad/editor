@@ -1,6 +1,7 @@
 // Node-safe half of the Electronics module (see ../defineModule.js). UI and the MicroPython
 // runtime bridge live in index.js.
 import { defineModule } from '../defineModule.js'
+import { codeStagesField } from '../../shared/taskFields.js'
 import {
   anyCheckHasValue,
   validateStageStates,
@@ -112,6 +113,13 @@ export default defineModule({
   initStageTab: null,
   defaultCheck: () => [{ type: 'circuit_no_short' }],
 
+  taskFields: [
+    { name: 'starterCircuit', type: 'object', required: true, authored: true },
+    { name: 'completeCircuit', type: 'object', authored: true },
+    codeStagesField([{ name: 'circuit', type: 'object', required: true, authored: true }]),
+    { name: 'availableComponents', type: 'array' },
+    { name: 'carryCircuitFrom', type: 'string' },
+  ],
   carryThroughField: 'carryCircuitFrom',
   completeField: 'completeCircuit',
   carryThroughLabel: 'Carry circuit from task',
