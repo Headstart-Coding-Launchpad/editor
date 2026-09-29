@@ -167,6 +167,9 @@ async function renderTeacherView(lesson) {
   const { rerender } = render(<TeacherView lessonId={lesson.id} />)
   rerenderView = () => rerender(<TeacherView lessonId={lesson.id} />)
   await waitFor(() => expect(captured.editor?.task).toBeTruthy())
+  // Let the task-content load effect run before the test acts: under load it can still be
+  // pending here, and would then overwrite the sandbox's staged work with the task starter.
+  await act(async () => {})
 }
 
 // A realtime session update: the real useSession re-renders its owner with the new session.
