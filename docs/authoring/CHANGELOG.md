@@ -20,6 +20,17 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-29
 
+### Scratch Support stages: `markdown` for students, `blocks` for replacing (docs fix)
+
+- No platform change; the docs contradicted each other. A Scratch Support stage's `markdown` is
+  the read-only reference the student sees, and the panel opens empty without it. Its optional
+  `blocks` are only loaded when the stage replaces the student's work (teacher stage push,
+  `stageOffer` `replace`, stage reset) and are what the teacher's stage tab shows.
+- Lessons whose Scratch Support stages carry only `blocks` should add `markdown`. See
+  [scratch.md](scratch.md#sprite-object).
+- Affects: scratch · Existing lessons: add `markdown` to blocks-only Support stages ·
+  Resolves: authoring-requests/2026-09-29-scratch-support-stage-docs-say-markdown-every-live-lesson-us.md
+
 ### Line hints in starter code (`#> …` / `<!--> … -->`)
 
 - Python, Turtle and HTML starter code, code stages and complete code can carry **line hints**
