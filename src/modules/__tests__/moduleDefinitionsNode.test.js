@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, readdirSync } from 'node:fs'
 import path from 'node:path'
+import { MODULE_TYPES } from '../definitions.js'
 
 // Module definition.js files must load under plain Node ESM (the CLI imports them through
 // src/shared/composedLesson.js). Vitest resolves extensionless imports, JSX and missing named
@@ -8,19 +9,27 @@ import path from 'node:path'
 
 const root = path.resolve(__dirname, '../../..')
 
-function definitionFiles() {
+// Every module folder with a definition.js. `_`-prefixed folders (the _template scaffold) are
+// never registered, but their definition still has to load under Node.
+function moduleFolders({ includeTemplates = false } = {}) {
   const dir = path.join(root, 'src', 'modules')
   return readdirSync(dir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && entry.name !== '__tests__')
-    .map((entry) => `src/modules/${entry.name}/definition.js`)
-    .filter((file) => existsSync(path.join(root, file)))
+    .filter((entry) => includeTemplates || !entry.name.startsWith('_'))
+    .map((entry) => entry.name)
+    .filter((name) => existsSync(path.join(root, 'src', 'modules', name, 'definition.js')))
 }
 
-const files = ['src/modules/definitions.js', ...definitionFiles(), 'src/shared/composedLesson.js']
+const definitionFiles = moduleFolders({ includeTemplates: true }).map(
+  (name) => `src/modules/${name}/definition.js`
+)
+const files = ['src/modules/definitions.js', ...definitionFiles, 'src/shared/composedLesson.js']
 
 describe('module definitions under Node ESM', () => {
-  it('finds a definition.js for every module folder', () => {
-    expect(definitionFiles()).toHaveLength(8)
+  it('registers every module folder that has a definition.js', () => {
+    expect(moduleFolders().sort()).toEqual([...MODULE_TYPES].sort())
+    expect(MODULE_TYPES.length).toBeGreaterThanOrEqual(8)
+    expect(definitionFiles).toContain('src/modules/_template/definition.js')
   })
 
   it('loads every definition in a real Node process', () => {
@@ -33,7 +42,7 @@ describe('module definitions under Node ESM', () => {
         catch (error) { failures.push(file + ': ' + String(error && error.message).split('\\n')[0]) }
       }
       const { MODULE_TYPES, getModuleDefinition } = await import(new URL('src/modules/definitions.js', base).href);
-      if (MODULE_TYPES.length !== 8) failures.push('expected 8 MODULE_TYPES, got ' + MODULE_TYPES.length);
+      if (MODULE_TYPES.length !== ${moduleFolders().length}) failures.push('expected ${moduleFolders().length} MODULE_TYPES, got ' + MODULE_TYPES.length);
       for (const type of MODULE_TYPES) {
         if (typeof getModuleDefinition(type)?.getDisplayState !== 'function') failures.push(type + ': bad definition');
       }

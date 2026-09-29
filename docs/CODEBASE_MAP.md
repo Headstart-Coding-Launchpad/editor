@@ -375,6 +375,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `turtle/BuilderWorkspace.jsx` | Builder Turtle code-stage editor with a self-contained on-demand drawing preview (own Pyodide run, like Arcade Kit's Builder preview) |
 | `turtle/CheckEditor.jsx` | Turtle check list editor with a Turtle/Code subject picker; code checks reuse `CheckValueEditor` and `checkEditorUtils.js` |
 | `turtle/TeacherLiveView.jsx` | Teacher's read-only code + canvas view of a student's turtle task, driven by the synced `currentTurtleResult`/`turtleResult` |
+| `_template/definition.js`, `_template/index.js`, `_template/StudentWorkspace.jsx`, `_template/BuilderWorkspace.jsx`, `_template/CheckEditor.jsx`, `_template/TeacherLiveView.jsx`, `_template/checks.js` | Module scaffold copied by `npm run new:module` (`scripts/new-module.mjs`): a working "write text, press Check" module on the generic work slot (`run: 'workspace'`, `checking.trigger: 'run'`, `codeWorkSlot`, core code checks) with every contract v2 group filled with safe defaults and `TODO(new-module)` markers, its tests (definition, workspace UI, StudentView click-through that skips while unregistered) and `doc.md.tmpl`. Never registered; `moduleDefinitionsNode` / `validationErrorsDoc` skip `_`-prefixed folders (the definition still loads under Node) |
 
 ### Module interface
 
@@ -571,6 +572,8 @@ Pure, Node-safe input library for the Keyboard and Mouse activities and the Desk
 | `scripts/download-scratch-sprites.mjs` | One-off tool: downloads Scratch's official sprite/costume assets from the Scratch CDN into `public/scratch-assets/sprites/` |
 | `scripts/check-docs.mjs` | Dependency-free documentation hygiene check: validates local Markdown links, `docs/README.md` inventory, and source-file coverage in this map |
 | `scripts/new-activity.mjs` | `npm run new:activity -- <id> "<Label>" [--category …] [--dry-run]`: scaffolds an activity from `src/activities/_template/`, registers it in `registry.pure.js` / `registry.js`, writes `docs/authoring/activities/<id>.md` and indexes it in `docs/README.md`, this map and `validation-errors.md`; validates the id, refuses to overwrite, prettier-formats generated code (tested by `scripts/__tests__/newActivity.test.mjs`) |
+| `scripts/new-module.mjs` | `npm run new:module -- <type> "<Label>" [--dry-run]`: scaffolds a workspace module from `src/modules/_template/` (registry order after the last module), registers it in `definitions.js`, `registry.js` and `checks.js`, adds the type to the type-branch ratchet and the ESLint rule, records the scaffold's deliberate parity gaps in `moduleTypeParity`'s `KNOWN_GAPS`, adds its `StudentViewModules` click-through, writes `docs/authoring/<type>.md` and indexes it in `docs/README.md`, this map, `validation-errors.md`, `AGENTS.md`, `lesson-schema.md`, `task-types.md` and `MODULE_FEATURE_MATRIX.md`; validates the type (reserved words, activities, names core code already compares against), refuses to overwrite (tested by `scripts/__tests__/newModule.test.mjs`) |
+| `scripts/scaffold-utils.mjs` | Shared plan/apply plumbing for both kits: template listing, prettier formatting, anchored inserts, line-ending preservation, `applyPlan` (refuses to overwrite or apply a stale plan) and `describePlan` |
 
 ---
 
