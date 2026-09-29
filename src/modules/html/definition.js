@@ -19,6 +19,9 @@ import {
   TEACHER_EDIT_CODE_COPY,
 } from '../moduleContract.js'
 import { getCompleteStage } from '../../shared/taskStages.js'
+import { MARKUP_COPY_CODE_PLACEHOLDER } from '../moduleAuthoring.js'
+import { HTML_FILE_TYPE, HTML_ONLY } from './fileTemplates.js'
+import { printHtmlTask } from './print.js'
 
 const DEFAULT_HTML_FILE = {
   name: 'index.html',
@@ -178,6 +181,33 @@ export default defineModule({
   }),
   serializeState: null,
   deserializeState: null,
+
+  // ── Builder authoring hooks (see ../defineModule.js, "authoring") ─────────────
+  authoring: {
+    // The Builder's first task starts from the "HTML" file template (not DEFAULT_HTML_FILE).
+    defaultTypeFields: (prevTask) => ({
+      starterFiles: prevTask
+        ? (prevTask.completeFiles ?? prevTask.starterFiles ?? []).map((f) => ({ ...f }))
+        : [{ name: 'index.html', type: HTML_FILE_TYPE, content: HTML_ONLY }],
+      entryFile: prevTask
+        ? (prevTask.completeEntryFile ?? prevTask.entryFile ?? 'index.html')
+        : 'index.html',
+      carryCodeFrom: prevTask?.id ?? null,
+    }),
+    missingStarter: (task) => !Array.isArray(task.starterFiles),
+    missingStarterLabel: 'starter files',
+    copyStarterToComplete: (task) => ({
+      completeFiles: (task.starterFiles ?? []).map((file) => ({ ...file })),
+      completeEntryFile: task.entryFile ?? 'index.html',
+    }),
+    printTask: printHtmlTask,
+    sandboxStarterEditor: 'files',
+    builderRun: 'preview',
+    copyCodePlaceholder: MARKUP_COPY_CODE_PLACEHOLDER,
+    fileTabs: true,
+    sharedTypeAssets: true,
+    previewTypeAssets: true,
+  },
 
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
   lifecycle: {

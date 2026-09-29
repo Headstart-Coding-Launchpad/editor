@@ -12,7 +12,7 @@ the decision test is in [modular-activities-plan.md](modular-activities-plan.md)
 definition (`getModuleDefinition(type)` from `src/modules/definitions.js`, or the UI module from
 `registry.js`) looked up by the task's **effective** module (`getEffectiveLessonForTask` /
 `deriveTaskContext().moduleType`) — never a composed lesson's raw `type`. Outside
-`src/modules/**` and `src/activities/**` the type-branch ratchet is at zero and ESLint rejects a
+`src/modules/**` and `src/activities/**` (Builder included) the type-branch ratchet is at zero and ESLint rejects a
 new comparison (see [Guard rails](#guard-rails)). A behaviour that differs between modules
 becomes a definition field with a default in `defineModule.js`.
 
@@ -29,8 +29,9 @@ Each module is split in two:
 `defineModule` (`src/modules/defineModule.js`) validates every field below, fills the optional
 ones with defaults and freezes the result; a missing or ill-typed field throws with its name.
 `definitions.js` exposes `MODULE_TYPES` (ordered by `meta.order`), `getModuleDefinition`,
-`getModuleTypesWhere`, `getModuleTypesWithCapability`, `CARRY_THROUGH_FIELDS` and
-`getModuleLabel(type, surface)`; `src/modules/moduleContract.js` holds the shared builders the
+`getModuleTypesWhere`, `getModuleTypesWithCapability`, `CARRY_THROUGH_FIELDS`,
+`getModuleLabel(type, surface)`, `getModuleAuthoring(type)` and `SPRITE_LIBRARY_MODULE_TYPE`;
+`src/modules/moduleContract.js` and `moduleAuthoring.js` hold the shared builders the
 definitions use. `moduleDefinitionsNode.test.js` loads every definition in a real Node process.
 
 ## Contract v2 reference
@@ -60,8 +61,7 @@ mirror), `downloadCode` (`.launchpad` download), `fixedExplainer` (Scratch's fix
 Optional booleans (default false): `teacherFillHeight` (TeacherView's centre column fills and
 clips), `teacherSandboxRow` (the teacher sandbox workspace fills a plain flex row),
 `teacherUnifiedStageTabs` (teacher code tabs show stage roles with no Starter/Complete tabs),
-`explainerBlockMenu` (explainer editor's Scratch block-reference menu), `typeSpriteDefaults`
-(Shared Assets default sprites/backdrops in `lessonTypeAssets/{type}`).
+`explainerBlockMenu` (explainer editor's Scratch block-reference menu).
 
 | Field | Values |
 |---|---|
@@ -91,6 +91,28 @@ clips), `teacherSandboxRow` (the teacher sandbox workspace fills a plain flex ro
   `validateTask(task, { n, lesson, errors, warnings })`, `hasStarterContent`, `hasCheckValue`,
   `validateTaskInBrowser` (Builder only). Every message is documented in
   `docs/authoring/validation-errors.md` (`validationErrorsDoc.test.js`).
+
+### `authoring` (the Builder)
+
+Everything the Builder used to decide by comparing lesson types, so `src/builder/` never branches
+on a module type (`getModuleAuthoring(type)` in `definitions.js`; null for an unregistered type,
+so each call site keeps its old fallback). Shared builders: `src/modules/moduleAuthoring.js`,
+`src/modules/printHelpers.js`, each module's `print.js`.
+
+| Field | Meaning |
+|---|---|
+| `defaultTypeFields(prevTask, { defaultSprites })` | Module fields of a new task, seeded from the task it follows (`codeDefaultTypeFields` for code strings) |
+| `missingStarter(task)`, `missingStarterLabel` | A draft task with no starter work yet shows TaskEditor's "This draft task has no {label} yet" notice |
+| `copyStarterToComplete(task)` | "Reset to starter code" updates (`{}` = nothing) |
+| `printTask(task, { esc })` | The module's section of the printable lesson (`''` = none) |
+| `sandboxStarterEditor` | Sandbox starter modal editor: `'code'`, `'blocks'`, `'fs'`, `'circuit'`, `'files'` |
+| `builderRun` | TaskEditor's Run: `'pyodide'`, `'preview'`, `'none'` |
+| `codeFormat` (optional) | The Code task-format button `{ label, icon }` |
+| `copyCodePlaceholder` | Copy code panel placeholder (required with `supportsCopyCode`) |
+| Flags (default false) | `fileTabs`, `sharedTypeAssets`, `previewTypeAssets` (the preview always includes the type's shared assets, so Shared Assets offers no per-asset "Web editor" toggle), `spriteLibrary` (the type's assets hold the default sprites/backdrops: Builder, Shared Assets, EditLessonModal, the `type-assets` CLI) |
+
+`moduleAuthoring.test.js` and `builderAuthoringParity.test.jsx` compare the built-in hooks with
+verbatim copies of the Builder branches they replaced.
 
 ### `lifecycle`
 
@@ -195,12 +217,12 @@ parity with the frozen pre-registry dispatcher.
 ## Guard rails
 
 - `src/modules/__tests__/typeBranchRatchet.test.js` counts literal type comparisons (and inline
-  type arrays) per file outside the plugin folders; counts only go down, everything outside
-  `src/builder/` must be zero, and non-type matches go on its reasoned, self-checking allowlist
-  (empty today; prefer a named constant or map).
+  type arrays) per file outside the plugin folders; every file is at zero (the baseline is
+  empty), and a match that is not type branching goes on its reasoned, self-checking allowlist
+  (empty today; prefer a named constant or map). A new module's type joins its name list.
 - `eslint.config.js` `no-restricted-syntax` rejects `=== / !== / case` against a type name in
-  `src/**` and `cli/**` outside `src/modules/**` and `src/activities/**` (src/builder is ignored
-  until its migration merges; then remove that ignore and the ratchet's exemption).
+  `src/**` and `cli/**` outside `src/modules/**`, `src/activities/**` and tests (the generator
+  adds a new module's type to its pattern).
 - Registry-driven tests fail when a module misses a surface: `moduleInterface`,
   `moduleTypeParity` (every parity list or an honest `KNOWN_GAPS` reason),
   `StudentViewModules` (real click-through per module), `moduleDefinitionsNode` (every folder

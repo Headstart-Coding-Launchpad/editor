@@ -11,6 +11,8 @@ import BuilderToolbar from '../components/BuilderToolbar'
 import PreviewView from './PreviewView'
 import { useBuilderState } from '../hooks/useBuilderState'
 import { useTypeAssets } from '../../shared/useTypeAssets'
+import { isComposedLesson } from '../../shared/composedLesson'
+import { getModuleAuthoring, SPRITE_LIBRARY_MODULE_TYPE } from '../../modules/definitions'
 import { buildPrintHtml } from '../printLesson'
 import { flattenTasks, applyTaskUpdate } from '../../shared/taskUtils'
 import { normalizeTasksForExport } from '../lessonUtils'
@@ -38,8 +40,12 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
   } = useTopicLibrary(lesson.type === 'composed' ? null : lesson.type)
   const hasTopicReferences = collectLessonTopicReferences(lesson).length > 0
 
+  // The sprite library (Scratch's shared type assets) seeds a new sprite-library module task; a
+  // composed lesson may add one.
   const { defaultSprites } = useTypeAssets(
-    ['scratch', 'composed'].includes(lesson.type) ? 'scratch' : null
+    isComposedLesson(lesson) || getModuleAuthoring(lesson.type)?.spriteLibrary
+      ? SPRITE_LIBRARY_MODULE_TYPE
+      : null
   )
 
   const {

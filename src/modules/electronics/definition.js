@@ -26,6 +26,7 @@ import {
   starterStageOf,
   personalSandboxWhenLessonHas,
 } from '../moduleContract.js'
+import { printElectronicsTask } from './print.js'
 
 export default defineModule({
   type: 'electronics',
@@ -146,6 +147,29 @@ export default defineModule({
   deserializeState: (raw) => serializeCircuit(parseCircuit(raw, DEFAULT_CIRCUIT)),
 
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
+  // ── Builder authoring hooks (see ../defineModule.js, "authoring") ─────────────
+  authoring: {
+    defaultTypeFields: (prevTask) => ({
+      starterCircuit: prevTask
+        ? cloneCircuit(prevTask.completeCircuit ?? prevTask.starterCircuit ?? DEFAULT_CIRCUIT)
+        : cloneCircuit(DEFAULT_CIRCUIT),
+      carryCircuitFrom: prevTask?.id ?? null,
+      microcontroller: prevTask?.microcontroller
+        ? { ...prevTask.microcontroller }
+        : { enabled: false, boardType: null, starterCode: '' },
+    }),
+    missingStarter: (task) => !task.starterCircuit,
+    missingStarterLabel: 'starter breadboard',
+    copyStarterToComplete: (task) => ({
+      completeCircuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT),
+    }),
+    printTask: printElectronicsTask,
+    sandboxStarterEditor: 'circuit',
+    // The Builder's Run has always taken the preview path for electronics; its workspace runs
+    // the MicroPython itself.
+    builderRun: 'preview',
+  },
+
   lifecycle: {
     playgroundTask: () => ({
       id: 1,

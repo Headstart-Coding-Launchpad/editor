@@ -14,6 +14,8 @@ import {
   stageForAction,
   personalSandboxWhenLessonHas,
 } from '../moduleContract.js'
+import { noUpdates } from '../moduleAuthoring.js'
+import { printFilesystemTask } from './print.js'
 
 function sandboxStarterFs(lesson, task) {
   if (lesson?.sandboxStarterFs != null) {
@@ -125,6 +127,20 @@ export default defineModule({
   },
 
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
+  // ── Builder authoring hooks (see ../defineModule.js, "authoring") ─────────────
+  authoring: {
+    defaultTypeFields: (prevTask) => ({
+      starterFs: prevTask?.completeFs ?? prevTask?.starterFs ?? DEFAULT_FS,
+      carryFsFrom: prevTask?.id ?? null,
+    }),
+    missingStarter: (task) => !task.starterFs,
+    missingStarterLabel: 'starter filesystem',
+    copyStarterToComplete: noUpdates,
+    printTask: printFilesystemTask,
+    sandboxStarterEditor: 'fs',
+    builderRun: 'preview',
+  },
+
   lifecycle: {
     hasPersonalSandbox: personalSandboxWhenLessonHas('sandboxStarterFs'),
     resetTarget: (task, action, ctx = {}) => {

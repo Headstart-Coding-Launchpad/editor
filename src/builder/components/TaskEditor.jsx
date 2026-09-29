@@ -18,6 +18,7 @@ import ActivitySection from './task-editor/ActivitySection'
 import {
   getModuleHostedActivityDefinitions,
   getTaskFormat,
+  TASK_FORMATS,
 } from '../../activities/registry.pure.js'
 import {
   getActivityUi,
@@ -31,7 +32,8 @@ import { useTaskEditorState } from '../hooks/useTaskEditorState'
 import TaskPreviewPanel from './task-editor/TaskPreviewPanel'
 import TaskOptionsSection from './task-editor/TaskOptionsSection'
 import { getLessonModule } from '../../modules/registry'
-import { getModuleDefinition } from '../../modules/definitions'
+import { getModuleAuthoring, getModuleDefinition } from '../../modules/definitions'
+import { MARKUP_COPY_CODE_PLACEHOLDER } from '../../modules/moduleAuthoring'
 import { LESSON_MODULE_TYPES } from '../../shared/composedLesson'
 import {
   AnimatedPanelShell,
@@ -47,14 +49,10 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
   // Visible by default while authoring a Draft lesson; collapsed by default once Draft is off,
   // since this section is author-only and adds noise for a lesson ready for full validation.
   const [authoringMetaCollapsed, setAuthoringMetaCollapsed] = useState(() => lesson.draft !== true)
-  const usesUnifiedCodeStages = [
-    'python',
-    'html',
-    'arcade',
-    'turtle',
-    'electronics',
-    'scratch',
-  ].includes(lesson.type)
+  // What the module declares for the Builder (null for an unregistered lesson type).
+  const moduleDefinition = getModuleDefinition(lesson.type)
+  const moduleAuthoring = moduleDefinition?.authoring ?? null
+  const usesUnifiedCodeStages = moduleDefinition?.capabilities.unifiedStages === true
   const [codeTab, setCodeTab] = useState(usesUnifiedCodeStages ? 'stage_0' : 'starter')
   const [selectedCompleteFile, setSelectedCompleteFile] = useState('')
   const { typeStorageAssets } = useTypeAssets(lesson.type)
@@ -68,32 +66,33 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
     ...typeStorageAssets.filter((a) => !lessonStorageAssets.some((b) => b.name === a.name)),
   ]
   const sharedAssetNames = lesson.sharedAssetNames ?? null
-  const includedTypeAssets =
-    lesson.type === 'html'
-      ? sharedAssetNames !== null
-        ? typeStorageAssets.filter((a) => sharedAssetNames.includes(a.name))
-        : typeStorageAssets
-      : []
+  const includedTypeAssets = moduleAuthoring?.previewTypeAssets
+    ? sharedAssetNames !== null
+      ? typeStorageAssets.filter((a) => sharedAssetNames.includes(a.name))
+      : typeStorageAssets
+    : []
   const iframeStorageAssets = [
     ...lessonStorageAssets.filter((a) => a.showInEditor),
     ...includedTypeAssets.filter((a) => !lessonStorageAssets.some((b) => b.name === a.name)),
   ]
 
   const lessonMod = getLessonModule(lessonWithStorageAssets.type)
-  const isPython = lessonMod?.type === 'python'
-  const isScratch = lessonMod?.type === 'scratch'
-  const isFilesystem = lessonMod?.type === 'filesystem'
+  // What the Builder's Run does for the module (authoring.builderRun; an unregistered type builds
+  // the HTML preview, as before).
+  const builderRun = getModuleAuthoring(lessonMod?.type)?.builderRun ?? 'preview'
+  const runsPyodide = builderRun === 'pyodide'
+  const runsNothing = builderRun === 'none'
   const supportsCopyCode = lessonMod?.supportsCopyCode === true
   // Task format from the activity registry: 'information', 'quiz', 'activity', a
   // module-hosted activity's id ('code_arrange') or 'code' (drafts keep their own taskType and
   // edit like code tasks, as before).
   const taskFormat = getTaskFormat(task)
-  const isQuiz = taskFormat === 'quiz'
-  const isInformation = taskFormat === 'information'
+  const isQuiz = taskFormat === TASK_FORMATS.quiz
+  const isInformation = taskFormat === TASK_FORMATS.information
   // A module-hosted activity (Arrange): edited with its BuilderEditor, inside a host module.
   const moduleActivity = getModuleHostedActivityUi(task)
   const isCodeArrange = !!moduleActivity
-  const isActivity = taskFormat === 'activity'
+  const isActivity = taskFormat === TASK_FORMATS.activity
   // Choosing the Activity format opens the gallery; the task converts once one is picked.
   const [choosingActivityFor, setChoosingActivityFor] = useState(null)
   const choosingActivity = !isActivity && choosingActivityFor === task.id
@@ -126,10 +125,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
     !isInformation &&
     !isCodeArrange &&
     !showsActivity &&
-    ((lesson.type === 'html' && !Array.isArray(task.starterFiles)) ||
-      (lesson.type === 'filesystem' && !task.starterFs) ||
-      (lesson.type === 'desktop' && !task.starterDesktop) ||
-      (lesson.type === 'electronics' && !task.starterCircuit))
+    moduleAuthoring?.missingStarter(task) === true
 
   function set(field, value) {
     onUpdate({ ...task, [field]: value })
@@ -234,8 +230,8 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
     activePythonCode,
     activeFiles,
     activeEntryFile,
-    isPython,
-    isScratch,
+    runsPyodide,
+    runsNothing,
     set,
     iframeStorageAssets,
   })
@@ -323,7 +319,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
     // Leaving an activity keeps only the fields every task format shares.
     const base = isActivity ? commonTaskFields(task) : task
 
-    if (taskType === 'quiz') {
+    if (taskType === TASK_FORMATS.quiz) {
       onUpdate(toQuizTask(base))
       return
     }
@@ -416,7 +412,8 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
     if (!window.confirm('Replace the complete code with the starter code?')) return
     const updates = copyStarterToComplete(task, lesson.type)
     onUpdate({ ...task, ...updates })
-    if (lesson.type === 'html') {
+    // File-tab modules (html) reselect the complete entry file and close the preview.
+    if (moduleAuthoring?.fileTabs) {
       setSelectedCompleteFile(updates.completeEntryFile ?? updates.completeFiles?.[0]?.name ?? '')
       setIframeSrc(null)
       setHtmlPreviewOpen(false)
@@ -593,9 +590,9 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
         <div className="te-task-format-grid">
           {[
             {
-              value: 'code',
-              label: lesson.type === 'scratch' ? 'Scratch' : 'Code',
-              iconType: lesson.type === 'scratch' ? 'scratch' : 'code',
+              value: TASK_FORMATS.code,
+              label: moduleAuthoring?.codeFormat.label ?? 'Code',
+              iconType: moduleAuthoring?.codeFormat.icon ?? 'code',
             },
             { value: 'information', label: 'Information', iconType: 'information' },
             { value: 'quiz', label: 'Quiz', iconType: 'quiz' },
@@ -773,11 +770,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
                 value={task.copyCode ?? ''}
                 onChange={(e) => set('copyCode', e.target.value)}
                 spellCheck={false}
-                placeholder={
-                  lesson.type === 'python'
-                    ? 'Code students can copy...'
-                    : '<!-- Code students can copy... -->'
-                }
+                placeholder={moduleAuthoring?.copyCodePlaceholder ?? MARKUP_COPY_CODE_PLACEHOLDER}
               />
             )}
           </div>
@@ -870,16 +863,8 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
         <moduleActivity.BuilderEditor task={task} onUpdate={onUpdate} lessonType={lesson.type} />
       ) : incompleteDraftWorkspace ? (
         <div style={s.incompleteDraft}>
-          This draft task has no{' '}
-          {lesson.type === 'html'
-            ? 'starter files'
-            : lesson.type === 'filesystem'
-              ? 'starter filesystem'
-              : lesson.type === 'desktop'
-                ? 'starter desktop'
-                : 'starter breadboard'}{' '}
-          yet. Choose the Code format above to initialise the standard editor fields, then continue
-          editing the task.
+          This draft task has no {moduleAuthoring.missingStarterLabel} yet. Choose the Code format
+          above to initialise the standard editor fields, then continue editing the task.
         </div>
       ) : lessonMod?.BuilderWorkspace ? (
         <lessonMod.BuilderWorkspace

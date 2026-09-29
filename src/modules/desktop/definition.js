@@ -20,6 +20,8 @@ import {
   personalSandboxWhenLessonHas,
 } from '../moduleContract.js'
 import { INPUT_CHECK_TYPES } from '../../shared/input/checks.js'
+import { noUpdates } from '../moduleAuthoring.js'
+import { printNothing } from '../printHelpers.js'
 
 export default defineModule({
   type: 'desktop',
@@ -109,6 +111,27 @@ export default defineModule({
   deserializeState: (raw) => deserializeDesktop(raw),
 
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
+  // ── Builder authoring hooks (see ../defineModule.js, "authoring") ─────────────
+  authoring: {
+    defaultTypeFields: (prevTask) => ({
+      starterDesktop:
+        prevTask?.completeDesktop ??
+        prevTask?.starterDesktop ??
+        makeDefaultDesktop(prevTask?.availableApps),
+      carryDesktopFrom: prevTask?.id ?? null,
+      availableApps: prevTask?.availableApps ?? ['fileManager'],
+    }),
+    missingStarter: (task) => !task.starterDesktop,
+    missingStarterLabel: 'starter desktop',
+    copyStarterToComplete: noUpdates,
+    // Desktop tasks have never printed a module section; kept as-is.
+    printTask: printNothing,
+    // The Sandbox starter modal has always shown the starter-files editor for desktop lessons
+    // (the fallback editor); kept as-is.
+    sandboxStarterEditor: 'files',
+    builderRun: 'preview',
+  },
+
   lifecycle: {
     hasPersonalSandbox: personalSandboxWhenLessonHas('sandboxStarterDesktop'),
     resetTarget: (task, action, ctx = {}) => {

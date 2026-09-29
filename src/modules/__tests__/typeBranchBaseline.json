@@ -1,12 +1,1 @@
-{
-  "src/builder/components/FileManager.jsx": 1,
-  "src/builder/components/lesson-meta/SandboxStarterModal.jsx": 10,
-  "src/builder/components/LessonMetaPanel.jsx": 2,
-  "src/builder/components/task-editor/TaskEditorFields.jsx": 3,
-  "src/builder/components/TaskEditor.jsx": 18,
-  "src/builder/components/TaskList.jsx": 1,
-  "src/builder/hooks/useBuilderState.js": 7,
-  "src/builder/lessonUtils.js": 5,
-  "src/builder/printLesson.js": 7,
-  "src/builder/views/BuilderView.jsx": 1
-}
+{}

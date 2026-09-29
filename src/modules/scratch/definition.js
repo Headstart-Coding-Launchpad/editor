@@ -14,6 +14,13 @@ import {
   starterStageOf,
   personalSandboxWhenLessonHas,
 } from '../moduleContract.js'
+import { never, noUpdates } from '../moduleAuthoring.js'
+import { createSpriteFromPreset } from '../../shared/spritePresets.js'
+import { printScratchTask } from './print.js'
+
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value))
+}
 
 export default defineModule({
   type: 'scratch',
@@ -152,6 +159,40 @@ export default defineModule({
       }
     }
     return raw
+  },
+
+  // ── Builder authoring hooks (see ../defineModule.js, "authoring") ─────────────
+  authoring: {
+    // A following task copies the previous task's blocks, sprites, backdrops and variables; the
+    // first task starts with the sprite library's first sprite (when the library has one).
+    defaultTypeFields: (prevTask, { defaultSprites = [] } = {}) => {
+      if (prevTask) {
+        return {
+          toolbox: '',
+          starterBlocks: prevTask.completeBlocks ?? prevTask.starterBlocks ?? null,
+          carryBlocksFrom: prevTask.id,
+          sprites: cloneJson(prevTask.sprites ?? []),
+          backdrops: cloneJson(prevTask.backdrops ?? []),
+          variables: cloneJson(prevTask.variables ?? []),
+        }
+      }
+      const sprites =
+        defaultSprites.length > 0 ? [createSpriteFromPreset([], defaultSprites[0])] : undefined
+      return {
+        toolbox: '',
+        starterBlocks: null,
+        carryBlocksFrom: null,
+        ...(sprites ? { sprites } : {}),
+      }
+    },
+    missingStarter: never,
+    copyStarterToComplete: noUpdates,
+    printTask: printScratchTask,
+    sandboxStarterEditor: 'blocks',
+    // The stage runs inside the Scratch workspace; the Builder's Run does nothing.
+    builderRun: 'none',
+    codeFormat: { label: 'Scratch', icon: 'scratch' },
+    spriteLibrary: true,
   },
 
   // ── Contract v2 (see ../moduleContract.js) ───────────────────────────────────
