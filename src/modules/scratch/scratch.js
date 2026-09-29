@@ -133,6 +133,22 @@ function selectedSpriteThumbSrc(option) {
 function registerSpriteDropdownField(Blockly) {
   if (Blockly.registry.hasItem(Blockly.registry.Type.FIELD, 'field_sprite_dropdown')) return
   class FieldSpriteDropdown extends Blockly.FieldDropdown {
+    // FieldDropdown generates (and caches) its options in the constructor, before the
+    // field knows its block, so they come from the fallback context — which another
+    // mounted editor may have written. Regenerate once attached so the default value
+    // and later validation use this workspace's own costumes/sprites.
+    setSourceBlock(block) {
+      super.setSourceBlock(block)
+      if (!this.isOptionListDynamic()) return
+      const options = this.getOptions(false)
+      const value = this.getValue()
+      const match = options.find((option) => option[1] === value) ?? options[0]
+      if (match) {
+        this.selectedOption = match
+        if (match[1] !== value) this.setValue(match[1])
+      }
+    }
+
     render_() {
       const thumbSrc = selectedSpriteThumbSrc(this.selectedOption)
       if (!thumbSrc || !this.imageElement) {
@@ -518,7 +534,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
         message0: blockMessage('looks_switchbackdropto', 'switch backdrop to %1'),
         args0: blockArgs('looks_switchbackdropto', [
           {
-            type: 'field_dropdown',
+            type: 'field_sprite_dropdown',
             name: 'BACKDROP',
             options: function () {
               const backdrops = blocklyContextFor(this).backdrops
@@ -542,7 +558,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
         message0: blockMessage('event_whenbackdropswitchesto', 'when backdrop switches to %1'),
         args0: blockArgs('event_whenbackdropswitchesto', [
           {
-            type: 'field_dropdown',
+            type: 'field_sprite_dropdown',
             name: 'BACKDROP',
             options: function () {
               const backdrops = blocklyContextFor(this).backdrops
@@ -1000,7 +1016,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
         type: 'data_showvariable',
         message0: blockMessage('data_showvariable', 'show variable %1'),
         args0: blockArgs('data_showvariable', [
-          { type: 'field_dropdown', name: 'VARIABLE', options: variableOptions },
+          { type: 'field_sprite_dropdown', name: 'VARIABLE', options: variableOptions },
         ]),
         previousStatement: null,
         nextStatement: null,
@@ -1014,7 +1030,7 @@ export const SCRATCH_BLOCK_DEFINITIONS = {
         type: 'data_hidevariable',
         message0: blockMessage('data_hidevariable', 'hide variable %1'),
         args0: blockArgs('data_hidevariable', [
-          { type: 'field_dropdown', name: 'VARIABLE', options: variableOptions },
+          { type: 'field_sprite_dropdown', name: 'VARIABLE', options: variableOptions },
         ]),
         previousStatement: null,
         nextStatement: null,
@@ -1129,7 +1145,7 @@ function variableReporter() {
         type: 'data_variable',
         message0: blockMessage('data_variable', '%1'),
         args0: blockArgs('data_variable', [
-          { type: 'field_dropdown', name: 'VARIABLE', options: variableOptions },
+          { type: 'field_sprite_dropdown', name: 'VARIABLE', options: variableOptions },
         ]),
         output: ['Number', 'String'],
         colour: '#FF8C1A',
@@ -1145,7 +1161,7 @@ function variableStatement(type, message0, valueInput) {
         type,
         message0: blockMessage(type, message0),
         args0: blockArgs(type, [
-          { type: 'field_dropdown', name: 'VARIABLE', options: variableOptions },
+          { type: 'field_sprite_dropdown', name: 'VARIABLE', options: variableOptions },
           valueInput,
         ]),
         previousStatement: null,

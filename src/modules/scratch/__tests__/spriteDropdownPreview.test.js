@@ -147,6 +147,19 @@ describe('per-workspace dropdown context', () => {
     expect(optionValues(field18)).toEqual(['dog-a', 'dog-b'])
   })
 
+  it("defaults a new block to its own workspace's first costume, not the fallback's", () => {
+    // Blockly picks the initial value in the field constructor, before the field is
+    // attached to a block — so it would otherwise come from the stale fallback context.
+    setCostumeContext([{ name: 'walk1' }, { name: 'walk2' }])
+    const frog = workspaceWith({ costumes: [{ name: 'sit' }, { name: 'jump' }] })
+    const field = frog.newBlock('looks_switchcostumeto').getField('COSTUME')
+    expect(field.getValue()).toBe('sit')
+    expect(field.getText()).toBe('sit')
+    // Saved values validate against this workspace's costumes too.
+    field.setValue('jump')
+    expect(field.getValue()).toBe('jump')
+  })
+
   it('lists each workspace its own sprites', () => {
     const a = workspaceWith({ sprites: [{ id: 'cat', name: 'Cat' }] })
     const b = workspaceWith({ sprites: [{ id: 'dog', name: 'Dog' }] })
