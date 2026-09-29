@@ -104,6 +104,27 @@ function formatSummaryFailures(task) {
   return parts.length > 0 ? parts.join('; ') : '-'
 }
 
+// How often students needed a reference (support stage) for this task, and
+// who opened it — "3 opened by 2 students (2 teacher, 1 student)".
+function formatSummaryReferences(task) {
+  const count = task.supportRevealCount ?? 0
+  if (count === 0) return '-'
+  const studentCount = task.supportRevealStudentCount ?? 0
+  const sources = Object.entries(task.supportRevealSources ?? {})
+    .filter(([, n]) => n > 0)
+    .map(([source, n]) => `${n} ${source}`)
+  return `${count} opened by ${studentCount} student${studentCount === 1 ? '' : 's'}${
+    sources.length > 0 ? ` (${sources.join(', ')})` : ''
+  }`
+}
+
+function formatTaskReferences(task) {
+  const reveals = task.supportReveals ?? []
+  if (reveals.length === 0) return null
+  const labels = reveals.map((r) => r.stageLabel || `Stage ${(r.stageIndex ?? 0) + 1}`)
+  return `📖 ${reveals.length} reference${reveals.length === 1 ? '' : 's'}: ${labels.join(', ')}`
+}
+
 function StudentTaskRow({ task }) {
   const [expanded, setExpanded] = useState(false)
   return (
@@ -122,6 +143,9 @@ function StudentTaskRow({ task }) {
           <span style={s.attemptsCount}>
             {task.itemProgress.correct}/{task.itemProgress.total} items right
           </span>
+        )}
+        {formatTaskReferences(task) && (
+          <span style={s.attemptsCount}>{formatTaskReferences(task)}</span>
         )}
         {task.override && <span style={s.overrideNote}>{formatOverrideDetail(task)}</span>}
         {task.distinctAttempts.length > 0 && (
@@ -151,6 +175,7 @@ function StudentTaskRow({ task }) {
 function StudentSection({ student }) {
   const [expanded, setExpanded] = useState(false)
   const completedCount = student.tasks.filter((t) => t.completed).length
+  const referenceCount = student.tasks.reduce((n, t) => n + (t.supportReveals?.length ?? 0), 0)
   return (
     <div style={s.studentSection}>
       <button style={s.studentHeader} onClick={() => setExpanded((v) => !v)}>
@@ -158,6 +183,8 @@ function StudentSection({ student }) {
         <span style={s.studentName}>{student.studentLabel}</span>
         <span style={s.studentSummary}>
           {completedCount}/{student.tasks.length} tasks completed
+          {referenceCount > 0 &&
+            ` · ${referenceCount} reference${referenceCount === 1 ? '' : 's'} opened`}
         </span>
       </button>
       {expanded && (
@@ -296,6 +323,7 @@ export default function TeacherReportModal({ report, onClose, onSaveFeedback }) 
                     'Avg Attempts',
                     'Avg Time',
                     'Common Failures',
+                    'References',
                     'Teacher Rating',
                   ].map((h) => (
                     <th key={h} style={s.th}>
@@ -319,6 +347,7 @@ export default function TeacherReportModal({ report, onClose, onSaveFeedback }) 
                     <td style={s.td}>{task.avgAttempts ?? '-'}</td>
                     <td style={s.td}>{formatDuration(task.avgTimeOnTaskMs)}</td>
                     <td style={s.td}>{formatSummaryFailures(task)}</td>
+                    <td style={s.td}>{formatSummaryReferences(task)}</td>
                     <td style={s.td}>
                       {task.teacherRating ? (
                         <div style={s.teacherRatingCell}>

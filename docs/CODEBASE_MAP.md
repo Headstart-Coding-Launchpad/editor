@@ -69,6 +69,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `studentCodeExports.js` | Pure selection of browser-saved Python code tasks for `.launchpad` backup exports |
 | `teacherSandboxWork.js` | Pure teacher-sandbox work helpers for TeacherView (plan step 4.6): the per-`capabilities.sandboxState` work slots, restore order (draft, then the live session via `wire.fromCode` / decoded `sandboxFiles`, then `lifecycle.sandboxStarter`), draft copies, and the `enterSandbox` / `pushSandboxCode` / `pushSandboxFiles` fields via `wire.toCode` on the module's `wire.sandboxChannel`; `taskStarterWork` is the displayed task's Starter-tab work (`workSlot.teacherStarter`, step 4.8) |
 | `teacherLivePayload.js` | Pure student-to-teacherLive broadcast payload construction |
+| `nudgeAlert.js` | Best-effort browser attention effects for teacher nudges: `startTitleFlash` (tab title + favicon), `playNudgeChime` (Web Audio), `showNudgeNotification` (only with granted permission) |
 | `throttledMirrorWriter.js` | Leading + trailing throttle for mirrored "latest value" writes (watched student output); re-checks nothing itself — callers gate on watch state per write |
 | `taskItemProgress.js` | Pure teacher-only filled/correct item counts for Match and Fill in the Gaps quizzes (via the quiz activity's `getProgress`) and filled-slot counts for Code Arrange (StudentCard + StudentModal header) |
 | `sharedWorkspacePayload.js` | Pure workspace-share snapshot construction, size limit, index entry building, and newest-first share sorting |
@@ -99,7 +100,8 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `RecordingWidget.jsx` | Solo-mode-only fixed-corner pop-out player for a lesson's `recordingUrl` (YouTube recording, authorable on any lesson). Hide pauses via the YouTube IFrame API; the player stays mounted so reopening resumes in place |
 | `NameEntry.jsx` | Student name input with duplicate-suffix handling and solo fallback |
 | `StudentGrid.jsx` | Grid of StudentCards with collapse toggle and check conditions display |
-| `PresenceBadge.jsx` | Shared online/offline/waiting badge used by StudentCard and StudentModal |
+| `PresenceBadge.jsx` | Shared online/away/offline/waiting badge used by StudentCard and StudentModal (Away = connected but window unfocused) |
+| `NudgeBanner.jsx` | Student-side half of a teacher nudge: `NudgeBanner` (in-page "your teacher is asking for your attention" banner) and `NudgePermissionPrompt` (one-time opt-in for OS notifications, "Not now" remembered in localStorage) |
 | `StudentCard.jsx` | Compact card: name, online/run/check/support/sharing badges, teacher-only item progress badge (`taskItemProgress.js`), code/output snippet (per the module's `capabilities.cardSummary`) or the activity/quiz answer summary (the activity UI's `CardSummary`), expand button |
 | `SharedWorkspacePreview.jsx` | Read-only render of a frozen share snapshot; maps a snapshot to each module's TeacherLiveView props |
 | `SharedWorkspacePanel.jsx` | Student-facing "Shared work" gallery button, new-share toast, and share list |
@@ -178,6 +180,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `runWithRuntime.js` | `runWithRuntime(ctx)` — the `'runtime'` branch of `handleRun` (Pyodide / MicroPython): output streaming and throttled teacher mirror, `input()` prompts, stop handling, the task check with feedback, the run-record save, `writeStudentRun` and the attempt log. Per-module differences come from the definition's `runResult` flags and `checking.buildContext` |
 | `useLatestRef.js` | `useLatestRef(value)` — a ref holding the latest render's value, for stale-closure-safe reads inside async handlers, timers and event listeners |
 | `useStudentPresenceReporting.js` | Reports this student's window state to the teacher: connected, focused, fullscreen, recently active. Presentation windows report nothing and remove themselves from the roster |
+| `useNudgeAlert.js` | Reacts to a teacher nudge (`students/{id}/nudgePushedAt` always; session `nudgeAwayPushedAt` only when the window is unfocused): banner, chime, and — while unfocused — tab flash until focus plus an OS notification. Timestamps present at load are a baseline and never replay |
 | `useSandboxCodePush.js` | Loads content the teacher pushes into the sandbox, keyed off the session's push timestamps: on the module's code channel `wire.fromCode(sandboxCode)` → `onPushedWork(work)`, on the files channel the decoded `sandboxFiles` (else the lesson's `sandboxStarterFiles`) → `onPushedFiles(files)` |
 | `useTypewriterOutput.js` | `useTypewriterOutput(output)` — reveals program output with the retro typing animation, chunking faster as the remaining text grows; shared by `OutputPanel` and `BuilderOutputPanel` |
 | `useCheckFeedback.js` | Check result state (`checkPassed`, `checkAttempted`, `checkSuggestion`, `repeatedSuggestionCount`, `testResults`); `resetCheckFeedback` / `applyCheckFeedback`; teacher check-override effect |

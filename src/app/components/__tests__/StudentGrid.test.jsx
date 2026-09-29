@@ -146,6 +146,26 @@ describe('StudentGrid', () => {
     })
   })
 
+  describe('nudge Away students', () => {
+    const withAway = STUDENTS.map((st) =>
+      st.anonymousId === 's3' ? { ...st, windowFocused: false } : st
+    )
+
+    it('hides the button when nobody is Away', () => {
+      render(<StudentGrid {...mkProps({ onNudgeAway: vi.fn() })} />)
+      expect(screen.queryByText(/Nudge Away/)).not.toBeInTheDocument()
+    })
+
+    it('shows the Away count and nudges when clicked', async () => {
+      const user = userEvent.setup()
+      const onNudgeAway = vi.fn()
+      render(<StudentGrid {...mkProps({ students: withAway, onNudgeAway })} />)
+      await user.click(screen.getByText('🔔 Nudge Away (1)'))
+      expect(onNudgeAway).toHaveBeenCalledTimes(1)
+      expect(screen.getByText('✓ Nudged')).toBeInTheDocument()
+    })
+  })
+
   describe('collapsed state', () => {
     function renderCollapsed(studentOverrides = {}) {
       return render(

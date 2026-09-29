@@ -83,6 +83,7 @@ export default function StudentModal({
   onDeclineShare,
   onRequestShareSnapshot,
   onRequestFullscreen,
+  onNudge,
 }) {
   const overlayRef = useRef(null)
   const iframeRef = useRef(null)
@@ -96,6 +97,7 @@ export default function StudentModal({
   }, [student.anonymousId, session?.currentTaskId])
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [fullscreenRequested, setFullscreenRequested] = useState(false)
+  const [nudged, setNudged] = useState(false)
 
   // Teacher highlight: select a range in the mirrored view, tag it, send it
   const [pendingHighlight, setPendingHighlight] = useState(null) // {from, to} | null
@@ -336,6 +338,12 @@ export default function StudentModal({
     onRemoveHighlight?.(student.anonymousId, highlightId)
   }
 
+  function handleNudge() {
+    onNudge?.(student.anonymousId)
+    setNudged(true)
+    setTimeout(() => setNudged(false), 2000)
+  }
+
   function handleRequestFullscreen() {
     onRequestFullscreen?.(student.anonymousId)
     setFullscreenRequested(true)
@@ -507,6 +515,16 @@ export default function StudentModal({
           <div style={s.headerLeft}>
             <span style={s.name}>{student.displayName}</span>
             <PresenceBadge student={student} session={session} />
+            {onNudge && student.online && (
+              <button
+                className="btn-ghost"
+                style={s.nudgeBtn}
+                onClick={handleNudge}
+                title="Nudge: flash this student's tab and play a chime"
+              >
+                {nudged ? '✓ Nudged' : '🔔 Nudge'}
+              </button>
+            )}
             {isLive && <span style={s.liveBadge}>● {isLiveForAll ? 'LIVE FOR ALL' : 'LIVE'}</span>}
             {student.checkPassed && !isSessionSandbox && <span style={s.checkBadge}>✅</span>}
             {teacherAssisted && (
@@ -1156,6 +1174,13 @@ const s = {
     whiteSpace: 'nowrap',
   },
   checkBadge: { fontSize: '1rem' },
+  nudgeBtn: {
+    fontSize: '0.75rem',
+    padding: '2px 8px',
+    color: '#fff',
+    background: 'rgba(255,255,255,0.18)',
+    whiteSpace: 'nowrap',
+  },
   helpedBtn: {
     background: '#f59e0b',
     border: 'none',

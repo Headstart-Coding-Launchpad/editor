@@ -39,10 +39,12 @@ export default function StudentCard({
   onRename,
   onRemove,
   onExpand,
+  onNudge,
 }) {
   const [editing, setEditing] = useState(false)
   const [nameValue, setNameValue] = useState(student.displayName)
   const [isActive, setIsActive] = useState(false)
+  const [nudged, setNudged] = useState(false)
   const [, setTick] = useState(0)
 
   // Show typing dots for 4 seconds after lastActivityAt updates, then clear
@@ -237,6 +239,21 @@ export default function StudentCard({
             >
               Away
             </span>
+          )}
+          {onNudge && student.online && student.windowFocused === false && (
+            <button
+              style={s.nudgeBtn}
+              onClick={(event) => {
+                event.stopPropagation()
+                onNudge(student.anonymousId)
+                setNudged(true)
+                setTimeout(() => setNudged(false), 2000)
+              }}
+              title="Nudge: flash this student's tab and play a chime"
+              aria-label={`Nudge ${student.displayName}`}
+            >
+              {nudged ? '✓' : '🔔'}
+            </button>
           )}
           {student.isFullscreen && (
             <span
@@ -576,6 +593,15 @@ const s = {
     background: '#f3f4f6',
     color: '#6b7280',
     border: '1px solid #d1d5db',
+  },
+  nudgeBtn: {
+    background: '#fffbeb',
+    border: '1px solid #f59e0b',
+    borderRadius: 999,
+    fontSize: '0.72rem',
+    lineHeight: 1.2,
+    padding: '1px 6px',
+    cursor: 'pointer',
   },
   checkBadgeFullscreen: {
     background: '#0284c7',

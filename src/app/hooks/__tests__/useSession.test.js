@@ -416,6 +416,30 @@ describe('useSession', () => {
     })
   })
 
+  describe('nudges', () => {
+    it('nudgeStudent stamps nudgePushedAt on just that student', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.nudgeStudent('student-abc')
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { nudgePushedAt: expect.any(Number) }
+      )
+    })
+
+    it('nudgeAwayStudents stamps a session-level nudgeAwayPushedAt', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.nudgeAwayStudents()
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        { nudgeAwayPushedAt: expect.any(Number) }
+      )
+    })
+  })
+
   describe('writeStudentInteraction viewingShareId', () => {
     it('writes viewingShareId when a student opens a shared workspace', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
