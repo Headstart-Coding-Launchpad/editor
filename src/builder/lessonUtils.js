@@ -1,5 +1,5 @@
-import { DEFAULT_CIRCUIT, cloneCircuit } from '../modules/electronics/circuit'
-import { CARRY_THROUGH_FIELDS } from '../modules/definitions'
+import { CARRY_THROUGH_FIELDS, getModuleAuthoring } from '../modules/definitions'
+import { isLegacyQuizRecord } from '../activities/resolve.js'
 import { validateLessonCore, taskHasCheckValue } from '../shared/lessonValidation'
 
 // Quiz helpers now live with the shared legacy-activity validation; re-exported for existing
@@ -56,20 +56,9 @@ export function copyScratchSpriteStateToStarters(sprites, spriteStates) {
   })
 }
 
+// "Reset to starter code": the module's authoring hook (nothing for an unregistered type).
 export function copyStarterToComplete(task, lessonType) {
-  if (lessonType === 'python' || lessonType === 'arcade') {
-    return { completeCode: task.starterCode ?? '' }
-  }
-  if (lessonType === 'html') {
-    return {
-      completeFiles: (task.starterFiles ?? []).map((file) => ({ ...file })),
-      completeEntryFile: task.entryFile ?? 'index.html',
-    }
-  }
-  if (lessonType === 'electronics') {
-    return { completeCircuit: cloneCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT) }
-  }
-  return {}
+  return getModuleAuthoring(lessonType)?.copyStarterToComplete(task) ?? {}
 }
 
 // Builder lesson validation: the shared core (src/shared/lessonValidation.js — the same rules
@@ -172,7 +161,7 @@ export function normalizeTasksForExport(tasks, { preserveIds = false } = {}) {
     const { _checkTested, _customTitle, ...rest } = task
     const exported = { ...rest, id: idMap[task.id] }
     if (exported.copyCode != null && !String(exported.copyCode).trim()) delete exported.copyCode
-    if (exported.taskType === 'quiz') delete exported.copyCode
+    if (isLegacyQuizRecord(exported)) delete exported.copyCode
     if (exported.taskMode === 'both') delete exported.taskMode
     if (exported.carryCodeFrom != null)
       exported.carryCodeFrom = idMap[exported.carryCodeFrom] ?? exported.carryCodeFrom

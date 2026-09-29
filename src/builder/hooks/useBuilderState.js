@@ -6,12 +6,11 @@ import {
   updateSubtaskTitles,
 } from '../../shared/taskUtils'
 import { renumberTasks, validateLesson } from '../lessonUtils'
-import { HTML_ONLY } from '../components/FileManager'
-import { createSpriteFromPreset } from '../../shared/spritePresets'
-import { DEFAULT_CIRCUIT, cloneCircuit } from '../../modules/electronics/circuit'
-import { DEFAULT_FS } from '../../modules/filesystem/filesystem'
-import { makeDefaultDesktop } from '../../modules/desktop/desktopState'
+import { getModuleAuthoring } from '../../modules/definitions'
 import { getEffectiveLessonForTask, isComposedLesson } from '../../shared/composedLesson'
+
+// A lesson whose type no module registers has always been given HTML task fields.
+const FALLBACK_MODULE_TYPE = 'html'
 
 export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
   const [selectedTaskId, setSelectedTaskId] = useState(() => {
@@ -43,69 +42,11 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
     setSelectedTaskId(null)
   }
 
+  // A new task's module fields come from its module's authoring hook (an unknown type falls back
+  // to HTML's, as the old per-type chain did).
   function defaultTypeFields(prevTask = null, moduleType = lesson.type) {
-    if (moduleType === 'python' || moduleType === 'arcade' || moduleType === 'turtle') {
-      return {
-        starterCode: prevTask ? (prevTask.completeCode ?? prevTask.starterCode ?? '') : '',
-        carryCodeFrom: prevTask?.id ?? null,
-      }
-    }
-    if (moduleType === 'scratch') {
-      if (prevTask) {
-        return {
-          toolbox: '',
-          starterBlocks: prevTask.completeBlocks ?? prevTask.starterBlocks ?? null,
-          carryBlocksFrom: prevTask.id,
-          sprites: JSON.parse(JSON.stringify(prevTask.sprites ?? [])),
-          backdrops: JSON.parse(JSON.stringify(prevTask.backdrops ?? [])),
-          variables: JSON.parse(JSON.stringify(prevTask.variables ?? [])),
-        }
-      }
-      const sprites =
-        defaultSprites.length > 0 ? [createSpriteFromPreset([], defaultSprites[0])] : undefined
-      return {
-        toolbox: '',
-        starterBlocks: null,
-        carryBlocksFrom: null,
-        ...(sprites ? { sprites } : {}),
-      }
-    }
-    if (moduleType === 'electronics') {
-      return {
-        starterCircuit: prevTask
-          ? cloneCircuit(prevTask.completeCircuit ?? prevTask.starterCircuit ?? DEFAULT_CIRCUIT)
-          : cloneCircuit(DEFAULT_CIRCUIT),
-        carryCircuitFrom: prevTask?.id ?? null,
-        microcontroller: prevTask?.microcontroller
-          ? { ...prevTask.microcontroller }
-          : { enabled: false, boardType: null, starterCode: '' },
-      }
-    }
-    if (moduleType === 'filesystem') {
-      return {
-        starterFs: prevTask?.completeFs ?? prevTask?.starterFs ?? DEFAULT_FS,
-        carryFsFrom: prevTask?.id ?? null,
-      }
-    }
-    if (moduleType === 'desktop') {
-      return {
-        starterDesktop:
-          prevTask?.completeDesktop ??
-          prevTask?.starterDesktop ??
-          makeDefaultDesktop(prevTask?.availableApps),
-        carryDesktopFrom: prevTask?.id ?? null,
-        availableApps: prevTask?.availableApps ?? ['fileManager'],
-      }
-    }
-    return {
-      starterFiles: prevTask
-        ? (prevTask.completeFiles ?? prevTask.starterFiles ?? []).map((f) => ({ ...f }))
-        : [{ name: 'index.html', type: 'html', content: HTML_ONLY }],
-      entryFile: prevTask
-        ? (prevTask.completeEntryFile ?? prevTask.entryFile ?? 'index.html')
-        : 'index.html',
-      carryCodeFrom: prevTask?.id ?? null,
-    }
+    const authoring = getModuleAuthoring(moduleType) ?? getModuleAuthoring(FALLBACK_MODULE_TYPE)
+    return authoring.defaultTypeFields(prevTask, { defaultSprites })
   }
 
   function nextId() {

@@ -104,6 +104,27 @@ Three required, frozen hook groups on every definition, validated by `defineModu
 
 Call sites using the hooks today: `studentTaskContent.resolveRemoteResetTarget`, `StudentView` (`hasCompleteSolution`, `hasPersonalSandbox`), `TeacherEditorPanel` (Complete tab), `TeacherView` (`lifecycle.sandboxStarter`), `composedLesson.getEffectiveLessonForModule`, `useTeacherLivePublish` (live extras and the work-slot code string), and `sharedWorkspacePayload` (snapshot code/arcade design and share copy, keyed by `capabilities.sandboxState`). TeacherView's sandbox branches move in step 4.6.
 
+### Contract v2: Builder authoring (plan steps 4.1 / 4.8)
+
+`authoring` is a required, frozen group that holds everything the Builder used to decide by comparing lesson types, so `src/builder/` never branches on a module type (the type-branch ratchet holds every Builder file at 0). `defineModule` validates it (`AUTHORING_HOOKS`, `SANDBOX_STARTER_EDITORS`, `BUILDER_RUN_KINDS`, `AUTHORING_FLAGS`); `getModuleAuthoring(type)` in `definitions.js` returns it, or null for an unregistered type so each call site keeps its old fallback. Shared builders live in `src/modules/moduleAuthoring.js` and `src/modules/printHelpers.js`; each module's print section is in its own `print.js` (html, scratch, filesystem, electronics). `src/modules/__tests__/moduleAuthoring.test.js` compares every module's hooks against verbatim copies of the Builder branches they replaced (`helpers/legacyBuilderAuthoring.js`), and `src/builder/components/__tests__/builderAuthoringParity.test.jsx` does the same for the Sandbox starter summary and the task-format icons.
+
+Pure hooks:
+
+- `defaultTypeFields(prevTask, { defaultSprites })` — the module fields of a new task (`useBuilderState` add task / group / subtask), seeded from the task it follows (null for the first): code modules copy the complete-else-starter code and carry it (`codeDefaultTypeFields`); html copies the files and entry file (the first task gets the "HTML" template, `html/fileTemplates.js`); scratch deep-copies blocks, sprites, backdrops and variables (the first task gets the sprite library's first sprite); electronics clones the circuit and microcontroller; filesystem and desktop copy their state. An unregistered lesson type gets HTML's fields, as before.
+- `missingStarter(task)` + `missingStarterLabel` — a draft task with no starter work yet (html `starterFiles`, filesystem `starterFs`, desktop `starterDesktop`, electronics `starterCircuit`) shows the TaskEditor's "This draft task has no {label} yet" notice instead of the workspace. Always false (label null) for the other modules.
+- `copyStarterToComplete(task)` — "Reset to starter code" (`lessonUtils.copyStarterToComplete`): python and arcade copy `completeCode`, html the files and entry file, electronics the circuit; the rest (turtle included, as before) copy nothing.
+- `printTask(task, { esc })` — the module's section of the printable lesson (`printLesson.js`, code tasks only), byte-identical to the old per-type blocks. Desktop prints nothing, as before.
+
+Data:
+
+- `sandboxStarterEditor` — the lesson sandbox-starter editor and summary in the Builder's Sandbox starter modal: `'code'` (python, turtle, arcade), `'blocks'` (scratch), `'fs'` (filesystem), `'circuit'` (electronics), `'files'` (html; desktop has always fallen through to it too).
+- `builderRun` — the TaskEditor's Run (`useTaskEditorState`): `'pyodide'` (python), `'none'` (scratch, whose stage runs itself), `'preview'` (the HTML preview; html, and — as the old fallthrough — every other module, whose Builder workspaces run their own previews).
+- `codeFormat` (optional, `{ label: 'Code', icon: 'code' }`) — the Code task-format button (scratch: `Scratch` / the blocks icon).
+- `copyCodePlaceholder` — the Copy code panel placeholder, required for `supportsCopyCode` modules (python `Code students can copy...`, the others the HTML comment form).
+- Flags (default false): `fileTabs` (html — Reset to starter reselects the complete entry file and closes the preview), `sharedTypeAssets` (html, arcade — the lesson meta panel offers the module's shared type assets), `previewTypeAssets` (html — the Builder preview includes the selected shared assets), `spriteLibrary` (scratch — the module's type assets are the default sprite library; `SPRITE_LIBRARY_MODULE_TYPE`).
+
+The TaskEditor also reads `capabilities.unifiedStages` for its stage tabs, and task formats come from the activity registry (`getTaskFormat`, `TASK_FORMATS`, `isLegacyQuizRecord` in `src/activities/resolve.js` for export normalisation), never a `taskType` comparison.
+
 ### Contract v2: teacher surfaces (plan step 4.6)
 
 The teacher-side module data travels through the same hooks, with the Realtime Database shapes unchanged (`sandboxCode` / `sandboxFiles`, `teacherLive.*`), so mixed-version tabs keep reading and writing identical payloads:
@@ -212,7 +233,7 @@ When this contract changes, also check:
 
 ## Adding A New Type
 
-1. Add `src/modules/<type>/definition.js` (including the `lifecycle`, `storage` and `wire` groups, usually from the `src/modules/moduleContract.js` builders), `index.js`, `StudentWorkspace.jsx`, `BuilderWorkspace.jsx`, and `CheckEditor.jsx`.
+1. Add `src/modules/<type>/definition.js` (including the `lifecycle`, `storage` and `wire` groups, usually from the `src/modules/moduleContract.js` builders, and the Builder `authoring` group, from `src/modules/moduleAuthoring.js` / `printHelpers.js`), `index.js`, `StudentWorkspace.jsx`, `BuilderWorkspace.jsx`, and `CheckEditor.jsx`.
 2. Add type-specific `checks.js` if the type needs custom checks, exporting `CHECKS` definitions and adding them to `checkRegistry` in `src/modules/checks.js`.
 3. Register the definition in `src/modules/definitions.js` and the module in `src/modules/registry.js`.
 4. Add authoring documentation and examples.
