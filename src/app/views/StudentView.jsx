@@ -4,6 +4,7 @@ import { useSession } from '../hooks/useSession'
 import { useIdentity } from '../hooks/useIdentity'
 import { useLessonLoader } from '../hooks/useLessonLoader'
 import { applyLessonOverride, findSoloCompanion } from '../../shared/lessonService'
+import { prepareClassroomLesson } from '../studentTaskContent'
 import { useStudentPhase } from '../hooks/useStudentPhase'
 import { useStudentCodeState } from '../hooks/useStudentCodeState'
 import { useCrossTabPresence } from '../hooks/useCrossTabPresence'
@@ -136,7 +137,7 @@ export default function StudentView({
     : identity
 
   const lesson = useMemo(
-    () => applyLessonOverride(baseLesson, session?.lessonOverrideTasks),
+    () => prepareClassroomLesson(applyLessonOverride(baseLesson, session?.lessonOverrideTasks)),
     [baseLesson, session?.lessonOverrideTasks]
   )
   // Derive firstTaskId from the post-override lesson so solo-mode students start on a valid task.

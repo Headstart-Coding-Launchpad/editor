@@ -42,6 +42,29 @@ tasks:
 Turtle tasks are draw-and-check, like Arcade Kit — there is no `submit`
 interaction mode and no `tests` support.
 
+## Line hints
+
+Turtle starter code takes the same `#>` line hints as Python: a line whose
+trimmed text starts with `#>` is removed from the code and shown beside the
+next line (a 💡 in the gutter and faded text after the line), so instructions
+never sit in the student's code.
+
+```yaml
+    starterCode: |
+      import turtle
+
+      #> Try a different colour name here
+      turtle.color("blue")
+      for _ in range(4):
+          #> Change 100 to make the square bigger
+          turtle.forward(100)
+          turtle.left(90)
+```
+
+The rules (stacking, trailing markers, stripping before run/check/carry,
+re-anchoring on saved code) are the same as Python's — see
+[python.md](python.md#line-hints).
+
 ## Coordinate system
 
 Matches real Python `turtle` exactly: `(0, 0)` is the centre of a fixed

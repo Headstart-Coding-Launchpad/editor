@@ -10,6 +10,7 @@ import { useTypeAssets } from '../../shared/useTypeAssets'
 import { buildIframeSrc } from './iframe'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import { selectHtmlTaskFiles } from '../../app/studentTaskContent'
+import { getTaskLineHintSets } from '../../shared/lineHints'
 
 export default function StudentWorkspace({
   lesson,
@@ -83,6 +84,10 @@ export default function StudentWorkspace({
       ? viewedIframeSrc
       : cs.iframeSrc
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
+  const lineHintSetsFor =
+    readOnly || isSandbox || cs.inPersonalSandbox
+      ? undefined
+      : (fileName) => getTaskLineHintSets(task, fileName)
   useRemoteRunTrigger(cs.remoteRunToken, () => cs.handleRun(), {
     enabled: !readOnly && task?.interactionMode !== 'submit',
     onHandled: cs.acknowledgeRemoteRun,
@@ -150,6 +155,7 @@ export default function StudentWorkspace({
             assets={lesson.assets}
             storageAssets={htmlStorageAssets}
             errorLine={errorLine}
+            lineHintSetsFor={lineHintSetsFor}
             onRunShortcut={
               readOnly || task?.interactionMode === 'submit' ? undefined : cs.handleRun
             }
@@ -223,6 +229,7 @@ export default function StudentWorkspace({
               assets={lesson.assets}
               storageAssets={htmlStorageAssets}
               errorLine={errorLine}
+              lineHintSetsFor={lineHintSetsFor}
               onRunShortcut={
                 readOnly || task?.interactionMode === 'submit' ? undefined : cs.handleRun
               }

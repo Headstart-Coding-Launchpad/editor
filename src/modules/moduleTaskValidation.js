@@ -16,6 +16,7 @@ import { normalizeHtmlCheck } from './html/checks.js'
 import { normalizeSequenceItem } from './scratch/checks.js'
 import { ELECTRONICS_CHECK_TYPES } from './electronics/circuit.js'
 import { getStarterStage } from '../shared/taskStages.js'
+import { stripLineHints } from '../shared/lineHints.js'
 import { hasValue, labelCheckKind } from '../shared/checkAuthoringValidation.js'
 
 // Feedback (incorrect-answer) checks as the Builder edits them; [] when the task has none.
@@ -208,16 +209,15 @@ export function filesStarterPresent(task) {
 
 // ── Complete-solution warnings ───────────────────────────────────────────────
 // The static checks the authored complete code/files fail, plus a reminder to run the
-// complete solution when there are run-time checks the validator can't evaluate.
+// complete solution when there are run-time checks the validator can't evaluate. Line-hint
+// markers are stripped first, as they are for students (src/shared/lineHints.js).
 export function warnCompleteCode(task, n, warnings) {
   if (!task.check || task.completeCode == null) return
   const allChecks = normalizeChecks(task.check)
   const staticChecks = allChecks.filter((c) => checkAllowedForSubmit(c))
   const dynamicChecks = allChecks.filter((c) => checkRequiresRun(c))
-  if (
-    staticChecks.length > 0 &&
-    staticChecks.some((c) => !evaluateSingleCheck(c, '', { code: task.completeCode }))
-  ) {
+  const code = stripLineHints(task.completeCode, 'python')
+  if (staticChecks.length > 0 && staticChecks.some((c) => !evaluateSingleCheck(c, '', { code }))) {
     warnings.push(`Task ${n} complete solution fails a code check — review the complete code`)
   }
   if (dynamicChecks.length > 0 && !task._checkTested) {
@@ -233,7 +233,9 @@ export function warnCompleteFiles(task, n, warnings) {
   const staticChecks = allChecks.filter((c) => checkAllowedForSubmit(c))
   const dynamicChecks = allChecks.filter((c) => checkRequiresRun(c))
   if (staticChecks.length > 0) {
-    const codeStr = task.completeFiles.map((f) => f?.content ?? '').join('\n')
+    const codeStr = task.completeFiles
+      .map((f) => stripLineHints(f?.content ?? '', 'html'))
+      .join('\n')
     if (staticChecks.some((c) => !evaluateSingleCheck(c, '', { code: codeStr }))) {
       warnings.push(`Task ${n} complete solution fails a code check — review the complete files`)
     }

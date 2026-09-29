@@ -98,6 +98,8 @@ tasks:
     moduleType: python        # required on every code task in a new composed lesson
 ```
 
+**Line hints in starter code.** Instead of instructions in code comments, Python, Turtle and HTML starter code (and code stages) can carry marker lines that are shown beside the next line and never become part of the student's code: `#> Change the colour here` (Python, Turtle) or `<!--> Add a heading here -->` (HTML). See [python.md](python.md#line-hints) and [html.md](html.md#line-hints).
+
 ---
 
 ## Information Tasks

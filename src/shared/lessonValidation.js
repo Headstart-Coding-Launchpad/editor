@@ -42,6 +42,7 @@ import {
 } from '../modules/moduleTaskValidation.js'
 import { getTaskActivity } from '../activities/registry.pure.js'
 import { getLegacyTaskValidation } from '../activities/legacyValidation.js'
+import { findTrailingLineHintMarkers } from './lineHints.js'
 
 export const VALID_LESSON_TYPES = Object.freeze([...LESSON_MODULE_TYPES, 'composed'])
 
@@ -236,6 +237,13 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
   }
 
   if (kind === 'module') {
+    // A line-hint marker (#> … / <!--> … -->) needs a line after it to attach to.
+    const hintSyntax = definition?.capabilities.lineHints ?? null
+    for (const where of findTrailingLineHintMarkers(task, hintSyntax)) {
+      warnings.push(
+        `Task ${n} has a line hint with no line after it (${where}) — it shows on the last line`
+      )
+    }
     const carryField = definition?.carryThroughField ?? 'carryCodeFrom'
     const carryFrom = task[carryField]
     if (carryFrom != null && !flat.some((candidate) => candidate?.id === carryFrom)) {

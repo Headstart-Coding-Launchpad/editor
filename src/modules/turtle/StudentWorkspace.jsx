@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import PythonEditor from '../python/PythonEditor'
+import { getTaskLineHintSets } from '../../shared/lineHints'
 import OutputPanel from '../../app/components/OutputPanel'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import SplitPane from '../../shared/SplitPane'
@@ -16,6 +17,7 @@ const DEFAULT_TURTLE_STATE = createTurtleState()
 export default function StudentWorkspace({
   task,
   cs,
+  isSandbox,
   isMobile,
   viewingTaskId,
   isViewingPrev,
@@ -134,6 +136,7 @@ export default function StudentWorkspace({
         onChange={readOnly ? undefined : cs.handleCodeChange}
         pyodideStatus={cs.pyodideStatus}
         errorLine={readOnly ? null : cs.errorLine}
+        lineHints={readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskLineHintSets(task)}
         onRunShortcut={readOnly ? undefined : handleRunClick}
       />
     </div>

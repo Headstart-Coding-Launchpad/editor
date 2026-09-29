@@ -13,6 +13,72 @@ function lesson(type, tasks) {
   return { id: 'test-lesson', title: 'Test lesson', type, tasks }
 }
 
+describe('validateLesson line hints', () => {
+  const trailing = 'has a line hint with no line after it'
+
+  it('warns about a trailing Python line-hint marker, naming where it is', () => {
+    const result = validateLesson(
+      lesson('python', [
+        { id: 1, title: 'Hints', starterCode: 'x = 1\n#> Add a print here', _checkTested: true },
+      ])
+    )
+    expect(result.warnings).toContain(
+      'Task 1 has a line hint with no line after it (starter code) — it shows on the last line'
+    )
+  })
+
+  it('warns about a trailing HTML marker in a stage file', () => {
+    const result = validateLesson(
+      lesson('html', [
+        {
+          id: 1,
+          title: 'Hints',
+          starterFiles: [{ name: 'index.html', type: 'html', content: '<p>Hi</p>' }],
+          codeStages: [
+            {
+              role: 'support',
+              files: [
+                { name: 'index.html', type: 'html', content: '<p>Hi</p>\n<!--> Add more -->' },
+              ],
+            },
+          ],
+        },
+      ])
+    )
+    expect(result.warnings).toContain(
+      'Task 1 has a line hint with no line after it (stage 1 file index.html) — it shows on the last line'
+    )
+  })
+
+  it('does not warn about well-placed markers or other module types', () => {
+    const placed = validateLesson(
+      lesson('turtle', [{ id: 1, title: 'Hints', starterCode: '#> Pick a colour\ncolor("red")' }])
+    )
+    expect(placed.warnings.some((warning) => warning.includes(trailing))).toBe(false)
+    const arcade = validateLesson(
+      lesson('arcade', [{ id: 1, title: 'Game', starterCode: 'x = 1\n#> not a marker here' }])
+    )
+    expect(arcade.warnings.some((warning) => warning.includes(trailing))).toBe(false)
+  })
+
+  it('checks the complete code with its markers stripped', () => {
+    const result = validateLesson(
+      lesson('python', [
+        {
+          id: 1,
+          title: 'Hints',
+          starterCode: 'x = 1',
+          completeCode: '#> Print it\nprint(x)',
+          check: { type: 'code_not_contains', value: 'Print it' },
+        },
+      ])
+    )
+    expect(result.warnings).not.toContain(
+      'Task 1 complete solution fails a code check — review the complete code'
+    )
+  })
+})
+
 describe('validateLesson', () => {
   it('reports a missing task list instead of throwing', () => {
     const result = validateLesson({ id: 'no-tasks', title: 'No tasks', type: 'composed' })

@@ -7,6 +7,7 @@
 //
 // See docs/architecture/lesson-type-modules.md ("Contract").
 import { fieldWorkSlotHooks } from './moduleContract.js'
+import { LINE_HINT_SYNTAXES, isLineHintSyntax } from '../shared/lineHints.js'
 
 const REQUIRED_FUNCTIONS = [
   'getDisplayState',
@@ -93,6 +94,9 @@ export const STUDENT_MIRROR_KINDS = Object.freeze(['code', 'files', 'blocks', 'v
 // "HTML project" / "No run yet" line): the first lines of console output ('output'), whether
 // blocks were edited ('blocks') or whether the file tree changed ('fs').
 export const CARD_SUMMARY_KINDS = Object.freeze(['output', 'blocks', 'fs', null])
+// `capabilities.lineHints` (optional; null = none): the marker syntax authors use for line hints
+// in this module's starter code and stages — 'python' (`#> …`, python, turtle) or 'html'
+// (`<!--> … -->`, html). See src/shared/lineHints.js.
 // `capabilities.teacherEditor` (optional; null = the teacher cannot live-edit this module's work,
 // and must be non-null exactly when `workSlot.teacherEdit` is set). `surface` is what the teacher
 // edits in StudentModal:
@@ -390,6 +394,9 @@ function validateUiGates(type, def, workSlot) {
   }
   if (!CARD_SUMMARY_KINDS.includes(caps.cardSummary ?? null)) {
     fail(type, `"capabilities.cardSummary" must be one of: ${CARD_SUMMARY_KINDS.join(', ')}`)
+  }
+  if (caps.lineHints != null && !isLineHintSyntax(caps.lineHints)) {
+    fail(type, `"capabilities.lineHints" must be one of: ${LINE_HINT_SYNTAXES.join(', ')}, or null`)
   }
   const panes = caps.focusPanes ?? []
   if (

@@ -1,6 +1,28 @@
 import { findTaskById, getStarterStage } from '../shared/taskUtils'
-import { isCodeTask } from '../shared/composedLesson'
+import { getTaskModuleType, isCodeTask } from '../shared/composedLesson'
+import { stripLessonLineHints } from '../shared/lineHints'
+import { isModuleHostedActivityTask } from '../activities/registry.pure.js'
 import { getModuleDefinition } from '../modules/definitions.js'
+
+/**
+ * The lesson as the classroom uses it: author line-hint markers (#> … / <!--> … -->, see
+ * src/shared/lineHints.js) stripped from every starter, stage and complete solution, so the
+ * student never sees, saves, runs, checks, carries or mirrors them, with the hints kept on each
+ * task's runtime-only `lineHintSets` for the editors. Each task's markers follow its own module
+ * type (a composed lesson's per-task type). Apply after any session override; never save the
+ * result (the Teacher's lesson editor keeps the authored lesson).
+ */
+export function prepareClassroomLesson(lesson) {
+  if (!lesson) return lesson
+  const syntaxOf = (type) => getModuleDefinition(type)?.capabilities.lineHints ?? null
+  // Only student-edited code: not information, activity or Code Arrange tasks (whose tiles keep
+  // their text as written).
+  const taskSyntax = (task) =>
+    isCodeTask(task) && !isModuleHostedActivityTask(task)
+      ? syntaxOf(getTaskModuleType(lesson, task))
+      : null
+  return stripLessonLineHints(lesson, taskSyntax, syntaxOf(lesson.type))
+}
 
 export function canCarryTaskContent(tasks, carryFromId, currentTaskId) {
   if (!carryFromId) return false
