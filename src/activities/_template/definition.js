@@ -52,6 +52,10 @@ export default defineActivity({
     ),
   }),
 
+  // TODO(new-activity): task fields that store the answer (not the question), obfuscated in the
+  // public lesson document (src/shared/lessonSeal.js). check / feedbackChecks are sealed already.
+  sealedFields: [],
+
   // Per-keystroke / per-pointer-move changes MUST be 'continuous' (only synced while the teacher
   // watches this student). Button presses and finished items are 'discrete'.
   // TODO(new-activity): classify your own state changes.

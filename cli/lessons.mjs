@@ -7,9 +7,10 @@ import { LEVEL_COLLECTION, migrateLessonLevel } from '../src/shared/lessonLevels
 import { getClass } from './classes.mjs'
 import { applyLessonAuditMetadata } from '../src/shared/lessonAudit.js'
 import {
-  decodeLessonBlocksFromFirestore,
-  encodeLessonBlocksForFirestore,
+  decodeLessonFromFirestore,
+  encodeLessonForFirestore,
 } from '../src/shared/lessonBlocksCodec.js'
+import { lessonNeedsSealing } from '../src/shared/lessonSeal.js'
 import { flattenTaskTree } from '../src/shared/taskUtils.js'
 
 export { validateLessonForMcp as validateLesson }
@@ -18,15 +19,22 @@ export { validateLessonForMcp as validateLesson }
 // task (including legacy draft tasks the classroom hides), matching findTaskByFlatIndex.
 const flattenTasks = flattenTaskTree
 
-// Scratch block trees and Arcade designs are stored as JSON strings in Firestore (see
-// src/shared/lessonBlocksCodec.js). Every CLI read decodes and every write encodes, so
-// validation and audit comparisons see the same objects the web app does.
+// Scratch block trees and Arcade designs are stored as JSON strings in Firestore, and task
+// answers are sealed into `_sealed` (see src/shared/lessonBlocksCodec.js and lessonSeal.js).
+// Every CLI read decodes and every write encodes, so validation, verify and audit comparisons
+// see the same plain objects the web app does.
 function readLessonDoc(snap) {
-  return decodeLessonBlocksFromFirestore(snap.data())
+  return decodeLessonFromFirestore(snap.data())
 }
 
 function writeLessonDoc(id, lesson) {
-  return db.collection('lessons').doc(id).set(encodeLessonBlocksForFirestore(lesson))
+  return db.collection('lessons').doc(id).set(encodeLessonForFirestore(lesson))
+}
+
+// Write when the content changed, or when the stored lesson predates answer sealing (so an
+// unchanged republish still converts it).
+function shouldWriteLesson(audited, existingSnap) {
+  return audited.material || (!!existingSnap?.exists && lessonNeedsSealing(existingSnap.data()))
 }
 
 function buildSkeletonTaskList(tasks) {
@@ -157,7 +165,8 @@ async function publishLesson(lesson, { allowDraft = true } = {}) {
       .set(migrated.level, { merge: true })
   }
   const audited = applyLessonAuditMetadata(existingLesson, lessonToPublish)
-  if (audited.material) await writeLessonDoc(lessonToPublish.id, audited.lesson)
+  if (shouldWriteLesson(audited, existingSnap))
+    await writeLessonDoc(lessonToPublish.id, audited.lesson)
   const snap = await db.collection('lessons').doc(lessonToPublish.id).get()
   const published = snap.exists ? summarize(snap.id, readLessonDoc(snap)) : null
   return {
@@ -266,7 +275,7 @@ export async function upsertTask(lessonId, taskIndex, task) {
   const { errors, warnings } = validateLessonForMcp(updatedLesson)
   if (errors.length > 0) return { success: false, errors, warnings }
   const audited = applyLessonAuditMetadata(lesson, updatedLesson)
-  if (audited.material) await writeLessonDoc(lessonId, audited.lesson)
+  if (shouldWriteLesson(audited, snap)) await writeLessonDoc(lessonId, audited.lesson)
   return {
     success: true,
     lessonId,
@@ -286,7 +295,7 @@ export async function appendTask(lessonId, task, groupTitle) {
   const { errors, warnings } = validateLessonForMcp(updatedLesson)
   if (errors.length > 0) return { success: false, errors, warnings }
   const audited = applyLessonAuditMetadata(lesson, updatedLesson)
-  if (audited.material) await writeLessonDoc(lessonId, audited.lesson)
+  if (shouldWriteLesson(audited, snap)) await writeLessonDoc(lessonId, audited.lesson)
   return {
     success: true,
     lessonId,
@@ -383,7 +392,7 @@ export async function forkLesson(
 export async function listLessonForks(sourceLessonId) {
   const snap = await db.collection('lessons').get()
   return snap.docs
-    .map((doc) => ({ id: doc.id, ...doc.data() }))
+    .map((doc) => ({ id: doc.id, ...decodeLessonFromFirestore(doc.data()) }))
     .filter((lesson) => lesson.fork?.sourceLessonId === sourceLessonId)
     .sort((a, b) =>
       String(a.fork?.className ?? a.title ?? a.id).localeCompare(

@@ -12,6 +12,7 @@ import {
 } from 'firebase/database'
 import { db } from '../../shared/firebase'
 import { encodeFileKey, decodeFileKey } from '../../shared/fileKeys'
+import { sealTasks } from '../../shared/lessonSeal'
 import { compactTurtleResultForSync } from '../../modules/turtle/sync.js'
 import {
   buildShareIndexEntry,
@@ -377,8 +378,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
+  // Sealed like the lesson document (src/shared/lessonSeal.js); applyLessonOverride unseals.
   async function pushLessonOverride(tasks) {
-    await set(ref(db, `sessions/${lessonId}/lessonOverrideTasks`), tasks)
+    await set(ref(db, `sessions/${lessonId}/lessonOverrideTasks`), sealTasks(tasks))
   }
 
   async function clearLessonOverride() {

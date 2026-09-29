@@ -19,6 +19,8 @@
 // deep, or included Arcade sprite art), so decode leaves non-string values
 // untouched.
 
+import { sealLesson, unsealLesson } from './lessonSeal.js'
+
 const BLOCK_TREE_FIELDS = ['starterBlocks', 'completeBlocks']
 const ARCADE_DESIGN_FIELDS = ['arcadeDesign', 'completeArcadeDesign']
 
@@ -58,7 +60,7 @@ function stringifyJsonField(v) {
   return typeof v === 'string' ? v : JSON.stringify(v)
 }
 
-// Call on a lesson (or { tasks } fragment) right before setDoc/updateDoc.
+// Blocks/designs only. Lesson writes use encodeLessonForFirestore (below), which also seals.
 export function encodeLessonBlocksForFirestore(lesson) {
   if (!lesson?.tasks) return lesson
   return { ...lesson, tasks: mapTasks(lesson.tasks, stringifyJsonField) }
@@ -73,8 +75,20 @@ function safeParseJsonField(v) {
   }
 }
 
-// Call on the result of getDoc/getDocs/onSnapshot right after reading .data().
+// Blocks/designs only. Lesson reads use decodeLessonFromFirestore (below), which also unseals.
 export function decodeLessonBlocksFromFirestore(lesson) {
   if (!lesson?.tasks) return lesson
   return { ...lesson, tasks: mapTasks(lesson.tasks, safeParseJsonField) }
+}
+
+// The full `lessons` collection boundary: block/design encoding plus answer sealing
+// (src/shared/lessonSeal.js). Every write to `lessons/{id}` goes through encodeLessonForFirestore
+// and every read through decodeLessonFromFirestore, so the rest of the app (and the CLI) only
+// ever sees the plain task shape. Encoding runs blocks first, then seals; decoding reverses it.
+export function encodeLessonForFirestore(lesson) {
+  return sealLesson(encodeLessonBlocksForFirestore(lesson))
+}
+
+export function decodeLessonFromFirestore(doc) {
+  return decodeLessonBlocksFromFirestore(unsealLesson(doc))
 }

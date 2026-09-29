@@ -12,10 +12,8 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { firestore } from './firebase'
-import {
-  encodeLessonBlocksForFirestore,
-  decodeLessonBlocksFromFirestore,
-} from './lessonBlocksCodec'
+import { encodeLessonForFirestore, decodeLessonFromFirestore } from './lessonBlocksCodec'
+import { unsealTasks } from './lessonSeal'
 import { buildLessonFork, CLASS_COLLECTION, makeClassRecord } from './lessonForks'
 import { LEVEL_COLLECTION, migrateLessonLevel } from './lessonLevels'
 import { encodeSessionReportForFirestore } from './lessonReport'
@@ -23,13 +21,13 @@ import { encodeSessionReportForFirestore } from './lessonReport'
 export async function fetchLessonById(lessonId) {
   if (!lessonId) return null
   const snap = await getDoc(doc(firestore, 'lessons', lessonId))
-  if (snap.exists()) return decodeLessonBlocksFromFirestore({ id: snap.id, ...snap.data() })
+  if (snap.exists()) return decodeLessonFromFirestore({ id: snap.id, ...snap.data() })
   return null
 }
 
 export async function fetchLessonList() {
   const snap = await getDocs(collection(firestore, 'lessons'))
-  const items = snap.docs.map((d) => decodeLessonBlocksFromFirestore({ id: d.id, ...d.data() }))
+  const items = snap.docs.map((d) => decodeLessonFromFirestore({ id: d.id, ...d.data() }))
   items.sort((a, b) => (a.title ?? a.id).localeCompare(b.title ?? b.id))
   return items
 }
@@ -59,14 +57,14 @@ export async function publishLesson(lesson) {
   }
   await setDoc(
     doc(firestore, 'lessons', migrated.lesson.id),
-    encodeLessonBlocksForFirestore(migrated.lesson)
+    encodeLessonForFirestore(migrated.lesson)
   )
 }
 
 // Permanently persists an edited task list to a published lesson (admin-only,
 // enforced by Firestore rules). Only the tasks field is touched.
 export async function publishLessonTasks(lessonId, tasks) {
-  const { tasks: encodedTasks } = encodeLessonBlocksForFirestore({ tasks })
+  const { tasks: encodedTasks } = encodeLessonForFirestore({ tasks })
   await setDoc(doc(firestore, 'lessons', lessonId), { tasks: encodedTasks }, { merge: true })
 }
 
@@ -117,9 +115,11 @@ export async function publishLessonFork(sourceLesson, classRecord) {
 // Returns the lesson with its tasks swapped for a live session override, if
 // one is present. Used to merge a teacher's in-session task edits (broadcast
 // via the Realtime DB session node) on top of the canonical Firestore lesson.
+// The override tasks are stored sealed (useSession's pushLessonOverride) and unsealed here;
+// an override pushed before sealing existed has no `_sealed` and passes through unchanged.
 export function applyLessonOverride(lesson, overrideTasks) {
   if (!lesson || !overrideTasks) return lesson
-  return { ...lesson, tasks: overrideTasks }
+  return { ...lesson, tasks: unsealTasks(overrideTasks) }
 }
 
 // ── Session Reports ───────────────────────────────────────────────────────────

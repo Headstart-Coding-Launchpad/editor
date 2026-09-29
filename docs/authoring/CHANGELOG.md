@@ -20,6 +20,17 @@ Use this changelog when a platform or documentation change alters the lesson aut
 
 ## 2026-09-29
 
+### Task answers are stored sealed (no authoring change)
+
+- Nothing changes in how lessons are written: keep authoring `check`, `completeCode`,
+  `codeStages`, `tests`, quiz answers and the rest as plain fields in YAML/JSON.
+- The **stored** format changed: on save (Builder, `lessons upsert` / `publish-yaml`, task
+  upsert/append, admin import and fork) each task's answer fields are moved into an obfuscated
+  `_sealed` string on the public lesson document, and restored on every read (`lessons get`,
+  Builder load, the classroom). It hides answers from casual snooping; it is not security.
+- Existing lessons keep working unchanged and are sealed on their next save, even an unchanged
+  republish. Do not hand-write `_sealed`. See [lesson-schema.md](lesson-schema.md).
+
 ### Keyboard shortcuts, binary answers and validation messages
 
 - Keyboard `shortcuts` items can now use Shift with a non-typing key (`Shift+Tab`,

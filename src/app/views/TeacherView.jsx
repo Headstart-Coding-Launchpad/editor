@@ -11,7 +11,7 @@ import {
   saveSessionReport,
 } from '../../shared/lessonService'
 import { attachTeacherFeedback, buildSessionReport } from '../../shared/lessonReport'
-import { decodeLessonBlocksFromFirestore } from '../../shared/lessonBlocksCodec'
+import { decodeLessonFromFirestore } from '../../shared/lessonBlocksCodec'
 import EditLessonModal from '../components/EditLessonModal'
 import TopBar from '../components/TopBar'
 import TaskNavigator from '../components/TaskNavigator'
@@ -170,7 +170,7 @@ export default function TeacherView({ lessonId }) {
       .then((snap) => {
         if (cancelled) return
         if (snap.exists()) {
-          setBaseLesson(decodeLessonBlocksFromFirestore(snap.data()))
+          setBaseLesson(decodeLessonFromFirestore(snap.data()))
         } else {
           setLessonError(true)
         }

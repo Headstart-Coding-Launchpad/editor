@@ -51,6 +51,8 @@ anything. Every place to change is marked `TODO(new-activity)`.
    `'continuous'` for anything per keystroke or per pointer move, `'discrete'` otherwise;
    `requires` + `touchFallback` (`equivalent` / `virtual_keyboard` / `block`); icon, description,
    `summarize`, `printHtml`. Set `completion: 'auto'` only if the activity finishes itself.
+   List any task field that stores the answer (not the question) in `sealedFields`, so it is
+   obfuscated in the public lesson document (`src/shared/lessonSeal.js`).
 3. **`ui.jsx`:** controlled `StudentView({ task, state, onChange, onSubmit, readOnly, device })`.
    Never write to Firebase or storage. Controls ≥ 44px, full keyboard access, visible focus,
    `prefers-reduced-motion`, `act-` classes (add new ones to `src/index.css` in the `act-`

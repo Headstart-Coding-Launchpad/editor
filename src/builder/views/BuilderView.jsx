@@ -16,10 +16,8 @@ import { getModuleAuthoring, SPRITE_LIBRARY_MODULE_TYPE } from '../../modules/de
 import { buildPrintHtml } from '../printLesson'
 import { flattenTasks, applyTaskUpdate } from '../../shared/taskUtils'
 import { normalizeTasksForExport } from '../lessonUtils'
-import {
-  decodeLessonBlocksFromFirestore,
-  encodeLessonBlocksForFirestore,
-} from '../../shared/lessonBlocksCodec'
+import { decodeLessonFromFirestore, encodeLessonForFirestore } from '../../shared/lessonBlocksCodec'
+import { lessonNeedsSealing } from '../../shared/lessonSeal'
 import { applyLessonAuditMetadata } from '../../shared/lessonAudit'
 import { firestore } from '../../shared/firebase'
 import { useAuth } from '../../auth/useAuth'
@@ -148,11 +146,12 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
       )
       const lessonRef = doc(firestore, 'lessons', lesson.id)
       const existingSnap = await getDoc(lessonRef)
-      const existing = existingSnap.exists()
-        ? decodeLessonBlocksFromFirestore(existingSnap.data())
-        : null
+      const existing = existingSnap.exists() ? decodeLessonFromFirestore(existingSnap.data()) : null
       const audited = applyLessonAuditMetadata(existing, exported)
-      if (audited.material) await setDoc(lessonRef, encodeLessonBlocksForFirestore(audited.lesson))
+      // A lesson stored before answer sealing is rewritten (sealed) even when unchanged.
+      const needsSealing = existingSnap.exists() && lessonNeedsSealing(existingSnap.data())
+      if (audited.material || needsSealing)
+        await setDoc(lessonRef, encodeLessonForFirestore(audited.lesson))
       if (audited.material) onUpdate(audited.lesson)
       setSaveStatus('done')
       onMarkSaved()
