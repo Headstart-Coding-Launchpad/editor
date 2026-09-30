@@ -69,6 +69,7 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | Authoring an Electronics lesson (breadboard fields, circuit checks, examples) | `docs/authoring/electronics.md` |
 | Authoring an Arcade Kit lesson (experimental game module) | `docs/authoring/arcade.md` |
 | Quiz sub-types and quiz check types in detail | `docs/authoring/quiz-tasks.md` |
+| Live badges: `taskActivity` patterns, `badgeOptions`, `badgeHints`, badge rules | `docs/authoring/badges.md` |
 | Lesson JSON field reference (cross-cutting schema) | `docs/authoring/lesson-schema.md` |
 | Lesson YAML basics (envelope, common fields, info/group/draft tasks) | `docs/authoring/lesson-schema-yaml.md` |
 | Topic library schema and YAML authoring | `docs/authoring/TOPIC_LIBRARY_SCHEMA.md` |

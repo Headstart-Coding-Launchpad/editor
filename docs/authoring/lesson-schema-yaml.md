@@ -44,6 +44,10 @@ storageAssets:                 # optional — metadata for Firebase Storage file
     url: https://firebasestorage.googleapis.com/...
     showInEditor: true        # optional — show in web editor asset panel
 
+badgeOptions:                 # optional — tune the live badge rules (docs/authoring/badges.md)
+  quizMasterThreshold: 0.8    # default 0.8
+  readyToCodeSeconds: 10      # default 10
+
 # Optional named workspace instances. See “Composed modules” below.
 modules: []
 
@@ -67,6 +71,7 @@ tasks: []                     # required — ordered task list (see below)
 | `assetsPath` | No | string | Base URL path for asset resolution. |
 | `assets` | No | string array | Files shown in the AssetBrowser. |
 | `storageAssets` | No | array | Optional metadata for files stored at `lessons/{lessonId}/assets/`; the Storage folder is the asset inventory. |
+| `badgeOptions` | No | object | Tunes the built-in live badge rules: `quizMasterThreshold` (0–1), `quizMasterMinQuizzes`, `persistenceMinFails`, `readyToCodeSeconds`. See [badges.md](badges.md#badgeoptions). |
 | `modules` | No | array | Named workspace instances for a composed lesson. Use when tasks need a shared named workspace, especially when two instances use the same `moduleType`. See **Composed modules**. |
 | `tasks` | Yes | array | Ordered task list. May contain group objects. |
 
@@ -90,7 +95,9 @@ tasks:
     taskMode: both              # optional — both (default) | live | solo
     intent: >-                   # required, non-empty Markdown in Draft; author-only
       Describe the learning goal and intended task.
-    taskActivity: Code Task, Complete Example  # optional plain text; author-only
+    taskActivity: Code Task, Complete Example  # optional; author-only Glossary format + pattern
+    badgeHints:                 # optional — add or suppress a live badge on this task
+      suppress: [ready_to_code]
     # taskType is not set directly in YAML — use `type: information`, `type: quiz`,
     # `type: code_arrange` (drag-and-drop runnable code — see lesson-schema.md's
     # "Code Arrange Task Fields") or an activity (`type: binary`, `type: keyboard`,
@@ -113,7 +120,8 @@ tasks:
 | `moduleType` | Yes for a code task in a new composed lesson | string | Workspace type: `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics`. |
 | `moduleId` | No | string | ID of the named workspace instance in `modules`. Use it to give related tasks one workspace identity, or to distinguish two instances of the same `moduleType`. |
 | `intent` | Required for drafts; otherwise No | string | Authoring brief. Remains stored after Draft is cleared and is never student-facing. |
-| `taskActivity` | No | string | Author-only plain-text tag. The platform treats it as free text; HSC lesson authoring uses it for the task's canonical type (e.g. `Code Task, Complete Example`, `Quiz, Multiple Choice`), per the content workspace's `guides/Task Intent Format.md`. Always optional to the platform, even in Draft. Never student-facing. |
+| `taskActivity` | No | string | Author-only tag for the task's canonical type (e.g. `Code Task, Complete Example`, `Quiz, Multiple Choice`), per the content workspace's `guides/Task Intent Format.md`. The platform's copy of the vocabulary is `src/shared/taskActivity.js` (`lessons capabilities` → `taskActivity`); badges read the pattern, and validation warns (never errors) about one it doesn't recognise. Always optional, even in Draft. Never student-facing. |
+| `badgeHints` | No | object | `suggest:` / `suppress:` lists of badge ids for this task. See [badges.md](badges.md#badgehints). |
 | `intentLastChangedAt` | No | timestamp string | LaunchPad-managed; callers must not set it. Changes only when `intent` changes. |
 | `taskLastChangedAt` | No | timestamp string | LaunchPad-managed; callers must not set it. Changes only when learner-facing task content/configuration changes. |
 | `check` | No | object or array | Completion check. Arrays require every check to pass. A code task with **no** `check` never auto-completes and never completes on Run, but it also doesn't block advancing to the next task — it just never shows as passed in reports. See `docs/authoring/lesson-schema.md` for the full behaviour, including the Arcade-specific caveat. |

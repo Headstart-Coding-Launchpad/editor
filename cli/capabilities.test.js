@@ -101,6 +101,38 @@ describe('lessons capabilities', () => {
     expect(buildCapabilities({ requests: [request] }).requests).toEqual([request])
   })
 
+  it('lists the taskActivity patterns and the badges lessons can tune', () => {
+    expect(capabilities.taskActivity.formats.map((f) => f.name)).toEqual([
+      'Information',
+      'Quiz',
+      'Code Task',
+      'Arrange Task',
+      'Activity',
+    ])
+    expect(capabilities.taskActivity.patterns).toEqual(
+      expect.arrayContaining([
+        {
+          id: 'debug_code_task',
+          name: 'Debug Code Task',
+          formats: ['code_task'],
+          aliases: expect.any(Array),
+        },
+        { id: 'quiz_what_is_the_error', name: 'What Is the Error?', formats: ['quiz'] },
+      ])
+    )
+    expect(capabilities.badges.badges.find((b) => b.id === 'bug_hunter')).toMatchObject({
+      emoji: '🐛',
+      patterns: ['debug_code_task'],
+      badgeHints: ['suggest', 'suppress'],
+      autoAwardable: true,
+    })
+    expect(capabilities.badges.badges.find((b) => b.id === 'helpful_coder')).toMatchObject({
+      tutorOnly: true,
+      badgeHints: [],
+    })
+    expect(capabilities.badges.badgeOptions.quizMasterThreshold).toMatchObject({ default: 0.8 })
+  })
+
   it('is plain JSON', () => {
     expect(JSON.parse(JSON.stringify(capabilities))).toEqual(capabilities)
   })
