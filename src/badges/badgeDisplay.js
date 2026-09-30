@@ -33,13 +33,19 @@ export function normaliseCatalogueBadge(entry) {
 
 /**
  * The display fields for any badge id: the registry definition, else the catalogue entry
- * (archived ones included, so old awards still render), else a plain 🏅 placeholder.
+ * (archived ones included, so old awards still render), else the display snapshot stored on the
+ * decision (`decision.badge`, written when a catalogue badge is awarded: students can't read the
+ * Firestore catalogue), else a plain 🏅 placeholder.
  */
-export function resolveBadge(badgeId, catalogueBadges = []) {
+export function resolveBadge(badgeId, catalogueBadges = [], decision = null) {
   const builtIn = getBadgeDefinition(badgeId)
   if (builtIn) return builtIn
   for (const entry of catalogueBadges ?? []) {
     if (entry?.id === badgeId) return normaliseCatalogueBadge(entry)
+  }
+  const snapshot = decision?.badge
+  if (snapshot?.emoji && snapshot?.title) {
+    return normaliseCatalogueBadge({ ...snapshot, id: badgeId, archived: true })
   }
   return {
     id: badgeId,

@@ -550,7 +550,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
    * Records the tutor's decision on one badge for one student as a write-if-absent transaction,
    * so two teacher tabs (or an auto-award racing a dismissal) can never both write.
    * `decision`: { status: 'awarded' | 'dismissed', source: 'rule' | 'auto' | 'manual', reason,
-   * taskId, announce, bulkId }. `replaceStatuses` lists existing statuses this decision may
+   * taskId, announce, bulkId, badge }. `badge` is an Admin-catalogue badge's display snapshot
+   * ({ emoji, title, blurb }; see catalogueBadgeSnapshot), stored because students can't read
+   * Firestore `badgeCatalogue`. `replaceStatuses` lists existing statuses this decision may
    * replace (e.g. ['dismissed', 'revoked'] for a manual award after a dismissal); by default any
    * existing decision wins. Resolves to { committed, decision }: the decision now stored.
    */
@@ -565,6 +567,13 @@ export function useSession(lessonId, { enabled = true } = {}) {
       announce: status === 'awarded' && decision.announce !== false,
       bulkId: decision.bulkId ?? null,
       decidedAt: serverTimestamp(),
+    }
+    if (decision.badge?.emoji && decision.badge?.title) {
+      record.badge = {
+        emoji: decision.badge.emoji,
+        title: decision.badge.title,
+        blurb: decision.badge.blurb ?? '',
+      }
     }
     const result = await runTransaction(
       ref(db, badgeDecisionPath(anonymousId, badgeId)),

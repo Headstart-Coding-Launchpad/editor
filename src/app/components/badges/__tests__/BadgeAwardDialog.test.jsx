@@ -74,10 +74,41 @@ describe('BadgeAwardDialog', () => {
         taskId: 4,
         announce: true,
         bulkId: null,
+        badge: null,
       },
       { replaceStatuses: ['dismissed', 'revoked'] }
     )
     expect(await screen.findByRole('status')).toHaveTextContent('Helpful Coder awarded to Alex')
+  })
+
+  it("copies a catalogue badge's emoji, title and blurb onto the decision", async () => {
+    const user = userEvent.setup()
+    const { onDecideBadge } = renderDialog({
+      catalogueBadges: [
+        { id: 'star_speaker', emoji: '🎤', title: 'Star Speaker', blurb: 'Presented well.' },
+      ],
+    })
+    await user.click(screen.getByTestId('badge-option-star_speaker'))
+    expect(onDecideBadge.mock.calls[0][2].badge).toEqual({
+      emoji: '🎤',
+      title: 'Star Speaker',
+      blurb: 'Presented well.',
+    })
+  })
+
+  it('renders a held catalogue badge from its snapshot when the catalogue is not loaded', () => {
+    renderDialog({
+      decisions: {
+        s1: {
+          star_speaker: {
+            status: 'awarded',
+            badge: { emoji: '🎤', title: 'Star Speaker', blurb: 'Presented well.' },
+          },
+        },
+      },
+    })
+    const list = screen.getByRole('region', { name: "Alex's badges" })
+    expect(within(list).getByText('Star Speaker')).toBeInTheDocument()
   })
 
   it('respects the announce checkbox', async () => {

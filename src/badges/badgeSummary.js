@@ -15,16 +15,17 @@ function badgeOrder(catalogueBadges) {
 
 /**
  * Groups awards into wall rows, one per badge, in picker order. `awards` is a list of
- * `{ badgeId, name }` in the order names should appear (a name appears once per badge).
+ * `{ badgeId, name, decision? }` in the order names should appear (a name appears once per
+ * badge); a decision's catalogue snapshot names a badge the catalogue list doesn't hold.
  * @returns {{ badgeId: string, badge: object, names: string[] }[]}
  */
 export function groupClassWall(awards, catalogueBadges = []) {
   const rows = new Map()
-  for (const { badgeId, name } of awards ?? []) {
+  for (const { badgeId, name, decision } of awards ?? []) {
     if (!badgeId || !name) continue
     const row = rows.get(badgeId) ?? {
       badgeId,
-      badge: resolveBadge(badgeId, catalogueBadges),
+      badge: resolveBadge(badgeId, catalogueBadges, decision),
       names: [],
     }
     if (!row.names.includes(name)) row.names.push(name)
@@ -44,9 +45,10 @@ export function groupClassWall(awards, catalogueBadges = []) {
  * badge. A student `nameFor` returns nothing for is left out.
  */
 export function buildClassWall(decisions, { nameFor = () => null, catalogueBadges = [] } = {}) {
-  const awards = listAwards(decisions).map(({ studentId, badgeId }) => ({
+  const awards = listAwards(decisions).map(({ studentId, badgeId, decision }) => ({
     badgeId,
     name: nameFor(studentId) || null,
+    decision,
   }))
   return groupClassWall(awards, catalogueBadges)
 }

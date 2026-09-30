@@ -143,6 +143,28 @@ describe('badge decisions', () => {
     expect(store.get(path)).toMatchObject({ status: 'awarded', source: 'manual', announce: false })
   })
 
+  it("stores a catalogue badge's display snapshot on the decision", async () => {
+    const { result } = renderSession({ state: 'active' })
+    await act(async () => {
+      await result.current.decideBadge(STUDENT, 'star_helper', {
+        status: 'awarded',
+        source: 'manual',
+        badge: { emoji: '🌟', title: 'Star Helper', blurb: 'Helped out.' },
+      })
+      await result.current.decideBadge(STUDENT, 'bug_hunter', {
+        status: 'awarded',
+        source: 'manual',
+        badge: null,
+      })
+    })
+    expect(store.get(`sessions/${LESSON}/badges/${STUDENT}/star_helper`).badge).toEqual({
+      emoji: '🌟',
+      title: 'Star Helper',
+      blurb: 'Helped out.',
+    })
+    expect(store.get(path)).not.toHaveProperty('badge')
+  })
+
   it('revokes an awarded badge and leaves anything else alone', async () => {
     const { result } = renderSession({ state: 'active' })
     let missing, revoked

@@ -71,13 +71,18 @@
         },
 
         // Live badges: the tutor's decisions, one per student per badge
-        // ({ status, source, reason, taskId, announce, bulkId, decidedAt }).
+        // ({ status, source, reason, taskId, announce, bulkId, decidedAt, badge? }).
         // Teacher/admin write is inherited from $lessonId; there is no student
-        // rule, so students cannot award (or revoke) badges.
+        // rule, so students cannot award (or revoke) badges. `badge` is the
+        // display snapshot ({ emoji, title, blurb }) of an Admin-catalogue badge,
+        // which students can't read from Firestore.
         "badges": {
           "$anonymousId": {
             "$badgeId": {
-              ".validate": "newData.hasChildren(['status', 'source', 'decidedAt']) && newData.child('status').val().matches(/^(awarded|dismissed|revoked)$/) && newData.child('source').val().matches(/^(rule|auto|manual)$/)"
+              ".validate": "newData.hasChildren(['status', 'source', 'decidedAt']) && newData.child('status').val().matches(/^(awarded|dismissed|revoked)$/) && newData.child('source').val().matches(/^(rule|auto|manual)$/)",
+              "badge": {
+                ".validate": "newData.hasChildren(['emoji', 'title']) && newData.child('emoji').isString() && newData.child('emoji').val().length <= 16 && newData.child('title').isString() && newData.child('title').val().length <= 40 && (!newData.child('blurb').exists() || (newData.child('blurb').isString() && newData.child('blurb').val().length <= 120))"
+              }
             }
           }
         },
