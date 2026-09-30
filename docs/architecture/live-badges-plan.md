@@ -24,7 +24,8 @@ These answers from the interview and the same-day revision are fixed for this pl
 | Persistence | **Rule-backed, suggest only.** At least **2** failed attempts with *different* code on one task, then a real pass. Quizzes are excluded (retrying multiple choice is guessing). |
 | Resourceful Coder | **Rule-backed, suggest only.** The student opened the Topic Library themselves. |
 | Keyboard Wizard | **Rule-backed, suggest only.** The student used **any** keyboard shortcut, copy and paste included. |
-| Ready to Code | **Rule-backed, suggest only.** The first edit on a code task landed within **10 s** of the task opening. |
+| Ready to Code | **Rule-backed, suggest only.** The first edit on a code task landed within **10 s** of the task opening, or of the student joining if they arrived later. Scratch block drags count as edits. |
+| v1 additions (2026-09-30) | Tutor-only **No moments yet** filter · the student's moments on the **session-end screen** · **sound controls** · **Copy class summary** · every new badge metric in the **session report**. |
 | Quiz Master | At least 80% right on the first try across a quiz group of 3+ graded questions. |
 | Lesson-specific badges | **Not part of this system.** Per-lesson badges (the brief's §6, and the content workspace's concept, capstone and Level badges) stay separate. |
 | History | **Session only.** Named badges in the session report plus the end-of-lesson summary. No cross-lesson sticker book. |
@@ -112,6 +113,9 @@ so every rule inherits them:
 - "Show complete code"
 - the complete stage was revealed before the pass
 - a large paste on that task before the pass
+
+Anything done outside the lesson phase (personal sandbox, teacher sandbox, the presentation
+window) never enters a timeline.
 
 Every badge is suggested **at most once per student per lesson**. Nothing rewards run counts, code
 volume or time on platform.
@@ -224,7 +228,7 @@ badge per task. Each badge is suggested at most once per student per lesson.
 | 🔨 Persistence | On a code or Code Arrange task (no quizzes): at least `persistenceMinFails` (default **2**) failed attempts with *different* code (re-running the same code only bumps `retries`), then a real pass | "3 different tries, then passed *Task title*" | – |
 | 📚 Resourceful Coder | The student opened the Topic Library themselves: the library button, a topic link, or a topic card. Topics the tutor sent don't count | "Opened the Topic Library (*Loops*) on *Task title*" | – |
 | ⌨️ Keyboard Wizard | The student used **any** Ctrl/Cmd/Alt keyboard shortcut in the lesson workspace, copy and paste included | "Used *Ctrl+Enter*" | – |
-| 🚀 Ready to Code | On a code task (any module): the student's first change to their work landed within `readyToCodeSeconds` (default **10 s**) of the task opening for them. That is the later of the teacher's advance (`taskStartTimes`) and their own join. Cursor moves and clicks don't count | "Started typing 6 s into *Task title*" | – |
+| 🚀 Ready to Code | On a code task (any module): the student's first change to their work landed within `readyToCodeSeconds` (default **10 s**) of the task opening for them. That is the later of the teacher's advance (`taskStartTimes`) and their own join (confirmed). Cursor moves and clicks don't count; a Scratch block drag or drop does (confirmed) | "Started typing 6 s into *Task title*" | – |
 | 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🎯 Focused Coder · 🚀 Project Explorer · 📈 Knowledge Builder · 🤝 Helpful Coder | Tutor-only | – | – |
 
 - **Every badge in this table is also in the tutor's manual picker.** The rules only decide when a
@@ -232,6 +236,11 @@ badge per task. Each badge is suggested at most once per student per lesson.
   "first in class" limits apply to suggestions only.
 - **Several badges can come from one task.** Persistence and Code Fixer can both be suggested; they
   recognise different things, and the tutor picks.
+- **Module coverage.** Scratch has no Topic Library and no console, so Resourceful Coder and
+  Code Fixer never fire there. Arcade's errors currently go only to its own console, so PR2
+  wires them into the `error` flag. `docs/authoring/badges.md` carries a badge × module table.
+- **Browser shortcuts.** Keyboard Wizard ignores combos the browser reserves (reload, close tab,
+  new tab), since those take the student out of the lesson.
 - **Expect volume.** Keyboard Wizard and Ready to Code will be suggested for most of the class early
   in a lesson. The panel's **Award all** handles that in one click. If they prove too noisy, the
   report's dismissal counts will show it.
@@ -249,7 +258,8 @@ tests), `docs/agents/runtime-model.md`, and the `createSession` / `endSession` r
   - The key is the badge id. This enforces "once per lesson" and makes auto-award idempotent across
     teacher tabs.
   - It is a sibling log, so `setTaskId` never wipes it. `endSession` clears it after the report saves.
-- **`sessions/{lessonId}/badgeSettings`:** `{ autoAward: boolean }`, teacher-write.
+- **`sessions/{lessonId}/badgeSettings`:** `{ autoAward: boolean, soundsOff: boolean }`,
+  teacher-write.
 - **`sessions/{lessonId}/badgeSignals/{anonymousId}`:** one student-written node for the small
   signals the rules need.
   - Student-write for their own id, the same pattern as `supportRevealLog`.
@@ -266,11 +276,32 @@ tests), `docs/agents/runtime-model.md`, and the `createSession` / `endSession` r
 - **`attemptLog` entries:** gain an optional `error: true` when the run produced a console error
   (Python/Turtle/Electronics runtime, HTML `handleHtmlRuntimeError`).
 - **Firestore `badgeCatalogue/{id}`:** admin write, teacher and admin read.
-- **Session report** (Firestore `sessionReports`, existing doc):
-  - per student: `badges: [{ badgeId, emoji, title, source, reason, taskId, awardedAt }]`
-  - top level: `badgeSummary: { [badgeId]: { suggested, awarded, autoAwarded, dismissed, revoked } }`
+- **Session report** (Firestore `sessionReports`, existing doc). `buildSessionReport` gains every
+  metric the badge signals make available. `badgeSignals` and `badges` are read before `endSession`
+  wipes them, as the other logs are today.
+  - **Per student:**
+    - `badges: [{ badgeId, emoji, title, source, reason, taskId, awardedAt }]`
+    - `topicsOpened: [{ taskId, topicId, source, openedAt }]`
+    - `shortcutsUsed: [{ shortcutId, taskId, firstUsedAt }]`
+  - **Per student, per task** (alongside the existing attempts, reveals and pastes):
+    - `timeToFirstEditMs`
+    - `errorAttempts`: attempts with a real console error
+    - `distinctFailedAttempts`
+    - `firstPassInClass: true` when they were the class's first real pass
+  - **Per task (`taskSummary`):**
+    - median and range of time to first edit
+    - students with a console error
+    - Topic Library opens (student vs tutor-sent)
+    - first real pass: who, and how long after the task opened
+  - **Per quiz group:** each student's first-try %, and the class median.
+  - **Top level:** `badgeSummary: { [badgeId]: { suggested, awarded, autoAwarded, manual, dismissed,
+    revoked } }`, plus `shortcutSummary: { [shortcutId]: studentCount }`.
 
   Dismissal rates show which rules are noisy, which is the tuning signal for v2.
+
+  The report modal gets a **Coding moments** section (grouped by badge) and adds the new columns to
+  the per-task and per-student views. Everything is in the YAML export and follows the existing
+  anonymised display.
 
 ## Tutor experience
 
@@ -285,6 +316,12 @@ tests), `docs/agents/runtime-model.md`, and the `createSession` / `endSession` r
   tutor-only and Admin-catalogue (already-awarded ones greyed out). The student's awarded list has **Revoke**, which is silent
   to the student.
 - **Multi-award:** select several cards, then Award badge (for example 🤝 Helpful Coder to a pair).
+- **No moments yet filter:** a tutor-only toggle in the grid header that dims every student who
+  already has a badge, so the rest stand out. It's there to prompt the tutor to look for
+  something to recognise. Students never see it, and it shows no counts.
+- **Badge definitions on hover:** hovering a badge in the picker or panel shows its exact
+  "suggested when" rule.
+- **Sounds off:** a session control that silences the award chime for the whole class.
 - **Timing:** awarding takes one click and is never modal.
 
 ## Student experience
@@ -307,6 +344,11 @@ tests), `docs/agents/runtime-model.md`, and the `createSession` / `endSession` r
   - Never shown to the recipient.
   - Never shows totals.
   - Also shown in the presentation window.
+- **Mute:** a speaker toggle in the Coding moments pill silences the chime on that student's device
+  for the rest of the session. It's kept in memory only, so no new localStorage key is needed.
+- **Session-end screen:** when the tutor ends the session, the student's end screen shows their own
+  moments as a sticker sheet, even if the lesson has no Badge Summary task. The student's client
+  keeps its own awards in memory as they arrive, so the `endSession` wipe doesn't lose them.
 - **Nowhere** are counts, ranks, "top student" or comparisons shown.
 
 ## Badge Summary task
@@ -320,6 +362,10 @@ tests), `docs/agents/runtime-model.md`, and the `createSession` / `endSession` r
   - If they earned none, the screen is still warm ("Every coder's moments look different: here's
     what the class celebrated today"), with no empty-state shaming.
 - **Teacher:** a projector-friendly class wall grouped by badge.
+- **Copy class summary:** a button on the teacher's Badge Summary and in the session report.
+  It copies "Today's coding moments" as plain text grouped by badge ("🐛 Bug Hunter: Alex,
+  Sam"), ready for a newsletter or class chat. It has no counts, and in the report it uses real
+  names only when the tutor chooses to reveal them.
 - **Solo (v1):** the task is skipped, as if it were `taskMode: live`, because solo has no badges yet.
 
 ## Adding a new badge
@@ -353,10 +399,12 @@ Each PR has tests green, `npm run docs:check`, and doc updates. A CHANGELOG entr
    - `useSession` writers and resets, `runtime-model.md`, `feature-impact-map.md`
 3. **Engine:** `buildLiveTimeline`, the guards, `evaluateBadgeRules`, and characterisation tests from
    real session snapshots.
-4. **Tutor UI:** suggestions panel, grid button, card dot, modal award and revoke, picker,
-   multi-award, auto-award toggle.
-5. **Celebration:** recipient card, chime, pill, class toast, presentation window, reduced motion.
-6. **Summary and report:** `informationType: badges` (skipped in solo), `buildSessionReport` fields,
+4. **Tutor UI:** suggestions panel, grid button, card dot, modal award and revoke, picker with
+   hover definitions, multi-award, auto-award toggle, No moments yet filter, sounds off.
+5. **Celebration:** recipient card, chime and mute, pill, class toast, presentation window,
+   reduced motion, session-end screen moments.
+6. **Summary and report:** `informationType: badges` (skipped in solo), Copy class summary,
+   every new metric in `buildSessionReport` (see [Data model](#data-model)),
    the report modal "Coding moments" section and YAML export.
 7. **Admin and scaffold:** Firestore `badgeCatalogue` plus rules, the Admin Badges tab,
    `npm run new:badge`, the `new-badge` skill, and an ADR for the badge registry.
@@ -369,6 +417,8 @@ Each PR has tests green, `npm run docs:check`, and doc updates. A CHANGELOG entr
 - The presentation window toast.
 - Reduced motion.
 - Keyboard Wizard: a shortcut counts but clicking Run doesn't, and Mac `Cmd` works.
+- Sandbox work (personal, teacher or presentation window) never produces a suggestion.
+- The session-end screen shows the student's moments after `endSession`.
 - Ready to Code: typing counts, and moving the mouse or clicking into the editor doesn't. Scratch
   block drags count.
 - "First in class": two students passing seconds apart gives the suggestion to the earlier one, and
@@ -385,6 +435,14 @@ Each PR has tests green, `npm run docs:check`, and doc updates. A CHANGELOG entr
 - AI interpretation of behaviour
 - Automatic Knowledge Builder or Project Explorer
 - Any animation library
+
+## Considered, not in v1
+
+Raised on 2026-09-30 and not picked for v1:
+- a badges on/off switch per session, and an Admin per-rule kill switch
+- a roughly 5 s undo window before an award reaches the student
+- an optional personal note on manual awards
+- the Builder and CLI showing which badges a task or lesson can suggest
 
 ## Later
 
