@@ -150,10 +150,10 @@ describe('CodingMomentsPill', () => {
     expect(button).toHaveTextContent(/^🎖️$/)
     expect(button).not.toHaveTextContent('2')
     // The mute lives in the popover, not beside the button.
-    expect(screen.queryByRole('button', { name: 'Mute badge sounds' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Mute sounds' })).not.toBeInTheDocument()
   })
 
-  it('opens a popover with the moments and the in-memory mute', async () => {
+  it('opens a popover with the moments and the Sounds mute', async () => {
     const user = userEvent.setup()
     const onMutedChange = vi.fn()
     render(<CodingMomentsPill moments={moments} muted={false} onMutedChange={onMutedChange} />)
@@ -162,7 +162,7 @@ describe('CodingMomentsPill', () => {
     expect(within(popover).getByRole('list', { name: 'My coding moments' })).toHaveTextContent(
       'Bug Hunter'
     )
-    await user.click(within(popover).getByRole('button', { name: 'Mute badge sounds' }))
+    await user.click(within(popover).getByRole('button', { name: 'Mute sounds' }))
     expect(onMutedChange).toHaveBeenCalledWith(true)
   })
 
@@ -170,7 +170,7 @@ describe('CodingMomentsPill', () => {
     const user = userEvent.setup()
     render(<CodingMomentsPill moments={moments} muted={false} soundsOff />)
     await user.click(screen.getByRole('button', { name: /Coding moments/ }))
-    expect(screen.getByRole('button', { name: 'Mute badge sounds' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Mute sounds' })).toBeDisabled()
   })
 })
 

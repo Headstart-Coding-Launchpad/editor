@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { NUDGE_TITLE, showNudgeNotification, startTitleFlash } from '../nudgeAlert'
+import {
+  CHIME_PRESETS,
+  NUDGE_TITLE,
+  playCompleteChime,
+  showNudgeNotification,
+  startTitleFlash,
+} from '../nudgeAlert'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -50,5 +56,53 @@ describe('showNudgeNotification', () => {
       NUDGE_TITLE,
       expect.objectContaining({ tag: 'headstart-nudge' })
     )
+  })
+})
+
+describe('playCompleteChime', () => {
+  it('plays a short rising three-note chime, gentler than the nudge', () => {
+    const frequencies = []
+    class FakeAudioContext {
+      currentTime = 0
+      destination = {}
+      createOscillator() {
+        const osc = {
+          frequency: {
+            set value(v) {
+              frequencies.push(v)
+            },
+          },
+          connect: (node) => node,
+          start: vi.fn(),
+          stop: vi.fn(),
+        }
+        return osc
+      }
+      createGain() {
+        return {
+          gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+          connect: (node) => node,
+        }
+      }
+      close() {
+        return Promise.resolve()
+      }
+    }
+    vi.useFakeTimers()
+    vi.stubGlobal('AudioContext', FakeAudioContext)
+    playCompleteChime()
+    expect(frequencies).toEqual(CHIME_PRESETS.complete.notes)
+    expect(frequencies[0]).toBeLessThan(frequencies[1])
+    expect(frequencies[1]).toBeLessThan(frequencies[2])
+    const { notes, spacing, decay, gain } = CHIME_PRESETS.complete
+    expect((notes.length - 1) * spacing + decay).toBeLessThanOrEqual(0.5)
+    expect(gain).toBeLessThan(CHIME_PRESETS.nudge.gain)
+    expect(CHIME_PRESETS.complete.notes).not.toEqual(CHIME_PRESETS.badge.notes)
+  })
+
+  it('is silent without Web Audio', () => {
+    vi.stubGlobal('AudioContext', undefined)
+    vi.stubGlobal('webkitAudioContext', undefined)
+    expect(() => playCompleteChime()).not.toThrow()
   })
 })

@@ -42,6 +42,8 @@ import useBadgeCelebrations from '../hooks/useBadgeCelebrations'
 import BadgeCelebration from '../components/badges/BadgeCelebration'
 import BadgeClassToast from '../components/badges/BadgeClassToast'
 import CodingMomentsPill from '../components/badges/CodingMomentsPill'
+import SoundsToggleButton from '../components/SoundsToggleButton'
+import useCompleteChime from '../hooks/useCompleteChime'
 import { resolveBadge } from '../../badges/badgeDisplay'
 import { listMyMoments } from '../../badges/celebration'
 import LoadingScreen from '../components/LoadingScreen'
@@ -350,6 +352,31 @@ export default function StudentView({
     students: session?.students,
     soundsOff: !!session?.badgeSettings?.soundsOff,
   })
+  // The success chime when the student's checks pass on a task, solo or live. Never on the
+  // presentation window or a preview, nor in the personal sandbox.
+  const completeChime = useCompleteChime({
+    enabled:
+      (phase === 'lesson' || phase === 'solo') &&
+      !teacherPresentation &&
+      !previewMode &&
+      !cs.inPersonalSandbox,
+    passed: cs.checkPassed,
+    // The task on screen: a live student looking back at an earlier task sees that task's result.
+    taskKey:
+      (viewingTaskId ?? currentTaskId) == null
+        ? null
+        : `${lessonId}:${viewingTaskId ?? currentTaskId}`,
+    soundsOff: !!session?.badgeSettings?.soundsOff,
+  })
+  // "Show complete" fills in the answer, which passes the checks: that pass isn't celebrated.
+  // (cs is a new object every render, so this wrapper costs nothing extra.)
+  const taskCs = {
+    ...cs,
+    handleShowCompleteCode: () => {
+      completeChime.skipTask()
+      cs.handleShowCompleteCode()
+    },
+  }
   // The session-end screen reads the kept `badges` node, so it survives a reload of that screen.
   const endScreenMoments = useMemo(
     () =>
@@ -1178,6 +1205,7 @@ export default function StudentView({
     </div>
   ) : (
     <div style={s.topBarTaskControls}>
+      {!previewMode && <SoundsToggleButton soundsOff={!!session?.badgeSettings?.soundsOff} />}
       {(phase === 'lesson' || phase === 'sandbox') && (
         <CodingMomentsPill
           moments={badgeCelebrations.moments}
@@ -1497,7 +1525,7 @@ export default function StudentView({
           <LessonTaskContent
             lesson={displayedLesson}
             task={task}
-            cs={cs}
+            cs={taskCs}
             lessonId={lessonId}
             identityId={effectiveIdentity?.anonymousId}
             sandboxExplainer={session?.sandboxExplainer}
