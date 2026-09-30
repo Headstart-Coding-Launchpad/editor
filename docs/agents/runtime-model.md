@@ -68,6 +68,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
       "sandboxFiles": { "index__dot__html": "..." },
       "sandboxFilesUpdatedAt": 1234567890,
       "sandboxPreviousTaskId": "string | number | null (currentTaskId to restore on exitSandbox, when handleGoLiveSandbox moved it for a composed-lesson module switch)",
+      "sandboxEnteredAt": "number | null (teacher's Date.now() when the class entered the teacher sandbox; the id of the open visit in sessionArchive. Set by enterSandbox, cleared by exitSandbox/endSession/createSession)",
       "lessonOverrideTasks": "Task[] | null (answer fields sealed into task._sealed; see Sealed Task Answers)",
       "joiningStudents": {
         "{tempId}": { "joinedAt": 1234567890 }
@@ -83,6 +84,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
               "passed": true,
               "suggestion": "string | null",
               "teacherAssisted": "true | null (the teacher edited this student's answer on this task via StudentModal 'Edit answers'; the report shows the pass as teacher assisted)",
+              "error": "true | 'NameError' | null (the run produced a real console error: its name when readable, else true. Live badges; see Badge data)",
               "attemptNumber": 1,
               "retries": 0,
               "loggedAt": "ServerValue.TIMESTAMP",
@@ -123,6 +125,50 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
               "source": "teacher | student | teacher-auto",
               "attemptNumber": 2,
               "revealedAt": "ServerValue.TIMESTAMP"
+            }
+          }
+        }
+      },
+      "badges": {
+        "{anonymousId}": {
+          "{badgeId}": {
+            "status": "awarded | dismissed | revoked",
+            "source": "rule | auto | manual",
+            "reason": "string | null (captured when decided, so Edit Lesson can't break it)",
+            "taskId": "string | number | null",
+            "announce": "boolean",
+            "bulkId": "string | null (one merged announcement for a bulk award)",
+            "decidedAt": "ServerValue.TIMESTAMP",
+            "revokedAt": "ServerValue.TIMESTAMP (revoked only)"
+          }
+        }
+      },
+      "badgeSettings": { "autoAward": false, "soundsOff": false },
+      "studentSignals": {
+        "{anonymousId}": {
+          "topics": {
+            "{task | sandbox | personal}": {
+              "{taskId | none}": {
+                "{topicId}": { "openedAt": "ServerValue.TIMESTAMP", "source": "student | teacher", "via": "button | link | card | list | related | teacher" }
+              }
+            }
+          },
+          "shortcuts": {
+            "{shortcutId}": { "firstUsedAt": "ServerValue.TIMESTAMP", "context": "task | sandbox | personal", "taskId": "string | number | null" }
+          },
+          "firstEdits": {
+            "{taskId}": { "elapsedMs": 6200, "at": "ServerValue.TIMESTAMP" }
+          },
+          "completeShown": {
+            "{taskId}": { "at": "ServerValue.TIMESTAMP", "via": "show | preview | teacherReset" }
+          },
+          "sandbox": {
+            "{session | personal}": {
+              "timeMs": 0,
+              "runs": 0,
+              "errorRuns": 0,
+              "fixes": 0,
+              "runsLog": [{ "at": "ServerValue.TIMESTAMP", "error": "false | true | 'NameError'", "submissionHash": "string | null", "fix": "true (optional)" }]
             }
           }
         }
@@ -179,7 +225,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
           "nudgePushedAt": "number | null (teacher nudge for this student — see useNudgeAlert)",
           "autoRevealStage": "'first' | 'support' | 'solution' | null (teacher's \"Show on every task\" reference for this student — see below)",
           "pasteLog": {
-            "{taskId}": { "count": 2, "chars": 180, "lastAt": 1234567890 }
+            "{taskId}": { "count": 2, "chars": 180, "lastAt": 1234567890, "firstAt": "ServerValue.TIMESTAMP (first large paste on the task, set once)" }
           },
           "windowFocused": "boolean | null",
           "lastActivityAt": "number | null",
@@ -281,10 +327,11 @@ Student writes:
 - Dismiss a teacher highlight: removes one `teacherHighlights/{highlightId}` entry on their own node (same `removeTeacherHighlight` call the teacher uses to retract one).
 - Presence: own `windowFocused`, `lastActivityAt`, `isFullscreen`, and `visiblePanes` via `writeStudentPresence`, independent of the `online` onDisconnect key. `isFullscreen` mirrors `document.fullscreenElement` (updated on the browser's `fullscreenchange` event) and drives the "⛶ Fullscreen" badge on `StudentCard` — it reflects actual fullscreen state, not whether `fullscreenRequestedAt` was acted on. `visiblePanes` is written by `LessonTaskContent.jsx` on every change (debounced by identity, not per-keystroke) and reflects the info/explainer pane's open/closed state uniformly across all lesson types, plus each module's own internal panes for Electronics/Python/HTML/Arcade (`modulePanes`) or Scratch's Blocks/Stage split.
 - Remote edit/stage consent: `acceptTeacherEdit`/`acceptTeacherStage` set their own `teacherEditAcceptedAt`/`teacherStageAcceptedAt`; `declineTeacherEdit`/`declineTeacherStage` clear the corresponding request fields without accepting.
-- Large pastes: own `pasteLog/{taskId}` via `recordStudentPaste` (`{ count, chars, lastAt }`, see `docs/agents/classroom-behaviours.md`). Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `pastes` and the task summary's `pasteCount`/`pastedStudentCount`.
+- Large pastes: own `pasteLog/{taskId}` via `recordStudentPaste` (`{ count, chars, lastAt, firstAt }`, see `docs/agents/classroom-behaviours.md`). `firstAt` is a server timestamp set on the first large paste only (the badge guards order it against a pass); `lastAt` keeps being overwritten. Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `pastes` and the task summary's `pasteCount`/`pastedStudentCount`.
+- Live badge signals: own `studentSignals/{anonymousId}` and `attemptLog` entries' `error`. See "Badge data" below.
 - Stage reference reveal: after a failed attempt, students can reveal their own Python/HTML Support `codeStages` entries. The same `supportRevealLog` record stores `source: "student"`, stage label, attempt count, and server timestamp. Revealing does not change editor contents.
 
-Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields, `overrideLog`, and `supportRevealLog`. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, their own `attemptLog/{anonymousId}` node, their own `carryFallbackLog/{anonymousId}` node, and their own `supportRevealLog/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers).
+Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields (including `badges` and `badgeSettings`), `overrideLog`, and `supportRevealLog`. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, their own `attemptLog/{anonymousId}` node, their own `carryFallbackLog/{anonymousId}` node, their own `supportRevealLog/{anonymousId}` node, and the listed paths of their own `studentSignals/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers). The top-level `sessionArchive/{lessonId}` is teacher/admin read and write only.
 
 ## Workspace Sharing
 
@@ -356,6 +403,71 @@ Lifecycle:
 Security rules (`database.rules.json`): `sharedWorkspaces` inherits teacher/admin write from `sessions/{lessonId}` and has no student rule, so students cannot write the index. Under `sharedWorkspacePayloads/{lessonId}`, `pending/{anonymousId}` is readable and writable only by that student and teachers/admins, while `approved` is publicly readable and teacher/admin-write. That pending/approved read split is what actually enforces the approval gate — hiding a button on the client is not sufficient.
 
 
+## Badge data
+
+Live Student Badges (`docs/architecture/live-badges-plan.md`) record behaviour as it happens, as data the teacher's client turns into per-student timelines (`src/badges/timeline.js`) for the badge rules. The recording layer is this section; the timeline builder, suggestions and UI read it. Pure helpers: `src/badges/signals.js` (contexts, keys, error names, submission hashes, sandbox counters) and `src/badges/sessionArchive.js` (archive values and the 20 KB cap).
+
+**Who writes what.**
+
+| Path | Writer | Written by | When |
+|---|---|---|---|
+| `sessions/{lessonId}/badges/{anonymousId}/{badgeId}` | teacher | `decideBadge(anonymousId, badgeId, decision, { replaceStatuses })`, `revokeBadge(anonymousId, badgeId)` | a tutor decision. `decideBadge` is a write-if-absent `runTransaction`: an existing decision wins unless its status is listed in `replaceStatuses`, so two teacher tabs (or an auto-award racing a dismissal) write one decision. `revokeBadge` changes an `awarded` decision to `revoked`. |
+| `sessions/{lessonId}/badgeSettings` | teacher | `setBadgeSettings({ autoAward, soundsOff })` | a tutor toggle (only the keys given change) |
+| `studentSignals/{id}/topics/{context}/{taskId}/{topicId}` | student | `recordTopicOpenSignal` | first open per context, task and topic. Sources: the Topic Library button (`topicId: '_library'`, `via: 'button'`), a topic link (`link`), a topic card in `InlineMarkdown` (`card`), a topic picked in the library list (`list`) or a related-topic pill (`related`), and accepting a teacher-sent topic (`source: 'teacher'`, `via: 'teacher'`). A student's own open of a topic the teacher sent still overwrites the teacher record once. `taskId` is the current task id, or `none`. |
+| `studentSignals/{id}/shortcuts/{shortcutId}` | student | `recordShortcutSignal` | first use of a `KEYBOARD_WIZARD_SHORTCUTS` entry, from a keydown (capture phase) on the lesson work area: a CodeMirror editor, the Blockly workspace, or a module surface marked `data-badge-surface` (the Desktop's `app-shortcuts`, where copy/cut/paste by keyboard count as `desktop_shortcut`). AltGr (Ctrl+Alt) and key repeats never count. |
+| `studentSignals/{id}/firstEdits/{taskId}` | student | `recordFirstEditSignal` | the first real edit on a task in the lesson phase, `elapsedMs` on the student's own `performance.now()` from when the task first rendered or the student joined, whichever is later. Real edits: CodeMirror user transactions (`CodeEditor`'s `onUserEdit`, never the external value sync), Blockly create / delete / move-to-a-new-place / field change (not a block dropped where it was, not a sprite drag), and the Filesystem, Desktop and Arcade design change handlers. Not wired (no clear user-only hook): code_arrange tile placement and the Electronics breadboard. |
+| `studentSignals/{id}/completeShown/{taskId}` | student | `recordCompleteShownSignal` | the first time complete code reaches the student on a task: Show complete (`show`), the complete preview or a teacher `reveal_stage_n` of a complete stage (`preview`), a teacher remote reset to `complete` or to a complete-role `stage_n` (`teacherReset`) |
+| `studentSignals/{id}/sandbox/{session\|personal}` | student | `recordSandboxRunSignal`, `flagSandboxRunError`, `addSandboxTimeSignal` | per run in the teacher sandbox (`session`) or a personal sandbox (`personal`), as a `runTransaction`: `runs`, `errorRuns`, `fixes` (an error-free run with different code right after an error run) and `runsLog` (last 20). `flagSandboxRunError` marks the latest run for an error reported late (Arcade). `timeMs` is added when the student leaves the sandbox or hides the tab (spans under 1 s are dropped). |
+| `attemptLog/{id}/{taskId}/{pushId}/error` | student | `logAttempt(..., { error })`, `flagAttemptError(anonymousId, taskId, error)` | every `logAttempt` call site passes `error`: runtime runs (Python/Turtle/Electronics, from the run's output), Run tests (the first errored test), HTML (a preview console error reported before the check), Arcade (`flagAttemptError` when the game iframe reports its error after Run). Scratch, quizzes, activities and Filesystem/Desktop checks never set it. |
+| `students/{id}/pasteLog/{taskId}/firstAt` | student | `recordStudentPaste` | the first large paste on a task |
+| `sessionArchive/{lessonId}` (top level) | teacher | `enterSandbox`, `pushSandboxCode`, `pushSandboxFiles`, `pushSandboxExplainer`, `exitSandbox`, `endSession`, `archiveSandboxStudentSnapshot` | see below |
+
+**Gating.** Every student signal comes from `useStudentBadgeSignals` (called inside `useStudentCodeState`) and is recorded only while a real student is in the `lesson` or `sandbox` phase of a live session: never in the presentation window (`teacherPresentation`), a Builder preview (`previewMode`) or solo — the same phases `useStudentPresenceReporting` reports in. Shared components (`CodeEditor`, `ScratchWorkspace`, `MarkdownRenderer`, `InlineMarkdown`, `TopicLibraryDialog`) reach the reporters through `BadgeSignalsContext` (`src/shared/badgeSignalsContext.js`), which only `StudentView` provides. No code is ever stored under `studentSignals`: a submission is reduced to `hashSubmission` (the timeline builder hashes `attemptLog.submission` the same way).
+
+**First occurrence only.** Each first-occurrence write checks the session snapshot and a this-tab set first, and the rules refuse a second write (`!data.exists()`, except the teacher-to-student topic upgrade). A refused write is expected and swallowed.
+
+**Lifetimes.** `badges`, `badgeSettings` and `studentSignals` are siblings of `students`, so `setTaskId` never touches them. `createSession`/`restartSession` clear all three (and `sessionArchive/{lessonId}`). `endSession` keeps them, so a student who reloads the end screen still sees their badges; the session node's own `onDisconnect().remove()` takes them when the teacher leaves.
+
+**`sessionArchive/{lessonId}`** is the teacher-sandbox archive for the session report. It sits outside `sessions` (like `sharedWorkspacePayloads`) so sandbox code never streams to every client, and nothing subscribes to it; the report reads it once with `readSessionArchive({ endedAt })`.
+
+```json
+{
+  "sessionArchive": {
+    "{lessonId}": {
+      "visits": {
+        "{enteredAt}": {
+          "enteredAt": 1234567890,
+          "exitedAt": "number | null (endSession fills it when the session ends from the sandbox)",
+          "previousTaskId": "the task the class left (enterSandbox's previousTaskId, not the task handleGoLiveSandbox may jump to)",
+          "explainer": "string | null (the latest sandbox explainer)",
+          "pushes": { "{pushId}": { "at": 1234567890, "code | files | explainer": "...", "truncated": "true (optional)" } },
+          "studentSnapshots": { "{anonymousId}": { "at": "the run's lastRunAt", "code | files": "...", "truncated": "true (optional)" } }
+        }
+      }
+    }
+  }
+}
+```
+
+- A visit opens on `enterSandbox` (keyed by `session.sandboxEnteredAt`), whose code or files are its first push; `pushSandboxCode`/`pushSandboxFiles`/`pushSandboxExplainer` append pushes while `state === 'sandbox'`; `exitSandbox` writes `exitedAt`, and so does `endSession` (as `endedAt`) when the session ends from the sandbox. `readSessionArchive` also fills a missing `exitedAt` with `endedAt`.
+- Student snapshots are copied on the teacher side by `useSandboxArchiveSnapshots` (in `TeacherView`) from each student's existing `currentCode` / `currentFiles` whenever their `lastRunAt` moves during the visit — no new student write and no timer. A visit (or a teacher reload) starts from the run times already there.
+- File keys use `encodeFileKey`; `readSessionArchive` decodes them. Each push and snapshot is capped at 20 KB (UTF-8), cut short with a truncation marker and `truncated: true`.
+- Archive writes are best-effort (`archiveQuietly`): a failed write, e.g. before `database.rules.json` is deployed, never breaks the sandbox. `endSession` registers `onDisconnect().remove()` on the archive.
+
+**Mapping to the badge timeline events** (`src/badges/timeline.js`; `at` values are server timestamps unless noted):
+
+| Timeline event | Built from |
+|---|---|
+| `attempt { taskId, passed, firstTry, error, assisted, submissionHash, at }` | an `attemptLog/{id}/{taskId}` entry: `passed`; `firstTry` = `attemptNumber === 1`; `error`; `assisted` = `teacherAssisted`; `submissionHash` = `hashSubmission(submission)`; `at` = `passedAt` for a pass, else `loggedAt`. Context `task`. |
+| `sandbox_run { context, error, submissionHash, at }` | each `studentSignals/{id}/sandbox/{kind}/runsLog` entry; context `sandbox` for `session`, `personal` for `personal` (`contextForSandboxKind`) |
+| `topic_open { context, topicId, taskId, source, at }` | each `studentSignals/{id}/topics/{context}/{taskId}/{topicId}` (`at` = `openedAt`; `taskId` `none` = no task). Topic and task keys are `signalKey`-encoded (dots as `__dot__`). |
+| `reveal { taskId, stage, complete, at }` | `supportRevealLog/{id}/{taskId}/{stageIndex}` (`at` = `revealedAt`; `complete` from the task's stage role) |
+| `complete_shown { taskId, via, at }` | `studentSignals/{id}/completeShown/{taskId}` |
+| `paste { taskId, firstAt }` | `students/{id}/pasteLog/{taskId}/firstAt` (read before `endSession` clears `students`) |
+| `override { taskId, at }` | `overrideLog/{id}/{taskId}` (`at` = `overriddenAt`) |
+| `shortcut { context, shortcutId, taskId, at }` | `studentSignals/{id}/shortcuts/{shortcutId}` (`at` = `firstUsedAt`) |
+| `first_edit { taskId, elapsedMs, at }` | `studentSignals/{id}/firstEdits/{taskId}`; `elapsedMs` is device-local, so teacher/student clock skew has no effect |
+
 ## onDisconnect Rules
 
 - `activeStudentView` is cleared when the teacher disconnects.
@@ -364,6 +476,7 @@ Security rules (`database.rules.json`): `sharedWorkspaces` inherits teacher/admi
 - Session node is deleted when the teacher calls `endSession()` and disconnects.
 - `joiningStudents/{tempId}` key is removed on disconnect with `onDisconnect().remove()`.
 - `sharedWorkspacePayloads/{lessonId}` is removed when the teacher disconnects. It sits outside the session node, so the session's own removal does not cover it.
+- `sessionArchive/{lessonId}` is likewise removed when the teacher disconnects after `endSession()` (the report has already been built from it).
 
 ## Sealed Task Answers (`lessons/{lessonId}` tasks and `lessonOverrideTasks`)
 

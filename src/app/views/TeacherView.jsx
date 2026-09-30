@@ -62,6 +62,7 @@ import { getModuleDefinition } from '../../modules/definitions'
 import PaneFocusDropdown from '../components/student-modal/PaneFocusDropdown'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
 import { describeShareError } from '../sharedWorkspacePayload'
+import { useSandboxArchiveSnapshots } from '../hooks/useSandboxArchiveSnapshots'
 
 function canRecordAdvanceOverride(task) {
   if (!task || task.taskType === 'information') return false
@@ -131,7 +132,12 @@ export default function TeacherView({ lessonId }) {
     setTeacherLiveReferenceForClass,
     pushTeacherPaneCommand,
     pushClassPaneCommand,
+    archiveSandboxStudentSnapshot,
   } = useSession(lessonId)
+
+  // While the class is in the teacher sandbox, each student's latest sandbox run is copied into
+  // the session archive for the report (the sandbox is no longer thrown away).
+  useSandboxArchiveSnapshots({ session, archiveSandboxStudentSnapshot })
 
   const [baseLesson, setBaseLesson] = useState(null)
   // The authored lesson (with any session override) is what the Edit Lesson modal edits and

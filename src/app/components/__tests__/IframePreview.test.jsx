@@ -19,6 +19,7 @@ describe('IframePreview', () => {
       filename: undefined,
       lineno: undefined,
       loadId: undefined,
+      message: 'Unexpected token',
     })
   })
 
@@ -45,6 +46,7 @@ describe('IframePreview', () => {
       filename: 'blob:preview-1',
       lineno: 6,
       loadId: 'load-abc',
+      message: 'boom (line 6)',
     })
   })
 

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { searchTopics } from './topicLibrary'
+import { useBadgeSignals } from './badgeSignalsContext'
 
 export function TopicReference({ topic, label, onOpen, renderSummary: SummaryContent = null }) {
   const [showPreview, setShowPreview] = useState(false)
@@ -104,6 +105,7 @@ export function TopicLibraryDialog({
   students,
   onSendToIndividual,
 }) {
+  const badgeSignals = useBadgeSignals()
   const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState(initialTopicId || topics[0]?.id || '')
   const [sendMenuOpen, setSendMenuOpen] = useState(false)
@@ -177,6 +179,7 @@ export function TopicLibraryDialog({
                   onClick={() => {
                     setSelectedId(topic.id)
                     onTopicSelect?.(topic.id)
+                    badgeSignals?.reportTopicOpen?.(topic.id, { via: 'list' })
                   }}
                 >
                   <span style={s.resultTitle}>{topic.title}</span>
@@ -316,7 +319,10 @@ export function TopicLibraryDialog({
                           key={id}
                           type="button"
                           style={s.relatedButton}
-                          onClick={() => setSelectedId(id)}
+                          onClick={() => {
+                            setSelectedId(id)
+                            badgeSignals?.reportTopicOpen?.(id, { via: 'related' })
+                          }}
                         >
                           {relatedTopic.title}
                         </button>

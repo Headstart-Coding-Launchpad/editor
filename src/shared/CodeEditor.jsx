@@ -3,7 +3,7 @@
  * Accepts the language type, current value, an onChange callback, and a readOnly flag.
  * Creates a single EditorView and updates it imperatively to avoid full re-mounts.
  */
-import React, { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import React, { useContext, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { EditorState, StateEffect, StateField } from '@codemirror/state'
 import { Decoration, EditorView, WidgetType, keymap } from '@codemirror/view'
 import { indentUnit } from '@codemirror/language'
@@ -20,6 +20,22 @@ import {
   setLineHints,
 } from './codemirror'
 import { chooseLineHints } from './lineHints'
+import { BadgeSignalsContext } from './badgeSignalsContext'
+
+// The CodeMirror user-event types that are the student's own editing (typing, pasting,
+// deleting, dragging text, undo/redo). A value replaced from outside (task switch, carry-through,
+// a sandbox push, a teacher edit) is dispatched without a user event, so it never matches.
+const USER_EDIT_EVENTS = ['input', 'delete', 'move', 'undo', 'redo']
+
+/** Whether a CodeMirror view update contains a document change the user made. */
+export function isUserEditUpdate(update) {
+  return (
+    !!update?.docChanged &&
+    update.transactions.some(
+      (tr) => tr.docChanged && USER_EDIT_EVENTS.some((type) => tr.isUserEvent(type))
+    )
+  )
+}
 
 const setRemoteSelection = StateEffect.define()
 
@@ -223,6 +239,9 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     // outside (task switch, reset, saved code) — see chooseLineHints in ./lineHints.js.
     lineHints = null,
     onRunShortcut,
+    // Fires on a document change the user made (see USER_EDIT_EVENTS), never on the external
+    // value sync. Without it, the classroom's BadgeSignalsContext (if any) is told instead.
+    onUserEdit,
     style,
   },
   ref
@@ -239,6 +258,9 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
   onActivityRef.current = onActivity
   onHighlightDismissRef.current = onHighlightDismiss
   onRunShortcutRef.current = onRunShortcut
+  const badgeSignals = useContext(BadgeSignalsContext)
+  const onUserEditRef = useRef(null)
+  onUserEditRef.current = onUserEdit ?? badgeSignals?.reportUserEdit ?? null
   const lineHintSetsRef = useRef(lineHints)
   lineHintSetsRef.current = lineHints
   // Callers build the sets inline, so compare by content: a new array with the same hints must
@@ -271,6 +293,7 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               onChangeRef.current?.(update.state.doc.toString())
+              if (isUserEditUpdate(update)) onUserEditRef.current?.('editor')
             }
             if (update.docChanged || update.selectionSet) {
               const selection = update.state.selection.main
@@ -383,6 +406,8 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
         view.dispatch({
           changes: { from, to, insert: text },
           selection: { anchor: from + text.length },
+          // Typed through an on-screen button, so it is the user's own input.
+          userEvent: 'input.type',
         })
         view.focus()
       },

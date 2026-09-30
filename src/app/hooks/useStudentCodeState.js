@@ -56,6 +56,8 @@ import { getLessonModule } from '../../modules/registry'
 import { getModuleDefinition } from '../../modules/definitions.js'
 import { cloneArcadeDesign } from '../../modules/arcade/design'
 import { runWithRuntime } from './runWithRuntime'
+import { useStudentBadgeSignals } from './useStudentBadgeSignals'
+import { runErrorFor, runErrorName } from '../../badges/signals'
 
 // The generic work slot before any module has loaded work into it.
 const EMPTY_WORK = Object.freeze({ moduleType: null, taskId: null, value: null })
@@ -159,6 +161,10 @@ export function useStudentCodeState({
   removeTeacherHighlight,
   clearTeacherAnswerEdit,
   clearRemoteRun,
+  // Live badges: marks a logged attempt as errored after the fact (Arcade), and the
+  // studentSignals writers useStudentBadgeSignals records through (see useSession).
+  flagAttemptError,
+  badgeSignalWriters,
 }) {
   const [output, setOutput] = useState('')
   const [runStatus, setRunStatus] = useState(null)
@@ -259,6 +265,18 @@ export function useStudentCodeState({
   const editorSelectionRef = useLatestRef(editorSelection)
   const editorActivityRef = useLatestRef(editorActivity)
   const inPersonalSandboxRef = useLatestRef(inPersonalSandbox)
+  // Live badge signals (topic opens, shortcuts, first edits, complete shown, sandbox runs),
+  // gated off for the presentation window, previews and solo.
+  const badgeSignals = useStudentBadgeSignals({
+    phase,
+    identity,
+    session,
+    teacherPresentation,
+    previewMode,
+    currentTaskId,
+    inPersonalSandbox,
+    writers: badgeSignalWriters,
+  })
   // Updated synchronously by setWork / setInteraction (not on render), so a handler that runs
   // straight after another in the same event — e.g. Desktop opening a file calls
   // handleDesktopChange then handleDesktopInteraction, or a MicroPython run rewriting the
@@ -1085,7 +1103,10 @@ export function useStudentCodeState({
       const stageIndex = parseInt(revealMatch[1], 10)
       const stage = task.codeStages?.[stageIndex]
       if (getStageRole(stage) === 'support') handleRevealSupportStage(stageIndex, 'teacher')
-      else if (getStageRole(stage) === 'complete') setCompletePreviewShown(true)
+      else if (getStageRole(stage) === 'complete') {
+        setCompletePreviewShown(true)
+        badgeSignals.reportCompleteShown(currentTaskId, 'preview')
+      }
       return
     }
 
@@ -1095,6 +1116,15 @@ export function useStudentCodeState({
       desktop: makeDefaultDesktop(task.availableApps),
     })
     if (!target) return
+    // A reset to the complete code (the Complete tab, or a stage whose role is complete) puts
+    // the answer in front of the student: a pass after it is not a real pass.
+    const resetStage = action.match(/^stage_(\d+)$/)
+    if (
+      action === 'complete' ||
+      (resetStage && getStageRole(task.codeStages?.[parseInt(resetStage[1], 10)]) === 'complete')
+    ) {
+      badgeSignals.reportCompleteShown(currentTaskId, 'teacherReset')
+    }
 
     const slotDefinition = workSlotDefinition(lesson.type)
     if (slotDefinition) {
@@ -1364,6 +1394,7 @@ export function useStudentCodeState({
         feedback: { applyCheckFeedback, updateTargetedStageOffer, updateSupportStageForAttempt },
         saveRunRecord: (taskId, runCode, fields) =>
           persistence.saveRunRecord(moduleType, actor.anonymousId, taskId, runCode, fields),
+        signals: badgeSignals,
       })
       return
     }
@@ -1385,6 +1416,7 @@ export function useStudentCodeState({
     htmlSupportAttemptsRef.current.clear()
     htmlSupportAttemptsRef.current.set(src, {
       hasError: false,
+      errorName: null,
       outcomeApplied: false,
       passed: false,
     })
@@ -1440,6 +1472,10 @@ export function useStudentCodeState({
           })
         }
       }
+      // A runtime error the preview reported before its text came back (see
+      // handleHtmlRuntimeError) is the attempt's and sandbox run's `error`.
+      const htmlAttempt = htmlSupportAttemptsRef.current.get(src)
+      const runError = htmlAttempt?.hasError ? (htmlAttempt.errorName ?? true) : false
       if (
         !teacherPresentation &&
         phaseRef.current === 'lesson' &&
@@ -1452,6 +1488,13 @@ export function useStudentCodeState({
           passed,
           suggestion,
           teacherAssisted: teacherAssistedTaskIdsRef.current.has(taskIdAtRunTime),
+          error: runError,
+        })
+      }
+      if (phaseRef.current === 'sandbox' || inPersonalSandboxRef.current) {
+        badgeSignals.reportSandboxRun({
+          error: runError,
+          submission: wire.submission(currentFiles),
         })
       }
       persistence.saveWork(moduleType, actor.anonymousId, taskIdAtRunTime, currentFiles)
@@ -1586,10 +1629,12 @@ export function useStudentCodeState({
           .filter((r) => !r.passed)
           .map((r) => r.name)
           .join(', ')
+        const erroredTest = results.find((r) => r.status === 'error')
         logAttempt(actor.anonymousId, currentTaskId, {
           submission: code,
           passed: allPassed,
           suggestion: failedTestNames,
+          error: erroredTest ? runErrorFor('error', erroredTest.output) : false,
         })
       }
     } catch {
@@ -1617,6 +1662,7 @@ export function useStudentCodeState({
   // the code and published at once, but mirrored to a watching teacher on its own debounced
   // channel (writeStudentArcadeDesign) rather than with the code.
   function handleArcadeDesignChange(nextDesign) {
+    badgeSignals.reportUserEdit('arcade_design')
     const next = cloneArcadeDesign(nextDesign)
     const value = { ...workValueFor('arcade'), arcadeDesign: next }
     setWork('arcade', value)
@@ -1716,6 +1762,40 @@ export function useStudentCodeState({
     }
     if (!teacherPresentation && phaseRef.current === 'lesson' && !alreadySolved && hasCheck) {
       logAttempt(actor.anonymousId, currentTaskId, { submission: runCode, passed, suggestion })
+    }
+    // The game's own error (if any) arrives later, through handleWorkspaceRunError.
+    if (phaseRef.current === 'sandbox' || inPersonalSandboxRef.current) {
+      badgeSignals.reportSandboxRun({ error: false, submission: runCode })
+    }
+  }
+
+  /**
+   * A 'workspace'-run module's run failed after it started (Arcade: the game iframe reports a
+   * Python error once it has loaded, after handleWorkspaceRun logged the run). Shows the error
+   * as the run status, mirrors it like a run, and marks the logged attempt or sandbox run as
+   * errored for the badge data. `message` is the formatted error ("Line 3: NameError: ...").
+   */
+  function handleWorkspaceRunError(message) {
+    const actor = effectiveIdentity
+    if (!actor) return
+    const error = runErrorName(message) ?? true
+    setRunStatus('error')
+    if (canPublishTeacherLive()) publishTeacherLive({ runStatus: 'error' })
+    const isWatched = session?.activeStudentView === actor.anonymousId
+    if (
+      !teacherPresentation &&
+      (phaseRef.current === 'lesson' ||
+        phaseRef.current === 'sandbox' ||
+        inPersonalSandboxRef.current ||
+        isWatched)
+    ) {
+      writeStudentRun(actor.anonymousId, { status: 'error' })
+    }
+    if (!teacherPresentation && phaseRef.current === 'lesson' && !inPersonalSandboxRef.current) {
+      flagAttemptError?.(actor.anonymousId, currentTaskId, error)
+    }
+    if (phaseRef.current === 'sandbox' || inPersonalSandboxRef.current) {
+      badgeSignals.reportSandboxRunError(error)
     }
   }
 
@@ -1896,12 +1976,16 @@ export function useStudentCodeState({
         checkPassed: effectivePassed,
       })
       if (!teacherPresentation && phase === 'lesson' && !alreadySolved && task?.check) {
+        // Scratch has no console: its runs never carry an error.
         logAttempt(identity.anonymousId, currentTaskId, {
           submission: wire.submission(checkedWork),
           passed,
           suggestion,
         })
       }
+    }
+    if (phase === 'sandbox' || inPersonalSandboxRef.current) {
+      badgeSignals.reportSandboxRun({ error: false, submission: reportedWork ?? null })
     }
   }
 
@@ -1947,6 +2031,7 @@ export function useStudentCodeState({
         checkPassed: evaluatedPassed,
       })
       if (!alreadySolved && task?.check) {
+        // A failed filesystem / desktop check is not a console error: no `error` here.
         logAttempt(effectiveIdentity.anonymousId, currentTaskId, {
           submission: wire.submission(workValue),
           passed: evaluatedPassed,
@@ -2090,11 +2175,15 @@ export function useStudentCodeState({
 
   // Legacy per-module names the workspaces (and sharedWorkspacePayload) call. Interaction
   // handlers stay memoised, as before, so workspace effects keyed on them don't re-fire.
+  // Both are only called by the workspace for the student's own actions (never on load), so each
+  // is a real edit for Ready to Code.
   function handleFsChange(newFs) {
+    badgeSignals.reportUserEdit('filesystem')
     handleWorkChange(newFs, { moduleType: 'filesystem' })
   }
 
   function handleDesktopChange(newDesktop) {
+    badgeSignals.reportUserEdit('desktop')
     handleWorkChange(newDesktop, { moduleType: 'desktop' })
   }
 
@@ -2290,6 +2379,7 @@ export function useStudentCodeState({
     const supportAttempt = htmlSupportAttemptsRef.current.get(src)
     if (!supportAttempt) return
     supportAttempt.hasError = true
+    if (!supportAttempt.errorName) supportAttempt.errorName = runErrorName(errorMeta?.message)
     if (supportAttempt.outcomeApplied && supportAttempt.passed) {
       supportAttempt.passed = false
       updateSupportStageForAttempt(false)
@@ -2371,6 +2461,7 @@ export function useStudentCodeState({
     // Non-destructive: reveals the complete solution read-only in the explainer
     // panel without touching the student's own editor or marking the task solved.
     setCompletePreviewShown(true)
+    badgeSignals.reportCompleteShown(currentTaskId, 'preview')
   }
 
   function handleShowCompleteCode() {
@@ -2378,6 +2469,7 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     if (!task) return
     const slotDefinition = workSlotDefinition(lesson.type)
+    badgeSignals.reportCompleteShown(currentTaskId, 'show')
 
     if (slotDefinition) {
       // The complete work (Arcade: with the complete design, like Show stage and remote reset;
@@ -2563,6 +2655,8 @@ export function useStudentCodeState({
     handleWorkspaceRun,
     // Arcade's name for handleWorkspaceRun ("Run game").
     handleArcadeRun: handleWorkspaceRun,
+    handleWorkspaceRunError,
+    handleArcadeRunError: handleWorkspaceRunError,
     handleFileChange,
     handleFileTabChange,
     handleEditorSelection,
@@ -2626,5 +2720,8 @@ export function useStudentCodeState({
     publishTeacherLive,
     updateTeacherLiveFn: updateTeacherLive,
     setTeacherLiveFn: setTeacherLive,
+    // Live badge signal reporters (useStudentBadgeSignals), for StudentView's work-area
+    // keydown listener, topic opens and the BadgeSignalsContext.
+    badgeSignals,
   }
 }

@@ -56,6 +56,7 @@ import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { decodeFileKey } from '../../shared/fileKeys'
 import { getModuleDefinition } from '../../modules/definitions'
 import { decodeSessionFiles } from '../../shared/workspaceData'
+import { BadgeSignalsContext } from '../../shared/badgeSignalsContext'
 
 export default function StudentView({
   lessonId: lessonIdProp,
@@ -91,6 +92,7 @@ export default function StudentView({
     unregisterJoining,
     writeStudentRun,
     logAttempt,
+    flagAttemptError,
     writeStudentAnswer,
     writeStudentCode,
     writeStudentArcadeDesign,
@@ -106,6 +108,13 @@ export default function StudentView({
     recordStudentCarryFallback,
     recordSupportStageReveal,
     recordStudentPaste,
+    recordTopicOpenSignal,
+    recordShortcutSignal,
+    recordFirstEditSignal,
+    recordCompleteShownSignal,
+    recordSandboxRunSignal,
+    flagSandboxRunError,
+    addSandboxTimeSignal,
     writeStudentPersonalSandbox,
     writeStudentPresence,
     setTaskId,
@@ -239,7 +248,27 @@ export default function StudentView({
     clearTeacherAnswerEdit,
     clearRemoteRun,
     removeTeacherHighlight,
+    flagAttemptError,
+    // Read through a ref inside useStudentBadgeSignals, so a new object each render is fine.
+    badgeSignalWriters: {
+      recordTopicOpenSignal,
+      recordShortcutSignal,
+      recordFirstEditSignal,
+      recordCompleteShownSignal,
+      recordSandboxRunSignal,
+      flagSandboxRunError,
+      addSandboxTimeSignal,
+    },
   })
+  // Live badge reporters for the shared editor, Blockly and Topic Library components below
+  // (they read BadgeSignalsContext). The reporters are stable, so this value is too.
+  const badgeSignalsContextValue = useMemo(
+    () => ({
+      reportUserEdit: cs.badgeSignals.reportUserEdit,
+      reportTopicOpen: cs.badgeSignals.reportTopicOpen,
+    }),
+    [cs.badgeSignals.reportUserEdit, cs.badgeSignals.reportTopicOpen]
+  )
 
   // Wire phase callbacks to latest code-state functions each render
   saveWorkRef.current = cs.saveCurrentWork
@@ -1173,7 +1202,7 @@ export default function StudentView({
 
   const transitionKey = `${phase}-${cs.inPersonalSandbox ? 'personal-sandbox' : (viewingTaskId ?? currentTaskId)}`
 
-  return (
+  const page = (
     <div style={{ ...s.page, background: isForcedTeacherLive ? '#dde0e5' : '#f5f5f5' }}>
       {isPaused && (
         <div style={s.pauseOverlay}>
@@ -1287,6 +1316,10 @@ export default function StudentView({
                 className="btn-primary"
                 style={{ fontSize: 13 }}
                 onClick={() => {
+                  cs.badgeSignals.reportTopicOpen(pendingTopicId, {
+                    source: 'teacher',
+                    via: 'teacher',
+                  })
                   setOpenTopicId(pendingTopicId)
                   setPendingTopicId(null)
                 }}
@@ -1356,6 +1389,10 @@ export default function StudentView({
             ? { ...s.body, overflow: 'hidden' }
             : s.body
         }
+        // Keyboard Wizard: listed shortcuts pressed on the lesson work area (the editor, Blockly
+        // or the Desktop surface; see workAreaSurfaceOf). Capture phase, so an editor keymap
+        // that handles the key can't hide it.
+        onKeyDownCapture={cs.badgeSignals.handleWorkAreaKeyDown}
       >
         {activeShare ? (
           <SharedWorkspaceViewer
@@ -1439,6 +1476,12 @@ export default function StudentView({
         )}
       </div>
     </div>
+  )
+
+  return (
+    <BadgeSignalsContext.Provider value={badgeSignalsContextValue}>
+      {page}
+    </BadgeSignalsContext.Provider>
   )
 }
 
