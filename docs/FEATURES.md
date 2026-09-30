@@ -25,7 +25,7 @@ New lessons are composed lessons: each code task selects one of the workspace ty
 
 - **Code task** — students write code or blocks; automatic completion checks run on each attempt. **Arcade Kit** evaluates its code checks each time the student presses Run game (game-state checks aren't supported yet — see `docs/authoring/arcade.md`'s Runtime Notes). **Python Turtle** tasks can combine code checks with drawing checks, and show a 🐢 marker at the turtle's position and heading.
 - **Information task** — explainer text only; no editor or check
-- **Badge Summary task** (`informationType: badges`, "Today's Coding Moments") — in a live session each student sees their own badges as a sticker sheet flipping in, then the class wall grouped by badge ("🐛 Bug Hunter: Alex, Sam"; names only, no counts), with a warm line instead of an empty state for a student with none; the teacher sees a projector-friendly wall with **📋 Copy class summary** (plain text grouped by badge); skipped in solo
+- **Badge Summary task** (`informationType: badges`, "Today's Coding Moments") — in a live session each student sees their own badges as a sticker sheet tumbling in one by one, then the class wall grouped by badge dropping into place (the teacher's and presentation wall's emoji tumble in, then the rows drop; first view only, later awards just drop in) ("🐛 Bug Hunter: Alex, Sam"; names only, no counts), with a warm line instead of an empty state for a student with none; the teacher sees a projector-friendly wall with **📋 Copy class summary** (plain text grouped by badge); skipped in solo
 - **Quiz** — interactive question; no code editor
 - **Group** — ordered container of subtasks
 
