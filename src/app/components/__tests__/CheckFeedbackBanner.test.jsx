@@ -262,3 +262,14 @@ describe('CheckFeedbackBanner', () => {
     })
   })
 })
+
+describe('CheckFeedbackBanner hints and motion', () => {
+  it("never slides a hint's bullets in (only explainer and information bodies do)", () => {
+    const { container } = render(
+      <CheckFeedbackBanner passed={false} suggestion={'- Check the brackets\n- Check the quotes'} />
+    )
+    const items = container.querySelectorAll('li')
+    expect(items.length).toBe(2)
+    items.forEach((li) => expect(li).not.toHaveClass('motion-slide-in'))
+  })
+})

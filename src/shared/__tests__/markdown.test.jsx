@@ -506,3 +506,44 @@ describe('InlineMarkdown', () => {
     }
   })
 })
+
+describe('MarkdownRenderer animateLists', () => {
+  function items(container) {
+    return Array.from(container.querySelectorAll('li'))
+  }
+
+  it('slides list items in one after another, numbering each list from 0', () => {
+    const { container } = render(
+      <MarkdownRenderer content={'- one\n- two\n- three\n\n1. first\n2. second'} animateLists />
+    )
+    const all = items(container)
+    expect(all).toHaveLength(5)
+    all.forEach((li) => expect(li).toHaveClass('motion-slide-in', 'motion-stagger'))
+    expect(all.map((li) => li.style.getPropertyValue('--motion-i'))).toEqual([
+      '0',
+      '1',
+      '2',
+      '0',
+      '1',
+    ])
+  })
+
+  it('numbers the same content the same way on every render', () => {
+    const content = '- one\n- two'
+    const first = render(<MarkdownRenderer content={content} animateLists />)
+    const firstIndexes = items(first.container).map((li) => li.style.getPropertyValue('--motion-i'))
+    first.unmount()
+    const second = render(<MarkdownRenderer content={content} animateLists />)
+    expect(items(second.container).map((li) => li.style.getPropertyValue('--motion-i'))).toEqual(
+      firstIndexes
+    )
+  })
+
+  it('leaves lists still by default (hints, topic cards, Builder previews)', () => {
+    const { container } = render(<MarkdownRenderer content={'- one\n- two'} />)
+    items(container).forEach((li) => {
+      expect(li).not.toHaveClass('motion-slide-in')
+      expect(li.style.getPropertyValue('--motion-i')).toBe('')
+    })
+  })
+})

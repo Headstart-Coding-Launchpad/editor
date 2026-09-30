@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
+import { firstViewKey, useFirstView } from '../../shared/motion'
 
 export default function ExplainerPanel({
   title,
@@ -16,8 +17,26 @@ export default function ExplainerPanel({
   imageLayout = 'stacked',
   onCollapsedChange,
   highlighted = false,
+  // Which task this panel shows (usually `firstViewKey(lessonId, taskId)`). On that task's first
+  // view the panel drops in and its bullets slide in; null (Builder editor panes, StudentModal)
+  // never animates.
+  entranceKey = null,
 }) {
+  const isFirstView = useFirstView(
+    entranceKey == null ? null : firstViewKey('explainer', entranceKey)
+  )
   const [collapsed, setCollapsed] = useState(false)
+  // The entrance belongs to the task's arrival only: opening the panel again after a ▲/▼ toggle,
+  // or new content for the same task (a Builder edit, the complete-code reveal), shows it still.
+  // Content arriving into an empty panel is still the arrival.
+  const [entrance, setEntrance] = useState({ key: entranceKey, content, over: false })
+  if (entrance.key !== entranceKey) {
+    setEntrance({ key: entranceKey, content, over: false })
+  } else if (!entrance.over && content !== entrance.content) {
+    setEntrance(entrance.content ? { ...entrance, over: true } : { ...entrance, content })
+  }
+  const showEntrance =
+    isFirstView && entrance.key === entranceKey && !entrance.over && content === entrance.content
   const [expanded, setExpanded] = useState(false)
   const [canScroll, setCanScroll] = useState(false)
   const [atBottom, setAtBottom] = useState(false)
@@ -69,20 +88,26 @@ export default function ExplainerPanel({
   }
 
   return (
+    // Keyed by task so a panel that stays mounted across tasks (the teacher view) still gets a
+    // fresh element, and its entrance, for each new task.
     <div
+      key={entranceKey ?? undefined}
       ref={panelRef}
       style={{
         ...s.panel,
         ...(expanded ? s.panelExpanded : {}),
         ...(fill ? s.panelFill : {}),
       }}
-      className="card ui-collapsible"
+      className={showEntrance ? 'card ui-collapsible motion-drop-in' : 'card ui-collapsible'}
     >
       {collapsible ? (
         <button
           className={highlighted ? 'pane-highlight-pulse' : undefined}
           style={s.titleBar}
-          onClick={() => setCollapsed((c) => !c)}
+          onClick={() => {
+            setEntrance((current) => ({ ...current, over: true }))
+            setCollapsed((c) => !c)
+          }}
           aria-expanded={!collapsed}
         >
           <h2 style={s.titleText}>{title}</h2>
@@ -121,6 +146,7 @@ export default function ExplainerPanel({
               openTopicId={openTopicId}
               disableCopy={disableCopy}
               imageLayout={imageLayout}
+              animateLists={showEntrance}
             />
           </div>
           {!expanded && canExpandOverlay && canScroll && !atBottom && (

@@ -13,6 +13,7 @@ import { useBadgeSignals } from './badgeSignalsContext'
 import { TOPIC_LIBRARY_OPEN_ID } from '../badges/signals.js'
 import { InlineScratchBlock, ScratchBlocks, looksLikeScratchBlocks } from './markdown/ScratchBlocks'
 import { parseMarkdownTables } from './markdown/tableParser'
+import { staggerStyle } from './motion'
 
 hljs.registerLanguage('python', hljsPython)
 hljs.registerLanguage('xml', hljsXml)
@@ -65,6 +66,9 @@ const MarkdownImageMaxHeightContext = React.createContext('min(420px, 60vh)')
 // beside its surrounding paragraph text (used by information tasks) instead of always
 // breaking onto its own line.
 const MarkdownImageLayoutContext = React.createContext('stacked')
+// True when list items should slide in one after another (the explainer and information task
+// bodies on a task's first view; see MarkdownRenderer's `animateLists`).
+const MarkdownAnimateListsContext = React.createContext(false)
 const INLINE_CODE_LINE_BREAK = '@@HSC_INLINE_CODE_LINE_BREAK@@'
 
 // InlineMarkdown only allows inline elements (see allowedElements below) — headings,
@@ -448,6 +452,43 @@ function MarkdownImage({ src, alt }) {
   )
 }
 
+// Numbers a list's items 0, 1, 2… (skipping the whitespace text between them) so each one can
+// slide in after the one before. A nested list numbers its own items from 0.
+function withListItemIndexes(children) {
+  let index = 0
+  return React.Children.map(children, (child) =>
+    React.isValidElement(child) ? React.cloneElement(child, { motionIndex: index++ }) : child
+  )
+}
+function MarkdownUnorderedList({ children }) {
+  const animate = React.useContext(MarkdownAnimateListsContext)
+  return (
+    <ul style={{ margin: '6px 0 8px 20px', lineHeight: 1.55 }}>
+      {animate ? withListItemIndexes(children) : children}
+    </ul>
+  )
+}
+function MarkdownOrderedList({ children }) {
+  const animate = React.useContext(MarkdownAnimateListsContext)
+  return (
+    <ol style={{ margin: '6px 0 8px 22px', lineHeight: 1.55 }}>
+      {animate ? withListItemIndexes(children) : children}
+    </ol>
+  )
+}
+function MarkdownListItem({ children, motionIndex }) {
+  const animate = React.useContext(MarkdownAnimateListsContext)
+  if (!animate) return <li style={{ margin: '3px 0' }}>{children}</li>
+  return (
+    <li
+      className="motion-slide-in motion-stagger"
+      style={{ margin: '3px 0', ...staggerStyle(motionIndex) }}
+    >
+      {children}
+    </li>
+  )
+}
+
 const components = {
   h1: Heading1,
   h2: Heading2,
@@ -458,15 +499,9 @@ const components = {
   p({ children }) {
     return <p style={{ margin: '6px 0', lineHeight: 1.65 }}>{children}</p>
   },
-  ul({ children }) {
-    return <ul style={{ margin: '6px 0 8px 20px', lineHeight: 1.55 }}>{children}</ul>
-  },
-  ol({ children }) {
-    return <ol style={{ margin: '6px 0 8px 22px', lineHeight: 1.55 }}>{children}</ol>
-  },
-  li({ children }) {
-    return <li style={{ margin: '3px 0' }}>{children}</li>
-  },
+  ul: MarkdownUnorderedList,
+  ol: MarkdownOrderedList,
+  li: MarkdownListItem,
   blockquote({ children }) {
     const markerText = getTextFromChildren(children)
     const markerMatch = markerText.match(CALLOUT_MARKER_PATTERN)
@@ -509,6 +544,9 @@ export function MarkdownRenderer({
   disableCopy = false,
   imageMaxHeight = 'min(420px, 60vh)',
   imageLayout = 'stacked',
+  // Slide list items in one after another. Only the explainer and information task bodies pass
+  // it, on a task's first view (useFirstView), so it never replays on a revisit.
+  animateLists = false,
 }) {
   const topicEnabled =
     showLibrary || String(content ?? '').includes('[[') || String(content ?? '').includes('#topic/')
@@ -563,108 +601,110 @@ export function MarkdownRenderer({
   }
 
   return (
-    <MarkdownInheritColorContext.Provider value={inheritColor}>
-      <MarkdownImageMaxHeightContext.Provider value={imageMaxHeight}>
-        <MarkdownImageLayoutContext.Provider value={imageLayout}>
-          <MarkdownScaleContext.Provider value={textScale}>
-            <div
-              style={{
-                fontFamily: "'Quicksand', sans-serif",
-                color: inheritColor ? 'inherit' : 'var(--colour-text)',
-                fontSize: `${15 * textScale}px`,
-                lineHeight: 1.65,
-                ...(disableCopy
+    <MarkdownAnimateListsContext.Provider value={animateLists}>
+      <MarkdownInheritColorContext.Provider value={inheritColor}>
+        <MarkdownImageMaxHeightContext.Provider value={imageMaxHeight}>
+          <MarkdownImageLayoutContext.Provider value={imageLayout}>
+            <MarkdownScaleContext.Provider value={textScale}>
+              <div
+                style={{
+                  fontFamily: "'Quicksand', sans-serif",
+                  color: inheritColor ? 'inherit' : 'var(--colour-text)',
+                  fontSize: `${15 * textScale}px`,
+                  lineHeight: 1.65,
+                  ...(disableCopy
+                    ? {
+                        userSelect: 'none',
+                        WebkitUserSelect: 'none',
+                        MozUserSelect: 'none',
+                      }
+                    : {}),
+                  ...style,
+                }}
+                {...(disableCopy
                   ? {
-                      userSelect: 'none',
-                      WebkitUserSelect: 'none',
-                      MozUserSelect: 'none',
+                      onCopy: (e) => e.preventDefault(),
+                      onCut: (e) => e.preventDefault(),
+                      onDragStart: (e) => e.preventDefault(),
+                      onContextMenu: (e) => e.preventDefault(),
                     }
-                  : {}),
-                ...style,
-              }}
-              {...(disableCopy
-                ? {
-                    onCopy: (e) => e.preventDefault(),
-                    onCut: (e) => e.preventDefault(),
-                    onDragStart: (e) => e.preventDefault(),
-                    onContextMenu: (e) => e.preventDefault(),
-                  }
-                : {})}
-            >
-              {showLibrary && (
-                <button
-                  type="button"
-                  onClick={handleLibraryButton}
-                  style={{
-                    float: 'right',
-                    margin: '0 0 8px 10px',
-                    padding: '5px 10px',
-                    border: '1px solid #ded1f3',
-                    borderRadius: 999,
-                    background: '#f7f2ff',
-                    color: 'var(--colour-primary)',
-                    cursor: 'pointer',
-                    fontFamily: 'var(--font-body)',
-                    fontWeight: 700,
-                    fontSize: '0.78rem',
-                  }}
-                >
-                  {loading ? 'Loading library...' : 'Topic library'}
-                </button>
-              )}
-              {blocks.map((block, i) =>
-                block.type === 'table' ? (
-                  <MarkdownTable
-                    key={i}
-                    headers={block.headers}
-                    align={block.align}
-                    rows={block.rows}
-                  />
-                ) : (
-                  <ReactMarkdown
-                    key={i}
-                    remarkPlugins={[remarkBreaks]}
-                    rehypePlugins={[rehypeHighlight]}
-                    components={markdownComponents}
-                    allowedElements={[
-                      'h1',
-                      'h2',
-                      'h3',
-                      'h4',
-                      'p',
-                      'strong',
-                      'em',
-                      'code',
-                      'pre',
-                      'br',
-                      'span',
-                      'ul',
-                      'ol',
-                      'li',
-                      'blockquote',
-                      'img',
-                      'a',
-                    ]}
-                    unwrapDisallowed
+                  : {})}
+              >
+                {showLibrary && (
+                  <button
+                    type="button"
+                    onClick={handleLibraryButton}
+                    style={{
+                      float: 'right',
+                      margin: '0 0 8px 10px',
+                      padding: '5px 10px',
+                      border: '1px solid #ded1f3',
+                      borderRadius: 999,
+                      background: '#f7f2ff',
+                      color: 'var(--colour-primary)',
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-body)',
+                      fontWeight: 700,
+                      fontSize: '0.78rem',
+                    }}
                   >
-                    {block.content}
-                  </ReactMarkdown>
-                )
+                    {loading ? 'Loading library...' : 'Topic library'}
+                  </button>
+                )}
+                {blocks.map((block, i) =>
+                  block.type === 'table' ? (
+                    <MarkdownTable
+                      key={i}
+                      headers={block.headers}
+                      align={block.align}
+                      rows={block.rows}
+                    />
+                  ) : (
+                    <ReactMarkdown
+                      key={i}
+                      remarkPlugins={[remarkBreaks]}
+                      rehypePlugins={[rehypeHighlight]}
+                      components={markdownComponents}
+                      allowedElements={[
+                        'h1',
+                        'h2',
+                        'h3',
+                        'h4',
+                        'p',
+                        'strong',
+                        'em',
+                        'code',
+                        'pre',
+                        'br',
+                        'span',
+                        'ul',
+                        'ol',
+                        'li',
+                        'blockquote',
+                        'img',
+                        'a',
+                      ]}
+                      unwrapDisallowed
+                    >
+                      {block.content}
+                    </ReactMarkdown>
+                  )
+                )}
+              </div>
+              {libraryOpen && (
+                <TopicLibraryDialog
+                  topics={topics}
+                  initialTopicId={selectedTopicId}
+                  renderMarkdown={MarkdownRenderer}
+                  topicType={topicType}
+                  onClose={handleDialogClose}
+                  onTopicSelect={onTopicOpen}
+                />
               )}
-            </div>
-            {libraryOpen && (
-              <TopicLibraryDialog
-                topics={topics}
-                initialTopicId={selectedTopicId}
-                renderMarkdown={MarkdownRenderer}
-                topicType={topicType}
-                onClose={handleDialogClose}
-                onTopicSelect={onTopicOpen}
-              />
-            )}
-          </MarkdownScaleContext.Provider>
-        </MarkdownImageLayoutContext.Provider>
-      </MarkdownImageMaxHeightContext.Provider>
-    </MarkdownInheritColorContext.Provider>
+            </MarkdownScaleContext.Provider>
+          </MarkdownImageLayoutContext.Provider>
+        </MarkdownImageMaxHeightContext.Provider>
+      </MarkdownInheritColorContext.Provider>
+    </MarkdownAnimateListsContext.Provider>
   )
 }

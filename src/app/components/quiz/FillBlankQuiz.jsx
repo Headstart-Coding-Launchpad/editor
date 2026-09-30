@@ -2,6 +2,7 @@ import React, { useMemo } from 'react'
 import { InlineMarkdown } from '../../../shared/markdown'
 import { useTileDragAndDrop } from '../../hooks/useTileDragAndDrop'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
+import { useChoiceEntrance } from '../../../activities/ui/choiceEntrance.jsx'
 import {
   baseStyles as s,
   fillDragTileMatchesBlank,
@@ -49,6 +50,7 @@ export default function FillBlankQuiz({
 
   const placedIds = new Set(Object.values(state))
   const blocked = disabled || (submitted && checkPassed)
+  const entrance = useChoiceEntrance()
 
   function publishState(next) {
     const allFilled = blanks.every((b) => next[b.id] !== undefined)
@@ -213,15 +215,17 @@ export default function FillBlankQuiz({
             <div style={sm.poolTiles}>
               {tilePool
                 .filter((t) => !placedIds.has(t.id))
-                .map((t) => (
+                .map((t, tileIndex) => (
                   <button
                     key={t.id}
                     type="button"
+                    className={entrance(tileIndex).className}
                     style={{
                       ...sm.tile,
                       ...(draggingTile === t.id || touchSelectedTile === t.id
                         ? sm.tileSelected
                         : {}),
+                      ...entrance(tileIndex).style,
                     }}
                     draggable={!blocked}
                     onDragStart={(event) => dnd.handleDragStart(event, t.id)}

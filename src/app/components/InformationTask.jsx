@@ -5,6 +5,7 @@ import { isComposedLesson, getComposedModuleTypes } from '../../shared/composedL
 import { getModuleLabel } from '../../modules/definitions'
 import { BADGE_SUMMARY_INFORMATION_TYPE } from '../../shared/taskUtils'
 import BadgeSummaryTask from './badges/BadgeSummaryTask'
+import { firstViewKey, useFirstView } from '../../shared/motion'
 
 function singleTypeLabel(type) {
   return getModuleLabel(type, 'lessonIntro') ?? (type || 'Lesson')
@@ -21,15 +22,23 @@ function lessonTypeLabel(lesson) {
 // `badgeWall` (Badge Summary tasks only): `{ decisions, students, viewerId, variant,
 // catalogueBadges }` from the live session; see BadgeSummaryTask. Left out, the task renders its
 // preview note (the Builder).
+// `entranceKey` (usually `firstViewKey(lessonId, taskId)`): on the task's first view the body's
+// bullets slide in (and a standard task's panel drops in). Null (the Builder's task editor)
+// never animates.
 export default function InformationTask({
   task,
   lesson,
   fill = true,
   disableCopy = false,
   badgeWall = null,
+  entranceKey = null,
 }) {
   const informationType = task?.informationType ?? 'standard'
   const markdownTextScale = 1.4
+  const information = entranceKey == null ? null : firstViewKey('information', entranceKey)
+  const isRecapFirstView = useFirstView(
+    informationType === 'recap' && information ? firstViewKey('recap', information) : null
+  )
 
   if (informationType === BADGE_SUMMARY_INFORMATION_TYPE) {
     return <BadgeSummaryTask task={task} lesson={lesson} disableCopy={disableCopy} {...badgeWall} />
@@ -60,6 +69,7 @@ export default function InformationTask({
             inheritColor
             topicType={lesson?.type}
             disableCopy={disableCopy}
+            animateLists={isRecapFirstView}
           />
         </div>
         <div className="information-recap__content">
@@ -69,6 +79,7 @@ export default function InformationTask({
             topicType={lesson?.type}
             disableCopy={disableCopy}
             imageLayout="float"
+            animateLists={isRecapFirstView}
           />
         </div>
       </section>
@@ -86,6 +97,7 @@ export default function InformationTask({
       showLibrary={false}
       disableCopy={disableCopy}
       imageLayout="float"
+      entranceKey={information}
     />
   )
 }

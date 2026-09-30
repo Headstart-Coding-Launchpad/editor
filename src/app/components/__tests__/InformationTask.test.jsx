@@ -1,7 +1,8 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import InformationTask from '../InformationTask'
+import { resetFirstViews } from '../../../shared/motion'
 
 const lesson = { id: 'test', type: 'python', title: 'Test Lesson', description: 'Desc', level: 1 }
 
@@ -114,5 +115,60 @@ describe('InformationTask', () => {
       expect(findUserSelectNoneAncestor(screen.getByText('Left pane text'))).not.toBeNull()
       expect(findUserSelectNoneAncestor(screen.getByText('Right pane text'))).not.toBeNull()
     })
+  })
+})
+
+describe('InformationTask first-view entrance', () => {
+  beforeEach(() => resetFirstViews())
+
+  const standard = { id: 'info-1', title: 'Read this', explainer: '- one\n- two' }
+  const recap = {
+    id: 'recap-1',
+    informationType: 'recap',
+    title: 'Recap',
+    leftContent: '- left',
+    explainer: '- right one\n- right two',
+  }
+
+  it('drops a standard task in and slides its bullets in on the first view only', () => {
+    const first = render(
+      <InformationTask task={standard} lesson={lesson} entranceKey="test:info-1" />
+    )
+    expect(first.container.querySelector('.card')).toHaveClass('motion-drop-in')
+    const items = first.container.querySelectorAll('li')
+    expect(items).toHaveLength(2)
+    items.forEach((li) => expect(li).toHaveClass('motion-slide-in', 'motion-stagger'))
+    first.unmount()
+
+    const again = render(
+      <InformationTask task={standard} lesson={lesson} entranceKey="test:info-1" />
+    )
+    expect(again.container.querySelector('.card')).not.toHaveClass('motion-drop-in')
+    again.container.querySelectorAll('li').forEach((li) => {
+      expect(li).not.toHaveClass('motion-slide-in')
+    })
+  })
+
+  it("slides a recap's bullets in on the first view only", () => {
+    const first = render(
+      <InformationTask task={recap} lesson={lesson} entranceKey="test:recap-1" />
+    )
+    const items = first.container.querySelectorAll('li')
+    expect(items).toHaveLength(3)
+    items.forEach((li) => expect(li).toHaveClass('motion-slide-in'))
+    first.unmount()
+
+    const again = render(
+      <InformationTask task={recap} lesson={lesson} entranceKey="test:recap-1" />
+    )
+    again.container.querySelectorAll('li').forEach((li) => {
+      expect(li).not.toHaveClass('motion-slide-in')
+    })
+  })
+
+  it('never animates without an entrance key (the Builder task editor)', () => {
+    const { container } = render(<InformationTask task={standard} lesson={lesson} />)
+    expect(container.querySelector('.card')).not.toHaveClass('motion-drop-in')
+    container.querySelectorAll('li').forEach((li) => expect(li).not.toHaveClass('motion-slide-in'))
   })
 })
