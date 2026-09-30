@@ -1,6 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { useStudentPhase } from '../useStudentPhase'
+import { END_SCREEN_RESTORE_MS, useStudentPhase } from '../useStudentPhase'
 
 // Prevent window.close() from actually closing the jsdom window and breaking subsequent tests
 vi.stubGlobal('close', vi.fn())
@@ -223,6 +223,30 @@ describe('useStudentPhase', () => {
       )
       await waitFor(() => expect(result.current.phase).toBe('lesson'))
       expect(result.current.currentTaskId).toBe(5)
+    })
+
+    it('returns a student who reloads their own recently ended session to the end screen', async () => {
+      const session = makeSession({ state: 'ended', endedAt: Date.now() - 60_000 })
+      const { result } = renderHook(() =>
+        useStudentPhase(defaultProps({ session, identity: makeIdentity() }))
+      )
+      await waitFor(() => expect(result.current.phase).toBe('ended'))
+    })
+
+    it('offers the choice screen for a session that ended long ago or that the student was not in', async () => {
+      const old = makeSession({ state: 'ended', endedAt: Date.now() - END_SCREEN_RESTORE_MS - 1 })
+      const { result } = renderHook(() =>
+        useStudentPhase(defaultProps({ session: old, identity: makeIdentity() }))
+      )
+      await waitFor(() => expect(result.current.phase).toBe('choice'))
+
+      const other = makeSession({ state: 'ended', endedAt: Date.now() })
+      const { result: stranger } = renderHook(() =>
+        useStudentPhase(
+          defaultProps({ session: other, identity: makeIdentity({ lastSessionTimestamp: 5 }) })
+        )
+      )
+      await waitFor(() => expect(stranger.current.phase).toBe('choice'))
     })
 
     it('goes to ended when session state is ended in presentation mode', async () => {

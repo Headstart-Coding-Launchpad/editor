@@ -871,6 +871,130 @@ describe('StudentView', () => {
     })
   })
 
+  describe('live badges', () => {
+    const award = (overrides = {}) => ({
+      status: 'awarded',
+      source: 'manual',
+      reason: null,
+      taskId: 1,
+      announce: true,
+      bulkId: null,
+      decidedAt: 100,
+      ...overrides,
+    })
+
+    function mkLiveSession(overrides = {}) {
+      return {
+        session: {
+          lessonId: 'python-1-1',
+          state: 'active',
+          createdAt: 456,
+          currentTaskId: 1,
+          students: { 'student-1': { displayName: 'Me' }, sam: { displayName: 'Sam' } },
+          ...overrides,
+        },
+        loading: false,
+        registerPresence: vi.fn(),
+        joinSession: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentInteraction: vi.fn(),
+        writeStudentPersonalSandbox: vi.fn(),
+        writeStudentPresence: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
+      }
+    }
+
+    it('lists awards held at load in the pill without replaying the card', async () => {
+      mocks.useSession.mockReturnValue(
+        mkLiveSession({ badges: { 'student-1': { bug_hunter: award() } } })
+      )
+      render(<StudentView lessonId="python-1-1" />)
+      await screen.findByRole('button', { name: /Coding moments/ })
+      expect(screen.queryByTestId('badge-celebration')).not.toBeInTheDocument()
+    })
+
+    it('celebrates a new award for the student and toasts a classmate', async () => {
+      mocks.useSession.mockReturnValue(mkLiveSession())
+      const { rerender } = render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      mocks.useSession.mockReturnValue(
+        mkLiveSession({
+          badges: {
+            'student-1': { bug_hunter: award({ decidedAt: 200 }) },
+            sam: { code_fixer: award({ decidedAt: 201 }) },
+          },
+        })
+      )
+      rerender(<StudentView lessonId="python-1-1" />)
+      expect(await screen.findByTestId('badge-celebration')).toHaveTextContent('Bug Hunter')
+      expect(screen.getByRole('status')).toHaveTextContent('Sam · Code Fixer')
+    })
+
+    it('gives the presentation window the toast only', async () => {
+      mocks.useSession.mockReturnValue(mkLiveSession())
+      const { rerender } = render(<StudentView lessonId="python-1-1" teacherPresentation />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      mocks.useSession.mockReturnValue(
+        mkLiveSession({ badges: { 'student-1': { bug_hunter: award({ decidedAt: 200 }) } } })
+      )
+      rerender(<StudentView lessonId="python-1-1" teacherPresentation />)
+      const toast = await screen.findByRole('status')
+      expect(toast).toHaveTextContent('Me · Bug Hunter')
+      expect(toast.className).toContain('sv-badge-toast--presentation')
+      expect(screen.queryByTestId('badge-celebration')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Coding moments/ })).not.toBeInTheDocument()
+    })
+
+    it("lists the student's moments on the session-end screen", async () => {
+      mocks.useSession.mockReturnValue(mkLiveSession())
+      const { rerender } = render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      mocks.useSession.mockReturnValue(
+        mkLiveSession({
+          state: 'ended',
+          students: null,
+          badges: {
+            'student-1': {
+              bug_hunter: award(),
+              code_fixer: award({ status: 'revoked' }),
+            },
+            sam: { persistence: award() },
+          },
+        })
+      )
+      rerender(<StudentView lessonId="python-1-1" />)
+      const sheet = await screen.findByRole('list', { name: 'My coding moments' })
+      expect(sheet).toHaveTextContent('Bug Hunter')
+      expect(sheet).not.toHaveTextContent('Code Fixer')
+      expect(sheet).not.toHaveTextContent('Persistence')
+    })
+
+    it('shows the moments again when the student reloads the end screen', async () => {
+      mocks.useSession.mockReturnValue(
+        mkLiveSession({
+          state: 'ended',
+          endedAt: Date.now(),
+          students: null,
+          badges: { 'student-1': { bug_hunter: award() } },
+        })
+      )
+      render(<StudentView lessonId="python-1-1" />)
+      await screen.findByText('Session ended')
+      expect(screen.getByRole('list', { name: 'My coding moments' })).toHaveTextContent(
+        'Bug Hunter'
+      )
+    })
+  })
+
   describe('persistent Need Help control', () => {
     function mkLiveSession(sessionOverrides = {}, hookOverrides = {}) {
       return {

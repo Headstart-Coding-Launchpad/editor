@@ -38,6 +38,12 @@ import TaskProgressDots from '../components/TaskProgressDots'
 import TeacherMessageToast from '../components/TeacherMessageToast'
 import { NudgeBanner, NudgePermissionPrompt } from '../components/NudgeBanner'
 import useNudgeAlert from '../hooks/useNudgeAlert'
+import useBadgeCelebrations from '../hooks/useBadgeCelebrations'
+import BadgeCelebration from '../components/badges/BadgeCelebration'
+import BadgeClassToast from '../components/badges/BadgeClassToast'
+import CodingMomentsPill from '../components/badges/CodingMomentsPill'
+import { resolveBadge } from '../../badges/badgeDisplay'
+import { listMyMoments } from '../../badges/celebration'
 import LoadingScreen from '../components/LoadingScreen'
 import SessionEndedScreen from '../components/SessionEndedScreen'
 import StudentStatusBanners from '../components/StudentStatusBanners'
@@ -333,6 +339,25 @@ export default function StudentView({
     studentPushedAt: session?.students?.[identity?.anonymousId]?.nudgePushedAt ?? null,
     classPushedAt: session?.nudgeAwayPushedAt ?? null,
   })
+
+  // Live badges: the recipient's card and Coding moments pill, and the class toasts (the
+  // presentation window gets the toasts only). Awards stored before this load aren't replayed.
+  const badgeCelebrations = useBadgeCelebrations({
+    ready: !!session,
+    enabled: phase === 'lesson' || phase === 'sandbox',
+    decisions: session?.badges,
+    viewerId: teacherPresentation ? null : (identity?.anonymousId ?? null),
+    students: session?.students,
+    soundsOff: !!session?.badgeSettings?.soundsOff,
+  })
+  // The session-end screen reads the kept `badges` node, so it survives a reload of that screen.
+  const endScreenMoments = useMemo(
+    () =>
+      phase === 'ended' && !teacherPresentation
+        ? listMyMoments(session?.badges, identity?.anonymousId)
+        : [],
+    [phase, teacherPresentation, session?.badges, identity?.anonymousId]
+  )
 
   function handleGoFullscreen() {
     document.documentElement.requestFullscreen?.().catch(() => {})
@@ -742,6 +767,7 @@ export default function StudentView({
         soloCompanion={soloCompanion}
         onTrySoloChallenge={soloCompanion ? handleTrySoloChallenge : undefined}
         onOpenPlayground={canOpenPlaygroundAtEnd ? handleOpenPlaygroundAtEnd : undefined}
+        moments={endScreenMoments}
       />
     )
   }
@@ -1123,6 +1149,14 @@ export default function StudentView({
     </div>
   ) : (
     <div style={s.topBarTaskControls}>
+      {(phase === 'lesson' || phase === 'sandbox') && (
+        <CodingMomentsPill
+          moments={badgeCelebrations.moments}
+          muted={badgeCelebrations.muted}
+          onMutedChange={badgeCelebrations.setMuted}
+          soundsOff={!!session?.badgeSettings?.soundsOff}
+        />
+      )}
       {canRequestHelp && (
         <button
           type="button"
@@ -1231,6 +1265,19 @@ export default function StudentView({
           pushedAt={session?.students?.[identity?.anonymousId]?.teacherMessagePushedAt}
         />
       )}
+      {!teacherPresentation && (
+        <BadgeCelebration
+          award={badgeCelebrations.card}
+          badge={badgeCelebrations.card ? resolveBadge(badgeCelebrations.card.badgeId) : null}
+          onDone={badgeCelebrations.cardDone}
+        />
+      )}
+      <BadgeClassToast
+        toast={badgeCelebrations.toast}
+        badge={badgeCelebrations.toast ? resolveBadge(badgeCelebrations.toast.badgeId) : null}
+        presentation={teacherPresentation}
+        onDone={badgeCelebrations.toastDone}
+      />
       {nudgeBannerVisible && <NudgeBanner onDismiss={dismissNudge} />}
       {nudgeEnabled && <NudgePermissionPrompt />}
       {showTeacherEditConsent && (

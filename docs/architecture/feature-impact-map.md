@@ -113,6 +113,7 @@ Usually changes with:
 
 - `src/badges/` (definitions, `rules.js`, `timeline.js`, `evaluate.js`, `registry.pure.js`)
 - The tutor UI: `src/badges/badgeDisplay.js` (resolving registry and catalogue badges), `src/app/views/teacher/BadgeSuggestionsPanel.jsx`, `src/app/components/badges/` (`BadgeChip`, `BadgeAwardDialog`), and the badge props on `StudentGrid` / `StudentCard` / `StudentModal` (teacher-only: never render these in student or presentation components)
+- The student celebration: `src/badges/celebration.js`, `src/app/hooks/useBadgeCelebrations.js`, `src/app/components/badges/` (`BadgeCelebration`, `BadgeClassToast`, `CodingMomentsPill`, `BadgeStickerSheet`), the `sv-badge-*` / `sv-sticker*` CSS in `src/index.css`, `playBadgeChime` in `src/app/nudgeAlert.js`, and `SessionEndedScreen` / `useStudentPhase` (the end-screen reload)
 - `src/badges/liveTimeline.js` (stored data → timeline events, and the memo keys: a new event source must be added to both `buildStudentTimeline` and `studentTimelineInputKey`) and `src/app/hooks/useBadgeSuggestions.js` (`TeacherView`)
 - `src/shared/taskActivity.js` (pattern ids are stored by badges and reports: add aliases, never rename)
 - `src/shared/lessonValidation.js` and `src/badges/validation.js`

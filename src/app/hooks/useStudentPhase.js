@@ -9,6 +9,15 @@ import { useState, useRef, useEffect } from 'react'
  * onBeforeTaskChange()    — call before currentTaskId is updated (save current work)
  * onPersonalSandboxExit() — call when a forced task/phase change must close personal sandbox
  */
+/** How long after a session ends a reload by one of its students returns to the end screen. */
+export const END_SCREEN_RESTORE_MS = 3 * 60 * 60 * 1000
+
+function isRecentEndScreenReload(session, identity, now = Date.now()) {
+  if (!identity?.anonymousId || session?.createdAt == null) return false
+  if (identity.lastSessionTimestamp !== session.createdAt) return false
+  return session.endedAt != null && now - session.endedAt < END_SCREEN_RESTORE_MS
+}
+
 export function useStudentPhase({
   session,
   sessionLoading,
@@ -117,6 +126,13 @@ export function useStudentPhase({
         onPersonalSandboxExit?.()
         onBeforeTaskChange?.()
         onTaskReset?.()
+        setPhase('ended')
+        return
+      }
+      // A student reloading their own end screen gets it back (with their coding moments,
+      // which endSession keeps), but only for a while: an old ended session shouldn't hide
+      // the Join Live choice next lesson.
+      if (phaseRef.current === 'loading' && isRecentEndScreenReload(session, identity)) {
         setPhase('ended')
         return
       }
