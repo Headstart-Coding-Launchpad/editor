@@ -1,6 +1,6 @@
 # Live Student Badges Plan
 
-Status: **Agreed, not started.** Interviewed and revised on 2026-09-30, then reviewed cold by a fresh
+Status: **Approved for implementation (2026-09-30).** Interviewed and revised on 2026-09-30, then reviewed cold by a fresh
 agent against the code and revised again. Branch `feature/live-badges`. Delivered as seven focused PRs
 (see [PR sequence](#pr-sequence)).
 
@@ -30,7 +30,7 @@ These are fixed for this plan.
 | Class wall | **Grouped by badge** ("🐛 Bug Hunter: Alex, Sam"), never by student, so the layout never invites comparison (a determined reader could still tally names). |
 | Animation | CSS badge flip plus shine, and a **subtle** two-note chime. No new dependencies. The rest of the app stays calm. |
 | Sandboxes | Signal badges count in sandboxes. The report records the teacher sandbox in full, as a possible lesson gap, and personal sandboxes as activity only. |
-| Data model | Approved: RTDB `sessions/{lessonId}/badges`, `badgeSettings` and `studentSignals`; a top-level RTDB `sessionArchive/{lessonId}` for sandbox code (**added after the review: awaiting confirmation**); `attemptLog.error` and `pasteLog.firstAt`; Firestore `badgeCatalogue`. Details are [below](#data-model). The solo localStorage key was approved but is deferred along with solo. |
+| Data model | Approved: RTDB `sessions/{lessonId}/badges`, `badgeSettings` and `studentSignals`; a top-level RTDB `sessionArchive/{lessonId}` for sandbox code (added after the review, approved 2026-09-30); `attemptLog.error` and `pasteLog.firstAt`; Firestore `badgeCatalogue`. Details are [below](#data-model). The solo localStorage key was approved but is deferred along with solo. |
 
 ## What the codebase gives us (verified)
 
@@ -158,8 +158,7 @@ else.
 - **Coverage audit (PR1):** a one-off script counts published lessons' tasks per recognised pattern,
   and whether each has a `check` (attempts are logged only for checked tasks). The results are
   reviewed before PR3.
-  - This matters especially for Challenge (Open-Ended) tasks, which are often unchecked; without a
-    check, Challenge Solver can't fire.
+  - The author confirmed that Challenge (Open-Ended) tasks do have checks; the audit verifies coverage across the other patterns.
 - **Content workspace follow-up (outside this repo):** `guides/Task Intent Format.md` should point at
   this file as the source of truth.
 
@@ -292,7 +291,7 @@ keys pressed inside iframes (the HTML preview, Arcade) are ignored. The iframe g
 
 ## Data model
 
-Everything here was signed off on 2026-09-30, except `sessionArchive`, which the review added and is awaiting confirmation. Each change updates `database.rules.json` plus the rules
+Everything here was signed off on 2026-09-30 (`sessionArchive` was approved after the review). Each change updates `database.rules.json` plus the rules
 tests (`npm run test:rules`), `docs/agents/runtime-model.md`, and the `createSession` / `endSession`
 resets.
 
