@@ -11,6 +11,9 @@ export const MOTION_MS = Object.freeze({
   base: 280,
   slow: 460,
   stagger: 70,
+  // Class lengths JS has to wait out (`.motion-spin-once`, `.motion-tumble-in`).
+  spin: 620,
+  tumble: 720,
 })
 
 /** A stagger never waits for more than this many items, so a long list doesn't drag. */

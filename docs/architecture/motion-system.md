@@ -29,6 +29,8 @@ any of them.
 | `--motion-base` | 280ms | Item entrances (bullets, answers) |
 | `--motion-slow` | 460ms | Panel entrances (explainer), task slides |
 | `--motion-stagger` | 70ms | Gap between staggered items |
+| `--motion-spin` | 620ms | Length of `motion-spin-once` |
+| `--motion-tumble` | 720ms | Length of `motion-tumble-in` |
 | `--motion-ease-out` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | Default: things arriving |
 | `--motion-ease-glide` | `cubic-bezier(0.22, 1, 0.36, 1)` | Long travel (task slides) |
 | `--motion-ease-spring` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | Playful overshoot (spin, tumble) |
@@ -53,9 +55,11 @@ Every class uses `animation-fill-mode: backwards`: a staggered item stays hidden
 and once the animation ends the element's own `transform` (a hover lift, the quiz scale-to-fit)
 applies again. Don't switch a motion class to `both` or `forwards`.
 
-To replay a one-shot class (the spin on a second pass), change the element's React `key`, for
-example to the `usePassMoment` count. Re-adding the same class name does not restart a CSS
-animation.
+To replay a one-shot class (the spin on a second pass), either change the element's React `key`
+(for example to the `usePassMoment` count) or, for anything that can hold keyboard focus, restart
+it in place: remove the class, read `offsetWidth` to force a reflow, add it back (`SoloNav.jsx`
+does this so the Next button keeps focus). Re-adding the same class name alone does not restart a
+CSS animation.
 
 ## Hooks and helpers (`src/shared/motion.js`)
 
@@ -78,6 +82,14 @@ files. A sound only plays where the student can mute it, and the tutor's class-w
 always wins in a live session. It never plays on the teacher view, the presentation window or
 the Builder preview.
 
+- **One Sounds mute.** `src/app/soundSettings.js` (`useSoundsMuted()`) stores it in localStorage
+  as `headstart_sounds_muted` (`'1'` when muted), kept in sync across components and tabs. The
+  student sets it from the 🔊/🔇 top-bar button (`SoundsToggleButton.jsx`, solo and live) or the
+  🎖️ pill's popover; both are the same setting.
+- **Celebration sounds:** the badge chime and the `complete` chime (`useCompleteChime`, once per
+  task per screen, on a pass the student watched; silent for passes restored on arrival or reload).
+- **Not a celebration:** the teacher's nudge chime calls a student back and ignores the mute.
+
 ## Adding motion: checklist
 
 1. Is it marking a real change or achievement? If it's decoration, don't.
@@ -95,4 +107,14 @@ the Builder preview.
 
 | Moment | Where | Motion |
 |---|---|---|
+| Task slide | `TaskSlideTransition.jsx` (students via `LessonTaskContent`, presentation window, teacher explainer in `TeacherView`) | Direction-aware 120px slide over `--motion-slow` / glide; Back slides the other way |
+| Explainer arrives | `ExplainerPanel.jsx` (`entranceKey`) | `motion-drop-in`, first view only; not on collapse/expand |
+| Explainer and information bullets | `MarkdownRenderer` `animateLists` (explainer and `InformationTask` only) | `motion-slide-in` + `motion-stagger` per list |
+| Answers | Multiple choice, Match, fill-in-the-blank, confidence (`src/activities/ui/choiceEntrance.jsx`) | `motion-rise-in` + `motion-stagger`, first view only |
+| Checks pass | `CheckFeedbackBanner.jsx` ✓ icon | `motion-spin-once` each pass banner |
+| Checks fail | `CheckFeedbackBanner.jsx` fail banner | `motion-wobble` each failed check |
+| Next after a pass | `SoloNav.jsx` | Static success glow; `motion-spin-once` on a pass the student watched (`usePassMoment`) |
+| Activity correct | `src/activities/ui/ActivityCorrect.jsx` (`ActivityCorrect`, `SpinTick`) | ✓ `motion-spin-once` when it appears |
+| Success chime | `useCompleteChime` (StudentView) | Rising C–E–G Web Audio chime, first watched pass per task |
+| Badge Summary | `BadgeSummaryTask.jsx`, `BadgeStickerSheet` `entrance="tumble"` | Student: stickers `motion-tumble-in` 260ms apart, then the wall drops; teacher/presentation: row emoji tumble, rows drop; later arrivals only drop in |
 | Badge celebration card, class toast, sticker sheet | `src/app/components/badges/` | `sv-badge-*` keyframes (predate this system; same principles) |

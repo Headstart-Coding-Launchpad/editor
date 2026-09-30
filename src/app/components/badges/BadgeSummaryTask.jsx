@@ -11,9 +11,8 @@ import { listMyMoments } from '../../../badges/celebration'
 import BadgeStickerSheet from './BadgeStickerSheet'
 import CopyClassSummaryButton from './CopyClassSummaryButton'
 
-// The entrance timings (docs/architecture/motion-system.md). TUMBLE_MS mirrors `.motion-tumble-in`
-// in src/index.css; change both together.
-export const TUMBLE_MS = 720
+// The entrance timings (docs/architecture/motion-system.md).
+export const TUMBLE_MS = MOTION_MS.tumble
 export const STICKER_STAGGER_MS = 260
 export const EMOJI_STAGGER_MS = 200
 const ROW_STAGGER_MS = MOTION_MS.stagger

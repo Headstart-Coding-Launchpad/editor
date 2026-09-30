@@ -47,13 +47,16 @@ describe('SoloNav Next button motion', () => {
     expect(nextButton()).not.toHaveClass('motion-spin-once')
   })
 
-  it('remounts the button to replay the spin on a second watched pass', () => {
+  it('replays the spin on a second watched pass without remounting, so focus stays', () => {
     const { rerender } = render(nav())
     rerender(nav({ cs: { checkPassed: true } }))
     const first = nextButton()
+    first.focus()
     rerender(nav({ cs: { checkPassed: false } }))
+    expect(nextButton()).not.toHaveClass('motion-spin-once')
     rerender(nav({ cs: { checkPassed: true } }))
-    expect(nextButton()).not.toBe(first)
+    expect(nextButton()).toBe(first)
     expect(nextButton()).toHaveClass('motion-spin-once')
+    expect(document.activeElement).toBe(first)
   })
 })

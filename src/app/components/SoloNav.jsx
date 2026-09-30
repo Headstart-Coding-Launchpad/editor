@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useLayoutEffect, useRef } from 'react'
 import { useIsMobile } from '../../shared/useIsMobile'
 import { usePassMoment } from '../../shared/motion'
 
@@ -26,6 +26,18 @@ export default function SoloNav({
   // a reload). Keying the button by it restarts the one-shot spin; the success look is static.
   const passMoment = usePassMoment(!!cs.checkPassed, flatTasks[currentIndex]?.id)
   const nextSpin = nextSuccess && passMoment > 0
+  const nextRef = useRef(null)
+
+  // Restart the spin in place (not by remounting, which would drop keyboard focus): take the
+  // class off, force a reflow, put it back.
+  useLayoutEffect(() => {
+    const el = nextRef.current
+    if (!el) return
+    el.classList.remove('motion-spin-once')
+    if (!nextSpin) return
+    void el.offsetWidth
+    el.classList.add('motion-spin-once')
+  }, [nextSpin, passMoment])
 
   return (
     <div style={navStyle}>
@@ -50,8 +62,8 @@ export default function SoloNav({
       )}
       {!cs.inPersonalSandbox && (
         <button
-          key={`next-${passMoment}`}
-          className={`btn-secondary${nextSuccess ? ' btn-next-success' : ''}${nextSpin ? ' motion-spin-once' : ''}`}
+          ref={nextRef}
+          className={`btn-secondary${nextSuccess ? ' btn-next-success' : ''}`}
           style={{
             ...btnStyle,
             ...(!compact && canNavigateNextSolo && hasNextTask
