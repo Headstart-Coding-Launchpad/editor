@@ -73,7 +73,7 @@ Status and phased roadmap for the `desktop` lesson module (windowed desktop shel
 **Load when:** picking up or planning further Desktop module work, or checking what's built vs. outstanding.
 
 ### [architecture/live-badges-plan.md](architecture/live-badges-plan.md)
-Agreed phased plan for live student badges: a rules engine over per-student timelines (teacher-side in live, on-device in solo), tutor suggestions/awards, the badge registry and Admin catalogue, lesson badges, `taskActivity` parsing, celebration UI, the Badge Summary information task, and session-report fields.
+Agreed phased plan for live student badges: a teacher-side rules engine over per-student timelines, tutor suggestions/awards, the badge registry and Admin catalogue, `taskActivity` parsing, celebration UI, the Badge Summary information task, and session-report fields. Live only in v1.
 
 **Load when:** working on any badge PR, adding a badge, or changing badge rules, data paths, or the `taskActivity` vocabulary.
 

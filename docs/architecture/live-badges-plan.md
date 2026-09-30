@@ -1,32 +1,34 @@
 # Live Student Badges Plan
 
-Status: **Agreed, not started** (interviewed 2026-09-30, branch `feature/live-badges`). Delivered as seven
-focused PRs (see [PR sequence](#pr-sequence)). Source brief: "Live Student Badges" (recognise good
-learning behaviour as it happens; tutor stays in control; no points, totals, rankings or leaderboard).
+Status: **Agreed, not started** (interviewed 2026-09-30, revised the same day, branch `feature/live-badges`).
+Delivered as seven focused PRs (see [PR sequence](#pr-sequence)). Source brief: "Live Student Badges"
+(recognise good learning behaviour as it happens; tutor stays in control; no points, totals, rankings or
+leaderboard).
 
 > **Core principle:** make good learning behaviours visible, rewarding and socially engaging without
 > turning coding into a competition.
 
 ## Decisions
 
-These answers from the interview are fixed for this plan.
+These answers from the interview and the same-day revision are fixed for this plan.
 
 | Topic | Decision |
 |---|---|
-| Modes | **Live and solo.** Live: rules *suggest* and the tutor decides. Solo: there is no tutor, so the rule-backed badges award directly. |
-| Live auto-award | Suggest by default. A tutor session toggle, **Auto-award high-confidence badges**, lets the badges marked `autoAwardable` skip the click. Any award can be revoked. |
+| Modes | **Live only for v1.** Rules *suggest* and the tutor decides. Solo badges are deferred (see [Later](#later)); the engine is built so solo can be added without rework. |
+| Live auto-award | Suggest by default. A tutor session toggle, **Auto-award high-confidence badges**, lets badges marked `autoAwardable` skip the click. Any award can be revoked. |
 | Task kind | **Parse the existing `taskActivity` string** into the Glossary pattern it names. No lesson re-tagging. A per-task `badgeHints` override covers edge cases. |
-| Brief items that don't fit the platform | **Tutor-only.** This covers Knowledge Builder, Project Explorer and Keyboard Wizard (students can't move ahead in live mode, and quizzes are single pass/fail questions). |
+| Brief items that don't fit the platform | **Tutor-only.** This covers Knowledge Builder and Project Explorer (quizzes are single pass/fail questions, and students can't move ahead in live mode). |
 | Automatic mappings | Bug Hunter ← Debug Code Task · Code Builder ← Copy the Code · Challenge Solver ← Challenge (Open-Ended) · Code Detective ← Quiz: What Is the Error? / Quiz: Fix a Common Bug (first try) |
 | Code Fixer | Only after a **real console error** (syntax or runtime), then edited code, then a pass. |
+| Persistence | **Rule-backed, suggest only.** At least 3 failed attempts with *different* code on one task, then a real pass. Quizzes are excluded (retrying multiple choice is guessing). The threshold is configurable per lesson. |
+| Keyboard Wizard | **Rule-backed, suggest only.** At least 3 different shortcuts from a set list used during the lesson. Copy and paste don't count. |
 | Quiz Master | First-try correct % over a group of graded quizzes. |
+| Lesson-specific badges | **Not part of this system.** Per-lesson badges (the brief's §6, and the content workspace's concept, capstone and Level badges) stay separate. |
 | History | **Session only.** Named badges in the session report plus the end-of-lesson summary. No cross-lesson sticker book. |
 | Adding badges | **Both:** a code registry (with rules, scaffold, skill) for built-in badges, plus an Admin-editable catalogue of manual-only badges that needs no deploy. |
-| Lesson badges | **Separate live badges**, 1–2 per lesson in a new envelope field. The content workspace's concept, capstone and Level badges (Badge Writing Guide) are untouched and stay off-platform. |
-| Lesson badge discovery | *Default, not confirmed:* a "❓ Today's lesson badge" teaser that reveals the name and emoji the first time anyone in the class earns it. Easy to switch to "shown upfront". |
 | Class wall | **Grouped by badge** ("🐛 Bug Hunter: Alex, Sam"), never by student, so nobody can count. |
 | Animation | CSS badge flip plus shine, and a **subtle** two-note chime. No new dependencies. The rest of the app stays calm. |
-| Data model | Approved: RTDB `badges` node, RTDB `topicLog` node, Firestore `badgeCatalogue`, and a solo localStorage key (details [below](#data-model)). |
+| Data model | Approved: RTDB `badges`, `topicLog` and `shortcutLog` nodes, and Firestore `badgeCatalogue` (details [below](#data-model)). A solo localStorage key was approved but is deferred along with solo. |
 
 ## What the codebase already gives us (and what it doesn't)
 
@@ -42,11 +44,19 @@ These answers from the interview are fixed for this plan.
   Format.md` and `Lesson Format Glossary.md`). This plan brings the vocabulary into the platform.
 - **Quizzes** are one graded question per task with free retries, so "first try" means the first
   `attemptLog` entry for that task passed.
+- **`attemptLog` de-duplicates:** re-running the same code bumps `retries` rather than adding an entry.
+  So distinct failed entries mean distinct code, which is what Persistence needs.
 - **The Topic Library** only syncs the topic open *right now* (`students/{id}/currentTopicId`), and the
   library button, related-topic pills and `InlineMarkdown` cards report nothing. This needs a small log.
 - **Runtime errors** are visible only as the latest `lastRunStatus`, which is overwritten. Code Fixer
   needs an `error` flag on the attempt entry.
-- **Solo syncs nothing** and keeps pass/fail in memory only.
+- **Shortcuts:**
+  - `Mod-Enter` runs through the same handler as the Run button, so today the two can't be told apart.
+  - Copy and paste are reported.
+  - The Desktop input recorder already counts keyboard vs menu shortcuts.
+
+  Keyboard Wizard needs the editor to report *which* shortcut fired.
+- **Solo syncs nothing** and keeps pass/fail in memory only (one reason solo is deferred).
 - **Session reports** are built in `src/shared/lessonReport.js` and saved before `endSession` wipes the
   logs. They display anonymised ("Student N").
 - **No animation library.** There are CSS keyframes in `src/index.css`, and the nudge chime
@@ -55,19 +65,17 @@ These answers from the interview are fixed for this plan.
 ## Architecture
 
 ```
-            live: teacher client                        solo: student client
-  session snapshot ──► buildLiveTimeline()     local events ──► buildSoloTimeline()
-                              │                                         │
-                              └──────────► evaluateBadgeRules ◄─────────┘
-                                   (pure, deterministic, per student)
-                                              │
-                        suggestions[] { badgeId, studentId, taskId, reason }
-                                              │
-                 live: minus decided keys → Suggestions panel → Award / Dismiss
-                 solo: soloAuto badges → awarded locally → celebration
+  teacher client:  session snapshot ──► buildLiveTimeline() ──► evaluateBadgeRules
+                                                          (pure, deterministic, per student)
+                                                                        │
+                                   suggestions[] { badgeId, studentId, taskId, reason }
+                                                                        │
+                         minus decided keys → Suggestions panel → Award / Dismiss (or auto-award)
+                                                                        │
+                                          badges log → student celebration + class toast
 ```
 
-- **One rules engine, two timeline sources.** A *timeline* is a normalised, ordered event list per
+- **Rules read a timeline, not Firebase.** A *timeline* is a normalised, ordered event list per
   student:
   - `attempt { taskId, passed, firstTry, error, assisted, submissionHash, at }`
   - `topic_open { topicId, taskId, source: student|teacher, at }`
@@ -75,12 +83,13 @@ These answers from the interview are fixed for this plan.
   - `paste { taskId }`
   - `override { taskId }`
   - `show_complete { taskId }`
+  - `shortcut { shortcutId, at }`
 
-  Rules never touch Firebase or React.
+  Rules never touch Firebase or React, so a later solo timeline builder can reuse them unchanged.
 - **Suggestions are not stored.** They are recomputed from the snapshot, so they survive a teacher
   reload for free. Only *decisions* (awarded, dismissed, revoked) are written.
-- **Where the engine runs.** Live: the engine runs in `TeacherView` via `useBadgeSuggestions(session,
-  lesson)`, memoised per student. Solo: it runs in `StudentView` via `useSoloBadges`.
+- **Where the engine runs:** in `TeacherView` via `useBadgeSuggestions(session, lesson)`, memoised
+  per student.
 - **Composed lessons.** Rules resolve each task through the per-task effective lesson, never
   `lesson.type`.
 
@@ -94,8 +103,13 @@ so every rule inherits them:
 - the complete stage was revealed before the pass
 - a large paste on that task before the pass
 
-Every badge is suggested **at most once per student per lesson**, and nothing rewards speed, run
-counts, attempt counts, code volume or time on platform.
+Every badge is suggested **at most once per student per lesson**. Nothing rewards speed, run counts,
+code volume or time on platform.
+
+Persistence is the one rule that looks at attempts, so it has extra limits:
+- it counts only *distinct* failed submissions
+- it skips quizzes
+- it is never auto-awarded, so the tutor judges whether it was real persistence
 
 ## Task kind: `taskActivity` parser
 
@@ -122,21 +136,26 @@ counts, attempt counts, code volume or time on platform.
     emoji: '🐛',
     title: 'Bug Hunter',
     blurb: 'Found and fixed a bug.',          // shown to the student and in the class toast
-    tier: 'universal',                        // 'universal' | 'lesson' (lesson = gold treatment)
     rule: realPassOnPattern('debug_code_task'),
     reasonText: ({ task }) => `Fixed the bug in “${task.title}”`,
     autoAwardable: true,                      // eligible for the tutor's auto-award toggle
-    soloAuto: true,                           // awarded directly in solo
     examples: [                               // run by one generic test for every badge
       { name: 'passes debug task', timeline: [...], expect: ['t3'] },
       { name: 'assisted pass ignored', timeline: [...], expect: [] },
     ],
   })
   ```
+  Tutor-only badges omit `rule`.
 - **Registry files:** `src/badges/registry.pure.js` (Node-safe, for the CLI and tests) and
   `src/badges/registry.js`. These mirror the activities registry.
-- **Rule helpers** in `src/badges/rules.js`: `realPassOnPattern`, `firstTryOnPatterns`,
-  `errorThenPass`, `topicThenPass`, `quizGroupFirstTry`, `passTasks`.
+- **Rule helpers** in `src/badges/rules.js`:
+  - `realPassOnPattern`
+  - `firstTryOnPatterns`
+  - `errorThenPass`
+  - `distinctFailsThenPass`
+  - `topicThenPass`
+  - `quizGroupFirstTry`
+  - `distinctShortcuts`
 
 ### Admin catalogue (Firestore, manual-only)
 
@@ -147,19 +166,16 @@ counts, attempt counts, code volume or time on platform.
 - **Ids:** must not collide with registry ids (enforced on save).
 - **Archiving:** archived badges vanish from the picker but still render in old reports.
 
-### Lesson badges (lesson envelope)
+### Lesson authoring
+
+This feature adds no badge definitions to lessons. Lessons can only tune the built-in rules.
 
 ```yaml
-badges:                       # optional, max 2
-  - id: loop_master
-    emoji: "🔄"
-    title: Loop Master
-    blurb: Used loops to solve the challenge.
-    suggestWhen:              # optional; omit → tutor-only
-      passTasks: [loop-challenge]
-badgeOptions:                 # optional
-  quizMasterThreshold: 0.8    # default 0.8
-  quizMasterMinQuizzes: 3     # default 3
+badgeOptions:                     # optional, lesson envelope
+  quizMasterThreshold: 0.8        # default 0.8
+  quizMasterMinQuizzes: 3         # default 3
+  persistenceMinFails: 3          # default 3 distinct failed submissions
+  keyboardWizardMinShortcuts: 3   # default 3 different shortcuts
 ```
 
 A per-task override for edge cases:
@@ -170,56 +186,65 @@ badgeHints:
   suppress: [code_fixer]      # never suggest this badge from this task
 ```
 
-- **Validation (errors):**
+- **Validation errors:**
   - unknown badge ids in `badgeHints`
-  - more than 2 lesson badges
-  - lesson badge ids that clash with registry ids
-  - `passTasks` naming missing tasks
-  - a missing emoji, title or blurb
-- **Docs:** documented in `lesson-schema.md`, `lesson-schema-yaml.md` and a new
-  `docs/authoring/badges.md`, with a CHANGELOG entry.
-- **Builder:** gets a "Lesson badges" section in `LessonMetaPanel` and a "Badge hints" field on the
-  task editor.
+  - `badgeOptions` values out of range (threshold outside 0–1, counts below 1)
+- **Docs:** `lesson-schema.md`, `lesson-schema-yaml.md`, a new `docs/authoring/badges.md` (which
+  task activities trigger which badges), and a CHANGELOG entry.
+- **Builder:** a "Badge hints" field on the task editor. `badgeOptions` is YAML-only in v1.
 
 ## The v1 badge set
 
-| Badge | Kind | Trigger (real passes only) | Auto-awardable | Solo |
-|---|---|---|---|---|
-| 🐛 Bug Hunter | rule | Pass on a `Debug Code Task` | ✅ | ✅ |
-| 📋 Code Builder | rule | Pass on `Copy the Code` (Complete Example excluded: nothing to type) | ✅ | ✅ |
-| 🔓 Challenge Solver | rule | Pass on `Challenge (Open-Ended)` with no support stage revealed | ✅ | ✅ |
-| 🔍 Code Detective | rule | First-try correct on `Quiz: What Is the Error?` or `Quiz: Fix a Common Bug` | – | ✅ |
-| 🔧 Code Fixer | rule | An attempt with a **real console error**, then a pass with changed code, on a non-debug task | – | ✅ |
-| 📚 Resourceful Coder | rule | The student opened a topic themselves (not teacher-sent) while the task was unsolved, then passed it. The reason says whether the topic is linked from the task | – | ✅ |
-| 🎯 Quiz Master | rule | At least the threshold of first-try correct across a task group with at least the minimum number of graded quizzes (e.g. the End Quiz). Confidence checks excluded | ✅ | ✅ |
-| Lesson badges | rule or tutor | `suggestWhen.passTasks` all passed | ✅ | ✅ |
-| 🧠 Problem Solver · 🔨 Persistence · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🎯 Focused Coder · 🚀 Ready to Code · 🚀 Project Explorer · 📈 Knowledge Builder · ⌨️ Keyboard Wizard · 🤝 Helpful Coder | tutor | none | – | – |
+| Badge | Kind | Trigger (real passes only) | Auto-awardable |
+|---|---|---|---|
+| 🐛 Bug Hunter | rule | Pass on a `Debug Code Task` | ✅ |
+| 📋 Code Builder | rule | Pass on `Copy the Code` (Complete Example excluded: nothing to type) | ✅ |
+| 🔓 Challenge Solver | rule | Pass on `Challenge (Open-Ended)` with no support stage revealed | ✅ |
+| 🎯 Quiz Master | rule | At least the threshold of first-try correct across a task group with at least the minimum number of graded quizzes (e.g. the End Quiz). Confidence checks excluded | ✅ |
+| 🔍 Code Detective | rule | First-try correct on `Quiz: What Is the Error?` or `Quiz: Fix a Common Bug` | – |
+| 🔧 Code Fixer | rule | An attempt with a **real console error**, then a pass with changed code, on a non-debug task | – |
+| 🔨 Persistence | rule | At least `persistenceMinFails` failed attempts with distinct code on one task, then a pass. Code and Code Arrange tasks only (no quizzes) | – |
+| 📚 Resourceful Coder | rule | The student opened a topic themselves (not teacher-sent) while the task was unsolved, then passed it. The reason says whether the topic is linked from the task | – |
+| ⌨️ Keyboard Wizard | rule | At least `keyboardWizardMinShortcuts` different shortcuts from the list below used this lesson | – |
+| 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🎯 Focused Coder · 🚀 Ready to Code · 🚀 Project Explorer · 📈 Knowledge Builder · 🤝 Helpful Coder | tutor | none | – |
 
-Tutor-only badges are **not** awarded in solo, because solo has no tutor.
+- **Persistence and Code Fixer** can both be suggested from the same task. They recognise different
+  things, and the tutor picks.
+- **Keyboard Wizard's shortcut list** lives in one constant so it's easy to extend:
+  - run (`Ctrl/Cmd+Enter`)
+  - undo and redo
+  - toggle comment (`Ctrl/Cmd+/`)
+  - indent or outdent a selection (`Tab` / `Shift+Tab` with text selected)
+  - find (`Ctrl/Cmd+F`)
+  - Desktop-module shortcuts done by keyboard rather than menu
+
+  Copy, cut, paste and select-all don't count: paste is already flagged, and they're too easy to spam.
 
 ## Data model
 
-Every change here was signed off in the 2026-09-30 interview. Each one updates `database.rules.json`
-(plus the rules tests), `docs/agents/runtime-model.md`, and the `createSession` / `endSession` resets.
+Every change here was signed off on 2026-09-30. Each one updates `database.rules.json` (plus the rules
+tests), `docs/agents/runtime-model.md`, and the `createSession` / `endSession` resets.
 
 - **`sessions/{lessonId}/badges/{anonymousId}/{badgeId}`:**
   - Holds `{ status: 'awarded'|'dismissed'|'revoked', source: 'rule'|'auto'|'manual', reason, taskId,
     announce, decidedAt }`.
   - **Teacher-write only** (inherits the `$lessonId` teacher write), so students can't award
-    themselves. The key is the badge id, which is what enforces "once per lesson" and makes
-    auto-award idempotent across teacher tabs.
+    themselves.
+  - The key is the badge id. This enforces "once per lesson" and makes auto-award idempotent across
+    teacher tabs.
   - It is a sibling log, so `setTaskId` never wipes it. `endSession` clears it after the report saves.
 - **`sessions/{lessonId}/badgeSettings`:** `{ autoAward: boolean }`, teacher-write.
 - **`sessions/{lessonId}/topicLog/{anonymousId}/{taskId}/{topicId}`:** `{ openedAt, source }`.
   Student-write for their own id, the same pattern as `supportRevealLog`. The first open only (no
   per-click spam).
+- **`sessions/{lessonId}/shortcutLog/{anonymousId}/{shortcutId}`:** `firstUsedAt`.
+  - Student-write for their own id. First use only, so it's a handful of writes per student per
+    lesson.
+  - The editor reports shortcuts through a named-command wrapper in `CodeEditor.jsx`, so `Mod-Enter`
+    is distinguishable from the Run button.
 - **`attemptLog` entries:** gain an optional `error: true` when the run produced a console error
   (Python/Turtle/Electronics runtime, HTML `handleHtmlRuntimeError`).
 - **Firestore `badgeCatalogue/{id}`:** admin write, teacher and admin read.
-- **Solo localStorage `headstart_{lessonId}_badges_{anonymousId}`:**
-  - Holds `{ awarded: [...], timeline: [...] }`, so a reload mid-lesson keeps badges and rule state.
-  - Session-scoped: cleared when the student starts the lesson afresh.
-  - Guarded with try/catch like the other keys.
 - **Session report** (Firestore `sessionReports`, existing doc):
   - per student: `badges: [{ badgeId, emoji, title, source, reason, taskId, awardedAt }]`
   - top level: `badgeSummary: { [badgeId]: { suggested, awarded, autoAwarded, dismissed, revoked } }`
@@ -235,18 +260,17 @@ Every change here was signed off in the 2026-09-30 interview. Each one updates `
   - An **Award all** button covers several students suggested the same badge.
   - The **Auto-award high-confidence** toggle sits at the top.
 - **Student card:** a small 🏅 dot when that student has a pending suggestion. No counts on cards.
-- **Student modal:** More → **🏅 Award badge** opens a picker with universal, admin-catalogue and
-  this lesson's badges (already-awarded ones greyed out). The student's awarded list has **Revoke**,
-  which is silent to the student.
+- **Student modal:** More → **🏅 Award badge** opens a picker with universal and Admin-catalogue
+  badges (already-awarded ones greyed out). The student's awarded list has **Revoke**, which is silent
+  to the student.
 - **Multi-award:** select several cards, then Award badge (for example 🤝 Helpful Coder to a pair).
 - **Timing:** awarding takes one click and is never modal.
 
 ## Student experience
 
 - **Recipient celebration:**
-  - A centred card flips in (3D `rotateY`) with a single shine sweep. Lesson badges get a gold
-    holographic sheen.
-  - It shows the emoji, the title and "*blurb*".
+  - A centred card flips in (3D `rotateY`) with a single shine sweep, showing the emoji, the title
+    and "*blurb*".
   - After about 2.5 s it shrinks into a **🎖️ Coding moments** pill in the top bar, which opens their
     own list.
   - A subtle, low-gain two-note chime plays, reusing the nudge audio engine.
@@ -262,8 +286,6 @@ Every change here was signed off in the 2026-09-30 interview. Each one updates `
   - Never shown to the recipient.
   - Never shows totals.
   - Also shown in the presentation window.
-- **Lesson badge teaser:** a "❓ Today's lesson badge" chip. It reveals its name and emoji once the
-  first student earns it ("✨ Lesson badge unlocked: 🔄 Loop Master").
 - **Nowhere** are counts, ranks, "top student" or comparisons shown.
 
 ## Badge Summary task
@@ -272,12 +294,12 @@ Every change here was signed off in the 2026-09-30 interview. Each one updates `
   - This is the cheapest route, following `introduction`, which already renders lesson-level data
     in `src/app/components/InformationTask.jsx`.
   - Explainer optional. Usually placed last.
-- **Student (live):** their own badges as a sticker sheet that flips in one badge at a time, then
-  the class wall grouped by badge. If they earned none, the screen is still warm ("Every coder's
-  moments look different: here's what the class celebrated today"), with no empty-state shaming.
+- **Student:** their own badges as a sticker sheet that flips in one badge at a time, then the class
+  wall grouped by badge.
+  - If they earned none, the screen is still warm ("Every coder's moments look different: here's
+    what the class celebrated today"), with no empty-state shaming.
 - **Teacher:** a projector-friendly class wall grouped by badge.
-- **Solo:** the student's own moments. The solo **lesson-complete screen** also shows them
-  automatically, even when the lesson has no Badge Summary task.
+- **Solo (v1):** the task is skipped, as if it were `taskMode: live`, because solo has no badges yet.
 
 ## Adding a new badge
 
@@ -285,10 +307,9 @@ Every change here was signed off in the 2026-09-30 interview. Each one updates `
    `src/badges/definitions/<id>.js` with a rule stub and two examples, and registers it. The generic
    test runs its examples. The `new-badge` skill walks through the rest.
 2. **Manual, no deploy:** Admin Portal → Badges → Add.
-3. **Lesson-specific:** add it to the lesson's `badges:` envelope.
-4. **A new signal** (something no timeline event covers): add an event type to both timeline
-   builders. Live needs a new logged field with its own data-model sign-off, and `docs/authoring/badges.md`
-   gets a "Signals" table.
+3. **A new signal** (something no timeline event covers): add an event type to the timeline builder.
+   A new logged field needs its own data-model sign-off, and `docs/authoring/badges.md` gets a
+   "Signals" table.
 
 ## PR sequence
 
@@ -299,24 +320,23 @@ Each PR has tests green, `npm run docs:check`, and doc updates. A CHANGELOG entr
    - `src/shared/taskActivity.js` plus the validator warning
    - the badge registry, `defineBadge`, rule helpers, all universal definitions and the generic
      examples test
-   - envelope `badges` / `badgeOptions` and task `badgeHints` validation, YAML round-trip and
-     `lessons capabilities`
+   - `badgeOptions` and task `badgeHints` validation, YAML round-trip and `lessons capabilities`
    - `docs/authoring/badges.md`, schema docs and CHANGELOG
 
    No UI.
 2. **Live data:**
-   - `badges`, `badgeSettings` and `topicLog` nodes, `attemptLog.error`
+   - `badges`, `badgeSettings`, `topicLog` and `shortcutLog` nodes, `attemptLog.error`
    - rules and rules tests
    - topic-open reporting from the library button, related pills and `InlineMarkdown`
+   - shortcut reporting from `CodeEditor` named commands and the Desktop input recorder
    - `useSession` writers and resets, `runtime-model.md`, `feature-impact-map.md`
-3. **Engine:** `buildLiveTimeline`, `buildSoloTimeline`, the guards, `evaluateBadgeRules`, and
-   characterisation tests from real session snapshots.
+3. **Engine:** `buildLiveTimeline`, the guards, `evaluateBadgeRules`, and characterisation tests from
+   real session snapshots.
 4. **Tutor UI:** suggestions panel, grid button, card dot, modal award and revoke, picker,
    multi-award, auto-award toggle.
-5. **Celebration:** recipient card, chime, pill, class toast, presentation window, lesson-badge
-   teaser, reduced motion, solo auto-award and localStorage.
-6. **Summary and report:** `informationType: badges`, the solo lesson-complete section,
-   `buildSessionReport` fields, the report modal "Coding moments" section and YAML export.
+5. **Celebration:** recipient card, chime, pill, class toast, presentation window, reduced motion.
+6. **Summary and report:** `informationType: badges` (skipped in solo), `buildSessionReport` fields,
+   the report modal "Coding moments" section and YAML export.
 7. **Admin and scaffold:** Firestore `badgeCatalogue` plus rules, the Admin Badges tab,
    `npm run new:badge`, the `new-badge` skill, and an ADR for the badge registry.
 
@@ -327,21 +347,29 @@ Each PR has tests green, `npm run docs:check`, and doc updates. A CHANGELOG entr
 - Reload the teacher (dismissals kept) and the student (no replay).
 - The presentation window toast.
 - Reduced motion.
-- A solo run-through ending on the lesson-complete screen.
+- Keyboard Wizard: `Ctrl+Enter` counts but clicking Run doesn't, and Mac `Cmd` works.
+- A solo run-through skips the Badge Summary task cleanly.
 - Typing is uninterrupted during the celebration.
 - A tablet.
 
 ## Not in v1
 
+- Solo badges (see [Later](#later))
+- Lesson-specific badges (a separate system)
 - Points, totals, leaderboards, streaks, cross-lesson history, a per-device sticker book
 - AI interpretation of behaviour
-- Automatic Knowledge Builder, Project Explorer or Keyboard Wizard
+- Automatic Knowledge Builder or Project Explorer
 - Any animation library
 
-## Stretch ideas (post-v1, each needs a nod)
+## Later
 
+- **Solo badges:**
+  - Add a `buildSoloTimeline` from local events, feeding the same rules.
+  - Badges marked `soloAuto` award directly. There is no tutor, so tutor-only badges never appear.
+  - Persist to the already-approved localStorage key `headstart_{lessonId}_badges_{anonymousId}`.
+  - Show the student's moments on the solo lesson-complete screen, and stop skipping the Badge
+    Summary task.
 - **▶ Celebrate** on the teacher's Badge Summary: steps every screen through the class wall one
   badge at a time (a `badgeCelebration` session field).
 - **Download my coding moments:** a canvas-rendered PNG card the student can keep.
 - **Rule tuning from reports:** an Admin view of `badgeSummary` dismissal rates across sessions.
-- **Keyboard Wizard rule** from the Desktop input recorder's keyboard-vs-menu shortcut counts.
