@@ -155,6 +155,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Task progress dots — clickable for past tasks, locked for future tasks, current highlighted
 - Collapsible explainer panel with Markdown formatting, inline topic definitions (not on Scratch lessons — the topic library is disabled there), and Scratch block visualisation
 - Explainer text is not selectable/copyable for students (teacher and builder previews are unaffected)
+- First-view entrances: when a task first appears the explainer drops in, its bullets (and an information task's) slide in one after another, and quiz answers rise in one by one. They play once per task on each screen (student, presentation window, teacher view, Builder preview), never on a revisit, a ▲/▼ toggle or a Builder edit, and become a short fade under reduced motion
 - Retro typing animation on Python output
 - Line hints: authors attach short instructions to lines of Python, Turtle and HTML starter code (`#> …` / `<!--> … -->` marker lines). The editor shows a 💡 in the gutter (hover for the text) and the hint in faded text after the line; hints are never part of the student's code (not saved, run, checked, carried or mirrored), follow their line through edits, disappear when the line is deleted, and re-attach to matching lines when saved code is reloaded. Read-only stage references show them too
 
