@@ -122,6 +122,8 @@ export default function LessonTaskContent({
   viewingTaskId,
   currentTaskId,
   transitionKey,
+  // The displayed task's flat index, so the task slide knows forward from back.
+  transitionOrder,
   previewMode,
   isSandbox,
   isViewingPrev,
@@ -730,7 +732,11 @@ export default function LessonTaskContent({
   )
 
   return (
-    <TaskSlideTransition transitionKey={transitionKey} style={transitionStyle}>
+    <TaskSlideTransition
+      transitionKey={transitionKey}
+      order={transitionOrder}
+      style={transitionStyle}
+    >
       {previewMode && task && !isSandbox && (
         <Banner
           accent="#0ea5e9"

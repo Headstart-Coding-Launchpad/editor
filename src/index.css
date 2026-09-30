@@ -913,11 +913,12 @@ select {
   white-space: pre-wrap;
 }
 
-/* Task transition animation */
-@keyframes taskSlideFromRight {
+/* Task transition animation (TaskSlideTransition). --task-slide-dir flips the travel: 1 moves
+   forward (enter from the right, leave to the left), -1 moves back to an earlier task. */
+@keyframes taskSlideIn {
   from {
     opacity: 0;
-    transform: translateX(42px);
+    transform: translateX(calc(var(--task-slide-dir, 1) * var(--task-slide-travel)));
   }
   to {
     opacity: 1;
@@ -925,19 +926,20 @@ select {
   }
 }
 
-@keyframes taskSlideToLeft {
+@keyframes taskSlideOut {
   from {
     opacity: 1;
     transform: translateX(0);
   }
   to {
     opacity: 0;
-    transform: translateX(-42px);
+    transform: translateX(calc(var(--task-slide-dir, 1) * var(--task-slide-travel) * -1));
   }
 }
 
 .task-slide-viewport {
   position: relative;
+  --task-slide-travel: 120px;
 }
 
 .task-slide-panel {
@@ -948,18 +950,23 @@ select {
   min-height: 0;
 }
 
+.task-slide-panel--forward {
+  --task-slide-dir: 1;
+}
+
+.task-slide-panel--backward {
+  --task-slide-dir: -1;
+}
+
+.task-slide-panel--entering {
+  animation: taskSlideIn var(--motion-slow) var(--motion-ease-glide) backwards;
+}
+
 .task-slide-panel--leaving {
   position: absolute;
   inset: 0;
   width: 100%;
-}
-
-.task-slide-panel--entering {
-  animation: taskSlideFromRight 0.38s var(--motion-ease-glide);
-}
-
-.task-slide-panel--leaving {
-  animation: taskSlideToLeft 0.38s var(--motion-ease-glide) forwards;
+  animation: taskSlideOut var(--motion-slow) var(--motion-ease-glide) forwards;
   pointer-events: none;
 }
 
@@ -1161,11 +1168,17 @@ select {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Both directions: the direction classes only set --task-slide-dir, never the animation. */
   .task-slide-panel--entering,
   .task-slide-panel--leaving {
     animation: none;
     opacity: 1;
     transform: none;
+  }
+
+  /* With no slide, the old task would sit on top of the new one until the timer removes it. */
+  .task-slide-panel--leaving {
+    visibility: hidden;
   }
 }
 

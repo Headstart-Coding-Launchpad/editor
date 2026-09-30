@@ -1266,6 +1266,12 @@ export default function StudentView({
   )
 
   const transitionKey = `${phase}-${cs.inPersonalSandbox ? 'personal-sandbox' : (viewingTaskId ?? currentTaskId)}`
+  // The slide's direction: moving to an earlier task slides back. The personal sandbox has no
+  // place in the lesson, so entering or leaving it slides forward.
+  const transitionTaskIndex = cs.inPersonalSandbox
+    ? -1
+    : flatTasks.findIndex((t) => t.id === (viewingTaskId ?? currentTaskId))
+  const transitionOrder = transitionTaskIndex >= 0 ? transitionTaskIndex : null
 
   const page = (
     <div style={{ ...s.page, background: isForcedTeacherLive ? '#dde0e5' : '#f5f5f5' }}>
@@ -1505,6 +1511,7 @@ export default function StudentView({
             viewingTaskId={viewingTaskId}
             currentTaskId={currentTaskId}
             transitionKey={transitionKey}
+            transitionOrder={transitionOrder}
             previewMode={previewMode}
             isSandbox={isSandbox}
             isViewingPrev={isViewingPrev}
