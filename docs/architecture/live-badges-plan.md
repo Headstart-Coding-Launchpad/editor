@@ -6,7 +6,7 @@ agent against the code and revised again. Branch `feature/live-badges`. Delivere
 
 **Implementation status:** PR 1 Foundations (#388), PR 2 Live data (#389), PR 3 Engine
 (`src/badges/liveTimeline.js`, `src/app/hooks/useBadgeSuggestions.js`) and PR 4 Tutor UI (#391,
-`BadgeSuggestionsPanel`, `BadgeAwardDialog`, `src/badges/badgeDisplay.js`) and PR 5 Celebration (#PR5,
+`BadgeSuggestionsPanel`, `BadgeAwardDialog`, `src/badges/badgeDisplay.js`) and PR 5 Celebration (#392,
 `src/badges/celebration.js`, `useBadgeCelebrations`, `BadgeCelebration`, `BadgeClassToast`, `CodingMomentsPill`,
 `BadgeStickerSheet`) are done; PR 6 (Summary and report) is next.
 
