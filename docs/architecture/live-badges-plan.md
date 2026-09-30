@@ -25,14 +25,14 @@ These answers from the interview and the same-day revision are fixed for this pl
 | Resourceful Coder | **Rule-backed, suggest only.** The student opened the Topic Library themselves. |
 | Keyboard Wizard | **Rule-backed, suggest only.** The student used **any** keyboard shortcut, copy and paste included. |
 | Ready to Code | **Rule-backed, suggest only.** The first edit on a code task landed within **10 s** of the task opening, or of the student joining if they arrived later. Scratch block drags count as edits. |
-| v1 additions (2026-09-30) | Tutor-only **No moments yet** filter · the student's moments on the **session-end screen** · **sound controls** · **Copy class summary** · every new badge metric in the **session report**. |
+| v1 additions (2026-09-30) | A teacher-only **badge count** on each student card · the student's moments on the **session-end screen** · **sound controls** · **Copy class summary** · every new badge metric in the **session report** · **sandbox work** in badges and the report (see [Sandboxes](#sandboxes)). |
 | Quiz Master | At least 80% right on the first try across a quiz group of 3+ graded questions. |
 | Lesson-specific badges | **Not part of this system.** Per-lesson badges (the brief's §6, and the content workspace's concept, capstone and Level badges) stay separate. |
 | History | **Session only.** Named badges in the session report plus the end-of-lesson summary. No cross-lesson sticker book. |
 | Adding badges | **Both:** a code registry (with rules, scaffold, skill) for built-in badges, plus an Admin-editable catalogue of manual-only badges that needs no deploy. |
 | Class wall | **Grouped by badge** ("🐛 Bug Hunter: Alex, Sam"), never by student, so nobody can count. |
 | Animation | CSS badge flip plus shine, and a **subtle** two-note chime. No new dependencies. The rest of the app stays calm. |
-| Data model | Approved: RTDB `badges` and `badgeSignals` nodes, and Firestore `badgeCatalogue` (details [below](#data-model)). `badgeSignals` merges the earlier `topicLog` / `shortcutLog` ideas plus first edits. A solo localStorage key was approved but is deferred along with solo. |
+| Data model | Approved: RTDB `badges` and `studentSignals` nodes, and Firestore `badgeCatalogue` (details [below](#data-model)). `studentSignals` merges the earlier `topicLog` / `shortcutLog` ideas, first edits and sandbox activity. A teacher-written `sandboxLog` records the teacher sandbox. A solo localStorage key was approved but is deferred along with solo. |
 
 ## What the codebase already gives us (and what it doesn't)
 
@@ -114,8 +114,8 @@ so every rule inherits them:
 - the complete stage was revealed before the pass
 - a large paste on that task before the pass
 
-Anything done outside the lesson phase (personal sandbox, teacher sandbox, the presentation
-window) never enters a timeline.
+The presentation window never enters a timeline. Sandbox work does, but only for the badges listed
+under [Sandboxes](#sandboxes); the pass-based rules need a task and a check, which sandboxes don't have.
 
 Every badge is suggested **at most once per student per lesson**. Nothing rewards run counts, code
 volume or time on platform.
@@ -260,7 +260,7 @@ tests), `docs/agents/runtime-model.md`, and the `createSession` / `endSession` r
   - It is a sibling log, so `setTaskId` never wipes it. `endSession` clears it after the report saves.
 - **`sessions/{lessonId}/badgeSettings`:** `{ autoAward: boolean, soundsOff: boolean }`,
   teacher-write.
-- **`sessions/{lessonId}/badgeSignals/{anonymousId}`:** one student-written node for the small
+- **`sessions/{lessonId}/studentSignals/{anonymousId}`:** one student-written node for the small
   signals the rules need.
   - Student-write for their own id, the same pattern as `supportRevealLog`.
   - **First occurrence only**, so it's a handful of writes per student per lesson.
@@ -269,15 +269,25 @@ tests), `docs/agents/runtime-model.md`, and the `createSession` / `endSession` r
     - `shortcuts/{shortcutId}`: `{ firstUsedAt, taskId }`, where `shortcutId` is a normalised combo
       such as `mod+enter`
     - `firstEdits/{taskId}`: `{ at, taskOpenedAt }`
+    - `sandbox/{session|personal}`: `{ timeMs, runs, errorRuns, fixes }`
+      - These are counters updated per run, never per keystroke.
+      - `session` also holds `lastCode` / `lastFiles` and `lastCodeAt`: a snapshot of the student's
+        teacher-sandbox work, written at most every 30 s while they're in it and once on exit.
   - Where the signals come from:
     - shortcuts: a single window-level `keydown` listener for any Ctrl/Cmd/Alt combo
     - first edits: the first content change reported by each module's work area
     - topic opens: the library button, topic links and `InlineMarkdown` topic cards
+- **`sessions/{lessonId}/sandboxLog/{entryId}`:** teacher-write.
+  - Holds one entry per time the class entered the teacher sandbox: `{ enteredAt, exitedAt,
+    afterTaskId, explainer, pushes: [{ at, code | files }] }`.
+  - `enterSandbox`, `pushSandboxExplainer` and the push-code/files actions append to it.
+  - Today those values are overwritten on each push and cleared at session end, so nothing
+    survives into the report.
 - **`attemptLog` entries:** gain an optional `error: true` when the run produced a console error
   (Python/Turtle/Electronics runtime, HTML `handleHtmlRuntimeError`).
 - **Firestore `badgeCatalogue/{id}`:** admin write, teacher and admin read.
 - **Session report** (Firestore `sessionReports`, existing doc). `buildSessionReport` gains every
-  metric the badge signals make available. `badgeSignals` and `badges` are read before `endSession`
+  metric the badge signals make available. `studentSignals` and `badges` are read before `endSession`
   wipes them, as the other logs are today.
   - **Per student:**
     - `badges: [{ badgeId, emoji, title, source, reason, taskId, awardedAt }]`
@@ -294,6 +304,7 @@ tests), `docs/agents/runtime-model.md`, and the `createSession` / `endSession` r
     - Topic Library opens (student vs tutor-sent)
     - first real pass: who, and how long after the task opened
   - **Per quiz group:** each student's first-try %, and the class median.
+  - **Sandboxes:** see [Sandboxes](#sandboxes).
   - **Top level:** `badgeSummary: { [badgeId]: { suggested, awarded, autoAwarded, manual, dismissed,
     revoked } }`, plus `shortcutSummary: { [shortcutId]: studentCount }`.
 
@@ -316,9 +327,9 @@ tests), `docs/agents/runtime-model.md`, and the `createSession` / `endSession` r
   tutor-only and Admin-catalogue (already-awarded ones greyed out). The student's awarded list has **Revoke**, which is silent
   to the student.
 - **Multi-award:** select several cards, then Award badge (for example 🤝 Helpful Coder to a pair).
-- **No moments yet filter:** a tutor-only toggle in the grid header that dims every student who
-  already has a badge, so the rest stand out. It's there to prompt the tutor to look for
-  something to recognise. Students never see it, and it shows no counts.
+- **Badge count (teacher-only):** each student card and the student modal header show a small
+  "🏅 2". The tutor can see at a glance who hasn't been recognised yet. It never appears on
+  student screens or the presentation window, so students still see no totals.
 - **Badge definitions on hover:** hovering a badge in the picker or panel shows its exact
   "suggested when" rule.
 - **Sounds off:** a session control that silences the award chime for the whole class.
@@ -337,13 +348,14 @@ tests), `docs/agents/runtime-model.md`, and the `createSession` / `endSession` r
   - `prefers-reduced-motion` gets a plain fade.
   - It is not replayed on reload (load-baseline, as `useNudgeAlert` does). Awards made while offline
     still appear in the pill.
-- **Class toast:**
-  - A small, silent bottom-corner toast: "🎖️ Alex earned **Bug Hunter**, *Found and fixed a
-    bug.*". The blurb models the behaviour for peers.
+- **Class toast (every classmate's screen):**
+  - A compact, silent pill in the bottom corner: "🎖️ Alex · Bug Hunter".
+  - It shows for about 3 s and slides out. The badge's blurb appears on hover only.
   - One at a time, queued, dropped if the queue backs up.
-  - Never shown to the recipient.
+  - Never shown to the recipient, who gets the full celebration instead.
   - Never shows totals.
-  - Also shown in the presentation window.
+- **Presentation window:** the same announcement, slightly larger (still a corner toast, about 4 s),
+  so the projector celebrates it too.
 - **Mute:** a speaker toggle in the Coding moments pill silences the chime on that student's device
   for the rest of the session. It's kept in memory only, so no new localStorage key is needed.
 - **Session-end screen:** when the tutor ends the session, the student's end screen shows their own
@@ -367,6 +379,32 @@ tests), `docs/agents/runtime-model.md`, and the `createSession` / `endSession` r
   Sam"), ready for a newsletter or class chat. It has no counts, and in the report it uses real
   names only when the tutor chooses to reveal them.
 - **Solo (v1):** the task is skipped, as if it were `taskMode: live`, because solo has no badges yet.
+
+## Sandboxes
+
+Decided 2026-09-30.
+
+**Badges.** Sandbox work (the teacher sandbox and personal sandboxes) can suggest the signal badges:
+- ⌨️ Keyboard Wizard (a shortcut used in a sandbox)
+- 📚 Resourceful Coder (the Topic Library opened in a sandbox)
+- 🔧 Code Fixer, sandbox version: a sandbox run with a real console error, then a later run of changed
+  code without one. The reason reads "Fixed an error in the sandbox".
+
+The pass-based badges (Bug Hunter, Code Builder, Code Detective, Challenge Solver, Quiz Master,
+Persistence) and Ready to Code need a task, so they don't apply. Project Explorer stays tutor-only.
+
+**Report: teacher sandbox, in full.** Using the teacher sandbox usually means the lesson fell short and
+the tutor had to improvise, so the report records it as a **possible lesson gap**:
+- when the class entered and left, how long, and which task it followed
+- everything the teacher added: the explainer and every code or files push (from `sandboxLog`)
+- each student's last sandbox code snapshot, plus time, runs, error runs and fixes
+
+The report modal shows it as a callout, for example "The class spent 14 min in the teacher sandbox
+after Task 7", with the teacher's code and explainer, and each student's code viewable on expand. It
+is included in the YAML export.
+
+**Report: personal sandbox, activity only.** Per student: time spent, runs, runs with an error, and
+errors fixed. No code is stored.
 
 ## Adding a new badge
 
@@ -392,19 +430,21 @@ Each PR has tests green, `npm run docs:check`, and doc updates. A CHANGELOG entr
 
    No UI.
 2. **Live data:**
-   - `badges`, `badgeSettings` and `badgeSignals` nodes, `attemptLog.error`
+   - `badges`, `badgeSettings`, `studentSignals` and `sandboxLog` nodes, `attemptLog.error`
    - rules and rules tests
    - topic-open reporting from the library button, topic links and `InlineMarkdown`
    - shortcut reporting (window `keydown`) and first-edit reporting (each module's work area)
+   - sandbox counters and snapshots (student) and the teacher `sandboxLog` appends
    - `useSession` writers and resets, `runtime-model.md`, `feature-impact-map.md`
 3. **Engine:** `buildLiveTimeline`, the guards, `evaluateBadgeRules`, and characterisation tests from
    real session snapshots.
 4. **Tutor UI:** suggestions panel, grid button, card dot, modal award and revoke, picker with
-   hover definitions, multi-award, auto-award toggle, No moments yet filter, sounds off.
+   hover definitions, multi-award, auto-award toggle, teacher-only badge count, sounds off.
 5. **Celebration:** recipient card, chime and mute, pill, class toast, presentation window,
    reduced motion, session-end screen moments.
 6. **Summary and report:** `informationType: badges` (skipped in solo), Copy class summary,
-   every new metric in `buildSessionReport` (see [Data model](#data-model)),
+   every new metric in `buildSessionReport` (see [Data model](#data-model)), the teacher-sandbox
+   "possible lesson gap" callout and personal-sandbox activity,
    the report modal "Coding moments" section and YAML export.
 7. **Admin and scaffold:** Firestore `badgeCatalogue` plus rules, the Admin Badges tab,
    `npm run new:badge`, the `new-badge` skill, and an ADR for the badge registry.
@@ -417,7 +457,11 @@ Each PR has tests green, `npm run docs:check`, and doc updates. A CHANGELOG entr
 - The presentation window toast.
 - Reduced motion.
 - Keyboard Wizard: a shortcut counts but clicking Run doesn't, and Mac `Cmd` works.
-- Sandbox work (personal, teacher or presentation window) never produces a suggestion.
+- Sandbox: a shortcut, a topic open and an error→fix in a sandbox suggest the right badges. The
+  report shows the teacher sandbox's pushes and each student's snapshot, and personal-sandbox time.
+- The presentation window never produces a suggestion.
+- The class toast shows for about 3 s on classmates' screens, and the badge count never shows to
+  students.
 - The session-end screen shows the student's moments after `endSession`.
 - Ready to Code: typing counts, and moving the mouse or clicking into the editor doesn't. Scratch
   block drags count.
