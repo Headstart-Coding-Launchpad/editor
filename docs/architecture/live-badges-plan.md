@@ -15,7 +15,7 @@ agent against the code and revised again. Branch `feature/live-badges`. Delivere
 | 4 | Tutor UI (`BadgeSuggestionsPanel`, `BadgeAwardDialog`, `badgeDisplay.js`) | #391 |
 | 5 | Celebration (`celebration.js`, `useBadgeCelebrations`, card, toast, pill, sticker sheet) | #392 |
 | 6 | Summary and report (`informationType: badges`, `badgeSummary.js`, `reportMetrics.js`) | #393 |
-| 7 | Admin and scaffold (`badgeCatalogue`, Admin → Badges, catalogue snapshot on awards, Builder Badge hints, `npm run new:badge`, `new-badge` skill, [ADR 0011](../adr/0011-live-badges-registry-and-rules.md)) | PR 7 (this branch) |
+| 7 | Admin and scaffold (`badgeCatalogue`, Admin → Badges, catalogue snapshot on awards, Builder Badge hints, `npm run new:badge`, `new-badge` skill, [ADR 0011](../adr/0011-live-badges-registry-and-rules.md)) | #394 |
 
 PR 7 deviations: an awarded catalogue badge copies `{ emoji, title, blurb }` onto its decision
 (`decision.badge`), because students can't read Firestore `badgeCatalogue`; and the Builder's Badge
