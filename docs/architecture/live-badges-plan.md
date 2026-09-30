@@ -15,20 +15,23 @@ These answers from the interview and the same-day revision are fixed for this pl
 | Topic | Decision |
 |---|---|
 | Modes | **Live only for v1.** Rules *suggest* and the tutor decides. Solo badges are deferred (see [Later](#later)); the engine is built so solo can be added without rework. |
+| Manual awards | **Every badge can be awarded manually by the tutor**, rule-backed ones included. Rules only add automatic *suggestions* on top; a manual award of a rule-backed badge is recorded with `source: 'manual'` and stops further suggestions of it for that student. |
 | Live auto-award | Suggest by default. A tutor session toggle, **Auto-award high-confidence badges**, lets badges marked `autoAwardable` skip the click. Any award can be revoked. |
 | Task kind | **Parse the existing `taskActivity` string** into the Glossary pattern it names. No lesson re-tagging. A per-task `badgeHints` override covers edge cases. |
 | Brief items that don't fit the platform | **Tutor-only.** This covers Knowledge Builder and Project Explorer (quizzes are single pass/fail questions, and students can't move ahead in live mode). |
-| Automatic mappings | Bug Hunter ← Debug Code Task · Code Builder ← Copy the Code · Challenge Solver ← Challenge (Open-Ended) · Code Detective ← Quiz: What Is the Error? / Quiz: Fix a Common Bug (first try) |
+| "First in class" badges | Bug Hunter (Debug Code Task), Code Builder (Copy the Code) and Code Detective (error quizzes, correct on the first try) go to the **first student in the class** to do it, per task. Chosen deliberately, although it rewards being quick. |
 | Code Fixer | Only after a **real console error** (syntax or runtime), then edited code, then a pass. |
-| Persistence | **Rule-backed, suggest only.** At least 3 failed attempts with *different* code on one task, then a real pass. Quizzes are excluded (retrying multiple choice is guessing). The threshold is configurable per lesson. |
-| Keyboard Wizard | **Rule-backed, suggest only.** At least 3 different shortcuts from a set list used during the lesson. Copy and paste don't count. |
-| Quiz Master | First-try correct % over a group of graded quizzes. |
+| Persistence | **Rule-backed, suggest only.** At least **2** failed attempts with *different* code on one task, then a real pass. Quizzes are excluded (retrying multiple choice is guessing). |
+| Resourceful Coder | **Rule-backed, suggest only.** The student opened the Topic Library themselves. |
+| Keyboard Wizard | **Rule-backed, suggest only.** The student used **any** keyboard shortcut, copy and paste included. |
+| Ready to Code | **Rule-backed, suggest only.** The first edit on a code task landed within **10 s** of the task opening. |
+| Quiz Master | At least 80% right on the first try across a quiz group of 3+ graded questions. |
 | Lesson-specific badges | **Not part of this system.** Per-lesson badges (the brief's §6, and the content workspace's concept, capstone and Level badges) stay separate. |
 | History | **Session only.** Named badges in the session report plus the end-of-lesson summary. No cross-lesson sticker book. |
 | Adding badges | **Both:** a code registry (with rules, scaffold, skill) for built-in badges, plus an Admin-editable catalogue of manual-only badges that needs no deploy. |
 | Class wall | **Grouped by badge** ("🐛 Bug Hunter: Alex, Sam"), never by student, so nobody can count. |
 | Animation | CSS badge flip plus shine, and a **subtle** two-note chime. No new dependencies. The rest of the app stays calm. |
-| Data model | Approved: RTDB `badges`, `topicLog` and `shortcutLog` nodes, and Firestore `badgeCatalogue` (details [below](#data-model)). A solo localStorage key was approved but is deferred along with solo. |
+| Data model | Approved: RTDB `badges` and `badgeSignals` nodes, and Firestore `badgeCatalogue` (details [below](#data-model)). `badgeSignals` merges the earlier `topicLog` / `shortcutLog` ideas plus first edits. A solo localStorage key was approved but is deferred along with solo. |
 
 ## What the codebase already gives us (and what it doesn't)
 
@@ -55,7 +58,11 @@ These answers from the interview and the same-day revision are fixed for this pl
   - Copy and paste are reported.
   - The Desktop input recorder already counts keyboard vs menu shortcuts.
 
-  Keyboard Wizard needs the editor to report *which* shortcut fired.
+  Keyboard Wizard needs the student side to report that a shortcut fired.
+- **Typing:** `students/{id}/lastActivityAt` is a throttled heartbeat that also fires on mouse moves,
+  so it can't tell typing from moving the mouse. Ready to Code needs a first-edit timestamp per task.
+- **"First in class":** every passing `attemptLog` entry carries a server `passedAt`, so the first
+  real pass per task is exact and survives a teacher reload.
 - **Solo syncs nothing** and keeps pass/fail in memory only (one reason solo is deferred).
 - **Session reports** are built in `src/shared/lessonReport.js` and saved before `endSession` wipes the
   logs. They display anonymised ("Student N").
@@ -84,6 +91,9 @@ These answers from the interview and the same-day revision are fixed for this pl
   - `override { taskId }`
   - `show_complete { taskId }`
   - `shortcut { shortcutId, at }`
+  - `first_edit { taskId, at, taskOpenedAt }`
+
+  Rules also receive the whole class's timelines, so "first in class" rules can compare students.
 
   Rules never touch Firebase or React, so a later solo timeline builder can reuse them unchanged.
 - **Suggestions are not stored.** They are recomputed from the snapshot, so they survive a teacher
@@ -103,8 +113,12 @@ so every rule inherits them:
 - the complete stage was revealed before the pass
 - a large paste on that task before the pass
 
-Every badge is suggested **at most once per student per lesson**. Nothing rewards speed, run counts,
-code volume or time on platform.
+Every badge is suggested **at most once per student per lesson**. Nothing rewards run counts, code
+volume or time on platform.
+
+Some rules do reward being quick: the three "first in class" badges and Ready to Code. This was a
+deliberate choice on 2026-09-30. A "first in class" badge goes to the earliest real pass by a student
+who doesn't already hold that badge, so one fast student can't take every task's suggestion.
 
 Persistence is the one rule that looks at attempts, so it has extra limits:
 - it counts only *distinct* failed submissions
@@ -149,13 +163,13 @@ Persistence is the one rule that looks at attempts, so it has extra limits:
 - **Registry files:** `src/badges/registry.pure.js` (Node-safe, for the CLI and tests) and
   `src/badges/registry.js`. These mirror the activities registry.
 - **Rule helpers** in `src/badges/rules.js`:
+  - `firstInClassOnPattern` (with a `firstTryOnly` option for Code Detective)
   - `realPassOnPattern`
-  - `firstTryOnPatterns`
   - `errorThenPass`
   - `distinctFailsThenPass`
-  - `topicThenPass`
+  - `anySignal` (topic opened, shortcut used)
+  - `firstEditWithin`
   - `quizGroupFirstTry`
-  - `distinctShortcuts`
 
 ### Admin catalogue (Firestore, manual-only)
 
@@ -174,8 +188,8 @@ This feature adds no badge definitions to lessons. Lessons can only tune the bui
 badgeOptions:                     # optional, lesson envelope
   quizMasterThreshold: 0.8        # default 0.8
   quizMasterMinQuizzes: 3         # default 3
-  persistenceMinFails: 3          # default 3 distinct failed submissions
-  keyboardWizardMinShortcuts: 3   # default 3 different shortcuts
+  persistenceMinFails: 2          # default 2 distinct failed submissions
+  readyToCodeSeconds: 10          # default 10
 ```
 
 A per-task override for edge cases:
@@ -195,30 +209,32 @@ badgeHints:
 
 ## The v1 badge set
 
-| Badge | Kind | Trigger (real passes only) | Auto-awardable |
+A **real pass** is a passing `attemptLog` entry with none of the [guards](#central-anti-gaming-guards).
+A **task's pattern** comes from parsing its `taskActivity`, and `badgeHints` can add or suppress a
+badge per task. Each badge is suggested at most once per student per lesson.
+
+| Badge | Suggested when (exactly) | Suggestion reason shown to the tutor | Auto-awardable |
 |---|---|---|---|
-| 🐛 Bug Hunter | rule | Pass on a `Debug Code Task` | ✅ |
-| 📋 Code Builder | rule | Pass on `Copy the Code` (Complete Example excluded: nothing to type) | ✅ |
-| 🔓 Challenge Solver | rule | Pass on `Challenge (Open-Ended)` with no support stage revealed | ✅ |
-| 🎯 Quiz Master | rule | At least the threshold of first-try correct across a task group with at least the minimum number of graded quizzes (e.g. the End Quiz). Confidence checks excluded | ✅ |
-| 🔍 Code Detective | rule | First-try correct on `Quiz: What Is the Error?` or `Quiz: Fix a Common Bug` | – |
-| 🔧 Code Fixer | rule | An attempt with a **real console error**, then a pass with changed code, on a non-debug task | – |
-| 🔨 Persistence | rule | At least `persistenceMinFails` failed attempts with distinct code on one task, then a pass. Code and Code Arrange tasks only (no quizzes) | – |
-| 📚 Resourceful Coder | rule | The student opened a topic themselves (not teacher-sent) while the task was unsolved, then passed it. The reason says whether the topic is linked from the task | – |
-| ⌨️ Keyboard Wizard | rule | At least `keyboardWizardMinShortcuts` different shortcuts from the list below used this lesson | – |
-| 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🎯 Focused Coder · 🚀 Ready to Code · 🚀 Project Explorer · 📈 Knowledge Builder · 🤝 Helpful Coder | tutor | none | – |
+| 🐛 Bug Hunter | A task's pattern is `Debug Code Task`, and this student made the **earliest real pass** on it (by `passedAt`) among students who don't already hold Bug Hunter. At most one suggestion per Debug task | "First to fix the bug in *Task title*" | ✅ |
+| 📋 Code Builder | The same "first in class" rule on a `Copy the Code` task. Complete Example is excluded (nothing to type) | "First to build *Task title* from the example" | ✅ |
+| 🔍 Code Detective | A quiz task's pattern is `Quiz: What Is the Error?` or `Quiz: Fix a Common Bug`. This student's **first** attempt was correct, and it was the **earliest** such first-try-correct answer in the class among students who don't already hold Code Detective | "First to spot the error in *Task title*, first try" | ✅ |
+| 🔓 Challenge Solver | A real pass on a `Challenge (Open-Ended)` task, with no support stage revealed on that task before the pass | "Solved *Task title* without references" | ✅ |
+| 🎯 Quiz Master | A task group has 3+ graded quiz tasks (confidence checks excluded; usually the End Quiz). The student has attempted every one, and at least `quizMasterThreshold` (default 80%) were correct on the first attempt. Evaluated when their last quiz in that group is answered | "End Quiz: 4 of 5 right first time" | ✅ |
+| 🔧 Code Fixer | On a code task that isn't a Debug task: an attempt with `error: true` (a real console error), then a later real pass whose submission differs from the errored one | "Fixed a *NameError* in *Task title*" | – |
+| 🔨 Persistence | On a code or Code Arrange task (no quizzes): at least `persistenceMinFails` (default **2**) failed attempts with *different* code (re-running the same code only bumps `retries`), then a real pass | "3 different tries, then passed *Task title*" | – |
+| 📚 Resourceful Coder | The student opened the Topic Library themselves: the library button, a topic link, or a topic card. Topics the tutor sent don't count | "Opened the Topic Library (*Loops*) on *Task title*" | – |
+| ⌨️ Keyboard Wizard | The student used **any** Ctrl/Cmd/Alt keyboard shortcut in the lesson workspace, copy and paste included | "Used *Ctrl+Enter*" | – |
+| 🚀 Ready to Code | On a code task (any module): the student's first change to their work landed within `readyToCodeSeconds` (default **10 s**) of the task opening for them. That is the later of the teacher's advance (`taskStartTimes`) and their own join. Cursor moves and clicks don't count | "Started typing 6 s into *Task title*" | – |
+| 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🎯 Focused Coder · 🚀 Project Explorer · 📈 Knowledge Builder · 🤝 Helpful Coder | Tutor-only | – | – |
 
-- **Persistence and Code Fixer** can both be suggested from the same task. They recognise different
-  things, and the tutor picks.
-- **Keyboard Wizard's shortcut list** lives in one constant so it's easy to extend:
-  - run (`Ctrl/Cmd+Enter`)
-  - undo and redo
-  - toggle comment (`Ctrl/Cmd+/`)
-  - indent or outdent a selection (`Tab` / `Shift+Tab` with text selected)
-  - find (`Ctrl/Cmd+F`)
-  - Desktop-module shortcuts done by keyboard rather than menu
-
-  Copy, cut, paste and select-all don't count: paste is already flagged, and they're too easy to spam.
+- **Every badge in this table is also in the tutor's manual picker.** The rules only decide when a
+  badge is *suggested*; the tutor can award any of them at any time. The rule-backed badges'
+  "first in class" limits apply to suggestions only.
+- **Several badges can come from one task.** Persistence and Code Fixer can both be suggested; they
+  recognise different things, and the tutor picks.
+- **Expect volume.** Keyboard Wizard and Ready to Code will be suggested for most of the class early
+  in a lesson. The panel's **Award all** handles that in one click. If they prove too noisy, the
+  report's dismissal counts will show it.
 
 ## Data model
 
@@ -234,14 +250,19 @@ tests), `docs/agents/runtime-model.md`, and the `createSession` / `endSession` r
     teacher tabs.
   - It is a sibling log, so `setTaskId` never wipes it. `endSession` clears it after the report saves.
 - **`sessions/{lessonId}/badgeSettings`:** `{ autoAward: boolean }`, teacher-write.
-- **`sessions/{lessonId}/topicLog/{anonymousId}/{taskId}/{topicId}`:** `{ openedAt, source }`.
-  Student-write for their own id, the same pattern as `supportRevealLog`. The first open only (no
-  per-click spam).
-- **`sessions/{lessonId}/shortcutLog/{anonymousId}/{shortcutId}`:** `firstUsedAt`.
-  - Student-write for their own id. First use only, so it's a handful of writes per student per
-    lesson.
-  - The editor reports shortcuts through a named-command wrapper in `CodeEditor.jsx`, so `Mod-Enter`
-    is distinguishable from the Run button.
+- **`sessions/{lessonId}/badgeSignals/{anonymousId}`:** one student-written node for the small
+  signals the rules need.
+  - Student-write for their own id, the same pattern as `supportRevealLog`.
+  - **First occurrence only**, so it's a handful of writes per student per lesson.
+  - It holds:
+    - `topics/{taskId}/{topicId}`: `{ openedAt, source: 'student'|'teacher' }`
+    - `shortcuts/{shortcutId}`: `{ firstUsedAt, taskId }`, where `shortcutId` is a normalised combo
+      such as `mod+enter`
+    - `firstEdits/{taskId}`: `{ at, taskOpenedAt }`
+  - Where the signals come from:
+    - shortcuts: a single window-level `keydown` listener for any Ctrl/Cmd/Alt combo
+    - first edits: the first content change reported by each module's work area
+    - topic opens: the library button, topic links and `InlineMarkdown` topic cards
 - **`attemptLog` entries:** gain an optional `error: true` when the run produced a console error
   (Python/Turtle/Electronics runtime, HTML `handleHtmlRuntimeError`).
 - **Firestore `badgeCatalogue/{id}`:** admin write, teacher and admin read.
@@ -260,8 +281,8 @@ tests), `docs/agents/runtime-model.md`, and the `createSession` / `endSession` r
   - An **Award all** button covers several students suggested the same badge.
   - The **Auto-award high-confidence** toggle sits at the top.
 - **Student card:** a small 🏅 dot when that student has a pending suggestion. No counts on cards.
-- **Student modal:** More → **🏅 Award badge** opens a picker with universal and Admin-catalogue
-  badges (already-awarded ones greyed out). The student's awarded list has **Revoke**, which is silent
+- **Student modal:** More → **🏅 Award badge** opens a picker with **every** badge: rule-backed,
+  tutor-only and Admin-catalogue (already-awarded ones greyed out). The student's awarded list has **Revoke**, which is silent
   to the student.
 - **Multi-award:** select several cards, then Award badge (for example 🤝 Helpful Coder to a pair).
 - **Timing:** awarding takes one click and is never modal.
@@ -325,10 +346,10 @@ Each PR has tests green, `npm run docs:check`, and doc updates. A CHANGELOG entr
 
    No UI.
 2. **Live data:**
-   - `badges`, `badgeSettings`, `topicLog` and `shortcutLog` nodes, `attemptLog.error`
+   - `badges`, `badgeSettings` and `badgeSignals` nodes, `attemptLog.error`
    - rules and rules tests
-   - topic-open reporting from the library button, related pills and `InlineMarkdown`
-   - shortcut reporting from `CodeEditor` named commands and the Desktop input recorder
+   - topic-open reporting from the library button, topic links and `InlineMarkdown`
+   - shortcut reporting (window `keydown`) and first-edit reporting (each module's work area)
    - `useSession` writers and resets, `runtime-model.md`, `feature-impact-map.md`
 3. **Engine:** `buildLiveTimeline`, the guards, `evaluateBadgeRules`, and characterisation tests from
    real session snapshots.
@@ -347,7 +368,11 @@ Each PR has tests green, `npm run docs:check`, and doc updates. A CHANGELOG entr
 - Reload the teacher (dismissals kept) and the student (no replay).
 - The presentation window toast.
 - Reduced motion.
-- Keyboard Wizard: `Ctrl+Enter` counts but clicking Run doesn't, and Mac `Cmd` works.
+- Keyboard Wizard: a shortcut counts but clicking Run doesn't, and Mac `Cmd` works.
+- Ready to Code: typing counts, and moving the mouse or clicking into the editor doesn't. Scratch
+  block drags count.
+- "First in class": two students passing seconds apart gives the suggestion to the earlier one, and
+  it's still correct after a teacher reload.
 - A solo run-through skips the Badge Summary task cleanly.
 - Typing is uninterrupted during the celebration.
 - A tablet.
