@@ -182,6 +182,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `runWithRuntime.js` | `runWithRuntime(ctx)` — the `'runtime'` branch of `handleRun` (Pyodide / MicroPython): output streaming and throttled teacher mirror, `input()` prompts, stop handling, the task check with feedback, the run-record save, `writeStudentRun` and the attempt log. Per-module differences come from the definition's `runResult` flags and `checking.buildContext` |
 | `useLatestRef.js` | `useLatestRef(value)` — a ref holding the latest render's value, for stale-closure-safe reads inside async handlers, timers and event listeners |
 | `useStudentBadgeSignals.js` | Records this student's live badge signals (topic opens, Keyboard Wizard shortcuts on the work area, first real edit per task timed on the device, complete code shown, sandbox runs and time) through the `useSession` signal writers; gated off for the presentation window, previews and solo. Called inside `useStudentCodeState` (`cs.badgeSignals`); `workAreaSurfaceOf` / `workAreaShortcutFor` |
+| `useBadgeSuggestions.js` | Teacher side of live badges: `useBadgeSuggestions({ session, lesson, enabled, topics })` → `{ suggestions, suggestionsByStudent, pendingCountByStudent, awardedCountByStudent, decisions }`, memoised on `badgeEvaluationInputKey` and the lesson's content (not object identity); `useBadgeAutoAward({ suggestions, settings, decideBadge })` awards `autoAwardable` suggestions with `source: 'auto'` while `badgeSettings.autoAward` is on, once per student/badge per tab; pure `groupBadgeSuggestions`, `pickAutoAwards`, `autoAwardDecision`. Called in `TeacherView` |
 | `useSandboxArchiveSnapshots.js` | Teacher side of the sandbox archive: while the class is in the teacher sandbox, copies each student's latest sandbox run (`currentCode` / `currentFiles`, on a new `lastRunAt`) into `sessionArchive` |
 | `useStudentPresenceReporting.js` | Reports this student's window state to the teacher: connected, focused, fullscreen, recently active. Presentation windows report nothing and remove themselves from the roster |
 | `useNudgeAlert.js` | Reacts to a teacher nudge (`students/{id}/nudgePushedAt` always; session `nudgeAwayPushedAt` only when the window is unfocused): banner, chime, and — while unfocused — tab flash until focus plus an OS notification. Timestamps present at load are a baseline and never replay |
@@ -490,7 +491,7 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 
 ## Badges (`src/badges/`)
 
-Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs/authoring/badges.md`). Built-in badges are a code registry; rules read normalised per-student timelines, never Firebase or React, so they are pure and deterministic. PR 1 ships the registry, rules and authoring validation; PR 2 the live data (`docs/agents/runtime-model.md`, "Badge data"). No UI yet.
+Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs/authoring/badges.md`). Built-in badges are a code registry; rules read normalised per-student timelines, never Firebase or React, so they are pure and deterministic. PR 1 ships the registry, rules and authoring validation; PR 2 the live data (`docs/agents/runtime-model.md`, "Badge data"); PR 3 the engine that turns the session into suggestions (`liveTimeline.js`, `useBadgeSuggestions`). No UI yet.
 
 | File | Role |
 |---|---|
@@ -507,6 +508,7 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs
 | `shortcuts.js` | `KEYBOARD_WIZARD_SHORTCUTS` (the curated list), `matchKeyboardWizardShortcut(event, { inEditor })` (ignores AltGr / Alt), `DESKTOP_KEYBOARD_COMBOS` / `isDesktopKeyboardShortcut` |
 | `signals.js` | Pure helpers for the recorded signals: contexts (`signalContextFor`, `sandboxKindForContext`), RTDB-safe keys (`signalKey`), `hashSubmission`, run errors (`runErrorName`, `runErrorFor`), the sandbox counter transactions (`applySandboxRun`, `applySandboxRunError`, `applySandboxTime`), `isBlocklyUserEdit` |
 | `sessionArchive.js` | Teacher-sandbox archive values: the 20 KB cap (`capArchiveText`, `archiveWorkFields`, `archiveExplainerFields`) and the reader shape (`normaliseSessionArchive`, missing `exitedAt` = `endedAt`) |
+| `liveTimeline.js` | The live timeline builder: `buildLiveTimelines({ session, lesson, topics })` → `{ [studentId]: event[] }` from the session snapshot (roster-only; tasks outside `liveBadgeLesson(lesson)`, the session-edited lesson's live tasks, dropped), `buildStudentTimeline`, `buildTaskLookup`, `buildTopicTitles`, and the memo keys `studentTimelineInputKey` / `badgeEvaluationInputKey` (code text left out) |
 | `exampleLesson.js` | `EXAMPLE_LESSON`, the lesson badge `examples` run against (by `__tests__/badgeRegistry.test.js`) |
 
 ---

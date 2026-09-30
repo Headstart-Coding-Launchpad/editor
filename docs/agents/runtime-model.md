@@ -454,11 +454,11 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`) record behaviour a
 - File keys use `encodeFileKey`; `readSessionArchive` decodes them. Each push and snapshot is capped at 20 KB (UTF-8), cut short with a truncation marker and `truncated: true`.
 - Archive writes are best-effort (`archiveQuietly`): a failed write, e.g. before `database.rules.json` is deployed, never breaks the sandbox. `endSession` registers `onDisconnect().remove()` on the archive.
 
-**Mapping to the badge timeline events** (`src/badges/timeline.js`; `at` values are server timestamps unless noted):
+**Mapping to the badge timeline events** (`src/badges/timeline.js`, built by `buildLiveTimelines` in `src/badges/liveTimeline.js`; `at` values are server timestamps unless noted). Only students on the current roster (`students`) get a timeline, so a removed student (or a presentation window, which removes itself) can't hold a first-in-class slot. Only tasks in the lesson the class is using count: TeacherView's session-edited lesson (Edit Lesson → "Apply for this session", `lessonOverrideTasks`) narrowed to its live tasks (`liveBadgeLesson`); a task event on a task that has gone is dropped, while a sandbox event keeps no task.
 
 | Timeline event | Built from |
 |---|---|
-| `attempt { taskId, passed, firstTry, error, assisted, submissionHash, at }` | an `attemptLog/{id}/{taskId}` entry: `passed`; `firstTry` = `attemptNumber === 1`; `error`; `assisted` = `teacherAssisted`; `submissionHash` = `hashSubmission(submission)`; `at` = `passedAt` for a pass, else `loggedAt`. Context `task`. |
+| `attempt { taskId, passed, firstTry, error, assisted, submissionHash, at }` | an `attemptLog/{id}/{taskId}` entry: `passed`; `firstTry` = the task's earliest entry by `loggedAt` (not `attemptNumber`, which restarts at 1 after a student reload); `error`; `assisted` = `teacherAssisted`; `submissionHash` = `hashSubmission(submission)`; `at` = `passedAt` for a pass, else `loggedAt`. Context `task`. |
 | `sandbox_run { context, error, submissionHash, at }` | each `studentSignals/{id}/sandbox/{kind}/runsLog` entry; context `sandbox` for `session`, `personal` for `personal` (`contextForSandboxKind`) |
 | `topic_open { context, topicId, taskId, source, at }` | each `studentSignals/{id}/topics/{context}/{taskId}/{topicId}` (`at` = `openedAt`; `taskId` `none` = no task). Topic and task keys are `signalKey`-encoded (dots as `__dot__`). |
 | `reveal { taskId, stage, complete, at }` | `supportRevealLog/{id}/{taskId}/{stageIndex}` (`at` = `revealedAt`; `complete` from the task's stage role) |
@@ -467,6 +467,8 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`) record behaviour a
 | `override { taskId, at }` | `overrideLog/{id}/{taskId}` (`at` = `overriddenAt`) |
 | `shortcut { context, shortcutId, taskId, at }` | `studentSignals/{id}/shortcuts/{shortcutId}` (`at` = `firstUsedAt`) |
 | `first_edit { taskId, elapsedMs, at }` | `studentSignals/{id}/firstEdits/{taskId}`; `elapsedMs` is device-local, so teacher/student clock skew has no effect |
+
+**Suggestions.** `useBadgeSuggestions` (in `TeacherView`) runs `evaluateBadgeRules` over these timelines with the session's `badges` as decisions, `currentTaskId` and `sessionEnded` (`state === 'ended'`). Nothing is stored, so suggestions survive a teacher reload. It re-runs only when `badgeEvaluationInputKey(session)` changes (the roster, each rostered student's `attemptLog` / `supportRevealLog` / `overrideLog` / `pasteLog` / `studentSignals` minus code text, `badges`, `currentTaskId`, the ended state) or the lesson's content does: `snap.val()` rebuilds every object on each write, so reference memoising never hits. `useBadgeAutoAward` writes `decideBadge(..., { source: 'auto' })` for `autoAwardable` suggestions while `badgeSettings.autoAward` is on.
 
 ## onDisconnect Rules
 

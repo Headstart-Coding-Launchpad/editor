@@ -112,6 +112,7 @@ Changes include a badge definition, a rule helper, the timeline event shapes, th
 Usually changes with:
 
 - `src/badges/` (definitions, `rules.js`, `timeline.js`, `evaluate.js`, `registry.pure.js`)
+- `src/badges/liveTimeline.js` (stored data → timeline events, and the memo keys: a new event source must be added to both `buildStudentTimeline` and `studentTimelineInputKey`) and `src/app/hooks/useBadgeSuggestions.js` (`TeacherView`)
 - `src/shared/taskActivity.js` (pattern ids are stored by badges and reports: add aliases, never rename)
 - `src/shared/lessonValidation.js` and `src/badges/validation.js`
 - `cli/capabilities.mjs`
@@ -128,7 +129,8 @@ A change to the **recorded badge data** (a new signal, or a new field on `badges
 - `src/app/hooks/useSandboxArchiveSnapshots.js` and `TeacherView.jsx` (teacher-side sandbox snapshots)
 - `createSession` / `endSession` resets, and the "Badge data" section of `docs/agents/runtime-model.md` (paths, writers, lifetimes, the mapping to timeline events)
 - `docs/agents/classroom-behaviours.md` (sandbox archiving)
-- `src/app/hooks/__tests__/useSession.badges.test.js`, `useStudentBadgeSignals.test.js`, `useStudentCodeState.badges.test.js`
+- `src/badges/liveTimeline.js` (the mapping to timeline events) and `src/badges/__tests__/liveTimeline.test.js` (characterisation from session snapshots)
+- `src/app/hooks/__tests__/useSession.badges.test.js`, `useStudentBadgeSignals.test.js`, `useStudentCodeState.badges.test.js`, `useBadgeSuggestions.test.js`
 
 ## Firebase And Session Model
 
