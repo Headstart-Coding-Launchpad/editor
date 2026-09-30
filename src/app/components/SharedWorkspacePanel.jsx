@@ -70,7 +70,7 @@ export default function SharedWorkspacePanel({ sharedWorkspaces, viewerId, onOpe
             </button>
             <button
               type="button"
-              className="btn-ghost"
+              className="btn-ghost-outline"
               style={s.toastBtn}
               onClick={() => setToastEntry(null)}
             >

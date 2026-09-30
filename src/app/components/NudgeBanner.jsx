@@ -57,7 +57,7 @@ export function NudgePermissionPrompt() {
       <button className="btn-primary" style={s.promptBtn} onClick={allow}>
         Allow
       </button>
-      <button className="btn-ghost" style={s.promptBtn} onClick={dismiss}>
+      <button className="btn-ghost-outline" style={s.promptBtn} onClick={dismiss}>
         Not now
       </button>
     </div>

@@ -69,4 +69,23 @@ describe('TopBar', () => {
     render(<TopBar lessonTitle="Lesson" />)
     expect(screen.getByText('Headstart Coding - LaunchPad')).toBeInTheDocument()
   })
+
+  it('singleRow keeps one fixed-height row and shows the name as a chip', () => {
+    render(
+      <TopBar
+        lessonTitle="Lesson"
+        displayName="Jamie"
+        isSolo={false}
+        right={<button type="button">Help</button>}
+        singleRow
+      />
+    )
+    const bar = screen.getByRole('banner')
+    expect(bar.style.flexWrap).toBe('nowrap')
+    expect(bar.style.height).toBe('52px')
+    const chip = screen.getByTestId('top-bar-name')
+    expect(chip).toHaveTextContent('Jamie')
+    expect(chip).toHaveAttribute('title', 'Jamie')
+    expect(chip.parentElement.style.flexWrap).toBe('nowrap')
+  })
 })

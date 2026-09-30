@@ -934,7 +934,8 @@ describe('StudentView', () => {
       )
       rerender(<StudentView lessonId="python-1-1" />)
       expect(await screen.findByTestId('badge-celebration')).toHaveTextContent('Bug Hunter')
-      expect(screen.getByRole('status')).toHaveTextContent('Sam · Code Fixer')
+      expect(screen.getByRole('status')).toHaveTextContent('Sam earned a badge:')
+      expect(screen.getByRole('status')).toHaveTextContent('Code Fixer')
     })
 
     it('gives the presentation window the toast only', async () => {
@@ -947,7 +948,8 @@ describe('StudentView', () => {
       )
       rerender(<StudentView lessonId="python-1-1" teacherPresentation />)
       const toast = await screen.findByRole('status')
-      expect(toast).toHaveTextContent('Me · Bug Hunter')
+      expect(toast).toHaveTextContent('Me earned a badge:')
+      expect(toast).toHaveTextContent('Bug Hunter')
       expect(toast.className).toContain('sv-badge-toast--presentation')
       expect(screen.queryByTestId('badge-celebration')).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /Coding moments/ })).not.toBeInTheDocument()
@@ -1033,6 +1035,9 @@ describe('StudentView', () => {
       await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
 
       const needHelpBtn = screen.getByRole('button', { name: /Need Help/i })
+      // Short on screen (the top bar is one row); the full name stays in the label and title.
+      expect(needHelpBtn).toHaveTextContent(/^✋ Help$/)
+      expect(needHelpBtn).toHaveAttribute('title', 'Ask your teacher for help')
       await user.click(needHelpBtn)
 
       expect(requestHelp).toHaveBeenCalledWith('student-1')

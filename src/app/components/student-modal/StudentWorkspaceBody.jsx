@@ -133,7 +133,7 @@ export default function StudentWorkspaceBody({
       </button>
       {(pendingHighlight || highlightNote) && (
         <button
-          className="btn-ghost"
+          className="btn-ghost-outline"
           style={{ fontSize: 12, padding: '4px 10px' }}
           onClick={onCancelHighlight}
         >

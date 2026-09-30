@@ -1,13 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { CLASS_TOAST_MS, PRESENTATION_TOAST_MS, classToastLabel } from '../../../badges/celebration'
+import {
+  CLASS_TOAST_ICON,
+  CLASS_TOAST_MS,
+  PRESENTATION_TOAST_MS,
+  classToastLabel,
+} from '../../../badges/celebration'
 
 const LEAVE_MS = 300
 
 /**
- * The compact, silent class toast for a classmate's award: "🐛 Alex · Bug Hunter", or one merged
- * "⌨️ Keyboard Wizard · 12 coders" for a bulk award. The blurb is only in the hover title. The
- * presentation window shows it slightly larger and for longer. Calls `onDone` when it has gone,
- * so the next queued toast can show.
+ * The silent class toast for a classmate's award, bottom-left: "🎖️ Alex earned a badge: 🐛 Bug
+ * Hunter", or one merged "🎖️ 12 students earned a badge: ⌨️ Keyboard Wizard" for a bulk award. It
+ * slides in with a soft glow and the blurb is only in the hover title. The presentation window
+ * shows it larger and for a little longer. Calls `onDone` when it has gone, so the next queued
+ * toast can show.
  *
  * @param {object} props
  * @param {{ id: string, recipientIds: string[], names: string[] }|null} props.toast
@@ -44,7 +50,9 @@ export default function BadgeClassToast({ toast, badge, presentation = false, on
 
   return (
     <div className={className} role="status" title={badge?.blurb || undefined}>
-      <span aria-hidden="true">{badge?.emoji ?? '🏅'}</span>
+      <span className="sv-badge-toast__icon" aria-hidden="true">
+        {CLASS_TOAST_ICON}
+      </span>
       <span className="sv-badge-toast__text">{classToastLabel(toast, badge)}</span>
     </div>
   )

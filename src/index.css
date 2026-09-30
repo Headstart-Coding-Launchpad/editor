@@ -3829,38 +3829,43 @@ select {
 
 /* ─── Live badges: the student's celebration card, class toasts, Coding moments ───
    See docs/architecture/live-badges-plan.md ("Student experience"). CSS only, no library.
-   The card flips in (rotateY) with one shine sweep, then docks into the Coding moments pill;
-   --sv-dock-x / --sv-dock-y are set by BadgeCelebration from the pill's position. The layer
-   around the card never takes pointer events, so the page underneath stays usable. */
+   A small card drops down top-centre, just under the student top bar, flips in (rotateY) with
+   one shine sweep, then docks into the 🎖️ moments button; --sv-dock-x / --sv-dock-y are set by
+   BadgeCelebration from the button's position. The layer is only as big as the card and never
+   takes pointer events, so the editor and everything else stays usable. */
 .sv-badge-layer {
   position: fixed;
-  inset: 0;
   z-index: 1240;
   display: flex;
-  align-items: center;
-  justify-content: center;
   pointer-events: none;
   perspective: 900px;
+}
+
+/* Top-centre, just under the 52px student top bar. */
+.sv-badge-layer--top {
+  top: 60px;
+  left: 16px;
+  right: 16px;
+  justify-content: center;
 }
 
 .sv-badge-card {
   position: relative;
   overflow: hidden;
   pointer-events: auto;
-  width: min(300px, 86vw);
-  padding: 22px 22px 20px;
+  width: min(320px, 100%);
+  padding: 10px 14px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  text-align: center;
+  gap: 12px;
+  text-align: left;
   background: var(--ui-surface);
   border: 2px solid var(--ui-border-strong);
-  border-radius: 16px;
-  box-shadow: 0 20px 50px rgba(40, 22, 78, 0.28);
+  border-radius: 14px;
+  box-shadow: 0 14px 34px rgba(40, 22, 78, 0.24);
   font-family: var(--font-body);
-  transform-origin: center;
-  animation: sv-badge-flip-in 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transform-origin: top center;
+  animation: sv-badge-drop-in 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .sv-badge-card::after {
@@ -3879,8 +3884,15 @@ select {
   pointer-events: none;
 }
 
+.sv-badge-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .sv-badge-card__label {
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -3888,7 +3900,8 @@ select {
 }
 
 .sv-badge-card__emoji {
-  font-size: 3.4rem;
+  flex-shrink: 0;
+  font-size: 2.2rem;
   line-height: 1;
 }
 
@@ -3896,14 +3909,14 @@ select {
   margin: 0;
   font-family: var(--font-title);
   font-weight: 700;
-  font-size: 1.25rem;
+  font-size: 1rem;
   color: var(--colour-ink-strong);
 }
 
 .sv-badge-card__blurb {
   margin: 0;
-  font-size: 0.92rem;
-  line-height: 1.45;
+  font-size: 0.8rem;
+  line-height: 1.35;
   color: var(--colour-text);
 }
 
@@ -3927,6 +3940,22 @@ select {
 
 .sv-badge-card--reduced::after {
   display: none;
+}
+
+/* The drop-down flip: the card falls a little from under the top bar while it turns. */
+@keyframes sv-badge-drop-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-28px) rotateY(-90deg) scale(0.92);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(2px) rotateY(12deg) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotateY(0) scale(1);
+  }
 }
 
 @keyframes sv-badge-flip-in {
@@ -3960,7 +3989,7 @@ select {
   }
   to {
     opacity: 0;
-    transform: translate(var(--sv-dock-x, 40vw), var(--sv-dock-y, -45vh)) scale(0.12);
+    transform: translate(var(--sv-dock-x, 30vw), var(--sv-dock-y, -40px)) scale(0.12);
   }
 }
 
@@ -3982,7 +4011,8 @@ select {
   }
 }
 
-/* Class toast: compact and silent, bottom-left (the shared-work toast owns bottom-right). */
+/* Class toast: silent, bottom-left (the shared-work toast owns bottom-right). It slides in with
+   a soft purple glow; the presentation window scales it up for the board. */
 .sv-badge-toast {
   position: fixed;
   left: 16px;
@@ -3991,18 +4021,28 @@ select {
   max-width: calc(100vw - 32px);
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 14px;
+  gap: 12px;
+  padding: 10px 20px 10px 14px;
   background: var(--ui-surface);
   border: 1px solid var(--ui-border-strong);
   border-radius: 999px;
-  box-shadow: var(--ui-shadow-soft);
+  box-shadow:
+    0 0 0 4px rgba(98, 34, 204, 0.08),
+    0 8px 26px rgba(98, 34, 204, 0.22);
   font-family: var(--font-body);
-  font-size: 0.85rem;
+  font-size: 1.2rem;
   font-weight: 600;
   color: var(--colour-ink-strong);
   white-space: nowrap;
-  animation: sv-badge-toast-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation:
+    sv-badge-toast-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    sv-badge-toast-glow 1600ms ease-out 420ms 1 both;
+}
+
+.sv-badge-toast__icon {
+  flex-shrink: 0;
+  font-size: 1.9rem;
+  line-height: 1;
 }
 
 .sv-badge-toast__text {
@@ -4011,9 +4051,15 @@ select {
 }
 
 .sv-badge-toast--presentation {
-  padding: 10px 20px;
-  font-size: 1.05rem;
-  gap: 10px;
+  left: 24px;
+  bottom: 24px;
+  gap: 16px;
+  padding: 14px 30px 14px 20px;
+  font-size: 1.7rem;
+}
+
+.sv-badge-toast--presentation .sv-badge-toast__icon {
+  font-size: 2.7rem;
 }
 
 .sv-badge-toast--leaving {
@@ -4023,11 +4069,29 @@ select {
 @keyframes sv-badge-toast-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateX(-24px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
+  }
+}
+
+@keyframes sv-badge-toast-glow {
+  0% {
+    box-shadow:
+      0 0 0 4px rgba(98, 34, 204, 0.08),
+      0 8px 26px rgba(98, 34, 204, 0.22);
+  }
+  40% {
+    box-shadow:
+      0 0 0 8px rgba(251, 165, 4, 0.18),
+      0 8px 32px rgba(98, 34, 204, 0.3);
+  }
+  100% {
+    box-shadow:
+      0 0 0 4px rgba(98, 34, 204, 0.08),
+      0 8px 26px rgba(98, 34, 204, 0.22);
   }
 }
 

@@ -1,5 +1,5 @@
 import React from 'react'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BadgeCelebration from '../BadgeCelebration'
@@ -39,7 +39,10 @@ describe('BadgeCelebration', () => {
   it('shows the card, announces it politely, then docks and finishes', () => {
     const onDone = vi.fn()
     render(<BadgeCelebration award={{ key: 'a1' }} badge={BUG_HUNTER} onDone={onDone} />)
-    const card = screen.getByTestId('badge-celebration').firstChild
+    const layer = screen.getByTestId('badge-celebration')
+    // A small card top-centre under the top bar, not a centred overlay.
+    expect(layer.className).toContain('sv-badge-layer--top')
+    const card = layer.firstChild
     expect(card).toHaveTextContent(BUG_HUNTER.title)
     expect(card).toHaveTextContent(BUG_HUNTER.blurb)
     expect(card.className).not.toContain('sv-badge-card--reduced')
@@ -87,7 +90,7 @@ describe('BadgeClassToast', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
 
-  it('shows "Name · Badge" with the blurb only in the hover title, then finishes', () => {
+  it('shows "Name earned a badge: Badge" with the blurb only in the hover title, then finishes', () => {
     const onDone = vi.fn()
     render(
       <BadgeClassToast
@@ -97,7 +100,8 @@ describe('BadgeClassToast', () => {
       />
     )
     const toast = screen.getByRole('status')
-    expect(toast).toHaveTextContent('Sam · Bug Hunter')
+    expect(toast).toHaveTextContent(`Sam earned a badge: ${BUG_HUNTER.emoji} Bug Hunter`)
+    expect(toast.querySelector('.sv-badge-toast__icon')).toHaveTextContent('🎖️')
     expect(toast).not.toHaveTextContent(BUG_HUNTER.blurb)
     expect(toast).toHaveAttribute('title', BUG_HUNTER.blurb)
     act(() => vi.advanceTimersByTime(CLASS_TOAST_MS))
@@ -115,8 +119,10 @@ describe('BadgeClassToast', () => {
       />
     )
     const toast = screen.getByRole('status')
-    expect(toast).toHaveTextContent('Keyboard Wizard · 3 coders')
-    expect(toast).not.toHaveTextContent('A ·')
+    expect(toast).toHaveTextContent(
+      `3 students earned a badge: ${KEYBOARD_WIZARD.emoji} Keyboard Wizard`
+    )
+    expect(toast).not.toHaveTextContent('A earned')
     expect(toast.className).toContain('sv-badge-toast--presentation')
     act(() => vi.advanceTimersByTime(CLASS_TOAST_MS))
     expect(onDone).not.toHaveBeenCalled()
@@ -133,18 +139,37 @@ describe('CodingMomentsPill', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('lists the moments and toggles the in-memory mute', async () => {
+  it('is a compact icon-only button with no count', () => {
+    render(
+      <CodingMomentsPill
+        moments={[...moments, { badgeId: 'keyboard_wizard', badge: KEYBOARD_WIZARD }]}
+        muted={false}
+      />
+    )
+    const button = screen.getByRole('button', { name: 'Coding moments' })
+    expect(button).toHaveTextContent(/^🎖️$/)
+    expect(button).not.toHaveTextContent('2')
+    // The mute lives in the popover, not beside the button.
+    expect(screen.queryByRole('button', { name: 'Mute badge sounds' })).not.toBeInTheDocument()
+  })
+
+  it('opens a popover with the moments and the in-memory mute', async () => {
     const user = userEvent.setup()
     const onMutedChange = vi.fn()
     render(<CodingMomentsPill moments={moments} muted={false} onMutedChange={onMutedChange} />)
     await user.click(screen.getByRole('button', { name: /Coding moments/ }))
-    expect(screen.getByRole('list', { name: 'My coding moments' })).toHaveTextContent('Bug Hunter')
-    await user.click(screen.getByRole('button', { name: 'Mute badge sounds' }))
+    const popover = screen.getByRole('group', { name: 'Your coding moments' })
+    expect(within(popover).getByRole('list', { name: 'My coding moments' })).toHaveTextContent(
+      'Bug Hunter'
+    )
+    await user.click(within(popover).getByRole('button', { name: 'Mute badge sounds' }))
     expect(onMutedChange).toHaveBeenCalledWith(true)
   })
 
-  it('disables the mute when the tutor turned sounds off', () => {
+  it('disables the mute when the tutor turned sounds off', async () => {
+    const user = userEvent.setup()
     render(<CodingMomentsPill moments={moments} muted={false} soundsOff />)
+    await user.click(screen.getByRole('button', { name: /Coding moments/ }))
     expect(screen.getByRole('button', { name: 'Mute badge sounds' })).toBeDisabled()
   })
 })
@@ -207,7 +232,7 @@ describe('an Admin-catalogue badge on a student screen', () => {
       />
     )
     const status = screen.getByRole('status')
-    expect(status).toHaveTextContent('Alex · Star Speaker')
+    expect(status).toHaveTextContent('Alex earned a badge: 🎤 Star Speaker')
     expect(status).toHaveAttribute('title', 'Presented well.')
   })
 })

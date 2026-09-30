@@ -328,4 +328,36 @@ describe('TaskProgressDots', () => {
       expect(screen.getByTitle('Task progress')).toBeInTheDocument()
     })
   })
+
+  describe('compact (the student top bar)', () => {
+    const TWELVE = Array.from({ length: 12 }, (_, i) => ({
+      id: i + 1,
+      title: `Task ${i + 1}`,
+      type: 'task',
+    }))
+
+    it('shows every dot when they fit', () => {
+      activeRestore = stubRowWidth(2000)
+      render(<TaskProgressDots compact tasks={TWELVE} currentTaskId={11} onDotClick={vi.fn()} />)
+      expect(screen.getAllByRole('button')).toHaveLength(12)
+      expect(screen.getByTitle('Task progress')).toHaveAttribute('data-mode', 'fits')
+    })
+
+    it('scrolls sideways instead of wrapping when only some dots fit', () => {
+      // 12 compact dots need 12*30-4+6 = 362px; 200px holds more than 5 dots' worth.
+      activeRestore = stubRowWidth(200)
+      render(<TaskProgressDots compact tasks={TWELVE} currentTaskId={11} onDotClick={vi.fn()} />)
+      const row = screen.getByTitle('Task progress')
+      expect(row).toHaveAttribute('data-mode', 'scroll')
+      expect(row.style.overflowX).toBe('auto')
+      expect(screen.getAllByRole('button')).toHaveLength(12)
+    })
+
+    it('falls back to the counter when there is no useful room', () => {
+      activeRestore = stubRowWidth(60)
+      render(<TaskProgressDots compact tasks={TWELVE} currentTaskId={11} onDotClick={vi.fn()} />)
+      expect(screen.queryAllByRole('button')).toHaveLength(0)
+      expect(screen.getByTitle('Task progress')).toHaveTextContent('11/12')
+    })
+  })
 })

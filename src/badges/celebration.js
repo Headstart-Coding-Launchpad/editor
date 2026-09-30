@@ -11,8 +11,10 @@ export const CELEBRATION_CARD_MS = 2500
 /** How long the dock (shrink into the pill) takes. */
 export const CELEBRATION_DOCK_MS = 600
 /** How long a class toast shows: on a student's screen, and on the presentation window. */
-export const CLASS_TOAST_MS = 3000
-export const PRESENTATION_TOAST_MS = 4000
+export const CLASS_TOAST_MS = 4000
+export const PRESENTATION_TOAST_MS = 4500
+/** The class toast's leading icon (the badge's own emoji sits inside the text). */
+export const CLASS_TOAST_ICON = '🎖️'
 
 /**
  * One award's identity. `decidedAt` is part of it, so a badge revoked and then awarded again is
@@ -131,9 +133,14 @@ function studentName(students, studentId) {
   return students?.[studentId]?.displayName || 'A coder'
 }
 
-/** The toast's text: "Alex · Bug Hunter", or "Keyboard Wizard · 12 coders" for a bulk award. */
+/**
+ * The toast's text, after its 🎖️ icon: "Alex earned a badge: 🐛 Bug Hunter", or
+ * "12 students earned a badge: ⌨️ Keyboard Wizard" for a bulk award.
+ */
 export function classToastLabel(toast, badge) {
   const title = badge?.title ?? 'Badge'
-  if (toast.recipientIds.length > 1) return `${title} · ${toast.recipientIds.length} coders`
-  return `${toast.names[0] ?? 'A coder'} · ${title}`
+  const named = badge?.emoji ? `${badge.emoji} ${title}` : title
+  const count = toast.recipientIds.length
+  const who = count > 1 ? `${count} students` : (toast.names[0] ?? 'A coder')
+  return `${who} earned a badge: ${named}`
 }

@@ -171,7 +171,7 @@ export default function TeacherFeedbackModal({
               {submitted === 'lesson' && <p style={s.successMsg}>Submitted!</p>}
               {submitError && <p style={s.errorMsg}>{submitError}</p>}
               <div style={s.actions}>
-                <button className="btn-ghost" style={s.cancelBtn} onClick={onClose}>
+                <button className="btn-ghost-outline" style={s.cancelBtn} onClick={onClose}>
                   Cancel
                 </button>
                 <button
@@ -204,7 +204,7 @@ export default function TeacherFeedbackModal({
               {submitted === 'task' && <p style={s.successMsg}>Submitted!</p>}
               {submitError && <p style={s.errorMsg}>{submitError}</p>}
               <div style={s.actions}>
-                <button className="btn-ghost" style={s.cancelBtn} onClick={onClose}>
+                <button className="btn-ghost-outline" style={s.cancelBtn} onClick={onClose}>
                   Cancel
                 </button>
                 <button
@@ -237,7 +237,7 @@ export default function TeacherFeedbackModal({
               {submitted === 'platform' && <p style={s.successMsg}>Submitted!</p>}
               {submitError && <p style={s.errorMsg}>{submitError}</p>}
               <div style={s.actions}>
-                <button className="btn-ghost" style={s.cancelBtn} onClick={onClose}>
+                <button className="btn-ghost-outline" style={s.cancelBtn} onClick={onClose}>
                   Cancel
                 </button>
                 <button
