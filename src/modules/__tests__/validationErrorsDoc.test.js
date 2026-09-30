@@ -40,6 +40,7 @@ const VALIDATOR_FILES = [
   'src/shared/composedLesson.js',
   'src/shared/draftLesson.js',
   'src/shared/topicAudit.js',
+  'src/badges/validation.js',
 ]
 
 const normalize = (text) => text.replace(/\s+/g, ' ').trim()

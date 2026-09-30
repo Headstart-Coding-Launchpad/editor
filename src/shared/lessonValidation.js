@@ -43,6 +43,8 @@ import {
 import { getTaskActivity } from '../activities/registry.pure.js'
 import { getLegacyTaskValidation } from '../activities/legacyValidation.js'
 import { findTrailingLineHintMarkers } from './lineHints.js'
+import { parseTaskActivity } from './taskActivity.js'
+import { validateBadgeHints, validateBadgeOptions } from '../badges/validation.js'
 
 export const VALID_LESSON_TYPES = Object.freeze([...LESSON_MODULE_TYPES, 'composed'])
 
@@ -216,6 +218,15 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
     }
   }
 
+  // taskActivity names a Lesson Format Glossary pattern (src/shared/taskActivity.js); badges read
+  // it, so an unrecognised one is worth a warning (never an error: it's free text).
+  if (typeof task.taskActivity === 'string' && !parseTaskActivity(task.taskActivity).known) {
+    warnings.push(
+      `Task ${n} taskActivity "${task.taskActivity.trim()}" is not a recognised Lesson Format Glossary pattern`
+    )
+  }
+  validateBadgeHints(task, n, errors, warnings)
+
   // Drafts deliberately allow missing task-specific authoring fields; the schema/type checks
   // above (and validateDraftLessonStructure) still run so the Builder can load them safely.
   if (lesson.draft === true) return null
@@ -287,6 +298,7 @@ export function validateLessonCore(lesson, { envelope, beforeTasks, afterTask } 
   }
 
   validateLessonEnvelope(lesson, errors, envelope)
+  validateBadgeOptions(lesson, errors, warnings)
   const { tasks } = lesson
   if (!Array.isArray(tasks)) {
     errors.push('tasks is required and must be an array')

@@ -14,6 +14,7 @@ export const COMMON_TASK_FIELDS = Object.freeze([
   'estimatedMinutes',
   'intent',
   'taskActivity',
+  'badgeHints',
   'intentLastChangedAt',
   'taskLastChangedAt',
 ])

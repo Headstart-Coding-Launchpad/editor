@@ -36,7 +36,18 @@ export const COMMON_TASK_FIELDS = specs(
       description: 'Completion check (one or a list).',
     },
     { name: 'feedbackChecks', type: 'array', authored: true },
-    { name: 'taskActivity', type: 'string', authored: true, description: 'Teacher-only note.' },
+    {
+      name: 'taskActivity',
+      type: 'string',
+      authored: true,
+      description:
+        'Teacher-only Lesson Format Glossary type, e.g. "Code Task, Debug Code Task" (see taskActivity in capabilities).',
+    },
+    {
+      name: 'badgeHints',
+      type: 'object',
+      description: '{ suggest: [badgeId], suppress: [badgeId] } (docs/authoring/badges.md).',
+    },
     {
       name: 'intent',
       type: 'string',
