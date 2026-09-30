@@ -70,14 +70,14 @@ export const TASK_TYPE_FIELDS = Object.freeze({
       {
         name: 'informationType',
         type: 'string',
-        values: ['standard', 'recap', 'introduction'],
+        values: ['standard', 'recap', 'introduction', 'badges'],
       },
       {
         name: 'explainer',
         type: 'string',
         required: true,
         authored: true,
-        description: 'Required unless informationType is introduction.',
+        description: 'Required unless informationType is introduction or badges.',
       },
       { name: 'leftContent', type: 'string', authored: true, description: 'Recap only.' },
     ],

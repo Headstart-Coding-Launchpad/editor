@@ -13,7 +13,7 @@ import TaskSlideTransition from './TaskSlideTransition'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
 import PanelTabs from './PanelTabs'
 import SupportStagePanel from './SupportStagePanel'
-import { getCompleteStage, getRevealableStages } from '../../shared/taskUtils'
+import { getCompleteStage, getEffectiveTaskMode, getRevealableStages } from '../../shared/taskUtils'
 import { getStageLineHints } from '../../shared/lineHints'
 import {
   TEACHER_LIVE_REFERENCE_TYPES,
@@ -133,6 +133,8 @@ export default function LessonTaskContent({
   isQuizTask,
   isAutoEvaluatedQuiz,
   isInformationTask,
+  // The Badge Summary task's class wall (see InformationTask); null outside a live lesson.
+  badgeWall = null,
   // Hosted activity (taskType 'activity' or a quiz): a full-width surface rendered by
   // ActivityHost. displayAnswer is the teacher's broadcast activity state while forced-live.
   isActivityTask = false,
@@ -578,7 +580,7 @@ export default function LessonTaskContent({
           onReplayLesson={onReplayLesson}
         />
       ) : !isSandbox && (isInformationTask || isViewingExplainerSlide) ? (
-        <InformationTask task={task} lesson={lesson} fill disableCopy />
+        <InformationTask task={task} lesson={lesson} fill disableCopy badgeWall={badgeWall} />
       ) : !isSandbox && isActivityTask ? (
         <>
           <TeacherAnswerNotice at={isViewingPrev ? null : cs.teacherAnswerNoticeAt} />
@@ -735,9 +737,9 @@ export default function LessonTaskContent({
           color="#0369a1"
           style={{ padding: '5px 16px', fontSize: 12, fontWeight: 600 }}
         >
-          {task.taskMode === 'live'
+          {getEffectiveTaskMode(task) === 'live'
             ? 'Live sessions only'
-            : task.taskMode === 'solo'
+            : getEffectiveTaskMode(task) === 'solo'
               ? 'Solo mode only'
               : 'Live + Solo'}
         </Banner>

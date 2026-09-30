@@ -84,6 +84,32 @@ lands.
 teacher's session sandbox and in a student's personal sandbox. Badges that need a checked task
 (the pattern badges, 🎯, 🔨 and 🚀) don't.
 
+The session report records the teacher sandbox in full (when the class went in, for how long,
+after which task, the tutor's explainer and pushes, and each student's last sandbox code) as a
+*possible lesson gap*, and each student's personal sandbox as activity only (time, runs, error
+runs, fixes).
+
+## Badge Summary task
+
+An information task with `informationType: badges` shows **Today's Coding Moments**:
+
+```yaml
+  - type: information
+    informationType: badges
+    title: Today's Coding Moments   # optional heading; this is the default
+    explainer: Look what we did today!   # optional, shown above the wall
+```
+
+- **Students** see their own badges as a sticker sheet flipping in one by one, then the class wall
+  grouped by badge ("🐛 Bug Hunter: Alex, Sam"). A student with no badges gets a warm line about
+  the class, never an empty state.
+- **The teacher** sees a projector-friendly class wall and **Copy class summary** (plain text,
+  grouped by badge). The presentation window shows the wall only.
+- Names only, never counts or ranks. Revoked badges drop out.
+- **Solo:** skipped, exactly as if it were `taskMode: live` (solo badges are a later feature).
+- The session report has the same wall in its **Coding moments** section, with student labels
+  ("Student 3") because reports are anonymised.
+
 ## badgeOptions
 
 Optional, on the lesson envelope. Leave it out to use the defaults.

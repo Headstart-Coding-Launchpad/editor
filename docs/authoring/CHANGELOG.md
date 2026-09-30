@@ -39,6 +39,16 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-09-30
 
+### Badge Summary information task (`informationType: badges`)
+
+- New information type `badges`: "Today's Coding Moments". In a live session each student sees
+  their own badges as stickers, then the class wall grouped by badge (names only, no counts); the
+  teacher sees a projector-friendly wall with **Copy class summary**. The `explainer` is optional
+  and shows above the wall. Usually the last task.
+- Solo learners skip it, exactly as if it were `taskMode: live`; no `taskMode` is needed. See
+  [badges.md](badges.md#badge-summary-task).
+- Affects: all · Existing lessons: no changes needed · Resolves: none
+
 ### `taskActivity` patterns are read; `badgeOptions` and `badgeHints` for live badges
 
 - `taskActivity` stays free text, but the platform now reads the Lesson Format Glossary pattern it

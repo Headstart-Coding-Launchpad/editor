@@ -135,6 +135,7 @@ export default function TeacherView({ lessonId }) {
     pushTeacherPaneCommand,
     pushClassPaneCommand,
     archiveSandboxStudentSnapshot,
+    readSessionArchive,
     decideBadge,
     revokeBadge,
     setBadgeSettings,
@@ -162,6 +163,15 @@ export default function TeacherView({ lessonId }) {
     settings: session?.badgeSettings,
     decideBadge,
   })
+  // The Badge Summary task's class wall, on the teacher's screen.
+  const teacherBadgeWall = useMemo(
+    () => ({
+      decisions: session?.badges ?? {},
+      students: session?.students ?? {},
+      variant: 'teacher',
+    }),
+    [session?.badges, session?.students]
+  )
   // The suggestions panel's open state lives here so the grid's 🏅 Suggestions button can open
   // and focus it (bumping badgePanelFocus).
   const [badgePanelOpen, setBadgePanelOpen] = useState(false)
@@ -175,6 +185,26 @@ export default function TeacherView({ lessonId }) {
   const [showEditLessonModal, setShowEditLessonModal] = useState(false)
   const [lastReport, setLastReport] = useState(null)
   const [showReportsPanel, setShowReportsPanel] = useState(false)
+  // The teacher-sandbox archive for the in-progress report, read once each time the Reports
+  // panel opens during a session (null until it loads; the preview leaves the sandbox out).
+  const [liveReportArchive, setLiveReportArchive] = useState(null)
+  const liveReportOpen =
+    showReportsPanel && (session?.state === 'active' || session?.state === 'sandbox')
+  useEffect(() => {
+    if (!liveReportOpen) return undefined
+    let cancelled = false
+    setLiveReportArchive(null)
+    readSessionArchive()
+      .then((archive) => {
+        if (!cancelled) setLiveReportArchive(archive)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+    // Read once per opening; readSessionArchive changes identity every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveReportOpen])
   // The teacher's own read-only look at an approved share — same gallery students get,
   // opened from TeacherSessionControls' "Shared work" dropdown.
   const [openTeacherShare, setOpenTeacherShare] = useState(null)
@@ -414,8 +444,27 @@ export default function TeacherView({ lessonId }) {
     loadCurrentTaskContent(restoredTaskId)
   }
 
+  // The report's live-badge inputs besides the session: the suggestions still pending (counted
+  // in badgeSummary) and the Topic Library's titles.
+  function sessionReportInputs(sessionArchive = null) {
+    return {
+      session,
+      lesson,
+      sessionArchive,
+      pendingSuggestions: badgeSuggestions.suggestions,
+      topics,
+    }
+  }
+
   async function handleEndSession(goHome) {
-    const report = session?.startedAt ? buildSessionReport({ session, lesson }) : null
+    // The teacher-sandbox archive is read before the report is built, and the report is saved
+    // before endSession wipes the live data. A failed archive read leaves the sandbox out rather
+    // than losing the report.
+    let report = null
+    if (session?.startedAt) {
+      const sessionArchive = await readSessionArchive({ endedAt: Date.now() }).catch(() => null)
+      report = buildSessionReport(sessionReportInputs(sessionArchive))
+    }
     if (report) await saveSessionReport(lessonId, report.sessionId, report)
     await endSession()
     presentationWindowRef.current?.close()
@@ -755,6 +804,7 @@ export default function TeacherView({ lessonId }) {
             teacherLiveReferenceVisibleToAll={session?.teacherLiveReferenceVisibleToAll}
             onToggleLiveReference={setTeacherLiveReferenceForClass}
             fillHeight={centreFillsHeight}
+            badgeWall={teacherBadgeWall}
           />
           {task && !isInformationTask && !isInSandbox && (
             <TaskRatingPanel
@@ -856,7 +906,7 @@ export default function TeacherView({ lessonId }) {
           lessonId={lessonId}
           liveReport={
             session?.state === 'active' || session?.state === 'sandbox'
-              ? buildSessionReport({ session, lesson })
+              ? buildSessionReport(sessionReportInputs(liveReportArchive))
               : null
           }
           onClose={() => setShowReportsPanel(false)}

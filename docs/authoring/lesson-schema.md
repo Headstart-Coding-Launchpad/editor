@@ -186,9 +186,9 @@ Topic references are collected from task `topicLinks` and from `[[topic-id]]`, `
 | Field | Required | Notes |
 |---|:---:|---|
 | `taskType` | Yes | Must be `"information"`. |
-| `informationType` | No | `standard` (default), `recap`, or `introduction`. |
+| `informationType` | No | `standard` (default), `recap`, `introduction`, or `badges` (the Badge Summary, "Today's Coding Moments"; live only, skipped in solo — see [badges.md](badges.md#badge-summary-task)). |
 | `title` | Yes | Shown in progress UI. |
-| `explainer` | Yes* | Markdown content. Required for `standard` and `recap`. Optional for `introduction` (renders lesson metadata). |
+| `explainer` | Yes* | Markdown content. Required for `standard` and `recap`. Optional for `introduction` (renders lesson metadata) and `badges` (shown above the class wall). |
 | `leftContent` | No | Left-pane Markdown for `recap` only. |
 
 ---
@@ -356,7 +356,7 @@ Groups may not be nested. `carryCodeFrom` / `carryBlocksFrom` references from wi
 - `badgeOptions` values must be in range, and `badgeHints` must name built-in badges ([badges.md](badges.md)); an unrecognised `taskActivity` pattern is a warning.
 - Every task needs a `title`; `estimatedMinutes`, `priority`, `allowSharing` and stage `role`s must be valid.
 - Carry fields (`carryCodeFrom`, `carryBlocksFrom`, `carryFsFrom`, `carryCircuitFrom`, `carryDesktopFrom`) must reference an existing, earlier task in the same lesson module.
-- Information tasks need an `explainer` unless `informationType` is `introduction`.
+- Information tasks need an `explainer` unless `informationType` is `introduction` or `badges`.
 - Quiz tasks: multiple-choice needs at least two non-empty options and an `answer_equals` check; match/fill-blank/short-answer quizzes have their own required-field rules. Code-arrange tasks need lines, blanks, unique ids and a completion check, in the Python or HTML module.
 - HTML code tasks should have files with unique filenames and an HTML entry file. Electronics tasks need a starter breadboard (`starterCircuit` or a Starter-role `codeStages` entry — though write `starterCircuit` regardless, or the Builder shows a "no starter breadboard yet" banner the validator does not). Filesystem and Desktop stages need their state.
 - Check fields, for the completion check and every feedback check: Python/HTML/Arcade checks (submit mode cannot use run-required checks; DOM checks need a `selector`, attribute checks an `attribute`, style checks a `property`; variable checks a `name`, `variable_dict_key_value` a `key`, `variable_array_nth_item` a valid `index`; value checks a `value`, except `code_no_error`, `output_not_empty`, `output_empty`, `element_exists`, `element_attribute`, `element_style_property`, `variable_exists`), Scratch checks (see `docs/authoring/scratch.md`), Turtle checks, filesystem checks (`fs_*`, including legacy aliases) and Electronics checks (`circuit_*` need a real component/control selector and, for connection checks, an endpoint `pin`). Neither validator inspects Electronics wire endpoints, so a wire naming a missing pin — or written as a `{ component, pin }` object instead of a `componentId.pin` string — passes validation while connecting nothing; see `docs/authoring/electronics.md`.

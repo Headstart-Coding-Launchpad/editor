@@ -3,6 +3,18 @@ import { flattenTasks, getTaskPriority } from './taskUtils.js'
 import { getTaskActivity } from '../activities/registry.pure.js'
 import { SUPPORT_REVEAL_SOURCES } from './taskStages.js'
 import { normalizeCodeSubmission } from './codeSubmission.js'
+import {
+  buildBadgeSummary,
+  buildQuizGroupReport,
+  buildReportTimelines,
+  buildShortcutSummary,
+  buildTeacherSandboxReport,
+  capSessionReportSize,
+  findFirstRealPasses,
+  studentBadgeFields,
+  studentTaskBadgeFields,
+  taskSummaryBadgeFields,
+} from '../badges/reportMetrics.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
 
@@ -284,28 +296,91 @@ function getCompleted(task, entries, override) {
   return entries.some((entry) => entry.passed) || !!override
 }
 
+// A student reference inside a report section ({ studentLabel, ... }) relabelled through
+// `relabel`, with any stray name or id removed.
+function relabelStudentRef(ref, relabel) {
+  if (!ref || typeof ref !== 'object') return ref
+  const { anonymousId, displayName, studentLabel, ...rest } = ref
+  return { studentLabel: relabel(studentLabel ?? displayName ?? anonymousId), ...rest }
+}
+
 export function anonymizeSessionReport(report) {
   if (!report) return report
+  // Old or hand-made reports may name students; every reference to a student elsewhere in the
+  // report (first pass, quiz groups, sandbox snapshots) follows the student's new label.
+  const labels = new Map()
   const students = Array.isArray(report.students)
     ? report.students.map((student, index) => {
         const { anonymousId, displayName, studentLabel, ...rest } = student ?? {}
+        const label = getAnonymousStudentLabel(index)
+        for (const key of [studentLabel, displayName, anonymousId, label]) {
+          if (key != null && !labels.has(key)) labels.set(key, label)
+        }
         return {
-          studentLabel: getAnonymousStudentLabel(index),
+          studentLabel: label,
           ...rest,
         }
       })
     : []
+  const relabel = (key) => labels.get(key) ?? 'Former student'
 
   return {
     ...report,
     students,
+    ...(Array.isArray(report.taskSummary)
+      ? {
+          taskSummary: report.taskSummary.map((task) =>
+            task?.firstRealPass
+              ? { ...task, firstRealPass: relabelStudentRef(task.firstRealPass, relabel) }
+              : task
+          ),
+        }
+      : {}),
+    ...(Array.isArray(report.quizGroups)
+      ? {
+          quizGroups: report.quizGroups.map((group) => ({
+            ...group,
+            students: (group.students ?? []).map((ref) => relabelStudentRef(ref, relabel)),
+          })),
+        }
+      : {}),
+    ...(report.teacherSandbox
+      ? {
+          teacherSandbox: {
+            ...report.teacherSandbox,
+            visits: (report.teacherSandbox.visits ?? []).map((visit) => ({
+              ...visit,
+              studentSnapshots: (visit.studentSnapshots ?? []).map((ref) =>
+                relabelStudentRef(ref, relabel)
+              ),
+            })),
+          },
+        }
+      : {}),
   }
 }
 
 // Combines a (possibly still-live) RTDB session snapshot with the lesson's task
 // list into a plain, serializable report object. Information tasks are excluded
 // because they have no student interaction to report.
-export function buildSessionReport({ session, lesson }) {
+//
+// Live badges (docs/architecture/live-badges-plan.md, "Session report") add each student's
+// moments, topic opens, shortcuts and sandbox activity, per-task first-edit / error / first-pass
+// metrics, quiz-group first tries, the teacher sandbox and the badge and shortcut summaries.
+// - `sessionArchive`: the teacher-sandbox archive (useSession's readSessionArchive), or null to
+//   leave the teacher sandbox out (the in-progress preview before it loads).
+// - `pendingSuggestions`: the badge suggestions still waiting for the tutor (useBadgeSuggestions),
+//   counted in `badgeSummary[badgeId].suggested`.
+// - `topics`: the Topic Library's topics, for topic titles; `catalogueBadges`: Admin badges.
+// The report is trimmed to fit a Firestore document (capSessionReportSize).
+export function buildSessionReport({
+  session,
+  lesson,
+  sessionArchive = null,
+  pendingSuggestions = [],
+  topics = null,
+  catalogueBadges = [],
+}) {
   const tasks = flattenTasks(lesson?.tasks ?? []).filter(isReportableTask)
   const studentsSnapshot = session?.students ?? {}
   const attemptLog = session?.attemptLog ?? {}
@@ -320,13 +395,27 @@ export function buildSessionReport({ session, lesson }) {
       ...Object.keys(overrideLog),
       ...Object.keys(carryFallbackLog),
       ...Object.keys(supportRevealLog),
+      ...Object.keys(session?.badges ?? {}),
+      ...Object.keys(session?.studentSignals ?? {}),
+      ...(sessionArchive?.visits ?? []).flatMap((visit) =>
+        Object.keys(visit.studentSnapshots ?? {})
+      ),
     ])
   )
+  const labelIndex = new Map(anonymousIds.map((id, index) => [id, index]))
+  const labelFor = (anonymousId) =>
+    labelIndex.has(anonymousId)
+      ? getAnonymousStudentLabel(labelIndex.get(anonymousId))
+      : 'Former student'
 
   const taskStartTimes = session?.taskStartTimes ?? {}
+  const timelines = buildReportTimelines({ session, lesson, studentIds: anonymousIds, topics })
+  const gradedTasks = tasks.filter((task) => !isNotApplicableTask(task))
+  const firstPasses = findFirstRealPasses(timelines, gradedTasks)
 
   const students = anonymousIds.map((anonymousId, index) => {
     const studentAttempts = attemptLog[anonymousId] ?? {}
+    const timeline = timelines[anonymousId] ?? []
 
     const taskResults = tasks.map((task) => {
       const entries = Object.values(studentAttempts[task.id] ?? {}).sort(
@@ -375,6 +464,14 @@ export function buildSessionReport({ session, lesson }) {
         ...(supportReveals.length > 0 ? { supportReveals } : {}),
         ...(pastes ? { pastes } : {}),
         ...(itemProgress ? { itemProgress } : {}),
+        ...(isNotApplicableTask(task)
+          ? {}
+          : studentTaskBadgeFields({
+              timeline,
+              studentId: anonymousId,
+              taskId: task.id,
+              firstPass: firstPasses.get(String(task.id)) ?? null,
+            })),
         distinctAttempts: entries.map((entry) => ({
           attemptNumber: entry.attemptNumber,
           passed: entryReportPassed(task, entry),
@@ -387,6 +484,7 @@ export function buildSessionReport({ session, lesson }) {
 
     return {
       studentLabel: getAnonymousStudentLabel(index),
+      ...studentBadgeFields({ session, studentId: anonymousId, timeline, catalogueBadges }),
       tasks: taskResults,
     }
   })
@@ -401,6 +499,14 @@ export function buildSessionReport({ session, lesson }) {
     const typeFields = getTypeFields(task)
     const reportActivity = getReportActivity(task)
     const teacherRating = normalizeTaskRating(taskRatingLog[task.id])
+    const badgeFields = taskSummaryBadgeFields({
+      task,
+      perStudent,
+      timelines,
+      firstPass: firstPasses.get(String(task.id)) ?? null,
+      taskStartTimes,
+      labelFor,
+    })
 
     const failureCounts = new Map()
     for (const t of perStudent) {
@@ -438,6 +544,7 @@ export function buildSessionReport({ session, lesson }) {
         ...summarizeCarryFallbacks(perStudent),
         ...summarizeSupportReveals(perStudent),
         ...summarizePastes(perStudent),
+        ...badgeFields,
         ...(teacherRating ? { teacherRating } : {}),
       }
     }
@@ -466,6 +573,7 @@ export function buildSessionReport({ session, lesson }) {
       ...summarizeCarryFallbacks(perStudent),
       ...summarizeSupportReveals(perStudent),
       ...summarizePastes(perStudent),
+      ...badgeFields,
       ...(teacherRating ? { teacherRating } : {}),
     }
     // Per-item failures for match (pairFailures) and fill-in-the-gaps (blankFailures); the
@@ -479,7 +587,16 @@ export function buildSessionReport({ session, lesson }) {
       : summary
   })
 
-  return {
+  const quizGroups = buildQuizGroupReport({ lesson, timelines, labelFor })
+  const teacherSandbox = buildTeacherSandboxReport({
+    archive: sessionArchive,
+    lesson,
+    labelFor,
+  })
+  const badgeSummary = buildBadgeSummary(session?.badges, pendingSuggestions)
+  const shortcutSummary = buildShortcutSummary(students)
+
+  return capSessionReportSize({
     lessonId: lesson?.id ?? session?.lessonId ?? null,
     lessonTitle: lesson?.title ?? null,
     sessionId: session?.startedAt != null ? String(session.startedAt) : null,
@@ -487,7 +604,11 @@ export function buildSessionReport({ session, lesson }) {
     endedAt: session?.endedAt ?? Date.now(),
     students,
     taskSummary,
-  }
+    ...(quizGroups.length > 0 ? { quizGroups } : {}),
+    ...(teacherSandbox ? { teacherSandbox } : {}),
+    ...(Object.keys(badgeSummary).length > 0 ? { badgeSummary } : {}),
+    ...(Object.keys(shortcutSummary).length > 0 ? { shortcutSummary } : {}),
+  })
 }
 
 // Merges optional teacher-submitted end-of-session feedback (star rating plus

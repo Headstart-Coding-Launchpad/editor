@@ -30,11 +30,15 @@ export default function TeacherEditorPanel({
   teacherLiveReferenceVisibleToAll,
   onToggleLiveReference,
   fillHeight = false,
+  // The Badge Summary task's class wall (see InformationTask).
+  badgeWall = null,
 }) {
   const mod = getLessonModule(lesson?.type)
   const usesUnifiedStages = !!mod?.capabilities?.teacherUnifiedStageTabs
 
-  if (!isInSandbox && isInformationTask) return <InformationTask task={task} lesson={lesson} fill />
+  if (!isInSandbox && isInformationTask) {
+    return <InformationTask task={task} lesson={lesson} fill badgeWall={badgeWall} />
+  }
   // Activities show their answers read-only; quizzes (previewState 'initial') show just the
   // question, since the teacher's screen is often projected.
   if (!isInSandbox && isHostedActivityTask(task)) {

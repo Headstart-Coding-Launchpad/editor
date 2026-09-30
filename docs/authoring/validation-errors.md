@@ -91,7 +91,7 @@ isn't listed here, so add a row whenever you add a message.
 
 | Message | Meaning | Fix |
 |---|---|---|
-| `Task … is an information task but has no explainer` | Information tasks are just their explainer. | Add `explainer:` Markdown. |
+| `Task … is an information task but has no explainer` | Information tasks are just their explainer (except `informationType: introduction` and `badges`). | Add `explainer:` Markdown. |
 | `Task … is a quiz but has fewer than 2 options` | Multiple-choice needs at least two options. | Add options. |
 | `Task … is a quiz but has an empty option text` | An option has no text. | Fill in or remove it. |
 | `Task … is a quiz but no correct answer has been selected` | No option is marked correct. | In YAML, set `answer:` to the correct option text; in JSON, set `check` to that option's id. |

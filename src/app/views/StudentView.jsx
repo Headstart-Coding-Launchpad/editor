@@ -358,6 +358,27 @@ export default function StudentView({
         : [],
     [phase, teacherPresentation, session?.badges, identity?.anonymousId]
   )
+  // The Badge Summary task's wall in a live session: the student's own moments then the class,
+  // or the class only on the presentation window. Solo skips the task; a preview shows its note.
+  const badgeWall = useMemo(
+    () =>
+      phase === 'lesson' && !previewMode
+        ? {
+            decisions: session?.badges ?? {},
+            students: session?.students ?? {},
+            viewerId: teacherPresentation ? null : (identity?.anonymousId ?? null),
+            variant: teacherPresentation ? 'presentation' : 'student',
+          }
+        : null,
+    [
+      phase,
+      previewMode,
+      teacherPresentation,
+      session?.badges,
+      session?.students,
+      identity?.anonymousId,
+    ]
+  )
 
   function handleGoFullscreen() {
     document.documentElement.requestFullscreen?.().catch(() => {})
@@ -1471,6 +1492,7 @@ export default function StudentView({
             isQuizTask={isQuizTask}
             isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
             isInformationTask={isInformationTask}
+            badgeWall={badgeWall}
             isActivityTask={isActivityTask}
             displayAnswer={displayAnswer}
             isViewingExplainerSlide={viewingExplainerSlide}

@@ -253,7 +253,7 @@ tasks:
 
 ```yaml
   - type: information         # required — sets taskType: "information" in JSON
-    informationType: standard  # optional — standard (default) | recap | introduction
+    informationType: standard  # optional — standard (default) | recap | introduction | badges
     title: How loops work
     explainer: A `for` loop repeats code a fixed number of times.
     # leftContent is used only with informationType: recap (left pane content)
@@ -262,9 +262,9 @@ tasks:
 | Field | Required | Notes |
 |---|:---:|---|
 | `type` | Yes | Must be `information`. |
-| `informationType` | No | `standard` (default), `recap`, or `introduction`. |
+| `informationType` | No | `standard` (default), `recap`, `introduction`, or `badges` (the Badge Summary, "Today's Coding Moments": the live session's badges grouped by badge; skipped in solo — see [badges.md](badges.md#badge-summary-task)). |
 | `title` | Yes | Shown in progress UI. |
-| `explainer` | Yes* | Markdown content. Required for `standard` and `recap`. Optional for `introduction` (renders lesson metadata). |
+| `explainer` | Yes* | Markdown content. Required for `standard` and `recap`. Optional for `introduction` (renders lesson metadata) and `badges` (shown above the class wall). |
 | `leftContent` | No | Left-pane Markdown for `recap` only. |
 
 ---

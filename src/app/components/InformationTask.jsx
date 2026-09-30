@@ -3,6 +3,8 @@ import { MarkdownRenderer } from '../../shared/markdown'
 import ExplainerPanel from './ExplainerPanel'
 import { isComposedLesson, getComposedModuleTypes } from '../../shared/composedLesson'
 import { getModuleLabel } from '../../modules/definitions'
+import { BADGE_SUMMARY_INFORMATION_TYPE } from '../../shared/taskUtils'
+import BadgeSummaryTask from './badges/BadgeSummaryTask'
 
 function singleTypeLabel(type) {
   return getModuleLabel(type, 'lessonIntro') ?? (type || 'Lesson')
@@ -16,9 +18,22 @@ function lessonTypeLabel(lesson) {
   return types.length ? types.map(singleTypeLabel).join(' + ') : 'Lesson'
 }
 
-export default function InformationTask({ task, lesson, fill = true, disableCopy = false }) {
+// `badgeWall` (Badge Summary tasks only): `{ decisions, students, viewerId, variant,
+// catalogueBadges }` from the live session; see BadgeSummaryTask. Left out, the task renders its
+// preview note (the Builder).
+export default function InformationTask({
+  task,
+  lesson,
+  fill = true,
+  disableCopy = false,
+  badgeWall = null,
+}) {
   const informationType = task?.informationType ?? 'standard'
   const markdownTextScale = 1.4
+
+  if (informationType === BADGE_SUMMARY_INFORMATION_TYPE) {
+    return <BadgeSummaryTask task={task} lesson={lesson} disableCopy={disableCopy} {...badgeWall} />
+  }
 
   if (informationType === 'introduction') {
     return (
