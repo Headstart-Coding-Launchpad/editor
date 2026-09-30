@@ -59,7 +59,8 @@ export default function BadgeStickerSheet({
 
   if (entrance === 'tumble') {
     const motionFor = (index) => {
-      if (mounted.current) return { className: 'sv-sticker motion-drop-in', style: undefined }
+      if (mounted.current)
+        return { className: 'sv-sticker motion-drop-in motion-now', style: undefined }
       if (!animate) return { className: 'sv-sticker', style: undefined }
       return {
         className: 'sv-sticker sv-sticker--tumble motion-tumble-in',

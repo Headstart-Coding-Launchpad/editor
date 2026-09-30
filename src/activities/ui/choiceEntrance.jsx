@@ -14,10 +14,11 @@ import {
 
 const ChoiceEntranceContext = createContext(false)
 
-// Long enough for the last capped item to finish rising. After it the classes come off, so a
-// chip that goes back to its answer bank later doesn't rise in again.
+// Long enough for the last capped item to finish rising, after waiting for the task slide to land
+// (`--motion-entrance-delay`). After it the classes come off, so a chip that goes back to its
+// answer bank later doesn't rise in again.
 export const CHOICE_ENTRANCE_MS =
-  MOTION_MS.base + MOTION_MS.stagger * MOTION_STAGGER_CAP + MOTION_MS.fast
+  MOTION_MS.slow + MOTION_MS.base + MOTION_MS.stagger * MOTION_STAGGER_CAP + MOTION_MS.fast
 
 /**
  * `entranceKey` names the task shown (usually `firstViewKey(lessonId, taskId)`); null never

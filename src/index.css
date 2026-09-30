@@ -962,6 +962,9 @@ select {
 
 .task-slide-panel--entering {
   animation: taskSlideIn var(--motion-slow) var(--motion-ease-glide) backwards;
+  /* Entrances inside the new task (explainer drop, bullets, answers, Badge Summary) wait for the
+     slide to land: every motion-* entrance adds this to its delay. */
+  --motion-entrance-delay: var(--motion-slow);
 }
 
 .task-slide-panel--leaving {
@@ -1176,6 +1179,10 @@ select {
     animation: none;
     opacity: 1;
     transform: none;
+  }
+
+  .task-slide-panel--entering {
+    --motion-entrance-delay: 0ms;
   }
 
   /* With no slide, the old task would sit on top of the new one until the timer removes it. */
@@ -4146,7 +4153,7 @@ select {
 /* `entrance="tumble"` (the Badge Summary): `motion-tumble-in` plus this sticker's place in the
    stagger. Doubled class so it beats the shared class's `animation` shorthand further down. */
 .sv-sticker.sv-sticker--tumble {
-  animation-delay: var(--sv-sticker-delay, 0ms);
+  animation-delay: calc(var(--motion-entrance-delay, 0ms) + var(--sv-sticker-delay, 0ms));
 }
 
 .sv-sticker__emoji {
@@ -4273,7 +4280,7 @@ select {
    "The whole class" and the rows drop in (`motion-drop-in`) once the stickers have landed. */
 .badge-summary__content .badge-summary__heading--drop,
 .badge-summary__wall .badge-summary__row--drop {
-  animation-delay: var(--badge-summary-delay, 0ms);
+  animation-delay: calc(var(--motion-entrance-delay, 0ms) + var(--badge-summary-delay, 0ms));
 }
 
 /* Teacher and presentation: each emoji tumbles in (`motion-tumble-in`) on its own, then the row's
@@ -4300,11 +4307,11 @@ select {
 .badge-summary__row--tumble .badge-summary__badge,
 .badge-summary__row--tumble .badge-summary__names {
   animation: motion-drop-in var(--motion-slow) var(--motion-ease-out) backwards;
-  animation-delay: var(--badge-summary-delay, 0ms);
+  animation-delay: calc(var(--motion-entrance-delay, 0ms) + var(--badge-summary-delay, 0ms));
 }
 
 .badge-summary__row--tumble .badge-summary__emoji {
-  animation-delay: var(--badge-summary-emoji-delay, 0ms);
+  animation-delay: calc(var(--motion-entrance-delay, 0ms) + var(--badge-summary-emoji-delay, 0ms));
 }
 
 @media (max-width: 640px) {
@@ -4363,19 +4370,26 @@ select {
    Stagger a list with `motion-stagger` plus `--motion-i` (`staggerStyle(i)` in motion.js);
    the delay is capped at 8 items. */
 .motion-drop-in {
-  animation: motion-drop-in var(--motion-slow) var(--motion-ease-out) backwards;
+  animation: motion-drop-in var(--motion-slow) var(--motion-ease-out)
+    var(--motion-entrance-delay, 0ms) backwards;
 }
 
 .motion-slide-in {
-  animation: motion-slide-in var(--motion-base) var(--motion-ease-out) backwards;
+  animation: motion-slide-in var(--motion-base) var(--motion-ease-out)
+    var(--motion-entrance-delay, 0ms) backwards;
 }
 
 .motion-rise-in {
-  animation: motion-rise-in var(--motion-base) var(--motion-ease-out) backwards;
+  animation: motion-rise-in var(--motion-base) var(--motion-ease-out)
+    var(--motion-entrance-delay, 0ms) backwards;
 }
 
 .motion-spin-once {
   animation: motion-spin-once var(--motion-spin) var(--motion-ease-spring) backwards;
+}
+
+.motion-pop-in {
+  animation: motion-pop-in 320ms var(--motion-ease-spring) backwards;
 }
 
 .motion-wobble {
@@ -4383,11 +4397,19 @@ select {
 }
 
 .motion-tumble-in {
-  animation: motion-tumble-in var(--motion-tumble) var(--motion-ease-spring) backwards;
+  animation: motion-tumble-in var(--motion-tumble) var(--motion-ease-spring)
+    var(--motion-entrance-delay, 0ms) backwards;
+}
+
+/* Something arriving after its task has landed (a live Badge Summary row): no slide delay. */
+.motion-now {
+  --motion-entrance-delay: 0ms;
 }
 
 .motion-stagger {
-  animation-delay: calc(min(var(--motion-i, 0), 8) * var(--motion-stagger));
+  animation-delay: calc(
+    var(--motion-entrance-delay, 0ms) + min(var(--motion-i, 0), 8) * var(--motion-stagger)
+  );
 }
 
 @keyframes motion-drop-in {
@@ -4432,6 +4454,17 @@ select {
   }
   100% {
     transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes motion-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -4484,7 +4517,8 @@ select {
   .motion-drop-in,
   .motion-slide-in,
   .motion-rise-in,
-  .motion-tumble-in {
+  .motion-tumble-in,
+  .motion-pop-in {
     animation: motion-fade-in var(--motion-fast) ease-out backwards;
   }
 

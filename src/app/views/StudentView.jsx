@@ -50,6 +50,7 @@ import LoadingScreen from '../components/LoadingScreen'
 import SessionEndedScreen from '../components/SessionEndedScreen'
 import StudentStatusBanners from '../components/StudentStatusBanners'
 import LessonTaskContent from '../components/LessonTaskContent'
+import { usePreloadNeighbourImages } from '../../shared/preloadImages'
 import SoloNav from '../components/SoloNav'
 import SharedWorkspacePanel from '../components/SharedWorkspacePanel'
 import { applySharedWorkspaceCopy, describeShareError } from '../sharedWorkspacePayload'
@@ -742,6 +743,26 @@ export default function StudentView({
     await setTeacherLive(cs.currentTeacherLivePayload())
   }
 
+  const taskDisplayMode = previewMode
+    ? null
+    : phase === 'solo'
+      ? 'solo'
+      : phase === 'lesson'
+        ? 'live'
+        : null
+
+  // Images for the tasks either side of this one load in the background, so Next / Back don't
+  // show them popping in after the slide.
+  const preloadFlatTasks = useMemo(
+    () => (lesson ? flattenTasks(filterTasksByMode(lesson.tasks, taskDisplayMode)) : []),
+    [lesson, taskDisplayMode]
+  )
+  usePreloadNeighbourImages(
+    lesson,
+    preloadFlatTasks,
+    preloadFlatTasks.findIndex((t) => t.id === currentTaskId)
+  )
+
   // ─── Phase guards ──────────────────────────────────────────────────────────
 
   if (
@@ -822,13 +843,6 @@ export default function StudentView({
 
   // ─── Lesson / sandbox / solo render ───────────────────────────────────────
 
-  const taskDisplayMode = previewMode
-    ? null
-    : phase === 'solo'
-      ? 'solo'
-      : phase === 'lesson'
-        ? 'live'
-        : null
   const visibleTasks = filterTasksByMode(lesson.tasks, taskDisplayMode)
   const flatTasks = flattenTasks(visibleTasks)
   const currentIndex = flatTasks.findIndex((t) => t.id === currentTaskId)

@@ -30,11 +30,11 @@ export default function CheckFeedbackBanner({
 
   if (dismissed) return null
 
-  // Motion: a fail banner wobbles each time it appears and a pass banner's ✓ spins once. Callers
-  // remount this per check (see above), which replays the one-shot class.
+  // Motion: a fail banner wobbles each time it appears; a pass banner pops in while its ✓ spins
+  // once. Callers remount this per check (see above), which replays the one-shot class.
   return (
     <div
-      className={passed ? undefined : 'motion-wobble'}
+      className={passed ? 'motion-pop-in' : 'motion-wobble'}
       style={{ ...s.banner, ...(passed ? s.pass : s.fail) }}
       role="status"
     >

@@ -263,15 +263,17 @@ describe('CheckFeedbackBanner', () => {
   })
 
   describe('motion', () => {
-    it('spins the ✓ icon once on a pass and does not wobble the banner', () => {
+    it('pops the pass banner in, spins its ✓ once and does not wobble', () => {
       render(<CheckFeedbackBanner passed={true} />)
       expect(screen.getByText('✓')).toHaveClass('motion-spin-once')
+      expect(screen.getByRole('status')).toHaveClass('motion-pop-in')
       expect(screen.getByRole('status')).not.toHaveClass('motion-wobble')
     })
 
     it('wobbles the fail banner and does not spin its icon', () => {
       render(<CheckFeedbackBanner passed={false} />)
       expect(screen.getByRole('status')).toHaveClass('motion-wobble')
+      expect(screen.getByRole('status')).not.toHaveClass('motion-pop-in')
       expect(screen.getByText('!')).not.toHaveClass('motion-spin-once')
     })
 

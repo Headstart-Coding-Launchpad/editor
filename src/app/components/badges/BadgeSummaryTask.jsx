@@ -125,7 +125,7 @@ export default function BadgeSummaryTask({
   const wallStartMs = animateEntrance ? tumbleEndMs(atStart.stickers, STICKER_STAGGER_MS) : 0
 
   const rowMotion = (row, index) => {
-    if (mounted.current) return { rowClassName: 'motion-drop-in' }
+    if (mounted.current) return { rowClassName: 'motion-drop-in motion-now' }
     if (!animateEntrance) return null
     if (variant === 'student') {
       return {
@@ -146,7 +146,7 @@ export default function BadgeSummaryTask({
   // the student had moments at mount, otherwise they appear with the first award and drop in.
   const lateMine = atStart.stickers === 0
   let wallHeadingClass = 'badge-summary__heading'
-  if (lateMine) wallHeadingClass += ' motion-drop-in'
+  if (lateMine) wallHeadingClass += ' motion-drop-in motion-now'
   else if (animateEntrance) wallHeadingClass += ' badge-summary__heading--drop motion-drop-in'
 
   const title = String(task?.title ?? '').trim() || CLASS_WALL_TITLE
@@ -181,7 +181,7 @@ export default function BadgeSummaryTask({
             {variant === 'student' &&
               (myMoments.length > 0 ? (
                 <section
-                  className={`badge-summary__mine${lateMine ? ' motion-drop-in' : ''}`}
+                  className={`badge-summary__mine${lateMine ? ' motion-drop-in motion-now' : ''}`}
                   aria-label="Your coding moments"
                 >
                   <h2 className="badge-summary__heading">Your coding moments</h2>

@@ -18,6 +18,7 @@ import TopBar from '../components/TopBar'
 import TaskNavigator from '../components/TaskNavigator'
 import ExplainerPanel from '../components/ExplainerPanel'
 import TaskSlideTransition from '../components/TaskSlideTransition'
+import { usePreloadNeighbourImages } from '../../shared/preloadImages'
 import StudentGrid from '../components/StudentGrid'
 import TeacherTimers from '../components/TeacherTimers'
 import TeacherSessionControls from '../components/TeacherSessionControls'
@@ -574,6 +575,8 @@ export default function TeacherView({ lessonId }) {
   const editorLesson = isInSandbox ? sandboxLesson : displayedLesson
   const currentTask = flatTasks.find((t) => t.id === (session?.currentTaskId ?? currentTaskId))
   const displayIndex = flatTasks.findIndex((t) => t.id === displayTaskId)
+  // Next / Back in the teacher's navigator find the neighbouring tasks' images already loaded.
+  usePreloadNeighbourImages(lesson, flatTasks, displayIndex)
   const teacherStageMatch = teacherCodeTab.match(/^stage_(\d+)$/)
   const teacherActiveStageIndex = teacherStageMatch ? parseInt(teacherStageMatch[1], 10) : null
   const taskCodeStages = task?.codeStages ?? []

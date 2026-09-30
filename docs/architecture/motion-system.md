@@ -46,14 +46,25 @@ CSS; change both together.
 | `motion-drop-in` | Falls a little from above and fades in | Panels arriving (explainer, class wall) |
 | `motion-slide-in` | Slides in from the left | List items (explainer bullets) |
 | `motion-rise-in` | Rises a little from below | Choices (quiz options, activity choices) |
+| `motion-pop-in` | Scales up from 80% with a small overshoot and fades in | A box arriving as a reward (the pass banner) |
 | `motion-spin-once` | One full turn with a small overshoot | A pass: ✓ icon, Next button, "✓ Correct" |
 | `motion-wobble` | Small side-to-side shake | A failed check's hint banner |
 | `motion-tumble-in` | Falls from high up while rotating, bounces to rest | Badge stickers on the Badge Summary |
 | `motion-stagger` | Delays by `--motion-i` × `--motion-stagger`, capped at 8 items | Add to any of the above in a list |
+| `motion-now` | Sets `--motion-entrance-delay` to 0 on the element | Something arriving after its task has landed (a live Badge Summary row) |
 
 Every class uses `animation-fill-mode: backwards`: a staggered item stays hidden during its delay,
 and once the animation ends the element's own `transform` (a hover lift, the quiz scale-to-fit)
 applies again. Don't switch a motion class to `both` or `forwards`.
+
+**Slide first, then entrances.** A task's entering slide panel sets `--motion-entrance-delay` to
+`--motion-slow`, and every entrance class (`drop-in`, `slide-in`, `rise-in`, `tumble-in`, and
+`motion-stagger`) adds it to its delay. So the task slides in, then its explainer drops in and its
+bullets and answers follow, with no JS timers; content is hidden while it waits (backwards fill).
+The variable stays for the panel's life (turning it off mid-animation would make a delayed
+entrance jump), so anything that arrives later adds `motion-now`. Reduced motion sets it to 0.
+Emphasis classes (`spin-once`, `wobble`, `pop-in`) never wait. A JS timer that waits out an
+entrance must include `MOTION_MS.slow` for the slide (`CHOICE_ENTRANCE_MS` does).
 
 To replay a one-shot class (the spin on a second pass), either change the element's React `key`
 (for example to the `usePassMoment` count) or, for anything that can hold keyboard focus, restart
@@ -108,10 +119,11 @@ the Builder preview.
 | Moment | Where | Motion |
 |---|---|---|
 | Task slide | `TaskSlideTransition.jsx` (students via `LessonTaskContent`, presentation window, teacher explainer in `TeacherView`) | Direction-aware 120px slide over `--motion-slow` / glide; Back slides the other way |
-| Explainer arrives | `ExplainerPanel.jsx` (`entranceKey`) | `motion-drop-in`, first view only; not on collapse/expand |
+| Neighbour images | `usePreloadNeighbourImages` (`src/shared/preloadImages.js`) in `StudentView` and `TeacherView` | Not motion: the next and previous tasks' images load in the background, so they don't pop in after the slide |
+| Explainer arrives | `ExplainerPanel.jsx` (`entranceKey`) | `motion-drop-in` after the task slide lands, first view only; not on collapse/expand. Teacher view: the old explainer slides out, then the new one drops in |
 | Explainer and information bullets | `MarkdownRenderer` `animateLists` (explainer and `InformationTask` only) | `motion-slide-in` + `motion-stagger` per list |
 | Answers | Multiple choice, Match, fill-in-the-blank, confidence (`src/activities/ui/choiceEntrance.jsx`) | `motion-rise-in` + `motion-stagger`, first view only |
-| Checks pass | `CheckFeedbackBanner.jsx` ✓ icon | `motion-spin-once` each pass banner |
+| Checks pass | `CheckFeedbackBanner.jsx` | Banner `motion-pop-in` while its ✓ `motion-spin-once`, each pass banner |
 | Checks fail | `CheckFeedbackBanner.jsx` fail banner | `motion-wobble` each failed check |
 | Next after a pass | `SoloNav.jsx` | Static success glow; `motion-spin-once` on a pass the student watched (`usePassMoment`) |
 | Activity correct | `src/activities/ui/ActivityCorrect.jsx` (`ActivityCorrect`, `SpinTick`) | ✓ `motion-spin-once` when it appears |

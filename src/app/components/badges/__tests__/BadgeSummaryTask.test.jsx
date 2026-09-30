@@ -210,7 +210,7 @@ describe('BadgeSummaryTask', () => {
       const rows = wallItems()
       expect(rows).toHaveLength(3)
       const late = rows.find((row) => row.textContent.includes('Persistence'))
-      expect(late.className).toBe('badge-summary__row motion-drop-in')
+      expect(late.className).toBe('badge-summary__row motion-drop-in motion-now')
       expect(delay(late)).toBe('')
       expect(late.querySelector('.motion-tumble-in')).toBeNull()
       expect(rows.filter((row) => row !== late).map((row) => delay(row))).toEqual(before)
@@ -225,7 +225,7 @@ describe('BadgeSummaryTask', () => {
       expect(sticker).toHaveClass('motion-drop-in')
       expect(sticker).not.toHaveClass('motion-tumble-in')
       const row = wallItems().find((item) => item.textContent.includes('Persistence'))
-      expect(row.className).toBe('badge-summary__row motion-drop-in')
+      expect(row.className).toBe('badge-summary__row motion-drop-in motion-now')
     })
 
     it("drops a student's moments in when their first arrives after the entrance", () => {
