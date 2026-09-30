@@ -588,6 +588,7 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs
 | `lessonAudit.js` | Current-state lesson/task version and change-timestamp helper with no-op detection. |
 | `lessonService.js` | Shared lesson loading and publishing helpers: `fetchLessonById()`, `fetchLessonList()`, `publishLesson()`, `publishLessonTasks()`, `deletePublishedLesson()`, `publishLessonFork()`, `applyLessonOverride()`; class helpers; publishing migrates legacy scalar levels; session report helpers: `saveSessionReport()`, `fetchSessionReports()` |
 | `appVersion.js` | Reads the `__APP_BUILD_INFO__` build constant injected by `vite.config.js` (null under Vitest) and formats the version label (`formatAppVersion`, `formatVersionNumber`, `formatBuildDate`) |
+| `motion.js` | Shared motion helpers (docs/architecture/motion-system.md): `MOTION_MS` (mirrors the `--motion-*` CSS tokens), `prefersReducedMotion()`, `staggerStyle(i)`, `firstViewKey(...)` / `useFirstView(key)` (entrance plays on a task's first view only, in-memory per window) / `resetFirstViews()`, `usePassMoment(passed, taskKey)` (counts watched false→true passes, for spins and the success chime) |
 | `timeAgo.js` | Pure short relative-time label (`formatTimeAgo`) shared by the student grid and the shared-work gallery |
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |

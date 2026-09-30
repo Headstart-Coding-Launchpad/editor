@@ -77,6 +77,11 @@ Agreed phased plan for live student badges: a teacher-side rules engine over per
 
 **Load when:** working on any badge PR, adding a badge, or changing badge rules, data paths, or the `taskActivity` vocabulary.
 
+### [architecture/motion-system.md](architecture/motion-system.md)
+The unified motion system: principles, `--motion-*` tokens, the `motion-*` classes, the `src/shared/motion.js` hooks (`useFirstView`, `usePassMoment`), sound rules, reduced motion, and where each animation is used.
+
+**Load when:** adding or changing any animation, transition or UI sound.
+
 ### [architecture/animation-ideas.md](architecture/animation-ideas.md)
 Ideas only: places the app could use a celebration-style moment later (all checks passed, first successful run, lesson complete, and so on), under the principle "calm by default, celebrate real achievements, respect reduced motion".
 

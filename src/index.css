@@ -27,7 +27,16 @@
   --ui-shadow: 0 10px 28px rgba(40, 22, 78, 0.12);
   --ui-shadow-soft: 0 5px 16px rgba(40, 22, 78, 0.08);
   --ui-focus: 0 0 0 3px rgba(98, 34, 204, 0.16);
-  --ui-motion: 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Motion tokens (docs/architecture/motion-system.md). Mirrored in `MOTION_MS`,
+     src/shared/motion.js, for JS timers that must line up with CSS. */
+  --motion-fast: 180ms;
+  --motion-base: 280ms;
+  --motion-slow: 460ms;
+  --motion-stagger: 70ms;
+  --motion-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-ease-glide: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ui-motion: var(--motion-fast) var(--motion-ease-out);
 
   /* Neutral ramp.
      These are the values already in use across the app, promoted to tokens
@@ -351,7 +360,7 @@ select {
   border-radius: var(--ui-radius) !important;
   background: #fff !important;
   box-shadow: var(--ui-shadow) !important;
-  animation: ui-pop 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: ui-pop 160ms var(--motion-ease-out);
 }
 
 /* Our global `button { padding: 8px 18px }` reset (below) leaks into any
@@ -424,7 +433,7 @@ select {
   border-radius: var(--ui-radius) !important;
   border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow: 0 28px 80px rgba(25, 12, 54, 0.34) !important;
-  animation: ui-modal-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: ui-modal-in 220ms var(--motion-ease-out);
 }
 
 [role='dialog'] > div > div:first-child {
@@ -946,11 +955,11 @@ select {
 }
 
 .task-slide-panel--entering {
-  animation: taskSlideFromRight 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: taskSlideFromRight 0.38s var(--motion-ease-glide);
 }
 
 .task-slide-panel--leaving {
-  animation: taskSlideToLeft 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: taskSlideToLeft 0.38s var(--motion-ease-glide) forwards;
   pointer-events: none;
 }
 
@@ -3865,7 +3874,7 @@ select {
   box-shadow: 0 14px 34px rgba(40, 22, 78, 0.24);
   font-family: var(--font-body);
   transform-origin: top center;
-  animation: sv-badge-drop-in 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: sv-badge-drop-in 700ms var(--motion-ease-out) both;
 }
 
 .sv-badge-card::after {
@@ -4035,7 +4044,7 @@ select {
   color: var(--colour-ink-strong);
   white-space: nowrap;
   animation:
-    sv-badge-toast-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    sv-badge-toast-in 420ms var(--motion-ease-out) both,
     sv-badge-toast-glow 1600ms ease-out 420ms 1 both;
 }
 
@@ -4121,7 +4130,7 @@ select {
 }
 
 .sv-sticker--animate {
-  animation: sv-badge-flip-in 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: sv-badge-flip-in 600ms var(--motion-ease-out) both;
   animation-delay: var(--sv-sticker-delay, 0ms);
 }
 
@@ -4275,5 +4284,165 @@ select {
 
   .sv-badge-toast {
     animation: sv-badge-fade-in 200ms ease-out both;
+  }
+}
+
+/* ── Shared motion (docs/architecture/motion-system.md) ─────────────────────────────────
+   One class per kind of movement. Every one uses `animation-fill-mode: backwards`, never
+   `both`/`forwards`: a staggered item is hidden during its delay, but once it has played the
+   element's own transform (a hover lift, the quiz scale-to-fit) takes over again.
+   Stagger a list with `motion-stagger` plus `--motion-i` (`staggerStyle(i)` in motion.js);
+   the delay is capped at 8 items. */
+.motion-drop-in {
+  animation: motion-drop-in var(--motion-slow) var(--motion-ease-out) backwards;
+}
+
+.motion-slide-in {
+  animation: motion-slide-in var(--motion-base) var(--motion-ease-out) backwards;
+}
+
+.motion-rise-in {
+  animation: motion-rise-in var(--motion-base) var(--motion-ease-out) backwards;
+}
+
+.motion-spin-once {
+  animation: motion-spin-once 620ms var(--motion-ease-spring) backwards;
+}
+
+.motion-wobble {
+  animation: motion-wobble 360ms ease-in-out backwards;
+}
+
+.motion-tumble-in {
+  animation: motion-tumble-in 720ms var(--motion-ease-spring) backwards;
+}
+
+.motion-stagger {
+  animation-delay: calc(min(var(--motion-i, 0), 8) * var(--motion-stagger));
+}
+
+@keyframes motion-drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes motion-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes motion-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes motion-spin-once {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  60% {
+    transform: rotate(380deg) scale(1.15);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes motion-wobble {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes motion-tumble-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-140px) rotate(-220deg) scale(0.6);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(6px) rotate(8deg) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes motion-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Reduced motion: entrances become a plain short fade with no stagger; emphasis (spin, wobble)
+   and looping status animation stop, keeping their static colour so the state still reads. */
+@media (prefers-reduced-motion: reduce) {
+  .motion-drop-in,
+  .motion-slide-in,
+  .motion-rise-in,
+  .motion-tumble-in {
+    animation: motion-fade-in var(--motion-fast) ease-out backwards;
+  }
+
+  .motion-stagger {
+    animation-delay: 0ms;
+  }
+
+  .motion-spin-once,
+  .motion-wobble {
+    animation: none;
+  }
+
+  .ui-popover,
+  [role='dialog'] > div,
+  .btn-paused,
+  .live-dot,
+  .activity-dots span,
+  .btn-next-success,
+  .preview-slide-open,
+  .presence-badge--offline,
+  .presence-badge .presence-badge__dot,
+  .teacher-timer-card--expired {
+    animation: none;
+  }
+
+  .pane-highlight-pulse {
+    animation: none;
+    outline-color: rgba(245, 158, 11, 0.95);
   }
 }
