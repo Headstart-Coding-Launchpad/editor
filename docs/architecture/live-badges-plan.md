@@ -16,7 +16,7 @@ agent against the code and revised again. Branch `feature/live-badges`. Delivere
 | 5 | Celebration (`celebration.js`, `useBadgeCelebrations`, card, toast, pill, sticker sheet) | #392 |
 | 6 | Summary and report (`informationType: badges`, `badgeSummary.js`, `reportMetrics.js`) | #393 |
 | 7 | Admin and scaffold (`badgeCatalogue`, Admin → Badges, catalogue snapshot on awards, Builder Badge hints, `npm run new:badge`, `new-badge` skill, [ADR 0011](../adr/0011-live-badges-registry-and-rules.md)) | #394 |
-| 8 | Polish from testing: smaller top-centre celebration card, bigger "earned a badge" class toast, grouped select-then-Award picker, one-row student top bar (icon-only 🎖️ button with the mute inside), one-line grid header (⋯ menu) and student modal header (Support / More), readable light-surface buttons, [animation ideas](animation-ideas.md) | PR 8 |
+| 8 | Polish from testing: smaller top-centre celebration card, bigger "earned a badge" class toast, grouped select-then-Award picker, one-row student top bar (icon-only 🎖️ button with the mute inside), one-line grid header (⋯ menu) and student modal header (Support / More), readable light-surface buttons, [animation ideas](animation-ideas.md) | #395 |
 
 PR 7 deviations: an awarded catalogue badge copies `{ emoji, title, blurb }` onto its decision
 (`decision.badge`), because students can't read Firestore `badgeCatalogue`; and the Builder's Badge
