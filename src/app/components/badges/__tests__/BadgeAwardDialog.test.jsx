@@ -230,7 +230,9 @@ describe('BadgeAwardDialog', () => {
 
   it('shows full badge names without truncation', () => {
     renderDialog()
-    const title = screen.getByTestId('badge-option-resourceful_coder').querySelector('span:last-child')
+    const title = screen
+      .getByTestId('badge-option-resourceful_coder')
+      .querySelector('span:last-child')
     expect(title.style.textOverflow).not.toBe('ellipsis')
     expect(title.style.whiteSpace).toBe('normal')
   })

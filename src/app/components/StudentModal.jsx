@@ -758,9 +758,7 @@ export default function StudentModal({
                     )}
                     {canSetStage && stageRequestState !== 'requesting' && (
                       <>
-                        <div style={canReveal ? s.menuHeading : s.menuHeadingFirst}>
-                          Set stage
-                        </div>
+                        <div style={canReveal ? s.menuHeading : s.menuHeadingFirst}>Set stage</div>
                         {stageDeclinedNotice && (
                           <div style={s.menuNote}>The student declined the last change.</div>
                         )}
@@ -909,7 +907,10 @@ export default function StudentModal({
                 // Broadcasting a student's work is not offered on quiz or activity tasks
                 // (teacher-only broadcasts there).
                 const hasGoLiveForAll =
-                  !!onGoLiveForAll && !isInformation && !isLiveForAll && allowsStudentBroadcast(task)
+                  !!onGoLiveForAll &&
+                  !isInformation &&
+                  !isLiveForAll &&
+                  allowsStudentBroadcast(task)
                 const hasFocus = !!onPushTeacherPaneCommand && !isInformation && !isQuizLike
                 if (
                   !hasBadge &&

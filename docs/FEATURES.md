@@ -65,7 +65,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - **Pause/resume** — freezes student navigation without ending the session
 - **Sandbox mode** — freeform coding with no tasks or checks; teacher can push code/files to all students. Each visit (when, after which task, the teacher's pushes and each student's last sandbox code) is archived teacher-side for the session report
 - **Live badge signals** (the tutor's suggestions panel and picker are in the Student Grid section; the student celebration is under Student Features, "Coding moments") — first-occurrence topic opens, keyboard shortcuts, time to first edit, complete-code views, and sandbox run/error/fix counts are recorded per student during a live session (never in solo, previews or the presentation window, and never any code); see `docs/architecture/live-badges-plan.md`
-- **Need Help** — a persistent button in the top bar during any live lesson, always available (not tied to a failed check); marks the student's card for the teacher until dismissed
+- **Need Help** — a persistent "✋ Help" button in the top bar during any live lesson, always available (not tied to a failed check); marks the student's card for the teacher until dismissed
 - **Session end** — all students see an end screen, with their own coding moments (live badges) as a sticker sheet; a student who reloads within 3 hours of the end gets the end screen back
 
 ---
@@ -104,16 +104,19 @@ After the same hint appears twice in a row, solo students can optionally view th
 ### Student Grid
 - Cards per student: name, online status, run status, check status, code/output/quiz preview
 - Click to expand to full student workspace view
-- "Away" badge when a connected student's window isn't focused, with a 🔔 button to nudge them; "🔔 Nudge Away (n)" in the grid header nudges every Away student at once. A nudge shows the student a banner and plays a chime, and while their window is unfocused flashes the tab title/favicon and (if they allowed it) shows an OS notification
-- Live badges (tutor side): "🏅 Suggestions (n)" in the grid header opens the **Badge suggestions** panel above the teacher editor, grouped by student, with one-click Award / Dismiss, an "Announce" tick (on by default), "Award all" when several students earned the same badge, and the session's **Auto-award high-confidence badges** and **Sounds off** toggles. Each card shows a teacher-only "🏅 n" count with a dot while a suggestion is waiting (never shown to students or the presentation window). "☑ Select" picks several cards to award one badge to all of them at once
+- One-line grid header: "Students (n)", ⛶ Fullscreen All, a ⋯ menu (🔔 Nudge Away (n), 🏅 Suggestions (n), ☑ Select, 📖 Reference) and the › collapse. A small dot on ⋯ means someone is Away or a badge suggestion is waiting
+- "Away" badge when a connected student's window isn't focused, with a 🔔 button to nudge them; "🔔 Nudge Away (n)" in the grid header's ⋯ menu nudges every Away student at once. A nudge shows the student a banner and plays a chime, and while their window is unfocused flashes the tab title/favicon and (if they allowed it) shows an OS notification
+- Live badges (tutor side): "🏅 Suggestions (n)" in the grid header's ⋯ menu opens the **Badge suggestions** panel above the teacher editor, grouped by student, with one-click Award / Dismiss, an "Announce" tick (on by default), "Award all" when several students earned the same badge, and the session's **Auto-award high-confidence badges** and **Sounds off** toggles. Each card shows a teacher-only "🏅 n" count with a dot while a suggestion is waiting (never shown to students or the presentation window). "☑ Select" (⋯ menu) picks several cards to award one badge to all of them at once
 
 ### Student Actions (per student)
 - Go Live / Stop Live — one-to-one keystroke streaming with selection highlight and activity indicators
 - Remote Reset — silently replace student's code with starter code, complete code, or a named intermediate stage
 - Rename and remove students
-- Nudge (🔔 in the modal header) — draw the student's attention back to the lesson
-- 🏅 Award badge (More menu) — pick any badge (rule-backed, tutor-only or Admin catalogue; hover shows the exact rule; badges already held are greyed), and revoke an awarded one silently; the header shows the student's teacher-only badge count
-- "Show on every task" reference (in the Reveal menu): first hint, all hints, or the solution opens automatically for that student on every task for the rest of the session
+- One-line modal header: the student's name then small status chips ("Ryan · AWAY · LIVE · 🏅 2"), ← → to switch student, **Support ▾** (Reveal and Set stage sections), ▶ Run on student, **More ▾** and ✕
+- Nudge (More menu) — draw the student's attention back to the lesson
+- Go Live for All and Focus (highlight or switch a tab on the student's screen) are in the More menu; Stop Live stays in the header while broadcasting
+- 🏅 Award badge (More menu) — a picker with a purple header and a light body, grouped into **Suggested by rules**, **Tutor-awarded** and **Admin badges** (full names, badges already held greyed). Click a badge to select it and see what it's for, then press **Award**; "Announce to class" is on by default. Revoke an awarded one silently; the header shows the student's teacher-only badge count
+- "Show on every task" reference (in the Support menu's Reveal section): first hint, all hints, or the solution opens automatically for that student on every task for the rest of the session
 - "📋 Pasted" badge when a student pastes a large chunk (40+ characters or 3+ lines) into their editor — flagged, not blocked; also counted in the session report
 - The output panel in the student modal opens automatically when the student's run produces output or asks for input
 - Approve or decline a student's request to share their workspace with the class, after previewing the exact snapshot
@@ -147,6 +150,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Name entry with automatic duplicate-suffix handling
 
 ### Lesson UI
+- One-row top bar that never wraps or changes height: title and LIVE, the 🎖️ moments button, ✋ Help, 📤 Share, the task dots (they shrink, then scroll sideways, with 12+ tasks) and the student's name as a small chip
 - Lesson title, level badge, and mode indicator (solo / live / sandbox)
 - Task progress dots — clickable for past tasks, locked for future tasks, current highlighted
 - Collapsible explainer panel with Markdown formatting, inline topic definitions (not on Scratch lessons — the topic library is disabled there), and Scratch block visualisation
@@ -159,10 +163,10 @@ After the same hint appears twice in a row, solo students can optionally view th
 - **Solo mode**: free navigation; one task ahead unlocks after the check passes; previous tasks are viewable in read-only
 
 ### Coding moments (live badges)
-- When the tutor awards a student a badge, a card flips in on their screen (emoji, title and blurb, with one shine sweep) for about 2.5 s, then docks into a **🎖️ Coding moments** pill in the top bar that lists their own badges. A subtle two-note chime plays; the pill's speaker button mutes it on that device for the session, and the tutor's **Sounds off** silences it for the class
-- The card never takes focus, so typing carries on underneath; it is announced politely to screen readers, and `prefers-reduced-motion` gets a plain fade. Several awards at once queue one after another
-- Every classmate (and the presentation window, slightly larger) sees a small silent toast in the bottom-left corner, "🐛 Alex · Bug Hunter", for about 3 s, with the blurb on hover; a bulk award shows one toast, "⌨️ Keyboard Wizard · 12 coders". Not shown when the tutor unticked Announce, never shown to the recipient, and toasts beyond a short queue are dropped
-- A revoked badge disappears from the pill silently. Awards already made when the page loads are never replayed (they're just in the pill)
+- When the tutor awards a student a badge, a small card drops down top-centre, just under the top bar (emoji, title and blurb, with a flip and one shine sweep), for about 2.5 s, then docks into the compact **🎖️** moments button in the top bar (no count). Its popover lists their own badges and holds the speaker toggle. A subtle two-note chime plays; the speaker toggle mutes it on that device for the session, and the tutor's **Sounds off** silences it for the class
+- The card never takes focus or blocks the page around it, so typing carries on underneath; it is announced politely to screen readers, and `prefers-reduced-motion` gets a plain fade. Several awards at once queue one after another
+- Every classmate (and the presentation window, scaled up) sees a silent toast slide in at the bottom-left with a soft glow, "🎖️ Alex earned a badge: 🐛 Bug Hunter", for about 4 s, with the blurb on hover; a bulk award shows one toast, "🎖️ 12 students earned a badge: ⌨️ Keyboard Wizard". Not shown when the tutor unticked Announce, never shown to the recipient, and toasts beyond a short queue are dropped
+- A revoked badge disappears from the moments popover silently. Awards already made when the page loads are never replayed (they're just in the popover)
 - A **Badge Summary** task (see Task Types) shows the student's own moments and the class wall at the end of the lesson
 - No totals, ranks or comparisons are shown to students anywhere
 
