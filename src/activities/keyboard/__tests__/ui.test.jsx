@@ -44,7 +44,7 @@ describe('Keyboard UI: type_text', () => {
     })
     expect(keyboard.grade(TYPE, state()).passed).toBe(true)
     expect(onSubmit).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('✓ Well done!')).toBeInTheDocument()
+    expect(screen.getByText('Well done!')).toBeInTheDocument()
   })
 
   it('handles Backspace and lets the student try a line again', () => {

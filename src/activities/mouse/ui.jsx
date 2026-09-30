@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import MouseBuilderEditor from './MouseBuilderEditor.jsx'
+import { SpinTick } from '../ui/ActivityCorrect.jsx'
 import { activeMouseItems, describeMouseItem, gradeMouseItem } from './mouse.js'
 import {
   DEFAULT_GESTURE_OPTIONS,
@@ -367,7 +368,13 @@ export function MouseStudentView({
           {Math.min(currentIndex + (current ? 1 : 0), items.length)} of {items.length}
         </span>
         <span className="act-prompt" data-testid="mouse-instruction">
-          {current ? instructionFor(task, current, touch) : '✓ All done — great mousing!'}
+          {current ? (
+            instructionFor(task, current, touch)
+          ) : (
+            <>
+              <SpinTick /> All done — great mousing!
+            </>
+          )}
         </span>
       </p>
       {message && <p role="status">{message}</p>}

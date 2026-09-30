@@ -57,6 +57,6 @@ describe('Template Activity UI', () => {
     renderView({ readOnly: true, initialState: definition.solutionState(TASK) })
     expect(screen.getByLabelText('Your answer')).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Check answers' })).not.toBeInTheDocument()
-    expect(screen.getByText('✓ Correct')).toBeInTheDocument()
+    expect(screen.getByText('Correct')).toBeInTheDocument()
   })
 })

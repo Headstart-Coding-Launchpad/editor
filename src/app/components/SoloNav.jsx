@@ -1,5 +1,6 @@
 import React from 'react'
 import { useIsMobile } from '../../shared/useIsMobile'
+import { usePassMoment } from '../../shared/motion'
 
 export default function SoloNav({
   flatTasks,
@@ -19,6 +20,12 @@ export default function SoloNav({
   const labelStyle = compact
     ? { ...s.soloNavLabelCompact, ...(isMobile ? { minWidth: 0 } : {}) }
     : s.soloNavLabel
+  const hasNextTask = currentIndex < flatTasks.length - 1
+  const nextSuccess = !!cs.checkPassed && hasNextTask
+  // Counts passes the student watched on this task (0 on arrival at an already-passed task or
+  // a reload). Keying the button by it restarts the one-shot spin; the success look is static.
+  const passMoment = usePassMoment(!!cs.checkPassed, flatTasks[currentIndex]?.id)
+  const nextSpin = nextSuccess && passMoment > 0
 
   return (
     <div style={navStyle}>
@@ -43,14 +50,15 @@ export default function SoloNav({
       )}
       {!cs.inPersonalSandbox && (
         <button
-          className={`btn-secondary${cs.checkPassed && currentIndex < flatTasks.length - 1 ? ' btn-next-success' : ''}`}
+          key={`next-${passMoment}`}
+          className={`btn-secondary${nextSuccess ? ' btn-next-success' : ''}${nextSpin ? ' motion-spin-once' : ''}`}
           style={{
             ...btnStyle,
-            ...(!compact && canNavigateNextSolo && currentIndex < flatTasks.length - 1
+            ...(!compact && canNavigateNextSolo && hasNextTask
               ? { fontSize: 18, padding: '14px 36px' }
               : {}),
           }}
-          disabled={currentIndex >= flatTasks.length - 1 || !canNavigateNextSolo}
+          disabled={!hasNextTask || !canNavigateNextSolo}
           onClick={() => onNavigate(flatTasks[currentIndex + 1]?.id)}
           title={!canNavigateNextSolo ? 'Pass the completion check before moving on' : 'Next task'}
         >

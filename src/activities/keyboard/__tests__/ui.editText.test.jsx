@@ -50,7 +50,7 @@ describe('Keyboard UI: edit_text', () => {
     })
     expect(keyboard.grade(EDIT, state()).passed).toBe(true)
     expect(onSubmit).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('✓ Well done!')).toBeInTheDocument()
+    expect(screen.getByText('Well done!')).toBeInTheDocument()
   })
 
   it('spots a retyped line and lets the student try again', () => {

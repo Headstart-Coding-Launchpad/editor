@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ItemNav from '../ui/ItemNav.jsx'
+import ActivityCorrect from '../ui/ActivityCorrect.jsx'
 import { gradeItem } from './template_activity.js'
 
 // Template Activity UI. Controlled view: ActivityHost passes `state`, `onChange(next | prev =>
@@ -82,11 +83,7 @@ export function TemplateActivityStudentView({ task, state, onChange, onSubmit, r
           💡 {result.hint}
         </p>
       )}
-      {result?.correct && (
-        <p className="act-result act-result--pass" role="status">
-          ✓ Correct
-        </p>
-      )}
+      {result?.correct && <ActivityCorrect />}
 
       {!readOnly && (
         <div className="act-row">
