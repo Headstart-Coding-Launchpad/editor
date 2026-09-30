@@ -110,3 +110,15 @@ export function matchKeyboardWizardShortcut(event, { inEditor = false } = {}) {
   }
   return null
 }
+
+/**
+ * The Desktop app actions that count as `desktop_shortcut` when done by keyboard (the menu and
+ * toolbar offer the same commands; see the Desktop's COMMAND_COMBOS). Combos are the input
+ * library's canonical form (src/shared/input/events.js comboOf): Ctrl and Cmd are both 'mod'.
+ */
+export const DESKTOP_KEYBOARD_COMBOS = Object.freeze(['mod+c', 'mod+x', 'mod+v'])
+
+/** Whether a canonical key combo, pressed on the Desktop surface, is a Desktop app shortcut. */
+export function isDesktopKeyboardShortcut(combo) {
+  return typeof combo === 'string' && DESKTOP_KEYBOARD_COMBOS.includes(combo)
+}
