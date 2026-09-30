@@ -1,4 +1,5 @@
 import React from 'react'
+import { useChoiceEntrance } from '../../../activities/ui/choiceEntrance.jsx'
 import {
   baseStyles as s,
   CONFIDENCE_COLOURS,
@@ -15,6 +16,7 @@ export default function ConfidenceQuiz({
   showQuestion,
 }) {
   const blocked = disabled
+  const entrance = useChoiceEntrance()
   return (
     <div style={s.wrap}>
       {showQuestion && <QuestionPanel task={task} />}
@@ -27,10 +29,12 @@ export default function ConfidenceQuiz({
           {CONFIDENCE_COLOURS.map((colour, i) => {
             const level = i + 1
             const isSelected = selectedAnswer === String(level)
+            const buttonEntrance = entrance(i)
             return (
               <button
                 key={level}
                 type="button"
+                className={buttonEntrance.className}
                 style={{
                   ...sc.btn,
                   background: isSelected ? colour : '#f3f4f6',
@@ -41,6 +45,7 @@ export default function ConfidenceQuiz({
                     ? `0 0 0 4px ${colour}38, 0 6px 18px ${colour}28`
                     : undefined,
                   transform: isSelected ? 'scale(1.08)' : undefined,
+                  ...buttonEntrance.style,
                 }}
                 onClick={() => !blocked && onSelectAnswer?.(String(level), true)}
                 disabled={blocked}

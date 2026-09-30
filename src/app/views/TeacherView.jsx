@@ -67,6 +67,7 @@ import { describeShareError } from '../sharedWorkspacePayload'
 import { useSandboxArchiveSnapshots } from '../hooks/useSandboxArchiveSnapshots'
 import { useBadgeAutoAward, useBadgeSuggestions } from '../hooks/useBadgeSuggestions'
 import { useBadgeCatalogue } from '../hooks/useBadgeCatalogue'
+import { firstViewKey } from '../../shared/motion'
 
 function canRecordAdvanceOverride(task) {
   if (!task || task.taskType === 'information') return false
@@ -728,6 +729,7 @@ export default function TeacherView({ lessonId }) {
                 title={task.title}
                 content={task.explainer}
                 topicType={displayedLesson.type}
+                entranceKey={firstViewKey(lessonId, task.id)}
               />
             </TaskSlideTransition>
           )}
@@ -820,6 +822,7 @@ export default function TeacherView({ lessonId }) {
             onToggleLiveReference={setTeacherLiveReferenceForClass}
             fillHeight={centreFillsHeight}
             badgeWall={teacherBadgeWall}
+            entranceKey={firstViewKey(lessonId, task?.id)}
           />
           {task && !isInformationTask && !isInSandbox && (
             <TaskRatingPanel

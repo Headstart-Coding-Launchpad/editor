@@ -20,6 +20,7 @@ import {
   teacherLiveReferenceDisplayState,
 } from '../studentLiveDisplay'
 import { useElementSize } from '../../shared/useElementSize'
+import { firstViewKey } from '../../shared/motion'
 import { loadLayoutTab, saveLayoutTab } from '../studentStorage'
 import { NARROW_BREAKPOINT as SCRATCH_CODE_WIDE_WIDTH } from '../../modules/scratch/ScratchWorkspace'
 
@@ -236,6 +237,9 @@ export default function LessonTaskContent({
   // A teacher-started sandbox's pushed instructions take the task explainer's place, so
   // they get the same side-by-side/collapsible layout rather than stacking above the code.
   const hasSandboxExplainer = isSandbox && !!sandboxExplainer?.trim()
+  // Names the task shown for its first-view entrances (explainer drop-in, bullets, answers).
+  // Keyed by task id, not content, so a Builder edit or a revisit never replays them.
+  const taskEntranceKey = firstViewKey(lessonId, task?.id)
   const hasTaskExplainer =
     hasSandboxExplainer ||
     ((!!task?.explainer || showsCompleteCode) &&
@@ -473,6 +477,7 @@ export default function LessonTaskContent({
         markdownTextScale={useSideExplainer ? 1.08 : 1}
         onCollapsedChange={!useSideExplainer ? setAccordionExplainerCollapsed : undefined}
         highlighted={!useSideExplainer && instructionsHighlighted}
+        entranceKey={hasSandboxExplainer ? null : taskEntranceKey}
       />
     </div>
   ) : null
@@ -582,7 +587,14 @@ export default function LessonTaskContent({
           onReplayLesson={onReplayLesson}
         />
       ) : !isSandbox && (isInformationTask || isViewingExplainerSlide) ? (
-        <InformationTask task={task} lesson={lesson} fill disableCopy badgeWall={badgeWall} />
+        <InformationTask
+          task={task}
+          lesson={lesson}
+          fill
+          disableCopy
+          badgeWall={badgeWall}
+          entranceKey={taskEntranceKey}
+        />
       ) : !isSandbox && isActivityTask ? (
         <>
           <TeacherAnswerNotice at={isViewingPrev ? null : cs.teacherAnswerNoticeAt} />
@@ -592,6 +604,7 @@ export default function LessonTaskContent({
             broadcastAnswer={isForcedTeacherLive ? (displayAnswer ?? null) : undefined}
             reviewing={isViewingPrev}
             lessonType={lesson.type}
+            entranceKey={taskEntranceKey}
             result={
               isForcedTeacherLive
                 ? { submitted: displayRunStatus === 'submitted', passed: displayCheckPassed }
