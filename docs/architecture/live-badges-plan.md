@@ -8,7 +8,7 @@ agent against the code and revised again. Branch `feature/live-badges`. Delivere
 (`src/badges/liveTimeline.js`, `src/app/hooks/useBadgeSuggestions.js`) and PR 4 Tutor UI (#391,
 `BadgeSuggestionsPanel`, `BadgeAwardDialog`, `src/badges/badgeDisplay.js`) and PR 5 Celebration (#392,
 `src/badges/celebration.js`, `useBadgeCelebrations`, `BadgeCelebration`, `BadgeClassToast`, `CodingMomentsPill`,
-`BadgeStickerSheet`) and PR 6 Summary and report (#PR6, `informationType: badges`, `src/badges/badgeSummary.js`,
+`BadgeStickerSheet`) and PR 6 Summary and report (#393, `informationType: badges`, `src/badges/badgeSummary.js`,
 `src/badges/reportMetrics.js`, `BadgeSummaryTask`, `ReportBadgeSections`) are done; PR 7 (Admin and scaffold) is next.
 
 Source brief: "Live Student Badges". It recognises good learning behaviour as it happens, keeps the
