@@ -4134,6 +4134,12 @@ select {
   animation-delay: var(--sv-sticker-delay, 0ms);
 }
 
+/* `entrance="tumble"` (the Badge Summary): `motion-tumble-in` plus this sticker's place in the
+   stagger. Doubled class so it beats the shared class's `animation` shorthand further down. */
+.sv-sticker.sv-sticker--tumble {
+  animation-delay: var(--sv-sticker-delay, 0ms);
+}
+
 .sv-sticker__emoji {
   font-size: 2rem;
   line-height: 1;
@@ -4224,6 +4230,7 @@ select {
 }
 
 .badge-summary__emoji {
+  display: inline-block;
   font-size: 1.5rem;
   line-height: 1;
 }
@@ -4251,6 +4258,44 @@ select {
 .badge-summary__actions {
   display: flex;
   justify-content: flex-end;
+}
+
+/* Badge Summary entrance (first view only; BadgeSummaryTask.jsx works out the delays). Student:
+   "The whole class" and the rows drop in (`motion-drop-in`) once the stickers have landed. */
+.badge-summary__content .badge-summary__heading--drop,
+.badge-summary__wall .badge-summary__row--drop {
+  animation-delay: var(--badge-summary-delay, 0ms);
+}
+
+/* Teacher and presentation: each emoji tumbles in (`motion-tumble-in`) on its own, then the row's
+   card and text drop in under it. The card is drawn by ::before so it can move without the emoji
+   that has already landed. */
+.badge-summary__wall .badge-summary__row--tumble {
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+  border-color: transparent;
+}
+
+.badge-summary__row--tumble::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: inherit;
+}
+
+.badge-summary__row--tumble::before,
+.badge-summary__row--tumble .badge-summary__badge,
+.badge-summary__row--tumble .badge-summary__names {
+  animation: motion-drop-in var(--motion-slow) var(--motion-ease-out) backwards;
+  animation-delay: var(--badge-summary-delay, 0ms);
+}
+
+.badge-summary__row--tumble .badge-summary__emoji {
+  animation-delay: var(--badge-summary-emoji-delay, 0ms);
 }
 
 @media (max-width: 640px) {
@@ -4284,6 +4329,21 @@ select {
 
   .sv-badge-toast {
     animation: sv-badge-fade-in 200ms ease-out both;
+  }
+
+  /* Badge Summary entrance: the shared block fades the motion-* classes; drop the long delays
+     and fade the row cards, which aren't motion-* classes. */
+  .sv-sticker.sv-sticker--tumble,
+  .badge-summary__content .badge-summary__heading--drop,
+  .badge-summary__wall .badge-summary__row--drop,
+  .badge-summary__row--tumble .badge-summary__emoji {
+    animation-delay: 0ms;
+  }
+
+  .badge-summary__row--tumble::before,
+  .badge-summary__row--tumble .badge-summary__badge,
+  .badge-summary__row--tumble .badge-summary__names {
+    animation: motion-fade-in var(--motion-fast) ease-out backwards;
   }
 }
 
