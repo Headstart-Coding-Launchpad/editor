@@ -63,6 +63,7 @@ import PaneFocusDropdown from '../components/student-modal/PaneFocusDropdown'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
 import { describeShareError } from '../sharedWorkspacePayload'
 import { useSandboxArchiveSnapshots } from '../hooks/useSandboxArchiveSnapshots'
+import { useBadgeAutoAward, useBadgeSuggestions } from '../hooks/useBadgeSuggestions'
 
 function canRecordAdvanceOverride(task) {
   if (!task || task.taskType === 'information') return false
@@ -133,6 +134,7 @@ export default function TeacherView({ lessonId }) {
     pushTeacherPaneCommand,
     pushClassPaneCommand,
     archiveSandboxStudentSnapshot,
+    decideBadge,
   } = useSession(lessonId)
 
   // While the class is in the teacher sandbox, each student's latest sandbox run is copied into
@@ -149,6 +151,14 @@ export default function TeacherView({ lessonId }) {
   const lesson = useMemo(() => prepareClassroomLesson(authoredLesson), [authoredLesson])
   const [lessonLoading, setLessonLoading] = useState(true)
   const { topics } = useTopicLibrary(isComposedLesson(lesson) ? null : lesson?.type, !!lesson)
+  // Live badge suggestions, recomputed from the session (never stored), and the tutor's
+  // auto-award toggle. The suggestions panel and card counts read `badgeSuggestions`.
+  const badgeSuggestions = useBadgeSuggestions({ session, lesson, topics })
+  useBadgeAutoAward({
+    suggestions: badgeSuggestions.suggestions,
+    settings: session?.badgeSettings,
+    decideBadge,
+  })
   const [lessonError, setLessonError] = useState(false)
   const [currentTaskId, setCurrentTaskId] = useState(1)
   // previewTaskId: non-null while the teacher is previewing a task locally without moving students
