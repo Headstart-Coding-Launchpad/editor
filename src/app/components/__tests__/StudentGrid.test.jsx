@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import StudentGrid from '../StudentGrid'
@@ -11,6 +11,10 @@ vi.mock('../StudentCard', () => ({
       <button onClick={() => onExpand(student)}>Expand {student.displayName}</button>
     </div>
   ),
+}))
+
+vi.mock('../../../shared/TopicLibraryView', () => ({
+  TopicLibraryDialog: () => <div data-testid="topic-library" />,
 }))
 
 vi.mock('../StudentModal', () => ({
@@ -146,23 +150,91 @@ describe('StudentGrid', () => {
     })
   })
 
-  describe('nudge Away students', () => {
+  describe('nudge Away students (in the ⋯ menu)', () => {
     const withAway = STUDENTS.map((st) =>
       st.anonymousId === 's3' ? { ...st, windowFocused: false } : st
     )
 
-    it('hides the button when nobody is Away', () => {
+    it('disables the item and shows no attention dot when nobody is Away', async () => {
+      const user = userEvent.setup()
       render(<StudentGrid {...mkProps({ onNudgeAway: vi.fn() })} />)
       expect(screen.queryByText(/Nudge Away/)).not.toBeInTheDocument()
+      const more = screen.getByRole('button', { name: 'More class actions' })
+      expect(within(more).queryByTestId('dropdown-indicator')).not.toBeInTheDocument()
+      await user.click(more)
+      expect(screen.getByRole('button', { name: /Nudge Away \(0\)/ })).toBeDisabled()
     })
 
-    it('shows the Away count and nudges when clicked', async () => {
+    it('shows the Away count and nudges when clicked, with a dot on ⋯', async () => {
       const user = userEvent.setup()
       const onNudgeAway = vi.fn()
       render(<StudentGrid {...mkProps({ students: withAway, onNudgeAway })} />)
+      const more = screen.getByRole('button', { name: /More class actions \(something/ })
+      expect(within(more).getByTestId('dropdown-indicator')).toBeInTheDocument()
+      await user.click(more)
       await user.click(screen.getByText('🔔 Nudge Away (1)'))
       expect(onNudgeAway).toHaveBeenCalledTimes(1)
       expect(screen.getByText('✓ Nudged')).toBeInTheDocument()
+    })
+  })
+
+  describe('header', () => {
+    it('is one non-wrapping line: Students (n), Fullscreen All, ⋯ and the collapse arrow', () => {
+      render(
+        <StudentGrid
+          {...mkProps({
+            onRequestFullscreenAll: vi.fn(),
+            onNudgeAway: vi.fn(),
+            onDecideBadge: vi.fn(),
+            onOpenBadgeSuggestions: vi.fn(),
+            topics: [{ id: 't1', title: 'Loops' }],
+          })}
+        />
+      )
+      expect(screen.getByText('Students')).toHaveTextContent('Students (3)')
+      const header = screen.getByText('Students').parentElement
+      expect(header.style.flexWrap).toBe('nowrap')
+      expect(within(header).getByText('⛶ Fullscreen All')).toBeInTheDocument()
+      expect(within(header).getByRole('button', { name: 'More class actions' })).toBeInTheDocument()
+      expect(within(header).getByTitle('Collapse Students')).toBeInTheDocument()
+      // Everything else lives in the menu until it's opened.
+      expect(screen.queryByText(/Suggestions \(/)).not.toBeInTheDocument()
+      expect(screen.queryByText('☑ Select')).not.toBeInTheDocument()
+      expect(screen.queryByText('📖 Reference')).not.toBeInTheDocument()
+    })
+
+    it('lists Nudge Away, Suggestions, Select and Reference in the ⋯ menu', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentGrid
+          {...mkProps({
+            onNudgeAway: vi.fn(),
+            onDecideBadge: vi.fn(),
+            onOpenBadgeSuggestions: vi.fn(),
+            badgeSuggestions: { suggestions: [], pendingCountByStudent: {} },
+            topics: [{ id: 't1', title: 'Loops' }],
+          })}
+        />
+      )
+      await user.click(screen.getByRole('button', { name: 'More class actions' }))
+      expect(screen.getByText('🔔 Nudge Away (0)')).toBeInTheDocument()
+      expect(screen.getByText('🏅 Suggestions (0)')).toBeInTheDocument()
+      expect(screen.getByText('☑ Select')).toBeInTheDocument()
+      expect(screen.getByText('📖 Reference')).toBeInTheDocument()
+    })
+
+    it('opens the topic library from 📖 Reference', async () => {
+      const user = userEvent.setup()
+      render(<StudentGrid {...mkProps({ topics: [{ id: 't1', title: 'Loops', content: '' }] })} />)
+      await user.click(screen.getByRole('button', { name: 'More class actions' }))
+      await user.click(screen.getByText('📖 Reference'))
+      expect(screen.queryByText('📖 Reference')).not.toBeInTheDocument()
+      expect(screen.getByTestId('topic-library')).toBeInTheDocument()
+    })
+
+    it('has no ⋯ menu when there is nothing to put in it', () => {
+      render(<StudentGrid {...mkProps()} />)
+      expect(screen.queryByRole('button', { name: /More class actions/ })).not.toBeInTheDocument()
     })
   })
 
@@ -275,7 +347,7 @@ describe('StudentGrid', () => {
 })
 
 describe('StudentGrid live badges', () => {
-  it('shows the Suggestions button with its count and opens the panel', async () => {
+  it('shows Suggestions with its count in the ⋯ menu (with a dot) and opens the panel', async () => {
     const user = userEvent.setup()
     const onOpenBadgeSuggestions = vi.fn()
     render(
@@ -286,9 +358,12 @@ describe('StudentGrid live badges', () => {
         })}
       />
     )
+    const more = screen.getByRole('button', { name: /More class actions \(something/ })
+    expect(within(more).getByTestId('dropdown-indicator')).toBeInTheDocument()
+    await user.click(more)
+    expect(screen.getByText('🏅 Suggestions (2)')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Badge suggestions: 2 pending' }))
     expect(onOpenBadgeSuggestions).toHaveBeenCalled()
-    expect(screen.getByText('🏅 Suggestions (2)')).toBeInTheDocument()
   })
 
   it('hides the Suggestions button outside a live session with nothing pending', () => {
@@ -308,6 +383,7 @@ describe('StudentGrid live badges', () => {
     const user = userEvent.setup()
     const onDecideBadge = vi.fn(async () => ({ committed: true }))
     render(<StudentGrid {...mkProps({ onDecideBadge })} />)
+    await user.click(screen.getByRole('button', { name: 'More class actions' }))
     await user.click(screen.getByRole('button', { name: '☑ Select' }))
     const award = screen.getByRole('button', { name: '🏅 Award badge' })
     expect(award).toBeDisabled()
@@ -318,6 +394,7 @@ describe('StudentGrid live badges', () => {
       screen.getByRole('dialog', { name: /Award badge · Alice, Bob, Carol/ })
     ).toBeInTheDocument()
     await user.click(screen.getByTestId('badge-option-helpful_coder'))
+    await user.click(screen.getByTestId('badge-award-confirm'))
     expect(onDecideBadge).toHaveBeenCalledTimes(3)
     const bulkIds = new Set(onDecideBadge.mock.calls.map((call) => call[2].bulkId))
     expect(bulkIds.size).toBe(1)
