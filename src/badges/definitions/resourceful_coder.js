@@ -1,6 +1,7 @@
 import { defineBadge } from '../defineBadge.js'
 import { anySignal } from '../rules.js'
 import { topicOpenEvent } from '../timeline.js'
+import { TOPIC_LIBRARY_OPEN_ID } from '../signals.js'
 
 export default defineBadge({
   id: 'resourceful_coder',
@@ -11,9 +12,14 @@ export default defineBadge({
     'Opened a Topic Library topic themselves (library button, topic link or topic card), in a task or a sandbox. Topics the tutor sends don’t count.',
   rule: anySignal('topic_open', {
     filter: (event) => event.source === 'student',
-    values: (event) => ({ topicTitle: event.topicTitle ?? event.topicId }),
+    values: (event) => ({
+      topicTitle: event.topicTitle ?? event.topicId,
+      // The library button opened the library on no chosen topic.
+      libraryOnly: event.topicId === TOPIC_LIBRARY_OPEN_ID,
+    }),
   }),
-  reasonText: ({ topicTitle }) => `Opened “${topicTitle}” in the Topic Library`,
+  reasonText: ({ topicTitle, libraryOnly }) =>
+    libraryOnly ? 'Opened the Topic Library' : `Opened “${topicTitle}” in the Topic Library`,
   examples: [
     {
       name: 'the student opens a topic',
