@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import ItemNav from '../ui/ItemNav.jsx'
+import ActivityCorrect from '../ui/ActivityCorrect.jsx'
 import {
   ASCII_MAX_TEXT,
   DEFAULT_BITS,
@@ -708,11 +709,7 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
           💡 {liveResult.hint}
         </p>
       )}
-      {liveResult?.correct && (
-        <p className="act-result act-result--pass" role="status">
-          ✓ Correct
-        </p>
-      )}
+      {liveResult?.correct && <ActivityCorrect />}
 
       {!readOnly && (
         <div className="act-row">

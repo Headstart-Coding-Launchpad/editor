@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import KeyboardBuilderEditor from './KeyboardBuilderEditor.jsx'
 import ItemNav from '../ui/ItemNav.jsx'
+import ActivityCorrect, { SpinTick } from '../ui/ActivityCorrect.jsx'
 import OnScreenKeyboard, { codesForKey } from './OnScreenKeyboard.jsx'
 import { NAMED_KEYS, describeComboPart, describeItem, gradeKeyboardItem } from './keyboard.js'
 import { applyEditKey, initialEditModel } from './editText.js'
@@ -520,7 +521,9 @@ export function KeyboardStudentView({
               {String(result.typed ?? '') || (readOnly ? '' : 'Click here and start typing…')}
             </span>
           ) : finished ? (
-            <span>✓ Got it!</span>
+            <span>
+              <SpinTick /> Got it!
+            </span>
           ) : (
             <span>{readOnly ? 'Waiting for a key press' : 'Click here, then press the key.'}</span>
           )}
@@ -550,11 +553,7 @@ export function KeyboardStudentView({
           💡 {grade.hint}
         </p>
       )}
-      {finished && grade?.correct && (
-        <p className="act-result act-result--pass" role="status">
-          ✓ Well done!
-        </p>
-      )}
+      {finished && grade?.correct && <ActivityCorrect>Well done!</ActivityCorrect>}
 
       {(showPicture || virtualKeyboard) && !needsRealKeyboard && (
         <OnScreenKeyboard
