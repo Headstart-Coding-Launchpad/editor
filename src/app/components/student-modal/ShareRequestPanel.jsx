@@ -117,7 +117,7 @@ export default function ShareRequestPanel({
         </button>
         <button
           type="button"
-          className="btn-ghost"
+          className="btn-ghost-outline"
           style={s.actionBtn}
           disabled={busy}
           onClick={() => run('decline', () => onDecline(student.anonymousId))}

@@ -315,7 +315,7 @@ export default function Inspector({
                 {setupMode && (
                   <button
                     type="button"
-                    className="btn-ghost"
+                    className="btn-ghost-outline"
                     style={s.smallInspectorBtn}
                     disabled={readOnly || selectedStructureLocked}
                     onClick={actions.addGpioPin}

@@ -2,10 +2,11 @@ import React, { useEffect, useRef, useState } from 'react'
 import BadgeStickerSheet from './BadgeStickerSheet'
 
 /**
- * The student's "🎖️ Coding moments" pill in the top bar: their own awarded badges only (a revoked
- * one disappears silently), opening a small sheet of them, with a speaker toggle that mutes the
- * celebration chime on this device for the session. Hidden until the first moment arrives. The
- * celebration card docks into it (data-badge-dock).
+ * The student's 🎖️ Coding moments button in the top bar: a compact icon-only button (no count,
+ * so it never reads as a score) that opens a small popover of their own awarded badges (a revoked
+ * one disappears silently) with the speaker toggle that mutes the celebration chime on this device
+ * for the session. Hidden until the first moment arrives. The celebration card docks into it
+ * (data-badge-dock).
  *
  * @param {object} props
  * @param {{ badgeId: string, badge: object }[]} props.moments From `listMyMoments`.
@@ -27,8 +28,15 @@ export default function CodingMomentsPill({
     function onDown(event) {
       if (ref.current && !ref.current.contains(event.target)) setOpen(false)
     }
+    function onKey(event) {
+      if (event.key === 'Escape') setOpen(false)
+    }
     document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [open])
 
   if (moments.length === 0) return null
@@ -39,39 +47,39 @@ export default function CodingMomentsPill({
       <button
         type="button"
         className="btn-ghost"
-        style={s.pillBtn}
+        style={s.iconBtn}
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
+        aria-label="Coding moments"
         title="Your coding moments this lesson"
       >
-        <span aria-hidden="true">🎖️</span> Coding moments
-        <span style={s.emojiRow} aria-hidden="true">
-          {moments.slice(-4).map(({ badgeId, badge }) => (
-            <span key={badgeId}>{badge?.emoji ?? '🏅'}</span>
-          ))}
-        </span>
-      </button>
-      <button
-        type="button"
-        className="btn-ghost"
-        style={s.muteBtn}
-        onClick={() => onMutedChange?.(!muted)}
-        disabled={soundsOff}
-        aria-pressed={muted}
-        aria-label={muted ? 'Turn badge sounds on' : 'Mute badge sounds'}
-        title={
-          soundsOff
-            ? 'Your teacher has turned badge sounds off'
-            : muted
-              ? 'Turn badge sounds on'
-              : 'Mute badge sounds'
-        }
-      >
-        <span aria-hidden="true">{silenced ? '🔇' : '🔈'}</span>
+        <span aria-hidden="true">🎖️</span>
       </button>
       {open && (
-        <div style={s.panel} className="ui-popover">
-          <span style={s.panelTitle}>Your coding moments</span>
+        <div style={s.panel} className="ui-popover" role="group" aria-label="Your coding moments">
+          <div style={s.panelHead}>
+            <span style={s.panelTitle}>Your coding moments</span>
+            <button
+              type="button"
+              className="btn-ghost-outline"
+              style={s.muteBtn}
+              onClick={() => onMutedChange?.(!muted)}
+              disabled={soundsOff}
+              aria-pressed={muted}
+              aria-label={muted ? 'Turn badge sounds on' : 'Mute badge sounds'}
+              title={
+                soundsOff
+                  ? 'Your teacher has turned badge sounds off'
+                  : muted
+                    ? 'Turn badge sounds on'
+                    : 'Mute badge sounds'
+              }
+            >
+              <span aria-hidden="true">{silenced ? '🔇' : '🔈'}</span>{' '}
+              {soundsOff ? 'Sounds off' : muted ? 'Muted' : 'Sound on'}
+            </button>
+          </div>
+          {/* Not role="dialog": the global dialog styles would paint it as a modal overlay. */}
           <BadgeStickerSheet moments={moments} />
         </div>
       )}
@@ -84,27 +92,18 @@ const s = {
     position: 'relative',
     display: 'inline-flex',
     alignItems: 'center',
-    gap: 2,
     flexShrink: 0,
   },
-  pillBtn: {
-    fontSize: 13,
-    padding: '5px 12px',
+  iconBtn: {
+    width: 32,
+    height: 32,
+    padding: 0,
     borderRadius: 999,
+    fontSize: 16,
+    lineHeight: 1,
     display: 'inline-flex',
     alignItems: 'center',
-    gap: 6,
-    whiteSpace: 'nowrap',
-  },
-  emojiRow: {
-    display: 'inline-flex',
-    gap: 2,
-  },
-  muteBtn: {
-    fontSize: 13,
-    padding: '5px 8px',
-    borderRadius: 999,
-    lineHeight: 1,
+    justifyContent: 'center',
   },
   panel: {
     position: 'absolute',
@@ -119,10 +118,23 @@ const s = {
     flexDirection: 'column',
     gap: 8,
   },
+  panelHead: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   panelTitle: {
     fontFamily: 'var(--font-title)',
     fontWeight: 700,
     fontSize: '0.9rem',
     color: 'var(--colour-primary)',
+  },
+  muteBtn: {
+    fontSize: 12,
+    padding: '3px 10px',
+    borderRadius: 999,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
 }

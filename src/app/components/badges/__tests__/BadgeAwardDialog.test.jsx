@@ -18,6 +18,11 @@ function renderDialog(props = {}) {
   return { ...handlers, ...props }
 }
 
+async function selectAndAward(user, badgeId) {
+  await user.click(screen.getByTestId(`badge-option-${badgeId}`))
+  await user.click(screen.getByTestId('badge-award-confirm'))
+}
+
 describe('BadgeAwardDialog', () => {
   it('lists every registry badge, rule-backed and tutor-only', () => {
     renderDialog()
@@ -47,6 +52,10 @@ describe('BadgeAwardDialog', () => {
     expect(held).toHaveTextContent('Awarded')
     expect(screen.getByTestId('badge-option-code_fixer')).toHaveAttribute('aria-disabled', 'false')
     await user.click(held)
+    const confirm = screen.getByTestId('badge-award-confirm')
+    expect(confirm).toBeDisabled()
+    expect(confirm).toHaveTextContent('Already awarded')
+    await user.click(confirm)
     expect(onDecideBadge).not.toHaveBeenCalled()
   })
 
@@ -63,7 +72,7 @@ describe('BadgeAwardDialog', () => {
   it('awards manually, replacing a dismissal or revoke', async () => {
     const user = userEvent.setup()
     const { onDecideBadge } = renderDialog()
-    await user.click(screen.getByTestId('badge-option-helpful_coder'))
+    await selectAndAward(user, 'helpful_coder')
     expect(onDecideBadge).toHaveBeenCalledWith(
       's1',
       'helpful_coder',
@@ -88,7 +97,7 @@ describe('BadgeAwardDialog', () => {
         { id: 'star_speaker', emoji: '🎤', title: 'Star Speaker', blurb: 'Presented well.' },
       ],
     })
-    await user.click(screen.getByTestId('badge-option-star_speaker'))
+    await selectAndAward(user, 'star_speaker')
     expect(onDecideBadge.mock.calls[0][2].badge).toEqual({
       emoji: '🎤',
       title: 'Star Speaker',
@@ -115,7 +124,7 @@ describe('BadgeAwardDialog', () => {
     const user = userEvent.setup()
     const { onDecideBadge } = renderDialog()
     await user.click(screen.getByLabelText('Announce to class'))
-    await user.click(screen.getByTestId('badge-option-creative_coder'))
+    await selectAndAward(user, 'creative_coder')
     expect(onDecideBadge.mock.calls[0][2].announce).toBe(false)
   })
 
@@ -127,7 +136,7 @@ describe('BadgeAwardDialog', () => {
       decisions: { s3: { experimenter: { status: 'awarded' } } },
     })
     expect(screen.queryByText('Awarded this lesson')).not.toBeInTheDocument()
-    await user.click(screen.getByTestId('badge-option-experimenter'))
+    await selectAndAward(user, 'experimenter')
     expect(onDecideBadge).toHaveBeenCalledTimes(2)
     const ids = onDecideBadge.mock.calls.map((call) => call[0])
     expect(ids).toEqual(['s1', 's2'])
@@ -141,7 +150,7 @@ describe('BadgeAwardDialog', () => {
     renderDialog({
       onDecideBadge: vi.fn(async () => ({ committed: false, decision: { status: 'awarded' } })),
     })
-    await user.click(screen.getByTestId('badge-option-focused_coder'))
+    await selectAndAward(user, 'focused_coder')
     expect(await screen.findByRole('status')).toHaveTextContent('already awarded')
   })
 
@@ -169,5 +178,70 @@ describe('BadgeAwardDialog', () => {
     expect(onClose).toHaveBeenCalled()
     expect(windowKey).not.toHaveBeenCalled()
     window.removeEventListener('keydown', windowKey)
+  })
+
+  it('groups badges into rule-backed, tutor-awarded and (only when present) admin sections', () => {
+    renderDialog()
+    const rules = screen.getByRole('group', { name: 'Suggested by rules' })
+    const tutor = screen.getByRole('group', { name: 'Tutor-awarded' })
+    expect(screen.queryByRole('group', { name: 'Admin badges' })).not.toBeInTheDocument()
+    for (const badge of getBadgeDefinitions()) {
+      const section = badge.tutorOnly ? tutor : rules
+      expect(within(section).getByTestId(`badge-option-${badge.id}`)).toBeInTheDocument()
+    }
+  })
+
+  it('puts catalogue badges under Admin badges', () => {
+    renderDialog({
+      catalogueBadges: [{ id: 'star_speaker', emoji: '🎤', title: 'Star Speaker' }],
+    })
+    const admin = screen.getByRole('group', { name: 'Admin badges' })
+    expect(within(admin).getByTestId('badge-option-star_speaker')).toBeInTheDocument()
+  })
+
+  it('selects first, then awards only on the explicit Award button', async () => {
+    const user = userEvent.setup()
+    const { onDecideBadge } = renderDialog()
+    const confirm = screen.getByTestId('badge-award-confirm')
+    expect(confirm).toBeDisabled()
+    const tile = screen.getByTestId('badge-option-bug_hunter')
+    await user.click(tile)
+    expect(onDecideBadge).not.toHaveBeenCalled()
+    expect(tile).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByTestId('badge-rule-detail')).toHaveTextContent('Bug Hunter')
+    expect(confirm).toBeEnabled()
+    expect(confirm).toHaveTextContent('Award')
+    expect(confirm).toHaveTextContent('Bug Hunter')
+    await user.click(confirm)
+    expect(onDecideBadge).toHaveBeenCalledTimes(1)
+    expect(onDecideBadge.mock.calls[0][1]).toBe('bug_hunter')
+  })
+
+  it('selects a tile from the keyboard', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    const tile = screen.getByTestId('badge-option-persistence')
+    tile.focus()
+    await user.keyboard('{Enter}')
+    expect(tile).toHaveAttribute('aria-pressed', 'true')
+    await user.keyboard(' ')
+    expect(tile).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('shows full badge names without truncation', () => {
+    renderDialog()
+    const title = screen
+      .getByTestId('badge-option-resourceful_coder')
+      .querySelector('span:last-child')
+    expect(title.style.textOverflow).not.toBe('ellipsis')
+    expect(title.style.whiteSpace).toBe('normal')
+  })
+
+  it('keeps the purple header and a light body: role=dialog sits on the overlay', () => {
+    renderDialog()
+    const dialog = screen.getByRole('dialog')
+    const card = dialog.firstChild
+    expect(card.firstChild).toHaveTextContent('Award badge')
+    expect(within(card).getByLabelText('Announce to class')).toBeChecked()
   })
 })

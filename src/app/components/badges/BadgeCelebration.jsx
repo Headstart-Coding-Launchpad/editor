@@ -9,7 +9,7 @@ export function prefersReducedMotion() {
   }
 }
 
-/** Where the card docks: the Coding moments pill, when it's on screen. */
+/** Where the card docks: the 🎖️ moments button in the top bar, when it's on screen. */
 export const BADGE_DOCK_SELECTOR = '[data-badge-dock]'
 
 function dockOffset(cardEl) {
@@ -25,11 +25,13 @@ function dockOffset(cardEl) {
 }
 
 /**
- * The recipient's celebration: a card that flips in with one shine sweep, shows for
- * CELEBRATION_CARD_MS, then docks into the Coding moments pill and calls `onDone`.
+ * The recipient's celebration: a small card that drops down top-centre, just under the top bar,
+ * flips in with one shine sweep, shows for CELEBRATION_CARD_MS, then docks into the 🎖️ moments
+ * button and calls `onDone`.
  *
- * It never takes focus: nothing in it is focusable, the layer ignores pointer events, and a
- * mousedown on the card itself is cancelled so the editor keeps its focus and typing continues.
+ * It never takes focus: nothing in it is focusable, the layer is only as big as the card and
+ * ignores pointer events, and a mousedown on the card itself is cancelled so the editor keeps its
+ * focus and typing continues.
  * The polite live region is always mounted, so screen readers hear each award once.
  *
  * @param {object} props
@@ -81,7 +83,7 @@ export default function BadgeCelebration({ award, badge, onDone }) {
         {announcement}
       </div>
       {award && badge && (
-        <div className="sv-badge-layer" data-testid="badge-celebration">
+        <div className="sv-badge-layer sv-badge-layer--top" data-testid="badge-celebration">
           <div
             ref={cardRef}
             key={award.key}
@@ -94,10 +96,12 @@ export default function BadgeCelebration({ award, badge, onDone }) {
             }
             onMouseDown={(event) => event.preventDefault()}
           >
-            <span className="sv-badge-card__label">Coding moment</span>
             <span className="sv-badge-card__emoji">{badge.emoji}</span>
-            <p className="sv-badge-card__title">{badge.title}</p>
-            {badge.blurb && <p className="sv-badge-card__blurb">{badge.blurb}</p>}
+            <span className="sv-badge-card__text">
+              <span className="sv-badge-card__label">Coding moment</span>
+              <span className="sv-badge-card__title">{badge.title}</span>
+              {badge.blurb && <span className="sv-badge-card__blurb">{badge.blurb}</span>}
+            </span>
           </div>
         </div>
       )}

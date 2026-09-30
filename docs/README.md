@@ -77,6 +77,11 @@ Agreed phased plan for live student badges: a teacher-side rules engine over per
 
 **Load when:** working on any badge PR, adding a badge, or changing badge rules, data paths, or the `taskActivity` vocabulary.
 
+### [architecture/animation-ideas.md](architecture/animation-ideas.md)
+Ideas only: places the app could use a celebration-style moment later (all checks passed, first successful run, lesson complete, and so on), under the principle "calm by default, celebrate real achievements, respect reduced motion".
+
+**Load when:** considering new motion or celebration UI, so it stays consistent with the live-badge card and toast.
+
 ### [architecture/modular-activities-plan.md](architecture/modular-activities-plan.md)
 Accepted phased plan for making lesson capabilities modular: an Activity plugin tier (quiz sub-types, code_arrange, Binary, Keyboard, Mouse), a shared check-type registry and input recorder, workspace module contract v2, the scaffold/skill kit Claude uses to build new activities and modules, and the `docs/authoring/authoring-requests/` intake for lesson agents.
 

@@ -4,7 +4,7 @@ Status: **Approved for implementation (2026-09-30).** Interviewed and revised on
 agent against the code and revised again. Branch `feature/live-badges`. Delivered as seven focused PRs
 (see [PR sequence](#pr-sequence)).
 
-**Implementation status:** all seven PRs are **implemented; awaiting real-browser verification**
+**Implementation status:** all seven PRs, plus a polish PR 8 from hands-on testing, are **implemented; awaiting real-browser verification**
 (see [Real-browser checks](#real-browser-checks-jsdom-cant-catch-these)):
 
 | PR | Scope | Number |
@@ -16,6 +16,7 @@ agent against the code and revised again. Branch `feature/live-badges`. Delivere
 | 5 | Celebration (`celebration.js`, `useBadgeCelebrations`, card, toast, pill, sticker sheet) | #392 |
 | 6 | Summary and report (`informationType: badges`, `badgeSummary.js`, `reportMetrics.js`) | #393 |
 | 7 | Admin and scaffold (`badgeCatalogue`, Admin → Badges, catalogue snapshot on awards, Builder Badge hints, `npm run new:badge`, `new-badge` skill, [ADR 0011](../adr/0011-live-badges-registry-and-rules.md)) | #394 |
+| 8 | Polish from testing: smaller top-centre celebration card, bigger "earned a badge" class toast, grouped select-then-Award picker, one-row student top bar (icon-only 🎖️ button with the mute inside), one-line grid header (⋯ menu) and student modal header (Support / More), readable light-surface buttons, [animation ideas](animation-ideas.md) | #395 |
 
 PR 7 deviations: an awarded catalogue badge copies `{ emoji, title, blurb }` onto its decision
 (`decision.badge`), because students can't read Firestore `badgeCatalogue`; and the Builder's Badge
@@ -378,7 +379,7 @@ resets.
 
 ## Tutor experience
 
-- **Grid header:** a **🏅 Suggestions (n)** button, next to Nudge Away.
+- **Grid header:** a **🏅 Suggestions (n)** item in the header's ⋯ menu, next to Nudge Away (PR 8: a dot on ⋯ shows while one is pending).
 - **Suggestions panel:** a collapsible panel in the centre column (`TaskRatingPanel` pattern).
   - Suggestions are grouped by student. Each shows its emoji, title and reason, **[Award]
     [Dismiss]**, and "announce to class" (default on).
@@ -388,7 +389,8 @@ resets.
   ("🏅 2"). The count is also shown in the student modal header. It never appears on student screens
   or the presentation window.
 - **Student modal:** More → **🏅 Award badge** opens a picker with every badge (rule-backed,
-  tutor-only and Admin-catalogue).
+  tutor-only and Admin-catalogue), grouped in those three sections. PR 8: selecting a badge shows
+  its rule, and an explicit **Award** button confirms it.
   - Already-held badges are greyed out.
   - Hovering a badge shows its exact rule.
   - The student's awarded list has **Revoke**, which is silent to the student.
@@ -399,9 +401,10 @@ resets.
 ## Student experience
 
 - **Recipient celebration:**
-  - A centred card flips in (3D `rotateY`) with one shine sweep, showing the emoji, title and blurb.
-  - After about 2.5 s it docks into a **🎖️ Coding moments** pill in the top bar, which lists their own
-    badges.
+  - A small card drops down top-centre, just under the top bar, and flips in (3D `rotateY`) with
+    one shine sweep, showing the emoji, title and blurb (PR 8; it was centred and larger).
+  - After about 2.5 s it docks into a compact, icon-only **🎖️** button in the top bar (no count),
+    whose popover lists their own badges.
   - A subtle, low-gain two-note chime plays, reusing the nudge audio engine.
   - It never steals editor focus.
   - `aria-live="polite"` announces it.
@@ -409,13 +412,14 @@ resets.
   - It isn't replayed on reload (load-baseline, as `useNudgeAlert` does). Awards made while offline
     still appear in the pill.
 - **Class toast (every classmate's screen):**
-  - A compact, silent pill in the bottom corner, "🎖️ Alex · Bug Hunter".
-  - It shows for about 3 s, and the blurb appears on hover.
-  - A bulk award shows **one** toast: "⌨️ Keyboard Wizard · 12 coders".
+  - A silent pill in the bottom-left corner that slides in with a soft glow, "🎖️ Alex earned a
+    badge: 🐛 Bug Hunter" (PR 8: about 1.5× the original size).
+  - It shows for about 4 s, and the blurb appears on hover.
+  - A bulk award shows **one** toast: "🎖️ 12 students earned a badge: ⌨️ Keyboard Wizard".
   - Toasts are queued one at a time and dropped if the queue backs up.
   - The recipient doesn't see the toast; they get the celebration instead.
-- **Presentation window:** the same toast, slightly larger, for about 4 s.
-- **Mute:** a speaker toggle in the pill silences the chime on that device for the session. It's kept
+- **Presentation window:** the same toast, scaled up for the board, for about 4.5 s.
+- **Mute:** a speaker toggle in the 🎖️ popover silences the chime on that device for the session. It's kept
   in memory only, with no new localStorage key.
 - **Session-end screen:** shows the student's own moments as a sticker sheet, read from the `badges`
   node that `endSession` now keeps.

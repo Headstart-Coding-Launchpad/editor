@@ -22,8 +22,7 @@ import { TEACHER_LIVE_REFERENCE_TYPES } from '../studentLiveDisplay'
 import DropdownMenu from './student-modal/DropdownMenu'
 import MessageCompose from './student-modal/MessageCompose'
 import OverrideDropdown from './student-modal/OverrideDropdown'
-import StageDropdown from './student-modal/StageDropdown'
-import PaneFocusDropdown from './student-modal/PaneFocusDropdown'
+import { PaneFocusControls } from './student-modal/PaneFocusDropdown'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
 import ShareRequestPanel from './student-modal/ShareRequestPanel'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
@@ -504,6 +503,14 @@ export default function StudentModal({
   const autoRevealStage = student.autoRevealStage ?? null
 
   const supportsTeacherLiveReference = TEACHER_LIVE_REFERENCE_TYPES.includes(taskLesson?.type)
+  // The Support menu's two sections.
+  const canShowLiveReference =
+    !!onSetTeacherLiveReference && !isInformation && !isQuizLike && supportsTeacherLiveReference
+  const canReveal =
+    (!!onRevealSupportStage && revealableStages.length > 0) ||
+    canSetAutoReveal ||
+    canShowLiveReference
+  const canSetStage = !!onRemoteReset && !isInformation && !isQuiz && stageOptions.length > 0
   const teacherLiveReferenceVisible = !!student.teacherLiveReferenceVisible
   const teacherLiveReferenceMatchesTask =
     !!session?.teacherLiveReference?.active && session?.teacherLiveReference?.taskId === task?.id
@@ -533,10 +540,15 @@ export default function StudentModal({
       aria-modal="true"
     >
       <div style={s.modal}>
-        {/* Modal header */}
+        {/* Modal header: one fixed-height line. Name and small status chips on the left (they
+            scroll sideways rather than wrap); student switching, Support, Run, More and close on
+            the right. Occasional actions (Nudge, Focus, Go Live for All, Award badge, …) live in
+            More so the line never wraps at common widths. */}
         <div style={s.header}>
-          <div style={s.headerLeft}>
+          <div style={s.headerLeft} data-testid="student-modal-status">
             <span style={s.name}>{student.displayName}</span>
+            <PresenceBadge student={student} session={session} />
+            {isLive && <span style={s.liveBadge}>● {isLiveForAll ? 'LIVE FOR ALL' : 'LIVE'}</span>}
             {/* Teacher-only badge count; never shown on student screens. */}
             {badgeCount > 0 && (
               <span
@@ -547,18 +559,7 @@ export default function StudentModal({
                 🏅 {badgeCount}
               </span>
             )}
-            <PresenceBadge student={student} session={session} />
-            {onNudge && student.online && (
-              <button
-                className="btn-ghost"
-                style={s.nudgeBtn}
-                onClick={handleNudge}
-                title="Nudge: flash this student's tab and play a chime"
-              >
-                {nudged ? '✓ Nudged' : '🔔 Nudge'}
-              </button>
-            )}
-            {isLive && <span style={s.liveBadge}>● {isLiveForAll ? 'LIVE FOR ALL' : 'LIVE'}</span>}
+            {nudged && <span style={s.overrideBadge}>✓ Nudged</span>}
             {student.checkPassed && !isSessionSandbox && <span style={s.checkBadge}>✅</span>}
             {teacherAssisted && (
               <span
@@ -646,88 +647,131 @@ export default function StudentModal({
               </button>
             </div>
 
-            {/* Stage reference reveal dropdown */}
-            {((onRevealSupportStage && revealableStages.length > 0) ||
-              canSetAutoReveal ||
-              (onSetTeacherLiveReference &&
-                !isInformation &&
-                !isQuizLike &&
-                supportsTeacherLiveReference)) && (
-              <DropdownMenu label="Reveal" buttonClassName="btn-ghost">
+            {/* A stage request waits on the student's consent. */}
+            {canSetStage && stageRequestState === 'requesting' && (
+              <>
+                <span style={sEd.waitingText}>Waiting for {student.displayName}…</span>
+                <button
+                  className="btn-ghost"
+                  style={{ fontSize: 13, padding: '5px 10px' }}
+                  onClick={handleCancelStage}
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+
+            {/* Support: the Reveal references and Set Stage, in labelled sections. */}
+            {(canReveal || (canSetStage && stageRequestState !== 'requesting')) && (
+              <DropdownMenu
+                label={stageDeclinedNotice ? 'Support · declined' : 'Support'}
+                buttonClassName="btn-ghost"
+                buttonStyle={
+                  stageDeclinedNotice ? { color: '#fca5a5', borderColor: '#fca5a5' } : undefined
+                }
+                title={
+                  stageDeclinedNotice
+                    ? 'The student declined your last stage change'
+                    : 'Reveal a reference or set this student’s code stage'
+                }
+                panelStyle={s.menuPanel}
+              >
                 {(close) => (
                   <>
-                    {onSetTeacherLiveReference &&
-                      !isInformation &&
-                      !isQuizLike &&
-                      supportsTeacherLiveReference && (
-                        <button
-                          style={sTo.toolBtn}
-                          disabled={!teacherLiveReferenceMatchesTask}
-                          title={
-                            teacherLiveReferenceMatchesTask
-                              ? undefined
-                              : "Will work once you're presenting this task in Presentation View"
-                          }
-                          onClick={() => {
-                            close()
-                            onSetTeacherLiveReference(
-                              student.anonymousId,
-                              !teacherLiveReferenceVisible
-                            )
-                          }}
-                        >
-                          {teacherLiveReferenceVisible
-                            ? '✓ Live ref: your live code (on)'
-                            : 'Show your live code'}
-                        </button>
-                      )}
-                    {revealableStages.map(({ stage, index }) => {
-                      const alreadyRevealed = !!revealedSupportStages[index]
-                      return (
-                        <button
-                          key={index}
-                          style={sTo.toolBtn}
-                          disabled={alreadyRevealed}
-                          onClick={() => {
-                            close()
-                            handleRevealSupportStage(index, stage)
-                          }}
-                        >
-                          {alreadyRevealed ? 'Opened: ' : 'Reveal: '}
-                          {stage.label || `Stage ${index + 1}`}
-                        </button>
-                      )
-                    })}
-                    {completeStage && (
-                      <button
-                        style={sTo.toolBtn}
-                        onClick={() => {
-                          close()
-                          handleRevealSupportStage(completeStage.index, completeStage.stage)
-                          onRemoteReset?.(
-                            student.anonymousId,
-                            `reveal_stage_${completeStage.index}`
-                          )
-                        }}
-                      >
-                        Reveal solution: {completeStage.stage.label || 'Complete'}
-                      </button>
-                    )}
-                    {canSetAutoReveal && (
+                    {canReveal && (
                       <>
-                        <div style={s.autoRevealHeading}>Show on every task</div>
-                        {AUTO_REVEAL_OPTIONS.map(({ mode, label }) => (
+                        <div style={s.menuHeadingFirst}>Reveal</div>
+                        {canShowLiveReference && (
                           <button
-                            key={mode ?? 'off'}
                             style={sTo.toolBtn}
-                            aria-pressed={autoRevealStage === mode}
+                            disabled={!teacherLiveReferenceMatchesTask}
+                            title={
+                              teacherLiveReferenceMatchesTask
+                                ? undefined
+                                : "Will work once you're presenting this task in Presentation View"
+                            }
                             onClick={() => {
                               close()
-                              onSetAutoReveal(student.anonymousId, mode)
+                              onSetTeacherLiveReference(
+                                student.anonymousId,
+                                !teacherLiveReferenceVisible
+                              )
                             }}
                           >
-                            {autoRevealStage === mode ? '✓ ' : ''}
-                            {label}
+                            {teacherLiveReferenceVisible
+                              ? '✓ Live ref: your live code (on)'
+                              : 'Show your live code'}
+                          </button>
+                        )}
+                        {revealableStages.map(({ stage, index }) => {
+                          const alreadyRevealed = !!revealedSupportStages[index]
+                          return (
+                            <button
+                              key={index}
+                              style={sTo.toolBtn}
+                              disabled={alreadyRevealed}
+                              onClick={() => {
+                                close()
+                                handleRevealSupportStage(index, stage)
+                              }}
+                            >
+                              {alreadyRevealed ? 'Opened: ' : 'Reveal: '}
+                              {stage.label || `Stage ${index + 1}`}
+                            </button>
+                          )
+                        })}
+                        {completeStage && (
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              handleRevealSupportStage(completeStage.index, completeStage.stage)
+                              onRemoteReset?.(
+                                student.anonymousId,
+                                `reveal_stage_${completeStage.index}`
+                              )
+                            }}
+                          >
+                            Reveal solution: {completeStage.stage.label || 'Complete'}
+                          </button>
+                        )}
+                        {canSetAutoReveal && (
+                          <>
+                            <div style={s.autoRevealHeading}>Show on every task</div>
+                            {AUTO_REVEAL_OPTIONS.map(({ mode, label }) => (
+                              <button
+                                key={mode ?? 'off'}
+                                style={sTo.toolBtn}
+                                aria-pressed={autoRevealStage === mode}
+                                onClick={() => {
+                                  close()
+                                  onSetAutoReveal(student.anonymousId, mode)
+                                }}
+                              >
+                                {autoRevealStage === mode ? '✓ ' : ''}
+                                {label}
+                              </button>
+                            ))}
+                          </>
+                        )}
+                      </>
+                    )}
+                    {canSetStage && stageRequestState !== 'requesting' && (
+                      <>
+                        <div style={canReveal ? s.menuHeading : s.menuHeadingFirst}>Set stage</div>
+                        {stageDeclinedNotice && (
+                          <div style={s.menuNote}>The student declined the last change.</div>
+                        )}
+                        {stageOptions.map((opt) => (
+                          <button
+                            key={opt.value}
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              handleRequestStage(opt.value, opt.label)
+                            }}
+                          >
+                            {opt.label}
                           </button>
                         ))}
                       </>
@@ -737,35 +781,11 @@ export default function StudentModal({
               </DropdownMenu>
             )}
 
-            {/* Stage dropdown */}
-            {onRemoteReset &&
-              !isInformation &&
-              !isQuiz &&
-              stageOptions.length > 0 &&
-              (stageRequestState === 'requesting' ? (
-                <>
-                  <span style={sEd.waitingText}>Waiting for {student.displayName}…</span>
-                  <button
-                    className="btn-ghost"
-                    style={{ fontSize: 13, padding: '5px 10px' }}
-                    onClick={handleCancelStage}
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <StageDropdown
-                  stageOptions={stageOptions}
-                  onRequest={handleRequestStage}
-                  declinedNotice={stageDeclinedNotice}
-                />
-              ))}
-
             {supportsRemoteRun && (
               <button
                 type="button"
                 className="btn-ghost"
-                style={{ fontSize: 13, padding: '5px 12px' }}
+                style={{ fontSize: 13, padding: '5px 12px', whiteSpace: 'nowrap' }}
                 onClick={handleRemoteRun}
                 disabled={!student.online}
                 title={
@@ -782,7 +802,7 @@ export default function StudentModal({
               <button
                 type="button"
                 className={answerEditing ? 'btn-primary' : 'btn-ghost'}
-                style={{ fontSize: 13, padding: '5px 12px' }}
+                style={{ fontSize: 13, padding: '5px 12px', whiteSpace: 'nowrap' }}
                 onClick={() => setAnswerEditing((editing) => !editing)}
                 title="Change this student's answers — updates their screen live"
               >
@@ -793,19 +813,6 @@ export default function StudentModal({
             {/* Override dropdown */}
             {onOverrideCheck && task?.check != null && (
               <OverrideDropdown student={student} task={task} onOverrideCheck={onOverrideCheck} />
-            )}
-
-            {/* Highlight/force a tab or the Instructions pane on this student's screen */}
-            {onPushTeacherPaneCommand && !isInformation && !isQuizLike && (
-              <PaneFocusDropdown
-                lessonType={taskLesson?.type}
-                onHighlight={(panes) =>
-                  onPushTeacherPaneCommand(student.anonymousId, { mode: 'highlight', panes })
-                }
-                onForce={(panes) =>
-                  onPushTeacherPaneCommand(student.anonymousId, { mode: 'force', panes })
-                }
-              />
             )}
 
             {/* Active edit states (shown outside More dropdown while in progress) */}
@@ -822,6 +829,7 @@ export default function StudentModal({
                       padding: '5px 12px',
                       background: '#0f766e',
                       borderColor: '#0f766e',
+                      whiteSpace: 'nowrap',
                     }}
                     onClick={handleCommitEdit}
                   >
@@ -860,7 +868,18 @@ export default function StudentModal({
               !isQuiz &&
               declinedNotice && <span style={sEd.declinedNotice}>Student declined</span>}
 
-            {/* More dropdown: topic, message, edit code — grouped when idle */}
+            {/* A running broadcast can always be stopped from the header. */}
+            {!isInformation && isLiveForAll && (
+              <button
+                className="btn-danger"
+                style={{ fontSize: 13, padding: '5px 14px', whiteSpace: 'nowrap' }}
+                onClick={onStopLive}
+              >
+                Stop Live
+              </button>
+            )}
+
+            {/* More: badge, nudge, broadcast, topic, message, edit code, focus — grouped when idle */}
             {teacherEditState === 'idle' &&
               (() => {
                 const hasEdit = !!(
@@ -884,18 +903,30 @@ export default function StudentModal({
                   student.shareSnapshotRequestedAt == null
                 const hasFullscreen = !!onRequestFullscreen
                 const hasBadge = !!onDecideBadge
+                const hasNudge = !!onNudge && student.online
+                // Broadcasting a student's work is not offered on quiz or activity tasks
+                // (teacher-only broadcasts there).
+                const hasGoLiveForAll =
+                  !!onGoLiveForAll &&
+                  !isInformation &&
+                  !isLiveForAll &&
+                  allowsStudentBroadcast(task)
+                const hasFocus = !!onPushTeacherPaneCommand && !isInformation && !isQuizLike
                 if (
                   !hasBadge &&
+                  !hasNudge &&
+                  !hasGoLiveForAll &&
                   !hasEdit &&
                   !hasTopic &&
                   !hasMessage &&
                   !hasVideoCall &&
                   !hasShare &&
-                  !hasFullscreen
+                  !hasFullscreen &&
+                  !hasFocus
                 )
                   return null
                 return (
-                  <DropdownMenu label="More" buttonClassName="btn-ghost">
+                  <DropdownMenu label="More" buttonClassName="btn-ghost" panelStyle={s.menuPanel}>
                     {(close) => (
                       <>
                         {hasBadge && (
@@ -907,6 +938,30 @@ export default function StudentModal({
                             }}
                           >
                             🏅 Award badge
+                          </button>
+                        )}
+                        {hasNudge && (
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              handleNudge()
+                            }}
+                            title="Nudge: flash this student's tab and play a chime"
+                          >
+                            🔔 Nudge
+                          </button>
+                        )}
+                        {hasGoLiveForAll && (
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              onGoLiveForAll()
+                            }}
+                            title="Show this student's work on every screen"
+                          >
+                            📡 Go Live for All
                           </button>
                         )}
                         {hasEdit && (
@@ -976,35 +1031,33 @@ export default function StudentModal({
                             {fullscreenRequested ? '✓ Requested' : '⛶ Ask to go fullscreen'}
                           </button>
                         )}
+                        {/* Highlight/force a tab or the Instructions pane on this student's screen */}
+                        {hasFocus && (
+                          <section aria-label="Focus" style={s.menuSection}>
+                            <div style={s.menuHeading}>Focus</div>
+                            <PaneFocusControls
+                              lessonType={taskLesson?.type}
+                              onHighlight={(panes) =>
+                                onPushTeacherPaneCommand(student.anonymousId, {
+                                  mode: 'highlight',
+                                  panes,
+                                })
+                              }
+                              onForce={(panes) =>
+                                onPushTeacherPaneCommand(student.anonymousId, {
+                                  mode: 'force',
+                                  panes,
+                                })
+                              }
+                              onDone={close}
+                            />
+                          </section>
+                        )}
                       </>
                     )}
                   </DropdownMenu>
                 )
               })()}
-
-            {/* Go Live for All / Stop Live. Broadcasting a student's work is not offered on
-                quiz or activity tasks (teacher-only broadcasts there); a broadcast already
-                running can always be stopped. */}
-            {!isInformation &&
-              teacherEditState === 'idle' &&
-              (isLiveForAll || allowsStudentBroadcast(task)) &&
-              (isLiveForAll ? (
-                <button
-                  className="btn-danger"
-                  style={{ fontSize: 13, padding: '5px 14px' }}
-                  onClick={onStopLive}
-                >
-                  Stop Live
-                </button>
-              ) : (
-                <button
-                  className="btn-primary"
-                  style={{ fontSize: 13, padding: '5px 14px' }}
-                  onClick={onGoLiveForAll}
-                >
-                  Go Live for All
-                </button>
-              ))}
           </div>
           <button
             className="btn-ghost"
@@ -1217,9 +1270,11 @@ const s = {
   header: {
     background: 'var(--colour-primary)',
     color: '#fff',
-    padding: '10px 14px',
+    padding: '0 14px',
+    height: 52,
     display: 'flex',
     alignItems: 'center',
+    flexWrap: 'nowrap',
     flexShrink: 0,
     gap: 8,
   },
@@ -1229,9 +1284,39 @@ const s = {
     gap: 8,
     minWidth: 0,
     flex: '1 1 0',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
+    // Many chips at once scroll sideways instead of wrapping the header.
+    overflowX: 'auto',
+    scrollbarWidth: 'none',
   },
-  headerRight: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, flexWrap: 'wrap' },
+  headerRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
+    flexWrap: 'nowrap',
+  },
+  menuPanel: { minWidth: 220, maxHeight: '70vh', overflowY: 'auto' },
+  menuSection: { display: 'flex', flexDirection: 'column', gap: 6 },
+  menuHeadingFirst: {
+    padding: '0 2px 2px',
+    fontSize: '0.7rem',
+    fontWeight: 700,
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+  },
+  menuHeading: {
+    borderTop: '1px solid #e5e7eb',
+    marginTop: 4,
+    padding: '6px 2px 2px',
+    fontSize: '0.7rem',
+    fontWeight: 700,
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+  },
+  menuNote: { fontSize: 12, color: 'var(--colour-error-text)', padding: '0 2px' },
   closeBtnHeader: { flexShrink: 0, fontSize: 13, padding: '5px 10px' },
   navButtons: {
     display: 'flex',
@@ -1267,7 +1352,7 @@ const s = {
     letterSpacing: '0.05em',
     whiteSpace: 'nowrap',
   },
-  checkBadge: { fontSize: '1rem' },
+  checkBadge: { fontSize: '1rem', flexShrink: 0 },
   autoRevealHeading: {
     borderTop: '1px solid #e5e7eb',
     marginTop: 4,

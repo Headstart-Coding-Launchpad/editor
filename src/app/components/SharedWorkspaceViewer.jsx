@@ -175,7 +175,7 @@ export default function SharedWorkspaceViewer({
           {canCopy && (
             <button
               type="button"
-              className="btn-ghost"
+              className="btn-ghost-outline"
               style={s.bannerBtn}
               onClick={() => setConfirmingCopy(true)}
             >
@@ -205,7 +205,7 @@ export default function SharedWorkspaceViewer({
             </button>
             <button
               type="button"
-              className="btn-ghost"
+              className="btn-ghost-outline"
               style={s.bannerBtn}
               onClick={() => setConfirmingCopy(false)}
             >

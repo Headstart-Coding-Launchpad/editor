@@ -1088,6 +1088,7 @@ export default function StudentView({
 
   const taskProgressControl = !isSandbox ? (
     <TaskProgressDots
+      compact
       tasks={visibleTasks}
       currentTaskId={currentTaskId}
       viewingTaskId={viewingTaskId}
@@ -1125,8 +1126,10 @@ export default function StudentView({
         style={s.presentationBtn}
         disabled={currentIndex <= 0}
         onClick={() => handleSoloNavigate(flatTasks[currentIndex - 1]?.id)}
+        aria-label="Previous"
+        title="Previous task"
       >
-        Previous
+        ‹ Prev
       </button>
       <span style={s.presentationTaskLabel}>
         Task {currentIndex + 1} / {flatTasks.length}
@@ -1136,21 +1139,25 @@ export default function StudentView({
         style={s.presentationBtn}
         disabled={currentIndex >= flatTasks.length - 1}
         onClick={() => handleSoloNavigate(flatTasks[currentIndex + 1]?.id)}
+        aria-label="Next"
+        title="Next task"
       >
-        Next
+        Next ›
       </button>
       <button
         className={isTeacherLiveActive ? 'btn-danger' : 'btn-primary'}
         style={s.presentationBtn}
         onClick={handleToggleTeacherLive}
+        aria-label={isTeacherLiveActive ? 'Stop Live to Students' : 'Go Live to Students'}
+        title={isTeacherLiveActive ? 'Stop Live to Students' : 'Go Live to Students'}
       >
-        {isTeacherLiveActive ? 'Stop Live to Students' : 'Go Live to Students'}
+        {isTeacherLiveActive ? '■ Stop Live' : '📡 Go Live'}
       </button>
       <div style={s.presenterLayoutGroup} role="group" aria-label="Presentation layout">
         {[
-          { key: 'explainer', label: 'Explainer only' },
-          { key: 'both', label: 'Both' },
-          { key: 'code', label: 'Code only' },
+          { key: 'explainer', label: 'Explainer', full: 'Explainer only' },
+          { key: 'both', label: 'Both', full: 'Explainer and code' },
+          { key: 'code', label: 'Code', full: 'Code only' },
         ].map((opt) => (
           <button
             key={opt.key}
@@ -1161,6 +1168,7 @@ export default function StudentView({
               ...(presenterLayout === opt.key ? s.presenterLayoutBtnActive : {}),
             }}
             aria-pressed={presenterLayout === opt.key}
+            title={opt.full}
             onClick={() => setPresenterLayout(opt.key)}
           >
             {opt.label}
@@ -1186,8 +1194,9 @@ export default function StudentView({
           onClick={handleNeedHelp}
           disabled={myNeedsHelp}
           title={myNeedsHelp ? 'Your teacher has been notified' : 'Ask your teacher for help'}
+          aria-label={myNeedsHelp ? 'Help requested' : 'Need Help'}
         >
-          {myNeedsHelp ? '✋ Help requested' : '✋ Need Help'}
+          {myNeedsHelp ? '✋ Help requested' : '✋ Help'}
         </button>
       )}
       {canShareWorkspace && (
@@ -1201,8 +1210,9 @@ export default function StudentView({
               ? 'Waiting for your teacher to check it — click to withdraw'
               : 'Offer your work to the class (your teacher approves it first)'
           }
+          aria-label={sharePending ? 'Waiting for teacher' : 'Share with class'}
         >
-          {sharePending ? '⏳ Waiting for teacher' : '📤 Share with class'}
+          {sharePending ? '⏳ Waiting' : '📤 Share'}
         </button>
       )}
       {canSeeSharedWork && (
@@ -1213,7 +1223,7 @@ export default function StudentView({
         />
       )}
       {shareError && (
-        <span style={s.shareError} role="alert">
+        <span style={s.shareError} role="alert" title={shareError}>
           {shareError}
         </span>
       )}
@@ -1279,6 +1289,7 @@ export default function StudentView({
         isSandbox={isSandbox}
         isSolo={teacherPresentation ? undefined : isSolo}
         right={topBarRight}
+        singleRow
       />
       {!teacherPresentation && (
         <TeacherMessageToast
@@ -1582,13 +1593,14 @@ const s = {
   presentationControls: {
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
+    gap: 6,
+    flexWrap: 'nowrap',
     justifyContent: 'flex-end',
+    minWidth: 0,
   },
   presentationBtn: {
     fontSize: 13,
-    padding: '5px 12px',
+    padding: '5px 10px',
     whiteSpace: 'nowrap',
     flexShrink: 0,
   },
@@ -1616,27 +1628,36 @@ const s = {
     background: 'rgba(255,255,255,0.22)',
     borderColor: 'rgba(255,255,255,0.5)',
   },
+  // One row that never wraps (the top bar keeps a fixed height): the task dots shrink or scroll
+  // inside the space that's left, and every other control keeps its natural width.
   topBarTaskControls: {
     display: 'flex',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 12,
+    flexWrap: 'nowrap',
+    gap: 8,
     minWidth: 0,
     justifyContent: 'flex-end',
   },
   downloadCodeBtn: {
     fontSize: 13,
     padding: '5px 10px',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
   needHelpBtn: {
     fontSize: 13,
-    padding: '5px 12px',
+    padding: '5px 10px',
+    whiteSpace: 'nowrap',
     flexShrink: 0,
   },
   shareError: {
     fontSize: 12,
     color: 'var(--colour-danger)',
-    maxWidth: 260,
+    maxWidth: 180,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    flexShrink: 1,
   },
   pauseOverlay: {
     position: 'fixed',

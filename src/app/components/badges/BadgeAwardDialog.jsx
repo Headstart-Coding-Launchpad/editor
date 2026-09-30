@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import BadgeChip, { BadgeEmoji } from './BadgeChip'
 import {
   createBadgeBulkId,
@@ -17,14 +18,31 @@ function namesOf(students) {
   return `${students.length} students`
 }
 
+/** The picker's sections, in order; a section with no badges isn't shown. */
+export const BADGE_PICKER_GROUPS = Object.freeze([
+  { id: 'rules', label: 'Suggested by rules', test: (badge) => !badge.tutorOnly },
+  { id: 'tutor', label: 'Tutor-awarded', test: (badge) => badge.tutorOnly && !badge.catalogue },
+  { id: 'admin', label: 'Admin badges', test: (badge) => !!badge.catalogue },
+])
+
 /**
  * The tutor's manual badge picker (docs/architecture/live-badges-plan.md, "Tutor experience"):
  * opened from a student's More → 🏅 Award badge, or from the grid's select mode for several
- * students at once. Lists every badge (registry rule-backed and tutor-only, then the Admin
- * catalogue via `catalogueBadges`); a badge every selected student already holds is greyed.
- * Hovering or focusing a badge shows its exact rule. One click awards (source 'manual'); several
- * students share one `bulkId`, so the class sees one merged announcement. With one student it
- * also lists their awarded badges with Revoke (silent to the student).
+ * students at once. Lists every badge in three sections: "Suggested by rules" (registry
+ * rule-backed), "Tutor-awarded" (registry tutor-only) and "Admin badges" (the Admin catalogue via
+ * `catalogueBadges`, only when there are any). A badge every selected student already holds is
+ * greyed.
+ *
+ * Select, then confirm: clicking a tile selects it (aria-pressed) and shows its blurb and exact
+ * rule, and the Award button (disabled until a badge is selected) awards it (source 'manual').
+ * Hovering a tile previews its rule until one is selected. Several students share one `bulkId`,
+ * so the class sees one merged announcement. With one student it also lists their awarded badges
+ * with Revoke (silent to the student).
+ *
+ * `role="dialog"` sits on the overlay, as in StudentModal, so the global dialog styles give it a
+ * purple header and a light body (on the card itself they'd paint the whole card dark). It is
+ * portalled to <body>: nested inside StudentModal's dialog, the global `[role='dialog'] > div >
+ * div:first-child` header rule would paint this whole card purple.
  *
  * @param {object} props
  * @param {{ anonymousId: string, displayName: string }[]} props.students who receives the award
@@ -47,9 +65,19 @@ export default function BadgeAwardDialog({
   const [announce, setAnnounce] = useState(true)
   const [pending, setPending] = useState(() => new Set())
   const [notice, setNotice] = useState(null)
-  const [detailId, setDetailId] = useState(null)
+  const [selectedId, setSelectedId] = useState(null)
+  const [hoverId, setHoverId] = useState(null)
 
   const badges = useMemo(() => listAwardableBadges(catalogueBadges), [catalogueBadges])
+  const groups = useMemo(
+    () =>
+      BADGE_PICKER_GROUPS.map((group) => ({
+        id: group.id,
+        label: group.label,
+        badges: badges.filter(group.test),
+      })).filter((group) => group.badges.length > 0),
+    [badges]
+  )
   const single = students.length === 1 ? students[0] : null
   const held = single
     ? Object.entries(decisions?.[single.anonymousId] ?? {})
@@ -59,7 +87,17 @@ export default function BadgeAwardDialog({
           decision,
         }))
     : []
+
+  function holdersOf(badge) {
+    return students.filter((st) => holds(decisions, st.anonymousId, badge.id)).length
+  }
+
+  const selected = selectedId ? badges.find((badge) => badge.id === selectedId) : null
+  const detailId = selectedId ?? hoverId
   const detail = detailId ? badges.find((badge) => badge.id === detailId) : null
+  const selectedAllHold =
+    !!selected && students.length > 0 && holdersOf(selected) === students.length
+  const selectedBusy = !!selected && pending.has(selected.id)
 
   function mark(key, on) {
     setPending((prev) => {
@@ -104,7 +142,10 @@ export default function BadgeAwardDialog({
     const failed = results.filter((result) => result.status === 'rejected').length
     if (failed > 0) {
       setNotice({ tone: 'error', text: `Couldn't award ${badge.title}. Check your connection.` })
-    } else if (committed.length < targets.length) {
+      return
+    }
+    setSelectedId(null)
+    if (committed.length < targets.length) {
       setNotice({
         tone: 'info',
         text:
@@ -139,8 +180,16 @@ export default function BadgeAwardDialog({
     }
   }
 
-  return (
+  let awardLabel = 'Award'
+  if (selectedBusy) awardLabel = 'Awarding…'
+  else if (selectedAllHold) awardLabel = 'Already awarded'
+  else if (selected) awardLabel = `Award ${selected.emoji} ${selected.title}`
+
+  return createPortal(
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="badge-award-title"
       style={s.overlay}
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose?.()
@@ -153,7 +202,7 @@ export default function BadgeAwardDialog({
         }
       }}
     >
-      <div role="dialog" aria-modal="true" aria-labelledby="badge-award-title" style={s.dialog}>
+      <div style={s.dialog}>
         <div style={s.header}>
           <span id="badge-award-title" style={s.titleText}>
             🏅 Award badge · {namesOf(students)}
@@ -209,52 +258,63 @@ export default function BadgeAwardDialog({
                   type="checkbox"
                   checked={announce}
                   onChange={(event) => setAnnounce(event.target.checked)}
+                  style={s.announceBox}
                 />
                 Announce to class
               </label>
             </div>
-            <div style={s.grid}>
-              {badges.map((badge) => {
-                const holders = students.filter((st) =>
-                  holds(decisions, st.anonymousId, badge.id)
-                ).length
-                const allHold = students.length > 0 && holders === students.length
-                const busy = pending.has(badge.id)
-                const hint = [
-                  badge.blurb,
-                  badge.ruleText,
-                  holders > 0 && students.length > 1
-                    ? `Held by ${holders} of ${students.length}.`
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join('\n')
-                return (
-                  <button
-                    key={badge.id}
-                    type="button"
-                    style={{
-                      ...s.option,
-                      ...(allHold ? s.optionHeld : null),
-                      ...(detailId === badge.id ? s.optionActive : null),
-                    }}
-                    aria-disabled={allHold || busy}
-                    title={hint}
-                    onMouseEnter={() => setDetailId(badge.id)}
-                    onFocus={() => setDetailId(badge.id)}
-                    onClick={() => {
-                      if (!allHold) handleAward(badge)
-                    }}
-                    data-testid={`badge-option-${badge.id}`}
-                  >
-                    <BadgeEmoji badge={badge} size="1.15rem" />
-                    <span style={s.optionTitle}>{badge.title}</span>
-                    {allHold && <span style={s.optionState}>Awarded</span>}
-                    {busy && <span style={s.optionState}>Awarding…</span>}
-                  </button>
-                )
-              })}
-            </div>
+            {groups.map((group) => (
+              <div
+                key={group.id}
+                role="group"
+                aria-labelledby={`badge-group-${group.id}`}
+                style={s.group}
+              >
+                <div id={`badge-group-${group.id}`} style={s.groupLabel}>
+                  {group.label}
+                </div>
+                <div style={s.grid}>
+                  {group.badges.map((badge) => {
+                    const holders = holdersOf(badge)
+                    const allHold = students.length > 0 && holders === students.length
+                    const busy = pending.has(badge.id)
+                    const isSelected = selectedId === badge.id
+                    const hint = [
+                      badge.blurb,
+                      badge.ruleText,
+                      holders > 0 && students.length > 1
+                        ? `Held by ${holders} of ${students.length}.`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join('\n')
+                    return (
+                      <button
+                        key={badge.id}
+                        type="button"
+                        style={{
+                          ...s.option,
+                          ...(allHold ? s.optionHeld : null),
+                          ...(isSelected ? s.optionSelected : null),
+                        }}
+                        aria-pressed={isSelected}
+                        aria-disabled={allHold || busy}
+                        title={hint}
+                        onMouseEnter={() => setHoverId(badge.id)}
+                        onMouseLeave={() => setHoverId(null)}
+                        onClick={() => setSelectedId(isSelected ? null : badge.id)}
+                        data-testid={`badge-option-${badge.id}`}
+                      >
+                        <BadgeEmoji badge={badge} size="1.25rem" />
+                        <span style={s.optionTitle}>{badge.title}</span>
+                        {allHold && <span style={s.optionState}>Awarded</span>}
+                        {busy && <span style={s.optionState}>Awarding…</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
             <div style={s.detail} data-testid="badge-rule-detail">
               {detail ? (
                 <>
@@ -265,7 +325,7 @@ export default function BadgeAwardDialog({
                   <div style={s.ruleText}>{detail.ruleText}</div>
                 </>
               ) : (
-                <span style={s.muted}>Hover or focus a badge to see its rule.</span>
+                <span style={s.muted}>Select a badge to see what it&apos;s for.</span>
               )}
             </div>
           </section>
@@ -278,8 +338,25 @@ export default function BadgeAwardDialog({
             )}
           </div>
         </div>
+
+        <div style={s.footer}>
+          <button type="button" className="btn-ghost-outline" style={s.footerBtn} onClick={onClose}>
+            Close
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={s.footerBtn}
+            disabled={!selected || selectedAllHold || selectedBusy}
+            onClick={() => selected && handleAward(selected)}
+            data-testid="badge-award-confirm"
+          >
+            {awardLabel}
+          </button>
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -296,8 +373,9 @@ const s = {
   },
   dialog: {
     background: 'var(--ui-surface)',
+    color: 'var(--colour-text)',
     borderRadius: 10,
-    width: 'min(560px, 100%)',
+    width: 'min(760px, 100%)',
     maxHeight: '88vh',
     display: 'flex',
     flexDirection: 'column',
@@ -336,22 +414,23 @@ const s = {
     padding: 0,
   },
   body: {
-    padding: '12px 14px',
+    padding: '14px 16px',
     display: 'flex',
     flexDirection: 'column',
-    gap: 12,
+    gap: 14,
     overflowY: 'auto',
+    background: 'var(--ui-surface)',
     fontFamily: 'var(--font-body)',
   },
-  section: { display: 'flex', flexDirection: 'column', gap: 6 },
+  section: { display: 'flex', flexDirection: 'column', gap: 8 },
   sectionLabel: {
-    fontSize: '0.7rem',
+    fontSize: '0.72rem',
     fontWeight: 700,
-    color: 'var(--colour-muted)',
+    color: 'var(--colour-ink-strong)',
     textTransform: 'uppercase',
-    letterSpacing: '0.04em',
+    letterSpacing: '0.05em',
   },
-  muted: { fontSize: '0.82rem', color: 'var(--colour-muted-soft)' },
+  muted: { fontSize: '0.84rem', color: 'var(--colour-muted)' },
   heldList: {
     listStyle: 'none',
     margin: 0,
@@ -373,57 +452,81 @@ const s = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 6,
-    fontSize: '0.82rem',
-    color: 'var(--colour-text)',
+    fontSize: '0.86rem',
+    fontWeight: 600,
+    color: 'var(--colour-ink-strong)',
     cursor: 'pointer',
+  },
+  announceBox: { width: 16, height: 16, accentColor: 'var(--colour-primary)', cursor: 'pointer' },
+  group: { display: 'flex', flexDirection: 'column', gap: 6 },
+  groupLabel: {
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    color: 'var(--colour-primary-dark)',
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))',
     gap: 6,
   },
   option: {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
-    minHeight: 40,
+    minHeight: 44,
     padding: '6px 10px',
     background: 'var(--ui-surface)',
-    border: '1px solid var(--ui-border)',
+    border: '1px solid var(--ui-border-neutral-strong)',
     borderRadius: 'var(--ui-radius-sm)',
     cursor: 'pointer',
     textAlign: 'left',
     fontFamily: 'var(--font-body)',
-    fontSize: '0.84rem',
-    color: 'var(--colour-text)',
+    fontSize: '0.86rem',
+    color: 'var(--colour-ink-strong)',
     transition: 'background var(--ui-motion), border-color var(--ui-motion)',
   },
-  optionActive: { borderColor: 'var(--ui-border-strong)', background: 'var(--ui-surface-tint)' },
-  optionHeld: { opacity: 0.45, cursor: 'default' },
+  optionSelected: {
+    borderColor: 'var(--colour-primary)',
+    background: 'var(--ui-surface-tint)',
+    boxShadow: 'inset 0 0 0 1px var(--colour-primary)',
+  },
+  optionHeld: { opacity: 0.5 },
+  // Full names: a long title wraps onto a second line rather than being cut off.
   optionTitle: {
     flex: 1,
     minWidth: 0,
     fontWeight: 600,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    lineHeight: 1.2,
+    whiteSpace: 'normal',
+    overflowWrap: 'anywhere',
   },
-  optionState: { fontSize: '0.68rem', color: 'var(--colour-muted)', flexShrink: 0 },
+  optionState: { fontSize: '0.7rem', color: 'var(--colour-muted)', flexShrink: 0 },
   detail: {
-    minHeight: 44,
+    minHeight: 48,
     padding: '8px 10px',
     background: 'var(--ui-surface-soft)',
+    border: '1px solid var(--ui-border)',
     borderRadius: 'var(--ui-radius-sm)',
-    fontSize: '0.8rem',
-    color: 'var(--colour-text)',
+    fontSize: '0.84rem',
+    color: 'var(--colour-ink-strong)',
   },
   ruleText: { marginTop: 3, color: 'var(--colour-muted)' },
   notice: {
-    fontSize: '0.82rem',
+    fontSize: '0.84rem',
     padding: '6px 10px',
     borderRadius: 'var(--ui-radius-sm)',
     background: 'var(--colour-info-bg)',
     color: 'var(--colour-info-text)',
   },
   noticeError: { background: 'var(--colour-error-bg)', color: 'var(--colour-error-text)' },
+  footer: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: 8,
+    padding: '10px 16px',
+    borderTop: '1px solid var(--ui-border)',
+    background: 'var(--ui-surface-soft)',
+    flexShrink: 0,
+  },
+  footerBtn: { fontSize: 13, padding: '7px 16px' },
 }
