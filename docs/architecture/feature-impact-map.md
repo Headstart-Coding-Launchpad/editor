@@ -119,7 +119,18 @@ Usually changes with:
 - `docs/architecture/live-badges-plan.md`
 - `src/badges/__tests__/` (every rule-backed badge's `examples` run in `badgeRegistry.test.js`)
 
+A change to the **recorded badge data** (a new signal, or a new field on `badges`, `badgeSettings`, `studentSignals`, `sessionArchive`, `attemptLog.error` or `pasteLog.firstAt`) needs its own data-model sign-off, then usually changes with:
 
+- `src/app/hooks/useSession.js` (the writers) and `database.rules.json` + `tests/rules/database.rules.test.js` (every new path: students write only their own signals, never `badges` or `sessionArchive`)
+- `src/badges/signals.js`, `src/badges/sessionArchive.js` (values, keys, caps)
+- `src/app/hooks/useStudentBadgeSignals.js` (student gating: never the presentation window, a preview or solo) and its call sites in `useStudentCodeState.js`, `runWithRuntime.js`, `StudentView.jsx`
+- `src/shared/badgeSignalsContext.js` consumers: `CodeEditor.jsx` (`onUserEdit`), `ScratchWorkspace.jsx`, `markdown.jsx`, `TopicLibraryView.jsx`
+- `src/app/hooks/useSandboxArchiveSnapshots.js` and `TeacherView.jsx` (teacher-side sandbox snapshots)
+- `createSession` / `endSession` resets, and the "Badge data" section of `docs/agents/runtime-model.md` (paths, writers, lifetimes, the mapping to timeline events)
+- `docs/agents/classroom-behaviours.md` (sandbox archiving)
+- `src/app/hooks/__tests__/useSession.badges.test.js`, `useStudentBadgeSignals.test.js`, `useStudentCodeState.badges.test.js`
+
+## Firebase And Session Model
 
 Changes include Realtime Database paths, Firestore collections, Storage paths, security rules, session state transitions, or who can write a field.
 

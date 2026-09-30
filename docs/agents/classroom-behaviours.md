@@ -188,7 +188,8 @@ Shows a read-only complete solution in the same reference panel as Support, with
 ## Teacher-Forced Sandbox
 
 - Student code is saved to localStorage before the editor clears on sandbox entry.
-- Sandbox content is discarded on return to lesson and is never saved to localStorage.
+- Sandbox content is discarded on return to lesson and is never saved to localStorage. It is no longer thrown away entirely, though: for the session report (a possible lesson gap), each teacher-sandbox visit is archived teacher-side in the top-level RTDB `sessionArchive/{lessonId}` — when the class went in and out, the task it followed, the teacher's explainer and every push, and each student's last sandbox code, copied from the `currentCode` / `currentFiles` their sandbox runs already write (capped at 20 KB each). Nothing subscribes to it and students cannot read it. See `docs/agents/runtime-model.md`, "Badge data".
+- Sandbox runs, sandbox time, topic opens and keyboard shortcuts in the sandbox are counted (never the code) in the student's `studentSignals`, for the Live Badges (Code Fixer, Resourceful Coder, Keyboard Wizard). Personal sandboxes are counted the same way, as activity only.
 - `sandboxCodePushedAt` and `sandboxFilesUpdatedAt` timestamps are change triggers.
 - HTML sandbox stores files in Firebase `sandboxFiles` with `__dot__` encoded keys.
 - Every other module stores its sandbox work in `sandboxCode` through its definition's `wire.toCode` (read back with `wire.fromCode`): the code itself for Python, Turtle, Arcade and Electronics (its serialised circuit), a JSON string for Scratch (`'{}'` before any block), Filesystem and Desktop. TeacherView keeps the teacher's work and draft per `capabilities.sandboxState` kind (`src/app/teacherSandboxWork.js`); the channel comes from `wire.sandboxChannel` (`docs/architecture/lesson-type-modules.md`, "teacher surfaces").

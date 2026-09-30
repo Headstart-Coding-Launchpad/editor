@@ -62,7 +62,8 @@ After the same hint appears twice in a row, solo students can optionally view th
 
 - **Waiting room** — students wait until the teacher starts; auto-advance on start
 - **Pause/resume** — freezes student navigation without ending the session
-- **Sandbox mode** — freeform coding with no tasks or checks; teacher can push code/files to all students
+- **Sandbox mode** — freeform coding with no tasks or checks; teacher can push code/files to all students. Each visit (when, after which task, the teacher's pushes and each student's last sandbox code) is archived teacher-side for the session report
+- **Live badge signals** (recording only; the badge UI is still to come) — first-occurrence topic opens, keyboard shortcuts, time to first edit, complete-code views, and sandbox run/error/fix counts are recorded per student during a live session (never in solo, previews or the presentation window, and never any code); see `docs/architecture/live-badges-plan.md`
 - **Need Help** — a persistent button in the top bar during any live lesson, always available (not tied to a failed check); marks the student's card for the teacher until dismissed
 - **Session end** — all students see an end screen
 
