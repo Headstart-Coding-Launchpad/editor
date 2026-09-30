@@ -2405,7 +2405,7 @@ select {
 }
 .te-info-type-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
 }
 .te-priority-grid {
@@ -4076,6 +4076,122 @@ select {
   font-size: 0.78rem;
   line-height: 1.35;
   color: var(--colour-muted);
+}
+
+/* Badge Summary task ("Today's Coding Moments"): the class wall, grouped by badge. The teacher
+   variant is projected, so it is larger. */
+.badge-summary {
+  display: flex;
+  justify-content: center;
+  padding: 32px 24px;
+  background: var(--ui-surface-soft);
+  border-radius: var(--ui-radius);
+}
+
+.badge-summary__content {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(900px, 100%);
+}
+
+.badge-summary__title {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: var(--font-weight-title);
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  color: var(--colour-primary);
+}
+
+.badge-summary__heading {
+  margin: 0 0 10px;
+  font-family: var(--font-title);
+  font-weight: var(--font-weight-title);
+  font-size: 1.05rem;
+  color: var(--colour-ink-strong);
+}
+
+.badge-summary__explainer,
+.badge-summary__warm,
+.badge-summary__empty {
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: var(--colour-text);
+}
+
+.badge-summary__warm,
+.badge-summary__empty {
+  margin: 0;
+}
+
+.badge-summary__empty {
+  color: var(--colour-muted);
+}
+
+.badge-summary__wall {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.badge-summary__row {
+  display: grid;
+  grid-template-columns: auto minmax(120px, max-content) 1fr;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  font-family: var(--font-body);
+}
+
+.badge-summary__emoji {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.badge-summary__badge {
+  font-weight: 700;
+  color: var(--colour-ink-strong);
+}
+
+.badge-summary__names {
+  color: var(--colour-text);
+}
+
+.badge-summary--teacher .badge-summary__row,
+.badge-summary--presentation .badge-summary__row {
+  padding: 14px 18px;
+  font-size: 1.25rem;
+}
+
+.badge-summary--teacher .badge-summary__emoji,
+.badge-summary--presentation .badge-summary__emoji {
+  font-size: 2rem;
+}
+
+.badge-summary__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .badge-summary {
+    padding: 20px 14px;
+  }
+
+  .badge-summary__row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .badge-summary__names {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
