@@ -1313,21 +1313,10 @@ select {
   filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0)) drop-shadow(0 0 8px rgba(251, 165, 4, 0.7));
 }
 
-/* Solo mode — Next button pulse when check passes */
-@keyframes solo-next-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow: 0 2px 10px rgba(98, 34, 204, 0.25);
-  }
-  50% {
-    transform: scale(1.08);
-    box-shadow: 0 6px 24px rgba(98, 34, 204, 0.55);
-  }
-}
-
+/* Solo mode — Next button once the check passes: a static highlight (no loop). SoloNav adds
+   motion-spin-once for one turn only when the student watches the task pass. */
 .btn-next-success {
-  animation: solo-next-pulse 1s ease-in-out infinite;
+  box-shadow: 0 6px 24px rgba(98, 34, 204, 0.55);
 }
 
 /* Retro terminal cursor and animations */
@@ -3483,6 +3472,11 @@ select {
   color: var(--colour-success-text);
 }
 
+/* The ✓ in ActivityCorrect spins once (motion-spin-once); a transform needs inline-block. */
+.act-correct-tick {
+  display: inline-block;
+}
+
 .act-item-nav {
   display: flex;
   flex-wrap: wrap;
@@ -4433,7 +4427,6 @@ select {
   .btn-paused,
   .live-dot,
   .activity-dots span,
-  .btn-next-success,
   .preview-slide-open,
   .presence-badge--offline,
   .presence-badge .presence-badge__dot,

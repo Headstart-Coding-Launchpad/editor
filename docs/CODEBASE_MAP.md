@@ -95,7 +95,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `CollapsibleIframePreview.jsx` | Slide-in toggle wrapper around IframePreview |
 | `QuizTask.jsx` | Polymorphic quiz: multiple-choice (grid), match (drag-drop), fill-blank (drag/type), short-answer, confidence (1–5 rating) |
 | `CodeArrangeTask.jsx`, `CodeArrangeTaskContainer.jsx` | Thin re-exports of the code_arrange activity's tile board and module workspace (moved to `src/activities/code_arrange/`) |
-| `CheckFeedbackBanner.jsx` | Pass/fail popup (floating, top-center, auto-dismisses after 45s or via its own close button — not inline in the layout) with optional hint and "see complete code" action; no longer hosts its own Need Help button (see StudentView's top bar) |
+| `CheckFeedbackBanner.jsx` | Pass/fail popup (floating, top-center, auto-dismisses after 45s or via its own close button — not inline in the layout) with optional hint and "see complete code" action; no longer hosts its own Need Help button (see StudentView's top bar); a pass spins the ✓ icon once and a fail wobbles the banner (centred with auto margins, not a transform) |
 | `WaitingRoom.jsx` | Full-screen modal: lesson title + animated "your teacher is getting ready" message; shows a "📹 Join Video Call" link when the session's `videoCallLink` is set |
 | `ChoiceScreen.jsx` | `choice`-phase screen: Join a Live Lesson or Go Solo (shown when no active session exists and the student hasn't committed to solo) |
 | `EntryScreenCard.jsx` | Shared chrome for the pre-lesson screens (`ChoiceScreen`, `NameEntry`, `WaitingRoom`, `JoinSessionPrompt`): centred card, purple header, wordmark, lesson title and optional description, above a white body. Exports `centredBody` and `ghostLink` for the body layouts and quiet secondary links those screens share |
@@ -142,7 +142,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `SessionEndedScreen.jsx` | "Session ended" screen with Continue Solo action — rendered when phase === 'ended'; `moments` shows the student's live badges as a `BadgeStickerSheet` |
 | `StudentStatusBanners.jsx` | Teacher-live, viewing-previous, and personal-sandbox notification banners shown above the task body |
 | `LessonTaskContent.jsx` | Task content area: TaskSlideTransition wrapper, ExplainerPanel, CheckFeedbackBanner, and task-type dispatch via `getLessonModule()` registry (Quiz, Information, and Code Arrange rendered inline; other code types delegated to their module's `StudentWorkspace`) |
-| `SoloNav.jsx` | Bottom prev/next navigation bar for solo mode; includes Open Sandbox shortcut |
+| `SoloNav.jsx` | Bottom prev/next navigation bar for solo mode; includes Open Sandbox shortcut. Next gets a static `btn-next-success` look once the check passes and spins once (`usePassMoment`) only when the student watched the pass |
 
 ### Quiz Components (`src/app/components/quiz/`)
 
@@ -498,6 +498,7 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `keyboard/OnScreenKeyboard.jsx` | UK on-screen keyboard: interactive fallback emitting virtual key events (one-shot Shift/Ctrl) or a non-interactive picture highlighting hinted keys |
 | `mouse/ui.jsx` | Mouse StudentView: stage of positioned `data-input-id` targets, Pointer Events recording (incl. touch drag via `elementsFromPoint`), `recognizeGestures`, no native context menu on the stage, hover dwell timer (skipped on touch), `state.device.touch` |
 | `ui/ItemNav.jsx` | Shared "Question n of m" item navigation with per-item done/wrong markers |
+| `ui/ActivityCorrect.jsx` | Shared "✓ Correct" result line (`role="status"`, custom text via children) and `SpinTick`, the ✓ that spins once when it appears; used by every activity StudentView |
 | `ui/ActivityDeviceBadge.jsx` | Teacher badge (card and modal) showing a touch-screen or on-screen-keyboard attempt |
 | `binary/binary.js` | Pure Binary activity logic for `make_number`, `to_binary`, `to_decimal`, `add`, `overflow`, `hex`, `ascii`, `pixels`: bit conversion, place values, carries, shared authoring validation, per-item grading with child-friendly hints, whole-task progress |
 | `_template/definition.js`, `_template/template_activity.js`, `_template/ui.jsx` | Activity scaffold copied by `npm run new:activity` (`scripts/new-activity.mjs`): a working "type the answer" activity with `TODO(new-activity)` markers, its tests (pure, UI, StudentView click-through that skips while unregistered) and `doc.md.tmpl`. Never registered; the registry, interface and validation-doc tests skip `_`-prefixed folders |

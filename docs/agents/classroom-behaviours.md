@@ -173,7 +173,7 @@ Shows a read-only complete solution in the same reference panel as Support, with
 
 ## Check Feedback Popup & Need Help
 
-- `CheckFeedbackBanner.jsx` is a floating, `position: fixed` popup (top-center) rather than an inline banner in the task content flow — it auto-dismisses after 45s (`AUTO_DISMISS_MS`) or via its own close (×) button; both are purely local component state (`dismissed`), not persisted.
+- `CheckFeedbackBanner.jsx` is a floating, `position: fixed` popup (top-center) rather than an inline banner in the task content flow — it auto-dismisses after 45s (`AUTO_DISMISS_MS`) or via its own close (×) button; both are purely local component state (`dismissed`), not persisted. Callers remount it per check event via `key`, which replays its motion: the pass ✓ icon spins once, the fail banner wobbles on every failed check (it is centred with `left/right: 0` + auto margins so the wobble's `transform` can't un-centre it).
 - `LessonTaskContent.jsx` gives it a `key` derived from `${currentTaskId}-${displayCheckPassed}-${cs.checkFailCount}-${cs.offeredSupportStageIndex}` so a genuinely new check/stage event remounts it (resetting the auto-dismiss timer and any prior dismissal) instead of reusing an already-dismissed instance across unrelated re-renders.
 - It no longer renders its own "Need Help" button — on a failed check it just points at the persistent Need Help control (below) instead of offering its own action.
 - Hidden entirely while the viewer is `isForcedTeacherLive` (watching a teacher/peer broadcast rather than doing their own work) — folded into `shouldShowFeedbackBanner`'s gate in `LessonTaskContent.jsx`.
