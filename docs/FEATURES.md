@@ -63,9 +63,9 @@ After the same hint appears twice in a row, solo students can optionally view th
 - **Waiting room** — students wait until the teacher starts; auto-advance on start
 - **Pause/resume** — freezes student navigation without ending the session
 - **Sandbox mode** — freeform coding with no tasks or checks; teacher can push code/files to all students. Each visit (when, after which task, the teacher's pushes and each student's last sandbox code) is archived teacher-side for the session report
-- **Live badge signals** (the tutor's suggestions panel and picker are in the Student Grid section; the student celebration is still to come) — first-occurrence topic opens, keyboard shortcuts, time to first edit, complete-code views, and sandbox run/error/fix counts are recorded per student during a live session (never in solo, previews or the presentation window, and never any code); see `docs/architecture/live-badges-plan.md`
+- **Live badge signals** (the tutor's suggestions panel and picker are in the Student Grid section; the student celebration is under Student Features, "Coding moments") — first-occurrence topic opens, keyboard shortcuts, time to first edit, complete-code views, and sandbox run/error/fix counts are recorded per student during a live session (never in solo, previews or the presentation window, and never any code); see `docs/architecture/live-badges-plan.md`
 - **Need Help** — a persistent button in the top bar during any live lesson, always available (not tied to a failed check); marks the student's card for the teacher until dismissed
-- **Session end** — all students see an end screen
+- **Session end** — all students see an end screen, with their own coding moments (live badges) as a sticker sheet; a student who reloads within 3 hours of the end gets the end screen back
 
 ---
 
@@ -155,6 +155,13 @@ After the same hint appears twice in a row, solo students can optionally view th
 ### Task Navigation
 - **Live mode**: teacher controls the current task; students cannot advance past it
 - **Solo mode**: free navigation; one task ahead unlocks after the check passes; previous tasks are viewable in read-only
+
+### Coding moments (live badges)
+- When the tutor awards a student a badge, a card flips in on their screen (emoji, title and blurb, with one shine sweep) for about 2.5 s, then docks into a **🎖️ Coding moments** pill in the top bar that lists their own badges. A subtle two-note chime plays; the pill's speaker button mutes it on that device for the session, and the tutor's **Sounds off** silences it for the class
+- The card never takes focus, so typing carries on underneath; it is announced politely to screen readers, and `prefers-reduced-motion` gets a plain fade. Several awards at once queue one after another
+- Every classmate (and the presentation window, slightly larger) sees a small silent toast in the bottom-left corner, "🐛 Alex · Bug Hunter", for about 3 s, with the blurb on hover; a bulk award shows one toast, "⌨️ Keyboard Wizard · 12 coders". Not shown when the tutor unticked Announce, never shown to the recipient, and toasts beyond a short queue are dropped
+- A revoked badge disappears from the pill silently. Awards already made when the page loads are never replayed (they're just in the pill)
+- No totals, ranks or comparisons are shown to students anywhere
 
 ### Personal Sandbox
 - Available after a check passes (live mode) or via the nav bar (solo mode)

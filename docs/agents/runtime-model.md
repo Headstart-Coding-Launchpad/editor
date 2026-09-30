@@ -426,7 +426,7 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`) record behaviour a
 
 **First occurrence only.** Each first-occurrence write checks the session snapshot and a this-tab set first, and the rules refuse a second write (`!data.exists()`, except the teacher-to-student topic upgrade). A refused write is expected and swallowed.
 
-**Lifetimes.** `badges`, `badgeSettings` and `studentSignals` are siblings of `students`, so `setTaskId` never touches them. `createSession`/`restartSession` clear all three (and `sessionArchive/{lessonId}`). `endSession` keeps them, so a student who reloads the end screen still sees their badges; the session node's own `onDisconnect().remove()` takes them when the teacher leaves.
+**Lifetimes.** `badges`, `badgeSettings` and `studentSignals` are siblings of `students`, so `setTaskId` never touches them. `createSession`/`restartSession` clear all three (and `sessionArchive/{lessonId}`). `endSession` keeps them, so a student who reloads the end screen still sees their badges; the session node's own `onDisconnect().remove()` takes them when the teacher leaves. Students only read `badges` (`useBadgeCelebrations` in `StudentView`: their own card and Coding moments pill, classmates' toasts, the end-screen sticker sheet); a returning student reloading within `END_SCREEN_RESTORE_MS` (3 h) of `endedAt` is put back on the end screen (`useStudentPhase`). See `docs/agents/classroom-behaviours.md`, "Live Badge Celebration".
 
 **`sessionArchive/{lessonId}`** is the teacher-sandbox archive for the session report. It sits outside `sessions` (like `sharedWorkspacePayloads`) so sandbox code never streams to every client, and nothing subscribes to it; the report reads it once with `readSessionArchive({ endedAt })`.
 
