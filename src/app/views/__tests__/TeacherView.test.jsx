@@ -1,5 +1,5 @@
 import React from 'react'
-import { act, render, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const captured = {}
@@ -42,7 +42,9 @@ vi.mock('../../components/TaskNavigator', () => ({ default: capture('navigator')
 vi.mock('../../components/TeacherSandboxBanner', () => ({ default: capture('sandboxBanner') }))
 vi.mock('../../components/TopBar', () => ({ default: () => null }))
 vi.mock('../../components/StudentGrid', () => ({ default: () => null }))
-vi.mock('../../components/ExplainerPanel', () => ({ default: () => null }))
+vi.mock('../../components/ExplainerPanel', () => ({
+  default: ({ title }) => <span data-testid="explainer">{title}</span>,
+}))
 vi.mock('../../components/TeacherTimers', () => ({ default: () => null }))
 vi.mock('../teacher/TaskRatingPanel', () => ({ default: () => null }))
 vi.mock('../teacher/CheckConditionsPanel', () => ({ default: () => null }))
@@ -106,5 +108,50 @@ describe('TeacherView with a Python Turtle task', () => {
     await act(async () => captured.sandboxBanner.onPush())
     expect(sessionCommands.pushSandboxCode).toHaveBeenCalledWith('turtle.left(90)')
     expect(sessionCommands.pushSandboxFiles).not.toHaveBeenCalled()
+  })
+})
+
+describe('TeacherView task slide', () => {
+  beforeEach(() => {
+    for (const key of Object.keys(captured)) delete captured[key]
+    for (const key of Object.keys(sessionCommands)) delete sessionCommands[key]
+    mockSession = { state: 'active', currentTaskId: 1, students: {} }
+  })
+
+  function explainerLesson() {
+    const task = (id, title) => ({
+      id,
+      moduleType: 'turtle',
+      title,
+      explainer: `About ${title}`,
+      starterCode: '',
+      codeStages: [{ label: 'Starter', role: 'starter', code: '' }],
+    })
+    return {
+      id: 'explainer-lesson',
+      title: 'Explainers',
+      type: 'composed',
+      tasks: [task(1, 'One'), task(2, 'Two'), task(3, 'Three')],
+    }
+  }
+
+  function enteringPanel() {
+    return screen
+      .getAllByTestId('explainer')
+      .map((node) => node.closest('.task-slide-panel'))
+      .find((panel) => panel.classList.contains('task-slide-panel--entering'))
+  }
+
+  it('slides the explainer forward to a later task and back to an earlier one', async () => {
+    await renderTeacherView(explainerLesson())
+    expect(enteringPanel()).toHaveTextContent('One')
+
+    act(() => captured.navigator.onTaskSelect(3))
+    await waitFor(() => expect(enteringPanel()).toHaveTextContent('Three'))
+    expect(enteringPanel()).toHaveClass('task-slide-panel--forward')
+
+    act(() => captured.navigator.onTaskSelect(2))
+    await waitFor(() => expect(enteringPanel()).toHaveTextContent('Two'))
+    expect(enteringPanel()).toHaveClass('task-slide-panel--backward')
   })
 })

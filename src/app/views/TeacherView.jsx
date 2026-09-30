@@ -17,6 +17,7 @@ import EditLessonModal from '../components/EditLessonModal'
 import TopBar from '../components/TopBar'
 import TaskNavigator from '../components/TaskNavigator'
 import ExplainerPanel from '../components/ExplainerPanel'
+import TaskSlideTransition from '../components/TaskSlideTransition'
 import StudentGrid from '../components/StudentGrid'
 import TeacherTimers from '../components/TeacherTimers'
 import TeacherSessionControls from '../components/TeacherSessionControls'
@@ -715,12 +716,20 @@ export default function TeacherView({ lessonId }) {
 
         {/* Centre — Teacher Editor */}
         <main style={{ ...s.centre, ...(centreFillsHeight ? { overflow: 'hidden' } : {}) }}>
+          {/* Only the explainer slides: it's presentational, so the leaving copy is an inert
+              snapshot. The editor, broadcast and panels below have side effects and swap in place. */}
           {task?.explainer && !isInSandbox && !isHostedActivityTask(task) && !isInformationTask && (
-            <ExplainerPanel
-              title={task.title}
-              content={task.explainer}
-              topicType={displayedLesson.type}
-            />
+            <TaskSlideTransition
+              transitionKey={`teacher-explainer-${displayTaskId}`}
+              order={displayIndex}
+              style={s.explainerSlide}
+            >
+              <ExplainerPanel
+                title={task.title}
+                content={task.explainer}
+                topicType={displayedLesson.type}
+              />
+            </TaskSlideTransition>
           )}
 
           {isPreviewing && (
@@ -1028,6 +1037,9 @@ const s = {
     gap: 10,
     overflow: 'auto',
     background: '#f5f5f5',
+  },
+  explainerSlide: {
+    flexShrink: 0,
   },
   right: {
     background: '#fff',

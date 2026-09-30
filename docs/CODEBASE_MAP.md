@@ -56,7 +56,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `LoginPage.jsx` | Email/password sign-in form; reads `?redirect` param and navigates after success |
 | `LessonRoute.jsx` | URL dispatcher: reads `:lessonId` + query params; auth-guards teacher paths, routes to TeacherView or StudentView. `?live=true` is a deprecated no-op (bare URL now smart-joins); `?solo=true` forces solo unconditionally; `?preview=true` (auth-gated like `?teacher=true`) renders an ephemeral, unrestricted-navigation solo StudentView, used by the Admin Portal's Preview link |
 | `StudentView.jsx` | Main student experience: all phases (loading → choice → waiting → name-entry → lesson/sandbox/solo → ended); `forceSolo` prop (from `?solo=true`) is combined with the lesson's `soloOnly` flag into the internal `soloMode` |
-| `TeacherView.jsx` | Teacher dashboard: collapsible 3-panel layout, session lifecycle controls, student grid |
+| `TeacherView.jsx` | Teacher dashboard: collapsible 3-panel layout, session lifecycle controls, student grid; the task explainer (only) slides between tasks via `TaskSlideTransition` |
 
 ---
 
@@ -136,7 +136,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `LessonCompleteScreen.jsx` | "Lesson complete!" screen shown after Next off the last task in solo mode, with an Open Playground button for playground-supported lesson types — see `docs/agents/classroom-behaviours.md` |
 | `CollapsiblePanelControls.jsx` | Shared collapse/expand tab controls for classroom and builder panels |
 | `PanelTabs.jsx` | Generic `role="tablist"` tab switcher (`PanelTabs`, `PanelTabPanel`); inactive panels are hidden via `display:none`, never unmounted; styled by `.ui-tabs`/`.ui-tab` in index.css |
-| `TaskSlideTransition.jsx` | Animated slide transition wrapper used when switching between tasks; optional `panelStyle` prop overrides the entering panel's own `.task-slide-panel` CSS (`min-height: 0`) — used by Scratch's layout, see `docs/agents/classroom-behaviours.md` |
+| `TaskSlideTransition.jsx` | Direction-aware slide transition wrapper used when switching between tasks (`LessonTaskContent.jsx`, the teacher's explainer in `TeacherView.jsx`): `order` (the task's flat index) picks forward (enter from the right) or backward (enter from the left); timing is `MOTION_MS.slow` / `--motion-slow`. `useIsLeavingTaskSlide()` marks the inert leaving copy, see `docs/agents/classroom-behaviours.md` |
 | `StudentEditorHeader.jsx` | Shared editor header bar (Code label + Run/Submit/Reset buttons) for HTML task editors |
 | `LoadingScreen.jsx` | Branded reusable spinner/loading/error message screen for route, auth, and StudentView phases |
 | `SessionEndedScreen.jsx` | "Session ended" screen with Continue Solo action — rendered when phase === 'ended'; `moments` shows the student's live badges as a `BadgeStickerSheet` |
