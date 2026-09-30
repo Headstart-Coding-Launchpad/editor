@@ -18,6 +18,7 @@ import { validateTopicProposals } from './topicAudit.js'
 import { makeForkLessonId } from './lessonForks.js'
 import { isValidRecordingUrl } from './youtube.js'
 import {
+  BADGE_SUMMARY_INFORMATION_TYPE,
   canTaskAllowSharing,
   flattenTasks,
   isValidStageRole,
@@ -235,7 +236,12 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
   if (usesModule) validateStageMetadata(task, n, errors)
 
   if (kind === 'information') {
-    if (task.informationType !== 'introduction' && !task.explainer?.trim()) {
+    // An introduction shows the lesson's metadata and a Badge Summary the session's coding
+    // moments, so neither needs an explainer.
+    const explainerOptional = ['introduction', BADGE_SUMMARY_INFORMATION_TYPE].includes(
+      task.informationType
+    )
+    if (!explainerOptional && !task.explainer?.trim()) {
       errors.push(`Task ${n} is an information task but has no explainer`)
     }
   } else if (kind === 'activity') {

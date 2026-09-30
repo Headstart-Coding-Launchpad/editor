@@ -153,6 +153,16 @@ describe('validateLesson', () => {
     ).toContain('Task 1 is an information task but has no explainer')
   })
 
+  it('accepts a Badge Summary information task without an explainer', () => {
+    const result = validateLesson(
+      lesson('python', [
+        { id: 1, title: 'Code', starterCode: 'print(1)' },
+        { id: 2, title: "Today's moments", taskType: 'information', informationType: 'badges' },
+      ])
+    )
+    expect(result.errors.filter((error) => error.includes('explainer'))).toEqual([])
+  })
+
   it('validates grouped and quiz tasks without editor warnings for complete content', () => {
     const result = validateLesson(
       lesson('python', [

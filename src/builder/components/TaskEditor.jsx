@@ -668,6 +668,11 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
               { value: 'standard', label: 'Standard', hint: 'Markdown explainer' },
               { value: 'recap', label: 'Two Pane View', hint: 'Two editable markdown panes' },
               { value: 'introduction', label: 'Introduction', hint: 'Lesson metadata slide' },
+              {
+                value: 'badges',
+                label: 'Badge Summary',
+                hint: "Today's Coding Moments (live only)",
+              },
             ].map((option) => {
               const active = (task.informationType ?? 'standard') === option.value
               return (
