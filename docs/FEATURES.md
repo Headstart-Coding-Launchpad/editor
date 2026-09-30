@@ -25,6 +25,7 @@ New lessons are composed lessons: each code task selects one of the workspace ty
 
 - **Code task** — students write code or blocks; automatic completion checks run on each attempt. **Arcade Kit** evaluates its code checks each time the student presses Run game (game-state checks aren't supported yet — see `docs/authoring/arcade.md`'s Runtime Notes). **Python Turtle** tasks can combine code checks with drawing checks, and show a 🐢 marker at the turtle's position and heading.
 - **Information task** — explainer text only; no editor or check
+- **Badge Summary task** (`informationType: badges`, "Today's Coding Moments") — in a live session each student sees their own badges as a sticker sheet flipping in, then the class wall grouped by badge ("🐛 Bug Hunter: Alex, Sam"; names only, no counts), with a warm line instead of an empty state for a student with none; the teacher sees a projector-friendly wall with **📋 Copy class summary** (plain text grouped by badge); skipped in solo
 - **Quiz** — interactive question; no code editor
 - **Group** — ordered container of subtasks
 
@@ -77,6 +78,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Lesson elapsed timer and per-task countdown that flashes when time expires
 - Ending a session ends it immediately for students; the report shown afterwards offers an optional 1-5 star rating plus "what worked well" / "what didn't work, or was broken" notes, saved onto that session's report
 - The session report shows how many references (support stages) were opened per task — count, students, and teacher vs student — and which ones each student opened
+- Live badges in the session report: a **Coding moments** section (the class wall grouped by badge, **Copy class summary** with student labels, and suggested / awarded / auto / manual / dismissed / revoked counts per badge); new task columns (time to first edit median and range, students with a console error, Topic Library opens student vs tutor-sent, and the first real pass with how long after the task opened); per student their moments, topics opened, shortcuts, personal- and teacher-sandbox activity, and per task their first edit, error runs, different failed tries and "first real pass in class"; quiz-group first-try scores with the class median; and each teacher-sandbox visit as a "possible lesson gap" callout ("The class spent 14 min in the teacher sandbox after …") that expands to the tutor's explainer and pushes and each student's last sandbox code. All of it is in the YAML export. A report near Firestore's 1 MiB limit drops the students' sandbox code first and says so
 - Rate any task live, while teaching it: a collapsible "Rate This Task" panel above the check conditions lets the teacher give the current task a 1-5 star rating plus "what worked well" / "what didn't work" notes as the class works through it, rather than waiting until the session ends. Each task's rating is folded into that task's row in the session report
 
 ### Task Navigator
@@ -161,6 +163,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - The card never takes focus, so typing carries on underneath; it is announced politely to screen readers, and `prefers-reduced-motion` gets a plain fade. Several awards at once queue one after another
 - Every classmate (and the presentation window, slightly larger) sees a small silent toast in the bottom-left corner, "🐛 Alex · Bug Hunter", for about 3 s, with the blurb on hover; a bulk award shows one toast, "⌨️ Keyboard Wizard · 12 coders". Not shown when the tutor unticked Announce, never shown to the recipient, and toasts beyond a short queue are dropped
 - A revoked badge disappears from the pill silently. Awards already made when the page loads are never replayed (they're just in the pill)
+- A **Badge Summary** task (see Task Types) shows the student's own moments and the class wall at the end of the lesson
 - No totals, ranks or comparisons are shown to students anywhere
 
 ### Personal Sandbox

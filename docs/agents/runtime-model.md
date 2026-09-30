@@ -499,13 +499,22 @@ A deliberate data-model change approved by the product owner (September 2026). `
 
 Reports include all non-information tasks, including check-less quiz interactions. Each per-student task entry and each task summary has `taskType`; quiz entries also have `quizType`. Each task summary has `priority`, defaulting omitted task priority to `core`. Confidence and open short-answer summaries use `respondedCount` instead of pass/fail completion metrics. Fill-blank and match summaries add missed-blank or missed-pair breakdowns. Carry-through walk-backs add per-student `carryFallback` metadata and task-level `carryFallbackCount`/`carryFallbacks`. Support-stage reveals add per-student `supportReveals` metadata and task-level `supportRevealCount`, `supportRevealStudentCount`, and `supportRevealSources`. A task summary also carries `teacherRating` (`{ rating, whatWorkedWell, whatDidntWork, submittedAt }`) when the teacher rated that task live during the session via `TaskRatingPanel.jsx` — omitted entirely for a task the teacher left unrated, same "attach only if non-blank" rule as the whole-session `teacherFeedback` below.
 
-Written once per session run, when the teacher ends (or restarts, since restart is only reachable after `endSession()`) a session. `TeacherView.handleEndSession` builds the report client-side via `buildSessionReport({ session, lesson })` (`src/shared/lessonReport.js`) from the in-memory `session` snapshot — combining `session.students` (roster), `session.attemptLog` (full per-task attempt history), `session.overrideLog` (teacher move-on records), `session.carryFallbackLog` (carry walk-back records), `session.supportRevealLog` (read-only stage references opened by teacher/student), `session.taskRatingLog` (live per-task teacher ratings), `session.taskStartTimes`, and the lesson's task list — then writes it with `saveSessionReport` (`src/shared/lessonService.js`) before the RTDB `endSession()` update wipes live session data. Doc ID is the report's `sessionId` (`String(session.startedAt)`), so each distinct run of a lesson gets its own report doc. Information tasks are excluded — there is nothing to grade.
+Written once per session run, when the teacher ends (or restarts, since restart is only reachable after `endSession()`) a session. `TeacherView.handleEndSession` builds the report client-side via `buildSessionReport({ session, lesson })` (`src/shared/lessonReport.js`) from the in-memory `session` snapshot — combining `session.students` (roster), `session.attemptLog` (full per-task attempt history), `session.overrideLog` (teacher move-on records), `session.carryFallbackLog` (carry walk-back records), `session.supportRevealLog` (read-only stage references opened by teacher/student), `session.taskRatingLog` (live per-task teacher ratings), `session.taskStartTimes`, the live badge data (`session.badges`, `session.studentSignals`, `pasteLog.firstAt`, `attemptLog` `error`; see "Badge data"), and the lesson's task list — then writes it with `saveSessionReport` (`src/shared/lessonService.js`) before the RTDB `endSession()` update wipes live session data. Before building, `handleEndSession` awaits `readSessionArchive({ endedAt })` and passes the teacher-sandbox archive in as `buildSessionReport({ session, lesson, sessionArchive, pendingSuggestions, topics })`, with the badge suggestions still pending (`useBadgeSuggestions`) and the Topic Library's topics (for topic titles); a failed archive read leaves the sandbox out rather than losing the report. Doc ID is the report's `sessionId` (`String(session.startedAt)`), so each distinct run of a lesson gets its own report doc. Information tasks are excluded — there is nothing to grade.
 
 The whole-session `teacherFeedback` (rating plus "what worked well"/"what didn't work" notes for the lesson as a whole) is a separate, later step: unlike `taskRatingLog`, it isn't written live to RTDB — the teacher submits it in `TeacherReportModal`'s `TeacherFeedbackForm` right after the report is first built, and `attachTeacherFeedback(report, feedback)` (`src/shared/lessonReport.js`) merges it onto the already-saved report, which is then re-saved via `saveSessionReport`. Both features share the same star-rating + notes UI (`StarRatingFeedbackFields.jsx`) and the same "omit if every field is blank" validation, but `teacherFeedback` sits at the report root while `teacherRating` sits per task inside `taskSummary`.
 
 Override records make moved-on tasks complete without claiming a real pass. If a student had at least one failed attempt before the teacher moved them on, the task reports `finalResult: overridden_failed`; if they had no attempt, it reports `finalResult: overridden_unattempted`. `distinctAttempts[].passed` remains `false` unless an actual check passed.
 
-`buildSessionReport` can also be called against a still-live session (state `active`/`sandbox`, not yet ended) to preview an in-progress session's report before it's saved — this is how the "current report" view works (see below); the result is never written to Firestore in that case.
+`buildSessionReport` can also be called against a still-live session (state `active`/`sandbox`, not yet ended) to preview an in-progress session's report before it's saved — this is how the "current report" view works (see below); the result is never written to Firestore in that case. The preview reads the sandbox archive once each time the Reports panel opens and leaves the teacher sandbox out until it arrives.
+
+**Live badge fields** (`src/badges/reportMetrics.js`). Real passes, first tries and error attempts come from the badge engine's own timelines and guards (`buildStudentTimeline`, `getRealPass`, `getFirstTryRealPass` in `src/badges/rules.js`), built for every report student (not only the current roster), so the report and the suggestions agree. Empty, zero and false values are left out. Every student reference is a `studentLabel`; no section stores a name or an anonymous id, and `anonymizeSessionReport` relabels those references with their student. Students who only appear in `badges`, `studentSignals` or a sandbox snapshot are included.
+- Per student: `badges` (awarded only, oldest first: `badgeId`, `emoji`, `title`, `source`, `reason`, `taskId`, `awardedAt` = `decidedAt`), `topicsOpened`, `shortcutsUsed`, `personalSandbox` and `teacherSandbox` activity (`timeMs`, `runs`, `errorRuns`, `fixes`; never code).
+- Per student per graded task: `timeToFirstEditMs`, `errorAttempts` (attempts with `error`), `uniqueFailedAttempts` (distinct `hashSubmission` of failed attempts), `firstPassInClass` (the class's earliest real pass).
+- Per task summary: `timeToFirstEdit` (`medianMs`, `minMs`, `maxMs`, `studentCount`), `errorStudentCount`, `topicOpens` (`student` vs `teacher`-sent, task context only), `firstRealPass` (`studentLabel`, `afterMs` after `taskStartTimes[taskId]`).
+- `quizGroups`: each lesson group with at least `quizMasterMinQuizzes` graded quizzes, with each student who attempted one (`right`, `total`, `firstTryPercent`) and `medianFirstTryPercent`.
+- `teacherSandbox`: `{ possibleLessonGap: true, visits: [...] }` from `sessionArchive` — each visit's times, `previousTaskId`/`previousTaskTitle`, explainer, pushes and `studentSnapshots: [{ studentLabel, at, code | files, truncated? }]`.
+- `badgeSummary[badgeId]`: `suggested` (decisions with source `rule` or `auto`, plus the suggestions pending at session end), `awarded` (still held), `autoAwarded`, `manual`, `dismissed`, `revoked`; `shortcutSummary[shortcutId]`: students who used it.
+- **Size cap:** `capSessionReportSize` keeps the serialised report under 900 KB (Firestore's limit is 1 MiB): it drops the students' sandbox snapshots first (`teacherSandbox.studentSnapshotsDropped`), then the teacher's pushed code (`pushesDropped`), and sets `sizeNote`.
 
 Each task result carries `timeOnTaskMs`: the gap between `taskStartTimes[taskId]` and either the passing attempt's `passedAt` (if completed) or the latest attempt's `loggedAt` (if not) — `null` if the task never started or nothing was logged. `taskSummary` carries the class average as `avgTimeOnTaskMs` (averaged only over students with a non-null value).
 
@@ -571,11 +580,30 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
       "ratingDistribution": { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 },
       "blankFailures": [{ "blankId": "string", "expected": "string", "count": 1, "values": [{ "value": "string", "count": 1 }] }],
       "pairFailures": [{ "pairId": "string", "prompt": "string", "expected": "string", "count": 1, "values": [{ "value": "string", "count": 1 }] }],
-      "teacherRating": { "rating": "1-5 | null", "whatWorkedWell": "string", "whatDidntWork": "string", "submittedAt": 1234567890 }
+      "teacherRating": { "rating": "1-5 | null", "whatWorkedWell": "string", "whatDidntWork": "string", "submittedAt": 1234567890 },
+      "timeToFirstEdit": { "medianMs": 6000, "minMs": 2000, "maxMs": 40000, "studentCount": 12 },
+      "errorStudentCount": 3,
+      "topicOpens": { "student": 4, "teacher": 1 },
+      "firstRealPass": { "studentLabel": "Student 3", "afterMs": "number | null" }
     }
-  ]
+  ],
+  "quizGroups": [
+    { "groupId": "g1", "title": "End Quiz", "quizTaskIds": [7, 8, 9], "students": [{ "studentLabel": "Student 1", "right": 2, "total": 3, "firstTryPercent": 67 }], "medianFirstTryPercent": 67 }
+  ],
+  "teacherSandbox": {
+    "possibleLessonGap": true,
+    "studentSnapshotsDropped": "true (only when the size cap dropped them)",
+    "visits": [
+      { "visitId": "1234567890", "enteredAt": 1234567890, "exitedAt": 1234567999, "durationMs": 840000, "previousTaskId": 7, "previousTaskTitle": "Loops", "explainer": "string | null", "pushes": [{ "at": 1234567890, "code | files | explainer": "..." }], "studentSnapshots": [{ "studentLabel": "Student 2", "at": 1234567890, "code | files": "...", "truncated": "true (optional)" }] }
+    ]
+  },
+  "badgeSummary": { "{badgeId}": { "suggested": 3, "awarded": 2, "autoAwarded": 1, "manual": 0, "dismissed": 1, "revoked": 0 } },
+  "shortcutSummary": { "{shortcutId}": 5 },
+  "sizeNote": "string (only when the size cap dropped sandbox code)"
 }
 ```
+
+Per-student additions (inside each `students[]` entry, beside `tasks`): `badges: [{ badgeId, emoji, title, source, reason, taskId, awardedAt }]`, `topicsOpened: [{ topicId, title, context, taskId, source, openedAt }]`, `shortcutsUsed: [{ shortcutId, label, context, taskId, firstUsedAt }]`, `personalSandbox` / `teacherSandbox: { timeMs, runs, errorRuns, fixes }`; and in each task entry `timeToFirstEditMs`, `errorAttempts`, `uniqueFailedAttempts`, `firstPassInClass`.
 
 ## Lesson Levels (`lessonLevels` collection)
 

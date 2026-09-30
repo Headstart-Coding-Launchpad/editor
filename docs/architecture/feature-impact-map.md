@@ -114,6 +114,7 @@ Usually changes with:
 - `src/badges/` (definitions, `rules.js`, `timeline.js`, `evaluate.js`, `registry.pure.js`)
 - The tutor UI: `src/badges/badgeDisplay.js` (resolving registry and catalogue badges), `src/app/views/teacher/BadgeSuggestionsPanel.jsx`, `src/app/components/badges/` (`BadgeChip`, `BadgeAwardDialog`), and the badge props on `StudentGrid` / `StudentCard` / `StudentModal` (teacher-only: never render these in student or presentation components)
 - The student celebration: `src/badges/celebration.js`, `src/app/hooks/useBadgeCelebrations.js`, `src/app/components/badges/` (`BadgeCelebration`, `BadgeClassToast`, `CodingMomentsPill`, `BadgeStickerSheet`), the `sv-badge-*` / `sv-sticker*` CSS in `src/index.css`, `playBadgeChime` in `src/app/nudgeAlert.js`, and `SessionEndedScreen` / `useStudentPhase` (the end-screen reload)
+- The Badge Summary task and report: `src/badges/badgeSummary.js` (class wall), `src/badges/reportMetrics.js` (report fields read through the same timelines and guards), `src/app/components/badges/BadgeSummaryTask.jsx`, the `badgeWall` prop through `InformationTask` / `LessonTaskContent` / `TeacherEditorPanel`, `getEffectiveTaskMode` in `src/shared/taskUtils.js` (solo skips the task), and `src/app/components/ReportBadgeSections.jsx`
 - `src/badges/liveTimeline.js` (stored data → timeline events, and the memo keys: a new event source must be added to both `buildStudentTimeline` and `studentTimelineInputKey`) and `src/app/hooks/useBadgeSuggestions.js` (`TeacherView`)
 - `src/shared/taskActivity.js` (pattern ids are stored by badges and reports: add aliases, never rename)
 - `src/shared/lessonValidation.js` and `src/badges/validation.js`
@@ -312,8 +313,11 @@ Changes include session report shape, report display, YAML export, lesson feedba
 Usually changes with:
 
 - `src/shared/lessonReport.js`
+- `src/badges/reportMetrics.js` (live-badge report fields and the Firestore size cap)
 - `src/app/components/TeacherReportModal.jsx`
+- `src/app/components/ReportBadgeSections.jsx` and `src/app/reportBadgeFormat.js`
 - `src/app/components/TeacherReportsPanel.jsx`
+- `src/app/views/TeacherView.jsx` (`handleEndSession` reads the sandbox archive before building)
 - `src/admin/LessonPanel.jsx`
 - `src/admin/FeedbackPanel.jsx`
 - `cli/feedback.mjs`
