@@ -4,8 +4,9 @@ Status: **Approved for implementation (2026-09-30).** Interviewed and revised on
 agent against the code and revised again. Branch `feature/live-badges`. Delivered as seven focused PRs
 (see [PR sequence](#pr-sequence)).
 
-**Implementation status:** PR 1 Foundations (#388), PR 2 Live data (#389) and PR 3 Engine
-(`src/badges/liveTimeline.js`, `src/app/hooks/useBadgeSuggestions.js`) are done; PR 4 (Tutor UI) is next.
+**Implementation status:** PR 1 Foundations (#388), PR 2 Live data (#389), PR 3 Engine
+(`src/badges/liveTimeline.js`, `src/app/hooks/useBadgeSuggestions.js`) and PR 4 Tutor UI (#391,
+`BadgeSuggestionsPanel`, `BadgeAwardDialog`, `src/badges/badgeDisplay.js`) are done; PR 5 (Celebration) is next.
 
 Source brief: "Live Student Badges". It recognises good learning behaviour as it happens, keeps the
 tutor in control, and has no points, totals, rankings or leaderboard.

@@ -28,6 +28,7 @@ import TeacherReportModal from '../components/TeacherReportModal'
 import TeacherReportsPanel from '../components/TeacherReportsPanel'
 import CheckConditionsPanel from './teacher/CheckConditionsPanel'
 import TaskRatingPanel from './teacher/TaskRatingPanel'
+import BadgeSuggestionsPanel from './teacher/BadgeSuggestionsPanel'
 import TeacherEditorPanel from './teacher/TeacherEditorPanel'
 import { cloneFiles } from '../../shared/workspaceData'
 import {
@@ -135,6 +136,8 @@ export default function TeacherView({ lessonId }) {
     pushClassPaneCommand,
     archiveSandboxStudentSnapshot,
     decideBadge,
+    revokeBadge,
+    setBadgeSettings,
   } = useSession(lessonId)
 
   // While the class is in the teacher sandbox, each student's latest sandbox run is copied into
@@ -159,6 +162,10 @@ export default function TeacherView({ lessonId }) {
     settings: session?.badgeSettings,
     decideBadge,
   })
+  // The suggestions panel's open state lives here so the grid's 🏅 Suggestions button can open
+  // and focus it (bumping badgePanelFocus).
+  const [badgePanelOpen, setBadgePanelOpen] = useState(false)
+  const [badgePanelFocus, setBadgePanelFocus] = useState(0)
   const [lessonError, setLessonError] = useState(false)
   const [currentTaskId, setCurrentTaskId] = useState(1)
   // previewTaskId: non-null while the teacher is previewing a task locally without moving students
@@ -714,6 +721,22 @@ export default function TeacherView({ lessonId }) {
             </div>
           )}
 
+          {session &&
+            (session.state === 'active' ||
+              session.state === 'sandbox' ||
+              badgeSuggestions.suggestions.length > 0) && (
+              <BadgeSuggestionsPanel
+                suggestions={badgeSuggestions.suggestions}
+                students={students}
+                settings={session.badgeSettings ?? null}
+                onDecideBadge={decideBadge}
+                onSetBadgeSettings={setBadgeSettings}
+                open={badgePanelOpen}
+                onOpenChange={setBadgePanelOpen}
+                focusRequest={badgePanelFocus}
+              />
+            )}
+
           <TeacherEditorPanel
             lesson={editorLesson}
             task={task}
@@ -791,6 +814,10 @@ export default function TeacherView({ lessonId }) {
             onNudgeStudent={nudgeStudent}
             onNudgeAway={nudgeAwayStudents}
             onSetAutoReveal={setAutoRevealStage}
+            badgeSuggestions={badgeSuggestions}
+            onOpenBadgeSuggestions={() => setBadgePanelFocus((n) => n + 1)}
+            onDecideBadge={decideBadge}
+            onRevokeBadge={revokeBadge}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed((v) => !v)}
           />

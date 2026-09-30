@@ -63,7 +63,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - **Waiting room** — students wait until the teacher starts; auto-advance on start
 - **Pause/resume** — freezes student navigation without ending the session
 - **Sandbox mode** — freeform coding with no tasks or checks; teacher can push code/files to all students. Each visit (when, after which task, the teacher's pushes and each student's last sandbox code) is archived teacher-side for the session report
-- **Live badge signals** (recording only; the badge UI is still to come) — first-occurrence topic opens, keyboard shortcuts, time to first edit, complete-code views, and sandbox run/error/fix counts are recorded per student during a live session (never in solo, previews or the presentation window, and never any code); see `docs/architecture/live-badges-plan.md`
+- **Live badge signals** (the tutor's suggestions panel and picker are in the Student Grid section; the student celebration is still to come) — first-occurrence topic opens, keyboard shortcuts, time to first edit, complete-code views, and sandbox run/error/fix counts are recorded per student during a live session (never in solo, previews or the presentation window, and never any code); see `docs/architecture/live-badges-plan.md`
 - **Need Help** — a persistent button in the top bar during any live lesson, always available (not tied to a failed check); marks the student's card for the teacher until dismissed
 - **Session end** — all students see an end screen
 
@@ -103,12 +103,14 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Cards per student: name, online status, run status, check status, code/output/quiz preview
 - Click to expand to full student workspace view
 - "Away" badge when a connected student's window isn't focused, with a 🔔 button to nudge them; "🔔 Nudge Away (n)" in the grid header nudges every Away student at once. A nudge shows the student a banner and plays a chime, and while their window is unfocused flashes the tab title/favicon and (if they allowed it) shows an OS notification
+- Live badges (tutor side): "🏅 Suggestions (n)" in the grid header opens the **Badge suggestions** panel above the teacher editor, grouped by student, with one-click Award / Dismiss, an "Announce" tick (on by default), "Award all" when several students earned the same badge, and the session's **Auto-award high-confidence badges** and **Sounds off** toggles. Each card shows a teacher-only "🏅 n" count with a dot while a suggestion is waiting (never shown to students or the presentation window). "☑ Select" picks several cards to award one badge to all of them at once
 
 ### Student Actions (per student)
 - Go Live / Stop Live — one-to-one keystroke streaming with selection highlight and activity indicators
 - Remote Reset — silently replace student's code with starter code, complete code, or a named intermediate stage
 - Rename and remove students
 - Nudge (🔔 in the modal header) — draw the student's attention back to the lesson
+- 🏅 Award badge (More menu) — pick any badge (rule-backed, tutor-only or Admin catalogue; hover shows the exact rule; badges already held are greyed), and revoke an awarded one silently; the header shows the student's teacher-only badge count
 - "Show on every task" reference (in the Reveal menu): first hint, all hints, or the solution opens automatically for that student on every task for the rest of the session
 - "📋 Pasted" badge when a student pastes a large chunk (40+ characters or 3+ lines) into their editor — flagged, not blocked; also counted in the session report
 - The output panel in the student modal opens automatically when the student's run produces output or asks for input

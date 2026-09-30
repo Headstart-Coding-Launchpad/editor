@@ -34,6 +34,8 @@ import {
 } from '../../activities/registry.pure.js'
 import { readActivityAnswer } from '../../activities/state.js'
 import ActivityDeviceBadge from '../../activities/ui/ActivityDeviceBadge.jsx'
+import BadgeAwardDialog from './badges/BadgeAwardDialog'
+import { heldBadgeIds } from '../../badges/badgeDisplay'
 
 // Modes match AUTO_REVEAL_MODES (src/shared/taskStages.js); null turns it off.
 const AUTO_REVEAL_OPTIONS = [
@@ -93,6 +95,9 @@ export default function StudentModal({
   onRequestFullscreen,
   onNudge,
   onSetAutoReveal,
+  onDecideBadge,
+  onRevokeBadge,
+  catalogueBadges = [],
 }) {
   const overlayRef = useRef(null)
   const iframeRef = useRef(null)
@@ -107,6 +112,7 @@ export default function StudentModal({
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [fullscreenRequested, setFullscreenRequested] = useState(false)
   const [nudged, setNudged] = useState(false)
+  const [showBadgeDialog, setShowBadgeDialog] = useState(false)
 
   // Teacher highlight: select a range in the mirrored view, tag it, send it
   const [pendingHighlight, setPendingHighlight] = useState(null) // {from, to} | null
@@ -202,6 +208,7 @@ export default function StudentModal({
     setStagePendingAction(null)
     setStageDeclinedNotice(false)
     setShowMessageModal(false)
+    setShowBadgeDialog(false)
     setPendingHighlight(null)
     setHighlightNote('')
   }, [student.anonymousId])
@@ -360,6 +367,7 @@ export default function StudentModal({
   }
 
   const files = decodeSessionFiles(student.currentFiles, decodeFileKey, 'html')
+  const badgeCount = heldBadgeIds(session?.badges, student.anonymousId).length
   const task = findTaskById(lesson?.tasks, session?.currentTaskId)
   const taskLesson = getEffectiveLessonForTask(lesson, task)
   const {
@@ -502,7 +510,10 @@ export default function StudentModal({
 
   // Read through a ref: the listener is bound once, and handleClose → handleCommitEdit
   // must see the teacher's latest typed code/files, not the values from when it was bound.
-  const handleCloseRef = useLatestRef(handleClose)
+  // Escape closes the badge picker first, then the modal.
+  const handleCloseRef = useLatestRef(() =>
+    showBadgeDialog ? setShowBadgeDialog(false) : handleClose()
+  )
   useEffect(() => {
     function onKey(e) {
       if (e.key === 'Escape') handleCloseRef.current()
@@ -526,6 +537,16 @@ export default function StudentModal({
         <div style={s.header}>
           <div style={s.headerLeft}>
             <span style={s.name}>{student.displayName}</span>
+            {/* Teacher-only badge count; never shown on student screens. */}
+            {badgeCount > 0 && (
+              <span
+                style={s.overrideBadge}
+                title="Badges awarded this lesson (only you see this)"
+                data-testid="modal-badge-count"
+              >
+                🏅 {badgeCount}
+              </span>
+            )}
             <PresenceBadge student={student} session={session} />
             {onNudge && student.online && (
               <button
@@ -862,7 +883,9 @@ export default function StudentModal({
                   student.shareRequestedAt == null &&
                   student.shareSnapshotRequestedAt == null
                 const hasFullscreen = !!onRequestFullscreen
+                const hasBadge = !!onDecideBadge
                 if (
+                  !hasBadge &&
                   !hasEdit &&
                   !hasTopic &&
                   !hasMessage &&
@@ -875,6 +898,17 @@ export default function StudentModal({
                   <DropdownMenu label="More" buttonClassName="btn-ghost">
                     {(close) => (
                       <>
+                        {hasBadge && (
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              setShowBadgeDialog(true)
+                            }}
+                          >
+                            🏅 Award badge
+                          </button>
+                        )}
                         {hasEdit && (
                           <button
                             style={sTo.toolBtn}
@@ -1131,6 +1165,18 @@ export default function StudentModal({
                 }
               : undefined
           }
+        />
+      )}
+
+      {showBadgeDialog && onDecideBadge && (
+        <BadgeAwardDialog
+          students={[{ anonymousId: student.anonymousId, displayName: student.displayName }]}
+          decisions={session?.badges ?? {}}
+          catalogueBadges={catalogueBadges}
+          taskId={session?.currentTaskId ?? null}
+          onDecideBadge={onDecideBadge}
+          onRevokeBadge={onRevokeBadge}
+          onClose={() => setShowBadgeDialog(false)}
         />
       )}
 

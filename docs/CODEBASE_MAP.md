@@ -101,14 +101,16 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `VideoCallPrompt.jsx` | Modal shown to one student when a teacher targets them with "📹 Send Video Call Link" from the Student Grid, stamping `students/{id}/videoCallLinkPushedAt` |
 | `RecordingWidget.jsx` | Solo-mode-only fixed-corner pop-out player for a lesson's `recordingUrl` (YouTube recording, authorable on any lesson). Hide pauses via the YouTube IFrame API; the player stays mounted so reopening resumes in place |
 | `NameEntry.jsx` | Student name input with duplicate-suffix handling and solo fallback |
-| `StudentGrid.jsx` | Grid of StudentCards with collapse toggle and check conditions display |
+| `StudentGrid.jsx` | Grid of StudentCards with collapse toggle and check conditions display; the "🏅 Suggestions (n)" header button (opens `BadgeSuggestionsPanel`) and a "☑ Select" mode for multi-award (select cards → 🏅 Award badge → `BadgeAwardDialog` with one shared `bulkId`) |
 | `PresenceBadge.jsx` | Shared online/away/offline/waiting badge used by StudentCard and StudentModal (Away = connected but window unfocused) |
 | `NudgeBanner.jsx` | Student-side half of a teacher nudge: `NudgeBanner` (in-page "your teacher is asking for your attention" banner) and `NudgePermissionPrompt` (one-time opt-in for OS notifications, "Not now" remembered in localStorage) |
-| `StudentCard.jsx` | Compact card: name, online/run/check/support/sharing badges, teacher-only item progress badge (`taskItemProgress.js`), code/output snippet (per the module's `capabilities.cardSummary`) or the activity/quiz answer summary (the activity UI's `CardSummary`), expand button |
+| `StudentCard.jsx` | Compact card: name, online/run/check/support/sharing badges, teacher-only item progress badge (`taskItemProgress.js`), teacher-only live badge count "🏅 n" with a dot while a suggestion is pending (`badgeAwardedCount` / `badgePendingCount`), select-mode checkbox role (`selectMode` / `selected` / `onToggleSelect`), code/output snippet (per the module's `capabilities.cardSummary`) or the activity/quiz answer summary (the activity UI's `CardSummary`), expand button |
 | `SharedWorkspacePreview.jsx` | Read-only render of a frozen share snapshot; maps a snapshot to each module's TeacherLiveView props |
 | `SharedWorkspacePanel.jsx` | Student-facing "Shared work" gallery button, new-share toast, and share list |
 | `SharedWorkspaceViewer.jsx` | Non-destructive editable copy of a classmate's shared workspace; renders the student's own `LessonTaskContent` surface via a throwaway `useStudentCodeState` (previewMode, namespaced lessonId, no-op session writers), seeded from the snapshot; optional "Copy to my editor" |
-| `StudentModal.jsx` | Full-width modal: student workspace view + teacher actions (Go Live, Remote Reset, Check Override, Rename, Remove, Send Video Call Link); remote run, live edit (`capabilities.teacherEditor`, rendered through the module's `TeacherLiveView`), code highlights and the stage Reveal menu are gated by the task module's capabilities |
+| `StudentModal.jsx` | Full-width modal: student workspace view + teacher actions (Go Live, Remote Reset, Check Override, Rename, Remove, Send Video Call Link); remote run, live edit (`capabilities.teacherEditor`, rendered through the module's `TeacherLiveView`), code highlights and the stage Reveal menu are gated by the task module's capabilities; teacher-only "🏅 n" badge count in the header and More → 🏅 Award badge (`BadgeAwardDialog`, `onDecideBadge` / `onRevokeBadge` / `catalogueBadges`) |
+| `badges/BadgeChip.jsx` | Live badges: `BadgeChip({ badge, showTitle, size, title })` (emoji + title) and `BadgeEmoji({ badge, size })` (emoji only, with the title as its accessible name); `badge` is a registry definition or `resolveBadge()` result |
+| `badges/BadgeAwardDialog.jsx` | The tutor's manual badge picker: `BadgeAwardDialog({ students, decisions, catalogueBadges, taskId, onDecideBadge, onRevokeBadge, onClose })` lists every badge (registry, then non-archived `catalogueBadges`), greys ones every selected student holds, shows the exact rule on hover/focus, awards with `source: 'manual'` and `replaceStatuses: ['dismissed', 'revoked']` (several students share one `bulkId`), and for one student lists their awards with Revoke; Escape closes it without closing the student modal |
 | `TeacherMessageToast.jsx` | Friendly dismissible toast shown to a student when a teacher sends them a personal message |
 | `TeacherTimers.jsx` | Timer strip for elapsed lesson time, planned duration, and active-task countdown |
 | `TeacherSessionControls.jsx` | Teacher top-bar task navigation, presentation/share links, session action controls, and a "📹 Video Call" popover to set/edit the session's `videoCallLink` |
@@ -164,6 +166,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 |---|---|
 | `TeacherEditorPanel.jsx` | Module-generic teacher editor/live-view panel, including starter/stage/complete tabs |
 | `CheckConditionsPanel.jsx` | Collapsible teacher-facing display of current task check conditions |
+| `BadgeSuggestionsPanel.jsx` | Collapsible centre-column panel (above the editor) of live badge suggestions grouped by student: emoji, title, reason, Award / Dismiss (`source: 'rule'`), an "Announce" checkbox (default on), "Award all (n)" for a badge suggested to several students (one shared `bulkId`), and the session's Auto-award / Sounds off toggles (`setBadgeSettings`); a `committed: false` decision (another tab first) shows a note, not an error. `open` / `onOpenChange` / `focusRequest` are controlled by `TeacherView` so the grid button can open it |
 | `TaskRatingPanel.jsx` | Collapsible panel, rendered above `CheckConditionsPanel`, letting the teacher rate the current task live (1-5 stars + notes) via `setTaskRating`; follows the teacher as they move between tasks |
 | `checkFormatting.js` | Human-readable check formatting helper used by `CheckConditionsPanel` |
 
@@ -491,7 +494,7 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 
 ## Badges (`src/badges/`)
 
-Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs/authoring/badges.md`). Built-in badges are a code registry; rules read normalised per-student timelines, never Firebase or React, so they are pure and deterministic. PR 1 ships the registry, rules and authoring validation; PR 2 the live data (`docs/agents/runtime-model.md`, "Badge data"); PR 3 the engine that turns the session into suggestions (`liveTimeline.js`, `useBadgeSuggestions`). No UI yet.
+Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs/authoring/badges.md`). Built-in badges are a code registry; rules read normalised per-student timelines, never Firebase or React, so they are pure and deterministic. PR 1 ships the registry, rules and authoring validation; PR 2 the live data (`docs/agents/runtime-model.md`, "Badge data"); PR 3 the engine that turns the session into suggestions (`liveTimeline.js`, `useBadgeSuggestions`); PR 4 the tutor UI (`BadgeSuggestionsPanel`, `BadgeAwardDialog`, `BadgeChip`, the grid button, card count and select mode).
 
 | File | Role |
 |---|---|
@@ -509,6 +512,7 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs
 | `signals.js` | Pure helpers for the recorded signals: contexts (`signalContextFor`, `sandboxKindForContext`), RTDB-safe keys (`signalKey`), `hashSubmission`, run errors (`runErrorName`, `runErrorFor`), the sandbox counter transactions (`applySandboxRun`, `applySandboxRunError`, `applySandboxTime`), `isBlocklyUserEdit` |
 | `sessionArchive.js` | Teacher-sandbox archive values: the 20 KB cap (`capArchiveText`, `archiveWorkFields`, `archiveExplainerFields`) and the reader shape (`normaliseSessionArchive`, missing `exitedAt` = `endedAt`) |
 | `liveTimeline.js` | The live timeline builder: `buildLiveTimelines({ session, lesson, topics })` → `{ [studentId]: event[] }` from the session snapshot (roster-only; tasks outside `liveBadgeLesson(lesson)`, the session-edited lesson's live tasks, dropped), `buildStudentTimeline`, `buildTaskLookup`, `buildTopicTitles`, and the memo keys `studentTimelineInputKey` / `badgeEvaluationInputKey` (code text left out) |
+| `badgeDisplay.js` | Display and picking helpers shared by the tutor UI (and later the celebration and report): `resolveBadge(badgeId, catalogueBadges)` (registry, else catalogue incl. archived, else a 🏅 placeholder), `listAwardableBadges(catalogueBadges)` (registry then non-archived catalogue), `normaliseCatalogueBadge`, `heldBadgeIds(decisions, studentId)`, `createBadgeBulkId(badgeId, prefix)`, `MANUAL_AWARD_REPLACES` |
 | `exampleLesson.js` | `EXAMPLE_LESSON`, the lesson badge `examples` run against (by `__tests__/badgeRegistry.test.js`) |
 
 ---

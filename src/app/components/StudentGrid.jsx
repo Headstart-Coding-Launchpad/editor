@@ -4,6 +4,7 @@ import StudentModal from './StudentModal'
 import { findTaskById } from '../../shared/taskUtils'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
 import { MarkdownRenderer } from '../../shared/markdown'
+import BadgeAwardDialog from './badges/BadgeAwardDialog'
 
 export default function StudentGrid({
   students = [],
@@ -48,6 +49,11 @@ export default function StudentGrid({
   onNudgeStudent,
   onNudgeAway,
   onSetAutoReveal,
+  badgeSuggestions = null,
+  onOpenBadgeSuggestions,
+  onDecideBadge,
+  onRevokeBadge,
+  catalogueBadges = [],
   collapsed,
   onToggle,
 }) {
@@ -56,6 +62,28 @@ export default function StudentGrid({
   const [fullscreenRequested, setFullscreenRequested] = useState(false)
   const [nudgedAway, setNudgedAway] = useState(false)
   const awayCount = students.filter((st) => st.online && st.windowFocused === false).length
+  // Multi-award: select mode turns a card click into a selection toggle.
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [showBadgeDialog, setShowBadgeDialog] = useState(false)
+  const selectedStudents = students.filter((st) => selectedIds.has(st.anonymousId))
+  const suggestionCount = badgeSuggestions?.suggestions?.length ?? 0
+  const sessionLive = session?.state === 'active' || session?.state === 'sandbox'
+
+  function toggleSelected(studentId) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(studentId)) next.delete(studentId)
+      else next.add(studentId)
+      return next
+    })
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+    setShowBadgeDialog(false)
+  }
 
   function handleNudgeAway() {
     onNudgeAway?.()
@@ -153,6 +181,15 @@ export default function StudentGrid({
           </div>
         )}
 
+        {suggestionCount > 0 && (
+          <div style={s.collapsedStat} title="Badge suggestions waiting">
+            <span style={{ ...s.collapsedBadge, background: 'var(--colour-primary)' }}>
+              {suggestionCount}
+            </span>
+            <span style={s.collapsedStatLabel}>🏅</span>
+          </div>
+        )}
+
         <span style={s.collapsedLabel}>Students</span>
       </div>
     )
@@ -206,6 +243,26 @@ export default function StudentGrid({
               {nudgedAway ? '✓ Nudged' : `🔔 Nudge Away (${awayCount})`}
             </button>
           )}
+          {onOpenBadgeSuggestions && (sessionLive || suggestionCount > 0) && (
+            <button
+              style={s.topicsBtn}
+              onClick={onOpenBadgeSuggestions}
+              title="Open the badge suggestions panel"
+              aria-label={`Badge suggestions: ${suggestionCount} pending`}
+            >
+              🏅 Suggestions ({suggestionCount})
+            </button>
+          )}
+          {onDecideBadge && students.length > 0 && (
+            <button
+              style={{ ...s.topicsBtn, ...(selectMode ? s.topicsBtnOn : null) }}
+              onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+              aria-pressed={selectMode}
+              title="Select several students to award a badge to all of them at once"
+            >
+              {selectMode ? 'Done' : '☑ Select'}
+            </button>
+          )}
           {onRequestFullscreenAll && students.length > 0 && (
             <button
               style={s.topicsBtn}
@@ -244,22 +301,77 @@ export default function StudentGrid({
           )}
         </div>
       ) : (
-        <div style={s.grid}>
-          {students.map((student) => (
-            <StudentCard
-              key={student.anonymousId}
-              student={student}
-              lesson={lesson}
-              lessonId={lessonId}
-              session={session}
-              topics={topics}
-              onRename={onRename}
-              onRemove={onRemove}
-              onExpand={handleExpand}
-              onNudge={onNudgeStudent}
-            />
-          ))}
-        </div>
+        <>
+          {selectMode && (
+            <div style={s.selectBar} role="toolbar" aria-label="Selected students">
+              <span style={s.selectCount} aria-live="polite">
+                {selectedStudents.length} selected
+              </span>
+              <button
+                type="button"
+                className="btn-ghost-outline"
+                style={s.selectBtn}
+                onClick={() =>
+                  setSelectedIds(
+                    selectedStudents.length === students.length
+                      ? new Set()
+                      : new Set(students.map((st) => st.anonymousId))
+                  )
+                }
+              >
+                {selectedStudents.length === students.length ? 'Clear' : 'All'}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                style={s.selectBtn}
+                disabled={selectedStudents.length === 0}
+                onClick={() => setShowBadgeDialog(true)}
+              >
+                🏅 Award badge
+              </button>
+            </div>
+          )}
+          <div style={s.grid}>
+            {students.map((student) => (
+              <StudentCard
+                key={student.anonymousId}
+                student={student}
+                lesson={lesson}
+                lessonId={lessonId}
+                session={session}
+                topics={topics}
+                onRename={onRename}
+                onRemove={onRemove}
+                onExpand={handleExpand}
+                onNudge={onNudgeStudent}
+                badgePendingCount={
+                  badgeSuggestions?.pendingCountByStudent?.[student.anonymousId] ?? 0
+                }
+                badgeAwardedCount={
+                  badgeSuggestions?.awardedCountByStudent?.[student.anonymousId] ?? 0
+                }
+                selectMode={selectMode}
+                selected={selectedIds.has(student.anonymousId)}
+                onToggleSelect={toggleSelected}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {showBadgeDialog && onDecideBadge && selectedStudents.length > 0 && (
+        <BadgeAwardDialog
+          students={selectedStudents.map((st) => ({
+            anonymousId: st.anonymousId,
+            displayName: st.displayName,
+          }))}
+          decisions={session?.badges ?? {}}
+          catalogueBadges={catalogueBadges}
+          taskId={session?.currentTaskId ?? null}
+          onDecideBadge={onDecideBadge}
+          onClose={() => setShowBadgeDialog(false)}
+        />
       )}
 
       {onTogglePaused && (session?.state === 'active' || session?.state === 'sandbox') && (
@@ -330,6 +442,9 @@ export default function StudentGrid({
           onRequestFullscreen={onRequestFullscreenStudent}
           onNudge={onNudgeStudent}
           onSetAutoReveal={onSetAutoReveal}
+          onDecideBadge={onDecideBadge}
+          onRevokeBadge={onRevokeBadge}
+          catalogueBadges={catalogueBadges}
         />
       )}
     </div>
@@ -418,6 +533,28 @@ const s = {
     lineHeight: 1,
     borderRadius: 4,
   },
+  topicsBtnOn: {
+    background: 'var(--ui-surface)',
+    color: 'var(--colour-primary)',
+  },
+  selectBar: {
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+    padding: '6px 10px',
+    background: 'var(--ui-surface-tint)',
+    borderBottom: '1px solid var(--ui-border)',
+  },
+  selectCount: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    color: 'var(--colour-primary)',
+    marginRight: 'auto',
+  },
+  selectBtn: { fontSize: 12, padding: '4px 10px' },
   pauseRow: {
     flexShrink: 0,
     borderTop: '1px solid #e5e7eb',
