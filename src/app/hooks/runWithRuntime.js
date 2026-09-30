@@ -1,6 +1,7 @@
 import { evaluateCheck, evaluateCheckWithFeedback } from '../../modules/checks'
 import { createThrottledMirrorWriter } from '../throttledMirrorWriter'
 import { appendStudentOutput, createStudentOutputBuffer } from './studentOutputBuffer'
+import { runErrorFor } from '../../badges/signals'
 
 /**
  * Runs the student's code through a `capabilities.run === 'runtime'` module's runtime (Pyodide
@@ -28,6 +29,8 @@ import { appendStudentOutput, createStudentOutputBuffer } from './studentOutputB
  * - live: canPublishTeacherLive, updateTeacherLive, currentTeacherLivePayload, publishTeacherLive
  * - feedback: applyCheckFeedback, updateTargetedStageOffer, updateSupportStageForAttempt
  * - saveRunRecord(taskId, code, fields): the task's run record (persistence.saveRunRecord)
+ * - signals (optional): the live badge reporters (useStudentBadgeSignals); a free-play run is
+ *   reported with reportSandboxRun
  */
 export async function runWithRuntime(ctx) {
   const {
@@ -49,6 +52,7 @@ export async function runWithRuntime(ctx) {
     live,
     feedback,
     saveRunRecord,
+    signals = null,
   } = ctx
   const { runResult, checking } = definition
   const { setOutput, setInputPrompt, setErrorLine, setRunStatus, setTurtleResult, setRunning } =
@@ -223,6 +227,8 @@ export async function runWithRuntime(ctx) {
   // lesson task, but sandbox code has nothing to do with that task's check, so scoring
   // it reported a "failed" run to the teacher on every sandbox Run.
   const isFreePlay = refs.phaseRef.current === 'sandbox' || refs.inPersonalSandboxRef.current
+  // A real console error, named when the output shows it ('NameError'), for the badge data.
+  const runError = runErrorFor(status, outputBuffer.raw)
   const checkTask = isFreePlay ? null : task
   const hasTests = checkTask?.tests?.length > 0
   let passed = alreadySolved
@@ -282,6 +288,9 @@ export async function runWithRuntime(ctx) {
     // drawing, not just their code.
     if (runResult.turtle) writers.writeStudentTurtleResult(actor.anonymousId, result.turtle ?? null)
   }
+  if (isFreePlay && !teacherPresentation) {
+    signals?.reportSandboxRun({ error: runError, submission: nextCode })
+  }
   if (
     !teacherPresentation &&
     refs.phaseRef.current === 'lesson' &&
@@ -294,6 +303,7 @@ export async function runWithRuntime(ctx) {
       passed,
       suggestion,
       teacherAssisted: refs.teacherAssistedTaskIdsRef.current.has(currentTaskId),
+      error: runError,
     })
   }
   setRunning(false)

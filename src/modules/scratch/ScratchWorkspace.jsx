@@ -1,10 +1,12 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo, useContext } from 'react'
 import { createPortal } from 'react-dom'
 import {
   CollapsedPanelRail,
   CollapseTabButton,
 } from '../../app/components/CollapsiblePanelControls'
 import { useElementSize } from '../../shared/useElementSize.js'
+import { BadgeSignalsContext } from '../../shared/badgeSignalsContext.js'
+import { isBlocklyUserEdit } from '../../badges/signals.js'
 import {
   loadBlocklyModules,
   DEFAULT_TOOLBOX,
@@ -1022,6 +1024,10 @@ export default function ScratchWorkspace({
   onStateChangeRef.current = onStateChange
   onSpriteStatesChangeRef.current = onSpriteStatesChange
   onActivityRef.current = onActivity
+  // Live badges: a real block edit is the student's first edit on the task (Ready to Code).
+  const badgeSignals = useContext(BadgeSignalsContext)
+  const reportUserEditRef = useRef(null)
+  reportUserEditRef.current = badgeSignals?.reportUserEdit ?? null
   onCursorMoveRef.current = onCursorMove
   onBlockDragMoveRef.current = onBlockDragMove
   onCheckResultRef.current = onCheckResult
@@ -1523,6 +1529,7 @@ export default function ScratchWorkspace({
       // UI-only events (viewport, selection, toolbox) don't change the blocks —
       // saving on them would persist an empty/no-op state on mere task visits.
       if (event.isUiEvent) return
+      if (isBlocklyUserEdit(event)) reportUserEditRef.current?.('blocks')
       // Any real edit invalidates a prior check attempt (e.g. clicking a block to edit its
       // field runs it via click-to-run, which can fail; the failure banner must not linger
       // once the learner starts fixing it). The debounced evaluators below recompute a fresh

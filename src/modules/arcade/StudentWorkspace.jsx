@@ -325,6 +325,7 @@ export default function StudentWorkspace({
         tilemaps={generatedTilemaps}
         runId={runId}
         running={running}
+        onError={readOnly ? undefined : cs.handleArcadeRunError}
       />
     </div>
   )
