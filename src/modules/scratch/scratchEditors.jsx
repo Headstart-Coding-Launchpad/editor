@@ -780,7 +780,11 @@ export function PrebuiltStacksEditor({ prebuiltStacks = [], predefinedBlocks = [
                   Edit prebuilt stack:{' '}
                   <ScratchBlockLabel type={editingStack.stack?.type ?? ''} compact />
                 </span>
-                <button type="button" className="btn-ghost" onClick={() => setEditingStackId(null)}>
+                <button
+                  type="button"
+                  className="btn-ghost-outline"
+                  onClick={() => setEditingStackId(null)}
+                >
                   Done
                 </button>
               </div>

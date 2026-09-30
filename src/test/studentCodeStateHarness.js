@@ -60,6 +60,18 @@ export function storedKeys() {
 
 // ── Session ───────────────────────────────────────────────────────────────────
 
+// The studentSignals writers, handed to the hook as one `badgeSignalWriters` object (as
+// StudentView does) but kept flat in `writers` so tests can assert on each.
+export const BADGE_SIGNAL_WRITER_NAMES = [
+  'recordTopicOpenSignal',
+  'recordShortcutSignal',
+  'recordFirstEditSignal',
+  'recordCompleteShownSignal',
+  'recordSandboxRunSignal',
+  'flagSandboxRunError',
+  'addSandboxTimeSignal',
+]
+
 export const WRITER_NAMES = [
   'writeStudentRun',
   'logAttempt',
@@ -88,6 +100,8 @@ export const WRITER_NAMES = [
   'removeTeacherHighlight',
   'clearTeacherAnswerEdit',
   'clearRemoteRun',
+  'flagAttemptError',
+  ...BADGE_SIGNAL_WRITER_NAMES,
 ]
 
 export function makeWriters() {
@@ -156,6 +170,9 @@ export function renderStudentCodeState({
     ...p,
     lesson: effectiveLesson ? getEffectiveLessonForTask(p.lesson, p.currentTaskId) : p.lesson,
     ...writers,
+    badgeSignalWriters: Object.fromEntries(
+      BADGE_SIGNAL_WRITER_NAMES.map((name) => [name, writers[name]])
+    ),
   })
   const utils = renderHook((p) => useStudentCodeState(toHookProps(p)), {
     initialProps: rawProps,

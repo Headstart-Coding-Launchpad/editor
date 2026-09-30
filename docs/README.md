@@ -72,6 +72,16 @@ Status and phased roadmap for the `desktop` lesson module (windowed desktop shel
 
 **Load when:** picking up or planning further Desktop module work, or checking what's built vs. outstanding.
 
+### [architecture/live-badges-plan.md](architecture/live-badges-plan.md)
+Agreed phased plan for live student badges: a teacher-side rules engine over per-student timelines, tutor suggestions/awards, the badge registry and Admin catalogue, `taskActivity` parsing, celebration UI, the Badge Summary information task, and session-report fields. Live only in v1.
+
+**Load when:** working on any badge PR, adding a badge, or changing badge rules, data paths, or the `taskActivity` vocabulary.
+
+### [architecture/animation-ideas.md](architecture/animation-ideas.md)
+Ideas only: places the app could use a celebration-style moment later (all checks passed, first successful run, lesson complete, and so on), under the principle "calm by default, celebrate real achievements, respect reduced motion".
+
+**Load when:** considering new motion or celebration UI, so it stays consistent with the live-badge card and toast.
+
 ### [architecture/modular-activities-plan.md](architecture/modular-activities-plan.md)
 Accepted phased plan for making lesson capabilities modular: an Activity plugin tier (quiz sub-types, code_arrange, Binary, Keyboard, Mouse), a shared check-type registry and input recorder, workspace module contract v2, the scaffold/skill kit Claude uses to build new activities and modules, and the `docs/authoring/authoring-requests/` intake for lesson agents.
 
@@ -127,6 +137,9 @@ Decision to model bounded exercises (quizzes, code_arrange, Binary, Keyboard, Mo
 
 ### [adr/0010-module-contract-v2-and-work-slot.md](adr/0010-module-contract-v2-and-work-slot.md)
 Decision that module definitions describe everything core code needs (meta, capabilities, lifecycle, storage, wire, checking, work slot), that the student hook keeps one generic work slot, and that core code never compares against a type name (ratchet + ESLint rule).
+
+### [adr/0011-live-badges-registry-and-rules.md](adr/0011-live-badges-registry-and-rules.md)
+Decision that built-in live badges are a code registry of `defineBadge` definitions with pure, example-tested rules over per-student timelines; rules only suggest, only the tutor's decisions are stored (write-if-absent), and manual-only badges live in an Admin-edited Firestore catalogue whose display fields are copied onto each award.
 
 ---
 
@@ -204,6 +217,11 @@ Durable CLI contract for listing, uploading, and deleting lesson files in Fireba
 Intake for capability requests from lesson agents and people: when a lesson needs a new activity, module, check type or activity mode. Includes the request template and how requests move from open to shipped. Individual request files live in the same folder.
 
 **Load when:** a lesson needs something `lessons capabilities` doesn't list, or you are picking up a request to build.
+
+### [authoring/badges.md](authoring/badges.md)
+Live badges from the lesson author's side: the built-in badges and their exact rules, which `taskActivity` patterns trigger which badge, badge × module coverage, the envelope's `badgeOptions`, per-task `badgeHints`, and the `taskActivity` pattern vocabulary.
+
+**Load when:** tagging `taskActivity`, tuning badges for a lesson, or checking which badges a task can earn.
 
 ### [authoring/validation-errors.md](authoring/validation-errors.md)
 Every lesson validation error and warning from the CLI and shared validators, with what it means and how to fix it. A test fails if a validator gains a message that isn't listed.

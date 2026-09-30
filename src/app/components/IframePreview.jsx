@@ -41,6 +41,8 @@ export default function IframePreview({
           filename: e.data.filename,
           lineno: e.data.lineno,
           loadId: e.data.id,
+          // The logged error text, so a run can be tagged with the error's name.
+          message: Array.isArray(e.data.args) ? e.data.args.map(String).join(' ') : '',
         })
       }
     }

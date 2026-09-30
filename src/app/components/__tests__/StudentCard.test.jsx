@@ -596,3 +596,41 @@ describe('StudentCard', () => {
     })
   })
 })
+
+describe('StudentCard live badges (teacher-only)', () => {
+  it('shows nothing with no badges or suggestions', () => {
+    render(<StudentCard {...mkProps()} />)
+    expect(screen.queryByTestId('badge-count')).not.toBeInTheDocument()
+  })
+
+  it('shows the awarded count and a dot while a suggestion is pending', () => {
+    render(<StudentCard {...mkProps({ badgeAwardedCount: 2, badgePendingCount: 1 })} />)
+    const count = screen.getByTestId('badge-count')
+    expect(count).toHaveTextContent('🏅 2')
+    expect(count).toHaveAccessibleName('2 badges awarded, badge suggestion waiting')
+    expect(screen.getByTestId('badge-pending-dot')).toBeInTheDocument()
+  })
+
+  it('shows the dot without a count before any award', () => {
+    render(<StudentCard {...mkProps({ badgePendingCount: 3 })} />)
+    expect(screen.getByTestId('badge-count')).toHaveTextContent(/^🏅$/)
+    expect(screen.getByTestId('badge-pending-dot')).toBeInTheDocument()
+  })
+
+  it('toggles selection instead of expanding in select mode', async () => {
+    const user = userEvent.setup()
+    const onExpand = vi.fn()
+    const onToggleSelect = vi.fn()
+    render(
+      <StudentCard {...mkProps({ onExpand, onToggleSelect, selectMode: true, selected: true })} />
+    )
+    const card = screen.getByRole('checkbox', { name: 'Select Jamie' })
+    expect(card).toHaveAttribute('aria-checked', 'true')
+    await user.click(card)
+    expect(onToggleSelect).toHaveBeenCalledWith('student-1')
+    expect(onExpand).not.toHaveBeenCalled()
+    card.focus()
+    await user.keyboard(' ')
+    expect(onToggleSelect).toHaveBeenCalledTimes(2)
+  })
+})

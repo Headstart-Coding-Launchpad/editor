@@ -34,32 +34,47 @@ export function startTitleFlash({ doc = document, text = NUDGE_TITLE, intervalMs
   }
 }
 
-// A short two-note chime synthesised with Web Audio, so no sound asset is
-// needed. Browsers may keep audio suspended until the student has interacted
-// with the page; that failure is silent.
-export function playNudgeChime() {
+// Two-note chimes synthesised with Web Audio, so no sound asset is needed. `nudge` is bright
+// enough to call a student back; `badge` (a live badge celebration) is a softer, lower-gain
+// pair that shouldn't startle a class of screens.
+export const CHIME_PRESETS = Object.freeze({
+  nudge: Object.freeze({ notes: [880, 1320], gain: 0.25, spacing: 0.18, decay: 0.35 }),
+  badge: Object.freeze({ notes: [659.25, 987.77], gain: 0.06, spacing: 0.14, decay: 0.5 }),
+})
+
+// Browsers may keep audio suspended until the student has interacted with the page; that
+// failure is silent.
+export function playChime({ notes, gain: peak, spacing, decay } = CHIME_PRESETS.nudge) {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext
     if (!AudioCtx) return
     const ctx = new AudioCtx()
     const now = ctx.currentTime
-    ;[880, 1320].forEach((freq, i) => {
+    notes.forEach((freq, i) => {
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.type = 'sine'
       osc.frequency.value = freq
-      const start = now + i * 0.18
+      const start = now + i * spacing
       gain.gain.setValueAtTime(0.0001, start)
-      gain.gain.exponentialRampToValueAtTime(0.25, start + 0.02)
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.35)
+      gain.gain.exponentialRampToValueAtTime(peak, start + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + decay)
       osc.connect(gain).connect(ctx.destination)
       osc.start(start)
-      osc.stop(start + 0.4)
+      osc.stop(start + decay + 0.05)
     })
-    setTimeout(() => ctx.close?.().catch?.(() => {}), 1000)
+    setTimeout(() => ctx.close?.().catch?.(() => {}), 1000 + notes.length * spacing * 1000)
   } catch {
-    // Audio unavailable or blocked — the title flash still gets their attention.
+    // Audio unavailable or blocked; the visual cue still shows.
   }
+}
+
+export function playNudgeChime() {
+  playChime(CHIME_PRESETS.nudge)
+}
+
+export function playBadgeChime() {
+  playChime(CHIME_PRESETS.badge)
 }
 
 export function canShowNudgeNotification() {

@@ -38,6 +38,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `recordingUrl` | No | string | Unlisted YouTube link to a recorded live session, authorable on any lesson (including class forks — see Fork Metadata) via the Builder's "Recording" field. Shown to solo students as a small pop-out player; not shown during live sessions or teacher presentation. The YouTube video must be set to **Unlisted** (not Private) — students never sign in with Google. Parsed/validated with `src/shared/youtube.js`; only `youtube.com`/`youtu.be` links are accepted. |
 | `soloOnly` | No | boolean | Default `false`/absent. When `true`, the lesson is hard-forced to solo mode always — the live/wait choice screen is never offered to students, regardless of which URL they open (even `?solo=true` is redundant, and even if a live session exists for the lesson, students stay in solo mode). Authored via the Builder's "Solo-only lesson" checkbox in `LessonMetaPanel.jsx`, alongside `draft`. See `docs/agents/runtime-model.md` for how this interacts with the URL/session join flow. |
 | `companionOf` | No | string | Set on a `soloOnly` "solo challenge" lesson to the `id` of the parent lesson it extends (see Solo Companion Metadata). Authored via the Builder's "Solo challenge companion of" text field in `LessonMetaPanel.jsx`, next to the "Solo-only lesson" checkbox. |
+| `badgeOptions` | No | object | Tunes the built-in live badge rules for this lesson: `quizMasterThreshold` (0–1, default `0.8`), `quizMasterMinQuizzes` (default `3`), `persistenceMinFails` (default `2`), `readyToCodeSeconds` (default `10`). Lessons never define badges. See [badges.md](badges.md#badgeoptions). |
 | `tasks` | Yes | array | Ordered task list. IDs are sequential integers starting at `1`. May contain group objects. |
 
 ### Fork Metadata
@@ -93,7 +94,8 @@ Use `node cli/cli.mjs lessons link-solo` to preview a one-time backfill of `comp
 | `copyCode` | No | string | Python, Arcade Kit, Turtle, or HTML code task snippet shown in a read-only reference panel above the student editor. Students cannot select or copy directly from this panel. Missing or blank values hide it. |
 | `arcadeTools` | No | string | Arcade Kit only: `none` (default), `sprites`, `tilemaps`, or `both`; controls which visual editors students receive. |
 | `arcadeDesign` / `completeArcadeDesign` | No | object | Arcade Kit only: portable authored pixel-sprite and tilemap data for Starter / Complete. A code stage may instead carry `arcadeDesign`. See `arcade.md`. |
-| `taskActivity` | No | string | Author-only plain-text note on the intended in-class activity for this task (e.g. "Pair-share discussion"). Never shown to students. |
+| `taskActivity` | No | string | Author-only tag naming the task's Lesson Format Glossary format and pattern, e.g. `Code Task, Debug Code Task` or `Quiz: What Is the Error?`. Never shown to students. Free text, but `src/shared/taskActivity.js` reads the pattern (badges use it) and validation warns about an unrecognised one; `lessons capabilities` → `taskActivity` lists them. |
+| `badgeHints` | No | object | `{ suggest: [badgeId], suppress: [badgeId] }`: treat a real pass here as a pattern badge's trigger, or never suggest a badge from this task. See [badges.md](badges.md#badgehints). |
 | `check` | No | object or array | Completion check. Arrays require every check to pass. A code task with **no** `check` never auto-completes and never completes on Run — its check-passed state stays permanently false and it's never logged as passed in teacher reports. This does **not** block the student from advancing to the next task; forward navigation isn't gated by check state. Arcade is a special case: **Run game** evaluates only generic `code` checks (there is no captured output or game-state check yet — see `docs/authoring/arcade.md`), so use `code` checks to gate progression on an Arcade task. Turtle tasks may mix `code` checks with turtle checks. |
 | `feedbackChecks` | No | object or array | Detect nudges or wrong patterns using the same shape as completion checks. Requires a completion `check`. Supported by Python, HTML, Filesystem, Electronics, and Scratch. `mode: blocking` fails the task when matched; `mode: nudge` shows guidance without failing. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). A feedback check may also set a positive `priority` (lower is shown first) and a `stageOffer` to give targeted help. |
 | `incorrectChecks` | No | object or array | Legacy alias for blocking `feedbackChecks`. Use `feedbackChecks` in new lessons. |
@@ -184,9 +186,9 @@ Topic references are collected from task `topicLinks` and from `[[topic-id]]`, `
 | Field | Required | Notes |
 |---|:---:|---|
 | `taskType` | Yes | Must be `"information"`. |
-| `informationType` | No | `standard` (default), `recap`, or `introduction`. |
+| `informationType` | No | `standard` (default), `recap`, `introduction`, or `badges` (the Badge Summary, "Today's Coding Moments"; live only, skipped in solo — see [badges.md](badges.md#badge-summary-task)). |
 | `title` | Yes | Shown in progress UI. |
-| `explainer` | Yes* | Markdown content. Required for `standard` and `recap`. Optional for `introduction` (renders lesson metadata). |
+| `explainer` | Yes* | Markdown content. Required for `standard` and `recap`. Optional for `introduction` (renders lesson metadata) and `badges` (shown above the class wall). |
 | `leftContent` | No | Left-pane Markdown for `recap` only. |
 
 ---
@@ -351,9 +353,10 @@ Groups may not be nested. `carryCodeFrom` / `carryBlocksFrom` references from wi
 **Enforced by both the CLI and the builder** (highlights):
 
 - Lesson `id`, `type`, `title`, and at least one task are required; `recordingUrl` must be a YouTube link.
+- `badgeOptions` values must be in range, and `badgeHints` must name built-in badges ([badges.md](badges.md)); an unrecognised `taskActivity` pattern is a warning.
 - Every task needs a `title`; `estimatedMinutes`, `priority`, `allowSharing` and stage `role`s must be valid.
 - Carry fields (`carryCodeFrom`, `carryBlocksFrom`, `carryFsFrom`, `carryCircuitFrom`, `carryDesktopFrom`) must reference an existing, earlier task in the same lesson module.
-- Information tasks need an `explainer` unless `informationType` is `introduction`.
+- Information tasks need an `explainer` unless `informationType` is `introduction` or `badges`.
 - Quiz tasks: multiple-choice needs at least two non-empty options and an `answer_equals` check; match/fill-blank/short-answer quizzes have their own required-field rules. Code-arrange tasks need lines, blanks, unique ids and a completion check, in the Python or HTML module.
 - HTML code tasks should have files with unique filenames and an HTML entry file. Electronics tasks need a starter breadboard (`starterCircuit` or a Starter-role `codeStages` entry — though write `starterCircuit` regardless, or the Builder shows a "no starter breadboard yet" banner the validator does not). Filesystem and Desktop stages need their state.
 - Check fields, for the completion check and every feedback check: Python/HTML/Arcade checks (submit mode cannot use run-required checks; DOM checks need a `selector`, attribute checks an `attribute`, style checks a `property`; variable checks a `name`, `variable_dict_key_value` a `key`, `variable_array_nth_item` a valid `index`; value checks a `value`, except `code_no_error`, `output_not_empty`, `output_empty`, `element_exists`, `element_attribute`, `element_style_property`, `variable_exists`), Scratch checks (see `docs/authoring/scratch.md`), Turtle checks, filesystem checks (`fs_*`, including legacy aliases) and Electronics checks (`circuit_*` need a real component/control selector and, for connection checks, an endpoint `pin`). Neither validator inspects Electronics wire endpoints, so a wire naming a missing pin — or written as a `{ component, pin }` object instead of a `componentId.pin` string — passes validation while connecting nothing; see `docs/authoring/electronics.md`.

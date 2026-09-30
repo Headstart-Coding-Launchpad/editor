@@ -77,4 +77,26 @@ describe('SessionEndedScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open Playground' }))
     expect(onOpenPlayground).toHaveBeenCalledOnce()
   })
+
+  it("shows the student's coding moments as a sticker sheet", () => {
+    render(
+      <SessionEndedScreen
+        onContinueSolo={vi.fn()}
+        moments={[
+          {
+            badgeId: 'bug_hunter',
+            badge: { emoji: '🐛', title: 'Bug Hunter', blurb: 'Fixed it.' },
+          },
+        ]}
+      />
+    )
+    const sheet = screen.getByRole('list', { name: 'My coding moments' })
+    expect(sheet).toHaveTextContent('Bug Hunter')
+    expect(sheet).toHaveTextContent('Fixed it.')
+  })
+
+  it('shows no moments section when the student has none', () => {
+    render(<SessionEndedScreen onContinueSolo={vi.fn()} />)
+    expect(screen.queryByText(/your coding moments/i)).not.toBeInTheDocument()
+  })
 })

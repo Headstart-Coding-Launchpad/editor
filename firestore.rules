@@ -75,6 +75,18 @@ service cloud.firestore {
                    && request.auth.token.role == 'admin';
     }
 
+    // Admin badge catalogue: manual-only live badges ({ emoji, title, blurb,
+    // archived, updatedAt, updatedBy }). Teachers read it for the award picker;
+    // only admins write. Students never read it: an awarded catalogue badge
+    // carries its own display snapshot on the RTDB decision.
+    match /badgeCatalogue/{badgeId} {
+      allow read: if request.auth != null
+                  && (request.auth.token.role == 'admin'
+                      || request.auth.token.role == 'teacher');
+      allow write: if request.auth != null
+                   && request.auth.token.role == 'admin';
+    }
+
     // Platform feedback: teacher or admin can write; admin can read.
     match /platformFeedback/{feedbackId} {
       allow read: if request.auth != null

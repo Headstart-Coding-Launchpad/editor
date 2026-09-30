@@ -40,6 +40,11 @@ export default function StudentCard({
   onRemove,
   onExpand,
   onNudge,
+  badgePendingCount = 0,
+  badgeAwardedCount = 0,
+  selectMode = false,
+  selected = false,
+  onToggleSelect,
 }) {
   const [editing, setEditing] = useState(false)
   const [nameValue, setNameValue] = useState(student.displayName)
@@ -156,29 +161,63 @@ export default function StudentCard({
   const openStudent = () => {
     if (expandable) onExpand?.(student)
   }
+  // Select mode (the grid's multi-award): the whole card toggles selection instead of opening.
+  const clickable = selectMode || expandable
+  const activate = () => {
+    if (selectMode) onToggleSelect?.(student.anonymousId)
+    else openStudent()
+  }
+  const badgeLabel = [
+    badgeAwardedCount > 0
+      ? `${badgeAwardedCount} badge${badgeAwardedCount === 1 ? '' : 's'} awarded`
+      : null,
+    badgePendingCount > 0 ? 'badge suggestion waiting' : null,
+  ]
+    .filter(Boolean)
+    .join(', ')
 
   return (
     // The card is the click target. A dedicated full-width Expand button cost ~45px on
     // every card - over half the height budget - was the loudest thing on the wall, and
     // was identical on all eight, so it carried nothing about the student it belonged to.
     <div
-      style={{ ...s.card, ...checkCardStyle, ...(expandable ? s.cardClickable : null) }}
+      style={{
+        ...s.card,
+        ...checkCardStyle,
+        ...(clickable ? s.cardClickable : null),
+        ...(selectMode && selected ? s.cardSelected : null),
+      }}
       className="card"
-      role={expandable ? 'button' : undefined}
-      tabIndex={expandable ? 0 : undefined}
-      aria-label={expandable ? `Expand ${student.displayName}` : undefined}
-      onClick={openStudent}
+      role={selectMode ? 'checkbox' : expandable ? 'button' : undefined}
+      aria-checked={selectMode ? selected : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      aria-label={
+        selectMode
+          ? `Select ${student.displayName}`
+          : expandable
+            ? `Expand ${student.displayName}`
+            : undefined
+      }
+      onClick={activate}
       onKeyDown={(event) => {
-        if (!expandable) return
+        if (!clickable || event.target !== event.currentTarget) return
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
-          openStudent()
+          activate()
         }
       }}
     >
       {/* Header row */}
       <div style={s.header}>
         <div style={s.nameRow}>
+          {selectMode && (
+            <span
+              style={{ ...s.selectBox, ...(selected ? s.selectBoxOn : null) }}
+              aria-hidden="true"
+            >
+              {selected ? '✓' : ''}
+            </span>
+          )}
           <span style={{ ...s.statusDot, background: statusColour }} title={presenceTitle} />
           {editing ? (
             <form
@@ -197,6 +236,19 @@ export default function StudentCard({
           ) : (
             <span style={s.name} title={student.displayName}>
               {student.displayName}
+            </span>
+          )}
+          {/* Teacher-only: StudentCard is only ever rendered in the teacher's grid. */}
+          {(badgeAwardedCount > 0 || badgePendingCount > 0) && (
+            <span
+              style={s.badgeCount}
+              title={`${badgeLabel} (only you see this)`}
+              role="img"
+              aria-label={badgeLabel}
+              data-testid="badge-count"
+            >
+              🏅{badgeAwardedCount > 0 ? ` ${badgeAwardedCount}` : ''}
+              {badgePendingCount > 0 && <span style={s.badgeDot} data-testid="badge-pending-dot" />}
             </span>
           )}
           {!isQuiz && !isInformation && !isActivity && student.lastRunAt && (
@@ -482,6 +534,51 @@ const s = {
   },
   cardClickable: {
     cursor: 'pointer',
+  },
+  cardSelected: {
+    outline: '2px solid var(--colour-primary)',
+    outlineOffset: -2,
+    background: 'var(--ui-surface-tint)',
+  },
+  selectBox: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    border: '1.5px solid var(--ui-border-strong)',
+    background: 'var(--ui-surface)',
+    color: 'var(--colour-text-on-primary)',
+    fontSize: '0.7rem',
+    fontWeight: 700,
+    lineHeight: 1,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  selectBoxOn: {
+    background: 'var(--colour-primary)',
+    borderColor: 'var(--colour-primary)',
+  },
+  badgeCount: {
+    position: 'relative',
+    display: 'inline-flex',
+    alignItems: 'center',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    color: 'var(--colour-muted)',
+    flexShrink: 0,
+    paddingRight: 4,
+  },
+  badgeDot: {
+    position: 'absolute',
+    top: -1,
+    right: 0,
+    width: 7,
+    height: 7,
+    borderRadius: '50%',
+    background: 'var(--colour-secondary)',
+    boxShadow: '0 0 0 1.5px var(--ui-surface)',
   },
   // Finished is quiet-positive: the loud states should be the ones that want you to
   // walk over.

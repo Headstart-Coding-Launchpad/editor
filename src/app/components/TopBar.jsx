@@ -2,6 +2,8 @@ import React from 'react'
 import { useIsMobile } from '../../shared/useIsMobile'
 
 // isSolo: true = solo, false = live teacher session, undefined = don't show badge (teacher view)
+// singleRow: the student view's layout — one fixed-height row that never wraps, so the bar
+// doesn't change height as controls come and go; the name shows as a small chip.
 export default function TopBar({
   lessonTitle,
   lessonLevel,
@@ -9,6 +11,7 @@ export default function TopBar({
   isSandbox,
   isSolo,
   right,
+  singleRow = false,
 }) {
   const isMobile = useIsMobile()
 
@@ -20,7 +23,7 @@ export default function TopBar({
     ) : null
 
   return (
-    <header style={s.bar}>
+    <header style={singleRow ? { ...s.bar, ...s.barSingleRow } : s.bar}>
       <div style={s.left}>
         {!isMobile && (
           <span style={s.logo}>
@@ -67,13 +70,19 @@ export default function TopBar({
             </>
           ))}
       </div>
-      <div style={s.rightSlot}>
+      <div style={singleRow ? { ...s.rightSlot, ...s.rightSlotSingleRow } : s.rightSlot}>
         {right}
-        {displayName && !isSolo && (
-          <span style={{ ...s.name, fontSize: isMobile ? '0.75rem' : '0.9rem' }}>
-            {displayName}
-          </span>
-        )}
+        {displayName &&
+          !isSolo &&
+          (singleRow ? (
+            <span style={s.nameChip} title={displayName} data-testid="top-bar-name">
+              {displayName}
+            </span>
+          ) : (
+            <span style={{ ...s.name, fontSize: isMobile ? '0.75rem' : '0.9rem' }}>
+              {displayName}
+            </span>
+          ))}
       </div>
     </header>
   )
@@ -92,6 +101,11 @@ const s = {
     flexShrink: 0,
     gap: 8,
     rowGap: 6,
+  },
+  barSingleRow: {
+    flexWrap: 'nowrap',
+    height: 52,
+    minHeight: 52,
   },
   left: {
     display: 'flex',
@@ -167,6 +181,27 @@ const s = {
     gap: 8,
     minWidth: 0,
     flex: '0 1 auto',
+  },
+  rightSlotSingleRow: {
+    flexWrap: 'nowrap',
+    // Take the room the title doesn't need; the task dots inside shrink or scroll first.
+    flex: '0 1 auto',
+    overflow: 'visible',
+  },
+  nameChip: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: '0.75rem',
+    lineHeight: 1.2,
+    padding: '3px 9px',
+    borderRadius: 999,
+    background: 'rgba(255,255,255,0.16)',
+    border: '1px solid rgba(255,255,255,0.28)',
+    whiteSpace: 'nowrap',
+    maxWidth: 140,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    flexShrink: 0,
   },
   name: {
     fontFamily: 'var(--font-body)',

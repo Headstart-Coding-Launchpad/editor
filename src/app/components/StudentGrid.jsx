@@ -4,6 +4,8 @@ import StudentModal from './StudentModal'
 import { findTaskById } from '../../shared/taskUtils'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
 import { MarkdownRenderer } from '../../shared/markdown'
+import BadgeAwardDialog from './badges/BadgeAwardDialog'
+import DropdownMenu from './student-modal/DropdownMenu'
 
 export default function StudentGrid({
   students = [],
@@ -48,6 +50,11 @@ export default function StudentGrid({
   onNudgeStudent,
   onNudgeAway,
   onSetAutoReveal,
+  badgeSuggestions = null,
+  onOpenBadgeSuggestions,
+  onDecideBadge,
+  onRevokeBadge,
+  catalogueBadges = [],
   collapsed,
   onToggle,
 }) {
@@ -56,6 +63,36 @@ export default function StudentGrid({
   const [fullscreenRequested, setFullscreenRequested] = useState(false)
   const [nudgedAway, setNudgedAway] = useState(false)
   const awayCount = students.filter((st) => st.online && st.windowFocused === false).length
+  // Multi-award: select mode turns a card click into a selection toggle.
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [showBadgeDialog, setShowBadgeDialog] = useState(false)
+  const selectedStudents = students.filter((st) => selectedIds.has(st.anonymousId))
+  const suggestionCount = badgeSuggestions?.suggestions?.length ?? 0
+  const sessionLive = session?.state === 'active' || session?.state === 'sandbox'
+  // The header's ⋯ menu: occasional class actions, kept off the always-visible line.
+  const showNudgeItem = !!onNudgeAway && (sessionLive || awayCount > 0)
+  const showSuggestionsItem = !!onOpenBadgeSuggestions && (sessionLive || suggestionCount > 0)
+  const showSelectItem = !!onDecideBadge && students.length > 0
+  const showReferenceItem = topics?.length > 0
+  const hasClassMenu = showNudgeItem || showSuggestionsItem || showSelectItem || showReferenceItem
+  const classMenuAttention =
+    (showNudgeItem && awayCount > 0) || (showSuggestionsItem && suggestionCount > 0)
+
+  function toggleSelected(studentId) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(studentId)) next.delete(studentId)
+      else next.add(studentId)
+      return next
+    })
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+    setShowBadgeDialog(false)
+  }
 
   function handleNudgeAway() {
     onNudgeAway?.()
@@ -153,6 +190,15 @@ export default function StudentGrid({
           </div>
         )}
 
+        {suggestionCount > 0 && (
+          <div style={s.collapsedStat} title="Badge suggestions waiting">
+            <span style={{ ...s.collapsedBadge, background: 'var(--colour-primary)' }}>
+              {suggestionCount}
+            </span>
+            <span style={s.collapsedStatLabel}>🏅</span>
+          </div>
+        )}
+
         <span style={s.collapsedLabel}>Students</span>
       </div>
     )
@@ -160,18 +206,14 @@ export default function StudentGrid({
 
   return (
     <div style={s.wrap}>
+      {/* One line, never wrapping: the title and count, Fullscreen All, a ⋯ menu for the
+          occasional class actions (its dot means someone is Away or a badge suggestion is
+          waiting) and the collapse arrow. */}
       <div style={s.header}>
-        <span style={s.label}>Students</span>
-        <div
-          style={{
-            display: 'flex',
-            gap: 6,
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            justifyContent: 'flex-end',
-            minWidth: 0,
-          }}
-        >
+        <span style={s.label}>
+          Students <span style={s.labelCount}>({students.length})</span>
+        </span>
+        <div style={s.headerRight}>
           {joiningCount > 0 && (
             <span
               style={{ ...s.checkCountBadge, background: '#f59e0b' }}
@@ -196,15 +238,10 @@ export default function StudentGrid({
               ✕ {failedCount}
             </span>
           )}
-          <span style={s.count}>{students.length}</span>
-          {onNudgeAway && (awayCount > 0 || nudgedAway) && (
-            <button
-              style={s.topicsBtn}
-              onClick={handleNudgeAway}
-              title="Flash the tab and chime for every student whose window isn't focused"
-            >
-              {nudgedAway ? '✓ Nudged' : `🔔 Nudge Away (${awayCount})`}
-            </button>
+          {nudgedAway && (
+            <span style={s.headerNote} role="status">
+              ✓ Nudged
+            </span>
           )}
           {onRequestFullscreenAll && students.length > 0 && (
             <button
@@ -215,14 +252,82 @@ export default function StudentGrid({
               {fullscreenRequested ? '✓ Requested' : '⛶ Fullscreen All'}
             </button>
           )}
-          {topics?.length > 0 && (
-            <button
-              style={s.topicsBtn}
-              onClick={() => setShowTopicsDialog(true)}
-              title="Open topic library"
+          {hasClassMenu && (
+            <DropdownMenu
+              label="⋯"
+              caret={false}
+              buttonClassName=""
+              buttonStyle={s.moreBtn}
+              ariaLabel={
+                classMenuAttention
+                  ? 'More class actions (something needs attention)'
+                  : 'More class actions'
+              }
+              title="More class actions"
+              indicator={classMenuAttention}
+              panelStyle={s.menuPanel}
             >
-              📖
-            </button>
+              {(close) => (
+                <>
+                  {showNudgeItem && (
+                    <button
+                      type="button"
+                      style={s.menuItem}
+                      disabled={awayCount === 0}
+                      onClick={() => {
+                        close()
+                        handleNudgeAway()
+                      }}
+                      title="Flash the tab and chime for every student whose window isn't focused"
+                    >
+                      🔔 Nudge Away ({awayCount})
+                    </button>
+                  )}
+                  {showSuggestionsItem && (
+                    <button
+                      type="button"
+                      style={s.menuItem}
+                      onClick={() => {
+                        close()
+                        onOpenBadgeSuggestions()
+                      }}
+                      title="Open the badge suggestions panel"
+                      aria-label={`Badge suggestions: ${suggestionCount} pending`}
+                    >
+                      🏅 Suggestions ({suggestionCount})
+                    </button>
+                  )}
+                  {showSelectItem && (
+                    <button
+                      type="button"
+                      style={s.menuItem}
+                      aria-pressed={selectMode}
+                      onClick={() => {
+                        close()
+                        if (selectMode) exitSelectMode()
+                        else setSelectMode(true)
+                      }}
+                      title="Select several students to award a badge to all of them at once"
+                    >
+                      {selectMode ? '☑ Done selecting' : '☑ Select'}
+                    </button>
+                  )}
+                  {showReferenceItem && (
+                    <button
+                      type="button"
+                      style={s.menuItem}
+                      onClick={() => {
+                        close()
+                        setShowTopicsDialog(true)
+                      }}
+                      title="Open topic library"
+                    >
+                      📖 Reference
+                    </button>
+                  )}
+                </>
+              )}
+            </DropdownMenu>
           )}
           <button style={s.toggleBtn} onClick={onToggle} title="Collapse Students">
             ›
@@ -244,22 +349,85 @@ export default function StudentGrid({
           )}
         </div>
       ) : (
-        <div style={s.grid}>
-          {students.map((student) => (
-            <StudentCard
-              key={student.anonymousId}
-              student={student}
-              lesson={lesson}
-              lessonId={lessonId}
-              session={session}
-              topics={topics}
-              onRename={onRename}
-              onRemove={onRemove}
-              onExpand={handleExpand}
-              onNudge={onNudgeStudent}
-            />
-          ))}
-        </div>
+        <>
+          {selectMode && (
+            <div style={s.selectBar} role="toolbar" aria-label="Selected students">
+              <span style={s.selectCount} aria-live="polite">
+                {selectedStudents.length} selected
+              </span>
+              <button
+                type="button"
+                className="btn-ghost-outline"
+                style={s.selectBtn}
+                onClick={() =>
+                  setSelectedIds(
+                    selectedStudents.length === students.length
+                      ? new Set()
+                      : new Set(students.map((st) => st.anonymousId))
+                  )
+                }
+              >
+                {selectedStudents.length === students.length ? 'Clear' : 'All'}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                style={s.selectBtn}
+                disabled={selectedStudents.length === 0}
+                onClick={() => setShowBadgeDialog(true)}
+              >
+                🏅 Award badge
+              </button>
+              <button
+                type="button"
+                className="btn-ghost-outline"
+                style={s.selectBtn}
+                onClick={exitSelectMode}
+              >
+                Done
+              </button>
+            </div>
+          )}
+          <div style={s.grid}>
+            {students.map((student) => (
+              <StudentCard
+                key={student.anonymousId}
+                student={student}
+                lesson={lesson}
+                lessonId={lessonId}
+                session={session}
+                topics={topics}
+                onRename={onRename}
+                onRemove={onRemove}
+                onExpand={handleExpand}
+                onNudge={onNudgeStudent}
+                badgePendingCount={
+                  badgeSuggestions?.pendingCountByStudent?.[student.anonymousId] ?? 0
+                }
+                badgeAwardedCount={
+                  badgeSuggestions?.awardedCountByStudent?.[student.anonymousId] ?? 0
+                }
+                selectMode={selectMode}
+                selected={selectedIds.has(student.anonymousId)}
+                onToggleSelect={toggleSelected}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {showBadgeDialog && onDecideBadge && selectedStudents.length > 0 && (
+        <BadgeAwardDialog
+          students={selectedStudents.map((st) => ({
+            anonymousId: st.anonymousId,
+            displayName: st.displayName,
+          }))}
+          decisions={session?.badges ?? {}}
+          catalogueBadges={catalogueBadges}
+          taskId={session?.currentTaskId ?? null}
+          onDecideBadge={onDecideBadge}
+          onClose={() => setShowBadgeDialog(false)}
+        />
       )}
 
       {onTogglePaused && (session?.state === 'active' || session?.state === 'sandbox') && (
@@ -330,6 +498,9 @@ export default function StudentGrid({
           onRequestFullscreen={onRequestFullscreenStudent}
           onNudge={onNudgeStudent}
           onSetAutoReveal={onSetAutoReveal}
+          onDecideBadge={onDecideBadge}
+          onRevokeBadge={onRevokeBadge}
+          catalogueBadges={catalogueBadges}
         />
       )}
     </div>
@@ -345,28 +516,69 @@ const s = {
   header: {
     background: 'var(--colour-primary)',
     color: '#fff',
-    padding: '10px 14px',
+    padding: '0 10px 0 14px',
+    height: 44,
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 8,
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     minWidth: 0,
     flexShrink: 0,
+  },
+  headerRight: {
+    display: 'flex',
+    gap: 6,
+    alignItems: 'center',
+    flexWrap: 'nowrap',
+    justifyContent: 'flex-end',
+    minWidth: 0,
   },
   label: {
     fontFamily: 'var(--font-title)',
     fontWeight: 700,
     fontSize: '0.85rem',
     letterSpacing: '0.04em',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
-  count: {
-    background: 'rgba(255,255,255,0.2)',
-    borderRadius: 10,
-    padding: '1px 8px',
-    fontSize: '0.8rem',
+  labelCount: {
     fontFamily: 'var(--font-body)',
     fontWeight: 600,
+    opacity: 0.85,
+  },
+  headerNote: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+    opacity: 0.9,
+  },
+  moreBtn: {
+    background: 'rgba(255,255,255,0.18)',
+    border: 'none',
+    color: '#fff',
+    fontSize: '1rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    padding: '2px 8px',
+    lineHeight: 1,
+    borderRadius: 4,
+  },
+  menuPanel: { minWidth: 210, padding: 8, gap: 4 },
+  menuItem: {
+    width: '100%',
+    padding: '7px 12px',
+    background: 'rgba(98,34,204,0.06)',
+    color: 'var(--colour-primary-dark)',
+    border: '1px solid rgba(98,34,204,0.18)',
+    borderRadius: 6,
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: 13,
+    cursor: 'pointer',
+    textAlign: 'left',
+    whiteSpace: 'nowrap',
   },
   checkCountBadge: {
     color: '#fff',
@@ -376,6 +588,7 @@ const s = {
     fontFamily: 'var(--font-body)',
     fontWeight: 700,
     lineHeight: 1.25,
+    whiteSpace: 'nowrap',
   },
   grid: {
     flex: 1,
@@ -412,12 +625,32 @@ const s = {
     background: 'rgba(255,255,255,0.18)',
     border: 'none',
     color: '#fff',
-    fontSize: '0.95rem',
+    fontSize: '0.85rem',
     cursor: 'pointer',
-    padding: '2px 6px',
+    padding: '4px 8px',
     lineHeight: 1,
     borderRadius: 4,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
+  selectBar: {
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+    padding: '6px 10px',
+    background: 'var(--ui-surface-tint)',
+    borderBottom: '1px solid var(--ui-border)',
+  },
+  selectCount: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    color: 'var(--colour-primary)',
+    marginRight: 'auto',
+  },
+  selectBtn: { fontSize: 12, padding: '4px 10px' },
   pauseRow: {
     flexShrink: 0,
     borderTop: '1px solid #e5e7eb',

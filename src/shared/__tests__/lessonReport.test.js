@@ -953,6 +953,10 @@ describe('characterisation: buildSessionReport for legacy quiz + code_arrange ta
           ],
           "completedCount": 1,
           "completionRate": 0.5,
+          "firstRealPass": {
+            "afterMs": 400,
+            "studentLabel": "Student 1",
+          },
           "overriddenFailedCount": 0,
           "overriddenUnattemptedCount": 0,
           "overrideCount": 0,
@@ -1195,6 +1199,10 @@ describe('characterisation: buildSessionReport for legacy quiz + code_arrange ta
           ],
           "completedCount": 1,
           "completionRate": 0.5,
+          "firstRealPass": {
+            "afterMs": 300,
+            "studentLabel": "Student 1",
+          },
           "overriddenFailedCount": 0,
           "overriddenUnattemptedCount": 0,
           "overrideCount": 0,

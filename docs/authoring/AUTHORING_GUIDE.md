@@ -106,7 +106,7 @@ tasks:
 
 ```yaml
   - type: information         # sets taskType: "information" in JSON
-    informationType: standard # standard (default) | recap | introduction
+    informationType: standard # standard (default) | recap | introduction | badges
     title: How loops work
     explainer: A `for` loop repeats code a fixed number of times.
     # For recap (two-pane view):
@@ -115,6 +115,18 @@ tasks:
     # explainer: |            # white right pane
     #   More detail here
     # introduction renders lesson title/level/description — no explainer needed
+```
+
+**Badge Summary ("Today's Coding Moments").** `informationType: badges` shows the live session's
+coding moments: each student sees their own badges as stickers, then the class wall grouped by
+badge ("🐛 Bug Hunter: Alex, Sam"); the teacher sees a projector-friendly wall with **Copy class
+summary**. The explainer is optional (shown above the wall). Put it last. Solo learners skip it,
+as if it were `taskMode: live`. See [badges.md](badges.md#badge-summary-task).
+
+```yaml
+  - type: information
+    informationType: badges
+    title: Today's Coding Moments
 ```
 
 ---

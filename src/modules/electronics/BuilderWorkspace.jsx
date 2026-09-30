@@ -379,7 +379,7 @@ export default function BuilderWorkspace({
               <div style={s.pickerActions}>
                 <button
                   type="button"
-                  className="btn-ghost"
+                  className="btn-ghost-outline"
                   style={s.smallButton}
                   onClick={resetAvailableComponents}
                 >
@@ -387,7 +387,7 @@ export default function BuilderWorkspace({
                 </button>
                 <button
                   type="button"
-                  className="btn-ghost"
+                  className="btn-ghost-outline"
                   style={s.smallButton}
                   onClick={clearAvailableComponents}
                 >

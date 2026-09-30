@@ -25,6 +25,7 @@ New lessons are composed lessons: each code task selects one of the workspace ty
 
 - **Code task** — students write code or blocks; automatic completion checks run on each attempt. **Arcade Kit** evaluates its code checks each time the student presses Run game (game-state checks aren't supported yet — see `docs/authoring/arcade.md`'s Runtime Notes). **Python Turtle** tasks can combine code checks with drawing checks, and show a 🐢 marker at the turtle's position and heading.
 - **Information task** — explainer text only; no editor or check
+- **Badge Summary task** (`informationType: badges`, "Today's Coding Moments") — in a live session each student sees their own badges as a sticker sheet flipping in, then the class wall grouped by badge ("🐛 Bug Hunter: Alex, Sam"; names only, no counts), with a warm line instead of an empty state for a student with none; the teacher sees a projector-friendly wall with **📋 Copy class summary** (plain text grouped by badge); skipped in solo
 - **Quiz** — interactive question; no code editor
 - **Group** — ordered container of subtasks
 
@@ -62,9 +63,10 @@ After the same hint appears twice in a row, solo students can optionally view th
 
 - **Waiting room** — students wait until the teacher starts; auto-advance on start
 - **Pause/resume** — freezes student navigation without ending the session
-- **Sandbox mode** — freeform coding with no tasks or checks; teacher can push code/files to all students
-- **Need Help** — a persistent button in the top bar during any live lesson, always available (not tied to a failed check); marks the student's card for the teacher until dismissed
-- **Session end** — all students see an end screen
+- **Sandbox mode** — freeform coding with no tasks or checks; teacher can push code/files to all students. Each visit (when, after which task, the teacher's pushes and each student's last sandbox code) is archived teacher-side for the session report
+- **Live badge signals** (the tutor's suggestions panel and picker are in the Student Grid section; the student celebration is under Student Features, "Coding moments") — first-occurrence topic opens, keyboard shortcuts, time to first edit, complete-code views, and sandbox run/error/fix counts are recorded per student during a live session (never in solo, previews or the presentation window, and never any code); see `docs/architecture/live-badges-plan.md`
+- **Need Help** — a persistent "✋ Help" button in the top bar during any live lesson, always available (not tied to a failed check); marks the student's card for the teacher until dismissed
+- **Session end** — all students see an end screen, with their own coding moments (live badges) as a sticker sheet; a student who reloads within 3 hours of the end gets the end screen back
 
 ---
 
@@ -76,6 +78,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Lesson elapsed timer and per-task countdown that flashes when time expires
 - Ending a session ends it immediately for students; the report shown afterwards offers an optional 1-5 star rating plus "what worked well" / "what didn't work, or was broken" notes, saved onto that session's report
 - The session report shows how many references (support stages) were opened per task — count, students, and teacher vs student — and which ones each student opened
+- Live badges in the session report: a **Coding moments** section (the class wall grouped by badge, **Copy class summary** with student labels, and suggested / awarded / auto / manual / dismissed / revoked counts per badge); new task columns (time to first edit median and range, students with a console error, Topic Library opens student vs tutor-sent, and the first real pass with how long after the task opened); per student their moments, topics opened, shortcuts, personal- and teacher-sandbox activity, and per task their first edit, error runs, different failed tries and "first real pass in class"; quiz-group first-try scores with the class median; and each teacher-sandbox visit as a "possible lesson gap" callout ("The class spent 14 min in the teacher sandbox after …") that expands to the tutor's explainer and pushes and each student's last sandbox code. All of it is in the YAML export. A report near Firestore's 1 MiB limit drops the students' sandbox code first and says so
 - Rate any task live, while teaching it: a collapsible "Rate This Task" panel above the check conditions lets the teacher give the current task a 1-5 star rating plus "what worked well" / "what didn't work" notes as the class works through it, rather than waiting until the session ends. Each task's rating is folded into that task's row in the session report
 
 ### Task Navigator
@@ -101,14 +104,19 @@ After the same hint appears twice in a row, solo students can optionally view th
 ### Student Grid
 - Cards per student: name, online status, run status, check status, code/output/quiz preview
 - Click to expand to full student workspace view
-- "Away" badge when a connected student's window isn't focused, with a 🔔 button to nudge them; "🔔 Nudge Away (n)" in the grid header nudges every Away student at once. A nudge shows the student a banner and plays a chime, and while their window is unfocused flashes the tab title/favicon and (if they allowed it) shows an OS notification
+- One-line grid header: "Students (n)", ⛶ Fullscreen All, a ⋯ menu (🔔 Nudge Away (n), 🏅 Suggestions (n), ☑ Select, 📖 Reference) and the › collapse. A small dot on ⋯ means someone is Away or a badge suggestion is waiting
+- "Away" badge when a connected student's window isn't focused, with a 🔔 button to nudge them; "🔔 Nudge Away (n)" in the grid header's ⋯ menu nudges every Away student at once. A nudge shows the student a banner and plays a chime, and while their window is unfocused flashes the tab title/favicon and (if they allowed it) shows an OS notification
+- Live badges (tutor side): "🏅 Suggestions (n)" in the grid header's ⋯ menu opens the **Badge suggestions** panel above the teacher editor, grouped by student, with one-click Award / Dismiss, an "Announce" tick (on by default), "Award all" when several students earned the same badge, and the session's **Auto-award high-confidence badges** and **Sounds off** toggles. Each card shows a teacher-only "🏅 n" count with a dot while a suggestion is waiting (never shown to students or the presentation window). "☑ Select" (⋯ menu) picks several cards to award one badge to all of them at once
 
 ### Student Actions (per student)
 - Go Live / Stop Live — one-to-one keystroke streaming with selection highlight and activity indicators
 - Remote Reset — silently replace student's code with starter code, complete code, or a named intermediate stage
 - Rename and remove students
-- Nudge (🔔 in the modal header) — draw the student's attention back to the lesson
-- "Show on every task" reference (in the Reveal menu): first hint, all hints, or the solution opens automatically for that student on every task for the rest of the session
+- One-line modal header: the student's name then small status chips ("Ryan · AWAY · LIVE · 🏅 2"), ← → to switch student, **Support ▾** (Reveal and Set stage sections), ▶ Run on student, **More ▾** and ✕
+- Nudge (More menu) — draw the student's attention back to the lesson
+- Go Live for All and Focus (highlight or switch a tab on the student's screen) are in the More menu; Stop Live stays in the header while broadcasting
+- 🏅 Award badge (More menu) — a picker with a purple header and a light body, grouped into **Suggested by rules**, **Tutor-awarded** and **Admin badges** (full names, badges already held greyed). Click a badge to select it and see what it's for, then press **Award**; "Announce to class" is on by default. Revoke an awarded one silently; the header shows the student's teacher-only badge count
+- "Show on every task" reference (in the Support menu's Reveal section): first hint, all hints, or the solution opens automatically for that student on every task for the rest of the session
 - "📋 Pasted" badge when a student pastes a large chunk (40+ characters or 3+ lines) into their editor — flagged, not blocked; also counted in the session report
 - The output panel in the student modal opens automatically when the student's run produces output or asks for input
 - Approve or decline a student's request to share their workspace with the class, after previewing the exact snapshot
@@ -142,6 +150,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Name entry with automatic duplicate-suffix handling
 
 ### Lesson UI
+- One-row top bar that never wraps or changes height: title and LIVE, the 🎖️ moments button, ✋ Help, 📤 Share, the task dots (they shrink, then scroll sideways, with 12+ tasks) and the student's name as a small chip
 - Lesson title, level badge, and mode indicator (solo / live / sandbox)
 - Task progress dots — clickable for past tasks, locked for future tasks, current highlighted
 - Collapsible explainer panel with Markdown formatting, inline topic definitions (not on Scratch lessons — the topic library is disabled there), and Scratch block visualisation
@@ -152,6 +161,14 @@ After the same hint appears twice in a row, solo students can optionally view th
 ### Task Navigation
 - **Live mode**: teacher controls the current task; students cannot advance past it
 - **Solo mode**: free navigation; one task ahead unlocks after the check passes; previous tasks are viewable in read-only
+
+### Coding moments (live badges)
+- When the tutor awards a student a badge, a small card drops down top-centre, just under the top bar (emoji, title and blurb, with a flip and one shine sweep), for about 2.5 s, then docks into the compact **🎖️** moments button in the top bar (no count). Its popover lists their own badges and holds the speaker toggle. A subtle two-note chime plays; the speaker toggle mutes it on that device for the session, and the tutor's **Sounds off** silences it for the class
+- The card never takes focus or blocks the page around it, so typing carries on underneath; it is announced politely to screen readers, and `prefers-reduced-motion` gets a plain fade. Several awards at once queue one after another
+- Every classmate (and the presentation window, scaled up) sees a silent toast slide in at the bottom-left with a soft glow, "🎖️ Alex earned a badge: 🐛 Bug Hunter", for about 4 s, with the blurb on hover; a bulk award shows one toast, "🎖️ 12 students earned a badge: ⌨️ Keyboard Wizard". Not shown when the tutor unticked Announce, never shown to the recipient, and toasts beyond a short queue are dropped
+- A revoked badge disappears from the moments popover silently. Awards already made when the page loads are never replayed (they're just in the popover)
+- A **Badge Summary** task (see Task Types) shows the student's own moments and the class wall at the end of the lesson
+- No totals, ranks or comparisons are shown to students anywhere
 
 ### Personal Sandbox
 - Available after a check passes (live mode) or via the nav bar (solo mode)
@@ -191,6 +208,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Carry-through: bring code or filesystem state from a previous task as the starter
 - Filesystem: visual editor for starter and complete states, and a filesystem check builder
 - Checks: type-filtered list with run/submit mode; tested/untested flag per check
+- Badge hints (authoring metadata): toggle which live badges this task may also suggest (`badgeHints.suggest`, pattern badges only) or never suggest (`badgeHints.suppress`), with a read-only note of the badges the task's `taskActivity` pattern already triggers
 
 ### Scratch Tools
 - Starter/complete workspace tabs with isolated state
@@ -223,6 +241,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - **Session management**: see every live or waiting session left open across the platform (lesson, state, paused flag, student/online counts, how long it's been open) and close any of them remotely, for cases where a teacher left a session running without ending it
 - **Topic library**: create, edit, and delete topics with full Markdown description and syntax fields; type filters come from the lesson module registry
 - **Shared assets**: manage lesson-type-wide Firebase Storage files and Scratch default sprites, shared across every lesson of a given type
+- **Badges**: see every built-in live badge with its exact rule (rule-backed or tutor-only, auto-awardable), and add, edit, archive or restore manual-only badges that reach tutors' award pickers with no deploy; ids and emoji are checked for clashes on save, and archived badges still show wherever they were awarded
 - **Version footer**: the bottom of every Admin tab shows `LaunchPad vMAJOR.MINOR.BUILD · commit · built date` (BUILD rises on every merge to `main`), with a Copy button for bug reports; clicking the version opens "What's new" milestone release notes
 
 ---

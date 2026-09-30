@@ -133,9 +133,12 @@ describe('StudentModal on an activity task', () => {
     const four = screen.getByRole('switch', { name: 'Bits 4 column' })
     expect(four).toHaveAttribute('aria-checked', 'true')
     expect(four).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Go Live for All' })).not.toBeInTheDocument()
+    const more = screen.queryByRole('button', { name: /^More/ })
+    if (more) fireEvent.click(more)
+    expect(screen.queryByRole('button', { name: /Go Live for All/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '▶ Run on student' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Reveal' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Support/ }))
+    expect(screen.queryByText('Reveal')).not.toBeInTheDocument()
   })
 
   it('still lets the teacher stop a broadcast that is already running', () => {
@@ -185,7 +188,8 @@ describe('StudentModal on an activity task', () => {
       { value: 'starter', label: 'Start again' },
       { value: 'complete', label: 'Complete (show answers)' },
     ])
-    expect(screen.getByRole('button', { name: /Stage/ })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Support/ }))
+    expect(screen.getByText('Set stage')).toBeInTheDocument()
   })
 })
 
@@ -204,7 +208,9 @@ describe('Go Live restriction', () => {
       ],
     }
     render(<StudentModal {...modalProps({ lesson })} />)
-    expect(screen.queryByRole('button', { name: 'Go Live for All' })).not.toBeInTheDocument()
+    const more = screen.queryByRole('button', { name: /^More/ })
+    if (more) fireEvent.click(more)
+    expect(screen.queryByRole('button', { name: /Go Live for All/ })).not.toBeInTheDocument()
   })
 
   it('still offers Go Live for All on a code task', () => {
@@ -215,7 +221,8 @@ describe('Go Live restriction', () => {
       />
     )
     const header = screen.getByRole('dialog')
-    fireEvent.click(within(header).getByRole('button', { name: 'Go Live for All' }))
+    fireEvent.click(within(header).getByRole('button', { name: /^More/ }))
+    fireEvent.click(within(header).getByRole('button', { name: '📡 Go Live for All' }))
     expect(onGoLiveForAll).toHaveBeenCalled()
   })
 })

@@ -28,6 +28,7 @@ import TeacherReportModal from '../components/TeacherReportModal'
 import TeacherReportsPanel from '../components/TeacherReportsPanel'
 import CheckConditionsPanel from './teacher/CheckConditionsPanel'
 import TaskRatingPanel from './teacher/TaskRatingPanel'
+import BadgeSuggestionsPanel from './teacher/BadgeSuggestionsPanel'
 import TeacherEditorPanel from './teacher/TeacherEditorPanel'
 import { cloneFiles } from '../../shared/workspaceData'
 import {
@@ -62,6 +63,9 @@ import { getModuleDefinition } from '../../modules/definitions'
 import PaneFocusDropdown from '../components/student-modal/PaneFocusDropdown'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
 import { describeShareError } from '../sharedWorkspacePayload'
+import { useSandboxArchiveSnapshots } from '../hooks/useSandboxArchiveSnapshots'
+import { useBadgeAutoAward, useBadgeSuggestions } from '../hooks/useBadgeSuggestions'
+import { useBadgeCatalogue } from '../hooks/useBadgeCatalogue'
 
 function canRecordAdvanceOverride(task) {
   if (!task || task.taskType === 'information') return false
@@ -131,7 +135,16 @@ export default function TeacherView({ lessonId }) {
     setTeacherLiveReferenceForClass,
     pushTeacherPaneCommand,
     pushClassPaneCommand,
+    archiveSandboxStudentSnapshot,
+    readSessionArchive,
+    decideBadge,
+    revokeBadge,
+    setBadgeSettings,
   } = useSession(lessonId)
+
+  // While the class is in the teacher sandbox, each student's latest sandbox run is copied into
+  // the session archive for the report (the sandbox is no longer thrown away).
+  useSandboxArchiveSnapshots({ session, archiveSandboxStudentSnapshot })
 
   const [baseLesson, setBaseLesson] = useState(null)
   // The authored lesson (with any session override) is what the Edit Lesson modal edits and
@@ -143,6 +156,31 @@ export default function TeacherView({ lessonId }) {
   const lesson = useMemo(() => prepareClassroomLesson(authoredLesson), [authoredLesson])
   const [lessonLoading, setLessonLoading] = useState(true)
   const { topics } = useTopicLibrary(isComposedLesson(lesson) ? null : lesson?.type, !!lesson)
+  // Live badge suggestions, recomputed from the session (never stored), and the tutor's
+  // auto-award toggle. The suggestions panel and card counts read `badgeSuggestions`.
+  const badgeSuggestions = useBadgeSuggestions({ session, lesson, topics })
+  useBadgeAutoAward({
+    suggestions: badgeSuggestions.suggestions,
+    settings: session?.badgeSettings,
+    decideBadge,
+  })
+  // The Admin badge catalogue (manual-only badges), read once: the picker, cards, Badge Summary
+  // wall and report resolve catalogue badge ids through it.
+  const catalogueBadges = useBadgeCatalogue(!!user)
+  // The Badge Summary task's class wall, on the teacher's screen.
+  const teacherBadgeWall = useMemo(
+    () => ({
+      decisions: session?.badges ?? {},
+      students: session?.students ?? {},
+      variant: 'teacher',
+      catalogueBadges,
+    }),
+    [session?.badges, session?.students, catalogueBadges]
+  )
+  // The suggestions panel's open state lives here so the grid's 🏅 Suggestions button can open
+  // and focus it (bumping badgePanelFocus).
+  const [badgePanelOpen, setBadgePanelOpen] = useState(false)
+  const [badgePanelFocus, setBadgePanelFocus] = useState(0)
   const [lessonError, setLessonError] = useState(false)
   const [currentTaskId, setCurrentTaskId] = useState(1)
   // previewTaskId: non-null while the teacher is previewing a task locally without moving students
@@ -152,6 +190,26 @@ export default function TeacherView({ lessonId }) {
   const [showEditLessonModal, setShowEditLessonModal] = useState(false)
   const [lastReport, setLastReport] = useState(null)
   const [showReportsPanel, setShowReportsPanel] = useState(false)
+  // The teacher-sandbox archive for the in-progress report, read once each time the Reports
+  // panel opens during a session (null until it loads; the preview leaves the sandbox out).
+  const [liveReportArchive, setLiveReportArchive] = useState(null)
+  const liveReportOpen =
+    showReportsPanel && (session?.state === 'active' || session?.state === 'sandbox')
+  useEffect(() => {
+    if (!liveReportOpen) return undefined
+    let cancelled = false
+    setLiveReportArchive(null)
+    readSessionArchive()
+      .then((archive) => {
+        if (!cancelled) setLiveReportArchive(archive)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+    // Read once per opening; readSessionArchive changes identity every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveReportOpen])
   // The teacher's own read-only look at an approved share — same gallery students get,
   // opened from TeacherSessionControls' "Shared work" dropdown.
   const [openTeacherShare, setOpenTeacherShare] = useState(null)
@@ -391,8 +449,28 @@ export default function TeacherView({ lessonId }) {
     loadCurrentTaskContent(restoredTaskId)
   }
 
+  // The report's live-badge inputs besides the session: the suggestions still pending (counted
+  // in badgeSummary) and the Topic Library's titles.
+  function sessionReportInputs(sessionArchive = null) {
+    return {
+      session,
+      lesson,
+      sessionArchive,
+      pendingSuggestions: badgeSuggestions.suggestions,
+      topics,
+      catalogueBadges,
+    }
+  }
+
   async function handleEndSession(goHome) {
-    const report = session?.startedAt ? buildSessionReport({ session, lesson }) : null
+    // The teacher-sandbox archive is read before the report is built, and the report is saved
+    // before endSession wipes the live data. A failed archive read leaves the sandbox out rather
+    // than losing the report.
+    let report = null
+    if (session?.startedAt) {
+      const sessionArchive = await readSessionArchive({ endedAt: Date.now() }).catch(() => null)
+      report = buildSessionReport(sessionReportInputs(sessionArchive))
+    }
     if (report) await saveSessionReport(lessonId, report.sessionId, report)
     await endSession()
     presentationWindowRef.current?.close()
@@ -698,6 +776,22 @@ export default function TeacherView({ lessonId }) {
             </div>
           )}
 
+          {session &&
+            (session.state === 'active' ||
+              session.state === 'sandbox' ||
+              badgeSuggestions.suggestions.length > 0) && (
+              <BadgeSuggestionsPanel
+                suggestions={badgeSuggestions.suggestions}
+                students={students}
+                settings={session.badgeSettings ?? null}
+                onDecideBadge={decideBadge}
+                onSetBadgeSettings={setBadgeSettings}
+                open={badgePanelOpen}
+                onOpenChange={setBadgePanelOpen}
+                focusRequest={badgePanelFocus}
+              />
+            )}
+
           <TeacherEditorPanel
             lesson={editorLesson}
             task={task}
@@ -716,6 +810,7 @@ export default function TeacherView({ lessonId }) {
             teacherLiveReferenceVisibleToAll={session?.teacherLiveReferenceVisibleToAll}
             onToggleLiveReference={setTeacherLiveReferenceForClass}
             fillHeight={centreFillsHeight}
+            badgeWall={teacherBadgeWall}
           />
           {task && !isInformationTask && !isInSandbox && (
             <TaskRatingPanel
@@ -775,6 +870,11 @@ export default function TeacherView({ lessonId }) {
             onNudgeStudent={nudgeStudent}
             onNudgeAway={nudgeAwayStudents}
             onSetAutoReveal={setAutoRevealStage}
+            badgeSuggestions={badgeSuggestions}
+            onOpenBadgeSuggestions={() => setBadgePanelFocus((n) => n + 1)}
+            onDecideBadge={decideBadge}
+            onRevokeBadge={revokeBadge}
+            catalogueBadges={catalogueBadges}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed((v) => !v)}
           />
@@ -813,7 +913,7 @@ export default function TeacherView({ lessonId }) {
           lessonId={lessonId}
           liveReport={
             session?.state === 'active' || session?.state === 'sandbox'
-              ? buildSessionReport({ session, lesson })
+              ? buildSessionReport(sessionReportInputs(liveReportArchive))
               : null
           }
           onClose={() => setShowReportsPanel(false)}
@@ -837,7 +937,7 @@ export default function TeacherView({ lessonId }) {
           {teacherShareError}
           <button
             type="button"
-            className="btn-ghost"
+            className="btn-ghost-outline"
             style={s.teacherShareErrorDismiss}
             onClick={() => setTeacherShareError(null)}
           >

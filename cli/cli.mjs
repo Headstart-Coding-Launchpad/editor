@@ -213,7 +213,7 @@ await yargs(hideBin(process.argv))
 
       .command(
         'capabilities',
-        'List lesson modules, activities and check types from the registries (no Firebase)',
+        'List lesson modules, activities, check types, taskActivity patterns and badges from the registries (no Firebase)',
         {},
         cmd(async () => {
           const { buildCapabilities } = await loadCapabilities()

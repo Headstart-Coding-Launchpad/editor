@@ -70,6 +70,7 @@ describe.each([
       passed: true,
       suggestion: '',
       teacherAssisted: false,
+      error: false,
     })
     expect(localStorage.getItem(taskKey('t1'))).toBe(
       '{"code":"print(\\"start\\")","output":"hi\\n","runStatus":"success"}'
@@ -95,8 +96,34 @@ describe.each([
       passed: false,
       suggestion: 'Print hi',
       teacherAssisted: false,
+      error: false,
     })
     expect(h.result.current.checkSuggestion).toBe('Print hi')
+  })
+
+  it('runtime error: the attempt carries the error name read from the output', async () => {
+    mockModuleRun(type, (callbacks) => {
+      callbacks.onOutput("Line 1: NameError: name 'x' is not defined\n", 'stderr', 1)
+      return { status: 'error' }
+    })
+    const h = renderStudentCodeState({ lesson: lesson(), currentTaskId: 't1' })
+    await actAsync(() => h.result.current.handleRun())
+    expect(h.writers.logAttempt).toHaveBeenCalledWith(
+      ANON,
+      't1',
+      expect.objectContaining({ passed: false, error: 'NameError' })
+    )
+  })
+
+  it('runtime error without a readable name: the attempt carries error: true', async () => {
+    mockModuleRun(type, printing('something broke\n', 'error'))
+    const h = renderStudentCodeState({ lesson: lesson(), currentTaskId: 't1' })
+    await actAsync(() => h.result.current.handleRun())
+    expect(h.writers.logAttempt).toHaveBeenCalledWith(
+      ANON,
+      't1',
+      expect.objectContaining({ error: true })
+    )
   })
 
   it('runtime error: completion fails even if output would match', async () => {
@@ -309,6 +336,7 @@ describe('handleRunTests — python', () => {
       submission: 'print("start")',
       passed: false,
       suggestion: 'Test 2',
+      error: false,
     })
     expect(JSON.parse(localStorage.getItem(taskKey('t1')))).toEqual({
       code: 'print("start")',
@@ -360,6 +388,7 @@ describe('handleRun — html', () => {
       passed: false,
       suggestion: 'Add a heading',
       teacherAssisted: false,
+      error: false,
     })
     expect(JSON.parse(localStorage.getItem(fileKey('t1', 'index.html')))).toEqual({
       content: '<p>start</p>',

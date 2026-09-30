@@ -153,6 +153,7 @@ export function normalizeTasksForExport(tasks, { preserveIds = false } = {}) {
       // Authoring metadata is intentionally retained for all task formats.
       if (task.intent != null) exported.intent = task.intent
       if (task.taskActivity != null) exported.taskActivity = task.taskActivity
+      if (task.badgeHints != null) exported.badgeHints = task.badgeHints
       if (task.intentLastChangedAt != null) exported.intentLastChangedAt = task.intentLastChangedAt
       if (task.taskLastChangedAt != null) exported.taskLastChangedAt = task.taskLastChangedAt
       return exported

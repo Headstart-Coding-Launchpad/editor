@@ -194,7 +194,12 @@ export default function EditLessonModal({
         </div>
 
         <div style={s.footer}>
-          <button className="btn-ghost" style={s.footerBtn} onClick={onClose} disabled={saving}>
+          <button
+            className="btn-ghost-outline"
+            style={s.footerBtn}
+            onClick={onClose}
+            disabled={saving}
+          >
             Cancel
           </button>
           <button

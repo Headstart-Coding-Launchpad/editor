@@ -9,6 +9,8 @@ import hljsCss from 'highlight.js/lib/languages/css'
 import hljsJs from 'highlight.js/lib/languages/javascript'
 import { expandTopicLinks, parseTopicHref, useTopicLibrary } from './topicLibrary'
 import { TopicLibraryDialog, TopicReference } from './TopicLibraryView'
+import { useBadgeSignals } from './badgeSignalsContext'
+import { TOPIC_LIBRARY_OPEN_ID } from '../badges/signals.js'
 import { InlineScratchBlock, ScratchBlocks, looksLikeScratchBlocks } from './markdown/ScratchBlocks'
 import { parseMarkdownTables } from './markdown/tableParser'
 
@@ -136,6 +138,7 @@ export function InlineMarkdown({ content, topicType = null }) {
   const topicEnabled =
     String(content ?? '').includes('[[') || String(content ?? '').includes('#topic/')
   const { topics } = useTopicLibrary(topicType, topicEnabled)
+  const badgeSignals = useBadgeSignals()
   const [libraryOpen, setLibraryOpen] = React.useState(false)
   const [selectedTopicId, setSelectedTopicId] = React.useState('')
   const inlineComponents = {
@@ -152,6 +155,7 @@ export function InlineMarkdown({ content, topicType = null }) {
           onOpen={(id) => {
             setSelectedTopicId(id)
             setLibraryOpen(true)
+            badgeSignals?.reportTopicOpen?.(id, { via: 'card' })
           }}
         />
       )
@@ -509,6 +513,7 @@ export function MarkdownRenderer({
   const topicEnabled =
     showLibrary || String(content ?? '').includes('[[') || String(content ?? '').includes('#topic/')
   const { topics, loading } = useTopicLibrary(topicType, topicEnabled)
+  const badgeSignals = useBadgeSignals()
   const [libraryOpen, setLibraryOpen] = React.useState(false)
   const [selectedTopicId, setSelectedTopicId] = React.useState('')
   const blocks = parseMarkdownTables(topicEnabled ? expandTopicLinks(content, topics) : content)
@@ -526,6 +531,12 @@ export function MarkdownRenderer({
     setSelectedTopicId(id)
     setLibraryOpen(true)
     onTopicOpen?.(id)
+    badgeSignals?.reportTopicOpen?.(id, { via: 'link' })
+  }
+
+  function handleLibraryButton() {
+    setLibraryOpen(true)
+    badgeSignals?.reportTopicOpen?.(TOPIC_LIBRARY_OPEN_ID, { via: 'button' })
   }
 
   function handleDialogClose() {
@@ -583,7 +594,7 @@ export function MarkdownRenderer({
               {showLibrary && (
                 <button
                   type="button"
-                  onClick={() => setLibraryOpen(true)}
+                  onClick={handleLibraryButton}
                   style={{
                     float: 'right',
                     margin: '0 0 8px 10px',

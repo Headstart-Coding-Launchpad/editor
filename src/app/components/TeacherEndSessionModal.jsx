@@ -19,7 +19,7 @@ export default function TeacherEndSessionModal({ onClose, onEnd, onEndAndGoHome 
             can rate the lesson and leave notes afterwards.
           </p>
           <div className="teacher-end-modal__actions">
-            <button className="btn-ghost teacher-end-modal__btn" onClick={onClose}>
+            <button className="btn-ghost-outline teacher-end-modal__btn" onClick={onClose}>
               Cancel
             </button>
             <button className="btn-danger teacher-end-modal__btn" onClick={onEnd}>

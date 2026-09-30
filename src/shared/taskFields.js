@@ -36,7 +36,18 @@ export const COMMON_TASK_FIELDS = specs(
       description: 'Completion check (one or a list).',
     },
     { name: 'feedbackChecks', type: 'array', authored: true },
-    { name: 'taskActivity', type: 'string', authored: true, description: 'Teacher-only note.' },
+    {
+      name: 'taskActivity',
+      type: 'string',
+      authored: true,
+      description:
+        'Teacher-only Lesson Format Glossary type, e.g. "Code Task, Debug Code Task" (see taskActivity in capabilities).',
+    },
+    {
+      name: 'badgeHints',
+      type: 'object',
+      description: '{ suggest: [badgeId], suppress: [badgeId] } (docs/authoring/badges.md).',
+    },
     {
       name: 'intent',
       type: 'string',
@@ -59,14 +70,14 @@ export const TASK_TYPE_FIELDS = Object.freeze({
       {
         name: 'informationType',
         type: 'string',
-        values: ['standard', 'recap', 'introduction'],
+        values: ['standard', 'recap', 'introduction', 'badges'],
       },
       {
         name: 'explainer',
         type: 'string',
         required: true,
         authored: true,
-        description: 'Required unless informationType is introduction.',
+        description: 'Required unless informationType is introduction or badges.',
       },
       { name: 'leftContent', type: 'string', authored: true, description: 'Recap only.' },
     ],

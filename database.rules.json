@@ -70,6 +70,69 @@
           }
         },
 
+        // Live badges: the tutor's decisions, one per student per badge
+        // ({ status, source, reason, taskId, announce, bulkId, decidedAt, badge? }).
+        // Teacher/admin write is inherited from $lessonId; there is no student
+        // rule, so students cannot award (or revoke) badges. `badge` is the
+        // display snapshot ({ emoji, title, blurb }) of an Admin-catalogue badge,
+        // which students can't read from Firestore.
+        "badges": {
+          "$anonymousId": {
+            "$badgeId": {
+              ".validate": "newData.hasChildren(['status', 'source', 'decidedAt']) && newData.child('status').val().matches(/^(awarded|dismissed|revoked)$/) && newData.child('source').val().matches(/^(rule|auto|manual)$/)",
+              "badge": {
+                ".validate": "newData.hasChildren(['emoji', 'title']) && newData.child('emoji').isString() && newData.child('emoji').val().length <= 16 && newData.child('title').isString() && newData.child('title').val().length <= 40 && (!newData.child('blurb').exists() || (newData.child('blurb').isString() && newData.child('blurb').val().length <= 120))"
+              }
+            }
+          }
+        },
+
+        // The tutor's badge toggles ({ autoAward, soundsOff }). Teacher-only,
+        // inherited from $lessonId.
+
+        // Live badge signals, written by each student for their own id only.
+        // No code is stored here. The first-occurrence records can be written
+        // once (!data.exists()); the one exception is a topic the teacher sent
+        // that the student then opens themselves. Sandbox counters are per-run
+        // transactions on the student's own node.
+        "studentSignals": {
+          "$anonymousId": {
+            "topics": {
+              "$context": {
+                "$taskId": {
+                  "$topicId": {
+                    ".write": "auth != null && auth.uid === $anonymousId && $context.matches(/^(task|sandbox|personal)$/) && (!data.exists() || (data.child('source').val() === 'teacher' && newData.child('source').val() === 'student'))",
+                    ".validate": "newData.hasChildren(['openedAt', 'source']) && newData.child('source').val().matches(/^(student|teacher)$/)"
+                  }
+                }
+              }
+            },
+            "shortcuts": {
+              "$shortcutId": {
+                ".write": "auth != null && auth.uid === $anonymousId && !data.exists()",
+                ".validate": "newData.hasChildren(['firstUsedAt', 'context'])"
+              }
+            },
+            "firstEdits": {
+              "$taskId": {
+                ".write": "auth != null && auth.uid === $anonymousId && !data.exists()",
+                ".validate": "newData.child('elapsedMs').isNumber() && newData.child('elapsedMs').val() >= 0"
+              }
+            },
+            "completeShown": {
+              "$taskId": {
+                ".write": "auth != null && auth.uid === $anonymousId && !data.exists()",
+                ".validate": "newData.hasChildren(['at', 'via']) && newData.child('via').val().matches(/^(show|preview|teacherReset)$/)"
+              }
+            },
+            "sandbox": {
+              "$kind": {
+                ".write": "auth != null && auth.uid === $anonymousId && $kind.matches(/^(session|personal)$/)"
+              }
+            }
+          }
+        },
+
         // Approved workspace shares, index only: who shared, which task, when.
         // Deliberately small, because every client streams the whole session
         // node. The workspace content itself lives in sharedWorkspacePayloads
@@ -109,6 +172,18 @@
         "approved": {
           ".read": true
         }
+      }
+    },
+
+    // Teacher-sandbox archive for the session report: one entry per teacher
+    // sandbox visit, with the tutor's pushes and each student's last sandbox
+    // code. Kept outside "sessions" so it never streams to every client, and
+    // no client subscribes to it. Teacher/admin read and write only; students
+    // never write here (their snapshots are copied teacher-side).
+    "sessionArchive": {
+      "$lessonId": {
+        ".read": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+        ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')"
       }
     }
   }

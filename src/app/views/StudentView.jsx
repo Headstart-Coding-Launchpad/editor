@@ -38,6 +38,12 @@ import TaskProgressDots from '../components/TaskProgressDots'
 import TeacherMessageToast from '../components/TeacherMessageToast'
 import { NudgeBanner, NudgePermissionPrompt } from '../components/NudgeBanner'
 import useNudgeAlert from '../hooks/useNudgeAlert'
+import useBadgeCelebrations from '../hooks/useBadgeCelebrations'
+import BadgeCelebration from '../components/badges/BadgeCelebration'
+import BadgeClassToast from '../components/badges/BadgeClassToast'
+import CodingMomentsPill from '../components/badges/CodingMomentsPill'
+import { resolveBadge } from '../../badges/badgeDisplay'
+import { listMyMoments } from '../../badges/celebration'
 import LoadingScreen from '../components/LoadingScreen'
 import SessionEndedScreen from '../components/SessionEndedScreen'
 import StudentStatusBanners from '../components/StudentStatusBanners'
@@ -56,6 +62,7 @@ import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { decodeFileKey } from '../../shared/fileKeys'
 import { getModuleDefinition } from '../../modules/definitions'
 import { decodeSessionFiles } from '../../shared/workspaceData'
+import { BadgeSignalsContext } from '../../shared/badgeSignalsContext'
 
 export default function StudentView({
   lessonId: lessonIdProp,
@@ -91,6 +98,7 @@ export default function StudentView({
     unregisterJoining,
     writeStudentRun,
     logAttempt,
+    flagAttemptError,
     writeStudentAnswer,
     writeStudentCode,
     writeStudentArcadeDesign,
@@ -106,6 +114,13 @@ export default function StudentView({
     recordStudentCarryFallback,
     recordSupportStageReveal,
     recordStudentPaste,
+    recordTopicOpenSignal,
+    recordShortcutSignal,
+    recordFirstEditSignal,
+    recordCompleteShownSignal,
+    recordSandboxRunSignal,
+    flagSandboxRunError,
+    addSandboxTimeSignal,
     writeStudentPersonalSandbox,
     writeStudentPresence,
     setTaskId,
@@ -239,7 +254,27 @@ export default function StudentView({
     clearTeacherAnswerEdit,
     clearRemoteRun,
     removeTeacherHighlight,
+    flagAttemptError,
+    // Read through a ref inside useStudentBadgeSignals, so a new object each render is fine.
+    badgeSignalWriters: {
+      recordTopicOpenSignal,
+      recordShortcutSignal,
+      recordFirstEditSignal,
+      recordCompleteShownSignal,
+      recordSandboxRunSignal,
+      flagSandboxRunError,
+      addSandboxTimeSignal,
+    },
   })
+  // Live badge reporters for the shared editor, Blockly and Topic Library components below
+  // (they read BadgeSignalsContext). The reporters are stable, so this value is too.
+  const badgeSignalsContextValue = useMemo(
+    () => ({
+      reportUserEdit: cs.badgeSignals.reportUserEdit,
+      reportTopicOpen: cs.badgeSignals.reportTopicOpen,
+    }),
+    [cs.badgeSignals.reportUserEdit, cs.badgeSignals.reportTopicOpen]
+  )
 
   // Wire phase callbacks to latest code-state functions each render
   saveWorkRef.current = cs.saveCurrentWork
@@ -304,6 +339,46 @@ export default function StudentView({
     studentPushedAt: session?.students?.[identity?.anonymousId]?.nudgePushedAt ?? null,
     classPushedAt: session?.nudgeAwayPushedAt ?? null,
   })
+
+  // Live badges: the recipient's card and Coding moments pill, and the class toasts (the
+  // presentation window gets the toasts only). Awards stored before this load aren't replayed.
+  const badgeCelebrations = useBadgeCelebrations({
+    ready: !!session,
+    enabled: phase === 'lesson' || phase === 'sandbox',
+    decisions: session?.badges,
+    viewerId: teacherPresentation ? null : (identity?.anonymousId ?? null),
+    students: session?.students,
+    soundsOff: !!session?.badgeSettings?.soundsOff,
+  })
+  // The session-end screen reads the kept `badges` node, so it survives a reload of that screen.
+  const endScreenMoments = useMemo(
+    () =>
+      phase === 'ended' && !teacherPresentation
+        ? listMyMoments(session?.badges, identity?.anonymousId)
+        : [],
+    [phase, teacherPresentation, session?.badges, identity?.anonymousId]
+  )
+  // The Badge Summary task's wall in a live session: the student's own moments then the class,
+  // or the class only on the presentation window. Solo skips the task; a preview shows its note.
+  const badgeWall = useMemo(
+    () =>
+      phase === 'lesson' && !previewMode
+        ? {
+            decisions: session?.badges ?? {},
+            students: session?.students ?? {},
+            viewerId: teacherPresentation ? null : (identity?.anonymousId ?? null),
+            variant: teacherPresentation ? 'presentation' : 'student',
+          }
+        : null,
+    [
+      phase,
+      previewMode,
+      teacherPresentation,
+      session?.badges,
+      session?.students,
+      identity?.anonymousId,
+    ]
+  )
 
   function handleGoFullscreen() {
     document.documentElement.requestFullscreen?.().catch(() => {})
@@ -713,6 +788,7 @@ export default function StudentView({
         soloCompanion={soloCompanion}
         onTrySoloChallenge={soloCompanion ? handleTrySoloChallenge : undefined}
         onOpenPlayground={canOpenPlaygroundAtEnd ? handleOpenPlaygroundAtEnd : undefined}
+        moments={endScreenMoments}
       />
     )
   }
@@ -1012,6 +1088,7 @@ export default function StudentView({
 
   const taskProgressControl = !isSandbox ? (
     <TaskProgressDots
+      compact
       tasks={visibleTasks}
       currentTaskId={currentTaskId}
       viewingTaskId={viewingTaskId}
@@ -1049,8 +1126,10 @@ export default function StudentView({
         style={s.presentationBtn}
         disabled={currentIndex <= 0}
         onClick={() => handleSoloNavigate(flatTasks[currentIndex - 1]?.id)}
+        aria-label="Previous"
+        title="Previous task"
       >
-        Previous
+        ‹ Prev
       </button>
       <span style={s.presentationTaskLabel}>
         Task {currentIndex + 1} / {flatTasks.length}
@@ -1060,21 +1139,25 @@ export default function StudentView({
         style={s.presentationBtn}
         disabled={currentIndex >= flatTasks.length - 1}
         onClick={() => handleSoloNavigate(flatTasks[currentIndex + 1]?.id)}
+        aria-label="Next"
+        title="Next task"
       >
-        Next
+        Next ›
       </button>
       <button
         className={isTeacherLiveActive ? 'btn-danger' : 'btn-primary'}
         style={s.presentationBtn}
         onClick={handleToggleTeacherLive}
+        aria-label={isTeacherLiveActive ? 'Stop Live to Students' : 'Go Live to Students'}
+        title={isTeacherLiveActive ? 'Stop Live to Students' : 'Go Live to Students'}
       >
-        {isTeacherLiveActive ? 'Stop Live to Students' : 'Go Live to Students'}
+        {isTeacherLiveActive ? '■ Stop Live' : '📡 Go Live'}
       </button>
       <div style={s.presenterLayoutGroup} role="group" aria-label="Presentation layout">
         {[
-          { key: 'explainer', label: 'Explainer only' },
-          { key: 'both', label: 'Both' },
-          { key: 'code', label: 'Code only' },
+          { key: 'explainer', label: 'Explainer', full: 'Explainer only' },
+          { key: 'both', label: 'Both', full: 'Explainer and code' },
+          { key: 'code', label: 'Code', full: 'Code only' },
         ].map((opt) => (
           <button
             key={opt.key}
@@ -1085,6 +1168,7 @@ export default function StudentView({
               ...(presenterLayout === opt.key ? s.presenterLayoutBtnActive : {}),
             }}
             aria-pressed={presenterLayout === opt.key}
+            title={opt.full}
             onClick={() => setPresenterLayout(opt.key)}
           >
             {opt.label}
@@ -1094,6 +1178,14 @@ export default function StudentView({
     </div>
   ) : (
     <div style={s.topBarTaskControls}>
+      {(phase === 'lesson' || phase === 'sandbox') && (
+        <CodingMomentsPill
+          moments={badgeCelebrations.moments}
+          muted={badgeCelebrations.muted}
+          onMutedChange={badgeCelebrations.setMuted}
+          soundsOff={!!session?.badgeSettings?.soundsOff}
+        />
+      )}
       {canRequestHelp && (
         <button
           type="button"
@@ -1102,8 +1194,9 @@ export default function StudentView({
           onClick={handleNeedHelp}
           disabled={myNeedsHelp}
           title={myNeedsHelp ? 'Your teacher has been notified' : 'Ask your teacher for help'}
+          aria-label={myNeedsHelp ? 'Help requested' : 'Need Help'}
         >
-          {myNeedsHelp ? '✋ Help requested' : '✋ Need Help'}
+          {myNeedsHelp ? '✋ Help requested' : '✋ Help'}
         </button>
       )}
       {canShareWorkspace && (
@@ -1117,8 +1210,9 @@ export default function StudentView({
               ? 'Waiting for your teacher to check it — click to withdraw'
               : 'Offer your work to the class (your teacher approves it first)'
           }
+          aria-label={sharePending ? 'Waiting for teacher' : 'Share with class'}
         >
-          {sharePending ? '⏳ Waiting for teacher' : '📤 Share with class'}
+          {sharePending ? '⏳ Waiting' : '📤 Share'}
         </button>
       )}
       {canSeeSharedWork && (
@@ -1129,7 +1223,7 @@ export default function StudentView({
         />
       )}
       {shareError && (
-        <span style={s.shareError} role="alert">
+        <span style={s.shareError} role="alert" title={shareError}>
           {shareError}
         </span>
       )}
@@ -1173,7 +1267,7 @@ export default function StudentView({
 
   const transitionKey = `${phase}-${cs.inPersonalSandbox ? 'personal-sandbox' : (viewingTaskId ?? currentTaskId)}`
 
-  return (
+  const page = (
     <div style={{ ...s.page, background: isForcedTeacherLive ? '#dde0e5' : '#f5f5f5' }}>
       {isPaused && (
         <div style={s.pauseOverlay}>
@@ -1195,6 +1289,7 @@ export default function StudentView({
         isSandbox={isSandbox}
         isSolo={teacherPresentation ? undefined : isSolo}
         right={topBarRight}
+        singleRow
       />
       {!teacherPresentation && (
         <TeacherMessageToast
@@ -1202,6 +1297,29 @@ export default function StudentView({
           pushedAt={session?.students?.[identity?.anonymousId]?.teacherMessagePushedAt}
         />
       )}
+      {!teacherPresentation && (
+        <BadgeCelebration
+          award={badgeCelebrations.card}
+          badge={
+            badgeCelebrations.card
+              ? resolveBadge(badgeCelebrations.card.badgeId, [], badgeCelebrations.card.decision)
+              : null
+          }
+          onDone={badgeCelebrations.cardDone}
+        />
+      )}
+      <BadgeClassToast
+        toast={badgeCelebrations.toast}
+        badge={
+          badgeCelebrations.toast
+            ? resolveBadge(badgeCelebrations.toast.badgeId, [], {
+                badge: badgeCelebrations.toast.badge,
+              })
+            : null
+        }
+        presentation={teacherPresentation}
+        onDone={badgeCelebrations.toastDone}
+      />
       {nudgeBannerVisible && <NudgeBanner onDismiss={dismissNudge} />}
       {nudgeEnabled && <NudgePermissionPrompt />}
       {showTeacherEditConsent && (
@@ -1287,6 +1405,10 @@ export default function StudentView({
                 className="btn-primary"
                 style={{ fontSize: 13 }}
                 onClick={() => {
+                  cs.badgeSignals.reportTopicOpen(pendingTopicId, {
+                    source: 'teacher',
+                    via: 'teacher',
+                  })
                   setOpenTopicId(pendingTopicId)
                   setPendingTopicId(null)
                 }}
@@ -1356,6 +1478,10 @@ export default function StudentView({
             ? { ...s.body, overflow: 'hidden' }
             : s.body
         }
+        // Keyboard Wizard: listed shortcuts pressed on the lesson work area (the editor, Blockly
+        // or the Desktop surface; see workAreaSurfaceOf). Capture phase, so an editor keymap
+        // that handles the key can't hide it.
+        onKeyDownCapture={cs.badgeSignals.handleWorkAreaKeyDown}
       >
         {activeShare ? (
           <SharedWorkspaceViewer
@@ -1387,6 +1513,7 @@ export default function StudentView({
             isQuizTask={isQuizTask}
             isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
             isInformationTask={isInformationTask}
+            badgeWall={badgeWall}
             isActivityTask={isActivityTask}
             displayAnswer={displayAnswer}
             isViewingExplainerSlide={viewingExplainerSlide}
@@ -1440,6 +1567,12 @@ export default function StudentView({
       </div>
     </div>
   )
+
+  return (
+    <BadgeSignalsContext.Provider value={badgeSignalsContextValue}>
+      {page}
+    </BadgeSignalsContext.Provider>
+  )
 }
 
 const s = {
@@ -1460,13 +1593,14 @@ const s = {
   presentationControls: {
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
+    gap: 6,
+    flexWrap: 'nowrap',
     justifyContent: 'flex-end',
+    minWidth: 0,
   },
   presentationBtn: {
     fontSize: 13,
-    padding: '5px 12px',
+    padding: '5px 10px',
     whiteSpace: 'nowrap',
     flexShrink: 0,
   },
@@ -1494,27 +1628,36 @@ const s = {
     background: 'rgba(255,255,255,0.22)',
     borderColor: 'rgba(255,255,255,0.5)',
   },
+  // One row that never wraps (the top bar keeps a fixed height): the task dots shrink or scroll
+  // inside the space that's left, and every other control keeps its natural width.
   topBarTaskControls: {
     display: 'flex',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 12,
+    flexWrap: 'nowrap',
+    gap: 8,
     minWidth: 0,
     justifyContent: 'flex-end',
   },
   downloadCodeBtn: {
     fontSize: 13,
     padding: '5px 10px',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
   needHelpBtn: {
     fontSize: 13,
-    padding: '5px 12px',
+    padding: '5px 10px',
+    whiteSpace: 'nowrap',
     flexShrink: 0,
   },
   shareError: {
     fontSize: 12,
     color: 'var(--colour-danger)',
-    maxWidth: 260,
+    maxWidth: 180,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    flexShrink: 1,
   },
   pauseOverlay: {
     position: 'fixed',

@@ -32,6 +32,11 @@ isn't listed here, so add a row whenever you add a message.
 | `tasks must contain at least one task or group` | `tasks` is empty. | Add a task. |
 | `draft must be a boolean when provided` | `draft` is not `true` or `false`. | Use `draft: true` or remove it. |
 | `version must be a non-negative integer when provided` | `version` was hand-edited. | Remove `version` from source files; LaunchPad manages it. |
+| `badgeOptions must be an object when provided` | `badgeOptions` isn't a mapping. | Write it as `badgeOptions:` with option names under it ([badges.md](badges.md#badgeoptions)). |
+| `badgeOptions.… is not a badge option and is ignored` (warning) | A key under `badgeOptions` isn't one of `quizMasterThreshold`, `quizMasterMinQuizzes`, `persistenceMinFails` or `readyToCodeSeconds`. | Fix the spelling or remove it. |
+| `badgeOptions.… must be a number from 0 to 1` | `quizMasterThreshold` is outside 0–1 (it's a share, not a percentage). | Write `0.8`, not `80`. |
+| `badgeOptions.… must be a whole number of at least 1` | `quizMasterMinQuizzes` or `persistenceMinFails` is below 1 or not a whole number. | Use a whole number, 1 or more. |
+| `badgeOptions.… must be a positive number of seconds` | `readyToCodeSeconds` is 0, negative or not a number. | Use a number of seconds above 0. |
 
 ## Groups
 
@@ -53,6 +58,13 @@ isn't listed here, so add a row whenever you add a message.
 | `… intent must be a non-empty Markdown string while lesson draft is enabled` | Draft lessons need an `intent` on every real task. | Add `intent:` describing what the task is for. |
 | `… intent must be a Markdown string when provided` | `intent` isn't text. | Make it a string. |
 | `… taskActivity must be a string when provided` | `taskActivity` isn't text. | Make it a string. |
+| `Task … taskActivity "…" is not a recognised Lesson Format Glossary pattern` (warning) | `taskActivity` doesn't name a known format and pattern (`Code Task, Debug Code Task`, `Quiz: What Is the Error?`, plain `Information` …). Pattern-based badges ([badges.md](badges.md)) won't recognise the task. | Use a pattern from `lessons capabilities` → `taskActivity.patterns`, or the plain form (`Code Task`, `Quiz, Multiple Choice`). |
+| `Task … badgeHints must be an object with suggest and/or suppress lists` | `badgeHints` isn't a mapping. | Write `badgeHints:` with `suggest:` / `suppress:` lists under it ([badges.md](badges.md#badgehints)). |
+| `Task … badgeHints only takes suggest and suppress (found "…")` | `badgeHints` has another key. | Use only `suggest` and `suppress`. |
+| `Task … badgeHints.… must be a list of badge ids` | `suggest` or `suppress` isn't a list of strings. | Write `suggest: [bug_hunter]`. |
+| `Task … badgeHints.… names an unknown badge "…"` | The id isn't a built-in badge. | Use an id from `lessons capabilities` → `badges.badges`. |
+| `Task … badgeHints.suggest names "…", which a task's pattern can't trigger` | Only the pattern badges (`bug_hunter`, `code_builder`, `code_detective`, `challenge_solver`) can be added to a task; the others follow their own signals, and tutor-only badges are never suggested. | Remove the id from `suggest`. |
+| `Task … badgeHints.suppress names "…", a tutor-only badge that is never suggested` (warning) | Suppressing a tutor-only badge does nothing. | Remove the id from `suppress`. |
 | `… check must be an object or an array of objects when provided` | `check` is a string or number. | Write the check as a mapping, or a list of mappings. |
 | `… must be an array of objects when provided` | A list field (`options`, `pairs`, `blanks`, `lines`, `starterFiles`, `codeStages`, `tests`, `feedbackChecks`, …) holds non-objects. | Make each entry a mapping. |
 | `… … must be a string when provided` | A text field holds a list or number. | Quote the value. |
@@ -79,7 +91,7 @@ isn't listed here, so add a row whenever you add a message.
 
 | Message | Meaning | Fix |
 |---|---|---|
-| `Task … is an information task but has no explainer` | Information tasks are just their explainer. | Add `explainer:` Markdown. |
+| `Task … is an information task but has no explainer` | Information tasks are just their explainer (except `informationType: introduction` and `badges`). | Add `explainer:` Markdown. |
 | `Task … is a quiz but has fewer than 2 options` | Multiple-choice needs at least two options. | Add options. |
 | `Task … is a quiz but has an empty option text` | An option has no text. | Fill in or remove it. |
 | `Task … is a quiz but no correct answer has been selected` | No option is marked correct. | In YAML, set `answer:` to the correct option text; in JSON, set `check` to that option's id. |

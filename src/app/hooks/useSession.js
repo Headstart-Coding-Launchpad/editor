@@ -9,6 +9,7 @@ import {
   get,
   serverTimestamp,
   onDisconnect,
+  runTransaction,
 } from 'firebase/database'
 import { db } from '../../shared/firebase'
 import { encodeFileKey, decodeFileKey } from '../../shared/fileKeys'
@@ -20,6 +21,27 @@ import {
   isSnapshotWithinLimit,
   SHARE_PAYLOAD_MAX_BYTES,
 } from '../sharedWorkspacePayload'
+import {
+  applySandboxRun,
+  applySandboxRunError,
+  applySandboxTime,
+  COMPLETE_SHOWN_VIA,
+  SANDBOX_SIGNAL_KINDS,
+  signalKey,
+  SIGNAL_CONTEXTS,
+  storedError,
+  TOPIC_OPEN_SOURCES,
+} from '../../badges/signals'
+import {
+  archiveExplainerFields,
+  archiveWorkFields,
+  normaliseSessionArchive,
+} from '../../badges/sessionArchive'
+
+// Badge decisions (sessions/{lessonId}/badges/{anonymousId}/{badgeId}). A decision is written
+// once; revoking is the only later change (see decideBadge / revokeBadge).
+export const BADGE_DECISION_STATUSES = Object.freeze(['awarded', 'dismissed', 'revoked'])
+export const BADGE_DECISION_SOURCES = Object.freeze(['rule', 'auto', 'manual'])
 
 function encodeFileKeys(files) {
   return Object.fromEntries(Object.entries(files).map(([k, v]) => [encodeFileKey(k), v]))
@@ -56,6 +78,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
   const [connected, setConnected] = useState(null)
   const sessionRef = useRef(null)
   const attemptCacheRef = useRef({})
+  // This tab's first-occurrence guards (badge signals, pasteLog.firstAt), backing up the
+  // session snapshot, which lags a write by a round trip.
+  const signalSeenRef = useRef(new Set())
+  const pasteFirstSeenRef = useRef(new Set())
 
   useEffect(() => {
     if (!enabled) {
@@ -85,6 +111,12 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
     return () => unsub()
   }, [enabled, lessonId])
+
+  // A new session (createSession clears studentSignals) starts this tab's guards afresh.
+  useEffect(() => {
+    signalSeenRef.current = new Set()
+    pasteFirstSeenRef.current = new Set()
+  }, [lessonId, session?.createdAt])
 
   // ─── Teacher helpers ──────────────────────────────────────────────────────
 
@@ -116,10 +148,19 @@ export function useSession(lessonId, { enabled = true } = {}) {
       nudgeAwayPushedAt: null,
       videoCallLink: null,
       sharedWorkspaces: null,
+      sandboxEnteredAt: null,
+      // Live badges: decisions, the tutor's badge toggles and the students' signals are
+      // session-scoped, so a new session starts without them (set() replaces the node anyway;
+      // listed so the reset is explicit).
+      badges: null,
+      badgeSettings: null,
+      studentSignals: null,
     })
     // The payload node lives outside the session, so resetting the session
     // does not clear it on its own.
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
+    // Neither does the teacher-sandbox archive.
+    await archiveQuietly(remove(ref(db, sessionArchivePath())))
   }
 
   async function restartSession() {
@@ -138,9 +179,18 @@ export function useSession(lessonId, { enabled = true } = {}) {
   }
 
   async function endSession() {
+    const endedAt = Date.now()
+    // Ending from the teacher sandbox: the open archive visit ends when the session does.
+    if (session?.state === 'sandbox' && session?.sandboxEnteredAt != null) {
+      await archiveQuietly(
+        update(ref(db, archiveVisitPath(session.sandboxEnteredAt)), { exitedAt: endedAt })
+      )
+    }
+    // badges, badgeSettings and studentSignals are deliberately kept: a student who reloads the
+    // end screen still sees their badges (see docs/agents/runtime-model.md).
     await update(ref(db, `sessions/${lessonId}`), {
       state: 'ended',
-      endedAt: Date.now(),
+      endedAt,
       activeStudentView: null,
       teacherLive: null,
       sandboxCode: null,
@@ -149,6 +199,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       sandboxFilesUpdatedAt: null,
       sandboxExplainer: null,
       sandboxPreviousTaskId: null,
+      sandboxEnteredAt: null,
       lessonOverrideTasks: null,
       explainerShowComplete: false,
       students: null,
@@ -170,6 +221,13 @@ export function useSession(lessonId, { enabled = true } = {}) {
       .remove()
       .catch(() => {
         // Non-fatal: worst case a payload subtree outlives its session.
+      })
+    // The sandbox archive has been read into the saved report by now (handleEndSession builds
+    // the report before calling this), so it goes with the session.
+    onDisconnect(ref(db, sessionArchivePath()))
+      .remove()
+      .catch(() => {
+        // Non-fatal: worst case an archive outlives its session until the next createSession.
       })
   }
 
@@ -323,30 +381,52 @@ export function useSession(lessonId, { enabled = true } = {}) {
   }
 
   async function enterSandbox({ code = null, files = null, previousTaskId = null } = {}) {
+    const now = Date.now()
     const updates = { state: 'sandbox' }
     if (previousTaskId != null) updates.sandboxPreviousTaskId = previousTaskId
+    // Identifies this visit in the sandbox archive; kept if the class is already in the sandbox.
+    const alreadyIn = session?.state === 'sandbox' && session?.sandboxEnteredAt != null
+    const enteredAt = alreadyIn ? session.sandboxEnteredAt : now
+    updates.sandboxEnteredAt = enteredAt
+    let filesMap = null
     if (code != null) {
       updates.sandboxCode = code
-      updates.sandboxCodePushedAt = Date.now()
+      updates.sandboxCodePushedAt = now
     }
     if (files != null) {
-      const filesMap = Object.fromEntries(files.map((f) => [f.name, f.content]))
+      filesMap = Object.fromEntries(files.map((f) => [f.name, f.content]))
       updates.sandboxFiles = encodeFileKeys(filesMap)
-      updates.sandboxFilesUpdatedAt = Date.now()
+      updates.sandboxFilesUpdatedAt = now
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
+    if (!alreadyIn) {
+      // "After Task N" is the task the teacher left, not the one handleGoLiveSandbox may have
+      // jumped to for a composed lesson's module.
+      await archiveQuietly(
+        set(ref(db, archiveVisitPath(enteredAt)), {
+          enteredAt,
+          exitedAt: null,
+          previousTaskId: previousTaskId ?? session?.currentTaskId ?? null,
+          explainer: session?.sandboxExplainer ?? null,
+        })
+      )
+    }
+    const work = filesMap != null ? { files: filesMap } : code != null ? { code } : null
+    if (work) await appendArchivePush(enteredAt, archiveWorkFields(work), now)
   }
 
   async function exitSandbox() {
+    const now = Date.now()
     const updates = {
       state: 'active',
-      currentTaskStartedAt: Date.now(),
+      currentTaskStartedAt: now,
       sandboxCode: null,
       sandboxCodePushedAt: null,
       sandboxFiles: null,
       sandboxFilesUpdatedAt: null,
       sandboxExplainer: null,
       sandboxPreviousTaskId: null,
+      sandboxEnteredAt: null,
     }
     // Going live can silently move the class onto the sandbox module's first
     // task (see TeacherView.handleGoLiveSandbox) so the right editor/module
@@ -358,27 +438,174 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates.currentTaskId = session.sandboxPreviousTaskId
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
+    if (session?.sandboxEnteredAt != null) {
+      await archiveQuietly(
+        update(ref(db, archiveVisitPath(session.sandboxEnteredAt)), { exitedAt: now })
+      )
+    }
   }
 
   async function pushSandboxCode(code) {
+    const now = Date.now()
     await update(ref(db, `sessions/${lessonId}`), {
       sandboxCode: code,
-      sandboxCodePushedAt: Date.now(),
+      sandboxCodePushedAt: now,
     })
+    await appendArchivePush(currentSandboxVisitId(), archiveWorkFields({ code }), now)
   }
 
   async function pushSandboxFiles(files) {
+    const now = Date.now()
     const filesMap = Object.fromEntries(files.map((f) => [f.name, f.content]))
     await update(ref(db, `sessions/${lessonId}`), {
       sandboxFiles: encodeFileKeys(filesMap),
-      sandboxFilesUpdatedAt: Date.now(),
+      sandboxFilesUpdatedAt: now,
     })
+    await appendArchivePush(currentSandboxVisitId(), archiveWorkFields({ files: filesMap }), now)
   }
 
   async function pushSandboxExplainer(text) {
+    const now = Date.now()
     await update(ref(db, `sessions/${lessonId}`), {
       sandboxExplainer: text || null,
     })
+    const visitId = currentSandboxVisitId()
+    if (visitId == null) return
+    const fields = archiveExplainerFields(text || '')
+    await archiveQuietly(
+      update(ref(db, archiveVisitPath(visitId)), { explainer: fields.explainer || null })
+    )
+    await appendArchivePush(visitId, fields, now)
+  }
+
+  // ─── Teacher-sandbox archive ──────────────────────────────────────────────
+  //
+  // sessionArchive/{lessonId} sits outside the session node (like sharedWorkspacePayloads), so
+  // sandbox code never streams to every client, and nothing subscribes to it. Teacher read and
+  // write only. One visit per teacher sandbox, keyed by the visit's enteredAt
+  // (session.sandboxEnteredAt while it is open). Shapes and the 20 KB cap:
+  // src/badges/sessionArchive.js. Every write is best-effort: a failed archive write (e.g.
+  // database.rules.json not deployed yet) must never break the sandbox itself.
+
+  function sessionArchivePath() {
+    return `sessionArchive/${lessonId}`
+  }
+
+  function archiveVisitPath(visitId) {
+    return `${sessionArchivePath()}/visits/${visitId}`
+  }
+
+  function currentSandboxVisitId() {
+    return session?.state === 'sandbox' ? (session?.sandboxEnteredAt ?? null) : null
+  }
+
+  async function archiveQuietly(promise) {
+    try {
+      await promise
+    } catch (err) {
+      console.warn('[badges] could not write the sandbox archive', err)
+    }
+  }
+
+  async function appendArchivePush(visitId, fields, at = Date.now()) {
+    if (visitId == null || !fields || Object.keys(fields).length === 0) return
+    await archiveQuietly(
+      set(push(ref(db, `${archiveVisitPath(visitId)}/pushes`)), { at, ...fields })
+    )
+  }
+
+  // A student's latest sandbox work, copied teacher-side from their existing currentCode /
+  // currentFiles when a sandbox run updates it (see useSandboxArchiveSnapshots). `files` is a
+  // decoded filename → content map (or an array of { name, content }). Overwrites the student's
+  // previous snapshot in this visit.
+  async function archiveSandboxStudentSnapshot(anonymousId, { code, files, at = Date.now() } = {}) {
+    const visitId = currentSandboxVisitId()
+    if (visitId == null || !anonymousId) return
+    const fields = archiveWorkFields({ code, files })
+    if (Object.keys(fields).length === 0) return
+    await archiveQuietly(
+      set(ref(db, `${archiveVisitPath(visitId)}/studentSnapshots/${anonymousId}`), {
+        at,
+        ...fields,
+      })
+    )
+  }
+
+  // One-shot read for the session report; never subscribed. A visit still open, or left open by
+  // ending the session from the sandbox, takes `endedAt` as its exit time.
+  async function readSessionArchive({ endedAt } = {}) {
+    const snap = await get(ref(db, sessionArchivePath()))
+    return normaliseSessionArchive(snap.val(), {
+      endedAt: endedAt ?? session?.endedAt ?? Date.now(),
+    })
+  }
+
+  // ─── Live badges: decisions and settings (teacher) ─────────────────────────
+
+  function badgeDecisionPath(anonymousId, badgeId) {
+    return `sessions/${lessonId}/badges/${anonymousId}/${badgeId}`
+  }
+
+  /**
+   * Records the tutor's decision on one badge for one student as a write-if-absent transaction,
+   * so two teacher tabs (or an auto-award racing a dismissal) can never both write.
+   * `decision`: { status: 'awarded' | 'dismissed', source: 'rule' | 'auto' | 'manual', reason,
+   * taskId, announce, bulkId, badge }. `badge` is an Admin-catalogue badge's display snapshot
+   * ({ emoji, title, blurb }; see catalogueBadgeSnapshot), stored because students can't read
+   * Firestore `badgeCatalogue`. `replaceStatuses` lists existing statuses this decision may
+   * replace (e.g. ['dismissed', 'revoked'] for a manual award after a dismissal); by default any
+   * existing decision wins. Resolves to { committed, decision }: the decision now stored.
+   */
+  async function decideBadge(anonymousId, badgeId, decision = {}, { replaceStatuses = [] } = {}) {
+    if (!anonymousId || !badgeId) return { committed: false, decision: null }
+    const status = decision.status === 'dismissed' ? 'dismissed' : 'awarded'
+    const record = {
+      status,
+      source: BADGE_DECISION_SOURCES.includes(decision.source) ? decision.source : 'manual',
+      reason: decision.reason ?? null,
+      taskId: decision.taskId ?? null,
+      announce: status === 'awarded' && decision.announce !== false,
+      bulkId: decision.bulkId ?? null,
+      decidedAt: serverTimestamp(),
+    }
+    if (decision.badge?.emoji && decision.badge?.title) {
+      record.badge = {
+        emoji: decision.badge.emoji,
+        title: decision.badge.title,
+        blurb: decision.badge.blurb ?? '',
+      }
+    }
+    const result = await runTransaction(
+      ref(db, badgeDecisionPath(anonymousId, badgeId)),
+      (current) =>
+        current == null || replaceStatuses.includes(current.status) ? record : undefined
+    )
+    return { committed: !!result?.committed, decision: result?.snapshot?.val() ?? null }
+  }
+
+  /**
+   * Revokes an awarded badge: an explicit status change on the existing decision, silent to the
+   * student. A missing or not-awarded decision is left alone. Resolves to { committed, decision }.
+   */
+  async function revokeBadge(anonymousId, badgeId) {
+    if (!anonymousId || !badgeId) return { committed: false, decision: null }
+    const result = await runTransaction(
+      ref(db, badgeDecisionPath(anonymousId, badgeId)),
+      (current) =>
+        current?.status === 'awarded'
+          ? { ...current, status: 'revoked', revokedAt: serverTimestamp() }
+          : undefined
+    )
+    return { committed: !!result?.committed, decision: result?.snapshot?.val() ?? null }
+  }
+
+  /** The tutor's session badge toggles; only the keys given change. */
+  async function setBadgeSettings({ autoAward, soundsOff } = {}) {
+    const updates = {}
+    if (autoAward !== undefined) updates.autoAward = !!autoAward
+    if (soundsOff !== undefined) updates.soundsOff = !!soundsOff
+    if (Object.keys(updates).length === 0) return
+    await update(ref(db, `sessions/${lessonId}/badgeSettings`), updates)
   }
 
   // Sealed like the lesson document (src/shared/lessonSeal.js); applyLessonOverride unseals.
@@ -873,10 +1100,12 @@ export function useSession(lessonId, { enabled = true } = {}) {
   // existing entry instead of creating a new one, and no further attempts are logged
   // once a task has been passed. Safe without an atomic increment because only this
   // student's own tab ever writes to their own attemptLog entries.
+  // `error` marks a run that produced a real console error: true, or the error's name
+  // ('NameError') when the run handler could read it (see runErrorFor in src/badges/signals.js).
   async function logAttempt(
     anonymousId,
     taskId,
-    { submission, passed, suggestion, teacherAssisted } = {}
+    { submission, passed, suggestion, teacherAssisted, error } = {}
   ) {
     const cacheKey = `${anonymousId}:${taskId}`
     const cached = attemptCacheRef.current[cacheKey]
@@ -894,6 +1123,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
         updates.passedAt = serverTimestamp()
       }
       if (teacherAssisted) updates.teacherAssisted = true
+      if (storedError(error)) updates.error = storedError(error)
       await update(ref(db, `${basePath}/${cached.key}`), updates)
       attemptCacheRef.current[cacheKey] = {
         ...cached,
@@ -915,6 +1145,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       passed,
       suggestion: suggestion || null,
       teacherAssisted: teacherAssisted ? true : null,
+      error: storedError(error),
       attemptNumber,
       retries: 0,
       loggedAt: serverTimestamp(),
@@ -927,6 +1158,20 @@ export function useSession(lessonId, { enabled = true } = {}) {
       retries: 0,
       passed,
     }
+  }
+
+  // Marks this tab's latest logged attempt on a task as having errored, for an error reported
+  // after the attempt was logged (Arcade: the game iframe reports its error after Run, once the
+  // code checks have already been logged). No-op when this tab has logged no attempt there.
+  async function flagAttemptError(anonymousId, taskId, error = true) {
+    const cached = attemptCacheRef.current[`${anonymousId}:${taskId}`]
+    if (!cached?.key || !storedError(error)) return
+    await update(
+      ref(db, `sessions/${lessonId}/attemptLog/${anonymousId}/${taskId}/${cached.key}`),
+      {
+        error: storedError(error),
+      }
+    )
   }
 
   async function writeStudentAnswer(anonymousId, answer) {
@@ -1060,14 +1305,144 @@ export function useSession(lessonId, { enabled = true } = {}) {
   // A large paste into this student's editor (see handleEditorPaste in
   // useStudentCodeState). Lives on the student's own node so students can write
   // it; per task, so the report can say where it happened.
+  // `firstAt` (server time, set once per task) orders the first paste against a pass for the
+  // badge guards; `lastAt` keeps being overwritten.
   async function recordStudentPaste(anonymousId, taskId, { chars = 0 } = {}) {
     if (!anonymousId || taskId == null) return
     const prev = session?.students?.[anonymousId]?.pasteLog?.[taskId]
+    const firstKey = `${anonymousId}:${taskId}`
+    const isFirst = !prev?.firstAt && !pasteFirstSeenRef.current.has(firstKey)
+    pasteFirstSeenRef.current.add(firstKey)
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}/pasteLog/${taskId}`), {
       count: (prev?.count ?? 0) + 1,
       chars: (prev?.chars ?? 0) + chars,
       lastAt: Date.now(),
+      ...(isFirst ? { firstAt: serverTimestamp() } : {}),
     })
+  }
+
+  // ─── Live badges: student signals ─────────────────────────────────────────
+  //
+  // sessions/{lessonId}/studentSignals/{anonymousId}, written by the student's own client only
+  // (see useStudentBadgeSignals for the gating: never the presentation window, Builder preview or
+  // solo). No code is stored here. The first-occurrence writes check the session snapshot and a
+  // this-tab set before writing, and the rules refuse a second write (!data.exists()), so each is
+  // written at most once; a refused write is expected and swallowed. Shapes and the mapping to
+  // badge timeline events: docs/agents/runtime-model.md, "Badge data".
+
+  function signalsPath(anonymousId) {
+    return `sessions/${lessonId}/studentSignals/${anonymousId}`
+  }
+
+  function mySignals(anonymousId) {
+    return session?.studentSignals?.[anonymousId] ?? null
+  }
+
+  // Writes `value` at `sessions/{lessonId}/studentSignals/{anonymousId}/{subPath}` unless this tab
+  // or the snapshot has already seen it. Resolves to true when a write was sent.
+  async function writeSignalOnce(anonymousId, subPath, value, { existing } = {}) {
+    const seenKey = `${anonymousId}/${subPath}`
+    if (existing || signalSeenRef.current.has(seenKey)) return false
+    signalSeenRef.current.add(seenKey)
+    try {
+      await set(ref(db, `${signalsPath(anonymousId)}/${subPath}`), value)
+      return true
+    } catch {
+      // Already written by another tab (the rules allow the first write only).
+      return false
+    }
+  }
+
+  /**
+   * The student opened a Topic Library topic, or accepted one the teacher sent (`source:
+   * 'teacher'`). First per context, task and topic, except that the student opening a topic
+   * the teacher sent still records it as theirs. `via`: 'button' | 'link' | 'card' | 'list' |
+   * 'related' | 'teacher'.
+   */
+  async function recordTopicOpenSignal(
+    anonymousId,
+    { context = 'task', taskId = null, topicId, source = 'student', via = null } = {}
+  ) {
+    if (!anonymousId || !topicId || !SIGNAL_CONTEXTS.includes(context)) return false
+    const safeSource = TOPIC_OPEN_SOURCES.includes(source) ? source : 'student'
+    const subPath = `topics/${context}/${signalKey(taskId)}/${signalKey(topicId)}`
+    const existing =
+      mySignals(anonymousId)?.topics?.[context]?.[signalKey(taskId)]?.[signalKey(topicId)]
+    const upgrade = existing?.source === 'teacher' && safeSource === 'student'
+    if (upgrade) signalSeenRef.current.delete(`${anonymousId}/${subPath}`)
+    return writeSignalOnce(
+      anonymousId,
+      subPath,
+      { openedAt: serverTimestamp(), source: safeSource, via: via ?? null },
+      { existing: existing && !upgrade }
+    )
+  }
+
+  /** The first use of a listed Keyboard Wizard shortcut (src/badges/shortcuts.js). */
+  async function recordShortcutSignal(anonymousId, shortcutId, { context = 'task', taskId } = {}) {
+    if (!anonymousId || !shortcutId || !SIGNAL_CONTEXTS.includes(context)) return false
+    return writeSignalOnce(
+      anonymousId,
+      `shortcuts/${signalKey(shortcutId)}`,
+      { firstUsedAt: serverTimestamp(), context, taskId: taskId ?? null },
+      { existing: mySignals(anonymousId)?.shortcuts?.[signalKey(shortcutId)] }
+    )
+  }
+
+  /** The student's first real edit on a task, `elapsedMs` timed on their own device. */
+  async function recordFirstEditSignal(anonymousId, taskId, elapsedMs) {
+    if (!anonymousId || taskId == null || !Number.isFinite(elapsedMs)) return false
+    return writeSignalOnce(
+      anonymousId,
+      `firstEdits/${signalKey(taskId)}`,
+      { elapsedMs: Math.max(0, Math.round(elapsedMs)), at: serverTimestamp() },
+      { existing: mySignals(anonymousId)?.firstEdits?.[signalKey(taskId)] }
+    )
+  }
+
+  /** Complete code was shown ('show'), previewed ('preview') or reset to by the teacher. */
+  async function recordCompleteShownSignal(anonymousId, taskId, via = 'show') {
+    if (!anonymousId || taskId == null) return false
+    return writeSignalOnce(
+      anonymousId,
+      `completeShown/${signalKey(taskId)}`,
+      { at: serverTimestamp(), via: COMPLETE_SHOWN_VIA.includes(via) ? via : 'show' },
+      { existing: mySignals(anonymousId)?.completeShown?.[signalKey(taskId)] }
+    )
+  }
+
+  // The per-run sandbox counters are transactions on the student's own node, so two quick runs
+  // (or a run and a time flush) never lose an update.
+  async function updateSandboxCounters(anonymousId, kind, apply) {
+    if (!anonymousId || !SANDBOX_SIGNAL_KINDS.includes(kind)) return
+    try {
+      await runTransaction(ref(db, `${signalsPath(anonymousId)}/sandbox/${kind}`), apply)
+    } catch (err) {
+      console.warn('[badges] could not record sandbox activity', err)
+    }
+  }
+
+  /**
+   * One run in a sandbox (`kind`: 'session' for the teacher's sandbox, 'personal'): bumps `runs`
+   * (and `errorRuns` / `fixes`) and appends `{ at, error, submissionHash }` to `runsLog` (last 20).
+   */
+  async function recordSandboxRunSignal(anonymousId, kind, { error = false, submissionHash } = {}) {
+    await updateSandboxCounters(anonymousId, kind, (current) =>
+      applySandboxRun(current, { at: serverTimestamp(), error, submissionHash })
+    )
+  }
+
+  /** The latest sandbox run turned out to have errored (Arcade reports its error late). */
+  async function flagSandboxRunError(anonymousId, kind, error = true) {
+    await updateSandboxCounters(anonymousId, kind, (current) =>
+      applySandboxRunError(current, error)
+    )
+  }
+
+  /** Adds time spent in a sandbox (flushed on leaving it, or when the tab is hidden). */
+  async function addSandboxTimeSignal(anonymousId, kind, ms) {
+    if (!(ms > 0)) return
+    await updateSandboxCounters(anonymousId, kind, (current) => applySandboxTime(current, ms))
   }
 
   // Teacher-authored, task-scoped rating captured live during the session (see
@@ -1240,6 +1615,12 @@ export function useSession(lessonId, { enabled = true } = {}) {
     clearTeacherPaneCommand,
     pushClassPaneCommand,
     clearClassPaneCommand,
+    // teacher: live badges and the sandbox archive
+    decideBadge,
+    revokeBadge,
+    setBadgeSettings,
+    archiveSandboxStudentSnapshot,
+    readSessionArchive,
     // student
     registerPresence,
     joinSession,
@@ -1247,6 +1628,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     unregisterJoining,
     writeStudentRun,
     logAttempt,
+    flagAttemptError,
     writeStudentAnswer,
     writeStudentCode,
     writeStudentArcadeDesign,
@@ -1262,6 +1644,14 @@ export function useSession(lessonId, { enabled = true } = {}) {
     recordStudentCarryFallback,
     recordSupportStageReveal,
     recordStudentPaste,
+    // student: live badge signals
+    recordTopicOpenSignal,
+    recordShortcutSignal,
+    recordFirstEditSignal,
+    recordCompleteShownSignal,
+    recordSandboxRunSignal,
+    flagSandboxRunError,
+    addSandboxTimeSignal,
     setTaskRating,
     writeStudentPersonalSandbox,
     setTeacherLiveReferenceForStudent,

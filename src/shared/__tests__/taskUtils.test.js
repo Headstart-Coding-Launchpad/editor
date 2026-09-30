@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   flattenTasks,
   filterTasksByMode,
+  getEffectiveTaskMode,
+  isBadgeSummaryTask,
   getEstimatedMinutes,
   getTaskPriority,
   canTaskAllowSharing,
@@ -411,6 +413,18 @@ describe('filterTasksByMode', () => {
   it('includes solo-only tasks in solo mode only', () => {
     expect(filterTasksByMode([soloOnly], 'solo')).toEqual([soloOnly])
     expect(filterTasksByMode([soloOnly], 'live')).toEqual([])
+  })
+
+  it('skips a Badge Summary task in solo, as if it were live-only', () => {
+    const badges = { id: 9, title: 'Moments', taskType: 'information', informationType: 'badges' }
+    const grouped = { id: 'g', type: 'group', title: 'Wrap up', subtasks: [both, badges] }
+    expect(filterTasksByMode([both, badges], 'live')).toEqual([both, badges])
+    expect(filterTasksByMode([both, badges], 'solo')).toEqual([both])
+    expect(filterTasksByMode([grouped], 'solo')[0].subtasks).toEqual([both])
+    expect(filterTasksByMode([{ ...badges, taskMode: 'solo' }], 'solo')).toEqual([])
+    expect(getEffectiveTaskMode(badges)).toBe('live')
+    expect(isBadgeSummaryTask(badges)).toBe(true)
+    expect(isBadgeSummaryTask({ ...badges, taskType: 'code' })).toBe(false)
   })
 
   it('filters a mixed task list correctly for live mode', () => {

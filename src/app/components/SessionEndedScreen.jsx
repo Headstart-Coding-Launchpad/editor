@@ -1,4 +1,5 @@
 import React from 'react'
+import BadgeStickerSheet from './badges/BadgeStickerSheet'
 
 export default function SessionEndedScreen({
   savedCodeTaskCount = 0,
@@ -8,6 +9,7 @@ export default function SessionEndedScreen({
   soloCompanion,
   onTrySoloChallenge,
   onOpenPlayground,
+  moments = [],
 }) {
   return (
     <div style={s.centreScreen}>
@@ -15,6 +17,14 @@ export default function SessionEndedScreen({
       <p style={{ color: 'var(--colour-text)', fontFamily: 'var(--font-body)', marginBottom: 8 }}>
         Great work today! Your progress has been saved in this browser.
       </p>
+      {moments.length > 0 && (
+        <section style={s.moments} aria-label="Your coding moments">
+          <h3 style={s.momentsTitle}>
+            <span aria-hidden="true">🎖️</span> Your coding moments
+          </h3>
+          <BadgeStickerSheet moments={moments} animate />
+        </section>
+      )}
       {savedCodeTaskCount > 0 && (
         <div style={s.backupNotice}>
           <strong>Saved only on this device.</strong> Browser data can be cleared or lost when you
@@ -76,6 +86,7 @@ const s = {
     gap: 16,
     padding: 32,
     textAlign: 'center',
+    overflowY: 'auto',
   },
   title: {
     fontFamily: 'var(--font-title)',
@@ -96,6 +107,19 @@ const s = {
     fontFamily: 'var(--font-body)',
     fontSize: '0.9rem',
     lineHeight: 1.5,
+  },
+  moments: {
+    width: 'min(560px, 100%)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+  },
+  momentsTitle: {
+    margin: 0,
+    fontFamily: 'var(--font-title)',
+    fontWeight: 700,
+    fontSize: '1rem',
+    color: 'var(--colour-primary)',
   },
   downloadButton: { alignSelf: 'center', padding: '10px 20px', fontSize: 14 },
   secondaryButton: { padding: '12px 32px', fontSize: 15 },

@@ -70,6 +70,27 @@ describe('platform feedback', () => {
   })
 })
 
+describe('badge catalogue', () => {
+  const badge = { emoji: '🌟', title: 'Star Helper', blurb: 'Helped out.', archived: false }
+
+  it('lets teachers and admins read, and nobody else', async () => {
+    await assertFails(doc(as.anonymous, 'badgeCatalogue/star_helper').get())
+    await assertFails(doc(as.student, 'badgeCatalogue/star_helper').get())
+    await assertSucceeds(doc(as.teacher, 'badgeCatalogue/star_helper').get())
+    await assertSucceeds(doc(as.admin, 'badgeCatalogue/star_helper').get())
+    await assertSucceeds(as.teacher.firestore().collection('badgeCatalogue').get())
+  })
+
+  it('lets only admins write', async () => {
+    await assertFails(doc(as.student, 'badgeCatalogue/star_helper').set(badge))
+    await assertFails(doc(as.teacher, 'badgeCatalogue/star_helper').set(badge))
+    await assertSucceeds(doc(as.admin, 'badgeCatalogue/star_helper').set(badge))
+    await assertSucceeds(
+      doc(as.admin, 'badgeCatalogue/star_helper').set({ archived: true }, { merge: true })
+    )
+  })
+})
+
 describe('everything else', () => {
   it('denies reads and writes to collections without a rule', async () => {
     await assertFails(doc(as.admin, 'unlisted/doc-1').get())

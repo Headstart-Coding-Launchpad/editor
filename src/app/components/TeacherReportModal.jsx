@@ -1,14 +1,20 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { anonymizeSessionReport, reportToYamlText } from '../../shared/lessonReport'
 import { FeedbackFields, StarRatingDisplay } from './StarRatingFeedbackFields'
-
-function formatDuration(ms) {
-  if (ms == null) return '—'
-  const totalSeconds = Math.round(ms / 1000)
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return minutes === 0 ? `${seconds}s` : `${minutes}m ${seconds}s`
-}
+import {
+  CodingMomentsSection,
+  QuizGroupsSection,
+  StudentBadgeDetails,
+  TeacherSandboxSection,
+} from './ReportBadgeSections'
+import {
+  formatErrorStudents,
+  formatFirstRealPass,
+  formatReportDuration as formatDuration,
+  formatTimeToFirstEdit,
+  formatTopicOpens,
+  studentTaskSignalLabels,
+} from '../reportBadgeFormat'
 
 function renderSubmission(submission) {
   if (submission == null) return '(none)'
@@ -164,6 +170,9 @@ function StudentTaskRow({ task }) {
             📋 Pasted ×{task.pastes.count} ({task.pastes.chars} chars)
           </span>
         )}
+        {studentTaskSignalLabels(task).length > 0 && (
+          <span style={s.attemptsCount}>{studentTaskSignalLabels(task).join(' · ')}</span>
+        )}
         {task.override && <span style={s.overrideNote}>{formatOverrideDetail(task)}</span>}
         {task.distinctAttempts.length > 0 && (
           <span style={s.expandArrow}>{expanded ? '▾' : '▸'}</span>
@@ -198,6 +207,15 @@ function StudentSection({ student }) {
       <button style={s.studentHeader} onClick={() => setExpanded((v) => !v)}>
         <span style={s.expandArrow}>{expanded ? '▾' : '▸'}</span>
         <span style={s.studentName}>{student.studentLabel}</span>
+        {student.badges?.length > 0 && (
+          <span
+            style={s.studentMoments}
+            title={student.badges.map((b) => b.title).join(', ')}
+            aria-label={`Coding moments: ${student.badges.map((b) => b.title).join(', ')}`}
+          >
+            {student.badges.map((b) => b.emoji).join(' ')}
+          </span>
+        )}
         <span style={s.studentSummary}>
           {completedCount}/{student.tasks.length} tasks completed
           {referenceCount > 0 &&
@@ -206,6 +224,7 @@ function StudentSection({ student }) {
       </button>
       {expanded && (
         <div style={s.studentBody}>
+          <StudentBadgeDetails student={student} />
           {student.tasks.map((task) => (
             <StudentTaskRow key={task.taskId} task={task} />
           ))}
@@ -329,68 +348,84 @@ export default function TeacherReportModal({ report, onClose, onSaveFeedback }) 
             </section>
           ) : null}
 
+          <CodingMomentsSection report={displayReport} />
+
+          <TeacherSandboxSection report={displayReport} />
+
           <section>
             <h3 style={s.sectionTitle}>Task Summary</h3>
-            <table style={s.table}>
-              <thead>
-                <tr>
-                  {[
-                    'Task',
-                    'Completed',
-                    'Avg Attempts',
-                    'Avg Time',
-                    'Common Failures',
-                    'References',
-                    'Pasted',
-                    'Teacher Rating',
-                  ].map((h) => (
-                    <th key={h} style={s.th}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {displayReport.taskSummary.map((task) => (
-                  <tr key={task.taskId}>
-                    <td style={s.td}>
-                      <div style={s.summaryTaskTitle}>
-                        <span>{task.title}</span>
-                        {task.priority === 'optional' && (
-                          <span style={s.priorityBadge}>optional</span>
-                        )}
-                      </div>
-                    </td>
-                    <td style={s.td}>{formatSummaryCompletion(task)}</td>
-                    <td style={s.td}>{task.avgAttempts ?? '-'}</td>
-                    <td style={s.td}>{formatDuration(task.avgTimeOnTaskMs)}</td>
-                    <td style={s.td}>{formatSummaryFailures(task)}</td>
-                    <td style={s.td}>{formatSummaryReferences(task)}</td>
-                    <td style={s.td}>{formatSummaryPastes(task)}</td>
-                    <td style={s.td}>
-                      {task.teacherRating ? (
-                        <div style={s.teacherRatingCell}>
-                          <StarRatingDisplay value={task.teacherRating.rating} size="small" />
-                          {task.teacherRating.whatWorkedWell && (
-                            <div style={s.teacherRatingNote}>
-                              👍 {task.teacherRating.whatWorkedWell}
-                            </div>
-                          )}
-                          {task.teacherRating.whatDidntWork && (
-                            <div style={s.teacherRatingNote}>
-                              👎 {task.teacherRating.whatDidntWork}
-                            </div>
+            <div style={s.tableScroll}>
+              <table style={s.table}>
+                <thead>
+                  <tr>
+                    {[
+                      'Task',
+                      'Completed',
+                      'Avg Attempts',
+                      'Avg Time',
+                      'Common Failures',
+                      'References',
+                      'Pasted',
+                      'First Edit',
+                      'Console Errors',
+                      'Topic Library',
+                      'First Real Pass',
+                      'Teacher Rating',
+                    ].map((h) => (
+                      <th key={h} style={s.th}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayReport.taskSummary.map((task) => (
+                    <tr key={task.taskId}>
+                      <td style={s.td}>
+                        <div style={s.summaryTaskTitle}>
+                          <span>{task.title}</span>
+                          {task.priority === 'optional' && (
+                            <span style={s.priorityBadge}>optional</span>
                           )}
                         </div>
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </td>
+                      <td style={s.td}>{formatSummaryCompletion(task)}</td>
+                      <td style={s.td}>{task.avgAttempts ?? '-'}</td>
+                      <td style={s.td}>{formatDuration(task.avgTimeOnTaskMs)}</td>
+                      <td style={s.td}>{formatSummaryFailures(task)}</td>
+                      <td style={s.td}>{formatSummaryReferences(task)}</td>
+                      <td style={s.td}>{formatSummaryPastes(task)}</td>
+                      <td style={s.td}>{formatTimeToFirstEdit(task)}</td>
+                      <td style={s.td}>{formatErrorStudents(task)}</td>
+                      <td style={s.td}>{formatTopicOpens(task)}</td>
+                      <td style={s.td}>{formatFirstRealPass(task)}</td>
+                      <td style={s.td}>
+                        {task.teacherRating ? (
+                          <div style={s.teacherRatingCell}>
+                            <StarRatingDisplay value={task.teacherRating.rating} size="small" />
+                            {task.teacherRating.whatWorkedWell && (
+                              <div style={s.teacherRatingNote}>
+                                👍 {task.teacherRating.whatWorkedWell}
+                              </div>
+                            )}
+                            {task.teacherRating.whatDidntWork && (
+                              <div style={s.teacherRatingNote}>
+                                👎 {task.teacherRating.whatDidntWork}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
+
+          <QuizGroupsSection report={displayReport} />
 
           <section>
             <h3 style={s.sectionTitle}>Students</h3>
@@ -450,6 +485,7 @@ const s = {
     fontSize: '0.95rem',
     margin: '0 0 10px',
   },
+  tableScroll: { overflowX: 'auto' },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
@@ -542,6 +578,7 @@ const s = {
     fontSize: '0.9rem',
     color: 'var(--colour-text)',
   },
+  studentMoments: { fontSize: '0.95rem', letterSpacing: 2 },
   studentSummary: {
     fontFamily: 'var(--font-body)',
     fontSize: '0.8rem',

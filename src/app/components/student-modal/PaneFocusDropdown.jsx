@@ -14,17 +14,13 @@ export function getPaneOptionsForLessonType(lessonType) {
   return [INSTRUCTIONS_PANE, ...(getModuleDefinition(lessonType)?.capabilities.focusPanes ?? [])]
 }
 
-// label/buttonStyle let TeacherView reuse this for the whole-class version with its own
-// wording, while StudentModal uses the defaults for the per-student version.
-export default function PaneFocusDropdown({
-  lessonType,
-  onHighlight,
-  onForce,
-  label = 'Focus',
-  buttonStyle,
-}) {
+// The checkboxes plus Highlight / Switch buttons. StudentModal shows them as the Focus section of
+// its More menu; PaneFocusDropdown wraps them in their own menu (TeacherView's whole-class
+// version). `onDone` runs after either action, to close whichever menu holds them.
+export function PaneFocusControls({ lessonType, onHighlight, onForce, onDone }) {
   const options = getPaneOptionsForLessonType(lessonType)
   const [checked, setChecked] = useState(() => new Set(['instructions']))
+  const panes = Array.from(checked)
 
   function toggle(id) {
     setChecked((prev) => {
@@ -36,56 +32,68 @@ export default function PaneFocusDropdown({
   }
 
   return (
+    <>
+      <span style={s.heading}>Show on student screen:</span>
+      <div style={s.optionsList}>
+        {options.map((opt) => (
+          <label key={opt.id} style={s.optionRow}>
+            <input type="checkbox" checked={checked.has(opt.id)} onChange={() => toggle(opt.id)} />
+            {opt.label}
+          </label>
+        ))}
+      </div>
+      <button
+        type="button"
+        style={s.actionBtn}
+        disabled={panes.length === 0}
+        onClick={() => {
+          onHighlight(panes)
+          onDone?.()
+        }}
+        title="Draws a pulsing glow on these tabs without changing what the student is looking at"
+      >
+        ✨ Highlight
+      </button>
+      <button
+        type="button"
+        style={{
+          ...s.actionBtn,
+          background: 'var(--colour-primary)',
+          color: '#fff',
+          borderColor: 'var(--colour-primary)',
+        }}
+        disabled={panes.length === 0}
+        onClick={() => {
+          onForce(panes)
+          onDone?.()
+        }}
+        title="Immediately switches the student to these tabs — they're free to navigate away again after"
+      >
+        👉 Switch to this
+      </button>
+    </>
+  )
+}
+
+// label/buttonStyle let TeacherView reuse this for the whole-class version with its own
+// wording.
+export default function PaneFocusDropdown({
+  lessonType,
+  onHighlight,
+  onForce,
+  label = 'Focus',
+  buttonStyle,
+}) {
+  return (
     <DropdownMenu label={label} buttonClassName="btn-ghost" buttonStyle={buttonStyle}>
-      {(close) => {
-        const panes = Array.from(checked)
-        return (
-          <>
-            <span style={s.heading}>Show on student screen:</span>
-            <div style={s.optionsList}>
-              {options.map((opt) => (
-                <label key={opt.id} style={s.optionRow}>
-                  <input
-                    type="checkbox"
-                    checked={checked.has(opt.id)}
-                    onChange={() => toggle(opt.id)}
-                  />
-                  {opt.label}
-                </label>
-              ))}
-            </div>
-            <button
-              type="button"
-              style={s.actionBtn}
-              disabled={panes.length === 0}
-              onClick={() => {
-                onHighlight(panes)
-                close()
-              }}
-              title="Draws a pulsing glow on these tabs without changing what the student is looking at"
-            >
-              ✨ Highlight
-            </button>
-            <button
-              type="button"
-              style={{
-                ...s.actionBtn,
-                background: 'var(--colour-primary)',
-                color: '#fff',
-                borderColor: 'var(--colour-primary)',
-              }}
-              disabled={panes.length === 0}
-              onClick={() => {
-                onForce(panes)
-                close()
-              }}
-              title="Immediately switches the student to these tabs — they're free to navigate away again after"
-            >
-              👉 Switch to this
-            </button>
-          </>
-        )
-      }}
+      {(close) => (
+        <PaneFocusControls
+          lessonType={lessonType}
+          onHighlight={onHighlight}
+          onForce={onForce}
+          onDone={close}
+        />
+      )}
     </DropdownMenu>
   )
 }

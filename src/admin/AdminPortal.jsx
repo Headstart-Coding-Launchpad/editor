@@ -7,6 +7,7 @@ import LoadingScreen from '../app/components/LoadingScreen'
 import AppVersionFooter from './AppVersionFooter'
 
 const AccountManagement = lazy(() => import('./AccountManagement'))
+const BadgesPanel = lazy(() => import('./BadgesPanel'))
 const FeedbackPanel = lazy(() => import('./FeedbackPanel'))
 const LessonPanel = lazy(() => import('./LessonPanel'))
 const SessionsPanel = lazy(() => import('./SessionsPanel'))
@@ -20,6 +21,7 @@ const TABS = [
   { id: 'sessions', label: 'Sessions' },
   { id: 'topics', label: 'Topic Library' },
   { id: 'shared-assets', label: 'Shared Assets' },
+  { id: 'badges', label: 'Badges' },
   { id: 'accounts', label: 'Accounts' },
   { id: 'feedback', label: 'Feedback' },
 ]
@@ -87,6 +89,7 @@ export default function AdminPortal() {
           {activeTab === 'shared-assets' && (
             <SharedAssetsPanel subtab={subtab} onSubtabChange={handleSubtabChange} />
           )}
+          {activeTab === 'badges' && <BadgesPanel />}
           {activeTab === 'accounts' && <AccountManagement />}
           {activeTab === 'feedback' && (
             <FeedbackPanel subtab={subtab} onSubtabChange={handleSubtabChange} />

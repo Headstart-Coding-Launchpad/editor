@@ -105,6 +105,37 @@ Usually changes with:
 - `docs/FEATURES.md`
 - builder and CLI validation tests
 
+## Live Badges
+
+Changes include a badge definition, a rule helper, the timeline event shapes, the `taskActivity` vocabulary, `badgeOptions` / `badgeHints`, or the Keyboard Wizard shortcut list.
+
+Usually changes with:
+
+- `src/badges/` (definitions, `rules.js`, `timeline.js`, `evaluate.js`, `registry.pure.js`)
+- The tutor UI: `src/badges/badgeDisplay.js` (resolving registry and catalogue badges), `src/app/views/teacher/BadgeSuggestionsPanel.jsx`, `src/app/components/badges/` (`BadgeChip`, `BadgeAwardDialog`), and the badge props on `StudentGrid` / `StudentCard` / `StudentModal` (teacher-only: never render these in student or presentation components)
+- The student celebration: `src/badges/celebration.js`, `src/app/hooks/useBadgeCelebrations.js`, `src/app/components/badges/` (`BadgeCelebration`, `BadgeClassToast`, `CodingMomentsPill`, `BadgeStickerSheet`), the `sv-badge-*` / `sv-sticker*` CSS in `src/index.css`, `playBadgeChime` in `src/app/nudgeAlert.js`, `SessionEndedScreen` / `useStudentPhase` (the end-screen reload), and the one-row student top bar the 🎖️ button sits in (`TopBar` `singleRow`, `TaskProgressDots` `compact`, `topBarTaskControls` in `StudentView`); the card is positioned just under that bar's fixed 52px height
+- The Badge Summary task and report: `src/badges/badgeSummary.js` (class wall), `src/badges/reportMetrics.js` (report fields read through the same timelines and guards), `src/app/components/badges/BadgeSummaryTask.jsx`, the `badgeWall` prop through `InformationTask` / `LessonTaskContent` / `TeacherEditorPanel`, `getEffectiveTaskMode` in `src/shared/taskUtils.js` (solo skips the task), and `src/app/components/ReportBadgeSections.jsx`
+- The Admin catalogue and authoring tools: `src/badges/catalogue.js` / `catalogueService.js` (Firestore `badgeCatalogue`: `firestore.rules` + `tests/rules/firestore.rules.test.js`), `src/admin/BadgesPanel.jsx`, `useBadgeCatalogue` in `TeacherView` (passes `catalogueBadges` on), the decision's `badge` snapshot (`catalogueBadgeSnapshot` in `BadgeAwardDialog`, `decideBadge`, the `badges` `.validate` in `database.rules.json`; every student display path resolves through `resolveBadge(badgeId, catalogueBadges, decision)`), the Builder's `BadgeHintsField` / `src/builder/badgeHints.js`, and `scripts/new-badge.mjs` (its registry and docs anchors: the `BADGES` list, the badges.md table and the CODEBASE_MAP `definitions/*.js` row)
+- `src/badges/liveTimeline.js` (stored data → timeline events, and the memo keys: a new event source must be added to both `buildStudentTimeline` and `studentTimelineInputKey`) and `src/app/hooks/useBadgeSuggestions.js` (`TeacherView`)
+- `src/shared/taskActivity.js` (pattern ids are stored by badges and reports: add aliases, never rename)
+- `src/shared/lessonValidation.js` and `src/badges/validation.js`
+- `cli/capabilities.mjs`
+- `docs/authoring/badges.md`, `validation-errors.md`, `CHANGELOG.md`
+- `docs/architecture/live-badges-plan.md`
+- `src/badges/__tests__/` (every rule-backed badge's `examples` run in `badgeRegistry.test.js`)
+
+A change to the **recorded badge data** (a new signal, or a new field on `badges`, `badgeSettings`, `studentSignals`, `sessionArchive`, `attemptLog.error` or `pasteLog.firstAt`) needs its own data-model sign-off, then usually changes with:
+
+- `src/app/hooks/useSession.js` (the writers) and `database.rules.json` + `tests/rules/database.rules.test.js` (every new path: students write only their own signals, never `badges` or `sessionArchive`)
+- `src/badges/signals.js`, `src/badges/sessionArchive.js` (values, keys, caps)
+- `src/app/hooks/useStudentBadgeSignals.js` (student gating: never the presentation window, a preview or solo) and its call sites in `useStudentCodeState.js`, `runWithRuntime.js`, `StudentView.jsx`
+- `src/shared/badgeSignalsContext.js` consumers: `CodeEditor.jsx` (`onUserEdit`), `ScratchWorkspace.jsx`, `markdown.jsx`, `TopicLibraryView.jsx`
+- `src/app/hooks/useSandboxArchiveSnapshots.js` and `TeacherView.jsx` (teacher-side sandbox snapshots)
+- `createSession` / `endSession` resets, and the "Badge data" section of `docs/agents/runtime-model.md` (paths, writers, lifetimes, the mapping to timeline events)
+- `docs/agents/classroom-behaviours.md` (sandbox archiving)
+- `src/badges/liveTimeline.js` (the mapping to timeline events) and `src/badges/__tests__/liveTimeline.test.js` (characterisation from session snapshots)
+- `src/app/hooks/__tests__/useSession.badges.test.js`, `useStudentBadgeSignals.test.js`, `useStudentCodeState.badges.test.js`, `useBadgeSuggestions.test.js`
+
 ## Firebase And Session Model
 
 Changes include Realtime Database paths, Firestore collections, Storage paths, security rules, session state transitions, or who can write a field.
@@ -283,8 +314,11 @@ Changes include session report shape, report display, YAML export, lesson feedba
 Usually changes with:
 
 - `src/shared/lessonReport.js`
+- `src/badges/reportMetrics.js` (live-badge report fields and the Firestore size cap)
 - `src/app/components/TeacherReportModal.jsx`
+- `src/app/components/ReportBadgeSections.jsx` and `src/app/reportBadgeFormat.js`
 - `src/app/components/TeacherReportsPanel.jsx`
+- `src/app/views/TeacherView.jsx` (`handleEndSession` reads the sandbox archive before building)
 - `src/admin/LessonPanel.jsx`
 - `src/admin/FeedbackPanel.jsx`
 - `cli/feedback.mjs`

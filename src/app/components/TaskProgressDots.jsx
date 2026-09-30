@@ -3,6 +3,12 @@ import { getProgressItems } from '../../shared/taskUtils'
 
 const DOT_WIDTH = 32
 const DOT_GAP = 6
+// `compact` (the student top bar's one-row layout): smaller dots, and when they don't all fit
+// the row scrolls sideways (the current dot kept in view) rather than wrapping the bar.
+const COMPACT_DOT_WIDTH = 26
+const COMPACT_DOT_GAP = 4
+// Below this many dots' worth of room, scrolling stops being useful: show the "x/y" counter.
+const MIN_SCROLL_DOTS = 5
 
 // Fitting the dots is a two-phase measurement, not something CSS can decide alone:
 // a flex item's "natural" size (used to divide space with its siblings, e.g. the
@@ -14,7 +20,8 @@ const DOT_GAP = 6
 // data and getting stuck), then commit to either the dots or the compact counter —
 // dropping the dots from layout in counter mode, so the title can reclaim the freed
 // space. A window resize (or the task count changing) reopens the probe, since the
-// answer may no longer hold.
+// answer may no longer hold. In `compact` mode there's a middle answer: when the row has room for
+// at least MIN_SCROLL_DOTS dots but not all of them, it stays mounted and scrolls sideways.
 export default function TaskProgressDots({
   tasks,
   currentTaskId,
@@ -23,8 +30,11 @@ export default function TaskProgressDots({
   isSolo,
   canSelectTask,
   pseudoTask,
+  compact = false,
 }) {
   const rowRef = useRef(null)
+  const dotWidth = compact ? COMPACT_DOT_WIDTH : DOT_WIDTH
+  const dotGap = compact ? COMPACT_DOT_GAP : DOT_GAP
   const baseItems = getProgressItems(tasks)
   const pseudoIndex = pseudoTask
     ? baseItems.findIndex((item) => item.taskIds.includes(pseudoTask.beforeTaskId))
@@ -43,14 +53,17 @@ export default function TaskProgressDots({
           },
           ...baseItems.slice(pseudoIndex),
         ]
-  const naturalWidth = items.length * (DOT_WIDTH + DOT_GAP) - DOT_GAP
-  const [mode, setMode] = useState('probing') // 'probing' | 'fits' | 'collapsed'
+  const naturalWidth = items.length * (dotWidth + dotGap) - dotGap + (compact ? 6 : 0)
+  const minScrollWidth = Math.min(naturalWidth, MIN_SCROLL_DOTS * (dotWidth + dotGap) - dotGap)
+  const [mode, setMode] = useState('probing') // 'probing' | 'fits' | 'scroll' | 'collapsed'
 
   useLayoutEffect(() => {
     if (mode !== 'probing') return
     const width = rowRef.current?.getBoundingClientRect().width ?? 0
-    setMode(width >= naturalWidth ? 'fits' : 'collapsed')
-  }, [mode, naturalWidth])
+    if (width >= naturalWidth) setMode('fits')
+    else if (compact && width >= minScrollWidth) setMode('scroll')
+    else setMode('collapsed')
+  }, [mode, naturalWidth, minScrollWidth, compact])
 
   useEffect(() => {
     setMode('probing')
@@ -65,6 +78,15 @@ export default function TaskProgressDots({
   const currentIndex = items.findIndex((item) => item.taskIds.includes(currentTaskId))
   const currentNumber = Math.max(1, currentIndex + 1)
 
+  // Scrolling row: keep the current dot in view (centred where possible).
+  useEffect(() => {
+    if (mode !== 'scroll') return
+    const row = rowRef.current
+    const dot = row?.children?.[currentIndex]
+    if (!row || !dot) return
+    row.scrollLeft = Math.max(0, dot.offsetLeft - (row.clientWidth - dot.offsetWidth) / 2)
+  }, [mode, currentIndex])
+
   if (mode === 'collapsed') {
     return (
       <span style={s.counter} title="Task progress">
@@ -76,8 +98,15 @@ export default function TaskProgressDots({
   return (
     <div
       ref={rowRef}
-      style={{ ...s.row, visibility: mode === 'fits' ? 'visible' : 'hidden' }}
+      style={{
+        ...s.row,
+        gap: dotGap,
+        ...(compact ? s.rowCompact : null),
+        ...(mode === 'scroll' ? s.rowScroll : null),
+        visibility: mode === 'probing' ? 'hidden' : 'visible',
+      }}
       title="Task progress"
+      data-mode={mode}
     >
       {items.map((item, index) => {
         // A pseudo item (the "explainer shrunk" nav entry) has a synthetic id that
@@ -91,6 +120,7 @@ export default function TaskProgressDots({
               key={item.id}
               style={{
                 ...s.dot,
+                ...(compact ? s.dotCompact : null),
                 ...s.dotPseudo,
                 ...(isViewing ? s.dotViewing : {}),
                 cursor: 'pointer',
@@ -117,7 +147,8 @@ export default function TaskProgressDots({
             key={item.id}
             style={{
               ...s.dot,
-              ...(isGroup ? s.dotGroup : {}),
+              ...(compact ? s.dotCompact : null),
+              ...(isGroup ? (compact ? s.dotGroupCompact : s.dotGroup) : {}),
               ...(isCurrent ? s.dotCurrent : {}),
               ...(isViewing ? s.dotViewing : {}),
               ...(isPast ? s.dotPast : {}),
@@ -145,6 +176,16 @@ const s = {
     justifyContent: 'flex-end',
     minWidth: 0,
     flexShrink: 1,
+  },
+  rowCompact: {
+    // Room for the current dot's scale(1.15) inside a row that may clip (scroll mode).
+    padding: '3px 3px',
+  },
+  rowScroll: {
+    overflowX: 'auto',
+    overflowY: 'hidden',
+    justifyContent: 'flex-start',
+    scrollbarWidth: 'none',
   },
   counter: {
     fontFamily: 'var(--font-body)',
@@ -174,6 +215,15 @@ const s = {
   dotGroup: {
     borderRadius: 8,
     width: 36,
+  },
+  dotCompact: {
+    width: COMPACT_DOT_WIDTH,
+    height: COMPACT_DOT_WIDTH,
+    fontSize: '0.72rem',
+  },
+  dotGroupCompact: {
+    borderRadius: 7,
+    width: COMPACT_DOT_WIDTH + 4,
   },
   dotPseudo: {
     borderStyle: 'dashed',

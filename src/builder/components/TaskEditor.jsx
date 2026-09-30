@@ -31,6 +31,7 @@ import { ScratchToolboxPicker } from '../../modules/scratch/scratchEditors'
 import { useTaskEditorState } from '../hooks/useTaskEditorState'
 import TaskPreviewPanel from './task-editor/TaskPreviewPanel'
 import TaskOptionsSection from './task-editor/TaskOptionsSection'
+import BadgeHintsField from './task-editor/BadgeHintsField'
 import { getLessonModule } from '../../modules/registry'
 import { getModuleAuthoring, getModuleDefinition } from '../../modules/definitions'
 import { MARKUP_COPY_CODE_PLACEHOLDER } from '../../modules/moduleAuthoring'
@@ -129,6 +130,16 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
 
   function set(field, value) {
     onUpdate({ ...task, [field]: value })
+  }
+
+  // badgeHints is optional: an empty one is removed rather than stored as {}.
+  function setBadgeHints(badgeHints) {
+    if (badgeHints) {
+      onUpdate({ ...task, badgeHints })
+      return
+    }
+    const { badgeHints: _badgeHints, ...rest } = task
+    onUpdate(rest)
   }
 
   function setPriority(priority) {
@@ -523,6 +534,10 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
               />
             </Field>
 
+            {task.taskType !== 'information' && (
+              <BadgeHintsField task={task} onChange={setBadgeHints} />
+            )}
+
             {(task.intentLastChangedAt || task.taskLastChangedAt) && (
               <div style={s.auditMeta}>
                 {task.intentLastChangedAt && (
@@ -668,6 +683,11 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
               { value: 'standard', label: 'Standard', hint: 'Markdown explainer' },
               { value: 'recap', label: 'Two Pane View', hint: 'Two editable markdown panes' },
               { value: 'introduction', label: 'Introduction', hint: 'Lesson metadata slide' },
+              {
+                value: 'badges',
+                label: 'Badge Summary',
+                hint: "Today's Coding Moments (live only)",
+              },
             ].map((option) => {
               const active = (task.informationType ?? 'standard') === option.value
               return (

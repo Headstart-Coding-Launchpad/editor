@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import React from 'react'
+import { describe, expect, it, vi } from 'vitest'
 import { EditorState } from '@codemirror/state'
 import {
+  CodeEditor,
   errorLineField,
+  isUserEditUpdate,
   setErrorLine,
   setTeacherHighlights,
   teacherHighlightsField,
@@ -132,5 +135,55 @@ describe('teacherHighlightsField', () => {
       { from: 12, to: 17, class: 'cm-teacherHighlight' },
       { at: 19, badges: ['h1'] },
     ])
+  })
+})
+
+describe('isUserEditUpdate (onUserEdit)', () => {
+  // A view update as CodeMirror hands it to an update listener.
+  function updateFor(spec) {
+    const state = EditorState.create({ doc: 'print(1)' })
+    const tr = state.update(spec)
+    return { docChanged: tr.docChanged, transactions: [tr] }
+  }
+
+  it('fires for typing, deleting, moving text, undo and redo', () => {
+    for (const userEvent of [
+      'input.type',
+      'input.paste',
+      'delete.backward',
+      'move.drop',
+      'undo',
+      'redo',
+    ]) {
+      expect(isUserEditUpdate(updateFor({ changes: { from: 0, insert: 'x' }, userEvent }))).toBe(
+        true
+      )
+    }
+  })
+
+  it('does not fire for the external value sync (task switch, carry, sandbox push)', () => {
+    expect(isUserEditUpdate(updateFor({ changes: { from: 0, to: 8, insert: 'print(2)' } }))).toBe(
+      false
+    )
+  })
+
+  it('does not fire for a selection change without an edit', () => {
+    expect(isUserEditUpdate(updateFor({ selection: { anchor: 2 }, userEvent: 'select' }))).toBe(
+      false
+    )
+  })
+})
+
+describe('CodeEditor onUserEdit', () => {
+  it('does not fire when the value is replaced from outside', async () => {
+    const { render } = await import('@testing-library/react')
+    const onUserEdit = vi.fn()
+    const onChange = vi.fn()
+    const { rerender } = render(
+      <CodeEditor value="print(1)" onChange={onChange} onUserEdit={onUserEdit} />
+    )
+    rerender(<CodeEditor value="print(2)" onChange={onChange} onUserEdit={onUserEdit} />)
+    expect(onChange).toHaveBeenCalledWith('print(2)')
+    expect(onUserEdit).not.toHaveBeenCalled()
   })
 })

@@ -37,6 +37,42 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-09-30
+
+### Badge hints in the Builder; Admin catalogue badges
+
+- The Builder task editor has a **Badge hints** field (Authoring metadata, every task except
+  information tasks) that edits `badgeHints.suggest` and `badgeHints.suppress` with only the ids
+  validation accepts, and notes which badges the task's `taskActivity` pattern already triggers.
+  The YAML field is unchanged. See [badges.md](badges.md#badgehints).
+- Admins can add manual-only badges in Admin Portal → Badges. They are awarded by tutors only;
+  lessons can't name them in `badgeHints`. See [badges.md](badges.md#admin-catalogue-badges).
+- Affects: all · Existing lessons: no changes needed · Resolves: none
+
+### Badge Summary information task (`informationType: badges`)
+
+- New information type `badges`: "Today's Coding Moments". In a live session each student sees
+  their own badges as stickers, then the class wall grouped by badge (names only, no counts); the
+  teacher sees a projector-friendly wall with **Copy class summary**. The `explainer` is optional
+  and shows above the wall. Usually the last task.
+- Solo learners skip it, exactly as if it were `taskMode: live`; no `taskMode` is needed. See
+  [badges.md](badges.md#badge-summary-task).
+- Affects: all · Existing lessons: no changes needed · Resolves: none
+
+### `taskActivity` patterns are read; `badgeOptions` and `badgeHints` for live badges
+
+- `taskActivity` stays free text, but the platform now reads the Lesson Format Glossary pattern it
+  names (`src/shared/taskActivity.js`; `lessons capabilities` → `taskActivity`). An unrecognised
+  pattern is a **warning**, never an error. Case, spacing and `,` vs `:` don't matter.
+- The coming live badges use the pattern: a `Debug Code Task` can suggest 🐛 Bug Hunter, a
+  `Copy the Code` task 📋 Code Builder, `Quiz: What Is the Error?` / `Quiz: Fix a Common Bug`
+  🔍 Code Detective, and a `Challenge (Open-Ended)` 🔓 Challenge Solver. Those tasks need a `check`.
+- New optional envelope field `badgeOptions` (`quizMasterThreshold`, `quizMasterMinQuizzes`,
+  `persistenceMinFails`, `readyToCodeSeconds`) and per-task `badgeHints` (`suggest`, `suppress`).
+  Lessons never define badges. See [badges.md](badges.md).
+- Affects: all, cli · Existing lessons: no changes needed (fix any `taskActivity` the validator
+  warns about) · Resolves: none
+
 ## 2026-09-29
 
 ### Mac and Chromebook keys and right-click

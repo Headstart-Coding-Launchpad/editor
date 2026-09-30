@@ -6,6 +6,9 @@ import { getActivityDefinitions } from '../src/activities/registry.pure.js'
 import { checkRegistry } from '../src/modules/checks.js'
 import { authoredFieldPaths, describeFieldSpecs, fieldsForMode } from '../src/shared/fieldSpec.js'
 import { COMMON_TASK_FIELDS, TASK_TYPE_FIELDS } from '../src/shared/taskFields.js'
+import { TASK_ACTIVITY_FORMATS, TASK_ACTIVITY_PATTERNS } from '../src/shared/taskActivity.js'
+import { getBadgeDefinitions } from '../src/badges/registry.pure.js'
+import { BADGE_OPTION_SPECS } from '../src/badges/badgeOptions.js'
 import { readAuthoringRequests } from './authoring-requests.mjs'
 
 const MODULE_FLAGS = [
@@ -105,6 +108,44 @@ function describeCheck(def) {
   }
 }
 
+// The `taskActivity` vocabulary (src/shared/taskActivity.js): write `<Format>, <Pattern>` or
+// `Quiz: <Pattern>`; `id` is what badgeHints, badges and reports use.
+function describeTaskActivity() {
+  return {
+    formats: TASK_ACTIVITY_FORMATS.map((format) => ({ id: format.id, name: format.name })),
+    patterns: TASK_ACTIVITY_PATTERNS.map((pattern) => ({
+      id: pattern.id,
+      name: pattern.name,
+      formats: [...pattern.formats],
+      ...(pattern.aliases.length ? { aliases: [...pattern.aliases] } : {}),
+    })),
+  }
+}
+
+// Built-in badges (src/badges), what a lesson can tune (badgeOptions) and which badges a task's
+// badgeHints can name. Lessons never define badges.
+function describeBadges() {
+  return {
+    badges: getBadgeDefinitions().map((badge) => ({
+      id: badge.id,
+      emoji: badge.emoji,
+      title: badge.title,
+      tutorOnly: badge.tutorOnly,
+      autoAwardable: badge.autoAwardable,
+      rule: badge.ruleText,
+      ...(badge.rule?.patterns ? { patterns: [...badge.rule.patterns] } : {}),
+      badgeHints: badge.rule?.hintable ? ['suggest', 'suppress'] : badge.rule ? ['suppress'] : [],
+    })),
+    badgeOptions: Object.fromEntries(
+      Object.entries(BADGE_OPTION_SPECS).map(([key, spec]) => [
+        key,
+        { kind: spec.kind, default: spec.default, description: spec.description },
+      ])
+    ),
+    docs: 'docs/authoring/badges.md',
+  }
+}
+
 export function buildCapabilities({ requests = readAuthoringRequests() } = {}) {
   return {
     modules: getModuleDefinitions().map(describeModule),
@@ -112,6 +153,8 @@ export function buildCapabilities({ requests = readAuthoringRequests() } = {}) {
     // Fields every task can carry, and the non-module task types (information, group).
     taskFields: describeTaskFields(),
     checkTypes: checkRegistry.list().map(describeCheck),
+    taskActivity: describeTaskActivity(),
+    badges: describeBadges(),
     // What is already asked for: { file, title, kind, status, requestedBy, lessonsBlocked }.
     requests,
     requestsHowTo:

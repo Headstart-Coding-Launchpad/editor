@@ -277,13 +277,34 @@ export function buildStageOptions(task, lessonType) {
   return opts
 }
 
+// The Badge Summary task ("Today's Coding Moments", docs/architecture/live-badges-plan.md): an
+// information task showing the session's coding moments. Live badges only exist in a live
+// session, so in solo it is skipped as if it were `taskMode: live`.
+export const BADGE_SUMMARY_INFORMATION_TYPE = 'badges'
+
+export function isBadgeSummaryTask(task) {
+  return (
+    task?.taskType === 'information' && task?.informationType === BADGE_SUMMARY_INFORMATION_TYPE
+  )
+}
+
+// The mode a task shows in: its `taskMode` (absent = 'both'), except that a Badge Summary task
+// is always live-only.
+export function getEffectiveTaskMode(task) {
+  if (isBadgeSummaryTask(task)) return 'live'
+  return task?.taskMode || 'both'
+}
+
 // Filter tasks (including groups) to only those visible in a given mode.
 // mode: 'live' | 'solo' | null (null = no filtering, return all)
-// A task is included when taskMode is absent, 'both', or matches the current mode.
+// A task is included when its effective mode (getEffectiveTaskMode) is 'both' or matches.
 export function filterTasksByMode(tasks, mode) {
   const activeTasks = filterLegacyDraftTasks(tasks)
   if (!mode) return activeTasks
-  const allowed = (t) => !t.taskMode || t.taskMode === 'both' || t.taskMode === mode
+  const allowed = (t) => {
+    const taskMode = getEffectiveTaskMode(t)
+    return taskMode === 'both' || taskMode === mode
+  }
   const result = []
   for (const item of activeTasks) {
     if (item.type === 'group') {
