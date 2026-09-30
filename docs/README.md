@@ -133,6 +133,9 @@ Decision to model bounded exercises (quizzes, code_arrange, Binary, Keyboard, Mo
 ### [adr/0010-module-contract-v2-and-work-slot.md](adr/0010-module-contract-v2-and-work-slot.md)
 Decision that module definitions describe everything core code needs (meta, capabilities, lifecycle, storage, wire, checking, work slot), that the student hook keeps one generic work slot, and that core code never compares against a type name (ratchet + ESLint rule).
 
+### [adr/0011-live-badges-registry-and-rules.md](adr/0011-live-badges-registry-and-rules.md)
+Decision that built-in live badges are a code registry of `defineBadge` definitions with pure, example-tested rules over per-student timelines; rules only suggest, only the tutor's decisions are stored (write-if-absent), and manual-only badges live in an Admin-edited Firestore catalogue whose display fields are copied onto each award.
+
 ---
 
 ## Agent reference docs (`docs/agents/`)

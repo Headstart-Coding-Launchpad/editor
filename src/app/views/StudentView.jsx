@@ -1289,13 +1289,23 @@ export default function StudentView({
       {!teacherPresentation && (
         <BadgeCelebration
           award={badgeCelebrations.card}
-          badge={badgeCelebrations.card ? resolveBadge(badgeCelebrations.card.badgeId) : null}
+          badge={
+            badgeCelebrations.card
+              ? resolveBadge(badgeCelebrations.card.badgeId, [], badgeCelebrations.card.decision)
+              : null
+          }
           onDone={badgeCelebrations.cardDone}
         />
       )}
       <BadgeClassToast
         toast={badgeCelebrations.toast}
-        badge={badgeCelebrations.toast ? resolveBadge(badgeCelebrations.toast.badgeId) : null}
+        badge={
+          badgeCelebrations.toast
+            ? resolveBadge(badgeCelebrations.toast.badgeId, [], {
+                badge: badgeCelebrations.toast.badge,
+              })
+            : null
+        }
         presentation={teacherPresentation}
         onDone={badgeCelebrations.toastDone}
       />

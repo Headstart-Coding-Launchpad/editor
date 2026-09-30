@@ -204,6 +204,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Carry-through: bring code or filesystem state from a previous task as the starter
 - Filesystem: visual editor for starter and complete states, and a filesystem check builder
 - Checks: type-filtered list with run/submit mode; tested/untested flag per check
+- Badge hints (authoring metadata): toggle which live badges this task may also suggest (`badgeHints.suggest`, pattern badges only) or never suggest (`badgeHints.suppress`), with a read-only note of the badges the task's `taskActivity` pattern already triggers
 
 ### Scratch Tools
 - Starter/complete workspace tabs with isolated state
@@ -236,6 +237,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - **Session management**: see every live or waiting session left open across the platform (lesson, state, paused flag, student/online counts, how long it's been open) and close any of them remotely, for cases where a teacher left a session running without ending it
 - **Topic library**: create, edit, and delete topics with full Markdown description and syntax fields; type filters come from the lesson module registry
 - **Shared assets**: manage lesson-type-wide Firebase Storage files and Scratch default sprites, shared across every lesson of a given type
+- **Badges**: see every built-in live badge with its exact rule (rule-backed or tutor-only, auto-awardable), and add, edit, archive or restore manual-only badges that reach tutors' award pickers with no deploy; ids and emoji are checked for clashes on save, and archived badges still show wherever they were awarded
 - **Version footer**: the bottom of every Admin tab shows `LaunchPad vMAJOR.MINOR.BUILD · commit · built date` (BUILD rises on every merge to `main`), with a Copy button for bug reports; clicking the version opens "What's new" milestone release notes
 
 ---

@@ -65,6 +65,7 @@ import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
 import { describeShareError } from '../sharedWorkspacePayload'
 import { useSandboxArchiveSnapshots } from '../hooks/useSandboxArchiveSnapshots'
 import { useBadgeAutoAward, useBadgeSuggestions } from '../hooks/useBadgeSuggestions'
+import { useBadgeCatalogue } from '../hooks/useBadgeCatalogue'
 
 function canRecordAdvanceOverride(task) {
   if (!task || task.taskType === 'information') return false
@@ -163,14 +164,18 @@ export default function TeacherView({ lessonId }) {
     settings: session?.badgeSettings,
     decideBadge,
   })
+  // The Admin badge catalogue (manual-only badges), read once: the picker, cards, Badge Summary
+  // wall and report resolve catalogue badge ids through it.
+  const catalogueBadges = useBadgeCatalogue(!!user)
   // The Badge Summary task's class wall, on the teacher's screen.
   const teacherBadgeWall = useMemo(
     () => ({
       decisions: session?.badges ?? {},
       students: session?.students ?? {},
       variant: 'teacher',
+      catalogueBadges,
     }),
-    [session?.badges, session?.students]
+    [session?.badges, session?.students, catalogueBadges]
   )
   // The suggestions panel's open state lives here so the grid's 🏅 Suggestions button can open
   // and focus it (bumping badgePanelFocus).
@@ -453,6 +458,7 @@ export default function TeacherView({ lessonId }) {
       sessionArchive,
       pendingSuggestions: badgeSuggestions.suggestions,
       topics,
+      catalogueBadges,
     }
   }
 
@@ -868,6 +874,7 @@ export default function TeacherView({ lessonId }) {
             onOpenBadgeSuggestions={() => setBadgePanelFocus((n) => n + 1)}
             onDecideBadge={decideBadge}
             onRevokeBadge={revokeBadge}
+            catalogueBadges={catalogueBadges}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed((v) => !v)}
           />

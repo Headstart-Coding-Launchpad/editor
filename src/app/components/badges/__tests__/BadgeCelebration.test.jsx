@@ -12,6 +12,8 @@ import {
   CELEBRATION_DOCK_MS,
   CLASS_TOAST_MS,
   PRESENTATION_TOAST_MS,
+  findNewAwards,
+  mergeClassToasts,
 } from '../../../../badges/celebration'
 
 const BUG_HUNTER = resolveBadge('bug_hunter')
@@ -161,5 +163,51 @@ describe('BadgeStickerSheet', () => {
     const items = screen.getAllByRole('listitem')
     expect(items).toHaveLength(2)
     expect(items[1].style.getPropertyValue('--sv-sticker-delay')).toBe('180ms')
+  })
+})
+
+describe('an Admin-catalogue badge on a student screen', () => {
+  // Students can't read Firestore `badgeCatalogue`: the award's decision carries the snapshot.
+  const decision = {
+    status: 'awarded',
+    announce: true,
+    decidedAt: 9,
+    badge: { emoji: '🎤', title: 'Star Speaker', blurb: 'Presented well.' },
+  }
+
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it("shows the real emoji, title and blurb on the recipient's card", () => {
+    const [award] = findNewAwards({ alex: { star_speaker: decision } }, new Set())
+    render(
+      <BadgeCelebration
+        award={award}
+        badge={resolveBadge(award.badgeId, [], award.decision)}
+        onDone={() => {}}
+      />
+    )
+    const card = screen.getByTestId('badge-celebration').firstChild
+    expect(card).toHaveTextContent('🎤')
+    expect(card).toHaveTextContent('Star Speaker')
+    expect(card).toHaveTextContent('Presented well.')
+  })
+
+  it("names it on a classmate's toast", () => {
+    const [toast] = mergeClassToasts(
+      [],
+      findNewAwards({ alex: { star_speaker: decision } }, new Set()),
+      { viewerId: 'sam', students: { alex: { displayName: 'Alex' } } }
+    )
+    render(
+      <BadgeClassToast
+        toast={toast}
+        badge={resolveBadge(toast.badgeId, [], { badge: toast.badge })}
+        onDone={() => {}}
+      />
+    )
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('Alex · Star Speaker')
+    expect(status).toHaveAttribute('title', 'Presented well.')
   })
 })

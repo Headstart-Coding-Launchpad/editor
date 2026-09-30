@@ -57,7 +57,7 @@ export function listMyMoments(decisions, studentId, catalogueBadges = []) {
   if (!studentId) return []
   return listAwards({ [studentId]: decisions?.[studentId] }).map(({ badgeId, decision }) => ({
     badgeId,
-    badge: resolveBadge(badgeId, catalogueBadges),
+    badge: resolveBadge(badgeId, catalogueBadges, decision),
     decision,
   }))
 }
@@ -82,7 +82,8 @@ export function isStillAwarded(decisions, award) {
  *   that set (the one side effect here).
  * - New toasts beyond `cap` (the one showing included) are dropped, so a backlog never builds.
  *
- * Toast: `{ id, badgeId, bulkId, recipientIds: [], names: [] }`. Returns a new queue.
+ * Toast: `{ id, badgeId, badge, bulkId, recipientIds: [], names: [] }` (`badge`: a catalogue
+ * badge's display snapshot, or null). Returns a new queue.
  */
 export function mergeClassToasts(
   queue,
@@ -116,6 +117,8 @@ export function mergeClassToasts(
     next.push({
       id: bulkId ?? award.key,
       badgeId: award.badgeId,
+      // A catalogue badge's display snapshot (resolveBadge's `decision.badge`), for classmates.
+      badge: award.decision?.badge ?? null,
       bulkId,
       recipientIds: [award.studentId],
       names: [studentName(students, award.studentId)],

@@ -6,6 +6,7 @@ import {
   MANUAL_AWARD_REPLACES,
   resolveBadge,
 } from '../../../badges/badgeDisplay'
+import { catalogueBadgeSnapshot } from '../../../badges/catalogue'
 
 function holds(decisions, studentId, badgeId) {
   return decisions?.[studentId]?.[badgeId]?.status === 'awarded'
@@ -53,7 +54,10 @@ export default function BadgeAwardDialog({
   const held = single
     ? Object.entries(decisions?.[single.anonymousId] ?? {})
         .filter(([, decision]) => decision?.status === 'awarded')
-        .map(([badgeId, decision]) => ({ badge: resolveBadge(badgeId, catalogueBadges), decision }))
+        .map(([badgeId, decision]) => ({
+          badge: resolveBadge(badgeId, catalogueBadges, decision),
+          decision,
+        }))
     : []
   const detail = detailId ? badges.find((badge) => badge.id === detailId) : null
 
@@ -77,7 +81,17 @@ export default function BadgeAwardDialog({
         onDecideBadge(
           st.anonymousId,
           badge.id,
-          { status: 'awarded', source: 'manual', reason: null, taskId, announce, bulkId },
+          {
+            status: 'awarded',
+            source: 'manual',
+            reason: null,
+            taskId,
+            announce,
+            bulkId,
+            // Students can't read the Admin catalogue, so a catalogue badge travels with its
+            // emoji, title and blurb (null for a registry badge).
+            badge: catalogueBadgeSnapshot(badge),
+          },
           { replaceStatuses: [...MANUAL_AWARD_REPLACES] }
         )
       )

@@ -31,7 +31,12 @@ describe('badge registry', () => {
   })
 
   it('has the plan’s tutor-only badges', () => {
-    expect(getTutorOnlyBadges().map((badge) => badge.id)).toEqual([
+    // A tutor-only badge added later (npm run new:badge -- --tutor-only) goes after these.
+    expect(
+      getTutorOnlyBadges()
+        .map((badge) => badge.id)
+        .slice(0, 8)
+    ).toEqual([
       'problem_solver',
       'experimenter',
       'creative_coder',

@@ -122,6 +122,17 @@ describe('live badges', () => {
     await assertFails(ref(as.teacher, path).set({ status: 'awarded', source: 'manual' }))
   })
 
+  it('accepts a catalogue badge snapshot only with an emoji and a short title', async () => {
+    const path = `sessions/${LESSON}/badges/${STUDENT_ID}/star_helper`
+    const badge = { emoji: '🌟', title: 'Star Helper', blurb: 'Helped out.' }
+    await assertSucceeds(ref(as.teacher, path).set({ ...decision, badge }))
+    await assertFails(ref(as.teacher, path).set({ ...decision, badge: { title: 'No emoji' } }))
+    await assertFails(
+      ref(as.teacher, path).set({ ...decision, badge: { ...badge, title: 'x'.repeat(41) } })
+    )
+    await assertFails(ref(as.student, path).set({ ...decision, badge }))
+  })
+
   it('only lets teachers write badge settings', async () => {
     const path = `sessions/${LESSON}/badgeSettings`
     await assertFails(ref(as.student, path).set({ autoAward: true }))
