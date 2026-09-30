@@ -34,12 +34,19 @@ export function startTitleFlash({ doc = document, text = NUDGE_TITLE, intervalMs
   }
 }
 
-// Two-note chimes synthesised with Web Audio, so no sound asset is needed. `nudge` is bright
+// Short chimes synthesised with Web Audio, so no sound asset is needed. `nudge` is bright
 // enough to call a student back; `badge` (a live badge celebration) is a softer, lower-gain
-// pair that shouldn't startle a class of screens.
+// pair that shouldn't startle a class of screens; `complete` (a task's checks passing) is a
+// quick rising C5-E5-G5 arpeggio, about 400ms, at a similarly gentle gain.
 export const CHIME_PRESETS = Object.freeze({
   nudge: Object.freeze({ notes: [880, 1320], gain: 0.25, spacing: 0.18, decay: 0.35 }),
   badge: Object.freeze({ notes: [659.25, 987.77], gain: 0.06, spacing: 0.14, decay: 0.5 }),
+  complete: Object.freeze({
+    notes: [523.25, 659.25, 783.99],
+    gain: 0.07,
+    spacing: 0.09,
+    decay: 0.24,
+  }),
 })
 
 // Browsers may keep audio suspended until the student has interacted with the page; that
@@ -75,6 +82,10 @@ export function playNudgeChime() {
 
 export function playBadgeChime() {
   playChime(CHIME_PRESETS.badge)
+}
+
+export function playCompleteChime() {
+  playChime(CHIME_PRESETS.complete)
 }
 
 export function canShowNudgeNotification() {
