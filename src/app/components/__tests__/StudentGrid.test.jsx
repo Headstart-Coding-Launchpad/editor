@@ -273,3 +273,60 @@ describe('StudentGrid', () => {
     })
   })
 })
+
+describe('StudentGrid live badges', () => {
+  it('shows the Suggestions button with its count and opens the panel', async () => {
+    const user = userEvent.setup()
+    const onOpenBadgeSuggestions = vi.fn()
+    render(
+      <StudentGrid
+        {...mkProps({
+          onOpenBadgeSuggestions,
+          badgeSuggestions: { suggestions: [{}, {}], pendingCountByStudent: {} },
+        })}
+      />
+    )
+    await user.click(screen.getByRole('button', { name: 'Badge suggestions: 2 pending' }))
+    expect(onOpenBadgeSuggestions).toHaveBeenCalled()
+    expect(screen.getByText('🏅 Suggestions (2)')).toBeInTheDocument()
+  })
+
+  it('hides the Suggestions button outside a live session with nothing pending', () => {
+    render(
+      <StudentGrid
+        {...mkProps({
+          session: { state: 'waiting' },
+          onOpenBadgeSuggestions: vi.fn(),
+          badgeSuggestions: { suggestions: [] },
+        })}
+      />
+    )
+    expect(screen.queryByText(/Suggestions \(/)).not.toBeInTheDocument()
+  })
+
+  it('select mode awards a badge to several students with one bulkId', async () => {
+    const user = userEvent.setup()
+    const onDecideBadge = vi.fn(async () => ({ committed: true }))
+    render(<StudentGrid {...mkProps({ onDecideBadge })} />)
+    await user.click(screen.getByRole('button', { name: '☑ Select' }))
+    const award = screen.getByRole('button', { name: '🏅 Award badge' })
+    expect(award).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'All' }))
+    expect(screen.getByText('3 selected')).toBeInTheDocument()
+    await user.click(award)
+    expect(
+      screen.getByRole('dialog', { name: /Award badge · Alice, Bob, Carol/ })
+    ).toBeInTheDocument()
+    await user.click(screen.getByTestId('badge-option-helpful_coder'))
+    expect(onDecideBadge).toHaveBeenCalledTimes(3)
+    const bulkIds = new Set(onDecideBadge.mock.calls.map((call) => call[2].bulkId))
+    expect(bulkIds.size).toBe(1)
+    expect([...bulkIds][0]).toMatch(/^bulk-helpful_coder-/)
+    expect(onDecideBadge.mock.calls[0][2].source).toBe('manual')
+  })
+
+  it('has no select mode without a badge writer', () => {
+    render(<StudentGrid {...mkProps()} />)
+    expect(screen.queryByRole('button', { name: '☑ Select' })).not.toBeInTheDocument()
+  })
+})

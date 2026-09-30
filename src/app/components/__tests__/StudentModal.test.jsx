@@ -797,3 +797,46 @@ describe('StudentModal item progress', () => {
     expect(screen.queryByRole('button', { name: '▶ Run on student' })).not.toBeInTheDocument()
   })
 })
+
+describe('StudentModal live badges', () => {
+  it('shows the teacher-only badge count in the header', () => {
+    render(
+      <StudentModal
+        {...mkProps({
+          session: {
+            ...ACTIVE_SESSION,
+            badges: {
+              'student-1': {
+                bug_hunter: { status: 'awarded' },
+                code_fixer: { status: 'revoked' },
+                persistence: { status: 'awarded' },
+              },
+            },
+          },
+        })}
+      />
+    )
+    expect(screen.getByTestId('modal-badge-count')).toHaveTextContent('🏅 2')
+  })
+
+  it('opens the badge picker from More and awards manually', async () => {
+    const user = userEvent.setup()
+    const onDecideBadge = vi.fn(async () => ({ committed: true }))
+    const onClose = vi.fn()
+    render(<StudentModal {...mkProps({ onDecideBadge, onRevokeBadge: vi.fn(), onClose })} />)
+    await user.click(screen.getByRole('button', { name: /^More/ }))
+    await user.click(screen.getByRole('button', { name: '🏅 Award badge' }))
+    expect(screen.getByRole('dialog', { name: /Award badge · Jamie/ })).toBeInTheDocument()
+    await user.click(screen.getByTestId('badge-option-problem_solver'))
+    expect(onDecideBadge).toHaveBeenCalledWith(
+      'student-1',
+      'problem_solver',
+      expect.objectContaining({ source: 'manual', taskId: 1 }),
+      { replaceStatuses: ['dismissed', 'revoked'] }
+    )
+    // Escape closes the picker, not the student modal.
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: /Award badge/ })).not.toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+})
