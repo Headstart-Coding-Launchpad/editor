@@ -486,6 +486,27 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 
 ---
 
+## Badges (`src/badges/`)
+
+Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs/authoring/badges.md`). Built-in badges are a code registry; rules read normalised per-student timelines, never Firebase or React, so they are pure and deterministic. PR 1 ships the registry, rules and authoring validation only (no UI, no live data yet).
+
+| File | Role |
+|---|---|
+| `defineBadge.js` | Badge contract: `defineBadge({ id, emoji, title, blurb, ruleText, rule?, reasonText?, autoAwardable?, examples? })`; tutor-only badges omit `rule`; rule-backed ones need `reasonText`, `ruleText` and 2+ `examples` |
+| `definitions/*.js` | One file per built-in badge (`bug_hunter.js`, `code_builder.js`, `code_detective.js`, `challenge_solver.js`, `quiz_master.js`, `code_fixer.js`, `persistence.js`, `resourceful_coder.js`, `keyboard_wizard.js`, `ready_to_code.js`, and tutor-only `problem_solver.js`, `experimenter.js`, `creative_coder.js`, `comedy_coder.js`, `focused_coder.js`, `project_explorer.js`, `knowledge_builder.js`, `helpful_coder.js`) |
+| `registry.pure.js` | Node-safe registry: `BADGE_IDS`, `getBadgeDefinition(s)`, `getRuleBackedBadges`, `getTutorOnlyBadges`, `getHintableBadges`, `getBadgesByPattern`; rejects duplicate ids and emoji |
+| `registry.js` | UI registry (re-exports the pure one until badges have UI parts), mirroring `src/activities/registry.js` |
+| `timeline.js` | Timeline event shapes (JSDoc typedefs) and constructors (`attemptEvent`, `sandboxRunEvent`, `topicOpenEvent`, `revealEvent`, `completeShownEvent`, `pasteEvent`, `overrideEvent`, `shortcutEvent`, `firstEditEvent`), `filterTimelinesToRoster` |
+| `rules.js` | Guards (`getPassGuard`, `isRealPass`, `getRealPass`, `getFirstTryRealPass`), `computeFirstInClass`, and the rule helpers `firstInClassOnPattern`, `realPassOnPattern`, `errorThenPass`, `uniqueFailsThenPass`, `anySignal` / `keyboardWizardSignal`, `firstEditWithin`, `quizGroupFirstTry` |
+| `evaluate.js` | `evaluateBadgeRules({ timelines, lesson, decisions, options })` → suggestions `{ badgeId, studentId, taskId, reason, context, at }`, once per student per badge, decided keys removed |
+| `lessonIndex.js` | `buildBadgeLessonIndex(lesson)`: per-task pattern, effective module type, code / graded-quiz flags and `badgeHints`, plus quiz groups, via the shared task utilities (composed-lesson safe); `isGradedQuizTask` |
+| `badgeOptions.js` | `BADGE_OPTION_SPECS`, `DEFAULT_BADGE_OPTIONS`, `resolveBadgeOptions(lesson, overrides)` for the envelope's `badgeOptions` |
+| `validation.js` | `validateBadgeOptions` / `validateBadgeHints`, called by `src/shared/lessonValidation.js` (messages in `validation-errors.md`) |
+| `shortcuts.js` | `KEYBOARD_WIZARD_SHORTCUTS` (the curated list), `matchKeyboardWizardShortcut(event, { inEditor })` (ignores AltGr / Alt) |
+| `exampleLesson.js` | `EXAMPLE_LESSON`, the lesson badge `examples` run against (by `__tests__/badgeRegistry.test.js`) |
+
+---
+
 ## Shared Modules (`src/shared/`)
 
 | File | Role |
@@ -511,6 +532,7 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `fileKeys.js` | Pure helpers for Firebase file key encoding: `encodeFileKey(name)` and `decodeFileKey(key)` — dots encoded as `__dot__` |
 | `codemirror.js` | CodeMirror config: `createBaseExtensions(type, readOnly)`, `getTabSize(type)`, `getLanguageExtension(type)` (editor-language maps; unknown languages get Python and a 2-space tab) — `headstartTheme` and `headstartHighlight` are internal-only, applied inside `createBaseExtensions`. Also the line-hint extension: `lineHintsExtension()` (💡 gutter marker + faded ghost-text widget per hinted line, never part of the document or undo history), driven by `setLineHints`; `lineHintsField` maps hints through edits and drops one when its line is deleted; `getLineHints(state)` reads what shows |
 | `fieldSpec.js` | Pure field declarations (a task shape as data): `normaliseFieldSpecs` (validates and freezes `{ name, type, required, authored, values, modes, itemFields }`), `authoredFieldPaths`, `fieldsForMode`, `describeFieldSpecs`. Used by `defineActivity` (`fields`), `defineModule` (`taskFields`) and `taskFields.js` |
+| `taskActivity.js` | The platform copy of the Lesson Format Glossary: `TASK_ACTIVITY_FORMATS`, `TASK_ACTIVITY_PATTERNS` (stable ids such as `debug_code_task`, `quiz_what_is_the_error`), `parseTaskActivity(str)` → `{ format, pattern, known }` (tolerant of case, spacing and `,` vs `:`), `getTaskActivityPatternId(task)`; unrecognised patterns are a validation warning |
 | `taskFields.js` | `COMMON_TASK_FIELDS`, `TASK_TYPE_FIELDS` (information, group) and the `codeStagesField(payload)` helper modules use in their `taskFields` |
 | `lineHints.js` | Pure, import-free author line hints (`#> …` / `<!--> … -->` marker lines; a module opts in with `capabilities.lineHints`): `parseLineHints(code, syntax)` → `{ code, hints, trailingMarker }`, `stripLineHints`, `anchorLineHints` / `chooseLineHints` (re-anchor hints onto saved code by trimmed line text), `stripTaskLineHints` / `stripLessonLineHints` (strip a task/lesson, recording runtime-only `task.lineHintSets`), `getTaskLineHintSets` / `getStageLineHints` (what editors and stage references show), `findTrailingLineHintMarkers` (validator warning) |
 | `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions`, `storage` |
@@ -593,6 +615,7 @@ Pure, Node-safe input library for the Keyboard and Mouse activities and the Desk
 | `scripts/check-docs.mjs` | Dependency-free documentation hygiene check: validates local Markdown links, `docs/README.md` inventory, and source-file coverage in this map |
 | `scripts/new-activity.mjs` | `npm run new:activity -- <id> "<Label>" [--category …] [--dry-run]`: scaffolds an activity from `src/activities/_template/`, registers it in `registry.pure.js` / `registry.js`, writes `docs/authoring/activities/<id>.md` and indexes it in `docs/README.md`, this map and `validation-errors.md`; validates the id, refuses to overwrite, prettier-formats generated code (tested by `scripts/__tests__/newActivity.test.mjs`) |
 | `scripts/new-module.mjs` | `npm run new:module -- <type> "<Label>" [--dry-run]`: scaffolds a workspace module from `src/modules/_template/` (registry order after the last module), registers it in `definitions.js`, `registry.js` and `checks.js`, adds the type to the type-branch ratchet and the ESLint rule, records the scaffold's deliberate parity gaps in `moduleTypeParity`'s `KNOWN_GAPS`, adds its `StudentViewModules` click-through, writes `docs/authoring/<type>.md` and indexes it in `docs/README.md`, this map, `validation-errors.md`, `AGENTS.md`, `lesson-schema.md`, `task-types.md` and `MODULE_FEATURE_MATRIX.md`; validates the type (reserved words, activities, names core code already compares against), refuses to overwrite (tested by `scripts/__tests__/newModule.test.mjs`) |
+| `scripts/audit-task-activity.mjs` | `node scripts/audit-task-activity.mjs <file-or-folder>... [--json]`: read-only coverage audit of lesson YAML / JSON — tasks per `taskActivity` pattern, how many have a `check`, unrecognised values, quiz groups big enough for Quiz Master (tested by `scripts/__tests__/auditTaskActivity.test.mjs`) |
 | `scripts/scaffold-utils.mjs` | Shared plan/apply plumbing for both kits: template listing, prettier formatting, anchored inserts, line-ending preservation, `applyPlan` (refuses to overwrite or apply a stale plan) and `describePlan` |
 | `scripts/build-info.mjs` | `getBuildInfo({ packageVersion })`: build metadata for the app version label — MAJOR.MINOR from `package.json`, build number = `git rev-list --count HEAD` (null in a shallow clone), short commit and build time; used by `vite.config.js` (tested by `scripts/__tests__/buildInfo.test.mjs`) |
 
@@ -619,7 +642,7 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | `cli/cli.mjs` | Entry point: yargs CLI with lesson topic audit/preflight/check-case testing plus `lessons`, `tasks`, `topics`, `feedback`, and `assets` subcommand groups |
 | `cli/firebase.mjs` | Firebase Admin SDK init via `GOOGLE_APPLICATION_CREDENTIALS`; exports `db` (Firestore) and `storage`; exits on missing credentials |
 | `cli/validate.mjs` | `validateLessonForMcp(lesson)` — standalone lesson validation (no Firebase dependency): the shared core (`src/shared/lessonValidation.js`) plus the CLI-only `description is required` rule |
-| `cli/capabilities.mjs` | `buildCapabilities()` — JSON catalogue printed by `lessons capabilities` for lesson agents (no Firebase): modules (with their `taskFields`), activities (modes, `fields`, `fieldsByMode`, `authoredFields` from each definition's `fields`), the common / information / group task fields (`src/shared/taskFields.js`), check types, and `requests` |
+| `cli/capabilities.mjs` | `buildCapabilities()` — JSON catalogue printed by `lessons capabilities` for lesson agents (no Firebase): modules (with their `taskFields`), activities (modes, `fields`, `fieldsByMode`, `authoredFields` from each definition's `fields`), the common / information / group task fields (`src/shared/taskFields.js`), check types, the `taskActivity` vocabulary (`src/shared/taskActivity.js`), the built-in badges with `badgeOptions`, and `requests` |
 | `cli/authoring-requests.mjs` | `readAuthoringRequests()` / `parseAuthoringRequest()` — reads `docs/authoring/authoring-requests/*.md` headers into `{ file, title, kind, status, requestedBy, lessonsBlocked }` for `lessons capabilities` |
 | `cli/check-tests.mjs` | `testLessonChecks(lesson, casesFile)` — source-code case harness using the shared runtime check evaluator, including feedback-match reporting |
 | `cli/topic-utils.mjs` | Standalone topic-library normalization and validation helpers used by CLI conversion/publish commands |

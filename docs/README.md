@@ -210,6 +210,11 @@ Intake for capability requests from lesson agents and people: when a lesson need
 
 **Load when:** a lesson needs something `lessons capabilities` doesn't list, or you are picking up a request to build.
 
+### [authoring/badges.md](authoring/badges.md)
+Live badges from the lesson author's side: the built-in badges and their exact rules, which `taskActivity` patterns trigger which badge, badge × module coverage, the envelope's `badgeOptions`, per-task `badgeHints`, and the `taskActivity` pattern vocabulary.
+
+**Load when:** tagging `taskActivity`, tuning badges for a lesson, or checking which badges a task can earn.
+
 ### [authoring/validation-errors.md](authoring/validation-errors.md)
 Every lesson validation error and warning from the CLI and shared validators, with what it means and how to fix it. A test fails if a validator gains a message that isn't listed.
 

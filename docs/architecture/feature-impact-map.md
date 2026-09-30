@@ -105,7 +105,21 @@ Usually changes with:
 - `docs/FEATURES.md`
 - builder and CLI validation tests
 
-## Firebase And Session Model
+## Live Badges
+
+Changes include a badge definition, a rule helper, the timeline event shapes, the `taskActivity` vocabulary, `badgeOptions` / `badgeHints`, or the Keyboard Wizard shortcut list.
+
+Usually changes with:
+
+- `src/badges/` (definitions, `rules.js`, `timeline.js`, `evaluate.js`, `registry.pure.js`)
+- `src/shared/taskActivity.js` (pattern ids are stored by badges and reports: add aliases, never rename)
+- `src/shared/lessonValidation.js` and `src/badges/validation.js`
+- `cli/capabilities.mjs`
+- `docs/authoring/badges.md`, `validation-errors.md`, `CHANGELOG.md`
+- `docs/architecture/live-badges-plan.md`
+- `src/badges/__tests__/` (every rule-backed badge's `examples` run in `badgeRegistry.test.js`)
+
+
 
 Changes include Realtime Database paths, Firestore collections, Storage paths, security rules, session state transitions, or who can write a field.
 

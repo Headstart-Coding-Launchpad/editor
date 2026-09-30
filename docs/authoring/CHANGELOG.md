@@ -37,6 +37,22 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-09-30
+
+### `taskActivity` patterns are read; `badgeOptions` and `badgeHints` for live badges
+
+- `taskActivity` stays free text, but the platform now reads the Lesson Format Glossary pattern it
+  names (`src/shared/taskActivity.js`; `lessons capabilities` → `taskActivity`). An unrecognised
+  pattern is a **warning**, never an error. Case, spacing and `,` vs `:` don't matter.
+- The coming live badges use the pattern: a `Debug Code Task` can suggest 🐛 Bug Hunter, a
+  `Copy the Code` task 📋 Code Builder, `Quiz: What Is the Error?` / `Quiz: Fix a Common Bug`
+  🔍 Code Detective, and a `Challenge (Open-Ended)` 🔓 Challenge Solver. Those tasks need a `check`.
+- New optional envelope field `badgeOptions` (`quizMasterThreshold`, `quizMasterMinQuizzes`,
+  `persistenceMinFails`, `readyToCodeSeconds`) and per-task `badgeHints` (`suggest`, `suppress`).
+  Lessons never define badges. See [badges.md](badges.md).
+- Affects: all, cli · Existing lessons: no changes needed (fix any `taskActivity` the validator
+  warns about) · Resolves: none
+
 ## 2026-09-29
 
 ### Mac and Chromebook keys and right-click
