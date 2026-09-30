@@ -42,12 +42,15 @@ import useBadgeCelebrations from '../hooks/useBadgeCelebrations'
 import BadgeCelebration from '../components/badges/BadgeCelebration'
 import BadgeClassToast from '../components/badges/BadgeClassToast'
 import CodingMomentsPill from '../components/badges/CodingMomentsPill'
+import SoundsToggleButton from '../components/SoundsToggleButton'
+import useCompleteChime from '../hooks/useCompleteChime'
 import { resolveBadge } from '../../badges/badgeDisplay'
 import { listMyMoments } from '../../badges/celebration'
 import LoadingScreen from '../components/LoadingScreen'
 import SessionEndedScreen from '../components/SessionEndedScreen'
 import StudentStatusBanners from '../components/StudentStatusBanners'
 import LessonTaskContent from '../components/LessonTaskContent'
+import { usePreloadNeighbourImages } from '../../shared/preloadImages'
 import SoloNav from '../components/SoloNav'
 import SharedWorkspacePanel from '../components/SharedWorkspacePanel'
 import { applySharedWorkspaceCopy, describeShareError } from '../sharedWorkspacePayload'
@@ -350,6 +353,31 @@ export default function StudentView({
     students: session?.students,
     soundsOff: !!session?.badgeSettings?.soundsOff,
   })
+  // The success chime when the student's checks pass on a task, solo or live. Never on the
+  // presentation window or a preview, nor in the personal sandbox.
+  const completeChime = useCompleteChime({
+    enabled:
+      (phase === 'lesson' || phase === 'solo') &&
+      !teacherPresentation &&
+      !previewMode &&
+      !cs.inPersonalSandbox,
+    passed: cs.checkPassed,
+    // The task on screen: a live student looking back at an earlier task sees that task's result.
+    taskKey:
+      (viewingTaskId ?? currentTaskId) == null
+        ? null
+        : `${lessonId}:${viewingTaskId ?? currentTaskId}`,
+    soundsOff: !!session?.badgeSettings?.soundsOff,
+  })
+  // "Show complete" fills in the answer, which passes the checks: that pass isn't celebrated.
+  // (cs is a new object every render, so this wrapper costs nothing extra.)
+  const taskCs = {
+    ...cs,
+    handleShowCompleteCode: () => {
+      completeChime.skipTask()
+      cs.handleShowCompleteCode()
+    },
+  }
   // The session-end screen reads the kept `badges` node, so it survives a reload of that screen.
   const endScreenMoments = useMemo(
     () =>
@@ -715,6 +743,26 @@ export default function StudentView({
     await setTeacherLive(cs.currentTeacherLivePayload())
   }
 
+  const taskDisplayMode = previewMode
+    ? null
+    : phase === 'solo'
+      ? 'solo'
+      : phase === 'lesson'
+        ? 'live'
+        : null
+
+  // Images for the tasks either side of this one load in the background, so Next / Back don't
+  // show them popping in after the slide.
+  const preloadFlatTasks = useMemo(
+    () => (lesson ? flattenTasks(filterTasksByMode(lesson.tasks, taskDisplayMode)) : []),
+    [lesson, taskDisplayMode]
+  )
+  usePreloadNeighbourImages(
+    lesson,
+    preloadFlatTasks,
+    preloadFlatTasks.findIndex((t) => t.id === currentTaskId)
+  )
+
   // ─── Phase guards ──────────────────────────────────────────────────────────
 
   if (
@@ -795,13 +843,6 @@ export default function StudentView({
 
   // ─── Lesson / sandbox / solo render ───────────────────────────────────────
 
-  const taskDisplayMode = previewMode
-    ? null
-    : phase === 'solo'
-      ? 'solo'
-      : phase === 'lesson'
-        ? 'live'
-        : null
   const visibleTasks = filterTasksByMode(lesson.tasks, taskDisplayMode)
   const flatTasks = flattenTasks(visibleTasks)
   const currentIndex = flatTasks.findIndex((t) => t.id === currentTaskId)
@@ -1178,6 +1219,7 @@ export default function StudentView({
     </div>
   ) : (
     <div style={s.topBarTaskControls}>
+      {!previewMode && <SoundsToggleButton soundsOff={!!session?.badgeSettings?.soundsOff} />}
       {(phase === 'lesson' || phase === 'sandbox') && (
         <CodingMomentsPill
           moments={badgeCelebrations.moments}
@@ -1266,6 +1308,12 @@ export default function StudentView({
   )
 
   const transitionKey = `${phase}-${cs.inPersonalSandbox ? 'personal-sandbox' : (viewingTaskId ?? currentTaskId)}`
+  // The slide's direction: moving to an earlier task slides back. The personal sandbox has no
+  // place in the lesson, so entering or leaving it slides forward.
+  const transitionTaskIndex = cs.inPersonalSandbox
+    ? -1
+    : flatTasks.findIndex((t) => t.id === (viewingTaskId ?? currentTaskId))
+  const transitionOrder = transitionTaskIndex >= 0 ? transitionTaskIndex : null
 
   const page = (
     <div style={{ ...s.page, background: isForcedTeacherLive ? '#dde0e5' : '#f5f5f5' }}>
@@ -1497,7 +1545,7 @@ export default function StudentView({
           <LessonTaskContent
             lesson={displayedLesson}
             task={task}
-            cs={cs}
+            cs={taskCs}
             lessonId={lessonId}
             identityId={effectiveIdentity?.anonymousId}
             sandboxExplainer={session?.sandboxExplainer}
@@ -1505,6 +1553,7 @@ export default function StudentView({
             viewingTaskId={viewingTaskId}
             currentTaskId={currentTaskId}
             transitionKey={transitionKey}
+            transitionOrder={transitionOrder}
             previewMode={previewMode}
             isSandbox={isSandbox}
             isViewingPrev={isViewingPrev}

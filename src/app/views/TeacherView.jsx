@@ -17,6 +17,8 @@ import EditLessonModal from '../components/EditLessonModal'
 import TopBar from '../components/TopBar'
 import TaskNavigator from '../components/TaskNavigator'
 import ExplainerPanel from '../components/ExplainerPanel'
+import TaskSlideTransition from '../components/TaskSlideTransition'
+import { usePreloadNeighbourImages } from '../../shared/preloadImages'
 import StudentGrid from '../components/StudentGrid'
 import TeacherTimers from '../components/TeacherTimers'
 import TeacherSessionControls from '../components/TeacherSessionControls'
@@ -66,6 +68,7 @@ import { describeShareError } from '../sharedWorkspacePayload'
 import { useSandboxArchiveSnapshots } from '../hooks/useSandboxArchiveSnapshots'
 import { useBadgeAutoAward, useBadgeSuggestions } from '../hooks/useBadgeSuggestions'
 import { useBadgeCatalogue } from '../hooks/useBadgeCatalogue'
+import { firstViewKey } from '../../shared/motion'
 
 function canRecordAdvanceOverride(task) {
   if (!task || task.taskType === 'information') return false
@@ -572,6 +575,8 @@ export default function TeacherView({ lessonId }) {
   const editorLesson = isInSandbox ? sandboxLesson : displayedLesson
   const currentTask = flatTasks.find((t) => t.id === (session?.currentTaskId ?? currentTaskId))
   const displayIndex = flatTasks.findIndex((t) => t.id === displayTaskId)
+  // Next / Back in the teacher's navigator find the neighbouring tasks' images already loaded.
+  usePreloadNeighbourImages(lesson, flatTasks, displayIndex)
   const teacherStageMatch = teacherCodeTab.match(/^stage_(\d+)$/)
   const teacherActiveStageIndex = teacherStageMatch ? parseInt(teacherStageMatch[1], 10) : null
   const taskCodeStages = task?.codeStages ?? []
@@ -715,12 +720,21 @@ export default function TeacherView({ lessonId }) {
 
         {/* Centre — Teacher Editor */}
         <main style={{ ...s.centre, ...(centreFillsHeight ? { overflow: 'hidden' } : {}) }}>
+          {/* Only the explainer slides: it's presentational, so the leaving copy is an inert
+              snapshot. The editor, broadcast and panels below have side effects and swap in place. */}
           {task?.explainer && !isInSandbox && !isHostedActivityTask(task) && !isInformationTask && (
-            <ExplainerPanel
-              title={task.title}
-              content={task.explainer}
-              topicType={displayedLesson.type}
-            />
+            <TaskSlideTransition
+              transitionKey={`teacher-explainer-${displayTaskId}`}
+              order={displayIndex}
+              style={s.explainerSlide}
+            >
+              <ExplainerPanel
+                title={task.title}
+                content={task.explainer}
+                topicType={displayedLesson.type}
+                entranceKey={firstViewKey(lessonId, task.id)}
+              />
+            </TaskSlideTransition>
           )}
 
           {isPreviewing && (
@@ -811,6 +825,7 @@ export default function TeacherView({ lessonId }) {
             onToggleLiveReference={setTeacherLiveReferenceForClass}
             fillHeight={centreFillsHeight}
             badgeWall={teacherBadgeWall}
+            entranceKey={firstViewKey(lessonId, task?.id)}
           />
           {task && !isInformationTask && !isInSandbox && (
             <TaskRatingPanel
@@ -1028,6 +1043,9 @@ const s = {
     gap: 10,
     overflow: 'auto',
     background: '#f5f5f5',
+  },
+  explainerSlide: {
+    flexShrink: 0,
   },
   right: {
     background: '#fff',

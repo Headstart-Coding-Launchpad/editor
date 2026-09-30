@@ -261,4 +261,45 @@ describe('CheckFeedbackBanner', () => {
       expect(screen.queryByText(/Need Help/i)).not.toBeInTheDocument()
     })
   })
+
+  describe('motion', () => {
+    it('pops the pass banner in, spins its ✓ once and does not wobble', () => {
+      render(<CheckFeedbackBanner passed={true} />)
+      expect(screen.getByText('✓')).toHaveClass('motion-spin-once')
+      expect(screen.getByRole('status')).toHaveClass('motion-pop-in')
+      expect(screen.getByRole('status')).not.toHaveClass('motion-wobble')
+    })
+
+    it('wobbles the fail banner and does not spin its icon', () => {
+      render(<CheckFeedbackBanner passed={false} />)
+      expect(screen.getByRole('status')).toHaveClass('motion-wobble')
+      expect(screen.getByRole('status')).not.toHaveClass('motion-pop-in')
+      expect(screen.getByText('!')).not.toHaveClass('motion-spin-once')
+    })
+
+    it('replays the wobble on every failed check (a new key remounts the banner)', () => {
+      const { rerender } = render(<CheckFeedbackBanner key="fail-1" passed={false} />)
+      const first = screen.getByRole('status')
+      rerender(<CheckFeedbackBanner key="fail-2" passed={false} />)
+      const second = screen.getByRole('status')
+      expect(second).not.toBe(first)
+      expect(second).toHaveClass('motion-wobble')
+    })
+
+    it('centres the banner without a transform, so the wobble cannot move it off-centre', () => {
+      render(<CheckFeedbackBanner passed={false} />)
+      expect(screen.getByRole('status').style.transform).toBe('')
+    })
+  })
+})
+
+describe('CheckFeedbackBanner hints and motion', () => {
+  it("never slides a hint's bullets in (only explainer and information bodies do)", () => {
+    const { container } = render(
+      <CheckFeedbackBanner passed={false} suggestion={'- Check the brackets\n- Check the quotes'} />
+    )
+    const items = container.querySelectorAll('li')
+    expect(items.length).toBe(2)
+    items.forEach((li) => expect(li).not.toHaveClass('motion-slide-in'))
+  })
 })

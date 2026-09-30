@@ -184,6 +184,10 @@ delete this clone
 2. Another item
 ```
 
+In a task's explainer and an information task's body, list items slide in one after another the
+first time the task is shown (`MarkdownRenderer`'s `animateLists` prop). Nothing to opt into;
+hints, topic cards and Builder previews stay still.
+
 ---
 
 ## Tables

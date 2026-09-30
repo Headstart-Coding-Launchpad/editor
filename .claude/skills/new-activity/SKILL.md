@@ -63,6 +63,9 @@ anything. Every place to change is marked `TODO(new-activity)`.
    `prefers-reduced-motion`, `act-` classes (add new ones to `src/index.css` in the `act-`
    namespace). Touch: honour `device.touch` / `device.virtualKeyboard`; pointer code uses
    Pointer Events. `readOnly` must render the teacher view (no Check button, marks shown).
+   Show a correct answer with the shared `ActivityCorrect` (`src/activities/ui/ActivityCorrect.jsx`,
+   "✓ Correct" or custom text as children; `SpinTick` for a bare ✓), whose ✓ spins once when it
+   appears. Render it only while the answer is correct; don't hand-roll a "✓ Correct" line.
 4. Do not touch app code (StudentView, TeacherView, hooks): `ActivityHost` and
    `useActivityState` already handle persistence, sync, grading, reset and teacher edits. If
    the activity truly needs a host change, stop and ask.

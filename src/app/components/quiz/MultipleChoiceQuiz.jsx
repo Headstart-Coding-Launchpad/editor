@@ -1,6 +1,7 @@
 import React from 'react'
 import { InlineMarkdown, MarkdownRenderer } from '../../../shared/markdown'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
+import { useChoiceEntrance } from '../../../activities/ui/choiceEntrance.jsx'
 import {
   baseStyles as s,
   fitScratchQuizScale,
@@ -29,6 +30,7 @@ export default function MultipleChoiceQuiz({
   const optionsFrameRef = React.useRef(null)
   const optionsGridRef = React.useRef(null)
   const [optionsScale, setOptionsScale] = React.useState(1)
+  const entrance = useChoiceEntrance()
 
   // Options render in the order the lesson author wrote them. They are shuffled once, by
   // the authoring agent, when the lesson is written; shuffling again per mount gave every
@@ -41,16 +43,26 @@ export default function MultipleChoiceQuiz({
     const content = optionsGridRef.current
     if (!container || !content) return undefined
 
-    const run = () =>
-      shrinkToFit({
-        setScale: (scale) => {
-          content.style.setProperty('--quiz-option-scale', String(scale))
-          setOptionsScale(scale)
-        },
-        isOverflowing: () =>
-          content.scrollHeight > container.clientHeight + 1 ||
-          content.scrollWidth > container.clientWidth + 1,
-      })
+    // A rising option (its first-view entrance) is translated down, which scrollHeight counts
+    // as overflow; measure with the options at rest so the entrance never shrinks them. An
+    // !important declaration outranks the animation without restarting it.
+    const run = () => {
+      const options = Array.from(content.children)
+      options.forEach((option) => option.style.setProperty('transform', 'none', 'important'))
+      try {
+        shrinkToFit({
+          setScale: (scale) => {
+            content.style.setProperty('--quiz-option-scale', String(scale))
+            setOptionsScale(scale)
+          },
+          isOverflowing: () =>
+            content.scrollHeight > container.clientHeight + 1 ||
+            content.scrollWidth > container.clientWidth + 1,
+        })
+      } finally {
+        options.forEach((option) => option.style.removeProperty('transform'))
+      }
+    }
 
     run()
     if (typeof ResizeObserver === 'undefined') return undefined
@@ -96,6 +108,8 @@ export default function MultipleChoiceQuiz({
               if (!locked) onSelectAnswer?.(option.id)
             }
 
+            const optionEntrance = entrance(index)
+
             return (
               <div
                 key={option.id}
@@ -103,12 +117,14 @@ export default function MultipleChoiceQuiz({
                 aria-checked={active}
                 aria-disabled={locked || undefined}
                 tabIndex={locked ? -1 : 0}
+                className={optionEntrance.className}
                 style={{
                   ...s.option,
                   background: bg,
                   borderColor: border,
                   color: textColour,
                   ...(active || isCorrect || isWrong ? s.optionActive : {}),
+                  ...optionEntrance.style,
                 }}
                 onClick={chooseOption}
                 onKeyDown={(event) => {

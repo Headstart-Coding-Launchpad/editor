@@ -6,6 +6,7 @@ import { getTaskActivityUi } from './registry.js'
 import { UNKNOWN_ACTIVITY_ID } from './resolve.js'
 import { deserializeActivityState } from './state.js'
 import { effectiveCapabilities } from './device.js'
+import { ChoiceEntranceProvider } from './ui/choiceEntrance.jsx'
 
 // ActivityHost renders a hosted activity task (taskType 'activity', or a legacy quiz) in the
 // classroom. The
@@ -61,6 +62,9 @@ export function ActivityView({
   showHeader = true,
   lessonType = null,
   result = null,
+  // Which task is shown (usually firstViewKey(lessonId, taskId)): its answer choices rise in on
+  // the task's first view. Null (the Builder's editor preview, StudentModal) never animates.
+  entranceKey = null,
 }) {
   const ui = getTaskActivityUi(task)
   if (!ui || ui.id === UNKNOWN_ACTIVITY_ID || !ui.StudentView) {
@@ -86,12 +90,17 @@ export function ActivityView({
       result={result}
     />
   )
-  if (ui.ownsLayout) return view
   return (
-    <div className="act-host" data-activity={ui.id}>
-      {showHeader && <ActivityHeader task={task} lessonType={lessonType} />}
-      {view}
-    </div>
+    <ChoiceEntranceProvider entranceKey={entranceKey}>
+      {ui.ownsLayout ? (
+        view
+      ) : (
+        <div className="act-host" data-activity={ui.id}>
+          {showHeader && <ActivityHeader task={task} lessonType={lessonType} />}
+          {view}
+        </div>
+      )}
+    </ChoiceEntranceProvider>
   )
 }
 
@@ -150,6 +159,8 @@ export default function ActivityHost({
   reviewing = false,
   lessonType = null,
   result = null,
+  // Passed to ActivityView: the task's first view plays its choices' entrance.
+  entranceKey = null,
 }) {
   const capabilities = useInputCapabilities()
   const [keyboardOverride, setKeyboardOverride] = useState(false)
@@ -204,6 +215,7 @@ export default function ActivityHost({
       device={device}
       lessonType={lessonType}
       result={reviewing ? null : result}
+      entranceKey={entranceKey}
     />
   )
   // Quizzes have no device requirements and lay themselves out (see ActivityView).

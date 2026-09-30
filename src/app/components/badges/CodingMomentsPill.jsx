@@ -4,15 +4,15 @@ import BadgeStickerSheet from './BadgeStickerSheet'
 /**
  * The student's 🎖️ Coding moments button in the top bar: a compact icon-only button (no count,
  * so it never reads as a score) that opens a small popover of their own awarded badges (a revoked
- * one disappears silently) with the speaker toggle that mutes the celebration chime on this device
- * for the session. Hidden until the first moment arrives. The celebration card docks into it
+ * one disappears silently) with the speaker toggle for the student's app-wide Sounds setting (the
+ * same mute as the top-bar 🔊 button; StudentView wires it to `useSoundsMuted`). Hidden until the first moment arrives. The celebration card docks into it
  * (data-badge-dock).
  *
  * @param {object} props
  * @param {{ badgeId: string, badge: object }[]} props.moments From `listMyMoments`.
- * @param {boolean} props.muted The student's own mute (in memory only).
+ * @param {boolean} props.muted The student's own Sounds mute (`useSoundsMuted`).
  * @param {(muted: boolean) => void} props.onMutedChange
- * @param {boolean} [props.soundsOff] The tutor turned badge sounds off for the class.
+ * @param {boolean} [props.soundsOff] The tutor turned sounds off for the class.
  */
 export default function CodingMomentsPill({
   moments = [],
@@ -66,13 +66,13 @@ export default function CodingMomentsPill({
               onClick={() => onMutedChange?.(!muted)}
               disabled={soundsOff}
               aria-pressed={muted}
-              aria-label={muted ? 'Turn badge sounds on' : 'Mute badge sounds'}
+              aria-label={muted ? 'Turn sounds on' : 'Mute sounds'}
               title={
                 soundsOff
-                  ? 'Your teacher has turned badge sounds off'
+                  ? 'Your teacher has turned sounds off'
                   : muted
-                    ? 'Turn badge sounds on'
-                    : 'Mute badge sounds'
+                    ? 'Turn sounds on'
+                    : 'Mute sounds'
               }
             >
               <span aria-hidden="true">{silenced ? '🔇' : '🔈'}</span>{' '}

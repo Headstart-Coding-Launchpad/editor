@@ -167,6 +167,6 @@ describe('Binary UI: pixels', () => {
     expect(
       screen.getAllByRole('switch').filter((c) => c.getAttribute('aria-checked') === 'true')
     ).toHaveLength(3)
-    expect(screen.getByText('✓ Correct')).toBeInTheDocument()
+    expect(screen.getByText('Correct')).toBeInTheDocument()
   })
 })

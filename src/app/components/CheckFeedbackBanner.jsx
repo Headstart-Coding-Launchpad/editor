@@ -30,8 +30,14 @@ export default function CheckFeedbackBanner({
 
   if (dismissed) return null
 
+  // Motion: a fail banner wobbles each time it appears; a pass banner pops in while its ✓ spins
+  // once. Callers remount this per check (see above), which replays the one-shot class.
   return (
-    <div style={{ ...s.banner, ...(passed ? s.pass : s.fail) }} role="status">
+    <div
+      className={passed ? 'motion-pop-in' : 'motion-wobble'}
+      style={{ ...s.banner, ...(passed ? s.pass : s.fail) }}
+      role="status"
+    >
       <button
         type="button"
         style={s.closeBtn}
@@ -41,7 +47,10 @@ export default function CheckFeedbackBanner({
         ×
       </button>
       <div style={s.row}>
-        <span style={{ ...s.icon, background: passed ? '#166534' : '#92400e' }}>
+        <span
+          className={passed ? 'motion-spin-once' : undefined}
+          style={{ ...s.icon, background: passed ? '#166534' : '#92400e' }}
+        >
           {passed ? '✓' : '!'}
         </span>
         <div style={s.text}>
@@ -111,8 +120,11 @@ const s = {
   banner: {
     position: 'fixed',
     top: 64,
-    left: '50%',
-    transform: 'translateX(-50%)',
+    // Centred with auto margins, not translateX(-50%): the fail banner's motion-wobble animates
+    // `transform`, which would override a centring transform while it plays.
+    left: 0,
+    right: 0,
+    marginInline: 'auto',
     zIndex: 45,
     width: 'min(92vw, 380px)',
     display: 'flex',

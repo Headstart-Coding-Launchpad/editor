@@ -430,9 +430,14 @@ resets.
 - **Task:** `taskType: information` with a new `informationType: badges` ("Today's Coding Moments").
   It follows the `introduction` pattern in `InformationTask.jsx`. The explainer is optional, and the
   task is usually placed last.
-- **Student:** their own badges as a sticker sheet flipping in one by one, then the class wall grouped
-  by badge. A student with no badges gets a warm class celebration, with no empty-state shaming.
-- **Teacher:** a projector-friendly class wall grouped by badge.
+- **Student:** their own badges as a sticker sheet tumbling in one by one (rotating as they fall),
+  then the class wall grouped by badge, dropping into place once the stickers have landed. A student
+  with no badges gets a warm class celebration, with no empty-state shaming.
+- **Teacher:** a projector-friendly class wall grouped by badge. On the teacher and presentation
+  views each row's emoji tumbles in, then the rows drop into place.
+- **Entrance:** first view of the task on that screen only (`useFirstView`); a revisit shows it
+  still. A sticker or row that arrives later (a live award) only drops in plainly, with no delay,
+  and rows already there never re-animate. Reduced motion turns it all into a short fade.
 - **Copy class summary:** on the teacher's Badge Summary and in the report. It copies the moments as
   plain text grouped by badge. In the report it uses real names only when the tutor reveals them.
 - **Solo (v1):** the task is skipped, as if it were `taskMode: live`.

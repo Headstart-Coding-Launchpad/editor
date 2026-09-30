@@ -1,9 +1,10 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import StudentView from '../StudentView'
 import { runPython, stopPython } from '../../../modules/python/pyodide'
+import { SOUNDS_MUTED_KEY, setSoundsMuted } from '../../soundSettings'
 
 const mocks = vi.hoisted(() => ({
   fetchLessonById: vi.fn(),
@@ -12,6 +13,12 @@ const mocks = vi.hoisted(() => ({
   useIdentity: vi.fn(),
   scratchWorkspace: vi.fn(),
   buildIframeSrc: vi.fn(() => 'blob:preview'),
+  playCompleteChime: vi.fn(),
+}))
+
+vi.mock('../../nudgeAlert', async (importOriginal) => ({
+  ...(await importOriginal()),
+  playCompleteChime: (...args) => mocks.playCompleteChime(...args),
 }))
 
 vi.mock('../../../shared/useIsMobile', () => ({
@@ -994,6 +1001,171 @@ describe('StudentView', () => {
       expect(screen.getByRole('list', { name: 'My coding moments' })).toHaveTextContent(
         'Bug Hunter'
       )
+    })
+  })
+
+  describe('sounds and the complete chime', () => {
+    const scratchLesson = {
+      id: 'scratch-1-1',
+      title: 'Scratch 1.1',
+      type: 'scratch',
+      tasks: [
+        {
+          id: 1,
+          title: 'Turn the sprite',
+          starterBlocks: null,
+          check: { type: 'sprite_property_changed', property: 'direction', spriteName: 'Lion' },
+        },
+      ],
+    }
+    let offset = 0
+
+    function mkLiveScratchSession(sessionOverrides = {}) {
+      return {
+        session: {
+          lessonId: 'scratch-1-1',
+          state: 'active',
+          createdAt: 456,
+          currentTaskId: 1,
+          students: {},
+          ...sessionOverrides,
+        },
+        loading: false,
+        registerPresence: vi.fn(),
+        joinSession: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentAnswer: vi.fn(),
+        writeStudentInteraction: vi.fn(),
+        writeStudentPersonalSandbox: vi.fn(),
+        writeStudentPresence: vi.fn(),
+        logAttempt: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
+      }
+    }
+
+    // Moves past the arrival grace, then reports a check result from the Scratch workspace.
+    function reportCheck(passed) {
+      offset += 5000
+      act(() => mocks.scratchWorkspace.mock.calls.at(-1)[0].onCheckResult(passed, {}))
+    }
+
+    beforeEach(() => {
+      offset = 0
+      const realNow = Date.now.bind(Date)
+      vi.spyOn(Date, 'now').mockImplementation(() => realNow() + offset)
+      mocks.playCompleteChime.mockClear()
+    })
+
+    afterEach(() => {
+      vi.mocked(Date.now).mockRestore()
+      setSoundsMuted(false)
+    })
+
+    it('chimes once when a solo student first passes, and the top-bar button mutes it', async () => {
+      const user = userEvent.setup()
+      render(<StudentView lessonId="scratch-1-1" forceSolo lesson={scratchLesson} />)
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+
+      const soundsBtn = screen.getByRole('button', { name: 'Mute sounds' })
+      expect(soundsBtn).toHaveAttribute('aria-pressed', 'false')
+
+      reportCheck(true)
+      await waitFor(() => expect(mocks.playCompleteChime).toHaveBeenCalledTimes(1))
+      reportCheck(false)
+      reportCheck(true)
+      expect(mocks.playCompleteChime).toHaveBeenCalledTimes(1)
+
+      await user.click(soundsBtn)
+      const mutedBtn = screen.getByRole('button', { name: 'Turn sounds on' })
+      expect(mutedBtn).toHaveAttribute('aria-pressed', 'true')
+      expect(window.localStorage.getItem(SOUNDS_MUTED_KEY)).toBe('1')
+    })
+
+    it('stays silent when the student has muted sounds', async () => {
+      setSoundsMuted(true)
+      render(<StudentView lessonId="scratch-1-1" forceSolo lesson={scratchLesson} />)
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      expect(screen.getByRole('button', { name: 'Turn sounds on' })).toBeInTheDocument()
+      reportCheck(true)
+      expect(mocks.playCompleteChime).not.toHaveBeenCalled()
+    })
+
+    it('has no Sounds button and no chime in the Builder preview', async () => {
+      render(
+        <StudentView lesson={scratchLesson} forceSolo allowUnrestrictedTaskNavigation previewMode />
+      )
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      expect(screen.queryByRole('button', { name: 'Mute sounds' })).not.toBeInTheDocument()
+      reportCheck(true)
+      expect(mocks.playCompleteChime).not.toHaveBeenCalled()
+    })
+
+    it('has no Sounds button and no chime in the presentation window', async () => {
+      mocks.useSession.mockReturnValue(mkLiveScratchSession())
+      render(<StudentView lessonId="scratch-1-1" lesson={scratchLesson} teacherPresentation />)
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      expect(screen.queryByRole('button', { name: 'Mute sounds' })).not.toBeInTheDocument()
+      reportCheck(true)
+      expect(mocks.playCompleteChime).not.toHaveBeenCalled()
+    })
+
+    it('chimes in a live lesson', async () => {
+      mocks.useSession.mockReturnValue(mkLiveScratchSession())
+      render(<StudentView lessonId="scratch-1-1" lesson={scratchLesson} />)
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      reportCheck(true)
+      await waitFor(() => expect(mocks.playCompleteChime).toHaveBeenCalledTimes(1))
+    })
+
+    it('disables the button and stays silent when the tutor turned sounds off', async () => {
+      mocks.useSession.mockReturnValue(mkLiveScratchSession({ badgeSettings: { soundsOff: true } }))
+      render(<StudentView lessonId="scratch-1-1" lesson={scratchLesson} />)
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      const soundsBtn = screen.getByRole('button', { name: 'Mute sounds' })
+      expect(soundsBtn).toBeDisabled()
+      expect(soundsBtn).toHaveAttribute('title', 'Your teacher has turned sounds off')
+      reportCheck(true)
+      expect(mocks.playCompleteChime).not.toHaveBeenCalled()
+    })
+
+    it('shares one mute between the top bar and the Coding moments popover', async () => {
+      const user = userEvent.setup()
+      mocks.useSession.mockReturnValue(
+        mkLiveScratchSession({
+          badges: {
+            'student-1': {
+              bug_hunter: {
+                status: 'awarded',
+                source: 'manual',
+                reason: null,
+                taskId: 1,
+                announce: true,
+                bulkId: null,
+                decidedAt: 100,
+              },
+            },
+          },
+        })
+      )
+      render(<StudentView lessonId="scratch-1-1" lesson={scratchLesson} />)
+      await user.click(await screen.findByRole('button', { name: /Coding moments/ }))
+      const popover = screen.getByRole('group', { name: 'Your coding moments' })
+      await user.click(within(popover).getByRole('button', { name: 'Mute sounds' }))
+      expect(within(popover).getByRole('button', { name: 'Turn sounds on' })).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      )
+      const topBarBtns = screen
+        .getAllByRole('button', { name: 'Turn sounds on' })
+        .filter((btn) => !popover.contains(btn))
+      expect(topBarBtns).toHaveLength(1)
+      expect(topBarBtns[0]).toHaveAttribute('aria-pressed', 'true')
     })
   })
 

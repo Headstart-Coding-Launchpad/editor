@@ -1,11 +1,16 @@
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ExplainerPanel from '../ExplainerPanel'
+import { resetFirstViews } from '../../../shared/motion'
 
 vi.mock('../../../shared/markdown', () => ({
-  MarkdownRenderer: ({ content, disableCopy }) => (
-    <div data-testid="markdown" data-disable-copy={String(!!disableCopy)}>
+  MarkdownRenderer: ({ content, disableCopy, animateLists }) => (
+    <div
+      data-testid="markdown"
+      data-disable-copy={String(!!disableCopy)}
+      data-animate-lists={String(!!animateLists)}
+    >
       {content}
     </div>
   ),
@@ -106,5 +111,78 @@ describe('ExplainerPanel', () => {
       />
     )
     expect(onCollapsedChange).not.toHaveBeenCalled()
+  })
+})
+
+describe('ExplainerPanel first-view entrance', () => {
+  beforeEach(() => resetFirstViews())
+
+  function panelOf(container) {
+    return container.querySelector('.card')
+  }
+
+  it("drops in and slides its bullets in on the task's first view", () => {
+    const { container } = render(
+      <ExplainerPanel title="Section" content="- one" entranceKey="lesson-1:task-1" />
+    )
+    expect(panelOf(container)).toHaveClass('motion-drop-in')
+    expect(screen.getByTestId('markdown')).toHaveAttribute('data-animate-lists', 'true')
+  })
+
+  it('does not replay on a revisit or remount of the same task', () => {
+    const first = render(
+      <ExplainerPanel title="Section" content="- one" entranceKey="lesson-1:task-1" />
+    )
+    first.unmount()
+    const { container } = render(
+      <ExplainerPanel title="Section" content="- one" entranceKey="lesson-1:task-1" />
+    )
+    expect(panelOf(container)).not.toHaveClass('motion-drop-in')
+    expect(screen.getByTestId('markdown')).toHaveAttribute('data-animate-lists', 'false')
+  })
+
+  it('never animates without an entrance key', () => {
+    const { container } = render(<ExplainerPanel title="Section" content="- one" />)
+    expect(panelOf(container)).not.toHaveClass('motion-drop-in')
+    expect(screen.getByTestId('markdown')).toHaveAttribute('data-animate-lists', 'false')
+  })
+
+  it('does not replay when the panel is collapsed and opened again', () => {
+    const { container } = render(
+      <ExplainerPanel title="Section" content="- one" collapsible entranceKey="lesson-1:task-1" />
+    )
+    const toggle = screen.getByRole('button')
+    fireEvent.click(toggle)
+    fireEvent.click(toggle)
+    expect(panelOf(container)).not.toHaveClass('motion-drop-in')
+    expect(screen.getByTestId('markdown')).toHaveAttribute('data-animate-lists', 'false')
+  })
+
+  it("does not replay when the same task's content is edited (the Builder)", () => {
+    const { container, rerender } = render(
+      <ExplainerPanel title="Section" content="- one" entranceKey="lesson-1:task-1" />
+    )
+    rerender(
+      <ExplainerPanel title="Section" content={'- one\n- two'} entranceKey="lesson-1:task-1" />
+    )
+    expect(panelOf(container)).not.toHaveClass('motion-drop-in')
+    expect(screen.getByTestId('markdown')).toHaveAttribute('data-animate-lists', 'false')
+  })
+
+  it('plays again when a panel that stays mounted moves to an unseen task', () => {
+    const { container, rerender } = render(
+      <ExplainerPanel title="Task 1" content="- one" entranceKey="lesson-1:task-1" />
+    )
+    rerender(<ExplainerPanel title="Task 2" content="- two" entranceKey="lesson-1:task-2" />)
+    expect(panelOf(container)).toHaveClass('motion-drop-in')
+    expect(screen.getByTestId('markdown')).toHaveAttribute('data-animate-lists', 'true')
+  })
+
+  it('keeps the entrance when content arrives into an empty panel', () => {
+    const { container, rerender } = render(
+      <ExplainerPanel title="Section" content="" entranceKey="lesson-1:task-1" />
+    )
+    rerender(<ExplainerPanel title="Section" content="- one" entranceKey="lesson-1:task-1" />)
+    expect(panelOf(container)).toHaveClass('motion-drop-in')
   })
 })

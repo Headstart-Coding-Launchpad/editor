@@ -161,6 +161,6 @@ describe('Binary UI', () => {
     renderBinary(MAKE, { readOnly: true, initialState: binary.solutionState(MAKE) })
     for (const tile of screen.getAllByRole('switch')) expect(tile).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Check answers' })).not.toBeInTheDocument()
-    expect(screen.getByText('✓ Correct')).toBeInTheDocument()
+    expect(screen.getByText('Correct')).toBeInTheDocument()
   })
 })

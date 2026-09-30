@@ -2,7 +2,8 @@
 
 Status: **ideas only, nothing built.** A short list of places where a celebration-style moment,
 like the live-badge card and class toast (see [live-badges-plan.md](live-badges-plan.md)), could
-help later. Each one needs its own design pass before it's built.
+help later. Each one needs its own design pass before it's built. Build any of them with the
+tokens, classes and hooks in [motion-system.md](motion-system.md).
 
 ## Principle
 

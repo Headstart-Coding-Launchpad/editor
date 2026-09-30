@@ -32,12 +32,22 @@ export default function TeacherEditorPanel({
   fillHeight = false,
   // The Badge Summary task's class wall (see InformationTask).
   badgeWall = null,
+  // Names the task shown (`firstViewKey(lessonId, taskId)`) for its first-view entrances.
+  entranceKey = null,
 }) {
   const mod = getLessonModule(lesson?.type)
   const usesUnifiedStages = !!mod?.capabilities?.teacherUnifiedStageTabs
 
   if (!isInSandbox && isInformationTask) {
-    return <InformationTask task={task} lesson={lesson} fill badgeWall={badgeWall} />
+    return (
+      <InformationTask
+        task={task}
+        lesson={lesson}
+        fill
+        badgeWall={badgeWall}
+        entranceKey={entranceKey}
+      />
+    )
   }
   // Activities show their answers read-only; quizzes (previewState 'initial') show just the
   // question, since the teacher's screen is often projected.
@@ -54,6 +64,7 @@ export default function TeacherEditorPanel({
         teacher
         readOnly
         lessonType={lesson?.type}
+        entranceKey={entranceKey}
       />
     )
   }

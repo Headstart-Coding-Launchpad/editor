@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { playBadgeChime } from '../nudgeAlert'
+import { useSoundsMuted } from '../soundSettings'
 import {
   collectAwardKeys,
   findNewAwards,
@@ -18,8 +19,9 @@ import {
  * coming back doesn't replay them either.
  *
  * - `viewerId`: this student's id, or null for the presentation window, which only gets toasts.
- * - `soundsOff`: the tutor's class-wide `badgeSettings.soundsOff`. The student's own mute is
- *   in memory only, for this session (no localStorage key).
+ * - `soundsOff`: the tutor's class-wide `badgeSettings.soundsOff`. The student's own mute is the
+ *   app-wide Sounds setting (`useSoundsMuted`, localStorage `headstart_sounds_muted`), shared
+ *   with the top-bar 🔊 button and the complete chime.
  *
  * Returns `{ moments, card, cardDone, toast, toastDone, muted, setMuted }`; the components own
  * the timing and call `cardDone` / `toastDone` when theirs finishes.
@@ -37,7 +39,7 @@ export default function useBadgeCelebrations({
   const finishedBulkIdsRef = useRef(new Set())
   const [cardQueue, setCardQueue] = useState([])
   const [toastQueue, setToastQueue] = useState([])
-  const [muted, setMuted] = useState(false)
+  const [muted, setMuted] = useSoundsMuted()
 
   if (ready && seenRef.current == null) seenRef.current = collectAwardKeys(decisions)
 

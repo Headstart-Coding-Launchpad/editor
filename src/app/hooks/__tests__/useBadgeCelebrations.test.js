@@ -5,6 +5,7 @@ const audio = vi.hoisted(() => ({ playBadgeChime: vi.fn() }))
 vi.mock('../../nudgeAlert', () => ({ playBadgeChime: audio.playBadgeChime }))
 
 import useBadgeCelebrations from '../useBadgeCelebrations'
+import { SOUNDS_MUTED_KEY, readSoundsMuted, setSoundsMuted } from '../../soundSettings'
 
 const award = (overrides = {}) => ({
   status: 'awarded',
@@ -32,7 +33,10 @@ function renderCelebrations(initial = {}) {
   })
 }
 
-afterEach(() => audio.playBadgeChime.mockReset())
+afterEach(() => {
+  audio.playBadgeChime.mockReset()
+  setSoundsMuted(false)
+})
 
 describe('useBadgeCelebrations', () => {
   it('does not replay awards already stored when the session loaded, but lists them', () => {
@@ -114,6 +118,25 @@ describe('useBadgeCelebrations', () => {
     })
     expect(result.current.card.badgeId).toBe('code_fixer')
     expect(audio.playBadgeChime).not.toHaveBeenCalled()
+  })
+
+  it("uses the student's app-wide Sounds setting as its mute", () => {
+    setSoundsMuted(true)
+    const { result, rerender } = renderCelebrations()
+    expect(result.current.muted).toBe(true)
+    rerender({
+      ready: true,
+      enabled: true,
+      viewerId: 'me',
+      students: STUDENTS,
+      decisions: { me: { bug_hunter: award({ decidedAt: 200 }) } },
+    })
+    expect(result.current.card).not.toBeNull()
+    expect(audio.playBadgeChime).not.toHaveBeenCalled()
+
+    act(() => result.current.setMuted(false))
+    expect(readSoundsMuted()).toBe(false)
+    expect(window.localStorage.getItem(SOUNDS_MUTED_KEY)).toBeNull()
   })
 
   it('removes a revoked badge from the moments silently', () => {

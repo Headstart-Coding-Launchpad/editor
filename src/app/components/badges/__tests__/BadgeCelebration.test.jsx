@@ -150,10 +150,10 @@ describe('CodingMomentsPill', () => {
     expect(button).toHaveTextContent(/^🎖️$/)
     expect(button).not.toHaveTextContent('2')
     // The mute lives in the popover, not beside the button.
-    expect(screen.queryByRole('button', { name: 'Mute badge sounds' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Mute sounds' })).not.toBeInTheDocument()
   })
 
-  it('opens a popover with the moments and the in-memory mute', async () => {
+  it('opens a popover with the moments and the Sounds mute', async () => {
     const user = userEvent.setup()
     const onMutedChange = vi.fn()
     render(<CodingMomentsPill moments={moments} muted={false} onMutedChange={onMutedChange} />)
@@ -162,7 +162,7 @@ describe('CodingMomentsPill', () => {
     expect(within(popover).getByRole('list', { name: 'My coding moments' })).toHaveTextContent(
       'Bug Hunter'
     )
-    await user.click(within(popover).getByRole('button', { name: 'Mute badge sounds' }))
+    await user.click(within(popover).getByRole('button', { name: 'Mute sounds' }))
     expect(onMutedChange).toHaveBeenCalledWith(true)
   })
 
@@ -170,7 +170,7 @@ describe('CodingMomentsPill', () => {
     const user = userEvent.setup()
     render(<CodingMomentsPill moments={moments} muted={false} soundsOff />)
     await user.click(screen.getByRole('button', { name: /Coding moments/ }))
-    expect(screen.getByRole('button', { name: 'Mute badge sounds' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Mute sounds' })).toBeDisabled()
   })
 })
 
@@ -188,6 +188,58 @@ describe('BadgeStickerSheet', () => {
     const items = screen.getAllByRole('listitem')
     expect(items).toHaveLength(2)
     expect(items[1].style.getPropertyValue('--sv-sticker-delay')).toBe('180ms')
+  })
+
+  it('keeps the flip-in as the default entrance', () => {
+    render(<BadgeStickerSheet animate moments={[{ badgeId: 'bug_hunter', badge: BUG_HUNTER }]} />)
+    const item = screen.getByRole('listitem')
+    expect(item).toHaveClass('sv-sticker', 'sv-sticker--animate')
+    expect(item).not.toHaveClass('motion-tumble-in')
+    expect(item).not.toHaveClass('sv-sticker--tumble')
+  })
+
+  it('tumbles the stickers in with entrance="tumble", and drops a later one in plainly', () => {
+    const first = [
+      { badgeId: 'bug_hunter', badge: BUG_HUNTER },
+      { badgeId: 'keyboard_wizard', badge: KEYBOARD_WIZARD },
+    ]
+    const { rerender } = render(
+      <BadgeStickerSheet animate entrance="tumble" staggerMs={260} moments={first} />
+    )
+    let items = screen.getAllByRole('listitem')
+    expect(items[0]).toHaveClass('sv-sticker--tumble', 'motion-tumble-in')
+    expect(items[0]).not.toHaveClass('sv-sticker--animate')
+    expect(items[1].style.getPropertyValue('--sv-sticker-delay')).toBe('260ms')
+
+    rerender(
+      <BadgeStickerSheet
+        animate
+        entrance="tumble"
+        staggerMs={260}
+        moments={[{ badgeId: 'persistence', badge: resolveBadge('persistence') }, ...first]}
+      />
+    )
+    items = screen.getAllByRole('listitem')
+    expect(items[0]).toHaveClass('sv-sticker', 'motion-drop-in')
+    expect(items[0]).not.toHaveClass('motion-tumble-in')
+    expect(items[0].style.getPropertyValue('--sv-sticker-delay')).toBe('')
+    // The stickers already there keep their own delay rather than moving down the stagger.
+    expect(items[2].style.getPropertyValue('--sv-sticker-delay')).toBe('260ms')
+  })
+
+  it('shows a tumble sheet still without animate, but still drops a later sticker in', () => {
+    const one = [{ badgeId: 'bug_hunter', badge: BUG_HUNTER }]
+    const { rerender } = render(<BadgeStickerSheet entrance="tumble" moments={one} />)
+    expect(screen.getByRole('listitem').className).toBe('sv-sticker')
+    rerender(
+      <BadgeStickerSheet
+        entrance="tumble"
+        moments={[...one, { badgeId: 'keyboard_wizard', badge: KEYBOARD_WIZARD }]}
+      />
+    )
+    const items = screen.getAllByRole('listitem')
+    expect(items[0].className).toBe('sv-sticker')
+    expect(items[1]).toHaveClass('motion-drop-in')
   })
 })
 

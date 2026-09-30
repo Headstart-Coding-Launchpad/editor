@@ -2,6 +2,7 @@ import React, { useMemo } from 'react'
 import { InlineMarkdown } from '../../../shared/markdown'
 import { useTileDragAndDrop } from '../../hooks/useTileDragAndDrop'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
+import { useChoiceEntrance } from '../../../activities/ui/choiceEntrance.jsx'
 import {
   baseStyles as s,
   interactionStyles as sm,
@@ -33,6 +34,7 @@ export default function MatchQuiz({
   const state = useMemo(() => parseQuizAnswerState(selectedAnswer), [selectedAnswer])
   const placedIds = new Set(Object.values(state))
   const blocked = disabled || (submitted && checkPassed)
+  const entrance = useChoiceEntrance()
 
   function publishState(next) {
     const allFilled = pairs.every((p) => next[p.id] !== undefined)
@@ -56,7 +58,7 @@ export default function MatchQuiz({
 
       <div style={sm.matchLayout}>
         <div style={sm.promptList}>
-          {pairs.map((pair) => {
+          {pairs.map((pair, pairIndex) => {
             const placedId = state[pair.id]
             const placedPair = placedId ? pairs.find((p) => p.id === placedId) : null
             const isOccupied = !!placedId
@@ -68,8 +70,14 @@ export default function MatchQuiz({
             const isSlotWrong = isOccupied && placedId !== pair.id
             const correctPair = revealAnswers && !isSlotCorrect ? pair : null
 
+            const rowEntrance = entrance(pairIndex)
+
             return (
-              <div key={pair.id} style={sm.matchRow}>
+              <div
+                key={pair.id}
+                className={rowEntrance.className}
+                style={{ ...sm.matchRow, ...rowEntrance.style }}
+              >
                 <div style={sm.promptCell}>
                   <span style={s.markdownOnDark}>
                     <InlineMarkdown content={pair.prompt} />
@@ -130,15 +138,17 @@ export default function MatchQuiz({
           <div style={sm.poolTiles}>
             {shuffledAnswers
               .filter((p) => !placedIds.has(p.id))
-              .map((pair) => (
+              .map((pair, tileIndex) => (
                 <button
                   key={pair.id}
                   type="button"
+                  className={entrance(tileIndex).className}
                   style={{
                     ...sm.tile,
                     ...(draggingTile === pair.id || touchSelectedTile === pair.id
                       ? sm.tileSelected
                       : {}),
+                    ...entrance(tileIndex).style,
                   }}
                   draggable={!blocked}
                   onDragStart={(event) => dnd.handleDragStart(event, pair.id)}

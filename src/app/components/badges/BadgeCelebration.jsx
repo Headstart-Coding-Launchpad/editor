@@ -1,13 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { CELEBRATION_CARD_MS, CELEBRATION_DOCK_MS } from '../../../badges/celebration'
+import { prefersReducedMotion } from '../../../shared/motion'
 
-export function prefersReducedMotion() {
-  try {
-    return !!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
-  } catch {
-    return false
-  }
-}
+export { prefersReducedMotion }
 
 /** Where the card docks: the 🎖️ moments button in the top bar, when it's on screen. */
 export const BADGE_DOCK_SELECTOR = '[data-badge-dock]'
