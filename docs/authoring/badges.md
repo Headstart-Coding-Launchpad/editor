@@ -169,6 +169,12 @@ tasks:
 Unknown badge ids, other keys, and out-of-range options are validation errors
 ([validation-errors.md](validation-errors.md)).
 
+**In the Builder:** task editor → Authoring metadata → **Badge hints** (every task except
+information tasks). *Also suggest* offers the four pattern badges and *Never suggest* the
+rule-backed ones, so only valid ids can be picked; a badge is in one list at most, and clearing
+both lists removes `badgeHints`. A read-only line above them names the badges the task's
+`taskActivity` pattern already triggers. `badgeOptions` is YAML-only.
+
 ## Task activity patterns
 
 `taskActivity` stays free text, but the platform reads the Glossary pattern it names
@@ -193,3 +199,20 @@ Rules read a per-student timeline of events, never Firebase directly
 (`src/badges/timeline.js`): `attempt`, `sandbox_run`, `topic_open`, `reveal`, `complete_shown`,
 `paste`, `override`, `shortcut` and `first_edit`. A new badge that needs a new signal adds an
 event type there; a new stored field needs its own data-model sign-off.
+
+## Admin catalogue badges
+
+Tutors can also award **manual-only** badges that an admin adds in Admin Portal → **Badges**,
+with no deploy: an emoji, a title and a blurb (Firestore `badgeCatalogue`). They are never
+suggested and lessons can't name them in `badgeHints`. Their ids can't clash with a built-in
+badge, and every badge's emoji is unique. An archived catalogue badge leaves the tutor's picker
+but still shows wherever it was awarded. Students see the emoji, title and blurb stored on the
+award itself.
+
+## Adding a built-in badge
+
+`npm run new:badge -- <id> --emoji <emoji> [--title "<Title>"] [--blurb "<Blurb>"] [--tutor-only]`
+scaffolds `src/badges/definitions/<id>.js` (a stub rule with two examples, or a tutor-only
+badge), registers it and adds a row to the table above. The `new-badge` skill
+(`.claude/skills/new-badge/SKILL.md`) covers the rest, including a new signal. Why badges work
+this way: [ADR 0011](../adr/0011-live-badges-registry-and-rules.md).

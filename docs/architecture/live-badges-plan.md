@@ -4,12 +4,24 @@ Status: **Approved for implementation (2026-09-30).** Interviewed and revised on
 agent against the code and revised again. Branch `feature/live-badges`. Delivered as seven focused PRs
 (see [PR sequence](#pr-sequence)).
 
-**Implementation status:** PR 1 Foundations (#388), PR 2 Live data (#389), PR 3 Engine
-(`src/badges/liveTimeline.js`, `src/app/hooks/useBadgeSuggestions.js`) and PR 4 Tutor UI (#391,
-`BadgeSuggestionsPanel`, `BadgeAwardDialog`, `src/badges/badgeDisplay.js`) and PR 5 Celebration (#392,
-`src/badges/celebration.js`, `useBadgeCelebrations`, `BadgeCelebration`, `BadgeClassToast`, `CodingMomentsPill`,
-`BadgeStickerSheet`) and PR 6 Summary and report (#393, `informationType: badges`, `src/badges/badgeSummary.js`,
-`src/badges/reportMetrics.js`, `BadgeSummaryTask`, `ReportBadgeSections`) are done; PR 7 (Admin and scaffold) is next.
+**Implementation status:** all seven PRs are **implemented; awaiting real-browser verification**
+(see [Real-browser checks](#real-browser-checks-jsdom-cant-catch-these)):
+
+| PR | Scope | Number |
+|---|---|---|
+| 1 | Foundations (`taskActivity.js`, registry, rules, authoring validation) | #388 |
+| 2 | Live data (signals, decisions, sandbox archive) | #389 |
+| 3 | Engine (`liveTimeline.js`, `useBadgeSuggestions`) | #390 |
+| 4 | Tutor UI (`BadgeSuggestionsPanel`, `BadgeAwardDialog`, `badgeDisplay.js`) | #391 |
+| 5 | Celebration (`celebration.js`, `useBadgeCelebrations`, card, toast, pill, sticker sheet) | #392 |
+| 6 | Summary and report (`informationType: badges`, `badgeSummary.js`, `reportMetrics.js`) | #393 |
+| 7 | Admin and scaffold (`badgeCatalogue`, Admin → Badges, catalogue snapshot on awards, Builder Badge hints, `npm run new:badge`, `new-badge` skill, [ADR 0011](../adr/0011-live-badges-registry-and-rules.md)) | PR 7 (this branch) |
+
+PR 7 deviations: an awarded catalogue badge copies `{ emoji, title, blurb }` onto its decision
+(`decision.badge`), because students can't read Firestore `badgeCatalogue`; and the Builder's Badge
+hints field shows (read-only) which badges the task's pattern triggers, a small slice of the
+"Builder showing which badges a task can suggest" idea listed under
+[Considered, not in v1](#considered-not-in-v1).
 
 Source brief: "Live Student Badges". It recognises good learning behaviour as it happens, keeps the
 tutor in control, and has no points, totals, rankings or leaderboard.

@@ -139,7 +139,8 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
             "announce": "boolean",
             "bulkId": "string | null (one merged announcement for a bulk award)",
             "decidedAt": "ServerValue.TIMESTAMP",
-            "revokedAt": "ServerValue.TIMESTAMP (revoked only)"
+            "revokedAt": "ServerValue.TIMESTAMP (revoked only)",
+            "badge": "{ emoji, title, blurb } (Admin-catalogue badges only: the display snapshot students render, since they can't read Firestore badgeCatalogue)"
           }
         }
       },
@@ -411,7 +412,7 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`) record behaviour a
 
 | Path | Writer | Written by | When |
 |---|---|---|---|
-| `sessions/{lessonId}/badges/{anonymousId}/{badgeId}` | teacher | `decideBadge(anonymousId, badgeId, decision, { replaceStatuses })`, `revokeBadge(anonymousId, badgeId)` | a tutor decision. `decideBadge` is a write-if-absent `runTransaction`: an existing decision wins unless its status is listed in `replaceStatuses`, so two teacher tabs (or an auto-award racing a dismissal) write one decision. `revokeBadge` changes an `awarded` decision to `revoked`. |
+| `sessions/{lessonId}/badges/{anonymousId}/{badgeId}` | teacher | `decideBadge(anonymousId, badgeId, decision, { replaceStatuses })`, `revokeBadge(anonymousId, badgeId)` | a tutor decision. `decideBadge` is a write-if-absent `runTransaction`: an existing decision wins unless its status is listed in `replaceStatuses`, so two teacher tabs (or an auto-award racing a dismissal) write one decision. `revokeBadge` changes an `awarded` decision to `revoked`. A catalogue badge's award also stores `badge: { emoji, title, blurb }` (`catalogueBadgeSnapshot`, from `BadgeAwardDialog`; the rules require an emoji of at most 16 and a title of at most 40 characters). |
 | `sessions/{lessonId}/badgeSettings` | teacher | `setBadgeSettings({ autoAward, soundsOff })` | a tutor toggle (only the keys given change) |
 | `studentSignals/{id}/topics/{context}/{taskId}/{topicId}` | student | `recordTopicOpenSignal` | first open per context, task and topic. Sources: the Topic Library button (`topicId: '_library'`, `via: 'button'`), a topic link (`link`), a topic card in `InlineMarkdown` (`card`), a topic picked in the library list (`list`) or a related-topic pill (`related`), and accepting a teacher-sent topic (`source: 'teacher'`, `via: 'teacher'`). A student's own open of a topic the teacher sent still overwrites the teacher record once. `taskId` is the current task id, or `none`. |
 | `studentSignals/{id}/shortcuts/{shortcutId}` | student | `recordShortcutSignal` | first use of a `KEYBOARD_WIZARD_SHORTCUTS` entry, from a keydown (capture phase) on the lesson work area: a CodeMirror editor, the Blockly workspace, or a module surface marked `data-badge-surface` (the Desktop's `app-shortcuts`, where copy/cut/paste by keyboard count as `desktop_shortcut`). AltGr (Ctrl+Alt) and key repeats never count. |
@@ -427,6 +428,8 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`) record behaviour a
 **First occurrence only.** Each first-occurrence write checks the session snapshot and a this-tab set first, and the rules refuse a second write (`!data.exists()`, except the teacher-to-student topic upgrade). A refused write is expected and swallowed.
 
 **Lifetimes.** `badges`, `badgeSettings` and `studentSignals` are siblings of `students`, so `setTaskId` never touches them. `createSession`/`restartSession` clear all three (and `sessionArchive/{lessonId}`). `endSession` keeps them, so a student who reloads the end screen still sees their badges; the session node's own `onDisconnect().remove()` takes them when the teacher leaves. Students only read `badges` (`useBadgeCelebrations` in `StudentView`: their own card and Coding moments pill, classmates' toasts, the end-screen sticker sheet); a returning student reloading within `END_SCREEN_RESTORE_MS` (3 h) of `endedAt` is put back on the end screen (`useStudentPhase`). See `docs/agents/classroom-behaviours.md`, "Live Badge Celebration".
+
+**Admin badge catalogue (Firestore `badgeCatalogue/{id}`).** Manual-only badges an admin adds in Admin Portal → Badges: `{ emoji, title, blurb, archived, updatedAt, updatedBy }` (`src/badges/catalogue.js`, `catalogueService.js`). Firestore rules: admin write, teacher and admin read; students and anonymous users can't read it. `TeacherView` reads it once (`useBadgeCatalogue`) and passes it on as `catalogueBadges` (picker, cards, student modal, Badge Summary wall, report). Ids never collide with the registry, emoji are unique across every badge (archived included), and badges are archived, never deleted: an archived badge leaves the picker but still renders. Students (and the presentation window) resolve a catalogue badge from the decision's `badge` snapshot: `resolveBadge(badgeId, catalogueBadges, decision)` tries the registry, then the live catalogue, then the snapshot, then a 🏅 placeholder; class toasts carry the snapshot as `toast.badge`.
 
 **`sessionArchive/{lessonId}`** is the teacher-sandbox archive for the session report. It sits outside `sessions` (like `sharedWorkspacePayloads`) so sandbox code never streams to every client, and nothing subscribes to it; the report reads it once with `readSessionArchive({ endedAt })`.
 

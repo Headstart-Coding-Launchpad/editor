@@ -14,4 +14,4 @@ ADRs capture decisions that should not have to be rediscovered from code. Keep t
 - [ADR 0008: Split CLI and Builder validation](0008-split-cli-and-builder-validation.md)
 - [ADR 0009: Activity registry](0009-activity-registry.md)
 - [ADR 0010: Module contract v2 and the generic work slot](0010-module-contract-v2-and-work-slot.md)
-
+- [ADR 0011: Live badges: code registry, pure rules engine, decisions-only storage](0011-live-badges-registry-and-rules.md)

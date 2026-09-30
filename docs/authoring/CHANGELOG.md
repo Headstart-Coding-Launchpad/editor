@@ -39,6 +39,16 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-09-30
 
+### Badge hints in the Builder; Admin catalogue badges
+
+- The Builder task editor has a **Badge hints** field (Authoring metadata, every task except
+  information tasks) that edits `badgeHints.suggest` and `badgeHints.suppress` with only the ids
+  validation accepts, and notes which badges the task's `taskActivity` pattern already triggers.
+  The YAML field is unchanged. See [badges.md](badges.md#badgehints).
+- Admins can add manual-only badges in Admin Portal → Badges. They are awarded by tutors only;
+  lessons can't name them in `badgeHints`. See [badges.md](badges.md#admin-catalogue-badges).
+- Affects: all · Existing lessons: no changes needed · Resolves: none
+
 ### Badge Summary information task (`informationType: badges`)
 
 - New information type `badges`: "Today's Coding Moments". In a live session each student sees
