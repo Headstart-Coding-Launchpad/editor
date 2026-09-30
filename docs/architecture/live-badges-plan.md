@@ -5,7 +5,7 @@ agent against the code and revised again. Branch `feature/live-badges`. Delivere
 (see [PR sequence](#pr-sequence)).
 
 **Implementation status:** PR 1 Foundations (#388), PR 2 Live data (#389), PR 3 Engine
-(`src/badges/liveTimeline.js`, `src/app/hooks/useBadgeSuggestions.js`) and PR 4 Tutor UI (#PR4,
+(`src/badges/liveTimeline.js`, `src/app/hooks/useBadgeSuggestions.js`) and PR 4 Tutor UI (#391,
 `BadgeSuggestionsPanel`, `BadgeAwardDialog`, `src/badges/badgeDisplay.js`) are done; PR 5 (Celebration) is next.
 
 Source brief: "Live Student Badges". It recognises good learning behaviour as it happens, keeps the
