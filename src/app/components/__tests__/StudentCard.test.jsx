@@ -124,7 +124,10 @@ describe('StudentCard', () => {
 
       render(<StudentCard {...mkProps(waiting, { online: false })} />)
       expect(screen.getByText('Waiting')).toHaveAttribute('data-presence', 'offline')
-      expect(screen.getByTitle('Waiting for the lesson to start · Offline')).toBeTruthy()
+      // The card's own presence dot and the badge both carry this title.
+      expect(
+        screen.getAllByTitle('Waiting for the lesson to start · Offline').length
+      ).toBeGreaterThan(0)
     })
   })
 
