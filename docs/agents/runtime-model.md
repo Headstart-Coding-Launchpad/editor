@@ -8,6 +8,8 @@ Do not deviate from this shape. (The `videoCallLink`, `videoCallBroadcastAt` and
 
 The top-level `liveInk/{lessonId}` node (Presentation annotations) was likewise added with explicit user approval; its shape is in "Presentation Annotations" below.
 
+The session-level `classCountdown` node (the teacher's class countdown) was also added with explicit user approval.
+
 ```json
 {
   "sessions": {
@@ -32,6 +34,7 @@ The top-level `liveInk/{lessonId}` node (Presentation annotations) was likewise 
       "nudgeAwayPushedAt": "1234567890 | null (class-wide nudge; only students whose window is unfocused react)",
       "videoCallLink": "string | null (http(s) URL only, validated at the write boundary; ephemeral — reset to null on createSession/restartSession/endSession, so the teacher re-enters it each session)",
       "videoCallBroadcastAt": "1234567890 | null (class-wide \"Send to all\" video-call push; reaches name-entry, waiting-room and lesson/sandbox students; reset to null on createSession/endSession)",
+      "classCountdown": "{ startedAt, endsAt, durationMs } | null (teacher's class countdown, server-time ms; survives setTaskId; reset to null on createSession/endSession)",
       "teacherLive": {
         "active": true,
         "source": "teacher | student",
@@ -304,6 +307,7 @@ Teacher writes:
 - `sandboxExplainer` (pushed via `pushSandboxExplainer`, cleared on `createSession`/`endSession`/entering sandbox) and `explainerShowComplete` (toggled via `setExplainerShowComplete`; reset to `false` on `setTaskId`, `createSession`, `endSession` — see `docs/agents/classroom-behaviours.md` for the student-facing "Complete Code" reveal this gates)
 - `lessonOverrideTasks` (session-only task edits from `EditLessonModal`; `pushLessonOverride`/`clearLessonOverride`) — reset to `null` on `createSession`/`endSession`. Task IDs inside it are never renumbered, so they stay valid against `currentTaskId`, carry-through references, and student per-task localStorage keys
 - `fullscreenRequestedAt` (stamped by `requestFullscreenForAll`, reset to `null` on `createSession`/`endSession`) — a class-wide "please go fullscreen" broadcast. The Fullscreen API only fires from a direct user gesture, so this cannot force students into fullscreen; each student client (`StudentView`) shows a centred modal prompt with a "Go Fullscreen" button that calls `document.documentElement.requestFullscreen()` from the student's own click when this timestamp changes. Once `phase` becomes `'ended'`, `StudentView` renders `SessionEndedScreen` instead (the prompt naturally disappears) and calls `document.exitFullscreen()` so a student isn't left stuck in fullscreen
+- `classCountdown` (`startClassCountdown(durationMs)` / `addClassCountdownTime(extraMs)` / `clearClassCountdown()`, from the "⏱ Countdown" popover in `TeacherSessionControls.jsx`, offered while the session is `active` or `sandbox`; reset to `null` on `createSession`/`endSession`) — `{ startedAt, endsAt, durationMs }` in **server time** (`Date.now()` + Firebase `.info/serverTimeOffset`, which `useSession` exposes as `serverTimeOffset`), so every screen counts to the same deadline whatever its clock says. Separate from a task's `estimatedMinutes` timer: not touched by `setTaskId`, so it runs across task changes until the teacher stops it. Adding time to one that already hit zero restarts it from now. `database.rules.json` validates the shape (numeric fields, `durationMs > 0`, `endsAt >= startedAt`, no other children). Students and the presentation window show it in the top bar (`ClassCountdownPill`) and a "Time's up" banner at zero (`useClassCountdown` + `TimesUpBanner`); nothing is locked or paused. See "Class Countdown" in `docs/agents/classroom-behaviours.md`
 - `nudgeAwayPushedAt` (stamped by `nudgeAwayStudents` from the "🔔 Nudge Away" item in `StudentGrid`'s ⋯ header menu, reset to `null` on `createSession`/`endSession`) — a class-wide nudge. Each student client's `useNudgeAlert` only reacts if its window is unfocused when the new timestamp arrives. The per-student equivalent is `students/{id}/nudgePushedAt` (`nudgeStudent`, from the 🔔 button on an Away `StudentCard` or the StudentModal header), which always alerts that student. Timestamps already present when a student's session first loads are a baseline and never replay. The alert shows an in-page banner and plays a Web Audio chime; if the window is unfocused it also flashes the tab title and favicon until the window regains focus, and shows an OS `Notification` when permission was already granted (students opt in once via `NudgePermissionPrompt`)
 - any student's `displayName`
 - student node removal

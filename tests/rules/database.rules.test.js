@@ -148,6 +148,25 @@ describe('shared workspaces', () => {
   })
 })
 
+describe('class countdown', () => {
+  const path = `sessions/${LESSON}/classCountdown`
+  const countdown = { startedAt: 1000, endsAt: 61_000, durationMs: 60_000 }
+
+  it('only lets teachers and admins start or clear the countdown', async () => {
+    await assertFails(ref(as.student, path).set(countdown))
+    await assertSucceeds(ref(as.teacher, path).set(countdown))
+    await assertSucceeds(ref(as.admin, path).set(null))
+  })
+
+  it('requires numeric startedAt, endsAt and a positive durationMs, and nothing else', async () => {
+    await assertFails(ref(as.teacher, path).set({ startedAt: 1000, endsAt: 61_000 }))
+    await assertFails(ref(as.teacher, path).set({ ...countdown, durationMs: 0 }))
+    await assertFails(ref(as.teacher, path).set({ ...countdown, endsAt: 500 }))
+    await assertFails(ref(as.teacher, path).set({ ...countdown, endsAt: 'soon' }))
+    await assertFails(ref(as.teacher, path).set({ ...countdown, label: 'x' }))
+  })
+})
+
 describe('live badges', () => {
   const decision = { status: 'awarded', source: 'manual', decidedAt: 1, announce: true }
 

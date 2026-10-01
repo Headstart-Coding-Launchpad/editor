@@ -69,7 +69,7 @@ beforeEach(() => {
     return { committed: true, snapshot: { val: () => next } }
   })
   firebaseMocks.onValue.mockImplementation((refObj, callback) => {
-    if (refObj.path !== '.info/connected') sessionCallback = callback
+    if (!refObj.path.startsWith('.info/')) sessionCallback = callback
     return vi.fn()
   })
 })

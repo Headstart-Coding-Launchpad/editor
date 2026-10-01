@@ -40,6 +40,9 @@ import { NudgeBanner, NudgePermissionPrompt } from '../components/NudgeBanner'
 import useNudgeAlert from '../hooks/useNudgeAlert'
 import useThumbsUp from '../hooks/useThumbsUp'
 import ThumbsUpToast from '../components/ThumbsUpToast'
+import useClassCountdown from '../hooks/useClassCountdown'
+import ClassCountdownPill from '../components/ClassCountdownPill'
+import TimesUpBanner from '../components/TimesUpBanner'
 import useVideoCallPrompt, { VIDEO_CALL_PROMPT_PHASES } from '../hooks/useVideoCallPrompt'
 import useBadgeCelebrations from '../hooks/useBadgeCelebrations'
 import BadgeCelebration from '../components/badges/BadgeCelebration'
@@ -99,6 +102,7 @@ export default function StudentView({
     session,
     loading: sessionLoading,
     connected,
+    serverTimeOffset,
     registerPresence,
     joinSession,
     recordStudentReturn,
@@ -368,6 +372,22 @@ export default function StudentView({
     ready: !!session,
     enabled: nudgeEnabled,
     pushedAt: session?.students?.[identity?.anonymousId]?.thumbsUpPushedAt ?? null,
+    soundsOff: !!session?.badgeSettings?.soundsOff,
+  })
+
+  // The teacher's class countdown: a pill in the top bar (large on the presentation window) and
+  // a "Time's up" banner at zero, with a chime on the student's own screen only. It survives
+  // task changes and locks nothing.
+  const classCountdownVisible =
+    !previewMode &&
+    (session?.state === 'active' || session?.state === 'sandbox') &&
+    (teacherPresentation || phase === 'lesson' || phase === 'sandbox')
+  const classCountdown = classCountdownVisible ? (session?.classCountdown ?? null) : null
+  const { timesUpAt } = useClassCountdown({
+    countdown: classCountdown,
+    serverTimeOffset,
+    enabled: classCountdownVisible,
+    playSound: !teacherPresentation,
     soundsOff: !!session?.badgeSettings?.soundsOff,
   })
 
@@ -1202,6 +1222,11 @@ export default function StudentView({
 
   const topBarRight = teacherPresentation ? (
     <div style={s.presentationControls}>
+      <ClassCountdownPill
+        countdown={classCountdown}
+        serverTimeOffset={serverTimeOffset}
+        variant="presentation"
+      />
       <button
         className="btn-ghost"
         style={s.presentationBtn}
@@ -1259,6 +1284,7 @@ export default function StudentView({
     </div>
   ) : (
     <div style={s.topBarTaskControls}>
+      <ClassCountdownPill countdown={classCountdown} serverTimeOffset={serverTimeOffset} />
       {!previewMode && <SoundsToggleButton soundsOff={!!session?.badgeSettings?.soundsOff} />}
       {(phase === 'lesson' || phase === 'sandbox') && (
         <CodingMomentsPill
@@ -1410,6 +1436,7 @@ export default function StudentView({
       />
       {nudgeBannerVisible && <NudgeBanner onDismiss={dismissNudge} />}
       <ThumbsUpToast shownAt={thumbsUpAt} />
+      <TimesUpBanner shownAt={timesUpAt} presentation={teacherPresentation} />
       {nudgeEnabled && <NudgePermissionPrompt />}
       {showTeacherEditConsent && (
         <div style={s.consentOverlay}>

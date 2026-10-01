@@ -136,6 +136,16 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 - Teacher view shows lesson elapsed time and a countdown for timed active tasks.
 - Expired task timers flash.
 
+## Class Countdown
+
+A teacher-set countdown the class can see, separate from the per-task `estimatedMinutes` timer above (session field `classCountdown`, see `docs/agents/runtime-model.md`).
+
+- The teacher opens "⏱ Countdown" in the top bar (`ClassCountdownControl` inside `TeacherSessionControls`; kept out of the narrow Menu, shown only while the session is `active`/`sandbox`): presets 1/2/5/10 min, custom minutes (0.25–120), and, while one runs, +1 min and Stop. Starting again replaces the running countdown.
+- The deadline is written in server time and every client counts against `Date.now() + serverTimeOffset`, so skewed device clocks still agree.
+- Students in a live lesson or sandbox see a small pill in the top bar (`ClassCountdownPill`), amber in the last minute and "Time's up" at zero. The presentation window shows a large one in its controls; the teacher sees a "Class countdown" card in the `TeacherTimers` strip. The pill ticks on its own so `StudentView` doesn't re-render every second.
+- At zero (only for a deadline the screen watched counting down; a reload after zero shows the pill's "Time's up" but no banner): a non-blocking "⏰ Time's up!" banner pops in for 5 s (`TimesUpBanner`, `motion-pop-in`, larger on the presentation window) and, on the student's own screen only, the falling `timesUp` chime, silenced by the student's Sounds mute or the tutor's class-wide Sounds off. Nothing is locked or paused. Adding time arms it again.
+- It survives task changes (`setTaskId` doesn't touch it) and is cleared by Stop, `createSession` and `endSession`. Not shown in preview or solo mode.
+
 ## Remote Reset
 
 - Teacher writes `remoteResetAction` and `remoteResetPushedAt` to one student node.

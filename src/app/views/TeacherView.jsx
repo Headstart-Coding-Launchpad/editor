@@ -128,6 +128,10 @@ export default function TeacherView({ lessonId }) {
     updateVideoCallLink,
     sendVideoCallLink,
     broadcastVideoCallLink,
+    serverTimeOffset,
+    startClassCountdown,
+    addClassCountdownTime,
+    clearClassCountdown,
     requestTeacherEdit,
     pushTeacherLiveCode,
     commitTeacherEdit,
@@ -701,11 +705,20 @@ export default function TeacherView({ lessonId }) {
               onRemoveSharedWorkspace={removeSharedWorkspace}
               onRemoveAllSharedWorkspaces={removeAllSharedWorkspaces}
               onOpenSharedWorkspace={handleOpenTeacherShare}
+              serverTimeOffset={serverTimeOffset}
+              onStartClassCountdown={startClassCountdown}
+              onAddClassCountdownTime={addClassCountdownTime}
+              onClearClassCountdown={clearClassCountdown}
             />
           </>
         }
       />
-      <TeacherTimers session={session} task={currentTask} tasks={visibleTasks} />
+      <TeacherTimers
+        session={session}
+        task={currentTask}
+        tasks={visibleTasks}
+        serverTimeOffset={serverTimeOffset}
+      />
 
       <div
         style={{

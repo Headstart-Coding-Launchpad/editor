@@ -737,6 +737,111 @@ select {
   animation: teacherTimerExpired 1s ease-in-out infinite;
 }
 
+/* Teacher's class countdown (ClassCountdownPill, TimesUpBanner). Static colours only: no
+   looping animation on student UI; the banner's motion-pop-in handles reduced motion. */
+.class-countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  border: 1px solid #c4b5fd;
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: #f5f3ff;
+  color: var(--colour-primary-dark);
+  font-family: var(--font-body);
+  white-space: nowrap;
+}
+
+.class-countdown__time {
+  font-family: var(--font-code);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.class-countdown__label {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.class-countdown__icon {
+  line-height: 1;
+}
+
+.class-countdown--teacher {
+  border-radius: 8px;
+  padding: 6px 12px;
+  border-color: #d8b4fe;
+  background: #f7f2ff;
+}
+
+.class-countdown--presentation {
+  padding: 4px 16px;
+  border-width: 2px;
+}
+
+.class-countdown--presentation .class-countdown__time {
+  font-size: 1.5rem;
+}
+
+.class-countdown--presentation .class-countdown__icon {
+  font-size: 1.3rem;
+}
+
+.class-countdown--warning {
+  background: #fffbeb;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.class-countdown--expired {
+  background: #fef2f2;
+  border-color: #ef4444;
+  color: #991b1b;
+}
+
+.times-up-banner-wrap {
+  position: fixed;
+  top: 72px;
+  left: 0;
+  right: 0;
+  /* Same layer as the 👍 toast: above the badge card (1240), below the nudge banner (1250). */
+  z-index: 1245;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  padding: 0 16px;
+}
+
+.times-up-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 8px 20px;
+  border: 2px solid #ef4444;
+  border-radius: 999px;
+  background: #fef2f2;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  font-family: var(--font-body);
+  font-weight: 800;
+  color: #991b1b;
+}
+
+.times-up-banner__icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.times-up-banner--presentation {
+  padding: 14px 36px;
+  font-size: 2rem;
+}
+
+.times-up-banner--presentation .times-up-banner__icon {
+  font-size: 2.6rem;
+}
+
 /* Teacher session actions and lesson-link popover */
 .teacher-session-controls {
   display: flex;
