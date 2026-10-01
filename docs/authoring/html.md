@@ -88,7 +88,7 @@ Put instructions **next to** a line of a starter file instead of in an HTML comm
 ```
 
 - A marker attaches to the **next non-marker line** of the same file; indentation doesn't matter. Several markers in a row stack onto the same line; one on a blank line marks where to write.
-- A marker with no line after it attaches to the file's last line, and the validator warns (`… has a line hint with no line after it (starter file index.html) …`).
+- A marker with no line after it (the last thing in the file) gets a new empty line at the end of the file, marking where the student starts typing.
 - Markers work in `starterFiles`, `completeFiles` and the `files` of every code stage. Ordinary `<!-- comments -->` are left alone.
 - Markers are stripped before the files are shown, saved, previewed, checked (`code_contains`, regex, element checks), carried or mirrored to the teacher. The Builder's editor shows the raw markers; its Run and check buttons strip them.
 - When a student returns to saved files, each hint re-attaches to the line that still reads the same (ignoring indentation), or is dropped when that line is gone or ambiguous. See [python.md](python.md#line-hints) for the full rules.

@@ -37,6 +37,19 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-01
+
+### Line hints: a trailing marker gets its own empty line
+
+- A line-hint marker with nothing after it (`#> …` / `<!--> … -->` as the last line of the code,
+  a stage or a file) now shows on a **new empty last line** instead of beside the last line of
+  code, so `#> Write your code here` at the end marks where the student starts typing. No extra
+  blank lines are needed (YAML `code: |` strips them anyway).
+- The validator warning `Task … has a line hint with no line after it …` is removed.
+- The editor's cursor now sits at the end of a hinted line (column 0 on an empty one) rather than
+  floating out next to the hint text.
+- Affects: python, turtle, html · Existing lessons: no changes needed · Resolves: none
+
 ## 2026-09-30
 
 ### Badge hints in the Builder; Admin catalogue badges

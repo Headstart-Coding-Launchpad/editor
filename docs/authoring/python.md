@@ -79,7 +79,7 @@ Put instructions **next to** a line of starter code instead of in a comment the 
 - A marker attaches to the **next non-marker line**; its own indentation (and the target line's) doesn't matter.
 - Several markers in a row stack onto the same line.
 - A marker on the empty line where students should write works: put `#> Write your loop here` above a blank line.
-- A marker with no line after it attaches to the last line, and the validator warns (`… has a line hint with no line after it …`).
+- A marker with no line after it (the last thing in the code) gets a new empty line at the end, so a closing `#> Write your code here` marks where the student starts typing — no extra blank lines needed (YAML `code: |` drops trailing blank lines anyway).
 - Markers work in `codeStages` of every role and in the legacy `starterCode` / `completeCode`. Support stages shown as a read-only reference show their hints too.
 - Markers are stripped before the code is shown, saved, run, checked (`code_contains`, regex and every other check see the code without them), carried to a later task or mirrored to the teacher. The Builder's editor shows the raw markers so you can edit them; its Run and check buttons strip them.
 - Hints show while the editor holds the starter (or a stage). When a student comes back to saved code, each hint re-attaches to the line that still reads the same (ignoring indentation) — if that line was deleted, or several lines now match, the hint is dropped. Deleting a hinted line removes its hint.
