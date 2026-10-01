@@ -1012,3 +1012,63 @@ describe('StudentModal header', () => {
     expect(props.onClose).not.toHaveBeenCalled()
   })
 })
+
+// Every student card opens the modal, information tasks included, so each information type has to
+// render a sensible body (and nothing crash).
+describe('information tasks', () => {
+  function infoLesson(task) {
+    return {
+      type: 'python',
+      title: 'Loops Lesson',
+      level: 'Level 2',
+      tasks: [{ id: 1, taskType: 'information', title: 'Info', ...task }],
+    }
+  }
+
+  it('renders a standard information task as its explainer', () => {
+    render(<StudentModal {...mkProps({ lesson: infoLesson({ explainer: 'Read this first.' }) })} />)
+    expect(screen.getByTestId('explainer-panel')).toHaveTextContent('Read this first.')
+    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+  })
+
+  it('renders a standard information task with no explainer without crashing', () => {
+    render(<StudentModal {...mkProps({ lesson: infoLesson({}) })} />)
+    expect(screen.getByTestId('explainer-panel')).toBeInTheDocument()
+  })
+
+  it('renders an introduction task as the lesson title and meta', () => {
+    render(
+      <StudentModal {...mkProps({ lesson: infoLesson({ informationType: 'introduction' }) })} />
+    )
+    expect(screen.getByRole('heading', { name: 'Loops Lesson' })).toBeInTheDocument()
+    expect(screen.getByText('Level 2')).toBeInTheDocument()
+    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+  })
+
+  it('renders a recap task without crashing', () => {
+    render(
+      <StudentModal
+        {...mkProps({
+          lesson: infoLesson({ informationType: 'recap', leftContent: 'We learned loops' }),
+        })}
+      />
+    )
+    expect(screen.getByText('We learned loops')).toBeInTheDocument()
+  })
+
+  it('renders a Badge Summary task as the class wall the student sees', () => {
+    render(
+      <StudentModal
+        {...mkProps({
+          lesson: infoLesson({ informationType: 'badges', title: 'Our coding moments' }),
+          session: { ...ACTIVE_SESSION, badges: {}, students: {} },
+        })}
+      />
+    )
+    expect(screen.getByRole('region', { name: 'Our coding moments' })).toBeInTheDocument()
+    expect(
+      screen.getByText("Coding moments will appear here as they're celebrated.")
+    ).toBeInTheDocument()
+    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+  })
+})

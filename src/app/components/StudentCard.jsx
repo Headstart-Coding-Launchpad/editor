@@ -153,12 +153,10 @@ export default function StudentCard({
         ? s.cardCheckFailed
         : null
 
-  const expandable = !isInformation
-  const openStudent = () => {
-    if (expandable) onExpand?.(student)
-  }
+  // Every card opens the student modal, information tasks included: the modal shows the task
+  // itself and keeps the badge, nudge, message and video-call controls a teacher still needs.
+  const openStudent = () => onExpand?.(student)
   // Select mode (the grid's multi-award): the whole card toggles selection instead of opening.
-  const clickable = selectMode || expandable
   const activate = () => {
     if (selectMode) onToggleSelect?.(student.anonymousId)
     else openStudent()
@@ -180,23 +178,17 @@ export default function StudentCard({
       style={{
         ...s.card,
         ...checkCardStyle,
-        ...(clickable ? s.cardClickable : null),
+        ...s.cardClickable,
         ...(selectMode && selected ? s.cardSelected : null),
       }}
       className="card"
-      role={selectMode ? 'checkbox' : expandable ? 'button' : undefined}
+      role={selectMode ? 'checkbox' : 'button'}
       aria-checked={selectMode ? selected : undefined}
-      tabIndex={clickable ? 0 : undefined}
-      aria-label={
-        selectMode
-          ? `Select ${student.displayName}`
-          : expandable
-            ? `Expand ${student.displayName}`
-            : undefined
-      }
+      tabIndex={0}
+      aria-label={selectMode ? `Select ${student.displayName}` : `Expand ${student.displayName}`}
       onClick={activate}
       onKeyDown={(event) => {
-        if (!clickable || event.target !== event.currentTarget) return
+        if (event.target !== event.currentTarget) return
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
           activate()

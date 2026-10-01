@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { CodeEditor } from '../../../shared/CodeEditor'
 import ExplainerPanel from '../ExplainerPanel'
+import InformationTask from '../InformationTask'
 import IframePreview from '../IframePreview'
 import OutputPanel from '../OutputPanel'
 import { ActivityView } from '../../../activities/ActivityHost.jsx'
@@ -150,6 +151,23 @@ export default function StudentWorkspaceBody({
       )}
     </div>
   )
+
+  // Introduction, recap and Badge Summary information tasks have no explainer of their own to
+  // show (an introduction is just the lesson's title and meta), so they render the student's own
+  // InformationTask view: the Badge Summary as this student sees it (their moments, then the class).
+  if (isInformation && (task?.informationType ?? 'standard') !== 'standard')
+    return (
+      <InformationTask
+        task={task}
+        lesson={lesson}
+        badgeWall={{
+          decisions: session?.badges ?? {},
+          students: session?.students ?? {},
+          viewerId: student?.anonymousId ?? null,
+          variant: 'student',
+        }}
+      />
+    )
 
   if (isInformation)
     return (
