@@ -483,4 +483,138 @@ describe('useStudentPhase', () => {
       expect(result.current.phase).toBe('lesson')
     })
   })
+
+  describe('joining marker: typed name and teacher admit', () => {
+    // Captures the marker listener so tests can play the teacher's admit write.
+    function markerHarness() {
+      const listeners = new Map()
+      const subscribeJoiningMarker = vi.fn((tempId, cb) => {
+        listeners.set(tempId, cb)
+        return () => listeners.delete(tempId)
+      })
+      return {
+        subscribeJoiningMarker,
+        fire: (marker) => {
+          for (const cb of [...listeners.values()]) cb(marker)
+        },
+        listenerCount: () => listeners.size,
+      }
+    }
+
+    async function renderNameEntry(overrides = {}) {
+      const harness = markerHarness()
+      const joinSession = vi.fn().mockResolvedValue(undefined)
+      const createIdentity = vi.fn((displayName, ts) => ({
+        anonymousId: 'a1',
+        displayName,
+        lastSessionTimestamp: ts,
+      }))
+      const props = defaultProps({
+        session: makeSession({ state: 'active', currentTaskId: 2 }),
+        identity: null,
+        joinSession,
+        createIdentity,
+        subscribeJoiningMarker: harness.subscribeJoiningMarker,
+        setJoiningTypedName: vi.fn().mockResolvedValue(undefined),
+        ...overrides,
+      })
+      const hook = renderHook((p) => useStudentPhase(p), { initialProps: props })
+      await waitFor(() => expect(hook.result.current.phase).toBe('name-entry'))
+      await waitFor(() => expect(harness.listenerCount()).toBe(1))
+      return { ...hook, props, harness }
+    }
+
+    it('writes the typed name to its own marker, trimmed and capped', async () => {
+      const { result, props } = await renderNameEntry()
+      const tempId = props.registerJoining.mock.calls[0][0]
+      act(() => result.current.reportTypedName('  Jamie  '))
+      expect(props.setJoiningTypedName).toHaveBeenLastCalledWith(tempId, 'Jamie')
+      act(() => result.current.reportTypedName('x'.repeat(50)))
+      expect(props.setJoiningTypedName).toHaveBeenLastCalledWith(tempId, 'x'.repeat(30))
+    })
+
+    it('does not write a typed name once the student has left name entry', async () => {
+      const { result, props } = await renderNameEntry()
+      await act(async () => {
+        await result.current.handleNameSubmit('Bob')
+      })
+      expect(result.current.phase).toBe('lesson')
+      props.setJoiningTypedName.mockClear()
+      act(() => result.current.reportTypedName('Bob'))
+      expect(props.setJoiningTypedName).not.toHaveBeenCalled()
+    })
+
+    it('a teacher admit joins the student with that name exactly once', async () => {
+      const { result, props, harness } = await renderNameEntry()
+      const marker = { joinedAt: 5000, admit: { name: 'Jamie', at: 6000 } }
+      await act(async () => {
+        harness.fire(marker)
+        harness.fire({ ...marker, typedName: 'Jam' })
+      })
+      await waitFor(() => expect(result.current.phase).toBe('lesson'))
+      expect(props.joinSession).toHaveBeenCalledTimes(1)
+      expect(props.joinSession).toHaveBeenCalledWith('a1', 'Jamie')
+      expect(props.createIdentity).toHaveBeenCalledWith('Jamie', 1000)
+      expect(props.unregisterJoining).toHaveBeenCalled()
+      expect(result.current.currentTaskId).toBe(2)
+    })
+
+    it('suffixes an admitted name that is already taken, like a typed one', async () => {
+      const { props, harness } = await renderNameEntry({
+        session: makeSession({ students: { s1: { displayName: 'Jamie' } } }),
+      })
+      await act(async () => {
+        harness.fire({ joinedAt: 5000, admit: { name: 'Jamie', at: 6000 } })
+      })
+      await waitFor(() => expect(props.joinSession).toHaveBeenCalledWith('a1', 'Jamie-2'))
+    })
+
+    it('admitted into a waiting session goes to the waiting room', async () => {
+      const { result, harness } = await renderNameEntry({
+        session: makeSession({ state: 'waiting' }),
+      })
+      await act(async () => {
+        harness.fire({ joinedAt: 5000, admit: { name: 'Jamie', at: 6000 } })
+      })
+      await waitFor(() => expect(result.current.phase).toBe('waiting'))
+    })
+
+    it('ignores admits older than the marker, without a name, or without a time', async () => {
+      const { result, props, harness } = await renderNameEntry()
+      await act(async () => {
+        harness.fire({ joinedAt: 5000, admit: { name: 'Jamie', at: 4000 } })
+        harness.fire({ joinedAt: 5000, admit: { name: '   ', at: 6000 } })
+        harness.fire({ joinedAt: 5000, admit: { name: 'Jamie' } })
+        harness.fire({ joinedAt: 5000, typedName: 'Jamie' })
+        harness.fire(null)
+      })
+      expect(props.joinSession).not.toHaveBeenCalled()
+      expect(result.current.phase).toBe('name-entry')
+    })
+
+    it('ignores an admit while the student’s own Join is in flight', async () => {
+      let resolveJoin
+      const joinSession = vi.fn(
+        () =>
+          new Promise((resolve) => {
+            resolveJoin = resolve
+          })
+      )
+      const { result, harness } = await renderNameEntry({ joinSession })
+      let submitting
+      act(() => {
+        submitting = result.current.handleNameSubmit('Bob')
+      })
+      await act(async () => {
+        harness.fire({ joinedAt: 5000, admit: { name: 'Jamie', at: 6000 } })
+      })
+      await act(async () => {
+        resolveJoin()
+        await submitting
+      })
+      expect(joinSession).toHaveBeenCalledTimes(1)
+      expect(joinSession).toHaveBeenCalledWith('a1', 'Bob')
+      expect(result.current.phase).toBe('lesson')
+    })
+  })
 })

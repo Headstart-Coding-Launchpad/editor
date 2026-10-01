@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { applyNameSuffix, normaliseJoinName, readAdmitName } from '../joiningStudents'
 
 /**
  * Owns the student phase state machine: loading → choice → waiting → name-entry → lesson → sandbox → solo → ended.
@@ -36,6 +37,8 @@ export function useStudentPhase({
   joinSession,
   registerJoining,
   unregisterJoining,
+  setJoiningTypedName,
+  subscribeJoiningMarker,
 }) {
   const [phase, setPhase] = useState('loading')
   const [currentTaskId, setCurrentTaskId] = useState(firstTaskId ?? 1)
@@ -53,6 +56,16 @@ export function useStudentPhase({
   // Holds the tempId for the current name-entry phase so handleNameSubmit can
   // eagerly remove the joining marker before writing to students/.
   const joiningTempIdRef = useRef(null)
+  // The same tempId as state, so the admit listener below re-subscribes per marker.
+  const [joiningTempId, setJoiningTempId] = useState(null)
+  const setJoiningTypedNameRef = useRef(setJoiningTypedName)
+  setJoiningTypedNameRef.current = setJoiningTypedName
+  const subscribeJoiningMarkerRef = useRef(subscribeJoiningMarker)
+  subscribeJoiningMarkerRef.current = subscribeJoiningMarker
+  // True while a name submit (typed or teacher-admitted) is writing the student record.
+  const nameSubmitInFlightRef = useRef(false)
+  // The marker whose teacher admit has already been acted on — an admit runs once.
+  const admitHandledForRef = useRef(null)
 
   // While in name-entry, write a temporary "joining" marker to Firebase so the teacher
   // can see students who are in the process of entering their name.
@@ -60,12 +73,26 @@ export function useStudentPhase({
     if (phase !== 'name-entry') return
     const tempId = crypto.randomUUID()
     joiningTempIdRef.current = tempId
+    setJoiningTempId(tempId)
     registerJoiningRef.current?.(tempId)
     return () => {
       joiningTempIdRef.current = null
+      setJoiningTempId(null)
       unregisterJoiningRef.current?.(tempId)
     }
   }, [phase])
+
+  // Shares the name being typed on the marker (NameEntry throttles the calls). A no-op
+  // once the marker is gone, so a trailing write can't recreate it after a submit.
+  const reportTypedName = useCallback((value) => {
+    const tempId = joiningTempIdRef.current
+    if (!tempId || phaseRef.current !== 'name-entry') return
+    const write = setJoiningTypedNameRef.current
+    if (!write) return
+    Promise.resolve(write(tempId, normaliseJoinName(value))).catch((err) =>
+      console.warn('Failed to share typed name:', err)
+    )
+  }, [])
 
   // Sync currentTaskId when firstTaskId resolves — only during loading phase to avoid
   // overwriting a session-driven task that was already applied by the phase-determination effect
@@ -234,18 +261,47 @@ export function useStudentPhase({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.currentTaskId])
 
+  // Teacher "Pull in": the teacher writes admit = { name, at } on this device's joining
+  // marker, and the student joins exactly as if they had typed that name and pressed Join
+  // (duplicate suffixing here, identity + joinSession in handleNameSubmit). The phase logic
+  // above ignores session changes during name entry, so this watches the marker itself.
+  const handleNameSubmitRef = useRef(null)
+  const sessionRef = useRef(session)
+  sessionRef.current = session
+  useEffect(() => {
+    const subscribe = subscribeJoiningMarkerRef.current
+    if (!joiningTempId || !subscribe) return
+    const unsubscribe = subscribe(joiningTempId, (marker) => {
+      if (admitHandledForRef.current === joiningTempId) return
+      if (joiningTempIdRef.current !== joiningTempId || phaseRef.current !== 'name-entry') return
+      // The student pressed Join themselves and that submit is still in flight.
+      if (nameSubmitInFlightRef.current) return
+      const name = readAdmitName(marker)
+      if (!name) return
+      admitHandledForRef.current = joiningTempId
+      const existingNames = Object.values(sessionRef.current?.students ?? {}).map(
+        (st) => st?.displayName
+      )
+      handleNameSubmitRef.current?.(applyNameSuffix(name, existingNames))
+    })
+    return () => unsubscribe?.()
+  }, [joiningTempId])
+
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
   async function handleNameSubmit(displayName) {
     setJoinError(null)
     const sessionTs = session.createdAt
     const id = createIdentity(displayName, sessionTs)
+    nameSubmitInFlightRef.current = true
     try {
       await joinSession(id.anonymousId, displayName)
     } catch (err) {
       console.warn('Failed to join session:', err)
       setJoinError("Couldn't connect to the class session. Check your connection and try again.")
       return
+    } finally {
+      nameSubmitInFlightRef.current = false
     }
     // Only remove the joining marker once the real student record is written, so a failed
     // join (and any retry) keeps the teacher's live view showing this student as joining.
@@ -268,6 +324,8 @@ export function useStudentPhase({
     setCurrentTaskId(session.currentTaskId ?? 1)
     setPhase('lesson')
   }
+
+  handleNameSubmitRef.current = handleNameSubmit
 
   function handleWaitForTeacher() {
     if (session && session.state === 'waiting') {
@@ -293,5 +351,6 @@ export function useStudentPhase({
     handleNameSubmit,
     handleWaitForTeacher,
     handleGoSolo,
+    reportTypedName,
   }
 }

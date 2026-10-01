@@ -11,6 +11,7 @@ import {
   saveSessionReport,
 } from '../../shared/lessonService'
 import { prepareClassroomLesson } from '../studentTaskContent'
+import { listJoiningStudents } from '../joiningStudents'
 import { attachTeacherFeedback, buildSessionReport } from '../../shared/lessonReport'
 import { decodeLessonFromFirestore } from '../../shared/lessonBlocksCodec'
 import EditLessonModal from '../components/EditLessonModal'
@@ -102,6 +103,7 @@ export default function TeacherView({ lessonId }) {
     requestFullscreenForStudent,
     nudgeStudent,
     nudgeAwayStudents,
+    admitJoiningStudent,
     setAutoRevealStage,
     setActiveStudentView,
     setTeacherLive,
@@ -588,7 +590,10 @@ export default function TeacherView({ lessonId }) {
   const students = session
     ? Object.entries(session.students ?? {}).map(([id, s]) => ({ ...s, anonymousId: id }))
     : []
-  const joiningCount = Object.keys(session?.joiningStudents ?? {}).length
+  const joiningStudents = useMemo(
+    () => listJoiningStudents(session?.joiningStudents),
+    [session?.joiningStudents]
+  )
   const isPreviewing = previewTaskId !== null && !isInSandbox
 
   async function handleSendStageToAll(action) {
@@ -844,7 +849,8 @@ export default function TeacherView({ lessonId }) {
         <aside style={s.right}>
           <StudentGrid
             students={students}
-            joiningCount={joiningCount}
+            joiningStudents={joiningStudents}
+            onAdmitJoining={admitJoiningStudent}
             lesson={lesson}
             lessonId={lessonId}
             session={session}

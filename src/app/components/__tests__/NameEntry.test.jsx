@@ -1,6 +1,6 @@
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { act, render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import NameEntry from '../NameEntry'
 
 function renderEntry(overrides = {}) {
@@ -115,5 +115,75 @@ describe('NameEntry', () => {
     const props = renderEntry({ joinError: 'Something went wrong.' })
     typeAndSubmit('Jamie')
     expect(props.onSubmit).toHaveBeenCalledWith('Jamie')
+  })
+
+  describe('sharing the typed name with the teacher', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    function type(value) {
+      fireEvent.change(screen.getByRole('textbox'), { target: { value } })
+    }
+
+    it('throttles typedName writes to one per 750ms, trimmed, with the last value landing', () => {
+      vi.useFakeTimers()
+      const onNameTyping = vi.fn()
+      renderEntry({ onNameTyping })
+
+      type('J')
+      expect(onNameTyping).toHaveBeenCalledTimes(1)
+      expect(onNameTyping).toHaveBeenLastCalledWith('J')
+
+      type('Ja')
+      type('Jam')
+      type('Jamie  ')
+      expect(onNameTyping).toHaveBeenCalledTimes(1)
+
+      act(() => {
+        vi.advanceTimersByTime(749)
+      })
+      expect(onNameTyping).toHaveBeenCalledTimes(1)
+      act(() => {
+        vi.advanceTimersByTime(1)
+      })
+      expect(onNameTyping).toHaveBeenCalledTimes(2)
+      expect(onNameTyping).toHaveBeenLastCalledWith('Jamie')
+    })
+
+    it('shares an empty string when the box is cleared, and skips unchanged values', () => {
+      vi.useFakeTimers()
+      const onNameTyping = vi.fn()
+      renderEntry({ onNameTyping })
+
+      type('Al')
+      act(() => {
+        vi.advanceTimersByTime(800)
+      })
+      type('Al ') // trims to the same value, so no write
+      act(() => {
+        vi.advanceTimersByTime(800)
+      })
+      expect(onNameTyping).toHaveBeenCalledTimes(1)
+
+      type('')
+      expect(onNameTyping).toHaveBeenLastCalledWith('')
+    })
+
+    it('drops a pending typedName write once the student presses Join', () => {
+      vi.useFakeTimers()
+      const onNameTyping = vi.fn()
+      const props = renderEntry({ onNameTyping })
+
+      type('J')
+      type('Jo')
+      fireEvent.click(screen.getByRole('button', { name: /Join/ }))
+      expect(props.onSubmit).toHaveBeenCalledWith('Jo')
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+      expect(onNameTyping).toHaveBeenCalledTimes(1)
+      expect(onNameTyping).toHaveBeenLastCalledWith('J')
+    })
   })
 })

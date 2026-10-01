@@ -99,6 +99,8 @@ export default function StudentView({
     joinSession,
     registerJoining,
     unregisterJoining,
+    setJoiningTypedName,
+    subscribeJoiningMarker,
     writeStudentRun,
     logAttempt,
     flagAttemptError,
@@ -192,6 +194,7 @@ export default function StudentView({
     handleNameSubmit,
     handleWaitForTeacher,
     handleGoSolo,
+    reportTypedName,
   } = useStudentPhase({
     session,
     sessionLoading,
@@ -210,6 +213,8 @@ export default function StudentView({
     joinSession,
     registerJoining,
     unregisterJoining,
+    setJoiningTypedName,
+    subscribeJoiningMarker,
   })
   const activeLesson = useMemo(
     () => getEffectiveLessonForTask(lesson, currentTaskId),
@@ -809,6 +814,7 @@ export default function StudentView({
           session ? Object.values(session.students ?? {}).map((s) => s.displayName) : []
         }
         onSubmit={handleNameSubmit}
+        onNameTyping={reportTypedName}
         onGoSolo={handleGoSolo}
         waitingForSession={session?.state === 'waiting'}
         joinError={joinError}

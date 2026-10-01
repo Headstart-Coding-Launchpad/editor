@@ -663,6 +663,21 @@ select {
   background: #eab308;
 }
 
+/* Waiting badge: the dot still shows real presence (PresenceBadge). */
+.presence-badge--waiting.presence-badge--dot-online .presence-badge__dot {
+  background: #22c55e;
+  animation: online-pulse 1.6s ease-in-out infinite;
+}
+
+.presence-badge--waiting.presence-badge--dot-away .presence-badge__dot {
+  background: #9ca3af;
+}
+
+.presence-badge--waiting.presence-badge--dot-offline .presence-badge__dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px #a16207;
+}
+
 /* Teacher lesson and current-task timers */
 .teacher-timers {
   display: flex;

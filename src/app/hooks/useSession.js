@@ -1048,14 +1048,39 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   // ─── Student helpers ──────────────────────────────────────────────────────
 
+  // joinedAt is a server timestamp so a teacher's admit.at (also server time) can be
+  // compared with it without clock skew between the two devices.
   async function registerJoining(tempId) {
     const r = ref(db, `sessions/${lessonId}/joiningStudents/${tempId}`)
     onDisconnect(r).remove()
-    await set(r, { joinedAt: Date.now() })
+    await set(r, { joinedAt: serverTimestamp() })
   }
 
   async function unregisterJoining(tempId) {
     await remove(ref(db, `sessions/${lessonId}/joiningStudents/${tempId}`))
+  }
+
+  // The name the student is typing on NameEntry, for the teacher grid's joining list.
+  // '' removes the field. The rules reject it once the marker itself is gone.
+  async function setJoiningTypedName(tempId, typedName) {
+    const value = typeof typedName === 'string' && typedName ? typedName : null
+    await set(ref(db, `sessions/${lessonId}/joiningStudents/${tempId}/typedName`), value)
+  }
+
+  // Teacher "Pull in": the student's own device acts on this (useStudentPhase).
+  async function admitJoiningStudent(tempId, name) {
+    await set(ref(db, `sessions/${lessonId}/joiningStudents/${tempId}/admit`), {
+      name,
+      at: serverTimestamp(),
+    })
+  }
+
+  // A dedicated listener on one joining marker; the phase logic ignores session changes
+  // during name entry, so the student watches its own marker for a teacher admit here.
+  function subscribeJoiningMarker(tempId, callback) {
+    return onValue(ref(db, `sessions/${lessonId}/joiningStudents/${tempId}`), (snap) =>
+      callback(snap.val())
+    )
   }
 
   async function registerPresence(anonymousId) {
@@ -1621,11 +1646,14 @@ export function useSession(lessonId, { enabled = true } = {}) {
     setBadgeSettings,
     archiveSandboxStudentSnapshot,
     readSessionArchive,
+    admitJoiningStudent,
     // student
     registerPresence,
     joinSession,
     registerJoining,
     unregisterJoining,
+    setJoiningTypedName,
+    subscribeJoiningMarker,
     writeStudentRun,
     logAttempt,
     flagAttemptError,
