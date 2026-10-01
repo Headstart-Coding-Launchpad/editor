@@ -238,6 +238,11 @@ Reading, adding and archiving teacher feedback (lesson and platform) with the CL
 
 **Load when:** acting on teacher feedback about a lesson.
 
+### [authoring/session-reports.md](authoring/session-reports.md)
+Field reference for session report YAML: every top-level, per-student, per-task and task-summary field with its meaning, units, when it's present and the date it was added; how attempts, retries, overrides (including class-advance overrides) and support reveals are derived; and the two kinds of teacher feedback (`teacherFeedback`, `teacherRating`).
+
+**Load when:** reading or reviewing session reports, writing report tooling, or changing `lessonReport.js` / `reportMetrics.js` / activity `summaryFields`.
+
 ### Per-type code task and check references
 Completion and feedback checks are documented inside each lesson-type authoring doc so authors can work from one self-contained page per lesson type.
 

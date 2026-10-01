@@ -80,6 +80,7 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | Draft lessons (incomplete tasks, intent, clearing draft) | `docs/authoring/AUTHORING_GUIDE.md` Draft lessons |
 | Lesson assets via CLI | `docs/authoring/lesson-assets-cli.md` |
 | Reading, adding, or archiving teacher feedback via CLI | `docs/authoring/feedback-cli.md` |
+| Reading or reviewing session reports (field reference) | `docs/authoring/session-reports.md` |
 | Test strategy | `docs/TESTING.md` |
 | Licenses | `docs/LICENSES.md` |
 

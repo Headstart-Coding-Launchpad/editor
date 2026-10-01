@@ -333,6 +333,105 @@ tasks:
       Teach `range()` and have learners print the numbers 0–4.
 ```
 
+#### Multi-group Draft example
+
+A fuller skeleton: an introduction, two groups (`group:` + `tasks:`; groups can't nest), code tasks
+with intent, a quiz and an activity, and a recap. Every task has a `title` and an `intent`, and a
+`taskActivity` naming its [Glossary pattern](badges.md#task-activity-patterns) (badges and reports
+read it; an unrecognised pattern is a warning, not an error).
+
+```yaml
+id: python-loops-skeleton
+type: composed
+title: Python Loops
+description: Repeat code with for loops and range().
+level: 2
+draft: true
+tasks:
+  - type: information
+    informationType: introduction
+    title: Python Loops
+    taskActivity: Information
+    intent: |
+      Lesson opener. Renders the lesson title, level and description only.
+
+  - group: Counting with range()
+    tasks:
+      - type: information
+        title: What a loop does
+        taskActivity: "Information: Brief Description"
+        intent: |
+          Explain that a `for` loop repeats the indented lines once per number in `range()`.
+      - title: Run a counted loop
+        moduleType: python
+        taskActivity: Code Task, Complete Example
+        intent: |
+          Complete example: `for i in range(5): print(i)`. Learners run it and see 0–4.
+      - title: Count to ten
+        moduleType: python
+        taskActivity: Code Task, Meaningful Change
+        intent: |
+          Starter is the previous loop; learners change `range(5)` so it prints 0–9.
+          Check: output has 10 lines.
+      - title: Copy the times table
+        moduleType: python
+        taskActivity: Code Task, Copy the Code
+        intent: |
+          Learners type out a 3-times-table loop shown in the explainer. Check: output contains 30.
+      - type: quiz
+        quizType: multiple_choice
+        title: How many times?
+        taskActivity: "Quiz: What Do You Expect the Code to Do"
+        intent: |
+          Show `for i in range(3): print("hi")` and ask how many times "hi" prints (answer: 3).
+
+  - group: Loops that go wrong
+    tasks:
+      - title: Fix the broken loop
+        moduleType: python
+        taskActivity: Code Task, Debug Code Task
+        intent: |
+          Starter is missing the colon after `range(4)`. Learners fix it so 0–3 print.
+      - type: quiz
+        quizType: multiple_choice
+        title: Spot the error
+        taskActivity: "Quiz: What Is the Error?"
+        intent: |
+          A loop body that isn't indented; ask which line causes the IndentationError.
+      - type: binary
+        mode: to_decimal
+        title: Count in binary
+        taskActivity: "Activity, Binary: to_decimal"
+        intent: |
+          Warm-down: three 4-bit numbers (0011, 0101, 1000) to convert to decimal.
+      - title: Your own pattern
+        moduleType: python
+        taskActivity: Code Task, Challenge (Open-Ended)
+        intent: |
+          Open-ended: learners use a loop to print any repeating pattern they like.
+          Check: code contains `for` and output has at least 3 lines.
+
+  - type: information
+    informationType: recap
+    title: Recap
+    taskActivity: Information
+    leftContent: "## What we covered"
+    explainer: |
+      - `for i in range(5):` repeats the indented lines 5 times.
+      - `i` counts up from 0.
+      - Every loop line ends with a colon, and the body is indented.
+    intent: |
+      Recap the three loop rules from both groups.
+```
+
+- **Introduction** (`informationType: introduction`) renders the lesson's `title`, `level` and
+  `description` only: it never shows `explainer` or `leftContent`, so leave both out.
+- **Recap** (`informationType: recap`) uses `leftContent` for the purple left pane. The canonical
+  style is a **single `## ` heading and nothing else** (`leftContent: "## What we covered"`); put
+  the recap body in `explainer` (the right pane).
+- A Draft task may leave out its learner-facing fields (`explainer`, `starterCode`, `check`, quiz
+  `options`, activity `items`), but any field it does include must have the right shape.
+
 `lessons validate` validates Draft structure. `lessons upsert` creates or replaces Draft lessons, and `lessons get <id> --format yaml` retrieves the current authoritative YAML. Builder permits incomplete tasks while `draft: true`, preserves recognised task fields, task IDs, task order, and intent when it saves, and runs full final validation when Draft is cleared. It refuses to clear Draft if final validation fails. `publish-yaml` refuses lessons that remain drafts.
 
 Do not use lesson stages, `taskType: draft` or `type: draft`, intended-type fields, or review-note metadata.
