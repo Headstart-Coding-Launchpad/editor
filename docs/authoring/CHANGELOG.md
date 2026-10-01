@@ -39,6 +39,43 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-01
 
+### Session report field reference
+
+- New [session-reports.md](session-reports.md): every field a session report's YAML can contain
+  (path, meaning, units, when it's present or omitted, date added), including activity summary
+  fields (`pairFailures`, `blankFailures`, `ratingDistribution`, `avgItemProgress`).
+- Explains the derivations that surprise reviewers: `attempts` and `avgAttempts` count identical
+  resubmissions (`retries`); `completionRate` includes overrides; `overridden_failed` is written
+  automatically for every unpassed student when the teacher moves the class on, not only by a
+  tutor; a support reveal can attach to a task with no `check`; there is no `revealCount`.
+- Documents lesson-level `teacherFeedback` (one per session run, on that run's report; absent
+  after **End & Go to Home**) and per-task `taskSummary[].teacherRating`, and how both differ from
+  the [feedback CLI](feedback-cli.md)'s lesson feedback.
+- From now on, a change to the report's output updates that page and adds an entry here.
+- Affects: all · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-09-30-document-the-session-report-schema-including-teacherfeedback.md
+
+### Multi-group Draft example; recap `leftContent` is a single heading
+
+- [AUTHORING_GUIDE.md](AUTHORING_GUIDE.md#draft-lessons) has a second Draft example: an
+  introduction, two groups, code tasks with intent, quizzes, an activity and a recap, with
+  `taskActivity` across the Glossary patterns.
+- Recap `leftContent` (the purple left pane) is canonically a **single `## ` heading**
+  (`leftContent: "## What we covered"`), with the recap body in `explainer`. An `introduction`
+  ignores both `leftContent` and `explainer`: it shows the lesson's title, level and description.
+  See [lesson-schema-yaml.md](lesson-schema-yaml.md#information-task-fields).
+- Affects: all · Existing lessons: recaps whose `leftContent` holds plain text or a body should
+  move to a single `## ` heading, with the body in `explainer` (they still render as before) ·
+  Resolves: authoring-requests/2026-09-30-authoring-guide-draft-lessons-add-a-multi-group-draft-exampl.md
+
+### Arcade palette hex values
+
+- [arcade.md](arcade.md#palette) lists each palette colour's hex. The palette is exactly the
+  standard PICO-8 16-colour palette; `white` is the warm `#fff1e8`, not `#ffffff`, which matters
+  when an image-generation prompt must match the game window.
+- Affects: arcade · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-09-30-arcade-md-palette-section-should-list-each-colour-s-hex-valu.md
+
 ### Line hints: a trailing marker gets its own empty line
 
 - A line-hint marker with nothing after it (`#> …` / `<!--> … -->` as the last line of the code,

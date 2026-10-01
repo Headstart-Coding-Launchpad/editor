@@ -131,6 +131,7 @@ After significant changes, update relevant docs:
 - `docs/TESTING.md` when test strategy or coverage thresholds change.
 - `docs/agents/project-rules.md` when CLI commands or auth setup changes.
 - `docs/authoring/AUTHORING_GUIDE.md`, `docs/authoring/validation-errors.md` or `docs/authoring/feedback-cli.md` when content-authoring workflows change.
+- `docs/authoring/session-reports.md` **and** a `docs/authoring/CHANGELOG.md` entry whenever the session report's output changes: `src/shared/lessonReport.js`, `src/badges/reportMetrics.js`, or an activity's `report.summaryFields` / `report.typeFields`. Reports are never regenerated, so give each new field its date added.
 - `AGENTS.md` and `docs/agents/*.md` when agent-facing rules, Firebase model, localStorage keys, URLs, session states, or key behaviours change.
 
 ### Authoring CHANGELOG entries

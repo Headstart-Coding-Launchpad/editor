@@ -264,8 +264,8 @@ tasks:
 | `type` | Yes | Must be `information`. |
 | `informationType` | No | `standard` (default), `recap`, `introduction`, or `badges` (the Badge Summary, "Today's Coding Moments": the live session's badges grouped by badge; skipped in solo — see [badges.md](badges.md#badge-summary-task)). |
 | `title` | Yes | Shown in progress UI. |
-| `explainer` | Yes* | Markdown content. Required for `standard` and `recap`. Optional for `introduction` (renders lesson metadata) and `badges` (shown above the class wall). |
-| `leftContent` | No | Left-pane Markdown for `recap` only. |
+| `explainer` | Yes* | Markdown content. Required for `standard` and `recap` (the recap's right pane). Optional for `badges` (shown above the class wall). `introduction` ignores it: it renders only the lesson's `title`, `level` and `description`. |
+| `leftContent` | No | `recap` only: the purple left pane. Canonical style is a single `## ` heading and nothing else (`leftContent: "## What we covered"`); put the recap body in `explainer`. Ignored by every other `informationType`, including `introduction`. |
 
 ---
 
