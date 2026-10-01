@@ -69,6 +69,63 @@ describe('code_arrange activity', () => {
     ).toEqual([])
   })
 
+  it('drops unknown tiles when loading a stored board for a task', () => {
+    const task = PYTHON_CODE_ARRANGE_TASK
+    expect(definition.deserialize('{"S1":"S1","L2":"ghost"}', task)).toEqual({ S1: 'S1' })
+    expect(definition.deserialize({ S1: 'S1d1', L2: 'L2', zz: 'L2' }, task)).toEqual({
+      S1: 'S1d1',
+      L2: 'L2',
+    })
+    expect(definition.getProgress(task, { S1: 'S1', L2: 'ghost' }).filled).toBe(1)
+  })
+
+  it('errors when an html arrangement assembles into a file that is not a starter file', () => {
+    const task = { ...HTML_CODE_ARRANGE_TASK, entryFile: 'page.html' }
+    expect(definition.validateTask(task, { n: 9 }).errors).toContain(
+      'Task 9 entryFile "page.html" is not one of its starter files'
+    )
+    expect(definition.validateTask(HTML_CODE_ARRANGE_TASK, { n: 9 }).errors).toEqual([])
+  })
+
+  it("warns when the authored solution fails the task's own code check", () => {
+    const failing = {
+      ...PYTHON_CODE_ARRANGE_TASK,
+      check: { type: 'code', operator: 'contains', value: 'while' },
+    }
+    expect(definition.validateTask(failing, { n: 8 }).warnings).toEqual([
+      'Task 8 solution arrangement does not pass its own code check',
+    ])
+    const passing = {
+      ...PYTHON_CODE_ARRANGE_TASK,
+      check: { type: 'code', operator: 'contains', value: 'range(5)' },
+    }
+    expect(definition.validateTask(passing, { n: 8 }).warnings).toEqual([])
+    // Output checks need a real run: never evaluated here.
+    expect(definition.validateTask(PYTHON_CODE_ARRANGE_TASK, { n: 8 }).warnings).toEqual([])
+    // HTML code checks read the files with the solution in the entry file.
+    const html = {
+      ...HTML_CODE_ARRANGE_TASK,
+      check: [
+        { type: 'code', operator: 'contains', value: '<h1>Hello</h1>' },
+        { type: 'code', operator: 'contains', value: 'color: navy' },
+      ],
+    }
+    expect(definition.validateTask(html, { n: 9 }).warnings).toEqual([])
+  })
+
+  it('warns when a python solution line after a block opener is not indented', () => {
+    const task = {
+      ...PYTHON_CODE_ARRANGE_TASK,
+      lines: [
+        PYTHON_CODE_ARRANGE_TASK.lines[0],
+        { id: 'L2', parts: [{ type: 'slot', id: 'L2', code: 'print(i * 2)' }] },
+      ],
+    }
+    expect(definition.validateTask(task, { n: 8 }).warnings).toEqual([
+      'Task 8 line 2 follows a line ending in ":" but is not indented',
+    ])
+  })
+
   it('renders on a host module, falling back to python', () => {
     expect(hostModuleFor('html')).toBe('html')
     expect(hostModuleFor('python')).toBe('python')

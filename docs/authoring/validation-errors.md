@@ -195,6 +195,9 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … distractor … has no id` / `Task … distractor … has no code` | A distractor tile is incomplete. | Give it an `id` and `code`. |
 | `Task … is a code-arrange task but has duplicate blank/distractor ids` | Slot and distractor ids clash. | Make every tile id unique. |
 | `Task … is a code-arrange task but has no completion check` | There's nothing to decide when the arrangement is right. | Add a `check`, usually on output. |
+| `Task … entryFile "…" is not one of its starter files` | An HTML arrange task assembles its tiles into `entryFile`, but `starterFiles` has no file with that name, so the preview would be blank. | Add a starter file named after `entryFile` (an empty `content` is fine), or set `entryFile` to the starter file the tiles belong in. |
+| `Task … solution arrangement does not pass its own code check` (warning) | With every blank holding its own correct tile, the assembled program fails one of the task's `code` checks (`code` / `code_contains` / `code_matches_regex` …). Only code checks are tried here; `output` and element checks need a real run, so test those with the Builder's **Show solution** and Run. | Fix the check's value, or the blanks' `code`, so the intended program passes. |
+| `Task … line … follows a line ending in ":" but is not indented` (warning) | Python only: in the authored solution, this line comes after a block opener (`for …:`, `if …:`, `def …:`) but is not indented further, so the program would fail with an `IndentationError`. | Indent the line's blank `code` (or its fixed text), e.g. `"    print(i)"`. |
 
 ## Module starter state
 

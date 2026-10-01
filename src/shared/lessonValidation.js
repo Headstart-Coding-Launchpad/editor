@@ -246,7 +246,7 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
   } else if (kind === 'activity') {
     validateActivityTask(task, n, lesson, errors, warnings)
   }
-  legacy?.validateTask(task, { n, moduleType, errors })
+  legacy?.validateTask(task, { n, moduleType, errors, warnings })
   if (usesModule) {
     definition?.validateTask(task, { n, lesson, errors, warnings })
     validateRegisteredChecks(task, n, errors, { moduleDefinition: definition })

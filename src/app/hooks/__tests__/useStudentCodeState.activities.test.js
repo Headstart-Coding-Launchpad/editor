@@ -464,7 +464,7 @@ describe('teacherAnswerEdit (StudentModal "Edit answers") on the student side', 
         me: { teacherAnswerEdit: { answer: null, codeArrangeSlots: slots, taskId: 8, at: 777 } },
       }),
     })
-    expect(result.current.teacherCodeArrangeEdit).toEqual({ slots, at: 777 })
+    expect(result.current.teacherCodeArrangeEdit).toEqual({ slots, taskId: 8, at: 777 })
     expect(result.current.teacherAnswerNoticeAt).toBe(777)
     expect(writers.writeStudentRun).not.toHaveBeenCalled()
     expect(writers.writeStudentCodeArrangeSlots).not.toHaveBeenCalled()

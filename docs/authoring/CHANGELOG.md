@@ -170,6 +170,22 @@ Entries written before 2026-09-29 are not tagged.
 - Affects: scratch · Existing lessons: no changes needed · Resolves:
   authoring-requests/2026-09-30-scratch-text-field-typing-logs-a-new-attempt-on-every-keystr.md
 
+### Code Arrange: HTML entry file must be a starter file; solutions are checked
+
+- An HTML `code_arrange` task whose `entryFile` is not one of its `starterFiles` now fails
+  validation (`Task … entryFile "…" is not one of its starter files`). Before, the assembled tiles
+  were silently dropped and the preview stayed blank.
+- Validation (CLI `lessons validate` and the Builder) now assembles the authored solution and
+  warns when it fails the task's own `code` checks, or, for Python, when a line after a block
+  opener (`…:`) isn't indented. `output` and element checks still need a real run and aren't tried.
+- Classroom fixes with no authoring change: a tutor's **Edit answers** applies once, to the task it
+  was made on; tiles a task no longer has are ignored (the board isn't "complete" with them); Run
+  stays disabled with a message when Python failed to load. See
+  [lesson-schema.md](lesson-schema.md#code-arrange-task-fields) and
+  [validation-errors.md](validation-errors.md#code-arrange-tasks).
+- Affects: code_arrange · Existing lessons: html arrange tasks whose entryFile isn't a starter
+  file now fail validation; solutions failing their own code checks warn · Resolves: none
+
 ### Code Arrange attempts always record the assembled program
 
 - A `code_arrange` Run now always runs, and logs, the program assembled from the tiles. Before,

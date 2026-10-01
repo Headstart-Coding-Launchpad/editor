@@ -80,11 +80,29 @@ export function fragmentIdExists(task, fragmentId) {
   return getTaskPool(task).some((fragment) => fragment.id === fragmentId)
 }
 
+// Keeps only the placements that are real tiles of this task: a slot id the task has, holding a
+// tile id from the task's pool. A saved or mirrored board can hold ids from an earlier version of
+// the task (or, before task-scoped teacher edits, another task's tiles); those show as empty and
+// assemble to nothing, so they are dropped rather than counted as filled.
+export function pruneSlotState(task, slotState) {
+  if (!slotState || typeof slotState !== 'object' || Array.isArray(slotState)) return {}
+  const slotIds = new Set(getSlotIds(task))
+  const poolIds = new Set(getTaskPool(task).map((fragment) => fragment.id))
+  return Object.fromEntries(
+    Object.entries(slotState).filter(([slotId, tileId]) => {
+      return slotIds.has(slotId) && poolIds.has(tileId)
+    })
+  )
+}
+
+// Complete when every slot holds a tile from the task's pool — an unknown tile id renders as an
+// empty blank and assembles to '', so it never counts as filled.
 export function isArrangementComplete(task, slotState) {
   const slotIds = getSlotIds(task)
   if (slotIds.length === 0) return false
   const state = slotState && typeof slotState === 'object' ? slotState : {}
-  return slotIds.every((id) => state[id] != null && state[id] !== '')
+  const poolIds = new Set(getTaskPool(task).map((fragment) => fragment.id))
+  return slotIds.every((id) => state[id] != null && state[id] !== '' && poolIds.has(state[id]))
 }
 
 // Assembles a single authored line into its final source text, given the

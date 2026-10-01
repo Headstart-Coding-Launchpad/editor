@@ -141,13 +141,19 @@ export default function CodeArrangeTaskContainer({
   // A teacher edited this student's tiles from StudentModal ("Edit answers").
   // Applied like a student placement (saved locally, assembled into code by
   // the re-sync effect below) but flagged so it doesn't count as the student
-  // superseding the teacher's edit.
+  // superseding the teacher's edit. Scoped to the task it was made on (every task the Builder
+  // seeds shares the same slot ids, so another task's tiles would often "fit") and one-shot:
+  // acknowledged once applied, so a later remount — revisiting the task after the student has
+  // moved the tiles — never re-applies it over their newer arrangement.
   const teacherEditAt = cs.teacherCodeArrangeEdit?.at ?? null
   useEffect(() => {
     if (!teacherEditAt || detached) return
-    const slots = cs.teacherCodeArrangeEdit?.slots
+    const edit = cs.teacherCodeArrangeEdit
+    if (edit.taskId != null && String(edit.taskId) !== String(taskId)) return
+    const slots = edit.slots
     if (!slots || typeof slots !== 'object' || Array.isArray(slots)) return
-    handleSlotStateChange(slots, { fromTeacher: true })
+    handleSlotStateChange(definition.deserialize(slots, task), { fromTeacher: true })
+    cs.acknowledgeTeacherCodeArrangeEdit?.(teacherEditAt)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teacherEditAt])
 
@@ -162,7 +168,7 @@ export default function CodeArrangeTaskContainer({
     if (reset.taskId != null && String(reset.taskId) !== String(taskId)) return
     const slots = reset.slots
     if (!slots || typeof slots !== 'object' || Array.isArray(slots)) return
-    handleSlotStateChange(slots, { fromTeacher: true })
+    handleSlotStateChange(definition.deserialize(slots, task), { fromTeacher: true })
     cs.acknowledgeCodeArrangeReset?.(remoteResetAt)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remoteResetAt])
