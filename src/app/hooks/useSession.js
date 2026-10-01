@@ -330,6 +330,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/teacherStageAcceptedAt`] = null
       updates[`students/${anonymousId}/teacherHighlights`] = null
       updates[`students/${anonymousId}/teacherPaneCommand`] = null
+      // The previous task's panes mean nothing on the new one; the student's StudentView
+      // re-reports the new task's panes (its dedupe resets per task).
+      updates[`students/${anonymousId}/visiblePanes`] = null
       // Pending share requests are per-task. Approved shares live in
       // sharedWorkspaces (session level) and deliberately survive this wipe.
       updates[`students/${anonymousId}/shareRequestedAt`] = null

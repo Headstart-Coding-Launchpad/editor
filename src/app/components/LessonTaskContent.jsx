@@ -272,31 +272,43 @@ export default function LessonTaskContent({
         ? !explainerCollapsed
         : !accordionExplainerCollapsed
   const codePaneVisible = !taskPanelCompact || taskPanelTab === 'code'
-  const visiblePanes = isFixedExplainerLesson
-    ? [
-        ...(instructionsPaneVisible ? ['instructions'] : []),
-        ...(codePaneVisible ? scratchCodePanes : []),
-      ]
-    : supportsModulePanes
-      ? [...(instructionsPaneVisible ? ['instructions'] : []), ...modulePanes]
-      : hasTaskExplainer
-        ? instructionsPaneVisible
-          ? ['instructions']
-          : []
-        : null
+  // Information and quiz/activity tasks have no explainer/workspace panes at all (outside a
+  // sandbox, which always shows the workspace). They report an explicit empty list so the
+  // previous task's panes are cleared on the teacher's card rather than left behind —
+  // modulePanes/scratchCodePanes still hold the last code task's state here, and in a
+  // composed lesson the module flags below resolve to nothing on these tasks.
+  const hasNoPanes = (isQuizLike || isInformationTask) && !isSandbox
+  const visiblePanes = hasNoPanes
+    ? []
+    : isFixedExplainerLesson
+      ? [
+          ...(instructionsPaneVisible ? ['instructions'] : []),
+          ...(codePaneVisible ? scratchCodePanes : []),
+        ]
+      : supportsModulePanes
+        ? [...(instructionsPaneVisible ? ['instructions'] : []), ...modulePanes]
+        : hasTaskExplainer
+          ? instructionsPaneVisible
+            ? ['instructions']
+            : []
+          : null
   const visiblePanesKey = visiblePanes?.join(',') ?? ''
   const instructionsHighlighted = !!highlightedPanes?.includes('instructions')
 
   useEffect(() => {
-    if (isFixedExplainerLesson || supportsModulePanes || hasTaskExplainer)
+    if (hasNoPanes || isFixedExplainerLesson || supportsModulePanes || hasTaskExplainer)
       onVisiblePanesChange?.(visiblePanes)
     // visiblePanes is rebuilt every render; visiblePanesKey is its stable dependency.
+    // task?.id re-reports on every task change: the teacher's setTaskId wipes visiblePanes,
+    // so an unchanged list (e.g. Python -> Python) still has to be written again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    hasNoPanes,
     isFixedExplainerLesson,
     supportsModulePanes,
     hasTaskExplainer,
     visiblePanesKey,
+    task?.id,
     onVisiblePanesChange,
   ])
 

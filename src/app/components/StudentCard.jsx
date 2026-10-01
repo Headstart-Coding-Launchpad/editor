@@ -94,6 +94,13 @@ export default function StudentCard({
   // Hosted activity (quizzes included): the card shows the activity's own summary of
   // currentAnswer — its CardSummary (the quizzes' answer / rating / progress) or one line.
   const isActivity = isActivityTask && !isSessionSandbox
+  // Information and activity/quiz tasks have no explainer/workspace panes, so a
+  // visiblePanes report left over from the previous task is meaningless there — hide it
+  // (a session sandbox always shows the workspace, whatever task it's parked on).
+  const showsVisiblePanes =
+    (isSessionSandbox || (!isInformation && !isActivityTask)) &&
+    Array.isArray(student.visiblePanes) &&
+    student.visiblePanes.length > 0
   const activityUi = isActivity ? getTaskActivityUi(currentTask) : null
   const activitySummary =
     isActivity && !activityUi?.CardSummary
@@ -420,7 +427,7 @@ export default function StudentCard({
                 </span>
               )
             })()}
-          {Array.isArray(student.visiblePanes) && student.visiblePanes.length > 0 && (
+          {showsVisiblePanes && (
             <span
               style={{ ...s.checkBadge, ...s.checkBadgeView }}
               title={`Student can currently see: ${formatVisiblePanes(student.visiblePanes)}`}
