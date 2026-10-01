@@ -98,7 +98,7 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `taskType` | `code` (code tasks and Code Arrange), `quiz`, or `activity`. | Always | 2026-07-22 |
 | `quizType` | `multiple_choice`, `match`, `fill_blank`, `short_answer`, `confidence`, `poll` (since 2026-10-01). | Quizzes only | 2026-07-22 |
 | `activityType` | The activity id (`binary`, `keyboard`, `mouse`, …). | Activities only | 2026-09-28 |
-| `completed` | Graded: passed, passed by a tutor's hand override, or auto-checked correct when the class moved on (`auto_passed`). Moving the class on past a graded task the student never passed **no longer** makes it complete (since 2026-10-01; see [Overrides](#overrides)). Ungraded: responded at all. | Always | 2026-07-13 (changed 2026-10-01) |
+| `completed` | Graded: passed, passed by a tutor's hand override, or auto-checked correct when the class moved on (`auto_passed`). Moving the class on past a graded code task the student never passed **no longer** makes it complete (quizzes and activities moved past still count as complete) (since 2026-10-01; see [Overrides](#overrides)). Ungraded: responded at all. | Always | 2026-07-13 (changed 2026-10-01) |
 | `attempts` | Total submissions including identical resubmissions: Σ(1 + `retries`) over `distinctAttempts`. | Always | 2026-07-13 |
 | `finalResult` | See [finalResult](#finalresult). | Always | 2026-07-13 (values changed 2026-07-22) |
 | `timeOnTaskMs` | From when the teacher (last) moved the class onto the task to the passing attempt / override / correct auto-check, or, if not completed, to the latest attempt. Null when there's no start time or no attempt/override. | Always (may be null) | 2026-07-14 |
@@ -189,7 +189,7 @@ An override records a student moved on without a passing attempt. It is recorded
    the roster who hasn't passed the task being left, an override is written. This applies to
    every graded task (code tasks, Code Arrange, graded quizzes and activities), not to
    information or ungraded tasks. Since 2026-10-01 it does **not** count as complete on a graded
-   task: the student's result comes from the [auto-check on leave](#auto-check-on-leave) when
+   code task (quizzes and activities moved past still count as complete): the student's result comes from the [auto-check on leave](#auto-check-on-leave) when
    there is one, else stays `overridden_*` with `completed: false`.
 
 `previousCheckState` is `failed` when the student had made attempts, `unattempted` otherwise.
@@ -221,7 +221,7 @@ nothing. Rules (`evaluateTaskWithoutRun` in `src/modules/checks.js`):
 
 So a task mixing static and run checks is "not run" unless a static check already fails. Not
 auto-checked: information tasks, quizzes and activities (they are submitted explicitly; moved
-past unanswered they show `overridden_unattempted`, not complete), check-less tasks, solo, the
+past unanswered they show `overridden_unattempted` and still count as complete), check-less tasks, solo, the
 presentation window, Builder preview, and a student with no work for the task (nothing loaded or
 saved, e.g. an untouched Scratch task). A student offline when the class moves on logs nothing.
 If the class comes back to the task and moves on again, the latest auto-check wins.

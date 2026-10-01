@@ -89,10 +89,10 @@ describe('session report — class advance and auto-check on leave', () => {
     expect(summary(rep, 1)).toMatchObject({ completedCount: 0, overrideCount: 2 })
   })
 
-  it('a class-advance override on a graded quiz is no longer complete either', () => {
+  it('a class-advance override on a graded quiz still counts as complete', () => {
     const rep = report({ students: { a: {} }, overrideLog: { a: { 3: advance(3) } } })
     expect(task(rep, 'Student 1', 3)).toMatchObject({
-      completed: false,
+      completed: true,
       finalResult: 'overridden_unattempted',
     })
   })

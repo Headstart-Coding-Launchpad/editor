@@ -53,10 +53,11 @@ Entries written before 2026-09-29 are not tagged.
   Turtle, HTML element or Scratch run-time checks, or Python `tests`, is "not run" unless one of
   its static checks already fails. Authors who want move-on grading for a task should include a
   static check (for example a `code` check) alongside its output checks.
-- Being moved on past a graded task without passing it (a class-advance override) **no longer
-  counts as complete** in `completed` / `completedCount` / `completionRate`; a tutor's hand pass
-  still does. Overrides now carry `source: teacher | class_advance`. Check-less code tasks,
-  information tasks and ungraded quizzes are unchanged.
+- Being moved on past a graded code task without passing it (a class-advance override) **no
+  longer counts as complete** in `completed` / `completedCount` / `completionRate`; a tutor's hand
+  pass still does. Overrides now carry `source: teacher | class_advance`. Check-less code tasks,
+  information tasks, quizzes and activities are unchanged (moved past, they still count as
+  complete).
 - Affects: all · Existing lessons: no changes needed · Resolves: none
 ### Poll quiz (`quizType: poll`) and live class polls in the session report
 

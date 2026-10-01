@@ -352,10 +352,11 @@ function resolveTaskOutcome(task, entries, override, autoCheck) {
     return { finalResult: 'auto_not_run', completed: false }
   }
   if (override) {
-    return {
-      finalResult: getOverrideFinalResult(override),
-      completed: override.source !== 'class_advance' || !isGradedTask(task),
-    }
+    // Moving the class on still completes quizzes and activities; only graded code tasks
+    // (which the auto-check covers) stay incomplete.
+    const movedPastCodeTask =
+      override.source === 'class_advance' && isGradedTask(task) && !getReportActivity(task)
+    return { finalResult: getOverrideFinalResult(override), completed: !movedPastCodeTask }
   }
   return { finalResult: entries.length === 0 ? 'not_attempted' : 'failed', completed: false }
 }
