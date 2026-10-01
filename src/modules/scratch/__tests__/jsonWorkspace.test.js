@@ -155,7 +155,7 @@ describe('buildJsonSpriteWorkspaces', () => {
   ]
 
   it('builds one entry per author sprite in task order, keyed by sprite id', () => {
-    const result = buildJsonSpriteWorkspaces({ sprites }, { s2: flagThenSay })
+    const result = buildJsonSpriteWorkspaces({ sprites }, { s1: null, s2: flagThenSay })
     expect(result.map((sprite) => [sprite.id, sprite.name])).toEqual([
       ['s1', 'Cat'],
       ['s2', 'Dog'],

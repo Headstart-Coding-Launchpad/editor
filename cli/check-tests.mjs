@@ -7,6 +7,7 @@ import { findTaskById, flattenTasks } from '../src/shared/taskUtils.js'
 import { getTaskModuleType } from '../src/shared/composedLesson.js'
 import { getTaskValidationKind } from '../src/shared/lessonValidation.js'
 import { getModuleDefinition } from '../src/modules/definitions.js'
+import { getTaskActivityPatternId } from '../src/shared/taskActivity.js'
 
 const EXPECTED_COMPLETION = new Set(['pass', 'fail'])
 
@@ -145,7 +146,9 @@ export function testStageChecks(lesson, { taskId } = {}) {
   let skippedRuntimeChecks = 0
   const tasks = verifiable.map((task) => {
     const verify = stageVerifier(lesson, task)
-    const { warnings: taskWarnings, ...result } = verify(task, task.id)
+    const { warnings: taskWarnings, ...result } = verify(task, task.id, {
+      activityPattern: getTaskActivityPatternId(task),
+    })
     warnings.push(...taskWarnings)
     stagesChecked += result.stages.length
     skippedRuntimeChecks += countSkipped(result.stages.find((stage) => stage.completion))

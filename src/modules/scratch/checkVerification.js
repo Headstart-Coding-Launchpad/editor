@@ -6,7 +6,6 @@
 
 import { normalizeChecks, normalizeFeedbackChecks } from '../checks.js'
 import { getStageRole, getStarterStage } from '../../shared/taskStages.js'
-import { getTaskActivityPatternId } from '../../shared/taskActivity.js'
 import { evaluateScratchCheck, normalizeSequenceItem } from './checks.js'
 import {
   evaluateScratchCheckForSprites,
@@ -170,8 +169,10 @@ export function evaluateScratchStage(task, blocks) {
   return { completion: { result, checks }, feedback }
 }
 
-function isDebugTask(task) {
-  return getTaskActivityPatternId(task) === 'debug_code_task'
+// `activityPattern` is the task's taskActivity pattern id, resolved by the caller (the CLI) so
+// this module stays free of the activity registry.
+function isDebugTask(activityPattern) {
+  return activityPattern === 'debug_code_task'
 }
 
 /**
@@ -180,7 +181,7 @@ function isDebugTask(task) {
  * Complete stage; the starter already passes every completion check; a Debug Code Task whose
  * static blocking feedback checks all stay silent on the starter.
  */
-export function verifyScratchTask(task, label = task?.id) {
+export function verifyScratchTask(task, label = task?.id, { activityPattern = null } = {}) {
   const warnings = []
   const stages = getScratchVerificationStages(task).map(({ stage, kind, blocks }) => {
     let evaluated
@@ -207,7 +208,11 @@ export function verifyScratchTask(task, label = task?.id) {
         warnings.push(`Task ${label} starter already passes every completion check`)
       }
       const blocking = feedback.filter((c) => c.mode === 'blocking' && c.result !== 'skipped')
-      if (isDebugTask(task) && blocking.length > 0 && !blocking.some((c) => c.result === 'fires')) {
+      if (
+        isDebugTask(activityPattern) &&
+        blocking.length > 0 &&
+        !blocking.some((c) => c.result === 'fires')
+      ) {
         warnings.push(
           `Task ${label} is a Debug task but none of its blocking feedback checks fires on the starter`
         )
