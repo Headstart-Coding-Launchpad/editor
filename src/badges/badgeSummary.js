@@ -5,8 +5,11 @@
 import { listAwardableBadges, resolveBadge } from './badgeDisplay.js'
 import { listAwards } from './celebration.js'
 
-/** The Badge Summary task's heading, and the first line of the copied class summary. */
-export const CLASS_WALL_TITLE = "Today's Coding Moments"
+/**
+ * The Badge Summary task's default heading (when no title is authored), and the first line of the
+ * copied class summary. An authored title is shown exactly as written, so the emoji lives here.
+ */
+export const CLASS_WALL_TITLE = "🎖️ Today's Coding Moments"
 
 // Wall order: the picker's badge order (registry, then catalogue), then any other badge id.
 function badgeOrder(catalogueBadges) {
@@ -60,7 +63,7 @@ export function rosterNameFor(students) {
 
 /**
  * The class wall as plain text for the clipboard, grouped by badge:
- * "Today's Coding Moments\n🐛 Bug Hunter: Alex, Sam\n…". An empty wall gives just the heading
+ * "🎖️ Today's Coding Moments\n🐛 Bug Hunter: Alex, Sam\n…". An empty wall gives just the heading
  * and a line saying so.
  */
 export function classWallText(wall, { title = CLASS_WALL_TITLE } = {}) {

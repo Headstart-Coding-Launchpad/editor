@@ -48,7 +48,9 @@ describe('BadgeSummaryTask', () => {
         variant="student"
       />
     )
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent("Today's Coding Moments")
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      /^🎖️ Today's Coding Moments$/
+    )
     const mine = screen.getByRole('list', { name: 'My coding moments' })
     expect(within(mine).getAllByRole('listitem')).toHaveLength(2)
     expect(mine.querySelector('.sv-sticker--tumble')).not.toBeNull()
@@ -99,8 +101,19 @@ describe('BadgeSummaryTask', () => {
         variant="teacher"
       />
     )
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Well done!')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/^Well done!$/)
     expect(screen.getByText('Look what we did.')).toBeInTheDocument()
+  })
+
+  it('shows an emoji-first authored title exactly as written (no doubled emoji)', () => {
+    render(
+      <BadgeSummaryTask
+        task={{ ...task, title: '🌟 Our Coding Moments' }}
+        decisions={{}}
+        variant="teacher"
+      />
+    )
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/^🌟 Our Coding Moments$/)
   })
 
   it('shows the presentation window the class wall only', () => {
@@ -261,7 +274,7 @@ describe('BadgeSummaryTask', () => {
         fireEvent.click(screen.getByRole('button', { name: /copy class summary/i }))
       })
       expect(writeText).toHaveBeenCalledWith(
-        "Today's Coding Moments\n🐛 Bug Hunter: Alex, Sam\n⌨️ Keyboard Wizard: Alex"
+        "🎖️ Today's Coding Moments\n🐛 Bug Hunter: Alex, Sam\n⌨️ Keyboard Wizard: Alex"
       )
       expect(screen.getByRole('button', { name: /copied/i })).toBeInTheDocument()
       act(() => vi.advanceTimersByTime(2000))
