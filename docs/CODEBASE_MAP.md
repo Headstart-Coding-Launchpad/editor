@@ -166,9 +166,10 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `OverrideDropdown.jsx` | Teacher check-override menu and fail-hint modal |
 | `MessageCompose.jsx` | Personal teacher message composer for one student |
 | `PaneFocusDropdown.jsx` | Checkbox picker + Highlight/Force actions for `teacherPaneCommand`: `PaneFocusControls` is the Focus section of StudentModal's More menu; the default `PaneFocusDropdown` wraps it as TeacherView's whole-class "Focus Class" menu; options are Instructions plus the module's `capabilities.focusPanes` |
-| `StudentWorkspaceBody.jsx` | Student workspace display inside the teacher modal, chosen by the module's `capabilities.studentMirror` (`code` / `files` inline editors, `blocks` / `view` through the module's `TeacherLiveView` passed in by StudentModal); the `code` mirror's `OutputPanel` mirrors `currentInputPrompt`/`currentInput` read-only while a watched student has a pending `input()` prompt |
+| `StudentWorkspaceBody.jsx` | Student workspace display inside the teacher modal, chosen by the module's `capabilities.studentMirror` (`code` / `files` inline editors, `blocks` / `view` through the module's `TeacherLiveView` passed in by StudentModal); the `code` mirror's `OutputPanel` mirrors `currentInputPrompt`/`currentInput` read-only while a watched student has a pending `input()` prompt. The `code` / `files` editors (and a `view` module's `TeacherLiveView`, e.g. Turtle) get the task's 💡 line hints via `mirrorLineHints.js` |
 | `ShareRequestPanel.jsx` | Teacher review of a pending workspace share: fetches the frozen snapshot, previews it read-only, approves or declines |
 | `constants.js` | StudentModal highlight emoji options and shared modal constants |
+| `mirrorLineHints.js` | `getMirrorLineHintSets(task, { mirror, file, isSessionSandbox })` — the task's line hint sets for the mirrored code/file (same `getTaskLineHintSets` the student editor uses; none in a session sandbox); `countShownLineHints(code, sets)` for the modal header's 💡 chip. Display only, no new data |
 
 ### Teacher View Sub-modules (`src/app/views/teacher/`)
 
@@ -407,7 +408,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `turtle/StudentWorkspace.jsx` | Student Turtle workspace: Python editor, canvas, Run/Stop controls, collapsible output panel |
 | `turtle/BuilderWorkspace.jsx` | Builder Turtle code-stage editor with a self-contained on-demand drawing preview (own Pyodide run, like Arcade Kit's Builder preview) |
 | `turtle/CheckEditor.jsx` | Turtle check list editor with a Turtle/Code subject picker; code checks reuse `CheckValueEditor` and `checkEditorUtils.js` |
-| `turtle/TeacherLiveView.jsx` | Teacher's read-only code + canvas view of a student's turtle task, driven by the synced `currentTurtleResult`/`turtleResult` |
+| `turtle/TeacherLiveView.jsx` | Teacher's read-only code + canvas view of a student's turtle task, driven by the synced `currentTurtleResult`/`turtleResult`; optional `lineHints` (StudentModal) shows the task's 💡 line hints |
 | `_template/definition.js`, `_template/index.js`, `_template/StudentWorkspace.jsx`, `_template/BuilderWorkspace.jsx`, `_template/CheckEditor.jsx`, `_template/TeacherLiveView.jsx`, `_template/checks.js` | Module scaffold copied by `npm run new:module` (`scripts/new-module.mjs`): a working "write text, press Check" module on the generic work slot (`run: 'workspace'`, `checking.trigger: 'run'`, `codeWorkSlot`, core code checks) with every contract v2 group filled with safe defaults and `TODO(new-module)` markers, its tests (definition, workspace UI, StudentView click-through that skips while unregistered) and `doc.md.tmpl`. Never registered; `moduleDefinitionsNode` / `validationErrorsDoc` skip `_`-prefixed folders (the definition still loads under Node) |
 
 ### Module interface

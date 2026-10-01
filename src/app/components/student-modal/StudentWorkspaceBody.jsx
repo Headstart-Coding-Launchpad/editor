@@ -8,6 +8,7 @@ import { getTaskActivity } from '../../../activities/registry.pure.js'
 import { getModuleHostedActivityUi } from '../../../activities/registry.js'
 import { readActivityAnswer, studentStateField } from '../../../activities/state.js'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './constants'
+import { getMirrorLineHintSets } from './mirrorLineHints'
 
 function answerKey(value) {
   return typeof value === 'string' ? value : JSON.stringify(value ?? null)
@@ -95,6 +96,13 @@ export default function StudentWorkspaceBody({
   // Teacher edits of an activity chain on the latest edited state, not the last render's, so
   // an activity UI that updates several times in one event never loses a step.
   const activityEditRef = useRef(null)
+  // The task's 💡 line hints on the mirrored code, as the student's editor shows them
+  // (display only — see mirrorLineHints.js).
+  const lineHints = getMirrorLineHintSets(task, {
+    mirror,
+    file: activeFileObj?.name ?? null,
+    isSessionSandbox,
+  })
 
   const highlightComposer = canHighlight && (
     <div style={s.highlightComposer}>
@@ -242,6 +250,7 @@ export default function StudentWorkspaceBody({
             readOnly
             remoteSelection={remoteSelection}
             teacherHighlights={highlights}
+            lineHints={lineHints}
             onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
             onHighlightDismiss={onDismissHighlight}
             style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
@@ -292,6 +301,7 @@ export default function StudentWorkspaceBody({
         student={student}
         displayState={moduleDisplayState}
         liveState={moduleDisplayState}
+        lineHints={lineHints}
         readOnly
         onChange={undefined}
         onActivity={undefined}
@@ -333,6 +343,7 @@ export default function StudentWorkspaceBody({
                 readOnly
                 remoteSelection={remoteSelection}
                 teacherHighlights={highlights}
+                lineHints={lineHints}
                 onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
                 onHighlightDismiss={onDismissHighlight}
                 style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
