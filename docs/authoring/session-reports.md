@@ -75,6 +75,10 @@ signals, or a teacher-sandbox snapshot.
 | Path | Meaning | Present | Added |
 |---|---|---|---|
 | `students[].studentLabel` | `Student N`. | Always | 2026-07-16 |
+| `students[].joinedAt` | When the student first joined (ms, the student's clock). Written once and never overwritten by a later name entry or reload. | Omitted when unknown (sessions before 2026-10-01, or a student the teacher removed) | 2026-10-01 |
+| `students[].joinedAfterMs` | `joinedAt` minus the session's `startedAt`, clamped to 0 for a waiting-room join. Compares the student's clock with the teacher's, so allow for a little skew. | Omitted when `joinedAt` or `startedAt` is unknown | 2026-10-01 |
+| `students[].joinedAtTaskId` | The class's current task when the student first joined. Untouched tasks before it mean "not present yet", not "skipped". | Omitted when `joinedAt` is unknown | 2026-10-01 |
+| `students[].rejoins[]` | Each later return to the session, oldest first: `{ at (ms), taskId }`. Counts a repeated name entry and a page reload back into the session (a second tab counts too). At most the latest 20. | Omitted when none | 2026-10-01 |
 | `students[].badges[]` | Badges the student still holds at session end: `badgeId`, `emoji`, `title`, `source` (`rule` = a suggestion the tutor accepted, `auto` = auto-awarded, `manual` = awarded by hand), `reason` (the reason text), `taskId` (null when not task-based), `awardedAt` (ms). Revoked badges are left out. | Omitted when none | 2026-09-30 |
 | `students[].topicsOpened[]` | Topic Library opens: `topicId`, `title` (`Topic Library` for opening the library itself), `context` (`task`, `sandbox` teacher sandbox, `personal` personal sandbox), `taskId` (task context only), `source` (`student`, or `teacher` when the teacher opened it for them), `openedAt` (ms). One entry per topic per task/context (first open). | Omitted when none | 2026-09-30 |
 | `students[].shortcutsUsed[]` | First use of each Keyboard Wizard shortcut: `shortcutId`, `label`, `context`, `taskId`, `firstUsedAt` (ms). | Omitted when none | 2026-09-30 |
