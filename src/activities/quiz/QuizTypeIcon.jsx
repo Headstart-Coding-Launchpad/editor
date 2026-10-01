@@ -42,6 +42,14 @@ export function QuizTypeIcon({ type }) {
         <path d="M15 18l2 2 4-5" />
       </svg>
     )
+  if (type === 'poll')
+    return (
+      <svg {...common}>
+        <path d="M4 6h10" />
+        <path d="M4 12h16" />
+        <path d="M4 18h7" />
+      </svg>
+    )
   if (type === 'confidence')
     return (
       <svg {...common}>

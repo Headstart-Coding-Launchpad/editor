@@ -35,6 +35,19 @@ export function validateQuizTask(task, { n, errors }) {
       errors.push(`Task ${n} is a fill-in-the-blank quiz but has no blank answers`)
     if (task.blanks?.some((blank) => !blank.answer?.trim()))
       errors.push(`Task ${n} is a fill-in-the-blank quiz but has an empty answer`)
+  } else if (quizType === 'poll') {
+    if (!task.options || task.options.length < 2)
+      errors.push(`Task ${n} is a poll but has fewer than 2 options`)
+    if (task.options?.length > 6) errors.push(`Task ${n} is a poll but has more than 6 options`)
+    if (task.options?.some((option) => !option.text?.trim()))
+      errors.push(`Task ${n} is a poll but has an empty option text`)
+    const ids = (task.options ?? []).map((option) => option?.id)
+    if (ids.some((id) => typeof id !== 'string' || !id.trim()))
+      errors.push(`Task ${n} is a poll but has an option with no id`)
+    else if (new Set(ids).size !== ids.length)
+      errors.push(`Task ${n} is a poll but has duplicate option ids`)
+    if (task.check != null)
+      errors.push(`Task ${n} is a poll but has a check (polls are never marked)`)
   } else if (quizType === 'short_answer') {
     if (
       task.check != null &&
@@ -152,6 +165,7 @@ export function quizHasStarter(task) {
     return !!task.text?.trim() || task.blanks?.some((blank) => blank.answer?.trim())
   if (quizType === 'short_answer') return !!task.explainer?.trim()
   if (quizType === 'confidence') return !!task.explainer?.trim()
+  if (quizType === 'poll') return task.options?.some((option) => option.text?.trim())
   return false
 }
 
@@ -164,7 +178,7 @@ export function quizHasCheckValue(task) {
     )
   if (quizType === 'fill_blank')
     return task.blanks?.length > 0 && task.blanks.every((blank) => blank.answer?.trim())
-  if (quizType === 'confidence') return true
+  if (quizType === 'confidence' || quizType === 'poll') return true
   return !!task.check?.value
 }
 

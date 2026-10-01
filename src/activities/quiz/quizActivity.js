@@ -1,5 +1,5 @@
-// Shared logic for the five legacy quiz activities (quiz_multiple_choice, quiz_match,
-// quiz_fill_blank, quiz_short_answer, quiz_confidence). Each quiz_<type>/definition.js is built
+// Shared logic for the legacy quiz activities (quiz_multiple_choice, quiz_match,
+// quiz_fill_blank, quiz_short_answer, quiz_confidence, quiz_poll). Each quiz_<type>/definition.js is built
 // with defineQuizActivity below; the old helpers (studentQuizContent.js, taskItemProgress.js,
 // lessonReport.js, printLesson.js) are thin adapters over these functions, so the stored and
 // reported formats stay exactly as they were before quizzes became activities.
@@ -11,6 +11,7 @@
 //   fill_blank       JSON map of blank id -> tile id (drag) or typed text (type)
 //   short_answer     the free-text answer
 //   confidence       "1".."5"
+//   poll             the chosen option id ("b")
 //
 // Pure and Node-safe: imported by the CLI, validation, reports and print.
 import { defineActivity } from '../defineActivity.js'
@@ -24,6 +25,7 @@ export const QUIZ_TYPES = Object.freeze([
   'fill_blank',
   'short_answer',
   'confidence',
+  'poll',
 ])
 
 function quizTypeOf(task) {
@@ -228,6 +230,7 @@ export const QUIZ_LABELS = Object.freeze({
   fill_blank: 'Fill in the gaps',
   short_answer: 'Short answer',
   confidence: 'Confidence check',
+  poll: 'Poll',
 })
 
 function validateWithLegacyRules(task, { n } = {}) {

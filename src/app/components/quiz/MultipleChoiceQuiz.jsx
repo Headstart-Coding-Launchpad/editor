@@ -22,6 +22,8 @@ export default function MultipleChoiceQuiz({
   showQuestion,
   showResult,
   showCorrectAnswer,
+  // Extra content under the options (a poll's "you can change your vote" line).
+  footer = null,
 }) {
   const options = task?.options ?? []
   const correctId = task?.check?.type === 'answer_equals' ? task.check.value : null
@@ -197,6 +199,7 @@ export default function MultipleChoiceQuiz({
           suggestion={getMultipleChoiceSuggestion(task, selectedAnswer)}
         />
       )}
+      {footer}
     </div>
   )
 }

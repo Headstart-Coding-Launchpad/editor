@@ -55,7 +55,7 @@ isn't listed here, so add a row whenever you add a message.
 | `… must be an object` | A task entry is not a mapping (e.g. a bare string). | Write each task as `- title: …` with fields under it. |
 | `… taskType must be information, quiz, code_arrange or activity when provided` | `taskType` has an unsupported value. Allowed: `information`, `quiz`, `code_arrange`, `activity`; leave it out for code tasks. | Fix the value or remove `taskType`. In YAML, `type: information` / `type: quiz` also work. |
 | `… has an invalid task-type value` | The YAML `type:` shorthand isn't a known task type. | Use `information`, `quiz` or `group`, or omit it for a code task. |
-| `… has an invalid quiz type` | `quizType` isn't one of the five quiz types. | Use `multiple_choice`, `match`, `fill_blank`, `short_answer` or `confidence`. |
+| `… has an invalid quiz type` | `quizType` isn't one of the six quiz types. | Use `multiple_choice`, `match`, `fill_blank`, `short_answer`, `confidence` or `poll`. |
 | `… intent must be a non-empty Markdown string while lesson draft is enabled` | Draft lessons need an `intent` on every real task. | Add `intent:` describing what the task is for. |
 | `… intent must be a Markdown string when provided` | `intent` isn't text. | Make it a string. |
 | `… taskActivity must be a string when provided` | `taskActivity` isn't text. | Make it a string. |
@@ -102,6 +102,12 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … is a fill-in-the-blank quiz but has no blank answers` | `blanks` is empty. | Add an answer per blank. |
 | `Task … is a fill-in-the-blank quiz but has an empty answer` | A blank has no answer. | Fill it in. |
 | `Task … is a short-answer quiz with a check enabled but no check value` | The short-answer check has no `value`. | Add the expected answer, or remove the check for an ungraded question. |
+| `Task … is a poll but has fewer than 2 options` | A poll (`quizType: poll`) needs at least two options. | Add options. |
+| `Task … is a poll but has more than 6 options` | Polls take 2 to 6 options. | Remove options, or split the question. |
+| `Task … is a poll but has an empty option text` | A poll option has no text. | Fill in or remove it. |
+| `Task … is a poll but has an option with no id` | A poll option has no `id`. | Give each option an id (`a`, `b`, …), as for multiple choice. |
+| `Task … is a poll but has duplicate option ids` | Two poll options share an `id`. | Give each option its own id. |
+| `Task … is a poll but has a check (polls are never marked)` | A poll has a `check` or `answer:`. Polls have no right answer. | Remove `check` / `answer:`. Use `quizType: multiple_choice` for a marked question. |
 
 ## Activity tasks
 

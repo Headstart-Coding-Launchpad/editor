@@ -3,6 +3,7 @@ import ConfidenceQuiz from './quiz/ConfidenceQuiz'
 import FillBlankQuiz from './quiz/FillBlankQuiz'
 import MatchQuiz from './quiz/MatchQuiz'
 import MultipleChoiceQuiz from './quiz/MultipleChoiceQuiz'
+import PollQuiz from './quiz/PollQuiz'
 import ShortAnswerQuiz from './quiz/ShortAnswerQuiz'
 
 export { CONFIDENCE_COLOURS, getQuizOptionText } from './quiz/quizUtils'
@@ -35,5 +36,6 @@ export default function QuizTask({
   if (quizType === 'fill_blank') return <FillBlankQuiz {...props} />
   if (quizType === 'short_answer') return <ShortAnswerQuiz {...props} />
   if (quizType === 'confidence') return <ConfidenceQuiz {...props} />
+  if (quizType === 'poll') return <PollQuiz {...props} />
   return <MultipleChoiceQuiz {...props} />
 }
