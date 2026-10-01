@@ -69,7 +69,7 @@ describe('characterisation: quiz + code_arrange validation messages', () => {
           "Task 1 is a code-arrange task but has duplicate blank/distractor ids",
         ],
         "code_arrange_html_no_entry": [
-          "Task 1 entryFile \"index.html\" is not one of its starter files",
+          "Task 1 entryFile "index.html" is not one of its starter files",
           "Task 1 has duplicate filenames",
           "Task 1 has no HTML file to use as entry point",
         ],
