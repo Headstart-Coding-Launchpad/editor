@@ -144,6 +144,38 @@ describe('TeacherSessionControls', () => {
 
       await waitFor(() => expect(onUpdateVideoCallLink).toHaveBeenCalledWith(''))
     })
+
+    it('hides "Send to all" until a link is set', () => {
+      renderControls({ onUpdateVideoCallLink: vi.fn(), onBroadcastVideoCallLink: vi.fn() })
+      expect(screen.queryByRole('button', { name: /Send to all/ })).not.toBeInTheDocument()
+    })
+
+    it('"Send to all" broadcasts without a confirm and shows a brief Sent state', async () => {
+      const onBroadcastVideoCallLink = vi.fn().mockResolvedValue(undefined)
+      renderControls({
+        session: { state: 'waiting', videoCallLink: 'https://zoom.us/j/123' },
+        onUpdateVideoCallLink: vi.fn(),
+        onBroadcastVideoCallLink,
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: '📹 Send to all' }))
+
+      expect(onBroadcastVideoCallLink).toHaveBeenCalledTimes(1)
+      expect(await screen.findByRole('button', { name: '✓ Sent' })).toBeDisabled()
+      await waitFor(
+        () => expect(screen.getByRole('button', { name: '📹 Send to all' })).toBeInTheDocument(),
+        { timeout: 3000 }
+      )
+    })
+
+    it('does not offer "Send to all" once the session has ended', () => {
+      renderControls({
+        session: { state: 'ended', videoCallLink: 'https://zoom.us/j/123' },
+        onUpdateVideoCallLink: vi.fn(),
+        onBroadcastVideoCallLink: vi.fn(),
+      })
+      expect(screen.queryByRole('button', { name: /Send to all/ })).not.toBeInTheDocument()
+    })
   })
 
   describe('shared work dropdown', () => {

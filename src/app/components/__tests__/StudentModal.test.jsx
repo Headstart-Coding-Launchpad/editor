@@ -537,6 +537,22 @@ describe('StudentModal', () => {
       await user.click(screen.getByRole('button', { name: /Send Video Call Link/ }))
       expect(onSendVideoCallLink).toHaveBeenCalledWith('student-1')
     })
+
+    it('offers the send for a named student still in the waiting room', async () => {
+      const user = userEvent.setup()
+      const onSendVideoCallLink = vi.fn()
+      render(
+        <StudentModal
+          {...mkProps({
+            onSendVideoCallLink,
+            session: { ...ACTIVE_SESSION, state: 'waiting', videoCallLink: 'https://zoom.us/j/1' },
+          })}
+        />
+      )
+      await user.click(screen.getByRole('button', { name: /^More/ }))
+      await user.click(screen.getByRole('button', { name: /Send Video Call Link/ }))
+      expect(onSendVideoCallLink).toHaveBeenCalledWith('student-1')
+    })
   })
 
   describe('Scratch lessons', () => {

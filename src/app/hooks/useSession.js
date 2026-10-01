@@ -151,6 +151,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       fullscreenRequestedAt: null,
       nudgeAwayPushedAt: null,
       videoCallLink: null,
+      videoCallBroadcastAt: null,
       sharedWorkspaces: null,
       sandboxEnteredAt: null,
       // Live badges: decisions, the tutor's badge toggles and the students' signals are
@@ -213,6 +214,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       fullscreenRequestedAt: null,
       nudgeAwayPushedAt: null,
       videoCallLink: null,
+      videoCallBroadcastAt: null,
       sharedWorkspaces: null,
     })
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
@@ -259,6 +261,13 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
       videoCallLinkPushedAt: Date.now(),
     })
+  }
+
+  // "Send to all": one session-wide timestamp that every student screen watches (name entry,
+  // waiting room, lesson). Students compare it with the value they saw on load, so a reload
+  // doesn't replay an old broadcast (see useVideoCallPrompt).
+  async function broadcastVideoCallLink() {
+    await set(ref(db, `sessions/${lessonId}/videoCallBroadcastAt`), Date.now())
   }
 
   async function setTaskId(taskId) {
@@ -1665,6 +1674,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     sendMessageToStudent,
     updateVideoCallLink,
     sendVideoCallLink,
+    broadcastVideoCallLink,
     requestTeacherEdit,
     pushTeacherLiveCode,
     commitTeacherEdit,

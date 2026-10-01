@@ -125,6 +125,7 @@ export default function TeacherView({ lessonId }) {
     sendMessageToStudent,
     updateVideoCallLink,
     sendVideoCallLink,
+    broadcastVideoCallLink,
     requestTeacherEdit,
     pushTeacherLiveCode,
     commitTeacherEdit,
@@ -691,6 +692,7 @@ export default function TeacherView({ lessonId }) {
               onRestartSession={restartSession}
               onReturnToAdmin={() => navigate('/admin')}
               onUpdateVideoCallLink={updateVideoCallLink}
+              onBroadcastVideoCallLink={broadcastVideoCallLink}
               onRemoveSharedWorkspace={removeSharedWorkspace}
               onRemoveAllSharedWorkspaces={removeAllSharedWorkspaces}
               onOpenSharedWorkspace={handleOpenTeacherShare}

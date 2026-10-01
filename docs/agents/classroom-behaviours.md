@@ -286,6 +286,15 @@ Shows a read-only complete solution in the same reference panel as Support, with
 - A student currently viewing a share writes their real `writeStudentInteraction({ viewingShareId })` to `sessions/{lessonId}/students/{anonymousId}` — separate from the throwaway viewer state above, which never reaches Firebase. `StudentCard` shows a "👀 {sharerName}" badge live on the roster while `student.online && student.viewingShareId`; gating on `online` means a stale field from a dropped connection just stops rendering rather than sticking. Set on open, cleared (`null`) on close or on copying into their own editor.
 - The teacher gets the same read-only look at an approved share that students get: `TeacherSessionControls`' "📤 Shared work" dropdown has an **Open** button per entry (alongside Remove) that fetches the snapshot and renders it in a modal via the same `SharedWorkspaceViewer`, just without `onCopyToMyEditor` — a teacher has no editor of their own to copy into.
 
+## Video Call Prompt
+
+`VideoCallPrompt.jsx` ("Your teacher wants you on the video call", Join / Not now) pops up when the teacher pushes the session's `videoCallLink`, either to one student (`students/{id}/videoCallLinkPushedAt`, StudentModal **More → 📹 Send Video Call Link**) or to everyone (`videoCallBroadcastAt`, **📹 Send to all** beside the Video Call control). `useVideoCallPrompt` (called once in `StudentView`) decides when it shows:
+
+- **Where.** Name entry, the waiting room, and the lesson/sandbox page (every task type). Name-entry students have no student record, so only the broadcast reaches them. Never in solo, the choice or end screens, or the presentation window. The waiting room's static "Join Video Call" button stays as well.
+- **Load baseline.** Both timestamps present when the session first loads are a baseline, as in `useNudgeAlert`, so a reload never replays an old push. A push older than `VIDEO_CALL_PROMPT_STALE_MS` (10 minutes) by the student's clock is ignored.
+- **Pushes while hidden are consumed.** A push that lands while the prompt can't show (e.g. on the choice screen) is marked seen, not queued.
+- **Tied to its phase.** The prompt closes when the student's phase changes (name entry → waiting room → lesson) and does not come back, so a waiting-room prompt never pops up again once the lesson starts. A new push in the new phase shows it again.
+
 ## Live Badge Celebration
 
 The student side of the tutor's badge decisions (`sessions/{lessonId}/badges`), driven by `useBadgeCelebrations` in `StudentView`, with the decisions logic in `src/badges/celebration.js`. See `docs/architecture/live-badges-plan.md`, "Student experience".
