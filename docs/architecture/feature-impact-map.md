@@ -188,6 +188,8 @@ Usually changes with:
 - `src/app/views/teacher/TeacherEditorPanel.jsx`
 - `src/app/components/StudentModal.jsx`
 - `src/modules/<type>/TeacherLiveView.jsx`
+- `src/app/liveInk/` (Presentation annotations: pointer, ink, highlights at `liveInk/{lessonId}`; anchors from `src/shared/markdown/anchors.js`, so a change to MarkdownRenderer's block/element structure changes where marks land)
+- `database.rules.json` (`liveInk/$lessonId`)
 - `docs/agents/classroom-behaviours.md`
 - `docs/agents/runtime-model.md`
 - `docs/architecture/runtime-flows.md`

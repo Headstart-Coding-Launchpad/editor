@@ -111,6 +111,34 @@ function CheckValueEditor({ check, subject, operator, onChange, output = '', cod
     return <div className="te-check-help">Passes when the run produces no visible output.</div>
   }
 
+  if (check.type === 'code_structure') {
+    const mono = { fontFamily: "'JetBrains Mono', monospace", fontSize: '0.88rem' }
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <input
+          className="te-input"
+          style={mono}
+          value={check.inner ?? ''}
+          onChange={(e) => onChange({ ...check, inner: e.target.value })}
+          placeholder="Inner line, e.g. if has_water_bottle:"
+          aria-label="Inner line"
+        />
+        <input
+          className="te-input"
+          style={mono}
+          value={check.outer ?? ''}
+          onChange={(e) => onChange({ ...check, outer: e.target.value })}
+          placeholder="Outer block line, e.g. if has_backpack:"
+          aria-label="Outer line"
+        />
+        <div className="te-check-help">
+          Reads the indentation: the inner line must sit inside the block the outer line opens.
+          Whole lines, spacing and case ignored; * matches anything.
+        </div>
+      </div>
+    )
+  }
+
   if (subject === 'element') {
     const isAttribute = operator.startsWith('attribute_')
     const isStyle = operator.startsWith('style_')
@@ -482,6 +510,8 @@ function CheckListEditor({
   allowVariableChecks = false,
   allowDomChecks = false,
   allowOutputChecks = true,
+  // Python only: offer Code → Structure (code_structure nesting checks).
+  allowStructureChecks = false,
   lessonType = null,
   output = '',
   code = '',
@@ -533,7 +563,9 @@ function CheckListEditor({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
       {checks.map((check, index) => {
         const { subject, aspect, operator } = checkUiFromCheck(check)
-        const aspectOptions = getAspectOptions(subject, aspect)
+        const aspectOptions = getAspectOptions(subject, aspect, {
+          allowStructure: allowStructureChecks,
+        })
         const operatorOptions = getOperatorOptions(subject, operator, aspect)
         return (
           <div key={index} className="te-check-row">

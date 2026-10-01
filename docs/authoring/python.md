@@ -153,13 +153,93 @@ Prefer the canonical `type` + `operator` form:
 
 Legacy aliases such as `output_contains`, `output_equals`, `output_matches_regex`, `code_contains`, `code_does_not_contain`, and `code_matches_regex` still load, but new lessons should use the canonical form above.
 
-**Submit mode** only accepts `type: code` checks. Output and variable checks require a run.
+**Submit mode** only accepts `type: code` and `type: code_structure` checks. Output and variable checks require a run.
 
 **Regex:** `matches_regex` and `not_matches_regex` use JavaScript `RegExp(pattern, flags)`. Put the regex pattern in `value`; put flags such as `i`, `m`, or `s` in `flags`. Regex is case-sensitive unless `flags: i` is set. Anchors (`^`, `$`), groups, alternation, lookarounds, and backreferences follow the browser JavaScript regex engine.
 
-**Normalisation:** output checks normalise `\r\n` to `\n` and compare case-insensitively except regex. Exact output checks trim trailing newline characters only, not other leading/trailing spaces. Code checks normalise whitespace outside quoted strings before contains/equality checks; regex checks see that same normalised source.
+**Normalisation:** output checks normalise `\r\n` to `\n` and compare case-insensitively except regex. Exact output checks trim trailing newline characters only, not other leading/trailing spaces. Code checks normalise whitespace outside quoted strings before contains/equality checks; regex checks see that same normalised source. Because indentation is removed too, use [`code_structure`](#code-structure-checks-code_structure) to check nesting.
 
 **Wildcards and option lists:** for non-regex contains/equality checks, `*` matches any sequence including newlines. A value written as `"opt1","opt2"` passes `contains` if any option is present, and passes `not_contains` only if none of them are. An invalid regex fails both `matches_regex` and `not_matches_regex`, so a typo in a pattern never lets every student pass.
+
+## Code Structure Checks (`code_structure`)
+
+`code` checks remove all whitespace, so they can't tell a nested `if` from two `if`s one after the
+other. `code_structure` is the only check that reads **indentation**: it checks that one line sits
+inside the block another line opens. Python only (including `code_arrange` tasks with
+`moduleType: python`); it needs no run, so it also works in submit mode and on idle feedback.
+
+| Field | Required | Meaning |
+|---|---|---|
+| `operator` | Y | `nested_in`, `directly_nested_in` or `not_nested_in` (no default) |
+| `inner` | Y | The line that should (or shouldn't) be inside the block |
+| `outer` | Y | The line that opens the block, usually ending in `:` |
+
+Nested ifs: the inner `if` must be inside the outer one (at any depth).
+
+```yaml
+check:
+  type: code_structure
+  operator: nested_in
+  inner: "if has_water_bottle:"
+  outer: "if has_backpack:"
+  hint: Indent the water bottle `if` so it sits inside the backpack `if`.
+```
+
+A loop inside a function: the `print` must be the loop's own body, and the loop must be inside
+the function.
+
+```yaml
+check:
+  - type: code_structure
+    operator: directly_nested_in
+    inner: "print(name)"
+    outer: "for name in *:"
+  - type: code_structure
+    operator: nested_in
+    inner: "for name in *:"
+    outer: "def greet(*):"
+```
+
+Not nested: the total is printed once, after the loop, not every time round it.
+
+```yaml
+feedbackChecks:
+  - type: code_structure
+    operator: not_nested_in
+    inner: "print(total)"
+    outer: "for * in *:"
+    mode: nudge
+    hint: Move `print(total)` out of the loop so it prints once at the end.
+```
+
+**Operators:**
+
+- `nested_in` passes when some line matching `inner` is inside a block opened by a line matching
+  `outer`, at any depth.
+- `directly_nested_in` passes when some `inner` line's **nearest** enclosing block is opened by an
+  `outer` line (one level only).
+- `not_nested_in` passes when an `inner` line exists and **no** `inner` line is inside an `outer`
+  block, at any depth.
+- Every operator fails when no line matches `inner`, so a missing line never passes. Combine with
+  a `code` check if you also need to check the outer line exists.
+
+**Matching:** `inner` and `outer` are compared with whole lines (not part of a line), ignoring
+spacing outside strings and case, like `code` `equals`. A trailing `# comment` on the student's
+line is ignored. `*` matches anything, e.g. `for * in range(*):`.
+
+**How nesting is read:** a block opener is a line ending in `:` (`if`, `elif`, `else`, `for`,
+`while`, `def`, `class`, `try`, `with`, …). A line is inside every opener above it with less
+indentation, up to the left margin. Tabs count as 4 spaces. Blank lines and comment-only lines are
+skipped; a statement split over several lines (open brackets, triple-quoted strings, a trailing
+`\`) counts as one line.
+
+- `elif` and `else` are their own blocks: a line under `elif x:` is inside `elif x:`, not inside the
+  `if` above it. An `elif` lined up with the outer `if` is therefore **not** nested in it, which is
+  how this check catches "elif instead of a nested if".
+- A one-line block such as `if ok: print("hi")` has nothing nested under it; put the inner line on
+  its own line.
+- The check reads the source only. It doesn't run the code, so indentation Python would reject
+  still gets checked; pair it with an output check when the program must also run.
 
 ## Feedback Checks
 
@@ -176,6 +256,8 @@ feedbackChecks:
 ```
 
 If a completion check passes but a blocking feedback check also matches, the task fails and the feedback hint is shown. A matching `mode: nudge` hint is shown without failing the task. If a blocking feedback check has no `hint`, students see `Not quite.` and the builder warns authors to add one.
+
+Only one hint is shown per attempt: a matched feedback check's hint beats every completion-check hint, and otherwise the first *failed* completion check (in list order) with a `hint` wins. See [Which hint is shown](AUTHORING_GUIDE.md#which-hint-is-shown).
 
 For a misconception-specific recovery path, add `priority` and `stageOffer` to a feedback check. The offer targets an existing `codeStages` index after two matching attempts by default; use `action: preview` to show the stage first, or `action: replace` to offer a confirmed replacement. See `docs/authoring/lesson-schema.md` for the full shape.
 

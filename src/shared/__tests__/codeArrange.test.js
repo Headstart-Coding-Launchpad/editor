@@ -6,6 +6,7 @@ import {
   fragmentIdExists,
   getAllSlots,
   getCodeArrangeEntryFile,
+  getCodeArrangeSlotCode,
   getDistractors,
   getFragmentCodeById,
   getLineParts,
@@ -14,6 +15,7 @@ import {
   getSlotIds,
   getTaskPool,
   isArrangementComplete,
+  pruneSlotState,
 } from '../codeArrange'
 import { evaluateCheck, evaluateSingleCheck } from '../../modules/checks'
 
@@ -336,5 +338,44 @@ describe('deriveSlotStateFromCode — lines with inline blanks', () => {
 
   it('returns an empty arrangement when a line cannot be resolved from any combination of the shared pool', () => {
     expect(deriveSlotStateFromCode(INLINE_TASK, 'x = 999 + 3\nprint(x)')).toEqual({})
+  })
+})
+
+describe('getCodeArrangeSlotCode', () => {
+  it('reads the code string for a code-string host (python)', () => {
+    expect(getCodeArrangeSlotCode(WHOLE_TASK, { code: 'print(1)' })).toBe('print(1)')
+    expect(getCodeArrangeSlotCode(WHOLE_TASK, {})).toBe('')
+  })
+
+  it("reads the entry file's content for a files host (html)", () => {
+    const task = { moduleType: 'html', entryFile: 'page.html', lines: [] }
+    const files = [
+      { name: 'style.css', content: 'h1 {}' },
+      { name: 'page.html', content: '<h1>Hi</h1>' },
+    ]
+    expect(getCodeArrangeSlotCode(task, { code: 'ignored', files })).toBe('<h1>Hi</h1>')
+    expect(getCodeArrangeSlotCode(task, { files: [] })).toBe('')
+  })
+})
+
+// A saved or mirrored board can hold tile ids the task no longer has (an edited task, or another
+// task's tiles): they show as empty blanks and assemble to nothing, so they never count.
+describe('unknown tiles', () => {
+  it('is not complete while a slot holds a tile id outside the pool', () => {
+    expect(isArrangementComplete(WHOLE_TASK, { L1: 'L1', L2: 'ghost' })).toBe(false)
+    expect(assembleCodeArrangement(WHOLE_TASK, { L1: 'L1', L2: 'ghost' })).toBeNull()
+    expect(isArrangementComplete(WHOLE_TASK, { L1: 'L1', L2: 'D1' })).toBe(true)
+  })
+
+  it("prunes placements that are not this task's slots and tiles", () => {
+    expect(pruneSlotState(WHOLE_TASK, { L1: 'L1', L2: 'ghost', X9: 'D1' })).toEqual({ L1: 'L1' })
+    expect(pruneSlotState(INLINE_TASK, { S1: 'S1d1', S2: 'S2', L2: 'L2' })).toEqual({
+      S1: 'S1d1',
+      S2: 'S2',
+      L2: 'L2',
+    })
+    for (const bad of [null, undefined, 'x', ['L1']]) {
+      expect(pruneSlotState(WHOLE_TASK, bad)).toEqual({})
+    }
   })
 })

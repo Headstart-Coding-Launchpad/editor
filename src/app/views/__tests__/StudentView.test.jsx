@@ -105,7 +105,14 @@ vi.mock('../../components/LoadingScreen', () => ({
 }))
 
 vi.mock('../../components/NameEntry', () => ({
-  default: () => <div>Name entry</div>,
+  default: ({ onSubmit }) => (
+    <div>
+      Name entry
+      <button type="button" onClick={() => onSubmit('Me')}>
+        submit-name
+      </button>
+    </div>
+  ),
 }))
 
 vi.mock('../../components/WaitingRoom', () => ({
@@ -790,6 +797,110 @@ describe('StudentView', () => {
       await waitFor(() => expect(exitFullscreen).toHaveBeenCalledTimes(1))
 
       Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: null })
+    })
+  })
+
+  describe('video call prompt', () => {
+    const LINK = 'https://zoom.us/j/123'
+    const PROMPT = 'Your teacher wants you on the video call'
+
+    function mkSession(overrides = {}) {
+      return {
+        session: {
+          lessonId: 'python-1-1',
+          state: 'waiting',
+          // Matches the identity's lastSessionTimestamp, so a named student goes on to the lesson.
+          createdAt: 456,
+          currentTaskId: 1,
+          students: {},
+          videoCallLink: LINK,
+          ...overrides,
+        },
+        loading: false,
+        registerPresence: vi.fn(),
+        joinSession: vi.fn().mockResolvedValue(undefined),
+        registerJoining: vi.fn(),
+        unregisterJoining: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentInteraction: vi.fn(),
+        writeStudentPersonalSandbox: vi.fn(),
+        writeStudentPresence: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
+      }
+    }
+
+    beforeEach(() => {
+      mocks.useIdentity.mockReturnValue({
+        identity: { anonymousId: 'student-1', displayName: 'Me', lastSessionTimestamp: 456 },
+        loaded: true,
+        createIdentity: vi.fn(() => ({ anonymousId: 'student-1' })),
+        updateTimestamp: vi.fn(),
+        updateDisplayName: vi.fn(),
+      })
+    })
+
+    async function reachWaitingRoom(user, sessionOverrides = {}) {
+      mocks.useSession.mockReturnValue(mkSession(sessionOverrides))
+      const view = render(<StudentView lessonId="python-1-1" />)
+      await user.click(await screen.findByRole('button', { name: 'submit-name' }))
+      await screen.findByText('Waiting for Python 1.1')
+      return view
+    }
+
+    it('pops up on the name screen when the teacher sends to all', async () => {
+      mocks.useSession.mockReturnValue(mkSession({ videoCallBroadcastAt: Date.now() - 1000 }))
+      const { rerender } = render(<StudentView lessonId="python-1-1" />)
+      await screen.findByText('Name entry')
+      // A broadcast already there on load is not replayed.
+      expect(screen.queryByText(PROMPT)).not.toBeInTheDocument()
+
+      mocks.useSession.mockReturnValue(mkSession({ videoCallBroadcastAt: Date.now() }))
+      rerender(<StudentView lessonId="python-1-1" />)
+      expect(await screen.findByText(PROMPT)).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /Join Video Call/ })).toHaveAttribute('href', LINK)
+    })
+
+    it('pops up in the waiting room for a broadcast and for a per-student send', async () => {
+      const user = userEvent.setup()
+      const { rerender } = await reachWaitingRoom(user)
+      expect(screen.queryByText(PROMPT)).not.toBeInTheDocument()
+
+      mocks.useSession.mockReturnValue(mkSession({ videoCallBroadcastAt: Date.now() }))
+      rerender(<StudentView lessonId="python-1-1" />)
+      expect(await screen.findByText(PROMPT)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Not now' }))
+      expect(screen.queryByText(PROMPT)).not.toBeInTheDocument()
+
+      mocks.useSession.mockReturnValue(
+        mkSession({
+          videoCallBroadcastAt: Date.now(),
+          students: { 'student-1': { displayName: 'Me', videoCallLinkPushedAt: Date.now() + 1 } },
+        })
+      )
+      rerender(<StudentView lessonId="python-1-1" />)
+      expect(await screen.findByText(PROMPT)).toBeInTheDocument()
+    })
+
+    it('clears a waiting-room prompt once the lesson starts', async () => {
+      const user = userEvent.setup()
+      const { rerender } = await reachWaitingRoom(user)
+
+      mocks.useSession.mockReturnValue(mkSession({ videoCallBroadcastAt: Date.now() }))
+      rerender(<StudentView lessonId="python-1-1" />)
+      expect(await screen.findByText(PROMPT)).toBeInTheDocument()
+
+      mocks.useSession.mockReturnValue(
+        mkSession({ state: 'active', videoCallBroadcastAt: Date.now() - 1 })
+      )
+      rerender(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+      expect(screen.queryByText(PROMPT)).not.toBeInTheDocument()
     })
   })
 

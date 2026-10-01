@@ -1,8 +1,62 @@
 import { describe, it, expect } from 'vitest'
 import {
   buildScratchToolboxXml,
+  describeScratchCheck,
   parseScratchToolboxXml,
 } from '../../../../modules/scratch/scratchEditors'
+
+describe('describeScratchCheck with opcode alternatives', () => {
+  const sprites = [{ id: 'sprite1', name: 'Sprite 1' }]
+
+  it('summarises a plain opcode as before', () => {
+    const summary = describeScratchCheck(
+      { type: 'block_used', opcode: 'motion_turnright' },
+      sprites
+    )
+    expect(summary).toMatch(/^Workspace must contain a ".*turn right" block$/)
+  })
+
+  it('summarises a short-form list as "any of" with the shared values', () => {
+    const summary = describeScratchCheck(
+      {
+        type: 'block_used',
+        opcode: ['motion_turnright', 'motion_turnleft'],
+        fieldValues: { DEGREES: '90' },
+      },
+      sprites
+    )
+    expect(summary).toMatch(/"any of: .*turn right, .*turn left" block \(degrees=90\)$/)
+  })
+
+  it('summarises long-form entries with their own values (block_run, blocks_in_order)', () => {
+    const opcode = [
+      { opcode: 'motion_turnright', fieldValues: { DEGREES: '90' } },
+      { opcode: 'motion_turnleft', fieldValues: { DEGREES: '45' } },
+    ]
+    expect(describeScratchCheck({ type: 'block_run', opcode }, sprites)).toMatch(
+      /any of: .*turn right \(degrees=90\), .*turn left \(degrees=45\)/
+    )
+    expect(
+      describeScratchCheck(
+        { type: 'blocks_in_order', sequence: ['event_whenflagclicked', { opcode }] },
+        sprites
+      )
+    ).toMatch(/ → \(any of: .*turn right \(degrees=90\), .*turn left \(degrees=45\)\)$/)
+  })
+
+  it('summarises a block_count list without values (counting ignores them)', () => {
+    const summary = describeScratchCheck(
+      {
+        type: 'block_count',
+        opcode: [{ opcode: 'motion_turnright', fieldValues: { DEGREES: '90' } }, 'motion_turnleft'],
+        operator: 'equals',
+        value: 2,
+      },
+      sprites
+    )
+    expect(summary).toMatch(/"any of: .*turn right, .*turn left" block count equals 2$/)
+  })
+})
 
 describe('buildScratchToolboxXml', () => {
   it('returns an xml element with category children for selected types', () => {

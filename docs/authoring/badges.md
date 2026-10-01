@@ -96,9 +96,12 @@ An information task with `informationType: badges` shows **Today's Coding Moment
 ```yaml
   - type: information
     informationType: badges
-    title: Today's Coding Moments   # optional heading; this is the default
+    title: "🎖️ Today's Coding Moments"   # optional heading; this is the default
     explainer: Look what we did today!   # optional, shown above the wall
 ```
+
+The title is shown exactly as written: the platform adds no emoji of its own, so start the title
+with one if you want one. It is also the first line of **Copy class summary**.
 
 - **Students** see their own badges as a sticker sheet flipping in one by one, then the class wall
   grouped by badge ("🐛 Bug Hunter: Alex, Sam"). A student with no badges gets a warm line about

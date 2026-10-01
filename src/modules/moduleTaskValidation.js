@@ -13,7 +13,10 @@ import {
   normalizeFeedbackChecks,
 } from './checks.js'
 import { normalizeHtmlCheck } from './html/checks.js'
-import { normalizeSequenceItem } from './scratch/checks.js'
+import { normalizeSequenceItem, opcodeSpecOpcodes } from './scratch/checks.js'
+import { VALUE_INPUT_DEFAULTS } from './scratch/blockInputs.js'
+import { isScratchStaticCheck } from './scratch/checkDispatch.js'
+import { evaluateScratchStage, getScratchVerificationStages } from './scratch/checkVerification.js'
 import { ELECTRONICS_CHECK_TYPES } from './electronics/circuit.js'
 import { getStarterStage } from '../shared/taskStages.js'
 import { stripLineHints } from '../shared/lineHints.js'
@@ -125,6 +128,8 @@ export function validateCodeChecks(
     'output_empty',
     'html_element',
     'variable_exists',
+    // inner / outer instead of a value; its own validate() (python/checks.js) checks them.
+    'code_structure',
   ]
   if (html) noValueTypes.push('html_element_attribute', 'html_element_style_property')
   if (normalized.some((check) => !noValueTypes.includes(check.type) && !hasValue(check.value))) {
@@ -132,20 +137,104 @@ export function validateCodeChecks(
   }
 }
 
-export function validateScratchChecks(checks, n, errors, kind = 'completion') {
+const isPlainObject = (value) => !!value && typeof value === 'object' && !Array.isArray(value)
+
+// Problem with a Scratch opcode spec — a check's or sequence item's `opcode`: one opcode
+// name, or a non-empty list of alternatives, each an opcode name or { opcode, fieldValues? }.
+// Returns 'missing', 'empty_list', 'invalid' or null.
+function opcodeSpecProblem(spec) {
+  if (spec == null || spec === '') return 'missing'
+  if (typeof spec === 'string') return spec.trim() ? null : 'missing'
+  if (!Array.isArray(spec)) return 'invalid'
+  if (spec.length === 0) return 'empty_list'
+  const validAlternative = (alt) =>
+    typeof alt === 'string'
+      ? !!alt.trim()
+      : isPlainObject(alt) &&
+        typeof alt.opcode === 'string' &&
+        !!alt.opcode.trim() &&
+        (alt.fieldValues == null || isPlainObject(alt.fieldValues))
+  return spec.every(validAlternative) ? null : 'invalid'
+}
+
+// Shared fieldValues keys that are a known value input of one alternative but not of another
+// (VALUE_INPUT_DEFAULTS lists value inputs only; alternatives it doesn't know, and dropdown
+// fields, are skipped rather than guessed).
+function sharedFieldValueKeysMissingFromAlternatives(spec, fieldValues) {
+  if (!Array.isArray(spec) || !isPlainObject(fieldValues)) return []
+  const opcodes = opcodeSpecOpcodes(spec)
+  const known = opcodes.filter((opcode) => Object.hasOwn(VALUE_INPUT_DEFAULTS, opcode))
+  const hasInput = (opcode, key) => Object.hasOwn(VALUE_INPUT_DEFAULTS[opcode], key)
+  return Object.keys(fieldValues).filter(
+    (key) =>
+      known.some((opcode) => hasInput(opcode, key)) &&
+      known.some((opcode) => !hasInput(opcode, key))
+  )
+}
+
+export function validateScratchChecks(checks, n, errors, kind = 'completion', warnings = []) {
   const label = labelCheckKind(kind)
+  // `what` is the check label, e.g. "check" or "block-order check".
+  const warnSharedFieldValues = (spec, fieldValues, what) => {
+    for (const key of sharedFieldValueKeysMissingFromAlternatives(spec, fieldValues)) {
+      warnings.push(
+        `Task ${n} has a Scratch ${what} whose shared fieldValues key ${key} is not an input of every alternative opcode — give each alternative its own fieldValues`
+      )
+    }
+  }
   for (const check of normalizeChecks(checks)) {
-    if (
-      (check.type === 'block_used' || check.type === 'block_run' || check.type === 'block_count') &&
-      !check.opcode
-    ) {
-      errors.push(`Task ${n} has a Scratch ${label} but no block opcode`)
+    if (check.type === 'block_used' || check.type === 'block_run' || check.type === 'block_count') {
+      const problem = opcodeSpecProblem(check.opcode)
+      if (problem === 'missing') {
+        errors.push(`Task ${n} has a Scratch ${label} but no block opcode`)
+      } else if (problem === 'empty_list') {
+        errors.push(`Task ${n} has a Scratch ${label} with an empty list of block opcodes`)
+      } else if (problem === 'invalid') {
+        errors.push(
+          `Task ${n} has a Scratch ${label} with an invalid block opcode — use an opcode name or a list of opcode names or { opcode, fieldValues } entries`
+        )
+      } else if (check.type === 'block_count') {
+        if (Array.isArray(check.opcode) && check.opcode.some((alt) => alt?.fieldValues)) {
+          warnings.push(
+            `Task ${n} has a Scratch block-count ${label} with fieldValues on an alternative — block_count counts by opcode only and ignores them`
+          )
+        }
+      } else {
+        warnSharedFieldValues(check.opcode, check.fieldValues, label)
+      }
     }
     if (check.type === 'blocks_in_order') {
       if (!Array.isArray(check.sequence) || check.sequence.length === 0) {
         errors.push(`Task ${n} has a Scratch block-order ${label} but no block sequence`)
-      } else if (check.sequence.some((item) => !normalizeSequenceItem(item).opcode)) {
-        errors.push(`Task ${n} has a Scratch block-order ${label} with an empty block opcode`)
+      } else {
+        // A bare list item ([a, b]) would be a list inside a list, which Firestore can't store.
+        if (check.sequence.some((item) => Array.isArray(item))) {
+          errors.push(
+            `Task ${n} has a Scratch block-order ${label} with a list as a sequence item — write alternatives as opcode: [...] inside the item`
+          )
+        }
+        const items = check.sequence.map((item) => normalizeSequenceItem(item))
+        const problems = items.map((item, i) =>
+          Array.isArray(check.sequence[i]) ? 'bare_list' : opcodeSpecProblem(item.opcode)
+        )
+        if (problems.includes('missing')) {
+          errors.push(`Task ${n} has a Scratch block-order ${label} with an empty block opcode`)
+        }
+        if (problems.includes('empty_list')) {
+          errors.push(
+            `Task ${n} has a Scratch block-order ${label} with an empty list of block opcodes`
+          )
+        }
+        if (problems.includes('invalid')) {
+          errors.push(
+            `Task ${n} has a Scratch block-order ${label} with an invalid block opcode — use an opcode name or a list of opcode names or { opcode, fieldValues } entries`
+          )
+        }
+        items.forEach((item, i) => {
+          if (!problems[i]) {
+            warnSharedFieldValues(item.opcode, item.fieldValues, `block-order ${label}`)
+          }
+        })
       }
     }
     if (
@@ -282,6 +371,35 @@ export function warnCompleteDesktop(task, n, warnings) {
   }
 }
 
+// Scratch: the static block checks (block_used, blocks_in_order, block_count) evaluated against
+// the saved blocks, as `lessons test-checks` does per check. Warns when a Complete stage
+// (completeBlocks, or a Complete-role code stage) fails one, and when the starter already
+// passes a completion made only of block checks. Unparseable blocks are skipped here.
+export function warnCompleteBlocks(task, n, warnings) {
+  const checks = normalizeChecks(task.check)
+  if (!checks.some(isScratchStaticCheck)) return
+  let completeFails = false
+  let starterPasses = false
+  for (const { kind, blocks } of getScratchVerificationStages(task)) {
+    let completion
+    try {
+      completion = evaluateScratchStage(task, blocks).completion
+    } catch {
+      continue
+    }
+    if (kind === 'complete' && completion.result === 'fail') completeFails = true
+    if (kind === 'starter' && completion.result === 'pass') starterPasses = true
+  }
+  if (completeFails) {
+    warnings.push(`Task ${n} complete solution fails a block check — review the complete blocks`)
+  }
+  if (starterPasses) {
+    warnings.push(
+      `Task ${n} starter already passes every completion check — students can finish without changing anything`
+    )
+  }
+}
+
 export function warnCompleteCircuit(task, n, warnings) {
   if (!task.check || !task.completeCircuit) return
   const circuitChecks = normalizeChecks(task.check).filter((c) =>
@@ -303,6 +421,7 @@ const NO_VALUE_CODE_CHECK_TYPES = [
   'element_attribute',
   'element_style_property',
   'variable_exists',
+  'code_structure',
 ]
 
 export function codeCheckHasValue(task) {

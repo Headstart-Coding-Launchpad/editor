@@ -388,7 +388,11 @@ Scratch checks can be a single object or an array. Prefer `evaluation: after_blo
 
 Students should not see a failure just because they are still building. `after_block_placed` checks can pass as soon as the workspace is correct; off-track feedback should be modelled as a nudge/authoring warning rather than a hard fail while the learner is mid-edit.
 
+**When checks run and what logs an attempt.** `after_block_placed` checks (and `on_idle` feedback checks) are evaluated shortly after an edit to the blocks: a block placed, moved or deleted, or a field edit committed — the learner leaves the text field or presses Enter, or picks a dropdown value. Each evaluation is logged as one attempt in the session report. Typing inside a text field (for example a Say message) does not run checks or log attempts; the edit is checked once, with the final text, when the field is committed. `after_run` checks are evaluated when the learner runs the project.
+
 `feedbackChecks` use the same Scratch check shapes and require a completion `check`. Use `show: on_idle` for guidance after the learner pauses editing blocks, or `show: after_attempt` for feedback after a Scratch check evaluates. `mode: blocking` fails completion when matched; `mode: nudge` shows guidance without failing. `incorrectChecks` is a legacy alias for blocking feedback. Avoid using `after_run` check types (`block_run`, `sprite_property`/`variable_compare` reading run-dependent state) as `on_idle` feedback checks — idle evaluation happens purely from editing, without a fresh run, so an `after_run` check there is judged against the last Run's state rather than the learner's current unedited workspace.
+
+Scratch picks the one hint to show with the shared rule in [Which hint is shown](AUTHORING_GUIDE.md#which-hint-is-shown). Run-time checks (`evaluation: after_run`, such as `block_run` or `sprite_property`) only contribute hints after the learner presses Run; while the learner is placing blocks, only an `after_block_placed` check that has definitely failed (not one that is still incomplete) can supply the hint. If no failed check has a hint, the learner sees the generic "Not quite, try again!" banner.
 
 ### `block_used`
 ```yaml
@@ -409,6 +413,44 @@ Comparisons follow the same rules as every other check:
 - When both values are numbers they compare as numbers, so `"10"` equals `"10.0"`.
 - `greater_than`, `less_than` and the other numeric operators need both values to be numbers.
 - `matches_regex` uses `flags` (e.g. `i`); an invalid pattern fails.
+
+### One of several opcodes
+
+When more than one block is equally correct (turn right or turn left), give `opcode` a list.
+Any one of the blocks counts. This works in `block_used`, `block_run`, `block_count` and in
+each `blocks_in_order` sequence item. A plain string still means exactly that one block.
+
+Short form: a list of opcodes. The check's `fieldValues` apply to whichever block matched:
+```yaml
+check:
+  type: block_used
+  evaluation: after_block_placed
+  opcode: [motion_turnright, motion_turnleft]
+  fieldValues:
+    DEGREES: "90"       # must be an input of every block in the list
+```
+Use the short form's `fieldValues` only with keys that every listed block has (both turn
+blocks have `DEGREES`). Validation warns when a key is an input of one listed block but not
+another, e.g. `DEGREES` with `[motion_turnright, motion_movesteps]`. The warning only knows
+number and text inputs, so it can't spot dropdown fields such as `motion_goto`'s `TO`.
+
+Long form: a list of `{ opcode, fieldValues }` entries, each with its own values:
+```yaml
+check:
+  type: block_used
+  evaluation: after_block_placed
+  opcode:
+    - opcode: motion_turnright
+      fieldValues: { DEGREES: "90" }
+    - opcode: motion_turnleft
+      fieldValues: { DEGREES: "90" }
+```
+You can mix plain opcodes and `{ opcode, fieldValues }` entries in one list. A plain opcode
+uses the check's shared `fieldValues`. An entry's own `fieldValues` are added on top of the
+shared ones and win where both set the same key.
+
+The Builder shows a list as "any of: …". It can't edit the list, so change it in the lesson
+YAML. Its **Use one block** button replaces the list with its first opcode.
 
 ### `sprite_property`
 ```yaml
@@ -475,8 +517,11 @@ check:
       fieldValues:
         STEPS: "50"
     - motion_turnright           # plain string — any value accepted
+    - opcode: [motion_turnright, motion_turnleft]   # either turn counts here
+      fieldValues:
+        DEGREES: "90"
 ```
-Passes if any connected stack contains the opcodes **consecutively** (no gaps). Each sequence item can be a plain opcode string or an object with `opcode` and optional `fieldValues`.
+Passes if any connected stack contains the opcodes **consecutively** (no gaps). Each sequence item can be a plain opcode string or an object with `opcode` and optional `fieldValues`. An item's `opcode` can also be a list of alternatives, in the short or long form from [One of several opcodes](#one-of-several-opcodes). Put the list under the item's `opcode:`. A bare list as the item itself (`- [motion_turnright, motion_turnleft]`) is rejected, because lessons can't store a list directly inside a list. A block of any listed opcode counts for that position, including when the after-block-placed check decides whether a block sits in the wrong place. A stack is followed from its top block through `next` only: blocks inside a C block (`control_repeat`, `control_forever`, `control_if`, …) are not part of the stack around them and don't start a stack of their own, so a sequence can't match there — check them with `block_used` or `block_count` instead.
 
 ### `block_count`
 ```yaml
@@ -488,6 +533,10 @@ check:
   operator: equals
   value: 3
 ```
+`block_count` counts blocks by opcode only. It doesn't use `fieldValues`. With a list of
+opcodes, for example `opcode: [motion_turnright, motion_turnleft]`, it counts the blocks of
+every listed opcode together: one turn right and two turn lefts count as 3. `fieldValues` on a
+long-form entry are ignored here too, and validation warns about them.
 
 ### Costume checks
 ```yaml
@@ -513,7 +562,7 @@ check:
       operator: greater_than_or_equal
       value: "50"
 ```
-Note: event hat blocks (`event_whenflagclicked` etc.) are not tracked by `block_run` — use `block_used` to check for a hat's presence instead. When `fieldValues` is set, the block must both have executed and currently have those input values in the workspace.
+Note: event hat blocks (`event_whenflagclicked` etc.) are not tracked by `block_run` — use `block_used` to check for a hat's presence instead. When `fieldValues` is set, the block must both have executed and currently have those input values in the workspace. With a list of opcodes (see [One of several opcodes](#one-of-several-opcodes)), the check passes when any listed block ran. If that block has `fieldValues`, a block of the same opcode in the workspace must hold them.
 
 **Always set `fieldValues` when the block has a student-editable input (text, number).** A block is marked "executed" the instant it runs, before its field values are inspected — and this app's click-to-run-a-single-block feature means a bare click on the block (e.g. while a student is clicking in to edit its text) already counts as a run. Without `fieldValues`, `block_run` only asserts "this opcode executed at least once," which can pass on a still-blank/default field. For a task like "type your own message into this say block," require the field to be non-empty rather than leaving `fieldValues` unset:
 ```yaml
@@ -522,6 +571,69 @@ Note: event hat blocks (`event_whenflagclicked` etc.) are not tracked by `block_
         operator: not_equals
         value: ""
 ```
+
+### Verifying Scratch checks
+
+Run `test-checks` with no `--cases` file to check every Scratch task's checks against its own blocks (no Firebase needed):
+
+```bash
+node cli/cli.mjs lessons test-checks lesson.yaml --yaml          # every Scratch task
+node cli/cli.mjs lessons test-checks lesson.yaml --task 7         # one task
+```
+
+Each task is checked against these stages: `complete` (`completeBlocks`), `starter` (the first Starter stage's `blocks`, else `starterBlocks`), and `complete:<label>` for each Complete-role code stage (legacy `solution` stages included). Checks go through the same per-sprite rules as the classroom: a check with `spriteName` looks at that sprite, falling back to the first sprite when no sprite has that name; one without passes if any sprite satisfies it.
+
+Only block checks are evaluated: `block_used`, `blocks_in_order` and `block_count`. Run-time checks (`sprite_property`, `sprite_property_delta`, `sprite_property_changed`, costume, variable and `block_run` checks) need a Run and are reported as `skipped`, so a stage whose block checks pass but has run-time checks reads `incomplete`. Verify those in the Builder.
+
+```yaml
+tasks:
+  - taskId: 7
+    title: Move the rocket
+    stages:
+      - stage: complete
+        completion:
+          result: fail                # pass | fail | incomplete (run-time checks skipped) | none
+          checks:
+            - index: 1
+              type: blocks_in_order
+              result: fail            # pass | fail | skipped
+              sprite: any             # the sprite that decided it; `any` when no sprite passes
+              actual:                 # on a fail: each script's opcodes (block_used / block_count: the count)
+                - - event_whenflagclicked
+                  - motion_movesteps
+              reason: the blocks are in this order but a fieldValues condition doesn't match
+            - index: 2
+              type: sprite_property
+              result: skipped
+              reason: "run-time check: needs a Run, which the CLI never does"
+        feedback:
+          - index: 1
+            type: block_used
+            opcode: motion_turnright
+            mode: blocking
+            show: after_attempt
+            hint: Remove the turn block.
+            result: silent            # fires | silent | skipped
+      - stage: starter
+        # …
+warnings:
+  - Task 7 complete stage fails completion check 1 (blocks_in_order)
+summary:
+  tasks: 1
+  stagesChecked: 2
+  failed: 1                           # number of warnings
+  skippedRuntimeChecks: 1
+```
+
+`warnings` lists:
+
+- a Complete stage that fails a completion check (`Task … <stage> stage fails completion check N (type)`);
+- a feedback check that fires on a Complete stage (it would show to a student who got it right);
+- a starter that already passes every completion check;
+- a Debug Code Task (`taskActivity`) whose blocking feedback checks all stay silent on the starter (the bug they describe isn't in the starter);
+- stage blocks that aren't valid JSON.
+
+The command exits with status 1 when there are warnings. `lessons validate` also warns when the Complete blocks fail a block check, or the starter already passes, without the per-check detail.
 
 ---
 

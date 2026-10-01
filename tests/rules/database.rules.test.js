@@ -43,8 +43,52 @@ describe('sessions', () => {
   })
 
   it('lets any signed-in user register a joining presence marker', async () => {
-    await assertSucceeds(ref(as.student, `sessions/${LESSON}/joiningStudents/temp-1`).set(true))
-    await assertFails(ref(as.anonymous, `sessions/${LESSON}/joiningStudents/temp-1`).set(true))
+    const marker = `sessions/${LESSON}/joiningStudents/temp-1`
+    await assertSucceeds(ref(as.student, marker).set({ joinedAt: 1000 }))
+    await assertFails(ref(as.anonymous, marker).set({ joinedAt: 1000 }))
+    await assertFails(ref(as.student, marker).set(true))
+    await assertFails(ref(as.student, marker).set({ joinedAt: 1000, extra: 'x' }))
+  })
+
+  describe('joining marker typedName and admit', () => {
+    const marker = `sessions/${LESSON}/joiningStudents/temp-1`
+
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled((ctx) => ref(ctx, marker).set({ joinedAt: 1000 }))
+    })
+
+    it('lets the student share a typed name up to 30 characters', async () => {
+      await assertSucceeds(ref(as.student, `${marker}/typedName`).set('Jamie'))
+      await assertSucceeds(ref(as.student, `${marker}/typedName`).set('x'.repeat(30)))
+      await assertSucceeds(ref(as.student, `${marker}/typedName`).set(null))
+      await assertFails(ref(as.student, `${marker}/typedName`).set('x'.repeat(31)))
+      await assertFails(ref(as.student, `${marker}/typedName`).set(42))
+    })
+
+    it('does not let a typed name or admit recreate a removed marker', async () => {
+      await assertSucceeds(ref(as.student, marker).remove())
+      await assertFails(ref(as.student, `${marker}/typedName`).set('Jamie'))
+      await assertFails(ref(as.teacher, `${marker}/admit`).set({ name: 'Jamie', at: 2000 }))
+    })
+
+    it('lets only teachers and admins write admit, with a valid name and time', async () => {
+      await assertFails(ref(as.student, `${marker}/admit`).set({ name: 'Jamie', at: 2000 }))
+      await assertSucceeds(ref(as.teacher, `${marker}/admit`).set({ name: 'Jamie', at: 2000 }))
+      await assertSucceeds(ref(as.admin, `${marker}/admit`).set({ name: 'Sam', at: 3000 }))
+      await assertFails(ref(as.teacher, `${marker}/admit`).set({ name: '', at: 2000 }))
+      await assertFails(ref(as.teacher, `${marker}/admit`).set({ name: 'x'.repeat(31), at: 2000 }))
+      await assertFails(ref(as.teacher, `${marker}/admit`).set({ name: 'Jamie' }))
+      await assertFails(ref(as.teacher, `${marker}/admit`).set({ name: 'Jamie', at: 'now' }))
+      await assertFails(
+        ref(as.teacher, `${marker}/admit`).set({ name: 'Jamie', at: 2000, extra: true })
+      )
+    })
+
+    it('still lets the student remove its own marker after an admit', async () => {
+      await assertSucceeds(ref(as.teacher, `${marker}/admit`).set({ name: 'Jamie', at: 2000 }))
+      await assertSucceeds(ref(as.student, `${marker}/typedName`).set('Jamie'))
+      await assertSucceeds(ref(as.student, marker).remove())
+    })
   })
 })
 
@@ -214,6 +258,99 @@ describe('session archive', () => {
     await assertFails(ref(as.anonymous, path).get())
     await assertFails(
       ref(as.student, `${path}/studentSnapshots/${STUDENT_ID}`).set({ at: 1, code: 'x' })
+    )
+  })
+})
+
+describe('presentation annotations (liveInk)', () => {
+  const root = `liveInk/${LESSON}`
+  const pointer = { surface: 'info:3', anchor: 'b0.p1', rx: 0.4, ry: 0.5, t: 1 }
+  const stroke = {
+    surface: 'explainer:3',
+    anchor: 'b0.li2',
+    points: [
+      [0.1, 0.2],
+      [0.3, 0.4],
+    ],
+    colour: 'var(--colour-error)',
+    t: 1,
+  }
+  const highlight = { surface: 'info:3', anchor: 'b0.p0', quote: 'print', occurrence: 1, t: 1 }
+
+  it('lets anyone read the annotations, including signed-out visitors', async () => {
+    await testEnv.withSecurityRulesDisabled((ctx) => ref(ctx, `${root}/pointer`).set(pointer))
+    await assertSucceeds(ref(as.anonymous, root).get())
+    await assertSucceeds(ref(as.student, root).get())
+  })
+
+  it('lets only teachers and admins write them', async () => {
+    await assertSucceeds(ref(as.teacher, `${root}/pointer`).set(pointer))
+    await assertSucceeds(ref(as.admin, `${root}/strokes/s1`).set(stroke))
+    await assertSucceeds(ref(as.teacher, `${root}/highlights/h1`).set(highlight))
+    await assertFails(ref(as.student, `${root}/pointer`).set(pointer))
+    await assertFails(ref(as.anonymous, `${root}/highlights/h1`).set(highlight))
+    await assertFails(ref(as.student, root).remove())
+    await assertSucceeds(ref(as.teacher, root).remove())
+  })
+
+  it('rejects malformed pointers, strokes and highlights', async () => {
+    await assertFails(ref(as.teacher, `${root}/pointer`).set({ ...pointer, rx: 50 }))
+    await assertFails(ref(as.teacher, `${root}/pointer`).set({ ...pointer, extra: true }))
+    await assertFails(ref(as.teacher, `${root}/pointer`).set({ surface: 'info:3', rx: 0, ry: 0 }))
+    await assertFails(
+      ref(as.teacher, `${root}/strokes/s1`).set({ ...stroke, points: [['a', 0.2]] })
+    )
+    await assertFails(
+      ref(as.teacher, `${root}/highlights/h1`).set({ ...highlight, quote: 'x'.repeat(501) })
+    )
+    await assertFails(ref(as.teacher, `${root}/somethingElse`).set(true))
+  })
+
+  it('accepts text-anchored pointers and stroke points, alone or mixed with fractions', async () => {
+    const textPointer = { surface: 'info:3', anchor: 'b0.p1', c: 12, dx: 0.25, dy: -0.4, t: 1 }
+    await assertSucceeds(ref(as.teacher, `${root}/pointer`).set(textPointer))
+    await assertSucceeds(
+      ref(as.teacher, `${root}/strokes/s1`).set({
+        ...stroke,
+        points: [{ c: 3, dx: 0.1, dy: 0.6 }, [0.5, 0.5], { c: 9, dx: -0.2, dy: 0.6 }],
+      })
+    )
+  })
+
+  it('rejects malformed text-anchored pointers and stroke points', async () => {
+    const textPointer = { surface: 'info:3', anchor: 'b0.p1', c: 12, dx: 0.25, dy: -0.4, t: 1 }
+    await assertFails(ref(as.teacher, `${root}/pointer`).set({ ...textPointer, dx: 500 }))
+    await assertFails(ref(as.teacher, `${root}/pointer`).set({ ...textPointer, c: -1 }))
+    await assertFails(ref(as.teacher, `${root}/pointer`).set({ ...textPointer, rx: 0.5, ry: 0.5 }))
+    const { dy: _dy, ...missingDy } = textPointer
+    await assertFails(ref(as.teacher, `${root}/pointer`).set(missingDy))
+    await assertFails(
+      ref(as.teacher, `${root}/strokes/s1`).set({ ...stroke, points: [{ c: 3, dx: 0.1 }] })
+    )
+    await assertFails(
+      ref(as.teacher, `${root}/strokes/s1`).set({
+        ...stroke,
+        points: [{ c: 3, dx: 0.1, dy: 0.2, extra: 1 }],
+      })
+    )
+    await assertFails(
+      ref(as.teacher, `${root}/strokes/s1`).set({ ...stroke, points: [{ c: 'x', dx: 0, dy: 0 }] })
+    )
+  })
+
+  it('caps a stroke at 200 points', async () => {
+    const points = (count) => Array.from({ length: count }, (_, i) => [i / count, 0.5])
+    await assertSucceeds(
+      ref(as.teacher, `${root}/strokes/s1`).set({ ...stroke, points: points(200) })
+    )
+    await assertFails(ref(as.teacher, `${root}/strokes/s2`).set({ ...stroke, points: points(201) }))
+    const textPoints = (count) =>
+      Array.from({ length: count }, (_, i) => ({ c: i, dx: 0, dy: 0.6 }))
+    await assertSucceeds(
+      ref(as.teacher, `${root}/strokes/s3`).set({ ...stroke, points: textPoints(200) })
+    )
+    await assertFails(
+      ref(as.teacher, `${root}/strokes/s4`).set({ ...stroke, points: textPoints(201) })
     )
   })
 })

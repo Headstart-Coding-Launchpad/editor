@@ -62,6 +62,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 ## Session Features
 
 - **Waiting room** — students wait until the teacher starts; auto-advance on start
+- **Video call** — the teacher sets a call link for the session (shown in the waiting room); "Send to all" pops a join prompt for every student, including those in the waiting room or still entering their name, and "Send Video Call Link" in a student's More menu pops it for one student (waiting room or any task)
 - **Pause/resume** — freezes student navigation without ending the session
 - **Sandbox mode** — freeform coding with no tasks or checks; teacher can push code/files to all students. Each visit (when, after which task, the teacher's pushes and each student's last sandbox code) is archived teacher-side for the session report
 - **Live badge signals** (the tutor's suggestions panel and picker are in the Student Grid section; the student celebration is under Student Features, "Coding moments") — first-occurrence topic opens, keyboard shortcuts, time to first edit, complete-code views, and sandbox run/error/fix counts are recorded per student during a live session (never in solo, previews or the presentation window, and never any code); see `docs/architecture/live-badges-plan.md`
@@ -79,7 +80,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Ending a session ends it immediately for students; the report shown afterwards offers an optional 1-5 star rating plus "what worked well" / "what didn't work, or was broken" notes, saved onto that session's report
 - The session report shows how many references (support stages) were opened per task — count, students, and teacher vs student — and which ones each student opened
 - Live badges in the session report: a **Coding moments** section (the class wall grouped by badge, **Copy class summary** with student labels, and suggested / awarded / auto / manual / dismissed / revoked counts per badge); new task columns (time to first edit median and range, students with a console error, Topic Library opens student vs tutor-sent, and the first real pass with how long after the task opened); per student their moments, topics opened, shortcuts, personal- and teacher-sandbox activity, and per task their first edit, error runs, different failed tries and "first real pass in class"; quiz-group first-try scores with the class median; and each teacher-sandbox visit as a "possible lesson gap" callout ("The class spent 14 min in the teacher sandbox after …") that expands to the tutor's explainer and pushes and each student's last sandbox code. All of it is in the YAML export. A report near Firestore's 1 MiB limit drops the students' sandbox code first and says so
-- Rate any task live, while teaching it: a collapsible "Rate This Task" panel above the check conditions lets the teacher give the current task a 1-5 star rating plus "what worked well" / "what didn't work" notes as the class works through it, rather than waiting until the session ends. Each task's rating is folded into that task's row in the session report
+- Rate any task live, while teaching it: a "⭐ Rate this task" button in the teacher's top bar (showing "⭐ N" once rated) opens a popover that lets the teacher give the current task a 1-5 star rating plus "what worked well" / "what didn't work" notes as the class works through it, rather than waiting until the session ends. Each task's rating is folded into that task's row in the session report
 
 ### Task Navigator
 - Task list with group collapse
@@ -102,8 +103,9 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Scratch: multi-sprite workspace + stage canvas
 
 ### Student Grid
-- Cards per student: name, online status, run status, check status, code/output/quiz preview
-- Click to expand to full student workspace view
+- Cards per student: name, online status, run status, check status, code/output/quiz preview. While the session is waiting, the card's badge says "Waiting" and its dot still shows whether that student is online, away or offline
+- **Joining list**: students still on the name screen are listed above the cards as they type ("Jamie (typing…)", or "Someone (typing…)" before they type), with a **Pull in** button that opens a small editor prefilled with the typed name. Confirming joins that student with the (editable) name on their own device, exactly as if they had pressed Join (a taken name still gets a "-2" suffix), into the waiting room or the lesson. **Hide names** masks the typed names, e.g. while the screen is projected
+- Click to expand to full student workspace view — on every task, information tasks included (the modal shows the task as the student sees it: the explainer, the introduction's lesson title, the recap, or the Badge Summary wall, with the badge, nudge, message and video-call controls still available)
 - One-line grid header: "Students (n)", ⛶ Fullscreen All, a ⋯ menu (🔔 Nudge Away (n), 🏅 Suggestions (n), ☑ Select, 📖 Reference) and the › collapse. A small dot on ⋯ means someone is Away or a badge suggestion is waiting
 - "Away" badge when a connected student's window isn't focused, with a 🔔 button to nudge them; "🔔 Nudge Away (n)" in the grid header's ⋯ menu nudges every Away student at once. A nudge shows the student a banner and plays a chime, and while their window is unfocused flashes the tab title/favicon and (if they allowed it) shows an OS notification
 - Live badges (tutor side): "🏅 Suggestions (n)" in the grid header's ⋯ menu opens the **Badge suggestions** panel above the teacher editor, grouped by student, with one-click Award / Dismiss, an "Announce" tick (on by default), "Award all" when several students earned the same badge, and the session's **Auto-award high-confidence badges** and **Sounds off** toggles. Each card shows a teacher-only "🏅 n" count with a dot while a suggestion is waiting (never shown to students or the presentation window). "☑ Select" (⋯ menu) picks several cards to award one badge to all of them at once
@@ -114,9 +116,11 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Rename and remove students
 - One-line modal header: the student's name then small status chips ("Ryan · AWAY · LIVE · 🏅 2"), ← → to switch student, **Support ▾** (Reveal and Set stage sections), ▶ Run on student, **More ▾** and ✕
 - Nudge (More menu) — draw the student's attention back to the lesson
+- 👍 thumbs up (StudentCard and StudentModal header, online students) — the student sees a brief "👍 You're on the right track!" toast with a gentle chime (respecting their mute and the tutor's Sounds off) that disappears after about 2.5s. Private to that student: not a badge, not shown to the class, not in session reports. Reloads don't replay it; the button confirms ✓ and is disabled for 2s to avoid spamming
 - Go Live for All and Focus (highlight or switch a tab on the student's screen) are in the More menu; Stop Live stays in the header while broadcasting
 - 🏅 Award badge (More menu) — a picker with a purple header and a light body, grouped into **Suggested by rules**, **Tutor-awarded** and **Admin badges** (full names, badges already held greyed). Click a badge to select it and see what it's for, then press **Award**; "Announce to class" is on by default. Revoke an awarded one silently; the header shows the student's teacher-only badge count
 - "Show on every task" reference (in the Support menu's Reveal section): first hint, all hints, or the solution opens automatically for that student on every task for the rest of the session
+- Teacher's live code as a reference (while Presentation View is on the task): **Reveal live code** shows it for the current task only and drops off on the next task; **📌 Keep showing live code** pins it on every task until turned off ("📌 Live code: kept on"). The Live tab in the teacher's code panel has the class versions: **Reveal live code to all** and **📌 Keep showing live code to class**
 - "📋 Pasted" badge when a student pastes a large chunk (40+ characters or 3+ lines) into their editor — flagged, not blocked; also counted in the session report
 - The output panel in the student modal opens automatically when the student's run produces output or asks for input
 - Approve or decline a student's request to share their workspace with the class, after previewing the exact snapshot
@@ -132,6 +136,13 @@ After the same hint appears twice in a row, solo students can optionally view th
 ### Teacher Broadcast
 - Broadcast teacher's or a pinned student's screen to all students simultaneously
 - Available via a separate presentation window
+
+### Presentation Annotations
+- In the presentation window, a small floating toolbar lets the teacher annotate information tasks (standard, recap, introduction, images included) and code tasks' explainers, and every student sees it live (whole class only)
+- **🔴 Pointer**: a dot that follows the teacher's mouse; **✏️ Ink**: freehand marks that fade a few seconds later; **🖍️ Highlight**: selected text highlighted on every screen until clicked again, cleared or the task changes; **Clear** removes everything; Escape leaves a tool
+- Marks land on the same content (word, list item, part of an image) on every screen size, not the same pixels
+- If the teacher points somewhere a student has scrolled away from, a "👆 Teacher is pointing here" chip appears; clicking it scrolls there (never automatic). Pointing at a code task's explainer opens it for students who had it collapsed
+- Cleared on every task change and when the session or presentation window ends; respects reduced motion (no fades)
 
 ### Edit Lesson
 - "Edit Lesson" button opens the builder's task list/editor (add, duplicate, delete, reorder, group) in a modal without leaving the session
@@ -157,7 +168,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Explainer text is not selectable/copyable for students (teacher and builder previews are unaffected)
 - First-view entrances: when a task first appears the explainer drops in, its bullets (and an information task's) slide in one after another, and quiz answers rise in one by one. They play once per task on each screen (student, presentation window, teacher view, Builder preview), never on a revisit, a ▲/▼ toggle or a Builder edit, and become a short fade under reduced motion
 - Retro typing animation on Python output
-- Line hints: authors attach short instructions to lines of Python, Turtle and HTML starter code (`#> …` / `<!--> … -->` marker lines). The editor shows a 💡 in the gutter (hover for the text) and the hint in faded text after the line; hints are never part of the student's code (not saved, run, checked, carried or mirrored), follow their line through edits, disappear when the line is deleted, and re-attach to matching lines when saved code is reloaded. Read-only stage references show them too
+- Line hints: authors attach short instructions to lines of Python, Turtle and HTML starter code (`#> …` / `<!--> … -->` marker lines). The editor shows a 💡 in the gutter (hover for the text) and the hint in faded text after the line; hints are never part of the student's code (not saved, run, checked, carried or mirrored), follow their line through edits, disappear when the line is deleted, and re-attach to matching lines when saved code is reloaded. Read-only stage references show them too, and so does the teacher's student window (Python and Turtle code, HTML files — computed from the lesson, display only), with a header chip counting the hints still on the student's code; a hint on a line the student changed is gone for the teacher too
 
 ### Task Navigation
 - **Live mode**: teacher controls the current task; students cannot advance past it

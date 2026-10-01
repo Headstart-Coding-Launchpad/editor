@@ -686,7 +686,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
               {
                 value: 'badges',
                 label: 'Badge Summary',
-                hint: "Today's Coding Moments (live only)",
+                hint: "🎖️ Today's Coding Moments (live only)",
               },
             ].map((option) => {
               const active = (task.informationType ?? 'standard') === option.value

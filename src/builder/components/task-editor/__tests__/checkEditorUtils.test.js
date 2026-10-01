@@ -305,6 +305,54 @@ describe('getOperatorOptions', () => {
     ])
   })
 
+  it('offers the code Structure aspect only when allowed (Python) or already in use', () => {
+    expect(getAspectOptions('code').map((o) => o.value)).toEqual(['source'])
+    expect(getAspectOptions('code', null, { allowStructure: true }).map((o) => o.value)).toEqual([
+      'source',
+      'structure',
+    ])
+    expect(getAspectOptions('code', 'structure').map((o) => o.value)).toEqual([
+      'source',
+      'structure',
+    ])
+  })
+
+  it('round-trips code_structure checks through the subject/aspect/operator controls', () => {
+    const existing = {
+      type: 'code_structure',
+      operator: 'directly_nested_in',
+      inner: 'print(name)',
+      outer: 'for name in names:',
+      hint: 'Indent it',
+    }
+    expect(checkUiFromCheck(existing)).toEqual({
+      subject: 'code',
+      aspect: 'structure',
+      operator: 'directly_nested_in',
+    })
+    expect(
+      getOperatorOptions('code', 'directly_nested_in', 'structure').map((o) => o.value)
+    ).toEqual(['nested_in', 'directly_nested_in', 'not_nested_in'])
+    expect(checkFromSubjectOp('code', 'not_nested_in', existing)).toEqual({
+      type: 'code_structure',
+      operator: 'not_nested_in',
+      inner: 'print(name)',
+      outer: 'for name in names:',
+      hint: 'Indent it',
+    })
+    expect(checkFromSubjectOp('code', 'nested_in', {})).toEqual({
+      type: 'code_structure',
+      operator: 'nested_in',
+      inner: '',
+      outer: '',
+    })
+    // Back to Source: a plain code check.
+    expect(checkFromSubjectOp('code', 'contains', existing)).toMatchObject({
+      type: 'code',
+      operator: 'contains',
+    })
+  })
+
   it('returns output operators without no_error', () => {
     const opts = getOperatorOptions('output')
     expect(opts.map((o) => o.value)).not.toContain('no_error')

@@ -38,6 +38,9 @@ import TaskProgressDots from '../components/TaskProgressDots'
 import TeacherMessageToast from '../components/TeacherMessageToast'
 import { NudgeBanner, NudgePermissionPrompt } from '../components/NudgeBanner'
 import useNudgeAlert from '../hooks/useNudgeAlert'
+import useThumbsUp from '../hooks/useThumbsUp'
+import ThumbsUpToast from '../components/ThumbsUpToast'
+import useVideoCallPrompt, { VIDEO_CALL_PROMPT_PHASES } from '../hooks/useVideoCallPrompt'
 import useBadgeCelebrations from '../hooks/useBadgeCelebrations'
 import BadgeCelebration from '../components/badges/BadgeCelebration'
 import BadgeClassToast from '../components/badges/BadgeClassToast'
@@ -66,6 +69,7 @@ import { decodeFileKey } from '../../shared/fileKeys'
 import { getModuleDefinition } from '../../modules/definitions'
 import { decodeSessionFiles } from '../../shared/workspaceData'
 import { BadgeSignalsContext } from '../../shared/badgeSignalsContext'
+import LiveInkProvider from '../liveInk/LiveInkProvider'
 
 export default function StudentView({
   lessonId: lessonIdProp,
@@ -97,8 +101,11 @@ export default function StudentView({
     connected,
     registerPresence,
     joinSession,
+    recordStudentReturn,
     registerJoining,
     unregisterJoining,
+    setJoiningTypedName,
+    subscribeJoiningMarker,
     writeStudentRun,
     logAttempt,
     flagAttemptError,
@@ -143,6 +150,9 @@ export default function StudentView({
     removeTeacherHighlight,
     clearTeacherAnswerEdit,
     clearRemoteRun,
+    pushClassPaneCommand,
+    subscribeLiveInk,
+    createLiveInkWriter,
   } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
   const {
     identity,
@@ -192,6 +202,7 @@ export default function StudentView({
     handleNameSubmit,
     handleWaitForTeacher,
     handleGoSolo,
+    reportTypedName,
   } = useStudentPhase({
     session,
     sessionLoading,
@@ -208,8 +219,11 @@ export default function StudentView({
     createIdentity,
     updateTimestamp,
     joinSession,
+    recordStudentReturn,
     registerJoining,
     unregisterJoining,
+    setJoiningTypedName,
+    subscribeJoiningMarker,
   })
   const activeLesson = useMemo(
     () => getEffectiveLessonForTask(lesson, currentTaskId),
@@ -341,6 +355,13 @@ export default function StudentView({
     enabled: nudgeEnabled,
     studentPushedAt: session?.students?.[identity?.anonymousId]?.nudgePushedAt ?? null,
     classPushedAt: session?.nudgeAwayPushedAt ?? null,
+  })
+  // The teacher's transient 👍 "on the right track" toast — same live-only gate as nudges.
+  const { thumbsUpAt } = useThumbsUp({
+    ready: !!session,
+    enabled: nudgeEnabled,
+    pushedAt: session?.students?.[identity?.anonymousId]?.thumbsUpPushedAt ?? null,
+    soundsOff: !!session?.badgeSettings?.soundsOff,
   })
 
   // Live badges: the recipient's card and Coding moments pill, and the class toasts (the
@@ -480,13 +501,24 @@ export default function StudentView({
 
   // ─── Teacher-sent video call link ──────────────────────────────────────────
 
-  const [showVideoCallPrompt, setShowVideoCallPrompt] = useState(false)
-  const videoCallLinkPushedAt = session?.students?.[identity?.anonymousId]?.videoCallLinkPushedAt
-
-  useEffect(() => {
-    if (!videoCallLinkPushedAt) return
-    setShowVideoCallPrompt(true)
-  }, [videoCallLinkPushedAt])
+  // Per-student send or class-wide "Send to all"; also shown on the name and waiting screens.
+  const { videoCallPromptVisible, dismissVideoCallPrompt } = useVideoCallPrompt({
+    ready: !!session,
+    enabled: !teacherPresentation && VIDEO_CALL_PROMPT_PHASES.includes(phase),
+    phase,
+    link: session?.videoCallLink,
+    studentPushedAt: session?.students?.[identity?.anonymousId]?.videoCallLinkPushedAt ?? null,
+    broadcastAt: session?.videoCallBroadcastAt ?? null,
+  })
+  const videoCallPrompt = videoCallPromptVisible ? (
+    <VideoCallPrompt videoCallLink={session.videoCallLink} onDismiss={dismissVideoCallPrompt} />
+  ) : null
+  const withVideoCallPrompt = (screen) => (
+    <>
+      {screen}
+      {videoCallPrompt}
+    </>
+  )
 
   // ─── Teacher-requested share snapshot ──────────────────────────────────────
   // The teacher can put a student's work in front of the class without them
@@ -802,13 +834,14 @@ export default function StudentView({
   }
 
   if (phase === 'name-entry') {
-    return (
+    return withVideoCallPrompt(
       <NameEntry
         lessonTitle={lesson.title}
         existingNames={
           session ? Object.values(session.students ?? {}).map((s) => s.displayName) : []
         }
         onSubmit={handleNameSubmit}
+        onNameTyping={reportTypedName}
         onGoSolo={handleGoSolo}
         waitingForSession={session?.state === 'waiting'}
         joinError={joinError}
@@ -817,7 +850,7 @@ export default function StudentView({
   }
 
   if (phase === 'waiting') {
-    return (
+    return withVideoCallPrompt(
       <WaitingRoom
         lessonTitle={lesson.title}
         lessonDescription={lesson.description}
@@ -1369,6 +1402,7 @@ export default function StudentView({
         onDone={badgeCelebrations.toastDone}
       />
       {nudgeBannerVisible && <NudgeBanner onDismiss={dismissNudge} />}
+      <ThumbsUpToast shownAt={thumbsUpAt} />
       {nudgeEnabled && <NudgePermissionPrompt />}
       {showTeacherEditConsent && (
         <div style={s.consentOverlay}>
@@ -1467,12 +1501,7 @@ export default function StudentView({
           </div>
         </div>
       )}
-      {showVideoCallPrompt && !teacherPresentation && session?.videoCallLink && (
-        <VideoCallPrompt
-          videoCallLink={session.videoCallLink}
-          onDismiss={() => setShowVideoCallPrompt(false)}
-        />
-      )}
+      {videoCallPrompt}
       {isSolo && !teacherPresentation && lesson.recordingUrl && (
         <RecordingWidget recordingUrl={lesson.recordingUrl} />
       )}
@@ -1617,9 +1646,29 @@ export default function StudentView({
     </div>
   )
 
+  // Presentation annotations (src/app/liveInk): the Presentation window draws, students in the
+  // live lesson see it. Solo, preview and the sandbox phase stay inert.
+  const liveInkRole = teacherPresentation
+    ? 'teacher'
+    : !soloMode && !previewMode && phase === 'lesson' && identity?.anonymousId
+      ? 'student'
+      : null
+
   return (
     <BadgeSignalsContext.Provider value={badgeSignalsContextValue}>
-      {page}
+      <LiveInkProvider
+        lessonId={lessonId}
+        role={liveInkRole}
+        subscribe={subscribeLiveInk}
+        createWriter={createLiveInkWriter}
+        // Annotating a code task's explainer opens it for students who have it collapsed,
+        // through the existing whole-class pane command.
+        onExplainerAnnotate={() =>
+          pushClassPaneCommand?.({ mode: 'force', panes: ['instructions'] })
+        }
+      >
+        {page}
+      </LiveInkProvider>
     </BadgeSignalsContext.Provider>
   )
 }

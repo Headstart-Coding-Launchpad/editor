@@ -39,6 +39,174 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-01
 
+### Session report field reference
+
+- New [session-reports.md](session-reports.md): every field a session report's YAML can contain
+  (path, meaning, units, when it's present or omitted, date added), including activity summary
+  fields (`pairFailures`, `blankFailures`, `ratingDistribution`, `avgItemProgress`).
+- Explains the derivations that surprise reviewers: `attempts` and `avgAttempts` count identical
+  resubmissions (`retries`); `completionRate` includes overrides; `overridden_failed` is written
+  automatically for every unpassed student when the teacher moves the class on, not only by a
+  tutor; a support reveal can attach to a task with no `check`; there is no `revealCount`.
+- Documents lesson-level `teacherFeedback` (one per session run, on that run's report; absent
+  after **End & Go to Home**) and per-task `taskSummary[].teacherRating`, and how both differ from
+  the [feedback CLI](feedback-cli.md)'s lesson feedback.
+- From now on, a change to the report's output updates that page and adds an entry here.
+- Affects: all · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-09-30-document-the-session-report-schema-including-teacherfeedback.md
+
+### Multi-group Draft example; recap `leftContent` is a single heading
+
+- [AUTHORING_GUIDE.md](AUTHORING_GUIDE.md#draft-lessons) has a second Draft example: an
+  introduction, two groups, code tasks with intent, quizzes, an activity and a recap, with
+  `taskActivity` across the Glossary patterns.
+- Recap `leftContent` (the purple left pane) is canonically a **single `## ` heading**
+  (`leftContent: "## What we covered"`), with the recap body in `explainer`. An `introduction`
+  ignores both `leftContent` and `explainer`: it shows the lesson's title, level and description.
+  See [lesson-schema-yaml.md](lesson-schema-yaml.md#information-task-fields).
+- Affects: all · Existing lessons: recaps whose `leftContent` holds plain text or a body should
+  move to a single `## ` heading, with the body in `explainer` (they still render as before) ·
+  Resolves: authoring-requests/2026-09-30-authoring-guide-draft-lessons-add-a-multi-group-draft-exampl.md
+
+### Arcade palette hex values
+
+- [arcade.md](arcade.md#palette) lists each palette colour's hex. The palette is exactly the
+  standard PICO-8 16-colour palette; `white` is the warm `#fff1e8`, not `#ffffff`, which matters
+  when an image-generation prompt must match the game window.
+- Affects: arcade · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-09-30-arcade-md-palette-section-should-list-each-colour-s-hex-valu.md
+
+### Session reports: each student's first join, task at join and rejoins
+
+- Each `students[]` entry in a session report now carries `joinedAt` (the student's first join,
+  ms, never overwritten), `joinedAfterMs` (how long after the session started, clamped to 0 for a
+  waiting-room join), `joinedAtTaskId` (the class's current task at that moment) and `rejoins:
+  [{ at, taskId }]` (each later name entry or page reload back into the session, oldest first; at
+  most the latest 20). Untouched tasks before `joinedAtTaskId` mean "not present yet", not
+  "skipped".
+- Reports from sessions before 2026-10-01 lack these fields; any of them is also omitted when
+  unknown (no session start, no rejoins, a student the teacher removed).
+- Affects: all (session reports) · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-01-session-report-per-student-join-time-and-task-at-join.md
+
+### `code_structure` check: Python nesting (`nested_in`, `directly_nested_in`, `not_nested_in`)
+
+- New Python check `type: code_structure` with `operator` (`nested_in` | `directly_nested_in` |
+  `not_nested_in`, required), `inner` and `outer`. It reads indentation, which `code` checks
+  can't see, so a nested `if` no longer passes the same checks as two sibling `if`s or an `elif`
+  lined up with the outer `if`.
+- `inner` / `outer` are whole lines, matched ignoring spacing and case, with `*` wildcards. Every
+  operator fails when no line matches `inner`.
+- Needs no run: works in submit mode, in feedback checks (including `show: on_idle`), in
+  `code_arrange` tasks with `moduleType: python`, and in `lessons test-checks`. The Builder offers
+  it as Code → Structure (nesting) on Python tasks.
+- See [python.md](python.md#code-structure-checks-code_structure).
+- Affects: python, code_arrange · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-09-30-python-check-that-can-see-indentation-nesting-depth.md
+
+### Scratch block checks accept one of several opcodes
+
+- `block_used`, `block_run`, `block_count` and each `blocks_in_order` sequence item can give
+  `opcode` a list, so any one of several equally-correct blocks counts. Short form:
+  `opcode: [motion_turnright, motion_turnleft]`, where the check's (or item's) `fieldValues`
+  apply to whichever block matched. Long form: a list of `{ opcode, fieldValues }` entries, each
+  with its own values. A plain string works exactly as before.
+- In `blocks_in_order`, put the list under the item's `opcode:` (`- opcode: [a, b]`). A bare
+  list as the item is rejected, because lessons can't store a list inside a list.
+- `block_count` adds up the blocks of every listed opcode and, as before, ignores `fieldValues`.
+  `block_run` passes when any listed block ran.
+- Validation rejects an empty list or a malformed entry. It warns when a shared `fieldValues`
+  key isn't an input of every listed block, and when a `block_count` entry has `fieldValues`.
+  The Builder shows a list as "any of: …" and leaves it alone; edit it in YAML. See
+  [scratch.md](scratch.md#one-of-several-opcodes).
+- Affects: scratch · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-09-30-scratch-block-checks-that-accept-one-of-several-opcodes.md
+
+### Scratch checks verified per check by `test-checks` and `validate`
+
+- `lessons test-checks lesson.yaml` with **no `--cases`** now verifies every Scratch task (picked
+  by each task's own module, so composed lessons work). Each completion and feedback check is
+  evaluated against the task's `completeBlocks`, its starter and each Complete-role code stage,
+  with a per-check `pass`/`fail` (plus `sprite`, `reason` and `actual` blocks on a fail) and
+  feedback `fires`/`silent`. Run-time checks (`sprite_property*`, variables, costumes,
+  `block_run`) are reported as `skipped`. It warns when a Complete stage fails a check, a
+  feedback check fires on a Complete stage, the starter already passes, or a Debug Code Task's
+  blocking feedback checks all stay silent on the starter. `--task <id>` limits it to one task.
+  See [scratch.md](scratch.md#verifying-scratch-checks).
+- `lessons validate` (and the Builder) warn `Task … complete solution fails a block check —
+  review the complete blocks` and `Task … starter already passes every completion check — …`.
+  See [validation-errors.md](validation-errors.md#warnings-about-the-solution).
+- Affects: scratch, cli · Existing lessons: no changes needed (validate may now warn on Scratch
+  lessons whose Complete stage fails a check) · Resolves:
+  authoring-requests/2026-09-30-scratch-check-verification-per-check-results-from-validate-o.md
+
+### Which hint is shown: one documented rule, Scratch now follows it
+
+- New [Which hint is shown](AUTHORING_GUIDE.md#which-hint-is-shown) section: only one hint is
+  shown per attempt. A matched blocking feedback check's hint wins; then, if the completion checks
+  failed, the highest-priority matched feedback check's hint; otherwise the first **failed** entry
+  in the `check` list that has a `hint`; otherwise the generic "Not quite, try again!" banner.
+  Order completion checks most-specific-first (or give each a hint), and use `feedbackChecks`
+  with `priority` for misconception-specific hints.
+- Scratch now matches Python/HTML: it no longer falls back to the first check's hint when no
+  failed check has one (that could be a check the learner had already passed), and while the
+  learner is placing blocks only an `after_block_placed` check that has definitely failed can
+  supply the hint. Run-time checks (`block_run`, `sprite_property`, …) only contribute hints
+  after Run. See [scratch.md](scratch.md).
+- Affects: all, scratch · Existing lessons: no changes needed (Scratch lessons that relied on a
+  passed check's hint now show the generic banner) · Resolves:
+  authoring-requests/2026-09-30-document-which-hint-shows-when-several-completion-checks-fai.md
+
+### Scratch: typing in a text field no longer logs an attempt per keystroke
+
+- On Scratch tasks with a text field (a Say message, for example), each character typed was
+  checked and logged as a separate attempt (`h`, `ha`, `hav`, …), inflating attempt counts and
+  awarding the Persistence badge too easily. Checks now run, and one attempt is logged, when the
+  field edit is committed (the learner leaves the field or presses Enter), with the final text.
+  Placing, moving or deleting a block still runs checks as before. See
+  [scratch.md](scratch.md#scratch-check-types).
+- Session reports from before this fix overcount attempts on Scratch tasks with a text field;
+  discount their attempt counts and Persistence badges when judging task difficulty.
+- Affects: scratch · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-09-30-scratch-text-field-typing-logs-a-new-attempt-on-every-keystr.md
+
+### Code Arrange: HTML entry file must be a starter file; solutions are checked
+
+- An HTML `code_arrange` task whose `entryFile` is not one of its `starterFiles` now fails
+  validation (`Task … entryFile "…" is not one of its starter files`). Before, the assembled tiles
+  were silently dropped and the preview stayed blank.
+- Validation (CLI `lessons validate` and the Builder) now assembles the authored solution and
+  warns when it fails the task's own `code` checks, or, for Python, when a line after a block
+  opener (`…:`) isn't indented. `output` and element checks still need a real run and aren't tried.
+- Classroom fixes with no authoring change: a tutor's **Edit answers** applies once, to the task it
+  was made on; tiles a task no longer has are ignored (the board isn't "complete" with them); Run
+  stays disabled with a message when Python failed to load. See
+  [lesson-schema.md](lesson-schema.md#code-arrange-task-fields) and
+  [validation-errors.md](validation-errors.md#code-arrange-tasks).
+- Affects: code_arrange · Existing lessons: html arrange tasks whose entryFile isn't a starter
+  file now fail validation; solutions failing their own code checks warn · Resolves: none
+
+### Code Arrange attempts always record the assembled program
+
+- A `code_arrange` Run now always runs, and logs, the program assembled from the tiles. Before,
+  the code behind the board could be reset to empty while the tiles stayed placed (loading a task
+  in a live session, a late reconnect, a tutor's **Start again**), so the attempt was logged with
+  an empty `submission` and failed. A tutor's reset now clears the tiles too (or fills in the
+  answer for **Complete**).
+- [lesson-schema.md](lesson-schema.md#code-arrange-task-fields) now says what an arrange attempt
+  records: the assembled program text as `submission`, identical re-runs counted as retries.
+- Affects: code_arrange · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-09-30-code-arrange-attempts-recorded-with-an-empty-submission-then.md
+
+### Badge Summary title shown exactly as written
+
+- The Badge Summary task (`informationType: badges`) no longer adds 🎖️ in front of its `title`,
+  so an emoji-first title no longer shows two emojis. The title (and the first line of **Copy
+  class summary**) is shown exactly as written; with no title the default is
+  "🎖️ Today's Coding Moments". See [badges.md](badges.md#badge-summary-task).
+- Affects: badges · Existing lessons: Badge Summary tasks whose title has no emoji now show
+  none — add one if wanted · Resolves: none
+
 ### Line hints: a trailing marker gets its own empty line
 
 - A line-hint marker with nothing after it (`#> …` / `<!--> … -->` as the last line of the code,

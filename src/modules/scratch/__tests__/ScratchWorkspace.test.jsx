@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   getSelectableScratchSprites,
   isSpriteStudentEditable,
@@ -11,7 +11,10 @@ import {
   computeStageScale,
   cloneSpriteStates,
   evalSingleCheckPartial,
+  blockPlacedCheckHasFailed,
+  routeWorkspaceEdit,
 } from '../ScratchWorkspace'
+import { FEEDBACK_TIMING, evaluateCheckWithCustomFeedback } from '../../checks'
 
 // Workspace stub where blocks form named chains, for blocks_in_order checks.
 function makeChainWorkspace(chains) {
@@ -198,6 +201,52 @@ describe('evalSingleCheckPartial multi-sprite aggregation (no spriteName)', () =
   })
 })
 
+describe('after_block_placed hint selection (blockPlacedCheckHasFailed)', () => {
+  const sequence = ['event_whenflagclicked', 'motion_movesteps']
+  const runCheck = { type: 'block_run', opcode: 'motion_movesteps', hint: 'Run hint' }
+  const pendingCheck = {
+    type: 'block_used',
+    opcode: 'looks_say',
+    evaluation: 'after_block_placed',
+    hint: 'Pending hint',
+  }
+  const orderCheck = {
+    type: 'blocks_in_order',
+    sequence,
+    evaluation: 'after_block_placed',
+    hint: 'Order hint',
+  }
+  const sws = [
+    { name: 'sprite1', workspace: makeChainWorkspace([['event_whenflagclicked', 'looks_turn']]) },
+  ]
+
+  it('only counts block-placement checks that definitively failed', () => {
+    expect(evalSingleCheckPartial(orderCheck, sws)).toBe('fail')
+    expect(blockPlacedCheckHasFailed(orderCheck, sws)).toBe(true)
+    // looks_say isn't placed yet: pending, not failed.
+    expect(evalSingleCheckPartial(pendingCheck, sws)).toBe('pending')
+    expect(blockPlacedCheckHasFailed(pendingCheck, sws)).toBe(false)
+    // Run-time checks are never judged before a Run.
+    expect(blockPlacedCheckHasFailed(runCheck, sws)).toBe(false)
+  })
+
+  it('a run-time or pending check listed first does not steal the hint from the failed one', () => {
+    const task = { check: [runCheck, pendingCheck, orderCheck] }
+    const evaluation = evaluateCheckWithCustomFeedback(
+      task,
+      false,
+      () => false, // the full evaluator reports every check as not passed (stale run signal)
+      '',
+      {},
+      {
+        feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT,
+        isCompletionCheckFailed: (c) => blockPlacedCheckHasFailed(c, sws),
+      }
+    )
+    expect(evaluation.suggestion).toBe('Order hint')
+  })
+})
+
 describe('isValidNewVariableName', () => {
   const existing = [{ name: 'score' }, { name: 'Lives' }]
 
@@ -260,5 +309,73 @@ describe('wrapScratchBubbleText', () => {
 
   it('splits an unbroken long value to keep it inside the bubble', () => {
     expect(wrapScratchBubbleText(ctx, 'abcdefghijkl', 40)).toEqual(['abcd', 'efgh', 'ijkl'])
+  })
+})
+
+describe('routeWorkspaceEdit', () => {
+  function makeActions({ feedback = true } = {}) {
+    return {
+      hasCheckFeedback: vi.fn(() => feedback),
+      clearCheckFeedback: vi.fn(),
+      syncNow: vi.fn(),
+      scheduleSync: vi.fn(),
+      scheduleChecks: vi.fn(),
+    }
+  }
+
+  it('syncs each keystroke in an open text field without clearing feedback or running checks', () => {
+    const actions = makeActions()
+    for (const [oldValue, newValue] of [
+      ['Hello!', 'h'],
+      ['h', 'ha'],
+      ['ha', 'hav'],
+    ]) {
+      routeWorkspaceEdit(
+        { type: 'block_field_intermediate_change', name: 'MESSAGE', oldValue, newValue },
+        actions
+      )
+    }
+    expect(actions.scheduleSync).toHaveBeenCalledTimes(3)
+    expect(actions.syncNow).not.toHaveBeenCalled()
+    expect(actions.clearCheckFeedback).not.toHaveBeenCalled()
+    expect(actions.scheduleChecks).not.toHaveBeenCalled()
+  })
+
+  it('runs checks once when the field edit is committed', () => {
+    const actions = makeActions()
+    routeWorkspaceEdit(
+      { type: 'block_field_intermediate_change', oldValue: 'Hello!', newValue: 'h' },
+      actions
+    )
+    routeWorkspaceEdit(
+      { type: 'block_field_intermediate_change', oldValue: 'h', newValue: 'hi' },
+      actions
+    )
+    routeWorkspaceEdit(
+      { type: 'change', element: 'field', name: 'MESSAGE', oldValue: 'Hello!', newValue: 'hi' },
+      actions
+    )
+    expect(actions.clearCheckFeedback).toHaveBeenCalledTimes(1)
+    expect(actions.scheduleChecks).toHaveBeenCalledTimes(1)
+    expect(actions.scheduleSync).toHaveBeenCalledTimes(3)
+  })
+
+  it('clears feedback and runs checks for block edits, syncing a new block at once', () => {
+    const actions = makeActions()
+    routeWorkspaceEdit({ type: 'create', blockId: 'b1' }, actions)
+    expect(actions.syncNow).toHaveBeenCalledTimes(1)
+    expect(actions.scheduleSync).not.toHaveBeenCalled()
+    routeWorkspaceEdit({ type: 'move', blockId: 'b1', newParentId: 'p1' }, actions)
+    routeWorkspaceEdit({ type: 'delete', blockId: 'b1' }, actions)
+    expect(actions.scheduleSync).toHaveBeenCalledTimes(2)
+    expect(actions.clearCheckFeedback).toHaveBeenCalledTimes(3)
+    expect(actions.scheduleChecks).toHaveBeenCalledTimes(3)
+  })
+
+  it('leaves feedback alone when there is none to clear', () => {
+    const actions = makeActions({ feedback: false })
+    routeWorkspaceEdit({ type: 'delete', blockId: 'b1' }, actions)
+    expect(actions.clearCheckFeedback).not.toHaveBeenCalled()
+    expect(actions.scheduleChecks).toHaveBeenCalledTimes(1)
   })
 })

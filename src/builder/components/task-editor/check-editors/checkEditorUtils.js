@@ -96,10 +96,19 @@ const ELEMENT_OPERATOR_DEFS = {
   style_not_matches_regex: { type: 'html_element_style_property', operator: 'not_matches_regex' },
 }
 
+// `code_structure` (Python only): the Code subject's Structure aspect.
+const STRUCTURE_OPERATORS = ['nested_in', 'directly_nested_in', 'not_nested_in']
+
 function subjectOpFromCheck(check) {
   if (!check?.type) return { subject: 'output', operator: 'contains' }
   if (check.type === 'output') return { subject: 'output', operator: check.operator ?? 'contains' }
   if (check.type === 'code') return { subject: 'code', operator: check.operator ?? 'contains' }
+  if (check.type === 'code_structure') {
+    return {
+      subject: 'code',
+      operator: STRUCTURE_OPERATORS.includes(check.operator) ? check.operator : 'nested_in',
+    }
+  }
   if (check.type === 'output_line_count') {
     return {
       subject: 'output',
@@ -149,7 +158,7 @@ function aspectFromSubjectOperator(subject, operator) {
     if (operator.startsWith('line_count')) return 'line_count'
     return 'text'
   }
-  if (subject === 'code') return 'source'
+  if (subject === 'code') return STRUCTURE_OPERATORS.includes(operator) ? 'structure' : 'source'
   if (subject === 'element') {
     if (operator === 'exists') return 'element'
     if (operator.startsWith('count_')) return 'count'
@@ -170,7 +179,8 @@ function checkUiFromCheck(check) {
   return { subject, aspect: aspectFromSubjectOperator(subject, operator), operator }
 }
 
-function getAspectOptions(subject, currentAspect = null) {
+// `allowStructure`: offer the Code → Structure aspect (Python's code_structure check).
+function getAspectOptions(subject, currentAspect = null, { allowStructure = false } = {}) {
   if (subject === 'output')
     return [
       { value: 'text', label: 'Text' },
@@ -178,7 +188,13 @@ function getAspectOptions(subject, currentAspect = null) {
       { value: 'output_state', label: 'Output state' },
       ...(currentAspect === 'status' ? [{ value: 'status', label: 'Run status' }] : []),
     ]
-  if (subject === 'code') return [{ value: 'source', label: 'Source' }]
+  if (subject === 'code')
+    return [
+      { value: 'source', label: 'Source' },
+      ...(allowStructure || currentAspect === 'structure'
+        ? [{ value: 'structure', label: 'Structure (nesting)' }]
+        : []),
+    ]
   if (subject === 'element')
     return [
       { value: 'element', label: 'Element' },
@@ -203,7 +219,7 @@ function defaultOperatorForAspect(subject, aspect) {
     if (aspect === 'status') return 'no_error'
     return 'contains'
   }
-  if (subject === 'code') return 'contains'
+  if (subject === 'code') return aspect === 'structure' ? 'nested_in' : 'contains'
   if (subject === 'element') {
     if (aspect === 'element') return 'exists'
     if (aspect === 'count') return 'count_equals'
@@ -298,6 +314,16 @@ function checkFromSubjectOp(subject, operator, prev = {}) {
     }
   }
 
+  if (subject === 'code' && STRUCTURE_OPERATORS.includes(operator)) {
+    return {
+      type: 'code_structure',
+      operator,
+      inner: prev.inner ?? '',
+      outer: prev.outer ?? '',
+      ...meta,
+    }
+  }
+
   if (subject === 'code') {
     return {
       type: 'code',
@@ -362,6 +388,12 @@ function getOperatorOptions(subject, currentOperator = null, aspect = null) {
       { value: 'not_matches_regex', label: 'does not match regex' },
     ]
   }
+  if (subject === 'code' && currentAspect === 'structure')
+    return [
+      { value: 'nested_in', label: 'is inside' },
+      { value: 'directly_nested_in', label: 'is directly inside' },
+      { value: 'not_nested_in', label: 'is not inside' },
+    ]
   if (subject === 'code')
     return [
       { value: 'contains', label: 'contains' },

@@ -24,4 +24,23 @@ describe('PresenceBadge', () => {
     )
     expect(screen.getByText('Waiting')).toBeInTheDocument()
   })
+
+  it('shows Waiting with the real presence on the dot while the session waits', () => {
+    const WAITING = { state: 'waiting' }
+    const { rerender } = render(<PresenceBadge student={{ online: true }} session={WAITING} />)
+    let badge = screen.getByText('Waiting')
+    expect(badge).toHaveAttribute('data-presence', 'online')
+    expect(badge).toHaveClass('presence-badge--waiting', 'presence-badge--dot-online')
+    expect(badge).toHaveAttribute('title', expect.stringContaining('Online'))
+
+    rerender(<PresenceBadge student={{ online: true, windowFocused: false }} session={WAITING} />)
+    badge = screen.getByText('Waiting')
+    expect(badge).toHaveAttribute('data-presence', 'away')
+    expect(badge).toHaveClass('presence-badge--dot-away')
+
+    rerender(<PresenceBadge student={{ online: false }} session={WAITING} />)
+    badge = screen.getByText('Waiting')
+    expect(badge).toHaveAttribute('data-presence', 'offline')
+    expect(badge).toHaveAttribute('title', expect.stringContaining('Offline'))
+  })
 })

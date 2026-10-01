@@ -12,11 +12,37 @@
         // (state, currentTaskId, teacherLive, sandboxCode, etc.)
         ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
 
-        // Any authenticated user can register their name-entry presence marker.
-        // The tempId is a client-generated UUID so no UID match is enforced here.
+        // Any authenticated user can register their name-entry presence marker
+        // ({ joinedAt, typedName?, admit? }). The tempId is a client-generated UUID so no
+        // UID match is enforced here. Every write must leave joinedAt in place, so a late
+        // typedName or admit can't recreate a marker that was removed on join/disconnect.
+        // typedName (what the student is typing) and admit.name are capped at the name
+        // input's 30 characters; only teachers/admins can write admit ("Pull in").
         "joiningStudents": {
           "$tempId": {
-            ".write": "auth != null"
+            ".write": "auth != null",
+            ".validate": "newData.hasChild('joinedAt')",
+            "joinedAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "typedName": {
+              ".validate": "newData.isString() && newData.val().length <= 30"
+            },
+            "admit": {
+              ".validate": "(auth.token.role === 'teacher' || auth.token.role === 'admin') && newData.hasChildren(['name', 'at'])",
+              "name": {
+                ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
+              },
+              "at": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
           }
         },
 
@@ -184,6 +210,92 @@
       "$lessonId": {
         ".read": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
         ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')"
+      }
+    },
+
+    // Presentation annotations (live pointer, fading ink, text highlights) from the teacher's
+    // Presentation window. Kept outside "sessions" because the pointer moves at ~12Hz and every
+    // client streams the whole session node. Readable like a session (students are
+    // login-less); only teachers/admins write. Shapes mirror src/app/liveInk/liveInkData.js.
+    "liveInk": {
+      "$lessonId": {
+        ".read": true,
+        ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+
+        // Either { c, dx, dy } (a character + em offset, over text) or { rx, ry } (box fractions).
+        "pointer": {
+          ".validate": "newData.hasChildren(['surface', 'anchor', 't']) && ((newData.hasChildren(['rx', 'ry']) && !newData.hasChild('c')) || (newData.hasChildren(['c', 'dx', 'dy']) && !newData.hasChild('rx') && !newData.hasChild('ry')))",
+          "surface": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120"
+          },
+          "anchor": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+          },
+          "rx": {
+            ".validate": "newData.isNumber() && newData.val() >= -10 && newData.val() <= 10"
+          },
+          "ry": {
+            ".validate": "newData.isNumber() && newData.val() >= -10 && newData.val() <= 10"
+          },
+          "c": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+          },
+          "dx": {
+            ".validate": "newData.isNumber() && newData.val() >= -50 && newData.val() <= 50"
+          },
+          "dy": {
+            ".validate": "newData.isNumber() && newData.val() >= -50 && newData.val() <= 50"
+          },
+          "t": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        },
+
+        "strokes": {
+          "$strokeId": {
+            ".validate": "newData.hasChildren(['surface', 'anchor', 'points', 't'])",
+            "surface": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120"
+            },
+            "anchor": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+            },
+            "colour": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "t": { ".validate": "newData.isNumber()" },
+            // At most 200 points (keys 0-199), each either a [rx, ry] pair of box fractions or
+            // a { c, dx, dy } text position (character offset + em offset).
+            "points": {
+              "$index": {
+                ".validate": "$index.matches(/^(1?[0-9]?[0-9])$/) && ((newData.hasChildren(['0', '1']) && !newData.hasChild('c')) || (newData.hasChildren(['c', 'dx', 'dy']) && !newData.hasChild('0') && !newData.hasChild('1')))",
+                "$coord": {
+                  ".validate": "newData.isNumber() && (($coord.matches(/^[01]$/) && newData.val() >= -10 && newData.val() <= 10) || ($coord === 'c' && newData.val() >= 0 && newData.val() <= 1000000) || (($coord === 'dx' || $coord === 'dy') && newData.val() >= -50 && newData.val() <= 50))"
+                }
+              }
+            },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "highlights": {
+          "$highlightId": {
+            ".validate": "newData.hasChildren(['surface', 'anchor', 'quote', 'occurrence', 't'])",
+            "surface": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120"
+            },
+            "anchor": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+            },
+            "quote": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
+            },
+            "occurrence": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 1000"
+            },
+            "t": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "$other": { ".validate": false }
       }
     }
   }

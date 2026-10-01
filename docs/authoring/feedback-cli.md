@@ -11,6 +11,10 @@ once it's dealt with. All commands need CLI credentials (see "CLI credentials" i
 | Lesson feedback | `lessons/{lessonId}/feedback` | Teacher's Feedback button during a lesson, for the whole lesson or one task | Builder task feedback panel, Admin > Lessons |
 | Platform feedback | `platformFeedback` | Bug reports and feature ideas | Admin > Feedback |
 
+This is not the feedback inside a session report. A report carries its own rated
+`teacherFeedback` (per session run) and per-task `teacherRating`, which the CLI can't read; see
+[session-reports.md](session-reports.md#teacher-feedback).
+
 Each item has `id`, `lessonId`, `lessonTitle`, `taskId` (null for whole-lesson feedback),
 `taskTitle`, `teacherEmail`, `text`, `submittedAt` (Unix ms) and `archived`. List results also
 include `source: "lesson" | "platform"`, sorted newest first.

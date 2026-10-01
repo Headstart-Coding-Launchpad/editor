@@ -283,7 +283,7 @@ describe('scratch — reportRun (workspace-owned checks)', () => {
     expect(h.result.current.checkPassed).toBe(true)
   })
 
-  it("a failing report uses the workspace's suggestion, else the first hint, and the saved work", () => {
+  it("a failing report uses the workspace's suggestion (never a check's own hint) and the saved work", () => {
     writeStored(taskKey('t1'), { state: scratchBlocks('saved') })
     const h = renderStudentCodeState({ lesson: scratchLesson(), currentTaskId: 't1' })
     actSync(() => h.result.current.reportRun({ passed: false, suggestion: '  Use a loop ' }))
@@ -293,8 +293,11 @@ describe('scratch — reportRun (workspace-owned checks)', () => {
       suggestion: 'Use a loop',
     })
     actSync(() => h.result.current.reportRun({ passed: false }))
-    expect(h.writers.logAttempt.mock.calls[1][2].suggestion).toBe('Move the cat')
-    expect(h.result.current.checkSuggestion).toBe('Move the cat')
+    // No suggestion from the workspace means no failed check had a hint: the generic banner
+    // shows. It must not fall back to the first check's hint, which may belong to a check
+    // that passed (matches Python/HTML).
+    expect(h.writers.logAttempt.mock.calls[1][2].suggestion).toBe('')
+    expect(h.result.current.checkSuggestion).toBe('')
   })
 
   it('a module not checked by its workspace gets local feedback only', () => {

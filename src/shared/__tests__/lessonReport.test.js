@@ -793,6 +793,93 @@ describe('anonymizeSessionReport', () => {
   })
 })
 
+describe('student join history', () => {
+  const joinSession = {
+    ...session,
+    students: {
+      alice: {
+        displayName: 'Alice',
+        joinedAt: 5000, // latest name entry: overwritten on re-join, so never reported
+        firstJoinedAt: 1600,
+        firstJoinTaskId: 3,
+        rejoins: [
+          { at: 1900, taskId: 5 },
+          { at: 1700, taskId: 4 },
+        ],
+      },
+      bob: { displayName: 'Bob', firstJoinedAt: 900, firstJoinTaskId: 1 },
+    },
+  }
+
+  it('reports the first join, the gap after the start, the task at join and rejoins in time order', () => {
+    const report = buildSessionReport({ session: joinSession, lesson })
+    const [alice, bob] = report.students
+    expect(alice).toMatchObject({
+      joinedAt: 1600,
+      joinedAfterMs: 600,
+      joinedAtTaskId: 3,
+      rejoins: [
+        { at: 1700, taskId: 4 },
+        { at: 1900, taskId: 5 },
+      ],
+    })
+    // Joined in the waiting room, before the session started: clamped to 0, no rejoins.
+    expect(bob).toMatchObject({ joinedAt: 900, joinedAfterMs: 0, joinedAtTaskId: 1 })
+    expect(bob).not.toHaveProperty('rejoins')
+  })
+
+  it('reads rejoins stored as an RTDB object', () => {
+    const report = buildSessionReport({
+      session: {
+        ...joinSession,
+        students: {
+          alice: { firstJoinedAt: 1600, rejoins: { 0: { at: 1800, taskId: 4 }, 1: { at: 1750 } } },
+        },
+      },
+      lesson,
+    })
+    expect(report.students[0].rejoins).toEqual([{ at: 1750 }, { at: 1800, taskId: 4 }])
+  })
+
+  it('omits every join field when the session has no join history (older sessions)', () => {
+    const report = buildSessionReport({
+      session: { ...session, students: { alice: { displayName: 'Alice', joinedAt: 1500 } } },
+      lesson,
+    })
+    for (const student of report.students) {
+      expect(student).not.toHaveProperty('joinedAt')
+      expect(student).not.toHaveProperty('joinedAfterMs')
+      expect(student).not.toHaveProperty('joinedAtTaskId')
+      expect(student).not.toHaveProperty('rejoins')
+    }
+  })
+
+  it('omits joinedAfterMs when the session start is unknown', () => {
+    const report = buildSessionReport({
+      session: { ...joinSession, startedAt: null },
+      lesson,
+    })
+    expect(report.students[0].joinedAt).toBe(1600)
+    expect(report.students[0]).not.toHaveProperty('joinedAfterMs')
+  })
+
+  it('keeps the join fields through anonymisation', () => {
+    const report = anonymizeSessionReport(buildSessionReport({ session: joinSession, lesson }))
+    expect(report.students[0]).toMatchObject({
+      studentLabel: 'Student 1',
+      joinedAt: 1600,
+      joinedAfterMs: 600,
+      joinedAtTaskId: 3,
+      rejoins: [
+        { at: 1700, taskId: 4 },
+        { at: 1900, taskId: 5 },
+      ],
+    })
+    expect(report.students[0]).not.toHaveProperty('displayName')
+    expect(report.students[0]).not.toHaveProperty('anonymousId')
+  })
+})
+
 describe('encodeSessionReportForFirestore', () => {
   it('re-stringifies object-shaped submissions so Firestore never sees a raw array-in-array', () => {
     // Blockly's mutator/extraState serialization can nest an array directly

@@ -78,6 +78,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `throttledMirrorWriter.js` | Leading + trailing throttle for mirrored "latest value" writes (watched student output); re-checks nothing itself — callers gate on watch state per write |
 | `taskItemProgress.js` | Pure teacher-only filled/correct item counts for Match and Fill in the Gaps quizzes (via the quiz activity's `getProgress`) and filled-slot counts for Code Arrange (StudentCard + StudentModal header) |
 | `sharedWorkspacePayload.js` | Pure workspace-share snapshot construction, size limit, index entry building, and newest-first share sorting |
+| `joiningStudents.js` | Name-entry joining-marker helpers shared by NameEntry, useStudentPhase, StudentGrid and TeacherView: `NAME_MAX_LENGTH` (30, matches the rules), `TYPED_NAME_THROTTLE_MS` (750), `normaliseJoinName`, `applyNameSuffix` (duplicate-name `-2` suffixing), `listJoiningStudents` (markers → oldest-first list) and `readAdmitName` (a teacher admit's name, or null when it predates the marker or is unusable) |
 
 ---
 
@@ -88,7 +89,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TopBar.jsx` | Header: lesson title, level badge, SOLO/LIVE/SANDBOX badge, student name, progress dots slot; `singleRow` (StudentView) makes it one fixed-height 52px row that never wraps, with the name as a small chip |
 | `TaskNavigator.jsx` | Left sidebar: task list with group collapse, run/check stats, sandbox and pause controls |
 | `TaskProgressDots.jsx` | Top bar progress indicator: clickable past dots, locked future dots, current highlighted; measures itself and falls back to an "x/y" counter; `compact` (student top bar) uses smaller dots and scrolls sideways, current dot kept in view, when at least five fit but not all |
-| `ExplainerPanel.jsx` | Collapsible Markdown explainer panel above the editor; `disableCopy` prop blocks selection/copy (used for student-facing renders only); `entranceKey` drops the panel in and slides its bullets in on the task's first view (`useFirstView`), not on a ▲/▼ toggle or a same-task edit |
+| `ExplainerPanel.jsx` | Collapsible Markdown explainer panel above the editor; `disableCopy` prop blocks selection/copy (used for student-facing renders only); `entranceKey` drops the panel in and slides its bullets in on the task's first view (`useFirstView`), not on a ▲/▼ toggle or a same-task edit; `inkSurfaceId` makes the content annotatable from the Presentation window (`src/app/liveInk/`) |
 | `CopyCodePanel.jsx` | Student-facing read-only reference code block with selection/copy blocked, shown for Python/HTML tasks with `copyCode` |
 | `SupportStagePanel.jsx` | Student-facing read-only code-stage reference panel with reveal control and copy/selection blocking; shows the stage's line hints as faded text after their lines (`lineHintsFor`, `stageHintsByLine`) |
 | `OutputPanel.jsx` | Python output with retro typing animation (via `useTypewriterOutput`) and inline `input()` prompt; `onInputChange` fires per keystroke (for live-mirroring to a watching teacher); `inputReadOnly`+`mirroredInputValue` swap the prompt row to a plain-text, externally-driven mirror instead of an editable input, used by `StudentWorkspaceBody.jsx`. `splitEmojiRuns()` (exported for testing) grapheme-splits the output so emoji render a bit larger than the surrounding monospace text, via `Intl.Segmenter` |
@@ -101,11 +102,12 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `ChoiceScreen.jsx` | `choice`-phase screen: Join a Live Lesson or Go Solo (shown when no active session exists and the student hasn't committed to solo) |
 | `EntryScreenCard.jsx` | Shared chrome for the pre-lesson screens (`ChoiceScreen`, `NameEntry`, `WaitingRoom`, `JoinSessionPrompt`): centred card, purple header, wordmark, lesson title and optional description, above a white body. Exports `centredBody` and `ghostLink` for the body layouts and quiet secondary links those screens share |
 | `JoinSessionPrompt.jsx` | Modal: option to join a live session that started during solo work |
-| `VideoCallPrompt.jsx` | Modal shown to one student when a teacher targets them with "📹 Send Video Call Link" from the Student Grid, stamping `students/{id}/videoCallLinkPushedAt` |
+| `VideoCallPrompt.jsx` | Modal shown when the teacher pushes the video call: one student via "📹 Send Video Call Link" (`students/{id}/videoCallLinkPushedAt`) or everyone via "📹 Send to all" (`videoCallBroadcastAt`); shown on name entry, the waiting room and the lesson page, timed by `useVideoCallPrompt` |
 | `RecordingWidget.jsx` | Solo-mode-only fixed-corner pop-out player for a lesson's `recordingUrl` (YouTube recording, authorable on any lesson). Hide pauses via the YouTube IFrame API; the player stays mounted so reopening resumes in place |
-| `NameEntry.jsx` | Student name input with duplicate-suffix handling and solo fallback |
-| `StudentGrid.jsx` | Grid of StudentCards with collapse toggle and check conditions display. One-line header: "Students (n)", ⛶ Fullscreen All, a ⋯ `DropdownMenu` (🔔 Nudge Away (n), 🏅 Suggestions (n) → `BadgeSuggestionsPanel`, ☑ Select, 📖 Reference → topic library) with an attention dot while someone is Away or a suggestion is pending, and the › collapse. Select mode is for multi-award (select cards → 🏅 Award badge → `BadgeAwardDialog` with one shared `bulkId`; Done exits) |
-| `PresenceBadge.jsx` | Shared online/away/offline/waiting badge used by StudentCard and StudentModal (Away = connected but window unfocused) |
+| `NameEntry.jsx` | Student name input with duplicate-suffix handling and solo fallback; shares the trimmed name being typed via `onNameTyping` (throttled, for the teacher's joining list) |
+| `JoiningStudentsList.jsx` | Teacher grid list of students still on the name screen ("Jamie (typing…)" / "Someone (typing…)"), each with **Pull in** → inline name editor → `onAdmit(tempId, name)`; a per-view **Hide names** toggle masks typed names |
+| `StudentGrid.jsx` | Grid of StudentCards with collapse toggle and check conditions display. One-line header: "Students (n)", ⛶ Fullscreen All, a ⋯ `DropdownMenu` (🔔 Nudge Away (n), 🏅 Suggestions (n) → `BadgeSuggestionsPanel`, ☑ Select, 📖 Reference → topic library) with an attention dot while someone is Away or a suggestion is pending, and the › collapse. Select mode is for multi-award (select cards → 🏅 Award badge → `BadgeAwardDialog` with one shared `bulkId`; Done exits). `joiningStudents` (from `listJoiningStudents`) drives the header "n joining…" count and `JoiningStudentsList` above the cards; `onAdmitJoining` is the Pull in writer |
+| `PresenceBadge.jsx` | Shared online/away/offline/waiting badge used by StudentCard and StudentModal (Away = connected but window unfocused); while the session waits it reads "Waiting" with the real presence on its dot (`data-presence`) |
 | `NudgeBanner.jsx` | Student-side half of a teacher nudge: `NudgeBanner` (in-page "your teacher is asking for your attention" banner) and `NudgePermissionPrompt` (one-time opt-in for OS notifications on a white card; "Not now" is `btn-ghost-outline` and remembered in localStorage) |
 | `StudentCard.jsx` | Compact card: name, online/run/check/support/sharing badges, teacher-only item progress badge (`taskItemProgress.js`), teacher-only live badge count "🏅 n" with a dot while a suggestion is pending (`badgeAwardedCount` / `badgePendingCount`), select-mode checkbox role (`selectMode` / `selected` / `onToggleSelect`), code/output snippet (per the module's `capabilities.cardSummary`) or the activity/quiz answer summary (the activity UI's `CardSummary`), expand button |
 | `SharedWorkspacePreview.jsx` | Read-only render of a frozen share snapshot; maps a snapshot to each module's TeacherLiveView props |
@@ -122,8 +124,9 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `badges/CopyClassSummaryButton.jsx` | "📋 Copy class summary": copies the given plain text to the clipboard with Copied / failed feedback |
 | `badges/BadgeAwardDialog.jsx` | The tutor's manual badge picker: `BadgeAwardDialog({ students, decisions, catalogueBadges, taskId, onDecideBadge, onRevokeBadge, onClose })`, portalled to `<body>` with `role="dialog"` on the overlay (purple header, light body). Sections from `BADGE_PICKER_GROUPS`: "Suggested by rules", "Tutor-awarded", "Admin badges" (non-archived `catalogueBadges`, only when present); full two-line names; greys ones every selected student holds. Select, then confirm: a tile click selects it (`aria-pressed`) and shows its blurb and rule (hover previews), and the **Award** button awards with `source: 'manual'` and `replaceStatuses: ['dismissed', 'revoked']` (several students share one `bulkId`). For one student it lists their awards with Revoke; Escape closes it without closing the student modal |
 | `TeacherMessageToast.jsx` | Friendly dismissible toast shown to a student when a teacher sends them a personal message |
+| `ThumbsUpToast.jsx` | `ThumbsUpToast({ shownAt })`: the student's non-blocking "👍 You're on the right track!" pill (top-centre, `motion-pop-in`, `role="status"`, `pointer-events: none`); visibility comes from `useThumbsUp` |
 | `TeacherTimers.jsx` | Timer strip for elapsed lesson time, planned duration, and active-task countdown |
-| `TeacherSessionControls.jsx` | Teacher top-bar task navigation, presentation/share links, session action controls, and a "📹 Video Call" popover to set/edit the session's `videoCallLink` |
+| `TeacherSessionControls.jsx` | Teacher top-bar task navigation, presentation/share links, session action controls, and a "📹 Video Call" popover to set/edit the session's `videoCallLink`, plus "📹 Send to all" (`videoCallBroadcastAt`) once a link is set |
 | `TeacherCodeTabs.jsx` | Starter/stage/complete tab strip shown above teacher code editors; includes "Send to all" action |
 | `TeacherPreviewBanner.jsx` | Status banner shown when the teacher previews a task without moving students |
 | `TeacherSandboxBanner.jsx` | Status banner shown in sandbox staging/live mode with action buttons |
@@ -146,6 +149,21 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `LessonTaskContent.jsx` | Task content area: TaskSlideTransition wrapper, ExplainerPanel, CheckFeedbackBanner, and task-type dispatch via `getLessonModule()` registry (Quiz, Information, and Code Arrange rendered inline; other code types delegated to their module's `StudentWorkspace`) |
 | `SoloNav.jsx` | Bottom prev/next navigation bar for solo mode; includes Open Sandbox shortcut. Next gets a static `btn-next-success` look once the check passes and spins once (`usePassMoment`) only when the student watched the pass |
 
+### Presentation Annotations (`src/app/liveInk/`)
+
+The teacher's live pointer, fading ink and text highlights from the Presentation window, shown to the class on information tasks and code-task explainers. Data at the top-level RTDB node `liveInk/{lessonId}` (see `docs/agents/runtime-model.md`, "Presentation Annotations"; behaviour in `docs/agents/classroom-behaviours.md`).
+
+| File | Role |
+|---|---|
+| `LiveInkProvider.jsx` | Wraps `StudentView`'s page: subscribes to `liveInk/{lessonId}` (via `useSession().subscribeLiveInk`) for the teacher role (Presentation window) and student role (live lesson phase), owns the tool state, surface registry, Escape handling and the explainer force-open (`pushClassPaneCommand`), and renders the toolbar |
+| `liveInkContext.js` | The two contexts: config (role, tool, writer; changes rarely) and data (changes at ~12Hz, read only by the overlay) |
+| `InkSurface.jsx` | Marks a block of content as annotatable (`id` like `info:3`, `explainer:7`); handles the teacher's pointer, ink capture and highlight selection; renders `LiveInkOverlay`. Inert (renders children only) without a provider |
+| `LiveInkOverlay.jsx` | Draws one surface's pointer (lerp-smoothed), fading strokes (SVG) and highlights (CSS Custom Highlight API, rect fallback); students' off-screen edge chip |
+| `PresentationInkToolbar.jsx` | Floating 🔴 Pointer / ✏️ Ink / 🖍️ Highlight / Clear toolbar (Presentation window only) |
+| `geometry.js` | Pure helpers: point ↔ fractions of an element box, text-anchored points (`{ c, dx, dy }`: character offset + em offset; encode/decode, segment splitting where text reflowed), stroke thinning/mapping, quote re-finding with occurrence, plus small DOM helpers (anchor lookup, caret lookup, character boxes, text-offset ranges, selection description, scroll container) |
+| `liveInkData.js` | Node shape, paths, surface ids, timing constants, snapshot normalisation |
+| `liveInkWriter.js` | The Presentation window's RTDB writes: throttled pointer (`createThrottledMirrorWriter`, ~12Hz), strokes (auto-removed after the fade), highlights, clear, disconnect cleanup |
+
 ### Quiz Components (`src/app/components/quiz/`)
 
 | File | Role |
@@ -166,9 +184,10 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `OverrideDropdown.jsx` | Teacher check-override menu and fail-hint modal |
 | `MessageCompose.jsx` | Personal teacher message composer for one student |
 | `PaneFocusDropdown.jsx` | Checkbox picker + Highlight/Force actions for `teacherPaneCommand`: `PaneFocusControls` is the Focus section of StudentModal's More menu; the default `PaneFocusDropdown` wraps it as TeacherView's whole-class "Focus Class" menu; options are Instructions plus the module's `capabilities.focusPanes` |
-| `StudentWorkspaceBody.jsx` | Student workspace display inside the teacher modal, chosen by the module's `capabilities.studentMirror` (`code` / `files` inline editors, `blocks` / `view` through the module's `TeacherLiveView` passed in by StudentModal); the `code` mirror's `OutputPanel` mirrors `currentInputPrompt`/`currentInput` read-only while a watched student has a pending `input()` prompt |
+| `StudentWorkspaceBody.jsx` | Student workspace display inside the teacher modal, chosen by the module's `capabilities.studentMirror` (`code` / `files` inline editors, `blocks` / `view` through the module's `TeacherLiveView` passed in by StudentModal); the `code` mirror's `OutputPanel` mirrors `currentInputPrompt`/`currentInput` read-only while a watched student has a pending `input()` prompt. The `code` / `files` editors (and a `view` module's `TeacherLiveView`, e.g. Turtle) get the task's 💡 line hints via `mirrorLineHints.js` |
 | `ShareRequestPanel.jsx` | Teacher review of a pending workspace share: fetches the frozen snapshot, previews it read-only, approves or declines |
 | `constants.js` | StudentModal highlight emoji options and shared modal constants |
+| `mirrorLineHints.js` | `getMirrorLineHintSets(task, { mirror, file, isSessionSandbox })` — the task's line hint sets for the mirrored code/file (same `getTaskLineHintSets` the student editor uses; none in a session sandbox); `countShownLineHints(code, sets)` for the modal header's 💡 chip. Display only, no new data |
 
 ### Teacher View Sub-modules (`src/app/views/teacher/`)
 
@@ -177,7 +196,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TeacherEditorPanel.jsx` | Module-generic teacher editor/live-view panel, including starter/stage/complete tabs |
 | `CheckConditionsPanel.jsx` | Collapsible teacher-facing display of current task check conditions |
 | `BadgeSuggestionsPanel.jsx` | Collapsible centre-column panel (above the editor) of live badge suggestions grouped by student: emoji, title, reason, Award / Dismiss (`source: 'rule'`), an "Announce" checkbox (default on), "Award all (n)" for a badge suggested to several students (one shared `bulkId`), and the session's Auto-award / Sounds off toggles (`setBadgeSettings`); a `committed: false` decision (another tab first) shows a note, not an error. `open` / `onOpenChange` / `focusRequest` are controlled by `TeacherView` so the grid button can open it |
-| `TaskRatingPanel.jsx` | Collapsible panel, rendered above `CheckConditionsPanel`, letting the teacher rate the current task live (1-5 stars + notes) via `setTaskRating`; follows the teacher as they move between tasks |
+| `TaskRatingPanel.jsx` | "⭐ Rate this task" top-bar button opening a portalled, fixed-position popover that lets the teacher rate the current task live (1-5 stars + notes) via `setTaskRating`; follows the teacher between tasks (switching task closes it) and stays out of the centre column's layout |
 | `checkFormatting.js` | Human-readable check formatting helper used by `CheckConditionsPanel` |
 
 ---
@@ -200,8 +219,10 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `useStudentPresenceReporting.js` | Reports this student's window state to the teacher: connected, focused, fullscreen, recently active. Presentation windows report nothing and remove themselves from the roster |
 | `useBadgeCatalogue.js` | `useBadgeCatalogue(enabled)` → the Admin badge catalogue (`fetchBadgeCatalogue`), read once; `[]` until it loads or when the read fails. Called in `TeacherView`, which passes it on as `catalogueBadges` |
 | `useBadgeCelebrations.js` | Student side of live badges: `useBadgeCelebrations({ ready, enabled, decisions, viewerId, students, soundsOff, catalogueBadges })` → `{ moments, card, cardDone, toast, toastDone, muted, setMuted }`. Load baseline (no replay), recipient card queue with `playBadgeChime` (skipped for `soundsOff` or the shared Sounds mute, `useSoundsMuted`), class toast queue via `mergeClassToasts`; `viewerId: null` (presentation) gets toasts only. Called in `StudentView` |
+| `useThumbsUp.js` | `useThumbsUp({ ready, enabled, pushedAt, soundsOff })` → `{ thumbsUpAt }`: reacts to a teacher 👍 (`students/{id}/thumbsUpPushedAt`); load baseline (no replay), ignores pushes older than `THUMBS_UP_MAX_AGE_MS` (30 s), plays `playBadgeChime` unless muted / `soundsOff`, clears after `THUMBS_UP_VISIBLE_MS` (2.5 s) |
 | `useCompleteChime.js` | `useCompleteChime({ enabled, passed, taskKey, soundsOff })` → `{ skipTask }`: plays `playCompleteChime` the first time a task's checks pass while the student watches (`usePassMoment`, `COMPLETE_CHIME_ARRIVAL_GRACE_MS` arrival grace, once per task key per screen); respects `useSoundsMuted` and the tutor's `soundsOff`. Called in `StudentView` (disabled for presentation, preview and the personal sandbox) |
 | `useNudgeAlert.js` | Reacts to a teacher nudge (`students/{id}/nudgePushedAt` always; session `nudgeAwayPushedAt` only when the window is unfocused): banner, chime, and — while unfocused — tab flash until focus plus an OS notification. Timestamps present at load are a baseline and never replay |
+| `useVideoCallPrompt.js` | When the student's `VideoCallPrompt` shows: per-student `videoCallLinkPushedAt` or session `videoCallBroadcastAt`, on name entry / waiting room / lesson / sandbox. Load baseline (no replay), stale-push guard, closes on phase change |
 | `useSandboxCodePush.js` | Loads content the teacher pushes into the sandbox, keyed off the session's push timestamps: on the module's code channel `wire.fromCode(sandboxCode)` → `onPushedWork(work)`, on the files channel the decoded `sandboxFiles` (else the lesson's `sandboxStarterFiles`) → `onPushedFiles(files)` |
 | `useTypewriterOutput.js` | `useTypewriterOutput(output)` — reveals program output with the retro typing animation, chunking faster as the remaining text grows; shared by `OutputPanel` and `BuilderOutputPanel` |
 | `useCheckFeedback.js` | Check result state (`checkPassed`, `checkAttempted`, `checkSuggestion`, `repeatedSuggestionCount`, `testResults`); `resetCheckFeedback` / `applyCheckFeedback`; teacher check-override effect |
@@ -335,7 +356,11 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `html/fileTemplates.js` | Pure: `HTML_FILE_TYPE`, `isHtmlFileType`, `isHtmlEntryCandidate`, and the `HTML_ONLY` / `HTML_WITH_CSS` / `HTML_WITH_CSS_JS` file templates (Builder file manager, sandbox starter editor, `authoring.defaultTypeFields`) |
 | `html/print.js` | Pure: `printHtmlTask` — the HTML module's printable-lesson section |
 | `scratch/index.js` | Scratch module definition |
-| `scratch/checks.js` | Pure Scratch check evaluation: `evaluateScratchCheck`, `compare`, `createSpriteState`, `DEFAULT_SPRITES`, `normalizeSequenceItem` |
+| `scratch/blockInputs.js` | Pure (Blockly-free): `VALUE_INPUT_DEFAULTS` — each block's value inputs and default shadows; read by the lesson validator, re-exported from `scratch.js` |
+| `scratch/checks.js` | Pure Scratch check evaluation: `evaluateScratchCheck`, `compare`, `createSpriteState`, `DEFAULT_SPRITES`, `normalizeSequenceItem`, and the shared block matcher `matchesOpcodeSpec` / `opcodeAlternatives` (an `opcode` may be one opcode or a list of alternatives) |
+| `scratch/checkDispatch.js` | Pure per-sprite check dispatch shared by `ScratchWorkspace.jsx` and the CLI: `evaluateScratchCheckForSprites` (spriteName targeting, first-sprite fallback, any-sprite pass), `partialEvaluateScratchCheckForSprites` (after_block_placed pass/pending/fail), `findScratchCheckTarget`, `isScratchStaticCheck` / `SCRATCH_STATIC_CHECK_TYPES` |
+| `scratch/jsonWorkspace.js` | Pure: wraps saved Blockly workspace JSON in the duck-typed workspace interface the checks read (`createJsonWorkspace`, `buildJsonSpriteWorkspaces`, `parseScratchBlocksState`), so checks run in plain Node |
+| `scratch/checkVerification.js` | Pure static verification of a task's Scratch checks against its complete / starter / Complete-role stages (`verifyScratchTask`, `evaluateScratchStage`, `explainScratchCheck`, `getScratchVerificationStages`); used by `cli/check-tests.mjs` and `warnCompleteBlocks` |
 | `scratch/print.js` | Pure: `printScratchTask` — the Scratch module's printable-lesson section |
 | `scratch/scratch.js` | Custom Scratch interpreter: block definitions, multi-sprite state, broadcast, sounds, `CREATE_VARIABLE_CALLBACK_KEY`/`addCreateVariableButtonToToolbox` flyout button injection; re-exports check/state helpers from `checks.js` and persistence helpers from `scratchPersistence.js` |
 | `scratch/scratchEditors.jsx` | Scratch toolbox data, `buildScratchToolboxXml`, `parseScratchToolboxXml`, `ScratchToolboxPicker`, `ScratchCheckListEditor`, `ScratchCheckEditor`, variables, and prebuilt stack editors |
@@ -407,7 +432,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `turtle/StudentWorkspace.jsx` | Student Turtle workspace: Python editor, canvas, Run/Stop controls, collapsible output panel |
 | `turtle/BuilderWorkspace.jsx` | Builder Turtle code-stage editor with a self-contained on-demand drawing preview (own Pyodide run, like Arcade Kit's Builder preview) |
 | `turtle/CheckEditor.jsx` | Turtle check list editor with a Turtle/Code subject picker; code checks reuse `CheckValueEditor` and `checkEditorUtils.js` |
-| `turtle/TeacherLiveView.jsx` | Teacher's read-only code + canvas view of a student's turtle task, driven by the synced `currentTurtleResult`/`turtleResult` |
+| `turtle/TeacherLiveView.jsx` | Teacher's read-only code + canvas view of a student's turtle task, driven by the synced `currentTurtleResult`/`turtleResult`; optional `lineHints` (StudentModal) shows the task's 💡 line hints |
 | `_template/definition.js`, `_template/index.js`, `_template/StudentWorkspace.jsx`, `_template/BuilderWorkspace.jsx`, `_template/CheckEditor.jsx`, `_template/TeacherLiveView.jsx`, `_template/checks.js` | Module scaffold copied by `npm run new:module` (`scripts/new-module.mjs`): a working "write text, press Check" module on the generic work slot (`run: 'workspace'`, `checking.trigger: 'run'`, `codeWorkSlot`, core code checks) with every contract v2 group filled with safe defaults and `TODO(new-module)` markers, its tests (definition, workspace UI, StudentView click-through that skips while unregistered) and `doc.md.tmpl`. Never registered; `moduleDefinitionsNode` / `validationErrorsDoc` skip `_`-prefixed folders (the definition still loads under Node) |
 
 ### Module interface
@@ -449,6 +474,7 @@ Each `index.js` exports a default object with the following properties. UI surfa
 | `hasStarterContent(task)` | `fn \| null` | Optional: whether the task has starter content (`null` = never warn about an empty editor) |
 | `hasCheckValue(task)` | `fn \| null` | Optional: whether the completion check is worth the Builder's untested-check reminder (`null` = the generic code-check rule) |
 | `validateTaskInBrowser(task, { n, errors, warnings })` | `fn \| null` | Optional Builder-only rules needing browser APIs (Scratch toolbox XML via `DOMParser`); the CLI never calls it |
+| `verifyTaskChecks(task, label)` | `fn \| null` | Optional: the task's checks evaluated per check against its own authored stages, returning `{ taskId, title, stages, warnings }` — `lessons test-checks` without `--cases` (Scratch: `verifyScratchTask`) |
 | `runtime` | `object \| null` | Optional runtime bridge with `init`, `isReady`, `stop`, and module-specific helpers |
 
 ---
@@ -611,6 +637,7 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs
 | `editorOptions.js` | Markdown editor option data and helpers: image extensions, code block options, inline code options, Scratch insertion categories, and Scratch fence detection |
 | `ScratchBlocks.jsx` | SVG/path Scratch block renderer and fenced-stack parser used by MarkdownRenderer |
 | `tableParser.js` | Pure Markdown table parser used before handing content to ReactMarkdown |
+| `anchors.js` | Stable `data-md-anchor` content anchors (`b{n}`, `b{n}.p{k}`, `.h{k}`, `.li{k}`, `.img{k}`, `.q{k}`, `.pre{k}`, `.th`/`.tr{k}`): `rehypeMarkdownAnchors` plugin plus the block/table-row helpers MarkdownRenderer uses; Presentation annotations position marks against them |
 
 ### Input Recorder (`src/shared/input/`)
 
@@ -680,7 +707,7 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | `cli/validate.mjs` | `validateLessonForMcp(lesson)` — standalone lesson validation (no Firebase dependency): the shared core (`src/shared/lessonValidation.js`) plus the CLI-only `description is required` rule |
 | `cli/capabilities.mjs` | `buildCapabilities()` — JSON catalogue printed by `lessons capabilities` for lesson agents (no Firebase): modules (with their `taskFields`), activities (modes, `fields`, `fieldsByMode`, `authoredFields` from each definition's `fields`), the common / information / group task fields (`src/shared/taskFields.js`), check types, the `taskActivity` vocabulary (`src/shared/taskActivity.js`), the built-in badges with `badgeOptions`, and `requests` |
 | `cli/authoring-requests.mjs` | `readAuthoringRequests()` / `parseAuthoringRequest()` — reads `docs/authoring/authoring-requests/*.md` headers into `{ file, title, kind, status, requestedBy, lessonsBlocked }` for `lessons capabilities` |
-| `cli/check-tests.mjs` | `testLessonChecks(lesson, casesFile)` — source-code case harness using the shared runtime check evaluator, including feedback-match reporting |
+| `cli/check-tests.mjs` | `testLessonChecks(lesson, casesFile)` — source-code case harness using the shared runtime check evaluator, including feedback-match reporting; `testStageChecks(lesson, { taskId })` / `getStageVerifiableTasks` — the no-cases mode for tasks whose module declares `verifyTaskChecks` (Scratch: per-check, per-stage verification) |
 | `cli/topic-utils.mjs` | Standalone topic-library normalization and validation helpers used by CLI conversion/publish commands |
 | `cli/yaml-converter.mjs` | YAML conversion helpers for lessons and topic libraries, including lesson/topic JSON-to-YAML serialization and the `type: <activity>` shorthand (both directions, via the activity registry) |
 | `cli/structured-input.mjs` | JSON/YAML input detection for CLI files and stdin; lesson YAML is passed through the lesson shorthand converter |

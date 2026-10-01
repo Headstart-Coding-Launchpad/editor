@@ -19,7 +19,9 @@ import {
 // so the rendered answer state per sub-type is pinned here.)
 
 vi.mock('../../../../shared/CodeEditor', () => ({
-  CodeEditor: () => <div data-testid="code-editor" />,
+  CodeEditor: ({ lineHints }) => (
+    <div data-testid="code-editor" data-line-hints={JSON.stringify(lineHints ?? null)} />
+  ),
 }))
 vi.mock('../../../../modules/scratch/TeacherLiveView.jsx', () => ({
   default: () => <div data-testid="scratch-live" />,
@@ -202,5 +204,49 @@ describe('StudentWorkspaceBody code_arrange', () => {
     await user.click(screen.getByRole('button', { name: '5' }))
     await user.click(screen.getAllByText('Tap to place')[0])
     expect(onEditAnswer).toHaveBeenLastCalledWith({ codeArrangeSlots: { S1: 'S1' } })
+  })
+})
+
+describe('StudentWorkspaceBody line hints', () => {
+  const codeHints = [{ line: 1, text: 'Change the name', target: "name = 'Sam'" }]
+  const fileHints = [{ line: 2, text: 'Add a heading', target: '<body>' }]
+  const HINTED_TASK = {
+    id: 't-hints',
+    title: 'Hinted',
+    starterCode: "name = 'Sam'\nprint(name)\n",
+    lineHintSets: [
+      { source: 'starter', stageIndex: null, file: null, hints: codeHints },
+      { source: 'starter', stageIndex: null, file: 'index.html', hints: fileHints },
+    ],
+  }
+  const lineHintsOf = () => JSON.parse(screen.getByTestId('code-editor').dataset.lineHints)
+
+  it("passes the task's code hint sets to the mirrored code editor", () => {
+    renderBody(HINTED_TASK, { currentCode: "name = 'Sam'\nprint(name)\n" }, { mirror: 'code' })
+    expect(lineHintsOf()).toEqual([codeHints])
+  })
+
+  it("passes the active file's hint sets in the files mirror", () => {
+    const file = { name: 'index.html', type: 'html', content: '<html>\n<body>\n' }
+    renderBody(
+      HINTED_TASK,
+      {},
+      {
+        mirror: 'files',
+        files: [file],
+        activeFile: 'index.html',
+        activeFileObj: file,
+        setActiveFile: vi.fn(),
+      }
+    )
+    expect(lineHintsOf()).toEqual([fileHints])
+  })
+
+  it('passes no hints in a session sandbox or for a task without hint markers', () => {
+    const { unmount } = renderBody(HINTED_TASK, {}, { mirror: 'code', isSessionSandbox: true })
+    expect(lineHintsOf()).toBeNull()
+    unmount()
+    renderBody({ ...HINTED_TASK, lineHintSets: undefined }, {}, { mirror: 'code' })
+    expect(lineHintsOf()).toBeNull()
   })
 })

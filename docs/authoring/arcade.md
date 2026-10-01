@@ -113,11 +113,33 @@ def draw():
 ### Palette
 
 Sprites and `game.clear`, `game.rect`, and `game.text` share one 16-colour
-palette. Use one of these names (or its matching hex value):
+palette: the standard **PICO-8** palette, with exactly PICO-8's hex values
+(source of truth: `ARCADE_PALETTE` in `src/modules/arcade/design.js`). Use one
+of these names (or its matching hex value):
 
-`black`, `dark_blue`, `dark_purple`, `dark_green`, `brown`, `dark_gray`,
-`light_gray`, `white`, `red`, `orange`, `yellow`, `green`, `blue`,
-`lavender`, `pink`, `peach`.
+| Name | Hex |
+|---|---|
+| `black` | `#000000` |
+| `dark_blue` | `#1d2b53` |
+| `dark_purple` | `#7e2553` |
+| `dark_green` | `#008751` |
+| `brown` | `#ab5236` |
+| `dark_gray` | `#5f574f` |
+| `light_gray` | `#c2c3c7` |
+| `white` | `#fff1e8` |
+| `red` | `#ff004d` |
+| `orange` | `#ffa300` |
+| `yellow` | `#ffec27` |
+| `green` | `#00e436` |
+| `blue` | `#29adff` |
+| `lavender` | `#83769c` |
+| `pink` | `#ff77a8` |
+| `peach` | `#ffccaa` |
+
+`white` is PICO-8's warm off-white `#fff1e8`, **not** pure `#ffffff`. When an
+image-generation prompt or an external art tool needs to match what students
+see in the game window, give it these exact hexes (for example "PICO-8 palette;
+white is #fff1e8") rather than just naming the palette.
 
 ### `Sprite`
 

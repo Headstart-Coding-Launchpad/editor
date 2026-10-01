@@ -6,7 +6,7 @@ import {
 } from '../../app/components/CollapsiblePanelControls'
 import { useElementSize } from '../../shared/useElementSize.js'
 import { BadgeSignalsContext } from '../../shared/badgeSignalsContext.js'
-import { isBlocklyUserEdit } from '../../badges/signals.js'
+import { isBlocklyFieldIntermediateChange, isBlocklyUserEdit } from '../../badges/signals.js'
 import {
   loadBlocklyModules,
   DEFAULT_TOOLBOX,
@@ -21,8 +21,6 @@ import {
   normalizeKey,
   saveWorkspace,
   loadWorkspace,
-  evaluateScratchCheck,
-  partialEvaluateScratchCheck,
   setSpriteContext,
   setBackdropContext,
   setCostumeContext,
@@ -38,6 +36,10 @@ import {
   readGraphicEffects,
 } from './graphicEffects.js'
 import { FEEDBACK_TIMING, evaluateCheckWithCustomFeedback } from '../checks'
+import {
+  evaluateScratchCheckForSprites,
+  partialEvaluateScratchCheckForSprites,
+} from './checkDispatch.js'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import PanelTabs, { PanelTabPanel } from '../../app/components/PanelTabs'
 import { loadLayoutTab, saveLayoutTab } from '../../app/studentStorage'
@@ -208,6 +210,25 @@ export function isValidNewVariableName(name, existingVariables = []) {
   const trimmed = String(name ?? '').trim()
   if (!trimmed) return false
   return !(existingVariables ?? []).some((v) => v.name.toLowerCase() === trimmed.toLowerCase())
+}
+
+/**
+ * Routes a non-UI Blockly workspace change to the work it should trigger. Every change syncs
+ * the workspace (so a watching teacher sees typing as it happens); a brand-new block syncs
+ * at once. A keystroke inside an open text field (an intermediate field change) stops there:
+ * it must not clear check feedback or run after_block_placed / idle-feedback checks, or each
+ * character typed would be scored, and logged, as a separate attempt. The committed 'change'
+ * event Blockly fires when the field editor closes runs the checks once, on the final text.
+ */
+export function routeWorkspaceEdit(
+  event,
+  { hasCheckFeedback, clearCheckFeedback, syncNow, scheduleSync, scheduleChecks }
+) {
+  const typingInField = isBlocklyFieldIntermediateChange(event)
+  if (!typingInField && hasCheckFeedback()) clearCheckFeedback()
+  if (event.type === 'create') syncNow()
+  else scheduleSync()
+  if (!typingInField) scheduleChecks()
 }
 
 const ROT_STYLES = [
@@ -659,72 +680,13 @@ function PropField({ label, value, onChange, readOnly, min, max }) {
 // ── Check helpers ─────────────────────────────────────────────────────────────
 
 function evalSingleCheck(check, spriteWorkspaces, signal, preRunSpriteStates = {}) {
-  if (!check?.type) return false
-  try {
-    if (check.type === 'block_used') {
-      if (check.spriteName) {
-        const target =
-          spriteWorkspaces.find((sp) => sp.name === check.spriteName) ?? spriteWorkspaces[0]
-        return target ? evaluateScratchCheck(check, target.workspace, null, null) : false
-      }
-      return spriteWorkspaces.some((sp) => evaluateScratchCheck(check, sp.workspace, null, null))
-    }
-    if (check.type === 'variable_equals' || check.type === 'variable_compare') {
-      return evaluateScratchCheck(check, null, null, signal)
-    }
-    if (check.type === 'block_run') {
-      if (check.spriteName) {
-        const target =
-          spriteWorkspaces.find((sp) => sp.name === check.spriteName) ?? spriteWorkspaces[0]
-        return target ? evaluateScratchCheck(check, target.workspace, null, signal) : false
-      }
-      return spriteWorkspaces.some((sp) => evaluateScratchCheck(check, sp.workspace, null, signal))
-    }
-    if (check.type === 'blocks_in_order' || check.type === 'block_count') {
-      if (check.spriteName) {
-        const target =
-          spriteWorkspaces.find((sp) => sp.name === check.spriteName) ?? spriteWorkspaces[0]
-        if (!target) return false
-        return evaluateScratchCheck(check, target.workspace, null, null)
-      }
-      return spriteWorkspaces.some((sp) => evaluateScratchCheck(check, sp.workspace, null, null))
-    }
-    // sprite_property / sprite_property_delta / sprite_property_changed / costume_is: match by name or fall back to first
-    const target =
-      spriteWorkspaces.find((sp) => sp.name === check.spriteName) ?? spriteWorkspaces[0]
-    if (!target) return false
-    const preRunState = preRunSpriteStates[target.id] ?? null
-    return evaluateScratchCheck(check, target.workspace, target.state, signal, preRunState)
-  } catch {
-    return false
-  }
+  return evaluateScratchCheckForSprites(check, spriteWorkspaces, signal, preRunSpriteStates)
 }
 
-// Returns 'pass', 'pending', or 'fail' — used for after_block_placed evaluation.
-// A check with no spriteName passes if ANY sprite satisfies it (see evalSingleCheck
-// below), so it must only report 'fail' once EVERY sprite has ruled it out — one
-// unrelated sprite whose starter blocks happen to share the sequence's first opcode
-// (e.g. the near-universal "when green flag clicked" hat) would otherwise flag a
-// 'violation' against its own unrelated next block and fail the check for everyone,
-// before the student has touched the sprite the check actually targets.
+// Returns 'pass', 'pending', or 'fail' — used for after_block_placed evaluation (see
+// checkDispatch.js for the any-sprite aggregation rule).
 export function evalSingleCheckPartial(check, spriteWorkspaces) {
-  if (!check?.type) return 'fail'
-  try {
-    const bySprite = (fn) => {
-      if (check.spriteName) {
-        const target =
-          spriteWorkspaces.find((sp) => sp.name === check.spriteName) ?? spriteWorkspaces[0]
-        return target ? fn(target.workspace) : 'pending'
-      }
-      const results = spriteWorkspaces.map((sp) => fn(sp.workspace))
-      if (results.some((r) => r === 'pass')) return 'pass'
-      if (results.length > 0 && results.every((r) => r === 'fail')) return 'fail'
-      return 'pending'
-    }
-    return bySprite((ws) => partialEvaluateScratchCheck(check, ws))
-  } catch {
-    return 'pending'
-  }
+  return partialEvaluateScratchCheckForSprites(check, spriteWorkspaces)
 }
 
 function normalizeScratchChecks(check) {
@@ -732,6 +694,17 @@ function normalizeScratchChecks(check) {
   if (Array.isArray(check)) return check.filter((c) => c?.type)
   if (check.type) return [check]
   return []
+}
+
+// Hint eligibility during after_block_placed evaluation (before any Run): only a
+// block-placement check that has definitively failed may supply the hint. Run-time checks
+// (block_run, sprite_property*) can't be judged yet, and a merely 'pending' check hasn't
+// failed — either would otherwise win the hint over the check that actually failed.
+export function blockPlacedCheckHasFailed(check, spriteWorkspaces) {
+  return (
+    check?.evaluation === 'after_block_placed' &&
+    evalSingleCheckPartial(check, spriteWorkspaces) === 'fail'
+  )
 }
 
 // A live cursor's on-screen marker: a small solid dot for the exact pointer position,
@@ -1530,35 +1503,42 @@ export default function ScratchWorkspace({
       // saving on them would persist an empty/no-op state on mere task visits.
       if (event.isUiEvent) return
       if (isBlocklyUserEdit(event)) reportUserEditRef.current?.('blocks')
-      // Any real edit invalidates a prior check attempt (e.g. clicking a block to edit its
-      // field runs it via click-to-run, which can fail; the failure banner must not linger
-      // once the learner starts fixing it). The debounced evaluators below recompute a fresh
-      // verdict for after_block_placed/idle-feedback checks; after_run-only checks stay
-      // cleared until the learner runs again.
-      if (lastCheckRef.current !== null) clearCheckFeedback()
-      pendingSyncRef.current = true
-      clearTimeout(syncTimerRef.current)
-      if (event.type === 'create') {
-        // A brand-new block (e.g. just dragged out of the flyout) doesn't exist
-        // in a watching mirror's last-synced copy yet, so the live block-drag
-        // position stream has nothing to move there until this lands — sync
-        // right away instead of waiting out the debounce, so it appears (at
-        // wherever it currently sits) and live-following can pick it up for
+      routeWorkspaceEdit(event, {
+        // Any committed edit invalidates a prior check attempt (e.g. clicking a block to edit
+        // its field runs it via click-to-run, which can fail; the failure banner must not
+        // linger once the learner starts fixing it). The debounced evaluators recompute a fresh
+        // verdict for after_block_placed/idle-feedback checks; after_run-only checks stay
+        // cleared until the learner runs again.
+        hasCheckFeedback: () => lastCheckRef.current !== null,
+        clearCheckFeedback,
+        // A brand-new block (e.g. just dragged out of the flyout) doesn't exist in a watching
+        // mirror's last-synced copy yet, so the live block-drag position stream has nothing to
+        // move there until this lands — sync right away instead of waiting out the debounce,
+        // so it appears (at wherever it currently sits) and live-following can pick it up for
         // the rest of the drag instead of only once the drag settles.
-        emitWorkspaceState()
-      } else {
-        syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
-      }
-      clearTimeout(blockPlacedTimerRef.current)
-      blockPlacedTimerRef.current = setTimeout(
-        () => evaluateBlockPlacedChecksRef.current?.(),
-        BLOCK_PLACED_CHECK_DEBOUNCE
-      )
-      clearTimeout(idleFeedbackTimerRef.current)
-      idleFeedbackTimerRef.current = setTimeout(
-        () => evaluateIdleFeedbackRef.current?.(),
-        IDLE_FEEDBACK_DEBOUNCE
-      )
+        syncNow: () => {
+          pendingSyncRef.current = true
+          clearTimeout(syncTimerRef.current)
+          emitWorkspaceState()
+        },
+        scheduleSync: () => {
+          pendingSyncRef.current = true
+          clearTimeout(syncTimerRef.current)
+          syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
+        },
+        scheduleChecks: () => {
+          clearTimeout(blockPlacedTimerRef.current)
+          blockPlacedTimerRef.current = setTimeout(
+            () => evaluateBlockPlacedChecksRef.current?.(),
+            BLOCK_PLACED_CHECK_DEBOUNCE
+          )
+          clearTimeout(idleFeedbackTimerRef.current)
+          idleFeedbackTimerRef.current = setTimeout(
+            () => evaluateIdleFeedbackRef.current?.(),
+            IDLE_FEEDBACK_DEBOUNCE
+          )
+        },
+      })
     })
     div.addEventListener('click', (event) => handleWorkspaceDomClick(event, ws, spriteId, Blockly))
     // Cursor position is captured off the hot path: a block (or flyout-stack) drag
@@ -2192,7 +2172,10 @@ export default function ScratchWorkspace({
           evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
         '',
         {},
-        { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT }
+        {
+          feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT,
+          isCompletionCheckFailed: (c) => blockPlacedCheckHasFailed(c, sws),
+        }
       )
       notifyCheck(false, false, { suggestion: evaluation.suggestion })
     } else {

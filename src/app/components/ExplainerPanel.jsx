@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 import { firstViewKey, useFirstView } from '../../shared/motion'
+import InkSurface from '../liveInk/InkSurface'
 
 export default function ExplainerPanel({
   title,
@@ -21,6 +22,9 @@ export default function ExplainerPanel({
   // view the panel drops in and its bullets slide in; null (Builder editor panes, StudentModal)
   // never animates.
   entranceKey = null,
+  // Presentation annotations: names this panel's content (e.g. `explainer:7`, `info:3`) so the
+  // teacher can point at, draw on and highlight it live. Null leaves it un-annotatable.
+  inkSurfaceId = null,
 }) {
   const isFirstView = useFirstView(
     entranceKey == null ? null : firstViewKey('explainer', entranceKey)
@@ -136,18 +140,20 @@ export default function ExplainerPanel({
             }}
             onScroll={updateScrollState}
           >
-            <MarkdownRenderer
-              content={content}
-              textScale={markdownTextScale}
-              topicType={topicType}
-              showLibrary={showLibrary}
-              onTopicOpen={onTopicOpen}
-              onTopicClose={onTopicClose}
-              openTopicId={openTopicId}
-              disableCopy={disableCopy}
-              imageLayout={imageLayout}
-              animateLists={showEntrance}
-            />
+            <InkSurface id={inkSurfaceId}>
+              <MarkdownRenderer
+                content={content}
+                textScale={markdownTextScale}
+                topicType={topicType}
+                showLibrary={showLibrary}
+                onTopicOpen={onTopicOpen}
+                onTopicClose={onTopicClose}
+                openTopicId={openTopicId}
+                disableCopy={disableCopy}
+                imageLayout={imageLayout}
+                animateLists={showEntrance}
+              />
+            </InkSurface>
           </div>
           {!expanded && canExpandOverlay && canScroll && !atBottom && (
             <div style={s.showMoreBar}>

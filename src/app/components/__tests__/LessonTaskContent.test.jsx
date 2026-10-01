@@ -122,6 +122,26 @@ describe('LessonTaskContent teacher-live-code support reference', () => {
     expect(screen.getByText("Live from your teacher's screen")).toBeInTheDocument()
   })
 
+  it('marks a pinned (kept on) live code reference with 📌', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+
+    render(
+      <LessonTaskContent
+        {...baseProps}
+        lesson={{ type: 'python' }}
+        cs={{
+          inPersonalSandbox: false,
+          teacherLiveReferenceActive: true,
+          teacherLiveReferencePinned: true,
+        }}
+        isForcedTeacherLive={false}
+        teacherLiveReferencePayload={{ code: 'print("live")' }}
+      />
+    )
+
+    expect(screen.getByText("📌 Live from your teacher's screen")).toBeInTheDocument()
+  })
+
   it('converts the teacherLive files map into text for HTML', () => {
     getLessonModule.mockReturnValue({
       type: 'html',

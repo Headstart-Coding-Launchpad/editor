@@ -58,6 +58,12 @@ export function CodeArrangeTeacherLiveView({
     : (student.currentCode ?? '')
   const selectedAnswer =
     slots && typeof slots === 'object' ? slots : deriveSlotStateFromCode(task, code)
+  // The same pass/fail the StudentCard shows: a teacher override wins, otherwise the last run.
+  const hasOverride = !!student.checkOverridePushedAt
+  const checkPassed = hasOverride
+    ? student.checkOverridePassed === true
+    : student.checkPassed === true
+  const checkAttempted = hasOverride || student.lastRunStatus != null
   return (
     <CodeArrangeTask
       task={task}
@@ -65,7 +71,8 @@ export function CodeArrangeTeacherLiveView({
       selectedAnswer={selectedAnswer}
       output={student.currentOutput ?? ''}
       runStatus={student.lastRunStatus}
-      checkPassed={student.checkPassed}
+      checkPassed={checkPassed}
+      checkAttempted={checkAttempted}
       iframeSrc={iframeSrc}
       iframeRef={iframeRef}
       onSelectAnswer={onEditSlots}

@@ -11,6 +11,7 @@ import {
   saveSessionReport,
 } from '../../shared/lessonService'
 import { prepareClassroomLesson } from '../studentTaskContent'
+import { listJoiningStudents } from '../joiningStudents'
 import { attachTeacherFeedback, buildSessionReport } from '../../shared/lessonReport'
 import { decodeLessonFromFirestore } from '../../shared/lessonBlocksCodec'
 import EditLessonModal from '../components/EditLessonModal'
@@ -101,7 +102,9 @@ export default function TeacherView({ lessonId }) {
     requestFullscreenForAll,
     requestFullscreenForStudent,
     nudgeStudent,
+    sendThumbsUp,
     nudgeAwayStudents,
+    admitJoiningStudent,
     setAutoRevealStage,
     setActiveStudentView,
     setTeacherLive,
@@ -124,6 +127,7 @@ export default function TeacherView({ lessonId }) {
     sendMessageToStudent,
     updateVideoCallLink,
     sendVideoCallLink,
+    broadcastVideoCallLink,
     requestTeacherEdit,
     pushTeacherLiveCode,
     commitTeacherEdit,
@@ -588,7 +592,10 @@ export default function TeacherView({ lessonId }) {
   const students = session
     ? Object.entries(session.students ?? {}).map(([id, s]) => ({ ...s, anonymousId: id }))
     : []
-  const joiningCount = Object.keys(session?.joiningStudents ?? {}).length
+  const joiningStudents = useMemo(
+    () => listJoiningStudents(session?.joiningStudents),
+    [session?.joiningStudents]
+  )
   const isPreviewing = previewTaskId !== null && !isInSandbox
 
   async function handleSendStageToAll(action) {
@@ -646,7 +653,7 @@ export default function TeacherView({ lessonId }) {
   // Fill-height module workspaces (capabilities.teacherFillHeight) are sized to the centre
   // column, which clips instead of scrolling. Everything else scrolls the column,
   // and the editor must then keep its own minimum height rather than collapsing
-  // under the panels below it (TaskRatingPanel, CheckConditionsPanel) — see
+  // under the panels around it (BadgeSuggestionsPanel, CheckConditionsPanel) — see
   // TeacherEditorPanel's `fillHeight` prop.
   const centreFillsHeight =
     (isInformationTask ||
@@ -661,6 +668,16 @@ export default function TeacherView({ lessonId }) {
         isSandbox={isSandbox}
         right={
           <>
+            {/* A popover from the top bar, not a panel in <main>, so it never resizes the
+                task workspace (see TaskRatingPanel). */}
+            {task && !isInformationTask && !isInSandbox && (
+              <TaskRatingPanel
+                taskId={task.id}
+                taskTitle={task.title}
+                existingRating={session?.taskRatingLog?.[task.id] ?? null}
+                onSave={setTaskRating}
+              />
+            )}
             {session && !isInformationTask && (
               <PaneFocusDropdown
                 label="Focus Class"
@@ -680,6 +697,7 @@ export default function TeacherView({ lessonId }) {
               onRestartSession={restartSession}
               onReturnToAdmin={() => navigate('/admin')}
               onUpdateVideoCallLink={updateVideoCallLink}
+              onBroadcastVideoCallLink={broadcastVideoCallLink}
               onRemoveSharedWorkspace={removeSharedWorkspace}
               onRemoveAllSharedWorkspaces={removeAllSharedWorkspaces}
               onOpenSharedWorkspace={handleOpenTeacherShare}
@@ -827,14 +845,6 @@ export default function TeacherView({ lessonId }) {
             badgeWall={teacherBadgeWall}
             entranceKey={firstViewKey(lessonId, task?.id)}
           />
-          {task && !isInformationTask && !isInSandbox && (
-            <TaskRatingPanel
-              taskId={task.id}
-              taskTitle={task.title}
-              existingRating={session?.taskRatingLog?.[task.id] ?? null}
-              onSave={setTaskRating}
-            />
-          )}
           {task?.check != null && !isInSandbox && (
             <CheckConditionsPanel check={task.check} taskTitle={task.title} />
           )}
@@ -844,7 +854,8 @@ export default function TeacherView({ lessonId }) {
         <aside style={s.right}>
           <StudentGrid
             students={students}
-            joiningCount={joiningCount}
+            joiningStudents={joiningStudents}
+            onAdmitJoining={admitJoiningStudent}
             lesson={lesson}
             lessonId={lessonId}
             session={session}
@@ -883,6 +894,7 @@ export default function TeacherView({ lessonId }) {
             onRequestFullscreenAll={requestFullscreenForAll}
             onRequestFullscreenStudent={requestFullscreenForStudent}
             onNudgeStudent={nudgeStudent}
+            onThumbsUpStudent={sendThumbsUp}
             onNudgeAway={nudgeAwayStudents}
             onSetAutoReveal={setAutoRevealStage}
             badgeSuggestions={badgeSuggestions}

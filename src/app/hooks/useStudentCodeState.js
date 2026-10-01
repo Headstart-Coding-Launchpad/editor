@@ -21,6 +21,12 @@ import {
   getStageRole,
   isRevealableStage,
 } from '../../shared/taskUtils'
+import {
+  TEACHER_LIVE_PIN_REVEAL_KEY,
+  TEACHER_LIVE_REVEAL_KEY,
+  getTeacherLivePin,
+  isTeacherLivePinLogged,
+} from '../../shared/taskStages.js'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { isFlaggablePaste, isSamePasteText, measurePaste } from '../../shared/pasteDetection'
 import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesystem'
@@ -38,7 +44,7 @@ import {
   selectHtmlTaskFiles,
   selectPythonTaskCode,
 } from '../studentTaskContent'
-import { decodeSessionFiles } from '../../shared/workspaceData'
+import { decodeSessionFiles, getFileType } from '../../shared/workspaceData'
 import { resolveIframeErrorLocation } from '../../modules/html/iframe'
 import { buildCodeCheckContext } from '../codeCheckContext'
 import { useCheckFeedback } from './useCheckFeedback'
@@ -48,7 +54,17 @@ import { useStudentPresenceReporting } from './useStudentPresenceReporting'
 import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
 import { useActivityState } from './useActivityState'
-import { isHostedActivityTask, isModuleHostedActivityTask } from '../../activities/registry.pure.js'
+import {
+  getModuleHostedActivity,
+  isHostedActivityTask,
+  isModuleHostedActivityTask,
+} from '../../activities/registry.pure.js'
+import { solutionOrInitialState } from '../../activities/state.js'
+import {
+  assembleCodeArrangement,
+  getCodeArrangeEntryFile,
+  getCodeArrangeSlotCode,
+} from '../../shared/codeArrange.js'
 import { buildSharedWorkspaceSnapshot } from '../sharedWorkspacePayload'
 import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
@@ -222,7 +238,15 @@ export function useStudentCodeState({
   // answers"): their logged attempts carry teacherAssisted for the report.
   const teacherAssistedTaskIdsRef = useRef(new Set())
   const appliedTeacherAnswerEditAtRef = useRef(null)
+  // A teacher's "Edit answers" tiles for a code_arrange task: `{ slots, taskId, at }`, applied once
+  // to that task's board by CodeArrangeTaskContainer (which then acknowledges it) and dropped when
+  // the student moves to another task, so it never lands on a different task's board or over the
+  // student's later placements.
   const [teacherCodeArrangeEdit, setTeacherCodeArrangeEdit] = useState(null)
+  // A teacher "Start again" / "Complete" reset of a code_arrange task: `{ slots, taskId, at }`,
+  // applied to that task's tiles by CodeArrangeTaskContainer (which then acknowledges it) so the
+  // board matches the reset code slot.
+  const [codeArrangeReset, setCodeArrangeReset] = useState(null)
   const [teacherAnswerNoticeAt, setTeacherAnswerNoticeAt] = useState(null)
   // Bumped when the teacher presses Run for this student; each module
   // workspace reacts via useRemoteRunTrigger with its own Run action.
@@ -239,8 +263,11 @@ export function useStudentCodeState({
   const htmlSupportAttemptsRef = useRef(new Map())
   // Latest code_arrange tile-placement state (owned by CodeArrangeTaskContainer,
   // mirrored here purely so the "teacher starts watching" effect below can
-  // publish it immediately — see handleCodeArrangeSlotsChange.
+  // publish it immediately — see handleCodeArrangeSlotsChange — and so Run can
+  // assemble the program from the tiles if the code slot has lost it. The task
+  // id is the task the board reported for.
   const codeArrangeSlotStateRef = useRef({})
+  const codeArrangeSlotTaskIdRef = useRef(null)
 
   const IDLE_FEEDBACK_DELAY_MS = 900
 
@@ -493,29 +520,49 @@ export function useStudentCodeState({
   // Teacher-live-code support reference: Presentation View's independent
   // teacherLiveReference broadcast (separate from teacherLive, which drives
   // the all-or-nothing "Go Live" force takeover) shown as a dismissible
-  // reference. Deriving this reactively — rather than via an explicit
-  // "clear" write — is what makes it auto-clear the instant Presentation
-  // closes or moves to a different task.
-  const teacherLiveReferenceRequested =
-    !!myStudentData?.teacherLiveReferenceVisible || !!session?.teacherLiveReferenceVisibleToAll
+  // reference. Two ways in (see docs/agents/classroom-behaviours.md):
+  // - pinned ("Keep showing live code"): students.{id}.teacherLiveReferenceVisible or
+  //   session.teacherLiveReferenceVisibleToAll — shows on every task until unpinned;
+  // - one-off ("Reveal live code"): a supportRevealLog entry for this task
+  //   (TEACHER_LIVE_REVEAL_KEY), so it drops off on the next task like a stage reveal.
+  // Deriving this reactively — rather than via an explicit "clear" write — is
+  // what makes it auto-clear the instant Presentation closes or moves to a
+  // different task.
+  const teacherLivePin = getTeacherLivePin(
+    myStudentData?.teacherLiveReferenceVisible,
+    session?.teacherLiveReferenceVisibleToAll
+  )
+  const teacherLiveReferenceRevealed = !!supportStageReveals[TEACHER_LIVE_REVEAL_KEY]
+  const teacherLiveReferenceRequested = !!teacherLivePin || teacherLiveReferenceRevealed
   const teacherLiveReferenceActive =
     teacherLiveReferenceRequested &&
     !!session?.teacherLiveReference?.active &&
     session?.teacherLiveReference?.taskId === currentTaskId
+  const teacherLiveReferencePinned = !!teacherLivePin && teacherLiveReferenceActive
 
-  // Log the first time this becomes visible for this task, matching the
-  // existing "note the reveal happened once" semantics used for authored
-  // stage reveals — recordSupportStageReveal already no-ops on repeats.
+  // Log a pinned reference once per pin — on the first task it actually shows —
+  // not on every task while it stays pinned (that made the teacher's "Support"
+  // chip reappear on every task). A one-off reveal is logged when it is revealed
+  // (StudentModal writes it; "Reveal live code to all" lands in the remote-reset
+  // effect below), so it needs nothing here.
+  const loggedTeacherLivePinsRef = useRef(new Set())
   useEffect(() => {
-    if (!teacherLiveReferenceActive) return
+    if (!teacherLiveReferencePinned) return
     if (teacherPresentation || phase !== 'lesson') return
-    if (!effectiveIdentity?.anonymousId) return
-    recordSupportStageReveal?.(effectiveIdentity.anonymousId, currentTaskId, 'teacherLive', {
-      source: 'teacher',
-      stageLabel: "Teacher's live code",
+    const anonymousId = effectiveIdentity?.anonymousId
+    if (!anonymousId) return
+    if (loggedTeacherLivePinsRef.current.has(teacherLivePin)) return
+    if (isTeacherLivePinLogged(session?.supportRevealLog?.[anonymousId], teacherLivePin)) return
+    loggedTeacherLivePinsRef.current.add(teacherLivePin)
+    recordSupportStageReveal?.(anonymousId, currentTaskId, TEACHER_LIVE_PIN_REVEAL_KEY, {
+      source: 'teacher-auto',
+      stageLabel: "Teacher's live code (kept on)",
+      pinnedAt: teacherLivePin,
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    teacherLiveReferenceActive,
+    teacherLiveReferencePinned,
+    teacherLivePin,
     teacherPresentation,
     phase,
     effectiveIdentity?.anonymousId,
@@ -1098,6 +1145,13 @@ export function useStudentCodeState({
     // Activity resets are applied by useActivityState.
     if (isHostedActivityTask(task)) return
 
+    // "Reveal live code to all": a one-off reveal of the teacher's live code for
+    // this task only (see teacherLiveReferenceActive).
+    if (action === 'reveal_live') {
+      handleRevealTeacherLiveReference()
+      return
+    }
+
     const revealMatch = action.match(/^reveal_stage_(\d+)$/)
     if (revealMatch) {
       const stageIndex = parseInt(revealMatch[1], 10)
@@ -1155,6 +1209,36 @@ export function useStudentCodeState({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.remoteResetPushedAt])
 
+  // A teacher reset of a code_arrange task also resets its tiles: 'starter' to an empty board,
+  // 'complete' to the authored solution — the same initialState / solutionState a hosted
+  // activity's reset loads (useActivityState). The effect above resets the code slot ('starter'
+  // restores the empty starter); without this the board kept its tiles over an empty slot, so the
+  // next Run executed (and logged) an empty program. As in useActivityState, the reset already
+  // on the student record when this tab first sees it is history and is never re-applied.
+  const seenCodeArrangeResetAtRef = useRef(undefined)
+  const remoteResetPushedAt = myStudentData?.remoteResetPushedAt ?? null
+  useEffect(() => {
+    if (!myStudentData) return
+    if (seenCodeArrangeResetAtRef.current === undefined) {
+      seenCodeArrangeResetAtRef.current = remoteResetPushedAt
+      return
+    }
+    if (!remoteResetPushedAt || remoteResetPushedAt === seenCodeArrangeResetAtRef.current) return
+    if (phase !== 'lesson' && phase !== 'solo') return
+    seenCodeArrangeResetAtRef.current = remoteResetPushedAt
+    const task = findTaskById(lesson?.tasks, currentTaskId)
+    const activity = getModuleHostedActivity(task)
+    if (!activity) return
+    const action = myStudentData.remoteResetAction
+    if (action !== 'starter' && action !== 'complete') return
+    const slots =
+      action === 'complete' ? solutionOrInitialState(activity, task) : activity.initialState(task)
+    setCodeArrangeReset({ slots, taskId: currentTaskId, at: remoteResetPushedAt })
+    clearRunFor(lesson.type)
+    resetCheckFeedback()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remoteResetPushedAt, !!myStudentData])
+
   // Apply a teacher's edit to this student's Code Arrange tiles (StudentModal "Edit answers").
   // Quiz and activity answer edits are applied by useActivityState, so marking, the Firebase
   // mirror and the attempt log behave exactly as if the student had answered — the only
@@ -1173,11 +1257,23 @@ export function useStudentCodeState({
     const task = findTaskById(lesson.tasks, currentTaskId)
     if (isModuleHostedActivityTask(task) && edit.codeArrangeSlots) {
       teacherAssistedTaskIdsRef.current.add(currentTaskId)
-      setTeacherCodeArrangeEdit({ slots: edit.codeArrangeSlots, at: edit.at })
+      setTeacherCodeArrangeEdit({
+        slots: edit.codeArrangeSlots,
+        taskId: currentTaskId,
+        at: edit.at,
+      })
       setTeacherAnswerNoticeAt(edit.at)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.teacherAnswerEdit?.at, lesson, phase, currentTaskId])
+
+  // A pending code_arrange teacher edit belongs to one task: drop it once the student is on
+  // another, so a later visit's board never re-applies it.
+  useEffect(() => {
+    setTeacherCodeArrangeEdit((current) =>
+      current && String(current.taskId) !== String(currentTaskId) ? null : current
+    )
+  }, [currentTaskId])
 
   // Teacher pressed Run for this student (StudentModal). Consumed (cleared in
   // Firebase) as soon as it's handed to the workspace, so it runs once.
@@ -1308,6 +1404,28 @@ export function useStudentCodeState({
 
   // ─── Run / Stop / Tests ────────────────────────────────────────────────────
 
+  // Safety net for a code_arrange task: Run executes (and the attempt log records) the code slot,
+  // never the tiles. CodeArrangeTaskContainer keeps the slot in step with a complete board, but if
+  // the slot still holds something else at Run (e.g. a reset that landed in the same moment), the
+  // program is assembled from the tiles first, so a complete board never runs an empty program.
+  // Not in the personal or session sandbox, where the slot holds the sandbox's own code.
+  function syncCodeArrangeSlotBeforeRun(task) {
+    if (!isModuleHostedActivityTask(task)) return
+    if (phase === 'sandbox' || inPersonalSandboxRef.current) return
+    if (String(codeArrangeSlotTaskIdRef.current) !== String(currentTaskId)) return
+    const assembled = assembleCodeArrangement(task, codeArrangeSlotStateRef.current)
+    if (assembled === null) return
+    const moduleType = lesson?.type
+    const definition = workSlotDefinition(moduleType)
+    if (!definition) return
+    const slotCode = isFilesWork(definition)
+      ? getCodeArrangeSlotCode(task, { files: workValueFor(moduleType)?.files ?? [] })
+      : getCodeArrangeSlotCode(task, { code: storedWork(moduleType).work })
+    if (slotCode === assembled) return
+    if (isFilesWork(definition)) handleFileChange(getCodeArrangeEntryFile(task), assembled)
+    else handleCodeChange(assembled)
+  }
+
   async function handleRun() {
     const actor = effectiveIdentity
     if (!actor || running) return
@@ -1329,6 +1447,7 @@ export function useStudentCodeState({
       runKind === 'runtime' ||
       (runKind === 'preview' && typeof mod?.runtime?.buildPreviewSrc === 'function')
     if (!runsHere) return
+    syncCodeArrangeSlotBeforeRun(task)
 
     setRunning(true)
     setOutput('')
@@ -1849,7 +1968,11 @@ export function useStudentCodeState({
     const definition = workSlotDefinition(lesson?.type)
     if (!isFilesWork(definition)) return
     const current = workValueFor(definition.type)
-    const nextFiles = current.files.map((f) => (f.name === filename ? { ...f, content } : f))
+    // A file the work doesn't hold yet is added (a code_arrange html task's entry file when the
+    // starter files lack it), so the change is never silently dropped.
+    const nextFiles = current.files.some((f) => f.name === filename)
+      ? current.files.map((f) => (f.name === filename ? { ...f, content } : f))
+      : [...current.files, { name: filename, type: getFileType(filename, 'html'), content }]
     if (htmlErrorLocation?.file === filename) setHtmlErrorLocation(null)
     handleFilesWorkChange(
       definition,
@@ -1920,6 +2043,7 @@ export function useStudentCodeState({
   // currentCodeArrangeSlots record for a teacher passively watching them.
   function handleCodeArrangeSlotsChange(slotState, { fromTeacher = false } = {}) {
     codeArrangeSlotStateRef.current = slotState
+    codeArrangeSlotTaskIdRef.current = currentTaskIdRef.current ?? null
     if (!identity) return
     if (!fromTeacher) supersedeTeacherAnswerEdit()
     if (canPublishTeacherLive()) publishTeacherLive({ codeArrangeSlots: slotState })
@@ -1943,7 +2067,7 @@ export function useStudentCodeState({
 
   /**
    * A 'workspace'-checked module (Scratch) evaluated the task check itself and reports the
-   * outcome: `passed`, the workspace's own `suggestion` (else the first check hint is used), and
+   * outcome: `passed`, the workspace's own `suggestion` (empty → the generic banner), and
    * the `work` it checked (else the task's saved work). Applies local feedback; then, in a live
    * lesson, the teacher sandbox or while watched, writes the run (the work as `code` via
    * wire.toCode) and, in a live lesson while unsolved, the attempt (wire.submission).
@@ -1952,11 +2076,9 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const alreadySolved = isAlreadySolved()
     const effectivePassed = alreadySolved ? true : passed
-    const checks = Array.isArray(task?.check) ? task.check : task?.check ? [task.check] : []
-    const suggestion = effectivePassed
-      ? ''
-      : String(reportedSuggestion ?? '').trim() ||
-        String(checks.find((c) => c?.hint)?.hint ?? '').trim()
+    // The workspace already applied the shared hint rule (checks.js buildCheckFeedbackResult);
+    // an empty suggestion means no failed check had a hint, so the generic banner shows.
+    const suggestion = effectivePassed ? '' : String(reportedSuggestion ?? '').trim()
     if (!alreadySolved && task?.check) applyCheckFeedback(passed, suggestion)
     const definition = workSlotDefinition(lesson?.type)
     if (!identity || definition?.checking.trigger !== 'workspace') return
@@ -2334,6 +2456,39 @@ export function useStudentCodeState({
     }
   }
 
+  // One-off reveal of the teacher's live code on the current task (the teacher's
+  // "Reveal live code to all"). Shown at once from local state; the supportRevealLog
+  // entry keeps it across a reload and is what the teacher's views and reports read.
+  // Only while Presentation is broadcasting this task, so a stray command never logs
+  // a reveal of a reference the student never saw.
+  function handleRevealTeacherLiveReference() {
+    if (!effectiveIdentity) return
+    const liveReference = sessionRef.current?.teacherLiveReference ?? session?.teacherLiveReference
+    if (!liveReference?.active || liveReference.taskId !== currentTaskId) return
+    const stageLabel = "Teacher's live code"
+    setLocalSupportStageReveals((prev) => ({
+      ...prev,
+      [currentTaskId]: {
+        ...(prev[currentTaskId] ?? {}),
+        [TEACHER_LIVE_REVEAL_KEY]: {
+          taskId: currentTaskId,
+          stageIndex: TEACHER_LIVE_REVEAL_KEY,
+          stageLabel,
+          source: 'teacher',
+          revealedAt: Date.now(),
+        },
+      },
+    }))
+    if (!teacherPresentation && phase === 'lesson') {
+      recordSupportStageReveal?.(
+        effectiveIdentity.anonymousId,
+        currentTaskId,
+        TEACHER_LIVE_REVEAL_KEY,
+        { source: 'teacher', stageLabel }
+      )
+    }
+  }
+
   // 'first' = the first support stage; 'support' = every support stage (never the
   // solution); 'solution' = the complete stage, falling back to every support
   // stage on a task that has no complete stage.
@@ -2590,6 +2745,14 @@ export function useStudentCodeState({
     // generic work slot.
     code,
     teacherCodeArrangeEdit,
+    codeArrangeReset,
+    // The board applied the reset: a later remount (another task, or back from an earlier one)
+    // must not apply it again over the student's newer tiles.
+    acknowledgeCodeArrangeReset: (at) =>
+      setCodeArrangeReset((current) => (current?.at === at ? null : current)),
+    // The board applied the teacher's "Edit answers" tiles: never apply them again.
+    acknowledgeTeacherCodeArrangeEdit: (at) =>
+      setTeacherCodeArrangeEdit((current) => (current?.at === at ? null : current)),
     teacherAnswerNoticeAt,
     remoteRunToken,
     acknowledgeRemoteRun: (token) =>
@@ -2624,6 +2787,7 @@ export function useStudentCodeState({
     activeSupportStageIndex,
     offeredSupportStageIndex,
     teacherLiveReferenceActive,
+    teacherLiveReferencePinned,
     targetedStageOffer,
     targetedPreviewStageIndex,
     // A workspace-owned module's (Scratch's) pushed work, under its old names.

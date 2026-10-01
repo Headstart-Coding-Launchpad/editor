@@ -5,6 +5,7 @@ import { getModuleDefinition, getModuleTypesWithCapability } from '../../modules
 import SplitPane from '../../shared/SplitPane'
 import ExplainerPanel from './ExplainerPanel'
 import InformationTask from './InformationTask'
+import { SURFACE_KINDS, surfaceId } from '../liveInk/liveInkData'
 import LessonCompleteScreen from './LessonCompleteScreen'
 import { getModuleHostedActivityUi } from '../../activities/registry.js'
 import ActivityHost from '../../activities/ActivityHost.jsx'
@@ -478,6 +479,13 @@ export default function LessonTaskContent({
         onCollapsedChange={!useSideExplainer ? setAccordionExplainerCollapsed : undefined}
         highlighted={!useSideExplainer && instructionsHighlighted}
         entranceKey={hasSandboxExplainer ? null : taskEntranceKey}
+        // Presentation annotations cover the task's own explainer only (not a pushed sandbox
+        // explainer or the complete-code reveal).
+        inkSurfaceId={
+          !hasSandboxExplainer && !showsCompleteCode && task?.id != null
+            ? surfaceId(SURFACE_KINDS.explainer, task.id)
+            : null
+        }
       />
     </div>
   ) : null
@@ -546,7 +554,9 @@ export default function LessonTaskContent({
             : targetedReferenceStage
               ? 'Shown for your feedback'
               : teacherLiveReferenceStage
-                ? "Live from your teacher's screen"
+                ? cs.teacherLiveReferencePinned
+                  ? "📌 Live from your teacher's screen"
+                  : "Live from your teacher's screen"
                 : reveal?.source === 'teacher' || reveal?.source === 'teacher-auto'
                   ? 'Opened by your teacher'
                   : 'Shown after a failed attempt'

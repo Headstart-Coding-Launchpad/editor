@@ -6,10 +6,13 @@ import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
 import { MarkdownRenderer } from '../../shared/markdown'
 import BadgeAwardDialog from './badges/BadgeAwardDialog'
 import DropdownMenu from './student-modal/DropdownMenu'
+import JoiningStudentsList from './JoiningStudentsList'
 
 export default function StudentGrid({
   students = [],
-  joiningCount = 0,
+  // [{ tempId, typedName, joinedAt }] from listJoiningStudents(session.joiningStudents)
+  joiningStudents = [],
+  onAdmitJoining,
   lesson,
   lessonId,
   session,
@@ -48,6 +51,7 @@ export default function StudentGrid({
   onRequestFullscreenAll,
   onRequestFullscreenStudent,
   onNudgeStudent,
+  onThumbsUpStudent,
   onNudgeAway,
   onSetAutoReveal,
   badgeSuggestions = null,
@@ -58,6 +62,7 @@ export default function StudentGrid({
   collapsed,
   onToggle,
 }) {
+  const joiningCount = joiningStudents.length
   const [expandedStudentId, setExpandedStudentId] = useState(null)
   const [showTopicsDialog, setShowTopicsDialog] = useState(false)
   const [fullscreenRequested, setFullscreenRequested] = useState(false)
@@ -335,11 +340,13 @@ export default function StudentGrid({
         </div>
       </div>
 
+      <JoiningStudentsList joiningStudents={joiningStudents} onAdmit={onAdmitJoining} />
+
       {students.length === 0 ? (
         <div style={s.empty}>
           <p>
             {joiningCount > 0
-              ? `${joiningCount} student${joiningCount === 1 ? '' : 's'} entering their name…`
+              ? 'No one has joined yet. Wait for them to press Join, or pull them in above.'
               : 'No students yet.'}
           </p>
           {joiningCount === 0 && (
@@ -401,6 +408,7 @@ export default function StudentGrid({
                 onRemove={onRemove}
                 onExpand={handleExpand}
                 onNudge={onNudgeStudent}
+                onThumbsUp={onThumbsUpStudent}
                 badgePendingCount={
                   badgeSuggestions?.pendingCountByStudent?.[student.anonymousId] ?? 0
                 }
@@ -497,6 +505,7 @@ export default function StudentGrid({
           onRequestShareSnapshot={onRequestShareSnapshot}
           onRequestFullscreen={onRequestFullscreenStudent}
           onNudge={onNudgeStudent}
+          onThumbsUp={onThumbsUpStudent}
           onSetAutoReveal={onSetAutoReveal}
           onDecideBadge={onDecideBadge}
           onRevokeBadge={onRevokeBadge}

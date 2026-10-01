@@ -537,6 +537,22 @@ describe('StudentModal', () => {
       await user.click(screen.getByRole('button', { name: /Send Video Call Link/ }))
       expect(onSendVideoCallLink).toHaveBeenCalledWith('student-1')
     })
+
+    it('offers the send for a named student still in the waiting room', async () => {
+      const user = userEvent.setup()
+      const onSendVideoCallLink = vi.fn()
+      render(
+        <StudentModal
+          {...mkProps({
+            onSendVideoCallLink,
+            session: { ...ACTIVE_SESSION, state: 'waiting', videoCallLink: 'https://zoom.us/j/1' },
+          })}
+        />
+      )
+      await user.click(screen.getByRole('button', { name: /^More/ }))
+      await user.click(screen.getByRole('button', { name: /Send Video Call Link/ }))
+      expect(onSendVideoCallLink).toHaveBeenCalledWith('student-1')
+    })
   })
 
   describe('Scratch lessons', () => {
@@ -808,6 +824,43 @@ describe('StudentModal item progress', () => {
   })
 })
 
+describe('StudentModal line hints', () => {
+  const HINTED_LESSON = {
+    type: 'python',
+    tasks: [
+      {
+        id: 1,
+        title: 'Hinted task',
+        lineHintSets: [
+          {
+            source: 'starter',
+            stageIndex: null,
+            file: null,
+            hints: [
+              { line: 1, text: 'Change the name', target: "name = 'Sam'" },
+              { line: 2, text: 'Print it', target: 'print(name)' },
+            ],
+          },
+        ],
+      },
+    ],
+  }
+
+  it('shows how many of the task hints are still on the student code', () => {
+    render(
+      <StudentModal
+        {...mkProps({ lesson: HINTED_LESSON }, { currentCode: "name = 'Ali'\nprint(name)\n" })}
+      />
+    )
+    expect(screen.getByTestId('modal-line-hint-count')).toHaveTextContent('💡 1 hint showing')
+  })
+
+  it('shows no hint count for a task without hint markers', () => {
+    render(<StudentModal {...mkProps()} />)
+    expect(screen.queryByTestId('modal-line-hint-count')).not.toBeInTheDocument()
+  })
+})
+
 describe('StudentModal live badges', () => {
   it('shows the teacher-only badge count in the header', () => {
     render(
@@ -937,6 +990,17 @@ describe('StudentModal header', () => {
     expect(onGoLiveForAll).toHaveBeenCalled()
   })
 
+  it('sends a 👍 from the header and confirms it', async () => {
+    const user = userEvent.setup()
+    const onThumbsUp = vi.fn()
+    render(<StudentModal {...mkProps({ onThumbsUp })} />)
+    await user.click(screen.getByRole('button', { name: 'Send Jamie a thumbs up' }))
+    expect(onThumbsUp).toHaveBeenCalledWith('student-1')
+    const button = screen.getByRole('button', { name: 'Send Jamie a thumbs up' })
+    expect(button).toBeDisabled()
+    expect(button).toHaveTextContent('✓ Sent')
+  })
+
   it('closes an open menu on Escape without closing the modal', async () => {
     const user = userEvent.setup()
     const props = mkProps({ onDecideBadge: vi.fn() })
@@ -946,5 +1010,182 @@ describe('StudentModal header', () => {
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('button', { name: '🏅 Award badge' })).not.toBeInTheDocument()
     expect(props.onClose).not.toHaveBeenCalled()
+  })
+})
+
+// Every student card opens the modal, information tasks included, so each information type has to
+// render a sensible body (and nothing crash).
+describe('information tasks', () => {
+  function infoLesson(task) {
+    return {
+      type: 'python',
+      title: 'Loops Lesson',
+      level: 'Level 2',
+      tasks: [{ id: 1, taskType: 'information', title: 'Info', ...task }],
+    }
+  }
+
+  it('renders a standard information task as its explainer', () => {
+    render(<StudentModal {...mkProps({ lesson: infoLesson({ explainer: 'Read this first.' }) })} />)
+    expect(screen.getByTestId('explainer-panel')).toHaveTextContent('Read this first.')
+    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+  })
+
+  it('renders a standard information task with no explainer without crashing', () => {
+    render(<StudentModal {...mkProps({ lesson: infoLesson({}) })} />)
+    expect(screen.getByTestId('explainer-panel')).toBeInTheDocument()
+  })
+
+  it('renders an introduction task as the lesson title and meta', () => {
+    render(
+      <StudentModal {...mkProps({ lesson: infoLesson({ informationType: 'introduction' }) })} />
+    )
+    expect(screen.getByRole('heading', { name: 'Loops Lesson' })).toBeInTheDocument()
+    expect(screen.getByText('Level 2')).toBeInTheDocument()
+    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+  })
+
+  it('renders a recap task without crashing', () => {
+    render(
+      <StudentModal
+        {...mkProps({
+          lesson: infoLesson({ informationType: 'recap', leftContent: 'We learned loops' }),
+        })}
+      />
+    )
+    expect(screen.getByText('We learned loops')).toBeInTheDocument()
+  })
+
+  it('renders a Badge Summary task as the class wall the student sees', () => {
+    render(
+      <StudentModal
+        {...mkProps({
+          lesson: infoLesson({ informationType: 'badges', title: 'Our coding moments' }),
+          session: { ...ACTIVE_SESSION, badges: {}, students: {} },
+        })}
+      />
+    )
+    expect(screen.getByRole('region', { name: 'Our coding moments' })).toBeInTheDocument()
+    expect(
+      screen.getByText("Coding moments will appear here as they're celebrated.")
+    ).toBeInTheDocument()
+    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+  })
+})
+
+describe('teacher live code reference (Support menu)', () => {
+  const PRESENTING = {
+    ...ACTIVE_SESSION,
+    teacherLiveReference: { active: true, taskId: 1, code: 'print("live")' },
+  }
+
+  function liveProps(overrides = {}, studentOverrides = {}) {
+    return mkProps(
+      {
+        session: PRESENTING,
+        onRevealSupportStage: vi.fn(),
+        onSetTeacherLiveReference: vi.fn(),
+        ...overrides,
+      },
+      studentOverrides
+    )
+  }
+
+  it('offers a one-off "Reveal live code" that logs a teacher reveal for this task only', async () => {
+    const user = userEvent.setup()
+    const props = liveProps()
+    render(<StudentModal {...props} />)
+    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    await user.click(screen.getByRole('button', { name: 'Reveal live code' }))
+    expect(props.onRevealSupportStage).toHaveBeenCalledWith('student-1', 1, 'teacherLive', {
+      source: 'teacher',
+      stageLabel: "Teacher's live code",
+    })
+    // A one-off reveal is not a pin.
+    expect(props.onSetTeacherLiveReference).not.toHaveBeenCalled()
+  })
+
+  it('shows "Opened: live code" once revealed on this task', async () => {
+    const user = userEvent.setup()
+    render(
+      <StudentModal
+        {...liveProps({
+          session: {
+            ...PRESENTING,
+            supportRevealLog: { 'student-1': { 1: { teacherLive: { source: 'teacher' } } } },
+          },
+        })}
+      />
+    )
+    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    expect(screen.getByRole('button', { name: 'Opened: live code' })).toBeDisabled()
+  })
+
+  it('offers "Reveal live code" again on a task where it was not revealed', async () => {
+    const user = userEvent.setup()
+    render(
+      <StudentModal
+        {...liveProps({
+          session: {
+            ...PRESENTING,
+            // Revealed on another task only.
+            supportRevealLog: { 'student-1': { 7: { teacherLive: { source: 'teacher' } } } },
+          },
+        })}
+      />
+    )
+    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    expect(screen.getByRole('button', { name: 'Reveal live code' })).toBeEnabled()
+  })
+
+  it('pins with "📌 Keep showing live code"', async () => {
+    const user = userEvent.setup()
+    const props = liveProps()
+    render(<StudentModal {...props} />)
+    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    const pinBtn = screen.getByRole('button', { name: '📌 Keep showing live code' })
+    expect(pinBtn).toHaveAttribute('aria-pressed', 'false')
+    await user.click(pinBtn)
+    expect(props.onSetTeacherLiveReference).toHaveBeenCalledWith('student-1', true)
+    expect(props.onRevealSupportStage).not.toHaveBeenCalled()
+  })
+
+  it('shows the pinned state as "📌 Live code: kept on" and unpins from it', async () => {
+    const user = userEvent.setup()
+    const props = liveProps({}, { teacherLiveReferenceVisible: 1000 })
+    render(<StudentModal {...props} />)
+    // Header chip, so the pin is obvious without opening the menu.
+    expect(screen.getByText('📌 Live code: kept on')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    const pinBtn = screen.getByRole('button', { name: '📌 Live code: kept on' })
+    expect(pinBtn).toHaveAttribute('aria-pressed', 'true')
+    await user.click(pinBtn)
+    expect(props.onSetTeacherLiveReference).toHaveBeenCalledWith('student-1', false)
+  })
+
+  it('shows the class pin as kept on in the header', () => {
+    render(
+      <StudentModal
+        {...liveProps({ session: { ...PRESENTING, teacherLiveReferenceVisibleToAll: 1000 } })}
+      />
+    )
+    expect(screen.getByText('📌 Live code: kept on')).toBeInTheDocument()
+  })
+
+  it('disables both live-code actions until Presentation is on this task', async () => {
+    const user = userEvent.setup()
+    render(
+      <StudentModal
+        {...liveProps({
+          session: {
+            ...ACTIVE_SESSION,
+            teacherLiveReference: { active: true, taskId: 2, code: 'x' },
+          },
+        })}
+      />
+    )
+    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    expect(screen.getByRole('button', { name: 'Reveal live code' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '📌 Keep showing live code' })).toBeDisabled()
   })
 })

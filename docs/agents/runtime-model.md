@@ -4,7 +4,9 @@ Load this when a task touches Firebase, localStorage, routing, session state, id
 
 ## Firebase Data Model
 
-Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCallLinkPushedAt` fields below were added as an explicitly user-authorized deviation for the lesson-join/video-call rework — not an ad hoc addition.)
+Do not deviate from this shape. (The `videoCallLink`, `videoCallBroadcastAt` and `students.{id}.videoCallLinkPushedAt` fields below were added as explicitly user-authorized deviations for the lesson-join/video-call rework and the "Send to all" video-call broadcast — not ad hoc additions.)
+
+The top-level `liveInk/{lessonId}` node (Presentation annotations) was likewise added with explicit user approval; its shape is in "Presentation Annotations" below.
 
 ```json
 {
@@ -25,9 +27,11 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
       },
       "sandboxExplainer": "string | null",
       "explainerShowComplete": false,
+      "teacherLiveReferenceVisibleToAll": "number | null (\"📌 Keep showing live code to class\" pin: the time it was pinned; legacy true still counts; not cleared by setTaskId — see classroom-behaviours.md \"Teacher-Live-Code Reference\")",
       "fullscreenRequestedAt": "1234567890 | null",
       "nudgeAwayPushedAt": "1234567890 | null (class-wide nudge; only students whose window is unfocused react)",
       "videoCallLink": "string | null (http(s) URL only, validated at the write boundary; ephemeral — reset to null on createSession/restartSession/endSession, so the teacher re-enters it each session)",
+      "videoCallBroadcastAt": "1234567890 | null (class-wide \"Send to all\" video-call push; reaches name-entry, waiting-room and lesson/sandbox students; reset to null on createSession/endSession)",
       "teacherLive": {
         "active": true,
         "source": "teacher | student",
@@ -71,7 +75,11 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
       "sandboxEnteredAt": "number | null (teacher's Date.now() when the class entered the teacher sandbox; the id of the open visit in sessionArchive. Set by enterSandbox, cleared by exitSandbox/endSession/createSession)",
       "lessonOverrideTasks": "Task[] | null (answer fields sealed into task._sealed; see Sealed Task Answers)",
       "joiningStudents": {
-        "{tempId}": { "joinedAt": 1234567890 }
+        "{tempId}": {
+          "joinedAt": "number (server timestamp, set by registerJoining)",
+          "typedName": "string ≤ 30 (optional; the trimmed name being typed on NameEntry, throttled ≤ 1 write / 750ms; absent when empty)",
+          "admit": "{ name: string ≤ 30, at: number (server timestamp) } (optional; teacher/admin-only 'Pull in')"
+        }
       },
       "taskStartTimes": {
         "{taskId}": 1234567890
@@ -124,7 +132,8 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
               "stageLabel": "With a variable already created",
               "source": "teacher | student | teacher-auto",
               "attemptNumber": 2,
-              "revealedAt": "ServerValue.TIMESTAMP"
+              "revealedAt": "ServerValue.TIMESTAMP",
+              "pinnedAt": "number | true (teacherLivePinned entries only: the pin they log)"
             }
           }
         }
@@ -186,7 +195,10 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
       "students": {
         "{anonymousId}": {
           "displayName": "Jamie",
-          "joinedAt": 1234567890,
+          "joinedAt": "1234567890 (latest name entry: joinSession overwrites it on every join)",
+          "firstJoinedAt": "1234567890 (first join this session, client ms; written once by joinSession's transaction, never overwritten)",
+          "firstJoinTaskId": "number | string | null (session currentTaskId when firstJoinedAt was written)",
+          "rejoins": "[{ at, taskId }] | null (each later name entry (joinSession) or reload-return (recordStudentReturn, only when firstJoinedAt exists); appended by transaction, latest 20 kept — MAX_STUDENT_REJOINS)",
           "online": true,
           "currentCode": "string",
           "currentArcadeDesign": "object | null (watched Arcade student's throttled sprite/map snapshot)",
@@ -206,7 +218,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
           "lastRunStatus": "success | error | null",
           "checkPassed": true,
           "lastRunAt": 1234567890,
-          "remoteResetAction": "starter | complete | stage_0 | stage_1 | ...",
+          "remoteResetAction": "starter | complete | stage_0 | stage_1 | ... | reveal_stage_N | reveal_live (one-off \"Reveal live code to all\" for the current task)",
           "remoteResetPushedAt": 1234567890,
           "teacherAnswerEdit": "object | null ({ answer: string | null, codeArrangeSlots: object | null, passed: boolean | null, taskId, at } — teacher's edit of a Match/Fill in the Gaps answer or Code Arrange tiles, applied by the student's tab when `at` changes; the student clears it when they supersede it with their own change)",
           "remoteRunPushedAt": "number | null (teacher pressed Run for this student in StudentModal; the student's tab runs its current code and clears this back to null)",
@@ -224,6 +236,8 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
           "teacherMessage": "string | null",
           "teacherMessagePushedAt": "number | null",
           "nudgePushedAt": "number | null (teacher nudge for this student — see useNudgeAlert)",
+          "thumbsUpPushedAt": "number | null (teacher 👍 \"on the right track\" — stamped by sendThumbsUp; transient toast via useThumbsUp, not a badge, not in reports; cleared by setTaskId)",
+          "teacherLiveReferenceVisible": "number | null (\"📌 Keep showing live code\" pin for this student: the time it was pinned; legacy true still counts; not cleared by setTaskId)",
           "autoRevealStage": "'first' | 'support' | 'solution' | null (teacher's \"Show on every task\" reference for this student — see below)",
           "pasteLog": {
             "{taskId}": { "count": 2, "chars": 180, "lastAt": 1234567890, "firstAt": "ServerValue.TIMESTAMP (first large paste on the task, set once)" }
@@ -280,10 +294,11 @@ Teacher writes:
 
 - `state`, `currentTaskId`, `startedAt`, `currentTaskStartedAt`, `endedAt`, `isPaused`
 - `taskStartTimes/{taskId}` — stamped by `startSession` (for the initial task) and `setTaskId` (for the newly-entered task); overwritten if the teacher revisits a task. Used by `buildSessionReport` to compute time-on-task.
-- `taskRatingLog/{taskId}` (`setTaskRating`) — the teacher's own live rating of a task (1-5 stars plus "what worked well"/"what didn't work" notes), entered via `TaskRatingPanel.jsx` in the main task panel while that task is showing, not just at end-of-session. Last write wins per task; saving with every field blank removes the entry instead of leaving an empty stub. Not cleared by `setTaskId` (so it survives the teacher moving on and back), but is nulled by `createSession`/`endSession` like `overrideLog`/`supportRevealLog` — `buildSessionReport` reads it (see "Session Reports" below) before `endSession` clears it.
+- `taskRatingLog/{taskId}` (`setTaskRating`) — the teacher's own live rating of a task (1-5 stars plus "what worked well"/"what didn't work" notes), entered via `TaskRatingPanel.jsx` (the top bar's "⭐ Rate this task" popover) while that task is showing, not just at end-of-session. Last write wins per task; saving with every field blank removes the entry instead of leaving an empty stub. Not cleared by `setTaskId` (so it survives the teacher moving on and back), but is nulled by `createSession`/`endSession` like `overrideLog`/`supportRevealLog` — `buildSessionReport` reads it (see "Session Reports" below) before `endSession` clears it.
 - `activeStudentView`, `teacherLive`
 - `teacherClassPaneCommand` (`pushClassPaneCommand`/`clearClassPaneCommand`) — whole-class "highlight this tab/panel" or "force-switch to this tab/panel" broadcast (e.g. Electronics' Breadboard/MicroPython tabs, Scratch's Blocks/Stage tabs, or the Instructions/explainer pane on any lesson type); every connected student evaluates this same node. See the per-student `teacherPaneCommand` bullet below for semantics and the `docs/agents/classroom-behaviours.md` section for student-side behaviour. Cleared by `setTaskId`
 - `videoCallLink` (written by `updateVideoCallLink`, validated as http(s)-only — throws on any other scheme or malformed URL; settable any time during a session via the "📹 Video Call" popover in `TeacherSessionControls.jsx`; reset to `null` on `createSession`/`restartSession`/`endSession`) — shown to students in `WaitingRoom.jsx` whenever set
+- `videoCallBroadcastAt` (stamped by `broadcastVideoCallLink` from the "📹 Send to all" button beside the Video Call control in `TeacherSessionControls.jsx`, only offered while a `videoCallLink` is set and the session hasn't ended; reset to `null` on `createSession`/`endSession`) — a class-wide video-call push. Every student screen that can show the prompt reacts: name entry (those students have no student record yet, so this is the only push that reaches them), the waiting room, and the lesson/sandbox page. See "Video call prompt" in `docs/agents/classroom-behaviours.md`
 - `sandboxCode`, `sandboxCodePushedAt`, `sandboxFiles`, `sandboxFilesUpdatedAt`
 - `sandboxPreviousTaskId` (written by `enterSandbox`, consumed and cleared by `exitSandbox` — see `docs/agents/classroom-behaviours.md`)
 - `sandboxExplainer` (pushed via `pushSandboxExplainer`, cleared on `createSession`/`endSession`/entering sandbox) and `explainerShowComplete` (toggled via `setExplainerShowComplete`; reset to `false` on `setTaskId`, `createSession`, `endSession` — see `docs/agents/classroom-behaviours.md` for the student-facing "Complete Code" reveal this gates)
@@ -292,6 +307,7 @@ Teacher writes:
 - `nudgeAwayPushedAt` (stamped by `nudgeAwayStudents` from the "🔔 Nudge Away" item in `StudentGrid`'s ⋯ header menu, reset to `null` on `createSession`/`endSession`) — a class-wide nudge. Each student client's `useNudgeAlert` only reacts if its window is unfocused when the new timestamp arrives. The per-student equivalent is `students/{id}/nudgePushedAt` (`nudgeStudent`, from the 🔔 button on an Away `StudentCard` or the StudentModal header), which always alerts that student. Timestamps already present when a student's session first loads are a baseline and never replay. The alert shows an in-page banner and plays a Web Audio chime; if the window is unfocused it also flashes the tab title and favicon until the window regains focus, and shows an OS `Notification` when permission was already granted (students opt in once via `NudgePermissionPrompt`)
 - any student's `displayName`
 - student node removal
+- `joiningStudents/{tempId}/admit` (`admitJoiningStudent(tempId, name)`, `{ name, at: serverTimestamp() }`) — "Pull in" from the Student Grid's joining list (`JoiningStudentsList.jsx`), which shows each marker's `typedName` ("Jamie (typing…)", or "Someone (typing…)" when empty) and opens a small editor prefilled with it. The student's own device does the actual join (see "Name entry" under student writes)
 
 Teacher per-student actions:
 
@@ -306,8 +322,9 @@ Teacher per-student actions:
 - Remote edit (Python/Scratch only): `requestTeacherEdit` sets `teacherEditRequestedAt` and clears `teacherEditAcceptedAt`/`teacherLiveCode`/`teacherEditApplyCode`/`teacherEditAppliedAt`, prompting the student for consent. Once accepted, `pushTeacherLiveCode` streams `teacherLiveCode` as the teacher types; `commitTeacherEdit` writes the final code to `teacherEditApplyCode` + `teacherEditAppliedAt` and directly to the student's `currentCode`; `cancelTeacherEdit` clears the request without committing. All eight `teacherEdit*`/`teacherLiveCode` fields are cleared by `setTaskId`.
 - Remote stage push: `requestTeacherStage` sets `teacherStageRequestedAt` and `teacherStagePendingAction` (a reset-action string, same shape as `remoteResetAction`) and clears `teacherStageAcceptedAt`, prompting the student for consent before the stage change is applied; `clearTeacherStage` clears all three fields. Cleared by `setTaskId`.
 - Stage reference reveal: `recordSupportStageReveal` writes `supportRevealLog/{anonymousId}/{taskId}/{stageIndex}` with `source: "teacher"`, stage label, attempt count, and server timestamp. This reveals a read-only Python/HTML stage reference to that one student and does not write to their editor.
+- Teacher live code (`teacherLiveReference`): `{stageIndex}` may also be `teacherLive` (a one-off "Reveal live code" for that task — the entry is what shows it, so it drops off on the next task; written by the teacher's `recordSupportStageReveal` or by the student applying a `reveal_live` remote-reset action) or `teacherLivePinned` (logged once per "📌 Keep showing" pin, with `pinnedAt`; display-only). The pins themselves are `students/{id}/teacherLiveReferenceVisible` and `teacherLiveReferenceVisibleToAll` (pin time), which `setTaskId` does not clear. See `docs/agents/classroom-behaviours.md` "Teacher-Live-Code Reference".
 - "Show on every task" reference: `setAutoRevealStage` writes the student's `autoRevealStage` (`'first'` = first support stage, `'support'` = every support stage, `'solution'` = the complete stage, falling back to every support stage where a task has none; `null` = off). The student's client (`useStudentCodeState`) re-applies it as each task loads in a live lesson, logging each reveal with `source: "teacher-auto"` so the report counts it separately. Session-only: it lives on the student node, which `createSession`/`endSession` clear. Not cleared by `setTaskId`.
-- Send video call link: `sendVideoCallLink(anonymousId)` stamps that student's own `videoCallLinkPushedAt`, from the "📹 Send Video Call Link" action in `StudentModal.jsx`'s "More" menu — pops `VideoCallPrompt.jsx` for that one student. Independent of the session-level `videoCallLink`; the teacher can target one student mid-lesson even outside the waiting room.
+- Send video call link: `sendVideoCallLink(anonymousId)` stamps that student's own `videoCallLinkPushedAt`, from the "📹 Send Video Call Link" action in `StudentModal.jsx`'s "More" menu — pops `VideoCallPrompt.jsx` for that one student, in the waiting room or the lesson (any task type). Waiting-room students have a tile once named, so the action is available for them too. The prompt needs the session-level `videoCallLink` to be set (the action is only offered then). The class-wide equivalent is the session's `videoCallBroadcastAt`.
 
 Student writes:
 
@@ -324,15 +341,16 @@ Student writes:
 - Carry-through walk-back: when a live lesson task carries from a skipped source and resolves to an earlier saved source in the authored carry chain, the student writes own `carryFallbackLog/{taskId}` with the carry field, requested source, resolved source, skipped source ids, and server timestamp. Empty saved state is not skipped.
 - Personal sandbox: own `inPersonalSandbox` set to `true` on entry and `null` on exit.
 - Topic library: own `currentTopicId` when a topic opens; cleared when dialog closes and by `setTaskId`.
-- Name entry: own `joiningStudents/{tempId}` during name-entry phase; removed on joining or leaving.
-- Dismiss a teacher highlight: removes one `teacherHighlights/{highlightId}` entry on their own node (same `removeTeacherHighlight` call the teacher uses to retract one).
+- Name entry: own `joiningStudents/{tempId}` during name-entry phase (`{ joinedAt }` via `registerJoining`); removed on joining or leaving. While the student types, `NameEntry` shares the trimmed name as `typedName` (`setJoiningTypedName` via `useStudentPhase`'s `reportTypedName`; leading + trailing throttle, at most one write per 750ms, capped at the input's 30 characters, removed when the box is empty). No typedName write happens once the marker is gone, and the rules reject one that would recreate it.
+- Teacher "Pull in" (student side): `useStudentPhase` listens to its own marker (`subscribeJoiningMarker`, a dedicated listener because the phase logic ignores session changes during name entry). When `admit = { name, at }` appears it calls the normal `handleNameSubmit` once with the admitted name, after the same duplicate-name suffixing NameEntry applies (`applyNameSuffix` in `src/app/joiningStudents.js`), so identity creation, `joinSession` and the next phase (waiting room if the session is waiting, lesson/sandbox if live) are exactly a normal submit. It ignores admits stamped before the marker's `joinedAt`, admits without a usable name, and admits arriving while the student's own Join is in flight.
+- Dismiss a teacher highlight: removes one `teacherHighlights/{highlightId}` entry on their own node (same `removeTeacherHighlight` call the teacher uses to retract one). Written when they click its badge, and when they edit inside the highlighted code (see classroom-behaviours.md, Teacher Code Highlights).
 - Presence: own `windowFocused`, `lastActivityAt`, `isFullscreen`, and `visiblePanes` via `writeStudentPresence`, independent of the `online` onDisconnect key. `isFullscreen` mirrors `document.fullscreenElement` (updated on the browser's `fullscreenchange` event) and drives the "⛶ Fullscreen" badge on `StudentCard` — it reflects actual fullscreen state, not whether `fullscreenRequestedAt` was acted on. `visiblePanes` is written by `LessonTaskContent.jsx` on every change (debounced by identity, not per-keystroke) and reflects the info/explainer pane's open/closed state uniformly across all lesson types, plus each module's own internal panes for Electronics/Python/HTML/Arcade (`modulePanes`) or Scratch's Blocks/Stage split.
 - Remote edit/stage consent: `acceptTeacherEdit`/`acceptTeacherStage` set their own `teacherEditAcceptedAt`/`teacherStageAcceptedAt`; `declineTeacherEdit`/`declineTeacherStage` clear the corresponding request fields without accepting.
 - Large pastes: own `pasteLog/{taskId}` via `recordStudentPaste` (`{ count, chars, lastAt, firstAt }`, see `docs/agents/classroom-behaviours.md`). `firstAt` is a server timestamp set on the first large paste only (the badge guards order it against a pass); `lastAt` keeps being overwritten. Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `pastes` and the task summary's `pasteCount`/`pastedStudentCount`.
 - Live badge signals: own `studentSignals/{anonymousId}` and `attemptLog` entries' `error`. See "Badge data" below.
 - Stage reference reveal: after a failed attempt, students can reveal their own Python/HTML Support `codeStages` entries. The same `supportRevealLog` record stores `source: "student"`, stage label, attempt count, and server timestamp. Revealing does not change editor contents.
 
-Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields (including `badges` and `badgeSettings`), `overrideLog`, and `supportRevealLog`. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, their own `attemptLog/{anonymousId}` node, their own `carryFallbackLog/{anonymousId}` node, their own `supportRevealLog/{anonymousId}` node, and the listed paths of their own `studentSignals/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers). The top-level `sessionArchive/{lessonId}` is teacher/admin read and write only.
+Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields (including `badges` and `badgeSettings`), `overrideLog`, and `supportRevealLog`. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, their own `attemptLog/{anonymousId}` node, their own `carryFallbackLog/{anonymousId}` node, their own `supportRevealLog/{anonymousId}` node, and the listed paths of their own `studentSignals/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers), but every write must leave `joinedAt` (a number) in place, `typedName` must be a string of at most 30 characters, no other fields are allowed, and only teachers/admins can write `admit` (`{ name: string 1-30, at: number }` and nothing else). Removal (on join or disconnect) is unrestricted. The top-level `sessionArchive/{lessonId}` is teacher/admin read and write only. The top-level `liveInk/{lessonId}` (Presentation annotations) is publicly readable and teacher/admin write, with shape validation (see "Presentation Annotations").
 
 ## Workspace Sharing
 
@@ -403,6 +421,45 @@ Lifecycle:
 
 Security rules (`database.rules.json`): `sharedWorkspaces` inherits teacher/admin write from `sessions/{lessonId}` and has no student rule, so students cannot write the index. Under `sharedWorkspacePayloads/{lessonId}`, `pending/{anonymousId}` is readable and writable only by that student and teachers/admins, while `approved` is publicly readable and teacher/admin-write. That pending/approved read split is what actually enforces the approval gate — hiding a button on the client is not sufficient.
 
+
+## Presentation Annotations (`liveInk/{lessonId}`)
+
+The teacher's live pointer, fading ink and text highlights from the Presentation window (see `docs/agents/classroom-behaviours.md`, "Presentation Annotations"). A **top-level** node, never under `sessions/{lessonId}`: every client streams the whole session node, and the pointer moves at ~12Hz, so keeping it there would re-render every student's view on every mouse move. Code: `src/app/liveInk/` (`liveInkData.js` is the shape, `liveInkWriter.js` the writes); `useSession.js` exposes `subscribeLiveInk(callback)` and `createLiveInkWriter()` for `LiveInkProvider`.
+
+```json
+{
+  "liveInk": {
+    "{lessonId}": {
+      "pointer": { "surface": "info:3", "anchor": "b0.p1", "c": 17, "dx": 0.25, "dy": -0.1, "t": 1234567890 },
+      "strokes": {
+        "{pushId}": {
+          "surface": "explainer:7",
+          "anchor": "b0.li2",
+          "points": [{ "c": 4, "dx": 0.1, "dy": 0.7 }, { "c": 9, "dx": 0.2, "dy": 0.7 }, [0.98, 0.6]],
+          "colour": "var(--colour-error)",
+          "t": 1234567890
+        }
+      },
+      "highlights": {
+        "{pushId}": { "surface": "info:3", "anchor": "b0.p0", "quote": "print()", "occurrence": 1, "t": 1234567890 }
+      }
+    }
+  }
+}
+```
+
+- **`surface`** names the rendered content: `{kind}:{taskId}` with kind `info` (standard information task), `recap-left` / `recap` (the two recap columns), `intro` (introduction task) or `explainer` (a code task's explainer pane). Including the task id means marks from one task can never land on another.
+- **`anchor`** is a `data-md-anchor` from the shared Markdown renderer (`src/shared/markdown/anchors.js`): `b{n}` per parsed block, then `b{n}.p{k}`, `.h{k}`, `.li{k}`, `.img{k}`, `.q{k}`, `.pre{k}`, `.th`/`.tr{k}` in document order; `root` means the surface itself. The introduction task's hand-written anchors are `title`, `meta` and `description`.
+- **Positions** (the pointer, and each stroke point) come in two forms, never pixels:
+  - **Text-anchored `{ c, dx, dy }`** — used whenever the point is over or near text in the anchor (within ~2em of the nearest character's line, ~12em to its side). `c` is the character offset in the anchor element's `textContent` (text nodes walked in document order, the same scheme highlights use); `dx` is the offset from that character's left edge and `dy` from its line's vertical midline, both in **em** of the character's computed font size. Each screen finds the character (a one-character Range's client rect; the previous character's right edge if it has no box) and adds the em offsets, so ink follows the words when the paragraph reflows at a different width or font size.
+  - **Box fractions `rx`/`ry`** (pointer) or **`[rx, ry]`** (stroke point) — fractions of the anchor element's bounding box, used over images (where the box is the right reference) and anywhere not near text. Older data in this form still renders.
+  - A stroke can mix both forms, and is anchored on the element under its first point. If consecutive text-anchored points that the teacher drew along one line land on different lines on a student's screen (the words wrapped there), the stroke is split into separate segments at that break (a jump of more than ~0.8 line heights, with the characters on different lines and a sideways jump) rather than drawn diagonally across the paragraph. Resolved strokes are cached per stroke and recomputed when the surface's layout changes (ResizeObserver/MutationObserver tick) or the strokes change.
+- **Highlights** store the selected text (`quote`, max 500 chars) and which `occurrence` of it inside the anchor's `textContent`; each client re-finds the words in its own DOM and paints them with the CSS Custom Highlight API (range-rect overlay where unsupported). React-managed DOM is never mutated.
+- **Writes** (teacher/admin only, from the Presentation window): `pointer` through `createThrottledMirrorWriter` at ~12Hz (`POINTER_INTERVAL_MS`), set to `null` when pointer mode ends or the mouse leaves the content; a stroke once on pointer-up (max 200 points), removed by the teacher's window `STROKE_REMOVE_AFTER_MS` later; highlights until clicked again or cleared. Every screen fades strokes on its own clock from when the stroke arrived (`STROKE_HOLD_MS` + `STROKE_FADE_MS`), so clock skew doesn't matter.
+- **Clearing:** `setTaskId`, `createSession`/`restartSession` and `endSession` remove the whole `liveInk/{lessonId}` node (best-effort, `clearLiveInkQuietly`); the toolbar's Clear does the same; the Presentation window registers `onDisconnect().remove()` on it when it opens and removes it when it unmounts.
+- **Reads:** a separate `onValue` on `liveInk/{lessonId}` in `LiveInkProvider`, only in the Presentation window and for students in the live lesson phase (never solo, preview or the sandbox phase).
+
+Security rules (`database.rules.json`): `liveInk/$lessonId` is publicly readable (students are login-less, mirroring `sessions/$lessonId`) and teacher/admin write (mirroring the `sessions/$lessonId` write rule), with validation of each shape: string sizes, the pointer as exactly one of `rx`+`ry` (within ±10) or `c`+`dx`+`dy` (`c` 0–1,000,000, `dx`/`dy` within ±50 em), at most 200 points each either a numeric `[rx, ry]` pair or a `{ c, dx, dy }` object with the same limits, `quote` ≤ 500 chars, and no unknown children. **Deploying the rules is required** (`firebase deploy --only database`): until then every write to the new node is denied and annotations silently do nothing (the session itself is unaffected).
 
 ## Badge data
 
@@ -482,6 +539,7 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`) record behaviour a
 - `joiningStudents/{tempId}` key is removed on disconnect with `onDisconnect().remove()`.
 - `sharedWorkspacePayloads/{lessonId}` is removed when the teacher disconnects. It sits outside the session node, so the session's own removal does not cover it.
 - `sessionArchive/{lessonId}` is likewise removed when the teacher disconnects after `endSession()` (the report has already been built from it).
+- `liveInk/{lessonId}` (Presentation annotations) is removed when the Presentation window disconnects; it registers `onDisconnect().remove()` as soon as it opens.
 
 ## Sealed Task Answers (`lessons/{lessonId}` tasks and `lessonOverrideTasks`)
 
@@ -605,6 +663,8 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
   "sizeNote": "string (only when the size cap dropped sandbox code)"
 }
 ```
+
+Per-student join history (inside each `students[]` entry, from the student node's `firstJoinedAt` / `firstJoinTaskId` / `rejoins`, via `studentJoinFields`): `joinedAt` (first join, ms; the node's own `joinedAt` is not used because every re-join overwrites it), `joinedAfterMs` (`joinedAt - startedAt`, clamped to 0, omitted when `startedAt` is unknown), `joinedAtTaskId` (the class's current task at first join) and `rejoins: [{ at, taskId }]` (later name entries and reload-returns, oldest first; omitted when empty). All are omitted when unknown: sessions before 2026-10-01 and students whose node was removed. They survive `anonymizeSessionReport` and the size cap.
 
 Per-student additions (inside each `students[]` entry, beside `tasks`): `badges: [{ badgeId, emoji, title, source, reason, taskId, awardedAt }]`, `topicsOpened: [{ topicId, title, context, taskId, source, openedAt }]`, `shortcutsUsed: [{ shortcutId, label, context, taskId, firstUsedAt }]`, `personalSandbox` / `teacherSandbox: { timeMs, runs, errorRuns, fixes }`; and in each task entry `timeToFirstEditMs`, `errorAttempts`, `uniqueFailedAttempts`, `firstPassInClass`.
 

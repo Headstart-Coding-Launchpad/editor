@@ -11,6 +11,7 @@ import {
   getCompleteStage,
   getRevealableStages,
 } from '../../shared/taskUtils'
+import { TEACHER_LIVE_REVEAL_KEY } from '../../shared/taskStages.js'
 import PresenceBadge from './PresenceBadge'
 import ScratchWorkspace from '../../modules/scratch/ScratchWorkspace.jsx'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
@@ -26,6 +27,7 @@ import { PaneFocusControls } from './student-modal/PaneFocusDropdown'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
 import ShareRequestPanel from './student-modal/ShareRequestPanel'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
+import { countShownLineHints, getMirrorLineHintSets } from './student-modal/mirrorLineHints'
 import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
 import {
   allowsStudentBroadcast,
@@ -93,6 +95,7 @@ export default function StudentModal({
   onRequestShareSnapshot,
   onRequestFullscreen,
   onNudge,
+  onThumbsUp,
   onSetAutoReveal,
   onDecideBadge,
   onRevokeBadge,
@@ -111,6 +114,7 @@ export default function StudentModal({
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [fullscreenRequested, setFullscreenRequested] = useState(false)
   const [nudged, setNudged] = useState(false)
+  const [thumbsUpSent, setThumbsUpSent] = useState(false)
   const [showBadgeDialog, setShowBadgeDialog] = useState(false)
 
   // Teacher highlight: select a range in the mirrored view, tag it, send it
@@ -310,6 +314,16 @@ export default function StudentModal({
     })
   }
 
+  // One-off "Reveal live code": logged like a stage reveal, which is also what shows it on the
+  // student's screen — for this task only, so it drops off on the next task.
+  function handleRevealTeacherLiveReference() {
+    if (!task?.id) return
+    onRevealSupportStage?.(student.anonymousId, task.id, TEACHER_LIVE_REVEAL_KEY, {
+      source: 'teacher',
+      stageLabel: "Teacher's live code",
+    })
+  }
+
   function handleCancelStage() {
     onClearTeacherStage?.(student.anonymousId)
     setStageRequestState('idle')
@@ -457,6 +471,27 @@ export default function StudentModal({
   const showShareRequest =
     !!onReadPendingShare && (student.shareRequestedAt != null || awaitingShareSnapshot)
 
+  // The task's 💡 line hints still on the watched student's code (the count the mirrored editor
+  // shows in StudentWorkspaceBody); null when the task has none or the body shows no code.
+  const mirrorLineHintSets =
+    isInformation || isQuizLike || isCodeArrangeTask || showShareRequest
+      ? null
+      : getMirrorLineHintSets(task, {
+          mirror,
+          file: activeFileObj?.name ?? null,
+          isSessionSandbox,
+        })
+  const mirroredHintCode =
+    mirror === 'files'
+      ? activeFileObj?.content
+      : mirror === 'view'
+        ? moduleDisplayState
+        : student.currentCode
+  const shownLineHintCount =
+    mirrorLineHintSets && typeof mirroredHintCode === 'string'
+      ? countShownLineHints(mirroredHintCode, mirrorLineHintSets)
+      : null
+
   const hasOverride = !!student.checkOverridePushedAt
   const remoteSelection =
     !isLive || (mirror !== 'code' && student.currentSelection?.file !== activeFile)
@@ -506,12 +541,17 @@ export default function StudentModal({
   // The Support menu's two sections.
   const canShowLiveReference =
     !!onSetTeacherLiveReference && !isInformation && !isQuizLike && supportsTeacherLiveReference
+  const canRevealLiveReference = canShowLiveReference && !!onRevealSupportStage
   const canReveal =
     (!!onRevealSupportStage && revealableStages.length > 0) ||
     canSetAutoReveal ||
     canShowLiveReference
   const canSetStage = !!onRemoteReset && !isInformation && !isQuiz && stageOptions.length > 0
-  const teacherLiveReferenceVisible = !!student.teacherLiveReferenceVisible
+  // Live code has two modes: pinned ("Keep showing", every task until turned off) and a
+  // one-off reveal for this task only (a supportRevealLog entry, like a stage reveal).
+  const teacherLiveReferencePinned = !!student.teacherLiveReferenceVisible
+  const teacherLiveReferencePinnedForClass = !!session?.teacherLiveReferenceVisibleToAll
+  const teacherLiveReferenceRevealed = !!revealedSupportStages[TEACHER_LIVE_REVEAL_KEY]
   const teacherLiveReferenceMatchesTask =
     !!session?.teacherLiveReference?.active && session?.teacherLiveReference?.taskId === task?.id
 
@@ -609,6 +649,27 @@ export default function StudentModal({
                 📖 Every task: {AUTO_REVEAL_OPTIONS.find((o) => o.mode === autoRevealStage)?.label}
               </span>
             )}
+            {shownLineHintCount != null && teacherEditState !== 'editing' && (
+              <span
+                style={s.supportBadge}
+                title="The lesson's 💡 line hints still on this student's code (hints on lines the student has changed are gone)"
+                data-testid="modal-line-hint-count"
+              >
+                💡 {shownLineHintCount} {shownLineHintCount === 1 ? 'hint' : 'hints'} showing
+              </span>
+            )}
+            {(teacherLiveReferencePinned || teacherLiveReferencePinnedForClass) && (
+              <span
+                style={s.supportBadge}
+                title={
+                  teacherLiveReferencePinned
+                    ? 'Your live code shows for this student on every task until you turn it off'
+                    : 'Your live code shows for the whole class on every task until you turn it off'
+                }
+              >
+                📌 Live code: kept on
+              </span>
+            )}
             {Object.keys(revealedSupportStages).length > 0 && (
               <span style={s.supportBadge} title="Student has opened a stage reference">
                 Reference opened
@@ -681,26 +742,25 @@ export default function StudentModal({
                     {canReveal && (
                       <>
                         <div style={s.menuHeadingFirst}>Reveal</div>
-                        {canShowLiveReference && (
+                        {canRevealLiveReference && (
                           <button
                             style={sTo.toolBtn}
-                            disabled={!teacherLiveReferenceMatchesTask}
+                            disabled={
+                              !teacherLiveReferenceMatchesTask || teacherLiveReferenceRevealed
+                            }
                             title={
                               teacherLiveReferenceMatchesTask
-                                ? undefined
+                                ? 'Show your live code for this task only'
                                 : "Will work once you're presenting this task in Presentation View"
                             }
                             onClick={() => {
                               close()
-                              onSetTeacherLiveReference(
-                                student.anonymousId,
-                                !teacherLiveReferenceVisible
-                              )
+                              handleRevealTeacherLiveReference()
                             }}
                           >
-                            {teacherLiveReferenceVisible
-                              ? '✓ Live ref: your live code (on)'
-                              : 'Show your live code'}
+                            {teacherLiveReferenceRevealed
+                              ? 'Opened: live code'
+                              : 'Reveal live code'}
                           </button>
                         )}
                         {revealableStages.map(({ stage, index }) => {
@@ -752,6 +812,38 @@ export default function StudentModal({
                                 {label}
                               </button>
                             ))}
+                          </>
+                        )}
+                        {canShowLiveReference && (
+                          <>
+                            {!canSetAutoReveal && (
+                              <div style={s.autoRevealHeading}>Show on every task</div>
+                            )}
+                            <button
+                              style={sTo.toolBtn}
+                              aria-pressed={teacherLiveReferencePinned}
+                              disabled={
+                                !teacherLiveReferencePinned && !teacherLiveReferenceMatchesTask
+                              }
+                              title={
+                                teacherLiveReferencePinned
+                                  ? 'Stop showing your live code to this student'
+                                  : teacherLiveReferenceMatchesTask
+                                    ? 'Keep showing your live code on every task until you turn it off'
+                                    : "Will work once you're presenting this task in Presentation View"
+                              }
+                              onClick={() => {
+                                close()
+                                onSetTeacherLiveReference(
+                                  student.anonymousId,
+                                  !teacherLiveReferencePinned
+                                )
+                              }}
+                            >
+                              {teacherLiveReferencePinned
+                                ? '📌 Live code: kept on'
+                                : '📌 Keep showing live code'}
+                            </button>
                           </>
                         )}
                       </>
@@ -876,6 +968,24 @@ export default function StudentModal({
                 onClick={onStopLive}
               >
                 Stop Live
+              </button>
+            )}
+
+            {/* A transient 👍 "on the right track" toast on the student's screen. */}
+            {onThumbsUp && student.online && (
+              <button
+                className="btn-ghost"
+                style={{ fontSize: 13, padding: '5px 10px', whiteSpace: 'nowrap' }}
+                disabled={thumbsUpSent}
+                onClick={() => {
+                  onThumbsUp(student.anonymousId)
+                  setThumbsUpSent(true)
+                  setTimeout(() => setThumbsUpSent(false), 2000)
+                }}
+                title="Send a 👍: tells this student they're on the right track"
+                aria-label={`Send ${student.displayName} a thumbs up`}
+              >
+                {thumbsUpSent ? '✓ Sent' : '👍'}
               </button>
             )}
 

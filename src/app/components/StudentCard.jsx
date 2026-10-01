@@ -40,6 +40,7 @@ export default function StudentCard({
   onRemove,
   onExpand,
   onNudge,
+  onThumbsUp,
   badgePendingCount = 0,
   badgeAwardedCount = 0,
   selectMode = false,
@@ -50,6 +51,7 @@ export default function StudentCard({
   const [nameValue, setNameValue] = useState(student.displayName)
   const [isActive, setIsActive] = useState(false)
   const [nudged, setNudged] = useState(false)
+  const [thumbsUpSent, setThumbsUpSent] = useState(false)
   const pasteRecord = student.pasteLog?.[session?.currentTaskId] ?? null
   const [, setTick] = useState(0)
 
@@ -112,20 +114,14 @@ export default function StudentCard({
   // used to carry run status while the pill next to it carried presence - two dots one
   // row apart answering different questions, so an idle-but-connected student read as
   // half offline. Run status is already in the output snippet and the pass/fail badge.
-  const presenceState =
-    session?.state === 'waiting' ? 'waiting' : student.online ? 'online' : 'offline'
+  // While the session is waiting the dot still shows real presence; the "Waiting" badge
+  // below (PresenceBadge) carries the waiting state.
+  const presenceState = student.online ? 'online' : 'offline'
   const statusColour =
-    presenceState === 'waiting'
-      ? 'var(--colour-warning)'
-      : presenceState === 'online'
-        ? 'var(--colour-success)'
-        : 'var(--colour-muted-soft)'
+    presenceState === 'online' ? 'var(--colour-success)' : 'var(--colour-muted-soft)'
   const presenceTitle =
-    presenceState === 'waiting'
-      ? 'Waiting to join'
-      : presenceState === 'online'
-        ? 'Connected now'
-        : 'Offline'
+    (session?.state === 'waiting' ? 'Waiting for the lesson to start · ' : '') +
+    (presenceState === 'online' ? 'Connected now' : 'Offline')
 
   // Confidence tasks have no pass/fail check — teacher just sees the submitted level
   // For match/fill_blank quizzes and activities, checkPassed comes from the activity's own
@@ -157,12 +153,10 @@ export default function StudentCard({
         ? s.cardCheckFailed
         : null
 
-  const expandable = !isInformation
-  const openStudent = () => {
-    if (expandable) onExpand?.(student)
-  }
+  // Every card opens the student modal, information tasks included: the modal shows the task
+  // itself and keeps the badge, nudge, message and video-call controls a teacher still needs.
+  const openStudent = () => onExpand?.(student)
   // Select mode (the grid's multi-award): the whole card toggles selection instead of opening.
-  const clickable = selectMode || expandable
   const activate = () => {
     if (selectMode) onToggleSelect?.(student.anonymousId)
     else openStudent()
@@ -184,23 +178,17 @@ export default function StudentCard({
       style={{
         ...s.card,
         ...checkCardStyle,
-        ...(clickable ? s.cardClickable : null),
+        ...s.cardClickable,
         ...(selectMode && selected ? s.cardSelected : null),
       }}
       className="card"
-      role={selectMode ? 'checkbox' : expandable ? 'button' : undefined}
+      role={selectMode ? 'checkbox' : 'button'}
       aria-checked={selectMode ? selected : undefined}
-      tabIndex={clickable ? 0 : undefined}
-      aria-label={
-        selectMode
-          ? `Select ${student.displayName}`
-          : expandable
-            ? `Expand ${student.displayName}`
-            : undefined
-      }
+      tabIndex={0}
+      aria-label={selectMode ? `Select ${student.displayName}` : `Expand ${student.displayName}`}
       onClick={activate}
       onKeyDown={(event) => {
-        if (!clickable || event.target !== event.currentTarget) return
+        if (event.target !== event.currentTarget) return
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
           activate()
@@ -306,6 +294,22 @@ export default function StudentCard({
               aria-label={`Nudge ${student.displayName}`}
             >
               {nudged ? '✓' : '🔔'}
+            </button>
+          )}
+          {onThumbsUp && student.online && (
+            <button
+              style={{ ...s.thumbsUpBtn, ...(thumbsUpSent ? s.thumbsUpBtnSent : null) }}
+              disabled={thumbsUpSent}
+              onClick={(event) => {
+                event.stopPropagation()
+                onThumbsUp(student.anonymousId)
+                setThumbsUpSent(true)
+                setTimeout(() => setThumbsUpSent(false), 2000)
+              }}
+              title="Send a 👍: tells this student they're on the right track"
+              aria-label={`Send ${student.displayName} a thumbs up`}
+            >
+              {thumbsUpSent ? '✓' : '👍'}
             </button>
           )}
           {pasteRecord?.count > 0 && (
@@ -714,6 +718,16 @@ const s = {
     padding: '1px 6px',
     cursor: 'pointer',
   },
+  thumbsUpBtn: {
+    background: '#ecfdf5',
+    border: '1px solid #10b981',
+    borderRadius: 999,
+    fontSize: '0.72rem',
+    lineHeight: 1.2,
+    padding: '1px 6px',
+    cursor: 'pointer',
+  },
+  thumbsUpBtnSent: { cursor: 'default', opacity: 0.7 },
   checkBadgeFullscreen: {
     background: '#0284c7',
     color: '#fff',

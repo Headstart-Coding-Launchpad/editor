@@ -22,6 +22,7 @@ import {
   buildSolutionSlotState,
   getSlotIds,
   isArrangementComplete,
+  pruneSlotState,
 } from '../../shared/codeArrange.js'
 import { normalizeCodeSubmission } from '../../shared/codeSubmission.js'
 
@@ -31,9 +32,7 @@ function isSlotMap(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value)
 }
 
-// The stored slot map (aux file text, or the object mirrored in RTDB). Anything that isn't a
-// plain object loads as an empty board.
-function deserializeSlots(raw) {
+function parseSlots(raw) {
   if (isSlotMap(raw)) return raw
   if (typeof raw !== 'string' || !raw) return {}
   try {
@@ -42,6 +41,14 @@ function deserializeSlots(raw) {
   } catch {
     return {}
   }
+}
+
+// The stored slot map (aux file text, or the object mirrored in RTDB). Anything that isn't a
+// plain object loads as an empty board; given the task, placements that aren't the task's own
+// slots and tiles are dropped (pruneSlotState), so a stale board can never look complete.
+function deserializeSlots(raw, task) {
+  const slots = parseSlots(raw)
+  return task ? pruneSlotState(task, slots) : slots
 }
 
 function isFilled(value) {
@@ -53,7 +60,8 @@ function isFilled(value) {
 function slotProgress(task, state) {
   const slotIds = getSlotIds(task)
   if (slotIds.length === 0) return null
-  const slots = isSlotMap(state) ? state : {}
+  // Only the task's own tiles count: an unknown id shows as an empty blank.
+  const slots = isSlotMap(state) ? pruneSlotState(task, state) : {}
   const filled = slotIds.filter((id) => isFilled(slots[id])).length
   return { kind: 'code_arrange', filled, total: slotIds.length, correct: null }
 }
@@ -147,12 +155,14 @@ export default defineActivity({
   // module's own rules run as well in lesson validation (src/shared/lessonValidation.js).
   validateTask: (task, { n, moduleType, lesson } = {}) => {
     const errors = []
+    const warnings = []
     validateCodeArrangeTask(task, {
       n,
       moduleType: moduleType ?? task?.moduleType ?? lesson?.type,
       errors,
+      warnings,
     })
-    return { errors, warnings: [] }
+    return { errors, warnings }
   },
   hasStarter: (task) => codeArrangeHasStarter(task),
   // The completion check is the host module's (hasCheckValue: null in legacyValidation.js).
@@ -163,7 +173,7 @@ export default defineActivity({
   // Each slot part's `code` is its answer.
   sealedFields: ['lines'],
   serialize: (state) => JSON.stringify(state ?? {}),
-  deserialize: (raw) => deserializeSlots(raw),
+  deserialize: (raw, task) => deserializeSlots(raw, task),
   storage: Object.freeze({ persist: true, filename: CODE_ARRANGE_SLOTS_FILENAME }),
   liveChannel: 'codeArrangeSlots',
   // Every tile placement is discrete (mirrored whether or not the teacher is watching).

@@ -187,7 +187,10 @@ const FIELD_BAG = {
 
 const VALUES = ['hello', 'Hello World', '42', 'led.on()', '^h.*o$']
 
-const registeredIds = checkRegistry.typeIds()
+// Check types added after the legacy dispatcher was frozen have no legacy behaviour to match;
+// they are tested on their own (e.g. ../python/__tests__/codeStructure.test.js).
+const POST_REGISTRY_TYPES = ['code_structure']
+const registeredIds = checkRegistry.typeIds().filter((id) => !POST_REGISTRY_TYPES.includes(id))
 const operators = [
   undefined,
   ...new Set(
@@ -287,8 +290,12 @@ describe('check registry parity — run/submit classification', () => {
 
   it('derives RUN_REQUIRED and SUBMIT_ALLOWED with the same sets as before', () => {
     expect(sorted(CHECK_TYPES.RUN_REQUIRED)).toEqual(sorted(LEGACY_RUN_REQUIRED))
-    expect(sorted(CHECK_TYPES.SUBMIT_ALLOWED)).toEqual(sorted(LEGACY_SUBMIT_ALLOWED))
-    expect(sorted(CHECK_TYPES.SUBMIT_ALLOWED)).toEqual(sorted(CODE_CHECK_TYPES))
+    const submitAllowed = CHECK_TYPES.SUBMIT_ALLOWED.filter(
+      (id) => !POST_REGISTRY_TYPES.includes(id)
+    )
+    expect(sorted(submitAllowed)).toEqual(sorted(LEGACY_SUBMIT_ALLOWED))
+    expect(sorted(submitAllowed)).toEqual(sorted(CODE_CHECK_TYPES))
+    expect(CHECK_TYPES.SUBMIT_ALLOWED).toContain('code_structure')
     expect(CHECK_TYPES.RUN_REQUIRED).toHaveLength(new Set(CHECK_TYPES.RUN_REQUIRED).size)
   })
 

@@ -107,7 +107,7 @@ describe('TeacherCodeTabs', () => {
     expect(props.onLive).toHaveBeenCalledOnce()
   })
 
-  it('shows the class-broadcast toggle instead of send-to-all while on the Live tab', () => {
+  it('shows the class live-code buttons instead of send-to-all while on the Live tab', () => {
     const onToggleLiveReference = vi.fn()
     const onSendToAll = vi.fn()
     renderTabs({
@@ -118,13 +118,15 @@ describe('TeacherCodeTabs', () => {
       onToggleLiveReference,
     })
     expect(screen.queryByRole('button', { name: 'Send to all' })).not.toBeInTheDocument()
-    const toggleBtn = screen.getByRole('button', { name: 'Show live code to class' })
-    fireEvent.click(toggleBtn)
+    expect(screen.getByRole('button', { name: 'Reveal live code to all' })).toBeInTheDocument()
+    const pinBtn = screen.getByRole('button', { name: '📌 Keep showing live code to class' })
+    expect(pinBtn).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(pinBtn)
     expect(onToggleLiveReference).toHaveBeenCalledWith(true)
     expect(onSendToAll).not.toHaveBeenCalled()
   })
 
-  it('toggles the class broadcast off when already visible to the class', () => {
+  it('turns the class pin off from its kept-on state', () => {
     const onToggleLiveReference = vi.fn()
     renderTabs({
       activeTab: 'live',
@@ -133,7 +135,52 @@ describe('TeacherCodeTabs', () => {
       liveReferenceVisibleToAll: true,
       onToggleLiveReference,
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Live ref: class on' }))
+    const pinBtn = screen.getByRole('button', { name: '📌 Live code: kept on' })
+    expect(pinBtn).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(pinBtn)
     expect(onToggleLiveReference).toHaveBeenCalledWith(false)
+  })
+
+  it('"Reveal live code to all" confirms, then sends the one-off reveal_live action', () => {
+    const onSendToAll = vi.fn()
+    const onToggleLiveReference = vi.fn()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderTabs({
+      activeTab: 'live',
+      showLiveTab: true,
+      hasStudents: true,
+      onSendToAll,
+      onToggleLiveReference,
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Reveal live code to all' }))
+    expect(confirm).toHaveBeenCalledOnce()
+    expect(onSendToAll).toHaveBeenCalledWith('reveal_live')
+    expect(onToggleLiveReference).not.toHaveBeenCalled()
+  })
+
+  it('does not reveal live code when the confirmation is cancelled', () => {
+    const onSendToAll = vi.fn()
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    renderTabs({
+      activeTab: 'live',
+      showLiveTab: true,
+      hasStudents: true,
+      onSendToAll,
+      onToggleLiveReference: vi.fn(),
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Reveal live code to all' }))
+    expect(onSendToAll).not.toHaveBeenCalled()
+  })
+
+  it('shows no live-code buttons without students', () => {
+    renderTabs({
+      activeTab: 'live',
+      showLiveTab: true,
+      hasStudents: false,
+      onSendToAll: vi.fn(),
+      onToggleLiveReference: vi.fn(),
+    })
+    expect(screen.queryByRole('button', { name: 'Reveal live code to all' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Keep showing live code/ })).toBeNull()
   })
 })

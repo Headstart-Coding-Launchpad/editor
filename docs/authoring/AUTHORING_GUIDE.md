@@ -28,11 +28,14 @@ node cli/cli.mjs lessons upsert lesson.yaml                 # accepts YAML or JS
 # verify code checks against named student-code examples (JSON or YAML cases file):
 node cli/cli.mjs lessons test-checks lesson.yaml --cases check-cases.yaml
 
+# verify Scratch block checks against each task's complete, starter and Complete stages (no cases file):
+node cli/cli.mjs lessons test-checks lesson.yaml
+
 # fetch an existing lesson as YAML:
 node cli/cli.mjs lessons get python-for-loops --format yaml
 ```
 
-`test-checks` runs named source-code examples through the same code-check evaluator used by LaunchPad and reports any feedback checks that match. For example, `check-cases.yaml` can be:
+`test-checks` runs named source-code examples through the same code-check evaluator used by LaunchPad and reports any feedback checks that match. Without `--cases` it verifies Scratch tasks instead, per check and per stage — see [Verifying Scratch checks](scratch.md#verifying-scratch-checks). For example, `check-cases.yaml` can be:
 
 **Limitation:** `test-checks` only evaluates source-code checks. A task carrying an `output`, `output_not_empty`, `output_line_count`, `code_no_error`, or `variable_*` check has no run behind it here, so it reports a false `completion: fail` against its own correct complete code — indistinguishable from a genuinely broken check. To verify the source-code half of a lesson that mixes families, run `test-checks` against a stripped copy of the YAML with the runtime checks removed, and verify the runtime checks by reasoning against the task's complete code instead. The cases format has no field for stdin or expected output.
 
@@ -120,13 +123,15 @@ tasks:
 **Badge Summary ("Today's Coding Moments").** `informationType: badges` shows the live session's
 coding moments: each student sees their own badges as stickers, then the class wall grouped by
 badge ("🐛 Bug Hunter: Alex, Sam"); the teacher sees a projector-friendly wall with **Copy class
-summary**. The explainer is optional (shown above the wall). Put it last. Solo learners skip it,
-as if it were `taskMode: live`. See [badges.md](badges.md#badge-summary-task).
+summary**. The title is shown exactly as written (no emoji is added), so start it with one if you
+want one; with no title it defaults to "🎖️ Today's Coding Moments". The explainer is optional
+(shown above the wall). Put it last. Solo learners skip it, as if it were `taskMode: live`. See
+[badges.md](badges.md#badge-summary-task).
 
 ```yaml
   - type: information
     informationType: badges
-    title: Today's Coding Moments
+    title: "🎖️ Today's Coding Moments"   # shown exactly as written
 ```
 
 ---
@@ -262,6 +267,25 @@ feedbackChecks:
 
 `feedbackChecks` are supported by Python, HTML, Filesystem, Electronics, and Scratch tasks and require a completion `check`. Blocking feedback fails the task if it matches, even when the completion check passes. `mode: nudge` shows guidance without blocking completion. `show` defaults to `after_attempt`; use `on_idle` to show feedback after the learner pauses editing. For HTML, `on_idle` is limited to code-safe checks; DOM/output feedback should run `after_attempt`. `incorrectChecks` is a legacy alias for blocking feedback, and legacy `show: on_pause` is treated as `on_idle`.
 
+### Which hint is shown
+
+A learner only ever sees **one** hint per attempt. Every module (Python, HTML, Turtle, Arcade, Filesystem, Desktop, Electronics, Scratch) picks it with the same rule, in this order:
+
+1. **A blocking feedback check matched** → the task fails (even if the completion checks passed) and the hint of the highest-priority matched feedback check is shown. With no hint, the learner sees "Not quite."
+2. **The completion checks failed and any feedback check matched** (blocking or nudge) → the highest-priority matched feedback check's hint. Feedback hints always beat completion-check hints.
+3. **Otherwise** → the hint of the **first** entry in the `check` list (top to bottom) that **failed** and has a non-empty `hint`. A check that passed never supplies the hint, and later failed checks are not shown.
+4. **No failed check has a hint** → the generic banner: "Not quite, try again!" ("Not quite right, try again." on quiz-like tasks).
+
+When the completion checks pass, only a matched `mode: nudge` feedback check's hint is shown, next to "Correct!".
+
+**Priority:** among matched feedback checks, the lowest `priority` number wins (1 beats 2). A feedback check without `priority` takes its position in the list (first = 1), so list order decides ties.
+
+Writing hints that reach learners:
+
+- Order completion checks **most specific first**, or give every completion check its own `hint`. A specific check placed after a general one only shows its hint when the general one passes.
+- For a known misconception (wrong text, `=` instead of `==`, a missing indent), write a `feedbackChecks` entry that detects the mistake and give it a `priority`. It beats every completion hint.
+- Don't write several hints expecting them to add up: only one is shown.
+
 **Wildcards and option lists:** `*` matches any sequence (including newlines) in `value` for containment/equality checks. `"opt1","opt2"` passes `contains` if any option is present and `not_contains` only if none are. These operators mean the same thing in every module (output, answers, file content, HTML elements, Scratch block inputs), because all of them use one shared implementation (`compareText` in `src/shared/checkHelpers.js`).
 
 **Multi-option values:** `"option1","option2"` format — passes if the actual value matches any option. Works for `output_contains`, `code_contains`, `element_value`, `answer_contains`.
@@ -332,6 +356,105 @@ tasks:
     intent: |
       Teach `range()` and have learners print the numbers 0–4.
 ```
+
+#### Multi-group Draft example
+
+A fuller skeleton: an introduction, two groups (`group:` + `tasks:`; groups can't nest), code tasks
+with intent, a quiz and an activity, and a recap. Every task has a `title` and an `intent`, and a
+`taskActivity` naming its [Glossary pattern](badges.md#task-activity-patterns) (badges and reports
+read it; an unrecognised pattern is a warning, not an error).
+
+```yaml
+id: python-loops-skeleton
+type: composed
+title: Python Loops
+description: Repeat code with for loops and range().
+level: 2
+draft: true
+tasks:
+  - type: information
+    informationType: introduction
+    title: Python Loops
+    taskActivity: Information
+    intent: |
+      Lesson opener. Renders the lesson title, level and description only.
+
+  - group: Counting with range()
+    tasks:
+      - type: information
+        title: What a loop does
+        taskActivity: "Information: Brief Description"
+        intent: |
+          Explain that a `for` loop repeats the indented lines once per number in `range()`.
+      - title: Run a counted loop
+        moduleType: python
+        taskActivity: Code Task, Complete Example
+        intent: |
+          Complete example: `for i in range(5): print(i)`. Learners run it and see 0–4.
+      - title: Count to ten
+        moduleType: python
+        taskActivity: Code Task, Meaningful Change
+        intent: |
+          Starter is the previous loop; learners change `range(5)` so it prints 0–9.
+          Check: output has 10 lines.
+      - title: Copy the times table
+        moduleType: python
+        taskActivity: Code Task, Copy the Code
+        intent: |
+          Learners type out a 3-times-table loop shown in the explainer. Check: output contains 30.
+      - type: quiz
+        quizType: multiple_choice
+        title: How many times?
+        taskActivity: "Quiz: What Do You Expect the Code to Do"
+        intent: |
+          Show `for i in range(3): print("hi")` and ask how many times "hi" prints (answer: 3).
+
+  - group: Loops that go wrong
+    tasks:
+      - title: Fix the broken loop
+        moduleType: python
+        taskActivity: Code Task, Debug Code Task
+        intent: |
+          Starter is missing the colon after `range(4)`. Learners fix it so 0–3 print.
+      - type: quiz
+        quizType: multiple_choice
+        title: Spot the error
+        taskActivity: "Quiz: What Is the Error?"
+        intent: |
+          A loop body that isn't indented; ask which line causes the IndentationError.
+      - type: binary
+        mode: to_decimal
+        title: Count in binary
+        taskActivity: "Activity, Binary: to_decimal"
+        intent: |
+          Warm-down: three 4-bit numbers (0011, 0101, 1000) to convert to decimal.
+      - title: Your own pattern
+        moduleType: python
+        taskActivity: Code Task, Challenge (Open-Ended)
+        intent: |
+          Open-ended: learners use a loop to print any repeating pattern they like.
+          Check: code contains `for` and output has at least 3 lines.
+
+  - type: information
+    informationType: recap
+    title: Recap
+    taskActivity: Information
+    leftContent: "## What we covered"
+    explainer: |
+      - `for i in range(5):` repeats the indented lines 5 times.
+      - `i` counts up from 0.
+      - Every loop line ends with a colon, and the body is indented.
+    intent: |
+      Recap the three loop rules from both groups.
+```
+
+- **Introduction** (`informationType: introduction`) renders the lesson's `title`, `level` and
+  `description` only: it never shows `explainer` or `leftContent`, so leave both out.
+- **Recap** (`informationType: recap`) uses `leftContent` for the purple left pane. The canonical
+  style is a **single `## ` heading and nothing else** (`leftContent: "## What we covered"`); put
+  the recap body in `explainer` (the right pane).
+- A Draft task may leave out its learner-facing fields (`explainer`, `starterCode`, `check`, quiz
+  `options`, activity `items`), but any field it does include must have the right shape.
 
 `lessons validate` validates Draft structure. `lessons upsert` creates or replaces Draft lessons, and `lessons get <id> --format yaml` retrieves the current authoritative YAML. Builder permits incomplete tasks while `draft: true`, preserves recognised task fields, task IDs, task order, and intent when it saves, and runs full final validation when Draft is cleared. It refuses to clear Draft if final validation fails. `publish-yaml` refuses lessons that remain drafts.
 

@@ -5,6 +5,9 @@ import {
   evaluateScratchCheck,
   partialEvaluateScratchCheck,
   compare,
+  matchesOpcodeSpec,
+  normalizeSequenceItem,
+  opcodeAlternatives,
 } from '../checks'
 
 // Minimal workspace stub used by block_used / block_count checks.
@@ -1200,6 +1203,286 @@ describe('evaluateScratchCheck', () => {
         ],
       }
       expect(evaluateScratchCheck(check, ws, null)).toBe(true)
+    })
+  })
+})
+
+describe('opcode alternatives (opcode: [a, b])', () => {
+  // A connected stack of blocks with input values, e.g. [['motion_turnleft', { DEGREES: 90 }]].
+  function makeChain(typeValuePairs) {
+    const blocks = typeValuePairs.map(([type, vals]) => makeBlock(type, vals ?? {}))
+    for (let i = 0; i < blocks.length; i++) {
+      const next = blocks[i + 1] ?? null
+      blocks[i].getNextBlock = () => next
+      if (i > 0) blocks[i].previousConnection = { isConnected: () => true }
+    }
+    return { getAllBlocks: () => blocks }
+  }
+
+  const TURN = ['motion_turnright', 'motion_turnleft']
+  const TURN_90_LONG = [
+    { opcode: 'motion_turnright', fieldValues: { DEGREES: 90 } },
+    { opcode: 'motion_turnleft', fieldValues: { DEGREES: 90 } },
+  ]
+
+  describe('opcodeAlternatives / matchesOpcodeSpec', () => {
+    it('treats a plain string as one alternative carrying the shared fieldValues', () => {
+      expect(opcodeAlternatives('motion_movesteps', { STEPS: 10 })).toEqual([
+        { opcode: 'motion_movesteps', fieldValues: { STEPS: 10 } },
+      ])
+    })
+
+    it('gives every short-form alternative the shared fieldValues', () => {
+      expect(opcodeAlternatives(TURN, { DEGREES: 90 })).toEqual([
+        { opcode: 'motion_turnright', fieldValues: { DEGREES: 90 } },
+        { opcode: 'motion_turnleft', fieldValues: { DEGREES: 90 } },
+      ])
+    })
+
+    it("merges a long-form alternative's own fieldValues over the shared ones", () => {
+      expect(
+        opcodeAlternatives(
+          [{ opcode: 'looks_sayforsecs', fieldValues: { SECS: 2 } }, 'looks_say'],
+          { MESSAGE: 'Hi' }
+        )
+      ).toEqual([
+        { opcode: 'looks_sayforsecs', fieldValues: { MESSAGE: 'Hi', SECS: 2 } },
+        { opcode: 'looks_say', fieldValues: { MESSAGE: 'Hi' } },
+      ])
+    })
+
+    it('drops malformed alternatives', () => {
+      expect(opcodeAlternatives(['', null, { fieldValues: {} }, 42, 'looks_say'])).toEqual([
+        { opcode: 'looks_say', fieldValues: null },
+      ])
+      expect(opcodeAlternatives([])).toEqual([])
+    })
+
+    it('matches a block of any alternative', () => {
+      expect(matchesOpcodeSpec(makeBlock('motion_turnleft'), TURN)).toBe(true)
+      expect(matchesOpcodeSpec(makeBlock('motion_turnright'), TURN)).toBe(true)
+      expect(matchesOpcodeSpec(makeBlock('motion_movesteps'), TURN)).toBe(false)
+    })
+
+    it('keeps an opcode list on an object sequence item; a bare list item has no opcode', () => {
+      expect(normalizeSequenceItem({ opcode: TURN, fieldValues: { DEGREES: 90 } })).toEqual({
+        opcode: TURN,
+        fieldValues: { DEGREES: 90 },
+      })
+      // A list directly inside the sequence list can't be stored in Firestore (validation
+      // rejects it), so it matches nothing rather than being read as alternatives.
+      expect(normalizeSequenceItem(TURN)).toEqual({ opcode: null, fieldValues: null })
+    })
+  })
+
+  describe('block_used', () => {
+    it('passes for either alternative (full and partial evaluation)', () => {
+      for (const type of TURN) {
+        const ws = makeWorkspace([type])
+        const check = { type: 'block_used', opcode: TURN }
+        expect(evaluateScratchCheck(check, ws, null)).toBe(true)
+        expect(partialEvaluateScratchCheck(check, ws)).toBe('pass')
+      }
+    })
+
+    it('fails / stays pending when no alternative is present', () => {
+      const ws = makeWorkspace(['motion_movesteps'])
+      const check = { type: 'block_used', opcode: TURN }
+      expect(evaluateScratchCheck(check, ws, null)).toBe(false)
+      expect(partialEvaluateScratchCheck(check, ws)).toBe('pending')
+    })
+
+    it('applies short-form shared fieldValues to whichever alternative matched', () => {
+      const check = { type: 'block_used', opcode: TURN, fieldValues: { DEGREES: 90 } }
+      const left90 = { getAllBlocks: () => [makeBlock('motion_turnleft', { DEGREES: 90 })] }
+      const left15 = { getAllBlocks: () => [makeBlock('motion_turnleft', { DEGREES: 15 })] }
+      expect(evaluateScratchCheck(check, left90, null)).toBe(true)
+      expect(evaluateScratchCheck(check, left15, null)).toBe(false)
+      expect(partialEvaluateScratchCheck(check, left90)).toBe('pass')
+      expect(partialEvaluateScratchCheck(check, left15)).toBe('pending')
+    })
+
+    it('applies long-form per-alternative fieldValues', () => {
+      const check = {
+        type: 'block_used',
+        opcode: [
+          { opcode: 'motion_turnright', fieldValues: { DEGREES: 90 } },
+          { opcode: 'motion_turnleft', fieldValues: { DEGREES: 45 } },
+        ],
+      }
+      const left45 = { getAllBlocks: () => [makeBlock('motion_turnleft', { DEGREES: 45 })] }
+      const left90 = { getAllBlocks: () => [makeBlock('motion_turnleft', { DEGREES: 90 })] }
+      expect(evaluateScratchCheck(check, left45, null)).toBe(true)
+      expect(evaluateScratchCheck(check, left90, null)).toBe(false)
+      expect(partialEvaluateScratchCheck(check, left45)).toBe('pass')
+      expect(partialEvaluateScratchCheck(check, left90)).toBe('pending')
+    })
+
+    it('keeps a plain string opcode working exactly as before', () => {
+      const check = { type: 'block_used', opcode: 'motion_turnright' }
+      expect(evaluateScratchCheck(check, makeWorkspace(['motion_turnright']), null)).toBe(true)
+      expect(evaluateScratchCheck(check, makeWorkspace(['motion_turnleft']), null)).toBe(false)
+    })
+  })
+
+  describe('blocks_in_order', () => {
+    const sequence = ['event_whenflagclicked', { opcode: TURN }, 'motion_movesteps']
+
+    it('accepts either alternative at the position (full and partial evaluation)', () => {
+      for (const type of TURN) {
+        const ws = makeChainWorkspace([['event_whenflagclicked', type, 'motion_movesteps']])
+        const check = { type: 'blocks_in_order', sequence }
+        expect(evaluateScratchCheck(check, ws, null)).toBe(true)
+        expect(partialEvaluateScratchCheck(check, ws)).toBe('pass')
+      }
+    })
+
+    it('fails when a non-alternative block sits at the position', () => {
+      const ws = makeChainWorkspace([
+        ['event_whenflagclicked', 'motion_pointindirection', 'motion_movesteps'],
+      ])
+      const check = { type: 'blocks_in_order', sequence }
+      expect(evaluateScratchCheck(check, ws, null)).toBe(false)
+      expect(partialEvaluateScratchCheck(check, ws)).toBe('fail')
+    })
+
+    it('is pending while the alternatives position has not been reached yet', () => {
+      const ws = makeChainWorkspace([['event_whenflagclicked']])
+      expect(partialEvaluateScratchCheck({ type: 'blocks_in_order', sequence }, ws)).toBe('pending')
+    })
+
+    it('starts the sequence on an alternatives item', () => {
+      const ws = makeChainWorkspace([['event_whenflagclicked', 'motion_turnleft', 'control_wait']])
+      const check = { type: 'blocks_in_order', sequence: [{ opcode: TURN }, 'control_wait'] }
+      expect(evaluateScratchCheck(check, ws, null)).toBe(true)
+      expect(partialEvaluateScratchCheck(check, ws)).toBe('pass')
+    })
+
+    it('applies item-level shared fieldValues to whichever alternative matched', () => {
+      const check = {
+        type: 'blocks_in_order',
+        sequence: ['event_whenflagclicked', { opcode: TURN, fieldValues: { DEGREES: 90 } }],
+      }
+      const good = makeChain([
+        ['event_whenflagclicked', {}],
+        ['motion_turnleft', { DEGREES: 90 }],
+      ])
+      const bad = makeChain([
+        ['event_whenflagclicked', {}],
+        ['motion_turnleft', { DEGREES: 15 }],
+      ])
+      expect(evaluateScratchCheck(check, good, null)).toBe(true)
+      expect(evaluateScratchCheck(check, bad, null)).toBe(false)
+      expect(partialEvaluateScratchCheck(check, good)).toBe('pass')
+      expect(partialEvaluateScratchCheck(check, bad)).toBe('fail')
+    })
+
+    it('applies long-form per-alternative fieldValues inside a sequence item', () => {
+      const check = {
+        type: 'blocks_in_order',
+        sequence: ['event_whenflagclicked', { opcode: TURN_90_LONG }],
+      }
+      const good = makeChain([
+        ['event_whenflagclicked', {}],
+        ['motion_turnright', { DEGREES: 90 }],
+      ])
+      const bad = makeChain([
+        ['event_whenflagclicked', {}],
+        ['motion_turnright', { DEGREES: 30 }],
+      ])
+      expect(evaluateScratchCheck(check, good, null)).toBe(true)
+      expect(evaluateScratchCheck(check, bad, null)).toBe(false)
+    })
+
+    it('treats an alternative placed elsewhere in the chain as a violation, not on-track', () => {
+      // Required: move → (turn right | turn left) → move. The turn sits before the first move
+      // and the second move follows the first directly: the turn was placed in the wrong spot.
+      const check = {
+        type: 'blocks_in_order',
+        sequence: ['motion_movesteps', { opcode: TURN }, 'motion_movesteps'],
+      }
+      const ws = makeChainWorkspace([
+        ['event_whenflagclicked', 'motion_turnleft', 'motion_movesteps', 'motion_movesteps'],
+      ])
+      expect(partialEvaluateScratchCheck(check, ws)).toBe('fail')
+    })
+  })
+
+  describe('block_count', () => {
+    it('sums the blocks of every alternative (full and partial evaluation)', () => {
+      const ws = makeWorkspace([
+        'motion_turnright',
+        'motion_turnleft',
+        'motion_turnleft',
+        'motion_movesteps',
+      ])
+      const check = { type: 'block_count', opcode: TURN, operator: 'equals', value: 3 }
+      expect(evaluateScratchCheck(check, ws, null)).toBe(true)
+      expect(partialEvaluateScratchCheck(check, ws)).toBe('pass')
+      expect(
+        evaluateScratchCheck({ ...check, value: 2 }, ws, null),
+        'the two alternatives together exceed 2'
+      ).toBe(false)
+      expect(partialEvaluateScratchCheck({ ...check, value: 4 }, ws)).toBe('pending')
+    })
+
+    it('counts by opcode only — long-form fieldValues are ignored, like the shared ones', () => {
+      const ws = {
+        getAllBlocks: () => [
+          makeBlock('motion_turnright', { DEGREES: 15 }),
+          makeBlock('motion_turnleft', { DEGREES: 15 }),
+        ],
+      }
+      const check = { type: 'block_count', opcode: TURN_90_LONG, operator: 'equals', value: 2 }
+      expect(evaluateScratchCheck(check, ws, null)).toBe(true)
+    })
+
+    it('keeps a plain string opcode counting as before', () => {
+      const ws = makeWorkspace(['motion_turnright', 'motion_turnleft'])
+      expect(
+        evaluateScratchCheck(
+          { type: 'block_count', opcode: 'motion_turnright', operator: 'equals', value: 1 },
+          ws,
+          null
+        )
+      ).toBe(true)
+    })
+  })
+
+  describe('block_run', () => {
+    it('passes when any alternative was executed', () => {
+      const check = { type: 'block_run', opcode: TURN }
+      expect(
+        evaluateScratchCheck(check, null, null, { executedBlocks: new Set(['motion_turnleft']) })
+      ).toBe(true)
+      expect(
+        evaluateScratchCheck(check, null, null, { executedBlocks: new Set(['motion_movesteps']) })
+      ).toBe(false)
+      expect(evaluateScratchCheck(check, null, null, null)).toBe(false)
+    })
+
+    it('checks fieldValues against the alternative that ran', () => {
+      const check = { type: 'block_run', opcode: TURN, fieldValues: { DEGREES: 90 } }
+      const runState = { executedBlocks: new Set(['motion_turnleft']) }
+      const left90 = { getAllBlocks: () => [makeBlock('motion_turnleft', { DEGREES: 90 })] }
+      // A 90° turn right that never ran must not satisfy the turn left that did.
+      const right90Left15 = {
+        getAllBlocks: () => [
+          makeBlock('motion_turnright', { DEGREES: 90 }),
+          makeBlock('motion_turnleft', { DEGREES: 15 }),
+        ],
+      }
+      expect(evaluateScratchCheck(check, left90, null, runState)).toBe(true)
+      expect(evaluateScratchCheck(check, right90Left15, null, runState)).toBe(false)
+    })
+
+    it('applies long-form per-alternative fieldValues', () => {
+      const check = { type: 'block_run', opcode: TURN_90_LONG }
+      const runState = { executedBlocks: new Set(['motion_turnright']) }
+      const right90 = { getAllBlocks: () => [makeBlock('motion_turnright', { DEGREES: 90 })] }
+      const right30 = { getAllBlocks: () => [makeBlock('motion_turnright', { DEGREES: 30 })] }
+      expect(evaluateScratchCheck(check, right90, null, runState)).toBe(true)
+      expect(evaluateScratchCheck(check, right30, null, runState)).toBe(false)
     })
   })
 })

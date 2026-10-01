@@ -37,11 +37,17 @@ import {
   archiveWorkFields,
   normaliseSessionArchive,
 } from '../../badges/sessionArchive'
+import { liveInkPath } from '../liveInk/liveInkData'
+import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liveInkWriter'
 
 // Badge decisions (sessions/{lessonId}/badges/{anonymousId}/{badgeId}). A decision is written
 // once; revoking is the only later change (see decideBadge / revokeBadge).
 export const BADGE_DECISION_STATUSES = Object.freeze(['awarded', 'dismissed', 'revoked'])
 export const BADGE_DECISION_SOURCES = Object.freeze(['rule', 'auto', 'manual'])
+
+// Most `students/{id}/rejoins` entries kept (the latest win), so a flaky connection that
+// reloads all lesson can't grow the student node without bound.
+export const MAX_STUDENT_REJOINS = 20
 
 function encodeFileKeys(files) {
   return Object.fromEntries(Object.entries(files).map(([k, v]) => [encodeFileKey(k), v]))
@@ -147,6 +153,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       fullscreenRequestedAt: null,
       nudgeAwayPushedAt: null,
       videoCallLink: null,
+      videoCallBroadcastAt: null,
       sharedWorkspaces: null,
       sandboxEnteredAt: null,
       // Live badges: decisions, the tutor's badge toggles and the students' signals are
@@ -161,6 +168,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
     // Neither does the teacher-sandbox archive.
     await archiveQuietly(remove(ref(db, sessionArchivePath())))
+    // Nor the Presentation annotations.
+    await clearLiveInkQuietly()
   }
 
   async function restartSession() {
@@ -209,9 +218,11 @@ export function useSession(lessonId, { enabled = true } = {}) {
       fullscreenRequestedAt: null,
       nudgeAwayPushedAt: null,
       videoCallLink: null,
+      videoCallBroadcastAt: null,
       sharedWorkspaces: null,
     })
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
+    await clearLiveInkQuietly()
     // When the teacher closes the tab, remove the session entirely so the
     // lesson becomes available for solo study without a stale "ended" record.
     onDisconnect(ref(db, `sessions/${lessonId}`)).remove()
@@ -257,6 +268,13 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
+  // "Send to all": one session-wide timestamp that every student screen watches (name entry,
+  // waiting room, lesson). Students compare it with the value they saw on load, so a reload
+  // doesn't replay an old broadcast (see useVideoCallPrompt).
+  async function broadcastVideoCallLink() {
+    await set(ref(db, `sessions/${lessonId}/videoCallBroadcastAt`), Date.now())
+  }
+
   async function setTaskId(taskId) {
     const now = Date.now()
     const updates = {
@@ -291,6 +309,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/sentToTopicPushedAt`] = null
       updates[`students/${anonymousId}/teacherMessage`] = null
       updates[`students/${anonymousId}/teacherMessagePushedAt`] = null
+      updates[`students/${anonymousId}/thumbsUpPushedAt`] = null
       updates[`students/${anonymousId}/teacherEditRequestedAt`] = null
       updates[`students/${anonymousId}/teacherEditAcceptedAt`] = null
       updates[`students/${anonymousId}/teacherLiveCode`] = null
@@ -320,11 +339,13 @@ export function useSession(lessonId, { enabled = true } = {}) {
       pendingShareIds.push(anonymousId)
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
-    await Promise.all(
-      pendingShareIds.map((anonymousId) =>
+    await Promise.all([
+      ...pendingShareIds.map((anonymousId) =>
         removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}/pending/${anonymousId}`)
-      )
-    )
+      ),
+      // Presentation annotations belong to the task they were drawn on.
+      clearLiveInkQuietly(),
+    ])
   }
 
   function buildOverrideRecord(anonymousId, taskId) {
@@ -643,6 +664,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
   async function nudgeStudent(anonymousId) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
       nudgePushedAt: Date.now(),
+    })
+  }
+
+  // A transient "you're on the right track" 👍 for one student: their client pops a short
+  // toast and a gentle chime (see useThumbsUp). Not a badge, not shown to the class and not
+  // in session reports. Cleared on task change.
+  async function sendThumbsUp(anonymousId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      thumbsUpPushedAt: Date.now(),
     })
   }
 
@@ -1046,16 +1076,67 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await set(ref(db, `sessions/${lessonId}/teacherClassPaneCommand`), null)
   }
 
+  // ─── Presentation annotations (liveInk/{lessonId}) ─────────────────────────
+  // Pointer, ink and highlights from the Presentation window. A top-level node, not part of
+  // the session: every client streams sessions/{lessonId} in full, and the pointer moves at
+  // ~12Hz. See src/app/liveInk and docs/agents/runtime-model.md.
+
+  // Separate subscription for LiveInkProvider; returns the unsubscribe function.
+  function subscribeLiveInk(callback) {
+    if (!lessonId) return () => {}
+    return onValue(ref(db, liveInkPath(lessonId)), (snap) =>
+      callback(snap.exists() ? snap.val() : null)
+    )
+  }
+
+  // The Presentation window's writer (pointer/strokes/highlights/clear).
+  function createLiveInkWriter() {
+    return lessonId ? createLessonLiveInkWriter(lessonId) : null
+  }
+
+  async function clearLiveInkQuietly() {
+    try {
+      await remove(ref(db, liveInkPath(lessonId)))
+    } catch (err) {
+      console.warn('[liveInk] could not clear the annotations', err)
+    }
+  }
+
   // ─── Student helpers ──────────────────────────────────────────────────────
 
+  // joinedAt is a server timestamp so a teacher's admit.at (also server time) can be
+  // compared with it without clock skew between the two devices.
   async function registerJoining(tempId) {
     const r = ref(db, `sessions/${lessonId}/joiningStudents/${tempId}`)
     onDisconnect(r).remove()
-    await set(r, { joinedAt: Date.now() })
+    await set(r, { joinedAt: serverTimestamp() })
   }
 
   async function unregisterJoining(tempId) {
     await remove(ref(db, `sessions/${lessonId}/joiningStudents/${tempId}`))
+  }
+
+  // The name the student is typing on NameEntry, for the teacher grid's joining list.
+  // '' removes the field. The rules reject it once the marker itself is gone.
+  async function setJoiningTypedName(tempId, typedName) {
+    const value = typeof typedName === 'string' && typedName ? typedName : null
+    await set(ref(db, `sessions/${lessonId}/joiningStudents/${tempId}/typedName`), value)
+  }
+
+  // Teacher "Pull in": the student's own device acts on this (useStudentPhase).
+  async function admitJoiningStudent(tempId, name) {
+    await set(ref(db, `sessions/${lessonId}/joiningStudents/${tempId}/admit`), {
+      name,
+      at: serverTimestamp(),
+    })
+  }
+
+  // A dedicated listener on one joining marker; the phase logic ignores session changes
+  // during name entry, so the student watches its own marker for a teacher admit here.
+  function subscribeJoiningMarker(tempId, callback) {
+    return onValue(ref(db, `sessions/${lessonId}/joiningStudents/${tempId}`), (snap) =>
+      callback(snap.val())
+    )
   }
 
   async function registerPresence(anonymousId) {
@@ -1064,10 +1145,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
     onDisconnect(presenceRef).remove()
   }
 
+  // `joinedAt` is the latest name entry (overwritten on every join). The join history for the
+  // session report lives beside it: `firstJoinedAt` / `firstJoinTaskId` are written once (the
+  // transaction only commits while firstJoinedAt is absent), and every later join or
+  // reload-return appends `{ at, taskId }` to `rejoins`, capped at MAX_STUDENT_REJOINS.
   async function joinSession(anonymousId, displayName) {
+    const now = Date.now()
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
       displayName,
-      joinedAt: Date.now(),
+      joinedAt: now,
       currentCode: '',
       currentArcadeDesign: null,
       currentSpriteState: null,
@@ -1077,6 +1163,48 @@ export function useSession(lessonId, { enabled = true } = {}) {
       checkPassed: null,
       lastRunAt: null,
     })
+    const taskId = session?.currentTaskId ?? null
+    try {
+      const result = await runTransaction(
+        ref(db, `sessions/${lessonId}/students/${anonymousId}/firstJoinedAt`),
+        (current) => (current == null ? now : undefined)
+      )
+      if (result?.committed) {
+        await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+          firstJoinTaskId: taskId,
+        })
+      } else {
+        await appendStudentRejoin(anonymousId, { at: now, taskId })
+      }
+    } catch (err) {
+      // The join itself succeeded; losing the report's join history must not block the student.
+      console.warn('Failed to record join history:', err)
+    }
+  }
+
+  async function appendStudentRejoin(anonymousId, entry) {
+    await runTransaction(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/rejoins`),
+      (current) => [...Object.values(current ?? {}), entry].slice(-MAX_STUDENT_REJOINS)
+    )
+  }
+
+  // A returning student's reload (no name entry, so no joinSession) logs a rejoin, but only
+  // when a first join is on record: a student the teacher removed, or one who joined before
+  // join history existed, gets nothing (and no stray student node is recreated).
+  async function recordStudentReturn(anonymousId) {
+    if (!anonymousId) return
+    try {
+      const studentPath = `sessions/${lessonId}/students/${anonymousId}`
+      const first = await get(ref(db, `${studentPath}/firstJoinedAt`))
+      if (first?.val?.() == null) return
+      await appendStudentRejoin(anonymousId, {
+        at: Date.now(),
+        taskId: session?.currentTaskId ?? null,
+      })
+    } catch (err) {
+      console.warn('Failed to record student return:', err)
+    }
   }
 
   async function writeStudentRun(
@@ -1283,7 +1411,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     anonymousId,
     taskId,
     stageIndex,
-    { source = 'student', stageLabel = '', attemptNumber = null } = {}
+    { source = 'student', stageLabel = '', attemptNumber = null, pinnedAt = null } = {}
   ) {
     if (!anonymousId || taskId == null || stageIndex == null) return
     if (session?.supportRevealLog?.[anonymousId]?.[taskId]?.[stageIndex]) return
@@ -1298,6 +1426,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
         source: SUPPORT_REVEAL_SOURCES.includes(source) ? source : 'student',
         attemptNumber: attemptNumber ?? countedAttempts,
         revealedAt: serverTimestamp(),
+        // A pinned live-code reference's pin (see TEACHER_LIVE_PIN_REVEAL_KEY).
+        ...(pinnedAt != null ? { pinnedAt } : {}),
       }
     )
   }
@@ -1489,20 +1619,26 @@ export function useSession(lessonId, { enabled = true } = {}) {
     )
   }
 
-  // Visibility flags for showing Presentation View's live broadcast as a
+  // "Keep showing live code" pins for Presentation View's live broadcast as a
   // support reference (see docs/agents/classroom-behaviours.md). These are
   // toggles, not one-shot commands — the actual content always comes live
-  // from session.teacherLive; the flag just decides whether a student is
-  // allowed to see it.
+  // from session.teacherLiveReference; the pin just decides whether a student
+  // sees it, on every task until it is turned off (setTaskId leaves pins alone).
+  // A pin is stored as the time it was set, so the student's client can log it
+  // once per pin rather than once per task. The one-off "Reveal live code" is a
+  // supportRevealLog entry instead (TEACHER_LIVE_REVEAL_KEY), not a flag here.
   async function setTeacherLiveReferenceForStudent(anonymousId, visible) {
     await set(
       ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherLiveReferenceVisible`),
-      visible || null
+      visible ? Date.now() : null
     )
   }
 
   async function setTeacherLiveReferenceForClass(visible) {
-    await set(ref(db, `sessions/${lessonId}/teacherLiveReferenceVisibleToAll`), visible || null)
+    await set(
+      ref(db, `sessions/${lessonId}/teacherLiveReferenceVisibleToAll`),
+      visible ? Date.now() : null
+    )
   }
 
   async function requestHelp(anonymousId) {
@@ -1573,6 +1709,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     requestFullscreenForAll,
     requestFullscreenForStudent,
     nudgeStudent,
+    sendThumbsUp,
     nudgeAwayStudents,
     setAutoRevealStage,
     setExplainerShowComplete,
@@ -1603,6 +1740,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     sendMessageToStudent,
     updateVideoCallLink,
     sendVideoCallLink,
+    broadcastVideoCallLink,
     requestTeacherEdit,
     pushTeacherLiveCode,
     commitTeacherEdit,
@@ -1615,17 +1753,24 @@ export function useSession(lessonId, { enabled = true } = {}) {
     clearTeacherPaneCommand,
     pushClassPaneCommand,
     clearClassPaneCommand,
+    // Presentation annotations (LiveInkProvider)
+    subscribeLiveInk,
+    createLiveInkWriter,
     // teacher: live badges and the sandbox archive
     decideBadge,
     revokeBadge,
     setBadgeSettings,
     archiveSandboxStudentSnapshot,
     readSessionArchive,
+    admitJoiningStudent,
     // student
     registerPresence,
     joinSession,
+    recordStudentReturn,
     registerJoining,
     unregisterJoining,
+    setJoiningTypedName,
+    subscribeJoiningMarker,
     writeStudentRun,
     logAttempt,
     flagAttemptError,
