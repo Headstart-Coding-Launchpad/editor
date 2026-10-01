@@ -158,9 +158,7 @@ export default function BadgeSummaryTask({
       aria-label={title}
     >
       <div className="badge-summary__content">
-        <h1 className="badge-summary__title">
-          <span aria-hidden="true">🎖️</span> {title}
-        </h1>
+        <h1 className="badge-summary__title">{title}</h1>
         {explainer && (
           <div className="badge-summary__explainer">
             <MarkdownRenderer

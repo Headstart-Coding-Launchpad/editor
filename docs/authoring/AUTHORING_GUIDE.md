@@ -120,13 +120,15 @@ tasks:
 **Badge Summary ("Today's Coding Moments").** `informationType: badges` shows the live session's
 coding moments: each student sees their own badges as stickers, then the class wall grouped by
 badge ("🐛 Bug Hunter: Alex, Sam"); the teacher sees a projector-friendly wall with **Copy class
-summary**. The explainer is optional (shown above the wall). Put it last. Solo learners skip it,
-as if it were `taskMode: live`. See [badges.md](badges.md#badge-summary-task).
+summary**. The title is shown exactly as written (no emoji is added), so start it with one if you
+want one; with no title it defaults to "🎖️ Today's Coding Moments". The explainer is optional
+(shown above the wall). Put it last. Solo learners skip it, as if it were `taskMode: live`. See
+[badges.md](badges.md#badge-summary-task).
 
 ```yaml
   - type: information
     informationType: badges
-    title: Today's Coding Moments
+    title: "🎖️ Today's Coding Moments"   # shown exactly as written
 ```
 
 ---

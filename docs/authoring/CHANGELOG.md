@@ -39,6 +39,15 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-01
 
+### Badge Summary title shown exactly as written
+
+- The Badge Summary task (`informationType: badges`) no longer adds 🎖️ in front of its `title`,
+  so an emoji-first title no longer shows two emojis. The title (and the first line of **Copy
+  class summary**) is shown exactly as written; with no title the default is
+  "🎖️ Today's Coding Moments". See [badges.md](badges.md#badge-summary-task).
+- Affects: badges · Existing lessons: Badge Summary tasks whose title has no emoji now show
+  none — add one if wanted · Resolves: none
+
 ### Line hints: a trailing marker gets its own empty line
 
 - A line-hint marker with nothing after it (`#> …` / `<!--> … -->` as the last line of the code,
