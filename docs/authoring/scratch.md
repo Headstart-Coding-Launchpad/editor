@@ -410,6 +410,44 @@ Comparisons follow the same rules as every other check:
 - `greater_than`, `less_than` and the other numeric operators need both values to be numbers.
 - `matches_regex` uses `flags` (e.g. `i`); an invalid pattern fails.
 
+### One of several opcodes
+
+When more than one block is equally correct (turn right or turn left), give `opcode` a list.
+Any one of the blocks counts. This works in `block_used`, `block_run`, `block_count` and in
+each `blocks_in_order` sequence item. A plain string still means exactly that one block.
+
+Short form: a list of opcodes. The check's `fieldValues` apply to whichever block matched:
+```yaml
+check:
+  type: block_used
+  evaluation: after_block_placed
+  opcode: [motion_turnright, motion_turnleft]
+  fieldValues:
+    DEGREES: "90"       # must be an input of every block in the list
+```
+Use the short form's `fieldValues` only with keys that every listed block has (both turn
+blocks have `DEGREES`). Validation warns when a key is an input of one listed block but not
+another, e.g. `DEGREES` with `[motion_turnright, motion_movesteps]`. The warning only knows
+number and text inputs, so it can't spot dropdown fields such as `motion_goto`'s `TO`.
+
+Long form: a list of `{ opcode, fieldValues }` entries, each with its own values:
+```yaml
+check:
+  type: block_used
+  evaluation: after_block_placed
+  opcode:
+    - opcode: motion_turnright
+      fieldValues: { DEGREES: "90" }
+    - opcode: motion_turnleft
+      fieldValues: { DEGREES: "90" }
+```
+You can mix plain opcodes and `{ opcode, fieldValues }` entries in one list. A plain opcode
+uses the check's shared `fieldValues`. An entry's own `fieldValues` are added on top of the
+shared ones and win where both set the same key.
+
+The Builder shows a list as "any of: …". It can't edit the list, so change it in the lesson
+YAML. Its **Use one block** button replaces the list with its first opcode.
+
 ### `sprite_property`
 ```yaml
 check:
@@ -475,8 +513,11 @@ check:
       fieldValues:
         STEPS: "50"
     - motion_turnright           # plain string — any value accepted
+    - opcode: [motion_turnright, motion_turnleft]   # either turn counts here
+      fieldValues:
+        DEGREES: "90"
 ```
-Passes if any connected stack contains the opcodes **consecutively** (no gaps). Each sequence item can be a plain opcode string or an object with `opcode` and optional `fieldValues`.
+Passes if any connected stack contains the opcodes **consecutively** (no gaps). Each sequence item can be a plain opcode string or an object with `opcode` and optional `fieldValues`. An item's `opcode` can also be a list of alternatives, in the short or long form from [One of several opcodes](#one-of-several-opcodes). Put the list under the item's `opcode:`. A bare list as the item itself (`- [motion_turnright, motion_turnleft]`) is rejected, because lessons can't store a list directly inside a list. A block of any listed opcode counts for that position, including when the after-block-placed check decides whether a block sits in the wrong place.
 
 ### `block_count`
 ```yaml
@@ -488,6 +529,10 @@ check:
   operator: equals
   value: 3
 ```
+`block_count` counts blocks by opcode only. It doesn't use `fieldValues`. With a list of
+opcodes, for example `opcode: [motion_turnright, motion_turnleft]`, it counts the blocks of
+every listed opcode together: one turn right and two turn lefts count as 3. `fieldValues` on a
+long-form entry are ignored here too, and validation warns about them.
 
 ### Costume checks
 ```yaml
@@ -513,7 +558,7 @@ check:
       operator: greater_than_or_equal
       value: "50"
 ```
-Note: event hat blocks (`event_whenflagclicked` etc.) are not tracked by `block_run` — use `block_used` to check for a hat's presence instead. When `fieldValues` is set, the block must both have executed and currently have those input values in the workspace.
+Note: event hat blocks (`event_whenflagclicked` etc.) are not tracked by `block_run` — use `block_used` to check for a hat's presence instead. When `fieldValues` is set, the block must both have executed and currently have those input values in the workspace. With a list of opcodes (see [One of several opcodes](#one-of-several-opcodes)), the check passes when any listed block ran. If that block has `fieldValues`, a block of the same opcode in the workspace must hold them.
 
 **Always set `fieldValues` when the block has a student-editable input (text, number).** A block is marked "executed" the instant it runs, before its field values are inspected — and this app's click-to-run-a-single-block feature means a bare click on the block (e.g. while a student is clicking in to edit its text) already counts as a run. Without `fieldValues`, `block_run` only asserts "this opcode executed at least once," which can pass on a still-blank/default field. For a task like "type your own message into this say block," require the field to be non-empty rather than leaving `fieldValues` unset:
 ```yaml

@@ -16,7 +16,7 @@ import {
   loadBlocklyModules,
   predefinedBlockToStack,
 } from './scratch'
-import { normalizeSequenceItem } from './checks'
+import { normalizeSequenceItem, opcodeSpecOpcodes } from './checks'
 
 const SCRATCH_BLOCK_OPTIONS = SCRATCH_TOOLBOX_GROUPS.flatMap((group) => group.blocks)
 const SCRATCH_ALL_BLOCK_TYPES = SCRATCH_BLOCK_OPTIONS.map(([type]) => type)
@@ -861,6 +861,53 @@ const COMPARISON_OPERATORS = [
   { value: 'less_than', label: 'less than' },
 ]
 
+// " (steps=10, ...)" for a fieldValues map, or '' when there are none.
+function describeFieldValues(fieldValues) {
+  const entries = fieldValues ? Object.entries(fieldValues).filter(([, v]) => v !== '') : []
+  return entries.length > 0
+    ? ` (${entries.map(([k, v]) => `${k.toLowerCase()}=${v}`).join(', ')})`
+    : ''
+}
+
+const isPlainObject = (value) => !!value && typeof value === 'object' && !Array.isArray(value)
+
+// Label for a check's opcode spec: the block's label, or "any of: A, B" for a list of
+// alternatives (each with its own fieldValues, unless withValues is false).
+function opcodeSpecLabel(spec, { withValues = true } = {}) {
+  if (!Array.isArray(spec)) return blockLabel(spec)
+  const labels = spec.map((alt) =>
+    isPlainObject(alt)
+      ? blockLabel(alt.opcode) + (withValues ? describeFieldValues(alt.fieldValues) : '')
+      : blockLabel(alt)
+  )
+  return `any of: ${labels.join(', ')}`
+}
+
+// Shown in place of the block picker when a check (or sequence item) lists alternative
+// opcodes. The Builder edits single opcodes only, so the list stays read-only instead of
+// being overwritten by the picker; "Use one block" replaces it with its first opcode.
+function OpcodeAlternativesNote({ spec, onUseSingle }) {
+  return (
+    <div
+      className="te-scratch-opcode-alternatives"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        flexWrap: 'wrap',
+        fontFamily: 'var(--font-body)',
+        fontSize: '0.8rem',
+      }}
+    >
+      <span>{opcodeSpecLabel(spec)}</span>
+      <span style={{ color: '#6b7280' }}>(alternatives are edited in the lesson YAML)</span>
+      <button type="button" className="btn-ghost" onClick={onUseSingle}>
+        Use one block
+      </button>
+    </div>
+  )
+}
+
 function describeCheck(check, sprites) {
   const spriteName = check.spriteName ?? sprites[0]?.name ?? 'Sprite 1'
   const propLabel = check.property ?? 'x'
@@ -872,18 +919,8 @@ function describeCheck(check, sprites) {
         : 'When checked manually'
 
   switch (check.type) {
-    case 'block_used': {
-      const found = SCRATCH_BLOCK_OPTIONS.find(([t]) => t === check.opcode)
-      const label = found ? found[1] : check.opcode
-      const fvEntries = check.fieldValues
-        ? Object.entries(check.fieldValues).filter(([, v]) => v !== '')
-        : []
-      const values =
-        fvEntries.length > 0
-          ? ` (${fvEntries.map(([k, v]) => `${k.toLowerCase()}=${v}`).join(', ')})`
-          : ''
-      return `Workspace must contain a "${label}" block${values}`
-    }
+    case 'block_used':
+      return `Workspace must contain a "${opcodeSpecLabel(check.opcode)}" block${describeFieldValues(check.fieldValues)}`
     case 'sprite_property': {
       const opLabel =
         COMPARISON_OPERATORS.find((o) => o.value === check.operator)?.label ?? check.operator
@@ -902,26 +939,17 @@ function describeCheck(check, sprites) {
       const labels = (check.sequence ?? [])
         .map((item) => {
           const { opcode, fieldValues } = normalizeSequenceItem(item)
-          const found = SCRATCH_BLOCK_OPTIONS.find(([t]) => t === opcode)
-          const label = found ? found[1] : opcode
-          const fvEntries = fieldValues
-            ? Object.entries(fieldValues).filter(([, v]) => v !== '')
-            : []
-          const values =
-            fvEntries.length > 0
-              ? ` (${fvEntries.map(([k, v]) => `${k.toLowerCase()}=${v}`).join(', ')})`
-              : ''
-          return label + values
+          const label = opcodeSpecLabel(opcode)
+          return (Array.isArray(opcode) ? `(${label})` : label) + describeFieldValues(fieldValues)
         })
         .join(' → ')
       const spriteLabel = check.spriteName ?? 'Any sprite'
       return `${spriteLabel}: workspace must contain the sequence: ${labels}`
     }
     case 'block_count': {
-      const found = SCRATCH_BLOCK_OPTIONS.find(([t]) => t === check.opcode)
       const opLabel =
         COMPARISON_OPERATORS.find((o) => o.value === check.operator)?.label ?? check.operator
-      return `Workspace must have "${found?.[1] ?? check.opcode}" block count ${opLabel} ${check.value}`
+      return `Workspace must have "${opcodeSpecLabel(check.opcode, { withValues: false })}" block count ${opLabel} ${check.value}`
     }
     case 'variable_compare': {
       const opLabel =
@@ -930,17 +958,8 @@ function describeCheck(check, sprites) {
     }
     case 'costume_is':
       return `${evalLabel}: ${spriteName}'s costume must be "${check.value}"`
-    case 'block_run': {
-      const found = SCRATCH_BLOCK_OPTIONS.find(([t]) => t === check.opcode)
-      const fvEntries = check.fieldValues
-        ? Object.entries(check.fieldValues).filter(([, v]) => v !== '')
-        : []
-      const values =
-        fvEntries.length > 0
-          ? ` (${fvEntries.map(([k, v]) => `${k.toLowerCase()}=${v}`).join(', ')})`
-          : ''
-      return `After running: a "${found?.[1] ?? check.opcode}" block must have been executed${values}`
-    }
+    case 'block_run':
+      return `After running: a "${opcodeSpecLabel(check.opcode)}" block must have been executed${describeFieldValues(check.fieldValues)}`
     default:
       return ''
   }
@@ -1118,35 +1137,49 @@ function ScratchCheckEditor({
                 </option>
               ))}
             </select>
-            <ScratchBlockPicker
-              value={check.opcode ?? 'motion_movesteps'}
-              onChange={(opcode) => onChange({ ...check, opcode, fieldValues: undefined })}
-              fieldValues={check.fieldValues}
-              onChangeFieldValues={(fv) => onChange({ ...check, fieldValues: fv })}
-              allowFieldOperators
-            />
-            {VALUE_INPUT_DEFAULTS[check.opcode ?? 'motion_movesteps'] && (
-              <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '0.8rem',
-                  color: '#6b7280',
-                  cursor: 'pointer',
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={!!check.fieldValues}
-                  onChange={(e) =>
-                    onChange({ ...check, fieldValues: e.target.checked ? {} : undefined })
-                  }
-                />
-                Require specific values
-              </label>
+            {Array.isArray(check.opcode) ? (
+              <OpcodeAlternativesNote
+                spec={check.opcode}
+                onUseSingle={() =>
+                  onChange({
+                    ...check,
+                    opcode: opcodeSpecOpcodes(check.opcode)[0] ?? 'motion_movesteps',
+                    fieldValues: undefined,
+                  })
+                }
+              />
+            ) : (
+              <ScratchBlockPicker
+                value={check.opcode ?? 'motion_movesteps'}
+                onChange={(opcode) => onChange({ ...check, opcode, fieldValues: undefined })}
+                fieldValues={check.fieldValues}
+                onChangeFieldValues={(fv) => onChange({ ...check, fieldValues: fv })}
+                allowFieldOperators
+              />
             )}
+            {!Array.isArray(check.opcode) &&
+              VALUE_INPUT_DEFAULTS[check.opcode ?? 'motion_movesteps'] && (
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '0.8rem',
+                    color: '#6b7280',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!check.fieldValues}
+                    onChange={(e) =>
+                      onChange({ ...check, fieldValues: e.target.checked ? {} : undefined })
+                    }
+                  />
+                  Require specific values
+                </label>
+              )}
           </div>
         ) : type === 'block_count' ? (
           <>
@@ -1162,11 +1195,23 @@ function ScratchCheckEditor({
                 </option>
               ))}
             </select>
-            <ScratchBlockPicker
-              value={check.opcode ?? 'motion_movesteps'}
-              onChange={(opcode) => onChange({ ...check, opcode })}
-              compact
-            />
+            {Array.isArray(check.opcode) ? (
+              <OpcodeAlternativesNote
+                spec={check.opcode}
+                onUseSingle={() =>
+                  onChange({
+                    ...check,
+                    opcode: opcodeSpecOpcodes(check.opcode)[0] ?? 'motion_movesteps',
+                  })
+                }
+              />
+            ) : (
+              <ScratchBlockPicker
+                value={check.opcode ?? 'motion_movesteps'}
+                onChange={(opcode) => onChange({ ...check, opcode })}
+                compact
+              />
+            )}
             <select
               className="te-select"
               value={check.operator ?? 'equals'}
@@ -1203,7 +1248,8 @@ function ScratchCheckEditor({
             </select>
             {(check.sequence ?? ['motion_movesteps']).map((seqItem, idx) => {
               const { opcode, fieldValues } = normalizeSequenceItem(seqItem)
-              const hasInputs = !!VALUE_INPUT_DEFAULTS[opcode]
+              const alternatives = Array.isArray(opcode)
+              const hasInputs = !alternatives && !!VALUE_INPUT_DEFAULTS[opcode]
               return (
                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span
@@ -1216,22 +1262,33 @@ function ScratchCheckEditor({
                   >
                     {idx + 1}.
                   </span>
-                  <ScratchBlockPicker
-                    value={opcode}
-                    onChange={(nextOpcode) => {
-                      const next = [...(check.sequence ?? [])]
-                      next[idx] = nextOpcode
-                      onChange({ ...check, sequence: next })
-                    }}
-                    fieldValues={fieldValues !== null ? fieldValues : undefined}
-                    onChangeFieldValues={(fv) => {
-                      const next = [...(check.sequence ?? [])]
-                      next[idx] = { opcode, fieldValues: fv }
-                      onChange({ ...check, sequence: next })
-                    }}
-                    allowFieldOperators
-                    compact
-                  />
+                  {alternatives ? (
+                    <OpcodeAlternativesNote
+                      spec={opcode}
+                      onUseSingle={() => {
+                        const next = [...(check.sequence ?? [])]
+                        next[idx] = opcodeSpecOpcodes(opcode)[0] ?? SCRATCH_BLOCK_OPTIONS[0][0]
+                        onChange({ ...check, sequence: next })
+                      }}
+                    />
+                  ) : (
+                    <ScratchBlockPicker
+                      value={opcode}
+                      onChange={(nextOpcode) => {
+                        const next = [...(check.sequence ?? [])]
+                        next[idx] = nextOpcode
+                        onChange({ ...check, sequence: next })
+                      }}
+                      fieldValues={fieldValues !== null ? fieldValues : undefined}
+                      onChangeFieldValues={(fv) => {
+                        const next = [...(check.sequence ?? [])]
+                        next[idx] = { opcode, fieldValues: fv }
+                        onChange({ ...check, sequence: next })
+                      }}
+                      allowFieldOperators
+                      compact
+                    />
+                  )}
                   {hasInputs && (
                     <label
                       style={{
@@ -1509,6 +1566,7 @@ export function VariableManager({ variables, onChange }) {
 export {
   ScratchCheckListEditor,
   ScratchCheckEditor,
+  describeCheck as describeScratchCheck,
   buildScratchToolboxXml,
   parseScratchToolboxXml,
 }

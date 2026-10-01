@@ -193,4 +193,21 @@ describe('characterisation: buildPrintHtml for legacy quiz + code_arrange tasks'
     expect(section).not.toContain('Options')
     expect(section).toContain('<strong>answer_equals</strong>')
   })
+
+  it('prints a Scratch check that accepts one of several opcodes', () => {
+    const html = buildPrintHtml(
+      lesson('scratch', {
+        id: 1,
+        title: 'Turn either way',
+        check: {
+          type: 'block_used',
+          opcode: ['motion_turnright', { opcode: 'motion_turnleft', fieldValues: { DEGREES: 90 } }],
+        },
+      })
+    )
+    expect(html).toContain(
+      'opcode: any of <code>motion_turnright</code>, <code>motion_turnleft</code>'
+    )
+    expect(html).not.toContain('[object Object]')
+  })
 })

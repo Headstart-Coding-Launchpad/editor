@@ -302,8 +302,10 @@ export default defineModule({
   },
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
-  validateTask: (task, { n, errors }) => {
-    validateTaskChecks(task, (checks, kind) => validateScratchChecks(checks, n, errors, kind))
+  validateTask: (task, { n, errors, warnings }) => {
+    validateTaskChecks(task, (checks, kind) =>
+      validateScratchChecks(checks, n, errors, kind, warnings)
+    )
   },
   hasStarterContent: (task) => !!task.starterBlocks,
   hasCheckValue: anyCheckHasValue,

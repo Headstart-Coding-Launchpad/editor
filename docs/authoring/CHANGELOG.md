@@ -39,6 +39,24 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-01
 
+### Scratch block checks accept one of several opcodes
+
+- `block_used`, `block_run`, `block_count` and each `blocks_in_order` sequence item can give
+  `opcode` a list, so any one of several equally-correct blocks counts. Short form:
+  `opcode: [motion_turnright, motion_turnleft]`, where the check's (or item's) `fieldValues`
+  apply to whichever block matched. Long form: a list of `{ opcode, fieldValues }` entries, each
+  with its own values. A plain string works exactly as before.
+- In `blocks_in_order`, put the list under the item's `opcode:` (`- opcode: [a, b]`). A bare
+  list as the item is rejected, because lessons can't store a list inside a list.
+- `block_count` adds up the blocks of every listed opcode and, as before, ignores `fieldValues`.
+  `block_run` passes when any listed block ran.
+- Validation rejects an empty list or a malformed entry. It warns when a shared `fieldValues`
+  key isn't an input of every listed block, and when a `block_count` entry has `fieldValues`.
+  The Builder shows a list as "any of: …" and leaves it alone; edit it in YAML. See
+  [scratch.md](scratch.md#one-of-several-opcodes).
+- Affects: scratch · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-09-30-scratch-block-checks-that-accept-one-of-several-opcodes.md
+
 ### Line hints: a trailing marker gets its own empty line
 
 - A line-hint marker with nothing after it (`#> …` / `<!--> … -->` as the last line of the code,
