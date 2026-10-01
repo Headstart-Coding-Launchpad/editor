@@ -39,6 +39,19 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-01
 
+### Session reports: each student's first join, task at join and rejoins
+
+- Each `students[]` entry in a session report now carries `joinedAt` (the student's first join,
+  ms, never overwritten), `joinedAfterMs` (how long after the session started, clamped to 0 for a
+  waiting-room join), `joinedAtTaskId` (the class's current task at that moment) and `rejoins:
+  [{ at, taskId }]` (each later name entry or page reload back into the session, oldest first; at
+  most the latest 20). Untouched tasks before `joinedAtTaskId` mean "not present yet", not
+  "skipped".
+- Reports from sessions before 2026-10-01 lack these fields; any of them is also omitted when
+  unknown (no session start, no rejoins, a student the teacher removed).
+- Affects: all (session reports) · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-01-session-report-per-student-join-time-and-task-at-join.md
+
 ### Line hints: a trailing marker gets its own empty line
 
 - A line-hint marker with nothing after it (`#> …` / `<!--> … -->` as the last line of the code,

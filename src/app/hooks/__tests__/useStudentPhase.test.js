@@ -176,6 +176,57 @@ describe('useStudentPhase', () => {
       await waitFor(() => expect(updateTimestamp).toHaveBeenCalledWith(1000))
     })
 
+    it('records one rejoin when a returning student reloads into the lesson', async () => {
+      const recordStudentReturn = vi.fn().mockResolvedValue(undefined)
+      const identity = makeIdentity({ lastSessionTimestamp: 1000 })
+      const props = (session) => defaultProps({ session, identity, recordStudentReturn })
+      const { result, rerender } = renderHook((p) => useStudentPhase(p), {
+        initialProps: props(makeSession({ state: 'active', createdAt: 1000, currentTaskId: 1 })),
+      })
+      await waitFor(() => expect(result.current.phase).toBe('lesson'))
+      expect(recordStudentReturn).toHaveBeenCalledTimes(1)
+      expect(recordStudentReturn).toHaveBeenCalledWith('anon-1')
+
+      // Effect reruns (teacher moves on, sandbox and back) are not new returns.
+      rerender(props(makeSession({ state: 'active', createdAt: 1000, currentTaskId: 2 })))
+      await waitFor(() => expect(result.current.currentTaskId).toBe(2))
+      rerender(props(makeSession({ state: 'sandbox', createdAt: 1000, currentTaskId: 2 })))
+      await waitFor(() => expect(result.current.phase).toBe('sandbox'))
+      rerender(props(makeSession({ state: 'active', createdAt: 1000, currentTaskId: 2 })))
+      await waitFor(() => expect(result.current.phase).toBe('lesson'))
+      expect(recordStudentReturn).toHaveBeenCalledTimes(1)
+    })
+
+    it('records no rejoin for a name submit (joinSession logs that) or a new student', async () => {
+      const recordStudentReturn = vi.fn()
+      const joinSession = vi.fn().mockResolvedValue(undefined)
+      const createIdentity = vi.fn((displayName, ts) => ({
+        anonymousId: 'anon-1',
+        displayName,
+        lastSessionTimestamp: ts,
+      }))
+      const session = makeSession({ state: 'active', createdAt: 1000 })
+      const { result } = renderHook(() =>
+        useStudentPhase(
+          defaultProps({
+            session,
+            identity: null,
+            identityLoaded: true,
+            recordStudentReturn,
+            joinSession,
+            createIdentity,
+          })
+        )
+      )
+      await waitFor(() => expect(result.current.phase).toBe('name-entry'))
+      await act(async () => {
+        await result.current.handleNameSubmit('Bob')
+      })
+      expect(result.current.phase).toBe('lesson')
+      expect(joinSession).toHaveBeenCalledWith('anon-1', 'Bob')
+      expect(recordStudentReturn).not.toHaveBeenCalled()
+    })
+
     it('goes to choice from loading phase when session is ended and not soloMode', async () => {
       const session = makeSession({ state: 'ended' })
       const { result } = renderHook(() =>

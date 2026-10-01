@@ -97,6 +97,7 @@ export default function StudentView({
     connected,
     registerPresence,
     joinSession,
+    recordStudentReturn,
     registerJoining,
     unregisterJoining,
     writeStudentRun,
@@ -208,6 +209,7 @@ export default function StudentView({
     createIdentity,
     updateTimestamp,
     joinSession,
+    recordStudentReturn,
     registerJoining,
     unregisterJoining,
   })

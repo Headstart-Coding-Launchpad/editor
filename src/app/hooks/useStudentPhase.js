@@ -34,6 +34,7 @@ export function useStudentPhase({
   createIdentity,
   updateTimestamp,
   joinSession,
+  recordStudentReturn,
   registerJoining,
   unregisterJoining,
 }) {
@@ -53,6 +54,9 @@ export function useStudentPhase({
   // Holds the tempId for the current name-entry phase so handleNameSubmit can
   // eagerly remove the joining marker before writing to students/.
   const joiningTempIdRef = useRef(null)
+  // The session (createdAt) this tab already logged a reload-return for, so effect reruns
+  // (task changes, state flips) never log another one.
+  const returnRecordedForRef = useRef(null)
 
   // While in name-entry, write a temporary "joining" marker to Firebase so the teacher
   // can see students who are in the process of entering their name.
@@ -195,7 +199,13 @@ export function useStudentPhase({
       return
     }
 
-    // Returning student — update timestamp and drop in
+    // Returning student — update timestamp and drop in. Landing here straight from 'loading'
+    // is a reload (or a fresh tab) of a student who already joined: log it as a rejoin for
+    // the session report. Later reruns of this effect reach here from 'lesson'/'sandbox'.
+    if (phaseRef.current === 'loading' && returnRecordedForRef.current !== sessionTs) {
+      returnRecordedForRef.current = sessionTs
+      recordStudentReturn?.(identity.anonymousId)
+    }
     updateTimestamp(sessionTs)
 
     if (session.state === 'sandbox') {
