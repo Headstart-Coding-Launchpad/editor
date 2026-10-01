@@ -128,5 +128,6 @@ the Builder preview.
 | Next after a pass | `SoloNav.jsx` | Static success glow; `motion-spin-once` on a pass the student watched (`usePassMoment`) |
 | Activity correct | `src/activities/ui/ActivityCorrect.jsx` (`ActivityCorrect`, `SpinTick`) | ✓ `motion-spin-once` when it appears |
 | Success chime | `useCompleteChime` (StudentView) | Rising C–E–G Web Audio chime, first watched pass per task |
+| Teacher 👍 | `ThumbsUpToast.jsx` + `useThumbsUp` (StudentView) | Toast `motion-pop-in` per push, auto-dismissed after 2.5s; the `badge` chime unless muted |
 | Badge Summary | `BadgeSummaryTask.jsx`, `BadgeStickerSheet` `entrance="tumble"` | Student: stickers `motion-tumble-in` 260ms apart, then the wall drops; teacher/presentation: row emoji tumble, rows drop; later arrivals only drop in |
 | Badge celebration card, class toast, sticker sheet | `src/app/components/badges/` | `sv-badge-*` keyframes (predate this system; same principles) |

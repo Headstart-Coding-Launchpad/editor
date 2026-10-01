@@ -48,6 +48,7 @@ export default function StudentGrid({
   onRequestFullscreenAll,
   onRequestFullscreenStudent,
   onNudgeStudent,
+  onThumbsUpStudent,
   onNudgeAway,
   onSetAutoReveal,
   badgeSuggestions = null,
@@ -401,6 +402,7 @@ export default function StudentGrid({
                 onRemove={onRemove}
                 onExpand={handleExpand}
                 onNudge={onNudgeStudent}
+                onThumbsUp={onThumbsUpStudent}
                 badgePendingCount={
                   badgeSuggestions?.pendingCountByStudent?.[student.anonymousId] ?? 0
                 }
@@ -497,6 +499,7 @@ export default function StudentGrid({
           onRequestShareSnapshot={onRequestShareSnapshot}
           onRequestFullscreen={onRequestFullscreenStudent}
           onNudge={onNudgeStudent}
+          onThumbsUp={onThumbsUpStudent}
           onSetAutoReveal={onSetAutoReveal}
           onDecideBadge={onDecideBadge}
           onRevokeBadge={onRevokeBadge}

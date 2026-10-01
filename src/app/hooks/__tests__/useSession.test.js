@@ -446,6 +446,17 @@ describe('useSession', () => {
       )
     })
 
+    it('sendThumbsUp stamps thumbsUpPushedAt on just that student', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.sendThumbsUp('student-abc')
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc' },
+        { thumbsUpPushedAt: expect.any(Number) }
+      )
+    })
+
     it('nudgeAwayStudents stamps a session-level nudgeAwayPushedAt', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {
@@ -980,6 +991,7 @@ describe('useSession', () => {
         sentToTopicPushedAt: null,
         teacherMessage: null,
         teacherMessagePushedAt: null,
+        thumbsUpPushedAt: null,
         teacherEditRequestedAt: null,
         teacherEditAcceptedAt: null,
         teacherLiveCode: null,

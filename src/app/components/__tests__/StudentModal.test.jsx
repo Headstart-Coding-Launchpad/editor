@@ -974,6 +974,17 @@ describe('StudentModal header', () => {
     expect(onGoLiveForAll).toHaveBeenCalled()
   })
 
+  it('sends a 👍 from the header and confirms it', async () => {
+    const user = userEvent.setup()
+    const onThumbsUp = vi.fn()
+    render(<StudentModal {...mkProps({ onThumbsUp })} />)
+    await user.click(screen.getByRole('button', { name: 'Send Jamie a thumbs up' }))
+    expect(onThumbsUp).toHaveBeenCalledWith('student-1')
+    const button = screen.getByRole('button', { name: 'Send Jamie a thumbs up' })
+    expect(button).toBeDisabled()
+    expect(button).toHaveTextContent('✓ Sent')
+  })
+
   it('closes an open menu on Escape without closing the modal', async () => {
     const user = userEvent.setup()
     const props = mkProps({ onDecideBadge: vi.fn() })
