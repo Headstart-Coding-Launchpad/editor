@@ -39,6 +39,18 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-01
 
+### Code Arrange attempts always record the assembled program
+
+- A `code_arrange` Run now always runs, and logs, the program assembled from the tiles. Before,
+  the code behind the board could be reset to empty while the tiles stayed placed (loading a task
+  in a live session, a late reconnect, a tutor's **Start again**), so the attempt was logged with
+  an empty `submission` and failed. A tutor's reset now clears the tiles too (or fills in the
+  answer for **Complete**).
+- [lesson-schema.md](lesson-schema.md#code-arrange-task-fields) now says what an arrange attempt
+  records: the assembled program text as `submission`, identical re-runs counted as retries.
+- Affects: code_arrange · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-09-30-code-arrange-attempts-recorded-with-an-empty-submission-then.md
+
 ### Line hints: a trailing marker gets its own empty line
 
 - A line-hint marker with nothing after it (`#> …` / `<!--> … -->` as the last line of the code,
