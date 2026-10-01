@@ -10,7 +10,10 @@ import {
   mockModuleRun,
   renderStudentCodeState,
 } from '../../../test/studentCodeStateHarness'
-import { PYTHON_CODE_ARRANGE_TASK } from '../../../test/fixtures/legacyActivityTasks'
+import {
+  HTML_CODE_ARRANGE_TASK,
+  PYTHON_CODE_ARRANGE_TASK,
+} from '../../../test/fixtures/legacyActivityTasks'
 
 vi.mock('../../../modules/python/pyodide', async () =>
   (await import('../../../test/studentCodeStateMocks')).pyodideMock()
@@ -110,5 +113,69 @@ describe('code_arrange teacher remote reset', () => {
       session: makeSession({ student: { remoteResetPushedAt: 5, remoteResetAction: 'starter' } }),
     })
     expect(h.result.current.codeArrangeReset).toBeNull()
+  })
+})
+
+// "Edit answers" belongs to the task it was made on and is applied once: every Builder-seeded
+// task shares the same slot ids, so a stale edit would otherwise land on the next task's board.
+describe('code_arrange teacher answer edit', () => {
+  const NEXT_TASK = { ...PYTHON_CODE_ARRANGE_TASK, id: 18, title: 'Another arrangement' }
+  const TWO_TASKS = { ...LESSON, tasks: [PYTHON_CODE_ARRANGE_TASK, NEXT_TASK] }
+  const EDIT = { answer: null, codeArrangeSlots: SOLUTION_SLOTS, taskId: TASK_ID, at: 21 }
+
+  it('carries the task it was made on', () => {
+    const h = renderStudentCodeState({
+      lesson: TWO_TASKS,
+      currentTaskId: TASK_ID,
+      session: makeSession({ student: { teacherAnswerEdit: EDIT } }),
+    })
+    expect(h.result.current.teacherCodeArrangeEdit).toEqual({
+      slots: SOLUTION_SLOTS,
+      taskId: TASK_ID,
+      at: 21,
+    })
+  })
+
+  it('is dropped when the student moves to another task', () => {
+    const h = renderStudentCodeState({
+      lesson: TWO_TASKS,
+      currentTaskId: TASK_ID,
+      session: makeSession({ student: { teacherAnswerEdit: EDIT } }),
+    })
+    h.update({ currentTaskId: NEXT_TASK.id })
+    expect(h.result.current.teacherCodeArrangeEdit).toBeNull()
+  })
+
+  it('is cleared once the board acknowledges it', () => {
+    const h = renderStudentCodeState({
+      lesson: TWO_TASKS,
+      currentTaskId: TASK_ID,
+      session: makeSession({ student: { teacherAnswerEdit: EDIT } }),
+    })
+    actSync(() => h.result.current.acknowledgeTeacherCodeArrangeEdit(20))
+    expect(h.result.current.teacherCodeArrangeEdit).not.toBeNull()
+    actSync(() => h.result.current.acknowledgeTeacherCodeArrangeEdit(21))
+    expect(h.result.current.teacherCodeArrangeEdit).toBeNull()
+  })
+})
+
+describe('code_arrange html entry file', () => {
+  it('creates the entry file when the starter files lack it, so the program is never dropped', () => {
+    const task = {
+      ...HTML_CODE_ARRANGE_TASK,
+      entryFile: 'page.html',
+      starterFiles: [{ name: 'index.html', type: 'html', content: '' }],
+    }
+    const lesson = { id: 'arrange-html', title: 'Arrange', type: 'html', tasks: [task] }
+    const h = renderStudentCodeState({ lesson, currentTaskId: task.id })
+
+    actSync(() => h.result.current.handleFileChange('page.html', '<h1>Hello</h1>'))
+
+    expect(h.result.current.files).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'page.html', type: 'html', content: '<h1>Hello</h1>' }),
+        expect.objectContaining({ name: 'index.html' }),
+      ])
+    )
   })
 })

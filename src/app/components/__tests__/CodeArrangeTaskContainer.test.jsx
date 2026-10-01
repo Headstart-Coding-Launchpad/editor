@@ -647,3 +647,93 @@ describe('CodeArrangeTaskContainer — code slot kept in step with the tiles', (
     expect(cs.acknowledgeCodeArrangeReset).not.toHaveBeenCalled()
   })
 })
+
+// "Edit answers" is task-scoped and one-shot: the Builder seeds every task with the same slot
+// ids, so another task's tiles would often land; and a remount (revisiting the task) must never
+// re-apply it over the student's newer placements.
+describe('CodeArrangeTaskContainer — task-scoped, one-shot teacher edit', () => {
+  function board(cs, task = PYTHON_TASK) {
+    return (
+      <CodeArrangeTaskContainer
+        task={task}
+        cs={cs}
+        currentTaskId={task.id}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+  }
+
+  it("ignores a teacher edit made on another task's board", () => {
+    const cs = makeCs({
+      readSavedTaskFile: vi.fn(() => JSON.stringify({ L1: 'L1', L2: 'L2' })),
+      code: 'for i in range(5): print(i * 2)\nprint("done")',
+      teacherCodeArrangeEdit: { slots: { L1: 'D1', L2: 'D1' }, taskId: 99, at: 6 },
+      acknowledgeTeacherCodeArrangeEdit: vi.fn(),
+    })
+    render(board(cs))
+
+    expect(cs.handleCodeArrangeSlotsChange).toHaveBeenCalledTimes(1)
+    expect(cs.handleCodeArrangeSlotsChange).toHaveBeenCalledWith({ L1: 'L1', L2: 'L2' })
+    expect(cs.saveTaskAuxFile).not.toHaveBeenCalled()
+    expect(cs.handleCodeChange).not.toHaveBeenCalled()
+    expect(cs.acknowledgeTeacherCodeArrangeEdit).not.toHaveBeenCalled()
+  })
+
+  it('applies a teacher edit for this task once, then acknowledges it', () => {
+    const acknowledgeTeacherCodeArrangeEdit = vi.fn()
+    const cs = makeCs({
+      readSavedTaskFile: vi.fn(() => null),
+      teacherCodeArrangeEdit: { slots: { L1: 'L1', L2: 'D1' }, taskId: 1, at: 7 },
+      acknowledgeTeacherCodeArrangeEdit,
+    })
+    render(board(cs))
+
+    expect(cs.handleCodeArrangeSlotsChange).toHaveBeenCalledWith(
+      { L1: 'L1', L2: 'D1' },
+      { fromTeacher: true }
+    )
+    expect(acknowledgeTeacherCodeArrangeEdit).toHaveBeenCalledTimes(1)
+    expect(acknowledgeTeacherCodeArrangeEdit).toHaveBeenCalledWith(7)
+  })
+
+  it('drops tiles from a teacher edit that are not in this task', () => {
+    const cs = makeCs({
+      readSavedTaskFile: vi.fn(() => null),
+      teacherCodeArrangeEdit: { slots: { L1: 'L1', L2: 'ghost' }, taskId: 1, at: 8 },
+      acknowledgeTeacherCodeArrangeEdit: vi.fn(),
+    })
+    render(board(cs))
+
+    expect(cs.handleCodeArrangeSlotsChange).toHaveBeenCalledWith(
+      { L1: 'L1' },
+      { fromTeacher: true }
+    )
+    // Incomplete once the unknown tile is dropped: nothing runnable is pushed.
+    expect(cs.handleCodeChange).not.toHaveBeenCalled()
+  })
+})
+
+describe('CodeArrangeTaskContainer — unknown tiles', () => {
+  it('loads a saved board without tiles the task no longer has, and does not push it', () => {
+    const cs = makeCs({
+      readSavedTaskFile: vi.fn(() => JSON.stringify({ L1: 'L1', L2: 'gone' })),
+      code: '',
+    })
+    render(
+      <CodeArrangeTaskContainer
+        task={PYTHON_TASK}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+    expect(cs.handleCodeArrangeSlotsChange).toHaveBeenCalledWith({ L1: 'L1' })
+    expect(cs.handleCodeChange).not.toHaveBeenCalled()
+  })
+})

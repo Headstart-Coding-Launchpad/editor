@@ -144,12 +144,11 @@ export default function CodeArrangeTask({
     []
   )
 
-  const remainingCount = slotIds.filter((id) => state[id] == null || state[id] === '').length
-  const runLabel = running
-    ? 'Stop'
-    : moduleType === 'python' && pyodideStatus === 'loading'
-      ? 'Getting Python ready...'
-      : 'Run'
+  // A blank holding a tile id that isn't in the pool shows empty, so it counts as left to fill.
+  const remainingCount = slotIds.filter((id) => !pool.some((f) => f.id === state[id])).length
+  const pythonLoading = moduleType === 'python' && pyodideStatus === 'loading'
+  const pythonFailed = moduleType === 'python' && pyodideStatus === 'error'
+  const runLabel = running ? 'Stop' : pythonLoading ? 'Getting Python ready...' : 'Run'
 
   function renderTargetContent(placedFragment, canReceive, emptyPlaceholder) {
     if (placedFragment) return placedFragment.code
@@ -310,16 +309,20 @@ export default function CodeArrangeTask({
               className={running ? 'btn-danger' : 'btn-primary'}
               style={ca.runBtn}
               onClick={running ? onStop : onRun}
-              disabled={
-                !running && (!complete || (moduleType === 'python' && pyodideStatus === 'loading'))
-              }
+              disabled={!running && (!complete || pythonLoading || pythonFailed)}
             >
               {runLabel}
             </button>
-            {!complete && (
-              <span style={ca.runHint}>
-                Fill in every blank to run{remainingCount > 0 ? ` (${remainingCount} left)` : ''}.
+            {pythonFailed && !running ? (
+              <span style={ca.runError} role="alert">
+                Python failed to load. Please refresh the page.
               </span>
+            ) : (
+              !complete && (
+                <span style={ca.runHint}>
+                  Fill in every blank to run{remainingCount > 0 ? ` (${remainingCount} left)` : ''}.
+                </span>
+              )
             )}
           </div>
         )}
@@ -573,6 +576,11 @@ const ca = {
     fontFamily: 'var(--font-body)',
     fontSize: '0.82rem',
     color: '#6b7280',
+  },
+  runError: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.82rem',
+    color: '#b91c1c',
   },
   previewShell: {
     minHeight: 220,

@@ -245,8 +245,8 @@ to a single blank, the whole-line shape, as a starting point).
 | `lines[].parts[].id` | Slot parts | Stable string id; doubles as the id of that blank's own "correct" tile in the task's shared pool. |
 | `lines[].parts[].code` | Slot parts | The exact correct value for this blank. |
 | `distractors` | No | Task-level list of extra wrong tiles, shared by every blank in the task: `{id, code}[]`. |
-| `entryFile` / `starterFiles` | HTML only | Same shape as ordinary HTML tasks (see `docs/authoring/html.md`); the assembled lines become `entryFile`'s content, so include an entry for it with any placeholder `content` (an empty string is fine). Other files (e.g. `style.css`) are not assembled from tiles. |
-| `check` | Yes | Same `output`/`code`/`output_line_count`/`code_no_error` checks as an ordinary Python task, or the same `html_element_*`/`output`/`code` checks as an ordinary HTML task — see `docs/authoring/python.md` / `docs/authoring/html.md`. |
+| `entryFile` / `starterFiles` | HTML only | Same shape as ordinary HTML tasks (see `docs/authoring/html.md`); the assembled lines become `entryFile`'s content, so `entryFile` **must** name one of the `starterFiles` (any placeholder `content`, an empty string is fine) — validation fails otherwise. Without `entryFile`, the first starter file is used. Other files (e.g. `style.css`) are not assembled from tiles. |
+| `check` | Yes | Same `output`/`code`/`output_line_count`/`code_no_error` checks as an ordinary Python task, or the same `html_element_*`/`output`/`code` checks as an ordinary HTML task — see `docs/authoring/python.md` / `docs/authoring/html.md`. The authored solution (every blank holding its own `code`) is checked against the task's `code` checks when the lesson is validated, and a failure is a warning; `output` and element checks need a real run and are not tried. For Python, a solution line after a block opener (`…:`) that isn't indented also warns. |
 | `feedbackChecks` | No | Same shape as other code tasks. |
 
 **What an arrange attempt records.** Run is only enabled once every blank is filled, and each Run

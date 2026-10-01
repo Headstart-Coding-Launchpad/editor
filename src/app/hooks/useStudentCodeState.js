@@ -38,7 +38,7 @@ import {
   selectHtmlTaskFiles,
   selectPythonTaskCode,
 } from '../studentTaskContent'
-import { decodeSessionFiles } from '../../shared/workspaceData'
+import { decodeSessionFiles, getFileType } from '../../shared/workspaceData'
 import { resolveIframeErrorLocation } from '../../modules/html/iframe'
 import { buildCodeCheckContext } from '../codeCheckContext'
 import { useCheckFeedback } from './useCheckFeedback'
@@ -232,6 +232,10 @@ export function useStudentCodeState({
   // answers"): their logged attempts carry teacherAssisted for the report.
   const teacherAssistedTaskIdsRef = useRef(new Set())
   const appliedTeacherAnswerEditAtRef = useRef(null)
+  // A teacher's "Edit answers" tiles for a code_arrange task: `{ slots, taskId, at }`, applied once
+  // to that task's board by CodeArrangeTaskContainer (which then acknowledges it) and dropped when
+  // the student moves to another task, so it never lands on a different task's board or over the
+  // student's later placements.
   const [teacherCodeArrangeEdit, setTeacherCodeArrangeEdit] = useState(null)
   // A teacher "Start again" / "Complete" reset of a code_arrange task: `{ slots, taskId, at }`,
   // applied to that task's tiles by CodeArrangeTaskContainer (which then acknowledges it) so the
@@ -1220,11 +1224,23 @@ export function useStudentCodeState({
     const task = findTaskById(lesson.tasks, currentTaskId)
     if (isModuleHostedActivityTask(task) && edit.codeArrangeSlots) {
       teacherAssistedTaskIdsRef.current.add(currentTaskId)
-      setTeacherCodeArrangeEdit({ slots: edit.codeArrangeSlots, at: edit.at })
+      setTeacherCodeArrangeEdit({
+        slots: edit.codeArrangeSlots,
+        taskId: currentTaskId,
+        at: edit.at,
+      })
       setTeacherAnswerNoticeAt(edit.at)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.teacherAnswerEdit?.at, lesson, phase, currentTaskId])
+
+  // A pending code_arrange teacher edit belongs to one task: drop it once the student is on
+  // another, so a later visit's board never re-applies it.
+  useEffect(() => {
+    setTeacherCodeArrangeEdit((current) =>
+      current && String(current.taskId) !== String(currentTaskId) ? null : current
+    )
+  }, [currentTaskId])
 
   // Teacher pressed Run for this student (StudentModal). Consumed (cleared in
   // Firebase) as soon as it's handed to the workspace, so it runs once.
@@ -1919,7 +1935,11 @@ export function useStudentCodeState({
     const definition = workSlotDefinition(lesson?.type)
     if (!isFilesWork(definition)) return
     const current = workValueFor(definition.type)
-    const nextFiles = current.files.map((f) => (f.name === filename ? { ...f, content } : f))
+    // A file the work doesn't hold yet is added (a code_arrange html task's entry file when the
+    // starter files lack it), so the change is never silently dropped.
+    const nextFiles = current.files.some((f) => f.name === filename)
+      ? current.files.map((f) => (f.name === filename ? { ...f, content } : f))
+      : [...current.files, { name: filename, type: getFileType(filename, 'html'), content }]
     if (htmlErrorLocation?.file === filename) setHtmlErrorLocation(null)
     handleFilesWorkChange(
       definition,
@@ -2666,6 +2686,9 @@ export function useStudentCodeState({
     // must not apply it again over the student's newer tiles.
     acknowledgeCodeArrangeReset: (at) =>
       setCodeArrangeReset((current) => (current?.at === at ? null : current)),
+    // The board applied the teacher's "Edit answers" tiles: never apply them again.
+    acknowledgeTeacherCodeArrangeEdit: (at) =>
+      setTeacherCodeArrangeEdit((current) => (current?.at === at ? null : current)),
     teacherAnswerNoticeAt,
     remoteRunToken,
     acknowledgeRemoteRun: (token) =>

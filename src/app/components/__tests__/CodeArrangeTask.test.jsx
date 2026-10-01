@@ -453,3 +453,34 @@ describe('CodeArrangeTask — lines with inline blanks', () => {
     expect(onSelectAnswer).toHaveBeenLastCalledWith({ L1: 'S1' })
   })
 })
+
+describe('CodeArrangeTask — Run gating', () => {
+  it('keeps Run disabled with a message when Python failed to load', () => {
+    render(
+      <CodeArrangeTask
+        task={PYTHON_TASK}
+        moduleType="python"
+        selectedAnswer={{ L1: 'L1', L2: 'L2' }}
+        pyodideStatus="error"
+        onRun={vi.fn()}
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Python failed to load. Please refresh the page.'
+    )
+  })
+
+  it('treats a blank holding an unknown tile as empty', () => {
+    render(
+      <CodeArrangeTask
+        task={PYTHON_TASK}
+        moduleType="python"
+        selectedAnswer={{ L1: 'L1', L2: 'ghost' }}
+        onRun={vi.fn()}
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
+    expect(screen.getByText('Fill in every blank to run (1 left).')).toBeInTheDocument()
+  })
+})
