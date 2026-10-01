@@ -62,6 +62,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 ## Session Features
 
 - **Waiting room** — students wait until the teacher starts; auto-advance on start
+- **Video call** — the teacher sets a call link for the session (shown in the waiting room); "Send to all" pops a join prompt for every student, including those in the waiting room or still entering their name, and "Send Video Call Link" in a student's More menu pops it for one student (waiting room or any task)
 - **Pause/resume** — freezes student navigation without ending the session
 - **Sandbox mode** — freeform coding with no tasks or checks; teacher can push code/files to all students. Each visit (when, after which task, the teacher's pushes and each student's last sandbox code) is archived teacher-side for the session report
 - **Live badge signals** (the tutor's suggestions panel and picker are in the Student Grid section; the student celebration is under Student Features, "Coding moments") — first-occurrence topic opens, keyboard shortcuts, time to first edit, complete-code views, and sandbox run/error/fix counts are recorded per student during a live session (never in solo, previews or the presentation window, and never any code); see `docs/architecture/live-badges-plan.md`

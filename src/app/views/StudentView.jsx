@@ -38,6 +38,7 @@ import TaskProgressDots from '../components/TaskProgressDots'
 import TeacherMessageToast from '../components/TeacherMessageToast'
 import { NudgeBanner, NudgePermissionPrompt } from '../components/NudgeBanner'
 import useNudgeAlert from '../hooks/useNudgeAlert'
+import useVideoCallPrompt, { VIDEO_CALL_PROMPT_PHASES } from '../hooks/useVideoCallPrompt'
 import useBadgeCelebrations from '../hooks/useBadgeCelebrations'
 import BadgeCelebration from '../components/badges/BadgeCelebration'
 import BadgeClassToast from '../components/badges/BadgeClassToast'
@@ -480,13 +481,24 @@ export default function StudentView({
 
   // ─── Teacher-sent video call link ──────────────────────────────────────────
 
-  const [showVideoCallPrompt, setShowVideoCallPrompt] = useState(false)
-  const videoCallLinkPushedAt = session?.students?.[identity?.anonymousId]?.videoCallLinkPushedAt
-
-  useEffect(() => {
-    if (!videoCallLinkPushedAt) return
-    setShowVideoCallPrompt(true)
-  }, [videoCallLinkPushedAt])
+  // Per-student send or class-wide "Send to all"; also shown on the name and waiting screens.
+  const { videoCallPromptVisible, dismissVideoCallPrompt } = useVideoCallPrompt({
+    ready: !!session,
+    enabled: !teacherPresentation && VIDEO_CALL_PROMPT_PHASES.includes(phase),
+    phase,
+    link: session?.videoCallLink,
+    studentPushedAt: session?.students?.[identity?.anonymousId]?.videoCallLinkPushedAt ?? null,
+    broadcastAt: session?.videoCallBroadcastAt ?? null,
+  })
+  const videoCallPrompt = videoCallPromptVisible ? (
+    <VideoCallPrompt videoCallLink={session.videoCallLink} onDismiss={dismissVideoCallPrompt} />
+  ) : null
+  const withVideoCallPrompt = (screen) => (
+    <>
+      {screen}
+      {videoCallPrompt}
+    </>
+  )
 
   // ─── Teacher-requested share snapshot ──────────────────────────────────────
   // The teacher can put a student's work in front of the class without them
@@ -802,7 +814,7 @@ export default function StudentView({
   }
 
   if (phase === 'name-entry') {
-    return (
+    return withVideoCallPrompt(
       <NameEntry
         lessonTitle={lesson.title}
         existingNames={
@@ -817,7 +829,7 @@ export default function StudentView({
   }
 
   if (phase === 'waiting') {
-    return (
+    return withVideoCallPrompt(
       <WaitingRoom
         lessonTitle={lesson.title}
         lessonDescription={lesson.description}
@@ -1467,12 +1479,7 @@ export default function StudentView({
           </div>
         </div>
       )}
-      {showVideoCallPrompt && !teacherPresentation && session?.videoCallLink && (
-        <VideoCallPrompt
-          videoCallLink={session.videoCallLink}
-          onDismiss={() => setShowVideoCallPrompt(false)}
-        />
-      )}
+      {videoCallPrompt}
       {isSolo && !teacherPresentation && lesson.recordingUrl && (
         <RecordingWidget recordingUrl={lesson.recordingUrl} />
       )}

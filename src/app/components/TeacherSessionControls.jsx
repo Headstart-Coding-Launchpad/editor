@@ -15,6 +15,7 @@ export default function TeacherSessionControls({
   onRestartSession,
   onReturnToAdmin,
   onUpdateVideoCallLink,
+  onBroadcastVideoCallLink,
   onRemoveSharedWorkspace,
   onRemoveAllSharedWorkspaces,
   onOpenSharedWorkspace,
@@ -34,6 +35,7 @@ export default function TeacherSessionControls({
   const [videoLinkError, setVideoLinkError] = useState(null)
   const [videoLinkSaving, setVideoLinkSaving] = useState(false)
   const videoLinkRef = useRef(null)
+  const [videoBroadcastSent, setVideoBroadcastSent] = useState(false)
 
   const shareEntries = useMemo(
     () => sortedShareEntries(session?.sharedWorkspaces),
@@ -87,6 +89,22 @@ export default function TeacherSessionControls({
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [videoLinkOpen])
+
+  // "Send to all" has no confirm step; it flips to "Sent" briefly so the click registers.
+  useEffect(() => {
+    if (!videoBroadcastSent) return
+    const t = setTimeout(() => setVideoBroadcastSent(false), 2000)
+    return () => clearTimeout(t)
+  }, [videoBroadcastSent])
+
+  async function handleBroadcastVideoLink() {
+    try {
+      await onBroadcastVideoCallLink()
+      setVideoBroadcastSent(true)
+    } catch (err) {
+      console.warn('Failed to send the video call to everyone:', err)
+    }
+  }
 
   async function handleSaveVideoLink() {
     setVideoLinkSaving(true)
@@ -317,6 +335,17 @@ export default function TeacherSessionControls({
             </div>
           )}
         </div>
+      )}
+
+      {session?.videoCallLink && onBroadcastVideoCallLink && state !== 'ended' && (
+        <button
+          className="btn-ghost teacher-session-controls__action"
+          onClick={handleBroadcastVideoLink}
+          disabled={videoBroadcastSent}
+          title="Pop up the video call link for every student, including the waiting room and name screen"
+        >
+          {videoBroadcastSent ? '✓ Sent' : '📹 Send to all'}
+        </button>
       )}
 
       {state === 'waiting' && (

@@ -4,7 +4,7 @@ Load this when a task touches Firebase, localStorage, routing, session state, id
 
 ## Firebase Data Model
 
-Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCallLinkPushedAt` fields below were added as an explicitly user-authorized deviation for the lesson-join/video-call rework — not an ad hoc addition.)
+Do not deviate from this shape. (The `videoCallLink`, `videoCallBroadcastAt` and `students.{id}.videoCallLinkPushedAt` fields below were added as explicitly user-authorized deviations for the lesson-join/video-call rework and the "Send to all" video-call broadcast — not ad hoc additions.)
 
 ```json
 {
@@ -28,6 +28,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
       "fullscreenRequestedAt": "1234567890 | null",
       "nudgeAwayPushedAt": "1234567890 | null (class-wide nudge; only students whose window is unfocused react)",
       "videoCallLink": "string | null (http(s) URL only, validated at the write boundary; ephemeral — reset to null on createSession/restartSession/endSession, so the teacher re-enters it each session)",
+      "videoCallBroadcastAt": "1234567890 | null (class-wide \"Send to all\" video-call push; reaches name-entry, waiting-room and lesson/sandbox students; reset to null on createSession/endSession)",
       "teacherLive": {
         "active": true,
         "source": "teacher | student",
@@ -284,6 +285,7 @@ Teacher writes:
 - `activeStudentView`, `teacherLive`
 - `teacherClassPaneCommand` (`pushClassPaneCommand`/`clearClassPaneCommand`) — whole-class "highlight this tab/panel" or "force-switch to this tab/panel" broadcast (e.g. Electronics' Breadboard/MicroPython tabs, Scratch's Blocks/Stage tabs, or the Instructions/explainer pane on any lesson type); every connected student evaluates this same node. See the per-student `teacherPaneCommand` bullet below for semantics and the `docs/agents/classroom-behaviours.md` section for student-side behaviour. Cleared by `setTaskId`
 - `videoCallLink` (written by `updateVideoCallLink`, validated as http(s)-only — throws on any other scheme or malformed URL; settable any time during a session via the "📹 Video Call" popover in `TeacherSessionControls.jsx`; reset to `null` on `createSession`/`restartSession`/`endSession`) — shown to students in `WaitingRoom.jsx` whenever set
+- `videoCallBroadcastAt` (stamped by `broadcastVideoCallLink` from the "📹 Send to all" button beside the Video Call control in `TeacherSessionControls.jsx`, only offered while a `videoCallLink` is set and the session hasn't ended; reset to `null` on `createSession`/`endSession`) — a class-wide video-call push. Every student screen that can show the prompt reacts: name entry (those students have no student record yet, so this is the only push that reaches them), the waiting room, and the lesson/sandbox page. See "Video call prompt" in `docs/agents/classroom-behaviours.md`
 - `sandboxCode`, `sandboxCodePushedAt`, `sandboxFiles`, `sandboxFilesUpdatedAt`
 - `sandboxPreviousTaskId` (written by `enterSandbox`, consumed and cleared by `exitSandbox` — see `docs/agents/classroom-behaviours.md`)
 - `sandboxExplainer` (pushed via `pushSandboxExplainer`, cleared on `createSession`/`endSession`/entering sandbox) and `explainerShowComplete` (toggled via `setExplainerShowComplete`; reset to `false` on `setTaskId`, `createSession`, `endSession` — see `docs/agents/classroom-behaviours.md` for the student-facing "Complete Code" reveal this gates)
@@ -307,7 +309,7 @@ Teacher per-student actions:
 - Remote stage push: `requestTeacherStage` sets `teacherStageRequestedAt` and `teacherStagePendingAction` (a reset-action string, same shape as `remoteResetAction`) and clears `teacherStageAcceptedAt`, prompting the student for consent before the stage change is applied; `clearTeacherStage` clears all three fields. Cleared by `setTaskId`.
 - Stage reference reveal: `recordSupportStageReveal` writes `supportRevealLog/{anonymousId}/{taskId}/{stageIndex}` with `source: "teacher"`, stage label, attempt count, and server timestamp. This reveals a read-only Python/HTML stage reference to that one student and does not write to their editor.
 - "Show on every task" reference: `setAutoRevealStage` writes the student's `autoRevealStage` (`'first'` = first support stage, `'support'` = every support stage, `'solution'` = the complete stage, falling back to every support stage where a task has none; `null` = off). The student's client (`useStudentCodeState`) re-applies it as each task loads in a live lesson, logging each reveal with `source: "teacher-auto"` so the report counts it separately. Session-only: it lives on the student node, which `createSession`/`endSession` clear. Not cleared by `setTaskId`.
-- Send video call link: `sendVideoCallLink(anonymousId)` stamps that student's own `videoCallLinkPushedAt`, from the "📹 Send Video Call Link" action in `StudentModal.jsx`'s "More" menu — pops `VideoCallPrompt.jsx` for that one student. Independent of the session-level `videoCallLink`; the teacher can target one student mid-lesson even outside the waiting room.
+- Send video call link: `sendVideoCallLink(anonymousId)` stamps that student's own `videoCallLinkPushedAt`, from the "📹 Send Video Call Link" action in `StudentModal.jsx`'s "More" menu — pops `VideoCallPrompt.jsx` for that one student, in the waiting room or the lesson (any task type). Waiting-room students have a tile once named, so the action is available for them too. The prompt needs the session-level `videoCallLink` to be set (the action is only offered then). The class-wide equivalent is the session's `videoCallBroadcastAt`.
 
 Student writes:
 

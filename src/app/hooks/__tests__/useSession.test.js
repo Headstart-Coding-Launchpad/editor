@@ -293,6 +293,17 @@ describe('useSession', () => {
         expect.objectContaining({ videoCallLink: null })
       )
     })
+
+    it('resets videoCallBroadcastAt to null', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.endSession()
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ videoCallBroadcastAt: null })
+      )
+    })
   })
 
   describe('createSession', () => {
@@ -326,6 +337,17 @@ describe('useSession', () => {
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1' },
         expect.objectContaining({ videoCallLink: null })
+      )
+    })
+
+    it('initialises videoCallBroadcastAt to null so an old broadcast never carries over', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.createSession()
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ videoCallBroadcastAt: null })
       )
     })
   })
@@ -386,6 +408,19 @@ describe('useSession', () => {
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/students/student-abc' },
         { videoCallLinkPushedAt: expect.any(Number) }
+      )
+    })
+  })
+
+  describe('broadcastVideoCallLink', () => {
+    it('writes a session-wide videoCallBroadcastAt timestamp', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.broadcastVideoCallLink()
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/videoCallBroadcastAt' },
+        expect.any(Number)
       )
     })
   })
