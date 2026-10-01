@@ -317,6 +317,66 @@ describe('StudentCard', () => {
       render(<StudentCard {...mkProps({}, { visiblePanes: [] })} />)
       expect(screen.queryByText(/👀/)).not.toBeInTheDocument()
     })
+
+    // A visiblePanes report left over from the previous code task must not show once the
+    // class moves to a task with no explainer/workspace panes.
+    it('hides a stale badge on an information task', () => {
+      const infoLesson = { type: 'python', tasks: [{ id: 1, taskType: 'information' }] }
+      render(
+        <StudentCard
+          {...mkProps({ lesson: infoLesson }, { visiblePanes: ['instructions', 'code'] })}
+        />
+      )
+      expect(screen.queryByText(/👀/)).not.toBeInTheDocument()
+    })
+
+    it('hides a stale badge on an activity (quiz) task', () => {
+      const quizLesson = { type: 'python', tasks: [MULTIPLE_CHOICE_TASK] }
+      render(
+        <StudentCard
+          {...mkProps(
+            {
+              lesson: quizLesson,
+              session: { state: 'active', currentTaskId: MULTIPLE_CHOICE_TASK.id },
+            },
+            { visiblePanes: ['instructions', 'code'] }
+          )}
+        />
+      )
+      expect(screen.queryByText(/👀/)).not.toBeInTheDocument()
+    })
+
+    it('hides a stale badge on an information task in a composed lesson', () => {
+      const composed = {
+        type: 'composed',
+        tasks: [
+          { id: 1, title: 'Code', moduleType: 'scratch' },
+          { id: 2, taskType: 'information', title: 'Intro' },
+        ],
+      }
+      render(
+        <StudentCard
+          {...mkProps(
+            { lesson: composed, session: { state: 'active', currentTaskId: 2 } },
+            { visiblePanes: ['blocks', 'stage'] }
+          )}
+        />
+      )
+      expect(screen.queryByText(/👀/)).not.toBeInTheDocument()
+    })
+
+    it('still shows the badge in a session sandbox parked on an information task', () => {
+      const infoLesson = { type: 'python', tasks: [{ id: 1, taskType: 'information' }] }
+      render(
+        <StudentCard
+          {...mkProps(
+            { lesson: infoLesson, session: { state: 'sandbox', currentTaskId: 1 } },
+            { visiblePanes: ['code'] }
+          )}
+        />
+      )
+      expect(screen.getByText('👀 Code')).toBeInTheDocument()
+    })
   })
 
   describe('rename form', () => {

@@ -569,13 +569,15 @@ export default function StudentView({
       setLocalVisiblePanes(panes)
       if (teacherPresentation || !identity?.anonymousId) return
       if (phase !== 'lesson' && phase !== 'sandbox') return
-      const key = panes?.join(',') ?? ''
+      // Keyed per task: the teacher's setTaskId wipes visiblePanes, so the same list on the
+      // next task (e.g. Python -> Python) must still be written again.
+      const key = `${currentTaskId}|${panes?.join(',') ?? ''}`
       if (lastVisiblePanesRef.current === key) return
       lastVisiblePanesRef.current = key
       writeStudentPresence?.(identity.anonymousId, { visiblePanes: panes })
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [teacherPresentation, identity?.anonymousId, phase]
+    [teacherPresentation, identity?.anonymousId, phase, currentTaskId]
   )
 
   // Scratch solo: when the current task's explainer is hidden (either the manual

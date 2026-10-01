@@ -678,7 +678,9 @@ export default function TeacherView({ lessonId }) {
                 onSave={setTaskRating}
               />
             )}
-            {session && !isInformationTask && (
+            {/* Information and activity/quiz tasks have no explainer or workspace panes to
+                focus (a sandbox parked on an activity still shows the workspace). */}
+            {session && !isInformationTask && (isInSandbox || !isHostedActivityTask(task)) && (
               <PaneFocusDropdown
                 label="Focus Class"
                 lessonType={editorLesson?.type}

@@ -1077,6 +1077,27 @@ describe('useSession', () => {
     })
   })
 
+  // The 👀 visible-panes badge belongs to the task it was reported on — the student
+  // re-reports the new task's panes (empty on information/activity tasks).
+  describe('setTaskId clears visiblePanes', () => {
+    it('nulls visiblePanes for every student on task change', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        state: 'active',
+        currentTaskId: 1,
+        isPaused: false,
+        students: { 'student-abc': { displayName: 'Jamie', visiblePanes: ['instructions'] } },
+      })
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ 'students/student-abc/visiblePanes': null })
+      )
+    })
+  })
+
   // Phase 0 characterisation (docs/architecture/modular-activities-plan.md step 0.3):
   // the exact per-student wipe list on task change, including the quiz /
   // code_arrange mirrors (currentAnswer, currentCodeArrangeSlots) and the
@@ -1156,6 +1177,7 @@ describe('useSession', () => {
         teacherStageAcceptedAt: null,
         teacherHighlights: null,
         teacherPaneCommand: null,
+        visiblePanes: null,
         shareRequestedAt: null,
         shareRequestTaskId: null,
         shareRequestOrigin: null,
