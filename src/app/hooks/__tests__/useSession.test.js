@@ -154,6 +154,28 @@ describe('useSession', () => {
         expect.objectContaining({ explainerShowComplete: false })
       )
     })
+
+    it('leaves the pinned live-code flags alone and does not touch the reveal log', async () => {
+      // Pinned ("Keep showing live code") persists across tasks; a one-off "Reveal live code"
+      // is a per-task supportRevealLog entry, so it drops off without any clearing write.
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        currentTaskId: 1,
+        teacherLiveReferenceVisibleToAll: 1000,
+        students: { 'student-abc': { teacherLiveReferenceVisible: 1000 } },
+        supportRevealLog: { 'student-abc': { 1: { teacherLive: { source: 'teacher' } } } },
+      })
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      const updateCall = firebaseMocks.update.mock.calls.find(
+        ([r]) => r.path === 'sessions/lesson-1'
+      )
+      const keys = Object.keys(updateCall[1])
+      expect(keys).not.toContain('teacherLiveReferenceVisibleToAll')
+      expect(keys).not.toContain('students/student-abc/teacherLiveReferenceVisible')
+      expect(keys.some((key) => key.startsWith('supportRevealLog'))).toBe(false)
+    })
   })
 
   describe('enterSandbox / exitSandbox', () => {
@@ -811,6 +833,48 @@ describe('useSession', () => {
           attemptNumber: 2,
           revealedAt: { '.sv': 'timestamp' },
         }
+      )
+    })
+
+    it('records a pinned live-code reveal with the pin it belongs to', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ currentTaskId: 1, students: { 'student-abc': {} } })
+
+      await act(async () => {
+        await result.current.recordSupportStageReveal('student-abc', 1, 'teacherLivePinned', {
+          source: 'teacher-auto',
+          stageLabel: "Teacher's live code (kept on)",
+          pinnedAt: 1000,
+        })
+      })
+
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/supportRevealLog/student-abc/1/teacherLivePinned' },
+        expect.objectContaining({
+          stageIndex: 'teacherLivePinned',
+          source: 'teacher-auto',
+          pinnedAt: 1000,
+        })
+      )
+    })
+
+    it('does not rewrite a one-off live-code reveal already logged for the task', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        currentTaskId: 1,
+        students: { 'student-abc': {} },
+        supportRevealLog: { 'student-abc': { 1: { teacherLive: { source: 'teacher' } } } },
+      })
+
+      await act(async () => {
+        await result.current.recordSupportStageReveal('student-abc', 1, 'teacherLive', {
+          source: 'teacher',
+        })
+      })
+
+      expect(firebaseMocks.set).not.toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/supportRevealLog/student-abc/1/teacherLive' },
+        expect.anything()
       )
     })
   })
@@ -1770,14 +1834,14 @@ describe('useSession', () => {
   })
 
   describe('setTeacherLiveReferenceForStudent', () => {
-    it('writes true to the student teacherLiveReferenceVisible path', async () => {
+    it('writes the pin time to the student teacherLiveReferenceVisible path', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {
         await result.current.setTeacherLiveReferenceForStudent('student-abc', true)
       })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/students/student-abc/teacherLiveReferenceVisible' },
-        true
+        expect.any(Number)
       )
     })
 
@@ -1794,14 +1858,14 @@ describe('useSession', () => {
   })
 
   describe('setTeacherLiveReferenceForClass', () => {
-    it('writes true to the session teacherLiveReferenceVisibleToAll path', async () => {
+    it('writes the pin time to the session teacherLiveReferenceVisibleToAll path', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {
         await result.current.setTeacherLiveReferenceForClass(true)
       })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/teacherLiveReferenceVisibleToAll' },
-        true
+        expect.any(Number)
       )
     })
 

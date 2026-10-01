@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { getTeacherLivePin, isTeacherLivePinLogged } from '../taskStages.js'
 import {
   flattenTasks,
   filterTasksByMode,
@@ -734,5 +735,26 @@ describe('workspace sharing helpers', () => {
 
   it('ignores the flag on task types that cannot share', () => {
     expect(isSharingAllowed({ taskType: 'quiz', allowSharing: true })).toBe(false)
+  })
+})
+
+describe('teacher live-code pins', () => {
+  it('getTeacherLivePin prefers the student pin, then the class pin', () => {
+    expect(getTeacherLivePin(1000, 2000)).toBe(1000)
+    expect(getTeacherLivePin(null, 2000)).toBe(2000)
+    expect(getTeacherLivePin(undefined, null)).toBe(null)
+    // Legacy boolean pins still count.
+    expect(getTeacherLivePin(true, null)).toBe(true)
+  })
+
+  it('isTeacherLivePinLogged finds the pin on any task, ignoring one-off reveals', () => {
+    const log = {
+      1: { teacherLive: { source: 'teacher' } },
+      2: { teacherLivePinned: { pinnedAt: 1000 } },
+    }
+    expect(isTeacherLivePinLogged(log, 1000)).toBe(true)
+    expect(isTeacherLivePinLogged(log, 3000)).toBe(false)
+    expect(isTeacherLivePinLogged(undefined, 1000)).toBe(false)
+    expect(isTeacherLivePinLogged(log, null)).toBe(false)
   })
 })
