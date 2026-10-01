@@ -734,6 +734,17 @@ function normalizeScratchChecks(check) {
   return []
 }
 
+// Hint eligibility during after_block_placed evaluation (before any Run): only a
+// block-placement check that has definitively failed may supply the hint. Run-time checks
+// (block_run, sprite_property*) can't be judged yet, and a merely 'pending' check hasn't
+// failed — either would otherwise win the hint over the check that actually failed.
+export function blockPlacedCheckHasFailed(check, spriteWorkspaces) {
+  return (
+    check?.evaluation === 'after_block_placed' &&
+    evalSingleCheckPartial(check, spriteWorkspaces) === 'fail'
+  )
+}
+
 // A live cursor's on-screen marker: a small solid dot for the exact pointer position,
 // plus a bigger translucent yellow halo layered on top while the source's mouse
 // button is held — for the whole click/drag, not just the initial press. Rendered
@@ -2192,7 +2203,10 @@ export default function ScratchWorkspace({
           evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
         '',
         {},
-        { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT }
+        {
+          feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT,
+          isCompletionCheckFailed: (c) => blockPlacedCheckHasFailed(c, sws),
+        }
       )
       notifyCheck(false, false, { suggestion: evaluation.suggestion })
     } else {

@@ -380,10 +380,11 @@ export function getStageOfferMatchThreshold(stageOffer) {
 // evaluator instead of the generic core-only evaluateSingleCheck — needed for module check
 // types (e.g. Scratch's block_run/sprite_property_delta) that evaluateSingleCheck can't
 // evaluate itself, and would otherwise unconditionally report as failed.
-function getFirstFailedCheckHintCustom(check, isCheckPassed) {
-  const failed = normalizeChecks(check).find(
-    (c) => !isCheckPassed(c) && String(c.hint ?? '').trim()
-  )
+// `isCheckFailed` returns true only for a check that has definitively failed; a check it
+// can't judge yet (e.g. a run-time check before any run) must return false so it never
+// supplies the hint.
+function getFirstFailedCheckHintCustom(check, isCheckFailed) {
+  const failed = normalizeChecks(check).find((c) => isCheckFailed(c) && String(c.hint ?? '').trim())
   return failed ? String(failed.hint).trim() : ''
 }
 
@@ -393,7 +394,7 @@ function buildCheckFeedbackResult(
   feedbackResults,
   output,
   context = {},
-  isCompletionCheckPassed = null
+  isCompletionCheckFailed = null
 ) {
   const blockingMatch = getHighestPriorityFeedbackMatch(
     feedbackResults.filter((result) => (result.mode ?? 'blocking') === 'blocking')
@@ -415,8 +416,8 @@ function buildCheckFeedbackResult(
         : ''
       : matchedFeedbackHint
         ? String(matchedFeedbackHint.hint).trim()
-        : isCompletionCheckPassed
-          ? getFirstFailedCheckHintCustom(task?.check, isCompletionCheckPassed)
+        : isCompletionCheckFailed
+          ? getFirstFailedCheckHintCustom(task?.check, isCompletionCheckFailed)
           : getFirstFailedCheckHint(task?.check, output, context)
 
   return {
@@ -452,13 +453,21 @@ export function evaluateCheckWithCustomFeedback(
       ...c,
       passed: isFeedbackCheckPassed(c),
     }))
+  // Completion-check hints: by default a completion check failed when the evaluator says it
+  // didn't pass. Callers that can only partly judge the checks (Scratch's after_block_placed
+  // evaluation, before any run) pass `isCompletionCheckFailed` so that checks that are still
+  // pending or can't be judged yet never supply the hint.
+  const isCompletionCheckFailed =
+    typeof options.isCompletionCheckFailed === 'function'
+      ? options.isCompletionCheckFailed
+      : (c) => !isFeedbackCheckPassed(c)
   return buildCheckFeedbackResult(
     task,
     completionPassed,
     feedbackResults,
     output,
     context,
-    isFeedbackCheckPassed
+    isCompletionCheckFailed
   )
 }
 

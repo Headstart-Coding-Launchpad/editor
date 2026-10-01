@@ -497,7 +497,7 @@ describe('handleScratchCheck', () => {
     })
   })
 
-  it('falls back to the saved state and the first check hint on failure', () => {
+  it('falls back to the saved state on failure; no suggestion means no hint (generic banner)', () => {
     writeStored(taskKey('t1'), { state: scratchBlocks('saved') })
     const h = renderStudentCodeState({ lesson: scratchLesson(), currentTaskId: 't1' })
     actSync(() => h.result.current.handleScratchCheck(false, {}))
@@ -509,7 +509,9 @@ describe('handleScratchCheck', () => {
     expect(h.writers.logAttempt).toHaveBeenCalledWith(ANON, 't1', {
       submission: scratchBlocks('saved'),
       passed: false,
-      suggestion: 'Move the cat',
+      // The workspace applies the shared hint rule; an empty suggestion must not fall back to
+      // the first check's hint (that check may have passed).
+      suggestion: '',
     })
   })
 
