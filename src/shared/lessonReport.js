@@ -304,6 +304,31 @@ function relabelStudentRef(ref, relabel) {
   return { studentLabel: relabel(studentLabel ?? displayName ?? anonymousId), ...rest }
 }
 
+// A student's join history for the report, from the RTDB student node (useSession.joinSession /
+// recordStudentReturn): `joinedAt` is the first join (`firstJoinedAt`, never overwritten),
+// `joinedAfterMs` its gap after the session started (0 if they joined before the start),
+// `joinedAtTaskId` the class's current task at that moment, and `rejoins` each later name entry
+// or reload-return, oldest first. The node's own `joinedAt` is not used: every re-join
+// overwrites it. Anything unknown (sessions from before 2026-10-01, a removed student) is omitted.
+export function studentJoinFields(studentNode, session) {
+  const fields = {}
+  const joinedAt = studentNode?.firstJoinedAt
+  if (typeof joinedAt === 'number' && Number.isFinite(joinedAt)) {
+    fields.joinedAt = joinedAt
+    const startedAt = session?.startedAt
+    if (typeof startedAt === 'number' && Number.isFinite(startedAt)) {
+      fields.joinedAfterMs = Math.max(0, joinedAt - startedAt)
+    }
+    if (studentNode.firstJoinTaskId != null) fields.joinedAtTaskId = studentNode.firstJoinTaskId
+  }
+  const rejoins = Object.values(studentNode?.rejoins ?? {})
+    .filter((entry) => typeof entry?.at === 'number' && Number.isFinite(entry.at))
+    .map((entry) => ({ at: entry.at, ...(entry.taskId != null ? { taskId: entry.taskId } : {}) }))
+    .sort((a, b) => a.at - b.at)
+  if (rejoins.length > 0) fields.rejoins = rejoins
+  return fields
+}
+
 export function anonymizeSessionReport(report) {
   if (!report) return report
   // Old or hand-made reports may name students; every reference to a student elsewhere in the
@@ -484,6 +509,7 @@ export function buildSessionReport({
 
     return {
       studentLabel: getAnonymousStudentLabel(index),
+      ...studentJoinFields(studentsSnapshot[anonymousId], session),
       ...studentBadgeFields({ session, studentId: anonymousId, timeline, catalogueBadges }),
       tasks: taskResults,
     }

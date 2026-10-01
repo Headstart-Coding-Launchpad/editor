@@ -43,6 +43,10 @@ import {
 export const BADGE_DECISION_STATUSES = Object.freeze(['awarded', 'dismissed', 'revoked'])
 export const BADGE_DECISION_SOURCES = Object.freeze(['rule', 'auto', 'manual'])
 
+// Most `students/{id}/rejoins` entries kept (the latest win), so a flaky connection that
+// reloads all lesson can't grow the student node without bound.
+export const MAX_STUDENT_REJOINS = 20
+
 function encodeFileKeys(files) {
   return Object.fromEntries(Object.entries(files).map(([k, v]) => [encodeFileKey(k), v]))
 }
@@ -1064,10 +1068,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
     onDisconnect(presenceRef).remove()
   }
 
+  // `joinedAt` is the latest name entry (overwritten on every join). The join history for the
+  // session report lives beside it: `firstJoinedAt` / `firstJoinTaskId` are written once (the
+  // transaction only commits while firstJoinedAt is absent), and every later join or
+  // reload-return appends `{ at, taskId }` to `rejoins`, capped at MAX_STUDENT_REJOINS.
   async function joinSession(anonymousId, displayName) {
+    const now = Date.now()
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
       displayName,
-      joinedAt: Date.now(),
+      joinedAt: now,
       currentCode: '',
       currentArcadeDesign: null,
       currentSpriteState: null,
@@ -1077,6 +1086,48 @@ export function useSession(lessonId, { enabled = true } = {}) {
       checkPassed: null,
       lastRunAt: null,
     })
+    const taskId = session?.currentTaskId ?? null
+    try {
+      const result = await runTransaction(
+        ref(db, `sessions/${lessonId}/students/${anonymousId}/firstJoinedAt`),
+        (current) => (current == null ? now : undefined)
+      )
+      if (result?.committed) {
+        await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+          firstJoinTaskId: taskId,
+        })
+      } else {
+        await appendStudentRejoin(anonymousId, { at: now, taskId })
+      }
+    } catch (err) {
+      // The join itself succeeded; losing the report's join history must not block the student.
+      console.warn('Failed to record join history:', err)
+    }
+  }
+
+  async function appendStudentRejoin(anonymousId, entry) {
+    await runTransaction(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/rejoins`),
+      (current) => [...Object.values(current ?? {}), entry].slice(-MAX_STUDENT_REJOINS)
+    )
+  }
+
+  // A returning student's reload (no name entry, so no joinSession) logs a rejoin, but only
+  // when a first join is on record: a student the teacher removed, or one who joined before
+  // join history existed, gets nothing (and no stray student node is recreated).
+  async function recordStudentReturn(anonymousId) {
+    if (!anonymousId) return
+    try {
+      const studentPath = `sessions/${lessonId}/students/${anonymousId}`
+      const first = await get(ref(db, `${studentPath}/firstJoinedAt`))
+      if (first?.val?.() == null) return
+      await appendStudentRejoin(anonymousId, {
+        at: Date.now(),
+        taskId: session?.currentTaskId ?? null,
+      })
+    } catch (err) {
+      console.warn('Failed to record student return:', err)
+    }
   }
 
   async function writeStudentRun(
@@ -1624,6 +1675,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     // student
     registerPresence,
     joinSession,
+    recordStudentReturn,
     registerJoining,
     unregisterJoining,
     writeStudentRun,

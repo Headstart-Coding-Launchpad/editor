@@ -186,7 +186,10 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
       "students": {
         "{anonymousId}": {
           "displayName": "Jamie",
-          "joinedAt": 1234567890,
+          "joinedAt": "1234567890 (latest name entry: joinSession overwrites it on every join)",
+          "firstJoinedAt": "1234567890 (first join this session, client ms; written once by joinSession's transaction, never overwritten)",
+          "firstJoinTaskId": "number | string | null (session currentTaskId when firstJoinedAt was written)",
+          "rejoins": "[{ at, taskId }] | null (each later name entry (joinSession) or reload-return (recordStudentReturn, only when firstJoinedAt exists); appended by transaction, latest 20 kept — MAX_STUDENT_REJOINS)",
           "online": true,
           "currentCode": "string",
           "currentArcadeDesign": "object | null (watched Arcade student's throttled sprite/map snapshot)",
@@ -605,6 +608,8 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
   "sizeNote": "string (only when the size cap dropped sandbox code)"
 }
 ```
+
+Per-student join history (inside each `students[]` entry, from the student node's `firstJoinedAt` / `firstJoinTaskId` / `rejoins`, via `studentJoinFields`): `joinedAt` (first join, ms; the node's own `joinedAt` is not used because every re-join overwrites it), `joinedAfterMs` (`joinedAt - startedAt`, clamped to 0, omitted when `startedAt` is unknown), `joinedAtTaskId` (the class's current task at first join) and `rejoins: [{ at, taskId }]` (later name entries and reload-returns, oldest first; omitted when empty). All are omitted when unknown: sessions before 2026-10-01 and students whose node was removed. They survive `anonymizeSessionReport` and the size cap.
 
 Per-student additions (inside each `students[]` entry, beside `tasks`): `badges: [{ badgeId, emoji, title, source, reason, taskId, awardedAt }]`, `topicsOpened: [{ topicId, title, context, taskId, source, openedAt }]`, `shortcutsUsed: [{ shortcutId, label, context, taskId, firstUsedAt }]`, `personalSandbox` / `teacherSandbox: { timeMs, runs, errorRuns, fixes }`; and in each task entry `timeToFirstEditMs`, `errorAttempts`, `uniqueFailedAttempts`, `firstPassInClass`.
 
