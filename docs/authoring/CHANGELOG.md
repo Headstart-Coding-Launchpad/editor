@@ -39,6 +39,19 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-01
 
+### Scratch: typing in a text field no longer logs an attempt per keystroke
+
+- On Scratch tasks with a text field (a Say message, for example), each character typed was
+  checked and logged as a separate attempt (`h`, `ha`, `hav`, …), inflating attempt counts and
+  awarding the Persistence badge too easily. Checks now run, and one attempt is logged, when the
+  field edit is committed (the learner leaves the field or presses Enter), with the final text.
+  Placing, moving or deleting a block still runs checks as before. See
+  [scratch.md](scratch.md#scratch-check-types).
+- Session reports from before this fix overcount attempts on Scratch tasks with a text field;
+  discount their attempt counts and Persistence badges when judging task difficulty.
+- Affects: scratch · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-09-30-scratch-text-field-typing-logs-a-new-attempt-on-every-keystr.md
+
 ### Line hints: a trailing marker gets its own empty line
 
 - A line-hint marker with nothing after it (`#> …` / `<!--> … -->` as the last line of the code,
