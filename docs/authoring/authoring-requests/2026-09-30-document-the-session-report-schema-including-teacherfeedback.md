@@ -1,6 +1,6 @@
 # Document the session report schema, including teacherFeedback
 
-- **Status:** resolved
+- **Status:** planned
 - **Kind:** docs
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-09-30
 - **Lessons blocked:** none yet

@@ -1,6 +1,6 @@
 # arcade.md Palette section should list each colour's hex value
 
-- **Status:** resolved
+- **Status:** planned
 - **Kind:** docs
 - **Requested by:** Ryan (approved by Ryan), 2026-09-30
 - **Lessons blocked:** none yet

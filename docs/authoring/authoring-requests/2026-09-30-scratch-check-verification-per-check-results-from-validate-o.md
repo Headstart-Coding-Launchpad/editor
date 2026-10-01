@@ -1,6 +1,6 @@
 # Scratch check verification: per-check results from validate (or a Scratch test-checks)
 
-- **Status:** resolved
+- **Status:** planned
 - **Kind:** tooling
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-09-30
 - **Lessons blocked:** none yet
