@@ -1,18 +1,19 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import Banner from '../../shared/Banner.jsx'
 import EntryScreenCard, { ghostLink } from './EntryScreenCard'
-
-function applySuffix(name, existing) {
-  if (!existing.includes(name)) return name
-  let n = 2
-  while (existing.includes(`${name}-${n}`)) n++
-  return `${name}-${n}`
-}
+import { createThrottledMirrorWriter } from '../throttledMirrorWriter'
+import {
+  applyNameSuffix as applySuffix,
+  NAME_MAX_LENGTH,
+  normaliseJoinName,
+  TYPED_NAME_THROTTLE_MS,
+} from '../joiningStudents'
 
 export default function NameEntry({
   lessonTitle,
   existingNames = [],
   onSubmit,
+  onNameTyping,
   onGoSolo,
   waitingForSession = false,
   joinError = null,
@@ -21,7 +22,30 @@ export default function NameEntry({
   const [confirmed, setConfirmed] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
+  // Shares the (trimmed) name being typed so the teacher can see who is joining:
+  // at most one write per TYPED_NAME_THROTTLE_MS, and the last value always lands.
+  const onNameTypingRef = useRef(onNameTyping)
+  onNameTypingRef.current = onNameTyping
+  const lastSharedRef = useRef('')
+  const typingWriterRef = useRef(null)
+  if (!typingWriterRef.current) {
+    typingWriterRef.current = createThrottledMirrorWriter({
+      intervalMs: TYPED_NAME_THROTTLE_MS,
+      write: (name) => onNameTypingRef.current?.(name),
+    })
+  }
+  useEffect(() => () => typingWriterRef.current?.cancel(), [])
+
+  function handleChange(e) {
+    setValue(e.target.value)
+    const shared = normaliseJoinName(e.target.value)
+    if (shared === lastSharedRef.current) return
+    lastSharedRef.current = shared
+    typingWriterRef.current.push(shared)
+  }
+
   async function submit(name) {
+    typingWriterRef.current?.cancel()
     setSubmitting(true)
     try {
       await onSubmit(name)
@@ -88,8 +112,8 @@ export default function NameEntry({
               type="text"
               placeholder="e.g. Jamie"
               value={value}
-              onChange={(e) => setValue(e.target.value)}
-              maxLength={30}
+              onChange={handleChange}
+              maxLength={NAME_MAX_LENGTH}
               autoComplete="new-password"
             />
           </label>

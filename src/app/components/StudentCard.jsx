@@ -114,20 +114,14 @@ export default function StudentCard({
   // used to carry run status while the pill next to it carried presence - two dots one
   // row apart answering different questions, so an idle-but-connected student read as
   // half offline. Run status is already in the output snippet and the pass/fail badge.
-  const presenceState =
-    session?.state === 'waiting' ? 'waiting' : student.online ? 'online' : 'offline'
+  // While the session is waiting the dot still shows real presence; the "Waiting" badge
+  // below (PresenceBadge) carries the waiting state.
+  const presenceState = student.online ? 'online' : 'offline'
   const statusColour =
-    presenceState === 'waiting'
-      ? 'var(--colour-warning)'
-      : presenceState === 'online'
-        ? 'var(--colour-success)'
-        : 'var(--colour-muted-soft)'
+    presenceState === 'online' ? 'var(--colour-success)' : 'var(--colour-muted-soft)'
   const presenceTitle =
-    presenceState === 'waiting'
-      ? 'Waiting to join'
-      : presenceState === 'online'
-        ? 'Connected now'
-        : 'Offline'
+    (session?.state === 'waiting' ? 'Waiting for the lesson to start · ' : '') +
+    (presenceState === 'online' ? 'Connected now' : 'Offline')
 
   // Confidence tasks have no pass/fail check — teacher just sees the submitted level
   // For match/fill_blank quizzes and activities, checkPassed comes from the activity's own

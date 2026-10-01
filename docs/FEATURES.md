@@ -103,7 +103,8 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Scratch: multi-sprite workspace + stage canvas
 
 ### Student Grid
-- Cards per student: name, online status, run status, check status, code/output/quiz preview
+- Cards per student: name, online status, run status, check status, code/output/quiz preview. While the session is waiting, the card's badge says "Waiting" and its dot still shows whether that student is online, away or offline
+- **Joining list**: students still on the name screen are listed above the cards as they type ("Jamie (typing…)", or "Someone (typing…)" before they type), with a **Pull in** button that opens a small editor prefilled with the typed name. Confirming joins that student with the (editable) name on their own device, exactly as if they had pressed Join (a taken name still gets a "-2" suffix), into the waiting room or the lesson. **Hide names** masks the typed names, e.g. while the screen is projected
 - Click to expand to full student workspace view
 - One-line grid header: "Students (n)", ⛶ Fullscreen All, a ⋯ menu (🔔 Nudge Away (n), 🏅 Suggestions (n), ☑ Select, 📖 Reference) and the › collapse. A small dot on ⋯ means someone is Away or a badge suggestion is waiting
 - "Away" badge when a connected student's window isn't focused, with a 🔔 button to nudge them; "🔔 Nudge Away (n)" in the grid header's ⋯ menu nudges every Away student at once. A nudge shows the student a banner and plays a chime, and while their window is unfocused flashes the tab title/favicon and (if they allowed it) shows an OS notification

@@ -135,6 +135,18 @@ describe('StudentCard', () => {
       render(<StudentCard {...mkProps({ session: { state: 'waiting', currentTaskId: 1 } })} />)
       expect(screen.getByText('Waiting')).toBeInTheDocument()
     })
+
+    it('keeps the real presence beside Waiting while the session waits', () => {
+      const waiting = { session: { state: 'waiting', currentTaskId: 1 } }
+      const { unmount } = render(<StudentCard {...mkProps(waiting)} />)
+      expect(screen.getByText('Waiting')).toHaveAttribute('data-presence', 'online')
+      expect(screen.getByTitle('Waiting for the lesson to start · Connected now')).toBeTruthy()
+      unmount()
+
+      render(<StudentCard {...mkProps(waiting, { online: false })} />)
+      expect(screen.getByText('Waiting')).toHaveAttribute('data-presence', 'offline')
+      expect(screen.getByTitle('Waiting for the lesson to start · Offline')).toBeTruthy()
+    })
   })
 
   describe('check badges', () => {

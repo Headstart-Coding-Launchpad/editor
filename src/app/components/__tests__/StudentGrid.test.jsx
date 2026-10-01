@@ -407,3 +407,71 @@ describe('StudentGrid live badges', () => {
     expect(screen.queryByRole('button', { name: '☑ Select' })).not.toBeInTheDocument()
   })
 })
+
+describe('StudentGrid joining students', () => {
+  const JOINING = [
+    { tempId: 't1', typedName: 'Jamie', joinedAt: 1 },
+    { tempId: 't2', typedName: '', joinedAt: 2 },
+  ]
+
+  it('lists joining students by the name they are typing, or Someone when empty', () => {
+    render(<StudentGrid {...mkProps({ joiningStudents: JOINING })} />)
+    const list = screen.getByRole('region', { name: 'Students joining' })
+    expect(within(list).getByText('Jamie')).toBeInTheDocument()
+    expect(within(list).getByText('Someone')).toBeInTheDocument()
+    expect(within(list).getAllByText('(typing…)')).toHaveLength(2)
+    expect(screen.getByText('2 joining…')).toBeInTheDocument()
+  })
+
+  it('lists joining students in the empty state too', () => {
+    render(<StudentGrid {...mkProps({ students: [], joiningStudents: JOINING.slice(0, 1) })} />)
+    expect(screen.getByRole('region', { name: 'Students joining' })).toHaveTextContent('Jamie')
+    expect(screen.queryByText('No students yet.')).not.toBeInTheDocument()
+  })
+
+  it('Pull in opens an editor prefilled with the typed name and admits with the edited name', async () => {
+    const user = userEvent.setup()
+    const onAdmitJoining = vi.fn().mockResolvedValue(undefined)
+    render(<StudentGrid {...mkProps({ joiningStudents: JOINING, onAdmitJoining })} />)
+
+    await user.click(screen.getByRole('button', { name: 'Pull in Jamie' }))
+    const input = screen.getByRole('textbox', { name: 'Name to join with' })
+    expect(input).toHaveValue('Jamie')
+    expect(input).toHaveAttribute('maxLength', '30')
+
+    await user.clear(input)
+    await user.type(input, '  Jamie B  ')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(onAdmitJoining).toHaveBeenCalledTimes(1)
+    expect(onAdmitJoining).toHaveBeenCalledWith('t1', 'Jamie B')
+    expect(screen.queryByRole('textbox', { name: 'Name to join with' })).not.toBeInTheDocument()
+  })
+
+  it('cannot admit with an empty name, and Cancel closes the editor', async () => {
+    const user = userEvent.setup()
+    const onAdmitJoining = vi.fn()
+    render(<StudentGrid {...mkProps({ joiningStudents: JOINING, onAdmitJoining })} />)
+
+    await user.click(screen.getByRole('button', { name: 'Pull in Someone' }))
+    expect(screen.getByRole('textbox', { name: 'Name to join with' })).toHaveValue('')
+    expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('textbox', { name: 'Name to join with' })).not.toBeInTheDocument()
+    expect(onAdmitJoining).not.toHaveBeenCalled()
+  })
+
+  it('Hide names masks the typed names', async () => {
+    const user = userEvent.setup()
+    render(<StudentGrid {...mkProps({ joiningStudents: JOINING })} />)
+    await user.click(screen.getByRole('button', { name: 'Hide names' }))
+    const list = screen.getByRole('region', { name: 'Students joining' })
+    expect(within(list).queryByText('Jamie')).not.toBeInTheDocument()
+    expect(within(list).getAllByText('Someone')).toHaveLength(2)
+  })
+
+  it('shows no Pull in button without an admit handler', () => {
+    render(<StudentGrid {...mkProps({ joiningStudents: JOINING })} />)
+    expect(screen.queryByRole('button', { name: /Pull in/ })).not.toBeInTheDocument()
+  })
+})

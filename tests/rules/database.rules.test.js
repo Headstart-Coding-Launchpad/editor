@@ -43,8 +43,52 @@ describe('sessions', () => {
   })
 
   it('lets any signed-in user register a joining presence marker', async () => {
-    await assertSucceeds(ref(as.student, `sessions/${LESSON}/joiningStudents/temp-1`).set(true))
-    await assertFails(ref(as.anonymous, `sessions/${LESSON}/joiningStudents/temp-1`).set(true))
+    const marker = `sessions/${LESSON}/joiningStudents/temp-1`
+    await assertSucceeds(ref(as.student, marker).set({ joinedAt: 1000 }))
+    await assertFails(ref(as.anonymous, marker).set({ joinedAt: 1000 }))
+    await assertFails(ref(as.student, marker).set(true))
+    await assertFails(ref(as.student, marker).set({ joinedAt: 1000, extra: 'x' }))
+  })
+
+  describe('joining marker typedName and admit', () => {
+    const marker = `sessions/${LESSON}/joiningStudents/temp-1`
+
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled((ctx) => ref(ctx, marker).set({ joinedAt: 1000 }))
+    })
+
+    it('lets the student share a typed name up to 30 characters', async () => {
+      await assertSucceeds(ref(as.student, `${marker}/typedName`).set('Jamie'))
+      await assertSucceeds(ref(as.student, `${marker}/typedName`).set('x'.repeat(30)))
+      await assertSucceeds(ref(as.student, `${marker}/typedName`).set(null))
+      await assertFails(ref(as.student, `${marker}/typedName`).set('x'.repeat(31)))
+      await assertFails(ref(as.student, `${marker}/typedName`).set(42))
+    })
+
+    it('does not let a typed name or admit recreate a removed marker', async () => {
+      await assertSucceeds(ref(as.student, marker).remove())
+      await assertFails(ref(as.student, `${marker}/typedName`).set('Jamie'))
+      await assertFails(ref(as.teacher, `${marker}/admit`).set({ name: 'Jamie', at: 2000 }))
+    })
+
+    it('lets only teachers and admins write admit, with a valid name and time', async () => {
+      await assertFails(ref(as.student, `${marker}/admit`).set({ name: 'Jamie', at: 2000 }))
+      await assertSucceeds(ref(as.teacher, `${marker}/admit`).set({ name: 'Jamie', at: 2000 }))
+      await assertSucceeds(ref(as.admin, `${marker}/admit`).set({ name: 'Sam', at: 3000 }))
+      await assertFails(ref(as.teacher, `${marker}/admit`).set({ name: '', at: 2000 }))
+      await assertFails(ref(as.teacher, `${marker}/admit`).set({ name: 'x'.repeat(31), at: 2000 }))
+      await assertFails(ref(as.teacher, `${marker}/admit`).set({ name: 'Jamie' }))
+      await assertFails(ref(as.teacher, `${marker}/admit`).set({ name: 'Jamie', at: 'now' }))
+      await assertFails(
+        ref(as.teacher, `${marker}/admit`).set({ name: 'Jamie', at: 2000, extra: true })
+      )
+    })
+
+    it('still lets the student remove its own marker after an admit', async () => {
+      await assertSucceeds(ref(as.teacher, `${marker}/admit`).set({ name: 'Jamie', at: 2000 }))
+      await assertSucceeds(ref(as.student, `${marker}/typedName`).set('Jamie'))
+      await assertSucceeds(ref(as.student, marker).remove())
+    })
   })
 })
 

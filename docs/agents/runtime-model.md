@@ -72,7 +72,11 @@ Do not deviate from this shape. (The `videoCallLink`, `videoCallBroadcastAt` and
       "sandboxEnteredAt": "number | null (teacher's Date.now() when the class entered the teacher sandbox; the id of the open visit in sessionArchive. Set by enterSandbox, cleared by exitSandbox/endSession/createSession)",
       "lessonOverrideTasks": "Task[] | null (answer fields sealed into task._sealed; see Sealed Task Answers)",
       "joiningStudents": {
-        "{tempId}": { "joinedAt": 1234567890 }
+        "{tempId}": {
+          "joinedAt": "number (server timestamp, set by registerJoining)",
+          "typedName": "string ≤ 30 (optional; the trimmed name being typed on NameEntry, throttled ≤ 1 write / 750ms; absent when empty)",
+          "admit": "{ name: string ≤ 30, at: number (server timestamp) } (optional; teacher/admin-only 'Pull in')"
+        }
       },
       "taskStartTimes": {
         "{taskId}": 1234567890
@@ -298,6 +302,7 @@ Teacher writes:
 - `nudgeAwayPushedAt` (stamped by `nudgeAwayStudents` from the "🔔 Nudge Away" item in `StudentGrid`'s ⋯ header menu, reset to `null` on `createSession`/`endSession`) — a class-wide nudge. Each student client's `useNudgeAlert` only reacts if its window is unfocused when the new timestamp arrives. The per-student equivalent is `students/{id}/nudgePushedAt` (`nudgeStudent`, from the 🔔 button on an Away `StudentCard` or the StudentModal header), which always alerts that student. Timestamps already present when a student's session first loads are a baseline and never replay. The alert shows an in-page banner and plays a Web Audio chime; if the window is unfocused it also flashes the tab title and favicon until the window regains focus, and shows an OS `Notification` when permission was already granted (students opt in once via `NudgePermissionPrompt`)
 - any student's `displayName`
 - student node removal
+- `joiningStudents/{tempId}/admit` (`admitJoiningStudent(tempId, name)`, `{ name, at: serverTimestamp() }`) — "Pull in" from the Student Grid's joining list (`JoiningStudentsList.jsx`), which shows each marker's `typedName` ("Jamie (typing…)", or "Someone (typing…)" when empty) and opens a small editor prefilled with it. The student's own device does the actual join (see "Name entry" under student writes)
 
 Teacher per-student actions:
 
@@ -330,7 +335,8 @@ Student writes:
 - Carry-through walk-back: when a live lesson task carries from a skipped source and resolves to an earlier saved source in the authored carry chain, the student writes own `carryFallbackLog/{taskId}` with the carry field, requested source, resolved source, skipped source ids, and server timestamp. Empty saved state is not skipped.
 - Personal sandbox: own `inPersonalSandbox` set to `true` on entry and `null` on exit.
 - Topic library: own `currentTopicId` when a topic opens; cleared when dialog closes and by `setTaskId`.
-- Name entry: own `joiningStudents/{tempId}` during name-entry phase; removed on joining or leaving.
+- Name entry: own `joiningStudents/{tempId}` during name-entry phase (`{ joinedAt }` via `registerJoining`); removed on joining or leaving. While the student types, `NameEntry` shares the trimmed name as `typedName` (`setJoiningTypedName` via `useStudentPhase`'s `reportTypedName`; leading + trailing throttle, at most one write per 750ms, capped at the input's 30 characters, removed when the box is empty). No typedName write happens once the marker is gone, and the rules reject one that would recreate it.
+- Teacher "Pull in" (student side): `useStudentPhase` listens to its own marker (`subscribeJoiningMarker`, a dedicated listener because the phase logic ignores session changes during name entry). When `admit = { name, at }` appears it calls the normal `handleNameSubmit` once with the admitted name, after the same duplicate-name suffixing NameEntry applies (`applyNameSuffix` in `src/app/joiningStudents.js`), so identity creation, `joinSession` and the next phase (waiting room if the session is waiting, lesson/sandbox if live) are exactly a normal submit. It ignores admits stamped before the marker's `joinedAt`, admits without a usable name, and admits arriving while the student's own Join is in flight.
 - Dismiss a teacher highlight: removes one `teacherHighlights/{highlightId}` entry on their own node (same `removeTeacherHighlight` call the teacher uses to retract one). Written when they click its badge, and when they edit inside the highlighted code (see classroom-behaviours.md, Teacher Code Highlights).
 - Presence: own `windowFocused`, `lastActivityAt`, `isFullscreen`, and `visiblePanes` via `writeStudentPresence`, independent of the `online` onDisconnect key. `isFullscreen` mirrors `document.fullscreenElement` (updated on the browser's `fullscreenchange` event) and drives the "⛶ Fullscreen" badge on `StudentCard` — it reflects actual fullscreen state, not whether `fullscreenRequestedAt` was acted on. `visiblePanes` is written by `LessonTaskContent.jsx` on every change (debounced by identity, not per-keystroke) and reflects the info/explainer pane's open/closed state uniformly across all lesson types, plus each module's own internal panes for Electronics/Python/HTML/Arcade (`modulePanes`) or Scratch's Blocks/Stage split.
 - Remote edit/stage consent: `acceptTeacherEdit`/`acceptTeacherStage` set their own `teacherEditAcceptedAt`/`teacherStageAcceptedAt`; `declineTeacherEdit`/`declineTeacherStage` clear the corresponding request fields without accepting.
@@ -338,7 +344,7 @@ Student writes:
 - Live badge signals: own `studentSignals/{anonymousId}` and `attemptLog` entries' `error`. See "Badge data" below.
 - Stage reference reveal: after a failed attempt, students can reveal their own Python/HTML Support `codeStages` entries. The same `supportRevealLog` record stores `source: "student"`, stage label, attempt count, and server timestamp. Revealing does not change editor contents.
 
-Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields (including `badges` and `badgeSettings`), `overrideLog`, and `supportRevealLog`. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, their own `attemptLog/{anonymousId}` node, their own `carryFallbackLog/{anonymousId}` node, their own `supportRevealLog/{anonymousId}` node, and the listed paths of their own `studentSignals/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers). The top-level `sessionArchive/{lessonId}` is teacher/admin read and write only.
+Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields (including `badges` and `badgeSettings`), `overrideLog`, and `supportRevealLog`. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, their own `attemptLog/{anonymousId}` node, their own `carryFallbackLog/{anonymousId}` node, their own `supportRevealLog/{anonymousId}` node, and the listed paths of their own `studentSignals/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers), but every write must leave `joinedAt` (a number) in place, `typedName` must be a string of at most 30 characters, no other fields are allowed, and only teachers/admins can write `admit` (`{ name: string 1-30, at: number }` and nothing else). Removal (on join or disconnect) is unrestricted. The top-level `sessionArchive/{lessonId}` is teacher/admin read and write only.
 
 ## Workspace Sharing
 

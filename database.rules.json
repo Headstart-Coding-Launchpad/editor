@@ -12,11 +12,37 @@
         // (state, currentTaskId, teacherLive, sandboxCode, etc.)
         ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
 
-        // Any authenticated user can register their name-entry presence marker.
-        // The tempId is a client-generated UUID so no UID match is enforced here.
+        // Any authenticated user can register their name-entry presence marker
+        // ({ joinedAt, typedName?, admit? }). The tempId is a client-generated UUID so no
+        // UID match is enforced here. Every write must leave joinedAt in place, so a late
+        // typedName or admit can't recreate a marker that was removed on join/disconnect.
+        // typedName (what the student is typing) and admit.name are capped at the name
+        // input's 30 characters; only teachers/admins can write admit ("Pull in").
         "joiningStudents": {
           "$tempId": {
-            ".write": "auth != null"
+            ".write": "auth != null",
+            ".validate": "newData.hasChild('joinedAt')",
+            "joinedAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "typedName": {
+              ".validate": "newData.isString() && newData.val().length <= 30"
+            },
+            "admit": {
+              ".validate": "(auth.token.role === 'teacher' || auth.token.role === 'admin') && newData.hasChildren(['name', 'at'])",
+              "name": {
+                ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
+              },
+              "at": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
           }
         },
 
