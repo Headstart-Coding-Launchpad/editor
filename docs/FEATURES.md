@@ -114,6 +114,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Rename and remove students
 - One-line modal header: the student's name then small status chips ("Ryan · AWAY · LIVE · 🏅 2"), ← → to switch student, **Support ▾** (Reveal and Set stage sections), ▶ Run on student, **More ▾** and ✕
 - Nudge (More menu) — draw the student's attention back to the lesson
+- 👍 thumbs up (StudentCard and StudentModal header, online students) — the student sees a brief "👍 You're on the right track!" toast with a gentle chime (respecting their mute and the tutor's Sounds off) that disappears after about 2.5s. Private to that student: not a badge, not shown to the class, not in session reports. Reloads don't replay it; the button confirms ✓ and is disabled for 2s to avoid spamming
 - Go Live for All and Focus (highlight or switch a tab on the student's screen) are in the More menu; Stop Live stays in the header while broadcasting
 - 🏅 Award badge (More menu) — a picker with a purple header and a light body, grouped into **Suggested by rules**, **Tutor-awarded** and **Admin badges** (full names, badges already held greyed). Click a badge to select it and see what it's for, then press **Award**; "Announce to class" is on by default. Revoke an awarded one silently; the header shows the student's teacher-only badge count
 - "Show on every task" reference (in the Support menu's Reveal section): first hint, all hints, or the solution opens automatically for that student on every task for the rest of the session

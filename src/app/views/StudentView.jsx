@@ -38,6 +38,8 @@ import TaskProgressDots from '../components/TaskProgressDots'
 import TeacherMessageToast from '../components/TeacherMessageToast'
 import { NudgeBanner, NudgePermissionPrompt } from '../components/NudgeBanner'
 import useNudgeAlert from '../hooks/useNudgeAlert'
+import useThumbsUp from '../hooks/useThumbsUp'
+import ThumbsUpToast from '../components/ThumbsUpToast'
 import useBadgeCelebrations from '../hooks/useBadgeCelebrations'
 import BadgeCelebration from '../components/badges/BadgeCelebration'
 import BadgeClassToast from '../components/badges/BadgeClassToast'
@@ -341,6 +343,13 @@ export default function StudentView({
     enabled: nudgeEnabled,
     studentPushedAt: session?.students?.[identity?.anonymousId]?.nudgePushedAt ?? null,
     classPushedAt: session?.nudgeAwayPushedAt ?? null,
+  })
+  // The teacher's transient 👍 "on the right track" toast — same live-only gate as nudges.
+  const { thumbsUpAt } = useThumbsUp({
+    ready: !!session,
+    enabled: nudgeEnabled,
+    pushedAt: session?.students?.[identity?.anonymousId]?.thumbsUpPushedAt ?? null,
+    soundsOff: !!session?.badgeSettings?.soundsOff,
   })
 
   // Live badges: the recipient's card and Coding moments pill, and the class toasts (the
@@ -1369,6 +1378,7 @@ export default function StudentView({
         onDone={badgeCelebrations.toastDone}
       />
       {nudgeBannerVisible && <NudgeBanner onDismiss={dismissNudge} />}
+      <ThumbsUpToast shownAt={thumbsUpAt} />
       {nudgeEnabled && <NudgePermissionPrompt />}
       {showTeacherEditConsent && (
         <div style={s.consentOverlay}>

@@ -96,6 +96,27 @@ describe('StudentCard', () => {
     })
   })
 
+  describe('thumbs up', () => {
+    it('sends a 👍 without expanding the card, then confirms and blocks a repeat', async () => {
+      const user = userEvent.setup()
+      const props = mkProps({ onThumbsUp: vi.fn() })
+      render(<StudentCard {...props} />)
+      const button = screen.getByRole('button', { name: 'Send Jamie a thumbs up' })
+      await user.click(button)
+      expect(props.onThumbsUp).toHaveBeenCalledWith('student-1')
+      expect(props.onExpand).not.toHaveBeenCalled()
+      expect(button).toBeDisabled()
+      expect(button).toHaveTextContent('✓')
+    })
+
+    it('is not offered for an offline student', () => {
+      render(<StudentCard {...mkProps({ onThumbsUp: vi.fn() }, { online: false })} />)
+      expect(
+        screen.queryByRole('button', { name: 'Send Jamie a thumbs up' })
+      ).not.toBeInTheDocument()
+    })
+  })
+
   describe('presence badge', () => {
     // Online is the default and is already carried by the status dot. Spending a badge
     // on it put a green pill on every card in the column, which is the same noise the

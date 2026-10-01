@@ -291,6 +291,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/sentToTopicPushedAt`] = null
       updates[`students/${anonymousId}/teacherMessage`] = null
       updates[`students/${anonymousId}/teacherMessagePushedAt`] = null
+      updates[`students/${anonymousId}/thumbsUpPushedAt`] = null
       updates[`students/${anonymousId}/teacherEditRequestedAt`] = null
       updates[`students/${anonymousId}/teacherEditAcceptedAt`] = null
       updates[`students/${anonymousId}/teacherLiveCode`] = null
@@ -643,6 +644,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
   async function nudgeStudent(anonymousId) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
       nudgePushedAt: Date.now(),
+    })
+  }
+
+  // A transient "you're on the right track" 👍 for one student: their client pops a short
+  // toast and a gentle chime (see useThumbsUp). Not a badge, not shown to the class and not
+  // in session reports. Cleared on task change.
+  async function sendThumbsUp(anonymousId) {
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      thumbsUpPushedAt: Date.now(),
     })
   }
 
@@ -1573,6 +1583,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     requestFullscreenForAll,
     requestFullscreenForStudent,
     nudgeStudent,
+    sendThumbsUp,
     nudgeAwayStudents,
     setAutoRevealStage,
     setExplainerShowComplete,

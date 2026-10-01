@@ -224,6 +224,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
           "teacherMessage": "string | null",
           "teacherMessagePushedAt": "number | null",
           "nudgePushedAt": "number | null (teacher nudge for this student — see useNudgeAlert)",
+          "thumbsUpPushedAt": "number | null (teacher 👍 \"on the right track\" — stamped by sendThumbsUp; transient toast via useThumbsUp, not a badge, not in reports; cleared by setTaskId)",
           "autoRevealStage": "'first' | 'support' | 'solution' | null (teacher's \"Show on every task\" reference for this student — see below)",
           "pasteLog": {
             "{taskId}": { "count": 2, "chars": 180, "lastAt": 1234567890, "firstAt": "ServerValue.TIMESTAMP (first large paste on the task, set once)" }

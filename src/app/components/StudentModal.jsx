@@ -93,6 +93,7 @@ export default function StudentModal({
   onRequestShareSnapshot,
   onRequestFullscreen,
   onNudge,
+  onThumbsUp,
   onSetAutoReveal,
   onDecideBadge,
   onRevokeBadge,
@@ -111,6 +112,7 @@ export default function StudentModal({
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [fullscreenRequested, setFullscreenRequested] = useState(false)
   const [nudged, setNudged] = useState(false)
+  const [thumbsUpSent, setThumbsUpSent] = useState(false)
   const [showBadgeDialog, setShowBadgeDialog] = useState(false)
 
   // Teacher highlight: select a range in the mirrored view, tag it, send it
@@ -876,6 +878,24 @@ export default function StudentModal({
                 onClick={onStopLive}
               >
                 Stop Live
+              </button>
+            )}
+
+            {/* A transient 👍 "on the right track" toast on the student's screen. */}
+            {onThumbsUp && student.online && (
+              <button
+                className="btn-ghost"
+                style={{ fontSize: 13, padding: '5px 10px', whiteSpace: 'nowrap' }}
+                disabled={thumbsUpSent}
+                onClick={() => {
+                  onThumbsUp(student.anonymousId)
+                  setThumbsUpSent(true)
+                  setTimeout(() => setThumbsUpSent(false), 2000)
+                }}
+                title="Send a 👍: tells this student they're on the right track"
+                aria-label={`Send ${student.displayName} a thumbs up`}
+              >
+                {thumbsUpSent ? '✓ Sent' : '👍'}
               </button>
             )}
 

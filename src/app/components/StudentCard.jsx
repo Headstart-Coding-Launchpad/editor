@@ -40,6 +40,7 @@ export default function StudentCard({
   onRemove,
   onExpand,
   onNudge,
+  onThumbsUp,
   badgePendingCount = 0,
   badgeAwardedCount = 0,
   selectMode = false,
@@ -50,6 +51,7 @@ export default function StudentCard({
   const [nameValue, setNameValue] = useState(student.displayName)
   const [isActive, setIsActive] = useState(false)
   const [nudged, setNudged] = useState(false)
+  const [thumbsUpSent, setThumbsUpSent] = useState(false)
   const pasteRecord = student.pasteLog?.[session?.currentTaskId] ?? null
   const [, setTick] = useState(0)
 
@@ -306,6 +308,22 @@ export default function StudentCard({
               aria-label={`Nudge ${student.displayName}`}
             >
               {nudged ? '✓' : '🔔'}
+            </button>
+          )}
+          {onThumbsUp && student.online && (
+            <button
+              style={{ ...s.thumbsUpBtn, ...(thumbsUpSent ? s.thumbsUpBtnSent : null) }}
+              disabled={thumbsUpSent}
+              onClick={(event) => {
+                event.stopPropagation()
+                onThumbsUp(student.anonymousId)
+                setThumbsUpSent(true)
+                setTimeout(() => setThumbsUpSent(false), 2000)
+              }}
+              title="Send a 👍: tells this student they're on the right track"
+              aria-label={`Send ${student.displayName} a thumbs up`}
+            >
+              {thumbsUpSent ? '✓' : '👍'}
             </button>
           )}
           {pasteRecord?.count > 0 && (
@@ -714,6 +732,16 @@ const s = {
     padding: '1px 6px',
     cursor: 'pointer',
   },
+  thumbsUpBtn: {
+    background: '#ecfdf5',
+    border: '1px solid #10b981',
+    borderRadius: 999,
+    fontSize: '0.72rem',
+    lineHeight: 1.2,
+    padding: '1px 6px',
+    cursor: 'pointer',
+  },
+  thumbsUpBtnSent: { cursor: 'default', opacity: 0.7 },
   checkBadgeFullscreen: {
     background: '#0284c7',
     color: '#fff',
