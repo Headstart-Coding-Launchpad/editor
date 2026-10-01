@@ -5,7 +5,9 @@ import {
   anyCheckHasValue,
   validateScratchChecks,
   validateTaskChecks,
+  warnCompleteBlocks,
 } from '../moduleTaskValidation.js'
+import { verifyScratchTask } from './checkVerification.js'
 import {
   identityFromStored,
   identityStored,
@@ -306,8 +308,11 @@ export default defineModule({
     validateTaskChecks(task, (checks, kind) =>
       validateScratchChecks(checks, n, errors, kind, warnings)
     )
+    warnCompleteBlocks(task, n, warnings)
   },
   hasStarterContent: (task) => !!task.starterBlocks,
+  // `lessons test-checks` with no --cases: static block checks per stage (checkVerification.js).
+  verifyTaskChecks: verifyScratchTask,
   hasCheckValue: anyCheckHasValue,
   // Builder only: the CLI has no XML parser, so the toolbox is checked where DOMParser exists.
   validateTaskInBrowser: (task, { n, errors }) => {

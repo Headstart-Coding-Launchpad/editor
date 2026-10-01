@@ -91,7 +91,9 @@ clips), `teacherSandboxRow` (the teacher sandbox workspace fills a plain flex ro
 - Validation, shared by the Builder and the CLI (`src/shared/lessonValidation.js`):
   `validateTask(task, { n, lesson, errors, warnings })`, `hasStarterContent`, `hasCheckValue`,
   `validateTaskInBrowser` (Builder only). Every message is documented in
-  `docs/authoring/validation-errors.md` (`validationErrorsDoc.test.js`).
+  `docs/authoring/validation-errors.md` (`validationErrorsDoc.test.js`). Optional
+  `verifyTaskChecks(task, label)` evaluates the task's checks per check against its own authored
+  stages for `lessons test-checks` without `--cases` (Scratch).
 
 ### `authoring` (the Builder)
 

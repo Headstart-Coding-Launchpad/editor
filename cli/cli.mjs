@@ -267,17 +267,31 @@ await yargs(hideBin(process.argv))
 
       .command(
         'test-checks <lessonPath>',
-        'Test source-code check cases from a JSON or YAML file',
+        'Test checks: source-code cases from a --cases file, or (no --cases) each Scratch task against its own stages',
         {
           cases: {
             type: 'string',
-            demandOption: true,
-            describe: 'JSON or YAML file containing named task cases',
+            describe:
+              'JSON or YAML file containing named task cases (source-code checks); omit for Scratch tasks',
+          },
+          task: {
+            type: 'string',
+            describe: 'Scratch mode only: verify just this task id',
           },
         },
-        cmd(async ({ lessonPath, cases }) => {
-          const { testLessonChecks } = await loadCheckTests()
+        cmd(async ({ lessonPath, cases, task }) => {
+          const { testLessonChecks, testStageChecks, getStageVerifiableTasks } =
+            await loadCheckTests()
           const lesson = parseLessonJsonOrYaml(lessonPath, await readText(lessonPath))
+          if (!cases) {
+            if (getStageVerifiableTasks(lesson).length === 0) {
+              throw new Error('--cases is required: the lesson has no Scratch tasks to verify')
+            }
+            const result = testStageChecks(lesson, { taskId: task })
+            print(result)
+            if (!result.success) process.exit(1)
+            return
+          }
           const casesFile = parseJsonOrYaml(cases, await readText(cases))
           const result = testLessonChecks(lesson, casesFile)
           print(result)

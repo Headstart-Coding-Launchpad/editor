@@ -337,6 +337,9 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `scratch/index.js` | Scratch module definition |
 | `scratch/blockInputs.js` | Pure (Blockly-free): `VALUE_INPUT_DEFAULTS` — each block's value inputs and default shadows; read by the lesson validator, re-exported from `scratch.js` |
 | `scratch/checks.js` | Pure Scratch check evaluation: `evaluateScratchCheck`, `compare`, `createSpriteState`, `DEFAULT_SPRITES`, `normalizeSequenceItem`, and the shared block matcher `matchesOpcodeSpec` / `opcodeAlternatives` (an `opcode` may be one opcode or a list of alternatives) |
+| `scratch/checkDispatch.js` | Pure per-sprite check dispatch shared by `ScratchWorkspace.jsx` and the CLI: `evaluateScratchCheckForSprites` (spriteName targeting, first-sprite fallback, any-sprite pass), `partialEvaluateScratchCheckForSprites` (after_block_placed pass/pending/fail), `findScratchCheckTarget`, `isScratchStaticCheck` / `SCRATCH_STATIC_CHECK_TYPES` |
+| `scratch/jsonWorkspace.js` | Pure: wraps saved Blockly workspace JSON in the duck-typed workspace interface the checks read (`createJsonWorkspace`, `buildJsonSpriteWorkspaces`, `parseScratchBlocksState`), so checks run in plain Node |
+| `scratch/checkVerification.js` | Pure static verification of a task's Scratch checks against its complete / starter / Complete-role stages (`verifyScratchTask`, `evaluateScratchStage`, `explainScratchCheck`, `getScratchVerificationStages`); used by `cli/check-tests.mjs` and `warnCompleteBlocks` |
 | `scratch/print.js` | Pure: `printScratchTask` — the Scratch module's printable-lesson section |
 | `scratch/scratch.js` | Custom Scratch interpreter: block definitions, multi-sprite state, broadcast, sounds, `CREATE_VARIABLE_CALLBACK_KEY`/`addCreateVariableButtonToToolbox` flyout button injection; re-exports check/state helpers from `checks.js` and persistence helpers from `scratchPersistence.js` |
 | `scratch/scratchEditors.jsx` | Scratch toolbox data, `buildScratchToolboxXml`, `parseScratchToolboxXml`, `ScratchToolboxPicker`, `ScratchCheckListEditor`, `ScratchCheckEditor`, variables, and prebuilt stack editors |
@@ -450,6 +453,7 @@ Each `index.js` exports a default object with the following properties. UI surfa
 | `hasStarterContent(task)` | `fn \| null` | Optional: whether the task has starter content (`null` = never warn about an empty editor) |
 | `hasCheckValue(task)` | `fn \| null` | Optional: whether the completion check is worth the Builder's untested-check reminder (`null` = the generic code-check rule) |
 | `validateTaskInBrowser(task, { n, errors, warnings })` | `fn \| null` | Optional Builder-only rules needing browser APIs (Scratch toolbox XML via `DOMParser`); the CLI never calls it |
+| `verifyTaskChecks(task, label)` | `fn \| null` | Optional: the task's checks evaluated per check against its own authored stages, returning `{ taskId, title, stages, warnings }` — `lessons test-checks` without `--cases` (Scratch: `verifyScratchTask`) |
 | `runtime` | `object \| null` | Optional runtime bridge with `init`, `isReady`, `stop`, and module-specific helpers |
 
 ---
@@ -681,7 +685,7 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | `cli/validate.mjs` | `validateLessonForMcp(lesson)` — standalone lesson validation (no Firebase dependency): the shared core (`src/shared/lessonValidation.js`) plus the CLI-only `description is required` rule |
 | `cli/capabilities.mjs` | `buildCapabilities()` — JSON catalogue printed by `lessons capabilities` for lesson agents (no Firebase): modules (with their `taskFields`), activities (modes, `fields`, `fieldsByMode`, `authoredFields` from each definition's `fields`), the common / information / group task fields (`src/shared/taskFields.js`), check types, the `taskActivity` vocabulary (`src/shared/taskActivity.js`), the built-in badges with `badgeOptions`, and `requests` |
 | `cli/authoring-requests.mjs` | `readAuthoringRequests()` / `parseAuthoringRequest()` — reads `docs/authoring/authoring-requests/*.md` headers into `{ file, title, kind, status, requestedBy, lessonsBlocked }` for `lessons capabilities` |
-| `cli/check-tests.mjs` | `testLessonChecks(lesson, casesFile)` — source-code case harness using the shared runtime check evaluator, including feedback-match reporting |
+| `cli/check-tests.mjs` | `testLessonChecks(lesson, casesFile)` — source-code case harness using the shared runtime check evaluator, including feedback-match reporting; `testStageChecks(lesson, { taskId })` / `getStageVerifiableTasks` — the no-cases mode for tasks whose module declares `verifyTaskChecks` (Scratch: per-check, per-stage verification) |
 | `cli/topic-utils.mjs` | Standalone topic-library normalization and validation helpers used by CLI conversion/publish commands |
 | `cli/yaml-converter.mjs` | YAML conversion helpers for lessons and topic libraries, including lesson/topic JSON-to-YAML serialization and the `type: <activity>` shorthand (both directions, via the activity registry) |
 | `cli/structured-input.mjs` | JSON/YAML input detection for CLI files and stdin; lesson YAML is passed through the lesson shorthand converter |

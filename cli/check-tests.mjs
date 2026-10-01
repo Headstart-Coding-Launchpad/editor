@@ -3,7 +3,10 @@ import {
   normalizeChecks,
   normalizeFeedbackChecks,
 } from '../src/modules/checks.js'
-import { findTaskById } from '../src/shared/taskUtils.js'
+import { findTaskById, flattenTasks } from '../src/shared/taskUtils.js'
+import { getTaskModuleType } from '../src/shared/composedLesson.js'
+import { getTaskValidationKind } from '../src/shared/lessonValidation.js'
+import { getModuleDefinition } from '../src/modules/definitions.js'
 
 const EXPECTED_COMPLETION = new Set(['pass', 'fail'])
 
@@ -99,6 +102,67 @@ export function testLessonChecks(lesson, casesFile) {
       total: cases.length,
       passed: cases.length - failed.length,
       failed: failed.length,
+    },
+  }
+}
+
+// ── Stage verification (no cases file) ───────────────────────────────────────
+// Tasks whose module declares `verifyTaskChecks` (Scratch) need no cases file: each task's
+// completion and feedback checks are evaluated against its own authored stages (Scratch:
+// Complete blocks, starter, Complete-role code stages). Checks that need a run are reported as
+// skipped.
+
+function stageVerifier(lesson, task) {
+  if (!task || typeof task !== 'object' || getTaskValidationKind(task) !== 'module') return null
+  // Each task's own module: composed lessons mix modules.
+  const moduleType = getTaskModuleType(lesson, task) ?? lesson.type
+  return getModuleDefinition(moduleType)?.verifyTaskChecks ?? null
+}
+
+// The lesson's tasks that `test-checks` can verify without a cases file.
+export function getStageVerifiableTasks(lesson) {
+  return flattenTasks(lesson?.tasks ?? []).filter((task) => stageVerifier(lesson, task))
+}
+
+const countSkipped = (stage) =>
+  [...(stage?.completion?.checks ?? []), ...(stage?.feedback ?? [])].filter(
+    (check) => check.result === 'skipped'
+  ).length
+
+export function testStageChecks(lesson, { taskId } = {}) {
+  if (!lesson || typeof lesson !== 'object' || Array.isArray(lesson)) {
+    throw new Error('Lesson must be an object')
+  }
+  let verifiable = getStageVerifiableTasks(lesson)
+  if (taskId != null && taskId !== '') {
+    verifiable = verifiable.filter((task) => String(task.id) === String(taskId))
+    if (verifiable.length === 0) throw new Error(`Scratch task ${taskId} was not found`)
+  }
+  if (verifiable.length === 0) throw new Error('The lesson has no Scratch tasks')
+
+  const warnings = []
+  let stagesChecked = 0
+  let skippedRuntimeChecks = 0
+  const tasks = verifiable.map((task) => {
+    const verify = stageVerifier(lesson, task)
+    const { warnings: taskWarnings, ...result } = verify(task, task.id)
+    warnings.push(...taskWarnings)
+    stagesChecked += result.stages.length
+    skippedRuntimeChecks += countSkipped(result.stages.find((stage) => stage.completion))
+    return result
+  })
+
+  return {
+    success: warnings.length === 0,
+    lessonId: lesson.id ?? null,
+    mode: 'stages',
+    tasks,
+    warnings,
+    summary: {
+      tasks: tasks.length,
+      stagesChecked,
+      failed: warnings.length,
+      skippedRuntimeChecks,
     },
   }
 }
