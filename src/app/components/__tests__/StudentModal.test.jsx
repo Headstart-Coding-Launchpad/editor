@@ -1070,6 +1070,8 @@ describe('information tasks', () => {
       screen.getByText("Coding moments will appear here as they're celebrated.")
     ).toBeInTheDocument()
     expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+  })
+})
 
 describe('teacher live code reference (Support menu)', () => {
   const PRESENTING = {
