@@ -52,6 +52,20 @@ describe('createLiveInkWriter', () => {
     })
   })
 
+  it('writes a text-anchored pointer with only its own keys', () => {
+    const writer = createLiveInkWriter('lesson-1')
+    writer.movePointer({ surface: 'info:1', anchor: 'b0.p0', c: 7, dx: 0.25, dy: -0.1 })
+    vi.advanceTimersByTime(POINTER_INTERVAL_MS)
+    expect(pointerWrites().at(-1)[1]).toEqual({
+      surface: 'info:1',
+      anchor: 'b0.p0',
+      c: 7,
+      dx: 0.25,
+      dy: -0.1,
+      t: expect.any(Number),
+    })
+  })
+
   it('hidePointer drops a waiting move and removes the pointer', () => {
     const writer = createLiveInkWriter('lesson-1')
     writer.movePointer({ surface: 'info:1', anchor: 'b0', rx: 0.1, ry: 0.1 })

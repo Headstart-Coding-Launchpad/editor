@@ -48,8 +48,34 @@ afterEach(() => {
   rectSpy.mockRestore()
   if (originalRangeRects) Range.prototype.getClientRects = originalRangeRects
   else delete Range.prototype.getClientRects
+  delete document.caretPositionFromPoint
   vi.useRealTimers()
 })
+
+// Fake text layout for the paragraph (b0.p0 at (20, 100)): 10px-wide characters on 20px lines,
+// `perLine` characters to a line - a narrow screen wraps after fewer characters.
+function mockParagraphText(perLine) {
+  Range.prototype.getClientRects = function getClientRects() {
+    const p = document.querySelector('[data-md-anchor="b0.p0"]')
+    if (this.startContainer !== p?.firstChild) return []
+    const rects = []
+    for (let i = this.startOffset; i < this.endOffset; i += 1) {
+      const left = 20 + (i % perLine) * 10
+      const top = 100 + Math.floor(i / perLine) * 20
+      rects.push({ left, right: left + 10, top, bottom: top + 20, width: 10, height: 20 })
+    }
+    return rects
+  }
+}
+
+// The caret lands between the paragraph's characters nearest the pointer's x (one line).
+function mockCaretLookup() {
+  document.caretPositionFromPoint = (x) => {
+    const text = document.querySelector('[data-md-anchor="b0.p0"]').firstChild
+    const offset = Math.min(text.data.length, Math.max(0, Math.round((x - 20) / 10)))
+    return { offsetNode: text, offset }
+  }
+}
 
 function makeSubscription() {
   let emit = null
@@ -148,6 +174,44 @@ describe('LiveInkOverlay (what students see)', () => {
       vi.advanceTimersByTime(STROKE_HOLD_MS + STROKE_FADE_MS + 100)
     })
     expect(container.querySelector('[data-stroke-id="s1"]')).toBeNull()
+  })
+
+  it('draws a text-anchored stroke under the same words, split where they wrap', () => {
+    mockParagraphText(10)
+    const sub = makeSubscription()
+    const { container } = renderInk({ role: 'student', subscribe: sub.subscribe })
+    sub.push({
+      strokes: {
+        s1: {
+          surface: 'info:1',
+          anchor: 'b0.p0',
+          // Under characters 2-12; the teacher drew it along one line.
+          points: [
+            { c: 2, dx: 0, dy: 0.75 },
+            { c: 6, dx: 0, dy: 0.75 },
+            { c: 12, dx: 0, dy: 0.75 },
+          ],
+          colour: 'red',
+          t: 1,
+        },
+      },
+    })
+    // Character 12 wraps onto the second line here: a new segment, not a diagonal.
+    expect(container.querySelector('[data-stroke-id="s1"]')).toHaveAttribute(
+      'd',
+      'M40.0 122.0 L80.0 122.0 M40.0 142.0 l0.01 0'
+    )
+  })
+
+  it('draws a text-anchored pointer on its character', () => {
+    mockParagraphText(100)
+    const sub = makeSubscription()
+    renderInk({ role: 'student', subscribe: sub.subscribe })
+    sub.push({ pointer: { surface: 'info:1', anchor: 'b0.p0', c: 2, dx: 0.25, dy: 0, t: 1 } })
+    const dot = screen.getByTestId('live-ink-pointer')
+    // Character 2 starts at x 40 on a line whose midline is y 110; 0.25em = 4px.
+    expect(dot).toHaveAttribute('data-x', '44')
+    expect(dot).toHaveAttribute('data-y', '110')
   })
 
   it('re-finds a highlighted quote and draws it over the text', () => {
@@ -253,6 +317,48 @@ describe('Presentation window (teacher) tools', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(pointerBtn).toHaveAttribute('aria-pressed', 'false')
     expect(writer.hidePointer).toHaveBeenCalled()
+  })
+
+  it('pointer mode pins the pointer to the character under it when over text', () => {
+    mockParagraphText(100)
+    mockCaretLookup()
+    const writer = makeWriter()
+    renderInk({ role: 'teacher', subscribe: makeSubscription().subscribe, writer })
+    fireEvent.click(screen.getByRole('button', { name: /Pointer/ }))
+    fireEvent.pointerMove(screen.getByText('Use print to show text.'), {
+      clientX: 44,
+      clientY: 112,
+    })
+    expect(writer.movePointer).toHaveBeenCalledWith({
+      surface: 'info:1',
+      anchor: 'b0.p0',
+      c: 2,
+      dx: 0.25,
+      dy: 0.125,
+    })
+  })
+
+  it('ink over text is stored as characters plus em offsets', () => {
+    mockParagraphText(100)
+    mockCaretLookup()
+    const writer = makeWriter()
+    renderInk({ role: 'teacher', subscribe: makeSubscription().subscribe, writer })
+    fireEvent.click(screen.getByRole('button', { name: /Ink/ }))
+    const layer = screen.getByTestId('live-ink-capture')
+    fireEvent.pointerDown(layer, { clientX: 44, clientY: 122, button: 0 })
+    fireEvent.pointerMove(layer, { clientX: 84, clientY: 122 })
+    fireEvent.pointerUp(layer, { clientX: 84, clientY: 122 })
+    // jsdom can't hit-test, so the anchor is the surface; offsets count its whole text.
+    expect(writer.addStroke).toHaveBeenCalledWith({
+      surface: 'info:1',
+      anchor: 'root',
+      points: [
+        { c: 2, dx: 0.25, dy: 0.75 },
+        { c: 6, dx: 0.25, dy: 0.75 },
+      ],
+    })
+    // The capture layer takes the pointer again afterwards.
+    expect(layer.style.pointerEvents).toBe('')
   })
 
   it('only captures the pointer for drawing in ink mode', () => {

@@ -1,10 +1,15 @@
 // Pure helpers for Presentation annotations (live pointer, fading ink, text highlights).
 //
-// Screens differ in size, so nothing is sent as pixels. A position is `{ anchor, rx, ry }`:
-// the `data-md-anchor` of the content element under it (see src/shared/markdown/anchors.js)
-// and fractions of that element's bounding box. Every client looks the anchor up in its own
-// DOM and maps the fractions back onto its own box, so the dot lands on the same word or the
-// same part of an image even after the text has reflowed.
+// Screens differ in size, so nothing is sent as pixels. A position is named against the
+// `data-md-anchor` of the content element under it (see src/shared/markdown/anchors.js), in
+// one of two forms:
+//   - over text: `{ c, dx, dy }` - the character at textContent offset `c` of the anchor
+//     element, plus an offset from that character (left edge, line midline) in em of its font
+//     size. Text reflows differently at every width, so this keeps an underline under the same
+//     words on every screen.
+//   - anywhere else (an image, empty space): `[rx, ry]` / `{ rx, ry }` - fractions of the anchor
+//     element's bounding box (right for images, which scale with their box).
+// Every client looks the anchor up in its own DOM and maps the position back onto it.
 
 import { MD_ANCHOR_ATTR } from '../../shared/markdown/anchors.js'
 
@@ -21,8 +26,31 @@ export const MAX_STROKE_POINTS = 200
 /** Longest highlight quote, in characters (also capped in database.rules.json). */
 export const MAX_QUOTE_LENGTH = 500
 
+/** Text-anchored offsets (`dx`, `dy`, in em) are dropped beyond this. Mirrors database.rules.json. */
+export const TEXT_OFFSET_LIMIT_EM = 50
+
+/** Largest character offset `c` a text-anchored point may name. Mirrors database.rules.json. */
+export const MAX_TEXT_OFFSET = 1000000
+
+/** A point snaps to the text only when it is this close (in em) to the nearest character's
+ * line midline - further away (a margin, a gap between paragraphs) it uses box fractions. */
+export const TEXT_SNAP_DY_EM = 2
+/** ...and no further than this (in em) to the side of that character. */
+export const TEXT_SNAP_DX_EM = 12
+
+/** Font size assumed when the computed one can't be read. */
+export const DEFAULT_FONT_SIZE = 16
+
+/** Consecutive text-anchored points further apart than this many line heights, whose
+ * characters sit on different lines, start a new stroke segment (see splitStrokeSegments). */
+export const LINE_JUMP_FACTOR = 0.8
+
 function round4(value) {
   return Math.round(value * 10000) / 10000
+}
+
+function round3(value) {
+  return Math.round(value * 1000) / 1000
 }
 
 function isFiniteNumber(value) {
@@ -106,6 +134,130 @@ export function pointsToSvgPath(points) {
   const head = `M${first.x.toFixed(1)} ${first.y.toFixed(1)}`
   if (!rest.length) return `${head} l0.01 0`
   return `${head} ${rest.map((p) => `L${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')}`
+}
+
+/** SVG path data through several segments (a stroke broken where its text reflowed). */
+export function segmentsToSvgPath(segments) {
+  return (segments ?? [])
+    .map((segment) => pointsToSvgPath(segment))
+    .filter(Boolean)
+    .join(' ')
+}
+
+// ─── Text-anchored points ({ c, dx, dy }) ──────────────────────────────────
+
+/** True for a well-formed text-anchored point `{ c, dx, dy }`. */
+export function isTextPoint(point) {
+  return (
+    !!point &&
+    typeof point === 'object' &&
+    !Array.isArray(point) &&
+    isFiniteNumber(point.c) &&
+    point.c >= 0 &&
+    point.c <= MAX_TEXT_OFFSET &&
+    isFiniteNumber(point.dx) &&
+    Math.abs(point.dx) <= TEXT_OFFSET_LIMIT_EM &&
+    isFiniteNumber(point.dy) &&
+    Math.abs(point.dy) <= TEXT_OFFSET_LIMIT_EM
+  )
+}
+
+/** The `[rx, ry]` of a box-fraction point (`[rx, ry]`, `{ rx, ry }` or RTDB's `{ 0, 1 }`), or null. */
+export function fractionPairOf(point) {
+  if (!point || typeof point !== 'object') return null
+  let pair
+  if (Array.isArray(point)) pair = point
+  else if ('rx' in point || 'ry' in point) pair = [point.rx, point.ry]
+  else pair = [point[0], point[1]]
+  const [rx, ry] = pair
+  if (!isFiniteNumber(rx) || !isFiniteNumber(ry)) return null
+  if (Math.abs(rx) > FRACTION_LIMIT || Math.abs(ry) > FRACTION_LIMIT) return null
+  return [rx, ry]
+}
+
+function usableFontSize(fontSize) {
+  return isFiniteNumber(fontSize) && fontSize > 0 ? fontSize : DEFAULT_FONT_SIZE
+}
+
+/** Pixels -> em of `fontSize` (rounded to 3 places). */
+export function pxToEm(px, fontSize) {
+  return round3(px / usableFontSize(fontSize))
+}
+
+/** Em of `fontSize` -> pixels. */
+export function emToPx(em, fontSize) {
+  return em * usableFontSize(fontSize)
+}
+
+/**
+ * Client point -> `{ c, dx, dy }` against `charBox` (`{ x, mid, fontSize }`: the character's
+ * left edge, its line's vertical midline and its font size). Null when the point is too far
+ * from the character to count as "on the text" (`maxDxEm` / `maxDyEm`).
+ */
+export function encodeTextPoint(
+  point,
+  charBox,
+  c,
+  { maxDxEm = TEXT_SNAP_DX_EM, maxDyEm = TEXT_SNAP_DY_EM } = {}
+) {
+  if (!point || !charBox || !isFiniteNumber(c) || c < 0 || c > MAX_TEXT_OFFSET) return null
+  if (!isFiniteNumber(point.x) || !isFiniteNumber(point.y)) return null
+  if (!isFiniteNumber(charBox.x) || !isFiniteNumber(charBox.mid)) return null
+  const dx = pxToEm(point.x - charBox.x, charBox.fontSize)
+  const dy = pxToEm(point.y - charBox.mid, charBox.fontSize)
+  if (Math.abs(dx) > maxDxEm || Math.abs(dy) > maxDyEm) return null
+  return { c: Math.round(c), dx, dy }
+}
+
+/** `{ c, dx, dy }` + where that character sits on this screen (`charBox`) -> client point. */
+export function decodeTextPoint(textPoint, charBox) {
+  if (!isTextPoint(textPoint) || !charBox) return null
+  if (!isFiniteNumber(charBox.x) || !isFiniteNumber(charBox.mid)) return null
+  return {
+    x: charBox.x + emToPx(textPoint.dx, charBox.fontSize),
+    y: charBox.mid + emToPx(textPoint.dy, charBox.fontSize),
+  }
+}
+
+/**
+ * Breaks a stroke's resolved client points into segments where the text has reflowed, so a
+ * stroke that ran along one line on the teacher's screen doesn't cut diagonally across the
+ * paragraph where those words wrap onto two lines here.
+ *
+ * Each point is `{ x, y }`, plus - for text-anchored points - `line: { mid, height }` (its
+ * character's line midline and height on this screen) and `dyPx` (the teacher's offset from
+ * that line, in px here). A break goes between two text-anchored points when all hold:
+ *   - they land more than LINE_JUMP_FACTOR line heights apart vertically,
+ *   - their characters sit on different lines here,
+ *   - their offsets from the line barely differ, i.e. the teacher drew them along one line
+ *     (a pen genuinely moving down a line has its offset reset to the new line - no split), and
+ *   - they also jump sideways by more than a line height (a wrap sends the next word back to
+ *     the start of the line; a fast downward flick barely moves sideways).
+ */
+export function splitStrokeSegments(points, { jumpFactor = LINE_JUMP_FACTOR } = {}) {
+  const segments = []
+  let current = []
+  for (const point of points ?? []) {
+    if (!point || !isFiniteNumber(point.x) || !isFiniteNumber(point.y)) continue
+    const previous = current[current.length - 1]
+    if (previous && isLineJump(previous, point, jumpFactor)) {
+      segments.push(current)
+      current = []
+    }
+    current.push(point)
+  }
+  if (current.length) segments.push(current)
+  return segments
+}
+
+function isLineJump(a, b, jumpFactor) {
+  if (!a.line || !b.line) return false
+  const lineHeight = Math.max(a.line.height || 0, b.line.height || 0)
+  if (!(lineHeight > 0)) return false
+  if (Math.abs(b.y - a.y) <= jumpFactor * lineHeight) return false
+  if (Math.abs(b.line.mid - a.line.mid) <= lineHeight / 2) return false
+  if (Math.abs(b.x - a.x) <= lineHeight) return false
+  return Math.abs((b.dyPx ?? 0) - (a.dyPx ?? 0)) < lineHeight / 2
 }
 
 // ─── Text quotes ────────────────────────────────────────────────────────────
@@ -331,6 +483,145 @@ export function anchorElementAtPoint(surfaceEl, x, y, ignoreSelector = '[data-li
     (el) => surfaceEl.contains(el) && !(ignoreSelector && el.closest?.(ignoreSelector))
   )
   return anchorElementFor(hit ?? surfaceEl, surfaceEl)
+}
+
+// ─── Text-anchored points: DOM side ─────────────────────────────────────────
+
+const MEDIA_TAGS = new Set(['IMG', 'SVG', 'CANVAS', 'VIDEO', 'PICTURE', 'IFRAME'])
+
+function isMediaElement(el) {
+  return !!el?.tagName && MEDIA_TAGS.has(String(el.tagName).toUpperCase())
+}
+
+/** The caret position nearest client point (x, y) as `{ node, offset }`, or null. */
+export function caretPositionAtPoint(doc, x, y) {
+  if (!doc) return null
+  if (typeof doc.caretPositionFromPoint === 'function') {
+    const position = doc.caretPositionFromPoint(x, y)
+    if (position?.offsetNode) return { node: position.offsetNode, offset: position.offset }
+  }
+  if (typeof doc.caretRangeFromPoint === 'function') {
+    const range = doc.caretRangeFromPoint(x, y)
+    if (range?.startContainer) return { node: range.startContainer, offset: range.startOffset }
+  }
+  return null
+}
+
+/** Computed font size (px) of the element holding `node`. */
+export function fontSizeOf(node) {
+  const el = node?.nodeType === 1 ? node : node?.parentElement
+  const view = el?.ownerDocument?.defaultView
+  const size = parseFloat(view?.getComputedStyle?.(el)?.fontSize)
+  return size > 0 ? size : DEFAULT_FONT_SIZE
+}
+
+function measuredRects(range) {
+  if (!range || typeof range.getClientRects !== 'function') return []
+  return Array.from(range.getClientRects()).filter((rect) => rect.height > 0)
+}
+
+function charBox(x, rect, range) {
+  return {
+    x,
+    mid: rect.top + rect.height / 2,
+    height: rect.height,
+    fontSize: fontSizeOf(range.startContainer),
+  }
+}
+
+/**
+ * Where character `c` of `root`'s textContent sits on this screen: `{ x, mid, height,
+ * fontSize }` - its left edge, its line's midline and height, and its font size. A character
+ * with no box (collapsed whitespace, the end of the text) uses the previous character's right
+ * edge instead. Null when neither can be measured. Teacher and students use the same rule, so
+ * the fallback lands consistently.
+ */
+export function charBoxAt(root, c) {
+  if (!root || !isFiniteNumber(c) || c < 0) return null
+  const length = (root.textContent ?? '').length
+  if (c < length) {
+    const range = rangeFromTextOffsets(root, c, c + 1)
+    const rect = measuredRects(range)[0]
+    if (rect) return charBox(rect.left, rect, range)
+  }
+  if (c > 0 && c <= length) {
+    const range = rangeFromTextOffsets(root, c - 1, c)
+    const rect = measuredRects(range).at(-1)
+    if (rect) return charBox(rect.right, rect, range)
+  }
+  return null
+}
+
+/**
+ * Client point (x, y) as a text-anchored `{ c, dx, dy }` within `anchorEl`, or null when it
+ * isn't over or near that element's text: over an image, outside the anchor, or further than
+ * TEXT_SNAP_DY_EM / TEXT_SNAP_DX_EM from the nearest character. The annotation layers must not
+ * take hits while this runs (InkSurface turns the capture layer's pointer events off).
+ */
+export function textPointAt(anchorEl, x, y, ignoreSelector = '[data-live-ink-layer]') {
+  if (!anchorEl || isMediaElement(anchorEl)) return null
+  const doc = anchorEl.ownerDocument
+  if (typeof doc?.elementsFromPoint === 'function') {
+    const hit = doc
+      .elementsFromPoint(x, y)
+      .find((el) => !(ignoreSelector && el.closest?.(ignoreSelector)))
+    if (isMediaElement(hit)) return null
+  }
+  const caret = caretPositionAtPoint(doc, x, y)
+  if (!caret || caret.node?.nodeType !== 3 || !anchorEl.contains(caret.node)) return null
+  if (ignoreSelector && caret.node.parentElement?.closest?.(ignoreSelector)) return null
+  const c = textOffsetWithin(anchorEl, caret.node, caret.offset)
+  return encodeTextPoint({ x, y }, charBoxAt(anchorEl, c), c)
+}
+
+/**
+ * Client point -> the position sent to students: `{ c, dx, dy }` over text, else `{ rx, ry }`
+ * fractions of `anchorRect` (default: the anchor's box), else null.
+ */
+export function encodeInkPoint(anchorEl, point, anchorRect) {
+  if (!anchorEl || !point) return null
+  return (
+    textPointAt(anchorEl, point.x, point.y) ??
+    pointToFraction(point, anchorRect ?? anchorEl.getBoundingClientRect())
+  )
+}
+
+/** A stroke's client points -> stored points: `{ c, dx, dy }` over text, `[rx, ry]` elsewhere. */
+export function strokeToInkPoints(points, anchorEl) {
+  if (!anchorEl) return []
+  const rect = anchorEl.getBoundingClientRect()
+  return (points ?? [])
+    .map((point) => encodeInkPoint(anchorEl, point, rect))
+    .filter(Boolean)
+    .map((encoded) => (isTextPoint(encoded) ? encoded : [encoded.rx, encoded.ry]))
+}
+
+/**
+ * A stored point (`{ c, dx, dy }`, `[rx, ry]` or `{ rx, ry }`) -> client point on this screen.
+ * Text-anchored ones also carry `line` and `dyPx` for splitStrokeSegments.
+ */
+export function resolveInkPoint(anchorEl, anchorRect, point) {
+  if (isTextPoint(point)) {
+    const box = charBoxAt(anchorEl, point.c)
+    const resolved = decodeTextPoint(point, box)
+    if (!resolved) return null
+    return {
+      ...resolved,
+      line: { mid: box.mid, height: box.height },
+      dyPx: emToPx(point.dy, box.fontSize),
+    }
+  }
+  const pair = fractionPairOf(point)
+  return pair ? fractionToPoint({ rx: pair[0], ry: pair[1] }, anchorRect) : null
+}
+
+/** A stored stroke's points -> client-point segments, broken where its text reflowed. */
+export function resolveInkStroke(anchorEl, points) {
+  if (!anchorEl) return []
+  const rect = anchorEl.getBoundingClientRect()
+  const list = Array.isArray(points) ? points : Object.values(points ?? {})
+  const resolved = list.map((point) => resolveInkPoint(anchorEl, rect, point)).filter(Boolean)
+  return splitStrokeSegments(resolved)
 }
 
 /**

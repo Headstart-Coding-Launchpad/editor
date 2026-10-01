@@ -414,12 +414,12 @@ The teacher's live pointer, fading ink and text highlights from the Presentation
 {
   "liveInk": {
     "{lessonId}": {
-      "pointer": { "surface": "info:3", "anchor": "b0.p1", "rx": 0.42, "ry": 0.5, "t": 1234567890 },
+      "pointer": { "surface": "info:3", "anchor": "b0.p1", "c": 17, "dx": 0.25, "dy": -0.1, "t": 1234567890 },
       "strokes": {
         "{pushId}": {
           "surface": "explainer:7",
           "anchor": "b0.li2",
-          "points": [[0.1, 0.4], [0.12, 0.43]],
+          "points": [{ "c": 4, "dx": 0.1, "dy": 0.7 }, { "c": 9, "dx": 0.2, "dy": 0.7 }, [0.98, 0.6]],
           "colour": "var(--colour-error)",
           "t": 1234567890
         }
@@ -434,13 +434,16 @@ The teacher's live pointer, fading ink and text highlights from the Presentation
 
 - **`surface`** names the rendered content: `{kind}:{taskId}` with kind `info` (standard information task), `recap-left` / `recap` (the two recap columns), `intro` (introduction task) or `explainer` (a code task's explainer pane). Including the task id means marks from one task can never land on another.
 - **`anchor`** is a `data-md-anchor` from the shared Markdown renderer (`src/shared/markdown/anchors.js`): `b{n}` per parsed block, then `b{n}.p{k}`, `.h{k}`, `.li{k}`, `.img{k}`, `.q{k}`, `.pre{k}`, `.th`/`.tr{k}` in document order; `root` means the surface itself. The introduction task's hand-written anchors are `title`, `meta` and `description`.
-- **`rx`/`ry`** (and each `[rx, ry]` stroke point) are fractions of the anchor element's bounding box, not pixels, so a mark lands on the same content on every screen size (for an image, the same part of the image). A stroke is anchored on the element under its first point. Small drift inside a reflowed paragraph is accepted.
+- **Positions** (the pointer, and each stroke point) come in two forms, never pixels:
+  - **Text-anchored `{ c, dx, dy }`** — used whenever the point is over or near text in the anchor (within ~2em of the nearest character's line, ~12em to its side). `c` is the character offset in the anchor element's `textContent` (text nodes walked in document order, the same scheme highlights use); `dx` is the offset from that character's left edge and `dy` from its line's vertical midline, both in **em** of the character's computed font size. Each screen finds the character (a one-character Range's client rect; the previous character's right edge if it has no box) and adds the em offsets, so ink follows the words when the paragraph reflows at a different width or font size.
+  - **Box fractions `rx`/`ry`** (pointer) or **`[rx, ry]`** (stroke point) — fractions of the anchor element's bounding box, used over images (where the box is the right reference) and anywhere not near text. Older data in this form still renders.
+  - A stroke can mix both forms, and is anchored on the element under its first point. If consecutive text-anchored points that the teacher drew along one line land on different lines on a student's screen (the words wrapped there), the stroke is split into separate segments at that break (a jump of more than ~0.8 line heights, with the characters on different lines and a sideways jump) rather than drawn diagonally across the paragraph. Resolved strokes are cached per stroke and recomputed when the surface's layout changes (ResizeObserver/MutationObserver tick) or the strokes change.
 - **Highlights** store the selected text (`quote`, max 500 chars) and which `occurrence` of it inside the anchor's `textContent`; each client re-finds the words in its own DOM and paints them with the CSS Custom Highlight API (range-rect overlay where unsupported). React-managed DOM is never mutated.
 - **Writes** (teacher/admin only, from the Presentation window): `pointer` through `createThrottledMirrorWriter` at ~12Hz (`POINTER_INTERVAL_MS`), set to `null` when pointer mode ends or the mouse leaves the content; a stroke once on pointer-up (max 200 points), removed by the teacher's window `STROKE_REMOVE_AFTER_MS` later; highlights until clicked again or cleared. Every screen fades strokes on its own clock from when the stroke arrived (`STROKE_HOLD_MS` + `STROKE_FADE_MS`), so clock skew doesn't matter.
 - **Clearing:** `setTaskId`, `createSession`/`restartSession` and `endSession` remove the whole `liveInk/{lessonId}` node (best-effort, `clearLiveInkQuietly`); the toolbar's Clear does the same; the Presentation window registers `onDisconnect().remove()` on it when it opens and removes it when it unmounts.
 - **Reads:** a separate `onValue` on `liveInk/{lessonId}` in `LiveInkProvider`, only in the Presentation window and for students in the live lesson phase (never solo, preview or the sandbox phase).
 
-Security rules (`database.rules.json`): `liveInk/$lessonId` is publicly readable (students are login-less, mirroring `sessions/$lessonId`) and teacher/admin write (mirroring the `sessions/$lessonId` write rule), with validation of each shape: string sizes, `rx`/`ry` within ±10, at most 200 numeric `[rx, ry]` points, `quote` ≤ 500 chars, and no unknown children. **Deploying the rules is required** (`firebase deploy --only database`): until then every write to the new node is denied and annotations silently do nothing (the session itself is unaffected).
+Security rules (`database.rules.json`): `liveInk/$lessonId` is publicly readable (students are login-less, mirroring `sessions/$lessonId`) and teacher/admin write (mirroring the `sessions/$lessonId` write rule), with validation of each shape: string sizes, the pointer as exactly one of `rx`+`ry` (within ±10) or `c`+`dx`+`dy` (`c` 0–1,000,000, `dx`/`dy` within ±50 em), at most 200 points each either a numeric `[rx, ry]` pair or a `{ c, dx, dy }` object with the same limits, `quote` ≤ 500 chars, and no unknown children. **Deploying the rules is required** (`firebase deploy --only database`): until then every write to the new node is denied and annotations silently do nothing (the session itself is unaffected).
 
 ## Badge data
 

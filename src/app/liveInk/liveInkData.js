@@ -3,11 +3,17 @@
 // 12Hz pointer stream there would re-render every student's view. See
 // docs/agents/runtime-model.md (Presentation annotations) and database.rules.json.
 //
-//   liveInk/{lessonId}/pointer              { surface, anchor, rx, ry, t }
-//   liveInk/{lessonId}/strokes/{pushId}     { surface, anchor, points: [[rx, ry], ...], colour, t }
+//   liveInk/{lessonId}/pointer              { surface, anchor, c, dx, dy, t }  over text
+//                                           { surface, anchor, rx, ry, t }     anywhere else
+//   liveInk/{lessonId}/strokes/{pushId}     { surface, anchor, points: [point, ...], colour, t }
+//                                           point: { c, dx, dy } over text, [rx, ry] elsewhere
 //   liveInk/{lessonId}/highlights/{pushId}  { surface, anchor, quote, occurrence, t }
+//
+// `{ c, dx, dy }`: character offset `c` in the anchor element's textContent, plus an offset in
+// em from that character, so ink follows the words when text reflows. `[rx, ry]`: fractions
+// of the anchor element's box (images, margins). See geometry.js.
 
-import { FRACTION_LIMIT, MAX_QUOTE_LENGTH, MAX_STROKE_POINTS } from './geometry.js'
+import { MAX_QUOTE_LENGTH, MAX_STROKE_POINTS, fractionPairOf, isTextPoint } from './geometry.js'
 
 export const LIVE_INK_ROOT = 'liveInk'
 
@@ -62,26 +68,30 @@ export function isExplainerSurface(id) {
   return surfaceKindOf(id) === SURFACE_KINDS.explainer
 }
 
-function isFraction(value) {
-  return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= FRACTION_LIMIT
-}
-
 function isShortString(value, max) {
   return typeof value === 'string' && value.length > 0 && value.length <= max
 }
 
-function normalisePointer(raw) {
-  if (!raw || !isShortString(raw.surface, 120) || !isShortString(raw.anchor, 80)) return null
-  if (!isFraction(raw.rx) || !isFraction(raw.ry)) return null
-  return { surface: raw.surface, anchor: raw.anchor, rx: raw.rx, ry: raw.ry, t: raw.t ?? 0 }
+function textPointOf(raw) {
+  return isTextPoint(raw) ? { c: raw.c, dx: raw.dx, dy: raw.dy } : null
 }
 
+function normalisePointer(raw) {
+  if (!raw || !isShortString(raw.surface, 120) || !isShortString(raw.anchor, 80)) return null
+  const base = { surface: raw.surface, anchor: raw.anchor, t: raw.t ?? 0 }
+  const text = textPointOf(raw)
+  if (text) return { ...base, ...text }
+  const pair = fractionPairOf({ rx: raw.rx, ry: raw.ry })
+  return pair ? { ...base, rx: pair[0], ry: pair[1] } : null
+}
+
+// Each point stays in its own form: `{ c, dx, dy }` (text) or `[rx, ry]` (box fractions).
 function normaliseStrokePoints(points) {
   const list = Array.isArray(points) ? points : Object.values(points ?? {})
   return list
     .slice(0, MAX_STROKE_POINTS)
-    .map((pair) => (Array.isArray(pair) ? pair : [pair?.[0], pair?.[1]]))
-    .filter(([rx, ry]) => isFraction(rx) && isFraction(ry))
+    .map((point) => textPointOf(point) ?? fractionPairOf(point))
+    .filter(Boolean)
 }
 
 function normaliseStroke(id, raw) {

@@ -157,7 +157,7 @@ The teacher's live pointer, fading ink and text highlights from the Presentation
 | `InkSurface.jsx` | Marks a block of content as annotatable (`id` like `info:3`, `explainer:7`); handles the teacher's pointer, ink capture and highlight selection; renders `LiveInkOverlay`. Inert (renders children only) without a provider |
 | `LiveInkOverlay.jsx` | Draws one surface's pointer (lerp-smoothed), fading strokes (SVG) and highlights (CSS Custom Highlight API, rect fallback); students' off-screen edge chip |
 | `PresentationInkToolbar.jsx` | Floating 🔴 Pointer / ✏️ Ink / 🖍️ Highlight / Clear toolbar (Presentation window only) |
-| `geometry.js` | Pure helpers: point ↔ fractions of an element box, stroke thinning/mapping, quote re-finding with occurrence, plus small DOM helpers (anchor lookup, text-offset ranges, selection description, scroll container) |
+| `geometry.js` | Pure helpers: point ↔ fractions of an element box, text-anchored points (`{ c, dx, dy }`: character offset + em offset; encode/decode, segment splitting where text reflowed), stroke thinning/mapping, quote re-finding with occurrence, plus small DOM helpers (anchor lookup, caret lookup, character boxes, text-offset ranges, selection description, scroll container) |
 | `liveInkData.js` | Node shape, paths, surface ids, timing constants, snapshot normalisation |
 | `liveInkWriter.js` | The Presentation window's RTDB writes: throttled pointer (`createThrottledMirrorWriter`, ~12Hz), strokes (auto-removed after the fade), highlights, clear, disconnect cleanup |
 

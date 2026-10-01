@@ -262,11 +262,51 @@ describe('presentation annotations (liveInk)', () => {
     await assertFails(ref(as.teacher, `${root}/somethingElse`).set(true))
   })
 
+  it('accepts text-anchored pointers and stroke points, alone or mixed with fractions', async () => {
+    const textPointer = { surface: 'info:3', anchor: 'b0.p1', c: 12, dx: 0.25, dy: -0.4, t: 1 }
+    await assertSucceeds(ref(as.teacher, `${root}/pointer`).set(textPointer))
+    await assertSucceeds(
+      ref(as.teacher, `${root}/strokes/s1`).set({
+        ...stroke,
+        points: [{ c: 3, dx: 0.1, dy: 0.6 }, [0.5, 0.5], { c: 9, dx: -0.2, dy: 0.6 }],
+      })
+    )
+  })
+
+  it('rejects malformed text-anchored pointers and stroke points', async () => {
+    const textPointer = { surface: 'info:3', anchor: 'b0.p1', c: 12, dx: 0.25, dy: -0.4, t: 1 }
+    await assertFails(ref(as.teacher, `${root}/pointer`).set({ ...textPointer, dx: 500 }))
+    await assertFails(ref(as.teacher, `${root}/pointer`).set({ ...textPointer, c: -1 }))
+    await assertFails(ref(as.teacher, `${root}/pointer`).set({ ...textPointer, rx: 0.5, ry: 0.5 }))
+    const { dy: _dy, ...missingDy } = textPointer
+    await assertFails(ref(as.teacher, `${root}/pointer`).set(missingDy))
+    await assertFails(
+      ref(as.teacher, `${root}/strokes/s1`).set({ ...stroke, points: [{ c: 3, dx: 0.1 }] })
+    )
+    await assertFails(
+      ref(as.teacher, `${root}/strokes/s1`).set({
+        ...stroke,
+        points: [{ c: 3, dx: 0.1, dy: 0.2, extra: 1 }],
+      })
+    )
+    await assertFails(
+      ref(as.teacher, `${root}/strokes/s1`).set({ ...stroke, points: [{ c: 'x', dx: 0, dy: 0 }] })
+    )
+  })
+
   it('caps a stroke at 200 points', async () => {
     const points = (count) => Array.from({ length: count }, (_, i) => [i / count, 0.5])
     await assertSucceeds(
       ref(as.teacher, `${root}/strokes/s1`).set({ ...stroke, points: points(200) })
     )
     await assertFails(ref(as.teacher, `${root}/strokes/s2`).set({ ...stroke, points: points(201) }))
+    const textPoints = (count) =>
+      Array.from({ length: count }, (_, i) => ({ c: i, dx: 0, dy: 0.6 }))
+    await assertSucceeds(
+      ref(as.teacher, `${root}/strokes/s3`).set({ ...stroke, points: textPoints(200) })
+    )
+    await assertFails(
+      ref(as.teacher, `${root}/strokes/s4`).set({ ...stroke, points: textPoints(201) })
+    )
   })
 })
