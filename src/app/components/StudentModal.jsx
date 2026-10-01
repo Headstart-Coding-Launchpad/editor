@@ -11,6 +11,7 @@ import {
   getCompleteStage,
   getRevealableStages,
 } from '../../shared/taskUtils'
+import { TEACHER_LIVE_REVEAL_KEY } from '../../shared/taskStages.js'
 import PresenceBadge from './PresenceBadge'
 import ScratchWorkspace from '../../modules/scratch/ScratchWorkspace.jsx'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
@@ -310,6 +311,16 @@ export default function StudentModal({
     })
   }
 
+  // One-off "Reveal live code": logged like a stage reveal, which is also what shows it on the
+  // student's screen — for this task only, so it drops off on the next task.
+  function handleRevealTeacherLiveReference() {
+    if (!task?.id) return
+    onRevealSupportStage?.(student.anonymousId, task.id, TEACHER_LIVE_REVEAL_KEY, {
+      source: 'teacher',
+      stageLabel: "Teacher's live code",
+    })
+  }
+
   function handleCancelStage() {
     onClearTeacherStage?.(student.anonymousId)
     setStageRequestState('idle')
@@ -506,12 +517,17 @@ export default function StudentModal({
   // The Support menu's two sections.
   const canShowLiveReference =
     !!onSetTeacherLiveReference && !isInformation && !isQuizLike && supportsTeacherLiveReference
+  const canRevealLiveReference = canShowLiveReference && !!onRevealSupportStage
   const canReveal =
     (!!onRevealSupportStage && revealableStages.length > 0) ||
     canSetAutoReveal ||
     canShowLiveReference
   const canSetStage = !!onRemoteReset && !isInformation && !isQuiz && stageOptions.length > 0
-  const teacherLiveReferenceVisible = !!student.teacherLiveReferenceVisible
+  // Live code has two modes: pinned ("Keep showing", every task until turned off) and a
+  // one-off reveal for this task only (a supportRevealLog entry, like a stage reveal).
+  const teacherLiveReferencePinned = !!student.teacherLiveReferenceVisible
+  const teacherLiveReferencePinnedForClass = !!session?.teacherLiveReferenceVisibleToAll
+  const teacherLiveReferenceRevealed = !!revealedSupportStages[TEACHER_LIVE_REVEAL_KEY]
   const teacherLiveReferenceMatchesTask =
     !!session?.teacherLiveReference?.active && session?.teacherLiveReference?.taskId === task?.id
 
@@ -609,6 +625,18 @@ export default function StudentModal({
                 📖 Every task: {AUTO_REVEAL_OPTIONS.find((o) => o.mode === autoRevealStage)?.label}
               </span>
             )}
+            {(teacherLiveReferencePinned || teacherLiveReferencePinnedForClass) && (
+              <span
+                style={s.supportBadge}
+                title={
+                  teacherLiveReferencePinned
+                    ? 'Your live code shows for this student on every task until you turn it off'
+                    : 'Your live code shows for the whole class on every task until you turn it off'
+                }
+              >
+                📌 Live code: kept on
+              </span>
+            )}
             {Object.keys(revealedSupportStages).length > 0 && (
               <span style={s.supportBadge} title="Student has opened a stage reference">
                 Reference opened
@@ -681,26 +709,25 @@ export default function StudentModal({
                     {canReveal && (
                       <>
                         <div style={s.menuHeadingFirst}>Reveal</div>
-                        {canShowLiveReference && (
+                        {canRevealLiveReference && (
                           <button
                             style={sTo.toolBtn}
-                            disabled={!teacherLiveReferenceMatchesTask}
+                            disabled={
+                              !teacherLiveReferenceMatchesTask || teacherLiveReferenceRevealed
+                            }
                             title={
                               teacherLiveReferenceMatchesTask
-                                ? undefined
+                                ? 'Show your live code for this task only'
                                 : "Will work once you're presenting this task in Presentation View"
                             }
                             onClick={() => {
                               close()
-                              onSetTeacherLiveReference(
-                                student.anonymousId,
-                                !teacherLiveReferenceVisible
-                              )
+                              handleRevealTeacherLiveReference()
                             }}
                           >
-                            {teacherLiveReferenceVisible
-                              ? '✓ Live ref: your live code (on)'
-                              : 'Show your live code'}
+                            {teacherLiveReferenceRevealed
+                              ? 'Opened: live code'
+                              : 'Reveal live code'}
                           </button>
                         )}
                         {revealableStages.map(({ stage, index }) => {
@@ -752,6 +779,38 @@ export default function StudentModal({
                                 {label}
                               </button>
                             ))}
+                          </>
+                        )}
+                        {canShowLiveReference && (
+                          <>
+                            {!canSetAutoReveal && (
+                              <div style={s.autoRevealHeading}>Show on every task</div>
+                            )}
+                            <button
+                              style={sTo.toolBtn}
+                              aria-pressed={teacherLiveReferencePinned}
+                              disabled={
+                                !teacherLiveReferencePinned && !teacherLiveReferenceMatchesTask
+                              }
+                              title={
+                                teacherLiveReferencePinned
+                                  ? 'Stop showing your live code to this student'
+                                  : teacherLiveReferenceMatchesTask
+                                    ? 'Keep showing your live code on every task until you turn it off'
+                                    : "Will work once you're presenting this task in Presentation View"
+                              }
+                              onClick={() => {
+                                close()
+                                onSetTeacherLiveReference(
+                                  student.anonymousId,
+                                  !teacherLiveReferencePinned
+                                )
+                              }}
+                            >
+                              {teacherLiveReferencePinned
+                                ? '📌 Live code: kept on'
+                                : '📌 Keep showing live code'}
+                            </button>
                           </>
                         )}
                       </>

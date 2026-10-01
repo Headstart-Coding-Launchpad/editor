@@ -1283,7 +1283,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     anonymousId,
     taskId,
     stageIndex,
-    { source = 'student', stageLabel = '', attemptNumber = null } = {}
+    { source = 'student', stageLabel = '', attemptNumber = null, pinnedAt = null } = {}
   ) {
     if (!anonymousId || taskId == null || stageIndex == null) return
     if (session?.supportRevealLog?.[anonymousId]?.[taskId]?.[stageIndex]) return
@@ -1298,6 +1298,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
         source: SUPPORT_REVEAL_SOURCES.includes(source) ? source : 'student',
         attemptNumber: attemptNumber ?? countedAttempts,
         revealedAt: serverTimestamp(),
+        // A pinned live-code reference's pin (see TEACHER_LIVE_PIN_REVEAL_KEY).
+        ...(pinnedAt != null ? { pinnedAt } : {}),
       }
     )
   }
@@ -1489,20 +1491,26 @@ export function useSession(lessonId, { enabled = true } = {}) {
     )
   }
 
-  // Visibility flags for showing Presentation View's live broadcast as a
+  // "Keep showing live code" pins for Presentation View's live broadcast as a
   // support reference (see docs/agents/classroom-behaviours.md). These are
   // toggles, not one-shot commands — the actual content always comes live
-  // from session.teacherLive; the flag just decides whether a student is
-  // allowed to see it.
+  // from session.teacherLiveReference; the pin just decides whether a student
+  // sees it, on every task until it is turned off (setTaskId leaves pins alone).
+  // A pin is stored as the time it was set, so the student's client can log it
+  // once per pin rather than once per task. The one-off "Reveal live code" is a
+  // supportRevealLog entry instead (TEACHER_LIVE_REVEAL_KEY), not a flag here.
   async function setTeacherLiveReferenceForStudent(anonymousId, visible) {
     await set(
       ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherLiveReferenceVisible`),
-      visible || null
+      visible ? Date.now() : null
     )
   }
 
   async function setTeacherLiveReferenceForClass(visible) {
-    await set(ref(db, `sessions/${lessonId}/teacherLiveReferenceVisibleToAll`), visible || null)
+    await set(
+      ref(db, `sessions/${lessonId}/teacherLiveReferenceVisibleToAll`),
+      visible ? Date.now() : null
+    )
   }
 
   async function requestHelp(anonymousId) {

@@ -546,7 +546,9 @@ export default function LessonTaskContent({
             : targetedReferenceStage
               ? 'Shown for your feedback'
               : teacherLiveReferenceStage
-                ? "Live from your teacher's screen"
+                ? cs.teacherLiveReferencePinned
+                  ? "📌 Live from your teacher's screen"
+                  : "Live from your teacher's screen"
                 : reveal?.source === 'teacher' || reveal?.source === 'teacher-auto'
                   ? 'Opened by your teacher'
                   : 'Shown after a failed attempt'

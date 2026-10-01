@@ -70,23 +70,46 @@ export default function TeacherCodeTabs({
           Live
         </button>
       )}
-      {hasStudents && isLiveTab && onToggleLiveReference ? (
+      {hasStudents && isLiveTab && (onToggleLiveReference || onSendToAll) ? (
         <div style={tabActions}>
-          <button
-            type="button"
-            style={{
-              ...sendStageBtn,
-              ...(liveReferenceVisibleToAll ? sendStageBtnActive : {}),
-            }}
-            title={
-              liveReferenceVisibleToAll
-                ? 'Stop sharing your live code with the class'
-                : 'Show your live code to the whole class as a reference'
-            }
-            onClick={() => onToggleLiveReference(!liveReferenceVisibleToAll)}
-          >
-            {liveReferenceVisibleToAll ? 'Live ref: class on' : 'Show live code to class'}
-          </button>
+          {/* One-off: shows for the current task only and drops off on the next one,
+              like "Reveal to all" for a stage. */}
+          {onSendToAll && (
+            <button
+              type="button"
+              style={sendStageBtn}
+              title="Show your live code to every student for this task only"
+              onClick={() => {
+                if (window.confirm('Reveal your live code to all students for this task?')) {
+                  onSendToAll('reveal_live')
+                }
+              }}
+            >
+              Reveal live code to all
+            </button>
+          )}
+          {/* Pinned: keeps showing on every task until turned off. */}
+          {onToggleLiveReference && (
+            <button
+              type="button"
+              style={{
+                ...sendStageBtn,
+                ...(onSendToAll ? { marginLeft: 6 } : {}),
+                ...(liveReferenceVisibleToAll ? sendStageBtnActive : {}),
+              }}
+              aria-pressed={liveReferenceVisibleToAll}
+              title={
+                liveReferenceVisibleToAll
+                  ? 'Stop showing your live code to the class'
+                  : 'Keep showing your live code to the whole class on every task until you turn it off'
+              }
+              onClick={() => onToggleLiveReference(!liveReferenceVisibleToAll)}
+            >
+              {liveReferenceVisibleToAll
+                ? '📌 Live code: kept on'
+                : '📌 Keep showing live code to class'}
+            </button>
+          )}
         </div>
       ) : (
         hasStudents &&

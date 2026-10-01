@@ -16,6 +16,33 @@ const LEGACY_STAGE_ROLE_ALIASES = {
 // 'teacher-auto' is the teacher's per-student "every task" reference.
 export const SUPPORT_REVEAL_SOURCES = ['student', 'teacher', 'teacher-auto']
 
+// supportRevealLog keys for the teacher's live code (Presentation View's
+// teacherLiveReference broadcast), which has no stage index:
+// - TEACHER_LIVE_REVEAL_KEY: a one-off "Reveal live code" for that task. The entry itself is
+//   what shows the reference, so it drops off on the next task like a stage reveal.
+// - TEACHER_LIVE_PIN_REVEAL_KEY: a "Keep showing live code" pin, logged once per pin (on the
+//   first task the pinned reference shows), never per task. Display-only: the pin flags
+//   (students.{id}.teacherLiveReferenceVisible / teacherLiveReferenceVisibleToAll) drive it.
+export const TEACHER_LIVE_REVEAL_KEY = 'teacherLive'
+export const TEACHER_LIVE_PIN_REVEAL_KEY = 'teacherLivePinned'
+
+// The pin value currently in effect for a student: their own pin, else the class pin.
+// Pins are stored as the time they were set (legacy pins are `true`); null when unpinned.
+export function getTeacherLivePin(studentPin, classPin) {
+  if (studentPin) return studentPin
+  if (classPin) return classPin
+  return null
+}
+
+// Whether this pin (see getTeacherLivePin) is already in a student's supportRevealLog
+// (supportRevealLog.{id}, every task), so a pinned reference is logged once per pin.
+export function isTeacherLivePinLogged(studentRevealLog, pin) {
+  if (!pin || !studentRevealLog || typeof studentRevealLog !== 'object') return false
+  return Object.values(studentRevealLog).some(
+    (taskLog) => taskLog?.[TEACHER_LIVE_PIN_REVEAL_KEY]?.pinnedAt === pin
+  )
+}
+
 // students.{id}.autoRevealStage values: the first support stage, every support
 // stage, or the complete (solution) stage.
 export const AUTO_REVEAL_MODES = ['first', 'support', 'solution']

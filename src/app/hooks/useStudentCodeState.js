@@ -21,6 +21,12 @@ import {
   getStageRole,
   isRevealableStage,
 } from '../../shared/taskUtils'
+import {
+  TEACHER_LIVE_PIN_REVEAL_KEY,
+  TEACHER_LIVE_REVEAL_KEY,
+  getTeacherLivePin,
+  isTeacherLivePinLogged,
+} from '../../shared/taskStages.js'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { isFlaggablePaste, isSamePasteText, measurePaste } from '../../shared/pasteDetection'
 import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesystem'
@@ -493,29 +499,49 @@ export function useStudentCodeState({
   // Teacher-live-code support reference: Presentation View's independent
   // teacherLiveReference broadcast (separate from teacherLive, which drives
   // the all-or-nothing "Go Live" force takeover) shown as a dismissible
-  // reference. Deriving this reactively — rather than via an explicit
-  // "clear" write — is what makes it auto-clear the instant Presentation
-  // closes or moves to a different task.
-  const teacherLiveReferenceRequested =
-    !!myStudentData?.teacherLiveReferenceVisible || !!session?.teacherLiveReferenceVisibleToAll
+  // reference. Two ways in (see docs/agents/classroom-behaviours.md):
+  // - pinned ("Keep showing live code"): students.{id}.teacherLiveReferenceVisible or
+  //   session.teacherLiveReferenceVisibleToAll — shows on every task until unpinned;
+  // - one-off ("Reveal live code"): a supportRevealLog entry for this task
+  //   (TEACHER_LIVE_REVEAL_KEY), so it drops off on the next task like a stage reveal.
+  // Deriving this reactively — rather than via an explicit "clear" write — is
+  // what makes it auto-clear the instant Presentation closes or moves to a
+  // different task.
+  const teacherLivePin = getTeacherLivePin(
+    myStudentData?.teacherLiveReferenceVisible,
+    session?.teacherLiveReferenceVisibleToAll
+  )
+  const teacherLiveReferenceRevealed = !!supportStageReveals[TEACHER_LIVE_REVEAL_KEY]
+  const teacherLiveReferenceRequested = !!teacherLivePin || teacherLiveReferenceRevealed
   const teacherLiveReferenceActive =
     teacherLiveReferenceRequested &&
     !!session?.teacherLiveReference?.active &&
     session?.teacherLiveReference?.taskId === currentTaskId
+  const teacherLiveReferencePinned = !!teacherLivePin && teacherLiveReferenceActive
 
-  // Log the first time this becomes visible for this task, matching the
-  // existing "note the reveal happened once" semantics used for authored
-  // stage reveals — recordSupportStageReveal already no-ops on repeats.
+  // Log a pinned reference once per pin — on the first task it actually shows —
+  // not on every task while it stays pinned (that made the teacher's "Support"
+  // chip reappear on every task). A one-off reveal is logged when it is revealed
+  // (StudentModal writes it; "Reveal live code to all" lands in the remote-reset
+  // effect below), so it needs nothing here.
+  const loggedTeacherLivePinsRef = useRef(new Set())
   useEffect(() => {
-    if (!teacherLiveReferenceActive) return
+    if (!teacherLiveReferencePinned) return
     if (teacherPresentation || phase !== 'lesson') return
-    if (!effectiveIdentity?.anonymousId) return
-    recordSupportStageReveal?.(effectiveIdentity.anonymousId, currentTaskId, 'teacherLive', {
-      source: 'teacher',
-      stageLabel: "Teacher's live code",
+    const anonymousId = effectiveIdentity?.anonymousId
+    if (!anonymousId) return
+    if (loggedTeacherLivePinsRef.current.has(teacherLivePin)) return
+    if (isTeacherLivePinLogged(session?.supportRevealLog?.[anonymousId], teacherLivePin)) return
+    loggedTeacherLivePinsRef.current.add(teacherLivePin)
+    recordSupportStageReveal?.(anonymousId, currentTaskId, TEACHER_LIVE_PIN_REVEAL_KEY, {
+      source: 'teacher-auto',
+      stageLabel: "Teacher's live code (kept on)",
+      pinnedAt: teacherLivePin,
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    teacherLiveReferenceActive,
+    teacherLiveReferencePinned,
+    teacherLivePin,
     teacherPresentation,
     phase,
     effectiveIdentity?.anonymousId,
@@ -1097,6 +1123,13 @@ export function useStudentCodeState({
     if (!task || !action) return
     // Activity resets are applied by useActivityState.
     if (isHostedActivityTask(task)) return
+
+    // "Reveal live code to all": a one-off reveal of the teacher's live code for
+    // this task only (see teacherLiveReferenceActive).
+    if (action === 'reveal_live') {
+      handleRevealTeacherLiveReference()
+      return
+    }
 
     const revealMatch = action.match(/^reveal_stage_(\d+)$/)
     if (revealMatch) {
@@ -2334,6 +2367,39 @@ export function useStudentCodeState({
     }
   }
 
+  // One-off reveal of the teacher's live code on the current task (the teacher's
+  // "Reveal live code to all"). Shown at once from local state; the supportRevealLog
+  // entry keeps it across a reload and is what the teacher's views and reports read.
+  // Only while Presentation is broadcasting this task, so a stray command never logs
+  // a reveal of a reference the student never saw.
+  function handleRevealTeacherLiveReference() {
+    if (!effectiveIdentity) return
+    const liveReference = sessionRef.current?.teacherLiveReference ?? session?.teacherLiveReference
+    if (!liveReference?.active || liveReference.taskId !== currentTaskId) return
+    const stageLabel = "Teacher's live code"
+    setLocalSupportStageReveals((prev) => ({
+      ...prev,
+      [currentTaskId]: {
+        ...(prev[currentTaskId] ?? {}),
+        [TEACHER_LIVE_REVEAL_KEY]: {
+          taskId: currentTaskId,
+          stageIndex: TEACHER_LIVE_REVEAL_KEY,
+          stageLabel,
+          source: 'teacher',
+          revealedAt: Date.now(),
+        },
+      },
+    }))
+    if (!teacherPresentation && phase === 'lesson') {
+      recordSupportStageReveal?.(
+        effectiveIdentity.anonymousId,
+        currentTaskId,
+        TEACHER_LIVE_REVEAL_KEY,
+        { source: 'teacher', stageLabel }
+      )
+    }
+  }
+
   // 'first' = the first support stage; 'support' = every support stage (never the
   // solution); 'solution' = the complete stage, falling back to every support
   // stage on a task that has no complete stage.
@@ -2624,6 +2690,7 @@ export function useStudentCodeState({
     activeSupportStageIndex,
     offeredSupportStageIndex,
     teacherLiveReferenceActive,
+    teacherLiveReferencePinned,
     targetedStageOffer,
     targetedPreviewStageIndex,
     // A workspace-owned module's (Scratch's) pushed work, under its old names.

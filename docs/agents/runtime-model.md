@@ -25,6 +25,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
       },
       "sandboxExplainer": "string | null",
       "explainerShowComplete": false,
+      "teacherLiveReferenceVisibleToAll": "number | null (\"📌 Keep showing live code to class\" pin: the time it was pinned; legacy true still counts; not cleared by setTaskId — see classroom-behaviours.md \"Teacher-Live-Code Reference\")",
       "fullscreenRequestedAt": "1234567890 | null",
       "nudgeAwayPushedAt": "1234567890 | null (class-wide nudge; only students whose window is unfocused react)",
       "videoCallLink": "string | null (http(s) URL only, validated at the write boundary; ephemeral — reset to null on createSession/restartSession/endSession, so the teacher re-enters it each session)",
@@ -124,7 +125,8 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
               "stageLabel": "With a variable already created",
               "source": "teacher | student | teacher-auto",
               "attemptNumber": 2,
-              "revealedAt": "ServerValue.TIMESTAMP"
+              "revealedAt": "ServerValue.TIMESTAMP",
+              "pinnedAt": "number | true (teacherLivePinned entries only: the pin they log)"
             }
           }
         }
@@ -206,7 +208,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
           "lastRunStatus": "success | error | null",
           "checkPassed": true,
           "lastRunAt": 1234567890,
-          "remoteResetAction": "starter | complete | stage_0 | stage_1 | ...",
+          "remoteResetAction": "starter | complete | stage_0 | stage_1 | ... | reveal_stage_N | reveal_live (one-off \"Reveal live code to all\" for the current task)",
           "remoteResetPushedAt": 1234567890,
           "teacherAnswerEdit": "object | null ({ answer: string | null, codeArrangeSlots: object | null, passed: boolean | null, taskId, at } — teacher's edit of a Match/Fill in the Gaps answer or Code Arrange tiles, applied by the student's tab when `at` changes; the student clears it when they supersede it with their own change)",
           "remoteRunPushedAt": "number | null (teacher pressed Run for this student in StudentModal; the student's tab runs its current code and clears this back to null)",
@@ -224,6 +226,7 @@ Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCal
           "teacherMessage": "string | null",
           "teacherMessagePushedAt": "number | null",
           "nudgePushedAt": "number | null (teacher nudge for this student — see useNudgeAlert)",
+          "teacherLiveReferenceVisible": "number | null (\"📌 Keep showing live code\" pin for this student: the time it was pinned; legacy true still counts; not cleared by setTaskId)",
           "autoRevealStage": "'first' | 'support' | 'solution' | null (teacher's \"Show on every task\" reference for this student — see below)",
           "pasteLog": {
             "{taskId}": { "count": 2, "chars": 180, "lastAt": 1234567890, "firstAt": "ServerValue.TIMESTAMP (first large paste on the task, set once)" }
@@ -306,6 +309,7 @@ Teacher per-student actions:
 - Remote edit (Python/Scratch only): `requestTeacherEdit` sets `teacherEditRequestedAt` and clears `teacherEditAcceptedAt`/`teacherLiveCode`/`teacherEditApplyCode`/`teacherEditAppliedAt`, prompting the student for consent. Once accepted, `pushTeacherLiveCode` streams `teacherLiveCode` as the teacher types; `commitTeacherEdit` writes the final code to `teacherEditApplyCode` + `teacherEditAppliedAt` and directly to the student's `currentCode`; `cancelTeacherEdit` clears the request without committing. All eight `teacherEdit*`/`teacherLiveCode` fields are cleared by `setTaskId`.
 - Remote stage push: `requestTeacherStage` sets `teacherStageRequestedAt` and `teacherStagePendingAction` (a reset-action string, same shape as `remoteResetAction`) and clears `teacherStageAcceptedAt`, prompting the student for consent before the stage change is applied; `clearTeacherStage` clears all three fields. Cleared by `setTaskId`.
 - Stage reference reveal: `recordSupportStageReveal` writes `supportRevealLog/{anonymousId}/{taskId}/{stageIndex}` with `source: "teacher"`, stage label, attempt count, and server timestamp. This reveals a read-only Python/HTML stage reference to that one student and does not write to their editor.
+- Teacher live code (`teacherLiveReference`): `{stageIndex}` may also be `teacherLive` (a one-off "Reveal live code" for that task — the entry is what shows it, so it drops off on the next task; written by the teacher's `recordSupportStageReveal` or by the student applying a `reveal_live` remote-reset action) or `teacherLivePinned` (logged once per "📌 Keep showing" pin, with `pinnedAt`; display-only). The pins themselves are `students/{id}/teacherLiveReferenceVisible` and `teacherLiveReferenceVisibleToAll` (pin time), which `setTaskId` does not clear. See `docs/agents/classroom-behaviours.md` "Teacher-Live-Code Reference".
 - "Show on every task" reference: `setAutoRevealStage` writes the student's `autoRevealStage` (`'first'` = first support stage, `'support'` = every support stage, `'solution'` = the complete stage, falling back to every support stage where a task has none; `null` = off). The student's client (`useStudentCodeState`) re-applies it as each task loads in a live lesson, logging each reveal with `source: "teacher-auto"` so the report counts it separately. Session-only: it lives on the student node, which `createSession`/`endSession` clear. Not cleared by `setTaskId`.
 - Send video call link: `sendVideoCallLink(anonymousId)` stamps that student's own `videoCallLinkPushedAt`, from the "📹 Send Video Call Link" action in `StudentModal.jsx`'s "More" menu — pops `VideoCallPrompt.jsx` for that one student. Independent of the session-level `videoCallLink`; the teacher can target one student mid-lesson even outside the waiting room.
 
