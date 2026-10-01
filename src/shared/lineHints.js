@@ -9,11 +9,11 @@
 //                                     e.g. `<!--> Add a heading -->`
 // A module opts in by declaring its marker syntax as `capabilities.lineHints` in its definition
 // (src/modules/<type>/definition.js); callers pass that syntax here, never a module type.
-// Consecutive markers stack onto the same line. A marker with nothing after it attaches to the
-// last line (the validator warns). Marker lines are removed from the code before the student
-// ever sees, saves, runs, checks, carries or mirrors it (stripLessonLineHints, applied where the
-// classroom loads its lesson — prepareClassroomLesson in src/app/studentTaskContent.js); the
-// editor shows the hints as a gutter icon plus faded ghost text (lineHintsExtension in
+// Consecutive markers stack onto the same line. Markers with nothing after them get a new empty
+// line at the end of the code — the place a "write your code here" hint points at. Marker lines
+// are removed from the code before the student ever sees, saves, runs, checks, carries or
+// mirrors it (stripLessonLineHints, applied where the classroom loads its lesson —
+// prepareClassroomLesson in src/app/studentTaskContent.js); the editor shows the hints as a gutter icon plus faded ghost text (lineHintsExtension in
 // ./codemirror.js).
 //
 // A hint is `{ line, text, target }`: `line` is 1-based in the stripped code, `target` is the
@@ -43,9 +43,10 @@ function markerText(line, syntax) {
 /**
  * Splits marker lines out of `code`. Returns `{ code, hints, trailingMarker }`: the code
  * without its marker lines (unchanged, byte for byte, when there are none), the hints in
- * document order, and whether any marker had no line after it (it then attaches to the last
- * line). `syntax` is a marker syntax ('python' | 'html'); anything else (or non-string code)
- * returns the code untouched with no hints.
+ * document order, and whether any marker had no line after it (it then attaches to a new empty
+ * last line, which takes the place of the code's final newline). `syntax` is a marker syntax
+ * ('python' | 'html'); anything else (or non-string code) returns the code untouched with no
+ * hints.
  */
 export function parseLineHints(code, syntax) {
   if (typeof code !== 'string' || !isLineHintSyntax(syntax)) {
@@ -73,13 +74,15 @@ export function parseLineHints(code, syntax) {
     for (const hintText of pending) hints.push({ index: kept.length - 1, text: hintText })
     pending = []
   }
+  // Trailing markers point at a new empty last line: the code ends in a newline either way, so
+  // the editor's final (empty) line is the one they describe.
   const trailingMarker = pending.length > 0
   if (trailingMarker) {
-    if (kept.length === 0) kept.push('')
+    kept.push('')
     for (const hintText of pending) hints.push({ index: kept.length - 1, text: hintText })
   }
   return {
-    code: kept.join('\n') + (endsWithNewline ? '\n' : ''),
+    code: kept.join('\n') + (endsWithNewline && !trailingMarker ? '\n' : ''),
     hints: hints
       .filter((hint) => hint.text !== '')
       .map(({ index, text }) => ({ line: index + 1, text, target: kept[index].trim() })),
@@ -294,30 +297,4 @@ export function getStageLineHints(task, stageIndex, file = null) {
   return (task?.lineHintSets ?? [])
     .filter((set) => matches(set) && (set.file ?? null) === (file ?? null))
     .flatMap((set) => set.hints)
-}
-
-/**
- * Where a task's code has a marker with no line after it — for the validator's warning. Returns
- * labels such as 'starter code', 'stage 2' or 'starter file index.html'.
- */
-export function findTrailingLineHintMarkers(task, syntax) {
-  if (!task || !isLineHintSyntax(syntax)) return []
-  const found = []
-  const check = (code, label) => {
-    if (parseLineHints(code, syntax).trailingMarker) found.push(label)
-  }
-  const checkFiles = (files, label) => {
-    for (const file of Array.isArray(files) ? files : []) {
-      check(file?.content, `${label} ${file?.name ?? ''}`.trim())
-    }
-  }
-  check(task.starterCode, 'starter code')
-  checkFiles(task.starterFiles, 'starter file')
-  check(task.completeCode, 'complete code')
-  checkFiles(task.completeFiles, 'complete file')
-  ;(Array.isArray(task.codeStages) ? task.codeStages : []).forEach((stage, index) => {
-    check(stage?.code, `stage ${index + 1}`)
-    checkFiles(stage?.files, `stage ${index + 1} file`)
-  })
-  return found
 }

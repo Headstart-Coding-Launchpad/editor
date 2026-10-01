@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   anchorLineHints,
   chooseLineHints,
-  findTrailingLineHintMarkers,
   getStageLineHints,
   getTaskLineHintSets,
   isLineHintSyntax,
@@ -64,18 +63,24 @@ describe('parseLineHints (python)', () => {
     ])
   })
 
-  it('attaches a trailing marker to the last line and flags it', () => {
+  it('gives a trailing marker a new empty last line and flags it', () => {
     const result = parseLineHints('x = 1\ny = 2\n#> Add a print here', 'python')
-    expect(result.code).toBe('x = 1\ny = 2')
-    expect(result.hints).toEqual([{ line: 2, text: 'Add a print here', target: 'y = 2' }])
+    expect(result.code).toBe('x = 1\ny = 2\n')
+    expect(result.hints).toEqual([{ line: 3, text: 'Add a print here', target: '' }])
     expect(result.trailingMarker).toBe(true)
   })
 
-  it('attaches a trailing marker to the last real line when the code ends in a newline', () => {
+  it('reuses the final newline for a trailing marker rather than adding a second one', () => {
     const result = parseLineHints('x = 1\n#> Hint\n', 'python')
     expect(result.code).toBe('x = 1\n')
-    expect(result.hints[0].line).toBe(1)
+    expect(result.hints).toEqual([{ line: 2, text: 'Hint', target: '' }])
     expect(result.trailingMarker).toBe(true)
+  })
+
+  it('keeps CRLF line endings when a trailing marker adds the last line', () => {
+    const result = parseLineHints('x = 1\r\n#> Hint\r\n', 'python')
+    expect(result.code).toBe('x = 1\r\n')
+    expect(result.hints[0].line).toBe(2)
   })
 
   it('handles a hint on an empty line (the place to write code)', () => {
@@ -354,25 +359,5 @@ describe('stripLessonLineHints', () => {
     const lesson = { type: 'python', tasks: [{ id: 1, starterCode: 'x = 1' }] }
     expect(stripLessonLineHints(lesson, () => 'python')).toBe(lesson)
     expect(stripLessonLineHints(null, () => 'python')).toBeNull()
-  })
-})
-
-describe('findTrailingLineHintMarkers', () => {
-  it('lists every place a marker has no line after it', () => {
-    const task = {
-      starterCode: 'x = 1\n#> dangling',
-      codeStages: [{ code: 'y = 2' }, { code: 'z = 3\n#> dangling' }],
-    }
-    expect(findTrailingLineHintMarkers(task, 'python')).toEqual(['starter code', 'stage 2'])
-  })
-
-  it('names the file for HTML', () => {
-    const task = { starterFiles: [{ name: 'index.html', content: '<p></p>\n<!--> dangling -->' }] }
-    expect(findTrailingLineHintMarkers(task, 'html')).toEqual(['starter file index.html'])
-  })
-
-  it('returns [] for well-placed markers or unsupported modules', () => {
-    expect(findTrailingLineHintMarkers({ starterCode: '#> ok\nx' }, 'python')).toEqual([])
-    expect(findTrailingLineHintMarkers({ starterCode: 'x\n#> dangling' }, 'scratch')).toEqual([])
   })
 })

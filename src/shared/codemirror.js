@@ -324,8 +324,10 @@ const lineHintTheme = EditorView.baseTheme({
     cursor: 'help',
     fontSize: '0.8em',
   },
+  // Padding, not margin: the cursor at the end of a hinted line is drawn against the ghost's
+  // box, so a margin would leave it floating out past the line's last character.
   '.cm-lineHintGhost': {
-    marginLeft: '1.5em',
+    paddingLeft: '1.5em',
     color: '#9ca3af',
     fontStyle: 'italic',
     fontFamily: 'var(--font-body, sans-serif)',
