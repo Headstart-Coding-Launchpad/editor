@@ -194,4 +194,5 @@ export default defineModule({
   hasStarterContent: codeStarterPresent,
   hasCheckValue: null,
   validateTaskInBrowser: null,
+  verifyTaskChecks: null,
 })

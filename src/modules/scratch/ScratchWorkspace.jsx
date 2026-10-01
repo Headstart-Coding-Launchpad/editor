@@ -21,8 +21,6 @@ import {
   normalizeKey,
   saveWorkspace,
   loadWorkspace,
-  evaluateScratchCheck,
-  partialEvaluateScratchCheck,
   setSpriteContext,
   setBackdropContext,
   setCostumeContext,
@@ -38,6 +36,10 @@ import {
   readGraphicEffects,
 } from './graphicEffects.js'
 import { FEEDBACK_TIMING, evaluateCheckWithCustomFeedback } from '../checks'
+import {
+  evaluateScratchCheckForSprites,
+  partialEvaluateScratchCheckForSprites,
+} from './checkDispatch.js'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import PanelTabs, { PanelTabPanel } from '../../app/components/PanelTabs'
 import { loadLayoutTab, saveLayoutTab } from '../../app/studentStorage'
@@ -659,72 +661,13 @@ function PropField({ label, value, onChange, readOnly, min, max }) {
 // ── Check helpers ─────────────────────────────────────────────────────────────
 
 function evalSingleCheck(check, spriteWorkspaces, signal, preRunSpriteStates = {}) {
-  if (!check?.type) return false
-  try {
-    if (check.type === 'block_used') {
-      if (check.spriteName) {
-        const target =
-          spriteWorkspaces.find((sp) => sp.name === check.spriteName) ?? spriteWorkspaces[0]
-        return target ? evaluateScratchCheck(check, target.workspace, null, null) : false
-      }
-      return spriteWorkspaces.some((sp) => evaluateScratchCheck(check, sp.workspace, null, null))
-    }
-    if (check.type === 'variable_equals' || check.type === 'variable_compare') {
-      return evaluateScratchCheck(check, null, null, signal)
-    }
-    if (check.type === 'block_run') {
-      if (check.spriteName) {
-        const target =
-          spriteWorkspaces.find((sp) => sp.name === check.spriteName) ?? spriteWorkspaces[0]
-        return target ? evaluateScratchCheck(check, target.workspace, null, signal) : false
-      }
-      return spriteWorkspaces.some((sp) => evaluateScratchCheck(check, sp.workspace, null, signal))
-    }
-    if (check.type === 'blocks_in_order' || check.type === 'block_count') {
-      if (check.spriteName) {
-        const target =
-          spriteWorkspaces.find((sp) => sp.name === check.spriteName) ?? spriteWorkspaces[0]
-        if (!target) return false
-        return evaluateScratchCheck(check, target.workspace, null, null)
-      }
-      return spriteWorkspaces.some((sp) => evaluateScratchCheck(check, sp.workspace, null, null))
-    }
-    // sprite_property / sprite_property_delta / sprite_property_changed / costume_is: match by name or fall back to first
-    const target =
-      spriteWorkspaces.find((sp) => sp.name === check.spriteName) ?? spriteWorkspaces[0]
-    if (!target) return false
-    const preRunState = preRunSpriteStates[target.id] ?? null
-    return evaluateScratchCheck(check, target.workspace, target.state, signal, preRunState)
-  } catch {
-    return false
-  }
+  return evaluateScratchCheckForSprites(check, spriteWorkspaces, signal, preRunSpriteStates)
 }
 
-// Returns 'pass', 'pending', or 'fail' — used for after_block_placed evaluation.
-// A check with no spriteName passes if ANY sprite satisfies it (see evalSingleCheck
-// below), so it must only report 'fail' once EVERY sprite has ruled it out — one
-// unrelated sprite whose starter blocks happen to share the sequence's first opcode
-// (e.g. the near-universal "when green flag clicked" hat) would otherwise flag a
-// 'violation' against its own unrelated next block and fail the check for everyone,
-// before the student has touched the sprite the check actually targets.
+// Returns 'pass', 'pending', or 'fail' — used for after_block_placed evaluation (see
+// checkDispatch.js for the any-sprite aggregation rule).
 export function evalSingleCheckPartial(check, spriteWorkspaces) {
-  if (!check?.type) return 'fail'
-  try {
-    const bySprite = (fn) => {
-      if (check.spriteName) {
-        const target =
-          spriteWorkspaces.find((sp) => sp.name === check.spriteName) ?? spriteWorkspaces[0]
-        return target ? fn(target.workspace) : 'pending'
-      }
-      const results = spriteWorkspaces.map((sp) => fn(sp.workspace))
-      if (results.some((r) => r === 'pass')) return 'pass'
-      if (results.length > 0 && results.every((r) => r === 'fail')) return 'fail'
-      return 'pending'
-    }
-    return bySprite((ws) => partialEvaluateScratchCheck(check, ws))
-  } catch {
-    return 'pending'
-  }
+  return partialEvaluateScratchCheckForSprites(check, spriteWorkspaces)
 }
 
 function normalizeScratchChecks(check) {

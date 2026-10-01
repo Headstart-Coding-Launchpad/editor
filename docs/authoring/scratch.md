@@ -476,7 +476,7 @@ check:
         STEPS: "50"
     - motion_turnright           # plain string — any value accepted
 ```
-Passes if any connected stack contains the opcodes **consecutively** (no gaps). Each sequence item can be a plain opcode string or an object with `opcode` and optional `fieldValues`.
+Passes if any connected stack contains the opcodes **consecutively** (no gaps). Each sequence item can be a plain opcode string or an object with `opcode` and optional `fieldValues`. A stack is followed from its top block through `next` only: blocks inside a C block (`control_repeat`, `control_forever`, `control_if`, …) are not part of the stack around them and don't start a stack of their own, so a sequence can't match there — check them with `block_used` or `block_count` instead.
 
 ### `block_count`
 ```yaml
@@ -522,6 +522,69 @@ Note: event hat blocks (`event_whenflagclicked` etc.) are not tracked by `block_
         operator: not_equals
         value: ""
 ```
+
+### Verifying Scratch checks
+
+Run `test-checks` with no `--cases` file to check every Scratch task's checks against its own blocks (no Firebase needed):
+
+```bash
+node cli/cli.mjs lessons test-checks lesson.yaml --yaml          # every Scratch task
+node cli/cli.mjs lessons test-checks lesson.yaml --task 7         # one task
+```
+
+Each task is checked against these stages: `complete` (`completeBlocks`), `starter` (the first Starter stage's `blocks`, else `starterBlocks`), and `complete:<label>` for each Complete-role code stage (legacy `solution` stages included). Checks go through the same per-sprite rules as the classroom: a check with `spriteName` looks at that sprite, falling back to the first sprite when no sprite has that name; one without passes if any sprite satisfies it.
+
+Only block checks are evaluated: `block_used`, `blocks_in_order` and `block_count`. Run-time checks (`sprite_property`, `sprite_property_delta`, `sprite_property_changed`, costume, variable and `block_run` checks) need a Run and are reported as `skipped`, so a stage whose block checks pass but has run-time checks reads `incomplete`. Verify those in the Builder.
+
+```yaml
+tasks:
+  - taskId: 7
+    title: Move the rocket
+    stages:
+      - stage: complete
+        completion:
+          result: fail                # pass | fail | incomplete (run-time checks skipped) | none
+          checks:
+            - index: 1
+              type: blocks_in_order
+              result: fail            # pass | fail | skipped
+              sprite: any             # the sprite that decided it; `any` when no sprite passes
+              actual:                 # on a fail: each script's opcodes (block_used / block_count: the count)
+                - - event_whenflagclicked
+                  - motion_movesteps
+              reason: the blocks are in this order but a fieldValues condition doesn't match
+            - index: 2
+              type: sprite_property
+              result: skipped
+              reason: "run-time check: needs a Run, which the CLI never does"
+        feedback:
+          - index: 1
+            type: block_used
+            opcode: motion_turnright
+            mode: blocking
+            show: after_attempt
+            hint: Remove the turn block.
+            result: silent            # fires | silent | skipped
+      - stage: starter
+        # …
+warnings:
+  - Task 7 complete stage fails completion check 1 (blocks_in_order)
+summary:
+  tasks: 1
+  stagesChecked: 2
+  failed: 1                           # number of warnings
+  skippedRuntimeChecks: 1
+```
+
+`warnings` lists:
+
+- a Complete stage that fails a completion check (`Task … <stage> stage fails completion check N (type)`);
+- a feedback check that fires on a Complete stage (it would show to a student who got it right);
+- a starter that already passes every completion check;
+- a Debug Code Task (`taskActivity`) whose blocking feedback checks all stay silent on the starter (the bug they describe isn't in the starter);
+- stage blocks that aren't valid JSON.
+
+The command exits with status 1 when there are warnings. `lessons validate` also warns when the Complete blocks fail a block check, or the starter already passes, without the per-check detail.
 
 ---
 

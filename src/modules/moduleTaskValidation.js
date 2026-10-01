@@ -14,6 +14,8 @@ import {
 } from './checks.js'
 import { normalizeHtmlCheck } from './html/checks.js'
 import { normalizeSequenceItem } from './scratch/checks.js'
+import { isScratchStaticCheck } from './scratch/checkDispatch.js'
+import { evaluateScratchStage, getScratchVerificationStages } from './scratch/checkVerification.js'
 import { ELECTRONICS_CHECK_TYPES } from './electronics/circuit.js'
 import { getStarterStage } from '../shared/taskStages.js'
 import { stripLineHints } from '../shared/lineHints.js'
@@ -278,6 +280,35 @@ export function warnCompleteDesktop(task, n, warnings) {
   if (desktopChecks.some((c) => !evaluateSingleCheck(c, '', context))) {
     warnings.push(
       `Task ${n} complete desktop does not satisfy a check — review the complete desktop`
+    )
+  }
+}
+
+// Scratch: the static block checks (block_used, blocks_in_order, block_count) evaluated against
+// the saved blocks, as `lessons test-checks` does per check. Warns when a Complete stage
+// (completeBlocks, or a Complete-role code stage) fails one, and when the starter already
+// passes a completion made only of block checks. Unparseable blocks are skipped here.
+export function warnCompleteBlocks(task, n, warnings) {
+  const checks = normalizeChecks(task.check)
+  if (!checks.some(isScratchStaticCheck)) return
+  let completeFails = false
+  let starterPasses = false
+  for (const { kind, blocks } of getScratchVerificationStages(task)) {
+    let completion
+    try {
+      completion = evaluateScratchStage(task, blocks).completion
+    } catch {
+      continue
+    }
+    if (kind === 'complete' && completion.result === 'fail') completeFails = true
+    if (kind === 'starter' && completion.result === 'pass') starterPasses = true
+  }
+  if (completeFails) {
+    warnings.push(`Task ${n} complete solution fails a block check — review the complete blocks`)
+  }
+  if (starterPasses) {
+    warnings.push(
+      `Task ${n} starter already passes every completion check — students can finish without changing anything`
     )
   }
 }

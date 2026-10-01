@@ -39,6 +39,24 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-01
 
+### Scratch checks verified per check by `test-checks` and `validate`
+
+- `lessons test-checks lesson.yaml` with **no `--cases`** now verifies every Scratch task (picked
+  by each task's own module, so composed lessons work). Each completion and feedback check is
+  evaluated against the task's `completeBlocks`, its starter and each Complete-role code stage,
+  with a per-check `pass`/`fail` (plus `sprite`, `reason` and `actual` blocks on a fail) and
+  feedback `fires`/`silent`. Run-time checks (`sprite_property*`, variables, costumes,
+  `block_run`) are reported as `skipped`. It warns when a Complete stage fails a check, a
+  feedback check fires on a Complete stage, the starter already passes, or a Debug Code Task's
+  blocking feedback checks all stay silent on the starter. `--task <id>` limits it to one task.
+  See [scratch.md](scratch.md#verifying-scratch-checks).
+- `lessons validate` (and the Builder) warn `Task … complete solution fails a block check —
+  review the complete blocks` and `Task … starter already passes every completion check — …`.
+  See [validation-errors.md](validation-errors.md#warnings-about-the-solution).
+- Affects: scratch, cli · Existing lessons: no changes needed (validate may now warn on Scratch
+  lessons whose Complete stage fails a check) · Resolves:
+  authoring-requests/2026-09-30-scratch-check-verification-per-check-results-from-validate-o.md
+
 ### Line hints: a trailing marker gets its own empty line
 
 - A line-hint marker with nothing after it (`#> …` / `<!--> … -->` as the last line of the code,
