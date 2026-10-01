@@ -48,7 +48,17 @@ import { useStudentPresenceReporting } from './useStudentPresenceReporting'
 import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
 import { useActivityState } from './useActivityState'
-import { isHostedActivityTask, isModuleHostedActivityTask } from '../../activities/registry.pure.js'
+import {
+  getModuleHostedActivity,
+  isHostedActivityTask,
+  isModuleHostedActivityTask,
+} from '../../activities/registry.pure.js'
+import { solutionOrInitialState } from '../../activities/state.js'
+import {
+  assembleCodeArrangement,
+  getCodeArrangeEntryFile,
+  getCodeArrangeSlotCode,
+} from '../../shared/codeArrange.js'
 import { buildSharedWorkspaceSnapshot } from '../sharedWorkspacePayload'
 import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
@@ -223,6 +233,10 @@ export function useStudentCodeState({
   const teacherAssistedTaskIdsRef = useRef(new Set())
   const appliedTeacherAnswerEditAtRef = useRef(null)
   const [teacherCodeArrangeEdit, setTeacherCodeArrangeEdit] = useState(null)
+  // A teacher "Start again" / "Complete" reset of a code_arrange task: `{ slots, taskId, at }`,
+  // applied to that task's tiles by CodeArrangeTaskContainer (which then acknowledges it) so the
+  // board matches the reset code slot.
+  const [codeArrangeReset, setCodeArrangeReset] = useState(null)
   const [teacherAnswerNoticeAt, setTeacherAnswerNoticeAt] = useState(null)
   // Bumped when the teacher presses Run for this student; each module
   // workspace reacts via useRemoteRunTrigger with its own Run action.
@@ -239,8 +253,11 @@ export function useStudentCodeState({
   const htmlSupportAttemptsRef = useRef(new Map())
   // Latest code_arrange tile-placement state (owned by CodeArrangeTaskContainer,
   // mirrored here purely so the "teacher starts watching" effect below can
-  // publish it immediately — see handleCodeArrangeSlotsChange.
+  // publish it immediately — see handleCodeArrangeSlotsChange — and so Run can
+  // assemble the program from the tiles if the code slot has lost it. The task
+  // id is the task the board reported for.
   const codeArrangeSlotStateRef = useRef({})
+  const codeArrangeSlotTaskIdRef = useRef(null)
 
   const IDLE_FEEDBACK_DELAY_MS = 900
 
@@ -1155,6 +1172,36 @@ export function useStudentCodeState({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.remoteResetPushedAt])
 
+  // A teacher reset of a code_arrange task also resets its tiles: 'starter' to an empty board,
+  // 'complete' to the authored solution — the same initialState / solutionState a hosted
+  // activity's reset loads (useActivityState). The effect above resets the code slot ('starter'
+  // restores the empty starter); without this the board kept its tiles over an empty slot, so the
+  // next Run executed (and logged) an empty program. As in useActivityState, the reset already
+  // on the student record when this tab first sees it is history and is never re-applied.
+  const seenCodeArrangeResetAtRef = useRef(undefined)
+  const remoteResetPushedAt = myStudentData?.remoteResetPushedAt ?? null
+  useEffect(() => {
+    if (!myStudentData) return
+    if (seenCodeArrangeResetAtRef.current === undefined) {
+      seenCodeArrangeResetAtRef.current = remoteResetPushedAt
+      return
+    }
+    if (!remoteResetPushedAt || remoteResetPushedAt === seenCodeArrangeResetAtRef.current) return
+    if (phase !== 'lesson' && phase !== 'solo') return
+    seenCodeArrangeResetAtRef.current = remoteResetPushedAt
+    const task = findTaskById(lesson?.tasks, currentTaskId)
+    const activity = getModuleHostedActivity(task)
+    if (!activity) return
+    const action = myStudentData.remoteResetAction
+    if (action !== 'starter' && action !== 'complete') return
+    const slots =
+      action === 'complete' ? solutionOrInitialState(activity, task) : activity.initialState(task)
+    setCodeArrangeReset({ slots, taskId: currentTaskId, at: remoteResetPushedAt })
+    clearRunFor(lesson.type)
+    resetCheckFeedback()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remoteResetPushedAt, !!myStudentData])
+
   // Apply a teacher's edit to this student's Code Arrange tiles (StudentModal "Edit answers").
   // Quiz and activity answer edits are applied by useActivityState, so marking, the Firebase
   // mirror and the attempt log behave exactly as if the student had answered — the only
@@ -1308,6 +1355,28 @@ export function useStudentCodeState({
 
   // ─── Run / Stop / Tests ────────────────────────────────────────────────────
 
+  // Safety net for a code_arrange task: Run executes (and the attempt log records) the code slot,
+  // never the tiles. CodeArrangeTaskContainer keeps the slot in step with a complete board, but if
+  // the slot still holds something else at Run (e.g. a reset that landed in the same moment), the
+  // program is assembled from the tiles first, so a complete board never runs an empty program.
+  // Not in the personal or session sandbox, where the slot holds the sandbox's own code.
+  function syncCodeArrangeSlotBeforeRun(task) {
+    if (!isModuleHostedActivityTask(task)) return
+    if (phase === 'sandbox' || inPersonalSandboxRef.current) return
+    if (String(codeArrangeSlotTaskIdRef.current) !== String(currentTaskId)) return
+    const assembled = assembleCodeArrangement(task, codeArrangeSlotStateRef.current)
+    if (assembled === null) return
+    const moduleType = lesson?.type
+    const definition = workSlotDefinition(moduleType)
+    if (!definition) return
+    const slotCode = isFilesWork(definition)
+      ? getCodeArrangeSlotCode(task, { files: workValueFor(moduleType)?.files ?? [] })
+      : getCodeArrangeSlotCode(task, { code: storedWork(moduleType).work })
+    if (slotCode === assembled) return
+    if (isFilesWork(definition)) handleFileChange(getCodeArrangeEntryFile(task), assembled)
+    else handleCodeChange(assembled)
+  }
+
   async function handleRun() {
     const actor = effectiveIdentity
     if (!actor || running) return
@@ -1329,6 +1398,7 @@ export function useStudentCodeState({
       runKind === 'runtime' ||
       (runKind === 'preview' && typeof mod?.runtime?.buildPreviewSrc === 'function')
     if (!runsHere) return
+    syncCodeArrangeSlotBeforeRun(task)
 
     setRunning(true)
     setOutput('')
@@ -1920,6 +1990,7 @@ export function useStudentCodeState({
   // currentCodeArrangeSlots record for a teacher passively watching them.
   function handleCodeArrangeSlotsChange(slotState, { fromTeacher = false } = {}) {
     codeArrangeSlotStateRef.current = slotState
+    codeArrangeSlotTaskIdRef.current = currentTaskIdRef.current ?? null
     if (!identity) return
     if (!fromTeacher) supersedeTeacherAnswerEdit()
     if (canPublishTeacherLive()) publishTeacherLive({ codeArrangeSlots: slotState })
@@ -2588,6 +2659,11 @@ export function useStudentCodeState({
     // generic work slot.
     code,
     teacherCodeArrangeEdit,
+    codeArrangeReset,
+    // The board applied the reset: a later remount (another task, or back from an earlier one)
+    // must not apply it again over the student's newer tiles.
+    acknowledgeCodeArrangeReset: (at) =>
+      setCodeArrangeReset((current) => (current?.at === at ? null : current)),
     teacherAnswerNoticeAt,
     remoteRunToken,
     acknowledgeRemoteRun: (token) =>

@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react'
 import CodeArrangeTask from './CodeArrangeTask'
 import {
+  assembleCodeArrangement,
   deriveSlotStateFromCode,
   getCodeArrangeEntryFile,
+  getCodeArrangeSlotCode,
   isArrangementComplete,
 } from '../../shared/codeArrange'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
@@ -23,11 +25,16 @@ function fileContent(files, name) {
 
 // Wires the presentational CodeArrangeTask component to the shared student
 // code-state hook (`cs`, from useStudentCodeState). The tile arrangement
-// itself is new UI-only state owned here; whenever it changes we assemble the
-// full program and push it into cs.code / cs.files through the exact same
+// itself is new UI-only state owned here; whenever the assembled program
+// differs from what the shared code slot actually holds (cs.code, or the
+// entry file in cs.files for html) we push it through the exact same
 // handleCodeChange / handleFileChange entry points a normal Python/HTML task
 // uses, so Run, checks, teacher live view, and local-storage persistence for
 // the *code* are 100% the existing pipeline — nothing here re-implements them.
+// Comparing against the real slot (not just the last value pushed) re-syncs
+// the slot whenever something else resets it while the board stays mounted —
+// a live task load restoring the starter (''), an identity arriving late — so
+// Run never executes (and logs) an empty program under a complete board.
 //
 // The tile-to-slot arrangement itself is NOT part of that reused code/check
 // pipeline (it's UI-only bookkeeping), so it needs its own handling for the
@@ -97,6 +104,9 @@ export default function CodeArrangeTaskContainer({
   // what is displayed; the leaving snapshot keeps the student's own display).
   const detached = readOnly || isLeavingSlide
   const [slotState, setSlotState] = useState({})
+  // The latest arrangement, ahead of the re-render: a reset or teacher edit applied earlier in
+  // the same commit must not have the re-sync effect below push the board it just replaced.
+  const slotStateRef = useRef({})
   const loadedForTaskRef = useRef(null)
 
   useEffect(() => {
@@ -112,12 +122,14 @@ export default function CodeArrangeTaskContainer({
     // student's actual saved progress immediately, not a blank board.
     // A missing or malformed saved arrangement loads as an empty board.
     const saved = definition.deserialize(raw, task)
+    slotStateRef.current = saved
     setSlotState(saved)
     if (!isLeavingSlide) cs.handleCodeArrangeSlotsChange?.(saved)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, isLiveMirror])
 
   function handleSlotStateChange(next, options) {
+    slotStateRef.current = next
     setSlotState(next)
     if (!detached) {
       cs.saveTaskAuxFile(taskId, CODE_ARRANGE_SLOTS_FILENAME, definition.serialize(next))
@@ -128,7 +140,7 @@ export default function CodeArrangeTaskContainer({
 
   // A teacher edited this student's tiles from StudentModal ("Edit answers").
   // Applied like a student placement (saved locally, assembled into code by
-  // CodeArrangeTask) but flagged so it doesn't count as the student
+  // the re-sync effect below) but flagged so it doesn't count as the student
   // superseding the teacher's edit.
   const teacherEditAt = cs.teacherCodeArrangeEdit?.at ?? null
   useEffect(() => {
@@ -138,6 +150,40 @@ export default function CodeArrangeTaskContainer({
     handleSlotStateChange(slots, { fromTeacher: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teacherEditAt])
+
+  // A teacher "Start again" / "Complete" reset (StudentModal) of this task: the hook resets the
+  // code slot and hands the board its matching tiles (empty, or the authored solution), applied
+  // like the teacher's answer edit above so the board and the code agree, then acknowledged so
+  // a later remount never applies it again.
+  const remoteResetAt = cs.codeArrangeReset?.at ?? null
+  useEffect(() => {
+    if (!remoteResetAt || detached) return
+    const reset = cs.codeArrangeReset
+    if (reset.taskId != null && String(reset.taskId) !== String(taskId)) return
+    const slots = reset.slots
+    if (!slots || typeof slots !== 'object' || Array.isArray(slots)) return
+    handleSlotStateChange(slots, { fromTeacher: true })
+    cs.acknowledgeCodeArrangeReset?.(remoteResetAt)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remoteResetAt])
+
+  // Keep the shared code slot in step with the tiles: push the assembled program whenever the
+  // board is complete and the slot holds something else. Never while a program runs (Run reads
+  // the slot, and the tiles are locked meanwhile) or in the personal sandbox (the slot holds the
+  // sandbox's code then). Only a real difference pushes, so this cannot loop.
+  const assembledCode = assembleCodeArrangement(task, slotState)
+  const slotCode = getCodeArrangeSlotCode(
+    task,
+    isHtml ? { files: Array.isArray(cs.files) ? cs.files : [] } : { code: cs.code }
+  )
+  const syncBlocked = detached || !!cs.running || !!cs.inPersonalSandbox
+  useEffect(() => {
+    if (syncBlocked) return
+    const latest = assembleCodeArrangement(task, slotStateRef.current)
+    if (latest === null || latest === slotCode) return
+    handleAssembledCodeChange(latest)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assembledCode, slotCode, syncBlocked])
 
   // Teacher remote Run: only a complete arrangement has runnable code.
   useRemoteRunTrigger(
@@ -222,7 +268,6 @@ export default function CodeArrangeTaskContainer({
       moduleType={task.moduleType}
       selectedAnswer={selectedAnswer}
       onSelectAnswer={detached ? undefined : handleSlotStateChange}
-      onAssembledCodeChange={detached ? undefined : handleAssembledCodeChange}
       output={output}
       runStatus={runStatus}
       inputPrompt={inputPrompt}

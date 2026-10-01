@@ -249,6 +249,15 @@ to a single blank, the whole-line shape, as a starting point).
 | `check` | Yes | Same `output`/`code`/`output_line_count`/`code_no_error`/`code_structure` checks as an ordinary Python task (`code_structure` sees the indentation of the assembled program), or the same `html_element_*`/`output`/`code` checks as an ordinary HTML task — see `docs/authoring/python.md` / `docs/authoring/html.md`. |
 | `feedbackChecks` | No | Same shape as other code tasks. |
 
+**What an arrange attempt records.** Run is only enabled once every blank is filled, and each Run
+is logged as one attempt for the task exactly like an ordinary code task (`taskType: code` in the
+session report). The attempt's `submission` is the assembled program text built from the tiles
+(for HTML, the assembled `entryFile` as part of the files map), the same text the checks ran
+against; the tile placements themselves are not recorded. Running the same program again without
+changing a tile adds a retry to the previous attempt rather than a new attempt. A tutor's manual
+pass, or the class moving on, without a passing run shows as an override (`overridden_failed` when
+the last run failed). See [session-reports.md](session-reports.md) for the report format.
+
 ### Python Example (a whole-line blank + a line with an inline blank, sharing one pool)
 
 ```yaml

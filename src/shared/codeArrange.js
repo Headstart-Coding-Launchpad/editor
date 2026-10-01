@@ -129,6 +129,18 @@ export function getCodeArrangeEntryFile(task) {
   return task?.entryFile || task?.starterFiles?.[0]?.name || 'index.html'
 }
 
+// The program a code_arrange task's host work slot currently holds: the entry file's content
+// when the host keeps files (`files` given: html), else the code string (python). Compared
+// against assembleCodeArrangement() to keep the slot in step with the tiles — Run and the
+// attempt log read the slot, never the tiles.
+export function getCodeArrangeSlotCode(task, { code, files } = {}) {
+  if (Array.isArray(files)) {
+    const entryFile = getCodeArrangeEntryFile(task)
+    return files.find((f) => f?.name === entryFile)?.content ?? ''
+  }
+  return typeof code === 'string' ? code : ''
+}
+
 // Reconstructs the slot state for a single already-assembled program line,
 // given that line's authoring definition and the task's shared pool — the
 // inverse of assembleLineCode(). The line's fixed-text parts are known,
