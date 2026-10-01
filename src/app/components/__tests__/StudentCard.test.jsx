@@ -243,13 +243,16 @@ describe('StudentCard', () => {
       expect(props.onExpand).toHaveBeenCalledWith(props.student)
     })
 
-    it('does not render the expand button for information tasks', () => {
+    it('renders the expand button for information tasks too', async () => {
+      const user = userEvent.setup()
       const infoLesson = {
         type: 'python',
         tasks: [{ id: 1, taskType: 'information', title: 'Intro' }],
       }
-      render(<StudentCard {...mkProps({ lesson: infoLesson })} />)
-      expect(screen.queryByRole('button', { name: /expand/i })).not.toBeInTheDocument()
+      const props = mkProps({ lesson: infoLesson })
+      render(<StudentCard {...props} />)
+      await user.click(screen.getByRole('button', { name: /expand/i }))
+      expect(props.onExpand).toHaveBeenCalledWith(props.student)
     })
   })
 
@@ -379,13 +382,30 @@ describe('StudentCard', () => {
       expect(props.onExpand).not.toHaveBeenCalled()
     })
 
-    it('leaves an information task inert', () => {
+    it.each(['standard', 'introduction', 'recap', 'badges'])(
+      'opens the student on a %s information task',
+      async (informationType) => {
+        const user = userEvent.setup()
+        const lesson = {
+          type: 'python',
+          tasks: [{ id: 1, title: 'Task 1', taskType: 'information', informationType }],
+        }
+        const props = mkProps({ lesson })
+        render(<StudentCard {...props} />)
+        await user.click(screen.getByRole('button', { name: /expand jamie/i }))
+        expect(props.onExpand).toHaveBeenCalledWith(props.student)
+      }
+    )
+
+    it('opens an information task from the keyboard', () => {
       const lesson = {
         type: 'python',
         tasks: [{ id: 1, title: 'Task 1', taskType: 'information' }],
       }
-      render(<StudentCard {...mkProps({ lesson })} />)
-      expect(screen.queryByRole('button', { name: /expand/i })).not.toBeInTheDocument()
+      const props = mkProps({ lesson })
+      render(<StudentCard {...props} />)
+      fireEvent.keyDown(screen.getByRole('button', { name: /expand jamie/i }), { key: 'Enter' })
+      expect(props.onExpand).toHaveBeenCalledWith(props.student)
     })
   })
   describe('workspace share badge', () => {
