@@ -1,10 +1,12 @@
 import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { EditorState } from '@codemirror/state'
+import { EditorView } from '@codemirror/view'
 import {
   CodeEditor,
   errorLineField,
   isUserEditUpdate,
+  minimalReplace,
   setErrorLine,
   setTeacherHighlights,
   teacherHighlightsField,
@@ -135,6 +137,149 @@ describe('teacherHighlightsField', () => {
       { from: 12, to: 17, class: 'cm-teacherHighlight' },
       { at: 19, badges: ['h1'] },
     ])
+  })
+
+  function positions(state) {
+    return state.field(teacherHighlightsField).highlights.map((h) => [h.id, h.from, h.to])
+  }
+
+  function withHighlight() {
+    const state = EditorState.create({ doc, extensions: [teacherHighlightsField] })
+    return state.update({ effects: setTeacherHighlights.of([highlight]) }).state
+  }
+
+  it('keeps the mapped position when the same highlight is set again with its stored one', () => {
+    let state = withHighlight()
+    state = state.update({ changes: { from: 0, insert: 'xx' }, userEvent: 'input.type' }).state
+    expect(positions(state)).toEqual([['h1', 9, 14]])
+    state = state.update({
+      effects: setTeacherHighlights.of([{ ...highlight, note: 'Changed' }]),
+    }).state
+    expect(positions(state)).toEqual([['h1', 9, 14]])
+    expect(state.field(teacherHighlightsField).highlights[0].note).toBe('Changed')
+  })
+
+  it('adds new highlights at their stored position and removes ones no longer listed', () => {
+    let state = withHighlight()
+    state = state.update({ effects: setTeacherHighlights.of([{ id: 'h2', from: 0, to: 4 }]) }).state
+    expect(positions(state)).toEqual([['h2', 0, 4]])
+  })
+
+  it('keeps a highlight when the user types right at either edge of it', () => {
+    const start = withHighlight().update({
+      changes: { from: 7, insert: 'Z' },
+      userEvent: 'input.type',
+    }).state
+    expect(positions(start)).toEqual([['h1', 8, 13]])
+    const end = withHighlight().update({
+      changes: { from: 12, insert: 'Z' },
+      userEvent: 'input.type',
+    }).state
+    expect(positions(end)).toEqual([['h1', 7, 12]])
+    const bordering = withHighlight().update({
+      changes: { from: 6, to: 7 },
+      userEvent: 'delete.backward',
+    }).state
+    expect(positions(bordering)).toEqual([['h1', 6, 11]])
+  })
+
+  it('clears a highlight when the user types inside it or deletes part of it', () => {
+    const typed = withHighlight().update({
+      changes: { from: 9, insert: 'Z' },
+      userEvent: 'input.type',
+    }).state
+    expect(positions(typed)).toEqual([])
+    const deleted = withHighlight().update({
+      changes: { from: 11, to: 13 },
+      userEvent: 'delete.backward',
+    }).state
+    expect(positions(deleted)).toEqual([])
+  })
+
+  it('maps rather than clears a highlight under a change from outside (a live mirror update)', () => {
+    const state = withHighlight().update({ changes: { from: 9, insert: 'Z' } }).state
+    expect(positions(state)).toEqual([['h1', 7, 13]])
+  })
+})
+
+describe('minimalReplace', () => {
+  it('changes only the span between the shared prefix and suffix', () => {
+    expect(minimalReplace('abcXdef', 'abcYYdef')).toEqual({ from: 3, to: 4, insert: 'YY' })
+    expect(minimalReplace('aaa', 'aaaa')).toEqual({ from: 3, to: 3, insert: 'a' })
+    expect(minimalReplace('', 'x')).toEqual({ from: 0, to: 0, insert: 'x' })
+    expect(minimalReplace('same', 'same')).toEqual({ from: 4, to: 4, insert: '' })
+  })
+})
+
+describe('CodeEditor teacher highlights', () => {
+  const code = 'name = input()\nprint("Hello")\n'
+  const stored = () => [{ id: 'h1', emoji: '👀', note: null, from: 7, to: 12 }]
+
+  async function renderEditor(props) {
+    const { render } = await import('@testing-library/react')
+    const utils = render(<CodeEditor value={code} {...props} />)
+    const view = EditorView.findFromDOM(utils.container.querySelector('.cm-editor'))
+    const positions = () =>
+      view.state.field(teacherHighlightsField).highlights.map((h) => [h.id, h.from, h.to])
+    return { ...utils, view, positions }
+  }
+
+  it('does not reset mapped positions when handed a new array with the same highlights', async () => {
+    const { view, rerender, positions } = await renderEditor({ teacherHighlights: stored() })
+    view.dispatch({ changes: { from: 0, insert: '# hi\n' }, userEvent: 'input.type' })
+    expect(positions()).toEqual([['h1', 12, 17]])
+    rerender(<CodeEditor value={view.state.doc.toString()} teacherHighlights={stored()} />)
+    expect(positions()).toEqual([['h1', 12, 17]])
+  })
+
+  it('clears an edited highlight, reports it dismissed and does not bring it back', async () => {
+    const onHighlightDismiss = vi.fn()
+    const { view, rerender, positions } = await renderEditor({
+      teacherHighlights: stored(),
+      onHighlightDismiss,
+    })
+    view.dispatch({ changes: { from: 9, insert: 'Z' }, userEvent: 'input.type' })
+    expect(positions()).toEqual([])
+    expect(onHighlightDismiss).toHaveBeenCalledWith('h1')
+    // The session still lists h1 until the dismissal lands; a new highlight arriving meanwhile
+    // must not resurrect it.
+    rerender(
+      <CodeEditor
+        value={view.state.doc.toString()}
+        teacherHighlights={[...stored(), { id: 'h2', from: 0, to: 4 }]}
+        onHighlightDismiss={onHighlightDismiss}
+      />
+    )
+    expect(positions()).toEqual([['h2', 0, 4]])
+  })
+
+  it('keeps a highlight, without dismissing it, when the student types next to it', async () => {
+    const onHighlightDismiss = vi.fn()
+    const { view, positions } = await renderEditor({
+      teacherHighlights: stored(),
+      onHighlightDismiss,
+    })
+    view.dispatch({ changes: { from: 12, insert: '!' }, userEvent: 'input.type' })
+    expect(positions()).toEqual([['h1', 7, 12]])
+    expect(onHighlightDismiss).not.toHaveBeenCalled()
+  })
+
+  it('keeps highlights on unchanged code when the value is replaced from outside', async () => {
+    const onHighlightDismiss = vi.fn()
+    const { view, rerender, positions } = await renderEditor({
+      teacherHighlights: stored(),
+      onHighlightDismiss,
+    })
+    rerender(
+      <CodeEditor
+        value={`# hi\n${code}`}
+        teacherHighlights={stored()}
+        onHighlightDismiss={onHighlightDismiss}
+      />
+    )
+    expect(view.state.doc.toString()).toBe(`# hi\n${code}`)
+    expect(positions()).toEqual([['h1', 12, 17]])
+    expect(onHighlightDismiss).not.toHaveBeenCalled()
   })
 })
 
