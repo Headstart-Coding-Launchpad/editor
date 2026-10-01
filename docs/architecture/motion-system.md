@@ -131,3 +131,4 @@ the Builder preview.
 | Teacher 👍 | `ThumbsUpToast.jsx` + `useThumbsUp` (StudentView) | Toast `motion-pop-in` per push, auto-dismissed after 2.5s; the `badge` chime unless muted |
 | Badge Summary | `BadgeSummaryTask.jsx`, `BadgeStickerSheet` `entrance="tumble"` | Student: stickers `motion-tumble-in` 260ms apart, then the wall drops; teacher/presentation: row emoji tumble, rows drop; later arrivals only drop in |
 | Badge celebration card, class toast, sticker sheet | `src/app/components/badges/` | `sv-badge-*` keyframes (predate this system; same principles) |
+| Presentation annotations | `src/app/liveInk/LiveInkOverlay.jsx` (`live-ink-*` classes in `index.css`) | Teacher's pointer dot lerps between ~12Hz updates; ink strokes hold 2.5 s then fade over 1.5 s (`live-ink-fade`). Reduced motion: the dot jumps and strokes vanish at the same moment with no fade |

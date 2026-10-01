@@ -178,6 +178,51 @@ describe('useSession', () => {
     })
   })
 
+  describe('Presentation annotations (liveInk)', () => {
+    it('setTaskId clears liveInk/{lessonId} — annotations belong to the task they were drawn on', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.setTaskId(3)
+      })
+      expect(firebaseMocks.remove).toHaveBeenCalledWith({ path: 'liveInk/lesson-1' })
+      // Never under the session node, which every client streams.
+      const updateCall = firebaseMocks.update.mock.calls.find(
+        ([r]) => r.path === 'sessions/lesson-1'
+      )
+      expect(Object.keys(updateCall[1]).some((key) => key.includes('liveInk'))).toBe(false)
+    })
+
+    it('createSession and endSession clear liveInk/{lessonId} too', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.createSession()
+      })
+      expect(firebaseMocks.remove).toHaveBeenCalledWith({ path: 'liveInk/lesson-1' })
+      firebaseMocks.remove.mockClear()
+      await act(async () => {
+        await result.current.endSession()
+      })
+      expect(firebaseMocks.remove).toHaveBeenCalledWith({ path: 'liveInk/lesson-1' })
+    })
+
+    it('subscribeLiveInk listens to the separate liveInk node and hands back its value', () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      let liveInkCallback = null
+      const unsubscribe = vi.fn()
+      firebaseMocks.onValue.mockImplementation((refObj, callback) => {
+        if (refObj.path === 'liveInk/lesson-1') liveInkCallback = callback
+        return unsubscribe
+      })
+      const received = vi.fn()
+      const stop = result.current.subscribeLiveInk(received)
+      liveInkCallback({ exists: () => true, val: () => ({ pointer: { rx: 0.5 } }) })
+      expect(received).toHaveBeenCalledWith({ pointer: { rx: 0.5 } })
+      liveInkCallback({ exists: () => false, val: () => null })
+      expect(received).toHaveBeenLastCalledWith(null)
+      expect(stop).toBe(unsubscribe)
+    })
+  })
+
   describe('enterSandbox / exitSandbox', () => {
     it('records previousTaskId as sandboxPreviousTaskId when provided', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))

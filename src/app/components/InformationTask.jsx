@@ -6,6 +6,8 @@ import { getModuleLabel } from '../../modules/definitions'
 import { BADGE_SUMMARY_INFORMATION_TYPE } from '../../shared/taskUtils'
 import BadgeSummaryTask from './badges/BadgeSummaryTask'
 import { firstViewKey, useFirstView } from '../../shared/motion'
+import InkSurface from '../liveInk/InkSurface'
+import { SURFACE_KINDS, surfaceId } from '../liveInk/liveInkData'
 
 function singleTypeLabel(type) {
   return getModuleLabel(type, 'lessonIntro') ?? (type || 'Lesson')
@@ -44,17 +46,24 @@ export default function InformationTask({
     return <BadgeSummaryTask task={task} lesson={lesson} disableCopy={disableCopy} {...badgeWall} />
   }
 
+  // Presentation annotations (src/app/liveInk): each block of content is its own surface, named
+  // by kind + task id. Inert outside a live lesson / the Presentation window.
+  const inkId = (kind) => (task?.id == null ? null : surfaceId(kind, task.id))
+
   if (informationType === 'introduction') {
+    // Not Markdown, so its three parts carry hand-written anchors.
     return (
       <section className="information-task information-task--introduction">
-        <div className="information-intro__content">
-          <h1>{lesson?.title ?? task?.title ?? 'Lesson'}</h1>
-          <div className="information-intro__meta">
-            {lesson?.level && <span>{lesson.level}</span>}
-            <span>{lessonTypeLabel(lesson)}</span>
+        <InkSurface id={inkId(SURFACE_KINDS.intro)} style={s.introSurface}>
+          <div className="information-intro__content">
+            <h1 data-md-anchor="title">{lesson?.title ?? task?.title ?? 'Lesson'}</h1>
+            <div className="information-intro__meta" data-md-anchor="meta">
+              {lesson?.level && <span>{lesson.level}</span>}
+              <span>{lessonTypeLabel(lesson)}</span>
+            </div>
+            {lesson?.description && <p data-md-anchor="description">{lesson.description}</p>}
           </div>
-          {lesson?.description && <p>{lesson.description}</p>}
-        </div>
+        </InkSurface>
       </section>
     )
   }
@@ -63,24 +72,28 @@ export default function InformationTask({
     return (
       <section className="information-task information-task--recap">
         <div className="information-recap__left">
-          <MarkdownRenderer
-            content={task?.leftContent ?? ''}
-            textScale={markdownTextScale}
-            inheritColor
-            topicType={lesson?.type}
-            disableCopy={disableCopy}
-            animateLists={isRecapFirstView}
-          />
+          <InkSurface id={inkId(SURFACE_KINDS.recapLeft)}>
+            <MarkdownRenderer
+              content={task?.leftContent ?? ''}
+              textScale={markdownTextScale}
+              inheritColor
+              topicType={lesson?.type}
+              disableCopy={disableCopy}
+              animateLists={isRecapFirstView}
+            />
+          </InkSurface>
         </div>
         <div className="information-recap__content">
-          <MarkdownRenderer
-            content={task?.explainer ?? ''}
-            textScale={markdownTextScale}
-            topicType={lesson?.type}
-            disableCopy={disableCopy}
-            imageLayout="float"
-            animateLists={isRecapFirstView}
-          />
+          <InkSurface id={inkId(SURFACE_KINDS.recap)}>
+            <MarkdownRenderer
+              content={task?.explainer ?? ''}
+              textScale={markdownTextScale}
+              topicType={lesson?.type}
+              disableCopy={disableCopy}
+              imageLayout="float"
+              animateLists={isRecapFirstView}
+            />
+          </InkSurface>
         </div>
       </section>
     )
@@ -98,6 +111,12 @@ export default function InformationTask({
       disableCopy={disableCopy}
       imageLayout="float"
       entranceKey={information}
+      inkSurfaceId={inkId(SURFACE_KINDS.info)}
     />
   )
+}
+
+const s = {
+  // Keeps the introduction's centred column at its own width once it sits inside a surface.
+  introSurface: { width: 'min(860px, 100%)' },
 }

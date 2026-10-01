@@ -69,6 +69,7 @@ import { decodeFileKey } from '../../shared/fileKeys'
 import { getModuleDefinition } from '../../modules/definitions'
 import { decodeSessionFiles } from '../../shared/workspaceData'
 import { BadgeSignalsContext } from '../../shared/badgeSignalsContext'
+import LiveInkProvider from '../liveInk/LiveInkProvider'
 
 export default function StudentView({
   lessonId: lessonIdProp,
@@ -149,6 +150,9 @@ export default function StudentView({
     removeTeacherHighlight,
     clearTeacherAnswerEdit,
     clearRemoteRun,
+    pushClassPaneCommand,
+    subscribeLiveInk,
+    createLiveInkWriter,
   } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
   const {
     identity,
@@ -1642,9 +1646,29 @@ export default function StudentView({
     </div>
   )
 
+  // Presentation annotations (src/app/liveInk): the Presentation window draws, students in the
+  // live lesson see it. Solo, preview and the sandbox phase stay inert.
+  const liveInkRole = teacherPresentation
+    ? 'teacher'
+    : !soloMode && !previewMode && phase === 'lesson' && identity?.anonymousId
+      ? 'student'
+      : null
+
   return (
     <BadgeSignalsContext.Provider value={badgeSignalsContextValue}>
-      {page}
+      <LiveInkProvider
+        lessonId={lessonId}
+        role={liveInkRole}
+        subscribe={subscribeLiveInk}
+        createWriter={createLiveInkWriter}
+        // Annotating a code task's explainer opens it for students who have it collapsed,
+        // through the existing whole-class pane command.
+        onExplainerAnnotate={() =>
+          pushClassPaneCommand?.({ mode: 'force', panes: ['instructions'] })
+        }
+      >
+        {page}
+      </LiveInkProvider>
     </BadgeSignalsContext.Provider>
   )
 }
