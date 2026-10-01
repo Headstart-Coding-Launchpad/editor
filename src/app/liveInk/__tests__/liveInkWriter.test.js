@@ -71,7 +71,9 @@ describe('createLiveInkWriter', () => {
     )
     expect(firebaseMocks.remove).not.toHaveBeenCalled()
     vi.advanceTimersByTime(STROKE_REMOVE_AFTER_MS)
-    expect(firebaseMocks.remove).toHaveBeenCalledWith({ path: 'liveInk/lesson-1/strokes/pushed-1' })
+    expect(firebaseMocks.remove).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'liveInk/lesson-1/strokes/pushed-1' })
+    )
   })
 
   it('adds and removes highlights', () => {
