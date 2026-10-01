@@ -40,13 +40,22 @@ function capture(name) {
 vi.mock('../teacher/TeacherEditorPanel', () => ({ default: capture('editor') }))
 vi.mock('../../components/TaskNavigator', () => ({ default: capture('navigator') }))
 vi.mock('../../components/TeacherSandboxBanner', () => ({ default: capture('sandboxBanner') }))
-vi.mock('../../components/TopBar', () => ({ default: () => null }))
+vi.mock('../../components/TopBar', () => ({
+  default: ({ right }) => <header data-testid="top-bar">{right}</header>,
+}))
+vi.mock('../../components/TeacherSessionControls', () => ({ default: () => null }))
+vi.mock('../../components/student-modal/PaneFocusDropdown', () => ({ default: () => null }))
 vi.mock('../../components/StudentGrid', () => ({ default: () => null }))
 vi.mock('../../components/ExplainerPanel', () => ({
   default: ({ title }) => <span data-testid="explainer">{title}</span>,
 }))
 vi.mock('../../components/TeacherTimers', () => ({ default: () => null }))
-vi.mock('../teacher/TaskRatingPanel', () => ({ default: () => null }))
+vi.mock('../teacher/TaskRatingPanel', () => ({
+  default: (props) => {
+    captured.rating = props
+    return <span data-testid="task-rating" />
+  },
+}))
 vi.mock('../teacher/CheckConditionsPanel', () => ({ default: () => null }))
 
 import { getDoc } from 'firebase/firestore'
@@ -153,5 +162,43 @@ describe('TeacherView task slide', () => {
     act(() => captured.navigator.onTaskSelect(2))
     await waitFor(() => expect(enteringPanel()).toHaveTextContent('Two'))
     expect(enteringPanel()).toHaveClass('task-slide-panel--backward')
+  })
+})
+
+describe('TeacherView task rating', () => {
+  beforeEach(() => {
+    for (const key of Object.keys(captured)) delete captured[key]
+    for (const key of Object.keys(sessionCommands)) delete sessionCommands[key]
+    mockSession = {
+      state: 'active',
+      currentTaskId: 1,
+      students: {},
+      taskRatingLog: { 1: { rating: 4, whatWorkedWell: '', whatDidntWork: '' } },
+    }
+  })
+
+  // The rating used to be an inline panel in <main> that squeezed or clipped the
+  // task workspace; it now lives in the top bar and opens as a popover.
+  it('renders the rating control in the top bar, not inside the centre column', async () => {
+    await renderTeacherView(turtleLesson())
+
+    const rating = screen.getByTestId('task-rating')
+    expect(screen.getByTestId('top-bar').contains(rating)).toBe(true)
+    expect(screen.getByRole('main').contains(rating)).toBe(false)
+    expect(captured.rating.taskId).toBe(1)
+    expect(captured.rating.existingRating).toEqual({
+      rating: 4,
+      whatWorkedWell: '',
+      whatDidntWork: '',
+    })
+    expect(captured.rating.onSave).toBe(sessionCommands.setTaskRating)
+  })
+
+  it('hides the rating control in the sandbox', async () => {
+    await renderTeacherView(turtleLesson())
+
+    act(() => captured.navigator.onSandbox())
+    await waitFor(() => expect(captured.editor.isInSandbox).toBe(true))
+    expect(screen.queryByTestId('task-rating')).not.toBeInTheDocument()
   })
 })

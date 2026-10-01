@@ -104,10 +104,12 @@ export default function TeacherEditorPanel({
   const showCompleteTab = mod.lifecycle.teacherCompleteTab(task)
 
   // In a scrolling centre column the stack must not shrink below its content:
-  // with `minHeight: 0` it collapsed when TaskRatingPanel expanded, and the
-  // editor (which keeps its own minHeight) spilled out over the panel, hiding
-  // its fields and swallowing their clicks. Only fill-height layouts, whose
-  // centre column clips rather than scrolls, need the stack to shrink to fit.
+  // with `minHeight: 0` it collapsed when a sibling panel (originally the inline
+  // task-rating panel, now a top-bar popover; still CheckConditionsPanel and the
+  // collapsible BadgeSuggestionsPanel) grew, and the editor (which keeps its own
+  // minHeight) spilled out over that panel, hiding its fields and swallowing
+  // their clicks. Only fill-height layouts, whose centre column clips rather than
+  // scrolls, need the stack to shrink to fit.
   const codeWorkspaceStack = fillHeight
     ? styles.codeWorkspaceStack
     : { ...styles.codeWorkspaceStack, minHeight: 'auto' }

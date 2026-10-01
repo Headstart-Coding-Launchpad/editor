@@ -177,7 +177,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TeacherEditorPanel.jsx` | Module-generic teacher editor/live-view panel, including starter/stage/complete tabs |
 | `CheckConditionsPanel.jsx` | Collapsible teacher-facing display of current task check conditions |
 | `BadgeSuggestionsPanel.jsx` | Collapsible centre-column panel (above the editor) of live badge suggestions grouped by student: emoji, title, reason, Award / Dismiss (`source: 'rule'`), an "Announce" checkbox (default on), "Award all (n)" for a badge suggested to several students (one shared `bulkId`), and the session's Auto-award / Sounds off toggles (`setBadgeSettings`); a `committed: false` decision (another tab first) shows a note, not an error. `open` / `onOpenChange` / `focusRequest` are controlled by `TeacherView` so the grid button can open it |
-| `TaskRatingPanel.jsx` | Collapsible panel, rendered above `CheckConditionsPanel`, letting the teacher rate the current task live (1-5 stars + notes) via `setTaskRating`; follows the teacher as they move between tasks |
+| `TaskRatingPanel.jsx` | "⭐ Rate this task" top-bar button opening a portalled, fixed-position popover that lets the teacher rate the current task live (1-5 stars + notes) via `setTaskRating`; follows the teacher between tasks (switching task closes it) and stays out of the centre column's layout |
 | `checkFormatting.js` | Human-readable check formatting helper used by `CheckConditionsPanel` |
 
 ---

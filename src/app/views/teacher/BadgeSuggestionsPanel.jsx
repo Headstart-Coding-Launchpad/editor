@@ -4,7 +4,7 @@ import { createBadgeBulkId, resolveBadge } from '../../../badges/badgeDisplay'
 import { getRuleBackedBadges } from '../../../badges/registry'
 
 // The tutor's live badge suggestions (docs/architecture/live-badges-plan.md, "Tutor
-// experience"): a collapsible centre-column panel in the TaskRatingPanel pattern. Suggestions
+// experience"): a collapsible centre-column panel. Suggestions
 // come from useBadgeSuggestions (recomputed from the session, never stored); only the tutor's
 // decisions are written, through useSession's decideBadge (a write-if-absent transaction, so a
 // second teacher tab or auto-award deciding first resolves as `committed: false`, which is not

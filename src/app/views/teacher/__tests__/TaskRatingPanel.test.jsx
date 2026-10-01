@@ -1,19 +1,26 @@
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import TaskRatingPanel from '../TaskRatingPanel'
 
+function openPopover() {
+  fireEvent.click(screen.getByRole('button', { name: /Rate this task/ }))
+  return screen.getByRole('dialog', { name: /Rate this task/ })
+}
+
 describe('TaskRatingPanel', () => {
-  it('starts collapsed with no rating shown', () => {
+  it('renders a closed "Rate this task" button with no popover', () => {
     render(
       <TaskRatingPanel taskId={1} taskTitle="Task One" existingRating={null} onSave={vi.fn()} />
     )
-    expect(screen.getByText('Rate This Task — Task One')).toBeInTheDocument()
-    expect(screen.queryByLabelText(/Rated \d out of 5 stars/)).not.toBeInTheDocument()
+    const button = screen.getByRole('button', { name: 'Rate this task' })
+    expect(button).toHaveTextContent('⭐ Rate this task')
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.queryByText("How's this task going?")).not.toBeInTheDocument()
   })
 
-  it('shows the existing rating in the collapsed header', () => {
+  it('shows the existing rating on the button', () => {
     render(
       <TaskRatingPanel
         taskId={1}
@@ -22,16 +29,34 @@ describe('TaskRatingPanel', () => {
         onSave={vi.fn()}
       />
     )
-    expect(screen.getByLabelText('Rated 4 out of 5 stars')).toBeInTheDocument()
+    const button = screen.getByRole('button', { name: 'Rate this task (rated 4 out of 5)' })
+    expect(button).toHaveTextContent('⭐ 4')
   })
 
-  it('expands to reveal the rating form and saves the entered values', async () => {
+  it('opens a popover portalled to <body> and moves focus into it', () => {
+    const { container } = render(
+      <TaskRatingPanel taskId={1} taskTitle="Task One" existingRating={null} onSave={vi.fn()} />
+    )
+    const dialog = openPopover()
+
+    expect(screen.getByRole('button', { name: /Rate this task/ })).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    )
+    expect(dialog).toHaveTextContent('Rate This Task — Task One')
+    // Out of the render container (and so out of any overflow-clipping workspace).
+    expect(container.contains(dialog)).toBe(false)
+    expect(dialog).toHaveStyle({ position: 'fixed' })
+    expect(dialog.contains(document.activeElement)).toBe(true)
+  })
+
+  it('saves the entered values via onSave and closes, returning focus to the button', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined)
     render(
       <TaskRatingPanel taskId={1} taskTitle="Task One" existingRating={null} onSave={onSave} />
     )
 
-    fireEvent.click(screen.getByText('Rate This Task — Task One'))
+    openPopover()
     fireEvent.click(screen.getByRole('radio', { name: '3 stars' }))
     fireEvent.change(screen.getByLabelText('What worked well?'), {
       target: { value: 'Went smoothly' },
@@ -46,21 +71,51 @@ describe('TaskRatingPanel', () => {
       whatWorkedWell: 'Went smoothly',
       whatDidntWork: 'Check was flaky',
     })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('button', { name: /Rate this task/ })).toHaveFocus()
   })
 
-  it('keeps the header pinned to the top of the scroll area once expanded', () => {
+  it('closes on Escape and returns focus to the button', () => {
     render(
       <TaskRatingPanel taskId={1} taskTitle="Task One" existingRating={null} onSave={vi.fn()} />
     )
+    const dialog = openPopover()
 
-    const header = screen.getByText('Rate This Task — Task One').closest('button')
-    // Sticky (not just scrolled-into-view) so the header can't be pushed out of
-    // view by its own body expanding below it, no matter where the teacher had
-    // scrolled TeacherView's <main> before opening this panel.
-    expect(header).toHaveStyle({ position: 'sticky', top: '0px' })
+    fireEvent.keyDown(dialog, { key: 'Escape' })
 
-    fireEvent.click(header)
-    expect(header).toHaveStyle({ position: 'sticky', top: '0px' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    const button = screen.getByRole('button', { name: /Rate this task/ })
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    expect(button).toHaveFocus()
+  })
+
+  it('closes on an outside click but not on a click inside the popover', () => {
+    render(
+      <div>
+        <p>Elsewhere</p>
+        <TaskRatingPanel taskId={1} taskTitle="Task One" existingRating={null} onSave={vi.fn()} />
+      </div>
+    )
+    openPopover()
+
+    fireEvent.mouseDown(screen.getByLabelText('What worked well?'))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+    fireEvent.mouseDown(screen.getByText('Elsewhere'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('closes when the teacher moves to another task', () => {
+    const { rerender } = render(
+      <TaskRatingPanel taskId={1} taskTitle="Task One" existingRating={null} onSave={vi.fn()} />
+    )
+    openPopover()
+
+    rerender(
+      <TaskRatingPanel taskId={2} taskTitle="Task Two" existingRating={null} onSave={vi.fn()} />
+    )
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('does not wipe unsaved edits when existingRating is re-fetched with unchanged content', () => {
@@ -72,7 +127,7 @@ describe('TaskRatingPanel', () => {
         onSave={vi.fn()}
       />
     )
-    fireEvent.click(screen.getByText(/Task One/))
+    openPopover()
     fireEvent.change(screen.getByLabelText('What worked well?'), {
       target: { value: 'Still typing this' },
     })
@@ -101,14 +156,14 @@ describe('TaskRatingPanel', () => {
         onSave={vi.fn()}
       />
     )
-    fireEvent.click(screen.getByText(/Task One/))
+    openPopover()
     expect(screen.getByRole('radio', { name: '5 stars', checked: true })).toBeInTheDocument()
 
     rerender(
       <TaskRatingPanel taskId={2} taskTitle="Task Two" existingRating={null} onSave={vi.fn()} />
     )
-    // Panel stays expanded across the task switch (same component instance); the
-    // form fields reset to the new task's (empty) rating via the taskId effect.
+    // The task switch closes the popover; reopening shows the new task's (empty) rating.
+    openPopover()
     expect(screen.getByRole('radio', { name: '5 stars', checked: false })).toBeInTheDocument()
   })
 })
