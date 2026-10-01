@@ -89,6 +89,21 @@ Entries written before 2026-09-29 are not tagged.
 - Affects: all (session reports) · Existing lessons: no changes needed · Resolves:
   authoring-requests/2026-10-01-session-report-per-student-join-time-and-task-at-join.md
 
+### `code_structure` check: Python nesting (`nested_in`, `directly_nested_in`, `not_nested_in`)
+
+- New Python check `type: code_structure` with `operator` (`nested_in` | `directly_nested_in` |
+  `not_nested_in`, required), `inner` and `outer`. It reads indentation, which `code` checks
+  can't see, so a nested `if` no longer passes the same checks as two sibling `if`s or an `elif`
+  lined up with the outer `if`.
+- `inner` / `outer` are whole lines, matched ignoring spacing and case, with `*` wildcards. Every
+  operator fails when no line matches `inner`.
+- Needs no run: works in submit mode, in feedback checks (including `show: on_idle`), in
+  `code_arrange` tasks with `moduleType: python`, and in `lessons test-checks`. The Builder offers
+  it as Code → Structure (nesting) on Python tasks.
+- See [python.md](python.md#code-structure-checks-code_structure).
+- Affects: python, code_arrange · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-09-30-python-check-that-can-see-indentation-nesting-depth.md
+
 ### Line hints: a trailing marker gets its own empty line
 
 - A line-hint marker with nothing after it (`#> …` / `<!--> … -->` as the last line of the code,

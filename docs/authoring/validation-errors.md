@@ -227,6 +227,9 @@ message says `feedback check` where it would say `check` (that part is shown as 
 | `Task … has a dictionary key-value … but no key` | `variable_dict_key_value` has no `key`. | Add `key:`. |
 | `Task … has an array N-th item … but no valid index` | `variable_array_nth_item` has no (or a negative) `index`. | Add a 0-based `index`. |
 | `Task … has a … enabled but no check value` | A Python, HTML or Arcade check that compares against a value has no `value`. | Add `value:`. |
+| `Task … has a code_structure …, but code_structure checks only work in Python tasks` | A `code_structure` check is on an HTML, Turtle, Arcade or other non-Python task (including a `code_arrange` task with `moduleType: html`). It reads Python indentation. | Use `code` checks there, or move the check to a Python task. |
+| `Task … has a code_structure … with operator "…" — use one of: …` | `operator` is missing or unknown. There is no default. | Set `nested_in`, `directly_nested_in` or `not_nested_in` (see `python.md` Code Structure Checks). |
+| `Task … has a code_structure … but no inner line` / `Task … has a code_structure … but no outer line` | `inner` or `outer` is missing or blank. | Add the line that should be nested (`inner`) and the line that opens its block (`outer`), e.g. `inner: "if has_water_bottle:"`, `outer: "if has_backpack:"`. |
 | `Task … has a Scratch … but no block opcode` | `block_used`, `block_run` or `block_count` has no `opcode`. | Add `opcode:` (see `scratch.md` for opcodes). |
 | `Task … has a Scratch block-order … but no block sequence` / `Task … has a Scratch block-order … with an empty block opcode` | `blocks_in_order` has no `sequence`, or an entry has no opcode. | List the opcodes in order. |
 | `Task … has a Scratch sprite-property … with missing property, operator, or value` | A `sprite_property` or `sprite_property_delta` check is incomplete. | Set `property`, `operator` and `value`. |

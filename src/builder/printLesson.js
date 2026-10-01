@@ -81,6 +81,8 @@ function renderCheckHtml(check) {
       if (c.spriteName) parts.push(`sprite: ${esc(c.spriteName)}`)
       if (c.property) parts.push(`property: ${esc(c.property)}`)
       if (c.operator) parts.push(`operator: ${esc(c.operator)}`)
+      if (c.inner) parts.push(`inner: <code>${esc(c.inner)}</code>`)
+      if (c.outer) parts.push(`outer: <code>${esc(c.outer)}</code>`)
       if (c.opcode) parts.push(`opcode: <code>${esc(c.opcode)}</code>`)
       if (c.variableName) parts.push(`variable: ${esc(c.variableName)}`)
       return `<div class="check-item">${parts.join(' — ')}</div>`

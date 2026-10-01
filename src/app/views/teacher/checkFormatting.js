@@ -16,6 +16,15 @@ export function formatCheckValue(c) {
   if (c.type === 'code_equals') return `code equals "${c.value}"`
   if (c.type === 'code_not_equals') return `code does not equal "${c.value}"`
   if (c.type === 'code_matches_regex') return `code matches /${c.value}/`
+  if (c.type === 'code_structure') {
+    const relation =
+      c.operator === 'directly_nested_in'
+        ? 'is directly inside'
+        : c.operator === 'not_nested_in'
+          ? 'is not inside'
+          : 'is inside'
+    return `"${c.inner}" ${relation} "${c.outer}"`
+  }
   // Variable
   if (c.type === 'variable_exists') return `variable "${c.name}" exists`
   if (c.type === 'variable_type') return `variable "${c.name}" is ${c.value}`
