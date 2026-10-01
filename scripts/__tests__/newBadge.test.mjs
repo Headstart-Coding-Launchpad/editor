@@ -119,12 +119,12 @@ describe('planNewBadge', () => {
     // Registered after the last rule-backed badge, before the tutor-only ones.
     const pure = byPath['src/badges/registry.pure.js']
     expect(pure).toContain("import tidyCoder from './definitions/tidy_coder.js'")
-    expect(pure).toMatch(/readyToCode,\n {2}tidyCoder,\n {2}problemSolver,/)
+    expect(pure).toMatch(/earlyBird,\n {2}tidyCoder,\n {2}problemSolver,/)
     expect(byPath['docs/authoring/badges.md']).toMatch(
       /\| 🧹 Tidy Coder \| `tidy_coder` \| TODO\(new-badge\)[^\n]*\n\| 🧠 Problem Solver/
     )
     expect(byPath['docs/CODEBASE_MAP.md']).toContain(
-      '`ready_to_code.js`, `tidy_coder.js`, and tutor-only'
+      '`early_bird.js`, `tidy_coder.js`, and tutor-only'
     )
     expect(plan.checklist.join('\n')).toMatch(/real browser/)
   })
@@ -141,8 +141,8 @@ describe('planNewBadge', () => {
     const definition = byPath['src/badges/definitions/team_player.js']
     expect(definition).toContain('blurb: "Helped the team\'s project.",')
     expect(definition).not.toContain('rule')
-    expect(byPath['src/badges/registry.pure.js']).toMatch(/helpfulCoder,\n {2}teamPlayer,\n\]/)
-    expect(byPath['docs/CODEBASE_MAP.md']).toContain('`helpful_coder.js`, `team_player.js`) |')
+    expect(byPath['src/badges/registry.pure.js']).toMatch(/designMaster,\n {2}teamPlayer,\n\]/)
+    expect(byPath['docs/CODEBASE_MAP.md']).toContain('`design_master.js`, `team_player.js`) |')
     expect(byPath['docs/authoring/badges.md']).toContain(
       '| 🫶 Team Player | `team_player` | Tutor-only: never suggested | – |'
     )

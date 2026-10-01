@@ -139,6 +139,10 @@
                 ".validate": "newData.hasChildren(['firstUsedAt', 'context'])"
               }
             },
+            "autocomplete": {
+              ".write": "auth != null && auth.uid === $anonymousId && !data.exists()",
+              ".validate": "newData.hasChildren(['firstUsedAt', 'context']) && newData.child('context').val().matches(/^(task|sandbox|personal)$/)"
+            },
             "firstEdits": {
               "$taskId": {
                 ".write": "auth != null && auth.uid === $anonymousId && !data.exists()",

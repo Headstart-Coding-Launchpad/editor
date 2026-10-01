@@ -23,6 +23,13 @@ import focusedCoder from './definitions/focused_coder.js'
 import projectExplorer from './definitions/project_explorer.js'
 import knowledgeBuilder from './definitions/knowledge_builder.js'
 import helpfulCoder from './definitions/helpful_coder.js'
+import codeArranger from './definitions/code_arranger.js'
+import autocompleteAce from './definitions/autocomplete_ace.js'
+import earlyBird from './definitions/early_bird.js'
+import greatQuestion from './definitions/great_question.js'
+import sharpShooter from './definitions/sharp_shooter.js'
+import wordWizard from './definitions/word_wizard.js'
+import designMaster from './definitions/design_master.js'
 
 const BADGES = [
   bugHunter,
@@ -35,6 +42,9 @@ const BADGES = [
   resourcefulCoder,
   keyboardWizard,
   readyToCode,
+  codeArranger,
+  autocompleteAce,
+  earlyBird,
   problemSolver,
   experimenter,
   creativeCoder,
@@ -43,6 +53,10 @@ const BADGES = [
   projectExplorer,
   knowledgeBuilder,
   helpfulCoder,
+  greatQuestion,
+  sharpShooter,
+  wordWizard,
+  designMaster,
 ]
 
 const BY_ID = new Map()
@@ -85,6 +99,17 @@ export function getBadgesByPattern() {
   for (const badge of BADGES) {
     for (const pattern of badge.rule?.patterns ?? []) {
       map[pattern] = [...(map[pattern] ?? []), badge.id]
+    }
+  }
+  return map
+}
+
+/** Task format → the badges whose rule triggers on it ('code_arrange' → 🧩 Code Arranger). */
+export function getBadgesByFormat() {
+  const map = {}
+  for (const badge of BADGES) {
+    for (const format of badge.rule?.formats ?? []) {
+      map[format] = [...(map[format] ?? []), badge.id]
     }
   }
   return map

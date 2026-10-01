@@ -494,6 +494,62 @@ describe('signal badges', () => {
   })
 })
 
+describe('🐦 Early Bird', () => {
+  const MINUTE = 60 * 1000
+  const START = 100 * MINUTE
+  const withJoins = (startedAt, joins) => {
+    const session = makeSession({ startedAt })
+    for (const [id, at] of Object.entries(joins)) session.students[id].firstJoinedAt = at
+    return session
+  }
+  const earlyBird = (session, lesson) =>
+    suggest(session, { badgeIds: ['early_bird'], ...(lesson ? { lesson } : {}) })
+
+  it('suggests students who joined at least five minutes before Start, with no task', () => {
+    const session = withJoins(START, { alex: START - 6 * MINUTE, sam: START - 4 * MINUTE })
+    const found = earlyBird(session)
+    expect(pairs(found)).toEqual([['alex', null]])
+    expect(found[0].reason).toBe('Joined 6 min before the lesson started')
+  })
+
+  it('waits for Start, and ignores a join after Start', () => {
+    expect(earlyBird(withJoins(null, { alex: START - 10 * MINUTE }))).toEqual([])
+    expect(earlyBird(withJoins(START, { alex: START + MINUTE }))).toEqual([])
+  })
+
+  it('follows the lesson badgeOptions', () => {
+    const session = withJoins(START, { sam: START - 3 * MINUTE })
+    const lesson = { ...LESSON, badgeOptions: { earlyBirdMinutes: 2 } }
+    expect(pairs(earlyBird(session, lesson))).toEqual([['sam', null]])
+  })
+
+  it('re-evaluates when Start is pressed', () => {
+    const before = withJoins(null, { alex: 1 })
+    const after = withJoins(START, { alex: 1 })
+    expect(badgeEvaluationInputKey(after)).not.toBe(badgeEvaluationInputKey(before))
+  })
+})
+
+describe('✨ Autocomplete Ace', () => {
+  const ace = (autocomplete) =>
+    suggest(makeSession({ roster: ['alex'], studentSignals: { alex: { autocomplete } } }), {
+      badgeIds: ['autocomplete_ace'],
+    })
+
+  it('maps the signal to its task, or no task in a sandbox', () => {
+    const [onTask] = ace({ firstUsedAt: 10, context: 'task', taskId: 4 })
+    expect(onTask).toMatchObject({ studentId: 'alex', taskId: 4, context: 'task' })
+    expect(onTask.reason).toBe('Used autocomplete in “Count up”')
+    const [inSandbox] = ace({ firstUsedAt: 10, context: 'personal', taskId: null })
+    expect(inSandbox).toMatchObject({ taskId: null, context: 'personal' })
+    expect(inSandbox.reason).toBe('Used autocomplete')
+  })
+
+  it('drops a task signal whose task has gone', () => {
+    expect(ace({ firstUsedAt: 10, context: 'task', taskId: 99 })).toEqual([])
+  })
+})
+
 describe('🎯 Quiz Master', () => {
   const lesson = { ...LESSON, badgeOptions: { quizMasterThreshold: 0.6 } }
   // Right first time on two of the three graded quizzes; the third not attempted.

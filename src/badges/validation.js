@@ -27,6 +27,8 @@ export function validateBadgeOptions(lesson, errors, warnings) {
     if (spec.kind === 'fraction') errors.push(`badgeOptions.${key} must be a number from 0 to 1`)
     else if (spec.kind === 'count') {
       errors.push(`badgeOptions.${key} must be a whole number of at least 1`)
+    } else if (spec.kind === 'minutes') {
+      errors.push(`badgeOptions.${key} must be a positive number of minutes`)
     } else errors.push(`badgeOptions.${key} must be a positive number of seconds`)
   }
 }

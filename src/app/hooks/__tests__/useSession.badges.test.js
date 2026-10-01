@@ -396,6 +396,8 @@ describe('student signals', () => {
       await result.current.recordFirstEditSignal(STUDENT, 3, 9000)
       await result.current.recordShortcutSignal(STUDENT, 'run', { context: 'task', taskId: 3 })
       await result.current.recordShortcutSignal(STUDENT, 'run', { context: 'sandbox' })
+      await result.current.recordAutocompleteSignal(STUDENT, { context: 'personal' })
+      await result.current.recordAutocompleteSignal(STUDENT, { context: 'task', taskId: 3 })
       await result.current.recordCompleteShownSignal(STUDENT, 3, 'preview')
       await result.current.recordCompleteShownSignal(STUDENT, 3, 'show')
     })
@@ -406,6 +408,12 @@ describe('student signals', () => {
       [
         { path: `${signals}/shortcuts/run` },
         { firstUsedAt: SERVER_TIME, context: 'task', taskId: 3 },
+      ],
+    ])
+    expect(setCallsTo(`${signals}/autocomplete`)).toEqual([
+      [
+        { path: `${signals}/autocomplete` },
+        { firstUsedAt: SERVER_TIME, context: 'personal', taskId: null },
       ],
     ])
     expect(setCallsTo(`${signals}/completeShown/3`)).toEqual([

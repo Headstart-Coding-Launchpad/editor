@@ -47,6 +47,7 @@ storageAssets:                 # optional — metadata for Firebase Storage file
 badgeOptions:                 # optional — tune the live badge rules (docs/authoring/badges.md)
   quizMasterThreshold: 0.8    # default 0.8
   readyToCodeSeconds: 10      # default 10
+  earlyBirdMinutes: 5         # default 5
 
 # Optional named workspace instances. See “Composed modules” below.
 modules: []
@@ -71,7 +72,7 @@ tasks: []                     # required — ordered task list (see below)
 | `assetsPath` | No | string | Base URL path for asset resolution. |
 | `assets` | No | string array | Files shown in the AssetBrowser. |
 | `storageAssets` | No | array | Optional metadata for files stored at `lessons/{lessonId}/assets/`; the Storage folder is the asset inventory. |
-| `badgeOptions` | No | object | Tunes the built-in live badge rules: `quizMasterThreshold` (0–1), `quizMasterMinQuizzes`, `persistenceMinFails`, `readyToCodeSeconds`. See [badges.md](badges.md#badgeoptions). |
+| `badgeOptions` | No | object | Tunes the built-in live badge rules: `quizMasterThreshold` (0–1), `quizMasterMinQuizzes`, `persistenceMinFails`, `readyToCodeSeconds`, `earlyBirdMinutes`. See [badges.md](badges.md#badgeoptions). |
 | `modules` | No | array | Named workspace instances for a composed lesson. Use when tasks need a shared named workspace, especially when two instances use the same `moduleType`. See **Composed modules**. |
 | `tasks` | Yes | array | Ordered task list. May contain group objects. |
 

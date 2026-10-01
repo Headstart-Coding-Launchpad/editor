@@ -4,7 +4,11 @@
 import { flattenTasks, getProgressItems } from '../shared/taskUtils.js'
 import { getTaskModuleType, isCodeTask } from '../shared/composedLesson.js'
 import { getTaskActivityPatternId } from '../shared/taskActivity.js'
-import { getQuizActivityDefinitions, getTaskActivity } from '../activities/registry.pure.js'
+import {
+  getQuizActivityDefinitions,
+  getTaskActivity,
+  getTaskFormat,
+} from '../activities/registry.pure.js'
 
 // Graded quizzes for 🎯 Quiz Master: the quiz activities' own `isGraded` (multiple choice, match,
 // fill in the blanks, and short answer with a check; never a confidence check).
@@ -26,6 +30,7 @@ function hintList(task, key) {
  * @property {number} order position in the flattened lesson (0-based)
  * @property {string} title the task title, or "Task n"
  * @property {string|null} pattern the taskActivity pattern id (src/shared/taskActivity.js)
+ * @property {string} format the Builder task format (getTaskFormat: 'code', 'code_arrange', …)
  * @property {string|null} moduleType the task's effective module type
  * @property {boolean} isCode a code or code_arrange task (not information, quiz or activity)
  * @property {boolean} isGradedQuiz
@@ -44,6 +49,7 @@ export function buildBadgeLessonIndex(lesson) {
     order,
     title: String(task.title ?? '').trim() || `Task ${order + 1}`,
     pattern: getTaskActivityPatternId(task),
+    format: getTaskFormat(task),
     moduleType: getTaskModuleType(lesson, task),
     isCode: isCodeTask(task),
     isGradedQuiz: isGradedQuizTask(task),
@@ -71,9 +77,13 @@ export function taskAllowsBadge(info, badgeId) {
   return !!info && !info.suppress.includes(badgeId)
 }
 
-// Whether this task is one of the badge's trigger tasks: its pattern is one of `patterns`, or
-// badgeHints.suggest names the badge, and badgeHints.suppress doesn't.
-export function taskTriggersBadge(info, badgeId, patterns) {
+// Whether this task is one of the badge's trigger tasks: its pattern is one of `patterns` (or its
+// format one of `formats`), or badgeHints.suggest names the badge, and badgeHints.suppress doesn't.
+export function taskTriggersBadge(info, badgeId, patterns, formats = []) {
   if (!taskAllowsBadge(info, badgeId)) return false
-  return info.suggest.includes(badgeId) || (info.pattern != null && patterns.includes(info.pattern))
+  return (
+    info.suggest.includes(badgeId) ||
+    (info.pattern != null && patterns.includes(info.pattern)) ||
+    formats.includes(info.format)
+  )
 }

@@ -5,6 +5,7 @@ import { EditorView } from '@codemirror/view'
 import {
   CodeEditor,
   errorLineField,
+  isAutocompletePick,
   isUserEditUpdate,
   minimalReplace,
   setErrorLine,
@@ -280,6 +281,20 @@ describe('CodeEditor teacher highlights', () => {
     expect(view.state.doc.toString()).toBe(`# hi\n${code}`)
     expect(positions()).toEqual([['h1', 12, 17]])
     expect(onHighlightDismiss).not.toHaveBeenCalled()
+  })
+})
+
+describe('isAutocompletePick (✨ Autocomplete Ace)', () => {
+  function updateFor(spec) {
+    const state = EditorState.create({ doc: 'pri' })
+    return { docChanged: true, transactions: [state.update(spec)] }
+  }
+
+  it('fires only for an accepted completion', () => {
+    const insert = { changes: { from: 0, to: 3, insert: 'print' } }
+    expect(isAutocompletePick(updateFor({ ...insert, userEvent: 'input.complete' }))).toBe(true)
+    expect(isAutocompletePick(updateFor({ ...insert, userEvent: 'input.type' }))).toBe(false)
+    expect(isAutocompletePick(updateFor(insert))).toBe(false)
   })
 })
 

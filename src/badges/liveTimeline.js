@@ -14,7 +14,9 @@ import { filterTasksByMode, flattenTasks } from '../shared/taskUtils.js'
 import { getStageRole } from '../shared/taskStages.js'
 import {
   attemptEvent,
+  autocompleteEvent,
   completeShownEvent,
+  earlyJoinEvent,
   firstEditEvent,
   overrideEvent,
   pasteEvent,
@@ -187,6 +189,22 @@ export function buildStudentTimeline({ session, studentId, tasks, topicTitles = 
     events.push(shortcutEvent({ context, shortcutId, taskId, at: used.firstUsedAt }))
   }
 
+  if (signals.autocomplete) {
+    const used = signals.autocomplete
+    const context = TIMELINE_CONTEXTS.includes(used.context) ? used.context : 'task'
+    const { keep, taskId } = signalTask(context, used.taskId ?? null)
+    if (keep) events.push(autocompleteEvent({ context, taskId, at: used.firstUsedAt }))
+  }
+
+  // Joined before the tutor pressed Start (only once the session has started).
+  const startedAt = Number(session?.startedAt)
+  const firstJoinedAt = Number(session?.students?.[studentId]?.firstJoinedAt)
+  if (session?.startedAt != null && Number.isFinite(startedAt) && Number.isFinite(firstJoinedAt)) {
+    if (firstJoinedAt > 0 && firstJoinedAt < startedAt) {
+      events.push(earlyJoinEvent({ leadMs: startedAt - firstJoinedAt, at: firstJoinedAt }))
+    }
+  }
+
   for (const kind of SANDBOX_SIGNAL_KINDS) {
     const context = contextForSandboxKind(kind)
     for (const run of values(signals.sandbox?.[kind]?.runsLog)) {
@@ -252,6 +270,8 @@ export function studentTimelineInputKey(session, studentId) {
       session?.overrideLog?.[studentId] ?? null,
       session?.students?.[studentId]?.pasteLog ?? null,
       session?.studentSignals?.[studentId] ?? null,
+      session?.students?.[studentId]?.firstJoinedAt ?? null,
+      session?.startedAt ?? null,
     ],
     keyReplacer
   )

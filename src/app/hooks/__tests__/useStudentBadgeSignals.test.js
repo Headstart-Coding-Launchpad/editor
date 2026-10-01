@@ -11,6 +11,7 @@ const ID = 'student-1'
 const WRITER_NAMES = [
   'recordTopicOpenSignal',
   'recordShortcutSignal',
+  'recordAutocompleteSignal',
   'recordFirstEditSignal',
   'recordCompleteShownSignal',
   'recordSandboxRunSignal',
@@ -60,6 +61,7 @@ describe('gating', () => {
     act(() => {
       result.current.reportTopicOpen('loops')
       result.current.reportShortcut('run')
+      result.current.reportAutocomplete()
       result.current.reportUserEdit('code-editor')
       result.current.reportCompleteShown(1, 'show')
       result.current.reportSandboxRun({ error: true, submission: 'x' })
@@ -227,6 +229,18 @@ describe('Keyboard Wizard on the work area', () => {
       presenter.result.current.handleWorkAreaKeyDown(keyOn(ed, { key: 's', ctrlKey: true }))
     )
     expect(presenter.writers.recordShortcutSignal).not.toHaveBeenCalled()
+  })
+
+  it('reports an accepted autocomplete with its context and task', () => {
+    const { result, writers } = render({ currentTaskId: 3 })
+    act(() => result.current.reportAutocomplete())
+    expect(writers.recordAutocompleteSignal).toHaveBeenCalledWith(ID, {
+      context: 'task',
+      taskId: 3,
+    })
+    const preview = render({ previewMode: true })
+    act(() => preview.result.current.reportAutocomplete())
+    expect(preview.writers.recordAutocompleteSignal).not.toHaveBeenCalled()
   })
 })
 

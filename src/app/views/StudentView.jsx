@@ -126,6 +126,7 @@ export default function StudentView({
     recordStudentPaste,
     recordTopicOpenSignal,
     recordShortcutSignal,
+    recordAutocompleteSignal,
     recordFirstEditSignal,
     recordCompleteShownSignal,
     recordSandboxRunSignal,
@@ -276,6 +277,7 @@ export default function StudentView({
     badgeSignalWriters: {
       recordTopicOpenSignal,
       recordShortcutSignal,
+      recordAutocompleteSignal,
       recordFirstEditSignal,
       recordCompleteShownSignal,
       recordSandboxRunSignal,
@@ -288,9 +290,14 @@ export default function StudentView({
   const badgeSignalsContextValue = useMemo(
     () => ({
       reportUserEdit: cs.badgeSignals.reportUserEdit,
+      reportAutocomplete: cs.badgeSignals.reportAutocomplete,
       reportTopicOpen: cs.badgeSignals.reportTopicOpen,
     }),
-    [cs.badgeSignals.reportUserEdit, cs.badgeSignals.reportTopicOpen]
+    [
+      cs.badgeSignals.reportUserEdit,
+      cs.badgeSignals.reportAutocomplete,
+      cs.badgeSignals.reportTopicOpen,
+    ]
   )
 
   // Wire phase callbacks to latest code-state functions each render

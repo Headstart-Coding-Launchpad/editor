@@ -189,6 +189,7 @@ describe('student signals', () => {
 
   it.each([
     ['shortcuts/run', { firstUsedAt: 1, context: 'task', taskId: 3 }],
+    ['autocomplete', { firstUsedAt: 1, context: 'personal', taskId: null }],
     ['firstEdits/3', { elapsedMs: 4200 }],
     ['completeShown/3', { at: 1, via: 'show' }],
     ['topics/task/3/loops', { openedAt: 1, source: 'student' }],
@@ -231,6 +232,12 @@ describe('student signals', () => {
     await assertSucceeds(ref(as.student, path).set({ ...counters, runs: 2 }))
     await assertFails(ref(as.otherStudent, path).set(counters))
     await assertFails(ref(as.student, `${signals(STUDENT_ID)}/sandbox/other`).set(counters))
+  })
+
+  it('rejects an autocomplete signal with an unknown context', async () => {
+    await assertFails(
+      ref(as.student, `${signals(STUDENT_ID)}/autocomplete`).set({ firstUsedAt: 1, context: 'x' })
+    )
   })
 
   it('does not let a student write anywhere else under their signals', async () => {

@@ -134,6 +134,7 @@ function describeBadges() {
       autoAwardable: badge.autoAwardable,
       rule: badge.ruleText,
       ...(badge.rule?.patterns ? { patterns: [...badge.rule.patterns] } : {}),
+      ...(badge.rule?.formats?.length ? { formats: [...badge.rule.formats] } : {}),
       badgeHints: badge.rule?.hintable ? ['suggest', 'suppress'] : badge.rule ? ['suppress'] : [],
     })),
     badgeOptions: Object.fromEntries(

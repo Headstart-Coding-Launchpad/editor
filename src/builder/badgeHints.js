@@ -1,9 +1,11 @@
 // Builder helpers for a task's optional `badgeHints` (docs/authoring/badges.md), used by the task
 // editor's Badge hints field. Pure.
-import { getBadgesByPattern } from '../badges/registry'
+import { getTaskFormat } from '../activities/registry.pure.js'
+import { getBadgesByFormat, getBadgesByPattern } from '../badges/registry'
 import { getTaskActivityPatternId } from '../shared/taskActivity'
 
 const PATTERN_BADGES = getBadgesByPattern()
+const FORMAT_BADGES = getBadgesByFormat()
 
 export function listBadgeHints(hints, key) {
   const list = hints?.[key]
@@ -30,8 +32,13 @@ export function toggleBadgeHint(hints, key, badgeId) {
   return Object.keys(out).length ? out : undefined
 }
 
-/** The badges a task's taskActivity pattern can trigger by itself (docs/authoring/badges.md). */
+/**
+ * The badges a task's taskActivity pattern (or its task format, e.g. an Arrange task) can trigger
+ * by itself (docs/authoring/badges.md).
+ */
 export function patternBadgesFor(task) {
   const pattern = getTaskActivityPatternId(task)
-  return pattern ? (PATTERN_BADGES[pattern] ?? []) : []
+  const byPattern = pattern ? (PATTERN_BADGES[pattern] ?? []) : []
+  const byFormat = FORMAT_BADGES[getTaskFormat(task)] ?? []
+  return [...new Set([...byPattern, ...byFormat])]
 }

@@ -61,6 +61,7 @@ export function workAreaShortcutFor(event) {
  * Returns stable reporters (safe in effects and long-lived listeners):
  * - reportTopicOpen(topicId, { source = 'student', via })
  * - reportShortcut(shortcutId)
+ * - reportAutocomplete(): an accepted code-editor autocomplete suggestion (first use only)
  * - handleWorkAreaKeyDown(event): a keydown (capture phase) on the lesson work area
  * - reportUserEdit(surface): a real edit (CodeEditor onUserEdit, a Blockly user event, a
  *   Filesystem / Desktop / Arcade design change)
@@ -160,6 +161,19 @@ export function useStudentBadgeSignals({
     []
   )
 
+  const reportAutocomplete = useCallback(
+    () => {
+      const s = stateRef.current
+      if (!s.enabled) return
+      writersRef.current.recordAutocompleteSignal?.(s.anonymousId, {
+        context: s.context,
+        taskId: s.currentTaskId ?? null,
+      })
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  )
+
   const handleWorkAreaKeyDown = useCallback(
     (event) => {
       if (!stateRef.current.enabled) return
@@ -227,6 +241,7 @@ export function useStudentBadgeSignals({
       context,
       reportTopicOpen,
       reportShortcut,
+      reportAutocomplete,
       handleWorkAreaKeyDown,
       reportUserEdit,
       reportCompleteShown,
@@ -238,6 +253,7 @@ export function useStudentBadgeSignals({
       context,
       reportTopicOpen,
       reportShortcut,
+      reportAutocomplete,
       handleWorkAreaKeyDown,
       reportUserEdit,
       reportCompleteShown,

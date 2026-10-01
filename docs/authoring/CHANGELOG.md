@@ -39,6 +39,19 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-01
 
+### Seven new live badges; `earlyBirdMinutes`; Code Arranger hints
+
+- New rule-backed badges: 🧩 **Code Arranger** (`code_arranger`, auto-awardable: first in class
+  right first time on any Arrange task, whatever its `taskActivity`), ✨ **Autocomplete Ace**
+  (`autocomplete_ace`: accepted a code-editor autocomplete suggestion) and 🐦 **Early Bird**
+  (`early_bird`: joined at least `earlyBirdMinutes` before the tutor pressed Start).
+- New tutor-only badges: 🙋 Great Question, 🏹 Sharp Shooter, ✍️ Word Wizard, 🎨 Design Master.
+- New `badgeOptions.earlyBirdMinutes` (default `5`, a number of minutes above 0).
+- `badgeHints.suggest` can now name `code_arranger` (to treat a non-Arrange task as its trigger),
+  and `badgeHints.suppress` can name `code_arranger` or `autocomplete_ace` (Early Bird isn't tied
+  to a task, so suppressing it does nothing). See [badges.md](badges.md).
+- Affects: all · Existing lessons: no changes needed · Resolves: none
+
 ### Session report field reference
 
 - New [session-reports.md](session-reports.md): every field a session report's YAML can contain

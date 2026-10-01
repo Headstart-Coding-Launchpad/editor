@@ -1,7 +1,7 @@
 // Lesson-level tuning for the built-in badge rules: the optional `badgeOptions` envelope field
 // (docs/authoring/badges.md). Lessons define no badges; they can only tune these numbers. Pure.
 
-// kind: 'fraction' (0–1), 'count' (whole number ≥ 1) or 'seconds' (a positive number).
+// kind: 'fraction' (0–1), 'count' (whole number ≥ 1), 'seconds' or 'minutes' (a positive number).
 export const BADGE_OPTION_SPECS = Object.freeze({
   quizMasterThreshold: Object.freeze({
     kind: 'fraction',
@@ -22,6 +22,12 @@ export const BADGE_OPTION_SPECS = Object.freeze({
     kind: 'seconds',
     default: 10,
     description: 'Seconds from a code task opening to the first real edit for 🚀 Ready to Code.',
+  }),
+  earlyBirdMinutes: Object.freeze({
+    kind: 'minutes',
+    default: 5,
+    description:
+      'Minutes before the tutor presses Start that a student must join for 🐦 Early Bird.',
   }),
 })
 

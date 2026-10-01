@@ -272,7 +272,10 @@ Definitions used below:
 | 📚 Resourceful Coder | A `topic_open` with `source: student` (library button, topic link or topic card), in a task or a sandbox | "Opened *Loops* in the Topic Library" | – |
 | ⌨️ Keyboard Wizard | A `shortcut` from the [list](#keyboard-wizard-shortcuts), in a task or a sandbox | "Used *Ctrl+Enter*" | – |
 | 🚀 Ready to Code | On a code task (any module), `first_edit.elapsedMs` ≤ `readyToCodeSeconds` × 1000 | "Started 6 s into *Task 2*" | – |
-| 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🧘 Focused Coder · 🧭 Project Explorer · 📈 Knowledge Builder · 🤝 Helpful Coder | Tutor-only | – | – |
+| 🧩 Code Arranger *(added 2026-10-01)* | First in class among students whose **first** attempt at an Arrange task (format `code_arrange`, any `taskActivity`) was a real pass | "First to arrange *Task 4*, first try" | ✅ |
+| ✨ Autocomplete Ace *(added 2026-10-01)* | An `autocomplete` event (first accepted code-editor autocomplete suggestion), in a task or a sandbox | "Used autocomplete in *Task 2*" | – |
+| 🐦 Early Bird *(added 2026-10-01)* | An `early_join` event with `leadMs` ≥ `earlyBirdMinutes` × 60 000: first joined before the tutor pressed Start. Two devices' clocks, so never auto-awarded | "Joined 6 min before the lesson started" | – |
+| 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🧘 Focused Coder · 🧭 Project Explorer · 📈 Knowledge Builder · 🤝 Helpful Coder · 🙋 Great Question · 🏹 Sharp Shooter · ✍️ Word Wizard · 🎨 Design Master | Tutor-only | – | – |
 
 - **Manual picker.** Every badge in this table is in the tutor's manual picker. The rules only decide
   suggestions.

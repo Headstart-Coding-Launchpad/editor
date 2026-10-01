@@ -53,6 +53,7 @@ describe('BadgeHintsField', () => {
     )
     expect(screen.getByTestId('badge-hints-pattern')).toHaveTextContent('no pattern badge')
     expect(patternBadgesFor({ taskActivity: 'Code Task, Debug Code Task' })).toEqual(['bug_hunter'])
+    expect(patternBadgesFor({ taskType: 'code_arrange' })).toEqual(['code_arranger'])
   })
 
   it('edits suggest and suppress, and round-trips through export, validation and YAML', async () => {

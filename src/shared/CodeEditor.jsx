@@ -37,6 +37,11 @@ export function isUserEditUpdate(update) {
   )
 }
 
+// The user accepted an autocomplete suggestion (CodeMirror tags the insert 'input.complete').
+export function isAutocompletePick(update) {
+  return !!update?.transactions?.some((tr) => tr.isUserEvent('input.complete'))
+}
+
 const setRemoteSelection = StateEffect.define()
 
 class RemoteCursorWidget extends WidgetType {
@@ -323,6 +328,8 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
   const badgeSignals = useContext(BadgeSignalsContext)
   const onUserEditRef = useRef(null)
   onUserEditRef.current = onUserEdit ?? badgeSignals?.reportUserEdit ?? null
+  const onAutocompleteRef = useRef(null)
+  onAutocompleteRef.current = badgeSignals?.reportAutocomplete ?? null
   const lineHintSetsRef = useRef(lineHints)
   lineHintSetsRef.current = lineHints
   // Callers build the sets inline, so compare by content: a new array with the same hints must
@@ -368,6 +375,7 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
             if (update.docChanged) {
               onChangeRef.current?.(update.state.doc.toString())
               if (isUserEditUpdate(update)) onUserEditRef.current?.('editor')
+              if (isAutocompletePick(update)) onAutocompleteRef.current?.()
               for (const id of highlightsClearedByUserEdit(update)) {
                 clearedHighlightIdsRef.current.add(id)
                 onHighlightDismissRef.current?.(id)

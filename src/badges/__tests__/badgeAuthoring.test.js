@@ -29,6 +29,7 @@ describe('badgeOptions validation', () => {
           quizMasterMinQuizzes: 4,
           persistenceMinFails: 1,
           readyToCodeSeconds: 7.5,
+          earlyBirdMinutes: 2,
         },
       })
     )
@@ -44,6 +45,7 @@ describe('badgeOptions validation', () => {
           quizMasterMinQuizzes: 0,
           persistenceMinFails: 1.5,
           readyToCodeSeconds: 0,
+          earlyBirdMinutes: -1,
         },
       })
     )
@@ -52,6 +54,7 @@ describe('badgeOptions validation', () => {
       'badgeOptions.quizMasterMinQuizzes must be a whole number of at least 1',
       'badgeOptions.persistenceMinFails must be a whole number of at least 1',
       'badgeOptions.readyToCodeSeconds must be a positive number of seconds',
+      'badgeOptions.earlyBirdMinutes must be a positive number of minutes',
     ])
   })
 

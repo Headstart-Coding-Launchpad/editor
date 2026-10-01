@@ -10,6 +10,7 @@ export const EXAMPLE_LESSON = Object.freeze({
     { id: 't3', title: 'Fix the loop', taskActivity: 'Code Task, Debug Code Task' },
     { id: 't4', title: 'Count up', taskActivity: 'Code Task' },
     { id: 't5', title: 'Your own greeting', taskActivity: 'Code Task, Challenge (Open-Ended)' },
+    { id: 'a1', title: 'Order the lines', taskType: 'code_arrange' },
     {
       id: 'g-end-quiz',
       type: 'group',

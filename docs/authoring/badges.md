@@ -35,10 +35,16 @@ student per lesson.
 | 📚 Resourceful Coder | `resourceful_coder` | Opened a Topic Library topic themselves (not one the tutor sent), in a task or a sandbox | – |
 | ⌨️ Keyboard Wizard | `keyboard_wizard` | Used a listed shortcut (Ctrl/Cmd+Enter, undo/redo, Ctrl+/, Tab / Shift+Tab in the editor, Delete, Ctrl+F, Ctrl+S, a Desktop app shortcut) | – |
 | 🚀 Ready to Code | `ready_to_code` | On a code task, a real edit within `readyToCodeSeconds` of the task opening | – |
-| 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🧘 Focused Coder · 🧭 Project Explorer · 📈 Knowledge Builder · 🤝 Helpful Coder | `problem_solver`, `experimenter`, `creative_coder`, `comedy_coder`, `focused_coder`, `project_explorer`, `knowledge_builder`, `helpful_coder` | Tutor-only: never suggested | – |
+| 🧩 Code Arranger | `code_arranger` | First in class among students right **first time** on an Arrange task (`code_arrange`, whatever its `taskActivity`) | ✅ |
+| ✨ Autocomplete Ace | `autocomplete_ace` | Accepted a code-editor autocomplete suggestion, in a task or a sandbox | – |
+| 🐦 Early Bird | `early_bird` | First joined at least `earlyBirdMinutes` before the tutor pressed **Start** (suggested once the session starts; not tied to a task) | – |
+| 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🧘 Focused Coder · 🧭 Project Explorer · 📈 Knowledge Builder · 🤝 Helpful Coder · 🙋 Great Question · 🏹 Sharp Shooter · ✍️ Word Wizard · 🎨 Design Master | `problem_solver`, `experimenter`, `creative_coder`, `comedy_coder`, `focused_coder`, `project_explorer`, `knowledge_builder`, `helpful_coder`, `great_question`, `sharp_shooter`, `word_wizard`, `design_master` | Tutor-only: never suggested | – |
 
 "First in class" is decided per task, in the order the tasks were first passed. Each student
 can win it once, and when a tutor dismisses a suggestion nobody else is suggested for that task.
+
+🐦 Early Bird compares two clocks (the student's device when they joined, the tutor's when they
+pressed Start), so it is never auto-awarded. It is judged against the session's latest Start.
 
 ### Quiz groups
 
@@ -57,6 +63,7 @@ The pattern comes from `taskActivity` (see [Task activity patterns](#task-activi
 | `Code Task, Debug Code Task` | 🐛 Bug Hunter (and never 🔧 Code Fixer: fixing the bug *is* the task) |
 | `Code Task, Copy the Code` | 📋 Code Builder |
 | `Quiz: What Is the Error?`, `Quiz: Fix a Common Bug` | 🔍 Code Detective |
+| Any Arrange task (`code_arrange`), by format rather than pattern | 🧩 Code Arranger |
 | `Code Task, Challenge (Open-Ended)` | 🔓 Challenge Solver |
 | Any checked code or Code Arrange task | 🔨 Persistence, 🔧 Code Fixer, 🚀 Ready to Code |
 | Graded quizzes in a group | 🎯 Quiz Master |
@@ -73,16 +80,19 @@ Pattern badges need a `check` on the task: attempts are only recorded for checke
 | 📚 Resourceful Coder | ✅ | ✅ | ✅ | ✅ | ❌ no Topic Library | ✅ | ✅ | ✅ | ✅ |
 | ⌨️ Keyboard Wizard | ✅ editor | ✅ editor | ✅ editor, not the game | ✅ editor, not the preview | ✅ Blockly | ✅ | ✅ | ✅ | – |
 | 🚀 Ready to Code | ✅ | ✅ | ✅ | ✅ | ✅ block moves | ✅ | ✅ | ✅ | – |
+| 🧩 Code Arranger | Arrange tasks, wherever the lesson offers them | | | | | | | | – |
+| ✨ Autocomplete Ace | ✅ editor | ✅ editor | ✅ editor | ✅ editor | ❌ no code editor | – | – | – | – |
+| 🐦 Early Bird | any lesson (not a task) | | | | | | | | |
 
 "–" means the badge has no signal there. The live signals (console errors, topic opens, shortcuts,
-first edits) are recorded from each module's work area; see the plan's PR sequence for when each
+first edits, autocomplete) are recorded from each module's work area; see the plan's PR sequence for when each
 lands.
 
 ## Sandboxes
 
-⌨️ Keyboard Wizard, 📚 Resourceful Coder and the sandbox version of 🔧 Code Fixer count in the
+⌨️ Keyboard Wizard, ✨ Autocomplete Ace, 📚 Resourceful Coder and the sandbox version of 🔧 Code Fixer count in the
 teacher's session sandbox and in a student's personal sandbox. Badges that need a checked task
-(the pattern badges, 🎯, 🔨 and 🚀) don't.
+(the pattern badges, 🧩, 🎯, 🔨 and 🚀) don't.
 
 The session report records the teacher sandbox in full (when the class went in, for how long,
 after which task, the tutor's explainer and pushes, and each student's last sandbox code) as a
@@ -123,6 +133,7 @@ Optional, on the lesson envelope. Leave it out to use the defaults.
 | `quizMasterMinQuizzes` | `3` | a whole number ≥ 1 | 🎯 graded quizzes a group needs |
 | `persistenceMinFails` | `2` | a whole number ≥ 1 | 🔨 different failed submissions before the pass |
 | `readyToCodeSeconds` | `10` | a number > 0 | 🚀 seconds to the first real edit |
+| `earlyBirdMinutes` | `5` | a number > 0 | 🐦 minutes before Start a student must join |
 
 ## badgeHints
 
@@ -130,7 +141,7 @@ Optional, on any task: lists of badge ids.
 
 - `suggest`: treat a real pass on this task as the badge's trigger, for a task whose
   `taskActivity` doesn't say so. Only the pattern badges (`bug_hunter`, `code_builder`,
-  `code_detective`, `challenge_solver`) can be suggested this way.
+  `code_detective`, `challenge_solver`, `code_arranger`) can be suggested this way.
 - `suppress`: never suggest this badge from this task (for example `ready_to_code` on a task that
   opens with a long read, or `code_fixer` on a task that deliberately starts broken without being
   a Debug Code Task).
@@ -173,10 +184,10 @@ Unknown badge ids, other keys, and out-of-range options are validation errors
 ([validation-errors.md](validation-errors.md)).
 
 **In the Builder:** task editor → Authoring metadata → **Badge hints** (every task except
-information tasks). *Also suggest* offers the four pattern badges and *Never suggest* the
+information tasks). *Also suggest* offers the five pattern badges and *Never suggest* the
 rule-backed ones, so only valid ids can be picked; a badge is in one list at most, and clearing
 both lists removes `badgeHints`. A read-only line above them names the badges the task's
-`taskActivity` pattern already triggers. `badgeOptions` is YAML-only.
+`taskActivity` pattern (or, for an Arrange task, its format) already triggers. `badgeOptions` is YAML-only.
 
 ## Task activity patterns
 
@@ -200,7 +211,8 @@ Pattern ids are stable: badges and reports store them, so a renamed pattern gets
 
 Rules read a per-student timeline of events, never Firebase directly
 (`src/badges/timeline.js`): `attempt`, `sandbox_run`, `topic_open`, `reveal`, `complete_shown`,
-`paste`, `override`, `shortcut` and `first_edit`. A new badge that needs a new signal adds an
+`paste`, `override`, `shortcut`, `first_edit`, `early_join` (built from `firstJoinedAt` and the
+session's `startedAt`) and `autocomplete`. A new badge that needs a new signal adds an
 event type there; a new stored field needs its own data-model sign-off.
 
 ## Admin catalogue badges

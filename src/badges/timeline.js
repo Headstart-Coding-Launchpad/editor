@@ -23,6 +23,8 @@ export const TIMELINE_EVENT_TYPES = Object.freeze([
   'override',
   'shortcut',
   'first_edit',
+  'early_join',
+  'autocomplete',
 ])
 
 /**
@@ -125,8 +127,30 @@ export const TIMELINE_EVENT_TYPES = Object.freeze([
  */
 
 /**
+ * The student first joined the session before the tutor pressed Start (`students.{id}.
+ * firstJoinedAt` against the session's `startedAt`). Only built once the session has started.
+ * The two times come from different devices' clocks.
+ * @typedef {object} EarlyJoinEvent
+ * @property {'early_join'} type
+ * @property {'task'} context
+ * @property {null} taskId the lesson as a whole, not a task
+ * @property {number} leadMs how long before Start they joined
+ * @property {number|null} at when they first joined
+ */
+
+/**
+ * The first accepted code-editor autocomplete suggestion (`studentSignals.autocomplete`).
+ * @typedef {object} AutocompleteEvent
+ * @property {'autocomplete'} type
+ * @property {'task'|'sandbox'|'personal'} context
+ * @property {string|number|null} [taskId]
+ * @property {number|null} at
+ */
+
+/**
  * @typedef {AttemptEvent|SandboxRunEvent|TopicOpenEvent|RevealEvent|CompleteShownEvent|
- *   PasteEvent|OverrideEvent|ShortcutEvent|FirstEditEvent} TimelineEvent
+ *   PasteEvent|OverrideEvent|ShortcutEvent|FirstEditEvent|EarlyJoinEvent|AutocompleteEvent}
+ *   TimelineEvent
  */
 
 const time = (value) => (value == null || value === '' ? null : Number(value))
@@ -218,6 +242,16 @@ export function shortcutEvent({ context = 'task', shortcutId, taskId = null, at 
 /** @returns {FirstEditEvent} */
 export function firstEditEvent({ taskId, elapsedMs, at = null }) {
   return { type: 'first_edit', context: 'task', taskId, elapsedMs: Number(elapsedMs), at: time(at) }
+}
+
+/** @returns {EarlyJoinEvent} */
+export function earlyJoinEvent({ leadMs, at = null }) {
+  return { type: 'early_join', context: 'task', taskId: null, leadMs: Number(leadMs), at: time(at) }
+}
+
+/** @returns {AutocompleteEvent} */
+export function autocompleteEvent({ context = 'task', taskId = null, at = null }) {
+  return { type: 'autocomplete', context, taskId, at: time(at) }
 }
 
 /**

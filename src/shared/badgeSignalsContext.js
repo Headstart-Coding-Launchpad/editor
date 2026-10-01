@@ -7,7 +7,8 @@ import { createContext, useContext } from 'react'
 // and reporting is a no-op. The reporters do their own gating: a provider in the presentation
 // window or a preview reports nothing.
 //
-// Value: { reportUserEdit(surface), reportTopicOpen(topicId, { source, via }) } or null.
+// Value: { reportUserEdit(surface), reportAutocomplete(), reportTopicOpen(topicId, { source, via }) }
+// or null.
 export const BadgeSignalsContext = createContext(null)
 
 export function useBadgeSignals() {

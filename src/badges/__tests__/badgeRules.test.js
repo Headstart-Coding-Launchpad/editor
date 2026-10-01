@@ -5,6 +5,7 @@ import { getPassGuard, isRealPass, computeFirstInClass } from '../rules.js'
 import {
   attemptEvent as attempt,
   completeShownEvent,
+  earlyJoinEvent,
   filterTimelinesToRoster,
   firstEditEvent,
   overrideEvent,
@@ -201,6 +202,55 @@ describe('badgeHints', () => {
     }
     const t = { alex: [firstEditEvent({ taskId: 'a', elapsedMs: 100 })] }
     expect(evaluate('ready_to_code', t, { lesson: suppressed })).toEqual([])
+  })
+})
+
+describe('formats (🧩 Code Arranger)', () => {
+  const lesson = {
+    ...EXAMPLE_LESSON,
+    tasks: [
+      { id: 'a1', title: 'Arrange', taskType: 'code_arrange' },
+      {
+        id: 'a2',
+        title: 'Quiet',
+        taskType: 'code_arrange',
+        badgeHints: { suppress: ['code_arranger'] },
+      },
+      {
+        id: 'c1',
+        title: 'Code',
+        taskActivity: 'Code Task',
+        badgeHints: { suggest: ['code_arranger'] },
+      },
+    ],
+  }
+
+  it('triggers on the format, honours suppress, and suggest adds a code task', () => {
+    const t = { alex: [pass('a1', 10)], sam: [pass('a2', 5)], kim: [pass('c1', 20)] }
+    expect(pairs(evaluate('code_arranger', t, { lesson }))).toEqual([
+      ['alex', 'a1'],
+      ['kim', 'c1'],
+    ])
+  })
+})
+
+describe('Early Bird (joinedEarly)', () => {
+  const MINUTE = 60 * 1000
+  it('needs the lead in minutes and reports whole minutes, with no task', () => {
+    const t = {
+      alex: [earlyJoinEvent({ leadMs: 7.9 * MINUTE, at: 1 })],
+      sam: [earlyJoinEvent({ leadMs: 4 * MINUTE, at: 2 })],
+      kim: [earlyJoinEvent({ leadMs: Number.NaN, at: 3 })],
+    }
+    const found = evaluate('early_bird', t)
+    expect(pairs(found)).toEqual([['alex', null]])
+    expect(found[0].reason).toBe('Joined 7 min before the lesson started')
+    expect(
+      pairs(evaluate('early_bird', t, { options: { badgeOptions: { earlyBirdMinutes: 3 } } }))
+    ).toEqual([
+      ['alex', null],
+      ['sam', null],
+    ])
   })
 })
 

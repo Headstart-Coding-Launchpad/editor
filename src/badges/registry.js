@@ -6,6 +6,7 @@ export {
   BADGE_IDS,
   getBadgeDefinition,
   getBadgeDefinitions,
+  getBadgesByFormat,
   getBadgesByPattern,
   getHintableBadges,
   getRuleBackedBadges,

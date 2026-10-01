@@ -1519,6 +1519,17 @@ export function useSession(lessonId, { enabled = true } = {}) {
     )
   }
 
+  /** The student's first accepted code-editor autocomplete suggestion (✨ Autocomplete Ace). */
+  async function recordAutocompleteSignal(anonymousId, { context = 'task', taskId } = {}) {
+    if (!anonymousId || !SIGNAL_CONTEXTS.includes(context)) return false
+    return writeSignalOnce(
+      anonymousId,
+      'autocomplete',
+      { firstUsedAt: serverTimestamp(), context, taskId: taskId ?? null },
+      { existing: mySignals(anonymousId)?.autocomplete }
+    )
+  }
+
   /** The student's first real edit on a task, `elapsedMs` timed on their own device. */
   async function recordFirstEditSignal(anonymousId, taskId, elapsedMs) {
     if (!anonymousId || taskId == null || !Number.isFinite(elapsedMs)) return false
@@ -1792,6 +1803,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     // student: live badge signals
     recordTopicOpenSignal,
     recordShortcutSignal,
+    recordAutocompleteSignal,
     recordFirstEditSignal,
     recordCompleteShownSignal,
     recordSandboxRunSignal,

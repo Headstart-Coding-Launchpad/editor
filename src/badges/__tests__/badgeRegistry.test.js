@@ -53,7 +53,14 @@ describe('badge registry', () => {
       getBadgeDefinitions()
         .filter((badge) => badge.autoAwardable)
         .map((badge) => badge.id)
-    ).toEqual(['bug_hunter', 'code_builder', 'code_detective', 'challenge_solver', 'quiz_master'])
+    ).toEqual([
+      'bug_hunter',
+      'code_builder',
+      'code_detective',
+      'challenge_solver',
+      'quiz_master',
+      'code_arranger',
+    ])
   })
 
   it('only triggers on real taskActivity patterns', () => {
@@ -66,7 +73,9 @@ describe('badge registry', () => {
       'code_builder',
       'code_detective',
       'challenge_solver',
+      'code_arranger',
     ])
+    expect(getBadgeDefinition('code_arranger').rule.formats).toEqual(['code_arrange'])
   })
 
   it('rejects malformed definitions', () => {

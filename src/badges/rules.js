@@ -167,19 +167,22 @@ export function computeFirstInClass({ tasks, badgeId, decisions }) {
 }
 
 /**
- * 🐛 / 📋 / 🔍: the first student in class to make a real pass on a task with one of `patterns`.
+ * 🐛 / 📋 / 🔍 / 🧩: the first student in class to make a real pass on a task with one of
+ * `patterns`, or (`formats`) whose Builder task format is one of them ('code_arrange').
  * `firstTryOnly`: only students whose first attempt at the task was that real pass qualify.
  */
-export function firstInClassOnPattern(patterns, { firstTryOnly = false } = {}) {
+export function firstInClassOnPattern(patterns, { firstTryOnly = false, formats = [] } = {}) {
   const patternList = asList(patterns)
+  const formatList = asList(formats)
   return Object.freeze({
     kind: 'firstInClassOnPattern',
     patterns: Object.freeze(patternList),
+    formats: Object.freeze(formatList),
     firstTryOnly,
     hintable: true,
     evaluate({ badgeId, timelines, index, decisions }) {
       const tasks = index.tasks
-        .filter((info) => taskTriggersBadge(info, badgeId, patternList))
+        .filter((info) => taskTriggersBadge(info, badgeId, patternList, formatList))
         .map((info) => ({
           info,
           passes: entriesOf(timelines).flatMap(([studentId, timeline]) => {
@@ -407,6 +410,34 @@ export function firstEditWithin({ secondsOption = 'readyToCodeSeconds' } = {}) {
               }),
             ]
           : []
+      })
+    },
+  })
+}
+
+/**
+ * 🐦: first joined the session at least `options[minutesOption]` minutes before the tutor pressed
+ * Start (an `early_join` event). Not tied to a task. Values: `minutes` (rounded down).
+ */
+export function joinedEarly({ minutesOption = 'earlyBirdMinutes' } = {}) {
+  return Object.freeze({
+    kind: 'joinedEarly',
+    minutesOption,
+    hintable: false,
+    evaluate({ timelines, options }) {
+      const leadNeededMs = options[minutesOption] * 60 * 1000
+      return entriesOf(timelines).flatMap(([studentId, timeline]) => {
+        const event = eventsOf(timeline, 'early_join').find((e) => {
+          const lead = Number(e.leadMs)
+          return Number.isFinite(lead) && lead >= leadNeededMs
+        })
+        if (!event) return []
+        return [
+          candidate(studentId, null, {
+            at: event.at,
+            values: { minutes: Math.floor(Number(event.leadMs) / 60000) },
+          }),
+        ]
       })
     },
   })
