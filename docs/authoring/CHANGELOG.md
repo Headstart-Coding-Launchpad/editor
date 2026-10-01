@@ -39,6 +39,26 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-01
 
+### Moving the class on auto-checks unpassed tasks; it no longer counts as complete
+
+- When the teacher moves a live class to another task, each student who hasn't passed the graded
+  task being left has their current work graded **without running it** and the verdict logged for
+  the session report: Correct (auto-checked) `auto_passed`, Incorrect (auto-checked)
+  `auto_failed`, or Not run `auto_not_run`. New per-student `autoCheck` and summary
+  `autoPassedCount` / `autoFailedCount` / `autoNotRunCount` fields. See
+  [session-reports.md](session-reports.md#auto-check-on-leave).
+- Only checks a run can't change are judged (`code`, `code_structure`, filesystem, desktop,
+  `input_*`, electronics circuit checks, Scratch `block_used` / `blocks_in_order` /
+  `block_count`). A task whose checks include `output*`, `code_no_error`, Python variable,
+  Turtle, HTML element or Scratch run-time checks, or Python `tests`, is "not run" unless one of
+  its static checks already fails. Authors who want move-on grading for a task should include a
+  static check (for example a `code` check) alongside its output checks.
+- Being moved on past a graded task without passing it (a class-advance override) **no longer
+  counts as complete** in `completed` / `completedCount` / `completionRate`; a tutor's hand pass
+  still does. Overrides now carry `source: teacher | class_advance`. Check-less code tasks,
+  information tasks and ungraded quizzes are unchanged.
+- Affects: all · Existing lessons: no changes needed · Resolves: none
+
 ### Seven new live badges; `earlyBirdMinutes`; Code Arranger hints
 
 - New rule-backed badges: 🧩 **Code Arranger** (`code_arranger`, auto-awardable: first in class

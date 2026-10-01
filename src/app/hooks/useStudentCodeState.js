@@ -5,6 +5,8 @@ import {
   evaluateCheck,
   evaluateCheckWithCode,
   evaluateCheckWithFeedback,
+  evaluateTaskWithoutRun,
+  NO_RUN_RESULTS,
   getStageOfferMatchThreshold,
   normalizeChecks,
   normalizeFeedbackChecks,
@@ -33,6 +35,7 @@ import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesyste
 import { DEFAULT_CIRCUIT } from '../../modules/electronics/circuit'
 import { makeDefaultDesktop } from '../../modules/desktop/desktopState'
 import { decodeFileKey } from '../../shared/fileKeys'
+import { AUTO_CHECK_LEAVE, isAutoAttempt } from '../../shared/autoCheck'
 import {
   savePersonalSandboxCode,
   savePersonalSandboxFileRecord,
@@ -2163,6 +2166,90 @@ export function useStudentCodeState({
     }
   }
 
+  // ─── Auto-check on leave ─────────────────────────────────────────────────────
+
+  // The work to auto-check for the leaving task: the slot's work when it holds this task's work
+  // for this module, else (personal sandbox, or the slot not loaded) the task's saved work.
+  // Null when there is none, or for a per-file module (html) whose saved files can't be listed.
+  function leavingTaskWork(moduleType, taskId, definition) {
+    const slot = workRef.current
+    if (
+      !inPersonalSandboxRef.current &&
+      slot.moduleType === moduleType &&
+      (slot.taskId == null || slot.taskId === taskId) &&
+      slot.value != null
+    ) {
+      return slot.value
+    }
+    if (definition.storage.layout === 'perFile') return null
+    const saved = persistence.readWork(moduleType, effectiveIdentity.anonymousId, taskId)
+    if (saved?.work == null) return null
+    return definition.workSlot.fromStored(saved, defaultWorkFor(moduleType))
+  }
+
+  /**
+   * Called by the student phase machine when the teacher moves a live class to another task,
+   * BEFORE the current task changes (refs still point at the leaving task). If this student has
+   * not passed the leaving graded task, grades their current work without running it
+   * (checks.js evaluateTaskWithoutRun, or the module's checking.evaluateWithoutRun for Scratch)
+   * and logs the verdict as an `auto: 'leave'` attempt for the session report. Never runs code,
+   * changes the student's feedback, or writes their student node. Activities (quizzes included)
+   * and information tasks are left alone, as are check-less tasks, solo, presentation and preview.
+   */
+  function autoCheckOnLeave() {
+    if (teacherPresentation || previewMode || phaseRef.current !== 'lesson') return
+    const anonymousId = effectiveIdentity?.anonymousId
+    const currentLesson = lessonRef.current
+    const taskId = currentTaskIdRef.current
+    if (!anonymousId || !currentLesson || taskId == null) return
+    const task = findTaskById(currentLesson.tasks, taskId)
+    if (!task || task.taskType === 'information' || isHostedActivityTask(task)) return
+    if (normalizeChecks(task.check).length === 0 && !(task.tests?.length > 0)) return
+    if (checkPassedRef.current) return
+    const logged = Object.values(sessionRef.current?.attemptLog?.[anonymousId]?.[taskId] ?? {})
+    if (logged.some((entry) => entry?.passed && !isAutoAttempt(entry))) return
+
+    // lessonRef is the leaving task's effective lesson, so a composed lesson's module is right.
+    const moduleType = currentLesson.type
+    const definition = workSlotDefinition(moduleType)
+    if (!definition?.checking) return
+    const workValue = leavingTaskWork(moduleType, taskId, definition)
+    if (workValue == null) return
+
+    let outcome = null
+    try {
+      const { checking } = definition
+      if (typeof checking.evaluateWithoutRun === 'function') {
+        outcome = checking.evaluateWithoutRun(task, workValue)
+      } else if (typeof checking.buildContext === 'function') {
+        const { work: stored } = definition.workSlot.stored(workValue)
+        const context =
+          checking.trigger === 'change'
+            ? checking.buildContext(workValue, interactionFor(moduleType))
+            : checking.buildContext(stored)
+        outcome = evaluateTaskWithoutRun(task, context)
+      } else {
+        // A 'workspace'-checked module with no evaluator: its checks can't be judged here.
+        outcome = { result: NO_RUN_RESULTS.NOT_RUN, suggestion: '' }
+      }
+    } catch (err) {
+      console.warn('Auto-check on leave failed:', err)
+      outcome = { result: NO_RUN_RESULTS.NOT_RUN, suggestion: '' }
+    }
+    if (!outcome) return
+
+    const submission = definition.wire.submission(definition.workSlot.stored(workValue).work)
+    Promise.resolve(
+      logAttempt(anonymousId, taskId, {
+        submission,
+        passed: false,
+        suggestion: outcome.suggestion,
+        auto: AUTO_CHECK_LEAVE,
+        autoResult: outcome.result,
+      })
+    ).catch((err) => console.warn('Failed to log the auto-check on leave:', err))
+  }
+
   // The check context for a work-slot module's latest work and interaction (read from refs, so
   // idle feedback evaluates whatever is current when its timer fires).
   function currentWorkCheckContext(moduleType) {
@@ -2874,6 +2961,7 @@ export function useStudentCodeState({
     recordCarryFallback,
     // Coordination helpers (called by StudentView)
     saveCurrentWork: saveCurrentWorkSnapshot,
+    autoCheckOnLeave,
     resetForTaskChange,
     exitPersonalSandbox,
     currentTeacherLivePayload,

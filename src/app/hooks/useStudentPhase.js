@@ -8,6 +8,8 @@ import { applyNameSuffix, normaliseJoinName, readAdmitName } from '../joiningStu
  * Also owns currentTaskId and viewingTaskId, which are tightly coupled to phase transitions.
  *
  * onBeforeTaskChange()    — call before currentTaskId is updated (save current work)
+ * onBeforeClassAdvance()  — call first when the teacher moves the live class to another task
+ *                           (auto-check the leaving task; useStudentCodeState autoCheckOnLeave)
  * onPersonalSandboxExit() — call when a forced task/phase change must close personal sandbox
  */
 /** How long after a session ends a reload by one of its students returns to the end screen. */
@@ -30,6 +32,7 @@ export function useStudentPhase({
   teacherPresentation,
   firstTaskId = null,
   onBeforeTaskChange,
+  onBeforeClassAdvance,
   onPersonalSandboxExit,
   onTaskReset,
   createIdentity,
@@ -262,6 +265,9 @@ export function useStudentPhase({
   useEffect(() => {
     if (!session?.currentTaskId || phase !== 'lesson') return
     if (session.currentTaskId !== currentTaskId) {
+      // First, while every ref still points at the leaving task (and before the personal
+      // sandbox closes): grade the leaving task if this student never passed it.
+      onBeforeClassAdvance?.()
       onPersonalSandboxExit?.()
       onBeforeTaskChange?.()
       onTaskReset?.()

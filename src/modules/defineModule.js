@@ -179,6 +179,10 @@ export const WIRE_HOOKS = Object.freeze(['toCode', 'fromCode', 'liveExtras', 'su
 //   itself and reports the outcome through the hook's reportRun; scratch).
 // - buildContext(work, interaction) → the context handed to the check evaluators. Optional for a
 //   'workspace' trigger, whose checks the hook never evaluates.
+// - evaluateWithoutRun(task, work) → optional; `{ result, suggestion }` (checks.js
+//   evaluateTaskWithoutRun) or null, for the auto-check when the teacher moves the class on. A
+//   'workspace'-checked module declares it to be graded at all (scratch); the others are graded
+//   through buildContext + evaluateTaskWithoutRun.
 export const CHECK_TRIGGERS = Object.freeze(['change', 'run', 'submit', 'workspace'])
 export const CHECKING_HOOKS = Object.freeze(['buildContext'])
 // workSlot — where the module's work comes from, for the generic loaders (task load, carry,
@@ -586,6 +590,12 @@ export function defineModule(def) {
       if (typeof def.checking[key] !== 'function') {
         fail(type, `missing required function "checking.${key}"`)
       }
+    }
+    if (
+      def.checking.evaluateWithoutRun != null &&
+      typeof def.checking.evaluateWithoutRun !== 'function'
+    ) {
+      fail(type, '"checking.evaluateWithoutRun" must be a function')
     }
   }
   let workSlot = null

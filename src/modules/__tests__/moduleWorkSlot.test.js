@@ -121,6 +121,19 @@ describe('defineModule — checking / workSlot validation', () => {
     )
   })
 
+  it('accepts an optional evaluateWithoutRun function and rejects anything else', () => {
+    const evaluateWithoutRun = () => null
+    expect(
+      defineModule(withSlot({ checking: { ...filesystemDefinition.checking, evaluateWithoutRun } }))
+        .checking.evaluateWithoutRun
+    ).toBe(evaluateWithoutRun)
+    expect(() =>
+      defineModule(
+        withSlot({ checking: { ...filesystemDefinition.checking, evaluateWithoutRun: 'yes' } })
+      )
+    ).toThrow(/checking\.evaluateWithoutRun/)
+  })
+
   it.each(['starterField', 'sandboxField', 'stageField', 'empty', 'normalise'])(
     'requires workSlot.%s',
     (key) => {

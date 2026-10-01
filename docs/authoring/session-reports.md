@@ -97,11 +97,12 @@ rating, a short answer with no `check`, an unknown activity).
 | `taskType` | `code` (code tasks and Code Arrange), `quiz`, or `activity`. | Always | 2026-07-22 |
 | `quizType` | `multiple_choice`, `match`, `fill_blank`, `short_answer`, `confidence`. | Quizzes only | 2026-07-22 |
 | `activityType` | The activity id (`binary`, `keyboard`, `mouse`, …). | Activities only | 2026-09-28 |
-| `completed` | Graded: passed, or overridden. Ungraded: responded at all. | Always | 2026-07-13 |
+| `completed` | Graded: passed, passed by a tutor's hand override, or auto-checked correct when the class moved on (`auto_passed`). Moving the class on past a graded task the student never passed **no longer** makes it complete (since 2026-10-01; see [Overrides](#overrides)). Ungraded: responded at all. | Always | 2026-07-13 (changed 2026-10-01) |
 | `attempts` | Total submissions including identical resubmissions: Σ(1 + `retries`) over `distinctAttempts`. | Always | 2026-07-13 |
 | `finalResult` | See [finalResult](#finalresult). | Always | 2026-07-13 (values changed 2026-07-22) |
-| `timeOnTaskMs` | From when the teacher (last) moved the class onto the task to the passing attempt / override, or, if not completed, to the latest attempt. Null when there's no start time or no attempt/override. | Always (may be null) | 2026-07-14 |
-| `override` | `{ taskId, overriddenAt (ms), attemptNumber (attempts made before it), previousCheckState: failed \| unattempted }`. Only when the student never passed. See [Overrides](#overrides). | Omitted when none | 2026-07-22 |
+| `timeOnTaskMs` | From when the teacher (last) moved the class onto the task to the passing attempt / override / correct auto-check, or, if not completed, to the latest attempt. Null when there's no start time or no attempt/override. | Always (may be null) | 2026-07-14 |
+| `override` | `{ taskId, overriddenAt (ms), attemptNumber (attempts made before it), previousCheckState: failed \| unattempted, source?: teacher \| class_advance }`. Only when the student never passed. `source` is missing on records written before 2026-10-01. See [Overrides](#overrides). | Omitted when none | 2026-07-22 (`source` 2026-10-01) |
+| `autoCheck` | The [auto-check on leave](#auto-check-on-leave): `{ result: passed \| failed \| not_run, suggestion (the hint a run would have shown, or null), submission (the work checked), checkedAt (ms) }`, the latest one. *Graded only.* | Omitted unless the student never passed and was auto-checked | 2026-10-01 |
 | `teacherAssisted` | `true`: the passing attempt came after the teacher used **Edit answers** on this student's quiz or activity answer, or Code Arrange tiles, on this task (teacher code edits don't set it). | Omitted unless true | 2026-09-17 |
 | `carryFallback` | Carry-through couldn't use the requested source task: `taskId`, `field` (the carry field), `requestedSourceTaskId`, `resolvedSourceTaskId` (what was used instead, or null), `skippedSourceTaskIds[]`, `fallbackAt` (ms), `files[]` (only when the fallback recorded files). | Omitted when none | 2026-07-22 |
 | `supportReveals[]` | Each support reference opened: `taskId`, `stageIndex`, `stageLabel`, `source` (`student`, `teacher`, `teacher-auto`), `attemptNumber` (attempts made before it), `revealedAt` (ms). See [Support reveals](#support-reveals). | Omitted when none | 2026-07-22 |
@@ -138,6 +139,11 @@ written. So:
   it inflates the task's `avgAttempts`. Use `distinctAttempts` length or `uniqueFailedAttempts`
   for "how many different things did they try".
 
+Auto-check-on-leave records (`auto: 'leave'` in `attemptLog`) are **not** attempts: they never
+appear in `distinctAttempts` and never count towards `attempts`, `retries`, `commonFailures`,
+`errorAttempts`, `uniqueFailedAttempts` or `firstRealPass`. They only set `autoCheck` and
+`finalResult`.
+
 #### finalResult
 
 | Value | Meaning |
@@ -148,20 +154,42 @@ written. So:
 | `not_applicable` | Ungraded task the student responded to. |
 | `overridden_failed` | Never passed, but an override was recorded after at least one failed attempt. |
 | `overridden_unattempted` | Never passed, and an override was recorded with no attempt. |
+| `auto_passed` | Never passed, but the [auto-check on leave](#auto-check-on-leave) found the work correct. `completed: true`. Shown as "Correct (auto-checked)". |
+| `auto_failed` | Never passed, and the auto-check on leave found the work incorrect. Shown as "Incorrect (auto-checked)". |
+| `auto_not_run` | Never passed, made no attempt, and the task needs a run the student never made. Shown as "Not run". |
 
 Reports before 2026-07-22 used `not attempted` (with a space) and had no override or
-`not_applicable` values.
+`not_applicable` values. The `auto_*` values date from 2026-10-01.
+
+**Precedence** (`resolveTaskOutcome` in `src/shared/lessonReport.js`), first match wins:
+
+1. a real passing attempt → `passed`;
+2. a tutor's hand override (`source: teacher`) → `overridden_*`, complete;
+3. the latest auto-check on leave: correct → `auto_passed`; incorrect → `auto_failed`; not run
+   with no real attempt → `auto_not_run` (not run after real failed attempts falls through, so the
+   runs the student did make decide it);
+4. a class-advance override → `overridden_*`, **not** complete on a graded task (still complete on
+   a check-less code task; a record from before 2026-10-01, with no `source`, still counts as
+   complete);
+5. no attempt → `not_attempted`, else `failed`.
+
+The auto-check outranks the class-advance override because the student's device writes it just
+after the teacher's device wrote the override, whose `previousCheckState` could not see it.
 
 ## Overrides
 
-An override marks a student complete without a passing attempt. It is recorded (`overrideLog`,
-`buildOverrideRecord` in `useSession.js`) in two ways:
+An override records a student moved on without a passing attempt. It is recorded (`overrideLog`,
+`buildOverrideRecord` in `useSession.js`) in two ways, told apart by `source`:
 
-1. **A tutor passes the student by hand** (the student card's override).
+1. **A tutor passes the student by hand** (the student card's override; `source: teacher`). This
+   counts as complete.
 2. **Automatically when the teacher moves the class on** (`recordClassAdvanceOverrides`, called
-   from `handleTaskChange` in `TeacherView.jsx`): for every student on the roster who hasn't
-   passed the task being left, an override is written. This applies to every graded task (code
-   tasks, Code Arrange, graded quizzes and activities), not to information or ungraded tasks.
+   from `handleTaskChange` in `TeacherView.jsx`; `source: class_advance`): for every student on
+   the roster who hasn't passed the task being left, an override is written. This applies to
+   every graded task (code tasks, Code Arrange, graded quizzes and activities), not to
+   information or ungraded tasks. Since 2026-10-01 it does **not** count as complete on a graded
+   task: the student's result comes from the [auto-check on leave](#auto-check-on-leave) when
+   there is one, else stays `overridden_*` with `completed: false`.
 
 `previousCheckState` is `failed` when the student had made attempts, `unattempted` otherwise.
 So `overridden_failed` usually means "the class moved on while this student was still stuck",
@@ -169,7 +197,33 @@ not that a tutor intervened. An override is only written once per student per ta
 ignored by the report when the student later passes.
 
 A checked code task logs attempts, but a code task **without** a `check` logs none, so moving the
-class on from it normally gives every student `overridden_unattempted` (and `completed: true`).
+class on from it normally gives every student `overridden_unattempted` (and, as a check-less task
+isn't graded, `completed: true`).
+
+## Auto-check on leave
+
+When the teacher moves a live class to another task, each student's device that has not passed
+the graded task being left grades its current work **without running it** (`autoCheckOnLeave` in
+`useStudentCodeState.js`, called by `useStudentPhase` before the task changes) and logs the verdict
+as an `attemptLog` entry with `auto: 'leave'`, `autoResult` and `passed: false`. The student sees
+nothing. Rules (`evaluateTaskWithoutRun` in `src/modules/checks.js`):
+
+- only checks a run can't change are judged: `code` checks, Python `code_structure`, filesystem
+  and desktop checks, `input_*` checks, electronics circuit checks, Scratch block checks
+  (`block_used`, `blocks_in_order`, `block_count`, judged against the saved blocks);
+- **incorrect** when any judged completion check fails, or a judged blocking feedback check
+  matches (with the hint a run would have shown);
+- otherwise **not run** when any check needs a run (`output*`, `code_no_error`, Python variable
+  checks, Turtle checks, HTML element checks, Scratch sprite/variable/`block_run` checks) or the
+  task has Python `tests`; no code is executed;
+- otherwise **correct**.
+
+So a task mixing static and run checks is "not run" unless a static check already fails. Not
+auto-checked: information tasks, quizzes and activities (they are submitted explicitly; moved
+past unanswered they show `overridden_unattempted`, not complete), check-less tasks, solo, the
+presentation window, Builder preview, and a student with no work for the task (nothing loaded or
+saved, e.g. an untouched Scratch task). A student offline when the class moves on logs nothing.
+If the class comes back to the task and moves on again, the latest auto-check wins.
 
 ## Support reveals
 
@@ -200,14 +254,15 @@ different shapes.
 | `priority` | `core` or `optional` (the task's `priority`, default `core`). | Always | 2026-07-22 |
 | `taskType`, `quizType`, `activityType` | As in [Student tasks](#student-tasks). | As there | 2026-07-22 / 2026-09-28 |
 | `totalStudents` | Students in the report. | Always | 2026-07-13 |
-| `completedCount` | Students with `completed: true`, **including overrides** (and so including the class-advance overrides). | Always | 2026-07-13 |
-| `completionRate` | `completedCount / totalStudents`, 2 dp (0–1). Includes overrides. | Always | 2026-07-13 |
+| `completedCount` | Students with `completed: true`: real passes, tutor hand overrides and `auto_passed`. Class-advance overrides on a graded task are **not** counted since 2026-10-01 (they were before). | Always | 2026-07-13 (changed 2026-10-01) |
+| `completionRate` | `completedCount / totalStudents`, 2 dp (0–1). | Always | 2026-07-13 |
 | `avgAttempts` | Σ`attempts` ÷ students whose `finalResult` isn't `not_attempted`, 2 dp. Counts `retries`, and overridden students with no attempts count in the divisor. | Always | 2026-07-13 |
 | `avgTimeOnTaskMs` | Mean `timeOnTaskMs` over students who have one, rounded; null if none. | Always | 2026-07-14 |
 | `commonFailures[]` | Up to 5 `{ suggestion, count }`, most common first: failed distinct attempts per hint (retries not counted). | Always (may be empty) | 2026-07-13 |
 | `teacherAssistedCount` | Students with `teacherAssisted`. | Always | 2026-09-17 |
 | `overrideCount` | `overriddenFailedCount + overriddenUnattemptedCount`. | Always | 2026-07-22 |
-| `overriddenFailedCount`, `overriddenUnattemptedCount` | Students with that `finalResult`. | Always | 2026-07-22 |
+| `overriddenFailedCount`, `overriddenUnattemptedCount` | Students with that `finalResult` (an auto-checked student has an `auto_*` result instead). | Always | 2026-07-22 |
+| `autoPassedCount`, `autoFailedCount`, `autoNotRunCount` | Students with `finalResult` `auto_passed` / `auto_failed` / `auto_not_run`. | Omitted when all 0 | 2026-10-01 |
 | `carryFallbackCount` | Students with a `carryFallback`. | Always | 2026-07-22 |
 | `carryFallbacks[]` | Fallbacks grouped by `field`, `requestedSourceTaskId`, `resolvedSourceTaskId`, `skippedSourceTaskIds`, each with a `count`, most common first. | Always (may be empty) | 2026-07-22 |
 | `supportRevealCount` | Total `supportReveals` across students. | Always | 2026-07-22 |
