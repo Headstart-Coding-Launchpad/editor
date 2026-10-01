@@ -190,7 +190,9 @@ export default function StudentView({
   const saveWorkRef = useRef(null)
   const exitSandboxRef = useRef(null)
   const resetForTaskRef = useRef(null)
+  const autoCheckOnLeaveRef = useRef(null)
   const onBeforeTaskChange = useCallback(() => saveWorkRef.current?.(), [])
+  const onBeforeClassAdvance = useCallback(() => autoCheckOnLeaveRef.current?.(), [])
   const onPersonalSandboxExit = useCallback(() => exitSandboxRef.current?.(), [])
   const onTaskReset = useCallback(() => resetForTaskRef.current?.(), [])
 
@@ -219,6 +221,7 @@ export default function StudentView({
     teacherPresentation,
     firstTaskId,
     onBeforeTaskChange,
+    onBeforeClassAdvance,
     onPersonalSandboxExit,
     onTaskReset,
     createIdentity,
@@ -306,6 +309,7 @@ export default function StudentView({
 
   // Wire phase callbacks to latest code-state functions each render
   saveWorkRef.current = cs.saveCurrentWork
+  autoCheckOnLeaveRef.current = cs.autoCheckOnLeave
   exitSandboxRef.current = cs.exitPersonalSandbox
   resetForTaskRef.current = cs.resetForTaskChange
 

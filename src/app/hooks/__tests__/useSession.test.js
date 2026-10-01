@@ -764,6 +764,7 @@ describe('useSession', () => {
             overriddenAt: { '.sv': 'timestamp' },
             attemptNumber: 3,
             previousCheckState: 'failed',
+            source: 'teacher',
           },
         })
       )
@@ -819,12 +820,52 @@ describe('useSession', () => {
             overriddenAt: { '.sv': 'timestamp' },
             attemptNumber: 3,
             previousCheckState: 'failed',
+            source: 'class_advance',
           },
           'overrideLog/cara/1': {
             taskId: 1,
             overriddenAt: { '.sv': 'timestamp' },
             attemptNumber: 0,
             previousCheckState: 'unattempted',
+            source: 'class_advance',
+          },
+        }
+      )
+    })
+
+    it('ignores auto-check-on-leave records when counting attempts', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        currentTaskId: 1,
+        students: { alice: { checkPassed: false } },
+        attemptLog: {
+          alice: {
+            1: {
+              k1: {
+                attemptNumber: 0,
+                retries: 0,
+                passed: false,
+                auto: 'leave',
+                autoResult: 'failed',
+              },
+            },
+          },
+        },
+      })
+
+      await act(async () => {
+        await result.current.recordClassAdvanceOverrides(1)
+      })
+
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        {
+          'overrideLog/alice/1': {
+            taskId: 1,
+            overriddenAt: { '.sv': 'timestamp' },
+            attemptNumber: 0,
+            previousCheckState: 'unattempted',
+            source: 'class_advance',
           },
         }
       )
@@ -1400,6 +1441,91 @@ describe('useSession', () => {
   })
 
   describe('logAttempt', () => {
+    it('pushes an auto-check-on-leave record with passed false and the verdict', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, {
+          submission: 'print(1)',
+          passed: true,
+          suggestion: '',
+          auto: 'leave',
+          autoResult: 'passed',
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: 'sessions/lesson-1/attemptLog/student-abc/1/mockHighlightId',
+        }),
+        {
+          submission: 'print(1)',
+          passed: false,
+          suggestion: null,
+          auto: 'leave',
+          autoResult: 'passed',
+          attemptNumber: 0,
+          retries: 0,
+          loggedAt: { '.sv': 'timestamp' },
+        }
+      )
+    })
+
+    it('reads an unknown leave verdict as not_run', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, {
+          submission: 'x',
+          auto: 'leave',
+          autoResult: 'bogus',
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({ auto: 'leave', autoResult: 'not_run', passed: false })
+      )
+    })
+
+    it('a leave record neither de-duplicates against nor bumps a real attempt', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false })
+      })
+      firebaseMocks.update.mockClear()
+      firebaseMocks.set.mockClear()
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, {
+          submission: 'code v1',
+          auto: 'leave',
+          autoResult: 'failed',
+        })
+      })
+      expect(firebaseMocks.update).not.toHaveBeenCalled()
+      expect(firebaseMocks.set).toHaveBeenCalledTimes(1)
+      // The next real attempt with the same code still bumps the real entry's retries.
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/attemptLog/student-abc/1/mockHighlightId' },
+        { retries: 1 }
+      )
+    })
+
+    it('logs no leave record once this tab has logged a pass', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: true })
+      })
+      firebaseMocks.set.mockClear()
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, {
+          submission: 'code v2',
+          auto: 'leave',
+          autoResult: 'failed',
+        })
+      })
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+    })
+
     it('pushes a new attempt entry on first submission for a task', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {

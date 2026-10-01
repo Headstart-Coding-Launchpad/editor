@@ -37,6 +37,7 @@ import {
   archiveWorkFields,
   normaliseSessionArchive,
 } from '../../badges/sessionArchive'
+import { AUTO_CHECK_LEAVE, AUTO_CHECK_RESULTS, realAttemptEntries } from '../../shared/autoCheck'
 import { liveInkPath } from '../liveInk/liveInkData'
 import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liveInkWriter'
 import { buildClassCountdown, extendClassCountdown } from '../../shared/classCountdown'
@@ -65,8 +66,10 @@ function encodeWorkspaceFiles(files) {
   return encodeFileKeys(fileMap ?? {})
 }
 
+// The attempts a student really ran or submitted: auto-check-on-leave records
+// (src/shared/autoCheck.js) are not attempts.
 function getAttemptEntries(session, anonymousId, taskId) {
-  return Object.values(session?.attemptLog?.[anonymousId]?.[taskId] ?? {}).sort(
+  return realAttemptEntries(Object.values(session?.attemptLog?.[anonymousId]?.[taskId] ?? {})).sort(
     (a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0)
   )
 }
@@ -367,7 +370,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
     ])
   }
 
-  function buildOverrideRecord(anonymousId, taskId) {
+  // `source`: 'teacher' for a tutor passing the student by hand (counts as complete in the
+  // report), 'class_advance' for the record written when the teacher moves the class on (does
+  // not count as complete for a graded task; see lessonReport.js).
+  function buildOverrideRecord(anonymousId, taskId, source) {
     if (taskId == null) return null
     if (session?.overrideLog?.[anonymousId]?.[taskId]) return null
     if (session?.students?.[anonymousId]?.checkPassed === true) return null
@@ -381,6 +387,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       overriddenAt: serverTimestamp(),
       attemptNumber,
       previousCheckState: attemptNumber > 0 ? 'failed' : 'unattempted',
+      source,
     }
   }
 
@@ -397,7 +404,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       [`students/${anonymousId}/checkOverridePushedAt`]: now,
     }
     if (passed) {
-      const record = buildOverrideRecord(anonymousId, taskId)
+      const record = buildOverrideRecord(anonymousId, taskId, 'teacher')
       if (record) updates[`overrideLog/${anonymousId}/${taskId}`] = record
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
@@ -412,7 +419,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     for (const anonymousId of anonymousIds) {
       const student = session?.students?.[anonymousId] ?? {}
       if (student.checkPassed === true || student.checkOverridePassed === true) continue
-      const record = buildOverrideRecord(anonymousId, taskId)
+      const record = buildOverrideRecord(anonymousId, taskId, 'class_advance')
       if (record) updates[`overrideLog/${anonymousId}/${taskId}`] = record
     }
     if (Object.keys(updates).length > 0) {
@@ -1274,10 +1281,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
   // student's own tab ever writes to their own attemptLog entries.
   // `error` marks a run that produced a real console error: true, or the error's name
   // ('NameError') when the run handler could read it (see runErrorFor in src/badges/signals.js).
+  //
+  // `auto: 'leave'` logs the auto-check made when the teacher moves the class on before this
+  // student passed (src/shared/autoCheck.js): a separate record with the verdict in `autoResult`
+  // ('passed' | 'failed' | 'not_run') and `passed: false`, which never de-duplicates, bumps
+  // retries or touches the de-dupe cache, so it never stands in for a real attempt.
   async function logAttempt(
     anonymousId,
     taskId,
-    { submission, passed, suggestion, teacherAssisted, error } = {}
+    { submission, passed, suggestion, teacherAssisted, error, auto, autoResult } = {}
   ) {
     const cacheKey = `${anonymousId}:${taskId}`
     const cached = attemptCacheRef.current[cacheKey]
@@ -1286,6 +1298,20 @@ export function useSession(lessonId, { enabled = true } = {}) {
     const serialized =
       typeof submission === 'string' ? submission : JSON.stringify(submission ?? null)
     const basePath = `sessions/${lessonId}/attemptLog/${anonymousId}/${taskId}`
+
+    if (auto === AUTO_CHECK_LEAVE) {
+      await set(push(ref(db, basePath)), {
+        submission: serialized,
+        passed: false,
+        suggestion: suggestion || null,
+        auto: AUTO_CHECK_LEAVE,
+        autoResult: AUTO_CHECK_RESULTS.includes(autoResult) ? autoResult : 'not_run',
+        attemptNumber: 0,
+        retries: 0,
+        loggedAt: serverTimestamp(),
+      })
+      return
+    }
 
     if (cached && cached.serialized === serialized) {
       const nextRetries = cached.retries + 1
