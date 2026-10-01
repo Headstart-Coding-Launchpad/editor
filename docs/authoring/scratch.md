@@ -390,6 +390,8 @@ Students should not see a failure just because they are still building. `after_b
 
 `feedbackChecks` use the same Scratch check shapes and require a completion `check`. Use `show: on_idle` for guidance after the learner pauses editing blocks, or `show: after_attempt` for feedback after a Scratch check evaluates. `mode: blocking` fails completion when matched; `mode: nudge` shows guidance without failing. `incorrectChecks` is a legacy alias for blocking feedback. Avoid using `after_run` check types (`block_run`, `sprite_property`/`variable_compare` reading run-dependent state) as `on_idle` feedback checks — idle evaluation happens purely from editing, without a fresh run, so an `after_run` check there is judged against the last Run's state rather than the learner's current unedited workspace.
 
+Scratch picks the one hint to show with the shared rule in [Which hint is shown](AUTHORING_GUIDE.md#which-hint-is-shown). Run-time checks (`evaluation: after_run`, such as `block_run` or `sprite_property`) only contribute hints after the learner presses Run; while the learner is placing blocks, only an `after_block_placed` check that has definitely failed (not one that is still incomplete) can supply the hint. If no failed check has a hint, the learner sees the generic "Not quite, try again!" banner.
+
 ### `block_used`
 ```yaml
 check:

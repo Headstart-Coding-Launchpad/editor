@@ -11,7 +11,9 @@ import {
   computeStageScale,
   cloneSpriteStates,
   evalSingleCheckPartial,
+  blockPlacedCheckHasFailed,
 } from '../ScratchWorkspace'
+import { FEEDBACK_TIMING, evaluateCheckWithCustomFeedback } from '../../checks'
 
 // Workspace stub where blocks form named chains, for blocks_in_order checks.
 function makeChainWorkspace(chains) {
@@ -195,6 +197,52 @@ describe('evalSingleCheckPartial multi-sprite aggregation (no spriteName)', () =
     ]
 
     expect(evalSingleCheckPartial(check, spriteWorkspaces)).toBe('pass')
+  })
+})
+
+describe('after_block_placed hint selection (blockPlacedCheckHasFailed)', () => {
+  const sequence = ['event_whenflagclicked', 'motion_movesteps']
+  const runCheck = { type: 'block_run', opcode: 'motion_movesteps', hint: 'Run hint' }
+  const pendingCheck = {
+    type: 'block_used',
+    opcode: 'looks_say',
+    evaluation: 'after_block_placed',
+    hint: 'Pending hint',
+  }
+  const orderCheck = {
+    type: 'blocks_in_order',
+    sequence,
+    evaluation: 'after_block_placed',
+    hint: 'Order hint',
+  }
+  const sws = [
+    { name: 'sprite1', workspace: makeChainWorkspace([['event_whenflagclicked', 'looks_turn']]) },
+  ]
+
+  it('only counts block-placement checks that definitively failed', () => {
+    expect(evalSingleCheckPartial(orderCheck, sws)).toBe('fail')
+    expect(blockPlacedCheckHasFailed(orderCheck, sws)).toBe(true)
+    // looks_say isn't placed yet: pending, not failed.
+    expect(evalSingleCheckPartial(pendingCheck, sws)).toBe('pending')
+    expect(blockPlacedCheckHasFailed(pendingCheck, sws)).toBe(false)
+    // Run-time checks are never judged before a Run.
+    expect(blockPlacedCheckHasFailed(runCheck, sws)).toBe(false)
+  })
+
+  it('a run-time or pending check listed first does not steal the hint from the failed one', () => {
+    const task = { check: [runCheck, pendingCheck, orderCheck] }
+    const evaluation = evaluateCheckWithCustomFeedback(
+      task,
+      false,
+      () => false, // the full evaluator reports every check as not passed (stale run signal)
+      '',
+      {},
+      {
+        feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT,
+        isCompletionCheckFailed: (c) => blockPlacedCheckHasFailed(c, sws),
+      }
+    )
+    expect(evaluation.suggestion).toBe('Order hint')
   })
 })
 

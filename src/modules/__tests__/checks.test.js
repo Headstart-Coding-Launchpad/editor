@@ -899,6 +899,101 @@ describe('evaluateCheckWithFeedback', () => {
 
     expect(result.suggestion).toBe('Press the green flag again.')
   })
+
+  it('lets the caller narrow which completion checks may supply the hint (isCompletionCheckFailed)', () => {
+    // Scratch after_block_placed: a run-time check (block_run) can't be judged before a Run, so
+    // even though the full evaluator reports it as not passed, only the block-placement check
+    // that definitively failed may supply the hint.
+    const task = {
+      check: [
+        { type: 'block_run', opcode: 'motion_movesteps', hint: 'Run hint' },
+        { type: 'blocks_in_order', evaluation: 'after_block_placed', hint: 'Order hint' },
+      ],
+    }
+    const result = evaluateCheckWithCustomFeedback(
+      task,
+      false,
+      () => false,
+      '',
+      {},
+      {
+        feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT,
+        isCompletionCheckFailed: (check) => check.type === 'blocks_in_order',
+      }
+    )
+    expect(result.suggestion).toBe('Order hint')
+
+    const none = evaluateCheckWithCustomFeedback(
+      task,
+      false,
+      () => false,
+      '',
+      {},
+      {
+        isCompletionCheckFailed: () => false,
+      }
+    )
+    expect(none.suggestion).toBe('')
+  })
+})
+
+// ─── Which hint is shown (the shared rule, docs/authoring/AUTHORING_GUIDE.md) ──
+
+describe('hint selection rule', () => {
+  const completion = [
+    { type: 'output_contains', value: 'a', hint: 'Hint A' },
+    { type: 'output_contains', value: 'b' },
+    { type: 'output_contains', value: 'c', hint: 'Hint C' },
+  ]
+
+  it('uses the first FAILED completion check (in list order) that has a hint', () => {
+    // 'a' passes, 'b' fails without a hint, 'c' fails with one.
+    expect(evaluateCheckWithFeedback({ check: completion }, 'a').suggestion).toBe('Hint C')
+    // 'a' fails too: it is first in the list.
+    expect(evaluateCheckWithFeedback({ check: completion }, 'x').suggestion).toBe('Hint A')
+  })
+
+  it("never shows a passed check's hint; returns '' (generic banner) when no failed check has one", () => {
+    const task = {
+      check: [
+        { type: 'output_contains', value: 'a', hint: 'Hint A' },
+        { type: 'output_contains', value: 'b' },
+      ],
+    }
+    expect(evaluateCheckWithFeedback(task, 'a').suggestion).toBe('')
+  })
+
+  it('a matched feedback check beats every completion hint; lower priority wins', () => {
+    const task = {
+      check: completion,
+      feedbackChecks: [
+        { type: 'output_contains', value: 'x', mode: 'nudge', hint: 'Nudge X', priority: 2 },
+        { type: 'output_contains', value: 'x', mode: 'nudge', hint: 'Targeted X', priority: 1 },
+      ],
+    }
+    expect(evaluateCheckWithFeedback(task, 'x').suggestion).toBe('Targeted X')
+  })
+
+  it('a matched blocking feedback check fails a passing attempt and supplies the hint', () => {
+    const task = {
+      check: { type: 'output_contains', value: 'a', hint: 'Hint A' },
+      feedbackChecks: [{ type: 'output_contains', value: 'ab', hint: 'No b please.' }],
+    }
+    const result = evaluateCheckWithFeedback(task, 'ab')
+    expect(result.passed).toBe(false)
+    expect(result.suggestion).toBe('No b please.')
+  })
+
+  it('a passing attempt shows only a matched nudge hint, never a completion hint', () => {
+    const task = {
+      check: { type: 'output_contains', value: 'a', hint: 'Hint A' },
+      feedbackChecks: [{ type: 'output_contains', value: 'aa', mode: 'nudge', hint: 'Tidy up.' }],
+    }
+    expect(evaluateCheckWithFeedback(task, 'a').suggestion).toBe('')
+    const nudged = evaluateCheckWithFeedback(task, 'aa')
+    expect(nudged.passed).toBe(true)
+    expect(nudged.suggestion).toBe('Tidy up.')
+  })
 })
 
 // ─── DOM checks with null iframeDoc ───────────────────────────────────────────

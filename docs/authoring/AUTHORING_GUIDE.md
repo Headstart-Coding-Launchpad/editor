@@ -265,6 +265,25 @@ feedbackChecks:
 
 `feedbackChecks` are supported by Python, HTML, Filesystem, Electronics, and Scratch tasks and require a completion `check`. Blocking feedback fails the task if it matches, even when the completion check passes. `mode: nudge` shows guidance without blocking completion. `show` defaults to `after_attempt`; use `on_idle` to show feedback after the learner pauses editing. For HTML, `on_idle` is limited to code-safe checks; DOM/output feedback should run `after_attempt`. `incorrectChecks` is a legacy alias for blocking feedback, and legacy `show: on_pause` is treated as `on_idle`.
 
+### Which hint is shown
+
+A learner only ever sees **one** hint per attempt. Every module (Python, HTML, Turtle, Arcade, Filesystem, Desktop, Electronics, Scratch) picks it with the same rule, in this order:
+
+1. **A blocking feedback check matched** → the task fails (even if the completion checks passed) and the hint of the highest-priority matched feedback check is shown. With no hint, the learner sees "Not quite."
+2. **The completion checks failed and any feedback check matched** (blocking or nudge) → the highest-priority matched feedback check's hint. Feedback hints always beat completion-check hints.
+3. **Otherwise** → the hint of the **first** entry in the `check` list (top to bottom) that **failed** and has a non-empty `hint`. A check that passed never supplies the hint, and later failed checks are not shown.
+4. **No failed check has a hint** → the generic banner: "Not quite, try again!" ("Not quite right, try again." on quiz-like tasks).
+
+When the completion checks pass, only a matched `mode: nudge` feedback check's hint is shown, next to "Correct!".
+
+**Priority:** among matched feedback checks, the lowest `priority` number wins (1 beats 2). A feedback check without `priority` takes its position in the list (first = 1), so list order decides ties.
+
+Writing hints that reach learners:
+
+- Order completion checks **most specific first**, or give every completion check its own `hint`. A specific check placed after a general one only shows its hint when the general one passes.
+- For a known misconception (wrong text, `=` instead of `==`, a missing indent), write a `feedbackChecks` entry that detects the mistake and give it a `priority`. It beats every completion hint.
+- Don't write several hints expecting them to add up: only one is shown.
+
 **Wildcards and option lists:** `*` matches any sequence (including newlines) in `value` for containment/equality checks. `"opt1","opt2"` passes `contains` if any option is present and `not_contains` only if none are. These operators mean the same thing in every module (output, answers, file content, HTML elements, Scratch block inputs), because all of them use one shared implementation (`compareText` in `src/shared/checkHelpers.js`).
 
 **Multi-option values:** `"option1","option2"` format — passes if the actual value matches any option. Works for `output_contains`, `code_contains`, `element_value`, `answer_contains`.

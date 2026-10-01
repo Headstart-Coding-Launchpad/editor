@@ -1943,7 +1943,7 @@ export function useStudentCodeState({
 
   /**
    * A 'workspace'-checked module (Scratch) evaluated the task check itself and reports the
-   * outcome: `passed`, the workspace's own `suggestion` (else the first check hint is used), and
+   * outcome: `passed`, the workspace's own `suggestion` (empty → the generic banner), and
    * the `work` it checked (else the task's saved work). Applies local feedback; then, in a live
    * lesson, the teacher sandbox or while watched, writes the run (the work as `code` via
    * wire.toCode) and, in a live lesson while unsolved, the attempt (wire.submission).
@@ -1952,11 +1952,9 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const alreadySolved = isAlreadySolved()
     const effectivePassed = alreadySolved ? true : passed
-    const checks = Array.isArray(task?.check) ? task.check : task?.check ? [task.check] : []
-    const suggestion = effectivePassed
-      ? ''
-      : String(reportedSuggestion ?? '').trim() ||
-        String(checks.find((c) => c?.hint)?.hint ?? '').trim()
+    // The workspace already applied the shared hint rule (checks.js buildCheckFeedbackResult);
+    // an empty suggestion means no failed check had a hint, so the generic banner shows.
+    const suggestion = effectivePassed ? '' : String(reportedSuggestion ?? '').trim()
     if (!alreadySolved && task?.check) applyCheckFeedback(passed, suggestion)
     const definition = workSlotDefinition(lesson?.type)
     if (!identity || definition?.checking.trigger !== 'workspace') return

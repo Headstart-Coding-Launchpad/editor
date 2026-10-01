@@ -140,6 +140,23 @@ Entries written before 2026-09-29 are not tagged.
   lessons whose Complete stage fails a check) · Resolves:
   authoring-requests/2026-09-30-scratch-check-verification-per-check-results-from-validate-o.md
 
+### Which hint is shown: one documented rule, Scratch now follows it
+
+- New [Which hint is shown](AUTHORING_GUIDE.md#which-hint-is-shown) section: only one hint is
+  shown per attempt. A matched blocking feedback check's hint wins; then, if the completion checks
+  failed, the highest-priority matched feedback check's hint; otherwise the first **failed** entry
+  in the `check` list that has a `hint`; otherwise the generic "Not quite, try again!" banner.
+  Order completion checks most-specific-first (or give each a hint), and use `feedbackChecks`
+  with `priority` for misconception-specific hints.
+- Scratch now matches Python/HTML: it no longer falls back to the first check's hint when no
+  failed check has one (that could be a check the learner had already passed), and while the
+  learner is placing blocks only an `after_block_placed` check that has definitely failed can
+  supply the hint. Run-time checks (`block_run`, `sprite_property`, …) only contribute hints
+  after Run. See [scratch.md](scratch.md).
+- Affects: all, scratch · Existing lessons: no changes needed (Scratch lessons that relied on a
+  passed check's hint now show the generic banner) · Resolves:
+  authoring-requests/2026-09-30-document-which-hint-shows-when-several-completion-checks-fai.md
+
 ### Line hints: a trailing marker gets its own empty line
 
 - A line-hint marker with nothing after it (`#> …` / `<!--> … -->` as the last line of the code,
