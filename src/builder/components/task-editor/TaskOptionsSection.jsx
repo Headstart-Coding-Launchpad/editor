@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { normalizeChecks } from '../../../modules/checks'
+import { getCheckDefinition, normalizeChecks } from '../../../modules/checks'
 import { Field, CarryThroughPicker } from './TaskEditorFields'
 import { CheckListEditor } from './CheckEditors'
 import TestsEditor from './TestsEditor'
@@ -225,6 +225,10 @@ export default function TaskOptionsSection({
                   }
                   allowDomChecks={lessonMod?.supportsDomChecks && task.interactionMode !== 'submit'}
                   allowOutputChecks={lessonMod?.supportsOutputChecks !== false}
+                  allowStructureChecks={
+                    !!lessonMod &&
+                    getCheckDefinition('code_structure')?.owner === `module:${lessonMod.type}`
+                  }
                   lessonType={lesson.type}
                   feedbackEditor
                   stages={task.codeStages ?? []}

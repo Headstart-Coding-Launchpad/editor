@@ -19,6 +19,9 @@ describe('lessons capabilities', () => {
     expect(filesystem.checkTypes).toContain('fs_path')
     const python = capabilities.modules.find((m) => m.type === 'python')
     expect(python.checkTypes).not.toContain('fs_path')
+    expect(python.checkTypes).toContain('code_structure')
+    const html = capabilities.modules.find((m) => m.type === 'html')
+    expect(html.checkTypes).not.toContain('code_structure')
   })
 
   it('lists inherited input_* check types on the modules that record input', () => {

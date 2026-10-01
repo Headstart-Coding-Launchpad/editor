@@ -17,6 +17,7 @@ export default function CheckEditor({
       interactionMode={interactionMode}
       allowVariableChecks={interactionMode !== 'submit'}
       allowDomChecks={false}
+      allowStructureChecks
       lessonType={lesson.type}
       output={output}
       code={activePythonCode}

@@ -299,6 +299,141 @@ export function evaluateCodeCheck(check, code) {
   return false
 }
 
+// ── Python block structure (`code_structure` checks) ─────────────────────────
+// normalizeCode drops all whitespace, so code checks can't see indentation. These helpers
+// read Python's block nesting from indentation instead (no Pyodide, no full parser).
+
+export const CODE_STRUCTURE_OPERATORS = ['nested_in', 'directly_nested_in', 'not_nested_in']
+
+const PY_OPEN_BRACKETS = '([{'
+const PY_CLOSE_BRACKETS = ')]}'
+
+// Scans one physical line, carrying open brackets and triple-quoted strings over in `state`
+// ({ depth, triple }). Returns the line's code with any trailing `#` comment removed, and
+// whether it ends in a backslash line continuation.
+function scanPythonLine(line, state) {
+  let code = ''
+  let quote = null
+  let i = 0
+  while (i < line.length) {
+    const character = line[i]
+    if (state.triple || quote) {
+      if (character === '\\') {
+        code += line.slice(i, i + 2)
+        i += 2
+        continue
+      }
+      if (state.triple && line.startsWith(state.triple, i)) {
+        code += state.triple
+        i += 3
+        state.triple = null
+        continue
+      }
+      if (quote && character === quote) quote = null
+      code += character
+      i += 1
+      continue
+    }
+    if (character === '#') break
+    const three = line.slice(i, i + 3)
+    if (three === '"""' || three === "'''") {
+      state.triple = three
+      code += three
+      i += 3
+      continue
+    }
+    if (character === '"' || character === "'") quote = character
+    else if (PY_OPEN_BRACKETS.includes(character)) state.depth += 1
+    else if (PY_CLOSE_BRACKETS.includes(character)) state.depth = Math.max(0, state.depth - 1)
+    code += character
+    i += 1
+  }
+  const trimmed = code.trimEnd()
+  const backslash = !state.triple && !quote && trimmed.endsWith('\\')
+  return { code: backslash ? trimmed.slice(0, -1) : trimmed, backslash }
+}
+
+// The logical lines of a Python program with their indentation: [{ line, indent, text,
+// opensBlock }]. `line` is the 1-based physical line the statement starts on; `indent` counts
+// leading spaces with tabs expanded to 4; `text` is the statement without its trailing comment,
+// with any continuation lines (open brackets, triple-quoted strings, backslashes) joined on.
+// Blank and comment-only lines are skipped. `opensBlock` is true when the statement ends with
+// `:` (if / elif / else / for / while / def / class / try / with ...).
+export function parsePythonBlockLines(code) {
+  const physical = String(code ?? '')
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+  const state = { depth: 0, triple: null }
+  const lines = []
+  let current = null
+  let continues = false
+  physical.forEach((raw, index) => {
+    const expanded = raw.replace(/\t/g, '    ')
+    const startsInside = continues && current
+    const { code: text, backslash } = scanPythonLine(expanded, state)
+    if (startsInside) {
+      const more = text.trim()
+      if (more) current.text = `${current.text} ${more}`
+    } else if (text.trim()) {
+      current = {
+        line: index + 1,
+        indent: expanded.length - expanded.trimStart().length,
+        text: text.trim(),
+      }
+      lines.push(current)
+    } else {
+      current = null
+    }
+    continues = state.depth > 0 || state.triple !== null || backslash
+  })
+  return lines.map((entry) => ({ ...entry, opensBlock: entry.text.endsWith(':') }))
+}
+
+// The block openers a logical line sits inside, nearest first: walking upward, each line with
+// less indentation than any seen so far closes off a level, and counts when it ends with `:`.
+export function pythonBlockAncestors(lines, index) {
+  const ancestors = []
+  let minIndent = lines[index]?.indent ?? 0
+  for (let j = index - 1; j >= 0 && minIndent > 0; j -= 1) {
+    if (lines[j].indent < minIndent) {
+      if (lines[j].opensBlock) ancestors.push(lines[j])
+      minIndent = lines[j].indent
+    }
+  }
+  return ancestors
+}
+
+// A whole logical line against an authored line: whitespace-normalised and case-insensitive
+// like the `code` equals check, with `*` wildcards.
+function pythonLineMatches(line, pattern) {
+  return wildcardEquals(normalizeCode(line.text), normalizeCode(pattern))
+}
+
+// `code_structure`: is a line (`inner`) inside a block opened by another line (`outer`)?
+//   nested_in          — some inner line has outer as an enclosing block, at any depth
+//   directly_nested_in — some inner line has outer as its nearest enclosing block
+//   not_nested_in      — the inner line is present and no inner line is inside outer
+// Every operator fails when no line matches `inner`.
+export function evaluateCodeStructureCheck(check, code) {
+  const { operator, inner, outer } = check ?? {}
+  if (!CODE_STRUCTURE_OPERATORS.includes(operator)) return false
+  if (typeof inner !== 'string' || !inner.trim()) return false
+  if (typeof outer !== 'string' || !outer.trim()) return false
+  const lines = parsePythonBlockLines(code)
+  const innerIndexes = lines
+    .map((line, index) => (pythonLineMatches(line, inner) ? index : -1))
+    .filter((index) => index >= 0)
+  if (innerIndexes.length === 0) return false
+  const insideOuter = (index) =>
+    pythonBlockAncestors(lines, index).some((ancestor) => pythonLineMatches(ancestor, outer))
+  if (operator === 'nested_in') return innerIndexes.some(insideOuter)
+  if (operator === 'not_nested_in') return !innerIndexes.some(insideOuter)
+  return innerIndexes.some((index) => {
+    const [nearest] = pythonBlockAncestors(lines, index)
+    return !!nearest && pythonLineMatches(nearest, outer)
+  })
+}
+
 export function normalizeTypeName(type) {
   const raw = normalizeOutput(type)
   const aliases = {
