@@ -55,6 +55,8 @@ describe('useSession', () => {
     firebaseMocks.onValue.mockImplementation((refObj, callback) => {
       if (refObj.path === '.info/connected') {
         connCallback = callback
+      } else if (refObj.path === '.info/serverTimeOffset') {
+        // Covered in useSession.classCountdown.test.js.
       } else {
         sessionCallback = callback
       }

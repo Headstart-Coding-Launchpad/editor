@@ -37,7 +37,9 @@ export function startTitleFlash({ doc = document, text = NUDGE_TITLE, intervalMs
 // Short chimes synthesised with Web Audio, so no sound asset is needed. `nudge` is bright
 // enough to call a student back; `badge` (a live badge celebration) is a softer, lower-gain
 // pair that shouldn't startle a class of screens; `complete` (a task's checks passing) is a
-// quick rising C5-E5-G5 arpeggio, about 400ms, at a similarly gentle gain.
+// quick rising C5-E5-G5 arpeggio, about 400ms, at a similarly gentle gain. `timesUp` (the
+// teacher's class countdown reaching zero) is a falling G5-E5-C5 bell, clearly "stop" without
+// the nudge's urgency.
 export const CHIME_PRESETS = Object.freeze({
   nudge: Object.freeze({ notes: [880, 1320], gain: 0.25, spacing: 0.18, decay: 0.35 }),
   badge: Object.freeze({ notes: [659.25, 987.77], gain: 0.06, spacing: 0.14, decay: 0.5 }),
@@ -46,6 +48,12 @@ export const CHIME_PRESETS = Object.freeze({
     gain: 0.07,
     spacing: 0.09,
     decay: 0.24,
+  }),
+  timesUp: Object.freeze({
+    notes: [783.99, 659.25, 523.25],
+    gain: 0.09,
+    spacing: 0.22,
+    decay: 0.6,
   }),
 })
 
@@ -86,6 +94,10 @@ export function playBadgeChime() {
 
 export function playCompleteChime() {
   playChime(CHIME_PRESETS.complete)
+}
+
+export function playTimesUpChime() {
+  playChime(CHIME_PRESETS.timesUp)
 }
 
 export function canShowNudgeNotification() {

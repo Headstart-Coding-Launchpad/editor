@@ -39,6 +39,7 @@ import {
 } from '../../badges/sessionArchive'
 import { liveInkPath } from '../liveInk/liveInkData'
 import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liveInkWriter'
+import { buildClassCountdown, extendClassCountdown } from '../../shared/classCountdown'
 
 // Badge decisions (sessions/{lessonId}/badges/{anonymousId}/{badgeId}). A decision is written
 // once; revoking is the only later change (see decideBadge / revokeBadge).
@@ -82,6 +83,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(enabled)
   const [connected, setConnected] = useState(null)
+  // Firebase's estimate of (server clock - this device's clock), in ms. Shared deadlines (the
+  // class countdown) are written and read in server time so screens with skewed clocks agree.
+  const [serverTimeOffset, setServerTimeOffset] = useState(0)
+  const serverTimeOffsetRef = useRef(0)
   const sessionRef = useRef(null)
   const attemptCacheRef = useRef({})
   // This tab's first-occurrence guards (badge signals, pasteLog.firstAt), backing up the
@@ -96,7 +101,16 @@ export function useSession(lessonId, { enabled = true } = {}) {
     }
     const connRef = ref(db, '.info/connected')
     const unsub = onValue(connRef, (snap) => setConnected(snap.val() === true))
-    return () => unsub()
+    const unsubOffset = onValue(ref(db, '.info/serverTimeOffset'), (snap) => {
+      const offset = Number(snap.val())
+      const next = Number.isFinite(offset) ? offset : 0
+      serverTimeOffsetRef.current = next
+      setServerTimeOffset(next)
+    })
+    return () => {
+      unsub()
+      unsubOffset()
+    }
   }, [enabled])
 
   useEffect(() => {
@@ -156,6 +170,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       videoCallBroadcastAt: null,
       sharedWorkspaces: null,
       sandboxEnteredAt: null,
+      classCountdown: null,
       // Live badges: decisions, the tutor's badge toggles and the students' signals are
       // session-scoped, so a new session starts without them (set() replaces the node anyway;
       // listed so the reset is explicit).
@@ -220,6 +235,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       videoCallLink: null,
       videoCallBroadcastAt: null,
       sharedWorkspaces: null,
+      classCountdown: null,
     })
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
     await clearLiveInkQuietly()
@@ -686,6 +702,31 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
       autoRevealStage: AUTO_REVEAL_MODES.includes(mode) ? mode : null,
     })
+  }
+
+  // The teacher's class countdown (sessions/{lessonId}/classCountdown): one shared deadline in
+  // server time that every student screen and the presentation window count down to. It
+  // survives task changes; only clearClassCountdown, createSession and endSession remove it.
+  // Reaching zero locks nothing (see useClassCountdown).
+  function serverNow() {
+    return Date.now() + serverTimeOffsetRef.current
+  }
+
+  async function startClassCountdown(durationMs) {
+    const countdown = buildClassCountdown(durationMs, serverNow())
+    if (!countdown) return
+    await set(ref(db, `sessions/${lessonId}/classCountdown`), countdown)
+  }
+
+  // "+1 min": pushes the deadline back; a countdown that already hit zero restarts from now.
+  async function addClassCountdownTime(extraMs) {
+    const next = extendClassCountdown(session?.classCountdown, extraMs, serverNow())
+    if (!next) return
+    await set(ref(db, `sessions/${lessonId}/classCountdown`), next)
+  }
+
+  async function clearClassCountdown() {
+    await set(ref(db, `sessions/${lessonId}/classCountdown`), null)
   }
 
   async function nudgeAwayStudents() {
@@ -1706,6 +1747,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     session,
     loading,
     connected,
+    serverTimeOffset,
     // teacher
     createSession,
     restartSession,
@@ -1755,6 +1797,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
     updateVideoCallLink,
     sendVideoCallLink,
     broadcastVideoCallLink,
+    startClassCountdown,
+    addClassCountdownTime,
+    clearClassCountdown,
     requestTeacherEdit,
     pushTeacherLiveCode,
     commitTeacherEdit,

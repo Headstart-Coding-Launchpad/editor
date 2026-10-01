@@ -175,6 +175,18 @@
             // fail validation and surface as PERMISSION_DENIED on approve.
             ".validate": "newData.hasChildren(['sharerId', 'sharedAt'])"
           }
+        },
+
+        // The teacher's class countdown ({ startedAt, endsAt, durationMs }, server-time ms) or
+        // absent. Teacher/admin write is inherited from $lessonId; students cannot write it.
+        "classCountdown": {
+          ".validate": "newData.hasChildren(['startedAt', 'endsAt', 'durationMs'])",
+          "startedAt": { ".validate": "newData.isNumber()" },
+          "endsAt": {
+            ".validate": "newData.isNumber() && newData.val() >= newData.parent().child('startedAt').val()"
+          },
+          "durationMs": { ".validate": "newData.isNumber() && newData.val() > 0" },
+          "$other": { ".validate": false }
         }
       }
     },
