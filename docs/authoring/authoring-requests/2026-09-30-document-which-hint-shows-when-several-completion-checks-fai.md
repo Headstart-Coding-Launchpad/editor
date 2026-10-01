@@ -1,6 +1,6 @@
 # Document which hint shows when several completion checks fail
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** docs
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-09-30
 - **Lessons blocked:** none yet

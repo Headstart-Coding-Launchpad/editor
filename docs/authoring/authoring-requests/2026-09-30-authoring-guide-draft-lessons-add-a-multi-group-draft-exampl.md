@@ -1,6 +1,6 @@
 # AUTHORING_GUIDE Draft lessons: add a multi-group Draft example
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** docs
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-09-30
 - **Lessons blocked:** none yet

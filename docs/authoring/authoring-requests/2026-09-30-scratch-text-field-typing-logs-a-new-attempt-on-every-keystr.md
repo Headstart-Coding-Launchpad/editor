@@ -1,6 +1,6 @@
 # Scratch text-field typing logs a new attempt on every keystroke
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** bug
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-09-30
 - **Lessons blocked:** none yet

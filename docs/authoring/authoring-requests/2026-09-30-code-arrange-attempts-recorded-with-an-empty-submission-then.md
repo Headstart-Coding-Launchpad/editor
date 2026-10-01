@@ -1,6 +1,6 @@
 # code_arrange attempts recorded with an empty submission, then overridden_failed
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** bug
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-09-30
 - **Lessons blocked:** none yet

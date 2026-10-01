@@ -1,6 +1,6 @@
 # Session report: per-student join time and task at join
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** tooling
 - **Requested by:** Ryan (approved by Ryan), 2026-10-01
 - **Lessons blocked:** none yet
