@@ -217,3 +217,56 @@ describe('session archive', () => {
     )
   })
 })
+
+describe('presentation annotations (liveInk)', () => {
+  const root = `liveInk/${LESSON}`
+  const pointer = { surface: 'info:3', anchor: 'b0.p1', rx: 0.4, ry: 0.5, t: 1 }
+  const stroke = {
+    surface: 'explainer:3',
+    anchor: 'b0.li2',
+    points: [
+      [0.1, 0.2],
+      [0.3, 0.4],
+    ],
+    colour: 'var(--colour-error)',
+    t: 1,
+  }
+  const highlight = { surface: 'info:3', anchor: 'b0.p0', quote: 'print', occurrence: 1, t: 1 }
+
+  it('lets anyone read the annotations, including signed-out visitors', async () => {
+    await testEnv.withSecurityRulesDisabled((ctx) => ref(ctx, `${root}/pointer`).set(pointer))
+    await assertSucceeds(ref(as.anonymous, root).get())
+    await assertSucceeds(ref(as.student, root).get())
+  })
+
+  it('lets only teachers and admins write them', async () => {
+    await assertSucceeds(ref(as.teacher, `${root}/pointer`).set(pointer))
+    await assertSucceeds(ref(as.admin, `${root}/strokes/s1`).set(stroke))
+    await assertSucceeds(ref(as.teacher, `${root}/highlights/h1`).set(highlight))
+    await assertFails(ref(as.student, `${root}/pointer`).set(pointer))
+    await assertFails(ref(as.anonymous, `${root}/highlights/h1`).set(highlight))
+    await assertFails(ref(as.student, root).remove())
+    await assertSucceeds(ref(as.teacher, root).remove())
+  })
+
+  it('rejects malformed pointers, strokes and highlights', async () => {
+    await assertFails(ref(as.teacher, `${root}/pointer`).set({ ...pointer, rx: 50 }))
+    await assertFails(ref(as.teacher, `${root}/pointer`).set({ ...pointer, extra: true }))
+    await assertFails(ref(as.teacher, `${root}/pointer`).set({ surface: 'info:3', rx: 0, ry: 0 }))
+    await assertFails(
+      ref(as.teacher, `${root}/strokes/s1`).set({ ...stroke, points: [['a', 0.2]] })
+    )
+    await assertFails(
+      ref(as.teacher, `${root}/highlights/h1`).set({ ...highlight, quote: 'x'.repeat(501) })
+    )
+    await assertFails(ref(as.teacher, `${root}/somethingElse`).set(true))
+  })
+
+  it('caps a stroke at 200 points', async () => {
+    const points = (count) => Array.from({ length: count }, (_, i) => [i / count, 0.5])
+    await assertSucceeds(
+      ref(as.teacher, `${root}/strokes/s1`).set({ ...stroke, points: points(200) })
+    )
+    await assertFails(ref(as.teacher, `${root}/strokes/s2`).set({ ...stroke, points: points(201) }))
+  })
+})

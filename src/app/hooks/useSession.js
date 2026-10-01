@@ -37,6 +37,8 @@ import {
   archiveWorkFields,
   normaliseSessionArchive,
 } from '../../badges/sessionArchive'
+import { liveInkPath } from '../liveInk/liveInkData'
+import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liveInkWriter'
 
 // Badge decisions (sessions/{lessonId}/badges/{anonymousId}/{badgeId}). A decision is written
 // once; revoking is the only later change (see decideBadge / revokeBadge).
@@ -161,6 +163,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
     // Neither does the teacher-sandbox archive.
     await archiveQuietly(remove(ref(db, sessionArchivePath())))
+    // Nor the Presentation annotations.
+    await clearLiveInkQuietly()
   }
 
   async function restartSession() {
@@ -212,6 +216,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       sharedWorkspaces: null,
     })
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
+    await clearLiveInkQuietly()
     // When the teacher closes the tab, remove the session entirely so the
     // lesson becomes available for solo study without a stale "ended" record.
     onDisconnect(ref(db, `sessions/${lessonId}`)).remove()
@@ -320,11 +325,13 @@ export function useSession(lessonId, { enabled = true } = {}) {
       pendingShareIds.push(anonymousId)
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
-    await Promise.all(
-      pendingShareIds.map((anonymousId) =>
+    await Promise.all([
+      ...pendingShareIds.map((anonymousId) =>
         removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}/pending/${anonymousId}`)
-      )
-    )
+      ),
+      // Presentation annotations belong to the task they were drawn on.
+      clearLiveInkQuietly(),
+    ])
   }
 
   function buildOverrideRecord(anonymousId, taskId) {
@@ -1046,6 +1053,32 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await set(ref(db, `sessions/${lessonId}/teacherClassPaneCommand`), null)
   }
 
+  // ─── Presentation annotations (liveInk/{lessonId}) ─────────────────────────
+  // Pointer, ink and highlights from the Presentation window. A top-level node, not part of
+  // the session: every client streams sessions/{lessonId} in full, and the pointer moves at
+  // ~12Hz. See src/app/liveInk and docs/agents/runtime-model.md.
+
+  // Separate subscription for LiveInkProvider; returns the unsubscribe function.
+  function subscribeLiveInk(callback) {
+    if (!lessonId) return () => {}
+    return onValue(ref(db, liveInkPath(lessonId)), (snap) =>
+      callback(snap.exists() ? snap.val() : null)
+    )
+  }
+
+  // The Presentation window's writer (pointer/strokes/highlights/clear).
+  function createLiveInkWriter() {
+    return lessonId ? createLessonLiveInkWriter(lessonId) : null
+  }
+
+  async function clearLiveInkQuietly() {
+    try {
+      await remove(ref(db, liveInkPath(lessonId)))
+    } catch (err) {
+      console.warn('[liveInk] could not clear the annotations', err)
+    }
+  }
+
   // ─── Student helpers ──────────────────────────────────────────────────────
 
   async function registerJoining(tempId) {
@@ -1615,6 +1648,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
     clearTeacherPaneCommand,
     pushClassPaneCommand,
     clearClassPaneCommand,
+    // Presentation annotations (LiveInkProvider)
+    subscribeLiveInk,
+    createLiveInkWriter,
     // teacher: live badges and the sandbox archive
     decideBadge,
     revokeBadge,

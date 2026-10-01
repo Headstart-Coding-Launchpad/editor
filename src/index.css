@@ -4548,3 +4548,171 @@ select {
     outline-color: rgba(245, 158, 11, 0.95);
   }
 }
+
+/* ── Presentation annotations (src/app/liveInk) ────────────────────────────────
+   The teacher's live pointer, fading ink and text highlights, drawn over information tasks
+   and explainers. Layers never take clicks except the ink capture layer in ink mode. */
+:root {
+  --live-ink-colour: var(--colour-error);
+  --live-ink-highlight: rgba(253, 224, 71, 0.65); /* --colour-warning-edge, see-through */
+}
+
+.live-ink-surface {
+  position: relative;
+}
+
+.live-ink-surface--highlight,
+.live-ink-surface--highlight * {
+  /* Information and explainer text is copy-blocked (user-select: none inline); the teacher
+     still needs to select it to highlight. */
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  cursor: text;
+}
+
+.live-ink-overlay,
+.live-ink-capture {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  z-index: 3;
+}
+
+.live-ink-overlay {
+  pointer-events: none;
+}
+
+.live-ink-capture {
+  cursor: crosshair;
+  touch-action: none;
+  z-index: 4;
+}
+
+.live-ink-strokes {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.live-ink-stroke {
+  fill: none;
+  stroke: var(--live-ink-colour);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
+}
+
+/* Holds, then fades: STROKE_HOLD_MS / STROKE_FADE_MS in src/app/liveInk/liveInkData.js. */
+.live-ink-stroke--fading {
+  animation: live-ink-fade 1500ms ease-in 2500ms forwards;
+}
+
+@keyframes live-ink-fade {
+  to {
+    opacity: 0;
+  }
+}
+
+.live-ink-pointer {
+  position: absolute;
+  left: -9px;
+  top: -9px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--live-ink-colour);
+  border: 2px solid #fff;
+  box-shadow:
+    0 0 0 4px rgba(239, 68, 68, 0.25),
+    0 2px 8px rgba(0, 0, 0, 0.25);
+  will-change: transform;
+}
+
+.live-ink-highlight-rect {
+  position: absolute;
+  background: var(--live-ink-highlight);
+  mix-blend-mode: multiply;
+  border-radius: 2px;
+}
+
+::highlight(live-ink-highlight) {
+  background-color: var(--live-ink-highlight);
+  color: var(--colour-text);
+}
+
+.live-ink-chip {
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 80;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 999px;
+  background: var(--ui-surface);
+  color: var(--colour-primary-dark);
+  box-shadow: var(--ui-shadow-soft);
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-body-medium);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.live-ink-chip:hover {
+  background: var(--ui-surface-tint);
+}
+
+.live-ink-toolbar {
+  /* Bottom centre: the class badge toast already owns the bottom-left corner. */
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 16px;
+  z-index: 75;
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+}
+
+.live-ink-toolbar__btn {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--colour-text);
+  padding: 5px 11px;
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-body-medium);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--ui-motion);
+}
+
+.live-ink-toolbar__btn:hover:not(:disabled) {
+  background: var(--ui-surface-tint);
+}
+
+.live-ink-toolbar__btn.is-active {
+  background: var(--colour-primary);
+  color: var(--colour-text-on-primary);
+}
+
+.live-ink-toolbar__btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No fade: the stroke shows, then goes (LiveInkOverlay removes it on the same timer). */
+  .live-ink-stroke--fading {
+    animation: none;
+  }
+}

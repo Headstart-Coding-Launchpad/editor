@@ -6,6 +6,8 @@ Load this when a task touches Firebase, localStorage, routing, session state, id
 
 Do not deviate from this shape. (The `videoCallLink` and `students.{id}.videoCallLinkPushedAt` fields below were added as an explicitly user-authorized deviation for the lesson-join/video-call rework — not an ad hoc addition.)
 
+The top-level `liveInk/{lessonId}` node (Presentation annotations) was likewise added with explicit user approval; its shape is in "Presentation Annotations" below.
+
 ```json
 {
   "sessions": {
@@ -332,7 +334,7 @@ Student writes:
 - Live badge signals: own `studentSignals/{anonymousId}` and `attemptLog` entries' `error`. See "Badge data" below.
 - Stage reference reveal: after a failed attempt, students can reveal their own Python/HTML Support `codeStages` entries. The same `supportRevealLog` record stores `source: "student"`, stage label, attempt count, and server timestamp. Revealing does not change editor contents.
 
-Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields (including `badges` and `badgeSettings`), `overrideLog`, and `supportRevealLog`. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, their own `attemptLog/{anonymousId}` node, their own `carryFallbackLog/{anonymousId}` node, their own `supportRevealLog/{anonymousId}` node, and the listed paths of their own `studentSignals/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers). The top-level `sessionArchive/{lessonId}` is teacher/admin read and write only.
+Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields (including `badges` and `badgeSettings`), `overrideLog`, and `supportRevealLog`. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, their own `attemptLog/{anonymousId}` node, their own `carryFallbackLog/{anonymousId}` node, their own `supportRevealLog/{anonymousId}` node, and the listed paths of their own `studentSignals/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers). The top-level `sessionArchive/{lessonId}` is teacher/admin read and write only. The top-level `liveInk/{lessonId}` (Presentation annotations) is publicly readable and teacher/admin write, with shape validation (see "Presentation Annotations").
 
 ## Workspace Sharing
 
@@ -403,6 +405,42 @@ Lifecycle:
 
 Security rules (`database.rules.json`): `sharedWorkspaces` inherits teacher/admin write from `sessions/{lessonId}` and has no student rule, so students cannot write the index. Under `sharedWorkspacePayloads/{lessonId}`, `pending/{anonymousId}` is readable and writable only by that student and teachers/admins, while `approved` is publicly readable and teacher/admin-write. That pending/approved read split is what actually enforces the approval gate — hiding a button on the client is not sufficient.
 
+
+## Presentation Annotations (`liveInk/{lessonId}`)
+
+The teacher's live pointer, fading ink and text highlights from the Presentation window (see `docs/agents/classroom-behaviours.md`, "Presentation Annotations"). A **top-level** node, never under `sessions/{lessonId}`: every client streams the whole session node, and the pointer moves at ~12Hz, so keeping it there would re-render every student's view on every mouse move. Code: `src/app/liveInk/` (`liveInkData.js` is the shape, `liveInkWriter.js` the writes); `useSession.js` exposes `subscribeLiveInk(callback)` and `createLiveInkWriter()` for `LiveInkProvider`.
+
+```json
+{
+  "liveInk": {
+    "{lessonId}": {
+      "pointer": { "surface": "info:3", "anchor": "b0.p1", "rx": 0.42, "ry": 0.5, "t": 1234567890 },
+      "strokes": {
+        "{pushId}": {
+          "surface": "explainer:7",
+          "anchor": "b0.li2",
+          "points": [[0.1, 0.4], [0.12, 0.43]],
+          "colour": "var(--colour-error)",
+          "t": 1234567890
+        }
+      },
+      "highlights": {
+        "{pushId}": { "surface": "info:3", "anchor": "b0.p0", "quote": "print()", "occurrence": 1, "t": 1234567890 }
+      }
+    }
+  }
+}
+```
+
+- **`surface`** names the rendered content: `{kind}:{taskId}` with kind `info` (standard information task), `recap-left` / `recap` (the two recap columns), `intro` (introduction task) or `explainer` (a code task's explainer pane). Including the task id means marks from one task can never land on another.
+- **`anchor`** is a `data-md-anchor` from the shared Markdown renderer (`src/shared/markdown/anchors.js`): `b{n}` per parsed block, then `b{n}.p{k}`, `.h{k}`, `.li{k}`, `.img{k}`, `.q{k}`, `.pre{k}`, `.th`/`.tr{k}` in document order; `root` means the surface itself. The introduction task's hand-written anchors are `title`, `meta` and `description`.
+- **`rx`/`ry`** (and each `[rx, ry]` stroke point) are fractions of the anchor element's bounding box, not pixels, so a mark lands on the same content on every screen size (for an image, the same part of the image). A stroke is anchored on the element under its first point. Small drift inside a reflowed paragraph is accepted.
+- **Highlights** store the selected text (`quote`, max 500 chars) and which `occurrence` of it inside the anchor's `textContent`; each client re-finds the words in its own DOM and paints them with the CSS Custom Highlight API (range-rect overlay where unsupported). React-managed DOM is never mutated.
+- **Writes** (teacher/admin only, from the Presentation window): `pointer` through `createThrottledMirrorWriter` at ~12Hz (`POINTER_INTERVAL_MS`), set to `null` when pointer mode ends or the mouse leaves the content; a stroke once on pointer-up (max 200 points), removed by the teacher's window `STROKE_REMOVE_AFTER_MS` later; highlights until clicked again or cleared. Every screen fades strokes on its own clock from when the stroke arrived (`STROKE_HOLD_MS` + `STROKE_FADE_MS`), so clock skew doesn't matter.
+- **Clearing:** `setTaskId`, `createSession`/`restartSession` and `endSession` remove the whole `liveInk/{lessonId}` node (best-effort, `clearLiveInkQuietly`); the toolbar's Clear does the same; the Presentation window registers `onDisconnect().remove()` on it when it opens and removes it when it unmounts.
+- **Reads:** a separate `onValue` on `liveInk/{lessonId}` in `LiveInkProvider`, only in the Presentation window and for students in the live lesson phase (never solo, preview or the sandbox phase).
+
+Security rules (`database.rules.json`): `liveInk/$lessonId` is publicly readable (students are login-less, mirroring `sessions/$lessonId`) and teacher/admin write (mirroring the `sessions/$lessonId` write rule), with validation of each shape: string sizes, `rx`/`ry` within ±10, at most 200 numeric `[rx, ry]` points, `quote` ≤ 500 chars, and no unknown children. **Deploying the rules is required** (`firebase deploy --only database`): until then every write to the new node is denied and annotations silently do nothing (the session itself is unaffected).
 
 ## Badge data
 
@@ -482,6 +520,7 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`) record behaviour a
 - `joiningStudents/{tempId}` key is removed on disconnect with `onDisconnect().remove()`.
 - `sharedWorkspacePayloads/{lessonId}` is removed when the teacher disconnects. It sits outside the session node, so the session's own removal does not cover it.
 - `sessionArchive/{lessonId}` is likewise removed when the teacher disconnects after `endSession()` (the report has already been built from it).
+- `liveInk/{lessonId}` (Presentation annotations) is removed when the Presentation window disconnects; it registers `onDisconnect().remove()` as soon as it opens.
 
 ## Sealed Task Answers (`lessons/{lessonId}` tasks and `lessonOverrideTasks`)
 

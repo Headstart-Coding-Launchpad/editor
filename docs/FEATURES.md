@@ -133,6 +133,13 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Broadcast teacher's or a pinned student's screen to all students simultaneously
 - Available via a separate presentation window
 
+### Presentation Annotations
+- In the presentation window, a small floating toolbar lets the teacher annotate information tasks (standard, recap, introduction, images included) and code tasks' explainers, and every student sees it live (whole class only)
+- **🔴 Pointer**: a dot that follows the teacher's mouse; **✏️ Ink**: freehand marks that fade a few seconds later; **🖍️ Highlight**: selected text highlighted on every screen until clicked again, cleared or the task changes; **Clear** removes everything; Escape leaves a tool
+- Marks land on the same content (word, list item, part of an image) on every screen size, not the same pixels
+- If the teacher points somewhere a student has scrolled away from, a "👆 Teacher is pointing here" chip appears; clicking it scrolls there (never automatic). Pointing at a code task's explainer opens it for students who had it collapsed
+- Cleared on every task change and when the session or presentation window ends; respects reduced motion (no fades)
+
 ### Edit Lesson
 - "Edit Lesson" button opens the builder's task list/editor (add, duplicate, delete, reorder, group) in a modal without leaving the session
 - Teachers: "Apply for This Session" broadcasts the edited tasks live to connected students for the current session only — never written to Firestore, and cleared on session end/restart

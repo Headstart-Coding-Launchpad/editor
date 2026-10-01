@@ -130,3 +130,4 @@ the Builder preview.
 | Success chime | `useCompleteChime` (StudentView) | Rising C–E–G Web Audio chime, first watched pass per task |
 | Badge Summary | `BadgeSummaryTask.jsx`, `BadgeStickerSheet` `entrance="tumble"` | Student: stickers `motion-tumble-in` 260ms apart, then the wall drops; teacher/presentation: row emoji tumble, rows drop; later arrivals only drop in |
 | Badge celebration card, class toast, sticker sheet | `src/app/components/badges/` | `sv-badge-*` keyframes (predate this system; same principles) |
+| Presentation annotations | `src/app/liveInk/LiveInkOverlay.jsx` (`live-ink-*` classes in `index.css`) | Teacher's pointer dot lerps between ~12Hz updates; ink strokes hold 2.5 s then fade over 1.5 s (`live-ink-fade`). Reduced motion: the dot jumps and strokes vanish at the same moment with no fade |

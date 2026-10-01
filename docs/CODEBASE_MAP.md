@@ -88,7 +88,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `TopBar.jsx` | Header: lesson title, level badge, SOLO/LIVE/SANDBOX badge, student name, progress dots slot; `singleRow` (StudentView) makes it one fixed-height 52px row that never wraps, with the name as a small chip |
 | `TaskNavigator.jsx` | Left sidebar: task list with group collapse, run/check stats, sandbox and pause controls |
 | `TaskProgressDots.jsx` | Top bar progress indicator: clickable past dots, locked future dots, current highlighted; measures itself and falls back to an "x/y" counter; `compact` (student top bar) uses smaller dots and scrolls sideways, current dot kept in view, when at least five fit but not all |
-| `ExplainerPanel.jsx` | Collapsible Markdown explainer panel above the editor; `disableCopy` prop blocks selection/copy (used for student-facing renders only); `entranceKey` drops the panel in and slides its bullets in on the task's first view (`useFirstView`), not on a ▲/▼ toggle or a same-task edit |
+| `ExplainerPanel.jsx` | Collapsible Markdown explainer panel above the editor; `disableCopy` prop blocks selection/copy (used for student-facing renders only); `entranceKey` drops the panel in and slides its bullets in on the task's first view (`useFirstView`), not on a ▲/▼ toggle or a same-task edit; `inkSurfaceId` makes the content annotatable from the Presentation window (`src/app/liveInk/`) |
 | `CopyCodePanel.jsx` | Student-facing read-only reference code block with selection/copy blocked, shown for Python/HTML tasks with `copyCode` |
 | `SupportStagePanel.jsx` | Student-facing read-only code-stage reference panel with reveal control and copy/selection blocking; shows the stage's line hints as faded text after their lines (`lineHintsFor`, `stageHintsByLine`) |
 | `OutputPanel.jsx` | Python output with retro typing animation (via `useTypewriterOutput`) and inline `input()` prompt; `onInputChange` fires per keystroke (for live-mirroring to a watching teacher); `inputReadOnly`+`mirroredInputValue` swap the prompt row to a plain-text, externally-driven mirror instead of an editable input, used by `StudentWorkspaceBody.jsx`. `splitEmojiRuns()` (exported for testing) grapheme-splits the output so emoji render a bit larger than the surrounding monospace text, via `Intl.Segmenter` |
@@ -145,6 +145,21 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `StudentStatusBanners.jsx` | Teacher-live, viewing-previous, and personal-sandbox notification banners shown above the task body |
 | `LessonTaskContent.jsx` | Task content area: TaskSlideTransition wrapper, ExplainerPanel, CheckFeedbackBanner, and task-type dispatch via `getLessonModule()` registry (Quiz, Information, and Code Arrange rendered inline; other code types delegated to their module's `StudentWorkspace`) |
 | `SoloNav.jsx` | Bottom prev/next navigation bar for solo mode; includes Open Sandbox shortcut. Next gets a static `btn-next-success` look once the check passes and spins once (`usePassMoment`) only when the student watched the pass |
+
+### Presentation Annotations (`src/app/liveInk/`)
+
+The teacher's live pointer, fading ink and text highlights from the Presentation window, shown to the class on information tasks and code-task explainers. Data at the top-level RTDB node `liveInk/{lessonId}` (see `docs/agents/runtime-model.md`, "Presentation Annotations"; behaviour in `docs/agents/classroom-behaviours.md`).
+
+| File | Role |
+|---|---|
+| `LiveInkProvider.jsx` | Wraps `StudentView`'s page: subscribes to `liveInk/{lessonId}` (via `useSession().subscribeLiveInk`) for the teacher role (Presentation window) and student role (live lesson phase), owns the tool state, surface registry, Escape handling and the explainer force-open (`pushClassPaneCommand`), and renders the toolbar |
+| `liveInkContext.js` | The two contexts: config (role, tool, writer; changes rarely) and data (changes at ~12Hz, read only by the overlay) |
+| `InkSurface.jsx` | Marks a block of content as annotatable (`id` like `info:3`, `explainer:7`); handles the teacher's pointer, ink capture and highlight selection; renders `LiveInkOverlay`. Inert (renders children only) without a provider |
+| `LiveInkOverlay.jsx` | Draws one surface's pointer (lerp-smoothed), fading strokes (SVG) and highlights (CSS Custom Highlight API, rect fallback); students' off-screen edge chip |
+| `PresentationInkToolbar.jsx` | Floating 🔴 Pointer / ✏️ Ink / 🖍️ Highlight / Clear toolbar (Presentation window only) |
+| `geometry.js` | Pure helpers: point ↔ fractions of an element box, stroke thinning/mapping, quote re-finding with occurrence, plus small DOM helpers (anchor lookup, text-offset ranges, selection description, scroll container) |
+| `liveInkData.js` | Node shape, paths, surface ids, timing constants, snapshot normalisation |
+| `liveInkWriter.js` | The Presentation window's RTDB writes: throttled pointer (`createThrottledMirrorWriter`, ~12Hz), strokes (auto-removed after the fade), highlights, clear, disconnect cleanup |
 
 ### Quiz Components (`src/app/components/quiz/`)
 
@@ -611,6 +626,7 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs
 | `editorOptions.js` | Markdown editor option data and helpers: image extensions, code block options, inline code options, Scratch insertion categories, and Scratch fence detection |
 | `ScratchBlocks.jsx` | SVG/path Scratch block renderer and fenced-stack parser used by MarkdownRenderer |
 | `tableParser.js` | Pure Markdown table parser used before handing content to ReactMarkdown |
+| `anchors.js` | Stable `data-md-anchor` content anchors (`b{n}`, `b{n}.p{k}`, `.h{k}`, `.li{k}`, `.img{k}`, `.q{k}`, `.pre{k}`, `.th`/`.tr{k}`): `rehypeMarkdownAnchors` plugin plus the block/table-row helpers MarkdownRenderer uses; Presentation annotations position marks against them |
 
 ### Input Recorder (`src/shared/input/`)
 

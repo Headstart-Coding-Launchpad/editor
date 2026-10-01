@@ -13,6 +13,7 @@ import { useBadgeSignals } from './badgeSignalsContext'
 import { TOPIC_LIBRARY_OPEN_ID } from '../badges/signals.js'
 import { InlineScratchBlock, ScratchBlocks, looksLikeScratchBlocks } from './markdown/ScratchBlocks'
 import { parseMarkdownTables } from './markdown/tableParser'
+import { anchorProps, blockAnchor, rehypeMarkdownAnchors, tableRowAnchor } from './markdown/anchors'
 import { staggerStyle } from './motion'
 
 hljs.registerLanguage('python', hljsPython)
@@ -191,12 +192,12 @@ export function InlineMarkdown({ content, topicType = null }) {
   )
 }
 
-function MarkdownTable({ headers, align, rows }) {
+function MarkdownTable({ headers, align, rows, blockIndex = 0 }) {
   return (
     <div style={tableStyles.scroll}>
       <table style={tableStyles.table}>
         <thead>
-          <tr>
+          <tr data-md-anchor={tableRowAnchor(blockIndex)}>
             {headers.map((header, i) => (
               <th key={i} style={{ ...tableStyles.th, textAlign: align[i] }}>
                 <InlineMarkdown content={header} />
@@ -206,7 +207,7 @@ function MarkdownTable({ headers, align, rows }) {
         </thead>
         <tbody>
           {rows.map((row, rowIndex) => (
-            <tr key={rowIndex}>
+            <tr key={rowIndex} data-md-anchor={tableRowAnchor(blockIndex, rowIndex)}>
               {row.map((cell, i) => (
                 <td key={i} style={{ ...tableStyles.td, textAlign: align[i] }}>
                   <InlineMarkdown content={cell} />
@@ -332,20 +333,36 @@ function useHeadingStyle(sizeRem, margin) {
   }
 }
 
-function Heading1({ children }) {
-  return <h1 style={useHeadingStyle(1.45, '4px 0 10px')}>{children}</h1>
+function Heading1({ children, ...props }) {
+  return (
+    <h1 {...anchorProps(props)} style={useHeadingStyle(1.45, '4px 0 10px')}>
+      {children}
+    </h1>
+  )
 }
 
-function Heading2({ children }) {
-  return <h2 style={useHeadingStyle(1.22, '4px 0 8px')}>{children}</h2>
+function Heading2({ children, ...props }) {
+  return (
+    <h2 {...anchorProps(props)} style={useHeadingStyle(1.22, '4px 0 8px')}>
+      {children}
+    </h2>
+  )
 }
 
-function Heading3({ children }) {
-  return <h3 style={useHeadingStyle(1.05, '8px 0 6px')}>{children}</h3>
+function Heading3({ children, ...props }) {
+  return (
+    <h3 {...anchorProps(props)} style={useHeadingStyle(1.05, '8px 0 6px')}>
+      {children}
+    </h3>
+  )
 }
 
-function Heading4({ children }) {
-  return <h4 style={useHeadingStyle(0.95, '8px 0 4px')}>{children}</h4>
+function Heading4({ children, ...props }) {
+  return (
+    <h4 {...anchorProps(props)} style={useHeadingStyle(0.95, '8px 0 4px')}>
+      {children}
+    </h4>
+  )
 }
 
 function MarkdownCode({ node: _node, className, children, ...props }) {
@@ -390,7 +407,7 @@ function MarkdownCode({ node: _node, className, children, ...props }) {
     </code>
   )
 }
-function MarkdownPre({ children }) {
+function MarkdownPre({ children, ...props }) {
   const scale = React.useContext(MarkdownScaleContext)
   // Pass through without pre styling when the child is a scratch block
   const child = React.Children.toArray(children)[0]
@@ -406,6 +423,7 @@ function MarkdownPre({ children }) {
   return (
     <BlockCodeContext.Provider value={true}>
       <pre
+        {...anchorProps(props)}
         style={{
           background: '#fafafa',
           border: '1px solid #e5e7eb',
@@ -428,12 +446,13 @@ function MarkdownStrong({ children }) {
   const color = inheritColor ? 'inherit' : 'var(--colour-primary)'
   return <strong style={{ fontWeight: 700, color }}>{children}</strong>
 }
-function MarkdownImage({ src, alt }) {
+function MarkdownImage({ src, alt, ...props }) {
   const imageMaxHeight = React.useContext(MarkdownImageMaxHeightContext)
   const imageLayout = React.useContext(MarkdownImageLayoutContext)
   const floating = imageLayout === 'float'
   return (
     <img
+      {...anchorProps(props)}
       src={src}
       alt={alt ?? ''}
       className={floating ? 'markdown-img--float' : undefined}
@@ -476,11 +495,17 @@ function MarkdownOrderedList({ children }) {
     </ol>
   )
 }
-function MarkdownListItem({ children, motionIndex }) {
+function MarkdownListItem({ children, motionIndex, ...props }) {
   const animate = React.useContext(MarkdownAnimateListsContext)
-  if (!animate) return <li style={{ margin: '3px 0' }}>{children}</li>
+  if (!animate)
+    return (
+      <li {...anchorProps(props)} style={{ margin: '3px 0' }}>
+        {children}
+      </li>
+    )
   return (
     <li
+      {...anchorProps(props)}
       className="motion-slide-in motion-stagger"
       style={{ margin: '3px 0', ...staggerStyle(motionIndex) }}
     >
@@ -496,13 +521,17 @@ const components = {
   h4: Heading4,
   code: MarkdownCode,
   pre: MarkdownPre,
-  p({ children }) {
-    return <p style={{ margin: '6px 0', lineHeight: 1.65 }}>{children}</p>
+  p({ children, ...props }) {
+    return (
+      <p {...anchorProps(props)} style={{ margin: '6px 0', lineHeight: 1.65 }}>
+        {children}
+      </p>
+    )
   },
   ul: MarkdownUnorderedList,
   ol: MarkdownOrderedList,
   li: MarkdownListItem,
-  blockquote({ children }) {
+  blockquote({ children, ...props }) {
     const markerText = getTextFromChildren(children)
     const markerMatch = markerText.match(CALLOUT_MARKER_PATTERN)
     const variant = markerMatch ? markerMatch[1].toLowerCase() : 'default'
@@ -511,6 +540,7 @@ const components = {
 
     return (
       <blockquote
+        {...anchorProps(props)}
         style={{
           margin: '10px 0',
           padding: '8px 12px',
@@ -651,45 +681,52 @@ export function MarkdownRenderer({
                     {loading ? 'Loading library...' : 'Topic library'}
                   </button>
                 )}
-                {blocks.map((block, i) =>
-                  block.type === 'table' ? (
-                    <MarkdownTable
-                      key={i}
-                      headers={block.headers}
-                      align={block.align}
-                      rows={block.rows}
-                    />
-                  ) : (
-                    <ReactMarkdown
-                      key={i}
-                      remarkPlugins={[remarkBreaks]}
-                      rehypePlugins={[rehypeHighlight]}
-                      components={markdownComponents}
-                      allowedElements={[
-                        'h1',
-                        'h2',
-                        'h3',
-                        'h4',
-                        'p',
-                        'strong',
-                        'em',
-                        'code',
-                        'pre',
-                        'br',
-                        'span',
-                        'ul',
-                        'ol',
-                        'li',
-                        'blockquote',
-                        'img',
-                        'a',
-                      ]}
-                      unwrapDisallowed
-                    >
-                      {block.content}
-                    </ReactMarkdown>
-                  )
-                )}
+                {/* Each parsed block sits in a plain wrapper carrying its b{n} anchor (margins
+                    still collapse through it); finer anchors come from rehypeMarkdownAnchors.
+                    See markdown/anchors.js. */}
+                {blocks.map((block, i) => (
+                  <div key={i} data-md-anchor={blockAnchor(i)}>
+                    {block.type === 'table' ? (
+                      <MarkdownTable
+                        headers={block.headers}
+                        align={block.align}
+                        rows={block.rows}
+                        blockIndex={i}
+                      />
+                    ) : (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkBreaks]}
+                        rehypePlugins={[
+                          rehypeHighlight,
+                          [rehypeMarkdownAnchors, { prefix: blockAnchor(i) }],
+                        ]}
+                        components={markdownComponents}
+                        allowedElements={[
+                          'h1',
+                          'h2',
+                          'h3',
+                          'h4',
+                          'p',
+                          'strong',
+                          'em',
+                          'code',
+                          'pre',
+                          'br',
+                          'span',
+                          'ul',
+                          'ol',
+                          'li',
+                          'blockquote',
+                          'img',
+                          'a',
+                        ]}
+                        unwrapDisallowed
+                      >
+                        {block.content}
+                      </ReactMarkdown>
+                    )}
+                  </div>
+                ))}
               </div>
               {libraryOpen && (
                 <TopicLibraryDialog

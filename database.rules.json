@@ -185,6 +185,81 @@
         ".read": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
         ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')"
       }
+    },
+
+    // Presentation annotations (live pointer, fading ink, text highlights) from the teacher's
+    // Presentation window. Kept outside "sessions" because the pointer moves at ~12Hz and every
+    // client streams the whole session node. Readable like a session (students are
+    // login-less); only teachers/admins write. Shapes mirror src/app/liveInk/liveInkData.js.
+    "liveInk": {
+      "$lessonId": {
+        ".read": true,
+        ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+
+        "pointer": {
+          ".validate": "newData.hasChildren(['surface', 'anchor', 'rx', 'ry', 't'])",
+          "surface": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120"
+          },
+          "anchor": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+          },
+          "rx": {
+            ".validate": "newData.isNumber() && newData.val() >= -10 && newData.val() <= 10"
+          },
+          "ry": {
+            ".validate": "newData.isNumber() && newData.val() >= -10 && newData.val() <= 10"
+          },
+          "t": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        },
+
+        "strokes": {
+          "$strokeId": {
+            ".validate": "newData.hasChildren(['surface', 'anchor', 'points', 't'])",
+            "surface": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120"
+            },
+            "anchor": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+            },
+            "colour": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "t": { ".validate": "newData.isNumber()" },
+            // At most 200 points (keys 0-199), each a [rx, ry] pair of small numbers.
+            "points": {
+              "$index": {
+                ".validate": "$index.matches(/^(1?[0-9]?[0-9])$/) && newData.hasChildren(['0', '1'])",
+                "$coord": {
+                  ".validate": "$coord.matches(/^[01]$/) && newData.isNumber() && newData.val() >= -10 && newData.val() <= 10"
+                }
+              }
+            },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "highlights": {
+          "$highlightId": {
+            ".validate": "newData.hasChildren(['surface', 'anchor', 'quote', 'occurrence', 't'])",
+            "surface": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120"
+            },
+            "anchor": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+            },
+            "quote": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
+            },
+            "occurrence": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 1000"
+            },
+            "t": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "$other": { ".validate": false }
+      }
     }
   }
 }
