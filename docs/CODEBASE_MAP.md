@@ -335,7 +335,8 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `html/fileTemplates.js` | Pure: `HTML_FILE_TYPE`, `isHtmlFileType`, `isHtmlEntryCandidate`, and the `HTML_ONLY` / `HTML_WITH_CSS` / `HTML_WITH_CSS_JS` file templates (Builder file manager, sandbox starter editor, `authoring.defaultTypeFields`) |
 | `html/print.js` | Pure: `printHtmlTask` — the HTML module's printable-lesson section |
 | `scratch/index.js` | Scratch module definition |
-| `scratch/checks.js` | Pure Scratch check evaluation: `evaluateScratchCheck`, `compare`, `createSpriteState`, `DEFAULT_SPRITES`, `normalizeSequenceItem` |
+| `scratch/blockInputs.js` | Pure (Blockly-free): `VALUE_INPUT_DEFAULTS` — each block's value inputs and default shadows; read by the lesson validator, re-exported from `scratch.js` |
+| `scratch/checks.js` | Pure Scratch check evaluation: `evaluateScratchCheck`, `compare`, `createSpriteState`, `DEFAULT_SPRITES`, `normalizeSequenceItem`, and the shared block matcher `matchesOpcodeSpec` / `opcodeAlternatives` (an `opcode` may be one opcode or a list of alternatives) |
 | `scratch/print.js` | Pure: `printScratchTask` — the Scratch module's printable-lesson section |
 | `scratch/scratch.js` | Custom Scratch interpreter: block definitions, multi-sprite state, broadcast, sounds, `CREATE_VARIABLE_CALLBACK_KEY`/`addCreateVariableButtonToToolbox` flyout button injection; re-exports check/state helpers from `checks.js` and persistence helpers from `scratchPersistence.js` |
 | `scratch/scratchEditors.jsx` | Scratch toolbox data, `buildScratchToolboxXml`, `parseScratchToolboxXml`, `ScratchToolboxPicker`, `ScratchCheckListEditor`, `ScratchCheckEditor`, variables, and prebuilt stack editors |

@@ -5,6 +5,7 @@ import remarkRehype from 'remark-rehype'
 import { getEffectiveLessonForTask, getComposedModuleTypes } from '../shared/composedLesson'
 import { getModuleAuthoring, getModuleLabel } from '../modules/definitions'
 import { getTaskActivity } from '../activities/registry.pure.js'
+import { opcodeSpecOpcodes } from '../modules/scratch/checks.js'
 
 function esc(str) {
   if (str == null) return ''
@@ -83,7 +84,10 @@ function renderCheckHtml(check) {
       if (c.operator) parts.push(`operator: ${esc(c.operator)}`)
       if (c.inner) parts.push(`inner: <code>${esc(c.inner)}</code>`)
       if (c.outer) parts.push(`outer: <code>${esc(c.outer)}</code>`)
-      if (c.opcode) parts.push(`opcode: <code>${esc(c.opcode)}</code>`)
+      if (Array.isArray(c.opcode)) {
+        const opcodes = opcodeSpecOpcodes(c.opcode).map((op) => `<code>${esc(op)}</code>`)
+        parts.push(`opcode: any of ${opcodes.join(', ')}`)
+      } else if (c.opcode) parts.push(`opcode: <code>${esc(c.opcode)}</code>`)
       if (c.variableName) parts.push(`variable: ${esc(c.variableName)}`)
       return `<div class="check-item">${parts.join(' — ')}</div>`
     })

@@ -28,10 +28,45 @@ export function createSpriteState() {
   }
 }
 
-// Normalize a blocks_in_order sequence item to {opcode, fieldValues}.
+// Normalize a blocks_in_order sequence item to {opcode, fieldValues}. `opcode` is the item's
+// opcode spec: a string, or a list of alternatives (see opcodeAlternatives). A bare list as
+// the item itself isn't supported — Firestore can't store a list directly inside a list — so
+// alternatives go in the object form, { opcode: [...] }.
 export function normalizeSequenceItem(item) {
   if (typeof item === 'string') return { opcode: item, fieldValues: null }
+  if (!item || typeof item !== 'object' || Array.isArray(item)) {
+    return { opcode: null, fieldValues: null }
+  }
   return { opcode: item.opcode, fieldValues: item.fieldValues ?? null }
+}
+
+function isPlainObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+// An opcode spec (a check's or sequence item's `opcode`) is one opcode name, or a list of
+// alternatives where any one counts:
+//   'motion_turnright'                                   — one opcode
+//   ['motion_turnright', 'motion_turnleft']              — short form; shared fieldValues
+//   [{ opcode: 'motion_turnright', fieldValues: {...} }] — long form; per-alternative values
+// Returns [{ opcode, fieldValues }], each alternative's own fieldValues merged over the shared
+// ones (its own key wins). Malformed entries are dropped (validation reports them).
+export function opcodeAlternatives(opcodeSpec, sharedFieldValues = null) {
+  const shared = isPlainObject(sharedFieldValues) ? sharedFieldValues : null
+  const list = Array.isArray(opcodeSpec) ? opcodeSpec : [opcodeSpec]
+  return list.flatMap((alt) => {
+    if (typeof alt === 'string') return alt ? [{ opcode: alt, fieldValues: shared }] : []
+    if (isPlainObject(alt) && typeof alt.opcode === 'string' && alt.opcode) {
+      const own = isPlainObject(alt.fieldValues) ? alt.fieldValues : null
+      return [{ opcode: alt.opcode, fieldValues: own ? { ...(shared ?? {}), ...own } : shared }]
+    }
+    return []
+  })
+}
+
+// The opcode names an opcode spec accepts (block_count, labels).
+export function opcodeSpecOpcodes(opcodeSpec) {
+  return opcodeAlternatives(opcodeSpec).map((alt) => alt.opcode)
 }
 
 function traverseChain(startBlock) {
@@ -85,34 +120,45 @@ function blockMatchesFieldValues(block, fieldValues) {
   })
 }
 
+// True if `block` is one of the opcode spec's alternatives and meets that alternative's
+// fieldValues (its own merged over `sharedFieldValues`). The one block matcher the block
+// checks share, so a plain opcode string and a list of alternatives behave the same way.
+export function matchesOpcodeSpec(block, opcodeSpec, sharedFieldValues = null) {
+  if (!block) return false
+  return opcodeAlternatives(opcodeSpec, sharedFieldValues).some(
+    (alt) => block.type === alt.opcode && blockMatchesFieldValues(block, alt.fieldValues)
+  )
+}
+
+// block_count counts by opcode only: any alternative's opcode, fieldValues ignored.
+function hasSpecOpcode(block, opcodeSpec) {
+  return opcodeSpecOpcodes(opcodeSpec).includes(block?.type)
+}
+
+function itemMatches(block, item) {
+  return matchesOpcodeSpec(block, item.opcode, item.fieldValues)
+}
+
 function containsSubsequence(haystack, needle) {
   if (needle.length === 0) return true
   const normalizedNeedle = needle.map(normalizeSequenceItem)
   outer: for (let i = 0; i <= haystack.length - normalizedNeedle.length; i++) {
     for (let j = 0; j < normalizedNeedle.length; j++) {
-      const block = haystack[i + j]
-      const { opcode, fieldValues } = normalizedNeedle[j]
-      if (block.type !== opcode) continue outer
-      if (!blockMatchesFieldValues(block, fieldValues)) continue outer
+      if (!itemMatches(haystack[i + j], normalizedNeedle[j])) continue outer
     }
     return true
   }
   return false
 }
 
-function chainContainsBlock(chain, opcode, fieldValues) {
-  return chain.some((block) => block.type === opcode && blockMatchesFieldValues(block, fieldValues))
+function chainContainsBlock(chain, item) {
+  return chain.some((block) => itemMatches(block, item))
 }
 
 // True if `block` matches some sequence item other than the one at `skipIndex` — i.e. it
 // genuinely belongs to the required sequence, just not at this position.
 function blockMatchesOtherSequenceItem(block, normalized, skipIndex) {
-  return normalized.some(
-    (item, idx) =>
-      idx !== skipIndex &&
-      block.type === item.opcode &&
-      blockMatchesFieldValues(block, item.fieldValues)
-  )
+  return normalized.some((item, idx) => idx !== skipIndex && itemMatches(block, item))
 }
 
 // Returns 'on_track', 'violation', or 'unrelated' for a chain against a required sequence.
@@ -120,16 +166,11 @@ function blockMatchesOtherSequenceItem(block, normalized, skipIndex) {
 function findChainStatus(chain, sequence) {
   const normalized = sequence.map(normalizeSequenceItem)
   for (let i = 0; i < chain.length; i++) {
-    if (chain[i].type !== normalized[0].opcode) continue
-    if (!blockMatchesFieldValues(chain[i], normalized[0].fieldValues)) continue
+    if (!itemMatches(chain[i], normalized[0])) continue
     // Found sequence start at index i — verify that subsequent blocks continue correctly.
     for (let j = 1; j < normalized.length && i + j < chain.length; j++) {
       const block = chain[i + j]
-      if (
-        block.type === normalized[j].opcode &&
-        blockMatchesFieldValues(block, normalized[j].fieldValues)
-      )
-        continue
+      if (itemMatches(block, normalized[j])) continue
       // The next required block isn't here. That's only a genuine violation once
       // something is actually wrong — either the block sitting here doesn't belong to
       // the sequence at all (a foreign block), or the required block has already been
@@ -141,11 +182,7 @@ function findChainStatus(chain, sequence) {
       // content commonly begins with exactly this gap, since "insert a block between
       // these two" starts from the two blocks already connected to each other.
       const sittingBlockBelongsToSequence = blockMatchesOtherSequenceItem(block, normalized, j)
-      const requiredBlockPlacedElsewhere = chainContainsBlock(
-        chain,
-        normalized[j].opcode,
-        normalized[j].fieldValues
-      )
+      const requiredBlockPlacedElsewhere = chainContainsBlock(chain, normalized[j])
       if (!sittingBlockBelongsToSequence || requiredBlockPlacedElsewhere) return 'violation'
       return 'on_track'
     }
@@ -164,7 +201,7 @@ export function partialEvaluateScratchCheck(check, workspace) {
         if (!workspace) return 'pending'
         const found = workspace
           .getAllBlocks(false)
-          .some((b) => b.type === check.opcode && blockMatchesFieldValues(b, check.fieldValues))
+          .some((b) => matchesOpcodeSpec(b, check.opcode, check.fieldValues))
         return found ? 'pass' : 'pending'
       }
       case 'blocks_in_order': {
@@ -181,7 +218,9 @@ export function partialEvaluateScratchCheck(check, workspace) {
       }
       case 'block_count': {
         if (!workspace) return 'pending'
-        const count = workspace.getAllBlocks(false).filter((b) => b.type === check.opcode).length
+        const count = workspace
+          .getAllBlocks(false)
+          .filter((b) => hasSpecOpcode(b, check.opcode)).length
         const target = Number(check.value)
         if (check.operator === 'equals') {
           if (count === target) return 'pass'
@@ -224,7 +263,7 @@ export function evaluateScratchCheck(
         if (!workspace) return false
         return workspace
           .getAllBlocks(false)
-          .some((b) => b.type === check.opcode && blockMatchesFieldValues(b, check.fieldValues))
+          .some((b) => matchesOpcodeSpec(b, check.opcode, check.fieldValues))
       case 'sprite_property_delta': {
         if (!spriteState || !preRunSpriteState) return false
         const delta =
@@ -247,7 +286,9 @@ export function evaluateScratchCheck(
       }
       case 'block_count': {
         if (!workspace) return false
-        const count = workspace.getAllBlocks(false).filter((b) => b.type === check.opcode).length
+        const count = workspace
+          .getAllBlocks(false)
+          .filter((b) => hasSpecOpcode(b, check.opcode)).length
         return compare(count, check.operator, check.value)
       }
       case 'variable_compare':
@@ -255,13 +296,18 @@ export function evaluateScratchCheck(
       case 'costume_is':
         return spriteState ? spriteState.costume === check.value : false
       case 'block_run': {
-        const ran = runState?.executedBlocks?.has(check.opcode) ?? false
-        if (!ran) return false
-        if (!check.fieldValues || Object.keys(check.fieldValues).length === 0) return true
-        if (!workspace) return true
-        return workspace
-          .getAllBlocks(false)
-          .some((b) => b.type === check.opcode && blockMatchesFieldValues(b, check.fieldValues))
+        // Passes when any alternative ran. The run only records opcodes, so an alternative
+        // with fieldValues also needs a block of it in the workspace holding those values.
+        const executed = runState?.executedBlocks
+        if (!executed) return false
+        return opcodeAlternatives(check.opcode, check.fieldValues).some((alt) => {
+          if (!executed.has(alt.opcode)) return false
+          if (!alt.fieldValues || Object.keys(alt.fieldValues).length === 0) return true
+          if (!workspace) return true
+          return workspace
+            .getAllBlocks(false)
+            .some((b) => matchesOpcodeSpec(b, alt.opcode, alt.fieldValues))
+        })
       }
       default:
         return false
