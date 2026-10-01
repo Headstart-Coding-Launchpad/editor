@@ -343,9 +343,10 @@ function validateAuthoring(type, def) {
 //   code-check rule.
 // - validateTaskInBrowser(task, { n, errors, warnings }) → Builder-only rules needing browser
 //   APIs (e.g. DOMParser); the CLI never calls it.
-// - verifyTaskChecks(task, label) → { taskId, title, stages, warnings }: the task's checks
-//   evaluated against its own authored stages, per check, with no cases file (`lessons
-//   test-checks` without --cases; scratch). Pure / Node-safe; null = not supported.
+// - verifyTaskChecks(task, label, { activityPattern }) → { taskId, title, stages, warnings }:
+//   the task's checks evaluated against its own authored stages, per check, with no cases file
+//   (`lessons test-checks` without --cases; scratch). `activityPattern` is the task's
+//   taskActivity pattern id, resolved by the CLI. Pure / Node-safe; null = not supported.
 const OPTIONAL_FUNCTIONS = [
   'initCompleteTab',
   'initStageTab',
