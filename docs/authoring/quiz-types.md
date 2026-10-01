@@ -21,3 +21,7 @@ Student types a free-text response. It can be auto-checked for a keyword or phra
 ## Confidence Rating
 
 Student rates how confident they feel about a topic on a 1–5 scale. There's no right or wrong answer — it's a self-check, not a test.
+
+## Poll
+
+Student picks the option they prefer, such as what the class should do next. There's no right or wrong answer, the student can change their mind, and nobody sees anyone else's choice; the teacher sees the totals in the session report. (A teacher can also run a quick poll during a live lesson without changing the lesson.)

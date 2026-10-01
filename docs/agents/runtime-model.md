@@ -8,6 +8,8 @@ Do not deviate from this shape. (The `videoCallLink`, `videoCallBroadcastAt` and
 
 The top-level `liveInk/{lessonId}` node (Presentation annotations) was likewise added with explicit user approval; its shape is in "Presentation Annotations" below.
 
+The live class poll fields (`polls`, `activePollId`, `students.{id}.pollResponses`) were added with explicit user approval (teacher feedback, 2026-10-01); see the `polls/{pollId}` write rule and "Class poll answers" below.
+
 ```json
 {
   "sessions": {
@@ -32,6 +34,10 @@ The top-level `liveInk/{lessonId}` node (Presentation annotations) was likewise 
       "nudgeAwayPushedAt": "1234567890 | null (class-wide nudge; only students whose window is unfocused react)",
       "videoCallLink": "string | null (http(s) URL only, validated at the write boundary; ephemeral — reset to null on createSession/restartSession/endSession, so the teacher re-enters it each session)",
       "videoCallBroadcastAt": "1234567890 | null (class-wide \"Send to all\" video-call push; reaches name-entry, waiting-room and lesson/sandbox students; reset to null on createSession/endSession)",
+      "polls": {
+        "{pollId}": { "question": "string (≤200)", "options": ["2-6 strings (≤100 each)"], "status": "open | closed", "showResults": false, "createdAt": 1234567890, "closedAt": "number | absent while open" }
+      },
+      "activePollId": "string | null (the poll on students' screens: open, or closed; null after Remove from screens; polls and activePollId reset on createSession/endSession)",
       "teacherLive": {
         "active": true,
         "source": "teacher | student",
@@ -242,6 +248,9 @@ The top-level `liveInk/{lessonId}` node (Presentation annotations) was likewise 
           "pasteLog": {
             "{taskId}": { "count": 2, "chars": 180, "lastAt": 1234567890, "firstAt": "ServerValue.TIMESTAMP (first large paste on the task, set once)" }
           },
+          "pollResponses": {
+            "{pollId}": { "choice": "option index 0-5", "answeredAt": 1234567890 }
+          },
           "windowFocused": "boolean | null",
           "lastActivityAt": "number | null",
           "isFullscreen": "boolean | null",
@@ -299,6 +308,7 @@ Teacher writes:
 - `teacherClassPaneCommand` (`pushClassPaneCommand`/`clearClassPaneCommand`) — whole-class "highlight this tab/panel" or "force-switch to this tab/panel" broadcast (e.g. Electronics' Breadboard/MicroPython tabs, Scratch's Blocks/Stage tabs, or the Instructions/explainer pane on any lesson type); every connected student evaluates this same node. See the per-student `teacherPaneCommand` bullet below for semantics and the `docs/agents/classroom-behaviours.md` section for student-side behaviour. Cleared by `setTaskId`
 - `videoCallLink` (written by `updateVideoCallLink`, validated as http(s)-only — throws on any other scheme or malformed URL; settable any time during a session via the "📹 Video Call" popover in `TeacherSessionControls.jsx`; reset to `null` on `createSession`/`restartSession`/`endSession`) — shown to students in `WaitingRoom.jsx` whenever set
 - `videoCallBroadcastAt` (stamped by `broadcastVideoCallLink` from the "📹 Send to all" button beside the Video Call control in `TeacherSessionControls.jsx`, only offered while a `videoCallLink` is set and the session hasn't ended; reset to `null` on `createSession`/`endSession`) — a class-wide video-call push. Every student screen that can show the prompt reacts: name entry (those students have no student record yet, so this is the only push that reaches them), the waiting room, and the lesson/sandbox page. See "Video call prompt" in `docs/agents/classroom-behaviours.md`
+- `polls/{pollId}`, `activePollId` — live class polls from the top bar's "📊 Poll" popover (`TeacherPollControl.jsx`): `launchPoll` (closes any poll still open, writes the new one with `status: 'open'`, `showResults: false` and makes it `activePollId`), `closePoll`, `setPollShowResults`, `dismissPoll` (clears `activePollId`, closing the poll first if open). Shapes are validated in `database.rules.json`; logic in `src/shared/classPolls.js`. Not touched by `setTaskId`; reset on `createSession`/`endSession` (the report is built first)
 - `sandboxCode`, `sandboxCodePushedAt`, `sandboxFiles`, `sandboxFilesUpdatedAt`
 - `sandboxPreviousTaskId` (written by `enterSandbox`, consumed and cleared by `exitSandbox` — see `docs/agents/classroom-behaviours.md`)
 - `sandboxExplainer` (pushed via `pushSandboxExplainer`, cleared on `createSession`/`endSession`/entering sandbox) and `explainerShowComplete` (toggled via `setExplainerShowComplete`; reset to `false` on `setTaskId`, `createSession`, `endSession` — see `docs/agents/classroom-behaviours.md` for the student-facing "Complete Code" reveal this gates)
@@ -315,7 +325,7 @@ Teacher per-student actions:
 - Remote Run (`pushRemoteRun`) writes `remoteRunPushedAt` and `remoteRunTaskId`. The student's tab (lesson or sandbox phase, not reviewing an earlier task) clears `remoteRunPushedAt` (`clearRemoteRun`) and, if the task matches, hands it to the module workspace as `cs.remoteRunToken`. `setTaskId` clears both fields.
 - Remote reset writes `remoteResetAction` and `remoteResetPushedAt`. For Arcade tasks, the student resets both code and the matching Starter/Stage/Complete visual design.
 - Check override writes `checkOverridePassed`, `checkOverrideHint`, and `checkOverridePushedAt`; a manual pass also writes `overrideLog/{anonymousId}/{taskId}` when the student has no real passing attempt. The per-student visible override fields are cleared by `setTaskId`; `overrideLog` is not, so the end-of-session report can read it.
-- Whole-class task advance writes `overrideLog/{anonymousId}/{taskId}` for each student who has not passed, unless the task is information, confidence, or an unchecked open short-answer response task. Override records store the task id, server timestamp, total attempt count at the moment of override, and `previousCheckState` (`failed` or `unattempted`). Teacher identity is not stored.
+- Whole-class task advance writes `overrideLog/{anonymousId}/{taskId}` for each student who has not passed, unless the task is information, confidence, poll, or an unchecked open short-answer response task. Override records store the task id, server timestamp, total attempt count at the moment of override, and `previousCheckState` (`failed` or `unattempted`). Teacher identity is not stored.
 - Send to topic writes `sentToTopicId` and `sentToTopicPushedAt`; cleared by `setTaskId`.
 - Highlight code (`pushTeacherHighlight`) adds an entry under `teacherHighlights/{highlightId}`; the teacher (or the student — see below) can remove any entry (`removeTeacherHighlight`). All entries cleared by `setTaskId`.
 - Highlight or force a tab/panel (`pushTeacherPaneCommand`/`clearTeacherPaneCommand`) writes `teacherPaneCommand: { mode, panes, pushedAt }` — `mode: 'highlight'` pulses a glow on the named tab(s)/panel(s) without moving anything; `mode: 'force'` immediately switches the student to them (a one-time jump, not a lock — the student is free to navigate away again right after). `panes` is drawn from `instructions` (every lesson type), plus `breadboard`/`code` for Electronics or `blocks`/`stage` for Scratch — see `PaneFocusDropdown.jsx`. There is no consent step (unlike `teacherStageRequestedAt`/`teacherEditRequestedAt`). Dismissal ("clears when the student looks at it") is tracked client-side in `StudentView`, not by writing back to Firebase — this matters for `teacherClassPaneCommand` above, since it's one shared node and one student looking at it must not clear it for the rest of the class. Cleared by `setTaskId`.
@@ -346,6 +356,7 @@ Student writes:
 - Dismiss a teacher highlight: removes one `teacherHighlights/{highlightId}` entry on their own node (same `removeTeacherHighlight` call the teacher uses to retract one). Written when they click its badge, and when they edit inside the highlighted code (see classroom-behaviours.md, Teacher Code Highlights).
 - Presence: own `windowFocused`, `lastActivityAt`, `isFullscreen`, and `visiblePanes` via `writeStudentPresence`, independent of the `online` onDisconnect key. `isFullscreen` mirrors `document.fullscreenElement` (updated on the browser's `fullscreenchange` event) and drives the "⛶ Fullscreen" badge on `StudentCard` — it reflects actual fullscreen state, not whether `fullscreenRequestedAt` was acted on. `visiblePanes` is written by `LessonTaskContent.jsx` on every change (debounced by identity, not per-keystroke) and reflects the info/explainer pane's open/closed state uniformly across all lesson types, plus each module's own internal panes for Electronics/Python/HTML/Arcade (`modulePanes`) or Scratch's Blocks/Stage split.
 - Remote edit/stage consent: `acceptTeacherEdit`/`acceptTeacherStage` set their own `teacherEditAcceptedAt`/`teacherStageAcceptedAt`; `declineTeacherEdit`/`declineTeacherStage` clear the corresponding request fields without accepting.
+- Class poll answers: own `pollResponses/{pollId}` (`{ choice, answeredAt }`) via `answerPoll` from the poll card (`ClassPollCard.jsx`), only while that poll's `status` is `open` (the rules refuse a student answer to a closed or missing poll). Overwritten when the student changes their answer. Not cleared by `setTaskId`; read by `buildSessionReport` into the report's `polls`.
 - Large pastes: own `pasteLog/{taskId}` via `recordStudentPaste` (`{ count, chars, lastAt, firstAt }`, see `docs/agents/classroom-behaviours.md`). `firstAt` is a server timestamp set on the first large paste only (the badge guards order it against a pass); `lastAt` keeps being overwritten. Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `pastes` and the task summary's `pasteCount`/`pastedStudentCount`.
 - Live badge signals: own `studentSignals/{anonymousId}` and `attemptLog` entries' `error`. See "Badge data" below.
 - Stage reference reveal: after a failed attempt, students can reveal their own Python/HTML Support `codeStages` entries. The same `supportRevealLog` record stores `source: "student"`, stage label, attempt count, and server timestamp. Revealing does not change editor contents.
@@ -561,7 +572,7 @@ A deliberate data-model change approved by the product owner (September 2026). `
 
 ## Session Reports (`lessons/{lessonId}/sessionReports` subcollection)
 
-Reports include all non-information tasks, including check-less quiz interactions. Each per-student task entry and each task summary has `taskType`; quiz entries also have `quizType`. Each task summary has `priority`, defaulting omitted task priority to `core`. Confidence and open short-answer summaries use `respondedCount` instead of pass/fail completion metrics. Fill-blank and match summaries add missed-blank or missed-pair breakdowns. Carry-through walk-backs add per-student `carryFallback` metadata and task-level `carryFallbackCount`/`carryFallbacks`. Support-stage reveals add per-student `supportReveals` metadata and task-level `supportRevealCount`, `supportRevealStudentCount`, and `supportRevealSources`. A task summary also carries `teacherRating` (`{ rating, whatWorkedWell, whatDidntWork, submittedAt }`) when the teacher rated that task live during the session via `TaskRatingPanel.jsx` — omitted entirely for a task the teacher left unrated, same "attach only if non-blank" rule as the whole-session `teacherFeedback` below.
+Reports include all non-information tasks, including check-less quiz interactions. Each per-student task entry and each task summary has `taskType`; quiz entries also have `quizType`. Each task summary has `priority`, defaulting omitted task priority to `core`. Confidence, poll and open short-answer summaries use `respondedCount` instead of pass/fail completion metrics. Fill-blank and match summaries add missed-blank or missed-pair breakdowns. Carry-through walk-backs add per-student `carryFallback` metadata and task-level `carryFallbackCount`/`carryFallbacks`. Support-stage reveals add per-student `supportReveals` metadata and task-level `supportRevealCount`, `supportRevealStudentCount`, and `supportRevealSources`. A task summary also carries `teacherRating` (`{ rating, whatWorkedWell, whatDidntWork, submittedAt }`) when the teacher rated that task live during the session via `TaskRatingPanel.jsx` — omitted entirely for a task the teacher left unrated, same "attach only if non-blank" rule as the whole-session `teacherFeedback` below.
 
 Written once per session run, when the teacher ends (or restarts, since restart is only reachable after `endSession()`) a session. `TeacherView.handleEndSession` builds the report client-side via `buildSessionReport({ session, lesson })` (`src/shared/lessonReport.js`) from the in-memory `session` snapshot — combining `session.students` (roster), `session.attemptLog` (full per-task attempt history), `session.overrideLog` (teacher move-on records), `session.carryFallbackLog` (carry walk-back records), `session.supportRevealLog` (read-only stage references opened by teacher/student), `session.taskRatingLog` (live per-task teacher ratings), `session.taskStartTimes`, the live badge data (`session.badges`, `session.studentSignals`, `pasteLog.firstAt`, `attemptLog` `error`; see "Badge data"), and the lesson's task list — then writes it with `saveSessionReport` (`src/shared/lessonService.js`) before the RTDB `endSession()` update wipes live session data. Before building, `handleEndSession` awaits `readSessionArchive({ endedAt })` and passes the teacher-sandbox archive in as `buildSessionReport({ session, lesson, sessionArchive, pendingSuggestions, topics })`, with the badge suggestions still pending (`useBadgeSuggestions`) and the Topic Library's topics (for topic titles); a failed archive read leaves the sandbox out rather than losing the report. Doc ID is the report's `sessionId` (`String(session.startedAt)`), so each distinct run of a lesson gets its own report doc. Information tasks are excluded — there is nothing to grade.
 
@@ -578,6 +589,7 @@ Override records make moved-on tasks complete without claiming a real pass. If a
 - `quizGroups`: each lesson group with at least `quizMasterMinQuizzes` graded quizzes, with each student who attempted one (`right`, `total`, `firstTryPercent`) and `medianFirstTryPercent`.
 - `teacherSandbox`: `{ possibleLessonGap: true, visits: [...] }` from `sessionArchive` — each visit's times, `previousTaskId`/`previousTaskTitle`, explainer, pushes and `studentSnapshots: [{ studentLabel, at, code | files, truncated? }]`.
 - `badgeSummary[badgeId]`: `suggested` (decisions with source `rule` or `auto`, plus the suggestions pending at session end), `awarded` (still held), `autoAwarded`, `manual`, `dismissed`, `revoked`; `shortcutSummary[shortcutId]`: students who used it.
+- `polls`: every live class poll, oldest first (`buildPollsReport` in `src/shared/classPolls.js`), with its options and counts, each student's final answer by anonymous label, and who didn't answer. Omitted when there were none. Field reference: `docs/authoring/session-reports.md` "polls".
 - **Size cap:** `capSessionReportSize` keeps the serialised report under 900 KB (Firestore's limit is 1 MiB): it drops the students' sandbox snapshots first (`teacherSandbox.studentSnapshotsDropped`), then the teacher's pushed code (`pushesDropped`), and sets `sizeNote`.
 
 Each task result carries `timeOnTaskMs`: the gap between `taskStartTimes[taskId]` and either the passing attempt's `passedAt` (if completed) or the latest attempt's `loggedAt` (if not) — `null` if the task never started or nothing was logged. `taskSummary` carries the class average as `avgTimeOnTaskMs` (averaged only over students with a non-null value).
@@ -600,7 +612,7 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
           "taskId": 1,
           "title": "Task One",
           "taskType": "code | quiz",
-          "quizType": "multiple_choice | match | fill_blank | short_answer | confidence",
+          "quizType": "multiple_choice | match | fill_blank | short_answer | confidence | poll",
           "completed": true,
           "attempts": 3,
           "finalResult": "passed | failed | not_attempted | not_applicable | overridden_failed | overridden_unattempted",
@@ -627,7 +639,7 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
       "title": "Task One",
       "priority": "core | optional",
       "taskType": "code | quiz",
-      "quizType": "multiple_choice | match | fill_blank | short_answer | confidence",
+      "quizType": "multiple_choice | match | fill_blank | short_answer | confidence | poll",
       "totalStudents": 12,
       "completedCount": 9,
       "completionRate": 0.75,
@@ -640,8 +652,9 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
       "supportRevealCount": 3,
       "supportRevealStudentCount": 2,
       "supportRevealSources": { "teacher": 1, "student": 2 },
-      "respondedCount": "number (confidence/open short-answer summaries)",
+      "respondedCount": "number (confidence/poll/open short-answer summaries)",
       "ratingDistribution": { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 },
+      "optionDistribution": [{ "id": "a", "text": "Games", "count": 3 }],
       "blankFailures": [{ "blankId": "string", "expected": "string", "count": 1, "values": [{ "value": "string", "count": 1 }] }],
       "pairFailures": [{ "pairId": "string", "prompt": "string", "expected": "string", "count": 1, "values": [{ "value": "string", "count": 1 }] }],
       "teacherRating": { "rating": "1-5 | null", "whatWorkedWell": "string", "whatDidntWork": "string", "submittedAt": 1234567890 },
@@ -663,6 +676,9 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
   },
   "badgeSummary": { "{badgeId}": { "suggested": 3, "awarded": 2, "autoAwarded": 1, "manual": 0, "dismissed": 1, "revoked": 0 } },
   "shortcutSummary": { "{shortcutId}": 5 },
+  "polls": [
+    { "pollId": "-Nx…", "question": "What next?", "options": [{ "index": 0, "text": "Games", "count": 4 }], "status": "closed", "showResults": true, "createdAt": 1234567890, "closedAt": 1234567990, "respondedCount": 4, "responses": [{ "studentLabel": "Student 1", "choice": 0, "choiceText": "Games", "answeredAt": 1234567900 }], "notResponded": ["Student 5"] }
+  ],
   "sizeNote": "string (only when the size cap dropped sandbox code)"
 }
 ```

@@ -63,6 +63,7 @@ Information tasks (`type: information`) are never in a report. Every other task 
 | `teacherSandbox` | The class's teacher-sandbox visits, flagged as a possible lesson gap ([teacherSandbox](#teachersandbox)). | Omitted when the class never went into the sandbox | 2026-09-30 |
 | `badgeSummary` | Per-badge counts ([badgeSummary](#badgesummary)). | Omitted when no badge was suggested or awarded | 2026-09-30 |
 | `shortcutSummary` | `{ <shortcutId>: <number of students who used it> }` for the Keyboard Wizard shortcuts. | Omitted when nobody used one | 2026-09-30 |
+| `polls[]` | The teacher's live class polls, oldest first ([polls](#polls)). | Omitted when the teacher ran no poll | 2026-10-01 |
 | `sizeNote` | Plain-text note saying sandbox code was left out to fit the 1 MiB limit. | Only on a trimmed report | 2026-09-30 |
 | `teacherFeedback` | The teacher's end-of-session rating and notes ([Teacher feedback](#teacher-feedback)). | Omitted unless the teacher saved some | 2026-09-01 |
 
@@ -89,13 +90,13 @@ signals, or a teacher-sandbox snapshot.
 ### Student tasks
 
 `students[].tasks[]`. Fields marked *graded only* are left out on ungraded tasks (a confidence
-rating, a short answer with no `check`, an unknown activity).
+rating, a poll, a short answer with no `check`, an unknown activity).
 
 | Path | Meaning | Present | Added |
 |---|---|---|---|
 | `taskId`, `title` | The task. `title` falls back to `Task <id>`. | Always | 2026-07-13 |
 | `taskType` | `code` (code tasks and Code Arrange), `quiz`, or `activity`. | Always | 2026-07-22 |
-| `quizType` | `multiple_choice`, `match`, `fill_blank`, `short_answer`, `confidence`. | Quizzes only | 2026-07-22 |
+| `quizType` | `multiple_choice`, `match`, `fill_blank`, `short_answer`, `confidence`, `poll` (since 2026-10-01). | Quizzes only | 2026-07-22 |
 | `activityType` | The activity id (`binary`, `keyboard`, `mouse`, …). | Activities only | 2026-09-28 |
 | `completed` | Graded: passed, or overridden. Ungraded: responded at all. | Always | 2026-07-13 |
 | `attempts` | Total submissions including identical resubmissions: Σ(1 + `retries`) over `distinctAttempts`. | Always | 2026-07-13 |
@@ -224,7 +225,7 @@ different shapes.
 
 ### Ungraded tasks
 
-A confidence rating, a short answer with no `check`, or an unknown activity. These report who
+A confidence rating, a poll, a short answer with no `check`, or an unknown activity. These report who
 responded instead of completion: there is no `completedCount`, `completionRate`, `avgAttempts` or
 `teacherAssistedCount`.
 
@@ -233,6 +234,7 @@ responded instead of completion: there is no `completedCount`, `completionRate`,
 | `taskId`, `title`, `priority`, `taskType`, `quizType` / `activityType`, `totalStudents` | As for graded tasks. | — |
 | `respondedCount` | Students who responded at least once. | 2026-07-22 |
 | `ratingDistribution` | Confidence only: `{ 1: n, 2: n, 3: n, 4: n, 5: n }` from each student's latest rating. | 2026-07-22 |
+| `optionDistribution[]` | Poll only: `{ id, text, count }` per option, in the task's option order, counting each student's latest choice (students can change their choice). | 2026-10-01 |
 | `avgTimeOnTaskMs` | As for graded tasks. | 2026-07-14 |
 | `commonFailures` | Always `[]`. | 2026-07-22 |
 | `overrideCount`, `overriddenFailedCount`, `overriddenUnattemptedCount` | Always `0`. | 2026-07-22 |
@@ -248,6 +250,7 @@ Each activity's definition can add fields through `report.summaryFields(task, pe
 | `pairFailures[]` | Match quiz | `{ pairId, prompt, expected, count, values: [{ value, count }] }`, most-missed first; counts wrong pairings across every distinct attempt. | 2026-07-22 |
 | `blankFailures[]` | Fill-in-the-blanks quiz | `{ blankId, expected, count, values: [{ value, count }] }`, as above. | 2026-07-22 |
 | `ratingDistribution` | Confidence quiz | See [Ungraded tasks](#ungraded-tasks). | 2026-07-22 |
+| `optionDistribution[]` | Poll quiz | See [Ungraded tasks](#ungraded-tasks). | 2026-10-01 |
 | `avgItemProgress` | Every `taskType: activity` (Binary, Keyboard, Mouse, …) | Mean of `correct / total` over students with `itemProgress`, 2 dp (0–1). Added by the report itself, not `summaryFields`. Omitted when nobody submitted. | 2026-09-28 |
 
 A new activity that adds summary fields documents them here (and in its own authoring page).
@@ -263,6 +266,24 @@ A quiz group is a lesson group (`group:`) with at least `badgeOptions.quizMaster
 | `quizGroups[].quizTaskIds[]` | Its graded quizzes. |
 | `quizGroups[].students[]` | Students who attempted at least one of them: `studentLabel`, `right` (quizzes right on the first try, as a real pass), `total`, `firstTryPercent` (0–100). |
 | `quizGroups[].medianFirstTryPercent` | Median of the students' `firstTryPercent`, or null. |
+
+## polls
+
+Every live class poll the teacher ran from the **📊 Poll** button in the top bar (not the
+`quizType: poll` task, which reports in `taskSummary`), oldest first. Built from the session's
+`polls` and each student's `pollResponses` (`src/shared/classPolls.js`). Added 2026-10-01.
+
+| Path | Meaning |
+|---|---|
+| `polls[].pollId` | The poll's RTDB key. |
+| `polls[].question` | The question the teacher asked. |
+| `polls[].options[]` | `{ index, text, count }` per option, in the order asked. |
+| `polls[].status` | `closed`, or `open` if the session ended (or the in-progress report was built) while it was still open. |
+| `polls[].showResults` | `true` if the teacher showed the results to the class. |
+| `polls[].createdAt`, `closedAt` | When it was launched and closed (ms); `closedAt` is null while open. |
+| `polls[].respondedCount` | Students who answered. |
+| `polls[].responses[]` | `{ studentLabel, choice (option index), choiceText, answeredAt }`, each student's final answer (students can change it while the poll is open). |
+| `polls[].notResponded[]` | Labels of students in the class who didn't answer. A student who first joined after the poll closed isn't listed. |
 
 ## teacherSandbox
 
