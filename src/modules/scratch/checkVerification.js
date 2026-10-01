@@ -7,7 +7,7 @@
 import { normalizeChecks, normalizeFeedbackChecks } from '../checks.js'
 import { getStageRole, getStarterStage } from '../../shared/taskStages.js'
 import { getTaskActivityPatternId } from '../../shared/taskActivity.js'
-import { evaluateScratchCheck, normalizeSequenceItem } from './checks.js'
+import { evaluateScratchCheck, normalizeSequenceItem, opcodeSpecOpcodes } from './checks.js'
 import {
   evaluateScratchCheckForSprites,
   findScratchCheckTarget,
@@ -36,8 +36,19 @@ export function getScratchVerificationStages(task) {
   return stages
 }
 
+// `opcode` may be one opcode or a list of alternatives (short or long form).
 function blockCount(workspace, opcode) {
-  return workspace.getAllBlocks(false).filter((block) => block.type === opcode).length
+  const opcodes = opcodeSpecOpcodes(opcode)
+  return workspace.getAllBlocks(false).filter((block) => opcodes.includes(block.type)).length
+}
+
+function opcodeLabel(opcode) {
+  return opcodeSpecOpcodes(opcode).join(' or ')
+}
+
+// The opcode spec with every per-alternative fieldValues dropped.
+function bareOpcodeSpec(opcode) {
+  return Array.isArray(opcode) ? opcodeSpecOpcodes(opcode) : opcode
 }
 
 // Each top-level script as its list of opcodes (reporters plugged into inputs are left out).
@@ -64,10 +75,12 @@ function withoutFieldValues(check) {
   if (check.type === 'blocks_in_order') {
     return {
       ...check,
-      sequence: (check.sequence ?? []).map((item) => normalizeSequenceItem(item).opcode),
+      sequence: (check.sequence ?? []).map((item) => ({
+        opcode: bareOpcodeSpec(normalizeSequenceItem(item).opcode),
+      })),
     }
   }
-  return { ...check, fieldValues: null }
+  return { ...check, opcode: bareOpcodeSpec(check.opcode), fieldValues: null }
 }
 
 /**
@@ -117,8 +130,8 @@ export function explainScratchCheck(check, spriteWorkspaces) {
       out.actual = perSprite(considered, (ws) => blockCount(ws, check.opcode))
       reasons.push(
         looseMatch
-          ? `a ${check.opcode} block is there but its fields don't match fieldValues`
-          : `no ${check.opcode} block`
+          ? `a ${opcodeLabel(check.opcode)} block is there but its fields don't match fieldValues`
+          : `no ${opcodeLabel(check.opcode)} block`
       )
     } else if (check.type === 'blocks_in_order') {
       out.actual = perSprite(considered, scriptOpcodes)
@@ -128,7 +141,7 @@ export function explainScratchCheck(check, spriteWorkspaces) {
           : 'no script has these blocks joined in this order'
       )
     } else if (check.type === 'block_count') {
-      reasons.push(`${check.opcode} count is not ${check.operator} ${check.value}`)
+      reasons.push(`${opcodeLabel(check.opcode)} count is not ${check.operator} ${check.value}`)
     }
   }
   if (reasons.length > 0) out.reason = reasons.join('; ')
