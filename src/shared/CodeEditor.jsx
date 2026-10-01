@@ -159,6 +159,13 @@ function buildTeacherHighlightDecorations(doc, highlights) {
   return Decoration.set(ranges, true)
 }
 
+// Whether a change (the span fromA..toA of the old document was inserted at, deleted or
+// replaced) touches the highlighted text itself. Typing right at either edge, or deleting
+// text that only borders the range, does not: the highlight just moves with its code.
+function changeTouchesHighlight(fromA, toA, h) {
+  return fromA < h.to && toA > h.from
+}
+
 export const teacherHighlightsField = StateField.define({
   create() {
     return { decorations: Decoration.none, highlights: [] }
@@ -167,7 +174,20 @@ export const teacherHighlightsField = StateField.define({
     let highlights = value.highlights
     let changed = false
     if (transaction.docChanged && highlights.length > 0) {
+      // The user's own edit (typing, deleting, pasting, undo) inside a highlighted range
+      // clears that highlight for good: the code it marked has changed. Every other
+      // highlight, and every highlight under an outside change (task switch, a live mirror
+      // update), is mapped so it stays on the code it marks.
+      const touched = new Set()
+      if (USER_EDIT_EVENTS.some((type) => transaction.isUserEvent(type))) {
+        transaction.changes.iterChangedRanges((fromA, toA) => {
+          for (const h of highlights) {
+            if (changeTouchesHighlight(fromA, toA, h)) touched.add(h.id)
+          }
+        })
+      }
       highlights = highlights
+        .filter((h) => !touched.has(h.id))
         .map((h) => ({
           ...h,
           from: transaction.changes.mapPos(h.from, 1),
@@ -178,9 +198,18 @@ export const teacherHighlightsField = StateField.define({
     }
     for (const effect of transaction.effects) {
       if (!effect.is(setTeacherHighlights)) continue
+      // The incoming list says which highlights exist. One the editor already shows keeps
+      // the position it has been mapped to (the stored one predates the latest edits); a new
+      // one is placed at its stored position; the rest are removed.
       const max = transaction.state.doc.length
+      const current = new Map(highlights.map((h) => [h.id, h]))
       highlights = []
       for (const h of effect.value ?? []) {
+        const existing = current.get(h.id)
+        if (existing) {
+          highlights.push({ ...existing, emoji: h.emoji, note: h.note })
+          continue
+        }
         const from = Math.min(Math.max(h.from ?? 0, 0), max)
         const to = Math.min(Math.max(h.to ?? from, 0), max)
         if (from >= to) continue
@@ -196,6 +225,39 @@ export const teacherHighlightsField = StateField.define({
   },
   provide: (field) => EditorView.decorations.from(field, (value) => value.decorations),
 })
+
+/**
+ * The ids of the teacher highlights a view update cleared because the user edited inside
+ * them (see teacherHighlightsField); the editor reports each through onHighlightDismiss.
+ */
+export function highlightsClearedByUserEdit(update) {
+  if (!isUserEditUpdate(update)) return []
+  const before = update.startState.field(teacherHighlightsField, false)?.highlights ?? []
+  if (before.length === 0) return []
+  const after = new Set(
+    (update.state.field(teacherHighlightsField, false)?.highlights ?? []).map((h) => h.id)
+  )
+  return before.filter((h) => !after.has(h.id)).map((h) => h.id)
+}
+
+/**
+ * The smallest single change turning `current` into `next`: the shared prefix and suffix are
+ * left alone, so decorations on untouched text (teacher highlights, the remote selection) map
+ * through an outside update instead of being wiped by a whole-document replace.
+ */
+export function minimalReplace(current, next) {
+  const max = Math.min(current.length, next.length)
+  let start = 0
+  while (start < max && current.charCodeAt(start) === next.charCodeAt(start)) start++
+  let end = 0
+  while (
+    end < max - start &&
+    current.charCodeAt(current.length - 1 - end) === next.charCodeAt(next.length - 1 - end)
+  ) {
+    end++
+  }
+  return { from: start, to: current.length - end, insert: next.slice(start, next.length - end) }
+}
 
 // Runtime error-line highlight: a single whole-line marker showing where the
 // student's last Run threw. Cleared automatically the moment the document
@@ -266,6 +328,18 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
   // Callers build the sets inline, so compare by content: a new array with the same hints must
   // not re-anchor (and so resurrect) hints the student has deleted.
   const lineHintsKey = useMemo(() => JSON.stringify(lineHints ?? []), [lineHints])
+  // The teacher highlights are rebuilt from every session snapshot (even one the student's own
+  // selection write caused), so they too are compared by content: only a real change to the
+  // set may reach the editor, or the positions it has mapped through edits would be reset.
+  const teacherHighlightsRef = useRef(teacherHighlights)
+  teacherHighlightsRef.current = teacherHighlights
+  // Highlights this editor cleared because the user edited inside them. They stay cleared even
+  // while the session still lists them (the dismissal write is in flight, or there is none).
+  const clearedHighlightIdsRef = useRef(new Set())
+  const teacherHighlightsKey = useMemo(
+    () => JSON.stringify(teacherHighlights ?? []),
+    [teacherHighlights]
+  )
 
   // Mount the editor once
   useEffect(() => {
@@ -294,6 +368,10 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
             if (update.docChanged) {
               onChangeRef.current?.(update.state.doc.toString())
               if (isUserEditUpdate(update)) onUserEditRef.current?.('editor')
+              for (const id of highlightsClearedByUserEdit(update)) {
+                clearedHighlightIdsRef.current.add(id)
+                onHighlightDismissRef.current?.(id)
+              }
             }
             if (update.docChanged || update.selectionSet) {
               const selection = update.state.selection.main
@@ -361,7 +439,8 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     const current = view.state.doc.toString()
     if (current !== value) {
       view.dispatch({
-        changes: { from: 0, to: current.length, insert: value ?? '' },
+        // Only the changed span, so highlights on unchanged code survive (see minimalReplace).
+        changes: minimalReplace(current, value ?? ''),
         effects: setLineHints.of(chooseLineHints(value ?? '', lineHintSetsRef.current)),
       })
     }
@@ -384,8 +463,10 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
-    view.dispatch({ effects: setTeacherHighlights.of(teacherHighlights) })
-  }, [teacherHighlights])
+    const cleared = clearedHighlightIdsRef.current
+    const highlights = (teacherHighlightsRef.current ?? []).filter((h) => !cleared.has(h.id))
+    view.dispatch({ effects: setTeacherHighlights.of(highlights) })
+  }, [teacherHighlightsKey])
 
   useEffect(() => {
     const view = viewRef.current
