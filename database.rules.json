@@ -50,8 +50,62 @@
         // Teachers and admins retain write access for rename, reset, and check override.
         "students": {
           "$anonymousId": {
-            ".write": "auth != null && (auth.uid === $anonymousId || auth.token.role === 'teacher' || auth.token.role === 'admin')"
+            ".write": "auth != null && (auth.uid === $anonymousId || auth.token.role === 'teacher' || auth.token.role === 'admin')",
+
+            // Live class poll answers ({ choice: option index 0-5, answeredAt }). A student
+            // may only answer (or change an answer to) a poll that exists and is open;
+            // teachers/admins are not limited to open polls.
+            "pollResponses": {
+              "$pollId": {
+                ".validate": "newData.hasChildren(['choice', 'answeredAt']) && root.child('sessions').child($lessonId).child('polls').child($pollId).exists() && (auth.token.role === 'teacher' || auth.token.role === 'admin' || root.child('sessions').child($lessonId).child('polls').child($pollId).child('status').val() === 'open')",
+                "choice": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5"
+                },
+                "answeredAt": {
+                  ".validate": "newData.isNumber()"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            }
           }
+        },
+
+        // Live class polls ({ question, options, status, showResults, createdAt, closedAt? }).
+        // Teacher/admin write is inherited from $lessonId; there is no student rule, so
+        // students only answer, on their own node (students/$anonymousId/pollResponses).
+        // activePollId names the poll on students' screens (src/shared/classPolls.js).
+        "polls": {
+          "$pollId": {
+            ".validate": "newData.hasChildren(['question', 'options', 'status', 'createdAt'])",
+            "question": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200"
+            },
+            "options": {
+              "$index": {
+                ".validate": "$index.matches(/^[0-5]$/) && newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+              }
+            },
+            "status": {
+              ".validate": "newData.val() === 'open' || newData.val() === 'closed'"
+            },
+            "showResults": {
+              ".validate": "newData.isBoolean()"
+            },
+            "createdAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "closedAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "activePollId": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 64"
         },
 
         // Per-task attempt history, keyed the same way as students so each

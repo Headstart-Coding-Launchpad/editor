@@ -39,6 +39,7 @@ import {
 } from '../../badges/sessionArchive'
 import { AUTO_CHECK_LEAVE, AUTO_CHECK_RESULTS, realAttemptEntries } from '../../shared/autoCheck'
 import { liveInkPath } from '../liveInk/liveInkData'
+import { normalizePollDraft, pollChoiceIndex } from '../../shared/classPolls.js'
 import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liveInkWriter'
 import { buildClassCountdown, extendClassCountdown } from '../../shared/classCountdown'
 
@@ -174,6 +175,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
       sharedWorkspaces: null,
       sandboxEnteredAt: null,
       classCountdown: null,
+      // Live class polls (src/shared/classPolls.js) belong to one session.
+      polls: null,
+      activePollId: null,
       // Live badges: decisions, the tutor's badge toggles and the students' signals are
       // session-scoped, so a new session starts without them (set() replaces the node anyway;
       // listed so the reset is explicit).
@@ -239,6 +243,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
       videoCallBroadcastAt: null,
       sharedWorkspaces: null,
       classCountdown: null,
+      // The report (built before this, in handleEndSession) already holds every poll, and
+      // the students' answers go with the students node.
+      polls: null,
+      activePollId: null,
     })
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
     await clearLiveInkQuietly()
@@ -292,6 +300,77 @@ export function useSession(lessonId, { enabled = true } = {}) {
   // doesn't replay an old broadcast (see useVideoCallPrompt).
   async function broadcastVideoCallLink() {
     await set(ref(db, `sessions/${lessonId}/videoCallBroadcastAt`), Date.now())
+  }
+
+  // ─── Live class polls (src/shared/classPolls.js) ──────────────────────────
+  // One poll is on students' screens at a time (activePollId). Launching a new one closes any
+  // poll still open. Answers live on each student's own node (students/{id}/pollResponses),
+  // which setTaskId never clears, so a poll can stay open across a task change.
+
+  async function launchPoll(draft) {
+    const { poll, error } = normalizePollDraft(draft)
+    if (error) throw new Error(error)
+    const now = Date.now()
+    const pollId = push(ref(db, `sessions/${lessonId}/polls`)).key
+    const updates = {
+      [`polls/${pollId}`]: {
+        question: poll.question,
+        options: poll.options,
+        status: 'open',
+        showResults: false,
+        createdAt: now,
+        closedAt: null,
+      },
+      activePollId: pollId,
+    }
+    for (const [otherId, other] of Object.entries(session?.polls ?? {})) {
+      if (other?.status === 'open') {
+        updates[`polls/${otherId}/status`] = 'closed'
+        updates[`polls/${otherId}/closedAt`] = now
+      }
+    }
+    await update(ref(db, `sessions/${lessonId}`), updates)
+    return pollId
+  }
+
+  // Stops answers. The poll stays on screen (activePollId) so its results can be shown.
+  async function closePoll(pollId) {
+    if (!pollId) return
+    await update(ref(db, `sessions/${lessonId}/polls/${pollId}`), {
+      status: 'closed',
+      closedAt: Date.now(),
+    })
+  }
+
+  // Results are hidden from students until the teacher shows them.
+  async function setPollShowResults(pollId, showResults) {
+    if (!pollId) return
+    await set(ref(db, `sessions/${lessonId}/polls/${pollId}/showResults`), !!showResults)
+  }
+
+  // Takes the poll off every screen, closing it first if it is still open. It stays in
+  // `polls` for the report.
+  async function dismissPoll() {
+    const pollId = session?.activePollId
+    const updates = { activePollId: null }
+    if (pollId && session?.polls?.[pollId]?.status === 'open') {
+      updates[`polls/${pollId}/status`] = 'closed'
+      updates[`polls/${pollId}/closedAt`] = Date.now()
+    }
+    await update(ref(db, `sessions/${lessonId}`), updates)
+  }
+
+  // Student: pick (or change) an answer while the poll is open.
+  async function answerPoll(anonymousId, pollId, choice) {
+    if (!anonymousId || !pollId) return
+    const poll = session?.polls?.[pollId]
+    if (!poll || poll.status !== 'open') return
+    const index = pollChoiceIndex(poll, choice)
+    if (index === null) return
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/pollResponses/${pollId}`), {
+      choice: index,
+      answeredAt: Date.now(),
+    })
   }
 
   async function setTaskId(taskId) {
@@ -1793,6 +1872,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
     nudgeStudent,
     sendThumbsUp,
     nudgeAwayStudents,
+    launchPoll,
+    closePoll,
+    setPollShowResults,
+    dismissPoll,
     setAutoRevealStage,
     setExplainerShowComplete,
     setActiveStudentView,
@@ -1849,6 +1932,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     readSessionArchive,
     admitJoiningStudent,
     // student
+    answerPoll,
     registerPresence,
     joinSession,
     recordStudentReturn,

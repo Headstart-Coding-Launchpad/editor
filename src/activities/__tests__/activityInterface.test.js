@@ -143,7 +143,8 @@ describe('resolve', () => {
   it('claims legacy quiz and code_arrange tasks', () => {
     expect(getTaskActivity({ taskType: 'quiz', quizType: 'match' })?.id).toBe('quiz_match')
     expect(getTaskActivity({ taskType: 'quiz' })?.id).toBe('quiz_multiple_choice')
-    expect(getTaskActivity({ taskType: 'quiz', quizType: 'poll' })?.id).toBe(UNKNOWN_ACTIVITY_ID)
+    expect(getTaskActivity({ taskType: 'quiz', quizType: 'poll' })?.id).toBe('quiz_poll')
+    expect(getTaskActivity({ taskType: 'quiz', quizType: 'survey' })?.id).toBe(UNKNOWN_ACTIVITY_ID)
     expect(getTaskActivity({ taskType: 'code_arrange' })?.id).toBe('code_arrange')
     expect(getTaskActivity({ taskType: 'information' })).toBeNull()
   })
@@ -186,6 +187,7 @@ describe('resolve', () => {
       'fill_blank',
       'short_answer',
       'confidence',
+      'poll',
     ]) {
       const activity = getActivityDefinition(`quiz_${quizType}`)
       expect(activity.legacy).toEqual({ taskType: 'quiz', quizType })

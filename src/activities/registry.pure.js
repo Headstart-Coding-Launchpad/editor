@@ -12,6 +12,7 @@ import quizMatch from './quiz_match/definition.js'
 import quizFillBlank from './quiz_fill_blank/definition.js'
 import quizShortAnswer from './quiz_short_answer/definition.js'
 import quizConfidence from './quiz_confidence/definition.js'
+import quizPoll from './quiz_poll/definition.js'
 import codeArrange from './code_arrange/definition.js'
 import unknown from './unknown/definition.js'
 import { UNKNOWN_ACTIVITY_ID, getActivityId } from './resolve.js'
@@ -25,6 +26,7 @@ const ACTIVITIES = [
   quizFillBlank,
   quizShortAnswer,
   quizConfidence,
+  quizPoll,
   codeArrange,
   unknown,
 ]

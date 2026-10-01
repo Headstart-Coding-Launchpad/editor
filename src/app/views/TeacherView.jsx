@@ -132,6 +132,10 @@ export default function TeacherView({ lessonId }) {
     startClassCountdown,
     addClassCountdownTime,
     clearClassCountdown,
+    launchPoll,
+    closePoll,
+    setPollShowResults,
+    dismissPoll,
     requestTeacherEdit,
     pushTeacherLiveCode,
     commitTeacherEdit,
@@ -711,6 +715,10 @@ export default function TeacherView({ lessonId }) {
               onStartClassCountdown={startClassCountdown}
               onAddClassCountdownTime={addClassCountdownTime}
               onClearClassCountdown={clearClassCountdown}
+              onLaunchPoll={launchPoll}
+              onClosePoll={closePoll}
+              onSetPollShowResults={setPollShowResults}
+              onDismissPoll={dismissPoll}
             />
           </>
         }

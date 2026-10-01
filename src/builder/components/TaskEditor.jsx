@@ -858,11 +858,13 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
                   >
                     {task.quizType === 'confidence'
                       ? 'Rating submitted — any confidence level completes this task.'
-                      : allPassed
-                        ? 'Check passes — students will see the completion banner.'
-                        : task.quizType === 'match' || task.quizType === 'fill_blank'
-                          ? 'Check does not pass — try placing the correct answers in the preview.'
-                          : 'Check does not pass — review the answer or check configuration.'}
+                      : task.quizType === 'poll'
+                        ? 'Vote recorded — polls are never marked; any choice completes this task.'
+                        : allPassed
+                          ? 'Check passes — students will see the completion banner.'
+                          : task.quizType === 'match' || task.quizType === 'fill_blank'
+                            ? 'Check does not pass — try placing the correct answers in the preview.'
+                            : 'Check does not pass — review the answer or check configuration.'}
                   </div>
                 )
               })()}

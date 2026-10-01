@@ -55,6 +55,8 @@ import { listMyMoments } from '../../badges/celebration'
 import LoadingScreen from '../components/LoadingScreen'
 import SessionEndedScreen from '../components/SessionEndedScreen'
 import StudentStatusBanners from '../components/StudentStatusBanners'
+import ClassPollCard from '../components/polls/ClassPollCard'
+import { getActivePoll, getStudentPollChoice, tallyPoll } from '../../shared/classPolls'
 import LessonTaskContent from '../components/LessonTaskContent'
 import { usePreloadNeighbourImages } from '../../shared/preloadImages'
 import SoloNav from '../components/SoloNav'
@@ -144,6 +146,7 @@ export default function StudentView({
     setTeacherLiveReference,
     removeStudent,
     requestHelp,
+    answerPoll,
     requestWorkspaceShare,
     cancelWorkspaceShare,
     readSharedWorkspace,
@@ -1166,6 +1169,22 @@ export default function StudentView({
   const isPaused =
     !isForcedTeacherLive && (phase === 'lesson' || phase === 'sandbox') && session?.isPaused
 
+  // The teacher's live class poll (src/shared/classPolls.js): a corner card on live lesson
+  // screens, read-only on the presentation window. Results are tallied here only for showing
+  // once the teacher shows them (and the presentation's answer count).
+  const activePoll =
+    (phase === 'lesson' || phase === 'sandbox') && (teacherPresentation || identity?.anonymousId)
+      ? getActivePoll(session)
+      : null
+  const activePollTally =
+    activePoll && (teacherPresentation || activePoll.showResults)
+      ? tallyPoll(session, activePoll.pollId)
+      : null
+  const myPollChoice =
+    activePoll && !teacherPresentation
+      ? getStudentPollChoice(session, identity?.anonymousId, activePoll.pollId)
+      : null
+
   const myStudentTeacherEdit = session?.students?.[identity?.anonymousId]
   // Modules a teacher can live-edit declare capabilities.teacherEditor (and its consent copy).
   const canTeacherEditType = !!activeModuleCaps?.teacherEditor
@@ -1571,6 +1590,22 @@ export default function StudentView({
             </div>
           </div>
         </div>
+      )}
+      {activePoll && (
+        <ClassPollCard
+          poll={activePoll}
+          choice={myPollChoice}
+          tally={activePollTally}
+          presentation={teacherPresentation}
+          onAnswer={
+            teacherPresentation
+              ? undefined
+              : (index) =>
+                  answerPoll(identity.anonymousId, activePoll.pollId, index).catch((err) =>
+                    console.warn('Could not save the poll answer:', err)
+                  )
+          }
+        />
       )}
       <StudentStatusBanners
         isForcedTeacherLive={isForcedTeacherLive}

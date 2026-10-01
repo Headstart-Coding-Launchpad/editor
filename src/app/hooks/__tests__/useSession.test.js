@@ -178,6 +178,160 @@ describe('useSession', () => {
       expect(keys).not.toContain('students/student-abc/teacherLiveReferenceVisible')
       expect(keys.some((key) => key.startsWith('supportRevealLog'))).toBe(false)
     })
+
+    it('keeps poll answers and the active poll across a task change', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        currentTaskId: 1,
+        activePollId: 'p1',
+        polls: { p1: { question: 'Q', options: ['A', 'B'], status: 'open', createdAt: 1 } },
+        students: { 'student-abc': { pollResponses: { p1: { choice: 0, answeredAt: 2 } } } },
+      })
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      const updateCall = firebaseMocks.update.mock.calls.find(
+        ([r]) => r.path === 'sessions/lesson-1'
+      )
+      const keys = Object.keys(updateCall[1])
+      expect(keys.some((key) => key.includes('pollResponses'))).toBe(false)
+      expect(keys.some((key) => key.startsWith('polls') || key === 'activePollId')).toBe(false)
+    })
+  })
+
+  describe('live class polls', () => {
+    const openPoll = { question: 'Q', options: ['A', 'B'], status: 'open', createdAt: 1 }
+
+    it('launchPoll writes a tidy open poll and makes it the active poll', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      let pollId
+      await act(async () => {
+        pollId = await result.current.launchPoll({
+          question: '  What next?  ',
+          options: [' Games ', '', 'Art'],
+        })
+      })
+      expect(pollId).toBe('mockHighlightId')
+      expect(firebaseMocks.push).toHaveBeenCalledWith({ path: 'sessions/lesson-1/polls' })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        {
+          'polls/mockHighlightId': {
+            question: 'What next?',
+            options: ['Games', 'Art'],
+            status: 'open',
+            showResults: false,
+            createdAt: expect.any(Number),
+            closedAt: null,
+          },
+          activePollId: 'mockHighlightId',
+        }
+      )
+    })
+
+    it('launchPoll closes a poll that is still open', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ activePollId: 'old', polls: { old: openPoll } })
+      await act(async () => {
+        await result.current.launchPoll({ question: 'Next?', options: ['A', 'B'] })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({
+          'polls/old/status': 'closed',
+          'polls/old/closedAt': expect.any(Number),
+          activePollId: 'mockHighlightId',
+        })
+      )
+    })
+
+    it('launchPoll rejects a draft with fewer than 2 options and writes nothing', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await expect(
+        result.current.launchPoll({ question: 'Q', options: ['Only one'] })
+      ).rejects.toThrow(/at least 2 options/)
+      expect(firebaseMocks.update).not.toHaveBeenCalled()
+    })
+
+    it('closePoll closes the poll and stamps closedAt', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.closePoll('p1')
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/polls/p1' },
+        { status: 'closed', closedAt: expect.any(Number) }
+      )
+    })
+
+    it('setPollShowResults writes a boolean', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.setPollShowResults('p1', 1)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/polls/p1/showResults' },
+        true
+      )
+    })
+
+    it('dismissPoll clears the active poll and closes it if still open', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ activePollId: 'p1', polls: { p1: openPoll } })
+      await act(async () => {
+        await result.current.dismissPoll()
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        {
+          activePollId: null,
+          'polls/p1/status': 'closed',
+          'polls/p1/closedAt': expect.any(Number),
+        }
+      )
+    })
+
+    it('answerPoll writes the choice on the student node while the poll is open', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ activePollId: 'p1', polls: { p1: openPoll } })
+      await act(async () => {
+        await result.current.answerPoll('student-abc', 'p1', 1)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc/pollResponses/p1' },
+        { choice: 1, answeredAt: expect.any(Number) }
+      )
+    })
+
+    it('answerPoll ignores a closed poll and an option it does not have', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        polls: { p1: { ...openPoll, status: 'closed' }, p2: openPoll },
+      })
+      await act(async () => {
+        await result.current.answerPoll('student-abc', 'p1', 0)
+        await result.current.answerPoll('student-abc', 'p2', 5)
+      })
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+    })
+
+    it('createSession and endSession reset the polls', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.createSession()
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ polls: null, activePollId: null })
+      )
+      await act(async () => {
+        await result.current.endSession()
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ polls: null, activePollId: null })
+      )
+    })
   })
 
   describe('Presentation annotations (liveInk)', () => {

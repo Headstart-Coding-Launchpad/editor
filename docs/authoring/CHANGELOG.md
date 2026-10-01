@@ -58,6 +58,19 @@ Entries written before 2026-09-29 are not tagged.
   still does. Overrides now carry `source: teacher | class_advance`. Check-less code tasks,
   information tasks and ungraded quizzes are unchanged.
 - Affects: all · Existing lessons: no changes needed · Resolves: none
+### Poll quiz (`quizType: poll`) and live class polls in the session report
+
+- New quiz sub-type `quizType: poll`: an opinion question with 2 to 6 `options` (`id`, `text`),
+  never marked. Any choice completes the task and students can change it; they never see anyone
+  else's choice. No `check`, `answer:` or option `feedback` (a `check` is a validation error).
+  See [quiz-tasks.md](quiz-tasks.md#poll) and the new poll rows in
+  [validation-errors.md](validation-errors.md).
+- Its `taskSummary` entry reports `respondedCount` and `optionDistribution`
+  (`[{ id, text, count }]`, each student's latest choice), like other ungraded tasks.
+- Session reports gain a top-level `polls[]`: the teacher's ad-hoc live polls from the new
+  **📊 Poll** button (question, options with counts, each student's final answer, who didn't
+  answer, times). See [session-reports.md](session-reports.md#polls). Lessons don't author these.
+- Affects: quiz_poll, all · Existing lessons: no changes needed · Resolves: none
 
 ### Seven new live badges; `earlyBirdMinutes`; Code Arranger hints
 

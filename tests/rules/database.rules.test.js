@@ -380,3 +380,60 @@ describe('presentation annotations (liveInk)', () => {
     )
   })
 })
+
+describe('live class polls', () => {
+  const pollPath = `sessions/${LESSON}/polls/p1`
+  const poll = {
+    question: 'What next?',
+    options: ['Games', 'Art'],
+    status: 'open',
+    showResults: false,
+    createdAt: 1000,
+  }
+  const answerPath = (studentId) => `sessions/${LESSON}/students/${studentId}/pollResponses/p1`
+
+  it('lets teachers launch a poll and name the active poll, but not students', async () => {
+    await assertSucceeds(ref(as.teacher, pollPath).set(poll))
+    await assertSucceeds(ref(as.teacher, `sessions/${LESSON}/activePollId`).set('p1'))
+    await assertFails(ref(as.student, `sessions/${LESSON}/polls/p2`).set(poll))
+    await assertFails(ref(as.student, `sessions/${LESSON}/activePollId`).set('p1'))
+  })
+
+  it('rejects malformed polls', async () => {
+    await assertFails(ref(as.teacher, pollPath).set({ ...poll, status: 'paused' }))
+    await assertFails(ref(as.teacher, pollPath).set({ ...poll, question: '' }))
+    await assertFails(ref(as.teacher, pollPath).set({ ...poll, extra: 1 }))
+    await assertFails(
+      ref(as.teacher, pollPath).set({ ...poll, options: ['1', '2', '3', '4', '5', '6', '7'] })
+    )
+    const { question: _question, ...noQuestion } = poll
+    await assertFails(ref(as.teacher, pollPath).set(noQuestion))
+  })
+
+  it('lets a student answer an open poll on their own node only', async () => {
+    await testEnv.withSecurityRulesDisabled((ctx) => ref(ctx, pollPath).set(poll))
+    await assertSucceeds(ref(as.student, answerPath(STUDENT_ID)).set({ choice: 1, answeredAt: 5 }))
+    await assertSucceeds(ref(as.student, answerPath(STUDENT_ID)).set({ choice: 0, answeredAt: 6 }))
+    await assertFails(
+      ref(as.student, answerPath(OTHER_STUDENT_ID)).set({ choice: 1, answeredAt: 5 })
+    )
+    await assertFails(ref(as.student, answerPath(STUDENT_ID)).set({ choice: 9, answeredAt: 5 }))
+    await assertFails(ref(as.student, answerPath(STUDENT_ID)).set({ choice: 'a', answeredAt: 5 }))
+    await assertFails(
+      ref(as.student, answerPath(STUDENT_ID)).set({ choice: 1, answeredAt: 5, extra: true })
+    )
+  })
+
+  it('refuses student answers to a closed or missing poll', async () => {
+    await testEnv.withSecurityRulesDisabled((ctx) =>
+      ref(ctx, pollPath).set({ ...poll, status: 'closed', closedAt: 2000 })
+    )
+    await assertFails(ref(as.student, answerPath(STUDENT_ID)).set({ choice: 1, answeredAt: 5 }))
+    await assertFails(
+      ref(as.student, `sessions/${LESSON}/students/${STUDENT_ID}/pollResponses/nope`).set({
+        choice: 0,
+        answeredAt: 5,
+      })
+    )
+  })
+})

@@ -12,6 +12,7 @@ import quizMatchUi from './quiz_match/ui.jsx'
 import quizFillBlankUi from './quiz_fill_blank/ui.jsx'
 import quizShortAnswerUi from './quiz_short_answer/ui.jsx'
 import quizConfidenceUi from './quiz_confidence/ui.jsx'
+import quizPollUi from './quiz_poll/ui.jsx'
 import codeArrangeUi from './code_arrange/ui.jsx'
 
 export const ACTIVITY_UIS = Object.freeze({
@@ -23,6 +24,7 @@ export const ACTIVITY_UIS = Object.freeze({
   quiz_fill_blank: quizFillBlankUi,
   quiz_short_answer: quizShortAnswerUi,
   quiz_confidence: quizConfidenceUi,
+  quiz_poll: quizPollUi,
   code_arrange: codeArrangeUi,
 })
 
