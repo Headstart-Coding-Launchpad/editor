@@ -55,7 +55,9 @@ export default function LiveInkProvider({
       inkRef.current = next
       setInk(next)
     })
-    return () => unsubscribe?.()
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe()
+    }
   }, [enabled, lessonId])
 
   useEffect(() => {

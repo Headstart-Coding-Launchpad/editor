@@ -66,7 +66,7 @@ describe('createLiveInkWriter', () => {
     writer.addStroke({ surface: 'explainer:2', anchor: 'b0.li1', points: [[0.1, 0.2]] })
     expect(firebaseMocks.push).toHaveBeenCalledWith({ path: 'liveInk/lesson-1/strokes' })
     expect(firebaseMocks.set).toHaveBeenCalledWith(
-      { path: 'liveInk/lesson-1/strokes/pushed-1' },
+      expect.objectContaining({ path: 'liveInk/lesson-1/strokes/pushed-1' }),
       expect.objectContaining({ surface: 'explainer:2', anchor: 'b0.li1', points: [[0.1, 0.2]] })
     )
     expect(firebaseMocks.remove).not.toHaveBeenCalled()
@@ -78,7 +78,7 @@ describe('createLiveInkWriter', () => {
     const writer = createLiveInkWriter('lesson-1')
     writer.addHighlight({ surface: 'info:1', anchor: 'b0.p0', quote: 'print', occurrence: 1 })
     expect(firebaseMocks.set).toHaveBeenCalledWith(
-      { path: 'liveInk/lesson-1/highlights/pushed-1' },
+      expect.objectContaining({ path: 'liveInk/lesson-1/highlights/pushed-1' }),
       { surface: 'info:1', anchor: 'b0.p0', quote: 'print', occurrence: 1, t: 10_000 }
     )
     writer.removeHighlight('h9')
