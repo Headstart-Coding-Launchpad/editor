@@ -26,6 +26,7 @@ import { PaneFocusControls } from './student-modal/PaneFocusDropdown'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
 import ShareRequestPanel from './student-modal/ShareRequestPanel'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
+import { countShownLineHints, getMirrorLineHintSets } from './student-modal/mirrorLineHints'
 import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
 import {
   allowsStudentBroadcast,
@@ -457,6 +458,27 @@ export default function StudentModal({
   const showShareRequest =
     !!onReadPendingShare && (student.shareRequestedAt != null || awaitingShareSnapshot)
 
+  // The task's 💡 line hints still on the watched student's code (the count the mirrored editor
+  // shows in StudentWorkspaceBody); null when the task has none or the body shows no code.
+  const mirrorLineHintSets =
+    isInformation || isQuizLike || isCodeArrangeTask || showShareRequest
+      ? null
+      : getMirrorLineHintSets(task, {
+          mirror,
+          file: activeFileObj?.name ?? null,
+          isSessionSandbox,
+        })
+  const mirroredHintCode =
+    mirror === 'files'
+      ? activeFileObj?.content
+      : mirror === 'view'
+        ? moduleDisplayState
+        : student.currentCode
+  const shownLineHintCount =
+    mirrorLineHintSets && typeof mirroredHintCode === 'string'
+      ? countShownLineHints(mirroredHintCode, mirrorLineHintSets)
+      : null
+
   const hasOverride = !!student.checkOverridePushedAt
   const remoteSelection =
     !isLive || (mirror !== 'code' && student.currentSelection?.file !== activeFile)
@@ -607,6 +629,15 @@ export default function StudentModal({
                 title="A reference opens automatically for this student on every task"
               >
                 📖 Every task: {AUTO_REVEAL_OPTIONS.find((o) => o.mode === autoRevealStage)?.label}
+              </span>
+            )}
+            {shownLineHintCount != null && teacherEditState !== 'editing' && (
+              <span
+                style={s.supportBadge}
+                title="The lesson's 💡 line hints still on this student's code (hints on lines the student has changed are gone)"
+                data-testid="modal-line-hint-count"
+              >
+                💡 {shownLineHintCount} {shownLineHintCount === 1 ? 'hint' : 'hints'} showing
               </span>
             )}
             {Object.keys(revealedSupportStages).length > 0 && (

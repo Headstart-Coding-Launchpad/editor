@@ -808,6 +808,43 @@ describe('StudentModal item progress', () => {
   })
 })
 
+describe('StudentModal line hints', () => {
+  const HINTED_LESSON = {
+    type: 'python',
+    tasks: [
+      {
+        id: 1,
+        title: 'Hinted task',
+        lineHintSets: [
+          {
+            source: 'starter',
+            stageIndex: null,
+            file: null,
+            hints: [
+              { line: 1, text: 'Change the name', target: "name = 'Sam'" },
+              { line: 2, text: 'Print it', target: 'print(name)' },
+            ],
+          },
+        ],
+      },
+    ],
+  }
+
+  it('shows how many of the task hints are still on the student code', () => {
+    render(
+      <StudentModal
+        {...mkProps({ lesson: HINTED_LESSON }, { currentCode: "name = 'Ali'\nprint(name)\n" })}
+      />
+    )
+    expect(screen.getByTestId('modal-line-hint-count')).toHaveTextContent('💡 1 hint showing')
+  })
+
+  it('shows no hint count for a task without hint markers', () => {
+    render(<StudentModal {...mkProps()} />)
+    expect(screen.queryByTestId('modal-line-hint-count')).not.toBeInTheDocument()
+  })
+})
+
 describe('StudentModal live badges', () => {
   it('shows the teacher-only badge count in the header', () => {
     render(
