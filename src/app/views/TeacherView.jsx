@@ -646,7 +646,7 @@ export default function TeacherView({ lessonId }) {
   // Fill-height module workspaces (capabilities.teacherFillHeight) are sized to the centre
   // column, which clips instead of scrolling. Everything else scrolls the column,
   // and the editor must then keep its own minimum height rather than collapsing
-  // under the panels below it (TaskRatingPanel, CheckConditionsPanel) — see
+  // under the panels around it (BadgeSuggestionsPanel, CheckConditionsPanel) — see
   // TeacherEditorPanel's `fillHeight` prop.
   const centreFillsHeight =
     (isInformationTask ||
@@ -661,6 +661,16 @@ export default function TeacherView({ lessonId }) {
         isSandbox={isSandbox}
         right={
           <>
+            {/* A popover from the top bar, not a panel in <main>, so it never resizes the
+                task workspace (see TaskRatingPanel). */}
+            {task && !isInformationTask && !isInSandbox && (
+              <TaskRatingPanel
+                taskId={task.id}
+                taskTitle={task.title}
+                existingRating={session?.taskRatingLog?.[task.id] ?? null}
+                onSave={setTaskRating}
+              />
+            )}
             {session && !isInformationTask && (
               <PaneFocusDropdown
                 label="Focus Class"
@@ -827,14 +837,6 @@ export default function TeacherView({ lessonId }) {
             badgeWall={teacherBadgeWall}
             entranceKey={firstViewKey(lessonId, task?.id)}
           />
-          {task && !isInformationTask && !isInSandbox && (
-            <TaskRatingPanel
-              taskId={task.id}
-              taskTitle={task.title}
-              existingRating={session?.taskRatingLog?.[task.id] ?? null}
-              onSave={setTaskRating}
-            />
-          )}
           {task?.check != null && !isInSandbox && (
             <CheckConditionsPanel check={task.check} taskTitle={task.title} />
           )}

@@ -108,6 +108,11 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
   - Not applied to approved shared workspaces (`SharedWorkspaceViewer` renders with `isForcedTeacherLive={false}` and doesn't pass the flag) or to the teacher's own `StudentModal` watch view.
 - **Large pastes are flagged, not blocked.** `LessonTaskContent`'s workspace wrapper listens for `paste` bubbling out of a CodeMirror editor (`.cm-editor`) and hands the text to `cs.handleEditorPaste`. In a live lesson (not solo, sandbox, presentation or preview) a paste of at least 40 characters or 3 lines (`src/shared/pasteDetection.js`) is counted via `recordStudentPaste` into the student's own `pasteLog/{taskId}` (`{ count, chars, lastAt }`). Text the student copied or cut from their own editor (remembered from `copy`/`cut` on the same wrapper) doesn't count, so moving their own code around isn't flagged. The teacher sees "📋 Pasted" on the StudentCard (current task) and StudentModal, and the session report shows it per student task and per task.
 
+## Teacher Task Rating
+
+- `TeacherView.jsx`'s top bar shows a "⭐ Rate this task" button (`TaskRatingPanel.jsx`) for the shown task, except on information tasks and in the sandbox; once the task is rated it reads "⭐ N". It opens a popover (stars 1-5, what worked well, what didn't, Save Rating) that writes `taskRatingLog/{taskId}` via `setTaskRating`.
+- The popover is portalled to `<body>` with `position: fixed`, clamped to the viewport, so it never takes part in the centre column's layout or gets clipped by a fill-height workspace's `overflow: hidden`. It closes on Save, Escape, an outside click, or a task switch; focus moves into it on open and back to the button on Save/Escape.
+
 ## Teacher Timers
 
 - A task may define `estimatedMinutes` as a positive number (decimals allowed, e.g. `7.5`).

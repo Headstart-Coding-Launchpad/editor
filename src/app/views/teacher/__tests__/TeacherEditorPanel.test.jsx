@@ -72,9 +72,10 @@ const PYTHON_TASK = { id: 2, title: 'Run the Countdown Twice', starterCode: 'pri
 const PYTHON_LESSON = { type: 'python', tasks: [PYTHON_TASK] }
 
 describe('TeacherEditorPanel — editor stack sizing', () => {
-  // The stack sits in TeacherView's centre column above TaskRatingPanel. When
-  // that column scrolls, a shrinkable (minHeight: 0) stack collapsed as the
-  // rating panel expanded and the editor spilled out over the panel's fields.
+  // The stack sits in TeacherView's centre column alongside CheckConditionsPanel
+  // and BadgeSuggestionsPanel. When that column scrolls, a shrinkable
+  // (minHeight: 0) stack collapsed as a sibling panel grew and the editor
+  // spilled out over the panel's fields.
   it('does not let the editor stack shrink below its content in a scrolling column', () => {
     const { container } = render(
       <TeacherEditorPanel
