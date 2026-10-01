@@ -7,6 +7,7 @@ import {
   StudentBadgeDetails,
   TeacherSandboxSection,
 } from './ReportBadgeSections'
+import ReportPollsSection from './polls/ReportPollsSection'
 import {
   formatErrorStudents,
   formatFirstRealPass,
@@ -71,7 +72,11 @@ function formatSummaryCompletion(task) {
     return `${task.completedCount}/${task.totalStudents} (${Math.round(task.completionRate * 100)}%)${overrideLabel}${assistedLabel}${itemsLabel}`
   }
   if (typeof task.respondedCount === 'number') {
-    return `${task.respondedCount}/${task.totalStudents} responded${overrideLabel}`
+    // A poll task (quizType poll) also lists how many chose each option.
+    const optionsLabel = Array.isArray(task.optionDistribution)
+      ? task.optionDistribution.map((option) => ` · ${option.text}: ${option.count}`).join('')
+      : ''
+    return `${task.respondedCount}/${task.totalStudents} responded${overrideLabel}${optionsLabel}`
   }
   return '-'
 }
@@ -426,6 +431,8 @@ export default function TeacherReportModal({ report, onClose, onSaveFeedback }) 
           </section>
 
           <QuizGroupsSection report={displayReport} />
+
+          <ReportPollsSection report={displayReport} />
 
           <section>
             <h3 style={s.sectionTitle}>Students</h3>

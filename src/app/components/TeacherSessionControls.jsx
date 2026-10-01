@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { sortedShareEntries } from '../sharedWorkspacePayload'
+import TeacherPollControl from './polls/TeacherPollControl'
 
 const BREAKPOINT_NARROW = 1300 // collapse secondary buttons into Menu dropdown
 const BREAKPOINT_COMPACT = 950 // also hide status text from bar (shown inside dropdown instead)
@@ -19,6 +20,10 @@ export default function TeacherSessionControls({
   onRemoveSharedWorkspace,
   onRemoveAllSharedWorkspaces,
   onOpenSharedWorkspace,
+  onLaunchPoll,
+  onClosePoll,
+  onSetPollShowResults,
+  onDismissPoll,
 }) {
   const state = session?.state
   const isRunning = state === 'active' || state === 'sandbox'
@@ -281,6 +286,16 @@ export default function TeacherSessionControls({
             </div>
           )}
         </div>
+      )}
+
+      {session && isRunning && onLaunchPoll && (
+        <TeacherPollControl
+          session={session}
+          onLaunch={onLaunchPoll}
+          onClosePoll={onClosePoll}
+          onSetShowResults={onSetPollShowResults}
+          onDismiss={onDismissPoll}
+        />
       )}
 
       {session && onUpdateVideoCallLink && (

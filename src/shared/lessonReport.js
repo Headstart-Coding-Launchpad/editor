@@ -3,6 +3,7 @@ import { flattenTasks, getTaskPriority } from './taskUtils.js'
 import { getTaskActivity } from '../activities/registry.pure.js'
 import { SUPPORT_REVEAL_SOURCES } from './taskStages.js'
 import { normalizeCodeSubmission } from './codeSubmission.js'
+import { buildPollsReport } from './classPolls.js'
 import {
   buildBadgeSummary,
   buildQuizGroupReport,
@@ -369,6 +370,15 @@ export function anonymizeSessionReport(report) {
           })),
         }
       : {}),
+    ...(Array.isArray(report.polls)
+      ? {
+          polls: report.polls.map((poll) => ({
+            ...poll,
+            responses: (poll.responses ?? []).map((ref) => relabelStudentRef(ref, relabel)),
+            notResponded: (poll.notResponded ?? []).map((label) => relabel(label)),
+          })),
+        }
+      : {}),
     ...(report.teacherSandbox
       ? {
           teacherSandbox: {
@@ -621,6 +631,8 @@ export function buildSessionReport({
   })
   const badgeSummary = buildBadgeSummary(session?.badges, pendingSuggestions)
   const shortcutSummary = buildShortcutSummary(students)
+  // Live class polls from the teacher's top bar (src/shared/classPolls.js), oldest first.
+  const polls = buildPollsReport(session, labelFor)
 
   return capSessionReportSize({
     lessonId: lesson?.id ?? session?.lessonId ?? null,
@@ -634,6 +646,7 @@ export function buildSessionReport({
     ...(teacherSandbox ? { teacherSandbox } : {}),
     ...(Object.keys(badgeSummary).length > 0 ? { badgeSummary } : {}),
     ...(Object.keys(shortcutSummary).length > 0 ? { shortcutSummary } : {}),
+    ...(polls.length > 0 ? { polls } : {}),
   })
 }
 

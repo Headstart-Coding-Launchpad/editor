@@ -128,6 +128,10 @@ export default function TeacherView({ lessonId }) {
     updateVideoCallLink,
     sendVideoCallLink,
     broadcastVideoCallLink,
+    launchPoll,
+    closePoll,
+    setPollShowResults,
+    dismissPoll,
     requestTeacherEdit,
     pushTeacherLiveCode,
     commitTeacherEdit,
@@ -701,6 +705,10 @@ export default function TeacherView({ lessonId }) {
               onRemoveSharedWorkspace={removeSharedWorkspace}
               onRemoveAllSharedWorkspaces={removeAllSharedWorkspaces}
               onOpenSharedWorkspace={handleOpenTeacherShare}
+              onLaunchPoll={launchPoll}
+              onClosePoll={closePoll}
+              onSetPollShowResults={setPollShowResults}
+              onDismissPoll={dismissPoll}
             />
           </>
         }

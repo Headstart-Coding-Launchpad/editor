@@ -4731,3 +4731,476 @@ select {
     animation: none;
   }
 }
+
+/* ── Live class polls (src/app/components/polls/, src/shared/classPolls.js) ───────────────── */
+
+.poll-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--font-body);
+}
+
+.poll-bar__label {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--colour-text);
+  margin-bottom: 3px;
+}
+
+.poll-bar__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: var(--font-weight-body-medium);
+}
+
+.poll-bar__you {
+  font-weight: var(--font-weight-body);
+  color: var(--colour-primary);
+}
+
+.poll-bar__count {
+  flex-shrink: 0;
+  color: var(--colour-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.poll-bar__track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--ui-surface-neutral-sunk);
+  overflow: hidden;
+}
+
+.poll-bar__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--colour-primary);
+  transition: width var(--motion-base) var(--motion-ease-out);
+}
+
+.poll-bar--mine .poll-bar__fill {
+  background: var(--colour-secondary);
+}
+
+.poll-bars--large {
+  gap: 14px;
+}
+
+.poll-bars--large .poll-bar__label {
+  font-size: 20px;
+}
+
+.poll-bars--large .poll-bar__track {
+  height: 18px;
+}
+
+/* Student card: bottom-right, above the workspace, below modals and the pause overlay. */
+.class-poll-card {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 900;
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 12px;
+  box-shadow: var(--ui-shadow);
+  font-family: var(--font-body);
+}
+
+/* Presentation: centred along the bottom, larger for projecting. Not translated (the entrance
+   animation owns transform), so it is centred with auto margins instead. */
+.class-poll-card--presentation {
+  left: 16px;
+  right: 16px;
+  margin: 0 auto;
+  width: min(640px, calc(100vw - 32px));
+  padding: 20px 24px;
+}
+
+.class-poll-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.class-poll-card__kicker {
+  font-family: var(--font-title);
+  font-weight: var(--font-weight-title);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--colour-primary);
+}
+
+.class-poll-card__status {
+  font-size: 11px;
+  font-weight: var(--font-weight-body-medium);
+  color: var(--colour-muted);
+  background: var(--ui-surface-neutral-sunk);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.class-poll-card__minimise {
+  margin-left: auto;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--ui-radius-sm);
+  background: transparent;
+  color: var(--colour-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.class-poll-card__minimise:hover,
+.class-poll-card__minimise:focus-visible {
+  background: var(--ui-surface-tint);
+}
+
+.class-poll-card__question {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: var(--font-weight-title);
+  font-size: 1.05rem;
+  color: var(--colour-text);
+  overflow-wrap: anywhere;
+}
+
+.class-poll-card--presentation .class-poll-card__question {
+  font-size: 1.6rem;
+}
+
+.class-poll-card__list {
+  margin: 0;
+  padding-left: 1.4em;
+  font-size: 1.2rem;
+  line-height: 1.6;
+}
+
+.class-poll-card__note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--colour-muted);
+}
+
+.class-poll-card--presentation .class-poll-card__note {
+  font-size: 1rem;
+}
+
+.class-poll-card__options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.class-poll-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 2px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface-soft);
+  color: var(--colour-text);
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-body-medium);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--ui-motion),
+    border-color var(--ui-motion);
+}
+
+.class-poll-option:hover {
+  background: var(--ui-surface-tint);
+}
+
+.class-poll-option:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus);
+}
+
+.class-poll-option--selected {
+  border-color: var(--colour-primary);
+  background: var(--colour-primary);
+  color: var(--colour-text-on-primary);
+}
+
+.class-poll-option--selected:hover {
+  background: var(--colour-primary-dark);
+}
+
+.class-poll-option__mark {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.class-poll-option__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.class-poll-pill {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 900;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 999px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-soft);
+  color: var(--colour-primary-dark);
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-body-medium);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.class-poll-pill:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus);
+}
+
+/* Teacher popover (TeacherPollControl). */
+.teacher-poll-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 200;
+  width: min(380px, calc(100vw - 32px));
+  max-height: min(70vh, 620px);
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--colour-text);
+}
+
+.teacher-poll-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.teacher-poll-form__label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: var(--font-weight-body-medium);
+  font-size: 12px;
+  color: var(--colour-ink-strong);
+}
+
+.teacher-poll-form__options {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.teacher-poll-form__option {
+  display: flex;
+  gap: 6px;
+}
+
+.teacher-poll-form__input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--ui-border-neutral-strong);
+  border-radius: var(--ui-radius-sm);
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.teacher-poll-form__input:focus {
+  outline: none;
+  border-color: var(--colour-primary);
+  box-shadow: var(--ui-focus);
+}
+
+.teacher-poll-form__remove {
+  padding: 0 10px;
+  border: 1px solid var(--ui-border-neutral);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface-neutral);
+  color: var(--colour-muted);
+  cursor: pointer;
+}
+
+.teacher-poll-form__remove:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.teacher-poll-panel__link {
+  align-self: flex-start;
+  padding: 2px 0;
+  border: none;
+  background: none;
+  color: var(--colour-primary);
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-body-medium);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.teacher-poll-panel__note,
+.teacher-poll-panel__footer {
+  margin: 0;
+  font-size: 12px;
+  color: var(--colour-muted);
+}
+
+.teacher-poll-panel__footer {
+  padding-top: 8px;
+  border-top: 1px solid var(--ui-border-neutral);
+}
+
+.teacher-poll-panel__error {
+  font-size: 12px;
+  color: var(--colour-error-edge);
+}
+
+.teacher-poll-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.teacher-poll-panel__actions button {
+  font-size: 13px;
+  padding: 6px 12px;
+}
+
+.teacher-poll-live {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.teacher-poll-live__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.teacher-poll-live__question {
+  font-family: var(--font-title);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.teacher-poll-live__status {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: var(--font-weight-body-medium);
+  border-radius: 999px;
+  padding: 1px 8px;
+  background: var(--ui-surface-neutral-sunk);
+  color: var(--colour-muted);
+}
+
+.teacher-poll-live__status--open {
+  background: var(--ui-surface-tint);
+  color: var(--colour-primary-dark);
+}
+
+.teacher-poll-live__voters {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.teacher-poll-live__voters dt {
+  display: inline;
+  font-weight: var(--font-weight-body-medium);
+}
+
+.teacher-poll-live__voters dt::after {
+  content: ': ';
+}
+
+.teacher-poll-live__voters dd {
+  display: inline;
+  margin: 0;
+  color: var(--colour-muted);
+}
+
+.teacher-poll-live__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: var(--font-weight-body-medium);
+  cursor: pointer;
+}
+
+/* Session report (ReportPollsSection). */
+.report-polls__title {
+  font-family: var(--font-title);
+  font-weight: var(--font-weight-title);
+  font-size: 0.95rem;
+  margin: 0 0 10px;
+}
+
+.report-poll {
+  border: 1px solid var(--ui-border-neutral);
+  border-radius: var(--ui-radius);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--font-body);
+}
+
+.report-poll__question {
+  font-weight: var(--font-weight-body-medium);
+}
+
+.report-poll__meta,
+.report-poll__who {
+  font-size: 0.8rem;
+  color: var(--colour-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poll-bar__fill {
+    transition: none;
+  }
+}
