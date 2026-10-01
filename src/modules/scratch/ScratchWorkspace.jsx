@@ -6,7 +6,7 @@ import {
 } from '../../app/components/CollapsiblePanelControls'
 import { useElementSize } from '../../shared/useElementSize.js'
 import { BadgeSignalsContext } from '../../shared/badgeSignalsContext.js'
-import { isBlocklyUserEdit } from '../../badges/signals.js'
+import { isBlocklyFieldIntermediateChange, isBlocklyUserEdit } from '../../badges/signals.js'
 import {
   loadBlocklyModules,
   DEFAULT_TOOLBOX,
@@ -210,6 +210,25 @@ export function isValidNewVariableName(name, existingVariables = []) {
   const trimmed = String(name ?? '').trim()
   if (!trimmed) return false
   return !(existingVariables ?? []).some((v) => v.name.toLowerCase() === trimmed.toLowerCase())
+}
+
+/**
+ * Routes a non-UI Blockly workspace change to the work it should trigger. Every change syncs
+ * the workspace (so a watching teacher sees typing as it happens); a brand-new block syncs
+ * at once. A keystroke inside an open text field (an intermediate field change) stops there:
+ * it must not clear check feedback or run after_block_placed / idle-feedback checks, or each
+ * character typed would be scored, and logged, as a separate attempt. The committed 'change'
+ * event Blockly fires when the field editor closes runs the checks once, on the final text.
+ */
+export function routeWorkspaceEdit(
+  event,
+  { hasCheckFeedback, clearCheckFeedback, syncNow, scheduleSync, scheduleChecks }
+) {
+  const typingInField = isBlocklyFieldIntermediateChange(event)
+  if (!typingInField && hasCheckFeedback()) clearCheckFeedback()
+  if (event.type === 'create') syncNow()
+  else scheduleSync()
+  if (!typingInField) scheduleChecks()
 }
 
 const ROT_STYLES = [
@@ -1484,35 +1503,42 @@ export default function ScratchWorkspace({
       // saving on them would persist an empty/no-op state on mere task visits.
       if (event.isUiEvent) return
       if (isBlocklyUserEdit(event)) reportUserEditRef.current?.('blocks')
-      // Any real edit invalidates a prior check attempt (e.g. clicking a block to edit its
-      // field runs it via click-to-run, which can fail; the failure banner must not linger
-      // once the learner starts fixing it). The debounced evaluators below recompute a fresh
-      // verdict for after_block_placed/idle-feedback checks; after_run-only checks stay
-      // cleared until the learner runs again.
-      if (lastCheckRef.current !== null) clearCheckFeedback()
-      pendingSyncRef.current = true
-      clearTimeout(syncTimerRef.current)
-      if (event.type === 'create') {
-        // A brand-new block (e.g. just dragged out of the flyout) doesn't exist
-        // in a watching mirror's last-synced copy yet, so the live block-drag
-        // position stream has nothing to move there until this lands — sync
-        // right away instead of waiting out the debounce, so it appears (at
-        // wherever it currently sits) and live-following can pick it up for
+      routeWorkspaceEdit(event, {
+        // Any committed edit invalidates a prior check attempt (e.g. clicking a block to edit
+        // its field runs it via click-to-run, which can fail; the failure banner must not
+        // linger once the learner starts fixing it). The debounced evaluators recompute a fresh
+        // verdict for after_block_placed/idle-feedback checks; after_run-only checks stay
+        // cleared until the learner runs again.
+        hasCheckFeedback: () => lastCheckRef.current !== null,
+        clearCheckFeedback,
+        // A brand-new block (e.g. just dragged out of the flyout) doesn't exist in a watching
+        // mirror's last-synced copy yet, so the live block-drag position stream has nothing to
+        // move there until this lands — sync right away instead of waiting out the debounce,
+        // so it appears (at wherever it currently sits) and live-following can pick it up for
         // the rest of the drag instead of only once the drag settles.
-        emitWorkspaceState()
-      } else {
-        syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
-      }
-      clearTimeout(blockPlacedTimerRef.current)
-      blockPlacedTimerRef.current = setTimeout(
-        () => evaluateBlockPlacedChecksRef.current?.(),
-        BLOCK_PLACED_CHECK_DEBOUNCE
-      )
-      clearTimeout(idleFeedbackTimerRef.current)
-      idleFeedbackTimerRef.current = setTimeout(
-        () => evaluateIdleFeedbackRef.current?.(),
-        IDLE_FEEDBACK_DEBOUNCE
-      )
+        syncNow: () => {
+          pendingSyncRef.current = true
+          clearTimeout(syncTimerRef.current)
+          emitWorkspaceState()
+        },
+        scheduleSync: () => {
+          pendingSyncRef.current = true
+          clearTimeout(syncTimerRef.current)
+          syncTimerRef.current = setTimeout(emitWorkspaceState, SYNC_DEBOUNCE)
+        },
+        scheduleChecks: () => {
+          clearTimeout(blockPlacedTimerRef.current)
+          blockPlacedTimerRef.current = setTimeout(
+            () => evaluateBlockPlacedChecksRef.current?.(),
+            BLOCK_PLACED_CHECK_DEBOUNCE
+          )
+          clearTimeout(idleFeedbackTimerRef.current)
+          idleFeedbackTimerRef.current = setTimeout(
+            () => evaluateIdleFeedbackRef.current?.(),
+            IDLE_FEEDBACK_DEBOUNCE
+          )
+        },
+      })
     })
     div.addEventListener('click', (event) => handleWorkspaceDomClick(event, ws, spriteId, Blockly))
     // Cursor position is captured off the hot path: a block (or flyout-stack) drag

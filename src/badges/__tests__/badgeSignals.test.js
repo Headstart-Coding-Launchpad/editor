@@ -5,6 +5,7 @@ import {
   applySandboxTime,
   contextForSandboxKind,
   hashSubmission,
+  isBlocklyFieldIntermediateChange,
   isBlocklyUserEdit,
   runErrorFor,
   runErrorName,
@@ -118,6 +119,34 @@ describe('sandbox counters', () => {
   it('accumulates time', () => {
     expect(applySandboxTime(applySandboxTime(null, 1500.4), 1000).timeMs).toBe(2500)
     expect(applySandboxTime({ timeMs: 10 }, -5).timeMs).toBe(10)
+  })
+})
+
+describe('isBlocklyFieldIntermediateChange', () => {
+  it('is true only for a keystroke inside an open field editor', () => {
+    expect(
+      isBlocklyFieldIntermediateChange({
+        type: 'block_field_intermediate_change',
+        oldValue: 'h',
+        newValue: 'ha',
+      })
+    ).toBe(true)
+    expect(
+      isBlocklyFieldIntermediateChange({
+        type: 'change',
+        element: 'field',
+        oldValue: 'Hello!',
+        newValue: 'ha',
+      })
+    ).toBe(false)
+    expect(isBlocklyFieldIntermediateChange({ type: 'create' })).toBe(false)
+    expect(isBlocklyFieldIntermediateChange(null)).toBe(false)
+  })
+
+  it('is not counted as a user edit (the committed change is)', () => {
+    expect(
+      isBlocklyUserEdit({ type: 'block_field_intermediate_change', oldValue: 'h', newValue: 'ha' })
+    ).toBe(false)
   })
 })
 

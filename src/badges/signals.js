@@ -184,6 +184,20 @@ export function applySandboxTime(current, ms) {
 // Blockly event types (Blockly.Events.BLOCK_CREATE etc.), kept as strings so this stays pure.
 const BLOCKLY_EDIT_TYPES = new Set(['create', 'delete', 'move', 'change'])
 
+// Blockly.Events.BLOCK_FIELD_INTERMEDIATE_CHANGE: fired on every keystroke while a field's
+// text editor is open. Blockly follows it with an ordinary 'change' event when the editor
+// closes (blur or Enter), carrying the value from when the editor opened and the final text.
+const BLOCKLY_FIELD_INTERMEDIATE_CHANGE = 'block_field_intermediate_change'
+
+/**
+ * Whether a Blockly workspace event is an in-progress field edit (a keystroke while a text
+ * field's editor is open), as opposed to a committed one. These are not edits in their own
+ * right: the committed 'change' event that closes the editor is.
+ */
+export function isBlocklyFieldIntermediateChange(event) {
+  return event?.type === BLOCKLY_FIELD_INTERMEDIATE_CHANGE
+}
+
 function sameCoordinate(a, b) {
   if (!a || !b) return !a && !b
   return Math.abs((a.x ?? 0) - (b.x ?? 0)) < 1 && Math.abs((a.y ?? 0) - (b.y ?? 0)) < 1
