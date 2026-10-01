@@ -5,12 +5,12 @@ import { useLiveInkData } from './liveInkContext'
 import {
   findAnchorElement,
   findScrollContainer,
-  fractionToPoint,
-  fractionsToStroke,
   offscreenDirection,
-  pointsToSvgPath,
   rangeClientRects,
   resolveHighlightRange,
+  resolveInkPoint,
+  resolveInkStroke,
+  segmentsToSvgPath,
 } from './geometry'
 import { RECENT_MARK_MS, STROKE_FADE_MS, STROKE_HOLD_MS, inkForSurface } from './liveInkData'
 
@@ -207,6 +207,11 @@ export default function LiveInkOverlay({ surfaceId, surfaceRef, role }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleStrokeKey, now])
 
+  // Resolved strokes (surface-relative segments), per stroke id. Strokes never change once
+  // written, so an entry only goes stale when the layout does (layoutTick: resize, reflow,
+  // content changes) - not on every ~12Hz pointer update.
+  const strokeCacheRef = useRef({ tick: -1, byId: new Map() })
+
   const [layout, setLayout] = useState(EMPTY_LAYOUT)
   useLayoutEffect(() => {
     const surfaceEl = surfaceRef.current
@@ -217,20 +222,36 @@ export default function LiveInkOverlay({ surfaceId, surfaceRef, role }) {
     let pointer = null
     if (mine.pointer) {
       const anchorEl = findAnchorElement(surfaceEl, mine.pointer.anchor)
-      const point = anchorEl && fractionToPoint(mine.pointer, anchorEl.getBoundingClientRect())
+      const point =
+        anchorEl && resolveInkPoint(anchorEl, anchorEl.getBoundingClientRect(), mine.pointer)
       if (point) pointer = relative(point)
     }
 
-    const strokes = []
-    for (const stroke of visibleStrokes) {
-      const anchorEl = findAnchorElement(surfaceEl, stroke.anchor)
-      if (!anchorEl) continue
-      const points = fractionsToStroke(stroke.points, anchorEl.getBoundingClientRect()).map(
-        relative
-      )
-      if (!points.length) continue
-      strokes.push({ id: stroke.id, colour: stroke.colour, d: pointsToSvgPath(points), points })
+    const cache = strokeCacheRef.current
+    if (cache.tick !== layoutTick) {
+      cache.tick = layoutTick
+      cache.byId = new Map()
     }
+    const strokes = []
+    const liveIds = new Set()
+    for (const stroke of visibleStrokes) {
+      liveIds.add(stroke.id)
+      let resolved = cache.byId.get(stroke.id)
+      if (!resolved) {
+        const anchorEl = findAnchorElement(surfaceEl, stroke.anchor)
+        // Text-anchored points follow their words; a stroke whose words now wrap onto two
+        // lines is drawn as separate segments rather than a line across the paragraph.
+        const segments = anchorEl
+          ? resolveInkStroke(anchorEl, stroke.points).map((segment) => segment.map(relative))
+          : []
+        resolved = { segments, points: segments.flat(), d: segmentsToSvgPath(segments) }
+        // An anchor that isn't rendered yet is retried on the next pass.
+        if (anchorEl) cache.byId.set(stroke.id, resolved)
+      }
+      if (!resolved.points.length) continue
+      strokes.push({ id: stroke.id, colour: stroke.colour, d: resolved.d, points: resolved.points })
+    }
+    for (const id of cache.byId.keys()) if (!liveIds.has(id)) cache.byId.delete(id)
 
     const highlightRects = []
     const ranges = []

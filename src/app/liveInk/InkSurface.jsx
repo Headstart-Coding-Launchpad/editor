@@ -6,11 +6,11 @@ import {
   anchorElementFor,
   anchorNameOf,
   describeSelection,
+  encodeInkPoint,
   highlightAtPoint,
-  pointToFraction,
   pointsToSvgPath,
   simplifyStrokePoints,
-  strokeToFractions,
+  strokeToInkPoints,
 } from './geometry'
 import { INK_COLOUR } from './liveInkData'
 
@@ -57,12 +57,11 @@ function ActiveInkSurface({ id, config, style, children }) {
     const surfaceEl = surfaceRef.current
     if (!surfaceEl?.contains(event.target)) return
     const anchorEl = anchorElementFor(event.target, surfaceEl)
-    const fraction = pointToFraction(
-      { x: event.clientX, y: event.clientY },
-      anchorEl.getBoundingClientRect()
-    )
-    if (!fraction) return
-    writer.movePointer({ surface: id, anchor: anchorNameOf(anchorEl, surfaceEl), ...fraction })
+    // Over text: the character under the pointer (so the dot stays on that word at any
+    // width); elsewhere: fractions of the anchor element's box.
+    const position = encodeInkPoint(anchorEl, { x: event.clientX, y: event.clientY })
+    if (!position) return
+    writer.movePointer({ surface: id, anchor: anchorNameOf(anchorEl, surfaceEl), ...position })
   }
 
   function handlePointerLeave() {
@@ -132,8 +131,10 @@ function ActiveInkSurface({ id, config, style, children }) {
 
 // Ink mode only: sits over the content and takes the pointer, so a drag draws instead of
 // selecting text or clicking links. The stroke is written once, on pointer-up, anchored on the
-// content element under its first point.
+// content element under its first point; each point is pinned to the character under it where
+// there is text (see strokeToInkPoints).
 function InkCaptureLayer({ surfaceId, surfaceRef, writer, onAnnotate }) {
+  const layerRef = useRef(null)
   const drawingRef = useRef(null)
   const [draft, setDraft] = useState(null)
 
@@ -169,10 +170,16 @@ function InkCaptureLayer({ surfaceId, surfaceRef, writer, onAnnotate }) {
     setDraft(null)
     const surfaceEl = surfaceRef.current
     if (!drawing || !surfaceEl) return
-    const points = strokeToFractions(
-      simplifyStrokePoints(drawing.points),
-      drawing.anchorEl.getBoundingClientRect()
-    )
+    // The caret lookups hit-test, so this layer (on top of the text) steps aside meanwhile.
+    const layer = layerRef.current
+    const previousPointerEvents = layer?.style.pointerEvents ?? ''
+    if (layer) layer.style.pointerEvents = 'none'
+    let points
+    try {
+      points = strokeToInkPoints(simplifyStrokePoints(drawing.points), drawing.anchorEl)
+    } finally {
+      if (layer) layer.style.pointerEvents = previousPointerEvents
+    }
     if (!points.length) return
     writer.addStroke({
       surface: surfaceId,
@@ -184,6 +191,7 @@ function InkCaptureLayer({ surfaceId, surfaceRef, writer, onAnnotate }) {
 
   return (
     <div
+      ref={layerRef}
       className="live-ink-capture"
       data-live-ink-layer=""
       data-testid="live-ink-capture"

@@ -222,8 +222,9 @@
         ".read": true,
         ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
 
+        // Either { c, dx, dy } (a character + em offset, over text) or { rx, ry } (box fractions).
         "pointer": {
-          ".validate": "newData.hasChildren(['surface', 'anchor', 'rx', 'ry', 't'])",
+          ".validate": "newData.hasChildren(['surface', 'anchor', 't']) && ((newData.hasChildren(['rx', 'ry']) && !newData.hasChild('c')) || (newData.hasChildren(['c', 'dx', 'dy']) && !newData.hasChild('rx') && !newData.hasChild('ry')))",
           "surface": {
             ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120"
           },
@@ -235,6 +236,15 @@
           },
           "ry": {
             ".validate": "newData.isNumber() && newData.val() >= -10 && newData.val() <= 10"
+          },
+          "c": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+          },
+          "dx": {
+            ".validate": "newData.isNumber() && newData.val() >= -50 && newData.val() <= 50"
+          },
+          "dy": {
+            ".validate": "newData.isNumber() && newData.val() >= -50 && newData.val() <= 50"
           },
           "t": { ".validate": "newData.isNumber()" },
           "$other": { ".validate": false }
@@ -251,12 +261,13 @@
             },
             "colour": { ".validate": "newData.isString() && newData.val().length <= 40" },
             "t": { ".validate": "newData.isNumber()" },
-            // At most 200 points (keys 0-199), each a [rx, ry] pair of small numbers.
+            // At most 200 points (keys 0-199), each either a [rx, ry] pair of box fractions or
+            // a { c, dx, dy } text position (character offset + em offset).
             "points": {
               "$index": {
-                ".validate": "$index.matches(/^(1?[0-9]?[0-9])$/) && newData.hasChildren(['0', '1'])",
+                ".validate": "$index.matches(/^(1?[0-9]?[0-9])$/) && ((newData.hasChildren(['0', '1']) && !newData.hasChild('c')) || (newData.hasChildren(['c', 'dx', 'dy']) && !newData.hasChild('0') && !newData.hasChild('1')))",
                 "$coord": {
-                  ".validate": "$coord.matches(/^[01]$/) && newData.isNumber() && newData.val() >= -10 && newData.val() <= 10"
+                  ".validate": "newData.isNumber() && (($coord.matches(/^[01]$/) && newData.val() >= -10 && newData.val() <= 10) || ($coord === 'c' && newData.val() >= 0 && newData.val() <= 1000000) || (($coord === 'dx' || $coord === 'dy') && newData.val() >= -50 && newData.val() <= 50))"
                 }
               }
             },

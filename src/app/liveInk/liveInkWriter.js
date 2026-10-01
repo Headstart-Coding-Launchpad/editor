@@ -40,8 +40,14 @@ export function createLiveInkWriter(
       return quietly(onDisconnect(rootRef).remove(), 'arm the disconnect cleanup')
     },
 
-    movePointer({ surface, anchor, rx, ry }) {
-      pointerWriter.push({ surface, anchor, rx, ry, t: now() })
+    // `position` is `{ c, dx, dy }` (over text) or `{ rx, ry }` (box fractions); only that
+    // form's keys are written, since the rules accept one form or the other.
+    movePointer({ surface, anchor, ...position }) {
+      const coords =
+        position.c != null
+          ? { c: position.c, dx: position.dx, dy: position.dy }
+          : { rx: position.rx, ry: position.ry }
+      pointerWriter.push({ surface, anchor, ...coords, t: now() })
     },
 
     hidePointer() {
