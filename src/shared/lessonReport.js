@@ -4,6 +4,7 @@ import { getTaskActivity } from '../activities/registry.pure.js'
 import { SUPPORT_REVEAL_SOURCES } from './taskStages.js'
 import { normalizeCodeSubmission } from './codeSubmission.js'
 import { isAutoAttempt, latestLeaveAttempt, leaveAttemptResult } from './autoCheck.js'
+import { buildShownResponsesByTask } from './shownResponses.js'
 import { buildPollsReport } from './classPolls.js'
 import {
   buildBadgeSummary,
@@ -432,11 +433,17 @@ export function anonymizeSessionReport(report) {
     students,
     ...(Array.isArray(report.taskSummary)
       ? {
-          taskSummary: report.taskSummary.map((task) =>
-            task?.firstRealPass
-              ? { ...task, firstRealPass: relabelStudentRef(task.firstRealPass, relabel) }
-              : task
-          ),
+          taskSummary: report.taskSummary.map((task) => ({
+            ...task,
+            ...(task?.firstRealPass
+              ? { firstRealPass: relabelStudentRef(task.firstRealPass, relabel) }
+              : {}),
+            ...(Array.isArray(task?.shownResponses)
+              ? {
+                  shownResponses: task.shownResponses.map((ref) => relabelStudentRef(ref, relabel)),
+                }
+              : {}),
+          })),
         }
       : {}),
     ...(Array.isArray(report.quizGroups)
@@ -612,6 +619,8 @@ export function buildSessionReport({
     }
   })
 
+  // Answers the teacher showed on the presentation window (src/shared/shownResponses.js).
+  const shownByTask = buildShownResponsesByTask(session, labelFor)
   const taskSummary = tasks.map((task) => {
     const perStudent = students
       .map((s) => s.tasks.find((t) => t.taskId === task.id))
@@ -659,6 +668,9 @@ export function buildSessionReport({
         totalStudents: perStudent.length,
         respondedCount: attemptedStudents.length,
         ...reportActivity.report.summaryFields(task, perStudent),
+        ...(shownByTask[String(task.id)]?.length
+          ? { shownResponses: shownByTask[String(task.id)] }
+          : {}),
         avgTimeOnTaskMs,
         commonFailures: [],
         overrideCount: 0,

@@ -8,6 +8,12 @@ import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress
 import { readActivityAnswer, summarizeActivityAnswer } from '../../activities/state.js'
 import { getTaskActivityUi } from '../../activities/registry.js'
 import ActivityDeviceBadge from '../../activities/ui/ActivityDeviceBadge.jsx'
+import {
+  canShowResponses,
+  defaultShowName,
+  findShownResponse,
+  normalizeShownText,
+} from '../../shared/shownResponses'
 
 const formatLastRun = formatTimeAgo
 
@@ -41,6 +47,9 @@ export default function StudentCard({
   onExpand,
   onNudge,
   onThumbsUp,
+  onShowResponse,
+  onHideResponse,
+  onSetShownResponseName,
   badgePendingCount = 0,
   badgeAwardedCount = 0,
   selectMode = false,
@@ -116,6 +125,17 @@ export default function StudentCard({
   const itemProgress = isSessionSandbox ? null : getTaskItemProgress(currentTask, student)
   // A rating (confidence check) is never right or wrong, so it has no pass/fail badge.
   const isNeverMarked = activity?.completion === 'none'
+
+  // Open short answers authored with `showResponses: teacher_picks`: the teacher can put this
+  // student's answer on the presentation window (src/shared/shownResponses.js).
+  const showableText =
+    isActivity && canShowResponses(currentTask) && onShowResponse
+      ? normalizeShownText(student.currentAnswer)
+      : ''
+  const shownResponse = showableText
+    ? findShownResponse(session, currentTask.id, student.anonymousId)
+    : null
+  const isShown = !!shownResponse && shownResponse.hiddenAt == null
 
   // The dot is presence, which is what a dot beside a name means everywhere else. It
   // used to carry run status while the pill next to it carried presence - two dots one
@@ -527,6 +547,51 @@ export default function StudentCard({
           )}
         </div>
       )}
+      {showableText && (
+        <div style={s.showRow}>
+          <button
+            type="button"
+            style={{ ...s.showBtn, ...(isShown ? s.showBtnOn : null) }}
+            aria-pressed={isShown}
+            onClick={(event) => {
+              event.stopPropagation()
+              if (isShown) onHideResponse?.(shownResponse.responseId)
+              else
+                onShowResponse(
+                  currentTask.id,
+                  student.anonymousId,
+                  showableText,
+                  shownResponse ? shownResponse.showName === true : defaultShowName(currentTask)
+                )
+            }}
+            title={
+              isShown
+                ? 'Take this answer off the presentation window'
+                : 'Show this answer on the presentation window'
+            }
+          >
+            {isShown ? '📺 On screen' : '📺 Show'}
+          </button>
+          {isShown && (
+            <button
+              type="button"
+              style={{ ...s.showBtn, ...(shownResponse.showName ? s.showBtnOn : null) }}
+              aria-pressed={shownResponse.showName === true}
+              onClick={(event) => {
+                event.stopPropagation()
+                onSetShownResponseName?.(shownResponse.responseId, !shownResponse.showName)
+              }}
+              title={
+                shownResponse.showName
+                  ? 'Hide this student’s name on the presentation window'
+                  : 'Show this student’s name with their answer'
+              }
+            >
+              {shownResponse.showName ? '👤 Name shown' : '👤 Anonymous'}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -735,6 +800,20 @@ const s = {
     cursor: 'pointer',
   },
   thumbsUpBtnSent: { cursor: 'default', opacity: 0.7 },
+  showRow: { display: 'flex', gap: 4, flexWrap: 'wrap' },
+  showBtn: {
+    background: 'var(--ui-surface)',
+    border: '1px solid var(--ui-border-strong)',
+    borderRadius: 999,
+    fontSize: '0.72rem',
+    lineHeight: 1.2,
+    padding: '1px 6px',
+    cursor: 'pointer',
+  },
+  showBtnOn: {
+    background: 'var(--ui-surface-tint)',
+    borderColor: 'var(--colour-primary)',
+  },
   checkBadgeFullscreen: {
     background: '#0284c7',
     color: '#fff',

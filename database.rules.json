@@ -107,6 +107,24 @@
         "activePollId": {
           ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 64"
         },
+        "shownResponses": {
+          "$responseId": {
+            ".validate": "newData.hasChildren(['taskId', 'anonymousId', 'text', 'showName', 'shownAt'])",
+            "taskId": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128"
+            },
+            "anonymousId": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128"
+            },
+            "text": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 1000"
+            },
+            "showName": { ".validate": "newData.isBoolean()" },
+            "shownAt": { ".validate": "newData.isNumber()" },
+            "hiddenAt": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
 
         // Per-task attempt history, keyed the same way as students so each
         // student can only log their own attempts. Sibling of "students" (not

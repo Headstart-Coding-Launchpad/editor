@@ -52,6 +52,9 @@ export default function StudentGrid({
   onRequestFullscreenStudent,
   onNudgeStudent,
   onThumbsUpStudent,
+  onShowResponse,
+  onHideResponse,
+  onSetShownResponseName,
   onNudgeAway,
   onSetAutoReveal,
   badgeSuggestions = null,
@@ -409,6 +412,9 @@ export default function StudentGrid({
                 onExpand={handleExpand}
                 onNudge={onNudgeStudent}
                 onThumbsUp={onThumbsUpStudent}
+                onShowResponse={onShowResponse}
+                onHideResponse={onHideResponse}
+                onSetShownResponseName={onSetShownResponseName}
                 badgePendingCount={
                   badgeSuggestions?.pendingCountByStudent?.[student.anonymousId] ?? 0
                 }

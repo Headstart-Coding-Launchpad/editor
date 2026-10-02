@@ -57,6 +57,16 @@ export function validateQuizTask(task, { n, errors }) {
     ) {
       errors.push(`Task ${n} is a short-answer quiz with a check enabled but no check value`)
     }
+    if (task.showResponses != null) {
+      if (task.showResponses !== 'teacher_picks')
+        errors.push(`Task ${n} is a short-answer quiz but showResponses is not teacher_picks`)
+      else if (task.check != null)
+        errors.push(
+          `Task ${n} is a short-answer quiz with a check but has showResponses (only open answers with no check can be shown)`
+        )
+    }
+    if (task.anonymiseResponses != null && typeof task.anonymiseResponses !== 'boolean')
+      errors.push(`Task ${n} is a short-answer quiz but anonymiseResponses is not true or false`)
   }
 }
 

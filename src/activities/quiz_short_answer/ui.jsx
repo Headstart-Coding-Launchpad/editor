@@ -15,26 +15,29 @@ export function ShortAnswerBuilder({ task, onUpdate, lessonType = null }) {
   }
 
   function toggleCheck(enabled) {
+    // A graded answer is never shown to the class, so a check drops the show-answer fields.
+    const { showResponses: _showResponses, anonymiseResponses: _anonymise, ...rest } = task
     onUpdate({
-      ...task,
+      ...(enabled ? rest : task),
       check: enabled ? { type: 'answer_contains', value: '' } : null,
       _checkTested: false,
     })
   }
 
+  function toggleShowResponses(enabled) {
+    const { showResponses: _showResponses, anonymiseResponses: _anonymise, ...rest } = task
+    onUpdate(enabled ? { ...rest, showResponses: 'teacher_picks' } : rest)
+  }
+
+  function toggleShowNames(showNames) {
+    const { anonymiseResponses: _anonymise, ...rest } = task
+    onUpdate(showNames ? { ...rest, anonymiseResponses: false } : rest)
+  }
+
   return (
     <Field label="Completion check">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.9rem',
-            cursor: 'pointer',
-          }}
-        >
+        <label style={toggleLabelStyle}>
           <input
             type="checkbox"
             checked={hasCheck}
@@ -59,6 +62,26 @@ export function ShortAnswerBuilder({ task, onUpdate, lessonType = null }) {
             Open-ended — any submitted answer completes the task. The teacher can review what each
             student wrote.
           </p>
+        )}
+        {!hasCheck && (
+          <label style={toggleLabelStyle}>
+            <input
+              type="checkbox"
+              checked={task.showResponses === 'teacher_picks'}
+              onChange={(e) => toggleShowResponses(e.target.checked)}
+            />
+            Teacher can show answers on the presentation window
+          </label>
+        )}
+        {!hasCheck && task.showResponses === 'teacher_picks' && (
+          <label style={{ ...toggleLabelStyle, paddingLeft: 24 }}>
+            <input
+              type="checkbox"
+              checked={task.anonymiseResponses === false}
+              onChange={(e) => toggleShowNames(e.target.checked)}
+            />
+            Show names by default (the teacher can still change each answer)
+          </label>
         )}
         {hasCheck && (
           <>
@@ -109,6 +132,15 @@ export function ShortAnswerBuilder({ task, onUpdate, lessonType = null }) {
       </div>
     </Field>
   )
+}
+
+const toggleLabelStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  fontFamily: 'var(--font-body)',
+  fontSize: '0.9rem',
+  cursor: 'pointer',
 }
 
 // The existing short-answer component (via QuizTask), hosted as an activity.
