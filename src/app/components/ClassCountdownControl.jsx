@@ -81,7 +81,7 @@ export default function ClassCountdownControl({
         ⏱ {running ? 'Countdown ●' : 'Countdown'}
       </button>
       {open && (
-        <div style={s.panel} className="ui-popover" role="dialog" aria-label="Class countdown">
+        <div style={s.panel} className="ui-popover" role="group" aria-label="Class countdown">
           {running && (
             <div style={s.runningRow}>
               <ClassCountdownPill

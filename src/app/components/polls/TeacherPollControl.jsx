@@ -93,7 +93,7 @@ export default function TeacherPollControl({
         {buttonLabel}
       </button>
       {open && (
-        <div className="ui-popover teacher-poll-panel" role="dialog" aria-label="Class poll">
+        <div className="ui-popover teacher-poll-panel" role="group" aria-label="Class poll">
           {showForm ? (
             <form className="teacher-poll-form" onSubmit={handleLaunch}>
               <label className="teacher-poll-form__label">
