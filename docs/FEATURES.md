@@ -14,7 +14,7 @@ New lessons are composed lessons: each code task selects one of the workspace ty
 | Arcade Kit | Build a small pixel-style Python game with a sandboxed canvas, keyboard input, named/uploaded or pixel-editor assets, tilemaps, and Run/Stop controls |
 | Turtle | Write Python turtle-graphics commands that draw onto a responsive canvas; checks run on the finished drawing |
 | HTML/CSS/JS | Write and run web pages across multiple tabbed files; output shown in an iframe preview |
-| Scratch | Drag-and-drop block programming with a live stage canvas; costume and sprite dropdowns (switch costume, go to, glide, touching, distance to, create clone of) show a thumbnail preview of each option, and sprite dropdowns keep the selected sprite's thumbnail beside its name on the block |
+| Scratch | Drag-and-drop block programming with a live stage canvas; costume and sprite dropdowns (switch costume, go to, glide, touching, distance to, create clone of) show a thumbnail preview of each option, and sprite dropdowns keep the selected sprite's thumbnail beside its name on the block; optional Costumes and Sounds tabs (per task) where students can add emoji/library costumes and synth or sound-file sounds to any sprite |
 | Filesystem | Navigate, create, rename, move, and delete files and folders in a virtual file manager |
 | Desktop | A windowed desktop shell (icons, taskbar, draggable/resizable windows) hosting File Manager (with a Recycle Bin, search, and sort), Text Editor, Image Viewer, Paint, and a simulated Browser with a search engine |
 | Electronics | Build and test breadboard-style circuits with guided checks |
@@ -229,7 +229,8 @@ After the same hint appears twice in a row, solo students can optionally view th
 
 ### Scratch Tools
 - Starter/complete workspace tabs with isolated state
-- Sprite panel: add/remove, costumes, and initial stage properties
+- Sprite panel: add/remove, costumes, sounds (built-in synth or audio file), and initial stage properties
+- Student additions: Costumes / Sounds tabs and whether students may add costumes or sounds
 - Backdrop manager
 - Toolbox editor with block category toggles
 
@@ -257,7 +258,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - **Class management**: create and archive admin-only class records used for reusable lesson forks
 - **Session management**: see every live or waiting session left open across the platform (lesson, state, paused flag, student/online counts, how long it's been open) and close any of them remotely, for cases where a teacher left a session running without ending it
 - **Topic library**: create, edit, and delete topics with full Markdown description and syntax fields; type filters come from the lesson module registry
-- **Shared assets**: manage lesson-type-wide Firebase Storage files and Scratch default sprites, shared across every lesson of a given type
+- **Shared assets**: manage lesson-type-wide Firebase Storage files and Scratch default sprites, backdrops and sounds, shared across every lesson of a given type
 - **Badges**: see every built-in live badge with its exact rule (rule-backed or tutor-only, auto-awardable), and add, edit, archive or restore manual-only badges that reach tutors' award pickers with no deploy; ids and emoji are checked for clashes on save, and archived badges still show wherever they were awarded
 - **Version footer**: the bottom of every Admin tab shows `LaunchPad vMAJOR.MINOR.BUILD · commit · built date` (BUILD rises on every merge to `main`), with a Copy button for bug reports; clicking the version opens "What's new" milestone release notes
 

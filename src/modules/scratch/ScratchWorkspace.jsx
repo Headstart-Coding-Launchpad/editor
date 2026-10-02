@@ -24,6 +24,7 @@ import {
   setSpriteContext,
   setBackdropContext,
   setCostumeContext,
+  setSoundContext,
   setVariableContext,
   setWorkspaceBlocklyContext,
   addCreateVariableButtonToToolbox,
@@ -51,6 +52,15 @@ import {
   normalizeBackdropPresets,
   resolvePresetLibrary,
 } from '../../shared/spritePresets'
+import {
+  DEFAULT_SPRITE_SOUNDS,
+  normalizeSoundPresets,
+  playScratchSound,
+  preloadSoundUrl,
+  resolveSpriteSounds,
+  uniqueItemName,
+} from './scratchSounds.js'
+import { CostumesTab, SoundsTab } from './CostumesSoundsPanel.jsx'
 
 const STAGE_W = 480
 const STAGE_H = 360
@@ -200,6 +210,92 @@ export function isSpriteRemovable(sprite, task) {
   if (!task?.allowRemoveSprite) return false
   if (task?.allowRemoveStarterSprites) return true
   return sprite?.studentAdded === true
+}
+
+// Student-added costumes/sounds on any sprite (task flags allowAddCostume / allowAddSound) are
+// tagged `studentAdded: true` inside the sprite's own list. A student-added *sprite* already
+// carries its whole lists in `__meta__.addedSprites`; for authored sprites only the added
+// entries are saved, under `__meta__.addedCostumes` / `addedSounds` keyed by sprite id.
+export function collectAddedSpriteAssets(sprites) {
+  const addedCostumes = {}
+  const addedSounds = {}
+  for (const sp of sprites ?? []) {
+    if (sp.studentAdded) continue
+    const costumes = (sp.costumes ?? []).filter((c) => c.studentAdded)
+    const sounds = (sp.sounds ?? []).filter((snd) => snd.studentAdded)
+    if (costumes.length) addedCostumes[sp.id] = costumes
+    if (sounds.length) addedSounds[sp.id] = sounds
+  }
+  return { addedCostumes, addedSounds }
+}
+
+// Re-applies saved costume/sound additions to authored sprites. Idempotent: entries already
+// marked studentAdded are replaced, not duplicated, and the same array is returned when
+// nothing changes (so a live mirror re-applying every push doesn't churn `sprites`).
+export function mergeAddedSpriteAssets(sprites, addedCostumes, addedSounds) {
+  let changed = false
+  const next = (sprites ?? []).map((sp) => {
+    const costumes = addedCostumes?.[sp.id]
+    const sounds = addedSounds?.[sp.id]
+    if (sp.studentAdded || (!costumes?.length && !sounds?.length)) return sp
+    const updated = { ...sp }
+    if (costumes?.length) {
+      updated.costumes = [...(sp.costumes ?? []).filter((c) => !c.studentAdded), ...costumes]
+    }
+    if (sounds?.length) {
+      updated.sounds = [
+        ...resolveSpriteSounds({ sounds: (sp.sounds ?? []).filter((x) => !x.studentAdded) }),
+        ...sounds,
+      ]
+    }
+    if (
+      JSON.stringify(updated.costumes) === JSON.stringify(sp.costumes) &&
+      JSON.stringify(updated.sounds) === JSON.stringify(sp.sounds)
+    )
+      return sp
+    changed = true
+    return updated
+  })
+  return changed ? next : sprites
+}
+
+// Adds one costume to a sprite's list. A sprite drawn from its emoji or shape with no
+// costumes first gets a plain "costume1" standing for that look (a costume with neither
+// image nor emoji draws the sprite's own emoji/shape), so the original stays selectable.
+export function addCostumeToSprite(sprite, costume) {
+  const base = sprite.costumes?.length
+    ? sprite.costumes
+    : [{ name: 'costume1', studentAdded: true }]
+  const added = { ...costume, name: uniqueItemName(costume.name, base), studentAdded: true }
+  return { sprite: { ...sprite, costumes: [...base, added] }, costume: added }
+}
+
+export function addSoundToSprite(sprite, sound) {
+  const base = resolveSpriteSounds(sprite)
+  const added = { ...sound, name: uniqueItemName(sound.name, base), studentAdded: true }
+  return { ...sprite, sounds: [...base, added] }
+}
+
+// Every costume in the admin sprite library, flattened for the Costumes tab's "Add" view.
+// A library sprite with no costumes contributes its emoji (shape-only sprites have nothing
+// a costume can carry, so they are skipped).
+export function libraryCostumeOptions(spritePresets) {
+  const options = []
+  for (const preset of spritePresets ?? []) {
+    if (preset.costumes?.length) {
+      preset.costumes.forEach((c, i) => {
+        if (!c?.image && !c?.emoji) return
+        options.push({
+          key: `${preset.id}:${i}`,
+          name: c.name || preset.name,
+          ...(c.image ? { image: c.image } : { emoji: c.emoji }),
+        })
+      })
+    } else if (preset.emoji) {
+      options.push({ key: preset.id, name: preset.name, emoji: preset.emoji })
+    }
+  }
+  return options
 }
 
 // A student-typed variable name must be non-empty and must not collide (case-insensitively)
@@ -819,8 +915,16 @@ export default function ScratchWorkspace({
   const canAddBackdrop = !readOnly && !!task?.allowAddBackdrop
   const canCreateVariable = !readOnly && !!task?.allowCreateVariable
   const canRemoveSprite = !readOnly && !!task?.allowRemoveSprite
-  const { defaultSprites: libSprites, defaultBackdrops: libBackdrops } = useTypeAssets(
-    canAddSprite || canAddBackdrop ? 'scratch' : null
+  const showCostumesTab = !!task?.showCostumesTab
+  const showSoundsTab = !!task?.showSoundsTab
+  const canAddCostume = !readOnly && showCostumesTab && !!task?.allowAddCostume
+  const canAddSound = !readOnly && showSoundsTab && !!task?.allowAddSound
+  const {
+    defaultSprites: libSprites,
+    defaultBackdrops: libBackdrops,
+    defaultSounds: libSounds,
+  } = useTypeAssets(
+    canAddSprite || canAddBackdrop || canAddCostume || canAddSound ? 'scratch' : null
   )
   const spriteLibraryOptions = resolvePresetLibrary(
     normalizeSpritePresets(libSprites),
@@ -830,6 +934,24 @@ export default function ScratchWorkspace({
     normalizeBackdropPresets(libBackdrops),
     task?.addBackdropPresetIds
   )
+  const costumeLibraryOptions = useMemo(
+    () =>
+      libraryCostumeOptions(normalizeSpritePresets(libSprites)).map((c) => ({
+        ...c,
+        imageUrl: c.image ? resolveAssetFileUrl(assetsPath, c.image) : undefined,
+      })),
+    [libSprites, assetsPath]
+  )
+  const soundLibraryOptions = useMemo(
+    () =>
+      normalizeSoundPresets(libSounds).map((preset) => ({
+        ...preset,
+        url: resolveAssetFileUrl(assetsPath, preset.audio),
+      })),
+    [libSounds, assetsPath]
+  )
+  // Code / Costumes / Sounds tab beside the block editor (only when a tab flag is on).
+  const [assetTab, setAssetTab] = useState('code')
   const [spritePickerOpen, setSpritePickerOpen] = useState(false)
   const [backdropPickerOpen, setBackdropPickerOpen] = useState(false)
   const [variablePrompt, setVariablePrompt] = useState(null) // { value, error } | null
@@ -1028,12 +1150,27 @@ export default function ScratchWorkspace({
       ),
     [sprites, assetsPath]
   )
+  // Each sprite's sounds with any `audio` path resolved to a URL: read by the sound
+  // dropdowns and handed to the interpreter (see buildSpriteWorkspaces).
+  const soundsBySpriteId = useMemo(
+    () =>
+      Object.fromEntries(
+        sprites.map((sp) => [
+          sp.id,
+          resolveSpriteSounds(sp).map((snd) =>
+            snd.audio ? { ...snd, url: resolveAssetFileUrl(assetsPath, snd.audio) } : snd
+          ),
+        ])
+      ),
+    [sprites, assetsPath]
+  )
   const blocklyContextRef = useRef(null)
   blocklyContextRef.current = {
     sprites: dropdownSprites,
     backdrops,
     variables,
     costumesBySpriteId,
+    soundsBySpriteId,
     firstSpriteId: sprites[0]?.id,
   }
   function blocklyContextForWorkspace(spriteId) {
@@ -1043,6 +1180,7 @@ export default function ScratchWorkspace({
       backdrops: ctx.backdrops,
       variables: ctx.variables,
       costumes: ctx.costumesBySpriteId[spriteId] ?? ctx.costumesBySpriteId[ctx.firstSpriteId] ?? [],
+      sounds: ctx.soundsBySpriteId[spriteId] ?? DEFAULT_SPRITE_SOUNDS,
     }
   }
 
@@ -1089,6 +1227,24 @@ export default function ScratchWorkspace({
       costumesBySpriteId[selectedSpriteId] ?? costumesBySpriteId[sprites[0]?.id] ?? []
     )
   }, [costumesBySpriteId, selectedSpriteId, sprites])
+
+  useEffect(() => {
+    setSoundContext(soundsBySpriteId[selectedSpriteId] ?? DEFAULT_SPRITE_SOUNDS)
+  }, [soundsBySpriteId, selectedSpriteId])
+
+  // Fetch and decode sprites' audio-file sounds up front so the first play isn't delayed.
+  useEffect(() => {
+    for (const sounds of Object.values(soundsBySpriteId)) {
+      for (const snd of sounds) if (snd.url) preloadSoundUrl(snd.url)
+    }
+  }, [soundsBySpriteId])
+
+  // The stage has no costumes or sounds of its own here, so it always shows Code.
+  useEffect(() => {
+    if (selectedSpriteId === '__stage__' && assetTab !== 'code') setAssetTab('code')
+    if (assetTab === 'costumes' && !showCostumesTab) setAssetTab('code')
+    if (assetTab === 'sounds' && !showSoundsTab) setAssetTab('code')
+  }, [selectedSpriteId, assetTab, showCostumesTab, showSoundsTab])
 
   useEffect(() => {
     if (controlledSpriteId !== null) return
@@ -1242,12 +1398,16 @@ export default function ScratchWorkspace({
       const addedSprites = spritesRef.current.filter((sp) => sp.studentAdded)
       const addedBackdrops = backdropsRef.current.filter((b) => b.studentAdded)
       const createdVars = createdVariablesRef.current
-      if (addedSprites.length || addedBackdrops.length || createdVars.length) {
+      const { addedCostumes, addedSounds } = collectAddedSpriteAssets(spritesRef.current)
+      const hasAddedAssets =
+        Object.keys(addedCostumes).length > 0 || Object.keys(addedSounds).length > 0
+      if (addedSprites.length || addedBackdrops.length || createdVars.length || hasAddedAssets) {
         states.__meta__ = {
           addedSprites,
           addedBackdrops,
           createdVariables: createdVars,
           variableValues: { ...variableRuntimeRef.current },
+          ...(hasAddedAssets ? { addedCostumes, addedSounds } : {}),
         }
       }
       pendingSyncRef.current = false
@@ -1315,6 +1475,7 @@ export default function ScratchWorkspace({
         workspace: workspaceRefs.current[sp.id],
         state: spriteStatesRef.current[sp.id],
         costumes: sp.costumes ?? [],
+        sounds: soundsBySpriteId[sp.id] ?? DEFAULT_SPRITE_SOUNDS,
         onUpdate: (s) => {
           commitSpriteStates({ ...spriteStatesRef.current, [sp.id]: s })
         },
@@ -1328,11 +1489,12 @@ export default function ScratchWorkspace({
         workspace: workspaceRefs.current['__stage__'],
         state: { ...STAGE_RUNTIME_STATE },
         costumes: [],
+        sounds: DEFAULT_SPRITE_SOUNDS,
         onUpdate: () => {},
       })
     }
     return result
-  }, [sprites, task?.enableStageCode])
+  }, [sprites, soundsBySpriteId, task?.enableStageCode])
 
   function commitSpriteStates(nextStates) {
     spriteStatesRef.current = nextStates
@@ -1448,6 +1610,23 @@ export default function ScratchWorkspace({
     backdropNameRef.current = newBackdrop.name
     setBackdropName(newBackdrop.name)
     setBackdropPickerOpen(false)
+    requestAnimationFrame(persistMetaNow)
+  }
+
+  // Costumes/Sounds tab additions (allowAddCostume / allowAddSound). Persisted immediately
+  // like a sprite addition, since there's no Blockly change event to trigger the usual save.
+  // A new costume is put on straight away, as in Scratch.
+  function handleAddCostume(spriteId, costume) {
+    const sprite = sprites.find((sp) => sp.id === spriteId)
+    if (!sprite) return
+    const { sprite: updated, costume: added } = addCostumeToSprite(sprite, costume)
+    setSprites((prev) => prev.map((sp) => (sp.id === spriteId ? updated : sp)))
+    updateSpriteStateOverride(spriteId, { costume: added.name })
+    requestAnimationFrame(persistMetaNow)
+  }
+
+  function handleAddSound(spriteId, sound) {
+    setSprites((prev) => prev.map((sp) => (sp.id === spriteId ? addSoundToSprite(sp, sound) : sp)))
     requestAnimationFrame(persistMetaNow)
   }
 
@@ -1705,6 +1884,8 @@ export default function ScratchWorkspace({
         const meta = normInitStates?.__meta__ ?? null
         if (!cancelled && meta) {
           restoreAddedSprites(meta.addedSprites)
+          if (meta.addedCostumes || meta.addedSounds)
+            setSprites((prev) => mergeAddedSpriteAssets(prev, meta.addedCostumes, meta.addedSounds))
           if (meta.addedBackdrops?.length) setBackdrops((prev) => [...prev, ...meta.addedBackdrops])
           if (meta.createdVariables?.length) setCreatedVariables(meta.createdVariables)
           if (meta.variableValues) {
@@ -1804,6 +1985,10 @@ export default function ScratchWorkspace({
   useEffect(() => {
     if (!normExtStates || status !== 'ready' || !BlocklyRef.current) return
     if (normExtStates === lastEmittedStateRef.current) return
+    // A watched student's costume/sound additions (teacher live view / pushed state).
+    const extMeta = normExtStates.__meta__
+    if (extMeta?.addedCostumes || extMeta?.addedSounds)
+      setSprites((prev) => mergeAddedSpriteAssets(prev, extMeta.addedCostumes, extMeta.addedSounds))
     try {
       suppressChangeRef.current = true
       for (const [id, state] of Object.entries(normExtStates)) {
@@ -2838,6 +3023,12 @@ export default function ScratchWorkspace({
     </button>
   ) : null
 
+  const selectedSprite =
+    selectedSpriteId && selectedSpriteId !== '__stage__'
+      ? (sprites.find((sp) => sp.id === selectedSpriteId) ?? null)
+      : null
+  const assetTabsVisible = (showCostumesTab || showSoundsTab) && !!selectedSprite
+
   const spritePanelFull = (
     <div style={s.spritePanel}>
       <div style={s.spriteTileRow}>
@@ -3104,34 +3295,91 @@ export default function ScratchWorkspace({
         }
       >
         <div style={s.editorPaneHeader}>
-          <button
-            type="button"
-            onClick={() => setFlyoutCollapsed((c) => !c)}
-            style={flyoutCollapsed ? s.flyoutToggleBtnOpen : s.flyoutToggleBtnHide}
-            title={flyoutCollapsed ? 'Show blocks palette' : 'Hide blocks palette'}
-          >
-            {flyoutCollapsed ? (
-              <>
-                <svg
-                  aria-hidden="true"
-                  width="13"
-                  height="13"
-                  viewBox="0 0 14 14"
-                  fill="currentColor"
+          {assetTabsVisible && (
+            <div style={s.assetTabs} role="tablist" aria-label="Sprite editor">
+              {[
+                { id: 'code', label: 'Code' },
+                ...(showCostumesTab ? [{ id: 'costumes', label: 'Costumes' }] : []),
+                ...(showSoundsTab ? [{ id: 'sounds', label: 'Sounds' }] : []),
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={assetTab === tab.id}
+                  style={{ ...s.assetTab, ...(assetTab === tab.id ? s.assetTabActive : {}) }}
+                  onClick={() => setAssetTab(tab.id)}
                 >
-                  <rect x="0" y="0" width="6" height="6" rx="1" />
-                  <rect x="8" y="0" width="6" height="6" rx="1" />
-                  <rect x="0" y="8" width="6" height="6" rx="1" />
-                  <rect x="8" y="8" width="6" height="6" rx="1" />
-                </svg>
-                Blocks
-              </>
-            ) : (
-              '◀ Hide'
-            )}
-          </button>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {assetTab === 'code' && (
+            <button
+              type="button"
+              onClick={() => setFlyoutCollapsed((c) => !c)}
+              style={flyoutCollapsed ? s.flyoutToggleBtnOpen : s.flyoutToggleBtnHide}
+              title={flyoutCollapsed ? 'Show blocks palette' : 'Hide blocks palette'}
+            >
+              {flyoutCollapsed ? (
+                <>
+                  <svg
+                    aria-hidden="true"
+                    width="13"
+                    height="13"
+                    viewBox="0 0 14 14"
+                    fill="currentColor"
+                  >
+                    <rect x="0" y="0" width="6" height="6" rx="1" />
+                    <rect x="8" y="0" width="6" height="6" rx="1" />
+                    <rect x="0" y="8" width="6" height="6" rx="1" />
+                    <rect x="8" y="8" width="6" height="6" rx="1" />
+                  </svg>
+                  Blocks
+                </>
+              ) : (
+                '◀ Hide'
+              )}
+            </button>
+          )}
         </div>
         <div style={s.editorPaneBody}>
+          {assetTabsVisible && assetTab === 'costumes' && selectedSprite && (
+            <CostumesTab
+              key={selectedSprite.id}
+              sprite={selectedSprite}
+              currentCostume={spriteStates[selectedSprite.id]?.costume}
+              readOnly={readOnly}
+              canAdd={canAddCostume}
+              libraryCostumes={costumeLibraryOptions}
+              renderCostumeThumb={(costume) => (
+                <SpriteThumb
+                  sprite={selectedSprite}
+                  state={{ visible: true, direction: 90, costume: costume.name }}
+                  imageCache={imageCacheRef.current}
+                  assetsPath={assetsPath}
+                  size={44}
+                  imageVersion={imageVersion}
+                />
+              )}
+              onSelectCostume={(name) =>
+                updateSpriteStateOverride(selectedSprite.id, { costume: name })
+              }
+              onAddCostume={(costume) => handleAddCostume(selectedSprite.id, costume)}
+            />
+          )}
+          {assetTabsVisible && assetTab === 'sounds' && selectedSprite && (
+            <SoundsTab
+              key={selectedSprite.id}
+              sprite={selectedSprite}
+              sounds={soundsBySpriteId[selectedSprite.id] ?? DEFAULT_SPRITE_SOUNDS}
+              canAdd={canAddSound}
+              audioLibrary={soundLibraryOptions}
+              onPreviewSound={(sound) => playScratchSound(sound)}
+              onAddSound={(sound) => handleAddSound(selectedSprite.id, sound)}
+            />
+          )}
           {task?.enableStageCode && (
             <div
               key="__stage__"
@@ -3466,7 +3714,25 @@ const s = {
     background: '#fafafa',
     flexShrink: 0,
   },
-  editorPaneBody: { flex: 1, minHeight: 0, position: 'relative' },
+  // isolation keeps the Costumes/Sounds panel's raised z-index inside this pane.
+  editorPaneBody: { flex: 1, minHeight: 0, position: 'relative', isolation: 'isolate' },
+  assetTabs: { display: 'flex', gap: 2, marginRight: 8 },
+  assetTab: {
+    padding: '3px 10px',
+    fontSize: '0.78rem',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    border: '1px solid transparent',
+    borderRadius: 6,
+    background: 'transparent',
+    color: 'var(--colour-muted)',
+    cursor: 'pointer',
+  },
+  assetTabActive: {
+    background: '#fff',
+    borderColor: 'var(--ui-border-neutral-strong)',
+    color: 'var(--colour-text)',
+  },
   flyoutToggleBtnOpen: {
     padding: '4px 10px',
     fontSize: '0.8rem',

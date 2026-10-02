@@ -39,11 +39,11 @@ Separate from a single lesson's own assets, each lesson type can carry a shared 
 
 | Command | Required inputs | Behaviour |
 |---|---|---|
-| `node cli/cli.mjs assets list-type <type>` | Lesson type (e.g. `scratch`, `arcade`) | Lists the type's shared assets: `storageAssets` (generic uploaded files, `name`/`url`/`showInEditor`, merged with the shared Storage folder) for any type, plus, for `type: scratch` only, `defaultSprites` and `defaultBackdrops` — the curated preset libraries managed in Admin → Shared Assets → Scratch (each backdrop preset carries at least `id`, `name`, `colour`, and `image`). |
+| `node cli/cli.mjs assets list-type <type>` | Lesson type (e.g. `scratch`, `arcade`) | Lists the type's shared assets: `storageAssets` (generic uploaded files, `name`/`url`/`showInEditor`, merged with the shared Storage folder) for any type, plus `defaultSprites`, `defaultBackdrops` and `defaultSounds` — the curated Scratch preset libraries managed in Admin → Shared Assets → Scratch (each backdrop preset carries at least `id`, `name`, `colour`, and `image`; each sound is `{ id, name, audio }`, with `audio` the hosted file URL). Each list is empty (`[]`) when nothing is set, and always empty for types other than `scratch`. |
 
-Before authoring a new sprite, backdrop, or scene image for a lesson, run `list-type` for that lesson's type and check whether an existing shared entry already fits — see each type's own lesson/task type profile (e.g. `guides/Scratch Lesson Guide.md`, `guides/Arcade Task Type Profile.md`) for when this check applies and what to do with the result.
+Before authoring a new sprite, backdrop, scene image, or sound file for a lesson, run `list-type` for that lesson's type and check whether an existing shared entry already fits — see each type's own lesson/task type profile (e.g. `guides/Scratch Lesson Guide.md`, `guides/Arcade Task Type Profile.md`) for when this check applies and what to do with the result.
 
-`defaultSprites`/`defaultBackdrops` are Scratch-only; `assets upload-type`, `assets set-default-sprites`, and `assets upload-backdrop` are the matching admin-curation commands that populate this library, used to add to the shared pool rather than to author a specific lesson.
+`defaultSprites`/`defaultBackdrops`/`defaultSounds` are Scratch-only; `assets upload-type`, `assets set-default-sprites`, `assets upload-backdrop`, `assets set-default-sounds`, and `assets upload-sound` are the matching admin-curation commands that populate this library, used to add to the shared pool rather than to author a specific lesson.
 
 ## Restrictions
 

@@ -619,6 +619,66 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                             Allow students to create their own variables
                           </span>
                         </label>
+                        {[
+                          {
+                            show: 'showCostumesTab',
+                            add: 'allowAddCostume',
+                            showLabel: 'Show the Costumes tab',
+                            addLabel: 'Allow students to add costumes (emoji or library)',
+                          },
+                          {
+                            show: 'showSoundsTab',
+                            add: 'allowAddSound',
+                            showLabel: 'Show the Sounds tab',
+                            addLabel: 'Allow students to add sounds (synth or library)',
+                          },
+                        ].map(({ show, add, showLabel, addLabel }) => (
+                          <div key={show}>
+                            <label
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                cursor: 'pointer',
+                                fontFamily: 'var(--font-body)',
+                                fontSize: '0.86rem',
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={!!task[show]}
+                                onChange={(e) =>
+                                  onUpdate({
+                                    ...task,
+                                    [show]: e.target.checked || undefined,
+                                    [add]: e.target.checked ? task[add] : undefined,
+                                  })
+                                }
+                              />
+                              <span style={{ fontWeight: 600 }}>{showLabel}</span>
+                            </label>
+                            {task[show] && (
+                              <label
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 8,
+                                  cursor: 'pointer',
+                                  fontFamily: 'var(--font-body)',
+                                  fontSize: '0.82rem',
+                                  margin: '6px 0 0 24px',
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={!!task[add]}
+                                  onChange={(e) => set(add, e.target.checked || undefined)}
+                                />
+                                <span>{addLabel}</span>
+                              </label>
+                            )}
+                          </div>
+                        ))}
                         <p
                           style={{
                             fontFamily: 'var(--font-body)',

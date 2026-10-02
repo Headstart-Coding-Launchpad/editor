@@ -73,6 +73,7 @@ function TypeAssetsEditor({ lessonType }) {
   const storageAssets = typeData?.storageAssets ?? []
   const defaultSprites = typeData?.defaultSprites ?? []
   const defaultBackdrops = typeData?.defaultBackdrops ?? []
+  const defaultSounds = typeData?.defaultSounds ?? []
 
   async function ensureDoc() {
     const ref = doc(firestore, 'lessonTypeAssets', lessonType)
@@ -90,7 +91,7 @@ function TypeAssetsEditor({ lessonType }) {
     const input = document.createElement('input')
     input.type = 'file'
     input.multiple = true
-    input.accept = 'image/*,application/pdf,.svg'
+    input.accept = 'image/*,audio/*,application/pdf,.svg'
     input.onchange = (e) => {
       for (const file of e.target.files) uploadFile(file)
     }
@@ -222,6 +223,14 @@ function TypeAssetsEditor({ lessonType }) {
           backdrops={defaultBackdrops}
           storageAssets={storageAssets}
           onChange={(backdrops) => updateField('defaultBackdrops', backdrops)}
+        />
+      )}
+
+      {hasSpriteDefaults && (
+        <DefaultSoundsEditor
+          sounds={defaultSounds}
+          storageAssets={storageAssets}
+          onChange={(sounds) => updateField('defaultSounds', sounds)}
         />
       )}
     </div>
@@ -677,6 +686,95 @@ function DefaultBackdropsEditor({ backdrops, storageAssets, onChange }) {
                 onChange={(e) => update(b.id, 'colour', e.target.value)}
               />
             )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Audio-file sounds students can add from a sprite's Sounds tab (task flag allowAddSound),
+// alongside the built-in synth sounds. Each entry is { id, name, audio } where audio is an
+// uploaded shared file's URL.
+function DefaultSoundsEditor({ sounds, storageAssets, onChange }) {
+  function addSound() {
+    let n = sounds.length + 1
+    while (sounds.some((snd) => snd.id === `sound${n}`)) n += 1
+    onChange([...sounds, { id: `sound${n}`, name: `Sound ${n}`, audio: '' }])
+  }
+
+  function removeSound(id) {
+    const sound = sounds.find((snd) => snd.id === id)
+    if (!window.confirm(`Delete "${sound?.name ?? 'this sound'}" from the shared default sounds?`))
+      return
+    onChange(sounds.filter((snd) => snd.id !== id))
+  }
+
+  function update(id, field, value) {
+    onChange(sounds.map((snd) => (snd.id === id ? { ...snd, [field]: value } : snd)))
+  }
+
+  const audioAssets = (storageAssets ?? []).filter((a) =>
+    /\.(mp3|wav|ogg|m4a|aac|webm)$/i.test(a.name)
+  )
+
+  return (
+    <div style={s.sectionCard}>
+      <div style={s.cardTitleRow}>
+        <span style={s.cardTitle}>Default sounds</span>
+        <button className="btn-ghost" style={s.uploadBtn} onClick={addSound}>
+          + Add sound
+        </button>
+      </div>
+      <p style={s.muted}>
+        Audio files students can add to a sprite from its Sounds tab (when a lesson author turns
+        that on for a task), alongside the built-in synth sounds. Upload the audio file above first.
+      </p>
+
+      {sounds.length === 0 && <p style={s.muted}>No default sounds configured yet.</p>}
+
+      {sounds.map((snd, i) => (
+        <div key={snd.id} style={s.spriteBlock}>
+          <div style={s.spriteRow}>
+            <span style={s.spriteIndex}>{i + 1}</span>
+            <input
+              style={s.spriteInput}
+              value={snd.name}
+              onChange={(e) => update(snd.id, 'name', e.target.value)}
+              placeholder="Name"
+            />
+            <button style={s.removeBtn} onClick={() => removeSound(snd.id)} title="Remove sound">
+              ×
+            </button>
+          </div>
+          <div style={{ ...s.spriteRow, paddingLeft: 28 }}>
+            {audioAssets.length > 0 ? (
+              <select
+                style={{ ...s.spriteSelect, flex: '2 1 160px' }}
+                value={snd.audio ?? ''}
+                onChange={(e) => update(snd.id, 'audio', e.target.value)}
+              >
+                <option value="">Choose an audio file…</option>
+                {audioAssets.map((a) => (
+                  <option key={a.name} value={a.url}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                style={{
+                  ...s.spriteInput,
+                  flex: '2 1 160px',
+                  fontFamily: 'var(--font-code)',
+                  fontSize: '0.78rem',
+                }}
+                value={snd.audio ?? ''}
+                onChange={(e) => update(snd.id, 'audio', e.target.value)}
+                placeholder="Audio URL (upload files above first)"
+              />
+            )}
+            {snd.audio && <audio controls preload="none" src={snd.audio} style={{ height: 30 }} />}
           </div>
         </div>
       ))}

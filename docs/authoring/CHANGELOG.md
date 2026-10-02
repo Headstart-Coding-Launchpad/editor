@@ -37,6 +37,25 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-02
+
+### Scratch: per-sprite sounds, and Costumes / Sounds tabs
+
+- Sprites take an optional `sounds: [{ name, synth } | { name, audio }]` list. `synth` is one of
+  18 built-in sounds (`pop`, `meow`, `click`, `chime`, `boing`, `laser`, `coin`, `jump`,
+  `power-up`, `game-over`, `beep`, `buzzer`, `bell`, `drum`, `snare`, `whoosh`, `splash`,
+  `zap`); `audio` is an audio file path resolved like a costume image. The sound blocks'
+  dropdown lists the sprite's own sounds. Without `sounds`, a sprite keeps the old four
+  (`pop`, `meow`, `click`, `chime`). See [scratch.md](scratch.md#sounds).
+- New task toggles, all off by default: `showCostumesTab`, `showSoundsTab`, `allowAddCostume`
+  (emoji or admin-library costumes), `allowAddSound` (synth sounds or admin sound files).
+  Students may add to any sprite; additions are saved with their work. See
+  [scratch.md](scratch.md#costumes-and-sounds-tabs).
+- New admin library `lessonTypeAssets/scratch.defaultSounds` (`{ id, name, audio }`), with CLI
+  `lessons assets upload-sound scratch <file>` and `lessons assets set-default-sounds scratch
+  [file]`. `lessons assets list-type scratch` now returns `defaultSounds` alongside `defaultSprites` / `defaultBackdrops` (`[]` when none), so check it before asking for a new sound file.
+- Affects: scratch, cli · Existing lessons: no changes needed · Resolves: platform request #35 (assets-list-type-scratch-include-defaultsounds)
+
 ## 2026-10-01
 
 ### Moving the class on auto-checks unpassed tasks; it no longer counts as complete
