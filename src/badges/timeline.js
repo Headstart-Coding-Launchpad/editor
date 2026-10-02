@@ -25,6 +25,7 @@ export const TIMELINE_EVENT_TYPES = Object.freeze([
   'first_edit',
   'early_join',
   'autocomplete',
+  'peer_help',
 ])
 
 /**
@@ -247,6 +248,23 @@ export function firstEditEvent({ taskId, elapsedMs, at = null }) {
 /** @returns {EarlyJoinEvent} */
 export function earlyJoinEvent({ leadMs, at = null }) {
   return { type: 'early_join', context: 'task', taskId: null, leadMs: Number(leadMs), at: time(at) }
+}
+
+/**
+ * A classmate found this student's peer help useful: the stuck student pressed 👍 Useful on an
+ * item, or used a suggested change (`response` on `peerHelp/{lessonId}/{requestId}/inbox`, read
+ * teacher-side; see src/shared/peerHelp.js). Never stored as a student signal.
+ * @typedef {object} PeerHelpEvent
+ * @property {'peer_help'} type
+ * @property {'task'} context
+ * @property {string|number|null} taskId the task the help was on
+ * @property {'useful'|'accepted'} outcome
+ * @property {number|null} at
+ */
+
+/** @returns {PeerHelpEvent} */
+export function peerHelpEvent({ taskId = null, outcome = 'useful', at = null }) {
+  return { type: 'peer_help', context: 'task', taskId, outcome, at: time(at) }
 }
 
 /** @returns {AutocompleteEvent} */

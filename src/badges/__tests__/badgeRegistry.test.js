@@ -35,7 +35,7 @@ describe('badge registry', () => {
     expect(
       getTutorOnlyBadges()
         .map((badge) => badge.id)
-        .slice(0, 8)
+        .slice(0, 7)
     ).toEqual([
       'problem_solver',
       'experimenter',
@@ -44,8 +44,9 @@ describe('badge registry', () => {
       'focused_coder',
       'project_explorer',
       'knowledge_builder',
-      'helpful_coder',
     ])
+    // Helpful Coder started tutor-only and is now suggested from peer help.
+    expect(getBadgeDefinition('helpful_coder').tutorOnly).toBe(false)
   })
 
   it('marks only the pattern and first-in-class badges as auto-awardable', () => {

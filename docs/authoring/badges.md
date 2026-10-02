@@ -38,7 +38,8 @@ student per lesson.
 | 🧩 Code Arranger | `code_arranger` | First in class among students right **first time** on an Arrange task (`code_arrange`, whatever its `taskActivity`) | ✅ |
 | ✨ Autocomplete Ace | `autocomplete_ace` | Accepted a code-editor autocomplete suggestion, in a task or a sandbox | – |
 | 🐦 Early Bird | `early_bird` | First joined at least `earlyBirdMinutes` before the tutor pressed **Start** (suggested once the session starts; not tied to a task) | – |
-| 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🧘 Focused Coder · 🧭 Project Explorer · 📈 Knowledge Builder · 🤝 Helpful Coder · 🙋 Great Question · 🏹 Sharp Shooter · ✍️ Word Wizard · 🎨 Design Master · 🦸 Independent Coder | `problem_solver`, `experimenter`, `creative_coder`, `comedy_coder`, `focused_coder`, `project_explorer`, `knowledge_builder`, `helpful_coder`, `great_question`, `sharp_shooter`, `word_wizard`, `design_master`, `independent_coder` | Tutor-only: never suggested | – |
+| 🤝 Helpful Coder | `helpful_coder` | Helped a stuck classmate through peer help, and the classmate pressed 👍 Useful on something they sent or used their suggested change (on the task the help was for) | – |
+| 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🧘 Focused Coder · 🧭 Project Explorer · 📈 Knowledge Builder · 🙋 Great Question · 🏹 Sharp Shooter · ✍️ Word Wizard · 🎨 Design Master · 🦸 Independent Coder | `problem_solver`, `experimenter`, `creative_coder`, `comedy_coder`, `focused_coder`, `project_explorer`, `knowledge_builder`, `great_question`, `sharp_shooter`, `word_wizard`, `design_master`, `independent_coder` | Tutor-only: never suggested | – |
 
 "First in class" is decided per task, in the order the tasks were first passed. Each student
 can win it once, and when a tutor dismisses a suggestion nobody else is suggested for that task.
@@ -83,6 +84,7 @@ Pattern badges need a `check` on the task: attempts are only recorded for checke
 | 🧩 Code Arranger | Arrange tasks, wherever the lesson offers them | | | | | | | | – |
 | ✨ Autocomplete Ace | ✅ editor | ✅ editor | ✅ editor | ✅ editor | ❌ no code editor | – | – | – | – |
 | 🐦 Early Bird | any lesson (not a task) | | | | | | | | |
+| 🤝 Helpful Coder | ✅ | ✅ | – | ✅ | ✅ | – | – | – | – |
 
 "–" means the badge has no signal there. The live signals (console errors, topic opens, shortcuts,
 first edits, autocomplete) are recorded from each module's work area; see the plan's PR sequence for when each
@@ -212,7 +214,9 @@ Pattern ids are stable: badges and reports store them, so a renamed pattern gets
 Rules read a per-student timeline of events, never Firebase directly
 (`src/badges/timeline.js`): `attempt`, `sandbox_run`, `topic_open`, `reveal`, `complete_shown`,
 `paste`, `override`, `shortcut`, `first_edit`, `early_join` (built from `firstJoinedAt` and the
-session's `startedAt`) and `autocomplete`. A new badge that needs a new signal adds an
+session's `startedAt`), `autocomplete` and `peer_help` (built teacher-side from peer help: a
+helper's item the stuck classmate marked 👍 Useful or whose change they used; students can't
+read each other's peer help, so it is never a student signal). A new badge that needs a new signal adds an
 event type there; a new stored field needs its own data-model sign-off.
 
 ## Admin catalogue badges

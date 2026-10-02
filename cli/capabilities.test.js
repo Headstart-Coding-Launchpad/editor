@@ -129,7 +129,7 @@ describe('lessons capabilities', () => {
       badgeHints: ['suggest', 'suppress'],
       autoAwardable: true,
     })
-    expect(capabilities.badges.badges.find((b) => b.id === 'helpful_coder')).toMatchObject({
+    expect(capabilities.badges.badges.find((b) => b.id === 'great_question')).toMatchObject({
       tutorOnly: true,
       badgeHints: [],
     })
