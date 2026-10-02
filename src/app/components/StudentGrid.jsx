@@ -478,7 +478,8 @@ export default function StudentGrid({
           isLive={session?.activeStudentView === expandedStudent.anonymousId}
           isLiveForAll={session?.teacherLive?.sourceStudentId === expandedStudent.anonymousId}
           onGoLive={() => onGoLive?.(expandedStudent.anonymousId)}
-          onGoLiveForAll={() => onGoLiveForAll?.(expandedStudent)}
+          onGoLiveForAll={(mode) => onGoLiveForAll?.(expandedStudent, mode)}
+          isLiveForAllPanel={session?.teacherLive?.mode === 'panel'}
           onStopLive={() => onStopLive?.()}
           onClose={handleClose}
           hasPrev={expandedIndex > 0}

@@ -532,7 +532,8 @@ export default function TeacherView({ lessonId }) {
     await setActiveStudentView(studentId)
   }
 
-  async function handleGoLiveForAll(student) {
+  // mode 'panel' shows the work to the class without locking anyone's editor.
+  async function handleGoLiveForAll(student, mode) {
     // Quiz and activity tasks only allow the teacher's own broadcast (Presentation View).
     const liveTask = findTaskById(lesson?.tasks, session?.currentTaskId ?? currentTaskId)
     if (!allowsStudentBroadcast(liveTask)) return
@@ -543,6 +544,7 @@ export default function TeacherView({ lessonId }) {
         lesson,
         taskId: session?.currentTaskId ?? currentTaskId,
         entryFileTaskId: session?.currentTaskId,
+        mode,
       })
     )
   }

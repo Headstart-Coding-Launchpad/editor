@@ -59,6 +59,7 @@ export function deriveStudentLiveDisplay({
   checkAttempted,
   checkSuggestion,
   editorActivity,
+  watchingStudentPanel = false,
 }) {
   const inLiveLesson = phase === 'lesson' || phase === 'sandbox'
   const isTeacherLiveViewer = !!(
@@ -72,13 +73,19 @@ export function deriveStudentLiveDisplay({
     teacherLive?.active &&
     teacherLive.source === 'student'
   )
-  const isStudentGoLiveViewer = !!(
+  // A student's work broadcast to the class. 'takeover' (the default) locks every other
+  // student onto it; 'panel' ("Show to class, keep coding") only offers it: each viewer keeps
+  // their own editor and chooses to watch (watchingStudentPanel) or try a throwaway copy.
+  const isOtherStudentBroadcast = !!(
     !teacherPresentation &&
     inLiveLesson &&
     teacherLive?.active &&
     teacherLive.source === 'student' &&
     teacherLive.sourceStudentId !== identityId
   )
+  const isStudentPanelBroadcast = isOtherStudentBroadcast && teacherLive.mode === 'panel'
+  const isStudentGoLiveViewer =
+    isOtherStudentBroadcast && (!isStudentPanelBroadcast || !!watchingStudentPanel)
   const isForcedTeacherLive =
     isTeacherLiveViewer || isPresentationStudentViewer || isStudentGoLiveViewer
   // Students watching a broadcast can't lift the code out of it. Deliberately narrower
@@ -91,6 +98,7 @@ export function deriveStudentLiveDisplay({
     isTeacherLiveViewer,
     isPresentationStudentViewer,
     isStudentGoLiveViewer,
+    isStudentPanelBroadcast,
     isTeacherLiveActive: !!(
       teacherPresentation &&
       teacherLive?.active &&
@@ -131,5 +139,21 @@ export function deriveStudentLiveDisplay({
     // meaningful while forced-live; null otherwise since the component uses
     // its own local toggle state in that case.
     displayOutputCollapsed: isForcedTeacherLive ? !!teacherLive.outputCollapsed : null,
+  }
+}
+
+// A student broadcast as a SharedWorkspaceViewer snapshot ({taskId, lessonType, code, files,
+// arcadeDesign}): what "Try a copy" on a "Show to class" broadcast opens. Files arrive with
+// encoded keys on the wire and leave as a filename → content map.
+export function teacherLiveToSnapshot(teacherLive) {
+  if (!teacherLive?.active) return null
+  return {
+    taskId: teacherLive.taskId ?? null,
+    lessonType: teacherLive.lessonType ?? null,
+    code: teacherLive.code ?? '',
+    files: Object.fromEntries(
+      toTeacherLiveFiles(teacherLive.files).map((f) => [f.name, f.content])
+    ),
+    arcadeDesign: teacherLive.arcadeDesign ?? null,
   }
 }

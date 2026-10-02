@@ -21,7 +21,7 @@ import {
   isSharingAllowed,
 } from '../../shared/taskUtils'
 import { PLAYGROUND_LESSON_TYPES, getTaskModuleType, isCodeTask } from '../../shared/composedLesson'
-import { deriveStudentLiveDisplay } from '../studentLiveDisplay'
+import { deriveStudentLiveDisplay, teacherLiveToSnapshot } from '../studentLiveDisplay'
 import {
   getTaskActivity,
   isHostedActivityTask,
@@ -64,6 +64,7 @@ import SoloNav from '../components/SoloNav'
 import SharedWorkspacePanel from '../components/SharedWorkspacePanel'
 import { applySharedWorkspaceCopy, describeShareError } from '../sharedWorkspacePayload'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
+import StudentLivePanelBar from '../components/StudentLivePanelBar'
 import { createLaunchpadCodeFile, downloadLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
 import {
   getSavedNonPythonTaskCount,
@@ -521,6 +522,18 @@ export default function StudentView({
   // { entry, snapshot }. Local only — opening a share never touches their work.
   const [activeShare, setActiveShare] = useState(null)
   const [shareLoading, setShareLoading] = useState(false)
+  // A "Show to class (keep coding)" broadcast: whether this student chose to watch it, and the
+  // throwaway copy they opened ({ entry, snapshot }), if any. Both reset per broadcast.
+  const [watchingStudentPanel, setWatchingStudentPanel] = useState(false)
+  const [livePanelCopy, setLivePanelCopy] = useState(null)
+  const livePanelKey =
+    session?.teacherLive?.active && session.teacherLive.mode === 'panel'
+      ? `${session.teacherLive.sourceStudentId}:${session.teacherLive.taskId}`
+      : null
+  useEffect(() => {
+    setWatchingStudentPanel(false)
+    setLivePanelCopy(null)
+  }, [livePanelKey])
   const [openTopicId, setOpenTopicId] = useState(null)
   const [pendingTopicId, setPendingTopicId] = useState(null)
   // Presenter-only layout toggle: which panes the presentation popup shows ('both' | 'explainer' | 'code')
@@ -919,6 +932,7 @@ export default function StudentView({
   const {
     isPresentationStudentViewer,
     isStudentGoLiveViewer,
+    isStudentPanelBroadcast,
     isTeacherLiveActive,
     isForcedTeacherLive,
     displayedTaskId,
@@ -957,6 +971,7 @@ export default function StudentView({
     checkAttempted: cs.checkAttempted,
     checkSuggestion: cs.checkSuggestion,
     editorActivity: cs.editorActivity,
+    watchingStudentPanel,
   })
   const task = flatTasks.find((t) => t.id === displayedTaskId)
   const displayedLesson = getEffectiveLessonForTask(lesson, displayedTaskId)
@@ -1632,6 +1647,25 @@ export default function StudentView({
         authError={!teacherPresentation && authError}
         onRetrySignIn={retrySignIn}
       />
+      {isStudentPanelBroadcast && !activeShare && (
+        <StudentLivePanelBar
+          sourceStudentName={session?.teacherLive?.sourceStudentName}
+          watching={watchingStudentPanel}
+          copyOpen={!!livePanelCopy}
+          onWatch={() => setWatchingStudentPanel(true)}
+          onStopWatching={() => setWatchingStudentPanel(false)}
+          onTryCopy={() => {
+            setWatchingStudentPanel(false)
+            setLivePanelCopy({
+              entry: {
+                shareId: `live-${session.teacherLive.updatedAt ?? Date.now()}`,
+                sharerName: session.teacherLive.sourceStudentName,
+              },
+              snapshot: teacherLiveToSnapshot(session.teacherLive),
+            })
+          }}
+        />
+      )}
       <div
         style={
           isSolo &&
@@ -1654,6 +1688,19 @@ export default function StudentView({
             isMobile={isMobile}
             onClose={handleCloseSharedWorkspace}
             onCopyToMyEditor={handleCopySharedWorkspace}
+          />
+        ) : isStudentPanelBroadcast && livePanelCopy ? (
+          // A throwaway, runnable copy of the work on show: nothing is saved and nothing can
+          // be copied out of it into the student's own editor.
+          <SharedWorkspaceViewer
+            lesson={lesson}
+            entry={livePanelCopy.entry}
+            snapshot={livePanelCopy.snapshot}
+            isMobile={isMobile}
+            title={`📺 A copy of ${livePanelCopy.entry.sharerName ?? 'a classmate'}'s work`}
+            subtitle="Run it and try changes — nothing here is saved, and your own work is unchanged."
+            copyBlocked
+            onClose={() => setLivePanelCopy(null)}
           />
         ) : (
           <PollTaskClassContext.Provider value={pollTaskClass}>

@@ -61,6 +61,7 @@ export default function StudentModal({
   topics,
   isLive,
   isLiveForAll,
+  isLiveForAllPanel = false,
   onGoLive,
   onGoLiveForAll,
   onStopLive,
@@ -588,7 +589,11 @@ export default function StudentModal({
           <div style={s.headerLeft} data-testid="student-modal-status">
             <span style={s.name}>{student.displayName}</span>
             <PresenceBadge student={student} session={session} />
-            {isLive && <span style={s.liveBadge}>● {isLiveForAll ? 'LIVE FOR ALL' : 'LIVE'}</span>}
+            {isLive && (
+              <span style={s.liveBadge}>
+                ● {isLiveForAll ? (isLiveForAllPanel ? 'SHOWN TO CLASS' : 'LIVE FOR ALL') : 'LIVE'}
+              </span>
+            )}
             {/* Teacher-only badge count; never shown on student screens. */}
             {badgeCount > 0 && (
               <span
@@ -1072,6 +1077,18 @@ export default function StudentModal({
                             title="Show this student's work on every screen"
                           >
                             📡 Go Live for All
+                          </button>
+                        )}
+                        {hasGoLiveForAll && (
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              onGoLiveForAll('panel')
+                            }}
+                            title="Offer this student's work to the class: everyone keeps coding and can watch it or try a copy"
+                          >
+                            📺 Show to class (keep coding)
                           </button>
                         )}
                         {hasEdit && (

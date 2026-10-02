@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   deriveStudentLiveDisplay,
   teacherLiveReferenceDisplayState,
+  teacherLiveToSnapshot,
   toTeacherLiveFiles,
 } from '../studentLiveDisplay'
 
@@ -303,6 +304,7 @@ describe('deriveStudentLiveDisplay', () => {
       'isLiveCopyBlocked',
       'isPresentationStudentViewer',
       'isStudentGoLiveViewer',
+      'isStudentPanelBroadcast',
       'isTeacherLiveActive',
       'isTeacherLiveViewer',
     ])
@@ -324,5 +326,77 @@ describe('teacherLiveReferenceDisplayState by state kind (plan 1.5)', () => {
     expect(teacherLiveReferenceDisplayState({ code: '{}' }, 'scratch')).toBeNull()
     expect(teacherLiveReferenceDisplayState({ code: '{}' }, 'desktop')).toBeNull()
     expect(teacherLiveReferenceDisplayState(null, 'python')).toBeNull()
+  })
+})
+
+describe('"Show to class (keep coding)" student broadcasts', () => {
+  const panelBroadcast = {
+    active: true,
+    source: 'student',
+    mode: 'panel',
+    sourceStudentId: 'student-1',
+    sourceStudentName: 'Sam',
+    taskId: 3,
+    lessonType: 'html',
+    code: 'shared student code',
+    files: { index__dot__html: '<p>hi</p>' },
+  }
+  const derive = (overrides) =>
+    deriveStudentLiveDisplay({
+      ...localWorkspace,
+      teacherPresentation: false,
+      phase: 'lesson',
+      teacherLive: panelBroadcast,
+      identityId: 'student-2',
+      currentTaskId: 1,
+      viewingTaskId: null,
+      ...overrides,
+    })
+
+  it('leaves a classmate on their own work until they choose to watch', () => {
+    const display = derive()
+    expect(display.isStudentPanelBroadcast).toBe(true)
+    expect(display.isStudentGoLiveViewer).toBe(false)
+    expect(display.isForcedTeacherLive).toBe(false)
+    expect(display.isLiveCopyBlocked).toBe(false)
+    expect(display.displayCode).toBe('local code')
+    expect(display.displayedTaskId).toBe(1)
+  })
+
+  it('mirrors the broadcast, copy-blocked, while the classmate watches', () => {
+    const display = derive({ watchingStudentPanel: true })
+    expect(display.isStudentGoLiveViewer).toBe(true)
+    expect(display.isForcedTeacherLive).toBe(true)
+    expect(display.isLiveCopyBlocked).toBe(true)
+    expect(display.displayCode).toBe('shared student code')
+    expect(display.displayedTaskId).toBe(3)
+  })
+
+  it('never offers the panel to the student whose work is on show, or outside a live lesson', () => {
+    expect(derive({ identityId: 'student-1' }).isStudentPanelBroadcast).toBe(false)
+    expect(derive({ phase: 'solo' }).isStudentPanelBroadcast).toBe(false)
+    expect(derive({ teacherPresentation: true }).isStudentPanelBroadcast).toBe(false)
+  })
+
+  it('keeps the presentation window showing the work in full', () => {
+    expect(derive({ teacherPresentation: true }).isPresentationStudentViewer).toBe(true)
+  })
+
+  it('a broadcast without a mode is still the full takeover', () => {
+    const { mode: _mode, ...takeover } = panelBroadcast
+    const display = derive({ teacherLive: takeover })
+    expect(display.isStudentPanelBroadcast).toBe(false)
+    expect(display.isStudentGoLiveViewer).toBe(true)
+  })
+
+  it('turns the broadcast into a throwaway-copy snapshot with decoded file names', () => {
+    expect(teacherLiveToSnapshot(panelBroadcast)).toEqual({
+      taskId: 3,
+      lessonType: 'html',
+      code: 'shared student code',
+      files: { 'index.html': '<p>hi</p>' },
+      arcadeDesign: null,
+    })
+    expect(teacherLiveToSnapshot(null)).toBeNull()
   })
 })

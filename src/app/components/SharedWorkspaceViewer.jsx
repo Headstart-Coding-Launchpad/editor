@@ -105,6 +105,11 @@ export default function SharedWorkspaceViewer({
   onCopyToMyEditor,
   copyTargetTaskId,
   isMobile = false,
+  // Optional banner wording, for other throwaway copies (a "Show to class" broadcast).
+  title,
+  subtitle,
+  // Blocks clipboard copy out of the copy, as a forced live broadcast does.
+  copyBlocked = false,
 }) {
   const { task, effectiveLesson, moduleType } = useMemo(
     () => resolveSnapshotContext(lesson, snapshot),
@@ -165,10 +170,12 @@ export default function SharedWorkspaceViewer({
     <div style={s.wrap}>
       <div style={s.banner}>
         <div style={s.bannerText}>
-          <span style={s.title}>📤 {entry?.sharerName ?? 'A classmate'}&apos;s workspace</span>
+          <span style={s.title}>
+            {title ?? `📤 ${entry?.sharerName ?? 'A classmate'}'s workspace`}
+          </span>
           <span style={s.subtitle}>
-            {task?.title ? `${task.title} · ` : ''}Run it, change it, try anything — your own work
-            is safe and unchanged.
+            {task?.title ? `${task.title} · ` : ''}
+            {subtitle ?? 'Run it, change it, try anything — your own work is safe and unchanged.'}
           </span>
         </div>
         <div style={s.bannerActions}>
@@ -238,6 +245,7 @@ export default function SharedWorkspaceViewer({
           isInformationTask={false}
           isCodeArrangeTask={isModuleHostedActivityTask(task)}
           isTeacherEditing={false}
+          isLiveCopyBlocked={copyBlocked}
           presenterLayout="both"
         />
       </div>
