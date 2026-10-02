@@ -38,7 +38,7 @@ student per lesson.
 | 🧩 Code Arranger | `code_arranger` | First in class among students right **first time** on an Arrange task (`code_arrange`, whatever its `taskActivity`) | ✅ |
 | ✨ Autocomplete Ace | `autocomplete_ace` | Accepted a code-editor autocomplete suggestion, in a task or a sandbox | – |
 | 🐦 Early Bird | `early_bird` | First joined at least `earlyBirdMinutes` before the tutor pressed **Start** (suggested once the session starts; not tied to a task) | – |
-| 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🧘 Focused Coder · 🧭 Project Explorer · 📈 Knowledge Builder · 🤝 Helpful Coder · 🙋 Great Question · 🏹 Sharp Shooter · ✍️ Word Wizard · 🎨 Design Master | `problem_solver`, `experimenter`, `creative_coder`, `comedy_coder`, `focused_coder`, `project_explorer`, `knowledge_builder`, `helpful_coder`, `great_question`, `sharp_shooter`, `word_wizard`, `design_master` | Tutor-only: never suggested | – |
+| 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🧘 Focused Coder · 🧭 Project Explorer · 📈 Knowledge Builder · 🤝 Helpful Coder · 🙋 Great Question · 🏹 Sharp Shooter · ✍️ Word Wizard · 🎨 Design Master · 🦸 Independent Coder | `problem_solver`, `experimenter`, `creative_coder`, `comedy_coder`, `focused_coder`, `project_explorer`, `knowledge_builder`, `helpful_coder`, `great_question`, `sharp_shooter`, `word_wizard`, `design_master`, `independent_coder` | Tutor-only: never suggested | – |
 
 "First in class" is decided per task, in the order the tasks were first passed. Each student
 can win it once, and when a tutor dismisses a suggestion nobody else is suggested for that task.
