@@ -54,7 +54,7 @@ Entries written before 2026-09-29 are not tagged.
 - New admin library `lessonTypeAssets/scratch.defaultSounds` (`{ id, name, audio }`), with CLI
   `lessons assets upload-sound scratch <file>` and `lessons assets set-default-sounds scratch
   [file]`. `lessons assets list-type scratch` now returns `defaultSounds` alongside `defaultSprites` / `defaultBackdrops` (`[]` when none), so check it before asking for a new sound file.
-- Affects: scratch, cli · Existing lessons: no changes needed · Resolves: platform request #35 (assets-list-type-scratch-include-defaultsounds)
+- Affects: scratch, cli · Existing lessons: no changes needed · Resolves: authoring-requests/2026-10-02-assets-list-type-scratch-include-defaultsounds.md
 
 ## 2026-10-01
 
