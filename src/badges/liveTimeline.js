@@ -9,6 +9,7 @@
 // - only tasks still in the lesson the class is using: the session-edited lesson (Edit Lesson →
 //   "Apply for this session") in its live form (`liveBadgeLesson`). Task events on a task that
 //   has gone are dropped; sandbox events keep no task.
+import { isAutoAttempt } from '../shared/autoCheck.js'
 import { decodeFileKey } from '../shared/fileKeys.js'
 import { filterTasksByMode, flattenTasks } from '../shared/taskUtils.js'
 import { getStageRole } from '../shared/taskStages.js'
@@ -75,12 +76,15 @@ export function buildTaskLookup(lesson) {
 
 // One task's attemptLog entries → attempt events. The first try is the earliest entry: the
 // stored `attemptNumber` restarts at 1 after a student reload (the de-dupe cache is per tab),
-// so it can't be trusted on its own.
+// so it can't be trusted on its own. Auto-check-on-leave records (src/shared/autoCheck.js) are
+// not attempts: they never make an attempt, a first try, an error or a pass.
 function attemptEventsFor(task, logEntries) {
-  const ordered = entries(logEntries).sort(
-    ([keyA, a], [keyB, b]) =>
-      timeOrInfinity(a.loggedAt) - timeOrInfinity(b.loggedAt) || (keyA < keyB ? -1 : 1)
-  )
+  const ordered = entries(logEntries)
+    .filter(([, entry]) => !isAutoAttempt(entry))
+    .sort(
+      ([keyA, a], [keyB, b]) =>
+        timeOrInfinity(a.loggedAt) - timeOrInfinity(b.loggedAt) || (keyA < keyB ? -1 : 1)
+    )
   return ordered.map(([, entry], i) =>
     attemptEvent({
       taskId: task.id,

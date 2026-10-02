@@ -358,6 +358,66 @@ describe('useStudentPhase', () => {
       expect(onPersonalSandboxExit).toHaveBeenCalled()
       expect(onTaskReset).toHaveBeenCalled()
     })
+
+    it('calls onBeforeClassAdvance first, while the leaving task is still current', async () => {
+      const calls = []
+      let currentTaskIdAtAutoCheck = null
+      const identity = makeIdentity()
+      let hookResult = null
+      const onBeforeClassAdvance = vi.fn(() => {
+        calls.push('autoCheck')
+        currentTaskIdAtAutoCheck = hookResult?.current.currentTaskId
+      })
+      const onPersonalSandboxExit = vi.fn(() => calls.push('sandboxExit'))
+      const onBeforeTaskChange = vi.fn(() => calls.push('save'))
+      const onTaskReset = vi.fn(() => calls.push('reset'))
+      const props = (session) =>
+        defaultProps({
+          session,
+          identity,
+          onBeforeClassAdvance,
+          onPersonalSandboxExit,
+          onBeforeTaskChange,
+          onTaskReset,
+        })
+      const { result, rerender } = renderHook((p) => useStudentPhase(p), {
+        initialProps: props(makeSession({ state: 'active', currentTaskId: 1 })),
+      })
+      hookResult = result
+      await waitFor(() => expect(result.current.phase).toBe('lesson'))
+      expect(onBeforeClassAdvance).not.toHaveBeenCalled()
+
+      rerender(props(makeSession({ state: 'active', currentTaskId: 2 })))
+
+      await waitFor(() => expect(result.current.currentTaskId).toBe(2))
+      expect(onBeforeClassAdvance).toHaveBeenCalledTimes(1)
+      expect(currentTaskIdAtAutoCheck).toBe(1)
+      expect(calls).toEqual(['autoCheck', 'sandboxExit', 'save', 'reset'])
+    })
+
+    it('does not call onBeforeClassAdvance when the session ends', async () => {
+      const onBeforeClassAdvance = vi.fn()
+      const identity = makeIdentity()
+      const { result, rerender } = renderHook((p) => useStudentPhase(p), {
+        initialProps: defaultProps({
+          session: makeSession({ state: 'active', currentTaskId: 1 }),
+          identity,
+          onBeforeClassAdvance,
+        }),
+      })
+      await waitFor(() => expect(result.current.phase).toBe('lesson'))
+
+      rerender(
+        defaultProps({
+          session: makeSession({ state: 'ended', currentTaskId: 1, endedAt: 2000 }),
+          identity,
+          onBeforeClassAdvance,
+        })
+      )
+
+      await waitFor(() => expect(result.current.phase).toBe('ended'))
+      expect(onBeforeClassAdvance).not.toHaveBeenCalled()
+    })
   })
 
   describe('session-end callbacks', () => {

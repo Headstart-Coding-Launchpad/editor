@@ -3,6 +3,8 @@ import { flattenTasks, getTaskPriority } from './taskUtils.js'
 import { getTaskActivity } from '../activities/registry.pure.js'
 import { SUPPORT_REVEAL_SOURCES } from './taskStages.js'
 import { normalizeCodeSubmission } from './codeSubmission.js'
+import { isAutoAttempt, latestLeaveAttempt, leaveAttemptResult } from './autoCheck.js'
+import { buildPollsReport } from './classPolls.js'
 import {
   buildBadgeSummary,
   buildQuizGroupReport,
@@ -108,6 +110,14 @@ export function encodeSessionReportForFirestore(report) {
           ...attempt,
           submission: encodeSubmissionForFirestore(attempt.submission),
         })),
+        ...(task.autoCheck
+          ? {
+              autoCheck: {
+                ...task.autoCheck,
+                submission: encodeSubmissionForFirestore(task.autoCheck.submission),
+              },
+            }
+          : {}),
       })),
     })),
   }
@@ -121,6 +131,11 @@ function entryReportPassed(task, entry) {
 function countAttempts(entries) {
   return entries.reduce((sum, entry) => sum + 1 + (entry.retries ?? 0), 0)
 }
+
+// Override `source`: 'teacher' (a tutor passed the student by hand) or 'class_advance' (written
+// when the teacher moved the class on). Records from before 2026-10 carry neither and are left
+// without one (read as before: complete).
+const OVERRIDE_SOURCES = ['teacher', 'class_advance']
 
 function normalizeOverrideRecord(raw, taskId, entries) {
   if (!raw) return null
@@ -136,6 +151,31 @@ function normalizeOverrideRecord(raw, taskId, entries) {
     overriddenAt: raw.overriddenAt ?? raw.timestamp ?? null,
     attemptNumber: Number.isFinite(raw.attemptNumber) ? raw.attemptNumber : attempts,
     previousCheckState,
+    ...(OVERRIDE_SOURCES.includes(raw.source) ? { source: raw.source } : {}),
+  }
+}
+
+// A graded task: one a student can pass or fail. Code tasks need a `check` or `tests`
+// (a check-less code task is free practice); quizzes and activities need to be marked.
+function isGradedTask(task) {
+  if (isNotApplicableTask(task)) return false
+  if (getReportActivity(task)) return true
+  const check = task?.check
+  const hasCheck = Array.isArray(check) ? check.some((c) => c?.type) : !!check?.type
+  return hasCheck || (Array.isArray(task?.tests) && task.tests.length > 0)
+}
+
+// The auto-check made when the teacher moved the class on (src/shared/autoCheck.js), for a
+// student with no real pass: `{ result, suggestion, submission, checkedAt }`, or null.
+function getAutoCheck(task, entries) {
+  if (entries.some((entry) => entry.passed && !isAutoAttempt(entry))) return null
+  const leave = latestLeaveAttempt(entries)
+  if (!leave) return null
+  return {
+    result: leaveAttemptResult(leave),
+    suggestion: leave.suggestion || null,
+    submission: normalizeSubmission(task, leave.submission),
+    checkedAt: typeof leave.loggedAt === 'number' ? leave.loggedAt : null,
   }
 }
 
@@ -282,18 +322,56 @@ function normalizeTaskRating(raw) {
   return { rating, whatWorkedWell, whatDidntWork, submittedAt: raw.submittedAt ?? null }
 }
 
-function getFinalResult(task, entries, override) {
-  if (isNotApplicableTask(task)) return entries.length > 0 ? 'not_applicable' : 'not_attempted'
-  if (entries.some((entry) => entry.passed)) return 'passed'
-  const overrideResult = getOverrideFinalResult(override)
-  if (overrideResult) return overrideResult
-  if (entries.length === 0) return 'not_attempted'
-  return 'failed'
+// One student's result on one task: `{ finalResult, completed }`. `entries` are the student's
+// real attempts (auto-check records removed), `autoCheck` the auto-check made when the class
+// moved on (getAutoCheck). Precedence:
+// 1. a real pass → passed;
+// 2. a tutor's hand pass (override source 'teacher') → overridden_*, complete;
+// 3. the auto-check: passed → auto_passed (complete); failed → auto_failed; not_run with no
+//    real attempt → auto_not_run (a not_run after real failed attempts falls through: the runs
+//    the student did make decide it);
+// 4. a class-advance override → overridden_*, NOT complete on a graded task (a check-less code
+//    task keeps counting as complete); an override from before sources existed stays complete;
+// 5. no attempts → not_attempted, else failed.
+// The auto-check outranks the class-advance override because students write it after the
+// teacher wrote the override (the override's previousCheckState was taken before it existed).
+function resolveTaskOutcome(task, entries, override, autoCheck) {
+  if (isNotApplicableTask(task)) {
+    return {
+      finalResult: entries.length > 0 ? 'not_applicable' : 'not_attempted',
+      completed: entries.length > 0,
+    }
+  }
+  if (entries.some((entry) => entry.passed)) return { finalResult: 'passed', completed: true }
+  if (override?.source === 'teacher') {
+    return { finalResult: getOverrideFinalResult(override), completed: true }
+  }
+  if (autoCheck?.result === 'passed') return { finalResult: 'auto_passed', completed: true }
+  if (autoCheck?.result === 'failed') return { finalResult: 'auto_failed', completed: false }
+  if (autoCheck?.result === 'not_run' && entries.length === 0) {
+    return { finalResult: 'auto_not_run', completed: false }
+  }
+  if (override) {
+    // Moving the class on still completes quizzes and activities; only graded code tasks
+    // (which the auto-check covers) stay incomplete.
+    const movedPastCodeTask =
+      override.source === 'class_advance' && isGradedTask(task) && !getReportActivity(task)
+    return { finalResult: getOverrideFinalResult(override), completed: !movedPastCodeTask }
+  }
+  return { finalResult: entries.length === 0 ? 'not_attempted' : 'failed', completed: false }
 }
 
-function getCompleted(task, entries, override) {
-  if (isNotApplicableTask(task)) return entries.length > 0
-  return entries.some((entry) => entry.passed) || !!override
+// The auto-check counts for a graded task's summary, present only when some student's result
+// came from an auto-check.
+function addAutoCheckSummaryFields(summary, perStudent) {
+  const count = (finalResult) => perStudent.filter((t) => t.finalResult === finalResult).length
+  const counts = {
+    autoPassedCount: count('auto_passed'),
+    autoFailedCount: count('auto_failed'),
+    autoNotRunCount: count('auto_not_run'),
+  }
+  if (Object.values(counts).every((n) => n === 0)) return summary
+  return { ...summary, ...counts }
 }
 
 // A student reference inside a report section ({ studentLabel, ... }) relabelled through
@@ -366,6 +444,15 @@ export function anonymizeSessionReport(report) {
           quizGroups: report.quizGroups.map((group) => ({
             ...group,
             students: (group.students ?? []).map((ref) => relabelStudentRef(ref, relabel)),
+          })),
+        }
+      : {}),
+    ...(Array.isArray(report.polls)
+      ? {
+          polls: report.polls.map((poll) => ({
+            ...poll,
+            responses: (poll.responses ?? []).map((ref) => relabelStudentRef(ref, relabel)),
+            notResponded: (poll.notResponded ?? []).map((label) => relabel(label)),
           })),
         }
       : {}),
@@ -443,9 +530,13 @@ export function buildSessionReport({
     const timeline = timelines[anonymousId] ?? []
 
     const taskResults = tasks.map((task) => {
-      const entries = Object.values(studentAttempts[task.id] ?? {}).sort(
-        (a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0)
-      )
+      const allEntries = Object.values(studentAttempts[task.id] ?? {})
+      // Auto-check-on-leave records are not attempts: they never count towards attempts,
+      // retries, distinctAttempts or common failures, and only decide the result (getAutoCheck).
+      const entries = allEntries
+        .filter((entry) => !isAutoAttempt(entry))
+        .sort((a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0))
+      const autoCheck = isGradedTask(task) ? getAutoCheck(task, allEntries) : null
       const override = getStudentTaskOverride(overrideLog, anonymousId, task.id, entries, task)
       const carryFallback = normalizeCarryFallbackRecord(
         carryFallbackLog?.[anonymousId]?.[task.id],
@@ -457,18 +548,23 @@ export function buildSessionReport({
       )
       const pastes = normalizePasteRecord(studentsSnapshot[anonymousId]?.pasteLog?.[task.id])
       const attempts = countAttempts(entries)
-      const completed = getCompleted(task, entries, override)
+      const { finalResult, completed } = resolveTaskOutcome(task, entries, override, autoCheck)
       const itemProgress =
         entries.length > 0
           ? getItemProgress(task, normalizeSubmission(task, entries[entries.length - 1].submission))
           : null
 
       // Time on task: elapsed time between the task becoming current and either the
-      // moment a passing attempt/override was logged, or (if not yet completed) the latest attempt.
+      // moment a passing attempt/override/auto-check was logged, or (if not yet completed) the
+      // latest attempt.
       const startedAt = taskStartTimes[task.id] ?? null
       const passingEntry = entries.find((entry) => entry.passed)
       const referenceTime = completed
-        ? (passingEntry?.passedAt ?? passingEntry?.loggedAt ?? override?.overriddenAt ?? null)
+        ? (passingEntry?.passedAt ??
+          passingEntry?.loggedAt ??
+          (finalResult === 'auto_passed' ? autoCheck.checkedAt : null) ??
+          override?.overriddenAt ??
+          null)
         : (entries[entries.length - 1]?.loggedAt ?? null)
       const timeOnTaskMs =
         startedAt != null && typeof referenceTime === 'number'
@@ -481,9 +577,10 @@ export function buildSessionReport({
         ...getTypeFields(task),
         completed,
         attempts,
-        finalResult: getFinalResult(task, entries, override),
+        finalResult,
         timeOnTaskMs,
         ...(override ? { override } : {}),
+        ...(autoCheck ? { autoCheck } : {}),
         ...(passingEntry?.teacherAssisted ? { teacherAssisted: true } : {}),
         ...(carryFallback ? { carryFallback } : {}),
         ...(supportReveals.length > 0 ? { supportReveals } : {}),
@@ -576,24 +673,27 @@ export function buildSessionReport({
     }
 
     const summary = {
-      ...addOverrideSummaryFields(
-        {
-          taskId: task.id,
-          title: task.title ?? `Task ${task.id}`,
-          priority: getTaskPriority(task),
-          ...typeFields,
-          totalStudents: perStudent.length,
-          completedCount,
-          completionRate: perStudent.length
-            ? Number((completedCount / perStudent.length).toFixed(2))
-            : 0,
-          avgAttempts: attemptedStudents.length
-            ? Number((totalAttempts / attemptedStudents.length).toFixed(2))
-            : 0,
-          avgTimeOnTaskMs,
-          commonFailures,
-          teacherAssistedCount: perStudent.filter((t) => t.teacherAssisted).length,
-        },
+      ...addAutoCheckSummaryFields(
+        addOverrideSummaryFields(
+          {
+            taskId: task.id,
+            title: task.title ?? `Task ${task.id}`,
+            priority: getTaskPriority(task),
+            ...typeFields,
+            totalStudents: perStudent.length,
+            completedCount,
+            completionRate: perStudent.length
+              ? Number((completedCount / perStudent.length).toFixed(2))
+              : 0,
+            avgAttempts: attemptedStudents.length
+              ? Number((totalAttempts / attemptedStudents.length).toFixed(2))
+              : 0,
+            avgTimeOnTaskMs,
+            commonFailures,
+            teacherAssistedCount: perStudent.filter((t) => t.teacherAssisted).length,
+          },
+          perStudent
+        ),
         perStudent
       ),
       ...summarizeCarryFallbacks(perStudent),
@@ -621,6 +721,8 @@ export function buildSessionReport({
   })
   const badgeSummary = buildBadgeSummary(session?.badges, pendingSuggestions)
   const shortcutSummary = buildShortcutSummary(students)
+  // Live class polls from the teacher's top bar (src/shared/classPolls.js), oldest first.
+  const polls = buildPollsReport(session, labelFor)
 
   return capSessionReportSize({
     lessonId: lesson?.id ?? session?.lessonId ?? null,
@@ -634,6 +736,7 @@ export function buildSessionReport({
     ...(teacherSandbox ? { teacherSandbox } : {}),
     ...(Object.keys(badgeSummary).length > 0 ? { badgeSummary } : {}),
     ...(Object.keys(shortcutSummary).length > 0 ? { shortcutSummary } : {}),
+    ...(polls.length > 0 ? { polls } : {}),
   })
 }
 

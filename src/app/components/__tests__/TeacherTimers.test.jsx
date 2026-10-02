@@ -1,7 +1,8 @@
 import React from 'react'
 import { act, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import TeacherTimers, { formatClock } from '../TeacherTimers'
+import TeacherTimers from '../TeacherTimers'
+import { formatClock } from '../../../shared/timeAgo'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -66,5 +67,27 @@ describe('TeacherTimers', () => {
 
     expect(screen.getByText('0:30')).toBeInTheDocument()
     expect(screen.queryByText('Task time')).not.toBeInTheDocument()
+  })
+
+  it('shows the class countdown the students see, in server time', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(4_000_000)
+    render(
+      <TeacherTimers
+        session={{
+          state: 'active',
+          startedAt: 4_000_000,
+          currentTaskStartedAt: 4_000_000,
+          classCountdown: { startedAt: 4_000_000, endsAt: 4_125_000, durationMs: 125_000 },
+        }}
+        task={{ id: 1 }}
+        tasks={[{ id: 1 }]}
+        serverTimeOffset={5_000}
+      />
+    )
+
+    expect(screen.getByText('Class countdown')).toBeInTheDocument()
+    // 125s countdown, server clock 5s ahead: 120s left.
+    expect(screen.getByText('2:00')).toBeInTheDocument()
   })
 })

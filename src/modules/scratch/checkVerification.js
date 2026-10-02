@@ -4,7 +4,7 @@
 // (checkDispatch.js). Only checks decided by the blocks alone are evaluated; run-time checks
 // (sprite state, variables, costumes, block_run) are reported as skipped.
 
-import { normalizeChecks, normalizeFeedbackChecks } from '../checks.js'
+import { evaluateTaskWithoutRun, normalizeChecks, normalizeFeedbackChecks } from '../checks.js'
 import { getStageRole, getStarterStage } from '../../shared/taskStages.js'
 import { evaluateScratchCheck, normalizeSequenceItem, opcodeSpecOpcodes } from './checks.js'
 import {
@@ -180,6 +180,35 @@ export function evaluateScratchStage(task, blocks) {
     return { ...entry, result: fires ? 'fires' : 'silent' }
   })
   return { completion: { result, checks }, feedback }
+}
+
+/**
+ * Grades a student's saved Scratch work without a run, for the auto-check when the teacher moves
+ * the class on (the module's `checking.evaluateWithoutRun`). `workspaceStates` is the work the
+ * workspace last reported (keyed by sprite id). The block checks (block_used, blocks_in_order,
+ * block_count) are judged against the saved blocks; sprite-state, variable and block_run checks
+ * need a run. Returns evaluateTaskWithoutRun's `{ result, suggestion }`, or null when there is
+ * no work or nothing to grade.
+ */
+export function evaluateScratchWorkWithoutRun(task, workspaceStates) {
+  if (workspaceStates == null) return null
+  let spriteWorkspaces
+  try {
+    spriteWorkspaces = buildJsonSpriteWorkspaces(task, workspaceStates)
+  } catch {
+    return null
+  }
+  return evaluateTaskWithoutRun(
+    task,
+    {},
+    {
+      judgeCheck: (check) =>
+        isScratchStaticCheck(check)
+          ? spriteWorkspaces.length > 0 &&
+            evaluateScratchCheckForSprites(check, spriteWorkspaces, null)
+          : null,
+    }
+  )
 }
 
 // `activityPattern` is the task's taskActivity pattern id, resolved by the caller (the CLI) so

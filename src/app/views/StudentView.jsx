@@ -40,6 +40,9 @@ import { NudgeBanner, NudgePermissionPrompt } from '../components/NudgeBanner'
 import useNudgeAlert from '../hooks/useNudgeAlert'
 import useThumbsUp from '../hooks/useThumbsUp'
 import ThumbsUpToast from '../components/ThumbsUpToast'
+import useClassCountdown from '../hooks/useClassCountdown'
+import ClassCountdownPill from '../components/ClassCountdownPill'
+import TimesUpBanner from '../components/TimesUpBanner'
 import useVideoCallPrompt, { VIDEO_CALL_PROMPT_PHASES } from '../hooks/useVideoCallPrompt'
 import useBadgeCelebrations from '../hooks/useBadgeCelebrations'
 import BadgeCelebration from '../components/badges/BadgeCelebration'
@@ -52,6 +55,9 @@ import { listMyMoments } from '../../badges/celebration'
 import LoadingScreen from '../components/LoadingScreen'
 import SessionEndedScreen from '../components/SessionEndedScreen'
 import StudentStatusBanners from '../components/StudentStatusBanners'
+import ClassPollCard from '../components/polls/ClassPollCard'
+import { PollTaskClassContext } from '../components/quiz/PollTaskClassContext'
+import { getActivePoll, getStudentPollChoice, tallyPoll } from '../../shared/classPolls'
 import LessonTaskContent from '../components/LessonTaskContent'
 import { usePreloadNeighbourImages } from '../../shared/preloadImages'
 import SoloNav from '../components/SoloNav'
@@ -99,6 +105,7 @@ export default function StudentView({
     session,
     loading: sessionLoading,
     connected,
+    serverTimeOffset,
     registerPresence,
     joinSession,
     recordStudentReturn,
@@ -140,6 +147,7 @@ export default function StudentView({
     setTeacherLiveReference,
     removeStudent,
     requestHelp,
+    answerPoll,
     requestWorkspaceShare,
     cancelWorkspaceShare,
     readSharedWorkspace,
@@ -186,7 +194,9 @@ export default function StudentView({
   const saveWorkRef = useRef(null)
   const exitSandboxRef = useRef(null)
   const resetForTaskRef = useRef(null)
+  const autoCheckOnLeaveRef = useRef(null)
   const onBeforeTaskChange = useCallback(() => saveWorkRef.current?.(), [])
+  const onBeforeClassAdvance = useCallback(() => autoCheckOnLeaveRef.current?.(), [])
   const onPersonalSandboxExit = useCallback(() => exitSandboxRef.current?.(), [])
   const onTaskReset = useCallback(() => resetForTaskRef.current?.(), [])
 
@@ -215,6 +225,7 @@ export default function StudentView({
     teacherPresentation,
     firstTaskId,
     onBeforeTaskChange,
+    onBeforeClassAdvance,
     onPersonalSandboxExit,
     onTaskReset,
     createIdentity,
@@ -302,6 +313,7 @@ export default function StudentView({
 
   // Wire phase callbacks to latest code-state functions each render
   saveWorkRef.current = cs.saveCurrentWork
+  autoCheckOnLeaveRef.current = cs.autoCheckOnLeave
   exitSandboxRef.current = cs.exitPersonalSandbox
   resetForTaskRef.current = cs.resetForTaskChange
 
@@ -368,6 +380,22 @@ export default function StudentView({
     ready: !!session,
     enabled: nudgeEnabled,
     pushedAt: session?.students?.[identity?.anonymousId]?.thumbsUpPushedAt ?? null,
+    soundsOff: !!session?.badgeSettings?.soundsOff,
+  })
+
+  // The teacher's class countdown: a pill in the top bar (large on the presentation window) and
+  // a "Time's up" banner at zero, with a chime on the student's own screen only. It survives
+  // task changes and locks nothing.
+  const classCountdownVisible =
+    !previewMode &&
+    (session?.state === 'active' || session?.state === 'sandbox') &&
+    (teacherPresentation || phase === 'lesson' || phase === 'sandbox')
+  const classCountdown = classCountdownVisible ? (session?.classCountdown ?? null) : null
+  const { timesUpAt } = useClassCountdown({
+    countdown: classCountdown,
+    serverTimeOffset,
+    enabled: classCountdownVisible,
+    playSound: !teacherPresentation,
     soundsOff: !!session?.badgeSettings?.soundsOff,
   })
 
@@ -569,13 +597,15 @@ export default function StudentView({
       setLocalVisiblePanes(panes)
       if (teacherPresentation || !identity?.anonymousId) return
       if (phase !== 'lesson' && phase !== 'sandbox') return
-      const key = panes?.join(',') ?? ''
+      // Keyed per task: the teacher's setTaskId wipes visiblePanes, so the same list on the
+      // next task (e.g. Python -> Python) must still be written again.
+      const key = `${currentTaskId}|${panes?.join(',') ?? ''}`
       if (lastVisiblePanesRef.current === key) return
       lastVisiblePanesRef.current = key
       writeStudentPresence?.(identity.anonymousId, { visiblePanes: panes })
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [teacherPresentation, identity?.anonymousId, phase]
+    [teacherPresentation, identity?.anonymousId, phase, currentTaskId]
   )
 
   // Scratch solo: when the current task's explainer is hidden (either the manual
@@ -1140,6 +1170,31 @@ export default function StudentView({
   const isPaused =
     !isForcedTeacherLive && (phase === 'lesson' || phase === 'sandbox') && session?.isPaused
 
+  // The teacher's live class poll (src/shared/classPolls.js): a corner card on live lesson
+  // screens, read-only on the presentation window. Results are tallied here only for showing
+  // once the teacher shows them (and the presentation's answer count).
+  const activePoll =
+    (phase === 'lesson' || phase === 'sandbox') && (teacherPresentation || identity?.anonymousId)
+      ? getActivePoll(session)
+      : null
+  const activePollTally =
+    activePoll && (teacherPresentation || activePoll.showResults)
+      ? tallyPoll(session, activePoll.pollId)
+      : null
+  // Poll tasks in the lesson show the class split from the live session (PollQuiz).
+  const pollTaskClass =
+    phase === 'lesson' && (teacherPresentation || identity?.anonymousId)
+      ? {
+          session,
+          anonymousId: teacherPresentation ? null : identity?.anonymousId,
+          presentation: !!teacherPresentation,
+        }
+      : null
+  const myPollChoice =
+    activePoll && !teacherPresentation
+      ? getStudentPollChoice(session, identity?.anonymousId, activePoll.pollId)
+      : null
+
   const myStudentTeacherEdit = session?.students?.[identity?.anonymousId]
   // Modules a teacher can live-edit declare capabilities.teacherEditor (and its consent copy).
   const canTeacherEditType = !!activeModuleCaps?.teacherEditor
@@ -1202,6 +1257,11 @@ export default function StudentView({
 
   const topBarRight = teacherPresentation ? (
     <div style={s.presentationControls}>
+      <ClassCountdownPill
+        countdown={classCountdown}
+        serverTimeOffset={serverTimeOffset}
+        variant="presentation"
+      />
       <button
         className="btn-ghost"
         style={s.presentationBtn}
@@ -1259,6 +1319,7 @@ export default function StudentView({
     </div>
   ) : (
     <div style={s.topBarTaskControls}>
+      <ClassCountdownPill countdown={classCountdown} serverTimeOffset={serverTimeOffset} />
       {!previewMode && <SoundsToggleButton soundsOff={!!session?.badgeSettings?.soundsOff} />}
       {(phase === 'lesson' || phase === 'sandbox') && (
         <CodingMomentsPill
@@ -1410,6 +1471,7 @@ export default function StudentView({
       />
       {nudgeBannerVisible && <NudgeBanner onDismiss={dismissNudge} />}
       <ThumbsUpToast shownAt={thumbsUpAt} />
+      <TimesUpBanner shownAt={timesUpAt} presentation={teacherPresentation} />
       {nudgeEnabled && <NudgePermissionPrompt />}
       {showTeacherEditConsent && (
         <div style={s.consentOverlay}>
@@ -1539,6 +1601,22 @@ export default function StudentView({
           </div>
         </div>
       )}
+      {activePoll && (
+        <ClassPollCard
+          poll={activePoll}
+          choice={myPollChoice}
+          tally={activePollTally}
+          presentation={teacherPresentation}
+          onAnswer={
+            teacherPresentation
+              ? undefined
+              : (index) =>
+                  answerPoll(identity.anonymousId, activePoll.pollId, index).catch((err) =>
+                    console.warn('Could not save the poll answer:', err)
+                  )
+          }
+        />
+      )}
       <StudentStatusBanners
         isForcedTeacherLive={isForcedTeacherLive}
         isPresentationStudentViewer={isPresentationStudentViewer}
@@ -1578,76 +1656,78 @@ export default function StudentView({
             onCopyToMyEditor={handleCopySharedWorkspace}
           />
         ) : (
-          <LessonTaskContent
-            lesson={displayedLesson}
-            task={task}
-            cs={taskCs}
-            lessonId={lessonId}
-            identityId={effectiveIdentity?.anonymousId}
-            sandboxExplainer={session?.sandboxExplainer}
-            activeStudentView={session?.activeStudentView}
-            viewingTaskId={viewingTaskId}
-            currentTaskId={currentTaskId}
-            transitionKey={transitionKey}
-            transitionOrder={transitionOrder}
-            previewMode={previewMode}
-            isSandbox={isSandbox}
-            isViewingPrev={isViewingPrev}
-            isForcedTeacherLive={isForcedTeacherLive}
-            isMobile={isMobile}
-            isQuizTask={isQuizTask}
-            isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
-            isInformationTask={isInformationTask}
-            badgeWall={badgeWall}
-            isActivityTask={isActivityTask}
-            displayAnswer={displayAnswer}
-            isViewingExplainerSlide={viewingExplainerSlide}
-            isViewingCompletionScreen={viewingCompletionScreen}
-            onOpenPlayground={canOpenPlayground ? handleOpenPlayground : undefined}
-            soloCompanion={soloCompanion}
-            onTrySoloChallenge={soloCompanion ? handleTrySoloChallenge : undefined}
-            onReplayLesson={handleReplayLesson}
-            isCodeArrangeTask={isCodeArrangeTask}
-            displayCode={displayCode}
-            displayArcadeDesign={displayArcadeDesign}
-            displayTurtleResult={displayTurtleResult}
-            displaySpriteState={displaySpriteState}
-            displayCursor={displayCursor}
-            displayBlockDrag={displayBlockDrag}
-            displayCodeArrangeSlots={displayCodeArrangeSlots}
-            displayCodeArrangeCursor={displayCodeArrangeCursor}
-            displayFiles={displayFiles}
-            displayActiveFile={displayActiveFile}
-            displayOutput={displayOutput}
-            displayRunStatus={displayRunStatus}
-            displayCheckPassed={displayCheckPassed}
-            displayCheckAttempted={displayCheckAttempted}
-            displayCheckSuggestion={displayCheckSuggestion}
-            displaySelection={displaySelection}
-            displayOutputCollapsed={displayOutputCollapsed}
-            isLiveCopyBlocked={isLiveCopyBlocked}
-            displayFs={displayFs}
-            displayDesktop={displayDesktop}
-            isTeacherEditing={isTeacherEditing}
-            teacherLiveCode={teacherLiveCode}
-            teacherLiveFiles={teacherLiveFiles}
-            teacherLiveActiveFile={teacherLiveActiveFile}
-            teacherLiveWorkspace={teacherLiveWorkspace}
-            teacherLiveArcadeDesign={teacherLiveArcadeDesign}
-            teacherLiveReferencePayload={session?.teacherLiveReference}
-            canOfferNextStage={canOfferNextStage}
-            canOfferCompletePreview={canOfferCompletePreview}
-            canOfferCompleteSolution={canOfferCompleteSolution}
-            canOfferPersonalSandbox={canOfferPersonalSandbox}
-            explainerShowsComplete={explainerShowsComplete}
-            presenterLayout={teacherPresentation ? presenterLayout : 'both'}
-            onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
-            onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
-            openTopicId={phase === 'lesson' ? openTopicId : null}
-            onVisiblePanesChange={handleVisiblePanesChange}
-            highlightedPanes={highlightedPanes}
-            forcedPaneCommand={forcedPaneCommand}
-          />
+          <PollTaskClassContext.Provider value={pollTaskClass}>
+            <LessonTaskContent
+              lesson={displayedLesson}
+              task={task}
+              cs={taskCs}
+              lessonId={lessonId}
+              identityId={effectiveIdentity?.anonymousId}
+              sandboxExplainer={session?.sandboxExplainer}
+              activeStudentView={session?.activeStudentView}
+              viewingTaskId={viewingTaskId}
+              currentTaskId={currentTaskId}
+              transitionKey={transitionKey}
+              transitionOrder={transitionOrder}
+              previewMode={previewMode}
+              isSandbox={isSandbox}
+              isViewingPrev={isViewingPrev}
+              isForcedTeacherLive={isForcedTeacherLive}
+              isMobile={isMobile}
+              isQuizTask={isQuizTask}
+              isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
+              isInformationTask={isInformationTask}
+              badgeWall={badgeWall}
+              isActivityTask={isActivityTask}
+              displayAnswer={displayAnswer}
+              isViewingExplainerSlide={viewingExplainerSlide}
+              isViewingCompletionScreen={viewingCompletionScreen}
+              onOpenPlayground={canOpenPlayground ? handleOpenPlayground : undefined}
+              soloCompanion={soloCompanion}
+              onTrySoloChallenge={soloCompanion ? handleTrySoloChallenge : undefined}
+              onReplayLesson={handleReplayLesson}
+              isCodeArrangeTask={isCodeArrangeTask}
+              displayCode={displayCode}
+              displayArcadeDesign={displayArcadeDesign}
+              displayTurtleResult={displayTurtleResult}
+              displaySpriteState={displaySpriteState}
+              displayCursor={displayCursor}
+              displayBlockDrag={displayBlockDrag}
+              displayCodeArrangeSlots={displayCodeArrangeSlots}
+              displayCodeArrangeCursor={displayCodeArrangeCursor}
+              displayFiles={displayFiles}
+              displayActiveFile={displayActiveFile}
+              displayOutput={displayOutput}
+              displayRunStatus={displayRunStatus}
+              displayCheckPassed={displayCheckPassed}
+              displayCheckAttempted={displayCheckAttempted}
+              displayCheckSuggestion={displayCheckSuggestion}
+              displaySelection={displaySelection}
+              displayOutputCollapsed={displayOutputCollapsed}
+              isLiveCopyBlocked={isLiveCopyBlocked}
+              displayFs={displayFs}
+              displayDesktop={displayDesktop}
+              isTeacherEditing={isTeacherEditing}
+              teacherLiveCode={teacherLiveCode}
+              teacherLiveFiles={teacherLiveFiles}
+              teacherLiveActiveFile={teacherLiveActiveFile}
+              teacherLiveWorkspace={teacherLiveWorkspace}
+              teacherLiveArcadeDesign={teacherLiveArcadeDesign}
+              teacherLiveReferencePayload={session?.teacherLiveReference}
+              canOfferNextStage={canOfferNextStage}
+              canOfferCompletePreview={canOfferCompletePreview}
+              canOfferCompleteSolution={canOfferCompleteSolution}
+              canOfferPersonalSandbox={canOfferPersonalSandbox}
+              explainerShowsComplete={explainerShowsComplete}
+              presenterLayout={teacherPresentation ? presenterLayout : 'both'}
+              onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
+              onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
+              openTopicId={phase === 'lesson' ? openTopicId : null}
+              onVisiblePanesChange={handleVisiblePanesChange}
+              highlightedPanes={highlightedPanes}
+              forcedPaneCommand={forcedPaneCommand}
+            />
+          </PollTaskClassContext.Provider>
         )}
       </div>
     </div>

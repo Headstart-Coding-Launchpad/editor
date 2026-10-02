@@ -3,7 +3,7 @@ import { ref, onValue, remove } from 'firebase/database'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db, firestore } from '../shared/firebase'
 import { getLessonLinks } from '../shared/lessonLinks'
-import { formatClock } from '../app/components/TeacherTimers'
+import { formatClock } from '../shared/timeAgo'
 import {
   AdminBadge,
   AdminCell,

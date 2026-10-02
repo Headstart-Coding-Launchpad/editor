@@ -128,6 +128,14 @@ export default function TeacherView({ lessonId }) {
     updateVideoCallLink,
     sendVideoCallLink,
     broadcastVideoCallLink,
+    serverTimeOffset,
+    startClassCountdown,
+    addClassCountdownTime,
+    clearClassCountdown,
+    launchPoll,
+    closePoll,
+    setPollShowResults,
+    dismissPoll,
     requestTeacherEdit,
     pushTeacherLiveCode,
     commitTeacherEdit,
@@ -678,7 +686,9 @@ export default function TeacherView({ lessonId }) {
                 onSave={setTaskRating}
               />
             )}
-            {session && !isInformationTask && (
+            {/* Information and activity/quiz tasks have no explainer or workspace panes to
+                focus (a sandbox parked on an activity still shows the workspace). */}
+            {session && !isInformationTask && (isInSandbox || !isHostedActivityTask(task)) && (
               <PaneFocusDropdown
                 label="Focus Class"
                 lessonType={editorLesson?.type}
@@ -701,11 +711,24 @@ export default function TeacherView({ lessonId }) {
               onRemoveSharedWorkspace={removeSharedWorkspace}
               onRemoveAllSharedWorkspaces={removeAllSharedWorkspaces}
               onOpenSharedWorkspace={handleOpenTeacherShare}
+              serverTimeOffset={serverTimeOffset}
+              onStartClassCountdown={startClassCountdown}
+              onAddClassCountdownTime={addClassCountdownTime}
+              onClearClassCountdown={clearClassCountdown}
+              onLaunchPoll={launchPoll}
+              onClosePoll={closePoll}
+              onSetPollShowResults={setPollShowResults}
+              onDismissPoll={dismissPoll}
             />
           </>
         }
       />
-      <TeacherTimers session={session} task={currentTask} tasks={visibleTasks} />
+      <TeacherTimers
+        session={session}
+        task={currentTask}
+        tasks={visibleTasks}
+        serverTimeOffset={serverTimeOffset}
+      />
 
       <div
         style={{

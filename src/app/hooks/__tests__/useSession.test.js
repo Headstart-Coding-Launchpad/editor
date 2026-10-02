@@ -55,6 +55,8 @@ describe('useSession', () => {
     firebaseMocks.onValue.mockImplementation((refObj, callback) => {
       if (refObj.path === '.info/connected') {
         connCallback = callback
+      } else if (refObj.path === '.info/serverTimeOffset') {
+        // Covered in useSession.classCountdown.test.js.
       } else {
         sessionCallback = callback
       }
@@ -175,6 +177,169 @@ describe('useSession', () => {
       expect(keys).not.toContain('teacherLiveReferenceVisibleToAll')
       expect(keys).not.toContain('students/student-abc/teacherLiveReferenceVisible')
       expect(keys.some((key) => key.startsWith('supportRevealLog'))).toBe(false)
+    })
+
+    it('keeps poll answers and the active poll across a task change', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        currentTaskId: 1,
+        activePollId: 'p1',
+        polls: { p1: { question: 'Q', options: ['A', 'B'], status: 'open', createdAt: 1 } },
+        students: { 'student-abc': { pollResponses: { p1: { choice: 0, answeredAt: 2 } } } },
+      })
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      const updateCall = firebaseMocks.update.mock.calls.find(
+        ([r]) => r.path === 'sessions/lesson-1'
+      )
+      const keys = Object.keys(updateCall[1])
+      expect(keys.some((key) => key.includes('pollResponses'))).toBe(false)
+      expect(keys.some((key) => key.startsWith('polls') || key === 'activePollId')).toBe(false)
+    })
+  })
+
+  describe('live class polls', () => {
+    const openPoll = { question: 'Q', options: ['A', 'B'], status: 'open', createdAt: 1 }
+
+    it('launchPoll writes a tidy open poll and makes it the active poll', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      let pollId
+      await act(async () => {
+        pollId = await result.current.launchPoll({
+          question: '  What next?  ',
+          options: [' Games ', '', 'Art'],
+        })
+      })
+      expect(pollId).toBe('mockHighlightId')
+      expect(firebaseMocks.push).toHaveBeenCalledWith({ path: 'sessions/lesson-1/polls' })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        {
+          'polls/mockHighlightId': {
+            question: 'What next?',
+            options: ['Games', 'Art'],
+            status: 'open',
+            showResults: true,
+            createdAt: expect.any(Number),
+            closedAt: null,
+          },
+          activePollId: 'mockHighlightId',
+        }
+      )
+    })
+
+    it('launchPoll keeps results private when asked', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.launchPoll({ question: 'Q?', options: ['A', 'B'], keepPrivate: true })
+      })
+      const updates = firebaseMocks.update.mock.calls.at(-1)[1]
+      expect(updates['polls/mockHighlightId'].showResults).toBe(false)
+    })
+
+    it('launchPoll closes a poll that is still open', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ activePollId: 'old', polls: { old: openPoll } })
+      await act(async () => {
+        await result.current.launchPoll({ question: 'Next?', options: ['A', 'B'] })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({
+          'polls/old/status': 'closed',
+          'polls/old/closedAt': expect.any(Number),
+          activePollId: 'mockHighlightId',
+        })
+      )
+    })
+
+    it('launchPoll rejects a draft with fewer than 2 options and writes nothing', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await expect(
+        result.current.launchPoll({ question: 'Q', options: ['Only one'] })
+      ).rejects.toThrow(/at least 2 options/)
+      expect(firebaseMocks.update).not.toHaveBeenCalled()
+    })
+
+    it('closePoll closes the poll and stamps closedAt', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.closePoll('p1')
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/polls/p1' },
+        { status: 'closed', closedAt: expect.any(Number) }
+      )
+    })
+
+    it('setPollShowResults writes a boolean', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.setPollShowResults('p1', 1)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/polls/p1/showResults' },
+        true
+      )
+    })
+
+    it('dismissPoll clears the active poll and closes it if still open', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ activePollId: 'p1', polls: { p1: openPoll } })
+      await act(async () => {
+        await result.current.dismissPoll()
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        {
+          activePollId: null,
+          'polls/p1/status': 'closed',
+          'polls/p1/closedAt': expect.any(Number),
+        }
+      )
+    })
+
+    it('answerPoll writes the choice on the student node while the poll is open', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ activePollId: 'p1', polls: { p1: openPoll } })
+      await act(async () => {
+        await result.current.answerPoll('student-abc', 'p1', 1)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc/pollResponses/p1' },
+        { choice: 1, answeredAt: expect.any(Number) }
+      )
+    })
+
+    it('answerPoll ignores a closed poll and an option it does not have', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        polls: { p1: { ...openPoll, status: 'closed' }, p2: openPoll },
+      })
+      await act(async () => {
+        await result.current.answerPoll('student-abc', 'p1', 0)
+        await result.current.answerPoll('student-abc', 'p2', 5)
+      })
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+    })
+
+    it('createSession and endSession reset the polls', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.createSession()
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ polls: null, activePollId: null })
+      )
+      await act(async () => {
+        await result.current.endSession()
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ polls: null, activePollId: null })
+      )
     })
   })
 
@@ -762,6 +927,7 @@ describe('useSession', () => {
             overriddenAt: { '.sv': 'timestamp' },
             attemptNumber: 3,
             previousCheckState: 'failed',
+            source: 'teacher',
           },
         })
       )
@@ -817,12 +983,52 @@ describe('useSession', () => {
             overriddenAt: { '.sv': 'timestamp' },
             attemptNumber: 3,
             previousCheckState: 'failed',
+            source: 'class_advance',
           },
           'overrideLog/cara/1': {
             taskId: 1,
             overriddenAt: { '.sv': 'timestamp' },
             attemptNumber: 0,
             previousCheckState: 'unattempted',
+            source: 'class_advance',
+          },
+        }
+      )
+    })
+
+    it('ignores auto-check-on-leave records when counting attempts', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        currentTaskId: 1,
+        students: { alice: { checkPassed: false } },
+        attemptLog: {
+          alice: {
+            1: {
+              k1: {
+                attemptNumber: 0,
+                retries: 0,
+                passed: false,
+                auto: 'leave',
+                autoResult: 'failed',
+              },
+            },
+          },
+        },
+      })
+
+      await act(async () => {
+        await result.current.recordClassAdvanceOverrides(1)
+      })
+
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        {
+          'overrideLog/alice/1': {
+            taskId: 1,
+            overriddenAt: { '.sv': 'timestamp' },
+            attemptNumber: 0,
+            previousCheckState: 'unattempted',
+            source: 'class_advance',
           },
         }
       )
@@ -1077,6 +1283,27 @@ describe('useSession', () => {
     })
   })
 
+  // The 👀 visible-panes badge belongs to the task it was reported on — the student
+  // re-reports the new task's panes (empty on information/activity tasks).
+  describe('setTaskId clears visiblePanes', () => {
+    it('nulls visiblePanes for every student on task change', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        state: 'active',
+        currentTaskId: 1,
+        isPaused: false,
+        students: { 'student-abc': { displayName: 'Jamie', visiblePanes: ['instructions'] } },
+      })
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ 'students/student-abc/visiblePanes': null })
+      )
+    })
+  })
+
   // Phase 0 characterisation (docs/architecture/modular-activities-plan.md step 0.3):
   // the exact per-student wipe list on task change, including the quiz /
   // code_arrange mirrors (currentAnswer, currentCodeArrangeSlots) and the
@@ -1156,6 +1383,7 @@ describe('useSession', () => {
         teacherStageAcceptedAt: null,
         teacherHighlights: null,
         teacherPaneCommand: null,
+        visiblePanes: null,
         shareRequestedAt: null,
         shareRequestTaskId: null,
         shareRequestOrigin: null,
@@ -1376,6 +1604,115 @@ describe('useSession', () => {
   })
 
   describe('logAttempt', () => {
+    it('keeps logging a changeable (ungraded) answer after a pass, but not a graded one', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 7, { submission: 'a', passed: true })
+      })
+      const afterFirst = firebaseMocks.set.mock.calls.length
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 7, { submission: 'b', passed: true })
+      })
+      expect(firebaseMocks.set.mock.calls.length).toBe(afterFirst)
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 7, {
+          submission: 'b',
+          passed: true,
+          changeable: true,
+        })
+      })
+      expect(firebaseMocks.set.mock.calls.length).toBe(afterFirst + 1)
+      expect(firebaseMocks.set.mock.calls.at(-1)[1]).toMatchObject({
+        submission: 'b',
+        passed: true,
+      })
+    })
+
+    it('pushes an auto-check-on-leave record with passed false and the verdict', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, {
+          submission: 'print(1)',
+          passed: true,
+          suggestion: '',
+          auto: 'leave',
+          autoResult: 'passed',
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: 'sessions/lesson-1/attemptLog/student-abc/1/mockHighlightId',
+        }),
+        {
+          submission: 'print(1)',
+          passed: false,
+          suggestion: null,
+          auto: 'leave',
+          autoResult: 'passed',
+          attemptNumber: 0,
+          retries: 0,
+          loggedAt: { '.sv': 'timestamp' },
+        }
+      )
+    })
+
+    it('reads an unknown leave verdict as not_run', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, {
+          submission: 'x',
+          auto: 'leave',
+          autoResult: 'bogus',
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({ auto: 'leave', autoResult: 'not_run', passed: false })
+      )
+    })
+
+    it('a leave record neither de-duplicates against nor bumps a real attempt', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false })
+      })
+      firebaseMocks.update.mockClear()
+      firebaseMocks.set.mockClear()
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, {
+          submission: 'code v1',
+          auto: 'leave',
+          autoResult: 'failed',
+        })
+      })
+      expect(firebaseMocks.update).not.toHaveBeenCalled()
+      expect(firebaseMocks.set).toHaveBeenCalledTimes(1)
+      // The next real attempt with the same code still bumps the real entry's retries.
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/attemptLog/student-abc/1/mockHighlightId' },
+        { retries: 1 }
+      )
+    })
+
+    it('logs no leave record once this tab has logged a pass', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: true })
+      })
+      firebaseMocks.set.mockClear()
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, {
+          submission: 'code v2',
+          auto: 'leave',
+          autoResult: 'failed',
+        })
+      })
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+    })
+
     it('pushes a new attempt entry on first submission for a task', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {

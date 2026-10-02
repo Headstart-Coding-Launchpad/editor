@@ -133,6 +133,99 @@ describe('TeacherReportModal', () => {
     expect(screen.getByText('Teacher moved on after 2 attempts')).toBeInTheDocument()
   })
 
+  it('labels auto-checked results and shows the work checked when the class moved on', () => {
+    const autoReport = {
+      ...report,
+      students: [
+        {
+          ...report.students[0],
+          tasks: [
+            {
+              ...report.students[0].tasks[0],
+              completed: false,
+              attempts: 0,
+              finalResult: 'auto_failed',
+              distinctAttempts: [],
+              autoCheck: {
+                result: 'failed',
+                suggestion: 'Use a for loop',
+                submission: 'print(1)',
+                checkedAt: 1800,
+              },
+            },
+            {
+              ...report.students[0].tasks[0],
+              taskId: 2,
+              title: 'Task Two',
+              completed: true,
+              attempts: 0,
+              finalResult: 'auto_passed',
+              distinctAttempts: [],
+            },
+            {
+              ...report.students[0].tasks[0],
+              taskId: 3,
+              title: 'Task Three',
+              completed: false,
+              attempts: 0,
+              finalResult: 'auto_not_run',
+              distinctAttempts: [],
+            },
+          ],
+        },
+      ],
+      taskSummary: [
+        {
+          ...report.taskSummary[0],
+          completedCount: 0,
+          completionRate: 0,
+          autoPassedCount: 0,
+          autoFailedCount: 1,
+          autoNotRunCount: 0,
+        },
+      ],
+    }
+
+    render(<TeacherReportModal report={autoReport} onClose={vi.fn()} />)
+    expect(screen.getByText('0/1 (0%), auto-checked: 1 incorrect')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Student 1'))
+    expect(screen.getByText('Incorrect (auto-checked)')).toBeInTheDocument()
+    expect(screen.getByText('Correct (auto-checked)')).toBeInTheDocument()
+    expect(screen.getByText('Not run')).toBeInTheDocument()
+    expect(screen.getByText('1/3 tasks completed')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Task One/ }))
+    expect(screen.getByText('Auto-checked on move-on: incorrect')).toBeInTheDocument()
+    expect(screen.getByText('Use a for loop')).toBeInTheDocument()
+    expect(screen.getByText('print(1)')).toBeInTheDocument()
+  })
+
+  it('describes a tutor hand pass apart from moving the class on', () => {
+    const handPassReport = {
+      ...report,
+      students: [
+        {
+          ...report.students[0],
+          tasks: [
+            {
+              ...report.students[0].tasks[0],
+              finalResult: 'overridden_failed',
+              override: {
+                taskId: 1,
+                overriddenAt: 1900,
+                attemptNumber: 2,
+                previousCheckState: 'failed',
+                source: 'teacher',
+              },
+            },
+          ],
+        },
+      ],
+    }
+    render(<TeacherReportModal report={handPassReport} onClose={vi.fn()} />)
+    fireEvent.click(screen.getByText('Student 1'))
+    expect(screen.getByText('Passed by the teacher')).toBeInTheDocument()
+  })
+
   it('expands a student and task row to reveal distinct attempts', () => {
     render(<TeacherReportModal report={report} onClose={vi.fn()} />)
     expect(screen.queryByText('Alice')).not.toBeInTheDocument()

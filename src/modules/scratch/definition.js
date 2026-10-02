@@ -7,7 +7,7 @@ import {
   validateTaskChecks,
   warnCompleteBlocks,
 } from '../moduleTaskValidation.js'
-import { verifyScratchTask } from './checkVerification.js'
+import { evaluateScratchWorkWithoutRun, verifyScratchTask } from './checkVerification.js'
 import {
   identityFromStored,
   identityStored,
@@ -276,7 +276,9 @@ export default defineModule({
   // itself (selectScratchInitialProject), evaluates the checks on the stage and reports them
   // (handleScratchCheck → reportRun). Restored blocks (reset, stage, complete, teacher edit) are
   // pushed to it as external state; the slot holds what it last reported (null until then).
-  checking: { trigger: 'workspace' },
+  // `evaluateWithoutRun` grades the saved blocks when the teacher moves the class on before the
+  // student passed (block checks only; anything run-time is "not run").
+  checking: { trigger: 'workspace', evaluateWithoutRun: evaluateScratchWorkWithoutRun },
   workSlot: {
     kind: 'state',
     workspaceOwned: true,

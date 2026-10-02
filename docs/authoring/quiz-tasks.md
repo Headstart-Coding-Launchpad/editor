@@ -1,6 +1,6 @@
 # Quiz Tasks Reference
 
-All five quiz sub-types. Set `type: quiz` on the task; the converter sets `taskType: "quiz"` in JSON.
+All six quiz sub-types. Set `type: quiz` on the task; the converter sets `taskType: "quiz"` in JSON.
 
 Do not include code fields, carry fields, or `interactionMode` on quiz tasks.
 
@@ -204,6 +204,46 @@ Students rate confidence on a 1–5 scale (red to green). Any rating completes t
 ```
 
 No `check`, `options`, `pairs`, `blanks`, or `text` fields.
+
+---
+
+## Poll
+
+Students pick the option they prefer: an opinion, never right or wrong ("What would you like to
+do next?", "Which project should we build?"). Any choice completes the task, and a student can
+change their choice at any time. In a live lesson, once a student has chosen they see how the
+class voted (a percentage bar per option, never who chose what), and the presentation window
+shows the split live; set `showResults: false` to keep it to the teacher. Solo study and the
+Builder preview never show a split. The teacher sees each student's choice on their card in the
+student grid, and the session report
+counts each option (`optionDistribution` in `taskSummary`, see
+[session-reports.md](session-reports.md)).
+
+```yaml
+- type: quiz
+  quizType: poll
+  taskMode: live          # optional — most useful in live sessions, but works in solo study
+  title: What next?
+  explainer: Which would you like to try **next week**?
+  options:
+    - id: a
+      text: Make a game
+    - id: b
+      text: Draw with code
+    - id: c
+      text: Build a website
+```
+
+| Field | Required | Notes |
+|---|:---:|---|
+| `options` | Yes | 2 to 6 options, shown in the order written (not shuffled). |
+| `options[].id` | Yes | Stable identifier, usually `a`, `b`, `c`. Reported in `distinctAttempts[].submission`. |
+| `options[].text` | Yes | Shown to students. Markdown supported. |
+
+No `check`, `answer:`, option `feedback` or task `feedback`: a poll is never marked (a `check`
+is a validation error). For a quick question the teacher thinks of during a live lesson, use the
+**📊 Poll** button in the teacher's top bar instead — no lesson change needed (see
+`docs/FEATURES.md`).
 
 ---
 

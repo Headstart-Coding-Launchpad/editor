@@ -128,18 +128,18 @@ record the device in their state (`state.device`: `touch`, `virtualKeyboard`, an
 ## Quizzes (legacy activities)
 
 Each quiz sub-type is an activity: `quiz_multiple_choice`, `quiz_match`, `quiz_fill_blank`,
-`quiz_short_answer`, `quiz_confidence` (`src/activities/quiz_<type>/`), built with
+`quiz_short_answer`, `quiz_confidence`, `quiz_poll` (`src/activities/quiz_<type>/`), built with
 `defineQuizActivity` in `src/activities/quiz/quizActivity.js`. Stored lessons are unchanged:
 `resolve.js` maps `taskType: 'quiz'` + `quizType` (missing → `multiple_choice`) to the id, and each
 definition carries `legacy: { taskType: 'quiz', quizType }`. An unknown `quizType` gets the
 `unknown` fallback.
 
-| | multiple_choice | match | fill_blank | short_answer | confidence |
-|---|---|---|---|---|---|
-| State / `currentAnswer` | option id `"b"` | `{"p1":"p2"}` | `{"b1":"d1"}` (tile id) or typed text | free text | `"1"`..`"5"` |
-| Final answer | option chosen | last tile placed | last tile (drag) / Submit (type) | Submit | rating chosen |
-| `completion` / `isGraded` | on_submit / yes | auto / yes | auto / yes | on_submit / only with a `check` | none / no |
-| Teacher "Edit answers" | no | yes | yes | no | no |
+| | multiple_choice | match | fill_blank | short_answer | confidence | poll |
+|---|---|---|---|---|---|---|
+| State / `currentAnswer` | option id `"b"` | `{"p1":"p2"}` | `{"b1":"d1"}` (tile id) or typed text | free text | `"1"`..`"5"` | option id `"b"` |
+| Final answer | option chosen | last tile placed | last tile (drag) / Submit (type) | Submit | rating chosen | option chosen (changeable) |
+| `completion` / `isGraded` | on_submit / yes | auto / yes | auto / yes | on_submit / only with a `check` | none / no | none / no |
+| Teacher "Edit answers" | no | yes | yes | no | no | no |
 
 - Every change is discrete (debounced 300ms mirror, always); a final answer is submitted by the
   quiz UI (`onSubmit(answer, { passedOverride })`), so the host never auto-submits a quiz.
@@ -149,7 +149,7 @@ definition carries `legacy: { taskType: 'quiz', quizType }`. An unknown `quizTyp
   through `QuizTask` (`ownsLayout`: no activity header or frame); `CardSummary` renders the
   StudentCard answer (option, match/fill progress text, short answer, rating badge).
 - Submissions, item progress, session-report fields (`{ taskType: 'quiz', quizType }`,
-  normalised submissions, confidence `ratingDistribution`, `pairFailures` / `blankFailures`) and
+  normalised submissions, confidence `ratingDistribution`, poll `optionDistribution`, `pairFailures` / `blankFailures`) and
   print sections come from the definitions; `studentQuizContent.js`, `taskItemProgress.js`,
   `lessonReport.js` and `printLesson.js` are adapters over them, and their output is pinned
   byte-for-byte by the Phase 0 tests. Validation still runs the shared legacy rules

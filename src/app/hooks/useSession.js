@@ -37,8 +37,11 @@ import {
   archiveWorkFields,
   normaliseSessionArchive,
 } from '../../badges/sessionArchive'
+import { AUTO_CHECK_LEAVE, AUTO_CHECK_RESULTS, realAttemptEntries } from '../../shared/autoCheck'
 import { liveInkPath } from '../liveInk/liveInkData'
+import { normalizePollDraft, pollChoiceIndex } from '../../shared/classPolls.js'
 import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liveInkWriter'
+import { buildClassCountdown, extendClassCountdown } from '../../shared/classCountdown'
 
 // Badge decisions (sessions/{lessonId}/badges/{anonymousId}/{badgeId}). A decision is written
 // once; revoking is the only later change (see decideBadge / revokeBadge).
@@ -64,8 +67,10 @@ function encodeWorkspaceFiles(files) {
   return encodeFileKeys(fileMap ?? {})
 }
 
+// The attempts a student really ran or submitted: auto-check-on-leave records
+// (src/shared/autoCheck.js) are not attempts.
 function getAttemptEntries(session, anonymousId, taskId) {
-  return Object.values(session?.attemptLog?.[anonymousId]?.[taskId] ?? {}).sort(
+  return realAttemptEntries(Object.values(session?.attemptLog?.[anonymousId]?.[taskId] ?? {})).sort(
     (a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0)
   )
 }
@@ -82,6 +87,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(enabled)
   const [connected, setConnected] = useState(null)
+  // Firebase's estimate of (server clock - this device's clock), in ms. Shared deadlines (the
+  // class countdown) are written and read in server time so screens with skewed clocks agree.
+  const [serverTimeOffset, setServerTimeOffset] = useState(0)
+  const serverTimeOffsetRef = useRef(0)
   const sessionRef = useRef(null)
   const attemptCacheRef = useRef({})
   // This tab's first-occurrence guards (badge signals, pasteLog.firstAt), backing up the
@@ -96,7 +105,16 @@ export function useSession(lessonId, { enabled = true } = {}) {
     }
     const connRef = ref(db, '.info/connected')
     const unsub = onValue(connRef, (snap) => setConnected(snap.val() === true))
-    return () => unsub()
+    const unsubOffset = onValue(ref(db, '.info/serverTimeOffset'), (snap) => {
+      const offset = Number(snap.val())
+      const next = Number.isFinite(offset) ? offset : 0
+      serverTimeOffsetRef.current = next
+      setServerTimeOffset(next)
+    })
+    return () => {
+      unsub()
+      unsubOffset()
+    }
   }, [enabled])
 
   useEffect(() => {
@@ -156,6 +174,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
       videoCallBroadcastAt: null,
       sharedWorkspaces: null,
       sandboxEnteredAt: null,
+      classCountdown: null,
+      // Live class polls (src/shared/classPolls.js) belong to one session.
+      polls: null,
+      activePollId: null,
       // Live badges: decisions, the tutor's badge toggles and the students' signals are
       // session-scoped, so a new session starts without them (set() replaces the node anyway;
       // listed so the reset is explicit).
@@ -220,6 +242,11 @@ export function useSession(lessonId, { enabled = true } = {}) {
       videoCallLink: null,
       videoCallBroadcastAt: null,
       sharedWorkspaces: null,
+      classCountdown: null,
+      // The report (built before this, in handleEndSession) already holds every poll, and
+      // the students' answers go with the students node.
+      polls: null,
+      activePollId: null,
     })
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
     await clearLiveInkQuietly()
@@ -273,6 +300,79 @@ export function useSession(lessonId, { enabled = true } = {}) {
   // doesn't replay an old broadcast (see useVideoCallPrompt).
   async function broadcastVideoCallLink() {
     await set(ref(db, `sessions/${lessonId}/videoCallBroadcastAt`), Date.now())
+  }
+
+  // ─── Live class polls (src/shared/classPolls.js) ──────────────────────────
+  // One poll is on students' screens at a time (activePollId). Launching a new one closes any
+  // poll still open. Answers live on each student's own node (students/{id}/pollResponses),
+  // which setTaskId never clears, so a poll can stay open across a task change.
+
+  async function launchPoll(draft) {
+    const { poll, error } = normalizePollDraft(draft)
+    if (error) throw new Error(error)
+    const now = Date.now()
+    const pollId = push(ref(db, `sessions/${lessonId}/polls`)).key
+    const updates = {
+      [`polls/${pollId}`]: {
+        question: poll.question,
+        options: poll.options,
+        status: 'open',
+        // Results are public (live bars on the presentation window and, once they've voted,
+        // students' screens) unless the teacher ticked "Keep results private".
+        showResults: draft?.keepPrivate !== true,
+        createdAt: now,
+        closedAt: null,
+      },
+      activePollId: pollId,
+    }
+    for (const [otherId, other] of Object.entries(session?.polls ?? {})) {
+      if (other?.status === 'open') {
+        updates[`polls/${otherId}/status`] = 'closed'
+        updates[`polls/${otherId}/closedAt`] = now
+      }
+    }
+    await update(ref(db, `sessions/${lessonId}`), updates)
+    return pollId
+  }
+
+  // Stops answers. The poll stays on screen (activePollId) so its results can be shown.
+  async function closePoll(pollId) {
+    if (!pollId) return
+    await update(ref(db, `sessions/${lessonId}/polls/${pollId}`), {
+      status: 'closed',
+      closedAt: Date.now(),
+    })
+  }
+
+  // Results are hidden from students until the teacher shows them.
+  async function setPollShowResults(pollId, showResults) {
+    if (!pollId) return
+    await set(ref(db, `sessions/${lessonId}/polls/${pollId}/showResults`), !!showResults)
+  }
+
+  // Takes the poll off every screen, closing it first if it is still open. It stays in
+  // `polls` for the report.
+  async function dismissPoll() {
+    const pollId = session?.activePollId
+    const updates = { activePollId: null }
+    if (pollId && session?.polls?.[pollId]?.status === 'open') {
+      updates[`polls/${pollId}/status`] = 'closed'
+      updates[`polls/${pollId}/closedAt`] = Date.now()
+    }
+    await update(ref(db, `sessions/${lessonId}`), updates)
+  }
+
+  // Student: pick (or change) an answer while the poll is open.
+  async function answerPoll(anonymousId, pollId, choice) {
+    if (!anonymousId || !pollId) return
+    const poll = session?.polls?.[pollId]
+    if (!poll || poll.status !== 'open') return
+    const index = pollChoiceIndex(poll, choice)
+    if (index === null) return
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/pollResponses/${pollId}`), {
+      choice: index,
+      answeredAt: Date.now(),
+    })
   }
 
   async function setTaskId(taskId) {
@@ -330,6 +430,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/teacherStageAcceptedAt`] = null
       updates[`students/${anonymousId}/teacherHighlights`] = null
       updates[`students/${anonymousId}/teacherPaneCommand`] = null
+      // The previous task's panes mean nothing on the new one; the student's StudentView
+      // re-reports the new task's panes (its dedupe resets per task).
+      updates[`students/${anonymousId}/visiblePanes`] = null
       // Pending share requests are per-task. Approved shares live in
       // sharedWorkspaces (session level) and deliberately survive this wipe.
       updates[`students/${anonymousId}/shareRequestedAt`] = null
@@ -348,7 +451,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
     ])
   }
 
-  function buildOverrideRecord(anonymousId, taskId) {
+  // `source`: 'teacher' for a tutor passing the student by hand (counts as complete in the
+  // report), 'class_advance' for the record written when the teacher moves the class on (does
+  // not count as complete for a graded task; see lessonReport.js).
+  function buildOverrideRecord(anonymousId, taskId, source) {
     if (taskId == null) return null
     if (session?.overrideLog?.[anonymousId]?.[taskId]) return null
     if (session?.students?.[anonymousId]?.checkPassed === true) return null
@@ -362,6 +468,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       overriddenAt: serverTimestamp(),
       attemptNumber,
       previousCheckState: attemptNumber > 0 ? 'failed' : 'unattempted',
+      source,
     }
   }
 
@@ -378,7 +485,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       [`students/${anonymousId}/checkOverridePushedAt`]: now,
     }
     if (passed) {
-      const record = buildOverrideRecord(anonymousId, taskId)
+      const record = buildOverrideRecord(anonymousId, taskId, 'teacher')
       if (record) updates[`overrideLog/${anonymousId}/${taskId}`] = record
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
@@ -393,7 +500,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     for (const anonymousId of anonymousIds) {
       const student = session?.students?.[anonymousId] ?? {}
       if (student.checkPassed === true || student.checkOverridePassed === true) continue
-      const record = buildOverrideRecord(anonymousId, taskId)
+      const record = buildOverrideRecord(anonymousId, taskId, 'class_advance')
       if (record) updates[`overrideLog/${anonymousId}/${taskId}`] = record
     }
     if (Object.keys(updates).length > 0) {
@@ -683,6 +790,31 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
       autoRevealStage: AUTO_REVEAL_MODES.includes(mode) ? mode : null,
     })
+  }
+
+  // The teacher's class countdown (sessions/{lessonId}/classCountdown): one shared deadline in
+  // server time that every student screen and the presentation window count down to. It
+  // survives task changes; only clearClassCountdown, createSession and endSession remove it.
+  // Reaching zero locks nothing (see useClassCountdown).
+  function serverNow() {
+    return Date.now() + serverTimeOffsetRef.current
+  }
+
+  async function startClassCountdown(durationMs) {
+    const countdown = buildClassCountdown(durationMs, serverNow())
+    if (!countdown) return
+    await set(ref(db, `sessions/${lessonId}/classCountdown`), countdown)
+  }
+
+  // "+1 min": pushes the deadline back; a countdown that already hit zero restarts from now.
+  async function addClassCountdownTime(extraMs) {
+    const next = extendClassCountdown(session?.classCountdown, extraMs, serverNow())
+    if (!next) return
+    await set(ref(db, `sessions/${lessonId}/classCountdown`), next)
+  }
+
+  async function clearClassCountdown() {
+    await set(ref(db, `sessions/${lessonId}/classCountdown`), null)
   }
 
   async function nudgeAwayStudents() {
@@ -1230,18 +1362,40 @@ export function useSession(lessonId, { enabled = true } = {}) {
   // student's own tab ever writes to their own attemptLog entries.
   // `error` marks a run that produced a real console error: true, or the error's name
   // ('NameError') when the run handler could read it (see runErrorFor in src/badges/signals.js).
+  //
+  // `auto: 'leave'` logs the auto-check made when the teacher moves the class on before this
+  // student passed (src/shared/autoCheck.js): a separate record with the verdict in `autoResult`
+  // ('passed' | 'failed' | 'not_run') and `passed: false`, which never de-duplicates, bumps
+  // retries or touches the de-dupe cache, so it never stands in for a real attempt.
+  //
+  // `changeable: true` (ungraded activities a student can re-answer: polls, confidence) keeps
+  // logging after a pass, so the report and the live poll split see the student's latest answer.
   async function logAttempt(
     anonymousId,
     taskId,
-    { submission, passed, suggestion, teacherAssisted, error } = {}
+    { submission, passed, suggestion, teacherAssisted, error, auto, autoResult, changeable } = {}
   ) {
     const cacheKey = `${anonymousId}:${taskId}`
     const cached = attemptCacheRef.current[cacheKey]
-    if (cached?.passed) return
+    if (cached?.passed && !changeable) return
 
     const serialized =
       typeof submission === 'string' ? submission : JSON.stringify(submission ?? null)
     const basePath = `sessions/${lessonId}/attemptLog/${anonymousId}/${taskId}`
+
+    if (auto === AUTO_CHECK_LEAVE) {
+      await set(push(ref(db, basePath)), {
+        submission: serialized,
+        passed: false,
+        suggestion: suggestion || null,
+        auto: AUTO_CHECK_LEAVE,
+        autoResult: AUTO_CHECK_RESULTS.includes(autoResult) ? autoResult : 'not_run',
+        attemptNumber: 0,
+        retries: 0,
+        loggedAt: serverTimestamp(),
+      })
+      return
+    }
 
     if (cached && cached.serialized === serialized) {
       const nextRetries = cached.retries + 1
@@ -1703,6 +1857,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     session,
     loading,
     connected,
+    serverTimeOffset,
     // teacher
     createSession,
     restartSession,
@@ -1722,6 +1877,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
     nudgeStudent,
     sendThumbsUp,
     nudgeAwayStudents,
+    launchPoll,
+    closePoll,
+    setPollShowResults,
+    dismissPoll,
     setAutoRevealStage,
     setExplainerShowComplete,
     setActiveStudentView,
@@ -1752,6 +1911,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
     updateVideoCallLink,
     sendVideoCallLink,
     broadcastVideoCallLink,
+    startClassCountdown,
+    addClassCountdownTime,
+    clearClassCountdown,
     requestTeacherEdit,
     pushTeacherLiveCode,
     commitTeacherEdit,
@@ -1775,6 +1937,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     readSessionArchive,
     admitJoiningStudent,
     // student
+    answerPoll,
     registerPresence,
     joinSession,
     recordStudentReturn,

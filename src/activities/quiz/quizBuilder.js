@@ -75,6 +75,19 @@ export function switchQuizType(task, quizType) {
     const existing = task.check?.type?.startsWith('answer_') ? task.check : null
     return { ...task, quizType: 'short_answer', check: existing ?? null }
   }
+  if (quizType === 'poll') {
+    const options = task.options?.length ? task.options : makeDefaultQuizOptions()
+    return {
+      ...task,
+      quizType: 'poll',
+      options: options.map(({ feedback: _feedback, hint: _hint, ...option }) => option),
+      pairs: undefined,
+      blanks: undefined,
+      text: undefined,
+      feedback: undefined,
+      check: null,
+    }
+  }
   if (quizType === 'confidence') {
     return {
       ...task,

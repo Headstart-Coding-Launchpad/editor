@@ -4,19 +4,10 @@ import {
   getEstimatedMinutes,
   getTotalEstimatedMinutes,
 } from '../../shared/taskUtils'
+import { formatClock } from '../../shared/timeAgo'
+import ClassCountdownPill from './ClassCountdownPill'
 
-export function formatClock(totalSeconds) {
-  const seconds = Math.max(0, Math.floor(totalSeconds))
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  const remainder = seconds % 60
-  if (hours) {
-    return `${hours}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`
-  }
-  return `${minutes}:${String(remainder).padStart(2, '0')}`
-}
-
-export default function TeacherTimers({ session, task, tasks }) {
+export default function TeacherTimers({ session, task, tasks, serverTimeOffset = 0 }) {
   const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
@@ -50,6 +41,14 @@ export default function TeacherTimers({ session, task, tasks }) {
           </span>
         )}
       </div>
+      {/* The class countdown the students see (started from ⏱ Countdown in the top bar). */}
+      {session.state !== 'ended' && (
+        <ClassCountdownPill
+          countdown={session.classCountdown}
+          serverTimeOffset={serverTimeOffset}
+          variant="teacher"
+        />
+      )}
       {showTaskCountdown && (
         <div
           className={`teacher-timer-card teacher-timer-card--task${taskExpired ? ' teacher-timer-card--expired' : ''}`}

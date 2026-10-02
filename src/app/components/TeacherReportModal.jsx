@@ -7,6 +7,7 @@ import {
   StudentBadgeDetails,
   TeacherSandboxSection,
 } from './ReportBadgeSections'
+import ReportPollsSection from './polls/ReportPollsSection'
 import {
   formatErrorStudents,
   formatFirstRealPass,
@@ -32,6 +33,10 @@ function formatFinalResult(task) {
   if (task.finalResult === 'not_applicable') return task.completed ? 'Answered' : 'No response'
   if (task.finalResult === 'overridden_failed') return 'Overridden'
   if (task.finalResult === 'overridden_unattempted') return 'Skipped'
+  // Graded without a run when the teacher moved the class on (src/shared/autoCheck.js).
+  if (task.finalResult === 'auto_passed') return 'Correct (auto-checked)'
+  if (task.finalResult === 'auto_failed') return 'Incorrect (auto-checked)'
+  if (task.finalResult === 'auto_not_run') return 'Not run'
   if (task.completed && task.teacherAssisted) return 'Passed (teacher assisted)'
   return task.completed ? 'Passed' : 'Failed'
 }
@@ -40,9 +45,22 @@ function resultBadgeStyle(task) {
   if (task.finalResult === 'not_applicable') return task.completed ? s.badgeInfo : s.badgeNone
   if (task.finalResult === 'not_attempted' || task.finalResult === 'not attempted')
     return s.badgeNone
-  if (task.finalResult === 'overridden_failed' || task.finalResult === 'overridden_unattempted')
+  if (task.finalResult === 'auto_not_run') return s.badgeNone
+  if (
+    task.finalResult === 'overridden_failed' ||
+    task.finalResult === 'overridden_unattempted' ||
+    task.finalResult === 'auto_passed' ||
+    task.finalResult === 'auto_failed'
+  )
     return s.badgeInfo
   return task.completed ? s.badgePass : s.badgeFail
+}
+
+// The auto-check record shown with a student's attempts: the work they had when the class moved on.
+const AUTO_CHECK_LABELS = {
+  passed: 'Auto-checked on move-on: correct',
+  failed: 'Auto-checked on move-on: incorrect',
+  not_run: 'Moved on: not run',
 }
 
 function formatAttemptStatus(attempt) {
@@ -62,22 +80,34 @@ function formatSummaryCompletion(task) {
       : ''
   const assistedLabel =
     task.teacherAssistedCount > 0 ? `, ${task.teacherAssistedCount} teacher assisted` : ''
+  // Students graded without a run when the class moved on (only the correct ones count above).
+  const autoParts = [
+    task.autoPassedCount > 0 ? `${task.autoPassedCount} correct` : null,
+    task.autoFailedCount > 0 ? `${task.autoFailedCount} incorrect` : null,
+    task.autoNotRunCount > 0 ? `${task.autoNotRunCount} not run` : null,
+  ].filter(Boolean)
+  const autoLabel = autoParts.length > 0 ? `, auto-checked: ${autoParts.join(', ')}` : ''
   // Activities (Binary, Keyboard, Mouse...) also report the average share of items right.
   const itemsLabel =
     typeof task.avgItemProgress === 'number'
       ? `, ${Math.round(task.avgItemProgress * 100)}% of items right`
       : ''
   if (typeof task.completionRate === 'number') {
-    return `${task.completedCount}/${task.totalStudents} (${Math.round(task.completionRate * 100)}%)${overrideLabel}${assistedLabel}${itemsLabel}`
+    return `${task.completedCount}/${task.totalStudents} (${Math.round(task.completionRate * 100)}%)${overrideLabel}${assistedLabel}${autoLabel}${itemsLabel}`
   }
   if (typeof task.respondedCount === 'number') {
-    return `${task.respondedCount}/${task.totalStudents} responded${overrideLabel}`
+    // A poll task (quizType poll) also lists how many chose each option.
+    const optionsLabel = Array.isArray(task.optionDistribution)
+      ? task.optionDistribution.map((option) => ` · ${option.text}: ${option.count}`).join('')
+      : ''
+    return `${task.respondedCount}/${task.totalStudents} responded${overrideLabel}${optionsLabel}`
   }
   return '-'
 }
 
 function formatOverrideDetail(task) {
   if (!task.override) return null
+  if (task.override.source === 'teacher') return 'Passed by the teacher'
   const attempts = task.override.attemptNumber ?? 0
   return task.override.previousCheckState === 'failed'
     ? `Teacher moved on after ${attempts} attempt${attempts === 1 ? '' : 's'}`
@@ -174,12 +204,25 @@ function StudentTaskRow({ task }) {
           <span style={s.attemptsCount}>{studentTaskSignalLabels(task).join(' · ')}</span>
         )}
         {task.override && <span style={s.overrideNote}>{formatOverrideDetail(task)}</span>}
-        {task.distinctAttempts.length > 0 && (
+        {(task.distinctAttempts.length > 0 || task.autoCheck) && (
           <span style={s.expandArrow}>{expanded ? '▾' : '▸'}</span>
         )}
       </button>
-      {expanded && task.distinctAttempts.length > 0 && (
+      {expanded && (task.distinctAttempts.length > 0 || task.autoCheck) && (
         <div style={s.attemptsList}>
+          {task.autoCheck && (
+            <div style={s.attemptItem}>
+              <div style={s.attemptHeader}>
+                <span style={{ ...s.badge, ...s.badgeInfo }}>
+                  {AUTO_CHECK_LABELS[task.autoCheck.result] ?? 'Auto-checked'}
+                </span>
+                {task.autoCheck.suggestion && (
+                  <span style={s.suggestion}>{task.autoCheck.suggestion}</span>
+                )}
+              </div>
+              <pre style={s.submission}>{renderSubmission(task.autoCheck.submission)}</pre>
+            </div>
+          )}
           {task.distinctAttempts.map((a, i) => (
             <div key={i} style={s.attemptItem}>
               <div style={s.attemptHeader}>
@@ -426,6 +469,8 @@ export default function TeacherReportModal({ report, onClose, onSaveFeedback }) 
           </section>
 
           <QuizGroupsSection report={displayReport} />
+
+          <ReportPollsSection report={displayReport} />
 
           <section>
             <h3 style={s.sectionTitle}>Students</h3>

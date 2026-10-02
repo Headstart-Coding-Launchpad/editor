@@ -73,7 +73,7 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 ## Teacher Pane Highlight/Force: `teacherPaneCommand`
 
 - Lets a teacher draw attention to, or immediately switch a student (or the whole class) to, a specific tab/panel a student might not have noticed — e.g. Electronics' Breadboard/MicroPython tabs, Scratch's Blocks/Stage tabs, or the Instructions/explainer pane on any lesson type.
-- Triggered from `PaneFocusDropdown.jsx` — a checkbox picker of the panes relevant to the current lesson type (`PaneFocusControls` as the Focus section of the per-student More menu in `StudentModal.jsx`, `PaneFocusDropdown` as "Focus Class" whole-class in `TeacherView.jsx`'s top bar) with two actions: **Highlight** and **Switch to this**.
+- Triggered from `PaneFocusDropdown.jsx` — a checkbox picker of the panes relevant to the current lesson type (`PaneFocusControls` as the Focus section of the per-student More menu in `StudentModal.jsx`, `PaneFocusDropdown` as "Focus Class" whole-class in `TeacherView.jsx`'s top bar, hidden on information tasks and, outside a sandbox, on activity/quiz tasks — neither has panes to focus) with two actions: **Highlight** and **Switch to this**.
 - Two RTDB fields, same `{ mode: 'highlight' | 'force', panes: string[], pushedAt }` shape: `sessions/{lessonId}/students/{anonymousId}/teacherPaneCommand` (per-student, `pushTeacherPaneCommand`/`clearTeacherPaneCommand`) and `sessions/{lessonId}/teacherClassPaneCommand` (whole-class, `pushClassPaneCommand`/`clearClassPaneCommand`, every connected student evaluates the same node — same pattern as `teacherLive`). `StudentView.jsx` derives one effective command from whichever of the two has the more recent `pushedAt`.
 - No consent step, unlike `teacherStageRequestedAt`/`teacherEditRequestedAt` — both modes apply immediately.
 - `mode: 'highlight'` adds a pulsing glow (`pane-highlight-pulse` CSS class in `index.css`, animating `transform`/`filter` rather than `box-shadow` since `.ui-tab` forces that `!important`) to the named tab button(s)/collapse control, via a `highlightedIds`/`highlightedTabs`/`highlighted` prop threaded through `PanelTabs.jsx`, `ElectronicsWorkspace.jsx`'s tab buttons, and `CollapseTabButton`/`CollapsedPanelRail`/`ExplainerPanel`. Purely visual — nothing moves.
@@ -135,6 +135,16 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 - Moving the class to a task or returning from sandbox restarts `currentTaskStartedAt`.
 - Teacher view shows lesson elapsed time and a countdown for timed active tasks.
 - Expired task timers flash.
+
+## Class Countdown
+
+A teacher-set countdown the class can see, separate from the per-task `estimatedMinutes` timer above (session field `classCountdown`, see `docs/agents/runtime-model.md`).
+
+- The teacher opens "⏱ Countdown" in the top bar (`ClassCountdownControl` inside `TeacherSessionControls`; kept out of the narrow Menu, shown only while the session is `active`/`sandbox`): presets 1/2/5/10 min, custom minutes (0.25–120), and, while one runs, +1 min and Stop. Starting again replaces the running countdown.
+- The deadline is written in server time and every client counts against `Date.now() + serverTimeOffset`, so skewed device clocks still agree.
+- Students in a live lesson or sandbox see a small pill in the top bar (`ClassCountdownPill`), amber in the last minute and "Time's up" at zero. The presentation window shows a large one in its controls; the teacher sees a "Class countdown" card in the `TeacherTimers` strip. The pill ticks on its own so `StudentView` doesn't re-render every second.
+- At zero (only for a deadline the screen watched counting down; a reload after zero shows the pill's "Time's up" but no banner): a non-blocking "⏰ Time's up!" banner pops in for 5 s (`TimesUpBanner`, `motion-pop-in`, larger on the presentation window) and, on the student's own screen only, the falling `timesUp` chime, silenced by the student's Sounds mute or the tutor's class-wide Sounds off. Nothing is locked or paused. Adding time arms it again.
+- It survives task changes (`setTaskId` doesn't touch it) and is cleared by Stop, `createSession` and `endSession`. Not shown in preview or solo mode.
 
 ## Remote Reset
 

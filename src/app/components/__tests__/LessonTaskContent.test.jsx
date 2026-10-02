@@ -507,6 +507,58 @@ describe('LessonTaskContent instructions-pane reporting', () => {
 
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith([])
   })
+
+  // The previous code task's panes (still held in scratchCodePanes/modulePanes) must not be
+  // re-reported once the class moves to a task with no panes at all.
+  it('reports an empty list on an information task after a code task', () => {
+    getLessonModule.mockReturnValue(SCRATCH_MODULE)
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
+    const onVisiblePanesChange = vi.fn()
+    const props = {
+      ...baseProps,
+      lesson: { type: 'scratch' },
+      onVisiblePanesChange,
+    }
+
+    const { rerender } = render(
+      <LessonTaskContent
+        {...props}
+        task={{ id: 1, title: 'Move the cat', explainer: 'Drag the move block.' }}
+      />
+    )
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['instructions', 'blocks', 'stage'])
+
+    rerender(
+      <LessonTaskContent
+        {...props}
+        currentTaskId={2}
+        isInformationTask
+        task={{ id: 2, taskType: 'information', title: 'Intro', explainer: 'Welcome.' }}
+      />
+    )
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith([])
+  })
+
+  it('re-reports an unchanged pane list when the task changes', () => {
+    getLessonModule.mockReturnValue(SCRATCH_MODULE)
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
+    const onVisiblePanesChange = vi.fn()
+    const props = { ...baseProps, lesson: { type: 'scratch' }, onVisiblePanesChange }
+
+    const { rerender } = render(
+      <LessonTaskContent {...props} task={{ id: 1, title: 'One', explainer: 'First.' }} />
+    )
+    const callsBefore = onVisiblePanesChange.mock.calls.length
+    rerender(
+      <LessonTaskContent
+        {...props}
+        currentTaskId={2}
+        task={{ id: 2, title: 'Two', explainer: 'Second.' }}
+      />
+    )
+    expect(onVisiblePanesChange.mock.calls.length).toBeGreaterThan(callsBefore)
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['instructions', 'blocks', 'stage'])
+  })
 })
 
 describe('LessonTaskContent highlightedPanes', () => {

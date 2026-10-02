@@ -498,3 +498,103 @@ export function evaluateCheckWithCode(check, code, context = {}) {
     return false
   return checks.every((c) => evaluateSingleCheck(c, '', { code, ...context }))
 }
+
+// ─── Grading without a run (auto-check on leave) ─────────────────────────────────────────────
+// When the teacher moves a live class on, a student who never passed the task has their current
+// work graded without running it (useStudentCodeState autoCheckOnLeave, logged as an attempt
+// with `auto: 'leave'`). Only checks that a run cannot change are judged; no code is executed.
+
+// The outcomes of grading without a run: every check passed, a check failed (or a blocking
+// feedback check matched), or the task needs a run that never happened.
+export const NO_RUN_RESULTS = Object.freeze({
+  PASSED: 'passed',
+  FAILED: 'failed',
+  NOT_RUN: 'not_run',
+})
+
+// Context keys only a run produces: code_no_error's `status`, Python's captured `variables`,
+// Turtle's drawing and HTML's rendered `iframeDoc`. A check reading one needs a run even when
+// its registry definition does not set `requiresRun` (Turtle's checks).
+const RUN_CONTEXT_KEYS = ['status', 'variables', 'turtle', 'iframeDoc']
+
+/**
+ * Whether one check can be judged from the work alone. False for a run-required type, a check
+ * reading a run's result, a check whose context key the caller did not supply (an `answer`
+ * check with no answer), and any type the registry does not know (Scratch's checks are judged
+ * by the module's own `checking.evaluateWithoutRun`).
+ */
+export function canEvaluateCheckWithoutRun(check, context = {}) {
+  const normalized = normalizeCheckShape(check)
+  if (!normalized?.type) return false
+  const def = getCheckDefinition(normalized.type)
+  if (!def || def.requiresRun) return false
+  if (def.contextKey && RUN_CONTEXT_KEYS.includes(def.contextKey)) return false
+  if (def.contextKey && context?.[def.contextKey] === undefined) return false
+  return true
+}
+
+// The default judge for evaluateTaskWithoutRun: true / false for a check it can judge from the
+// context alone, null for one that needs a run.
+function judgeCheckWithoutRun(check, context) {
+  return canEvaluateCheckWithoutRun(check, context) ? evaluateSingleCheck(check, '', context) : null
+}
+
+/**
+ * The tri-state verdict of a completion check without a run: 'failed' when any check that can
+ * be judged fails (the task cannot pass whatever a run would show), else 'not_run' when some
+ * check needs a run, else 'passed'. Null when there is no check. `judgeCheck(check)` returns
+ * true / false, or null for a check it cannot judge (defaults to the registry judge above).
+ */
+export function evaluateCheckWithoutRun(check, context = {}, judgeCheck = null) {
+  const judge = judgeCheck ?? ((c) => judgeCheckWithoutRun(c, context))
+  const checks = normalizeChecks(check)
+  if (checks.length === 0) return null
+  let needsRun = false
+  for (const c of checks) {
+    const verdict = judge(c)
+    if (verdict == null) needsRun = true
+    else if (!verdict) return NO_RUN_RESULTS.FAILED
+  }
+  return needsRun ? NO_RUN_RESULTS.NOT_RUN : NO_RUN_RESULTS.PASSED
+}
+
+/**
+ * Grades a task's work without running it: `{ result, suggestion }`, or null when the task has
+ * nothing to grade (no `check` and no `tests`). Rules:
+ * - a completion check that can be judged fails → 'failed';
+ * - a blocking feedback check that can be judged matches → 'failed' (a run would fail too);
+ * - otherwise any check that needs a run, or Python `tests`, → 'not_run';
+ * - otherwise → 'passed'.
+ * `suggestion` is the hint a run would have shown for a 'failed' result ('' otherwise); feedback
+ * checks that need a run never match, so they never supply it. `options.judgeCheck` replaces
+ * the registry judge (Scratch judges its block checks against the saved workspace JSON).
+ */
+export function evaluateTaskWithoutRun(task, context = {}, { judgeCheck = null } = {}) {
+  const judge = judgeCheck ?? ((c) => judgeCheckWithoutRun(c, context))
+  const hasTests = Array.isArray(task?.tests) && task.tests.length > 0
+  const completion = evaluateCheckWithoutRun(task?.check, context, judge)
+  if (completion == null && !hasTests) return null
+  // `check: null` keeps normalizeFeedbackChecks from reading a check-less task as a check.
+  const feedbackTask = { ...task, check: task?.check ?? null }
+  const evaluation = evaluateCheckWithCustomFeedback(
+    feedbackTask,
+    completion === NO_RUN_RESULTS.PASSED,
+    (c) => judge(c) === true,
+    '',
+    context,
+    {
+      feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT,
+      isCompletionCheckFailed: (c) => judge(c) === false,
+    }
+  )
+  let result = NO_RUN_RESULTS.PASSED
+  if (completion === NO_RUN_RESULTS.FAILED || evaluation.blockingFeedback) {
+    result = NO_RUN_RESULTS.FAILED
+  } else if (completion === NO_RUN_RESULTS.NOT_RUN || hasTests) {
+    result = NO_RUN_RESULTS.NOT_RUN
+  }
+  return {
+    result,
+    suggestion: result === NO_RUN_RESULTS.FAILED ? evaluation.suggestion : '',
+  }
+}

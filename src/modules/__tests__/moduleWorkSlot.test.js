@@ -121,6 +121,19 @@ describe('defineModule — checking / workSlot validation', () => {
     )
   })
 
+  it('accepts an optional evaluateWithoutRun function and rejects anything else', () => {
+    const evaluateWithoutRun = () => null
+    expect(
+      defineModule(withSlot({ checking: { ...filesystemDefinition.checking, evaluateWithoutRun } }))
+        .checking.evaluateWithoutRun
+    ).toBe(evaluateWithoutRun)
+    expect(() =>
+      defineModule(
+        withSlot({ checking: { ...filesystemDefinition.checking, evaluateWithoutRun: 'yes' } })
+      )
+    ).toThrow(/checking\.evaluateWithoutRun/)
+  })
+
   it.each(['starterField', 'sandboxField', 'stageField', 'empty', 'normalise'])(
     'requires workSlot.%s',
     (key) => {
@@ -140,7 +153,10 @@ describe('defineModule — checking / workSlot validation', () => {
 
   it('accepts a missing buildContext only for a workspace trigger', () => {
     const scratch = { ...scratchDefinition, meta: { ...scratchDefinition.meta } }
-    expect(defineModule(scratch).checking).toEqual({ trigger: 'workspace' })
+    expect(defineModule(scratch).checking).toEqual({
+      trigger: 'workspace',
+      evaluateWithoutRun: expect.any(Function),
+    })
     expect(() =>
       defineModule({ ...scratch, checking: { trigger: 'run' }, getSandboxState: undefined })
     ).toThrow(/scratch.*"checking\.buildContext"/)
@@ -319,7 +335,7 @@ describe('html and scratch work slots (plan step 4.5)', () => {
 
   it('scratch: workspace-owned states, checked by the workspace', () => {
     const { workSlot, checking } = getModuleDefinition('scratch')
-    expect(checking).toEqual({ trigger: 'workspace' })
+    expect(checking).toEqual({ trigger: 'workspace', evaluateWithoutRun: expect.any(Function) })
     expect(workSlot).toMatchObject({
       kind: 'state',
       workspaceOwned: true,
