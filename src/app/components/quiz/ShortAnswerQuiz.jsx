@@ -1,5 +1,8 @@
-import React, { useState } from 'react'
+import React, { useContext, useState } from 'react'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
+import { canShowResponses, getShownResponses } from '../../../shared/shownResponses'
+import { PollTaskClassContext } from './PollTaskClassContext'
+import ShownResponsesWall from './ShownResponsesWall'
 import { baseStyles as s, interactionStyles as sm, QuestionPanel } from './quizUtils'
 
 export default function ShortAnswerQuiz({
@@ -12,6 +15,7 @@ export default function ShortAnswerQuiz({
   showQuestion,
   showResult,
 }) {
+  const classView = useContext(PollTaskClassContext)
   const [localAnswer, setLocalAnswer] = useState(
     typeof selectedAnswer === 'string' ? selectedAnswer : ''
   )
@@ -24,6 +28,17 @@ export default function ShortAnswerQuiz({
     const trimmed = localAnswer.trim()
     if (!trimmed) return
     onSelectAnswer?.(trimmed)
+  }
+
+  // On the presentation window, a task whose answers the teacher can show swaps the answer box
+  // for the answers picked so far (src/shared/shownResponses.js).
+  if (classView?.presentation && canShowResponses(task)) {
+    return (
+      <div style={s.wrap}>
+        {showQuestion && <QuestionPanel task={task} />}
+        <ShownResponsesWall responses={getShownResponses(classView.session, task.id)} />
+      </div>
+    )
   }
 
   const submittedAnswer = localAnswer || (typeof selectedAnswer === 'string' ? selectedAnswer : '')

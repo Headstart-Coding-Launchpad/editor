@@ -381,6 +381,34 @@ describe('presentation annotations (liveInk)', () => {
   })
 })
 
+describe('shown short answers', () => {
+  const path = `sessions/${LESSON}/shownResponses/r1`
+  const entry = {
+    taskId: 'show-and-tell',
+    anonymousId: STUDENT_ID,
+    text: 'I made a maze game',
+    showName: false,
+    shownAt: 1000,
+  }
+
+  it('lets teachers show and hide an answer, but not students', async () => {
+    await assertSucceeds(ref(as.teacher, path).set(entry))
+    await assertSucceeds(ref(as.teacher, `${path}/hiddenAt`).set(2000))
+    await assertSucceeds(ref(as.teacher, `${path}/showName`).set(true))
+    await assertFails(ref(as.student, `sessions/${LESSON}/shownResponses/r2`).set(entry))
+    await assertFails(ref(as.student, `${path}/hiddenAt`).set(3000))
+  })
+
+  it('rejects malformed entries', async () => {
+    await assertFails(ref(as.teacher, path).set({ ...entry, text: '' }))
+    await assertFails(ref(as.teacher, path).set({ ...entry, text: 'x'.repeat(1001) }))
+    await assertFails(ref(as.teacher, path).set({ ...entry, showName: 'yes' }))
+    await assertFails(ref(as.teacher, path).set({ ...entry, extra: 1 }))
+    const { taskId: _taskId, ...noTask } = entry
+    await assertFails(ref(as.teacher, path).set(noTask))
+  })
+})
+
 describe('live class polls', () => {
   const pollPath = `sessions/${LESSON}/polls/p1`
   const poll = {

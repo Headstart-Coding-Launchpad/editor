@@ -3,6 +3,9 @@
 // answer is accepted and the task is ungraded (reports show "not applicable").
 import { defineQuizActivity, gradeAnswerCheck, gradeResult } from '../quiz/quizActivity.js'
 
+// `showResponses` values: the teacher picks answers to show on the presentation window.
+export const SHOW_RESPONSES_MODES = Object.freeze(['teacher_picks'])
+
 export default defineQuizActivity('short_answer', {
   description: 'Type a short written answer, optionally marked by an answer check.',
 
@@ -13,6 +16,21 @@ export default defineQuizActivity('short_answer', {
         type: 'object',
         authored: true,
         description: 'Optional answer_* check with a value; without it any answer is accepted.',
+      },
+      {
+        name: 'showResponses',
+        type: 'string',
+        values: SHOW_RESPONSES_MODES,
+        authored: true,
+        description:
+          'teacher_picks (open answers only, no check): in a live lesson the teacher picks answers to show on the presentation window. Omit to keep answers teacher-only.',
+      },
+      {
+        name: 'anonymiseResponses',
+        type: 'boolean',
+        authored: true,
+        description:
+          'Default true: answers shown with showResponses have no name; the teacher can turn a name on per answer. false shows names by default.',
       },
     ],
   },
@@ -32,6 +50,7 @@ export default defineQuizActivity('short_answer', {
   deserialize: (raw) => (typeof raw === 'string' ? raw : ''),
 
   isGraded: (task) => task?.check != null,
+  showsResponses: (task) => task?.check == null && task?.showResponses === 'teacher_picks',
   grade: (task, answer) =>
     gradeResult(
       task,

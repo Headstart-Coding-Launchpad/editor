@@ -103,6 +103,9 @@ export default function TeacherView({ lessonId }) {
     requestFullscreenForStudent,
     nudgeStudent,
     sendThumbsUp,
+    showResponse,
+    hideResponse,
+    setShownResponseName,
     nudgeAwayStudents,
     admitJoiningStudent,
     setAutoRevealStage,
@@ -918,6 +921,9 @@ export default function TeacherView({ lessonId }) {
             onRequestFullscreenStudent={requestFullscreenForStudent}
             onNudgeStudent={nudgeStudent}
             onThumbsUpStudent={sendThumbsUp}
+            onShowResponse={showResponse}
+            onHideResponse={hideResponse}
+            onSetShownResponseName={setShownResponseName}
             onNudgeAway={nudgeAwayStudents}
             onSetAutoReveal={setAutoRevealStage}
             badgeSuggestions={badgeSuggestions}

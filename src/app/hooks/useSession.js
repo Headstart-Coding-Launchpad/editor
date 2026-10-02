@@ -37,6 +37,7 @@ import {
   archiveWorkFields,
   normaliseSessionArchive,
 } from '../../badges/sessionArchive'
+import { findShownResponse, normalizeShownText } from '../../shared/shownResponses'
 import { AUTO_CHECK_LEAVE, AUTO_CHECK_RESULTS, realAttemptEntries } from '../../shared/autoCheck'
 import { liveInkPath } from '../liveInk/liveInkData'
 import { normalizePollDraft, pollChoiceIndex } from '../../shared/classPolls.js'
@@ -178,6 +179,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       // Live class polls (src/shared/classPolls.js) belong to one session.
       polls: null,
       activePollId: null,
+      // Shown short answers (src/shared/shownResponses.js) belong to one session.
+      shownResponses: null,
       // Live badges: decisions, the tutor's badge toggles and the students' signals are
       // session-scoped, so a new session starts without them (set() replaces the node anyway;
       // listed so the reset is explicit).
@@ -247,6 +250,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       // the students' answers go with the students node.
       polls: null,
       activePollId: null,
+      shownResponses: null,
     })
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
     await clearLiveInkQuietly()
@@ -360,6 +364,36 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`polls/${pollId}/closedAt`] = Date.now()
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
+  }
+
+  // ─── Shown short answers (src/shared/shownResponses.js) ───────────────────
+  // Teacher-only: puts a copy of one student's answer on the presentation window. Showing an
+  // answer that was hidden reuses its entry (one per student per task).
+  async function showResponse(taskId, anonymousId, text, showName) {
+    const value = normalizeShownText(text)
+    if (taskId == null || taskId === '' || !anonymousId || !value) return
+    const existing = findShownResponse(session, taskId, anonymousId)
+    const responseId =
+      existing?.responseId ?? push(ref(db, `sessions/${lessonId}/shownResponses`)).key
+    await set(ref(db, `sessions/${lessonId}/shownResponses/${responseId}`), {
+      taskId: String(taskId),
+      anonymousId,
+      text: value,
+      showName: !!showName,
+      shownAt: Date.now(),
+      hiddenAt: null,
+    })
+  }
+
+  // Takes the answer off the presentation window; the entry stays for the report.
+  async function hideResponse(responseId) {
+    if (!responseId) return
+    await set(ref(db, `sessions/${lessonId}/shownResponses/${responseId}/hiddenAt`), Date.now())
+  }
+
+  async function setShownResponseName(responseId, showName) {
+    if (!responseId) return
+    await set(ref(db, `sessions/${lessonId}/shownResponses/${responseId}/showName`), !!showName)
   }
 
   // Student: pick (or change) an answer while the poll is open.
@@ -1881,6 +1915,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
     closePoll,
     setPollShowResults,
     dismissPoll,
+    showResponse,
+    hideResponse,
+    setShownResponseName,
     setAutoRevealStage,
     setExplainerShowComplete,
     setActiveStudentView,

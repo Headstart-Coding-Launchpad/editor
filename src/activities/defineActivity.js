@@ -105,6 +105,10 @@ export function defineActivity(def) {
     liveChannel: 'answer',
     classifyChange: () => 'discrete',
     isGraded: () => true,
+    // true when the teacher may show a student's answer on the presentation window
+    // (src/shared/shownResponses.js): open short answers with `showResponses: teacher_picks`.
+    // Graded answers are never broadcast.
+    showsResponses: () => false,
     checks: [],
     buildSubmission: (task, state) => state,
     getProgress: () => null,

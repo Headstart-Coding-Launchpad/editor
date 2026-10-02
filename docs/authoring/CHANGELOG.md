@@ -39,6 +39,21 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-02
 
+### Open short answers: the teacher can show chosen answers on the presentation window
+
+- New fields on an open `short_answer` quiz (no `check`): `showResponses: teacher_picks` gives
+  each student card a **📺 Show** button in a live lesson, and the picked answers replace the
+  answer box on the presentation window. `anonymiseResponses` (default `true`) shows them
+  without names; `false` shows names by default. The teacher can turn a name on or off per
+  answer either way. Students' screens don't change. See
+  [quiz-tasks.md](quiz-tasks.md#showing-answers-on-the-presentation-window).
+- Validation rejects `showResponses` on a short answer with a `check` (graded answers are never
+  broadcast), a value other than `teacher_picks`, and a non-boolean `anonymiseResponses`.
+- Session reports: the task summary gains `shownResponses[]` (`studentLabel`, `text`,
+  `showName`, `shownAt`, `hiddenAt`). See
+  [session-reports.md](session-reports.md#ungraded-tasks).
+- Affects: quiz_short_answer · Existing lessons: no changes needed · Resolves: authoring-requests/2026-10-02-open-short-answer-teacher-shows-chosen-answers-on-the-presen.md
+
 ### Scratch: per-sprite sounds, and Costumes / Sounds tabs
 
 - Sprites take an optional `sounds: [{ name, synth } | { name, audio }]` list. `synth` is one of

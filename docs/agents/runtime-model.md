@@ -10,6 +10,7 @@ The top-level `liveInk/{lessonId}` node (Presentation annotations) was likewise 
 
 The session-level `classCountdown` node (the teacher's class countdown) was also added with explicit user approval.
 The live class poll fields (`polls`, `activePollId`, `students.{id}.pollResponses`) were added with explicit user approval (teacher feedback, 2026-10-01); see the `polls/{pollId}` write rule and "Class poll answers" below.
+The teacher-written `shownResponses` node was added for the 2026-10-02 authoring request "Open short answer: teacher shows chosen answers on the presentation window"; see `shownResponses/{responseId}` below.
 
 ```json
 {
@@ -40,6 +41,9 @@ The live class poll fields (`polls`, `activePollId`, `students.{id}.pollResponse
         "{pollId}": { "question": "string (≤200)", "options": ["2-6 strings (≤100 each)"], "status": "open | closed", "showResults": "true (public: live bars on the presentation, students after voting) | false (private)", "createdAt": 1234567890, "closedAt": "number | absent while open" }
       },
       "activePollId": "string | null (the poll on students' screens: open, or closed; null after Remove from screens; polls and activePollId reset on createSession/endSession)",
+      "shownResponses": {
+        "{responseId}": { "taskId": "string", "anonymousId": "string", "text": "string (1-1000, a copy of the answer when shown)", "showName": "boolean", "shownAt": 1234567890, "hiddenAt": "number | absent while on screen" }
+      },
       "teacherLive": {
         "active": true,
         "source": "teacher | student",
@@ -314,6 +318,7 @@ Teacher writes:
 - `videoCallLink` (written by `updateVideoCallLink`, validated as http(s)-only — throws on any other scheme or malformed URL; settable any time during a session via the "📹 Video Call" popover in `TeacherSessionControls.jsx`; reset to `null` on `createSession`/`restartSession`/`endSession`) — shown to students in `WaitingRoom.jsx` whenever set
 - `videoCallBroadcastAt` (stamped by `broadcastVideoCallLink` from the "📹 Send to all" button beside the Video Call control in `TeacherSessionControls.jsx`, only offered while a `videoCallLink` is set and the session hasn't ended; reset to `null` on `createSession`/`endSession`) — a class-wide video-call push. Every student screen that can show the prompt reacts: name entry (those students have no student record yet, so this is the only push that reaches them), the waiting room, and the lesson/sandbox page. See "Video call prompt" in `docs/agents/classroom-behaviours.md`
 - `polls/{pollId}`, `activePollId` — live class polls from the top bar's "📊 Poll" popover (`TeacherPollControl.jsx`): `launchPoll` (closes any poll still open, writes the new one with `status: 'open'`, `showResults: true` — or `false` when the teacher ticked "Keep results private" (`draft.keepPrivate`) — and makes it `activePollId`), `closePoll`, `setPollShowResults`, `dismissPoll` (clears `activePollId`, closing the poll first if open). Shapes are validated in `database.rules.json`; logic in `src/shared/classPolls.js`. Not touched by `setTaskId`; reset on `createSession`/`endSession` (the report is built first)
+- `shownResponses/{responseId}` — answers to an open short-answer task with `showResponses: teacher_picks` that the teacher showed on the presentation window from the student cards (`src/shared/shownResponses.js`): `showResponse(taskId, anonymousId, text, showName)` (one entry per student per task, reused if shown again, clearing `hiddenAt`), `hideResponse` (sets `hiddenAt`; the entry stays for the report), `setShownResponseName`. Teacher-only writes, validated in `database.rules.json`. Read by the presentation window (`ShortAnswerQuiz` via `PollTaskClassContext`) and by `buildSessionReport` into the task summary's `shownResponses`. Not touched by `setTaskId`; reset on `createSession`/`endSession` (the report is built first)
 - `sandboxCode`, `sandboxCodePushedAt`, `sandboxFiles`, `sandboxFilesUpdatedAt`
 - `sandboxPreviousTaskId` (written by `enterSandbox`, consumed and cleared by `exitSandbox` — see `docs/agents/classroom-behaviours.md`)
 - `sandboxExplainer` (pushed via `pushSandboxExplainer`, cleared on `createSession`/`endSession`/entering sandbox) and `explainerShowComplete` (toggled via `setExplainerShowComplete`; reset to `false` on `setTaskId`, `createSession`, `endSession` — see `docs/agents/classroom-behaviours.md` for the student-facing "Complete Code" reveal this gates)

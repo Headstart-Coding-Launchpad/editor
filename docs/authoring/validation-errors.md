@@ -109,6 +109,9 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … is a poll but has duplicate option ids` | Two poll options share an `id`. | Give each option its own id. |
 | `Task … is a poll but has a check (polls are never marked)` | A poll has a `check` or `answer:`. Polls have no right answer. | Remove `check` / `answer:`. Use `quizType: multiple_choice` for a marked question. |
 | `Task … is a poll but showResults is not true or false` | A poll's `showResults` is set to something other than `true` or `false`. | Use `showResults: false` to keep the class split private, or remove the field (default `true`). |
+| `Task … is a short-answer quiz but showResponses is not teacher_picks` | `showResponses` has a value other than `teacher_picks`. | Use `showResponses: teacher_picks`, or remove the field to keep answers teacher-only. |
+| `Task … is a short-answer quiz with a check but has showResponses (only open answers with no check can be shown)` | A graded short answer (with a `check`) asks for its answers to be shown. Graded quizzes never broadcast a student's answer. | Remove `check` to make it an open discussion question, or remove `showResponses`. |
+| `Task … is a short-answer quiz but anonymiseResponses is not true or false` | `anonymiseResponses` is set to something other than `true` or `false`. | Use `anonymiseResponses: false` to show names by default, or remove the field (default `true`). |
 
 ## Activity tasks
 

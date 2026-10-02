@@ -189,6 +189,37 @@ Omit `check` — any submitted text completes the task. The teacher sees each st
   explainer: Write one thing you found difficult in today's lesson.
 ```
 
+#### Showing answers on the presentation window
+
+For a discussion task (an opening "Show and tell", a closing "Where could you use this?"), add
+`showResponses: teacher_picks`. In a live lesson each student card then gets a **📺 Show**
+button once that student has answered: the teacher picks the answers to put on the
+presentation window, where they replace the answer box under the question. Answers are shown
+without names; the card's **👤** toggle turns a name on for one answer, and
+`anonymiseResponses: false` makes names the default. **📺 On screen** takes an answer off
+again. Students' own screens don't change. The session report lists every answer shown on the
+task summary (`shownResponses`).
+
+| Field | Values | Default |
+|---|---|---|
+| `showResponses` | `teacher_picks` | omitted: answers stay teacher-only |
+| `anonymiseResponses` | `true` / `false` | `true` (no names) |
+
+Only an open short answer (no `check`) can show answers: a graded quiz never broadcasts a
+student's answer, and validation rejects `showResponses` alongside a `check`. In the Builder:
+untick **Require a correct answer**, then tick **Teacher can show answers on the presentation
+window**.
+
+```yaml
+- type: quiz
+  quizType: short_answer
+  taskMode: live
+  priority: optional
+  title: Show and tell
+  explainer: What have you made, tried or played with since last lesson?
+  showResponses: teacher_picks
+```
+
 ---
 
 ## Confidence
