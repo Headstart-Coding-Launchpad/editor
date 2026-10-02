@@ -1759,7 +1759,11 @@ export default function StudentView({
       {peerHelpError && (
         <div style={s.peerHelpingBar} role="alert">
           <span>{peerHelpError}</span>
-          <button type="button" className="btn-ghost" onClick={() => setPeerHelpError(null)}>
+          <button
+            type="button"
+            className="btn-ghost-outline"
+            onClick={() => setPeerHelpError(null)}
+          >
             Dismiss
           </button>
         </div>
@@ -2062,6 +2066,7 @@ const s = {
     fontSize: 13,
     fontWeight: 600,
     background: 'rgba(13, 148, 136, 0.10)',
+    color: 'var(--colour-text)',
     borderBottom: '2px solid #0d9488',
     flexShrink: 0,
   },

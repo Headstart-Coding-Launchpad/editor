@@ -52,6 +52,7 @@ const s = {
     padding: '6px 12px',
     background: 'rgba(124, 58, 237, 0.08)',
     borderBottom: '2px solid #7c3aed',
+    color: 'var(--colour-text)',
     flexShrink: 0,
   },
   text: { fontSize: 13, fontWeight: 600 },

@@ -53,7 +53,6 @@ export default function HelpRequestButton({
         <div style={s.menu}>
           <button
             type="button"
-            className="btn-ghost"
             style={s.option}
             onClick={() => {
               close()
@@ -64,7 +63,6 @@ export default function HelpRequestButton({
           </button>
           <button
             type="button"
-            className="btn-ghost"
             style={s.option}
             onClick={() => {
               close()
@@ -84,7 +82,22 @@ export default function HelpRequestButton({
 
 const s = {
   panel: { right: 0, left: 'auto', minWidth: 260 },
-  menu: { display: 'flex', flexDirection: 'column', gap: 4, padding: 4 },
-  option: { textAlign: 'left', fontSize: 13, padding: '6px 10px', whiteSpace: 'normal' },
+  // The menu opens from the dark top bar, so its text colour is set here, not inherited.
+  menu: { display: 'flex', flexDirection: 'column', gap: 6, color: 'var(--colour-text)' },
+  // The dropdown menus' item look (StudentModal's toolBtn).
+  option: {
+    width: '100%',
+    padding: '7px 12px',
+    background: 'rgba(98,34,204,0.06)',
+    color: 'var(--colour-primary-dark)',
+    border: '1px solid rgba(98,34,204,0.18)',
+    borderRadius: 6,
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: 13,
+    cursor: 'pointer',
+    textAlign: 'left',
+    whiteSpace: 'normal',
+  },
   note: { fontSize: 11, color: 'var(--colour-muted)', padding: '2px 10px 4px' },
 }

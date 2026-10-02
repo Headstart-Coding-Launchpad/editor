@@ -52,7 +52,7 @@ export default function PeerHelpInbox({
         <strong>🤝 Help from a classmate</strong>
         <button
           type="button"
-          className="btn-ghost"
+          className="btn-ghost-outline"
           style={s.small}
           aria-expanded={!collapsed}
           onClick={() => setCollapsed((c) => !c)}
@@ -128,7 +128,7 @@ export default function PeerHelpInbox({
                       {item.response === 'declined' && <span style={s.muted}>No thanks</span>}
                       <button
                         type="button"
-                        className="btn-ghost"
+                        className="btn-ghost-outline"
                         style={s.small}
                         title="Hide this and tell your teacher"
                         onClick={() => onNotOk(item.itemId)}
@@ -146,7 +146,7 @@ export default function PeerHelpInbox({
             {!ended && (
               <button
                 type="button"
-                className="btn-ghost"
+                className="btn-ghost-outline"
                 style={s.small}
                 title="Stop and tell your teacher"
                 onClick={() => onNotOk(null)}
@@ -180,6 +180,7 @@ const s = {
     maxHeight: '60vh',
     overflowY: 'auto',
     background: 'var(--ui-surface)',
+    color: 'var(--colour-text)',
     border: '2px solid #0d9488',
     borderRadius: 12,
     padding: 12,

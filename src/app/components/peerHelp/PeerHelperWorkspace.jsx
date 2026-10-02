@@ -115,6 +115,7 @@ const s = {
     flexWrap: 'wrap',
     padding: '6px 12px',
     background: 'rgba(13, 148, 136, 0.10)',
+    color: 'var(--colour-text)',
     borderBottom: '2px solid #0d9488',
     flexShrink: 0,
   },

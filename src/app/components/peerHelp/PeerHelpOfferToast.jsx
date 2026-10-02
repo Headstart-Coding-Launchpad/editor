@@ -38,6 +38,7 @@ const s = {
     zIndex: 900,
     maxWidth: 'min(360px, calc(100vw - 32px))',
     background: 'var(--ui-surface)',
+    color: 'var(--colour-text)',
     border: '2px solid #0d9488',
     borderRadius: 12,
     padding: 12,

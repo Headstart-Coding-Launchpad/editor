@@ -45,7 +45,7 @@ const s = {
   },
   card: {
     background: 'var(--ui-surface)',
-    color: 'var(--colour-text, inherit)',
+    color: 'var(--colour-text)',
     borderRadius: 12,
     padding: 20,
     maxWidth: 420,

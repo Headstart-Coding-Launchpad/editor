@@ -205,6 +205,8 @@ const s = {
     gap: 12,
     padding: 10,
     maxHeight: '70vh',
+    // Opens from the dark top bar: set the text colour rather than inherit white.
+    color: 'var(--colour-text)',
     overflowY: 'auto',
   },
   section: { display: 'flex', flexDirection: 'column', gap: 6 },

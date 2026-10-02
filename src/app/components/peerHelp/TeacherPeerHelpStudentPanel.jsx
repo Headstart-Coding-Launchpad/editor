@@ -128,6 +128,7 @@ const s = {
     borderRadius: 8,
     background: 'rgba(13, 148, 136, 0.08)',
     border: '1px solid rgba(13, 148, 136, 0.35)',
+    color: 'var(--colour-text)',
     fontSize: 13,
   },
   block: { display: 'flex', flexDirection: 'column', gap: 6 },

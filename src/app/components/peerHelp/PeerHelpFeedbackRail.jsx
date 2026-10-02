@@ -281,7 +281,7 @@ export default function PeerHelpFeedbackRail({
                   />
                   <button
                     type="button"
-                    className="btn-ghost"
+                    className="btn-ghost-outline"
                     aria-label="Remove this change"
                     onClick={() => setDraftEdits((edits) => edits.filter((_, i) => i !== index))}
                   >
@@ -366,6 +366,7 @@ const s = {
     minWidth: 260,
     borderLeft: '1px solid var(--ui-border)',
     background: 'var(--ui-surface-soft)',
+    color: 'var(--colour-text)',
     overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
@@ -401,6 +402,7 @@ const s = {
     textAlign: 'left',
     cursor: 'pointer',
     fontSize: 12,
+    color: 'inherit',
   },
   lineSelected: {
     background: 'var(--ui-surface-tint)',
