@@ -249,6 +249,58 @@
           }
         },
 
+        // Peer help offers (src/shared/peerHelp.js). Visible to the class, and deliberately
+        // never naming either student: who is stuck and who is helping live in the
+        // teacher-only peerHelp node below. The teacher creates and ends offers. The helper
+        // stamps claimedAt in the same update as claiming peerHelp/.../helperId; either
+        // student in the pairing may stamp endedAt.
+        "peerHelpOffers": {
+          "$requestId": {
+            "taskId": {
+              ".validate": "newData.isNumber() || (newData.isString() && newData.val().length <= 128)"
+            },
+            "lessonType": {
+              ".validate": "newData.isString() && newData.val().length <= 32"
+            },
+            "offeredAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "claimedAt": {
+              ".write": "auth != null && !data.exists() && newData.parent().parent().parent().parent().parent().child('peerHelp').child($lessonId).child($requestId).child('helperId').val() === auth.uid",
+              ".validate": "newData.isNumber()"
+            },
+            "endedAt": {
+              ".write": "auth != null && !data.exists() && (root.child('peerHelp').child($lessonId).child($requestId).child('stuckId').val() === auth.uid || root.child('peerHelp').child($lessonId).child($requestId).child('helperId').val() === auth.uid)",
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+
+        // Teacher-only peer help switches: notes on/off for this session, and the
+        // "End all peer help" pause.
+        "peerHelpSettings": {
+          "notesEnabled": {
+            ".validate": "newData.isBoolean()"
+          },
+          "pausedAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+
+        // Students the teacher switched off as helpers for this session. Kept off the
+        // students node, which each student can rewrite.
+        "peerHelperOff": {
+          "$anonymousId": {
+            ".validate": "newData.isBoolean()"
+          }
+        },
+
         // The teacher's class countdown ({ startedAt, endsAt, durationMs }, server-time ms) or
         // absent. Teacher/admin write is inherited from $lessonId; students cannot write it.
         "classCountdown": {
@@ -285,6 +337,223 @@
         // Once approved, the class can read it. Only teachers/admins write.
         "approved": {
           ".read": true
+        }
+      }
+    },
+
+    // ─── Peer help (src/shared/peerHelp.js) ─────────────────────────────────
+    // Outside "sessions" so none of it streams to the class. Teachers/admins read and
+    // write all of it. A student only ever reads the parts of one request they belong to,
+    // and the request id is random, so neither student can find out who the other is.
+
+    // A stuck student's opt-in ("let a classmate help") and their request id.
+    "peerHelpRequests": {
+      "$lessonId": {
+        ".read": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+        ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+        "$anonymousId": {
+          ".read": "auth != null && auth.uid === $anonymousId",
+          ".write": "auth != null && auth.uid === $anonymousId",
+          ".validate": "newData.hasChildren(['requestId', 'at'])",
+          "requestId": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 64"
+          },
+          "taskId": {
+            ".validate": "newData.isNumber() || (newData.isString() && newData.val().length <= 128)"
+          },
+          "at": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+
+    // The request a helper is working on, so their client finds it again after a reload.
+    "peerHelpHelping": {
+      "$lessonId": {
+        ".read": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+        ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+        "$anonymousId": {
+          ".read": "auth != null && auth.uid === $anonymousId",
+          ".write": "auth != null && auth.uid === $anonymousId",
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 64"
+        }
+      }
+    },
+
+    // The helper promise, agreed once per session before a first claim.
+    "peerHelpPromises": {
+      "$lessonId": {
+        ".read": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+        ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+        "$anonymousId": {
+          ".read": "auth != null && auth.uid === $anonymousId",
+          ".write": "auth != null && auth.uid === $anonymousId",
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+
+    "peerHelp": {
+      "$lessonId": {
+        ".read": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+        ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+        "$requestId": {
+          // Written by the stuck student when they ask for help, once.
+          "stuckId": {
+            ".read": "auth != null && data.val() === auth.uid",
+            ".write": "auth != null && !data.exists() && newData.val() === auth.uid",
+            ".validate": "newData.isString()"
+          },
+          // The claim. Written once, by a student who passed the current task, is not the
+          // stuck student, has made the helper promise and is not switched off, while the
+          // offer is open and peer help is not paused. Readable only by that helper.
+          "helperId": {
+            ".read": "auth != null && data.val() === auth.uid",
+            ".write": "auth != null && !data.exists() && newData.val() === auth.uid && data.parent().child('stuckId').val() !== auth.uid && root.child('sessions').child($lessonId).child('peerHelpOffers').child($requestId).exists() && !root.child('sessions').child($lessonId).child('peerHelpOffers').child($requestId).child('endedAt').exists() && !root.child('sessions').child($lessonId).child('peerHelpOffers').child($requestId).child('claimedAt').exists() && root.child('sessions').child($lessonId).child('peerHelpOffers').child($requestId).child('taskId').val() === root.child('sessions').child($lessonId).child('currentTaskId').val() && (root.child('sessions').child($lessonId).child('students').child(auth.uid).child('checkPassed').val() === true || root.child('sessions').child($lessonId).child('students').child(auth.uid).child('checkOverridePassed').val() === true) && root.child('sessions').child($lessonId).child('students').child(auth.uid).child('checkOverridePassed').val() !== false && !root.child('sessions').child($lessonId).child('peerHelperOff').child(auth.uid).exists() && !root.child('sessions').child($lessonId).child('peerHelpSettings').child('pausedAt').exists() && root.child('peerHelpPromises').child($lessonId).child(auth.uid).exists()",
+            ".validate": "newData.isString()"
+          },
+          // The stuck student's work, written by them (when asking, and on "Get latest").
+          "snapshot": {
+            ".read": "auth != null && (root.child('peerHelp').child($lessonId).child($requestId).child('stuckId').val() === auth.uid || root.child('peerHelp').child($lessonId).child($requestId).child('helperId').val() === auth.uid)",
+            ".write": "auth != null && (root.child('peerHelp').child($lessonId).child($requestId).child('stuckId').val() === auth.uid || newData.parent().child('stuckId').val() === auth.uid) && !root.child('peerHelp').child($lessonId).child($requestId).child('state').child('endedAt').exists()"
+          },
+          "state": {
+            ".read": "auth != null && (root.child('peerHelp').child($lessonId).child($requestId).child('stuckId').val() === auth.uid || root.child('peerHelp').child($lessonId).child($requestId).child('helperId').val() === auth.uid)",
+            "endedAt": {
+              ".write": "auth != null && !data.exists() && (root.child('peerHelp').child($lessonId).child($requestId).child('stuckId').val() === auth.uid || root.child('peerHelp').child($lessonId).child($requestId).child('helperId').val() === auth.uid)",
+              ".validate": "newData.isNumber()"
+            },
+            "endedBy": {
+              ".write": "auth != null && !data.exists() && ((root.child('peerHelp').child($lessonId).child($requestId).child('stuckId').val() === auth.uid && newData.val() === 'stuck') || (root.child('peerHelp').child($lessonId).child($requestId).child('helperId').val() === auth.uid && newData.val() === 'helper'))",
+              ".validate": "newData.isString() && newData.val().matches(/^(stuck|helper|teacher|task_changed)$/)"
+            },
+            "snapshotRequestedAt": {
+              ".write": "auth != null && root.child('peerHelp').child($lessonId).child($requestId).child('helperId').val() === auth.uid && !root.child('peerHelp').child($lessonId).child($requestId).child('state').child('endedAt').exists()",
+              ".validate": "newData.isNumber()"
+            },
+            // The stuck student's "Not OK": an alert for the teacher, at any time.
+            "notOkAt": {
+              ".write": "auth != null && root.child('peerHelp').child($lessonId).child($requestId).child('stuckId').val() === auth.uid",
+              ".validate": "newData.isNumber()"
+            },
+            "notOkSeenAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          // What the stuck student sees. The helper may only add thumbs and preset hints
+          // (ids, never text). Edits and notes arrive here only when the teacher approves
+          // them. The stuck student may only respond.
+          "inbox": {
+            ".read": "auth != null && (root.child('peerHelp').child($lessonId).child($requestId).child('stuckId').val() === auth.uid || root.child('peerHelp').child($lessonId).child($requestId).child('helperId').val() === auth.uid)",
+            "$itemId": {
+              ".write": "auth != null && !data.exists() && root.child('peerHelp').child($lessonId).child($requestId).child('helperId').val() === auth.uid && !root.child('peerHelp').child($lessonId).child($requestId).child('state').child('endedAt').exists() && (newData.child('kind').val() === 'mark' || newData.child('kind').val() === 'hint')",
+              ".validate": "newData.hasChildren(['kind', 'createdAt'])",
+              "kind": {
+                ".validate": "newData.isString() && newData.val().matches(/^(mark|hint|edit|note)$/)"
+              },
+              "createdAt": {
+                ".validate": "newData.isNumber()"
+              },
+              "file": {
+                ".validate": "newData.isString() && newData.val().length <= 128"
+              },
+              "line": {
+                ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 100000"
+              },
+              "verdict": {
+                ".validate": "newData.val() === 'up' || newData.val() === 'down'"
+              },
+              "hintId": {
+                ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_-]{1,40}$/)"
+              },
+              "text": {
+                ".validate": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin') && newData.isString() && newData.val().length <= 140"
+              },
+              "edits": {
+                ".validate": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')"
+              },
+              "reviewItemId": {
+                ".validate": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin') && newData.isString() && newData.val().length <= 64"
+              },
+              "response": {
+                ".write": "auth != null && root.child('peerHelp').child($lessonId).child($requestId).child('stuckId').val() === auth.uid",
+                ".validate": "newData.isString() && newData.val().matches(/^(useful|accepted|declined|not_ok)$/) && (root.child('peerHelp').child($lessonId).child($requestId).child('stuckId').val() === auth.uid || auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin'))"
+              },
+              "respondedAt": {
+                ".write": "auth != null && root.child('peerHelp').child($lessonId).child($requestId).child('stuckId').val() === auth.uid",
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          // Suggested edits and notes waiting for the teacher, plus notes the word filter
+          // blocked (kept for the teacher). The helper creates them; only the teacher decides.
+          "review": {
+            ".read": "auth != null && root.child('peerHelp').child($lessonId).child($requestId).child('helperId').val() === auth.uid",
+            "$itemId": {
+              ".write": "auth != null && !data.exists() && root.child('peerHelp').child($lessonId).child($requestId).child('helperId').val() === auth.uid && !root.child('peerHelp').child($lessonId).child($requestId).child('state').child('endedAt').exists()",
+              ".validate": "newData.hasChildren(['kind', 'status', 'createdAt']) && (newData.child('kind').val() !== 'note' || newData.child('status').val() === 'blocked' || root.child('sessions').child($lessonId).child('peerHelpSettings').child('notesEnabled').val() === true)",
+              "kind": {
+                ".validate": "newData.isString() && newData.val().matches(/^(edit|note)$/)"
+              },
+              "status": {
+                ".validate": "newData.isString() && (newData.val() === 'pending' || newData.val() === 'blocked' || (auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin') && (newData.val() === 'approved' || newData.val() === 'rejected')))"
+              },
+              "createdAt": {
+                ".validate": "newData.isNumber()"
+              },
+              "decidedAt": {
+                ".validate": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin') && newData.isNumber()"
+              },
+              "file": {
+                ".validate": "newData.isString() && newData.val().length <= 128"
+              },
+              "line": {
+                ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 100000"
+              },
+              "text": {
+                ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 140"
+              },
+              "blockedReason": {
+                ".validate": "newData.isString() && newData.val().matches(/^(language|contact)$/)"
+              },
+              "edits": {
+                "$index": {
+                  ".validate": "$index.matches(/^[0-2]$/) && newData.hasChildren(['line', 'op', 'text', 'before'])",
+                  "line": {
+                    ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 100000"
+                  },
+                  "op": {
+                    ".validate": "newData.val() === 'replace' || newData.val() === 'insert'"
+                  },
+                  "text": {
+                    ".validate": "newData.isString() && newData.val().length <= 200"
+                  },
+                  "before": {
+                    ".validate": "newData.isString() && newData.val().length <= 2000"
+                  },
+                  "$other": {
+                    ".validate": false
+                  }
+                }
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
         }
       }
     },
