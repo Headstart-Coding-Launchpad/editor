@@ -1583,13 +1583,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   async function writeStudentInteraction(
     anonymousId,
-    { selection, activity, activeFile, viewingShareId } = {}
+    { selection, activity, activeFile, viewingShareId, watchingLive } = {}
   ) {
     const updates = {}
     if (selection !== undefined) updates.currentSelection = selection
     if (activity !== undefined) updates.currentActivity = activity
     if (activeFile !== undefined) updates.currentActiveFile = activeFile
     if (viewingShareId !== undefined) updates.viewingShareId = viewingShareId
+    // 'look' | 'try' | null: watching or trying a "Show to class" broadcast (teacher's roster).
+    if (watchingLive !== undefined) updates.watchingLive = watchingLive
     if (Object.keys(updates).length > 0) {
       await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), updates)
     }

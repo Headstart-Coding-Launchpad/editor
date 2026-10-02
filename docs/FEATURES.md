@@ -85,6 +85,11 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Live badges in the session report: a **Coding moments** section (the class wall grouped by badge, **Copy class summary** with student labels, and suggested / awarded / auto / manual / dismissed / revoked counts per badge); new task columns (time to first edit median and range, students with a console error, Topic Library opens student vs tutor-sent, and the first real pass with how long after the task opened); per student their moments, topics opened, shortcuts, personal- and teacher-sandbox activity, and per task their first edit, error runs, different failed tries and "first real pass in class"; quiz-group first-try scores with the class median; and each teacher-sandbox visit as a "possible lesson gap" callout ("The class spent 14 min in the teacher sandbox after …") that expands to the tutor's explainer and pushes and each student's last sandbox code. All of it is in the YAML export. A report near Firestore's 1 MiB limit drops the students' sandbox code first and says so
 - Rate any task live, while teaching it: a "⭐ Rate this task" button in the teacher's top bar (showing "⭐ N" once rated) opens a popover that lets the teacher give the current task a 1-5 star rating plus "what worked well" / "what didn't work" notes as the class works through it, rather than waiting until the session ends. Each task's rating is folded into that task's row in the session report
 
+### What Students Are Doing
+- Each student card has a "Now:" line for what the student is doing: 🤝 helping Sam / helped by Ali, 👀 looking at or ▶ trying the work on show, 📤 viewing shared work, 📖 reading a topic, 🧪 in their own sandbox
+- A one-line class strip above the cards sums it up ("🤝 Hal → Sam · 👀 6 looking at Sam's work"); hover for names, click to outline those cards
+- Card status chips are single icons (✓ ✕ ✋ 💤 📋 ⛶ 📤 💡 🪟 ✏️), with the words on hover
+
 ### Task Navigator
 - Task list with group collapse
 - Aggregate run count and check-passed count per task

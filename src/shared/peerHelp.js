@@ -255,24 +255,36 @@ export function notOkAlerts(peerHelp) {
 }
 
 /**
- * Each student's peer help role right now, for the teacher's cards:
- * 'asked' (opted in, not offered yet) | 'offered' | 'being_helped' | 'helping'.
+ * Each student's peer help role right now, with their partner, for the teacher:
+ * { [id]: { role, partnerId, requestId } } where role is 'asked' (opted in, not offered yet) |
+ * 'offered' | 'being_helped' | 'helping', and partnerId the other student (null until claimed).
  */
-export function peerHelpRolesByStudent({ requests, peerHelp, offers }) {
-  const roles = {}
+export function peerHelpPairsByStudent({ requests, peerHelp, offers }) {
+  const pairs = {}
   for (const [studentId, request] of Object.entries(requests ?? {})) {
     const entry = peerHelp?.[request?.requestId]
     if (!entry || entry.state?.endedAt) continue
     const offer = offers?.[request.requestId]
     if (offer?.endedAt != null) continue
-    roles[studentId] = !offer ? 'asked' : offer.claimedAt ? 'being_helped' : 'offered'
+    pairs[studentId] = {
+      role: !offer ? 'asked' : offer.claimedAt ? 'being_helped' : 'offered',
+      partnerId: offer?.claimedAt ? (entry.helperId ?? null) : null,
+      requestId: request.requestId,
+    }
   }
   for (const [requestId, entry] of Object.entries(peerHelp ?? {})) {
     if (!entry?.helperId || entry.state?.endedAt) continue
     if (offers?.[requestId]?.endedAt != null) continue
-    roles[entry.helperId] = 'helping'
+    pairs[entry.helperId] = { role: 'helping', partnerId: entry.stuckId ?? null, requestId }
   }
-  return roles
+  return pairs
+}
+
+/** Just the roles of peerHelpPairsByStudent: { [id]: role }. */
+export function peerHelpRolesByStudent(input) {
+  return Object.fromEntries(
+    Object.entries(peerHelpPairsByStudent(input)).map(([id, pair]) => [id, pair.role])
+  )
 }
 
 // ─── Session report ──────────────────────────────────────────────────────────

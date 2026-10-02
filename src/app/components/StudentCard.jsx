@@ -36,17 +36,20 @@ function formatVisiblePanes(panes) {
   return panes.map((p) => VISIBLE_PANE_LABELS[p] ?? p).join(' + ')
 }
 
-const PEER_HELP_ROLE_LABELS = {
-  asked: 'Classmate OK',
-  offered: 'Offered',
-  being_helped: 'Being helped',
-  helping: 'Helping',
-}
-const PEER_HELP_ROLE_TITLES = {
-  asked: 'Says a classmate may help: open them to check their work and offer it',
-  offered: 'Offered to the class, waiting for a helper',
-  being_helped: 'A classmate is helping them',
-  helping: 'Helping a classmate',
+// A status chip as a single icon: the words are its tooltip and its accessible name, so the
+// card stays compact (the teacher hovers for detail).
+function IconChip({ icon, label, title, style, testId }) {
+  return (
+    <span
+      style={{ ...s.checkBadge, ...s.iconChip, ...style }}
+      title={title ?? label}
+      aria-label={label}
+      role="img"
+      data-testid={testId}
+    >
+      {icon}
+    </span>
+  )
 }
 
 export default function StudentCard({
@@ -54,7 +57,6 @@ export default function StudentCard({
   lesson,
   lessonId,
   session,
-  topics,
   onRename,
   onRemove,
   onExpand,
@@ -65,9 +67,11 @@ export default function StudentCard({
   onSetShownResponseName,
   badgePendingCount = 0,
   badgeAwardedCount = 0,
-  // Peer help role on the current task (peerHelpRolesByStudent): 'asked' | 'offered' |
-  // 'being_helped' | 'helping', or null.
-  peerHelpRole = null,
+  // What the student is doing now, most important first (studentActivities in
+  // src/app/studentActivity.js): the first is the "Now:" line, the rest are icons.
+  activities = [],
+  // Outlined because the teacher clicked their group in the class activity strip.
+  highlighted = false,
   selectMode = false,
   selected = false,
   onToggleSelect,
@@ -223,6 +227,7 @@ export default function StudentCard({
         ...checkCardStyle,
         ...s.cardClickable,
         ...(selectMode && selected ? s.cardSelected : null),
+        ...(highlighted ? s.cardHighlighted : null),
       }}
       className="card"
       role={selectMode ? 'checkbox' : 'button'}
@@ -317,12 +322,12 @@ export default function StudentCard({
             <PresenceBadge student={student} session={session} />
           )}
           {student.online && student.windowFocused === false && (
-            <span
-              style={{ ...s.checkBadge, ...s.checkBadgeAway }}
-              title="Student's tab is not focused"
-            >
-              Away
-            </span>
+            <IconChip
+              icon="💤"
+              label="Away"
+              title="Away: the student's tab is not focused"
+              style={s.checkBadgeAway}
+            />
           )}
           {onNudge && student.online && student.windowFocused === false && (
             <button
@@ -356,20 +361,20 @@ export default function StudentCard({
             </button>
           )}
           {pasteRecord?.count > 0 && (
-            <span
-              style={{ ...s.checkBadge, ...s.checkBadgePasted }}
-              title={`Pasted ${pasteRecord.chars} characters into the editor on this task`}
-            >
-              📋 Pasted{pasteRecord.count > 1 ? ` ×${pasteRecord.count}` : ''}
-            </span>
+            <IconChip
+              icon="📋"
+              label={`Pasted${pasteRecord.count > 1 ? ` ×${pasteRecord.count}` : ''}`}
+              title={`Pasted ${pasteRecord.chars} characters into the editor on this task${pasteRecord.count > 1 ? ` (${pasteRecord.count} times)` : ''}`}
+              style={s.checkBadgePasted}
+            />
           )}
           {student.isFullscreen && (
-            <span
-              style={{ ...s.checkBadge, ...s.checkBadgeFullscreen }}
-              title="Student is in fullscreen mode"
-            >
-              ⛶ Fullscreen
-            </span>
+            <IconChip
+              icon="⛶"
+              label="Fullscreen"
+              title="In fullscreen mode"
+              style={s.checkBadgeFullscreen}
+            />
           )}
           {isActive && (
             <span className="activity-dots" title="Student is active">
@@ -379,116 +384,68 @@ export default function StudentCard({
             </span>
           )}
           {checkPassed && (
-            <span
-              style={{ ...s.checkBadge, ...s.checkBadgePassed }}
+            <IconChip
+              icon="✓"
+              label="Passed"
               title="Completion check passed"
-            >
-              <span style={s.checkBadgeIcon}>✓</span>
-              Passed
-            </span>
+              style={s.checkBadgePassed}
+            />
           )}
           {checkFailed && (
-            <span
-              style={{ ...s.checkBadge, ...s.checkBadgeFailed }}
+            <IconChip
+              icon="✕"
+              label="Failed"
               title="Completion check failed"
-            >
-              <span style={s.checkBadgeIcon}>✕</span>
-              Failed
-            </span>
+              style={s.checkBadgeFailed}
+            />
           )}
           {hasActiveOverride && (
-            <span
-              style={{
-                ...s.checkBadge,
-                ...(student.checkOverridePassed
+            <IconChip
+              icon={student.checkOverridePassed ? '✓' : '✕'}
+              label={student.checkOverridePassed ? 'Override: passed' : 'Override: failed'}
+              title={`Check overridden by you: ${student.checkOverridePassed ? 'passed' : 'failed'}`}
+              style={
+                student.checkOverridePassed
                   ? s.checkBadgeOverridePassed
-                  : s.checkBadgeOverrideFailed),
-              }}
-              title="Check overridden by teacher"
-            >
-              <span style={s.checkBadgeIcon}>{student.checkOverridePassed ? '✓' : '✕'}</span>
-              Override
-            </span>
-          )}
-          {student.inPersonalSandbox && (
-            <span
-              style={{ ...s.checkBadge, ...s.checkBadgeSandbox }}
-              title="Student is in their personal sandbox"
-            >
-              Sandbox
-            </span>
+                  : s.checkBadgeOverrideFailed
+              }
+            />
           )}
           {student.needsHelp && (
-            <span
-              style={{ ...s.checkBadge, ...s.checkBadgeHelp }}
-              title="Student has requested help"
-            >
-              Help
-            </span>
-          )}
-          {peerHelpRole && (
-            <span
-              style={{ ...s.checkBadge, ...s.checkBadgeShare }}
-              title={PEER_HELP_ROLE_TITLES[peerHelpRole]}
-              data-testid="card-peer-help"
-            >
-              🤝 {PEER_HELP_ROLE_LABELS[peerHelpRole]}
-            </span>
+            <IconChip icon="✋" label="Help" title="Asked for help" style={s.checkBadgeHelp} />
           )}
           {student.shareRequestedAt != null && (
-            <span
-              style={{ ...s.checkBadge, ...s.checkBadgeShare }}
-              title="Student wants to share their workspace with the class — open them to review it"
-            >
-              Sharing
-            </span>
-          )}
-          {student.online && student.viewingShareId && (
-            <span
-              style={{ ...s.checkBadge, ...s.checkBadgeShare }}
-              title={`Viewing ${session?.sharedWorkspaces?.[student.viewingShareId]?.sharerName ?? "a classmate's"} shared work`}
-            >
-              👀{' '}
-              {session?.sharedWorkspaces?.[student.viewingShareId]?.sharerName ?? 'Viewing share'}
-            </span>
+            <IconChip
+              icon="📤"
+              label="Sharing"
+              title="Wants to share their work with the class: open them to review it"
+              style={s.checkBadgeShare}
+            />
           )}
           {supportRevealCount > 0 && (
-            <span
-              style={{ ...s.checkBadge, ...s.checkBadgeSupport }}
-              title="Student has opened support reference"
-            >
-              Support {supportRevealCount > 1 ? supportRevealCount : ''}
-            </span>
+            <IconChip
+              icon="💡"
+              label={`Support${supportRevealCount > 1 ? ` ${supportRevealCount}` : ''}`}
+              title={`Opened ${supportRevealCount > 1 ? `${supportRevealCount} support references` : 'a support reference'}`}
+              style={s.checkBadgeSupport}
+            />
           )}
-          {student.currentTopicId &&
-            (() => {
-              const topic = topics?.find((t) => t.id === student.currentTopicId)
-              return (
-                <span
-                  style={{ ...s.checkBadge, ...s.checkBadgeTopic }}
-                  title={`Student has topic "${topic?.title ?? student.currentTopicId}" open`}
-                >
-                  📖 {topic?.title ?? student.currentTopicId}
-                </span>
-              )
-            })()}
           {showsVisiblePanes && (
-            <span
-              style={{ ...s.checkBadge, ...s.checkBadgeView }}
-              title={`Student can currently see: ${formatVisiblePanes(student.visiblePanes)}`}
-            >
-              👀 {formatVisiblePanes(student.visiblePanes)}
-            </span>
+            <IconChip
+              icon="🪟"
+              label={`Can see: ${formatVisiblePanes(student.visiblePanes)}`}
+              style={s.checkBadgeView}
+            />
           )}
           {student.teacherAssistedTaskId != null &&
             String(student.teacherAssistedTaskId) === String(session?.currentTaskId) && (
-              <span
-                style={{ ...s.checkBadge, ...s.checkBadgeView }}
+              <IconChip
+                icon="✏️"
+                label="Assisted"
                 title="You edited this student's answer on this task"
-                data-testid="teacher-assisted"
-              >
-                ✏️ Assisted
-              </span>
+                style={s.checkBadgeView}
+                testId="teacher-assisted"
+              />
             )}
           {itemProgress && (
             <span
@@ -499,7 +456,21 @@ export default function StudentCard({
               🧩 {formatTaskItemProgress(itemProgress)}
             </span>
           )}
+          {/* Anything else they're doing, after the "Now:" one below. */}
+          {activities.slice(1).map((activity) => (
+            <IconChip
+              key={activity.kind}
+              icon={activity.icon}
+              label={activity.title}
+              style={s.checkBadgeShare}
+            />
+          ))}
         </div>
+        {activities[0] && (
+          <div style={s.nowLine} title={activities[0].title} data-testid="card-now">
+            <span style={s.nowLabel}>Now:</span> {activities[0].icon} {activities[0].text}
+          </div>
+        )}
       </div>
 
       {/* Output / preview snippet */}
@@ -742,6 +713,20 @@ const s = {
     opacity: 0.5,
     borderRadius: 4,
   },
+  iconChip: { minWidth: 22, justifyContent: 'center', padding: '1px 5px', fontSize: 12 },
+  nowLine: {
+    fontSize: 12,
+    color: 'var(--colour-ink-strong)',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    marginTop: 2,
+  },
+  nowLabel: { fontWeight: 700, color: 'var(--colour-muted)' },
+  cardHighlighted: {
+    outline: '3px solid var(--colour-secondary)',
+    outlineOffset: 1,
+  },
   checkBadge: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -764,10 +749,6 @@ const s = {
     background: '#ef4444',
     color: '#fff',
   },
-  checkBadgeSandbox: {
-    background: '#7c3aed',
-    color: '#fff',
-  },
   checkBadgeHelp: {
     background: '#f59e0b',
     color: '#fff',
@@ -779,15 +760,6 @@ const s = {
   checkBadgeShare: {
     background: '#0d9488',
     color: '#fff',
-  },
-  checkBadgeTopic: {
-    background: '#0ea5e9',
-    color: '#fff',
-    maxWidth: 120,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    display: 'inline-block',
   },
   checkBadgeView: {
     background: '#f3f4f6',
@@ -852,17 +824,6 @@ const s = {
     background: 'rgba(239,68,68,0.12)',
     color: '#dc2626',
     border: '1.5px solid #ef4444',
-  },
-  checkBadgeIcon: {
-    width: 16,
-    height: 16,
-    borderRadius: '50%',
-    background: 'rgba(255,255,255,0.22)',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '0.78rem',
-    lineHeight: 1,
   },
   removeBtn: {
     background: 'transparent',

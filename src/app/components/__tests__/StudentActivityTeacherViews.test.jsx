@@ -123,7 +123,7 @@ describe('StudentCard on an activity task', () => {
       />
     )
     expect(screen.getByTestId('activity-device')).toHaveTextContent('Touch screen')
-    expect(screen.getByText('Failed')).toBeInTheDocument()
+    expect(screen.getByLabelText('Failed')).toBeInTheDocument()
   })
 })
 

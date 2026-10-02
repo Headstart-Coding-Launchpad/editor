@@ -246,6 +246,7 @@ The teacher-written `shownResponses` node was added for the 2026-10-02 authoring
           "checkOverrideHint": "string | null",
           "checkOverridePushedAt": "number | null",
           "currentTopicId": "topicId | null",
+          "watchingLive": "'look' | 'try' | null (student-written via writeStudentInteraction when they press 👀 Look / ▶ Try it / Back on a \"Show to class (keep coding)\" broadcast, and null when it ends; never per keystroke. Read by the teacher's roster: src/app/studentActivity.js)",
           "sentToTopicId": "topicId | null",
           "sentToTopicPushedAt": "number | null",
           "teacherMessage": "string | null",

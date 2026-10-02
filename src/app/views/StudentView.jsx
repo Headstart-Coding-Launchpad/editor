@@ -543,6 +543,17 @@ export default function StudentView({
     setWatchingStudentPanel(false)
     setLivePanelCopy(null)
   }, [livePanelKey])
+  // Tells the teacher's roster when this student is looking at (or trying) the broadcast:
+  // students/{id}/watchingLive, written only when it changes (see src/app/studentActivity.js).
+  const watchingLive = livePanelCopy ? 'try' : watchingStudentPanel ? 'look' : null
+  const reportedWatchingLiveRef = useRef(null)
+  useEffect(() => {
+    const id = identity?.anonymousId
+    if (!id || teacherPresentation || previewMode) return
+    if (reportedWatchingLiveRef.current === watchingLive) return
+    reportedWatchingLiveRef.current = watchingLive
+    writeStudentInteraction?.(id, { watchingLive })
+  }, [watchingLive, identity?.anonymousId, teacherPresentation, previewMode])
 
   // Peer help (src/shared/peerHelp.js): this student's own request, and the request they help
   // with. Live lessons only; never in solo, preview or the Presentation window.
