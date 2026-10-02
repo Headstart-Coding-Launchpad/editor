@@ -59,8 +59,10 @@ describe('peerHelpAnchors', () => {
   })
 
   it('describes items in words, resolving hints by the module’s list', () => {
-    expect(describeItem({ kind: 'mark', verdict: 'down' }, 'python')).toBe('👎 look again')
-    expect(describeItem({ kind: 'hint', hintId: 'py-colon' }, 'turtle')).toMatch(/colon/)
+    expect(describeItem({ kind: 'mark', verdict: 'down' }, 'python')).toBe('👎 Look again')
+    expect(describeItem({ kind: 'hint', hintId: 'py-indent' }, 'turtle')).toBe(
+      '↔️ Check the spaces at the start'
+    )
     expect(
       describeItem({ kind: 'hint', hintId: 'lesson-0' }, 'python', { peerHints: ['Use a loop'] })
     ).toBe('💡 Use a loop')

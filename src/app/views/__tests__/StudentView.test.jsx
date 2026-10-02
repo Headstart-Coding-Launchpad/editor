@@ -1324,17 +1324,14 @@ describe('StudentView', () => {
 
       const needHelpBtn = screen.getByRole('button', { name: /Need Help/i })
       // Short on screen (the top bar is one row); the full name stays in the label and title.
-      // Python supports peer help, so Help opens a menu (ask the teacher, or let a classmate
-      // help too).
-      expect(needHelpBtn).toHaveTextContent(/^✋ Help/)
-      expect(needHelpBtn).toHaveAttribute('title', 'Ask for help')
+      expect(needHelpBtn).toHaveTextContent(/^✋ Help$/)
+      expect(needHelpBtn).toHaveAttribute('title', 'Ask your teacher for help')
       await user.click(needHelpBtn)
-      await user.click(screen.getByRole('button', { name: /Ask my teacher$/ }))
 
       expect(requestHelp).toHaveBeenCalledWith('student-1')
     })
 
-    it('can also let a classmate help: asks the teacher and sends a snapshot for them to check', async () => {
+    it('then asks if a classmate can help: Yes sends a snapshot for the teacher to check', async () => {
       const user = userEvent.setup()
       const requestHelp = vi.fn(() => Promise.resolve())
       const requestPeerHelp = vi.fn(() => Promise.resolve('req-1'))
@@ -1344,7 +1341,10 @@ describe('StudentView', () => {
       await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
 
       await user.click(screen.getByRole('button', { name: /Need Help/i }))
-      await user.click(screen.getByRole('button', { name: /a classmate can help too/ }))
+      // Help is one tap; a bubble then asks whether a classmate can help too.
+      expect(await screen.findByText('Can a classmate help too?')).toBeInTheDocument()
+      expect(requestPeerHelp).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: /Yes/ }))
 
       expect(requestHelp).toHaveBeenCalledWith('student-1')
       await waitFor(() => expect(requestPeerHelp).toHaveBeenCalled())

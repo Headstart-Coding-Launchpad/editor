@@ -67,6 +67,7 @@ import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
 import StudentLivePanelBar from '../components/StudentLivePanelBar'
 import { usePeerHelp } from '../hooks/usePeerHelp'
 import HelpRequestButton from '../components/peerHelp/HelpRequestButton'
+import PeerHelpAskBubble from '../components/peerHelp/PeerHelpAskBubble'
 import HelperPromiseDialog from '../components/peerHelp/HelperPromiseDialog'
 import PeerHelpOfferToast from '../components/peerHelp/PeerHelpOfferToast'
 import PeerHelperWorkspace from '../components/peerHelp/PeerHelperWorkspace'
@@ -559,6 +560,8 @@ export default function StudentView({
   const [peerClaimBusy, setPeerClaimBusy] = useState(false)
   const [peerClaimError, setPeerClaimError] = useState(null)
   const [peerHelpError, setPeerHelpError] = useState(null)
+  // "Can a classmate help too?", asked right after ✋ Help where peer help is possible.
+  const [peerAskOpen, setPeerAskOpen] = useState(false)
   useEffect(() => {
     if (peerHelp.helpingRequestId) setPeerHelperOpen(true)
   }, [peerHelp.helpingRequestId])
@@ -1138,13 +1141,19 @@ export default function StudentView({
   const isHelpingClassmate = !!peerHelp.helpingRequestId && phase === 'lesson'
   const showPeerHelperWorkspace = isHelpingClassmate && peerHelperOpen && !activeShare
 
-  async function handleAskWithPeers() {
+  // ✋ Help is one tap; where a classmate could help, a bubble then asks.
+  async function handleHelpTap() {
+    await handleNeedHelp()
+    if (peerHelpAvailable && !peerHelp.ownRequestId) setPeerAskOpen(true)
+  }
+
+  async function handleClassmateCanHelp() {
+    setPeerAskOpen(false)
     setPeerHelpError(null)
     try {
-      await requestHelp(identity.anonymousId)
       await peerHelp.requestPeerHelp(cs.buildShareSnapshot())
     } catch (err) {
-      setPeerHelpError(err?.message ?? 'Could not ask for a classmate’s help.')
+      setPeerHelpError(err?.message ?? 'Could not ask a classmate. Your teacher is still coming.')
     }
   }
 
@@ -1447,9 +1456,7 @@ export default function StudentView({
       {canRequestHelp && (
         <HelpRequestButton
           requested={myNeedsHelp}
-          peerHelpAvailable={peerHelpAvailable && !peerHelp.ownRequestId}
-          onAskTeacher={handleNeedHelp}
-          onAskWithPeers={handleAskWithPeers}
+          onAskTeacher={handleHelpTap}
           style={s.needHelpBtn}
         />
       )}
@@ -1729,7 +1736,8 @@ export default function StudentView({
         />
       )}
       <StudentStatusBanners
-        isForcedTeacherLive={isForcedTeacherLive}
+        // A "Show to class" broadcast has its own bar (StudentLivePanelBar) while watching.
+        isForcedTeacherLive={isForcedTeacherLive && !isStudentPanelBroadcast}
         isPresentationStudentViewer={isPresentationStudentViewer}
         isStudentGoLiveViewer={isStudentGoLiveViewer}
         teacherLiveSourceStudentName={session?.teacherLive?.sourceStudentName}
@@ -1745,7 +1753,7 @@ export default function StudentView({
       />
       {isHelpingClassmate && !peerHelperOpen && (
         <div style={s.peerHelpingBar} role="status">
-          <span>🤝 You are helping a classmate</span>
+          <span>🤝 Helping a classmate</span>
           <button
             type="button"
             className="btn-primary"
@@ -1767,6 +1775,9 @@ export default function StudentView({
             Dismiss
           </button>
         </div>
+      )}
+      {peerAskOpen && peerHelpAvailable && !peerHelp.ownRequestId && (
+        <PeerHelpAskBubble onYes={handleClassmateCanHelp} onNo={() => setPeerAskOpen(false)} />
       )}
       {peerOffers.length > 0 && !peerHelp.ownRequestId && (
         <PeerHelpOfferToast
@@ -1851,7 +1862,6 @@ export default function StudentView({
             review={peerHelp.helpingReview}
             notesEnabled={!!session?.peerHelpSettings?.notesEnabled}
             isMobile={isMobile}
-            onBackToMyWork={() => setPeerHelperOpen(false)}
             onRequestLatest={() => peerHelp.requestLatestSnapshot().catch(() => {})}
             onFinish={() => peerHelp.finishHelping().catch(() => {})}
             onMark={peerHelp.sendMark}
@@ -1877,8 +1887,8 @@ export default function StudentView({
             entry={livePanelCopy.entry}
             snapshot={livePanelCopy.snapshot}
             isMobile={isMobile}
-            title={`📺 A copy of ${livePanelCopy.entry.sharerName ?? 'a classmate'}'s work`}
-            subtitle="Run it and try changes — nothing here is saved, and your own work is unchanged."
+            title={`▶ ${livePanelCopy.entry.sharerName ?? 'A classmate'}’s work`}
+            subtitle="Try it! Your own code is safe."
             copyBlocked
             onClose={() => setLivePanelCopy(null)}
           />

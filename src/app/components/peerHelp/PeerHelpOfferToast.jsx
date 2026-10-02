@@ -8,9 +8,7 @@ export default function PeerHelpOfferToast({ offer, busy, error, onHelp, onDismi
   if (!offer) return null
   return (
     <div style={s.toast} role="status" data-testid="peer-help-offer">
-      <span style={s.text}>
-        🤝 A classmate is stuck on this task. You finished it: can you help?
-      </span>
+      <span style={s.text}>🤝 Can you help a classmate?</span>
       {error && <span style={s.error}>{error}</span>}
       <div style={s.actions}>
         <button type="button" className="btn-ghost-outline" style={s.btn} onClick={onDismiss}>
@@ -23,7 +21,7 @@ export default function PeerHelpOfferToast({ offer, busy, error, onHelp, onDismi
           onClick={onHelp}
           disabled={busy}
         >
-          Help out
+          Yes!
         </button>
       </div>
     </div>
@@ -47,8 +45,8 @@ const s = {
     flexDirection: 'column',
     gap: 8,
   },
-  text: { fontSize: 14, fontWeight: 600 },
+  text: { fontSize: 17, fontWeight: 700 },
   error: { fontSize: 12, color: 'var(--colour-danger, #dc2626)' },
   actions: { display: 'flex', justifyContent: 'flex-end', gap: 8 },
-  btn: { fontSize: 13, padding: '5px 12px' },
+  btn: { fontSize: 15, padding: '6px 16px' },
 }

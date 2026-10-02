@@ -6,12 +6,12 @@ import StudentLivePanelBar from '../StudentLivePanelBar'
 describe('StudentLivePanelBar', () => {
   const handlers = () => ({ onWatch: vi.fn(), onStopWatching: vi.fn(), onTryCopy: vi.fn() })
 
-  it('offers Watch and Try a copy without interrupting the student', () => {
+  it('offers Look and Try it, in a few words, without interrupting the student', () => {
     const h = handlers()
     render(<StudentLivePanelBar sourceStudentName="Sam" {...h} />)
-    expect(screen.getByText(/Sam's work is on show — keep coding/)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /Watch/ }))
-    fireEvent.click(screen.getByRole('button', { name: /Try a copy/ }))
+    expect(screen.getByText(/Look at Sam’s work!/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Look/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Try it/ }))
     expect(h.onWatch).toHaveBeenCalled()
     expect(h.onTryCopy).toHaveBeenCalled()
   })
@@ -19,14 +19,15 @@ describe('StudentLivePanelBar', () => {
   it('offers the way back while watching', () => {
     const h = handlers()
     render(<StudentLivePanelBar sourceStudentName="Sam" watching {...h} />)
-    fireEvent.click(screen.getByRole('button', { name: /Back to my work/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Back to my code/ }))
     expect(h.onStopWatching).toHaveBeenCalled()
-    expect(screen.queryByRole('button', { name: /Watch/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Look/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Try it/ })).toBeNull()
   })
 
   it('hides both offers while the copy is open (the copy has its own way back)', () => {
     render(<StudentLivePanelBar sourceStudentName="Sam" copyOpen {...handlers()} />)
-    expect(screen.queryByRole('button', { name: /Watch/ })).toBeNull()
-    expect(screen.queryByRole('button', { name: /Try a copy/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Look/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Try it/ })).toBeNull()
   })
 })

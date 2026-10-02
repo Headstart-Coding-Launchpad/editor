@@ -226,10 +226,10 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
       task.peerHints.some((hint) => typeof hint !== 'string' || !hint.trim())
     ) {
       errors.push(`Task ${n} peerHints must be a list of short hint texts`)
-    } else if (task.peerHints.length > 10) {
-      errors.push(`Task ${n} peerHints can have at most 10 hints`)
-    } else if (task.peerHints.some((hint) => hint.trim().length > 100)) {
-      errors.push(`Task ${n} peerHints must each be 100 characters or fewer`)
+    } else if (task.peerHints.length > 6) {
+      errors.push(`Task ${n} peerHints can have at most 6 hints`)
+    } else if (task.peerHints.some((hint) => hint.trim().length > 60)) {
+      errors.push(`Task ${n} peerHints must each be 60 characters or fewer`)
     } else if (!canTaskAllowSharing(task)) {
       errors.push(`Task ${n} peerHints is not supported on quiz or information tasks`)
     }

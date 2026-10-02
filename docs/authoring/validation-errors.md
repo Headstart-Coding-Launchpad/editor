@@ -75,8 +75,8 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … allowSharing must be true or false` | `allowSharing` isn't a boolean. | Use `true` or `false`. |
 | `Task … allowSharing is not supported on quiz or information tasks` | Only code tasks have a workspace to share. | Remove `allowSharing` from that task. |
 | `Task … peerHints must be a list of short hint texts` | `peerHints` isn't a list, or holds an empty or non-text entry. | Write `peerHints: ["Did you use a loop?"]`. |
-| `Task … peerHints can have at most 10 hints` | More than 10 `peerHints`. | Keep the few that matter most. |
-| `Task … peerHints must each be 100 characters or fewer` | A hint is too long for a classmate to send. | Shorten it. |
+| `Task … peerHints can have at most 6 hints` | More than 6 `peerHints` (helpers see at most 6 hint cards). | Keep the few that matter most. |
+| `Task … peerHints must each be 60 characters or fewer` | A hint is too long to read on a card. | Shorten it: a few words a 9-year-old reads at a glance. |
 | `Task … peerHints is not supported on quiz or information tasks` | Peer help is for code tasks. | Remove `peerHints` from that task. |
 | `Task … stage … role must be one of: …` | A `codeStages` entry has an unknown `role`. | Use `starter`, `support` or `complete`. |
 | `Task … stage … is missing a label` | A code stage has no `label`. | Add `label:` to the stage. |

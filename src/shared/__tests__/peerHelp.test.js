@@ -4,6 +4,7 @@ import {
   buildPeerHelpAudit,
   editsFromWire,
   findPeerHint,
+  getPeerHintCards,
   getPeerHints,
   hasPassedCurrentTask,
   notOkAlerts,
@@ -18,16 +19,37 @@ import {
 describe('peer hints', () => {
   it('puts the lesson author hints first, then the language list, then the common list', () => {
     const hints = getPeerHints('python', { peerHints: ['Did you use a loop?', '  '] })
-    expect(hints[0]).toEqual({ id: 'lesson-0', text: 'Did you use a loop?' })
+    expect(hints[0]).toEqual({ id: 'lesson-0', emoji: '💡', text: 'Did you use a loop?' })
     expect(hints.some((h) => h.id === 'py-indent')).toBe(true)
     expect(hints.at(-1).id).toBe('looks-good')
     expect(hints.filter((h) => h.id.startsWith('lesson-'))).toHaveLength(1)
   })
 
   it('finds hints by id within a hint list', () => {
-    expect(findPeerHint('py-colon', 'python', null)?.text).toMatch(/colon/)
+    expect(findPeerHint('py-colon', 'python', null)?.text).toMatch(/:/)
     expect(findPeerHint('html-close', 'python', null)).toBeNull()
     expect(findPeerHint('sc-loop', 'blocks', null)?.text).toMatch(/loop/)
+  })
+})
+
+describe('getPeerHintCards', () => {
+  it('shows at most six short cards: the lesson’s first, then the module’s', () => {
+    const cards = getPeerHintCards('python', { peerHints: ['Use a loop'] })
+    expect(cards).toHaveLength(6)
+    expect(cards[0]).toMatchObject({ id: 'lesson-0', text: 'Use a loop' })
+    expect(cards[1].id).toBe('py-indent')
+    expect(cards.every((card) => card.emoji && card.text.length <= 40)).toBe(true)
+  })
+
+  it('tops a short module list up with the most useful common hints', () => {
+    expect(getPeerHintCards('html', null).map((c) => c.id)).toEqual([
+      'html-close',
+      'html-angle',
+      'html-attr-quotes',
+      'html-nesting',
+      'run-and-read',
+      'nearly-there',
+    ])
   })
 })
 

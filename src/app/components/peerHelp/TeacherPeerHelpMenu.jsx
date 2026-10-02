@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import DropdownMenu from '../student-modal/DropdownMenu'
 import {
+  PEER_HELP_EDITS_AND_NOTES,
   editsFromWire,
   notOkAlerts,
   pendingReviewItems,
@@ -79,51 +80,55 @@ export default function TeacherPeerHelpMenu({ session, lesson, peerHelp }) {
           </div>
         ))}
 
-        <section style={s.section}>
-          <strong>Waiting for you ({pending.length})</strong>
-          {pending.length === 0 && <span style={s.muted}>Nothing to check.</span>}
-          {pending.map((item) => {
-            const request = peerHelp.allPeerHelp?.[item.requestId]
-            const anchor = anchorFor(lesson, request, item)
-            return (
-              <div key={`${item.requestId}-${item.itemId}`} style={s.item}>
-                <span style={s.muted}>
-                  {nameOf(session, request?.helperId)} → {nameOf(session, request?.stuckId)}
-                  {anchor ? ` · ${anchor.label}` : ''}
-                </span>
-                {item.kind === 'note' && <span style={s.note}>“{item.text}”</span>}
-                {item.kind === 'edit' &&
-                  editsFromWire(item.edits).map((edit, i) => (
-                    <div key={i}>
-                      {edit.op === 'replace' && <code style={s.removed}>- {edit.before}</code>}
-                      <code style={s.added}>
-                        + {edit.text}
-                        {edit.op === 'insert' ? `   (new line after ${edit.line})` : ''}
-                      </code>
-                    </div>
-                  ))}
-                <div style={s.row}>
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    style={s.btn}
-                    onClick={() => peerHelp.approveItem(item.requestId, item.itemId)}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-ghost-outline"
-                    style={s.btn}
-                    onClick={() => peerHelp.rejectItem(item.requestId, item.itemId)}
-                  >
-                    Reject
-                  </button>
+        {/* Suggested edits and notes are switched off (PEER_HELP_EDITS_AND_NOTES); anything
+            already pending (or sent by a modified client) still shows here to approve or reject. */}
+        {(PEER_HELP_EDITS_AND_NOTES || pending.length > 0) && (
+          <section style={s.section}>
+            <strong>Waiting for you ({pending.length})</strong>
+            {pending.length === 0 && <span style={s.muted}>Nothing to check.</span>}
+            {pending.map((item) => {
+              const request = peerHelp.allPeerHelp?.[item.requestId]
+              const anchor = anchorFor(lesson, request, item)
+              return (
+                <div key={`${item.requestId}-${item.itemId}`} style={s.item}>
+                  <span style={s.muted}>
+                    {nameOf(session, request?.helperId)} → {nameOf(session, request?.stuckId)}
+                    {anchor ? ` · ${anchor.label}` : ''}
+                  </span>
+                  {item.kind === 'note' && <span style={s.note}>“{item.text}”</span>}
+                  {item.kind === 'edit' &&
+                    editsFromWire(item.edits).map((edit, i) => (
+                      <div key={i}>
+                        {edit.op === 'replace' && <code style={s.removed}>- {edit.before}</code>}
+                        <code style={s.added}>
+                          + {edit.text}
+                          {edit.op === 'insert' ? `   (new line after ${edit.line})` : ''}
+                        </code>
+                      </div>
+                    ))}
+                  <div style={s.row}>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      style={s.btn}
+                      onClick={() => peerHelp.approveItem(item.requestId, item.itemId)}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost-outline"
+                      style={s.btn}
+                      onClick={() => peerHelp.rejectItem(item.requestId, item.itemId)}
+                    >
+                      Reject
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )
-          })}
-        </section>
+              )
+            })}
+          </section>
+        )}
 
         <section style={s.section}>
           <strong>Helping now ({active.length})</strong>
@@ -164,14 +169,16 @@ export default function TeacherPeerHelpMenu({ session, lesson, peerHelp }) {
         )}
 
         <section style={s.section}>
-          <label style={s.check}>
-            <input
-              type="checkbox"
-              checked={notesEnabled}
-              onChange={(e) => peerHelp.setNotesEnabled(e.target.checked)}
-            />
-            Let helpers write short notes (you approve each one)
-          </label>
+          {PEER_HELP_EDITS_AND_NOTES && (
+            <label style={s.check}>
+              <input
+                type="checkbox"
+                checked={notesEnabled}
+                onChange={(e) => peerHelp.setNotesEnabled(e.target.checked)}
+              />
+              Let helpers write short notes (you approve each one)
+            </label>
+          )}
           {paused ? (
             <button
               type="button"

@@ -30,53 +30,81 @@ export const PEER_HINT_ID_PATTERN = /^[a-z0-9_-]{1,40}$/
 export const PEER_HELP_END_REASONS = ['stuck', 'helper', 'teacher', 'task_changed']
 export const PEER_HELP_RESPONSES = ['useful', 'accepted', 'declined', 'not_ok']
 
-// Kind, code-focused hints. Ids are stable: they travel over the wire instead of text, so
-// nothing a helper sends without review can carry words of their own.
+// Suggested edits and notes for the teacher to approve are built (the review queue, the word
+// filter in ./peerHelpFilter.js, the rules) but switched off: for 9-year-olds peer help is just
+// 👍 / 👎 / 💡 on a line. Turning this on shows them again to helpers and the teacher.
+export const PEER_HELP_EDITS_AND_NOTES = false
+
+// Kind, code-focused hints, with an emoji and very few words (helpers can be 9). Ids are stable:
+// they travel over the wire instead of text, so nothing a helper sends without review can carry
+// words of their own. Never renumber or reuse an id: old sessions resolve hints by it.
 export const PLATFORM_PEER_HINTS = {
   common: [
-    { id: 'look-again', text: 'Have another look at this line' },
-    { id: 'run-and-read', text: 'Run it and read the message carefully' },
-    { id: 'reread-task', text: 'Re-read the task: what does it ask for?' },
-    { id: 'spelling', text: 'Check the spelling matches exactly' },
-    { id: 'nearly-there', text: "You're nearly there!" },
-    { id: 'looks-good', text: 'This part looks good' },
+    { id: 'run-and-read', emoji: '▶️', text: 'Run it and read the message' },
+    { id: 'nearly-there', emoji: '⭐', text: 'Nearly there!' },
+    { id: 'spelling', emoji: '🔤', text: 'Check the spelling' },
+    { id: 'reread-task', emoji: '📖', text: 'Read the task again' },
+    { id: 'look-again', emoji: '👀', text: 'Look at this line again' },
+    { id: 'looks-good', emoji: '✅', text: 'This bit is good' },
   ],
   python: [
-    { id: 'py-indent', text: 'Check the indentation (the spaces at the start)' },
-    { id: 'py-colon', text: 'Does this line need a colon : at the end?' },
-    { id: 'py-brackets', text: 'Count the brackets: does every ( have a )?' },
-    { id: 'py-quotes', text: 'Check the quote marks around the text' },
-    { id: 'py-case', text: 'Capital letters matter in Python' },
-    { id: 'py-order', text: 'Is this in the right order?' },
+    { id: 'py-indent', emoji: '↔️', text: 'Check the spaces at the start' },
+    { id: 'py-colon', emoji: '❗', text: 'Does it need a : at the end?' },
+    { id: 'py-brackets', emoji: '🔢', text: 'Count the brackets ( )' },
+    { id: 'py-quotes', emoji: '💬', text: 'Check the " " marks' },
+    { id: 'py-case', emoji: '🔠', text: 'Check the capital letters' },
+    { id: 'py-order', emoji: '🔀', text: 'Is it in the right order?' },
   ],
   html: [
-    { id: 'html-close', text: 'Does this tag have a closing tag?' },
-    { id: 'html-angle', text: 'Check the < and > around the tag' },
-    { id: 'html-attr-quotes', text: 'Put quote marks around the attribute value' },
-    { id: 'html-nesting', text: 'Is this tag inside the right tag?' },
+    { id: 'html-close', emoji: '🔚', text: 'Does the tag close?' },
+    { id: 'html-angle', emoji: '📐', text: 'Check the < and >' },
+    { id: 'html-attr-quotes', emoji: '💬', text: 'Put " " round the value' },
+    { id: 'html-nesting', emoji: '📦', text: 'Is it inside the right tag?' },
   ],
   blocks: [
-    {
-      id: 'sc-hat',
-      text: 'Does this script start with a hat block (like "when green flag clicked")?',
-    },
-    { id: 'sc-order', text: 'Are the blocks in the right order?' },
-    { id: 'sc-loop', text: 'Would a loop help here?' },
-    { id: 'sc-sprite', text: 'Is this on the right sprite?' },
-    { id: 'sc-value', text: 'Check the number in this block' },
+    { id: 'sc-hat', emoji: '🏁', text: 'Start with a hat block' },
+    { id: 'sc-order', emoji: '🔀', text: 'Are the blocks in order?' },
+    { id: 'sc-loop', emoji: '🔁', text: 'Try a loop' },
+    { id: 'sc-sprite', emoji: '🐱', text: 'Is it on the right sprite?' },
+    { id: 'sc-value', emoji: '🔢', text: 'Check the number' },
   ],
 }
 
+// How many hint cards a helper sees at once: few enough to read at a glance.
+export const PEER_HINT_CARD_LIMIT = 6
+// Common hints worth a card when the module's list leaves room, most useful first.
+const COMMON_CARD_IDS = ['run-and-read', 'nearly-there', 'spelling', 'reread-task']
+
+function lessonPeerHints(task) {
+  return (Array.isArray(task?.peerHints) ? task.peerHints : [])
+    .map((text, index) => ({ id: `lesson-${index}`, emoji: '💡', text: String(text ?? '').trim() }))
+    .filter((hint) => hint.text)
+}
+
 /**
- * The hints a helper can pick from: any the lesson author added on the task (`peerHints: [...]`,
- * ids `lesson-0`, `lesson-1`, …), the module's list (its `capabilities.peerHelp.hints`: 'python',
- * 'html' or 'blocks') and the common list.
+ * Every hint id that can be resolved on this task: the lesson author's (`peerHints: [...]`, ids
+ * `lesson-0`, `lesson-1`, …), the module's list (its `capabilities.peerHelp.hints`: 'python',
+ * 'html' or 'blocks') and the common list. For showing what was sent; helpers pick from
+ * getPeerHintCards.
  */
 export function getPeerHints(hintList, task) {
-  const lessonHints = (Array.isArray(task?.peerHints) ? task.peerHints : [])
-    .map((text, index) => ({ id: `lesson-${index}`, text: String(text ?? '').trim() }))
-    .filter((hint) => hint.text)
-  return [...lessonHints, ...(PLATFORM_PEER_HINTS[hintList] ?? []), ...PLATFORM_PEER_HINTS.common]
+  return [
+    ...lessonPeerHints(task),
+    ...(PLATFORM_PEER_HINTS[hintList] ?? []),
+    ...PLATFORM_PEER_HINTS.common,
+  ]
+}
+
+/**
+ * The hint cards a helper picks from (at most PEER_HINT_CARD_LIMIT): the lesson's own first,
+ * then the module's, then a few common ones.
+ */
+export function getPeerHintCards(hintList, task) {
+  const common = COMMON_CARD_IDS.map((id) => PLATFORM_PEER_HINTS.common.find((h) => h.id === id))
+  return [...lessonPeerHints(task), ...(PLATFORM_PEER_HINTS[hintList] ?? []), ...common].slice(
+    0,
+    PEER_HINT_CARD_LIMIT
+  )
 }
 
 export function findPeerHint(hintId, hintList, task) {

@@ -114,13 +114,15 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `StudentCard.jsx` | Compact card: name, online/run/check/support/sharing badges, teacher-only item progress badge (`taskItemProgress.js`), teacher-only live badge count "🏅 n" with a dot while a suggestion is pending (`badgeAwardedCount` / `badgePendingCount`), select-mode checkbox role (`selectMode` / `selected` / `onToggleSelect`), code/output snippet (per the module's `capabilities.cardSummary`) or the activity/quiz answer summary (the activity UI's `CardSummary`), expand button |
 | `SharedWorkspacePreview.jsx` | Read-only render of a frozen share snapshot; maps a snapshot to each module's TeacherLiveView props |
 | `SharedWorkspacePanel.jsx` | Student-facing "Shared work" gallery button, new-share toast, and share list |
-| `StudentLivePanelBar.jsx` | Student bar for a "Show to class (keep coding)" broadcast: 👀 Watch / ← Back to my work, ▶ Try a copy |
-| `peerHelp/HelpRequestButton.jsx` | The student's ✋ Help: a plain button, or a menu with "a classmate can help too" where peer help is available |
-| `peerHelp/HelperPromiseDialog.jsx` | The once-per-session helper promise |
+| `StudentLivePanelBar.jsx` | Student bar for a "Show to class (keep coding)" broadcast: "📺 Look at Sam's work!", 👀 Look / ← Back to my code, ▶ Try it |
+| `peerHelp/HelpRequestButton.jsx` | The student's one-tap ✋ Help / Help requested button |
+| `peerHelp/PeerHelpAskBubble.jsx` | After ✋ Help where peer help is possible: "Can a classmate help too? 👍 Yes / No thanks" (closes itself after 30s) |
+| `peerHelp/PeerHelpLineList.jsx` | Helper's main view: the classmate's code, big, with 👍 Good / 👎 Look again / 💡 Hint per line (or Scratch script); 💡 opens up to six hint cards |
+| `peerHelp/HelperPromiseDialog.jsx` | The once-per-session helper promise: three emoji lines, I promise |
 | `peerHelp/PeerHelpOfferToast.jsx` | "A classmate is stuck on this task. Can you help?" for finished students |
-| `peerHelp/PeerHelperWorkspace.jsx` | Helper view: a runnable copy (`SharedWorkspaceViewer`, copy-blocked) beside `PeerHelpFeedbackRail` |
-| `peerHelp/PeerHelpFeedbackRail.jsx` | Helper rail: pick a line/script; 👍/👎, preset hints, suggested edits (👎 lines, ≤ 3) and notes (word filter) for the teacher; what was sent and its status |
-| `peerHelp/PeerHelpInbox.jsx` | Stuck student's card: status, items with their line, Use this change / No thanks / 👍 Useful, 🚩 Not OK, I'm OK now |
+| `peerHelp/PeerHelperWorkspace.jsx` | Helper view: `PeerHelpLineList`, ▶ Run their code (a copy-blocked `SharedWorkspaceViewer`), ✓ Done, what was sent; fetches the latest code on opening |
+| `peerHelp/PeerHelpFeedbackRail.jsx` | Switched off (`PEER_HELP_EDITS_AND_NOTES`): helper rail for suggested edits (👎 lines, ≤ 3) and word-filtered notes for the teacher to approve |
+| `peerHelp/PeerHelpInbox.jsx` | Stuck student's card: status, items with their line, Thanks 👍 and a small 🚩 each, one big I'm OK now |
 | `peerHelp/TeacherPeerHelpMenu.jsx` | Teacher top-bar 🤝 Peer help: Not OK alerts, review queue (Approve/Reject), who is helping whom, filter-blocked notes, notes switch, End all peer help |
 | `peerHelp/TeacherPeerHelpStudentPanel.jsx` | StudentModal peer help: check the snapshot, Offer to classmates / Not this time, End, "Can help classmates today" |
 | `peerHelp/TeacherPeerHelpAlertBanner.jsx` | Teacher banner for a stuck student's 🚩 Not OK, with Stop them helping today / Seen |
@@ -620,7 +622,7 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs
 | `fieldSpec.js` | Pure field declarations (a task shape as data): `normaliseFieldSpecs` (validates and freezes `{ name, type, required, authored, values, modes, itemFields }`), `authoredFieldPaths`, `fieldsForMode`, `describeFieldSpecs`. Used by `defineActivity` (`fields`), `defineModule` (`taskFields`) and `taskFields.js` |
 | `taskActivity.js` | The platform copy of the Lesson Format Glossary: `TASK_ACTIVITY_FORMATS`, `TASK_ACTIVITY_PATTERNS` (stable ids such as `debug_code_task`, `quiz_what_is_the_error`), `parseTaskActivity(str)` → `{ format, pattern, known }` (tolerant of case, spacing and `,` vs `:`), `getTaskActivityPatternId(task)`; unrecognised patterns are a validation warning |
 | `taskFields.js` | `COMMON_TASK_FIELDS`, `TASK_TYPE_FIELDS` (information, group) and the `codeStagesField(payload)` helper modules use in their `taskFields` |
-| `peerHelp.js` | Peer help data model and pure logic: preset hints (`getPeerHints`, platform lists + task `peerHints`), eligibility (`visiblePeerHelpOffers`, `hasPassedCurrentTask`), snapshot lines, suggested-edit limits (`validatePeerEdit`, `applyPeerEdit`), teacher queues (`pendingReviewItems`, `notOkAlerts`, `peerHelpRolesByStudent`) and the report audit (`buildPeerHelpAudit`) |
+| `peerHelp.js` | Peer help data model and pure logic: `PEER_HELP_EDITS_AND_NOTES` (off), preset hints (`getPeerHints` to resolve, `getPeerHintCards` for the ≤ 6 cards; platform lists + task `peerHints`), eligibility (`visiblePeerHelpOffers`, `hasPassedCurrentTask`), snapshot lines, suggested-edit limits (`validatePeerEdit`, `applyPeerEdit`), teacher queues (`pendingReviewItems`, `notOkAlerts`, `peerHelpRolesByStudent`) and the report audit (`buildPeerHelpAudit`) |
 | `peerHelpFilter.js` | `findBlockedContent(text)`: the local word filter for peer help notes (swearing, unkind words, links, emails, phone numbers, social handles) |
 | `lineHints.js` | Pure, import-free author line hints (`#> …` / `<!--> … -->` marker lines; a module opts in with `capabilities.lineHints`): `parseLineHints(code, syntax)` → `{ code, hints, trailingMarker }`, `stripLineHints`, `anchorLineHints` / `chooseLineHints` (re-anchor hints onto saved code by trimmed line text), `stripTaskLineHints` / `stripLessonLineHints` (strip a task/lesson, recording runtime-only `task.lineHintSets`), `getTaskLineHintSets` / `getStageLineHints` (what editors and stage references show), `findTrailingLineHintMarkers` (validator warning) |
 | `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions`, `storage` |

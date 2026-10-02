@@ -1,9 +1,9 @@
 import React from 'react'
 
 const HELPER_PROMISE_POINTS = [
-  'Be kind. Talk about the code, never the person.',
-  'Help them learn: give a nudge, not the whole answer.',
-  'Your teacher sees everything you send.',
+  { emoji: '😊', text: 'I will be kind' },
+  { emoji: '💡', text: 'I will give clues, not answers' },
+  { emoji: '👀', text: 'My teacher can see what I send' },
 ]
 
 /** Agreed once per session, before a student's first go at helping a classmate. */
@@ -11,22 +11,23 @@ export default function HelperPromiseDialog({ onAgree, onCancel }) {
   return (
     <div style={s.backdrop} role="dialog" aria-modal="true" aria-label="Helper promise">
       <div style={s.card}>
-        <h2 style={s.title}>🤝 The helper promise</h2>
+        <h2 style={s.title}>🤝 Helper promise</h2>
         <ul style={s.list}>
           {HELPER_PROMISE_POINTS.map((point) => (
-            <li key={point} style={s.item}>
-              {point}
+            <li key={point.text} style={s.item}>
+              <span style={s.emoji} aria-hidden="true">
+                {point.emoji}
+              </span>
+              {point.text}
             </li>
           ))}
         </ul>
-        <div style={s.actions}>
-          <button type="button" className="btn-ghost-outline" onClick={onCancel}>
-            Not now
-          </button>
-          <button type="button" className="btn-primary" onClick={onAgree}>
-            I promise
-          </button>
-        </div>
+        <button type="button" className="btn-primary" style={s.promise} onClick={onAgree}>
+          I promise
+        </button>
+        <button type="button" style={s.notNow} onClick={onCancel}>
+          not now
+        </button>
       </div>
     </div>
   )
@@ -46,14 +47,34 @@ const s = {
   card: {
     background: 'var(--ui-surface)',
     color: 'var(--colour-text)',
-    borderRadius: 12,
-    padding: 20,
-    maxWidth: 420,
+    borderRadius: 16,
+    padding: 24,
+    maxWidth: 380,
     width: '100%',
     boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 12,
   },
-  title: { margin: '0 0 10px', fontSize: 18 },
-  list: { margin: '0 0 16px', paddingLeft: 20 },
-  item: { marginBottom: 6, fontSize: 14 },
-  actions: { display: 'flex', justifyContent: 'flex-end', gap: 8 },
+  title: { margin: 0, fontSize: 22 },
+  list: {
+    listStyle: 'none',
+    margin: 0,
+    padding: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+  },
+  item: { display: 'flex', alignItems: 'center', gap: 12, fontSize: 18, fontWeight: 600 },
+  emoji: { fontSize: 26 },
+  promise: { fontSize: 18, padding: '10px 32px', marginTop: 6 },
+  notNow: {
+    background: 'transparent',
+    border: 'none',
+    color: 'var(--colour-muted)',
+    fontSize: 14,
+    textDecoration: 'underline',
+    cursor: 'pointer',
+  },
 }

@@ -91,10 +91,12 @@ export function findAnchor(anchors, file, line) {
 
 // One line describing a peer help item, for the helper, the stuck student and the teacher.
 export function describeItem(item, lessonType, task) {
-  if (item.kind === 'mark') return item.verdict === 'up' ? '👍 looks right' : '👎 look again'
-  if (item.kind === 'hint')
-    return `💡 ${findPeerHint(item.hintId, peerHelpCapability(lessonType)?.hints, task)?.text ?? 'a hint'}`
+  if (item.kind === 'mark') return item.verdict === 'up' ? '👍 Good!' : '👎 Look again'
+  if (item.kind === 'hint') {
+    const hint = findPeerHint(item.hintId, peerHelpCapability(lessonType)?.hints, task)
+    return hint ? `${hint.emoji ?? '💡'} ${hint.text}` : '💡 A hint'
+  }
   if (item.kind === 'note') return `💬 “${item.text ?? ''}”`
-  if (item.kind === 'edit') return '✏️ a suggested change'
+  if (item.kind === 'edit') return '✏️ A change to try'
   return item.kind
 }

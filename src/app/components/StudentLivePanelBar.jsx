@@ -13,28 +13,27 @@ export default function StudentLivePanelBar({
   onStopWatching,
   onTryCopy,
 }) {
-  const name = sourceStudentName ?? 'A classmate'
+  const name = sourceStudentName ?? 'your classmate'
   return (
     <div style={s.bar} role="status" data-testid="student-live-panel-bar">
       <span style={s.text}>
-        📺 {name}&apos;s work is on show
-        {watching || copyOpen ? '' : ' — keep coding, or take a look'}
+        📺 {watching || copyOpen ? `${name}’s work` : `Look at ${name}’s work!`}
       </span>
       <div style={s.actions}>
         {watching ? (
           <button type="button" className="btn-primary" style={s.btn} onClick={onStopWatching}>
-            ← Back to my work
+            ← Back to my code
           </button>
         ) : (
           !copyOpen && (
             <button type="button" className="btn-ghost-outline" style={s.btn} onClick={onWatch}>
-              👀 Watch
+              👀 Look
             </button>
           )
         )}
-        {!copyOpen && (
+        {!copyOpen && !watching && (
           <button type="button" className="btn-ghost-outline" style={s.btn} onClick={onTryCopy}>
-            ▶ Try a copy
+            ▶ Try it
           </button>
         )}
       </div>
@@ -55,7 +54,7 @@ const s = {
     color: 'var(--colour-text)',
     flexShrink: 0,
   },
-  text: { fontSize: 13, fontWeight: 600 },
+  text: { fontSize: 15, fontWeight: 700 },
   actions: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  btn: { fontSize: 13, padding: '4px 12px' },
+  btn: { fontSize: 14, padding: '5px 14px' },
 }

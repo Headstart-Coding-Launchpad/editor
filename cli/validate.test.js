@@ -365,11 +365,11 @@ describe('CLI lesson validation', () => {
       'Task 1 peerHints must be a list of short hint texts'
     )
     expect(
-      validateLessonForMcp(lesson({ peerHints: Array.from({ length: 11 }, (_, i) => `h${i}`) }))
+      validateLessonForMcp(lesson({ peerHints: Array.from({ length: 7 }, (_, i) => `h${i}`) }))
         .errors
-    ).toContain('Task 1 peerHints can have at most 10 hints')
-    expect(validateLessonForMcp(lesson({ peerHints: ['x'.repeat(101)] })).errors).toContain(
-      'Task 1 peerHints must each be 100 characters or fewer'
+    ).toContain('Task 1 peerHints can have at most 6 hints')
+    expect(validateLessonForMcp(lesson({ peerHints: ['x'.repeat(61)] })).errors).toContain(
+      'Task 1 peerHints must each be 60 characters or fewer'
     )
     expect(
       validateLessonForMcp(
