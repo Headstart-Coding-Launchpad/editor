@@ -31,6 +31,9 @@ const MIME_MAP = {
   '.json': 'application/json',
   '.txt': 'text/plain',
   '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.m4a': 'audio/mp4',
   '.mp4': 'video/mp4',
   '.html': 'text/html',
   '.css': 'text/css',
@@ -1140,9 +1143,55 @@ await yargs(hideBin(process.argv))
         })
       )
 
+      .command(
+        'set-default-sounds <type> [file]',
+        'Replace the default Scratch sound-file list ({ id, name, audio }) — file path or stdin (JSON or YAML)',
+        {},
+        cmd(async ({ type, file }) => {
+          const { setDefaultSounds } = await loadTypeAssets()
+          print(await setDefaultSounds(type, parseJsonOrYaml(file, await readText(file))))
+        })
+      )
+
+      .command(
+        'upload-sound <type> <filepath>',
+        'Upload a local audio file and add it as a default Scratch sound in one step',
+        {
+          id: { type: 'string', describe: 'Sound id (auto-generated if omitted)' },
+          name: {
+            type: 'string',
+            describe: "Sound display name (defaults to the file's name without extension)",
+          },
+          filename: {
+            type: 'string',
+            describe: "Storage filename (defaults to the file's basename)",
+          },
+          'mime-type': {
+            type: 'string',
+            describe: 'MIME type (auto-detected from file extension if omitted)',
+          },
+        },
+        cmd(async ({ type, filepath, id, name, filename, 'mime-type': mimeType }) => {
+          const resolvedFilename = filename ?? basename(filepath)
+          const resolvedMimeType =
+            mimeType ?? MIME_MAP[extname(filepath).toLowerCase()] ?? 'application/octet-stream'
+          const buffer = await readFile(filepath)
+          const { uploadDefaultSound } = await loadTypeAssets()
+          print(
+            await uploadDefaultSound(
+              type,
+              resolvedFilename,
+              buffer.toString('base64'),
+              resolvedMimeType,
+              { id, name }
+            )
+          )
+        })
+      )
+
       .demandCommand(
         1,
-        'Specify a subcommand: list | upload | delete | list-type | upload-type | set-default-sprites | upload-backdrop'
+        'Specify a subcommand: list | upload | delete | list-type | upload-type | set-default-sprites | upload-backdrop | set-default-sounds | upload-sound'
       )
       .help()
   )

@@ -131,7 +131,7 @@ Command groups:
 - `tasks get|upsert|append`
 - `topics list|get|upsert|upsert-library|yaml-to-json|json-to-yaml|publish-yaml|delete`
 - `feedback platform|lesson|all|add-lesson|add-platform|archive-lesson|archive-platform|clear-lesson|clear-platform`
-- `assets list|upload|delete|list-type|upload-type|set-default-sprites|upload-backdrop`
+- `assets list|upload|delete|list-type|upload-type|set-default-sprites|upload-backdrop|set-default-sounds|upload-sound`
 - `levels list|upsert|delete`
 - `classes list|upsert|archive`
 
@@ -143,4 +143,4 @@ Lesson validation/upsert, task upsert/append, and topic upsert/upsert-library ac
 
 Scratch toolbox XML validation is skipped server-side (no DOMParser in Node); use the builder preview to catch XML errors.
 
-`assets list-type`/`upload-type` work for any lesson type (shared files only). `set-default-sprites` (accepts a JSON/YAML array or `{ sprites: [...] }`, file or stdin) and `upload-backdrop` (uploads a local image and appends it as a new `defaultBackdrops` entry in one step) are scratch-only — they write `lessonTypeAssets/scratch.defaultSprites`/`defaultBackdrops`, the same fields the Scratch student/builder workspaces read via `useTypeAssets`.
+`assets list-type`/`upload-type` work for any lesson type (shared files only). `set-default-sprites` (accepts a JSON/YAML array or `{ sprites: [...] }`, file or stdin) and `upload-backdrop` (uploads a local image and appends it as a new `defaultBackdrops` entry in one step) are scratch-only — they write `lessonTypeAssets/scratch.defaultSprites`/`defaultBackdrops`, the same fields the Scratch student/builder workspaces read via `useTypeAssets`. `set-default-sounds` (array or `{ sounds: [...] }` of `{ id, name, audio }`) and `upload-sound` (uploads a local audio file and appends it to `defaultSounds`) do the same for the Sounds tab's sound-file library.

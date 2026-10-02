@@ -9,6 +9,12 @@ import {
   scratchBlockBadgeIcon,
 } from '../../shared/scratchBlockCatalog'
 import { VALUE_INPUT_DEFAULTS, numberShadow } from './blockInputs.js'
+import {
+  DEFAULT_SPRITE_SOUNDS,
+  getSynthSound,
+  playScratchSound,
+  stopAllScratchSounds,
+} from './scratchSounds.js'
 
 export { VALUE_INPUT_DEFAULTS }
 export {
@@ -26,12 +32,11 @@ export {
 } from './scratchPersistence'
 
 let _Blockly = null
-let audioContext = null
-let activeOscillators = []
 let _currentSprites = []
 let _currentBackdrops = []
 let _currentCostumes = []
 let _currentVariables = []
+let _currentSounds = DEFAULT_SPRITE_SOUNDS
 
 // The field height sets the Blockly row height. Leave a little vertical space
 // around the badge so it does not crowd the block's puzzle-piece connections.
@@ -48,6 +53,10 @@ export function setBackdropContext(backdrops) {
 
 export function setCostumeContext(costumes) {
   _currentCostumes = costumes ?? []
+}
+
+export function setSoundContext(sounds) {
+  _currentSounds = sounds?.length ? sounds : DEFAULT_SPRITE_SOUNDS
 }
 
 // Per-workspace dropdown context. The globals above are last-writer-wins, so when two
@@ -71,6 +80,7 @@ function blocklyContextFor(field) {
     backdrops: ctx.backdrops ?? _currentBackdrops,
     costumes: ctx.costumes ?? _currentCostumes,
     variables: ctx.variables ?? _currentVariables,
+    sounds: ctx.sounds ?? _currentSounds,
   }
 }
 
@@ -1103,14 +1113,17 @@ function soundBlock(type, message0) {
         message0: blockMessage(type, message0),
         args0: blockArgs(type, [
           {
-            type: 'field_dropdown',
+            // field_sprite_dropdown re-reads options once attached, so each workspace
+            // lists its own sprite's sounds (see scratchSounds.js), not another editor's.
+            type: 'field_sprite_dropdown',
             name: 'SOUND_MENU',
-            options: [
-              ['pop', 'pop'],
-              ['meow', 'meow'],
-              ['click', 'click'],
-              ['chime', 'chime'],
-            ],
+            options: function () {
+              const sounds = blocklyContextFor(this).sounds
+              return (sounds?.length ? sounds : DEFAULT_SPRITE_SOUNDS).map((snd) => [
+                snd.name,
+                snd.name,
+              ])
+            },
           },
         ]),
         previousStatement: null,
@@ -1894,7 +1907,10 @@ function createRunContext(
   spriteId = null
 ) {
   signal.variables ??= {}
-  return { workspace, state, onUpdate, signal, allSprites, costumes, spriteId }
+  // Sounds come from the sprite entry for this workspace — clones share their parent's
+  // workspace, so they find the parent's sounds too.
+  const sounds = allSprites?.find((sp) => sp.workspace === workspace)?.sounds ?? null
+  return { workspace, state, onUpdate, signal, allSprites, costumes, spriteId, sounds }
 }
 
 // A chain is active while the run hasn't been globally stopped, and — if it belongs to a
@@ -2136,14 +2152,14 @@ async function runBlock(block, context) {
     }
 
     case 'sound_play':
-      playSound(block.getFieldValue('SOUND_MENU') ?? 'pop')
+      playScratchSound(soundForName(block.getFieldValue('SOUND_MENU'), context))
       await tick()
       break
     case 'sound_playuntildone':
-      await playSound(block.getFieldValue('SOUND_MENU') ?? 'pop')
+      await playScratchSound(soundForName(block.getFieldValue('SOUND_MENU'), context))
       break
     case 'sound_stopallsounds':
-      stopAllSounds()
+      stopAllScratchSounds()
       await tick()
       break
 
@@ -2189,7 +2205,7 @@ async function runBlock(block, context) {
       break
     case 'control_stop':
       signal.stopped = true
-      stopAllSounds()
+      stopAllScratchSounds()
       break
 
     case 'control_create_clone_of': {
@@ -2577,45 +2593,13 @@ function askQuestion(question, signal) {
   return Promise.resolve(window.prompt(question, '') ?? '')
 }
 
-function playSound(name) {
-  if (typeof window === 'undefined') return Promise.resolve()
-  audioContext ??= new (window.AudioContext || window.webkitAudioContext)()
-  const ctx = audioContext
-  const osc = ctx.createOscillator()
-  const gain = ctx.createGain()
-  const sound = {
-    pop: { frequency: 660, duration: 0.18, type: 'sine' },
-    meow: { frequency: 440, duration: 0.42, type: 'sawtooth' },
-    click: { frequency: 880, duration: 0.08, type: 'square' },
-    chime: { frequency: 1046, duration: 0.35, type: 'triangle' },
-  }[name] ?? { frequency: 660, duration: 0.18, type: 'sine' }
-
-  osc.type = sound.type
-  osc.frequency.setValueAtTime(sound.frequency, ctx.currentTime)
-  if (name === 'meow')
-    osc.frequency.exponentialRampToValueAtTime(260, ctx.currentTime + sound.duration)
-  gain.gain.setValueAtTime(0.001, ctx.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.16, ctx.currentTime + 0.02)
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + sound.duration)
-  osc.connect(gain).connect(ctx.destination)
-  activeOscillators.push(osc)
-  osc.start()
-  osc.stop(ctx.currentTime + sound.duration + 0.03)
-  return new Promise((resolve) => {
-    osc.onended = () => {
-      activeOscillators = activeOscillators.filter((item) => item !== osc)
-      resolve()
-    }
-  })
-}
-
-function stopAllSounds() {
-  for (const osc of activeOscillators) {
-    try {
-      osc.stop()
-    } catch {}
-  }
-  activeOscillators = []
+// The running sprite's sound with this name. Falls back to a built-in synth of the same id
+// (the original pop/meow/click/chime menu values), then to pop.
+function soundForName(name, context) {
+  const sounds = context.sounds?.length ? context.sounds : DEFAULT_SPRITE_SOUNDS
+  const found = sounds.find((snd) => snd.name === name)
+  if (found) return found
+  return getSynthSound(name) ? { synth: name } : { synth: 'pop' }
 }
 
 function switchBackdrop(name, context) {

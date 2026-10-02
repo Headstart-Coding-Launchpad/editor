@@ -6,6 +6,11 @@ import { resolveAssetFileUrl } from '../../../shared/assetPaths'
 import { SPRITE_TYPES } from '../../../modules/scratch/ScratchWorkspace'
 import { spriteVisualMode } from '../../../shared/spriteVisuals'
 import { createSpriteFromPreset } from '../../../shared/spritePresets'
+import {
+  DEFAULT_SPRITE_SOUNDS,
+  SYNTH_SOUNDS,
+  playScratchSound,
+} from '../../../modules/scratch/scratchSounds'
 import { flattenTasks, getStageRole, STAGE_ROLES } from '../../../shared/taskUtils'
 import { getLessonModule } from '../../../modules/registry'
 import { getModuleAuthoring } from '../../../modules/definitions'
@@ -722,6 +727,13 @@ export function SpriteManager({
               onUpdate={(idx, field, value) => updateCostume(sp.id, idx, field, value)}
             />
           )}
+          <SoundManager
+            sounds={sp.sounds}
+            assetsPath={assetsPath}
+            storageAssets={storageAssets}
+            lessonId={lessonId}
+            onChange={(sounds) => update(sp.id, 'sounds', sounds)}
+          />
         </div>
       </div>
     )
@@ -734,6 +746,166 @@ export function SpriteManager({
         <SpriteAddPicker sprites={sprites} onChange={onChange} lessonType={lessonType} />
       )}
     </>
+  )
+}
+
+// A sprite's sounds: built-in synth sounds or audio files (an asset path, like a costume
+// image). With no `sounds` list the sprite gets the four default synth sounds.
+// SpriteManager is Scratch-only, so the shared files come from the Scratch type assets.
+function SoundManager({ sounds, assetsPath, storageAssets, lessonId, onChange }) {
+  const [browsingIdx, setBrowsingIdx] = React.useState(null)
+  const { lessonAssets } = useAssets()
+  const { typeStorageAssets } = useTypeAssets('scratch')
+  const isAudio = (a) => /\.(mp3|wav|ogg|m4a|aac|webm)$/i.test(a.name ?? a.path ?? '')
+  const assets = lessonAssets(lessonId, 'scratch').filter(isAudio)
+  const mergedStorageAssets = [
+    ...(storageAssets ?? []),
+    ...typeStorageAssets.filter((a) => !(storageAssets ?? []).some((b) => b.name === a.name)),
+  ].filter(isAudio)
+  const hasAnyAssets = assets.length > 0 || mergedStorageAssets.length > 0
+  const list = Array.isArray(sounds) && sounds.length > 0 ? sounds : null
+
+  function setList(next) {
+    onChange(next.length ? next : undefined)
+  }
+  function updateSound(idx, patch) {
+    setList(
+      list.map((snd, i) => {
+        if (i !== idx) return snd
+        const next = { ...snd, ...patch }
+        for (const key of Object.keys(next)) if (next[key] === undefined) delete next[key]
+        return next
+      })
+    )
+  }
+
+  if (!list) {
+    return (
+      <div className="te-costume-manager">
+        <p className="te-costume-empty">
+          Sounds: the default {DEFAULT_SPRITE_SOUNDS.map((snd) => snd.name).join(', ')}.
+        </p>
+        <button
+          type="button"
+          className="btn-ghost te-add-sprite-btn"
+          onClick={() => onChange(DEFAULT_SPRITE_SOUNDS.map((snd) => ({ ...snd })))}
+        >
+          Customise sounds
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="te-costume-manager">
+      <span className="te-sprite-field__label">Sounds</span>
+      {list.map((snd, idx) => {
+        const isBrowsing = browsingIdx === idx
+        const source = snd.audio !== undefined ? 'audio' : 'synth'
+        return (
+          <div key={idx} className="te-costume-block">
+            <div className="te-costume-row">
+              <input
+                className="te-input"
+                style={{ flex: '1 1 90px', minWidth: 0 }}
+                value={snd.name ?? ''}
+                onChange={(e) => updateSound(idx, { name: e.target.value })}
+                placeholder="Sound name"
+              />
+              <select
+                className="te-input"
+                style={{ flex: '1 1 110px', minWidth: 0 }}
+                value={source === 'audio' ? '__audio__' : (snd.synth ?? '')}
+                onChange={(e) =>
+                  e.target.value === '__audio__'
+                    ? updateSound(idx, { synth: undefined, audio: snd.audio ?? '' })
+                    : updateSound(idx, { audio: undefined, synth: e.target.value })
+                }
+              >
+                {SYNTH_SOUNDS.map((synth) => (
+                  <option key={synth.id} value={synth.id}>
+                    Synth: {synth.name}
+                  </option>
+                ))}
+                <option value="__audio__">Audio file…</option>
+              </select>
+              {source === 'audio' && (
+                <input
+                  className="te-input"
+                  style={{
+                    flex: '2 1 120px',
+                    minWidth: 0,
+                    fontFamily: 'var(--font-code)',
+                    fontSize: '0.8rem',
+                  }}
+                  value={snd.audio ?? ''}
+                  onChange={(e) => updateSound(idx, { audio: e.target.value })}
+                  placeholder="e.g. sounds/bark.mp3"
+                />
+              )}
+              {source === 'audio' && hasAnyAssets && (
+                <button
+                  type="button"
+                  className={
+                    isBrowsing
+                      ? 'te-browse-toggle-btn te-browse-toggle-btn--active'
+                      : 'te-browse-toggle-btn'
+                  }
+                  onClick={() => setBrowsingIdx(isBrowsing ? null : idx)}
+                  title="Browse assets"
+                >
+                  Browse
+                </button>
+              )}
+              <button
+                type="button"
+                className="te-browse-toggle-btn"
+                title={`Play ${snd.name}`}
+                aria-label={`Play ${snd.name}`}
+                onClick={() =>
+                  playScratchSound(
+                    source === 'audio'
+                      ? { url: resolveAssetFileUrl(assetsPath, snd.audio) }
+                      : { synth: snd.synth }
+                  )
+                }
+              >
+                ▶
+              </button>
+              <button
+                type="button"
+                className="te-remove-btn"
+                onClick={() => setList(list.filter((_, i) => i !== idx))}
+                title="Remove sound"
+              >
+                ✕
+              </button>
+            </div>
+            {isBrowsing && hasAnyAssets && (
+              <div className="te-inline-browser">
+                <AssetBrowser
+                  assetsPath={assetsPath}
+                  assets={assets}
+                  storageAssets={mergedStorageAssets}
+                  mode="select"
+                  onSelect={(path) => {
+                    updateSound(idx, { audio: path })
+                    setBrowsingIdx(null)
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )
+      })}
+      <button
+        type="button"
+        className="btn-ghost te-add-sprite-btn"
+        onClick={() => setList([...list, { name: `sound${list.length + 1}`, synth: 'pop' }])}
+      >
+        + Add sound
+      </button>
+    </div>
   )
 }
 

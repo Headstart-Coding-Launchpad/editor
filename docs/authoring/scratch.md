@@ -65,6 +65,10 @@ modules:
     allowRemoveSprite: false  # optional — let students remove sprites they added themselves (default false)
     allowRemoveStarterSprites: false # optional — also let removal target author-placed sprites, not just student-added ones (default false; ignored unless allowRemoveSprite is true)
     enableStageCode: false    # optional — give the Stage its own workspace (blocks keyed "__stage__"); carried through automatically when the task carries blocks from an earlier task
+    showCostumesTab: false    # optional — show a Costumes tab beside the block editor (default false)
+    showSoundsTab: false      # optional — show a Sounds tab beside the block editor (default false)
+    allowAddCostume: false    # optional — students can add costumes (emoji or library) in the Costumes tab; needs showCostumesTab
+    allowAddSound: false      # optional — students can add sounds (synth or library file) in the Sounds tab; needs showSoundsTab
     check:
       type: sprite_property
       evaluation: after_run
@@ -103,8 +107,30 @@ sprites:
       - name: rocket
         image: sprites/rocket.png   # relative to assetsPath, or /assets/shared/...
     emoji: "🚀"               # optional — emoji rendered on stage when no costume image is active
+    sounds:                   # optional — this sprite's sounds; omitted = pop, meow, click, chime
+      - name: launch
+        synth: laser          # a built-in synth sound (see Sounds below)
+      - name: countdown
+        audio: sounds/countdown.mp3   # an audio file, resolved like a costume image
     studentEditable: true     # optional — when false, students cannot select or view blocks (default true)
 ```
+
+### Sounds
+
+Sounds belong to a sprite. The `start sound` / `play sound until done` dropdown lists the
+selected sprite's own `sounds` by `name`, and a sprite with no `sounds` list gets the four
+default synth sounds `pop`, `meow`, `click`, `chime` (so older lessons are unchanged). Each
+sound has a `name` and exactly one source:
+
+- `synth` — a built-in sound generated in the browser (no file): `pop`, `meow`, `click`,
+  `chime`, `boing`, `laser`, `coin`, `jump`, `power-up`, `game-over`, `beep`, `buzzer`, `bell`,
+  `drum`, `snare`, `whoosh`, `splash`, `zap`.
+- `audio` — an audio file path (`.mp3`, `.wav`, `.ogg`, `.m4a`), relative to `assetsPath`, a
+  `/assets/shared/...` path, or a full URL.
+
+Validation errors on a sound with no name, two sounds with the same name on one sprite, a
+sound with both or neither of `synth`/`audio`, or an unknown `synth` id. Sound names in
+`starterBlocks`/`completeBlocks` (the `SOUND_MENU` field) must match the sprite's sound names.
 
 ---
 
@@ -378,7 +404,33 @@ Three per-task toggles let students extend their own project beyond what the aut
 
 Both are enforced structurally (author sprites/variables are always distinguishable from student-added ones), not by convention, so no extra authoring care is needed beyond picking `variableName`/`spriteName` values that match what you authored.
 
-**Persistence.** Student-added sprites/backdrops and created variables persist the same way as everything else in the task — saved, carried through (`carryBlocksFrom`), and pushed by remote reset/teacher-live-view — under a `__meta__` key alongside the per-sprite Blockly workspace state, opaque to any code that only stores or forwards the state blob.
+**Persistence.** Student-added sprites/backdrops, created variables, and added costumes/sounds persist the same way as everything else in the task — saved, carried through (`carryBlocksFrom`), and pushed by remote reset/teacher-live-view — under a `__meta__` key alongside the per-sprite Blockly workspace state, opaque to any code that only stores or forwards the state blob.
+
+---
+
+## Costumes and Sounds Tabs
+
+Two per-task toggles add tabs beside the block editor for the selected sprite, as in Scratch.
+Both are off by default, and the Stage (with `enableStageCode`) always shows only Code:
+
+- `showCostumesTab` — a **Costumes** tab listing the sprite's costumes. Clicking one puts it on
+  (the same as the Costume property). `allowAddCostume` adds an **+ Add costume** button
+  offering every costume in the admin sprite library (`lessonTypeAssets/scratch.defaultSprites`;
+  an emoji-only library sprite offers its emoji) plus a full emoji picker. A new costume is put
+  on straight away. Adding to a sprite drawn from its emoji or shape with no costumes first
+  keeps that look as `costume1`.
+- `showSoundsTab` — a **Sounds** tab listing the sprite's sounds with a ▶ preview.
+  `allowAddSound` adds an **+ Add sound** button offering every built-in synth sound plus the
+  admin sound-file library (`lessonTypeAssets/scratch.defaultSounds`, managed in Admin → Shared
+  Assets → Scratch → Default sounds, or `lessons assets upload-sound scratch <file>`). An added
+  sound appears in that sprite's sound blocks immediately.
+
+Students can add costumes and sounds to **any** sprite, including author-placed ones. Added
+entries are saved with the student's work (under `__meta__.addedCostumes` / `addedSounds`,
+keyed by sprite id) and show in the teacher's live view. A costume check
+(`sprite_property` `property: costume`) still works on author-named costumes; student-added
+costume names are whatever the student picked, so don't write checks that expect them. The
+Scratch Playground turns all four toggles on.
 
 ---
 
@@ -669,7 +721,7 @@ Available opcodes for `toolbox` XML, `block_used`, `blocks_in_order`, `block_cou
 - `looks_seteffectto` · `looks_changeeffectby` · `looks_cleargraphiceffects`: all seven effects (`color`, `fisheye`, `whirl`, `pixelate`, `mosaic`, `brightness`, `ghost`) draw on the stage using Scratch 3's own maths. For costume images hosted on another site (for example Firebase Storage URLs), `fisheye` and `whirl` can't be drawn, because the browser won't let the page read those pixels; the other five still work.
 
 **Sound**
-- `sound_play` · `sound_playuntildone` · `sound_stopallsounds`
+- `sound_play` · `sound_playuntildone` · `sound_stopallsounds`: the `SOUND_MENU` field is the name of one of the sprite's own `sounds` (see [Sounds](#sounds)).
 
 **Control**
 - `control_wait` · `control_wait_until`

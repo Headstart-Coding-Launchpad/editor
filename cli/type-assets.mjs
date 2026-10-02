@@ -13,6 +13,7 @@ import {
   normalizeBackdropPresets,
   createBackdropFromPreset,
 } from '../src/shared/spritePresets.js'
+import { normalizeSoundPresets } from '../src/modules/scratch/scratchSounds.js'
 
 // Mirrors the admin "Shared Assets" panel: lesson-type-wide files and Scratch defaults
 // live in Firestore `lessonTypeAssets/{type}`, with files in Storage under `shared/{type}/assets/`.
@@ -50,6 +51,7 @@ export async function listTypeAssets(type) {
     storageAssets: mergeStorageAssets(data.storageAssets ?? [], folderAssets),
     defaultSprites: data.defaultSprites ?? [],
     defaultBackdrops: data.defaultBackdrops ?? [],
+    defaultSounds: data.defaultSounds ?? [],
   }
 }
 
@@ -95,6 +97,51 @@ export async function setDefaultSprites(type, input) {
   const sprites = normalizeSpritePresets(normalizeListInput(input, 'sprites'))
   await typeAssetsRef(type).set({ defaultSprites: sprites }, { merge: true })
   return { success: true, type, count: sprites.length, defaultSprites: sprites }
+}
+
+// Default sounds: audio files students can add from a sprite's Sounds tab (allowAddSound).
+// Each entry is { id, name, audio } with `audio` a URL (normally an uploaded shared file).
+export async function setDefaultSounds(type, input) {
+  validateSlug(type, 'type')
+  assertScratchType(type, 'Default sounds')
+  const sounds = normalizeSoundPresets(normalizeListInput(input, 'sounds'))
+  await typeAssetsRef(type).set({ defaultSounds: sounds }, { merge: true })
+  return { success: true, type, count: sounds.length, defaultSounds: sounds }
+}
+
+// Uploads a local audio file and appends it as a default sound in one step.
+export async function uploadDefaultSound(
+  type,
+  filename,
+  base64Content,
+  mimeType,
+  { id, name } = {}
+) {
+  validateSlug(type, 'type')
+  assertScratchType(type, 'Default sounds')
+
+  const uploadResult = await uploadTypeAsset(type, filename, base64Content, mimeType)
+
+  const ref = typeAssetsRef(type)
+  const snap = await ref.get()
+  const existing = normalizeSoundPresets(snap.exists ? snap.data().defaultSounds : [])
+  let soundId = id
+  if (soundId) {
+    if (existing.some((snd) => snd.id === soundId))
+      throw new Error(`Sound id '${soundId}' already exists`)
+  } else {
+    let n = existing.length + 1
+    while (existing.some((snd) => snd.id === `sound${n}`)) n += 1
+    soundId = `sound${n}`
+  }
+  const sound = {
+    id: soundId,
+    name: name ?? filename.replace(/\.[^.]+$/, ''),
+    audio: uploadResult.url,
+  }
+  await ref.set({ defaultSounds: [...existing, sound] }, { merge: true })
+
+  return { success: true, type, sound, asset: uploadResult }
 }
 
 // Uploads a local image to the type's shared assets and, in the same call, appends it as a

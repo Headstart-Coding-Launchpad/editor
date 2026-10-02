@@ -1,4 +1,5 @@
 // Node-safe half of the Scratch module (see ../defineModule.js). UI lives in index.js.
+import { validateScratchSoundsAndTabs } from './scratchSounds.js'
 import { defineModule } from '../defineModule.js'
 import { codeStagesField } from '../../shared/taskFields.js'
 import {
@@ -138,6 +139,10 @@ export default defineModule({
     { name: 'allowRemoveSprite', type: 'boolean' },
     { name: 'allowRemoveStarterSprites', type: 'boolean' },
     { name: 'enableStageCode', type: 'boolean' },
+    { name: 'showCostumesTab', type: 'boolean' },
+    { name: 'showSoundsTab', type: 'boolean' },
+    { name: 'allowAddCostume', type: 'boolean' },
+    { name: 'allowAddSound', type: 'boolean' },
     { name: 'carryBlocksFrom', type: 'string' },
   ],
   carryThroughField: 'carryBlocksFrom',
@@ -236,6 +241,10 @@ export default defineModule({
       allowAddSprite: true,
       allowRemoveSprite: true,
       allowRemoveStarterSprites: true,
+      showCostumesTab: true,
+      showSoundsTab: true,
+      allowAddCostume: true,
+      allowAddSound: true,
     }),
     hasPersonalSandbox: personalSandboxWhenLessonHas('sandboxStarter'),
     // Only a stage reset leaves a stage active; starter and complete clear it.
@@ -311,6 +320,7 @@ export default defineModule({
       validateScratchChecks(checks, n, errors, kind, warnings)
     )
     warnCompleteBlocks(task, n, warnings)
+    validateScratchSoundsAndTabs(task, n, errors, warnings)
   },
   hasStarterContent: (task) => !!task.starterBlocks,
   // `lessons test-checks` with no --cases: static block checks per stage (checkVerification.js).

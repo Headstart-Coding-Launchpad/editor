@@ -43,6 +43,8 @@ import {
   uploadTypeAsset,
   setDefaultSprites,
   uploadDefaultBackdrop,
+  setDefaultSounds,
+  uploadDefaultSound,
 } from './type-assets.mjs'
 
 describe('CLI lesson-type shared assets', () => {
@@ -123,6 +125,38 @@ describe('CLI lesson-type shared assets', () => {
       uploadDefaultBackdrop('scratch', 'b.png', Buffer.from('b').toString('base64'), 'image/png', {
         id: 'bg1',
       })
+    ).rejects.toThrow(/already exists/)
+  })
+
+  it('lists defaultSounds, empty when none are set', async () => {
+    expect((await listTypeAssets('scratch')).defaultSounds).toEqual([])
+    const sounds = [{ id: 'sound1', name: 'Loop', audio: 'https://x/loop.mp3' }]
+    await setDefaultSounds('scratch', { sounds: [...sounds, { id: 'bad', name: 'No audio' }] })
+    expect((await listTypeAssets('scratch')).defaultSounds).toEqual(sounds)
+    await expect(setDefaultSounds('python', sounds)).rejects.toThrow(
+      /only supported for the 'scratch'/
+    )
+  })
+
+  it('uploads an audio file and adds it as a default sound in one step', async () => {
+    const result = await uploadDefaultSound(
+      'scratch',
+      'music-loop.mp3',
+      Buffer.from('hi').toString('base64'),
+      'audio/mpeg'
+    )
+    expect(result.sound).toMatchObject({ id: 'sound1', name: 'music-loop' })
+    expect(result.sound.audio).toBe(result.asset.url)
+    const listed = await listTypeAssets('scratch')
+    expect(listed.defaultSounds).toEqual([result.sound])
+    expect(listed.storageAssets).toEqual([expect.objectContaining({ name: 'music-loop.mp3' })])
+
+    const second = await uploadDefaultSound('scratch', 'b.wav', 'aGk=', 'audio/wav', {
+      name: 'Beat',
+    })
+    expect(second.sound).toMatchObject({ id: 'sound2', name: 'Beat' })
+    await expect(
+      uploadDefaultSound('scratch', 'c.wav', 'aGk=', 'audio/wav', { id: 'sound1' })
     ).rejects.toThrow(/already exists/)
   })
 })
