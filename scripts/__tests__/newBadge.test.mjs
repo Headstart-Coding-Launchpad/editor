@@ -141,8 +141,8 @@ describe('planNewBadge', () => {
     const definition = byPath['src/badges/definitions/team_player.js']
     expect(definition).toContain('blurb: "Helped the team\'s project.",')
     expect(definition).not.toContain('rule')
-    expect(byPath['src/badges/registry.pure.js']).toMatch(/designMaster,\n {2}teamPlayer,\n\]/)
-    expect(byPath['docs/CODEBASE_MAP.md']).toContain('`design_master.js`, `team_player.js`) |')
+    expect(byPath['src/badges/registry.pure.js']).toMatch(/independentCoder,\n {2}teamPlayer,\n\]/)
+    expect(byPath['docs/CODEBASE_MAP.md']).toContain('`independent_coder.js`, `team_player.js`) |')
     expect(byPath['docs/authoring/badges.md']).toContain(
       '| 🫶 Team Player | `team_player` | Tutor-only: never suggested | – |'
     )
