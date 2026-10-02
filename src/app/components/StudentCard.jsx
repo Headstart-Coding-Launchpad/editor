@@ -36,6 +36,19 @@ function formatVisiblePanes(panes) {
   return panes.map((p) => VISIBLE_PANE_LABELS[p] ?? p).join(' + ')
 }
 
+const PEER_HELP_ROLE_LABELS = {
+  asked: 'Classmate OK',
+  offered: 'Offered',
+  being_helped: 'Being helped',
+  helping: 'Helping',
+}
+const PEER_HELP_ROLE_TITLES = {
+  asked: 'Says a classmate may help: open them to check their work and offer it',
+  offered: 'Offered to the class, waiting for a helper',
+  being_helped: 'A classmate is helping them',
+  helping: 'Helping a classmate',
+}
+
 export default function StudentCard({
   student,
   lesson,
@@ -52,6 +65,9 @@ export default function StudentCard({
   onSetShownResponseName,
   badgePendingCount = 0,
   badgeAwardedCount = 0,
+  // Peer help role on the current task (peerHelpRolesByStudent): 'asked' | 'offered' |
+  // 'being_helped' | 'helping', or null.
+  peerHelpRole = null,
   selectMode = false,
   selected = false,
   onToggleSelect,
@@ -408,6 +424,15 @@ export default function StudentCard({
               title="Student has requested help"
             >
               Help
+            </span>
+          )}
+          {peerHelpRole && (
+            <span
+              style={{ ...s.checkBadge, ...s.checkBadgeShare }}
+              title={PEER_HELP_ROLE_TITLES[peerHelpRole]}
+              data-testid="card-peer-help"
+            >
+              🤝 {PEER_HELP_ROLE_LABELS[peerHelpRole]}
             </span>
           )}
           {student.shareRequestedAt != null && (

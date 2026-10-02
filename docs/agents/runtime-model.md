@@ -313,7 +313,8 @@ Teacher writes:
 - `state`, `currentTaskId`, `startedAt`, `currentTaskStartedAt`, `endedAt`, `isPaused`
 - `taskStartTimes/{taskId}` — stamped by `startSession` (for the initial task) and `setTaskId` (for the newly-entered task); overwritten if the teacher revisits a task. Used by `buildSessionReport` to compute time-on-task.
 - `taskRatingLog/{taskId}` (`setTaskRating`) — the teacher's own live rating of a task (1-5 stars plus "what worked well"/"what didn't work" notes), entered via `TaskRatingPanel.jsx` (the top bar's "⭐ Rate this task" popover) while that task is showing, not just at end-of-session. Last write wins per task; saving with every field blank removes the entry instead of leaving an empty stub. Not cleared by `setTaskId` (so it survives the teacher moving on and back), but is nulled by `createSession`/`endSession` like `overrideLog`/`supportRevealLog` — `buildSessionReport` reads it (see "Session Reports" below) before `endSession` clears it.
-- `activeStudentView`, `teacherLive`
+- `activeStudentView`, `teacherLive` (a student broadcast may carry `mode: 'panel'`, "Show to class (keep coding)", which classmates choose to watch instead of being locked onto; see `docs/agents/classroom-behaviours.md`)
+- `peerHelpOffers/{requestId}` (`{ taskId, lessonType, offeredAt }`; a helper adds `claimedAt` and either student in the pairing `endedAt`), `peerHelpSettings` (`{ notesEnabled, pausedAt }`), `peerHelperOff/{anonymousId}` — peer help; see "Peer Help" below
 - `teacherClassPaneCommand` (`pushClassPaneCommand`/`clearClassPaneCommand`) — whole-class "highlight this tab/panel" or "force-switch to this tab/panel" broadcast (e.g. Electronics' Breadboard/MicroPython tabs, Scratch's Blocks/Stage tabs, or the Instructions/explainer pane on any lesson type); every connected student evaluates this same node. See the per-student `teacherPaneCommand` bullet below for semantics and the `docs/agents/classroom-behaviours.md` section for student-side behaviour. Cleared by `setTaskId`
 - `videoCallLink` (written by `updateVideoCallLink`, validated as http(s)-only — throws on any other scheme or malformed URL; settable any time during a session via the "📹 Video Call" popover in `TeacherSessionControls.jsx`; reset to `null` on `createSession`/`restartSession`/`endSession`) — shown to students in `WaitingRoom.jsx` whenever set
 - `videoCallBroadcastAt` (stamped by `broadcastVideoCallLink` from the "📹 Send to all" button beside the Video Call control in `TeacherSessionControls.jsx`, only offered while a `videoCallLink` is set and the session hasn't ended; reset to `null` on `createSession`/`endSession`) — a class-wide video-call push. Every student screen that can show the prompt reacts: name entry (those students have no student record yet, so this is the only push that reaches them), the waiting room, and the lesson/sandbox page. See "Video call prompt" in `docs/agents/classroom-behaviours.md`
@@ -445,6 +446,31 @@ Lifecycle:
 Security rules (`database.rules.json`): `sharedWorkspaces` inherits teacher/admin write from `sessions/{lessonId}` and has no student rule, so students cannot write the index. Under `sharedWorkspacePayloads/{lessonId}`, `pending/{anonymousId}` is readable and writable only by that student and teachers/admins, while `approved` is publicly readable and teacher/admin-write. That pending/approved read split is what actually enforces the approval gate — hiding a button on the client is not sufficient.
 
 
+## Peer Help
+
+A finished student helping a stuck one (`src/shared/peerHelp.js`, `src/app/hooks/usePeerHelp.js`, behaviour in `docs/agents/classroom-behaviours.md` "Peer Help"). Everything that could identify either student, and the stuck student's work, lives **outside** `sessions` (which streams to every client), keyed by a random request id; the class only ever sees an anonymous offer.
+
+```text
+sessions/{lessonId}/peerHelpOffers/{requestId}   { taskId, lessonType, offeredAt, claimedAt?, endedAt? }   class-readable, no ids
+sessions/{lessonId}/peerHelpSettings             { notesEnabled, pausedAt }                                 teacher only
+sessions/{lessonId}/peerHelperOff/{anonymousId}  true                                                       teacher only
+peerHelpRequests/{lessonId}/{anonymousId}        { requestId, taskId, at }    the stuck student's opt-in    that student + teacher
+peerHelpHelping/{lessonId}/{anonymousId}         requestId                    the helper's current request  that student + teacher
+peerHelpPromises/{lessonId}/{anonymousId}        at                           the helper promise            that student + teacher
+peerHelp/{lessonId}/{requestId}/
+  stuckId      read: teacher, that student          written once by the stuck student
+  helperId     read: teacher, that helper           the claim, written once (rules re-check eligibility)
+  snapshot     read: teacher, stuck, helper         the stuck student's work (encoded file keys)
+  state        { endedAt, endedBy, snapshotRequestedAt, notOkAt, notOkSeenAt }
+  inbox/{id}   what the stuck student sees: helper thumbs/hints (no text), teacher-approved edits/notes, the stuck student's response
+  review/{id}  edits and notes for the teacher (pending/approved/rejected), and filter-blocked notes
+```
+
+- Rules (`database.rules.json`, tested by `tests/rules/peerHelp.rules.test.js` under `npm run test:rules`): a student can read only the parts of a request they belong to; the claim is one write of `helperId` that the rules accept only from a promised, eligible (passed the current task, not switched off, not paused, offer open, not the stuck student) student, and `claimedAt` only from whoever holds `helperId`, so both go in one multi-path update; the helper writes inbox items of kind `mark`/`hint` only, with no text; only the teacher can put text, edits or an approval anywhere the stuck student reads; nothing but the teacher writes after `state/endedAt`.
+- `createSession` and `endSession` remove `peerHelp`, `peerHelpRequests`, `peerHelpHelping` and `peerHelpPromises` for the lesson (`clearPeerHelpData`), and `endSession` nulls the three session fields. `handleEndSession` reads `peerHelp/{lessonId}` into the report first.
+- When the class moves to another task, the teacher's client ends every open request from an earlier task (`endedBy: 'task_changed'`) and clears their opt-ins.
+- **Deploying the rules is required**: the four nodes are new top-level paths, denied by default until `firebase deploy --only database` runs.
+
 ## Presentation Annotations (`liveInk/{lessonId}`)
 
 The teacher's live pointer, fading ink and text highlights from the Presentation window (see `docs/agents/classroom-behaviours.md`, "Presentation Annotations"). A **top-level** node, never under `sessions/{lessonId}`: every client streams the whole session node, and the pointer moves at ~12Hz, so keeping it there would re-render every student's view on every mouse move. Code: `src/app/liveInk/` (`liveInkData.js` is the shape, `liveInkWriter.js` the writes); `useSession.js` exposes `subscribeLiveInk(callback)` and `createLiveInkWriter()` for `LiveInkProvider`.
@@ -503,6 +529,8 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`) record behaviour a
 | `attemptLog/{id}/{taskId}/{pushId}/error` | student | `logAttempt(..., { error })`, `flagAttemptError(anonymousId, taskId, error)` | every `logAttempt` call site passes `error`: runtime runs (Python/Turtle/Electronics, from the run's output), Run tests (the first errored test), HTML (a preview console error reported before the check), Arcade (`flagAttemptError` when the game iframe reports its error after Run). Scratch, quizzes, activities and Filesystem/Desktop checks never set it. |
 | `students/{id}/pasteLog/{taskId}/firstAt` | student | `recordStudentPaste` | the first large paste on a task |
 | `sessionArchive/{lessonId}` (top level) | teacher | `enterSandbox`, `pushSandboxCode`, `pushSandboxFiles`, `pushSandboxExplainer`, `exitSandbox`, `endSession`, `archiveSandboxStudentSnapshot` | see below |
+
+**Read, not written: peer help.** 🤝 Helpful Coder writes nothing new either: `useBadgeSuggestions` takes the teacher's read of `peerHelp/{lessonId}` (`usePeerHelp().allPeerHelp`, see "Peer Help" above) and `buildPeerHelpEvents` adds a `peer_help` event to the helper's timeline for each inbox item the stuck student marked `useful` or `accepted`. Helper, task and responses are in the badge evaluation input key. Students can't read each other's peer help, so this is never a student signal.
 
 **Read, not written.** 🐦 Early Bird writes nothing new: the timeline builder emits an `early_join` event from `students/{id}/firstJoinedAt` (the student's clock) and the session's `startedAt` (the tutor's clock) once the session has started and the join was before it. Both are in the badge evaluation input key, so pressing Start re-evaluates.
 

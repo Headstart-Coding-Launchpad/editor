@@ -2,6 +2,7 @@ import React from 'react'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { peerHelpMock } from '../../hooks/__tests__/peerHelpMock.js'
 import StudentView from '../StudentView'
 import { runPython, stopPython } from '../../../modules/python/pyodide'
 import { SOUNDS_MUTED_KEY, setSoundsMuted } from '../../soundSettings'
@@ -32,6 +33,10 @@ vi.mock('../../../shared/lessonService', () => ({
     overrideTasks ? { ...lesson, tasks: overrideTasks } : lesson,
 }))
 
+vi.mock('../../hooks/usePeerHelp', async () => {
+  const { peerHelpModuleMock } = await import('../../hooks/__tests__/peerHelpMock.js')
+  return peerHelpModuleMock
+})
 vi.mock('../../hooks/useSession', () => ({
   useSession: (...args) => mocks.useSession(...args),
 }))
@@ -1319,11 +1324,32 @@ describe('StudentView', () => {
 
       const needHelpBtn = screen.getByRole('button', { name: /Need Help/i })
       // Short on screen (the top bar is one row); the full name stays in the label and title.
-      expect(needHelpBtn).toHaveTextContent(/^✋ Help$/)
-      expect(needHelpBtn).toHaveAttribute('title', 'Ask your teacher for help')
+      // Python supports peer help, so Help opens a menu (ask the teacher, or let a classmate
+      // help too).
+      expect(needHelpBtn).toHaveTextContent(/^✋ Help/)
+      expect(needHelpBtn).toHaveAttribute('title', 'Ask for help')
       await user.click(needHelpBtn)
+      await user.click(screen.getByRole('button', { name: /Ask my teacher$/ }))
 
       expect(requestHelp).toHaveBeenCalledWith('student-1')
+    })
+
+    it('can also let a classmate help: asks the teacher and sends a snapshot for them to check', async () => {
+      const user = userEvent.setup()
+      const requestHelp = vi.fn(() => Promise.resolve())
+      const requestPeerHelp = vi.fn(() => Promise.resolve('req-1'))
+      peerHelpMock.overrides = { requestPeerHelp }
+      mocks.useSession.mockReturnValue(mkLiveSession({}, { requestHelp }))
+      render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      await user.click(screen.getByRole('button', { name: /Need Help/i }))
+      await user.click(screen.getByRole('button', { name: /a classmate can help too/ }))
+
+      expect(requestHelp).toHaveBeenCalledWith('student-1')
+      await waitFor(() => expect(requestPeerHelp).toHaveBeenCalled())
+      expect(requestPeerHelp.mock.calls[0][0]).toMatchObject({ taskId: 1, lessonType: 'python' })
+      peerHelpMock.overrides = {}
     })
 
     it('shows a requested state and disables the button once the teacher has been notified', async () => {

@@ -225,4 +225,17 @@ describe('Go Live restriction', () => {
     fireEvent.click(within(header).getByRole('button', { name: '📡 Go Live for All' }))
     expect(onGoLiveForAll).toHaveBeenCalled()
   })
+
+  it('also offers "Show to class (keep coding)", which broadcasts in panel mode', () => {
+    const onGoLiveForAll = vi.fn()
+    render(
+      <StudentModal
+        {...modalProps({ onGoLiveForAll, session: { ...SESSION, currentTaskId: 2 } })}
+      />
+    )
+    const header = screen.getByRole('dialog')
+    fireEvent.click(within(header).getByRole('button', { name: /^More/ }))
+    fireEvent.click(within(header).getByRole('button', { name: '📺 Show to class (keep coding)' }))
+    expect(onGoLiveForAll).toHaveBeenCalledWith('panel')
+  })
 })

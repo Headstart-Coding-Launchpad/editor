@@ -74,6 +74,10 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … priority must be one of: …` | `priority` isn't `core` or `optional`. | Fix the value or remove it (default is core). |
 | `Task … allowSharing must be true or false` | `allowSharing` isn't a boolean. | Use `true` or `false`. |
 | `Task … allowSharing is not supported on quiz or information tasks` | Only code tasks have a workspace to share. | Remove `allowSharing` from that task. |
+| `Task … peerHints must be a list of short hint texts` | `peerHints` isn't a list, or holds an empty or non-text entry. | Write `peerHints: ["Did you use a loop?"]`. |
+| `Task … peerHints can have at most 10 hints` | More than 10 `peerHints`. | Keep the few that matter most. |
+| `Task … peerHints must each be 100 characters or fewer` | A hint is too long for a classmate to send. | Shorten it. |
+| `Task … peerHints is not supported on quiz or information tasks` | Peer help is for code tasks. | Remove `peerHints` from that task. |
 | `Task … stage … role must be one of: …` | A `codeStages` entry has an unknown `role`. | Use `starter`, `support` or `complete`. |
 | `Task … stage … is missing a label` | A code stage has no `label`. | Add `label:` to the stage. |
 | `Task ID … is used by … and … - renumber task IDs before publishing` (warning, **Builder only**) | Two tasks share an `id`. | Renumber the task ids. |

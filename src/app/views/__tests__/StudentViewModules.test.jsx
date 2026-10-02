@@ -87,6 +87,10 @@ vi.mock('../../../shared/useTypeAssets', () => ({
   }),
 }))
 
+vi.mock('../../hooks/usePeerHelp', async () => {
+  const { peerHelpModuleMock } = await import('../../hooks/__tests__/peerHelpMock.js')
+  return peerHelpModuleMock
+})
 vi.mock('../../hooks/useSession', () => ({
   useSession: () => mocks.session,
 }))

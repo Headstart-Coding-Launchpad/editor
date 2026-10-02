@@ -8,9 +8,9 @@ import {
   hasPassedCurrentTask,
   notOkAlerts,
   pendingReviewItems,
+  peerHelpRolesByStudent,
   snapshotLine,
   snapshotLineFiles,
-  supportsPeerHelp,
   validatePeerEdit,
   visiblePeerHelpOffers,
 } from '../peerHelp'
@@ -24,14 +24,10 @@ describe('peer hints', () => {
     expect(hints.filter((h) => h.id.startsWith('lesson-'))).toHaveLength(1)
   })
 
-  it('treats Turtle as Python and finds hints by id', () => {
-    expect(findPeerHint('py-colon', 'turtle', null)?.text).toMatch(/colon/)
+  it('finds hints by id within a hint list', () => {
+    expect(findPeerHint('py-colon', 'python', null)?.text).toMatch(/colon/)
     expect(findPeerHint('html-close', 'python', null)).toBeNull()
-  })
-
-  it('only supports the lesson types it has hints and a helper view for', () => {
-    expect(['python', 'turtle', 'html', 'scratch'].every(supportsPeerHelp)).toBe(true)
-    expect(supportsPeerHelp('electronics')).toBe(false)
+    expect(findPeerHint('sc-loop', 'blocks', null)?.text).toMatch(/loop/)
   })
 })
 
@@ -150,7 +146,7 @@ describe('teacher queues and the audit', () => {
       stuckId: 's',
       helperId: 'h',
       snapshot: { taskId: 2 },
-      state: { endedAt: 50, endedBy: 'not_ok' },
+      state: { endedAt: 50, endedBy: 'stuck', notOkAt: 50 },
       inbox: { i1: { kind: 'mark', line: 2, verdict: 'down', createdAt: 3, response: 'not_ok' } },
       review: {
         i2: { kind: 'note', text: 'try a colon', status: 'pending', createdAt: 4 },
@@ -168,7 +164,7 @@ describe('teacher queues and the audit', () => {
   it('lists pending items and unseen Not OK alerts', () => {
     expect(pendingReviewItems(peerHelp).map((i) => i.itemId)).toEqual(['i2'])
     expect(notOkAlerts(peerHelp).map((a) => a.requestId)).toEqual(['r1'])
-    expect(notOkAlerts({ r1: { state: { endedBy: 'not_ok', notOkSeenAt: 1 } } })).toEqual([])
+    expect(notOkAlerts({ r1: { state: { notOkAt: 1, notOkSeenAt: 2 } } })).toEqual([])
   })
 
   it('keeps every item, with names, in the audit', () => {
@@ -177,8 +173,35 @@ describe('teacher queues and the audit', () => {
       offers: { r1: { offeredAt: 1, claimedAt: 2 } },
       students: { s: { displayName: 'Sam' }, h: { displayName: 'Hal' } },
     })
-    expect(entry).toMatchObject({ stuck: 'Sam', helper: 'Hal', endedBy: 'not_ok', taskId: 2 })
+    expect(entry).toMatchObject({
+      stuck: 'Sam',
+      helper: 'Hal',
+      endedBy: 'stuck',
+      notOkAt: 50,
+      taskId: 2,
+    })
     expect(entry.delivered[0]).toMatchObject({ kind: 'mark', response: 'not_ok' })
     expect(entry.reviewed.map((i) => i.status)).toEqual(['pending', 'blocked'])
+  })
+})
+
+describe('peerHelpRolesByStudent', () => {
+  it('labels who asked, who is offered, being helped and helping', () => {
+    const roles = peerHelpRolesByStudent({
+      requests: {
+        a: { requestId: 'r1' },
+        b: { requestId: 'r2' },
+        c: { requestId: 'r3' },
+        d: { requestId: 'r4' },
+      },
+      peerHelp: {
+        r1: { stuckId: 'a' },
+        r2: { stuckId: 'b' },
+        r3: { stuckId: 'c', helperId: 'h' },
+        r4: { stuckId: 'd', state: { endedAt: 1 } },
+      },
+      offers: { r2: { offeredAt: 1 }, r3: { offeredAt: 1, claimedAt: 2 } },
+    })
+    expect(roles).toEqual({ a: 'asked', b: 'offered', c: 'being_helped', h: 'helping' })
   })
 })

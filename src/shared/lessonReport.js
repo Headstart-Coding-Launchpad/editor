@@ -1,5 +1,6 @@
 import yaml from 'js-yaml'
 import { flattenTasks, getTaskPriority } from './taskUtils.js'
+import { buildPeerHelpAudit } from './peerHelp.js'
 import { getTaskActivity } from '../activities/registry.pure.js'
 import { SUPPORT_REVEAL_SOURCES } from './taskStages.js'
 import { normalizeCodeSubmission } from './codeSubmission.js'
@@ -499,6 +500,8 @@ export function buildSessionReport({
   pendingSuggestions = [],
   topics = null,
   catalogueBadges = [],
+  // peerHelp/{lessonId}, read once by the teacher (src/app/hooks/usePeerHelp.js).
+  peerHelp = null,
 }) {
   const tasks = flattenTasks(lesson?.tasks ?? []).filter(isReportableTask)
   const studentsSnapshot = session?.students ?? {}
@@ -518,6 +521,9 @@ export function buildSessionReport({
       ...Object.keys(session?.studentSignals ?? {}),
       ...(sessionArchive?.visits ?? []).flatMap((visit) =>
         Object.keys(visit.studentSnapshots ?? {})
+      ),
+      ...Object.values(peerHelp ?? {}).flatMap((request) =>
+        [request?.stuckId, request?.helperId].filter(Boolean)
       ),
     ])
   )
@@ -735,6 +741,13 @@ export function buildSessionReport({
   const shortcutSummary = buildShortcutSummary(students)
   // Live class polls from the teacher's top bar (src/shared/classPolls.js), oldest first.
   const polls = buildPollsReport(session, labelFor)
+  // Peer help audit (src/shared/peerHelp.js): every request, with every item sent, approved,
+  // rejected or blocked, under the report's anonymous labels.
+  const peerHelpAudit = buildPeerHelpAudit({
+    peerHelp,
+    offers: session?.peerHelpOffers,
+    nameOf: labelFor,
+  })
 
   return capSessionReportSize({
     lessonId: lesson?.id ?? session?.lessonId ?? null,
@@ -749,6 +762,7 @@ export function buildSessionReport({
     ...(Object.keys(badgeSummary).length > 0 ? { badgeSummary } : {}),
     ...(Object.keys(shortcutSummary).length > 0 ? { shortcutSummary } : {}),
     ...(polls.length > 0 ? { polls } : {}),
+    ...(peerHelpAudit.length > 0 ? { peerHelp: peerHelpAudit } : {}),
   })
 }
 

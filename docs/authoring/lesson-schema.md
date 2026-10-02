@@ -86,6 +86,7 @@ Use `node cli/cli.mjs lessons link-solo` to preview a one-time backfill of `comp
 | `explainer` | Yes | string | Markdown shown to students. |
 | `estimatedMinutes` | No | positive number | Approximate duration in minutes (decimals allowed, e.g. `7.5`); totalled in the builder. |
 | `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
+| `peerHints` | No | string[] | Up to 10 short hints (≤ 100 characters) a classmate can send when helping on this task (peer help), listed before the platform's own hints. They reach the stuck student without teacher review, so keep them general and kind, never the answer. Code tasks only (Python, Turtle, HTML, Scratch). |
 | `allowSharing` | No | boolean | Lets students offer this workspace to the whole class. Off unless set to `true`. The teacher approves every share before classmates see it, and classmates open it as a non-destructive copy they can run and edit without affecting their own work. Not valid on `quiz` or `information` tasks. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `taskType` | No | string | Omit for code tasks. Use `information` or `quiz` for non-code task types, or `code_arrange` for a drag-and-drop runnable-code task (see "Code Arrange Task Fields" below). |

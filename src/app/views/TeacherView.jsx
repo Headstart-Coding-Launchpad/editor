@@ -70,6 +70,9 @@ import { useSandboxArchiveSnapshots } from '../hooks/useSandboxArchiveSnapshots'
 import { useBadgeAutoAward, useBadgeSuggestions } from '../hooks/useBadgeSuggestions'
 import { useBadgeCatalogue } from '../hooks/useBadgeCatalogue'
 import { firstViewKey } from '../../shared/motion'
+import { usePeerHelp } from '../hooks/usePeerHelp'
+import TeacherPeerHelpMenu from '../components/peerHelp/TeacherPeerHelpMenu'
+import TeacherPeerHelpAlertBanner from '../components/peerHelp/TeacherPeerHelpAlertBanner'
 
 function canRecordAdvanceOverride(task) {
   if (!task || task.taskType === 'information') return false
@@ -159,6 +162,8 @@ export default function TeacherView({ lessonId }) {
     revokeBadge,
     setBadgeSettings,
   } = useSession(lessonId)
+  // Peer help: every request in the lesson, the review queue and the teacher's switches.
+  const peerHelp = usePeerHelp({ lessonId, session, role: 'teacher' })
 
   // While the class is in the teacher sandbox, each student's latest sandbox run is copied into
   // the session archive for the report (the sandbox is no longer thrown away).
@@ -176,7 +181,12 @@ export default function TeacherView({ lessonId }) {
   const { topics } = useTopicLibrary(isComposedLesson(lesson) ? null : lesson?.type, !!lesson)
   // Live badge suggestions, recomputed from the session (never stored), and the tutor's
   // auto-award toggle. The suggestions panel and card counts read `badgeSuggestions`.
-  const badgeSuggestions = useBadgeSuggestions({ session, lesson, topics })
+  const badgeSuggestions = useBadgeSuggestions({
+    session,
+    lesson,
+    topics,
+    peerHelp: peerHelp.allPeerHelp,
+  })
   useBadgeAutoAward({
     suggestions: badgeSuggestions.suggestions,
     settings: session?.badgeSettings,
@@ -469,11 +479,12 @@ export default function TeacherView({ lessonId }) {
 
   // The report's live-badge inputs besides the session: the suggestions still pending (counted
   // in badgeSummary) and the Topic Library's titles.
-  function sessionReportInputs(sessionArchive = null) {
+  function sessionReportInputs(sessionArchive = null, peerHelpLog = null) {
     return {
       session,
       lesson,
       sessionArchive,
+      peerHelp: peerHelpLog,
       pendingSuggestions: badgeSuggestions.suggestions,
       topics,
       catalogueBadges,
@@ -487,7 +498,8 @@ export default function TeacherView({ lessonId }) {
     let report = null
     if (session?.startedAt) {
       const sessionArchive = await readSessionArchive({ endedAt: Date.now() }).catch(() => null)
-      report = buildSessionReport(sessionReportInputs(sessionArchive))
+      const peerHelpLog = await peerHelp.readPeerHelpForReport().catch(() => null)
+      report = buildSessionReport(sessionReportInputs(sessionArchive, peerHelpLog))
     }
     if (report) await saveSessionReport(lessonId, report.sessionId, report)
     await endSession()
@@ -724,10 +736,14 @@ export default function TeacherView({ lessonId }) {
               onClosePoll={closePoll}
               onSetPollShowResults={setPollShowResults}
               onDismissPoll={dismissPoll}
+              peerHelpMenu={
+                <TeacherPeerHelpMenu session={session} lesson={lesson} peerHelp={peerHelp} />
+              }
             />
           </>
         }
       />
+      <TeacherPeerHelpAlertBanner session={session} peerHelp={peerHelp} />
       <TeacherTimers
         session={session}
         task={currentTask}
@@ -895,7 +911,12 @@ export default function TeacherView({ lessonId }) {
             onStopLive={handleStopStudentLive}
             onRemoteReset={pushResetToStudent}
             onOverrideCheck={overrideStudentCheck}
-            onDismissHelp={dismissHelp}
+            onDismissHelp={(studentId) => {
+              dismissHelp(studentId)
+              // "Helped ✓" also ends any peer help they asked for.
+              peerHelp.endRequestForStudent(studentId).catch(() => {})
+            }}
+            peerHelp={peerHelp}
             onSendToTopic={sendToTopic}
             onSendVideoCallLink={session?.videoCallLink ? sendVideoCallLink : undefined}
             onSendTopicToAll={handleSendTopicToAll}
@@ -971,7 +992,7 @@ export default function TeacherView({ lessonId }) {
           lessonId={lessonId}
           liveReport={
             session?.state === 'active' || session?.state === 'sandbox'
-              ? buildSessionReport(sessionReportInputs(liveReportArchive))
+              ? buildSessionReport(sessionReportInputs(liveReportArchive, peerHelp.allPeerHelp))
               : null
           }
           onClose={() => setShowReportsPanel(false)}

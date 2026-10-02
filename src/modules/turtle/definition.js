@@ -56,6 +56,8 @@ export default defineModule({
     run: 'runtime',
     // Authors hint at starter lines with `#> …` marker lines (src/shared/lineHints.js).
     lineHints: 'python',
+    // A classmate can help (src/shared/peerHelp.js).
+    peerHelp: { anchors: 'lines', hints: 'python' },
   },
   // The run's drawing is synced with the run (a run result, like output).
   runResult: { errorLine: false, turtle: true, liveCode: false },

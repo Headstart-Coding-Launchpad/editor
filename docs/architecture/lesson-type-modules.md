@@ -69,6 +69,7 @@ clips), `teacherSandboxRow` (the teacher sandbox workspace fills a plain flex ro
 | `studentMirror` | How StudentModal mirrors a watched student: `'code'`, `'files'` (= the files wire channel), `'blocks'`, `'view'` (the module's `TeacherLiveView`) |
 | `cardSummary` (optional) | StudentCard line: `'output'`, `'blocks'`, `'fs'`, null |
 | `lineHints` (optional) | Author line-hint marker syntax in starter code and stages (`src/shared/lineHints.js`): `'python'` (`#> …`; python, turtle), `'html'` (`<!--> … -->`; html), null (none). The classroom strips markers per task by this (`prepareClassroomLesson`); a trailing marker hints a new empty last line. The module's student editor still has to pass `getTaskLineHintSets(task)` to its `CodeEditor` |
+| `peerHelp` (optional) | `{ anchors: 'lines' \| 'scripts', hints: 'python' \| 'html' \| 'blocks' }` or null (default): a classmate can help with this module's work (`src/shared/peerHelp.js`). `anchors` is what feedback attaches to (`'lines'` also allows suggested edits); `hints` picks the platform's preset hint list. Read through `peerHelpCapability` (`src/app/peerHelpAnchors.js`). Python, Turtle, HTML: lines; Scratch: scripts |
 | `focusPanes` (optional) | Extra `{ id, label }` panes the teacher can highlight/force |
 | `teacherEditor` (optional) | `{ surface: 'code'\|'files'\|'blocks'\|'view', workspace?, design? }`, declared exactly when `workSlot.teacherEdit` is |
 | `sandboxState` | Teacher sandbox work kind: `'code'` (one code string), `'blocks'`, `'fs'`, `'desktop'`, `'files'` |

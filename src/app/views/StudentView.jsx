@@ -65,6 +65,14 @@ import SharedWorkspacePanel from '../components/SharedWorkspacePanel'
 import { applySharedWorkspaceCopy, describeShareError } from '../sharedWorkspacePayload'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
 import StudentLivePanelBar from '../components/StudentLivePanelBar'
+import { usePeerHelp } from '../hooks/usePeerHelp'
+import HelpRequestButton from '../components/peerHelp/HelpRequestButton'
+import HelperPromiseDialog from '../components/peerHelp/HelperPromiseDialog'
+import PeerHelpOfferToast from '../components/peerHelp/PeerHelpOfferToast'
+import PeerHelperWorkspace from '../components/peerHelp/PeerHelperWorkspace'
+import PeerHelpInbox from '../components/peerHelp/PeerHelpInbox'
+import { applyPeerEdit, visiblePeerHelpOffers } from '../../shared/peerHelp'
+import { supportsPeerHelp } from '../peerHelpAnchors'
 import { createLaunchpadCodeFile, downloadLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
 import {
   getSavedNonPythonTaskCount,
@@ -534,6 +542,26 @@ export default function StudentView({
     setWatchingStudentPanel(false)
     setLivePanelCopy(null)
   }, [livePanelKey])
+
+  // Peer help (src/shared/peerHelp.js): this student's own request, and the request they help
+  // with. Live lessons only; never in solo, preview or the Presentation window.
+  const peerHelp = usePeerHelp({
+    lessonId,
+    session,
+    identityId: identity?.anonymousId,
+    role: !soloMode && !previewMode && !teacherPresentation ? 'student' : null,
+  })
+  // The stuck student's client answers a helper's "Get latest" with this.
+  peerHelp.setSnapshotBuilder(() => cs.buildShareSnapshot())
+  const [peerHelperOpen, setPeerHelperOpen] = useState(true)
+  const [peerPromiseFor, setPeerPromiseFor] = useState(null)
+  const [dismissedPeerOffers, setDismissedPeerOffers] = useState(() => new Set())
+  const [peerClaimBusy, setPeerClaimBusy] = useState(false)
+  const [peerClaimError, setPeerClaimError] = useState(null)
+  const [peerHelpError, setPeerHelpError] = useState(null)
+  useEffect(() => {
+    if (peerHelp.helpingRequestId) setPeerHelperOpen(true)
+  }, [peerHelp.helpingRequestId])
   const [openTopicId, setOpenTopicId] = useState(null)
   const [pendingTopicId, setPendingTopicId] = useState(null)
   // Presenter-only layout toggle: which panes the presentation popup shows ('both' | 'explainer' | 'code')
@@ -1085,6 +1113,78 @@ export default function StudentView({
   // Hosted activities (taskType 'activity' and quizzes) are not code tasks: no Run, personal
   // sandbox, share or carry. ActivityHost renders them (see LessonTaskContent).
   const isActivityTask = isHostedActivityTask(task)
+
+  // ─── Peer help ────────────────────────────────────────────────────────────
+  const peerHelpAvailable =
+    phase === 'lesson' &&
+    !teacherPresentation &&
+    !!identity?.anonymousId &&
+    !isQuizTask &&
+    !isInformationTask &&
+    !isActivityTask &&
+    !isCodeArrangeTask &&
+    supportsPeerHelp(displayedLesson.type)
+  const ownPeerOffer = peerHelp.ownRequestId
+    ? (session?.peerHelpOffers?.[peerHelp.ownRequestId] ?? null)
+    : null
+  const peerOffers =
+    phase === 'lesson' && !teacherPresentation && !peerHelp.helpingRequestId
+      ? visiblePeerHelpOffers({
+          session,
+          identityId: identity?.anonymousId,
+          ownRequestId: peerHelp.ownRequestId,
+        }).filter((offer) => !dismissedPeerOffers.has(offer.requestId))
+      : []
+  const isHelpingClassmate = !!peerHelp.helpingRequestId && phase === 'lesson'
+  const showPeerHelperWorkspace = isHelpingClassmate && peerHelperOpen && !activeShare
+
+  async function handleAskWithPeers() {
+    setPeerHelpError(null)
+    try {
+      await requestHelp(identity.anonymousId)
+      await peerHelp.requestPeerHelp(cs.buildShareSnapshot())
+    } catch (err) {
+      setPeerHelpError(err?.message ?? 'Could not ask for a classmate’s help.')
+    }
+  }
+
+  async function claimPeerOffer(requestId) {
+    setPeerClaimBusy(true)
+    setPeerClaimError(null)
+    const ok = await peerHelp.claimOffer(requestId)
+    setPeerClaimBusy(false)
+    if (!ok) {
+      setPeerClaimError('Someone else is already helping. Thank you!')
+      setDismissedPeerOffers((set) => new Set(set).add(requestId))
+    }
+  }
+
+  async function handleHelpOut(requestId) {
+    if (!peerHelp.hasPromised) {
+      setPeerPromiseFor(requestId)
+      return
+    }
+    await claimPeerOffer(requestId)
+  }
+
+  // Applies a teacher-approved change to the student's own work, through the normal change
+  // handlers so it saves like their typing. False when it can't be applied safely.
+  async function handleAcceptPeerEdit(item) {
+    if (isViewingPrev || isForcedTeacherLive || cs.inPersonalSandbox) return false
+    if (item.file) {
+      const file = (cs.files ?? []).find((f) => f.name === item.file)
+      if (!file) return false
+      const next = applyPeerEdit(file.content, item.edits)
+      if (next == null) return false
+      cs.handleFileChange(item.file, next)
+      return true
+    }
+    const next = applyPeerEdit(cs.code, item.edits)
+    if (next == null) return false
+    cs.handleCodeChange(next)
+    return true
+  }
+
   const canNavigateNextSolo = allowUnrestrictedTaskNavigation || isSolo
   // Also present (bypassing the debounce) whenever the slide is actually being viewed —
   // e.g. just after an arrival auto-opened it, before the debounce has had time to settle —
@@ -1345,17 +1445,13 @@ export default function StudentView({
         />
       )}
       {canRequestHelp && (
-        <button
-          type="button"
-          className={myNeedsHelp ? 'btn-danger' : 'btn-ghost'}
+        <HelpRequestButton
+          requested={myNeedsHelp}
+          peerHelpAvailable={peerHelpAvailable && !peerHelp.ownRequestId}
+          onAskTeacher={handleNeedHelp}
+          onAskWithPeers={handleAskWithPeers}
           style={s.needHelpBtn}
-          onClick={handleNeedHelp}
-          disabled={myNeedsHelp}
-          title={myNeedsHelp ? 'Your teacher has been notified' : 'Ask your teacher for help'}
-          aria-label={myNeedsHelp ? 'Help requested' : 'Need Help'}
-        >
-          {myNeedsHelp ? '✋ Help requested' : '✋ Help'}
-        </button>
+        />
       )}
       {canShareWorkspace && (
         <button
@@ -1647,6 +1743,68 @@ export default function StudentView({
         authError={!teacherPresentation && authError}
         onRetrySignIn={retrySignIn}
       />
+      {isHelpingClassmate && !peerHelperOpen && (
+        <div style={s.peerHelpingBar} role="status">
+          <span>🤝 You are helping a classmate</span>
+          <button
+            type="button"
+            className="btn-primary"
+            style={{ fontSize: 13, padding: '4px 12px' }}
+            onClick={() => setPeerHelperOpen(true)}
+          >
+            Open
+          </button>
+        </div>
+      )}
+      {peerHelpError && (
+        <div style={s.peerHelpingBar} role="alert">
+          <span>{peerHelpError}</span>
+          <button type="button" className="btn-ghost" onClick={() => setPeerHelpError(null)}>
+            Dismiss
+          </button>
+        </div>
+      )}
+      {peerOffers.length > 0 && !peerHelp.ownRequestId && (
+        <PeerHelpOfferToast
+          offer={peerOffers[0]}
+          busy={peerClaimBusy}
+          error={peerClaimError}
+          onHelp={() => handleHelpOut(peerOffers[0].requestId)}
+          onDismiss={() =>
+            setDismissedPeerOffers((set) => new Set(set).add(peerOffers[0].requestId))
+          }
+        />
+      )}
+      {peerPromiseFor && (
+        <HelperPromiseDialog
+          onCancel={() => setPeerPromiseFor(null)}
+          onAgree={async () => {
+            const requestId = peerPromiseFor
+            setPeerPromiseFor(null)
+            try {
+              await peerHelp.makeHelperPromise()
+              await claimPeerOffer(requestId)
+            } catch {
+              setPeerClaimError('Could not start helping. Try again in a moment.')
+            }
+          }}
+        />
+      )}
+      {peerHelp.ownRequestId && phase === 'lesson' && !teacherPresentation && (
+        <PeerHelpInbox
+          offer={ownPeerOffer}
+          state={peerHelp.ownState}
+          inbox={peerHelp.ownInbox}
+          snapshot={peerHelp.ownSnapshot}
+          lessonType={peerHelp.ownSnapshot?.lessonType ?? displayedLesson.type}
+          task={task}
+          onRespond={(itemId, response) => peerHelp.respondToItem(itemId, response).catch(() => {})}
+          onAcceptEdit={handleAcceptPeerEdit}
+          onNotOk={(itemId) => peerHelp.flagNotOk(itemId).catch(() => {})}
+          onEnd={() => peerHelp.endOwnRequest().catch(() => {})}
+          onClose={() => peerHelp.endOwnRequest().catch(() => {})}
+        />
+      )}
       {isStudentPanelBroadcast && !activeShare && (
         <StudentLivePanelBar
           sourceStudentName={session?.teacherLive?.sourceStudentName}
@@ -1679,7 +1837,25 @@ export default function StudentView({
         // that handles the key can't hide it.
         onKeyDownCapture={cs.badgeSignals.handleWorkAreaKeyDown}
       >
-        {activeShare ? (
+        {showPeerHelperWorkspace ? (
+          <PeerHelperWorkspace
+            lesson={lesson}
+            requestId={peerHelp.helpingRequestId}
+            snapshot={peerHelp.helpingSnapshot}
+            state={peerHelp.helpingState}
+            inbox={peerHelp.helpingInbox}
+            review={peerHelp.helpingReview}
+            notesEnabled={!!session?.peerHelpSettings?.notesEnabled}
+            isMobile={isMobile}
+            onBackToMyWork={() => setPeerHelperOpen(false)}
+            onRequestLatest={() => peerHelp.requestLatestSnapshot().catch(() => {})}
+            onFinish={() => peerHelp.finishHelping().catch(() => {})}
+            onMark={peerHelp.sendMark}
+            onHint={peerHelp.sendHint}
+            onSubmitEdit={peerHelp.submitEdit}
+            onSubmitNote={peerHelp.submitNote}
+          />
+        ) : activeShare ? (
           <SharedWorkspaceViewer
             lesson={lesson}
             entry={activeShare.entry}
@@ -1874,6 +2050,19 @@ const s = {
     fontSize: 13,
     padding: '5px 10px',
     whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  peerHelpingBar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    flexWrap: 'wrap',
+    padding: '6px 12px',
+    fontSize: 13,
+    fontWeight: 600,
+    background: 'rgba(13, 148, 136, 0.10)',
+    borderBottom: '2px solid #0d9488',
     flexShrink: 0,
   },
   needHelpBtn: {

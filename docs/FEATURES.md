@@ -139,6 +139,16 @@ After the same hint appears twice in a row, solo students can optionally view th
 ### Teacher Broadcast
 - Broadcast teacher's or a pinned student's screen to all students simultaneously
 - Available via a separate presentation window
+- **📺 Show to class (keep coding)**: show a student's work without locking anyone. Classmates keep coding, and can 👀 Watch it or ▶ Try a copy they can run (nothing saved, nothing copied out)
+
+### Peer Help
+- On Python, Turtle, HTML and Scratch tasks, ✋ Help can also say "a classmate can help too"
+- The teacher checks the student's work first, then offers it to classmates who finished the task; neither student sees the other's name
+- The first helper to accept agrees to a short helper promise, then gets a runnable copy of the work to try things in
+- Helpers mark lines (or Scratch scripts) 👍 / 👎 and send preset hints (lesson authors can add their own with `peerHints`); these arrive straight away
+- Suggested changes (only on 👎 lines, at most 3 lines) and short notes (off unless the teacher turns them on, 140 characters, word-filtered) wait for the teacher's approval; the stuck student chooses whether to use a change
+- The stuck student can press 🚩 Not OK on anything: it disappears, the help ends and the teacher gets an alert with the option to stop that student helping for the day
+- 🤝 Peer help menu: approvals, who is helping whom, notes switch, and End all peer help; everything is kept in the session report
 
 ### Presentation Annotations
 - In the presentation window, a small floating toolbar lets the teacher annotate information tasks (standard, recap, introduction, images included) and code tasks' explainers, and every student sees it live (whole class only)

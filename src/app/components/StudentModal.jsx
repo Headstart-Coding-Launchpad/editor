@@ -21,6 +21,7 @@ import { getModuleDefinition } from '../../modules/definitions'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { TEACHER_LIVE_REFERENCE_TYPES } from '../studentLiveDisplay'
 import DropdownMenu from './student-modal/DropdownMenu'
+import TeacherPeerHelpStudentPanel from './peerHelp/TeacherPeerHelpStudentPanel'
 import MessageCompose from './student-modal/MessageCompose'
 import OverrideDropdown from './student-modal/OverrideDropdown'
 import { PaneFocusControls } from './student-modal/PaneFocusDropdown'
@@ -73,6 +74,8 @@ export default function StudentModal({
   onRemoteReset,
   onOverrideCheck,
   onDismissHelp,
+  // usePeerHelp (teacher): this student's peer help request and helper switch.
+  peerHelp = null,
   onSendToTopic,
   onSendTopicToAll,
   onSendMessage,
@@ -1200,6 +1203,14 @@ export default function StudentModal({
             the live workspace at once invited approving one while looking at
             the other — they are different content, and only the snapshot is
             what the class would actually receive. */}
+        {peerHelp && (
+          <TeacherPeerHelpStudentPanel
+            student={student}
+            session={session}
+            lesson={lesson}
+            peerHelp={peerHelp}
+          />
+        )}
         {showShareRequest ? (
           <ShareRequestPanel
             student={student}

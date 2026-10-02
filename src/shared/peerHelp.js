@@ -27,24 +27,8 @@ export const PEER_EDIT_MAX_LINES = 3
 export const PEER_EDIT_LINE_MAX_LENGTH = 200
 export const PEER_HINT_ID_PATTERN = /^[a-z0-9_-]{1,40}$/
 
-export const PEER_HELP_END_REASONS = ['stuck', 'helper', 'teacher', 'not_ok', 'task_changed']
+export const PEER_HELP_END_REASONS = ['stuck', 'helper', 'teacher', 'task_changed']
 export const PEER_HELP_RESPONSES = ['useful', 'accepted', 'declined', 'not_ok']
-
-// Lesson types peer help supports. Others keep the plain ✋ Help request.
-const PEER_HELP_FAMILIES = {
-  python: 'python',
-  turtle: 'python',
-  html: 'html',
-  scratch: 'scratch',
-}
-
-export function peerHelpFamily(lessonType) {
-  return PEER_HELP_FAMILIES[lessonType] ?? null
-}
-
-export function supportsPeerHelp(lessonType) {
-  return peerHelpFamily(lessonType) != null
-}
 
 // Kind, code-focused hints. Ids are stable: they travel over the wire instead of text, so
 // nothing a helper sends without review can carry words of their own.
@@ -71,7 +55,7 @@ export const PLATFORM_PEER_HINTS = {
     { id: 'html-attr-quotes', text: 'Put quote marks around the attribute value' },
     { id: 'html-nesting', text: 'Is this tag inside the right tag?' },
   ],
-  scratch: [
+  blocks: [
     {
       id: 'sc-hat',
       text: 'Does this script start with a hat block (like "when green flag clicked")?',
@@ -84,23 +68,19 @@ export const PLATFORM_PEER_HINTS = {
 }
 
 /**
- * The hints a helper can pick from: the common list, the lesson type's list, and any the
- * lesson author added on the task (`peerHints: [...]`, ids `lesson-0`, `lesson-1`, …).
+ * The hints a helper can pick from: any the lesson author added on the task (`peerHints: [...]`,
+ * ids `lesson-0`, `lesson-1`, …), the module's list (its `capabilities.peerHelp.hints`: 'python',
+ * 'html' or 'blocks') and the common list.
  */
-export function getPeerHints(lessonType, task) {
-  const family = peerHelpFamily(lessonType)
+export function getPeerHints(hintList, task) {
   const lessonHints = (Array.isArray(task?.peerHints) ? task.peerHints : [])
     .map((text, index) => ({ id: `lesson-${index}`, text: String(text ?? '').trim() }))
     .filter((hint) => hint.text)
-  return [
-    ...lessonHints,
-    ...(family ? PLATFORM_PEER_HINTS[family] : []),
-    ...PLATFORM_PEER_HINTS.common,
-  ]
+  return [...lessonHints, ...(PLATFORM_PEER_HINTS[hintList] ?? []), ...PLATFORM_PEER_HINTS.common]
 }
 
-export function findPeerHint(hintId, lessonType, task) {
-  return getPeerHints(lessonType, task).find((hint) => hint.id === hintId) ?? null
+export function findPeerHint(hintId, hintList, task) {
+  return getPeerHints(hintList, task).find((hint) => hint.id === hintId) ?? null
 }
 
 // ─── Eligibility ─────────────────────────────────────────────────────────────
@@ -242,8 +222,29 @@ export function pendingReviewItems(peerHelp) {
 /** Requests the stuck student flagged "Not OK" that the teacher hasn't acknowledged. */
 export function notOkAlerts(peerHelp) {
   return Object.entries(peerHelp ?? {})
-    .filter(([, request]) => request?.state?.endedBy === 'not_ok' && !request?.state?.notOkSeenAt)
+    .filter(([, request]) => request?.state?.notOkAt != null && !request?.state?.notOkSeenAt)
     .map(([requestId, request]) => ({ requestId, ...request }))
+}
+
+/**
+ * Each student's peer help role right now, for the teacher's cards:
+ * 'asked' (opted in, not offered yet) | 'offered' | 'being_helped' | 'helping'.
+ */
+export function peerHelpRolesByStudent({ requests, peerHelp, offers }) {
+  const roles = {}
+  for (const [studentId, request] of Object.entries(requests ?? {})) {
+    const entry = peerHelp?.[request?.requestId]
+    if (!entry || entry.state?.endedAt) continue
+    const offer = offers?.[request.requestId]
+    if (offer?.endedAt != null) continue
+    roles[studentId] = !offer ? 'asked' : offer.claimedAt ? 'being_helped' : 'offered'
+  }
+  for (const [requestId, entry] of Object.entries(peerHelp ?? {})) {
+    if (!entry?.helperId || entry.state?.endedAt) continue
+    if (offers?.[requestId]?.endedAt != null) continue
+    roles[entry.helperId] = 'helping'
+  }
+  return roles
 }
 
 // ─── Session report ──────────────────────────────────────────────────────────
@@ -268,6 +269,7 @@ export function buildPeerHelpAudit({ peerHelp, offers, students, nameOf }) {
         claimedAt: offer?.claimedAt ?? null,
         endedAt: request?.state?.endedAt ?? offer?.endedAt ?? null,
         endedBy: request?.state?.endedBy ?? null,
+        notOkAt: request?.state?.notOkAt ?? null,
         delivered: sortedItems(request?.inbox).map(auditItem),
         reviewed: sortedItems(request?.review).map(auditItem),
       }

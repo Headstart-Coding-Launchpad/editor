@@ -7,6 +7,7 @@ import { MarkdownRenderer } from '../../shared/markdown'
 import BadgeAwardDialog from './badges/BadgeAwardDialog'
 import DropdownMenu from './student-modal/DropdownMenu'
 import JoiningStudentsList from './JoiningStudentsList'
+import { peerHelpRolesByStudent } from '../../shared/peerHelp'
 
 export default function StudentGrid({
   students = [],
@@ -25,6 +26,7 @@ export default function StudentGrid({
   onRemoteReset,
   onOverrideCheck,
   onDismissHelp,
+  peerHelp = null,
   onSendToTopic,
   onSendTopicToAll,
   onTogglePaused,
@@ -74,6 +76,13 @@ export default function StudentGrid({
   // Multi-award: select mode turns a card click into a selection toggle.
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const peerHelpRoles = peerHelp
+    ? peerHelpRolesByStudent({
+        requests: peerHelp.allRequests,
+        peerHelp: peerHelp.allPeerHelp,
+        offers: session?.peerHelpOffers,
+      })
+    : {}
   const [showBadgeDialog, setShowBadgeDialog] = useState(false)
   const selectedStudents = students.filter((st) => selectedIds.has(st.anonymousId))
   const suggestionCount = badgeSuggestions?.suggestions?.length ?? 0
@@ -421,6 +430,7 @@ export default function StudentGrid({
                 badgeAwardedCount={
                   badgeSuggestions?.awardedCountByStudent?.[student.anonymousId] ?? 0
                 }
+                peerHelpRole={peerHelpRoles[student.anonymousId] ?? null}
                 selectMode={selectMode}
                 selected={selectedIds.has(student.anonymousId)}
                 onToggleSelect={toggleSelected}
@@ -489,6 +499,7 @@ export default function StudentGrid({
           onRemoteReset={onRemoteReset}
           onOverrideCheck={onOverrideCheck}
           onDismissHelp={onDismissHelp}
+          peerHelp={peerHelp}
           onSendToTopic={onSendToTopic}
           onSendTopicToAll={onSendTopicToAll}
           onSendMessage={onSendMessage}
