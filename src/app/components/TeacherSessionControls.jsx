@@ -29,6 +29,8 @@ export default function TeacherSessionControls({
   onClosePoll,
   onSetPollShowResults,
   onDismissPoll,
+  // The 🤝 Peer help menu (TeacherPeerHelpMenu), shown while the session runs.
+  peerHelpMenu = null,
 }) {
   const state = session?.state
   const isRunning = state === 'active' || state === 'sandbox'
@@ -302,6 +304,8 @@ export default function TeacherSessionControls({
           onDismiss={onDismissPoll}
         />
       )}
+
+      {session && isRunning && peerHelpMenu}
 
       {session && onUpdateVideoCallLink && (
         <div ref={videoLinkRef} style={sDD.wrap}>

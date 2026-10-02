@@ -218,6 +218,23 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
     }
   }
 
+  // peerHints: extra preset hints for peer help (src/shared/peerHelp.js). They reach a student
+  // without the teacher checking each one, so they are authored text only, short, and few.
+  if (task.peerHints != null) {
+    if (
+      !Array.isArray(task.peerHints) ||
+      task.peerHints.some((hint) => typeof hint !== 'string' || !hint.trim())
+    ) {
+      errors.push(`Task ${n} peerHints must be a list of short hint texts`)
+    } else if (task.peerHints.length > 6) {
+      errors.push(`Task ${n} peerHints can have at most 6 hints`)
+    } else if (task.peerHints.some((hint) => hint.trim().length > 60)) {
+      errors.push(`Task ${n} peerHints must each be 60 characters or fewer`)
+    } else if (!canTaskAllowSharing(task)) {
+      errors.push(`Task ${n} peerHints is not supported on quiz or information tasks`)
+    }
+  }
+
   // taskActivity names a Lesson Format Glossary pattern (src/shared/taskActivity.js); badges read
   // it, so an unrecognised one is worth a warning (never an error: it's free text).
   if (typeof task.taskActivity === 'string' && !parseTaskActivity(task.taskActivity).known) {

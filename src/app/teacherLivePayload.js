@@ -2,7 +2,9 @@ import { findTaskById } from '../shared/taskUtils'
 import { decodeFileKey } from '../shared/fileKeys'
 import { getTaskModuleType } from '../shared/composedLesson'
 
-export function buildStudentLivePayload({ student, lesson, taskId, entryFileTaskId }) {
+// `mode: 'panel'` broadcasts without locking the class (see deriveStudentLiveDisplay); the
+// default full takeover carries no mode, as it always has.
+export function buildStudentLivePayload({ student, lesson, taskId, entryFileTaskId, mode }) {
   const task = findTaskById(lesson?.tasks, entryFileTaskId)
   const files = student.currentFiles
     ? Object.fromEntries(
@@ -30,5 +32,6 @@ export function buildStudentLivePayload({ student, lesson, taskId, entryFileTask
     checkAttempted: student.checkPassed != null || student.lastRunStatus != null,
     selection: student.currentSelection ?? null,
     activity: student.currentActivity ?? null,
+    ...(mode === 'panel' ? { mode: 'panel' } : {}),
   }
 }

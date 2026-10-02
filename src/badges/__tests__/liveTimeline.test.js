@@ -603,3 +603,52 @@ describe('input keys', () => {
     expect(badgeEvaluationInputKey(d)).not.toBe(badgeEvaluationInputKey(a))
   })
 })
+
+describe('peer help → Helpful Coder', () => {
+  const peerHelp = {
+    r1: {
+      stuckId: 'sam',
+      helperId: 'alex',
+      snapshot: { taskId: 4 },
+      inbox: {
+        i1: { kind: 'hint', hintId: 'py-colon', createdAt: 5, response: 'useful', respondedAt: 6 },
+        i2: { kind: 'mark', verdict: 'down', createdAt: 7 },
+      },
+    },
+    r2: {
+      stuckId: 'jo',
+      helperId: 'sam',
+      snapshot: { taskId: 4 },
+      inbox: { i1: { kind: 'mark', verdict: 'up', createdAt: 5, response: 'declined' } },
+    },
+    gone: {
+      stuckId: 'jo',
+      helperId: 'jo',
+      snapshot: { taskId: 999 },
+      inbox: { i1: { kind: 'hint', createdAt: 1, response: 'useful' } },
+    },
+  }
+
+  it('adds a peer_help event to the helper only, for a useful or used item on a live task', () => {
+    const session = makeSession({ roster: ['alex', 'sam', 'jo'] })
+    const timelines = buildLiveTimelines({ session, lesson: LESSON, peerHelp })
+    expect(timelines.alex.filter((e) => e.type === 'peer_help')).toEqual([
+      { type: 'peer_help', context: 'task', taskId: 4, outcome: 'useful', at: 6 },
+    ])
+    expect(timelines.sam.some((e) => e.type === 'peer_help')).toBe(false)
+    expect(timelines.jo.some((e) => e.type === 'peer_help')).toBe(false)
+  })
+
+  it('suggests Helpful Coder (never auto-awarded) and re-evaluates when a response arrives', () => {
+    const session = makeSession({ roster: ['alex', 'sam', 'jo'] })
+    const suggestions = evaluateBadgeRules({
+      timelines: buildLiveTimelines({ session, lesson: LESSON, peerHelp }),
+      lesson: liveBadgeLesson(LESSON),
+      decisions: {},
+      options: { currentTaskId: 4, badgeIds: ['helpful_coder'] },
+    })
+    expect(pairs(suggestions)).toEqual([['alex', 4]])
+    const before = badgeEvaluationInputKey(session, null)
+    expect(badgeEvaluationInputKey(session, peerHelp)).not.toBe(before)
+  })
+})

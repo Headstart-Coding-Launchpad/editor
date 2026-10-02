@@ -21,6 +21,7 @@ import {
   firstEditEvent,
   overrideEvent,
   pasteEvent,
+  peerHelpEvent,
   revealEvent,
   sandboxRunEvent,
   shortcutEvent,
@@ -226,6 +227,29 @@ export function buildStudentTimeline({ session, studentId, tasks, topicTitles = 
   return events
 }
 
+/**
+ * Peer help outcomes (src/shared/peerHelp.js) → `peer_help` events on each helper's timeline: an
+ * item the stuck classmate marked 👍 Useful or whose change they used. `peerHelp` is the
+ * teacher's read of `peerHelp/{lessonId}` (students can't read each other's), so this only ever
+ * runs teacher-side. Help on a task that has gone is dropped.
+ * @returns {{ [helperId: string]: import('./timeline.js').PeerHelpEvent[] }}
+ */
+export function buildPeerHelpEvents(peerHelp, tasks) {
+  const byHelper = {}
+  for (const request of values(peerHelp)) {
+    const helperId = request?.helperId
+    const taskId = request?.snapshot?.taskId
+    if (!helperId || taskId == null || !tasks.has(String(taskId))) continue
+    for (const item of values(request.inbox)) {
+      if (item.response !== 'useful' && item.response !== 'accepted') continue
+      ;(byHelper[helperId] ??= []).push(
+        peerHelpEvent({ taskId, outcome: item.response, at: item.respondedAt ?? item.createdAt })
+      )
+    }
+  }
+  return byHelper
+}
+
 /** A lower-cased topic id → title lookup from the Topic Library's topics (optional). */
 export function buildTopicTitles(topics) {
   if (!Array.isArray(topics) || topics.length === 0) return null
@@ -245,13 +269,17 @@ export function buildTopicTitles(topics) {
  * @param {object[]} [input.topics] the Topic Library's topics, for Resourceful Coder's reason
  * @returns {{ [studentId: string]: import('./timeline.js').TimelineEvent[] }}
  */
-export function buildLiveTimelines({ session, lesson, topics = null }) {
+export function buildLiveTimelines({ session, lesson, topics = null, peerHelp = null }) {
   const tasks = buildTaskLookup(liveBadgeLesson(lesson))
   const topicTitles = buildTopicTitles(topics)
+  const peerHelpEvents = buildPeerHelpEvents(peerHelp, tasks)
   return Object.fromEntries(
     rosterIds(session).map((studentId) => [
       studentId,
-      buildStudentTimeline({ session, studentId, tasks, topicTitles }),
+      [
+        ...buildStudentTimeline({ session, studentId, tasks, topicTitles }),
+        ...(peerHelpEvents[studentId] ?? []),
+      ],
     ])
   )
 }
@@ -281,16 +309,27 @@ export function studentTimelineInputKey(session, studentId) {
   )
 }
 
+// Only what buildPeerHelpEvents reads: helper, task and each item's response.
+function peerHelpOutcomesKey(peerHelp) {
+  return entries(peerHelp).map(([requestId, request]) => [
+    requestId,
+    request?.helperId ?? null,
+    request?.snapshot?.taskId ?? null,
+    entries(request?.inbox).map(([itemId, item]) => [itemId, item.response ?? null]),
+  ])
+}
+
 /**
  * The key for a whole class evaluation: the roster, each student's timeline inputs, the badge
  * decisions, the current task and whether the session has ended.
  */
-export function badgeEvaluationInputKey(session) {
+export function badgeEvaluationInputKey(session, peerHelp = null) {
   const students = rosterIds(session).map(
     (studentId) => `${studentId}=${studentTimelineInputKey(session, studentId)}`
   )
   return JSON.stringify([
     students,
+    peerHelpOutcomesKey(peerHelp),
     session?.badges ?? null,
     session?.currentTaskId ?? null,
     session?.state === 'ended',

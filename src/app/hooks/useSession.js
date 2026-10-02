@@ -12,6 +12,7 @@ import {
   runTransaction,
 } from 'firebase/database'
 import { db } from '../../shared/firebase'
+import { clearPeerHelpData } from './usePeerHelp'
 import { encodeFileKey, decodeFileKey } from '../../shared/fileKeys'
 import { sealTasks } from '../../shared/lessonSeal'
 import { compactTurtleResultForSync } from '../../modules/turtle/sync.js'
@@ -195,6 +196,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await archiveQuietly(remove(ref(db, sessionArchivePath())))
     // Nor the Presentation annotations.
     await clearLiveInkQuietly()
+    // Nor peer help (src/shared/peerHelp.js), which keeps students' work and identities
+    // outside the session on purpose.
+    await clearPeerHelpData(lessonId)
   }
 
   async function restartSession() {
@@ -251,9 +255,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
       polls: null,
       activePollId: null,
       shownResponses: null,
+      // Peer help offers and switches; the rest of peer help is cleared below. The report
+      // (built before this, in handleEndSession) already holds the peer help audit.
+      peerHelpOffers: null,
+      peerHelpSettings: null,
+      peerHelperOff: null,
     })
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
     await clearLiveInkQuietly()
+    await clearPeerHelpData(lessonId)
     // When the teacher closes the tab, remove the session entirely so the
     // lesson becomes available for solo study without a stale "ended" record.
     onDisconnect(ref(db, `sessions/${lessonId}`)).remove()
@@ -1573,13 +1583,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   async function writeStudentInteraction(
     anonymousId,
-    { selection, activity, activeFile, viewingShareId } = {}
+    { selection, activity, activeFile, viewingShareId, watchingLive } = {}
   ) {
     const updates = {}
     if (selection !== undefined) updates.currentSelection = selection
     if (activity !== undefined) updates.currentActivity = activity
     if (activeFile !== undefined) updates.currentActiveFile = activeFile
     if (viewingShareId !== undefined) updates.viewingShareId = viewingShareId
+    // 'look' | 'try' | null: watching or trying a "Show to class" broadcast (teacher's roster).
+    if (watchingLive !== undefined) updates.watchingLive = watchingLive
     if (Object.keys(updates).length > 0) {
       await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), updates)
     }

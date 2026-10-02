@@ -85,6 +85,11 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Live badges in the session report: a **Coding moments** section (the class wall grouped by badge, **Copy class summary** with student labels, and suggested / awarded / auto / manual / dismissed / revoked counts per badge); new task columns (time to first edit median and range, students with a console error, Topic Library opens student vs tutor-sent, and the first real pass with how long after the task opened); per student their moments, topics opened, shortcuts, personal- and teacher-sandbox activity, and per task their first edit, error runs, different failed tries and "first real pass in class"; quiz-group first-try scores with the class median; and each teacher-sandbox visit as a "possible lesson gap" callout ("The class spent 14 min in the teacher sandbox after …") that expands to the tutor's explainer and pushes and each student's last sandbox code. All of it is in the YAML export. A report near Firestore's 1 MiB limit drops the students' sandbox code first and says so
 - Rate any task live, while teaching it: a "⭐ Rate this task" button in the teacher's top bar (showing "⭐ N" once rated) opens a popover that lets the teacher give the current task a 1-5 star rating plus "what worked well" / "what didn't work" notes as the class works through it, rather than waiting until the session ends. Each task's rating is folded into that task's row in the session report
 
+### What Students Are Doing
+- Each student card has a "Now:" line for what the student is doing: 🤝 helping Sam / helped by Ali, 👀 looking at or ▶ trying the work on show, 📤 viewing shared work, 📖 reading a topic, 🧪 in their own sandbox
+- A one-line class strip above the cards sums it up ("🤝 Hal → Sam · 👀 6 looking at Sam's work"); hover for names, click to outline those cards
+- Card status chips are single icons (✓ ✕ ✋ 💤 📋 ⛶ 📤 💡 🪟 ✏️), with the words on hover
+
 ### Task Navigator
 - Task list with group collapse
 - Aggregate run count and check-passed count per task
@@ -139,6 +144,17 @@ After the same hint appears twice in a row, solo students can optionally view th
 ### Teacher Broadcast
 - Broadcast teacher's or a pinned student's screen to all students simultaneously
 - Available via a separate presentation window
+- **📺 Show to class (keep coding)**: show a student's work without locking anyone. Classmates keep coding; the bar says "📺 Look at Sam's work!" with 👀 Look and ▶ Try it (a copy they can run: nothing saved, nothing copied out)
+
+### Peer Help
+Student screens are made for 9-year-olds: big buttons, few words, fixed choices only. The teacher's side has the detail.
+- On Python, Turtle, HTML and Scratch tasks, ✋ Help is still one tap; a bubble then asks "Can a classmate help too? 👍 Yes / No thanks"
+- The teacher checks the student's work first, then offers it to classmates who finished the task; neither student sees the other's name
+- Finished students see "🤝 Can you help a classmate? Yes! / Not now"; the first to say yes makes a three-line helper promise (😊 kind, 💡 clues not answers, 👀 teacher can see)
+- The helper sees the classmate's code, big, with 👍 Good / 👎 Look again / 💡 Hint on every line (Scratch: every script). 💡 opens up to six big hint cards (the lesson's `peerHints` first). "▶ Run their code" shows what it does
+- The stuck student's card lists what arrived and on which line, with "Thanks 👍" and a small 🚩 on each, and one big "I'm OK now". 🚩 hides it, ends the help and alerts the teacher, who can stop that student helping for the day
+- 🤝 Peer help menu: who is helping whom, alerts, and End all peer help; everything is kept in the session report
+- Suggested changes and notes (teacher-approved) are built but switched off (`PEER_HELP_EDITS_AND_NOTES` in `src/shared/peerHelp.js`)
 
 ### Presentation Annotations
 - In the presentation window, a small floating toolbar lets the teacher annotate information tasks (standard, recap, introduction, images included) and code tasks' explainers, and every student sees it live (whole class only)

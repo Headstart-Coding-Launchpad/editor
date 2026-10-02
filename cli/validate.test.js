@@ -349,6 +349,35 @@ describe('CLI lesson validation', () => {
     expect(invalid.errors).toContain('Task 1 priority must be one of: core, optional')
   })
 
+  it('accepts short peerHints on code tasks and rejects anything else', () => {
+    const lesson = (task) => ({
+      id: 'peer-hints-demo',
+      type: 'python',
+      title: 'Peer hints demo',
+      description: 'A lesson with peer help hints',
+      tasks: [{ title: 'Loop', starterCode: 'print("hi")', ...task }],
+    })
+    expect(validateLessonForMcp(lesson({ peerHints: ['Did you use a loop?'] })).errors).toEqual([])
+    expect(validateLessonForMcp(lesson({ peerHints: 'Use a loop' })).errors).toContain(
+      'Task 1 peerHints must be a list of short hint texts'
+    )
+    expect(validateLessonForMcp(lesson({ peerHints: ['ok', ''] })).errors).toContain(
+      'Task 1 peerHints must be a list of short hint texts'
+    )
+    expect(
+      validateLessonForMcp(lesson({ peerHints: Array.from({ length: 7 }, (_, i) => `h${i}`) }))
+        .errors
+    ).toContain('Task 1 peerHints can have at most 6 hints')
+    expect(validateLessonForMcp(lesson({ peerHints: ['x'.repeat(61)] })).errors).toContain(
+      'Task 1 peerHints must each be 60 characters or fewer'
+    )
+    expect(
+      validateLessonForMcp(
+        lesson({ taskType: 'information', explainer: 'Read', peerHints: ['Hint'] })
+      ).errors
+    ).toContain('Task 1 peerHints is not supported on quiz or information tasks')
+  })
+
   it('accepts allowSharing on code tasks and rejects it elsewhere', () => {
     const valid = validateLessonForMcp({
       id: 'sharing-demo',

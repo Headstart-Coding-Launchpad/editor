@@ -7,6 +7,8 @@ import { MarkdownRenderer } from '../../shared/markdown'
 import BadgeAwardDialog from './badges/BadgeAwardDialog'
 import DropdownMenu from './student-modal/DropdownMenu'
 import JoiningStudentsList from './JoiningStudentsList'
+import ClassActivityStrip from './ClassActivityStrip'
+import { classActivities, summariseClassActivities } from '../studentActivity'
 
 export default function StudentGrid({
   students = [],
@@ -25,6 +27,7 @@ export default function StudentGrid({
   onRemoteReset,
   onOverrideCheck,
   onDismissHelp,
+  peerHelp = null,
   onSendToTopic,
   onSendTopicToAll,
   onTogglePaused,
@@ -74,6 +77,18 @@ export default function StudentGrid({
   // Multi-award: select mode turns a card click into a selection toggle.
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState(() => new Set())
+  // What each student is doing now (src/app/studentActivity.js): the cards' "Now:" lines and
+  // the class strip above the grid, whose groups the teacher can click to outline those cards.
+  const activities = classActivities({ session, peerHelp, topics })
+  const activitySummary = summariseClassActivities({ session, activities })
+  const [highlightedGroup, setHighlightedGroup] = useState(null)
+  const highlightedIds = new Set(
+    activitySummary.find((entry) => entry.group === highlightedGroup)?.studentIds ?? []
+  )
+  const studentNames = Object.fromEntries(
+    students.map((student) => [student.anonymousId, student.displayName])
+  )
+
   const [showBadgeDialog, setShowBadgeDialog] = useState(false)
   const selectedStudents = students.filter((st) => selectedIds.has(st.anonymousId))
   const suggestionCount = badgeSuggestions?.suggestions?.length ?? 0
@@ -398,6 +413,12 @@ export default function StudentGrid({
               </button>
             </div>
           )}
+          <ClassActivityStrip
+            entries={activitySummary}
+            names={studentNames}
+            highlighted={highlightedIds.size > 0 ? highlightedGroup : null}
+            onHighlight={setHighlightedGroup}
+          />
           <div style={s.grid}>
             {students.map((student) => (
               <StudentCard
@@ -406,7 +427,6 @@ export default function StudentGrid({
                 lesson={lesson}
                 lessonId={lessonId}
                 session={session}
-                topics={topics}
                 onRename={onRename}
                 onRemove={onRemove}
                 onExpand={handleExpand}
@@ -421,6 +441,8 @@ export default function StudentGrid({
                 badgeAwardedCount={
                   badgeSuggestions?.awardedCountByStudent?.[student.anonymousId] ?? 0
                 }
+                activities={activities[student.anonymousId] ?? []}
+                highlighted={highlightedIds.has(student.anonymousId)}
                 selectMode={selectMode}
                 selected={selectedIds.has(student.anonymousId)}
                 onToggleSelect={toggleSelected}
@@ -478,7 +500,8 @@ export default function StudentGrid({
           isLive={session?.activeStudentView === expandedStudent.anonymousId}
           isLiveForAll={session?.teacherLive?.sourceStudentId === expandedStudent.anonymousId}
           onGoLive={() => onGoLive?.(expandedStudent.anonymousId)}
-          onGoLiveForAll={() => onGoLiveForAll?.(expandedStudent)}
+          onGoLiveForAll={(mode) => onGoLiveForAll?.(expandedStudent, mode)}
+          isLiveForAllPanel={session?.teacherLive?.mode === 'panel'}
           onStopLive={() => onStopLive?.()}
           onClose={handleClose}
           hasPrev={expandedIndex > 0}
@@ -488,6 +511,7 @@ export default function StudentGrid({
           onRemoteReset={onRemoteReset}
           onOverrideCheck={onOverrideCheck}
           onDismissHelp={onDismissHelp}
+          peerHelp={peerHelp}
           onSendToTopic={onSendToTopic}
           onSendTopicToAll={onSendTopicToAll}
           onSendMessage={onSendMessage}

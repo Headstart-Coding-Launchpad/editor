@@ -2,6 +2,7 @@ import React from 'react'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { peerHelpMock } from '../../hooks/__tests__/peerHelpMock.js'
 import StudentView from '../StudentView'
 import { runPython, stopPython } from '../../../modules/python/pyodide'
 import { SOUNDS_MUTED_KEY, setSoundsMuted } from '../../soundSettings'
@@ -32,6 +33,10 @@ vi.mock('../../../shared/lessonService', () => ({
     overrideTasks ? { ...lesson, tasks: overrideTasks } : lesson,
 }))
 
+vi.mock('../../hooks/usePeerHelp', async () => {
+  const { peerHelpModuleMock } = await import('../../hooks/__tests__/peerHelpMock.js')
+  return peerHelpModuleMock
+})
 vi.mock('../../hooks/useSession', () => ({
   useSession: (...args) => mocks.useSession(...args),
 }))
@@ -1280,6 +1285,63 @@ describe('StudentView', () => {
     })
   })
 
+  describe('"Show to class (keep coding)" broadcast', () => {
+    it('tells the teacher when the student looks at it or tries it, and when they stop', async () => {
+      const user = userEvent.setup()
+      const writeStudentInteraction = vi.fn()
+      mocks.useSession.mockReturnValue({
+        session: {
+          lessonId: 'python-1-1',
+          state: 'active',
+          createdAt: 456,
+          currentTaskId: 1,
+          students: {},
+          teacherLive: {
+            active: true,
+            source: 'student',
+            mode: 'panel',
+            sourceStudentId: 'someone-else',
+            sourceStudentName: 'Sam',
+            taskId: 1,
+            code: 'print(1)',
+          },
+        },
+        loading: false,
+        registerPresence: vi.fn(),
+        joinSession: vi.fn(),
+        writeStudentRun: vi.fn(),
+        writeStudentCode: vi.fn(),
+        writeStudentFiles: vi.fn(),
+        writeStudentOutput: vi.fn(),
+        writeStudentInteraction,
+        writeStudentPersonalSandbox: vi.fn(),
+        writeStudentPresence: vi.fn(),
+        setTaskId: vi.fn(),
+        setTeacherLive: vi.fn(),
+        updateTeacherLive: vi.fn(),
+        removeStudent: vi.fn(),
+        requestHelp: vi.fn(),
+      })
+      render(<StudentView lessonId="python-1-1" />)
+      await user.click(await screen.findByRole('button', { name: '👀 Look' }))
+      await waitFor(() =>
+        expect(writeStudentInteraction).toHaveBeenCalledWith('student-1', { watchingLive: 'look' })
+      )
+      await user.click(screen.getByRole('button', { name: '← Back to my code' }))
+      await waitFor(() =>
+        expect(writeStudentInteraction).toHaveBeenLastCalledWith('student-1', {
+          watchingLive: null,
+        })
+      )
+      await user.click(screen.getByRole('button', { name: '▶ Try it' }))
+      await waitFor(() =>
+        expect(writeStudentInteraction).toHaveBeenLastCalledWith('student-1', {
+          watchingLive: 'try',
+        })
+      )
+    })
+  })
+
   describe('persistent Need Help control', () => {
     function mkLiveSession(sessionOverrides = {}, hookOverrides = {}) {
       return {
@@ -1324,6 +1386,27 @@ describe('StudentView', () => {
       await user.click(needHelpBtn)
 
       expect(requestHelp).toHaveBeenCalledWith('student-1')
+    })
+
+    it('then asks if a classmate can help: Yes sends a snapshot for the teacher to check', async () => {
+      const user = userEvent.setup()
+      const requestHelp = vi.fn(() => Promise.resolve())
+      const requestPeerHelp = vi.fn(() => Promise.resolve('req-1'))
+      peerHelpMock.overrides = { requestPeerHelp }
+      mocks.useSession.mockReturnValue(mkLiveSession({}, { requestHelp }))
+      render(<StudentView lessonId="python-1-1" />)
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+
+      await user.click(screen.getByRole('button', { name: /Need Help/i }))
+      // Help is one tap; a bubble then asks whether a classmate can help too.
+      expect(await screen.findByText('Can a classmate help too?')).toBeInTheDocument()
+      expect(requestPeerHelp).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: /Yes/ }))
+
+      expect(requestHelp).toHaveBeenCalledWith('student-1')
+      await waitFor(() => expect(requestPeerHelp).toHaveBeenCalled())
+      expect(requestPeerHelp.mock.calls[0][0]).toMatchObject({ taskId: 1, lessonType: 'python' })
+      peerHelpMock.overrides = {}
     })
 
     it('shows a requested state and disables the button once the teacher has been notified', async () => {

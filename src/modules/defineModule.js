@@ -95,6 +95,12 @@ export const STUDENT_MIRROR_KINDS = Object.freeze(['code', 'files', 'blocks', 'v
 // "HTML project" / "No run yet" line): the first lines of console output ('output'), whether
 // blocks were edited ('blocks') or whether the file tree changed ('fs').
 export const CARD_SUMMARY_KINDS = Object.freeze(['output', 'blocks', 'fs', null])
+// `capabilities.peerHelp` (optional; null = students keep the plain ✋ Help): how a classmate can
+// help with this module's work (src/shared/peerHelp.js). `anchors` is what feedback attaches to:
+// 'lines' (lines of code; suggested edits allowed) or 'scripts' (Scratch scripts; no edits).
+// `hints` picks the platform's preset hint list: 'python', 'html' or 'blocks'.
+export const PEER_HELP_ANCHORS = Object.freeze(['lines', 'scripts'])
+export const PEER_HELP_HINT_LISTS = Object.freeze(['python', 'html', 'blocks'])
 // `capabilities.lineHints` (optional; null = none): the marker syntax authors use for line hints
 // in this module's starter code and stages — 'python' (`#> …`, python, turtle) or 'html'
 // (`<!--> … -->`, html). See src/shared/lineHints.js.
@@ -407,6 +413,16 @@ function validateUiGates(type, def, workSlot) {
   }
   if (caps.lineHints != null && !isLineHintSyntax(caps.lineHints)) {
     fail(type, `"capabilities.lineHints" must be one of: ${LINE_HINT_SYNTAXES.join(', ')}, or null`)
+  }
+  if (
+    caps.peerHelp != null &&
+    (!PEER_HELP_ANCHORS.includes(caps.peerHelp.anchors) ||
+      !PEER_HELP_HINT_LISTS.includes(caps.peerHelp.hints))
+  ) {
+    fail(
+      type,
+      `"capabilities.peerHelp" must be null or { anchors: ${PEER_HELP_ANCHORS.join('|')}, hints: ${PEER_HELP_HINT_LISTS.join('|')} }`
+    )
   }
   const panes = caps.focusPanes ?? []
   if (

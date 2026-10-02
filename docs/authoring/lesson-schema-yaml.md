@@ -93,6 +93,8 @@ tasks:
     estimatedMinutes: 5        # optional — approximate duration, totalled in the builder
     priority: core              # optional — core (default) | optional; teacher-facing only
     allowSharing: true          # optional — let students share this workspace with the class (teacher approves)
+    peerHints:                  # optional — extra hints a classmate can send when helping (peer help)
+      - Did you use a loop?
     taskMode: both              # optional — both (default) | live | solo
     intent: >-                   # required, non-empty Markdown in Draft; author-only
       Describe the learning goal and intended task.
@@ -116,6 +118,7 @@ tasks:
 | `explainer` | Yes in final mode | string | Markdown shown to students. Draft permits it to be omitted. |
 | `estimatedMinutes` | No | positive number | Approximate duration in minutes (decimals allowed, e.g. `7.5`); totalled in the builder. |
 | `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
+| `peerHints` | No | list of strings | Up to 6 short hints (≤ 60 characters; helpers see at most 6 hint cards) a classmate can send when helping on this task (peer help). Keep them general and kind, never the answer. Not valid on `quiz` or `information` tasks. |
 | `allowSharing` | No | boolean | Lets students offer this workspace to the whole class, subject to teacher approval. Off unless set to `true`. Not valid on `quiz` or `information` tasks. |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `moduleType` | Yes for a code task in a new composed lesson | string | Workspace type: `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics`. |

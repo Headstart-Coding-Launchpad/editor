@@ -42,7 +42,7 @@ describe('BadgeHintsField', () => {
     expect(within(suggest).getAllByRole('button')).toHaveLength(getHintableBadges().length)
     expect(within(suppress).getAllByRole('button')).toHaveLength(getRuleBackedBadges().length)
     expect(within(suggest).queryByRole('button', { name: /Code Fixer/ })).not.toBeInTheDocument()
-    expect(within(suppress).queryByRole('button', { name: /Helpful Coder/ })).toBeNull()
+    expect(within(suppress).queryByRole('button', { name: /Great Question/ })).toBeNull()
   })
 
   it("shows which badges the task's activity pattern triggers", () => {

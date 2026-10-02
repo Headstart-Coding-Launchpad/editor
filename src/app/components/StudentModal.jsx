@@ -21,6 +21,7 @@ import { getModuleDefinition } from '../../modules/definitions'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { TEACHER_LIVE_REFERENCE_TYPES } from '../studentLiveDisplay'
 import DropdownMenu from './student-modal/DropdownMenu'
+import TeacherPeerHelpStudentPanel from './peerHelp/TeacherPeerHelpStudentPanel'
 import MessageCompose from './student-modal/MessageCompose'
 import OverrideDropdown from './student-modal/OverrideDropdown'
 import { PaneFocusControls } from './student-modal/PaneFocusDropdown'
@@ -61,6 +62,7 @@ export default function StudentModal({
   topics,
   isLive,
   isLiveForAll,
+  isLiveForAllPanel = false,
   onGoLive,
   onGoLiveForAll,
   onStopLive,
@@ -72,6 +74,8 @@ export default function StudentModal({
   onRemoteReset,
   onOverrideCheck,
   onDismissHelp,
+  // usePeerHelp (teacher): this student's peer help request and helper switch.
+  peerHelp = null,
   onSendToTopic,
   onSendTopicToAll,
   onSendMessage,
@@ -588,7 +592,11 @@ export default function StudentModal({
           <div style={s.headerLeft} data-testid="student-modal-status">
             <span style={s.name}>{student.displayName}</span>
             <PresenceBadge student={student} session={session} />
-            {isLive && <span style={s.liveBadge}>● {isLiveForAll ? 'LIVE FOR ALL' : 'LIVE'}</span>}
+            {isLive && (
+              <span style={s.liveBadge}>
+                ● {isLiveForAll ? (isLiveForAllPanel ? 'SHOWN TO CLASS' : 'LIVE FOR ALL') : 'LIVE'}
+              </span>
+            )}
             {/* Teacher-only badge count; never shown on student screens. */}
             {badgeCount > 0 && (
               <span
@@ -1074,6 +1082,18 @@ export default function StudentModal({
                             📡 Go Live for All
                           </button>
                         )}
+                        {hasGoLiveForAll && (
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              onGoLiveForAll('panel')
+                            }}
+                            title="Offer this student's work to the class: everyone keeps coding and can watch it or try a copy"
+                          >
+                            📺 Show to class (keep coding)
+                          </button>
+                        )}
                         {hasEdit && (
                           <button
                             style={sTo.toolBtn}
@@ -1183,6 +1203,14 @@ export default function StudentModal({
             the live workspace at once invited approving one while looking at
             the other — they are different content, and only the snapshot is
             what the class would actually receive. */}
+        {peerHelp && (
+          <TeacherPeerHelpStudentPanel
+            student={student}
+            session={session}
+            lesson={lesson}
+            peerHelp={peerHelp}
+          />
+        )}
         {showShareRequest ? (
           <ShareRequestPanel
             student={student}

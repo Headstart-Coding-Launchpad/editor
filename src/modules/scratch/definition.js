@@ -44,6 +44,8 @@ export default defineModule({
     pickerOrder: 4,
   },
   capabilities: {
+    // A classmate can help, attaching feedback to scripts (src/shared/peerHelp.js).
+    peerHelp: { anchors: 'scripts', hints: 'blocks' },
     stageReveal: 'offer',
     teacherStageReveal: true,
     highlights: false,

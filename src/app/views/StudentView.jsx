@@ -21,7 +21,7 @@ import {
   isSharingAllowed,
 } from '../../shared/taskUtils'
 import { PLAYGROUND_LESSON_TYPES, getTaskModuleType, isCodeTask } from '../../shared/composedLesson'
-import { deriveStudentLiveDisplay } from '../studentLiveDisplay'
+import { deriveStudentLiveDisplay, teacherLiveToSnapshot } from '../studentLiveDisplay'
 import {
   getTaskActivity,
   isHostedActivityTask,
@@ -64,6 +64,16 @@ import SoloNav from '../components/SoloNav'
 import SharedWorkspacePanel from '../components/SharedWorkspacePanel'
 import { applySharedWorkspaceCopy, describeShareError } from '../sharedWorkspacePayload'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
+import StudentLivePanelBar from '../components/StudentLivePanelBar'
+import { usePeerHelp } from '../hooks/usePeerHelp'
+import HelpRequestButton from '../components/peerHelp/HelpRequestButton'
+import PeerHelpAskBubble from '../components/peerHelp/PeerHelpAskBubble'
+import HelperPromiseDialog from '../components/peerHelp/HelperPromiseDialog'
+import PeerHelpOfferToast from '../components/peerHelp/PeerHelpOfferToast'
+import PeerHelperWorkspace from '../components/peerHelp/PeerHelperWorkspace'
+import PeerHelpInbox from '../components/peerHelp/PeerHelpInbox'
+import { applyPeerEdit, visiblePeerHelpOffers } from '../../shared/peerHelp'
+import { supportsPeerHelp } from '../peerHelpAnchors'
 import { createLaunchpadCodeFile, downloadLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
 import {
   getSavedNonPythonTaskCount,
@@ -521,6 +531,51 @@ export default function StudentView({
   // { entry, snapshot }. Local only — opening a share never touches their work.
   const [activeShare, setActiveShare] = useState(null)
   const [shareLoading, setShareLoading] = useState(false)
+  // A "Show to class (keep coding)" broadcast: whether this student chose to watch it, and the
+  // throwaway copy they opened ({ entry, snapshot }), if any. Both reset per broadcast.
+  const [watchingStudentPanel, setWatchingStudentPanel] = useState(false)
+  const [livePanelCopy, setLivePanelCopy] = useState(null)
+  const livePanelKey =
+    session?.teacherLive?.active && session.teacherLive.mode === 'panel'
+      ? `${session.teacherLive.sourceStudentId}:${session.teacherLive.taskId}`
+      : null
+  useEffect(() => {
+    setWatchingStudentPanel(false)
+    setLivePanelCopy(null)
+  }, [livePanelKey])
+  // Tells the teacher's roster when this student is looking at (or trying) the broadcast:
+  // students/{id}/watchingLive, written only when it changes (see src/app/studentActivity.js).
+  const watchingLive = livePanelCopy ? 'try' : watchingStudentPanel ? 'look' : null
+  const reportedWatchingLiveRef = useRef(null)
+  useEffect(() => {
+    const id = identity?.anonymousId
+    if (!id || teacherPresentation || previewMode) return
+    if (reportedWatchingLiveRef.current === watchingLive) return
+    reportedWatchingLiveRef.current = watchingLive
+    writeStudentInteraction?.(id, { watchingLive })
+  }, [watchingLive, identity?.anonymousId, teacherPresentation, previewMode])
+
+  // Peer help (src/shared/peerHelp.js): this student's own request, and the request they help
+  // with. Live lessons only; never in solo, preview or the Presentation window.
+  const peerHelp = usePeerHelp({
+    lessonId,
+    session,
+    identityId: identity?.anonymousId,
+    role: !soloMode && !previewMode && !teacherPresentation ? 'student' : null,
+  })
+  // The stuck student's client answers a helper's "Get latest" with this.
+  peerHelp.setSnapshotBuilder(() => cs.buildShareSnapshot())
+  const [peerHelperOpen, setPeerHelperOpen] = useState(true)
+  const [peerPromiseFor, setPeerPromiseFor] = useState(null)
+  const [dismissedPeerOffers, setDismissedPeerOffers] = useState(() => new Set())
+  const [peerClaimBusy, setPeerClaimBusy] = useState(false)
+  const [peerClaimError, setPeerClaimError] = useState(null)
+  const [peerHelpError, setPeerHelpError] = useState(null)
+  // "Can a classmate help too?", asked right after ✋ Help where peer help is possible.
+  const [peerAskOpen, setPeerAskOpen] = useState(false)
+  useEffect(() => {
+    if (peerHelp.helpingRequestId) setPeerHelperOpen(true)
+  }, [peerHelp.helpingRequestId])
   const [openTopicId, setOpenTopicId] = useState(null)
   const [pendingTopicId, setPendingTopicId] = useState(null)
   // Presenter-only layout toggle: which panes the presentation popup shows ('both' | 'explainer' | 'code')
@@ -919,6 +974,7 @@ export default function StudentView({
   const {
     isPresentationStudentViewer,
     isStudentGoLiveViewer,
+    isStudentPanelBroadcast,
     isTeacherLiveActive,
     isForcedTeacherLive,
     displayedTaskId,
@@ -957,6 +1013,7 @@ export default function StudentView({
     checkAttempted: cs.checkAttempted,
     checkSuggestion: cs.checkSuggestion,
     editorActivity: cs.editorActivity,
+    watchingStudentPanel,
   })
   const task = flatTasks.find((t) => t.id === displayedTaskId)
   const displayedLesson = getEffectiveLessonForTask(lesson, displayedTaskId)
@@ -1070,6 +1127,84 @@ export default function StudentView({
   // Hosted activities (taskType 'activity' and quizzes) are not code tasks: no Run, personal
   // sandbox, share or carry. ActivityHost renders them (see LessonTaskContent).
   const isActivityTask = isHostedActivityTask(task)
+
+  // ─── Peer help ────────────────────────────────────────────────────────────
+  const peerHelpAvailable =
+    phase === 'lesson' &&
+    !teacherPresentation &&
+    !!identity?.anonymousId &&
+    !isQuizTask &&
+    !isInformationTask &&
+    !isActivityTask &&
+    !isCodeArrangeTask &&
+    supportsPeerHelp(displayedLesson.type)
+  const ownPeerOffer = peerHelp.ownRequestId
+    ? (session?.peerHelpOffers?.[peerHelp.ownRequestId] ?? null)
+    : null
+  const peerOffers =
+    phase === 'lesson' && !teacherPresentation && !peerHelp.helpingRequestId
+      ? visiblePeerHelpOffers({
+          session,
+          identityId: identity?.anonymousId,
+          ownRequestId: peerHelp.ownRequestId,
+        }).filter((offer) => !dismissedPeerOffers.has(offer.requestId))
+      : []
+  const isHelpingClassmate = !!peerHelp.helpingRequestId && phase === 'lesson'
+  const showPeerHelperWorkspace = isHelpingClassmate && peerHelperOpen && !activeShare
+
+  // ✋ Help is one tap; where a classmate could help, a bubble then asks.
+  async function handleHelpTap() {
+    await handleNeedHelp()
+    if (peerHelpAvailable && !peerHelp.ownRequestId) setPeerAskOpen(true)
+  }
+
+  async function handleClassmateCanHelp() {
+    setPeerAskOpen(false)
+    setPeerHelpError(null)
+    try {
+      await peerHelp.requestPeerHelp(cs.buildShareSnapshot())
+    } catch (err) {
+      setPeerHelpError(err?.message ?? 'Could not ask a classmate. Your teacher is still coming.')
+    }
+  }
+
+  async function claimPeerOffer(requestId) {
+    setPeerClaimBusy(true)
+    setPeerClaimError(null)
+    const ok = await peerHelp.claimOffer(requestId)
+    setPeerClaimBusy(false)
+    if (!ok) {
+      setPeerClaimError('Someone else is already helping. Thank you!')
+      setDismissedPeerOffers((set) => new Set(set).add(requestId))
+    }
+  }
+
+  async function handleHelpOut(requestId) {
+    if (!peerHelp.hasPromised) {
+      setPeerPromiseFor(requestId)
+      return
+    }
+    await claimPeerOffer(requestId)
+  }
+
+  // Applies a teacher-approved change to the student's own work, through the normal change
+  // handlers so it saves like their typing. False when it can't be applied safely.
+  async function handleAcceptPeerEdit(item) {
+    if (isViewingPrev || isForcedTeacherLive || cs.inPersonalSandbox) return false
+    if (item.file) {
+      const file = (cs.files ?? []).find((f) => f.name === item.file)
+      if (!file) return false
+      const next = applyPeerEdit(file.content, item.edits)
+      if (next == null) return false
+      cs.handleFileChange(item.file, next)
+      return true
+    }
+    const next = applyPeerEdit(cs.code, item.edits)
+    if (next == null) return false
+    cs.handleCodeChange(next)
+    return true
+  }
+
   const canNavigateNextSolo = allowUnrestrictedTaskNavigation || isSolo
   // Also present (bypassing the debounce) whenever the slide is actually being viewed —
   // e.g. just after an arrival auto-opened it, before the debounce has had time to settle —
@@ -1330,17 +1465,11 @@ export default function StudentView({
         />
       )}
       {canRequestHelp && (
-        <button
-          type="button"
-          className={myNeedsHelp ? 'btn-danger' : 'btn-ghost'}
+        <HelpRequestButton
+          requested={myNeedsHelp}
+          onAskTeacher={handleHelpTap}
           style={s.needHelpBtn}
-          onClick={handleNeedHelp}
-          disabled={myNeedsHelp}
-          title={myNeedsHelp ? 'Your teacher has been notified' : 'Ask your teacher for help'}
-          aria-label={myNeedsHelp ? 'Help requested' : 'Need Help'}
-        >
-          {myNeedsHelp ? '✋ Help requested' : '✋ Help'}
-        </button>
+        />
       )}
       {canShareWorkspace && (
         <button
@@ -1618,7 +1747,8 @@ export default function StudentView({
         />
       )}
       <StudentStatusBanners
-        isForcedTeacherLive={isForcedTeacherLive}
+        // A "Show to class" broadcast has its own bar (StudentLivePanelBar) while watching.
+        isForcedTeacherLive={isForcedTeacherLive && !isStudentPanelBroadcast}
         isPresentationStudentViewer={isPresentationStudentViewer}
         isStudentGoLiveViewer={isStudentGoLiveViewer}
         teacherLiveSourceStudentName={session?.teacherLive?.sourceStudentName}
@@ -1632,6 +1762,94 @@ export default function StudentView({
         authError={!teacherPresentation && authError}
         onRetrySignIn={retrySignIn}
       />
+      {isHelpingClassmate && !peerHelperOpen && (
+        <div style={s.peerHelpingBar} role="status">
+          <span>🤝 Helping a classmate</span>
+          <button
+            type="button"
+            className="btn-primary"
+            style={{ fontSize: 13, padding: '4px 12px' }}
+            onClick={() => setPeerHelperOpen(true)}
+          >
+            Open
+          </button>
+        </div>
+      )}
+      {peerHelpError && (
+        <div style={s.peerHelpingBar} role="alert">
+          <span>{peerHelpError}</span>
+          <button
+            type="button"
+            className="btn-ghost-outline"
+            onClick={() => setPeerHelpError(null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      {peerAskOpen && peerHelpAvailable && !peerHelp.ownRequestId && (
+        <PeerHelpAskBubble onYes={handleClassmateCanHelp} onNo={() => setPeerAskOpen(false)} />
+      )}
+      {peerOffers.length > 0 && !peerHelp.ownRequestId && (
+        <PeerHelpOfferToast
+          offer={peerOffers[0]}
+          busy={peerClaimBusy}
+          error={peerClaimError}
+          onHelp={() => handleHelpOut(peerOffers[0].requestId)}
+          onDismiss={() =>
+            setDismissedPeerOffers((set) => new Set(set).add(peerOffers[0].requestId))
+          }
+        />
+      )}
+      {peerPromiseFor && (
+        <HelperPromiseDialog
+          onCancel={() => setPeerPromiseFor(null)}
+          onAgree={async () => {
+            const requestId = peerPromiseFor
+            setPeerPromiseFor(null)
+            try {
+              await peerHelp.makeHelperPromise()
+              await claimPeerOffer(requestId)
+            } catch {
+              setPeerClaimError('Could not start helping. Try again in a moment.')
+            }
+          }}
+        />
+      )}
+      {peerHelp.ownRequestId && phase === 'lesson' && !teacherPresentation && (
+        <PeerHelpInbox
+          offer={ownPeerOffer}
+          state={peerHelp.ownState}
+          inbox={peerHelp.ownInbox}
+          snapshot={peerHelp.ownSnapshot}
+          lessonType={peerHelp.ownSnapshot?.lessonType ?? displayedLesson.type}
+          task={task}
+          onRespond={(itemId, response) => peerHelp.respondToItem(itemId, response).catch(() => {})}
+          onAcceptEdit={handleAcceptPeerEdit}
+          onNotOk={(itemId) => peerHelp.flagNotOk(itemId).catch(() => {})}
+          onEnd={() => peerHelp.endOwnRequest().catch(() => {})}
+          onClose={() => peerHelp.endOwnRequest().catch(() => {})}
+        />
+      )}
+      {isStudentPanelBroadcast && !activeShare && (
+        <StudentLivePanelBar
+          sourceStudentName={session?.teacherLive?.sourceStudentName}
+          watching={watchingStudentPanel}
+          copyOpen={!!livePanelCopy}
+          onWatch={() => setWatchingStudentPanel(true)}
+          onStopWatching={() => setWatchingStudentPanel(false)}
+          onTryCopy={() => {
+            setWatchingStudentPanel(false)
+            setLivePanelCopy({
+              entry: {
+                shareId: `live-${session.teacherLive.updatedAt ?? Date.now()}`,
+                sharerName: session.teacherLive.sourceStudentName,
+              },
+              snapshot: teacherLiveToSnapshot(session.teacherLive),
+            })
+          }}
+        />
+      )}
       <div
         style={
           isSolo &&
@@ -1645,7 +1863,24 @@ export default function StudentView({
         // that handles the key can't hide it.
         onKeyDownCapture={cs.badgeSignals.handleWorkAreaKeyDown}
       >
-        {activeShare ? (
+        {showPeerHelperWorkspace ? (
+          <PeerHelperWorkspace
+            lesson={lesson}
+            requestId={peerHelp.helpingRequestId}
+            snapshot={peerHelp.helpingSnapshot}
+            state={peerHelp.helpingState}
+            inbox={peerHelp.helpingInbox}
+            review={peerHelp.helpingReview}
+            notesEnabled={!!session?.peerHelpSettings?.notesEnabled}
+            isMobile={isMobile}
+            onRequestLatest={() => peerHelp.requestLatestSnapshot().catch(() => {})}
+            onFinish={() => peerHelp.finishHelping().catch(() => {})}
+            onMark={peerHelp.sendMark}
+            onHint={peerHelp.sendHint}
+            onSubmitEdit={peerHelp.submitEdit}
+            onSubmitNote={peerHelp.submitNote}
+          />
+        ) : activeShare ? (
           <SharedWorkspaceViewer
             lesson={lesson}
             entry={activeShare.entry}
@@ -1654,6 +1889,19 @@ export default function StudentView({
             isMobile={isMobile}
             onClose={handleCloseSharedWorkspace}
             onCopyToMyEditor={handleCopySharedWorkspace}
+          />
+        ) : isStudentPanelBroadcast && livePanelCopy ? (
+          // A throwaway, runnable copy of the work on show: nothing is saved and nothing can
+          // be copied out of it into the student's own editor.
+          <SharedWorkspaceViewer
+            lesson={lesson}
+            entry={livePanelCopy.entry}
+            snapshot={livePanelCopy.snapshot}
+            isMobile={isMobile}
+            title={`▶ ${livePanelCopy.entry.sharerName ?? 'A classmate'}’s work`}
+            subtitle="Try it! Your own code is safe."
+            copyBlocked
+            onClose={() => setLivePanelCopy(null)}
           />
         ) : (
           <PollTaskClassContext.Provider value={pollTaskClass}>
@@ -1827,6 +2075,20 @@ const s = {
     fontSize: 13,
     padding: '5px 10px',
     whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  peerHelpingBar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    flexWrap: 'wrap',
+    padding: '6px 12px',
+    fontSize: 13,
+    fontWeight: 600,
+    background: 'rgba(13, 148, 136, 0.10)',
+    color: 'var(--colour-text)',
+    borderBottom: '2px solid #0d9488',
     flexShrink: 0,
   },
   needHelpBtn: {

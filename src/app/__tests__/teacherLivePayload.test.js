@@ -64,4 +64,15 @@ describe('buildStudentLivePayload', () => {
     expect(payload.activeFile).toBe('page.html')
     expect(payload.checkAttempted).toBe(false)
   })
+
+  it('marks a "Show to class (keep coding)" broadcast as panel mode; the takeover carries no mode', () => {
+    const base = {
+      lesson: { type: 'python', tasks: [{ id: 1 }] },
+      taskId: 1,
+      entryFileTaskId: 1,
+      student: { anonymousId: 's1' },
+    }
+    expect(buildStudentLivePayload({ ...base, mode: 'panel' }).mode).toBe('panel')
+    expect(buildStudentLivePayload(base)).not.toHaveProperty('mode')
+  })
 })

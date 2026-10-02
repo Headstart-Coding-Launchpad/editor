@@ -17,6 +17,10 @@ vi.mock('../../../shared/topicLibrary', () => ({ useTopicLibrary: () => ({ topic
 
 const sessionCommands = {}
 let mockSession = null
+vi.mock('../../hooks/usePeerHelp', async () => {
+  const { peerHelpModuleMock } = await import('../../hooks/__tests__/peerHelpMock.js')
+  return peerHelpModuleMock
+})
 vi.mock('../../hooks/useSession', () => ({
   useSession: () =>
     new Proxy(

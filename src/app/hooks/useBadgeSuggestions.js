@@ -59,7 +59,14 @@ export function groupBadgeSuggestions(suggestions, decisions = {}) {
  *   decisions: { [studentId: string]: { [badgeId: string]: object } },
  * }}
  */
-export function useBadgeSuggestions({ session, lesson, enabled = true, topics = null }) {
+// `peerHelp`: the teacher's read of peer help (usePeerHelp().allPeerHelp), for Helpful Coder.
+export function useBadgeSuggestions({
+  session,
+  lesson,
+  enabled = true,
+  topics = null,
+  peerHelp = null,
+}) {
   const active = !!enabled && !!session && !!lesson
 
   // One lesson object per distinct lesson content, and one topic list per distinct set of titles
@@ -73,14 +80,19 @@ export function useBadgeSuggestions({ session, lesson, enabled = true, topics = 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const stableTopics = useMemo(() => topics, [topicsKey])
 
-  const inputKey = active ? badgeEvaluationInputKey(session) : ''
+  const inputKey = active ? badgeEvaluationInputKey(session, peerHelp) : ''
 
   return useMemo(
     () => {
       if (!active) return EMPTY
       const decisions = session.badges ?? {}
       const suggestions = evaluateBadgeRules({
-        timelines: buildLiveTimelines({ session, lesson: badgeLesson, topics: stableTopics }),
+        timelines: buildLiveTimelines({
+          session,
+          lesson: badgeLesson,
+          topics: stableTopics,
+          peerHelp,
+        }),
         lesson: badgeLesson,
         decisions,
         options: {
@@ -90,7 +102,7 @@ export function useBadgeSuggestions({ session, lesson, enabled = true, topics = 
       })
       return { suggestions, decisions, ...groupBadgeSuggestions(suggestions, decisions) }
     },
-    // `session` is read through `inputKey`, which serialises every part of it used here.
+    // `session` and `peerHelp` are read through `inputKey`, which serialises every part used here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [active, inputKey, badgeLesson, stableTopics]
   )

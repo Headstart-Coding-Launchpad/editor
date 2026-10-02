@@ -66,6 +66,8 @@ export default defineModule({
     run: 'preview',
     // Authors hint at starter lines with `<!--> … -->` marker lines (src/shared/lineHints.js).
     lineHints: 'html',
+    // A classmate can help (src/shared/peerHelp.js).
+    peerHelp: { anchors: 'lines', hints: 'html' },
   },
 
   getDisplayState: (task, stage, liveState, tab) => {

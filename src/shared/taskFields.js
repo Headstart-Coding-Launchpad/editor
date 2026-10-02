@@ -59,6 +59,13 @@ export const COMMON_TASK_FIELDS = specs(
     { name: 'priority', type: 'string' },
     { name: 'taskMode', type: 'string' },
     { name: 'allowSharing', type: 'boolean' },
+    {
+      name: 'peerHints',
+      type: 'array',
+      authored: true,
+      description:
+        'Extra preset hints a classmate can send when helping on this task (peer help); up to 6 short strings (60 characters).',
+    },
   ],
   'COMMON_TASK_FIELDS'
 )

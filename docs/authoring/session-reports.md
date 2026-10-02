@@ -64,6 +64,7 @@ Information tasks (`type: information`) are never in a report. Every other task 
 | `badgeSummary` | Per-badge counts ([badgeSummary](#badgesummary)). | Omitted when no badge was suggested or awarded | 2026-09-30 |
 | `shortcutSummary` | `{ <shortcutId>: <number of students who used it> }` for the Keyboard Wizard shortcuts. | Omitted when nobody used one | 2026-09-30 |
 | `polls[]` | The teacher's live class polls, oldest first ([polls](#polls)). | Omitted when the teacher ran no poll | 2026-10-01 |
+| `peerHelp[]` | Every peer help request: who helped whom (as student labels) and everything sent ([peerHelp](#peerhelp)). | Omitted when nobody asked for peer help | 2026-10-02 |
 | `sizeNote` | Plain-text note saying sandbox code was left out to fit the 1 MiB limit. | Only on a trimmed report | 2026-09-30 |
 | `teacherFeedback` | The teacher's end-of-session rating and notes ([Teacher feedback](#teacher-feedback)). | Omitted unless the teacher saved some | 2026-09-01 |
 
@@ -340,6 +341,26 @@ Every live class poll the teacher ran from the **📊 Poll** button in the top b
 | `polls[].respondedCount` | Students who answered. |
 | `polls[].responses[]` | `{ studentLabel, choice (option index), choiceText, answeredAt }`, each student's final answer (students can change it while the poll is open). |
 | `polls[].notResponded[]` | Labels of students in the class who didn't answer. A student who first joined after the poll closed isn't listed. |
+
+## peerHelp
+
+The safeguarding record of peer help (a finished student helping a stuck one; see
+`docs/agents/classroom-behaviours.md` "Peer Help"), one entry per request, oldest first. Keeps
+every item, including the ones the teacher rejected and notes the word filter blocked. Built
+from `peerHelp/{lessonId}` (`buildPeerHelpAudit` in `src/shared/peerHelp.js`). Students appear
+under the report's anonymous labels like everywhere else, so the report alone can't say which
+child a label was. Added 2026-10-02.
+
+| Path | Meaning |
+|---|---|
+| `peerHelp[].requestId` | The request's random id. |
+| `peerHelp[].taskId` | The task it was asked on. |
+| `peerHelp[].stuck`, `helper` | Student labels; `helper` is null if nobody claimed it. |
+| `peerHelp[].offeredAt`, `claimedAt`, `endedAt` | When the teacher offered it, a helper claimed it, and it ended (ms; null if not reached). |
+| `peerHelp[].endedBy` | `stuck`, `helper`, `teacher` or `task_changed`. |
+| `peerHelp[].notOkAt` | When the stuck student pressed 🚩 Not OK (null if they didn't). |
+| `peerHelp[].delivered[]` | What reached the stuck student: `{ kind (mark, hint, edit, note), file, line, verdict, hintId, text, edits, response, createdAt }`. `response` is `useful`, `accepted`, `declined` or `not_ok`. |
+| `peerHelp[].reviewed[]` | Edits and notes sent to the teacher: the same fields plus `status` (`pending`, `approved`, `rejected`, `blocked`) and `blockedReason` (`language`, `contact`). |
 
 ## teacherSandbox
 

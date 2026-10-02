@@ -39,6 +39,23 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-02
 
+### Peer help: optional `peerHints` on code tasks
+
+- In a live lesson a stuck student can now let a classmate who finished the task help them. The
+  teacher checks the work and offers it, and a finished student marks lines 👍/👎 and sends
+  preset hints (💡) on a line. Neither student sees the other's name.
+- New optional task field `peerHints`: up to 6 short strings (60 characters each) that a helper
+  can send on this task. Helpers see at most 6 hint cards: the lesson's first, then the
+  platform's. They reach the stuck student without the teacher checking each one, and helpers
+  can be 9, so write them as a few kind, general words ("Did you use a loop?"), never the
+  answer. Not valid on `quiz` or `information` tasks. See [lesson-schema.md](lesson-schema.md).
+- Peer help works on Python, Python Turtle, HTML and Scratch tasks (Scratch: feedback on scripts).
+- Session reports gain `peerHelp[]` (see [session-reports.md](session-reports.md#peerhelp)).
+- 🤝 Helpful Coder is no longer tutor-only: it is suggested (never auto-awarded) when a stuck
+  classmate found a student's peer help useful. It still can't be named in `badgeHints.suggest`;
+  `badgeHints.suppress: [helpful_coder]` now works on a task. See [badges.md](badges.md).
+- Affects: python, turtle, html, scratch · Existing lessons: no changes needed · Resolves: none
+
 ### Open short answers: the teacher can show chosen answers on the presentation window
 
 - New fields on an open `short_answer` quiz (no `check`): `showResponses: teacher_picks` gives

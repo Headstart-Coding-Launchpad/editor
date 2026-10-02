@@ -113,8 +113,8 @@ describe('badgeHints validation', () => {
   })
 
   it('warns when suppressing a tutor-only badge', () => {
-    expect(errorsFor({ suppress: ['helpful_coder'] }).warnings).toContain(
-      'Task 1 badgeHints.suppress names "helpful_coder", a tutor-only badge that is never suggested'
+    expect(errorsFor({ suppress: ['great_question'] }).warnings).toContain(
+      'Task 1 badgeHints.suppress names "great_question", a tutor-only badge that is never suggested'
     )
   })
 

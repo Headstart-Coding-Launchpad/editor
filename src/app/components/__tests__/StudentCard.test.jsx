@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import StudentCard from '../StudentCard'
+import { studentActivities } from '../../studentActivity'
 import {
   CONFIDENCE_TASK,
   FILL_BLANK_DRAG_TASK,
@@ -71,10 +72,10 @@ describe('StudentCard', () => {
     const { unmount } = render(
       <StudentCard {...mkProps({}, { pasteLog: { 1: { count: 2, chars: 120 } } })} />
     )
-    expect(screen.getByText('📋 Pasted ×2')).toBeInTheDocument()
+    expect(screen.getByLabelText('Pasted ×2')).toBeInTheDocument()
     unmount()
     render(<StudentCard {...mkProps({}, { pasteLog: { 7: { count: 1, chars: 50 } } })} />)
-    expect(screen.queryByText(/Pasted/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/Pasted/)).not.toBeInTheDocument()
   })
 
   describe('nudge', () => {
@@ -162,7 +163,7 @@ describe('StudentCard', () => {
           )}
         />
       )
-      expect(screen.getByText('Passed')).toBeInTheDocument()
+      expect(screen.getByLabelText('Passed')).toBeInTheDocument()
     })
 
     it('shows the Failed badge when a run was attempted but check not passed', () => {
@@ -174,7 +175,7 @@ describe('StudentCard', () => {
           )}
         />
       )
-      expect(screen.getByText('Failed')).toBeInTheDocument()
+      expect(screen.getByLabelText('Failed')).toBeInTheDocument()
     })
 
     it('shows no check badge during a teacher-started sandbox, even if the session task has a check', () => {
@@ -186,29 +187,41 @@ describe('StudentCard', () => {
           )}
         />
       )
-      expect(screen.queryByText('Passed')).not.toBeInTheDocument()
-      expect(screen.queryByText('Failed')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Passed')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Failed')).not.toBeInTheDocument()
     })
 
     it('shows no check badge when the task has no check defined', () => {
       render(<StudentCard {...mkProps({}, { lastRunStatus: 'success', checkPassed: false })} />)
-      expect(screen.queryByText('Passed')).not.toBeInTheDocument()
-      expect(screen.queryByText('Failed')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Passed')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Failed')).not.toBeInTheDocument()
     })
 
-    it('shows the Sandbox badge when the student is in personal sandbox', () => {
-      render(<StudentCard {...mkProps({}, { inPersonalSandbox: true })} />)
-      expect(screen.getByText('Sandbox')).toBeInTheDocument()
+    it('shows "Now:" for what the student is doing, and the rest as icons', () => {
+      const student = {
+        ...BASE_STUDENT,
+        online: true,
+        inPersonalSandbox: true,
+        currentTopicId: 't1',
+      }
+      const activities = studentActivities({
+        student,
+        session: ACTIVE_SESSION,
+        topics: [{ id: 't1', title: 'Loops' }],
+      })
+      render(<StudentCard {...mkProps({ activities }, student)} />)
+      expect(screen.getByTestId('card-now')).toHaveTextContent('Now: 📖 reading “Loops”')
+      expect(screen.getByLabelText('In their personal sandbox')).toBeInTheDocument()
     })
 
     it('shows the Fullscreen badge when the student is in fullscreen mode', () => {
       render(<StudentCard {...mkProps({}, { isFullscreen: true })} />)
-      expect(screen.getByText('⛶ Fullscreen')).toBeInTheDocument()
+      expect(screen.getByLabelText('Fullscreen')).toBeInTheDocument()
     })
 
     it('shows no Fullscreen badge when the student is not in fullscreen mode', () => {
       render(<StudentCard {...mkProps({}, { isFullscreen: false })} />)
-      expect(screen.queryByText('⛶ Fullscreen')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Fullscreen')).not.toBeInTheDocument()
     })
   })
 
@@ -295,27 +308,27 @@ describe('StudentCard', () => {
   describe('visible panes badge', () => {
     it('labels Scratch pane ids', () => {
       render(<StudentCard {...mkProps({}, { visiblePanes: ['instructions', 'blocks'] })} />)
-      expect(screen.getByText('👀 Info + Blocks')).toBeInTheDocument()
+      expect(screen.getByLabelText('Can see: Info + Blocks')).toBeInTheDocument()
     })
 
     it('labels Electronics, Python, Arcade and HTML pane ids', () => {
       render(<StudentCard {...mkProps({}, { visiblePanes: ['breadboard'] })} />)
-      expect(screen.getByText('👀 Breadboard')).toBeInTheDocument()
+      expect(screen.getByLabelText('Can see: Breadboard')).toBeInTheDocument()
     })
 
     it('labels console, running and preview toggle states', () => {
       render(<StudentCard {...mkProps({}, { visiblePanes: ['code', 'console'] })} />)
-      expect(screen.getByText('👀 Code + Console')).toBeInTheDocument()
+      expect(screen.getByLabelText('Can see: Code + Console')).toBeInTheDocument()
     })
 
     it('passes an unmapped pane id (e.g. an HTML file name) through as-is', () => {
       render(<StudentCard {...mkProps({}, { visiblePanes: ['index.html', 'preview'] })} />)
-      expect(screen.getByText('👀 index.html + Preview')).toBeInTheDocument()
+      expect(screen.getByLabelText('Can see: index.html + Preview')).toBeInTheDocument()
     })
 
     it('shows no badge when visiblePanes is empty', () => {
       render(<StudentCard {...mkProps({}, { visiblePanes: [] })} />)
-      expect(screen.queryByText(/👀/)).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/Can see/)).not.toBeInTheDocument()
     })
 
     // A visiblePanes report left over from the previous code task must not show once the
@@ -327,7 +340,7 @@ describe('StudentCard', () => {
           {...mkProps({ lesson: infoLesson }, { visiblePanes: ['instructions', 'code'] })}
         />
       )
-      expect(screen.queryByText(/👀/)).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/Can see/)).not.toBeInTheDocument()
     })
 
     it('hides a stale badge on an activity (quiz) task', () => {
@@ -343,7 +356,7 @@ describe('StudentCard', () => {
           )}
         />
       )
-      expect(screen.queryByText(/👀/)).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/Can see/)).not.toBeInTheDocument()
     })
 
     it('hides a stale badge on an information task in a composed lesson', () => {
@@ -362,7 +375,7 @@ describe('StudentCard', () => {
           )}
         />
       )
-      expect(screen.queryByText(/👀/)).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/Can see/)).not.toBeInTheDocument()
     })
 
     it('still shows the badge in a session sandbox parked on an information task', () => {
@@ -375,7 +388,7 @@ describe('StudentCard', () => {
           )}
         />
       )
-      expect(screen.getByText('👀 Code')).toBeInTheDocument()
+      expect(screen.getByLabelText('Can see: Code')).toBeInTheDocument()
     })
   })
 
@@ -507,42 +520,39 @@ describe('StudentCard', () => {
   describe('workspace share badge', () => {
     it('shows Sharing when the student has a pending share request', () => {
       render(<StudentCard {...mkProps({}, { shareRequestedAt: 1700000000000 })} />)
-      expect(screen.getByText('Sharing')).toBeInTheDocument()
+      expect(screen.getByLabelText('Sharing')).toBeInTheDocument()
     })
 
     it('does not show Sharing when there is no pending request', () => {
       render(<StudentCard {...mkProps()} />)
-      expect(screen.queryByText('Sharing')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Sharing')).not.toBeInTheDocument()
     })
   })
 
-  describe('live viewing-a-share badge', () => {
+  describe('viewing a share', () => {
     const sessionWithShare = {
       ...ACTIVE_SESSION,
       sharedWorkspaces: { 'share-1': { sharerName: 'Alex' } },
     }
+    const render_ = (studentOverrides) => {
+      const student = { ...BASE_STUDENT, ...studentOverrides }
+      const activities = studentActivities({ student, session: sessionWithShare })
+      render(<StudentCard {...mkProps({ session: sessionWithShare, activities }, student)} />)
+    }
 
     it("shows who a connected student is currently viewing another student's share", () => {
-      render(
-        <StudentCard
-          {...mkProps({ session: sessionWithShare }, { viewingShareId: 'share-1', online: true })}
-        />
-      )
-      expect(screen.getByTitle('Viewing Alex shared work')).toBeInTheDocument()
+      render_({ viewingShareId: 'share-1', online: true })
+      expect(screen.getByTestId('card-now')).toHaveTextContent('Now: 📤 viewing Alex’s shared work')
     })
 
-    it('does not show the badge once the student is offline, even if the field is stale', () => {
-      render(
-        <StudentCard
-          {...mkProps({ session: sessionWithShare }, { viewingShareId: 'share-1', online: false })}
-        />
-      )
-      expect(screen.queryByTitle('Viewing Alex shared work')).not.toBeInTheDocument()
+    it('shows nothing once the student is offline, even if the field is stale', () => {
+      render_({ viewingShareId: 'share-1', online: false })
+      expect(screen.queryByTestId('card-now')).not.toBeInTheDocument()
     })
 
-    it('does not show the badge when no share is being viewed', () => {
-      render(<StudentCard {...mkProps({ session: sessionWithShare }, { online: true })} />)
-      expect(screen.queryByTitle('Viewing Alex shared work')).not.toBeInTheDocument()
+    it('shows nothing when no share is being viewed', () => {
+      render_({ online: true })
+      expect(screen.queryByTestId('card-now')).not.toBeInTheDocument()
     })
   })
 
@@ -598,7 +608,7 @@ describe('StudentCard', () => {
       const { rerender } = render(
         <StudentCard {...mkProps({ lesson: matchLesson }, { teacherAssistedTaskId: 1 })} />
       )
-      expect(screen.getByTestId('teacher-assisted')).toHaveTextContent('Assisted')
+      expect(screen.getByTestId('teacher-assisted')).toHaveAttribute('aria-label', 'Assisted')
       rerender(<StudentCard {...mkProps({ lesson: matchLesson }, { teacherAssistedTaskId: 2 })} />)
       expect(screen.queryByTestId('teacher-assisted')).not.toBeInTheDocument()
     })
@@ -647,7 +657,7 @@ describe('StudentCard', () => {
       })
       expect(screen.getByText('b')).toBeInTheDocument()
       expect(screen.getByText('Text for b')).toBeInTheDocument()
-      expect(screen.getByText('Failed')).toBeInTheDocument()
+      expect(screen.getByLabelText('Failed')).toBeInTheDocument()
     })
 
     it.each([
@@ -689,7 +699,7 @@ describe('StudentCard', () => {
         checkPassed: true,
       })
       expect(screen.getByText('4/5')).toBeInTheDocument()
-      expect(screen.queryByText('Passed')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Passed')).not.toBeInTheDocument()
       unmount()
       // A non-numeric answer is not guarded.
       renderTask(CONFIDENCE_TASK.id, { currentAnswer: 'abc' })

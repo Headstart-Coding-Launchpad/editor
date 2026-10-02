@@ -90,7 +90,7 @@ describe('arguments', () => {
       emoji: '🐛',
       ruleBacked: true,
     })
-    expect(registry.find((b) => b.id === 'helpful_coder').ruleBacked).toBe(false)
+    expect(registry.find((b) => b.id === 'great_question').ruleBacked).toBe(false)
   })
 })
 
@@ -119,12 +119,12 @@ describe('planNewBadge', () => {
     // Registered after the last rule-backed badge, before the tutor-only ones.
     const pure = byPath['src/badges/registry.pure.js']
     expect(pure).toContain("import tidyCoder from './definitions/tidy_coder.js'")
-    expect(pure).toMatch(/earlyBird,\n {2}tidyCoder,\n {2}problemSolver,/)
+    expect(pure).toMatch(/helpfulCoder,\n {2}tidyCoder,\n {2}problemSolver,/)
     expect(byPath['docs/authoring/badges.md']).toMatch(
       /\| 🧹 Tidy Coder \| `tidy_coder` \| TODO\(new-badge\)[^\n]*\n\| 🧠 Problem Solver/
     )
     expect(byPath['docs/CODEBASE_MAP.md']).toContain(
-      '`early_bird.js`, `tidy_coder.js`, and tutor-only'
+      '`helpful_coder.js`, `tidy_coder.js`, and tutor-only'
     )
     expect(plan.checklist.join('\n')).toMatch(/real browser/)
   })
