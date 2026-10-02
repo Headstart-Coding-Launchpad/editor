@@ -56,6 +56,7 @@ import LoadingScreen from '../components/LoadingScreen'
 import SessionEndedScreen from '../components/SessionEndedScreen'
 import StudentStatusBanners from '../components/StudentStatusBanners'
 import ClassPollCard from '../components/polls/ClassPollCard'
+import { PollTaskClassContext } from '../components/quiz/PollTaskClassContext'
 import { getActivePoll, getStudentPollChoice, tallyPoll } from '../../shared/classPolls'
 import LessonTaskContent from '../components/LessonTaskContent'
 import { usePreloadNeighbourImages } from '../../shared/preloadImages'
@@ -1180,6 +1181,15 @@ export default function StudentView({
     activePoll && (teacherPresentation || activePoll.showResults)
       ? tallyPoll(session, activePoll.pollId)
       : null
+  // Poll tasks in the lesson show the class split from the live session (PollQuiz).
+  const pollTaskClass =
+    phase === 'lesson' && (teacherPresentation || identity?.anonymousId)
+      ? {
+          session,
+          anonymousId: teacherPresentation ? null : identity?.anonymousId,
+          presentation: !!teacherPresentation,
+        }
+      : null
   const myPollChoice =
     activePoll && !teacherPresentation
       ? getStudentPollChoice(session, identity?.anonymousId, activePoll.pollId)
@@ -1646,76 +1656,78 @@ export default function StudentView({
             onCopyToMyEditor={handleCopySharedWorkspace}
           />
         ) : (
-          <LessonTaskContent
-            lesson={displayedLesson}
-            task={task}
-            cs={taskCs}
-            lessonId={lessonId}
-            identityId={effectiveIdentity?.anonymousId}
-            sandboxExplainer={session?.sandboxExplainer}
-            activeStudentView={session?.activeStudentView}
-            viewingTaskId={viewingTaskId}
-            currentTaskId={currentTaskId}
-            transitionKey={transitionKey}
-            transitionOrder={transitionOrder}
-            previewMode={previewMode}
-            isSandbox={isSandbox}
-            isViewingPrev={isViewingPrev}
-            isForcedTeacherLive={isForcedTeacherLive}
-            isMobile={isMobile}
-            isQuizTask={isQuizTask}
-            isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
-            isInformationTask={isInformationTask}
-            badgeWall={badgeWall}
-            isActivityTask={isActivityTask}
-            displayAnswer={displayAnswer}
-            isViewingExplainerSlide={viewingExplainerSlide}
-            isViewingCompletionScreen={viewingCompletionScreen}
-            onOpenPlayground={canOpenPlayground ? handleOpenPlayground : undefined}
-            soloCompanion={soloCompanion}
-            onTrySoloChallenge={soloCompanion ? handleTrySoloChallenge : undefined}
-            onReplayLesson={handleReplayLesson}
-            isCodeArrangeTask={isCodeArrangeTask}
-            displayCode={displayCode}
-            displayArcadeDesign={displayArcadeDesign}
-            displayTurtleResult={displayTurtleResult}
-            displaySpriteState={displaySpriteState}
-            displayCursor={displayCursor}
-            displayBlockDrag={displayBlockDrag}
-            displayCodeArrangeSlots={displayCodeArrangeSlots}
-            displayCodeArrangeCursor={displayCodeArrangeCursor}
-            displayFiles={displayFiles}
-            displayActiveFile={displayActiveFile}
-            displayOutput={displayOutput}
-            displayRunStatus={displayRunStatus}
-            displayCheckPassed={displayCheckPassed}
-            displayCheckAttempted={displayCheckAttempted}
-            displayCheckSuggestion={displayCheckSuggestion}
-            displaySelection={displaySelection}
-            displayOutputCollapsed={displayOutputCollapsed}
-            isLiveCopyBlocked={isLiveCopyBlocked}
-            displayFs={displayFs}
-            displayDesktop={displayDesktop}
-            isTeacherEditing={isTeacherEditing}
-            teacherLiveCode={teacherLiveCode}
-            teacherLiveFiles={teacherLiveFiles}
-            teacherLiveActiveFile={teacherLiveActiveFile}
-            teacherLiveWorkspace={teacherLiveWorkspace}
-            teacherLiveArcadeDesign={teacherLiveArcadeDesign}
-            teacherLiveReferencePayload={session?.teacherLiveReference}
-            canOfferNextStage={canOfferNextStage}
-            canOfferCompletePreview={canOfferCompletePreview}
-            canOfferCompleteSolution={canOfferCompleteSolution}
-            canOfferPersonalSandbox={canOfferPersonalSandbox}
-            explainerShowsComplete={explainerShowsComplete}
-            presenterLayout={teacherPresentation ? presenterLayout : 'both'}
-            onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
-            onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
-            openTopicId={phase === 'lesson' ? openTopicId : null}
-            onVisiblePanesChange={handleVisiblePanesChange}
-            highlightedPanes={highlightedPanes}
-            forcedPaneCommand={forcedPaneCommand}
-          />
+          <PollTaskClassContext.Provider value={pollTaskClass}>
+            <LessonTaskContent
+              lesson={displayedLesson}
+              task={task}
+              cs={taskCs}
+              lessonId={lessonId}
+              identityId={effectiveIdentity?.anonymousId}
+              sandboxExplainer={session?.sandboxExplainer}
+              activeStudentView={session?.activeStudentView}
+              viewingTaskId={viewingTaskId}
+              currentTaskId={currentTaskId}
+              transitionKey={transitionKey}
+              transitionOrder={transitionOrder}
+              previewMode={previewMode}
+              isSandbox={isSandbox}
+              isViewingPrev={isViewingPrev}
+              isForcedTeacherLive={isForcedTeacherLive}
+              isMobile={isMobile}
+              isQuizTask={isQuizTask}
+              isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
+              isInformationTask={isInformationTask}
+              badgeWall={badgeWall}
+              isActivityTask={isActivityTask}
+              displayAnswer={displayAnswer}
+              isViewingExplainerSlide={viewingExplainerSlide}
+              isViewingCompletionScreen={viewingCompletionScreen}
+              onOpenPlayground={canOpenPlayground ? handleOpenPlayground : undefined}
+              soloCompanion={soloCompanion}
+              onTrySoloChallenge={soloCompanion ? handleTrySoloChallenge : undefined}
+              onReplayLesson={handleReplayLesson}
+              isCodeArrangeTask={isCodeArrangeTask}
+              displayCode={displayCode}
+              displayArcadeDesign={displayArcadeDesign}
+              displayTurtleResult={displayTurtleResult}
+              displaySpriteState={displaySpriteState}
+              displayCursor={displayCursor}
+              displayBlockDrag={displayBlockDrag}
+              displayCodeArrangeSlots={displayCodeArrangeSlots}
+              displayCodeArrangeCursor={displayCodeArrangeCursor}
+              displayFiles={displayFiles}
+              displayActiveFile={displayActiveFile}
+              displayOutput={displayOutput}
+              displayRunStatus={displayRunStatus}
+              displayCheckPassed={displayCheckPassed}
+              displayCheckAttempted={displayCheckAttempted}
+              displayCheckSuggestion={displayCheckSuggestion}
+              displaySelection={displaySelection}
+              displayOutputCollapsed={displayOutputCollapsed}
+              isLiveCopyBlocked={isLiveCopyBlocked}
+              displayFs={displayFs}
+              displayDesktop={displayDesktop}
+              isTeacherEditing={isTeacherEditing}
+              teacherLiveCode={teacherLiveCode}
+              teacherLiveFiles={teacherLiveFiles}
+              teacherLiveActiveFile={teacherLiveActiveFile}
+              teacherLiveWorkspace={teacherLiveWorkspace}
+              teacherLiveArcadeDesign={teacherLiveArcadeDesign}
+              teacherLiveReferencePayload={session?.teacherLiveReference}
+              canOfferNextStage={canOfferNextStage}
+              canOfferCompletePreview={canOfferCompletePreview}
+              canOfferCompleteSolution={canOfferCompleteSolution}
+              canOfferPersonalSandbox={canOfferPersonalSandbox}
+              explainerShowsComplete={explainerShowsComplete}
+              presenterLayout={teacherPresentation ? presenterLayout : 'both'}
+              onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
+              onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
+              openTopicId={phase === 'lesson' ? openTopicId : null}
+              onVisiblePanesChange={handleVisiblePanesChange}
+              highlightedPanes={highlightedPanes}
+              forcedPaneCommand={forcedPaneCommand}
+            />
+          </PollTaskClassContext.Provider>
         )}
       </div>
     </div>

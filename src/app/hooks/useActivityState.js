@@ -272,6 +272,8 @@ export function useActivityState({
           submission: def.buildSubmission(currentTask, submitted),
           passed,
           suggestion,
+          // Ungraded answers can change; log each change so the latest one is reported.
+          changeable: def.completion === 'none',
           teacherAssisted: fromTeacher || !!teacherAssistedTaskIdsRef?.current?.has(taskId),
         })
       }

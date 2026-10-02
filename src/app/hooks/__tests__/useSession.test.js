@@ -220,13 +220,22 @@ describe('useSession', () => {
             question: 'What next?',
             options: ['Games', 'Art'],
             status: 'open',
-            showResults: false,
+            showResults: true,
             createdAt: expect.any(Number),
             closedAt: null,
           },
           activePollId: 'mockHighlightId',
         }
       )
+    })
+
+    it('launchPoll keeps results private when asked', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.launchPoll({ question: 'Q?', options: ['A', 'B'], keepPrivate: true })
+      })
+      const updates = firebaseMocks.update.mock.calls.at(-1)[1]
+      expect(updates['polls/mockHighlightId'].showResults).toBe(false)
     })
 
     it('launchPoll closes a poll that is still open', async () => {
@@ -1595,6 +1604,30 @@ describe('useSession', () => {
   })
 
   describe('logAttempt', () => {
+    it('keeps logging a changeable (ungraded) answer after a pass, but not a graded one', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 7, { submission: 'a', passed: true })
+      })
+      const afterFirst = firebaseMocks.set.mock.calls.length
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 7, { submission: 'b', passed: true })
+      })
+      expect(firebaseMocks.set.mock.calls.length).toBe(afterFirst)
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 7, {
+          submission: 'b',
+          passed: true,
+          changeable: true,
+        })
+      })
+      expect(firebaseMocks.set.mock.calls.length).toBe(afterFirst + 1)
+      expect(firebaseMocks.set.mock.calls.at(-1)[1]).toMatchObject({
+        submission: 'b',
+        passed: true,
+      })
+    })
+
     it('pushes an auto-check-on-leave record with passed false and the verdict', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {

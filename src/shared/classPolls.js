@@ -112,6 +112,39 @@ export function pollPercent(count, respondedCount) {
   return respondedCount > 0 ? Math.round((count / respondedCount) * 100) : 0
 }
 
+/**
+ * The class's split on a poll task (`quizType: poll`) during a live session, from each
+ * student's latest logged choice (`attemptLog/{id}/{taskId}`, auto-check entries skipped):
+ * `{ respondedCount, options: [{ index, id, text, count }] }`. `self` ({ anonymousId, choice })
+ * puts the viewer's current pick in straight away, before their own log arrives.
+ */
+export function tallyPollTask(session, task, self = null) {
+  const options = (task?.options ?? []).map((option, index) => ({
+    index,
+    id: option?.id,
+    text: String(option?.text ?? ''),
+    count: 0,
+  }))
+  const latest = {}
+  for (const [anonymousId, byTask] of Object.entries(session?.attemptLog ?? {})) {
+    const entries = Object.values(byTask?.[task?.id] ?? {}).filter(
+      (entry) => entry && typeof entry === 'object' && !entry.auto
+    )
+    if (!entries.length) continue
+    entries.sort((a, b) => (Number(a.loggedAt) || 0) - (Number(b.loggedAt) || 0))
+    latest[anonymousId] = entries[entries.length - 1].submission
+  }
+  if (self?.anonymousId && self.choice) latest[self.anonymousId] = self.choice
+  let respondedCount = 0
+  for (const choice of Object.values(latest)) {
+    const option = options.find((candidate) => candidate.id === choice)
+    if (!option) continue
+    option.count += 1
+    respondedCount += 1
+  }
+  return { respondedCount, options }
+}
+
 function finiteOrNull(value) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }

@@ -45,7 +45,20 @@ describe('TeacherPollControl', () => {
       expect(props.onLaunch).toHaveBeenCalledWith({
         question: 'What next?',
         options: ['Games', 'Art', ''],
+        keepPrivate: false,
       })
+    )
+  })
+
+  it('launches a private poll when "Keep results private" is ticked', async () => {
+    const props = renderControl({ state: 'active', students: {} })
+    fireEvent.change(screen.getByLabelText('Question'), { target: { value: 'Q?' } })
+    fireEvent.change(screen.getByLabelText('Option 1'), { target: { value: 'Yes' } })
+    fireEvent.change(screen.getByLabelText('Option 2'), { target: { value: 'No' } })
+    fireEvent.click(screen.getByLabelText('Keep results private'))
+    fireEvent.click(screen.getByRole('button', { name: 'Launch poll' }))
+    await waitFor(() =>
+      expect(props.onLaunch).toHaveBeenCalledWith(expect.objectContaining({ keepPrivate: true }))
     )
   })
 
@@ -107,6 +120,35 @@ describe('ClassPollCard', () => {
     expect(screen.queryByRole('radio')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Poll results')).toBeInTheDocument()
     expect(screen.getByText('(your answer)', { exact: false })).toBeInTheDocument()
+  })
+
+  it("shows a public poll's results only once the student has voted", () => {
+    const session = sessionWith(
+      { ...openPoll, showResults: true },
+      { a: { pollResponses: { p1: { choice: 0, answeredAt: 2 } } }, b: {} }
+    )
+    const poll = getActivePoll(session)
+    const tally = tallyPoll(session, 'p1')
+    const { rerender } = render(<ClassPollCard poll={poll} choice={null} tally={tally} />)
+    expect(screen.queryByLabelText('Poll results')).not.toBeInTheDocument()
+    expect(screen.getByText(/Pick one to see how the class voted/)).toBeInTheDocument()
+    rerender(<ClassPollCard poll={poll} choice={1} tally={tally} />)
+    expect(screen.getByLabelText('Poll results')).toBeInTheDocument()
+    // Still open: the student can change their answer.
+    expect(screen.getAllByRole('radio')).toHaveLength(2)
+  })
+
+  it('shows the presentation live bars for a public poll', () => {
+    const session = sessionWith(
+      { ...openPoll, showResults: true },
+      { a: { pollResponses: { p1: { choice: 1, answeredAt: 2 } } }, b: {} }
+    )
+    render(
+      <ClassPollCard poll={getActivePoll(session)} tally={tallyPoll(session, 'p1')} presentation />
+    )
+    expect(screen.getByLabelText('Poll results')).toBeInTheDocument()
+    expect(screen.getByText('1 of 2 answered')).toBeInTheDocument()
+    expect(screen.getByText(/1 · 100%/)).toBeInTheDocument()
   })
 
   it('shows the presentation the question and answer count, without buttons', () => {

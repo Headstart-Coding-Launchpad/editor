@@ -48,6 +48,8 @@ export function validateQuizTask(task, { n, errors }) {
       errors.push(`Task ${n} is a poll but has duplicate option ids`)
     if (task.check != null)
       errors.push(`Task ${n} is a poll but has a check (polls are never marked)`)
+    if (task.showResults != null && typeof task.showResults !== 'boolean')
+      errors.push(`Task ${n} is a poll but showResults is not true or false`)
   } else if (quizType === 'short_answer') {
     if (
       task.check != null &&

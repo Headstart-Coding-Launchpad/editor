@@ -8,6 +8,7 @@ import {
   pollOptionList,
   pollPercent,
   tallyPoll,
+  tallyPollTask,
 } from '../classPolls'
 import { anonymizeSessionReport, buildSessionReport, reportToYamlText } from '../lessonReport'
 
@@ -102,6 +103,37 @@ describe('tallyPoll', () => {
   it('works out percentages of the votes cast', () => {
     expect(pollPercent(1, 3)).toBe(33)
     expect(pollPercent(0, 0)).toBe(0)
+  })
+})
+
+describe('tallyPollTask', () => {
+  const task = {
+    id: 4,
+    options: [
+      { id: 'a', text: 'Games' },
+      { id: 'b', text: 'Art' },
+    ],
+  }
+
+  it("counts each student's latest logged choice and skips auto-check entries", () => {
+    const session = {
+      attemptLog: {
+        s1: { 4: { x: { submission: 'a', loggedAt: 1 }, y: { submission: 'b', loggedAt: 5 } } },
+        s2: { 4: { x: { submission: 'a', loggedAt: 2 } } },
+        s3: { 4: { x: { submission: 'b', loggedAt: 3, auto: 'leave' } } },
+        s4: { 9: { x: { submission: 'a', loggedAt: 3 } } },
+      },
+    }
+    const tally = tallyPollTask(session, task)
+    expect(tally.respondedCount).toBe(2)
+    expect(tally.options.map((o) => o.count)).toEqual([1, 1])
+  })
+
+  it("puts the viewer's current pick in before their own log arrives", () => {
+    const session = { attemptLog: { s1: { 4: { x: { submission: 'a', loggedAt: 1 } } } } }
+    const tally = tallyPollTask(session, task, { anonymousId: 's1', choice: 'b' })
+    expect(tally.options.map((o) => o.count)).toEqual([0, 1])
+    expect(tally.respondedCount).toBe(1)
   })
 })
 

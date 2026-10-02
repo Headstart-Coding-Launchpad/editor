@@ -317,7 +317,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
         question: poll.question,
         options: poll.options,
         status: 'open',
-        showResults: false,
+        // Results are public (live bars on the presentation window and, once they've voted,
+        // students' screens) unless the teacher ticked "Keep results private".
+        showResults: draft?.keepPrivate !== true,
         createdAt: now,
         closedAt: null,
       },
@@ -1365,14 +1367,17 @@ export function useSession(lessonId, { enabled = true } = {}) {
   // student passed (src/shared/autoCheck.js): a separate record with the verdict in `autoResult`
   // ('passed' | 'failed' | 'not_run') and `passed: false`, which never de-duplicates, bumps
   // retries or touches the de-dupe cache, so it never stands in for a real attempt.
+  //
+  // `changeable: true` (ungraded activities a student can re-answer: polls, confidence) keeps
+  // logging after a pass, so the report and the live poll split see the student's latest answer.
   async function logAttempt(
     anonymousId,
     taskId,
-    { submission, passed, suggestion, teacherAssisted, error, auto, autoResult } = {}
+    { submission, passed, suggestion, teacherAssisted, error, auto, autoResult, changeable } = {}
   ) {
     const cacheKey = `${anonymousId}:${taskId}`
     const cached = attemptCacheRef.current[cacheKey]
-    if (cached?.passed) return
+    if (cached?.passed && !changeable) return
 
     const serialized =
       typeof submission === 'string' ? submission : JSON.stringify(submission ?? null)

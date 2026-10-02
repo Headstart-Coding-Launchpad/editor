@@ -221,6 +221,7 @@ describe('quiz submissions (onSubmit; was handleQuizSelect with a passedOverride
           submission: 'b',
           passed: false,
           suggestion: 'input() asks the user a question.',
+          changeable: false,
           teacherAssisted: false,
         },
       ],
@@ -256,6 +257,7 @@ describe('quiz submissions (onSubmit; was handleQuizSelect with a passedOverride
       },
       passed: true,
       suggestion: '',
+      changeable: false,
       teacherAssisted: false,
     })
     expect(result.current.checkPassed).toBe(true)
@@ -271,6 +273,7 @@ describe('quiz submissions (onSubmit; was handleQuizSelect with a passedOverride
       },
       passed: false,
       suggestion: '',
+      changeable: false,
       teacherAssisted: false,
     })
   })
@@ -282,6 +285,7 @@ describe('quiz submissions (onSubmit; was handleQuizSelect with a passedOverride
       submission: 'It prints',
       passed: false,
       suggestion: 'Mention what print shows.',
+      changeable: false,
       teacherAssisted: false,
     })
     await submitAnswer(result, 'It shows text')
@@ -299,6 +303,7 @@ describe('quiz submissions (onSubmit; was handleQuizSelect with a passedOverride
       submission: 'I learned loops',
       passed: true,
       suggestion: '',
+      changeable: false,
       teacherAssisted: false,
     })
   })
@@ -315,6 +320,7 @@ describe('quiz submissions (onSubmit; was handleQuizSelect with a passedOverride
       submission: 4,
       passed: true,
       suggestion: '',
+      changeable: true,
       teacherAssisted: false,
     })
   })

@@ -5,8 +5,9 @@ import PollResultBars from './PollResultBars'
 /**
  * The live class poll on a student's screen (and, read-only, on the presentation window).
  * A card in the corner that never blocks the lesson: the student picks one option while the
- * poll is open and can change it until the teacher closes it. Results are only shown once the
- * teacher chooses to show them (`poll.showResults`).
+ * poll is open and can change it until the teacher closes it. When the results are public
+ * (`poll.showResults`, the default unless the teacher kept them private) the presentation shows
+ * live bars from the start and a student sees them once they have voted (or the poll closed).
  *
  * - `poll`: getActivePoll(session) — { pollId, question, options: [text], status, showResults }
  * - `choice`: the viewer's own answer (an option index) or null
@@ -21,7 +22,10 @@ export default function ClassPollCard({ poll, choice = null, tally, onAnswer, pr
 
   if (!poll) return null
   const isOpen = poll.status === 'open'
-  const showResults = poll.showResults === true && !!tally
+  const resultsPublic = poll.showResults === true && !!tally
+  // Students only see the split after voting (or once the poll has closed), so the bars never
+  // sway their own choice.
+  const showResults = resultsPublic && (presentation || choice != null || !isOpen)
   const chosenText = choice != null ? poll.options[choice] : null
 
   if (minimised && !presentation) {
@@ -62,20 +66,20 @@ export default function ClassPollCard({ poll, choice = null, tally, onAnswer, pr
       <h2 className="class-poll-card__question">{poll.question}</h2>
 
       {presentation ? (
-        !showResults && (
-          <>
+        <>
+          {!showResults && (
             <ol className="class-poll-card__list">
               {poll.options.map((text, index) => (
                 <li key={index}>{text}</li>
               ))}
             </ol>
-            {tally && (
-              <p className="class-poll-card__note">
-                {tally.respondedCount} of {tally.total} answered
-              </p>
-            )}
-          </>
-        )
+          )}
+          {tally && (
+            <p className="class-poll-card__note">
+              {tally.respondedCount} of {tally.total} answered
+            </p>
+          )}
+        </>
       ) : isOpen ? (
         <>
           <div className="class-poll-card__options" role="radiogroup" aria-label={poll.question}>
@@ -101,7 +105,9 @@ export default function ClassPollCard({ poll, choice = null, tally, onAnswer, pr
           </div>
           <p className="class-poll-card__note">
             {choice == null
-              ? 'Pick one. Only your teacher sees who chose what.'
+              ? resultsPublic
+                ? 'Pick one to see how the class voted. Nobody sees who chose what.'
+                : 'Pick one. Only your teacher sees who chose what.'
               : 'Thanks! You can change your answer until the poll closes.'}
           </p>
         </>

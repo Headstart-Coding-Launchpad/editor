@@ -62,15 +62,18 @@ Entries written before 2026-09-29 are not tagged.
 ### Poll quiz (`quizType: poll`) and live class polls in the session report
 
 - New quiz sub-type `quizType: poll`: an opinion question with 2 to 6 `options` (`id`, `text`),
-  never marked. Any choice completes the task and students can change it; they never see anyone
-  else's choice. No `check`, `answer:` or option `feedback` (a `check` is a validation error).
+  never marked. Any choice completes the task and students can change it. In a live lesson a
+  student sees the class split (percentages, never who chose what) once they have chosen, and the
+  presentation window shows it live; set `showResults: false` to keep it teacher-only. No
+  `check`, `answer:` or option `feedback` (a `check` is a validation error).
   See [quiz-tasks.md](quiz-tasks.md#poll) and the new poll rows in
   [validation-errors.md](validation-errors.md).
 - Its `taskSummary` entry reports `respondedCount` and `optionDistribution`
   (`[{ id, text, count }]`, each student's latest choice), like other ungraded tasks.
 - Session reports gain a top-level `polls[]`: the teacher's ad-hoc live polls from the new
   **📊 Poll** button (question, options with counts, each student's final answer, who didn't
-  answer, times). See [session-reports.md](session-reports.md#polls). Lessons don't author these.
+  answer, times). Their results are public by default (live on the presentation, and on a
+  student's screen once they have voted) unless the teacher ticks "Keep results private". See [session-reports.md](session-reports.md#polls). Lessons don't author these.
 - Affects: quiz_poll, all · Existing lessons: no changes needed · Resolves: none
 
 ### Seven new live badges; `earlyBirdMinutes`; Code Arranger hints

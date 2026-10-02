@@ -334,7 +334,7 @@ Every live class poll the teacher ran from the **📊 Poll** button in the top b
 | `polls[].question` | The question the teacher asked. |
 | `polls[].options[]` | `{ index, text, count }` per option, in the order asked. |
 | `polls[].status` | `closed`, or `open` if the session ended (or the in-progress report was built) while it was still open. |
-| `polls[].showResults` | `true` if the teacher showed the results to the class. |
+| `polls[].showResults` | `true` if the results were public (the default; live on the presentation and on students' screens once they voted), `false` if the teacher kept them private. |
 | `polls[].createdAt`, `closedAt` | When it was launched and closed (ms); `closedAt` is null while open. |
 | `polls[].respondedCount` | Students who answered. |
 | `polls[].responses[]` | `{ studentLabel, choice (option index), choiceText, answeredAt }`, each student's final answer (students can change it while the poll is open). |

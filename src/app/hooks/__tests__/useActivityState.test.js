@@ -206,6 +206,7 @@ describe('useActivityState: grading', () => {
       submission: bitsState('0100'),
       passed: false,
       suggestion: expect.stringMatching(/too small/),
+      changeable: false,
       teacherAssisted: false,
     })
   })

@@ -10,7 +10,7 @@ import {
 } from '../../../shared/classPolls'
 import PollResultBars from './PollResultBars'
 
-const EMPTY_DRAFT = () => ({ question: '', options: ['', ''] })
+const EMPTY_DRAFT = () => ({ question: '', options: ['', ''], keepPrivate: false })
 
 /**
  * The teacher's 📊 Poll button and popover (top bar, TeacherSessionControls). With no poll on
@@ -146,9 +146,18 @@ export default function TeacherPollControl({
                 )}
               </fieldset>
               {error && <span className="teacher-poll-panel__error">{error}</span>}
+              <label className="teacher-poll-live__toggle">
+                <input
+                  type="checkbox"
+                  checked={draft.keepPrivate}
+                  onChange={(e) => setDraft((d) => ({ ...d, keepPrivate: e.target.checked }))}
+                />
+                Keep results private
+              </label>
               <p className="teacher-poll-panel__note">
-                Students see a card they can answer while they work. Results stay hidden from them
-                until you show them.
+                {draft.keepPrivate
+                  ? 'Students answer in a card while they work. Only you see the results until you show them.'
+                  : 'Students answer in a card while they work. The presentation shows live percentages, and students see them once they have voted. Nobody sees who chose what.'}
                 {activePoll ? ' Launching closes the current poll.' : ''}
               </p>
               <div className="teacher-poll-panel__actions">

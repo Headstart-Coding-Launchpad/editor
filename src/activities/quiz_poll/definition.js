@@ -1,9 +1,11 @@
 // Poll (legacy `taskType: 'quiz'`, `quizType: 'poll'`). State: the chosen option id, '' before
 // answering. An opinion is never right or wrong (`completion: 'none'`, ungraded): choosing an
 // option records it as a response (logged with passed: true) and the student can change it. The
-// session report gives the option distribution (`optionDistribution`). Students never see the
-// class's choices; the live class poll (src/shared/classPolls.js) is the teacher's ad-hoc
-// version of this.
+// session report gives the option distribution (`optionDistribution`). In a live lesson a
+// student sees the class split (percentages, never who chose what) once they have chosen, and the
+// presentation window shows it live, unless `showResults: false`; changed answers keep logging
+// (logAttempt `changeable`). The live class poll (src/shared/classPolls.js) is the teacher's
+// ad-hoc version of this.
 import { defineQuizActivity, printTable } from '../quiz/quizActivity.js'
 
 function optionIds(task) {
@@ -26,6 +28,13 @@ export default defineQuizActivity('poll', {
           { name: 'id', type: 'string', required: true },
           { name: 'text', type: 'string', required: true, authored: true },
         ],
+      },
+      {
+        name: 'showResults',
+        type: 'boolean',
+        authored: true,
+        description:
+          'Default true: in a live lesson students see the class split after choosing and the presentation shows it live. false keeps it teacher-only.',
       },
     ],
   },

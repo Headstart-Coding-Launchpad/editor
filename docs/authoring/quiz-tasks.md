@@ -211,8 +211,11 @@ No `check`, `options`, `pairs`, `blanks`, or `text` fields.
 
 Students pick the option they prefer: an opinion, never right or wrong ("What would you like to
 do next?", "Which project should we build?"). Any choice completes the task, and a student can
-change their choice at any time. Students never see anyone else's choice or the class totals; the
-teacher sees each student's choice on their card in the student grid, and the session report
+change their choice at any time. In a live lesson, once a student has chosen they see how the
+class voted (a percentage bar per option, never who chose what), and the presentation window
+shows the split live; set `showResults: false` to keep it to the teacher. Solo study and the
+Builder preview never show a split. The teacher sees each student's choice on their card in the
+student grid, and the session report
 counts each option (`optionDistribution` in `taskSummary`, see
 [session-reports.md](session-reports.md)).
 

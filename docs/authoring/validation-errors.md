@@ -108,6 +108,7 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … is a poll but has an option with no id` | A poll option has no `id`. | Give each option an id (`a`, `b`, …), as for multiple choice. |
 | `Task … is a poll but has duplicate option ids` | Two poll options share an `id`. | Give each option its own id. |
 | `Task … is a poll but has a check (polls are never marked)` | A poll has a `check` or `answer:`. Polls have no right answer. | Remove `check` / `answer:`. Use `quizType: multiple_choice` for a marked question. |
+| `Task … is a poll but showResults is not true or false` | A poll's `showResults` is set to something other than `true` or `false`. | Use `showResults: false` to keep the class split private, or remove the field (default `true`). |
 
 ## Activity tasks
 
