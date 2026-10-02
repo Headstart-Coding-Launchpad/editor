@@ -39,6 +39,14 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-02
 
+### New tutor-only badge: 🦸 Independent Coder
+
+- `independent_coder` (🦸 Independent Coder): for a student who worked problems out on their own,
+  trying things and using hints and the Topic Library before asking for help. Tutor-only: tutors
+  award it by hand, it is never suggested, and it can't be named in `badgeHints.suggest`. A suggestion rule may come later, once a "help requested" signal exists. See
+  [badges.md](badges.md).
+- Affects: all · Existing lessons: no changes needed · Resolves: authoring-requests/2026-10-02-new-tutor-only-live-badge-independent-coder.md
+
 ### Scratch: per-sprite sounds, and Costumes / Sounds tabs
 
 - Sprites take an optional `sounds: [{ name, synth } | { name, audio }]` list. `synth` is one of

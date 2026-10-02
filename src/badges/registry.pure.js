@@ -30,6 +30,7 @@ import greatQuestion from './definitions/great_question.js'
 import sharpShooter from './definitions/sharp_shooter.js'
 import wordWizard from './definitions/word_wizard.js'
 import designMaster from './definitions/design_master.js'
+import independentCoder from './definitions/independent_coder.js'
 
 const BADGES = [
   bugHunter,
@@ -57,6 +58,7 @@ const BADGES = [
   sharpShooter,
   wordWizard,
   designMaster,
+  independentCoder,
 ]
 
 const BY_ID = new Map()
