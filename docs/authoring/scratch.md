@@ -127,6 +127,9 @@ sound has a `name` and exactly one source:
   `drum`, `snare`, `whoosh`, `splash`, `zap`.
 - `audio` — an audio file path (`.mp3`, `.wav`, `.ogg`, `.m4a`), relative to `assetsPath`, a
   `/assets/shared/...` path, or a full URL.
+  Files on Firebase Storage load through Web Audio (the bucket's CORS rules are in
+  `storage.cors.json`); a file on another host without CORS headers still plays, through a plain
+  `<audio>` element.
 
 Validation errors on a sound with no name, two sounds with the same name on one sprite, a
 sound with both or neither of `synth`/`audio`, or an unknown `synth` id. Sound names in
