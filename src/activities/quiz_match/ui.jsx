@@ -71,7 +71,7 @@ export function MatchPairsBuilder({ task, onUpdate, lessonType = null }) {
         ))}
         <button
           type="button"
-          className="btn-ghost te-add-check-btn"
+          className="te-add-check-btn"
           onClick={() => updatePairs([...pairs, { id: '', prompt: '', answer: '' }])}
         >
           + Add pair

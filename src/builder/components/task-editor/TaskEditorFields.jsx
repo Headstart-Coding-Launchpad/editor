@@ -101,7 +101,7 @@ function CodeWorkspaceTabs({
 
 function Modal({ title, children, onClose }) {
   return (
-    <div className="te-modal-backdrop" role="dialog" aria-modal="true">
+    <div className="te-modal-backdrop ui-modal-backdrop" role="dialog" aria-modal="true">
       <div className="te-modal">
         <div className="te-modal__header">
           <span className="te-modal__title">{title}</span>
@@ -366,7 +366,7 @@ export function SpriteAddPicker({ sprites, onChange, lessonType }) {
 
   if (!hasLibrarySprites) {
     return (
-      <button type="button" className="btn-ghost te-add-sprite-btn" onClick={() => addSprite(null)}>
+      <button type="button" className="te-add-sprite-btn" onClick={() => addSprite(null)}>
         + Add sprite
       </button>
     )
@@ -376,7 +376,7 @@ export function SpriteAddPicker({ sprites, onChange, lessonType }) {
     <div className="te-sprite-picker-wrap" ref={pickerWrapRef}>
       <button
         type="button"
-        className="btn-ghost te-add-sprite-btn"
+        className="te-add-sprite-btn"
         onClick={() => setPickerOpen((p) => !p)}
         aria-expanded={pickerOpen}
       >
@@ -651,11 +651,7 @@ export function SpriteManager({
                 onChange={(e) => update(sp.id, 'emoji', e.target.value)}
                 placeholder="🐱"
               />
-              <button
-                type="button"
-                className="btn-ghost te-add-sprite-btn"
-                onClick={() => addCostume(sp.id)}
-              >
+              <button type="button" className="te-add-sprite-btn" onClick={() => addCostume(sp.id)}>
                 + Add costumes
               </button>
             </div>
@@ -787,7 +783,7 @@ function SoundManager({ sounds, assetsPath, storageAssets, lessonId, onChange })
         </p>
         <button
           type="button"
-          className="btn-ghost te-add-sprite-btn"
+          className="te-add-sprite-btn"
           onClick={() => onChange(DEFAULT_SPRITE_SOUNDS.map((snd) => ({ ...snd })))}
         >
           Customise sounds
@@ -900,7 +896,7 @@ function SoundManager({ sounds, assetsPath, storageAssets, lessonId, onChange })
       })}
       <button
         type="button"
-        className="btn-ghost te-add-sprite-btn"
+        className="te-add-sprite-btn"
         onClick={() => setList([...list, { name: `sound${list.length + 1}`, synth: 'pop' }])}
       >
         + Add sound
@@ -1036,7 +1032,7 @@ function CostumeManager({
           </div>
         )
       })}
-      <button type="button" className="btn-ghost te-add-sprite-btn" onClick={onAdd}>
+      <button type="button" className="te-add-sprite-btn" onClick={onAdd}>
         + Add costume
       </button>
     </div>
@@ -1205,7 +1201,7 @@ export function BackdropManager({
           </div>
         )
       })}
-      <button type="button" className="btn-ghost te-add-sprite-btn" onClick={add}>
+      <button type="button" className="te-add-sprite-btn" onClick={add}>
         + Add backdrop
       </button>
     </div>

@@ -204,11 +204,8 @@ export default function PaintApp({ win, state, onStateChange, disabled, onIntera
       <div style={s.subToolbar}>
         <button
           className="btn-ghost-outline"
-          style={{
-            ...s.toolBtn,
-            background: tool === 'brush' ? 'var(--colour-primary)' : undefined,
-            color: tool === 'brush' ? '#fff' : undefined,
-          }}
+          style={s.toolBtn}
+          aria-pressed={tool === 'brush'}
           disabled={disabled}
           onClick={() => setTool('brush')}
         >
@@ -216,11 +213,8 @@ export default function PaintApp({ win, state, onStateChange, disabled, onIntera
         </button>
         <button
           className="btn-ghost-outline"
-          style={{
-            ...s.toolBtn,
-            background: tool === 'eraser' ? 'var(--colour-primary)' : undefined,
-            color: tool === 'eraser' ? '#fff' : undefined,
-          }}
+          style={s.toolBtn}
+          aria-pressed={tool === 'eraser'}
           disabled={disabled}
           onClick={() => setTool('eraser')}
         >
@@ -263,11 +257,8 @@ export default function PaintApp({ win, state, onStateChange, disabled, onIntera
             <button
               key={label}
               className="btn-ghost-outline"
-              style={{
-                ...s.sizeBtn,
-                background: brushSize === size ? 'var(--colour-primary)' : undefined,
-                color: brushSize === size ? '#fff' : undefined,
-              }}
+              style={s.sizeBtn}
+              aria-pressed={brushSize === size}
               disabled={disabled}
               onClick={() => setBrushSize(size)}
             >

@@ -101,6 +101,7 @@ export default function LandingPage() {
       </div>
       {playgroundPickerOpen && (
         <div
+          className="ui-modal-backdrop"
           style={s.dialogBackdrop}
           role="dialog"
           aria-modal="true"

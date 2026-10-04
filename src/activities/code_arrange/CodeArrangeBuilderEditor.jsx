@@ -363,7 +363,7 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
         </div>
         <button
           type="button"
-          className="btn-ghost te-secondary-btn"
+          className="te-secondary-btn"
           onClick={() => addLine(lines.length - 1)}
           style={{ marginTop: 8 }}
         >
@@ -399,7 +399,7 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
         </div>
         <button
           type="button"
-          className="btn-ghost te-secondary-btn"
+          className="te-secondary-btn"
           onClick={addDistractor}
           style={{ marginTop: 8 }}
         >
@@ -434,7 +434,7 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
                     />
                     <button
                       type="button"
-                      className="btn-ghost te-secondary-btn"
+                      className="te-secondary-btn"
                       onClick={() => removeStaticFile(index)}
                     >
                       Remove
@@ -445,7 +445,7 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
           </div>
           <button
             type="button"
-            className="btn-ghost te-secondary-btn"
+            className="te-secondary-btn"
             onClick={addStaticFile}
             style={{ marginTop: 8 }}
           >
@@ -498,13 +498,13 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
         <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
           <button
             type="button"
-            className="btn-ghost te-secondary-btn"
+            className="te-secondary-btn"
             onClick={handleLoadSolution}
             disabled={getSlotIds(task).length === 0}
           >
             Load authored solution
           </button>
-          <button type="button" className="btn-ghost te-secondary-btn" onClick={handleClearPreview}>
+          <button type="button" className="te-secondary-btn" onClick={handleClearPreview}>
             Clear
           </button>
         </div>
@@ -609,7 +609,7 @@ function LineEditor({
           >
             ▼
           </button>
-          <button type="button" className="btn-ghost te-secondary-btn" onClick={onInsertBelow}>
+          <button type="button" className="te-secondary-btn" onClick={onInsertBelow}>
             + Insert below
           </button>
           <button
@@ -654,18 +654,10 @@ function LineEditor({
           )}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <button
-            type="button"
-            className="btn-ghost te-secondary-btn"
-            onClick={() => onAddPart('text')}
-          >
+          <button type="button" className="te-secondary-btn" onClick={() => onAddPart('text')}>
             + Add fixed text
           </button>
-          <button
-            type="button"
-            className="btn-ghost te-secondary-btn"
-            onClick={() => onAddPart('slot')}
-          >
+          <button type="button" className="te-secondary-btn" onClick={() => onAddPart('slot')}>
             + Add blank
           </button>
         </div>

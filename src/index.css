@@ -5,6 +5,11 @@
   --colour-primary-dark: #4e1aa3;
   --colour-secondary: #fba504;
   --colour-secondary-dark: #e09400;
+  /* Amber for filled buttons with white text. Brand amber (#fba504) is only 2:1 against
+     white; these clear the 4.5:1 that 15px button text needs. */
+  --colour-action: #b45309;
+  --colour-action-light: #b85f04;
+  --colour-action-dark: #92400e;
   --colour-text: rgb(58, 59, 60);
   --colour-text-on-primary: #ffffff;
   --colour-text-on-secondary: #ffffff;
@@ -141,15 +146,19 @@ a:focus-visible {
 }
 
 .btn-primary {
-  background: linear-gradient(180deg, #fbb733 0%, var(--colour-secondary) 100%) !important;
+  background: linear-gradient(
+    180deg,
+    var(--colour-action-light) 0%,
+    var(--colour-action) 100%
+  ) !important;
   color: var(--colour-text-on-secondary) !important;
-  box-shadow: 0 6px 14px rgba(251, 165, 4, 0.24);
+  box-shadow: 0 6px 14px rgba(180, 83, 9, 0.24);
 }
 .btn-primary:hover:not(:disabled) {
   background: linear-gradient(
     180deg,
-    var(--colour-secondary) 0%,
-    var(--colour-secondary-dark) 100%
+    var(--colour-action) 0%,
+    var(--colour-action-dark) 100%
   ) !important;
 }
 
@@ -177,6 +186,14 @@ a:focus-visible {
   border-color: rgba(255, 255, 255, 0.64) !important;
 }
 
+/* Toggle state on a coloured bar; an inline background can't beat the rules above. */
+.btn-ghost[aria-pressed='true'] {
+  background: rgba(255, 255, 255, 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.75) !important;
+}
+
+/* For white/light surfaces. `.btn-ghost` is white text on a white wash and disappears there.
+   A toggle marks its selected option with aria-pressed rather than an inline background. */
 .btn-ghost-outline {
   background: #fff !important;
   color: var(--colour-primary) !important;
@@ -187,6 +204,12 @@ a:focus-visible {
   background: var(--ui-surface-tint) !important;
   border-color: var(--colour-primary) !important;
 }
+.btn-ghost-outline[aria-pressed='true'],
+.btn-ghost-outline[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--colour-primary) !important;
+  border-color: var(--colour-primary) !important;
+  color: var(--colour-text-on-primary) !important;
+}
 
 .btn-danger {
   background: linear-gradient(180deg, #f87171 0%, #ef4444 100%) !important;
@@ -195,6 +218,13 @@ a:focus-visible {
 }
 .btn-danger:hover:not(:disabled) {
   background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%) !important;
+}
+
+/* A completed outcome, such as Saved. Green is for verdicts only (see UI_STYLE_GUIDE). */
+.btn-success {
+  background: linear-gradient(180deg, var(--colour-success-edge) 0%, #15803d 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 14px rgba(22, 163, 74, 0.2);
 }
 
 input:not([type='checkbox']):not([type='radio']):not([type='color']),
@@ -426,19 +456,22 @@ select {
   }
 }
 
-[role='dialog'] {
+/* Full-screen modal backdrops opt in with this class. It used to key off `[role='dialog']`,
+   which also matched windows, popovers, toasts and cards that carry the role themselves:
+   their white fill was replaced by this translucent dark one, leaving dark text unreadable. */
+.ui-modal-backdrop {
   background: rgba(22, 14, 42, 0.52) !important;
   backdrop-filter: blur(6px);
 }
 
-[role='dialog'] > div {
+.ui-modal-backdrop > div {
   border-radius: var(--ui-radius) !important;
   border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow: 0 28px 80px rgba(25, 12, 54, 0.34) !important;
   animation: ui-modal-in 220ms var(--motion-ease-out);
 }
 
-[role='dialog'] > div > div:first-child {
+.ui-modal-backdrop > div > div:first-child {
   background: linear-gradient(
     135deg,
     var(--colour-primary) 0%,
@@ -448,13 +481,13 @@ select {
   border-bottom: none !important;
 }
 
-[role='dialog'] > div > div:first-child > span:first-child,
-[role='dialog'] > div > div:first-child > h2:first-child {
+.ui-modal-backdrop > div > div:first-child > span:first-child,
+.ui-modal-backdrop > div > div:first-child > h2:first-child {
   color: #fff !important;
 }
 
-[role='dialog'] button[title='Close'],
-[role='dialog'] button[aria-label='Close'] {
+.ui-modal-backdrop button[title='Close'],
+.ui-modal-backdrop button[aria-label='Close'] {
   background: rgba(255, 255, 255, 0.14) !important;
   border: 1px solid rgba(255, 255, 255, 0.36) !important;
   color: #fff !important;
@@ -463,23 +496,23 @@ select {
 @keyframes flash-yellow {
   0%,
   100% {
-    background: #fba504;
+    background: var(--colour-action);
     box-shadow: 0 0 0 0 rgba(251, 165, 4, 0);
   }
   50% {
-    background: #ffd04d;
+    background: #d97706;
     box-shadow: 0 0 10px 4px rgba(251, 165, 4, 0.55);
   }
 }
 
 .btn-paused {
-  background: #fba504;
+  background: var(--colour-action);
   color: #fff;
   border: none;
   animation: flash-yellow 1.2s ease-in-out infinite;
 }
 .btn-paused:hover:not(:disabled) {
-  background: #e09400;
+  background: var(--colour-action-dark);
   animation: none;
 }
 
@@ -993,15 +1026,15 @@ select {
   padding: 5px 12px;
 }
 
-.teacher-preview-banner__btn.btn-ghost {
+.teacher-preview-banner__btn {
   color: #1e40af;
-  border-color: #1e40af;
+  border: 1px solid #1e40af;
   background: transparent;
 }
 
-.teacher-sandbox-banner__btn--warn.btn-ghost {
+.teacher-sandbox-banner__btn--warn {
   color: #92400e;
-  border-color: #92400e;
+  border: 1px solid #92400e;
   background: transparent;
 }
 
@@ -1669,9 +1702,15 @@ select {
 .te-add-check-btn {
   align-self: flex-start;
   color: var(--colour-primary);
+  background: var(--ui-surface);
   border: 1px solid var(--colour-primary);
   padding: 6px 12px;
   font-size: 0.83rem;
+}
+.te-add-check-btn:hover:not(:disabled),
+.te-secondary-btn:hover:not(:disabled),
+.te-add-sprite-btn:hover:not(:disabled) {
+  background: var(--ui-surface-tint);
 }
 .te-check-editor {
   display: grid;
@@ -2893,6 +2932,7 @@ select {
 }
 .te-secondary-btn {
   color: var(--colour-primary);
+  background: var(--ui-surface);
   border: 1px solid var(--colour-primary);
   padding: 8px 14px;
   font-size: 0.86rem;
@@ -4652,7 +4692,7 @@ select {
   }
 
   .ui-popover,
-  [role='dialog'] > div,
+  .ui-modal-backdrop > div,
   .btn-paused,
   .live-dot,
   .activity-dots span,

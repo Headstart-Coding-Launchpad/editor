@@ -79,7 +79,6 @@ export default function CodingMomentsPill({
               {soundsOff ? 'Sounds off' : muted ? 'Muted' : 'Sound on'}
             </button>
           </div>
-          {/* Not role="dialog": the global dialog styles would paint it as a modal overlay. */}
           <BadgeStickerSheet moments={moments} />
         </div>
       )}

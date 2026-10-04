@@ -124,7 +124,7 @@ export default function BuilderApp() {
                 Restore
               </button>
               <button
-                className="btn-ghost"
+                className="btn-ghost-outline"
                 style={{
                   color: 'var(--colour-primary)',
                   border: '1px solid var(--colour-primary)',
@@ -233,12 +233,12 @@ function LessonTypeChooser({ onChoose, onUpload }) {
             </button>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn-ghost" style={s.uploadBtn} onClick={handleUpload}>
+            <button className="btn-ghost-outline" style={s.uploadBtn} onClick={handleUpload}>
               Upload existing JSON
             </button>
             {role === 'admin' && (
               <button
-                className="btn-ghost"
+                className="btn-ghost-outline"
                 style={s.uploadBtn}
                 onClick={() => setFirestoreOpen(true)}
               >

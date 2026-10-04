@@ -88,7 +88,7 @@ export default function StorageAssetUploader({ lessonId, storageAssets, onUpdate
     <div style={s.storageSection}>
       <div style={s.storageTitleRow}>
         <span style={s.fieldLabel}>Firebase Storage assets</span>
-        <button className="btn-ghost" style={s.uploadAssetBtn} onClick={handleFileSelect}>
+        <button className="btn-ghost-outline" style={s.uploadAssetBtn} onClick={handleFileSelect}>
           Upload file
         </button>
       </div>

@@ -576,6 +576,7 @@ export default function StudentModal({
   return (
     <div
       ref={overlayRef}
+      className="ui-modal-backdrop"
       style={s.overlay}
       onClick={(e) => {
         if (e.target === overlayRef.current) handleClose()

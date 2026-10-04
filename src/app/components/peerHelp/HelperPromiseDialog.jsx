@@ -9,7 +9,13 @@ const HELPER_PROMISE_POINTS = [
 /** Agreed once per session, before a student's first go at helping a classmate. */
 export default function HelperPromiseDialog({ onAgree, onCancel }) {
   return (
-    <div style={s.backdrop} role="dialog" aria-modal="true" aria-label="Helper promise">
+    <div
+      className="ui-modal-backdrop"
+      style={s.backdrop}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Helper promise"
+    >
       <div style={s.card}>
         <h2 style={s.title}>🤝 Helper promise</h2>
         <ul style={s.list}>

@@ -125,7 +125,7 @@ export default function EditLessonModal({
   }
 
   return (
-    <div className="te-modal-backdrop" role="dialog" aria-modal="true">
+    <div className="te-modal-backdrop ui-modal-backdrop" role="dialog" aria-modal="true">
       <div className="te-modal">
         <div className="te-modal__header">
           <span className="te-modal__title">

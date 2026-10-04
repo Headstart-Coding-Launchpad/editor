@@ -60,7 +60,7 @@ export function PollOptionsBuilder({ task, onUpdate, lessonType = null }) {
         {options.length < MAX_OPTIONS && (
           <button
             type="button"
-            className="btn-ghost te-add-check-btn"
+            className="te-add-check-btn"
             onClick={() => updateOptions([...options, { id: '', text: '' }])}
           >
             + Add option

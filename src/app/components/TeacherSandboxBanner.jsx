@@ -52,13 +52,13 @@ export default function TeacherSandboxBanner({
           {staging ? (
             <>
               <button
-                className="btn-ghost teacher-sandbox-banner__btn teacher-sandbox-banner__btn--warn"
+                className="teacher-sandbox-banner__btn teacher-sandbox-banner__btn--warn"
                 onClick={onCancel}
               >
                 Cancel
               </button>
               <button
-                className="btn-ghost teacher-sandbox-banner__btn teacher-sandbox-banner__btn--warn"
+                className="teacher-sandbox-banner__btn teacher-sandbox-banner__btn--warn"
                 onClick={onReset}
               >
                 Reset to Sandbox Starter
@@ -73,7 +73,7 @@ export default function TeacherSandboxBanner({
                 Push to All
               </button>
               <button
-                className="btn-ghost teacher-sandbox-banner__btn teacher-sandbox-banner__btn--warn"
+                className="teacher-sandbox-banner__btn teacher-sandbox-banner__btn--warn"
                 onClick={onReset}
               >
                 Reset to Sandbox Starter

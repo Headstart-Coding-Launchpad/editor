@@ -165,7 +165,10 @@ export default function Window({
           data-window-control
           aria-label="Close"
           onClick={() => onClose?.()}
-          style={{ ...windowControlStyle, color: '#fecaca' }}
+          style={{
+            ...windowControlStyle,
+            color: isFocused ? '#fecaca' : 'var(--colour-error-edge)',
+          }}
         >
           &#x2715;
         </button>

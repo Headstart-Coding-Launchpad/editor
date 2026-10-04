@@ -108,7 +108,7 @@ export function QuizOptionsBuilder({ task, onUpdate, lessonType = null }) {
         ))}
         <button
           type="button"
-          className="btn-ghost te-add-check-btn"
+          className="te-add-check-btn"
           onClick={() => updateOptions([...options, { id: '', text: '' }])}
         >
           + Add option

@@ -22,6 +22,7 @@ The global theme lives in [src/index.css](../src/index.css). New UI should use t
 | `--colour-primary-dark` | Purple hover/gradient depth |
 | `--colour-secondary` | Brand amber; main forward action |
 | `--colour-secondary-dark` | Amber hover/gradient depth |
+| `--colour-action` / `-light` / `-dark` | Darker amber for filled buttons with white text (`btn-primary`, `btn-paused`); brand amber is only 2:1 against white |
 | `--colour-text` | Default body text |
 | `--colour-text-on-primary` | Text on purple surfaces |
 | `--colour-text-on-secondary` | Text on amber surfaces |
@@ -122,9 +123,10 @@ Global button behaviour is defined in [src/index.css](../src/index.css). Use the
 |---|---|
 | `btn-primary` | Main forward action on the current surface, such as Run, Start, Save, Create, Publish |
 | `btn-secondary` | Important secondary action, especially purple actions in teacher/admin surfaces |
-| `btn-ghost` | Low-emphasis action on coloured or tool surfaces |
+| `btn-ghost` | Low-emphasis action on purple or other dark coloured bars only. It is white text on a white wash, so it disappears on a light surface |
 | `btn-ghost-outline` | Low-emphasis action on white/light surfaces |
-| `btn-danger` | Destructive or irreversible action |
+| `btn-danger` | Destructive or irreversible action, and Stop while something runs |
+| `btn-success` | A completed outcome on the button itself, such as Saved |
 | `btn-paused` | Existing animated paused-session state |
 
 Guidelines:
@@ -134,6 +136,8 @@ Guidelines:
 - Use `disabled` for unavailable actions and keep the reason visible nearby when it is not obvious.
 - Keep destructive actions red and separated from routine actions when possible.
 - Do not create one-off button colours for normal commands.
+- The `btn-*` classes set background and text colour with `!important`, so an inline `background` or `color` on them is silently ignored. To change a button's colour with its state, switch the class (for example `btn-primary` to `btn-danger`). For a selected option in a toggle group, set `aria-pressed`: `btn-ghost` and `btn-ghost-outline` style the pressed state.
+- A button whose own class sets its full look (for example `te-secondary-btn`) should not also carry `btn-ghost`.
 
 ## Forms
 
@@ -160,7 +164,7 @@ Use `.ui-tabs` and `.ui-tab` for tab-like switching. Use `.ui-tabs--editor` when
 - Use `.ui-popover` for dropdown menus, floating send menus, and short contextual pickers.
 - Use `.ui-collapsible` and `.ui-collapsible__header` for reusable collapsible panels.
 - Builder-style full modals should reuse `.te-modal-backdrop`, `.te-modal`, `.te-modal__header`, `.te-modal__title`, and `.te-modal__body`.
-- Generic dialogs should use `role="dialog"` and `aria-modal="true"` so the global dialog styling applies.
+- Generic modals put `className="ui-modal-backdrop"` plus `role="dialog"` and `aria-modal="true"` on the full-screen overlay; the class (not the role) applies the global modal styling: translucent backdrop, rounded card, purple first-child header, white Close button. Never put the class on the card itself, and never rely on `role="dialog"` for styling: windows, popovers, toasts and bubbles carry the role too and must keep their own white fill.
 - Provide a labelled close button with `aria-label` or `title`.
 - Keep modal headers purple when using the global dialog pattern, and reserve large modals for editor-like workflows.
 
@@ -254,6 +258,6 @@ These are the current opportunities for consistency based on the existing UI:
 - Prefer `LoadingScreen` for all lazy route and panel loading states; avoid plain text loading messages.
 - Use `.ui-tabs` for every tab/segmented control instead of local tab styling.
 - Reuse `Banner` or existing workflow banners instead of creating new notification strips.
-- Consolidate modal shells over time. Builder modals and generic `[role="dialog"]` modals are both established; new modals should pick one intentionally.
+- Consolidate modal shells over time. Builder modals and generic `.ui-modal-backdrop` modals are both established; new modals should pick one intentionally.
 - Keep future builder controls inside the `te-` namespace and reuse `Field`, `CodeWorkspaceTabs`, `te-input`, and `te-select`.
 - Consider extracting a shared `Field` primitive if labelled field layouts are needed outside the builder.

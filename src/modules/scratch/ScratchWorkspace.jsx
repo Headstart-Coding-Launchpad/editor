@@ -3466,7 +3466,7 @@ export default function ScratchWorkspace({
             />
             <button
               type="button"
-              className="btn-primary"
+              className="btn-ghost-outline"
               style={s.greenFlagBtn}
               onClick={(e) => {
                 e.currentTarget.blur()
@@ -3488,7 +3488,7 @@ export default function ScratchWorkspace({
             </button>
             <button
               type="button"
-              className="btn-secondary"
+              className="btn-danger"
               style={s.stopFlagBtn}
               onClick={handleStop}
               aria-label="Stop"

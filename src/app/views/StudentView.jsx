@@ -1439,10 +1439,7 @@ export default function StudentView({
             key={opt.key}
             type="button"
             className="btn-ghost"
-            style={{
-              ...s.presentationBtn,
-              ...(presenterLayout === opt.key ? s.presenterLayoutBtnActive : {}),
-            }}
+            style={s.presentationBtn}
             aria-pressed={presenterLayout === opt.key}
             title={opt.full}
             onClick={() => setPresenterLayout(opt.key)}
@@ -2056,10 +2053,6 @@ const s = {
     paddingLeft: 8,
     borderLeft: '1px solid rgba(255,255,255,0.35)',
     flexShrink: 0,
-  },
-  presenterLayoutBtnActive: {
-    background: 'rgba(255,255,255,0.22)',
-    borderColor: 'rgba(255,255,255,0.5)',
   },
   // One row that never wraps (the top bar keeps a fixed height): the task dots shrink or scroll
   // inside the space that's left, and every other control keeps its natural width.

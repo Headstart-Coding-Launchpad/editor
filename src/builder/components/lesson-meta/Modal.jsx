@@ -3,7 +3,7 @@ import { s } from './styles'
 
 export default function Modal({ title, children, onClose }) {
   return (
-    <div style={s.modalBackdrop} role="dialog" aria-modal="true">
+    <div className="ui-modal-backdrop" style={s.modalBackdrop} role="dialog" aria-modal="true">
       <div style={s.modal}>
         <div style={s.modalHeader}>
           <span style={s.modalTitle}>{title}</span>

@@ -267,7 +267,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
               : 'No starter blocks set. Students will start with an empty workspace.'}
           </p>
         </div>
-        <button className="btn-ghost te-secondary-btn" onClick={handleOpenStarterBlocks}>
+        <button className="te-secondary-btn" onClick={handleOpenStarterBlocks}>
           Edit
         </button>
       </div>
@@ -289,7 +289,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
               {scratchModalTab !== 'starter' && (
                 <button
                   type="button"
-                  className="btn-ghost te-secondary-btn"
+                  className="te-secondary-btn"
                   onClick={() => setScratchModalTab('starter')}
                 >
                   Project setup
@@ -307,7 +307,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
               {scratchModalTab !== 'starter' && (
                 <button
                   type="button"
-                  className="btn-ghost te-secondary-btn"
+                  className="te-secondary-btn"
                   onClick={handleCopySpriteInfoToStarter}
                 >
                   Copy Sprite Info to Starter
@@ -316,7 +316,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
               {scratchModalTab === 'complete' && (
                 <button
                   type="button"
-                  className="btn-ghost te-secondary-btn"
+                  className="te-secondary-btn"
                   onClick={handleCopyFromStarterToComplete}
                 >
                   Copy from starter code
@@ -889,7 +889,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                           />
                           <button
                             type="button"
-                            className="btn-ghost te-secondary-btn"
+                            className="te-secondary-btn"
                             onClick={() => handleCopyFromStarter(stageIdx)}
                             title="Replace this stage's blocks with a copy of the starter code"
                           >

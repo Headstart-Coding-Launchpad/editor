@@ -164,7 +164,7 @@ export default function TeacherPollControl({
                 {composing && (
                   <button
                     type="button"
-                    className="btn-ghost"
+                    className="btn-ghost-outline"
                     onClick={() => {
                       setComposing(false)
                       setError(null)
@@ -231,7 +231,7 @@ export default function TeacherPollControl({
                 )}
                 <button
                   type="button"
-                  className="btn-ghost"
+                  className="btn-ghost-outline"
                   disabled={busy}
                   onClick={() => run(() => onDismiss())}
                   title="Take the poll off every screen. It stays in the session report."
@@ -240,7 +240,7 @@ export default function TeacherPollControl({
                 </button>
                 <button
                   type="button"
-                  className="btn-ghost"
+                  className="btn-ghost-outline"
                   disabled={busy}
                   onClick={() => {
                     setComposing(true)
