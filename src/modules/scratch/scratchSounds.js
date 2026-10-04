@@ -192,6 +192,9 @@ export function synthDuration(synth) {
 let audioContext = null
 let activeNodes = []
 const audioBufferCache = new Map() // url → Promise<AudioBuffer | null>
+// Urls Web Audio couldn't load (e.g. a host without CORS headers, which blocks `fetch`); these
+// play through an <audio> element instead, which doesn't need CORS.
+const mediaElementUrls = new Set()
 
 function getAudioContext() {
   if (typeof window === 'undefined') return null
@@ -265,12 +268,29 @@ function loadAudioBuffer(ctx, url) {
       .then((res) => (res.ok ? res.arrayBuffer() : Promise.reject(new Error(res.statusText))))
       .then((data) => ctx.decodeAudioData(data))
       .catch(() => {
-        audioBufferCache.delete(url) // allow a retry after a transient failure
+        audioBufferCache.delete(url)
+        mediaElementUrls.add(url)
         return null
       })
     audioBufferCache.set(url, pending)
   }
   return audioBufferCache.get(url)
+}
+
+// Plays a url through an <audio> element. `stop()` lets stopAllScratchSounds end it like a
+// Web Audio node, and the promise also resolves if the file errors or autoplay is blocked.
+function playMediaElement(url) {
+  if (typeof Audio === 'undefined') return Promise.resolve()
+  const audio = new Audio(url)
+  const done = trackNode(audio)
+  const finish = () => audio.onended?.()
+  audio.stop = () => {
+    audio.pause()
+    finish()
+  }
+  audio.onerror = finish
+  Promise.resolve(audio.play?.()).catch(finish)
+  return done
 }
 
 // Starts loading an audio file so the first `start sound` doesn't wait on the network.
@@ -290,8 +310,9 @@ export async function playScratchSound(sound) {
   const entry = typeof sound === 'string' ? { synth: sound } : sound
   try {
     if (entry.url) {
+      if (mediaElementUrls.has(entry.url)) return await playMediaElement(entry.url)
       const buffer = await loadAudioBuffer(ctx, entry.url)
-      if (!buffer) return
+      if (!buffer) return await playMediaElement(entry.url)
       const source = ctx.createBufferSource()
       source.buffer = buffer
       source.connect(ctx.destination)

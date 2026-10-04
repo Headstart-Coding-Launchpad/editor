@@ -37,6 +37,17 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-04
+
+### Scratch `audio` sounds play from Firebase Storage and any other host
+
+- Sprite sounds with an `audio` file were silent when the file lived in Firebase Storage (for
+  example `/assets/shared/...` or an uploaded lesson asset): the bucket sent no CORS headers, so
+  the browser blocked the download. The bucket now allows the app's origins, and a file on a host
+  without CORS falls back to plain `<audio>` playback, so `start sound`, `play sound until done`
+  and `stop all sounds` work either way. No field changes.
+- Affects: scratch · Existing lessons: no changes needed · Resolves: none
+
 ## 2026-10-02
 
 ### Peer help: optional `peerHints` on code tasks

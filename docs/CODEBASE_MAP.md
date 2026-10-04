@@ -730,6 +730,7 @@ Pure, Node-safe input library for the Keyboard and Mouse activities and the Desk
 | `.firebaserc` | Firebase project alias (`headstartcoding-repl`) |
 | `firestore.rules` | Firestore security rules: lessons public read; users admin/self read; all writes via Cloud Functions |
 | `storage.rules` | Firebase Storage security rules: lesson assets public read; admin write only |
+| `storage.cors.json` | Storage bucket CORS rules (GET/HEAD from the Pages origin and local Vite ports) so the app can `fetch` assets such as Scratch audio; not deployed by `firebase deploy` — apply with `gcloud storage buckets update gs://headstartcoding-repl.firebasestorage.app --cors-file=storage.cors.json` |
 
 ---
 
