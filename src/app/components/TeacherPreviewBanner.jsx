@@ -7,7 +7,7 @@ export default function TeacherPreviewBanner({ taskNumber, taskTitle, onCancel, 
         Preview — Task {taskNumber}: {taskTitle ?? ''}
       </span>
       <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn-ghost teacher-preview-banner__btn" onClick={onCancel}>
+        <button className="teacher-preview-banner__btn" onClick={onCancel}>
           Back to Current Task
         </button>
         <button className="btn-primary teacher-preview-banner__btn" onClick={onConfirm}>

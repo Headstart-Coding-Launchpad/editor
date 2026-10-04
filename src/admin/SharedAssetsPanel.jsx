@@ -158,7 +158,7 @@ function TypeAssetsEditor({ lessonType }) {
       <div style={s.sectionCard}>
         <div style={s.cardTitleRow}>
           <span style={s.cardTitle}>Shared files</span>
-          <button className="btn-ghost" style={s.uploadBtn} onClick={handleFileSelect}>
+          <button className="btn-ghost-outline" style={s.uploadBtn} onClick={handleFileSelect}>
             Upload file
           </button>
         </div>
@@ -380,7 +380,7 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
     <div style={s.sectionCard}>
       <div style={s.cardTitleRow}>
         <span style={s.cardTitle}>Default sprites</span>
-        <button className="btn-ghost" style={s.uploadBtn} onClick={addSprite}>
+        <button className="btn-ghost-outline" style={s.uploadBtn} onClick={addSprite}>
           + Add sprite
         </button>
       </div>
@@ -464,7 +464,7 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
                   placeholder="🐱"
                 />
                 <button
-                  className="btn-ghost"
+                  className="btn-ghost-outline"
                   style={{ ...s.uploadBtn, alignSelf: 'flex-start' }}
                   onClick={() => addCostume(sp.id)}
                 >
@@ -506,7 +506,7 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
                   </div>
                 ))}
                 <button
-                  className="btn-ghost"
+                  className="btn-ghost-outline"
                   style={{ ...s.uploadBtn, alignSelf: 'flex-start', marginTop: 4 }}
                   onClick={() => addCostume(sp.id)}
                 >
@@ -567,7 +567,7 @@ function DefaultSpritesEditor({ sprites, storageAssets, onChange }) {
                   </div>
                 ))}
                 <button
-                  className="btn-ghost"
+                  className="btn-ghost-outline"
                   style={{ ...s.uploadBtn, alignSelf: 'flex-start', marginTop: 4 }}
                   onClick={() => addCostume(sp.id)}
                 >
@@ -615,7 +615,7 @@ function DefaultBackdropsEditor({ backdrops, storageAssets, onChange }) {
     <div style={s.sectionCard}>
       <div style={s.cardTitleRow}>
         <span style={s.cardTitle}>Default backdrops</span>
-        <button className="btn-ghost" style={s.uploadBtn} onClick={addBackdrop}>
+        <button className="btn-ghost-outline" style={s.uploadBtn} onClick={addBackdrop}>
           + Add backdrop
         </button>
       </div>
@@ -722,7 +722,7 @@ function DefaultSoundsEditor({ sounds, storageAssets, onChange }) {
     <div style={s.sectionCard}>
       <div style={s.cardTitleRow}>
         <span style={s.cardTitle}>Default sounds</span>
-        <button className="btn-ghost" style={s.uploadBtn} onClick={addSound}>
+        <button className="btn-ghost-outline" style={s.uploadBtn} onClick={addSound}>
           + Add sound
         </button>
       </div>

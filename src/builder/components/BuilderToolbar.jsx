@@ -59,12 +59,14 @@ export default function BuilderToolbar({
         </button>
         {role === 'admin' && (
           <button
-            className="btn-primary"
-            style={{
-              ...s.btnPrimary,
-              background:
-                saveStatus === 'done' ? '#16a34a' : saveStatus === 'error' ? '#ef4444' : undefined,
-            }}
+            className={
+              saveStatus === 'done'
+                ? 'btn-success'
+                : saveStatus === 'error'
+                  ? 'btn-danger'
+                  : 'btn-primary'
+            }
+            style={s.btnPrimary}
             onClick={onSave}
             disabled={saveStatus === 'saving'}
           >

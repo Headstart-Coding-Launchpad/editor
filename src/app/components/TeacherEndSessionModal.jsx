@@ -3,7 +3,7 @@ import React from 'react'
 export default function TeacherEndSessionModal({ onClose, onEnd, onEndAndGoHome }) {
   return (
     <div
-      className="teacher-end-modal__overlay"
+      className="teacher-end-modal__overlay ui-modal-backdrop"
       role="dialog"
       aria-modal="true"
       aria-label="End session"

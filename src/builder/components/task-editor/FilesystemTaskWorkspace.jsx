@@ -137,7 +137,7 @@ export default function FilesystemTaskWorkspace({
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
               <button
                 type="button"
-                className="btn-ghost te-secondary-btn"
+                className="te-secondary-btn"
                 onClick={handleCopyStarterToComplete}
                 disabled={!task.starterFs}
                 title="Copy the starter filesystem into the complete filesystem"

@@ -847,7 +847,7 @@ function ScratchCheckListEditor({ checks, onChange, sprites, feedbackEditor = fa
           </button>
         </div>
       ))}
-      <button type="button" className="btn-ghost te-add-check-btn" onClick={addCheck}>
+      <button type="button" className="te-add-check-btn" onClick={addCheck}>
         + Add check
       </button>
     </div>
@@ -901,7 +901,7 @@ function OpcodeAlternativesNote({ spec, onUseSingle }) {
     >
       <span>{opcodeSpecLabel(spec)}</span>
       <span style={{ color: '#6b7280' }}>(alternatives are edited in the lesson YAML)</span>
-      <button type="button" className="btn-ghost" onClick={onUseSingle}>
+      <button type="button" className="btn-ghost-outline" onClick={onUseSingle}>
         Use one block
       </button>
     </div>
@@ -1333,7 +1333,7 @@ function ScratchCheckEditor({
             })}
             <button
               type="button"
-              className="btn-ghost te-add-check-btn"
+              className="te-add-check-btn"
               style={{ alignSelf: 'flex-start' }}
               onClick={() =>
                 onChange({
@@ -1556,7 +1556,7 @@ export function VariableManager({ variables, onChange }) {
           </button>
         </div>
       ))}
-      <button type="button" className="btn-ghost te-add-check-btn" onClick={addVariable}>
+      <button type="button" className="te-add-check-btn" onClick={addVariable}>
         + Add variable
       </button>
     </div>

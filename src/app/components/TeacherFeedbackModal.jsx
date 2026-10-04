@@ -102,6 +102,7 @@ export default function TeacherFeedbackModal({
   return (
     <div
       ref={overlayRef}
+      className="ui-modal-backdrop"
       style={s.overlay}
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose?.()

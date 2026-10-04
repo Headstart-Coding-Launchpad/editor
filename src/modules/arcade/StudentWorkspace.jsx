@@ -254,7 +254,6 @@ export default function StudentWorkspace({
                     <button
                       key={asset.name}
                       type="button"
-                      className="btn-ghost"
                       title={`Insert ${asset.name}`}
                       style={s.generatedAssetButton}
                       onClick={() => insertCode(`Sprite(${JSON.stringify(asset.name)})`)}
@@ -271,7 +270,6 @@ export default function StudentWorkspace({
                     <button
                       key={tilemap.name}
                       type="button"
-                      className="btn-ghost"
                       title={`Insert ${tilemap.name}`}
                       style={s.generatedTilemapButton}
                       onClick={() => insertCode(mapToPythonSnippet(cs.arcadeDesign.maps[index]))}

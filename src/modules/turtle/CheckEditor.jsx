@@ -386,7 +386,7 @@ export default function CheckEditor({
       })}
       <button
         type="button"
-        className="btn-ghost te-add-check-btn"
+        className="te-add-check-btn"
         onClick={() =>
           setChecks([
             ...checks,
@@ -401,7 +401,7 @@ export default function CheckEditor({
       </button>
       <button
         type="button"
-        className="btn-ghost te-add-check-btn"
+        className="te-add-check-btn"
         onClick={() =>
           setChecks([
             ...checks,

@@ -125,7 +125,7 @@ export default function DesktopTaskWorkspace({
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
               <button
                 type="button"
-                className="btn-ghost te-secondary-btn"
+                className="te-secondary-btn"
                 onClick={handleCopyStarterToComplete}
                 disabled={!task.starterDesktop}
                 title="Copy the starter desktop into the complete desktop"

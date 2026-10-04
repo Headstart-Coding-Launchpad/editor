@@ -85,7 +85,7 @@ export default function NameEntry({
               {submitting ? 'Joining…' : `Join as ${confirmed}`}
             </button>
             <button
-              className="btn-ghost"
+              className="btn-ghost-outline"
               style={{
                 color: 'var(--colour-primary)',
                 border: '1px solid var(--colour-primary)',

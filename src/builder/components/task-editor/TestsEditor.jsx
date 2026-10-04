@@ -162,7 +162,7 @@ function SingleTestEditor({ test, onChange, onRemove, lessonType }) {
         </div>
         <button
           type="button"
-          className="btn-ghost te-add-check-btn"
+          className="te-add-check-btn"
           style={{ marginTop: 6 }}
           onClick={addInput}
         >
@@ -232,7 +232,7 @@ export default function TestsEditor({ tests = [], onChange, lessonType }) {
             lessonType={lessonType}
           />
         ))}
-        <button type="button" className="btn-ghost te-add-check-btn" onClick={addTest}>
+        <button type="button" className="te-add-check-btn" onClick={addTest}>
           + Add test case
         </button>
       </div>

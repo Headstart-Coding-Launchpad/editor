@@ -205,7 +205,7 @@ export default function TaskNavigator({
           </button>
         ) : sandboxStaging ? (
           <button
-            className="btn-ghost"
+            className="btn-ghost-outline"
             style={{
               width: '100%',
               color: 'var(--colour-primary)',
@@ -217,7 +217,7 @@ export default function TaskNavigator({
           </button>
         ) : (
           <button
-            className="btn-ghost"
+            className="btn-ghost-outline"
             style={{
               width: '100%',
               color: 'var(--colour-primary)',

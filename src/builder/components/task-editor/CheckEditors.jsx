@@ -655,7 +655,7 @@ function CheckListEditor({
           </div>
         )
       })}
-      <button type="button" className="btn-ghost te-add-check-btn" onClick={addCheck}>
+      <button type="button" className="te-add-check-btn" onClick={addCheck}>
         + Add check
       </button>
     </div>

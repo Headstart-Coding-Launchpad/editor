@@ -325,7 +325,11 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
             <span style={s.fieldLabel}>Sandbox starter</span>
             <p style={s.summaryText}>{getSandboxStarterSummary(lesson)}</p>
           </div>
-          <button className="btn-ghost" style={s.secondaryBtn} onClick={() => setSandboxOpen(true)}>
+          <button
+            className="btn-ghost-outline"
+            style={s.secondaryBtn}
+            onClick={() => setSandboxOpen(true)}
+          >
             Edit
           </button>
         </div>

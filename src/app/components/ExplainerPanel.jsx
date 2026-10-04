@@ -177,7 +177,7 @@ export default function ExplainerPanel({
               <h2 style={s.titleText}>{title}</h2>
               <button
                 type="button"
-                className="btn-primary"
+                className="btn-ghost-outline"
                 style={s.expandedHideBtn}
                 onClick={() => setExpanded(false)}
               >

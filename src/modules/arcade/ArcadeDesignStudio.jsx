@@ -474,11 +474,11 @@ export default function ArcadeDesignStudio({
                 <strong>Sprites</strong>
                 {!readOnly && (
                   <div style={s.buttonGroup}>
-                    <button className="btn-ghost" style={s.smallButton} onClick={addSprite}>
+                    <button style={s.smallButton} onClick={addSprite}>
                       + Sprite
                     </button>
                     {sprite && (
-                      <button className="btn-ghost" style={s.dangerButton} onClick={deleteSprite}>
+                      <button style={s.dangerButton} onClick={deleteSprite}>
                         Delete
                       </button>
                     )}
@@ -540,7 +540,7 @@ export default function ArcadeDesignStudio({
                       {sprite.width} x {sprite.height} px
                     </span>
                     {!readOnly && (
-                      <button className="btn-ghost" style={s.smallButton} onClick={addFrame}>
+                      <button style={s.smallButton} onClick={addFrame}>
                         + Frame
                       </button>
                     )}
@@ -615,11 +615,11 @@ export default function ArcadeDesignStudio({
                 <strong>Tilemaps</strong>
                 {!readOnly && (
                   <div style={s.buttonGroup}>
-                    <button className="btn-ghost" style={s.smallButton} onClick={addMap}>
+                    <button style={s.smallButton} onClick={addMap}>
                       + Map
                     </button>
                     {map && (
-                      <button className="btn-ghost" style={s.dangerButton} onClick={deleteMap}>
+                      <button style={s.dangerButton} onClick={deleteMap}>
                         Delete
                       </button>
                     )}
@@ -673,12 +673,7 @@ export default function ArcadeDesignStudio({
                       />
                     </label>
                     {!readOnly && (
-                      <button
-                        type="button"
-                        className="btn-ghost"
-                        style={s.smallButton}
-                        onClick={resizeMap}
-                      >
+                      <button type="button" style={s.smallButton} onClick={resizeMap}>
                         Resize map
                       </button>
                     )}
@@ -723,12 +718,7 @@ export default function ArcadeDesignStudio({
                       </div>
                     ))}
                     {!readOnly && (
-                      <button
-                        className="btn-ghost"
-                        style={s.smallButton}
-                        onClick={addTile}
-                        disabled={!assetNames.length}
-                      >
+                      <button style={s.smallButton} onClick={addTile} disabled={!assetNames.length}>
                         + Tile
                       </button>
                     )}
@@ -796,7 +786,6 @@ export default function ArcadeDesignStudio({
                         </label>
                         <button
                           type="button"
-                          className="btn-ghost"
                           style={s.smallButton}
                           disabled={readOnly}
                           onClick={addTileProperty}
@@ -893,12 +882,7 @@ export default function ArcadeDesignStudio({
                         aria-label="Object y"
                         disabled={readOnly}
                       />
-                      <button
-                        className="btn-ghost"
-                        style={s.smallButton}
-                        onClick={addObject}
-                        disabled={readOnly}
-                      >
+                      <button style={s.smallButton} onClick={addObject} disabled={readOnly}>
                         + Spawn
                       </button>
                     </div>
@@ -909,7 +893,6 @@ export default function ArcadeDesignStudio({
                         </span>
                         {!readOnly && (
                           <button
-                            className="btn-ghost"
                             style={s.removeButton}
                             onClick={() =>
                               updateMap({

@@ -39,10 +39,10 @@ export const BADGE_PICKER_GROUPS = Object.freeze([
  * so the class sees one merged announcement. With one student it also lists their awarded badges
  * with Revoke (silent to the student).
  *
- * `role="dialog"` sits on the overlay, as in StudentModal, so the global dialog styles give it a
- * purple header and a light body (on the card itself they'd paint the whole card dark). It is
- * portalled to <body>: nested inside StudentModal's dialog, the global `[role='dialog'] > div >
- * div:first-child` header rule would paint this whole card purple.
+ * The overlay carries `ui-modal-backdrop`, as in StudentModal, so the global modal styles give it
+ * a purple header and a light body. It is portalled to <body>: nested inside StudentModal's
+ * backdrop, the global `.ui-modal-backdrop > div > div:first-child` header rule would paint this
+ * whole card purple.
  *
  * @param {object} props
  * @param {{ anonymousId: string, displayName: string }[]} props.students who receives the award
@@ -187,6 +187,7 @@ export default function BadgeAwardDialog({
 
   return createPortal(
     <div
+      className="ui-modal-backdrop"
       role="dialog"
       aria-modal="true"
       aria-labelledby="badge-award-title"

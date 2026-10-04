@@ -125,7 +125,7 @@ export function FillBlankBuilder({ task, onUpdate, lessonType = null }) {
                 </button>
               </div>
             ))}
-            <button type="button" className="btn-ghost te-add-check-btn" onClick={addDistractor}>
+            <button type="button" className="te-add-check-btn" onClick={addDistractor}>
               + Add distractor
             </button>
           </div>

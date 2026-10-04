@@ -32,7 +32,7 @@ export default function PreviewView({ lesson, onClose, initialTaskId = null }) {
       <div style={s.banner}>
         <span style={s.bannerText}>This is a preview — changes are not saved</span>
         <div style={s.bannerActions}>
-          <button className="btn-ghost" style={s.feedbackBtn} onClick={() => setShowFeedback(true)}>
+          <button style={s.feedbackBtn} onClick={() => setShowFeedback(true)}>
             Feedback
           </button>
           <button

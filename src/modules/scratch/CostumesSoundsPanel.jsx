@@ -30,7 +30,7 @@ export function CostumesTab({
           <span style={s.title}>Choose a costume</span>
           <button
             type="button"
-            className="btn-ghost"
+            className="btn-ghost-outline"
             style={s.smallBtn}
             onClick={() => setAdding(false)}
           >
@@ -147,7 +147,7 @@ export function SoundsTab({ sprite, sounds, canAdd, audioLibrary, onPreviewSound
           <span style={s.title}>Choose a sound</span>
           <button
             type="button"
-            className="btn-ghost"
+            className="btn-ghost-outline"
             style={s.smallBtn}
             onClick={() => setAdding(false)}
           >
@@ -232,7 +232,7 @@ function SoundRow({ index, icon, name, onPreview, onAdd }) {
       <span style={s.soundName}>{name}</span>
       <button
         type="button"
-        className="btn-ghost"
+        className="btn-ghost-outline"
         style={s.iconBtn}
         onClick={onPreview}
         aria-label={`Play ${name}`}

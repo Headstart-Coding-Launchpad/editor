@@ -92,7 +92,7 @@ export default function SharedWorkspacePanel({ sharedWorkspaces, viewerId, onOpe
               <span style={s.modalTitle}>📤 Shared work</span>
               <button
                 type="button"
-                className="btn-ghost"
+                className="btn-ghost-outline"
                 style={s.closeBtn}
                 onClick={() => setOpen(false)}
                 aria-label="Close"

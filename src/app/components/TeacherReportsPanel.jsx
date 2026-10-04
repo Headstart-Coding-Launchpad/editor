@@ -44,6 +44,7 @@ export default function TeacherReportsPanel({ lessonId, liveReport, onClose }) {
   return (
     <div
       ref={overlayRef}
+      className="ui-modal-backdrop"
       style={s.overlay}
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose?.()

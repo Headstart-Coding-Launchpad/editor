@@ -49,7 +49,7 @@ export default function LessonTopicSummary({ lesson, topics, loading, error, onU
     <section style={s.section}>
       <div style={s.headingRow}>
         <span style={s.heading}>Topic Library</span>
-        <button type="button" className="btn-ghost" style={s.addBtn} onClick={addProposal}>
+        <button type="button" className="btn-ghost-outline" style={s.addBtn} onClick={addProposal}>
           Add proposal
         </button>
       </div>

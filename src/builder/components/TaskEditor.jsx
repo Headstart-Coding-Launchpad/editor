@@ -432,11 +432,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
   }
 
   const resetToStarterBtn = isCompleteTab ? (
-    <button
-      type="button"
-      className="btn-ghost te-secondary-btn"
-      onClick={handleResetCompleteToStarter}
-    >
+    <button type="button" className="te-secondary-btn" onClick={handleResetCompleteToStarter}>
       Reset to starter code
     </button>
   ) : null

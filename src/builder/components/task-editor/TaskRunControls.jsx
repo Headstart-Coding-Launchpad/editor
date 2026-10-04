@@ -11,13 +11,12 @@ export default function TaskRunControls({
   return (
     <div className="te-run-row">
       <button
-        className="btn-primary"
+        className={busy ? 'btn-danger' : 'btn-primary'}
         onClick={busy ? onStop : onRun}
         disabled={!busy && pyodideStatus === 'loading'}
         style={{
           padding: '10px 28px',
           fontSize: 15,
-          ...(busy ? { backgroundColor: '#ef4444', borderColor: '#ef4444' } : {}),
         }}
       >
         {busy ? 'Stop' : pyodideStatus === 'loading' ? 'Getting Python ready...' : 'Run'}

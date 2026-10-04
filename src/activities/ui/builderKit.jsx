@@ -138,7 +138,7 @@ export function RowListEditor({
         ))}
         <button
           type="button"
-          className="btn-ghost te-add-check-btn"
+          className="te-add-check-btn"
           onClick={() => onChange([...list, makeRow(list)])}
         >
           {addLabel}
