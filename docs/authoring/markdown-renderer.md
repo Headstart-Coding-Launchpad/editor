@@ -74,7 +74,7 @@ A fence opening directly under a paragraph line, with **no blank line** in betwe
 
 **The opening fence, the code, and the closing fence are always three separate lines, even when the code itself is a single line.** A fence delimiter must be alone on its own line — CommonMark does not recognise a fence unless the line containing ` ```python ` (or ` ``` `) contains nothing else. Squeezing a one-line snippet onto the same line as its fences does not produce a code block at all; it renders as broken literal text:
 
-```
+````
 WRONG:
 ```python print("Adventure awaits!") ```
 
@@ -82,7 +82,7 @@ RIGHT:
 ```python
 print("Adventure awaits!")
 ```
-```
+````
 
 This mistake surfaces specifically when the code being fenced happens to be one line long — a multi-line snippet is much less likely to get collapsed this way, since collapsing it as one line would visibly overrun the block. Check one-line-of-code fenced blocks in particular, e.g. wherever the Quiz Guide's "always fence, never inline, for this quiz type" rule applies to a single line of code.
 
