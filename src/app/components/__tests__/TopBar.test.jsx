@@ -23,6 +23,20 @@ describe('TopBar', () => {
     expect(screen.queryByText('Level 2')).not.toBeInTheDocument()
   })
 
+  it('shows "Lesson N" when the lesson has a lessonNumber', () => {
+    render(<TopBar lessonTitle="Boolean Flags" lessonLevel="Level 1" lessonNumber={9} />)
+    expect(screen.getByTestId('top-bar-lesson-number')).toHaveTextContent('Lesson 9')
+    expect(screen.getByText('Boolean Flags')).toBeInTheDocument()
+  })
+
+  it.each([undefined, null, 0, -2, 1.5, '9'])(
+    'shows no lesson number for lessonNumber %s',
+    (lessonNumber) => {
+      render(<TopBar lessonTitle="Lesson" lessonNumber={lessonNumber} />)
+      expect(screen.queryByTestId('top-bar-lesson-number')).not.toBeInTheDocument()
+    }
+  )
+
   it('shows the SOLO badge when isSolo is true', () => {
     render(<TopBar lessonTitle="Lesson" isSolo={true} />)
     expect(screen.getByText('SOLO')).toBeInTheDocument()

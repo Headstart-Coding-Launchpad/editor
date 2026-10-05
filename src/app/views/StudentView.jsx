@@ -1554,6 +1554,7 @@ export default function StudentView({
       <TopBar
         lessonTitle={lesson.title}
         lessonLevel={lesson.level}
+        lessonNumber={lesson.lessonNumber}
         displayName={
           isPresentationStudentViewer
             ? `Other Student — ${session.teacherLive.sourceStudentName ?? 'Student'}`

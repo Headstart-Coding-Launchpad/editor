@@ -3,7 +3,12 @@ import { validateLessonForMcp } from './validate.mjs'
 import { parseYamlLesson } from './yaml-converter.mjs'
 import { auditLessonTopics, validateLessonTopics } from '../src/shared/topicAudit.js'
 import { buildLessonFork, makeForkLessonId } from '../src/shared/lessonForks.js'
-import { LEVEL_COLLECTION, migrateLessonLevel } from '../src/shared/lessonLevels.js'
+import {
+  LEVEL_COLLECTION,
+  migrateLessonLevel,
+  normalizeLevelRecord,
+} from '../src/shared/lessonLevels.js'
+import { getLessonNumber, sortLessons } from '../src/shared/lessonOrder.js'
 import { getClass } from './classes.mjs'
 import { applyLessonAuditMetadata } from '../src/shared/lessonAudit.js'
 import {
@@ -195,41 +200,69 @@ async function clearLessonRunData(lessonId) {
   return { reportsDeleted, feedbackDeleted }
 }
 
+// Lesson list rows, in the shared LaunchPad order (src/shared/lessonOrder.js): by level, then
+// lessonNumber, with each Solo Challenge (companionOf) straight after its parent.
+export function buildLessonListRows(docs, levels = []) {
+  const rows = docs.map(({ id, data: d }) => {
+    const taskCount = (d.tasks ?? []).reduce(
+      (acc, t) => acc + (t.type === 'group' ? (t.subtasks?.length ?? 0) : 1),
+      0
+    )
+    return {
+      id,
+      title: d.title ?? '',
+      type: d.type ?? '',
+      draft: d.draft === true,
+      version: d.version ?? 0,
+      level: d.level ?? null,
+      levelId: d.levelId ?? null,
+      levelRef: d.levelRef ?? null,
+      lessonNumber: getLessonNumber(d),
+      soloOnly: d.soloOnly === true,
+      companionOf: d.companionOf ?? null,
+      fork: d.fork
+        ? {
+            sourceLessonId: d.fork.sourceLessonId,
+            classId: d.fork.classId,
+            className: d.fork.className ?? '',
+          }
+        : null,
+      taskCount,
+    }
+  })
+  // levelRef is only needed to group by level; keep the output shape unchanged otherwise.
+  return sortLessons(rows, { levels }).map(({ levelRef: _levelRef, ...row }) => row)
+}
+
+async function fetchLevelRecords() {
+  try {
+    const snap = await db.collection(LEVEL_COLLECTION).get()
+    return snap.docs.map((doc) => normalizeLevelRecord({ id: doc.id, ...doc.data() }))
+  } catch {
+    // Level order is cosmetic here; without it levels group by id.
+    return []
+  }
+}
+
 export async function listLessons() {
-  const snap = await db.collection('lessons').get()
-  return snap.docs
-    .map((doc) => {
-      const d = doc.data()
-      const taskCount = (d.tasks ?? []).reduce(
-        (acc, t) => acc + (t.type === 'group' ? (t.subtasks?.length ?? 0) : 1),
-        0
-      )
-      return {
-        id: doc.id,
-        title: d.title ?? '',
-        type: d.type ?? '',
-        draft: d.draft === true,
-        version: d.version ?? 0,
-        level: d.level ?? null,
-        levelId: d.levelId ?? null,
-        fork: d.fork
-          ? {
-              sourceLessonId: d.fork.sourceLessonId,
-              classId: d.fork.classId,
-              className: d.fork.className ?? '',
-            }
-          : null,
-        taskCount,
-      }
-    })
-    .sort((a, b) => a.title.localeCompare(b.title))
+  const [snap, levels] = await Promise.all([db.collection('lessons').get(), fetchLevelRecords()])
+  return buildLessonListRows(
+    snap.docs.map((doc) => ({ id: doc.id, data: doc.data() })),
+    levels
+  )
 }
 
 export async function getLesson(id) {
   const snap = await db.collection('lessons').doc(id).get()
   if (!snap.exists) throw new Error(`Lesson '${id}' not found`)
   const data = readLessonDoc(snap)
-  return { id: snap.id, ...data, draft: data.draft === true, version: data.version ?? 0 }
+  return {
+    id: snap.id,
+    ...data,
+    draft: data.draft === true,
+    version: data.version ?? 0,
+    lessonNumber: getLessonNumber(data),
+  }
 }
 
 export async function getLessonSkeleton(id) {

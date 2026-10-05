@@ -181,7 +181,7 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 
 ### Lesson UI
 - One-row top bar that never wraps or changes height: title and LIVE, the 🎖️ moments button, ✋ Help, 📤 Share, the task dots (they shrink, then scroll sideways, with 12+ tasks) and the student's name as a small chip
-- Lesson title, level badge, and mode indicator (solo / live / sandbox)
+- Lesson title, level badge, "Lesson N" (when the lesson has a `lessonNumber`), and mode indicator (solo / live / sandbox)
 - Task progress dots — clickable for past tasks, locked for future tasks, current highlighted
 - Collapsible explainer panel with Markdown formatting, inline topic definitions (not on Scratch lessons — the topic library is disabled there), and Scratch block visualisation
 - Explainer text is not selectable/copyable for students (teacher and builder previews are unaffected)
@@ -223,7 +223,8 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 ## Lesson Builder Features
 
 ### Lesson Configuration
-- ID, title, description, stage, a reusable referenced level, and ordered tasks with per-task workspace selection (new lessons)
+- ID, title, description, stage, a reusable referenced level, an optional lesson number (position within the level), and ordered tasks with per-task workspace selection (new lessons)
+- "Open from Firestore" lists lessons in the shared LaunchPad order (level, then `lessonNumber`, each Solo Challenge indented under its parent) as "9 · Title"
 - Forked lessons show their stock lesson and class lineage in Lesson Details
 - Asset list for the in-lesson asset browser
 - Independent sandbox state per workspace type used in the lesson
@@ -269,7 +270,7 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 ## Admin Portal Features
 
 - **Account management**: create teacher/admin accounts, set roles, change other users' passwords, disable/enable, delete. Signed-in users can change their own password from Account settings.
-- **Lesson management**: browse all published lessons in one library (not grouped by type); group stock lessons with class forks; expand each lesson to view report and feedback counts, session reports, and lesson/task feedback with resolve actions; launch as teacher, preview as a student (ephemeral — nothing is saved), copy student links, or create/overwrite a class fork
+- **Lesson management**: browse all published lessons in one library (not grouped by type), grouped by level and ordered within a level by `lessonNumber` (shown as "9 · Title"; unnumbered lessons after, by title); group stock lessons with class forks and Solo Challenges; expand each lesson to view report and feedback counts, session reports, and lesson/task feedback with resolve actions; launch as teacher, preview as a student (ephemeral — nothing is saved), copy student links, or create/overwrite a class fork
 - **Level management**: its own Admin tab (`Levels`) for creating and editing the reusable levels lessons can reference
 - **Class management**: create and archive admin-only class records used for reusable lesson forks
 - **Session management**: see every live or waiting session left open across the platform (lesson, state, paused flag, student/online counts, how long it's been open) and close any of them remotely, for cases where a teacher left a session running without ending it
@@ -317,7 +318,7 @@ The CLI can list, add, archive, and bulk-archive feedback items in both collecti
 - Manage live lessons, reusable levels, classes, tasks, topics, assets, and feedback through `node cli/cli.mjs`
 - Convert lesson and topic-library YAML to JSON for validation and publishing
 - Test a lesson's source-code completion and feedback checks against named JSON/YAML student-code cases
-- Fetch lessons, topics, tasks, assets, and feedback as JSON or YAML with `--format yaml`
+- Fetch lessons, topics, tasks, assets, and feedback as JSON or YAML with `--format yaml`; `lessons list` uses the shared lesson order (level, then `lessonNumber`, Solo Challenges after their parent) and includes `lessonNumber` and `companionOf`
 - Read, add, archive, and bulk-archive platform and per-lesson feedback from Firestore via the CLI
 - Create/list/delete reusable lesson levels with `node cli/cli.mjs levels`
 - Create/archive classes and create/list/inspect lesson forks with `node cli/cli.mjs classes` and `node cli/cli.mjs lessons fork`
