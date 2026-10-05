@@ -31,6 +31,18 @@ import sharpShooter from './definitions/sharp_shooter.js'
 import wordWizard from './definitions/word_wizard.js'
 import designMaster from './definitions/design_master.js'
 import independentCoder from './definitions/independent_coder.js'
+import honestCheckIn from './definitions/honest_check_in.js'
+import braveCoder from './definitions/brave_coder.js'
+import growingCoder from './definitions/growing_coder.js'
+import comebackCoder from './definitions/comeback_coder.js'
+import showAndTell from './definitions/show_and_tell.js'
+import greatAnswer from './definitions/great_answer.js'
+import codeTeacher from './definitions/code_teacher.js'
+import teacherTrap from './definitions/teacher_trap.js'
+import tidyCoder from './definitions/tidy_coder.js'
+import edgeExplorer from './definitions/edge_explorer.js'
+import finisher from './definitions/finisher.js'
+import carefulChecker from './definitions/careful_checker.js'
 
 const BADGES = [
   bugHunter,
@@ -59,6 +71,18 @@ const BADGES = [
   wordWizard,
   designMaster,
   independentCoder,
+  honestCheckIn,
+  braveCoder,
+  growingCoder,
+  comebackCoder,
+  showAndTell,
+  greatAnswer,
+  codeTeacher,
+  teacherTrap,
+  tidyCoder,
+  edgeExplorer,
+  finisher,
+  carefulChecker,
 ]
 
 const BY_ID = new Map()

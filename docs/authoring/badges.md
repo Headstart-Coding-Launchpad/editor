@@ -39,13 +39,17 @@ student per lesson.
 | ✨ Autocomplete Ace | `autocomplete_ace` | Accepted a code-editor autocomplete suggestion, in a task or a sandbox | – |
 | 🐦 Early Bird | `early_bird` | First joined at least `earlyBirdMinutes` before the tutor pressed **Start** (suggested once the session starts; not tied to a task) | – |
 | 🤝 Helpful Coder | `helpful_coder` | Helped a stuck classmate through peer help, and the classmate pressed 👍 Useful on something they sent or used their suggested change (on the task the help was for) | – |
-| 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🧘 Focused Coder · 🧭 Project Explorer · 📈 Knowledge Builder · 🙋 Great Question · 🏹 Sharp Shooter · ✍️ Word Wizard · 🎨 Design Master · 🦸 Independent Coder | `problem_solver`, `experimenter`, `creative_coder`, `comedy_coder`, `focused_coder`, `project_explorer`, `knowledge_builder`, `great_question`, `sharp_shooter`, `word_wizard`, `design_master`, `independent_coder` | Tutor-only: never suggested | – |
+| 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🧘 Focused Coder · 🧭 Project Explorer · 📈 Knowledge Builder · 🙋 Great Question · 🏹 Sharp Shooter · ✍️ Word Wizard · 🎨 Design Master · 🦸 Independent Coder · 🌡️ Honest Check-in · 🦁 Brave Coder · 🌱 Growing Coder · 🔁 Comeback Coder · 🎤 Show and Tell · 💬 Great Answer · 🧑‍🏫 Code Teacher · 🕵️ Teacher Trap · 🧹 Tidy Coder · 🔦 Edge Explorer · 🏁 Finisher · 🧷 Careful Checker | `problem_solver`, `experimenter`, `creative_coder`, `comedy_coder`, `focused_coder`, `project_explorer`, `knowledge_builder`, `great_question`, `sharp_shooter`, `word_wizard`, `design_master`, `independent_coder`, `honest_check_in`, `brave_coder`, `growing_coder`, `comeback_coder`, `show_and_tell`, `great_answer`, `code_teacher`, `teacher_trap`, `tidy_coder`, `edge_explorer`, `finisher`, `careful_checker` | Tutor-only: never suggested | – |
 
 "First in class" is decided per task, in the order the tasks were first passed. Each student
 can win it once, and when a tutor dismisses a suggestion nobody else is suggested for that task.
 
 🐦 Early Bird compares two clocks (the student's device when they joined, the tutor's when they
 pressed Start), so it is never auto-awarded. It is judged against the session's latest Start.
+
+Tutor-only badges have no rule yet; a rule can be added to the same definition later without
+changing the id. 🌡️ Honest Check-in (`honest_check_in`) may later gain a suggestion rule the tutor
+confirms (a student who said they weren't sure, then made a real pass); for now it is awarded by hand.
 
 ### Quiz groups
 

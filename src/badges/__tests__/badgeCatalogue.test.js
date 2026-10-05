@@ -13,7 +13,7 @@ import { normaliseCatalogueBadge, resolveBadge } from '../badgeDisplay.js'
 import { listMyMoments, mergeClassToasts } from '../celebration.js'
 import { buildClassWall, rosterNameFor } from '../badgeSummary.js'
 
-const STAR = { id: 'star_speaker', emoji: '🎤', title: 'Star Speaker', blurb: 'Presented well.' }
+const STAR = { id: 'star_speaker', emoji: '🎺', title: 'Star Speaker', blurb: 'Presented well.' }
 
 describe('validateCatalogueBadge', () => {
   it('accepts a complete, unique badge', () => {
@@ -40,9 +40,9 @@ describe('validateCatalogueBadge', () => {
     )
     // A variation selector doesn't make a different emoji.
     expect(validateCatalogueBadge({ ...STAR, emoji: '⌨' })[0]).toMatch(/Keyboard Wizard/)
-    const archived = { id: 'old', emoji: '🎤', title: 'Old Mic', archived: true }
+    const archived = { id: 'old', emoji: '🎺', title: 'Old Mic', archived: true }
     expect(validateCatalogueBadge(STAR, { catalogue: [archived] })).toContain(
-      '🎤 is already the Old Mic badge.'
+      '🎺 is already the Old Mic badge.'
     )
   })
 
@@ -73,7 +73,7 @@ describe('catalogue helpers', () => {
 
   it('snapshots only catalogue badges', () => {
     expect(catalogueBadgeSnapshot(normaliseCatalogueBadge(STAR))).toEqual({
-      emoji: '🎤',
+      emoji: '🎺',
       title: 'Star Speaker',
       blurb: 'Presented well.',
     })
@@ -87,13 +87,13 @@ describe('a catalogue award seen by students (no catalogue access)', () => {
     source: 'manual',
     announce: true,
     decidedAt: 5,
-    badge: { emoji: '🎤', title: 'Star Speaker', blurb: 'Presented well.' },
+    badge: { emoji: '🎺', title: 'Star Speaker', blurb: 'Presented well.' },
   }
   const decisions = { alex: { star_speaker: decision } }
 
   it('resolves from the decision snapshot', () => {
     expect(resolveBadge('star_speaker', [], decision)).toMatchObject({
-      emoji: '🎤',
+      emoji: '🎺',
       title: 'Star Speaker',
       blurb: 'Presented well.',
       catalogue: true,
@@ -107,7 +107,7 @@ describe('a catalogue award seen by students (no catalogue access)', () => {
 
   it("feeds the recipient's moments (card, pill and sticker sheet)", () => {
     const [moment] = listMyMoments(decisions, 'alex')
-    expect(moment.badge).toMatchObject({ emoji: '🎤', title: 'Star Speaker' })
+    expect(moment.badge).toMatchObject({ emoji: '🎺', title: 'Star Speaker' })
   })
 
   it('carries the snapshot on the class toast', () => {
@@ -127,7 +127,7 @@ describe('a catalogue award seen by students (no catalogue access)', () => {
     expect(wall).toEqual([
       expect.objectContaining({
         badgeId: 'star_speaker',
-        badge: expect.objectContaining({ emoji: '🎤', title: 'Star Speaker' }),
+        badge: expect.objectContaining({ emoji: '🎺', title: 'Star Speaker' }),
         names: ['Alex'],
       }),
     ])

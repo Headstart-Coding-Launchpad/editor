@@ -42,11 +42,11 @@ const byPathOf = (plan) =>
 describe('arguments', () => {
   it('parses the id, emoji, title, blurb and flags', () => {
     expect(
-      parseArgs(['tidy_coder', '--emoji', '🧹', '--title=Tidy Coder', '--tutor-only', '--dry-run'])
+      parseArgs(['kind_coder', '--emoji', '🌻', '--title=Kind Coder', '--tutor-only', '--dry-run'])
     ).toEqual({
-      id: 'tidy_coder',
-      emoji: '🧹',
-      title: 'Tidy Coder',
+      id: 'kind_coder',
+      emoji: '🌻',
+      title: 'Kind Coder',
       tutorOnly: true,
       dryRun: true,
       help: false,
@@ -56,15 +56,15 @@ describe('arguments', () => {
   })
 
   it('derives the variable and default title', () => {
-    expect(badgeNames('tidy_coder2')).toEqual({
-      id: 'tidy_coder2',
-      camel: 'tidyCoder2',
-      title: 'Tidy Coder2',
+    expect(badgeNames('kind_coder2')).toEqual({
+      id: 'kind_coder2',
+      camel: 'kindCoder2',
+      title: 'Kind Coder2',
     })
   })
 
   it('refuses bad ids, taken ids and taken emoji', () => {
-    const check = (request) => validateRequest(REPO_ROOT, { emoji: '🧹', ...request })
+    const check = (request) => validateRequest(REPO_ROOT, { emoji: '🌻', ...request })
     expect(check({ id: 'Bad-Id' })[0]).toMatch(/lowercase identifier/)
     expect(check({ id: 'badges' })[0]).toMatch(/not allowed/)
     expect(check({ id: 'tidy', emoji: undefined })[0]).toMatch(/Missing --emoji/)
@@ -81,7 +81,7 @@ describe('arguments', () => {
     ])
     // A variation selector doesn't make a new emoji.
     expect(check({ id: 'tidy', emoji: '⌨' })[0]).toMatch(/Keyboard Wizard/)
-    expect(check({ id: 'tidy_coder' })).toEqual([])
+    expect(check({ id: 'kind_coder' })).toEqual([])
   })
 
   it('reads which registered badges are rule-backed', () => {
@@ -96,35 +96,35 @@ describe('arguments', () => {
 
 describe('planNewBadge', () => {
   it('plans a rule-backed badge with a stub rule and two examples, without writing', async () => {
-    const plan = await planNewBadge({ root: REPO_ROOT, id: 'tidy_coder', emoji: '🧹' })
+    const plan = await planNewBadge({ root: REPO_ROOT, id: 'kind_coder', emoji: '🌻' })
     const byPath = byPathOf(plan)
     expect(Object.keys(byPath).sort()).toEqual(
       [
         'docs/CODEBASE_MAP.md',
         'docs/authoring/badges.md',
-        'src/badges/definitions/tidy_coder.js',
+        'src/badges/definitions/kind_coder.js',
         'src/badges/registry.pure.js',
       ].sort()
     )
-    expect(existsSync(path.join(REPO_ROOT, 'src/badges/definitions/tidy_coder.js'))).toBe(false)
+    expect(existsSync(path.join(REPO_ROOT, 'src/badges/definitions/kind_coder.js'))).toBe(false)
 
-    const definition = byPath['src/badges/definitions/tidy_coder.js']
-    expect(definition).toContain("id: 'tidy_coder',")
-    expect(definition).toContain("emoji: '🧹',")
-    expect(definition).toContain("title: 'Tidy Coder',")
+    const definition = byPath['src/badges/definitions/kind_coder.js']
+    expect(definition).toContain("id: 'kind_coder',")
+    expect(definition).toContain("emoji: '🌻',")
+    expect(definition).toContain("title: 'Kind Coder',")
     expect(definition).toContain('rule: anySignal(')
     expect(definition.match(/name: '/g)).toHaveLength(2)
     expect(definition).toContain('TODO(new-badge)')
 
     // Registered after the last rule-backed badge, before the tutor-only ones.
     const pure = byPath['src/badges/registry.pure.js']
-    expect(pure).toContain("import tidyCoder from './definitions/tidy_coder.js'")
-    expect(pure).toMatch(/helpfulCoder,\n {2}tidyCoder,\n {2}problemSolver,/)
+    expect(pure).toContain("import kindCoder from './definitions/kind_coder.js'")
+    expect(pure).toMatch(/helpfulCoder,\n {2}kindCoder,\n {2}problemSolver,/)
     expect(byPath['docs/authoring/badges.md']).toMatch(
-      /\| 🧹 Tidy Coder \| `tidy_coder` \| TODO\(new-badge\)[^\n]*\n\| 🧠 Problem Solver/
+      /\| 🌻 Kind Coder \| `kind_coder` \| TODO\(new-badge\)[^\n]*\n\| 🧠 Problem Solver/
     )
     expect(byPath['docs/CODEBASE_MAP.md']).toContain(
-      '`helpful_coder.js`, `tidy_coder.js`, and tutor-only'
+      '`helpful_coder.js`, `kind_coder.js`, and tutor-only'
     )
     expect(plan.checklist.join('\n')).toMatch(/real browser/)
   })
@@ -141,8 +141,8 @@ describe('planNewBadge', () => {
     const definition = byPath['src/badges/definitions/team_player.js']
     expect(definition).toContain('blurb: "Helped the team\'s project.",')
     expect(definition).not.toContain('rule')
-    expect(byPath['src/badges/registry.pure.js']).toMatch(/independentCoder,\n {2}teamPlayer,\n\]/)
-    expect(byPath['docs/CODEBASE_MAP.md']).toContain('`independent_coder.js`, `team_player.js`) |')
+    expect(byPath['src/badges/registry.pure.js']).toMatch(/carefulChecker,\n {2}teamPlayer,\n\]/)
+    expect(byPath['docs/CODEBASE_MAP.md']).toContain('`careful_checker.js`, `team_player.js`) |')
     expect(byPath['docs/authoring/badges.md']).toContain(
       '| 🫶 Team Player | `team_player` | Tutor-only: never suggested | – |'
     )
@@ -150,27 +150,27 @@ describe('planNewBadge', () => {
 
   it('applies the plan in a copy of the repo and refuses to run twice', async () => {
     const root = tempRepo()
-    const plan = await planNewBadge({ root, id: 'tidy_coder', emoji: '🧹' })
+    const plan = await planNewBadge({ root, id: 'kind_coder', emoji: '🌻' })
     applyPlan(root, plan)
-    expect(existsSync(path.join(root, 'src/badges/definitions/tidy_coder.js'))).toBe(true)
+    expect(existsSync(path.join(root, 'src/badges/definitions/kind_coder.js'))).toBe(true)
     expect(readFileSync(path.join(root, 'src/badges/registry.pure.js'), 'utf8')).toContain(
-      "'./definitions/tidy_coder.js'"
+      "'./definitions/kind_coder.js'"
     )
-    await expect(planNewBadge({ root, id: 'tidy_coder', emoji: '🧽' })).rejects.toThrow(
+    await expect(planNewBadge({ root, id: 'kind_coder', emoji: '🧽' })).rejects.toThrow(
       /already exists\. Refusing to overwrite/
     )
-    await expect(planNewBadge({ root, id: 'neat_coder', emoji: '🧹' })).rejects.toThrow(
-      /already the Tidy Coder badge/
+    await expect(planNewBadge({ root, id: 'neat_coder', emoji: '🌻' })).rejects.toThrow(
+      /already the Kind Coder badge/
     )
     expect(() => applyPlan(root, plan)).toThrow(/already exists/)
   })
 
   it('refuses to apply a stale plan', async () => {
     const root = tempRepo()
-    const plan = await planNewBadge({ root, id: 'tidy_coder', emoji: '🧹' })
+    const plan = await planNewBadge({ root, id: 'kind_coder', emoji: '🌻' })
     writeFileSync(path.join(root, 'docs/authoring/badges.md'), 'edited meanwhile\n')
     expect(() => applyPlan(root, plan)).toThrow(/changed while planning/)
-    expect(existsSync(path.join(root, 'src/badges/definitions/tidy_coder.js'))).toBe(false)
+    expect(existsSync(path.join(root, 'src/badges/definitions/kind_coder.js'))).toBe(false)
   })
 })
 
@@ -178,14 +178,14 @@ describe('command line', () => {
   it('--dry-run prints the plan and writes nothing', () => {
     const result = spawnSync(
       process.execPath,
-      ['scripts/new-badge.mjs', 'tidy_coder', '--emoji', '🧹', '--dry-run'],
+      ['scripts/new-badge.mjs', 'kind_coder', '--emoji', '🌻', '--dry-run'],
       { cwd: REPO_ROOT, encoding: 'utf8' }
     )
     expect(result.status).toBe(0)
-    expect(result.stdout).toContain('create  src/badges/definitions/tidy_coder.js')
-    expect(result.stdout).toContain("+ import tidyCoder from './definitions/tidy_coder.js'")
+    expect(result.stdout).toContain('create  src/badges/definitions/kind_coder.js')
+    expect(result.stdout).toContain("+ import kindCoder from './definitions/kind_coder.js'")
     expect(result.stdout).toContain('Dry run: nothing was written.')
-    expect(existsSync(path.join(REPO_ROOT, 'src/badges/definitions/tidy_coder.js'))).toBe(false)
+    expect(existsSync(path.join(REPO_ROOT, 'src/badges/definitions/kind_coder.js'))).toBe(false)
   })
 
   it('exits non-zero with the reasons when the id or emoji is taken', () => {

@@ -37,6 +37,21 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-05
+
+### 12 new tutor-only badges: confidence, sharing and code craft
+
+- Confidence: `honest_check_in` (🌡️ Honest Check-in), `brave_coder` (🦁 Brave Coder),
+  `growing_coder` (🌱 Growing Coder), `comeback_coder` (🔁 Comeback Coder).
+- Sharing: `show_and_tell` (🎤 Show and Tell), `great_answer` (💬 Great Answer),
+  `code_teacher` (🧑‍🏫 Code Teacher), `teacher_trap` (🕵️ Teacher Trap).
+- Code craft: `tidy_coder` (🧹 Tidy Coder), `edge_explorer` (🔦 Edge Explorer),
+  `finisher` (🏁 Finisher), `careful_checker` (🧷 Careful Checker).
+- Tutor-only: tutors award them by hand (student modal → More → 🏅 Award badge), they are
+  never suggested, and they can't be named in `badgeHints.suggest`. Honest Check-in may later gain
+  a suggestion rule the tutor confirms. See [badges.md](badges.md).
+- Affects: all · Existing lessons: no changes needed · Resolves: authoring-requests/2026-10-02-12-new-tutor-only-live-badges-confidence-sharing-code-craft.md
+
 ## 2026-10-04
 
 ### Scratch `audio` sounds play from Firebase Storage and any other host

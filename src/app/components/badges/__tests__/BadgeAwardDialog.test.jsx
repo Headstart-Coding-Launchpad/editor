@@ -34,7 +34,7 @@ describe('BadgeAwardDialog', () => {
   it('lists catalogue badges and leaves archived ones out', () => {
     renderDialog({
       catalogueBadges: [
-        { id: 'star_speaker', emoji: '🎤', title: 'Star Speaker', blurb: 'Presented well.' },
+        { id: 'star_speaker', emoji: '🎺', title: 'Star Speaker', blurb: 'Presented well.' },
         { id: 'old_one', emoji: '🗿', title: 'Old One', archived: true },
       ],
     })
@@ -94,12 +94,12 @@ describe('BadgeAwardDialog', () => {
     const user = userEvent.setup()
     const { onDecideBadge } = renderDialog({
       catalogueBadges: [
-        { id: 'star_speaker', emoji: '🎤', title: 'Star Speaker', blurb: 'Presented well.' },
+        { id: 'star_speaker', emoji: '🎺', title: 'Star Speaker', blurb: 'Presented well.' },
       ],
     })
     await selectAndAward(user, 'star_speaker')
     expect(onDecideBadge.mock.calls[0][2].badge).toEqual({
-      emoji: '🎤',
+      emoji: '🎺',
       title: 'Star Speaker',
       blurb: 'Presented well.',
     })
@@ -111,7 +111,7 @@ describe('BadgeAwardDialog', () => {
         s1: {
           star_speaker: {
             status: 'awarded',
-            badge: { emoji: '🎤', title: 'Star Speaker', blurb: 'Presented well.' },
+            badge: { emoji: '🎺', title: 'Star Speaker', blurb: 'Presented well.' },
           },
         },
       },
@@ -193,7 +193,7 @@ describe('BadgeAwardDialog', () => {
 
   it('puts catalogue badges under Admin badges', () => {
     renderDialog({
-      catalogueBadges: [{ id: 'star_speaker', emoji: '🎤', title: 'Star Speaker' }],
+      catalogueBadges: [{ id: 'star_speaker', emoji: '🎺', title: 'Star Speaker' }],
     })
     const admin = screen.getByRole('group', { name: 'Admin badges' })
     expect(within(admin).getByTestId('badge-option-star_speaker')).toBeInTheDocument()
