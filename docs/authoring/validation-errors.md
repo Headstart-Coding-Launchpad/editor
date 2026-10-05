@@ -237,7 +237,7 @@ message says `feedback check` where it would say `check` (that part is shown as 
 | `Task … feedback check … references a code stage that does not exist` | `stageOffer.stageIndex` is outside `codeStages`. | Point it at an existing stage (0-based). |
 | `Task … feedback check … stage offer action must be preview or replace` | Unknown `stageOffer.action`. | Use `preview` or `replace`. |
 | `Task … feedback check … stage offer threshold must be a positive whole number` | `stageOffer.afterMatches` is 0, negative or not a whole number. | Use 1, 2, 3, … or remove it. |
-| `Task … uses submit mode but has a … that requires running the code` | `interactionMode: submit` tasks never run, so output/variable/element checks can't pass. | Use code checks, or remove submit mode. |
+| `Task … uses submit mode but has a … that requires running the code` | `interactionMode: submit` tasks never run, so output/variable/element/`run_attempted` checks can't pass. | Use code checks, or remove submit mode. |
 | `Task … has an element … but no CSS selector` | An HTML element check has no `selector`. | Add `selector:`. |
 | `Task … has an element attribute … but no attribute name` | `html_element_attribute` has no `attribute`. | Add `attribute:`. |
 | `Task … has an element style … but no CSS property` | `html_element_style_property` has no `property`. | Add `property:`. |
@@ -275,9 +275,16 @@ message says `feedback check` where it would say `check` (that part is shown as 
 | `Task … has a control … but no control or controlled part` | `circuit_control_affects_power` is missing one side. | Set both `control` and `component`. |
 | `Task … has a circuit connection … but no source or destination part/pin` | A path check's `from`/`to` is incomplete. | Give both a part and a `pin`. |
 | `Task … has a circuit connection-includes … but no required part` | `circuit_path_includes` has no `includes`. | Add the part the path must go through. |
-| `Task … has an ArcadeKit check that is not a code check — only code checks are evaluated when the game runs` (warning) | An Arcade task has an output, variable or other non-code check. Arcade games run in their own frame with no captured output, so only `code` checks are evaluated (each time the student presses **Run game**). | Replace it with a `code` check, or remove it. |
+| `Task … has an ArcadeKit check that is not a code check — only code checks are evaluated when the game runs` (warning) | An Arcade task has an output, variable or other non-code check. Arcade games run in their own frame with no captured output, so only `code` checks (and `run_attempted`) are evaluated (each time the student presses **Run game**). | Replace it with a `code` check, or remove it. |
 | `Task … has a code … but no check value` | A generic `code` check on a Turtle or Electronics task has no `value`. | Add the text (or regex) the student's code should match. |
-| `Task … has a turtle … with unknown type "…"` | Not one of the Turtle check types or a generic `code` check. | See `turtle.md`. |
+| `Task … has a turtle … with unknown type "…"` | Not one of the Turtle check types, a generic `code` check or `run_attempted`. | See `turtle.md`. |
+| `Task … has a run_attempted check, but … tasks have no Run button — run_attempted needs a module with a Run button (Python, Turtle, Arcade, Electronics, HTML or Scratch)` | `run_attempted` passes when the student presses Run; Filesystem and Desktop tasks have nothing to run. | Use the module's own checks (e.g. `fs_*`, `window_state`), or move the demo to a module with Run. |
+| `Task … has a run_attempted feedback check — run_attempted can only be a completion check` | A feedback check matching "the student ran it" would fire on every run. | Move it to the completion `check`. |
+| `Task … has a run_attempted check whose requireSuccess is not true or false` | `requireSuccess` is a string or number. | Write `requireSuccess: true`, or remove it (any run counts). |
+| `Task … has a run_attempted check with requireSuccess, but … runs never report an error — requireSuccess is ignored there` (warning) | Arcade, HTML and Scratch runs have no error status, so any run passes. | Remove `requireSuccess`. |
+| `Task … has a run_attempted check with evaluation after_block_placed — it is judged when the green flag runs, so remove its evaluation` | A Scratch `run_attempted` was marked to be judged while editing blocks, where no run has happened. | Remove `evaluation` (or use `after_run`). |
+| `Task … has a run_attempted check and tests — a task with tests is completed by its tests, so the run_attempted check is never used` (warning) | Python `tests` replace the completion check. | Remove the `tests` for a demo task, or remove `run_attempted`. |
+| `Task … has a run_attempted check but no Micro Controller — an Electronics task only has a Run button when its board has one` (warning) | Electronics' Run lives in the Code tab, which needs a Micro Controller on the board (or `microcontroller.enabled: true`). | Add a Micro Controller to the starter board, or use circuit checks. |
 | `Task … has a turtle position … but no x/y target` | `turtle_position` needs `x` and `y`. | Add both. |
 | `Task … has a turtle … but no check value` | A heading/count/length check has no `value`. | Add `value:`. |
 | `Task … has a turtle command … with no valid command (one of: …)` | `turtle_command_used` names an unknown command. | Use one of the listed names, e.g. `forward`, `turn`, `circle`. |

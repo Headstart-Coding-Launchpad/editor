@@ -177,6 +177,18 @@ check:
     hint: Use a for loop to repeat the sides.
 ```
 
+**Demo tasks** ("press Run and watch") use `run_attempted`: it passes once the student presses
+**Run**, even if the program errors or they press Stop. Add `requireSuccess: true` to also require
+a run that finishes without an error. It is a completion check only (not a feedback check). Full
+reference and a worked example:
+[python.md](python.md#run-attempted-check-run_attempted).
+
+```yaml
+check:
+  type: run_attempted
+  hint: Press **Run** and watch the turtle draw.
+```
+
 ### Turtle check types
 
 | Type | Fields | Passes when |
@@ -197,8 +209,9 @@ Feedback/incorrect checks use the same types.
 The Builder and `node cli/cli.mjs lessons validate` apply the same rules to
 Turtle checks and feedback checks:
 
-- The `type` must be one of the eight turtle types above, or a generic `code`
-  check (including legacy aliases like `code_contains`).
+- The `type` must be one of the eight turtle types above, a generic `code`
+  check (including legacy aliases like `code_contains`), or `run_attempted`
+  (completion checks only).
 - A `code` check needs a `value`.
 - `turtle_position` needs both `x` and `y`.
 - `turtle_heading`, `turtle_segment_count`, `turtle_path_length` and

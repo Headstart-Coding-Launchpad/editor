@@ -374,7 +374,8 @@ destroying that iframe when source changes or the student presses Stop.
 Arcade Kit currently supports one Python source file, images, animated sprite
 sheets, rectangles, text, simple sprite and tile collision, keyboard and pointer
 input, scrolling cameras, and basic audio. It does not yet support Python
-packages, file I/O, gamepads, a full physics engine, or completion checks based on game state. See
+packages, file I/O, gamepads, a full physics engine, or completion checks based on game state
+(`run_attempted` certifies only that the game was run). See
 [ARCADE_KIT_STATUS.md](../ARCADE_KIT_STATUS.md) for the current implementation
 status and planned work.
 
@@ -385,10 +386,10 @@ also relies on), so a blocking `input()` call inside the `update()`/`draw()`
 game loop has no way to receive a value. Do not author a task that relies on
 `input()` inside Arcade Kit.
 
-**Only code checks are evaluated, each time the student presses Run game.**
-The game runs in its own frame with no captured text output, so `check` and
-`feedbackChecks` on an Arcade task should use the generic `code` type
-(`contains`, `not_contains`, `equals`, `not_equals`, `matches_regex`,
+**Only code checks and `run_attempted` are evaluated, each time the student
+presses Run game.** The game runs in its own frame with no captured text output,
+so `check` and `feedbackChecks` on an Arcade task should use the generic `code`
+type (`contains`, `not_contains`, `equals`, `not_equals`, `matches_regex`,
 `not_matches_regex`). Run game then passes or fails the task and shows hints
 like any other code task. Output, variable and other check types are ignored.
 The Builder and `lessons validate` warn about them. Checks on game state
@@ -401,4 +402,24 @@ check:
     operator: contains
     value: game.run()
     hint: Start the game loop with game.run() at the end of your code.
+```
+
+**Demo tasks** (a Visual Fun Application the student only plays) use
+`run_attempted` as the completion check: it passes the first time the student
+presses **Run game**, whatever the game then does. It combines with `code`
+checks in a list, and is a completion check only. `requireSuccess` is ignored in
+Arcade (the game's Python errors arrive after the run has been reported), and
+the validator warns about it. Full reference:
+[python.md](python.md#run-attempted-check-run_attempted).
+
+```yaml
+- title: 🎮 Watch It Move
+  taskActivity: Code Task, Visual Fun Application
+  starterCode: |
+    from headstart_arcade import game, keys
+    # ...
+    game.run()
+  check:
+    type: run_attempted
+    hint: Press **Run game**, then try the arrow keys.
 ```

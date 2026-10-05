@@ -37,6 +37,43 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-05
+
+### New `run_attempted` check for demo tasks
+
+- Demo tasks (Complete Example, Visual Fun Application: "press Run and watch") can now require
+  that the student actually ran the code. `check: { type: run_attempted }` passes once the student
+  presses **Run** (Python, Turtle, Electronics, HTML), **Run game** (Arcade Kit) or the **green
+  flag** (Scratch — clicking a single script does not count). Any run counts, even one that
+  errors or that the student stops; once passed the task stays complete.
+- Optional `requireSuccess: true` also requires the run to finish without an error. Honoured in
+  Python, Turtle and Electronics; ignored in Arcade, HTML and Scratch (a validator warning).
+- Composes with other completion checks in a list (all must pass); mixed with any other check an
+  erroring run fails as before. It is a completion check only: rejected as a feedback check, in
+  submit mode, on Filesystem/Desktop (no Run button) and as a Scratch `after_block_placed` check.
+  It never passes without a run (`lessons test-checks` reports `fail`, Scratch verification
+  `skipped`, the auto-check on leave **not run**). The Builder offers it as a **Run** check.
+- Example:
+
+  ```yaml
+  - title: 🎮 Watch It Move
+    taskActivity: Code Task, Complete Example
+    starterCode: |
+      import turtle
+      for side in range(4):
+          turtle.forward(100)
+          turtle.left(90)
+    check:
+      type: run_attempted
+      hint: Press **Run** to see the program work.
+  ```
+
+  Reference: [python.md](python.md#run-attempted-check-run_attempted); per-module notes in
+  `turtle.md`, `arcade.md`, `electronics.md` and `scratch.md`.
+- Affects: python, turtle, arcade, electronics, html, scratch, cli · Existing lessons: no changes
+  needed (checkless demo tasks can add `check: { type: run_attempted }`) · Resolves:
+  authoring-requests/2026-10-04-run-attempted-completion-signal-for-demo-mode-tasks.md
+
 ## 2026-10-04
 
 ### Scratch `audio` sounds play from Firebase Storage and any other host
