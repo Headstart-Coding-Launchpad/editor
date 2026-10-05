@@ -37,6 +37,27 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-05
+
+### Optional `lessonNumber` orders lessons within a level
+
+- New optional lesson-envelope field `lessonNumber`: a positive whole number giving the lesson's
+  position in its level. Every lesson list (Admin, the Builder's "Open from Firestore" picker
+  and `lessons list`) now sorts within a level by `lessonNumber`, unnumbered lessons after
+  numbered ones by title, and shows it next to the title (`9 · Boolean Flags`). The classroom
+  header shows `Lesson 9` beside the level badge.
+- A Solo Challenge (`companionOf`) needs no number: it sorts straight after its parent. Give a
+  Solo Project the number of the lesson it follows; on a shared number the lesson without
+  `soloOnly` comes first, then its companion, then the `soloOnly` lesson.
+- `lessons validate` and the Builder reject `0`, negatives, decimals and strings. Like task
+  `intent`, a save or upsert that leaves `lessonNumber` out keeps the stored number;
+  `lessonNumber: null` clears it. Set it in the Builder's new "Lesson number" field.
+- `lessons list` (JSON and YAML) now includes `lessonNumber`, `soloOnly` and `companionOf` for
+  every lesson, in the new order; `lessons get` includes `lessonNumber` (`null` when unset).
+  See "Lesson Numbers" in [lesson-schema.md](lesson-schema.md).
+- Affects: all, cli · Existing lessons: no changes needed (add `lessonNumber` to set list
+  order) · Resolves: authoring-requests/2026-10-05-lesson-number-field-lessonnumber-that-sorts-lessons-within-a.md
+
 ## 2026-10-04
 
 ### Scratch `audio` sounds play from Firebase Storage and any other host

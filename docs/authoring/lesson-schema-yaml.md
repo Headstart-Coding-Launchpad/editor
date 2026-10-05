@@ -32,6 +32,7 @@ version: 3                   # current successful-save version (managed by CLI/B
 description: Practise loops. # required — shown on the entry screen
 level: Level 1               # optional legacy display fallback; prefer levelId/levelRef
 levelId: python-level-1      # optional reusable level id from lessonLevels/
+lessonNumber: 9              # optional — position within the level (positive whole number)
 levelRef:                    # optional reusable level reference
   id: python-level-1
   scopeType: type            # type | module | course | collection
@@ -68,6 +69,7 @@ tasks: []                     # required — ordered task list (see below)
 | `level` | No | string/number | Legacy display fallback for the difficulty badge. Publishing migrates scalar values into reusable level records when no `levelId`/`levelRef` exists. |
 | `levelId` | No | string | ID of a reusable record in `lessonLevels/`. |
 | `levelRef` | No | object | `{ id, scopeType, scopeId }` reference for the reusable level. |
+| `lessonNumber` | No | positive integer | Position within its level (`1`, `2`, `3` …). Shown next to the title ("9 · Boolean Flags") in the Admin lesson list, the Builder's lesson picker and `lessons list`, and as "Lesson 9" in the classroom header. Lists sort within a level by `lessonNumber`, unnumbered lessons after numbered ones by title. A Solo Challenge (`companionOf`) needs none: it sorts straight after its parent. Give a Solo Project the number of the lesson it follows; on a shared number the lesson without `soloOnly` comes first, then its companion, then the `soloOnly` lesson. `0`, negatives, decimals and strings fail validation. A save or upsert that leaves the field out keeps the stored number; `lessonNumber: null` clears it. See "Lesson Numbers" in `docs/authoring/lesson-schema.md`. |
 | `topicProposals` | No | array | Missing Topic Library entries proposed by the lesson. See `docs/authoring/AUTHORING_GUIDE.md`. |
 | `assetsPath` | No | string | Base URL path for asset resolution. |
 | `assets` | No | string array | Files shown in the AssetBrowser. |

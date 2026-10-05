@@ -35,7 +35,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `AdminPortal.jsx` | Admin portal shell: header with account/sign-out actions and tab switcher between Lessons, Levels, Classes, Sessions, Topics, Shared Assets, Badges, Accounts, and Feedback panels |
 | `AdminUi.jsx` | Shared Admin Portal UI primitives for panels, buttons, status pills, filters, and empty states |
 | `AccountManagement.jsx` | Firestore `users` real-time list; create/role/password/disable/enable/delete via Cloud Functions |
-| `LessonPanel.jsx` | Firestore `lessons`, `lessonLevels`, `classes`, `sessionReports`, and feedback collection-group view; reusable level/class management, class fork creation, lesson actions, report/feedback collapsibles |
+| `LessonPanel.jsx` | Firestore `lessons`, `lessonLevels`, `classes`, `sessionReports`, and feedback collection-group view; lessons grouped by level and ordered with `src/shared/lessonOrder.js` ("9 · Title", Solo Challenges under their parent and its level); reusable level/class management, class fork creation, lesson actions, report/feedback collapsibles |
 | `SessionsPanel.jsx` | Realtime Database `sessions` list filtered to non-`ended` states; shows lesson, state, paused flag, student/online counts, and open duration; "Close Session" removes the session node so teachers who left a session open can be cleaned up |
 | `TopicLibraryPanel.jsx` | Firestore `topicLibrary` CRUD editor: searchable topic list, full topic form with MarkdownFieldEditor for description/syntax fields |
 | `FeedbackPanel.jsx` | Firestore `platformFeedback` real-time list; displays date, teacher email, lesson/task context, and feedback text |
@@ -89,7 +89,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 | File | Role |
 |---|---|
-| `TopBar.jsx` | Header: lesson title, level badge, SOLO/LIVE/SANDBOX badge, student name, progress dots slot; `singleRow` (StudentView) makes it one fixed-height 52px row that never wraps, with the name as a small chip |
+| `TopBar.jsx` | Header: lesson title, level badge, "Lesson N" when the lesson has a `lessonNumber`, SOLO/LIVE/SANDBOX badge, student name, progress dots slot; `singleRow` (StudentView) makes it one fixed-height 52px row that never wraps, with the name as a small chip |
 | `TaskNavigator.jsx` | Left sidebar: task list with group collapse, run/check stats, sandbox and pause controls |
 | `TaskProgressDots.jsx` | Top bar progress indicator: clickable past dots, locked future dots, current highlighted; measures itself and falls back to an "x/y" counter; `compact` (student top bar) uses smaller dots and scrolls sideways, current dot kept in view, when at least five fit but not all |
 | `ExplainerPanel.jsx` | Collapsible Markdown explainer panel above the editor; `disableCopy` prop blocks selection/copy (used for student-facing renders only); `entranceKey` drops the panel in and slides its bullets in on the task's first view (`useFirstView`), not on a ▲/▼ toggle or a same-task edit; `inkSurfaceId` makes the content annotatable from the Presentation window (`src/app/liveInk/`) |
@@ -295,7 +295,7 @@ The teacher's live pointer, fading ink and text highlights from the Presentation
 
 | File | Role |
 |---|---|
-| `LessonMetaPanel.jsx` | Lesson-level metadata: id, type, title, description, level, topic summary/proposals, assets (shared type assets for `authoring.sharedTypeAssets` modules), sandbox config modals |
+| `LessonMetaPanel.jsx` | Lesson-level metadata: id, type, title, description, level, lesson number, topic summary/proposals, assets (shared type assets for `authoring.sharedTypeAssets` modules), sandbox config modals |
 | `LessonTopicSummary.jsx` | Derived existing/missing/unused topic report and editor for lesson-level topic proposals |
 | `TaskList.jsx` | Left sidebar: task/group tree with drag-reorder, selection, creation, validation summary; task icons/tooltips for quizzes and activities come from the activity registry |
 | `TaskEditor.jsx` | Task editor composition root: orchestrates sub-components and workspace panels; task format grid Code / Information / Quiz / Activity (+ Arrange in composed lessons) via `getTaskFormat`, with the quiz picker, activity gallery and quiz `BuilderEditor`s from the activity registry; dispatches to lesson-type `BuilderWorkspace` via registry; module gates (stage tabs, draft notice, Code button, copy-code placeholder, preview assets, reset-to-starter) come from the definition's `capabilities.unifiedStages` and `authoring` group; delegates run/check state to `useTaskEditorState`; re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
@@ -641,6 +641,7 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs
 | `codeSubmission.js` | `normalizeCodeSubmission()`: parses a JSON code submission from the attempt log back to its object shape (HTML file map, Scratch state), leaving plain code strings; shared by the session report and the code_arrange activity's report |
 | `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder, returns `{ join, solo, teacher, preview }` (bare smart-join URL, plus `?solo=true`, `?teacher=true` and `?preview=true` links); used by TeacherView, LessonPanel and SessionsPanel |
 | `lessonLevels.js` | Reusable level reference helpers: level Firestore collection name, scope derivation, legacy migration, display title resolution, and sorting |
+| `lessonOrder.js` | Pure shared lesson ordering for every lesson list (Admin, Builder picker, CLI `lessons list`): `sortLessons()` (level, then `lessonNumber`, unnumbered by title, Solo Challenges right after their parent), `compareLessonsInLevel()`, `formatLessonLabel()` ("9 · Title"), `getLessonNumber()` / `isValidLessonNumber()` (also used by validation and the TopBar) |
 | `lessonForks.js` | Deterministic class-fork helpers: class record normalization, fork ID/title creation, stock lesson copy, and task lineage construction |
 | `youtube.js` | Pure YouTube URL parsing for the `recordingUrl` lesson field: `extractYouTubeId()`, `isValidRecordingUrl()`, `buildYouTubeEmbedSrc()`. Dependency-free (only the built-in `URL`) so it's shared between the browser widget/Builder field and the Node CLI validator |
 | `pasteDetection.js` | Large-paste thresholds (40 chars / 3 lines) and helpers used by `handleEditorPaste` to flag pastes to the teacher |
@@ -653,8 +654,8 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs
 | `composedLesson.js` | Pure composed-lesson module resolution, structural validation, sandbox adaptation, and scoped carry-source helpers |
 | `codeArrange.js` | Pure helpers for the `code_arrange` task type: the one shared task-level tile pool, slot-completeness, assembling the final runnable code string from tile placements (`assembleCodeArrangement`), and its inverse (`deriveSlotStateFromCode`, backtracking over the shared pool using each line's fixed text as anchors) — the run pipeline and check evaluator only ever see the final assembled string |
 | `draftLesson.js` | Shared structural validation for incomplete lesson-level draft tasks. |
-| `lessonAudit.js` | Current-state lesson/task version and change-timestamp helper with no-op detection. |
-| `lessonService.js` | Shared lesson loading and publishing helpers: `fetchLessonById()`, `fetchLessonList()`, `publishLesson()`, `publishLessonTasks()`, `deletePublishedLesson()`, `publishLessonFork()`, `applyLessonOverride()`; class helpers; publishing migrates legacy scalar levels; session report helpers: `saveSessionReport()`, `fetchSessionReports()` |
+| `lessonAudit.js` | Current-state lesson/task version and change-timestamp helper with no-op detection; carries a stored `lessonNumber` forward when a save omits it. |
+| `lessonService.js` | Shared lesson loading and publishing helpers: `fetchLessonById()`, `fetchLessonList()` (sorted with `lessonOrder.js` using the `lessonLevels` order), `publishLesson()`, `publishLessonTasks()`, `deletePublishedLesson()`, `publishLessonFork()`, `applyLessonOverride()`; class helpers; publishing migrates legacy scalar levels; session report helpers: `saveSessionReport()`, `fetchSessionReports()` |
 | `appVersion.js` | Reads the `__APP_BUILD_INFO__` build constant injected by `vite.config.js` (null under Vitest) and formats the version label (`formatAppVersion`, `formatVersionNumber`, `formatBuildDate`) |
 | `motion.js` | Shared motion helpers (docs/architecture/motion-system.md): `MOTION_MS` (mirrors the `--motion-*` CSS tokens), `prefersReducedMotion()`, `staggerStyle(i)`, `firstViewKey(...)` / `useFirstView(key)` (entrance plays on a task's first view only, in-memory per window) / `resetFirstViews()`, `usePassMoment(passed, taskKey)` (counts watched false→true passes, for spins and the success chime) |
 | `preloadImages.js` | Background image preloading for task navigation: `markdownImageUrls(text)`, `collectTaskImageUrls(task, lesson)` (explainer / `leftContent` / `description` Markdown images as authored, Scratch costumes and backdrops via `resolveAssetFileUrl`, so the real load hits the cache), `preloadImages(urls)` (low-priority `new Image()`, once per page load), `usePreloadNeighbourImages(lesson, flatTasks, index)` (the tasks either side, once idle; used by `StudentView` and `TeacherView`) |
@@ -750,7 +751,7 @@ Node.js CLI for lesson and topic library management against Firestore and Fireba
 | `cli/topic-utils.mjs` | Standalone topic-library normalization and validation helpers used by CLI conversion/publish commands |
 | `cli/yaml-converter.mjs` | YAML conversion helpers for lessons and topic libraries, including lesson/topic JSON-to-YAML serialization and the `type: <activity>` shorthand (both directions, via the activity registry) |
 | `cli/structured-input.mjs` | JSON/YAML input detection for CLI files and stdin; lesson YAML is passed through the lesson shorthand converter |
-| `cli/lessons.mjs` | Exports async functions: `listLessons`, `getLesson`, `getLessonSkeleton`, `getTask`, `upsertTask`, `appendTask`, `upsertLesson`, `deleteLesson`, `yamlToLesson`, `publishYamlLesson` |
+| `cli/lessons.mjs` | Exports `buildLessonListRows` (list rows in the shared `lessonOrder.js` order, with `lessonNumber`, `soloOnly`, `companionOf`) and async functions: `listLessons`, `getLesson`, `getLessonSkeleton`, `getTask`, `upsertTask`, `appendTask`, `upsertLesson`, `deleteLesson`, `yamlToLesson`, `publishYamlLesson` |
 | `cli/topics.mjs` | Exports topic Firestore functions plus bulk topic-library YAML/JSON publish helpers |
 | `cli/feedback.mjs` | Exports Firestore feedback helpers: list (platform/lesson/all), add (lesson/platform), archive by ID (soft-delete via `archived: true`), and bulk-clear (archive) with optional filters |
 | `cli/assets.mjs` | Exports async functions: `listLessonAssets`, `uploadLessonAsset`, `deleteLessonAsset` |

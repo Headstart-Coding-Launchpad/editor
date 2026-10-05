@@ -37,6 +37,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `fork` | No | object | Metadata for admin-created class forks. Forked lesson IDs must be `{sourceLessonId}-{classId}` and the fork is still a normal public lesson with its own URL. |
 | `recordingUrl` | No | string | Unlisted YouTube link to a recorded live session, authorable on any lesson (including class forks — see Fork Metadata) via the Builder's "Recording" field. Shown to solo students as a small pop-out player; not shown during live sessions or teacher presentation. The YouTube video must be set to **Unlisted** (not Private) — students never sign in with Google. Parsed/validated with `src/shared/youtube.js`; only `youtube.com`/`youtu.be` links are accepted. |
 | `soloOnly` | No | boolean | Default `false`/absent. When `true`, the lesson is hard-forced to solo mode always — the live/wait choice screen is never offered to students, regardless of which URL they open (even `?solo=true` is redundant, and even if a live session exists for the lesson, students stay in solo mode). Authored via the Builder's "Solo-only lesson" checkbox in `LessonMetaPanel.jsx`, alongside `draft`. See `docs/agents/runtime-model.md` for how this interacts with the URL/session join flow. |
+| `lessonNumber` | No | positive integer | Position of the lesson within its level; orders every lesson list and shows as "9 · Title" (lists) and "Lesson 9" (classroom header). Authored via the Builder's "Lesson number" field in `LessonMetaPanel.jsx` (clearing it stores `null`). See Lesson Numbers. |
 | `companionOf` | No | string | Set on a `soloOnly` "solo challenge" lesson to the `id` of the parent lesson it extends (see Solo Companion Metadata). Authored via the Builder's "Solo challenge companion of" text field in `LessonMetaPanel.jsx`, next to the "Solo-only lesson" checkbox. |
 | `badgeOptions` | No | object | Tunes the built-in live badge rules for this lesson: `quizMasterThreshold` (0–1, default `0.8`), `quizMasterMinQuizzes` (default `3`), `persistenceMinFails` (default `2`), `readyToCodeSeconds` (default `10`), `earlyBirdMinutes` (default `5`). Lessons never define badges. See [badges.md](badges.md#badgeoptions). |
 | `tasks` | Yes | array | Ordered task list. IDs are sequential integers starting at `1`. May contain group objects. |
@@ -74,6 +75,39 @@ Class forks are created by admins through Admin or the CLI. Creating the same fo
 A "solo challenge" lesson is a normal lesson (own `id`, own URL, `soloOnly: true`) that extends another lesson. Setting `companionOf` to the parent lesson's `id` links the two: the Admin lesson list groups the solo lesson under its parent, and students who finish the parent lesson (live or solo) are offered a "Try the Solo Challenge" button that drops them straight into the companion in solo mode. The link is one-directional and lives on the solo lesson only — the parent lesson document is not modified. At most one solo companion is resolved per parent lesson; if more than one lesson sets the same `companionOf`, only one is shown.
 
 Use `node cli/cli.mjs lessons link-solo` to preview a one-time backfill of `companionOf` for existing lessons that already follow the informal `<id>-solo` naming convention (add `--apply` to write it); it never overwrites an existing `companionOf` and flags `-solo`-suffixed lessons with no matching parent id for manual review.
+
+### Lesson Numbers
+
+```yaml
+# Main lesson
+id: k3f9x2qp7a
+title: Boolean Flags
+levelId: python-level-1
+lessonNumber: 9
+---
+# Its Solo Challenge: no number needed, sorts straight after its parent
+id: m8d2r6tw1c
+title: Boolean Flags — Solo Challenge
+soloOnly: true
+companionOf: k3f9x2qp7a
+---
+# Half-term Solo Project after Lesson 6: same number as the lesson it follows
+id: z5h1q9vb4e
+title: Solo Project 1
+soloOnly: true
+levelId: python-level-1
+lessonNumber: 6
+```
+
+Lesson ids are random, so the optional `lessonNumber` (a positive whole number) gives a lesson its place in its level. One shared order (`src/shared/lessonOrder.js`) is used by every lesson list: the Admin lesson list, the Builder's "Open from Firestore" picker and `node cli/cli.mjs lessons list`.
+
+- Lessons group by level (level `order`, then title; lessons without a level last). Within a level, numbered lessons come first by `lessonNumber` ascending, then unnumbered lessons by title.
+- A lesson with `companionOf` whose parent is in the list sorts directly after its parent (companions of one parent by title), whatever its own level or number. If the parent is missing, it sorts by its own level, number and title. In Admin it lists under its parent's level.
+- On a shared number the lesson without `soloOnly` comes first, then its companion, then any other `soloOnly` lesson (a Solo Project), then by title.
+- Lists show the number next to the title (`9 · Boolean Flags`); the classroom header (students and teacher) shows `Lesson 9` beside the level badge. Lessons without a number show only the title.
+- Validation (Builder and `lessons validate`) rejects `0`, negative numbers, decimals and strings. `null` means no number.
+- Like task `intent`, a Builder save or `lessons upsert` that leaves `lessonNumber` out keeps the stored number; set a new value to renumber, or `null` to clear it. Class forks copy it from their source lesson.
+- `lessons list` (JSON and YAML) includes `lessonNumber`, `soloOnly` and `companionOf` for every lesson (`null` when unset); `lessons get` includes `lessonNumber` (`null` when unset).
 
 ---
 

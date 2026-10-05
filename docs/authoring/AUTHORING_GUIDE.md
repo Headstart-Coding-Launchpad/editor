@@ -63,6 +63,7 @@ description: Practise loops. # required — shown on the entry screen
 draft: false                 # optional; true enables incomplete real tasks while authoring
 version: 3                   # LaunchPad-managed save version; do not set it in source YAML
 level: 1                     # optional — difficulty badge in the TopBar
+lessonNumber: 9              # optional — position within the level; orders lesson lists ("9 · Title")
 
 # Assets
 assetsPath: scratch-assets   # optional — base URL for image assets
