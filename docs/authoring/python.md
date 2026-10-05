@@ -259,6 +259,8 @@ If a completion check passes but a blocking feedback check also matches, the tas
 
 Only one hint is shown per attempt: a matched feedback check's hint beats every completion-check hint, and otherwise the first *failed* completion check (in list order) with a `hint` wins. See [Which hint is shown](AUTHORING_GUIDE.md#which-hint-is-shown).
 
+**When the code can't run** (a `SyntaxError` or runtime error), the task always fails but the checks still pick a hint: `code` / `code_structure` checks and `feedbackChecks` are evaluated against the source as typed (so a regex feedback check such as `matches_regex: '=\s*return'` catches a syntax slip), `code_no_error` and `variable_*` checks fail, and output checks are compared against the error message. Put the check whose hint you want for broken code first. See [When the code can't run (SyntaxError)](AUTHORING_GUIDE.md#when-the-code-cant-run-syntaxerror).
+
 For a misconception-specific recovery path, add `priority` and `stageOffer` to a feedback check. The offer targets an existing `codeStages` index after two matching attempts by default; use `action: preview` to show the stage first, or `action: replace` to offer a confirmed replacement. See `docs/authoring/lesson-schema.md` for the full shape.
 
 ---

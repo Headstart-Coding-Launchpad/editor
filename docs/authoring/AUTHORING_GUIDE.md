@@ -286,6 +286,26 @@ Writing hints that reach learners:
 - For a known misconception (wrong text, `=` instead of `==`, a missing indent), write a `feedbackChecks` entry that detects the mistake and give it a `priority`. It beats every completion hint.
 - Don't write several hints expecting them to add up: only one is shown.
 
+#### When the code can't run (SyntaxError)
+
+When a Python run ends in an error — a `SyntaxError` such as `def area(w, h) =return w * h`, or a runtime error such as `NameError` — the task **always fails**, whatever the checks say. The checks are still evaluated, though, so the learner still gets a targeted hint chosen by the same four rules above:
+
+- **`feedbackChecks` are evaluated as normal**, against the source as typed and against the error text in the output. A `code` regex feedback check that detects the slip (for example `matches_regex: '=\s*return'`) **does match**, and its hint wins over every completion-check hint (rule 2).
+- **If no feedback check matches**, the hint comes from the **first failed completion check that has a `hint`** (rule 3). On an errored run, each completion check type behaves like this:
+
+| Completion check type | On an errored run | Can it supply the hint? |
+|---|---|---|
+| `code` (and `code_contains`, `code_matches_regex`, … aliases), `code_structure` | Evaluated normally against the source text — the code does not need to parse | Yes, when it fails; a passing source check is skipped over |
+| `code_no_error` | Always fails (the run status is `error`) | Yes — if it is first in the list with a `hint`, that hint is shown |
+| `variable_*` (`variable_equals`, `variable_exists`, …) | Always fails on a `SyntaxError` (nothing ran, so no variables were captured). On a runtime error, only variables assigned before the crash exist | Yes |
+| `output`, `output_line_count`, `output_not_empty`, `output_empty` | Compared against the output, which is the **error message** (plus anything printed before a runtime error). So `contains` normally fails, while `not_contains`, `not_equals` and `output_not_empty` usually **pass** | Only when the comparison fails |
+
+The practical consequences:
+
+- **Order completion checks so the hint you want for broken code comes first.** If `code_no_error` with `hint: "Your code has an error — read the red message."` is first, every broken run shows that hint. If a `code` check that the broken code still satisfies is first, the next failing check supplies the hint instead.
+- **Catch a predictable syntax slip with a `feedbackChecks` regex** on the source. It fires even though the code could not run, and it beats the completion-check hints.
+- A task with `tests` skips this check-and-hint path entirely; the per-test results are shown instead.
+
 **Wildcards and option lists:** `*` matches any sequence (including newlines) in `value` for containment/equality checks. `"opt1","opt2"` passes `contains` if any option is present and `not_contains` only if none are. These operators mean the same thing in every module (output, answers, file content, HTML elements, Scratch block inputs), because all of them use one shared implementation (`compareText` in `src/shared/checkHelpers.js`).
 
 **Multi-option values:** `"option1","option2"` format — passes if the actual value matches any option. Works for `output_contains`, `code_contains`, `element_value`, `answer_contains`.
