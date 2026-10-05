@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 import { fetchLessonList } from '../shared/lessonService'
+import { formatLessonLabel, isAttachedCompanion } from '../shared/lessonOrder'
 import { decodeLessonFromFirestore } from '../shared/lessonBlocksCodec'
 import { useAuth } from '../auth/useAuth'
 import BuilderView from './views/BuilderView'
@@ -303,20 +304,27 @@ function FirestoreLessonPicker({ onLoad, onClose }) {
           {error && <p style={{ ...fp.hint, color: '#ef4444' }}>Error: {error}</p>}
           {lessons && lessons.length === 0 && <p style={fp.hint}>No lessons found in Firestore.</p>}
           {lessons &&
-            lessons.map((lesson) => (
-              <button
-                key={lesson.id}
-                style={fp.row}
-                onClick={() => handleSelect(lesson.id)}
-                disabled={loadingId === lesson.id}
-              >
-                <span style={fp.rowTitle}>{lesson.title || lesson.id}</span>
-                <span style={fp.rowMeta}>
-                  {lesson.id} · {lesson.type}
-                </span>
-                {loadingId === lesson.id && <span style={fp.rowLoading}>Loading…</span>}
-              </button>
-            ))}
+            lessons.map((lesson) => {
+              // fetchLessonList returns the shared order, so a Solo Challenge follows its parent.
+              const isCompanion = isAttachedCompanion(lesson, lessons)
+              return (
+                <button
+                  key={lesson.id}
+                  style={isCompanion ? { ...fp.row, ...fp.companionRow } : fp.row}
+                  onClick={() => handleSelect(lesson.id)}
+                  disabled={loadingId === lesson.id}
+                >
+                  <span style={fp.rowTitle}>
+                    {formatLessonLabel(lesson)}
+                    {isCompanion && <span style={fp.companionTag}>Solo Challenge</span>}
+                  </span>
+                  <span style={fp.rowMeta}>
+                    {lesson.id} · {lesson.type}
+                  </span>
+                  {loadingId === lesson.id && <span style={fp.rowLoading}>Loading…</span>}
+                </button>
+              )
+            })}
         </div>
       </div>
     </div>
@@ -396,6 +404,20 @@ const fp = {
     fontWeight: 600,
     fontSize: '0.92rem',
     color: 'var(--colour-text)',
+  },
+  companionRow: {
+    marginLeft: 22,
+    width: 'calc(100% - 22px)',
+  },
+  companionTag: {
+    marginLeft: 8,
+    padding: '1px 7px',
+    borderRadius: 999,
+    background: '#ede9fe',
+    color: '#5b21b6',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    verticalAlign: 'middle',
   },
   rowMeta: {
     fontFamily: 'var(--font-code)',

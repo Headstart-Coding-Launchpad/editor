@@ -36,6 +36,7 @@ import {
   migrateLessonLevel,
   normalizeLevelRecord,
 } from '../shared/lessonLevels'
+import { compareLessonsInLevel, formatLessonLabel, sortLessons } from '../shared/lessonOrder'
 import { validateLesson } from '../builder/lessonUtils'
 import TeacherReportModal from '../app/components/TeacherReportModal'
 import { AdminCell, AdminTable } from './AdminUi'
@@ -55,16 +56,20 @@ const makeBlankLevelForm = () => ({
   icon: DEFAULT_LEVEL_ICON,
 })
 
-// Natural order so "course-1-10" sorts after "course-1-9", not after "course-1-1".
-function compareLessonIds(a, b) {
-  return String(a.id).localeCompare(String(b.id), undefined, { numeric: true })
+// A Solo Challenge lists under its parent, so it takes the parent's level when the parent is
+// loaded (a companion often has no levelId of its own).
+function levelSourceLesson(lesson, lessonsById) {
+  const parent = lesson?.companionOf ? lessonsById.get(lesson.companionOf) : null
+  return parent && parent.id !== lesson.id ? parent : lesson
 }
 
 function makeLevelBuckets(lessons, levels) {
   const lessonBuckets = new Map()
+  const lessonsById = new Map(lessons.map((lesson) => [lesson.id, lesson]))
   for (const lesson of lessons) {
-    const level = findLessonLevel(lesson, levels)
-    const fallbackTitle = levelTitleFromLesson(lesson, levels)
+    const levelLesson = levelSourceLesson(lesson, lessonsById)
+    const level = findLessonLevel(levelLesson, levels)
+    const fallbackTitle = levelTitleFromLesson(levelLesson, levels)
     const bucketId = level?.id ?? (fallbackTitle ? `legacy:${fallbackTitle}` : UNASSIGNED_LEVEL_ID)
     if (!lessonBuckets.has(bucketId)) {
       lessonBuckets.set(bucketId, {
@@ -104,7 +109,8 @@ function makeLevelBuckets(lessons, levels) {
     })
     .map((bucket) => ({
       ...bucket,
-      lessons: bucket.lessons.sort(compareLessonIds),
+      // Within a level: lessonNumber, then title; Solo Challenges right after their parent.
+      lessons: sortLessons(bucket.lessons, { getLevelKey: () => null }),
     }))
 }
 
@@ -150,10 +156,16 @@ function getForkClassLabel(lesson, classes) {
   return cls?.name ?? lesson.fork.className ?? lesson.fork.classId ?? 'Class fork'
 }
 
+// Under a stock lesson: its Solo Challenges (by title), then its class forks (by class name).
 function sortFamilyChildren(children) {
-  return children.sort((a, b) =>
-    String(a.fork?.className ?? a.title).localeCompare(String(b.fork?.className ?? b.title))
-  )
+  const companions = children.filter((child) => !isLessonFork(child))
+  const forks = children.filter(isLessonFork)
+  return [
+    ...sortLessons(companions, { getLevelKey: () => null }),
+    ...forks.sort((a, b) =>
+      String(a.fork?.className ?? a.title).localeCompare(String(b.fork?.className ?? b.title))
+    ),
+  ]
 }
 
 function makeLessonFamilyGroups(lessons) {
@@ -168,7 +180,10 @@ function makeLessonFamilyGroups(lessons) {
     childrenBySource.get(sourceId).push(lesson)
   }
 
-  const stockLessons = lessons.filter((lesson) => !isFamilyChild(lesson)).sort(compareLessonIds)
+  // Stock lessons in the shared lesson order (lessonNumber, then title).
+  const stockLessons = lessons
+    .filter((lesson) => !isFamilyChild(lesson))
+    .sort(compareLessonsInLevel)
 
   for (const lesson of stockLessons) {
     const children = sortFamilyChildren(childrenBySource.get(lesson.id) ?? [])
@@ -180,16 +195,20 @@ function makeLessonFamilyGroups(lessons) {
     childrenBySource.delete(lesson.id)
   }
 
-  for (const [sourceId, children] of childrenBySource) {
+  // Forks and companions whose source isn't in this level, in the shared order of their
+  // first member.
+  const orphanFamilies = [...childrenBySource].map(([sourceId, children]) => {
+    const items = sortFamilyChildren(children)
     const source = byId.get(sourceId)
-    families.push({
+    return {
       id: sourceId,
       title: source?.title ?? children[0]?.fork?.sourceLessonTitle ?? sourceId,
-      items: sortFamilyChildren(children),
-    })
-  }
+      items,
+    }
+  })
+  orphanFamilies.sort((a, b) => compareLessonsInLevel(a.items[0], b.items[0]))
 
-  return families
+  return [...families, ...orphanFamilies]
 }
 
 export default function LessonPanel({ view = 'lessons' }) {
@@ -747,7 +766,7 @@ function LevelLessonGroup({
                                 aria-expanded={lessonOpen}
                               >
                                 <span style={s.lessonToggleIcon}>{lessonOpen ? '-' : '+'}</span>
-                                <span style={s.lessonToggleTitle}>{lesson.title || lesson.id}</span>
+                                <span style={s.lessonToggleTitle}>{formatLessonLabel(lesson)}</span>
                                 {lesson.draft === true && <span style={s.draftPill}>Draft</span>}
                                 {isFork && (
                                   <span style={s.classPill}>

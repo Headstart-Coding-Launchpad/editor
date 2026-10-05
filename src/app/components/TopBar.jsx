@@ -1,5 +1,6 @@
 import React from 'react'
 import { useIsMobile } from '../../shared/useIsMobile'
+import { getLessonNumber } from '../../shared/lessonOrder'
 
 // isSolo: true = solo, false = live teacher session, undefined = don't show badge (teacher view)
 // singleRow: the student view's layout — one fixed-height row that never wraps, so the bar
@@ -7,6 +8,7 @@ import { useIsMobile } from '../../shared/useIsMobile'
 export default function TopBar({
   lessonTitle,
   lessonLevel,
+  lessonNumber,
   displayName,
   isSandbox,
   isSolo,
@@ -14,6 +16,8 @@ export default function TopBar({
   singleRow = false,
 }) {
   const isMobile = useIsMobile()
+  // Only a valid authored lessonNumber shows ("Lesson 9"); absent or invalid shows nothing.
+  const number = getLessonNumber({ lessonNumber })
 
   const statusDot =
     isSolo === true ? (
@@ -54,6 +58,11 @@ export default function TopBar({
         )}
         {!isMobile && <span style={s.divider}>·</span>}
         {lessonLevel && <span style={s.level}>{lessonLevel}</span>}
+        {number != null && (
+          <span style={s.lessonNumber} data-testid="top-bar-lesson-number">
+            Lesson {number}
+          </span>
+        )}
         <span style={{ ...s.title, fontSize: isMobile ? '0.8rem' : '0.95rem' }}>{lessonTitle}</span>
         {isSandbox && <span style={s.sandboxBadge}>SANDBOX</span>}
         {!isSandbox &&
@@ -135,6 +144,14 @@ const s = {
     color: '#ffffff',
     padding: '2px 8px',
     borderRadius: 4,
+    flexShrink: 0,
+  },
+  lessonNumber: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: '0.75rem',
+    whiteSpace: 'nowrap',
+    opacity: 0.8,
     flexShrink: 0,
   },
   divider: {

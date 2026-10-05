@@ -15,7 +15,8 @@ import { firestore } from './firebase'
 import { encodeLessonForFirestore, decodeLessonFromFirestore } from './lessonBlocksCodec'
 import { unsealTasks } from './lessonSeal'
 import { buildLessonFork, CLASS_COLLECTION, makeClassRecord } from './lessonForks'
-import { LEVEL_COLLECTION, migrateLessonLevel } from './lessonLevels'
+import { LEVEL_COLLECTION, migrateLessonLevel, normalizeLevelRecord } from './lessonLevels'
+import { sortLessons } from './lessonOrder'
 import { encodeSessionReportForFirestore } from './lessonReport'
 
 export async function fetchLessonById(lessonId) {
@@ -25,11 +26,20 @@ export async function fetchLessonById(lessonId) {
   return null
 }
 
+// Every published lesson in the shared LaunchPad order (src/shared/lessonOrder.js): by level
+// order, then lessonNumber, with each Solo Challenge straight after its parent.
 export async function fetchLessonList() {
-  const snap = await getDocs(collection(firestore, 'lessons'))
+  const [snap, levels] = await Promise.all([
+    getDocs(collection(firestore, 'lessons')),
+    getDocs(collection(firestore, LEVEL_COLLECTION))
+      .then((levelSnap) =>
+        levelSnap.docs.map((d) => normalizeLevelRecord({ id: d.id, ...d.data() }))
+      )
+      // Level order only arranges the groups; without it levels group by id.
+      .catch(() => []),
+  ])
   const items = snap.docs.map((d) => decodeLessonFromFirestore({ id: d.id, ...d.data() }))
-  items.sort((a, b) => (a.title ?? a.id).localeCompare(b.title ?? b.id))
-  return items
+  return sortLessons(items, { levels })
 }
 
 // Finds the "solo challenge" lesson linked to a parent lesson, if any, via the

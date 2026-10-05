@@ -272,6 +272,25 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
           )}
         </Field>
 
+        <Field
+          label="Lesson number"
+          hint="Position in its level, shown as “9 · Title” and used to sort lesson lists; leave blank on a Solo Challenge, give a Solo Project the number of the lesson it follows"
+        >
+          <input
+            type="number"
+            min="1"
+            step="1"
+            style={s.input}
+            value={lesson.lessonNumber ?? ''}
+            onChange={(e) =>
+              // Cleared → null (an explicit "no number", so saving removes a stored one).
+              set('lessonNumber', e.target.value === '' ? null : Number(e.target.value))
+            }
+            placeholder="e.g. 9"
+            aria-label="Lesson number"
+          />
+        </Field>
+
         <Field label="Description">
           <textarea
             style={{ ...s.input, resize: 'vertical', minHeight: 60 }}

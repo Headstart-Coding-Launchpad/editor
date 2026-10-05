@@ -196,6 +196,71 @@ describe('LessonPanel', () => {
     ])
   })
 
+  it('orders lessons within a level by lessonNumber and shows "N · Title"', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel />)
+    fireAll({
+      lessons: [
+        { ...PYTHON_LESSON, id: 'k3f9x2qp7a', title: 'Boolean Flags', lessonNumber: 9 },
+        { ...PYTHON_LESSON, id: 'aaa-unnumbered', title: 'Aardvark extras' },
+        {
+          ...PYTHON_LESSON,
+          id: 'z5h1q9vb4e',
+          title: 'Solo Project 1',
+          soloOnly: true,
+          lessonNumber: 6,
+        },
+        { ...PYTHON_LESSON, id: 'zzz-six', title: 'Variables', lessonNumber: 6 },
+        { ...PYTHON_LESSON, id: 'bbb-ten', title: 'Lists', lessonNumber: 10 },
+      ],
+    })
+
+    await openFirstLevel(user)
+    const labels = screen
+      .getAllByText(/Boolean Flags|Aardvark extras|Solo Project 1|Variables|Lists/)
+      .map((el) => el.textContent)
+    expect(labels).toEqual([
+      '6 · Variables',
+      '6 · Solo Project 1',
+      '9 · Boolean Flags',
+      '10 · Lists',
+      'Aardvark extras',
+    ])
+  })
+
+  it('lists a level-less Solo Challenge under its parent’s level', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel />)
+    fireAll({
+      lessons: [
+        {
+          ...PYTHON_LESSON,
+          id: 'k3f9x2qp7a',
+          title: 'Boolean Flags',
+          level: null,
+          levelId: 'python-level-1',
+          lessonNumber: 9,
+        },
+        {
+          ...PYTHON_LESSON,
+          id: 'm8d2r6tw1c',
+          title: 'Boolean Flags — Solo Challenge',
+          level: null,
+          soloOnly: true,
+          companionOf: 'k3f9x2qp7a',
+        },
+      ],
+      levels: [{ id: 'python-level-1', title: 'Python Level 1', order: 1 }],
+    })
+
+    // Only the level bucket exists: no "No level" bucket for the companion.
+    expect(screen.queryByText('No level')).not.toBeInTheDocument()
+    await openFirstLevel(user)
+    await user.click(screen.getByRole('button', { name: '1 solo challenge' }))
+    expect(screen.getByText('9 · Boolean Flags')).toBeInTheDocument()
+    expect(screen.getByText('Boolean Flags — Solo Challenge')).toBeInTheDocument()
+  })
+
   it('shows an empty state message when no lessons are loaded', () => {
     render(<LessonPanel />)
     fireAll()

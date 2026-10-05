@@ -86,6 +86,52 @@ describe('lessonService', () => {
       { id: 'b', title: 'Zoo' },
     ])
   })
+
+  it('sorts lesson lists by level order, lessonNumber, and companions after their parent', async () => {
+    const lessons = [
+      { id: 'challenge', title: 'Boolean Flags — Solo Challenge', companionOf: 'flags' },
+      { id: 'flags', title: 'Boolean Flags', levelId: 'py-1', lessonNumber: 9 },
+      { id: 'later-level', title: 'Aaa first title', levelId: 'py-2', lessonNumber: 1 },
+      { id: 'six', title: 'Zebra', levelId: 'py-1', lessonNumber: 6 },
+      { id: 'project', title: 'Solo Project', levelId: 'py-1', lessonNumber: 6, soloOnly: true },
+      { id: 'unnumbered', title: 'Aardvark', levelId: 'py-1' },
+    ]
+    const levels = [
+      { id: 'py-2', title: 'Level 2', order: 2 },
+      { id: 'py-1', title: 'Level 1', order: 1 },
+    ]
+    mockGetDocs.mockImplementation(async (ref) => ({
+      docs: (ref.name === 'lessonLevels' ? levels : lessons).map(({ id, ...data }) => ({
+        id,
+        data: () => data,
+      })),
+    }))
+
+    const result = await fetchLessonList()
+    expect(result.map((lesson) => lesson.id)).toEqual([
+      'six',
+      'project',
+      'flags',
+      'challenge',
+      'unnumbered',
+      'later-level',
+    ])
+  })
+
+  it('still lists lessons when the levels collection cannot be read', async () => {
+    mockGetDocs.mockImplementation(async (ref) => {
+      if (ref.name === 'lessonLevels') throw new Error('permission-denied')
+      return {
+        docs: [
+          { id: 'b', data: () => ({ title: 'B', lessonNumber: 2 }) },
+          { id: 'a', data: () => ({ title: 'A', lessonNumber: 3 }) },
+        ],
+      }
+    })
+
+    const result = await fetchLessonList()
+    expect(result.map((lesson) => lesson.id)).toEqual(['b', 'a'])
+  })
 })
 
 describe('findSoloCompanion', () => {

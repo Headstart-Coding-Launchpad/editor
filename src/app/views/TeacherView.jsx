@@ -690,6 +690,7 @@ export default function TeacherView({ lessonId }) {
       <TopBar
         lessonTitle={lesson.title}
         lessonLevel={lesson.level}
+        lessonNumber={lesson.lessonNumber}
         isSandbox={isSandbox}
         right={
           <>
