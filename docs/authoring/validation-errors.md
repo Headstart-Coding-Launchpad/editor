@@ -28,6 +28,7 @@ isn't listed here, so add a row whenever you add a message.
 | `title is required` | No lesson `title`. | Add a title. |
 | `description is required` (**CLI only**) | No `description` (shown on the entry screen). | Add a one-sentence description. |
 | `recordingUrl must be a YouTube link (youtube.com or youtu.be)` | `recordingUrl` isn't a YouTube URL. | Use an unlisted YouTube link, or remove the field. |
+| `lessonNumber must be a positive whole number (1, 2, 3 …) when provided` | `lessonNumber` is `0`, negative, a decimal, or text (for example `"9"`). | Use a whole number from `1` up, or remove the field. |
 | `tasks is required and must be an array` | `tasks` is missing or not a list. | Add `tasks:` with at least one task. |
 | `tasks must contain at least one task or group` | `tasks` is empty. | Add a task. |
 | `draft must be a boolean when provided` | `draft` is not `true` or `false`. | Use `draft: true` or remove it. |

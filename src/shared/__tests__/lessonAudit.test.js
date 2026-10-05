@@ -52,4 +52,49 @@ describe('applyLessonAuditMetadata', () => {
       taskLastChangedAt: '2026-07-25T14:00:00.000Z',
     })
   })
+
+  describe('lessonNumber', () => {
+    const numbered = { ...lesson, lessonNumber: 9 }
+
+    it('stores a lessonNumber and treats a number change as a new version', () => {
+      const first = applyLessonAuditMetadata(null, numbered, timestamp).lesson
+      expect(first).toMatchObject({ lessonNumber: 9, version: 1 })
+
+      const renumbered = applyLessonAuditMetadata(first, { ...first, lessonNumber: 10 }, timestamp)
+      expect(renumbered).toMatchObject({ material: true, lesson: { lessonNumber: 10, version: 2 } })
+    })
+
+    it('keeps a stored lessonNumber when a save leaves the field out', () => {
+      const first = applyLessonAuditMetadata(null, numbered, timestamp).lesson
+      const { lessonNumber: _omitted, ...withoutNumber } = first
+
+      const noOp = applyLessonAuditMetadata(first, withoutNumber, '2026-07-25T13:00:00.000Z')
+      expect(noOp.material).toBe(false)
+      expect(noOp.lesson.lessonNumber).toBe(9)
+
+      const contentChange = applyLessonAuditMetadata(
+        first,
+        { ...withoutNumber, title: 'Audit renamed' },
+        '2026-07-25T13:00:00.000Z'
+      )
+      expect(contentChange).toMatchObject({
+        material: true,
+        lesson: { lessonNumber: 9, title: 'Audit renamed', version: 2 },
+      })
+    })
+
+    it('clears a stored lessonNumber on an explicit null', () => {
+      const first = applyLessonAuditMetadata(null, numbered, timestamp).lesson
+      const cleared = applyLessonAuditMetadata(first, { ...first, lessonNumber: null }, timestamp)
+      expect(cleared.material).toBe(true)
+      expect(cleared.lesson.lessonNumber).toBeNull()
+    })
+
+    it('does not invent a lessonNumber for a lesson that never had one', () => {
+      const first = applyLessonAuditMetadata(null, lesson, timestamp).lesson
+      expect('lessonNumber' in first).toBe(false)
+      const next = applyLessonAuditMetadata(first, { ...first, title: 'Changed' }, timestamp)
+      expect('lessonNumber' in next.lesson).toBe(false)
+    })
+  })
 })

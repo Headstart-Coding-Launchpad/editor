@@ -79,6 +79,11 @@ export function applyLessonAuditMetadata(
 ) {
   const normalized = { ...candidate, draft: candidate.draft === true }
   const baseline = existing ? { ...existing, draft: existing.draft === true } : null
+  // Like task intent, a lessonNumber set earlier survives a save that leaves the field out
+  // (e.g. a regenerated source file). An explicit `lessonNumber: null` clears it.
+  if (normalized.lessonNumber === undefined && baseline?.lessonNumber != null) {
+    normalized.lessonNumber = baseline.lessonNumber
+  }
   if (baseline && same(lessonWithoutAudit(baseline), lessonWithoutAudit(normalized))) {
     return { lesson: baseline, material: false }
   }

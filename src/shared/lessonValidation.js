@@ -17,6 +17,7 @@
 import { validateTopicProposals } from './topicAudit.js'
 import { makeForkLessonId } from './lessonForks.js'
 import { isValidRecordingUrl } from './youtube.js'
+import { isValidLessonNumber } from './lessonOrder.js'
 import {
   BADGE_SUMMARY_INFORMATION_TYPE,
   canTaskAllowSharing,
@@ -98,6 +99,10 @@ function validateLessonEnvelope(lesson, errors, extraRules) {
   if (lesson.fork != null) validateLessonFork(lesson, errors)
   if (lesson.recordingUrl != null && !isValidRecordingUrl(lesson.recordingUrl)) {
     errors.push('recordingUrl must be a YouTube link (youtube.com or youtu.be)')
+  }
+  // Optional; null means "no number" (the Builder clears the field to null).
+  if (lesson.lessonNumber != null && !isValidLessonNumber(lesson.lessonNumber)) {
+    errors.push('lessonNumber must be a positive whole number (1, 2, 3 …) when provided')
   }
 }
 
