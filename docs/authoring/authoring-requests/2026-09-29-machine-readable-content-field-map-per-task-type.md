@@ -1,6 +1,6 @@
 # Machine-readable content-field map per task type
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** tooling
 - **Requested by:** Ryan (approved by Ryan), 2026-09-29
 - **Lessons blocked:** none yet
@@ -26,3 +26,5 @@ capabilities (or a sibling command) returns, per task type/module/activity, its 
 ## Resolution
 
 Branch `feature/capabilities-fields-and-requests` (with the capabilities modes/fields request): modules declare `taskFields`, and `src/shared/taskFields.js` holds the common, information and group fields; `lessons capabilities` lists each with `authored` flags and flat `authoredFields` paths (authored = content, everything else is structural).
+
+Merged to main in `fc94c03` (2026-09-29).

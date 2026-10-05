@@ -1,6 +1,6 @@
 # Add bug, docs and tooling kinds to the authoring-request template
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** tooling
 - **Requested by:** Ryan (approved by Ryan), 2026-09-29
 - **Lessons blocked:** none yet
@@ -24,3 +24,5 @@ Filed first so the other workspace requests have a valid kind. Requests from the
 ## Resolution
 
 Branch `feature/authoring-request-kinds`: README template now lists `bug | docs | tooling` kinds, and "How requests are handled" has a per-kind table.
+
+Merged to main in `fc94c03` (2026-09-29).

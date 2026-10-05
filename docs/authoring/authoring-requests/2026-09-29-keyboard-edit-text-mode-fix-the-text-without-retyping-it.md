@@ -1,6 +1,6 @@
 # Keyboard edit_text mode: fix the text without retyping it
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** activity mode
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-09-29
 - **Lessons blocked:** none yet
@@ -65,3 +65,5 @@ Course: Mouse and Keyboard Skills ('Computer Confidence'), ages 7+ (raised from 
 ## Resolution
 
 Branch `feature/keyboard-edit-text-mode`: Keyboard activity (`activityType: keyboard`) mode `edit_text` with `start` / `target`, `minKept` (LCS-based, default 0.9), `requireKeys` (incl. `select`), `showTarget`; paste/drop blocked, no spellcheck/autocorrect (custom edit box); on-screen keyboard shows a needs-a-keyboard note. Docs: [activities/keyboard.md](../activities/keyboard.md). The Desktop Text Editor "edited, not retyped" follow-on is not included.
+
+Merged to main in `fc94c03` (2026-09-29).
