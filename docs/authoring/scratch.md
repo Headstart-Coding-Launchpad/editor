@@ -167,7 +167,7 @@ Drag-in block stacks appended to the toolbox for the task.
 prebuiltStacks:
   - id: stack-abc123          # required — stable builder-generated ID
     label: Starter stack      # optional — builder display label
-    stack: {}                 # required — Blockly toolbox-compatible block JSON
+    stack: {}                 # required — Blockly toolbox-compatible block JSON (stored as JSON text; any length)
 ```
 
 **Student mechanic:** a prebuilt stack is not a separate chip or button — it's inserted into the toolbox category matching its root block's type (e.g. a `say` stack appears in the Looks flyout, next to the plain `say` block). There's no click-to-insert:
@@ -183,8 +183,9 @@ Scratch uses two related JSON shapes. Use the toolbox-stack shape for
 `prebuiltStacks[].stack`; use the workspace-state shape for `starterBlocks`,
 `completeBlocks`, and `codeStages[].blocks`.
 
-- A **toolbox stack** is one root block. Do not wrap it in `blocks.blocks` and
-  do not include workspace-only `id`, `x`, or `y` values.
+- A **toolbox stack** is one root block, with any further blocks joined below
+  it through `next`. Do not wrap it in `blocks.blocks` and do not include
+  workspace-only `id`, `x`, or `y` values.
 - A **workspace state** is keyed by `sprites[].id`. Each sprite value is a
   Blockly workspace snapshot with its top-level blocks at `blocks.blocks`.
   Use the optional `x` and `y` values to place a top-level block in the
@@ -202,8 +203,17 @@ Scratch uses two related JSON shapes. Use the toolbox-stack shape for
   serialise these fields to JSON strings when they save (since 13 September
   2026; before that the CLI didn't, and authors had to serialise by hand).
   Strings you've already serialised are stored as they are, never encoded twice.
-  `lessons get` returns the object form. A toolbox stack
-  (`prebuiltStacks[].stack`) is one shallow block and stays a real object.
+  `lessons get` returns the object form.
+- **Write a toolbox stack (`prebuiltStacks[].stack`) as an object.** A stack
+  is a root block with every block below it nested through
+  `next: { block: ... }`, so a long stack is as deep as a long script. Since
+  5 October 2026 the Builder and the CLI store each `prebuiltStacks[].stack`
+  (on the task and on each code stage) as a JSON string too, and decode it
+  on read; the rest of the entry (`id`, `label`) stays a real object. Stacks
+  saved earlier as plain objects still load. `lessons validate` reports any
+  part of a lesson that would still be nested deeper than Firestore's 20
+  levels once stored — see
+  [validation errors](validation-errors.md#lesson-envelope).
 
 ### A filled toolbox stack
 
