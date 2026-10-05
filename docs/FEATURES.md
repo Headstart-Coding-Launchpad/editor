@@ -55,6 +55,7 @@ Checks can verify:
 - **Filesystem**: file and directory existence, which directory is currently open
 - **Desktop**: filesystem checks (as above) plus Recycle Bin membership, window open/closed/minimized/maximized state, a window moved into a screen zone or resized, two windows arranged side by side, simulated-browser page visits, and search-engine query matching
 - **Quiz**: correct answer match
+- **Demo tasks** (Python, Turtle, Arcade Kit, Electronics, HTML, Scratch): that the student pressed Run (Run game, or Scratch's green flag) at least once — `run_attempted`, optionally requiring a run without an error
 
 After the same hint appears twice in a row, solo students can optionally view the complete reference code (if defined on the task).
 

@@ -39,6 +39,7 @@ import {
 import { FEEDBACK_TIMING, evaluateCheckWithCustomFeedback } from '../checks'
 import {
   evaluateScratchCheckForSprites,
+  isScratchRunAttemptedOnly,
   partialEvaluateScratchCheckForSprites,
 } from './checkDispatch.js'
 import { useTypeAssets } from '../../shared/useTypeAssets'
@@ -975,6 +976,9 @@ export default function ScratchWorkspace({
   const preRunSpriteStatesRef = useRef({})
   const BlocklyRef = useRef(null)
   const signalRef = useRef(null)
+  // Whether the green flag has been pressed on this task (run_attempted checks). Stamped onto
+  // every run signal; reset when the task changes.
+  const greenFlagPressedRef = useRef(false)
   const syncTimerRef = useRef(null)
   const pendingSyncRef = useRef(false)
   const suppressChangeRef = useRef(false)
@@ -1183,6 +1187,10 @@ export default function ScratchWorkspace({
       sounds: ctx.soundsBySpriteId[spriteId] ?? DEFAULT_SPRITE_SOUNDS,
     }
   }
+
+  useEffect(() => {
+    greenFlagPressedRef.current = false
+  }, [task?.id])
 
   useEffect(() => {
     setSpriteContext(dropdownSprites)
@@ -2231,6 +2239,7 @@ export default function ScratchWorkspace({
   // ── Signal factory ───────────────────────────────────────────────────────────
   const createSignal = useCallback(() => {
     const signal = createRunSignal()
+    signal.greenFlagPressed = greenFlagPressedRef.current
     signal.keysPressed = inputStateRef.current.keysPressed
     signal.mouseDown = inputStateRef.current.mouseDown
     signal.mouseX = inputStateRef.current.mouseX
@@ -2292,6 +2301,10 @@ export default function ScratchWorkspace({
     (c) => c.evaluation !== 'manual' && c.evaluation !== 'after_block_placed'
   )
   const hasAfterBlockPlacedCheck = scratchChecks.some((c) => c.evaluation === 'after_block_placed')
+  // Every run-judged check is a run_attempted: the task is decided the moment the green flag is
+  // pressed, so it is judged then rather than when the scripts finish (a forever loop never
+  // does, and Stop skips the end-of-run check).
+  const runAttemptedOnly = isScratchRunAttemptedOnly(scratchChecks)
 
   const notifyCheck = useCallback((passed, force = false, meta = {}) => {
     const suggestion = meta.suggestion ?? ''
@@ -2396,29 +2409,31 @@ export default function ScratchWorkspace({
   }
   evaluateIdleFeedbackRef.current = evaluateIdleFeedback
 
+  // The end-of-run check: the after-run checks against the finished run's signal.
+  function evaluateAfterRunChecks(signal) {
+    const sws = filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
+    const afterRunChecks = scratchChecks.filter(
+      (c) => c.evaluation !== 'manual' && c.evaluation !== 'after_block_placed'
+    )
+    const completionPassed = afterRunChecks.every((c) =>
+      evalSingleCheck(c, sws, signal, preRunSpriteStatesRef.current)
+    )
+    const evaluation = evaluateCheckWithCustomFeedback(
+      task,
+      completionPassed,
+      (feedbackCheck) => evalSingleCheck(feedbackCheck, sws, signal, preRunSpriteStatesRef.current),
+      '',
+      {},
+      { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT }
+    )
+    notifyCheck(evaluation.passed, false, { suggestion: evaluation.suggestion })
+  }
+
   function finishRun(signal) {
     if (!signal.stopped) {
       runningRef.current = false
       setRunning(false)
-      if (scratchChecks.length > 0 && hasAfterRunCheck) {
-        const sws = filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
-        const afterRunChecks = scratchChecks.filter(
-          (c) => c.evaluation !== 'manual' && c.evaluation !== 'after_block_placed'
-        )
-        const completionPassed = afterRunChecks.every((c) =>
-          evalSingleCheck(c, sws, signal, preRunSpriteStatesRef.current)
-        )
-        const evaluation = evaluateCheckWithCustomFeedback(
-          task,
-          completionPassed,
-          (feedbackCheck) =>
-            evalSingleCheck(feedbackCheck, sws, signal, preRunSpriteStatesRef.current),
-          '',
-          {},
-          { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT }
-        )
-        notifyCheck(evaluation.passed, false, { suggestion: evaluation.suggestion })
-      }
+      if (scratchChecks.length > 0 && hasAfterRunCheck) evaluateAfterRunChecks(signal)
     }
   }
 
@@ -2446,8 +2461,11 @@ export default function ScratchWorkspace({
     runningRef.current = true
     setRunning(true)
     setCheckAttempted(false)
+    // Only the green flag counts for run_attempted (runClickedBlock and key presses don't set it).
+    greenFlagPressedRef.current = true
     const signal = createSignal()
     signalRef.current = signal
+    if (runAttemptedOnly) evaluateAfterRunChecks(signal)
     try {
       await runAllSprites(buildSpriteWorkspaces(), signal)
     } catch (err) {

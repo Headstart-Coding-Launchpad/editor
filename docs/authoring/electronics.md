@@ -190,6 +190,21 @@ If a board has more than one `microcontroller` component, code checks evaluate a
 
 Code checks read the MicroPython source whether the student presses **Check** or **Run** in the Code tab. Before September 2026, the Run path compared them against the serialized circuit instead, so checks with quotes such as `print("hi")` never matched after a Run.
 
+**Demo boards** ("press Run and watch the LED blink") use `run_attempted`: it passes once the
+student presses **Run** in the Code tab — even if the MicroPython errors, and when a `while True:`
+program is stopped with **Stop**. `requireSuccess: true` also requires the run to finish without an
+error (a forever loop never finishes, so don't combine the two). **Check Circuit** never passes it.
+Run lives in the Code tab, which only exists when the board has a Micro Controller (or
+`microcontroller.enabled: true`), so the validator warns about a `run_attempted` task without one.
+It combines with circuit and code checks in a list, all evaluated on the same Run. Full reference:
+[python.md](python.md#run-attempted-check-run_attempted).
+
+```yaml
+check:
+  type: run_attempted
+  hint: Press **Run** in the Code tab and watch the LED.
+```
+
 Selectors use component type and an optional label:
 
 ```yaml

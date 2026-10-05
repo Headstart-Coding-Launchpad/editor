@@ -1,4 +1,4 @@
-import { normalizeChecks, isCodeCheck } from '../modules/checks.js'
+import { normalizeChecks, isCodeCheck, isRunAttemptedCheck } from '../modules/checks.js'
 import { normalizeFsCheck } from '../modules/filesystem/checks.js'
 import { TURTLE_CHECK_TYPES, TURTLE_COMMAND_NAMES } from '../modules/turtle/checks.js'
 
@@ -106,11 +106,11 @@ export function validateCodeCheckValues(checks, n, errors, kind = 'completion') 
   }
 }
 
-// ArcadeKit only evaluates generic code checks (on Run game); output, variable and other
-// check types can never pass there. A warning, not an error, so lessons saved before this
-// was enforced can still be published.
+// ArcadeKit only evaluates generic code checks and run_attempted (on Run game); output,
+// variable and other check types can never pass there. A warning, not an error, so lessons
+// saved before this was enforced can still be published.
 export function warnArcadeUnevaluatedChecks(checks, n, warnings) {
-  if (normalizeChecks(checks).some((c) => !isCodeCheck(c))) {
+  if (normalizeChecks(checks).some((c) => !isCodeCheck(c) && !isRunAttemptedCheck(c))) {
     warnings.push(
       `Task ${n} has an ArcadeKit check that is not a code check — only code checks are evaluated when the game runs`
     )
@@ -130,7 +130,9 @@ export function validateTurtleChecks(checks, n, errors, kind = 'completion') {
   const label = labelCheckKind(kind)
   const normalized = normalizeChecks(checks)
   validateCodeCheckValues(normalized, n, errors, kind)
-  const unknown = normalized.find((c) => !TURTLE_CHECK_TYPES.includes(c?.type) && !isCodeCheck(c))
+  const unknown = normalized.find(
+    (c) => !TURTLE_CHECK_TYPES.includes(c?.type) && !isCodeCheck(c) && !isRunAttemptedCheck(c)
+  )
   if (unknown) {
     errors.push(`Task ${n} has a turtle ${label} with unknown type "${unknown?.type ?? ''}"`)
   }

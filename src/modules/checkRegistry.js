@@ -16,6 +16,8 @@
 //     evaluate(check, output, ctx) → boolean,
 //     validate?(check, { n, kind, task }) → string[],  // complete authoring messages
 //                      // ("Task N ..."); run for Builder + CLI by lessonValidation.js
+//     appliesTo?(moduleDefinition) → boolean,  // a core check usable by only some modules
+//                      // (run_attempted); `lessons capabilities` lists it on those modules
 //   }
 
 export const CHECK_TIMINGS = ['on_run', 'on_change', 'on_submit']
@@ -41,6 +43,9 @@ function assertValidDefinition(def) {
   }
   if (def.validate != null && typeof def.validate !== 'function') {
     throw new Error(`Check type "${def.type}" validate must be a function`)
+  }
+  if (def.appliesTo != null && typeof def.appliesTo !== 'function') {
+    throw new Error(`Check type "${def.type}" appliesTo must be a function`)
   }
 }
 

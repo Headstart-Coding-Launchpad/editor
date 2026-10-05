@@ -11,6 +11,7 @@ import {
 import {
   CheckFeedbackControls,
   CheckValueEditor,
+  RunAttemptedFields,
 } from '../../builder/components/task-editor/CheckEditors'
 
 // Matches controlAffectsComponentPower's own control-type filter in circuit.js.
@@ -38,6 +39,9 @@ const SUBJECT_OPTIONS = [
   { value: 'code', label: 'Code' },
 ]
 
+// The Run subject (run_attempted, for demo tasks): completion checks only.
+const RUN_SUBJECT_OPTION = { value: 'run', label: 'Run' }
+
 function uiFromCheck(check) {
   if (check.type === 'circuit_has_component')
     return { subject: 'part', aspect: 'presence', operator: 'exists' }
@@ -55,6 +59,8 @@ function uiFromCheck(check) {
     const { operator } = subjectOpFromCheck(check)
     return { subject: 'code', aspect: 'source', operator }
   }
+  if (check.type === 'run_attempted')
+    return { subject: 'run', aspect: 'run', operator: 'run_attempted' }
   return { subject: 'safety', aspect: 'short', operator: 'no_short' }
 }
 
@@ -67,6 +73,7 @@ function aspectOptions(subject) {
   if (subject === 'control') return [{ value: 'effect', label: 'Effect' }]
   if (subject === 'connection') return [{ value: 'path', label: 'Path' }]
   if (subject === 'code') return getAspectOptions('code')
+  if (subject === 'run') return getAspectOptions('run')
   return [{ value: 'short', label: 'Short circuit' }]
 }
 
@@ -80,6 +87,7 @@ function defaultOperator(subject, aspect) {
   if (subject === 'control') return 'affects_power'
   if (subject === 'connection') return 'exists'
   if (subject === 'code') return defaultOperatorForAspect('code', aspect)
+  if (subject === 'run') return 'run_attempted'
   return 'no_short'
 }
 
@@ -97,6 +105,7 @@ function operatorOptions(subject, aspect) {
       { value: 'includes', label: 'path includes part' },
     ]
   if (subject === 'code') return getOperatorOptions('code', null, aspect)
+  if (subject === 'run') return getOperatorOptions('run')
   return [{ value: 'no_short', label: 'has no short' }]
 }
 
@@ -336,6 +345,10 @@ function CheckFields({ check, onChange }) {
     return <CheckValueEditor check={check} subject="code" operator={operator} onChange={onChange} />
   }
 
+  if (check.type === 'run_attempted') {
+    return <RunAttemptedFields check={check} onChange={onChange} />
+  }
+
   return null
 }
 
@@ -358,8 +371,8 @@ export default function CheckEditor({
   }
 
   function updateFromUi(index, subject, aspect, operator, prev) {
-    if (subject === 'code') {
-      updateCheck(index, checkFromSubjectOp('code', operator, prev))
+    if (subject === 'code' || subject === 'run') {
+      updateCheck(index, checkFromSubjectOp(subject, operator, prev))
       return
     }
     updateCheck(index, skeleton(typeFromUi(subject, aspect, operator), prev))
@@ -370,7 +383,12 @@ export default function CheckEditor({
       {checks.map((check, index) => {
         const knownType =
           CHECK_OPTIONS.some(([value]) => value === check.type) ||
-          CODE_CHECK_TYPES.includes(check.type)
+          CODE_CHECK_TYPES.includes(check.type) ||
+          check.type === 'run_attempted'
+        const subjectOptions =
+          feedbackEditor && check.type !== 'run_attempted'
+            ? SUBJECT_OPTIONS
+            : [...SUBJECT_OPTIONS, RUN_SUBJECT_OPTION]
         const activeCheck = knownType ? check : skeleton('circuit_no_short')
         const ui = uiFromCheck(activeCheck)
         const aspects = aspectOptions(ui.subject)
@@ -393,7 +411,7 @@ export default function CheckEditor({
                 )
               }}
             >
-              {SUBJECT_OPTIONS.map((option) => (
+              {subjectOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>

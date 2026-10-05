@@ -149,17 +149,77 @@ Prefer the canonical `type` + `operator` form:
 | `output_line_count` | `equals`, `not_equals`, `greater_than`, `greater_than_or_equal`, `less_than`, `less_than_or_equal` | Y | N | `value` |
 | `code` | `contains`, `not_contains`, `equals`, `not_equals`, `matches_regex`, `not_matches_regex` | Y | Y | `value`, optional `flags` for regex |
 | `code_no_error` | none | Y | N | Python run status is `success` |
+| `run_attempted` | none | Y | N | The student pressed Run (see [Run Attempted](#run-attempted-check-run_attempted)); optional `requireSuccess` |
 | `output_not_empty` / `output_empty` | none | Y | N | Legacy convenience checks |
 
 Legacy aliases such as `output_contains`, `output_equals`, `output_matches_regex`, `code_contains`, `code_does_not_contain`, and `code_matches_regex` still load, but new lessons should use the canonical form above.
 
-**Submit mode** only accepts `type: code` and `type: code_structure` checks. Output and variable checks require a run.
+**Submit mode** only accepts `type: code` and `type: code_structure` checks. Output, variable and `run_attempted` checks require a run.
 
 **Regex:** `matches_regex` and `not_matches_regex` use JavaScript `RegExp(pattern, flags)`. Put the regex pattern in `value`; put flags such as `i`, `m`, or `s` in `flags`. Regex is case-sensitive unless `flags: i` is set. Anchors (`^`, `$`), groups, alternation, lookarounds, and backreferences follow the browser JavaScript regex engine.
 
 **Normalisation:** output checks normalise `\r\n` to `\n` and compare case-insensitively except regex. Exact output checks trim trailing newline characters only, not other leading/trailing spaces. Code checks normalise whitespace outside quoted strings before contains/equality checks; regex checks see that same normalised source. Because indentation is removed too, use [`code_structure`](#code-structure-checks-code_structure) to check nesting.
 
 **Wildcards and option lists:** for non-regex contains/equality checks, `*` matches any sequence including newlines. A value written as `"opt1","opt2"` passes `contains` if any option is present, and passes `not_contains` only if none of them are. An invalid regex fails both `matches_regex` and `not_matches_regex`, so a typo in a pattern never lets every student pass.
+
+## Run Attempted Check (`run_attempted`)
+
+For **demo tasks** (Complete Example, Visual Fun Application, "press Run and watch"): the student
+has nothing to edit, so every `code` / `output` check already passes on the unedited starter and
+certifies nothing. `run_attempted` passes once the student has pressed **Run** on the task.
+
+| Field | Required | Meaning |
+|---|---|---|
+| `requireSuccess` | N | `true`: the run must also finish without an error. Default `false`: any run counts |
+
+- **Default:** pressing Run is enough — even if the program raises an error, and even if the
+  student presses **Stop** (a program that loops forever can only end that way). The task completes
+  on that run and stays complete, like any passed task.
+- **`requireSuccess: true`:** the run must finish with status `success`; an error or a stopped run
+  does not count. Honoured in Python, Turtle and Electronics. Arcade, HTML and Scratch runs never
+  report an error status, so it is ignored there (the validator warns).
+- **Composes** with other completion checks in a check array (all must pass). Mixed with any other
+  check, an erroring run fails the task as it always has — the "any run counts" rule only applies
+  when `run_attempted` is the whole completion check.
+- **Completion checks only.** It is rejected as a feedback check (it would match on every run) and
+  in `interactionMode: submit` (it needs a run).
+- **Never passes without a run:** submit-mode grading, idle feedback, the auto-check when the
+  teacher moves the class on (reported as **not run**) and `lessons test-checks` (reported as
+  `fail`, since the CLI never runs code) all leave it unpassed.
+- A run the teacher starts from the student's card (remote Run) counts like the student's own.
+- A task with `tests` is completed by its tests, so a `run_attempted` check there is never used
+  (the validator warns).
+- Modules: Python, Turtle, Arcade (**Run game**), Electronics, HTML (**Run**) and Scratch (green
+  flag only — see `docs/authoring/scratch.md`). Filesystem and Desktop have no Run button and
+  reject it.
+
+Worked example — a required-path demo task:
+
+```yaml
+- title: 🎮 Watch It Move
+  taskActivity: Code Task, Complete Example
+  explainer: |
+    Press **Run** and watch the turtle draw a square. Nothing to change this time!
+  starterCode: |
+    import turtle
+    for side in range(4):
+        turtle.forward(100)
+        turtle.left(90)
+  check:
+    type: run_attempted
+    hint: Press **Run** to see the program work.
+```
+
+Requiring a clean run, together with another check:
+
+```yaml
+check:
+  - type: run_attempted
+    requireSuccess: true
+  - type: code
+    operator: contains
+    value: "for side in range(4):"
+```
 
 ## Code Structure Checks (`code_structure`)
 

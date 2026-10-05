@@ -106,6 +106,7 @@ export function useTaskEditorState({
           status: result.status,
           code: activePythonCode,
           variables: result.variables ?? {},
+          ran: true,
         }
         const checks = normalizeChecks(resolvedCheck)
         const passed =
@@ -177,6 +178,7 @@ export function useTaskEditorState({
             status: result.status,
             code: activePythonCode,
             variables: result.variables ?? {},
+            ran: true,
           }
           const results = checksToEval.map((c) => ({
             ...c,
@@ -223,13 +225,14 @@ export function useTaskEditorState({
             const iframeDoc = iframeRef.current?.contentDocument ?? null
             const results = checksToEval.map((c) => ({
               ...c,
-              passed: evaluateSingleCheck(c, text, { code: codeStr, iframeDoc }),
+              passed: evaluateSingleCheck(c, text, { code: codeStr, iframeDoc, ran: true }),
             }))
             setCheckResults(results)
             set('_checkTested', true)
             const feedbackResults = evaluateFeedbackCheckResults(task, text, {
               code: codeStr,
               iframeDoc,
+              ran: true,
             })
             if (feedbackResults.length > 0) {
               setIncorrectCheckResults(feedbackResults)

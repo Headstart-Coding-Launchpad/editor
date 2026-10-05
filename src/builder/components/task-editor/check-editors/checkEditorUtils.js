@@ -16,6 +16,7 @@ function formatCheckFailureDetail(result) {
 function subjectOpFromType(type) {
   const map = {
     code_no_error: { subject: 'output', operator: 'no_error' },
+    run_attempted: { subject: 'run', operator: 'run_attempted' },
     output_not_empty: { subject: 'output', operator: 'not_empty' },
     output_empty: { subject: 'output', operator: 'empty' },
     output_contains: { subject: 'output', operator: 'contains' },
@@ -159,6 +160,7 @@ function aspectFromSubjectOperator(subject, operator) {
     return 'text'
   }
   if (subject === 'code') return STRUCTURE_OPERATORS.includes(operator) ? 'structure' : 'source'
+  if (subject === 'run') return 'run'
   if (subject === 'element') {
     if (operator === 'exists') return 'element'
     if (operator.startsWith('count_')) return 'count'
@@ -188,6 +190,8 @@ function getAspectOptions(subject, currentAspect = null, { allowStructure = fals
       { value: 'output_state', label: 'Output state' },
       ...(currentAspect === 'status' ? [{ value: 'status', label: 'Run status' }] : []),
     ]
+  // The Run subject: run_attempted (demo tasks).
+  if (subject === 'run') return [{ value: 'run', label: 'Run pressed' }]
   if (subject === 'code')
     return [
       { value: 'source', label: 'Source' },
@@ -219,6 +223,7 @@ function defaultOperatorForAspect(subject, aspect) {
     if (aspect === 'status') return 'no_error'
     return 'contains'
   }
+  if (subject === 'run') return 'run_attempted'
   if (subject === 'code') return aspect === 'structure' ? 'nested_in' : 'contains'
   if (subject === 'element') {
     if (aspect === 'element') return 'exists'
@@ -270,6 +275,7 @@ function typeFromSubjectOp(subject, operator) {
       attribute_equals: 'element_attribute',
       style_equals: 'element_style_property',
     },
+    run: { run_attempted: 'run_attempted' },
     variable: {
       exists: 'variable_exists',
       type: 'variable_type',
@@ -313,6 +319,8 @@ function checkFromSubjectOp(subject, operator, prev = {}) {
       ...meta,
     }
   }
+
+  if (subject === 'run') return makeCheckSkeleton('run_attempted', prev)
 
   if (subject === 'code' && STRUCTURE_OPERATORS.includes(operator)) {
     return {
@@ -388,6 +396,7 @@ function getOperatorOptions(subject, currentOperator = null, aspect = null) {
       { value: 'not_matches_regex', label: 'does not match regex' },
     ]
   }
+  if (subject === 'run') return [{ value: 'run_attempted', label: 'at least once' }]
   if (subject === 'code' && currentAspect === 'structure')
     return [
       { value: 'nested_in', label: 'is inside' },
@@ -456,6 +465,8 @@ function makeCheckSkeleton(type, prev = {}) {
   }
   if (type === 'code_no_error' || type === 'output_not_empty' || type === 'output_empty')
     return { type, ...meta }
+  if (type === 'run_attempted')
+    return { type, ...(prev.requireSuccess === true ? { requireSuccess: true } : {}), ...meta }
   if (type === 'variable_exists') return { type, name: prev.name ?? '', ...meta }
   if (type === 'variable_dict_key_value')
     return { type, name: prev.name ?? '', key: prev.key ?? '', value: prev.value ?? '', ...meta }

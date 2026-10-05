@@ -48,7 +48,7 @@ tasks:
         completion: pass
 ```
 
-**Checks that need a run are skipped, not failed.** `test-checks` never runs code, so it only judges checks it can evaluate from the source (`code`, `code_structure` and their aliases). A check that needs a run — `output`, `output_not_empty`, `output_empty`, `output_line_count`, `code_no_error`, `variable_*`, Turtle and HTML element checks — and any check reading state a cases file can't supply (Filesystem, Desktop, Electronics circuit, `answer`) is reported per check as `result: skipped` with a `reason`, in `actual.checks` (completion) and `skippedFeedback` (feedback checks). The case's completion is then decided like this:
+**Checks that need a run are skipped, not failed.** `test-checks` never runs code, so it only judges checks it can evaluate from the source (`code`, `code_structure` and their aliases). A check that needs a run — `output`, `output_not_empty`, `output_empty`, `output_line_count`, `code_no_error`, `run_attempted`, `variable_*`, Turtle and HTML element checks — and any check reading state a cases file can't supply (Filesystem, Desktop, Electronics circuit, `answer`) is reported per check as `result: skipped` with a `reason`, in `actual.checks` (completion) and `skippedFeedback` (feedback checks). The case's completion is then decided like this:
 
 | Completion checks | `actual.completion` |
 |---|---|

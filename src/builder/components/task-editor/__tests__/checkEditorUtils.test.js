@@ -526,3 +526,30 @@ describe('formatCheckFailure', () => {
     expect(detail).toContain('hello')
   })
 })
+
+describe('the Run subject (run_attempted)', () => {
+  it('maps run_attempted to the Run subject and back', () => {
+    expect(subjectOpFromType('run_attempted')).toEqual({
+      subject: 'run',
+      operator: 'run_attempted',
+    })
+    expect(checkUiFromCheck({ type: 'run_attempted' })).toEqual({
+      subject: 'run',
+      aspect: 'run',
+      operator: 'run_attempted',
+    })
+    expect(typeFromSubjectOp('run', 'run_attempted')).toBe('run_attempted')
+    expect(getAspectOptions('run')).toEqual([{ value: 'run', label: 'Run pressed' }])
+    expect(getOperatorOptions('run').map((o) => o.value)).toEqual(['run_attempted'])
+  })
+
+  it('builds a run_attempted check, keeping requireSuccess and the hint', () => {
+    expect(checkFromSubjectOp('run', 'run_attempted')).toEqual({ type: 'run_attempted' })
+    expect(
+      checkFromSubjectOp('run', 'run_attempted', { requireSuccess: true, hint: 'Press Run' })
+    ).toEqual({ type: 'run_attempted', requireSuccess: true, hint: 'Press Run' })
+    expect(makeCheckSkeleton('run_attempted', { value: 'stale' })).toEqual({
+      type: 'run_attempted',
+    })
+  })
+})

@@ -10,6 +10,9 @@ export function formatCheckValue(c) {
     return `at least ${c.value} output line${c.value === 1 ? '' : 's'}`
   if (c.type === 'output_not_empty') return 'output is not empty'
   if (c.type === 'output_empty') return 'output is empty'
+  // Run
+  if (c.type === 'run_attempted')
+    return c.requireSuccess === true ? 'Run pressed, no error' : 'Run pressed'
   // Code
   if (c.type === 'code_contains') return `code contains "${c.value}"`
   if (c.type === 'code_does_not_contain') return `code does not contain "${c.value}"`

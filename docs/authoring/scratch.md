@@ -679,6 +679,23 @@ Note: event hat blocks (`event_whenflagclicked` etc.) are not tracked by `block_
         value: ""
 ```
 
+### `run_attempted`
+
+For demo tasks ("press the green flag and watch"): passes once the learner has pressed the
+**green flag** on this task. Clicking a single script, or pressing a key that starts a
+`when key pressed` script, never counts. When it is the task's only run-time check it is judged
+the moment the flag is pressed, so a project with a `forever` loop, or one the learner stops,
+still completes. Scratch has no error status, so `requireSuccess` is ignored (the validator warns).
+Leave `evaluation` unset; `after_block_placed` is rejected. It is a completion check only, and
+combines with block checks in a list. `test-checks` reports it as skipped (it needs a run). Full
+reference: [python.md](python.md#run-attempted-check-run_attempted).
+
+```yaml
+check:
+  type: run_attempted
+  hint: Click the green flag to watch the cat dance.
+```
+
 ### Verifying Scratch checks
 
 Run `test-checks` with no `--cases` file to check every Scratch task's checks against its own blocks (no Firebase needed):

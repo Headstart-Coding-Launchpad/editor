@@ -37,7 +37,9 @@ function describeModule(def) {
       .list()
       .filter(
         (check) =>
-          check.owner === `module:${def.type}` || def.inheritsCheckTypes?.includes(check.type)
+          check.owner === `module:${def.type}` ||
+          def.inheritsCheckTypes?.includes(check.type) ||
+          check.appliesTo?.(def) === true
       )
       .map((check) => check.type),
   }
