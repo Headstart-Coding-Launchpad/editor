@@ -249,7 +249,7 @@ describe('an Admin-catalogue badge on a student screen', () => {
     status: 'awarded',
     announce: true,
     decidedAt: 9,
-    badge: { emoji: '🎤', title: 'Star Speaker', blurb: 'Presented well.' },
+    badge: { emoji: '🎺', title: 'Star Speaker', blurb: 'Presented well.' },
   }
 
   beforeEach(() => vi.useFakeTimers())
@@ -265,7 +265,7 @@ describe('an Admin-catalogue badge on a student screen', () => {
       />
     )
     const card = screen.getByTestId('badge-celebration').firstChild
-    expect(card).toHaveTextContent('🎤')
+    expect(card).toHaveTextContent('🎺')
     expect(card).toHaveTextContent('Star Speaker')
     expect(card).toHaveTextContent('Presented well.')
   })
@@ -284,7 +284,7 @@ describe('an Admin-catalogue badge on a student screen', () => {
       />
     )
     const status = screen.getByRole('status')
-    expect(status).toHaveTextContent('Alex earned a badge: 🎤 Star Speaker')
+    expect(status).toHaveTextContent('Alex earned a badge: 🎺 Star Speaker')
     expect(status).toHaveAttribute('title', 'Presented well.')
   })
 })

@@ -109,7 +109,7 @@ export function readRegistry(root) {
 // Every reason the request can't be scaffolded, checked before anything is written.
 export function validateRequest(root, { id, emoji, title, blurb }) {
   const errors = []
-  if (!id) errors.push('Missing <id>, e.g. npm run new:badge -- tidy_coder --emoji 🧹')
+  if (!id) errors.push('Missing <id>, e.g. npm run new:badge -- kind_coder --emoji 🌻')
   else if (!/^[a-z][a-z0-9_]*$/.test(id) || id.endsWith('_') || id.includes('__')) {
     errors.push(
       `Badge id "${id}" must be a lowercase identifier (letters, digits, single underscores).`
@@ -117,7 +117,7 @@ export function validateRequest(root, { id, emoji, title, blurb }) {
   } else if (RESERVED_IDS.has(id) || id.length > 32) {
     errors.push(`Badge id "${id}" is not allowed (reserved, or longer than 32 characters).`)
   }
-  if (!emoji) errors.push('Missing --emoji (unique across every badge, e.g. --emoji 🧹).')
+  if (!emoji) errors.push('Missing --emoji (unique across every badge, e.g. --emoji 🌻).')
   else if (/\s/.test(emoji) || emoji.length > 16 || !/\p{Extended_Pictographic}/u.test(emoji)) {
     errors.push(`--emoji "${emoji}" must be a single emoji.`)
   }
@@ -331,7 +331,7 @@ function nextSteps(id, { tutorOnly }) {
 
 const USAGE = `Usage: npm run new:badge -- <id> --emoji <emoji> [--title "<Title>"] [--blurb "<Blurb>"] [--tutor-only] [--dry-run]
 
-  <id>          lowercase identifier stored in decisions and reports, e.g. tidy_coder
+  <id>          lowercase identifier stored in decisions and reports, e.g. kind_coder
   --emoji       the badge's emoji, unique across every badge
   --title       the name students and tutors see (default: from the id, e.g. "Tidy Coder")
   --blurb       one line for the student's card (default: a TODO)

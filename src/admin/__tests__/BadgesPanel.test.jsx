@@ -16,7 +16,7 @@ vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: { email: 'admin@x
 
 const STAR = {
   id: 'star_speaker',
-  emoji: '🎤',
+  emoji: '🎺',
   title: 'Star Speaker',
   blurb: 'Presented well.',
   archived: false,
@@ -74,11 +74,11 @@ describe('BadgesPanel', () => {
     expect(service.saveCatalogueBadge).not.toHaveBeenCalled()
 
     await user.clear(screen.getByLabelText('Emoji'))
-    await user.type(screen.getByLabelText('Emoji'), '🎤')
+    await user.type(screen.getByLabelText('Emoji'), '🎺')
     await user.clear(screen.getByLabelText('Id'))
     await user.type(screen.getByLabelText('Id'), 'mic_drop')
     await user.click(screen.getByRole('button', { name: 'Save badge' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('🎤 is already the Star Speaker badge')
+    expect(screen.getByRole('alert')).toHaveTextContent('🎺 is already the Star Speaker badge')
   })
 
   it('edits a badge without changing its id', async () => {
@@ -90,7 +90,7 @@ describe('BadgesPanel', () => {
     await user.type(screen.getByLabelText('Title'), 'Super Speaker')
     await user.click(screen.getByRole('button', { name: 'Save badge' }))
     expect(service.saveCatalogueBadge).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'star_speaker', title: 'Super Speaker', emoji: '🎤' }),
+      expect.objectContaining({ id: 'star_speaker', title: 'Super Speaker', emoji: '🎺' }),
       expect.objectContaining({ isNew: false })
     )
   })
