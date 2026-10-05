@@ -37,7 +37,15 @@ vi.mock('./firebase.mjs', () => ({
   db: { collection: (name) => mockCollection(name) },
 }))
 
-import { deleteLesson, getLesson, publishYamlLesson, upsertLesson } from './lessons.mjs'
+import yaml from 'js-yaml'
+import {
+  buildLessonListRows,
+  deleteLesson,
+  getLesson,
+  listLessons,
+  publishYamlLesson,
+  upsertLesson,
+} from './lessons.mjs'
 
 const draft = {
   id: 'cli-draft',
@@ -211,5 +219,154 @@ describe('CLI lesson Firestore encoding', () => {
         'lessons/deep-scratch',
       ])
     )
+  })
+})
+
+describe('CLI lessonNumber', () => {
+  beforeEach(() => {
+    state.records.clear()
+    state.set.mockReset()
+    state.deleted.length = 0
+  })
+
+  const numberedDraft = {
+    ...draft,
+    id: 'numbered-draft',
+    levelId: 'python-level-1',
+    lessonNumber: 9,
+  }
+
+  it('stores lessonNumber on upsert and keeps it on a new version that sets it again', async () => {
+    await upsertLesson(numberedDraft)
+    expect(state.records.get('lessons/numbered-draft').lessonNumber).toBe(9)
+
+    const updated = await upsertLesson({ ...numberedDraft, title: 'Renamed draft' })
+    expect(updated).toMatchObject({ success: true, version: 2 })
+    expect(state.records.get('lessons/numbered-draft')).toMatchObject({
+      lessonNumber: 9,
+      title: 'Renamed draft',
+    })
+  })
+
+  it('keeps a stored lessonNumber when a new version leaves the field out', async () => {
+    await upsertLesson(numberedDraft)
+    const { lessonNumber: _omitted, ...withoutNumber } = numberedDraft
+    const result = await upsertLesson({ ...withoutNumber, title: 'New version' })
+    expect(result).toMatchObject({ success: true, version: 2 })
+    expect(state.records.get('lessons/numbered-draft').lessonNumber).toBe(9)
+  })
+
+  it('rejects an invalid lessonNumber without writing', async () => {
+    const result = await upsertLesson({ ...numberedDraft, lessonNumber: 0 })
+    expect(result.success).toBe(false)
+    expect(result.errors).toContain(
+      'lessonNumber must be a positive whole number (1, 2, 3 …) when provided'
+    )
+    expect(state.set).not.toHaveBeenCalled()
+  })
+
+  it('returns lessonNumber from lessons get (null when unset)', async () => {
+    await upsertLesson(numberedDraft)
+    await upsertLesson(draft)
+    await expect(getLesson('numbered-draft')).resolves.toMatchObject({ lessonNumber: 9 })
+    await expect(getLesson('cli-draft')).resolves.toMatchObject({ lessonNumber: null })
+  })
+
+  // The request's example: a lesson, its Solo Challenge, and a Solo Project after Lesson 6.
+  const listFixture = [
+    {
+      id: 'z5h1q9vb4e',
+      title: 'Solo Project 1',
+      type: 'python',
+      soloOnly: true,
+      levelId: 'python-level-1',
+      lessonNumber: 6,
+    },
+    {
+      id: 'm8d2r6tw1c',
+      title: 'Boolean Flags — Solo Challenge',
+      type: 'python',
+      soloOnly: true,
+      companionOf: 'k3f9x2qp7a',
+    },
+    {
+      id: 'k3f9x2qp7a',
+      title: 'Boolean Flags',
+      type: 'python',
+      levelId: 'python-level-1',
+      lessonNumber: 9,
+    },
+    {
+      id: 'a-lesson-six',
+      title: 'Lesson Six',
+      type: 'python',
+      levelId: 'python-level-1',
+      lessonNumber: 6,
+    },
+    {
+      id: 'l2-first',
+      title: 'Level two',
+      type: 'python',
+      levelId: 'python-level-2',
+      lessonNumber: 1,
+    },
+    { id: 'no-level', title: 'Aaa no level', type: 'python' },
+  ]
+
+  it('lists lessons by level order, then lessonNumber, with companions after their parent', async () => {
+    for (const item of listFixture) state.records.set(`lessons/${item.id}`, item)
+    // Level 2 is stored first but ordered after Level 1.
+    state.records.set('lessonLevels/python-level-2', { title: 'Level 2', order: 2 })
+    state.records.set('lessonLevels/python-level-1', { title: 'Level 1', order: 1 })
+
+    const rows = await listLessons()
+    expect(rows.map((row) => row.id)).toEqual([
+      'a-lesson-six',
+      'z5h1q9vb4e',
+      'k3f9x2qp7a',
+      'm8d2r6tw1c',
+      'l2-first',
+      'no-level',
+    ])
+  })
+
+  it('includes lessonNumber and companionOf on every list row (JSON and YAML)', async () => {
+    for (const item of listFixture) state.records.set(`lessons/${item.id}`, item)
+
+    const rows = await listLessons()
+    for (const row of rows) {
+      expect(row).toHaveProperty('lessonNumber')
+      expect(row).toHaveProperty('companionOf')
+      expect(row).not.toHaveProperty('levelRef')
+    }
+    expect(rows.find((row) => row.id === 'k3f9x2qp7a')).toMatchObject({
+      lessonNumber: 9,
+      companionOf: null,
+      soloOnly: false,
+    })
+    expect(rows.find((row) => row.id === 'm8d2r6tw1c')).toMatchObject({
+      lessonNumber: null,
+      companionOf: 'k3f9x2qp7a',
+      soloOnly: true,
+    })
+
+    const json = JSON.parse(JSON.stringify(rows))
+    expect(json[0]).toEqual(expect.objectContaining({ lessonNumber: 6, companionOf: null }))
+    const yamlRows = yaml.load(yaml.dump(rows))
+    expect(yamlRows.find((row) => row.id === 'm8d2r6tw1c')).toMatchObject({
+      lessonNumber: null,
+      companionOf: 'k3f9x2qp7a',
+    })
+  })
+
+  it('buildLessonListRows reports an invalid stored lessonNumber as null', () => {
+    const rows = buildLessonListRows([
+      { id: 'bad', data: { title: 'Bad', lessonNumber: '3' } },
+      { id: 'good', data: { title: 'Good', lessonNumber: 3 } },
+    ])
+    expect(rows.map((row) => [row.id, row.lessonNumber])).toEqual([
+      ['good', 3],
+      ['bad', null],
+    ])
   })
 })
