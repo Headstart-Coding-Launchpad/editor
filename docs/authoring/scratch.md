@@ -389,6 +389,48 @@ The sprite/backdrop library the builder's own "Add sprite"/"Add backdrop" picker
 ]
 ```
 
+### A multi-costume preset
+
+A preset can carry several costumes, so a student who adds it from the picker can switch between them (for example a walk cycle with `next costume`), and each costume is also offered by the **+ Add costume** picker. Upload each image as a shared Scratch asset first, then point each costume's `image` at the hosted `url` the upload returns:
+
+```bash
+node cli/cli.mjs assets upload-type scratch ./dog-sit.png
+node cli/cli.mjs assets upload-type scratch ./dog-walk1.png
+node cli/cli.mjs assets upload-type scratch ./dog-walk2.png
+```
+
+```json
+[
+  {
+    "id": "dog",
+    "name": "Dog",
+    "type": "cat",
+    "size": 80,
+    "costume": "dog-sit",
+    "costumes": [
+      {
+        "name": "dog-sit",
+        "image": "https://firebasestorage.googleapis.com/v0/b/<bucket>/o/shared%2Fscratch%2Fassets%2Fdog-sit.png?alt=media&token=<token>"
+      },
+      {
+        "name": "dog-walk1",
+        "image": "https://firebasestorage.googleapis.com/v0/b/<bucket>/o/shared%2Fscratch%2Fassets%2Fdog-walk1.png?alt=media&token=<token>"
+      },
+      {
+        "name": "dog-walk2",
+        "image": "https://firebasestorage.googleapis.com/v0/b/<bucket>/o/shared%2Fscratch%2Fassets%2Fdog-walk2.png?alt=media&token=<token>"
+      }
+    ]
+  }
+]
+```
+
+- A preset has the same fields as an entry in a task's `sprites` list. Its `id` is the **preset** id (the one `addSpritePresetIds` lists); the sprite gets a fresh `spriteN` id when it is added to a task. `id` and a non-empty `name` are required — entries without them are dropped when the list is saved.
+- Each costume is `{ name, image }`. `costume` names the costume worn first; omitted, the first costume is used. Costume names are what `switch costume to` and `sprite_property` `property: costume` checks match, case-sensitively.
+- **Use full `https://` URLs (or `/assets/shared/...` site paths) for preset costume images.** A relative path such as `sprites/dog.png` is resolved against the `assetsPath` of whichever lesson the sprite is added to, so it breaks in every lesson that doesn't hold that file.
+- `showInEditor` on the uploaded shared assets doesn't matter here: Scratch loads a costume straight from its `image` URL and never reads `showInEditor`.
+- `assets set-default-sprites` **replaces the whole list**. Fetch the current list with `node cli/cli.mjs assets list-type scratch`, add your entry to its `defaultSprites`, and send the full list back. See [Lesson Asset CLI](lesson-assets-cli.md#shared-lesson-type-assets).
+
 ---
 
 ## Student-Added Sprites, Backdrops, and Variables

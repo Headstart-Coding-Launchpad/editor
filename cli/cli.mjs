@@ -1094,7 +1094,7 @@ await yargs(hideBin(process.argv))
 
       .command(
         'set-default-sprites <type> [file]',
-        'Replace the default Scratch sprite list for a lesson type — file path or stdin (JSON or YAML)',
+        'Replace the WHOLE default Scratch sprite list (omitted presets are deleted; fetch it with list-type first) — file path or stdin (JSON or YAML)',
         {},
         cmd(async ({ type, file }) => {
           const { setDefaultSprites } = await loadTypeAssets()
@@ -1145,7 +1145,7 @@ await yargs(hideBin(process.argv))
 
       .command(
         'set-default-sounds <type> [file]',
-        'Replace the default Scratch sound-file list ({ id, name, audio }) — file path or stdin (JSON or YAML)',
+        'Replace the WHOLE default Scratch sound-file list ({ id, name, audio }; omitted sounds are deleted) — file path or stdin (JSON or YAML)',
         {},
         cmd(async ({ type, file }) => {
           const { setDefaultSounds } = await loadTypeAssets()
