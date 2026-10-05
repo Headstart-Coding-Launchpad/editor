@@ -239,7 +239,7 @@ describe('lessons test-checks: Scratch mode', () => {
       tasks: [{ id: 1, cases: [{ name: 'has x', code: 'x = 1', completion: 'pass' }] }],
     })
     expect(result.success).toBe(true)
-    expect(result.mode).toBeUndefined()
+    expect(result.mode).toBe('cases')
   })
 })
 

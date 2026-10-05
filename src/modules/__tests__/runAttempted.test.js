@@ -191,7 +191,7 @@ describe('run_attempted — Scratch (green flag only)', () => {
 })
 
 describe('run_attempted — lessons test-checks', () => {
-  it('fails (never passes) a source-only case: the CLI never runs code', () => {
+  it('skips (never passes) a source-only case: the CLI never runs code', () => {
     const lesson = {
       id: 'demo',
       type: 'python',
@@ -200,7 +200,8 @@ describe('run_attempted — lessons test-checks', () => {
     const result = testLessonChecks(lesson, {
       tasks: [{ id: 1, cases: [{ name: 'starter', code: 'print("hi")', completion: 'fail' }] }],
     })
-    expect(result.cases[0].actual.completion).toBe('fail')
+    expect(result.cases[0].actual.completion).toBe('skipped')
+    expect(result.summary.skippedRuntimeChecks).toBe(1)
   })
 })
 
