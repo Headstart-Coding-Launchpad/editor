@@ -37,6 +37,67 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-05
+
+### `lessons validate` catches Firestore's 20-level nesting limit; prebuilt stacks stored as text
+
+- A lesson nested deeper than Firestore allows used to pass validation and then fail on save with
+  `Input object is deeper than 20 levels`. The shared validator (CLI and Builder) now measures the
+  lesson **as it will be stored** and reports an error naming the task, its title and the deepest
+  path, e.g. `Task 15 ("Title") is nested 24 levels deep at tasks[14].sprites[0]…`. See
+  [validation errors](validation-errors.md#lesson-envelope).
+- `prebuiltStacks[].stack` (on a task and on each code stage) is now saved as JSON text and parsed
+  back on read, like `starterBlocks` / `completeBlocks`, so a long prebuilt stack no longer hits
+  the limit. Authors still write the stack as an object; stacks stored as objects still load.
+  [scratch.md](scratch.md#populated-block-state-json) no longer calls a stack "one shallow block".
+- Affects: scratch, cli, all · Existing lessons: no changes needed (a lesson that failed to save
+  because of a long prebuilt stack can now be republished as it is) · Resolves:
+  authoring-requests/2026-10-04-lessons-validate-should-catch-firestore-s-20-level-depth-lim.md
+
+### `lessons test-checks --cases` skips checks that need a run instead of failing them
+
+- In `--cases` mode, `output`, `output_not_empty`, `output_empty`, `output_line_count`,
+  `code_no_error`, `variable_*`, Turtle and HTML element checks (and checks that read
+  Filesystem / Desktop / circuit / answer state) are now reported per check as `skipped` with a
+  reason instead of a false `fail`. Completion is judged on the source checks alone; it reads
+  `skipped` when every completion check needs a run, and a `skipped` completion is not a mismatch.
+  A task with Python `tests` is skipped entirely, as at runtime. The output gains
+  `actual.checks`, `skippedFeedback`, and `summary.skipped` / `summary.skippedRuntimeChecks`.
+  See the [Quick Start](AUTHORING_GUIDE.md).
+- Affects: cli, python, html, turtle · Existing lessons: no changes needed; drop any stripped
+  "source-checks-only" lesson copies made to work around the old false failures · Resolves:
+  authoring-requests/2026-10-04-lessons-test-checks-should-skip-runtime-checks-instead-of-fa.md
+
+### Docs: which hint shows when Python code can't run
+
+- New subsection [When the code can't run (SyntaxError)](AUTHORING_GUIDE.md#when-the-code-cant-run-syntaxerror):
+  the task always fails, but `feedbackChecks` and `code` checks are still evaluated against the
+  source (so a regex feedback check for a syntax slip does fire), `code_no_error` and `variable_*`
+  checks fail, and output checks are compared against the error message. Order completion checks
+  so the hint you want for broken code comes first. No behaviour change.
+- Affects: python · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-04-document-whether-source-code-checks-evaluate-python-code-tha.md
+
+### Docs: shared asset CLI — `showInEditor`, replace vs append, multi-costume presets
+
+- [lesson-assets-cli.md](lesson-assets-cli.md#shared-lesson-type-assets) now says that
+  `assets upload-type` stores `showInEditor: false` (Scratch never reads it, so preset costumes
+  are unaffected; Arcade needs **Web editor** ticked), that `set-default-sprites` and
+  `set-default-sounds` **replace the whole list** while `upload-sound` / `upload-backdrop` append,
+  and to fetch the current list with `assets list-type scratch` first.
+  [scratch.md](scratch.md#a-multi-costume-preset) gains a worked multi-costume `defaultSprites`
+  preset using uploaded shared images (use full `https://` URLs). No behaviour change.
+- Affects: scratch, arcade, cli · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-04-lesson-assets-cli-md-upload-type-showineditor-default-set-de.md
+
+### Docs: Markdown renderer reference fences fixed
+
+- An unbalanced code fence in [markdown-renderer.md](markdown-renderer.md) swallowed the
+  "Scratch Blocks (fenced)", block colour, value pill, shape and maintenance sections into one code
+  block. They now render as normal sections. No renderer change.
+- Affects: markdown · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-04-markdown-renderer-md-broken-code-fence-swallows-the-scratch-.md
+
 ## 2026-10-04
 
 ### Scratch `audio` sounds play from Firebase Storage and any other host
