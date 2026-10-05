@@ -295,6 +295,11 @@ export function evaluateScratchCheck(
         return compare(runState?.variables?.[check.variableName], check.operator, check.value)
       case 'costume_is':
         return spriteState ? spriteState.costume === check.value : false
+      case 'run_attempted':
+        // The green flag was pressed at least once on this task (ScratchWorkspace stamps every
+        // run signal with it); clicking a single script never counts. No error status exists in
+        // Scratch, so `requireSuccess` is ignored.
+        return runState?.greenFlagPressed === true
       case 'block_run': {
         // Passes when any alternative ran. The run only records opcodes, so an alternative
         // with fieldValues also needs a block of it in the workspace holding those values.

@@ -9,6 +9,9 @@ import {
   checkRequiresRun,
   evaluateSingleCheck,
   getCheckDefinition,
+  isRunAttemptedCheck,
+  moduleHasRunButton,
+  moduleReportsRunStatus,
   normalizeChecks,
   normalizeFeedbackChecks,
 } from './checks.js'
@@ -41,7 +44,12 @@ export function validateTaskChecks(task, validate) {
 // `Task ${n} `). `moduleDefinition` is the task's effective module (null when unknown), so a
 // check type can reject modules that can't evaluate it. Runs for the completion check and any
 // feedback checks of a task that uses a module.
-export function validateRegisteredChecks(task, n, errors, { moduleDefinition = null } = {}) {
+export function validateRegisteredChecks(
+  task,
+  n,
+  errors,
+  { moduleDefinition = null, warnings = [] } = {}
+) {
   validateTaskChecks(task, (checks, kind) => {
     for (const check of normalizeChecks(checks)) {
       const messages = getCheckDefinition(check?.type)?.validate?.(check, {
@@ -53,6 +61,60 @@ export function validateRegisteredChecks(task, n, errors, { moduleDefinition = n
       if (Array.isArray(messages)) errors.push(...messages)
     }
   })
+  validateRunAttemptedChecks(task, n, errors, warnings, { moduleDefinition })
+}
+
+// run_attempted (checks.js): a completion check for demo tasks, passed once the student runs the
+// task. Only modules with a Run button can run it; `requireSuccess` only means something where
+// runs report an error status (Python, Turtle, Electronics); it is never a feedback check (it
+// would match on every run); in Scratch it is judged when the green flag runs.
+export function validateRunAttemptedChecks(
+  task,
+  n,
+  errors,
+  warnings = [],
+  { moduleDefinition = null } = {}
+) {
+  const moduleLabel = moduleDefinition?.meta?.label ?? 'this module'
+  const completion = normalizeChecks(task?.check).filter(isRunAttemptedCheck)
+  if (collectFeedbackChecks(task).some(isRunAttemptedCheck)) {
+    errors.push(
+      `Task ${n} has a run_attempted feedback check — run_attempted can only be a completion check`
+    )
+  }
+  if (completion.length === 0) return
+  if (moduleDefinition && !moduleHasRunButton(moduleDefinition)) {
+    errors.push(
+      `Task ${n} has a run_attempted check, but ${moduleLabel} tasks have no Run button — run_attempted needs a module with a Run button (Python, Turtle, Arcade, Electronics, HTML or Scratch)`
+    )
+    return
+  }
+  if (
+    completion.some(
+      (check) => check.requireSuccess != null && typeof check.requireSuccess !== 'boolean'
+    )
+  ) {
+    errors.push(`Task ${n} has a run_attempted check whose requireSuccess is not true or false`)
+  }
+  if (
+    moduleDefinition &&
+    !moduleReportsRunStatus(moduleDefinition) &&
+    completion.some((check) => check.requireSuccess === true)
+  ) {
+    warnings.push(
+      `Task ${n} has a run_attempted check with requireSuccess, but ${moduleLabel} runs never report an error — requireSuccess is ignored there`
+    )
+  }
+  if (completion.some((check) => check.evaluation === 'after_block_placed')) {
+    errors.push(
+      `Task ${n} has a run_attempted check with evaluation after_block_placed — it is judged when the green flag runs, so remove its evaluation`
+    )
+  }
+  if (task?.tests?.length > 0) {
+    warnings.push(
+      `Task ${n} has a run_attempted check and tests — a task with tests is completed by its tests, so the run_attempted check is never used`
+    )
+  }
 }
 
 // Stage labels, plus (for modules whose stages hold state) the stage's state object.
@@ -124,6 +186,7 @@ export function validateCodeChecks(
   }
   const noValueTypes = [
     'code_no_error',
+    'run_attempted',
     'output_not_empty',
     'output_empty',
     'html_element',
@@ -304,7 +367,8 @@ export function warnCompleteCode(task, n, warnings) {
   if (!task.check || task.completeCode == null) return
   const allChecks = normalizeChecks(task.check)
   const staticChecks = allChecks.filter((c) => checkAllowedForSubmit(c))
-  const dynamicChecks = allChecks.filter((c) => checkRequiresRun(c))
+  // run_attempted needs a run but has nothing for the complete solution to satisfy.
+  const dynamicChecks = allChecks.filter((c) => checkRequiresRun(c) && !isRunAttemptedCheck(c))
   const code = stripLineHints(task.completeCode, 'python')
   if (staticChecks.length > 0 && staticChecks.some((c) => !evaluateSingleCheck(c, '', { code }))) {
     warnings.push(`Task ${n} complete solution fails a code check — review the complete code`)
@@ -320,7 +384,7 @@ export function warnCompleteFiles(task, n, warnings) {
   if (!task.check || !(task.completeFiles?.length > 0)) return
   const allChecks = normalizeChecks(task.check)
   const staticChecks = allChecks.filter((c) => checkAllowedForSubmit(c))
-  const dynamicChecks = allChecks.filter((c) => checkRequiresRun(c))
+  const dynamicChecks = allChecks.filter((c) => checkRequiresRun(c) && !isRunAttemptedCheck(c))
   if (staticChecks.length > 0) {
     const codeStr = task.completeFiles
       .map((f) => stripLineHints(f?.content ?? '', 'html'))
@@ -415,6 +479,7 @@ export function warnCompleteCircuit(task, n, warnings) {
 // ── "Has a check worth testing" (Builder's untested-check reminder) ──────────
 const NO_VALUE_CODE_CHECK_TYPES = [
   'code_no_error',
+  'run_attempted',
   'output_not_empty',
   'output_empty',
   'element_exists',

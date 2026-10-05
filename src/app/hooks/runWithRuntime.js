@@ -1,4 +1,8 @@
-import { evaluateCheck, evaluateCheckWithFeedback } from '../../modules/checks'
+import {
+  completionToleratesRunError,
+  evaluateCheck,
+  evaluateCheckWithFeedback,
+} from '../../modules/checks'
 import { createThrottledMirrorWriter } from '../throttledMirrorWriter'
 import { appendStudentOutput, createStudentOutputBuffer } from './studentOutputBuffer'
 import { runErrorFor } from '../../badges/signals'
@@ -190,7 +194,20 @@ export async function runWithRuntime(ctx) {
     refs.outputRafIdRef.current = null
   }
 
-  if (result.status === 'stopped') {
+  // A run_attempted-only task ("press Run and watch") completes on any run, so a run the
+  // student stopped still counts — a demo that loops forever (a blinking LED) can only end
+  // that way. It is reported like a finished run, with status 'stopped', but only while the
+  // student is still on the task: a stop triggered by navigating away reports nothing.
+  const stoppedRunCounts =
+    result.status === 'stopped' &&
+    currentTaskId === refs.currentTaskIdRef.current &&
+    !alreadySolved &&
+    refs.phaseRef.current !== 'sandbox' &&
+    !refs.inPersonalSandboxRef.current &&
+    !(task?.tests?.length > 0) &&
+    completionToleratesRunError(task?.check)
+
+  if (result.status === 'stopped' && !stoppedRunCounts) {
     flushRuntimeCodeUpdate()
     // Only repaint the buffered output if the student is still on the task that
     // produced it — a stop triggered by navigating away must not overwrite the
@@ -217,11 +234,13 @@ export async function runWithRuntime(ctx) {
   const nextCode = typeof result.updatedCode === 'string' ? result.updatedCode : latestRuntimeCode
   if (nextCode !== startCode) setCode(nextCode)
 
-  setTurtleResult(result.turtle ?? null)
+  if (status !== 'stopped') setTurtleResult(result.turtle ?? null)
+  // `ran` tells run_attempted checks this context comes from a real run (see checks.js).
   const checkContext = checking.buildContext(nextCode, {
     status,
     variables: result.variables ?? {},
     turtle: result.turtle ?? null,
+    ran: true,
   })
   // A teacher-started or personal sandbox is free play: the session still points at a
   // lesson task, but sandbox code has nothing to do with that task's check, so scoring
@@ -231,9 +250,13 @@ export async function runWithRuntime(ctx) {
   const runError = runErrorFor(status, outputBuffer.raw)
   const checkTask = isFreePlay ? null : task
   const hasTests = checkTask?.tests?.length > 0
+  // An errored (or, see stoppedRunCounts, stopped) run fails the completion check — except a
+  // run_attempted-only check, which any run satisfies.
+  const runFailureBlocksCompletion =
+    (status === 'error' || status === 'stopped') && !completionToleratesRunError(checkTask?.check)
   let passed = alreadySolved
     ? true
-    : status === 'error' || hasTests || isFreePlay
+    : runFailureBlocksCompletion || hasTests || isFreePlay
       ? false
       : evaluateCheckWithFeedback(checkTask, outputBuffer.raw, checkContext).passed
   let suggestion = ''
@@ -246,7 +269,8 @@ export async function runWithRuntime(ctx) {
       !hasTests && checkTask?.check
         ? evaluateCheckWithFeedback(checkTask, outputBuffer.raw, checkContext, {
             completionPassed:
-              status !== 'error' && evaluateCheck(checkTask.check, outputBuffer.raw, checkContext),
+              !runFailureBlocksCompletion &&
+              evaluateCheck(checkTask.check, outputBuffer.raw, checkContext),
           })
         : null
     if (evaluation) {

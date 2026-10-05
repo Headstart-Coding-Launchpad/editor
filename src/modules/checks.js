@@ -104,6 +104,12 @@ const CORE_CHECK_DEFINITIONS = {
     fields: [],
     evaluate: 'on_run',
   },
+  run_attempted: {
+    subject: 'Run pressed',
+    operators: [],
+    fields: ['requireSuccess'],
+    evaluate: 'on_run',
+  },
 }
 
 const CORE_LEGACY_CHECK_ALIASES = {
@@ -207,6 +213,45 @@ function coreCheck(type, extra) {
   }
 }
 
+// Run statuses that fail a `requireSuccess: true` run_attempted check: the run raised an error,
+// or the student stopped it before it finished.
+const RUN_FAILED_STATUSES = ['error', 'stopped']
+
+export const RUN_ATTEMPTED_CHECK_TYPE = 'run_attempted'
+
+// The run capabilities (defineModule `capabilities.run`) that give the student a Run button:
+// Python / Turtle / Electronics ('runtime'), Arcade's Run game and Scratch's green flag
+// ('workspace'), HTML ('preview'). Filesystem and Desktop ('none') have nothing to run.
+const RUN_BUTTON_KINDS = ['runtime', 'workspace', 'preview']
+
+export function moduleHasRunButton(moduleDefinition) {
+  return RUN_BUTTON_KINDS.includes(moduleDefinition?.capabilities?.run)
+}
+
+// Whether a module's runs report an error status that `requireSuccess` can read (the
+// 'runtime' modules). Arcade, HTML and Scratch runs never do.
+export function moduleReportsRunStatus(moduleDefinition) {
+  return moduleDefinition?.capabilities?.run === 'runtime'
+}
+
+export function isRunAttemptedCheck(check) {
+  return check?.type === RUN_ATTEMPTED_CHECK_TYPE
+}
+
+/**
+ * Whether a completion check passes on any run, whatever its status: every check is a
+ * run_attempted without `requireSuccess`. Run paths normally fail a run that errored (or was
+ * stopped) before evaluating the check; for such a check they evaluate it anyway, so a demo task
+ * completes as soon as the student presses Run. Mixed with any other check the usual
+ * "an error fails the run" rule still applies.
+ */
+export function completionToleratesRunError(check) {
+  const checks = normalizeChecks(check)
+  return (
+    checks.length > 0 && checks.every((c) => isRunAttemptedCheck(c) && c.requireSuccess !== true)
+  )
+}
+
 // Generic checks shared by every code-based module. Legacy aliases (output_contains,
 // code_equals, answer_contains, ...) are rewritten to their canonical type + operator
 // by normalizeCheckShape before lookup; they are listed as aliases so each id has
@@ -244,6 +289,23 @@ export const CORE_CHECKS = [
     requiresRun: true,
     contextKey: 'status',
     evaluate: (_check, _output, context = {}) => context.status === 'success',
+  }),
+  // Demo tasks ("press Run and watch"): passes once the student ran the task — Run, Arcade's
+  // Run game, HTML's Run, or Scratch's green flag (Scratch judges it in its own evaluator,
+  // scratch/checks.js). Only a real run supplies `ran: true`, so every no-run context (code-change
+  // grading, auto-check on leave, `lessons test-checks`, teacher views) leaves it unpassed. With
+  // `requireSuccess: true` the run must also have finished without an error; modules that never
+  // report a status (Arcade, HTML, Scratch) ignore it. See completionToleratesRunError for how an
+  // erroring run still completes a run_attempted-only task.
+  coreCheck('run_attempted', {
+    requiresRun: true,
+    contextKey: 'ran',
+    // Core checks apply to every code module; this one only to those with a Run button
+    // (`lessons capabilities` lists it per module; moduleTaskValidation.js rejects the rest).
+    appliesTo: moduleHasRunButton,
+    evaluate: (check, _output, context = {}) =>
+      context.ran === true &&
+      (check.requireSuccess !== true || !RUN_FAILED_STATUSES.includes(context.status)),
   }),
   coreCheck('code', {
     contextKey: 'code',
@@ -513,9 +575,9 @@ export const NO_RUN_RESULTS = Object.freeze({
 })
 
 // Context keys only a run produces: code_no_error's `status`, Python's captured `variables`,
-// Turtle's drawing and HTML's rendered `iframeDoc`. A check reading one needs a run even when
-// its registry definition does not set `requiresRun` (Turtle's checks).
-const RUN_CONTEXT_KEYS = ['status', 'variables', 'turtle', 'iframeDoc']
+// Turtle's drawing, HTML's rendered `iframeDoc` and run_attempted's `ran`. A check reading one
+// needs a run even when its registry definition does not set `requiresRun` (Turtle's checks).
+const RUN_CONTEXT_KEYS = ['status', 'variables', 'turtle', 'iframeDoc', 'ran']
 
 /**
  * Whether one check can be judged from the work alone. False for a run-required type, a check

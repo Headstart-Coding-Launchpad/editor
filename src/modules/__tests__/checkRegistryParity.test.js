@@ -189,7 +189,7 @@ const VALUES = ['hello', 'Hello World', '42', 'led.on()', '^h.*o$']
 
 // Check types added after the legacy dispatcher was frozen have no legacy behaviour to match;
 // they are tested on their own (e.g. ../python/__tests__/codeStructure.test.js).
-const POST_REGISTRY_TYPES = ['code_structure']
+const POST_REGISTRY_TYPES = ['code_structure', 'run_attempted']
 const registeredIds = checkRegistry.typeIds().filter((id) => !POST_REGISTRY_TYPES.includes(id))
 const operators = [
   undefined,
@@ -289,7 +289,9 @@ describe('check registry parity — run/submit classification', () => {
   const sorted = (list) => [...new Set(list)].sort()
 
   it('derives RUN_REQUIRED and SUBMIT_ALLOWED with the same sets as before', () => {
-    expect(sorted(CHECK_TYPES.RUN_REQUIRED)).toEqual(sorted(LEGACY_RUN_REQUIRED))
+    const runRequired = CHECK_TYPES.RUN_REQUIRED.filter((id) => !POST_REGISTRY_TYPES.includes(id))
+    expect(sorted(runRequired)).toEqual(sorted(LEGACY_RUN_REQUIRED))
+    expect(CHECK_TYPES.RUN_REQUIRED).toContain('run_attempted')
     const submitAllowed = CHECK_TYPES.SUBMIT_ALLOWED.filter(
       (id) => !POST_REGISTRY_TYPES.includes(id)
     )

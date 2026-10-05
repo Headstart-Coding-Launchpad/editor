@@ -229,6 +229,7 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
             status: result.status,
             code: assembled,
             variables: result.variables ?? {},
+            ran: true,
           }
           const passed = normalizeChecks(task.check).every((c) =>
             evaluateSingleCheck(c, accumulated, context)
@@ -262,7 +263,7 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
           const iframeDoc = iframeRef.current?.contentDocument ?? null
           const codeStr = files.map((f) => f.content).join('\n')
           const passed = normalizeChecks(task.check).every((c) =>
-            evaluateSingleCheck(c, text, { code: codeStr, iframeDoc })
+            evaluateSingleCheck(c, text, { code: codeStr, iframeDoc, ran: true })
           )
           setPreviewCheckPassed(passed)
           setPreviewCheckAttempted(true)

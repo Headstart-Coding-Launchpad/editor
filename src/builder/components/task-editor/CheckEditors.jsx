@@ -100,9 +100,37 @@ function IncorrectCheckResultsDisplay({ results }) {
   )
 }
 
+// run_attempted (demo tasks): help text plus the optional requireSuccess toggle. Shared with the
+// Turtle and Electronics check editors.
+function RunAttemptedFields({ check, onChange }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div className="te-check-help">
+        Passes once the student presses Run (Run game in Arcade), even if the code errors. For demo
+        tasks where the student only runs and watches.
+      </div>
+      <label className="te-check-help" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <input
+          type="checkbox"
+          checked={check.requireSuccess === true}
+          onChange={(e) => {
+            const next = { ...check }
+            delete next.requireSuccess
+            onChange(e.target.checked ? { ...next, requireSuccess: true } : next)
+          }}
+        />
+        Also require the run to finish without an error (Python, Turtle and Electronics only)
+      </label>
+    </div>
+  )
+}
+
 function CheckValueEditor({ check, subject, operator, onChange, output = '', code = '' }) {
   if (check.type === 'code_no_error') {
     return <div className="te-check-help">Passes when Python runs without an error.</div>
+  }
+  if (check.type === 'run_attempted') {
+    return <RunAttemptedFields check={check} onChange={onChange} />
   }
   if (check.type === 'output_not_empty') {
     return <div className="te-check-help">Passes when the run produces any visible output.</div>
@@ -512,6 +540,8 @@ function CheckListEditor({
   allowOutputChecks = true,
   // Python only: offer Code → Structure (code_structure nesting checks).
   allowStructureChecks = false,
+  // The Run subject (run_attempted, for demo tasks): completion checks of run-mode tasks only.
+  allowRunChecks = true,
   lessonType = null,
   output = '',
   code = '',
@@ -520,6 +550,7 @@ function CheckListEditor({
 }) {
   const submitMode = interactionMode === 'submit'
   const outputChecksAllowed = allowOutputChecks && !submitMode
+  const runChecksAllowed = allowRunChecks && !submitMode && !feedbackEditor
 
   function updateCheck(index, updated) {
     onChange(checks.map((c, i) => (i === index ? updated : c)))
@@ -581,6 +612,7 @@ function CheckListEditor({
                   <option value="output">Output</option>
                 )}
                 <option value="code">Code</option>
+                {(runChecksAllowed || subject === 'run') && <option value="run">Run</option>}
                 {allowVariableChecks && <option value="variable">Variable</option>}
                 {allowDomChecks && <option value="element">Element</option>}
               </select>
@@ -678,4 +710,5 @@ export {
   CheckValueEditor,
   CheckListEditor,
   CheckFeedbackControls,
+  RunAttemptedFields,
 }

@@ -4,6 +4,7 @@ import { isCodeCheck } from '../checks'
 import {
   CheckFeedbackControls,
   CheckValueEditor,
+  RunAttemptedFields,
 } from '../../builder/components/task-editor/CheckEditors'
 import {
   subjectOpFromCheck,
@@ -28,6 +29,9 @@ const CHECK_OPTIONS = [
   ['turtle_color_used', 'Colour used'],
   ['turtle_stamp_count', 'Number of stamps'],
 ]
+
+// run_attempted (demo tasks): listed with the turtle checks, completion checks only.
+const RUN_ATTEMPTED_OPTION = ['run_attempted', 'Run pressed (demo task)']
 
 const COMMAND_LABELS = {
   forward: 'Move forward (backward moves count too)',
@@ -86,6 +90,7 @@ function skeleton(type, prev = {}) {
   if (type === 'turtle_color_used') return { type, kind: 'pen', color: 'red', ...meta }
   if (type === 'turtle_stamp_count')
     return { type, operator: 'greater_than_or_equal', value: '1', ...meta }
+  if (type === 'run_attempted') return { type, ...meta }
   return { type: 'turtle_segment_count', operator: 'greater_than_or_equal', value: '1', ...meta }
 }
 
@@ -120,6 +125,13 @@ function OperatorSelect({ value, onChange }) {
 }
 
 function CheckFields({ check, onChange }) {
+  if (check.type === 'run_attempted') {
+    return (
+      <div style={{ gridColumn: '1 / -1' }}>
+        <RunAttemptedFields check={check} onChange={onChange} />
+      </div>
+    )
+  }
   if (check.type === 'turtle_position') {
     return (
       <>
@@ -289,7 +301,11 @@ export default function CheckEditor({
     <div style={s.wrap}>
       {checks.map((check, index) => {
         const codeCheck = isCodeCheck(check)
-        const knownType = codeCheck || CHECK_OPTIONS.some(([value]) => value === check.type)
+        const checkOptions =
+          feedbackEditor && check.type !== 'run_attempted'
+            ? CHECK_OPTIONS
+            : [...CHECK_OPTIONS, RUN_ATTEMPTED_OPTION]
+        const knownType = codeCheck || checkOptions.some(([value]) => value === check.type)
         const activeCheck = knownType ? check : skeleton('turtle_segment_count')
         const codeOperator = codeCheck ? subjectOpFromCheck(activeCheck).operator : null
         return (
@@ -347,7 +363,7 @@ export default function CheckEditor({
                   value={activeCheck.type}
                   onChange={(e) => updateCheck(index, skeleton(e.target.value, activeCheck))}
                 >
-                  {CHECK_OPTIONS.map(([value, label]) => (
+                  {checkOptions.map(([value, label]) => (
                     <option key={value} value={value}>
                       {label}
                     </option>

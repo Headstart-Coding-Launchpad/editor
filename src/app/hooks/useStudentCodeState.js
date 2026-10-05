@@ -12,6 +12,7 @@ import {
   normalizeFeedbackChecks,
   evaluateSingleCheck,
   isCodeCheck,
+  isRunAttemptedCheck,
   resolveTestCheck,
 } from '../../modules/checks'
 import {
@@ -1554,7 +1555,7 @@ export function useStudentCodeState({
         const evaluation = evaluateCheckWithFeedback(
           task,
           text,
-          definition.checking.buildContext(currentFiles, { iframeDoc })
+          definition.checking.buildContext(currentFiles, { iframeDoc, ran: true })
         )
         passed = evaluation.passed
         suggestion = task?.check ? evaluation.suggestion : ''
@@ -1686,7 +1687,12 @@ export function useStudentCodeState({
         })
         const resolvedCheck = resolveTestCheck(test.check, test.inputs ?? [])
         const checks = normalizeChecks(resolvedCheck)
-        const checkContext = { status: result.status, code, variables: result.variables ?? {} }
+        const checkContext = {
+          status: result.status,
+          code,
+          variables: result.variables ?? {},
+          ran: true,
+        }
         const passed =
           result.status !== 'error' &&
           checks.length > 0 &&
@@ -1809,8 +1815,8 @@ export function useStudentCodeState({
 
   // A 'workspace'-run module on the work slot (Arcade: "Run game") reports a run it made in
   // its own iframe. There is no captured text output, so on a run only the task's generic code
-  // checks can be evaluated; other check types saved on the task are ignored here (the Builder
-  // warns about them) rather than failing every attempt.
+  // checks and run_attempted (the run itself) can be evaluated; other check types saved on the
+  // task are ignored here (the Builder warns about them) rather than failing every attempt.
   function handleWorkspaceRun(runCode) {
     const actor = effectiveIdentity
     const moduleType = lesson?.type
@@ -1825,11 +1831,13 @@ export function useStudentCodeState({
       return
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const alreadySolved = isAlreadySolved()
-    const codeChecks = normalizeChecks(task?.check).filter(isCodeCheck)
+    const runChecks = normalizeChecks(task?.check).filter(
+      (check) => isCodeCheck(check) || isRunAttemptedCheck(check)
+    )
     const checkTask = task
       ? {
           ...task,
-          check: codeChecks.length > 0 ? codeChecks : null,
+          check: runChecks.length > 0 ? runChecks : null,
           feedbackChecks: normalizeFeedbackChecks(task).filter(isCodeCheck),
           incorrectChecks: null,
         }
@@ -1843,7 +1851,11 @@ export function useStudentCodeState({
     let suggestion = ''
     if (!alreadySolved) {
       if (hasCheck) {
-        const context = definition.checking.buildContext(runCode, { status: 'success' })
+        // `ran`: this is a real run, so a run_attempted check passes (see checks.js).
+        const context = definition.checking.buildContext(runCode, {
+          status: 'success',
+          ran: true,
+        })
         const evaluation = evaluateCheckWithFeedback(checkTask, '', context)
         passed = evaluation.passed
         suggestion = evaluation.suggestion

@@ -960,6 +960,8 @@ function describeCheck(check, sprites) {
       return `${evalLabel}: ${spriteName}'s costume must be "${check.value}"`
     case 'block_run':
       return `After running: a "${opcodeSpecLabel(check.opcode)}" block must have been executed${describeFieldValues(check.fieldValues)}`
+    case 'run_attempted':
+      return 'The green flag must have been pressed at least once (clicking a script does not count)'
     default:
       return ''
   }
@@ -1074,6 +1076,10 @@ function ScratchCheckEditor({
       onChange({ type: 'block_run', evaluation: 'after_run', opcode: 'motion_movesteps', ...meta })
       return
     }
+    if (nextType === 'run_attempted') {
+      onChange({ type: 'run_attempted', ...meta })
+      return
+    }
     onChange({
       type: 'block_used',
       evaluation: 'after_block_placed',
@@ -1099,8 +1105,11 @@ function ScratchCheckEditor({
           <option value="costume_is">Costume is</option>
           <option value="variable_equals">Variable equals</option>
           <option value="variable_compare">Variable compare</option>
+          {(!feedbackEditor || type === 'run_attempted') && (
+            <option value="run_attempted">Green flag pressed (demo task)</option>
+          )}
         </select>
-        {type !== 'block_run' && (
+        {type !== 'block_run' && type !== 'run_attempted' && (
           <select
             className="te-select"
             value={
@@ -1122,7 +1131,11 @@ function ScratchCheckEditor({
 
       {/* Row 2: type-specific fields */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {type === 'block_used' || type === 'block_run' ? (
+        {type === 'run_attempted' ? (
+          <span style={{ fontSize: '0.85em', color: '#6b7280' }}>
+            Judged when the green flag is pressed, even if the scripts never finish.
+          </span>
+        ) : type === 'block_used' || type === 'block_run' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <select
               className="te-select"

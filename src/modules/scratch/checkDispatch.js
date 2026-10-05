@@ -16,6 +16,20 @@ export function isScratchStaticCheck(check) {
   return SCRATCH_STATIC_CHECK_TYPES.includes(check?.type)
 }
 
+// Checks the workspace judges after a run (green flag, key press, clicked script): every check
+// not marked `manual` or `after_block_placed`.
+export function isScratchAfterRunCheck(check) {
+  return check?.evaluation !== 'manual' && check?.evaluation !== 'after_block_placed'
+}
+
+// Whether every after-run check is a run_attempted: the task is then decided the moment the green
+// flag is pressed (ScratchWorkspace judges it then, since a forever loop never finishes and Stop
+// skips the end-of-run check).
+export function isScratchRunAttemptedOnly(checks) {
+  const afterRun = (checks ?? []).filter((check) => check?.type && isScratchAfterRunCheck(check))
+  return afterRun.length > 0 && afterRun.every((check) => check.type === 'run_attempted')
+}
+
 // A check naming a sprite targets that sprite; an unknown name falls back to the first sprite.
 export function findScratchCheckTarget(check, spriteWorkspaces) {
   return spriteWorkspaces.find((sp) => sp.name === check.spriteName) ?? spriteWorkspaces[0]
@@ -31,6 +45,8 @@ export function evaluateScratchCheckForSprites(
 ) {
   if (!check?.type) return false
   try {
+    // Reads the run signal only (was the green flag pressed?), never a sprite.
+    if (check.type === 'run_attempted') return evaluateScratchCheck(check, null, null, signal)
     if (check.type === 'block_used') {
       if (check.spriteName) {
         const target = findScratchCheckTarget(check, spriteWorkspaces)

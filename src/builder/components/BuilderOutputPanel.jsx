@@ -260,6 +260,7 @@ export default function BuilderOutputPanel({
 
 function checkHint(result) {
   if (result.type === 'code_no_error') return 'because the code errored.'
+  if (result.type === 'run_attempted') return 'because the run did not finish without an error.'
   if (result.type === 'output_not_empty') return 'because the output is empty.'
   if (result.type === 'output_empty') return 'because the output is not empty.'
   if (result.type === 'code_contains')
