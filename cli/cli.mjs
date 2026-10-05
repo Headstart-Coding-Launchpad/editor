@@ -275,7 +275,7 @@ await yargs(hideBin(process.argv))
           cases: {
             type: 'string',
             describe:
-              'JSON or YAML file containing named task cases (source-code checks); omit for Scratch tasks',
+              'JSON or YAML file of named task cases; source-code checks are judged, checks that need a run (output, code_no_error, variable_*, tests) are reported as skipped; omit for Scratch tasks',
           },
           task: {
             type: 'string',

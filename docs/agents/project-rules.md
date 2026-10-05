@@ -139,7 +139,7 @@ Command groups:
 
 Lesson validation/upsert, task upsert/append, and topic upsert/upsert-library accept JSON or YAML as a file argument or via stdin. `tasks upsert`/`append` parse YAML as plain data: the lesson YAML shorthands (`type: quiz`, `answer:`, `checks:`) are not expanded and no task `id` is assigned, so pass JSON-shaped tasks there. Output is JSON by default; pass `--format yaml` for YAML. Validation failures print `{ valid: false, errors, warnings }` as JSON on stdout and exit 1; unexpected errors print to stderr and exit 1. See `docs/authoring/validation-errors.md` for every message.
 
-`lessons test-checks <lesson> --cases <file>` runs source-code cases; without `--cases` it verifies each Scratch task's static block checks against its complete, starter and Complete-role stages (`src/modules/scratch/checkVerification.js`, over saved block JSON wrapped by `jsonWorkspace.js` and dispatched per sprite by `checkDispatch.js`, the same dispatch `ScratchWorkspace.jsx` uses). See `docs/authoring/scratch.md#verifying-scratch-checks`.
+`lessons test-checks <lesson> --cases <file>` runs source-code cases (checks that need a run, per `checkNeedsRunResult` / `canEvaluateCheckWithoutRun` in `src/modules/checks.js`, are reported as `skipped`); without `--cases` it verifies each Scratch task's static block checks against its complete, starter and Complete-role stages (`src/modules/scratch/checkVerification.js`, over saved block JSON wrapped by `jsonWorkspace.js` and dispatched per sprite by `checkDispatch.js`, the same dispatch `ScratchWorkspace.jsx` uses). See `docs/authoring/scratch.md#verifying-scratch-checks`.
 
 Scratch toolbox XML validation is skipped server-side (no DOMParser in Node); use the builder preview to catch XML errors.
 

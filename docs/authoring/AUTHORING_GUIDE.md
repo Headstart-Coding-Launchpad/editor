@@ -37,8 +37,6 @@ node cli/cli.mjs lessons get python-for-loops --format yaml
 
 `test-checks` runs named source-code examples through the same code-check evaluator used by LaunchPad and reports any feedback checks that match. Without `--cases` it verifies Scratch tasks instead, per check and per stage — see [Verifying Scratch checks](scratch.md#verifying-scratch-checks). For example, `check-cases.yaml` can be:
 
-**Limitation:** `test-checks` only evaluates source-code checks. A task carrying an `output`, `output_not_empty`, `output_line_count`, `code_no_error`, or `variable_*` check has no run behind it here, so it reports a false `completion: fail` against its own correct complete code — indistinguishable from a genuinely broken check. To verify the source-code half of a lesson that mixes families, run `test-checks` against a stripped copy of the YAML with the runtime checks removed, and verify the runtime checks by reasoning against the task's complete code instead. The cases format has no field for stdin or expected output.
-
 ```yaml
 tasks:
   - id: 4
@@ -49,6 +47,17 @@ tasks:
             print("Hello world")
         completion: pass
 ```
+
+**Checks that need a run are skipped, not failed.** `test-checks` never runs code, so it only judges checks it can evaluate from the source (`code`, `code_structure` and their aliases). A check that needs a run — `output`, `output_not_empty`, `output_empty`, `output_line_count`, `code_no_error`, `variable_*`, Turtle and HTML element checks — and any check reading state a cases file can't supply (Filesystem, Desktop, Electronics circuit, `answer`) is reported per check as `result: skipped` with a `reason`, in `actual.checks` (completion) and `skippedFeedback` (feedback checks). The case's completion is then decided like this:
+
+| Completion checks | `actual.completion` |
+|---|---|
+| Any source check fails | `fail` |
+| At least one source check, all pass (run-only checks left out) | `pass` |
+| Every check needs a run | `skipped` |
+| The task has Python `tests` (they decide completion on a run) | `skipped` — its checks and feedback checks are all skipped, as at runtime |
+
+A `skipped` completion is never counted as a mismatch: the case is reported in `summary.skipped`, and `summary.skippedRuntimeChecks` counts the skipped checks. A task's `check` list is AND-ed, which is the only way checks combine — there are no `any`/`not` check shapes — so a skipped check simply drops out of the AND. Verify the skipped checks with a real Run in the Builder preview. The cases format has no field for stdin or expected output.
 
 ---
 
