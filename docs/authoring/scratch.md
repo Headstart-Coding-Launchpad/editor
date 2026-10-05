@@ -167,7 +167,7 @@ Drag-in block stacks appended to the toolbox for the task.
 prebuiltStacks:
   - id: stack-abc123          # required — stable builder-generated ID
     label: Starter stack      # optional — builder display label
-    stack: {}                 # required — Blockly toolbox-compatible block JSON
+    stack: {}                 # required — Blockly toolbox-compatible block JSON (stored as JSON text; any length)
 ```
 
 **Student mechanic:** a prebuilt stack is not a separate chip or button — it's inserted into the toolbox category matching its root block's type (e.g. a `say` stack appears in the Looks flyout, next to the plain `say` block). There's no click-to-insert:
@@ -183,8 +183,9 @@ Scratch uses two related JSON shapes. Use the toolbox-stack shape for
 `prebuiltStacks[].stack`; use the workspace-state shape for `starterBlocks`,
 `completeBlocks`, and `codeStages[].blocks`.
 
-- A **toolbox stack** is one root block. Do not wrap it in `blocks.blocks` and
-  do not include workspace-only `id`, `x`, or `y` values.
+- A **toolbox stack** is one root block, with any further blocks joined below
+  it through `next`. Do not wrap it in `blocks.blocks` and do not include
+  workspace-only `id`, `x`, or `y` values.
 - A **workspace state** is keyed by `sprites[].id`. Each sprite value is a
   Blockly workspace snapshot with its top-level blocks at `blocks.blocks`.
   Use the optional `x` and `y` values to place a top-level block in the
@@ -202,8 +203,17 @@ Scratch uses two related JSON shapes. Use the toolbox-stack shape for
   serialise these fields to JSON strings when they save (since 13 September
   2026; before that the CLI didn't, and authors had to serialise by hand).
   Strings you've already serialised are stored as they are, never encoded twice.
-  `lessons get` returns the object form. A toolbox stack
-  (`prebuiltStacks[].stack`) is one shallow block and stays a real object.
+  `lessons get` returns the object form.
+- **Write a toolbox stack (`prebuiltStacks[].stack`) as an object.** A stack
+  is a root block with every block below it nested through
+  `next: { block: ... }`, so a long stack is as deep as a long script. Since
+  5 October 2026 the Builder and the CLI store each `prebuiltStacks[].stack`
+  (on the task and on each code stage) as a JSON string too, and decode it
+  on read; the rest of the entry (`id`, `label`) stays a real object. Stacks
+  saved earlier as plain objects still load. `lessons validate` reports any
+  part of a lesson that would still be nested deeper than Firestore's 20
+  levels once stored — see
+  [validation errors](validation-errors.md#lesson-envelope).
 
 ### A filled toolbox stack
 
@@ -388,6 +398,48 @@ The sprite/backdrop library the builder's own "Add sprite"/"Add backdrop" picker
   }
 ]
 ```
+
+### A multi-costume preset
+
+A preset can carry several costumes, so a student who adds it from the picker can switch between them (for example a walk cycle with `next costume`), and each costume is also offered by the **+ Add costume** picker. Upload each image as a shared Scratch asset first, then point each costume's `image` at the hosted `url` the upload returns:
+
+```bash
+node cli/cli.mjs assets upload-type scratch ./dog-sit.png
+node cli/cli.mjs assets upload-type scratch ./dog-walk1.png
+node cli/cli.mjs assets upload-type scratch ./dog-walk2.png
+```
+
+```json
+[
+  {
+    "id": "dog",
+    "name": "Dog",
+    "type": "cat",
+    "size": 80,
+    "costume": "dog-sit",
+    "costumes": [
+      {
+        "name": "dog-sit",
+        "image": "https://firebasestorage.googleapis.com/v0/b/<bucket>/o/shared%2Fscratch%2Fassets%2Fdog-sit.png?alt=media&token=<token>"
+      },
+      {
+        "name": "dog-walk1",
+        "image": "https://firebasestorage.googleapis.com/v0/b/<bucket>/o/shared%2Fscratch%2Fassets%2Fdog-walk1.png?alt=media&token=<token>"
+      },
+      {
+        "name": "dog-walk2",
+        "image": "https://firebasestorage.googleapis.com/v0/b/<bucket>/o/shared%2Fscratch%2Fassets%2Fdog-walk2.png?alt=media&token=<token>"
+      }
+    ]
+  }
+]
+```
+
+- A preset has the same fields as an entry in a task's `sprites` list. Its `id` is the **preset** id (the one `addSpritePresetIds` lists); the sprite gets a fresh `spriteN` id when it is added to a task. `id` and a non-empty `name` are required — entries without them are dropped when the list is saved.
+- Each costume is `{ name, image }`. `costume` names the costume worn first; omitted, the first costume is used. Costume names are what `switch costume to` and `sprite_property` `property: costume` checks match, case-sensitively.
+- **Use full `https://` URLs (or `/assets/shared/...` site paths) for preset costume images.** A relative path such as `sprites/dog.png` is resolved against the `assetsPath` of whichever lesson the sprite is added to, so it breaks in every lesson that doesn't hold that file.
+- `showInEditor` on the uploaded shared assets doesn't matter here: Scratch loads a costume straight from its `image` URL and never reads `showInEditor`.
+- `assets set-default-sprites` **replaces the whole list**. Fetch the current list with `node cli/cli.mjs assets list-type scratch`, add your entry to its `defaultSprites`, and send the full list back. See [Lesson Asset CLI](lesson-assets-cli.md#shared-lesson-type-assets).
 
 ---
 

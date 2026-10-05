@@ -45,6 +45,12 @@ import { getTaskActivity } from '../activities/registry.pure.js'
 import { getLegacyTaskValidation } from '../activities/legacyValidation.js'
 import { parseTaskActivity } from './taskActivity.js'
 import { validateBadgeHints, validateBadgeOptions } from '../badges/validation.js'
+import { encodeLessonForFirestore } from './lessonBlocksCodec.js'
+import {
+  FIRESTORE_MAX_DEPTH,
+  formatFirestorePath,
+  measureFirestoreDepth,
+} from './firestoreDepth.js'
 
 export const VALID_LESSON_TYPES = Object.freeze([...LESSON_MODULE_TYPES, 'composed'])
 
@@ -99,6 +105,38 @@ function validateLessonEnvelope(lesson, errors, extraRules) {
   if (lesson.recordingUrl != null && !isValidRecordingUrl(lesson.recordingUrl)) {
     errors.push('recordingUrl must be a YouTube link (youtube.com or youtu.be)')
   }
+}
+
+// Firestore rejects a document whose maps/arrays nest more than 20 levels deep. Measure the
+// lesson as it will be stored (after lessonBlocksCodec's block encoding and answer sealing, which
+// turn the deepest Scratch block trees into strings) and name the deepest path and its task.
+function describeDepthLocation(lesson, flat, path) {
+  if (path[0] !== 'tasks' || typeof path[1] !== 'number') return 'The lesson'
+  const item = lesson.tasks[path[1]]
+  const task =
+    item?.type === 'group' && path[2] === 'subtasks' && typeof path[3] === 'number'
+      ? item.subtasks?.[path[3]]
+      : item
+  const n = flat.indexOf(task) + 1
+  if (n > 0) return task.title ? `Task ${n} ("${task.title}")` : `Task ${n}`
+  if (item?.type === 'group') return `Group "${item.title || path[1] + 1}"`
+  return `tasks[${path[1]}]`
+}
+
+function validateFirestoreDepth(lesson, flat, errors) {
+  let stored
+  try {
+    stored = encodeLessonForFirestore(lesson)
+  } catch {
+    return
+  }
+  const { depth, path } = measureFirestoreDepth(stored)
+  if (depth <= FIRESTORE_MAX_DEPTH) return
+  const location = describeDepthLocation(lesson, flat, path)
+  const where = formatFirestorePath(path)
+  errors.push(
+    `${location} is nested ${depth} levels deep at ${where} — Firestore rejects documents nested deeper than ${FIRESTORE_MAX_DEPTH} levels, so the lesson can't be saved. Flatten or shorten that part of the lesson`
+  )
 }
 
 function validateGroups(tasks, errors) {
@@ -325,6 +363,7 @@ export function validateLessonCore(lesson, { envelope, beforeTasks, afterTask } 
   validateGroups(tasks, errors)
 
   const flat = flattenTasks(tasks)
+  validateFirestoreDepth(lesson, flat, errors)
   beforeTasks?.({ lesson, flat, errors, warnings })
   flat.forEach((task, i) => {
     const n = i + 1

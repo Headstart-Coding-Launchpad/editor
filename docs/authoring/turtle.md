@@ -206,7 +206,7 @@ Turtle checks and feedback checks:
 - `turtle_command_used` needs a `command` from the list above.
 - `turtle_color_used` needs a `color`.
 
-`test-checks` can't evaluate turtle checks, because they need a real run —
+`test-checks` reports turtle checks as `skipped`, because they need a real run —
 use the Builder preview to confirm a complete solution passes. Code checks
 don't need a run.
 

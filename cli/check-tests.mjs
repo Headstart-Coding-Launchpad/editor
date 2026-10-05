@@ -1,5 +1,9 @@
 import {
+  canEvaluateCheckWithoutRun,
+  checkNeedsRunResult,
   evaluateSingleCheck,
+  getCheckDefinition,
+  normalizeCheckShape,
   normalizeChecks,
   normalizeFeedbackChecks,
 } from '../src/modules/checks.js'
@@ -11,9 +15,9 @@ import { getTaskActivityPatternId } from '../src/shared/taskActivity.js'
 
 const EXPECTED_COMPLETION = new Set(['pass', 'fail'])
 
-function completionResult(passed) {
-  return passed ? 'pass' : 'fail'
-}
+const SKIPPED = 'skipped'
+const NEEDS_RUN_REASON = 'needs a run, which test-checks never does'
+const TESTS_REASON = 'the task has Python tests, which decide completion on a run'
 
 function assertCasesFile(casesFile) {
   if (!casesFile || typeof casesFile !== 'object' || Array.isArray(casesFile)) {
@@ -22,6 +26,42 @@ function assertCasesFile(casesFile) {
   if (!Array.isArray(casesFile.tasks) || casesFile.tasks.length === 0) {
     throw new Error('Check cases must include at least one task in tasks')
   }
+}
+
+// Why a check can't be judged from a cases file's source code alone, or null when it can.
+// Uses the registry (requiresRun / run-only context keys) rather than a list of type names.
+function skipReason(check, context) {
+  if (canEvaluateCheckWithoutRun(check, context)) return null
+  if (checkNeedsRunResult(check)) return NEEDS_RUN_REASON
+  const def = getCheckDefinition(normalizeCheckShape(check)?.type)
+  if (!def) return 'not a source-code check this command can evaluate'
+  return `reads ${def.contextKey} state, which a cases file does not supply`
+}
+
+// One check against the case's source: 'pass' | 'fail' | 'skipped' (with a reason).
+function judgeCaseCheck(check, context) {
+  const reason = skipReason(check, context)
+  if (reason) return { result: SKIPPED, reason }
+  return { result: evaluateSingleCheck(check, '', context) ? 'pass' : 'fail' }
+}
+
+function checkSummary(check, index) {
+  const summary = { index: index + 1, type: check.type }
+  if (check.operator) summary.operator = check.operator
+  return summary
+}
+
+/**
+ * Completion over a check list. A task's `check` list is AND-ed (the only compound shape the
+ * check system has): 'fail' when any check that can be judged fails; otherwise 'pass' when at
+ * least one check was judged (the run-only ones are left out); 'skipped' when every check needs
+ * a run. A task with no completion check reads 'fail', as at runtime.
+ */
+export function combineCompletion(results) {
+  if (results.length === 0) return 'fail'
+  if (results.some((r) => r.result === 'fail')) return 'fail'
+  if (results.every((r) => r.result === SKIPPED)) return SKIPPED
+  return 'pass'
 }
 
 function evaluateCase(task, taskId, testCase, caseIndex) {
@@ -39,39 +79,52 @@ function evaluateCase(task, taskId, testCase, caseIndex) {
   }
 
   const context = { code: testCase.code }
-  const completionChecks = normalizeChecks(task.check)
-  const completionPassed =
-    completionChecks.length > 0 &&
-    completionChecks.every((check) => evaluateSingleCheck(check, '', context))
-  const actualCompletion = completionResult(completionPassed)
+  // A task with Python `tests` is graded by the tests alone at runtime (its checks and
+  // feedback checks are not evaluated), and the tests need a run.
+  const hasTests = Array.isArray(task.tests) && task.tests.length > 0
+  const judge = (check) =>
+    hasTests ? { result: SKIPPED, reason: TESTS_REASON } : judgeCaseCheck(check, context)
+
+  const checks = normalizeChecks(task.check).map((check, index) => ({
+    ...checkSummary(check, index),
+    ...judge(check),
+  }))
+  const actualCompletion = hasTests ? SKIPPED : combineCompletion(checks)
   const feedback = normalizeFeedbackChecks(task).map((check, index) => ({
-    index: index + 1,
-    type: check.type,
-    operator: check.operator,
+    ...checkSummary(check, index),
     hint: check.hint ?? '',
     mode: check.mode,
     show: check.show,
-    result: completionResult(evaluateSingleCheck(check, '', context)),
+    ...judge(check),
   }))
   const matchedFeedback = feedback.filter((check) => check.result === 'pass')
+  const skippedFeedback = feedback.filter((check) => check.result === SKIPPED)
   const mismatches = []
-  if (actualCompletion !== testCase.completion) {
+  // A skipped completion can't be compared with the expectation: it is reported, not failed.
+  if (actualCompletion !== SKIPPED && actualCompletion !== testCase.completion) {
     mismatches.push(`completion: expected ${testCase.completion}, got ${actualCompletion}`)
   }
 
-  return {
+  const result = {
     taskId,
     name: testCase.name,
     expected: { completion: testCase.completion },
-    actual: { completion: actualCompletion },
+    actual: { completion: actualCompletion, checks },
     matchedFeedback,
     mismatches,
   }
+  if (skippedFeedback.length > 0) result.skippedFeedback = skippedFeedback
+  const skippedRuntimeChecks =
+    checks.filter((c) => c.result === SKIPPED).length + skippedFeedback.length
+  if (skippedRuntimeChecks > 0) result.skippedRuntimeChecks = skippedRuntimeChecks
+  return result
 }
 
 // Runs source-code examples through the same check dispatcher used at runtime.
 // It deliberately supplies only { code }: this command does not execute code or
-// fabricate output, variables, or DOM state for checks that require them.
+// fabricate output, variables, or DOM state. Checks that need a run (output,
+// code_no_error, variable_*, Turtle, HTML element checks, Python `tests`) are
+// reported as 'skipped' and left out of the completion verdict.
 export function testLessonChecks(lesson, casesFile) {
   if (!lesson || typeof lesson !== 'object' || Array.isArray(lesson)) {
     throw new Error('Lesson must be an object')
@@ -95,14 +148,18 @@ export function testLessonChecks(lesson, casesFile) {
   }
 
   const failed = cases.filter((testCase) => testCase.mismatches.length > 0)
+  const skipped = cases.filter((testCase) => testCase.actual.completion === SKIPPED)
   return {
     success: failed.length === 0,
     lessonId: lesson.id ?? null,
+    mode: 'cases',
     cases,
     summary: {
       total: cases.length,
-      passed: cases.length - failed.length,
+      passed: cases.length - failed.length - skipped.length,
       failed: failed.length,
+      skipped: skipped.length,
+      skippedRuntimeChecks: cases.reduce((n, c) => n + (c.skippedRuntimeChecks ?? 0), 0),
     },
   }
 }

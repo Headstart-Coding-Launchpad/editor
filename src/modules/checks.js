@@ -515,7 +515,18 @@ export const NO_RUN_RESULTS = Object.freeze({
 // Context keys only a run produces: code_no_error's `status`, Python's captured `variables`,
 // Turtle's drawing and HTML's rendered `iframeDoc`. A check reading one needs a run even when
 // its registry definition does not set `requiresRun` (Turtle's checks).
-const RUN_CONTEXT_KEYS = ['status', 'variables', 'turtle', 'iframeDoc']
+export const RUN_CONTEXT_KEYS = Object.freeze(['status', 'variables', 'turtle', 'iframeDoc'])
+
+/**
+ * Whether a check can only be judged from a run's result: a run-required type, or one reading a
+ * run-only context key. Unknown types return false (the caller decides what to do with them).
+ */
+export function checkNeedsRunResult(check) {
+  const normalized = normalizeCheckShape(check)
+  const def = normalized?.type ? getCheckDefinition(normalized.type) : null
+  if (!def) return false
+  return def.requiresRun === true || RUN_CONTEXT_KEYS.includes(def.contextKey)
+}
 
 /**
  * Whether one check can be judged from the work alone. False for a run-required type, a check

@@ -152,6 +152,67 @@ describe('encodeLessonBlocksForFirestore / decodeLessonBlocksFromFirestore', () 
     expect(decodeLessonBlocksFromFirestore(encoded).tasks[0].starterBlocks).toEqual(blocks)
   })
 
+  it('round-trips prebuiltStacks[].stack on tasks, code stages and group subtasks as JSON text', () => {
+    const stack = deepBlockChain(25)
+    const lesson = {
+      id: 'l1',
+      tasks: [
+        {
+          id: 1,
+          prebuiltStacks: [
+            { id: 's1', stack },
+            { id: 's2', stack: { type: 'looks_say' } },
+          ],
+          codeStages: [
+            { label: 'Starter', role: 'starter', prebuiltStacks: [{ id: 's3', stack }] },
+          ],
+        },
+        {
+          type: 'group',
+          title: 'G',
+          subtasks: [{ id: 2, prebuiltStacks: [{ id: 's4', stack }] }],
+        },
+      ],
+    }
+
+    const encoded = encodeLessonBlocksForFirestore(lesson)
+    expect(typeof encoded.tasks[0].prebuiltStacks[0].stack).toBe('string')
+    expect(typeof encoded.tasks[0].prebuiltStacks[1].stack).toBe('string')
+    expect(typeof encoded.tasks[0].codeStages[0].prebuiltStacks[0].stack).toBe('string')
+    expect(typeof encoded.tasks[1].subtasks[0].prebuiltStacks[0].stack).toBe('string')
+    // The entry's own fields stay a real object; only the block tree becomes text.
+    expect(encoded.tasks[0].prebuiltStacks[0].id).toBe('s1')
+    expect(maxDepth(encoded)).toBeLessThan(10)
+    // Encoding must not mutate the caller's lesson.
+    expect(lesson.tasks[0].prebuiltStacks[0].stack).toBe(stack)
+
+    expect(decodeLessonBlocksFromFirestore(encoded)).toEqual(lesson)
+  })
+
+  it('loads legacy prebuiltStacks stored as plain objects, and never double-encodes text', () => {
+    const legacy = {
+      id: 'l1',
+      tasks: [
+        {
+          id: 1,
+          prebuiltStacks: [{ id: 's1', stack: { type: 'looks_say' } }],
+          codeStages: [{ label: 'Starter', prebuiltStacks: [{ id: 's2', stack: { type: 'a' } }] }],
+        },
+      ],
+    }
+    expect(decodeLessonBlocksFromFirestore(legacy)).toEqual(legacy)
+
+    const encoded = encodeLessonBlocksForFirestore(legacy)
+    expect(encodeLessonBlocksForFirestore(encoded)).toEqual(encoded)
+    expect(encoded.tasks[0].prebuiltStacks[0].stack).toBe(JSON.stringify({ type: 'looks_say' }))
+  })
+
+  it('leaves malformed prebuiltStacks entries alone', () => {
+    const lesson = { id: 'l1', tasks: [{ id: 1, prebuiltStacks: [null, { id: 'empty' }, 'x'] }] }
+    expect(encodeLessonBlocksForFirestore(lesson)).toEqual(lesson)
+    expect(decodeLessonBlocksFromFirestore(lesson)).toEqual(lesson)
+  })
+
   it('passes through lessons/fragments with no tasks unchanged', () => {
     expect(encodeLessonBlocksForFirestore(null)).toBeNull()
     expect(encodeLessonBlocksForFirestore({ title: 'x' })).toEqual({ title: 'x' })

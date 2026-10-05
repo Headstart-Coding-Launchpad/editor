@@ -37,8 +37,6 @@ node cli/cli.mjs lessons get python-for-loops --format yaml
 
 `test-checks` runs named source-code examples through the same code-check evaluator used by LaunchPad and reports any feedback checks that match. Without `--cases` it verifies Scratch tasks instead, per check and per stage — see [Verifying Scratch checks](scratch.md#verifying-scratch-checks). For example, `check-cases.yaml` can be:
 
-**Limitation:** `test-checks` only evaluates source-code checks. A task carrying an `output`, `output_not_empty`, `output_line_count`, `code_no_error`, or `variable_*` check has no run behind it here, so it reports a false `completion: fail` against its own correct complete code — indistinguishable from a genuinely broken check. To verify the source-code half of a lesson that mixes families, run `test-checks` against a stripped copy of the YAML with the runtime checks removed, and verify the runtime checks by reasoning against the task's complete code instead. The cases format has no field for stdin or expected output.
-
 ```yaml
 tasks:
   - id: 4
@@ -49,6 +47,17 @@ tasks:
             print("Hello world")
         completion: pass
 ```
+
+**Checks that need a run are skipped, not failed.** `test-checks` never runs code, so it only judges checks it can evaluate from the source (`code`, `code_structure` and their aliases). A check that needs a run — `output`, `output_not_empty`, `output_empty`, `output_line_count`, `code_no_error`, `variable_*`, Turtle and HTML element checks — and any check reading state a cases file can't supply (Filesystem, Desktop, Electronics circuit, `answer`) is reported per check as `result: skipped` with a `reason`, in `actual.checks` (completion) and `skippedFeedback` (feedback checks). The case's completion is then decided like this:
+
+| Completion checks | `actual.completion` |
+|---|---|
+| Any source check fails | `fail` |
+| At least one source check, all pass (run-only checks left out) | `pass` |
+| Every check needs a run | `skipped` |
+| The task has Python `tests` (they decide completion on a run) | `skipped` — its checks and feedback checks are all skipped, as at runtime |
+
+A `skipped` completion is never counted as a mismatch: the case is reported in `summary.skipped`, and `summary.skippedRuntimeChecks` counts the skipped checks. A task's `check` list is AND-ed, which is the only way checks combine — there are no `any`/`not` check shapes — so a skipped check simply drops out of the AND. Verify the skipped checks with a real Run in the Builder preview. The cases format has no field for stdin or expected output.
 
 ---
 
@@ -285,6 +294,26 @@ Writing hints that reach learners:
 - Order completion checks **most specific first**, or give every completion check its own `hint`. A specific check placed after a general one only shows its hint when the general one passes.
 - For a known misconception (wrong text, `=` instead of `==`, a missing indent), write a `feedbackChecks` entry that detects the mistake and give it a `priority`. It beats every completion hint.
 - Don't write several hints expecting them to add up: only one is shown.
+
+#### When the code can't run (SyntaxError)
+
+When a Python run ends in an error — a `SyntaxError` such as `def area(w, h) =return w * h`, or a runtime error such as `NameError` — the task **always fails**, whatever the checks say. The checks are still evaluated, though, so the learner still gets a targeted hint chosen by the same four rules above:
+
+- **`feedbackChecks` are evaluated as normal**, against the source as typed and against the error text in the output. A `code` regex feedback check that detects the slip (for example `matches_regex: '=\s*return'`) **does match**, and its hint wins over every completion-check hint (rule 2).
+- **If no feedback check matches**, the hint comes from the **first failed completion check that has a `hint`** (rule 3). On an errored run, each completion check type behaves like this:
+
+| Completion check type | On an errored run | Can it supply the hint? |
+|---|---|---|
+| `code` (and `code_contains`, `code_matches_regex`, … aliases), `code_structure` | Evaluated normally against the source text — the code does not need to parse | Yes, when it fails; a passing source check is skipped over |
+| `code_no_error` | Always fails (the run status is `error`) | Yes — if it is first in the list with a `hint`, that hint is shown |
+| `variable_*` (`variable_equals`, `variable_exists`, …) | Always fails on a `SyntaxError` (nothing ran, so no variables were captured). On a runtime error, only variables assigned before the crash exist | Yes |
+| `output`, `output_line_count`, `output_not_empty`, `output_empty` | Compared against the output, which is the **error message** (plus anything printed before a runtime error). So `contains` normally fails, while `not_contains`, `not_equals` and `output_not_empty` usually **pass** | Only when the comparison fails |
+
+The practical consequences:
+
+- **Order completion checks so the hint you want for broken code comes first.** If `code_no_error` with `hint: "Your code has an error — read the red message."` is first, every broken run shows that hint. If a `code` check that the broken code still satisfies is first, the next failing check supplies the hint instead.
+- **Catch a predictable syntax slip with a `feedbackChecks` regex** on the source. It fires even though the code could not run, and it beats the completion-check hints.
+- A task with `tests` skips this check-and-hint path entirely; the per-test results are shown instead.
 
 **Wildcards and option lists:** `*` matches any sequence (including newlines) in `value` for containment/equality checks. `"opt1","opt2"` passes `contains` if any option is present and `not_contains` only if none are. These operators mean the same thing in every module (output, answers, file content, HTML elements, Scratch block inputs), because all of them use one shared implementation (`compareText` in `src/shared/checkHelpers.js`).
 
