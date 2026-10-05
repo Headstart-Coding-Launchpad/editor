@@ -344,4 +344,22 @@ describe.each(VALIDATORS)('run_attempted validation (%s)', (_name, validate) => 
     )
     expect(has(warnings, 'the run_attempted check is never used')).toBe(true)
   })
+
+  it('warns when an Electronics board has no Micro Controller (no Run button)', () => {
+    const board = (components) => ({ components, wires: [] })
+    const without = validate(
+      lessonOf('electronics', {
+        starterCircuit: board([{ id: 'b', type: 'battery', x: 1, y: 1 }]),
+        check: RUN_ATTEMPTED,
+      })
+    )
+    expect(has(without.warnings, 'only has a Run button when its board has one')).toBe(true)
+    const withBoard = validate(
+      lessonOf('electronics', {
+        starterCircuit: board([{ id: 'mc', type: 'microcontroller', x: 1, y: 1 }]),
+        check: RUN_ATTEMPTED,
+      })
+    )
+    expect(has(withBoard.warnings, 'only has a Run button when its board has one')).toBe(false)
+  })
 })

@@ -10,6 +10,7 @@ import {
 } from '../moduleTaskValidation.js'
 import { validateElectronicsChecks } from '../../shared/checkAuthoringValidation.js'
 import { getStarterStage } from '../../shared/taskStages.js'
+import { isRunAttemptedCheck, normalizeChecks } from '../checks.js'
 import {
   DEFAULT_AVAILABLE_COMPONENTS,
   DEFAULT_CIRCUIT,
@@ -253,6 +254,16 @@ export default defineModule({
     validateStageStates(task, n, errors)
     validateTaskChecks(task, (checks, kind) => validateElectronicsChecks(checks, n, errors, kind))
     warnCompleteCircuit(task, n, warnings)
+    // The Run button lives in the Code tab, which only exists with a Micro Controller.
+    const hasMicrocontroller =
+      task.microcontroller?.enabled === true ||
+      (Array.isArray(starterCircuit?.components) &&
+        starterCircuit.components.some((component) => component?.type === 'microcontroller'))
+    if (!hasMicrocontroller && normalizeChecks(task.check).some(isRunAttemptedCheck)) {
+      warnings.push(
+        `Task ${n} has a run_attempted check but no Micro Controller — an Electronics task only has a Run button when its board has one`
+      )
+    }
   },
   hasStarterContent: null,
   hasCheckValue: anyCheckHasValue,
