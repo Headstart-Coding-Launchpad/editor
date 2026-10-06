@@ -135,6 +135,25 @@ describe('useSession', () => {
   })
 
   describe('setTaskId', () => {
+    it("wipes each student's mirrored hint, hint offer and run error", async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        currentTaskId: 1,
+        students: { 'student-abc': { studentHint: { text: 'x', taskId: '1' } } },
+      })
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({
+          'students/student-abc/studentHint': null,
+          'students/student-abc/hintOffer': null,
+          'students/student-abc/lastRunError': null,
+        })
+      )
+    })
+
     it('writes currentTaskId and currentTaskStartedAt via firebase update', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {
@@ -1341,6 +1360,9 @@ describe('useSession', () => {
       expect(student).toEqual({
         checkPassed: null,
         lastRunStatus: null,
+        lastRunError: null,
+        studentHint: null,
+        hintOffer: null,
         currentOutput: '',
         currentCode: '',
         currentArcadeDesign: null,
@@ -1432,10 +1454,59 @@ describe('useSession', () => {
         {
           lastRunStatus: 'submitted',
           lastRunAt: expect.any(Number),
+          lastRunError: null,
           checkPassed: false,
           currentAnswer: 'b',
         }
       )
+    })
+
+    it('writeStudentRun records the error line of a crashed run and clears it on the next', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.writeStudentRun('s1', {
+          status: 'error',
+          errorText: "  Line 3: NameError: name 'x' is not defined  ",
+        })
+      })
+      expect(firebaseMocks.update).toHaveBeenLastCalledWith(
+        { path: 'sessions/lesson-1/students/s1' },
+        expect.objectContaining({
+          lastRunStatus: 'error',
+          lastRunError: "Line 3: NameError: name 'x' is not defined",
+        })
+      )
+      await act(async () => {
+        await result.current.writeStudentRun('s1', { status: 'success', errorText: 'ignored' })
+      })
+      expect(firebaseMocks.update).toHaveBeenLastCalledWith(
+        { path: 'sessions/lesson-1/students/s1' },
+        expect.objectContaining({ lastRunStatus: 'success', lastRunError: null })
+      )
+    })
+
+    it('writeStudentHintState writes only the hint fields it is given', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      const hint = { text: 'Use quotes', source: 'check', failStreak: 2, taskId: '1', at: 5 }
+      await act(async () => {
+        await result.current.writeStudentHintState('s1', { studentHint: hint })
+      })
+      expect(firebaseMocks.update).toHaveBeenLastCalledWith(
+        { path: 'sessions/lesson-1/students/s1' },
+        { studentHint: hint }
+      )
+      await act(async () => {
+        await result.current.writeStudentHintState('s1', { studentHint: null, hintOffer: null })
+      })
+      expect(firebaseMocks.update).toHaveBeenLastCalledWith(
+        { path: 'sessions/lesson-1/students/s1' },
+        { studentHint: null, hintOffer: null }
+      )
+      const calls = firebaseMocks.update.mock.calls.length
+      await act(async () => {
+        await result.current.writeStudentHintState('s1', {})
+      })
+      expect(firebaseMocks.update.mock.calls.length).toBe(calls)
     })
   })
 

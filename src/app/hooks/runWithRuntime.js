@@ -6,6 +6,7 @@ import {
 import { createThrottledMirrorWriter } from '../throttledMirrorWriter'
 import { appendStudentOutput, createStudentOutputBuffer } from './studentOutputBuffer'
 import { runErrorFor } from '../../badges/signals'
+import { lastErrorLine } from '../studentHints.js'
 
 /**
  * Runs the student's code through a `capabilities.run === 'runtime'` module's runtime (Pyodide
@@ -305,6 +306,7 @@ export async function runWithRuntime(ctx) {
       output: outputBuffer.raw,
       status,
       checkPassed: hasTests || isFreePlay ? undefined : passed,
+      errorText: status === 'error' ? lastErrorLine(outputBuffer.raw) : undefined,
     })
     // Turtle's canvas is a run RESULT (like output), not an editing-tool state like
     // Arcade's design — so it's synced here alongside writeStudentRun, not only on

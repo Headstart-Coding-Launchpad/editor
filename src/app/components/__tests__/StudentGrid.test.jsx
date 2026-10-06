@@ -102,9 +102,49 @@ describe('StudentGrid', () => {
 
     it('shows check count badges when the current task has a check', () => {
       render(<StudentGrid {...mkProps({ lesson: LESSON_WITH_CHECK })} />)
-      // Alice passed (s1), Bob run but not passed (s2)
+      // Alice passed (s1); Bob's run crashed (s2), which counts as errored, not failed
       expect(screen.getByTitle('Students who passed the completion check')).toHaveTextContent('1')
+      expect(
+        screen.getByTitle('Students whose latest run crashed with an error')
+      ).toHaveTextContent('1')
+      expect(
+        screen.queryByTitle('Students who failed the completion check')
+      ).not.toBeInTheDocument()
+    })
+
+    it('counts a run that finished but failed the check as failed', () => {
+      const students = STUDENTS.map((st) =>
+        st.anonymousId === 's2' ? { ...st, lastRunStatus: 'success' } : st
+      )
+      render(<StudentGrid {...mkProps({ lesson: LESSON_WITH_CHECK, students })} />)
       expect(screen.getByTitle('Students who failed the completion check')).toHaveTextContent('1')
+      expect(
+        screen.queryByTitle('Students whose latest run crashed with an error')
+      ).not.toBeInTheDocument()
+    })
+
+    it('shows hints two or more students share, and outlines their cards on click', () => {
+      const hint = (text) => ({ text, source: 'check', failStreak: 1, taskId: '1', at: 1 })
+      const students = [
+        { ...STUDENTS[0], checkPassed: false, studentHint: hint('Use **quotes**') },
+        { ...STUDENTS[1], studentHint: hint('Use quotes') },
+        { ...STUDENTS[2], lastRunStatus: 'success', studentHint: hint('Something else') },
+      ]
+      render(<StudentGrid {...mkProps({ lesson: LESSON_WITH_CHECK, students })} />)
+      expect(screen.getByTestId('common-hints')).toHaveTextContent('Common hints right now (1)')
+      const row = within(screen.getByTestId('common-hints')).getByRole('button', {
+        name: /Use quotes/,
+      })
+      expect(row).toHaveTextContent('2')
+      expect(row).toHaveAttribute('title', 'Alice, Bob')
+      expect(screen.getByTestId('common-hints')).not.toHaveTextContent('Something else')
+      fireEvent.click(row)
+      expect(row).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('shows no common-hints strip when no hint is shared', () => {
+      render(<StudentGrid {...mkProps({ lesson: LESSON_WITH_CHECK })} />)
+      expect(screen.queryByTestId('common-hints')).not.toBeInTheDocument()
     })
 
     it('does not show check count badges during a teacher-started sandbox', () => {
@@ -260,10 +300,10 @@ describe('StudentGrid', () => {
       expect(screen.getByText('run')).toBeInTheDocument()
     })
 
-    it('shows passed and failed counts when task has a check', () => {
+    it('shows passed and errored counts when task has a check', () => {
       renderCollapsed()
       expect(screen.getByText('passed')).toBeInTheDocument()
-      expect(screen.getByText('failed')).toBeInTheDocument()
+      expect(screen.getByText('errored')).toBeInTheDocument()
     })
   })
 

@@ -8,6 +8,8 @@ import BadgeAwardDialog from './badges/BadgeAwardDialog'
 import DropdownMenu from './student-modal/DropdownMenu'
 import JoiningStudentsList from './JoiningStudentsList'
 import ClassActivityStrip from './ClassActivityStrip'
+import CommonHintsStrip from './CommonHintsStrip'
+import { summariseCommonHints } from '../studentHints.js'
 import { classActivities, summariseClassActivities } from '../studentActivity'
 
 export default function StudentGrid({
@@ -81,9 +83,14 @@ export default function StudentGrid({
   // the class strip above the grid, whose groups the teacher can click to outline those cards.
   const activities = classActivities({ session, peerHelp, topics })
   const activitySummary = summariseClassActivities({ session, activities })
+  // Hints two or more students are being shown on this task (src/app/studentHints.js). Not
+  // during a session sandbox, whose runs aren't scored against the task.
+  const commonHints =
+    session?.state === 'sandbox' ? [] : summariseCommonHints(students, session?.currentTaskId)
   const [highlightedGroup, setHighlightedGroup] = useState(null)
   const highlightedIds = new Set(
-    activitySummary.find((entry) => entry.group === highlightedGroup)?.studentIds ?? []
+    [...activitySummary, ...commonHints].find((entry) => entry.group === highlightedGroup)
+      ?.studentIds ?? []
   )
   const studentNames = Object.fromEntries(
     students.map((student) => [student.anonymousId, student.displayName])
@@ -161,8 +168,17 @@ export default function StudentGrid({
   const currentTask = findTaskById(lesson?.tasks, session?.currentTaskId)
   const hasCheck = currentTask?.check != null && session?.state !== 'sandbox'
   const passedCount = hasCheck ? students.filter((student) => student.checkPassed).length : 0
+  // A crashed run counts as "errored", not "failed" (matching the cards' Error chip).
+  const errorCount =
+    session?.state !== 'sandbox'
+      ? students.filter((student) => student.lastRunStatus === 'error' && !student.checkPassed)
+          .length
+      : 0
   const failedCount = hasCheck
-    ? students.filter((student) => student.lastRunStatus != null && !student.checkPassed).length
+    ? students.filter(
+        (student) =>
+          student.lastRunStatus != null && student.lastRunStatus !== 'error' && !student.checkPassed
+      ).length
     : 0
 
   if (collapsed) {
@@ -213,6 +229,13 @@ export default function StudentGrid({
           </div>
         )}
 
+        {students.length > 0 && errorCount > 0 && (
+          <div style={s.collapsedStat}>
+            <span style={{ ...s.collapsedBadge, background: '#ea580c' }}>{errorCount}</span>
+            <span style={s.collapsedStatLabel}>errored</span>
+          </div>
+        )}
+
         {suggestionCount > 0 && (
           <div style={s.collapsedStat} title="Badge suggestions waiting">
             <span style={{ ...s.collapsedBadge, background: 'var(--colour-primary)' }}>
@@ -259,6 +282,14 @@ export default function StudentGrid({
               title="Students who failed the completion check"
             >
               ✕ {failedCount}
+            </span>
+          )}
+          {errorCount > 0 && (
+            <span
+              style={{ ...s.checkCountBadge, background: '#ea580c' }}
+              title="Students whose latest run crashed with an error"
+            >
+              ⚠ {errorCount}
             </span>
           )}
           {nudgedAway && (
@@ -415,6 +446,12 @@ export default function StudentGrid({
           )}
           <ClassActivityStrip
             entries={activitySummary}
+            names={studentNames}
+            highlighted={highlightedIds.size > 0 ? highlightedGroup : null}
+            onHighlight={setHighlightedGroup}
+          />
+          <CommonHintsStrip
+            entries={commonHints}
             names={studentNames}
             highlighted={highlightedIds.size > 0 ? highlightedGroup : null}
             onHighlight={setHighlightedGroup}

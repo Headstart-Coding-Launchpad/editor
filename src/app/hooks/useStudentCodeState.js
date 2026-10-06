@@ -53,6 +53,7 @@ import { resolveIframeErrorLocation } from '../../modules/html/iframe'
 import { buildCodeCheckContext } from '../codeCheckContext'
 import { useCheckFeedback } from './useCheckFeedback'
 import { useLatestRef } from './useLatestRef'
+import { buildStudentHintState, lastErrorLine } from '../studentHints.js'
 import { useSandboxCodePush } from './useSandboxCodePush'
 import { useStudentPresenceReporting } from './useStudentPresenceReporting'
 import { createStudentPersistence } from './createStudentPersistence'
@@ -155,6 +156,7 @@ export function useStudentCodeState({
   previewMode,
   // Session write commands
   writeStudentRun,
+  writeStudentHintState,
   logAttempt,
   writeStudentAnswer,
   writeStudentCode,
@@ -612,6 +614,60 @@ export function useStudentCodeState({
     resetCheckFeedback,
     applyCheckFeedback,
   } = useCheckFeedback({ myStudentData })
+
+  // Mirror the hint on this student's check-feedback banner (and any unopened "Want a hint?"
+  // offer) onto their student node so the teacher's card, modal and common-hints strip can
+  // show it (src/app/studentHints.js). Live lesson tasks only: sandbox, personal-sandbox,
+  // presentation and preview runs neither set nor clear it. Writes only on change.
+  const hintSyncEnabled =
+    phase === 'lesson' &&
+    !teacherPresentation &&
+    !previewMode &&
+    !inPersonalSandbox &&
+    !!effectiveIdentity?.anonymousId &&
+    typeof writeStudentHintState === 'function'
+  const lastHintSyncRef = useRef({})
+  useEffect(() => {
+    if (!hintSyncEnabled) return
+    const next = buildStudentHintState({
+      task: findTaskById(lesson?.tasks, currentTaskId),
+      taskId: currentTaskId,
+      checkAttempted,
+      checkPassed,
+      checkSuggestion,
+      checkFailCount,
+      studentData: myStudentData,
+      targetedStageOffer,
+      offeredSupportStageIndex,
+    })
+    const scope = `${effectiveIdentity.anonymousId}:${currentTaskId}`
+    if (lastHintSyncRef.current.scope !== scope) lastHintSyncRef.current = { scope }
+    const written = lastHintSyncRef.current
+    const updates = {}
+    for (const key of ['studentHint', 'hintOffer']) {
+      if (next[key] === undefined) continue
+      const serialised = JSON.stringify(next[key])
+      if (written[key] === serialised) continue
+      written[key] = serialised
+      updates[key] = next[key] ? { ...next[key], at: Date.now() } : null
+    }
+    if (Object.keys(updates).length) {
+      Promise.resolve(writeStudentHintState(effectiveIdentity.anonymousId, updates)).catch((err) =>
+        console.warn('Failed to sync student hint:', err)
+      )
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    hintSyncEnabled,
+    currentTaskId,
+    checkAttempted,
+    checkPassed,
+    checkSuggestion,
+    checkFailCount,
+    targetedStageOffer,
+    offeredSupportStageIndex,
+    myStudentData?.checkOverridePushedAt,
+  ])
 
   const sandboxModuleId = lesson?.lessonModule?.id ?? null
   const activityLivePayloadRef = useRef(null)
@@ -1588,11 +1644,19 @@ export function useStudentCodeState({
           isWatched)
       ) {
         if (taskIdAtRunTime === currentTaskIdRef.current) {
+          // A runtime error the preview has already reported makes this an 'error' run for
+          // the teacher's card; one reported later is written by handleHtmlRuntimeError.
+          const attemptNow = htmlSupportAttemptsRef.current.get(src)
           writeStudentRun(actor.anonymousId, {
             files: wire.toFilesMap(currentFiles),
-            status: 'success',
+            status: attemptNow?.hasError ? 'error' : 'success',
             checkPassed: passed,
+            errorText: attemptNow?.errorMessage,
           })
+          if (attemptNow) {
+            attemptNow.runWrittenFor = actor.anonymousId
+            attemptNow.errorWritten = !!attemptNow.hasError
+          }
         }
       }
       // A runtime error the preview reported before its text came back (see
@@ -1750,6 +1814,7 @@ export function useStudentCodeState({
           output: displayedOutput,
           status: finalStatus,
           checkPassed: allPassed,
+          errorText: finalStatus === 'error' ? lastErrorLine(displayedOutput) : undefined,
         })
       }
       if (!teacherPresentation && phaseRef.current === 'lesson' && finalStatus !== 'stopped') {
@@ -1923,7 +1988,7 @@ export function useStudentCodeState({
         inPersonalSandboxRef.current ||
         isWatched)
     ) {
-      writeStudentRun(actor.anonymousId, { status: 'error' })
+      writeStudentRun(actor.anonymousId, { status: 'error', errorText: message })
     }
     if (!teacherPresentation && phaseRef.current === 'lesson' && !inPersonalSandboxRef.current) {
       flagAttemptError?.(actor.anonymousId, currentTaskId, error)
@@ -2164,7 +2229,9 @@ export function useStudentCodeState({
     ) {
       writeStudentRun(effectiveIdentity.anonymousId, {
         code: wire.toCode(workValue),
-        status: task?.check ? (evaluatedPassed ? 'success' : 'error') : null,
+        // A failed check is not a crash: 'error' is kept for runs that actually errored, so
+        // the teacher's card can tell "Error" from "Failed" (src/app/studentHints.js).
+        status: task?.check ? 'success' : null,
         checkPassed: evaluatedPassed,
       })
       if (!alreadySolved && task?.check) {
@@ -2634,6 +2701,17 @@ export function useStudentCodeState({
     if (!supportAttempt) return
     supportAttempt.hasError = true
     if (!supportAttempt.errorName) supportAttempt.errorName = runErrorName(errorMeta?.message)
+    if (!supportAttempt.errorMessage && errorMeta?.message) {
+      supportAttempt.errorMessage = String(errorMeta.message)
+    }
+    // The run was already written as a success before this error arrived: correct it.
+    if (supportAttempt.runWrittenFor && !supportAttempt.errorWritten) {
+      supportAttempt.errorWritten = true
+      writeStudentRun(supportAttempt.runWrittenFor, {
+        status: 'error',
+        errorText: supportAttempt.errorMessage,
+      })
+    }
     if (supportAttempt.outcomeApplied && supportAttempt.passed) {
       supportAttempt.passed = false
       updateSupportStageForAttempt(false)

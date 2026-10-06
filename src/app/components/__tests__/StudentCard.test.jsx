@@ -171,11 +171,123 @@ describe('StudentCard', () => {
         <StudentCard
           {...mkProps(
             { lesson: LESSON_WITH_CHECK },
-            { checkPassed: false, lastRunStatus: 'error' }
+            { checkPassed: false, lastRunStatus: 'success' }
           )}
         />
       )
       expect(screen.getByLabelText('Failed')).toBeInTheDocument()
+      expect(screen.queryByLabelText('Error')).not.toBeInTheDocument()
+    })
+
+    it('shows a separate Error badge, with the error line, when the run crashed', () => {
+      render(
+        <StudentCard
+          {...mkProps(
+            { lesson: LESSON_WITH_CHECK },
+            {
+              checkPassed: false,
+              lastRunStatus: 'error',
+              lastRunError: "Line 2: NameError: name 'x' is not defined",
+            }
+          )}
+        />
+      )
+      expect(screen.getByLabelText('Error')).toHaveAttribute(
+        'title',
+        "Their code crashed: Line 2: NameError: name 'x' is not defined"
+      )
+      expect(screen.queryByLabelText('Failed')).not.toBeInTheDocument()
+    })
+
+    it('lets a teacher override outrank the Error badge', () => {
+      render(
+        <StudentCard
+          {...mkProps(
+            { lesson: LESSON_WITH_CHECK },
+            {
+              checkPassed: false,
+              lastRunStatus: 'error',
+              checkOverridePushedAt: 5,
+              checkOverridePassed: false,
+            }
+          )}
+        />
+      )
+      expect(screen.queryByLabelText('Error')).not.toBeInTheDocument()
+      expect(screen.getByLabelText('Override: failed')).toBeInTheDocument()
+    })
+
+    describe('student hint chip', () => {
+      const hint = { text: 'Use **quotes**', source: 'check', failStreak: 3, taskId: '1', at: 1 }
+      const failed = { lastRunStatus: 'success', checkPassed: false }
+
+      it('shows the hint the student sees, with the fail streak, on hover', () => {
+        render(
+          <StudentCard
+            {...mkProps({ lesson: LESSON_WITH_CHECK }, { ...failed, studentHint: hint })}
+          />
+        )
+        expect(screen.getByLabelText('Hint shown').getAttribute('title')).toBe(
+          'Sees: “Use quotes”\nFailed 3 times in a row'
+        )
+      })
+
+      it('labels the teacher override hint as theirs', () => {
+        render(
+          <StudentCard
+            {...mkProps(
+              { lesson: LESSON_WITH_CHECK },
+              {
+                ...failed,
+                checkOverridePushedAt: 5,
+                checkOverridePassed: false,
+                studentHint: { ...hint, source: 'override', failStreak: 1 },
+              }
+            )}
+          />
+        )
+        expect(screen.getByLabelText('Your hint').getAttribute('title')).toBe(
+          'Your hint: “Use quotes”'
+        )
+      })
+
+      it('shows an unopened hint offer on its own', () => {
+        render(
+          <StudentCard
+            {...mkProps(
+              { lesson: LESSON_WITH_CHECK },
+              {
+                ...failed,
+                hintOffer: { kind: 'support', stageIndex: 1, label: 'Loop', taskId: '1' },
+              }
+            )}
+          />
+        )
+        expect(screen.getByLabelText('Hint offered').getAttribute('title')).toBe(
+          'Offered “Loop” as a hint — not opened yet'
+        )
+      })
+
+      it('hides a hint left over from another task, or once they have passed', () => {
+        const { rerender } = render(
+          <StudentCard
+            {...mkProps(
+              { lesson: LESSON_WITH_CHECK },
+              { ...failed, studentHint: { ...hint, taskId: '7' } }
+            )}
+          />
+        )
+        expect(screen.queryByTestId('student-hint')).not.toBeInTheDocument()
+        rerender(
+          <StudentCard
+            {...mkProps(
+              { lesson: LESSON_WITH_CHECK },
+              { lastRunStatus: 'success', checkPassed: true, studentHint: hint }
+            )}
+          />
+        )
+        expect(screen.queryByTestId('student-hint')).not.toBeInTheDocument()
+      })
     })
 
     it('shows no check badge during a teacher-started sandbox, even if the session task has a check', () => {

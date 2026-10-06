@@ -44,6 +44,7 @@ import { liveInkPath } from '../liveInk/liveInkData'
 import { normalizePollDraft, pollChoiceIndex } from '../../shared/classPolls.js'
 import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liveInkWriter'
 import { buildClassCountdown, extendClassCountdown } from '../../shared/classCountdown'
+import { clipRunError } from '../studentHints.js'
 
 // Badge decisions (sessions/{lessonId}/badges/{anonymousId}/{badgeId}). A decision is written
 // once; revoking is the only later change (see decideBadge / revokeBadge).
@@ -432,6 +433,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
     for (const anonymousId of Object.keys(session?.students ?? {})) {
       updates[`students/${anonymousId}/checkPassed`] = null
       updates[`students/${anonymousId}/lastRunStatus`] = null
+      updates[`students/${anonymousId}/lastRunError`] = null
+      updates[`students/${anonymousId}/studentHint`] = null
+      updates[`students/${anonymousId}/hintOffer`] = null
       updates[`students/${anonymousId}/currentOutput`] = ''
       updates[`students/${anonymousId}/currentCode`] = ''
       updates[`students/${anonymousId}/currentArcadeDesign`] = null
@@ -1336,6 +1340,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
       currentOutput: '',
       currentAnswer: null,
       lastRunStatus: null,
+      lastRunError: null,
+      studentHint: null,
+      hintOffer: null,
       checkPassed: null,
       lastRunAt: null,
     })
@@ -1385,17 +1392,32 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   async function writeStudentRun(
     anonymousId,
-    { code, files, output, answer, status, checkPassed }
+    { code, files, output, answer, status, checkPassed, errorText }
   ) {
     const updates = {
       lastRunStatus: status,
       lastRunAt: Date.now(),
+      // The crashed run's error line for the teacher's "Error" chip (src/app/studentHints.js);
+      // every run replaces it, so a later clean run clears it.
+      lastRunError: status === 'error' ? clipRunError(errorText) : null,
     }
     if (checkPassed !== undefined) updates.checkPassed = checkPassed
     if (code != null) updates.currentCode = code
     if (files != null) updates.currentFiles = encodeFileKeys(files)
     if (output != null) updates.currentOutput = output
     if (answer != null) updates.currentAnswer = answer
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), updates)
+  }
+
+  // The hint on the student's check-feedback banner and any unopened "Want a hint?" offer,
+  // mirrored for the teacher's card, modal and common-hints strip (src/app/studentHints.js).
+  // Only the keys present in `state` are written.
+  async function writeStudentHintState(anonymousId, state) {
+    const updates = {}
+    for (const key of ['studentHint', 'hintOffer']) {
+      if (state?.[key] !== undefined) updates[key] = state[key]
+    }
+    if (!Object.keys(updates).length) return
     await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), updates)
   }
 
@@ -1995,6 +2017,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     setJoiningTypedName,
     subscribeJoiningMarker,
     writeStudentRun,
+    writeStudentHintState,
     logAttempt,
     flagAttemptError,
     writeStudentAnswer,
