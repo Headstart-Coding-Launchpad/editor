@@ -89,7 +89,9 @@ After the same hint appears twice in a row, solo students can optionally view th
 ### What Students Are Doing
 - Each student card has a "Now:" line for what the student is doing: 🤝 helping Sam / helped by Ali, 👀 looking at or ▶ trying the work on show, 📤 viewing shared work, 📖 reading a topic, 🧪 in their own sandbox
 - A one-line class strip above the cards sums it up ("🤝 Hal → Sam · 👀 6 looking at Sam's work"); hover for names, click to outline those cards
-- Card status chips are single icons (✓ ✕ ✋ 💤 📋 ⛶ 📤 💡 🪟 ✏️), with the words on hover
+- Card status chips are single icons (✓ ✕ ⚠ 💬 ✋ 💤 📋 ⛶ 📤 💡 🪟 ✏️), with the words on hover
+- A run that crashed shows ⚠ Error (hover for the error line), separately from ✕ Failed (ran, but the check didn't pass); the grid header counts errored students on their own
+- See the hint each student is being shown: a 💬 chip on the card (hover for the hint, how many times in a row they've failed, and any "Want a hint?" offer they haven't opened; "Your hint" when it's your override), the same hint in a "Amy sees" panel at the top of the student's modal, and a "Common hints right now" list above the cards when two or more students are seeing the same hint (click to outline them). Live lesson tasks only; cleared when they pass or the task changes
 
 ### Task Navigator
 - Task list with group collapse

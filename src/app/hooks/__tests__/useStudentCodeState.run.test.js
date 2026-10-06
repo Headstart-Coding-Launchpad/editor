@@ -135,6 +135,7 @@ describe.each([
       output: 'hi\n',
       status: 'error',
       checkPassed: false,
+      errorText: 'hi',
     })
   })
 

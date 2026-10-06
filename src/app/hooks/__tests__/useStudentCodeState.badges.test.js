@@ -95,7 +95,10 @@ describe("Arcade's late game error", () => {
     expect(h.writers.logAttempt).toHaveBeenCalledTimes(1)
     actSync(() => h.result.current.handleArcadeRunError("Line 2: NameError: name 'y'"))
     expect(h.result.current.runStatus).toBe('error')
-    expect(h.writers.writeStudentRun).toHaveBeenLastCalledWith(ANON, { status: 'error' })
+    expect(h.writers.writeStudentRun).toHaveBeenLastCalledWith(ANON, {
+      status: 'error',
+      errorText: "Line 2: NameError: name 'y'",
+    })
     expect(h.writers.flagAttemptError).toHaveBeenCalledWith(ANON, 't1', 'NameError')
     expect(h.writers.flagSandboxRunError).not.toHaveBeenCalled()
   })

@@ -74,6 +74,7 @@ export const BADGE_SIGNAL_WRITER_NAMES = [
 
 export const WRITER_NAMES = [
   'writeStudentRun',
+  'writeStudentHintState',
   'logAttempt',
   'writeStudentAnswer',
   'writeStudentCode',

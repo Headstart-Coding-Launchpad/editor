@@ -9,6 +9,12 @@ import { readActivityAnswer, summarizeActivityAnswer } from '../../activities/st
 import { getTaskActivityUi } from '../../activities/registry.js'
 import ActivityDeviceBadge from '../../activities/ui/ActivityDeviceBadge.jsx'
 import {
+  describeHintOffer,
+  hintPlainText,
+  readHintOffer,
+  readStudentHint,
+} from '../studentHints.js'
+import {
   canShowResponses,
   defaultShowName,
   findShownResponse,
@@ -187,8 +193,13 @@ export default function StudentCard({
   const checkPassed =
     hasCheck &&
     (hasActiveOverride ? student.checkOverridePassed === true : student.checkPassed === true)
+  // A run that crashed is "Error", not "Failed": the check never got a fair go. The teacher's
+  // own override outranks both.
+  const runErrored =
+    !isSessionSandbox && !hasActiveOverride && !checkPassed && student.lastRunStatus === 'error'
   const checkFailed =
     hasCheck &&
+    !runErrored &&
     (hasActiveOverride
       ? student.checkOverridePassed === false
       : checkAttempted && student.checkPassed !== true)
@@ -196,9 +207,24 @@ export default function StudentCard({
     ? s.cardNeedsHelp
     : checkPassed
       ? s.cardCheckPassed
-      : checkFailed
-        ? s.cardCheckFailed
-        : null
+      : runErrored
+        ? s.cardRunError
+        : checkFailed
+          ? s.cardCheckFailed
+          : null
+  // The hint on the student's feedback banner and any unopened "Want a hint?" offer
+  // (src/app/studentHints.js).
+  const shownHint = isSessionSandbox ? null : readStudentHint(student, session?.currentTaskId)
+  const shownOffer = isSessionSandbox ? null : readHintOffer(student, session?.currentTaskId)
+  const hintChipTitle = [
+    shownHint
+      ? `${shownHint.source === 'override' ? 'Your hint' : 'Sees'}: “${hintPlainText(shownHint.text)}”`
+      : null,
+    shownHint?.failStreak > 1 ? `Failed ${shownHint.failStreak} times in a row` : null,
+    shownOffer ? describeHintOffer(shownOffer) : null,
+  ]
+    .filter(Boolean)
+    .join('\n')
 
   // Every card opens the student modal, information tasks included: the modal shows the task
   // itself and keeps the badge, nudge, message and video-call controls a teacher still needs.
@@ -397,6 +423,32 @@ export default function StudentCard({
               label="Failed"
               title="Completion check failed"
               style={s.checkBadgeFailed}
+            />
+          )}
+          {runErrored && (
+            <IconChip
+              icon="⚠"
+              label="Error"
+              title={`Their code crashed${student.lastRunError ? `: ${student.lastRunError}` : ''}`}
+              style={s.checkBadgeError}
+              testId="run-error"
+            />
+          )}
+          {(shownHint || shownOffer) && (
+            <IconChip
+              icon="💬"
+              label={
+                shownHint?.source === 'override'
+                  ? 'Your hint'
+                  : shownHint
+                    ? 'Hint shown'
+                    : 'Hint offered'
+              }
+              title={hintChipTitle}
+              style={
+                shownHint?.source === 'override' ? s.checkBadgeOverrideFailed : s.checkBadgeHint
+              }
+              testId="student-hint"
             />
           )}
           {hasActiveOverride && (
@@ -660,6 +712,9 @@ const s = {
   cardCheckFailed: {
     borderLeftColor: 'var(--colour-error)',
   },
+  cardRunError: {
+    borderLeftColor: '#ea580c',
+  },
   cardNeedsHelp: {
     borderLeftColor: 'var(--colour-warning)',
     background: 'var(--colour-warning-bg)',
@@ -748,6 +803,15 @@ const s = {
   checkBadgeFailed: {
     background: '#ef4444',
     color: '#fff',
+  },
+  checkBadgeError: {
+    background: '#ea580c',
+    color: '#fff',
+  },
+  checkBadgeHint: {
+    background: '#fef3c7',
+    color: '#92400e',
+    border: '1px solid #fde68a',
   },
   checkBadgeHelp: {
     background: '#f59e0b',

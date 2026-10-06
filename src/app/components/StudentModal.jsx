@@ -26,6 +26,7 @@ import MessageCompose from './student-modal/MessageCompose'
 import OverrideDropdown from './student-modal/OverrideDropdown'
 import { PaneFocusControls } from './student-modal/PaneFocusDropdown'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
+import StudentHintPanel from './student-modal/StudentHintPanel'
 import ShareRequestPanel from './student-modal/ShareRequestPanel'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
 import { countShownLineHints, getMirrorLineHintSets } from './student-modal/mirrorLineHints'
@@ -1224,6 +1225,11 @@ export default function StudentModal({
           />
         ) : (
           <>
+            <StudentHintPanel
+              student={student}
+              session={session}
+              isSessionSandbox={isSessionSandbox}
+            />
             {/* Content */}
             <div
               style={

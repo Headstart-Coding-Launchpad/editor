@@ -265,7 +265,7 @@ describe('handleFsChange — filesystem', () => {
     expect(h.writers.writeStudentRun).toHaveBeenCalledTimes(1)
     expect(h.writers.writeStudentRun).toHaveBeenCalledWith(ANON, {
       code: JSON.stringify(next),
-      status: 'error',
+      status: 'success',
       checkPassed: false,
     })
     expect(h.writers.logAttempt).toHaveBeenCalledWith(ANON, 't1', {
@@ -326,7 +326,7 @@ describe('handleFsChange — filesystem', () => {
     actSync(() => h.result.current.handleFsInteraction({ currentDir: '/', openFile: null }))
     expect(h.writers.writeStudentRun).toHaveBeenCalledWith(ANON, {
       code: JSON.stringify(fsWith('start.txt')),
-      status: 'error',
+      status: 'success',
       checkPassed: false,
     })
     expect(h.writers.logAttempt).toHaveBeenCalledWith(ANON, 't1', {
@@ -364,7 +364,7 @@ describe('handleDesktopChange — desktop', () => {
     actSync(() => h.result.current.handleDesktopChange(next))
     expect(h.writers.writeStudentRun).toHaveBeenCalledWith(ANON, {
       code: JSON.stringify(next),
-      status: 'error',
+      status: 'success',
       checkPassed: false,
     })
     expect(h.writers.logAttempt).toHaveBeenCalledWith(ANON, 't1', {
