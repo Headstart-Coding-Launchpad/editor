@@ -773,11 +773,19 @@ function SlotPartChip({ part, index, total, onUpdateCode, onMove, onRemove }) {
   )
 }
 
+// JetBrains Mono renders operators like != and <= as ligatures (≠, ≤);
+// students must see the literal characters they will type.
+const codeFont = {
+  fontFamily: "'JetBrains Mono', monospace",
+  fontVariantLigatures: 'none',
+  fontFeatureSettings: '"liga" 0, "calt" 0',
+}
+
 const caStyles = {
   codeTextarea: {
     minHeight: 80,
     resize: 'vertical',
-    fontFamily: "'JetBrains Mono', monospace",
+    ...codeFont,
     fontSize: '0.86rem',
     whiteSpace: 'pre',
     overflow: 'auto',
@@ -838,7 +846,7 @@ const caStyles = {
   },
   chipInput: {
     width: 160,
-    fontFamily: "'JetBrains Mono', monospace",
+    ...codeFont,
     fontSize: '0.85rem',
   },
   chipControls: {
@@ -875,7 +883,7 @@ const caStyles = {
     padding: '8px 10px',
     borderRadius: 6,
     background: '#111827',
-    fontFamily: "'JetBrains Mono', monospace",
+    ...codeFont,
     fontSize: '0.84rem',
     whiteSpace: 'pre-wrap',
     lineHeight: 1.6,

@@ -65,6 +65,19 @@ describe('CodeArrangeTask — single-slot ("whole line") lines', () => {
     expect(screen.getByText('print("wrong")')).toBeInTheDocument()
   })
 
+  it('disables font ligatures on code tiles so operators like != render literally', () => {
+    const task = {
+      ...PYTHON_TASK,
+      lines: [{ id: 'L1', parts: [{ type: 'slot', id: 'L1', code: 'if x != 3:' }] }],
+      distractors: [],
+    }
+    render(<CodeArrangeTask task={task} moduleType="python" selectedAnswer={{}} />)
+
+    const tile = screen.getByText('if x != 3:')
+    expect(tile.style.fontVariantLigatures).toBe('none')
+    expect(tile.style.fontFeatureSettings).toContain('"liga" 0')
+  })
+
   it('disables Run until every slot is filled, including when only a distractor is placed', () => {
     const { rerender } = render(
       <CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={{}} onRun={vi.fn()} />
