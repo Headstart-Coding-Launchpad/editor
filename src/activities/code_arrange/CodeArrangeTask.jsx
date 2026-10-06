@@ -431,6 +431,14 @@ function InlineSlot({
   )
 }
 
+// JetBrains Mono renders operators like != and <= as ligatures (≠, ≤);
+// students must see the literal characters they will type.
+const codeFont = {
+  fontFamily: "'JetBrains Mono', monospace",
+  fontVariantLigatures: 'none',
+  fontFeatureSettings: '"liga" 0, "calt" 0',
+}
+
 const ca = {
   programStack: {
     display: 'flex',
@@ -470,7 +478,7 @@ const ca = {
     padding: '6px 12px',
     borderRadius: 6,
     border: '2px dashed',
-    fontFamily: "'JetBrains Mono', monospace",
+    ...codeFont,
     fontSize: '0.92rem',
     transition: 'background 0.12s, border-color 0.12s, box-shadow 0.12s',
   },
@@ -488,7 +496,7 @@ const ca = {
     borderRadius: 6,
     background: '#f9fafb',
     border: '1px solid #e5e7eb',
-    fontFamily: "'JetBrains Mono', monospace",
+    ...codeFont,
     fontSize: '0.92rem',
   },
   textPart: {
@@ -505,7 +513,7 @@ const ca = {
     margin: '0 2px',
     borderRadius: 5,
     border: '2px dashed',
-    fontFamily: "'JetBrains Mono', monospace",
+    ...codeFont,
     fontSize: '0.9rem',
     whiteSpace: 'pre',
     cursor: 'pointer',
@@ -516,7 +524,7 @@ const ca = {
     border: '2px solid #e5e7eb',
     borderRadius: 8,
     background: '#fff',
-    fontFamily: "'JetBrains Mono', monospace",
+    ...codeFont,
     fontSize: '0.88rem',
     color: 'var(--colour-text)',
     cursor: 'pointer',
@@ -554,7 +562,7 @@ const ca = {
     borderRadius: 8,
     background: '#fff',
     color: 'var(--colour-text)',
-    fontFamily: "'JetBrains Mono', monospace",
+    ...codeFont,
     fontSize: '0.85rem',
     whiteSpace: 'pre',
     boxShadow: '0 6px 16px rgba(124, 58, 237, 0.25)',
