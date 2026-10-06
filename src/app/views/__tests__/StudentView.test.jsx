@@ -1544,6 +1544,34 @@ describe('StudentView', () => {
       expect(screen.queryByText('Information')).not.toBeInTheDocument()
     })
 
+    // Information/quiz tasks report an empty visiblePanes list. Arriving at a Scratch task
+    // from one must judge the new task's own panes, not that stale empty list, or the
+    // explainer slide pops open on every screen size even though everything fits.
+    it('does not auto-show the explainer slide when arriving from an information task with the explainer visible', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView
+          lessonId="scratch-1-1"
+          forceSolo
+          lesson={{
+            ...scratchLessonWithExplainers,
+            tasks: [
+              { id: 0, title: 'Welcome', taskType: 'information', content: 'Hello!' },
+              ...scratchLessonWithExplainers.tasks,
+            ],
+          }}
+        />
+      )
+
+      await waitFor(() => expect(screen.getByText('Task 1 of 3')).toBeInTheDocument())
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      expect(screen.getByText('Scratch')).toBeInTheDocument()
+      expect(screen.getByText('Task 2 of 3')).toBeInTheDocument()
+    })
+
     // Composed lessons carry a per-task module type (task.moduleType) rather than a
     // single lesson.type — the gate must read the effective, per-task type, not the
     // raw composed lesson.type (which is just 'composed').

@@ -16,17 +16,33 @@ import { useCallback, useRef, useState } from 'react'
 export function useElementSize() {
   const [size, setSize] = useState({ width: 0, height: 0 })
   const observerRef = useRef(null)
+  const nodeRef = useRef(null)
 
   const ref = useCallback((node) => {
+    if (!node) {
+      // React 18 passes null without saying which node detached. During a task change
+      // TaskSlideTransition's leaving panel re-renders the previous task's tree, so a
+      // second node shares this ref; its unmount must not stop observing the entering
+      // node. Only disconnect once the observed node has really left the document
+      // (checked after the commit finishes removing nodes).
+      queueMicrotask(() => {
+        if (nodeRef.current && !nodeRef.current.isConnected) {
+          observerRef.current?.disconnect()
+          observerRef.current = null
+          nodeRef.current = null
+        }
+      })
+      return
+    }
+    // The most recently attached node wins: the entering panel renders after the leaving one.
     observerRef.current?.disconnect()
-    observerRef.current = null
-    if (!node) return
     const obs = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect
       setSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }))
     })
     obs.observe(node)
     observerRef.current = obs
+    nodeRef.current = node
   }, [])
 
   return [ref, size]

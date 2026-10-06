@@ -88,4 +88,41 @@ describe('useElementSize', () => {
     act(() => observer.fire(observer.instances[1], { width: 300, height: 200 }))
     expect(sizes.at(-1)).toEqual({ width: 300, height: 200 })
   })
+
+  // Regression test: during a task change TaskSlideTransition renders the previous task's
+  // element tree again as the "leaving" panel, so a second node shares this same callback
+  // ref. React 18 calls the ref with null when that copy unmounts; that must not disconnect
+  // the observer watching the entering panel, or the size freezes for the rest of the task.
+  it('keeps observing the live node when another node sharing the ref detaches', async () => {
+    observer = stubResizeObserver()
+    const sizes = []
+    function SlideProbe({ leaving }) {
+      const [ref, size] = useElementSize()
+      sizes.push(size)
+      return (
+        <>
+          {leaving && <div key="leaving" ref={ref} />}
+          <div key="entering" ref={ref} />
+        </>
+      )
+    }
+
+    const { rerender } = render(<SlideProbe leaving />)
+    const enteringObserver = observer.instances.at(-1)
+
+    rerender(<SlideProbe leaving={false} />)
+    await act(async () => {})
+
+    expect(enteringObserver.disconnected).toBe(false)
+    act(() => observer.fire(enteringObserver, { width: 900, height: 600 }))
+    expect(sizes.at(-1)).toEqual({ width: 900, height: 600 })
+  })
+
+  it('disconnects once the owning component unmounts', async () => {
+    observer = stubResizeObserver()
+    const { unmount } = render(<Probe onSize={() => {}} />)
+    unmount()
+    await act(async () => {})
+    expect(observer.instances[0].disconnected).toBe(true)
+  })
 })

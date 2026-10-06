@@ -646,10 +646,15 @@ export default function StudentView({
   // useStudentCodeState.js: real students in a live/sandbox session only, never the
   // teacher's own presentation screen.
   const lastVisiblePanesRef = useRef(null)
-  const [localVisiblePanes, setLocalVisiblePanes] = useState(null)
+  // Tagged with the task that reported it: on a task change this still holds the previous
+  // task's panes (e.g. an information task's empty list) until the new task reports, and
+  // reading that stale list made the Scratch explainer look hidden on arrival.
+  const [reportedVisiblePanes, setReportedVisiblePanes] = useState(null)
+  const localVisiblePanes =
+    reportedVisiblePanes?.taskId === currentTaskId ? reportedVisiblePanes.panes : null
   const handleVisiblePanesChange = useCallback(
     (panes) => {
-      setLocalVisiblePanes(panes)
+      setReportedVisiblePanes({ taskId: currentTaskId, panes })
       if (teacherPresentation || !identity?.anonymousId) return
       if (phase !== 'lesson' && phase !== 'sandbox') return
       // Keyed per task: the teacher's setTaskId wipes visiblePanes, so the same list on the
