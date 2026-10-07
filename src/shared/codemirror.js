@@ -37,6 +37,9 @@ const headstartTheme = EditorView.theme(
       backgroundColor: '#fafafa',
       height: '100%',
     },
+    // CodeMirror's base theme sets `monospace` on the scroller, which beats the font above.
+    // Ligatures off so != and <= show as typed, not as ≠ and ≤ (as in the output panel).
+    '.cm-scroller': { fontFamily: "'JetBrains Mono', monospace", fontVariantLigatures: 'none' },
     '.cm-content': { padding: '8px 0', caretColor: '#6222CC' },
     '.cm-line': { padding: '0 14px' },
     '.cm-activeLine': { backgroundColor: 'rgba(240, 234, 250, 0.5)' },
