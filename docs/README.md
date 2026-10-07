@@ -328,6 +328,11 @@ How to write a Scratch toolbox XML string: XML structure, all categories with th
 
 **Load when:** writing a Scratch task `toolbox` field by hand, or troubleshooting a missing block in the student palette.
 
+### [authoring/scratch-render-cli.md](authoring/scratch-render-cli.md)
+`hsc scratch render`: draw a lesson's Scratch script as the classroom shows it and save a standalone SVG plus a block map with a stable id on each block.
+
+**Load when:** you need a picture of real Scratch blocks (videos, slides, docs) or are changing the render command.
+
 ### [authoring/scratch-markdown-blocks.md](authoring/scratch-markdown-blocks.md)
 Complete author-facing Scratch block rendering reference: every supported block, its opcode, the exact Markdown text that renders it, shapes, aliases, input notation, and C-block nesting syntax.
 
