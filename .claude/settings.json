@@ -1,1 +1,27 @@
-{"worktree":{"bgIsolation":"none"}}
+{
+  "worktree": { "bgIsolation": "none" },
+  "permissions": {
+    "allow": [
+      "Bash(npm test)",
+      "Bash(npm run docs:check)",
+      "Bash(npm run lint)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(Get-Content *)",
+      "PowerShell(Select-String *)",
+      "Read(//c/Users/rflem/Documents/HSC Hub/**)",
+      "Edit(/src/**)",
+      "Edit(/cli/**)",
+      "Edit(/docs/**)",
+      "Edit(/tests/**)",
+      "Edit(/e2e/**)",
+      "Edit(/scripts/**)",
+      "Edit(/functions/**)",
+      "Edit(/public/**)",
+      "Edit(//c/Users/rflem/Documents/HSC Hub/Handoffs.md)",
+      "Edit(//c/Users/rflem/Documents/HSC Hub/Status/LaunchPad Dev.md)",
+      "Edit(//c/Users/rflem/Documents/HSC Hub/Specs/**)",
+      "SendMessage",
+      "ListAgents"
+    ]
+  }
+}
