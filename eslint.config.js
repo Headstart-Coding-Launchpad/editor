@@ -145,6 +145,14 @@ export default [
     },
   },
 
+  // `hsc scratch render` page: runs in headless Chromium, not Node
+  {
+    files: ['cli/scratch-render/**/*.js'],
+    languageOptions: {
+      globals: { ...globals.browser },
+    },
+  },
+
   // CLI tool tests (vitest)
   {
     files: ['cli/**/*.test.js'],

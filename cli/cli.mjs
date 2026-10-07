@@ -193,6 +193,22 @@ const loadValidate = () => import('./validate.mjs')
 const loadYaml = () => import('./yaml-converter.mjs')
 const loadCheckTests = () => import('./check-tests.mjs')
 const loadCapabilities = () => import('./capabilities.mjs')
+const loadScratchRenderInput = () => import('./scratch-render-input.mjs')
+const loadScratchRender = () => import('./scratch-render.mjs')
+
+// A lesson or block file for `scratch render`: JSON, lesson YAML, or plain YAML blocks.
+async function readScratchSource(file) {
+  const text = await readText(file)
+  if (/\.ya?ml$/i.test(file ?? '')) {
+    const data = yaml.load(text)
+    if (Array.isArray(data?.tasks)) {
+      const { parseYamlLesson } = await loadYaml()
+      return parseYamlLesson(text)
+    }
+    return data
+  }
+  return JSON.parse(text)
+}
 
 await yargs(hideBin(process.argv))
   .scriptName('hsc')
@@ -1196,6 +1212,82 @@ await yargs(hideBin(process.argv))
       .help()
   )
 
+  // --- SCRATCH --------------------------------------------------------------
+
+  .command('scratch', 'Scratch tools that need no Firebase (except --lesson)', (yargs) =>
+    yargs
+      .command(
+        'render [file]',
+        'Draw a Scratch script as the app shows it and save it as SVG, with a stable id on each block (needs the repo dev dependencies and Playwright Chromium)',
+        {
+          lesson: {
+            type: 'string',
+            describe: 'Fetch this lesson id from Firestore instead of a file',
+          },
+          task: {
+            type: 'string',
+            describe:
+              'Task index (0-based, as tasks get) or task id. Default: first task with blocks',
+          },
+          field: {
+            type: 'string',
+            describe:
+              'complete | starter | stage:<n> | stack:<prebuiltStack id>. Default: complete, else starter',
+          },
+          sprite: {
+            type: 'string',
+            describe: 'Sprite id or name, or "stage". Default: first sprite with blocks',
+          },
+          out: { type: 'string', describe: 'SVG path. A .json block map is written beside it' },
+          'embed-font': {
+            type: 'boolean',
+            default: true,
+            describe: 'Embed Quicksand in the SVG (needs internet). --no-embed-font to skip',
+          },
+        },
+        cmd(
+          async ({ file, lesson: lessonId, task, field, sprite, out, 'embed-font': embedFont }) => {
+            if (!file && !lessonId)
+              throw new Error('Pass a lesson or blocks file, or --lesson <id>')
+            const data = lessonId
+              ? await (await loadLessons()).getLesson(lessonId)
+              : await readScratchSource(file)
+            const { buildRenderJob } = await loadScratchRenderInput()
+            const job = buildRenderJob({ data, task, field, sprite })
+            const { renderScratchSvg } = await loadScratchRender()
+            const result = await renderScratchSvg(job, { embedFont })
+            const svgPath = resolve(
+              out ??
+                `${job.source.taskId ?? 'blocks'}-${job.source.spriteId}.svg`.replace(
+                  /[^\w.-]+/g,
+                  '-'
+                )
+            )
+            const mapPath = svgPath.replace(/\.svg$/i, '') + '.json'
+            const map = {
+              source: { lessonId: lessonId ?? data?.id ?? null, ...job.source },
+              width: result.width,
+              height: result.height,
+              blocks: result.blocks,
+              warnings: result.warnings,
+            }
+            await writeText(svgPath, result.svg)
+            await writeText(mapPath, JSON.stringify(map, null, 2) + '\n')
+            print({
+              svg: printRelativePath(svgPath),
+              map: printRelativePath(mapPath),
+              width: result.width,
+              height: result.height,
+              blocks: result.blocks.length,
+              warnings: result.warnings,
+            })
+          }
+        )
+      )
+      .demandCommand(1, 'Specify a subcommand: render')
+      .help()
+  )
+
   // --- LEVELS ---------------------------------------------------------------
 
   .command('levels', 'Manage reusable lesson level records', (yargs) =>
@@ -1317,7 +1409,7 @@ await yargs(hideBin(process.argv))
   )
   .demandCommand(
     1,
-    'Specify a command: lessons | tasks | topics | feedback | assets | levels | classes'
+    'Specify a command: lessons | tasks | topics | feedback | assets | scratch | levels | classes'
   )
   .help()
   .parseAsync()
