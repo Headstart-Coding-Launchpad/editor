@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "docs:check": "node scripts/check-docs.mjs",
+    "board:feed": "node scripts/board-feed.mjs",
     "new:activity": "node scripts/new-activity.mjs",
     "new:badge": "node scripts/new-badge.mjs",
     "new:module": "node scripts/new-module.mjs",
