@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import PythonEditor from '../python/PythonEditor'
+import { taskShowsBlocks } from '../../shared/blockGuides'
 import SplitPane from '../../shared/SplitPane'
 import AssetBrowser from '../../shared/AssetBrowser'
 import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
@@ -235,6 +236,7 @@ export default function StudentWorkspace({
             onChange={readOnly ? undefined : handleCodeChange}
             pyodideStatus="ready"
             onRunShortcut={readOnly ? undefined : running ? stop : run}
+            showBlocks={taskShowsBlocks(task)}
           />
           {!readOnly && (
             <details

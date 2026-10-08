@@ -1,9 +1,11 @@
 import React from 'react'
 import PythonEditor from './PythonEditor.jsx'
+import { taskShowsBlocks } from '../../shared/blockGuides'
 
 const attachedEditorStyle = { borderRadius: '0 0 8px 8px' }
 
 export default function PythonTeacherLiveView({
+  task,
   displayState,
   readOnly,
   onChange,
@@ -12,6 +14,7 @@ export default function PythonTeacherLiveView({
 }) {
   return (
     <PythonEditor
+      showBlocks={taskShowsBlocks(task)}
       code={displayState ?? ''}
       onChange={onChange}
       onActivity={onActivity}

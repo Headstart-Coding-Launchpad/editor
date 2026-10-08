@@ -15,7 +15,8 @@ workspaces yet.
 
 Use `type: composed` at lesson level and `moduleType: turtle` on each Turtle
 task. Turtle tasks use the same source-stage fields as a Python code task:
-`starterCode`, `completeCode`, `codeStages`, `carryCodeFrom`, and `copyCode`.
+`starterCode`, `completeCode`, `codeStages`, `carryCodeFrom`, and `copyCode`, plus
+`showBlocks` (block brackets in the editor, see [python.md](python.md)).
 
 ```yaml
 id: draw-a-square

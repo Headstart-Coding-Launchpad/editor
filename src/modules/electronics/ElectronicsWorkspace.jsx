@@ -92,6 +92,8 @@ export default function ElectronicsWorkspace({
   // "not forced" — the component's own local toggle state applies.
   forcedOutputCollapsed = null,
   onOutputCollapsedChange,
+  // The task allows Python block brackets in the code tab (see PythonEditor.jsx).
+  showBlocks = true,
 }) {
   const boardRef = useRef(null)
   const boardWrapRef = useRef(null)
@@ -928,6 +930,7 @@ export default function ElectronicsWorkspace({
                   : onRunMicroPython
             }
             editorStyle={s.codeEditor}
+            showBlocks={showBlocks}
           />
         </div>
       ) : (

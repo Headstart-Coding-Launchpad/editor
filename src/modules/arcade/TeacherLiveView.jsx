@@ -1,4 +1,5 @@
 import PythonEditor from '../python/PythonEditor'
+import { taskShowsBlocks } from '../../shared/blockGuides'
 import ArcadeDesignStudio from './ArcadeDesignStudio'
 import { allowsArcadeTool, designForCodeTab } from './design'
 
@@ -59,6 +60,7 @@ export default function TeacherLiveView({
         {activeWorkspace === 'code' ? (
           <div style={s.editor}>
             <PythonEditor
+              showBlocks={taskShowsBlocks(task)}
               code={displayState ?? ''}
               readOnly={false}
               onChange={onChange}
@@ -86,6 +88,7 @@ export default function TeacherLiveView({
     <div style={s.wrap}>
       <div style={s.editor}>
         <PythonEditor
+          showBlocks={taskShowsBlocks(task)}
           code={displayState ?? ''}
           readOnly={readOnly}
           onChange={onChange}

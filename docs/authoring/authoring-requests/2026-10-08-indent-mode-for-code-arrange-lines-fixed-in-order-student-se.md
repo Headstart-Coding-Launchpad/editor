@@ -1,6 +1,6 @@
 # Indent mode for code_arrange: lines fixed in order, student sets each line's depth
 
-- **Status:** open
+- **Status:** planned
 - **Kind:** activity mode
 - **Requested by:** Ryan (approved by Ryan), 2026-10-08
 - **Lessons blocked:** none yet

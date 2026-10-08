@@ -4,7 +4,7 @@
  * Creates a single EditorView and updates it imperatively to avoid full re-mounts.
  */
 import React, { useContext, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
-import { EditorState, StateEffect, StateField } from '@codemirror/state'
+import { Compartment, EditorState, StateEffect, StateField } from '@codemirror/state'
 import { Decoration, EditorView, WidgetType, keymap } from '@codemirror/view'
 import { indentUnit } from '@codemirror/language'
 import {
@@ -20,6 +20,7 @@ import {
   setLineHints,
 } from './codemirror'
 import { chooseLineHints } from './lineHints'
+import { blockGuidesExtension } from './blockGuides'
 import { BadgeSignalsContext } from './badgeSignalsContext'
 
 // The CodeMirror user-event types that are the student's own editing (typing, pasting,
@@ -289,6 +290,13 @@ export const errorLineField = StateField.define({
   provide: (field) => EditorView.decorations.from(field),
 })
 
+// Python block brackets (./blockGuides.js), on only while the `blockGuides` prop is set.
+const blockGuidesCompartment = new Compartment()
+
+function blockGuidesFor(on) {
+  return on ? blockGuidesExtension() : []
+}
+
 export const CodeEditor = React.forwardRef(function CodeEditor(
   {
     value = '',
@@ -309,6 +317,8 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     // Fires on a document change the user made (see USER_EDIT_EVENTS), never on the external
     // value sync. Without it, the classroom's BadgeSignalsContext (if any) is told instead.
     onUserEdit,
+    // Draw coloured Python block brackets beside indented code (only PythonEditor sets it).
+    blockGuides = false,
     style,
   },
   ref
@@ -361,6 +371,7 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
           teacherHighlightsField,
           errorLineField,
           lineHintsExtension(),
+          blockGuidesCompartment.of(blockGuidesFor(blockGuides)),
           keymap.of([
             {
               key: 'Mod-Enter',
@@ -439,6 +450,14 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
       ],
     })
   }, [language])
+
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    view.dispatch({
+      effects: blockGuidesCompartment.reconfigure(blockGuidesFor(blockGuides)),
+    })
+  }, [blockGuides])
 
   // Sync external value changes (e.g. task switch, sandbox push)
   useEffect(() => {

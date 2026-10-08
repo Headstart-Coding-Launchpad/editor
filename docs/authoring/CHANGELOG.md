@@ -37,6 +37,23 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-08
+
+### Block brackets in the Python editor (`showBlocks`)
+
+- The Python editor (also in Turtle, Arcade Kit and Electronics MicroPython tasks) now draws a
+  coloured bracket beside the lines each `:` line controls, and colours that colon to match. The
+  colour follows the header's depth, so `elif`/`else` share their `if`'s colour, and the bracket
+  sits at the indent itself, so depth doesn't rely on colour alone. A header whose body isn't
+  indented gets no bracket.
+- On by default. Students and tutors can hide them with the editor's **Blocks** button
+  (remembered on that device). New optional task field `showBlocks: false` hides the brackets and
+  the button for that task; the Builder's **Block brackets** checkbox sets it. Non-boolean
+  values fail validation. See [python.md](python.md).
+- Affects: python, turtle, arcade, electronics · Existing lessons: no changes needed (brackets
+  appear automatically; add `showBlocks: false` only where a task should go without them) ·
+  Resolves: authoring-requests/2026-10-08-show-indentation-depth-in-the-python-editor-indent-guides-or.md
+
 ## 2026-10-05
 
 ### 12 new tutor-only badges: confidence, sharing and code craft

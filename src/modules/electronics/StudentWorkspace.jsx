@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from 'react'
 import ElectronicsWorkspace from './ElectronicsWorkspace.jsx'
+import { taskShowsBlocks } from '../../shared/blockGuides'
 import { DEFAULT_CIRCUIT, parseCircuit, serializeCircuit } from './circuit'
 import { resolveSavedCarrySource } from '../../app/studentTaskContent'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
@@ -94,6 +95,7 @@ export default function StudentWorkspace({
       availableComponents={task?.availableComponents}
       readOnly={readOnly}
       showCodeTab={showCodeTab}
+      showBlocks={taskShowsBlocks(task)}
       code={task?.microcontroller?.starterCode ?? ''}
       onCodeChange={handleLegacyCodeChange}
       onRunMicroPython={!readOnly ? cs.handleRun : undefined}

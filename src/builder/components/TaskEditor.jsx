@@ -84,6 +84,9 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
   const runsPyodide = builderRun === 'pyodide'
   const runsNothing = builderRun === 'none'
   const supportsCopyCode = lessonMod?.supportsCopyCode === true
+  // Modules whose Python editor draws block brackets declare a showBlocks task field; the
+  // brackets show unless the task sets showBlocks: false (src/shared/blockGuides.js).
+  const usesPythonEditor = !!moduleDefinition?.taskFields?.some((f) => f.name === 'showBlocks')
   // Task format from the activity registry: 'information', 'quiz', 'activity', a
   // module-hosted activity's id ('code_arrange') or 'code' (drafts keep their own taskType and
   // edit like code tasks, as before).
@@ -196,6 +199,16 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
     ])
       delete next[field]
     onUpdate(next)
+  }
+
+  // Brackets are on by default, so only the off state is stored.
+  function handleShowBlocksToggle(enabled) {
+    if (!enabled) {
+      onUpdate({ ...task, showBlocks: false })
+      return
+    }
+    const { showBlocks: _showBlocks, ...rest } = task
+    onUpdate(rest)
   }
 
   function handleCopyCodeToggle(enabled) {
@@ -790,6 +803,19 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
               />
             )}
           </div>
+        </Field>
+      )}
+
+      {!isQuiz && !isInformation && !showsActivity && !isCodeArrange && usesPythonEditor && (
+        <Field label="Block brackets" hint="optional">
+          <label className="te-check-toggle" style={{ alignSelf: 'flex-start' }}>
+            <input
+              type="checkbox"
+              checked={task.showBlocks !== false}
+              onChange={(e) => handleShowBlocksToggle(e.target.checked)}
+            />
+            Show coloured brackets for each indented block (students can hide them)
+          </label>
         </Field>
       )}
 

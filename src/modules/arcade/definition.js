@@ -119,6 +119,11 @@ export default defineModule({
       { name: 'arcadeDesign', type: 'object', authored: true },
     ]),
     { name: 'copyCode', type: 'string', authored: true, description: 'Read-only code to copy.' },
+    {
+      name: 'showBlocks',
+      type: 'boolean',
+      description: 'Coloured block brackets in the Python editor (default true; false hides them).',
+    },
     { name: 'arcadeTools', type: 'string', values: ['none', 'sprites', 'tilemaps', 'both'] },
     { name: 'interactionMode', type: 'string', values: ['run', 'submit'] },
     { name: 'carryCodeFrom', type: 'string' },

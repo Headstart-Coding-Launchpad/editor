@@ -2,6 +2,7 @@ import React, { useRef } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
 import EmojiPickerButton from '../../shared/EmojiPickerButton'
+import { useBlockGuidesOn } from '../../shared/blockGuidesSetting'
 
 // Symbols that are fiddly to reach on an on-screen keyboard but come up
 // constantly in Python source — shown as a tap-to-insert row so touch/iPad
@@ -22,11 +23,15 @@ export default function PythonEditor({
   errorLine = null,
   lineHints = null,
   onRunShortcut,
+  // The task allows block brackets (taskShowsBlocks in ../../shared/blockGuides.js). When it
+  // does, the Blocks button turns them on and off for this device; when not, both are hidden.
+  showBlocks = true,
 }) {
   const editorRef = useRef(null)
   const isTouchDevice = useIsTouchDevice()
   const showSymbolButtons = isTouchDevice && !readOnly
   const showEmojiButton = !readOnly
+  const [blockGuidesOn, setBlockGuidesOn] = useBlockGuidesOn()
 
   return (
     <div style={s.wrap}>
@@ -36,8 +41,8 @@ export default function PythonEditor({
           ⚠️ Python failed to load. Please refresh the page.
         </div>
       )}
-      {(showSymbolButtons || showEmojiButton) && (
-        <div style={s.symbolBar} role="toolbar" aria-label="Insert Python symbol or emoji">
+      {(showSymbolButtons || showEmojiButton || showBlocks) && (
+        <div style={s.symbolBar} role="toolbar" aria-label="Python editor tools">
           {showSymbolButtons &&
             SYMBOL_BUTTONS.map((symbol) => (
               <button
@@ -51,6 +56,24 @@ export default function PythonEditor({
             ))}
           {showEmojiButton && (
             <EmojiPickerButton onInsert={(emoji) => editorRef.current?.insertAtCursor(emoji)} />
+          )}
+          {showBlocks && (
+            <button
+              type="button"
+              style={{ ...s.blocksBtn, ...(blockGuidesOn ? s.blocksBtnOn : null) }}
+              aria-pressed={blockGuidesOn}
+              title={
+                blockGuidesOn
+                  ? 'Hide the coloured brackets that show which lines belong to each block'
+                  : 'Show coloured brackets for which lines belong to each block'
+              }
+              onClick={() => setBlockGuidesOn(!blockGuidesOn)}
+            >
+              <span aria-hidden="true" style={s.blocksIcon}>
+                ⎣
+              </span>
+              Blocks
+            </button>
           )}
         </div>
       )}
@@ -68,6 +91,7 @@ export default function PythonEditor({
         errorLine={errorLine}
         lineHints={lineHints}
         onRunShortcut={onRunShortcut}
+        blockGuides={showBlocks && blockGuidesOn}
         style={{ flex: 1, minHeight: 240, ...editorStyle }}
       />
     </div>
@@ -109,5 +133,31 @@ const s = {
     border: '1px solid #e5e7eb',
     borderRadius: 6,
     cursor: 'pointer',
+  },
+  blocksBtn: {
+    marginLeft: 'auto',
+    height: 32,
+    padding: '0 10px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    color: 'var(--colour-text)',
+    background: '#fff',
+    border: '1px solid #e5e7eb',
+    borderRadius: 6,
+    cursor: 'pointer',
+  },
+  blocksBtnOn: {
+    color: 'var(--colour-primary)',
+    background: '#f0eafa',
+    borderColor: '#d8c4f5',
+  },
+  blocksIcon: {
+    fontFamily: "'JetBrains Mono', monospace",
+    color: '#7c3aed',
+    fontWeight: 700,
   },
 }

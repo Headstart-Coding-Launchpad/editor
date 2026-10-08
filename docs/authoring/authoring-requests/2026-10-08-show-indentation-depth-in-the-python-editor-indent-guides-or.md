@@ -1,6 +1,6 @@
 # Show indentation depth in the Python editor (indent guides or block shading)
 
-- **Status:** open
+- **Status:** planned
 - **Kind:** module
 - **Requested by:** Ryan (approved by Ryan), 2026-10-08
 - **Lessons blocked:** none yet

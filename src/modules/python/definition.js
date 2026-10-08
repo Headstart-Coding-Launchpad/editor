@@ -111,6 +111,11 @@ export default defineModule({
     { name: 'completeCode', type: 'string', authored: true },
     codeStagesField([{ name: 'code', type: 'string', authored: true }]),
     { name: 'copyCode', type: 'string', authored: true, description: 'Read-only code to copy.' },
+    {
+      name: 'showBlocks',
+      type: 'boolean',
+      description: 'Coloured block brackets in the Python editor (default true; false hides them).',
+    },
     { name: 'interactionMode', type: 'string', values: ['run', 'submit'] },
     {
       name: 'tests',

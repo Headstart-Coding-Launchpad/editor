@@ -120,7 +120,7 @@ Only `closed === true` and `pressed === true` join a switch's or button's pins, 
 
 ## MicroPython
 
-Add a `microcontroller` component to the starter board to enable the MicroPython tab. The tab uses the same Python code editor as Python lessons, including syntax highlighting and editor behavior. Student code is saved inside the serialized circuit as `props.code` on the Micro Controller component, so reset, carry-through, stages, teacher live view, and local saving continue to work through the normal electronics circuit state.
+Add a `microcontroller` component to the starter board to enable the MicroPython tab. The tab uses the same Python code editor as Python lessons, including syntax highlighting and editor behavior. Student code is saved inside the serialized circuit as `props.code` on the Micro Controller component, so reset, carry-through, stages, teacher live view, and local saving continue to work through the normal electronics circuit state. The editor shows block brackets like the Python editor; set `showBlocks: false` on the task to hide them (see [python.md](python.md)).
 
 The runner executes MicroPython-style code through the existing Python runtime with a small `machine.Pin` and `utime.sleep_ms` shim. This supports common introductory snippets such as:
 

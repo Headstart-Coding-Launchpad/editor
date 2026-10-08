@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import PythonEditor from '../python/PythonEditor'
+import { taskShowsBlocks } from '../../shared/blockGuides'
 import { getTaskLineHintSets } from '../../shared/lineHints'
 import OutputPanel from '../../app/components/OutputPanel'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
@@ -137,6 +138,7 @@ export default function StudentWorkspace({
         pyodideStatus={cs.pyodideStatus}
         errorLine={readOnly ? null : cs.errorLine}
         lineHints={readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskLineHintSets(task)}
+        showBlocks={taskShowsBlocks(task)}
         onRunShortcut={readOnly ? undefined : handleRunClick}
       />
     </div>
