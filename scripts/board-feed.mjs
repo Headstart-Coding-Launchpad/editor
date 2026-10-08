@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // Writes LaunchPad Dev's feed for the HSC Board (`hsc board`): authoring requests, features and
 // bugs in flight, and recent merges grouped by release day. Format:
 // HSC Hub\Plans\Tracker Feed Format.md. Run with `npm run board:feed` after merging, pushing or
