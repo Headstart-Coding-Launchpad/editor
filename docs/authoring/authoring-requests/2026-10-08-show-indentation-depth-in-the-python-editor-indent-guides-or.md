@@ -1,6 +1,6 @@
 # Show indentation depth in the Python editor (indent guides or block shading)
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Ryan (approved by Ryan), 2026-10-08
 - **Lessons blocked:** none yet
@@ -23,3 +23,12 @@ Lessons that hit this gap:
 ## Resolution
 
 <!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+
+Shipped 2026-10-08 (merge of `feature/indent-brackets` to main). Built as a feature of the existing
+Python editor, not a new module: coloured block brackets beside the lines each `:` line controls,
+coloured by depth (elif/else share their if's colour), with the colon tinted to match. On by
+default in Python, Turtle, Arcade Kit and Electronics (MicroPython) editors; the editor's
+**Blocks** button hides them per device; new task field `showBlocks: false` (Builder: **Block
+brackets** checkbox) hides the brackets and the button. Docs: python.md "Block brackets",
+lesson-schema.md `showBlocks`, CHANGELOG 2026-10-08. The code_arrange indent mode request will
+reuse the same bracket colours.
