@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
 import ElectronicsWorkspace from './ElectronicsWorkspace.jsx'
+import { taskShowsBlocks } from '../../shared/blockGuides'
 import { DEFAULT_CIRCUIT, parseCircuit, serializeCircuit } from './circuit'
 
 export default function ElectronicsTeacherLiveView({
@@ -27,6 +28,7 @@ export default function ElectronicsTeacherLiveView({
       availableComponents={task?.availableComponents}
       readOnly={readOnly}
       showCodeTab={task?.microcontroller?.enabled === true}
+      showBlocks={taskShowsBlocks(task)}
       code={task?.microcontroller?.starterCode ?? ''}
       onCodeChange={handleLegacyCodeChange}
       onTabChange={onTabChange}

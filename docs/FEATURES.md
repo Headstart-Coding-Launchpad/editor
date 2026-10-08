@@ -10,7 +10,7 @@ New lessons are composed lessons: each code task selects one of the workspace ty
 
 | Type | What students do |
 |---|---|
-| Python | Write and run Python code; output shown in a console panel |
+| Python | Write and run Python code; output shown in a console panel; coloured block brackets show which lines each `:` line controls (Blocks button to hide them per device; tasks can turn them off with `showBlocks: false`) |
 | Arcade Kit | Build a small pixel-style Python game with a sandboxed canvas, keyboard input, named/uploaded or pixel-editor assets, tilemaps, and Run/Stop controls |
 | Turtle | Write Python turtle-graphics commands that draw onto a responsive canvas; checks run on the finished drawing |
 | HTML/CSS/JS | Write and run web pages across multiple tabbed files; output shown in an iframe preview |

@@ -153,3 +153,45 @@ describe('TaskEditor authoring metadata (Task Activity field + collapse)', () =>
     expect(screen.getAllByRole('button', { name: 'Show authoring metadata' })).toHaveLength(1)
   })
 })
+
+describe('TaskEditor block brackets toggle', () => {
+  const codeTask = (overrides = {}) => ({
+    id: 1,
+    title: 'Nest it',
+    explainer: 'Indent the inner print.',
+    starterCode: 'if a:\n    print(1)\n',
+    check: { type: 'output_contains', value: '1' },
+    ...overrides,
+  })
+
+  it('is checked by default for a Python code task', () => {
+    render(<TaskEditor task={codeTask()} lesson={makeLesson()} onUpdate={vi.fn()} />)
+    expect(screen.getByRole('checkbox', { name: /coloured brackets/i })).toBeChecked()
+  })
+
+  it('stores showBlocks: false when unticked, and removes it when ticked again', () => {
+    const onUpdate = vi.fn()
+    const { rerender } = render(
+      <TaskEditor task={codeTask()} lesson={makeLesson()} onUpdate={onUpdate} />
+    )
+    fireEvent.click(screen.getByRole('checkbox', { name: /coloured brackets/i }))
+    expect(onUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ showBlocks: false }))
+
+    rerender(
+      <TaskEditor
+        task={codeTask({ showBlocks: false })}
+        lesson={makeLesson()}
+        onUpdate={onUpdate}
+      />
+    )
+    fireEvent.click(screen.getByRole('checkbox', { name: /coloured brackets/i }))
+    expect(onUpdate.mock.lastCall[0]).not.toHaveProperty('showBlocks')
+  })
+
+  it('is not offered on an HTML lesson', () => {
+    render(
+      <TaskEditor task={codeTask()} lesson={makeLesson({ type: 'html' })} onUpdate={vi.fn()} />
+    )
+    expect(screen.queryByRole('checkbox', { name: /coloured brackets/i })).not.toBeInTheDocument()
+  })
+})

@@ -8,7 +8,8 @@ Pygame Zero, or a general Python package.
 
 Use `type: composed` at lesson level and `moduleType: arcade` on each Arcade task. Arcade tasks use the same source-stage
 fields as a Python code task: `starterCode`, `completeCode`, `codeStages`,
-`carryCodeFrom`, and `copyCode`.
+`carryCodeFrom`, and `copyCode`, plus `showBlocks` (block brackets in the editor, see
+[python.md](python.md)).
 
 ## Visual design tools
 

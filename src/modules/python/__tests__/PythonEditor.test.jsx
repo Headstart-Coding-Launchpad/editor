@@ -12,7 +12,7 @@ const insertAtCursor = vi.fn()
 vi.mock('../../../shared/CodeEditor', () => ({
   CodeEditor: React.forwardRef(function MockCodeEditor(props, ref) {
     React.useImperativeHandle(ref, () => ({ insertAtCursor }))
-    return <div data-testid="code-editor" />
+    return <div data-testid="code-editor" data-block-guides={String(props.blockGuides)} />
   }),
 }))
 
@@ -46,17 +46,13 @@ describe('PythonEditor — touch symbol bar', () => {
   it('shows the symbol bar on a touch device while interactive', () => {
     touchDevice = true
     render(<PythonEditor code="" onChange={vi.fn()} />)
-    expect(
-      screen.getByRole('toolbar', { name: /insert python symbol or emoji/i })
-    ).toBeInTheDocument()
+    expect(screen.getByRole('toolbar', { name: /python editor tools/i })).toBeInTheDocument()
   })
 
-  it('hides the symbol bar on a touch device when read-only', () => {
+  it('hides the symbol buttons on a touch device when read-only', () => {
     touchDevice = true
     render(<PythonEditor code="" onChange={vi.fn()} readOnly />)
-    expect(
-      screen.queryByRole('toolbar', { name: /insert python symbol or emoji/i })
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: ':' })).not.toBeInTheDocument()
   })
 
   it('inserts the tapped symbol at the cursor via the editor ref', async () => {
@@ -93,5 +89,44 @@ describe('PythonEditor — emoji button', () => {
     await user.click(screen.getByRole('button', { name: 'emoji-picker' }))
 
     expect(insertAtCursor).toHaveBeenCalledWith('🎉')
+  })
+})
+
+describe('PythonEditor — Blocks button', () => {
+  beforeEach(() => {
+    touchDevice = false
+    window.localStorage.clear()
+  })
+
+  it('shows block brackets by default, with the Blocks button pressed', () => {
+    render(<PythonEditor code="" onChange={vi.fn()} />)
+    expect(screen.getByRole('button', { name: /blocks/i })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByTestId('code-editor')).toHaveAttribute('data-block-guides', 'true')
+  })
+
+  it('turns the brackets off and remembers it on this device', async () => {
+    const user = userEvent.setup()
+    const { unmount } = render(<PythonEditor code="" onChange={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /blocks/i }))
+
+    expect(screen.getByRole('button', { name: /blocks/i })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByTestId('code-editor')).toHaveAttribute('data-block-guides', 'false')
+    expect(window.localStorage.getItem('headstart_block_guides_off')).toBe('1')
+
+    unmount()
+    render(<PythonEditor code="" onChange={vi.fn()} />)
+    expect(screen.getByTestId('code-editor')).toHaveAttribute('data-block-guides', 'false')
+  })
+
+  it('keeps the Blocks button for read-only viewers', () => {
+    render(<PythonEditor code="" readOnly />)
+    expect(screen.getByRole('button', { name: /blocks/i })).toBeInTheDocument()
+  })
+
+  it('hides the brackets and the button when the task turns them off', () => {
+    render(<PythonEditor code="" onChange={vi.fn()} showBlocks={false} />)
+    expect(screen.queryByRole('button', { name: /blocks/i })).not.toBeInTheDocument()
+    expect(screen.getByTestId('code-editor')).toHaveAttribute('data-block-guides', 'false')
   })
 })

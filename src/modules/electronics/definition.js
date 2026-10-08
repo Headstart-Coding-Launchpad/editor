@@ -119,6 +119,11 @@ export default defineModule({
     { name: 'completeCircuit', type: 'object', authored: true },
     codeStagesField([{ name: 'circuit', type: 'object', required: true, authored: true }]),
     { name: 'availableComponents', type: 'array' },
+    {
+      name: 'showBlocks',
+      type: 'boolean',
+      description: 'Coloured block brackets in the Python editor (default true; false hides them).',
+    },
     { name: 'carryCircuitFrom', type: 'string' },
   ],
   carryThroughField: 'carryCircuitFrom',

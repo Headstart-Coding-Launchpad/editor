@@ -260,6 +260,10 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
       errors.push(`Task ${n} allowSharing is not supported on quiz or information tasks`)
     }
   }
+  // showBlocks: false hides the Python editor's block brackets (src/shared/blockGuides.js).
+  if (task.showBlocks != null && typeof task.showBlocks !== 'boolean') {
+    errors.push(`Task ${n} showBlocks must be true or false`)
+  }
 
   // peerHints: extra preset hints for peer help (src/shared/peerHelp.js). They reach a student
   // without the teacher checking each one, so they are authored text only, short, and few.

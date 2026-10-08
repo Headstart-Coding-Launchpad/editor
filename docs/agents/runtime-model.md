@@ -816,6 +816,7 @@ Do not deviate from these key formats.
 | `headstart_{lessonId}_module_{moduleId}_sandbox_{filename}_{anonymousId}` | Composed lessons: per-file HTML personal sandbox for one lesson module |
 | `headstart_builder_current` | Full lesson JSON object |
 | `headstart_sounds_muted` | `'1'` while the student has muted sounds (the top-bar 🔊/🔇 button or the 🎖️ popover's speaker toggle); absent when sounds are on. One device-wide setting for the badge and complete chimes (not the nudge chime), read and written only through `src/app/soundSettings.js` (`useSoundsMuted`), all access best-effort in try/catch. The tutor's `badgeSettings.soundsOff` still silences both in a live session |
+| `headstart_block_guides_off` | `'1'` while this device has hidden the Python editor's block brackets (the editor's **Blocks** button); absent when they show. One device-wide setting for students and teachers, read and written only through `src/shared/blockGuidesSetting.js` (`useBlockGuidesOn`), all access best-effort in try/catch. A task with `showBlocks: false` hides the brackets regardless |
 | `headstart_nudge_notifications_dismissed` | `'1'` once a student chose "Not now" on the nudge notification prompt (`NudgePermissionPrompt`); stops the prompt reappearing |
 
 ## LaunchPad Code Files

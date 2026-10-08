@@ -44,6 +44,7 @@ Author starter and complete code as `codeStages` entries with `role: starter` / 
       print('Hello Headstart')
     carryCodeFrom: 1          # optional — carry saved code from task ID
     interactionMode: run      # optional — run (default) | submit
+    showBlocks: false         # optional — hide the editor's block brackets (default true)
     check:
       type: output
       operator: contains
@@ -54,6 +55,8 @@ Author starter and complete code as `codeStages` entries with `role: starter` / 
 - `run` or omitted: Run executes Python; checks run against output/code/variables/status.
 - `submit`: Submit checks code text only; use only submit-compatible checks (`type: code`).
 - `tests` present: **Run Tests** button appears. Only **Run Tests** sets task completion. Plain **Run** stays interactive.
+
+**Block brackets (`showBlocks`):** the Python editor draws a coloured bracket beside the lines each `:` line (`if`, `elif`, `else`, `for`, `while`, `def`, …) controls, and colours that colon to match. The colour follows the header's depth, so an `elif`/`else` shares its `if`'s colour. A header whose next line isn't indented gets no bracket, which is itself the clue. Students and tutors can hide the brackets with the editor's **Blocks** button (remembered on that device). Set `showBlocks: false` on a task to hide both the brackets and the button, for example once a level should read indentation unaided. The Builder's **Block brackets** checkbox sets the same field. The same field works on Turtle, Arcade Kit and Electronics (MicroPython) tasks.
 
 **Legacy `starterCode` / `completeCode`:** older lessons author starter and complete code as separate `starterCode: "..."` / `completeCode: "..."` string fields instead of `codeStages` roles. Both still work fully at runtime and are read whenever an equivalent stage is absent, but the current Builder UI no longer creates or edits them — don't use them in new lessons. See `docs/authoring/legacy-lesson-compatibility.md`.
 

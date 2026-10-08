@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import PythonEditor from '../python/PythonEditor'
+import { taskShowsBlocks } from '../../shared/blockGuides'
 import SplitPane from '../../shared/SplitPane'
 import { drawTurtleCommands, sizeCanvasToDisplay } from './draw.js'
 import { createTurtleState } from './engine.js'
@@ -14,6 +15,7 @@ const DEFAULT_TURTLE_STATE = createTurtleState()
 // `lineHints` (StudentModal only): the task's 💡 line hint sets, shown read-only on the
 // student's code (getMirrorLineHintSets in src/app/components/student-modal/mirrorLineHints.js).
 export default function TeacherLiveView({
+  task,
   displayState,
   student,
   readOnly,
@@ -48,6 +50,7 @@ export default function TeacherLiveView({
   const editor = (
     <div style={s.editor}>
       <PythonEditor
+        showBlocks={taskShowsBlocks(task)}
         code={displayState ?? ''}
         readOnly={readOnly}
         onChange={onChange}

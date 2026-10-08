@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import PythonEditor from './PythonEditor'
+import { taskShowsBlocks } from '../../shared/blockGuides'
 import { getTaskLineHintSets } from '../../shared/lineHints'
 import OutputPanel from '../../app/components/OutputPanel'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
@@ -195,6 +196,7 @@ export default function StudentWorkspace({
         pyodideStatus={cs.pyodideStatus}
         errorLine={readOnly ? null : cs.errorLine}
         lineHints={readOnly ? null : getTaskLineHintSets(task)}
+        showBlocks={taskShowsBlocks(task)}
         onRunShortcut={readOnly || task?.interactionMode === 'submit' ? undefined : handleRunClick}
       />
       {showSubmitBanner && <div style={s.submitBanner}>Code submitted</div>}
