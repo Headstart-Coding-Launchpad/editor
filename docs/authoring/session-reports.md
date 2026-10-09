@@ -112,6 +112,7 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `supportReveals[]` | Each support reference opened: `taskId`, `stageIndex`, `stageLabel`, `source` (`student`, `teacher`, `teacher-auto`), `attemptNumber` (attempts made before it), `revealedAt` (ms). See [Support reveals](#support-reveals). | Omitted when none | 2026-07-22 |
 | `pastes` | Large pastes into the editor: `{ count, chars }` (chars = total pasted). Pasting the student's own copied code doesn't count. | Omitted when none | 2026-09-29 |
 | `typing` | How the student typed on this code task ([Typing](#typing)): `{ charsTyped, activeTypingMs, charsPerMin, corrections, longestPauseMs, autocompleteAccepts, copyDistance? }`. Code tasks only (Python, Turtle, HTML); keyboard devices only. | Omitted when the student typed nothing, on touch devices, on other modules (Scratch, Arcade Kit, …), and on quizzes and activities | 2026-10-09 |
+| `tileMisses[]` | Code Arrange [tile feedback](lesson-schema.md#tile-feedback): each time the student dropped a tile into a blank where the task marks it known-wrong, oldest first: `{ slotId (the blank), tileId, at (ms) }`. Not attempts: they never count towards `attempts` or `distinctAttempts`. At most 100 per task. | Omitted when none | 2026-10-09 |
 | `itemProgress` | `{ correct, total }` items right in the latest submission. | `taskType: activity` only, when submitted | 2026-09-28 |
 | `timeToFirstEditMs` | Time from the task opening on the student's device to their first real edit (timed on the device). *Graded only.* | Omitted when unknown | 2026-09-30 |
 | `errorAttempts` | Attempts whose run hit a real console error. *Graded only.* | Omitted when 0 | 2026-09-30 |
@@ -128,8 +129,9 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `distinctAttempts[].retries` | How many more times this exact submission was resubmitted straight after it (e.g. pressing Run again without changing the code). |
 | `distinctAttempts[].suggestion` | The failure hint shown to the student, or null. |
 | `distinctAttempts[].submission` | The submitted code or answer. Code is a string; object-shaped work (files, Scratch workspaces, activity state) is an object, or a JSON string in reports read back from Firestore. |
+| `distinctAttempts[].placements` | Code Arrange only: the tiles on the board when Run was pressed, `{ <blank id>: <tile id> }` (a tile id is a blank's own id, i.e. that blank's correct tile, or a distractor's id). Lets you tell a wrong-blank guess (a right tile in another blank) from a wrong-content one (a distractor). A retry keeps the first entry's. Omitted on other tasks, indent-mode tasks, and attempts before 2026-10-09. |
 
-All five fields date from 2026-07-13.
+The first five fields date from 2026-07-13; `placements` from 2026-10-09.
 
 **How attempts are logged** (`logAttempt` in `src/app/hooks/useSession.js`): attempts are logged
 only on tasks with a `check` (code tasks without one log nothing), only during the lesson (not the
@@ -313,6 +315,7 @@ Each activity's definition can add fields through `report.summaryFields(task, pe
 | `blankFailures[]` | Fill-in-the-blanks quiz | `{ blankId, expected, count, values: [{ value, count }] }`, as above. | 2026-07-22 |
 | `ratingDistribution` | Confidence quiz | See [Ungraded tasks](#ungraded-tasks). | 2026-07-22 |
 | `optionDistribution[]` | Poll quiz | See [Ungraded tasks](#ungraded-tasks). | 2026-10-01 |
+| `tileMisses[]` | Code Arrange | `{ slotId, tileId, count, studentCount }` per blank and dropped tile, most common first, from the students' `tileMisses`. Omitted when nobody dropped a known-wrong tile. | 2026-10-09 |
 | `avgItemProgress` | Every `taskType: activity` (Binary, Keyboard, Mouse, …) | Mean of `correct / total` over students with `itemProgress`, 2 dp (0–1). Added by the report itself, not `summaryFields`. Omitted when nobody submitted. | 2026-09-28 |
 
 A new activity that adds summary fields documents them here (and in its own authoring page).

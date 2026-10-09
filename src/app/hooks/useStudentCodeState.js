@@ -67,6 +67,7 @@ import {
 import { solutionOrInitialState } from '../../activities/state.js'
 import {
   assembleCodeArrangement,
+  getAttemptPlacements,
   getCodeArrangeEntryFile,
   getCodeArrangeSlotCode,
 } from '../../shared/codeArrange.js'
@@ -158,7 +159,7 @@ export function useStudentCodeState({
   // Session write commands
   writeStudentRun,
   writeStudentHintState,
-  logAttempt,
+  logAttempt: logSessionAttempt,
   writeStudentAnswer,
   writeStudentCode,
   writeStudentArcadeDesign,
@@ -175,6 +176,7 @@ export function useStudentCodeState({
   recordSupportStageReveal,
   recordStudentPaste,
   recordStudentTyping,
+  recordStudentTileMiss,
   writeStudentPersonalSandbox,
   writeStudentPresence,
   registerPresence,
@@ -276,6 +278,22 @@ export function useStudentCodeState({
   // id is the task the board reported for.
   const codeArrangeSlotStateRef = useRef({})
   const codeArrangeSlotTaskIdRef = useRef(null)
+
+  // Every attempt goes through here: a code_arrange attempt also records its tile placements
+  // (blank id -> tile id) beside the assembled program, from the board this hook was last told
+  // about for that task. Other tasks' attempts pass straight through.
+  function logAttempt(anonymousId, taskId, fields = {}) {
+    const placements =
+      fields?.auto || fields?.placements !== undefined ? null : codeArrangeAttemptPlacements(taskId)
+    return logSessionAttempt?.(anonymousId, taskId, placements ? { ...fields, placements } : fields)
+  }
+
+  function codeArrangeAttemptPlacements(taskId) {
+    if (taskId == null || String(codeArrangeSlotTaskIdRef.current) !== String(taskId)) return null
+    const task = findTaskById(lesson?.tasks, taskId)
+    if (!isModuleHostedActivityTask(task)) return null
+    return getAttemptPlacements(task, codeArrangeSlotStateRef.current)
+  }
 
   const IDLE_FEEDBACK_DELAY_MS = 900
 
@@ -2154,6 +2172,16 @@ export function useStudentCodeState({
     }
   }
 
+  // A tile the student dropped into a blank where it is known to be wrong (code_arrange tile
+  // feedback, see CodeArrangeTaskContainer): logged for the session report as a tile miss, never
+  // an attempt. Only the student's own lesson work, like a flagged paste.
+  function recordCodeArrangeTileMiss({ slotId, tileId } = {}) {
+    if (phase !== 'lesson' || teacherPresentation || previewMode || inPersonalSandboxRef.current)
+      return
+    if (!effectiveIdentity?.anonymousId || currentTaskId == null || !slotId || !tileId) return
+    recordStudentTileMiss?.(effectiveIdentity.anonymousId, currentTaskId, { slotId, tileId })
+  }
+
   // Live drag-position mirror for code_arrange tasks, broadcast-only (Go
   // Live/presentation) — unlike slot placements there's no per-student
   // "watch one student" destination for this, since StudentModal only needs
@@ -3027,6 +3055,7 @@ export function useStudentCodeState({
     handleScratchBlockDrag,
     handleCodeArrangeSlotsChange,
     handleCodeArrangeDragCursor,
+    recordCodeArrangeTileMiss,
     handleScratchChange,
     handleScratchCheck,
     reportRun,

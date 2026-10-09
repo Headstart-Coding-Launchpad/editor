@@ -75,6 +75,39 @@ describe('code_arrange Run — never an empty submission under a complete board'
   })
 })
 
+describe('code_arrange tile feedback in the attempt log', () => {
+  it("records the attempt's tile placements beside the assembled program", async () => {
+    mockModuleRun('python', (callbacks) => {
+      callbacks.onOutput('0\n2\n4\n6\n8\n', 'stdout')
+      return { status: 'success' }
+    })
+    const h = renderStudentCodeState({ lesson: LESSON, currentTaskId: TASK_ID })
+    actSync(() => h.result.current.handleCodeArrangeSlotsChange(SOLUTION_SLOTS))
+
+    await actAsync(() => h.result.current.handleRun())
+
+    expect(h.writers.logAttempt).toHaveBeenCalledWith(
+      ANON,
+      TASK_ID,
+      expect.objectContaining({ submission: SOLUTION_CODE, placements: SOLUTION_SLOTS })
+    )
+  })
+
+  it('logs a known-wrong drop as a tile miss, only in a live lesson', () => {
+    const h = renderStudentCodeState({ lesson: LESSON, currentTaskId: TASK_ID })
+    actSync(() => h.result.current.recordCodeArrangeTileMiss({ slotId: 'S1', tileId: 'S1d1' }))
+    expect(h.writers.recordStudentTileMiss).toHaveBeenCalledWith(ANON, TASK_ID, {
+      slotId: 'S1',
+      tileId: 'S1d1',
+    })
+    expect(h.writers.logAttempt).not.toHaveBeenCalled()
+
+    const solo = renderStudentCodeState({ lesson: LESSON, currentTaskId: TASK_ID, phase: 'solo' })
+    actSync(() => solo.result.current.recordCodeArrangeTileMiss({ slotId: 'S1', tileId: 'S1d1' }))
+    expect(solo.writers.recordStudentTileMiss).not.toHaveBeenCalled()
+  })
+})
+
 describe('code_arrange teacher remote reset', () => {
   it('"Start again" clears the tiles along with the code', () => {
     const h = renderStudentCodeState({ lesson: LESSON, currentTaskId: TASK_ID })

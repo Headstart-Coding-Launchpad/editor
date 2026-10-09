@@ -92,6 +92,7 @@ export const WRITER_NAMES = [
   'recordSupportStageReveal',
   'recordStudentPaste',
   'recordStudentTyping',
+  'recordStudentTileMiss',
   'writeStudentPersonalSandbox',
   'writeStudentPresence',
   'registerPresence',

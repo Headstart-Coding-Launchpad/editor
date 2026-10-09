@@ -285,6 +285,38 @@ function normalizePasteRecord(raw) {
   return { count: raw.count, chars: Number.isFinite(raw.chars) ? raw.chars : 0 }
 }
 
+// A code_arrange attempt's tile placements ({ blankId: tileId }), stored on the attempt as a
+// JSON string (logAttempt in useSession.js). Null when the attempt has none.
+function normalizePlacements(raw) {
+  let value = raw
+  if (typeof raw === 'string') {
+    try {
+      value = JSON.parse(raw)
+    } catch {
+      return null
+    }
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const entries = Object.entries(value).filter(
+    ([blankId, tileId]) => blankId && typeof tileId === 'string' && tileId
+  )
+  return entries.length > 0 ? Object.fromEntries(entries) : null
+}
+
+// Code_arrange tile misses (students.{id}.tileMissLog.{taskId}, see recordStudentTileMiss): each
+// drop of a tile into a blank where it is known to be wrong, oldest first. Not attempts.
+function normalizeTileMisses(raw) {
+  if (!raw || typeof raw !== 'object') return []
+  return Object.values(raw)
+    .filter((entry) => entry?.slotId && entry?.tileId)
+    .map((entry) => ({
+      slotId: String(entry.slotId),
+      tileId: String(entry.tileId),
+      at: typeof entry.at === 'number' ? entry.at : null,
+    }))
+    .sort((a, b) => (a.at ?? 0) - (b.at ?? 0))
+}
+
 function summarizePastes(perStudent) {
   const pasted = perStudent.filter((task) => task.pastes)
   if (pasted.length === 0) return {}
@@ -639,6 +671,7 @@ export function buildSessionReport({
       )
       const pastes = normalizePasteRecord(studentsSnapshot[anonymousId]?.pasteLog?.[task.id])
       const typing = studentTypingFields(task, studentsSnapshot[anonymousId])
+      const tileMisses = normalizeTileMisses(studentsSnapshot[anonymousId]?.tileMissLog?.[task.id])
       const attempts = countAttempts(entries)
       const { finalResult, completed } = resolveTaskOutcome(task, entries, override, autoCheck)
       const itemProgress =
@@ -678,6 +711,7 @@ export function buildSessionReport({
         ...(supportReveals.length > 0 ? { supportReveals } : {}),
         ...(pastes ? { pastes } : {}),
         ...(typing ? { typing } : {}),
+        ...(tileMisses.length > 0 ? { tileMisses } : {}),
         ...(itemProgress ? { itemProgress } : {}),
         ...(isNotApplicableTask(task)
           ? {}
@@ -687,13 +721,17 @@ export function buildSessionReport({
               taskId: task.id,
               firstPass: firstPasses.get(String(task.id)) ?? null,
             })),
-        distinctAttempts: entries.map((entry) => ({
-          attemptNumber: entry.attemptNumber,
-          passed: entryReportPassed(task, entry),
-          retries: entry.retries ?? 0,
-          suggestion: entry.suggestion || null,
-          submission: normalizeSubmission(task, entry.submission),
-        })),
+        distinctAttempts: entries.map((entry) => {
+          const placements = normalizePlacements(entry.placements)
+          return {
+            attemptNumber: entry.attemptNumber,
+            passed: entryReportPassed(task, entry),
+            retries: entry.retries ?? 0,
+            suggestion: entry.suggestion || null,
+            submission: normalizeSubmission(task, entry.submission),
+            ...(placements ? { placements } : {}),
+          }
+        }),
       }
     })
 

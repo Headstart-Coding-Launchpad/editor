@@ -55,6 +55,16 @@ export const BADGE_DECISION_SOURCES = Object.freeze(['rule', 'auto', 'manual'])
 // reloads all lesson can't grow the student node without bound.
 export const MAX_STUDENT_REJOINS = 20
 
+// Most code_arrange tile misses (`students/{id}/tileMissLog/{taskId}`) kept per task.
+export const MAX_TILE_MISSES_PER_TASK = 100
+
+// A code_arrange attempt's tile placements ({ blankId: tileId }) as stored on the attempt: a JSON
+// string, or null when there are none.
+function storedPlacements(placements) {
+  if (!placements || typeof placements !== 'object' || Array.isArray(placements)) return null
+  return Object.keys(placements).length > 0 ? JSON.stringify(placements) : null
+}
+
 function encodeFileKeys(files) {
   return Object.fromEntries(Object.entries(files).map(([k, v]) => [encodeFileKey(k), v]))
 }
@@ -1465,10 +1475,23 @@ export function useSession(lessonId, { enabled = true } = {}) {
   //
   // `changeable: true` (ungraded activities a student can re-answer: polls, confidence) keeps
   // logging after a pass, so the report and the live poll split see the student's latest answer.
+  //
+  // `placements` (code_arrange: { blankId: tileId }) is stored beside the submission as a JSON
+  // string (authored ids needn't be valid RTDB keys); a retry keeps the first entry's.
   async function logAttempt(
     anonymousId,
     taskId,
-    { submission, passed, suggestion, teacherAssisted, error, auto, autoResult, changeable } = {}
+    {
+      submission,
+      passed,
+      suggestion,
+      teacherAssisted,
+      error,
+      auto,
+      autoResult,
+      changeable,
+      placements,
+    } = {}
   ) {
     const cacheKey = `${anonymousId}:${taskId}`
     const cached = attemptCacheRef.current[cacheKey]
@@ -1523,6 +1546,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       suggestion: suggestion || null,
       teacherAssisted: teacherAssisted ? true : null,
       error: storedError(error),
+      placements: storedPlacements(placements),
       attemptNumber,
       retries: 0,
       loggedAt: serverTimestamp(),
@@ -1709,6 +1733,21 @@ export function useSession(lessonId, { enabled = true } = {}) {
   async function recordStudentTyping(anonymousId, taskId, record) {
     if (!anonymousId || taskId == null || !record) return
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/typingLog/${taskId}`), record)
+  }
+
+  // A code_arrange tile the student dropped into a blank where it is known to be wrong (tile
+  // feedback): `{ slotId, tileId, at }` pushed under the student's own node, per task, for the
+  // report's tileMisses. Not an attempt. Capped per task so a student flicking tiles about can't
+  // grow the session without bound.
+  async function recordStudentTileMiss(anonymousId, taskId, { slotId, tileId } = {}) {
+    if (!anonymousId || taskId == null || !slotId || !tileId) return
+    const existing = session?.students?.[anonymousId]?.tileMissLog?.[taskId]
+    if (existing && Object.keys(existing).length >= MAX_TILE_MISSES_PER_TASK) return
+    await set(push(ref(db, `sessions/${lessonId}/students/${anonymousId}/tileMissLog/${taskId}`)), {
+      slotId: String(slotId),
+      tileId: String(tileId),
+      at: serverTimestamp(),
+    })
   }
 
   // ─── Live badges: student signals ─────────────────────────────────────────
@@ -2074,6 +2113,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     recordSupportStageReveal,
     recordStudentPaste,
     recordStudentTyping,
+    recordStudentTileMiss,
     // student: live badge signals
     recordTopicOpenSignal,
     recordShortcutSignal,

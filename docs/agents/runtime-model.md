@@ -108,6 +108,7 @@ The teacher-written `shownResponses` node was added for the 2026-10-02 authoring
               "suggestion": "string | null",
               "teacherAssisted": "true | null (the teacher edited this student's answer on this task via StudentModal 'Edit answers'; the report shows the pass as teacher assisted)",
               "error": "true | 'NameError' | null (the run produced a real console error: its name when readable, else true. Live badges; see Badge data)",
+              "placements": "string | null (code_arrange only: the attempt's tile placements { blankId: tileId } as a JSON string; a retry keeps the first entry's)",
               "attemptNumber": 1,
               "retries": 0,
               "loggedAt": "ServerValue.TIMESTAMP",
@@ -267,6 +268,11 @@ The teacher-written `shownResponses` node was added for the 2026-10-02 authoring
           "typingLog": {
             "{taskId}": { "charsTyped": 148, "activeTypingMs": 151000, "corrections": 23, "longestPauseMs": 48000, "autocompleteAccepts": 2, "copyDistance": "number (copyCode tasks only, from the first Run)" }
           },
+          "tileMissLog": {
+            "{taskId}": {
+              "{pushId}": { "slotId": "blank id", "tileId": "tile id", "at": "ServerValue.TIMESTAMP (code_arrange tile feedback: a known-wrong tile dropped into a blank; not an attempt; at most 100 per task)" }
+            }
+          },
           "pollResponses": {
             "{pollId}": { "choice": "option index 0-5", "answeredAt": 1234567890 }
           },
@@ -384,6 +390,7 @@ Student writes:
 - Class poll answers: own `pollResponses/{pollId}` (`{ choice, answeredAt }`) via `answerPoll` from the poll card (`ClassPollCard.jsx`), only while that poll's `status` is `open` (the rules refuse a student answer to a closed or missing poll). Overwritten when the student changes their answer. Not cleared by `setTaskId`; read by `buildSessionReport` into the report's `polls`.
 - Large pastes: own `pasteLog/{taskId}` via `recordStudentPaste` (`{ count, chars, lastAt, firstAt }`, see `docs/agents/classroom-behaviours.md`). `firstAt` is a server timestamp set on the first large paste only (the badge guards order it against a pass); `lastAt` keeps being overwritten. Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `pastes` and the task summary's `pasteCount`/`pastedStudentCount`.
 - Typing totals: own `typingLog/{taskId}` via `recordStudentTyping` (`{ charsTyped, activeTypingMs, corrections, longestPauseMs, autocompleteAccepts, copyDistance? }`). Counted on the student's device by `useStudentTypingStats` from the shared CodeEditor (keystroke inserts, not pastes or autocomplete; Backspace/Delete presses; 5 s typing bursts) and written as one replaced record per task on Run, on a task change, on leaving the lesson phase and on a hidden tab — never per keystroke, and never once the session has ended or the student was removed. Live lesson python/turtle/html tasks on keyboard devices only (not touch devices, solo, the presentation window, previews or the personal sandbox). Not cleared by `setTaskId`; read by `buildSessionReport` into each code task's `typing` and the task summary's `typingSummary`.
+- Code_arrange tile misses: own `tileMissLog/{taskId}/{pushId}` (`{ slotId, tileId, at }`) via `recordStudentTileMiss`, one per drop of a tile into a blank where the task's tile feedback marks it known-wrong (a distractor, or the blank's `wrongTiles`; see `getTileFlag` in `src/shared/codeArrange.js`), live lesson only, capped at 100 per task. Not attempts. Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `tileMisses` and the task summary's `tileMisses`. Each code_arrange attempt also stores its `placements` (JSON string) on the `attemptLog` entry.
 - Live badge signals: own `studentSignals/{anonymousId}` and `attemptLog` entries' `error`. See "Badge data" below.
 - Stage reference reveal: after a failed attempt, students can reveal their own Python/HTML Support `codeStages` entries. The same `supportRevealLog` record stores `source: "student"`, stage label, attempt count, and server timestamp. Revealing does not change editor contents.
 
@@ -617,7 +624,7 @@ A deliberate data-model change approved by the product owner (September 2026). `
 ```
 
 - **Format:** `_sealed = 'v1:' + base64(UTF-8 JSON of { field: value } XOR a fixed key)`. The `v1:` prefix is the version; a new key or encoding needs a new version (`decodeSealPayload` returns null for versions it does not know, and the task is then kept as stored).
-- **Sealed fields:** `TASK_SEALED_FIELDS` in `src/shared/lessonSeal.js` (`codeStages` (all stages, starter included), `completeCode`, `completeFiles`, `completeEntryFile`, `completeBlocks`, `completeFs`, `completeDesktop`, `completeCircuit`, `completeArcadeDesign`, `check`, `feedbackChecks`, `incorrectChecks`, `tests`) plus the task's activity `sealedFields` (multiple choice `options`, match `pairs`, fill-blank `blanks`, code_arrange `lines`). Group objects are not sealed; their subtasks are. A task with none of these fields gets no `_sealed`.
+- **Sealed fields:** `TASK_SEALED_FIELDS` in `src/shared/lessonSeal.js` (`codeStages` (all stages, starter included), `completeCode`, `completeFiles`, `completeEntryFile`, `completeBlocks`, `completeFs`, `completeDesktop`, `completeCircuit`, `completeArcadeDesign`, `check`, `feedbackChecks`, `incorrectChecks`, `tests`) plus the task's activity `sealedFields` (multiple choice `options`, match `pairs`, fill-blank `blanks`, code_arrange `lines` and `distractors`). Group objects are not sealed; their subtasks are. A task with none of these fields gets no `_sealed`.
 - **Boundary:** every write to `lessons` goes through `encodeLessonForFirestore` (blocks codec, then seal) and every read through `decodeLessonFromFirestore` (unseal, then blocks codec) in `src/shared/lessonBlocksCodec.js`, in the web app and the CLI. Everything past the boundary sees the plain task shape, so validation, audit/`version` comparisons, CLI `get`/export and reports are unchanged.
 - **Compatibility:** a task without `_sealed` passes through unchanged. A lesson stored before sealing is rewritten sealed on its next Builder save or CLI publish/upsert/append, even when the content is unchanged (`lessonNeedsSealing`); its `version` is not bumped for that.
 - **Session overrides:** `sessions/{lessonId}/lessonOverrideTasks` holds sealed tasks too (`pushLessonOverride` seals, `applyLessonOverride` unseals; a plain override still works).

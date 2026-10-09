@@ -355,6 +355,20 @@ export function getCheckDefinition(type) {
   return checkRegistry.get(type)
 }
 
+// A text-comparing check (output, code, answer, element value, file content, ...) written
+// without an `operator`: a canonical type that offers `contains`, has an expected value, and no
+// operator. Aliases that imply one (output_contains, element_text_equals, ...) never count. The
+// runtime compares these with DEFAULT_TEXT_OPERATOR; validation rejects them and the Builder's
+// check editor writes the default in, so what the author sees is what is stored.
+export function checkMissingOperator(check) {
+  const normalized = normalizeCheckShape(check)
+  const def = getCheckDefinition(normalized?.type)
+  if (!def || def.type !== normalized.type || !def.operators?.includes('contains')) return false
+  if (normalized.operator) return false
+  const present = (v) => v === 0 || v === false || String(v ?? '').trim() !== ''
+  return present(normalized.value) || present(normalized.text)
+}
+
 // Derived from the registry: every id (canonical + aliases) whose definition needs a
 // run / is allowed in submit-mode tasks.
 export const CHECK_TYPES = {

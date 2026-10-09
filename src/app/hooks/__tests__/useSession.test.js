@@ -1927,6 +1927,55 @@ describe('useSession', () => {
       )
     })
 
+    it('stores a code_arrange attempt’s tile placements as a JSON string', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-tiles', 6, {
+          submission: 'print(pet)',
+          passed: false,
+          placements: { 'blank.1': 'd1' },
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: 'sessions/lesson-1/attemptLog/student-tiles/6/mockHighlightId',
+        }),
+        expect.objectContaining({ placements: JSON.stringify({ 'blank.1': 'd1' }) })
+      )
+    })
+
+    it('stores no placements on an ordinary attempt', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-plain', 6, { submission: 'x', passed: false })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: 'sessions/lesson-1/attemptLog/student-plain/6/mockHighlightId',
+        }),
+        expect.objectContaining({ placements: null })
+      )
+    })
+
+    it('pushes a code_arrange tile miss under the student’s own node, not the attempt log', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.recordStudentTileMiss('student-tiles', 6, {
+          slotId: 's2',
+          tileId: 'd1',
+        })
+      })
+      expect(firebaseMocks.push).toHaveBeenCalledWith({
+        path: 'sessions/lesson-1/students/student-tiles/tileMissLog/6',
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: 'sessions/lesson-1/students/student-tiles/tileMissLog/6/mockHighlightId',
+        }),
+        { slotId: 's2', tileId: 'd1', at: { '.sv': 'timestamp' } }
+      )
+    })
+
     it('bumps retries instead of pushing a new entry when the submission is unchanged', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {

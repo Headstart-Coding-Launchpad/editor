@@ -130,6 +130,7 @@ export function validateCodeArrangeTask(task, { n, moduleType, errors, warnings 
   })
   if (new Set(poolIds).size !== poolIds.length)
     errors.push(`Task ${n} is a code-arrange task but has duplicate blank/distractor ids`)
+  validateTileFeedback(task, { n, lines, distractors, poolIds, errors, warnings })
   if (!task.check) errors.push(`Task ${n} is a code-arrange task but has no completion check`)
   // HTML assembles into the entry file: one that isn't a starter file would never be shown.
   const starterFiles = Array.isArray(task.starterFiles) ? task.starterFiles : []
@@ -143,6 +144,65 @@ export function validateCodeArrangeTask(task, { n, moduleType, errors, warnings 
   }
   // The authored solution is only worth checking once the arrangement itself is well formed.
   if (errors.length === errorCount) validateCodeArrangeSolution(task, { n, moduleType, warnings })
+}
+
+// Tile feedback (src/shared/codeArrange.js): distractors[].hint, and each blank's wrongTiles
+// ([{ tileId, hint }]) and alsoAccepts ([tileId]). A tile id is a blank's id or a distractor's id.
+function validateTileFeedback(task, { n, lines, distractors, poolIds, errors, warnings }) {
+  const pool = new Set(poolIds)
+  distractors.forEach((d, di) => {
+    if (d?.hint != null && typeof d.hint !== 'string')
+      errors.push(`Task ${n} distractor ${di + 1} hint must be text`)
+  })
+  lines.forEach((line, li) => {
+    const parts = Array.isArray(line?.parts) ? line.parts : []
+    parts.forEach((part, pi) => {
+      if (part?.type !== 'slot') return
+      const where = `Task ${n} line ${li + 1} blank ${pi + 1}`
+      const wrongIds = []
+      if (part.wrongTiles != null) {
+        if (!Array.isArray(part.wrongTiles)) {
+          errors.push(`${where} wrongTiles must be a list of { tileId, hint }`)
+        } else {
+          part.wrongTiles.forEach((entry, wi) => {
+            if (!entry || typeof entry.tileId !== 'string' || !entry.tileId) {
+              errors.push(`${where} wrongTiles entry ${wi + 1} has no tileId`)
+              return
+            }
+            if (entry.hint != null && typeof entry.hint !== 'string')
+              errors.push(`${where} wrongTiles entry ${wi + 1} hint must be text`)
+            wrongIds.push(entry.tileId)
+            if (!pool.has(entry.tileId))
+              warnings.push(
+                `${where} wrongTiles lists "${entry.tileId}", which is not a blank or distractor id in this task`
+              )
+            else if (entry.tileId === part.id)
+              warnings.push(`${where} wrongTiles lists its own tile (it is never flagged)`)
+          })
+        }
+      }
+      if (part.alsoAccepts != null) {
+        if (!Array.isArray(part.alsoAccepts)) {
+          errors.push(`${where} alsoAccepts must be a list of tile ids`)
+        } else {
+          part.alsoAccepts.forEach((tileId, ai) => {
+            if (typeof tileId !== 'string' || !tileId) {
+              errors.push(`${where} alsoAccepts entry ${ai + 1} is not a tile id`)
+              return
+            }
+            if (!pool.has(tileId))
+              warnings.push(
+                `${where} alsoAccepts lists "${tileId}", which is not a blank or distractor id in this task`
+              )
+            if (wrongIds.includes(tileId))
+              warnings.push(
+                `${where} lists "${tileId}" in both wrongTiles and alsoAccepts (alsoAccepts wins, so it is never flagged)`
+              )
+          })
+        }
+      }
+    })
+  })
 }
 
 function isDepthValue(value) {

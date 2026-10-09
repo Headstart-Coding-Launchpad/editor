@@ -7,7 +7,7 @@ Full JSON field reference for cross-cutting fields. For YAML authoring see `docs
 
 Lessons live in the Firestore `lessons/` collection. Each document ID is the lesson `id`. Use `node cli/cli.mjs lessons upsert <file>` to save a JSON or YAML lesson.
 
-**Stored form differs from authored form (sealed answers).** Authors always write the plain fields below. When a lesson is saved (Builder or CLI), each task's answer fields are moved into one obfuscated string, `task._sealed = "v1:<base64>"`, and restored when the lesson is read, so `lessons get`, the Builder and exports show the plain shape again. Sealed: `codeStages`, `completeCode`, `completeFiles`, `completeEntryFile`, `completeBlocks`, `completeFs`, `completeDesktop`, `completeCircuit`, `completeArcadeDesign`, `check`, `feedbackChecks`, `incorrectChecks`, `tests`, and the quiz/activity answer fields (multiple choice `options`, match `pairs`, fill-blank `blanks`, code_arrange `lines`). Never write `_sealed` yourself. It is obfuscation, not security. Format: `docs/agents/runtime-model.md` "Sealed Task Answers".
+**Stored form differs from authored form (sealed answers).** Authors always write the plain fields below. When a lesson is saved (Builder or CLI), each task's answer fields are moved into one obfuscated string, `task._sealed = "v1:<base64>"`, and restored when the lesson is read, so `lessons get`, the Builder and exports show the plain shape again. Sealed: `codeStages`, `completeCode`, `completeFiles`, `completeEntryFile`, `completeBlocks`, `completeFs`, `completeDesktop`, `completeCircuit`, `completeArcadeDesign`, `check`, `feedbackChecks`, `incorrectChecks`, `tests`, and the quiz/activity answer fields (multiple choice `options`, match `pairs`, fill-blank `blanks`, code_arrange `lines` and `distractors`). Never write `_sealed` yourself. It is obfuscation, not security. Format: `docs/agents/runtime-model.md` "Sealed Task Answers".
 
 **Stored form also serialises deep trees (Firestore's 20-level limit).** Firestore rejects a document whose maps and lists nest more than 20 levels deep. Before sealing, the save boundary (`src/shared/lessonBlocksCodec.js`) stores these fields as JSON text and parses them back on read: Scratch `starterBlocks`, `completeBlocks`, `codeStages[].blocks`, `prebuiltStacks[].stack` (task-level and per code stage), and Arcade `arcadeDesign` / `completeArcadeDesign` / `codeStages[].arcadeDesign`. Authors write them as objects (or already-serialised strings, stored as they are). Older lessons with these fields stored as objects still load. `lessons validate` and the Builder measure the lesson as it will be stored and report any remaining path deeper than 20 levels, naming the task and the path ([validation errors](validation-errors.md#lesson-envelope)).
 
@@ -283,7 +283,9 @@ to a single blank, the whole-line shape, as a starting point).
 | `lines[].parts` | Yes | Ordered sequence alternating fixed text and blanks: `{type: "text", text}` or `{type: "slot", id, code}`. A line may have zero `slot` parts (fixed context); the task as a whole needs at least one `slot` part somewhere across all lines. |
 | `lines[].parts[].id` | Slot parts | Stable string id; doubles as the id of that blank's own "correct" tile in the task's shared pool. |
 | `lines[].parts[].code` | Slot parts | The exact correct value for this blank. |
-| `distractors` | No | Task-level list of extra wrong tiles, shared by every blank in the task: `{id, code}[]`. |
+| `lines[].parts[].wrongTiles` | No | Slot parts, [tile feedback](#tile-feedback): tiles known to be wrong in this blank, `[{tileId, hint}]`. `tileId` is another blank's id (that blank's own tile) or a distractor's id. The blank turns red with `hint` the moment one is dropped in. |
+| `lines[].parts[].alsoAccepts` | No | Slot parts, [tile feedback](#tile-feedback): tile ids that are also fine in this blank (`[tileId]`), never flagged here, e.g. two independent lines that can go either way round. |
+| `distractors` | No | Task-level list of extra wrong tiles, shared by every blank in the task: `{id, code, hint?}[]`. `hint` (optional, [tile feedback](#tile-feedback)) is shown the moment that tile is dropped into any blank. |
 | `entryFile` / `starterFiles` | HTML only | Same shape as ordinary HTML tasks (see `docs/authoring/html.md`); the assembled lines become `entryFile`'s content, so `entryFile` **must** name one of the `starterFiles` (any placeholder `content`, an empty string is fine) — validation fails otherwise. Without `entryFile`, the first starter file is used. Other files (e.g. `style.css`) are not assembled from tiles. |
 | `check` | Yes | Same `output`/`code`/`output_line_count`/`code_no_error`/`code_structure` checks as an ordinary Python task (`code_structure` sees the indentation of the assembled program), or the same `html_element_*`/`output`/`code` checks as an ordinary HTML task — see `docs/authoring/python.md` / `docs/authoring/html.md`. The authored solution (every blank holding its own `code`) is checked against the task's `code` checks when the lesson is validated, and a failure is a warning; `output` and element checks need a real run and are not tried. For Python, a solution line after a block opener (`…:`) that isn't indented also warns. |
 | `feedbackChecks` | No | Same shape as other code tasks. |
@@ -292,10 +294,59 @@ to a single blank, the whole-line shape, as a starting point).
 is logged as one attempt for the task exactly like an ordinary code task (`taskType: code` in the
 session report). The attempt's `submission` is the assembled program text built from the tiles
 (for HTML, the assembled `entryFile` as part of the files map), the same text the checks ran
-against; the tile placements themselves are not recorded. Running the same program again without
+against. Running the same program again without
 changing a tile adds a retry to the previous attempt rather than a new attempt. A tutor's manual
 pass, or the class moving on, without a passing run shows as an override (`overridden_failed` when
-the last run failed). See [session-reports.md](session-reports.md) for the report format.
+the last run failed). Each attempt also records its tile `placements` (blank id -> tile id), so a
+wrong-blank guess can be told from a wrong-content one. See [session-reports.md](session-reports.md)
+for the report format.
+
+### Tile feedback
+
+Optional, per task: flag a tile the moment it is dropped into a blank where it is **known to be
+wrong**, with a hint about why, like fill-in-the-blank's instant red blank. The blank turns red and
+the hint shows under the line (no hover, so it works on touch screens).
+
+- **A distractor in any blank** shows its `hint`, or "This piece doesn't belong in this program."
+  when it has none.
+- **A tile in a blank's `wrongTiles`** shows that entry's `hint` (it overrides the distractor's own
+  hint for that blank; with no hint, the distractor's hint or a default is used).
+- **A tile in a blank's `alsoAccepts`** is never flagged in that blank.
+- **Anything else is never flagged**: a blank's own tile, and another blank's tile that isn't
+  listed. Nothing is ever marked right, so arrangements that work another way (independent lines
+  swapped) still pass.
+
+Tile feedback never decides completion: Run stays available whatever is flagged, and the task is
+still marked by running the program against `check`. It is opt-in: a task flags nothing until it
+authors at least one distractor `hint`, `wrongTiles` or `alsoAccepts`, so existing lessons behave
+exactly as before; once it does, every distractor is flagged (with the default hint when it has
+none). Each flagged drop is logged in the session report as a tile miss (`tileMisses`), never as an
+attempt. Validation warns when a `wrongTiles`/`alsoAccepts` `tileId` isn't a blank or distractor id
+in the task, or when a tile is in both lists for the same blank (`alsoAccepts` wins). In the Lesson
+Builder, each distractor has a hint box and each blank a **Tile feedback** list (Run decides /
+Wrong here + hint / Also fine here for every other tile).
+
+```yaml
+lines:
+  - id: l1
+    parts:
+      - {type: text, text: "score = "}
+      - {type: slot, id: s1, code: "int", wrongTiles: [{tileId: s3, hint: "That one updates a total. Which piece turns typed text into a number?"}]}
+      - {type: text, text: "(code_text)"}
+  - id: l2
+    parts:
+      - {type: text, text: "print(f\"Welcome back, "}
+      - {type: slot, id: s2, code: "{pet}"}
+      - {type: text, text: "!\")"}
+  - id: l3
+    parts: [{type: slot, id: s3, code: "total += 1"}]
+  - id: l4
+    parts: [{type: slot, id: s4, code: "a = 1", alsoAccepts: [s5]}]
+  - id: l5
+    parts: [{type: slot, id: s5, code: "b = 2", alsoAccepts: [s4]}]
+distractors:
+  - {id: d1, code: "{\"pet\"}", hint: "Quote marks mean 'use exactly this text'. Do you want the word pet, or what the name tag pet is stuck to?"}
+```
 
 ### Python Example (a whole-line blank + a line with an inline blank, sharing one pool)
 
