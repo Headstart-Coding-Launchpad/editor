@@ -16,6 +16,8 @@ import {
   getTaskPool,
   isArrangementComplete,
 } from '../../shared/codeArrange'
+import { isIndentArrangeTask } from '../../shared/codeArrangeIndent'
+import CodeArrangeIndentBoard from './CodeArrangeIndentBoard.jsx'
 
 // Matches ScratchWorkspace's live-cursor mirror (see CURSOR_THROTTLE_MS /
 // CURSOR_STALE_MS there) so both task types feel the same during Go Live.
@@ -37,6 +39,10 @@ const DRAG_CURSOR_STALE_MS = 2000
 // CodeArrangeEditor for the Builder preview), which both hand the assembled
 // code to the *same* run function and check evaluator a normal python/html
 // task uses.
+//
+// An indent-mode task (`arrangeMode: indent`) swaps the program and tile pool
+// for CodeArrangeIndentBoard (fixed lines, the student sets each depth); the
+// Run row and output below are shared.
 export default function CodeArrangeTask({
   task,
   moduleType,
@@ -65,6 +71,7 @@ export default function CodeArrangeTask({
   onDragCursor,
   externalDragCursor = null,
 }) {
+  const indentMode = isIndentArrangeTask(task)
   const lines = getLines(task)
   const pool = getTaskPool(task)
   const slotIds = getSlotIds(task)
@@ -175,88 +182,99 @@ export default function CodeArrangeTask({
         }}
       >
         {externalDragCursor && <DragCursorMirror task={task} cursor={externalDragCursor} />}
-        <div style={ca.programStack}>
-          {lines.map((line, index) => {
-            const parts = getLineParts(line)
-            // A line that's just one blank with no surrounding text renders
-            // as the traditional full-width "whole line" slot rather than a
-            // cramped inline chip; nothing in the data model distinguishes
-            // it — it's purely how a single-slot, text-free line displays.
-            const isWholeLineStyle = parts.length === 1 && parts[0]?.type === 'slot'
+        {indentMode && (
+          <CodeArrangeIndentBoard
+            task={task}
+            state={state}
+            onChange={onSelectAnswer ? publishState : undefined}
+            blocked={blocked}
+          />
+        )}
+        {!indentMode && (
+          <div style={ca.programStack}>
+            {lines.map((line, index) => {
+              const parts = getLineParts(line)
+              // A line that's just one blank with no surrounding text renders
+              // as the traditional full-width "whole line" slot rather than a
+              // cramped inline chip; nothing in the data model distinguishes
+              // it — it's purely how a single-slot, text-free line displays.
+              const isWholeLineStyle = parts.length === 1 && parts[0]?.type === 'slot'
 
-            if (isWholeLineStyle) {
-              const slotPart = parts[0]
-              const placedFragmentId = state[slotPart.id]
-              const placedFragment = pool.find((fragment) => fragment.id === placedFragmentId)
-              const canReceive = !!(activeId && activeId !== placedFragmentId)
-              const isDragHighlight = canReceive && dragOverTarget === slotPart.id && !blocked
-              const isTapHighlight = canReceive && !!touchSelectedTile && !draggingTile && !blocked
+              if (isWholeLineStyle) {
+                const slotPart = parts[0]
+                const placedFragmentId = state[slotPart.id]
+                const placedFragment = pool.find((fragment) => fragment.id === placedFragmentId)
+                const canReceive = !!(activeId && activeId !== placedFragmentId)
+                const isDragHighlight = canReceive && dragOverTarget === slotPart.id && !blocked
+                const isTapHighlight =
+                  canReceive && !!touchSelectedTile && !draggingTile && !blocked
+                return (
+                  <div key={line.id} style={ca.row}>
+                    <div style={ca.rowMain}>
+                      <span style={ca.rowIndex}>{index + 1}</span>
+                      <div
+                        style={{
+                          ...ca.slot,
+                          ...(placedFragment ? sm.slotFilled : sm.slotEmpty),
+                          ...(isDragHighlight || isTapHighlight ? sm.slotHighlight : {}),
+                        }}
+                        onDragOver={(event) => dnd.handleTargetDragOver(event, slotPart.id)}
+                        onDragLeave={dnd.clearDragOver}
+                        onDrop={(event) =>
+                          dnd.handleTargetDrop(event, slotPart.id, state, publishState)
+                        }
+                        onClick={() => dnd.handleTargetClick(slotPart.id, state, publishState)}
+                        draggable={!!placedFragment && !blocked}
+                        onDragStart={(event) =>
+                          placedFragment && dnd.handleDragStart(event, placedFragmentId)
+                        }
+                        onDragEnd={dnd.handleDragEnd}
+                        title={
+                          placedFragment && !blocked ? 'Click to pick this line back up' : undefined
+                        }
+                      >
+                        <span style={ca.slotCode}>
+                          {renderTargetContent(placedFragment, canReceive, 'Empty line')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+
               return (
                 <div key={line.id} style={ca.row}>
                   <div style={ca.rowMain}>
                     <span style={ca.rowIndex}>{index + 1}</span>
-                    <div
-                      style={{
-                        ...ca.slot,
-                        ...(placedFragment ? sm.slotFilled : sm.slotEmpty),
-                        ...(isDragHighlight || isTapHighlight ? sm.slotHighlight : {}),
-                      }}
-                      onDragOver={(event) => dnd.handleTargetDragOver(event, slotPart.id)}
-                      onDragLeave={dnd.clearDragOver}
-                      onDrop={(event) =>
-                        dnd.handleTargetDrop(event, slotPart.id, state, publishState)
-                      }
-                      onClick={() => dnd.handleTargetClick(slotPart.id, state, publishState)}
-                      draggable={!!placedFragment && !blocked}
-                      onDragStart={(event) =>
-                        placedFragment && dnd.handleDragStart(event, placedFragmentId)
-                      }
-                      onDragEnd={dnd.handleDragEnd}
-                      title={
-                        placedFragment && !blocked ? 'Click to pick this line back up' : undefined
-                      }
-                    >
-                      <span style={ca.slotCode}>
-                        {renderTargetContent(placedFragment, canReceive, 'Empty line')}
-                      </span>
+                    <div style={ca.inlineLine}>
+                      {parts.map((part, partIndex) =>
+                        part?.type === 'slot' ? (
+                          <InlineSlot
+                            key={part.id}
+                            part={part}
+                            pool={pool}
+                            state={state}
+                            dnd={dnd}
+                            blocked={blocked}
+                            activeId={activeId}
+                            publishState={publishState}
+                            renderTargetContent={renderTargetContent}
+                          />
+                        ) : (
+                          <span key={partIndex} style={ca.textPart}>
+                            {part?.text ?? ''}
+                          </span>
+                        )
+                      )}
                     </div>
                   </div>
                 </div>
               )
-            }
+            })}
+          </div>
+        )}
 
-            return (
-              <div key={line.id} style={ca.row}>
-                <div style={ca.rowMain}>
-                  <span style={ca.rowIndex}>{index + 1}</span>
-                  <div style={ca.inlineLine}>
-                    {parts.map((part, partIndex) =>
-                      part?.type === 'slot' ? (
-                        <InlineSlot
-                          key={part.id}
-                          part={part}
-                          pool={pool}
-                          state={state}
-                          dnd={dnd}
-                          blocked={blocked}
-                          activeId={activeId}
-                          publishState={publishState}
-                          renderTargetContent={renderTargetContent}
-                        />
-                      ) : (
-                        <span key={partIndex} style={ca.textPart}>
-                          {part?.text ?? ''}
-                        </span>
-                      )
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {pool.length > 0 && (
+        {!indentMode && pool.length > 0 && (
           <div
             style={sm.answerPool}
             onDragOver={dnd.handlePoolDragOver}

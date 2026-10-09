@@ -8,12 +8,14 @@ import {
 import {
   assembleCodeArrangement,
   buildSolutionSlotState,
-  fragmentIdExists,
   getCodeArrangeEntryFile,
-  getSlotIds,
   isArrangementComplete,
+  pruneSlotState,
 } from '../../shared/codeArrange'
+import { INDENT_MODE, MAX_INDENT_DEPTH, isIndentArrangeTask } from '../../shared/codeArrangeIndent'
+import { taskShowsBlocks } from '../../shared/blockGuides'
 import CodeArrangeTask from './CodeArrangeTask'
+import { switchArrangeMode } from './codeArrangeBuilder.js'
 import { Field } from '../../builder/components/task-editor/TaskEditorFields'
 import TaskPreviewPanel from '../../builder/components/task-editor/TaskPreviewPanel'
 
@@ -33,6 +35,13 @@ function makeLine() {
   return { id: makeFragmentId('line'), parts: [makeSlotPart()] }
 }
 
+// Indent mode: a line is its code and correct depth.
+function makeIndentLine(depth = 0) {
+  return { id: makeFragmentId('line'), code: '', depth }
+}
+
+const DEPTH_CHOICES = Array.from({ length: MAX_INDENT_DEPTH + 1 }, (_, depth) => depth)
+
 // Visual authoring UI (not a raw JSON-shaped form) for the `code_arrange`
 // task type: an ordered, reorderable list of lines, each built the same way
 // as an alternating fixed-text / blank-slot "parts" composer (a line that's
@@ -44,7 +53,8 @@ function makeLine() {
 // uses (getLessonModule(...).runtime), so authors can drag a test
 // arrangement and confirm their checks pass before publishing.
 export default function CodeArrangeEditor({ task, onUpdate }) {
-  const moduleType = task.moduleType === 'html' ? 'html' : 'python'
+  const indentMode = isIndentArrangeTask(task)
+  const moduleType = !indentMode && task.moduleType === 'html' ? 'html' : 'python'
   const lessonMod = getLessonModule(moduleType)
   const lines = task.lines ?? []
   const distractors = task.distractors ?? []
@@ -74,15 +84,12 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
   // harmless no-op when nothing changed, cheap given these tasks are small.
   function applyTask(nextTask) {
     onUpdate(nextTask)
-    setPreviewSlotState((prev) => {
-      const validSlotIds = new Set(getSlotIds(nextTask))
-      const next = {}
-      for (const [slotId, fragmentId] of Object.entries(prev)) {
-        if (validSlotIds.has(slotId) && fragmentIdExists(nextTask, fragmentId))
-          next[slotId] = fragmentId
-      }
-      return next
-    })
+    setPreviewSlotState((prev) => pruneSlotState(nextTask, prev))
+  }
+
+  function handleModeChange(mode) {
+    applyTask(switchArrangeMode(task, mode))
+    resetPreviewRun()
   }
 
   function applyLines(nextLines) {
@@ -95,7 +102,9 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
 
   function addLine(afterIndex) {
     const next = [...lines]
-    next.splice(afterIndex + 1, 0, makeLine())
+    // A new indent line starts level with the one above it.
+    const line = indentMode ? makeIndentLine(lines[afterIndex]?.depth ?? 0) : makeLine()
+    next.splice(afterIndex + 1, 0, line)
     applyLines(next)
   }
 
@@ -307,106 +316,139 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
 
   return (
     <>
-      <Field label="Language">
-        <div style={{ display: 'flex', gap: 24 }}>
+      <Field label="Arrange mode">
+        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
           <label className="te-carry-radio-label">
-            <input
-              type="radio"
-              checked={moduleType === 'python'}
-              onChange={() => onUpdate({ ...task, moduleType: 'python' })}
-            />
-            Python
+            <input type="radio" checked={!indentMode} onChange={() => handleModeChange('slots')} />
+            Tiles into blanks
           </label>
           <label className="te-carry-radio-label">
             <input
               type="radio"
-              checked={moduleType === 'html'}
-              onChange={() => onUpdate({ ...task, moduleType: 'html' })}
+              checked={indentMode}
+              onChange={() => handleModeChange(INDENT_MODE)}
             />
-            HTML
+            Indent (lines fixed, students set each depth)
           </label>
         </div>
       </Field>
 
-      {moduleType === 'html' && (
-        <Field label="Entry file" hint="The assembled lines become this file's content">
-          <input
-            className="te-input"
-            value={task.entryFile ?? 'index.html'}
-            onChange={(e) => handleEntryFileChange(e.target.value)}
-          />
-        </Field>
+      {indentMode && (
+        <IndentModeFields
+          task={task}
+          lines={lines}
+          onUpdate={onUpdate}
+          updateLine={updateLine}
+          moveLine={moveLine}
+          addLine={addLine}
+          removeLine={removeLine}
+        />
       )}
 
-      <Field
-        label="Program lines"
-        hint="Each line is built from fixed text and blanks — a line with just one blank behaves like a whole draggable line"
-      >
-        <div style={caStyles.lineList}>
-          {lines.map((line, index) => (
-            <LineEditor
-              key={line.id}
-              line={line}
-              index={index}
-              total={lines.length}
-              onMoveUp={() => moveLine(index, -1)}
-              onMoveDown={() => moveLine(index, 1)}
-              onInsertBelow={() => addLine(index)}
-              onRemove={() => removeLine(index)}
-              disableRemove={lines.length <= 1}
-              onAddPart={(type) => addPart(index, type)}
-              onUpdatePartText={(partIndex, text) => updatePartText(index, partIndex, text)}
-              onUpdatePartCode={(partIndex, code) => updatePartCode(index, partIndex, code)}
-              onMovePart={(partIndex, direction) => movePart(index, partIndex, direction)}
-              onRemovePart={(partIndex) => removePart(index, partIndex)}
-            />
-          ))}
-        </div>
-        <button
-          type="button"
-          className="te-secondary-btn"
-          onClick={() => addLine(lines.length - 1)}
-          style={{ marginTop: 8 }}
-        >
-          + Add line
-        </button>
-      </Field>
+      {!indentMode && (
+        <>
+          <Field label="Language">
+            <div style={{ display: 'flex', gap: 24 }}>
+              <label className="te-carry-radio-label">
+                <input
+                  type="radio"
+                  checked={moduleType === 'python'}
+                  onChange={() => onUpdate({ ...task, moduleType: 'python' })}
+                />
+                Python
+              </label>
+              <label className="te-carry-radio-label">
+                <input
+                  type="radio"
+                  checked={moduleType === 'html'}
+                  onChange={() => onUpdate({ ...task, moduleType: 'html' })}
+                />
+                HTML
+              </label>
+            </div>
+          </Field>
 
-      <Field
-        label="Distractor tiles"
-        hint="Wrong tiles added to the one shared pool — students can drag any of these into any blank"
-      >
-        <div className="te-quiz-answer-stack">
-          {distractors.map((d, index) => (
-            <div key={d.id} className="te-quiz-answer-card">
+          {moduleType === 'html' && (
+            <Field label="Entry file" hint="The assembled lines become this file's content">
               <input
                 className="te-input"
-                style={caStyles.chipInput}
-                value={d.code ?? ''}
-                onChange={(e) => updateDistractor(index, e.target.value)}
-                placeholder="A plausible but wrong value"
-                spellCheck={false}
+                value={task.entryFile ?? 'index.html'}
+                onChange={(e) => handleEntryFileChange(e.target.value)}
               />
-              <button
-                type="button"
-                className="te-remove-btn"
-                onClick={() => removeDistractor(index)}
-                title="Remove distractor"
-              >
-                ✕
-              </button>
+            </Field>
+          )}
+
+          <Field
+            label="Program lines"
+            hint="Each line is built from fixed text and blanks — a line with just one blank behaves like a whole draggable line"
+          >
+            <div style={caStyles.lineList}>
+              {lines.map((line, index) => (
+                <LineEditor
+                  key={line.id}
+                  line={line}
+                  index={index}
+                  total={lines.length}
+                  onMoveUp={() => moveLine(index, -1)}
+                  onMoveDown={() => moveLine(index, 1)}
+                  onInsertBelow={() => addLine(index)}
+                  onRemove={() => removeLine(index)}
+                  disableRemove={lines.length <= 1}
+                  onAddPart={(type) => addPart(index, type)}
+                  onUpdatePartText={(partIndex, text) => updatePartText(index, partIndex, text)}
+                  onUpdatePartCode={(partIndex, code) => updatePartCode(index, partIndex, code)}
+                  onMovePart={(partIndex, direction) => movePart(index, partIndex, direction)}
+                  onRemovePart={(partIndex) => removePart(index, partIndex)}
+                />
+              ))}
             </div>
-          ))}
-        </div>
-        <button
-          type="button"
-          className="te-secondary-btn"
-          onClick={addDistractor}
-          style={{ marginTop: 8 }}
-        >
-          + Add distractor
-        </button>
-      </Field>
+            <button
+              type="button"
+              className="te-secondary-btn"
+              onClick={() => addLine(lines.length - 1)}
+              style={{ marginTop: 8 }}
+            >
+              + Add line
+            </button>
+          </Field>
+
+          <Field
+            label="Distractor tiles"
+            hint="Wrong tiles added to the one shared pool — students can drag any of these into any blank"
+          >
+            <div className="te-quiz-answer-stack">
+              {distractors.map((d, index) => (
+                <div key={d.id} className="te-quiz-answer-card">
+                  <input
+                    className="te-input"
+                    style={caStyles.chipInput}
+                    value={d.code ?? ''}
+                    onChange={(e) => updateDistractor(index, e.target.value)}
+                    placeholder="A plausible but wrong value"
+                    spellCheck={false}
+                  />
+                  <button
+                    type="button"
+                    className="te-remove-btn"
+                    onClick={() => removeDistractor(index)}
+                    title="Remove distractor"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="te-secondary-btn"
+              onClick={addDistractor}
+              style={{ marginTop: 8 }}
+            >
+              + Add distractor
+            </button>
+          </Field>
+        </>
+      )}
 
       {moduleType === 'html' && (
         <Field
@@ -501,7 +543,7 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
             type="button"
             className="te-secondary-btn"
             onClick={handleLoadSolution}
-            disabled={getSlotIds(task).length === 0}
+            disabled={Object.keys(buildSolutionSlotState(task)).length === 0}
           >
             Load authored solution
           </button>
@@ -566,6 +608,174 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
         )}
       </TaskPreviewPanel>
     </>
+  )
+}
+
+// Indent mode's own fields: the fixed lines (code, correct depth, starting depth, lock) and the
+// block-bracket option.
+function IndentModeFields({ task, lines, onUpdate, updateLine, moveLine, addLine, removeLine }) {
+  return (
+    <>
+      <Field
+        label="Program lines"
+        hint="Lines stay in this order. Depth is the correct indent (0 = none). Starts at sets where a line begins, for a fix-the-indent task. Locked lines can't be moved."
+      >
+        <div style={caStyles.lineList}>
+          {lines.map((line, index) => (
+            <IndentLineEditor
+              key={line.id}
+              line={line}
+              index={index}
+              total={lines.length}
+              onChange={(next) => updateLine(index, () => next)}
+              onMoveUp={() => moveLine(index, -1)}
+              onMoveDown={() => moveLine(index, 1)}
+              onInsertBelow={() => addLine(index)}
+              onRemove={() => removeLine(index)}
+              disableRemove={lines.length <= 1}
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          className="te-secondary-btn"
+          onClick={() => addLine(lines.length - 1)}
+          style={{ marginTop: 8 }}
+        >
+          + Add line
+        </button>
+      </Field>
+
+      <Field label="Block brackets" hint="optional">
+        <label className="te-check-toggle" style={{ alignSelf: 'flex-start' }}>
+          <input
+            type="checkbox"
+            checked={taskShowsBlocks(task)}
+            onChange={(e) => {
+              const { showBlocks: _showBlocks, ...rest } = task
+              onUpdate(e.target.checked ? rest : { ...task, showBlocks: false })
+            }}
+          />
+          Show coloured brackets for each indented block (students can hide them)
+        </label>
+      </Field>
+    </>
+  )
+}
+
+// Indent mode: one line's code, correct depth, starting depth and lock, with the same
+// reorder/insert/remove controls as a tile line.
+function IndentLineEditor({
+  line,
+  index,
+  total,
+  onChange,
+  onMoveUp,
+  onMoveDown,
+  onInsertBelow,
+  onRemove,
+  disableRemove,
+}) {
+  const n = index + 1
+  const locked = line.locked === true
+  function setField(field, value) {
+    const next = { ...line }
+    if (value === undefined) delete next[field]
+    else next[field] = value
+    onChange(next)
+  }
+  return (
+    <div style={caStyles.lineCard}>
+      <div style={caStyles.indentRow}>
+        <span className="te-quiz-answer-badge">{n}</span>
+        <input
+          className="te-input"
+          style={{ ...caStyles.chipInput, flex: 1, minWidth: 180 }}
+          value={line.code ?? ''}
+          onChange={(e) => setField('code', e.target.value.trimStart())}
+          placeholder="Code for this line (no leading spaces)"
+          aria-label={`Line ${n} code`}
+          spellCheck={false}
+        />
+        <label style={caStyles.indentLabel}>
+          Depth
+          <select
+            className="te-input"
+            style={caStyles.depthSelect}
+            value={line.depth ?? 0}
+            onChange={(e) => setField('depth', Number(e.target.value))}
+            aria-label={`Line ${n} depth`}
+          >
+            {DEPTH_CHOICES.map((depth) => (
+              <option key={depth} value={depth}>
+                {depth}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label style={caStyles.indentLabel}>
+          Starts at
+          <select
+            className="te-input"
+            style={caStyles.depthSelect}
+            value={line.start == null ? '' : line.start}
+            onChange={(e) =>
+              setField('start', e.target.value === '' ? undefined : Number(e.target.value))
+            }
+            disabled={locked}
+            aria-label={`Line ${n} starts at`}
+          >
+            <option value="">0 (default)</option>
+            {DEPTH_CHOICES.map((depth) => (
+              <option key={depth} value={depth}>
+                {depth}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="te-check-toggle" style={caStyles.indentLabel}>
+          <input
+            type="checkbox"
+            checked={locked}
+            onChange={(e) => setField('locked', e.target.checked ? true : undefined)}
+            aria-label={`Lock line ${n}`}
+          />
+          Locked
+        </label>
+        <div style={caStyles.lineControls}>
+          <button
+            type="button"
+            className="te-remove-btn"
+            onClick={onMoveUp}
+            disabled={index === 0}
+            title="Move line up"
+          >
+            ▲
+          </button>
+          <button
+            type="button"
+            className="te-remove-btn"
+            onClick={onMoveDown}
+            disabled={index === total - 1}
+            title="Move line down"
+          >
+            ▼
+          </button>
+          <button type="button" className="te-secondary-btn" onClick={onInsertBelow}>
+            + Insert below
+          </button>
+          <button
+            type="button"
+            className="te-remove-btn"
+            onClick={onRemove}
+            disabled={disableRemove}
+            title="Remove line"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -782,6 +992,25 @@ const codeFont = {
 }
 
 const caStyles = {
+  indentRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  indentLabel: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.82rem',
+    color: '#4b5563',
+  },
+  depthSelect: {
+    width: 'auto',
+    minWidth: 64,
+    padding: '4px 6px',
+  },
   codeTextarea: {
     minHeight: 80,
     resize: 'vertical',

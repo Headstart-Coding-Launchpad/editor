@@ -8,6 +8,12 @@ import {
   buildSolutionSlotState,
   getCodeArrangeEntryFile,
 } from '../shared/codeArrange.js'
+import {
+  INDENT_MODE,
+  MAX_INDENT_DEPTH,
+  getStartDepth,
+  isIndentArrangeTask,
+} from '../shared/codeArrangeIndent.js'
 import { evaluateSingleCheck, isCodeCheck, normalizeChecks } from '../modules/checks.js'
 import { joinFileContents } from '../modules/moduleContract.js'
 
@@ -73,6 +79,18 @@ export function validateQuizTask(task, { n, errors }) {
 // Structure of the arrangement itself. The host module's own rules (HTML starter files, check
 // fields) run afterwards through its definition's validateTask.
 export function validateCodeArrangeTask(task, { n, moduleType, errors, warnings = [] }) {
+  if (
+    task.arrangeMode != null &&
+    task.arrangeMode !== 'slots' &&
+    task.arrangeMode !== INDENT_MODE
+  ) {
+    errors.push(`Task ${n} arrangeMode must be slots or indent`)
+    return
+  }
+  if (isIndentArrangeTask(task)) {
+    validateIndentArrangeTask(task, { n, moduleType, errors, warnings })
+    return
+  }
   const errorCount = errors.length
   if (!CODE_ARRANGE_MODULE_TYPES.includes(moduleType)) {
     errors.push(`Task ${n} is a code-arrange task but must use the Python or HTML module`)
@@ -125,6 +143,74 @@ export function validateCodeArrangeTask(task, { n, moduleType, errors, warnings 
   }
   // The authored solution is only worth checking once the arrangement itself is well formed.
   if (errors.length === errorCount) validateCodeArrangeSolution(task, { n, moduleType, warnings })
+}
+
+function isDepthValue(value) {
+  return Number.isInteger(value) && value >= 0 && value <= MAX_INDENT_DEPTH
+}
+
+// Indent mode (src/shared/codeArrangeIndent.js): fixed lines, each with its code and correct
+// depth; the student sets the depths.
+function validateIndentArrangeTask(task, { n, moduleType, errors, warnings }) {
+  const errorCount = errors.length
+  if (moduleType !== 'python') {
+    errors.push(`Task ${n} is an indent arrange task but must use the Python module`)
+  }
+  const lines = Array.isArray(task.lines) ? task.lines : []
+  if (lines.length === 0) errors.push(`Task ${n} is a code-arrange task but has no lines`)
+  const lineIds = []
+  lines.forEach((line, li) => {
+    const ln = li + 1
+    if (!line?.id) errors.push(`Task ${n} line ${ln} has no id`)
+    else lineIds.push(line.id)
+    if (line?.parts != null) {
+      errors.push(`Task ${n} line ${ln} has parts (indent arrange lines use code and depth)`)
+    }
+    const code = typeof line?.code === 'string' ? line.code : ''
+    if (!code.trim()) errors.push(`Task ${n} line ${ln} has no code`)
+    else if (/^\s/.test(code)) {
+      errors.push(`Task ${n} line ${ln} code starts with spaces (set its depth instead)`)
+    }
+    if (!isDepthValue(line?.depth)) {
+      errors.push(`Task ${n} line ${ln} depth must be a whole number from 0 to ${MAX_INDENT_DEPTH}`)
+    }
+    if (line?.start != null && !isDepthValue(line.start)) {
+      errors.push(`Task ${n} line ${ln} start must be a whole number from 0 to ${MAX_INDENT_DEPTH}`)
+    }
+    if (line?.locked != null && typeof line.locked !== 'boolean') {
+      errors.push(`Task ${n} line ${ln} locked must be true or false`)
+    }
+  })
+  if (new Set(lineIds).size !== lineIds.length)
+    errors.push(`Task ${n} is a code-arrange task but has duplicate line ids`)
+  const movable = lines.filter((line) => line?.locked !== true)
+  if (lines.length > 0 && movable.length === 0) {
+    errors.push(`Task ${n} is an indent arrange task but every line is locked`)
+  }
+  if (Array.isArray(task.distractors) && task.distractors.length > 0) {
+    errors.push(`Task ${n} is an indent arrange task but has distractors (not used in this mode)`)
+  }
+  if (!task.check) errors.push(`Task ${n} is a code-arrange task but has no completion check`)
+  if (errors.length !== errorCount) return
+
+  if (movable.length > 0 && movable.every((line) => getStartDepth(line) === line.depth)) {
+    warnings.push(
+      `Task ${n} is an indent arrange task but every movable line already starts at its correct depth`
+    )
+  }
+  // The answer itself must be a program Python can run: a line can go one step deeper only
+  // after a line ending in ":".
+  let previous = null
+  lines.forEach((line, index) => {
+    const code = line.code.trim()
+    if (code.startsWith('#')) return
+    const allowed = previous ? previous.depth + (previous.code.trim().endsWith(':') ? 1 : 0) : 0
+    if (line.depth > allowed) {
+      warnings.push(`Task ${n} line ${index + 1} is indented deeper than the line before it allows`)
+    }
+    previous = line
+  })
+  validateCodeArrangeSolution(task, { n, moduleType, warnings })
 }
 
 // The authored solution (every blank holding its own tile) must pass the task's own check. Only

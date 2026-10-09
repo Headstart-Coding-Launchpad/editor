@@ -69,3 +69,18 @@ Companion to request #46 (indent guides / block shading in the Python editor): p
 ## Resolution
 
 <!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+
+Built 2026-10-09 on branch `feature/code-arrange-indent-mode` as a mode of the existing
+`code_arrange` activity: `arrangeMode: indent`. Docs: lesson-schema.md "Indent mode", CHANGELOG
+2026-10-09. Differences from the request, agreed with Ryan:
+
+- No `startDepth` field. Each line's `depth` is always the correct answer and an optional
+  `start` sets where it begins (default 0), so a "fix the indent" task is written as
+  `{ code, depth: 2, start: 1 }`. That keeps Complete (show answers) and Load authored solution
+  working, and keeps the answer sealed.
+- `showBlocks` defaults to true (as in the editor). The board has the same Blocks button.
+- Keyboard: ← → change depth, ↑ ↓ move between lines (Tab keeps moving focus rather than
+  indenting). Depth is capped at 4.
+- The Trace button is not built yet (optional in the request).
+- The example's `check` needs `operator: equals` (an `output` check with no operator never
+  passes); the docs example has it.

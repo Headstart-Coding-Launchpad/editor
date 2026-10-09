@@ -37,6 +37,23 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-09
+
+### Code Arrange indent mode (`arrangeMode: indent`)
+
+- New Python mode for `code_arrange`: the lines are fixed in order and the student only sets how
+  far each one is indented (drag it sideways, its ← → buttons, or ← → on the keyboard). Run
+  assembles the program at the chosen depths (4 spaces per step) and runs it through the normal
+  pipeline, so `check`, `feedbackChecks` and `code_structure` work as for any arrange task.
+- Lines are `{ id, code, depth, start?, locked? }`: `code` has no leading spaces, `depth` (0–4) is
+  always the correct depth, `start` is where a line begins (default 0) for "fix the indent" tasks,
+  and `locked: true` fixes a line at its depth. No `parts`, `distractors` or HTML in this mode.
+- Coloured block brackets as in the Python editor (`showBlocks: false` hides them). The teacher's
+  card shows "2/5 lines moved". The Builder's Arrange composer has an **Arrange mode** choice;
+  switching keeps the program. See [lesson-schema.md](lesson-schema.md) "Indent mode".
+- Affects: code_arrange, python · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-08-indent-mode-for-code-arrange-lines-fixed-in-order-student-se.md
+
 ## 2026-10-08
 
 ### Block brackets in the Python editor (`showBlocks`)

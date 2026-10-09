@@ -1,4 +1,12 @@
 import { stableHash } from './textUtils.js'
+import {
+  assembleIndentArrangement,
+  buildIndentSolutionState,
+  deriveIndentStateFromCode,
+  getLines as getIndentLines,
+  isIndentArrangeTask,
+  pruneIndentState,
+} from './codeArrangeIndent.js'
 
 // Pure helpers for the "code_arrange" task type: students assemble a program
 // by dragging code tiles into slots, then it actually runs through the real
@@ -26,6 +34,11 @@ import { stableHash } from './textUtils.js'
 // needs to know the code came from drag-and-drop tiles. Keeping that boundary
 // pure and dependency-free here is what makes it easy to unit test and to
 // reuse from both the student workspace and the Lesson Builder preview.
+//
+// Indent mode (`arrangeMode: indent`, ./codeArrangeIndent.js) fixes the lines and lets the student
+// set each one's depth. Its state is a { lineId: depth } map that travels through the same
+// storage, live channel and teacher edits, so the state helpers below (prune, complete, assemble,
+// solution, derive from code) hand an indent task over to that module.
 
 export function getLines(task) {
   return Array.isArray(task?.lines) ? task.lines : []
@@ -85,6 +98,7 @@ export function fragmentIdExists(task, fragmentId) {
 // the task (or, before task-scoped teacher edits, another task's tiles); those show as empty and
 // assemble to nothing, so they are dropped rather than counted as filled.
 export function pruneSlotState(task, slotState) {
+  if (isIndentArrangeTask(task)) return pruneIndentState(task, slotState)
   if (!slotState || typeof slotState !== 'object' || Array.isArray(slotState)) return {}
   const slotIds = new Set(getSlotIds(task))
   const poolIds = new Set(getTaskPool(task).map((fragment) => fragment.id))
@@ -98,6 +112,8 @@ export function pruneSlotState(task, slotState) {
 // Complete when every slot holds a tile from the task's pool — an unknown tile id renders as an
 // empty blank and assembles to '', so it never counts as filled.
 export function isArrangementComplete(task, slotState) {
+  // Any depths make a runnable program.
+  if (isIndentArrangeTask(task)) return getIndentLines(task).length > 0
   const slotIds = getSlotIds(task)
   if (slotIds.length === 0) return false
   const state = slotState && typeof slotState === 'object' ? slotState : {}
@@ -126,6 +142,7 @@ function assembleLineCode(line, slotState, pool) {
 // incomplete — callers should not run or persist an incomplete program as
 // the task's code.
 export function assembleCodeArrangement(task, slotState) {
+  if (isIndentArrangeTask(task)) return assembleIndentArrangement(task, slotState)
   if (!isArrangementComplete(task, slotState)) return null
   const pool = getTaskPool(task)
   return getLines(task)
@@ -138,6 +155,7 @@ export function assembleCodeArrangement(task, slotState) {
 // fragment's id — see the module doc comment). Used by the Builder preview
 // so authors have a one-click way to check their intended solution passes.
 export function buildSolutionSlotState(task) {
+  if (isIndentArrangeTask(task)) return buildIndentSolutionState(task)
   return Object.fromEntries(getAllSlots(task).map((slot) => [slot.id, slot.id]))
 }
 
@@ -214,6 +232,7 @@ function deriveLineSlotState(line, codeLine, pool) {
 // thrown error — the run output/checks the teacher sees do not depend on
 // this reconstruction, it is a best-effort visual only.
 export function deriveSlotStateFromCode(task, code) {
+  if (isIndentArrangeTask(task)) return deriveIndentStateFromCode(task, code)
   const lines = getLines(task)
   if (lines.length === 0 || typeof code !== 'string') return {}
 

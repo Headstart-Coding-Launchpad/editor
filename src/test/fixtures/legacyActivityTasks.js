@@ -259,3 +259,23 @@ export const INVALID_LEGACY_ACTIVITY_TASKS = {
     ],
   },
 }
+
+// code_arrange indent mode (arrangeMode: indent), the authoring request's example: two locked set-up lines, then a nested if the student lines up.
+export const INDENT_CODE_ARRANGE_TASK = {
+  id: 1,
+  title: 'Line Up the Warmer Check',
+  taskType: 'code_arrange',
+  moduleType: 'python',
+  arrangeMode: 'indent',
+  explainer: 'Slide each line so "Heating up!" only prints when the mode is warmer.',
+  lines: [
+    { id: 'L1', code: 'guess = 15', depth: 0, locked: true },
+    { id: 'L2', code: 'mode = "warmer"', depth: 0, locked: true },
+    { id: 'L3', code: 'if guess < 20:', depth: 0 },
+    { id: 'L4', code: 'print("Too low")', depth: 1 },
+    { id: 'L5', code: 'if mode == "warmer":', depth: 1 },
+    { id: 'L6', code: 'print("Heating up!")', depth: 2 },
+    { id: 'L7', code: 'print("Round over")', depth: 0 },
+  ],
+  check: { type: 'output', operator: 'equals', value: 'Too low\nHeating up!\nRound over' },
+}
