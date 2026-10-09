@@ -39,6 +39,21 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-09
 
+### Text checks need an `operator`
+
+- A text-comparing check (`output`, `code`, `answer`, element value, file content, …) written
+  with a `value` but no `operator` used to fail every time, even on matching output, while
+  `lessons validate` and the Builder accepted it. Validation now rejects it (`Task … has a check of type
+  output with no operator …`), and publishing is blocked until it has one.
+- Already published lessons with such a check now compare with `contains` instead of always
+  failing. The Builder's check editor shows `contains` for them and writes `operator: contains`
+  into the task when it's opened, so the stored check matches what the author sees.
+- Affects: python, html, turtle, arcade, electronics, filesystem, desktop, code_arrange, quiz ·
+  Existing lessons: no changes needed (a sweep of all 79 published lessons on 2026-10-09 found no
+  check without an operator; re-validate local YAML sources to catch any) · Resolves:
+  authoring-requests/2026-10-09-output-check-with-no-operator-never-passes-and-validation-does.md,
+  authoring-requests/2026-10-09-builder-check-editor-shows-contains-when-the-check-has-no-op.md
+
 ### Code Arrange indent mode (`arrangeMode: indent`)
 
 - New Python mode for `code_arrange`: the lines are fixed in order and the student only sets how

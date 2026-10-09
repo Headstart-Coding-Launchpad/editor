@@ -1,6 +1,6 @@
 # Output check with no operator never passes, and validation doesn't flag it
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** bug
 - **Requested by:** LaunchPad Dev (approved by Ryan), 2026-10-09
 - **Lessons blocked:** none yet
@@ -44,4 +44,8 @@ Worth a sweep of published lessons for checks with no `operator` once fixed.
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Branch `fix/check-missing-operator`. A text check with a value and no `operator` now compares with
+`contains` at runtime (`DEFAULT_TEXT_OPERATOR`, src/shared/checkHelpers.js), validation rejects
+it (`validateCheckOperators`, src/modules/moduleTaskValidation.js; both Builder and `lessons
+validate`), and the Builder's `CheckListEditor` writes `operator: contains` in when it opens such a
+check. Shared test: `checkMissingOperator` (src/modules/checks.js). See CHANGELOG 2026-10-09. Sweep of all 79 published lessons (2,683 checks): none without an operator.
