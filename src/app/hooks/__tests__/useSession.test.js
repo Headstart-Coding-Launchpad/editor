@@ -1540,6 +1540,7 @@ describe('useSession', () => {
         teacherStageAcceptedAt: null,
         teacherHighlights: null,
         teacherTileHighlights: null,
+        currentDraft: null,
         teacherPaneCommand: null,
         sideQuestOpen: null,
         visiblePanes: null,
