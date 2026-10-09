@@ -66,6 +66,13 @@ The rules (stacking, trailing markers, stripping before run/check/carry,
 re-anchoring on saved code) are the same as Python's — see
 [python.md](python.md#line-hints).
 
+## Side-quests
+
+A Turtle task can carry up to three optional, unchecked `sideQuests` (`title`, `kind`,
+`explainer`, `starter`) that a student opens in their own scratch Turtle workspace (editor and canvas) once they pass
+the task. They never change the task's code or what `carryCodeFrom` copies. See
+[Side-quests](AUTHORING_GUIDE.md#side-quests).
+
 ## Coordinate system
 
 Matches real Python `turtle` exactly: `(0, 0)` is the centre of a fixed

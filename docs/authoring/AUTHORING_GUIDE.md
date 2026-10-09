@@ -109,6 +109,7 @@ tasks:
       Describe the complete authoring brief for this task.
     # taskType omitted = code task; use information or quiz for non-code tasks
     moduleType: python        # required on every code task in a new composed lesson
+    sideQuests: []            # optional on code tasks — see Side-quests below
 ```
 
 **Line hints in starter code.** Instead of instructions in code comments, Python, Turtle and HTML starter code (and code stages) can carry marker lines that are shown beside the next line and never become part of the student's code: `#> Change the colour here` (Python, Turtle) or `<!--> Add a heading here -->` (HTML). See [python.md](python.md#line-hints) and [html.md](html.md#line-hints).
@@ -321,6 +322,56 @@ The practical consequences:
 **Multi-option values:** `"option1","option2"` format — passes if the actual value matches any option. Works for `output_contains`, `code_contains`, `element_value`, `answer_contains`.
 
 **Case sensitivity:** Regex checks use JavaScript `RegExp`; add `flags: i` for case-insensitive regex. All other string comparisons are case-insensitive.
+
+---
+
+## Side-quests
+
+Lessons run in lockstep, so on a code task the class often waits (Copy the Code especially) for
+one or two students. `sideQuests` gives a student who has already passed something worthwhile to
+do meanwhile: up to three optional, **unchecked** mini tasks on that code task.
+
+```yaml
+  - title: "Copy the Code: for loops"
+    moduleType: python
+    taskActivity: Code Task, Copy the Code
+    copyCode: |
+      for i in range(3):
+          print("Hello")
+    check: { type: output_contains, value: Hello }
+    sideQuests:                      # optional, up to 3, shown in order
+      - title: Break it, then fix it  # required, ≤ 60 characters (it is a button)
+        kind: debug                  # challenge (default) | debug | predict: label and icon only
+        explainer: |                 # Markdown, shown as the side-quest's instructions
+          This loop has a bug. Run it, read the error message, then fix it.
+        starter: |                   # the side-quest's own starting code (HTML: index.html)
+          for i in range(3)
+              print("Hello")
+      - title: Predict, then run
+        kind: predict
+        explainer: How many times will this print? Decide first, then press Run.
+        starter: |
+          for i in range(2):
+              for j in range(3):
+                  print("*")
+```
+
+- **Unlock:** only after the task's own completion check passes (so the task needs a `check`).
+  Live: only while the class is still on that task; solo: after a pass. A bar above the workspace
+  says "🎉 You've finished! Try a side-quest" with a button per side-quest.
+- **Isolated:** each opens in place of the task in its own scratch editor of the task's module
+  (Python, Turtle or HTML; Scratch later). It never changes the task's saved code and never feeds
+  `carryCodeFrom`. Its code is kept on the student's device for the session.
+- **Unchecked:** no checks run. The student taps **✓ I've done it!**; that is recorded, never
+  verified. When the teacher moves the class on, the side-quest closes and the student goes to the
+  next task as normal.
+- **Teacher:** the student's card shows "🗺️ on side-quest 2/3 · ✓1" (status only, never the
+  side-quest's code). The session report lists each side-quest a student opened on each task
+  (opened, runs, error runs, done), and 🗺️ Side Quester is suggested after
+  `sideQuesterMinDone` (default 2) are marked done ([badges.md](badges.md)).
+- **Builder:** Task options → **Side-quests**.
+- Write side-quests that practise the task's concept (a small change, a bug to fix, a prediction,
+  an earlier skill), never the next task's content: in lockstep the class meets that next.
 
 ---
 

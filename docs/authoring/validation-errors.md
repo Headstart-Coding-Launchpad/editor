@@ -81,6 +81,15 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … peerHints can have at most 6 hints` | More than 6 `peerHints` (helpers see at most 6 hint cards). | Keep the few that matter most. |
 | `Task … peerHints must each be 60 characters or fewer` | A hint is too long to read on a card. | Shorten it: a few words a 9-year-old reads at a glance. |
 | `Task … peerHints is not supported on quiz or information tasks` | Peer help is for code tasks. | Remove `peerHints` from that task. |
+| `Task … sideQuests must be a list` | `sideQuests` isn't a list. | Write `sideQuests:` followed by `- title: …` entries. |
+| `Task … sideQuests can have at most 3 side-quests` | More than 3 side-quests. | Keep the best three. |
+| `Task … side-quest … needs a title` / `must be an object with a title` | A side-quest has no `title` (or isn't an object). | Add `title:` to it. |
+| `Task … side-quest … title must be 60 characters or fewer` | The title is too long for its button. | Shorten it. |
+| `Task … side-quest … kind must be one of: challenge, debug, predict` | Unknown `kind`. | Use one of those three (or leave it out for `challenge`). |
+| `Task … side-quest … explainer/starter must be text` | `explainer` or `starter` isn't a string. | Use a string (a YAML block scalar for code). |
+| `Task … side-quest … has unknown fields (…); they are ignored` (warning) | A side-quest has keys other than `title`, `kind`, `explainer`, `starter`. | Remove them; side-quests have no checks. |
+| `Task … sideQuests are not supported on … tasks yet (only python, turtle, html); they are ignored` (warning) | Side-quests only run in Python, Turtle and HTML so far (Scratch later). | Remove them, or move the task to a supported module. |
+| `Task … sideQuests only work on code tasks; they are ignored here` (warning) | `sideQuests` on a quiz, information, activity or Code Arrange task. | Remove them. |
 | `Task … stage … role must be one of: …` | A `codeStages` entry has an unknown `role`. | Use `starter`, `support` or `complete`. |
 | `Task … stage … is missing a label` | A code stage has no `label`. | Add `label:` to the stage. |
 | `Task ID … is used by … and … - renumber task IDs before publishing` (warning, **Builder only**) | Two tasks share an `id`. | Renumber the task ids. |

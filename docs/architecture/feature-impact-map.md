@@ -227,6 +227,38 @@ Usually changes with:
 - `docs/authoring/lesson-schema.md`, `lesson-schema-yaml.md`, `CHANGELOG.md`
 - `docs/MODULE_FEATURE_MATRIX.md`
 
+## Side-quests
+
+Changes include the `sideQuests` task field, the unlock rules, the side-quest workspace, the
+teacher's status line, the report fields or 🗺️ Side Quester.
+
+Invariants:
+
+- A side-quest never writes the task's saved work or anything `carryCodeFrom` reads: it runs in
+  a throwaway `useStudentCodeState` (previewMode, namespaced lessonId, no-op writers), like the
+  shared-workspace viewer, and keeps its code under its own localStorage key.
+- Status only reaches Firebase (`students/{id}/sideQuestOpen`, `sideQuestLog`), on open, close,
+  Run, error and Done; never code, never per keystroke.
+- Which modules support it comes from `capabilities.sideQuests`, never a type comparison.
+
+Usually changes with:
+
+- `src/shared/sideQuests.js` (and `src/shared/__tests__/sideQuests.test.js`)
+- `src/app/hooks/useSideQuests.js`, `src/app/hooks/useSession.js`
+- `src/app/components/sideQuests/SideQuestPrompt.jsx`, `SideQuestWorkspace.jsx`
+- `src/app/components/SharedWorkspaceViewer.jsx` (`seedSharedWorkspace`, `NOOP_SESSION_WRITES`)
+- `src/app/views/StudentView.jsx`, `src/app/studentStorage.js`
+- `src/app/studentActivity.js` (teacher roster line), `src/app/components/StudentGrid.jsx`
+- `src/shared/lessonReport.js`, `src/app/components/TeacherReportModal.jsx`
+- `src/badges/liveTimeline.js`, `src/badges/rules.js` (`sideQuestsDone`),
+  `src/badges/definitions/side_quester.js`, `src/badges/badgeOptions.js`
+- `src/shared/lessonValidation.js`, `src/shared/taskFields.js`, `src/modules/*/definition.js`
+  (`capabilities.sideQuests`)
+- `src/builder/components/task-editor/SideQuestsEditor.jsx`, `TaskOptionsSection.jsx`
+- `database.rules.json`, `tests/rules/database.rules.test.js`
+- `docs/agents/runtime-model.md`, `docs/agents/classroom-behaviours.md`,
+  `docs/authoring/AUTHORING_GUIDE.md`, `lesson-schema.md`, `session-reports.md`, `badges.md`
+
 ## Builder
 
 Changes include task editing, lesson metadata, preview, validation, publish/export, assets, or topic suggestions.

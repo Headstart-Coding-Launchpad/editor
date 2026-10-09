@@ -90,6 +90,13 @@ Put instructions **next to** a line of starter code instead of in a comment the 
 
 ---
 
+## Side-quests
+
+A Python code task can carry up to three optional, unchecked `sideQuests` (`title`, `kind`,
+`explainer`, `starter`) that a student opens in their own scratch Python editor once they pass
+the task. They never change the task's code or what `carryCodeFrom` copies. See
+[Side-quests](AUTHORING_GUIDE.md#side-quests).
+
 ## Automated Tests
 
 ```yaml

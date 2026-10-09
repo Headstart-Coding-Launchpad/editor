@@ -315,9 +315,43 @@ Shows a read-only complete solution in the same reference panel as Support, with
 - A student currently viewing a share writes their real `writeStudentInteraction({ viewingShareId })` to `sessions/{lessonId}/students/{anonymousId}` — separate from the throwaway viewer state above, which never reaches Firebase. `StudentCard` shows "Now: 📤 viewing {sharerName}'s shared work" live on the roster while `student.online && student.viewingShareId` (see "Teacher Roster: what students are doing"); gating on `online` means a stale field from a dropped connection just stops rendering rather than sticking. Set on open, cleared (`null`) on close or on copying into their own editor.
 - The teacher gets the same read-only look at an approved share that students get: `TeacherSessionControls`' "📤 Shared work" dropdown has an **Open** button per entry (alongside Remove) that fetches the snapshot and renders it in a modal via the same `SharedWorkspaceViewer`, just without `onCopyToMyEditor` — a teacher has no editor of their own to copy into.
 
+## Side-quests
+
+Optional, unchecked extras on a code task (`sideQuests`, max 3; `src/shared/sideQuests.js`) for
+students who have passed it while the class waits. Python, Turtle and HTML
+(`capabilities.sideQuests`); Scratch later.
+
+- **Unlock** (`canShowSideQuests`, `useSideQuests`): the task's own check has passed
+  (`cs.checkPassed`, a tutor override counts), the student is on that task (live: the class's
+  current task, not looking back; solo: any passed task), not in the personal sandbox, a teacher
+  broadcast, the solo explainer/completion slides, the presentation window or a non-code task.
+- **Prompt.** `SideQuestPrompt` is a bar above the workspace: "🎉 You've finished! Try a
+  side-quest" with one button per side-quest (✓ once marked done).
+- **Workspace.** `SideQuestWorkspace` takes the workspace slot, like `SharedWorkspaceViewer`: a
+  second, throwaway `useStudentCodeState` (`previewMode`, namespaced lessonId, no-op session
+  writers, `phase: 'solo'`) on a task built from the side-quest (`buildSideQuestTask`: its
+  `starter`, its `explainer` as the instructions, no check, no stages to reveal, no carry). So it
+  uses the module's own `StudentWorkspace` (shared CodeMirror, Pyodide, iframe) and can never
+  write the task's saved code or anything `carryCodeFrom` reads. Its code is seeded from and
+  saved to `headstart_{lessonId}_{taskId}_sidequest_{n}_{anonymousId}` (in memory only in a
+  preview or the presentation window). The banner has **✓ I've done it!** (self-reported, can be
+  undone) and **← Back to my task**.
+- **Closing.** It closes itself when the task changes (the teacher moves the class on, or a solo
+  student navigates), or it stops being available. The student then sees the next task as
+  normal. The main workspace's state is untouched while a side-quest is open.
+- **Teacher.** Status only: `sideQuestOpen` and `sideQuestLog` drive the roster line ("🗺️ on
+  side-quest 2/3 · ✓1"); there is no code view of a side-quest. Writes happen on open, close, Run,
+  error and Done, never per keystroke (see `docs/agents/runtime-model.md`).
+- **Report and badge.** `buildSessionReport` adds `sideQuests[]` per student task and
+  `sideQuestStudentCount` / `sideQuestDoneCount` per task. 🗺️ Side Quester is suggested (never
+  auto-awarded) after `sideQuesterMinDone` side-quests are marked done.
+- Badge signals from the main workspace's keyboard listener (Keyboard Wizard) and the shared
+  editor's autocomplete (Autocomplete Ace) still fire inside a side-quest, as in a shared
+  workspace copy.
+
 ## Teacher Roster: what students are doing
 
-`src/app/studentActivity.js` turns the session (and the teacher's peer help data) into what each online student is doing now, most important first: 🤝 helping / being helped / waiting for a classmate, 👀 looking at or ▶ trying a "Show to class" broadcast (`watchingLive`, only while that broadcast is up), 📤 viewing shared work (`viewingShareId`), 📖 reading a topic (`currentTopicId`), 🧪 in their own sandbox.
+`src/app/studentActivity.js` turns the session (and the teacher's peer help data) into what each online student is doing now, most important first: 🤝 helping / being helped / waiting for a classmate, 👀 looking at or ▶ trying a "Show to class" broadcast (`watchingLive`, only while that broadcast is up), 📤 viewing shared work (`viewingShareId`), 📖 reading a topic (`currentTopicId`), 🧪 in their own sandbox, 🗺️ on a side-quest ("on side-quest 2/3 · ✓1") or ✓ side-quests marked done on the current task (`sideQuestOpen`, `sideQuestLog`; `classActivities` needs the `lesson` for the count).
 
 - **The card's "Now:" line.** `StudentCard` shows the first as "Now: 🤝 helping Sam" and any others as icons.
 - **The class strip.** `ClassActivityStrip`, above the grid, groups the class (`summariseClassActivities`): "🤝 Hal → Sam · 👀 6 looking at Sam's work · 📖 1 reading a topic". Hovering names the students; clicking outlines their cards (`highlighted`), clicking again clears it. It shows nothing when nobody is doing any of these.

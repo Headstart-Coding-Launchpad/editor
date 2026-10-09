@@ -109,6 +109,7 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `carryFallback` | Carry-through couldn't use the requested source task: `taskId`, `field` (the carry field), `requestedSourceTaskId`, `resolvedSourceTaskId` (what was used instead, or null), `skippedSourceTaskIds[]`, `fallbackAt` (ms), `files[]` (only when the fallback recorded files). | Omitted when none | 2026-07-22 |
 | `supportReveals[]` | Each support reference opened: `taskId`, `stageIndex`, `stageLabel`, `source` (`student`, `teacher`, `teacher-auto`), `attemptNumber` (attempts made before it), `revealedAt` (ms). See [Support reveals](#support-reveals). | Omitted when none | 2026-07-22 |
 | `pastes` | Large pastes into the editor: `{ count, chars }` (chars = total pasted). Pasting the student's own copied code doesn't count. | Omitted when none | 2026-09-29 |
+| `sideQuests[]` | Each [side-quest](AUTHORING_GUIDE.md#side-quests) the student opened on this task, by index: `{ index, title, kind, openedAt (ms, first open), runs, errorRuns, done, doneAt (ms or null) }`. `done` is self-reported (the student's ✓ I've done it!), never checked. `title`/`kind` come from the lesson and are missing if the side-quest was since removed. Never any code. | Omitted when none | 2026-10-09 |
 | `itemProgress` | `{ correct, total }` items right in the latest submission. | `taskType: activity` only, when submitted | 2026-09-28 |
 | `timeToFirstEditMs` | Time from the task opening on the student's device to their first real edit (timed on the device). *Graded only.* | Omitted when unknown | 2026-09-30 |
 | `errorAttempts` | Attempts whose run hit a real console error. *Graded only.* | Omitted when 0 | 2026-09-30 |
@@ -272,6 +273,8 @@ different shapes.
 | `supportRevealSources` | `{ teacher, student }` counts (always present, may be 0), plus `teacher-auto` when any. | Always | 2026-07-22 |
 | `pasteCount` | Total large pastes. | Omitted when none | 2026-09-29 |
 | `pastedStudentCount` | Students who pasted. | Omitted when none | 2026-09-29 |
+| `sideQuestStudentCount` | Students who opened at least one side-quest on this task (they had passed it while the class was still on it: a sign the class waited here). | Omitted when none | 2026-10-09 |
+| `sideQuestDoneCount` | Side-quests marked done on this task, across students (self-reported). | Omitted when no side-quest was opened | 2026-10-09 |
 | `timeToFirstEdit` | `{ medianMs, minMs, maxMs, studentCount }` over students' `timeToFirstEditMs`. | Omitted when none | 2026-09-30 |
 | `errorStudentCount` | Students with `errorAttempts`. | Omitted when 0 | 2026-09-30 |
 | `topicOpens` | `{ student, teacher }` Topic Library opens on this task (task context). | Omitted when 0 | 2026-09-30 |
