@@ -1,6 +1,7 @@
 import yaml from 'js-yaml'
 import { flattenTasks, getTaskPriority } from './taskUtils.js'
 import { buildPeerHelpAudit } from './peerHelp.js'
+import { buildSideQuestReport, getSideQuests } from './sideQuests.js'
 import { getTaskActivity } from '../activities/registry.pure.js'
 import { SUPPORT_REVEAL_SOURCES } from './taskStages.js'
 import { normalizeCodeSubmission } from './codeSubmission.js'
@@ -292,6 +293,20 @@ function summarizePastes(perStudent) {
   }
 }
 
+// Side-quests (sideQuestLog, src/shared/sideQuests.js): who opened one on this task, and how
+// many were marked Done. Only present when someone opened one.
+function summarizeSideQuests(perStudent) {
+  const opened = perStudent.filter((task) => (task.sideQuests ?? []).length > 0)
+  if (opened.length === 0) return {}
+  return {
+    sideQuestStudentCount: opened.length,
+    sideQuestDoneCount: opened.reduce(
+      (n, task) => n + task.sideQuests.filter((quest) => quest.done).length,
+      0
+    ),
+  }
+}
+
 function summarizeSupportReveals(perStudent) {
   const reveals = perStudent.flatMap((task) => task.supportReveals ?? [])
   const sourceCounts = reveals.reduce(
@@ -510,6 +525,7 @@ export function buildSessionReport({
   const carryFallbackLog = session?.carryFallbackLog ?? {}
   const supportRevealLog = session?.supportRevealLog ?? {}
   const taskRatingLog = session?.taskRatingLog ?? {}
+  const sideQuestLog = session?.sideQuestLog ?? {}
   const anonymousIds = Array.from(
     new Set([
       ...Object.keys(studentsSnapshot),
@@ -517,6 +533,7 @@ export function buildSessionReport({
       ...Object.keys(overrideLog),
       ...Object.keys(carryFallbackLog),
       ...Object.keys(supportRevealLog),
+      ...Object.keys(sideQuestLog),
       ...Object.keys(session?.badges ?? {}),
       ...Object.keys(session?.studentSignals ?? {}),
       ...(sessionArchive?.visits ?? []).flatMap((visit) =>
@@ -560,6 +577,10 @@ export function buildSessionReport({
         task.id
       )
       const pastes = normalizePasteRecord(studentsSnapshot[anonymousId]?.pasteLog?.[task.id])
+      const sideQuests = buildSideQuestReport(
+        sideQuestLog?.[anonymousId]?.[task.id],
+        getSideQuests(task)
+      )
       const attempts = countAttempts(entries)
       const { finalResult, completed } = resolveTaskOutcome(task, entries, override, autoCheck)
       const itemProgress =
@@ -598,6 +619,7 @@ export function buildSessionReport({
         ...(carryFallback ? { carryFallback } : {}),
         ...(supportReveals.length > 0 ? { supportReveals } : {}),
         ...(pastes ? { pastes } : {}),
+        ...(sideQuests.length > 0 ? { sideQuests } : {}),
         ...(itemProgress ? { itemProgress } : {}),
         ...(isNotApplicableTask(task)
           ? {}
@@ -717,6 +739,7 @@ export function buildSessionReport({
       ...summarizeCarryFallbacks(perStudent),
       ...summarizeSupportReveals(perStudent),
       ...summarizePastes(perStudent),
+      ...summarizeSideQuests(perStudent),
       ...badgeFields,
       ...(teacherRating ? { teacherRating } : {}),
     }

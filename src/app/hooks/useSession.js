@@ -45,6 +45,7 @@ import { normalizePollDraft, pollChoiceIndex } from '../../shared/classPolls.js'
 import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liveInkWriter'
 import { buildClassCountdown, extendClassCountdown } from '../../shared/classCountdown'
 import { clipRunError } from '../studentHints.js'
+import { bumpSideQuestCount } from '../../shared/sideQuests.js'
 
 // Badge decisions (sessions/{lessonId}/badges/{anonymousId}/{badgeId}). A decision is written
 // once; revoking is the only later change (see decideBadge / revokeBadge).
@@ -189,6 +190,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       badges: null,
       badgeSettings: null,
       studentSignals: null,
+      // Side-quest status (src/shared/sideQuests.js) belongs to one session.
+      sideQuestLog: null,
     })
     // The payload node lives outside the session, so resetting the session
     // does not clear it on its own.
@@ -478,6 +481,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/teacherStageAcceptedAt`] = null
       updates[`students/${anonymousId}/teacherHighlights`] = null
       updates[`students/${anonymousId}/teacherPaneCommand`] = null
+      // A side-quest closes when the class moves on (sideQuestLog keeps what happened).
+      updates[`students/${anonymousId}/sideQuestOpen`] = null
       // The previous task's panes mean nothing on the new one; the student's StudentView
       // re-reports the new task's panes (its dedupe resets per task).
       updates[`students/${anonymousId}/visiblePanes`] = null
@@ -1852,6 +1857,54 @@ export function useSession(lessonId, { enabled = true } = {}) {
     )
   }
 
+  // ─── Side-quests (src/shared/sideQuests.js) ────────────────────────────────
+  // Status only: which side-quest is open, and per side-quest when it was first opened, how
+  // often it was run (and errored) and whether the student marked it Done. Written on open,
+  // close, Run and Done, never per keystroke, and never any code.
+  const sideQuestPath = (anonymousId, taskId, index) =>
+    `sessions/${lessonId}/sideQuestLog/${anonymousId}/${taskId}/${index}`
+
+  /** The side-quest open on the student's screen right now (its index), or null. */
+  async function writeSideQuestOpen(anonymousId, index) {
+    if (!anonymousId) return
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/sideQuestOpen`),
+      Number.isInteger(index) ? index : null
+    )
+  }
+
+  /** Stamps `openedAt` the first time the student opens this side-quest. */
+  async function recordSideQuestOpened(anonymousId, taskId, index) {
+    if (!anonymousId || taskId == null || !Number.isInteger(index)) return
+    if (session?.sideQuestLog?.[anonymousId]?.[taskId]?.[index]?.openedAt != null) return
+    await update(ref(db, sideQuestPath(anonymousId, taskId, index)), {
+      openedAt: serverTimestamp(),
+    })
+  }
+
+  /** One Run of a side-quest (`runs`), or one that hit an error (`errorRuns`), as a transaction. */
+  async function recordSideQuestRun(anonymousId, taskId, index, { error = false } = {}) {
+    if (!anonymousId || taskId == null || !Number.isInteger(index)) return
+    const field = error ? 'errorRuns' : 'runs'
+    try {
+      await runTransaction(
+        ref(db, `${sideQuestPath(anonymousId, taskId, index)}/${field}`),
+        bumpSideQuestCount
+      )
+    } catch (err) {
+      console.warn('[side-quests] could not record a run', err)
+    }
+  }
+
+  /** The student's self-reported Done (or un-Done). Recorded, never checked. */
+  async function setSideQuestDone(anonymousId, taskId, index, done) {
+    if (!anonymousId || taskId == null || !Number.isInteger(index)) return
+    await update(ref(db, sideQuestPath(anonymousId, taskId, index)), {
+      done: !!done,
+      doneAt: done ? serverTimestamp() : null,
+    })
+  }
+
   // "Keep showing live code" pins for Presentation View's live broadcast as a
   // support reference (see docs/agents/classroom-behaviours.md). These are
   // toggles, not one-shot commands — the actual content always comes live
@@ -2046,6 +2099,11 @@ export function useSession(lessonId, { enabled = true } = {}) {
     addSandboxTimeSignal,
     setTaskRating,
     writeStudentPersonalSandbox,
+    // student: side-quest status
+    writeSideQuestOpen,
+    recordSideQuestOpened,
+    recordSideQuestRun,
+    setSideQuestDone,
     setTeacherLiveReferenceForStudent,
     setTeacherLiveReferenceForClass,
     writeStudentPresence,

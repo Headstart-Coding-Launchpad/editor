@@ -66,6 +66,19 @@ export const COMMON_TASK_FIELDS = specs(
       description:
         'Extra preset hints a classmate can send when helping on this task (peer help); up to 6 short strings (60 characters).',
     },
+    {
+      name: 'sideQuests',
+      type: 'array',
+      authored: true,
+      description:
+        'Up to 3 optional, unchecked side-quests a student can open once they pass this code task (python, turtle, html); each runs in its own scratch editor and never changes the task code.',
+      itemFields: [
+        { name: 'title', type: 'string', required: true, authored: true },
+        { name: 'kind', type: 'string', values: ['challenge', 'debug', 'predict'] },
+        { name: 'explainer', type: 'string', authored: true },
+        { name: 'starter', type: 'string', authored: true },
+      ],
+    },
   ],
   'COMMON_TASK_FIELDS'
 )

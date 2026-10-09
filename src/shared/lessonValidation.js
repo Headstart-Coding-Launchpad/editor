@@ -28,6 +28,7 @@ import {
   TASK_PRIORITIES,
 } from './taskUtils.js'
 import { isPlainObject } from './textUtils.js'
+import { validateSideQuests } from './sideQuests.js'
 import { validateDraftLessonStructure } from './draftLesson.js'
 import {
   getModuleCarrySourceIds,
@@ -281,6 +282,9 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
       errors.push(`Task ${n} peerHints is not supported on quiz or information tasks`)
     }
   }
+
+  // sideQuests: optional, unchecked extras for students who passed the task (./sideQuests.js).
+  validateSideQuests(task, { n, moduleType, isCodeTask: kind === 'module' }, errors, warnings)
 
   // taskActivity names a Lesson Format Glossary pattern (src/shared/taskActivity.js); badges read
   // it, so an unrecognised one is worth a warning (never an error: it's free text).
