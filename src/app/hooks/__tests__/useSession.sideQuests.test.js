@@ -13,7 +13,7 @@ const firebaseMocks = vi.hoisted(() => ({
   set: vi.fn(() => Promise.resolve()),
   update: vi.fn(() => Promise.resolve()),
   remove: vi.fn(() => Promise.resolve()),
-  push: vi.fn(),
+  push: vi.fn((parentRef) => ({ path: `${parentRef.path}/mockPushId`, key: 'mockPushId' })),
   onDisconnect: vi.fn(() => ({
     set: vi.fn(() => Promise.resolve()),
     remove: vi.fn(() => Promise.resolve()),

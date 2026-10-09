@@ -1504,6 +1504,7 @@ describe('useSession', () => {
         teacherStageAcceptedAt: null,
         teacherHighlights: null,
         teacherPaneCommand: null,
+        sideQuestOpen: null,
         visiblePanes: null,
         shareRequestedAt: null,
         shareRequestTaskId: null,
