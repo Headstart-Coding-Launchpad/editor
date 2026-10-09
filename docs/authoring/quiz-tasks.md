@@ -119,6 +119,9 @@ Student fills blanks in a sentence or code snippet. Each filled blank gets immed
 
 One `___` in `text` per entry in `blanks`, in order. No `check` needed. `distractors` are ignored in type mode.
 
+In a live lesson the tutor sees what a student has typed into the gaps before they press
+Submit, as an unsubmitted draft (see [Live drafts](#live-drafts-what-the-tutor-sees-before-submit)).
+
 ### Code blocks in text
 
 Use triple-backtick fences in `text` to display a block of code. Blanks can appear inside the code block — they render inline at the correct position within the pre-formatted code.
@@ -182,6 +185,20 @@ Supported check types: `answer_equals`, `answer_contains`, `answer_not_contains`
 
 Omit `check` — any submitted text completes the task. The teacher sees each student's answer in the student grid.
 
+#### Live drafts: what the tutor sees before Submit
+
+In a live lesson the tutor sees what a student is typing before they submit, on both kinds of
+short answer (and on typed fill-in-the-gaps). The student card shows a dashed **✏️ Typing, not
+submitted:** line with the start of the draft; the student's StudentModal shows it in full
+under **Still typing, not submitted yet**. Nothing changes on the student's screen.
+
+A draft is never an answer: it is not checked, not counted as an attempt, never shown on the
+presentation window, and does not trigger badges. Pressing Submit replaces it with the answer.
+The draft is sent after the student stops typing for about 1.5 seconds, and live (about four
+times a second) only while the tutor has that student open. The session report records a
+student's last draft as `lastDraft` when they never submitted (see
+[session-reports.md](session-reports.md)). Nothing to author.
+
 ```yaml
 - type: quiz
   quizType: short_answer
@@ -224,7 +241,18 @@ window**.
 
 ## Confidence
 
-Students rate confidence on a 1–5 scale (red to green). Any rating completes the task. Teacher sees each student's level in the student grid.
+Students rate confidence on a 1–10 scale: ten buttons from red (1, 👎) to green (10, 👍), and
+one tap submits. Any rating completes the task, and a student can change their rating. The ten
+buttons sit in one row on a tablet (each at least 44px) and wrap to two rows of five on a narrow
+phone.
+
+The tutor sees each student's rating on their card as **N/10**, and a **Class confidence** strip
+above the student grid with how many students chose each number (click a number to outline those
+students' cards). The session report records each rating with `ratingScale: 10`.
+
+Every confidence check uses 1–10, including lessons written before 2026-10-09, which used 1–5;
+there is nothing to change in them. There is no `scale` field: validation warns that one is
+ignored.
 
 ```yaml
 - type: quiz

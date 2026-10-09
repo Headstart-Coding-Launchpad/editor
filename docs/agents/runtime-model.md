@@ -158,6 +158,14 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
           }
         }
       },
+      "draftLog": {
+        "{anonymousId}": {
+          "{taskId}": {
+            "text": "string (the student's last unsubmitted answer draft on that task, ≤1000 chars)",
+            "at": "number | null (when the draft was typed, client ms)"
+          }
+        }
+      },
       "sideQuestLog": {
         "{anonymousId}": {
           "{taskId}": {
@@ -245,6 +253,7 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
           "currentInputPrompt": "string | null (watched Python student's pending input() prompt text, if any — the only sync of that state; OutputPanel's own inputPrompt is otherwise local-only runtime state)",
           "currentInput": "string (watched Python student's not-yet-submitted input() text, per keystroke; cleared to '' on submit or when the prompt clears)",
           "currentAnswer": "b",
+          "currentDraft": "{ taskId, text, at } | null (unsubmitted answer draft: open/checked short answer text, or typed fill-in-the-gaps joined as 'print · ___'; written by useActivityState onDraft in a live lesson only — after ~1.5s with no typing, and throttled ~250ms only while activeStudentView is this student (flushed when watching starts); never per keystroke otherwise. Cleared (null) on submit, on reset, when emptied, and by setTaskId. Never an attempt. src/shared/answerDrafts.js)",
           "currentActiveFile": "index.html",
           "currentSelection": { "from": 0, "to": 5, "file": "index.html" },
           "currentActivity": { "type": "copy | paste | click | block_drag | block_click | green_flag | stop | sprite_drag", "at": 1234567890, "file": "index.html" },
@@ -343,6 +352,7 @@ Teacher writes:
 
 - `state`, `currentTaskId`, `startedAt`, `currentTaskStartedAt`, `endedAt`, `isPaused`
 - `taskStartTimes/{taskId}` — stamped by `startSession` (for the initial task) and `setTaskId` (for the newly-entered task); overwritten if the teacher revisits a task. Used by `buildSessionReport` to compute time-on-task.
+- `draftLog/{anonymousId}/{taskId}` — `{ text, at }`, written by `setTaskId` in the same update that clears every `students/{id}/currentDraft`: the draft of each student who had one and has no real attempt (auto-check-on-leave entries don't count) on that task (`draftLogUpdates` in `src/shared/answerDrafts.js`). Teacher-only (the `$lessonId` write rule; no rule of its own). `buildSessionReport` reads it, plus the live `currentDraft` for the task the session ends on, as the student task's `lastDraft`. Reset by `createSession` and `endSession`.
 - `taskTimeline/{pushId}` — `{ taskId, startedAt }`, appended in the same update as each current-task change once the session has started (`startSession` for the first task, `setTaskId`, and `exitSandbox` when it restores a different task), information tasks included. A change to the task already last on the timeline adds nothing; Go Live's silent jump onto a composed lesson's sandbox-module task (`setTaskId(id, { recordTimeline: false })`) is left off. Never overwritten; reset by `createSession`, wiped with the session data at `endSession` after `buildSessionReport` has read it into the report's `taskTimeline`.
 - `taskRatingLog/{taskId}` (`setTaskRating`) — the teacher's own live rating of a task (1-5 stars plus "what worked well"/"what didn't work" notes), entered via `TaskRatingPanel.jsx` (the top bar's "⭐ Rate this task" popover) while that task is showing, not just at end-of-session. Last write wins per task; saving with every field blank removes the entry instead of leaving an empty stub. Not cleared by `setTaskId` (so it survives the teacher moving on and back), but is nulled by `createSession`/`endSession` like `overrideLog`/`supportRevealLog` — `buildSessionReport` reads it (see "Session Reports" below) before `endSession` clears it.
 - `activeStudentView`, `teacherLive` (a student broadcast may carry `mode: 'panel'`, "Show to class (keep coding)", which classmates choose to watch instead of being locked onto; see `docs/agents/classroom-behaviours.md`)
@@ -391,7 +401,7 @@ Student writes:
 - When watched, HTML: `currentFiles` per active-tab keystroke, `currentActiveFile`, `currentSelection`, `currentActivity`.
 - `code_arrange` tasks (Python or HTML module), watched or not during a lesson/sandbox: `currentCodeArrangeSlots` on every tile placement/move (a discrete action like a quiz answer, not a keystroke — needed for the teacher's per-card "X/N slots filled" count), independent of the Python/HTML rules above — `currentCode`/`currentFiles` for the task only update once the arrangement is fully assembled (see `CodeArrangeTaskContainer.jsx`).
 - When watched, Scratch: `currentCode` (settled block state) on change, `currentActivity` for block drags/clicks/green-flag/stop/sprite-drag notices, a throttled (~120ms) `currentSpriteState` snapshot of sprite/clone/backdrop runtime state so the mirror renders live stage motion instead of authored starting positions, and a throttled (~50ms) `currentCursor` live pointer position covering both the stage and each sprite's block workspace. While a block is actively being dragged, its live in-progress position (not just the settled `currentCode` state on drop) also streams as `currentBlockDrag`, read directly off Blockly's own drag-tracked coordinates — the mirror repositions that block (if it already has it from the last settled sync) via Blockly's `moveTo`, without treating it as a real drag. The broadcast direction (`teacherLive`) mirrors the same fields (`code`, `activity`, `spriteState`, `cursor`, `blockDrag`); the mirror's visible sprite tab follows the source's tab automatically whenever a workspace-target cursor is live, and a cursor with no update for 2s fades out rather than freezing in place.
-- Quiz: `currentAnswer` on submit; also written incrementally (debounced ~300ms, watched or not) for match and fill-blank as tiles are placed or gaps typed. Quizzes run through `useActivityState.js` like the hosted activities below, keeping their legacy `currentAnswer` strings (option id, `{"p1":"p2"}` map, typed text, `"1"`..`"5"`); the answer is flushed once when the teacher starts watching (if the student has answered). In the session sandbox, answers and runs are mirrored but no attempt is logged.
+- Quiz: `currentAnswer` on submit; also written incrementally (debounced ~300ms, watched or not) for match and fill-blank drag as tiles are placed. Typed fill-blank gaps are *continuous* (since 2026-10-09): mirrored to `currentAnswer` only while watched (throttled ~250ms), like code. Text typed into a submit-to-reveal box (short answer, typed gaps) is mirrored as `currentDraft` (see the student fields above): idle-debounced ~1.5s watched or not, throttled ~250ms while watched; cleared on submit. Quizzes run through `useActivityState.js` like the hosted activities below, keeping their legacy `currentAnswer` strings (option id, `{"p1":"p2"}` map, typed text, `"1"`..`"10"`); the answer is flushed once when the teacher starts watching (if the student has answered). In the session sandbox, answers and runs are mirrored but no attempt is logged.
 - Hosted activities (`taskType: 'activity'`, `useActivityState.js`): the serialised activity state (JSON, `activity.serialize`) on `currentAnswer`. *Discrete* changes (a bit toggled, an item finished) write debounced (~300ms) whether or not the teacher watches, like quiz answers; *continuous* changes (keystrokes, typing a number) write throttled (~250ms) only while `activeStudentView` is this student, and the latest state is flushed once when the teacher starts watching. Submit writes `writeStudentRun({ answer, status: 'submitted', checkPassed })` and `logAttempt`. `remoteResetAction` `starter` / `complete` load the activity's initial / solution state; `teacherAnswerEdit.answer` is the serialised state. See `docs/architecture/activities.md`.
 - Quiz attempts are reportable even when the task has no explicit `check`. The attempt log stores structured submissions for fill-blank and match, numeric ratings for confidence, and text for open short-answer. Confidence and open short-answer use the internal passed flag only as a UI completion signal; reports translate them to `finalResult: not_applicable` and `passed: null`.
 - Carry-through walk-back: when a live lesson task carries from a skipped source and resolves to an earlier saved source in the authored carry chain, the student writes own `carryFallbackLog/{taskId}` with the carry field, requested source, resolved source, skipped source ids, and server timestamp. Empty saved state is not skipped.
@@ -733,7 +743,8 @@ Read/write access mirrors the `feedback` subcollection: teacher or admin only (s
       "supportRevealStudentCount": 2,
       "supportRevealSources": { "teacher": 1, "student": 2 },
       "respondedCount": "number (confidence/poll/open short-answer summaries)",
-      "ratingDistribution": { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 },
+      "ratingDistribution": { "1": 0, "2": 0, "...": 0, "10": 0 },
+      "ratingScale": "10 (confidence only; missing in reports before 2026-10-09, which were 1-5)",
       "optionDistribution": [{ "id": "a", "text": "Games", "count": 3 }],
       "blankFailures": [{ "blankId": "string", "expected": "string", "count": 1, "values": [{ "value": "string", "count": 1 }] }],
       "pairFailures": [{ "pairId": "string", "prompt": "string", "expected": "string", "count": 1, "values": [{ "value": "string", "count": 1 }] }],
@@ -844,7 +855,7 @@ Do not deviate from these key formats.
 | `headstart_{lessonId}_{taskId}_{anonymousId}` | `{ code, output, runStatus }` for Python/Turtle; plus `arcadeDesign` for Arcade; `{ code }` for Electronics (serialised circuit); `{ state }` for Scratch; `{ fs }` for Filesystem; `{ desktop }` for Desktop |
 | `headstart_{lessonId}_{taskId}_{filename}_{anonymousId}` | `{ content }` for HTML per-file |
 | `headstart_{lessonId}_{taskId}___code_arrange_slots___{anonymousId}` | `{ content }` Code Arrange tile placements (a per-task aux file, same shape as an HTML file); in indent mode (`arrangeMode: indent`) the same file holds `{ lineId: depth }` for the lines the student moved |
-| `headstart_{lessonId}_{taskId}___activity_state___{anonymousId}` | `{ content }` hosted activity state for `taskType: 'activity'` tasks (serialised JSON) and quiz tasks (the `currentAnswer` string: option id, JSON answer map, typed text or `"1"`..`"5"`); restored on reload and on returning to the task; in-memory only in presentation/preview |
+| `headstart_{lessonId}_{taskId}___activity_state___{anonymousId}` | `{ content }` hosted activity state for `taskType: 'activity'` tasks (serialised JSON) and quiz tasks (the `currentAnswer` string: option id, JSON answer map, typed text or `"1"`..`"10"`); restored on reload and on returning to the task; in-memory only in presentation/preview |
 | `headstart_{lessonId}_{taskId}_sidequest_{n}_{anonymousId}` | A side-quest's own work (n = its index 0-2): `{ code }` for Python/Turtle; `{ files: [{ name, content }], activeFile }` for HTML. Written by `SideQuestWorkspace` (debounced, and on close) for a real student, live or solo; in-memory only in presentation/preview. Never read as the task's work or by carry-through (`src/app/studentStorage.js` `sideQuestStorageKey`) |
 | `headstart_{lessonId}_personalsandbox_{anonymousId}` | `{ code }` for personal sandbox Python/Turtle/Electronics; `{ code, arcadeDesign }` for Arcade; `{ state }` for Scratch; `{ fs }` for Filesystem; `{ desktop }` for Desktop |
 | `headstart_{lessonId}_personalsandbox_{filename}_{anonymousId}` | `{ content }` for personal sandbox HTML per-file |

@@ -3557,6 +3557,22 @@ select {
   padding: 9px 20px;
 }
 
+/* Confidence check (ConfidenceQuiz): ten 1-10 buttons in one row, down to 44px each, so the
+   row fits a portrait tablet; two rows of five on a narrow phone. */
+.confidence-scale {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(44px, 1fr));
+  gap: 6px;
+  padding: 8px 4px;
+  overflow: visible;
+}
+@media (max-width: 540px) {
+  .confidence-scale {
+    grid-template-columns: repeat(5, minmax(44px, 1fr));
+    gap: 10px;
+  }
+}
+
 /* ─── Activities (src/activities) ──────────────────────────────────────────────
    Shared surface for hosted activities (Binary, Keyboard, Mouse). Aimed at 8-14 year
    olds: every control is at least 44px, focus is always visible, and motion is optional. */

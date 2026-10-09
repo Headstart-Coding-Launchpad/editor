@@ -12,6 +12,8 @@ export default function QuizTask({
   task,
   selectedAnswer,
   onSelectAnswer,
+  // (text) => void: the unsubmitted text typed so far (short answer, typed gaps), for the tutor.
+  onDraftChange,
   submitted = false,
   checkPassed = false,
   disabled = false,
@@ -24,6 +26,7 @@ export default function QuizTask({
     task,
     selectedAnswer,
     onSelectAnswer,
+    onDraftChange,
     submitted,
     checkPassed,
     disabled,

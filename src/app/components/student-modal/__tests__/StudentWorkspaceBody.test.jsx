@@ -130,6 +130,21 @@ describe('StudentWorkspaceBody quiz answers (read-only mirror)', () => {
     expect(screen.getByTitle('Confidence level 4')).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByTitle('Confidence level 4')).toBeDisabled()
   })
+
+  it('short_answer shows the unsubmitted draft in full above the answer', () => {
+    const long = 'Print shows text on the screen.\nIt can also show numbers and'
+    renderBody(SHORT_ANSWER_TASK, {
+      currentDraft: { taskId: SHORT_ANSWER_TASK.id, text: long, at: 1 },
+    })
+    const panel = screen.getByTestId('modal-draft')
+    expect(panel).toHaveTextContent('Still typing, not submitted yet')
+    expect(panel).toHaveTextContent('It can also show numbers and')
+  })
+
+  it('shows no draft panel for a draft from another task', () => {
+    renderBody(SHORT_ANSWER_TASK, { currentDraft: { taskId: 99, text: 'Old', at: 1 } })
+    expect(screen.queryByTestId('modal-draft')).not.toBeInTheDocument()
+  })
 })
 
 describe('StudentWorkspaceBody teacher answer editing', () => {

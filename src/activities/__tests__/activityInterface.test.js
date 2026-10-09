@@ -191,7 +191,12 @@ describe('resolve', () => {
     ]) {
       const activity = getActivityDefinition(`quiz_${quizType}`)
       expect(activity.legacy).toEqual({ taskType: 'quiz', quizType })
-      expect(activity.report.typeFields({})).toEqual({ taskType: 'quiz', quizType })
+      // A confidence check also records its rating scale (old reports without it are 1 to 5).
+      expect(activity.report.typeFields({})).toEqual({
+        taskType: 'quiz',
+        quizType,
+        ...(quizType === 'confidence' ? { ratingScale: 10 } : {}),
+      })
       expect(activity.storage).toEqual({ persist: true, filename: '__activity_state__' })
       expect(activity.liveChannel).toBe('answer')
       expect(activityIdForYamlType('quiz')).toBeNull()

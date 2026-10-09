@@ -52,7 +52,7 @@ function usePreviewActivity(task, definition, taskKey) {
     const next = typeof nextOrUpdater === 'function' ? nextOrUpdater(prev) : nextOrUpdater
     if (next === prev || next === undefined) return
     commit(next)
-    const discrete = definition.classifyChange(prev, next) !== 'continuous'
+    const discrete = definition.classifyChange(prev, next, task) !== 'continuous'
     if (
       definition.completion === 'auto' &&
       !definition.submitsAnswers &&

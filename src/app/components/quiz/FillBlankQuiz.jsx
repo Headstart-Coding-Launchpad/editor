@@ -2,6 +2,7 @@ import React, { useMemo } from 'react'
 import { InlineMarkdown } from '../../../shared/markdown'
 import { useTileDragAndDrop } from '../../hooks/useTileDragAndDrop'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
+import { fillBlankDraftText } from '../../../shared/answerDrafts'
 import { useChoiceEntrance } from '../../../activities/ui/choiceEntrance.jsx'
 import {
   baseStyles as s,
@@ -18,6 +19,8 @@ export default function FillBlankQuiz({
   task,
   selectedAnswer,
   onSelectAnswer,
+  // (text) => void: typed gaps not yet submitted, as one line for the tutor's draft view.
+  onDraftChange,
   submitted,
   checkPassed,
   disabled,
@@ -75,6 +78,7 @@ export default function FillBlankQuiz({
   function handleTypeChange(blankId, value) {
     const next = { ...state, [blankId]: value }
     onSelectAnswer?.(next, null)
+    onDraftChange?.(fillBlankDraftText(task, next))
   }
 
   function handleTypeSubmit() {

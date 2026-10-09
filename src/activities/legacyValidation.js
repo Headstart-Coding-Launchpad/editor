@@ -20,7 +20,7 @@ import { joinFileContents } from '../modules/moduleContract.js'
 // Module types a code-arrange task can run in.
 export const CODE_ARRANGE_MODULE_TYPES = Object.freeze(['python', 'html'])
 
-export function validateQuizTask(task, { n, errors }) {
+export function validateQuizTask(task, { n, errors, warnings = [] }) {
   const quizType = task.quizType ?? 'multiple_choice'
   if (quizType === 'multiple_choice') {
     if (!task.options || task.options.length < 2)
@@ -73,6 +73,13 @@ export function validateQuizTask(task, { n, errors }) {
     }
     if (task.anonymiseResponses != null && typeof task.anonymiseResponses !== 'boolean')
       errors.push(`Task ${n} is a short-answer quiz but anonymiseResponses is not true or false`)
+  } else if (quizType === 'confidence') {
+    // Every confidence check is rated 1 to 10 (src/shared/confidenceScale.js); a `scale` field
+    // (proposed by the 2026-10-09 request, never built) changes nothing.
+    if (task.scale !== undefined)
+      warnings.push(
+        `Task ${n} is a confidence check with a scale field; confidence checks always use 1 to 10, so scale is ignored`
+      )
   }
 }
 

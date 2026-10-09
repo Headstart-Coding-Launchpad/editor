@@ -39,7 +39,7 @@ ActivityHost ── state ──> <Activity>.StudentView
      │                          v
      └──── cs.activity <── useActivityState
                                 │ commit: save aux file (every change)
-                                │ classifyChange(prev, next)
+                                │ classifyChange(prev, next, task)
                                 ├─ 'discrete'  → currentAnswer, debounced 300ms (always, live lesson)
                                 ├─ 'continuous'→ currentAnswer, throttled 250ms, only while
                                 │                session.activeStudentView === this student
@@ -136,7 +136,7 @@ definition carries `legacy: { taskType: 'quiz', quizType }`. An unknown `quizTyp
 
 | | multiple_choice | match | fill_blank | short_answer | confidence | poll |
 |---|---|---|---|---|---|---|
-| State / `currentAnswer` | option id `"b"` | `{"p1":"p2"}` | `{"b1":"d1"}` (tile id) or typed text | free text | `"1"`..`"5"` | option id `"b"` |
+| State / `currentAnswer` | option id `"b"` | `{"p1":"p2"}` | `{"b1":"d1"}` (tile id) or typed text | free text | `"1"`..`"10"` | option id `"b"` |
 | Final answer | option chosen | last tile placed | last tile (drag) / Submit (type) | Submit | rating chosen | option chosen (changeable) |
 | `completion` / `isGraded` | on_submit / yes | auto / yes | auto / yes | on_submit / only with a `check` | none / no | none / no |
 | Teacher "Edit answers" | no | yes | yes | no | no | no |

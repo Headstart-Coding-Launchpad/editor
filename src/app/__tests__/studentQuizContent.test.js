@@ -226,10 +226,11 @@ describe('characterisation: legacy quiz fixtures', () => {
     expect(getQuizSuggestion(OPEN_SHORT_ANSWER_TASK, 'anything')).toBe('')
   })
 
-  it('confidence submits an integer 1-5, otherwise the raw answer unchanged', () => {
+  it('confidence submits an integer 1-10, otherwise the raw answer unchanged', () => {
     expect(buildQuizSubmission(CONFIDENCE_TASK, '3')).toBe(3)
     expect(buildQuizSubmission(CONFIDENCE_TASK, 5)).toBe(5)
-    expect(buildQuizSubmission(CONFIDENCE_TASK, '6')).toBe('6')
+    expect(buildQuizSubmission(CONFIDENCE_TASK, '10')).toBe(10)
+    expect(buildQuizSubmission(CONFIDENCE_TASK, '11')).toBe('11')
     expect(buildQuizSubmission(CONFIDENCE_TASK, '2.5')).toBe('2.5')
     expect(buildQuizSubmission(CONFIDENCE_TASK, '')).toBe('')
     expect(getQuizSuggestion(CONFIDENCE_TASK, '3')).toBe('')

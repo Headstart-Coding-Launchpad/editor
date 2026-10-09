@@ -9,6 +9,9 @@ import DropdownMenu from './student-modal/DropdownMenu'
 import JoiningStudentsList from './JoiningStudentsList'
 import ClassActivityStrip from './ClassActivityStrip'
 import CommonHintsStrip from './CommonHintsStrip'
+import ConfidenceSpreadStrip from './ConfidenceSpreadStrip'
+import { getTaskActivity } from '../../activities/registry.pure.js'
+import { confidenceSpreadEntries, tallyConfidenceSpread } from '../../shared/confidenceScale'
 import { summariseCommonHints } from '../studentHints.js'
 import { classActivities, summariseClassActivities } from '../studentActivity'
 
@@ -87,10 +90,17 @@ export default function StudentGrid({
   // during a session sandbox, whose runs aren't scored against the task.
   const commonHints =
     session?.state === 'sandbox' ? [] : summariseCommonHints(students, session?.currentTaskId)
+  // The class's spread on the current task's rating (a confidence check: activities with a
+  // ratingScale), from each student's mirrored answer. Not during a session sandbox.
+  const ratedTask =
+    session?.state === 'sandbox' ? null : findTaskById(lesson?.tasks, session?.currentTaskId)
+  const ratingScale = ratedTask ? getTaskActivity(ratedTask)?.ratingScale : null
+  const confidenceSpread = ratingScale ? tallyConfidenceSpread(students, ratingScale) : null
   const [highlightedGroup, setHighlightedGroup] = useState(null)
   const highlightedIds = new Set(
-    [...activitySummary, ...commonHints].find((entry) => entry.group === highlightedGroup)
-      ?.studentIds ?? []
+    [...activitySummary, ...commonHints, ...confidenceSpreadEntries(confidenceSpread)].find(
+      (entry) => entry.group === highlightedGroup
+    )?.studentIds ?? []
   )
   const studentNames = Object.fromEntries(
     students.map((student) => [student.anonymousId, student.displayName])
@@ -452,6 +462,12 @@ export default function StudentGrid({
           />
           <CommonHintsStrip
             entries={commonHints}
+            names={studentNames}
+            highlighted={highlightedIds.size > 0 ? highlightedGroup : null}
+            onHighlight={setHighlightedGroup}
+          />
+          <ConfidenceSpreadStrip
+            spread={confidenceSpread}
             names={studentNames}
             highlighted={highlightedIds.size > 0 ? highlightedGroup : null}
             onHighlight={setHighlightedGroup}

@@ -1,6 +1,6 @@
 # Confidence check on a 1 to 10 scale
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** activity mode
 - **Requested by:** Ryan (approved by Ryan), 2026-10-09
 - **Lessons blocked:** none yet
@@ -47,3 +47,19 @@ Part of the 2026-10-09 principle: **tutors see what students are doing at all ti
 ## Resolution
 
 <!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+
+Shipped 2026-10-09 on branch `feature/confidence-ten-and-answer-drafts` (not yet merged), activity
+`quiz_confidence`. Docs: quiz-tasks.md "Confidence", session-reports.md (`ratingScale`),
+classroom-behaviours.md "Class Confidence Spread", CHANGELOG 2026-10-09. Decisions agreed with Ryan
+(they override the request where it differs):
+
+- 1–10 everywhere, including published lessons: no opt-in `scale` field. A `scale` field is a
+  validation warning ("… so scale is ignored"), never an error.
+- Ten buttons red to green, 👎 on 1 and 👍 on 10, one tap submits; one row of ten (≥44px each) on
+  a portrait tablet, two rows of five below 540px wide (`.confidence-scale` in `src/index.css`).
+- Card pill "N/10". Session reports add `ratingScale: 10` to the task summary and each student
+  task; `ratingDistribution` has keys 1–10. A report without `ratingScale` is read as 1–5
+  (`reportConfidenceScale`, used by the report modal). No badge reads confidence values.
+- The tutor's class spread is a "Class confidence" strip above the student grid (count per
+  number, click to outline those cards), shown for activities with a `ratingScale`
+  (`src/shared/confidenceScale.js`, `ConfidenceSpreadStrip.jsx`).

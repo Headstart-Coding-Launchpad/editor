@@ -22,6 +22,7 @@ import {
   taskSummaryBadgeFields,
 } from '../badges/reportMetrics.js'
 import { typingReportFields } from './typingStats.js'
+import { lastDraftFor } from './answerDrafts.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
 
@@ -644,6 +645,7 @@ export function buildSessionReport({
       ...Object.keys(carryFallbackLog),
       ...Object.keys(supportRevealLog),
       ...Object.keys(sideQuestLog),
+      ...Object.keys(session?.draftLog ?? {}),
       ...Object.keys(session?.badges ?? {}),
       ...Object.keys(session?.studentSignals ?? {}),
       ...(sessionArchive?.visits ?? []).flatMap((visit) =>
@@ -694,6 +696,9 @@ export function buildSessionReport({
       const typing = studentTypingFields(task, studentsSnapshot[anonymousId])
       const tileMisses = normalizeTileMisses(studentsSnapshot[anonymousId]?.tileMissLog?.[task.id])
       const attempts = countAttempts(entries)
+      // The unsubmitted answer of a student who never submitted this task (an answer draft,
+      // src/shared/answerDrafts.js). Never an attempt.
+      const lastDraft = entries.length === 0 ? lastDraftFor(session, anonymousId, task.id) : null
       const { finalResult, completed } = resolveTaskOutcome(task, entries, override, autoCheck)
       const itemProgress =
         entries.length > 0
@@ -735,6 +740,7 @@ export function buildSessionReport({
         ...(typing ? { typing } : {}),
         ...(tileMisses.length > 0 ? { tileMisses } : {}),
         ...(itemProgress ? { itemProgress } : {}),
+        ...(lastDraft ? { lastDraft } : {}),
         ...(isNotApplicableTask(task)
           ? {}
           : studentTaskBadgeFields({

@@ -46,6 +46,7 @@ import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liv
 import { buildClassCountdown, extendClassCountdown } from '../../shared/classCountdown'
 import { clipRunError } from '../studentHints.js'
 import { bumpSideQuestCount } from '../../shared/sideQuests.js'
+import { draftLogUpdates } from '../../shared/answerDrafts.js'
 
 // Badge decisions (sessions/{lessonId}/badges/{anonymousId}/{badgeId}). A decision is written
 // once; revoking is the only later change (see decideBadge / revokeBadge).
@@ -204,6 +205,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       studentSignals: null,
       // Side-quest status (src/shared/sideQuests.js) belongs to one session.
       sideQuestLog: null,
+      // Unsubmitted answer drafts kept for the report (src/shared/answerDrafts.js).
+      draftLog: null,
     })
     // The payload node lives outside the session, so resetting the session
     // does not clear it on its own.
@@ -297,6 +300,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       peerHelpOffers: null,
       peerHelpSettings: null,
       peerHelperOff: null,
+      // Students' unsubmitted drafts: the report (built before this) holds them as lastDraft.
+      draftLog: null,
     })
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
     await clearLiveInkQuietly()
@@ -468,6 +473,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       teacherClassPaneCommand: null,
       [`taskStartTimes/${taskId}`]: now,
       ...(recordTimeline ? taskTimelineUpdate(taskId, now) : {}),
+      // Keep each unsubmitted draft for the report before currentDraft is cleared below.
+      ...draftLogUpdates(session),
     }
     const pendingShareIds = []
     for (const anonymousId of Object.keys(session?.students ?? {})) {
@@ -485,6 +492,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/currentCodeArrangeSlots`] = null
       updates[`students/${anonymousId}/currentFiles`] = null
       updates[`students/${anonymousId}/currentAnswer`] = null
+      updates[`students/${anonymousId}/currentDraft`] = null
       updates[`students/${anonymousId}/currentSelection`] = null
       updates[`students/${anonymousId}/currentActivity`] = null
       updates[`students/${anonymousId}/currentActiveFile`] = null
@@ -1584,6 +1592,13 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentAnswer`), answer)
   }
 
+  // The student's unsubmitted answer draft ({ taskId, text, at }, or null to clear it), written
+  // by useActivityState at the draft cadence (src/shared/answerDrafts.js): idle-debounced
+  // normally, throttled while the teacher watches. Never an attempt.
+  async function writeStudentDraft(anonymousId, draft) {
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentDraft`), draft ?? null)
+  }
+
   async function writeStudentCode(anonymousId, code) {
     await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/currentCode`), code)
   }
@@ -2151,6 +2166,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     logAttempt,
     flagAttemptError,
     writeStudentAnswer,
+    writeStudentDraft,
     writeStudentCode,
     writeStudentArcadeDesign,
     writeStudentTurtleResult,

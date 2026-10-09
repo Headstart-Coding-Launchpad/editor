@@ -39,6 +39,26 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-09
 
+### Confidence checks are 1–10; tutors see unsubmitted short answers
+
+- **Confidence 1–10 everywhere.** Every `quizType: confidence` task now shows ten buttons, red (1,
+  👎) to green (10, 👍); one tap still submits. This includes lessons already published: there is
+  nothing to change and no opt-in. There is **no `scale` field**: writing one gives the
+  validation warning "… confidence checks always use 1 to 10, so scale is ignored". The tutor's
+  card reads "N/10" and a **Class confidence** strip above the student grid counts how many
+  chose each number. Session reports add `ratingScale: 10` (task summary and student task) and
+  `ratingDistribution` has keys 1–10; a report without `ratingScale` is from before this change
+  and was rated 1–5. See [quiz-tasks.md](quiz-tasks.md#confidence).
+- **Live answer drafts.** In a live lesson the tutor sees what a student is typing into a short
+  answer (open or checked) or the gaps of a typed fill-in-the-gaps before they submit: "✏️
+  Typing, not submitted" on the card and in full in StudentModal. See-only. Drafts are never
+  attempts, checks, `showResponses` entries or badge signals. The session report adds `lastDraft`
+  for a student who never submitted. Nothing to author. See
+  [quiz-tasks.md](quiz-tasks.md#live-drafts-what-the-tutor-sees-before-submit).
+- Affects: quiz_confidence, quiz_short_answer, quiz_fill_blank · Existing lessons: no changes
+  needed · Resolves: authoring-requests/2026-10-09-confidence-check-1-to-10-scale.md,
+  authoring-requests/2026-10-09-tutor-sees-short-answer-text-as-the-student-types.md
+
 ### Side-quests for students who finish while the class waits (`sideQuests`)
 
 - New optional field `sideQuests` on Python, Turtle and HTML code tasks: up to 3 side-quests, each

@@ -9,6 +9,7 @@ import { getTaskActivity } from '../../../activities/registry.pure.js'
 import { getModuleHostedActivityUi } from '../../../activities/registry.js'
 import { readActivityAnswer, studentStateField } from '../../../activities/state.js'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './constants'
+import { readAnswerDraft } from '../../../shared/answerDrafts'
 import { getMirrorLineHintSets } from './mirrorLineHints'
 
 function answerKey(value) {
@@ -210,7 +211,9 @@ export default function StudentWorkspaceBody({
         passed = true
       onEditAnswer?.({ answer: serialized, passed })
     }
-    return (
+    // What the student is typing but has not submitted (short answer, typed gaps), in full.
+    const draftText = isSessionSandbox ? null : readAnswerDraft(student, task?.id)
+    const view = (
       <ActivityView
         task={task}
         state={shownState}
@@ -225,6 +228,16 @@ export default function StudentWorkspaceBody({
             : undefined
         }
       />
+    )
+    if (!draftText) return view
+    return (
+      <div style={s.draftStack}>
+        <div style={s.draftPanel} role="status" data-testid="modal-draft">
+          <div style={s.draftHeading}>✏️ Still typing, not submitted yet</div>
+          <div style={s.draftBody}>{draftText}</div>
+        </div>
+        <div style={s.draftView}>{view}</div>
+      </div>
     )
   }
 
@@ -381,6 +394,44 @@ export default function StudentWorkspaceBody({
 }
 
 const s = {
+  // The unsubmitted draft above a quiz: dashed so it never reads as the submitted answer.
+  draftStack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    height: '100%',
+    minHeight: 0,
+  },
+  draftPanel: {
+    flexShrink: 0,
+    maxHeight: '40%',
+    overflowY: 'auto',
+    padding: '8px 12px',
+    borderRadius: 8,
+    border: '2px dashed var(--ui-border-strong)',
+    background: 'var(--ui-surface-neutral-sunk)',
+    fontFamily: 'var(--font-body)',
+  },
+  draftHeading: {
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    color: 'var(--colour-muted)',
+    marginBottom: 4,
+  },
+  draftBody: {
+    fontSize: '0.95rem',
+    lineHeight: 1.45,
+    color: 'var(--colour-text)',
+    fontStyle: 'italic',
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
+  },
+  draftView: {
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+  },
   htmlEditorPane: {
     flex: 1,
     display: 'flex',

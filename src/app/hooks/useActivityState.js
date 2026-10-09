@@ -3,6 +3,12 @@ import { findTaskById } from '../../shared/taskUtils'
 import { getTaskActivity, isHostedActivityTask } from '../../activities/registry.pure.js'
 import { deserializeActivityState, solutionOrInitialState } from '../../activities/state.js'
 import { createThrottledMirrorWriter } from '../throttledMirrorWriter'
+import {
+  ANSWER_DRAFT_IDLE_MS,
+  buildDraftRecord,
+  normalizeDraftText,
+  readAnswerDraft,
+} from '../../shared/answerDrafts'
 import { useLatestRef } from './useLatestRef'
 
 // Discrete changes (a bit toggled, an item finished) mirror to students/{id}/currentAnswer after
@@ -35,7 +41,13 @@ function storageFileOf(definition) {
  *   state and supersedes a pending teacher edit, but never writes the debounced mirror;
  * - remoteResetAction 'starter' / 'complete' load initialState / solutionState;
  * - teacherAnswerEdit replaces the state and is marked teacher assisted, like quiz edits;
- * - the teacher's own Go Live broadcast publishes the serialised state as teacherLive.answer.
+ * - the teacher's own Go Live broadcast publishes the serialised state as teacherLive.answer;
+ * - `onDraft(text)` (an unsubmitted answer typed into a submit-to-reveal box: an open short
+ *   answer, typed gaps) writes students/{id}/currentDraft in a live lesson only: after
+ *   ANSWER_DRAFT_IDLE_MS of no typing, and throttled like continuous changes while
+ *   activeStudentView is this student (flushed when the teacher starts watching). Never per
+ *   keystroke otherwise. A submit clears it; a draft is never an attempt
+ *   (src/shared/answerDrafts.js).
  */
 export function useActivityState({
   lesson,
@@ -49,6 +61,7 @@ export function useActivityState({
   myStudentData,
   persistence,
   writeStudentAnswer,
+  writeStudentDraft,
   writeStudentRun,
   logAttempt,
   clearTeacherAnswerEdit,
@@ -97,10 +110,13 @@ export function useActivityState({
   const currentTaskIdRef = useLatestRef(currentTaskId)
   const actorIdRef = useLatestRef(actorId)
   const identityIdRef = useLatestRef(identity?.anonymousId ?? null)
+  const viewingTaskIdRef = useLatestRef(viewingTaskId ?? null)
+  const myStudentDataRef = useLatestRef(myStudentData)
   const debounceRef = useRef(null)
   const persistenceRef = useLatestRef(persistence)
   const callbacksRef = useLatestRef({
     writeStudentAnswer,
+    writeStudentDraft,
     writeStudentRun,
     logAttempt,
     clearTeacherAnswerEdit,
@@ -140,6 +156,13 @@ export function useActivityState({
           if (isWatchedNow()) writeAnswer(serialized)
         },
       }),
+      // The watched-only full-rate draft stream (onDraft).
+      draft: createThrottledMirrorWriter({
+        intervalMs: ACTIVITY_CONTINUOUS_THROTTLE_MS,
+        write: (text) => {
+          if (isWatchedNow()) writeDraft(text)
+        },
+      }),
       teacherLive: createThrottledMirrorWriter({
         intervalMs: ACTIVITY_CONTINUOUS_THROTTLE_MS,
         write: (serialized) => {
@@ -158,14 +181,71 @@ export function useActivityState({
     writersRef.current.continuous.cancel()
   }
 
+  // ─── Answer drafts (onDraft) ───────────────────────────────────────────────
+  // latest: the newest draft text typed; written: the text last sent (null when this tab has
+  // sent none), so an unchanged draft is never re-sent and a clear is only sent when needed.
+  // Until this tab sends one, the stored draft (e.g. from before a reload) counts as written.
+  const draftRef = useRef({ latest: '', written: null, timer: null })
+  const draftsAllowed = () =>
+    !teacherPresentation &&
+    phaseRef.current === 'lesson' &&
+    !!actorIdRef.current &&
+    viewingTaskIdRef.current === null
+
+  function writeDraft(text) {
+    const draft = draftRef.current
+    const value = normalizeDraftText(text)
+    if (!draftsAllowed()) return
+    const stored =
+      draft.written ?? readAnswerDraft(myStudentDataRef.current, currentTaskIdRef.current) ?? ''
+    if (stored === value) return
+    draft.written = value || ''
+    callbacksRef.current.writeStudentDraft?.(
+      actorIdRef.current,
+      buildDraftRecord(currentTaskIdRef.current, value)
+    )
+  }
+
+  function cancelDraftWrites() {
+    const draft = draftRef.current
+    clearTimeout(draft.timer)
+    draft.timer = null
+    writersRef.current.draft.cancel()
+  }
+
+  // A submit (or a reset) ends the draft: drop pending writes and clear a stored one.
+  function clearDraft() {
+    cancelDraftWrites()
+    draftRef.current.latest = ''
+    writeDraft('')
+  }
+
+  function handleDraft(text) {
+    const draft = draftRef.current
+    draft.latest = normalizeDraftText(text)
+    if (!draftsAllowed()) return
+    // Idle-debounced always (the low-rate write the card reads); full rate while watched.
+    clearTimeout(draft.timer)
+    draft.timer = setTimeout(() => {
+      draft.timer = null
+      writeDraft(draft.latest)
+    }, ANSWER_DRAFT_IDLE_MS)
+    if (isWatchedNow()) writersRef.current.draft.push(draft.latest)
+  }
+
   // Leaving the task drops any pending mirror write: currentAnswer is per current task, so a
   // late write would land on the next task's card. The state itself is already saved locally.
+  // A pending draft write is dropped too (the teacher's setTaskId clears currentDraft on a class
+  // task change, and keeps it for the report).
   useEffect(
     () => () => {
       clearTimeout(debounceRef.current)
       debounceRef.current = null
       writersRef.current?.continuous.cancel()
       writersRef.current?.teacherLive.cancel()
+      writersRef.current?.draft.cancel()
+      clearTimeout(draftRef.current.timer)
+      draftRef.current = { latest: '', written: null, timer: null }
     },
     [key]
   )
@@ -249,6 +329,8 @@ export function useActivityState({
     const serialized = def.serialize(submitted)
     cancelPendingWrites()
     writersRef.current.teacherLive.cancel()
+    // The answer is in: whatever was being typed is no longer a draft.
+    if (!fromTeacher) clearDraft()
     if (cb.canPublishTeacherLive?.()) {
       cb.publishTeacherLive({
         answer: serialized,
@@ -289,7 +371,8 @@ export function useActivityState({
     if (next === prev || next === undefined) return
     supersedeTeacherAnswerEdit()
     commit(next)
-    const kind = def.classifyChange(prev, next) === 'continuous' ? 'continuous' : 'discrete'
+    const kind =
+      def.classifyChange(prev, next, taskRef.current) === 'continuous' ? 'continuous' : 'discrete'
     sync(kind)
     // Activities whose UI submits final answers itself (quizzes) are never auto-submitted here.
     if (
@@ -305,12 +388,13 @@ export function useActivityState({
   // Stable entry points for the activity UI: they always call the latest implementation, so an
   // event listener bound once never works on a stale task or state.
   const implRef = useRef(null)
-  implRef.current = { handleChange, submit }
+  implRef.current = { handleChange, submit, handleDraft }
   const onChange = useCallback((next) => implRef.current.handleChange(next), [])
   const onSubmit = useCallback(
     (next) => implRef.current.submit(next, { supersede: next !== undefined }),
     []
   )
+  const onDraft = useCallback((text) => implRef.current.handleDraft(text), [])
 
   // The teacher opened this student's live view: publish the latest state straight away so a
   // continuous change made while unwatched (or an answer restored after a reload) is not
@@ -320,6 +404,11 @@ export function useActivityState({
     if (!writesToSession() || phaseRef.current !== 'lesson') return
     const def = definitionRef.current
     const serialized = serializeCurrent()
+    // An unsubmitted draft is sent straight away too, at full rate from now on.
+    if (draftRef.current.latest) {
+      cancelDraftWrites()
+      writeDraft(draftRef.current.latest)
+    }
     if (serialized === def?.serialize(def.initialState(taskRef.current))) return
     cancelPendingWrites()
     writeAnswer(serialized)
@@ -354,6 +443,7 @@ export function useActivityState({
     callbacksRef.current.resetCheckFeedback()
     callbacksRef.current.setRunStatus?.(null)
     cancelPendingWrites()
+    clearDraft()
     writeAnswer(def.serialize(next))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetPushedAt, !!myStudentData])
@@ -385,6 +475,8 @@ export function useActivityState({
     state,
     onChange,
     onSubmit,
+    // An unsubmitted answer typed so far (text), mirrored as students/{id}/currentDraft.
+    onDraft,
     // Saved state of any activity task (read-only review of an earlier task).
     readSavedState: (otherTask) =>
       isHostedActivityTask(otherTask) ? loadState(otherTask, getTaskActivity(otherTask)) : null,

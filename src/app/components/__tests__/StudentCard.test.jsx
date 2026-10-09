@@ -799,23 +799,39 @@ describe('StudentCard', () => {
       expect(screen.getByTestId('item-progress')).toHaveTextContent('🧩 2/2 filled · 1 correct')
     })
 
+    it('short_answer shows an unsubmitted draft marked as not submitted, for this task only', () => {
+      const { unmount } = renderTask(SHORT_ANSWER_TASK.id, {
+        currentDraft: { taskId: SHORT_ANSWER_TASK.id, text: 'It shows tex', at: 1 },
+      })
+      expect(screen.getByTestId('card-draft')).toHaveTextContent(
+        'Typing, not submitted: It shows tex'
+      )
+      // Not the answer: the answer area still has none.
+      expect(screen.getByText('No answer yet')).toBeInTheDocument()
+      unmount()
+      renderTask(SHORT_ANSWER_TASK.id, {
+        currentDraft: { taskId: 999, text: 'Another task', at: 1 },
+      })
+      expect(screen.queryByTestId('card-draft')).not.toBeInTheDocument()
+    })
+
     it('short_answer shows the raw answer text', () => {
       renderTask(SHORT_ANSWER_TASK.id, { currentAnswer: 'It shows text' })
       expect(screen.getByText('It shows text')).toBeInTheDocument()
     })
 
-    it('confidence shows the level out of 5, and no pass/fail badge even once submitted', () => {
+    it('confidence shows the level out of 10, and no pass/fail badge even once submitted', () => {
       const { unmount } = renderTask(CONFIDENCE_TASK.id, {
         currentAnswer: '4',
         lastRunStatus: 'submitted',
         checkPassed: true,
       })
-      expect(screen.getByText('4/5')).toBeInTheDocument()
+      expect(screen.getByText('4/10')).toBeInTheDocument()
       expect(screen.queryByLabelText('Passed')).not.toBeInTheDocument()
       unmount()
-      // A non-numeric answer is not guarded.
+      // A non-numeric answer shows a grey "?".
       renderTask(CONFIDENCE_TASK.id, { currentAnswer: 'abc' })
-      expect(screen.getByText('NaN/5')).toBeInTheDocument()
+      expect(screen.getByText('?')).toBeInTheDocument()
     })
 
     it('hides the quiz answer area during a teacher-started sandbox', () => {

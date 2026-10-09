@@ -188,7 +188,7 @@ want one; with no title it defaults to "🎖️ Today's Coding Moments". The exp
       type: answer_contains
       value: Central Processing Unit
 
-    # Confidence (1–5 rating; any rating completes the task)
+    # Confidence (1–10 rating; any rating completes the task)
     quizType: confidence
     taskMode: live
     explainer: How confident do you feel about for loops?

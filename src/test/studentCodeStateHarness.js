@@ -77,6 +77,7 @@ export const WRITER_NAMES = [
   'writeStudentHintState',
   'logAttempt',
   'writeStudentAnswer',
+  'writeStudentDraft',
   'writeStudentCode',
   'writeStudentArcadeDesign',
   'writeStudentTurtleResult',

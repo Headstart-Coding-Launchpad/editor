@@ -1,6 +1,12 @@
 import React from 'react'
 import { InlineMarkdown } from '../../shared/markdown'
-import QuizTask, { CONFIDENCE_COLOURS, getQuizOptionText } from '../../app/components/QuizTask'
+import QuizTask, { getQuizOptionText } from '../../app/components/QuizTask'
+import {
+  confidenceColour,
+  confidenceTextColour,
+  formatConfidence,
+  parseConfidenceRating,
+} from '../../shared/confidenceScale.js'
 import { getTaskActivity } from '../registry.pure.js'
 
 // Shared UI for the legacy quiz activities: each quiz_<type>/ui.jsx hosts the existing quiz
@@ -12,7 +18,9 @@ import { getTaskActivity } from '../registry.pure.js'
 //   passedOverride === null        → an in-progress change (a tile placed, a gap typed)
 //   anything else (bool/undefined) → a final answer (an option chosen, every tile placed,
 //                                    Submit pressed)
-// which the host sees as onChange(answer) and onSubmit(answer, { passedOverride }). The
+// which the host sees as onChange(answer) and onSubmit(answer, { passedOverride }). Text typed
+// into a submit-to-reveal box (short answer, typed gaps) is also reported as
+// onDraftChange(text) → the host's onDraft, so the tutor sees the unsubmitted draft. The
 // student's host marks a final answer with the definition's grade(); a teacher's "Edit
 // answers" forwards passedOverride as the edit's `passed`, exactly as before.
 
@@ -27,6 +35,7 @@ export function QuizActivityStudentView({
   state,
   onChange,
   onSubmit,
+  onDraft,
   readOnly = false,
   teacher = false,
   result = null,
@@ -45,6 +54,7 @@ export function QuizActivityStudentView({
       showQuestion
       selectedAnswer={selectedAnswer}
       onSelectAnswer={onSelectAnswer}
+      onDraftChange={readOnly ? undefined : onDraft}
       submitted={!!result?.submitted}
       checkPassed={result?.passed ?? false}
       disabled={readOnly}
@@ -108,8 +118,9 @@ const cardStyles = {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 40,
+    minWidth: 48,
     height: 40,
+    padding: '0 6px',
     borderRadius: 8,
     color: '#fff',
     fontFamily: 'var(--font-title)',
@@ -156,17 +167,19 @@ export function TextCardSummary({ raw }) {
   return <span style={cardStyles.shortAnswerText}>{raw}</span>
 }
 
+// The rating as an "N/10" pill in its level's colour (a grey "?" for anything else).
 export function ConfidenceCardSummary({ raw }) {
   if (!hasAnswer(raw)) return <NoAnswer />
-  const level = parseInt(raw)
+  const level = parseConfidenceRating(raw)
   return (
     <span
       style={{
         ...cardStyles.confidenceBadge,
-        background: level >= 1 && level <= 5 ? CONFIDENCE_COLOURS[level - 1] : '#9ca3af',
+        background: confidenceColour(level),
+        color: level === null ? '#fff' : confidenceTextColour(level),
       }}
     >
-      {level}/5
+      {level === null ? '?' : formatConfidence(level)}
     </span>
   )
 }

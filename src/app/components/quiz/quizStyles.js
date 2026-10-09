@@ -5,7 +5,8 @@
 // them out leaves quizUtils holding logic and keeps the palette - the subject of the
 // answer-colour fix - somewhere a reader would look for it.
 
-export const CONFIDENCE_COLOURS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e']
+// The confidence check's red-to-green levels (1 to 10) live with the rest of its scale.
+export { CONFIDENCE_COLOURS } from '../../../shared/confidenceScale'
 
 // Answer options are colour-coded by position, because four bright cards read better to
 // a classroom of children than four identical ones. The colour is decoration: it says
@@ -476,21 +477,18 @@ export const confidenceStyles = {
     fontSize: '0.82rem',
     color: '#6b7280',
   },
-  buttons: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(5, 1fr)',
-    gap: 12,
-    padding: '8px 6px',
-    overflow: 'visible',
-  },
+  // The grid itself is the .confidence-scale class (src/index.css): ten in a row when the quiz
+  // is wide enough (a portrait tablet), two rows of five on a narrow phone.
   btn: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    padding: '16px 0',
-    borderRadius: 12,
+    gap: 2,
+    minWidth: 44,
+    minHeight: 56,
+    padding: '10px 0',
+    borderRadius: 10,
     border: '3px solid',
     cursor: 'pointer',
     transition: 'background 0.12s, color 0.12s, transform 0.12s, box-shadow 0.12s',
@@ -499,11 +497,11 @@ export const confidenceStyles = {
   btnNum: {
     fontFamily: 'var(--font-title)',
     fontWeight: 700,
-    fontSize: '2rem',
+    fontSize: '1.5rem',
     lineHeight: 1,
   },
   btnIcon: {
-    fontSize: '1.3rem',
+    fontSize: '1.05rem',
     lineHeight: 1,
   },
   result: {
