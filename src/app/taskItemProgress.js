@@ -18,8 +18,10 @@ export function getTaskItemProgress(task, student) {
 
 export function formatTaskItemProgress(progress) {
   if (!progress) return ''
-  // An activity may name what it counts ("slots"); progress.kind is the activity id for those.
-  const unit = getActivityDefinition(progress.kind)?.progressUnit
-  const filled = `${progress.filled}/${progress.total} ${unit ? `${unit} ` : ''}filled`
+  // An activity may name what it counts ("slots"); progress.kind is the activity id for those. A
+  // progress result can name its own unit and verb (code_arrange's indent mode: "lines moved").
+  const unit = progress.unit ?? getActivityDefinition(progress.kind)?.progressUnit
+  const verb = progress.verb ?? 'filled'
+  const filled = `${progress.filled}/${progress.total} ${unit ? `${unit} ` : ''}${verb}`
   return progress.correct == null ? filled : `${filled} · ${progress.correct} correct`
 }

@@ -808,7 +808,7 @@ Do not deviate from these key formats.
 | `headstart_identity` | `{ anonymousId, displayName, lastSessionTimestamp }` |
 | `headstart_{lessonId}_{taskId}_{anonymousId}` | `{ code, output, runStatus }` for Python/Turtle; plus `arcadeDesign` for Arcade; `{ code }` for Electronics (serialised circuit); `{ state }` for Scratch; `{ fs }` for Filesystem; `{ desktop }` for Desktop |
 | `headstart_{lessonId}_{taskId}_{filename}_{anonymousId}` | `{ content }` for HTML per-file |
-| `headstart_{lessonId}_{taskId}___code_arrange_slots___{anonymousId}` | `{ content }` Code Arrange tile placements (a per-task aux file, same shape as an HTML file) |
+| `headstart_{lessonId}_{taskId}___code_arrange_slots___{anonymousId}` | `{ content }` Code Arrange tile placements (a per-task aux file, same shape as an HTML file); in indent mode (`arrangeMode: indent`) the same file holds `{ lineId: depth }` for the lines the student moved |
 | `headstart_{lessonId}_{taskId}___activity_state___{anonymousId}` | `{ content }` hosted activity state for `taskType: 'activity'` tasks (serialised JSON) and quiz tasks (the `currentAnswer` string: option id, JSON answer map, typed text or `"1"`..`"5"`); restored on reload and on returning to the task; in-memory only in presentation/preview |
 | `headstart_{lessonId}_personalsandbox_{anonymousId}` | `{ code }` for personal sandbox Python/Turtle/Electronics; `{ code, arcadeDesign }` for Arcade; `{ state }` for Scratch; `{ fs }` for Filesystem; `{ desktop }` for Desktop |
 | `headstart_{lessonId}_personalsandbox_{filename}_{anonymousId}` | `{ content }` for personal sandbox HTML per-file |

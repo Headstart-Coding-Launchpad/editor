@@ -215,6 +215,18 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … is a code-arrange task but has no completion check` | There's nothing to decide when the arrangement is right. | Add a `check`, usually on output. |
 | `Task … entryFile "…" is not one of its starter files` | An HTML arrange task assembles its tiles into `entryFile`, but `starterFiles` has no file with that name, so the preview would be blank. | Add a starter file named after `entryFile` (an empty `content` is fine), or set `entryFile` to the starter file the tiles belong in. |
 | `Task … solution arrangement does not pass its own code check` (warning) | With every blank holding its own correct tile, the assembled program fails one of the task's `code` checks (`code` / `code_contains` / `code_matches_regex` …). Only code checks are tried here; `output` and element checks need a real run, so test those with the Builder's **Show solution** and Run. | Fix the check's value, or the blanks' `code`, so the intended program passes. |
+| `Task … arrangeMode must be slots or indent` | `arrangeMode` has another value. | Use `indent`, or leave it out for tiles into blanks. |
+| `Task … is an indent arrange task but must use the Python module` | Indent mode is Python only. | Set `moduleType: python`. |
+| `Task … line … has no code` | Indent mode: a line has no `code`. | Give every line its code. |
+| `Task … line … code starts with spaces (set its depth instead)` | Indent mode: the indent comes from `depth`, not spaces in `code`. | Remove the leading spaces and set `depth`. |
+| `Task … line … depth must be a whole number from 0 to …` (… is 4) | Indent mode: `depth` is missing, not a whole number, or out of range. | Set `depth: 0` to `4`. |
+| `Task … line … start must be a whole number from 0 to …` (… is 4) | Indent mode: `start` is not a whole number from 0 to 4. | Fix it, or leave it out to start at 0. |
+| `Task … line … locked must be true or false` | Indent mode: `locked` isn't a boolean. | Use `true`, or leave it out. |
+| `Task … line … has parts (indent arrange lines use code and depth)` | Indent mode: a line was written in the tiles format. | Replace `parts` with `code` and `depth`. |
+| `Task … is an indent arrange task but every line is locked` | Nothing for the student to move. | Unlock at least one line. |
+| `Task … is an indent arrange task but has distractors (not used in this mode)` | Indent mode has no tiles. | Remove `distractors`. |
+| `Task … is an indent arrange task but every movable line already starts at its correct depth` (warning) | Every unlocked line's start (default 0) is already its `depth`, so the task starts solved. | Change a `start`, or check the `depth`s. |
+| `Task … line … is indented deeper than the line before it allows` (warning) | Indent mode: in the answer, this line is deeper than the line above (or more than one step deeper than a line ending in `:`), so Python would stop with an `IndentationError`. | Fix the line's `depth`. |
 | `Task … line … follows a line ending in ":" but is not indented` (warning) | Python only: in the authored solution, this line comes after a block opener (`for …:`, `if …:`, `def …:`) but is not indented further, so the program would fail with an `IndentationError`. | Indent the line's blank `code` (or its fixed text), e.g. `"    print(i)"`. |
 
 ## Module starter state

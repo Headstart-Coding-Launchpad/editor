@@ -3819,6 +3819,18 @@ select {
   }
 }
 
+/* code_arrange indent mode: a movable line (CodeArrangeIndentBoard.jsx). */
+.act-indent-line:focus-visible {
+  outline: 3px solid var(--colour-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .act-indent-line {
+    transition: none !important;
+  }
+}
+
 .act-char--selected {
   background: var(--colour-primary);
   color: var(--colour-on-primary, #fff);

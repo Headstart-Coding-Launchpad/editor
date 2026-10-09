@@ -11,6 +11,11 @@
 //   teacher edit   teacherAnswerEdit.codeArrangeSlots ("Edit answers" in StudentModal)
 //   reports        `{ taskType: 'code' }`, the submission is the assembled code / files
 //
+// Indent mode (`arrangeMode: indent`, src/shared/codeArrangeIndent.js): the lines are fixed and
+// the student sets each one's depth. Its state is a { lineId: depth } map carried by the same
+// storage, live channel and teacher edits; the shared helpers in src/shared/codeArrange.js
+// (prune, assemble, solution, derive) hand indent tasks over to it.
+//
 // Only composed lessons offer it (the Builder's Arrange format). Pure and Node-safe.
 import { defineActivity } from '../defineActivity.js'
 import {
@@ -24,6 +29,13 @@ import {
   isArrangementComplete,
   pruneSlotState,
 } from '../../shared/codeArrange.js'
+import {
+  INDENT_MODE,
+  countMovedLines,
+  getMovableLineIds,
+  isIndentArrangeTask,
+  isIndentArrangementCorrect,
+} from '../../shared/codeArrangeIndent.js'
 import { normalizeCodeSubmission } from '../../shared/codeSubmission.js'
 
 export const CODE_ARRANGE_SLOTS_FILENAME = '__code_arrange_slots__'
@@ -58,12 +70,21 @@ function isFilled(value) {
 // { kind, filled, total, correct: null } — the StudentCard / StudentModal "X/N slots filled"
 // badge. Arrangements are marked by running the program, never per slot.
 function slotProgress(task, state) {
+  if (isIndentArrangeTask(task)) return indentProgress(task, state)
   const slotIds = getSlotIds(task)
   if (slotIds.length === 0) return null
   // Only the task's own tiles count: an unknown id shows as an empty blank.
   const slots = isSlotMap(state) ? pruneSlotState(task, state) : {}
   const filled = slotIds.filter((id) => isFilled(slots[id])).length
   return { kind: 'code_arrange', filled, total: slotIds.length, correct: null }
+}
+
+// Indent mode: how many movable lines have left their start depth ("2/5 lines moved").
+function indentProgress(task, state) {
+  const total = getMovableLineIds(task).length
+  if (total === 0) return null
+  const filled = countMovedLines(task, isSlotMap(state) ? pruneSlotState(task, state) : {})
+  return { kind: 'code_arrange', filled, total, correct: null, unit: 'lines', verb: 'moved' }
 }
 
 // The host module a code_arrange surface renders for: its own type when it is a host module,
@@ -85,7 +106,15 @@ export default defineActivity({
   hostModules: CODE_ARRANGE_MODULE_TYPES,
 
   fields: {
+    modeField: 'arrangeMode',
     task: [
+      {
+        name: 'arrangeMode',
+        type: 'string',
+        values: ['slots', INDENT_MODE],
+        description:
+          "slots (default): drag tiles into blanks. indent: lines fixed in order, the student sets each line's depth (Python only).",
+      },
       {
         name: 'moduleType',
         type: 'string',
@@ -100,10 +129,39 @@ export default defineActivity({
         itemFields: [
           { name: 'id', type: 'string', required: true },
           {
+            name: 'code',
+            type: 'string',
+            required: true,
+            authored: true,
+            modes: [INDENT_MODE],
+            description: 'The line without leading spaces.',
+          },
+          {
+            name: 'depth',
+            type: 'number',
+            required: true,
+            authored: true,
+            modes: [INDENT_MODE],
+            description: 'The correct depth: 0 to 4 indent steps.',
+          },
+          {
+            name: 'start',
+            type: 'number',
+            modes: [INDENT_MODE],
+            description: 'Depth the line starts at (default 0); for "fix the indent" tasks.',
+          },
+          {
+            name: 'locked',
+            type: 'boolean',
+            modes: [INDENT_MODE],
+            description: 'Fixed at its depth; the student cannot move it.',
+          },
+          {
             name: 'parts',
             type: 'array',
             required: true,
             authored: true,
+            modes: ['slots'],
             description: 'At least one slot across the task.',
             itemFields: [
               { name: 'type', type: 'string', required: true, values: ['text', 'slot'] },
@@ -123,6 +181,7 @@ export default defineActivity({
         name: 'distractors',
         type: 'array',
         authored: true,
+        modes: ['slots'],
         itemFields: [
           { name: 'id', type: 'string', required: true },
           { name: 'code', type: 'string', required: true, authored: true },
@@ -135,8 +194,20 @@ export default defineActivity({
         authored: true,
         description: "The host module's completion check.",
       },
-      { name: 'entryFile', type: 'string', description: 'HTML only.' },
-      { name: 'starterFiles', type: 'array', authored: true, description: 'HTML only.' },
+      { name: 'entryFile', type: 'string', modes: ['slots'], description: 'HTML only.' },
+      {
+        name: 'starterFiles',
+        type: 'array',
+        authored: true,
+        modes: ['slots'],
+        description: 'HTML only.',
+      },
+      {
+        name: 'showBlocks',
+        type: 'boolean',
+        modes: [INDENT_MODE],
+        description: 'Coloured block brackets beside the lines (default true).',
+      },
     ],
   },
 
@@ -183,6 +254,12 @@ export default defineActivity({
   // module's checks. grade() answers the pure question "is this the authored arrangement?".
   grade: (task, state) => {
     const slots = isSlotMap(state) ? state : {}
+    if (isIndentArrangeTask(task)) {
+      return {
+        passed: isIndentArrangementCorrect(task, pruneSlotState(task, slots)),
+        suggestion: '',
+      }
+    }
     const passed =
       isArrangementComplete(task, slots) && getSlotIds(task).every((id) => slots[id] === id)
     return { passed, suggestion: '' }
@@ -194,7 +271,10 @@ export default defineActivity({
   summarize: (task, state) => {
     const progress = slotProgress(task, state)
     return progress
-      ? { text: `${progress.filled}/${progress.total} slots filled`, tone: 'neutral' }
+      ? {
+          text: `${progress.filled}/${progress.total} ${progress.unit ?? 'slots'} ${progress.verb ?? 'filled'}`,
+          tone: 'neutral',
+        }
       : null
   },
   teacherEditable: true,

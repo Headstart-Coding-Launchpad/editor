@@ -276,6 +276,7 @@ to a single blank, the whole-line shape, as a starting point).
 | Field | Required | Notes |
 |---|:---:|---|
 | `taskType` | Yes | Must be `"code_arrange"`. |
+| `arrangeMode` | No | `slots` (default, the tiles-into-blanks task this table describes) or `indent` (lines fixed in order, the student sets each line's depth; Python only — see "Indent mode" below). |
 | `moduleType` | Yes | `python` or `html` only. Selects which run pipeline executes the assembled code. |
 | `lines` | Yes | Ordered program lines: `{id, parts}[]`. At least one required. One assembled program line (`parts` joined together) is produced per entry, in order, joined by newlines. |
 | `lines[].id` | Yes | Stable string id for the line (Builder list identity/reordering only — not itself a pool tile id). |
@@ -368,6 +369,69 @@ the last run failed). See [session-reports.md](session-reports.md) for the repor
     operator: exists
     selector: h1
 ```
+
+### Indent mode (`arrangeMode: indent`)
+
+For practising **which block a line belongs to**. The lines are fixed in their authored order and
+the student can't reorder, add, remove or edit them; they only change how far each line is
+indented, by dragging it sideways (it snaps to whole steps), with its ← → buttons, or with ← →
+while it has keyboard focus (↑ ↓ move between lines). Run assembles the program at the chosen
+depths (4 spaces per step) and runs it through the normal Python pipeline, so `check`,
+`feedbackChecks` (including `code_structure`) and an `IndentationError` all behave exactly as for
+any arrange task. Every arrangement is runnable, so Run is available straight away.
+
+With block brackets on (the default), every line ending in `:` gets the same coloured bracket as
+the Python editor's, around the lines it currently controls, redrawn as lines move; an
+`elif`/`else` level with its `if` shares the `if`'s colour. Students can hide them with the
+board's **Blocks** button (remembered on that device); `showBlocks: false` hides both.
+
+**Fix the indent** tasks give some lines a `start` depth that is deliberately wrong; `depth` is
+always the correct answer, so a tutor's **Complete (show answers)** and the Builder's **Load
+authored solution** can fill it in, and the answer is hidden in the published lesson like other
+arrange answers.
+
+| Field | Required | Notes |
+|---|:---:|---|
+| `arrangeMode` | Yes | `indent`. |
+| `moduleType` | Yes | `python` only. |
+| `lines` | Yes | Ordered program lines: `{id, code, depth, start?, locked?}[]`. |
+| `lines[].id` | Yes | Unique string id. |
+| `lines[].code` | Yes | The line's code **without** leading spaces (validation fails if it starts with a space). |
+| `lines[].depth` | Yes | The correct depth: a whole number of indent steps from `0` to `4`. |
+| `lines[].start` | No | The depth the line starts at (default `0`). |
+| `lines[].locked` | No | `true` fixes the line at its `depth`: shown greyed with a 🔒, it can't be moved. At least one line must be unlocked. |
+| `showBlocks` | No | `false` hides the block brackets and the Blocks button (default `true`). |
+| `check` / `feedbackChecks` | Yes / No | As above. |
+
+`parts`, `distractors`, `entryFile` and `starterFiles` aren't used in this mode (lines with
+`parts`, or any distractors, fail validation). The teacher's card shows "2/5 lines moved" (lines
+no longer at their start depth); the session report records each Run's assembled program, so
+depth mistakes are visible there. In the Builder, pick **Indent** under **Arrange mode**:
+switching keeps the program (each line's leading spaces become its depth).
+
+```yaml
+- title: Line Up the Warmer Check
+  type: code_arrange
+  moduleType: python
+  arrangeMode: indent
+  explainer: Slide each line left or right so "Heating up!" only prints when the mode is warmer.
+  lines:
+    - { id: L1, code: 'guess = 15', depth: 0, locked: true }
+    - { id: L2, code: 'mode = "warmer"', depth: 0, locked: true }
+    - { id: L3, code: 'if guess < 20:', depth: 0 }
+    - { id: L4, code: 'print("Too low")', depth: 1 }
+    - { id: L5, code: 'if mode == "warmer":', depth: 1 }
+    - { id: L6, code: 'print("Heating up!")', depth: 2 }
+    - { id: L7, code: 'print("Round over")', depth: 0 }
+  check: { type: output, operator: equals, value: "Too low
+Heating up!
+Round over" }
+  feedbackChecks:
+    - check: { type: code_structure, operator: directly_nested_in, inner: 'print("Heating up!")', outer: 'if mode == "warmer":' }
+      hint: Which line decides whether "Heating up!" prints? Line it up one step to the right of that line.
+```
+
+A "fix the indent" version of line 6 would be `{ id: L6, code: 'print("Heating up!")', depth: 2, start: 1 }`.
 
 ---
 

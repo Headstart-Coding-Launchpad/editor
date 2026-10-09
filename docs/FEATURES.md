@@ -101,7 +101,8 @@ After the same hint appears twice in a row, solo students can optionally view th
 
 ### Student Progress Counts
 - Match and Fill in the Gaps tasks show a teacher-only "🧩 3/5 filled · 2 correct" badge on each student card and in the student modal header, updating live as the student works
-- Code Arrange tasks show "🧩 4/6 slots filled" (arrangements are marked by running the code, so there is no per-slot correct count)
+- Code Arrange tasks show "🧩 4/6 slots filled" (arrangements are marked by running the code, so there is no per-slot correct count); indent-mode tasks show "2/5 lines moved"
+- Code Arrange indent mode (`arrangeMode: indent`, Python): the lines stay in order and students slide each one left or right (drag, ← → buttons or arrow keys) to set its depth, with the same coloured block brackets as the Python editor; "fix the indent" tasks start some lines at the wrong depth
 - Students never see these counts
 - "✏️ Edit answers" in the student modal lets the teacher drag, type, or move that student's Match / Fill in the Gaps / Code Arrange items directly; changes appear on the student's screen live with a short "Your teacher updated your answer" note
 - "▶ Run on student" in the student modal runs that student's current code on their own device (Python, Turtle, Arcade, HTML, Scratch green flag, Electronics), exactly as if they had pressed Run; the output mirrors back to the teacher
