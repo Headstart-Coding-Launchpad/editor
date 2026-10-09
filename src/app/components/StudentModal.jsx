@@ -11,7 +11,7 @@ import {
   getCompleteStage,
   getRevealableStages,
 } from '../../shared/taskUtils'
-import { TEACHER_LIVE_REVEAL_KEY } from '../../shared/taskStages.js'
+import { TEACHER_LIVE_REVEAL_KEY, getTeacherLivePin } from '../../shared/taskStages.js'
 import PresenceBadge from './PresenceBadge'
 import ScratchWorkspace from '../../modules/scratch/ScratchWorkspace.jsx'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
@@ -554,8 +554,18 @@ export default function StudentModal({
   const canSetStage = !!onRemoteReset && !isInformation && !isQuiz && stageOptions.length > 0
   // Live code has two modes: pinned ("Keep showing", every task until turned off) and a
   // one-off reveal for this task only (a supportRevealLog entry, like a stage reveal).
-  const teacherLiveReferencePinned = !!student.teacherLiveReferenceVisible
+  // The per-student value is three-way (getTeacherLivePin): a pin time, `false` (hidden for
+  // this student while the class pin is on) or null (follows the class pin). The menu and
+  // header chip show what the student actually gets, class pin included.
+  const studentLivePin = student.teacherLiveReferenceVisible
   const teacherLiveReferencePinnedForClass = !!session?.teacherLiveReferenceVisibleToAll
+  const teacherLiveReferenceHiddenForStudent =
+    studentLivePin === false && teacherLiveReferencePinnedForClass
+  const teacherLiveReferencePinned = !!getTeacherLivePin(
+    studentLivePin,
+    session?.teacherLiveReferenceVisibleToAll
+  )
+  const teacherLiveReferencePinnedForStudent = !!studentLivePin
   const teacherLiveReferenceRevealed = !!revealedSupportStages[TEACHER_LIVE_REVEAL_KEY]
   const teacherLiveReferenceMatchesTask =
     !!session?.teacherLiveReference?.active && session?.teacherLiveReference?.taskId === task?.id
@@ -668,16 +678,24 @@ export default function StudentModal({
                 💡 {shownLineHintCount} {shownLineHintCount === 1 ? 'hint' : 'hints'} showing
               </span>
             )}
-            {(teacherLiveReferencePinned || teacherLiveReferencePinnedForClass) && (
+            {teacherLiveReferencePinned && (
               <span
                 style={s.supportBadge}
                 title={
-                  teacherLiveReferencePinned
+                  teacherLiveReferencePinnedForStudent
                     ? 'Your live code shows for this student on every task until you turn it off'
                     : 'Your live code shows for the whole class on every task until you turn it off'
                 }
               >
                 📌 Live code: kept on
+              </span>
+            )}
+            {teacherLiveReferenceHiddenForStudent && (
+              <span
+                style={s.supportBadge}
+                title="Your live code is pinned for the class but hidden for this student"
+              >
+                📌 Live code: hidden for this student
               </span>
             )}
             {Object.keys(revealedSupportStages).length > 0 && (
@@ -833,26 +851,40 @@ export default function StudentModal({
                               style={sTo.toolBtn}
                               aria-pressed={teacherLiveReferencePinned}
                               disabled={
-                                !teacherLiveReferencePinned && !teacherLiveReferenceMatchesTask
+                                !teacherLiveReferencePinned &&
+                                !teacherLiveReferenceHiddenForStudent &&
+                                !teacherLiveReferenceMatchesTask
                               }
                               title={
                                 teacherLiveReferencePinned
-                                  ? 'Stop showing your live code to this student'
-                                  : teacherLiveReferenceMatchesTask
-                                    ? 'Keep showing your live code on every task until you turn it off'
-                                    : "Will work once you're presenting this task in Presentation View"
+                                  ? teacherLiveReferencePinnedForClass
+                                    ? 'Hide your live code for this student (it stays on for the rest of the class)'
+                                    : 'Stop showing your live code to this student'
+                                  : teacherLiveReferenceHiddenForStudent
+                                    ? 'Show your class-pinned live code to this student again'
+                                    : teacherLiveReferenceMatchesTask
+                                      ? 'Keep showing your live code on every task until you turn it off'
+                                      : "Will work once you're presenting this task in Presentation View"
                               }
                               onClick={() => {
                                 close()
+                                // On → off (written as `false` while the class pin is on);
+                                // hidden → follow the class pin again (null); off → pin.
                                 onSetTeacherLiveReference(
                                   student.anonymousId,
-                                  !teacherLiveReferencePinned
+                                  teacherLiveReferencePinned
+                                    ? false
+                                    : teacherLiveReferenceHiddenForStudent
+                                      ? null
+                                      : true
                                 )
                               }}
                             >
                               {teacherLiveReferencePinned
                                 ? '📌 Live code: kept on'
-                                : '📌 Keep showing live code'}
+                                : teacherLiveReferenceHiddenForStudent
+                                  ? '📌 Show class live code again'
+                                  : '📌 Keep showing live code'}
                             </button>
                           </>
                         )}

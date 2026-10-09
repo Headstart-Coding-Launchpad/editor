@@ -28,7 +28,10 @@ export const TEACHER_LIVE_PIN_REVEAL_KEY = 'teacherLivePinned'
 
 // The pin value currently in effect for a student: their own pin, else the class pin.
 // Pins are stored as the time they were set (legacy pins are `true`); null when unpinned.
+// A per-student `false` is the tutor hiding it for that one student while the class pin
+// stays on for everyone else, so it wins over the class pin.
 export function getTeacherLivePin(studentPin, classPin) {
+  if (studentPin === false) return null
   if (studentPin) return studentPin
   if (classPin) return classPin
   return null

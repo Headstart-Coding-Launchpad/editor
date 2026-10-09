@@ -32,7 +32,7 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
       },
       "sandboxExplainer": "string | null",
       "explainerShowComplete": false,
-      "teacherLiveReferenceVisibleToAll": "number | null (\"📌 Keep showing live code to class\" pin: the time it was pinned; legacy true still counts; not cleared by setTaskId — see classroom-behaviours.md \"Teacher-Live-Code Reference\")",
+      "teacherLiveReferenceVisibleToAll": "number | null (\"📌 Keep showing live code to class\" pin: the time it was pinned; legacy true still counts; not cleared by setTaskId; cleared by endSession; pinning or unpinning also clears every per-student false override — see classroom-behaviours.md \"Teacher-Live-Code Reference\")",
       "fullscreenRequestedAt": "1234567890 | null",
       "nudgeAwayPushedAt": "1234567890 | null (class-wide nudge; only students whose window is unfocused react)",
       "videoCallLink": "string | null (http(s) URL only, validated at the write boundary; ephemeral — reset to null on createSession/restartSession/endSession, so the teacher re-enters it each session)",
@@ -277,7 +277,7 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
           "teacherMessagePushedAt": "number | null",
           "nudgePushedAt": "number | null (teacher nudge for this student — see useNudgeAlert)",
           "thumbsUpPushedAt": "number | null (teacher 👍 \"on the right track\" — stamped by sendThumbsUp; transient toast via useThumbsUp, not a badge, not in reports; cleared by setTaskId)",
-          "teacherLiveReferenceVisible": "number | null (\"📌 Keep showing live code\" pin for this student: the time it was pinned; legacy true still counts; not cleared by setTaskId)",
+          "teacherLiveReferenceVisible": "number | false | null (\"📌 Keep showing live code\" for this student: a pin time (legacy true still counts) keeps it on; false hides the class pin for this student only; null follows teacherLiveReferenceVisibleToAll. Not cleared by setTaskId)",
           "autoRevealStage": "'first' | 'support' | 'solution' | null (teacher's \"Show on every task\" reference for this student — see below)",
           "pasteLog": {
             "{taskId}": { "count": 2, "chars": 180, "lastAt": 1234567890, "firstAt": "ServerValue.TIMESTAMP (first large paste on the task, set once)" }

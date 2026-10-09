@@ -178,6 +178,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       sandboxPreviousTaskId: null,
       lessonOverrideTasks: null,
       explainerShowComplete: false,
+      teacherLiveReferenceVisibleToAll: null,
       taskStartTimes: {},
       // The class's current task over time, for the session report (see taskTimelineUpdate).
       taskTimeline: null,
@@ -277,6 +278,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       sandboxEnteredAt: null,
       lessonOverrideTasks: null,
       explainerShowComplete: false,
+      // The class "📌 Keep showing live code" pin belongs to this session.
+      teacherLiveReferenceVisibleToAll: null,
       students: null,
       overrideLog: null,
       supportRevealLog: null,
@@ -949,7 +952,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
-  // Presentation View's code as a soft, dismissible support reference — a
+  // Presentation View's code as a soft, read-only support reference — a
   // separate node from teacherLive, published continuously while Presentation
   // is open regardless of whether the "Go Live" force takeover (teacherLive)
   // is toggled on. See docs/agents/classroom-behaviours.md.
@@ -2004,18 +2007,32 @@ export function useSession(lessonId, { enabled = true } = {}) {
   // A pin is stored as the time it was set, so the student's client can log it
   // once per pin rather than once per task. The one-off "Reveal live code" is a
   // supportRevealLog entry instead (TEACHER_LIVE_REVEAL_KEY), not a flag here.
+  //
+  // The per-student value is three-way (see getTeacherLivePin): a pin time keeps it on for
+  // this student, `false` hides it for this student while the class pin stays on for
+  // everyone else, and null follows the class pin. `visible` is true, false (hide; written as
+  // `false` only while a class pin is on, else null) or null (follow the class).
   async function setTeacherLiveReferenceForStudent(anonymousId, visible) {
+    let value = null
+    if (visible === true) value = Date.now()
+    else if (visible === false && session?.teacherLiveReferenceVisibleToAll) value = false
     await set(
       ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherLiveReferenceVisible`),
-      visible ? Date.now() : null
+      value
     )
   }
 
+  // Pinning or unpinning for the class starts everyone afresh: any per-student "hidden for
+  // this student" (`false`) override is cleared with it, so a new class pin reaches every
+  // student. Per-student pins (a pin time) are left alone.
   async function setTeacherLiveReferenceForClass(visible) {
-    await set(
-      ref(db, `sessions/${lessonId}/teacherLiveReferenceVisibleToAll`),
-      visible ? Date.now() : null
-    )
+    const updates = { teacherLiveReferenceVisibleToAll: visible ? Date.now() : null }
+    for (const [anonymousId, student] of Object.entries(session?.students ?? {})) {
+      if (student?.teacherLiveReferenceVisible === false) {
+        updates[`students/${anonymousId}/teacherLiveReferenceVisible`] = null
+      }
+    }
+    await update(ref(db, `sessions/${lessonId}`), updates)
   }
 
   async function requestHelp(anonymousId) {
