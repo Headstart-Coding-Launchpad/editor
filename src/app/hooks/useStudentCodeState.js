@@ -78,6 +78,7 @@ import { getModuleDefinition } from '../../modules/definitions.js'
 import { cloneArcadeDesign } from '../../modules/arcade/design'
 import { runWithRuntime } from './runWithRuntime'
 import { useStudentBadgeSignals } from './useStudentBadgeSignals'
+import { useStudentTypingStats } from './useStudentTypingStats'
 import { runErrorFor, runErrorName } from '../../badges/signals'
 
 // The generic work slot before any module has loaded work into it.
@@ -173,6 +174,7 @@ export function useStudentCodeState({
   recordStudentCarryFallback,
   recordSupportStageReveal,
   recordStudentPaste,
+  recordStudentTyping,
   writeStudentPersonalSandbox,
   writeStudentPresence,
   registerPresence,
@@ -309,6 +311,20 @@ export function useStudentCodeState({
     currentTaskId,
     inPersonalSandbox,
     writers: badgeSignalWriters,
+  })
+  // Typing measures for the session report (src/shared/typingStats.js): live lesson code tasks
+  // of a typing lesson type only, keyboard devices only. The editor reports keystrokes through
+  // the BadgeSignalsContext; Run (handleRun) and task changes send the per-task totals.
+  const typingStats = useStudentTypingStats({
+    phase,
+    identity,
+    session,
+    teacherPresentation,
+    previewMode,
+    currentTaskId,
+    lessonType: lesson?.type,
+    inPersonalSandbox,
+    writers: { recordStudentTyping },
   })
   // Updated synchronously by setWork / setInteraction (not on render), so a handler that runs
   // straight after another in the same event — e.g. Desktop opening a file calls
@@ -1508,6 +1524,9 @@ export function useStudentCodeState({
       (runKind === 'preview' && typeof mod?.runtime?.buildPreviewSrc === 'function')
     if (!runsHere) return
     syncCodeArrangeSlotBeforeRun(task)
+    // The session report's typing totals go with each Run; the first Run on a copyCode task
+    // also records how far the code is from the copyCode (no-op outside a live lesson task).
+    typingStats.noteRun({ copyCode: task?.copyCode, work: storedWork(moduleType).work })
 
     setRunning(true)
     setOutput('')
@@ -3065,5 +3084,8 @@ export function useStudentCodeState({
     // Live badge signal reporters (useStudentBadgeSignals), for StudentView's work-area
     // keydown listener, topic opens and the BadgeSignalsContext.
     badgeSignals,
+    // Session report typing measures (useStudentTypingStats): `reportTyping` goes on the
+    // BadgeSignalsContext for the shared CodeEditor.
+    typingStats,
   }
 }

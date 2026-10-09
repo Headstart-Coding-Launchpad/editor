@@ -168,6 +168,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       lessonOverrideTasks: null,
       explainerShowComplete: false,
       taskStartTimes: {},
+      // The class's current task over time, for the session report (see taskTimelineUpdate).
+      taskTimeline: null,
       students: {},
       supportRevealLog: null,
       taskRatingLog: null,
@@ -206,14 +208,35 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await createSession()
   }
 
+  // The session report's `taskTimeline` (sessions/{lessonId}/taskTimeline/{pushId}:
+  // { taskId, startedAt }): one entry each time the class's current task changes, information
+  // tasks included, from the session start on. Teacher-written, with the task change itself; a
+  // change to the task already last on the timeline adds nothing (`force` skips that check, for
+  // the session start). Returns the update fields to merge, or {} for no entry.
+  function taskTimelineUpdate(taskId, at, { force = false } = {}) {
+    if (taskId == null) return {}
+    if (!force) {
+      if (session?.state !== 'active' && session?.state !== 'sandbox') return {}
+      const last = Object.values(session?.taskTimeline ?? {})
+        .filter((entry) => entry && typeof entry.startedAt === 'number')
+        .sort((a, b) => a.startedAt - b.startedAt)
+        .at(-1)
+      if (last && String(last.taskId) === String(taskId)) return {}
+    }
+    const key = push(ref(db, `sessions/${lessonId}/taskTimeline`)).key
+    return { [`taskTimeline/${key}`]: { taskId, startedAt: at } }
+  }
+
   async function startSession() {
     const now = Date.now()
+    const taskId = session?.currentTaskId ?? 1
     await update(ref(db, `sessions/${lessonId}`), {
       state: 'active',
       startedAt: now,
       currentTaskStartedAt: now,
       endedAt: null,
-      [`taskStartTimes/${session?.currentTaskId ?? 1}`]: now,
+      [`taskStartTimes/${taskId}`]: now,
+      ...taskTimelineUpdate(taskId, now, { force: true }),
     })
   }
 
@@ -420,7 +443,10 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
-  async function setTaskId(taskId) {
+  // `recordTimeline: false` keeps the change off the report's taskTimeline: Go Live in the
+  // teacher sandbox silently moving a composed lesson onto the sandbox module's task (see
+  // TeacherView.handleGoLiveSandbox), which is not the class moving on.
+  async function setTaskId(taskId, { recordTimeline = true } = {}) {
     const now = Date.now()
     const updates = {
       currentTaskId: taskId,
@@ -428,6 +454,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       explainerShowComplete: false,
       teacherClassPaneCommand: null,
       [`taskStartTimes/${taskId}`]: now,
+      ...(recordTimeline ? taskTimelineUpdate(taskId, now) : {}),
     }
     const pendingShareIds = []
     for (const anonymousId of Object.keys(session?.students ?? {})) {
@@ -612,6 +639,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       session.sandboxPreviousTaskId !== session?.currentTaskId
     ) {
       updates.currentTaskId = session.sandboxPreviousTaskId
+      // Back on the task the class left (usually already last on the timeline, so no entry).
+      Object.assign(updates, taskTimelineUpdate(session.sandboxPreviousTaskId, now))
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
     if (session?.sandboxEnteredAt != null) {
@@ -1673,6 +1702,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
+  // This student's typing totals on a task for the session report (src/shared/typingStats.js),
+  // aggregated on their device by useStudentTypingStats and written on Run, task change or a
+  // hidden tab, never per keystroke. Each write replaces the task's record with the new totals.
+  // Lives on the student's own node beside pasteLog, so students can write it.
+  async function recordStudentTyping(anonymousId, taskId, record) {
+    if (!anonymousId || taskId == null || !record) return
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/typingLog/${taskId}`), record)
+  }
+
   // ─── Live badges: student signals ─────────────────────────────────────────
   //
   // sessions/{lessonId}/studentSignals/{anonymousId}, written by the student's own client only
@@ -2035,6 +2073,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     recordStudentCarryFallback,
     recordSupportStageReveal,
     recordStudentPaste,
+    recordStudentTyping,
     // student: live badge signals
     recordTopicOpenSignal,
     recordShortcutSignal,

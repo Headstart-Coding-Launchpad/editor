@@ -15,10 +15,12 @@ import {
   buildTeacherSandboxReport,
   capSessionReportSize,
   findFirstRealPasses,
+  median,
   studentBadgeFields,
   studentTaskBadgeFields,
   taskSummaryBadgeFields,
 } from '../badges/reportMetrics.js'
+import { typingReportFields } from './typingStats.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
 
@@ -292,6 +294,82 @@ function summarizePastes(perStudent) {
   }
 }
 
+// Typing measures on a code task (students.{id}.typingLog.{taskId}, see useStudentTypingStats
+// and src/shared/typingStats.js). Code tasks only: quizzes and activities (Code Arrange
+// included) have no typing editor, and a Scratch task never records any.
+function studentTypingFields(task, studentNode) {
+  if (getReportActivity(task)) return null
+  return typingReportFields(studentNode?.typingLog?.[task.id])
+}
+
+// The class's typing on a task: the spread of typing rates (students with a rate) and the
+// median corrections (students with a typing record). Omitted when nobody typed.
+function summarizeTyping(perStudent) {
+  const typed = perStudent.map((task) => task.typing).filter(Boolean)
+  if (typed.length === 0) return {}
+  const rates = typed.map((typing) => typing.charsPerMin).filter((rate) => rate != null)
+  return {
+    typingSummary: {
+      ...(rates.length > 0
+        ? {
+            charsPerMin: {
+              medianPerMin: median(rates),
+              minPerMin: Math.min(...rates),
+              maxPerMin: Math.max(...rates),
+              studentCount: rates.length,
+            },
+          }
+        : {}),
+      correctionsMedian: median(typed.map((typing) => typing.corrections)),
+    },
+  }
+}
+
+// The nearest-rank percentile (0-100) of a non-empty list.
+function percentile(numbers, p) {
+  const sorted = [...numbers].sort((a, b) => a - b)
+  const rank = Math.max(1, Math.ceil((p / 100) * sorted.length))
+  return sorted[rank - 1]
+}
+
+// The spread of students' timeOnTaskMs, so the gap between the median and the slowest student
+// is in the report. Omitted when no student has a time.
+function summarizeTimeOnTaskSpread(perStudent) {
+  const times = perStudent.map((task) => task.timeOnTaskMs).filter((ms) => typeof ms === 'number')
+  if (times.length === 0) return {}
+  return {
+    timeOnTaskSpread: {
+      medianMs: median(times),
+      p90Ms: percentile(times, 90),
+      maxMs: Math.max(...times),
+      studentCount: times.length,
+    },
+  }
+}
+
+// The session's current task over time (sessions/{lessonId}/taskTimeline, written by the
+// teacher's setTaskId / startSession / exitSandbox): `[{ taskId, startedAt }]`, oldest first,
+// every task including information tasks, with consecutive repeats of a task collapsed.
+// Sessions from before 2026-10-09 have none (empty list).
+export function buildTaskTimeline(session) {
+  const entries = Object.values(session?.taskTimeline ?? {})
+    .filter(
+      (entry) =>
+        entry != null &&
+        entry.taskId != null &&
+        typeof entry.startedAt === 'number' &&
+        Number.isFinite(entry.startedAt)
+    )
+    .sort((a, b) => a.startedAt - b.startedAt)
+  const timeline = []
+  for (const entry of entries) {
+    const last = timeline[timeline.length - 1]
+    if (last && String(last.taskId) === String(entry.taskId)) continue
+    timeline.push({ taskId: entry.taskId, startedAt: entry.startedAt })
+  }
+  return timeline
+}
+
 function summarizeSupportReveals(perStudent) {
   const reveals = perStudent.flatMap((task) => task.supportReveals ?? [])
   const sourceCounts = reveals.reduce(
@@ -560,6 +638,7 @@ export function buildSessionReport({
         task.id
       )
       const pastes = normalizePasteRecord(studentsSnapshot[anonymousId]?.pasteLog?.[task.id])
+      const typing = studentTypingFields(task, studentsSnapshot[anonymousId])
       const attempts = countAttempts(entries)
       const { finalResult, completed } = resolveTaskOutcome(task, entries, override, autoCheck)
       const itemProgress =
@@ -598,6 +677,7 @@ export function buildSessionReport({
         ...(carryFallback ? { carryFallback } : {}),
         ...(supportReveals.length > 0 ? { supportReveals } : {}),
         ...(pastes ? { pastes } : {}),
+        ...(typing ? { typing } : {}),
         ...(itemProgress ? { itemProgress } : {}),
         ...(isNotApplicableTask(task)
           ? {}
@@ -717,6 +797,8 @@ export function buildSessionReport({
       ...summarizeCarryFallbacks(perStudent),
       ...summarizeSupportReveals(perStudent),
       ...summarizePastes(perStudent),
+      ...summarizeTimeOnTaskSpread(perStudent),
+      ...summarizeTyping(perStudent),
       ...badgeFields,
       ...(teacherRating ? { teacherRating } : {}),
     }
@@ -748,6 +830,8 @@ export function buildSessionReport({
     offers: session?.peerHelpOffers,
     nameOf: labelFor,
   })
+  // When the class moved onto each task, information tasks included.
+  const taskTimeline = buildTaskTimeline(session)
 
   return capSessionReportSize({
     lessonId: lesson?.id ?? session?.lessonId ?? null,
@@ -757,6 +841,7 @@ export function buildSessionReport({
     endedAt: session?.endedAt ?? Date.now(),
     students,
     taskSummary,
+    ...(taskTimeline.length > 0 ? { taskTimeline } : {}),
     ...(quizGroups.length > 0 ? { quizGroups } : {}),
     ...(teacherSandbox ? { teacherSandbox } : {}),
     ...(Object.keys(badgeSummary).length > 0 ? { badgeSummary } : {}),

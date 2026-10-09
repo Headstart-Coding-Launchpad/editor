@@ -6,11 +6,13 @@ import {
   CodeEditor,
   errorLineField,
   isAutocompletePick,
+  isCorrectionKey,
   isUserEditUpdate,
   minimalReplace,
   setErrorLine,
   setTeacherHighlights,
   teacherHighlightsField,
+  typedCharsInUpdate,
 } from '../CodeEditor'
 
 // Per docs/TESTING.md, CodeMirror editor internals (EditorView/DOM) are not
@@ -295,6 +297,67 @@ describe('isAutocompletePick (✨ Autocomplete Ace)', () => {
     expect(isAutocompletePick(updateFor({ ...insert, userEvent: 'input.complete' }))).toBe(true)
     expect(isAutocompletePick(updateFor({ ...insert, userEvent: 'input.type' }))).toBe(false)
     expect(isAutocompletePick(updateFor(insert))).toBe(false)
+  })
+})
+
+describe('typedCharsInUpdate (session report typing)', () => {
+  function updateFor(...specs) {
+    let state = EditorState.create({ doc: 'print(1)' })
+    const transactions = specs.map((spec) => {
+      const tr = state.update(spec)
+      state = tr.state
+      return tr
+    })
+    return { docChanged: transactions.some((tr) => tr.docChanged), transactions }
+  }
+
+  const typed = (insert, userEvent, from = 0) =>
+    typedCharsInUpdate(updateFor({ changes: { from, insert }, userEvent }))
+
+  it('counts characters typed by keystrokes', () => {
+    expect(typed('x', 'input.type')).toBe(1)
+    // Auto-closed brackets arrive with the keystroke that typed the opener.
+    expect(typed('()', 'input.type')).toBe(2)
+  })
+
+  it("counts Enter's newline once, not its auto-indent", () => {
+    expect(typed('\n    ', 'input', 8)).toBe(1)
+  })
+
+  it('never counts pastes, drops, autocomplete, undo or outside value syncs', () => {
+    for (const userEvent of [
+      'input.paste',
+      'input.drop',
+      'input.complete',
+      'undo',
+      'redo',
+      'delete.backward',
+    ]) {
+      expect(typed('abc', userEvent)).toBe(0)
+    }
+    expect(typedCharsInUpdate(updateFor({ changes: { from: 0, to: 8, insert: 'print(2)' } }))).toBe(
+      0
+    )
+  })
+
+  it('adds up several typed transactions in one update', () => {
+    expect(
+      typedCharsInUpdate(
+        updateFor(
+          { changes: { from: 0, insert: 'a' }, userEvent: 'input.type' },
+          { changes: { from: 1, insert: 'b' }, userEvent: 'input.type' }
+        )
+      )
+    ).toBe(2)
+  })
+})
+
+describe('isCorrectionKey', () => {
+  it('is a Backspace or Delete press, not a held-down repeat', () => {
+    expect(isCorrectionKey({ key: 'Backspace' })).toBe(true)
+    expect(isCorrectionKey({ key: 'Delete' })).toBe(true)
+    expect(isCorrectionKey({ key: 'Backspace', repeat: true })).toBe(false)
+    expect(isCorrectionKey({ key: 'a' })).toBe(false)
   })
 })
 
