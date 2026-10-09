@@ -407,6 +407,103 @@ describe('useSession', () => {
     })
   })
 
+  describe('taskTimeline (session report)', () => {
+    function lastSessionUpdate() {
+      return firebaseMocks.update.mock.calls
+        .filter(([r]) => r.path === 'sessions/lesson-1')
+        .at(-1)[1]
+    }
+    function timelineEntries(updates) {
+      return Object.entries(updates).filter(([key]) => key.startsWith('taskTimeline/'))
+    }
+
+    it('startSession records the first task', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ state: 'waiting', currentTaskId: 3 })
+      await act(async () => {
+        await result.current.startSession()
+      })
+      const updates = lastSessionUpdate()
+      expect(updates['taskTimeline/mockHighlightId']).toEqual({
+        taskId: 3,
+        startedAt: updates.startedAt,
+      })
+    })
+
+    it('setTaskId records each change, information tasks included', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        state: 'active',
+        currentTaskId: 1,
+        taskTimeline: { a: { taskId: 1, startedAt: 100 } },
+      })
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      const updates = lastSessionUpdate()
+      expect(updates['taskTimeline/mockHighlightId']).toEqual({
+        taskId: 2,
+        startedAt: updates.currentTaskStartedAt,
+      })
+    })
+
+    it('adds nothing for the task already last on the timeline', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        state: 'active',
+        currentTaskId: 2,
+        taskTimeline: { a: { taskId: 1, startedAt: 100 }, b: { taskId: 2, startedAt: 200 } },
+      })
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      expect(timelineEntries(lastSessionUpdate())).toEqual([])
+    })
+
+    it('records nothing before the session starts or for the Go Live sandbox jump', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ state: 'waiting', currentTaskId: 1 })
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      expect(timelineEntries(lastSessionUpdate())).toEqual([])
+
+      fireSession({ state: 'active', currentTaskId: 1 })
+      await act(async () => {
+        await result.current.setTaskId(4, { recordTimeline: false })
+      })
+      expect(timelineEntries(lastSessionUpdate())).toEqual([])
+    })
+
+    it('exitSandbox records a return to a task other than the last one', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        state: 'sandbox',
+        currentTaskId: 9,
+        sandboxPreviousTaskId: 4,
+        taskTimeline: { a: { taskId: 3, startedAt: 100 } },
+      })
+      await act(async () => {
+        await result.current.exitSandbox()
+      })
+      expect(lastSessionUpdate()['taskTimeline/mockHighlightId']).toMatchObject({ taskId: 4 })
+    })
+  })
+
+  describe('recordStudentTyping', () => {
+    it("writes the task's typing totals to the student's own typingLog", async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      const record = { charsTyped: 12, activeTypingMs: 6000, corrections: 1 }
+      await act(async () => {
+        await result.current.recordStudentTyping('s1', 3, record)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/s1/typingLog/3' },
+        record
+      )
+    })
+  })
+
   describe('enterSandbox / exitSandbox', () => {
     it('records previousTaskId as sandboxPreviousTaskId when provided', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
@@ -1356,6 +1453,8 @@ describe('useSession', () => {
         explainerShowComplete: false,
         teacherClassPaneCommand: null,
         'taskStartTimes/2': session.currentTaskStartedAt,
+        // The report's taskTimeline entry (push key from the firebase mock).
+        'taskTimeline/mockHighlightId': { taskId: 2, startedAt: session.currentTaskStartedAt },
       })
       expect(student).toEqual({
         checkPassed: null,

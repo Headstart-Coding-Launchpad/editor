@@ -28,7 +28,8 @@ export const REPORT_SIZE_NOTE_PUSHES =
 const sameId = (a, b) => a != null && b != null && String(a) === String(b)
 const isTime = (value) => typeof value === 'number' && Number.isFinite(value)
 
-function median(numbers) {
+/** The median of a list of numbers (the mean of the middle two, rounded, for an even count). */
+export function median(numbers) {
   if (numbers.length === 0) return null
   const sorted = [...numbers].sort((a, b) => a - b)
   const mid = Math.floor(sorted.length / 2)

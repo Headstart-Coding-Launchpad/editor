@@ -7,8 +7,9 @@ import { createContext, useContext } from 'react'
 // and reporting is a no-op. The reporters do their own gating: a provider in the presentation
 // window or a preview reports nothing.
 //
-// Value: { reportUserEdit(surface), reportAutocomplete(), reportTopicOpen(topicId, { source, via }) }
-// or null.
+// Value: { reportUserEdit(surface), reportAutocomplete(), reportTopicOpen(topicId, { source, via }),
+// reportTyping(event) } or null. `reportTyping` is not a badge signal: it feeds the session
+// report's typing measures (useStudentTypingStats, src/shared/typingStats.js).
 export const BadgeSignalsContext = createContext(null)
 
 export function useBadgeSignals() {

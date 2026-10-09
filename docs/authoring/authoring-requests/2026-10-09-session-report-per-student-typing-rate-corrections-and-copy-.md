@@ -1,6 +1,6 @@
 # Session report: per-student typing rate, corrections and copy accuracy on code tasks
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** tooling
 - **Requested by:** Ryan (approved by Ryan), 2026-10-09
 - **Lessons blocked:** none yet
@@ -54,4 +54,23 @@ Uses: recalibrate the typing-volume estimate; choose tasks for side-quests (Requ
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Branch `feature/session-report-timeline-typing`. Report only: the optional live typing figure on
+the teacher's card was left out. The shared code editor reports keystroke inserts, Backspace/Delete
+presses and accepted autocomplete suggestions; the student's device adds them up per task and
+writes one aggregated record to its own `students/{id}/typingLog/{taskId}` on Run, task change and
+a hidden tab (never per keystroke). Python, Turtle and HTML code tasks in a live lesson, keyboard
+devices only (omitted on touch devices, Scratch and every other module, quizzes and activities).
+
+- Per student per code task, `typing: { charsTyped, activeTypingMs, charsPerMin, corrections,
+  longestPauseMs, autocompleteAccepts, copyDistance? }` as in the example. `charsTyped` excludes
+  pastes and autocomplete (Enter's auto-indent counts once); a gap over 5 s ends a burst;
+  `charsPerMin` is null under 5 s of active typing; `corrections` counts presses (a held key
+  once); `copyDistance` is the Levenshtein distance from the copyCode at the first Run, ignoring
+  trailing whitespace (HTML: the closest file). Omitted when the student typed nothing.
+- Task summary: `typingSummary: { charsPerMin: { medianPerMin, minPerMin, maxPerMin,
+  studentCount }, correctionsMedian }` (omitted when nobody typed) and, on graded tasks,
+  `timeOnTaskSpread: { medianMs, p90Ms, maxMs, studentCount }` (nearest-rank p90).
+- Typing after the student's last Run, task change or hidden tab before the session ended is not
+  reported (the students node is wiped at the end).
+- Docs: [session-reports.md](../session-reports.md) "Typing";
+  [CHANGELOG.md](../CHANGELOG.md) 2026-10-09.

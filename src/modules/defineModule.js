@@ -77,6 +77,8 @@ export const OPTIONAL_CAPABILITY_BOOLEANS = Object.freeze([
   'teacherUnifiedStageTabs', // the teacher's code tabs list starter / complete as stage roles
   // with no separate Starter / Complete tabs (python, html)
   'explainerBlockMenu', // the explainer editor offers the Scratch block-reference menu (scratch)
+  'typingStats', // the student's keystrokes in the shared code editor feed the session report's
+  // `typing` measures (useStudentTypingStats; python, turtle, html)
 ])
 // How the student reaches a task's code stages on their own (StudentView, LessonTaskContent):
 // - 'progressive' reveals support stages as read-only references and previews the complete

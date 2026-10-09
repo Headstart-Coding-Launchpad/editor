@@ -44,6 +44,7 @@ export default defineModule({
     teacherStageReveal: false,
     highlights: false,
     downloadCode: false,
+    typingStats: true,
     fixedExplainer: false,
     topicLibrary: true,
     studentMirror: 'view',

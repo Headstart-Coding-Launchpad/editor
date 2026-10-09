@@ -91,6 +91,7 @@ export const WRITER_NAMES = [
   'recordStudentCarryFallback',
   'recordSupportStageReveal',
   'recordStudentPaste',
+  'recordStudentTyping',
   'recordStudentTileMiss',
   'writeStudentPersonalSandbox',
   'writeStudentPresence',
