@@ -43,6 +43,7 @@ import tidyCoder from './definitions/tidy_coder.js'
 import edgeExplorer from './definitions/edge_explorer.js'
 import finisher from './definitions/finisher.js'
 import carefulChecker from './definitions/careful_checker.js'
+import sideQuester from './definitions/side_quester.js'
 
 const BADGES = [
   bugHunter,
@@ -59,6 +60,7 @@ const BADGES = [
   autocompleteAce,
   earlyBird,
   helpfulCoder,
+  sideQuester,
   problemSolver,
   experimenter,
   creativeCoder,

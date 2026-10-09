@@ -444,6 +444,44 @@ export function joinedEarly({ minutesOption = 'earlyBirdMinutes' } = {}) {
 }
 
 /**
+ * 🗺️: at least `options[minDoneOption]` side-quests marked Done in the session
+ * (`side_quest_done` events, src/shared/sideQuests.js), across any tasks. Done is self-reported,
+ * so a badge using this is never auto-awardable. A side-quest on a task that has gone, or whose
+ * task suppresses the badge, doesn't count. The suggestion's task is the one the qualifying
+ * side-quest was on. Values: `count` (side-quests done when it qualified).
+ */
+export function sideQuestsDone({ minDoneOption = 'sideQuesterMinDone' } = {}) {
+  return Object.freeze({
+    kind: 'sideQuestsDone',
+    minDoneOption,
+    hintable: false,
+    evaluate({ badgeId, timelines, index, options }) {
+      const needed = options[minDoneOption]
+      return entriesOf(timelines).flatMap(([studentId, timeline]) => {
+        const seen = new Set()
+        const done = eventsOf(timeline, 'side_quest_done').filter((event) => {
+          const info = index.get(event.taskId)
+          if (!info || !taskAllowsBadge(info, badgeId)) return false
+          // One per side-quest, however often it was marked.
+          const key = `${String(event.taskId)}#${event.index}`
+          if (seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+        if (done.length < needed) return []
+        const qualifying = done[needed - 1]
+        return [
+          candidate(studentId, index.get(qualifying.taskId), {
+            at: qualifying.at,
+            values: { count: needed },
+          }),
+        ]
+      })
+    },
+  })
+}
+
+/**
  * 🎯: in a quiz group (a lesson group with at least `quizMasterMinQuizzes` graded quizzes), at
  * least `quizMasterThreshold` of them right first time. A group is evaluated once the student
  * has attempted all of its graded quizzes, or the class has moved past it (`options.currentTaskId`
