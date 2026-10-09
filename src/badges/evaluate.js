@@ -25,6 +25,9 @@ function sortByTime(candidates) {
  * @property {string} badgeId
  * @property {string} studentId
  * @property {string|number|null} taskId the lesson task it came from (null for a sandbox)
+ * @property {string|null} taskTitle that task's title from the lesson index ("Task n" when it
+ *   has none), looked up from `taskId` for every badge, so the tutor always sees which task a
+ *   suggestion came from (suggestionTaskLabel in ./badgeDisplay.js); null when there is no task
  * @property {string} reason the badge's reasonText, ready to store on the decision
  * @property {'task'|'sandbox'|'personal'} context
  * @property {number|null} at when it happened (for ordering; null when unknown)
@@ -75,6 +78,7 @@ export function evaluateBadgeRules({ timelines, lesson, decisions = {}, options 
         badgeId: badge.id,
         studentId: found.studentId,
         taskId: found.taskId,
+        taskTitle: index.get(found.taskId)?.title ?? null,
         reason: badge.reasonText(found.values),
         context: found.context,
         at: found.at ?? null,

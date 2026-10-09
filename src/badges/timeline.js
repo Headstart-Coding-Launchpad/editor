@@ -27,6 +27,7 @@ export const TIMELINE_EVENT_TYPES = Object.freeze([
   'autocomplete',
   'peer_help',
   'side_quest_done',
+  'emoji_run',
 ])
 
 /**
@@ -150,9 +151,19 @@ export const TIMELINE_EVENT_TYPES = Object.freeze([
  */
 
 /**
+ * The first Run of Python or HTML code with an emoji in a string, or in HTML text or an
+ * attribute (`studentSignals.emojiRun`; src/shared/emojiInCode.js decides). Comments don't count.
+ * @typedef {object} EmojiRunEvent
+ * @property {'emoji_run'} type
+ * @property {'task'|'sandbox'|'personal'} context
+ * @property {string|number|null} [taskId]
+ * @property {number|null} at
+ */
+
+/**
  * @typedef {AttemptEvent|SandboxRunEvent|TopicOpenEvent|RevealEvent|CompleteShownEvent|
  *   PasteEvent|OverrideEvent|ShortcutEvent|FirstEditEvent|EarlyJoinEvent|AutocompleteEvent|
- *   PeerHelpEvent|SideQuestDoneEvent}
+ *   PeerHelpEvent|SideQuestDoneEvent|EmojiRunEvent}
  *   TimelineEvent
  */
 
@@ -289,6 +300,11 @@ export function sideQuestDoneEvent({ taskId, index = 0, at = null }) {
 /** @returns {AutocompleteEvent} */
 export function autocompleteEvent({ context = 'task', taskId = null, at = null }) {
   return { type: 'autocomplete', context, taskId, at: time(at) }
+}
+
+/** @returns {EmojiRunEvent} */
+export function emojiRunEvent({ context = 'task', taskId = null, at = null }) {
+  return { type: 'emoji_run', context, taskId, at: time(at) }
 }
 
 /**

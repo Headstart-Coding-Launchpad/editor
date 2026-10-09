@@ -39,6 +39,24 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-09
 
+### New live badges 📖 Word Smith and 🤩 Emoji Artist; suggestions name their task
+
+- 📖 Word Smith (`word_smith`) is suggested when a student is right **first time** on every vocab
+  task they have tried, and on at least `wordSmithMinTasks` (new `badgeOptions` key, default 2) of
+  them. A vocab task is any **graded** quiz tagged `taskActivity: Quiz: Vocabulary Check` or
+  `Quiz: Vocabulary Match`, whatever its `quizType`; one vocab task wrong first time rules the
+  student out for the session. Tag vocab quizzes with one of those patterns for them to count.
+- 🤩 Emoji Artist (`emoji_artist`) is suggested the first time a student runs Python (or Turtle,
+  Electronics) code with an emoji inside a string, or HTML with an emoji in its text or an
+  attribute. Comments never count. No lesson fields; it works in tasks and sandboxes.
+- Every badge suggestion in the tutor's panel now names its task (the title, "Sandbox" or
+  "No task"), so a badge's reason no longer needs to quote the task title for the tutor to see it.
+  See [badges.md](badges.md).
+- Affects: badges, quiz_match, quiz_multiple_choice, quiz_fill_blank, quiz_short_answer, python,
+  turtle, electronics, html · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-09-badge-suggestions-always-show-the-task.md,
+  authoring-requests/2026-10-09-vocab-and-emoji-live-badges.md
+
 ### Side-quests for students who finish while the class waits (`sideQuests`)
 
 - New optional field `sideQuests` on Python, Turtle and HTML code tasks: up to 3 side-quests, each

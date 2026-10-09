@@ -177,3 +177,99 @@ describe('BadgeSuggestionsPanel', () => {
     expect(header).toHaveFocus()
   })
 })
+
+describe('BadgeSuggestionsPanel task names', () => {
+  const titled = [
+    {
+      badgeId: 'bug_hunter',
+      studentId: 's2',
+      taskId: 't3',
+      taskTitle: 'Fix the loop',
+      reason: 'First to fix the bug in “Fix the loop”',
+      context: 'task',
+      at: 100,
+    },
+    {
+      badgeId: 'quiz_master',
+      studentId: 's2',
+      taskId: 'q3',
+      taskTitle: 'Match the words',
+      reason: 'End Quiz: 3 of 3 right first time',
+      context: 'task',
+      at: 110,
+    },
+    {
+      badgeId: 'code_fixer',
+      studentId: 's1',
+      taskId: null,
+      taskTitle: null,
+      reason: 'Fixed an error',
+      context: 'sandbox',
+      at: 120,
+    },
+    {
+      badgeId: 'early_bird',
+      studentId: 's1',
+      taskId: null,
+      taskTitle: null,
+      reason: 'Joined 6 minutes before the start',
+      context: 'task',
+      at: 5,
+    },
+  ]
+
+  it('names the task on every row, without repeating one the reason already quotes', () => {
+    render(<Harness suggestions={titled} />)
+    const taskOf = (key) =>
+      within(screen.getByTestId(`badge-suggestion-${key}`))
+        .queryAllByTestId('badge-suggestion-task')
+        .map((el) => el.textContent)
+    expect(taskOf('s2:quiz_master')).toEqual(['Match the words'])
+    expect(taskOf('s2:bug_hunter')).toEqual([])
+    expect(screen.getByTestId('badge-suggestion-s2:bug_hunter')).toHaveTextContent('Fix the loop')
+    expect(taskOf('s1:code_fixer')).toEqual(['Sandbox'])
+    expect(taskOf('s1:early_bird')).toEqual(['No task'])
+  })
+
+  it('an Award all row shows each student’s task when the tasks differ', () => {
+    const list = [
+      {
+        badgeId: 'keyboard_wizard',
+        studentId: 's1',
+        taskId: 't1',
+        taskTitle: 'Say hello',
+        reason: 'Used Ctrl+Enter',
+        context: 'task',
+        at: 50,
+      },
+      {
+        badgeId: 'keyboard_wizard',
+        studentId: 's2',
+        taskId: null,
+        taskTitle: null,
+        reason: 'Used Tab',
+        context: 'personal',
+        at: 60,
+      },
+    ]
+    render(<Harness suggestions={list} />)
+    const bulk = screen.getByRole('button', { name: 'Award all (2)' }).parentElement
+    expect(bulk).toHaveTextContent('Alex (Say hello), Sam (Sandbox)')
+  })
+
+  it('an Award all row on one task names it once', () => {
+    const list = ['s1', 's2'].map((studentId, i) => ({
+      badgeId: 'keyboard_wizard',
+      studentId,
+      taskId: 't1',
+      taskTitle: 'Say hello',
+      reason: 'Used Tab',
+      context: 'task',
+      at: 50 + i,
+    }))
+    render(<Harness suggestions={list} />)
+    const bulk = screen.getByRole('button', { name: 'Award all (2)' }).parentElement
+    expect(within(bulk).getAllByTestId('badge-suggestion-task')).toHaveLength(1)
+    expect(bulk).toHaveTextContent('Say helloAlex, Sam')
+  })
+})
