@@ -241,6 +241,10 @@
               ".write": "auth != null && auth.uid === $anonymousId && !data.exists()",
               ".validate": "newData.hasChildren(['firstUsedAt', 'context']) && newData.child('context').val().matches(/^(task|sandbox|personal)$/)"
             },
+            "emojiRun": {
+              ".write": "auth != null && auth.uid === $anonymousId && !data.exists()",
+              ".validate": "newData.hasChildren(['firstRunAt', 'context']) && newData.child('firstRunAt').isNumber() && newData.child('context').val().matches(/^(task|sandbox|personal)$/)"
+            },
             "firstEdits": {
               "$taskId": {
                 ".write": "auth != null && auth.uid === $anonymousId && !data.exists()",

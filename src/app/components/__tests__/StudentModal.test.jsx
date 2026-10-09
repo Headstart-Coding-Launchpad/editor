@@ -1253,6 +1253,55 @@ describe('teacher live code reference (Support menu)', () => {
     expect(screen.getByText('📌 Live code: kept on')).toBeInTheDocument()
   })
 
+  it('reflects the class pin in the per-student toggle and hides it for this student only', async () => {
+    // Regression: the toggle used to read only the per-student flag, so with a class pin it
+    // showed "Keep showing" and toggling it could never turn the class-pinned panel off.
+    const user = userEvent.setup()
+    const props = liveProps({ session: { ...PRESENTING, teacherLiveReferenceVisibleToAll: 1000 } })
+    render(<StudentModal {...props} />)
+    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    const pinBtn = screen.getByRole('button', { name: '📌 Live code: kept on' })
+    expect(pinBtn).toHaveAttribute('aria-pressed', 'true')
+    await user.click(pinBtn)
+    expect(props.onSetTeacherLiveReference).toHaveBeenCalledWith('student-1', false)
+  })
+
+  it('shows a class pin hidden for this student and offers to follow the class again', async () => {
+    const user = userEvent.setup()
+    const props = liveProps(
+      // Not presenting this task: following the class pin again still works.
+      {
+        session: {
+          ...ACTIVE_SESSION,
+          teacherLiveReferenceVisibleToAll: 1000,
+        },
+      },
+      { teacherLiveReferenceVisible: false }
+    )
+    render(<StudentModal {...props} />)
+    expect(screen.getByText('📌 Live code: hidden for this student')).toBeInTheDocument()
+    expect(screen.queryByText('📌 Live code: kept on')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    const btn = screen.getByRole('button', { name: '📌 Show class live code again' })
+    expect(btn).toBeEnabled()
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    await user.click(btn)
+    expect(props.onSetTeacherLiveReference).toHaveBeenCalledWith('student-1', null)
+  })
+
+  it('lets the tutor turn a class pin off for one student while not presenting', async () => {
+    const user = userEvent.setup()
+    const props = liveProps({
+      session: { ...ACTIVE_SESSION, teacherLiveReferenceVisibleToAll: 1000 },
+    })
+    render(<StudentModal {...props} />)
+    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    const pinBtn = screen.getByRole('button', { name: '📌 Live code: kept on' })
+    expect(pinBtn).toBeEnabled()
+    await user.click(pinBtn)
+    expect(props.onSetTeacherLiveReference).toHaveBeenCalledWith('student-1', false)
+  })
+
   it('disables both live-code actions until Presentation is on this task', async () => {
     const user = userEvent.setup()
     render(

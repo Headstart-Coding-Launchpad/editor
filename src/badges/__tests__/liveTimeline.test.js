@@ -204,6 +204,25 @@ describe('buildLiveTimelines', () => {
     expect(reveal).toMatchObject({ type: 'reveal', stage: 1, complete: false })
   })
 
+  it('maps an emoji run signal, dropping one on a task that has gone', () => {
+    const session = makeSession({
+      roster: ['alex', 'sam', 'kai'],
+      studentSignals: {
+        alex: { emojiRun: { firstRunAt: 7, context: 'task', taskId: 4 } },
+        sam: { emojiRun: { firstRunAt: 8, context: 'personal', taskId: null } },
+        kai: { emojiRun: { firstRunAt: 9, context: 'task', taskId: 99 } },
+      },
+    })
+    const timelines = buildLiveTimelines({ session, lesson: LESSON })
+    expect(timelines.alex).toEqual([{ type: 'emoji_run', context: 'task', taskId: 4, at: 7 }])
+    expect(timelines.sam).toEqual([{ type: 'emoji_run', context: 'personal', taskId: null, at: 8 }])
+    expect(timelines.kai).toEqual([])
+    expect(pairs(suggest(session, { badgeIds: ['emoji_artist'] }))).toEqual([
+      ['alex', 4],
+      ['sam', null],
+    ])
+  })
+
   it('builds timelines only for the current roster', () => {
     const session = makeSession({
       roster: ['alex'],

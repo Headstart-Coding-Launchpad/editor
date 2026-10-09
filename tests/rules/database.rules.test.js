@@ -251,6 +251,7 @@ describe('student signals', () => {
   it.each([
     ['shortcuts/run', { firstUsedAt: 1, context: 'task', taskId: 3 }],
     ['autocomplete', { firstUsedAt: 1, context: 'personal', taskId: null }],
+    ['emojiRun', { firstRunAt: 1, context: 'task', taskId: 3 }],
     ['firstEdits/3', { elapsedMs: 4200 }],
     ['completeShown/3', { at: 1, via: 'show' }],
     ['topics/task/3/loops', { openedAt: 1, source: 'student' }],
@@ -299,6 +300,12 @@ describe('student signals', () => {
     await assertFails(
       ref(as.student, `${signals(STUDENT_ID)}/autocomplete`).set({ firstUsedAt: 1, context: 'x' })
     )
+  })
+
+  it('rejects an emoji run signal with an unknown context or no time', async () => {
+    const path = `${signals(STUDENT_ID)}/emojiRun`
+    await assertFails(ref(as.student, path).set({ firstRunAt: 1, context: 'x' }))
+    await assertFails(ref(as.student, path).set({ context: 'task' }))
   })
 
   it('does not let a student write anywhere else under their signals', async () => {

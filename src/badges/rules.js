@@ -342,7 +342,7 @@ export function uniqueFailsThenPass({ minFailsOption = 'persistenceMinFails' } =
 }
 
 /**
- * 📚 / ⌨️: the student's earliest `eventType` event that `filter` accepts, in a task or a
+ * 📚 / ⌨️ / ✨ / 🤩: the student's earliest `eventType` event that `filter` accepts, in a task or a
  * sandbox. Events on a task that isn't in the lesson, or whose badgeHints suppress the badge,
  * don't count. `values(event)` adds the reason's values.
  */
@@ -474,6 +474,62 @@ export function sideQuestsDone({ minDoneOption = 'sideQuesterMinDone' } = {}) {
           candidate(studentId, index.get(qualifying.taskId), {
             at: qualifying.at,
             values: { count: needed },
+          }),
+        ]
+      })
+    },
+  })
+}
+
+/**
+ * 📖: right first time on every task with one of `patterns` the student has attempted, and at
+ * least `options[minTasksOption]` of them. A task counts when the student's first attempt at it
+ * was a real pass (getFirstTryRealPass). Any attempted pattern task whose first attempt wasn't a
+ * real pass rules the student out for the session (a pending suggestion disappears with it);
+ * tasks the student hasn't attempted yet don't. Tasks whose badgeHints suppress the badge, or
+ * that have gone, don't count either way. The suggestion's task is the most recent first-try
+ * pass. Not hintable: only the pattern makes a task one of these. `gradedOnly`: only graded
+ * quizzes count (isGradedQuizTask: never a confidence check, poll, or short answer without a
+ * check, whose "pass" only means answered). Values: `count` (first-try passes) and `total`
+ * (pattern tasks in the lesson).
+ */
+export function firstTryOnEveryPatternTask(
+  patterns,
+  { minTasksOption = 'wordSmithMinTasks', gradedOnly = false } = {}
+) {
+  const patternList = asList(patterns)
+  return Object.freeze({
+    kind: 'firstTryOnEveryPatternTask',
+    patterns: Object.freeze(patternList),
+    minTasksOption,
+    gradedOnly,
+    hintable: false,
+    evaluate({ badgeId, timelines, index, options }) {
+      const needed = options[minTasksOption]
+      const tasks = index.tasks.filter(
+        (info) =>
+          taskAllowsBadge(info, badgeId) &&
+          info.pattern != null &&
+          patternList.includes(info.pattern) &&
+          (!gradedOnly || info.isGradedQuiz)
+      )
+      if (tasks.length < needed) return []
+      return entriesOf(timelines).flatMap(([studentId, timeline]) => {
+        const right = []
+        for (const info of tasks) {
+          if (!getFirstAttempt(timeline, info.id)) continue
+          const pass = getFirstTryRealPass(timeline, info.id)
+          if (!pass) return []
+          right.push({ info, at: pass.at, order: info.order })
+        }
+        if (right.length < needed) return []
+        const latest = [...right].sort(
+          (a, b) => compareAt(b, a) || compareNumbers(b.order, a.order)
+        )[0]
+        return [
+          candidate(studentId, latest.info, {
+            at: latest.at,
+            values: { count: right.length, total: tasks.length },
           }),
         ]
       })

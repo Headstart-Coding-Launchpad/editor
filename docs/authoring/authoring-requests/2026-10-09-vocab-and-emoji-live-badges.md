@@ -1,6 +1,6 @@
 # New live badges: vocab tasks and emoji use
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Ryan (approved by Ryan), 2026-10-09
 - **Lessons blocked:** none yet
@@ -37,4 +37,9 @@ Part of the 2026-10-09 principle: **tutors see what students are doing at all ti
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped on branch `feature/badge-task-names-vocab-emoji`, with Ryan's answers: two suggested (not auto-awarded) registry badges, in the tutor's picker and manually awardable like every badge.
+
+- 📖 Word Smith (`word_smith`, `src/badges/definitions/word_smith.js`, rule `firstTryOnEveryPatternTask` in `src/badges/rules.js`): right first time on every **graded** vocab-tagged quiz (`Quiz: Vocabulary Check` / `Quiz: Vocabulary Match`, any quiz type) the student has tried, at least `wordSmithMinTasks` (new `badgeOptions` key, default 2). One vocab task wrong first time rules them out; untried ones don't count.
+- 🤩 Emoji Artist (`emoji_artist`, `src/badges/definitions/emoji_artist.js`; 🎨 was taken by Design Master): the first Run of Python or HTML code with an emoji in a string literal, or in HTML text or an attribute. Comments never count. New student signal `studentSignals/{id}/emojiRun` `{ firstRunAt, context, taskId }`, written once from the student's device on Run (`reportRunCode` → `codeHasEmoji` in `src/shared/emojiInCode.js`), timeline event `emoji_run`; new `database.rules.json` rule (needs a rules deploy).
+
+Docs: [badges.md](../badges.md), [CHANGELOG.md](../CHANGELOG.md), `docs/agents/runtime-model.md` ("Badge data").

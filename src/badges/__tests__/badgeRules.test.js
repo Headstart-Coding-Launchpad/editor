@@ -12,6 +12,7 @@ import {
   pasteEvent,
   revealEvent,
   sandboxRunEvent as run,
+  shortcutEvent,
 } from '../timeline.js'
 
 const evaluate = (badgeId, timelines, { lesson = EXAMPLE_LESSON, decisions, options } = {}) =>
@@ -528,5 +529,118 @@ describe('evaluateBadgeRules', () => {
 
   it('runs with no timelines', () => {
     expect(evaluateBadgeRules({ timelines: {}, lesson: EXAMPLE_LESSON })).toEqual([])
+  })
+
+  it('names every suggestion’s task from its taskId, whatever the reason says', () => {
+    const t = {
+      alex: [shortcutEvent({ shortcutId: 'run', taskId: 'q2', at: 10 })],
+      sam: [shortcutEvent({ context: 'sandbox', shortcutId: 'run', at: 10 })],
+      kai: [earlyJoinEvent({ leadMs: 10 * 60 * 1000, at: 1 })],
+    }
+    const keyboard = evaluate('keyboard_wizard', t)
+    expect(keyboard.find((s) => s.studentId === 'alex')).toMatchObject({
+      taskId: 'q2',
+      taskTitle: 'Fix the bug',
+    })
+    expect(keyboard.find((s) => s.studentId === 'sam')).toMatchObject({
+      taskId: null,
+      taskTitle: null,
+      context: 'sandbox',
+    })
+    expect(evaluate('early_bird', t)[0]).toMatchObject({ taskId: null, taskTitle: null })
+  })
+})
+
+describe('Word Smith (firstTryOnEveryPatternTask)', () => {
+  // Vocab tasks of two quiz types, inside a group and out.
+  const lesson = {
+    id: 'vocab',
+    type: 'python',
+    title: 'Vocab',
+    tasks: [
+      { id: 'c1', title: 'Code', taskActivity: 'Code Task' },
+      {
+        id: 'g1',
+        type: 'group',
+        title: 'Words',
+        subtasks: [
+          {
+            id: 'v1',
+            title: 'Match',
+            taskType: 'quiz',
+            quizType: 'match',
+            taskActivity: 'Quiz: Vocabulary Match',
+          },
+          {
+            id: 'v2',
+            title: 'Check',
+            taskType: 'quiz',
+            quizType: 'multiple_choice',
+            taskActivity: 'Quiz: Vocabulary Check',
+          },
+        ],
+      },
+      {
+        id: 'v3',
+        title: 'Blanks',
+        taskType: 'quiz',
+        quizType: 'fill_blank',
+        taskActivity: 'Quiz: Vocabulary Check',
+      },
+    ],
+  }
+  const right = (taskId, at) => attempt({ taskId, passed: true, firstTry: true, at })
+
+  it('suggests on the second first-try pass, naming the latest, before the rest are tried', () => {
+    const found = evaluate('word_smith', { alex: [right('v1', 10), right('v3', 30)] }, { lesson })
+    expect(found).toEqual([
+      expect.objectContaining({
+        studentId: 'alex',
+        taskId: 'v3',
+        taskTitle: 'Blanks',
+        reason: 'Right first time on every vocab task so far (2 of 3)',
+      }),
+    ])
+    const all = evaluate(
+      'word_smith',
+      { alex: [right('v1', 10), right('v2', 20), right('v3', 30)] },
+      { lesson }
+    )
+    expect(all[0].reason).toBe('Right first time on all 3 vocab tasks')
+  })
+
+  it('a wrong first try anywhere withdraws it', () => {
+    const t = {
+      alex: [
+        right('v1', 10),
+        right('v3', 30),
+        attempt({ taskId: 'v2', passed: false, firstTry: true, at: 40 }),
+      ],
+    }
+    expect(evaluate('word_smith', t, { lesson })).toEqual([])
+  })
+
+  it('a task that suppresses the badge does not count either way', () => {
+    const suppressed = {
+      ...lesson,
+      tasks: lesson.tasks.map((task) =>
+        task.id === 'v3' ? { ...task, badgeHints: { suppress: ['word_smith'] } } : task
+      ),
+    }
+    const t = {
+      alex: [
+        right('v1', 10),
+        right('v2', 20),
+        attempt({ taskId: 'v3', passed: false, firstTry: true, at: 30 }),
+      ],
+    }
+    expect(pairs(evaluate('word_smith', t, { lesson: suppressed }))).toEqual([['alex', 'v2']])
+  })
+
+  it('needs at least wordSmithMinTasks vocab tasks in the lesson', () => {
+    const t = { alex: [right('v1', 10), right('v2', 20), right('v3', 30)] }
+    expect(
+      evaluate('word_smith', t, { lesson, options: { badgeOptions: { wordSmithMinTasks: 4 } } })
+    ).toEqual([])
   })
 })

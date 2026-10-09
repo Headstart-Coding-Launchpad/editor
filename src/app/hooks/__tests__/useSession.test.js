@@ -631,6 +631,18 @@ describe('useSession', () => {
       )
     })
 
+    it('clears the class "Keep showing live code" pin', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ state: 'active', teacherLiveReferenceVisibleToAll: 1000 })
+      await act(async () => {
+        await result.current.endSession()
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ teacherLiveReferenceVisibleToAll: null })
+      )
+    })
+
     it('resets videoCallLink to null', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {
@@ -2521,7 +2533,7 @@ describe('useSession', () => {
       )
     })
 
-    it('writes null (not false) when turned off', async () => {
+    it('writes null (not false) when turned off with no class pin', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {
         await result.current.setTeacherLiveReferenceForStudent('student-abc', false)
@@ -2531,17 +2543,44 @@ describe('useSession', () => {
         null
       )
     })
+
+    it('writes false to hide it for one student while the class pin is on', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ teacherLiveReferenceVisibleToAll: 1000, students: { 'student-abc': {} } })
+      await act(async () => {
+        await result.current.setTeacherLiveReferenceForStudent('student-abc', false)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc/teacherLiveReferenceVisible' },
+        false
+      )
+    })
+
+    it('writes null to follow the class pin again', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        teacherLiveReferenceVisibleToAll: 1000,
+        students: { 'student-abc': { teacherLiveReferenceVisible: false } },
+      })
+      await act(async () => {
+        await result.current.setTeacherLiveReferenceForStudent('student-abc', null)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc/teacherLiveReferenceVisible' },
+        null
+      )
+    })
   })
 
   describe('setTeacherLiveReferenceForClass', () => {
-    it('writes the pin time to the session teacherLiveReferenceVisibleToAll path', async () => {
+    it('writes the pin time to teacherLiveReferenceVisibleToAll', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {
         await result.current.setTeacherLiveReferenceForClass(true)
       })
-      expect(firebaseMocks.set).toHaveBeenCalledWith(
-        { path: 'sessions/lesson-1/teacherLiveReferenceVisibleToAll' },
-        expect.any(Number)
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        { teacherLiveReferenceVisibleToAll: expect.any(Number) }
       )
     })
 
@@ -2550,9 +2589,31 @@ describe('useSession', () => {
       await act(async () => {
         await result.current.setTeacherLiveReferenceForClass(false)
       })
-      expect(firebaseMocks.set).toHaveBeenCalledWith(
-        { path: 'sessions/lesson-1/teacherLiveReferenceVisibleToAll' },
-        null
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        { teacherLiveReferenceVisibleToAll: null }
+      )
+    })
+
+    it('clears per-student "hidden" overrides but keeps per-student pins', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        teacherLiveReferenceVisibleToAll: 1000,
+        students: {
+          hidden: { teacherLiveReferenceVisible: false },
+          pinned: { teacherLiveReferenceVisible: 500 },
+          plain: {},
+        },
+      })
+      await act(async () => {
+        await result.current.setTeacherLiveReferenceForClass(false)
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        {
+          teacherLiveReferenceVisibleToAll: null,
+          'students/hidden/teacherLiveReferenceVisible': null,
+        }
       )
     })
   })
