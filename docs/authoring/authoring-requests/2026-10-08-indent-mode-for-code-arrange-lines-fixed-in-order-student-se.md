@@ -1,6 +1,6 @@
 # Indent mode for code_arrange: lines fixed in order, student sets each line's depth
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** activity mode
 - **Requested by:** Ryan (approved by Ryan), 2026-10-08
 - **Lessons blocked:** none yet
@@ -70,7 +70,7 @@ Companion to request #46 (indent guides / block shading in the Python editor): p
 
 <!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
 
-Built 2026-10-09 on branch `feature/code-arrange-indent-mode` as a mode of the existing
+Shipped 2026-10-09 (merge of `feature/code-arrange-indent-mode` to main) as a mode of the existing
 `code_arrange` activity: `arrangeMode: indent`. Docs: lesson-schema.md "Indent mode", CHANGELOG
 2026-10-09. Differences from the request, agreed with Ryan:
 
