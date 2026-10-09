@@ -171,6 +171,87 @@ describe('code_arrange tasks', () => {
   })
 })
 
+// Tutor tile highlights: "👀 Highlight tiles" turns a tap on a blank into a highlight for the
+// student (with the note typed so far), a second tap removes it, and Clear all removes them all.
+describe('tutor tile highlights', () => {
+  const slots = { L1: 'D1', L2: 'L2' }
+  function highlightProps(extra = {}, student = {}) {
+    return mkProps(
+      {
+        lesson: CODE_ARRANGE_LESSON,
+        onPushTileHighlight: vi.fn(),
+        onRemoveTileHighlights: vi.fn(),
+        onClearTileHighlights: vi.fn(),
+        ...extra,
+      },
+      { currentCodeArrangeSlots: slots, ...student }
+    )
+  }
+
+  it('highlights a tapped blank with the note, without editing the student’s tiles', () => {
+    const props = highlightProps({ onTeacherAnswerEdit: vi.fn() })
+    render(<StudentModal {...props} />)
+    fireEvent.click(screen.getByTestId('tile-highlight-toggle'))
+    fireEvent.change(screen.getByLabelText('Note for the next highlighted tile'), {
+      target: { value: 'Is this line needed?' },
+    })
+    fireEvent.click(screen.getByTestId('code-arrange-slot-L1'))
+    expect(props.onPushTileHighlight).toHaveBeenCalledWith('student-1', {
+      taskId: 1,
+      targetId: 'L1',
+      tileId: 'D1',
+      note: 'Is this line needed?',
+      replaceIds: [],
+    })
+    expect(props.onTeacherAnswerEdit).not.toHaveBeenCalled()
+  })
+
+  it('removes a highlight on a second tap and clears all from the bar', () => {
+    const props = highlightProps(
+      {},
+      {
+        teacherTileHighlights: {
+          h1: { taskId: '1', targetId: 'L1', tileId: 'D1', note: null, createdAt: 1 },
+        },
+      }
+    )
+    render(<StudentModal {...props} />)
+    expect(screen.getByTestId('code-arrange-slot-L1')).toHaveAttribute(
+      'data-tutor-highlight',
+      'true'
+    )
+    expect(screen.getByTestId('tile-highlight-bar')).toHaveTextContent('1 tile highlighted')
+    fireEvent.click(screen.getByTestId('tile-highlight-toggle'))
+    fireEvent.click(screen.getByTestId('code-arrange-slot-L1'))
+    expect(props.onRemoveTileHighlights).toHaveBeenCalledWith('student-1', ['h1'])
+    fireEvent.click(screen.getByTestId('tile-highlight-clear-all'))
+    expect(props.onClearTileHighlights).toHaveBeenCalledWith('student-1')
+  })
+
+  it('hides a highlight whose tile the student has moved', () => {
+    render(
+      <StudentModal
+        {...highlightProps(
+          {},
+          {
+            currentCodeArrangeSlots: { L1: 'L1', L2: 'L2' },
+            teacherTileHighlights: {
+              h1: { taskId: '1', targetId: 'L1', tileId: 'D1', note: null, createdAt: 1 },
+            },
+          }
+        )}
+      />
+    )
+    expect(screen.getByTestId('code-arrange-slot-L1')).not.toHaveAttribute('data-tutor-highlight')
+    expect(screen.queryByTestId('tile-highlight-bar')).not.toBeInTheDocument()
+  })
+
+  it('offers no tile highlights on an ordinary code task', () => {
+    render(<StudentModal {...mkProps({ onPushTileHighlight: vi.fn() })} />)
+    expect(screen.queryByTestId('tile-highlight-toggle')).not.toBeInTheDocument()
+  })
+})
+
 describe('StudentModal', () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -1170,6 +1251,55 @@ describe('teacher live code reference (Support menu)', () => {
       />
     )
     expect(screen.getByText('📌 Live code: kept on')).toBeInTheDocument()
+  })
+
+  it('reflects the class pin in the per-student toggle and hides it for this student only', async () => {
+    // Regression: the toggle used to read only the per-student flag, so with a class pin it
+    // showed "Keep showing" and toggling it could never turn the class-pinned panel off.
+    const user = userEvent.setup()
+    const props = liveProps({ session: { ...PRESENTING, teacherLiveReferenceVisibleToAll: 1000 } })
+    render(<StudentModal {...props} />)
+    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    const pinBtn = screen.getByRole('button', { name: '📌 Live code: kept on' })
+    expect(pinBtn).toHaveAttribute('aria-pressed', 'true')
+    await user.click(pinBtn)
+    expect(props.onSetTeacherLiveReference).toHaveBeenCalledWith('student-1', false)
+  })
+
+  it('shows a class pin hidden for this student and offers to follow the class again', async () => {
+    const user = userEvent.setup()
+    const props = liveProps(
+      // Not presenting this task: following the class pin again still works.
+      {
+        session: {
+          ...ACTIVE_SESSION,
+          teacherLiveReferenceVisibleToAll: 1000,
+        },
+      },
+      { teacherLiveReferenceVisible: false }
+    )
+    render(<StudentModal {...props} />)
+    expect(screen.getByText('📌 Live code: hidden for this student')).toBeInTheDocument()
+    expect(screen.queryByText('📌 Live code: kept on')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    const btn = screen.getByRole('button', { name: '📌 Show class live code again' })
+    expect(btn).toBeEnabled()
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    await user.click(btn)
+    expect(props.onSetTeacherLiveReference).toHaveBeenCalledWith('student-1', null)
+  })
+
+  it('lets the tutor turn a class pin off for one student while not presenting', async () => {
+    const user = userEvent.setup()
+    const props = liveProps({
+      session: { ...ACTIVE_SESSION, teacherLiveReferenceVisibleToAll: 1000 },
+    })
+    render(<StudentModal {...props} />)
+    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    const pinBtn = screen.getByRole('button', { name: '📌 Live code: kept on' })
+    expect(pinBtn).toBeEnabled()
+    await user.click(pinBtn)
+    expect(props.onSetTeacherLiveReference).toHaveBeenCalledWith('student-1', false)
   })
 
   it('disables both live-code actions until Presentation is on this task', async () => {

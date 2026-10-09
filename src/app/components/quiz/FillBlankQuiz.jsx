@@ -3,6 +3,7 @@ import { InlineMarkdown } from '../../../shared/markdown'
 import { useTileDragAndDrop } from '../../hooks/useTileDragAndDrop'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
 import { fillBlankDraftText } from '../../../shared/answerDrafts'
+import TutorTileHighlightNote from './TutorTileHighlightNote'
 import { useChoiceEntrance } from '../../../activities/ui/choiceEntrance.jsx'
 import {
   baseStyles as s,
@@ -27,6 +28,11 @@ export default function FillBlankQuiz({
   showQuestion,
   showResult,
   showCorrectAnswer,
+  // Tutor "look again" highlights, { [blankId]: { id, note } } (drag mode; see
+  // src/shared/tutorTileHighlights.js).
+  tileHighlights = null,
+  // StudentModal's highlight mode: tapping a blank calls this instead of picking the tile up.
+  onTargetTap = null,
 }) {
   const blanks = task?.blanks ?? []
   const mode = task?.mode ?? 'drag'
@@ -111,6 +117,7 @@ export default function FillBlankQuiz({
           )
         : typedValueMatchesBlank(placedTileId, blank))
     const isBlankWrong = hasBlankValue && !isBlankCorrect
+    const tutorHighlight = mode === 'drag' ? (tileHighlights?.[blankId] ?? null) : null
 
     if (mode === 'type') {
       return (
@@ -138,12 +145,25 @@ export default function FillBlankQuiz({
           ...(isBlankCorrect ? sm.fillBlankCorrect : {}),
           ...(isBlankWrong ? sm.fillBlankWrong : {}),
           ...(isDragHighlight || isTapHighlight ? sm.fillBlankHighlight : {}),
-          cursor: blocked ? 'default' : isTapHighlight || placedTileId ? 'pointer' : 'copy',
+          ...(tutorHighlight ? sm.tutorHighlight : {}),
+          cursor: onTargetTap
+            ? 'pointer'
+            : blocked
+              ? 'default'
+              : isTapHighlight || placedTileId
+                ? 'pointer'
+                : 'copy',
         }}
+        data-tutor-highlight={tutorHighlight ? 'true' : undefined}
+        data-testid={`fill-blank-${blankId}`}
         onDragOver={(event) => dnd.handleTargetDragOver(event, blankId)}
         onDragLeave={dnd.clearDragOver}
         onDrop={(event) => dnd.handleTargetDrop(event, blankId, state, publishState)}
-        onClick={() => dnd.handleTargetClick(blankId, state, publishState)}
+        onClick={() =>
+          onTargetTap
+            ? onTargetTap(blankId, placedTileId ?? null)
+            : dnd.handleTargetClick(blankId, state, publishState)
+        }
         draggable={!!placedTileId && !blocked}
         onDragStart={(event) => placedTileId && dnd.handleDragStart(event, placedTileId)}
         onDragEnd={dnd.handleDragEnd}
@@ -210,6 +230,14 @@ export default function FillBlankQuiz({
         </div>
 
         {mode === 'drag' && (
+          <TutorHighlightNotes
+            segments={segments}
+            tileHighlights={tileHighlights}
+            tilePool={tilePool}
+          />
+        )}
+
+        {mode === 'drag' && (
           <div
             style={sm.answerPool}
             onDragOver={dnd.handlePoolDragOver}
@@ -274,6 +302,40 @@ export default function FillBlankQuiz({
           suggestion={task?.feedback ?? task?.check?.hint ?? ''}
         />
       )}
+    </div>
+  )
+}
+
+// The notes of the passage's highlighted blanks, under the passage in reading order (a blank sits
+// inside the text, so its note can't go under it). Each names the tile in that blank.
+function TutorHighlightNotes({ segments, tileHighlights, tilePool }) {
+  if (!tileHighlights || Object.keys(tileHighlights).length === 0) return null
+  const blankIds = []
+  for (const seg of segments) {
+    if (seg.type === 'blank') blankIds.push(seg.blankId)
+    if (seg.type === 'codeBlock') {
+      for (const part of seg.parts) if (part.type !== 'codeText') blankIds.push(part.blankId)
+    }
+  }
+  const shown = blankIds.filter((id) => tileHighlights[id])
+  if (shown.length === 0) return null
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }} aria-live="polite">
+      {shown.map((blankId) => {
+        const highlight = tileHighlights[blankId]
+        const text = tilePool.find((t) => t.id === highlight.tileId)?.text
+        return (
+          <TutorTileHighlightNote key={blankId} note={highlight.note}>
+            {text ? (
+              <span style={sm.fillBlankMarkdown}>
+                <InlineMarkdown content={text} />
+              </span>
+            ) : (
+              'an empty gap'
+            )}
+          </TutorTileHighlightNote>
+        )
+      })}
     </div>
   )
 }

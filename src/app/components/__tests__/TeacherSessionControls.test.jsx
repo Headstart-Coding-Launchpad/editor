@@ -35,6 +35,21 @@ describe('TeacherSessionControls', () => {
     expect(screen.getByRole('button', { name: 'Admin' })).toBeInTheDocument()
   })
 
+  it('shows an always-visible control to turn off the class live-code pin', () => {
+    const onUnpinLiveReference = vi.fn()
+    renderControls({
+      session: { state: 'active', teacherLiveReferenceVisibleToAll: 1000 },
+      onUnpinLiveReference,
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Live code kept on for class: turn off/ }))
+    expect(onUnpinLiveReference).toHaveBeenCalledWith(false)
+  })
+
+  it('hides the live-code unpin control when nothing is pinned for the class', () => {
+    renderControls({ onUnpinLiveReference: vi.fn() })
+    expect(screen.queryByRole('button', { name: /Live code kept on/ })).not.toBeInTheDocument()
+  })
+
   it('delegates return to admin', () => {
     const props = renderControls()
     fireEvent.click(screen.getByRole('button', { name: 'Admin' }))

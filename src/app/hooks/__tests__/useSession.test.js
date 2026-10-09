@@ -655,6 +655,18 @@ describe('useSession', () => {
       )
     })
 
+    it('clears the class "Keep showing live code" pin', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ state: 'active', teacherLiveReferenceVisibleToAll: 1000 })
+      await act(async () => {
+        await result.current.endSession()
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ teacherLiveReferenceVisibleToAll: null })
+      )
+    })
+
     it('resets videoCallLink to null', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {
@@ -1527,6 +1539,7 @@ describe('useSession', () => {
         teacherStagePendingAction: null,
         teacherStageAcceptedAt: null,
         teacherHighlights: null,
+        teacherTileHighlights: null,
         teacherPaneCommand: null,
         sideQuestOpen: null,
         visiblePanes: null,
@@ -2126,6 +2139,79 @@ describe('useSession', () => {
     })
   })
 
+  describe('tutor tile highlights', () => {
+    it('adds a highlight, replaces older entries on the blank and logs it, in one update', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherTileHighlight('student-xyz', {
+          taskId: 4,
+          targetId: 's2',
+          tileId: 'd1',
+          note: '  Check the colon  ',
+          replaceIds: ['old-1'],
+        })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        {
+          'students/student-xyz/teacherTileHighlights/old-1': null,
+          'students/student-xyz/teacherTileHighlights/mockHighlightId': {
+            taskId: '4',
+            targetId: 's2',
+            tileId: 'd1',
+            note: 'Check the colon',
+            createdAt: expect.any(Number),
+          },
+          'students/student-xyz/tileHighlightLog/4/mockHighlightId': {
+            targetId: 's2',
+            tileId: 'd1',
+            note: 'Check the colon',
+            at: { '.sv': 'timestamp' },
+          },
+        }
+      )
+    })
+
+    it('stores an empty blank as tileId null and no note as null', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherTileHighlight('student-xyz', {
+          taskId: 4,
+          targetId: 'b1',
+          tileId: null,
+          note: '',
+        })
+      })
+      const [, updates] = firebaseMocks.update.mock.calls.at(-1)
+      expect(updates['students/student-xyz/teacherTileHighlights/mockHighlightId']).toMatchObject({
+        targetId: 'b1',
+        tileId: null,
+        note: null,
+      })
+    })
+
+    it('removes chosen highlights and clears them all', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.removeTeacherTileHighlights('student-xyz', ['h1', 'h2'])
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        {
+          'students/student-xyz/teacherTileHighlights/h1': null,
+          'students/student-xyz/teacherTileHighlights/h2': null,
+        }
+      )
+      await act(async () => {
+        await result.current.clearTeacherTileHighlights('student-xyz')
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-xyz/teacherTileHighlights' },
+        null
+      )
+    })
+  })
+
   describe('pushTeacherPaneCommand', () => {
     it('writes mode, panes, and a pushedAt timestamp to the student node', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
@@ -2471,7 +2557,7 @@ describe('useSession', () => {
       )
     })
 
-    it('writes null (not false) when turned off', async () => {
+    it('writes null (not false) when turned off with no class pin', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {
         await result.current.setTeacherLiveReferenceForStudent('student-abc', false)
@@ -2481,17 +2567,44 @@ describe('useSession', () => {
         null
       )
     })
+
+    it('writes false to hide it for one student while the class pin is on', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ teacherLiveReferenceVisibleToAll: 1000, students: { 'student-abc': {} } })
+      await act(async () => {
+        await result.current.setTeacherLiveReferenceForStudent('student-abc', false)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc/teacherLiveReferenceVisible' },
+        false
+      )
+    })
+
+    it('writes null to follow the class pin again', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        teacherLiveReferenceVisibleToAll: 1000,
+        students: { 'student-abc': { teacherLiveReferenceVisible: false } },
+      })
+      await act(async () => {
+        await result.current.setTeacherLiveReferenceForStudent('student-abc', null)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-abc/teacherLiveReferenceVisible' },
+        null
+      )
+    })
   })
 
   describe('setTeacherLiveReferenceForClass', () => {
-    it('writes the pin time to the session teacherLiveReferenceVisibleToAll path', async () => {
+    it('writes the pin time to teacherLiveReferenceVisibleToAll', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {
         await result.current.setTeacherLiveReferenceForClass(true)
       })
-      expect(firebaseMocks.set).toHaveBeenCalledWith(
-        { path: 'sessions/lesson-1/teacherLiveReferenceVisibleToAll' },
-        expect.any(Number)
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        { teacherLiveReferenceVisibleToAll: expect.any(Number) }
       )
     })
 
@@ -2500,9 +2613,31 @@ describe('useSession', () => {
       await act(async () => {
         await result.current.setTeacherLiveReferenceForClass(false)
       })
-      expect(firebaseMocks.set).toHaveBeenCalledWith(
-        { path: 'sessions/lesson-1/teacherLiveReferenceVisibleToAll' },
-        null
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        { teacherLiveReferenceVisibleToAll: null }
+      )
+    })
+
+    it('clears per-student "hidden" overrides but keeps per-student pins', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        teacherLiveReferenceVisibleToAll: 1000,
+        students: {
+          hidden: { teacherLiveReferenceVisible: false },
+          pinned: { teacherLiveReferenceVisible: 500 },
+          plain: {},
+        },
+      })
+      await act(async () => {
+        await result.current.setTeacherLiveReferenceForClass(false)
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        {
+          teacherLiveReferenceVisibleToAll: null,
+          'students/hidden/teacherLiveReferenceVisible': null,
+        }
       )
     })
   })

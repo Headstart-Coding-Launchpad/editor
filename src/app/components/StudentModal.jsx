@@ -11,7 +11,7 @@ import {
   getCompleteStage,
   getRevealableStages,
 } from '../../shared/taskUtils'
-import { TEACHER_LIVE_REVEAL_KEY } from '../../shared/taskStages.js'
+import { TEACHER_LIVE_REVEAL_KEY, getTeacherLivePin } from '../../shared/taskStages.js'
 import PresenceBadge from './PresenceBadge'
 import ScratchWorkspace from '../../modules/scratch/ScratchWorkspace.jsx'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
@@ -28,6 +28,7 @@ import { PaneFocusControls } from './student-modal/PaneFocusDropdown'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
 import StudentHintPanel from './student-modal/StudentHintPanel'
 import ShareRequestPanel from './student-modal/ShareRequestPanel'
+import TileHighlightBar from './student-modal/TileHighlightBar'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
 import { countShownLineHints, getMirrorLineHintSets } from './student-modal/mirrorLineHints'
 import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
@@ -35,7 +36,13 @@ import {
   allowsStudentBroadcast,
   isModuleHostedActivityTask,
 } from '../../activities/registry.pure.js'
-import { readActivityAnswer } from '../../activities/state.js'
+import { readActivityAnswer, readStudentActivityState } from '../../activities/state.js'
+import {
+  activeTileHighlights,
+  listTileHighlights,
+  supportsTileHighlights,
+  tileHighlightIdsForTarget,
+} from '../../shared/tutorTileHighlights.js'
 import ActivityDeviceBadge from '../../activities/ui/ActivityDeviceBadge.jsx'
 import BadgeAwardDialog from './badges/BadgeAwardDialog'
 import { heldBadgeIds } from '../../badges/badgeDisplay'
@@ -93,6 +100,10 @@ export default function StudentModal({
   onSetTeacherLiveReference,
   onPushTeacherPaneCommand,
   onTeacherAnswerEdit,
+  // Tutor tile highlights (useSession push/remove/clearTeacherTileHighlights).
+  onPushTileHighlight,
+  onRemoveTileHighlights,
+  onClearTileHighlights,
   onRemoteRun,
   onReadPendingShare,
   onApproveShare,
@@ -110,11 +121,16 @@ export default function StudentModal({
   const iframeRef = useRef(null)
   const [showTopicLibrary, setShowTopicLibrary] = useState(false)
   const [answerEditing, setAnswerEditing] = useState(false)
+  // Tile highlight mode: a tap on the student's board highlights that blank for them.
+  const [tileHighlightMode, setTileHighlightMode] = useState(false)
+  const [tileHighlightNote, setTileHighlightNote] = useState('')
   const [remoteRunSent, setRemoteRunSent] = useState(false)
   // Editing is per student + task: switching student (Prev/Next) or the class
   // moving on must never leave the next board silently editable.
   useEffect(() => {
     setAnswerEditing(false)
+    setTileHighlightMode(false)
+    setTileHighlightNote('')
   }, [student.anonymousId, session?.currentTaskId])
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [fullscreenRequested, setFullscreenRequested] = useState(false)
@@ -416,6 +432,52 @@ export default function StudentModal({
   // student's answer directly (pushed live, see pushTeacherAnswerEdit).
   const supportsAnswerEdit =
     !!onTeacherAnswerEdit && (!!itemProgress || (isActivity && !!activity?.teacherEditable))
+  // Tutor tile highlights (src/shared/tutorTileHighlights.js): the activity says which boards
+  // have them (code_arrange slot mode, Match, Fill in the Gaps drag mode).
+  const supportsTileHighlight =
+    !!onPushTileHighlight &&
+    (isActivity || isCodeArrangeTask) &&
+    session?.currentTaskId != null &&
+    supportsTileHighlights(task)
+  const tileHighlightList = useMemo(
+    () =>
+      supportsTileHighlight
+        ? listTileHighlights(student.teacherTileHighlights, session?.currentTaskId)
+        : [],
+    [supportsTileHighlight, student.teacherTileHighlights, session?.currentTaskId]
+  )
+  // Drawn against the student's mirrored board: a highlight whose tile has moved is gone.
+  const shownTileHighlights = useMemo(
+    () =>
+      tileHighlightList.length
+        ? activeTileHighlights(tileHighlightList, readStudentActivityState(task, student))
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tileHighlightList, task, student.currentAnswer, student.currentCodeArrangeSlots]
+  )
+  const shownTileHighlightCount = shownTileHighlights ? Object.keys(shownTileHighlights).length : 0
+
+  // A tap on a blank in highlight mode: removes its highlight, or highlights the tile in it
+  // (replacing any older entry on that blank) with the note typed so far.
+  function handleTileHighlightTap(targetId, tileId) {
+    const ids = tileHighlightIdsForTarget(tileHighlightList, targetId)
+    if (shownTileHighlights?.[targetId]) {
+      onRemoveTileHighlights?.(student.anonymousId, ids)
+      return
+    }
+    onPushTileHighlight?.(student.anonymousId, {
+      taskId: session?.currentTaskId,
+      targetId,
+      tileId,
+      note: tileHighlightNote,
+      replaceIds: ids,
+    })
+    setTileHighlightNote('')
+  }
+
+  function handleClearTileHighlights() {
+    onClearTileHighlights?.(student.anonymousId)
+  }
   // Runs the student's current code on the student's own device: any module with a Run
   // (capabilities.run is not 'none').
   const supportsRemoteRun =
@@ -554,8 +616,18 @@ export default function StudentModal({
   const canSetStage = !!onRemoteReset && !isInformation && !isQuiz && stageOptions.length > 0
   // Live code has two modes: pinned ("Keep showing", every task until turned off) and a
   // one-off reveal for this task only (a supportRevealLog entry, like a stage reveal).
-  const teacherLiveReferencePinned = !!student.teacherLiveReferenceVisible
+  // The per-student value is three-way (getTeacherLivePin): a pin time, `false` (hidden for
+  // this student while the class pin is on) or null (follows the class pin). The menu and
+  // header chip show what the student actually gets, class pin included.
+  const studentLivePin = student.teacherLiveReferenceVisible
   const teacherLiveReferencePinnedForClass = !!session?.teacherLiveReferenceVisibleToAll
+  const teacherLiveReferenceHiddenForStudent =
+    studentLivePin === false && teacherLiveReferencePinnedForClass
+  const teacherLiveReferencePinned = !!getTeacherLivePin(
+    studentLivePin,
+    session?.teacherLiveReferenceVisibleToAll
+  )
+  const teacherLiveReferencePinnedForStudent = !!studentLivePin
   const teacherLiveReferenceRevealed = !!revealedSupportStages[TEACHER_LIVE_REVEAL_KEY]
   const teacherLiveReferenceMatchesTask =
     !!session?.teacherLiveReference?.active && session?.teacherLiveReference?.taskId === task?.id
@@ -668,16 +740,24 @@ export default function StudentModal({
                 💡 {shownLineHintCount} {shownLineHintCount === 1 ? 'hint' : 'hints'} showing
               </span>
             )}
-            {(teacherLiveReferencePinned || teacherLiveReferencePinnedForClass) && (
+            {teacherLiveReferencePinned && (
               <span
                 style={s.supportBadge}
                 title={
-                  teacherLiveReferencePinned
+                  teacherLiveReferencePinnedForStudent
                     ? 'Your live code shows for this student on every task until you turn it off'
                     : 'Your live code shows for the whole class on every task until you turn it off'
                 }
               >
                 📌 Live code: kept on
+              </span>
+            )}
+            {teacherLiveReferenceHiddenForStudent && (
+              <span
+                style={s.supportBadge}
+                title="Your live code is pinned for the class but hidden for this student"
+              >
+                📌 Live code: hidden for this student
               </span>
             )}
             {Object.keys(revealedSupportStages).length > 0 && (
@@ -833,26 +913,40 @@ export default function StudentModal({
                               style={sTo.toolBtn}
                               aria-pressed={teacherLiveReferencePinned}
                               disabled={
-                                !teacherLiveReferencePinned && !teacherLiveReferenceMatchesTask
+                                !teacherLiveReferencePinned &&
+                                !teacherLiveReferenceHiddenForStudent &&
+                                !teacherLiveReferenceMatchesTask
                               }
                               title={
                                 teacherLiveReferencePinned
-                                  ? 'Stop showing your live code to this student'
-                                  : teacherLiveReferenceMatchesTask
-                                    ? 'Keep showing your live code on every task until you turn it off'
-                                    : "Will work once you're presenting this task in Presentation View"
+                                  ? teacherLiveReferencePinnedForClass
+                                    ? 'Hide your live code for this student (it stays on for the rest of the class)'
+                                    : 'Stop showing your live code to this student'
+                                  : teacherLiveReferenceHiddenForStudent
+                                    ? 'Show your class-pinned live code to this student again'
+                                    : teacherLiveReferenceMatchesTask
+                                      ? 'Keep showing your live code on every task until you turn it off'
+                                      : "Will work once you're presenting this task in Presentation View"
                               }
                               onClick={() => {
                                 close()
+                                // On → off (written as `false` while the class pin is on);
+                                // hidden → follow the class pin again (null); off → pin.
                                 onSetTeacherLiveReference(
                                   student.anonymousId,
-                                  !teacherLiveReferencePinned
+                                  teacherLiveReferencePinned
+                                    ? false
+                                    : teacherLiveReferenceHiddenForStudent
+                                      ? null
+                                      : true
                                 )
                               }}
                             >
                               {teacherLiveReferencePinned
                                 ? '📌 Live code: kept on'
-                                : '📌 Keep showing live code'}
+                                : teacherLiveReferenceHiddenForStudent
+                                  ? '📌 Show class live code again'
+                                  : '📌 Keep showing live code'}
                             </button>
                           </>
                         )}
@@ -905,10 +999,30 @@ export default function StudentModal({
                 type="button"
                 className={answerEditing ? 'btn-primary' : 'btn-ghost'}
                 style={{ fontSize: 13, padding: '5px 12px', whiteSpace: 'nowrap' }}
-                onClick={() => setAnswerEditing((editing) => !editing)}
+                onClick={() => {
+                  setAnswerEditing((editing) => !editing)
+                  setTileHighlightMode(false)
+                }}
                 title="Change this student's answers — updates their screen live"
               >
                 {answerEditing ? 'Done editing' : '✏️ Edit answers'}
+              </button>
+            )}
+
+            {supportsTileHighlight && (
+              <button
+                type="button"
+                className={tileHighlightMode ? 'btn-primary' : 'btn-ghost'}
+                style={{ fontSize: 13, padding: '5px 12px', whiteSpace: 'nowrap' }}
+                onClick={() => {
+                  setTileHighlightMode((on) => !on)
+                  setAnswerEditing(false)
+                }}
+                aria-pressed={tileHighlightMode}
+                title="Tap a tile on the student's board to outline it on their screen: look again"
+                data-testid="tile-highlight-toggle"
+              >
+                {tileHighlightMode ? 'Done highlighting' : '👀 Highlight tiles'}
               </button>
             )}
 
@@ -1230,6 +1344,16 @@ export default function StudentModal({
               session={session}
               isSessionSandbox={isSessionSandbox}
             />
+            {supportsTileHighlight && (
+              <TileHighlightBar
+                active={tileHighlightMode}
+                count={shownTileHighlightCount}
+                note={tileHighlightNote}
+                onNoteChange={setTileHighlightNote}
+                onClearAll={handleClearTileHighlights}
+                onDone={() => setTileHighlightMode(false)}
+              />
+            )}
             {/* Content */}
             <div
               style={
@@ -1334,6 +1458,12 @@ export default function StudentModal({
                   onCancelHighlight={handleCancelHighlight}
                   answerEditing={supportsAnswerEdit && answerEditing}
                   onEditAnswer={(payload) => onTeacherAnswerEdit?.(student.anonymousId, payload)}
+                  tileHighlights={shownTileHighlights}
+                  onTileTargetTap={
+                    supportsTileHighlight && tileHighlightMode && !answerEditing
+                      ? handleTileHighlightTap
+                      : null
+                  }
                 />
               )}
             </div>

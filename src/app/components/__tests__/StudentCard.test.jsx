@@ -725,6 +725,34 @@ describe('StudentCard', () => {
       expect(screen.queryByTestId('teacher-assisted')).not.toBeInTheDocument()
     })
 
+    it('shows a 👀 chip while a tutor tile highlight is still on its tile', () => {
+      const highlights = {
+        h1: { taskId: '1', targetId: 'p2', tileId: 'p3', note: null, createdAt: 1 },
+      }
+      const { rerender } = render(
+        <StudentCard
+          {...mkProps(
+            { lesson: matchLesson },
+            { currentAnswer: '{"p2":"p3"}', teacherTileHighlights: highlights }
+          )}
+        />
+      )
+      expect(screen.getByTestId('tile-highlight-chip')).toHaveAttribute(
+        'aria-label',
+        'Highlighted 1'
+      )
+      // The student moved the tile: the highlight is gone from their screen and the card.
+      rerender(
+        <StudentCard
+          {...mkProps(
+            { lesson: matchLesson },
+            { currentAnswer: '{"p2":"p2"}', teacherTileHighlights: highlights }
+          )}
+        />
+      )
+      expect(screen.queryByTestId('tile-highlight-chip')).not.toBeInTheDocument()
+    })
+
     it('is absent for ordinary code tasks', () => {
       render(<StudentCard {...mkProps()} />)
       expect(screen.queryByTestId('item-progress')).not.toBeInTheDocument()

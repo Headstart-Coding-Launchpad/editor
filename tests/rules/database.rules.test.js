@@ -116,6 +116,19 @@ describe('student nodes', () => {
     await assertFails(ref(as.otherStudent, `sessions/${LESSON}/${path}`).set({ at: 1 }))
   })
 
+  it('lets teachers write tutor tile highlights and their log; the student only removes their own', async () => {
+    const base = `sessions/${LESSON}/students/${STUDENT_ID}`
+    const highlight = { taskId: '3', targetId: 's1', tileId: 'd1', note: null, createdAt: 1 }
+    await assertSucceeds(
+      ref(as.teacher, `sessions/${LESSON}`).update({
+        [`students/${STUDENT_ID}/teacherTileHighlights/h1`]: highlight,
+        [`students/${STUDENT_ID}/tileHighlightLog/3/l1`]: { targetId: 's1', tileId: 'd1', at: 1 },
+      })
+    )
+    await assertFails(ref(as.otherStudent, `${base}/teacherTileHighlights/h1`).set(null))
+    await assertSucceeds(ref(as.student, `${base}/teacherTileHighlights/h1`).set(null))
+  })
+
   it('never lets a student write their own override record', async () => {
     const path = `sessions/${LESSON}/overrideLog/${STUDENT_ID}/3`
     await assertFails(ref(as.student, path).set({ passed: true }))
@@ -238,6 +251,7 @@ describe('student signals', () => {
   it.each([
     ['shortcuts/run', { firstUsedAt: 1, context: 'task', taskId: 3 }],
     ['autocomplete', { firstUsedAt: 1, context: 'personal', taskId: null }],
+    ['emojiRun', { firstRunAt: 1, context: 'task', taskId: 3 }],
     ['firstEdits/3', { elapsedMs: 4200 }],
     ['completeShown/3', { at: 1, via: 'show' }],
     ['topics/task/3/loops', { openedAt: 1, source: 'student' }],
@@ -286,6 +300,12 @@ describe('student signals', () => {
     await assertFails(
       ref(as.student, `${signals(STUDENT_ID)}/autocomplete`).set({ firstUsedAt: 1, context: 'x' })
     )
+  })
+
+  it('rejects an emoji run signal with an unknown context or no time', async () => {
+    const path = `${signals(STUDENT_ID)}/emojiRun`
+    await assertFails(ref(as.student, path).set({ firstRunAt: 1, context: 'x' }))
+    await assertFails(ref(as.student, path).set({ context: 'task' }))
   })
 
   it('does not let a student write anywhere else under their signals', async () => {

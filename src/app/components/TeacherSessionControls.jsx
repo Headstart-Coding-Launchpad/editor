@@ -31,6 +31,10 @@ export default function TeacherSessionControls({
   onDismissPoll,
   // The 🤝 Peer help menu (TeacherPeerHelpMenu), shown while the session runs.
   peerHelpMenu = null,
+  // Turns off the class-wide "📌 Keep showing live code" pin (setTeacherLiveReferenceForClass
+  // with false). Pinning is done from the Live tab; turning it off lives here so it is
+  // reachable whether or not Presentation View is showing the task.
+  onUnpinLiveReference,
 }) {
   const state = session?.state
   const isRunning = state === 'active' || state === 'sandbox'
@@ -293,6 +297,17 @@ export default function TeacherSessionControls({
             </div>
           )}
         </div>
+      )}
+
+      {session?.teacherLiveReferenceVisibleToAll && onUnpinLiveReference && (
+        <button
+          className="btn-ghost teacher-session-controls__action"
+          title="Your live code is pinned for the whole class on every task. Click to stop showing it."
+          aria-label="Live code kept on for class: turn off"
+          onClick={() => onUnpinLiveReference(false)}
+        >
+          📌 Live code on · Turn off
+        </button>
       )}
 
       {session && isRunning && onLaunchPoll && (

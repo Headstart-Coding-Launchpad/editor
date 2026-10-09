@@ -1,6 +1,6 @@
 # Tutor highlights a wrong tile in arrange and drag-and-drop tasks
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** activity mode
 - **Requested by:** Ryan (approved by Ryan), 2026-10-09
 - **Lessons blocked:** none yet
@@ -40,4 +40,4 @@ Part of the 2026-10-09 principle: **tutors see what students are doing at all ti
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped on branch `feature/tutor-tile-highlights` (2026-10-09). StudentModal's "👀 Highlight tiles" toggle: a tap on a blank of the mirrored board highlights it (optional note; tap again removes it; Clear all). Covers code_arrange slot mode, `quiz_match` and `quiz_fill_blank` drag mode via the activity definition's new `tileHighlights(task)`; indent-mode code_arrange and typed Fill in the Gaps have none. The student sees the tile-feedback red outline plus "👀 Look again" and the note; it clears when the student changes what that blank holds, on the tutor's second tap, Clear all, or task change. Student card shows a 👀 chip. Data: `students/{id}/teacherTileHighlights` (live, teacher-written) and `students/{id}/tileHighlightLog/{taskId}` (report); report field `tutorTileHighlights[]` per student task. No rules change needed. Docs: [classroom-behaviours.md](../../agents/classroom-behaviours.md#tutor-tile-highlights-teachertilehighlights), [runtime-model.md](../../agents/runtime-model.md), [session-reports.md](../session-reports.md).

@@ -44,6 +44,8 @@ import edgeExplorer from './definitions/edge_explorer.js'
 import finisher from './definitions/finisher.js'
 import carefulChecker from './definitions/careful_checker.js'
 import sideQuester from './definitions/side_quester.js'
+import wordSmith from './definitions/word_smith.js'
+import emojiArtist from './definitions/emoji_artist.js'
 
 const BADGES = [
   bugHunter,
@@ -61,6 +63,8 @@ const BADGES = [
   earlyBird,
   helpfulCoder,
   sideQuester,
+  wordSmith,
+  emojiArtist,
   problemSolver,
   experimenter,
   creativeCoder,

@@ -1811,3 +1811,44 @@ describe('buildSessionReport: code_arrange placements and tile misses', () => {
     expect(quiet.students[0].tasks[0]).not.toHaveProperty('tileMisses')
   })
 })
+
+// Tutor tile highlights (src/shared/tutorTileHighlights.js): the tutor's "look again" taps are
+// listed per student task, oldest first, and change nothing about completion or attempts.
+describe('buildSessionReport: tutor tile highlights', () => {
+  const arrangeLesson = legacyActivityLesson([PYTHON_CODE_ARRANGE_TASK])
+  const session = {
+    startedAt: 1000,
+    endedAt: 9000,
+    taskStartTimes: { 8: 1000 },
+    students: {
+      alice: {
+        displayName: 'Alice',
+        tileHighlightLog: {
+          8: {
+            k2: { targetId: 'L2', tileId: null, note: null, at: 1300 },
+            k1: { targetId: 'S1', tileId: 'S1d1', note: 'Look at the range', at: 1200 },
+          },
+        },
+      },
+    },
+  }
+
+  it('lists the highlights oldest first with the note only when there is one', () => {
+    const report = buildSessionReport({ session, lesson: arrangeLesson })
+    const task = report.students[0].tasks.find((t) => t.taskId === 8)
+    expect(task.tutorTileHighlights).toEqual([
+      { targetId: 'S1', tileId: 'S1d1', note: 'Look at the range', at: 1200 },
+      { targetId: 'L2', tileId: null, at: 1300 },
+    ])
+    expect(task.attempts).toBe(0)
+    expect(task.finalResult).toBe('not_attempted')
+  })
+
+  it('leaves tutorTileHighlights out when the tutor highlighted nothing', () => {
+    const quiet = buildSessionReport({
+      session: { ...session, students: { alice: { displayName: 'Alice' } } },
+      lesson: arrangeLesson,
+    })
+    expect(quiet.students[0].tasks[0]).not.toHaveProperty('tutorTileHighlights')
+  })
+})

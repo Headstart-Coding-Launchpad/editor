@@ -118,6 +118,9 @@ export default function TeacherView({ lessonId }) {
     removeStudent,
     pushResetToStudent,
     pushTeacherAnswerEdit,
+    pushTeacherTileHighlight,
+    removeTeacherTileHighlights,
+    clearTeacherTileHighlights,
     pushRemoteRun,
     overrideStudentCheck,
     recordClassAdvanceOverrides,
@@ -737,6 +740,7 @@ export default function TeacherView({ lessonId }) {
               onClosePoll={closePoll}
               onSetPollShowResults={setPollShowResults}
               onDismissPoll={dismissPoll}
+              onUnpinLiveReference={setTeacherLiveReferenceForClass}
               peerHelpMenu={
                 <TeacherPeerHelpMenu session={session} lesson={lesson} peerHelp={peerHelp} />
               }
@@ -933,6 +937,9 @@ export default function TeacherView({ lessonId }) {
             onRemoveHighlight={removeTeacherHighlight}
             onPushTeacherPaneCommand={pushTeacherPaneCommand}
             onTeacherAnswerEdit={pushTeacherAnswerEdit}
+            onPushTileHighlight={pushTeacherTileHighlight}
+            onRemoveTileHighlights={removeTeacherTileHighlights}
+            onClearTileHighlights={clearTeacherTileHighlights}
             onRemoteRun={pushRemoteRun}
             onReadPendingShare={readPendingShare}
             onApproveShare={approveWorkspaceShare}

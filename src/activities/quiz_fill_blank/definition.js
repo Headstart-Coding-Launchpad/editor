@@ -61,6 +61,8 @@ export default defineQuizActivity('fill_blank', {
   // (onDraft, src/shared/answerDrafts.js). Placing a tile (drag mode) is discrete.
   classifyChange: (prev, next, task) =>
     (task?.mode ?? 'drag') === 'type' ? 'continuous' : 'discrete',
+  // Drag mode only: a tutor can highlight a placed tile (target: the blank id).
+  tileHighlights: (task) => (task?.mode ?? 'drag') === 'drag',
 
   defaultTask: (prev = {}) => ({
     id: prev.id,

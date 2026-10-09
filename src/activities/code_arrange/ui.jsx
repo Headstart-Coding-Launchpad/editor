@@ -49,6 +49,9 @@ export function CodeArrangeTeacherLiveView({
   iframeSrc,
   iframeRef,
   onEditSlots,
+  // The tutor's highlights on this board and the modal's tap-to-highlight (StudentWorkspaceBody).
+  tileHighlights = null,
+  onTargetTap = null,
 }) {
   // A code_arrange task's code comes from its entry file on a files module (html).
   const isFilesMirror = mirror === 'files'
@@ -78,6 +81,8 @@ export function CodeArrangeTeacherLiveView({
       onSelectAnswer={onEditSlots}
       disabled={!onEditSlots}
       showQuestion={false}
+      tileHighlights={tileHighlights}
+      onTargetTap={onTargetTap}
     />
   )
 }

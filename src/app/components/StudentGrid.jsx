@@ -51,6 +51,9 @@ export default function StudentGrid({
   onSetTeacherLiveReference,
   onPushTeacherPaneCommand,
   onTeacherAnswerEdit,
+  onPushTileHighlight,
+  onRemoveTileHighlights,
+  onClearTileHighlights,
   onRemoteRun,
   onReadPendingShare,
   onApproveShare,
@@ -581,6 +584,9 @@ export default function StudentGrid({
           onSetTeacherLiveReference={onSetTeacherLiveReference}
           onPushTeacherPaneCommand={onPushTeacherPaneCommand}
           onTeacherAnswerEdit={onTeacherAnswerEdit}
+          onPushTileHighlight={onPushTileHighlight}
+          onRemoveTileHighlights={onRemoveTileHighlights}
+          onClearTileHighlights={onClearTileHighlights}
           onRemoteRun={onRemoteRun}
           onReadPendingShare={onReadPendingShare}
           onApproveShare={onApproveShare}

@@ -102,6 +102,7 @@ export const WRITER_NAMES = [
   'setTeacherLive',
   'setTeacherLiveReference',
   'removeTeacherHighlight',
+  'removeTeacherTileHighlights',
   'clearTeacherAnswerEdit',
   'clearRemoteRun',
   'flagAttemptError',

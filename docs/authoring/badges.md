@@ -40,6 +40,8 @@ student per lesson.
 | 🐦 Early Bird | `early_bird` | First joined at least `earlyBirdMinutes` before the tutor pressed **Start** (suggested once the session starts; not tied to a task) | – |
 | 🤝 Helpful Coder | `helpful_coder` | Helped a stuck classmate through peer help, and the classmate pressed 👍 Useful on something they sent or used their suggested change (on the task the help was for) | – |
 | 🗺️ Side Quester | `side_quester` | Marked at least `sideQuesterMinDone` [side-quests](AUTHORING_GUIDE.md#side-quests) Done in the session, on any tasks. Done is self-reported, so it is suggested only and the tutor decides | – |
+| 📖 Word Smith | `word_smith` | Right **first time** on every vocab task they have tried (a graded quiz tagged `Quiz: Vocabulary Check` or `Quiz: Vocabulary Match`, any quiz type), and at least `wordSmithMinTasks` of them (see [Vocab tasks](#vocab-tasks)) | – |
+| 🤩 Emoji Artist | `emoji_artist` | Ran Python or HTML code with an emoji in a string, or in HTML text or an attribute (comments don't count), in a task or a sandbox; typed, pasted or picked all count | – |
 | 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🧘 Focused Coder · 🧭 Project Explorer · 📈 Knowledge Builder · 🙋 Great Question · 🏹 Sharp Shooter · ✍️ Word Wizard · 🎨 Design Master · 🦸 Independent Coder · 🌡️ Honest Check-in · 🦁 Brave Coder · 🌱 Growing Coder · 🔁 Comeback Coder · 🎤 Show and Tell · 💬 Great Answer · 🧑‍🏫 Code Teacher · 🕵️ Teacher Trap · 🧹 Tidy Coder · 🔦 Edge Explorer · 🏁 Finisher · 🧷 Careful Checker | `problem_solver`, `experimenter`, `creative_coder`, `comedy_coder`, `focused_coder`, `project_explorer`, `knowledge_builder`, `great_question`, `sharp_shooter`, `word_wizard`, `design_master`, `independent_coder`, `honest_check_in`, `brave_coder`, `growing_coder`, `comeback_coder`, `show_and_tell`, `great_answer`, `code_teacher`, `teacher_trap`, `tidy_coder`, `edge_explorer`, `finisher`, `careful_checker` | Tutor-only: never suggested | – |
 
 "First in class" is decided per task, in the order the tasks were first passed. Each student
@@ -51,6 +53,22 @@ pressed Start), so it is never auto-awarded. It is judged against the session's 
 Tutor-only badges have no rule yet; a rule can be added to the same definition later without
 changing the id. 🌡️ Honest Check-in (`honest_check_in`) may later gain a suggestion rule the tutor
 confirms (a student who said they weren't sure, then made a real pass); for now it is awarded by hand.
+
+### Vocab tasks
+
+📖 Word Smith reads every **graded** quiz whose `taskActivity` is `Quiz: Vocabulary Check` or
+`Quiz: Vocabulary Match`, whatever its `quizType` (match, multiple choice, fill in the blanks, or
+short answer with a `check`), inside a group or not. A vocab-tagged confidence check, poll or
+unchecked short answer has no right answer, so it never counts. The exact rule, re-checked as the
+class works:
+
+- a vocab task counts when the student's **first** answer to it was a real pass;
+- one vocab task whose first answer wasn't right rules them out for the session (a pending
+  suggestion disappears), even if they fix it later;
+- vocab tasks they haven't answered yet don't count either way, so it can be suggested before the
+  class reaches the last one;
+- they need at least `wordSmithMinTasks` (default 2) right first time, and the lesson needs at
+  least that many vocab tasks. The suggestion names the latest one.
 
 ### Quiz groups
 
@@ -73,6 +91,7 @@ The pattern comes from `taskActivity` (see [Task activity patterns](#task-activi
 | `Code Task, Challenge (Open-Ended)` | 🔓 Challenge Solver |
 | Any checked code or Code Arrange task | 🔨 Persistence, 🔧 Code Fixer, 🚀 Ready to Code |
 | Graded quizzes in a group | 🎯 Quiz Master |
+| `Quiz: Vocabulary Check`, `Quiz: Vocabulary Match` | 📖 Word Smith |
 
 Pattern badges need a `check` on the task: attempts are only recorded for checked tasks.
 
@@ -81,7 +100,7 @@ Pattern badges need a `check` on the task: attempts are only recorded for checke
 | Badge | Python | Turtle | Arcade | HTML | Scratch | Filesystem | Desktop | Electronics | Quizzes |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | Pattern badges (🐛 📋 🔓), 🔨 Persistence | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | – |
-| 🔍 Code Detective, 🎯 Quiz Master | – | – | – | – | – | – | – | – | ✅ |
+| 🔍 Code Detective, 🎯 Quiz Master, 📖 Word Smith | – | – | – | – | – | – | – | – | ✅ |
 | 🔧 Code Fixer | ✅ | ✅ | ✅ | ✅ runtime errors | ❌ no console | – | – | – | – |
 | 📚 Resourceful Coder | ✅ | ✅ | ✅ | ✅ | ❌ no Topic Library | ✅ | ✅ | ✅ | ✅ |
 | ⌨️ Keyboard Wizard | ✅ editor | ✅ editor | ✅ editor, not the game | ✅ editor, not the preview | ✅ Blockly | ✅ | ✅ | ✅ | – |
@@ -91,14 +110,15 @@ Pattern badges need a `check` on the task: attempts are only recorded for checke
 | 🐦 Early Bird | any lesson (not a task) | | | | | | | | |
 | 🤝 Helpful Coder | ✅ | ✅ | – | ✅ | ✅ | – | – | – | – |
 | 🗺️ Side Quester | ✅ | ✅ | – | ✅ | ❌ not yet | – | – | – | – |
+| 🤩 Emoji Artist | ✅ strings | ✅ strings | ❌ not yet | ✅ text and attributes | ❌ no code | – | – | ✅ strings | – |
 
 "–" means the badge has no signal there. The live signals (console errors, topic opens, shortcuts,
-first edits, autocomplete) are recorded from each module's work area; see the plan's PR sequence for when each
+first edits, autocomplete, emoji runs) are recorded from each module's work area; see the plan's PR sequence for when each
 lands.
 
 ## Sandboxes
 
-⌨️ Keyboard Wizard, ✨ Autocomplete Ace, 📚 Resourceful Coder and the sandbox version of 🔧 Code Fixer count in the
+⌨️ Keyboard Wizard, ✨ Autocomplete Ace, 🤩 Emoji Artist, 📚 Resourceful Coder and the sandbox version of 🔧 Code Fixer count in the
 teacher's session sandbox and in a student's personal sandbox. Badges that need a checked task
 (the pattern badges, 🧩, 🎯, 🔨 and 🚀) don't.
 
@@ -143,6 +163,7 @@ Optional, on the lesson envelope. Leave it out to use the defaults.
 | `readyToCodeSeconds` | `10` | a number > 0 | 🚀 seconds to the first real edit |
 | `earlyBirdMinutes` | `5` | a number > 0 | 🐦 minutes before Start a student must join |
 | `sideQuesterMinDone` | `2` | a whole number ≥ 1 | 🗺️ side-quests marked Done in the session |
+| `wordSmithMinTasks` | `2` | a whole number ≥ 1 | 📖 vocab tasks right first time |
 
 ## badgeHints
 
@@ -223,9 +244,25 @@ Rules read a per-student timeline of events, never Firebase directly
 `paste`, `override`, `shortcut`, `first_edit`, `early_join` (built from `firstJoinedAt` and the
 session's `startedAt`), `autocomplete` and `peer_help` (built teacher-side from peer help: a
 helper's item the stuck classmate marked 👍 Useful or whose change they used; students can't
-read each other's peer help, so it is never a student signal) and `side_quest_done` (a side-quest
-the student marked Done, from `sideQuestLog`; self-reported and never checked). A new badge that needs a new signal adds an
+read each other's peer help, so it is never a student signal), `side_quest_done` (a side-quest
+the student marked Done, from `sideQuestLog`; self-reported and never checked) and `emoji_run`.
+
+`emoji_run` is the student's first Run (or Run tests) of code with an emoji the program would
+show: inside a Python string literal, or in HTML text or an attribute value. Python `#` comments,
+HTML `<!-- -->` comments and CSS / JavaScript comments (in `<style>`, `<script>`, `.css` and `.js`
+files) don't count, and plain digits, `#`, `*`, ©, ® and ™ aren't emoji. The student's device
+checks the code on Run (`src/shared/emojiInCode.js`, for modules whose `meta.language` is
+`python` or `html`), never per keystroke and never storing code, and writes
+`studentSignals/{id}/emojiRun` once (`{ firstRunAt, context, taskId }`). A new badge that needs a new signal adds an
 event type there; a new stored field needs its own data-model sign-off.
+
+## In the tutor's suggestions panel
+
+Every suggestion names the task it came from, as text beside the reason (no hover needed): the
+task's title looked up from the suggestion's `taskId` (groups and composed lessons included),
+**Sandbox** for a session or personal sandbox, or **No task** (🐦 Early Bird). A reason that
+already quotes the task title doesn't repeat it. An **Award all** row whose students earned the
+badge on different tasks shows each student's task beside their name.
 
 ## Admin catalogue badges
 

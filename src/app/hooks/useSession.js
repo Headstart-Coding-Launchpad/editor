@@ -47,6 +47,10 @@ import { buildClassCountdown, extendClassCountdown } from '../../shared/classCou
 import { clipRunError } from '../studentHints.js'
 import { bumpSideQuestCount } from '../../shared/sideQuests.js'
 import { draftLogUpdates } from '../../shared/answerDrafts.js'
+import {
+  MAX_TILE_HIGHLIGHT_LOG_PER_TASK,
+  normalizeTileHighlightNote,
+} from '../../shared/tutorTileHighlights.js'
 
 // Badge decisions (sessions/{lessonId}/badges/{anonymousId}/{badgeId}). A decision is written
 // once; revoking is the only later change (see decideBadge / revokeBadge).
@@ -179,6 +183,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       sandboxPreviousTaskId: null,
       lessonOverrideTasks: null,
       explainerShowComplete: false,
+      teacherLiveReferenceVisibleToAll: null,
       taskStartTimes: {},
       // The class's current task over time, for the session report (see taskTimelineUpdate).
       taskTimeline: null,
@@ -280,6 +285,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       sandboxEnteredAt: null,
       lessonOverrideTasks: null,
       explainerShowComplete: false,
+      // The class "📌 Keep showing live code" pin belongs to this session.
+      teacherLiveReferenceVisibleToAll: null,
       students: null,
       overrideLog: null,
       supportRevealLog: null,
@@ -525,6 +532,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/teacherStagePendingAction`] = null
       updates[`students/${anonymousId}/teacherStageAcceptedAt`] = null
       updates[`students/${anonymousId}/teacherHighlights`] = null
+      updates[`students/${anonymousId}/teacherTileHighlights`] = null
       updates[`students/${anonymousId}/teacherPaneCommand`] = null
       // A side-quest closes when the class moves on (sideQuestLog keeps what happened).
       updates[`students/${anonymousId}/sideQuestOpen`] = null
@@ -957,7 +965,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
-  // Presentation View's code as a soft, dismissible support reference — a
+  // Presentation View's code as a soft, read-only support reference — a
   // separate node from teacherLive, published continuously while Presentation
   // is open regardless of whether the "Go Live" force takeover (teacherLive)
   // is toggled on. See docs/agents/classroom-behaviours.md.
@@ -1273,6 +1281,58 @@ export function useSession(lessonId, { enabled = true } = {}) {
       ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherHighlights/${highlightId}`),
       null
     )
+  }
+
+  // Tutor tile highlights (src/shared/tutorTileHighlights.js): a "look again" outline on one
+  // blank of the student's drag-and-drop board, made from StudentModal. One multi-path write
+  // replaces any earlier entries on the same blank (`replaceIds`), adds the new entry, and logs
+  // it for the session report (tileHighlightLog/{taskId}, capped per task).
+  async function pushTeacherTileHighlight(
+    anonymousId,
+    { taskId, targetId, tileId = null, note = null, replaceIds = [] } = {}
+  ) {
+    if (!anonymousId || taskId == null || !targetId) return null
+    const base = `students/${anonymousId}`
+    const key = push(ref(db, `sessions/${lessonId}/${base}/teacherTileHighlights`)).key
+    const cleanNote = normalizeTileHighlightNote(note)
+    const updates = {}
+    for (const id of replaceIds) updates[`${base}/teacherTileHighlights/${id}`] = null
+    updates[`${base}/teacherTileHighlights/${key}`] = {
+      taskId: String(taskId),
+      targetId: String(targetId),
+      tileId: tileId == null || tileId === '' ? null : String(tileId),
+      note: cleanNote,
+      createdAt: Date.now(),
+    }
+    const logged = session?.students?.[anonymousId]?.tileHighlightLog?.[taskId]
+    if (!logged || Object.keys(logged).length < MAX_TILE_HIGHLIGHT_LOG_PER_TASK) {
+      const logKey = push(ref(db, `sessions/${lessonId}/${base}/tileHighlightLog/${taskId}`)).key
+      updates[`${base}/tileHighlightLog/${taskId}/${logKey}`] = {
+        targetId: String(targetId),
+        tileId: tileId == null || tileId === '' ? null : String(tileId),
+        note: cleanNote,
+        at: serverTimestamp(),
+      }
+    }
+    await update(ref(db, `sessions/${lessonId}`), updates)
+    return key
+  }
+
+  // Removes tile highlights: the tutor tapping one again, or the student's device once the
+  // student has moved the highlighted tile.
+  async function removeTeacherTileHighlights(anonymousId, highlightIds = []) {
+    if (!anonymousId || highlightIds.length === 0) return
+    const updates = {}
+    for (const id of highlightIds) {
+      updates[`students/${anonymousId}/teacherTileHighlights/${id}`] = null
+    }
+    await update(ref(db, `sessions/${lessonId}`), updates)
+  }
+
+  // The tutor's "Clear all" in StudentModal.
+  async function clearTeacherTileHighlights(anonymousId) {
+    if (!anonymousId) return
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherTileHighlights`), null)
   }
 
   // Draws attention to (mode: 'highlight') or immediately switches (mode: 'force') one or
@@ -1849,6 +1909,20 @@ export function useSession(lessonId, { enabled = true } = {}) {
     )
   }
 
+  /**
+   * The student's first Run of code with an emoji in a string or HTML text (🤩 Emoji Artist;
+   * src/shared/emojiInCode.js decides on their device). No code is stored.
+   */
+  async function recordEmojiRunSignal(anonymousId, { context = 'task', taskId } = {}) {
+    if (!anonymousId || !SIGNAL_CONTEXTS.includes(context)) return false
+    return writeSignalOnce(
+      anonymousId,
+      'emojiRun',
+      { firstRunAt: serverTimestamp(), context, taskId: taskId ?? null },
+      { existing: mySignals(anonymousId)?.emojiRun }
+    )
+  }
+
   /** The student's first real edit on a task, `elapsedMs` timed on their own device. */
   async function recordFirstEditSignal(anonymousId, taskId, elapsedMs) {
     if (!anonymousId || taskId == null || !Number.isFinite(elapsedMs)) return false
@@ -2005,18 +2079,32 @@ export function useSession(lessonId, { enabled = true } = {}) {
   // A pin is stored as the time it was set, so the student's client can log it
   // once per pin rather than once per task. The one-off "Reveal live code" is a
   // supportRevealLog entry instead (TEACHER_LIVE_REVEAL_KEY), not a flag here.
+  //
+  // The per-student value is three-way (see getTeacherLivePin): a pin time keeps it on for
+  // this student, `false` hides it for this student while the class pin stays on for
+  // everyone else, and null follows the class pin. `visible` is true, false (hide; written as
+  // `false` only while a class pin is on, else null) or null (follow the class).
   async function setTeacherLiveReferenceForStudent(anonymousId, visible) {
+    let value = null
+    if (visible === true) value = Date.now()
+    else if (visible === false && session?.teacherLiveReferenceVisibleToAll) value = false
     await set(
       ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherLiveReferenceVisible`),
-      visible ? Date.now() : null
+      value
     )
   }
 
+  // Pinning or unpinning for the class starts everyone afresh: any per-student "hidden for
+  // this student" (`false`) override is cleared with it, so a new class pin reaches every
+  // student. Per-student pins (a pin time) are left alone.
   async function setTeacherLiveReferenceForClass(visible) {
-    await set(
-      ref(db, `sessions/${lessonId}/teacherLiveReferenceVisibleToAll`),
-      visible ? Date.now() : null
-    )
+    const updates = { teacherLiveReferenceVisibleToAll: visible ? Date.now() : null }
+    for (const [anonymousId, student] of Object.entries(session?.students ?? {})) {
+      if (student?.teacherLiveReferenceVisible === false) {
+        updates[`students/${anonymousId}/teacherLiveReferenceVisible`] = null
+      }
+    }
+    await update(ref(db, `sessions/${lessonId}`), updates)
   }
 
   async function requestHelp(anonymousId) {
@@ -2138,6 +2226,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
     clearTeacherStage,
     pushTeacherHighlight,
     removeTeacherHighlight,
+    pushTeacherTileHighlight,
+    removeTeacherTileHighlights,
+    clearTeacherTileHighlights,
     pushTeacherPaneCommand,
     clearTeacherPaneCommand,
     pushClassPaneCommand,
@@ -2187,6 +2278,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     recordTopicOpenSignal,
     recordShortcutSignal,
     recordAutocompleteSignal,
+    recordEmojiRunSignal,
     recordFirstEditSignal,
     recordCompleteShownSignal,
     recordSandboxRunSignal,

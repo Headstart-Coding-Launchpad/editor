@@ -250,6 +250,14 @@ export const interactionStyles = {
     background: '#fee2e2',
     color: '#b91c1c',
   },
+  // A tutor's "look again" highlight (src/shared/tutorTileHighlights.js): the tile-feedback red
+  // outline (slotWrong) plus a ring, so it reads on top of a slot's own verdict colour. Style
+  // only — no overlay — so the tile underneath still drags and taps as before.
+  tutorHighlight: {
+    borderColor: '#dc2626',
+    borderStyle: 'solid',
+    boxShadow: '0 0 0 3px rgba(220, 38, 38, 0.35)',
+  },
   correctAnswerHint: {
     fontFamily: 'var(--font-body)',
     fontSize: '0.78rem',
