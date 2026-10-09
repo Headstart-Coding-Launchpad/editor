@@ -215,6 +215,16 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … is a code-arrange task but has no completion check` | There's nothing to decide when the arrangement is right. | Add a `check`, usually on output. |
 | `Task … entryFile "…" is not one of its starter files` | An HTML arrange task assembles its tiles into `entryFile`, but `starterFiles` has no file with that name, so the preview would be blank. | Add a starter file named after `entryFile` (an empty `content` is fine), or set `entryFile` to the starter file the tiles belong in. |
 | `Task … solution arrangement does not pass its own code check` (warning) | With every blank holding its own correct tile, the assembled program fails one of the task's `code` checks (`code` / `code_contains` / `code_matches_regex` …). Only code checks are tried here; `output` and element checks need a real run, so test those with the Builder's **Show solution** and Run. | Fix the check's value, or the blanks' `code`, so the intended program passes. |
+| `Task … distractor … hint must be text` | Tile feedback: a distractor's `hint` isn't a string. | Write the hint as text, or remove it. |
+| `… wrongTiles must be a list of { tileId, hint }` | Tile feedback: a blank's `wrongTiles` isn't a list. `…` is `Task … line … blank …`. | Write `wrongTiles: [{ tileId: s3, hint: "…" }]`. |
+| `… wrongTiles entry … has no tileId` | A `wrongTiles` entry is missing `tileId`. | Add the id of the tile (another blank's id or a distractor id). |
+| `… wrongTiles entry … hint must be text` | A `wrongTiles` hint isn't a string. | Write the hint as text, or remove it (a default is shown). |
+| `… wrongTiles lists "…", which is not a blank or distractor id in this task` (warning) | The id matches no tile, so the entry never fires. | Use a blank id or a distractor id from this task. |
+| `… wrongTiles lists its own tile (it is never flagged)` (warning) | A blank's own tile is never flagged as wrong. | Remove the entry. |
+| `… alsoAccepts must be a list of tile ids` | `alsoAccepts` isn't a list. | Write `alsoAccepts: [s5]`. |
+| `… alsoAccepts entry … is not a tile id` | An `alsoAccepts` entry is empty or not a string. | Use a blank or distractor id. |
+| `… alsoAccepts lists "…", which is not a blank or distractor id in this task` (warning) | The id matches no tile. | Use a blank id or a distractor id from this task. |
+| `… lists "…" in both wrongTiles and alsoAccepts (alsoAccepts wins, so it is never flagged)` (warning) | The same tile is both wrong and fine in one blank. | Keep it in one list. |
 | `Task … arrangeMode must be slots or indent` | `arrangeMode` has another value. | Use `indent`, or leave it out for tiles into blanks. |
 | `Task … is an indent arrange task but must use the Python module` | Indent mode is Python only. | Set `moduleType: python`. |
 | `Task … line … has no code` | Indent mode: a line has no `code`. | Give every line its code. |
