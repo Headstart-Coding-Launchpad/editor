@@ -261,6 +261,40 @@ describe('CodeArrangeTaskContainer — teacher live mirror', () => {
     expect(cs.handleCodeChange).not.toHaveBeenCalled()
   })
 
+  it('logs a tile miss when the student drops a known-wrong tile, and none for other drops', async () => {
+    const user = userEvent.setup()
+    const cs = makeCs({
+      readSavedTaskFile: vi.fn(() => null),
+      recordCodeArrangeTileMiss: vi.fn(),
+    })
+    const task = {
+      ...PYTHON_TASK,
+      distractors: [{ id: 'D1', code: 'print("wrong")', hint: 'Nothing prints "wrong".' }],
+    }
+    render(
+      <CodeArrangeTaskContainer
+        task={task}
+        cs={cs}
+        currentTaskId={1}
+        viewingTaskId={null}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+
+    // Another blank's tile, not listed as wrong anywhere: not flagged.
+    await user.click(screen.getByText('print("done")'))
+    await user.click(screen.getAllByText('Tap to place')[0])
+    expect(cs.recordCodeArrangeTileMiss).not.toHaveBeenCalled()
+
+    await user.click(screen.getByText('print("wrong")'))
+    await user.click(screen.getByText('Tap to place'))
+    expect(cs.recordCodeArrangeTileMiss).toHaveBeenCalledTimes(1)
+    expect(cs.recordCodeArrangeTileMiss).toHaveBeenCalledWith({ slotId: 'L2', tileId: 'D1' })
+    expect(screen.getByText('Nothing prints "wrong".')).toBeInTheDocument()
+  })
+
   it('never mirrors tile placements live for a teacher live mirror (read-only)', () => {
     const cs = makeCs()
     render(

@@ -39,6 +39,27 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-09
 
+### Code Arrange tile feedback (`distractors[].hint`, `wrongTiles`, `alsoAccepts`)
+
+- New optional fields flag a tile the moment it is dropped into a blank where it is known to be
+  wrong: the blank turns red and the hint shows under the line (no hover; works on touch). A
+  distractor in any blank shows its `hint` (default "This piece doesn't belong in this
+  program."); a tile in a blank's `wrongTiles: [{tileId, hint}]` shows that hint;
+  `alsoAccepts: [tileId]` is never flagged in that blank. A `tileId` is a blank's id (its own
+  tile) or a distractor's id. Nothing is ever marked right, and anything not listed is left to the
+  run, so other valid arrangements still pass.
+- Opt-in per task: a task with none of the three fields flags nothing. Completion is unchanged
+  (Run against `check`; Run stays available whatever is flagged).
+- Session reports: each flagged drop is a `tileMisses[]` entry per student task (not an attempt),
+  summarised per task; every Code Arrange attempt now records its `placements` (blank id -> tile
+  id) beside the submission. The new fields and `distractors` are sealed with `lines`.
+- Validation warns when a `wrongTiles`/`alsoAccepts` id isn't in the task's pool, or a tile is in
+  both lists for one blank. The Builder has a hint box per distractor and a **Tile feedback** list
+  per blank. See [lesson-schema.md](lesson-schema.md) "Tile feedback" and
+  [session-reports.md](session-reports.md).
+- Affects: code_arrange, python, html · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-09-tile-level-feedback-for-code-arrange-flag-known-wrong-tile-p.md
+
 ### Text checks need an `operator`
 
 - A text-comparing check (`output`, `code`, `answer`, element value, file content, …) written
