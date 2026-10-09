@@ -553,6 +553,53 @@ describe('characterisation: QuizTask onSelectAnswer per legacy fixture', () => {
     expect(onSelectAnswer.mock.calls).toEqual([['It shows text']])
   })
 
+  it('short_answer reports the unsubmitted text as a draft, never as an answer', () => {
+    const onSelectAnswer = vi.fn()
+    const onDraftChange = vi.fn()
+    render(
+      <QuizTask
+        task={legacy.OPEN_SHORT_ANSWER_TASK}
+        selectedAnswer="Old answer"
+        onSelectAnswer={onSelectAnswer}
+        onDraftChange={onDraftChange}
+      />
+    )
+    const box = screen.getByPlaceholderText('Type your answer here…')
+    fireEvent.change(box, { target: { value: 'I learned loops' } })
+    expect(onDraftChange).toHaveBeenLastCalledWith('I learned loops')
+    // Back to the submitted text, or empty: nothing new to show.
+    fireEvent.change(box, { target: { value: 'Old answer' } })
+    expect(onDraftChange).toHaveBeenLastCalledWith('')
+    fireEvent.change(box, { target: { value: '   ' } })
+    expect(onDraftChange).toHaveBeenLastCalledWith('')
+    expect(onSelectAnswer).not.toHaveBeenCalled()
+  })
+
+  it('fill_blank type reports the typed gaps as a draft line', () => {
+    const onDraftChange = vi.fn()
+    render(
+      <QuizTask
+        task={legacy.FILL_BLANK_TYPE_TASK}
+        selectedAnswer=""
+        onSelectAnswer={vi.fn()}
+        onDraftChange={onDraftChange}
+      />
+    )
+    fireEvent.change(screen.getByPlaceholderText('...'), { target: { value: 'loop' } })
+    expect(onDraftChange).toHaveBeenLastCalledWith('loop')
+  })
+
+  it('confidence shows ten levels, 👎 on 1 and 👍 on 10', () => {
+    render(<QuizTask task={legacy.CONFIDENCE_TASK} selectedAnswer="" onSelectAnswer={vi.fn()} />)
+    for (let level = 1; level <= 10; level += 1) {
+      expect(screen.getByTitle(`Confidence level ${level}`)).toBeInTheDocument()
+    }
+    expect(screen.queryByTitle('Confidence level 11')).not.toBeInTheDocument()
+    expect(screen.getByTitle('Confidence level 1')).toHaveTextContent('👎')
+    expect(screen.getByTitle('Confidence level 10')).toHaveTextContent('👍')
+    expect(screen.getByTitle('Confidence level 5')).not.toHaveTextContent('👍')
+  })
+
   it('confidence emits the level as a string with passedOverride true', async () => {
     const user = userEvent.setup()
     const onSelectAnswer = vi.fn()

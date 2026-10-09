@@ -20,7 +20,7 @@ Student types a free-text response. It can be auto-checked for a keyword or phra
 
 ## Confidence Rating
 
-Student rates how confident they feel about a topic on a 1–5 scale. There's no right or wrong answer — it's a self-check, not a test.
+Student rates how confident they feel about a topic on a 1–10 scale. There's no right or wrong answer — it's a self-check, not a test.
 
 ## Poll
 

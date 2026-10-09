@@ -103,6 +103,7 @@ export function defineActivity(def) {
     serialize: jsonSerialize,
     storage: { persist: true, filename: ACTIVITY_STATE_FILENAME },
     liveChannel: 'answer',
+    // (prev, next, task) → 'discrete' | 'continuous' (see useActivityState's write rules).
     classifyChange: () => 'discrete',
     isGraded: () => true,
     // true when the teacher may show a student's answer on the presentation window

@@ -87,7 +87,7 @@ describe('answer choice entrance', () => {
 
   it('staggers the confidence buttons', () => {
     renderQuiz(CONFIDENCE_TASK, 'lesson-1:7')
-    for (let level = 1; level <= 5; level += 1) {
+    for (let level = 1; level <= 10; level += 1) {
       const button = screen.getByTitle(`Confidence level ${level}`)
       expect(button).toHaveClass('motion-rise-in', 'motion-stagger')
       expect(button.style.getPropertyValue('--motion-i')).toBe(String(level - 1))

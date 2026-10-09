@@ -9,6 +9,9 @@ export default function ShortAnswerQuiz({
   task,
   selectedAnswer,
   onSelectAnswer,
+  // (text) => void: the unsubmitted answer typed so far, mirrored to the tutor as a draft
+  // (useActivityState onDraft). '' when there is nothing new to show.
+  onDraftChange,
   submitted,
   checkPassed,
   disabled,
@@ -23,6 +26,13 @@ export default function ShortAnswerQuiz({
   React.useEffect(() => {
     setLocalAnswer(typeof selectedAnswer === 'string' ? selectedAnswer : '')
   }, [selectedAnswer])
+
+  function handleType(value) {
+    setLocalAnswer(value)
+    // Text that matches the submitted answer is not a draft.
+    const submittedText = typeof selectedAnswer === 'string' ? selectedAnswer : ''
+    onDraftChange?.(value.trim() && value.trim() !== submittedText.trim() ? value : '')
+  }
 
   function handleSubmit() {
     const trimmed = localAnswer.trim()
@@ -51,7 +61,7 @@ export default function ShortAnswerQuiz({
         <textarea
           style={sm.shortAnswerInput}
           value={localAnswer}
-          onChange={(e) => setLocalAnswer(e.target.value)}
+          onChange={(e) => handleType(e.target.value)}
           placeholder="Type your answer here…"
           disabled={disabled || (submitted && checkPassed)}
           rows={3}

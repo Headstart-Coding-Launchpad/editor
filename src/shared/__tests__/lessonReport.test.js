@@ -1421,11 +1421,17 @@ describe('characterisation: buildSessionReport for legacy quiz + code_arrange ta
           "quizType": "confidence",
           "ratingDistribution": {
             "1": 0,
+            "10": 0,
             "2": 0,
             "3": 0,
             "4": 1,
             "5": 1,
+            "6": 0,
+            "7": 0,
+            "8": 0,
+            "9": 0,
           },
+          "ratingScale": 10,
           "respondedCount": 2,
           "supportRevealCount": 0,
           "supportRevealSources": {

@@ -1,6 +1,6 @@
 # Tutor sees short-answer text as the student types
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** activity mode
 - **Requested by:** Ryan (approved by Ryan), 2026-10-09
 - **Lessons blocked:** none yet
@@ -36,3 +36,26 @@ Part of the 2026-10-09 principle: **tutors see what students are doing at all ti
 ## Resolution
 
 <!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+
+Shipped 2026-10-09 on branch `feature/confidence-ten-and-answer-drafts` (not yet merged) for
+`quiz_short_answer` (open and checked) and `quiz_fill_blank` type mode. Docs: quiz-tasks.md "Live
+drafts", runtime-model.md (`currentDraft`, `draftLog`), classroom-behaviours.md "Answer Drafts",
+session-reports.md (`lastDraft`), CHANGELOG 2026-10-09. Decisions agreed with Ryan:
+
+- See only: no nudge, hint or `teacher_picks` actions on a draft (the request's "can act on a
+  draft" is left for later).
+- `students/{id}/currentDraft` = `{ taskId, text, at }`, written by `useActivityState` (`onDraft`)
+  in a live lesson only: after 1.5s of no typing whether or not watched, and throttled ~250ms
+  only while `activeStudentView` is the student (flushed when watching starts). Never per
+  keystroke otherwise. Cleared on submit, reset, an emptied box and the class task change.
+- Card: dashed "✏️ Typing, not submitted:" line (two lines, no hover needed); StudentModal: the
+  full draft above the quiz. Drafts are never attempts; checks, `showResponses` and badges are
+  unchanged.
+- Typed fill-in-the-gaps had been mirroring every gap edit to `currentAnswer` (debounced 300ms,
+  watched or not); it is now a continuous change (watched only) plus the draft line.
+- Report: `lastDraft` on a student task the student never submitted. `setTaskId` copies the
+  unsubmitted draft to `draftLog/{id}/{taskId}` (teacher-written, covered by the existing
+  `$lessonId` rule, so no rules deploy).
+- Other submit-to-reveal inputs checked: Python `input()` already streams while watched; Binary
+  and Keyboard typed answers are continuous activity state (watched only) and were left as they
+  are.

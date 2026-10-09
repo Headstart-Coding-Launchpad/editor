@@ -58,6 +58,8 @@ export function ActivityView({
   state,
   onChange,
   onSubmit,
+  // (text) => void: an unsubmitted answer typed so far, for the tutor (useActivityState onDraft).
+  onDraft,
   readOnly = false,
   teacher = false,
   device = {},
@@ -91,6 +93,7 @@ export function ActivityView({
       state={state}
       onChange={readOnly ? undefined : onChange}
       onSubmit={readOnly ? undefined : onSubmit}
+      onDraft={readOnly ? undefined : onDraft}
       readOnly={readOnly}
       device={device}
       teacher={teacher}
@@ -231,6 +234,7 @@ export default function ActivityHost({
       state={state}
       onChange={activity?.onChange}
       onSubmit={activity?.onSubmit}
+      onDraft={activity?.onDraft}
       readOnly={readOnly}
       device={device}
       lessonType={lessonType}

@@ -123,6 +123,7 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … is a poll but has an empty option text` | A poll option has no text. | Fill in or remove it. |
 | `Task … is a poll but has an option with no id` | A poll option has no `id`. | Give each option an id (`a`, `b`, …), as for multiple choice. |
 | `Task … is a poll but has duplicate option ids` | Two poll options share an `id`. | Give each option its own id. |
+| `Task … is a confidence check with a scale field; confidence checks always use 1 to 10, so scale is ignored` (warning) | A confidence task sets `scale`. Every confidence check is 1 to 10. | Remove `scale`. |
 | `Task … is a poll but has a check (polls are never marked)` | A poll has a `check` or `answer:`. Polls have no right answer. | Remove `check` / `answer:`. Use `quizType: multiple_choice` for a marked question. |
 | `Task … is a poll but showResults is not true or false` | A poll's `showResults` is set to something other than `true` or `false`. | Use `showResults: false` to keep the class split private, or remove the field (default `true`). |
 | `Task … is a short-answer quiz but showResponses is not teacher_picks` | `showResponses` has a value other than `teacher_picks`. | Use `showResponses: teacher_picks`, or remove the field to keep answers teacher-only. |

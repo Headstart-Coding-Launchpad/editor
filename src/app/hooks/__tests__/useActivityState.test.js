@@ -11,6 +11,11 @@ import {
 } from '../../../test/studentCodeStateHarness'
 import { ACTIVITY_ANSWER_DEBOUNCE_MS, ACTIVITY_CONTINUOUS_THROTTLE_MS } from '../useActivityState'
 import binary from '../../../activities/binary/definition.js'
+import { ANSWER_DRAFT_IDLE_MS } from '../../../shared/answerDrafts'
+import {
+  FILL_BLANK_TYPE_TASK,
+  OPEN_SHORT_ANSWER_TASK,
+} from '../../../test/fixtures/legacyActivityTasks'
 
 vi.mock('../../../modules/python/pyodide', async () =>
   (await import('../../../test/studentCodeStateMocks')).pyodideMock()
@@ -348,5 +353,128 @@ describe('useActivityState: teacher controls', () => {
     act(() => result.current.activity.onChange(bitsState('0101')))
     act(() => vi.advanceTimersByTime(1000))
     expect(writers.updateTeacherLive).not.toHaveBeenCalled()
+  })
+})
+
+describe('useActivityState: answer drafts', () => {
+  const DRAFT_LESSON = {
+    id: 'lesson-drafts',
+    title: 'Drafts',
+    type: 'python',
+    tasks: [OPEN_SHORT_ANSWER_TASK, FILL_BLANK_TYPE_TASK],
+  }
+  const renderDrafts = (options = {}) =>
+    renderStudentCodeState({
+      lesson: DRAFT_LESSON,
+      currentTaskId: OPEN_SHORT_ANSWER_TASK.id,
+      ...options,
+    })
+  const draft = (taskId, text) => ({ taskId, text, at: expect.any(Number) })
+
+  it('writes an unwatched draft once typing goes quiet, never per keystroke', () => {
+    const { result, writers } = renderDrafts()
+    act(() => result.current.activity.onDraft('I'))
+    act(() => result.current.activity.onDraft('I learned'))
+    act(() => vi.advanceTimersByTime(ANSWER_DRAFT_IDLE_MS - 1))
+    expect(writers.writeStudentDraft).not.toHaveBeenCalled()
+    act(() => result.current.activity.onDraft('I learned loops'))
+    act(() => vi.advanceTimersByTime(ANSWER_DRAFT_IDLE_MS))
+    expect(writers.writeStudentDraft).toHaveBeenCalledTimes(1)
+    expect(writers.writeStudentDraft).toHaveBeenCalledWith(
+      ANON,
+      draft(OPEN_SHORT_ANSWER_TASK.id, 'I learned loops')
+    )
+    // A draft is never an answer or an attempt.
+    expect(writers.writeStudentAnswer).not.toHaveBeenCalled()
+    expect(writers.logAttempt).not.toHaveBeenCalled()
+  })
+
+  it('streams the draft throttled while this student is watched', () => {
+    const { result, writers } = renderDrafts({
+      session: makeSession({ activeStudentView: ANON }),
+    })
+    act(() => result.current.activity.onDraft('a'))
+    act(() => result.current.activity.onDraft('ab'))
+    act(() => result.current.activity.onDraft('abc'))
+    expect(writers.writeStudentDraft).toHaveBeenCalledTimes(1)
+    act(() => vi.advanceTimersByTime(ACTIVITY_CONTINUOUS_THROTTLE_MS))
+    expect(writers.writeStudentDraft).toHaveBeenCalledTimes(2)
+    expect(writers.writeStudentDraft).toHaveBeenLastCalledWith(
+      ANON,
+      draft(OPEN_SHORT_ANSWER_TASK.id, 'abc')
+    )
+    // The idle write finds nothing new to send.
+    act(() => vi.advanceTimersByTime(ANSWER_DRAFT_IDLE_MS))
+    expect(writers.writeStudentDraft).toHaveBeenCalledTimes(2)
+  })
+
+  it('sends the draft the moment the teacher starts watching', () => {
+    const { result, writers, updateSession } = renderDrafts()
+    act(() => result.current.activity.onDraft('half an answer'))
+    expect(writers.writeStudentDraft).not.toHaveBeenCalled()
+    updateSession({ activeStudentView: ANON })
+    expect(writers.writeStudentDraft).toHaveBeenCalledWith(
+      ANON,
+      draft(OPEN_SHORT_ANSWER_TASK.id, 'half an answer')
+    )
+  })
+
+  it('clears the draft on submit, and when the box is emptied', async () => {
+    const { result, writers } = renderDrafts()
+    act(() => result.current.activity.onDraft('Loops'))
+    act(() => vi.advanceTimersByTime(ANSWER_DRAFT_IDLE_MS))
+    writers.writeStudentDraft.mockClear()
+    await actAsync(() => result.current.activity.onSubmit('Loops repeat code'))
+    expect(writers.writeStudentDraft).toHaveBeenCalledWith(ANON, null)
+    expect(writers.logAttempt).toHaveBeenCalledTimes(1)
+
+    writers.writeStudentDraft.mockClear()
+    act(() => result.current.activity.onDraft('More'))
+    act(() => vi.advanceTimersByTime(ANSWER_DRAFT_IDLE_MS))
+    act(() => result.current.activity.onDraft(''))
+    act(() => vi.advanceTimersByTime(ANSWER_DRAFT_IDLE_MS))
+    expect(writers.writeStudentDraft.mock.calls.map((call) => call[1])).toEqual([
+      draft(OPEN_SHORT_ANSWER_TASK.id, 'More'),
+      null,
+    ])
+  })
+
+  it('clears a draft left from before a reload when the student submits', async () => {
+    const { result, writers } = renderDrafts({
+      session: makeSession({
+        student: { currentDraft: { taskId: OPEN_SHORT_ANSWER_TASK.id, text: 'Old', at: 1 } },
+      }),
+    })
+    await actAsync(() => result.current.activity.onSubmit('Final answer'))
+    expect(writers.writeStudentDraft).toHaveBeenCalledWith(ANON, null)
+  })
+
+  it('drops a pending draft when the task changes', () => {
+    const { result, writers, update } = renderDrafts()
+    act(() => result.current.activity.onDraft('unfinished'))
+    update({ currentTaskId: FILL_BLANK_TYPE_TASK.id })
+    act(() => vi.advanceTimersByTime(ANSWER_DRAFT_IDLE_MS * 2))
+    expect(writers.writeStudentDraft).not.toHaveBeenCalled()
+  })
+
+  it('writes no drafts in solo mode or the session sandbox', () => {
+    for (const phase of ['solo', 'sandbox']) {
+      const { result, writers, unmount } = renderDrafts({ phase })
+      act(() => result.current.activity.onDraft('text'))
+      act(() => vi.advanceTimersByTime(ANSWER_DRAFT_IDLE_MS))
+      expect(writers.writeStudentDraft).not.toHaveBeenCalled()
+      unmount()
+    }
+  })
+
+  it('mirrors typed gaps only while watched (continuous), like code', () => {
+    const { result, writers, updateSession } = renderDrafts({
+      currentTaskId: FILL_BLANK_TYPE_TASK.id,
+    })
+    act(() => result.current.activity.onChange({ t1: 'Lo' }))
+    act(() => vi.advanceTimersByTime(5000))
+    expect(writers.writeStudentAnswer).not.toHaveBeenCalled()
+    updateSession({ activeStudentView: ANON })
+    expect(writers.writeStudentAnswer).toHaveBeenCalledWith(ANON, JSON.stringify({ t1: 'Lo' }))
   })
 })

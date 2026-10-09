@@ -1,6 +1,7 @@
 // Fill-in-the-gaps quiz (legacy `taskType: 'quiz'`, `quizType: 'fill_blank'`). State:
 // { [blankId]: tileId } in drag mode, { [blankId]: typedText } in type mode. Filling the last gap
-// (drag) or pressing Check (type) submits; the teacher can edit a student's answers.
+// (drag) or pressing Submit (type) submits; the teacher can edit a student's answers. Typed gaps
+// not yet submitted reach the tutor as an answer draft (src/shared/answerDrafts.js).
 import { parseQuizAnswerState } from '../../shared/quizAnswers.js'
 import {
   buildFillBlankSubmission,
@@ -55,6 +56,11 @@ export default defineQuizActivity('fill_blank', {
   },
   completion: 'auto',
   teacherEditable: true,
+  // Typing a gap is continuous, like code: mirrored to currentAnswer only while the teacher
+  // watches this student. The unwatched tutor sees the typed gaps as an answer draft instead
+  // (onDraft, src/shared/answerDrafts.js). Placing a tile (drag mode) is discrete.
+  classifyChange: (prev, next, task) =>
+    (task?.mode ?? 'drag') === 'type' ? 'continuous' : 'discrete',
   // Drag mode only: a tutor can highlight a placed tile (target: the blank id).
   tileHighlights: (task) => (task?.mode ?? 'drag') === 'drag',
 

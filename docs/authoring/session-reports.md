@@ -101,6 +101,7 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `taskType` | `code` (code tasks and Code Arrange), `quiz`, or `activity`. | Always | 2026-07-22 |
 | `quizType` | `multiple_choice`, `match`, `fill_blank`, `short_answer`, `confidence`, `poll` (since 2026-10-01). | Quizzes only | 2026-07-22 |
 | `activityType` | The activity id (`binary`, `keyboard`, `mouse`, …). | Activities only | 2026-09-28 |
+| `ratingScale` | The scale the confidence ratings in `distinctAttempts` were given on: `10`. A confidence entry without it is from before 2026-10-09 and was rated 1–5. | Confidence quizzes only | 2026-10-09 |
 | `completed` | Graded: passed, passed by a tutor's hand override, or auto-checked correct when the class moved on (`auto_passed`). Moving the class on past a graded code task the student never passed **no longer** makes it complete (quizzes and activities moved past still count as complete) (since 2026-10-01; see [Overrides](#overrides)). Ungraded: responded at all. | Always | 2026-07-13 (changed 2026-10-01) |
 | `attempts` | Total submissions including identical resubmissions: Σ(1 + `retries`) over `distinctAttempts`. | Always | 2026-07-13 |
 | `finalResult` | See [finalResult](#finalresult). | Always | 2026-07-13 (values changed 2026-07-22) |
@@ -116,6 +117,7 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `tileMisses[]` | Code Arrange [tile feedback](lesson-schema.md#tile-feedback): each time the student dropped a tile into a blank where the task marks it known-wrong, oldest first: `{ slotId (the blank), tileId, at (ms) }`. Not attempts: they never count towards `attempts` or `distinctAttempts`. At most 100 per task. | Omitted when none | 2026-10-09 |
 | `tutorTileHighlights[]` | Each time the tutor highlighted a tile on this student's board as "look again" from StudentModal (code_arrange slot mode, Match, Fill in the Gaps drag mode), oldest first: `{ targetId (the blank: code_arrange slot id, Match prompt pair id, or Fill in the Gaps blank id), tileId (the tile in it then, or null for an empty blank), note (the tutor's note; omitted when none), at (ms) }`. Support, not grading: never attempts, never changes `completed` or `finalResult`. At most 50 per task. See [Tutor Tile Highlights](../agents/classroom-behaviours.md#tutor-tile-highlights-teachertilehighlights). | Omitted when none | 2026-10-09 |
 | `itemProgress` | `{ correct, total }` items right in the latest submission. | `taskType: activity` only, when submitted | 2026-09-28 |
+| `lastDraft` | The last text the student typed but never submitted (an open or checked short answer, or typed fill-in-the-gaps shown as `print · ___`), from the live [answer drafts](quiz-tasks.md#live-drafts-what-the-tutor-sees-before-submit). Never an attempt. At most 1000 characters. | Omitted when the student submitted the task or typed nothing | 2026-10-09 |
 | `timeToFirstEditMs` | Time from the task opening on the student's device to their first real edit (timed on the device). *Graded only.* | Omitted when unknown | 2026-09-30 |
 | `errorAttempts` | Attempts whose run hit a real console error. *Graded only.* | Omitted when 0 | 2026-09-30 |
 | `uniqueFailedAttempts` | Different failed submissions (by content hash). *Graded only.* | Omitted when 0 | 2026-09-30 |
@@ -300,7 +302,8 @@ responded instead of completion: there is no `completedCount`, `completionRate`,
 |---|---|---|
 | `taskId`, `title`, `priority`, `taskType`, `quizType` / `activityType`, `totalStudents` | As for graded tasks. | — |
 | `respondedCount` | Students who responded at least once. | 2026-07-22 |
-| `ratingDistribution` | Confidence only: `{ 1: n, 2: n, 3: n, 4: n, 5: n }` from each student's latest rating. | 2026-07-22 |
+| `ratingDistribution` | Confidence only: `{ 1: n, …, 10: n }` from each student's latest rating. Before 2026-10-09 the keys were 1–5. | 2026-07-22 (1–10 since 2026-10-09) |
+| `ratingScale` | Confidence only: `10`, the scale of `ratingDistribution`. Missing in reports before 2026-10-09, whose ratings are out of 5, so read a missing `ratingScale` as 5. | 2026-10-09 |
 | `optionDistribution[]` | Poll only: `{ id, text, count }` per option, in the task's option order, counting each student's latest choice (students can change their choice). | 2026-10-01 |
 | `shownResponses[]` | Open short answer with `showResponses: teacher_picks` only: each answer the teacher showed on the presentation window, in the order first shown, as `{ studentLabel, text, showName, shownAt, hiddenAt }`. `text` is the answer as it was when shown; `showName` is whether the name was on screen last; `hiddenAt` is `null` if it was still on screen at the end. Omitted when none were shown. | 2026-10-02 |
 | `avgTimeOnTaskMs` | As for graded tasks. | 2026-07-14 |

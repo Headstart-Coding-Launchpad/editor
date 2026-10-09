@@ -62,7 +62,9 @@ describe('quiz activity definitions', () => {
     expect(getTaskActivity(MULTIPLE_CHOICE_TASK).deserialize('z', MULTIPLE_CHOICE_TASK)).toBe('')
     expect(getTaskActivity(MATCH_TASK).deserialize(['p1'], MATCH_TASK)).toEqual({})
     expect(getTaskActivity(MATCH_TASK).deserialize({ p1: 'p1' }, MATCH_TASK)).toEqual({ p1: 'p1' })
-    expect(getTaskActivity(CONFIDENCE_TASK).deserialize('9', CONFIDENCE_TASK)).toBe('')
+    expect(getTaskActivity(CONFIDENCE_TASK).deserialize('11', CONFIDENCE_TASK)).toBe('')
+    expect(getTaskActivity(CONFIDENCE_TASK).deserialize('9', CONFIDENCE_TASK)).toBe('9')
+    expect(getTaskActivity(CONFIDENCE_TASK).deserialize('0', CONFIDENCE_TASK)).toBe('')
   })
 
   it('grades like the old handleQuizSelect rules', () => {

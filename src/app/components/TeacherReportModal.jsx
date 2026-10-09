@@ -8,6 +8,7 @@ import {
   TeacherSandboxSection,
 } from './ReportBadgeSections'
 import ReportPollsSection from './polls/ReportPollsSection'
+import { reportConfidenceScale } from '../../shared/confidenceScale'
 import {
   formatErrorStudents,
   formatFirstRealPass,
@@ -131,8 +132,11 @@ function formatSummaryFailures(task) {
     )
   }
   if (task.ratingDistribution) {
+    // Reports before 2026-10-09 have no ratingScale: those ratings are out of 5.
+    const scale = reportConfidenceScale(task)
     parts.push(
-      `Ratings: ${Object.entries(task.ratingDistribution)
+      `Ratings (out of ${scale}): ${Object.entries(task.ratingDistribution)
+        .sort(([a], [b]) => Number(a) - Number(b))
         .map(([rating, count]) => `${rating}:${count}`)
         .join(', ')}`
     )
@@ -210,12 +214,21 @@ function StudentTaskRow({ task }) {
           <span style={s.attemptsCount}>{studentTaskSignalLabels(task).join(' · ')}</span>
         )}
         {task.override && <span style={s.overrideNote}>{formatOverrideDetail(task)}</span>}
-        {(task.distinctAttempts.length > 0 || task.autoCheck) && (
+        {task.lastDraft && <span style={s.attemptsCount}>✏️ Typed but never submitted</span>}
+        {(task.distinctAttempts.length > 0 || task.autoCheck || task.lastDraft) && (
           <span style={s.expandArrow}>{expanded ? '▾' : '▸'}</span>
         )}
       </button>
-      {expanded && (task.distinctAttempts.length > 0 || task.autoCheck) && (
+      {expanded && (task.distinctAttempts.length > 0 || task.autoCheck || task.lastDraft) && (
         <div style={s.attemptsList}>
+          {task.lastDraft && (
+            <div style={s.attemptItem}>
+              <div style={s.attemptHeader}>
+                <span style={{ ...s.badge, ...s.badgeInfo }}>Last draft (not submitted)</span>
+              </div>
+              <pre style={s.submission}>{task.lastDraft}</pre>
+            </div>
+          )}
           {task.autoCheck && (
             <div style={s.attemptItem}>
               <div style={s.attemptHeader}>

@@ -370,6 +370,19 @@ students who have passed it while the class waits. Python, Turtle and HTML
 - **The class strip.** `ClassActivityStrip`, above the grid, groups the class (`summariseClassActivities`): "🤝 Hal → Sam · 👀 6 looking at Sam's work · 📖 1 reading a topic". Hovering names the students; clicking outlines their cards (`highlighted`), clicking again clears it. It shows nothing when nobody is doing any of these.
 - **Icon chips.** Every StudentCard status chip (Passed, Failed, Override, Help, Away, Pasted, Fullscreen, Sharing, Support, the visible panes, Assisted) is a single icon whose words are its tooltip and accessible name (`IconChip`), so cards stay compact. Item progress keeps its numbers.
 
+## Answer Drafts: `currentDraft`
+
+The tutor sees what a student is typing into a submit-to-reveal answer before they submit: an open or checked short answer (`ShortAnswerQuiz`), and typed fill-in-the-gaps (`FillBlankQuiz` type mode, as one line `print · ___`). See-only: no nudge or pick actions on a draft.
+
+- **Student side.** The quiz reports the typed text as `onDraftChange(text)` → the activity host's `onDraft` (`useActivityState`). Text equal to the submitted answer, or blank, is no draft. Writes follow the code-sync rules: after `ANSWER_DRAFT_IDLE_MS` (1.5s) of no typing whether or not watched, and throttled (~250ms) only while `activeStudentView` is this student, flushed the moment watching starts; never per keystroke otherwise. Live lesson only (not solo, presentation, preview or the session sandbox), and only on the student's own current task.
+- **Cleared** on submit (the student's own; a teacher's answer edit leaves it), on a remote reset, when the box is emptied, and on a class task change (`setTaskId`, which first copies an unsubmitted draft to `draftLog` for the report).
+- **Teacher side.** `StudentCard` shows a dashed "✏️ Typing, not submitted:" line (two lines, readable without hover) under the answer; StudentModal (`StudentWorkspaceBody`) shows the whole draft under "Still typing, not submitted yet" above the quiz. Only a draft whose `taskId` is the task shown counts (`readAnswerDraft`).
+- **Never an attempt.** Drafts are not checked, logged, counted, shown on the presentation window (`showResponses`) or read by badges. Typed fill-blank gaps are also *continuous* activity changes now (`classifyChange(prev, next, task)`), so `currentAnswer` follows them only while watched; the unwatched tutor reads the draft line instead.
+
+## Class Confidence Spread
+
+On a confidence check (an activity whose definition has a `ratingScale`; today `quiz_confidence`, 1–10), `StudentGrid` shows `ConfidenceSpreadStrip` above the cards: one column per level (red to green) with how many students chose it and "N of M answered", from each student's mirrored `currentAnswer` (`tallyConfidenceSpread` in `src/shared/confidenceScale.js`; confidence answers are discrete, so always mirrored). Clicking a level outlines those students' cards through the grid's shared highlight (group `confidence:<level>`), like `CommonHintsStrip`; hover names them. Not shown in the session sandbox. Each card's pill reads "N/10".
+
 ## Peer Help
 
 A stuck student can let a classmate who finished the task help them. Every step is gated by the teacher, neither student ever learns who the other is, and the safety model is enforced by `database.rules.json`, not the UI (data model: `src/shared/peerHelp.js`; Firebase: `src/app/hooks/usePeerHelp.js`; rules tests: `tests/rules/peerHelp.rules.test.js`).

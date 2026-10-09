@@ -17,7 +17,7 @@ export function ConfidenceBuilderNote() {
         color: '#6b7280',
       }}
     >
-      Students rate their confidence 1–5 (red to green). No options or check needed — any rating
+      Students rate their confidence 1–10 (red to green). No options or check needed — any rating
       counts as complete.
     </div>
   )
@@ -30,6 +30,6 @@ export default {
   ownsLayout: true,
   BuilderEditor: ConfidenceBuilderNote,
   BuilderIcon: () => <QuizTypeIcon type="confidence" />,
-  builderHint: 'Rate 1–5',
+  builderHint: 'Rate 1–10',
   builderConvert: (task) => switchQuizType(task, 'confidence'),
 }

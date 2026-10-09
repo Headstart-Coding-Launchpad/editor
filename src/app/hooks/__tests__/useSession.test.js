@@ -154,6 +154,30 @@ describe('useSession', () => {
       )
     })
 
+    it("clears each student's answer draft and keeps an unsubmitted one for the report", async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        currentTaskId: 1,
+        students: {
+          'student-abc': { currentDraft: { taskId: 1, text: 'Loops rep', at: 5 } },
+          'student-def': { currentDraft: { taskId: 1, text: 'Sent it', at: 6 } },
+        },
+        attemptLog: { 'student-def': { 1: { k: { passed: true, submission: 'Sent it' } } } },
+      })
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      const updateCall = firebaseMocks.update.mock.calls.find(
+        ([r]) => r.path === 'sessions/lesson-1'
+      )
+      expect(updateCall[1]).toMatchObject({
+        'students/student-abc/currentDraft': null,
+        'students/student-def/currentDraft': null,
+        'draftLog/student-abc/1': { text: 'Loops rep', at: 5 },
+      })
+      expect(updateCall[1]).not.toHaveProperty('draftLog/student-def/1')
+    })
+
     it('writes currentTaskId and currentTaskStartedAt via firebase update', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {
@@ -1516,6 +1540,7 @@ describe('useSession', () => {
         teacherStageAcceptedAt: null,
         teacherHighlights: null,
         teacherTileHighlights: null,
+        currentDraft: null,
         teacherPaneCommand: null,
         sideQuestOpen: null,
         visiblePanes: null,

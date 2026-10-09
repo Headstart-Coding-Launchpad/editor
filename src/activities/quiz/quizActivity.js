@@ -10,7 +10,7 @@
 //   match            JSON map of pair id -> placed pair id ('{"p1":"p2"}')
 //   fill_blank       JSON map of blank id -> tile id (drag) or typed text (type)
 //   short_answer     the free-text answer
-//   confidence       "1".."5"
+//   confidence       "1".."10" (1 to 5 before 2026-10-09; src/shared/confidenceScale.js)
 //   poll             the chosen option id ("b")
 //
 // Pure and Node-safe: imported by the CLI, validation, reports and print.
@@ -18,6 +18,7 @@ import { defineActivity } from '../defineActivity.js'
 import { validateQuizTask, quizHasCheckValue, quizHasStarter } from '../legacyValidation.js'
 import { evaluateCheck, getFirstFailedCheckHint } from '../../modules/checks.js'
 import { answerTextMatches, parseQuizAnswerState } from '../../shared/quizAnswers.js'
+import { parseConfidenceRating } from '../../shared/confidenceScale.js'
 
 export const QUIZ_TYPES = Object.freeze([
   'multiple_choice',
@@ -86,9 +87,9 @@ export function buildMatchSubmission(task, answer) {
   )
 }
 
+// The logged confidence rating: a whole number on the current 1 to 10 scale, or the raw answer.
 export function normalizeConfidenceRating(answer) {
-  const rating = Number(answer)
-  return Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : answer
+  return parseConfidenceRating(answer) ?? answer
 }
 
 function textSubmission(answer) {
@@ -235,8 +236,9 @@ export const QUIZ_LABELS = Object.freeze({
 
 function validateWithLegacyRules(task, { n } = {}) {
   const errors = []
-  validateQuizTask(task, { n, errors })
-  return { errors, warnings: [] }
+  const warnings = []
+  validateQuizTask(task, { n, errors, warnings })
+  return { errors, warnings }
 }
 
 /**

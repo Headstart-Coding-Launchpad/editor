@@ -15,6 +15,7 @@ import {
   readHintOffer,
   readStudentHint,
 } from '../studentHints.js'
+import { readAnswerDraft } from '../../shared/answerDrafts'
 import {
   canShowResponses,
   defaultShowName,
@@ -144,6 +145,9 @@ export default function StudentCard({
       : null
   const activityState = isActivity ? readActivityAnswer(currentTask, student.currentAnswer) : null
   const activitySubmitted = isActivity && student.lastRunStatus === 'submitted'
+  // The answer the student is typing but has not submitted (short answer, typed gaps), for this
+  // task only (src/shared/answerDrafts.js). Never counted as an answer.
+  const draftText = isActivity ? readAnswerDraft(student, currentTask?.id) : null
   // What the card shows for the module's work (capabilities.cardSummary): the first lines of
   // console output (python, arcade, electronics), whether blocks were edited (scratch) or the
   // file tree changed (filesystem); anything else gets the generic "HTML project" line.
@@ -609,6 +613,12 @@ export default function StudentCard({
           )}
         </div>
       )}
+      {draftText && (
+        <div style={s.draftLine} data-testid="card-draft" title={draftText}>
+          <span style={s.draftLabel}>✏️ Typing, not submitted:</span>{' '}
+          <span style={s.draftText}>{draftText}</span>
+        </div>
+      )}
       {showableText && (
         <div style={s.showRow}>
           <button
@@ -962,6 +972,31 @@ const s = {
     alignItems: 'center',
     gap: 8,
     overflow: 'hidden',
+  },
+  // An unsubmitted draft: dashed and italic so it never reads as the student's answer.
+  draftLine: {
+    marginTop: 4,
+    padding: '4px 8px',
+    borderRadius: 6,
+    border: '1px dashed var(--ui-border-strong)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.76rem',
+    lineHeight: 1.35,
+    color: 'var(--colour-text)',
+    overflow: 'hidden',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflowWrap: 'anywhere',
+  },
+  draftLabel: {
+    fontWeight: 700,
+    color: 'var(--colour-muted)',
+    fontStyle: 'normal',
+  },
+  draftText: {
+    fontStyle: 'italic',
+    whiteSpace: 'pre-wrap',
   },
   matchSummaryText: {
     fontFamily: 'var(--font-body)',
