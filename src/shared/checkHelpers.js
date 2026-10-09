@@ -135,6 +135,11 @@ export function matchesContainValue(rawValue, checkValue, normalizeFn) {
   return wildcardContains(normalizeFn(rawValue), normalizeFn(checkValue))
 }
 
+// What a text check written without an `operator` compares with. Validation rejects such checks
+// (validateCheckOperators), but lessons published before that still evaluate, matching the
+// Builder's check editor, which shows `contains` for them.
+export const DEFAULT_TEXT_OPERATOR = 'contains'
+
 // The one definition of the text comparison operators used by checks, so every module
 // means the same thing by them:
 //   contains      any of the options is found (`"a","b"` lists), `*` matches anything
@@ -151,7 +156,7 @@ export function compareText(actual, operator, expected, options = {}) {
   const normalize = options.normalize ?? normalizeOutput
   const normalizeEquals = options.normalizeEquals ?? normalize
   const normalizeRegex = options.normalizeRegex ?? ((value) => String(value ?? ''))
-  switch (operator) {
+  switch (operator ?? DEFAULT_TEXT_OPERATOR) {
     case 'contains':
       return matchesContainValue(actual, expected, normalize)
     case 'not_contains':
@@ -283,7 +288,10 @@ const CODE_CHECK_ALIAS_OPERATORS = {
 // style alias types directly, so callers that skip `normalizeCheckShape` still work.
 export function evaluateCodeCheck(check, code) {
   if (!check || check.value == null) return false
-  const operator = check.type === 'code' ? check.operator : CODE_CHECK_ALIAS_OPERATORS[check.type]
+  const operator =
+    check.type === 'code'
+      ? (check.operator ?? DEFAULT_TEXT_OPERATOR)
+      : CODE_CHECK_ALIAS_OPERATORS[check.type]
   if (!operator) return false
   const source = code ?? ''
   if (operator === 'contains') return codeContains(source, check.value)

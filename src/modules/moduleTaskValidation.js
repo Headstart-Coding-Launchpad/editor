@@ -6,6 +6,7 @@
 // (validationErrorsDoc.test.js scans this file).
 import {
   checkAllowedForSubmit,
+  checkMissingOperator,
   checkRequiresRun,
   evaluateSingleCheck,
   getCheckDefinition,
@@ -62,6 +63,19 @@ export function validateRegisteredChecks(
     }
   })
   validateRunAttemptedChecks(task, n, errors, warnings, { moduleDefinition })
+}
+
+// A text check with no `operator` (checkMissingOperator): the runtime falls back to `contains`, but
+// the author must say which comparison they mean.
+export function validateCheckOperators(task, n, errors) {
+  validateTaskChecks(task, (checks, kind) => {
+    for (const check of normalizeChecks(checks)) {
+      if (!checkMissingOperator(check)) continue
+      errors.push(
+        `Task ${n} has a ${labelCheckKind(kind)} of type ${check.type} with no operator (choose contains, equals, ...)`
+      )
+    }
+  })
 }
 
 // run_attempted (checks.js): a completion check for demo tasks, passed once the student runs the

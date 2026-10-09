@@ -155,6 +155,8 @@ Prefer the canonical `type` + `operator` form:
 | `run_attempted` | none | Y | N | The student pressed Run (see [Run Attempted](#run-attempted-check-run_attempted)); optional `requireSuccess` |
 | `output_not_empty` / `output_empty` | none | Y | N | Legacy convenience checks |
 
+`operator` is required on `output`, `code` (and the other text checks): validation rejects a check that leaves it out. Lessons published before that rule compare with `contains`.
+
 Legacy aliases such as `output_contains`, `output_equals`, `output_matches_regex`, `code_contains`, `code_does_not_contain`, and `code_matches_regex` still load, but new lessons should use the canonical form above.
 
 **Submit mode** only accepts `type: code` and `type: code_structure` checks. Output, variable and `run_attempted` checks require a run.

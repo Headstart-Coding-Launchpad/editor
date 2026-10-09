@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { CheckValueEditor } from '../CheckEditors'
+import { CheckListEditor, CheckValueEditor } from '../CheckEditors'
 
 describe('CheckValueEditor insertion actions', () => {
   it('uses current output as the output check value', async () => {
@@ -46,5 +46,28 @@ describe('CheckValueEditor insertion actions', () => {
 
     expect(onChange).toHaveBeenCalledWith({ type: 'code_equals', value: 'print("Hello")' })
     expect(clipboardWrite).not.toHaveBeenCalled()
+  })
+})
+
+describe('CheckListEditor with a check stored without an operator', () => {
+  it('writes the displayed "contains" into the check', () => {
+    const onChange = vi.fn()
+    render(
+      <CheckListEditor checks={[{ type: 'output', value: 'Hi', hint: 'h' }]} onChange={onChange} />
+    )
+    expect(onChange).toHaveBeenCalledWith([
+      { type: 'output', operator: 'contains', value: 'Hi', hint: 'h' },
+    ])
+  })
+
+  it('leaves checks that already have an operator alone', () => {
+    const onChange = vi.fn()
+    render(
+      <CheckListEditor
+        checks={[{ type: 'output', operator: 'equals', value: 'Hi' }]}
+        onChange={onChange}
+      />
+    )
+    expect(onChange).not.toHaveBeenCalled()
   })
 })
