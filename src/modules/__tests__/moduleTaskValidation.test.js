@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { checkRegistry } from '../checks.js'
 import { getModuleDefinitions } from '../definitions.js'

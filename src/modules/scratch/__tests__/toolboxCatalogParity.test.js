@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_TOOLBOX } from '../scratch.js'
 import { SCRATCH_BLOCK_CATALOG } from '../../../shared/scratchBlockCatalog.js'

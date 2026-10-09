@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { EditorState } from '@codemirror/state'
 import { indentUnit } from '@codemirror/language'

@@ -1,8 +1,8 @@
 name: CI
 
 # Runs on pull requests and on every push to main. Branches merged locally and
-# pushed straight to main still get checked, instead of only reaching the
-# `prebuild` test run inside the deploy job.
+# pushed straight to main still get checked. A green run on main triggers the
+# Pages deploy (deploy.yml).
 on:
   pull_request:
   push:
@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,15 +25,7 @@ jobs:
           # Full history: the build number is the commit count (scripts/build-info.mjs).
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      # npm install, not npm ci: the lockfile is generated on Windows and omits esbuild's
-      # optional Linux binaries, which makes npm ci fail (same as the deploy workflow).
-      - name: Install dependencies
-        run: npm install
+      - uses: ./.github/actions/setup
 
       - name: Check documentation
         run: npm run docs:check
@@ -45,17 +37,60 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
-      - name: Test with coverage
-        run: npm run test:coverage
-
       # Production build, so a PR can't pass CI and then break the deploy (Rollup rejects a
       # missing named export that Vitest resolves to undefined). Runs vite directly to skip the
-      # `prebuild` test run, which the step above already covers.
+      # `prebuild` test run, which the test jobs already cover.
       - name: Build
         run: npx vite build
 
+  # The suite is split across parallel runners. Each shard writes a blob report with its
+  # coverage, and the coverage job merges them and applies the thresholds.
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup
+
+      - name: Test shard ${{ matrix.shard }}/4
+        run: npx vitest run --shard=${{ matrix.shard }}/4 --reporter=default --reporter=blob --coverage --coverage.reporter=text-summary
+        env:
+          VITEST_COVERAGE_SHARD: '1'
+
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: .vitest-reports/
+          include-hidden-files: true
+          retention-days: 1
+
+  coverage:
+    needs: test
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup
+
+      - name: Download blob reports
+        uses: actions/download-artifact@v4
+        with:
+          path: .vitest-reports
+          pattern: blob-report-*
+          merge-multiple: true
+
+      - name: Merge reports and check coverage thresholds
+        run: npx vitest --merge-reports --coverage
+
       - name: Upload coverage report
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: coverage
@@ -69,18 +104,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
+      - uses: ./.github/actions/setup
 
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
-
-      - name: Install dependencies
-        run: npm install
 
       - name: Install Firebase CLI
         run: npm install --global firebase-tools@15

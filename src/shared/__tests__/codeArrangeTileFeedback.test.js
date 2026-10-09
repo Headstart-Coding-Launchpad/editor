@@ -1,3 +1,4 @@
+// @vitest-environment node
 // Code_arrange tile feedback: a tile dropped into a blank where it is known to be wrong (a
 // distractor anywhere, or one of that blank's wrongTiles) is flagged with its hint; nothing else
 // is, and a right tile is never marked.

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import electronicsModule, { buildMicroPythonProgram } from '../index.js'
 import { DEFAULT_CIRCUIT, makeComponent, parseCircuit } from '../circuit'

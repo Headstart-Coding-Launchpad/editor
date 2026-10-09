@@ -183,7 +183,7 @@ Both suites iterate the module registry (`getLessonModules()`), so registering a
 
 ## Coverage Thresholds
 
-Set in `vitest.config.js` and enforced by `npm run test:coverage`, which CI runs.
+Set in `vitest.config.js` and enforced by `npm run test:coverage`, and in CI by the `coverage` job.
 Coverage includes `src/**` and `cli/**/*.mjs`. Web Workers and `cli/cli.mjs` (argument
 parsing only) are excluded.
 
@@ -258,23 +258,45 @@ the generators (planning against the repo, applying in a temporary copy).
 
 ## Continuous Integration
 
-`.github/workflows/ci.yml` runs on every pull request and every push to `main`:
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`. Its jobs run in
+parallel:
 
-1. `npm install` (not `npm ci`: the Windows-generated lockfile omits Linux-only optional binaries)
-2. `npm run docs:check`
-3. `npm run lint`: fails on errors, not warnings
-4. `npm run format:check`: Prettier, code only (Markdown is ignored)
-5. `npm run test:coverage`: fails if a coverage floor is missed; the report is uploaded as
-   the `coverage` artifact
-6. `npx vite build`: the production build, so a PR can't pass CI and then break the deploy.
-   Rollup rejects a missing named export that Vitest silently resolves to `undefined`.
+- **checks:** `npm run docs:check`, `npm run lint` (fails on errors, not warnings),
+  `npm run format:check` (Prettier, code only; Markdown is ignored) and `npx vite build`. The
+  production build stops a PR passing CI and then breaking the deploy: Rollup rejects a missing
+  named export that Vitest silently resolves to `undefined`.
+- **test (4 shards):** `vitest run --shard=N/4`, each writing a blob report with its coverage.
+  `VITEST_COVERAGE_SHARD=1` switches the coverage floors off, since a shard only sees part
+  of the suite.
+- **coverage:** waits for the shards, merges their reports with `vitest --merge-reports
+  --coverage`, applies the coverage floors and uploads the `coverage` artifact.
+- **rules:** the security rules tests (see above).
 
-`src/modules/__tests__/nodeEsmImports.test.js` covers the same gap from the test suite: it loads
-every pure `cli/*.mjs` file, `src/modules/checks.js`, each `src/modules/<type>/checks.js` and the
-shared validation modules in a real Node process, so a broken import in the CLI's graph fails
-`npm test`.
+Every job installs through `.github/actions/setup`, which caches `node_modules` against the
+lockfile hash and only runs `npm install` when the lockfile changes. It uses `npm install`, not
+`npm ci`: the Windows-generated lockfile omits Linux-only optional binaries.
 
-The deploy workflow still runs `vitest run` through `prebuild` before building.
+`src/modules/__tests__/nodeEsmImports.test.js` covers the same gap as the build from the test
+suite: it loads every pure `cli/*.mjs` file, `src/modules/checks.js`, each
+`src/modules/<type>/checks.js` and the shared validation modules in a real Node process, so a
+broken import in the CLI's graph fails `npm test`.
+
+`.github/workflows/deploy.yml` runs when CI finishes on a push to `main`, and only if it passed.
+It builds the commit CI checked with `npx vite build`, skipping the `prebuild` test run. A manual
+run (`workflow_dispatch`) runs `npm test` first, since no CI run vouches for it.
+
+### Test environments
+
+The default environment is jsdom, and setting it up is the largest single cost in the suite.
+A test file that touches no DOM, `window`, storage or React rendering starts with
+
+```js
+// @vitest-environment node
+```
+
+and runs in plain Node. `src/test/setup.js` skips its browser-only setup (Testing Library,
+storage reset, `matchMedia` and `ResizeObserver` stubs) there. Add the line to new pure-logic
+test files; if a file fails under Node, leave it on jsdom.
 
 ---
 

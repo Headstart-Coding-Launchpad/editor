@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'

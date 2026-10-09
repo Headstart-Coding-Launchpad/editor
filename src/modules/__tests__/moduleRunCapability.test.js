@@ -1,3 +1,4 @@
+// @vitest-environment node
 // `capabilities.run` (plan step 4.4): what useStudentCodeState's Run does for each module —
 // run the code through the module's runtime, build the HTML preview, leave it to the workspace,
 // or nothing. handleRun dispatches on it instead of on the lesson type.

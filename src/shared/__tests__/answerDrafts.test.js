@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import {
   ANSWER_DRAFT_MAX_LENGTH,

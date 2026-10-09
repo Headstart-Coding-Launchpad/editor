@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createLiveInkWriter } from '../liveInkWriter'
 import { POINTER_INTERVAL_MS, STROKE_REMOVE_AFTER_MS } from '../liveInkData'

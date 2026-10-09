@@ -1,3 +1,4 @@
+// @vitest-environment node
 // run_attempted: the completion check for demo tasks ("press Run and watch"). Covers the shared
 // evaluator and its no-run behaviour, the error-gate helper, Scratch's own evaluator (green flag
 // only), the Builder + CLI validators, `lessons test-checks` and `lessons capabilities`.
