@@ -1,63 +1,69 @@
-import '@testing-library/jest-dom'
 import { afterEach } from 'vitest'
-import { configure } from '@testing-library/react'
 
-// waitFor/findBy default to 1s, which is tight for full views like StudentView on a busy
-// CI runner. A longer ceiling only costs time when an assertion is genuinely failing.
-configure({ asyncUtilTimeout: 5000 })
+// Pure-logic test files opt into the faster Node environment with a
+// `// @vitest-environment node` docblock. Everything browser-only below is skipped for
+// them, including the Testing Library imports, which are slow to load.
+if (typeof window !== 'undefined') {
+  await import('@testing-library/jest-dom')
+  const { configure } = await import('@testing-library/react')
 
-// Saved student work is keyed by lesson + task + student, and many tests reuse the same
-// ids. Without a reset, whatever one test saved (including an empty snapshot written when a
-// session ends before starter code loads) became the next test's "saved work", replacing
-// its starter code. That made StudentView's pseudo-task test fail whenever the earlier
-// test's timing let it save "" first. Every test starts with empty storage.
-afterEach(() => {
-  window.localStorage?.clear?.()
-  window.sessionStorage?.clear?.()
-})
+  // waitFor/findBy default to 1s, which is tight for full views like StudentView on a busy
+  // CI runner. A longer ceiling only costs time when an assertion is genuinely failing.
+  configure({ asyncUtilTimeout: 5000 })
 
-// Query jsdom's storage instead of Node's native getter, which warns when no
-// persistence file is configured in recent Node versions.
-if (typeof window.localStorage?.clear !== 'function') {
-  const values = new Map()
-  const storage = {
-    get length() {
-      return values.size
-    },
-    clear: () => values.clear(),
-    getItem: (key) => (values.has(String(key)) ? values.get(String(key)) : null),
-    key: (index) => Array.from(values.keys())[index] ?? null,
-    removeItem: (key) => values.delete(String(key)),
-    setItem: (key, value) => values.set(String(key), String(value)),
+  // Saved student work is keyed by lesson + task + student, and many tests reuse the same
+  // ids. Without a reset, whatever one test saved (including an empty snapshot written when a
+  // session ends before starter code loads) became the next test's "saved work", replacing
+  // its starter code. That made StudentView's pseudo-task test fail whenever the earlier
+  // test's timing let it save "" first. Every test starts with empty storage.
+  afterEach(() => {
+    window.localStorage?.clear?.()
+    window.sessionStorage?.clear?.()
+  })
+
+  // Query jsdom's storage instead of Node's native getter, which warns when no
+  // persistence file is configured in recent Node versions.
+  if (typeof window.localStorage?.clear !== 'function') {
+    const values = new Map()
+    const storage = {
+      get length() {
+        return values.size
+      },
+      clear: () => values.clear(),
+      getItem: (key) => (values.has(String(key)) ? values.get(String(key)) : null),
+      key: (index) => Array.from(values.keys())[index] ?? null,
+      removeItem: (key) => values.delete(String(key)),
+      setItem: (key, value) => values.set(String(key), String(value)),
+    }
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage })
   }
-  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage })
-}
 
-// matchMedia mock — jsdom does not implement it
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: (query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: () => {},
-    removeListener: () => {},
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    dispatchEvent: () => false,
-  }),
-})
+  // matchMedia mock — jsdom does not implement it
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: (query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  })
 
-// ResizeObserver — jsdom does not implement it. No-op by default so components that
-// merely mount it (SplitPane's minLeftPx, useElementSize, ScratchWorkspace) don't crash;
-// tests that need to actually drive resize behavior stub it locally instead (see
-// useElementSize.test.jsx) — a local `globalThis.ResizeObserver = ...` override in a test
-// takes precedence for that test and is expected to restore this default afterward.
-if (typeof globalThis.ResizeObserver === 'undefined') {
-  globalThis.ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
+  // ResizeObserver — jsdom does not implement it. No-op by default so components that
+  // merely mount it (SplitPane's minLeftPx, useElementSize, ScratchWorkspace) don't crash;
+  // tests that need to actually drive resize behavior stub it locally instead (see
+  // useElementSize.test.jsx) — a local `globalThis.ResizeObserver = ...` override in a test
+  // takes precedence for that test and is expected to restore this default afterward.
+  if (typeof globalThis.ResizeObserver === 'undefined') {
+    globalThis.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
   }
 }
 

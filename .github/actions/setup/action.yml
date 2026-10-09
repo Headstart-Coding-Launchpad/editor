@@ -1,0 +1,25 @@
+name: Set up Node and dependencies
+description: Installs Node 22 and restores node_modules from cache, running npm install only when the lockfile changed.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    # Caches node_modules itself, not just npm's download cache, so a run with an
+    # unchanged lockfile skips the ~90s install entirely.
+    - name: Restore node_modules
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: node_modules
+        key: node-modules-${{ runner.os }}-node22-${{ hashFiles('package-lock.json') }}
+
+    # npm install, not npm ci: the lockfile is generated on Windows and omits esbuild's
+    # optional Linux binaries, which makes npm ci fail.
+    - name: Install dependencies
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: npm install

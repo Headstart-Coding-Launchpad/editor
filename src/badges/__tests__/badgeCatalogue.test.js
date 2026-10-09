@@ -1,3 +1,4 @@
+// @vitest-environment node
 // The Admin badge catalogue: save validation, and the display snapshot a catalogue award carries
 // so students (who can't read Firestore `badgeCatalogue`) see the real emoji, title and blurb.
 import { describe, expect, it } from 'vitest'

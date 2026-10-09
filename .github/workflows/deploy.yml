@@ -1,7 +1,11 @@
 name: Deploy to GitHub Pages
 
+# Deploys main once CI has passed on it, so the deploy doesn't rerun the test suite and
+# nothing that failed CI reaches the site. A manual run tests before building.
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -16,26 +20,28 @@ concurrency:
 
 jobs:
   build:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          # Build the commit CI checked, not whatever main points at now.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           # Full history: the build number is the commit count (scripts/build-info.mjs).
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
+      - uses: ./.github/actions/setup
 
-      - name: Install dependencies
-        run: npm install
+      - name: Test
+        if: github.event_name == 'workflow_dispatch'
+        run: npm test
 
-      - name: Check documentation
-        run: npm run docs:check
-
+      # vite directly, skipping the `prebuild` test run: CI already passed on this commit.
       - name: Build
-        run: npm run build
+        run: npx vite build
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}

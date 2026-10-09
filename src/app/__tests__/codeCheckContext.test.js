@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { buildCodeCheckContext } from '../codeCheckContext'
 import { evaluateCheck } from '../../modules/checks'

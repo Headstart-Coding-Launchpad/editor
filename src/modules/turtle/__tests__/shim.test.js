@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { TURTLE_SHIM, buildTurtleProgram } from '../shim.js'
 

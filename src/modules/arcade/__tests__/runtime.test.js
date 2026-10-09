@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { ARCADE_KEY_ALIASES, buildArcadeIframeSrc, isArcadeKeyDown } from '../runtime.js'
 

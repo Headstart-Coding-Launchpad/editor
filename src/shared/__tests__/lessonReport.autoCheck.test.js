@@ -1,3 +1,4 @@
+// @vitest-environment node
 // The session report's reconciliation of class-advance overrides, tutor hand passes and
 // auto-check-on-leave records (src/shared/autoCheck.js).
 import { describe, expect, it } from 'vitest'

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import yaml from 'js-yaml'
 import { anonymizeSessionReport, buildSessionReport, reportToYamlText } from '../lessonReport'

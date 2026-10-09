@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { validateLesson } from '../../builder/lessonUtils.js'
 import { validateLessonForMcp } from '../../../cli/validate.mjs'

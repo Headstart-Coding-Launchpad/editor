@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { validateLessonCore } from '../../shared/lessonValidation.js'
 import { resolveBadgeOptions, DEFAULT_BADGE_OPTIONS } from '../badgeOptions.js'

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { softDeleteEntry, restoreEntry, purgeEntry, isInRecycleBin } from '../recycleBin.js'
 

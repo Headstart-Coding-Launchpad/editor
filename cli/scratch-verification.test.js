@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { getStageVerifiableTasks, testLessonChecks, testStageChecks } from './check-tests.mjs'
 import { validateLessonForMcp } from './validate.mjs'

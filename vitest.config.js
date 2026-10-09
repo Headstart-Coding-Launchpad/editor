@@ -2,6 +2,10 @@ import { defineConfig } from 'vitest/config'
 
 const nodeHasNativeWebStorage = Object.prototype.hasOwnProperty.call(globalThis, 'localStorage')
 
+// CI splits the suite across runners (.github/workflows/ci.yml). A shard only sees part of
+// the suite, so the floors are checked once, when the coverage job merges the shards.
+const coverageShard = process.env.VITEST_COVERAGE_SHARD === '1'
+
 export default defineConfig({
   test: {
     environment: 'jsdom',
@@ -42,17 +46,19 @@ export default defineConfig({
       // branches 49.2%, functions 49.2%, statements 52.8%). Raise them when coverage
       // grows; never lower them to make a PR pass. The per-file floors protect the
       // pure logic that decides what students see and what authors can publish.
-      thresholds: {
-        lines: 53,
-        branches: 48,
-        functions: 48,
-        statements: 51,
-        'src/modules/checks.js': { lines: 90, branches: 85 },
-        'src/modules/{python,turtle,filesystem,scratch}/checks.js': { lines: 85, branches: 75 },
-        'src/shared/taskUtils.js': { lines: 90, branches: 85 },
-        'src/shared/composedLesson.js': { lines: 90, branches: 75 },
-        'src/builder/lessonUtils.js': { lines: 75, branches: 65 },
-      },
+      thresholds: coverageShard
+        ? undefined
+        : {
+            lines: 53,
+            branches: 48,
+            functions: 48,
+            statements: 51,
+            'src/modules/checks.js': { lines: 90, branches: 85 },
+            'src/modules/{python,turtle,filesystem,scratch}/checks.js': { lines: 85, branches: 75 },
+            'src/shared/taskUtils.js': { lines: 90, branches: 85 },
+            'src/shared/composedLesson.js': { lines: 90, branches: 75 },
+            'src/builder/lessonUtils.js': { lines: 75, branches: 65 },
+          },
     },
   },
 })

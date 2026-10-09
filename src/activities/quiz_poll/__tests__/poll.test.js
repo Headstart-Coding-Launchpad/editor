@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { getActivityDefinition, getTaskActivity, isLegacyQuizTask } from '../../registry.pure.js'
 import { buildQuizSubmission } from '../../quiz/quizActivity.js'

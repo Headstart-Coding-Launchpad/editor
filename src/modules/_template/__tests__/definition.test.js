@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import definition from '../definition.js'
 import { evaluateSingleCheck } from '../../checks.js'

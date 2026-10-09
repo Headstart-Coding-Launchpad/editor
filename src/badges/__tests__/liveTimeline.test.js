@@ -1,3 +1,4 @@
+// @vitest-environment node
 // Characterisation tests for the live badge engine: realistic `sessions/{lessonId}` snapshots
 // (as `snap.val()` returns them) through buildLiveTimelines and evaluateBadgeRules
 // (docs/agents/runtime-model.md, "Badge data"; docs/architecture/live-badges-plan.md).

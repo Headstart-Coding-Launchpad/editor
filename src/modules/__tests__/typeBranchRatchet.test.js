@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import baseline from './typeBranchBaseline.json'

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { getLessonModule, getLessonModules } from '../registry.js'
 import { isBuiltInModule } from './helpers/builtInModules.js'

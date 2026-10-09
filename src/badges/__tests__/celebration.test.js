@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import {
   CLASS_TOAST_QUEUE_CAP,
