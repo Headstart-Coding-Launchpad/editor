@@ -34,6 +34,11 @@ export const BADGE_OPTION_SPECS = Object.freeze({
     default: 2,
     description: 'Side-quests a student must mark Done in the session for 🗺️ Side Quester.',
   }),
+  wordSmithMinTasks: Object.freeze({
+    kind: 'count',
+    default: 2,
+    description: 'Vocab tasks a student must get right first time for 📖 Word Smith.',
+  }),
 })
 
 export const DEFAULT_BADGE_OPTIONS = Object.freeze(

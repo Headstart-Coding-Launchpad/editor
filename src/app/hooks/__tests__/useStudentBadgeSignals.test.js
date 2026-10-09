@@ -12,6 +12,7 @@ const WRITER_NAMES = [
   'recordTopicOpenSignal',
   'recordShortcutSignal',
   'recordAutocompleteSignal',
+  'recordEmojiRunSignal',
   'recordFirstEditSignal',
   'recordCompleteShownSignal',
   'recordSandboxRunSignal',
@@ -62,6 +63,7 @@ describe('gating', () => {
       result.current.reportTopicOpen('loops')
       result.current.reportShortcut('run')
       result.current.reportAutocomplete()
+      result.current.reportRunCode({ work: 'print("😀")', language: 'python' })
       result.current.reportUserEdit('code-editor')
       result.current.reportCompleteShown(1, 'show')
       result.current.reportSandboxRun({ error: true, submission: 'x' })
@@ -241,6 +243,39 @@ describe('Keyboard Wizard on the work area', () => {
     const preview = render({ previewMode: true })
     act(() => preview.result.current.reportAutocomplete())
     expect(preview.writers.recordAutocompleteSignal).not.toHaveBeenCalled()
+  })
+})
+
+describe('emoji runs (🤩 Emoji Artist)', () => {
+  it('records the first run with an emoji in a string, once', () => {
+    const { result, writers } = render({ currentTaskId: 3 })
+    act(() => result.current.reportRunCode({ work: '# 😀\nprint("hi")', language: 'python' }))
+    expect(writers.recordEmojiRunSignal).not.toHaveBeenCalled()
+    act(() => result.current.reportRunCode({ work: 'print("hi 😀")', language: 'python' }))
+    act(() => result.current.reportRunCode({ work: 'print("again 🎉")', language: 'python' }))
+    expect(writers.recordEmojiRunSignal).toHaveBeenCalledTimes(1)
+    expect(writers.recordEmojiRunSignal).toHaveBeenCalledWith(ID, { context: 'task', taskId: 3 })
+  })
+
+  it('reads HTML files, and files the sandbox under no task', () => {
+    const { result, writers } = render({ phase: 'sandbox' })
+    const files = [{ name: 'index.html', content: '<p>Hi 👋</p>' }]
+    act(() => result.current.reportRunCode({ work: files, language: 'html' }))
+    expect(writers.recordEmojiRunSignal).toHaveBeenCalledWith(ID, {
+      context: 'sandbox',
+      taskId: null,
+    })
+  })
+
+  it('skips a module language it cannot read, and an emoji already recorded', () => {
+    const blocks = render()
+    act(() => blocks.result.current.reportRunCode({ work: '😀', language: null }))
+    expect(blocks.writers.recordEmojiRunSignal).not.toHaveBeenCalled()
+    const recorded = render({
+      session: { state: 'active', studentSignals: { [ID]: { emojiRun: { firstRunAt: 1 } } } },
+    })
+    act(() => recorded.result.current.reportRunCode({ work: 'print("😀")', language: 'python' }))
+    expect(recorded.writers.recordEmojiRunSignal).not.toHaveBeenCalled()
   })
 })
 

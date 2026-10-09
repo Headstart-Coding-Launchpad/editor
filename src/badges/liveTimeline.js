@@ -18,6 +18,7 @@ import {
   autocompleteEvent,
   completeShownEvent,
   earlyJoinEvent,
+  emojiRunEvent,
   firstEditEvent,
   overrideEvent,
   pasteEvent,
@@ -210,6 +211,14 @@ export function buildStudentTimeline({ session, studentId, tasks, topicTitles = 
     const context = TIMELINE_CONTEXTS.includes(used.context) ? used.context : 'task'
     const { keep, taskId } = signalTask(context, used.taskId ?? null)
     if (keep) events.push(autocompleteEvent({ context, taskId, at: used.firstUsedAt }))
+  }
+
+  // The first Run of code with an emoji in a string or HTML text (src/shared/emojiInCode.js).
+  if (signals.emojiRun) {
+    const ran = signals.emojiRun
+    const context = TIMELINE_CONTEXTS.includes(ran.context) ? ran.context : 'task'
+    const { keep, taskId } = signalTask(context, ran.taskId ?? null)
+    if (keep) events.push(emojiRunEvent({ context, taskId, at: ran.firstRunAt }))
   }
 
   // Joined before the tutor pressed Start (only once the session has started).

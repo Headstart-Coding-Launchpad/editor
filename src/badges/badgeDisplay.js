@@ -80,6 +80,38 @@ export function heldBadgeIds(decisions, studentId) {
     .map(([badgeId]) => badgeId)
 }
 
+/** The task label for a suggestion in a sandbox, and for one tied to no task (🐦 Early Bird). */
+export const SANDBOX_TASK_LABEL = 'Sandbox'
+export const NO_TASK_LABEL = 'No task'
+
+/**
+ * Which task a suggestion came from, for the tutor's panel: the task's title (`taskTitle`, which
+ * evaluateBadgeRules looks up from `taskId` for every badge), "Sandbox" for a session or
+ * personal sandbox, else "No task". Never read from the reason.
+ */
+export function suggestionTaskLabel(suggestion) {
+  if (suggestion?.context === 'sandbox' || suggestion?.context === 'personal') {
+    return SANDBOX_TASK_LABEL
+  }
+  const title = typeof suggestion?.taskTitle === 'string' ? suggestion.taskTitle.trim() : ''
+  if (title) return title
+  return NO_TASK_LABEL
+}
+
+/**
+ * Whether the panel should show a suggestion's task label beside its reason: not when the reason
+ * already names it, so it isn't shown twice. Reasons quote a task title (First to fix the bug in
+ * “Fix the loop”), so a title only counts quoted (a task called "Loops" isn't named by "used
+ * loops"); a sandbox reason just has to say sandbox.
+ */
+export function showSuggestionTaskLabel(suggestion) {
+  const label = suggestionTaskLabel(suggestion)
+  const reason = String(suggestion?.reason ?? '')
+  if (label === NO_TASK_LABEL) return true
+  if (label === SANDBOX_TASK_LABEL) return !/sandbox/i.test(reason)
+  return !reason.includes(`“${label}”`) && !reason.includes(`"${label}"`)
+}
+
 /**
  * A shared `bulkId` for one award given to several students at once, so the class sees one
  * merged announcement. `prefix` names the source ('bulk' for the tutor, 'auto' for auto-award).

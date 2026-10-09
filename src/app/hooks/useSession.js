@@ -1837,6 +1837,20 @@ export function useSession(lessonId, { enabled = true } = {}) {
     )
   }
 
+  /**
+   * The student's first Run of code with an emoji in a string or HTML text (🤩 Emoji Artist;
+   * src/shared/emojiInCode.js decides on their device). No code is stored.
+   */
+  async function recordEmojiRunSignal(anonymousId, { context = 'task', taskId } = {}) {
+    if (!anonymousId || !SIGNAL_CONTEXTS.includes(context)) return false
+    return writeSignalOnce(
+      anonymousId,
+      'emojiRun',
+      { firstRunAt: serverTimestamp(), context, taskId: taskId ?? null },
+      { existing: mySignals(anonymousId)?.emojiRun }
+    )
+  }
+
   /** The student's first real edit on a task, `elapsedMs` timed on their own device. */
   async function recordFirstEditSignal(anonymousId, taskId, elapsedMs) {
     if (!anonymousId || taskId == null || !Number.isFinite(elapsedMs)) return false
@@ -2188,6 +2202,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     recordTopicOpenSignal,
     recordShortcutSignal,
     recordAutocompleteSignal,
+    recordEmojiRunSignal,
     recordFirstEditSignal,
     recordCompleteShownSignal,
     recordSandboxRunSignal,

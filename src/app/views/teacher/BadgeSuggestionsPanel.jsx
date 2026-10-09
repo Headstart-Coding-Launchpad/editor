@@ -1,6 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import BadgeChip from '../../components/badges/BadgeChip'
-import { createBadgeBulkId, resolveBadge } from '../../../badges/badgeDisplay'
+import {
+  createBadgeBulkId,
+  resolveBadge,
+  showSuggestionTaskLabel,
+  suggestionTaskLabel,
+} from '../../../badges/badgeDisplay'
 import { getRuleBackedBadges } from '../../../badges/registry'
 
 // The tutor's live badge suggestions (docs/architecture/live-badges-plan.md, "Tutor
@@ -12,6 +17,11 @@ import { getRuleBackedBadges } from '../../../badges/registry'
 //
 // Awarding is one click and never modal. A row is hidden as soon as its decision is written,
 // before the session snapshot drops the suggestion.
+//
+// Every row names the task the suggestion came from (suggestionTaskLabel: the task title from
+// `taskId`, "Sandbox", or "No task"), as visible text so it reads on a tablet. A row whose reason
+// already quotes the task leaves it out; an "Award all" row spanning several tasks puts each
+// student's task beside their name.
 
 const keyOf = (suggestion) => `${suggestion.studentId}:${suggestion.badgeId}`
 
@@ -232,9 +242,7 @@ export default function BadgeSuggestionsPanel({
                     return (
                       <div key={badgeId} style={s.row}>
                         <BadgeChip badge={badge} title={badge.ruleText} />
-                        <span style={s.reason}>
-                          {list.map((suggestion) => nameOf(suggestion.studentId)).join(', ')}
-                        </span>
+                        <BulkStudents list={list} nameOf={nameOf} />
                         <label style={s.announce}>
                           <input
                             type="checkbox"
@@ -274,7 +282,12 @@ export default function BadgeSuggestionsPanel({
                     return (
                       <div key={key} style={s.row} data-testid={`badge-suggestion-${key}`}>
                         <BadgeChip badge={badge} title={badge.ruleText} />
-                        <span style={s.reason}>{suggestion.reason}</span>
+                        <span style={s.reason}>
+                          {showSuggestionTaskLabel(suggestion) && (
+                            <TaskLabel suggestion={suggestion} />
+                          )}
+                          {suggestion.reason}
+                        </span>
                         <label style={s.announce}>
                           <input
                             type="checkbox"
@@ -316,6 +329,43 @@ export default function BadgeSuggestionsPanel({
         </div>
       )}
     </section>
+  )
+}
+
+// Which task a suggestion came from, as a small visible tag before the reason.
+function TaskLabel({ suggestion }) {
+  return (
+    <span style={s.taskTag} data-testid="badge-suggestion-task">
+      {suggestionTaskLabel(suggestion)}
+    </span>
+  )
+}
+
+// An "Award all" row's students: one task tag for the row when they all share a task, else each
+// student's task beside their name.
+function BulkStudents({ list, nameOf }) {
+  const labels = list.map(suggestionTaskLabel)
+  const shared = labels.every((label) => label === labels[0])
+  if (shared) {
+    return (
+      <span style={s.reason}>
+        <TaskLabel suggestion={list[0]} />
+        {list.map((suggestion) => nameOf(suggestion.studentId)).join(', ')}
+      </span>
+    )
+  }
+  return (
+    <span style={s.reason}>
+      {list.map((suggestion, i) => (
+        <React.Fragment key={suggestion.studentId}>
+          {i > 0 && ', '}
+          {nameOf(suggestion.studentId)}{' '}
+          <span style={s.taskInline} data-testid="badge-suggestion-task">
+            ({labels[i]})
+          </span>
+        </React.Fragment>
+      ))}
+    </span>
   )
 }
 
@@ -423,6 +473,20 @@ const s = {
     fontSize: '0.82rem',
   },
   reason: { flex: '1 1 160px', minWidth: 0, color: 'var(--colour-muted)' },
+  taskTag: {
+    display: 'inline-block',
+    marginRight: 6,
+    padding: '0 6px',
+    borderRadius: 999,
+    background: 'var(--ui-surface-neutral)',
+    border: '1px solid var(--ui-border-neutral)',
+    color: 'var(--colour-text)',
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    maxWidth: '100%',
+    overflowWrap: 'anywhere',
+  },
+  taskInline: { color: 'var(--colour-text)', fontWeight: 600 },
   announce: {
     display: 'inline-flex',
     alignItems: 'center',

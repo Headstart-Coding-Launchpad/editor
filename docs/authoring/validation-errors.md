@@ -35,7 +35,7 @@ isn't listed here, so add a row whenever you add a message.
 | `draft must be a boolean when provided` | `draft` is not `true` or `false`. | Use `draft: true` or remove it. |
 | `version must be a non-negative integer when provided` | `version` was hand-edited. | Remove `version` from source files; LaunchPad manages it. |
 | `badgeOptions must be an object when provided` | `badgeOptions` isn't a mapping. | Write it as `badgeOptions:` with option names under it ([badges.md](badges.md#badgeoptions)). |
-| `badgeOptions.… is not a badge option and is ignored` (warning) | A key under `badgeOptions` isn't one of `quizMasterThreshold`, `quizMasterMinQuizzes`, `persistenceMinFails`, `readyToCodeSeconds` or `earlyBirdMinutes`. | Fix the spelling or remove it. |
+| `badgeOptions.… is not a badge option and is ignored` (warning) | A key under `badgeOptions` isn't one of `quizMasterThreshold`, `quizMasterMinQuizzes`, `persistenceMinFails`, `readyToCodeSeconds`, `earlyBirdMinutes`, `sideQuesterMinDone` or `wordSmithMinTasks`. | Fix the spelling or remove it. |
 | `badgeOptions.… must be a number from 0 to 1` | `quizMasterThreshold` is outside 0–1 (it's a share, not a percentage). | Write `0.8`, not `80`. |
 | `badgeOptions.… must be a whole number of at least 1` | `quizMasterMinQuizzes` or `persistenceMinFails` is below 1 or not a whole number. | Use a whole number, 1 or more. |
 | `badgeOptions.… must be a positive number of seconds` | `readyToCodeSeconds` is 0, negative or not a number. | Use a number of seconds above 0. |

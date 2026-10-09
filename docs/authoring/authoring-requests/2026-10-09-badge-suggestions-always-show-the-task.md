@@ -1,6 +1,6 @@
 # Badge suggestions always show which task earned them
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** tooling
 - **Requested by:** Ryan (approved by Ryan), 2026-10-09
 - **Lessons blocked:** none yet
@@ -41,4 +41,4 @@ Part of the 2026-10-09 principle: **tutors see what students are doing at all ti
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped on branch `feature/badge-task-names-vocab-emoji`. `evaluateBadgeRules` now adds `taskTitle` to every suggestion, looked up from `taskId` in the badge lesson index (groups and composed lessons flattened), and `BadgeSuggestionsPanel` shows it as visible text before the reason via `suggestionTaskLabel` / `showSuggestionTaskLabel` (`src/badges/badgeDisplay.js`): the task title, "Sandbox" for a session or personal sandbox, "No task" otherwise; left out when the reason already quotes the title. An "Award all" row shows one task tag when its students share a task, else each student's task beside their name. Docs: [badges.md](../badges.md#in-the-tutors-suggestions-panel).
