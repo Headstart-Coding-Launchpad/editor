@@ -39,6 +39,18 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-09
 
+### Session reports: tutor tile highlights (`tutorTileHighlights`)
+
+- A tutor can now tap a tile (or an empty blank) on a student's Code Arrange, Match or Fill in the
+  Gaps (drag mode) board in the student modal to outline it as "look again" on the student's
+  screen, with an optional note. No new lesson fields; nothing to author.
+- Session reports add `tutorTileHighlights[]` per student task: `{ targetId, tileId, note?, at }`
+  (the blank or Match prompt, the tile in it, the tutor's note). Not attempts; completion is
+  unchanged. Read many on one task as a sign the tiles or distractors confused students. See
+  [session-reports.md](session-reports.md).
+- Affects: code_arrange, quiz_match, quiz_fill_blank · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-10-09-tutor-highlights-a-wrong-tile-in-arrange-and-drag-and-drop.md
+
 ### Side-quests for students who finish while the class waits (`sideQuests`)
 
 - New optional field `sideQuests` on Python, Turtle and HTML code tasks: up to 3 side-quests, each

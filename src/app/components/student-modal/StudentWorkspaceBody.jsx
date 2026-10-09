@@ -85,6 +85,10 @@ export default function StudentWorkspaceBody({
   onCancelHighlight,
   answerEditing = false,
   onEditAnswer,
+  // Tutor tile highlights on the mirrored board ({ [targetId]: { id, tileId, note } }) and the
+  // highlight-mode tap (onTileTargetTap(targetId, tileId)); see src/shared/tutorTileHighlights.js.
+  tileHighlights = null,
+  onTileTargetTap = null,
 }) {
   const [editableAnswer, pushEditableAnswer] = useTeacherEditableValue(
     student.currentAnswer ?? '',
@@ -218,6 +222,8 @@ export default function StudentWorkspaceBody({
         readOnly={!answerEditing}
         lessonType={lesson?.type}
         result={{ submitted: student.lastRunStatus === 'submitted', passed: student.checkPassed }}
+        tileHighlights={tileHighlights}
+        onTargetTap={onTileTargetTap}
         onChange={(update) => pushEdit(update, false)}
         onSubmit={
           definition?.submitsAnswers
@@ -244,6 +250,8 @@ export default function StudentWorkspaceBody({
           slots={answerEditing ? editableSlots : student[studentStateField(moduleActivity)]}
           iframeSrc={iframeSrc}
           iframeRef={iframeRef}
+          tileHighlights={tileHighlights}
+          onTargetTap={onTileTargetTap}
           onEditSlots={
             answerEditing
               ? (next) => {

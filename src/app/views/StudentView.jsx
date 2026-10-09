@@ -177,6 +177,7 @@ export default function StudentView({
     acceptTeacherStage,
     declineTeacherStage,
     removeTeacherHighlight,
+    removeTeacherTileHighlights,
     clearTeacherAnswerEdit,
     clearRemoteRun,
     pushClassPaneCommand,
@@ -306,6 +307,7 @@ export default function StudentView({
     clearTeacherAnswerEdit,
     clearRemoteRun,
     removeTeacherHighlight,
+    removeTeacherTileHighlights,
     flagAttemptError,
     // Read through a ref inside useStudentBadgeSignals, so a new object each render is fine.
     badgeSignalWriters: {

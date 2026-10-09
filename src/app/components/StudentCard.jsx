@@ -8,6 +8,7 @@ import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress
 import { readActivityAnswer, summarizeActivityAnswer } from '../../activities/state.js'
 import { getTaskActivityUi } from '../../activities/registry.js'
 import ActivityDeviceBadge from '../../activities/ui/ActivityDeviceBadge.jsx'
+import { countActiveTileHighlights } from '../../shared/tutorTileHighlights.js'
 import {
   describeHintOffer,
   hintPlainText,
@@ -149,6 +150,10 @@ export default function StudentCard({
   const cardSummary = getModuleDefinition(moduleType)?.capabilities.cardSummary ?? null
   const hasConsoleOutput = cardSummary === 'output'
   const itemProgress = isSessionSandbox ? null : getTaskItemProgress(currentTask, student)
+  // Tiles the tutor highlighted on this student's board that are still where they were.
+  const tileHighlightCount = isSessionSandbox
+    ? 0
+    : countActiveTileHighlights(currentTask, student, session?.currentTaskId)
   // A rating (confidence check) is never right or wrong, so it has no pass/fail badge.
   const isNeverMarked = activity?.completion === 'none'
 
@@ -489,6 +494,15 @@ export default function StudentCard({
               style={s.checkBadgeView}
             />
           )}
+          {tileHighlightCount > 0 && (
+            <IconChip
+              icon="👀"
+              label={`Highlighted ${tileHighlightCount}`}
+              title={`You highlighted ${tileHighlightCount === 1 ? 'a tile' : `${tileHighlightCount} tiles`} on their board: look again`}
+              style={s.checkBadgeTileHighlight}
+              testId="tile-highlight-chip"
+            />
+          )}
           {student.teacherAssistedTaskId != null &&
             String(student.teacherAssistedTaskId) === String(session?.currentTaskId) && (
               <IconChip
@@ -812,6 +826,11 @@ const s = {
     background: '#fef3c7',
     color: '#92400e',
     border: '1px solid #fde68a',
+  },
+  checkBadgeTileHighlight: {
+    background: '#fee2e2',
+    color: '#b91c1c',
+    border: '1px solid #fecaca',
   },
   checkBadgeHelp: {
     background: '#f59e0b',

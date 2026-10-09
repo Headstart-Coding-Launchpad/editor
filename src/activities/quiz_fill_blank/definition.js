@@ -55,6 +55,8 @@ export default defineQuizActivity('fill_blank', {
   },
   completion: 'auto',
   teacherEditable: true,
+  // Drag mode only: a tutor can highlight a placed tile (target: the blank id).
+  tileHighlights: (task) => (task?.mode ?? 'drag') === 'drag',
 
   defaultTask: (prev = {}) => ({
     id: prev.id,

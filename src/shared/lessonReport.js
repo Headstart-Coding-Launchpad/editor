@@ -22,6 +22,7 @@ import {
   taskSummaryBadgeFields,
 } from '../badges/reportMetrics.js'
 import { typingReportFields } from './typingStats.js'
+import { normalizeTileHighlightLog } from './tutorTileHighlights.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
 
@@ -693,6 +694,11 @@ export function buildSessionReport({
       )
       const typing = studentTypingFields(task, studentsSnapshot[anonymousId])
       const tileMisses = normalizeTileMisses(studentsSnapshot[anonymousId]?.tileMissLog?.[task.id])
+      // The tutor's "look again" tile highlights (src/shared/tutorTileHighlights.js). Support,
+      // not attempts: they change nothing about completion.
+      const tutorTileHighlights = normalizeTileHighlightLog(
+        studentsSnapshot[anonymousId]?.tileHighlightLog?.[task.id]
+      )
       const attempts = countAttempts(entries)
       const { finalResult, completed } = resolveTaskOutcome(task, entries, override, autoCheck)
       const itemProgress =
@@ -734,6 +740,7 @@ export function buildSessionReport({
         ...(sideQuests.length > 0 ? { sideQuests } : {}),
         ...(typing ? { typing } : {}),
         ...(tileMisses.length > 0 ? { tileMisses } : {}),
+        ...(tutorTileHighlights.length > 0 ? { tutorTileHighlights } : {}),
         ...(itemProgress ? { itemProgress } : {}),
         ...(isNotApplicableTask(task)
           ? {}

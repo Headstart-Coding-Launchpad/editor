@@ -171,6 +171,87 @@ describe('code_arrange tasks', () => {
   })
 })
 
+// Tutor tile highlights: "👀 Highlight tiles" turns a tap on a blank into a highlight for the
+// student (with the note typed so far), a second tap removes it, and Clear all removes them all.
+describe('tutor tile highlights', () => {
+  const slots = { L1: 'D1', L2: 'L2' }
+  function highlightProps(extra = {}, student = {}) {
+    return mkProps(
+      {
+        lesson: CODE_ARRANGE_LESSON,
+        onPushTileHighlight: vi.fn(),
+        onRemoveTileHighlights: vi.fn(),
+        onClearTileHighlights: vi.fn(),
+        ...extra,
+      },
+      { currentCodeArrangeSlots: slots, ...student }
+    )
+  }
+
+  it('highlights a tapped blank with the note, without editing the student’s tiles', () => {
+    const props = highlightProps({ onTeacherAnswerEdit: vi.fn() })
+    render(<StudentModal {...props} />)
+    fireEvent.click(screen.getByTestId('tile-highlight-toggle'))
+    fireEvent.change(screen.getByLabelText('Note for the next highlighted tile'), {
+      target: { value: 'Is this line needed?' },
+    })
+    fireEvent.click(screen.getByTestId('code-arrange-slot-L1'))
+    expect(props.onPushTileHighlight).toHaveBeenCalledWith('student-1', {
+      taskId: 1,
+      targetId: 'L1',
+      tileId: 'D1',
+      note: 'Is this line needed?',
+      replaceIds: [],
+    })
+    expect(props.onTeacherAnswerEdit).not.toHaveBeenCalled()
+  })
+
+  it('removes a highlight on a second tap and clears all from the bar', () => {
+    const props = highlightProps(
+      {},
+      {
+        teacherTileHighlights: {
+          h1: { taskId: '1', targetId: 'L1', tileId: 'D1', note: null, createdAt: 1 },
+        },
+      }
+    )
+    render(<StudentModal {...props} />)
+    expect(screen.getByTestId('code-arrange-slot-L1')).toHaveAttribute(
+      'data-tutor-highlight',
+      'true'
+    )
+    expect(screen.getByTestId('tile-highlight-bar')).toHaveTextContent('1 tile highlighted')
+    fireEvent.click(screen.getByTestId('tile-highlight-toggle'))
+    fireEvent.click(screen.getByTestId('code-arrange-slot-L1'))
+    expect(props.onRemoveTileHighlights).toHaveBeenCalledWith('student-1', ['h1'])
+    fireEvent.click(screen.getByTestId('tile-highlight-clear-all'))
+    expect(props.onClearTileHighlights).toHaveBeenCalledWith('student-1')
+  })
+
+  it('hides a highlight whose tile the student has moved', () => {
+    render(
+      <StudentModal
+        {...highlightProps(
+          {},
+          {
+            currentCodeArrangeSlots: { L1: 'L1', L2: 'L2' },
+            teacherTileHighlights: {
+              h1: { taskId: '1', targetId: 'L1', tileId: 'D1', note: null, createdAt: 1 },
+            },
+          }
+        )}
+      />
+    )
+    expect(screen.getByTestId('code-arrange-slot-L1')).not.toHaveAttribute('data-tutor-highlight')
+    expect(screen.queryByTestId('tile-highlight-bar')).not.toBeInTheDocument()
+  })
+
+  it('offers no tile highlights on an ordinary code task', () => {
+    render(<StudentModal {...mkProps({ onPushTileHighlight: vi.fn() })} />)
+    expect(screen.queryByTestId('tile-highlight-toggle')).not.toBeInTheDocument()
+  })
+})
+
 describe('StudentModal', () => {
   afterEach(() => {
     vi.restoreAllMocks()

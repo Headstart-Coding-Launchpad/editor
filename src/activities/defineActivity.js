@@ -109,6 +109,11 @@ export function defineActivity(def) {
     // (src/shared/shownResponses.js): open short answers with `showResponses: teacher_picks`.
     // Graded answers are never broadcast.
     showsResponses: () => false,
+    // true when a tutor can tap a placed tile (or blank) on the student's board in StudentModal
+    // to highlight it "look again" (src/shared/tutorTileHighlights.js). Only for drag-and-drop
+    // boards whose state is a { [targetId]: tileId } map: code_arrange slot mode, Match, Fill in
+    // the Gaps drag mode.
+    tileHighlights: () => false,
     checks: [],
     buildSubmission: (task, state) => state,
     getProgress: () => null,
