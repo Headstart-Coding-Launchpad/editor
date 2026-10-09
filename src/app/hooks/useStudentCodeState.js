@@ -81,6 +81,7 @@ import { runWithRuntime } from './runWithRuntime'
 import { useStudentBadgeSignals } from './useStudentBadgeSignals'
 import { useStudentTypingStats } from './useStudentTypingStats'
 import { runErrorFor, runErrorName } from '../../badges/signals'
+import { listTileHighlights } from '../../shared/tutorTileHighlights.js'
 
 // The generic work slot before any module has loaded work into it.
 const EMPTY_WORK = Object.freeze({ moduleType: null, taskId: null, value: null })
@@ -89,6 +90,7 @@ const DEFAULT_INTERACTION = Object.freeze({ currentDir: '/', openFile: null })
 
 // A files module's work before any has loaded, and while the slot holds another module's.
 const NO_FILES_WORK = Object.freeze({ files: Object.freeze([]), activeFile: '' })
+const EMPTY_TILE_HIGHLIGHTS = Object.freeze([])
 
 // The module definition when `type` is on the generic work slot (declares `workSlot`), else null.
 // Every module is since plan step 4.5.
@@ -185,6 +187,7 @@ export function useStudentCodeState({
   setTeacherLive,
   setTeacherLiveReference,
   removeTeacherHighlight,
+  removeTeacherTileHighlights,
   clearTeacherAnswerEdit,
   clearRemoteRun,
   // Live badges: marks a logged attempt as errored after the fact (Arcade), and the
@@ -626,6 +629,26 @@ export function useStudentCodeState({
       removeTeacherHighlight?.(identity.anonymousId, highlightId)
     },
     [identity, removeTeacherHighlight]
+  )
+
+  // Tutor tile highlights on this task's drag-and-drop board (src/shared/tutorTileHighlights.js):
+  // only the student's own live lesson work, never the presentation window or Builder preview.
+  // The board's host (ActivityHost / CodeArrangeTaskContainer) draws the ones still current and
+  // calls dismissTileHighlights when the student moves a highlighted tile.
+  const tileHighlightsLive = phase === 'lesson' && !teacherPresentation && !previewMode
+  const tileHighlights = useMemo(
+    () =>
+      tileHighlightsLive
+        ? listTileHighlights(myStudentData?.teacherTileHighlights, currentTaskId)
+        : EMPTY_TILE_HIGHLIGHTS,
+    [tileHighlightsLive, myStudentData?.teacherTileHighlights, currentTaskId]
+  )
+  const dismissTileHighlights = useCallback(
+    (highlightIds) => {
+      if (!identity?.anonymousId || !highlightIds?.length) return
+      removeTeacherTileHighlights?.(identity.anonymousId, highlightIds)
+    },
+    [identity, removeTeacherTileHighlights]
   )
 
   const {
@@ -3041,6 +3064,8 @@ export function useStudentCodeState({
     inPersonalSandbox,
     teacherHighlights,
     dismissHighlight,
+    tileHighlights,
+    dismissTileHighlights,
     errorLine,
     htmlErrorLocation,
     // Refs

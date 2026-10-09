@@ -28,6 +28,7 @@ import { PaneFocusControls } from './student-modal/PaneFocusDropdown'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
 import StudentHintPanel from './student-modal/StudentHintPanel'
 import ShareRequestPanel from './student-modal/ShareRequestPanel'
+import TileHighlightBar from './student-modal/TileHighlightBar'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
 import { countShownLineHints, getMirrorLineHintSets } from './student-modal/mirrorLineHints'
 import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
@@ -35,7 +36,13 @@ import {
   allowsStudentBroadcast,
   isModuleHostedActivityTask,
 } from '../../activities/registry.pure.js'
-import { readActivityAnswer } from '../../activities/state.js'
+import { readActivityAnswer, readStudentActivityState } from '../../activities/state.js'
+import {
+  activeTileHighlights,
+  listTileHighlights,
+  supportsTileHighlights,
+  tileHighlightIdsForTarget,
+} from '../../shared/tutorTileHighlights.js'
 import ActivityDeviceBadge from '../../activities/ui/ActivityDeviceBadge.jsx'
 import BadgeAwardDialog from './badges/BadgeAwardDialog'
 import { heldBadgeIds } from '../../badges/badgeDisplay'
@@ -93,6 +100,10 @@ export default function StudentModal({
   onSetTeacherLiveReference,
   onPushTeacherPaneCommand,
   onTeacherAnswerEdit,
+  // Tutor tile highlights (useSession push/remove/clearTeacherTileHighlights).
+  onPushTileHighlight,
+  onRemoveTileHighlights,
+  onClearTileHighlights,
   onRemoteRun,
   onReadPendingShare,
   onApproveShare,
@@ -110,11 +121,16 @@ export default function StudentModal({
   const iframeRef = useRef(null)
   const [showTopicLibrary, setShowTopicLibrary] = useState(false)
   const [answerEditing, setAnswerEditing] = useState(false)
+  // Tile highlight mode: a tap on the student's board highlights that blank for them.
+  const [tileHighlightMode, setTileHighlightMode] = useState(false)
+  const [tileHighlightNote, setTileHighlightNote] = useState('')
   const [remoteRunSent, setRemoteRunSent] = useState(false)
   // Editing is per student + task: switching student (Prev/Next) or the class
   // moving on must never leave the next board silently editable.
   useEffect(() => {
     setAnswerEditing(false)
+    setTileHighlightMode(false)
+    setTileHighlightNote('')
   }, [student.anonymousId, session?.currentTaskId])
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [fullscreenRequested, setFullscreenRequested] = useState(false)
@@ -416,6 +432,52 @@ export default function StudentModal({
   // student's answer directly (pushed live, see pushTeacherAnswerEdit).
   const supportsAnswerEdit =
     !!onTeacherAnswerEdit && (!!itemProgress || (isActivity && !!activity?.teacherEditable))
+  // Tutor tile highlights (src/shared/tutorTileHighlights.js): the activity says which boards
+  // have them (code_arrange slot mode, Match, Fill in the Gaps drag mode).
+  const supportsTileHighlight =
+    !!onPushTileHighlight &&
+    (isActivity || isCodeArrangeTask) &&
+    session?.currentTaskId != null &&
+    supportsTileHighlights(task)
+  const tileHighlightList = useMemo(
+    () =>
+      supportsTileHighlight
+        ? listTileHighlights(student.teacherTileHighlights, session?.currentTaskId)
+        : [],
+    [supportsTileHighlight, student.teacherTileHighlights, session?.currentTaskId]
+  )
+  // Drawn against the student's mirrored board: a highlight whose tile has moved is gone.
+  const shownTileHighlights = useMemo(
+    () =>
+      tileHighlightList.length
+        ? activeTileHighlights(tileHighlightList, readStudentActivityState(task, student))
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tileHighlightList, task, student.currentAnswer, student.currentCodeArrangeSlots]
+  )
+  const shownTileHighlightCount = shownTileHighlights ? Object.keys(shownTileHighlights).length : 0
+
+  // A tap on a blank in highlight mode: removes its highlight, or highlights the tile in it
+  // (replacing any older entry on that blank) with the note typed so far.
+  function handleTileHighlightTap(targetId, tileId) {
+    const ids = tileHighlightIdsForTarget(tileHighlightList, targetId)
+    if (shownTileHighlights?.[targetId]) {
+      onRemoveTileHighlights?.(student.anonymousId, ids)
+      return
+    }
+    onPushTileHighlight?.(student.anonymousId, {
+      taskId: session?.currentTaskId,
+      targetId,
+      tileId,
+      note: tileHighlightNote,
+      replaceIds: ids,
+    })
+    setTileHighlightNote('')
+  }
+
+  function handleClearTileHighlights() {
+    onClearTileHighlights?.(student.anonymousId)
+  }
   // Runs the student's current code on the student's own device: any module with a Run
   // (capabilities.run is not 'none').
   const supportsRemoteRun =
@@ -937,10 +999,30 @@ export default function StudentModal({
                 type="button"
                 className={answerEditing ? 'btn-primary' : 'btn-ghost'}
                 style={{ fontSize: 13, padding: '5px 12px', whiteSpace: 'nowrap' }}
-                onClick={() => setAnswerEditing((editing) => !editing)}
+                onClick={() => {
+                  setAnswerEditing((editing) => !editing)
+                  setTileHighlightMode(false)
+                }}
                 title="Change this student's answers — updates their screen live"
               >
                 {answerEditing ? 'Done editing' : '✏️ Edit answers'}
+              </button>
+            )}
+
+            {supportsTileHighlight && (
+              <button
+                type="button"
+                className={tileHighlightMode ? 'btn-primary' : 'btn-ghost'}
+                style={{ fontSize: 13, padding: '5px 12px', whiteSpace: 'nowrap' }}
+                onClick={() => {
+                  setTileHighlightMode((on) => !on)
+                  setAnswerEditing(false)
+                }}
+                aria-pressed={tileHighlightMode}
+                title="Tap a tile on the student's board to outline it on their screen: look again"
+                data-testid="tile-highlight-toggle"
+              >
+                {tileHighlightMode ? 'Done highlighting' : '👀 Highlight tiles'}
               </button>
             )}
 
@@ -1262,6 +1344,16 @@ export default function StudentModal({
               session={session}
               isSessionSandbox={isSessionSandbox}
             />
+            {supportsTileHighlight && (
+              <TileHighlightBar
+                active={tileHighlightMode}
+                count={shownTileHighlightCount}
+                note={tileHighlightNote}
+                onNoteChange={setTileHighlightNote}
+                onClearAll={handleClearTileHighlights}
+                onDone={() => setTileHighlightMode(false)}
+              />
+            )}
             {/* Content */}
             <div
               style={
@@ -1366,6 +1458,12 @@ export default function StudentModal({
                   onCancelHighlight={handleCancelHighlight}
                   answerEditing={supportsAnswerEdit && answerEditing}
                   onEditAnswer={(payload) => onTeacherAnswerEdit?.(student.anonymousId, payload)}
+                  tileHighlights={shownTileHighlights}
+                  onTileTargetTap={
+                    supportsTileHighlight && tileHighlightMode && !answerEditing
+                      ? handleTileHighlightTap
+                      : null
+                  }
                 />
               )}
             </div>

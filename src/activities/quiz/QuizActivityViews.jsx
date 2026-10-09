@@ -30,6 +30,10 @@ export function QuizActivityStudentView({
   readOnly = false,
   teacher = false,
   result = null,
+  // Tutor "look again" highlights { [targetId]: { id, note } } and StudentModal's
+  // tap-to-highlight (src/shared/tutorTileHighlights.js).
+  tileHighlights = null,
+  onTargetTap = null,
 }) {
   const onSelectAnswer =
     readOnly || (!onChange && !onSubmit)
@@ -50,6 +54,8 @@ export function QuizActivityStudentView({
       disabled={readOnly}
       showResult={teacher}
       showCorrectAnswer={teacher}
+      tileHighlights={tileHighlights}
+      onTargetTap={onTargetTap}
     />
   )
 }

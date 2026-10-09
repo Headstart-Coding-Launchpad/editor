@@ -46,6 +46,10 @@ import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liv
 import { buildClassCountdown, extendClassCountdown } from '../../shared/classCountdown'
 import { clipRunError } from '../studentHints.js'
 import { bumpSideQuestCount } from '../../shared/sideQuests.js'
+import {
+  MAX_TILE_HIGHLIGHT_LOG_PER_TASK,
+  normalizeTileHighlightNote,
+} from '../../shared/tutorTileHighlights.js'
 
 // Badge decisions (sessions/{lessonId}/badges/{anonymousId}/{badgeId}). A decision is written
 // once; revoking is the only later change (see decideBadge / revokeBadge).
@@ -520,6 +524,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/teacherStagePendingAction`] = null
       updates[`students/${anonymousId}/teacherStageAcceptedAt`] = null
       updates[`students/${anonymousId}/teacherHighlights`] = null
+      updates[`students/${anonymousId}/teacherTileHighlights`] = null
       updates[`students/${anonymousId}/teacherPaneCommand`] = null
       // A side-quest closes when the class moves on (sideQuestLog keeps what happened).
       updates[`students/${anonymousId}/sideQuestOpen`] = null
@@ -1268,6 +1273,58 @@ export function useSession(lessonId, { enabled = true } = {}) {
       ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherHighlights/${highlightId}`),
       null
     )
+  }
+
+  // Tutor tile highlights (src/shared/tutorTileHighlights.js): a "look again" outline on one
+  // blank of the student's drag-and-drop board, made from StudentModal. One multi-path write
+  // replaces any earlier entries on the same blank (`replaceIds`), adds the new entry, and logs
+  // it for the session report (tileHighlightLog/{taskId}, capped per task).
+  async function pushTeacherTileHighlight(
+    anonymousId,
+    { taskId, targetId, tileId = null, note = null, replaceIds = [] } = {}
+  ) {
+    if (!anonymousId || taskId == null || !targetId) return null
+    const base = `students/${anonymousId}`
+    const key = push(ref(db, `sessions/${lessonId}/${base}/teacherTileHighlights`)).key
+    const cleanNote = normalizeTileHighlightNote(note)
+    const updates = {}
+    for (const id of replaceIds) updates[`${base}/teacherTileHighlights/${id}`] = null
+    updates[`${base}/teacherTileHighlights/${key}`] = {
+      taskId: String(taskId),
+      targetId: String(targetId),
+      tileId: tileId == null || tileId === '' ? null : String(tileId),
+      note: cleanNote,
+      createdAt: Date.now(),
+    }
+    const logged = session?.students?.[anonymousId]?.tileHighlightLog?.[taskId]
+    if (!logged || Object.keys(logged).length < MAX_TILE_HIGHLIGHT_LOG_PER_TASK) {
+      const logKey = push(ref(db, `sessions/${lessonId}/${base}/tileHighlightLog/${taskId}`)).key
+      updates[`${base}/tileHighlightLog/${taskId}/${logKey}`] = {
+        targetId: String(targetId),
+        tileId: tileId == null || tileId === '' ? null : String(tileId),
+        note: cleanNote,
+        at: serverTimestamp(),
+      }
+    }
+    await update(ref(db, `sessions/${lessonId}`), updates)
+    return key
+  }
+
+  // Removes tile highlights: the tutor tapping one again, or the student's device once the
+  // student has moved the highlighted tile.
+  async function removeTeacherTileHighlights(anonymousId, highlightIds = []) {
+    if (!anonymousId || highlightIds.length === 0) return
+    const updates = {}
+    for (const id of highlightIds) {
+      updates[`students/${anonymousId}/teacherTileHighlights/${id}`] = null
+    }
+    await update(ref(db, `sessions/${lessonId}`), updates)
+  }
+
+  // The tutor's "Clear all" in StudentModal.
+  async function clearTeacherTileHighlights(anonymousId) {
+    if (!anonymousId) return
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherTileHighlights`), null)
   }
 
   // Draws attention to (mode: 'highlight') or immediately switches (mode: 'force') one or
@@ -2154,6 +2211,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
     clearTeacherStage,
     pushTeacherHighlight,
     removeTeacherHighlight,
+    pushTeacherTileHighlight,
+    removeTeacherTileHighlights,
+    clearTeacherTileHighlights,
     pushTeacherPaneCommand,
     clearTeacherPaneCommand,
     pushClassPaneCommand,

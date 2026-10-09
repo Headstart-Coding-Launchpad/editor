@@ -2,6 +2,7 @@ import React, { useMemo } from 'react'
 import { InlineMarkdown } from '../../../shared/markdown'
 import { useTileDragAndDrop } from '../../hooks/useTileDragAndDrop'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
+import TutorTileHighlightNote from './TutorTileHighlightNote'
 import { useChoiceEntrance } from '../../../activities/ui/choiceEntrance.jsx'
 import {
   baseStyles as s,
@@ -21,6 +22,10 @@ export default function MatchQuiz({
   showQuestion,
   showResult,
   showCorrectAnswer,
+  // Tutor "look again" highlights, { [pairId]: { id, note } } (src/shared/tutorTileHighlights.js).
+  tileHighlights = null,
+  // StudentModal's highlight mode: tapping a prompt's slot calls this instead of picking up.
+  onTargetTap = null,
 }) {
   const pairs = task?.pairs ?? []
   const revealAnswers = showCorrectAnswer && submitted && disabled
@@ -69,6 +74,7 @@ export default function MatchQuiz({
             const isSlotCorrect = isOccupied && placedId === pair.id
             const isSlotWrong = isOccupied && placedId !== pair.id
             const correctPair = revealAnswers && !isSlotCorrect ? pair : null
+            const tutorHighlight = tileHighlights?.[pair.id] ?? null
 
             const rowEntrance = entrance(pairIndex)
 
@@ -92,16 +98,25 @@ export default function MatchQuiz({
                       ...(isSlotCorrect ? sm.slotCorrect : {}),
                       ...(isSlotWrong ? sm.slotWrong : {}),
                       ...(isDragHighlight || isTapHighlight ? sm.slotHighlight : {}),
-                      cursor: blocked
-                        ? 'default'
-                        : isTapHighlight || isOccupied
-                          ? 'pointer'
-                          : 'copy',
+                      ...(tutorHighlight ? sm.tutorHighlight : {}),
+                      cursor: onTargetTap
+                        ? 'pointer'
+                        : blocked
+                          ? 'default'
+                          : isTapHighlight || isOccupied
+                            ? 'pointer'
+                            : 'copy',
                     }}
+                    data-tutor-highlight={tutorHighlight ? 'true' : undefined}
+                    data-testid={`match-slot-${pair.id}`}
                     onDragOver={(event) => dnd.handleTargetDragOver(event, pair.id)}
                     onDragLeave={dnd.clearDragOver}
                     onDrop={(event) => dnd.handleTargetDrop(event, pair.id, state, publishState)}
-                    onClick={() => dnd.handleTargetClick(pair.id, state, publishState)}
+                    onClick={() =>
+                      onTargetTap
+                        ? onTargetTap(pair.id, placedId ?? null)
+                        : dnd.handleTargetClick(pair.id, state, publishState)
+                    }
                     draggable={isOccupied && !blocked}
                     onDragStart={(event) => isOccupied && dnd.handleDragStart(event, placedId)}
                     onDragEnd={dnd.handleDragEnd}
@@ -118,6 +133,7 @@ export default function MatchQuiz({
                       '—'
                     )}
                   </div>
+                  {tutorHighlight && <TutorTileHighlightNote note={tutorHighlight.note} />}
                   {correctPair && (
                     <div style={sm.correctAnswerHint}>
                       ✓ Correct: <InlineMarkdown content={correctPair.answer} />

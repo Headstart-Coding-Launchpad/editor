@@ -16,6 +16,8 @@
 // known to be wrong (a distractor anywhere, or one of the blank's `wrongTiles`) turns that blank
 // red with its hint at once; each such drop is logged as a tile miss
 // (students/{id}/tileMissLog/{taskId}), never as an attempt. Completion stays run-based.
+// A tutor can also highlight a tile live from StudentModal (`tileHighlights`,
+// src/shared/tutorTileHighlights.js); it draws the same red outline.
 //
 // Indent mode (`arrangeMode: indent`, src/shared/codeArrangeIndent.js): the lines are fixed and
 // the student sets each one's depth. Its state is a { lineId: depth } map carried by the same
@@ -335,6 +337,9 @@ export default defineActivity({
       : null
   },
   teacherEditable: true,
+  // Slot mode only: a tutor can highlight a placed tile (target: the blank's slot id). Indent
+  // mode has no tiles in blanks, so it has no tile highlights.
+  tileHighlights: (task) => !isIndentArrangeTask(task),
 
   report: Object.freeze({
     typeFields: () => ({ taskType: 'code' }),

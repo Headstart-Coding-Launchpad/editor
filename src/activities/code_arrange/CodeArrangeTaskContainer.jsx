@@ -11,6 +11,8 @@ import {
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import definition from './definition.js'
 import { useIsLeavingTaskSlide } from '../../app/components/TaskSlideTransition'
+import { useBoardTileHighlights } from '../../app/hooks/useBoardTileHighlights.js'
+import { supportsTileHighlights } from '../../shared/tutorTileHighlights.js'
 
 // Synthetic filename used to persist the student's own tile arrangement
 // alongside the ordinary per-task saved code, using the exact same
@@ -245,6 +247,16 @@ export default function CodeArrangeTaskContainer({
         ? deriveSlotStateFromCode(task, liveCode ?? '')
         : slotState
 
+  // The tutor's "look again" highlights (src/shared/tutorTileHighlights.js), on the student's own
+  // board of the current task only; moving a highlighted tile removes its highlight.
+  const tileHighlights = useBoardTileHighlights({
+    highlights: cs.tileHighlights,
+    state: slotState,
+    taskId,
+    onDismiss: cs.dismissTileHighlights,
+    enabled: !detached && !isViewingPrev && supportsTileHighlights(task),
+  })
+
   const output = isForcedTeacherLive
     ? (displayOutput ?? '')
     : isTeacherEditing
@@ -296,6 +308,7 @@ export default function CodeArrangeTaskContainer({
       onStop={detached ? undefined : cs.handleStop}
       onDragCursor={detached ? undefined : cs.handleCodeArrangeDragCursor}
       externalDragCursor={isForcedTeacherLive ? displayCodeArrangeCursor : null}
+      tileHighlights={tileHighlights}
       disabled={readOnly}
       showQuestion={false}
     />

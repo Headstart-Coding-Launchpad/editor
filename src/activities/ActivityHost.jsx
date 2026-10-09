@@ -7,6 +7,8 @@ import { UNKNOWN_ACTIVITY_ID } from './resolve.js'
 import { deserializeActivityState } from './state.js'
 import { effectiveCapabilities } from './device.js'
 import { ChoiceEntranceProvider } from './ui/choiceEntrance.jsx'
+import { useBoardTileHighlights } from '../app/hooks/useBoardTileHighlights.js'
+import { supportsTileHighlights } from '../shared/tutorTileHighlights.js'
 
 // ActivityHost renders a hosted activity task (taskType 'activity', or a legacy quiz) in the
 // classroom. The
@@ -65,6 +67,11 @@ export function ActivityView({
   // Which task is shown (usually firstViewKey(lessonId, taskId)): its answer choices rise in on
   // the task's first view. Null (the Builder's editor preview, StudentModal) never animates.
   entranceKey = null,
+  // Tutor "look again" highlights to draw, { [targetId]: { id, tileId, note } }, and
+  // StudentModal's tap-to-highlight (onTargetTap(targetId, tileId)); see
+  // src/shared/tutorTileHighlights.js.
+  tileHighlights = null,
+  onTargetTap = null,
 }) {
   const ui = getTaskActivityUi(task)
   if (!ui || ui.id === UNKNOWN_ACTIVITY_ID || !ui.StudentView) {
@@ -88,6 +95,8 @@ export function ActivityView({
       device={device}
       teacher={teacher}
       result={result}
+      tileHighlights={tileHighlights}
+      onTargetTap={onTargetTap}
     />
   )
   return (
@@ -161,6 +170,10 @@ export default function ActivityHost({
   result = null,
   // Passed to ActivityView: the task's first view plays its choices' entrance.
   entranceKey = null,
+  // The tutor's tile highlights on this task (cs.tileHighlights) and their removal
+  // (cs.dismissTileHighlights): drawn on the student's own board only.
+  tileHighlights = null,
+  onDismissTileHighlights,
 }) {
   const capabilities = useInputCapabilities()
   const [keyboardOverride, setKeyboardOverride] = useState(false)
@@ -180,6 +193,13 @@ export default function ActivityHost({
     [broadcasting, ownTask, task?.id]
   )
   const state = broadcasting ? broadcastState : ownTask ? activity.state : reviewState
+  const shownTileHighlights = useBoardTileHighlights({
+    highlights: tileHighlights,
+    state,
+    taskId: task?.id,
+    onDismiss: onDismissTileHighlights,
+    enabled: ownTask && supportsTileHighlights(task),
+  })
 
   const effective = effectiveCapabilities(capabilities, { keyboardOverride })
   const unmet = ui && !readOnly ? unmetRequirements(ui.requires ?? {}, effective) : []
@@ -216,6 +236,7 @@ export default function ActivityHost({
       lessonType={lessonType}
       result={reviewing ? null : result}
       entranceKey={entranceKey}
+      tileHighlights={shownTileHighlights}
     />
   )
   // Quizzes have no device requirements and lay themselves out (see ActivityView).

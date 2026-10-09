@@ -1515,6 +1515,7 @@ describe('useSession', () => {
         teacherStagePendingAction: null,
         teacherStageAcceptedAt: null,
         teacherHighlights: null,
+        teacherTileHighlights: null,
         teacherPaneCommand: null,
         sideQuestOpen: null,
         visiblePanes: null,
@@ -2109,6 +2110,79 @@ describe('useSession', () => {
       })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1/students/student-xyz/teacherHighlights/highlight-1' },
+        null
+      )
+    })
+  })
+
+  describe('tutor tile highlights', () => {
+    it('adds a highlight, replaces older entries on the blank and logs it, in one update', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherTileHighlight('student-xyz', {
+          taskId: 4,
+          targetId: 's2',
+          tileId: 'd1',
+          note: '  Check the colon  ',
+          replaceIds: ['old-1'],
+        })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        {
+          'students/student-xyz/teacherTileHighlights/old-1': null,
+          'students/student-xyz/teacherTileHighlights/mockHighlightId': {
+            taskId: '4',
+            targetId: 's2',
+            tileId: 'd1',
+            note: 'Check the colon',
+            createdAt: expect.any(Number),
+          },
+          'students/student-xyz/tileHighlightLog/4/mockHighlightId': {
+            targetId: 's2',
+            tileId: 'd1',
+            note: 'Check the colon',
+            at: { '.sv': 'timestamp' },
+          },
+        }
+      )
+    })
+
+    it('stores an empty blank as tileId null and no note as null', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherTileHighlight('student-xyz', {
+          taskId: 4,
+          targetId: 'b1',
+          tileId: null,
+          note: '',
+        })
+      })
+      const [, updates] = firebaseMocks.update.mock.calls.at(-1)
+      expect(updates['students/student-xyz/teacherTileHighlights/mockHighlightId']).toMatchObject({
+        targetId: 'b1',
+        tileId: null,
+        note: null,
+      })
+    })
+
+    it('removes chosen highlights and clears them all', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.removeTeacherTileHighlights('student-xyz', ['h1', 'h2'])
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        {
+          'students/student-xyz/teacherTileHighlights/h1': null,
+          'students/student-xyz/teacherTileHighlights/h2': null,
+        }
+      )
+      await act(async () => {
+        await result.current.clearTeacherTileHighlights('student-xyz')
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/student-xyz/teacherTileHighlights' },
         null
       )
     })

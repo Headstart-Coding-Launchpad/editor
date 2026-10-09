@@ -64,6 +64,7 @@ export const NOOP_SESSION_WRITES = {
   updateTeacherLive: NOOP_ASYNC,
   setTeacherLive: NOOP_ASYNC,
   removeTeacherHighlight: NOOP_ASYNC,
+  removeTeacherTileHighlights: NOOP_ASYNC,
 }
 
 export function shareViewerLessonId(shareId) {

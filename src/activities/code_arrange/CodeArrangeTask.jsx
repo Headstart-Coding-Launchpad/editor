@@ -19,6 +19,7 @@ import {
 } from '../../shared/codeArrange'
 import { isIndentArrangeTask } from '../../shared/codeArrangeIndent'
 import CodeArrangeIndentBoard from './CodeArrangeIndentBoard.jsx'
+import TutorTileHighlightNote from '../../app/components/quiz/TutorTileHighlightNote.jsx'
 
 // Matches ScratchWorkspace's live-cursor mirror (see CURSOR_THROTTLE_MS /
 // CURSOR_STALE_MS there) so both task types feel the same during Go Live.
@@ -46,6 +47,11 @@ const DRAG_CURSOR_STALE_MS = 2000
 // line, the moment it lands (getTileFlags, src/shared/codeArrange.js). Derived from the
 // arrangement, so it shows wherever the board does (Builder preview, a teacher's mirror). A right
 // tile is never marked: Run stays the only judge of the program.
+//
+// Tutor highlights (src/shared/tutorTileHighlights.js): a blank the tutor highlighted from
+// StudentModal gets the same red outline plus a ring, with "👀 Look again" and the tutor's note
+// under the line. `tileHighlights` is { [slotId]: { id, tileId, note } }; `onTargetTap` is
+// StudentModal's highlight mode (a tap on a blank highlights it instead of picking the tile up).
 //
 // An indent-mode task (`arrangeMode: indent`) swaps the program and tile pool
 // for CodeArrangeIndentBoard (fixed lines, the student sets each depth); the
@@ -77,6 +83,8 @@ export default function CodeArrangeTask({
   // handleScratchCursor / externalCursor.
   onDragCursor,
   externalDragCursor = null,
+  tileHighlights = null,
+  onTargetTap = null,
 }) {
   const indentMode = isIndentArrangeTask(task)
   const lines = getLines(task)
@@ -90,6 +98,7 @@ export default function CodeArrangeTask({
   const blocked = !!disabled || running
   const complete = isArrangementComplete(task, state)
   const tileFlags = indentMode ? {} : getTileFlags(task, state)
+  const tutorHighlights = (!indentMode && tileHighlights) || {}
   const assembledRef = useRef(null)
   const stateKey = JSON.stringify(state)
   const boardRef = useRef(null)
@@ -151,6 +160,12 @@ export default function CodeArrangeTask({
   // visibly floats across the board but nothing on it reacts, which is what
   // looked wrong.
   const activeId = draggingTile || touchSelectedTile || externalDragCursor?.tileId || null
+
+  // A tap on a blank: StudentModal's highlight mode, else the usual pick up / place.
+  function handleTargetTap(slotId) {
+    if (onTargetTap) onTargetTap(slotId, state[slotId] ?? null)
+    else dnd.handleTargetClick(slotId, state, publishState)
+  }
 
   useEffect(
     () => () => {
@@ -226,15 +241,19 @@ export default function CodeArrangeTask({
                           ...(placedFragment ? sm.slotFilled : sm.slotEmpty),
                           ...(tileFlags[slotPart.id] ? sm.slotWrong : {}),
                           ...(isDragHighlight || isTapHighlight ? sm.slotHighlight : {}),
+                          ...(tutorHighlights[slotPart.id] ? sm.tutorHighlight : {}),
+                          ...(onTargetTap ? { cursor: 'pointer' } : {}),
                         }}
+                        data-testid={`code-arrange-slot-${slotPart.id}`}
                         data-tile-flagged={tileFlags[slotPart.id] ? 'true' : undefined}
+                        data-tutor-highlight={tutorHighlights[slotPart.id] ? 'true' : undefined}
                         aria-invalid={tileFlags[slotPart.id] ? true : undefined}
                         onDragOver={(event) => dnd.handleTargetDragOver(event, slotPart.id)}
                         onDragLeave={dnd.clearDragOver}
                         onDrop={(event) =>
                           dnd.handleTargetDrop(event, slotPart.id, state, publishState)
                         }
-                        onClick={() => dnd.handleTargetClick(slotPart.id, state, publishState)}
+                        onClick={() => handleTargetTap(slotPart.id)}
                         draggable={!!placedFragment && !blocked}
                         onDragStart={(event) =>
                           placedFragment && dnd.handleDragStart(event, placedFragmentId)
@@ -250,6 +269,7 @@ export default function CodeArrangeTask({
                       </div>
                     </div>
                     <TileFlagHints parts={parts} pool={pool} tileFlags={tileFlags} />
+                    <TutorHighlightHints parts={parts} pool={pool} highlights={tutorHighlights} />
                   </div>
                 )
               }
@@ -272,6 +292,9 @@ export default function CodeArrangeTask({
                             publishState={publishState}
                             renderTargetContent={renderTargetContent}
                             flag={tileFlags[part.id] ?? null}
+                            tutorHighlight={tutorHighlights[part.id] ?? null}
+                            onTap={handleTargetTap}
+                            tapToHighlight={!!onTargetTap}
                           />
                         ) : (
                           <span key={partIndex} style={ca.textPart}>
@@ -282,6 +305,7 @@ export default function CodeArrangeTask({
                     </div>
                   </div>
                   <TileFlagHints parts={parts} pool={pool} tileFlags={tileFlags} />
+                  <TutorHighlightHints parts={parts} pool={pool} highlights={tutorHighlights} />
                 </div>
               )
             })}
@@ -436,6 +460,9 @@ function InlineSlot({
   publishState,
   renderTargetContent,
   flag,
+  tutorHighlight = null,
+  onTap,
+  tapToHighlight = false,
 }) {
   const placedFragmentId = state[part.id]
   const placedFragment = pool.find((fragment) => fragment.id === placedFragmentId)
@@ -450,17 +477,26 @@ function InlineSlot({
         ...(placedFragment ? sm.slotFilled : sm.slotEmpty),
         ...(flag ? sm.slotWrong : {}),
         ...(isDragHighlight || isTapHighlight ? sm.slotHighlight : {}),
+        ...(tutorHighlight ? sm.tutorHighlight : {}),
       }}
+      data-testid={`code-arrange-slot-${part.id}`}
       data-tile-flagged={flag ? 'true' : undefined}
+      data-tutor-highlight={tutorHighlight ? 'true' : undefined}
       aria-invalid={flag ? true : undefined}
       onDragOver={(event) => dnd.handleTargetDragOver(event, part.id)}
       onDragLeave={dnd.clearDragOver}
       onDrop={(event) => dnd.handleTargetDrop(event, part.id, state, publishState)}
-      onClick={() => dnd.handleTargetClick(part.id, state, publishState)}
+      onClick={() => onTap(part.id)}
       draggable={!!placedFragment && !blocked}
       onDragStart={(event) => placedFragment && dnd.handleDragStart(event, placedFragmentId)}
       onDragEnd={dnd.handleDragEnd}
-      title={placedFragment && !blocked ? 'Click to pick this tile back up' : 'Drop a tile here'}
+      title={
+        tapToHighlight
+          ? 'Tap to highlight for the student'
+          : placedFragment && !blocked
+            ? 'Click to pick this tile back up'
+            : 'Drop a tile here'
+      }
     >
       {renderTargetContent(placedFragment, canReceive, '___')}
     </span>
@@ -489,6 +525,27 @@ function TileFlagHints({ parts, pool, tileFlags }) {
               {flag.hint}
             </span>
           </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// "👀 Look again" (and the tutor's note) for each blank of the line the tutor highlighted, under
+// the line beside any tile-feedback hint. A line with more than one blank names the tile.
+function TutorHighlightHints({ parts, pool, highlights }) {
+  const slots = parts.filter((part) => part?.type === 'slot' && highlights[part.id])
+  if (slots.length === 0) return null
+  const named = parts.filter((part) => part?.type === 'slot').length > 1
+  return (
+    <div style={ca.flagList} aria-live="polite">
+      {slots.map((part) => {
+        const highlight = highlights[part.id]
+        const code = pool.find((fragment) => fragment.id === highlight.tileId)?.code ?? ''
+        return (
+          <TutorTileHighlightNote key={part.id} note={highlight.note}>
+            {named ? code ? <code style={ca.flagCode}>{code}</code> : 'the empty blank' : null}
+          </TutorTileHighlightNote>
         )
       })}
     </div>

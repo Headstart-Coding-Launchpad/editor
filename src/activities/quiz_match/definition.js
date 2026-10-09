@@ -32,6 +32,8 @@ export default defineQuizActivity('match', {
   },
   completion: 'auto',
   teacherEditable: true,
+  // A tutor can highlight a placed answer (target: the prompt's pair id).
+  tileHighlights: () => true,
 
   defaultTask: (prev = {}) => ({
     id: prev.id,
