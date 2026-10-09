@@ -145,6 +145,8 @@ export default function StudentView({
     recordStudentCarryFallback,
     recordSupportStageReveal,
     recordStudentPaste,
+    recordStudentTyping,
+    recordStudentTileMiss,
     recordTopicOpenSignal,
     recordShortcutSignal,
     recordAutocompleteSignal,
@@ -292,6 +294,8 @@ export default function StudentView({
     recordStudentCarryFallback,
     recordSupportStageReveal,
     recordStudentPaste,
+    recordStudentTyping,
+    recordStudentTileMiss,
     writeStudentPersonalSandbox,
     writeStudentPresence,
     registerPresence,
@@ -322,11 +326,14 @@ export default function StudentView({
       reportUserEdit: cs.badgeSignals.reportUserEdit,
       reportAutocomplete: cs.badgeSignals.reportAutocomplete,
       reportTopicOpen: cs.badgeSignals.reportTopicOpen,
+      // Session report typing measures (useStudentTypingStats), from the shared CodeEditor.
+      reportTyping: cs.typingStats.reportTyping,
     }),
     [
       cs.badgeSignals.reportUserEdit,
       cs.badgeSignals.reportAutocomplete,
       cs.badgeSignals.reportTopicOpen,
+      cs.typingStats.reportTyping,
     ]
   )
 

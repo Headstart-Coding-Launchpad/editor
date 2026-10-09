@@ -50,6 +50,7 @@ export default defineModule({
     teacherStageReveal: true,
     highlights: true,
     downloadCode: false,
+    typingStats: true,
     fixedExplainer: false,
     topicLibrary: true,
     studentMirror: 'files',

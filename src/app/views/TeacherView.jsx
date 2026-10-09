@@ -437,7 +437,7 @@ export default function TeacherView({ lessonId }) {
       : null
     if (sandboxTask && sandboxTask.id !== currentTaskId) {
       setCurrentTaskId(sandboxTask.id)
-      await setTaskId(sandboxTask.id)
+      await setTaskId(sandboxTask.id, { recordTimeline: false })
     }
     const work = workByKind[kind]
     sandboxDraftRef.current[kind] = cloneSandboxWork(definition, work)

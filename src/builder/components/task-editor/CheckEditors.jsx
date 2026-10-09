@@ -1,6 +1,8 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { MarkdownFieldEditor } from '../ExplainerEditor'
 import { getStageRole } from '../../../shared/taskUtils'
+import { checkMissingOperator } from '../../../modules/checks'
+import { DEFAULT_TEXT_OPERATOR } from '../../../shared/checkHelpers'
 import {
   formatCheckFailure,
   formatCheckFailureDetail,
@@ -551,6 +553,15 @@ function CheckListEditor({
   const submitMode = interactionMode === 'submit'
   const outputChecksAllowed = allowOutputChecks && !submitMode
   const runChecksAllowed = allowRunChecks && !submitMode && !feedbackEditor
+
+  // A text check stored without an operator (e.g. published from YAML that left it out) shows
+  // as "contains" in the dropdown below; write that in so the stored check matches the display.
+  useEffect(() => {
+    if (!checks.some(checkMissingOperator)) return
+    onChange(
+      checks.map((c) => (checkMissingOperator(c) ? { ...c, operator: DEFAULT_TEXT_OPERATOR } : c))
+    )
+  }, [checks, onChange])
 
   function updateCheck(index, updated) {
     onChange(checks.map((c, i) => (i === index ? updated : c)))

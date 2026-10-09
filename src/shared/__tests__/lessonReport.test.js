@@ -14,6 +14,7 @@ import {
   FILL_BLANK_DRAG_TASK,
   FILL_BLANK_TYPE_TASK,
   MATCH_TASK,
+  PYTHON_CODE_ARRANGE_TASK,
   legacyActivityLesson,
 } from '../../test/fixtures/legacyActivityTasks'
 
@@ -880,6 +881,158 @@ describe('student join history', () => {
   })
 })
 
+describe('taskTimeline', () => {
+  it('lists every current-task change oldest first, information tasks included', () => {
+    const report = buildSessionReport({
+      session: {
+        ...session,
+        taskTimeline: {
+          c: { taskId: 3, startedAt: 1500 },
+          a: { taskId: 1, startedAt: 1000 },
+          b: { taskId: 2, startedAt: 1200 },
+        },
+      },
+      lesson,
+    })
+    expect(report.taskTimeline).toEqual([
+      { taskId: 1, startedAt: 1000 },
+      { taskId: 2, startedAt: 1200 },
+      { taskId: 3, startedAt: 1500 },
+    ])
+  })
+
+  it('collapses consecutive repeats of a task but keeps a later return to it', () => {
+    const report = buildSessionReport({
+      session: {
+        ...session,
+        taskTimeline: {
+          a: { taskId: 1, startedAt: 1000 },
+          b: { taskId: 1, startedAt: 1100 },
+          c: { taskId: 3, startedAt: 1200 },
+          d: { taskId: 1, startedAt: 1300 },
+          e: { taskId: 'bad' },
+        },
+      },
+      lesson,
+    })
+    expect(report.taskTimeline).toEqual([
+      { taskId: 1, startedAt: 1000 },
+      { taskId: 3, startedAt: 1200 },
+      { taskId: 1, startedAt: 1300 },
+    ])
+  })
+
+  it('is omitted for sessions without a timeline, and survives anonymisation', () => {
+    expect(buildSessionReport({ session, lesson })).not.toHaveProperty('taskTimeline')
+    const report = anonymizeSessionReport(
+      buildSessionReport({
+        session: { ...session, taskTimeline: { a: { taskId: 2, startedAt: 1000 } } },
+        lesson,
+      })
+    )
+    expect(report.taskTimeline).toEqual([{ taskId: 2, startedAt: 1000 }])
+  })
+})
+
+describe('typing and time-on-task spread', () => {
+  const withTyping = {
+    ...session,
+    students: {
+      alice: {
+        ...session.students.alice,
+        typingLog: {
+          1: {
+            charsTyped: 148,
+            activeTypingMs: 151000,
+            corrections: 23,
+            longestPauseMs: 48000,
+            autocompleteAccepts: 2,
+            copyDistance: 4,
+          },
+          // A quiz never reports typing.
+          3: { charsTyped: 5, activeTypingMs: 6000, corrections: 0 },
+        },
+      },
+      bob: {
+        ...session.students.bob,
+        typingLog: {
+          1: { charsTyped: 100, activeTypingMs: 60000, corrections: 5, longestPauseMs: 9000 },
+        },
+      },
+    },
+  }
+
+  it("adds each student's typing block to code tasks only", () => {
+    const report = buildSessionReport({ session: withTyping, lesson })
+    const alice = studentByLabel(report, 'Student 1')
+    expect(taskById(alice.tasks, 1).typing).toEqual({
+      charsTyped: 148,
+      activeTypingMs: 151000,
+      charsPerMin: 59,
+      corrections: 23,
+      longestPauseMs: 48000,
+      autocompleteAccepts: 2,
+      copyDistance: 4,
+    })
+    expect(taskById(alice.tasks, 3)).not.toHaveProperty('typing')
+    expect(taskById(studentByLabel(report, 'Student 2').tasks, 1).typing).toEqual({
+      charsTyped: 100,
+      activeTypingMs: 60000,
+      charsPerMin: 100,
+      corrections: 5,
+      longestPauseMs: 9000,
+      autocompleteAccepts: 0,
+    })
+  })
+
+  it('summarises typing rates and corrections per task', () => {
+    const report = buildSessionReport({ session: withTyping, lesson })
+    expect(taskById(report.taskSummary, 1).typingSummary).toEqual({
+      charsPerMin: { medianPerMin: 80, minPerMin: 59, maxPerMin: 100, studentCount: 2 },
+      correctionsMedian: 14,
+    })
+    expect(taskById(report.taskSummary, 3)).not.toHaveProperty('typingSummary')
+  })
+
+  it('omits typing when nothing was typed, and the rate under 5 s of typing', () => {
+    const report = buildSessionReport({
+      session: {
+        ...session,
+        students: {
+          alice: { typingLog: { 1: { charsTyped: 0, corrections: 0, autocompleteAccepts: 1 } } },
+          bob: { typingLog: { 1: { charsTyped: 4, activeTypingMs: 900, corrections: 1 } } },
+        },
+      },
+      lesson,
+    })
+    expect(taskById(studentByLabel(report, 'Student 1').tasks, 1)).not.toHaveProperty('typing')
+    expect(taskById(studentByLabel(report, 'Student 2').tasks, 1).typing.charsPerMin).toBeNull()
+    expect(taskById(report.taskSummary, 1).typingSummary).toEqual({ correctionsMedian: 1 })
+  })
+
+  it('reports the median, p90 and max time on task', () => {
+    const times = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
+    const ids = times.map((_, i) => `s${i}`)
+    const pass = (ms) => ({ submission: 'x', passed: true, attemptNumber: 1, passedAt: 1000 + ms })
+    const report = buildSessionReport({
+      session: {
+        ...session,
+        students: Object.fromEntries(ids.map((id) => [id, {}])),
+        attemptLog: Object.fromEntries(ids.map((id, i) => [id, { 1: { k: pass(times[i]) } }])),
+      },
+      lesson,
+    })
+    expect(taskById(report.taskSummary, 1).timeOnTaskSpread).toEqual({
+      medianMs: 550,
+      p90Ms: 900,
+      maxMs: 1000,
+      studentCount: 10,
+    })
+    // Nobody timed on the fill-blank task: no spread.
+    expect(taskById(report.taskSummary, 4)).not.toHaveProperty('timeOnTaskSpread')
+  })
+})
+
 describe('encodeSessionReportForFirestore', () => {
   it('re-stringifies object-shaped submissions so Firestore never sees a raw array-in-array', () => {
     // Blockly's mutator/extraState serialization can nest an array directly
@@ -1058,6 +1211,12 @@ describe('characterisation: buildSessionReport for legacy quiz + code_arrange ta
           "taskId": 1,
           "taskType": "quiz",
           "teacherAssistedCount": 0,
+          "timeOnTaskSpread": {
+            "maxMs": 400,
+            "medianMs": 400,
+            "p90Ms": 400,
+            "studentCount": 1,
+          },
           "title": "Pick the output function",
           "totalStudents": 2,
         },
@@ -1114,6 +1273,12 @@ describe('characterisation: buildSessionReport for legacy quiz + code_arrange ta
           "taskId": 2,
           "taskType": "quiz",
           "teacherAssistedCount": 1,
+          "timeOnTaskSpread": {
+            "maxMs": 500,
+            "medianMs": 500,
+            "p90Ms": 500,
+            "studentCount": 1,
+          },
           "title": "Match each function",
           "totalStudents": 2,
         },
@@ -1303,6 +1468,12 @@ describe('characterisation: buildSessionReport for legacy quiz + code_arrange ta
           "taskId": 8,
           "taskType": "code",
           "teacherAssistedCount": 0,
+          "timeOnTaskSpread": {
+            "maxMs": 300,
+            "medianMs": 300,
+            "p90Ms": 300,
+            "studentCount": 1,
+          },
           "title": "Print the first five even numbers",
           "totalStudents": 2,
         },
@@ -1540,5 +1711,97 @@ describe('characterisation: buildSessionReport for legacy quiz + code_arrange ta
         },
       ]
     `)
+  })
+})
+
+// Code_arrange tile feedback: each Run records its placements beside the assembled program, and
+// each known-wrong drop is a tile miss on the student's node (not an attempt).
+describe('buildSessionReport: code_arrange placements and tile misses', () => {
+  const arrangeLesson = legacyActivityLesson([PYTHON_CODE_ARRANGE_TASK])
+  const session = {
+    startedAt: 1000,
+    endedAt: 9000,
+    taskStartTimes: { 8: 1000 },
+    students: {
+      alice: {
+        displayName: 'Alice',
+        tileMissLog: {
+          8: {
+            k2: { slotId: 'S1', tileId: 'S1d1', at: 1300 },
+            k1: { slotId: 'L2', tileId: 'D1', at: 1200 },
+          },
+        },
+      },
+      bob: {
+        displayName: 'Bob',
+        tileMissLog: { 8: { k1: { slotId: 'S1', tileId: 'S1d1', at: 1500 } } },
+      },
+    },
+    attemptLog: {
+      alice: {
+        8: {
+          a1: {
+            attemptNumber: 1,
+            submission: 'for i in range(10):\n    print(i * 2)',
+            passed: false,
+            suggestion: null,
+            retries: 0,
+            placements: JSON.stringify({ S1: 'S1d1', L2: 'L2' }),
+            loggedAt: 1400,
+          },
+        },
+      },
+      bob: {
+        8: {
+          b1: {
+            attemptNumber: 1,
+            submission: 'for i in range(5):\n    print(i * 2)',
+            passed: true,
+            suggestion: null,
+            retries: 0,
+            loggedAt: 1600,
+            passedAt: 1600,
+          },
+        },
+      },
+    },
+  }
+  const report = buildSessionReport({ session, lesson: arrangeLesson })
+  const studentTask = (label) =>
+    report.students.find((s) => s.studentLabel === label).tasks.find((t) => t.taskId === 8)
+
+  it('records each attempt’s placements beside the submission', () => {
+    expect(studentTask('Student 1').distinctAttempts[0]).toMatchObject({
+      submission: 'for i in range(10):\n    print(i * 2)',
+      placements: { S1: 'S1d1', L2: 'L2' },
+    })
+    // An attempt logged without placements (older sessions) has no placements key.
+    expect(studentTask('Student 2').distinctAttempts[0]).not.toHaveProperty('placements')
+  })
+
+  it('lists tile misses oldest first without counting them as attempts', () => {
+    const alice = studentTask('Student 1')
+    expect(alice.attempts).toBe(1)
+    expect(alice.tileMisses).toEqual([
+      { slotId: 'L2', tileId: 'D1', at: 1200 },
+      { slotId: 'S1', tileId: 'S1d1', at: 1300 },
+    ])
+  })
+
+  it('summarises the class’s tile misses per blank and tile, most common first', () => {
+    const summary = report.taskSummary.find((t) => t.taskId === 8)
+    expect(summary.tileMisses).toEqual([
+      { slotId: 'S1', tileId: 'S1d1', count: 2, studentCount: 2 },
+      { slotId: 'L2', tileId: 'D1', count: 1, studentCount: 1 },
+    ])
+  })
+
+  it('leaves tileMisses out when nobody dropped a known-wrong tile', () => {
+    const quiet = buildSessionReport({
+      session: { ...session, students: { alice: { displayName: 'Alice' } } },
+      lesson: arrangeLesson,
+    })
+    expect(quiet.taskSummary[0]).not.toHaveProperty('tileMisses')
+    expect(quiet.students[0].tasks[0]).not.toHaveProperty('tileMisses')
   })
 })

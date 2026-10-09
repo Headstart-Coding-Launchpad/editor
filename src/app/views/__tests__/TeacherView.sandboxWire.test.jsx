@@ -340,7 +340,8 @@ describe('TeacherView composed-lesson sandbox', () => {
     await waitFor(() => expect(captured.editor.liveState).toBe('print(1)'))
 
     await act(async () => captured.sandboxBanner.onGoLive())
-    expect(sessionCommands.setTaskId).toHaveBeenCalledWith(1)
+    // Not the class moving on, so it stays off the report's taskTimeline.
+    expect(sessionCommands.setTaskId).toHaveBeenCalledWith(1, { recordTimeline: false })
     expect(sessionCommands.enterSandbox).toHaveBeenCalledWith({
       code: 'print(1)',
       previousTaskId: 2,

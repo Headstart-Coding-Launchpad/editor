@@ -41,6 +41,7 @@ import {
   codeCheckHasValue,
   collectFeedbackChecks,
   filesStarterPresent,
+  validateCheckOperators,
   validateRegisteredChecks,
 } from '../modules/moduleTaskValidation.js'
 import { getTaskActivity } from '../activities/registry.pure.js'
@@ -300,6 +301,7 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
   if (lesson.draft === true) return null
 
   validateFeedbackBasics(task, n, errors, warnings)
+  validateCheckOperators(task, n, errors)
   if (usesModule) validateStageMetadata(task, n, errors)
 
   if (kind === 'information') {

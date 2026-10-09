@@ -1,6 +1,6 @@
 # Session report: timeline of the class's current task, including information slides
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** tooling
 - **Requested by:** Ryan (approved by Ryan), 2026-10-09
 - **Lessons blocked:** none yet
@@ -30,4 +30,18 @@ Shape is a sketch. Ryan asked for this 2026-10-08 alongside the 40-minute budget
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Branch `feature/session-report-timeline-typing`. The teacher's device appends
+`{ taskId, startedAt }` to `sessions/{lessonId}/taskTimeline` in the same update as each change of
+the session's current task once the session has started (`startSession` for the first task,
+`setTaskId`, and `exitSandbox` when it restores a different task), information tasks included; no
+student writes. Each report gains a top-level `taskTimeline: [{ taskId, startedAt }]`, oldest
+first, with consecutive repeats collapsed (a return to an earlier task adds an entry), omitted for
+sessions without one (before 2026-10-09). The shape is the one sketched above.
+
+- The first entry is the task at Start session (`startedAt` = the report's `startedAt`); the class
+  was on each task until the next entry, or `endedAt` for the last.
+- Teacher-sandbox time is not its own entry: it sits inside the task the class left
+  (`teacherSandbox.visits[]` has `enteredAt` / `exitedAt`). Go Live on a composed lesson's sandbox
+  module, which silently switches task, adds no entry.
+- Docs: [session-reports.md](../session-reports.md) "taskTimeline";
+  [CHANGELOG.md](../CHANGELOG.md) 2026-10-09.

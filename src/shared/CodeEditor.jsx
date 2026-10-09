@@ -43,6 +43,32 @@ export function isAutocompletePick(update) {
   return !!update?.transactions?.some((tr) => tr.isUserEvent('input.complete'))
 }
 
+// Typing measures for the session report (src/shared/typingStats.js): the characters a view
+// update inserted by keystrokes. Only plain input counts ('input', 'input.type', composition):
+// a paste ('input.paste', reported separately), a drop ('input.drop'), an accepted autocomplete
+// ('input.complete'), undo/redo and every outside value sync are never typing. Enter's
+// auto-indent is one keystroke, so whitespace right after an inserted newline isn't counted.
+const NOT_TYPED_INPUT_EVENTS = ['input.paste', 'input.drop', 'input.complete']
+
+export function typedCharsInUpdate(update) {
+  let chars = 0
+  for (const tr of update?.transactions ?? []) {
+    if (!tr.docChanged || !tr.isUserEvent('input')) continue
+    if (NOT_TYPED_INPUT_EVENTS.some((type) => tr.isUserEvent(type))) continue
+    tr.changes.iterChanges((_fromA, _toA, _fromB, _toB, inserted) => {
+      const text = inserted.toString().replace(/\n[ \t]+/g, '\n')
+      chars += Array.from(text).length
+    })
+  }
+  return chars
+}
+
+// A Backspace or Delete press in an editable editor (a correction, for the typing measures).
+// Holding the key down counts once.
+export function isCorrectionKey(event) {
+  return (event?.key === 'Backspace' || event?.key === 'Delete') && !event.repeat
+}
+
 const setRemoteSelection = StateEffect.define()
 
 class RemoteCursorWidget extends WidgetType {
@@ -340,6 +366,9 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
   onUserEditRef.current = onUserEdit ?? badgeSignals?.reportUserEdit ?? null
   const onAutocompleteRef = useRef(null)
   onAutocompleteRef.current = badgeSignals?.reportAutocomplete ?? null
+  // Typing measures for the session report (useStudentTypingStats); no-op outside the classroom.
+  const onTypingRef = useRef(null)
+  onTypingRef.current = badgeSignals?.reportTyping ?? null
   const lineHintSetsRef = useRef(lineHints)
   lineHintSetsRef.current = lineHints
   // Callers build the sets inline, so compare by content: a new array with the same hints must
@@ -386,7 +415,14 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
             if (update.docChanged) {
               onChangeRef.current?.(update.state.doc.toString())
               if (isUserEditUpdate(update)) onUserEditRef.current?.('editor')
-              if (isAutocompletePick(update)) onAutocompleteRef.current?.()
+              if (isAutocompletePick(update)) {
+                onAutocompleteRef.current?.()
+                onTypingRef.current?.({ kind: 'autocomplete' })
+              }
+              const typedChars = typedCharsInUpdate(update)
+              if (typedChars > 0) {
+                onTypingRef.current?.({ kind: 'insert', chars: typedChars, at: Date.now() })
+              }
               for (const id of highlightsClearedByUserEdit(update)) {
                 clearedHighlightIdsRef.current.add(id)
                 onHighlightDismissRef.current?.(id)
@@ -398,6 +434,12 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
             }
           }),
           EditorView.domEventHandlers({
+            keydown: (event, view) => {
+              if (isCorrectionKey(event) && !view.state.readOnly) {
+                onTypingRef.current?.({ kind: 'correction', at: Date.now() })
+              }
+              return false
+            },
             copy: () => {
               onActivityRef.current?.({ type: 'copy', at: Date.now() })
               return false

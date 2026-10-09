@@ -497,3 +497,73 @@ describe('CodeArrangeTask — Run gating', () => {
     expect(screen.getByText('Fill in every blank to run (1 left).')).toBeInTheDocument()
   })
 })
+
+describe('CodeArrangeTask — tile feedback', () => {
+  const FEEDBACK_TASK = {
+    taskType: 'code_arrange',
+    moduleType: 'python',
+    lines: [
+      {
+        id: 'l1',
+        parts: [
+          { type: 'text', text: 'print(f"Hi ' },
+          { type: 'slot', id: 's1', code: '{pet}' },
+          { type: 'text', text: ' and ' },
+          {
+            type: 'slot',
+            id: 's2',
+            code: '{name}',
+            wrongTiles: [{ tileId: 's1', hint: 'That one is the pet.' }],
+          },
+          { type: 'text', text: '")' },
+        ],
+      },
+      { id: 'l2', parts: [{ type: 'slot', id: 's3', code: 'x = 1' }] },
+    ],
+    distractors: [{ id: 'd1', code: '{"pet"}', hint: 'Quotes mean exactly this text.' }],
+    check: { type: 'output', operator: 'contains', value: 'Hi' },
+  }
+
+  it('turns a blank holding a known-wrong tile red with its hint, without hover', () => {
+    const { container } = render(
+      <CodeArrangeTask
+        task={FEEDBACK_TASK}
+        moduleType="python"
+        selectedAnswer={{ s1: 'd1', s2: 's1', s3: 's3' }}
+        onRun={vi.fn()}
+      />
+    )
+    const hints = screen.getAllByTestId('code-arrange-tile-hint')
+    expect(hints).toHaveLength(2)
+    expect(hints[0]).toHaveTextContent('Quotes mean exactly this text.')
+    expect(hints[1]).toHaveTextContent('That one is the pet.')
+    expect(container.querySelectorAll('[data-tile-flagged="true"]')).toHaveLength(2)
+    // Run stays available whatever is flagged.
+    expect(screen.getByRole('button', { name: 'Run' })).toBeEnabled()
+  })
+
+  it('never marks a right tile, or a tile the author did not list', () => {
+    const { container, rerender } = render(
+      <CodeArrangeTask
+        task={FEEDBACK_TASK}
+        moduleType="python"
+        selectedAnswer={{ s1: 's1', s2: 's2', s3: 's3' }}
+      />
+    )
+    expect(screen.queryByTestId('code-arrange-tile-hint')).not.toBeInTheDocument()
+    rerender(
+      <CodeArrangeTask
+        task={FEEDBACK_TASK}
+        moduleType="python"
+        selectedAnswer={{ s1: 's2', s2: 's3', s3: 's1' }}
+      />
+    )
+    expect(screen.queryByTestId('code-arrange-tile-hint')).not.toBeInTheDocument()
+    expect(container.querySelectorAll('[data-tile-flagged="true"]')).toHaveLength(0)
+  })
+
+  it('flags nothing on a task without tile-feedback fields', () => {
+    render(<CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={{ L2: 'D1' }} />)
+    expect(screen.queryByTestId('code-arrange-tile-hint')).not.toBeInTheDocument()
+  })
+})

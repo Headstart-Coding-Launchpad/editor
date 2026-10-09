@@ -407,6 +407,103 @@ describe('useSession', () => {
     })
   })
 
+  describe('taskTimeline (session report)', () => {
+    function lastSessionUpdate() {
+      return firebaseMocks.update.mock.calls
+        .filter(([r]) => r.path === 'sessions/lesson-1')
+        .at(-1)[1]
+    }
+    function timelineEntries(updates) {
+      return Object.entries(updates).filter(([key]) => key.startsWith('taskTimeline/'))
+    }
+
+    it('startSession records the first task', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ state: 'waiting', currentTaskId: 3 })
+      await act(async () => {
+        await result.current.startSession()
+      })
+      const updates = lastSessionUpdate()
+      expect(updates['taskTimeline/mockHighlightId']).toEqual({
+        taskId: 3,
+        startedAt: updates.startedAt,
+      })
+    })
+
+    it('setTaskId records each change, information tasks included', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        state: 'active',
+        currentTaskId: 1,
+        taskTimeline: { a: { taskId: 1, startedAt: 100 } },
+      })
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      const updates = lastSessionUpdate()
+      expect(updates['taskTimeline/mockHighlightId']).toEqual({
+        taskId: 2,
+        startedAt: updates.currentTaskStartedAt,
+      })
+    })
+
+    it('adds nothing for the task already last on the timeline', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        state: 'active',
+        currentTaskId: 2,
+        taskTimeline: { a: { taskId: 1, startedAt: 100 }, b: { taskId: 2, startedAt: 200 } },
+      })
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      expect(timelineEntries(lastSessionUpdate())).toEqual([])
+    })
+
+    it('records nothing before the session starts or for the Go Live sandbox jump', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ state: 'waiting', currentTaskId: 1 })
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      expect(timelineEntries(lastSessionUpdate())).toEqual([])
+
+      fireSession({ state: 'active', currentTaskId: 1 })
+      await act(async () => {
+        await result.current.setTaskId(4, { recordTimeline: false })
+      })
+      expect(timelineEntries(lastSessionUpdate())).toEqual([])
+    })
+
+    it('exitSandbox records a return to a task other than the last one', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({
+        state: 'sandbox',
+        currentTaskId: 9,
+        sandboxPreviousTaskId: 4,
+        taskTimeline: { a: { taskId: 3, startedAt: 100 } },
+      })
+      await act(async () => {
+        await result.current.exitSandbox()
+      })
+      expect(lastSessionUpdate()['taskTimeline/mockHighlightId']).toMatchObject({ taskId: 4 })
+    })
+  })
+
+  describe('recordStudentTyping', () => {
+    it("writes the task's typing totals to the student's own typingLog", async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      const record = { charsTyped: 12, activeTypingMs: 6000, corrections: 1 }
+      await act(async () => {
+        await result.current.recordStudentTyping('s1', 3, record)
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/students/s1/typingLog/3' },
+        record
+      )
+    })
+  })
+
   describe('enterSandbox / exitSandbox', () => {
     it('records previousTaskId as sandboxPreviousTaskId when provided', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
@@ -1356,6 +1453,8 @@ describe('useSession', () => {
         explainerShowComplete: false,
         teacherClassPaneCommand: null,
         'taskStartTimes/2': session.currentTaskStartedAt,
+        // The report's taskTimeline entry (push key from the firebase mock).
+        'taskTimeline/mockHighlightId': { taskId: 2, startedAt: session.currentTaskStartedAt },
       })
       expect(student).toEqual({
         checkPassed: null,
@@ -1825,6 +1924,55 @@ describe('useSession', () => {
           path: 'sessions/lesson-1/attemptLog/student-assisted/5/mockHighlightId',
         }),
         expect.objectContaining({ passed: true, teacherAssisted: true })
+      )
+    })
+
+    it('stores a code_arrange attempt’s tile placements as a JSON string', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-tiles', 6, {
+          submission: 'print(pet)',
+          passed: false,
+          placements: { 'blank.1': 'd1' },
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: 'sessions/lesson-1/attemptLog/student-tiles/6/mockHighlightId',
+        }),
+        expect.objectContaining({ placements: JSON.stringify({ 'blank.1': 'd1' }) })
+      )
+    })
+
+    it('stores no placements on an ordinary attempt', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-plain', 6, { submission: 'x', passed: false })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: 'sessions/lesson-1/attemptLog/student-plain/6/mockHighlightId',
+        }),
+        expect.objectContaining({ placements: null })
+      )
+    })
+
+    it('pushes a code_arrange tile miss under the student’s own node, not the attempt log', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.recordStudentTileMiss('student-tiles', 6, {
+          slotId: 's2',
+          tileId: 'd1',
+        })
+      })
+      expect(firebaseMocks.push).toHaveBeenCalledWith({
+        path: 'sessions/lesson-1/students/student-tiles/tileMissLog/6',
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: 'sessions/lesson-1/students/student-tiles/tileMissLog/6/mockHighlightId',
+        }),
+        { slotId: 's2', tileId: 'd1', at: { '.sv': 'timestamp' } }
       )
     })
 

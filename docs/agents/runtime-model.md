@@ -97,6 +97,9 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
       "taskStartTimes": {
         "{taskId}": 1234567890
       },
+      "taskTimeline": {
+        "{pushId}": { "taskId": "number | string (the class's new current task, information tasks included)", "startedAt": 1234567890 }
+      },
       "attemptLog": {
         "{anonymousId}": {
           "{taskId}": {
@@ -106,6 +109,7 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
               "suggestion": "string | null",
               "teacherAssisted": "true | null (the teacher edited this student's answer on this task via StudentModal 'Edit answers'; the report shows the pass as teacher assisted)",
               "error": "true | 'NameError' | null (the run produced a real console error: its name when readable, else true. Live badges; see Badge data)",
+              "placements": "string | null (code_arrange only: the attempt's tile placements { blankId: tileId } as a JSON string; a retry keeps the first entry's)",
               "attemptNumber": 1,
               "retries": 0,
               "loggedAt": "ServerValue.TIMESTAMP",
@@ -276,6 +280,14 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
           "pasteLog": {
             "{taskId}": { "count": 2, "chars": 180, "lastAt": 1234567890, "firstAt": "ServerValue.TIMESTAMP (first large paste on the task, set once)" }
           },
+          "typingLog": {
+            "{taskId}": { "charsTyped": 148, "activeTypingMs": 151000, "corrections": 23, "longestPauseMs": 48000, "autocompleteAccepts": 2, "copyDistance": "number (copyCode tasks only, from the first Run)" }
+          },
+          "tileMissLog": {
+            "{taskId}": {
+              "{pushId}": { "slotId": "blank id", "tileId": "tile id", "at": "ServerValue.TIMESTAMP (code_arrange tile feedback: a known-wrong tile dropped into a blank; not an attempt; at most 100 per task)" }
+            }
+          },
           "pollResponses": {
             "{pollId}": { "choice": "option index 0-5", "answeredAt": 1234567890 }
           },
@@ -331,6 +343,7 @@ Teacher writes:
 
 - `state`, `currentTaskId`, `startedAt`, `currentTaskStartedAt`, `endedAt`, `isPaused`
 - `taskStartTimes/{taskId}` — stamped by `startSession` (for the initial task) and `setTaskId` (for the newly-entered task); overwritten if the teacher revisits a task. Used by `buildSessionReport` to compute time-on-task.
+- `taskTimeline/{pushId}` — `{ taskId, startedAt }`, appended in the same update as each current-task change once the session has started (`startSession` for the first task, `setTaskId`, and `exitSandbox` when it restores a different task), information tasks included. A change to the task already last on the timeline adds nothing; Go Live's silent jump onto a composed lesson's sandbox-module task (`setTaskId(id, { recordTimeline: false })`) is left off. Never overwritten; reset by `createSession`, wiped with the session data at `endSession` after `buildSessionReport` has read it into the report's `taskTimeline`.
 - `taskRatingLog/{taskId}` (`setTaskRating`) — the teacher's own live rating of a task (1-5 stars plus "what worked well"/"what didn't work" notes), entered via `TaskRatingPanel.jsx` (the top bar's "⭐ Rate this task" popover) while that task is showing, not just at end-of-session. Last write wins per task; saving with every field blank removes the entry instead of leaving an empty stub. Not cleared by `setTaskId` (so it survives the teacher moving on and back), but is nulled by `createSession`/`endSession` like `overrideLog`/`supportRevealLog` — `buildSessionReport` reads it (see "Session Reports" below) before `endSession` clears it.
 - `activeStudentView`, `teacherLive` (a student broadcast may carry `mode: 'panel'`, "Show to class (keep coding)", which classmates choose to watch instead of being locked onto; see `docs/agents/classroom-behaviours.md`)
 - `peerHelpOffers/{requestId}` (`{ taskId, lessonType, offeredAt }`; a helper adds `claimedAt` and either student in the pairing `endedAt`), `peerHelpSettings` (`{ notesEnabled, pausedAt }`), `peerHelperOff/{anonymousId}` — peer help; see "Peer Help" below
@@ -392,6 +405,8 @@ Student writes:
 - Remote edit/stage consent: `acceptTeacherEdit`/`acceptTeacherStage` set their own `teacherEditAcceptedAt`/`teacherStageAcceptedAt`; `declineTeacherEdit`/`declineTeacherStage` clear the corresponding request fields without accepting.
 - Class poll answers: own `pollResponses/{pollId}` (`{ choice, answeredAt }`) via `answerPoll` from the poll card (`ClassPollCard.jsx`), only while that poll's `status` is `open` (the rules refuse a student answer to a closed or missing poll). Overwritten when the student changes their answer. Not cleared by `setTaskId`; read by `buildSessionReport` into the report's `polls`.
 - Large pastes: own `pasteLog/{taskId}` via `recordStudentPaste` (`{ count, chars, lastAt, firstAt }`, see `docs/agents/classroom-behaviours.md`). `firstAt` is a server timestamp set on the first large paste only (the badge guards order it against a pass); `lastAt` keeps being overwritten. Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `pastes` and the task summary's `pasteCount`/`pastedStudentCount`.
+- Typing totals: own `typingLog/{taskId}` via `recordStudentTyping` (`{ charsTyped, activeTypingMs, corrections, longestPauseMs, autocompleteAccepts, copyDistance? }`). Counted on the student's device by `useStudentTypingStats` from the shared CodeEditor (keystroke inserts, not pastes or autocomplete; Backspace/Delete presses; 5 s typing bursts) and written as one replaced record per task on Run, on a task change, on leaving the lesson phase and on a hidden tab — never per keystroke, and never once the session has ended or the student was removed. Live lesson python/turtle/html tasks on keyboard devices only (not touch devices, solo, the presentation window, previews or the personal sandbox). Not cleared by `setTaskId`; read by `buildSessionReport` into each code task's `typing` and the task summary's `typingSummary`.
+- Code_arrange tile misses: own `tileMissLog/{taskId}/{pushId}` (`{ slotId, tileId, at }`) via `recordStudentTileMiss`, one per drop of a tile into a blank where the task's tile feedback marks it known-wrong (a distractor, or the blank's `wrongTiles`; see `getTileFlag` in `src/shared/codeArrange.js`), live lesson only, capped at 100 per task. Not attempts. Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `tileMisses` and the task summary's `tileMisses`. Each code_arrange attempt also stores its `placements` (JSON string) on the `attemptLog` entry.
 - Live badge signals: own `studentSignals/{anonymousId}` and `attemptLog` entries' `error`. See "Badge data" below.
 - Stage reference reveal: after a failed attempt, students can reveal their own Python/HTML Support `codeStages` entries. The same `supportRevealLog` record stores `source: "student"`, stage label, attempt count, and server timestamp. Revealing does not change editor contents.
 
@@ -627,7 +642,7 @@ A deliberate data-model change approved by the product owner (September 2026). `
 ```
 
 - **Format:** `_sealed = 'v1:' + base64(UTF-8 JSON of { field: value } XOR a fixed key)`. The `v1:` prefix is the version; a new key or encoding needs a new version (`decodeSealPayload` returns null for versions it does not know, and the task is then kept as stored).
-- **Sealed fields:** `TASK_SEALED_FIELDS` in `src/shared/lessonSeal.js` (`codeStages` (all stages, starter included), `completeCode`, `completeFiles`, `completeEntryFile`, `completeBlocks`, `completeFs`, `completeDesktop`, `completeCircuit`, `completeArcadeDesign`, `check`, `feedbackChecks`, `incorrectChecks`, `tests`) plus the task's activity `sealedFields` (multiple choice `options`, match `pairs`, fill-blank `blanks`, code_arrange `lines`). Group objects are not sealed; their subtasks are. A task with none of these fields gets no `_sealed`.
+- **Sealed fields:** `TASK_SEALED_FIELDS` in `src/shared/lessonSeal.js` (`codeStages` (all stages, starter included), `completeCode`, `completeFiles`, `completeEntryFile`, `completeBlocks`, `completeFs`, `completeDesktop`, `completeCircuit`, `completeArcadeDesign`, `check`, `feedbackChecks`, `incorrectChecks`, `tests`) plus the task's activity `sealedFields` (multiple choice `options`, match `pairs`, fill-blank `blanks`, code_arrange `lines` and `distractors`). Group objects are not sealed; their subtasks are. A task with none of these fields gets no `_sealed`.
 - **Boundary:** every write to `lessons` goes through `encodeLessonForFirestore` (blocks codec, then seal) and every read through `decodeLessonFromFirestore` (unseal, then blocks codec) in `src/shared/lessonBlocksCodec.js`, in the web app and the CLI. Everything past the boundary sees the plain task shape, so validation, audit/`version` comparisons, CLI `get`/export and reports are unchanged.
 - **Compatibility:** a task without `_sealed` passes through unchanged. A lesson stored before sealing is rewritten sealed on its next Builder save or CLI publish/upsert/append, even when the content is unchanged (`lessonNeedsSealing`); its `version` is not bumped for that.
 - **Session overrides:** `sessions/{lessonId}/lessonOverrideTasks` holds sealed tasks too (`pushLessonOverride` seals, `applyLessonOverride` unseals; a plain override still works).
@@ -655,7 +670,9 @@ Override records make moved-on tasks complete without claiming a real pass. If a
 - `polls`: every live class poll, oldest first (`buildPollsReport` in `src/shared/classPolls.js`), with its options and counts, each student's final answer by anonymous label, and who didn't answer. Omitted when there were none. Field reference: `docs/authoring/session-reports.md` "polls".
 - **Size cap:** `capSessionReportSize` keeps the serialised report under 900 KB (Firestore's limit is 1 MiB): it drops the students' sandbox snapshots first (`teacherSandbox.studentSnapshotsDropped`), then the teacher's pushed code (`pushesDropped`), and sets `sizeNote`.
 
-Each task result carries `timeOnTaskMs`: the gap between `taskStartTimes[taskId]` and either the passing attempt's `passedAt` (if completed) or the latest attempt's `loggedAt` (if not) — `null` if the task never started or nothing was logged. `taskSummary` carries the class average as `avgTimeOnTaskMs` (averaged only over students with a non-null value).
+Each task result carries `timeOnTaskMs`: the gap between `taskStartTimes[taskId]` and either the passing attempt's `passedAt` (if completed) or the latest attempt's `loggedAt` (if not) — `null` if the task never started or nothing was logged. `taskSummary` carries the class average as `avgTimeOnTaskMs` (averaged only over students with a non-null value), and graded tasks add `timeOnTaskSpread` (`medianMs`, nearest-rank `p90Ms`, `maxMs`, `studentCount`; omitted when nobody has a time).
+
+The report's top-level `taskTimeline: [{ taskId, startedAt }]` comes from the session's `taskTimeline` (`buildTaskTimeline`): oldest first, every task the class was moved onto (information tasks included), consecutive repeats collapsed; omitted when the session has none (sessions before 2026-10-09). Code tasks (not quizzes or activities) carry each student's `typing` from their `typingLog` (`typingReportFields` in `src/shared/typingStats.js`: the stored counts plus `charsPerMin`, null under 5 s of active typing); the task summary adds `typingSummary` (`charsPerMin { medianPerMin, minPerMin, maxPerMin, studentCount }`, omitted when no student has a rate, and `correctionsMedian`), omitted when nobody typed. Field reference: `docs/authoring/session-reports.md`.
 
 Read/write access mirrors the `feedback` subcollection: teacher or admin only (see `firestore.rules`; the rule's recursive wildcard already supports admin-wide `collectionGroup()` reads). Teachers view reports via `TeacherReportModal` (shown right after ending a session) and `TeacherReportsPanel` (a persistent list reachable any time from the lesson's Reports button, querying the subcollection ordered by `startedAt` desc; while a session is running, `TeacherView` also passes it a `liveReport` built from the live session, shown as an "In progress" row above the saved reports). Admins browse saved reports from the **Lessons** tab: expand a lesson row to see report counts and a collapsible report list. Export to YAML uses `reportToYamlText` with the same `js-yaml` options as `cli/yaml-converter.mjs`.
 

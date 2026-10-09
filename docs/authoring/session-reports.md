@@ -37,8 +37,9 @@ reads reports.
   students' teacher-sandbox code first, then the teacher's pushed sandbox code, and gains
   `sizeNote` (see [`teacherSandbox`](#teachersandbox)).
 
-Information tasks (`type: information`) are never in a report. Every other task appears once in
-`taskSummary[]` and once in each student's `tasks[]`, even when nobody attempted it.
+Information tasks (`type: information`) are never in `taskSummary[]` or `tasks[]`; they appear only
+in [`taskTimeline`](#tasktimeline). Every other task appears once in `taskSummary[]` and once in
+each student's `tasks[]`, even when nobody attempted it.
 
 ### Conventions
 
@@ -59,6 +60,7 @@ Information tasks (`type: information`) are never in a report. Every other task 
 | `endedAt` | When the session ended (ms). | Always | 2026-07-13 |
 | `students[]` | One entry per student who took part ([Students](#students)). | Always | 2026-07-13 |
 | `taskSummary[]` | One entry per reportable task, in lesson order ([Task summary](#tasksummary)). | Always | 2026-07-13 |
+| `taskTimeline[]` | When the class moved onto each task, oldest first, information tasks included ([taskTimeline](#tasktimeline)). | Omitted when not recorded (sessions before 2026-10-09) | 2026-10-09 |
 | `quizGroups[]` | First-try quiz results per quiz group ([quizGroups](#quizgroups)). | Omitted when the lesson has no quiz group | 2026-09-30 |
 | `teacherSandbox` | The class's teacher-sandbox visits, flagged as a possible lesson gap ([teacherSandbox](#teachersandbox)). | Omitted when the class never went into the sandbox | 2026-09-30 |
 | `badgeSummary` | Per-badge counts ([badgeSummary](#badgesummary)). | Omitted when no badge was suggested or awarded | 2026-09-30 |
@@ -110,6 +112,8 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `supportReveals[]` | Each support reference opened: `taskId`, `stageIndex`, `stageLabel`, `source` (`student`, `teacher`, `teacher-auto`), `attemptNumber` (attempts made before it), `revealedAt` (ms). See [Support reveals](#support-reveals). | Omitted when none | 2026-07-22 |
 | `pastes` | Large pastes into the editor: `{ count, chars }` (chars = total pasted). Pasting the student's own copied code doesn't count. | Omitted when none | 2026-09-29 |
 | `sideQuests[]` | Each [side-quest](AUTHORING_GUIDE.md#side-quests) the student opened on this task, by index: `{ index, title, kind, openedAt (ms, first open), runs, errorRuns, done, doneAt (ms or null) }`. `done` is self-reported (the student's ✓ I've done it!), never checked. `title`/`kind` come from the lesson and are missing if the side-quest was since removed. Never any code. | Omitted when none | 2026-10-09 |
+| `typing` | How the student typed on this code task ([Typing](#typing)): `{ charsTyped, activeTypingMs, charsPerMin, corrections, longestPauseMs, autocompleteAccepts, copyDistance? }`. Code tasks only (Python, Turtle, HTML); keyboard devices only. | Omitted when the student typed nothing, on touch devices, on other modules (Scratch, Arcade Kit, …), and on quizzes and activities | 2026-10-09 |
+| `tileMisses[]` | Code Arrange [tile feedback](lesson-schema.md#tile-feedback): each time the student dropped a tile into a blank where the task marks it known-wrong, oldest first: `{ slotId (the blank), tileId, at (ms) }`. Not attempts: they never count towards `attempts` or `distinctAttempts`. At most 100 per task. | Omitted when none | 2026-10-09 |
 | `itemProgress` | `{ correct, total }` items right in the latest submission. | `taskType: activity` only, when submitted | 2026-09-28 |
 | `timeToFirstEditMs` | Time from the task opening on the student's device to their first real edit (timed on the device). *Graded only.* | Omitted when unknown | 2026-09-30 |
 | `errorAttempts` | Attempts whose run hit a real console error. *Graded only.* | Omitted when 0 | 2026-09-30 |
@@ -126,8 +130,9 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `distinctAttempts[].retries` | How many more times this exact submission was resubmitted straight after it (e.g. pressing Run again without changing the code). |
 | `distinctAttempts[].suggestion` | The failure hint shown to the student, or null. |
 | `distinctAttempts[].submission` | The submitted code or answer. Code is a string; object-shaped work (files, Scratch workspaces, activity state) is an object, or a JSON string in reports read back from Firestore. |
+| `distinctAttempts[].placements` | Code Arrange only: the tiles on the board when Run was pressed, `{ <blank id>: <tile id> }` (a tile id is a blank's own id, i.e. that blank's correct tile, or a distractor's id). Lets you tell a wrong-blank guess (a right tile in another blank) from a wrong-content one (a distractor). A retry keeps the first entry's. Omitted on other tasks, indent-mode tasks, and attempts before 2026-10-09. |
 
-All five fields date from 2026-07-13.
+The first five fields date from 2026-07-13; `placements` from 2026-10-09.
 
 **How attempts are logged** (`logAttempt` in `src/app/hooks/useSession.js`): attempts are logged
 only on tasks with a `check` (code tasks without one log nothing), only during the lesson (not the
@@ -276,6 +281,8 @@ different shapes.
 | `sideQuestStudentCount` | Students who opened at least one side-quest on this task (they had passed it while the class was still on it: a sign the class waited here). | Omitted when none | 2026-10-09 |
 | `sideQuestDoneCount` | Side-quests marked done on this task, across students (self-reported). | Omitted when no side-quest was opened | 2026-10-09 |
 | `timeToFirstEdit` | `{ medianMs, minMs, maxMs, studentCount }` over students' `timeToFirstEditMs`. | Omitted when none | 2026-09-30 |
+| `timeOnTaskSpread` | `{ medianMs, p90Ms, maxMs, studentCount }` over students' non-null `timeOnTaskMs`: the gap between the median and the slowest student. `p90Ms` is the nearest-rank 90th percentile (with fewer than 10 students it is the slowest or second slowest). | Omitted when no student has a time | 2026-10-09 |
+| `typingSummary` | `{ charsPerMin: { medianPerMin, minPerMin, maxPerMin, studentCount }, correctionsMedian }` over the students' `typing` ([Typing](#typing)). `charsPerMin` counts students with a rate (omitted when none has one); `correctionsMedian` covers every student with `typing`. | Omitted when nobody typed (always on quizzes and activities) | 2026-10-09 |
 | `errorStudentCount` | Students with `errorAttempts`. | Omitted when 0 | 2026-09-30 |
 | `topicOpens` | `{ student, teacher }` Topic Library opens on this task (task context). | Omitted when 0 | 2026-09-30 |
 | `firstRealPass` | `{ studentLabel, afterMs }`: the class's first *real* pass (not teacher-assisted, overridden, after the complete code was shown or revealed, or after a paste) and how long after the task opened (null if unknown). | Omitted when nobody really passed | 2026-09-30 |
@@ -311,6 +318,7 @@ Each activity's definition can add fields through `report.summaryFields(task, pe
 | `blankFailures[]` | Fill-in-the-blanks quiz | `{ blankId, expected, count, values: [{ value, count }] }`, as above. | 2026-07-22 |
 | `ratingDistribution` | Confidence quiz | See [Ungraded tasks](#ungraded-tasks). | 2026-07-22 |
 | `optionDistribution[]` | Poll quiz | See [Ungraded tasks](#ungraded-tasks). | 2026-10-01 |
+| `tileMisses[]` | Code Arrange | `{ slotId, tileId, count, studentCount }` per blank and dropped tile, most common first, from the students' `tileMisses`. Omitted when nobody dropped a known-wrong tile. | 2026-10-09 |
 | `avgItemProgress` | Every `taskType: activity` (Binary, Keyboard, Mouse, …) | Mean of `correct / total` over students with `itemProgress`, 2 dp (0–1). Added by the report itself, not `summaryFields`. Omitted when nobody submitted. | 2026-09-28 |
 
 A new activity that adds summary fields documents them here (and in its own authoring page).
@@ -344,6 +352,60 @@ Every live class poll the teacher ran from the **📊 Poll** button in the top b
 | `polls[].respondedCount` | Students who answered. |
 | `polls[].responses[]` | `{ studentLabel, choice (option index), choiceText, answeredAt }`, each student's final answer (students can change it while the poll is open). |
 | `polls[].notResponded[]` | Labels of students in the class who didn't answer. A student who first joined after the poll closed isn't listed. |
+
+## taskTimeline
+
+The class's current task over time: one `{ taskId, startedAt }` entry each time the teacher moved
+the class onto a task, oldest first, **information tasks included**. Written by the teacher's
+device with the task change itself (`setTaskId`, `startSession` for the first task, and leaving
+the teacher sandbox back onto a different task; `taskTimeline` in `useSession.js`), so it is the
+teacher's clock, like `startedAt`. Added 2026-10-09.
+
+| Path | Meaning |
+|---|---|
+| `taskTimeline[].taskId` | The task the class moved onto. |
+| `taskTimeline[].startedAt` | When (ms). The class was on it until the next entry's `startedAt`, or `endedAt` for the last. |
+
+- The first entry is the task at **Start session** (`startedAt` = the report's `startedAt`).
+  Moving between tasks in the waiting room before the start is not recorded.
+- Consecutive entries for the same task are collapsed. Going back to an earlier task adds a new
+  entry, so a task can appear more than once.
+- A jump (task 2 → task 9) means the teacher skipped the tasks between; a task the class never
+  reached is simply absent. Compare `students[].joinedAtTaskId` to tell a late arrival's untouched
+  tasks from skipped ones.
+- Time in the teacher sandbox is **not** a separate entry: it falls inside the task the class
+  left. Use `teacherSandbox.visits[]` (`enteredAt`, `exitedAt`) to take it out. Going live on a
+  composed lesson's sandbox module, which silently switches task, adds no entry.
+- `timeOnTaskMs` / `avgTimeOnTaskMs` still measure from the *latest* time the class moved onto a
+  task (`taskStartTimes`), not from the timeline.
+
+## Typing
+
+`students[].tasks[].typing` and `taskSummary[].typingSummary` measure how a student typed on a code
+task, so a slow typist can be told from a slow reader or a stuck student. Measured on the
+student's own device from the code editor (`src/shared/typingStats.js`, `useStudentTypingStats`),
+added up per task in memory and written with the student's Run, a task change and a hidden tab,
+never per keystroke. Added 2026-10-09.
+
+| Path | Meaning |
+|---|---|
+| `typing.charsTyped` | Characters inserted by keystrokes. Never pastes (see `pastes`), dropped text or accepted autocomplete suggestions. Enter counts once (its auto-indent doesn't count); an auto-closed bracket counts with the key that opened it. |
+| `typing.activeTypingMs` | Time spent in typing bursts: the gaps between consecutive keystrokes (typed characters and corrections), counting only gaps of 5 s or less. A gap over 5 s ends a burst. |
+| `typing.charsPerMin` | `charsTyped / activeTypingMs`, per minute, rounded. `null` under 5 s of active typing (too little to be a rate). |
+| `typing.corrections` | Backspace and Delete presses in the editor (holding the key down counts once). |
+| `typing.longestPauseMs` | The longest gap between two keystrokes on the task (any length; the wait before the first keystroke is `timeToFirstEditMs`, not this). |
+| `typing.autocompleteAccepts` | Autocomplete suggestions accepted. |
+| `typing.copyDistance` | Tasks with `copyCode` only: the edit distance (characters inserted, deleted or changed) between the copyCode and the student's code at their **first Run** on the task, ignoring trailing whitespace on each line and at the end. For HTML it is the closest file. Omitted when the student never ran it. |
+
+- Recorded only in a live lesson on Python, Turtle and HTML code tasks, on keyboard devices.
+  Omitted on touch devices (on-screen keyboard speeds aren't comparable), in solo study, in the
+  personal and teacher sandbox, on every other module (Scratch, Arcade Kit, Electronics
+  MicroPython, Filesystem, Desktop), and on quizzes, activities and Code Arrange.
+- The counts are as of the student's last Run, task change or hidden tab before the session
+  ended: typing after that on the last task is not reported. A reload carries on from the counts
+  already written.
+- Counts span every visit to the task: if the class comes back to it, typing adds to the same
+  totals.
 
 ## peerHelp
 
@@ -428,7 +490,8 @@ never archived, and is only visible through the exported report YAML.
 
 ## Not in reports
 
-- Information tasks.
+- Information tasks (except as `taskTimeline` entries).
 - Student names, anonymous ids or devices.
 - Attempts on tasks without a `check`, sandbox runs' code, or attempts after the student passed.
+- Individual keystrokes or typing timestamps (only the per-task `typing` totals).
 - Anything after the session ended (solo study is never reported).

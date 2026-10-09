@@ -5,6 +5,7 @@ import {
   deriveSlotStateFromCode,
   getCodeArrangeEntryFile,
   getCodeArrangeSlotCode,
+  getNewTileMisses,
   isArrangementComplete,
 } from '../../shared/codeArrange'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
@@ -128,9 +129,16 @@ export default function CodeArrangeTaskContainer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, isLiveMirror])
 
+  // A student's own drop of a tile into a blank where it is known to be wrong (tile feedback,
+  // getTileFlag in src/shared/codeArrange.js) is logged as a tile miss for the report, never as
+  // an attempt. Teacher edits and resets are not the student's drops.
   function handleSlotStateChange(next, options) {
+    const prev = slotStateRef.current
     slotStateRef.current = next
     setSlotState(next)
+    if (!detached && !options?.fromTeacher) {
+      for (const miss of getNewTileMisses(task, prev, next)) cs.recordCodeArrangeTileMiss?.(miss)
+    }
     if (!detached) {
       cs.saveTaskAuxFile(taskId, CODE_ARRANGE_SLOTS_FILENAME, definition.serialize(next))
       if (options) cs.handleCodeArrangeSlotsChange?.(next, options)

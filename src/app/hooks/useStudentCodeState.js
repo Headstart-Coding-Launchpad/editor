@@ -67,6 +67,7 @@ import {
 import { solutionOrInitialState } from '../../activities/state.js'
 import {
   assembleCodeArrangement,
+  getAttemptPlacements,
   getCodeArrangeEntryFile,
   getCodeArrangeSlotCode,
 } from '../../shared/codeArrange.js'
@@ -78,6 +79,7 @@ import { getModuleDefinition } from '../../modules/definitions.js'
 import { cloneArcadeDesign } from '../../modules/arcade/design'
 import { runWithRuntime } from './runWithRuntime'
 import { useStudentBadgeSignals } from './useStudentBadgeSignals'
+import { useStudentTypingStats } from './useStudentTypingStats'
 import { runErrorFor, runErrorName } from '../../badges/signals'
 
 // The generic work slot before any module has loaded work into it.
@@ -157,7 +159,7 @@ export function useStudentCodeState({
   // Session write commands
   writeStudentRun,
   writeStudentHintState,
-  logAttempt,
+  logAttempt: logSessionAttempt,
   writeStudentAnswer,
   writeStudentCode,
   writeStudentArcadeDesign,
@@ -173,6 +175,8 @@ export function useStudentCodeState({
   recordStudentCarryFallback,
   recordSupportStageReveal,
   recordStudentPaste,
+  recordStudentTyping,
+  recordStudentTileMiss,
   writeStudentPersonalSandbox,
   writeStudentPresence,
   registerPresence,
@@ -275,6 +279,22 @@ export function useStudentCodeState({
   const codeArrangeSlotStateRef = useRef({})
   const codeArrangeSlotTaskIdRef = useRef(null)
 
+  // Every attempt goes through here: a code_arrange attempt also records its tile placements
+  // (blank id -> tile id) beside the assembled program, from the board this hook was last told
+  // about for that task. Other tasks' attempts pass straight through.
+  function logAttempt(anonymousId, taskId, fields = {}) {
+    const placements =
+      fields?.auto || fields?.placements !== undefined ? null : codeArrangeAttemptPlacements(taskId)
+    return logSessionAttempt?.(anonymousId, taskId, placements ? { ...fields, placements } : fields)
+  }
+
+  function codeArrangeAttemptPlacements(taskId) {
+    if (taskId == null || String(codeArrangeSlotTaskIdRef.current) !== String(taskId)) return null
+    const task = findTaskById(lesson?.tasks, taskId)
+    if (!isModuleHostedActivityTask(task)) return null
+    return getAttemptPlacements(task, codeArrangeSlotStateRef.current)
+  }
+
   const IDLE_FEEDBACK_DELAY_MS = 900
 
   // Stable refs for stale-closure-safe reads inside async handlers and callbacks
@@ -309,6 +329,20 @@ export function useStudentCodeState({
     currentTaskId,
     inPersonalSandbox,
     writers: badgeSignalWriters,
+  })
+  // Typing measures for the session report (src/shared/typingStats.js): live lesson code tasks
+  // of a typing lesson type only, keyboard devices only. The editor reports keystrokes through
+  // the BadgeSignalsContext; Run (handleRun) and task changes send the per-task totals.
+  const typingStats = useStudentTypingStats({
+    phase,
+    identity,
+    session,
+    teacherPresentation,
+    previewMode,
+    currentTaskId,
+    lessonType: lesson?.type,
+    inPersonalSandbox,
+    writers: { recordStudentTyping },
   })
   // Updated synchronously by setWork / setInteraction (not on render), so a handler that runs
   // straight after another in the same event — e.g. Desktop opening a file calls
@@ -1508,6 +1542,9 @@ export function useStudentCodeState({
       (runKind === 'preview' && typeof mod?.runtime?.buildPreviewSrc === 'function')
     if (!runsHere) return
     syncCodeArrangeSlotBeforeRun(task)
+    // The session report's typing totals go with each Run; the first Run on a copyCode task
+    // also records how far the code is from the copyCode (no-op outside a live lesson task).
+    typingStats.noteRun({ copyCode: task?.copyCode, work: storedWork(moduleType).work })
 
     setRunning(true)
     setOutput('')
@@ -2133,6 +2170,16 @@ export function useStudentCodeState({
     if (!teacherPresentation && (phase === 'lesson' || phase === 'sandbox')) {
       writeStudentCodeArrangeSlots?.(identity.anonymousId, slotState)
     }
+  }
+
+  // A tile the student dropped into a blank where it is known to be wrong (code_arrange tile
+  // feedback, see CodeArrangeTaskContainer): logged for the session report as a tile miss, never
+  // an attempt. Only the student's own lesson work, like a flagged paste.
+  function recordCodeArrangeTileMiss({ slotId, tileId } = {}) {
+    if (phase !== 'lesson' || teacherPresentation || previewMode || inPersonalSandboxRef.current)
+      return
+    if (!effectiveIdentity?.anonymousId || currentTaskId == null || !slotId || !tileId) return
+    recordStudentTileMiss?.(effectiveIdentity.anonymousId, currentTaskId, { slotId, tileId })
   }
 
   // Live drag-position mirror for code_arrange tasks, broadcast-only (Go
@@ -3008,6 +3055,7 @@ export function useStudentCodeState({
     handleScratchBlockDrag,
     handleCodeArrangeSlotsChange,
     handleCodeArrangeDragCursor,
+    recordCodeArrangeTileMiss,
     handleScratchChange,
     handleScratchCheck,
     reportRun,
@@ -3065,5 +3113,8 @@ export function useStudentCodeState({
     // Live badge signal reporters (useStudentBadgeSignals), for StudentView's work-area
     // keydown listener, topic opens and the BadgeSignalsContext.
     badgeSignals,
+    // Session report typing measures (useStudentTypingStats): `reportTyping` goes on the
+    // BadgeSignalsContext for the shared CodeEditor.
+    typingStats,
   }
 }
