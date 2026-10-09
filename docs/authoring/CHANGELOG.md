@@ -39,6 +39,28 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-09
 
+### Side-quests for students who finish while the class waits (`sideQuests`)
+
+- New optional field `sideQuests` on Python, Turtle and HTML code tasks: up to 3 side-quests, each
+  `{ title, kind, explainer, starter }`. `title` (≤ 60 characters) is required; `kind` is
+  `challenge` (default), `debug` or `predict` and only picks the label and icon; `explainer` is
+  Markdown; `starter` is the side-quest's own starting code (HTML: its `index.html`).
+- Unchecked: no checks run, and the student marks each one done themselves. They unlock once the
+  task's own check passes (so the task needs a `check`): live only while the class is still on
+  that task, solo after a pass. Each runs in its own scratch editor and never changes the task's
+  code or what `carryCodeFrom` copies into the next task. When the teacher moves on, the
+  side-quest closes.
+- Use them on tasks the class waits on (always Copy the Code; later tasks once the concept is
+  taught). Practise the task's concept or an earlier skill, never the next task's content.
+- The teacher sees "🗺️ on side-quest n/m" on the card; the session report adds `sideQuests[]` per
+  student task and `sideQuestStudentCount` / `sideQuestDoneCount` per task. New suggested badge
+  🗺️ Side Quester (`side_quester`) after `sideQuesterMinDone` (new `badgeOptions` key, default 2)
+  side-quests marked done. On Scratch (and other modules) `sideQuests` is a validation warning and
+  ignored. Builder: Task options → **Side-quests**. See
+  [AUTHORING_GUIDE.md](AUTHORING_GUIDE.md#side-quests).
+- Affects: python, turtle, html, badges · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-09-side-quests-for-students-who-finish-a-code-task-while-the-cl.md
+
 ### Session reports: class task timeline, typing measures and time-on-task spread
 
 - New top-level `taskTimeline: [{ taskId, startedAt }]`: every time the teacher moved the class

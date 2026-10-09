@@ -25,6 +25,7 @@ import {
   revealEvent,
   sandboxRunEvent,
   shortcutEvent,
+  sideQuestDoneEvent,
   topicOpenEvent,
   TIMELINE_CONTEXTS,
 } from './timeline.js'
@@ -142,6 +143,16 @@ export function buildStudentTimeline({ session, studentId, tasks, topicTitles = 
   for (const [taskKey, paste] of entries(session?.students?.[studentId]?.pasteLog)) {
     const task = taskFor(taskKey)
     if (task) events.push(pasteEvent({ taskId: task.id, firstAt: paste.firstAt }))
+  }
+
+  // Side-quests the student marked Done (src/shared/sideQuests.js): self-reported, unchecked.
+  for (const [taskKey, quests] of entries(session?.sideQuestLog?.[studentId])) {
+    const task = taskFor(taskKey)
+    if (!task) continue
+    for (const [indexKey, quest] of entries(quests)) {
+      if (quest?.done !== true) continue
+      events.push(sideQuestDoneEvent({ taskId: task.id, index: indexKey, at: quest.doneAt }))
+    }
   }
 
   const signals = session?.studentSignals?.[studentId] ?? {}
@@ -302,6 +313,7 @@ export function studentTimelineInputKey(session, studentId) {
       session?.overrideLog?.[studentId] ?? null,
       session?.students?.[studentId]?.pasteLog ?? null,
       session?.studentSignals?.[studentId] ?? null,
+      session?.sideQuestLog?.[studentId] ?? null,
       session?.students?.[studentId]?.firstJoinedAt ?? null,
       session?.startedAt ?? null,
     ],

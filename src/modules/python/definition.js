@@ -61,6 +61,8 @@ export default defineModule({
     lineHints: 'python',
     // A classmate can help (src/shared/peerHelp.js).
     peerHelp: { anchors: 'lines', hints: 'python' },
+    // A passed task's side-quests run in a throwaway Python workspace (src/shared/sideQuests.js).
+    sideQuests: true,
   },
   // Pyodide reports the failing line on stderr; the editor highlights it.
   runResult: { errorLine: true, turtle: false, liveCode: false },

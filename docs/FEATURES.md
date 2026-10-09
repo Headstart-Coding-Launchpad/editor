@@ -211,6 +211,13 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - Available after a check passes (live mode) or via the nav bar (solo mode)
 - Returns to the lesson when the student closes it or the teacher advances the class
 
+### Side-quests
+- On Python, Turtle and HTML code tasks with `sideQuests`, a student who passes sees "🎉 You've finished! Try a side-quest" with up to three side-quests (🏆 Mini challenge, 🐞 Debug it, 🔮 Predict, then run)
+- Live: only while the class is still on that task; solo: after a pass
+- Each opens in its own scratch editor of the task's module: its own instructions and starter, nothing checked, and the task's code (and what the next task carries) never changes. Its code is kept on the device for the session
+- **✓ I've done it!** is self-reported and recorded; when the teacher moves the class on, the side-quest closes and the student moves on as normal
+- The teacher's card shows "🗺️ on side-quest 2/3 · ✓1" (status only, no code view); the session report lists each side-quest opened (runs, error runs, done); 🗺️ Side Quester is suggested after 2 (lesson-tunable) are marked done
+
 ### input() Support (Python)
 - Execution pauses; an inline input field appears in the output panel
 - Multiple sequential input calls handled in sequence
@@ -246,6 +253,7 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - Carry-through: bring code or filesystem state from a previous task as the starter
 - Filesystem: visual editor for starter and complete states, and a filesystem check builder
 - Checks: type-filtered list with run/submit mode; tested/untested flag per check
+- Side-quests (Task options, Python/Turtle/HTML): up to three per code task, each a title, kind, Markdown explainer and starter
 - Badge hints (authoring metadata): toggle which live badges this task may also suggest (`badgeHints.suggest`, pattern badges only) or never suggest (`badgeHints.suppress`), with a read-only note of the badges the task's `taskActivity` pattern already triggers
 
 ### Scratch Tools

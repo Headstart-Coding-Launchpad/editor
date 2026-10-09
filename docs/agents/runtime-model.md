@@ -11,6 +11,7 @@ The top-level `liveInk/{lessonId}` node (Presentation annotations) was likewise 
 The session-level `classCountdown` node (the teacher's class countdown) was also added with explicit user approval.
 The live class poll fields (`polls`, `activePollId`, `students.{id}.pollResponses`) were added with explicit user approval (teacher feedback, 2026-10-01); see the `polls/{pollId}` write rule and "Class poll answers" below.
 The teacher-written `shownResponses` node was added for the 2026-10-02 authoring request "Open short answer: teacher shows chosen answers on the presentation window"; see `shownResponses/{responseId}` below.
+The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLog` node) were added with explicit user approval for the 2026-10-09 authoring request "Side-quests for students who finish a code task while the class waits"; status only, never code (see the Student writes below and "Side-quests" in `docs/agents/classroom-behaviours.md`).
 
 ```json
 {
@@ -157,6 +158,19 @@ The teacher-written `shownResponses` node was added for the 2026-10-02 authoring
           }
         }
       },
+      "sideQuestLog": {
+        "{anonymousId}": {
+          "{taskId}": {
+            "{index 0-2}": {
+              "openedAt": "ServerValue.TIMESTAMP (first open; written once)",
+              "runs": "number (one per Run, transaction)",
+              "errorRuns": "number (runs that hit an error, transaction)",
+              "done": "boolean (self-reported ✓ I've done it!, never checked)",
+              "doneAt": "ServerValue.TIMESTAMP | null"
+            }
+          }
+        }
+      },
       "badges": {
         "{anonymousId}": {
           "{badgeId}": {
@@ -248,6 +262,7 @@ The teacher-written `shownResponses` node was added for the 2026-10-02 authoring
           "teacherAssistedTaskId": "number | string | null (task the teacher last edited this student's answer on; drives the teacher-only Assisted badge)",
           "needsHelp": "true | null",
           "inPersonalSandbox": "true | null",
+          "sideQuestOpen": "0-2 | null (the side-quest open on the student's screen; student-written on open/close, cleared by setTaskId)",
           "videoCallLinkPushedAt": "number | null (stamped by sendVideoCallLink to pop VideoCallPrompt for this one student mid-lesson; independent of the session-level videoCallLink above)",
           "checkOverridePassed": "boolean | null",
           "checkOverrideHint": "string | null",
@@ -381,6 +396,7 @@ Student writes:
 - Quiz attempts are reportable even when the task has no explicit `check`. The attempt log stores structured submissions for fill-blank and match, numeric ratings for confidence, and text for open short-answer. Confidence and open short-answer use the internal passed flag only as a UI completion signal; reports translate them to `finalResult: not_applicable` and `passed: null`.
 - Carry-through walk-back: when a live lesson task carries from a skipped source and resolves to an earlier saved source in the authored carry chain, the student writes own `carryFallbackLog/{taskId}` with the carry field, requested source, resolved source, skipped source ids, and server timestamp. Empty saved state is not skipped.
 - Personal sandbox: own `inPersonalSandbox` set to `true` on entry and `null` on exit.
+- Side-quests (live lesson phase only; never solo, preview or the presentation window): own `sideQuestOpen` (the index, or `null`) on opening and closing one (`writeSideQuestOpen`), and own `sideQuestLog/{taskId}/{index}`: `openedAt` the first time (`recordSideQuestOpened`), `runs` / `errorRuns` by transaction once per Run / per errored run (`recordSideQuestRun`), `done` + `doneAt` when the student taps ✓ (`setSideQuestDone`). Never per keystroke and never any code. `setTaskId` nulls every `sideQuestOpen`; `sideQuestLog` survives it (a sibling of `students`, like `attemptLog`), `createSession` clears it, and `buildSessionReport` reads it. See "Side-quests" in `docs/agents/classroom-behaviours.md`.
 - Topic library: own `currentTopicId` when a topic opens; cleared when dialog closes and by `setTaskId`.
 - Name entry: own `joiningStudents/{tempId}` during name-entry phase (`{ joinedAt }` via `registerJoining`); removed on joining or leaving. While the student types, `NameEntry` shares the trimmed name as `typedName` (`setJoiningTypedName` via `useStudentPhase`'s `reportTypedName`; leading + trailing throttle, at most one write per 750ms, capped at the input's 30 characters, removed when the box is empty). No typedName write happens once the marker is gone, and the rules reject one that would recreate it.
 - Teacher "Pull in" (student side): `useStudentPhase` listens to its own marker (`subscribeJoiningMarker`, a dedicated listener because the phase logic ignores session changes during name entry). When `admit = { name, at }` appears it calls the normal `handleNameSubmit` once with the admitted name, after the same duplicate-name suffixing NameEntry applies (`applyNameSuffix` in `src/app/joiningStudents.js`), so identity creation, `joinSession` and the next phase (waiting room if the session is waiting, lesson/sandbox if live) are exactly a normal submit. It ignores admits stamped before the marker's `joinedAt`, admits without a usable name, and admits arriving while the student's own Join is in flight.
@@ -394,7 +410,7 @@ Student writes:
 - Live badge signals: own `studentSignals/{anonymousId}` and `attemptLog` entries' `error`. See "Badge data" below.
 - Stage reference reveal: after a failed attempt, students can reveal their own Python/HTML Support `codeStages` entries. The same `supportRevealLog` record stores `source: "student"`, stage label, attempt count, and server timestamp. Revealing does not change editor contents.
 
-Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields (including `badges` and `badgeSettings`), `overrideLog`, and `supportRevealLog`. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, their own `attemptLog/{anonymousId}` node, their own `carryFallbackLog/{anonymousId}` node, their own `supportRevealLog/{anonymousId}` node, and the listed paths of their own `studentSignals/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers), but every write must leave `joinedAt` (a number) in place, `typedName` must be a string of at most 30 characters, no other fields are allowed, and only teachers/admins can write `admit` (`{ name: string 1-30, at: number }` and nothing else). Removal (on join or disconnect) is unrestricted. The top-level `sessionArchive/{lessonId}` is teacher/admin read and write only. The top-level `liveInk/{lessonId}` (Presentation annotations) is publicly readable and teacher/admin write, with shape validation (see "Presentation Annotations").
+Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields (including `badges` and `badgeSettings`), `overrideLog`, and `supportRevealLog`. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, their own `attemptLog/{anonymousId}` node, their own `carryFallbackLog/{anonymousId}` node, their own `supportRevealLog/{anonymousId}` node, their own `sideQuestLog/{anonymousId}/{taskId}/{0-2}` entries (`openedAt`, `runs`, `errorRuns`, `done`, `doneAt` only; numbers and a boolean), and the listed paths of their own `studentSignals/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers), but every write must leave `joinedAt` (a number) in place, `typedName` must be a string of at most 30 characters, no other fields are allowed, and only teachers/admins can write `admit` (`{ name: string 1-30, at: number }` and nothing else). Removal (on join or disconnect) is unrestricted. The top-level `sessionArchive/{lessonId}` is teacher/admin read and write only. The top-level `liveInk/{lessonId}` (Presentation annotations) is publicly readable and teacher/admin write, with shape validation (see "Presentation Annotations").
 
 ## Workspace Sharing
 
@@ -549,6 +565,8 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`) record behaviour a
 | `attemptLog/{id}/{taskId}/{pushId}/error` | student | `logAttempt(..., { error })`, `flagAttemptError(anonymousId, taskId, error)` | every `logAttempt` call site passes `error`: runtime runs (Python/Turtle/Electronics, from the run's output), Run tests (the first errored test), HTML (a preview console error reported before the check), Arcade (`flagAttemptError` when the game iframe reports its error after Run). Scratch, quizzes, activities and Filesystem/Desktop checks never set it. |
 | `students/{id}/pasteLog/{taskId}/firstAt` | student | `recordStudentPaste` | the first large paste on a task |
 | `sessionArchive/{lessonId}` (top level) | teacher | `enterSandbox`, `pushSandboxCode`, `pushSandboxFiles`, `pushSandboxExplainer`, `exitSandbox`, `endSession`, `archiveSandboxStudentSnapshot` | see below |
+
+**Side-quests.** 🗺️ Side Quester reads `sideQuestLog` (see Student writes above): each entry with `done: true` is a `side_quest_done { taskId, index, at: doneAt }` event (`buildStudentTimeline`); a task that has gone is dropped. `sideQuestLog` is in the timeline input key.
 
 **Read, not written: peer help.** 🤝 Helpful Coder writes nothing new either: `useBadgeSuggestions` takes the teacher's read of `peerHelp/{lessonId}` (`usePeerHelp().allPeerHelp`, see "Peer Help" above) and `buildPeerHelpEvents` adds a `peer_help` event to the helper's timeline for each inbox item the stuck student marked `useful` or `accepted`. Helper, task and responses are in the badge evaluation input key. Students can't read each other's peer help, so this is never a student signal.
 
@@ -827,6 +845,7 @@ Do not deviate from these key formats.
 | `headstart_{lessonId}_{taskId}_{filename}_{anonymousId}` | `{ content }` for HTML per-file |
 | `headstart_{lessonId}_{taskId}___code_arrange_slots___{anonymousId}` | `{ content }` Code Arrange tile placements (a per-task aux file, same shape as an HTML file); in indent mode (`arrangeMode: indent`) the same file holds `{ lineId: depth }` for the lines the student moved |
 | `headstart_{lessonId}_{taskId}___activity_state___{anonymousId}` | `{ content }` hosted activity state for `taskType: 'activity'` tasks (serialised JSON) and quiz tasks (the `currentAnswer` string: option id, JSON answer map, typed text or `"1"`..`"5"`); restored on reload and on returning to the task; in-memory only in presentation/preview |
+| `headstart_{lessonId}_{taskId}_sidequest_{n}_{anonymousId}` | A side-quest's own work (n = its index 0-2): `{ code }` for Python/Turtle; `{ files: [{ name, content }], activeFile }` for HTML. Written by `SideQuestWorkspace` (debounced, and on close) for a real student, live or solo; in-memory only in presentation/preview. Never read as the task's work or by carry-through (`src/app/studentStorage.js` `sideQuestStorageKey`) |
 | `headstart_{lessonId}_personalsandbox_{anonymousId}` | `{ code }` for personal sandbox Python/Turtle/Electronics; `{ code, arcadeDesign }` for Arcade; `{ state }` for Scratch; `{ fs }` for Filesystem; `{ desktop }` for Desktop |
 | `headstart_{lessonId}_personalsandbox_{filename}_{anonymousId}` | `{ content }` for personal sandbox HTML per-file |
 | `headstart_{lessonId}_module_{moduleId}_sandbox_{anonymousId}` | Composed lessons: the personal sandbox for one lesson module, same value shapes as `personalsandbox` |

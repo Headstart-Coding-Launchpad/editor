@@ -1,4 +1,6 @@
 import { peerHelpPairsByStudent } from '../shared/peerHelp'
+import { sideQuestStatus } from '../shared/sideQuests'
+import { findTaskById } from '../shared/taskUtils'
 
 // What each student is doing right now, for the teacher: the "Now:" line on a StudentCard and
 // the class summary strip above the grid (ClassActivityStrip). Pure: reads the session, the
@@ -10,6 +12,8 @@ import { peerHelpPairsByStudent } from '../shared/peerHelp'
 //   📤 viewing a classmate's shared work (viewingShareId)
 //   📖 reading a Topic Library topic (currentTopicId)
 //   🧪 in their own sandbox (inPersonalSandbox)
+//   🗺️ on a side-quest (sideQuestOpen), or ✓ side-quests marked Done on this task (sideQuestLog);
+//      status only, never the side-quest's code (src/shared/sideQuests.js)
 // Only online students are doing anything.
 
 const nameOf = (session, id) => session?.students?.[id]?.displayName ?? 'a classmate'
@@ -22,7 +26,13 @@ function possessive(name) {
  * @returns {{ kind, group, icon, text, title }[]} `text` follows "Now:" on the card; `group`
  *   is what the class strip counts by (e.g. everyone looking at the same broadcast).
  */
-export function studentActivities({ student, session, peerPairs = {}, topics = null }) {
+export function studentActivities({
+  student,
+  session,
+  peerPairs = {},
+  topics = null,
+  lesson = null,
+}) {
   if (!student?.online) return []
   const id = student.anonymousId
   const out = []
@@ -118,11 +128,33 @@ export function studentActivities({ student, session, peerPairs = {}, topics = n
       title: 'In their personal sandbox',
     })
   }
+
+  // Side-quests on the class's current task: status only, never their code.
+  const currentTask = lesson ? findTaskById(lesson.tasks, session?.currentTaskId) : null
+  const quests = sideQuestStatus({ student, session, task: currentTask })
+  if (quests?.open != null) {
+    const of = quests.total > 0 ? ` ${quests.open + 1}/${quests.total}` : ''
+    out.push({
+      kind: 'side_quest',
+      group: 'side_quest',
+      icon: '🗺️',
+      text: `on side-quest${of}${quests.done > 0 ? ` · ✓${quests.done}` : ''}`,
+      title: `Finished the task and on side-quest${of}; ${quests.done} marked done (self-reported)`,
+    })
+  } else if (quests?.done > 0) {
+    out.push({
+      kind: 'side_quest_done',
+      group: 'side_quest_done',
+      icon: '✓',
+      text: `${quests.done}/${quests.total} side-quests done`,
+      title: `Marked ${quests.done} of ${quests.total} side-quests done (self-reported)`,
+    })
+  }
   return out
 }
 
 /** Every student's activities: { [anonymousId]: activity[] }. */
-export function classActivities({ session, peerHelp = null, topics = null }) {
+export function classActivities({ session, peerHelp = null, topics = null, lesson = null }) {
   const peerPairs = peerHelpPairsByStudent({
     requests: peerHelp?.allRequests,
     peerHelp: peerHelp?.allPeerHelp,
@@ -133,7 +165,7 @@ export function classActivities({ session, peerHelp = null, topics = null }) {
       .filter((student) => student?.anonymousId)
       .map((student) => [
         student.anonymousId,
-        studentActivities({ student, session, peerPairs, topics }),
+        studentActivities({ student, session, peerPairs, topics, lesson }),
       ])
   )
 }
@@ -161,6 +193,8 @@ export function summariseClassActivities({ session, activities }) {
     'shared',
     'topic',
     'sandbox',
+    'side_quest',
+    'side_quest_done',
   ]
   const live = session?.teacherLive
   const owner = possessive(live?.sourceStudentName ?? 'a classmate')
@@ -181,6 +215,8 @@ export function summariseClassActivities({ session, activities }) {
             shared: `${n} viewing shared work`,
             topic: `${n} reading a topic`,
             sandbox: `${n} in their sandbox`,
+            side_quest: `${n} on a side-quest`,
+            side_quest_done: `${n} finished side-quests`,
           }[entry.kind]
       return { group: entry.group, icon: entry.icon, text, studentIds: entry.studentIds }
     })

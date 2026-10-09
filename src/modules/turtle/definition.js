@@ -59,6 +59,8 @@ export default defineModule({
     lineHints: 'python',
     // A classmate can help (src/shared/peerHelp.js).
     peerHelp: { anchors: 'lines', hints: 'python' },
+    // A passed task's side-quests run in a throwaway Turtle workspace (src/shared/sideQuests.js).
+    sideQuests: true,
   },
   // The run's drawing is synced with the run (a run result, like output).
   runResult: { errorLine: false, turtle: true, liveCode: false },

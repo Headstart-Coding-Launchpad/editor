@@ -77,6 +77,8 @@ export const OPTIONAL_CAPABILITY_BOOLEANS = Object.freeze([
   'teacherUnifiedStageTabs', // the teacher's code tabs list starter / complete as stage roles
   // with no separate Starter / Complete tabs (python, html)
   'explainerBlockMenu', // the explainer editor offers the Scratch block-reference menu (scratch)
+  'sideQuests', // a code task's `sideQuests` run in a throwaway workspace of this module once the
+  // student passes it (src/shared/sideQuests.js; python, turtle, html)
   'typingStats', // the student's keystrokes in the shared code editor feed the session report's
   // `typing` measures (useStudentTypingStats; python, turtle, html)
 ])

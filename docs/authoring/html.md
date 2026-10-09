@@ -95,6 +95,13 @@ Put instructions **next to** a line of a starter file instead of in an HTML comm
 
 ---
 
+## Side-quests
+
+An HTML code task can carry up to three optional, unchecked `sideQuests` (`title`, `kind`,
+`explainer`, `starter`, which becomes the side-quest's `index.html`) that a student opens in their own scratch HTML editor and preview once they pass
+the task. They never change the task's code or what `carryCodeFrom` copies. See
+[Side-quests](AUTHORING_GUIDE.md#side-quests).
+
 ## HTML Element Checks (run mode only)
 
 All element checks require a `selector` (CSS selector).

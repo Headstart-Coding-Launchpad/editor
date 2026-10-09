@@ -5,6 +5,8 @@ import { CheckListEditor } from './CheckEditors'
 import TestsEditor from './TestsEditor'
 import { getLessonModule } from '../../../modules/registry'
 import { canTaskAllowSharing } from '../../../shared/taskUtils'
+import { supportsSideQuests } from '../../../shared/sideQuests'
+import SideQuestsEditor from './SideQuestsEditor'
 
 export default function TaskOptionsSection({
   task,
@@ -29,6 +31,11 @@ export default function TaskOptionsSection({
   const summaryParts = []
   if (task.check) summaryParts.push('check enabled')
   if (task.interactionMode === 'submit') summaryParts.push('submit mode')
+  if (task.sideQuests?.length) {
+    summaryParts.push(
+      `${task.sideQuests.length} side-quest${task.sideQuests.length === 1 ? '' : 's'}`
+    )
+  }
   const summary = summaryParts.join(' · ')
 
   return (
@@ -186,6 +193,10 @@ export default function TaskOptionsSection({
                 </span>
               </label>
             </Field>
+          )}
+
+          {supportsSideQuests(lesson.type) && (
+            <SideQuestsEditor task={task} lesson={lesson} onUpdate={onUpdate} />
           )}
 
           {task.check && lessonMod?.supportsIncorrectChecks && (

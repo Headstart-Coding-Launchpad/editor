@@ -69,6 +69,9 @@ export default defineModule({
     lineHints: 'html',
     // A classmate can help (src/shared/peerHelp.js).
     peerHelp: { anchors: 'lines', hints: 'html' },
+    // A passed task's side-quests run in a throwaway HTML workspace, the starter as index.html
+    // (src/shared/sideQuests.js).
+    sideQuests: true,
   },
 
   getDisplayState: (task, stage, liveState, tab) => {

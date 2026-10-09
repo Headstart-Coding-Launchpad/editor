@@ -123,6 +123,35 @@ describe('student nodes', () => {
   })
 })
 
+describe('side-quests', () => {
+  const openPath = (id) => `sessions/${LESSON}/students/${id}/sideQuestOpen`
+  const logPath = (id, index = 0) => `sessions/${LESSON}/sideQuestLog/${id}/t2/${index}`
+
+  it('lets a student mark which side-quest is open (0-2) on their own node', async () => {
+    await assertSucceeds(ref(as.student, openPath(STUDENT_ID)).set(2))
+    await assertSucceeds(ref(as.student, openPath(STUDENT_ID)).set(null))
+    await assertFails(ref(as.student, openPath(STUDENT_ID)).set(3))
+    await assertFails(ref(as.student, openPath(STUDENT_ID)).set('1'))
+    await assertFails(ref(as.student, openPath(OTHER_STUDENT_ID)).set(0))
+  })
+
+  it('lets a student log their own side-quest status, and nobody else', async () => {
+    const entry = { openedAt: 1, runs: 2, errorRuns: 1, done: true, doneAt: 3 }
+    await assertSucceeds(ref(as.student, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.student, `${logPath(STUDENT_ID)}/runs`).set(3))
+    await assertFails(ref(as.otherStudent, logPath(STUDENT_ID)).set(entry))
+    await assertFails(ref(as.anonymous, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.teacher, `sessions/${LESSON}/sideQuestLog`).set(null))
+  })
+
+  it('refuses a side-quest index above 2, bad values and code', async () => {
+    await assertFails(ref(as.student, logPath(STUDENT_ID, 3)).set({ openedAt: 1 }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ runs: -1 }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ done: 'yes' }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ code: 'print(1)' }))
+  })
+})
+
 describe('shared workspaces', () => {
   it('only lets teachers approve shares, and requires sharerId and sharedAt', async () => {
     const path = `sessions/${LESSON}/sharedWorkspaces/share-1`

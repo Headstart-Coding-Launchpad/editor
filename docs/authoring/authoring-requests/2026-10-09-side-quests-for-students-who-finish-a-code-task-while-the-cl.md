@@ -1,6 +1,6 @@
 # Side-quests for students who finish a code task while the class waits
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Ryan (approved by Ryan), 2026-10-09
 - **Lessons blocked:** none yet
@@ -74,3 +74,21 @@ Ryan's choices (interview 2026-10-08): side-quest panel plus a prompt inside the
 ## Resolution
 
 <!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+
+Shipped 2026-10-09 on branch `feature/side-quests` (not yet merged) as the optional task field
+`sideQuests` on Python, Turtle and HTML code tasks (module flag `capabilities.sideQuests`). Docs:
+AUTHORING_GUIDE.md "Side-quests", lesson-schema.md, session-reports.md, badges.md, CHANGELOG
+2026-10-09. Decisions agreed with Ryan:
+
+- Unchecked; up to 3 per task; `kind` (`challenge` | `debug` | `predict`) is the label and icon
+  only. Unlocks after the task's own check passes: live only while the class is still on that
+  task, solo after a pass. Scratch is later (validation warns and ignores `sideQuests` there).
+- Each runs in a throwaway workspace of the task's module (the shared-workspace-viewer pattern),
+  so it never writes the task's code or feeds `carryCodeFrom`; its code is kept in localStorage
+  (`headstart_{lessonId}_{taskId}_sidequest_{n}_{anonymousId}`).
+- Teacher sees status only ("🗺️ on side-quest n/m · ✓k"), no code view. Firebase:
+  `students/{id}/sideQuestOpen` and `sideQuestLog/{id}/{taskId}/{n}` (`openedAt`, `runs`,
+  `errorRuns`, `done`, `doneAt`), written on open, close, Run, error and Done only. Needs a
+  `database.rules.json` deploy.
+- Reward: a suggested (never auto-awarded) 🗺️ Side Quester badge after `sideQuesterMinDone`
+  (default 2) side-quests marked done, rather than a points tally (badges.md: no points).

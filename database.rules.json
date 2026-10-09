@@ -68,6 +68,32 @@
                   ".validate": false
                 }
               }
+            },
+
+            // The side-quest open on the student's screen (its index 0-2), or absent
+            // (src/shared/sideQuests.js).
+            "sideQuestOpen": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2"
+            }
+          }
+        },
+
+        // Side-quest status per student, task and side-quest index (0-2):
+        // { openedAt, runs, errorRuns, done, doneAt }. Written by the student for their own
+        // id only, on open, Run and Done; never any code. Teacher/admin write (createSession
+        // clears it) is inherited from $lessonId.
+        "sideQuestLog": {
+          "$anonymousId": {
+            "$taskId": {
+              "$index": {
+                ".write": "auth != null && auth.uid === $anonymousId && $index.matches(/^[0-2]$/)",
+                "openedAt": { ".validate": "newData.isNumber()" },
+                "runs": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "errorRuns": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "done": { ".validate": "newData.isBoolean()" },
+                "doneAt": { ".validate": "newData.isNumber()" },
+                "$other": { ".validate": false }
+              }
             }
           }
         },

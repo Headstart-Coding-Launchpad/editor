@@ -38,7 +38,8 @@ const NOOP_ASYNC = () => Promise.resolve()
 // Every session write the hook can make, stubbed. Listed explicitly rather than
 // generated, so a newly added writer shows up as an obvious omission here
 // instead of silently reaching Firebase from a shared workspace.
-const NOOP_SESSION_WRITES = {
+// Also used by the side-quest workspace (sideQuests/SideQuestWorkspace.jsx), another throwaway copy.
+export const NOOP_SESSION_WRITES = {
   writeStudentRun: NOOP_ASYNC,
   logAttempt: NOOP_ASYNC,
   writeStudentAnswer: NOOP_ASYNC,
@@ -73,8 +74,14 @@ export function shareViewerLessonId(shareId) {
 // work decoded by the module's wire codec (files on the files channel, `wire.fromCode(code)`
 // otherwise — a JSON state that doesn't decode is skipped), written as the module's task
 // record(s) by its storage adapter (`storage.toTaskRecord`), plus Arcade's design.
-export function seedSharedWorkspace({ shareLessonId, taskId, moduleType, snapshot }) {
-  const actor = SHARE_VIEWER_ACTOR
+// `actor` is the throwaway identity the workspace runs as (the share viewer's by default).
+export function seedSharedWorkspace({
+  shareLessonId,
+  taskId,
+  moduleType,
+  snapshot,
+  actor = SHARE_VIEWER_ACTOR,
+}) {
   const definition = getModuleDefinition(moduleType)
   if (!definition) {
     ephemeralStorage.saveCode(shareLessonId, taskId, actor, { code: snapshot?.code ?? '' })

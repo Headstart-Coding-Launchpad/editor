@@ -1,6 +1,7 @@
 import yaml from 'js-yaml'
 import { flattenTasks, getTaskPriority } from './taskUtils.js'
 import { buildPeerHelpAudit } from './peerHelp.js'
+import { buildSideQuestReport, getSideQuests } from './sideQuests.js'
 import { getTaskActivity } from '../activities/registry.pure.js'
 import { SUPPORT_REVEAL_SOURCES } from './taskStages.js'
 import { normalizeCodeSubmission } from './codeSubmission.js'
@@ -326,6 +327,20 @@ function summarizePastes(perStudent) {
   }
 }
 
+// Side-quests (sideQuestLog, src/shared/sideQuests.js): who opened one on this task, and how
+// many were marked Done. Only present when someone opened one.
+function summarizeSideQuests(perStudent) {
+  const opened = perStudent.filter((task) => (task.sideQuests ?? []).length > 0)
+  if (opened.length === 0) return {}
+  return {
+    sideQuestStudentCount: opened.length,
+    sideQuestDoneCount: opened.reduce(
+      (n, task) => n + task.sideQuests.filter((quest) => quest.done).length,
+      0
+    ),
+  }
+}
+
 // Typing measures on a code task (students.{id}.typingLog.{taskId}, see useStudentTypingStats
 // and src/shared/typingStats.js). Code tasks only: quizzes and activities (Code Arrange
 // included) have no typing editor, and a Scratch task never records any.
@@ -620,6 +635,7 @@ export function buildSessionReport({
   const carryFallbackLog = session?.carryFallbackLog ?? {}
   const supportRevealLog = session?.supportRevealLog ?? {}
   const taskRatingLog = session?.taskRatingLog ?? {}
+  const sideQuestLog = session?.sideQuestLog ?? {}
   const anonymousIds = Array.from(
     new Set([
       ...Object.keys(studentsSnapshot),
@@ -627,6 +643,7 @@ export function buildSessionReport({
       ...Object.keys(overrideLog),
       ...Object.keys(carryFallbackLog),
       ...Object.keys(supportRevealLog),
+      ...Object.keys(sideQuestLog),
       ...Object.keys(session?.badges ?? {}),
       ...Object.keys(session?.studentSignals ?? {}),
       ...(sessionArchive?.visits ?? []).flatMap((visit) =>
@@ -670,6 +687,10 @@ export function buildSessionReport({
         task.id
       )
       const pastes = normalizePasteRecord(studentsSnapshot[anonymousId]?.pasteLog?.[task.id])
+      const sideQuests = buildSideQuestReport(
+        sideQuestLog?.[anonymousId]?.[task.id],
+        getSideQuests(task)
+      )
       const typing = studentTypingFields(task, studentsSnapshot[anonymousId])
       const tileMisses = normalizeTileMisses(studentsSnapshot[anonymousId]?.tileMissLog?.[task.id])
       const attempts = countAttempts(entries)
@@ -710,6 +731,7 @@ export function buildSessionReport({
         ...(carryFallback ? { carryFallback } : {}),
         ...(supportReveals.length > 0 ? { supportReveals } : {}),
         ...(pastes ? { pastes } : {}),
+        ...(sideQuests.length > 0 ? { sideQuests } : {}),
         ...(typing ? { typing } : {}),
         ...(tileMisses.length > 0 ? { tileMisses } : {}),
         ...(itemProgress ? { itemProgress } : {}),
@@ -835,6 +857,7 @@ export function buildSessionReport({
       ...summarizeCarryFallbacks(perStudent),
       ...summarizeSupportReveals(perStudent),
       ...summarizePastes(perStudent),
+      ...summarizeSideQuests(perStudent),
       ...summarizeTimeOnTaskSpread(perStudent),
       ...summarizeTyping(perStudent),
       ...badgeFields,

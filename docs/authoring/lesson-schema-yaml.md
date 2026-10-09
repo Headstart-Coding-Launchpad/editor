@@ -97,6 +97,13 @@ tasks:
     allowSharing: true          # optional — let students share this workspace with the class (teacher approves)
     peerHints:                  # optional — extra hints a classmate can send when helping (peer help)
       - Did you use a loop?
+    sideQuests:                 # optional — up to 3 unchecked extras once the task is passed (python, turtle, html)
+      - title: Break it, then fix it
+        kind: debug             # challenge | debug | predict (label and icon only)
+        explainer: Run it, read the error, then fix it.
+        starter: |
+          for i in range(3)
+              print("Hello")
     taskMode: both              # optional — both (default) | live | solo
     intent: >-                   # required, non-empty Markdown in Draft; author-only
       Describe the learning goal and intended task.
@@ -122,6 +129,7 @@ tasks:
 | `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
 | `peerHints` | No | list of strings | Up to 6 short hints (≤ 60 characters; helpers see at most 6 hint cards) a classmate can send when helping on this task (peer help). Keep them general and kind, never the answer. Not valid on `quiz` or `information` tasks. |
 | `allowSharing` | No | boolean | Lets students offer this workspace to the whole class, subject to teacher approval. Off unless set to `true`. Not valid on `quiz` or `information` tasks. |
+| `sideQuests` | No | list | Up to 3 optional, unchecked side-quests (`title`, `kind`, `explainer`, `starter`) a student can open once they pass this code task. Python, Turtle and HTML only. See [Side-quests](AUTHORING_GUIDE.md#side-quests). |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. |
 | `moduleType` | Yes for a code task in a new composed lesson | string | Workspace type: `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics`. |
 | `moduleId` | No | string | ID of the named workspace instance in `modules`. Use it to give related tasks one workspace identity, or to distinguish two instances of the same `moduleType`. |

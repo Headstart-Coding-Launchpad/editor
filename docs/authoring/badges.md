@@ -39,6 +39,7 @@ student per lesson.
 | ✨ Autocomplete Ace | `autocomplete_ace` | Accepted a code-editor autocomplete suggestion, in a task or a sandbox | – |
 | 🐦 Early Bird | `early_bird` | First joined at least `earlyBirdMinutes` before the tutor pressed **Start** (suggested once the session starts; not tied to a task) | – |
 | 🤝 Helpful Coder | `helpful_coder` | Helped a stuck classmate through peer help, and the classmate pressed 👍 Useful on something they sent or used their suggested change (on the task the help was for) | – |
+| 🗺️ Side Quester | `side_quester` | Marked at least `sideQuesterMinDone` [side-quests](AUTHORING_GUIDE.md#side-quests) Done in the session, on any tasks. Done is self-reported, so it is suggested only and the tutor decides | – |
 | 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🧘 Focused Coder · 🧭 Project Explorer · 📈 Knowledge Builder · 🙋 Great Question · 🏹 Sharp Shooter · ✍️ Word Wizard · 🎨 Design Master · 🦸 Independent Coder · 🌡️ Honest Check-in · 🦁 Brave Coder · 🌱 Growing Coder · 🔁 Comeback Coder · 🎤 Show and Tell · 💬 Great Answer · 🧑‍🏫 Code Teacher · 🕵️ Teacher Trap · 🧹 Tidy Coder · 🔦 Edge Explorer · 🏁 Finisher · 🧷 Careful Checker | `problem_solver`, `experimenter`, `creative_coder`, `comedy_coder`, `focused_coder`, `project_explorer`, `knowledge_builder`, `great_question`, `sharp_shooter`, `word_wizard`, `design_master`, `independent_coder`, `honest_check_in`, `brave_coder`, `growing_coder`, `comeback_coder`, `show_and_tell`, `great_answer`, `code_teacher`, `teacher_trap`, `tidy_coder`, `edge_explorer`, `finisher`, `careful_checker` | Tutor-only: never suggested | – |
 
 "First in class" is decided per task, in the order the tasks were first passed. Each student
@@ -89,6 +90,7 @@ Pattern badges need a `check` on the task: attempts are only recorded for checke
 | ✨ Autocomplete Ace | ✅ editor | ✅ editor | ✅ editor | ✅ editor | ❌ no code editor | – | – | – | – |
 | 🐦 Early Bird | any lesson (not a task) | | | | | | | | |
 | 🤝 Helpful Coder | ✅ | ✅ | – | ✅ | ✅ | – | – | – | – |
+| 🗺️ Side Quester | ✅ | ✅ | – | ✅ | ❌ not yet | – | – | – | – |
 
 "–" means the badge has no signal there. The live signals (console errors, topic opens, shortcuts,
 first edits, autocomplete) are recorded from each module's work area; see the plan's PR sequence for when each
@@ -140,6 +142,7 @@ Optional, on the lesson envelope. Leave it out to use the defaults.
 | `persistenceMinFails` | `2` | a whole number ≥ 1 | 🔨 different failed submissions before the pass |
 | `readyToCodeSeconds` | `10` | a number > 0 | 🚀 seconds to the first real edit |
 | `earlyBirdMinutes` | `5` | a number > 0 | 🐦 minutes before Start a student must join |
+| `sideQuesterMinDone` | `2` | a whole number ≥ 1 | 🗺️ side-quests marked Done in the session |
 
 ## badgeHints
 
@@ -220,7 +223,8 @@ Rules read a per-student timeline of events, never Firebase directly
 `paste`, `override`, `shortcut`, `first_edit`, `early_join` (built from `firstJoinedAt` and the
 session's `startedAt`), `autocomplete` and `peer_help` (built teacher-side from peer help: a
 helper's item the stuck classmate marked 👍 Useful or whose change they used; students can't
-read each other's peer help, so it is never a student signal). A new badge that needs a new signal adds an
+read each other's peer help, so it is never a student signal) and `side_quest_done` (a side-quest
+the student marked Done, from `sideQuestLog`; self-reported and never checked). A new badge that needs a new signal adds an
 event type there; a new stored field needs its own data-model sign-off.
 
 ## Admin catalogue badges

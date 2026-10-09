@@ -119,12 +119,12 @@ describe('planNewBadge', () => {
     // Registered after the last rule-backed badge, before the tutor-only ones.
     const pure = byPath['src/badges/registry.pure.js']
     expect(pure).toContain("import kindCoder from './definitions/kind_coder.js'")
-    expect(pure).toMatch(/helpfulCoder,\n {2}kindCoder,\n {2}problemSolver,/)
+    expect(pure).toMatch(/sideQuester,\n {2}kindCoder,\n {2}problemSolver,/)
     expect(byPath['docs/authoring/badges.md']).toMatch(
       /\| 🌻 Kind Coder \| `kind_coder` \| TODO\(new-badge\)[^\n]*\n\| 🧠 Problem Solver/
     )
     expect(byPath['docs/CODEBASE_MAP.md']).toContain(
-      '`helpful_coder.js`, `kind_coder.js`, and tutor-only'
+      '`side_quester.js`, `kind_coder.js`, and tutor-only'
     )
     expect(plan.checklist.join('\n')).toMatch(/real browser/)
   })

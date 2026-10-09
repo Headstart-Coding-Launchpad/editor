@@ -29,6 +29,11 @@ export const BADGE_OPTION_SPECS = Object.freeze({
     description:
       'Minutes before the tutor presses Start that a student must join for 🐦 Early Bird.',
   }),
+  sideQuesterMinDone: Object.freeze({
+    kind: 'count',
+    default: 2,
+    description: 'Side-quests a student must mark Done in the session for 🗺️ Side Quester.',
+  }),
 })
 
 export const DEFAULT_BADGE_OPTIONS = Object.freeze(

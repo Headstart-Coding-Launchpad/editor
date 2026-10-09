@@ -26,6 +26,7 @@ export const TIMELINE_EVENT_TYPES = Object.freeze([
   'early_join',
   'autocomplete',
   'peer_help',
+  'side_quest_done',
 ])
 
 /**
@@ -150,7 +151,8 @@ export const TIMELINE_EVENT_TYPES = Object.freeze([
 
 /**
  * @typedef {AttemptEvent|SandboxRunEvent|TopicOpenEvent|RevealEvent|CompleteShownEvent|
- *   PasteEvent|OverrideEvent|ShortcutEvent|FirstEditEvent|EarlyJoinEvent|AutocompleteEvent}
+ *   PasteEvent|OverrideEvent|ShortcutEvent|FirstEditEvent|EarlyJoinEvent|AutocompleteEvent|
+ *   PeerHelpEvent|SideQuestDoneEvent}
  *   TimelineEvent
  */
 
@@ -265,6 +267,23 @@ export function earlyJoinEvent({ leadMs, at = null }) {
 /** @returns {PeerHelpEvent} */
 export function peerHelpEvent({ taskId = null, outcome = 'useful', at = null }) {
   return { type: 'peer_help', context: 'task', taskId, outcome, at: time(at) }
+}
+
+/**
+ * The student marked a side-quest Done (`sideQuestLog/{id}/{taskId}/{index}`, see
+ * src/shared/sideQuests.js). Self-reported, never checked: the badge that reads it is only ever
+ * suggested.
+ * @typedef {object} SideQuestDoneEvent
+ * @property {'side_quest_done'} type
+ * @property {'task'} context
+ * @property {string|number} taskId the task the side-quest belongs to
+ * @property {number} index the side-quest's index on that task (0-2)
+ * @property {number|null} at `doneAt`
+ */
+
+/** @returns {SideQuestDoneEvent} */
+export function sideQuestDoneEvent({ taskId, index = 0, at = null }) {
+  return { type: 'side_quest_done', context: 'task', taskId, index: Number(index), at: time(at) }
 }
 
 /** @returns {AutocompleteEvent} */
