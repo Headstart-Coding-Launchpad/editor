@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
@@ -140,6 +140,27 @@ describe('LessonTaskContent teacher-live-code support reference', () => {
     )
 
     expect(screen.getByText("📌 Live from your teacher's screen")).toBeInTheDocument()
+  })
+
+  it('gives the student no close or collapse control — only the tutor turns it off', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+
+    render(
+      <LessonTaskContent
+        {...baseProps}
+        lesson={{ type: 'python' }}
+        cs={{
+          inPersonalSandbox: false,
+          teacherLiveReferenceActive: true,
+          teacherLiveReferencePinned: true,
+        }}
+        isForcedTeacherLive={false}
+        teacherLiveReferencePayload={{ code: 'print("live")' }}
+      />
+    )
+
+    const panel = screen.getByLabelText("Teacher's live code stage reference")
+    expect(within(panel).queryAllByRole('button')).toHaveLength(0)
   })
 
   it('converts the teacherLive files map into text for HTML', () => {

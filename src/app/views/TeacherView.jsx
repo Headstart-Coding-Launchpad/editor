@@ -737,6 +737,7 @@ export default function TeacherView({ lessonId }) {
               onClosePoll={closePoll}
               onSetPollShowResults={setPollShowResults}
               onDismissPoll={dismissPoll}
+              onUnpinLiveReference={setTeacherLiveReferenceForClass}
               peerHelpMenu={
                 <TeacherPeerHelpMenu session={session} lesson={lesson} peerHelp={peerHelp} />
               }

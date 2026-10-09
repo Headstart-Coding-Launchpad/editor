@@ -148,6 +148,39 @@ describe('teacher live reference — pinned (keep showing)', () => {
     expect(h.result.current.teacherLiveReferenceActive).toBe(true)
   })
 
+  it('turning the class pin off hides it at once', () => {
+    const h = renderStudentCodeState({
+      lesson: pythonLesson(),
+      currentTaskId: 't1',
+      session: makeSession({
+        teacherLiveReferenceVisibleToAll: 2000,
+        teacherLiveReference: liveOn('t1'),
+      }),
+    })
+    expect(h.result.current.teacherLiveReferenceActive).toBe(true)
+    h.updateSession({ teacherLiveReferenceVisibleToAll: null })
+    expect(h.result.current.teacherLiveReferenceActive).toBe(false)
+  })
+
+  it('a per-student false hides the class pin for this student only', () => {
+    const h = renderStudentCodeState({
+      lesson: pythonLesson(),
+      currentTaskId: 't1',
+      session: makeSession({
+        student: { teacherLiveReferenceVisible: false },
+        teacherLiveReferenceVisibleToAll: 2000,
+        teacherLiveReference: liveOn('t1'),
+      }),
+    })
+    expect(h.result.current.teacherLiveReferenceActive).toBe(false)
+    expect(h.result.current.teacherLiveReferencePinned).toBe(false)
+    expect(pinLogCalls(h)).toHaveLength(0)
+    // Following the class pin again (null) brings it back.
+    h.updateStudent({ teacherLiveReferenceVisible: null })
+    expect(h.result.current.teacherLiveReferenceActive).toBe(true)
+    expect(h.result.current.teacherLiveReferencePinned).toBe(true)
+  })
+
   it('logs the pin once, on the first task it shows, not again on the next task', () => {
     const h = renderStudentCodeState({
       lesson: pythonLesson(),
