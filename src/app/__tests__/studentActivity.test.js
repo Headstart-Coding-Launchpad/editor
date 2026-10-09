@@ -43,6 +43,33 @@ describe('studentActivities', () => {
     ).toEqual([])
   })
 
+  it('shows side-quest status on the current task, never more than status', () => {
+    const lesson = {
+      tasks: [
+        { id: 2, title: 'Copy', sideQuests: [{ title: 'A' }, { title: 'B' }, { title: 'C' }] },
+      ],
+    }
+    const onQuest = { anonymousId: 'kit', displayName: 'Kit', online: true, sideQuestOpen: 1 }
+    const withLog = {
+      ...session,
+      sideQuestLog: { kit: { 2: { 0: { done: true, doneAt: 5 }, 1: { openedAt: 6 } } } },
+    }
+    const open = studentActivities({ student: onQuest, session: withLog, lesson })
+    expect(open.map((a) => a.text)).toEqual(['on side-quest 2/3 · ✓1'])
+
+    const closed = studentActivities({
+      student: { ...onQuest, sideQuestOpen: null },
+      session: withLog,
+      lesson,
+    })
+    expect(closed.map((a) => a.text)).toEqual(['1/3 side-quests done'])
+
+    // A task without side-quests, or no lesson to read, shows nothing extra.
+    expect(
+      studentActivities({ student: { ...onQuest, sideQuestOpen: null }, session: withLog })
+    ).toEqual([])
+  })
+
   it('says when a student is waiting for a classmate', () => {
     const waiting = studentActivities({
       student: students.sam,

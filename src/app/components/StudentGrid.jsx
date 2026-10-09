@@ -81,7 +81,7 @@ export default function StudentGrid({
   const [selectedIds, setSelectedIds] = useState(() => new Set())
   // What each student is doing now (src/app/studentActivity.js): the cards' "Now:" lines and
   // the class strip above the grid, whose groups the teacher can click to outline those cards.
-  const activities = classActivities({ session, peerHelp, topics })
+  const activities = classActivities({ session, peerHelp, topics, lesson })
   const activitySummary = summariseClassActivities({ session, activities })
   // Hints two or more students are being shown on this task (src/app/studentHints.js). Not
   // during a session sandbox, whose runs aren't scored against the task.

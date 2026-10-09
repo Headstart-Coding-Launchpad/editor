@@ -74,6 +74,9 @@ import PeerHelperWorkspace from '../components/peerHelp/PeerHelperWorkspace'
 import PeerHelpInbox from '../components/peerHelp/PeerHelpInbox'
 import { applyPeerEdit, visiblePeerHelpOffers } from '../../shared/peerHelp'
 import { supportsPeerHelp } from '../peerHelpAnchors'
+import { useSideQuests } from '../hooks/useSideQuests'
+import SideQuestPrompt from '../components/sideQuests/SideQuestPrompt'
+import SideQuestWorkspace from '../components/sideQuests/SideQuestWorkspace'
 import { createLaunchpadCodeFile, downloadLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
 import {
   getSavedNonPythonTaskCount,
@@ -151,6 +154,10 @@ export default function StudentView({
     flagSandboxRunError,
     addSandboxTimeSignal,
     writeStudentPersonalSandbox,
+    writeSideQuestOpen,
+    recordSideQuestOpened,
+    recordSideQuestRun,
+    setSideQuestDone,
     writeStudentPresence,
     setTaskId,
     setTeacherLive,
@@ -578,6 +585,26 @@ export default function StudentView({
   useEffect(() => {
     if (peerHelp.helpingRequestId) setPeerHelperOpen(true)
   }, [peerHelp.helpingRequestId])
+
+  // Side-quests (src/shared/sideQuests.js): unchecked extras on the current task once the
+  // student has passed it, while the class is still on it (or solo). They run in their own
+  // throwaway workspace and never touch the task's code.
+  const sideQuests = useSideQuests({
+    task: lesson ? findTaskById(lesson.tasks, currentTaskId) : null,
+    moduleType: activeLesson?.type ?? null,
+    identity,
+    session,
+    phase,
+    checkPassed: cs.checkPassed,
+    isViewingPrev: viewingTaskId != null && viewingTaskId !== currentTaskId,
+    inPersonalSandbox: cs.inPersonalSandbox,
+    teacherPresentation,
+    previewMode,
+    writeSideQuestOpen,
+    recordSideQuestOpened,
+    recordSideQuestRun,
+    setSideQuestDone,
+  })
   const [openTopicId, setOpenTopicId] = useState(null)
   const [pendingTopicId, setPendingTopicId] = useState(null)
   // Presenter-only layout toggle: which panes the presentation popup shows ('both' | 'explainer' | 'code')
@@ -1134,6 +1161,23 @@ export default function StudentView({
   // Hosted activities (taskType 'activity' and quizzes) are not code tasks: no Run, personal
   // sandbox, share or carry. ActivityHost renders them (see LessonTaskContent).
   const isActivityTask = isHostedActivityTask(task)
+
+  // ─── Side-quests ──────────────────────────────────────────────────────────
+  // Only on a code task's own screen: not over a teacher broadcast, a classmate's work, peer
+  // help, or the solo explainer / completion slides.
+  const sideQuestsVisible =
+    sideQuests.available &&
+    !isQuizTask &&
+    !isInformationTask &&
+    !isActivityTask &&
+    !isCodeArrangeTask &&
+    !isForcedTeacherLive &&
+    !viewingExplainerSlide &&
+    !viewingCompletionScreen
+  const openSideQuest =
+    sideQuestsVisible && sideQuests.openIndex != null
+      ? (sideQuests.quests.find((quest) => quest.index === sideQuests.openIndex) ?? null)
+      : null
 
   // ─── Peer help ────────────────────────────────────────────────────────────
   const peerHelpAvailable =
@@ -1836,6 +1880,17 @@ export default function StudentView({
           onClose={() => peerHelp.endOwnRequest().catch(() => {})}
         />
       )}
+      {sideQuestsVisible &&
+        !openSideQuest &&
+        !showPeerHelperWorkspace &&
+        !activeShare &&
+        !(isStudentPanelBroadcast && livePanelCopy) && (
+          <SideQuestPrompt
+            quests={sideQuests.quests}
+            isDone={sideQuests.isDone}
+            onOpen={sideQuests.openQuest}
+          />
+        )}
       {isStudentPanelBroadcast && !activeShare && (
         <StudentLivePanelBar
           sourceStudentName={session?.teacherLive?.sourceStudentName}
@@ -1907,6 +1962,24 @@ export default function StudentView({
             subtitle="Try it! Your own code is safe."
             copyBlocked
             onClose={() => setLivePanelCopy(null)}
+          />
+        ) : openSideQuest ? (
+          // A side-quest in its own throwaway workspace: the task's code stays as it was.
+          <SideQuestWorkspace
+            key={`${sideQuests.taskId}#${openSideQuest.index}`}
+            lesson={displayedLesson}
+            lessonId={lessonId}
+            task={task}
+            quest={openSideQuest}
+            questCount={sideQuests.quests.length}
+            moduleType={displayedLesson.type}
+            anonymousId={identity?.anonymousId ?? null}
+            persist={sideQuests.persist}
+            done={sideQuests.isDone(openSideQuest.index)}
+            isMobile={isMobile}
+            onToggleDone={() => sideQuests.toggleDone(openSideQuest.index)}
+            onClose={sideQuests.closeQuest}
+            onRun={({ error }) => sideQuests.reportRun(openSideQuest.index, { error })}
           />
         ) : (
           <PollTaskClassContext.Provider value={pollTaskClass}>

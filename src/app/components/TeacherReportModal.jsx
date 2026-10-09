@@ -200,6 +200,12 @@ function StudentTaskRow({ task }) {
             📋 Pasted ×{task.pastes.count} ({task.pastes.chars} chars)
           </span>
         )}
+        {task.sideQuests?.length > 0 && (
+          <span style={s.attemptsCount}>
+            🗺️ {task.sideQuests.length} side-quest{task.sideQuests.length === 1 ? '' : 's'} opened ·{' '}
+            {task.sideQuests.filter((quest) => quest.done).length} done
+          </span>
+        )}
         {studentTaskSignalLabels(task).length > 0 && (
           <span style={s.attemptsCount}>{studentTaskSignalLabels(task).join(' · ')}</span>
         )}

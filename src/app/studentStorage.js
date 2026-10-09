@@ -1,3 +1,5 @@
+import { sideQuestStorageTaskId } from '../shared/sideQuests.js'
+
 export const studentTaskStorageKey = (lessonId, taskId, anonymousId) =>
   `headstart_${lessonId}_${taskId}_${anonymousId}`
 
@@ -144,6 +146,33 @@ export function saveDesktopState(lessonId, taskId, anonymousId, desktop) {
     studentTaskStorageKey(lessonId, taskId, anonymousId),
     JSON.stringify({ desktop })
   )
+}
+
+// ── Side-quests ───────────────────────────────────────────────────────────────
+// A side-quest's own work (src/shared/sideQuests.js) under a `{taskId}_sidequest_{n}` pseudo
+// task id, so the key format stays the task one and never collides with the task's saved work:
+// `{ code }` (python, turtle) or `{ files: [{ name, content }], activeFile }` (html).
+
+export const sideQuestStorageKey = (lessonId, taskId, index, anonymousId) =>
+  studentTaskStorageKey(lessonId, sideQuestStorageTaskId(taskId, index), anonymousId)
+
+export function loadSideQuestWork(lessonId, taskId, index, anonymousId) {
+  try {
+    return safeParse(sideQuestStorageKey(lessonId, taskId, index, anonymousId))
+  } catch {
+    return null
+  }
+}
+
+export function saveSideQuestWork(lessonId, taskId, index, anonymousId, record) {
+  try {
+    localStorage.setItem(
+      sideQuestStorageKey(lessonId, taskId, index, anonymousId),
+      JSON.stringify(record)
+    )
+  } catch {
+    // Storage full or blocked: the side-quest still works for this visit.
+  }
 }
 
 // ── Layout tab preference ──────────────────────────────────────────────────────
