@@ -559,10 +559,12 @@ export function useStudentCodeState({
 
   // Teacher-live-code support reference: Presentation View's independent
   // teacherLiveReference broadcast (separate from teacherLive, which drives
-  // the all-or-nothing "Go Live" force takeover) shown as a dismissible
-  // reference. Two ways in (see docs/agents/classroom-behaviours.md):
+  // the all-or-nothing "Go Live" force takeover) shown as a read-only
+  // reference. Only the tutor turns it off; the student has no close control.
+  // Two ways in (see docs/agents/classroom-behaviours.md):
   // - pinned ("Keep showing live code"): students.{id}.teacherLiveReferenceVisible or
   //   session.teacherLiveReferenceVisibleToAll — shows on every task until unpinned;
+  //   a per-student `false` hides the class pin for that student (getTeacherLivePin);
   // - one-off ("Reveal live code"): a supportRevealLog entry for this task
   //   (TEACHER_LIVE_REVEAL_KEY), so it drops off on the next task like a stage reveal.
   // Deriving this reactively — rather than via an explicit "clear" write — is

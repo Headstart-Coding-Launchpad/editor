@@ -747,6 +747,11 @@ describe('teacher live-code pins', () => {
     expect(getTeacherLivePin(true, null)).toBe(true)
   })
 
+  it('getTeacherLivePin: a per-student false hides the class pin for that student', () => {
+    expect(getTeacherLivePin(false, 2000)).toBe(null)
+    expect(getTeacherLivePin(false, null)).toBe(null)
+  })
+
   it('isTeacherLivePinLogged finds the pin on any task, ignoring one-off reveals', () => {
     const log = {
       1: { teacherLive: { source: 'teacher' } },
