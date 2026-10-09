@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useLatestRef } from './useLatestRef'
 import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
+import { getModuleDefinition } from '../../modules/definitions.js'
 import {
-  TYPING_LESSON_TYPES,
   applyTypingEvent,
   applyTypingRun,
   createTypingState,
@@ -50,7 +50,7 @@ export function useStudentTypingStats({
     !!session &&
     phase === 'lesson' &&
     currentTaskId != null &&
-    TYPING_LESSON_TYPES.includes(lessonType)
+    getModuleDefinition(lessonType)?.capabilities?.typingStats === true
 
   const stateRef = useLatestRef({ enabled, anonymousId, currentTaskId })
   const sessionRef = useLatestRef(session)

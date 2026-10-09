@@ -61,7 +61,8 @@ mirror), `downloadCode` (`.launchpad` download), `fixedExplainer` (Scratch's fix
 Optional booleans (default false): `teacherFillHeight` (TeacherView's centre column fills and
 clips), `teacherSandboxRow` (the teacher sandbox workspace fills a plain flex row),
 `teacherUnifiedStageTabs` (teacher code tabs show stage roles with no Starter/Complete tabs),
-`explainerBlockMenu` (explainer editor's Scratch block-reference menu).
+`explainerBlockMenu` (explainer editor's Scratch block-reference menu), `typingStats` (keystrokes in
+the shared code editor feed the session report's `typing` measures).
 
 | Field | Values |
 |---|---|

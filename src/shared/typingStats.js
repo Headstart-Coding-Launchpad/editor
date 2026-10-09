@@ -14,9 +14,6 @@ export const TYPING_BURST_GAP_MS = 5000
 /** Under this much active typing time, `charsPerMin` is null (too little to be a rate). */
 export const TYPING_RATE_MIN_ACTIVE_MS = 5000
 
-/** The lesson (module) types whose code tasks record typing. Scratch and the rest never do. */
-export const TYPING_LESSON_TYPES = Object.freeze(['python', 'turtle', 'html'])
-
 /** Above this many edit-distance cells (copyCode length × code length), copyDistance is skipped. */
 const MAX_EDIT_DISTANCE_CELLS = 4_000_000
 
