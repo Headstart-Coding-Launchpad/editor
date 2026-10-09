@@ -9,13 +9,18 @@ import {
   assembleCodeArrangement,
   buildSolutionSlotState,
   getCodeArrangeEntryFile,
+  getTaskPool,
   isArrangementComplete,
   pruneSlotState,
 } from '../../shared/codeArrange'
 import { INDENT_MODE, MAX_INDENT_DEPTH, isIndentArrangeTask } from '../../shared/codeArrangeIndent'
 import { taskShowsBlocks } from '../../shared/blockGuides'
 import CodeArrangeTask from './CodeArrangeTask'
-import { switchArrangeMode } from './codeArrangeBuilder.js'
+import {
+  getSlotTileFeedback,
+  setSlotTileFeedback,
+  switchArrangeMode,
+} from './codeArrangeBuilder.js'
 import { Field } from '../../builder/components/task-editor/TaskEditorFields'
 import TaskPreviewPanel from '../../builder/components/task-editor/TaskPreviewPanel'
 
@@ -150,6 +155,9 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
   function updatePartCode(index, partIndex, code) {
     updatePart(index, partIndex, (part) => ({ ...part, code }))
   }
+  function updatePartTileFeedback(index, partIndex, tileId, feedback) {
+    updatePart(index, partIndex, (part) => setSlotTileFeedback(part, tileId, feedback))
+  }
 
   function applyDistractors(nextDistractors) {
     applyTask({ ...task, distractors: nextDistractors })
@@ -159,6 +167,17 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
   }
   function updateDistractor(index, code) {
     applyDistractors(distractors.map((d, i) => (i === index ? { ...d, code } : d)))
+  }
+  // Tile feedback: shown the moment this distractor is dropped into any blank. An empty hint is
+  // removed rather than saved as "".
+  function updateDistractorHint(index, hint) {
+    applyDistractors(
+      distractors.map((d, i) => {
+        if (i !== index) return d
+        const { hint: _hint, ...rest } = d
+        return hint ? { ...rest, hint } : rest
+      })
+    )
   }
   function removeDistractor(index) {
     applyDistractors(distractors.filter((_, i) => i !== index))
@@ -304,6 +323,7 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
   }
 
   const CheckEditor = lessonMod?.CheckEditor ?? null
+  const pool = indentMode ? [] : getTaskPool(task)
   const previewAssembled = assembleCodeArrangement(task, previewSlotState)
   const previewComplete = isArrangementComplete(task, previewSlotState)
   const feedbackPreview =
@@ -397,6 +417,10 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
                   onAddPart={(type) => addPart(index, type)}
                   onUpdatePartText={(partIndex, text) => updatePartText(index, partIndex, text)}
                   onUpdatePartCode={(partIndex, code) => updatePartCode(index, partIndex, code)}
+                  onUpdatePartTileFeedback={(partIndex, tileId, feedback) =>
+                    updatePartTileFeedback(index, partIndex, tileId, feedback)
+                  }
+                  pool={pool}
                   onMovePart={(partIndex, direction) => movePart(index, partIndex, direction)}
                   onRemovePart={(partIndex) => removePart(index, partIndex)}
                 />
@@ -414,7 +438,7 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
 
           <Field
             label="Distractor tiles"
-            hint="Wrong tiles added to the one shared pool — students can drag any of these into any blank"
+            hint="Wrong tiles added to the one shared pool — students can drag any of these into any blank. A hint shows in red under the line the moment that tile is dropped into a blank."
           >
             <div className="te-quiz-answer-stack">
               {distractors.map((d, index) => (
@@ -426,6 +450,14 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
                     onChange={(e) => updateDistractor(index, e.target.value)}
                     placeholder="A plausible but wrong value"
                     spellCheck={false}
+                  />
+                  <input
+                    className="te-input"
+                    style={caStyles.hintInput}
+                    value={d.hint ?? ''}
+                    onChange={(e) => updateDistractorHint(index, e.target.value)}
+                    placeholder="Hint when dropped (optional)"
+                    aria-label={`Distractor ${index + 1} hint`}
                   />
                   <button
                     type="button"
@@ -794,8 +826,10 @@ function LineEditor({
   onAddPart,
   onUpdatePartText,
   onUpdatePartCode,
+  onUpdatePartTileFeedback,
   onMovePart,
   onRemovePart,
+  pool = [],
 }) {
   return (
     <div style={caStyles.lineCard}>
@@ -848,6 +882,10 @@ function LineEditor({
                 index={partIndex}
                 total={line.parts.length}
                 onUpdateCode={(code) => onUpdatePartCode(partIndex, code)}
+                onUpdateTileFeedback={(tileId, feedback) =>
+                  onUpdatePartTileFeedback?.(partIndex, tileId, feedback)
+                }
+                otherTiles={pool.filter((tile) => tile.id !== part.id)}
                 onMove={(direction) => onMovePart(partIndex, direction)}
                 onRemove={() => onRemovePart(partIndex)}
               />
@@ -942,7 +980,16 @@ function TextPartChip({ part, index, total, onUpdateText, onMove, onRemove }) {
 // A blank-slot segment in the parts composer: just its own correct value —
 // distractors are authored once, task-wide, in the shared "Distractor
 // tiles" field below the line list.
-function SlotPartChip({ part, index, total, onUpdateCode, onMove, onRemove }) {
+function SlotPartChip({
+  part,
+  index,
+  total,
+  onUpdateCode,
+  onUpdateTileFeedback,
+  otherTiles = [],
+  onMove,
+  onRemove,
+}) {
   return (
     <div style={caStyles.slotChip}>
       <div style={caStyles.chipHeader}>
@@ -979,7 +1026,63 @@ function SlotPartChip({ part, index, total, onUpdateCode, onMove, onRemove }) {
         placeholder="Correct value for this blank"
         spellCheck={false}
       />
+      {otherTiles.length > 0 && (
+        <SlotTileFeedbackEditor
+          part={part}
+          otherTiles={otherTiles}
+          onChange={onUpdateTileFeedback}
+        />
+      )}
     </div>
+  )
+}
+
+// Optional tile feedback for one blank: for each other tile in the pool, whether it is known to
+// be wrong here (flagged with a hint the moment it is dropped in), also fine here (never
+// flagged), or left to the run (the default). Distractors are flagged anyway once a task uses
+// tile feedback; marking one wrong here gives it a hint specific to this blank.
+function SlotTileFeedbackEditor({ part, otherTiles, onChange }) {
+  const setCount =
+    (Array.isArray(part.wrongTiles) ? part.wrongTiles.length : 0) +
+    (Array.isArray(part.alsoAccepts) ? part.alsoAccepts.length : 0)
+  return (
+    <details style={caStyles.feedbackDetails}>
+      <summary style={caStyles.feedbackSummary}>
+        Tile feedback{setCount > 0 ? ` (${setCount})` : ''}
+      </summary>
+      <div style={caStyles.feedbackList}>
+        {otherTiles.map((tile) => {
+          const feedback = getSlotTileFeedback(part, tile.id)
+          const label = tile.code?.trim() ? tile.code : '(empty)'
+          return (
+            <div key={tile.id} style={caStyles.feedbackRow}>
+              <code style={caStyles.feedbackCode}>{label}</code>
+              <select
+                className="te-input"
+                style={caStyles.feedbackSelect}
+                value={feedback.kind}
+                aria-label={`In this blank: ${label}`}
+                onChange={(e) => onChange?.(tile.id, { kind: e.target.value, hint: feedback.hint })}
+              >
+                <option value="none">Run decides</option>
+                <option value="wrong">Wrong here</option>
+                <option value="accept">Also fine here</option>
+              </select>
+              {feedback.kind === 'wrong' && (
+                <input
+                  className="te-input"
+                  style={caStyles.hintInput}
+                  value={feedback.hint}
+                  onChange={(e) => onChange?.(tile.id, { kind: 'wrong', hint: e.target.value })}
+                  placeholder="Hint shown when dropped here"
+                  aria-label={`Hint when ${label} is dropped here`}
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </details>
   )
 }
 
@@ -1106,6 +1209,46 @@ const caStyles = {
     borderRadius: 6,
     border: '2px solid var(--colour-primary)',
     background: '#f5f3ff',
+  },
+  hintInput: {
+    flex: 1,
+    minWidth: 160,
+    fontSize: '0.85rem',
+  },
+  feedbackDetails: {
+    marginTop: 6,
+  },
+  feedbackSummary: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    color: '#6b7280',
+    cursor: 'pointer',
+  },
+  feedbackList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    marginTop: 6,
+  },
+  feedbackRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  feedbackCode: {
+    ...codeFont,
+    fontSize: '0.8rem',
+    whiteSpace: 'pre',
+    padding: '1px 6px',
+    borderRadius: 4,
+    background: '#fff',
+    border: '1px solid #e5e7eb',
+  },
+  feedbackSelect: {
+    width: 'auto',
+    fontSize: '0.8rem',
   },
   linePreview: {
     marginTop: 10,

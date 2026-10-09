@@ -14,6 +14,7 @@ import {
   FILL_BLANK_DRAG_TASK,
   FILL_BLANK_TYPE_TASK,
   MATCH_TASK,
+  PYTHON_CODE_ARRANGE_TASK,
   legacyActivityLesson,
 } from '../../test/fixtures/legacyActivityTasks'
 
@@ -1540,5 +1541,97 @@ describe('characterisation: buildSessionReport for legacy quiz + code_arrange ta
         },
       ]
     `)
+  })
+})
+
+// Code_arrange tile feedback: each Run records its placements beside the assembled program, and
+// each known-wrong drop is a tile miss on the student's node (not an attempt).
+describe('buildSessionReport: code_arrange placements and tile misses', () => {
+  const arrangeLesson = legacyActivityLesson([PYTHON_CODE_ARRANGE_TASK])
+  const session = {
+    startedAt: 1000,
+    endedAt: 9000,
+    taskStartTimes: { 8: 1000 },
+    students: {
+      alice: {
+        displayName: 'Alice',
+        tileMissLog: {
+          8: {
+            k2: { slotId: 'S1', tileId: 'S1d1', at: 1300 },
+            k1: { slotId: 'L2', tileId: 'D1', at: 1200 },
+          },
+        },
+      },
+      bob: {
+        displayName: 'Bob',
+        tileMissLog: { 8: { k1: { slotId: 'S1', tileId: 'S1d1', at: 1500 } } },
+      },
+    },
+    attemptLog: {
+      alice: {
+        8: {
+          a1: {
+            attemptNumber: 1,
+            submission: 'for i in range(10):\n    print(i * 2)',
+            passed: false,
+            suggestion: null,
+            retries: 0,
+            placements: JSON.stringify({ S1: 'S1d1', L2: 'L2' }),
+            loggedAt: 1400,
+          },
+        },
+      },
+      bob: {
+        8: {
+          b1: {
+            attemptNumber: 1,
+            submission: 'for i in range(5):\n    print(i * 2)',
+            passed: true,
+            suggestion: null,
+            retries: 0,
+            loggedAt: 1600,
+            passedAt: 1600,
+          },
+        },
+      },
+    },
+  }
+  const report = buildSessionReport({ session, lesson: arrangeLesson })
+  const studentTask = (label) =>
+    report.students.find((s) => s.studentLabel === label).tasks.find((t) => t.taskId === 8)
+
+  it('records each attempt’s placements beside the submission', () => {
+    expect(studentTask('Student 1').distinctAttempts[0]).toMatchObject({
+      submission: 'for i in range(10):\n    print(i * 2)',
+      placements: { S1: 'S1d1', L2: 'L2' },
+    })
+    // An attempt logged without placements (older sessions) has no placements key.
+    expect(studentTask('Student 2').distinctAttempts[0]).not.toHaveProperty('placements')
+  })
+
+  it('lists tile misses oldest first without counting them as attempts', () => {
+    const alice = studentTask('Student 1')
+    expect(alice.attempts).toBe(1)
+    expect(alice.tileMisses).toEqual([
+      { slotId: 'L2', tileId: 'D1', at: 1200 },
+      { slotId: 'S1', tileId: 'S1d1', at: 1300 },
+    ])
+  })
+
+  it('summarises the class’s tile misses per blank and tile, most common first', () => {
+    const summary = report.taskSummary.find((t) => t.taskId === 8)
+    expect(summary.tileMisses).toEqual([
+      { slotId: 'S1', tileId: 'S1d1', count: 2, studentCount: 2 },
+      { slotId: 'L2', tileId: 'D1', count: 1, studentCount: 1 },
+    ])
+  })
+
+  it('leaves tileMisses out when nobody dropped a known-wrong tile', () => {
+    const quiet = buildSessionReport({
+      session: { ...session, students: { alice: { displayName: 'Alice' } } },
+      lesson: arrangeLesson,
+    })
+    expect(quiet.taskSummary[0]).not.toHaveProperty('tileMisses')
+    expect(quiet.students[0].tasks[0]).not.toHaveProperty('tileMisses')
   })
 })

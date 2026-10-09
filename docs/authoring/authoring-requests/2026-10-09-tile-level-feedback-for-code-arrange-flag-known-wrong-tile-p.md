@@ -1,6 +1,6 @@
 # Tile-level feedback for code_arrange: flag known-wrong tile placements per blank before the run
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** activity mode
 - **Requested by:** Ryan (approved by Ryan), 2026-10-09
 - **Lessons blocked:** none yet
@@ -64,4 +64,11 @@ From the 2026-10-09 misconception review (Plans/P5 Making concepts stick.md, sec
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped on branch `feature/code-arrange-tile-feedback` (activity `code_arrange`). Decisions made
+with Ryan that differ from the request above: tile hints show **on drop** (the moment a tile lands
+in a blank, like fill-in-the-blank), not on Run, and a flagged drop is logged as a tile miss
+(`tileMisses`), **not** counted as an attempt. Run stays available and completion stays run-based.
+Tile feedback is opt-in per task (a task with none of the three fields flags nothing), so existing
+lessons are unchanged. Docs: [lesson-schema.md](../lesson-schema.md) "Tile feedback",
+[session-reports.md](../session-reports.md) (`tileMisses`, `distinctAttempts[].placements`),
+[CHANGELOG.md](../CHANGELOG.md) 2026-10-09.

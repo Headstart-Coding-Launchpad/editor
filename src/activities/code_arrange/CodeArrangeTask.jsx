@@ -14,6 +14,7 @@ import {
   getLines,
   getSlotIds,
   getTaskPool,
+  getTileFlags,
   isArrangementComplete,
 } from '../../shared/codeArrange'
 import { isIndentArrangeTask } from '../../shared/codeArrangeIndent'
@@ -39,6 +40,12 @@ const DRAG_CURSOR_STALE_MS = 2000
 // CodeArrangeEditor for the Builder preview), which both hand the assembled
 // code to the *same* run function and check evaluator a normal python/html
 // task uses.
+//
+// Tile feedback: a tile sitting in a blank where the author marked it known-wrong (a distractor
+// anywhere, or one of that blank's `wrongTiles`) turns the blank red with its hint underneath the
+// line, the moment it lands (getTileFlags, src/shared/codeArrange.js). Derived from the
+// arrangement, so it shows wherever the board does (Builder preview, a teacher's mirror). A right
+// tile is never marked: Run stays the only judge of the program.
 //
 // An indent-mode task (`arrangeMode: indent`) swaps the program and tile pool
 // for CodeArrangeIndentBoard (fixed lines, the student sets each depth); the
@@ -82,6 +89,7 @@ export default function CodeArrangeTask({
   const placedIds = new Set(Object.values(state))
   const blocked = !!disabled || running
   const complete = isArrangementComplete(task, state)
+  const tileFlags = indentMode ? {} : getTileFlags(task, state)
   const assembledRef = useRef(null)
   const stateKey = JSON.stringify(state)
   const boardRef = useRef(null)
@@ -216,8 +224,11 @@ export default function CodeArrangeTask({
                         style={{
                           ...ca.slot,
                           ...(placedFragment ? sm.slotFilled : sm.slotEmpty),
+                          ...(tileFlags[slotPart.id] ? sm.slotWrong : {}),
                           ...(isDragHighlight || isTapHighlight ? sm.slotHighlight : {}),
                         }}
+                        data-tile-flagged={tileFlags[slotPart.id] ? 'true' : undefined}
+                        aria-invalid={tileFlags[slotPart.id] ? true : undefined}
                         onDragOver={(event) => dnd.handleTargetDragOver(event, slotPart.id)}
                         onDragLeave={dnd.clearDragOver}
                         onDrop={(event) =>
@@ -238,6 +249,7 @@ export default function CodeArrangeTask({
                         </span>
                       </div>
                     </div>
+                    <TileFlagHints parts={parts} pool={pool} tileFlags={tileFlags} />
                   </div>
                 )
               }
@@ -259,6 +271,7 @@ export default function CodeArrangeTask({
                             activeId={activeId}
                             publishState={publishState}
                             renderTargetContent={renderTargetContent}
+                            flag={tileFlags[part.id] ?? null}
                           />
                         ) : (
                           <span key={partIndex} style={ca.textPart}>
@@ -268,6 +281,7 @@ export default function CodeArrangeTask({
                       )}
                     </div>
                   </div>
+                  <TileFlagHints parts={parts} pool={pool} tileFlags={tileFlags} />
                 </div>
               )
             })}
@@ -421,6 +435,7 @@ function InlineSlot({
   activeId,
   publishState,
   renderTargetContent,
+  flag,
 }) {
   const placedFragmentId = state[part.id]
   const placedFragment = pool.find((fragment) => fragment.id === placedFragmentId)
@@ -433,8 +448,11 @@ function InlineSlot({
       style={{
         ...ca.inlineSlot,
         ...(placedFragment ? sm.slotFilled : sm.slotEmpty),
+        ...(flag ? sm.slotWrong : {}),
         ...(isDragHighlight || isTapHighlight ? sm.slotHighlight : {}),
       }}
+      data-tile-flagged={flag ? 'true' : undefined}
+      aria-invalid={flag ? true : undefined}
       onDragOver={(event) => dnd.handleTargetDragOver(event, part.id)}
       onDragLeave={dnd.clearDragOver}
       onDrop={(event) => dnd.handleTargetDrop(event, part.id, state, publishState)}
@@ -446,6 +464,34 @@ function InlineSlot({
     >
       {renderTargetContent(placedFragment, canReceive, '___')}
     </span>
+  )
+}
+
+// The hints of a line's flagged blanks, under the line (always visible, no hover, so they work
+// on touch). A line with more than one blank names the tile each hint is about.
+function TileFlagHints({ parts, pool, tileFlags }) {
+  const slots = parts.filter((part) => part?.type === 'slot' && tileFlags[part.id])
+  if (slots.length === 0) return null
+  const named = parts.filter((part) => part?.type === 'slot').length > 1
+  return (
+    <div style={ca.flagList} aria-live="polite">
+      {slots.map((part) => {
+        const flag = tileFlags[part.id]
+        const code = pool.find((fragment) => fragment.id === flag.tileId)?.code ?? ''
+        return (
+          <div key={part.id} style={ca.flagHint} data-testid="code-arrange-tile-hint">
+            <span aria-hidden="true" style={ca.flagIcon}>
+              ✗
+            </span>
+            <span>
+              {named && code ? <code style={ca.flagCode}>{code}</code> : null}
+              {named && code ? ' ' : null}
+              {flag.hint}
+            </span>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -586,6 +632,38 @@ const ca = {
     boxShadow: '0 6px 16px rgba(124, 58, 237, 0.25)',
     pointerEvents: 'none',
     zIndex: 5,
+  },
+  // Tile-feedback hints: the fill-in-the-blank red (quizStyles slotWrong / fillBlankWrong).
+  flagList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    marginLeft: 30,
+  },
+  flagHint: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 6,
+    padding: '4px 10px',
+    borderRadius: 6,
+    border: '1px solid #fecaca',
+    background: '#fee2e2',
+    color: '#b91c1c',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.84rem',
+    lineHeight: 1.4,
+  },
+  flagIcon: {
+    fontWeight: 700,
+    flexShrink: 0,
+  },
+  flagCode: {
+    ...codeFont,
+    fontSize: '0.82rem',
+    whiteSpace: 'pre',
+    padding: '0 4px',
+    borderRadius: 3,
+    background: 'rgba(255, 255, 255, 0.7)',
   },
   runRow: {
     display: 'flex',

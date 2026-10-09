@@ -9,7 +9,13 @@
 //   live           students/{id}/currentCodeArrangeSlots on every placement (watched or not),
 //                  teacherLive.codeArrangeSlots / codeArrangeCursor while broadcasting
 //   teacher edit   teacherAnswerEdit.codeArrangeSlots ("Edit answers" in StudentModal)
-//   reports        `{ taskType: 'code' }`, the submission is the assembled code / files
+//   reports        `{ taskType: 'code' }`, the submission is the assembled code / files; each
+//                  attempt also records its `placements` (blank id -> tile id)
+//
+// Tile feedback (src/shared/codeArrange.js getTileFlag): a tile dropped into a blank where it is
+// known to be wrong (a distractor anywhere, or one of the blank's `wrongTiles`) turns that blank
+// red with its hint at once; each such drop is logged as a tile miss
+// (students/{id}/tileMissLog/{taskId}), never as an attempt. Completion stays run-based.
 //
 // Indent mode (`arrangeMode: indent`, src/shared/codeArrangeIndent.js): the lines are fixed and
 // the student sets each one's depth. Its state is a { lineId: depth } map carried by the same
@@ -85,6 +91,32 @@ function indentProgress(task, state) {
   if (total === 0) return null
   const filled = countMovedLines(task, isSlotMap(state) ? pruneSlotState(task, state) : {})
   return { kind: 'code_arrange', filled, total, correct: null, unit: 'lines', verb: 'moved' }
+}
+
+// The session report's `tileMisses[]` for the task: `{ slotId, tileId, count, studentCount }` per
+// blank and tile, most dropped first. Omitted when nobody dropped a known-wrong tile.
+function summarizeTileMisses(perStudent) {
+  const groups = new Map()
+  for (const studentTask of perStudent ?? []) {
+    for (const miss of studentTask?.tileMisses ?? []) {
+      const key = JSON.stringify([miss.slotId, miss.tileId])
+      const group = groups.get(key) ?? {
+        slotId: miss.slotId,
+        tileId: miss.tileId,
+        count: 0,
+        students: new Set(),
+      }
+      group.count++
+      group.students.add(studentTask)
+      groups.set(key, group)
+    }
+  }
+  if (groups.size === 0) return {}
+  return {
+    tileMisses: [...groups.values()]
+      .sort((a, b) => b.count - a.count)
+      .map(({ students, ...group }) => ({ ...group, studentCount: students.size })),
+  }
 }
 
 // The host module a code_arrange surface renders for: its own type when it is a host module,
@@ -173,6 +205,23 @@ export default defineActivity({
                 authored: true,
                 description: 'Slot parts: the answer tile.',
               },
+              {
+                name: 'wrongTiles',
+                type: 'array',
+                authored: true,
+                description:
+                  "Slot parts, optional: tiles known to be wrong in this blank (another blank's id or a distractor id), flagged the moment one is dropped here with its hint.",
+                itemFields: [
+                  { name: 'tileId', type: 'string', required: true },
+                  { name: 'hint', type: 'string', authored: true },
+                ],
+              },
+              {
+                name: 'alsoAccepts',
+                type: 'array',
+                description:
+                  'Slot parts, optional: tile ids that are also fine in this blank; never flagged here.',
+              },
             ],
           },
         ],
@@ -185,6 +234,13 @@ export default defineActivity({
         itemFields: [
           { name: 'id', type: 'string', required: true },
           { name: 'code', type: 'string', required: true, authored: true },
+          {
+            name: 'hint',
+            type: 'string',
+            authored: true,
+            description:
+              'Optional: shown the moment this tile is dropped into any blank (default: "This piece doesn\'t belong in this program.").',
+          },
         ],
       },
       {
@@ -241,8 +297,9 @@ export default defineActivity({
 
   initialState: () => ({}),
   solutionState: (task) => buildSolutionSlotState(task),
-  // Each slot part's `code` is its answer.
-  sealedFields: ['lines'],
+  // Each slot part's `code` is its answer (and its wrongTiles / alsoAccepts give placements
+  // away); a distractor's hint marks it as a distractor.
+  sealedFields: ['lines', 'distractors'],
   serialize: (state) => JSON.stringify(state ?? {}),
   deserialize: (raw, task) => deserializeSlots(raw, task),
   storage: Object.freeze({ persist: true, filename: CODE_ARRANGE_SLOTS_FILENAME }),
@@ -282,7 +339,8 @@ export default defineActivity({
   report: Object.freeze({
     typeFields: () => ({ taskType: 'code' }),
     normalizeSubmission: (task, submission) => normalizeCodeSubmission(submission),
-    summaryFields: () => ({}),
+    // Known-wrong tile drops across the class (each student's `tileMisses`), most common first.
+    summaryFields: (task, perStudent) => summarizeTileMisses(perStudent),
   }),
 
   // Prints nothing of its own (the lines and tiles are not printed today).

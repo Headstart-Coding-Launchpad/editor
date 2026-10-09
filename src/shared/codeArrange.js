@@ -28,6 +28,9 @@ import {
 // pool, so buildSolutionSlotState() needs no separate bookkeeping to know
 // which pool tile is the intended answer for a slot.
 //
+// Tile feedback (bottom of this file): optional authored hints flag a tile dropped into a blank
+// where it is known to be wrong. It never decides completion.
+//
 // These helpers only ever produce a plain code string. The Python/HTML run
 // pipeline and the shared check evaluator (src/modules/checks.js) consume
 // that string exactly as they would any other task's code — neither one
@@ -247,4 +250,107 @@ export function deriveSlotStateFromCode(task, code) {
     Object.assign(state, lineState)
   }
   return state
+}
+
+// ─── Tile feedback (known-wrong placements) ─────────────────────────────────
+//
+// Optional authored fields flag a tile the moment it is dropped into a blank where it is known to
+// be wrong, like fill-in-the-blank's instant red blank:
+//   distractors[].hint   shown whenever that distractor sits in any blank (a default when none is
+//                        authored)
+//   slot.wrongTiles      [{ tileId, hint }]: tiles (another blank's own tile, or a distractor)
+//                        known to be wrong in this blank, with the hint to show
+//   slot.alsoAccepts     [tileId]: tiles that are fine in this blank, never flagged there
+// A tile id is a blank's own id (that blank's own tile) or a distractor's id. Only known-wrong
+// placements are flagged: a blank's own tile, or any other tile not listed, never is, and nothing
+// is ever marked right, so arrangements that run correctly another way still pass. Completion
+// stays the run against `check`. Indent tasks have no tiles and are never flagged. A task that
+// authors none of these fields flags nothing (usesTileFeedback), as before tile feedback existed.
+
+export const DEFAULT_DISTRACTOR_TILE_HINT = "This piece doesn't belong in this program."
+export const DEFAULT_WRONG_TILE_HINT = "This piece doesn't belong in this blank."
+
+function trimmedText(value) {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+export function getSlotWrongTiles(slot) {
+  return Array.isArray(slot?.wrongTiles)
+    ? slot.wrongTiles.filter(
+        (entry) => entry && typeof entry === 'object' && typeof entry.tileId === 'string'
+      )
+    : []
+}
+
+export function getSlotAlsoAccepts(slot) {
+  return Array.isArray(slot?.alsoAccepts)
+    ? slot.alsoAccepts.filter((id) => typeof id === 'string' && id)
+    : []
+}
+
+// The flag for tile `tileId` sitting in blank `slotId`: `{ hint }`, or null when it isn't a
+// known-wrong placement. A blank's own wrongTiles entry beats the distractor's own hint.
+export function getTileFlag(task, slotId, tileId) {
+  if (isIndentArrangeTask(task) || !slotId || tileId == null || tileId === '') return null
+  if (tileId === slotId) return null
+  const slot = getAllSlots(task).find((part) => part.id === slotId)
+  if (!slot) return null
+  if (getSlotAlsoAccepts(slot).includes(tileId)) return null
+  const distractor = getDistractors(task).find((d) => d?.id === tileId)
+  const wrong = getSlotWrongTiles(slot).find((entry) => entry.tileId === tileId)
+  if (wrong) {
+    const hint =
+      trimmedText(wrong.hint) ||
+      (distractor ? trimmedText(distractor.hint) || DEFAULT_DISTRACTOR_TILE_HINT : '') ||
+      DEFAULT_WRONG_TILE_HINT
+    return { hint }
+  }
+  if (distractor && usesTileFeedback(task)) {
+    return { hint: trimmedText(distractor.hint) || DEFAULT_DISTRACTOR_TILE_HINT }
+  }
+  return null
+}
+
+// Tile feedback is opt-in per task, so a lesson written before it behaves exactly as it did: a
+// task flags anything only once it authors a distractor `hint` or a blank's `wrongTiles` /
+// `alsoAccepts`. From then on every distractor is flagged (with the default hint when it has none).
+export function usesTileFeedback(task) {
+  if (isIndentArrangeTask(task)) return false
+  return (
+    getDistractors(task).some((d) => trimmedText(d?.hint) !== '') ||
+    getAllSlots(task).some(
+      (slot) => getSlotWrongTiles(slot).length > 0 || getSlotAlsoAccepts(slot).length > 0
+    )
+  )
+}
+
+// Every flagged blank in an arrangement: { [slotId]: { tileId, hint } }. Placements that aren't
+// real tiles of the task are ignored (they show as empty blanks).
+export function getTileFlags(task, slotState) {
+  if (isIndentArrangeTask(task)) return {}
+  const placements = pruneSlotState(task, slotState)
+  const flags = {}
+  for (const [slotId, tileId] of Object.entries(placements)) {
+    const flag = getTileFlag(task, slotId, tileId)
+    if (flag) flags[slotId] = { tileId, ...flag }
+  }
+  return flags
+}
+
+// The flagged placements `next` makes that `prev` didn't have (a tile newly dropped into a blank
+// where it is known to be wrong): [{ slotId, tileId }], in blank order. Logged as tile misses.
+export function getNewTileMisses(task, prev, next) {
+  const before = prev && typeof prev === 'object' && !Array.isArray(prev) ? prev : {}
+  const flags = getTileFlags(task, next)
+  return getSlotIds(task)
+    .filter((slotId) => flags[slotId] && before[slotId] !== flags[slotId].tileId)
+    .map((slotId) => ({ slotId, tileId: flags[slotId].tileId }))
+}
+
+// The placements an arrange attempt records (blank id -> tile id), or null for an indent task or
+// an empty board.
+export function getAttemptPlacements(task, slotState) {
+  if (isIndentArrangeTask(task)) return null
+  const placements = pruneSlotState(task, slotState)
+  return Object.keys(placements).length > 0 ? placements : null
 }
