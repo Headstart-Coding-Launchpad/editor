@@ -39,6 +39,28 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-09
 
+### Session reports: class task timeline, typing measures and time-on-task spread
+
+- New top-level `taskTimeline: [{ taskId, startedAt }]`: every time the teacher moved the class
+  onto a task, oldest first, **information tasks included** (consecutive repeats collapsed, a
+  return to an earlier task adds an entry). Section times, skipped tasks (a jump) and the task the
+  class was on at any minute can now be read from the report. Teacher-sandbox time sits inside
+  the task the class left (see `teacherSandbox.visits`).
+- New per-student `typing` on Python, Turtle and HTML code tasks (keyboard devices only):
+  `{ charsTyped, activeTypingMs, charsPerMin, corrections, longestPauseMs, autocompleteAccepts,
+  copyDistance? }`. Pastes and autocomplete never count as typed; a gap over 5 s ends a typing
+  burst; `charsPerMin` is null under 5 s of typing; `copyDistance` (copyCode tasks only) is the
+  edit distance from the copyCode at the student's first Run, ignoring trailing whitespace.
+- Task summary adds `typingSummary` (`charsPerMin { medianPerMin, minPerMin, maxPerMin,
+  studentCount }`, `correctionsMedian`) and, on graded tasks, `timeOnTaskSpread` (`medianMs`,
+  `p90Ms`, `maxMs`, `studentCount`). Report only: nothing new on the teacher's live card.
+- Reports from before 2026-10-09 lack all of these; each is omitted when empty. Field reference:
+  [session-reports.md](session-reports.md) "taskTimeline" and "Typing".
+- Affects: all (session reports), python, turtle, html · Existing lessons: no changes needed ·
+  Resolves:
+  authoring-requests/2026-10-09-session-report-timeline-of-the-class-s-current-task-includin.md,
+  authoring-requests/2026-10-09-session-report-per-student-typing-rate-corrections-and-copy-.md
+
 ### Code Arrange indent mode (`arrangeMode: indent`)
 
 - New Python mode for `code_arrange`: the lines are fixed in order and the student only sets how
