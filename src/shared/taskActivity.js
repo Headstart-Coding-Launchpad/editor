@@ -74,12 +74,14 @@ export const TASK_ACTIVITY_PATTERNS = Object.freeze([
   pattern('quiz_design', 'Design', ['quiz']),
   pattern('quiz_confidence_check', 'Confidence Check', ['quiz']),
   pattern('quiz_concept_refresh_check', 'Concept Refresh Check', ['quiz']),
+  pattern('quiz_which_construct_fits', 'Which Construct Fits?', ['quiz']),
   // Quiz: mechanical types (docs/authoring/quiz-types.md)
   pattern('quiz_multiple_choice', 'Multiple Choice', ['quiz']),
   pattern('quiz_match', 'Match', ['quiz']),
   pattern('quiz_fill_in_the_blank', 'Fill in the Blank', ['quiz'], ['Fill in the Blanks']),
   pattern('quiz_short_answer', 'Short Answer', ['quiz']),
   pattern('quiz_confidence_rating', 'Confidence Rating', ['quiz']),
+  pattern('quiz_poll', 'Poll', ['quiz']),
 ])
 
 export const TASK_ACTIVITY_PATTERN_IDS = Object.freeze(TASK_ACTIVITY_PATTERNS.map((p) => p.id))

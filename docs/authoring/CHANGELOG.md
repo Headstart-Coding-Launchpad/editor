@@ -37,6 +37,31 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-14
+
+### Feedback checks match when their check passes (docs fix)
+
+- **Docs fix, no behaviour change.** A `feedbackChecks` entry matches when its check **passes**,
+  so it must describe the mistake. The python.md Code Structure example used `not_nested_in` for
+  "Move `print(total)` out of the loop", which fired on correct code; it now uses `nested_in`.
+  The lesson-schema.md Indent mode example used `directly_nested_in` for a "line it up" hint (now
+  `not_nested_in`) and wrapped the entry in `check: {...}`, a shape that is silently dropped; it
+  is now a plain check with `hint` alongside. python.md Feedback Checks states the rule.
+- **Check your lessons:** a `code_structure` feedback check copied from the old examples fires
+  the wrong way round. Invert its operator, and unwrap any `- check: {...}` feedback entry. Confirm
+  with `test-checks` (`matchedFeedback`).
+- Affects: python, code_arrange · Existing lessons: invert `code_structure` feedback checks copied
+  from the old examples; unwrap `- check:` feedback entries · Resolves:
+  authoring-requests/2026-10-14-python-md-not-nested-in-feedbackchecks-example-has-its-hint-.md
+
+### `taskActivity` patterns: Which Construct Fits? and Poll
+
+- `Quiz: Which Construct Fits?` (`quiz_which_construct_fits`) and `Quiz, Poll` (`quiz_poll`) are
+  now recognised patterns, so they no longer warn "not a recognised pattern". See the table in
+  [badges.md](badges.md).
+- Affects: all · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-14-taskactivity-patterns-which-construct-fits-and-quiz-poll.md
+
 ## 2026-10-09
 
 ### Confidence checks are 1–10; tutors see unsubmitted short answers

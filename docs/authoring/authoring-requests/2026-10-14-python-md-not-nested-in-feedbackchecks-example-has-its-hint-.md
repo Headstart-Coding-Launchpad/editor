@@ -1,6 +1,6 @@
 # python.md: not_nested_in feedbackChecks example has its hint backwards
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** docs
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-10-14
 - **Lessons blocked:** none yet
@@ -25,4 +25,4 @@ Lessons that hit this gap:
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped on branch `fix/docs-feedback-check-direction` (2026-10-14). python.md Code Structure example now uses `nested_in`; python.md Feedback Checks states that a feedback check matches when its check passes; lesson-schema.md Indent mode example now uses `not_nested_in` and a plain check entry (the `- check: {...}` wrapper was silently dropped). CHANGELOG 2026-10-14.
