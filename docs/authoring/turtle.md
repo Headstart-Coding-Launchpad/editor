@@ -101,6 +101,38 @@ display rules and the forgiving comparison.
     - type: variables_predicted
 ```
 
+## Live scrubbing (`scrub`)
+
+`scrub` lets students drag a number (or tap it for a slider) and pick a colour from a picker,
+and the turtle redraws as the value changes. It's off unless set. Same field as Python:
+see [Python → Live scrubbing](python.md#live-scrubbing-scrub) for the options, devices and
+keyboard use.
+
+```yaml
+  - id: 40
+    moduleType: turtle
+    title: Change the size, watch the square
+    scrub:
+      enabled: true
+      ranges:
+        - line: 3
+          min: 10
+          max: 200
+    codeStages:
+      - role: starter
+        code: |
+          import turtle
+          for _ in range(4):
+              turtle.forward(100)
+              turtle.left(90)
+```
+
+- Every Turtle program re-runs live while a value moves (a preview: no attempt, checks, save or
+  tutor update), unless it calls `input()`: then the student sees "Press Run to see it".
+- Colour strings use CSS names (`'red'`, `'cornflowerblue'`) or hex (`'#ff0000'`).
+- When the drag ends the value is a normal edit, saved and sent to a watching tutor. The session
+  report counts each student's scrubs (`scrubs`).
+
 ## Coordinate system
 
 Matches real Python `turtle` exactly: `(0, 0)` is the centre of a fixed
@@ -264,7 +296,8 @@ don't need a run.
 
 - No file I/O, no `pip install` — same as the Python module.
 - The student's own canvas updates only after pressing **Run**; there is no
-  live redraw while typing.
+  live redraw while typing. The exception is [live scrubbing](#live-scrubbing-scrub): dragging
+  a number or picking a colour redraws as the value changes.
 - The turtle drawing itself is **not persisted** between sessions or page
   reloads — re-running the code regenerates the same drawing from the same
   script.

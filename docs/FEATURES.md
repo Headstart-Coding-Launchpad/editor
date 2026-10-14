@@ -232,6 +232,13 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - Go Live: the tutor's inspect mode, chosen element and property show on every student's screen. The tutor can inspect a student's page in the student modal. The session report records each student's use per task
 - Builder: Task options → HTML Inspector (start in inspect mode, pre-selected element, sections); the Builder preview has the Inspector too
 
+### Live Scrubbing (Python, Turtle, HTML)
+- On code tasks with `scrub` enabled, numbers and colours in the code are live controls: hovering a number underlines it (ew-resize cursor) and dragging left/right changes it (whole numbers stay whole, decimals step by their last place, CSS units kept); on a tablet a tap opens a slider beside it (− / + buttons, 44 px+); Alt+Enter opens it from the keyboard
+- Colour strings and CSS colours get a swatch; clicking or tapping opens a picker with colour-blind-safe colours first, then common names, then a hex box (text labels throughout). A name stays a name, hex stays hex
+- While a value moves, drawing programs re-run as a debounced preview (Turtle, Python with the Stage, HTML/CSS in the student's own preview): no attempt, checks, save or tutor update, and never overlapping the last run. Programs with `input()` (or Python without the Stage) show "Press Run to see it"
+- When the drag or popover ends the value is one real edit (saved, sent to a watching tutor, one Undo step), counted as an edit rather than typed characters. Per-line slider ranges via `scrub.ranges`; the session report counts each student's scrubs per task
+- Builder: Task options → Live scrubbing (numbers, colours, ranges by line)
+
 ### Scratch Slow-mo
 - On Scratch tasks with `slowMo` enabled, four big buttons under the stage (icon + word, 44 px+ for tablets): **Slow-mo** (run at the speed slider's blocks a second), **Pause**, **Step** (one block) and **Restart**
 - The running block glows in each running script (a still outline with reduced motion), and the stage redraws after every block, so two quick costume switches show both
@@ -278,6 +285,7 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - Highlight a control (Task options, code tasks with controls): pick Run, Stop, a Scratch control or block category to pulse when the task opens (`highlight`)
 - Side-quests (Task options, Python/Turtle/HTML): up to three per code task, each a title, kind, Markdown explainer and starter
 - HTML Inspector (Task options, HTML): enable, start in inspect mode, pre-selected element and sections
+- Live scrubbing (Task options, Python/Turtle/HTML): numbers, colours and per-line slider ranges
 - Badge hints (authoring metadata): toggle which live badges this task may also suggest (`badgeHints.suggest`, pattern badges only) or never suggest (`badgeHints.suppress`), with a read-only note of the badges the task's `taskActivity` pattern already triggers
 
 ### Scratch Tools

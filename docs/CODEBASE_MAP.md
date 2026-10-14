@@ -286,6 +286,8 @@ The teacher's live pointer, fading ink and text highlights from the Presentation
 | `useVariablesPanel.js` | The name-tag panel's student state (`showVariables`): the last run (`receiveRun`, called by `runWithRuntime`, returns the `variablePredictions` check context), predictions (`setPrediction`, `commitPredictions`), `clear`, the synced state for Go Live (`syncedRef`); writes `currentVariables` and `predictionLog` (live lesson only) |
 | `useTeacherLivePublish.js` | Teacher-live broadcast helpers (`canPublishTeacherLive`, `currentTeacherLivePayload`, `publishTeacherLive`), `teacherLiveIframeSrc` and `htmlPreviewCollapsed` state, and the two teacher-live sync effects; `publishOutputCollapsed(collapsed)` merge-updates just `teacherLive.outputCollapsed`, standalone from the main payload, so a source's output/preview panel collapse state mirrors continuously to forced-live viewers |
 | `useSlowMoLog.js` | Scratch slow-mo use for the session report, called inside `useStudentCodeState` (`cs.recordSlowMoUse({ kind: 'run' \| 'step' })`): batched `students/{id}/slowMoLog/{taskId}` counts (live lessons only). Loads Firebase on first use |
+| `useScrubLog.js` | Editor scrubbing use for the session report, called inside `useStudentCodeState` (`cs.recordScrub({ kind: 'number' \| 'colour' })`, the editor's `onScrubCommit`): batched `students/{id}/scrubLog/{taskId}` counts (live lessons only). Loads Firebase on first use |
+| `useScrubPreview.js` | Live preview re-runs while a value is scrubbed (`cs.scrubPreview(code, fileName?)` → `'preview'` \| `'press-run'`, `cs.settleScrubPreview()` awaited by Run): runtime modules run through their runtime and show output + Stage / turtle drawing; html rebuilds the student's own preview iframe. No attempt, checks, save or live writes; debounced and never overlapping (`previewScheduler.js`) |
 | `useHtmlInspectorLive.js` | The HTML Inspector's live side, called inside `useStudentCodeState` (`cs.liveInspector`, `cs.publishInspector`, `cs.recordInspectorUse`): the Go Live state kept in `inspectorRef` (sent in every payload by the html wire's `liveExtras`, explicit null when cleared) and written straight to `teacherLive/inspector` so a click doesn't rebuild viewers' preview iframes; batched `students/{id}/inspectorLog/{taskId}` counts for the report (live lessons only). Loads Firebase on first use |
 | `useActivityState.js` | State, persistence and live sync for hosted activity and quiz tasks (owned by `useStudentCodeState`): loads/saves the `__activity_state__` aux file, discrete changes mirror `currentAnswer` debounced, continuous changes only while `activeStudentView` is this student (throttled, flushed when the teacher starts watching), submit/auto grading → `applyCheckFeedback` + `writeStudentRun` + `logAttempt`, `remoteResetAction` starter/complete, `teacherAnswerEdit`, teacher-live `answer` payload |
 | `useTileDragAndDrop.js` | Shared drag-and-drop + tap-to-place hook for tile-based quizzes (MatchQuiz, FillBlankQuiz); also exports `setLiftedDragImage` and `removeTileFromState` |
@@ -366,6 +368,7 @@ The teacher's live pointer, fading ink and text highlights from the Presentation
 | `TaskRunControls.jsx` | Run/Stop/Run Tests button row for the Python task builder |
 | `TaskTestResults.jsx` | Output + test-suite results panel for the Python task builder; wraps `BuilderOutputPanel` |
 | `StageTargetField.jsx` | "Stage target" in the task editor (modules declaring the `stageTarget` task field: Python): on/off, the target's Python, ghost shown at start |
+| `ScrubField.jsx` | "Live scrubbing" in the task editor (modules declaring the `scrub` task field: Python, Turtle, HTML): on/off, numbers, colours, per-line slider ranges |
 | `ShowVariablesField.jsx` | "Name-tag panel" in the task editor (modules declaring the `showVariables` task field: Python, Turtle): on/off, mode, `at` (end / `#@peek`), hide list, predict names with the "every prediction is right" check toggle, target lines |
 | `BadgeHintsField.jsx` | "Badge hints" in the task editor's authoring metadata (not information tasks): toggles for `badgeHints.suggest` (hintable pattern badges) and `badgeHints.suppress` (rule-backed badges), plus a read-only line naming the badges the task's `taskActivity` pattern triggers |
 | `TaskOptionsSection.jsx` | Collapsible "Task options" section: carry-through, interaction mode, completion check (via module `CheckEditor` + `defaultCheck`), feedback checks with targeted stage offers, and tests; all type-specific behaviour driven by module properties (`supportsInteractionMode`, `supportsIncorrectChecks`, `supportsTests`) |
@@ -841,6 +844,20 @@ The drawing pane of a Python task (docs/authoring/python.md "Stage"). The engine
 | `canvas.js` | `drawStage(ctx, commands, { ghost, diff })`, `sizeStageCanvas` |
 | `svg.js` | `stageToSvg(commands)`: a standalone picture for export or a gallery |
 | `StagePane.jsx` | The pane: square canvas that scales to fit, Target (ghost) and Differences toggles (44 px), comparison summary, `compact` mode for the tutor card and StudentModal |
+
+### Editor scrubbing (`src/shared/scrub/`)
+
+Live number and colour scrubbing in the shared code editor, for a task's `scrub` field (docs/authoring/python.md "Live scrubbing"). The editor half is a CodeMirror extension in its own compartment; the classroom half (preview runs, report count) is `useScrubPreview` / `useScrubLog`. Modules opt in with `capabilities.scrub` (python, turtle, html).
+
+| File | Role |
+|---|---|
+| `literals.js` | Pure: `findScrubLiterals(line, syntax, { inStyle })` (python numbers / colour strings; CSS values; HTML style blocks, `style=""` and whole-value attributes), `numberStep`, `formatScrubNumber`, `defaultScrubRange` / `scrubRangeFor` / `clampScrubValue` / `valueForDrag`, the picker palettes (`SCRUB_SAFE_COLOURS`, `SCRUB_COMMON_COLOURS`), `formatScrubColour` (name stays name, hex stays hex) |
+| `scrubConfig.js` | Pure: `SCRUB_TASK_FIELD`, `getTaskScrub`, `validateScrub` (module `validateTask`), the `capabilities.scrub` reader / validator, `scrubPreviewMode` ('preview' or 'press-run': needed import, `input()`) |
+| `previewScheduler.js` | Pure: `createPreviewScheduler` — debounced (200 ms) preview runs, skipping while one runs (the latest waits), `settle()` |
+| `scrubExtension.js` | The CodeMirror extension: hover underline, colour swatches, mouse drag, tap / Alt-Enter popovers, `scrubPreviewAnnotation` previews (no history, skipped by `CodeEditor`'s change handling) and the one-edit commit (`input.scrub`) |
+| `ScrubPopover.jsx` | The slider popover (− / + / Done, 44 px, keyboard) and the colour picker (labelled swatches, hex box) |
+| `useEditorScrub.jsx` | `CodeEditor`'s hook-up: the compartment, handlers, popover and "Press Run to see it" notice |
+| `scrubUse.js` | Pure: `scrubReportFields` (`scrubs`, `scrubNumbers`, `scrubColours` from `scrubLog`) and `summarizeScrubUse` (`scrubUsedCount`) for `lessonReport.js` |
 
 ---
 

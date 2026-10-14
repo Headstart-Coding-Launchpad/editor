@@ -26,6 +26,11 @@ export default function PythonEditor({
   // The task allows block brackets (taskShowsBlocks in ../../shared/blockGuides.js). When it
   // does, the Blocks button turns them on and off for this device; when not, both are hidden.
   showBlocks = true,
+  // Live scrubbing (src/shared/scrub/): getTaskScrub's settings, the preview re-run and the
+  // report hook (see CodeEditor).
+  scrub = null,
+  onScrubPreview,
+  onScrubCommit,
 }) {
   const editorRef = useRef(null)
   const isTouchDevice = useIsTouchDevice()
@@ -92,6 +97,9 @@ export default function PythonEditor({
         lineHints={lineHints}
         onRunShortcut={onRunShortcut}
         blockGuides={showBlocks && blockGuidesOn}
+        scrub={scrub}
+        onScrubPreview={onScrubPreview}
+        onScrubCommit={onScrubCommit}
         style={{ flex: 1, minHeight: 240, ...editorStyle }}
       />
     </div>

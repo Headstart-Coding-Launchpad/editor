@@ -32,6 +32,7 @@ import {
 } from './exampleOpens.js'
 import { inspectorReportFields, summarizeInspectorUse } from './inspectorUse.js'
 import { slowMoReportFields, summarizeSlowMoUse } from './slowMoUse.js'
+import { scrubReportFields, summarizeScrubUse } from './scrub/scrubUse.js'
 import {
   crossLessonCarryReportFields,
   summarizeCrossLessonCarry,
@@ -787,6 +788,7 @@ export function buildSessionReport({
           inspectorReportFields(studentsSnapshot[anonymousId]?.inspectorLog?.[task.id])
         ),
         ...slowMoReportFields(studentsSnapshot[anonymousId]?.slowMoLog?.[task.id]),
+        ...scrubReportFields(studentsSnapshot[anonymousId]?.scrubLog?.[task.id]),
         ...(itemProgress ? { itemProgress } : {}),
         ...(lastDraft ? { lastDraft } : {}),
         ...exampleOpenReportFields(session, anonymousId, task.id),
@@ -922,6 +924,7 @@ export function buildSessionReport({
       ...summarizeCrossLessonCarry(perStudent),
       ...summarizeInspectorUse(perStudent),
       ...summarizeSlowMoUse(perStudent),
+      ...summarizeScrubUse(perStudent),
       ...summarizeVariablePredictions(perStudent),
       ...badgeFields,
       ...(teacherRating ? { teacherRating } : {}),

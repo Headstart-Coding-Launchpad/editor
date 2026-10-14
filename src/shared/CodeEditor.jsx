@@ -22,6 +22,8 @@ import {
 import { chooseLineHints } from './lineHints'
 import { blockGuidesExtension } from './blockGuides'
 import { BadgeSignalsContext } from './badgeSignalsContext'
+import { useEditorScrub } from './scrub/useEditorScrub.jsx'
+import { isScrubPreviewUpdate, SCRUB_USER_EVENT } from './scrub/scrubExtension.js'
 
 // The CodeMirror user-event types that are the student's own editing (typing, pasting,
 // deleting, dragging text, undo/redo). A value replaced from outside (task switch, carry-through,
@@ -48,7 +50,8 @@ export function isAutocompletePick(update) {
 // a paste ('input.paste', reported separately), a drop ('input.drop'), an accepted autocomplete
 // ('input.complete'), undo/redo and every outside value sync are never typing. Enter's
 // auto-indent is one keystroke, so whitespace right after an inserted newline isn't counted.
-const NOT_TYPED_INPUT_EVENTS = ['input.paste', 'input.drop', 'input.complete']
+// A finished scrub ('input.scrub', ./scrub/scrubExtension.js) is one edit, never typed characters.
+const NOT_TYPED_INPUT_EVENTS = ['input.paste', 'input.drop', 'input.complete', SCRUB_USER_EVENT]
 
 export function typedCharsInUpdate(update) {
   let chars = 0
@@ -345,12 +348,25 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     onUserEdit,
     // Draw coloured Python block brackets beside indented code (only PythonEditor sets it).
     blockGuides = false,
+    // Live number / colour scrubbing (./scrub/): getTaskScrub's settings or null, the preview
+    // re-run (returns 'preview' | 'press-run') and the report hook for a finished scrub.
+    scrub = null,
+    onScrubPreview,
+    onScrubCommit,
     style,
   },
   ref
 ) {
   const containerRef = useRef(null)
   const viewRef = useRef(null)
+  const scrubUi = useEditorScrub({
+    viewRef,
+    scrub,
+    language,
+    readOnly,
+    onScrubPreview,
+    onScrubCommit,
+  })
   const onChangeRef = useRef(onChange)
   const onSelectionChangeRef = useRef(onSelectionChange)
   const onActivityRef = useRef(onActivity)
@@ -401,6 +417,7 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
           errorLineField,
           lineHintsExtension(),
           blockGuidesCompartment.of(blockGuidesFor(blockGuides)),
+          scrubUi.extension,
           keymap.of([
             {
               key: 'Mod-Enter',
@@ -412,6 +429,8 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
             },
           ]),
           EditorView.updateListener.of((update) => {
+            // A value still being scrubbed is a preview, not an edit (./scrub/scrubExtension.js).
+            if (isScrubPreviewUpdate(update)) return
             if (update.docChanged) {
               onChangeRef.current?.(update.state.doc.toString())
               if (isUserEditUpdate(update)) onUserEditRef.current?.('editor')
@@ -566,16 +585,19 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
   )
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        height: '100%',
-        overflow: 'auto',
-        border: readOnly ? '1px solid rgba(239,68,68,0.3)' : '1px solid #e5e7eb',
-        borderRadius: '8px',
-        background: readOnly ? 'rgba(239,68,68,0.04)' : '#fafafa',
-        ...style,
-      }}
-    />
+    <>
+      <div
+        ref={containerRef}
+        style={{
+          height: '100%',
+          overflow: 'auto',
+          border: readOnly ? '1px solid rgba(239,68,68,0.3)' : '1px solid #e5e7eb',
+          borderRadius: '8px',
+          background: readOnly ? 'rgba(239,68,68,0.04)' : '#fafafa',
+          ...style,
+        }}
+      />
+      {scrubUi.element}
+    </>
   )
 })

@@ -61,6 +61,8 @@ import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
 import { useHtmlInspectorLive } from './useHtmlInspectorLive'
 import { useSlowMoLog } from './useSlowMoLog'
+import { useScrubLog } from './useScrubLog'
+import { useScrubPreview } from './useScrubPreview'
 import { useActivityState } from './useActivityState'
 import {
   getModuleHostedActivity,
@@ -903,6 +905,33 @@ export function useStudentCodeState({
     inPersonalSandboxRef,
   })
 
+  // Live number / colour scrubbing in the code editor (a task's `scrub`, src/shared/scrub/):
+  // preview re-runs while a value moves (useScrubPreview) and the report count (useScrubLog).
+  const scrubLog = useScrubLog({
+    lessonId,
+    phase,
+    teacherPresentation,
+    previewMode,
+    effectiveIdentity,
+    currentTaskId,
+    inPersonalSandboxRef,
+  })
+  const scrubPreview = useScrubPreview({
+    moduleType: lesson?.type,
+    task: findTaskById(lesson?.tasks, currentTaskId),
+    running: running || runningTests,
+    readWork: () => storedWork(lesson?.type).work,
+    previewOptions: () => ({
+      assets: lesson?.assets ?? [],
+      assetsPath: resolveAssetsPath(lesson?.assetsPath),
+      storageAssets: htmlIframeStorageAssets,
+    }),
+    setOutput,
+    setTurtleResult,
+    setStageResult,
+    setIframeSrc,
+  })
+
   // Hosted activity tasks (taskType 'activity' and legacy quizzes): state, persistence, live
   // sync, grading, reset and teacher edits. See useActivityState.js for the write rules.
   const activity = useActivityState({
@@ -1702,6 +1731,8 @@ export function useStudentCodeState({
       runKind === 'runtime' ||
       (runKind === 'preview' && typeof mod?.runtime?.buildPreviewSrc === 'function')
     if (!runsHere) return
+    // A scrub preview re-run (useScrubPreview) finishes first, so the two never overlap.
+    await scrubPreview.settleScrubPreview()
     syncCodeArrangeSlotBeforeRun(task)
     // The session report's typing totals go with each Run; the first Run on a copyCode task
     // also records how far the code is from the copyCode (no-op outside a live lesson task).
@@ -1934,6 +1965,7 @@ export function useStudentCodeState({
     if (!task?.tests?.length) return
     const isWatched = session?.activeStudentView === actor.anonymousId
     if (isAlreadySolved()) return
+    await scrubPreview.settleScrubPreview()
     badgeSignals.reportRunCode({
       work: code,
       language: getModuleDefinition(lesson?.type)?.meta?.language ?? null,
@@ -3201,6 +3233,10 @@ export function useStudentCodeState({
     ...htmlInspector,
     // Scratch slow-mo: recordSlowMoUse (useSlowMoLog).
     ...slowMoLog,
+    // Editor scrubbing: scrubPreview(code, fileName?) and settleScrubPreview (useScrubPreview),
+    // recordScrub({ kind }) (useScrubLog).
+    ...scrubPreview,
+    ...scrubLog,
     inputPrompt,
     checkPassed,
     checkAttempted,

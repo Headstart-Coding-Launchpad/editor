@@ -13,6 +13,7 @@ import CopyCodePanel from '../../app/components/CopyCodePanel'
 import { drawTurtleCommands, sizeCanvasToDisplay } from './draw.js'
 import { createTurtleState } from './engine.js'
 import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
+import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
 
 const DEFAULT_TURTLE_STATE = createTurtleState()
 
@@ -138,6 +139,10 @@ export default function StudentWorkspace({
         code={code}
         readOnly={readOnly}
         onChange={readOnly ? undefined : cs.handleCodeChange}
+        // Live number / colour scrubbing (task `scrub`, src/shared/scrub/); not in a sandbox.
+        scrub={readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskScrub(task)}
+        onScrubPreview={cs.scrubPreview}
+        onScrubCommit={cs.recordScrub}
         pyodideStatus={cs.pyodideStatus}
         errorLine={readOnly ? null : cs.errorLine}
         lineHints={readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskLineHintSets(task)}

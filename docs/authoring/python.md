@@ -390,6 +390,63 @@ description listing the shapes, text and grid size with colours in words.
 
 **Persistence.** None beyond the code: the drawing is redrawn by the next Run.
 
+### Live scrubbing (`scrub`)
+
+`scrub` lets students change a value without typing: drag a number, or pick a colour, and the
+Stage redraws as it changes. Use it on **Modify** tasks ("one change, one visible difference").
+It's off unless set, and works on Python, Turtle and HTML tasks.
+
+```yaml
+  - id: 40
+    title: Make the square bigger
+    scrub:
+      enabled: true          # required (scrub: true is short for this)
+      numbers: true          # optional — drag a number, or tap it for a slider (default true)
+      colours: true          # optional — click a colour string for a picker (default true)
+      ranges:                # optional — per-line slider ranges; otherwise a range around the value
+        - line: 3
+          min: 10
+          max: 200
+    codeStages:
+      - role: starter
+        code: |
+          from stage import *
+          background('white')
+          rect(50, 50, 100, 100, 'red')
+```
+
+What students get:
+
+- **Numbers.** On a computer, a number underlines when the pointer is over it; dragging left or
+  right changes it. Whole numbers stay whole; a decimal steps by its last decimal place (`0.5`
+  steps by 0.1, `0.25` by 0.01). On a tablet, tapping a number opens a slider beside it, with
+  − and + buttons (all at least 44 px). The keyboard works too: **Alt+Enter** on a number opens
+  the slider, and the arrow keys move it.
+- **Colours.** A colour string (`'red'`, `"#ff0000"`) gets a small swatch. Clicking or tapping it
+  opens a picker: colour-blind-safe colours first, then common colour names, then a hex box.
+  Every choice has a text label. A name stays a name when the choice has one; otherwise, and for
+  hex, it's written as hex in the same style (`#F00` stays short and in capitals when it can).
+- **Ranges.** `line` counts lines as the student sees them (`#>` line-hint markers don't count).
+  Without a range, a number scrubs from 0 to twice its value (at least 0–100; 0–1 for decimals),
+  or the same distance either side of 0 when it's negative. A value already outside an author's
+  range widens it, so grabbing a number never makes it jump.
+- **Live redraw.** While a value moves, the program re-runs about every 200 ms, as a preview: no
+  attempt, no checks, no save, and nothing is sent to the tutor. A preview never starts while the
+  last one is still running. Only programs that draw on the Stage (`from stage import *` or
+  `import stage`) and don't call `input()` re-run live; for anything else the student sees
+  "Press Run to see it".
+- **When the drag ends** (or the slider or picker closes), the new value is a normal edit: saved,
+  sent to a watching tutor like typing, one Undo step, and checked on the next Run as usual. It
+  counts as an edit, not as typed characters, in the typing measures.
+
+Numbers in code are scrubbed, not numbers in strings or comments, or inside names like `x2`. A
+minus sign belongs to the number (`-5` in `left(-5)`), but not in `a - 5`.
+
+No new checks. **Tutor:** the tutor sees the edit when the drag ends, like any edit, and the
+session report counts each student's scrubs on the task (`scrubs`,
+[session reports](session-reports.md)). In the Builder, the task's **Live scrubbing** setting
+turns it on and adds ranges.
+
 ---
 
 ## Output and Code Checks (shared with HTML)

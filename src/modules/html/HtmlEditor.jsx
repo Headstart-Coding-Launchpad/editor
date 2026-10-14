@@ -22,6 +22,11 @@ export default function HtmlEditor({
   // fileName → the author line-hint sets for that file (getTaskLineHintSets), or omitted.
   lineHintSetsFor,
   onRunShortcut,
+  // Live scrubbing of CSS and attribute values (src/shared/scrub/): getTaskScrub's settings,
+  // onScrubPreview(content, fileName) (the preview re-run) and onScrubCommit({ kind }).
+  scrub = null,
+  onScrubPreview,
+  onScrubCommit,
 }) {
   const [showAssets, setShowAssets] = useState(false)
   const editorRef = useRef(null)
@@ -94,6 +99,11 @@ export default function HtmlEditor({
           errorLine={errorLine}
           lineHints={lineHintSetsFor?.(current.name) ?? null}
           onRunShortcut={onRunShortcut}
+          scrub={scrub}
+          onScrubPreview={
+            onScrubPreview ? (content) => onScrubPreview(content, current.name) : undefined
+          }
+          onScrubCommit={onScrubCommit}
           style={{ flex: 1, minHeight: 240, ...(attachedTop ? s.editorAttachedTop : {}) }}
         />
       )}

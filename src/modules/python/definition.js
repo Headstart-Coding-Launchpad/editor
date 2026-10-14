@@ -25,6 +25,7 @@ import { SHOW_VARIABLES_TASK_FIELD } from '../../shared/variablesPanel/variables
 import { validateShowVariables } from '../../shared/variablesPanel/validation.js'
 import { STAGE_TARGET_TASK_FIELD, validateStageTarget } from '../../shared/stage/validation.js'
 import { compactStageForSync } from '../../shared/stage/sync.js'
+import { SCRUB_TASK_FIELD, validateScrub } from '../../shared/scrub/scrubConfig.js'
 import {
   codeCopyStarterToComplete,
   codeDefaultTypeFields,
@@ -77,6 +78,9 @@ export default defineModule({
     peerHelp: { anchors: 'lines', hints: 'python' },
     // A passed task's side-quests run in a throwaway Python workspace (src/shared/sideQuests.js).
     sideQuests: true,
+    // A task's `scrub` (src/shared/scrub/): a scrubbed value re-runs live only in programs that
+    // draw on the Python Stage (import stage) and never ask for input().
+    scrub: { liveRerun: 'preview', needsImport: 'stage', inputCall: 'input' },
   },
   // Pyodide reports the failing line on stderr; the editor highlights it. A run's Python Stage
   // drawing (src/shared/stage/) is written with the run (writeStudentStageResult).
@@ -155,6 +159,7 @@ export default defineModule({
     },
     SHOW_VARIABLES_TASK_FIELD,
     STAGE_TARGET_TASK_FIELD,
+    SCRUB_TASK_FIELD,
   ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeCode',
@@ -244,6 +249,9 @@ export default defineModule({
     warnCompleteCode(task, n, warnings)
     validateShowVariables(task, n, errors, warnings)
     validateStageTarget(task, n, errors, warnings)
+    validateScrub(task, n, errors, warnings, {
+      starterCode: getStarterStage(task)?.stage?.code ?? task.starterCode ?? null,
+    })
   },
   hasStarterContent: codeStarterPresent,
 })

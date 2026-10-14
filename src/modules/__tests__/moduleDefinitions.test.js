@@ -294,6 +294,19 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
     })
   })
 
+  it('scrub (live number / colour scrubbing in the code editor)', () => {
+    expect(pick('scrub')).toEqual({
+      python: { liveRerun: 'preview', needsImport: 'stage', inputCall: 'input' },
+      arcade: null,
+      turtle: { liveRerun: 'preview', needsImport: null, inputCall: 'input' },
+      scratch: null,
+      html: { liveRerun: 'preview', needsImport: null, inputCall: null },
+      filesystem: null,
+      desktop: null,
+      electronics: null,
+    })
+  })
+
   it('remote run is offered exactly for the modules with a Run', () => {
     expect(TYPES.filter((type) => pick('run')[type] !== 'none')).toEqual([
       'python',
@@ -417,6 +430,11 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
       [{ capabilities: { cardSummary: 'console' } }, /capabilities\.cardSummary/],
       [{ capabilities: { rosterWork: 'pixels' } }, /capabilities\.rosterWork/],
       [{ capabilities: { rosterWork: 'files' } }, /rosterWork.*wire\.sandboxChannel/],
+      [{ capabilities: { scrub: { liveRerun: 'always' } } }, /capabilities\.scrub\.liveRerun/],
+      [
+        { capabilities: { scrub: { liveRerun: 'none', needsImport: 'a b' } } },
+        /capabilities\.scrub\.needsImport/,
+      ],
       [{ capabilities: { focusPanes: [{ id: 'instructions', label: 'Info' }] } }, /focusPanes/],
       [{ capabilities: { focusPanes: [{ id: 'code' }] } }, /focusPanes/],
       [{ capabilities: { highlightTargets: [{ id: 'run' }] } }, /highlightTargets/],
