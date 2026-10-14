@@ -1710,7 +1710,10 @@ export function useStudentCodeState({
     else handleCodeChange(assembled)
   }
 
-  async function handleRun() {
+  // `runOptions` is a slow-mo Run's `{ slowMo: true, onResult }` (runWithRuntime); anything else
+  // (a click event) is a normal Run.
+  async function handleRun(runOptions = null) {
+    const slowMoRun = runOptions?.slowMo === true ? runOptions : null
     const actor = effectiveIdentity
     if (!actor || running) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
@@ -1814,6 +1817,7 @@ export function useStudentCodeState({
           persistence.saveRunRecord(moduleType, actor.anonymousId, taskId, runCode, fields),
         signals: badgeSignals,
         variablesPanel,
+        runOptions: slowMoRun,
       })
       return
     }

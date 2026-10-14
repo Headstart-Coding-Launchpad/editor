@@ -23,6 +23,7 @@ import {
 } from '../moduleContract.js'
 import { SHOW_VARIABLES_TASK_FIELD } from '../../shared/variablesPanel/variablesPanel.js'
 import { validateShowVariables } from '../../shared/variablesPanel/validation.js'
+import { PYTHON_SLOW_MO_TASK_FIELD, validatePythonSlowMo } from './slowMo/config.js'
 import { STAGE_TARGET_TASK_FIELD, validateStageTarget } from '../../shared/stage/validation.js'
 import { compactStageForSync } from '../../shared/stage/sync.js'
 import { SCRUB_TASK_FIELD, validateScrub } from '../../shared/scrub/scrubConfig.js'
@@ -160,6 +161,7 @@ export default defineModule({
     SHOW_VARIABLES_TASK_FIELD,
     STAGE_TARGET_TASK_FIELD,
     SCRUB_TASK_FIELD,
+    PYTHON_SLOW_MO_TASK_FIELD,
   ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeCode',
@@ -252,6 +254,7 @@ export default defineModule({
     validateScrub(task, n, errors, warnings, {
       starterCode: getStarterStage(task)?.stage?.code ?? task.starterCode ?? null,
     })
+    validatePythonSlowMo(task, n, errors, warnings)
   },
   hasStarterContent: codeStarterPresent,
 })

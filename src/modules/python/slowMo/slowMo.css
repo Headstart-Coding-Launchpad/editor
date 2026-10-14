@@ -1,0 +1,139 @@
+/* Python slow-mo controls (src/modules/python/slowMo/SlowMoBar.jsx). Same pattern as Scratch
+   slow-mo: big (44px+) buttons with an icon and a word, a touch-friendly speed slider. Nothing
+   here animates; the editor's current-line band is still (editorMarker.js). */
+
+.py-slowmo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 2px 4px;
+  font-family: var(--font-body);
+  flex-shrink: 0;
+}
+
+.py-slowmo-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.py-slowmo-buttons {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(64px, 1fr));
+  gap: 6px;
+  flex: 1 1 360px;
+}
+
+.py-slowmo-btn {
+  min-height: 48px;
+  min-width: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border: 2px solid #d1d5db;
+  border-radius: 10px;
+  background: #fff;
+  color: #1f2937;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.py-slowmo-btn:hover:not(:disabled) {
+  border-color: #9ca3af;
+}
+
+.py-slowmo-btn:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.py-slowmo-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.py-slowmo-btn[aria-pressed='true'] {
+  border-color: #16a34a;
+  background: #dcfce7;
+  opacity: 1;
+}
+
+.py-slowmo-btn-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.py-slowmo-speed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 220px;
+  font-size: 0.82rem;
+  color: #374151;
+}
+
+.py-slowmo-speed-label {
+  font-weight: 700;
+}
+
+.py-slowmo-speed input[type='range'] {
+  flex: 1 1 auto;
+  min-width: 80px;
+  min-height: 44px;
+}
+
+.py-slowmo-speed-value {
+  min-width: 8.5em;
+  color: #4b5563;
+}
+
+.py-slowmo-status,
+.py-slowmo-note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #4b5563;
+}
+
+.py-slowmo-status {
+  font-weight: 600;
+}
+
+.py-slowmo-note {
+  color: #92400e;
+}
+
+.py-slowmo-question {
+  margin: 0;
+  padding: 8px 12px;
+  border: 2px solid #b45309;
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #7c2d12;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.py-slowmo-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 640px) {
+  .py-slowmo-buttons {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

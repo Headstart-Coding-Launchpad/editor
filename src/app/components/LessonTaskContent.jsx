@@ -157,6 +157,7 @@ export default function LessonTaskContent({
   displayTurtleResult,
   displayVariablesPanel = null,
   displayStage = null,
+  displayPythonSlowMo = null,
   displaySpriteState,
   displayCursor,
   displayBlockDrag,
@@ -707,6 +708,7 @@ export default function LessonTaskContent({
           displayTurtleResult={displayTurtleResult}
           displayVariablesPanel={displayVariablesPanel}
           displayStage={displayStage}
+          displayPythonSlowMo={displayPythonSlowMo}
           displaySpriteState={displaySpriteState}
           displayCursor={displayCursor}
           displayBlockDrag={displayBlockDrag}

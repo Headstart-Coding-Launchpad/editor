@@ -38,6 +38,10 @@ import { lastErrorLine } from '../studentHints.js'
  * - signals (optional): the live badge reporters (useStudentBadgeSignals); a free-play run is
  *   reported with reportSandboxRun
  * - variablesPanel (optional): the name-tag panel (useVariablesPanel), handed each finished run
+ * - runOptions (optional): `{ slowMo: true, onResult(result) }` from a slow-mo Run
+ *   (src/modules/python/slowMo/): the runtime records the run for playback, and `onResult` gets
+ *   the runtime's result (with its `slowMo` recording) before anything else is done with it.
+ *   The recorded run IS the run: output, checks, the attempt and the save are exactly as for Run.
  */
 export async function runWithRuntime(ctx) {
   const {
@@ -182,7 +186,9 @@ export async function runWithRuntime(ctx) {
     },
     onCodeUpdate: scheduleRuntimeCodeUpdate,
     getRuntimeCode: readCode,
+    ...(ctx.runOptions?.slowMo ? { slowMo: true } : {}),
   })
+  ctx.runOptions?.onResult?.(result)
   refs.submitInputEchoRef.current = null
   outputMirror.cancel()
   if (refs.outputMirrorRef.current === outputMirror) refs.outputMirrorRef.current = null

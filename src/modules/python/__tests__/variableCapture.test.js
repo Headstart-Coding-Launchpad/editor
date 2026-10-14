@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeCaptureConfig } from '../pyodide.worker.js'
+import { normalizeCaptureConfig, normalizeRecordConfig } from '../pyodide.worker.js'
 import { VARIABLE_CAPTURE_LIMITS, VARIABLE_CAPTURE_PY } from '../variableCapture.py.js'
 
 describe('name-tag panel capture config (worker side)', () => {
@@ -36,5 +36,27 @@ describe('variable capture Python source', () => {
 
   it('reads the student file only, so library frames are never traced', () => {
     expect(VARIABLE_CAPTURE_PY).toContain("frame.f_code.co_filename != '<student>'")
+  })
+})
+
+describe('slow-mo record config (worker side)', () => {
+  it('is off without record', () => {
+    expect(normalizeRecordConfig(null)).toEqual({ on: false })
+    expect(normalizeRecordConfig(undefined)).toEqual({ on: false })
+  })
+
+  it('keeps a positive whole line offset and string hide names only', () => {
+    expect(normalizeRecordConfig({ lineOffset: 2, hide: ['a', 1, '', 'b'] })).toEqual({
+      on: true,
+      lineOffset: 2,
+      hide: ['a', 'b'],
+    })
+    expect(normalizeRecordConfig({ lineOffset: -1 }).lineOffset).toBe(0)
+    expect(normalizeRecordConfig({ lineOffset: 1.5 }).lineOffset).toBe(0)
+  })
+
+  it('lets a recorder end the program at the step cap', () => {
+    expect(VARIABLE_CAPTURE_PY).toContain('class _HsStopRun(BaseException)')
+    expect(VARIABLE_CAPTURE_PY).toContain('except _HsStopRun:')
   })
 })

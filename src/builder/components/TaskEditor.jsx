@@ -35,6 +35,8 @@ import BadgeHintsField from './task-editor/BadgeHintsField'
 import ShowVariablesField from './task-editor/ShowVariablesField'
 import StageTargetField from './task-editor/StageTargetField'
 import ScrubField from './task-editor/ScrubField'
+import PythonSlowMoField from '../../modules/python/slowMo/SlowMoField'
+import { declaresPythonSlowMo } from '../../modules/python/slowMo/config'
 import { getLessonModule } from '../../modules/registry'
 import { getModuleAuthoring, getModuleDefinition } from '../../modules/definitions'
 import { MARKUP_COPY_CODE_PLACEHOLDER } from '../../modules/moduleAuthoring'
@@ -96,6 +98,8 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
   const usesStageTarget = !!moduleDefinition?.taskFields?.some((f) => f.name === 'stageTarget')
   // Modules that declare the scrub task field (python, turtle, html) offer live scrubbing.
   const usesScrub = !!moduleDefinition?.taskFields?.some((f) => f.name === 'scrub')
+  // Modules that declare Python slow-mo's own slowMo field (python, turtle) offer slow-mo.
+  const usesPythonSlowMo = declaresPythonSlowMo(moduleDefinition)
   // Task format from the activity registry: 'information', 'quiz', 'activity', a
   // module-hosted activity's id ('code_arrange') or 'code' (drafts keep their own taskType and
   // edit like code tasks, as before).
@@ -842,6 +846,12 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
 
       {!isQuiz && !isInformation && !showsActivity && !isCodeArrange && usesScrub && (
         <ScrubField task={task} onUpdate={onUpdate} />
+      )}
+
+      {!isQuiz && !isInformation && !showsActivity && !isCodeArrange && usesPythonSlowMo && (
+        <Field label="Slow-mo" hint="optional">
+          <PythonSlowMoField task={task} onUpdate={onUpdate} />
+        </Field>
       )}
 
       {isInformation && (

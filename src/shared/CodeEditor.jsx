@@ -580,6 +580,8 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
         })
         view.focus()
       },
+      // The CodeMirror view, for add-ons kept in their own files (Python slow-mo's line marker).
+      getView: () => viewRef.current,
     }),
     [readOnly]
   )

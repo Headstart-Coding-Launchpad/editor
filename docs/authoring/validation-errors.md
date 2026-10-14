@@ -111,6 +111,11 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … slowMo.timeline has unknown field(s) …` (warning) | `timeline` names something else. | Use only `costume`, `backdrop`, `x`, `y`, `variables`. |
 | `Task … slowMo has unknown key(s) …; they are ignored` (warning) | `slowMo` has keys other than `enabled`, `speed`, `timeline`. | Remove them. |
 | `Task … slowMo is set but not enabled; add enabled: true to show it` (warning) | `slowMo` has settings but no `enabled`. | Add `enabled: true`, or remove `slowMo`. |
+| `Task … slowMo.speed must be a number of steps per second above 0` | A Python or Turtle `slowMo.speed` is text, zero or negative ([python.md](python.md#slow-mo-slowmo)). | Use a number such as `1` or `0.5`, or remove it (default 1). |
+| `Task … slowMo.showVariables must be true or false` | Python / Turtle `showVariables` inside `slowMo` isn't a boolean. | Use `true` or `false`. |
+| `Task … slowMo.question must be text` | Python / Turtle `slowMo.question` isn't a string. | Write the question as text. |
+| `Task … slowMo.speed … is outside 0.25–4 steps per second; it will be clamped` (warning) | A Python / Turtle starting speed is outside the slider's range. | Use a speed from 0.25 to 4. |
+| `Task … slowMo.question is over 200 characters; keep it to one short question` (warning) | The question is long for the small box it shows in. | Shorten it to one question. |
 | `Task … stage … role must be one of: …` | A `codeStages` entry has an unknown `role`. | Use `starter`, `support` or `complete`. |
 | `Task … stage … is missing a label` | A code stage has no `label`. | Add `label:` to the stage. |
 | `Task ID … is used by … and … - renumber task IDs before publishing` (warning, **Builder only**) | Two tasks share an `id`. | Renumber the task ids. |

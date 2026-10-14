@@ -19,6 +19,7 @@ import { SHOW_VARIABLES_TASK_FIELD } from '../../shared/variablesPanel/variables
 import { validateShowVariables } from '../../shared/variablesPanel/validation.js'
 import { SCRUB_TASK_FIELD, validateScrub } from '../../shared/scrub/scrubConfig.js'
 import { getStarterStage } from '../../shared/taskStages.js'
+import { PYTHON_SLOW_MO_TASK_FIELD, validatePythonSlowMo } from '../python/slowMo/config.js'
 import { compactTurtleResultForSync } from './sync.js'
 import {
   codeDefaultTypeFields,
@@ -134,6 +135,7 @@ export default defineModule({
     },
     SHOW_VARIABLES_TASK_FIELD,
     SCRUB_TASK_FIELD,
+    PYTHON_SLOW_MO_TASK_FIELD,
   ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeCode',
@@ -215,6 +217,7 @@ export default defineModule({
     validateScrub(task, n, errors, warnings, {
       starterCode: getStarterStage(task)?.stage?.code ?? task.starterCode ?? null,
     })
+    validatePythonSlowMo(task, n, errors, warnings)
   },
   hasStarterContent: codeStarterPresent,
 })

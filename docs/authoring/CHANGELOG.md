@@ -58,6 +58,33 @@ Entries written before 2026-09-29 are not tagged.
   (add `scrub: { enabled: true }` to Modify tasks) · Resolves:
   authoring-requests/2026-10-14-p6-4-live-number-and-colour-scrubbing-in-the-editor.md
 
+### Python and Turtle slow-mo: step through a run line by line
+
+- New optional Python and Turtle task field `slowMo: { enabled: true, speed?, showVariables?,
+  question? }` adds **Slow-mo**, **Pause**, **Step**, **Step back** and **Restart** above the
+  code, plus a speed slider. It is off unless `enabled: true`. `speed` is the starting lines a
+  second (default 1; the slider goes 0.25–4), `showVariables: true` shows name tags step by step,
+  and `question` shows while paused. See [python.md](python.md#slow-mo-slowmo) and
+  [turtle.md](turtle.md#slow-mo).
+- The run is recorded first, then played back: the line that just ran is highlighted, each loop
+  header shows "pass 3 of 4" (when the code writes the count) or "pass 3", changed name tags
+  pulse once with earlier values struck through, output grows line by line, and the Stage and
+  Turtle drawing build up step by step. `input()` is asked while recording; the answers appear at
+  the right step. Recordings stop at 2,000 steps ("Slow-mo stops after 2,000 steps. Is there a
+  loop that never ends?"), and that run counts as stopped.
+- No new checks. The recorded run is the run, so checks and the attempt log behave exactly as for
+  Run (the result shows when playback reaches the last line). Editing the code ends slow-mo.
+- Go Live: the presenter's recording and step go to every screen. The session report's
+  `slowMoUsed`, `slowMoRuns`, `slowMoSteps` and `slowMoUsedCount` now cover Python and Turtle too
+  ([session-reports.md](session-reports.md)).
+- Validation: errors for a malformed `slowMo` or wrong-typed keys; warnings for an out-of-range
+  speed, a question over 200 characters, unknown keys and a missing `enabled`. Pair slow-mo with a
+  prediction or a single question: step-through alone doesn't teach.
+- Also: Python Export work now saves the Stage drawing as a PNG, and a share link shows it.
+- Affects: python, turtle, cli (capabilities) · Existing lessons: no changes needed (add `slowMo`
+  where students should trace a loop or a reassignment) · Resolves:
+  authoring-requests/2026-10-14-p6-3-python-slow-mo-step-through-runs.md
+
 ### Keyboard typing history across lessons (`showHistory`)
 
 - Every finished Keyboard `type_text`, `type_code` and `falling_words` result is now kept across

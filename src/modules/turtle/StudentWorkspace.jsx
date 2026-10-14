@@ -14,6 +14,9 @@ import { drawTurtleCommands, sizeCanvasToDisplay } from './draw.js'
 import { createTurtleState } from './engine.js'
 import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
 import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
+import { usePythonSlowMo } from '../python/slowMo/usePythonSlowMo.js'
+import SlowMoBar from '../python/slowMo/SlowMoBar.jsx'
+import SlowMoNameTags from '../python/slowMo/SlowMoNameTags.jsx'
 
 const DEFAULT_TURTLE_STATE = createTurtleState()
 
@@ -29,6 +32,8 @@ export default function StudentWorkspace({
   displayCode,
   displayTurtleResult,
   displayVariablesPanel = null,
+  // The presenter's slow-mo playback in Go Live (teacherLive.pythonSlowMo).
+  displayPythonSlowMo = null,
   teacherLiveCode,
   onVisiblePanesChange,
 }) {
@@ -48,16 +53,48 @@ export default function StudentWorkspace({
         ? (savedCode?.code ?? '')
         : cs.code
 
+  // Slow-mo (task.slowMo, src/modules/python/slowMo/): the recorded run drawn step by step. A Go
+  // Live viewer follows the presenter's playback. Free play (a sandbox) has none.
+  const slowMoShown = !isViewingPrev && !isTeacherEditing && !isSandbox && !cs.inPersonalSandbox
+  const slowMo = usePythonSlowMo({
+    task: slowMoShown ? task : null,
+    cs,
+    code: cs.code,
+    readOnly,
+    live: isForcedTeacherLive ? displayPythonSlowMo : undefined,
+  })
+  const slowMoView = slowMoShown ? slowMo.view : null
+  const slowMoControls = {
+    ...slowMo,
+    slowMo: () => {
+      setOutputCollapsed(false)
+      slowMo.slowMo()
+    },
+    step: () => {
+      setOutputCollapsed(false)
+      slowMo.step()
+    },
+  }
+
   // Turtle draw state is ephemeral (not persisted) — the live student's own most recent
   // run, or (Phase 3) the broadcast snapshot synced via teacherLive.turtleResult when
   // watching a "Go Live" turtle task. isViewingPrev/isTeacherEditing still show an empty
   // canvas — there's no saved/editable canvas snapshot for those, only code.
-  const turtleResult = isForcedTeacherLive
-    ? displayTurtleResult
-    : !readOnly
-      ? cs.turtleResult
-      : null
-  const commands = turtleResult?.commands ?? []
+  const slowMoTurtle = useMemo(
+    () =>
+      slowMoView
+        ? { commands: slowMoView.turtle?.commands ?? [], state: slowMoView.turtle?.state ?? null }
+        : null,
+    [slowMoView]
+  )
+  const turtleResult = slowMoTurtle
+    ? slowMoTurtle
+    : isForcedTeacherLive
+      ? displayTurtleResult
+      : !readOnly
+        ? cs.turtleResult
+        : null
+  const commands = useMemo(() => turtleResult?.commands ?? [], [turtleResult])
   const background = turtleResult?.state?.background ?? '#ffffff'
   // Before any run the 🐢 marker sits at the origin facing east, like real turtle.
   const turtleState = useMemo(
@@ -135,6 +172,12 @@ export default function StudentWorkspace({
           </div>
         </div>
       )}
+      {slowMoShown && (!readOnly || slowMoView) && (
+        <SlowMoBar
+          slowMo={slowMoControls}
+          runDisabled={cs.running || cs.pyodideStatus === 'loading'}
+        />
+      )}
       <PythonEditor
         code={code}
         readOnly={readOnly}
@@ -148,6 +191,7 @@ export default function StudentWorkspace({
         lineHints={readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskLineHintSets(task)}
         showBlocks={taskShowsBlocks(task)}
         onRunShortcut={readOnly ? undefined : handleRunClick}
+        slowMoMarker={slowMoView?.marker ?? null}
       />
     </div>
   )
@@ -157,23 +201,30 @@ export default function StudentWorkspace({
       <div style={s.canvasWrap}>
         <canvas ref={setCanvas} style={s.canvas} />
       </div>
-      {/* The name-tag panel (showVariables), between the drawing and the output. */}
-      <TaskVariablesPanel
-        task={isSandbox || cs.inPersonalSandbox ? null : task}
-        panel={cs.variablesPanel}
-        synced={isForcedTeacherLive ? displayVariablesPanel : undefined}
-        running={cs.running}
-        hidden={isViewingPrev || isTeacherEditing}
-        style={s.variablesPanel}
-      />
+      {/* The name-tag panel (showVariables), between the drawing and the output; step by step
+          during slow-mo. */}
+      {slowMoView ? (
+        <SlowMoNameTags task={task} slowMo={slowMo} style={s.variablesPanel} />
+      ) : (
+        <TaskVariablesPanel
+          task={isSandbox || cs.inPersonalSandbox ? null : task}
+          panel={cs.variablesPanel}
+          synced={isForcedTeacherLive ? displayVariablesPanel : undefined}
+          running={cs.running}
+          hidden={isViewingPrev || isTeacherEditing}
+          style={s.variablesPanel}
+        />
+      )}
       {!outputCollapsed && (
         <div style={s.outputPane}>
           <OutputPanel
-            output={cs.output}
-            runStatus={cs.runStatus}
-            checkPassed={cs.checkPassed}
-            hasCheck={!!task?.check}
-            checkAttempted={cs.checkAttempted}
+            // During slow-mo the output grows step by step and the check result waits for the
+            // last step (the recorded run was checked like any Run).
+            output={slowMoView ? slowMoView.output : cs.output}
+            runStatus={slowMoView && !slowMoView.finished ? null : cs.runStatus}
+            checkPassed={slowMoView && !slowMoView.finished ? false : cs.checkPassed}
+            hasCheck={slowMoView && !slowMoView.finished ? false : !!task?.check}
+            checkAttempted={slowMoView && !slowMoView.finished ? false : cs.checkAttempted}
             fill
             collapsible={false}
             leadingActions={

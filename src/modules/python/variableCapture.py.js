@@ -28,7 +28,10 @@
  *       including after an `await input()` resumes. on_line returns False to stop watching
  *       (the tracer is removed at once, so the rest of the run is untraced). start() / stop().
  *       A recorder (slow-mo) can keep returning True and snapshot every step with
- *       _hs_snapshot(*_hs_frame_namespace(frame)).
+ *       _hs_snapshot(*_hs_frame_namespace(frame)). on_line may raise _HsStopRun (a BaseException,
+ *       so a student's `except Exception` can't swallow it) to end the
+ *       student's program there (slow-mo's 2,000-step cap): the watch stops and the exception
+ *       goes on into the program, for the caller to catch around __hs_run__.
  *   _hs_imported_names(tree, modules) → set
  *       Names bound by `from <module> import …` for the given top-level modules.
  *
@@ -178,6 +181,9 @@ def _hs_imported_names(tree, modules):
                 names.add(alias.asname or alias.name)
     return names
 
+class _HsStopRun(BaseException):
+    pass
+
 class _HsLineWatch:
     def __init__(self, on_line):
         self.on_line = on_line
@@ -194,6 +200,9 @@ class _HsLineWatch:
         if event == 'line':
             try:
                 keep = self.on_line(frame, frame.f_lineno)
+            except _HsStopRun:
+                self.stop(frame)
+                raise
             except Exception:
                 keep = False
             if keep is False:

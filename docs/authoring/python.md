@@ -46,6 +46,7 @@ Author starter and complete code as `codeStages` entries with `role: starter` / 
     # carryCodeFromLesson: { lesson: python-1-11, task: 6 }  # optional instead — the student's own code from an earlier lesson
     interactionMode: run      # optional — run (default) | submit
     showBlocks: false         # optional — hide the editor's block brackets (default true)
+    slowMo: { enabled: true } # optional — step through the run line by line; see Slow-mo
     check:
       type: output
       operator: contains
@@ -263,6 +264,94 @@ screen.
 (Turtle). On narrow screens it stacks under the code and stays usable with the on-screen keyboard;
 inputs and buttons are at least 44 px on touch screens. Every tag has a screen-reader text such as
 "score: number 10", and ✓ / ✗ always come with words.
+
+---
+
+## Slow-mo (`slowMo`)
+
+`slowMo` lets students watch their program run one line at a time: which line ran, what each
+variable holds after it, which pass a loop is on, and the output and drawing building up. Step-
+through alone doesn't teach, so pair it with a prediction or one question (the name-tag panel's
+predict mode, or `slowMo.question`). It is off unless `enabled: true`. Works the same on
+[Turtle](turtle.md#slow-mo) tasks, and draws the [Stage](#stage-drawing-beside-the-console) step
+by step.
+
+```yaml
+  - id: 31
+    moduleType: python
+    title: Watch the loop
+    slowMo:
+      enabled: true
+      speed: 1.0                # optional — starting lines a second (default 1; slider 0.25–4)
+      showVariables: true       # optional — name tags step by step (default false)
+      question: After pass 3, what is total?   # optional — shown while paused
+    codeStages:
+      - role: starter
+        code: |
+          total = 0
+          for n in [4, 7, 2, 5]:
+              total = total + n
+          print(total)
+```
+
+**Controls** (above the editor; 44 px+ buttons, an icon and a word each):
+
+| Button | What it does |
+|---|---|
+| 🐢 **Slow-mo** | Runs the program, then plays it back at the slider's speed. Pressed while paused, it carries on; once finished, it plays again from the start |
+| ⏸ **Pause** | Stops on the current line |
+| 👣 **Step** | One line forward (the first press runs the program and shows line 1) |
+| ↩ **Step back** | One line back, with the variables, output and drawing as they were |
+| ⏮ **Restart** | Back to before the first line |
+
+**Run** still runs the program normally.
+
+**While stepping:**
+
+- The line that just ran has an amber band and a ▶. Its effects are already shown.
+- A **loop pass counter** sits at the end of each loop's header line: "pass 3 of 4" when the code
+  says how many (`range(4)` with plain numbers, or a written-out list, tuple, set, dict or text),
+  "pass 3" otherwise (`range(n)`, `while`), and "finished: 4 passes" on the step where the loop
+  ends.
+- **Name tags** (when `showVariables: true`, or when the task has a [name-tag
+  panel](#name-tag-panel-showvariables)) show the variables after each line. A tag that changed
+  pulses once and shows up to three earlier values struck through, newest first. Inside a
+  function the tags add its local variables. A predict-mode panel shows plain tags while stepping;
+  its ✓ / ✗ come from the finished run. A target-mode panel keeps its targets.
+- The **output** grows line by line, `input()` prompts and answers included. The **Stage** and
+  the **Turtle** drawing build up step by step.
+- The task's `question` shows while paused (after the first step).
+
+**How it works (record, then replay).** A browser can't pause Python mid-run here, so Slow-mo
+runs the whole program first, recording every line, and then plays the recording. `input()` is
+asked while it records, before playback starts; the answers appear at the right step. Editing the
+code ends slow-mo (the recording no longer matches), and so does pressing Run.
+
+**Checks.** There are no slow-mo checks. The recorded run *is* the run: output, checks, the
+attempt log and the tutor's card update exactly as for Run, once. The check result appears when
+playback reaches the last line.
+
+**Runaway programs.** A recording stops at 2,000 lines run. The program is ended there, the
+student sees "Slow-mo stops after 2,000 steps. Is there a loop that never ends?", and the run is
+treated like one the student stopped (no check result, no attempt; `run_attempted` still passes).
+Keep slow-mo programs short.
+
+**Tutors.** In **Go Live** and presentation, the presenter's recording goes to every screen
+once and their Slow-mo, Pause, Step and Restart drive the line, tags, output and drawing the class
+sees. Viewers see "🐢 Slow-mo · Step 4 of 12 · line 3", the question when paused, and no
+controls. A very large recording is slimmed to fit (shorter values first, then no variables,
+then no drawing). The session report records slow-mo use per student per task (`slowMoUsed`,
+`slowMoRuns`, `slowMoSteps`; see [Session reports](session-reports.md)).
+
+**Accessibility.** Under reduced motion nothing pulses; the line band is always still. The pulse
+also stops above 2 lines a second, so nothing flashes 3 or more times a second. A live region
+reads each step ("Step 5 of 11: line 3 ran. total is now 11 (was 4). Loop on line 2: pass 2 of
+4.") while paused or playing at 1 line a second or slower.
+
+**Builder:** the task editor's **Slow-mo** field (on/off, starting speed, name tags, question).
+Validation flags a `slowMo` that isn't an object and an `enabled`, `showVariables` or `question`
+of the wrong type or a speed that isn't a positive number; it warns about a speed outside
+0.25–4, a question over 200 characters, unknown keys, and a `slowMo` with no `enabled`.
 
 ---
 

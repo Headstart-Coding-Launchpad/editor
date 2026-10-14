@@ -38,6 +38,15 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 - Read-only mirrors paint the received glow onto their own Blockly blocks (same block ids) and show "Slow-mo · step N · paused" under the stage. They never show the controls. The presenter's controls drive what the class sees. The timeline stays local.
 - `handleScratchSpriteState`'s throttled trailing send carries the newest payload held back in the window, so a glow change and the stage it drew arrive together.
 
+## Python / Turtle Slow-mo (record, then replay)
+
+- True pausing is impossible (it would need `SharedArrayBuffer`, which GitHub Pages can't enable), so a slow-mo Run is a normal `handleRun({ slowMo: true, onResult })`: `runWithRuntime` adds `slowMo: true` to the runtime callbacks, the python/turtle runtime passes `record` to `runPython`, and the worker records one step per `<student>` line (`src/modules/python/slowMo/recording.js` has the shape). `onResult` hands the recording to the workspace's `usePythonSlowMo` before anything else. That recorded run IS the run: output, checks, `logAttempt`, the save and the tutor's card are exactly as for Run, once. The workspace only replays it, hiding the check result until the last step.
+- A line event fires before its line runs, so each event closes the previous line's step with the variables as that line left them. The 2,000-step cap raises `_HsStopRun` (a `BaseException`, re-raised by `_HsLineWatch`) to end the program; `done` then says `stopped` (no check, no attempt, unless `run_attempted`).
+- `input()` is asked while recording, before playback; the recording's output includes each prompt and answer, so they appear at the right step.
+- Editing the code, a normal Run or Run Tests, or another task clears the recording. The workspace never re-renders anything per keystroke for slow-mo.
+- Go Live: the presenter's recording travels once as JSON text in `teacherLive.pythonSlowMo` (`{ taskId, id, json, position, mode, speed }`, compacted to ≤ 300 KB by `compactRecording`), written with its own small `updateTeacherLive` merges like `outputCollapsed`, never inside the full payload (which is re-sent on every keystroke). Each step after that is a multi-path update of `pythonSlowMo/position|mode|speed`. Viewers read it as `displayPythonSlowMo` and follow, read-only. `setTeacherLive` (a new Go Live) starts without it. No `liveExtras` change and no rules change (`teacherLive` is teacher-written and unvalidated below the node).
+- Report: `cs.recordSlowMoUse` (`useSlowMoLog`, `students/{id}/slowMoLog/{taskId}`), one `run` per recording and one `step` per step shown going forward.
+
 ## Scratch Compact Layout: Instructions/Code and Blocks/Stage tabs
 
 - The response to a shrinking panel is graduated, and — deliberately — the explainer gives way *before* the code area (Blocks/Stage) is ever forced to compact, not after. `LessonTaskContent.jsx` measures its explainer+workspace container (`useElementSize.js`, a `ResizeObserver` hook) and, for Scratch lessons only:

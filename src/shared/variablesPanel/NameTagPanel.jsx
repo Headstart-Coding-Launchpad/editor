@@ -33,6 +33,12 @@ const DICT_LIMIT = 8
  *   `readOnly`, for a tutor's or a Go Live viewer's copy)
  * - `running`: the program is running now
  * - `audience`: 'student' (default) or 'tutor' (wording)
+ *
+ * Step-by-step players (Python slow-mo) also pass:
+ * - `history`: `{ name: [earlier value nodes, newest first] }`, shown struck through on the tag
+ * - `status`: the status line's words (in place of the run summary)
+ * - `pulseKey`: changes on every step, so a changed tag pulses again; `pulse: false` turns the
+ *   pulse off (fast playback, so tags never flash more than about twice a second)
  */
 export default function NameTagPanel({
   config,
@@ -43,6 +49,10 @@ export default function NameTagPanel({
   readOnly = false,
   running = false,
   audience = 'student',
+  history = null,
+  status = null,
+  pulseKey = null,
+  pulse = true,
   style,
 }) {
   if (!config) return null
@@ -62,11 +72,16 @@ export default function NameTagPanel({
   const showOthers = !!snapshot && others.length > 0
 
   return (
-    <section className="ntp" aria-label="Variables" style={style} data-mode={config.mode}>
+    <section
+      className={`ntp${pulse ? '' : ' ntp--still'}`}
+      aria-label="Variables"
+      style={style}
+      data-mode={config.mode}
+    >
       <div className="ntp-head">
         <h3 className="ntp-title">Variables</h3>
         <p className="ntp-status" role="status" aria-live="polite">
-          {statusText({ config, run, snapshot, results, running, audience })}
+          {status ?? statusText({ config, run, snapshot, results, running, audience })}
         </p>
       </div>
 
@@ -107,7 +122,14 @@ export default function NameTagPanel({
       {showOthers && (
         <ul className="ntp-tags" aria-label={featured.length > 0 ? 'Other variables' : 'Variables'}>
           {others.map((entry) => (
-            <ValueTag key={entry.n} name={entry.n} node={entry.v} changed={changed.has(entry.n)} />
+            <ValueTag
+              key={changed.has(entry.n) && pulseKey != null ? `${entry.n}@${pulseKey}` : entry.n}
+              name={entry.n}
+              node={entry.v}
+              changed={changed.has(entry.n)}
+              previous={history?.[entry.n] ?? null}
+              stepping={history != null}
+            />
           ))}
         </ul>
       )}
@@ -169,14 +191,30 @@ function TagTop({ name, node, changed, label }) {
   )
 }
 
-function ValueTag({ name, node, changed }) {
+function ValueTag({ name, node, changed, previous = null, stepping = false }) {
+  const earlier = Array.isArray(previous) ? previous.filter(Boolean) : []
+  const changedWords = stepping ? ' (changed on this step)' : ' (changed since the last run)'
+  const wasWords = earlier.length
+    ? `, before that ${earlier.map((value) => formatValue(value, { maxChars: 60 })).join(', then ')}`
+    : ''
   return (
     <li
       className={`ntp-tag${changed ? ' is-changed' : ''}`}
-      aria-label={describeVariable(name, node) + (changed ? ' (changed since the last run)' : '')}
+      aria-label={describeVariable(name, node) + (changed ? changedWords : '') + wasWords}
     >
       <TagTop name={name} node={node} changed={changed} />
       <ValueView node={node} />
+      {earlier.length > 0 && (
+        <span className="ntp-history" aria-hidden="true">
+          was{' '}
+          {earlier.map((value, index) => (
+            <React.Fragment key={index}>
+              {index > 0 && ', '}
+              <s className="ntp-history-value">{formatValue(value, { maxChars: TILE_CHARS })}</s>
+            </React.Fragment>
+          ))}
+        </span>
+      )}
     </li>
   )
 }

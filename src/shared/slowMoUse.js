@@ -2,8 +2,8 @@
 //
 // The student's client writes `sessions/{lessonId}/students/{id}/slowMoLog/{taskId}`
 // `{ runs, steps, lastAt }` (src/app/hooks/useSlowMoLog.js): how many slow-mo runs they started
-// and how many times they pressed Step on that task (Scratch slow-mo, task.slowMo). The report
-// shows it per student per task. Counts only, never code.
+// and how many steps they took on that task (Scratch: Step presses; Python / Turtle: steps viewed;
+// task.slowMo). The report shows it per student per task. Counts only, never code.
 
 export const SLOW_MO_USE_KINDS = Object.freeze(['run', 'step'])
 

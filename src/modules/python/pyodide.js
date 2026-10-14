@@ -119,6 +119,8 @@ function handleWorkerMessage({ data }) {
         turtle: data.turtle ?? null,
         // The Python Stage drawing ({ commands }, src/shared/stage/).
         stage: data.stage ?? null,
+        // The slow-mo recording (runPython's `record`, src/modules/python/slowMo/), else null.
+        slowMo: data.slowMo ?? null,
       })
       _runResolve = null
       break
@@ -179,6 +181,9 @@ async function startRun(
     // Name-tag panel capture ({ panel, peekLine, hide }, see variableCaptureOptions in
     // src/shared/variablesPanel/variablesPanel.js); omitted for no panel.
     capture,
+    // Slow-mo recording ({ lineOffset, hide }, see slowMoRecordOptions in
+    // src/modules/python/slowMo/config.js); omitted for a normal run.
+    record,
   } = {}
 ) {
   if (!_worker) throw new Error('Pyodide not initialised — call initPyodide first')
@@ -214,6 +219,7 @@ async function startRun(
       gpioInputs: _gpioInputs,
       asyncNames: Array.isArray(asyncNames) ? asyncNames : [],
       capture: capture ?? null,
+      record: record ?? null,
     })
   })
 }

@@ -133,6 +133,22 @@ keyboard use.
 - When the drag ends the value is a normal edit, saved and sent to a watching tutor. The session
   report counts each student's scrubs (`scrubs`).
 
+## Slow-mo
+
+A Turtle task can use Python's [slow-mo](python.md#slow-mo-slowmo) (`slowMo: { enabled: true,
+speed?, showVariables?, question? }`): Slow-mo, Pause, Step, Step back and Restart above the code.
+The drawing builds up line by line and the 🐢 marker moves with it, so students see which line
+drew which side. The current line, loop pass counter ("pass 2 of 4" for `range(4)`), name tags
+and output work as in Python. The shim's own lines are never steps. The recorded run is the run
+for the checks, and Go Live carries the presenter's playback.
+
+```yaml
+  slowMo:
+    enabled: true
+    speed: 2
+    question: Which way is the turtle facing after pass 2?
+```
+
 ## Coordinate system
 
 Matches real Python `turtle` exactly: `(0, 0)` is the centre of a fixed
@@ -297,7 +313,8 @@ don't need a run.
 - No file I/O, no `pip install` — same as the Python module.
 - The student's own canvas updates only after pressing **Run**; there is no
   live redraw while typing. The exception is [live scrubbing](#live-scrubbing-scrub): dragging
-  a number or picking a colour redraws as the value changes.
+  a number or picking a colour redraws as the value changes. [Slow-mo](#slow-mo) replays a run's
+  drawing step by step.
 - The turtle drawing itself is **not persisted** between sessions or page
   reloads — re-running the code regenerates the same drawing from the same
   script.
