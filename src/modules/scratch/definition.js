@@ -177,6 +177,12 @@ export default defineModule({
     { name: 'allowAddSound', type: 'boolean' },
     { name: 'carryBlocksFrom', type: 'string' },
     {
+      name: 'carryBlocksFromLesson',
+      type: 'object',
+      description:
+        "{ lesson, task }: start from the student's own saved work on that task of an earlier lesson (stock ids; the tutor matches students to the class roster). Not with carryBlocksFrom.",
+    },
+    {
       name: 'slowMo',
       type: 'object',
       description:

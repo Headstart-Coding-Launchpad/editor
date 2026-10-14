@@ -1,6 +1,6 @@
 # Carry a student's own code from one lesson into the next (two-lesson projects)
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Ryan (approved by Ryan), 2026-10-14
 - **Lessons blocked:** none yet
@@ -19,4 +19,8 @@ Raised at Ryan's request in the 2026-10-09 open-notes triage (Guide Feedback ent
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped 2026-10-14 on `feature/carry-from-lesson` (package W3-a of `docs/architecture/requests-2026-10-14-plan.md`).
+
+- New task fields `carryCodeFromLesson` (Python, Turtle, HTML) and `carryBlocksFromLesson` (Scratch): `{ lesson: <stock lesson id>, task: <task id> }`. For Python Level 1 Lesson 12: `carryCodeFromLesson: { lesson: python-1-11, task: <the Lesson 11 build task id> }`, keeping the Build Reference's Stage 12 code as `starterCode` for the fallback.
+- Tutor-mediated through the class roster: once the tutor matches a student, the tutor's screen hands them their saved Lesson 11 work. Unmatched students wait (with a "Use the starter" override for the tutor); nothing saved, "No class", solo, presentation and preview use the starter, logged in `carryFallbackLog`.
+- Docs: [AUTHORING_GUIDE.md → Two-lesson projects](../AUTHORING_GUIDE.md#two-lesson-projects-carry-from-an-earlier-lesson), [lesson-schema.md](../lesson-schema.md), [validation-errors.md](../validation-errors.md), [session-reports.md](../session-reports.md) (`crossLessonCarry`), CHANGELOG 2026-10-14.

@@ -193,6 +193,16 @@ Module sandboxes use the existing type-specific sandbox fields: `sandboxStarter`
 
 Carry-through stays inside the same named module: use the existing type-specific carry field (`carryCodeFrom`, `carryBlocksFrom`, `carryFsFrom`, `carryDesktopFrom`, or `carryCircuitFrom`) and select an earlier task in that module only.
 
+To start from a student's own work in an **earlier lesson** (two-lesson projects), use `carryCodeFromLesson` (Python, Turtle, HTML) or `carryBlocksFromLesson` (Scratch), each a `{ lesson, task }` map with the stock lesson id and its task id:
+
+```yaml
+carryCodeFromLesson:
+  lesson: python-1-11
+  task: 6
+```
+
+It can't be combined with the task's in-lesson carry field. See [Two-lesson projects](AUTHORING_GUIDE.md#two-lesson-projects-carry-from-an-earlier-lesson).
+
 ---
 
 ## Draft workflow and managed metadata

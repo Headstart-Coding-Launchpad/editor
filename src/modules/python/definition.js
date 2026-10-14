@@ -147,6 +147,12 @@ export default defineModule({
       ],
     },
     { name: 'carryCodeFrom', type: 'string' },
+    {
+      name: 'carryCodeFromLesson',
+      type: 'object',
+      description:
+        "{ lesson, task }: start from the student's own saved work on that task of an earlier lesson (stock ids; the tutor matches students to the class roster). Not with carryCodeFrom.",
+    },
     SHOW_VARIABLES_TASK_FIELD,
     STAGE_TARGET_TASK_FIELD,
   ],

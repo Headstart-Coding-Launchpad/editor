@@ -57,6 +57,7 @@ modules:
     prebuiltStacks: []        # optional — drag-in block stacks shown in the toolbox
     codeStages: []            # optional — intermediate stages (label, role?, blocks, prebuiltStacks)
     carryBlocksFrom: null     # optional — carry saved blocks from task ID
+    # carryBlocksFromLesson: { lesson: scratch-1-11, task: 5 }  # optional instead — the student's own project from an earlier lesson
     allowAddSprite: false     # optional — show a student-facing "Add sprite" picker (default false)
     addSpritePresetIds: []    # optional — restrict the picker to these `lessonTypeAssets/scratch.defaultSprites` ids; omitted/empty = whole library
     allowAddBackdrop: false   # optional — show a student-facing "Add backdrop" picker (default false)
@@ -82,6 +83,8 @@ modules:
 ```
 
 ---
+
+**Carry from an earlier lesson.** `carryBlocksFromLesson: { lesson, task }` starts the task from each student's own saved project (sprites, blocks, backdrops) on that task of an earlier lesson (two-lesson projects), using the stock lesson id. Students the tutor hasn't matched to the class list wait; anyone with nothing saved gets `starterBlocks`. Not with `carryBlocksFrom` on the same task. See [Two-lesson projects](AUTHORING_GUIDE.md#two-lesson-projects-carry-from-an-earlier-lesson).
 
 ## Sprite Object
 

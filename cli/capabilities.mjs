@@ -10,6 +10,7 @@ import { TASK_ACTIVITY_FORMATS, TASK_ACTIVITY_PATTERNS } from '../src/shared/tas
 import { getBadgeDefinitions } from '../src/badges/registry.pure.js'
 import { BADGE_OPTION_SPECS } from '../src/badges/badgeOptions.js'
 import { readAuthoringRequests } from './authoring-requests.mjs'
+import { crossLessonCarryField } from '../src/shared/roster/crossLessonCarry.js'
 
 const MODULE_FLAGS = [
   'supportsInteractionMode',
@@ -25,6 +26,9 @@ function describeModule(def) {
     type: def.type,
     label: def.meta.label,
     carryThroughField: def.carryThroughField,
+    // `{ lesson, task }`: start from the student's saved work in an earlier lesson (null when
+    // the module saves no roster work). See docs/authoring/lesson-schema.md.
+    crossLessonCarryField: crossLessonCarryField(def),
     stageLabels: def.stageLabels,
     flags: Object.fromEntries(
       MODULE_FLAGS.filter((flag) => typeof def[flag] === 'boolean').map((flag) => [flag, def[flag]])

@@ -14,6 +14,7 @@ import {
 import { db } from '../../shared/firebase'
 import { buildControlHighlightCommand } from '../../shared/controlHighlight.js'
 import { clearPeerHelpData } from './usePeerHelp'
+import { clearCarryInbox } from '../../shared/roster/crossLessonCarryService'
 import { encodeFileKey, decodeFileKey } from '../../shared/fileKeys'
 import { sealTasks } from '../../shared/lessonSeal'
 import { compactTurtleResultForSync } from '../../modules/turtle/sync.js'
@@ -224,10 +225,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
       rosterMatches: null,
       // Typing history pushed to matched students (src/shared/typingHistory.js).
       typingHistory: null,
+      // Cross-lesson carry statuses (src/shared/roster/crossLessonCarry.js) belong to this
+      // session's anonymous students.
+      carryStatus: null,
     })
     // The payload node lives outside the session, so resetting the session
     // does not clear it on its own.
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
+    // Nor the cross-lesson carry inbox.
+    await clearCarryInbox(lessonId)
     // Neither does the teacher-sandbox archive.
     await archiveQuietly(remove(ref(db, sessionArchivePath())))
     // Nor the Presentation annotations.
@@ -321,8 +327,11 @@ export function useSession(lessonId, { enabled = true } = {}) {
       peerHelperOff: null,
       // Students' unsubmitted drafts: the report (built before this) holds them as lastDraft.
       draftLog: null,
+      // Cross-lesson carry outcomes: the report (built before this) holds them.
+      carryStatus: null,
     })
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
+    await clearCarryInbox(lessonId)
     await clearLiveInkQuietly()
     await clearPeerHelpData(lessonId)
     // When the teacher closes the tab, remove the session entirely so the
@@ -334,6 +343,11 @@ export function useSession(lessonId, { enabled = true } = {}) {
       .remove()
       .catch(() => {
         // Non-fatal: worst case a payload subtree outlives its session.
+      })
+    onDisconnect(ref(db, `carryInbox/${lessonId}`))
+      .remove()
+      .catch(() => {
+        // Non-fatal: worst case an inbox outlives its session until the next createSession.
       })
     // The sandbox archive has been read into the saved report by now (handleEndSession builds
     // the report before calling this), so it goes with the session.

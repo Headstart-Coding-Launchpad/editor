@@ -43,6 +43,7 @@ Author starter and complete code as `codeStages` entries with `role: starter` / 
     copyCode: |               # optional — read-only panel above the student editor
       print('Hello Headstart')
     carryCodeFrom: 1          # optional — carry saved code from task ID
+    # carryCodeFromLesson: { lesson: python-1-11, task: 6 }  # optional instead — the student's own code from an earlier lesson
     interactionMode: run      # optional — run (default) | submit
     showBlocks: false         # optional — hide the editor's block brackets (default true)
     check:
@@ -61,6 +62,8 @@ Author starter and complete code as `codeStages` entries with `role: starter` / 
 **Legacy `starterCode` / `completeCode`:** older lessons author starter and complete code as separate `starterCode: "..."` / `completeCode: "..."` string fields instead of `codeStages` roles. Both still work fully at runtime and are read whenever an equivalent stage is absent, but the current Builder UI no longer creates or edits them — don't use them in new lessons. See `docs/authoring/legacy-lesson-compatibility.md`.
 
 ---
+
+**Carry from an earlier lesson.** `carryCodeFromLesson: { lesson, task }` starts the task from each student's own saved code on that task of an earlier lesson (two-lesson projects), using the stock lesson id. Students the tutor hasn't matched to the class list wait; anyone with nothing saved gets `starterCode`. Not with `carryCodeFrom` on the same task. Turtle tasks take it too. See [Two-lesson projects](AUTHORING_GUIDE.md#two-lesson-projects-carry-from-an-earlier-lesson).
 
 ## Line Hints
 

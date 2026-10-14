@@ -7,6 +7,7 @@ import { getLessonModule } from '../../../modules/registry'
 import { canTaskAllowSharing } from '../../../shared/taskUtils'
 import { supportsSideQuests } from '../../../shared/sideQuests'
 import SideQuestsEditor from './SideQuestsEditor'
+import CrossLessonCarryField from './CrossLessonCarryField'
 import {
   listHighlightTargets,
   moduleHasHighlightTargets,
@@ -72,6 +73,8 @@ export default function TaskOptionsSection({
             onUpdate={onUpdate}
             lessonMod={lessonMod}
           />
+
+          <CrossLessonCarryField task={task} lesson={lesson} onUpdate={onUpdate} />
 
           {lessonMod?.supportsInteractionMode && (
             <Field label="Student interaction">

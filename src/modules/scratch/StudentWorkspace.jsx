@@ -50,6 +50,8 @@ export default function StudentWorkspace({
           taskId: viewingTaskId ?? currentTaskId,
           readSavedCode: cs.readSavedTaskCode,
           onCarryFallback: cs.recordCarryFallback,
+          // Cross-lesson carry (carryBlocksFromLesson): the workspace mounts once the hold ends.
+          crossLesson: cs.crossLessonCarryFor?.(viewingTaskId ?? currentTaskId) ?? null,
         })
   // Memoized so an unrelated re-render (e.g. a live-view activity notice firing
   // mid-drag) doesn't hand ScratchWorkspace a new array reference — that would

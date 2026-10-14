@@ -44,6 +44,11 @@ import {
 } from './composedLesson.js'
 import { CARRY_THROUGH_FIELDS, getModuleDefinition } from '../modules/definitions.js'
 import {
+  CROSS_LESSON_CARRY_FIELDS,
+  crossLessonCarryField,
+  normaliseCarrySpec,
+} from './roster/crossLessonCarry.js'
+import {
   codeCheckHasValue,
   collectFeedbackChecks,
   filesStarterPresent,
@@ -255,6 +260,42 @@ function taskHasStarter(task, { kind, legacy, definition }) {
   return definition.hasStarterContent ? !!definition.hasStarterContent(task) : true
 }
 
+// Cross-lesson carry (`carryCodeFromLesson` / `carryBlocksFromLesson`: { lesson, task }; see
+// src/shared/roster/crossLessonCarry.js). The field must be the task's own module's (its
+// carryThroughField + 'Lesson', on modules that save roster work), name another lesson, and not
+// be combined with in-lesson carry. Whether the source lesson and task exist needs Firestore:
+// the CLI's publish checks that softly (crossLessonCarrySourceWarnings).
+function validateCrossLessonCarry(task, { n, lesson, kind, definition, errors }) {
+  const ownField = kind === 'module' ? crossLessonCarryField(definition) : null
+  for (const field of CROSS_LESSON_CARRY_FIELDS) {
+    const value = task[field]
+    if (value == null) continue
+    if (field !== ownField) {
+      if (ownField) errors.push(`Task ${n} ${field} is not supported on this task; use ${ownField}`)
+      else errors.push(`Task ${n} ${field} is not supported on this task type`)
+      continue
+    }
+    const spec = normaliseCarrySpec(value)
+    if (!spec) {
+      errors.push(
+        `Task ${n} ${field} must be { lesson, task }: the earlier lesson's id and one of its task ids`
+      )
+      continue
+    }
+    const extra = Object.keys(value).filter((key) => key !== 'lesson' && key !== 'task')
+    if (extra.length) errors.push(`Task ${n} ${field} has unknown fields: ${extra.join(', ')}`)
+    const ownLessonIds = [lesson?.id, lesson?.fork?.sourceLessonId].filter(Boolean)
+    if (ownLessonIds.includes(spec.lesson)) {
+      errors.push(
+        `Task ${n} ${field} names this lesson; use ${definition.carryThroughField} to carry within a lesson`
+      )
+    }
+    if (task[definition.carryThroughField] != null) {
+      errors.push(`Task ${n} cannot use both ${field} and ${definition.carryThroughField}`)
+    }
+  }
+}
+
 /**
  * Validates one (flattened) task. Returns the validation context `{ kind, legacy, usesModule,
  * moduleType, definition }` for the validator's own extras, or null when the task was skipped
@@ -384,6 +425,8 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
     definition?.validateTask(task, { n, lesson, errors, warnings })
     validateRegisteredChecks(task, n, errors, { moduleDefinition: definition, warnings })
   }
+
+  validateCrossLessonCarry(task, { n, lesson, kind, definition, errors })
 
   if (kind === 'module') {
     const carryField = definition?.carryThroughField ?? 'carryCodeFrom'

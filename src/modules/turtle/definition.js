@@ -121,6 +121,12 @@ export default defineModule({
       description: 'Coloured block brackets in the Python editor (default true; false hides them).',
     },
     { name: 'carryCodeFrom', type: 'string' },
+    {
+      name: 'carryCodeFromLesson',
+      type: 'object',
+      description:
+        "{ lesson, task }: start from the student's own saved work on that task of an earlier lesson (stock ids; the tutor matches students to the class roster). Not with carryCodeFrom.",
+    },
     SHOW_VARIABLES_TASK_FIELD,
   ],
   carryThroughField: 'carryCodeFrom',
