@@ -1,6 +1,6 @@
 # Live number and colour scrubbing in the code editor
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, sent straight to LaunchPad Dev at Ryan's request, bypassing pipeline-ui), 2026-10-14
 - **Lessons blocked:** none yet. This is build 4 of 6 in Lesson Gen's P6 Visual learning plan.
@@ -65,3 +65,27 @@ The plan's Modify step is "one change, one visible difference". Today a student 
 
 ## Resolution
 
+Shipped 2026-10-14 on `feature/editor-scrubbing` as the task field `scrub: { enabled, numbers,
+colours, ranges: [{ line, min, max }] }` on Python, Turtle and HTML tasks (Arcade skipped: no cheap
+hot reload).
+
+- **Desktop:** hovering a number underlines it with an ew-resize cursor; dragging left / right
+  changes it (whole numbers stay whole, decimals step by their last place, CSS units kept, per-line
+  ranges clamp, otherwise 0 to twice the value). Clicking a colour opens the picker.
+- **Tablets:** tapping a number opens a slider popover beside it (− / + and Done, all 44 px+);
+  tapping a colour opens the picker. **Keyboard:** Alt+Enter opens either popover; arrow keys move
+  the slider, Enter keeps, Escape puts the value back.
+- **Picker:** the Okabe-Ito colour-blind-safe palette first (with text labels), then common colour
+  names, then a hex box. A name stays a name when the choice has one; hex stays hex (case and
+  3-digit form kept).
+- **Re-running:** a debounced (200 ms) preview run for Turtle, Python programs that import
+  `stage`, and HTML/CSS (the student's own preview iframe). No attempt log, checks, save,
+  `currentCode` write or typing count during the drag, and a re-run never starts while the last is
+  running. Programs calling `input()` (and Python without the Stage) show "Press Run to see it".
+- **Real edit:** when the drag or popover ends, the preview is reverted and the final value applied
+  as one edit (one Undo step): saved, sent to a watching tutor like typing, checked on the next Run.
+  It counts as an edit, not typed characters.
+- **Report:** `scrubs`, `scrubNumbers`, `scrubColours` per student task and `scrubUsedCount` per
+  task, from a new counts-only RTDB node `students/{id}/scrubLog/{taskId}` (rules deploy needed).
+- Builder: Task options → Live scrubbing. Docs: python.md, turtle.md, html.md, session-reports.md,
+  validation-errors.md.

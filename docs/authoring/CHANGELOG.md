@@ -39,6 +39,25 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-14
 
+### Live number and colour scrubbing in the code editor (`scrub`)
+
+- New optional task field `scrub: { enabled, numbers, colours, ranges: [{ line, min, max }] }` on
+  Python, Turtle and HTML tasks (`scrub: true` is short for `{ enabled: true }`). Students drag a
+  number (or tap it for a slider; Alt+Enter from the keyboard) and click a colour for a picker
+  (colour-blind-safe colours first, then names, then hex). Whole numbers stay whole, decimals step
+  by their last place, CSS units are kept, and a colour is written back as a name or hex to match.
+- While a value moves, Turtle, Python programs that draw on the Stage, and HTML/CSS re-run live as
+  a preview (no attempt, checks, save or tutor update). Programs that call `input()`, and Python
+  without the Stage, show "Press Run to see it". When the drag ends the value is one normal edit.
+  Arcade has no scrubbing. See [python.md](python.md#live-scrubbing-scrub),
+  [turtle.md](turtle.md#live-scrubbing-scrub) and [html.md](html.md#live-scrubbing-scrub).
+- The session report adds `scrubs`, `scrubNumbers` and `scrubColours` per student task, and
+  `scrubUsedCount` per task ([session-reports.md](session-reports.md)). Validation checks the
+  field's shape and ranges ([validation-errors.md](validation-errors.md#live-scrubbing-scrub)).
+- Affects: python, turtle, html, cli (capabilities, validate) · Existing lessons: no changes needed
+  (add `scrub: { enabled: true }` to Modify tasks) · Resolves:
+  authoring-requests/2026-10-14-p6-4-live-number-and-colour-scrubbing-in-the-editor.md
+
 ### Keyboard typing history across lessons (`showHistory`)
 
 - Every finished Keyboard `type_text`, `type_code` and `falling_words` result is now kept across

@@ -399,6 +399,24 @@ Python and Turtle tasks; see [python.md](python.md#name-tag-panel-showvariables)
 | `Task … has a variables_predicted …, but it only works in Python and Turtle tasks` | The check is on another module's task. | Move it to a Python or Turtle task. |
 | `Task … has a variables_predicted … whose names is not a list of variable names` / `Task … has a variables_predicted … with names that are not Python variable names` | `names` is empty, not a list, or holds something that isn't a Python name. | Write `names: [score, lives]`, or remove `names`. |
 
+## Live scrubbing (`scrub`)
+
+Python, Turtle and HTML tasks; see [python.md](python.md#live-scrubbing-scrub).
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task … has scrub, but scrubbing only works in Python, Turtle and HTML tasks — it is ignored` (warning) | `scrub` is on another module's task (Arcade, Scratch, …). | Remove it, or move the task to Python, Turtle or HTML. |
+| `Task … has a scrub that is not an object — write it as scrub: { enabled: true }` | `scrub` is a string, number or list. | Write `scrub: { enabled: true }` (or `scrub: true`). |
+| `Task … has scrub … that is not true or false` | `enabled`, `numbers` or `colours` is text or a number. | Use `true` or `false`. |
+| `Task … has scrub with numbers and colours both off — nothing can be scrubbed` (warning) | Both kinds are turned off. | Turn one on, or remove `scrub`. |
+| `Task … has scrub fields it does not use (…) — they are ignored` (warning) | `scrub` has keys other than `enabled`, `numbers`, `colours` and `ranges`. | Remove them (check the spelling of `colours`). |
+| `Task … has scrub ranges that is not a list — write ranges: [{ line, min, max }]` | `ranges` is a map or a string. | Write a list of `{ line, min, max }`. |
+| `Task … has a scrub range without a line number of 1 or more` | A range has no `line`, or it isn't a whole number from 1. | Give the line the student sees, e.g. `line: 3`. |
+| `Task … has a scrub range on line … whose min or max is not a number` | `min` / `max` is missing or text. | Write numbers, e.g. `min: 10, max: 200`. |
+| `Task … has a scrub range on line … whose min is not less than its max` | The range is empty or backwards. | Swap them, or fix one. |
+| `Task … has two scrub ranges for line … — only the first is used` (warning) | Two ranges name the same line. | Keep one. |
+| `Task … has a scrub range on line …, but the starter code has only … lines` (warning) | The line is past the end of the starter code (Python, Turtle). | Fix the line number. |
+
 ## Python Stage (`stageTarget` and `stage_*` checks)
 
 Python tasks; see [python.md](python.md#stage-drawing-beside-the-console).

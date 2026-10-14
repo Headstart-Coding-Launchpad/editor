@@ -11,6 +11,7 @@ import {
 } from '../../app/components/CollapsiblePanelControls'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
 import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
+import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
 import { taskShowsVariables } from '../../shared/variablesPanel/variablesPanel.js'
 import StagePane from '../../shared/stage/StagePane.jsx'
 import { stageCommandsOf } from '../../shared/stage/commands.js'
@@ -220,6 +221,10 @@ export default function StudentWorkspace({
         code={code}
         readOnly={readOnly}
         onChange={readOnly ? undefined : cs.handleCodeChange}
+        // Live number / colour scrubbing (task `scrub`, src/shared/scrub/); not in a sandbox.
+        scrub={readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskScrub(task)}
+        onScrubPreview={cs.scrubPreview}
+        onScrubCommit={cs.recordScrub}
         onSelectionChange={readOnly ? undefined : cs.handleEditorSelection}
         onActivity={readOnly ? undefined : cs.handleEditorActivity}
         remoteSelection={isForcedTeacherLive ? displaySelection : null}

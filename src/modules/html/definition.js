@@ -24,6 +24,7 @@ import { getCompleteStage } from '../../shared/taskStages.js'
 import { MARKUP_COPY_CODE_PLACEHOLDER } from '../moduleAuthoring.js'
 import { HTML_FILE_TYPE, HTML_ONLY } from './fileTemplates.js'
 import { printHtmlTask } from './print.js'
+import { SCRUB_TASK_FIELD, validateScrub } from '../../shared/scrub/scrubConfig.js'
 import {
   INSPECTOR_FOCUS_MAX,
   INSPECTOR_KEYS,
@@ -127,6 +128,9 @@ export default defineModule({
     // A passed task's side-quests run in a throwaway HTML workspace, the starter as index.html
     // (src/shared/sideQuests.js).
     sideQuests: true,
+    // A task's `scrub` (src/shared/scrub/): CSS and attribute values; the student's preview
+    // re-renders live while a value moves (a watching tutor's view updates on Run).
+    scrub: { liveRerun: 'preview', needsImport: null, inputCall: null },
     // The task's `inspector` field adds the HTML Inspector to the preview (./inspector/).
     previewInspector: true,
   },
@@ -227,6 +231,7 @@ export default defineModule({
       description:
         'HTML Inspector on the preview: { enabled: true, open?, focus?: "<CSS selector>", show?: [box, cascade, layout] } (docs/authoring/html.md).',
     },
+    SCRUB_TASK_FIELD,
   ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeFiles',
@@ -370,6 +375,8 @@ export default defineModule({
     )
     warnCompleteFiles(task, n, warnings)
     validateInspector(task, n, errors, warnings)
+    // Ranges are lines of whichever file is open, so there is no one starter to check them against.
+    validateScrub(task, n, errors, warnings)
   },
   hasStarterContent: filesStarterPresent,
 })

@@ -9,6 +9,7 @@
 import { fieldWorkSlotHooks } from './moduleContract.js'
 import { LINE_HINT_SYNTAXES, isLineHintSyntax } from '../shared/lineHints.js'
 import { normaliseFieldSpecs } from '../shared/fieldSpec.js'
+import { scrubCapabilityProblem } from '../shared/scrub/scrubConfig.js'
 
 const REQUIRED_FUNCTIONS = [
   'getDisplayState',
@@ -448,6 +449,11 @@ function validateUiGates(type, def, workSlot) {
       `"capabilities.peerHelp" must be null or { anchors: ${PEER_HELP_ANCHORS.join('|')}, hints: ${PEER_HELP_HINT_LISTS.join('|')} }`
     )
   }
+  // `capabilities.scrub` (optional; null = no scrubbing): live number / colour scrubbing in the
+  // code editor for a task's `scrub` field — { liveRerun: 'preview' | 'none', needsImport,
+  // inputCall } (src/shared/scrub/scrubConfig.js; python, turtle, html).
+  const scrubProblem = scrubCapabilityProblem(caps.scrub)
+  if (scrubProblem) fail(type, scrubProblem)
   const panes = caps.focusPanes ?? []
   if (
     !Array.isArray(panes) ||
@@ -799,6 +805,7 @@ export function defineModule(def) {
       run: runKind,
       cardSummary: def.capabilities.cardSummary ?? null,
       rosterWork: def.capabilities.rosterWork ?? null,
+      scrub: def.capabilities.scrub ? Object.freeze({ ...def.capabilities.scrub }) : null,
       focusPanes,
       highlightTargets,
       teacherEditor,

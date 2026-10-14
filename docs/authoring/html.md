@@ -155,6 +155,39 @@ Notes:
   The session report records whether each student used the Inspector on the task
   ([session reports](session-reports.md)).
 
+## Live scrubbing (`scrub`)
+
+`scrub` lets students drag CSS numbers and pick colours, and the preview updates as the value
+changes. It's off unless set. Same field as Python: see
+[Python → Live scrubbing](python.md#live-scrubbing-scrub) for the options, devices and keyboard
+use.
+
+```yaml
+  - id: 53
+    moduleType: html
+    title: Give the card more room
+    scrub:
+      enabled: true
+      ranges:
+        - line: 4          # a line of whichever file is open
+          min: 0
+          max: 60
+```
+
+What can be scrubbed:
+
+- **CSS values** in `<style>` blocks, `.css` files and `style="…"` attributes: numbers keep their
+  unit (`margin: 20px`, `font-size: 1.5em`, `width: 50%`), and colours are names or hex
+  (`color: red`, `background: #fff`).
+- **Attribute values** that are a whole number or a colour: `width="200"`, `fill="#f00"`.
+- Not text on the page, links, ids, classes or JavaScript.
+
+While a value moves, the student's own preview re-renders about every 200 ms (a preview: no
+attempt, checks or save). A watching tutor's view still updates only when the student runs, as
+always. When the drag ends the value is a normal edit, saved and sent like typing. `ranges` lines
+count in the file being edited, in every file. The session report counts each student's scrubs
+(`scrubs`).
+
 ## HTML Element Checks (run mode only)
 
 All element checks require a `selector` (CSS selector).

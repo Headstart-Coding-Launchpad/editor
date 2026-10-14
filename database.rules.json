@@ -123,6 +123,16 @@
                 "lastAt": { ".validate": "newData.isNumber()" },
                 "$other": { ".validate": false }
               }
+            },
+            // Editor scrubbing per task for the session report ({ numbers, colours, lastAt };
+            // src/shared/scrub/scrubUse.js). Counts only, never code.
+            "scrubLog": {
+              "$taskId": {
+                "numbers": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "colours": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "lastAt": { ".validate": "newData.isNumber()" },
+                "$other": { ".validate": false }
+              }
             }
           }
         },

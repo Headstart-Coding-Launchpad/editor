@@ -12,6 +12,7 @@ import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import { selectHtmlTaskFiles } from '../../app/studentTaskContent'
 import { getTaskLineHintSets } from '../../shared/lineHints'
 import { getInspectorConfig } from './inspector/config'
+import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
 
 export default function StudentWorkspace({
   lesson,
@@ -96,6 +97,8 @@ export default function StudentWorkspace({
           onUse: isViewingPrev ? undefined : cs.recordInspectorUse,
         }
     : null
+  // Live scrubbing of CSS and attribute values (task `scrub`, src/shared/scrub/).
+  const scrub = readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskScrub(task)
   const lineHintSetsFor =
     readOnly || isSandbox || cs.inPersonalSandbox
       ? undefined
@@ -168,6 +171,9 @@ export default function StudentWorkspace({
             storageAssets={htmlStorageAssets}
             errorLine={errorLine}
             lineHintSetsFor={lineHintSetsFor}
+            scrub={scrub}
+            onScrubPreview={cs.scrubPreview}
+            onScrubCommit={cs.recordScrub}
             onRunShortcut={
               readOnly || task?.interactionMode === 'submit' ? undefined : cs.handleRun
             }
@@ -243,6 +249,9 @@ export default function StudentWorkspace({
               storageAssets={htmlStorageAssets}
               errorLine={errorLine}
               lineHintSetsFor={lineHintSetsFor}
+              scrub={scrub}
+              onScrubPreview={cs.scrubPreview}
+              onScrubCommit={cs.recordScrub}
               onRunShortcut={
                 readOnly || task?.interactionMode === 'submit' ? undefined : cs.handleRun
               }

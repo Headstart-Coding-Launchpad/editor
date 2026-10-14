@@ -318,6 +318,14 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
     )
   }
 
+  // scrub: live number / colour scrubbing in the code editor (src/shared/scrub/), on the modules
+  // that declare it as a task field (python, turtle, html); their validateTask checks the shape.
+  if (task.scrub != null && !definition?.taskFields?.some((field) => field.name === 'scrub')) {
+    warnings.push(
+      `Task ${n} has scrub, but scrubbing only works in Python, Turtle and HTML tasks — it is ignored`
+    )
+  }
+
   // peerHints: extra preset hints for peer help (src/shared/peerHelp.js). They reach a student
   // without the teacher checking each one, so they are authored text only, short, and few.
   if (task.peerHints != null) {

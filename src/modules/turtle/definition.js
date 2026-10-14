@@ -17,6 +17,8 @@ import {
 } from '../moduleContract.js'
 import { SHOW_VARIABLES_TASK_FIELD } from '../../shared/variablesPanel/variablesPanel.js'
 import { validateShowVariables } from '../../shared/variablesPanel/validation.js'
+import { SCRUB_TASK_FIELD, validateScrub } from '../../shared/scrub/scrubConfig.js'
+import { getStarterStage } from '../../shared/taskStages.js'
 import { compactTurtleResultForSync } from './sync.js'
 import {
   codeDefaultTypeFields,
@@ -72,6 +74,9 @@ export default defineModule({
     peerHelp: { anchors: 'lines', hints: 'python' },
     // A passed task's side-quests run in a throwaway Turtle workspace (src/shared/sideQuests.js).
     sideQuests: true,
+    // A task's `scrub` (src/shared/scrub/): a scrubbed value redraws live unless the program
+    // asks for input().
+    scrub: { liveRerun: 'preview', needsImport: null, inputCall: 'input' },
   },
   // The run's drawing is synced with the run (a run result, like output).
   runResult: { errorLine: false, turtle: true, liveCode: false, stage: false },
@@ -122,6 +127,7 @@ export default defineModule({
     },
     { name: 'carryCodeFrom', type: 'string' },
     SHOW_VARIABLES_TASK_FIELD,
+    SCRUB_TASK_FIELD,
   ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeCode',
@@ -200,6 +206,9 @@ export default defineModule({
   validateTask: (task, { n, errors, warnings }) => {
     validateTaskChecks(task, (checks, kind) => validateTurtleChecks(checks, n, errors, kind))
     validateShowVariables(task, n, errors, warnings)
+    validateScrub(task, n, errors, warnings, {
+      starterCode: getStarterStage(task)?.stage?.code ?? task.starterCode ?? null,
+    })
   },
   hasStarterContent: codeStarterPresent,
 })
