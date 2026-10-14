@@ -17,6 +17,7 @@ import {
 } from '../moduleContract.js'
 import { SHOW_VARIABLES_TASK_FIELD } from '../../shared/variablesPanel/variablesPanel.js'
 import { validateShowVariables } from '../../shared/variablesPanel/validation.js'
+import { PYTHON_SLOW_MO_TASK_FIELD, validatePythonSlowMo } from '../python/slowMo/config.js'
 import { compactTurtleResultForSync } from './sync.js'
 import {
   codeDefaultTypeFields,
@@ -122,6 +123,7 @@ export default defineModule({
     },
     { name: 'carryCodeFrom', type: 'string' },
     SHOW_VARIABLES_TASK_FIELD,
+    PYTHON_SLOW_MO_TASK_FIELD,
   ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeCode',
@@ -200,6 +202,7 @@ export default defineModule({
   validateTask: (task, { n, errors, warnings }) => {
     validateTaskChecks(task, (checks, kind) => validateTurtleChecks(checks, n, errors, kind))
     validateShowVariables(task, n, errors, warnings)
+    validatePythonSlowMo(task, n, errors, warnings)
   },
   hasStarterContent: codeStarterPresent,
 })

@@ -17,6 +17,9 @@ import { stageCommandsOf } from '../../shared/stage/commands.js'
 import { readStageResult } from '../../shared/stage/sync.js'
 import { useElementSize } from '../../shared/useElementSize.js'
 import { stageTargetCode, stageTargetGhostOn, useStageTarget } from './stageTarget.js'
+import { usePythonSlowMo } from './slowMo/usePythonSlowMo.js'
+import SlowMoBar from './slowMo/SlowMoBar.jsx'
+import SlowMoNameTags from './slowMo/SlowMoNameTags.jsx'
 
 export default function StudentWorkspace({
   task: lessonTask,
@@ -38,6 +41,8 @@ export default function StudentWorkspace({
   displayVariablesPanel = null,
   // The Python Stage drawing broadcast in Go Live (compactStageForSync's shape).
   displayStage = null,
+  // The presenter's slow-mo playback in Go Live (teacherLive.pythonSlowMo, ./slowMo/live.js).
+  displayPythonSlowMo = null,
   isTeacherEditing,
   teacherLiveCode,
   onVisiblePanesChange,
@@ -94,6 +99,29 @@ export default function StudentWorkspace({
   }, [shouldShowOutput, outputCollapsed, onVisiblePanesChange])
   const showCopyCode = typeof task?.copyCode === 'string' && !!task.copyCode.trim()
 
+  // Slow-mo (task.slowMo, ./slowMo/): record the run, then play it back line by line. A Go Live
+  // viewer follows the presenter's playback.
+  const slowMoShown = !isViewingPrev && !isTeacherEditing && task?.interactionMode !== 'submit'
+  const slowMo = usePythonSlowMo({
+    task: slowMoShown ? task : null,
+    cs,
+    code: cs.code,
+    readOnly,
+    live: isForcedTeacherLive ? displayPythonSlowMo : undefined,
+  })
+  const slowMoView = slowMoShown ? slowMo.view : null
+  const slowMoControls = {
+    ...slowMo,
+    slowMo: () => {
+      setOutputCollapsed(false)
+      slowMo.slowMo()
+    },
+    step: () => {
+      setOutputCollapsed(false)
+      slowMo.step()
+    },
+  }
+
   // The Python Stage (src/shared/stage/): shown once the code draws, or from the start when the
   // task has a stageTarget to draw over. Go Live shows the broadcast drawing.
   const stageTarget = useStageTarget(task, { ready: cs.pyodideStatus === 'ready' })
@@ -103,9 +131,11 @@ export default function StudentWorkspace({
     : isViewingPrev || isTeacherEditing
       ? null
       : cs.stageResult
-  const stageCommands = stageCommandsOf(stageResult)
+  const stageCommands = slowMoView?.hasStage ? slowMoView.stage : stageCommandsOf(stageResult)
   const showStage =
-    !isViewingPrev && !isTeacherEditing && (stageCommands.length > 0 || !!stageTargetCode(task))
+    !isViewingPrev &&
+    !isTeacherEditing &&
+    (stageCommands.length > 0 || !!stageTargetCode(task) || !!slowMoView?.hasStage)
   const [outputPaneRef, outputPaneSize] = useElementSize()
   // Beside the console when the output side is wider than tall; above it otherwise (and always
   // on narrow screens).
@@ -138,6 +168,21 @@ export default function StudentWorkspace({
             hasCheck: !!task?.check || task?.tests?.length > 0,
             running: cs.running || cs.runningTests,
           }
+
+  // During slow-mo playback the output grows step by step; the check result shows once the
+  // last step has played (the recorded run was checked like any Run).
+  const shownOutputProps = slowMoView
+    ? {
+        ...outputProps,
+        output: slowMoView.output,
+        runStatus: slowMoView.finished ? outputProps.runStatus : null,
+        checkPassed: slowMoView.finished ? outputProps.checkPassed : false,
+        hasCheck: slowMoView.finished ? outputProps.hasCheck : false,
+        checkAttempted: slowMoView.finished ? outputProps.checkAttempted : false,
+        inputPrompt: null,
+        running: false,
+      }
+    : outputProps
 
   function handleRunClick() {
     if (cs.running || cs.runningTests) {
@@ -216,6 +261,12 @@ export default function StudentWorkspace({
           </div>
         </div>
       )}
+      {slowMoShown && (showEditableHeader || slowMoView) && (
+        <SlowMoBar
+          slowMo={slowMoControls}
+          runDisabled={cs.running || cs.runningTests || cs.pyodideStatus === 'loading'}
+        />
+      )}
       <PythonEditor
         code={code}
         readOnly={readOnly}
@@ -234,6 +285,7 @@ export default function StudentWorkspace({
         lineHints={readOnly ? null : getTaskLineHintSets(task)}
         showBlocks={taskShowsBlocks(task)}
         onRunShortcut={readOnly || task?.interactionMode === 'submit' ? undefined : handleRunClick}
+        slowMoMarker={slowMoView?.marker ?? null}
       />
       {showSubmitBanner && <div style={s.submitBanner}>Code submitted</div>}
     </div>
@@ -241,7 +293,9 @@ export default function StudentWorkspace({
 
   // The name-tag panel (showVariables): under the output, or alone while the output is folded
   // away on a narrow screen.
-  const variablesPanel = (
+  const variablesPanel = slowMoView ? (
+    <SlowMoNameTags task={task} slowMo={slowMo} style={s.variablesPanel} />
+  ) : (
     <TaskVariablesPanel
       task={task}
       panel={cs.variablesPanel}
@@ -254,7 +308,7 @@ export default function StudentWorkspace({
 
   const outputPanel = (
     <OutputPanel
-      {...outputProps}
+      {...shownOutputProps}
       fill
       collapsible={false}
       leadingActions={
@@ -280,7 +334,7 @@ export default function StudentWorkspace({
             commands={stageCommands}
             target={stageTarget?.commands ?? null}
             ghostDefault={stageTargetGhostOn(task)}
-            ran={!!stageResult}
+            ran={!!stageResult || !!slowMoView}
             truncated={stageResult?.truncated === true}
             style={isMobile ? s.stageMobile : stageBeside ? s.stageBeside : s.stageAbove}
           />

@@ -234,6 +234,22 @@
   }
 }
 
+/* Step-by-step playback (Python slow-mo): earlier values, struck through, newest first. Fast
+   playback turns the pulse off (.ntp--still) so a tag never flashes 3 or more times a second. */
+.ntp--still .ntp-tag.is-changed {
+  animation: none;
+}
+
+.ntp-history {
+  font-size: 0.74rem;
+  color: var(--colour-muted, #4b5563);
+}
+
+.ntp-history-value {
+  font-family: 'JetBrains Mono', monospace;
+  text-decoration-thickness: 2px;
+}
+
 /* Touch and narrow screens: 44px targets, like quiz tasks, and full-width tags. */
 @media (pointer: coarse), (max-width: 640px) {
   .ntp-expand,

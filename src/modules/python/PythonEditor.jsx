@@ -1,8 +1,9 @@
-import React, { useRef } from 'react'
+import React, { useEffect, useMemo, useRef } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
 import EmojiPickerButton from '../../shared/EmojiPickerButton'
 import { useBlockGuidesOn } from '../../shared/blockGuidesSetting'
+import { applySlowMoMarker } from './slowMo/editorMarker.js'
 
 // Symbols that are fiddly to reach on an on-screen keyboard but come up
 // constantly in Python source — shown as a tap-to-insert row so touch/iPad
@@ -26,8 +27,15 @@ export default function PythonEditor({
   // The task allows block brackets (taskShowsBlocks in ../../shared/blockGuides.js). When it
   // does, the Blocks button turns them on and off for this device; when not, both are hidden.
   showBlocks = true,
+  // Slow-mo playback (src/modules/python/slowMo/): `{ line, passes: [{ line, label }] }` marks
+  // the line that just ran and each loop's pass, or null.
+  slowMoMarker = null,
 }) {
   const editorRef = useRef(null)
+  const slowMoKey = useMemo(() => JSON.stringify(slowMoMarker ?? null), [slowMoMarker])
+  useEffect(() => {
+    applySlowMoMarker(editorRef.current?.getView?.(), JSON.parse(slowMoKey))
+  }, [slowMoKey])
   const isTouchDevice = useIsTouchDevice()
   const showSymbolButtons = isTouchDevice && !readOnly
   const showEmojiButton = !readOnly

@@ -1073,6 +1073,7 @@ export default function StudentView({
     displayTurtleResult,
     displayVariablesPanel,
     displayStage,
+    displayPythonSlowMo,
     displaySpriteState,
     displayCursor,
     displayBlockDrag,
@@ -2084,6 +2085,7 @@ export default function StudentView({
               displayTurtleResult={displayTurtleResult}
               displayVariablesPanel={displayVariablesPanel}
               displayStage={displayStage}
+              displayPythonSlowMo={displayPythonSlowMo}
               displaySpriteState={displaySpriteState}
               displayCursor={displayCursor}
               displayBlockDrag={displayBlockDrag}

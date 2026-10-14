@@ -295,6 +295,7 @@ describe('deriveStudentLiveDisplay', () => {
       'displayFiles',
       'displayOutput',
       'displayOutputCollapsed',
+      'displayPythonSlowMo',
       'displayRunStatus',
       'displaySelection',
       'displaySpriteState',

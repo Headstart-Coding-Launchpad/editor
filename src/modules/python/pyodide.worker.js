@@ -5,7 +5,8 @@
  * Message protocol
  * ────────────────
  * Main → Worker : { type: 'init' }
- *                 { type: 'run',   code: string, capture?: { panel, peekLine, hide } }
+ *                 { type: 'run',   code: string, capture?: { panel, peekLine, hide },
+ *                                  record?: { lineOffset, hide } }
  *                 { type: 'stage_render', id: number, code: string }
  *                 { type: 'input', value: string }
  *                 { type: 'gpio_inputs', values: object, requestId?: number }
@@ -15,8 +16,8 @@
  *                 { type: 'load_error',    msg: string }
  *                 { type: 'output',        text: string, kind: 'stdout'|'stderr', line?: number|null }
  *                 { type: 'input_required', prompt: string }
- *                 { type: 'done',          status: 'success'|'error', variables, variablesPanel,
- *                                          turtle, stage }
+ *                 { type: 'done',          status: 'success'|'error'|'stopped', variables,
+ *                                          variablesPanel, turtle, stage, slowMo }
  *                 { type: 'stage_rendered', id, status: 'success'|'error', commands, error }
  *                 { type: 'gpio_write',     pin: string, value: 0|1 }
  *                 { type: 'gpio_configure', pin: string, mode: number, pull: number|null }
@@ -49,6 +50,12 @@
  * (STAGE_INSTALL_PY), never prepended to the student's code; each call records one command
  * through __hsStageCall. Empty when the code never draws.
  *
+ * `record` turns on slow-mo recording (src/modules/python/slowMo/): every line of the student's
+ * file that runs becomes a step (see recording.js for the shape), and `done` carries the
+ * recording as `slowMo` (null without `record`). At 2,000 steps the program is ended there and
+ * `done` says 'stopped' with `slowMo.status: 'capped'`, so the run is treated like one the
+ * student stopped: no check, no attempt.
+ *
  * `stage_render` runs a task's stageTarget code silently (no output, `input()` answers '') and
  * replies with its stage commands only. The main thread never sends it while a run is going.
  */
@@ -67,6 +74,7 @@ import {
 import { VARIABLE_CAPTURE_PY } from './variableCapture.py.js'
 import { STAGE_INSTALL_PY, STAGE_MODULE_PY } from '../../shared/stage/stagePy.js'
 import { createStageRecorder } from '../../shared/stage/commands.js'
+import { PYTHON_SLOW_MO_MAX_STEPS } from './slowMo/config.js'
 
 const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
 
@@ -89,6 +97,12 @@ let _turtleFillPoints = []
 let _stageRecorder = createStageRecorder()
 // A stage_render run: no output, and input() answers '' at once.
 let _silentRun = false
+// The slow-mo recording of the current run (record), or null.
+let _slowMo = null
+// The most output characters a recording keeps, and how many line events (counting the ones
+// merged away, e.g. a one-line loop that changes nothing) end a run that never makes a step.
+const SLOW_MO_MAX_OUTPUT = 50_000
+const SLOW_MO_MAX_EVENTS = PYTHON_SLOW_MO_MAX_STEPS * 20
 
 // Python wrapper — same AST-transform approach as before, but now running in a Worker.
 // `import js as _js` gives access to this worker's globalThis. The variable-capture helpers
@@ -173,7 +187,13 @@ ast.fix_missing_locations(_tree)
 _hs_cfg = json.loads(_hs_capture_json or '{}')
 _hs_panel_on = bool(_hs_cfg.get('panel'))
 _hs_peek_line = _hs_cfg.get('peekLine')
-_hs_hidden = set(_hs_cfg.get('hide') or []) | _hs_imported_names(_tree, ('turtle', 'stage'))
+_hs_rec_cfg = json.loads(_hs_record_json or '{}')
+_hs_rec_on = bool(_hs_rec_cfg.get('on'))
+_hs_hidden = (
+    set(_hs_cfg.get('hide') or [])
+    | set(_hs_rec_cfg.get('hide') or [])
+    | _hs_imported_names(_tree, ('turtle', 'stage'))
+)
 _hs_end_locals = {}
 _hs_panel = {'end': None, 'peek': None, 'peekLine': _hs_peek_line, 'peekReached': False}
 
@@ -225,13 +245,134 @@ def _hs_on_peek_line(frame, lineno):
     _hs_panel['peekReached'] = True
     return False
 
-_hs_watch = _HsLineWatch(_hs_on_peek_line)
-if _hs_panel_on and isinstance(_hs_peek_line, int):
+# Slow-mo (record): one step per line of the student's file that runs, sent to the worker's
+# __hsSlowMoStep (see src/modules/python/slowMo/recording.js for the step shape). A 'line'
+# event fires BEFORE its line runs, so each event closes the previous line's step with the
+# variables as that line left them. The worker answers 1 at the step cap, which ends the program.
+_hs_rec_offset = int(_hs_rec_cfg.get('lineOffset') or 0)
+_hs_rec_last = len(_hs_user_code.split(chr(10)))
+_hs_rec = {'pending': None, 'scope': None, 'prev': {}, 'capped': False}
+
+def _hs_rec_depth(frame):
+    depth = 0
+    while frame is not None and not _hs_is_run_frame(frame):
+        depth += 1
+        frame = frame.f_back
+    return depth
+
+def _hs_rec_const_int(node):
+    if isinstance(node, ast.Constant) and type(node.value) is int:
+        return node.value
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+        inner = _hs_rec_const_int(node.operand)
+        return None if inner is None else -inner
+    return None
+
+def _hs_rec_loop_total(node):
+    if not isinstance(node, (ast.For, ast.AsyncFor)):
+        return None
+    it = node.iter
+    try:
+        if isinstance(it, (ast.List, ast.Tuple, ast.Set)):
+            if any(isinstance(e, ast.Starred) for e in it.elts):
+                return None
+            return len(it.elts)
+        if isinstance(it, ast.Dict):
+            return None if None in it.keys else len(it.keys)
+        if isinstance(it, ast.Constant) and isinstance(it.value, str):
+            return len(it.value)
+        if (isinstance(it, ast.Call) and isinstance(it.func, ast.Name) and it.func.id == 'range'
+                and not it.keywords and 1 <= len(it.args) <= 3):
+            nums = [_hs_rec_const_int(a) for a in it.args]
+            if None in nums or (len(nums) == 3 and nums[2] == 0):
+                return None
+            return len(range(*nums))
+    except Exception:
+        return None
+    return None
+
+def _hs_rec_loops():
+    out = []
+    for node in ast.walk(_tree):
+        if not isinstance(node, (ast.For, ast.AsyncFor, ast.While)):
+            continue
+        line = node.lineno - _hs_rec_offset
+        if line < 1:
+            continue
+        end = max([getattr(b, 'end_lineno', None) or b.lineno for b in node.body] or [node.lineno])
+        out.append({'line': line, 'end': end - _hs_rec_offset, 'total': _hs_rec_loop_total(node)})
+    return out
+
+def _hs_rec_close(namespace, scope, final=False):
+    pending = _hs_rec['pending']
+    if pending is None:
+        return
+    _hs_rec['pending'] = None
+    step = {'l': pending[0], 'k': pending[1]}
+    prev = _hs_rec['prev']
+    changed = {}
+    seen = set()
+    for item in _hs_snapshot(namespace, _hs_hidden, scope)['vars']:
+        name = item['n']
+        seen.add(name)
+        encoded = json.dumps(item['v'], sort_keys=True)
+        if prev.get(name) != encoded:
+            prev[name] = encoded
+            changed[name] = item['v']
+    gone = [name for name in prev if name not in seen]
+    for name in gone:
+        del prev[name]
+    if changed:
+        step['s'] = changed
+    if gone:
+        step['d'] = gone
+    if scope != _hs_rec['scope']:
+        step['c'] = scope
+        _hs_rec['scope'] = scope
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except Exception:
+        pass
+    if _js.__hsSlowMoStep(json.dumps(step)) and not final:
+        _hs_rec['capped'] = True
+        raise _HsStopRun()
+
+def _hs_rec_on_line(frame, lineno):
+    _hs_ns, _hs_scope = _hs_frame_namespace(frame)
+    _hs_rec_close(_hs_ns, _hs_scope)
+    line = lineno - _hs_rec_offset
+    # The runtime's own lines (Turtle's shim) and the wrapper's finally line are not steps.
+    if line >= 1 and lineno <= _hs_rec_last:
+        _hs_rec['pending'] = (line, _hs_rec_depth(frame))
+    return True
+
+if _hs_rec_on:
+    _js.__hsSlowMoLoops(json.dumps(_hs_rec_loops()))
+
+_hs_peek_on = [_hs_panel_on and isinstance(_hs_peek_line, int)]
+
+def _hs_on_line(frame, lineno):
+    if _hs_peek_on[0]:
+        _hs_peek_on[0] = bool(_hs_on_peek_line(frame, lineno))
+    if _hs_rec_on:
+        return _hs_rec_on_line(frame, lineno)
+    return _hs_peek_on[0]
+
+_hs_watch = _HsLineWatch(_hs_on_line)
+if _hs_peek_on[0] or _hs_rec_on:
     _hs_watch.start()
 try:
     await _g['__hs_run__']()
+except _HsStopRun:
+    pass
 finally:
     _hs_watch.stop()
+    if _hs_rec_on:
+        try:
+            _hs_rec_close(_hs_end_locals, None, True)
+        except Exception:
+            pass
     if _hs_panel_on:
         try:
             _hs_panel['end'] = _hs_snapshot(_hs_end_locals, _hs_hidden)
@@ -268,8 +409,129 @@ globalThis.__hsInput = async (prompt) => {
   return new Promise((resolve) => {
     if (prompt) self.postMessage({ type: 'output', text: String(prompt), kind: 'stdout' })
     self.postMessage({ type: 'input_required', prompt: String(prompt) })
-    _inputResolve = resolve
+    slowMoAppendOutput(String(prompt ?? ''))
+    // The classroom echoes the answer into the output; the recording does the same.
+    _inputResolve = (value) => {
+      slowMoAppendOutput(String(value) + '\n')
+      resolve(value)
+    }
   })
+}
+
+// ─── Slow-mo recorder (src/modules/python/slowMo/recording.js) ─────────────────
+
+function createSlowMoRecording() {
+  return {
+    steps: [],
+    events: 0,
+    output: '',
+    outputCut: false,
+    loops: [],
+    marks: { o: 0, t: 0, te: 0, ts: -1, g: 0 },
+    turtleArray: null,
+    turtleEpochs: [],
+    turtleStates: [],
+    turtleStateKeys: new Map(),
+    capped: false,
+  }
+}
+
+function slowMoAppendOutput(text) {
+  const rec = _slowMo
+  if (!rec || !text) return
+  const room = SLOW_MO_MAX_OUTPUT - rec.output.length
+  if (room <= 0) {
+    rec.outputCut = true
+    return
+  }
+  if (text.length > room) {
+    rec.output += text.slice(0, room)
+    rec.outputCut = true
+  } else {
+    rec.output += text
+  }
+}
+
+// Where the Turtle drawing is now: { t, te, ts } (nothing before the first turtle call).
+function slowMoTurtleMarks(rec) {
+  if (_turtleCalls.length === 0) return {}
+  if (_turtleCommands !== rec.turtleArray) {
+    // reset() swaps in a new command list: a new epoch.
+    rec.turtleArray = _turtleCommands
+    rec.turtleEpochs.push(_turtleCommands)
+  }
+  const key = JSON.stringify(_turtleState)
+  let index = rec.turtleStateKeys.get(key)
+  if (index === undefined) {
+    index = rec.turtleStates.length
+    rec.turtleStates.push({ ..._turtleState })
+    rec.turtleStateKeys.set(key, index)
+  }
+  return { t: _turtleCommands.length, te: rec.turtleEpochs.length - 1, ts: index }
+}
+
+// One step from Python ({ l, k, s?, d?, c? } as JSON). Adds the output and drawing marks that
+// changed, merges a step that changed nothing on the same line as the one before (a one-line
+// loop or a comprehension), and answers 1 once the recording is full.
+globalThis.__hsSlowMoStep = (json) => {
+  const rec = _slowMo
+  if (!rec || rec.capped) return 0
+  let raw
+  try {
+    raw = JSON.parse(String(json))
+  } catch {
+    return 0
+  }
+  rec.events += 1
+  const step = { l: raw.l, k: raw.k || 0 }
+  if (raw.s) step.s = raw.s
+  if (raw.d) step.d = raw.d
+  if ('c' in raw) step.c = raw.c ?? null
+  const marks = {
+    ...rec.marks,
+    o: rec.output.length,
+    ...slowMoTurtleMarks(rec),
+    g: _stageRecorder.commands.length,
+  }
+  for (const key of ['o', 't', 'te', 'ts', 'g']) {
+    if (marks[key] !== rec.marks[key]) step[key] = marks[key]
+  }
+  rec.marks = marks
+  const before = rec.steps[rec.steps.length - 1]
+  const nothingNew = Object.keys(step).length === 2
+  if (!(nothingNew && before && before.l === step.l && before.k === step.k)) rec.steps.push(step)
+  if (rec.steps.length >= PYTHON_SLOW_MO_MAX_STEPS || rec.events >= SLOW_MO_MAX_EVENTS) {
+    rec.capped = true
+    return 1
+  }
+  return 0
+}
+
+globalThis.__hsSlowMoLoops = (json) => {
+  if (!_slowMo) return
+  try {
+    const loops = JSON.parse(String(json))
+    _slowMo.loops = Array.isArray(loops) ? loops : []
+  } catch {
+    _slowMo.loops = []
+  }
+}
+
+// The finished recording for `done` (see recording.js), or null when not recording.
+function finishSlowMo(status) {
+  const rec = _slowMo
+  _slowMo = null
+  if (!rec) return null
+  return {
+    steps: rec.steps,
+    output: rec.output,
+    ...(rec.outputCut ? { outputCut: true } : {}),
+    loops: rec.loops,
+    turtle:
+      rec.turtleEpochs.length > 0 ? { epochs: rec.turtleEpochs, states: rec.turtleStates } : null,
+    stage: _stageRecorder.commands.length > 0 ? { commands: _stageRecorder.commands } : null,
+    status: rec.capped ? 'capped' : status,
+  }
 }
 
 globalThis.__hsSetVariablesPanel = (json) => {
@@ -552,6 +814,7 @@ self.onmessage = async ({ data }) => {
       raw: (charCode) => {
         const ch = _stdoutDecodeByte(charCode)
         if (!ch) return
+        slowMoAppendOutput(ch)
         _stdoutBuf += ch
         if (ch === '\n') {
           self.postMessage({ type: 'output', text: _stdoutBuf, kind: 'stdout' })
@@ -566,6 +829,7 @@ self.onmessage = async ({ data }) => {
       raw: (charCode) => {
         const ch = _stderrDecodeByte(charCode)
         if (!ch) return
+        slowMoAppendOutput(ch)
         _stderrBuf += ch
         if (ch === '\n') {
           self.postMessage({ type: 'output', text: _stderrBuf, kind: 'stderr' })
@@ -583,6 +847,9 @@ self.onmessage = async ({ data }) => {
       JSON.stringify(Array.isArray(data.asyncNames) ? data.asyncNames : [])
     )
     pyodide.globals.set('_hs_capture_json', JSON.stringify(normalizeCaptureConfig(data.capture)))
+    const record = normalizeRecordConfig(data.record)
+    pyodide.globals.set('_hs_record_json', JSON.stringify(record))
+    _slowMo = record.on ? createSlowMoRecording() : null
 
     const turtleResult = () => ({
       state: _turtleState,
@@ -593,19 +860,24 @@ self.onmessage = async ({ data }) => {
     try {
       await pyodide.runPythonAsync(WRAPPER)
       flushBuffers()
+      const slowMo = finishSlowMo('success')
       self.postMessage({
         type: 'done',
-        status: 'success',
+        // Slow-mo's step cap ended the program: treated like a run the student stopped.
+        status: slowMo?.status === 'capped' ? 'stopped' : 'success',
         variables: _lastVariables,
         variablesPanel: _lastVariablesPanel,
         turtle: turtleResult(),
         stage: { commands: _stageRecorder.commands },
+        slowMo,
       })
     } catch (err) {
       flushBuffers()
       const raw = String(err).replace(/^PythonError:\s*/, '')
       const { text, line } = formatPythonError(raw)
       self.postMessage({ type: 'output', text: text + '\n', kind: 'stderr', line })
+      slowMoAppendOutput(text + '\n')
+      const slowMo = finishSlowMo('error')
       self.postMessage({
         type: 'done',
         status: 'error',
@@ -613,6 +885,7 @@ self.onmessage = async ({ data }) => {
         variablesPanel: _lastVariablesPanel,
         turtle: turtleResult(),
         stage: { commands: _stageRecorder.commands },
+        slowMo,
       })
     }
     return
@@ -657,6 +930,8 @@ async function renderStage(code) {
   pyodide.globals.set('_hs_user_code', String(code ?? ''))
   pyodide.globals.set('_hs_async_names_json', '[]')
   pyodide.globals.set('_hs_capture_json', JSON.stringify({ panel: false }))
+  pyodide.globals.set('_hs_record_json', JSON.stringify({ on: false }))
+  _slowMo = null
   try {
     await pyodide.runPythonAsync(WRAPPER)
     return { status: 'success', commands: _stageRecorder.commands, error: null }
@@ -678,6 +953,18 @@ export function normalizeCaptureConfig(capture) {
     ? capture.hide.filter((name) => typeof name === 'string' && name)
     : []
   return { panel: true, peekLine, hide }
+}
+
+// Exported for unit testing. The run's slow-mo recording options as the Python wrapper reads
+// them (_hs_record_json): { on, lineOffset, hide }, or { on: false } without `record`.
+export function normalizeRecordConfig(record) {
+  if (!record || typeof record !== 'object') return { on: false }
+  const lineOffset =
+    Number.isInteger(record.lineOffset) && record.lineOffset > 0 ? record.lineOffset : 0
+  const hide = Array.isArray(record.hide)
+    ? record.hide.filter((name) => typeof name === 'string' && name)
+    : []
+  return { on: true, lineOffset, hide }
 }
 
 // Exported for unit testing (see src/modules/python/__tests__/pyodide.worker.test.js).

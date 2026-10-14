@@ -23,6 +23,7 @@ import {
 } from '../moduleContract.js'
 import { SHOW_VARIABLES_TASK_FIELD } from '../../shared/variablesPanel/variablesPanel.js'
 import { validateShowVariables } from '../../shared/variablesPanel/validation.js'
+import { PYTHON_SLOW_MO_TASK_FIELD, validatePythonSlowMo } from './slowMo/config.js'
 import { STAGE_TARGET_TASK_FIELD, validateStageTarget } from '../../shared/stage/validation.js'
 import { compactStageForSync } from '../../shared/stage/sync.js'
 import {
@@ -149,6 +150,7 @@ export default defineModule({
     { name: 'carryCodeFrom', type: 'string' },
     SHOW_VARIABLES_TASK_FIELD,
     STAGE_TARGET_TASK_FIELD,
+    PYTHON_SLOW_MO_TASK_FIELD,
   ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeCode',
@@ -238,6 +240,7 @@ export default defineModule({
     warnCompleteCode(task, n, warnings)
     validateShowVariables(task, n, errors, warnings)
     validateStageTarget(task, n, errors, warnings)
+    validatePythonSlowMo(task, n, errors, warnings)
   },
   hasStarterContent: codeStarterPresent,
 })
