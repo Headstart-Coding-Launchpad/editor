@@ -32,6 +32,11 @@ The `exampleOpenLog` node was added with explicit user approval ("example opens"
         "panes": ["instructions", "breadboard", "code", "blocks", "stage", "..."],
         "pushedAt": 1234567890
       },
+      "teacherClassControlHighlight": {
+        "target": "run | stop | green_flag | costumes_tab | sounds_tab | category:<name>",
+        "taskId": "number | string | null",
+        "pushedAt": "server-time ms"
+      },
       "sandboxExplainer": "string | null",
       "explainerShowComplete": false,
       "teacherLiveReferenceVisibleToAll": "number | null (\"📌 Keep showing live code to class\" pin: the time it was pinned; legacy true still counts; not cleared by setTaskId; cleared by endSession; pinning or unpinning also clears every per-student false override — see classroom-behaviours.md \"Teacher-Live-Code Reference\")",
@@ -366,6 +371,11 @@ The `exampleOpenLog` node was added with explicit user approval ("example opens"
             "mode": "highlight | force",
             "panes": ["instructions", "breadboard", "code", "blocks", "stage", "..."],
             "pushedAt": 1234567890
+          },
+          "teacherControlHighlight": {
+            "target": "run | stop | green_flag | costumes_tab | sounds_tab | category:<name>",
+            "taskId": "number | string | null",
+            "pushedAt": "server-time ms"
           }
         }
       }
@@ -414,6 +424,7 @@ Teacher per-student actions:
 - Highlight code (`pushTeacherHighlight`) adds an entry under `teacherHighlights/{highlightId}`; the teacher (or the student — see below) can remove any entry (`removeTeacherHighlight`). All entries cleared by `setTaskId`.
 - Highlight a tile (`pushTeacherTileHighlight`, StudentModal's "👀 Highlight tiles" mode on code_arrange slot mode, Match and Fill in the Gaps drag mode) writes, in one update: `teacherTileHighlights/{highlightId}` (`{ taskId, targetId, tileId, note, createdAt }`), null for any older entries on the same blank (`replaceIds`), and a `tileHighlightLog/{taskId}/{pushId}` record (`{ targetId, tileId, note, at }`, at most 50 per task) for the report. A second tap on the blank removes its entries (`removeTeacherTileHighlights`); "Clear all" nulls the whole `teacherTileHighlights` node (`clearTeacherTileHighlights`). `setTaskId` nulls `teacherTileHighlights`; `tileHighlightLog` is not cleared, so `buildSessionReport` reads it. No change to completion, attempts or overrides. See "Tutor Tile Highlights" in `docs/agents/classroom-behaviours.md` and `src/shared/tutorTileHighlights.js`.
 - Highlight or force a tab/panel (`pushTeacherPaneCommand`/`clearTeacherPaneCommand`) writes `teacherPaneCommand: { mode, panes, pushedAt }` — `mode: 'highlight'` pulses a glow on the named tab(s)/panel(s) without moving anything; `mode: 'force'` immediately switches the student to them (a one-time jump, not a lock — the student is free to navigate away again right after). `panes` is drawn from `instructions` (every lesson type), plus `breadboard`/`code` for Electronics or `blocks`/`stage` for Scratch — see `PaneFocusDropdown.jsx`. There is no consent step (unlike `teacherStageRequestedAt`/`teacherEditRequestedAt`). Dismissal ("clears when the student looks at it") is tracked client-side in `StudentView`, not by writing back to Firebase — this matters for `teacherClassPaneCommand` above, since it's one shared node and one student looking at it must not clear it for the rest of the class. Cleared by `setTaskId`.
+- Highlight a control (`pushTeacherControlHighlight` per student from StudentModal's More menu, `pushClassControlHighlight`/`clearClassControlHighlight` for the class from TeacherView's "Highlight Class") writes `teacherControlHighlight` / the session-level `teacherClassControlHighlight`: `{ target, taskId, pushedAt }` (server time). The student's screen pulses that control (`useStudentControlHighlight`, `src/shared/controlHighlight.js`) and ends it on its own when the student uses it or after 20 s; nothing is written back. It ignores a command for a different task and one older than 20 s (a reload or late join). Not cleared by `setTaskId` (the `taskId` makes it inert on the next task). Both nodes sit under the existing write rules (the student node, the teacher-only `$lessonId` write), so no rules change. See "Control Highlights" in `docs/agents/classroom-behaviours.md`.
 - Remote edit (Python/Scratch only): `requestTeacherEdit` sets `teacherEditRequestedAt` and clears `teacherEditAcceptedAt`/`teacherLiveCode`/`teacherEditApplyCode`/`teacherEditAppliedAt`, prompting the student for consent. Once accepted, `pushTeacherLiveCode` streams `teacherLiveCode` as the teacher types; `commitTeacherEdit` writes the final code to `teacherEditApplyCode` + `teacherEditAppliedAt` and directly to the student's `currentCode`; `cancelTeacherEdit` clears the request without committing. All eight `teacherEdit*`/`teacherLiveCode` fields are cleared by `setTaskId`.
 - Remote stage push: `requestTeacherStage` sets `teacherStageRequestedAt` and `teacherStagePendingAction` (a reset-action string, same shape as `remoteResetAction`) and clears `teacherStageAcceptedAt`, prompting the student for consent before the stage change is applied; `clearTeacherStage` clears all three fields. Cleared by `setTaskId`.
 - Stage reference reveal: `recordSupportStageReveal` writes `supportRevealLog/{anonymousId}/{taskId}/{stageIndex}` with `source: "teacher"`, stage label, attempt count, and server timestamp. This reveals a read-only Python/HTML stage reference to that one student and does not write to their editor.

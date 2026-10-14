@@ -311,6 +311,23 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
     })
   })
 
+  it('highlightTargets: Run/Stop on the code modules, Scratch its own controls', () => {
+    const targets = pick('highlightTargets')
+    const ids = Object.fromEntries(
+      TYPES.map((type) => [type, targets[type].map((target) => target.id)])
+    )
+    expect(ids).toEqual({
+      python: ['run', 'stop'],
+      arcade: ['run', 'stop'],
+      turtle: ['run', 'stop'],
+      scratch: ['green_flag', 'stop', 'costumes_tab', 'sounds_tab', 'category'],
+      html: ['run'],
+      filesystem: [],
+      desktop: [],
+      electronics: ['run', 'stop'],
+    })
+  })
+
   it('teacherEditor is declared exactly for workSlot.teacherEdit modules, with its copy', () => {
     const code = { surface: 'code', workspace: null, design: false }
     expect(pick('teacherEditor')).toEqual({
@@ -387,6 +404,24 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
       [{ capabilities: { cardSummary: 'console' } }, /capabilities\.cardSummary/],
       [{ capabilities: { focusPanes: [{ id: 'instructions', label: 'Info' }] } }, /focusPanes/],
       [{ capabilities: { focusPanes: [{ id: 'code' }] } }, /focusPanes/],
+      [{ capabilities: { highlightTargets: [{ id: 'run' }] } }, /highlightTargets/],
+      [{ capabilities: { highlightTargets: [{ id: 'Run', label: 'Run' }] } }, /highlightTargets/],
+      [
+        {
+          capabilities: {
+            highlightTargets: [
+              { id: 'run', label: 'Run' },
+              { id: 'go', label: 'Go', aliases: ['run'] },
+            ],
+          },
+        },
+        /highlightTargets/,
+      ],
+      [
+        { capabilities: { highlightTargets: [{ id: 'run', label: 'Run', pane: 'stage' }] } },
+        /pane/,
+      ],
+      [{ capabilities: { highlightTargets: [{ id: 'c', label: 'C', options: [''] }] } }, /options/],
       [{ capabilities: { teacherEditor: { surface: 'canvas' } } }, /teacherEditor\.surface/],
       [{ capabilities: { teacherEditor: { surface: 'files' } } }, /teacherEditor\.surface/],
       [{ capabilities: { teacherEditor: null } }, /workSlot\.teacherEdit/],

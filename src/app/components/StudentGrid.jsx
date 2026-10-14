@@ -51,6 +51,7 @@ export default function StudentGrid({
   onRevealSupportStage,
   onSetTeacherLiveReference,
   onPushTeacherPaneCommand,
+  onPushTeacherControlHighlight,
   onTeacherAnswerEdit,
   onPushTileHighlight,
   onRemoveTileHighlights,
@@ -606,6 +607,7 @@ export default function StudentGrid({
           onRevealSupportStage={onRevealSupportStage}
           onSetTeacherLiveReference={onSetTeacherLiveReference}
           onPushTeacherPaneCommand={onPushTeacherPaneCommand}
+          onPushTeacherControlHighlight={onPushTeacherControlHighlight}
           onTeacherAnswerEdit={onTeacherAnswerEdit}
           onPushTileHighlight={onPushTileHighlight}
           onRemoveTileHighlights={onRemoveTileHighlights}

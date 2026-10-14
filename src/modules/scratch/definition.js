@@ -59,6 +59,31 @@ export default defineModule({
       { id: 'blocks', label: 'Blocks' },
       { id: 'stage', label: 'Stage' },
     ],
+    // Controls a tutor or a task's `highlight` field can pulse (src/shared/controlHighlight.js).
+    // `pane` is the compact-layout tab that holds each one; `category:<name>` points at a
+    // category heading in the block palette.
+    highlightTargets: [
+      { id: 'green_flag', label: 'Green flag', pane: 'stage', aliases: ['run'] },
+      { id: 'stop', label: 'Stop sign', pane: 'stage' },
+      { id: 'costumes_tab', label: 'Costumes tab', pane: 'blocks' },
+      { id: 'sounds_tab', label: 'Sounds tab', pane: 'blocks' },
+      {
+        id: 'category',
+        label: 'Block category',
+        pane: 'blocks',
+        options: [
+          'Motion',
+          'Looks',
+          'Sound',
+          'Events',
+          'Control',
+          'Sensing',
+          'Operators',
+          'Variables',
+          'My Blocks',
+        ],
+      },
+    ],
     teacherEditor: { surface: 'blocks' },
     sideExplainer: true,
     modulePanes: false,

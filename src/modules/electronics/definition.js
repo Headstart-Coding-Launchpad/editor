@@ -47,6 +47,12 @@ export default defineModule({
     playground: true,
   },
   capabilities: {
+    // Controls a tutor or a task's `highlight` field can pulse (src/shared/controlHighlight.js).
+    // Run and Stop share one button, which carries data-highlight-target="run stop".
+    highlightTargets: [
+      { id: 'run', label: 'Run button' },
+      { id: 'stop', label: 'Stop button' },
+    ],
     stageReveal: 'offer',
     teacherStageReveal: true,
     highlights: false,

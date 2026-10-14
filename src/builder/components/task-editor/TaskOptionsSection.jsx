@@ -7,6 +7,11 @@ import { getLessonModule } from '../../../modules/registry'
 import { canTaskAllowSharing } from '../../../shared/taskUtils'
 import { supportsSideQuests } from '../../../shared/sideQuests'
 import SideQuestsEditor from './SideQuestsEditor'
+import {
+  listHighlightTargets,
+  moduleHasHighlightTargets,
+  resolveHighlightTarget,
+} from '../../../shared/controlHighlight'
 
 export default function TaskOptionsSection({
   task,
@@ -192,6 +197,28 @@ export default function TaskOptionsSection({
                   anyone else sees it.
                 </span>
               </label>
+            </Field>
+          )}
+
+          {moduleHasHighlightTargets(lesson.type) && (
+            <Field label="Highlight a control" hint="pulses when the task opens">
+              <select
+                className="te-select"
+                aria-label="Highlight a control"
+                value={resolveHighlightTarget(lesson.type, task.highlight)?.id ?? ''}
+                onChange={(e) => set('highlight', e.target.value || undefined)}
+              >
+                <option value="">None</option>
+                {listHighlightTargets(lesson.type).map((target) => (
+                  <option key={target.id} value={target.id}>
+                    {target.group ? `${target.group}: ${target.label}` : target.label}
+                  </option>
+                ))}
+              </select>
+              <p className="te-option-note">
+                Pulses this control once on each student&apos;s screen when they open the task,
+                until they use it (or 20 seconds). Tutors can also highlight controls live.
+              </p>
             </Field>
           )}
 

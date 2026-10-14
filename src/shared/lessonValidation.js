@@ -34,6 +34,7 @@ import {
   findExampleFenceProblems,
   MAX_LOGGED_EXAMPLES,
 } from './markdown/exampleFence.js'
+import { validateTaskHighlight } from './controlHighlight.js'
 import { validateDraftLessonStructure } from './draftLesson.js'
 import {
   getModuleCarrySourceIds,
@@ -316,6 +317,9 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
 
   // sideQuests: optional, unchecked extras for students who passed the task (./sideQuests.js).
   validateSideQuests(task, { n, moduleType, isCodeTask: kind === 'module' }, errors, warnings)
+  // highlight: a control to pulse when the task opens (./controlHighlight.js), checked against
+  // the task's effective module.
+  validateTaskHighlight(task, { n, moduleType, isModuleTask: kind === 'module' }, errors, warnings)
 
   // taskActivity names a Lesson Format Glossary pattern (src/shared/taskActivity.js); badges read
   // it, so an unrecognised one is worth a warning (never an error: it's free text).

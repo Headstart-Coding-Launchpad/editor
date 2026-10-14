@@ -476,10 +476,12 @@ function validateUiGates(type, def, workSlot) {
   if (workSlot && (editor !== null) !== workSlot.teacherEdit) {
     fail(type, '"capabilities.teacherEditor" is declared exactly when "workSlot.teacherEdit" is')
   }
+  const highlightTargets = validateHighlightTargets(type, caps.highlightTargets ?? [], panes)
   return {
     focusPanes: Object.freeze(
       panes.map((pane) => Object.freeze({ id: pane.id, label: pane.label }))
     ),
+    highlightTargets,
     teacherEditor:
       editor === null
         ? null
@@ -489,6 +491,52 @@ function validateUiGates(type, def, workSlot) {
             design: editor.design ?? false,
           }),
   }
+}
+
+// `capabilities.highlightTargets`: the controls a tutor (or a task's `highlight` field) can
+// pulse on the student's screen (src/shared/controlHighlight.js). Each is { id, label, pane?,
+// aliases?, options? }: `pane` is the focusPanes id that holds the control in a compact layout,
+// `aliases` other ids authors may write, and `options` makes it a family (`category:<option>`).
+// The workspace marks each control with `data-highlight-target="<id>"`.
+const HIGHLIGHT_TARGET_ID = /^[a-z][a-z0-9_]*$/
+function validateHighlightTargets(type, targets, panes) {
+  if (!Array.isArray(targets)) fail(type, '"capabilities.highlightTargets" must be an array')
+  const paneIds = new Set(panes.map((pane) => pane.id))
+  const seen = new Set()
+  return Object.freeze(
+    targets.map((target) => {
+      const ids = [target?.id, ...(target?.aliases ?? [])]
+      if (
+        typeof target?.label !== 'string' ||
+        !target.label ||
+        !Array.isArray(target.aliases ?? []) ||
+        ids.some((id) => typeof id !== 'string' || !HIGHLIGHT_TARGET_ID.test(id) || seen.has(id))
+      ) {
+        fail(
+          type,
+          '"capabilities.highlightTargets" must be { id, label, pane?, aliases?, options? } with unique snake_case ids'
+        )
+      }
+      ids.forEach((id) => seen.add(id))
+      if (target.pane != null && !paneIds.has(target.pane)) {
+        fail(type, `"capabilities.highlightTargets" pane "${target.pane}" is not a focusPanes id`)
+      }
+      if (
+        target.options != null &&
+        (!Array.isArray(target.options) ||
+          target.options.some((option) => typeof option !== 'string' || !option))
+      ) {
+        fail(type, '"capabilities.highlightTargets" options must be a list of names')
+      }
+      return Object.freeze({
+        id: target.id,
+        label: target.label,
+        pane: target.pane ?? null,
+        aliases: Object.freeze([...(target.aliases ?? [])]),
+        options: target.options ? Object.freeze([...target.options]) : null,
+      })
+    })
+  )
 }
 
 export function defineModule(def) {
@@ -680,7 +728,7 @@ export function defineModule(def) {
       ...Object.fromEntries(WORK_SLOT_FLAGS.map((key) => [key, def.workSlot[key] ?? false])),
     })
   }
-  const { focusPanes, teacherEditor } = validateUiGates(type, def, workSlot)
+  const { focusPanes, highlightTargets, teacherEditor } = validateUiGates(type, def, workSlot)
   const authoring = validateAuthoring(type, def)
   for (const key of REQUIRED_BOOLEANS) {
     if (typeof def[key] !== 'boolean') fail(type, `missing required boolean "${key}"`)
@@ -731,6 +779,7 @@ export function defineModule(def) {
       run: runKind,
       cardSummary: def.capabilities.cardSummary ?? null,
       focusPanes,
+      highlightTargets,
       teacherEditor,
     }),
     lifecycle: Object.freeze({ playgroundTask: null, ...def.lifecycle }),

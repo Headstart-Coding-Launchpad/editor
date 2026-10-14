@@ -12,6 +12,7 @@ import {
   runTransaction,
 } from 'firebase/database'
 import { db } from '../../shared/firebase'
+import { buildControlHighlightCommand } from '../../shared/controlHighlight.js'
 import { clearPeerHelpData } from './usePeerHelp'
 import { encodeFileKey, decodeFileKey } from '../../shared/fileKeys'
 import { sealTasks } from '../../shared/lessonSeal'
@@ -1372,6 +1373,30 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await set(ref(db, `sessions/${lessonId}/teacherClassPaneCommand`), null)
   }
 
+  // Control highlights (src/shared/controlHighlight.js): pulse one control (Run, the green flag,
+  // a Costumes tab…) on one student's screen or the whole class's. { target, taskId, pushedAt }
+  // in server time; each student's screen ends it on its own (used, or 20 s), so the node stays
+  // until the next push or a clear.
+  async function pushTeacherControlHighlight(anonymousId, target, taskId) {
+    if (!anonymousId || !target) return
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherControlHighlight`),
+      buildControlHighlightCommand(target, taskId, serverNow())
+    )
+  }
+
+  async function pushClassControlHighlight(target, taskId) {
+    if (!target) return
+    await set(
+      ref(db, `sessions/${lessonId}/teacherClassControlHighlight`),
+      buildControlHighlightCommand(target, taskId, serverNow())
+    )
+  }
+
+  async function clearClassControlHighlight() {
+    await set(ref(db, `sessions/${lessonId}/teacherClassControlHighlight`), null)
+  }
+
   // ─── Presentation annotations (liveInk/{lessonId}) ─────────────────────────
   // Pointer, ink and highlights from the Presentation window. A top-level node, not part of
   // the session: every client streams sessions/{lessonId} in full, and the pointer moves at
@@ -2284,6 +2309,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
     clearTeacherPaneCommand,
     pushClassPaneCommand,
     clearClassPaneCommand,
+    pushTeacherControlHighlight,
+    pushClassControlHighlight,
+    clearClassControlHighlight,
     // Presentation annotations (LiveInkProvider)
     subscribeLiveInk,
     createLiveInkWriter,

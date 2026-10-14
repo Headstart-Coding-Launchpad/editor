@@ -387,6 +387,50 @@ select {
   z-index: 1;
 }
 
+/* Control highlight (src/shared/ControlHighlightRing.jsx): a ring drawn over one control (Run,
+   the green flag, a Costumes tab, a block category) by a tutor or a task's `highlight` field.
+   It sits above the control and lets clicks through. Under one pulse a second (never more than
+   3 flashes/s), and finite: 16 pulses cover the 20 s the highlight lasts. `--reveal` marks a
+   control that reveals the target (a collapsed panel rail), drawn dashed. */
+@keyframes control-highlight-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 3px rgba(255, 255, 255, 0.95),
+      0 0 10px 3px rgba(245, 158, 11, 0.55);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow:
+      0 0 0 3px rgba(255, 255, 255, 0.95),
+      0 0 22px 8px rgba(245, 158, 11, 0.9);
+  }
+}
+
+.control-highlight-ring {
+  position: fixed;
+  z-index: 1500;
+  pointer-events: none;
+  box-sizing: border-box;
+  border: 3px solid #f59e0b;
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.95),
+    0 0 14px 5px rgba(245, 158, 11, 0.7);
+  animation: control-highlight-pulse 1.2s ease-in-out 16;
+}
+
+.control-highlight-ring--reveal {
+  border-style: dashed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .control-highlight-ring {
+    animation: none;
+  }
+}
+
 .ui-popover {
   border: 1px solid var(--ui-border) !important;
   border-radius: var(--ui-radius) !important;

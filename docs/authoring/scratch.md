@@ -69,6 +69,7 @@ modules:
     showSoundsTab: false      # optional — show a Sounds tab beside the block editor (default false)
     allowAddCostume: false    # optional — students can add costumes (emoji or library) in the Costumes tab; needs showCostumesTab
     allowAddSound: false      # optional — students can add sounds (synth or library file) in the Sounds tab; needs showSoundsTab
+    highlight: green_flag     # optional — pulse a control once when the task opens; see Highlighting a Control
     check:
       type: sprite_property
       evaluation: after_run
@@ -489,6 +490,35 @@ keyed by sprite id) and show in the teacher's live view. A costume check
 (`sprite_property` `property: costume`) still works on author-named costumes; student-added
 costume names are whatever the student picked, so don't write checks that expect them. The
 Scratch Playground turns all four toggles on.
+
+---
+
+## Highlighting a Control
+
+`highlight` pulses a ring around one control on each student's screen when the task opens (once
+per task), so a Level 1 student who keeps missing the green flag can't miss it. It stops when
+the student uses the control (presses it, opens the tab, taps the category heading) or after 20
+seconds. With reduced motion it's a still outline.
+
+```yaml
+    highlight: green_flag            # or: highlight: { target: green_flag }
+```
+
+| Target | Points at |
+|---|---|
+| `green_flag` (or `run`) | The green flag above the stage |
+| `stop` | The stop sign |
+| `costumes_tab` | The Costumes tab (needs `showCostumesTab`, or validation warns) |
+| `sounds_tab` | The Sounds tab (needs `showSoundsTab`, or validation warns) |
+| `category:<name>` | A category heading in the block palette: `Motion`, `Looks`, `Sound`, `Events`, `Control`, `Sensing`, `Operators`, `Variables` or `My Blocks`. The palette scrolls to it |
+
+Any other target is a validation error. When the control is out of sight, the way to it pulses
+instead: the **Stage** or **Blocks** tab on a narrow screen, the collapsed Stage rail, or the
+"Show blocks palette" button. A category your `toolbox` leaves out has no heading, so nothing
+pulses.
+
+Tutors can pulse the same controls live, for the whole class ("Highlight Class" in the top bar)
+or one student (the More menu in their workspace view).
 
 ---
 

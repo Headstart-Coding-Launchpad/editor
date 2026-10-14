@@ -1,6 +1,6 @@
 # Highlight a Scratch UI control (green flag, stop, tabs) for the class
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Ryan (approved by Ryan), 2026-10-14
 - **Lessons blocked:** none yet
@@ -23,4 +23,17 @@ From tutor feedback relayed by Ryan, 2026-10-13. Could apply to other modules' R
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped on branch `feature/highlight-ui-controls` (2026-10-14).
+
+- **Task field `highlight`** (string or `{ target }`), on code tasks: pulses the control once per
+  task per student when the task opens, until it's used or for 20 s (still outline with reduced
+  motion). Validation rejects unknown targets for the task's effective module.
+- **Targets** (each module's `capabilities.highlightTargets`): `run`, `stop` on python, turtle,
+  arcade, electronics; `run` on html; scratch `green_flag` (alias `run`), `stop`,
+  `costumes_tab`, `sounds_tab`, `category:<Motion|Looks|Sound|Events|Control|Sensing|Operators|Variables|My Blocks>`.
+- **Live tutor menu:** "Highlight Class" in TeacherView's top bar (whole class) and More →
+  Highlight in StudentModal (one student). RTDB `teacherClassControlHighlight` /
+  `students/{id}/teacherControlHighlight`, under the existing rules.
+- A control on a hidden compact tab, collapsed stage or hidden palette points at the way to it.
+- Docs: [scratch.md](../scratch.md#highlighting-a-control), [lesson-schema.md](../lesson-schema.md),
+  [AUTHORING_GUIDE.md](../AUTHORING_GUIDE.md), [CHANGELOG](../CHANGELOG.md).

@@ -65,6 +65,7 @@ import { CostumesTab, SoundsTab } from './CostumesSoundsPanel.jsx'
 import AddPickerPopover from './AddPickerPopover.jsx'
 import { getStartingBackdrop, getStartingBackdropName } from './startingBackdrop.js'
 import { isScratchStillBuilding } from './stillBuilding.js'
+import { useScratchCategoryReveal } from './scratchHighlight.js'
 
 const STAGE_W = 480
 const STAGE_H = 360
@@ -1037,6 +1038,8 @@ export default function ScratchWorkspace({
       (task?.enableStageCode ? '__stage__' : null)
   )
   const selectedSpriteId = controlledSpriteId ?? internalSelectedSpriteId
+  // A highlighted block category scrolls into view in the palette (src/shared/controlHighlight.js).
+  useScratchCategoryReveal(workspaceRefs, selectedSpriteId)
 
   function canSelectSpriteId(id) {
     return (
@@ -3348,6 +3351,7 @@ export default function ScratchWorkspace({
                   type="button"
                   role="tab"
                   aria-selected={assetTab === tab.id}
+                  data-highlight-target={tab.id === 'code' ? undefined : `${tab.id}_tab`}
                   style={{ ...s.assetTab, ...(assetTab === tab.id ? s.assetTabActive : {}) }}
                   onClick={() => setAssetTab(tab.id)}
                 >
@@ -3360,6 +3364,7 @@ export default function ScratchWorkspace({
             <button
               type="button"
               onClick={() => setFlyoutCollapsed((c) => !c)}
+              data-highlight-reveal={flyoutCollapsed ? 'category' : undefined}
               style={flyoutCollapsed ? s.flyoutToggleBtnOpen : s.flyoutToggleBtnHide}
               title={flyoutCollapsed ? 'Show blocks palette' : 'Hide blocks palette'}
             >
@@ -3454,7 +3459,7 @@ export default function ScratchWorkspace({
 
       {/* Stage + controls */}
       {!hideStage && !compact && stagePanelCollapsed && (
-        <div style={s.stageRailPane}>
+        <div style={s.stageRailPane} data-highlight-reveal="green_flag stop">
           <CollapsedPanelRail
             onClick={() => setStagePanelCollapsed(false)}
             label="Stage"
@@ -3509,6 +3514,7 @@ export default function ScratchWorkspace({
               type="button"
               className="btn-ghost-outline"
               style={s.greenFlagBtn}
+              data-highlight-target="green_flag"
               onClick={(e) => {
                 e.currentTarget.blur()
                 handleRun()
@@ -3531,6 +3537,7 @@ export default function ScratchWorkspace({
               type="button"
               className="btn-danger"
               style={s.stopFlagBtn}
+              data-highlight-target="stop"
               onClick={handleStop}
               aria-label="Stop"
               title="Stop all scripts"

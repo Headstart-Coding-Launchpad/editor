@@ -896,6 +896,7 @@ export default function ElectronicsWorkspace({
             <button
               className={running ? 'btn-danger' : 'btn-primary'}
               style={s.actionBtn}
+              data-highlight-target="run stop"
               disabled={running && !onStopMicroPython}
               onClick={running ? onStopMicroPython : onRunMicroPython}
             >
