@@ -28,14 +28,14 @@ node cli/cli.mjs lessons upsert lesson.yaml                 # accepts YAML or JS
 # verify code checks against named student-code examples (JSON or YAML cases file):
 node cli/cli.mjs lessons test-checks lesson.yaml --cases check-cases.yaml
 
-# verify Scratch block checks against each task's complete, starter and Complete stages (no cases file):
+# verify Scratch block checks against each task's complete, starter, Complete and Support stages (no cases file):
 node cli/cli.mjs lessons test-checks lesson.yaml
 
 # fetch an existing lesson as YAML:
 node cli/cli.mjs lessons get python-for-loops --format yaml
 ```
 
-`test-checks` runs named source-code examples through the same code-check evaluator used by LaunchPad and reports any feedback checks that match. Without `--cases` it verifies Scratch tasks instead, per check and per stage — see [Verifying Scratch checks](scratch.md#verifying-scratch-checks). For example, `check-cases.yaml` can be:
+`test-checks` runs named source-code examples through the same code-check evaluator used by LaunchPad and reports any feedback checks that match. Without `--cases` it verifies Scratch tasks instead, per check and per stage — see [Verifying Scratch checks](scratch.md#verifying-scratch-checks). Scratch tasks take cases too, as blocks or a stage plus edits — see [Testing student variations](scratch.md#testing-student-variations). For example, `check-cases.yaml` can be:
 
 ```yaml
 tasks:

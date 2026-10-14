@@ -745,7 +745,7 @@ node cli/cli.mjs lessons test-checks lesson.yaml --yaml          # every Scratch
 node cli/cli.mjs lessons test-checks lesson.yaml --task 7         # one task
 ```
 
-Each task is checked against these stages: `complete` (`completeBlocks`), `starter` (the first Starter stage's `blocks`, else `starterBlocks`), and `complete:<label>` for each Complete-role code stage (legacy `solution` stages included). Checks go through the same per-sprite rules as the classroom: a check with `spriteName` looks at that sprite, falling back to the first sprite when no sprite has that name; one without passes if any sprite satisfies it.
+Each task is checked against these stages: `complete` (`completeBlocks`), `starter` (the first Starter stage's `blocks`, else `starterBlocks`), `complete:<label>` for each Complete-role code stage (legacy `solution` stages included), and `support:<label>` for each Support-role code stage that has `blocks` (a stage with no `role` is Support), in authored order. Checks go through the same per-sprite rules as the classroom: a check with `spriteName` looks at that sprite, falling back to the first sprite when no sprite has that name; one without passes if any sprite satisfies it.
 
 Only block checks are evaluated: `block_used`, `blocks_in_order` and `block_count`. Run-time checks (`sprite_property`, `sprite_property_delta`, `sprite_property_changed`, costume, variable and `block_run` checks) need a Run and are reported as `skipped`, so a stage whose block checks pass but has run-time checks reads `incomplete`. Verify those in the Builder.
 
@@ -794,10 +794,77 @@ summary:
 - a Complete stage that fails a completion check (`Task … <stage> stage fails completion check N (type)`);
 - a feedback check that fires on a Complete stage (it would show to a student who got it right);
 - a starter that already passes every completion check;
+- a Support stage that passes completion (`Task … support:<label> stage passes every completion check`), or passes every block check with run-time checks skipped: revealing it would hand the student the answer;
 - a Debug Code Task (`taskActivity`) whose blocking feedback checks all stay silent on the starter (the bug they describe isn't in the starter);
 - stage blocks that aren't valid JSON.
 
 The command exits with status 1 when there are warnings. `lessons validate` also warns when the Complete blocks fail a block check, or the starter already passes, without the per-check detail.
+
+### Testing student variations
+
+`--cases` takes Scratch cases too, so you can check each check against the wrong and partial answers students actually make (a block appended at the bottom, the wrong sound block, a dropdown left on its default, a Support stage resubmitted unchanged) without hand-reading Blockly JSON. A case gives either whole `blocks` (the same JSON shape as `starterBlocks`), or a `stage` to start from plus `edits`:
+
+```bash
+node cli/cli.mjs lessons test-checks lesson.yaml --cases scratch-cases.yaml
+```
+
+```yaml
+cases:                                   # or tasks: [{ id: 7, cases: [...] }], as for code cases
+  - task: 7
+    name: start sound instead of play sound until done
+    stage: complete                      # a stage id from the no --cases run, or a role
+    edits:
+      - op: replaceOpcode
+        target: sound_playuntildone
+        opcode: sound_play
+    expect:
+      completion: fail                   # pass | fail (required)
+      blocking: fail                     # optional: fail = a blocking feedback check fires
+      feedback: [1]                      # optional: the feedback checks that should fire
+  - task: 7
+    name: extra block appended at the bottom
+    stage: complete
+    edits:
+      - { op: appendBlock, opcode: motion_movesteps, inputs: { STEPS: 10 } }
+    expect: { completion: pass, feedback: [] }
+  - task: 7
+    name: Support stage resubmitted unchanged
+    stage: support                       # the first Support stage with blocks
+    expect: { completion: fail }
+  - task: 7
+    name: whole workspace
+    blocks:
+      sprite1:
+        blocks:
+          blocks:
+            - type: event_whenflagclicked
+    expect: { completion: fail }
+```
+
+**`stage`** is a stage id as the no-`--cases` run prints it (`complete`, `starter`, `complete:<label>`, `support:<label>`; labels ignore case), or a role (`complete`, `starter`, `support`) for the first stage of that role.
+
+**`edits`** run in order on a copy of the stage's blocks. Each names a block with `target` (or `after` / `inside`): an opcode (the first in reading order), `{ opcode, nth }` (the nth one, counting from 1), or `{ path: [script, position] }` (counting from 1 down a script's top-level stack). `sprite` (name or id) picks the sprite; the default is the first sprite, and `Stage` is the Stage.
+
+| `op` | Fields | Does |
+|---|---|---|
+| `appendBlock` | `opcode` with optional `fields` and `inputs`, or a whole `block` (Blockly JSON); where: `after`, `inside` (+ `input`, default `SUBSTACK`), `newScript: true`, or `script` N (default 1) | Adds the block after a block, at the end of a C block's slot, loose on the canvas, or at the bottom of script N. An `inputs` number becomes a number slot, any other value a text slot. |
+| `replaceOpcode` | `target`, `opcode`, optional `fields` / `inputs` | Changes the block's opcode, keeping its fields and inputs (e.g. `sound_playuntildone` → `sound_play`). |
+| `setField` | `target`, `field`, `value` | Sets the block's own field (a dropdown such as `TO`), else the value in the input of that name (`STEPS`, a menu). |
+| `removeBlock` | `target`, optional `withBelow: true` | Removes the block; the blocks below move up unless `withBelow`. |
+
+An edit that can't be applied stops the run with an error naming it, such as `Task 7 case "…" edit 2 (setField): the looks_say block has no field or input "TO" (it has: MESSAGE)`.
+
+**`expect.feedback`** lists the feedback checks that should fire: a number is a check's index (from 1), any other text matches a check's `id`, else part of its `hint`. Every other feedback check is expected to stay silent. Leave `feedback` out to skip comparing feedback.
+
+Each case reports:
+
+- `actual.completion`: `pass`, `fail`, `incomplete` (the block checks pass, run-time checks skipped) or `none` (no completion check, compared as `fail`). An `incomplete` completion is not compared; it is listed in `unconfirmed` and counted in `summary.skipped`.
+- `actual.blocking`: `fail` when a blocking feedback check fires, `skipped` when none fires but a blocking one needs a run (not compared), else `pass`.
+- `actual.checks` and `actual.feedback`: each check's result with its `sprite`, `reason` and `actual` blocks, as in the no-`--cases` run. With `expect.feedback`, each feedback check also gets `expected` (`fires` / `silent`) and `mismatch: true` when it differs. `matchedFeedback` lists the ones that fire.
+- `stillBuilding`: whether the variant counts as still building in class (see [Still building](#scratch-check-types)): `value`, a `reason` (`the blocks are the same as the starter` or `a block is loose on the canvas`), and `failsHeldBack`, true when the task has an `after_block_placed` completion check that would fail here, so the student sees no fail and no hint while editing (Run and the Check button still judge it).
+- `mismatches`: each difference from `expect`. The command exits with status 1 when any case has one.
+
+A lesson's cases file can mix code cases and Scratch cases: each task is judged by its own module.
 
 ---
 

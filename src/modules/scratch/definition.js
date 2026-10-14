@@ -10,6 +10,7 @@ import {
   warnCompleteBlocks,
 } from '../moduleTaskValidation.js'
 import { evaluateScratchWorkWithoutRun, verifyScratchTask } from './checkVerification.js'
+import { evaluateScratchCheckCase } from './checkCases.js'
 import {
   identityFromStored,
   identityStored,
@@ -354,6 +355,8 @@ export default defineModule({
   hasStarterContent: (task) => !!task.starterBlocks,
   // `lessons test-checks` with no --cases: static block checks per stage (checkVerification.js).
   verifyTaskChecks: verifyScratchTask,
+  // `lessons test-checks --cases`: block variations (blocks, or a stage plus edits; checkCases.js).
+  testCheckCase: evaluateScratchCheckCase,
   hasCheckValue: anyCheckHasValue,
   // Builder only: the CLI has no XML parser, so the toolbox is checked where DOMParser exists.
   validateTaskInBrowser: (task, { n, errors }) => {

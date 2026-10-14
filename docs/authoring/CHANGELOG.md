@@ -39,6 +39,22 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-14
 
+### Scratch test-checks: student-variation cases and Support stages
+
+- `lessons test-checks --cases` now takes Scratch cases: whole `blocks`, or a `stage` (a stage id
+  or a role) plus `edits` (`appendBlock`, `replaceOpcode`, `setField`, `removeBlock`), with
+  `expect: { completion, blocking?, feedback? }`. Each completion and feedback check is reported
+  as pass / fail / skipped (needs a run) against the expectation, mismatches are listed, and
+  `stillBuilding` says whether the variant counts as still building in class (its
+  `after_block_placed` fails held back). A cases file may also be a flat `cases:` list whose
+  entries name their `task`. See
+  [scratch.md](scratch.md#testing-student-variations).
+- Without `--cases`, Support-role code stages with `blocks` are now checked too
+  (`support:<label>`), and a Support stage that passes completion is a warning (exit status 1).
+- Affects: scratch, cli · Existing lessons: no changes needed (a Support stage that passes
+  completion now warns in `test-checks`) · Resolves:
+  authoring-requests/2026-10-14-scratch-test-checks-student-variation-cases-and-support-stag.md
+
 ### HTML Inspector: box model, "Why this …?" and flex/grid overlays
 
 - New optional HTML task field `inspector: { enabled: true, open?, focus?, show? }` adds an
