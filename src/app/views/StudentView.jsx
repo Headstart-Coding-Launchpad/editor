@@ -162,6 +162,7 @@ export default function StudentView({
     recordSideQuestOpened,
     recordSideQuestRun,
     setSideQuestDone,
+    writeSideQuestCode,
     writeStudentPresence,
     setTaskId,
     setTeacherLive,
@@ -617,6 +618,7 @@ export default function StudentView({
     recordSideQuestOpened,
     recordSideQuestRun,
     setSideQuestDone,
+    writeSideQuestCode,
   })
   const [openTopicId, setOpenTopicId] = useState(null)
   const [pendingTopicId, setPendingTopicId] = useState(null)
@@ -1993,6 +1995,14 @@ export default function StudentView({
             onToggleDone={() => sideQuests.toggleDone(openSideQuest.index)}
             onClose={sideQuests.closeQuest}
             onRun={({ error }) => sideQuests.reportRun(openSideQuest.index, { error })}
+            liveSync={
+              sideQuests.live
+                ? {
+                    watched: sideQuests.watched,
+                    write: (patch) => sideQuests.syncCode(openSideQuest.index, patch),
+                  }
+                : null
+            }
           />
         ) : (
           <PollTaskClassContext.Provider value={pollTaskClass}>

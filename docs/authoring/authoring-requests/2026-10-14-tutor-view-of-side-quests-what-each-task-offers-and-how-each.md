@@ -1,6 +1,6 @@
 # Tutor view of side quests: what each task offers and how each student is getting on
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Ryan (approved by Ryan), 2026-10-14
 - **Lessons blocked:** none yet
@@ -19,4 +19,16 @@ From tutor feedback relayed by Ryan, 2026-10-13.
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped on branch `feature/side-quest-tutor-view` (package W1-d of
+`docs/architecture/requests-2026-10-14-plan.md`). No new lesson fields.
+
+- **Find them:** a 🗺️ Side-quests panel under the task in the teacher view lists the current
+  task's side-quests (title, kind, explainer, starter code).
+- **Who is on them:** each side-quest shows On it now / Done / Probably stuck counts. Probably
+  stuck = on it and 2 error runs in a row, or no Run for 5 minutes. A count lists the students.
+- **How they're getting on:** clicking a student, or the 🗺️ chip on their card, opens their
+  StudentModal on a read-only Side-quest view (status, code, output/drawing/preview), with a
+  Main task / Side-quest switch.
+- Side-quest code is synced to `students/{id}/sideQuestCode` on every Run, and per keystroke
+  only while the tutor watches that student (Ryan approved, 2026-10-14).
+- Docs: [AUTHORING_GUIDE.md](../AUTHORING_GUIDE.md#side-quests), CHANGELOG 2026-10-14.

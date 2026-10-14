@@ -81,6 +81,22 @@ Entries written before 2026-09-29 are not tagged.
   authoring-requests/2026-10-14-scratch-sprite-library-student-can-t-scroll-to-the-bottom-in.md,
   authoring-requests/2026-10-14-scratch-task-choose-which-backdrop-the-stage-starts-on.md
 
+### Tutors can see side-quests and the students on them
+
+- A **🗺️ Side-quests** panel under the task in the teacher's view lists the current task's
+  side-quests (title, kind, explainer, starter code), each with **On it now**, **Done** and
+  **Probably stuck** counts. Probably stuck: on it, and the last 2 Runs in a row hit an error,
+  or no Run for 5 minutes. Clicking a count lists those students. Clicking a student, or the
+  🗺️ chip on their card, opens their StudentModal on a read-only **Side-quest** view (status,
+  code, output, drawing or preview), with a Main task / Side-quest switch.
+- Side-quest code now reaches the tutor: on every Run, and live while the tutor has that
+  student open. This reverses the 2026-10-09 "status only" note. It is still never saved as the
+  task's work and never feeds `carryCodeFrom`. No new lesson fields and no report changes.
+- Authoring tip: the tutor reads each side-quest's `explainer` in the panel to help, so keep it
+  clear about what "done" looks like. See [AUTHORING_GUIDE.md](AUTHORING_GUIDE.md#side-quests).
+- Affects: python, turtle, html (sideQuests) · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-14-tutor-view-of-side-quests-what-each-task-offers-and-how-each.md
+
 ## 2026-10-09
 
 ### Confidence checks are 1–10; tutors see unsubmitted short answers

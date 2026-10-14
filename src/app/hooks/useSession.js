@@ -536,6 +536,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/teacherPaneCommand`] = null
       // A side-quest closes when the class moves on (sideQuestLog keeps what happened).
       updates[`students/${anonymousId}/sideQuestOpen`] = null
+      updates[`students/${anonymousId}/sideQuestCode`] = null
       // The previous task's panes mean nothing on the new one; the student's StudentView
       // re-reports the new task's panes (its dedupe resets per task).
       updates[`students/${anonymousId}/visiblePanes`] = null
@@ -2024,19 +2025,47 @@ export function useSession(lessonId, { enabled = true } = {}) {
   }
 
   // ─── Side-quests (src/shared/sideQuests.js) ────────────────────────────────
-  // Status only: which side-quest is open, and per side-quest when it was first opened, how
-  // often it was run (and errored) and whether the student marked it Done. Written on open,
-  // close, Run and Done, never per keystroke, and never any code.
+  // Status: which side-quest is open, and per side-quest when it was first opened, how often it
+  // was run (and errored) and whether the student marked it Done. Written on open, close, Run
+  // and Done. The open side-quest's live work goes to students/{id}/sideQuestCode for the tutor
+  // (writeSideQuestCode): on open, on Run, and per keystroke only while activeStudentView is
+  // this student (SideQuestWorkspace decides when).
   const sideQuestPath = (anonymousId, taskId, index) =>
     `sessions/${lessonId}/sideQuestLog/${anonymousId}/${taskId}/${index}`
+  const sideQuestCodePath = (anonymousId) =>
+    `sessions/${lessonId}/students/${anonymousId}/sideQuestCode`
 
-  /** The side-quest open on the student's screen right now (its index), or null. */
-  async function writeSideQuestOpen(anonymousId, index) {
+  /**
+   * The side-quest open on the student's screen right now (its index), or null. Opening starts
+   * a fresh live record ({ taskId, index, openedAt }); closing clears it.
+   */
+  async function writeSideQuestOpen(anonymousId, index, taskId = null) {
     if (!anonymousId) return
+    const open = Number.isInteger(index) ? index : null
     await set(
-      ref(db, `sessions/${lessonId}/students/${anonymousId}/sideQuestOpen`),
-      Number.isInteger(index) ? index : null
+      ref(db, sideQuestCodePath(anonymousId)),
+      open != null && taskId != null
+        ? { taskId, index: open, openedAt: serverTimestamp(), updatedAt: serverTimestamp() }
+        : null
     )
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/sideQuestOpen`), open)
+  }
+
+  /**
+   * Merges the open side-quest's live work into students/{id}/sideQuestCode (the caller always
+   * sends `taskId` and `index`). `files` is a { name: content } map; `turtleResult` is compacted
+   * like currentTurtleResult. Never call it per keystroke unless activeStudentView is this
+   * student.
+   */
+  async function writeSideQuestCode(anonymousId, patch) {
+    if (!anonymousId || !patch || !Number.isInteger(patch.index)) return
+    const next = { ...patch, updatedAt: serverTimestamp() }
+    if (patch.files !== undefined) next.files = patch.files ? encodeFileKeys(patch.files) : null
+    if (patch.turtleResult !== undefined) {
+      next.turtleResult = patch.turtleResult ? compactTurtleResultForSync(patch.turtleResult) : null
+    }
+    if (patch.lastRunAt === true) next.lastRunAt = serverTimestamp()
+    await update(ref(db, sideQuestCodePath(anonymousId)), next)
   }
 
   /** Stamps `openedAt` the first time the student opens this side-quest. */
@@ -2288,6 +2317,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     writeStudentPersonalSandbox,
     // student: side-quest status
     writeSideQuestOpen,
+    writeSideQuestCode,
     recordSideQuestOpened,
     recordSideQuestRun,
     setSideQuestDone,

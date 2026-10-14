@@ -1543,6 +1543,7 @@ describe('useSession', () => {
         currentDraft: null,
         teacherPaneCommand: null,
         sideQuestOpen: null,
+        sideQuestCode: null,
         visiblePanes: null,
         shareRequestedAt: null,
         shareRequestTaskId: null,
