@@ -1,6 +1,6 @@
 # Keyboard falling_words mode with code tokens
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** activity mode
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-10-14
 - **Lessons blocked:** none yet
@@ -44,3 +44,5 @@ Proposed courses that need this (see `Lesson Info/Courses/Proposed Courses/Check
 ## Resolution
 
 <!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+
+Shipped 2026-10-14 on branch `feature/keyboard-type-code-falling-words` (not yet merged): Keyboard activity `mode: falling_words` (`src/activities/keyboard/fallingWords.js`). Task fields `words` (tokens with symbols and spaces, ≤ 20 characters) and `durationSeconds` (15–300, default 60); no `items`. Points only, no lives (Ryan, 2026-10-14): a miss costs points; the round always runs the full time and completes. Records `cleared`, `missed`, `score`, `accuracy`, `cpm`, `wpm`, `corrections`, `timeMs`. Reduced motion: slower, no shake; pauses when the tab is hidden. The on-screen keyboard is blocked. Docs: [activities/keyboard.md](../activities/keyboard.md#falling-words-falling_words).

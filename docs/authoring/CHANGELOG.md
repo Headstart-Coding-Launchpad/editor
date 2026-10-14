@@ -134,6 +134,31 @@ Entries written before 2026-09-29 are not tagged.
   back into Challenge explainers as ` ```example ` fences) · Resolves:
   authoring-requests/2026-10-14-see-example-button-in-explainers-that-opens-a-worked-example.md
 
+### Keyboard: `type_code` and `falling_words` modes
+
+- **`mode: type_code`** types whole blocks of real code. Each item has a multi-line `code`
+  (≤ 1000 characters, ≤ 30 lines, a YAML `|` block is easiest). Task fields: `language`
+  (`python`, the default, or `html`: syntax colouring and the Tab width), `minAccuracy` (default
+  `0.9` here) and an optional `targetCpm` (characters a minute; speed is always shown, checked only
+  when set). Every typed character is marked right or wrong, newlines and indentation included.
+  Enter types a newline with no auto-indent; at the start of a line Tab counts as 4 spaces
+  (Python) or 2 (HTML), so Tab and spaces are both right. Needs a real keyboard (no on-screen
+  keyboard). See [activities/keyboard.md](activities/keyboard.md#typing-code-type_code).
+- **`mode: falling_words`** is a timed warm-up: `words` (code tokens with symbols and spaces are
+  fine, ≤ 20 characters each, ≤ 100 words) fall and typing one exactly clears it. Points only, no
+  lives; the round always runs for `durationSeconds` (15–300, default 60) and then completes.
+  The task has **no `items`**. Respects reduced motion and pauses when the tab is hidden. Needs a
+  real keyboard. See [activities/keyboard.md](activities/keyboard.md#falling-words-falling_words).
+- **Results for typing history.** `type_text`, `type_code` and `falling_words` results all record
+  `mode`, `accuracy`, `cpm`, `wpm`, `corrections`, `timeMs` and `done` (falling words adds
+  `cleared`, `missed`, `score`); `type_text` gains `mode`, `cpm`, `corrections` and `timeMs`
+  alongside its existing fields. Tutor cards read `2/3 done · 94% · 71 cpm` and `falling: 23
+  cleared · 4 missed · 250 pts`. New validation messages are in
+  [validation-errors.md](validation-errors.md) (Keyboard).
+- Affects: keyboard · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-14-keyboard-type-code-mode-type-a-multi-line-block-of-real-code.md,
+  authoring-requests/2026-10-14-keyboard-falling-words-mode-with-code-tokens.md
+
 ## 2026-10-09
 
 ### Confidence checks are 1–10; tutors see unsubmitted short answers

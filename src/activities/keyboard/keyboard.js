@@ -13,8 +13,25 @@ import {
   normalizeCombo,
 } from '../../shared/input/index.js'
 import { gradeEditItem, validateEditItem } from './editText.js'
+import { TYPE_CODE_LANGUAGES, gradeTypeCodeItem, validateTypeCodeItem } from './typeCode.js'
+import { FALLING_ROUND_ID, gradeFallingRound, validateFallingWordsTask } from './fallingWords.js'
 
-export const KEYBOARD_MODES = ['type_text', 'find_key', 'symbols', 'shortcuts', 'edit_text']
+export const KEYBOARD_MODES = [
+  'type_text',
+  'find_key',
+  'symbols',
+  'shortcuts',
+  'edit_text',
+  'type_code',
+  'falling_words',
+]
+
+// The items a task is marked on. falling_words has no authored items: its one round is stored
+// as a single item so every mode's results read the same way.
+export function keyboardItems(task) {
+  if (task?.mode === 'falling_words') return [{ id: FALLING_ROUND_ID }]
+  return Array.isArray(task?.items) ? task.items : []
+}
 
 // Named keys a find_key item may ask for, besides any typeable character.
 export const NAMED_KEYS = [
@@ -58,6 +75,20 @@ export function validateKeyboardTask(task, n) {
   if (task.minKept != null && !(task.minKept > 0 && task.minKept <= 1)) {
     errors.push(`${where}: minKept must be a number above 0 and at most 1.`)
   }
+  if (task.targetCpm != null && !(Number.isFinite(task.targetCpm) && task.targetCpm > 0)) {
+    errors.push(`${where}: targetCpm must be a positive number.`)
+  }
+  if (
+    task.mode === 'type_code' &&
+    task.language != null &&
+    !TYPE_CODE_LANGUAGES.includes(task.language)
+  ) {
+    errors.push(`${where}: type_code language must be one of ${TYPE_CODE_LANGUAGES.join(', ')}.`)
+  }
+  if (task.mode === 'falling_words') {
+    errors.push(...validateFallingWordsTask(task, where, (c) => !!getKeyForChar(c, layout)))
+    return { errors, warnings }
+  }
   const items = Array.isArray(task.items) ? task.items : []
   if (items.length === 0) errors.push(`${where}: keyboard task needs at least one item.`)
   const seen = new Set()
@@ -93,6 +124,8 @@ export function validateKeyboardTask(task, n) {
           `${label}: char must be one character that can be typed on a ${layout.toUpperCase()} keyboard.`
         )
       }
+    } else if (task.mode === 'type_code') {
+      errors.push(...validateTypeCodeItem(item, label, (c) => !!getKeyForChar(c, layout)))
     } else if (task.mode === 'edit_text') {
       const isTypeable = (c) => !!getKeyForChar(c, layout)
       errors.push(...validateEditItem(item, label, isTypeable, MAX_TEXT_LENGTH))
@@ -163,12 +196,21 @@ export function describeItem(task, item, platform) {
 //   symbols:   { typedChar, shift }
 //   shortcuts: { performed, via }   (via: 'keyboard' | 'menu')
 //   edit_text: { text, orig, caret, anchor, used, source, done }   (see editText.js)
+//   type_code: { mode, typed, accuracy, cpm, wpm, corrections, timeMs, source, done }
+//   falling_words (one item, 'round'): { mode, cleared, missed, score, accuracy, cpm, wpm,
+//              corrections, timeMs, source, done }   (see fallingWords.js)
+// The typing modes (type_text, type_code, falling_words) all record mode, cpm, wpm, accuracy,
+// corrections, timeMs and done, so typing history can read them the same way.
 // `platform` names the keys in hints as the student's keyboard does (Mac, Chromebook).
 export function gradeKeyboardItem(task, item, result = {}, { platform } = {}) {
   const hardwareOk = !item.hardwareOnly || result.source !== 'virtual'
   switch (task?.mode) {
     case 'edit_text':
       return gradeEditItem(task, item, result, platform)
+    case 'type_code':
+      return gradeTypeCodeItem(task, item, result)
+    case 'falling_words':
+      return gradeFallingRound(result)
     case 'type_text': {
       const typed = String(result.typed ?? '')
       const minAccuracy = task.minAccuracy ?? 1
@@ -216,7 +258,7 @@ export function gradeKeyboardItem(task, item, result = {}, { platform } = {}) {
 }
 
 export function gradeKeyboardTask(task, state = {}) {
-  const items = task?.items ?? []
+  const items = keyboardItems(task)
   // The student's platform (recorded by the view) names keys in the hints.
   const options = { platform: state?.device?.platform }
   const results = items.map((item) =>
