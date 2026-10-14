@@ -24,6 +24,11 @@ import {
 import { typingReportFields } from './typingStats.js'
 import { lastDraftFor } from './answerDrafts.js'
 import { normalizeTileHighlightLog } from './tutorTileHighlights.js'
+import {
+  exampleOpenReportFields,
+  exampleOpenStudentIds,
+  summarizeExampleOpens,
+} from './exampleOpens.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
 
@@ -646,6 +651,7 @@ export function buildSessionReport({
       ...Object.keys(carryFallbackLog),
       ...Object.keys(supportRevealLog),
       ...Object.keys(sideQuestLog),
+      ...exampleOpenStudentIds(session),
       ...Object.keys(session?.draftLog ?? {}),
       ...Object.keys(session?.badges ?? {}),
       ...Object.keys(session?.studentSignals ?? {}),
@@ -748,6 +754,7 @@ export function buildSessionReport({
         ...(tutorTileHighlights.length > 0 ? { tutorTileHighlights } : {}),
         ...(itemProgress ? { itemProgress } : {}),
         ...(lastDraft ? { lastDraft } : {}),
+        ...exampleOpenReportFields(session, anonymousId, task.id),
         ...(isNotApplicableTask(task)
           ? {}
           : studentTaskBadgeFields({
@@ -838,6 +845,7 @@ export function buildSessionReport({
         ...summarizeCarryFallbacks(perStudent),
         ...summarizeSupportReveals(perStudent),
         ...summarizePastes(perStudent),
+        ...summarizeExampleOpens(perStudent),
         ...badgeFields,
         ...(teacherRating ? { teacherRating } : {}),
       }
@@ -873,6 +881,7 @@ export function buildSessionReport({
       ...summarizeSideQuests(perStudent),
       ...summarizeTimeOnTaskSpread(perStudent),
       ...summarizeTyping(perStudent),
+      ...summarizeExampleOpens(perStudent),
       ...badgeFields,
       ...(teacherRating ? { teacherRating } : {}),
     }

@@ -22,6 +22,7 @@ import {
 } from '../studentLiveDisplay'
 import { useElementSize } from '../../shared/useElementSize'
 import { firstViewKey } from '../../shared/motion'
+import { useBadgeSignals } from '../../shared/badgeSignalsContext'
 import { loadLayoutTab, saveLayoutTab } from '../studentStorage'
 import { NARROW_BREAKPOINT as SCRATCH_CODE_WIDE_WIDTH } from '../../modules/scratch/ScratchWorkspace'
 
@@ -189,6 +190,7 @@ export default function LessonTaskContent({
   highlightedPanes,
   forcedPaneCommand,
 }) {
+  const badgeSignals = useBadgeSignals()
   const [explainerCollapsed, setExplainerCollapsed] = useState(false)
   // Tracks the explainer's own accordion collapse (used whenever `!useSideExplainer` —
   // i.e. lesson types outside SIDE_EXPLAINER_TYPES like Filesystem, and the mobile
@@ -497,6 +499,13 @@ export default function LessonTaskContent({
           !hasSandboxExplainer && !showsCompleteCode && task?.id != null
             ? surfaceId(SURFACE_KINDS.explainer, task.id)
             : null
+        }
+        // "See example" opens are logged for the tutor from the task's own explainer only
+        // (src/shared/exampleOpens.js); the reporter is a no-op outside a live lesson.
+        onExampleOpen={
+          !hasSandboxExplainer && !showsCompleteCode && badgeSignals?.reportExampleOpen
+            ? (index) => badgeSignals.reportExampleOpen(index, task?.id)
+            : undefined
         }
       />
     </div>

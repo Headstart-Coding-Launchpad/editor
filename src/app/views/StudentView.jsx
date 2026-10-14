@@ -157,6 +157,7 @@ export default function StudentView({
     recordSandboxRunSignal,
     flagSandboxRunError,
     addSandboxTimeSignal,
+    recordExampleOpen,
     writeStudentPersonalSandbox,
     writeSideQuestOpen,
     recordSideQuestOpened,
@@ -323,6 +324,7 @@ export default function StudentView({
       recordSandboxRunSignal,
       flagSandboxRunError,
       addSandboxTimeSignal,
+      recordExampleOpen,
     },
   })
   // Live badge reporters for the shared editor, Blockly and Topic Library components below
@@ -332,6 +334,8 @@ export default function StudentView({
       reportUserEdit: cs.badgeSignals.reportUserEdit,
       reportAutocomplete: cs.badgeSignals.reportAutocomplete,
       reportTopicOpen: cs.badgeSignals.reportTopicOpen,
+      // "See example" opens in the task explainer (src/shared/exampleOpens.js).
+      reportExampleOpen: cs.badgeSignals.reportExampleOpen,
       // Session report typing measures (useStudentTypingStats), from the shared CodeEditor.
       reportTyping: cs.typingStats.reportTyping,
     }),
@@ -339,6 +343,7 @@ export default function StudentView({
       cs.badgeSignals.reportUserEdit,
       cs.badgeSignals.reportAutocomplete,
       cs.badgeSignals.reportTopicOpen,
+      cs.badgeSignals.reportExampleOpen,
       cs.typingStats.reportTyping,
     ]
   )

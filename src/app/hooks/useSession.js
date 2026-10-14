@@ -46,6 +46,7 @@ import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liv
 import { buildClassCountdown, extendClassCountdown } from '../../shared/classCountdown'
 import { clipRunError } from '../studentHints.js'
 import { bumpSideQuestCount } from '../../shared/sideQuests.js'
+import { bumpExampleOpenCount, exampleOpenPath } from '../../shared/exampleOpens.js'
 import { draftLogUpdates } from '../../shared/answerDrafts.js'
 import {
   MAX_TILE_HIGHLIGHT_LOG_PER_TASK,
@@ -210,6 +211,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       studentSignals: null,
       // Side-quest status (src/shared/sideQuests.js) belongs to one session.
       sideQuestLog: null,
+      // "See example" opens (src/shared/exampleOpens.js) belong to one session.
+      exampleOpenLog: null,
       // Unsubmitted answer drafts kept for the report (src/shared/answerDrafts.js).
       draftLog: null,
     })
@@ -2063,6 +2066,25 @@ export function useSession(lessonId, { enabled = true } = {}) {
   }
 
   /** The student's self-reported Done (or un-Done). Recorded, never checked. */
+  /**
+   * A student opened a "See example" fence in a task explainer (src/shared/exampleOpens.js):
+   * stamps `openedAt` the first time, `lastOpenedAt` every time, and bumps `opens`.
+   */
+  async function recordExampleOpen(anonymousId, taskId, index) {
+    if (!anonymousId || taskId == null || !Number.isInteger(index) || index < 0 || index > 9) return
+    const path = exampleOpenPath(lessonId, anonymousId, taskId, index)
+    const first = session?.exampleOpenLog?.[anonymousId]?.[taskId]?.[index]?.openedAt == null
+    try {
+      await update(ref(db, path), {
+        ...(first ? { openedAt: serverTimestamp() } : {}),
+        lastOpenedAt: serverTimestamp(),
+      })
+      await runTransaction(ref(db, `${path}/opens`), bumpExampleOpenCount)
+    } catch (err) {
+      console.warn('[examples] could not record an example open', err)
+    }
+  }
+
   async function setSideQuestDone(anonymousId, taskId, index, done) {
     if (!anonymousId || taskId == null || !Number.isInteger(index)) return
     await update(ref(db, sideQuestPath(anonymousId, taskId, index)), {
@@ -2291,6 +2313,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     recordSideQuestOpened,
     recordSideQuestRun,
     setSideQuestDone,
+    recordExampleOpen,
     setTeacherLiveReferenceForStudent,
     setTeacherLiveReferenceForClass,
     writeStudentPresence,

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
+import { exampleOpenCount } from '../../shared/exampleOpens'
 import { CodeEditor } from '../../shared/CodeEditor'
 import { useLatestRef } from '../hooks/useLatestRef'
 import { decodeFileKey } from '../../shared/fileKeys'
@@ -600,6 +601,8 @@ export default function StudentModal({
   const completeStage =
     !isInformation && !isQuizLike && supportsStageReveal ? getCompleteStage(task) : null
   const revealedSupportStages = session?.supportRevealLog?.[student.anonymousId]?.[task?.id] ?? {}
+  // "See example" fences opened in this task's explainer (src/shared/exampleOpens.js).
+  const examplesOpened = exampleOpenCount(session, student.anonymousId, task?.id)
   // "Every task" reference: re-applied by the student's client on each task.
   const canSetAutoReveal = !!onSetAutoReveal && supportsStageReveal
   const autoRevealStage = student.autoRevealStage ?? null
@@ -763,6 +766,15 @@ export default function StudentModal({
             {Object.keys(revealedSupportStages).length > 0 && (
               <span style={s.supportBadge} title="Student has opened a stage reference">
                 Reference opened
+              </span>
+            )}
+            {examplesOpened > 0 && (
+              <span
+                style={s.supportBadge}
+                title="Student has opened the worked example in this task's explainer"
+                data-testid="modal-example-opened"
+              >
+                🔍 Opened example{examplesOpened > 1 ? ` (${examplesOpened})` : ''}
               </span>
             )}
             {student.currentTopicId &&

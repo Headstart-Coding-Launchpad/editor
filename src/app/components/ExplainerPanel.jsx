@@ -25,6 +25,9 @@ export default function ExplainerPanel({
   // Presentation annotations: names this panel's content (e.g. `explainer:7`, `info:3`) so the
   // teacher can point at, draw on and highlight it live. Null leaves it un-annotatable.
   inkSurfaceId = null,
+  // Logs a student's open of a "See example" fence in this content (the task explainer only;
+  // see MarkdownRenderer's onExampleOpen).
+  onExampleOpen,
 }) {
   const isFirstView = useFirstView(
     entranceKey == null ? null : firstViewKey('explainer', entranceKey)
@@ -78,6 +81,8 @@ export default function ExplainerPanel({
     if (!expanded) return
     function onPointerDown(event) {
       if (panelRef.current?.contains(event.target)) return
+      // The "See example" dialog is portalled out of the panel but belongs to it.
+      if (event.target?.closest?.('.md-example-backdrop')) return
       setExpanded(false)
     }
     document.addEventListener('pointerdown', onPointerDown)
@@ -151,6 +156,7 @@ export default function ExplainerPanel({
                 openTopicId={openTopicId}
                 disableCopy={disableCopy}
                 imageLayout={imageLayout}
+                onExampleOpen={onExampleOpen}
                 animateLists={showEntrance}
               />
             </InkSurface>
@@ -195,6 +201,7 @@ export default function ExplainerPanel({
                 openTopicId={openTopicId}
                 disableCopy={disableCopy}
                 imageLayout={imageLayout}
+                onExampleOpen={onExampleOpen}
               />
             </div>
           </div>
