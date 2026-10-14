@@ -19,13 +19,36 @@ const SKIPPED = 'skipped'
 const NEEDS_RUN_REASON = 'needs a run, which test-checks never does'
 const TESTS_REASON = 'the task has Python tests, which decide completion on a run'
 
-function assertCasesFile(casesFile) {
+// The cases file as [{ id, cases }]: a `tasks` list ({ id, cases: [...] }) and/or a flat
+// `cases` list whose entries each name their `task`.
+function groupCases(casesFile) {
   if (!casesFile || typeof casesFile !== 'object' || Array.isArray(casesFile)) {
     throw new Error('Check cases must be an object with a tasks array')
   }
-  if (!Array.isArray(casesFile.tasks) || casesFile.tasks.length === 0) {
-    throw new Error('Check cases must include at least one task in tasks')
+  const groups = []
+  if (casesFile.tasks != null) {
+    if (!Array.isArray(casesFile.tasks)) throw new Error('Check cases tasks must be a list')
+    groups.push(...casesFile.tasks)
   }
+  if (casesFile.cases != null) {
+    if (!Array.isArray(casesFile.cases)) throw new Error('Check cases cases must be a list')
+    casesFile.cases.forEach((testCase, index) => {
+      const id = testCase?.task
+      if (id == null || id === '') {
+        throw new Error(`Check case ${index + 1} in cases must name its task`)
+      }
+      let group = groups.find((entry) => entry?.flat && String(entry.id) === String(id))
+      if (!group) {
+        group = { id, cases: [], flat: true }
+        groups.push(group)
+      }
+      group.cases.push(testCase)
+    })
+  }
+  if (groups.length === 0) {
+    throw new Error('Check cases must include at least one task in tasks (or a cases list)')
+  }
+  return groups
 }
 
 // Why a check can't be judged from a cases file's source code alone, or null when it can.
@@ -43,6 +66,14 @@ function judgeCaseCheck(check, context) {
   const reason = skipReason(check, context)
   if (reason) return { result: SKIPPED, reason }
   return { result: evaluateSingleCheck(check, '', context) ? 'pass' : 'fail' }
+}
+
+// A task's own module hook (`verifyTaskChecks`, `testCheckCase`), or null. Each task's own
+// module: composed lessons mix modules.
+function moduleHook(lesson, task, name) {
+  if (!task || typeof task !== 'object' || getTaskValidationKind(task) !== 'module') return null
+  const moduleType = getTaskModuleType(lesson, task) ?? lesson.type
+  return getModuleDefinition(moduleType)?.[name] ?? null
 }
 
 function checkSummary(check, index) {
@@ -64,17 +95,22 @@ export function combineCompletion(results) {
   return 'pass'
 }
 
-function evaluateCase(task, taskId, testCase, caseIndex) {
+function evaluateCase(lesson, task, taskId, testCase, caseIndex) {
   if (!testCase || typeof testCase !== 'object' || Array.isArray(testCase)) {
     throw new Error(`Task ${taskId} case ${caseIndex + 1} must be an object`)
   }
   if (!String(testCase.name ?? '').trim()) {
     throw new Error(`Task ${taskId} case ${caseIndex + 1} is missing a name`)
   }
+  // A module that judges its own work shape (Scratch: blocks, or a stage plus edits).
+  const moduleCase = moduleHook(lesson, task, 'testCheckCase')
+  if (moduleCase) return moduleCase(task, testCase, { taskId })
+
   if (typeof testCase.code !== 'string') {
     throw new Error(`Task ${taskId} case "${testCase.name}" must provide code as a string`)
   }
-  if (!EXPECTED_COMPLETION.has(testCase.completion)) {
+  const expectedCompletion = testCase.expect?.completion ?? testCase.completion
+  if (!EXPECTED_COMPLETION.has(expectedCompletion)) {
     throw new Error(`Task ${taskId} case "${testCase.name}" completion must be "pass" or "fail"`)
   }
 
@@ -101,14 +137,14 @@ function evaluateCase(task, taskId, testCase, caseIndex) {
   const skippedFeedback = feedback.filter((check) => check.result === SKIPPED)
   const mismatches = []
   // A skipped completion can't be compared with the expectation: it is reported, not failed.
-  if (actualCompletion !== SKIPPED && actualCompletion !== testCase.completion) {
-    mismatches.push(`completion: expected ${testCase.completion}, got ${actualCompletion}`)
+  if (actualCompletion !== SKIPPED && actualCompletion !== expectedCompletion) {
+    mismatches.push(`completion: expected ${expectedCompletion}, got ${actualCompletion}`)
   }
 
   const result = {
     taskId,
     name: testCase.name,
-    expected: { completion: testCase.completion },
+    expected: { completion: expectedCompletion },
     actual: { completion: actualCompletion, checks },
     matchedFeedback,
     mismatches,
@@ -124,15 +160,15 @@ function evaluateCase(task, taskId, testCase, caseIndex) {
 // It deliberately supplies only { code }: this command does not execute code or
 // fabricate output, variables, or DOM state. Checks that need a run (output,
 // code_no_error, variable_*, Turtle, HTML element checks, Python `tests`) are
-// reported as 'skipped' and left out of the completion verdict.
+// reported as 'skipped' and left out of the completion verdict. A task whose module declares
+// `testCheckCase` (Scratch) judges its own cases instead: blocks, or a stage plus edits.
 export function testLessonChecks(lesson, casesFile) {
   if (!lesson || typeof lesson !== 'object' || Array.isArray(lesson)) {
     throw new Error('Lesson must be an object')
   }
-  assertCasesFile(casesFile)
 
   const cases = []
-  for (const taskCases of casesFile.tasks) {
+  for (const taskCases of groupCases(casesFile)) {
     const taskId = taskCases?.id
     if (taskId == null || taskId === '') throw new Error('Each check-case task must include an id')
     if (!Array.isArray(taskCases.cases) || taskCases.cases.length === 0) {
@@ -143,12 +179,18 @@ export function testLessonChecks(lesson, casesFile) {
     if (!task) throw new Error(`Lesson task ${taskId} was not found`)
 
     taskCases.cases.forEach((testCase, caseIndex) => {
-      cases.push(evaluateCase(task, taskId, testCase, caseIndex))
+      cases.push(evaluateCase(lesson, task, taskId, testCase, caseIndex))
     })
   }
 
   const failed = cases.filter((testCase) => testCase.mismatches.length > 0)
-  const skipped = cases.filter((testCase) => testCase.actual.completion === SKIPPED)
+  // Completion that couldn't be compared: every check needs a run (source code), or the block
+  // checks pass with run-time ones skipped (Scratch 'incomplete').
+  const skipped = cases.filter(
+    (testCase) =>
+      testCase.mismatches.length === 0 &&
+      (testCase.actual.completion === SKIPPED || testCase.actual.completion === 'incomplete')
+  )
   return {
     success: failed.length === 0,
     lessonId: lesson.id ?? null,
@@ -171,10 +213,7 @@ export function testLessonChecks(lesson, casesFile) {
 // skipped.
 
 function stageVerifier(lesson, task) {
-  if (!task || typeof task !== 'object' || getTaskValidationKind(task) !== 'module') return null
-  // Each task's own module: composed lessons mix modules.
-  const moduleType = getTaskModuleType(lesson, task) ?? lesson.type
-  return getModuleDefinition(moduleType)?.verifyTaskChecks ?? null
+  return moduleHook(lesson, task, 'verifyTaskChecks')
 }
 
 // The lesson's tasks that `test-checks` can verify without a cases file.

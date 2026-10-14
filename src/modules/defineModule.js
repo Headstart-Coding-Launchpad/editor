@@ -363,6 +363,10 @@ function validateAuthoring(type, def) {
 //   the task's checks evaluated against its own authored stages, per check, with no cases file
 //   (`lessons test-checks` without --cases; scratch). `activityPattern` is the task's
 //   taskActivity pattern id, resolved by the CLI. Pure / Node-safe; null = not supported.
+// - testCheckCase(task, testCase, { taskId }) → one `lessons test-checks --cases` case judged
+//   against the module's own work shape (scratch: blocks, or a stage plus edits), returning
+//   `{ taskId, name, expected, actual, mismatches, ... }`. Pure / Node-safe; null = the case is
+//   source code, judged by the shared code-check evaluator.
 const OPTIONAL_FUNCTIONS = [
   'initCompleteTab',
   'initStageTab',
@@ -372,6 +376,7 @@ const OPTIONAL_FUNCTIONS = [
   'hasCheckValue',
   'validateTaskInBrowser',
   'verifyTaskChecks',
+  'testCheckCase',
 ]
 
 // Keys the UI half must provide. A value may be null where the app already allows it

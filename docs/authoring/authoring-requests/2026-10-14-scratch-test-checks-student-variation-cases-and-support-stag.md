@@ -1,6 +1,6 @@
 # Scratch test-checks: student-variation cases and Support stage evaluation
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** tooling
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-10-14
 - **Lessons blocked:** none yet
@@ -32,4 +32,4 @@ Follow-on to shipped request #27 (Scratch per-check results), which covered the 
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Branch `feature/scratch-test-check-cases`: `lessons test-checks --cases` accepts Scratch cases, as whole `blocks` or a `stage` (stage id or role, Support stages included) plus `edits` (`appendBlock`, `replaceOpcode`, `setField`, `removeBlock`), with `expect: { completion, blocking?, feedback? }`. Each case reports every completion and feedback check (pass / fail / skipped, needs a run) against the expectation, lists mismatches, and says whether the variant counts as still building in class (`stillBuilding`, with `failsHeldBack`). Without `--cases`, Support-role stages are evaluated too (`support:<label>`) and a Support stage that passes completion is a warning. Module hook `testCheckCase` (Scratch: `src/modules/scratch/checkCases.js`, edits in `blockEdits.js`). Docs: [scratch.md](../scratch.md#testing-student-variations).

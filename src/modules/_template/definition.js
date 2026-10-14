@@ -198,4 +198,5 @@ export default defineModule({
   hasCheckValue: null,
   validateTaskInBrowser: null,
   verifyTaskChecks: null,
+  testCheckCase: null,
 })

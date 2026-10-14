@@ -98,7 +98,9 @@ to the preview; `src/modules/html/inspector/`; html).
   `validateTaskInBrowser` (Builder only). Every message is documented in
   `docs/authoring/validation-errors.md` (`validationErrorsDoc.test.js`). Optional
   `verifyTaskChecks(task, label)` evaluates the task's checks per check against its own authored
-  stages for `lessons test-checks` without `--cases` (Scratch).
+  stages for `lessons test-checks` without `--cases` (Scratch). Optional
+  `testCheckCase(task, testCase, { taskId })` judges one `--cases` case in the module's own work
+  shape (Scratch: blocks, or a stage plus edits); without it a case is source code.
 
 ### `authoring` (the Builder)
 

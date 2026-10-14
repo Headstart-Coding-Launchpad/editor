@@ -125,7 +125,7 @@ describe('lessons test-checks: Scratch mode', () => {
     })
   })
 
-  it('checks every Complete-role code stage, including legacy solution stages', () => {
+  it('checks every Complete-role and Support-role code stage, including legacy solution stages', () => {
     const task = scratchTask({
       completeBlocks: undefined,
       codeStages: [
@@ -140,9 +140,46 @@ describe('lessons test-checks: Scratch mode', () => {
     const result = testStageChecks(scratchLesson([task]))
     expect(result.tasks[0].stages.map((entry) => entry.stage)).toEqual([
       'starter',
+      'support:Hint',
       'complete:Model answer',
     ])
     expect(stage(result.tasks[0], 'complete:Model answer').completion.result).toBe('incomplete')
+    expect(stage(result.tasks[0], 'support:Hint').completion.result).toBe('fail')
+    expect(result.warnings).toEqual([])
+  })
+
+  it('warns when a Support stage passes completion', () => {
+    const task = scratchTask({
+      check: [{ type: 'block_used', opcode: 'motion_movesteps' }],
+      codeStages: [
+        { label: 'Hint', role: 'support', blocks: blocksFor(stack('event_whenflagclicked')) },
+        {
+          label: 'Worked example',
+          blocks: blocksFor(stack('event_whenflagclicked', move(20))),
+        },
+      ],
+    })
+    const result = testStageChecks(scratchLesson([task]))
+    expect(result.warnings).toEqual([
+      'Task 7 support:Worked example stage passes every completion check',
+    ])
+    expect(result.success).toBe(false)
+  })
+
+  it('warns when a Support stage passes every block check with run-time checks skipped', () => {
+    const task = scratchTask({
+      codeStages: [
+        {
+          label: 'Nearly',
+          role: 'support',
+          blocks: blocksFor(stack('event_whenflagclicked', move(20))),
+        },
+      ],
+    })
+    const result = testStageChecks(scratchLesson([task]))
+    expect(result.warnings).toEqual([
+      'Task 7 support:Nearly stage passes every block completion check (run-time checks not judged)',
+    ])
   })
 
   it('uses the first Starter stage as the starter', () => {
