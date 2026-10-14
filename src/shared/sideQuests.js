@@ -5,12 +5,18 @@
 //
 // Data (L = lessonId, T = taskId, n = the side-quest's index 0-2):
 //   sessions/L/students/{id}/sideQuestOpen         n | null: the side-quest open right now
+//   sessions/L/students/{id}/sideQuestCode         the open side-quest's live work, for the tutor:
+//                                                   { taskId, index, openedAt, updatedAt,
+//                                                     code | files, output, turtleResult,
+//                                                     runStatus, lastRunAt, errorStreak }
 //   sessions/L/sideQuestLog/{id}/T/n                { openedAt, runs, errorRuns, done, doneAt }
 //   localStorage headstart_{L}_{T}_sidequest_{n}_{anonymousId}
 //                                                   { code } (python, turtle) or
 //                                                   { files: [{ name, content }], activeFile } (html)
-// Side-quest code never reaches Firebase, never writes the task's saved work and never feeds
-// carryCodeFrom.
+// sideQuestCode is written on open (no code yet), on every Run, and per keystroke only while the
+// tutor is watching this student (activeStudentView), like currentCode. It is cleared when the
+// side-quest closes or the class moves on. Side-quest code never writes the task's saved work
+// and never feeds carryCodeFrom.
 import { getModuleDefinition, getModuleTypesWithCapability } from '../modules/definitions.js'
 
 export const SIDE_QUEST_MAX = 3
@@ -271,4 +277,118 @@ export function buildSideQuestReport(taskLog, quests = []) {
     })
     .filter(Boolean)
     .sort((a, b) => a.index - b.index)
+}
+
+// ─── Tutor view ──────────────────────────────────────────────────────────────
+
+// "Probably stuck" on an open side-quest (docs/authoring/AUTHORING_GUIDE.md "Side-quests"):
+// the last two or more Runs in a row hit an error, or no Run for five minutes while it is open.
+export const SIDE_QUEST_STUCK_ERROR_STREAK = 2
+export const SIDE_QUEST_STUCK_IDLE_MS = 5 * 60 * 1000
+// Output kept in the live record, from the end (the newest lines).
+export const SIDE_QUEST_OUTPUT_MAX = 20000
+
+const timeOrNull = (value) => (typeof value === 'number' && Number.isFinite(value) ? value : null)
+
+/**
+ * The student's live side-quest record (`students/{id}/sideQuestCode`) for the side-quest open
+ * on `taskId`, or null when they have none open there. `files` stays encoded (decode it with
+ * decodeSessionFiles).
+ */
+export function readSideQuestCode(student, taskId) {
+  const open = student?.sideQuestOpen
+  if (!Number.isInteger(open)) return null
+  const record = student?.sideQuestCode
+  if (!record || typeof record !== 'object') return null
+  if (record.index !== open) return null
+  if (taskId != null && record.taskId != null && String(record.taskId) !== String(taskId)) {
+    return null
+  }
+  return {
+    taskId: record.taskId ?? null,
+    index: record.index,
+    openedAt: timeOrNull(record.openedAt),
+    updatedAt: timeOrNull(record.updatedAt),
+    lastRunAt: timeOrNull(record.lastRunAt),
+    errorStreak: count(record.errorStreak),
+    runStatus: typeof record.runStatus === 'string' ? record.runStatus : null,
+    code: typeof record.code === 'string' ? record.code : null,
+    files: record.files && typeof record.files === 'object' ? record.files : null,
+    output: typeof record.output === 'string' ? record.output : '',
+    turtleResult: record.turtleResult ?? null,
+  }
+}
+
+/**
+ * The side-quest a student has open on `task` for the tutor's StudentModal:
+ * `{ quest, total, live, moduleType }` (`live` from readSideQuestCode, null until it arrives),
+ * or null when they have none open there or the module can't run side-quests.
+ */
+export function studentOpenSideQuest({ student, moduleType, task }) {
+  if (!supportsSideQuests(moduleType)) return null
+  const index = student?.sideQuestOpen
+  if (!Number.isInteger(index)) return null
+  const quests = getSideQuests(task)
+  const quest = quests.find((item) => item.index === index)
+  if (!quest) return null
+  return { quest, total: quests.length, live: readSideQuestCode(student, task?.id), moduleType }
+}
+
+/** Keeps the newest SIDE_QUEST_OUTPUT_MAX characters of a run's output. */
+export function trimSideQuestOutput(output) {
+  const text = typeof output === 'string' ? output : ''
+  return text.length > SIDE_QUEST_OUTPUT_MAX ? text.slice(-SIDE_QUEST_OUTPUT_MAX) : text
+}
+
+/**
+ * Whether a student on a side-quest is probably stuck: `{ stuck, reason }`, reason 'errors'
+ * (SIDE_QUEST_STUCK_ERROR_STREAK error runs in a row) or 'idle' (no Run for
+ * SIDE_QUEST_STUCK_IDLE_MS since the last Run, or since it was opened). Never stuck when
+ * offline, not on a side-quest of this task, or marked Done.
+ */
+export function sideQuestStuckState({ student, session, taskId, now = Date.now() }) {
+  const none = { stuck: false, reason: null }
+  if (!student?.online) return none
+  const live = readSideQuestCode(student, taskId)
+  if (!live) return none
+  const log = session?.sideQuestLog?.[student.anonymousId]?.[taskId]?.[live.index]
+  if (log?.done === true) return none
+  if (live.errorStreak >= SIDE_QUEST_STUCK_ERROR_STREAK) return { stuck: true, reason: 'errors' }
+  const since = live.lastRunAt ?? live.openedAt
+  if (since != null && now - since >= SIDE_QUEST_STUCK_IDLE_MS) {
+    return { stuck: true, reason: 'idle' }
+  }
+  return none
+}
+
+/**
+ * The class on each of the task's side-quests, for the tutor's side-quest panel:
+ * `[{ index, onIt: [ids], done: [ids], stuck: [ids] }]`, one per side-quest in `quests`.
+ * On it = online with that side-quest open now; done = marked Done (self-reported) on this
+ * task; stuck = on it and sideQuestStuckState says so.
+ */
+export function summariseSideQuestClass({
+  session,
+  task,
+  quests = getSideQuests(task),
+  now = Date.now(),
+}) {
+  const taskId = task?.id ?? null
+  const students = Object.values(session?.students ?? {}).filter((st) => st?.anonymousId)
+  return quests.map((quest) => {
+    const onIt = []
+    const done = []
+    const stuck = []
+    for (const student of students) {
+      const id = student.anonymousId
+      if (student.online && student.sideQuestOpen === quest.index) {
+        onIt.push(id)
+        if (sideQuestStuckState({ student, session, taskId, now }).stuck) stuck.push(id)
+      }
+      if (taskId != null && session?.sideQuestLog?.[id]?.[taskId]?.[quest.index]?.done === true) {
+        done.push(id)
+      }
+    }
+    return { index: quest.index, onIt, done, stuck }
+  })
 }

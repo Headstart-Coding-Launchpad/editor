@@ -1,5 +1,6 @@
 // Side-quest status in useSession (src/shared/sideQuests.js): the open side-quest on the student
-// node, and the per-side-quest log (opened, runs, error runs, done). Never any code.
+// node, the per-side-quest log (opened, runs, error runs, done), and the tutor's live copy of the
+// open side-quest's work (sideQuestCode).
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSession } from '../useSession'
@@ -83,6 +84,42 @@ describe('side-quest status', () => {
     expect(calls.map(([, value]) => value)).toEqual([1, null])
   })
 
+  it('starts a fresh live record on open (with the task) and clears it on close', async () => {
+    const { result } = renderSession({ state: 'active' })
+    await act(async () => {
+      await result.current.writeSideQuestOpen(STUDENT, 1, 't2')
+      await result.current.writeSideQuestOpen(STUDENT, null)
+    })
+    const calls = setCallsTo(`sessions/${LESSON}/students/${STUDENT}/sideQuestCode`)
+    expect(calls.map(([, value]) => value)).toEqual([
+      { taskId: 't2', index: 1, openedAt: SERVER_TIME, updatedAt: SERVER_TIME },
+      null,
+    ])
+  })
+
+  it('merges live side-quest work with encoded file keys and server times', async () => {
+    const { result } = renderSession({ state: 'active' })
+    await act(async () => {
+      await result.current.writeSideQuestCode(STUDENT, {
+        taskId: 't2',
+        index: 1,
+        files: { 'index.html': '<p>hi</p>' },
+        lastRunAt: true,
+      })
+      await result.current.writeSideQuestCode(STUDENT, { taskId: 't2', code: 'no index' })
+    })
+    const path = `sessions/${LESSON}/students/${STUDENT}/sideQuestCode`
+    expect(updateCallsTo(path).map(([, value]) => value)).toEqual([
+      {
+        taskId: 't2',
+        index: 1,
+        files: { index__dot__html: '<p>hi</p>' },
+        lastRunAt: SERVER_TIME,
+        updatedAt: SERVER_TIME,
+      },
+    ])
+  })
+
   it('stamps openedAt only the first time', async () => {
     const { result } = renderSession({ state: 'active' })
     await act(async () => {
@@ -146,6 +183,7 @@ describe('side-quest status', () => {
     })
     expect(updateCallsTo(`sessions/${LESSON}`)[0][1]).toMatchObject({
       [`students/${STUDENT}/sideQuestOpen`]: null,
+      [`students/${STUDENT}/sideQuestCode`]: null,
     })
     await act(async () => {
       await result.current.createSession()

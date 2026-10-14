@@ -217,7 +217,8 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - Live: only while the class is still on that task; solo: after a pass
 - Each opens in its own scratch editor of the task's module: its own instructions and starter, nothing checked, and the task's code (and what the next task carries) never changes. Its code is kept on the device for the session
 - **✓ I've done it!** is self-reported and recorded; when the teacher moves the class on, the side-quest closes and the student moves on as normal
-- The teacher's card shows "🗺️ on side-quest 2/3 · ✓1" (status only, no code view); the session report lists each side-quest opened (runs, error runs, done); 🗺️ Side Quester is suggested after 2 (lesson-tunable) are marked done
+- Tutor view: a 🗺️ Side-quests panel under the task lists the current task's side-quests (title, kind, explainer, starter) with On it now / Done / Probably stuck counts (2 error runs in a row, or no Run for 5 minutes); clicking a count lists the students, and a student (or their card's 🗺️ chip) opens their StudentModal on a read-only Side-quest view (status, code, output/drawing/preview), switchable with Main task. Side-quest code reaches the tutor on every Run, and live while the tutor watches that student
+- The teacher's card shows "🗺️ on side-quest 2/3 · ✓1"; the session report lists each side-quest opened (runs, error runs, done); 🗺️ Side Quester is suggested after 2 (lesson-tunable) are marked done
 
 ### input() Support (Python)
 - Execution pauses; an inline input field appears in the output panel

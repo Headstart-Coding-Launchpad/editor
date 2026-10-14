@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import { useLatestRef } from '../hooks/useLatestRef'
 import StudentCard from './StudentCard'
 import StudentModal from './StudentModal'
 import { findTaskById } from '../../shared/taskUtils'
@@ -75,6 +76,8 @@ export default function StudentGrid({
   catalogueBadges = [],
   collapsed,
   onToggle,
+  // { studentId, at } from TeacherView's side-quest panel: open that student's side-quest.
+  openSideQuestRequest = null,
 }) {
   const joiningCount = joiningStudents.length
   const [expandedStudentId, setExpandedStudentId] = useState(null)
@@ -155,7 +158,26 @@ export default function StudentGrid({
   function handleExpand(student) {
     onGoLive?.(student.anonymousId)
     setExpandedStudentId(student.anonymousId)
+    setSideQuestViewRequest(null)
   }
+
+  // Opens a student's modal on their side-quest: their card's 🗺️ chip, or the side-quest panel
+  // in TeacherView (`openSideQuestRequest`: { studentId, at }, a fresh object each click).
+  const [sideQuestViewRequest, setSideQuestViewRequest] = useState(null)
+  function handleOpenSideQuest(studentId) {
+    if (!studentId) return
+    // The modal lives in the open grid.
+    if (collapsed) onToggle?.()
+    onGoLive?.(studentId)
+    setExpandedStudentId(studentId)
+    setSideQuestViewRequest(Date.now())
+  }
+  const handleOpenSideQuestRef = useLatestRef(handleOpenSideQuest)
+  useEffect(() => {
+    if (openSideQuestRequest?.studentId) {
+      handleOpenSideQuestRef.current(openSideQuestRequest.studentId)
+    }
+  }, [openSideQuestRequest, handleOpenSideQuestRef])
 
   function handleClose() {
     onStopLive?.()
@@ -498,6 +520,7 @@ export default function StudentGrid({
                   badgeSuggestions?.awardedCountByStudent?.[student.anonymousId] ?? 0
                 }
                 activities={activities[student.anonymousId] ?? []}
+                onOpenSideQuest={handleOpenSideQuest}
                 highlighted={highlightedIds.has(student.anonymousId)}
                 selectMode={selectMode}
                 selected={selectedIds.has(student.anonymousId)}
@@ -599,6 +622,7 @@ export default function StudentGrid({
           onDecideBadge={onDecideBadge}
           onRevokeBadge={onRevokeBadge}
           catalogueBadges={catalogueBadges}
+          sideQuestViewRequest={sideQuestViewRequest}
         />
       )}
     </div>

@@ -28,6 +28,8 @@ import { PaneFocusControls } from './student-modal/PaneFocusDropdown'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
 import StudentHintPanel from './student-modal/StudentHintPanel'
 import ShareRequestPanel from './student-modal/ShareRequestPanel'
+import StudentSideQuestView, { SideQuestViewToggle } from './student-modal/StudentSideQuestView'
+import { studentOpenSideQuest } from '../../shared/sideQuests'
 import TileHighlightBar from './student-modal/TileHighlightBar'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
 import { countShownLineHints, getMirrorLineHintSets } from './student-modal/mirrorLineHints'
@@ -116,6 +118,8 @@ export default function StudentModal({
   onDecideBadge,
   onRevokeBadge,
   catalogueBadges = [],
+  // Truthy (a fresh value each time) to show the student's side-quest rather than the task.
+  sideQuestViewRequest = null,
 }) {
   const overlayRef = useRef(null)
   const iframeRef = useRef(null)
@@ -132,6 +136,12 @@ export default function StudentModal({
     setTileHighlightMode(false)
     setTileHighlightNote('')
   }, [student.anonymousId, session?.currentTaskId])
+  // 'main' or 'sideQuest' (StudentSideQuestView); a side-quest chip or the side-quest panel
+  // opens the modal on the side-quest (sideQuestViewRequest changes each time).
+  const [bodyView, setBodyView] = useState(sideQuestViewRequest ? 'sideQuest' : 'main')
+  useEffect(() => {
+    if (sideQuestViewRequest) setBodyView('sideQuest')
+  }, [sideQuestViewRequest])
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [fullscreenRequested, setFullscreenRequested] = useState(false)
   const [nudged, setNudged] = useState(false)
@@ -537,6 +547,9 @@ export default function StudentModal({
     student.shareSnapshotRequestedAt != null && student.shareRequestedAt == null
   const showShareRequest =
     !!onReadPendingShare && (student.shareRequestedAt != null || awaitingShareSnapshot)
+  // The student's open side-quest (StudentSideQuestView): a "Main task / Side-quest" switch.
+  const sideQuestInfo = studentOpenSideQuest({ student, moduleType: taskLesson?.type, task })
+  const showSideQuestView = bodyView === 'sideQuest' && !!sideQuestInfo
 
   // The task's 💡 line hints still on the watched student's code (the count the mirrored editor
   // shows in StudentWorkspaceBody); null when the task has none or the body shows no code.
@@ -1327,6 +1340,14 @@ export default function StudentModal({
             peerHelp={peerHelp}
           />
         )}
+        {sideQuestInfo && !showShareRequest && (
+          <SideQuestViewToggle
+            view={showSideQuestView ? 'sideQuest' : 'main'}
+            onChange={setBodyView}
+            quest={sideQuestInfo.quest}
+            total={sideQuestInfo.total}
+          />
+        )}
         {showShareRequest ? (
           <ShareRequestPanel
             student={student}
@@ -1336,6 +1357,13 @@ export default function StudentModal({
             onApprove={onApproveShare}
             onDecline={onDeclineShare}
             awaitingSnapshot={awaitingShareSnapshot}
+          />
+        ) : showSideQuestView ? (
+          <StudentSideQuestView
+            student={student}
+            session={session}
+            lesson={taskLesson}
+            task={task}
           />
         ) : (
           <>

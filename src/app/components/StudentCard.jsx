@@ -83,7 +83,12 @@ export default function StudentCard({
   selectMode = false,
   selected = false,
   onToggleSelect,
+  // (anonymousId): opens the StudentModal on their side-quest; the 🗺️ activity becomes a button.
+  onOpenSideQuest = null,
 }) {
+  // The 🗺️ "on side-quest" activity opens their side-quest (not in multi-select).
+  const opensSideQuest = (activity) =>
+    activity?.kind === 'side_quest' && !!onOpenSideQuest && !selectMode
   const [editing, setEditing] = useState(false)
   const [nameValue, setNameValue] = useState(student.displayName)
   const [isActive, setIsActive] = useState(false)
@@ -527,20 +532,52 @@ export default function StudentCard({
             </span>
           )}
           {/* Anything else they're doing, after the "Now:" one below. */}
-          {activities.slice(1).map((activity) => (
-            <IconChip
-              key={activity.kind}
-              icon={activity.icon}
-              label={activity.title}
-              style={s.checkBadgeShare}
-            />
-          ))}
+          {activities.slice(1).map((activity) =>
+            opensSideQuest(activity) ? (
+              <button
+                key={activity.kind}
+                type="button"
+                style={{ ...s.checkBadge, ...s.iconChip, ...s.checkBadgeShare, ...s.chipButton }}
+                title={`${activity.title}. Click to see their side-quest.`}
+                aria-label={`${activity.title}. See their side-quest`}
+                data-testid="card-side-quest-chip"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onOpenSideQuest(student.anonymousId)
+                }}
+              >
+                {activity.icon}
+              </button>
+            ) : (
+              <IconChip
+                key={activity.kind}
+                icon={activity.icon}
+                label={activity.title}
+                style={s.checkBadgeShare}
+              />
+            )
+          )}
         </div>
-        {activities[0] && (
-          <div style={s.nowLine} title={activities[0].title} data-testid="card-now">
-            <span style={s.nowLabel}>Now:</span> {activities[0].icon} {activities[0].text}
-          </div>
-        )}
+        {activities[0] &&
+          (opensSideQuest(activities[0]) ? (
+            <button
+              type="button"
+              style={{ ...s.nowLine, ...s.nowLineButton }}
+              title={`${activities[0].title}. Click to see their side-quest.`}
+              data-testid="card-now"
+              onClick={(event) => {
+                event.stopPropagation()
+                onOpenSideQuest(student.anonymousId)
+              }}
+            >
+              <span style={s.nowLabel}>Now:</span> {activities[0].icon}{' '}
+              <span style={s.nowLink}>{activities[0].text}</span>
+            </button>
+          ) : (
+            <div style={s.nowLine} title={activities[0].title} data-testid="card-now">
+              <span style={s.nowLabel}>Now:</span> {activities[0].icon} {activities[0].text}
+            </div>
+          ))}
       </div>
 
       {/* Output / preview snippet */}
@@ -802,6 +839,19 @@ const s = {
     marginTop: 2,
   },
   nowLabel: { fontWeight: 700, color: 'var(--colour-muted)' },
+  nowLineButton: {
+    display: 'block',
+    width: '100%',
+    textAlign: 'left',
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    cursor: 'pointer',
+    font: 'inherit',
+    fontSize: 12,
+  },
+  nowLink: { textDecoration: 'underline', textDecorationStyle: 'dotted' },
+  chipButton: { cursor: 'pointer', font: 'inherit' },
   cardHighlighted: {
     outline: '3px solid var(--colour-secondary)',
     outlineOffset: 1,

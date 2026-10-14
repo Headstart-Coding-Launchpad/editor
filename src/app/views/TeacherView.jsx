@@ -30,6 +30,7 @@ import TeacherFeedbackModal from '../components/TeacherFeedbackModal'
 import TeacherReportModal from '../components/TeacherReportModal'
 import TeacherReportsPanel from '../components/TeacherReportsPanel'
 import CheckConditionsPanel from './teacher/CheckConditionsPanel'
+import SideQuestsPanel from './teacher/SideQuestsPanel'
 import TaskRatingPanel from './teacher/TaskRatingPanel'
 import BadgeSuggestionsPanel from './teacher/BadgeSuggestionsPanel'
 import TeacherEditorPanel from './teacher/TeacherEditorPanel'
@@ -247,6 +248,9 @@ export default function TeacherView({ lessonId }) {
   const [teacherShareError, setTeacherShareError] = useState(null)
   const [leftCollapsed, setLeftCollapsed] = useState(() => window.innerWidth < 860)
   const [rightCollapsed, setRightCollapsed] = useState(() => window.innerWidth < 1100)
+  // { studentId, at }: the side-quest panel asking the student grid to open that student's
+  // side-quest in their StudentModal.
+  const [openSideQuestRequest, setOpenSideQuestRequest] = useState(null)
   // The work the teacher's editor shows, one value per sandbox kind
   // (`capabilities.sandboxState`: 'code', 'blocks', 'fs', 'desktop', 'files'), each in the
   // module's stored-work form — see ../teacherSandboxWork.js.
@@ -897,6 +901,13 @@ export default function TeacherView({ lessonId }) {
           {task?.check != null && !isInSandbox && (
             <CheckConditionsPanel check={task.check} taskTitle={task.title} />
           )}
+          {!isInSandbox && (
+            <SideQuestsPanel
+              lesson={lesson}
+              session={session}
+              onOpenStudent={(studentId) => setOpenSideQuestRequest({ studentId, at: Date.now() })}
+            />
+          )}
         </main>
 
         {/* Right — Student Grid */}
@@ -964,6 +975,7 @@ export default function TeacherView({ lessonId }) {
             catalogueBadges={catalogueBadges}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed((v) => !v)}
+            openSideQuestRequest={openSideQuestRequest}
           />
         </aside>
       </div>

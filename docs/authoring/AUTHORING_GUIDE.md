@@ -361,14 +361,25 @@ do meanwhile: up to three optional, **unchecked** mini tasks on that code task.
   says "🎉 You've finished! Try a side-quest" with a button per side-quest.
 - **Isolated:** each opens in place of the task in its own scratch editor of the task's module
   (Python, Turtle or HTML; Scratch later). It never changes the task's saved code and never feeds
-  `carryCodeFrom`. Its code is kept on the student's device for the session.
+  `carryCodeFrom`. Its code is kept on the student's device for the session, and a copy goes to
+  the tutor (see Tutor view).
 - **Unchecked:** no checks run. The student taps **✓ I've done it!**; that is recorded, never
   verified. When the teacher moves the class on, the side-quest closes and the student goes to the
   next task as normal.
-- **Teacher:** the student's card shows "🗺️ on side-quest 2/3 · ✓1" (status only, never the
-  side-quest's code). The session report lists each side-quest a student opened on each task
-  (opened, runs, error runs, done), and 🗺️ Side Quester is suggested after
-  `sideQuesterMinDone` (default 2) are marked done ([badges.md](badges.md)).
+- **Tutor view:** a **🗺️ Side-quests** panel under the task in the teacher's centre column lists
+  the current task's side-quests (title, kind, explainer, starter code), each with three counts:
+  **On it now**, **Done** (self-reported) and **Probably stuck**. Probably stuck means on it and
+  either the last 2 Runs in a row hit an error, or no Run for 5 minutes since the last Run (or
+  since opening it); a student who marked it done is never stuck. Click a count to list those
+  students, and a student to open their StudentModal on the side-quest. The student's card shows
+  "🗺️ on side-quest 2/3 · ✓1"; clicking it does the same. In the StudentModal, **Main task /
+  🗺️ Side-quest** switches between the two: the side-quest view shows its status (runs, errors,
+  done, stuck) and the student's side-quest code read-only, with the output, drawing or preview.
+  The code arrives on every Run, and live while the tutor has that student's modal open. The
+  session report lists each side-quest a student opened on each task (opened, runs, error runs,
+  done), and 🗺️ Side Quester is suggested after `sideQuesterMinDone` (default 2) are marked
+  done ([badges.md](badges.md)). A good explainer helps here too: it's what the tutor reads
+  first.
 - **Builder:** Task options → **Side-quests**.
 - Write side-quests that practise the task's concept (a small change, a bug to fix, a prediction,
   an earlier skill), never the next task's content: in lockstep the class meets that next.

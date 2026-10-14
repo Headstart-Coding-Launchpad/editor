@@ -352,9 +352,16 @@ students who have passed it while the class waits. Python, Turtle and HTML
 - **Closing.** It closes itself when the task changes (the teacher moves the class on, or a solo
   student navigates), or it stops being available. The student then sees the next task as
   normal. The main workspace's state is untouched while a side-quest is open.
-- **Teacher.** Status only: `sideQuestOpen` and `sideQuestLog` drive the roster line ("🗺️ on
-  side-quest 2/3 · ✓1"); there is no code view of a side-quest. Writes happen on open, close, Run,
-  error and Done, never per keystroke (see `docs/agents/runtime-model.md`).
+- **Teacher.** `sideQuestOpen` and `sideQuestLog` drive the roster line ("🗺️ on side-quest 2/3 ·
+  ✓1", clickable). `SideQuestsPanel` (TeacherView centre column, under Check Conditions) lists
+  the current task's side-quests with On it now / Done / Probably stuck counts
+  (`summariseSideQuestClass`, `sideQuestStuckState`: 2+ error runs in a row, or no Run for 5
+  minutes while open, never once marked done); a count lists the students and a student opens
+  their StudentModal on the side-quest. `StudentSideQuestView` shows the side-quest's status and
+  the student's side-quest work read-only from `students/{id}/sideQuestCode` through
+  `StudentWorkspaceBody`, behind a Main task / Side-quest switch. `useSideQuestLiveSync` writes
+  that record on every Run (and when the run ends), and per keystroke only while
+  `activeStudentView` is this student (see `docs/agents/runtime-model.md`).
 - **Report and badge.** `buildSessionReport` adds `sideQuests[]` per student task and
   `sideQuestStudentCount` / `sideQuestDoneCount` per task. 🗺️ Side Quester is suggested (never
   auto-awarded) after `sideQuesterMinDone` side-quests are marked done.

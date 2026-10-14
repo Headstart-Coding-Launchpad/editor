@@ -163,6 +163,53 @@ describe('side-quests', () => {
     await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ done: 'yes' }))
     await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ code: 'print(1)' }))
   })
+
+  describe('sideQuestCode (the tutor live copy)', () => {
+    const codePath = (id) => `sessions/${LESSON}/students/${id}/sideQuestCode`
+    const record = { taskId: 't2', index: 1, openedAt: 1, updatedAt: 2 }
+
+    it('lets a student write and clear their own live side-quest work', async () => {
+      await assertSucceeds(ref(as.student, codePath(STUDENT_ID)).set(record))
+      await assertSucceeds(
+        ref(as.student, codePath(STUDENT_ID)).update({
+          index: 1,
+          updatedAt: 3,
+          code: 'print(1)',
+          output: '1\n',
+          runStatus: 'success',
+          lastRunAt: 3,
+          errorStreak: 0,
+        })
+      )
+      await assertSucceeds(
+        ref(as.student, codePath(STUDENT_ID)).update({
+          index: 1,
+          updatedAt: 4,
+          files: { index__dot__html: '<p>hi</p>' },
+        })
+      )
+      await assertSucceeds(ref(as.student, codePath(STUDENT_ID)).set(null))
+    })
+
+    it('lets the teacher read and clear it, and nobody else write it', async () => {
+      await assertSucceeds(ref(as.student, codePath(STUDENT_ID)).set(record))
+      await assertSucceeds(ref(as.teacher, codePath(STUDENT_ID)).get())
+      await assertSucceeds(ref(as.teacher, codePath(STUDENT_ID)).set(null))
+      await assertFails(ref(as.otherStudent, codePath(STUDENT_ID)).set(record))
+      await assertFails(ref(as.anonymous, codePath(STUDENT_ID)).set(record))
+    })
+
+    it('refuses a missing index, an index above 2, bad values and unknown fields', async () => {
+      await assertFails(ref(as.student, codePath(STUDENT_ID)).set({ taskId: 't2', updatedAt: 1 }))
+      await assertFails(ref(as.student, codePath(STUDENT_ID)).set({ ...record, index: 3 }))
+      await assertFails(ref(as.student, codePath(STUDENT_ID)).set({ ...record, code: 42 }))
+      await assertFails(ref(as.student, codePath(STUDENT_ID)).set({ ...record, errorStreak: -1 }))
+      await assertFails(
+        ref(as.student, codePath(STUDENT_ID)).set({ ...record, output: 'x'.repeat(20001) })
+      )
+      await assertFails(ref(as.student, codePath(STUDENT_ID)).set({ ...record, secret: 'x' }))
+    })
+  })
 })
 
 describe('shared workspaces', () => {

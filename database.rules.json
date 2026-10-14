@@ -74,6 +74,35 @@
             // (src/shared/sideQuests.js).
             "sideQuestOpen": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2"
+            },
+
+            // The open side-quest's live work, for the tutor (src/shared/sideQuests.js):
+            // { taskId, index, openedAt, updatedAt, code | files, output, turtleResult,
+            //   runStatus, lastRunAt, errorStreak }. Written on open, on Run, and per keystroke
+            // only while activeStudentView is this student; cleared on close.
+            "sideQuestCode": {
+              ".validate": "newData.hasChildren(['index', 'updatedAt'])",
+              "taskId": { ".validate": "newData.isString() || newData.isNumber()" },
+              "index": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2"
+              },
+              "openedAt": { ".validate": "newData.isNumber()" },
+              "updatedAt": { ".validate": "newData.isNumber()" },
+              "lastRunAt": { ".validate": "newData.isNumber()" },
+              "errorStreak": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+              "runStatus": {
+                ".validate": "newData.isString() && newData.val().length <= 20"
+              },
+              "code": { ".validate": "newData.isString() && newData.val().length <= 100000" },
+              "files": {
+                "$file": {
+                  ".validate": "newData.isString() && newData.val().length <= 100000"
+                }
+              },
+              "output": { ".validate": "newData.isString() && newData.val().length <= 20000" },
+              // The compact Turtle drawing (compactTurtleResultForSync), as currentTurtleResult.
+              "turtleResult": { ".validate": "newData.hasChildren()" },
+              "$other": { ".validate": false }
             }
           }
         },
