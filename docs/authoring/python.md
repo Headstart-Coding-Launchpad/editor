@@ -263,6 +263,132 @@ inputs and buttons are at least 44 px on touch screens. Every tag has a screen-r
 
 ---
 
+## Stage (drawing beside the console)
+
+A Python task can also draw. Code that imports the `stage` module gets a **Stage** pane: a fixed
+400 × 400 drawing that appears once the code draws (or from the start when the task has a
+`stageTarget`). `print()` still goes to the console. On desktop the Stage sits beside the console
+when the output side is wide enough, and above it otherwise; on narrow screens it stacks above the
+console. Drawing is instant, like Turtle.
+
+```yaml
+  - id: 20
+    moduleType: python
+    title: A list is a picture
+    codeStages:
+      - role: starter
+        code: |
+          from stage import *
+
+          heart = [
+              [0, 1, 0, 1, 0],
+              [1, 1, 1, 1, 1],
+              [0, 1, 1, 1, 0],
+              [0, 0, 1, 0, 0],
+          ]
+          grid(heart, palette=["white", "red"])
+          print("Rows:", len(heart))
+    stageTarget:              # optional: the picture to aim for
+      code: |
+        from stage import *
+        grid([[0,1,0,1,0],[1,1,1,1,1],[0,1,1,1,0],[0,0,1,0,0]], palette=["white","red"])
+      ghost: true             # optional: the faint target starts shown (default true)
+    check:
+      - type: stage_matches_target
+        tolerance: 0.02       # fraction of the stage allowed to differ
+        hint: Compare your picture with the faint target. Which red squares are missing?
+      - type: output
+        operator: contains
+        value: "Rows: 4"
+```
+
+**The library.** `from stage import *` (or `import stage` and `stage.rect(...)`). Every call draws
+straight away; later calls draw on top.
+
+| Call | Draws |
+|---|---|
+| `background(colour)` | fills the whole stage |
+| `rect(x, y, w, h, colour)` | a rectangle; `(x, y)` is its top-left corner |
+| `circle(x, y, r, colour)` | a circle centred on `(x, y)` with radius `r` |
+| `line(x1, y1, x2, y2, colour, width=2)` | a line |
+| `text(x, y, words, colour, size=16)` | text; `(x, y)` is its top-left corner. `words` may be any value (a number is drawn as text) |
+| `stamp(emoji, x, y, size=32)` | one emoji centred on `(x, y)` |
+| `grid(rows, palette=None, cell=None, x=0, y=0)` | a 2D list as a pixel grid (see below) |
+| `clear()` | wipes the stage back to white |
+
+`WIDTH` and `HEIGHT` are both `400`.
+
+**Coordinates.** Top-left origin: `x` goes right, `y` goes **down**, on a fixed 400 × 400 stage that
+scales to fit the screen. (This is the screen convention of Arcade Kit and most graphics
+libraries; Turtle's centred, y-up world is different on purpose.)
+
+**Colours.** A colour is text: a CSS colour name (`"red"`, `"cornflowerblue"`), a PICO-8 name from
+Arcade Kit (`"dark_blue"`, `"peach"`, also written with a space), or a hex code (`"#f00"`,
+`"#ff0000"`). Where a name is both, the CSS colour wins (`"white"` is `#ffffff`, `"red"` is
+`#ff0000`); the PICO-8-only names are `dark_blue`, `dark_purple`, `dark_green`, `dark_gray`,
+`light_gray` and `peach` (`grey` spellings work too).
+
+**Grids.** `rows` is a list of rows; each value is drawn as one square cell:
+- with a `palette` (a list of colours), a whole number picks that palette colour (`0` is the first);
+- without one, whole numbers are the 16 PICO-8 colours (`0` black, `7` white, `8` red …), as in
+  Arcade Kit;
+- a colour name or hex code is drawn as that colour;
+- `None`, `"none"` or `"transparent"` draws nothing there.
+
+`cell` is the cell size (default: the biggest that fits the stage), `x`/`y` the top-left corner.
+Rows may be different lengths. A grid is at most 100 × 100.
+
+**Mistakes students make** stop the run with a plain-English error on the student's own line,
+naming the argument: `rect(): y should be a number, like 50, not the text '20'`,
+`circle(): 'redd' isn't a colour I know. Try a name like 'red' or a hex code like '#ff0000'`,
+`grid(): rows[0][1] is 2, but the palette only has 2 colours (numbers 0 to 1)`. A run that draws
+more than 20,000 commands (or more than 200,000 grid cells) stops with "The stage stopped after
+20,000 drawing commands — is a loop drawing forever?".
+
+### Target picture (`stageTarget`)
+
+`stageTarget: { code, ghost }` is Python that draws the picture to aim for. It runs once, silently
+(no output; `input()` answers nothing), when the task opens or on the first Run. With a target:
+- the Stage shows from the start, with a faint **ghost** of the target to draw over. The
+  **Target** toggle shows or hides it (`ghost: false` starts it hidden);
+- after a Run, the **Differences** toggle highlights where the drawing differs and says it in
+  words: "About 12% of the stage is different from the target. For example, near x 42, y 18 the
+  target is red but yours is white.";
+- `stage_matches_target` can check it.
+
+Both toggles are at least 44 px.
+
+### Stage checks
+
+All stage checks read the run's drawing, so they need a Run (`lessons test-checks` reports them as
+needing a run). They look at what is on the stage after the last `clear()`.
+
+| Type | Fields | Passes when |
+|---|---|---|
+| `stage_matches_target` | `tolerance` (0–1, default `0.01`) | the shapes differ from the `stageTarget` drawing in at most that fraction of the stage, and every target text and emoji is drawn (same words or emoji within 12 px) with no extra ones. Needs `stageTarget` |
+| `stage_shape_count` | `kind` (`rect`, `circle`, `line`, `text`, `stamp`, `grid`, or `any` = default), `min`, `max` | the number of those calls is between `min` and `max` (neither given: at least 1) |
+| `stage_colour_used` | `colour` | something on the stage is that colour: a shape, text, the background or a grid cell |
+| `stage_pixel` | `x` and `y` (0–399), **or** `row` and `col`, plus `colour` | that point, or the centre of that cell of the last grid, is that colour |
+| `stage_text_shown` | `text`, `operator` (`contains` = default, `equals`, `matches_regex`) | some drawn text matches (like output checks: `contains` ignores capitals) |
+
+Colours match when each red, green and blue part is within 8 of the expected colour. Shapes are
+compared on a 100 × 100 grid (each cell 4 × 4 stage pixels), so a 1 px difference doesn't fail a
+target; text and emoji are compared by what they say and where, not by pixels, because fonts differ
+between devices. Use `code` checks for the method (for example `code` contains `grid(`).
+
+**Hints name colours in words.** Write hints that never rely on colour alone: "Colour the top
+middle square red", not "make it this colour". The Builder's check row and the CLI describe a
+stage check in words too ("Something dark blue is on the stage").
+
+**Tutor view and Go Live.** After each Run the drawing goes to the student card (a small
+thumbnail beside the output lines) and to StudentModal (between the code and the console). In
+**Go Live** the presenter's drawing shows on every screen. The Stage has a screen-reader
+description listing the shapes, text and grid size with colours in words.
+
+**Persistence.** None beyond the code: the drawing is redrawn by the next Run.
+
+---
+
 ## Output and Code Checks (shared with HTML)
 
 Prefer the canonical `type` + `operator` form:

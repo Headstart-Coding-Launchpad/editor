@@ -79,7 +79,7 @@ to the preview; `src/modules/html/inspector/`; html).
 | `sandboxState` | Teacher sandbox work kind: `'code'` (one code string), `'blocks'`, `'fs'`, `'desktop'`, `'files'` |
 | `run` | What Run does (`handleRun` dispatches on it): `'runtime'` (needs `runResult` and a UI `runtime`), `'preview'` (html iframe), `'workspace'` (the workspace runs/checks and reports), `'none'` (default). Remote "Run on student" is offered when not `'none'`. |
 
-`runResult` (exactly for `'runtime'`): `errorLine`, `turtle`, `liveCode` booleans.
+`runResult` (exactly for `'runtime'`): `errorLine`, `turtle`, `liveCode`, `stage` booleans (`stage`: the run's Python Stage drawing is written with the run).
 `moduleDefinitions.test.js` / `moduleRunCapability.test.js` pin the built-in values.
 
 ### Authoring, state and validation hooks

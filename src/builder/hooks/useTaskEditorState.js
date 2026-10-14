@@ -106,6 +106,9 @@ export function useTaskEditorState({
           status: result.status,
           code: activePythonCode,
           variables: result.variables ?? {},
+          stage: result.stage
+            ? { commands: result.stage.commands ?? [], target: result.stageTarget ?? null }
+            : null,
           ran: true,
         }
         const checks = normalizeChecks(resolvedCheck)
@@ -178,6 +181,10 @@ export function useTaskEditorState({
             status: result.status,
             code: activePythonCode,
             variables: result.variables ?? {},
+            // The Python Stage drawing and its target, for the stage_* checks.
+            stage: result.stage
+              ? { commands: result.stage.commands ?? [], target: result.stageTarget ?? null }
+              : null,
             ran: true,
           }
           const results = checksToEval.map((c) => ({

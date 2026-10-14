@@ -12,6 +12,8 @@
  *   stopPython()               — terminate worker and pre-warm a replacement
  *   provideInput(text)         — supply a value for a pending input() call
  *   isPyodideReady()           — true when worker is alive and Pyodide is loaded
+ *   renderStage(code)          — run a stageTarget's code silently; resolves its stage commands
+ *   isPythonRunning()          — true while a run is in progress
  */
 
 // ─── Module state ─────────────────────────────────────────────────────────────
@@ -29,6 +31,10 @@ let _getGpioInputs = null
 let _gpioInputs = {}
 let _stopped = false
 let _progressCallback = null
+// Silent stage renders in flight (renderStage): id → resolve. A run waits for them first.
+let _stageRenderId = 0
+const _stageRenders = new Map()
+let _stageRenderChain = Promise.resolve()
 
 // ─── Worker management ────────────────────────────────────────────────────────
 
@@ -91,6 +97,15 @@ function handleWorkerMessage({ data }) {
       break
     }
 
+    case 'stage_rendered':
+      _stageRenders.get(data.id)?.({
+        status: data.status,
+        commands: Array.isArray(data.commands) ? data.commands : [],
+        error: data.error ?? null,
+      })
+      _stageRenders.delete(data.id)
+      break
+
     case 'input_required':
       if (!_stopped) _onInputRequired?.(data.prompt)
       break
@@ -102,6 +117,8 @@ function handleWorkerMessage({ data }) {
         // The name-tag panel capture (runPython's `capture`), null without one.
         variablesPanel: data.variablesPanel ?? null,
         turtle: data.turtle ?? null,
+        // The Python Stage drawing ({ commands }, src/shared/stage/).
+        stage: data.stage ?? null,
       })
       _runResolve = null
       break
@@ -133,11 +150,23 @@ export async function initPyodide(onProgress) {
   }
 }
 
+// Runs started and not yet finished (renderStage waits rather than overlap one).
+let _runsPending = 0
+
 /**
  * Run a Python code string in the worker.
  * Waits for Pyodide to finish loading if a pre-warm is in progress.
  */
-export async function runPython(
+export async function runPython(code, options = {}) {
+  _runsPending += 1
+  try {
+    return await startRun(code, options)
+  } finally {
+    _runsPending -= 1
+  }
+}
+
+async function startRun(
   code,
   {
     onOutput,
@@ -171,6 +200,9 @@ export async function runPython(
     }
   }
 
+  // A silent stage render (a stageTarget) must finish first: the worker runs one program at once.
+  await _stageRenderChain
+
   // Guard: stopPython() may have been called between the await above and here
   if (_stopped) return { status: 'stopped' }
 
@@ -186,11 +218,67 @@ export async function runPython(
   })
 }
 
+// Bumped by every stopPython(), so a caller can tell a Stop happened while it waited.
+let _stopCount = 0
+export function getStopCount() {
+  return _stopCount
+}
+
+export function isPythonRunning() {
+  return _runsPending > 0
+}
+
+function settleStageRenders() {
+  for (const resolve of _stageRenders.values()) resolve(null)
+  _stageRenders.clear()
+}
+
+/**
+ * Runs a stageTarget's code silently in the worker and resolves `{ status, commands, error }`
+ * (src/shared/stage/), or null when it couldn't (a run is in progress, Python stopped, or it
+ * took longer than `timeoutMs`, which stops Python). Never call it from inside a run.
+ */
+export async function renderStage(code, { timeoutMs = 8000 } = {}) {
+  if (!_worker) _worker = createAndInitWorker()
+  if (_runsPending > 0) return null
+  const job = _stageRenderChain.then(async () => {
+    if (_loadingPromise) {
+      try {
+        await _loadingPromise
+      } catch {
+        return null
+      }
+    }
+    if (!_worker || _runsPending > 0) return null
+    const id = ++_stageRenderId
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        if (!_stageRenders.has(id)) return
+        _stageRenders.delete(id)
+        resolve(null)
+        stopPython()
+      }, timeoutMs)
+      _stageRenders.set(id, (result) => {
+        clearTimeout(timer)
+        resolve(result)
+      })
+      _worker.postMessage({ type: 'stage_render', id, code: String(code ?? '') })
+    })
+  })
+  _stageRenderChain = job.then(
+    () => undefined,
+    () => undefined
+  )
+  return job
+}
+
 /** Terminate the running worker immediately and pre-warm a replacement. */
 export function stopPython() {
   if (!_worker) return
   _stopped = true
+  _stopCount += 1
   _worker.terminate()
+  settleStageRenders()
   _runResolve?.({ status: 'stopped' })
   _runResolve = null
   // createAndInitWorker rejects the old _loadingPromise and creates a fresh one

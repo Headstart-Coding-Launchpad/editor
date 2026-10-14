@@ -13,6 +13,8 @@ import { readAnswerDraft } from '../../../shared/answerDrafts'
 import { getMirrorLineHintSets } from './mirrorLineHints'
 import { getInspectorConfig } from '../../../modules/html/inspector/config'
 import TaskVariablesPanel from '../../../shared/variablesPanel/TaskVariablesPanel.jsx'
+import StagePane from '../../../shared/stage/StagePane.jsx'
+import { readStageResult } from '../../../shared/stage/sync.js'
 
 function answerKey(value) {
   return typeof value === 'string' ? value : JSON.stringify(value ?? null)
@@ -280,6 +282,9 @@ export default function StudentWorkspaceBody({
     }
   }
 
+  // The Python Stage drawing of the student's last run (currentStageResult), if it drew.
+  const stageResult = mirror === 'code' ? readStageResult(student.currentStageResult) : null
+
   if (mirror === 'code')
     return (
       <>
@@ -297,6 +302,15 @@ export default function StudentWorkspaceBody({
             style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
           />
         </div>
+        {stageResult && (
+          <StagePane
+            compact
+            commands={stageResult.commands}
+            truncated={stageResult.truncated}
+            title="Student's stage"
+            style={s.stagePane}
+          />
+        )}
         {task?.interactionMode === 'submit' && !isSessionSandbox ? (
           <div style={s.submitNotice}>
             {student.lastRunStatus === 'submitted' ? 'Code submitted' : 'Waiting for submission'}
@@ -430,6 +444,8 @@ export default function StudentWorkspaceBody({
 
 const s = {
   variablesPanel: { flexShrink: 0, maxHeight: 260, marginTop: 8 },
+  // The Python Stage drawing, between the code and the console.
+  stagePane: { flexShrink: 0, height: 240, marginTop: 8 },
   // The unsubmitted draft above a quiz: dashed so it never reads as the submitted answer.
   draftStack: {
     display: 'flex',

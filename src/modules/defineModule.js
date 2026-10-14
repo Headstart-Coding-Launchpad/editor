@@ -140,7 +140,8 @@ export const RUN_KINDS = Object.freeze(['runtime', 'preview', 'workspace', 'none
 // - turtle:    the run's turtle drawing is written with the run (writeStudentTurtleResult)
 // - liveCode:  the runtime rewrites the work while it runs (onCodeUpdate, electronics), and a
 //              stopped run still saves { code, output }
-export const RUN_RESULT_FLAGS = Object.freeze(['errorLine', 'turtle', 'liveCode'])
+// - stage:     the run's Python Stage drawing is written with the run (writeStudentStageResult)
+export const RUN_RESULT_FLAGS = Object.freeze(['errorLine', 'turtle', 'liveCode', 'stage'])
 
 // Contract v2 hook groups (see ./moduleContract.js for the shared builders and
 // docs/architecture/lesson-type-modules.md, "Contract v2"). Each group is a frozen object.

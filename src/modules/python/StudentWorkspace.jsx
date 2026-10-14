@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import PythonEditor from './PythonEditor'
 import { taskShowsBlocks } from '../../shared/blockGuides'
 import { getTaskLineHintSets } from '../../shared/lineHints'
@@ -12,6 +12,11 @@ import {
 import CopyCodePanel from '../../app/components/CopyCodePanel'
 import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
 import { taskShowsVariables } from '../../shared/variablesPanel/variablesPanel.js'
+import StagePane from '../../shared/stage/StagePane.jsx'
+import { stageCommandsOf } from '../../shared/stage/commands.js'
+import { readStageResult } from '../../shared/stage/sync.js'
+import { useElementSize } from '../../shared/useElementSize.js'
+import { stageTargetCode, stageTargetGhostOn, useStageTarget } from './stageTarget.js'
 
 export default function StudentWorkspace({
   task: lessonTask,
@@ -31,15 +36,21 @@ export default function StudentWorkspace({
   displayCheckAttempted,
   displaySelection,
   displayVariablesPanel = null,
+  // The Python Stage drawing broadcast in Go Live (compactStageForSync's shape).
+  displayStage = null,
   isTeacherEditing,
   teacherLiveCode,
   onVisiblePanesChange,
 }) {
   // A task with a name-tag panel (showVariables) opens with the output side showing, so the
-  // student can predict before the first Run.
+  // student can predict before the first Run; so does one with a Stage target to draw over.
   const [localOutputCollapsed, setLocalOutputCollapsed] = useState(
     () =>
-      !isForcedTeacherLive && !isTeacherEditing && !isViewingPrev && !taskShowsVariables(lessonTask)
+      !isForcedTeacherLive &&
+      !isTeacherEditing &&
+      !isViewingPrev &&
+      !taskShowsVariables(lessonTask) &&
+      !stageTargetCode(lessonTask)
   )
   // While forced-live, the panel state is locked to whatever the broadcast
   // source (teacher/watched student) has it set to — continuous, not a
@@ -82,6 +93,24 @@ export default function StudentWorkspace({
     onVisiblePanesChange?.(shouldShowOutput && !outputCollapsed ? ['code', 'console'] : ['code'])
   }, [shouldShowOutput, outputCollapsed, onVisiblePanesChange])
   const showCopyCode = typeof task?.copyCode === 'string' && !!task.copyCode.trim()
+
+  // The Python Stage (src/shared/stage/): shown once the code draws, or from the start when the
+  // task has a stageTarget to draw over. Go Live shows the broadcast drawing.
+  const stageTarget = useStageTarget(task, { ready: cs.pyodideStatus === 'ready' })
+  const liveStage = useMemo(() => readStageResult(displayStage), [displayStage])
+  const stageResult = isForcedTeacherLive
+    ? liveStage
+    : isViewingPrev || isTeacherEditing
+      ? null
+      : cs.stageResult
+  const stageCommands = stageCommandsOf(stageResult)
+  const showStage =
+    !isViewingPrev && !isTeacherEditing && (stageCommands.length > 0 || !!stageTargetCode(task))
+  const [outputPaneRef, outputPaneSize] = useElementSize()
+  // Beside the console when the output side is wider than tall; above it otherwise (and always
+  // on narrow screens).
+  const stageBeside =
+    !isMobile && outputPaneSize.width >= 480 && outputPaneSize.width > outputPaneSize.height * 1.05
   const outputProps =
     isForcedTeacherLive || isTeacherEditing
       ? {
@@ -223,24 +252,43 @@ export default function StudentWorkspace({
     />
   )
 
+  const outputPanel = (
+    <OutputPanel
+      {...outputProps}
+      fill
+      collapsible={false}
+      leadingActions={
+        !isForcedTeacherLive && (
+          <CollapseTabButton
+            onClick={() => setOutputCollapsed(true)}
+            direction="right"
+            title="Collapse Output"
+            ariaLabel="Collapse Output"
+            style={s.outputCollapseBtn}
+          />
+        )
+      }
+    />
+  )
+
   const output = (
-    <div style={s.outputPane}>
-      <OutputPanel
-        {...outputProps}
-        fill
-        collapsible={false}
-        leadingActions={
-          !isForcedTeacherLive && (
-            <CollapseTabButton
-              onClick={() => setOutputCollapsed(true)}
-              direction="right"
-              title="Collapse Output"
-              ariaLabel="Collapse Output"
-              style={s.outputCollapseBtn}
-            />
-          )
-        }
-      />
+    <div ref={outputPaneRef} style={s.outputPane}>
+      {showStage ? (
+        <div style={stageBeside ? s.stageRow : s.stageColumn}>
+          <StagePane
+            key={task?.id ?? 'sandbox'}
+            commands={stageCommands}
+            target={stageTarget?.commands ?? null}
+            ghostDefault={stageTargetGhostOn(task)}
+            ran={!!stageResult}
+            truncated={stageResult?.truncated === true}
+            style={isMobile ? s.stageMobile : stageBeside ? s.stageBeside : s.stageAbove}
+          />
+          <div style={isMobile ? s.consoleBoxMobile : s.consoleBox}>{outputPanel}</div>
+        </div>
+      ) : (
+        outputPanel
+      )}
       {!isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.testResults !== null && (
         <div style={s.testResultsPanel}>
           {cs.testResults.map((r, i) => (
@@ -323,6 +371,20 @@ const s = {
     gap: 8,
   },
   variablesPanel: { flex: '0 1 auto', maxHeight: '55%' },
+  // The Python Stage beside or above the console (src/shared/stage/StagePane.jsx).
+  stageRow: { display: 'flex', flexDirection: 'row', gap: 8, flex: 1, minHeight: 0 },
+  stageColumn: { display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0 },
+  stageBeside: { flex: '0 0 55%' },
+  stageAbove: { flex: '0 0 55%', minHeight: 180 },
+  stageMobile: { flex: '0 0 auto', height: 'min(90vw, 420px)' },
+  consoleBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    minHeight: 0,
+    minWidth: 0,
+  },
+  consoleBoxMobile: { display: 'flex', flexDirection: 'column', minHeight: 160, minWidth: 0 },
   outputCollapseBtn: {
     width: 28,
     height: 26,

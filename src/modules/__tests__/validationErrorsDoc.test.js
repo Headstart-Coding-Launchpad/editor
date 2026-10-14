@@ -39,6 +39,8 @@ const VALIDATOR_FILES = [
   'src/shared/input/checks.js',
   'src/modules/python/checks.js',
   'src/shared/variablesPanel/validation.js',
+  'src/shared/stage/checks.js',
+  'src/shared/stage/validation.js',
   'src/shared/composedLesson.js',
   'src/shared/draftLesson.js',
   'src/shared/topicAudit.js',

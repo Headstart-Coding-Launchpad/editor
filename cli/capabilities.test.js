@@ -20,6 +20,11 @@ describe('lessons capabilities', () => {
     const python = capabilities.modules.find((m) => m.type === 'python')
     expect(python.checkTypes).not.toContain('fs_path')
     expect(python.checkTypes).toContain('code_structure')
+    // The Python Stage's checks belong to python only.
+    expect(python.checkTypes).toContain('stage_matches_target')
+    expect(capabilities.modules.find((m) => m.type === 'turtle').checkTypes).not.toContain(
+      'stage_pixel'
+    )
     const html = capabilities.modules.find((m) => m.type === 'html')
     expect(html.checkTypes).not.toContain('code_structure')
   })

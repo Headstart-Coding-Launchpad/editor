@@ -298,6 +298,7 @@ describe('deriveStudentLiveDisplay', () => {
       'displayRunStatus',
       'displaySelection',
       'displaySpriteState',
+      'displayStage',
       'displayTurtleResult',
       'displayVariablesPanel',
       'displayedTaskId',

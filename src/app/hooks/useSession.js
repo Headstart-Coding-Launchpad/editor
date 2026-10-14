@@ -17,6 +17,7 @@ import { clearPeerHelpData } from './usePeerHelp'
 import { encodeFileKey, decodeFileKey } from '../../shared/fileKeys'
 import { sealTasks } from '../../shared/lessonSeal'
 import { compactTurtleResultForSync } from '../../modules/turtle/sync.js'
+import { compactStageForSync } from '../../shared/stage/sync.js'
 import { AUTO_REVEAL_MODES, SUPPORT_REVEAL_SOURCES } from '../../shared/taskStages.js'
 import {
   buildShareIndexEntry,
@@ -498,6 +499,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/currentCode`] = ''
       updates[`students/${anonymousId}/currentArcadeDesign`] = null
       updates[`students/${anonymousId}/currentVariables`] = null
+      updates[`students/${anonymousId}/currentStageResult`] = null
       updates[`students/${anonymousId}/currentSpriteState`] = null
       updates[`students/${anonymousId}/currentCursor`] = null
       updates[`students/${anonymousId}/currentBlockDrag`] = null
@@ -1707,6 +1709,16 @@ export function useSession(lessonId, { enabled = true } = {}) {
     )
   }
 
+  // The Python Stage drawing of the student's last run (src/shared/stage/), compacted for sync
+  // (compactStageForSync), or null when it drew nothing. Written with each run, like Turtle's.
+  async function writeStudentStageResult(anonymousId, stage) {
+    if (!anonymousId) return
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/currentStageResult`),
+      compactStageForSync(stage)
+    )
+  }
+
   async function writeStudentSpriteState(anonymousId, spriteState) {
     await set(
       ref(db, `sessions/${lessonId}/students/${anonymousId}/currentSpriteState`),
@@ -2364,6 +2376,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     writeStudentCode,
     writeStudentArcadeDesign,
     writeStudentTurtleResult,
+    writeStudentStageResult,
     writeStudentSpriteState,
     writeStudentCursor,
     writeStudentBlockDrag,

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { exampleOpenCount } from '../../shared/exampleOpens'
 import { findTaskById, deriveTaskContext } from '../../shared/taskUtils'
 import { variablesCardSummary } from '../../shared/variablesPanel/predictions.js'
+import StagePane from '../../shared/stage/StagePane.jsx'
+import { readStageResult } from '../../shared/stage/sync.js'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { getModuleDefinition } from '../../modules/definitions'
 import PresenceBadge from './PresenceBadge'
@@ -162,6 +164,8 @@ export default function StudentCard({
   // file tree changed (filesystem); anything else gets the generic "HTML project" line.
   const cardSummary = getModuleDefinition(moduleType)?.capabilities.cardSummary ?? null
   const hasConsoleOutput = cardSummary === 'output'
+  // The Python Stage drawing of the last run (currentStageResult): a thumbnail beside the output.
+  const cardStage = hasConsoleOutput ? readStageResult(student.currentStageResult) : null
   const itemProgress = isSessionSandbox ? null : getTaskItemProgress(currentTask, student)
   // Tiles the tutor highlighted on this student's board that are still where they were.
   const tileHighlightCount = isSessionSandbox
@@ -645,6 +649,20 @@ export default function StudentCard({
               <span style={{ color: '#9ca3af' }}>Waiting for submission</span>
             )}
           </pre>
+        ) : cardStage ? (
+          <div style={s.stageSnippetRow}>
+            <StagePane
+              compact
+              commands={cardStage.commands}
+              title="Stage drawing"
+              style={s.cardStage}
+            />
+            <pre style={{ ...s.snippet, flex: 1, minWidth: 0 }}>
+              {(student.currentOutput ?? '').split('\n').slice(0, 2).join('\n') || (
+                <span style={{ color: '#9ca3af' }}>No output yet</span>
+              )}
+            </pre>
+          </div>
         ) : (
           <pre style={s.snippet}>
             {(student.currentOutput ?? '').split('\n').slice(0, 2).join('\n') || (
@@ -729,6 +747,9 @@ export default function StudentCard({
 }
 
 const s = {
+  // The Python Stage thumbnail beside the output lines.
+  stageSnippetRow: { display: 'flex', gap: 8, alignItems: 'stretch' },
+  cardStage: { flex: '0 0 auto', width: 64, height: 64 },
   card: {
     display: 'flex',
     flexDirection: 'column',

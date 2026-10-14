@@ -58,6 +58,7 @@ export const NOOP_SESSION_WRITES = {
   recordStudentTyping: NOOP_ASYNC,
   recordStudentTileMiss: NOOP_ASYNC,
   writeStudentVariables: NOOP_ASYNC,
+  writeStudentStageResult: NOOP_ASYNC,
   recordVariablePredictions: NOOP_ASYNC,
   writeStudentPersonalSandbox: NOOP_ASYNC,
   writeStudentPresence: NOOP_ASYNC,

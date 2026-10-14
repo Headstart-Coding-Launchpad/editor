@@ -373,7 +373,7 @@ Python and Turtle tasks; see [python.md](python.md#name-tag-panel-showvariables)
 | Message | Meaning | Fix |
 |---|---|---|
 | `Task … has showVariables, but the name-tag panel only works in Python and Turtle tasks — it is ignored` (warning) | `showVariables` is on another module's task. | Remove it, or move the task to Python or Turtle. |
-| `Task … has a showVariables that is not an object — use { mode, at, … }` | `showVariables` is a string, list or `true`. | Write it as a map, e.g. `showVariables: { mode: view }`. |
+| `Task … has a showVariables that is not an object — use { mode, at,Write it as a map: `stageTarget: { code: … }`.| `showVariables` is a string, list or `true`. | Write it as a map, e.g. `showVariables: { mode: view }`. |
 | `Task … has showVariables mode "…" — use one of: …` | Unknown `mode`. | Use `view`, `predict` or `target`. |
 | `Task … has showVariables at "…" — use one of: …` | Unknown `at`. | Use `end` or `marker`. |
 | `Task … has showVariables … that is not a list of variable names` | `hide` or `predict` isn't a list. | Write `[score, lives]`. |
@@ -387,6 +387,31 @@ Python and Turtle tasks; see [python.md](python.md#name-tag-panel-showvariables)
 | `Task … has a variables_predicted check naming …, which showVariables predict does not list` | The check's `names` include a variable students are never asked to predict, so it can never pass. | Add the name to `predict`, or remove it from `names` (or drop `names` to mean every prediction). |
 | `Task … has a variables_predicted …, but it only works in Python and Turtle tasks` | The check is on another module's task. | Move it to a Python or Turtle task. |
 | `Task … has a variables_predicted … whose names is not a list of variable names` / `Task … has a variables_predicted … with names that are not Python variable names` | `names` is empty, not a list, or holds something that isn't a Python name. | Write `names: [score, lives]`, or remove `names`. |
+
+## Python Stage (`stageTarget` and `stage_*` checks)
+
+Python tasks; see [python.md](python.md#stage-drawing-beside-the-console).
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task … has stageTarget, but the Stage only works in Python tasks — it is ignored` (warning) | `stageTarget` is on another module's task. | Remove it, or move the task to Python. |
+| `Task … has a stageTarget that is not an object — write the target's Python under code` | `stageTarget` is a string or list. | Write it as a map: `stageTarget: { code: … }`. |
+| `Task … has a stageTarget with no code — add the Python that draws the target` | `code` is missing or empty. | Add the Python that draws the target picture. |
+| `Task … has stageTarget code that never imports stage — it will draw nothing (start it with from stage import *)` (warning) | The target code never mentions `stage`, so it draws nothing. | Start it with `from stage import *`. |
+| `Task … has a stageTarget ghost that is not true or false` | `ghost` is text or a number. | Use `ghost: true` or `ghost: false`. |
+| `Task … has stageTarget fields it does not use (…) — they are ignored` (warning) | `stageTarget` has keys other than `code` and `ghost`. | Remove them. |
+| `Task … has a … …, but stage checks only work in Python tasks` | A `stage_*` check is on another module's task. | Move it to a Python task. |
+| `Task … has a stage_matches_target … but no stageTarget code to compare with` | The check compares with the target, and there is none. | Add `stageTarget: { code:Write it as a map: `stageTarget: { code: … }`. or use another stage check. |
+| `Task … has a stage_matches_target … with tolerance "…" — use a fraction from 0 to 1, e.g. 0.02` | `tolerance` isn't a number from 0 to 1 (it is a fraction, not a percentage). | Write e.g. `tolerance: 0.02` for 2%. |
+| `Task … has a stage_shape_count … with kind "…" — use one of: any, …` | Unknown `kind`. | Use `any`, `rect`, `circle`, `line`, `text`, `stamp` or `grid`. |
+| `Task … has a stage_shape_count … whose min or max is not a whole number of 0 or more` | `min` / `max` is negative, a fraction or text. | Use whole numbers like `min: 1`. |
+| `Task … has a stage_shape_count … whose min is more than its max` | The range is empty, so the check can never pass. | Swap them, or fix one. |
+| `Task … has a … … with colour "…" — use a CSS colour name, a PICO-8 name or a hex code like #ff0000` | `stage_colour_used` / `stage_pixel` has no colour, or one the Stage doesn't know. | Use a name like `red` or `dark_blue`, or a hex code like `"#ff0000"` (quoted in YAML). |
+| `Task … has a stage_pixel … that needs either x and y, or row and col` | Neither a point nor a grid cell, or both. | Give `x` and `y` (a stage point) or `row` and `col` (a cell of the last grid). |
+| `Task … has a stage_pixel … whose x and y are not both numbers from 0 to 399` | The point is off the stage. | Use stage coordinates: top-left is `0, 0`, bottom-right `399, 399`. |
+| `Task … has a stage_pixel … whose row and col are not both whole numbers of 0 or more` | `row` / `col` is negative, a fraction or text. | Count rows and columns from 0. |
+| `Task … has a stage_text_shown … but no text` | The check has nothing to look for. | Add `text: …`. |
+| `Task … has a stage_text_shown … with operator "…" — use one of: …` | Unknown `operator`. | Use `contains` (the default), `equals` or `matches_regex`. |
 
 ## Python tests
 

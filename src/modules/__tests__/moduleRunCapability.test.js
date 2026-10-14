@@ -35,16 +35,19 @@ describe('capabilities.run', () => {
       errorLine: true,
       turtle: false,
       liveCode: false,
+      stage: true,
     })
     expect(getModuleDefinition('turtle').runResult).toEqual({
       errorLine: false,
       turtle: true,
       liveCode: false,
+      stage: false,
     })
     expect(getModuleDefinition('electronics').runResult).toEqual({
       errorLine: false,
       turtle: false,
       liveCode: true,
+      stage: false,
     })
     for (const type of MODULE_TYPES) {
       const definition = getModuleDefinition(type)

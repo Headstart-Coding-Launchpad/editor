@@ -352,6 +352,7 @@ The teacher's live pointer, fading ink and text highlights from the Presentation
 | `TaskCheckResults.jsx` | Pass/fail check result banner plus a non-mutating student-feedback preview for linked stage offers |
 | `TaskRunControls.jsx` | Run/Stop/Run Tests button row for the Python task builder |
 | `TaskTestResults.jsx` | Output + test-suite results panel for the Python task builder; wraps `BuilderOutputPanel` |
+| `StageTargetField.jsx` | "Stage target" in the task editor (modules declaring the `stageTarget` task field: Python): on/off, the target's Python, ghost shown at start |
 | `ShowVariablesField.jsx` | "Name-tag panel" in the task editor (modules declaring the `showVariables` task field: Python, Turtle): on/off, mode, `at` (end / `#@peek`), hide list, predict names with the "every prediction is right" check toggle, target lines |
 | `BadgeHintsField.jsx` | "Badge hints" in the task editor's authoring metadata (not information tasks): toggles for `badgeHints.suggest` (hintable pattern badges) and `badgeHints.suppress` (rule-backed badges), plus a read-only line naming the badges the task's `taskActivity` pattern triggers |
 | `TaskOptionsSection.jsx` | Collapsible "Task options" section: carry-through, interaction mode, completion check (via module `CheckEditor` + `defaultCheck`), feedback checks with targeted stage offers, and tests; all type-specific behaviour driven by module properties (`supportsInteractionMode`, `supportsIncorrectChecks`, `supportsTests`) |
@@ -394,9 +395,10 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `python/StudentWorkspace.jsx` | Student Python editor + Run/Stop/Output panel (extracted from `LessonTaskContent`) |
 | `python/BuilderWorkspace.jsx` | Re-export of `PythonTaskWorkspace` |
 | `python/CheckEditor.jsx` | `CheckListEditor` wrapper with Python-appropriate flags |
-| `python/pyodide.js` | Pyodide Web Worker manager: `initPyodide()`, `runPython()`, `stopPython()`, `provideInput()`, `isPyodideReady()` |
+| `python/pyodide.js` | Pyodide Web Worker manager: `initPyodide()`, `runPython()`, `stopPython()`, `provideInput()`, `isPyodideReady()`, `renderStage(code)` (a stageTarget run silently; never overlaps a run), `isPythonRunning()`, `getStopCount()` |
+| `python/stageTarget.js` | A task's Python Stage target: `stageTargetCode` / `stageTargetGhostOn`, `loadStageTarget(code)` (rendered once through `renderStage`, cached by code), `useStageTarget(task, { ready })` for the workspace's ghost |
 | `python/variableCapture.py.js` | Python source (a string) the worker runs before each run: `_hs_encode_value` (value → capped JSON node tree), `_hs_snapshot` (visible variables of a namespace: no modules, callables, dunders or hidden names), `_hs_frame_namespace` (the `__hs_run__` frame's locals plus a student function's), `_HsLineWatch` (a `sys.settrace` line watcher on `<student>` frames, removable mid-run) — the capture path for the name-tag panel and any later step recorder |
-| `python/pyodide.worker.js` | Web Worker: Pyodide loader, AST-based async `input()` transform, stdout/stderr event streaming (via `createUtf8ByteDecoder()`, a streaming UTF-8 decoder — Pyodide's raw callbacks deliver one byte at a time, so multi-byte characters like emoji or `£` must be reassembled rather than decoded byte-by-byte); `formatPythonError()` parses the failing `<student>` line for the error-line highlight |
+| `python/pyodide.worker.js` | Web Worker: Pyodide loader (registers the Python Stage's `stage` module in `sys.modules` once), top-level `import *` expansion, the `__hsStageCall` bridge and `stage_render` message, AST-based async `input()` transform, stdout/stderr event streaming (via `createUtf8ByteDecoder()`, a streaming UTF-8 decoder — Pyodide's raw callbacks deliver one byte at a time, so multi-byte characters like emoji or `£` must be reassembled rather than decoded byte-by-byte); `formatPythonError()` parses the failing `<student>` line for the error-line highlight |
 | `html/index.js` | HTML module definition |
 | `html/checks.js` | HTML-exclusive check evaluation: `HTML_CHECK_TYPES`, `evaluateHtmlCheck`, registry `CHECKS` (canonical `html_*` types own the legacy `element_*` ids as aliases) |
 | `html/iframe.js` | `buildIframeSrc()`: Blob URL filesystem, cross-reference rewriting, CSP + console interceptor injection; `resolveIframeErrorLocation()` maps a reported runtime error back to `{ file, line }` for the error-line highlight |
@@ -767,6 +769,24 @@ A Python / Turtle task's `showVariables` (docs/authoring/python.md "Name-Tag Pan
 | `validation.js` | `validateShowVariables` (python / turtle `validateTask`) and the `variables_predicted` check's registry `validate` |
 | `NameTagPanel.jsx` (+ `.css`) | Presentational panel: a tag per variable (name, type label, value; list tiles with indexes, dict rows, Show all), predict inputs with ✓ / ✗, target tags, "changed" marks, screen-reader text; takes `run.snapshots` + `run.index` so a step player can drive it |
 | `TaskVariablesPanel.jsx` | The panel for a task: from `cs.variablesPanel` (the student) or a synced copy (StudentModal, Go Live), read-only |
+
+### Python Stage (`src/shared/stage/`)
+
+The drawing pane of a Python task (docs/authoring/python.md "Stage"). The engine lives here so the Stage can later be its own workspace or part of Turtle; `src/modules/python/` only wires it (worker bridge, `stageTarget.js`, the workspace pane, the stage checks in `python/checks.js`).
+
+| File | Role |
+|---|---|
+| `colours.js` | Pure: `parseColour` (CSS names, PICO-8 names from Arcade's palette, `#rgb` / `#rrggbb`), `PICO8_PALETTE`, `coloursMatch` (per-channel tolerance), `describeHex` / `colourInWords` (colours in words) |
+| `commands.js` | Pure: the command model (`background`, `rect`, `circle`, `line`, `text`, `stamp`, `grid`, `clear`), `validateStageCall(name, args)` (friendly TypeError / ValueError messages naming the argument), `createStageRecorder` (caps: 20,000 commands, 200,000 grid cells), `visibleCommands`, `STAGE_SIZE` |
+| `stagePy.js` | Python source of the `stage` module (`STAGE_MODULE_PY`) and its one-time `sys.modules` install (`STAGE_INSTALL_PY`) |
+| `raster.js` | Pure-JS rasteriser (no canvas): `rasteriseStage` (100 × 100 by default), `stageColourAt`, `compareStages` (differing cells + text / emoji compared by command), `comparisonMatches` |
+| `describe.js` | `describeStage` (screen-reader text: shapes, text, grid size, colours in words), `describeComparison` (the Differences summary) |
+| `checks.js` | The five `stage_*` checks: `evaluateStageCheck`, `validateStageCheck`, `describeStageCheck` (registered by `python/checks.js`) |
+| `validation.js` | `STAGE_TARGET_TASK_FIELD`, `validateStageTarget` (python `validateTask`) |
+| `sync.js` | `compactStageForSync` (the `currentStageResult` / `teacherLive.stage` shape) and `readStageResult` (back from Firebase) |
+| `canvas.js` | `drawStage(ctx, commands, { ghost, diff })`, `sizeStageCanvas` |
+| `svg.js` | `stageToSvg(commands)`: a standalone picture for export or a gallery |
+| `StagePane.jsx` | The pane: square canvas that scales to fit, Target (ghost) and Differences toggles (44 px), comparison summary, `compact` mode for the tutor card and StudentModal |
 
 ---
 

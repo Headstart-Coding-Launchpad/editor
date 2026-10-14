@@ -69,6 +69,7 @@ describe('Template Module definition', () => {
       turtleResult: null,
       inspector: null,
       variablesPanel: null,
+      stage: null,
     })
   })
 

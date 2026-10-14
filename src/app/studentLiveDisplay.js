@@ -114,6 +114,8 @@ export function deriveStudentLiveDisplay({
     displayTurtleResult: isForcedTeacherLive ? (teacherLive.turtleResult ?? null) : null,
     // The broadcast name-tag panel (showVariables), as compactVariablesForSync shapes it.
     displayVariablesPanel: isForcedTeacherLive ? (teacherLive.variablesPanel ?? null) : null,
+    // The broadcast Python Stage drawing, as compactStageForSync shapes it.
+    displayStage: isForcedTeacherLive ? (teacherLive.stage ?? null) : null,
     displaySpriteState: isForcedTeacherLive ? (teacherLive.spriteState ?? null) : null,
     displayCursor: isForcedTeacherLive ? (teacherLive.cursor ?? null) : null,
     displayBlockDrag: isForcedTeacherLive ? (teacherLive.blockDrag ?? null) : null,

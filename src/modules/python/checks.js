@@ -9,6 +9,11 @@ import {
 } from '../../shared/checkHelpers.js'
 import { evaluateVariablesPredictedCheck } from '../../shared/variablesPanel/predictions.js'
 import { validateVariablesPredictedCheck } from '../../shared/variablesPanel/validation.js'
+import {
+  STAGE_CHECK_TYPES,
+  evaluateStageCheck,
+  validateStageCheck,
+} from '../../shared/stage/checks.js'
 
 // Messages from validateCodeStructureCheck are documented in
 // docs/authoring/validation-errors.md (validationErrorsDoc.test.js scans this file).
@@ -97,6 +102,14 @@ export function evaluatePythonCheck(check, output, context = {}) {
   return false
 }
 
+const STAGE_CHECK_FIELDS = {
+  stage_matches_target: ['tolerance'],
+  stage_shape_count: ['kind', 'min', 'max'],
+  stage_colour_used: ['colour'],
+  stage_pixel: ['x', 'y', 'row', 'col', 'colour'],
+  stage_text_shown: ['text', 'operator'],
+}
+
 // Check-type registry definitions (see ../checkRegistry.js). Evaluated against the
 // variables captured after a run (`context.variables`).
 export const CHECKS = [
@@ -141,6 +154,21 @@ export const CHECKS = [
     evaluate: evaluateVariablesPredictedCheck,
     validate: validateVariablesPredictedCheck,
   },
+  // The Python Stage (src/shared/stage/): checks on the run's drawing (`context.stage`:
+  // { commands, target }). They need a run, so `lessons test-checks` reports them as needing
+  // one. Fields are per type (see docs/authoring/python.md "Stage").
+  ...STAGE_CHECK_TYPES.map((type) => ({
+    type,
+    owner: 'module:python',
+    subject: 'Stage drawing',
+    fields: STAGE_CHECK_FIELDS[type],
+    timing: 'on_run',
+    requiresRun: true,
+    submitAllowed: false,
+    contextKey: 'stage',
+    evaluate: (check, _output, context = {}) => evaluateStageCheck(check, context),
+    validate: validateStageCheck,
+  })),
 ]
 
 // `code_structure` reads Python indentation, so it only works in Python tasks (including

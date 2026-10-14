@@ -81,6 +81,7 @@ export const WRITER_NAMES = [
   'writeStudentCode',
   'writeStudentArcadeDesign',
   'writeStudentTurtleResult',
+  'writeStudentStageResult',
   'writeStudentSpriteState',
   'writeStudentCursor',
   'writeStudentBlockDrag',
