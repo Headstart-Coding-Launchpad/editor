@@ -126,6 +126,8 @@ export default function StudentModal({
   catalogueBadges = [],
   // Truthy (a fresh value each time) to show the student's side-quest rather than the task.
   sideQuestViewRequest = null,
+  // Tutor-only: the class-list name this student is matched to (src/shared/roster/), or null.
+  rosterName = null,
 }) {
   const overlayRef = useRef(null)
   const iframeRef = useRef(null)
@@ -686,6 +688,15 @@ export default function StudentModal({
         <div style={s.header}>
           <div style={s.headerLeft} data-testid="student-modal-status">
             <span style={s.name}>{student.displayName}</span>
+            {rosterName && (
+              <span
+                style={s.rosterName}
+                title="Matched on the class list (only you see this)"
+                data-testid="modal-roster-name"
+              >
+                👥 {rosterName}
+              </span>
+            )}
             <PresenceBadge student={student} session={session} />
             {isLive && (
               <span style={s.liveBadge}>
@@ -1687,6 +1698,15 @@ const s = {
     fontWeight: 700,
     fontSize: '1.05rem',
     whiteSpace: 'nowrap',
+  },
+  rosterName: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: '0.78rem',
+    whiteSpace: 'nowrap',
+    background: 'rgba(255,255,255,0.18)',
+    borderRadius: 999,
+    padding: '1px 8px',
   },
   liveBadge: {
     fontFamily: 'var(--font-body)',

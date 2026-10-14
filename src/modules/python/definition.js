@@ -44,6 +44,8 @@ export default defineModule({
     playground: true,
   },
   capabilities: {
+    // Saved to a matched student's class roster on Run / submission (src/shared/roster/).
+    rosterWork: 'code',
     // Controls a tutor or a task's `highlight` field can pulse (src/shared/controlHighlight.js).
     // Run and Stop share one button, which carries data-highlight-target="run stop".
     highlightTargets: [

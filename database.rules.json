@@ -388,6 +388,37 @@
           }
         },
 
+        // Class roster (approved by Ryan 2026-10-14). The class a stock lesson's session uses
+        // (a class fork always uses its own fork.classId): `classId` (a class slug), absent for
+        // "No class", and `classChosenAt` once the tutor has chosen. `rosterMatches` holds the
+        // tutor's hand-made match of each joined student to a roster entry. Kept off
+        // students/{anonymousId}, which each student can rewrite: teacher/admin write is
+        // inherited from $lessonId, so students cannot write these. Roster names never come
+        // here: rosterId is an opaque Firestore id.
+        "classId": {
+          ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9-]{1,64}$/)"
+        },
+        "classChosenAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "rosterMatches": {
+          "$anonymousId": {
+            ".validate": "newData.hasChildren(['rosterId', 'matchedAt'])",
+            "rosterId": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128"
+            },
+            "matchedAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "matchedBy": {
+              ".validate": "newData.isString() && newData.val().length <= 128"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+
         // The teacher's class countdown ({ startedAt, endsAt, durationMs }, server-time ms) or
         // absent. Teacher/admin write is inherited from $lessonId; students cannot write it.
         "classCountdown": {

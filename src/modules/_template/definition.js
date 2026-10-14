@@ -66,6 +66,7 @@ export default defineModule({
     stageReveal: 'offer', // 'progressive' (python, html) | 'offer'
     studentMirror: 'view', // how StudentModal mirrors the student: 'code' | 'files' | 'blocks' | 'view'
     cardSummary: null, // StudentCard line: 'output' | 'blocks' | 'fs' | null
+    rosterWork: null, // saved to a matched student's class roster: 'code' | 'files' | 'blocks' | null
     focusPanes: [], // extra panes the teacher can highlight / force: [{ id, label }]
     // Controls a tutor or a task's `highlight` field can pulse, each marked in the workspace with
     // data-highlight-target (src/shared/controlHighlight.js): [{ id, label, pane? }]

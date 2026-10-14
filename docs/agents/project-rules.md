@@ -95,7 +95,7 @@ The `/admin` route is available only to users with the admin Firebase role.
 
 - Lessons: browse all published Firestore lessons in one library (the older type-grouped/filtered view is hardcoded off — `LessonPanel.jsx`'s type-tab UI is dead code behind `{false && ...}`); expand lessons to view session reports and lesson/task feedback with counts and resolve actions; launch as teacher, preview as a student (`?preview=true` — ephemeral, nothing persists), or copy student links; fork a lesson to a class.
 - Levels: manage reusable levels (`LessonPanel.jsx` rendered with `view="levels"`, via `LevelManager`).
-- Classes: manage class records used for lesson forks (`LessonPanel.jsx` rendered with `view="classes"`, via `ClassManager`).
+- Classes: manage class records used for lesson forks (`LessonPanel.jsx` rendered with `view="classes"`, via `ClassManager`), and each class's roster of students (first name and initial) under **Students** (`ClassRosterEditor.jsx`: add, rename, delete; deleting an entry also deletes its saved work and typing scores). Tutors match joined students to the roster in a session; see "Class roster" in `docs/agents/runtime-model.md`.
 - Sessions: Realtime Database `sessions` list filtered to non-`ended` states — lesson, state, paused flag, student/online counts, open duration; "Close Session" removes an abandoned session node.
 - Topic Library: create, edit, and delete topics with Markdown description and syntax fields.
 - Shared Assets: manage lesson-type-wide Firebase Storage files and Scratch default sprites in `lessonTypeAssets/{type}` with storage at `shared/{type}/assets/`.
@@ -110,7 +110,7 @@ The `cli/` package manages lessons, tasks, topics, feedback, and assets against 
 **Storage model:**
 - Lessons → Firestore `lessons/`
 - Reusable levels → Firestore `lessonLevels/`
-- Classes → Firestore `classes/`
+- Classes → Firestore `classes/` (roster: `classes/{classId}/roster/{rosterId}` with `work` and `typing` subcollections, teacher/admin only)
 - Topics → Firestore `topicLibrary/`
 - Assets → Firebase Storage under `lessons/{lessonId}/assets/`; `lesson.storageAssets` is optional metadata, not the source-of-truth inventory
 - Lesson-type-wide shared assets (files, Scratch default sprites/backdrops) → Firestore `lessonTypeAssets/{type}`, files in Storage under `shared/{type}/assets/` — same data the admin "Shared Assets" panel manages

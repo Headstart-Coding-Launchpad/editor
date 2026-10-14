@@ -21,6 +21,18 @@ vi.mock('../../../auth/useAuth', () => ({
   useAuth: () => ({ user: { uid: 't1' }, role: 'teacher' }),
 }))
 vi.mock('../../../shared/topicLibrary', () => ({ useTopicLibrary: () => ({ topics: [] }) }))
+// Class roster (Firestore listeners and the tutor-side saver) is covered by its own tests.
+vi.mock('../../hooks/useClassRoster', () => ({
+  useClassRoster: () => ({ roster: [], loading: false, error: null }),
+  useClassList: () => [],
+}))
+vi.mock('../../hooks/useRosterWorkSaver', () => ({ useRosterWorkSaver: () => {} }))
+vi.mock('../../../shared/roster/rosterService', () => ({
+  addRosterEntry: vi.fn(),
+  matchStudent: vi.fn(),
+  setSessionClass: vi.fn(),
+  unmatchStudent: vi.fn(),
+}))
 
 const sessionCommands = {}
 let mockSession = null

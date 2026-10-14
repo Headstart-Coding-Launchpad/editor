@@ -79,6 +79,10 @@ export default function StudentGrid({
   onToggle,
   // { studentId, at } from TeacherView's side-quest panel: open that student's side-quest.
   openSideQuestRequest = null,
+  // Tutor-only class roster status (summariseRosterStatus in src/shared/roster/rosterModel.js,
+  // plus `needsClass` while a stock lesson's class isn't chosen) and the Match students opener.
+  rosterStatus = null,
+  onOpenRoster,
 }) {
   const joiningCount = joiningStudents.length
   const [expandedStudentId, setExpandedStudentId] = useState(null)
@@ -122,7 +126,11 @@ export default function StudentGrid({
   const showSuggestionsItem = !!onOpenBadgeSuggestions && (sessionLive || suggestionCount > 0)
   const showSelectItem = !!onDecideBadge && students.length > 0
   const showReferenceItem = topics?.length > 0
-  const hasClassMenu = showNudgeItem || showSuggestionsItem || showSelectItem || showReferenceItem
+  const showRosterItem = !!onOpenRoster
+  const unmatchedCount = rosterStatus?.unmatchedIds?.length ?? 0
+  const unmatchedIds = new Set(rosterStatus?.unmatchedIds ?? [])
+  const hasClassMenu =
+    showNudgeItem || showSuggestionsItem || showSelectItem || showReferenceItem || showRosterItem
   const classMenuAttention =
     (showNudgeItem && awayCount > 0) || (showSuggestionsItem && suggestionCount > 0)
 
@@ -304,6 +312,20 @@ export default function StudentGrid({
               {joiningCount} joining…
             </span>
           )}
+          {onOpenRoster && (unmatchedCount > 0 || rosterStatus?.needsClass) && (
+            <button
+              type="button"
+              style={{ ...s.checkCountBadge, ...s.rosterChip }}
+              onClick={onOpenRoster}
+              title={
+                rosterStatus?.needsClass
+                  ? 'Pick the class you are teaching, to save students’ work to the class list'
+                  : 'Students not yet matched to the class list (their work is not being saved)'
+              }
+            >
+              👥 {rosterStatus?.needsClass ? 'Pick class' : `${unmatchedCount} unmatched`}
+            </button>
+          )}
           {hasCheck && passedCount > 0 && (
             <span
               style={{ ...s.checkCountBadge, background: 'var(--colour-success)' }}
@@ -400,6 +422,19 @@ export default function StudentGrid({
                       title="Select several students to award a badge to all of them at once"
                     >
                       {selectMode ? '☑ Done selecting' : '☑ Select'}
+                    </button>
+                  )}
+                  {showRosterItem && (
+                    <button
+                      type="button"
+                      style={s.menuItem}
+                      onClick={() => {
+                        close()
+                        onOpenRoster()
+                      }}
+                      title="Match each student to their name on the class list"
+                    >
+                      👥 Match students
                     </button>
                   )}
                   {showReferenceItem && (
@@ -526,6 +561,9 @@ export default function StudentGrid({
                 selectMode={selectMode}
                 selected={selectedIds.has(student.anonymousId)}
                 onToggleSelect={toggleSelected}
+                rosterName={rosterStatus?.namesByStudent?.[student.anonymousId] ?? null}
+                rosterUnmatched={unmatchedIds.has(student.anonymousId)}
+                onOpenRoster={onOpenRoster}
               />
             ))}
           </div>
@@ -625,6 +663,7 @@ export default function StudentGrid({
           onRevokeBadge={onRevokeBadge}
           catalogueBadges={catalogueBadges}
           sideQuestViewRequest={sideQuestViewRequest}
+          rosterName={rosterStatus?.namesByStudent?.[expandedStudent.anonymousId] ?? null}
         />
       )}
     </div>
@@ -703,6 +742,11 @@ const s = {
     cursor: 'pointer',
     textAlign: 'left',
     whiteSpace: 'nowrap',
+  },
+  rosterChip: {
+    background: '#0f766e',
+    border: 'none',
+    cursor: 'pointer',
   },
   checkCountBadge: {
     color: '#fff',

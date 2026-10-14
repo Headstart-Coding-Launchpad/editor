@@ -40,6 +40,7 @@ import { compareLessonsInLevel, formatLessonLabel, sortLessons } from '../shared
 import { validateLesson } from '../builder/lessonUtils'
 import TeacherReportModal from '../app/components/TeacherReportModal'
 import { AdminCell, AdminTable } from './AdminUi'
+import ClassRosterEditor from './ClassRosterEditor'
 
 function makeBuilderUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/builder?load=${lessonId}`
@@ -1135,6 +1136,8 @@ function ClassManager({ classes, loading }) {
   const [form, setForm] = useState({ id: '', name: '' })
   const [idTouched, setIdTouched] = useState(false)
   const [saveState, setSaveState] = useState(null)
+  // The class whose roster (class list) is open below its row.
+  const [openRosterId, setOpenRosterId] = useState(null)
   const activeClasses = classes.filter((cls) => !cls.archived)
   const archivedClasses = classes.filter((cls) => cls.archived)
 
@@ -1175,7 +1178,10 @@ function ClassManager({ classes, loading }) {
       <div style={s.titleRow}>
         <div>
           <h2 style={s.title}>Classes</h2>
-          <p style={s.subtitle}>Admin-only class records used to organise reusable lesson forks.</p>
+          <p style={s.subtitle}>
+            Admin-only class records used to organise reusable lesson forks, each with its class
+            list of students.
+          </p>
         </div>
       </div>
 
@@ -1222,20 +1228,32 @@ function ClassManager({ classes, loading }) {
       ) : (
         <div style={s.levelPreviewList}>
           {activeClasses.map((cls) => (
-            <div key={cls.id} style={s.classPreviewItem}>
-              <span style={s.levelPreviewText}>
-                <strong style={s.levelPreviewTitle}>{cls.name}</strong>
-                <span style={s.levelPreviewMeta}>{cls.id}</span>
-              </span>
-              <button
-                type="button"
-                className="btn-ghost-outline"
-                style={s.levelDeleteBtn}
-                onClick={() => handleArchive(cls)}
-              >
-                Archive
-              </button>
-            </div>
+            <React.Fragment key={cls.id}>
+              <div style={s.classPreviewItem}>
+                <span style={s.levelPreviewText}>
+                  <strong style={s.levelPreviewTitle}>{cls.name}</strong>
+                  <span style={s.levelPreviewMeta}>{cls.id}</span>
+                </span>
+                <button
+                  type="button"
+                  className="btn-ghost-outline"
+                  style={s.levelDeleteBtn}
+                  aria-expanded={openRosterId === cls.id}
+                  onClick={() => setOpenRosterId((id) => (id === cls.id ? null : cls.id))}
+                >
+                  {openRosterId === cls.id ? 'Hide students' : 'Students'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost-outline"
+                  style={s.levelDeleteBtn}
+                  onClick={() => handleArchive(cls)}
+                >
+                  Archive
+                </button>
+              </div>
+              {openRosterId === cls.id && <ClassRosterEditor cls={cls} />}
+            </React.Fragment>
           ))}
         </div>
       )}
@@ -1832,7 +1850,7 @@ const s = {
   },
   classPreviewItem: {
     display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) auto',
+    gridTemplateColumns: 'minmax(0, 1fr) auto auto',
     alignItems: 'center',
     gap: 8,
     border: '1px solid #e5e7eb',

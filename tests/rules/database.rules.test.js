@@ -302,6 +302,33 @@ describe('class countdown', () => {
   })
 })
 
+describe('class roster session fields', () => {
+  const matchPath = `sessions/${LESSON}/rosterMatches/${STUDENT_ID}`
+  const match = { rosterId: 'r1', matchedAt: 1000, matchedBy: 'teacher-1' }
+
+  it('only lets teachers and admins match students, never the student themselves', async () => {
+    await assertFails(ref(as.student, matchPath).set(match))
+    await assertFails(ref(as.otherStudent, matchPath).set(match))
+    await assertSucceeds(ref(as.teacher, matchPath).set(match))
+    await assertSucceeds(ref(as.admin, matchPath).set(null))
+  })
+
+  it('requires rosterId and matchedAt, and nothing unknown', async () => {
+    await assertFails(ref(as.teacher, matchPath).set({ rosterId: 'r1' }))
+    await assertFails(ref(as.teacher, matchPath).set({ ...match, rosterId: '' }))
+    await assertFails(ref(as.teacher, matchPath).set({ ...match, name: 'Jamie B.' }))
+    await assertSucceeds(ref(as.teacher, matchPath).set({ rosterId: 'r1', matchedAt: 1 }))
+  })
+
+  it('lets only teachers and admins choose the session class', async () => {
+    await assertFails(ref(as.student, `sessions/${LESSON}/classId`).set('maple'))
+    await assertSucceeds(ref(as.teacher, `sessions/${LESSON}/classId`).set('maple'))
+    await assertFails(ref(as.teacher, `sessions/${LESSON}/classId`).set('Maple Class'))
+    await assertSucceeds(ref(as.teacher, `sessions/${LESSON}/classChosenAt`).set(1000))
+    await assertFails(ref(as.teacher, `sessions/${LESSON}/classChosenAt`).set('now'))
+  })
+})
+
 describe('live badges', () => {
   const decision = { status: 'awarded', source: 'manual', decidedAt: 1, announce: true }
 

@@ -96,6 +96,8 @@ export default defineModule({
     surfaceLabels: { lessonIntro: 'Web Dev', builderMeta: 'Web', print: 'Web (HTML/CSS/JS)' },
   },
   capabilities: {
+    // Saved to a matched student's class roster on Run / submission (src/shared/roster/).
+    rosterWork: 'files',
     // Controls a tutor or a task's `highlight` field can pulse (src/shared/controlHighlight.js).
     // HTML has no Stop: Run re-renders the preview.
     highlightTargets: [{ id: 'run', label: 'Run button' }],

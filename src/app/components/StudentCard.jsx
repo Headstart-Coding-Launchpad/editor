@@ -87,6 +87,12 @@ export default function StudentCard({
   onToggleSelect,
   // (anonymousId): opens the StudentModal on their side-quest; the 🗺️ activity becomes a button.
   onOpenSideQuest = null,
+  // Tutor-only class roster: the name this student is matched to (shown on hover), whether the
+  // session has a class roster this student isn't matched to yet (a small 👥? marker), and the
+  // Match students opener the marker calls.
+  rosterName = null,
+  rosterUnmatched = false,
+  onOpenRoster = null,
 }) {
   // The 🗺️ "on side-quest" activity opens their side-quest (not in multi-select).
   const opensSideQuest = (activity) =>
@@ -316,8 +322,39 @@ export default function StudentCard({
               />
             </form>
           ) : (
-            <span style={s.name} title={student.displayName}>
+            <span
+              style={s.name}
+              title={
+                rosterName
+                  ? `${student.displayName} — class list: ${rosterName}`
+                  : student.displayName
+              }
+            >
               {student.displayName}
+            </span>
+          )}
+          {/* Teacher-only: not matched to the class list, so their work isn't being saved. */}
+          {rosterUnmatched && (
+            <span
+              style={s.rosterUnmatched}
+              role={onOpenRoster ? 'button' : 'img'}
+              tabIndex={onOpenRoster ? 0 : undefined}
+              title="Not matched to the class list yet: their work isn't being saved"
+              aria-label="Not matched to the class list"
+              data-testid="roster-unmatched"
+              onClick={(event) => {
+                if (!onOpenRoster) return
+                event.stopPropagation()
+                onOpenRoster()
+              }}
+              onKeyDown={(event) => {
+                if (!onOpenRoster || (event.key !== 'Enter' && event.key !== ' ')) return
+                event.preventDefault()
+                event.stopPropagation()
+                onOpenRoster()
+              }}
+            >
+              👥?
             </span>
           )}
           {/* Teacher-only: StudentCard is only ever rendered in the teacher's grid. */}
@@ -766,6 +803,17 @@ const s = {
   selectBoxOn: {
     background: 'var(--colour-primary)',
     borderColor: 'var(--colour-primary)',
+  },
+  rosterUnmatched: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.68rem',
+    fontWeight: 700,
+    color: 'var(--colour-warning-text)',
+    background: 'var(--colour-warning-bg)',
+    borderRadius: 999,
+    padding: '0 5px',
+    flexShrink: 0,
+    cursor: 'pointer',
   },
   badgeCount: {
     position: 'relative',

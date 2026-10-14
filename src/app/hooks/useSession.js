@@ -216,6 +216,11 @@ export function useSession(lessonId, { enabled = true } = {}) {
       exampleOpenLog: null,
       // Unsubmitted answer drafts kept for the report (src/shared/answerDrafts.js).
       draftLog: null,
+      // Class roster (src/shared/roster/): a stock lesson's class is picked again for each
+      // session, and matches belong to this session's anonymous students.
+      classId: null,
+      classChosenAt: null,
+      rosterMatches: null,
     })
     // The payload node lives outside the session, so resetting the session
     // does not clear it on its own.
