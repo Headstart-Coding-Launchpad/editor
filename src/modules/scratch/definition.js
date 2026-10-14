@@ -1,6 +1,7 @@
 // Node-safe half of the Scratch module (see ../defineModule.js). UI lives in index.js.
 import { validateScratchSoundsAndTabs } from './scratchSounds.js'
 import { validateStartingBackdrop } from './startingBackdrop.js'
+import { validateScratchSlowMo } from './slowMo/config.js'
 import { defineModule } from '../defineModule.js'
 import { codeStagesField } from '../../shared/taskFields.js'
 import {
@@ -175,6 +176,12 @@ export default defineModule({
     { name: 'allowAddCostume', type: 'boolean' },
     { name: 'allowAddSound', type: 'boolean' },
     { name: 'carryBlocksFrom', type: 'string' },
+    {
+      name: 'slowMo',
+      type: 'object',
+      description:
+        'Slow-mo controls under the stage: { enabled: true, speed: blocks per second (default 1, 0.25–4), timeline: [costume, backdrop, x, y, variables] }. Off unless enabled.',
+    },
   ],
   carryThroughField: 'carryBlocksFrom',
   completeField: 'completeBlocks',
@@ -353,6 +360,7 @@ export default defineModule({
     warnCompleteBlocks(task, n, warnings)
     validateScratchSoundsAndTabs(task, n, errors, warnings)
     validateStartingBackdrop(task, n, errors, warnings)
+    validateScratchSlowMo(task, n, errors, warnings)
   },
   hasStarterContent: (task) => !!task.starterBlocks,
   // `lessons test-checks` with no --cases: static block checks per stage (checkVerification.js).

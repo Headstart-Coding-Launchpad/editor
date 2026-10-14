@@ -1,6 +1,6 @@
 # Scratch slow-mo: block glow, step button and a state timeline
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, sent straight to LaunchPad Dev at Ryan's request, bypassing pipeline-ui), 2026-10-14
 - **Lessons blocked:** none yet. This is build 6 of 6 in Lesson Gen's P6 Visual learning plan.
@@ -61,4 +61,15 @@ Students can click any snapshot to see the stage at that moment.
 - **Order:** P6 build order is 1 name-tag panel, 2 Stage, 3 Python slow-mo, 4 scrubbing, 5 HTML Inspector, 6 this.
 
 ## Resolution
+
+Shipped 2026-10-14 on `feature/scratch-slow-mo`, as specced. See [scratch.md → Slow-mo](../scratch.md#slow-mo).
+
+- **Field:** `slowMo: { enabled, speed, timeline }`, off unless `enabled: true`. The speed slider goes from 0.25 to 4 blocks a second.
+- **Controls:** 🐢 Slow-mo, ⏸️ Pause, 👣 Step and ⏮️ Restart, each a big button (at least 44 px) with an icon and a word, plus a speed slider. Restart also puts the stage back and clears the timeline.
+- **While running:** the running block glows in each running script, and the stage redraws after every block. Under reduced motion the glow is a still outline.
+- **Step:** one block per press. When several scripts run at once, they take turns (round-robin, in the order they started). If every script is busy (inside a wait or glide), the Step is kept for the next script that's ready.
+- **Timeline:** one card per step, with the costume picture, backdrop, x, y and variables. It swipes on tablets, and each card has a text label. Tap a card to preview the stage at that step, then "Back to now". It keeps 500 steps.
+- **Checks:** none new. A slow-mo run is a green-flag run, so checks and "still building" work as before.
+- **Go Live:** the teacher's controls drive the glow, the stage and the step number the class sees. A tutor watching a student sees that student's glow and step. The timeline isn't synced.
+- **Session report:** `slowMoUsed`, `slowMoRuns` and `slowMoSteps` per student per task, and `slowMoUsedCount` per task.
 

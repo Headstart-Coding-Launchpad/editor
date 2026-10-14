@@ -103,6 +103,14 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … inspector is not enabled (enabled: true), so students won't see it` (warning) | `inspector` is set without `enabled: true`. | Add `enabled: true`, or remove `inspector`. |
 | `Task … inspector needs the preview, which submit-mode tasks don't show` (warning) | The task is `interactionMode: submit`, which has no preview to inspect. | Use run mode, or remove `inspector`. |
 | `Task … inspector only works on html tasks; it is ignored here` (warning) | `inspector` on a non-HTML task (or a quiz, information or activity task). | Remove it, or move it to an HTML code task. |
+| `Task … slowMo must be an object, e.g. { enabled: true }` | A Scratch task's `slowMo` isn't a mapping. | Write `slowMo:` with `enabled: true` under it ([scratch.md](scratch.md#slow-mo)). |
+| `Task … slowMo.enabled must be true or false` | `slowMo.enabled` isn't a boolean. | Use `true` or `false`. |
+| `Task … slowMo.speed must be a number of blocks per second above 0` | `speed` is text, zero or negative. | Use a number such as `1` or `0.5`, or remove it (default 1). |
+| `Task … slowMo.timeline must be a list of: …` | `timeline` isn't a list. | Use any of `costume`, `backdrop`, `x`, `y`, `variables`, or remove it to show all five. |
+| `Task … slowMo.speed … is outside 0.25–4 blocks per second; it will be clamped` (warning) | The starting speed is outside the slider's range. | Use a speed from 0.25 to 4. |
+| `Task … slowMo.timeline has unknown field(s) …` (warning) | `timeline` names something else. | Use only `costume`, `backdrop`, `x`, `y`, `variables`. |
+| `Task … slowMo has unknown key(s) …; they are ignored` (warning) | `slowMo` has keys other than `enabled`, `speed`, `timeline`. | Remove them. |
+| `Task … slowMo is set but not enabled; add enabled: true to show it` (warning) | `slowMo` has settings but no `enabled`. | Add `enabled: true`, or remove `slowMo`. |
 | `Task … stage … role must be one of: …` | A `codeStages` entry has an unknown `role`. | Use `starter`, `support` or `complete`. |
 | `Task … stage … is missing a label` | A code stage has no `label`. | Add `label:` to the stage. |
 | `Task ID … is used by … and … - renumber task IDs before publishing` (warning, **Builder only**) | Two tasks share an `id`. | Renumber the task ids. |

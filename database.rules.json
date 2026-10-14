@@ -113,6 +113,16 @@
                 "lastAt": { ".validate": "newData.isNumber()" },
                 "$other": { ".validate": false }
               }
+            },
+            // Scratch slow-mo use per task for the session report ({ runs, steps, lastAt };
+            // src/shared/slowMoUse.js). Counts only, never code.
+            "slowMoLog": {
+              "$taskId": {
+                "runs": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "steps": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "lastAt": { ".validate": "newData.isNumber()" },
+                "$other": { ".validate": false }
+              }
             }
           }
         },

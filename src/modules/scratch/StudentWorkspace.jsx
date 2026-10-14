@@ -149,6 +149,7 @@ export default function StudentWorkspace({
         forcedPaneToken={forcedPaneCommand?.pushedAt ?? null}
         runToken={detached ? null : cs.remoteRunToken}
         onRunTokenHandled={detached ? undefined : cs.acknowledgeRemoteRun}
+        onSlowMoUse={detached ? undefined : cs.recordSlowMoUse}
       />
     </div>
   )

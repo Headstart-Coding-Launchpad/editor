@@ -31,6 +31,11 @@ import {
   CREATE_VARIABLE_CALLBACK_KEY,
 } from './scratch'
 import { resolveAssetFileUrl } from '../../shared/assetPaths'
+import { normalizeSlowMo } from './slowMo/config.js'
+import { useScratchSlowMo } from './slowMo/useScratchSlowMo.js'
+import { slowMoStatusText } from './slowMo/live.js'
+import SlowMoControls, { SlowMoMirrorStatus } from './slowMo/SlowMoControls.jsx'
+import SlowMoTimeline, { SlowMoPreviewBanner } from './slowMo/SlowMoTimeline.jsx'
 import {
   drawSpriteWithGraphicEffects,
   hasGraphicEffects,
@@ -896,6 +901,8 @@ export default function ScratchWorkspace({
   // Teacher remote Run request (cs.remoteRunToken): presses the green flag.
   runToken = null,
   onRunTokenHandled = null,
+  // Slow-mo use for the session report ({ kind: 'run' | 'step' }); see slowMo/useScratchSlowMo.js.
+  onSlowMoUse = null,
 }) {
   // Sprites/backdrops start from the task's authored lists but become mutable local state so
   // an author-gated student "Add sprite"/"Add backdrop" picker (see below) can grow them during
@@ -1061,7 +1068,8 @@ export default function ScratchWorkspace({
       spriteStatesRef.current,
       clonesRef.current,
       backdropNameRef.current,
-      id
+      id,
+      slowMoLiveRef.current
     )
   }
 
@@ -1102,6 +1110,42 @@ export default function ScratchWorkspace({
   const [imageVersion, setImageVersion] = useState(0)
   const [cursorStale, setCursorStale] = useState(false)
   const canvasRef = useRef(null)
+
+  // ── Slow-mo (task.slowMo; ./slowMo/) ─────────────────────────────────────────
+  // The gate holds each block until its turn, the running blocks glow, and a timeline records
+  // one snapshot per step. Its live state rides with the sprite-state payload (5th argument of
+  // onSpriteStatesChange), so Go Live viewers and a watching tutor see the same glow and step.
+  const slowMoConfig = useMemo(() => normalizeSlowMo(task?.slowMo), [task?.slowMo])
+  const slowMo = useScratchSlowMo({
+    config: slowMoConfig,
+    readOnly,
+    externalLive: externalSpriteState?.slowMo ?? null,
+    status,
+    workspaceRefs,
+    spritesRef,
+    spriteStatesRef,
+    clonesRef,
+    backdropNameRef,
+    onUse: readOnly ? null : onSlowMoUse,
+  })
+  const slowMoRef = useRef(slowMo)
+  slowMoRef.current = slowMo
+  const slowMoLiveRef = useRef(null)
+  const slowMoLiveKey = JSON.stringify(slowMo.live)
+  const lastSlowMoLiveKeyRef = useRef(slowMoLiveKey)
+  useEffect(() => {
+    slowMoLiveRef.current = slowMo.live
+    if (readOnly || !slowMoConfig || lastSlowMoLiveKeyRef.current === slowMoLiveKey) return
+    lastSlowMoLiveKeyRef.current = slowMoLiveKey
+    onSpriteStatesChangeRef.current?.(
+      spriteStatesRef.current,
+      clonesRef.current,
+      backdropNameRef.current,
+      selectedSpriteId,
+      slowMo.live
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slowMoLiveKey])
   const stageToolbarRef = useRef(null)
   const rootRef = useRef(null)
   const [rootSizeRef, rootSize] = useElementSize()
@@ -1275,13 +1319,13 @@ export default function ScratchWorkspace({
 
   // ── Draw stage ──────────────────────────────────────────────────────────────
   const drawStage = useCallback(
-    (states, clones = {}) => {
+    (states, clones = {}, backdropOverride = null) => {
       const canvas = canvasRef.current
       if (!canvas) return
       const ctx = canvas.getContext('2d')
       ctx.clearRect(0, 0, STAGE_W, STAGE_H)
 
-      const currentName = backdropNameRef.current
+      const currentName = backdropOverride ?? backdropNameRef.current
       const backdrop =
         (currentName ? backdrops.find((b) => b.name === currentName) : null) ??
         getStartingBackdrop(backdrops)
@@ -1334,9 +1378,19 @@ export default function ScratchWorkspace({
     [sprites, backdrops, assetsPath]
   )
 
+  // A slow-mo timeline preview draws that step's stage over the live one; the run is untouched.
+  const slowMoPreview = slowMo.preview
   useEffect(() => {
+    if (slowMoPreview) {
+      drawStage(
+        slowMoPreview.spriteStates,
+        slowMoPreview.cloneStates,
+        slowMoPreview.backdropName || null
+      )
+      return
+    }
     drawStage(spriteStates, cloneStates)
-  }, [spriteStates, cloneStates, backdropName, imageVersion, drawStage])
+  }, [spriteStates, cloneStates, backdropName, imageVersion, drawStage, slowMoPreview])
 
   useEffect(() => {
     if (!stagePanelCollapsed) drawStage(spriteStatesRef.current, clonesRef.current)
@@ -1522,7 +1576,8 @@ export default function ScratchWorkspace({
       nextStates,
       clonesRef.current,
       backdropNameRef.current,
-      selectedSpriteId
+      selectedSpriteId,
+      slowMoLiveRef.current
     )
   }
 
@@ -2300,6 +2355,8 @@ export default function ScratchWorkspace({
       clonesRef.current = next
       setCloneStates(next)
     }
+    // While a slow-mo run is going, every run (key presses, sprite clicks) goes slowly too.
+    if (slowMoRef.current?.isRunning()) slowMoRef.current.attach(signal)
     return signal
   }, [backdrops])
 
@@ -2489,11 +2546,23 @@ export default function ScratchWorkspace({
   })
 
   // ── Run / Stop ────────────────────────────────────────────────────────────────
-  async function handleRun() {
+  // `slowMo`: 'play' (the Slow-mo button) or 'step' (Step before a run) starts a slow-mo run; it
+  // is a green-flag run in every other way (checks, run_attempted, the end-of-run check).
+  async function handleRun({ slowMo: slowMoStart = null } = {}) {
     if (status !== 'ready') return
-    onActivityRef.current?.({ type: 'green_flag', at: Date.now() })
+    onActivityRef.current?.({
+      type: 'green_flag',
+      at: Date.now(),
+      ...(slowMoStart ? { mode: 'slow_mo' } : {}),
+    })
     stopAll()
     clearClones()
+    if (slowMoStart && slowMoConfig) {
+      slowMo.begin({ paused: slowMoStart === 'step' })
+      if (slowMoStart === 'step') slowMo.step()
+    } else {
+      slowMo.cancel({ clear: true })
+    }
     lastCheckRef.current = null
     lastCheckSuggestionRef.current = ''
     preRunSpriteStatesRef.current = cloneSpriteStates(spriteStatesRef.current)
@@ -2510,13 +2579,50 @@ export default function ScratchWorkspace({
     } catch (err) {
       signal.onError?.(err)
     }
+    if (slowMoStart && !signal.stopped) slowMoRef.current?.finish()
     finishRun(signal)
+  }
+
+  // The slow-mo buttons (only shown when task.slowMo.enabled).
+  function handleSlowMoPlay() {
+    if (slowMo.isRunning()) {
+      slowMo.resume()
+      return
+    }
+    handleRun({ slowMo: 'play' })
+  }
+
+  function handleSlowMoStep() {
+    if (slowMo.isRunning()) {
+      slowMo.step()
+      return
+    }
+    handleRun({ slowMo: 'step' })
+  }
+
+  // A timeline card's costume picture: the sprite (or clone) whose block ran, as it was then.
+  function renderSlowMoCostume(snapshot) {
+    const sprite = sprites.find((sp) => sp.id === snapshot.baseSpriteId)
+    const state =
+      snapshot.spriteStates?.[snapshot.spriteId] ?? snapshot.cloneStates?.[snapshot.spriteId]?.state
+    if (!sprite || !state) return null
+    return (
+      <SpriteThumb
+        sprite={sprite}
+        state={state}
+        imageCache={imageCacheRef.current}
+        assetsPath={assetsPath}
+        size={28}
+        imageVersion={imageVersion}
+      />
+    )
   }
 
   async function runClickedBlock(block, spriteId) {
     if (runningRef.current || statusRef.current !== 'ready') return
     onActivityRef.current?.({ type: 'block_click', at: Date.now() })
     stopAll()
+    slowMoRef.current?.cancel()
     lastCheckRef.current = null
     lastCheckSuggestionRef.current = ''
     preRunSpriteStatesRef.current = cloneSpriteStates(spriteStatesRef.current)
@@ -2556,6 +2662,8 @@ export default function ScratchWorkspace({
   function handleStop() {
     onActivityRef.current?.({ type: 'stop', at: Date.now() })
     stopAll()
+    // Stop keeps the timeline to look back at; Restart (Reset Stage) clears it.
+    slowMo.cancel()
     clearClones()
     runningRef.current = false
     setRunning(false)
@@ -2566,6 +2674,7 @@ export default function ScratchWorkspace({
 
   function handleResetStage() {
     stopAll()
+    slowMo.cancel({ clear: true })
     clearClones()
     runningRef.current = false
     setRunning(false)
@@ -3620,7 +3729,9 @@ export default function ScratchWorkspace({
                   .map((v) => (
                     <div key={v.name} style={s.variableMonitor}>
                       <span style={s.variableMonitorName}>{v.name}</span>
-                      <span style={s.variableMonitorValue}>{variableValues[v.name] ?? 0}</span>
+                      <span style={s.variableMonitorValue}>
+                        {(slowMoPreview ? slowMoPreview.variables : variableValues)[v.name] ?? 0}
+                      </span>
                     </div>
                   ))}
               </div>
@@ -3635,6 +3746,7 @@ export default function ScratchWorkspace({
                 ))}
               </div>
             )}
+            <SlowMoPreviewBanner snapshot={slowMoPreview} onBackToNow={slowMo.backToNow} />
             <canvas
               ref={canvasRef}
               width={STAGE_W}
@@ -3679,6 +3791,34 @@ export default function ScratchWorkspace({
               </div>
             )}
           </div>
+
+          {slowMoConfig && !readOnly && (
+            <>
+              <SlowMoControls
+                mode={slowMo.view.mode}
+                step={slowMo.view.step}
+                speed={slowMo.speed}
+                disabled={status !== 'ready'}
+                onPlay={handleSlowMoPlay}
+                onPause={slowMo.pause}
+                onStep={handleSlowMoStep}
+                onRestart={handleResetStage}
+                onSpeedChange={slowMo.setSpeed}
+              />
+              <SlowMoTimeline
+                snapshots={slowMo.snapshots}
+                timeline={slowMoConfig.timeline}
+                capped={slowMo.capped}
+                selectedIndex={slowMo.previewIndex}
+                onSelect={slowMo.selectSnapshot}
+                onBackToNow={slowMo.backToNow}
+                renderCostume={renderSlowMoCostume}
+              />
+            </>
+          )}
+          {readOnly && slowMo.receivedLive && (
+            <SlowMoMirrorStatus text={slowMoStatusText(slowMo.receivedLive)} />
+          )}
 
           {spritePanelFull}
 

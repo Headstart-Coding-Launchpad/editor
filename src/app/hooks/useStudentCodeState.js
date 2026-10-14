@@ -59,6 +59,7 @@ import { useStudentPresenceReporting } from './useStudentPresenceReporting'
 import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
 import { useHtmlInspectorLive } from './useHtmlInspectorLive'
+import { useSlowMoLog } from './useSlowMoLog'
 import { useActivityState } from './useActivityState'
 import {
   getModuleHostedActivity,
@@ -319,6 +320,7 @@ export function useStudentCodeState({
   const arcadeDesignWriteTimerRef = useRef(null)
   const spriteStateLastSentRef = useRef(0)
   const spriteStatePendingTimerRef = useRef(null)
+  const spriteStatePendingPayloadRef = useRef(null)
   const outputRef = useLatestRef(output)
   const runStatusRef = useLatestRef(runStatus)
   const sessionRef = useLatestRef(session)
@@ -814,6 +816,17 @@ export function useStudentCodeState({
     inPersonalSandboxRef,
     inspectorRef,
     canPublishTeacherLive,
+  })
+
+  // Scratch slow-mo use for the session report: recordSlowMoUse (useSlowMoLog).
+  const slowMoLog = useSlowMoLog({
+    lessonId,
+    phase,
+    teacherPresentation,
+    previewMode,
+    effectiveIdentity,
+    currentTaskId,
+    inPersonalSandboxRef,
   })
 
   // Hosted activity tasks (taskType 'activity' and legacy quizzes): state, persistence, live
@@ -2183,20 +2196,33 @@ export function useStudentCodeState({
 
   const SPRITE_STATE_THROTTLE_MS = 120
 
-  function handleScratchSpriteState(spriteStates, cloneStates, backdropName, selectedSpriteId) {
+  function handleScratchSpriteState(
+    spriteStates,
+    cloneStates,
+    backdropName,
+    selectedSpriteId,
+    slowMo = null
+  ) {
     if (!identity) return
     const payload = {
       spriteStates,
       cloneStates,
       backdropName,
       selectedSpriteId: selectedSpriteId ?? null,
+      // Slow-mo's glow and step (src/modules/scratch/slowMo/live.js), null when not running.
+      slowMo: slowMo ?? null,
       updatedAt: Date.now(),
     }
+    // A throttled send carries the newest payload, not the first one held back (slow-mo's
+    // glow and the stage it drew arrive within one throttle window).
+    spriteStatePendingPayloadRef.current = payload
     const flush = () => {
+      const latest = spriteStatePendingPayloadRef.current ?? payload
+      spriteStatePendingPayloadRef.current = null
       spriteStateLastSentRef.current = Date.now()
-      if (canPublishTeacherLive()) publishTeacherLive({ spriteState: payload })
+      if (canPublishTeacherLive()) publishTeacherLive({ spriteState: latest })
       if (!teacherPresentation && session?.activeStudentView === identity.anonymousId) {
-        writeStudentSpriteState?.(identity.anonymousId, payload)
+        writeStudentSpriteState?.(identity.anonymousId, latest)
       }
     }
     const elapsed = Date.now() - spriteStateLastSentRef.current
@@ -3081,6 +3107,8 @@ export function useStudentCodeState({
     publishOutputCollapsed,
     // HTML Inspector: liveInspector, publishInspector, recordInspectorUse (useHtmlInspectorLive).
     ...htmlInspector,
+    // Scratch slow-mo: recordSlowMoUse (useSlowMoLog).
+    ...slowMoLog,
     inputPrompt,
     checkPassed,
     checkAttempted,

@@ -55,6 +55,31 @@ Entries written before 2026-09-29 are not tagged.
   completion now warns in `test-checks`) · Resolves:
   authoring-requests/2026-10-14-scratch-test-checks-student-variation-cases-and-support-stag.md
 
+### Scratch slow-mo: block glow, Step and a state timeline
+
+- New optional Scratch task field `slowMo: { enabled: true, speed?, timeline? }` adds four big
+  buttons under the stage: **Slow-mo**, **Pause**, **Step** (one block) and **Restart**, plus a
+  speed slider. It is off unless `enabled: true`. `speed` is the starting blocks per second
+  (default 1; the slider goes 0.25–4). `timeline` lists what each timeline card shows, any of
+  `costume`, `backdrop`, `x`, `y`, `variables` (default: all five; `[]` hides the strip). See
+  [scratch.md](scratch.md#slow-mo).
+- The running block glows in each running script, and the stage redraws after every block, so
+  "two quick switches" visibly shows both costumes. With several scripts, Step lets one block
+  through at a time, the scripts taking turns (round-robin). Under reduced motion the glow is a
+  still outline.
+- The timeline records one labelled card per step. Students swipe through it and tap a card to
+  see the stage at that moment.
+- No new checks. A slow-mo run is a green-flag run, so existing checks (`run_attempted`,
+  after-run checks at the end of the run) and the "still building" rule work as before. You no
+  longer need wait blocks just to show each state.
+- In Go Live, the tutor's controls drive the glow, stage and step the class sees. The session
+  report adds `slowMoUsed`, `slowMoRuns` and `slowMoSteps` per student and `slowMoUsedCount` per
+  task ([session-reports.md](session-reports.md)).
+- Validation: errors for a malformed `slowMo`; warnings for an out-of-range speed, unknown
+  timeline fields or keys, and a missing `enabled` ([validation-errors.md](validation-errors.md)).
+- Affects: scratch, cli · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-14-p6-6-scratch-slow-mo-block-glow-step-and-state-timeline.md
+
 ### HTML Inspector: box model, "Why this …?" and flex/grid overlays
 
 - New optional HTML task field `inspector: { enabled: true, open?, focus?, show? }` adds an
