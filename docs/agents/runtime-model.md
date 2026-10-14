@@ -13,6 +13,7 @@ The live class poll fields (`polls`, `activePollId`, `students.{id}.pollResponse
 The teacher-written `shownResponses` node was added for the 2026-10-02 authoring request "Open short answer: teacher shows chosen answers on the presentation window"; see `shownResponses/{responseId}` below.
 The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLog` node) were added with explicit user approval for the 2026-10-09 authoring request "Side-quests for students who finish a code task while the class waits" (see the Student writes below and "Side-quests" in `docs/agents/classroom-behaviours.md`).
 The side-quest live work field (`students.{id}.sideQuestCode`) was added with explicit user approval (Ryan, 2026-10-14, reversing the 2026-10-09 "status only" call) for the authoring request "Tutor view of side quests"; written on open, on Run, and per keystroke only while `activeStudentView` matches.
+The class roster session fields (`classId`, `classChosenAt`, `rosterMatches`) and the Firestore `classes/{classId}/roster` subcollection (with its `work` and `typing` subcollections) were added with explicit user approval (Ryan, 2026-10-14, "Identity: class roster, matched by the tutor" in `docs/architecture/requests-2026-10-14-plan.md`); see "Class roster" under Classes below.
 The `exampleOpenLog` node was added with explicit user approval ("example opens", 2026-10-14 build plan, `docs/architecture/requests-2026-10-14-plan.md`) for the authoring request "'See example' button in explainers that opens a worked example in a pop-up"; status only, never code (see the Student writes below).
 
 ```json
@@ -45,6 +46,11 @@ The `exampleOpenLog` node was added with explicit user approval ("example opens"
       "videoCallLink": "string | null (http(s) URL only, validated at the write boundary; ephemeral — reset to null on createSession/restartSession/endSession, so the teacher re-enters it each session)",
       "videoCallBroadcastAt": "1234567890 | null (class-wide \"Send to all\" video-call push; reaches name-entry, waiting-room and lesson/sandbox students; reset to null on createSession/endSession)",
       "classCountdown": "{ startedAt, endsAt, durationMs } | null (teacher's class countdown, server-time ms; survives setTaskId; reset to null on createSession/endSession)",
+      "classId": "string | null (a stock lesson's class for this session, picked by the tutor in Match students; absent for \"No class\" or not chosen yet; a class fork uses its own fork.classId instead. Reset on createSession)",
+      "classChosenAt": "number | null (when the tutor picked a class or \"No class\"; absent until they choose. Reset on createSession)",
+      "rosterMatches": {
+        "{anonymousId}": { "rosterId": "string (opaque Firestore id of a classes/{classId}/roster entry; never the name)", "matchedAt": 1234567890, "matchedBy": "teacher uid" }
+      },
       "polls": {
         "{pollId}": { "question": "string (≤200)", "options": ["2-6 strings (≤100 each)"], "status": "open | closed", "showResults": "true (public: live bars on the presentation, students after voting) | false (private)", "createdAt": 1234567890, "closedAt": "number | absent while open" }
       },
@@ -419,6 +425,7 @@ Teacher writes:
 - `lessonOverrideTasks` (session-only task edits from `EditLessonModal`; `pushLessonOverride`/`clearLessonOverride`) — reset to `null` on `createSession`/`endSession`. Task IDs inside it are never renumbered, so they stay valid against `currentTaskId`, carry-through references, and student per-task localStorage keys
 - `fullscreenRequestedAt` (stamped by `requestFullscreenForAll`, reset to `null` on `createSession`/`endSession`) — a class-wide "please go fullscreen" broadcast. The Fullscreen API only fires from a direct user gesture, so this cannot force students into fullscreen; each student client (`StudentView`) shows a centred modal prompt with a "Go Fullscreen" button that calls `document.documentElement.requestFullscreen()` from the student's own click when this timestamp changes. Once `phase` becomes `'ended'`, `StudentView` renders `SessionEndedScreen` instead (the prompt naturally disappears) and calls `document.exitFullscreen()` so a student isn't left stuck in fullscreen
 - `classCountdown` (`startClassCountdown(durationMs)` / `addClassCountdownTime(extraMs)` / `clearClassCountdown()`, from the "⏱ Countdown" popover in `TeacherSessionControls.jsx`, offered while the session is `active` or `sandbox`; reset to `null` on `createSession`/`endSession`) — `{ startedAt, endsAt, durationMs }` in **server time** (`Date.now()` + Firebase `.info/serverTimeOffset`, which `useSession` exposes as `serverTimeOffset`), so every screen counts to the same deadline whatever its clock says. Separate from a task's `estimatedMinutes` timer: not touched by `setTaskId`, so it runs across task changes until the teacher stops it. Adding time to one that already hit zero restarts it from now. `database.rules.json` validates the shape (numeric fields, `durationMs > 0`, `endsAt >= startedAt`, no other children). Students and the presentation window show it in the top bar (`ClassCountdownPill`) and a "Time's up" banner at zero (`useClassCountdown` + `TimesUpBanner`); nothing is locked or paused. See "Class Countdown" in `docs/agents/classroom-behaviours.md`
+- `classId` / `classChosenAt` (`setSessionClass(lessonId, classId | null)` in `src/shared/roster/rosterService.js`, from the Match students panel; changing class also clears `rosterMatches`; reset on `createSession`) and `rosterMatches/{anonymousId}` (`matchStudent` / `unmatchStudent`, `{ rosterId, matchedAt, matchedBy }`) — the class roster; see "Class roster" under Classes. Teacher/admin write only (inherited); `database.rules.json` validates `classId` as a class slug, `classChosenAt` as a number, and each match's shape (no other fields). Kept off `students/{anonymousId}`, which the student can rewrite
 - `nudgeAwayPushedAt` (stamped by `nudgeAwayStudents` from the "🔔 Nudge Away" item in `StudentGrid`'s ⋯ header menu, reset to `null` on `createSession`/`endSession`) — a class-wide nudge. Each student client's `useNudgeAlert` only reacts if its window is unfocused when the new timestamp arrives. The per-student equivalent is `students/{id}/nudgePushedAt` (`nudgeStudent`, from the 🔔 button on an Away `StudentCard` or the StudentModal header), which always alerts that student. Timestamps already present when a student's session first loads are a baseline and never replay. The alert shows an in-page banner and plays a Web Audio chime; if the window is unfocused it also flashes the tab title and favicon until the window regains focus, and shows an OS `Notification` when permission was already granted (students opt in once via `NudgePermissionPrompt`)
 - any student's `displayName`
 - student node removal
@@ -903,6 +910,45 @@ Class forks keep lineage on the lesson document:
 ```
 
 Creating a fork again overwrites the fork lesson document, resets the title from the source lesson and class name, rebuilds exact 1:1 task lineage, and clears the fork lesson's `sessionReports` and `feedback` subcollections. It does not copy stock lesson reports, feedback, or live session data.
+
+### Class roster (`classes/{classId}/roster`)
+
+Approved by Ryan on 2026-10-14 (`docs/architecture/requests-2026-10-14-plan.md`, "Identity"). Each class has a roster of students, first name and initial only. Students still type a name on join and stay anonymous; the tutor matches each joined student to a roster entry **by hand** (no auto-match, no suggestions). Code: `src/shared/roster/` (pure `rosterModel.js` and `rosterWorkChanges.js`, Firebase `rosterService.js`).
+
+```json
+{
+  "classes/{classId}/roster/{rosterId}": {
+    "displayName": "Jamie B. (1-30 characters)",
+    "createdAt": 1234567890,
+    "createdBy": "uid | null"
+  },
+  "classes/{classId}/roster/{rosterId}/work/{sourceLessonId}__{sourceTaskId}": {
+    "kind": "code | files | blocks (the module's capabilities.rosterWork)",
+    "moduleType": "python | turtle | html | scratch",
+    "code": "string (kind code)",
+    "files": "[{ name, content }] (kind files; real file names, an array so no keys hold dots)",
+    "scratchState": "string (kind blocks: the Blockly project as JSON, since it nests arrays)",
+    "chunkCount": "0, or n when the content (JSON of the content field) is in chunks/{0..n-1} { data } instead",
+    "hash": "FNV-1a of the work (unchanged work is not rewritten)",
+    "origin": "run | submission | leave",
+    "sessionLessonId": "the lesson the session ran (a fork's own id)",
+    "taskId": "the session lesson's task id",
+    "sourceLessonId": "fork.sourceLessonId, or the lesson id when not forked",
+    "sourceTaskId": "fork.taskLinks[].sourceTaskId for the task, or its own id",
+    "savedAt": "server timestamp"
+  },
+  "classes/{classId}/roster/{rosterId}/typing/{entryId}": "keyboard results, shape owned by the typing-history package; recordedAt server timestamp"
+}
+```
+
+- **Rules:** not public. Teachers and admins read and write the roster and its `work` (and `work/{id}/chunks`) and `typing` subcollections; nobody else can. Entries hold only `displayName` (string, 1-30), `createdAt` and `createdBy`. The parent `classes/{classId}` record keeps its public-read, admin-write rule.
+- **Managing:** admins add, rename and delete entries in Admin → Classes → Students (`ClassRosterEditor.jsx`); tutors add a "New student" from the Match students panel during a session. Deleting an entry deletes its saved work (with chunks) and typing scores.
+- **Which class:** `resolveSessionClass(lesson, session)` — a class fork's `fork.classId`, else the session's tutor-picked `classId` (stock lessons; "No class" saves nothing).
+- **Matching:** the Match students panel (`MatchStudentsDialog.jsx`, from the Student Grid's ⋯ menu or its "👥 n unmatched" / "👥 Pick class" chip) writes `sessions/{lessonId}/rosterMatches/{anonymousId}`. A card shows a small 👥? marker while the session has a class and that student isn't matched; the StudentModal header shows the matched name. Tutor-only.
+- **Saving (tutor-mediated):** students never write Firestore. The tutor's TeacherView (`useRosterWorkSaver`) saves each matched student's work from data it already receives: their last Run on the class's current task (`currentCode` / `currentFiles` with a new `lastRunAt` and a `lastRunStatus`; not in a session sandbox or personal sandbox) and each new `attemptLog` entry or retry (auto-check-on-leave included), whichever is newer, read through the module's `capabilities.rosterWork` (python, turtle: `code`; html: `files`; scratch: `blocks`). Never per keystroke: a save waits 3 s after the last change, and pending saves are flushed when the class moves task (before `setTaskId`'s wipe is seen) or the tab closes. Work is only saved while a tutor tab is open. Content over 200,000 characters is split into 200,000-character chunks so each document stays well under 1 MiB.
+- **Keys:** a fork's work is saved under the stock lesson's ids (`fork.sourceLessonId`, `fork.taskLinks[].sourceTaskId`; `buildLessonFork` copies tasks 1:1, so task ids match today), so a later lesson's fork finds an earlier fork's work.
+- **Privacy:** roster names stay on the tutor's side. Session reports stay anonymous ("Student N"), RTDB holds only opaque roster ids, and nothing roster-related is written to CLI-readable data.
+- **API for later packages:** `listRoster`, `subscribeRoster`, `matchStudent` / `unmatchStudent`, `getSavedWork(classId, rosterId, sourceLessonId, sourceTaskId)`, `saveRosterWork`, `appendTyping` / `listTyping` (`rosterService.js`), and `resolveSourceIds` / `makeRosterWorkId` (`rosterModel.js`).
 
 ## localStorage Keys
 

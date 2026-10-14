@@ -91,6 +91,50 @@ describe('badge catalogue', () => {
   })
 })
 
+describe('class roster', () => {
+  const entry = { displayName: 'Jamie B.', createdAt: 1, createdBy: 'teacher-1' }
+  const entryPath = 'classes/maple/roster/r1'
+
+  it('is not public: only teachers and admins read or write roster entries', async () => {
+    await assertFails(doc(as.anonymous, entryPath).get())
+    await assertFails(doc(as.student, entryPath).get())
+    await assertFails(doc(as.student, entryPath).set(entry))
+    await assertSucceeds(doc(as.teacher, entryPath).set(entry))
+    await assertSucceeds(doc(as.teacher, entryPath).get())
+    await assertSucceeds(doc(as.admin, entryPath).update({ displayName: 'Jamie Br.' }))
+    await assertSucceeds(as.teacher.firestore().collection('classes/maple/roster').get())
+    await assertFails(as.student.firestore().collection('classes/maple/roster').get())
+    await assertFails(doc(as.student, entryPath).delete())
+    await assertSucceeds(doc(as.admin, entryPath).delete())
+  })
+
+  it('keeps entries to a 1-30 character name and the known fields', async () => {
+    await assertFails(doc(as.teacher, entryPath).set({ ...entry, displayName: '' }))
+    await assertFails(doc(as.teacher, entryPath).set({ ...entry, displayName: 'x'.repeat(31) }))
+    await assertFails(doc(as.teacher, entryPath).set({ ...entry, displayName: 42 }))
+    await assertFails(doc(as.teacher, entryPath).set({ ...entry, surname: 'Brown' }))
+    await assertSucceeds(doc(as.teacher, entryPath).set({ ...entry, displayName: 'x'.repeat(30) }))
+  })
+
+  it.each([
+    `${entryPath}/work/python-l1__1`,
+    `${entryPath}/work/python-l1__1/chunks/0`,
+    `${entryPath}/typing/t1`,
+  ])('%s: teachers and admins only', async (path) => {
+    await assertFails(doc(as.anonymous, path).get())
+    await assertFails(doc(as.student, path).get())
+    await assertFails(doc(as.student, path).set({ kind: 'code', code: 'print(1)' }))
+    await assertSucceeds(doc(as.teacher, path).set({ kind: 'code', code: 'print(1)' }))
+    await assertSucceeds(doc(as.admin, path).get())
+    await assertSucceeds(doc(as.teacher, path).delete())
+  })
+
+  it('leaves the parent class record public-read and admin-write', async () => {
+    await assertSucceeds(doc(as.anonymous, 'classes/maple').get())
+    await assertFails(doc(as.teacher, 'classes/maple').set({ name: 'Maple' }))
+  })
+})
+
 describe('everything else', () => {
   it('denies reads and writes to collections without a rule', async () => {
     await assertFails(doc(as.admin, 'unlisted/doc-1').get())

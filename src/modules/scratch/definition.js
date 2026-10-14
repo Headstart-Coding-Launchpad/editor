@@ -46,6 +46,8 @@ export default defineModule({
     pickerOrder: 4,
   },
   capabilities: {
+    // Saved to a matched student's class roster on Run / submission (src/shared/roster/).
+    rosterWork: 'blocks',
     // A classmate can help, attaching feedback to scripts (src/shared/peerHelp.js).
     peerHelp: { anchors: 'scripts', hints: 'blocks' },
     stageReveal: 'offer',

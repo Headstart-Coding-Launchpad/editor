@@ -75,6 +75,20 @@ import { firstViewKey } from '../../shared/motion'
 import { usePeerHelp } from '../hooks/usePeerHelp'
 import TeacherPeerHelpMenu from '../components/peerHelp/TeacherPeerHelpMenu'
 import TeacherPeerHelpAlertBanner from '../components/peerHelp/TeacherPeerHelpAlertBanner'
+import MatchStudentsDialog from '../components/roster/MatchStudentsDialog'
+import { useClassList, useClassRoster } from '../hooks/useClassRoster'
+import { useRosterWorkSaver } from '../hooks/useRosterWorkSaver'
+import {
+  activeRosterMatches,
+  resolveSessionClass,
+  summariseRosterStatus,
+} from '../../shared/roster/rosterModel'
+import {
+  addRosterEntry,
+  matchStudent,
+  setSessionClass,
+  unmatchStudent,
+} from '../../shared/roster/rosterService'
 
 function canRecordAdvanceOverride(task) {
   if (!task || task.taskType === 'information') return false
@@ -203,6 +217,28 @@ export default function TeacherView({ lessonId }) {
   // The Admin badge catalogue (manual-only badges), read once: the picker, cards, Badge Summary
   // wall and report resolve catalogue badge ids through it.
   const catalogueBadges = useBadgeCatalogue(!!user)
+  // Class roster (Ryan, 2026-10-14): the session's class (a fork's own class, else the tutor's
+  // pick for this session), its roster, the tutor's hand-made matches, and the tutor-side saver
+  // that keeps each matched student's last Run / submission on their roster entry.
+  const sessionClass = useMemo(
+    () => resolveSessionClass(lesson, session),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lesson?.fork?.classId, session?.classId, session?.classChosenAt]
+  )
+  const { roster, loading: rosterLoading } = useClassRoster(sessionClass.classId)
+  const classList = useClassList(!!lesson && sessionClass.source !== 'fork')
+  const rosterMatches = useMemo(
+    () => activeRosterMatches(session?.rosterMatches, roster),
+    [session?.rosterMatches, roster]
+  )
+  useRosterWorkSaver({
+    session,
+    lesson,
+    lessonId,
+    classId: sessionClass.classId,
+    matches: rosterMatches,
+  })
+  const [showMatchDialog, setShowMatchDialog] = useState(false)
   // The Badge Summary task's class wall, on the teacher's screen.
   const teacherBadgeWall = useMemo(
     () => ({
@@ -638,6 +674,20 @@ export default function TeacherView({ lessonId }) {
     () => listJoiningStudents(session?.joiningStudents),
     [session?.joiningStudents]
   )
+  // Tutor-only: each matched student's roster name, and who still needs matching.
+  const rosterStatus = {
+    ...summariseRosterStatus({
+      students,
+      matches: session?.rosterMatches,
+      roster,
+      classId: sessionClass.classId,
+    }),
+    needsClass: sessionClass.source === 'unset',
+  }
+  const sessionClassName =
+    sessionClass.source === 'fork'
+      ? (lesson?.fork?.className ?? sessionClass.classId)
+      : (classList.find((cls) => cls.id === sessionClass.classId)?.name ?? sessionClass.classId)
   const isPreviewing = previewTaskId !== null && !isInSandbox
 
   async function handleSendStageToAll(action) {
@@ -999,9 +1049,30 @@ export default function TeacherView({ lessonId }) {
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed((v) => !v)}
             openSideQuestRequest={openSideQuestRequest}
+            rosterStatus={rosterStatus}
+            onOpenRoster={() => setShowMatchDialog(true)}
           />
         </aside>
       </div>
+
+      {showMatchDialog && (
+        <MatchStudentsDialog
+          onClose={() => setShowMatchDialog(false)}
+          classInfo={sessionClass}
+          classes={classList}
+          className={sessionClassName}
+          roster={roster}
+          rosterLoading={rosterLoading}
+          students={students}
+          matches={rosterMatches}
+          onPickClass={(classId) => setSessionClass(lessonId, classId)}
+          onMatch={(anonymousId, rosterId) =>
+            matchStudent(lessonId, anonymousId, rosterId, user?.uid ?? null)
+          }
+          onUnmatch={(anonymousId) => unmatchStudent(lessonId, anonymousId)}
+          onAddStudent={(name) => addRosterEntry(sessionClass.classId, name, user?.uid ?? null)}
+        />
+      )}
 
       {showEndModal && (
         <TeacherEndSessionModal

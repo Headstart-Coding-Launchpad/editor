@@ -101,6 +101,12 @@ export const STUDENT_MIRROR_KINDS = Object.freeze(['code', 'files', 'blocks', 'v
 // "HTML project" / "No run yet" line): the first lines of console output ('output'), whether
 // blocks were edited ('blocks') or whether the file tree changed ('fs').
 export const CARD_SUMMARY_KINDS = Object.freeze(['output', 'blocks', 'fs', null])
+// What the tutor's client saves to a matched student's class roster after a Run or submission
+// (optional; null = nothing saved; src/shared/roster/rosterWork.js):
+// - 'code'   the `currentCode` string / a code-string submission (python, turtle)
+// - 'files'  the `currentFiles` map / a files-map submission (html; the 'files' wire channel)
+// - 'blocks' the Blockly project, parsed from `currentCode` with `wire.fromCode` (scratch)
+export const ROSTER_WORK_KINDS = Object.freeze(['code', 'files', 'blocks', null])
 // `capabilities.peerHelp` (optional; null = students keep the plain ✋ Help): how a classmate can
 // help with this module's work (src/shared/peerHelp.js). `anchors` is what feedback attaches to:
 // 'lines' (lines of code; suggested edits allowed) or 'scripts' (Scratch scripts; no edits).
@@ -421,6 +427,12 @@ function validateUiGates(type, def, workSlot) {
   }
   if (!CARD_SUMMARY_KINDS.includes(caps.cardSummary ?? null)) {
     fail(type, `"capabilities.cardSummary" must be one of: ${CARD_SUMMARY_KINDS.join(', ')}`)
+  }
+  if (!ROSTER_WORK_KINDS.includes(caps.rosterWork ?? null)) {
+    fail(type, `"capabilities.rosterWork" must be one of: ${ROSTER_WORK_KINDS.join(', ')}`)
+  }
+  if ((caps.rosterWork === 'files') !== filesChannel && caps.rosterWork != null) {
+    fail(type, '"capabilities.rosterWork" is "files" exactly when "wire.sandboxChannel" is')
   }
   if (caps.lineHints != null && !isLineHintSyntax(caps.lineHints)) {
     fail(type, `"capabilities.lineHints" must be one of: ${LINE_HINT_SYNTAXES.join(', ')}, or null`)
@@ -785,6 +797,7 @@ export function defineModule(def) {
       ...def.capabilities,
       run: runKind,
       cardSummary: def.capabilities.cardSummary ?? null,
+      rosterWork: def.capabilities.rosterWork ?? null,
       focusPanes,
       highlightTargets,
       teacherEditor,

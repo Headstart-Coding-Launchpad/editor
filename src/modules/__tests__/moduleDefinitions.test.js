@@ -281,6 +281,19 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
     })
   })
 
+  it('rosterWork (what a matched student saves to the class roster)', () => {
+    expect(pick('rosterWork')).toEqual({
+      python: 'code',
+      arcade: null,
+      turtle: 'code',
+      scratch: 'blocks',
+      html: 'files',
+      filesystem: null,
+      desktop: null,
+      electronics: null,
+    })
+  })
+
   it('remote run is offered exactly for the modules with a Run', () => {
     expect(TYPES.filter((type) => pick('run')[type] !== 'none')).toEqual([
       'python',
@@ -402,6 +415,8 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
       [{ capabilities: { highlights: undefined } }, /capabilities\.highlights/],
       [{ capabilities: { fixedExplainer: true } }, /fixedExplainer/],
       [{ capabilities: { cardSummary: 'console' } }, /capabilities\.cardSummary/],
+      [{ capabilities: { rosterWork: 'pixels' } }, /capabilities\.rosterWork/],
+      [{ capabilities: { rosterWork: 'files' } }, /rosterWork.*wire\.sandboxChannel/],
       [{ capabilities: { focusPanes: [{ id: 'instructions', label: 'Info' }] } }, /focusPanes/],
       [{ capabilities: { focusPanes: [{ id: 'code' }] } }, /focusPanes/],
       [{ capabilities: { highlightTargets: [{ id: 'run' }] } }, /highlightTargets/],
