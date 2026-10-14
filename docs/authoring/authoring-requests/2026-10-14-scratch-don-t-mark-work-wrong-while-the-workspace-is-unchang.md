@@ -1,6 +1,6 @@
 # Scratch: don't mark work wrong while the workspace is unchanged or has loose blocks
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** bug
 - **Requested by:** Ryan (approved by Ryan), 2026-10-14
 - **Lessons blocked:** none yet
@@ -27,4 +27,4 @@ Ryan chose this behaviour 2026-10-13 in a tutor-feedback interview (over 'judge 
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped on `fix/scratch-eager-checks-library-backdrop` (package W1-b, 2026-10-14). New pure helper `src/modules/scratch/stillBuilding.js` (`isScratchStillBuilding`; it works on stored workspace JSON so the CLI can reuse it). `ScratchWorkspace.jsx` saves the checkable workspaces as the task opened (after carry). While the blocks are unchanged (ids and positions ignored) or a non-hat block is loose, it holds back `after_block_placed` failures (no fail, no hint, no attempt logged) and `on_idle` feedback. Passes always count. Docs: [scratch.md](../scratch.md#scratch-check-types), "Still building"; CHANGELOG 2026-10-14.

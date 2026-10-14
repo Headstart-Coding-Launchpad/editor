@@ -62,6 +62,25 @@ Entries written before 2026-09-29 are not tagged.
 - Affects: all · Existing lessons: no changes needed · Resolves:
   authoring-requests/2026-10-14-taskactivity-patterns-which-construct-fits-and-quiz-poll.md
 
+### Scratch: no fail while still building; starting backdrop; sprite library fits the screen
+
+- **Still building.** A failing `after_block_placed` check no longer shows a fail or hint, or logs
+  an attempt, while the blocks are unchanged since the task opened (starter or carried blocks,
+  ignoring block ids and positions) or while a non-hat block sits loose on the canvas. `on_idle`
+  feedback is held back the same way. Passes are never held back. Run and Check are unchanged. See
+  [scratch.md](scratch.md#scratch-check-types) ("Still building").
+- **`backdrops[].current: true`** sets the backdrop the Stage starts on (and returns to on Reset
+  Stage). Without it the first backdrop is used, as before. Validation warns when more than one
+  backdrop is `current` and errors when it isn't a boolean. The Builder's backdrop list has a
+  **Start** choice. See [scratch.md](scratch.md#backdrop-object).
+- **Sprite and backdrop library pickers** now open over the page, sized to the screen, so every
+  item can be reached on small laptops, tablets and zoomed browsers. Nothing to author.
+- Affects: scratch · Existing lessons: no changes needed; a lesson that reordered `backdrops` to
+  get the right starting scene can restore its order and mark the scene `current: true` ·
+  Resolves: authoring-requests/2026-10-14-scratch-don-t-mark-work-wrong-while-the-workspace-is-unchang.md,
+  authoring-requests/2026-10-14-scratch-sprite-library-student-can-t-scroll-to-the-bottom-in.md,
+  authoring-requests/2026-10-14-scratch-task-choose-which-backdrop-the-stage-starts-on.md
+
 ## 2026-10-09
 
 ### Confidence checks are 1–10; tutors see unsubmitted short answers

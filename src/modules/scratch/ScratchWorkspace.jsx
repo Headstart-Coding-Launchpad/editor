@@ -62,6 +62,9 @@ import {
   uniqueItemName,
 } from './scratchSounds.js'
 import { CostumesTab, SoundsTab } from './CostumesSoundsPanel.jsx'
+import AddPickerPopover from './AddPickerPopover.jsx'
+import { getStartingBackdrop, getStartingBackdropName } from './startingBackdrop.js'
+import { isScratchStillBuilding } from './stillBuilding.js'
 
 const STAGE_W = 480
 const STAGE_H = 360
@@ -988,6 +991,10 @@ export default function ScratchWorkspace({
   const idleFeedbackTimerRef = useRef(null)
   const evaluateBlockPlacedChecksRef = useRef(null)
   const evaluateIdleFeedbackRef = useRef(null)
+  // The checkable workspaces as the task opened (starter or carried blocks), for the "still
+  // building" rule (stillBuilding.js). Captured once the workspaces load; the component
+  // remounts per task.
+  const openedStatesRef = useRef(null)
   const lastEmittedStateRef = useRef(null)
   const statusRef = useRef('loading')
   const runningRef = useRef(false)
@@ -1006,7 +1013,7 @@ export default function ScratchWorkspace({
   const dragStartRef = useRef(null)
   const dragMovedRef = useRef(false)
   const draggingSpriteIdRef = useRef(null)
-  const backdropNameRef = useRef(backdrops[0]?.name ?? null)
+  const backdropNameRef = useRef(getStartingBackdropName(backdrops))
   const lastCursorSentRef = useRef(0)
   const cursorDotElRef = useRef(null)
   const cursorHaloElRef = useRef(null)
@@ -1088,7 +1095,7 @@ export default function ScratchWorkspace({
   const [stagePanelCollapsed, setStagePanelCollapsed] = useState(false)
   const [compact, setCompact] = useState(forceCompact)
   const [activePane, setActivePane] = useState(() => loadLayoutTab(activePaneSurface) || 'blocks')
-  const [backdropName, setBackdropName] = useState(backdrops[0]?.name ?? null)
+  const [backdropName, setBackdropName] = useState(() => getStartingBackdropName(backdrops))
   const [imageVersion, setImageVersion] = useState(0)
   const [cursorStale, setCursorStale] = useState(false)
   const canvasRef = useRef(null)
@@ -1273,7 +1280,8 @@ export default function ScratchWorkspace({
 
       const currentName = backdropNameRef.current
       const backdrop =
-        (currentName ? backdrops.find((b) => b.name === currentName) : null) ?? backdrops[0]
+        (currentName ? backdrops.find((b) => b.name === currentName) : null) ??
+        getStartingBackdrop(backdrops)
 
       if (backdrop?.image) {
         const url = resolveAssetFileUrl(assetsPath, backdrop.image)
@@ -1876,6 +1884,10 @@ export default function ScratchWorkspace({
         if (task?.enableStageCode)
           injectWorkspaceFor(Blockly, '__stage__', normInitStates?.['__stage__'])
 
+        openedStatesRef.current = saveCheckableWorkspaceStates(
+          filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
+        )
+
         if (!cancelled) setStatus('ready')
 
         // Publish the freshly-loaded state right away, rather than waiting for the
@@ -2338,6 +2350,23 @@ export default function ScratchWorkspace({
     lastCheckSuggestionRef.current = ''
   }
 
+  // Each checkable workspace saved as JSON, keyed by sprite id (stillBuilding.js's input).
+  function saveCheckableWorkspaceStates(sws) {
+    if (!BlocklyRef.current) return null
+    try {
+      return Object.fromEntries(
+        sws.map((sp) => [sp.id, saveWorkspace(BlocklyRef.current, sp.workspace)])
+      )
+    } catch {
+      return null
+    }
+  }
+
+  function isStillBuilding(sws) {
+    const current = saveCheckableWorkspaceStates(sws)
+    return !!current && isScratchStillBuilding(current, openedStatesRef.current)
+  }
+
   // Evaluates all after_block_placed checks and updates feedback.
   // Called on every debounced workspace change when after_block_placed checks are present.
   function evaluateBlockPlacedChecks() {
@@ -2363,6 +2392,12 @@ export default function ScratchWorkspace({
       )
       notifyCheck(evaluation.passed, false, { suggestion: evaluation.suggestion })
     } else if (results.some((r) => r === 'fail')) {
+      // Still building (unchanged since the task opened, or a loose block): no fail, no hint,
+      // no attempt logged. Passes above are never held back.
+      if (isStillBuilding(sws)) {
+        clearCheckFeedback()
+        return
+      }
       const evaluation = evaluateCheckWithCustomFeedback(
         task,
         false,
@@ -2394,6 +2429,7 @@ export default function ScratchWorkspace({
       idleChecks.every((c) =>
         evalSingleCheck(c, sws, signalRef.current, preRunSpriteStatesRef.current)
       )
+    if (!completionPassed && isStillBuilding(sws)) return
     const evaluation = evaluateCheckWithCustomFeedback(
       task,
       completionPassed,
@@ -2535,7 +2571,7 @@ export default function ScratchWorkspace({
     askResolveRef.current = null
     const reset = initSpriteStates(sprites)
     commitSpriteStates(reset)
-    const defaultBackdrop = backdrops[0]?.name ?? null
+    const defaultBackdrop = getStartingBackdropName(backdrops)
     backdropNameRef.current = defaultBackdrop
     setBackdropName(defaultBackdrop)
     variableRuntimeRef.current = {}
@@ -2842,26 +2878,8 @@ export default function ScratchWorkspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readOnly])
 
-  // Close the sprite/backdrop add pickers on an outside click.
-  useEffect(() => {
-    if (!spritePickerOpen && !backdropPickerOpen) return
-    function onPointerDown(e) {
-      if (
-        spritePickerOpen &&
-        spriteAddWrapRef.current &&
-        !spriteAddWrapRef.current.contains(e.target)
-      )
-        setSpritePickerOpen(false)
-      if (
-        backdropPickerOpen &&
-        backdropAddWrapRef.current &&
-        !backdropAddWrapRef.current.contains(e.target)
-      )
-        setBackdropPickerOpen(false)
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [spritePickerOpen, backdropPickerOpen])
+  // The sprite/backdrop add pickers close on an outside click or Escape inside
+  // AddPickerPopover (they're portalled, so a containment check here would miss them).
 
   const showManualCheck = scratchChecks.some((c) => c.evaluation === 'manual')
 
@@ -3119,7 +3137,12 @@ export default function ScratchWorkspace({
               <span style={s.spriteTileName}>Add</span>
             </button>
             {spritePickerOpen && (
-              <div style={s.addPickerPanel} role="listbox" aria-label="Choose a sprite to add">
+              <AddPickerPopover
+                anchorRef={spriteAddWrapRef}
+                onClose={() => setSpritePickerOpen(false)}
+                style={s.addPickerPanel}
+                ariaLabel="Choose a sprite to add"
+              >
                 {spriteLibraryOptions.length === 0 && (
                   <p style={s.addPickerEmpty}>No sprites available</p>
                 )}
@@ -3148,7 +3171,7 @@ export default function ScratchWorkspace({
                     <span style={s.addPickerName}>{preset.name}</span>
                   </button>
                 ))}
-              </div>
+              </AddPickerPopover>
             )}
           </div>
         )}
@@ -3536,10 +3559,11 @@ export default function ScratchWorkspace({
                   + Backdrop
                 </button>
                 {backdropPickerOpen && (
-                  <div
+                  <AddPickerPopover
+                    anchorRef={backdropAddWrapRef}
+                    onClose={() => setBackdropPickerOpen(false)}
                     style={s.addPickerPanel}
-                    role="listbox"
-                    aria-label="Choose a backdrop to add"
+                    ariaLabel="Choose a backdrop to add"
                   >
                     {backdropLibraryOptions.length === 0 && (
                       <p style={s.addPickerEmpty}>No backdrops available</p>
@@ -3573,7 +3597,7 @@ export default function ScratchWorkspace({
                         <span style={s.addPickerName}>{preset.name}</span>
                       </button>
                     ))}
-                  </div>
+                  </AddPickerPopover>
                 )}
               </div>
             )}
@@ -3882,18 +3906,12 @@ const s = {
   spriteAddIcon: { fontSize: '1.5rem', lineHeight: 1, fontWeight: 500 },
   // ── Student "Add sprite"/"Add backdrop" pickers ──────────────────────────────
   addPickerWrap: { position: 'relative' },
+  // Position, size and scrolling come from AddPickerPopover (portalled, viewport-clamped).
   addPickerPanel: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    marginTop: 4,
-    zIndex: 20,
     display: 'flex',
     flexWrap: 'wrap',
+    alignContent: 'flex-start',
     gap: 6,
-    width: 220,
-    maxHeight: 220,
-    overflowY: 'auto',
     padding: 8,
     background: '#fff',
     border: '1px solid var(--ui-border-neutral-strong)',
