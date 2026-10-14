@@ -45,6 +45,8 @@ vi.mock('../../../modules/python/pyodide', () => {
     stopPython: (...args) => mocks.stopPython(...args),
     provideInput: vi.fn(),
     updateGpioInputs: vi.fn(),
+    getStopCount: () => 0,
+    isPythonRunning: () => false,
   }
 })
 

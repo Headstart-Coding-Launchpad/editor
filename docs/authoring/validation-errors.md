@@ -398,7 +398,7 @@ Python and Turtle tasks; see [python.md](python.md#name-tag-panel-showvariables)
 | Message | Meaning | Fix |
 |---|---|---|
 | `Task … has showVariables, but the name-tag panel only works in Python and Turtle tasks — it is ignored` (warning) | `showVariables` is on another module's task. | Remove it, or move the task to Python or Turtle. |
-| `Task … has a showVariables that is not an object — use { mode, at,Write it as a map: `stageTarget: { code: … }`.| `showVariables` is a string, list or `true`. | Write it as a map, e.g. `showVariables: { mode: view }`. |
+| `Task … has a showVariables that is not an object — use { mode, at, … }` | `showVariables` is a string, list or `true`. | Write it as a map, e.g. `showVariables: { mode: view }`. |
 | `Task … has showVariables mode "…" — use one of: …` | Unknown `mode`. | Use `view`, `predict` or `target`. |
 | `Task … has showVariables at "…" — use one of: …` | Unknown `at`. | Use `end` or `marker`. |
 | `Task … has showVariables … that is not a list of variable names` | `hide` or `predict` isn't a list. | Write `[score, lives]`. |
@@ -444,7 +444,7 @@ Python tasks; see [python.md](python.md#stage-drawing-beside-the-console).
 | `Task … has a stageTarget ghost that is not true or false` | `ghost` is text or a number. | Use `ghost: true` or `ghost: false`. |
 | `Task … has stageTarget fields it does not use (…) — they are ignored` (warning) | `stageTarget` has keys other than `code` and `ghost`. | Remove them. |
 | `Task … has a … …, but stage checks only work in Python tasks` | A `stage_*` check is on another module's task. | Move it to a Python task. |
-| `Task … has a stage_matches_target … but no stageTarget code to compare with` | The check compares with the target, and there is none. | Add `stageTarget: { code:Write it as a map: `stageTarget: { code: … }`. or use another stage check. |
+| `Task … has a stage_matches_target … but no stageTarget code to compare with` | The check compares with the target, and there is none. | Add `stageTarget: { code: … }`, or use another stage check. |
 | `Task … has a stage_matches_target … with tolerance "…" — use a fraction from 0 to 1, e.g. 0.02` | `tolerance` isn't a number from 0 to 1 (it is a fraction, not a percentage). | Write e.g. `tolerance: 0.02` for 2%. |
 | `Task … has a stage_shape_count … with kind "…" — use one of: any, …` | Unknown `kind`. | Use `any`, `rect`, `circle`, `line`, `text`, `stamp` or `grid`. |
 | `Task … has a stage_shape_count … whose min or max is not a whole number of 0 or more` | `min` / `max` is negative, a fraction or text. | Use whole numbers like `min: 1`. |

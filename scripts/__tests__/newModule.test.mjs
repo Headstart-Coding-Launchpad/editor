@@ -104,7 +104,8 @@ describe('arguments', () => {
   })
 })
 
-describe('planNewModule', () => {
+// These copy a slice of the repo and spawn Node, which can pass 5s when the full suite loads the CPU.
+describe('planNewModule', { timeout: 30000 }, () => {
   it('plans the folder, registrations, tests and docs without writing anything', async () => {
     const plan = await planNewModule({
       root: REPO_ROOT,

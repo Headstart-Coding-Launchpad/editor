@@ -51,6 +51,8 @@ vi.mock('../../../modules/python/pyodide', () => ({
   stopPython: vi.fn(),
   provideInput: vi.fn(),
   isPyodideReady: () => true,
+  getStopCount: () => 0,
+  isPythonRunning: () => false,
 }))
 
 vi.mock('../../../modules/html/iframe', () => ({

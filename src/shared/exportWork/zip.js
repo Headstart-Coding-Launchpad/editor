@@ -8,7 +8,11 @@ export function toBytes(data) {
   if (data instanceof Uint8Array) return data
   if (data instanceof ArrayBuffer) return new Uint8Array(data)
   if (ArrayBuffer.isView(data)) return new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
-  return new TextEncoder().encode(String(data ?? ''))
+  // TextEncoder can hand back another realm's Uint8Array (jsdom; a frame's encoder), which fflate
+  // would take for a folder, so re-view its bytes as this realm's Uint8Array.
+  const encoded = new TextEncoder().encode(String(data ?? ''))
+  if (encoded instanceof Uint8Array) return encoded
+  return new Uint8Array(encoded.buffer, encoded.byteOffset, encoded.byteLength)
 }
 
 /**

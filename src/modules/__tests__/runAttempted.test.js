@@ -175,7 +175,7 @@ describe('run_attempted — Scratch (green flag only)', () => {
     const source = readRepoFile('src/modules/scratch/ScratchWorkspace.jsx')
     const assignments = [...source.matchAll(/greenFlagPressedRef\.current = true/g)]
     expect(assignments).toHaveLength(1)
-    const handleRunStart = source.indexOf('async function handleRun()')
+    const handleRunStart = source.indexOf('async function handleRun(')
     const runClickedStart = source.indexOf('async function runClickedBlock(')
     expect(handleRunStart).toBeGreaterThan(-1)
     expect(assignments[0].index).toBeGreaterThan(handleRunStart)
