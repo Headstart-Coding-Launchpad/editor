@@ -90,6 +90,14 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … side-quest … has unknown fields (…); they are ignored` (warning) | A side-quest has keys other than `title`, `kind`, `explainer`, `starter`. | Remove them; side-quests have no checks. |
 | `Task … sideQuests are not supported on … tasks yet (only python, turtle, html); they are ignored` (warning) | Side-quests only run in Python, Turtle and HTML so far (Scratch later). | Remove them, or move the task to a supported module. |
 | `Task … sideQuests only work on code tasks; they are ignored here` (warning) | `sideQuests` on a quiz, information, activity or Code Arrange task. | Remove them. |
+| `Task … inspector must be an object like { enabled: true, show: [box, cascade] }` | `inspector` isn't a mapping. | Write `inspector:` with `enabled: true` under it ([html.md](html.md#html-inspector)). |
+| `Task … inspector.… must be true or false` | `inspector.enabled` or `inspector.open` isn't a boolean. | Use `true` or `false`. |
+| `Task … inspector.focus must be a CSS selector of … characters or fewer` | `focus` is empty, not text, or over 200 characters. | Use a short selector such as `".card p"`, or remove it. |
+| `Task … inspector.show must be a list of: …` | `show` isn't a list, or names an unknown section. | Use any of `box`, `cascade`, `layout`, or remove it to show all three. |
+| `Task … inspector has unknown fields (…); they are ignored` (warning) | `inspector` has keys other than `enabled`, `open`, `focus`, `show`. | Remove them. |
+| `Task … inspector is not enabled (enabled: true), so students won't see it` (warning) | `inspector` is set without `enabled: true`. | Add `enabled: true`, or remove `inspector`. |
+| `Task … inspector needs the preview, which submit-mode tasks don't show` (warning) | The task is `interactionMode: submit`, which has no preview to inspect. | Use run mode, or remove `inspector`. |
+| `Task … inspector only works on html tasks; it is ignored here` (warning) | `inspector` on a non-HTML task (or a quiz, information or activity task). | Remove it, or move it to an HTML code task. |
 | `Task … stage … role must be one of: …` | A `codeStages` entry has an unknown `role`. | Use `starter`, `support` or `complete`. |
 | `Task … stage … is missing a label` | A code stage has no `label`. | Add `label:` to the stage. |
 | `Task ID … is used by … and … - renumber task IDs before publishing` (warning, **Builder only**) | Two tasks share an `id`. | Renumber the task ids. |

@@ -1,6 +1,6 @@
 # HTML Inspector: box model, "why this colour?" and flex/grid overlays
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, sent straight to LaunchPad Dev at Ryan's request, bypassing pipeline-ui), 2026-10-14
 - **Lessons blocked:** none yet. This is build 5 of 6 in Lesson Gen's P6 Visual learning plan.
@@ -70,3 +70,30 @@ The pathway itself says Level 3 "leans more heavily on live preview as a debuggi
 
 ## Resolution
 
+Shipped 2026-10-14 on `feature/html-inspector`. HTML tasks take `inspector: { enabled: true, open?,
+focus?, show?: [box, cascade, layout] }` (off unless `enabled: true`; see
+[html.md](../html.md#html-inspector)).
+
+- **Inspect mode:** an Inspect toggle on the preview. Hover (tap on touch) outlines the element
+  with labelled, Okabe–Ito coloured margin/border/padding/content bands and px sizes; click or tap
+  chooses it. Parent / First child / Previous / Next buttons (44 px) choose by keyboard or touch.
+  Drawn by the classroom over the iframe: nothing is added to the student's page, so `html_*`
+  checks and the page are untouched, and the preview still re-renders only on Run (the choice is
+  found again after each Run).
+- **Panel:** side panel, or a bottom sheet on narrow previews (slide-up skipped with reduced
+  motion), a labelled region a screen reader can read. Tag, id and classes; **Box** (nested boxes
+  with sizes); **Why this …?** for a chosen property (colour, background, text size, font, margin,
+  padding, border, width, height, display, position, flex and grid properties): every matching
+  rule and the style attribute, strongest first, the winner highlighted, losers struck through
+  with "less specific", "earlier in the file" / "loaded earlier", "overridden by !important" or
+  "beaten by the style=… on the tag"; specificity numbers second. Inherited properties say
+  "inherited from `div.card`"; nothing set reads as the browser's default; cross-origin
+  stylesheets are skipped with a note. **Layout:** flex main/cross axis arrows and gaps; grid
+  lines (numbered) and gaps.
+- **Teacher:** Go Live syncs the tutor's inspect mode, chosen element and property to students
+  (`teacherLive.inspector`, explicit null when cleared). The tutor can inspect a student's page in
+  the StudentModal preview.
+- **Report:** per-student `inspector: { used, opens, selects }` per task and the summary's
+  `inspectorUsedCount` (new RTDB `students/{id}/inspectorLog/{taskId}`; rules deploy needed).
+- Builder: Task options → HTML Inspector; the Builder preview has the Inspector too. Validation
+  and `lessons capabilities` (taskFields) cover the field.

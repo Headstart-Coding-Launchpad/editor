@@ -16,6 +16,7 @@ Field reference for `html` module code tasks in a `composed` lesson. Set `module
 | `completeEntryFile` | No | string | Entry file for `completeFiles`. |
 | `carryCodeFrom` | No | integer or null | Task ID to carry saved files from (matched by filename). |
 | `interactionMode` | No | string | `run` (default) or `submit`. |
+| `inspector` | No | object | The HTML Inspector on the preview: `{ enabled: true, open?, focus?, show? }` (`show`: any of `box`, `cascade`, `layout`). Off unless `enabled: true`. See [html.md](html.md#html-inspector). |
 
 **File object:** `{ name: string, type: "html"|"css"|"javascript", content: string }`.
 

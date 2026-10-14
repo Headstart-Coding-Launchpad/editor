@@ -219,16 +219,18 @@ describe('wire codec', () => {
   const liveInput = {
     arcadeDesign: design,
     turtleResult: { commands: [{ type: 'line', x1: 0.123, y1: 0, x2: 10.07, y2: 0 }] },
+    inspector: { on: true, selector: 'body > p:nth-of-type(1)', property: 'color' },
   }
 
   for (const type of MODULE_TYPES) {
-    it(`${type}: liveExtras always names both extras`, () => {
+    it(`${type}: liveExtras always names every extra`, () => {
       const extras = def(type).wire.liveExtras(liveInput)
       expect(Object.keys(extras).sort()).toEqual(Object.keys(NO_LIVE_EXTRAS).sort())
       expect(extras.arcadeDesign).toBe(type === 'arcade' ? design : null)
       expect(extras.turtleResult).toEqual(
         type === 'turtle' ? compactTurtleResultForSync(liveInput.turtleResult) : null
       )
+      expect(extras.inspector).toEqual(type === 'html' ? liveInput.inspector : null)
     })
   }
 

@@ -175,6 +175,7 @@ export default defineModule({
     liveExtras: ({ turtleResult } = {}) => ({
       arcadeDesign: null,
       turtleResult: compactTurtleResultForSync(turtleResult),
+      inspector: null,
     }),
   }),
   // Generic work slot (useStudentCodeState): the code string, checked when it runs.

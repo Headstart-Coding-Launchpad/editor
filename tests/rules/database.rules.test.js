@@ -165,6 +165,32 @@ describe('side-quests', () => {
   })
 })
 
+describe('HTML Inspector use', () => {
+  const logPath = (id) => `sessions/${LESSON}/students/${id}/inspectorLog/t2`
+
+  it('lets a student record their own Inspector use, and nobody else', async () => {
+    const entry = { opens: 1, selects: 3, lastAt: 1 }
+    await assertSucceeds(ref(as.student, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.student, `${logPath(STUDENT_ID)}/selects`).set(4))
+    await assertFails(ref(as.otherStudent, logPath(STUDENT_ID)).set(entry))
+    await assertFails(ref(as.anonymous, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.teacher, logPath(STUDENT_ID)).set(null))
+  })
+
+  it('refuses negative counts, bad values and page content', async () => {
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ opens: -1 }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ selects: 'many' }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ html: '<p>hi</p>' }))
+  })
+
+  it('lets only teachers write the Go Live inspector state', async () => {
+    const path = `sessions/${LESSON}/teacherLive/inspector`
+    const state = { on: true, selector: 'body > p:nth-of-type(1)', property: 'color' }
+    await assertSucceeds(ref(as.teacher, path).set(state))
+    await assertFails(ref(as.student, path).set(state))
+  })
+})
+
 describe('shared workspaces', () => {
   it('only lets teachers approve shares, and requires sharerId and sharedAt', async () => {
     const path = `sessions/${LESSON}/sharedWorkspaces/share-1`

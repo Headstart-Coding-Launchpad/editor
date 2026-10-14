@@ -58,6 +58,7 @@ import { useSandboxCodePush } from './useSandboxCodePush'
 import { useStudentPresenceReporting } from './useStudentPresenceReporting'
 import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
+import { useHtmlInspectorLive } from './useHtmlInspectorLive'
 import { useActivityState } from './useActivityState'
 import {
   getModuleHostedActivity,
@@ -739,6 +740,8 @@ export function useStudentCodeState({
     sandboxModuleId,
   })
 
+  // The HTML Inspector's Go Live state (useHtmlInspectorLive), read by the html wire's liveExtras.
+  const inspectorRef = useRef(null)
   const {
     teacherLiveIframeSrc,
     htmlPreviewCollapsed,
@@ -755,6 +758,7 @@ export function useStudentCodeState({
     currentTaskIdRef,
     codeRef,
     turtleResultRef,
+    inspectorRef,
     filesRef,
     activeFileRef,
     outputRef,
@@ -781,6 +785,18 @@ export function useStudentCodeState({
     extraPayloadRef: activityLivePayloadRef,
     updateTeacherLive,
     setTeacherLiveReference,
+  })
+  const htmlInspector = useHtmlInspectorLive({
+    lessonId,
+    session,
+    phase,
+    teacherPresentation,
+    previewMode,
+    effectiveIdentity,
+    currentTaskId,
+    inPersonalSandboxRef,
+    inspectorRef,
+    canPublishTeacherLive,
   })
 
   // Hosted activity tasks (taskType 'activity' and legacy quizzes): state, persistence, live
@@ -3035,6 +3051,8 @@ export function useStudentCodeState({
     htmlPreviewCollapsed,
     setHtmlPreviewCollapsed,
     publishOutputCollapsed,
+    // HTML Inspector: liveInspector, publishInspector, recordInspectorUse (useHtmlInspectorLive).
+    ...htmlInspector,
     inputPrompt,
     checkPassed,
     checkAttempted,

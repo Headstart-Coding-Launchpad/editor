@@ -24,8 +24,12 @@ import {
 import { typingReportFields } from './typingStats.js'
 import { lastDraftFor } from './answerDrafts.js'
 import { normalizeTileHighlightLog } from './tutorTileHighlights.js'
+import { inspectorReportFields, summarizeInspectorUse } from './inspectorUse.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
+
+// The HTML Inspector's per-student `inspector` block (./inspectorUse.js), when used.
+const withInspector = (inspector) => (inspector ? { inspector } : {})
 
 function getAnonymousStudentLabel(index) {
   return `Student ${index + 1}`
@@ -746,6 +750,9 @@ export function buildSessionReport({
         ...(typing ? { typing } : {}),
         ...(tileMisses.length > 0 ? { tileMisses } : {}),
         ...(tutorTileHighlights.length > 0 ? { tutorTileHighlights } : {}),
+        ...withInspector(
+          inspectorReportFields(studentsSnapshot[anonymousId]?.inspectorLog?.[task.id])
+        ),
         ...(itemProgress ? { itemProgress } : {}),
         ...(lastDraft ? { lastDraft } : {}),
         ...(isNotApplicableTask(task)
@@ -873,6 +880,7 @@ export function buildSessionReport({
       ...summarizeSideQuests(perStudent),
       ...summarizeTimeOnTaskSpread(perStudent),
       ...summarizeTyping(perStudent),
+      ...summarizeInspectorUse(perStudent),
       ...badgeFields,
       ...(teacherRating ? { teacherRating } : {}),
     }

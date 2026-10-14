@@ -64,7 +64,8 @@ clips), `teacherSandboxRow` (the teacher sandbox workspace fills a plain flex ro
 `explainerBlockMenu` (explainer editor's Scratch block-reference menu), `sideQuests` (a passed
 code task's `sideQuests` run in a throwaway workspace of this module; `src/shared/sideQuests.js`;
 python, turtle, html), `typingStats` (keystrokes in the shared code editor feed the session
-report's `typing` measures).
+report's `typing` measures), `previewInspector` (a task's `inspector` field adds the HTML Inspector
+to the preview; `src/modules/html/inspector/`; html).
 
 | Field | Values |
 |---|---|

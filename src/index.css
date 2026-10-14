@@ -445,6 +445,17 @@ select {
   }
 }
 
+/* HTML Inspector bottom sheet (src/modules/html/inspector/HtmlInspector.jsx). The component
+   skips the animation when reduced motion is on. */
+@keyframes hsc-inspector-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
 @keyframes ui-modal-in {
   from {
     opacity: 0;

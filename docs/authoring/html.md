@@ -51,6 +51,8 @@ modules:
     codeStages: []            # optional — intermediate stages (label, role?, files, entryFile?)
     carryCodeFrom: 1          # optional — carry files from task ID (matched by filename)
     interactionMode: run      # optional — run (default) | submit
+    inspector:                # optional — the HTML Inspector on the preview (see below)
+      enabled: true
     check:
       type: html_element
       operator: exists
@@ -101,6 +103,57 @@ An HTML code task can carry up to three optional, unchecked `sideQuests` (`title
 `explainer`, `starter`, which becomes the side-quest's `index.html`) that a student opens in their own scratch HTML editor and preview once they pass
 the task. They never change the task's code or what `carryCodeFrom` copies. See
 [Side-quests](AUTHORING_GUIDE.md#side-quests).
+
+## HTML Inspector
+
+`inspector` adds an **Inspect** button to the task's preview. It's off unless `enabled: true`.
+Use it when a task is about *why* the page looks the way it does: the box model, the cascade
+(selectors, inheritance, specificity) or flexbox and grid.
+
+```yaml
+  - id: 52
+    moduleType: html
+    title: Why is the card's text blue?
+    inspector:
+      enabled: true               # required to show it
+      open: true                  # optional — start with inspect mode on
+      focus: ".card p"            # optional — pre-select the first element this matches
+      show: [box, cascade]        # optional — any of box, cascade, layout (default: all three)
+```
+
+What students get:
+
+- **Inspect mode.** Pointing at part of the page (tapping on a tablet) outlines it with labelled,
+  coloured bands for **margin**, **border**, **padding** and **content**, with px sizes. Clicking
+  (or tapping) chooses it. Parent, First child, Previous and Next buttons move the choice by
+  keyboard or touch.
+- **The panel** (a side panel; a bottom sheet on narrow screens) shows the element's tag, id and
+  classes, and one section per `show` entry:
+  - `box`: the four nested boxes with their sizes.
+  - `cascade` ("Why this …?"): pick a property (text colour, background colour, text size,
+    font, margin, padding, border, width, display, gap and others). Every rule that sets it on
+    the element is listed strongest first: the winner highlighted, each loser struck through with
+    a plain-words reason: **less specific**, **earlier in the file** (or **loaded earlier** for
+    another stylesheet), **overridden by !important**, or **beaten by the style="…" on the
+    tag**. Specificity numbers show second, as `(ids,classes,tags)`. When nothing sets an
+    inherited property (text colour, font and so on), it says which parent it is **inherited
+    from**; when nothing sets it at all, it is the browser's default. Stylesheets from another
+    website can't be read; the panel says so.
+  - `layout`: on a flex container, the main axis (solid arrow), cross axis (dashed arrow) and
+    gaps; on a grid container, the numbered grid lines and gaps.
+- Each Run rebuilds the page; the chosen element is found again by its position in the page.
+
+Notes:
+
+- No new checks. The Inspector reads the page but never changes it, so `html_*` element checks
+  and the student's page work exactly as before.
+- `focus` is a CSS selector. A selector that matches nothing just leaves nothing chosen.
+- A submit-mode task has no preview, so the Inspector warns and does nothing there. On any
+  other module `inspector` is ignored with a warning.
+- **Tutor:** in Go Live, the tutor's inspect mode, chosen element and property show on every
+  student's screen. The tutor can also inspect a student's page in the student's card view.
+  The session report records whether each student used the Inspector on the task
+  ([session reports](session-reports.md)).
 
 ## HTML Element Checks (run mode only)
 

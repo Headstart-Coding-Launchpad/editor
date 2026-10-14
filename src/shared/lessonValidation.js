@@ -287,6 +287,14 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
   // sideQuests: optional, unchecked extras for students who passed the task (./sideQuests.js).
   validateSideQuests(task, { n, moduleType, isCodeTask: kind === 'module' }, errors, warnings)
 
+  // inspector: the HTML Inspector (src/modules/html/inspector); the html module validates its shape.
+  if (
+    task.inspector != null &&
+    !(kind === 'module' && getModuleDefinition(moduleType)?.capabilities.previewInspector)
+  ) {
+    warnings.push(`Task ${n} inspector only works on html tasks; it is ignored here`)
+  }
+
   // taskActivity names a Lesson Format Glossary pattern (src/shared/taskActivity.js); badges read
   // it, so an unrecognised one is worth a warning (never an error: it's free text).
   if (typeof task.taskActivity === 'string' && !parseTaskActivity(task.taskActivity).known) {
