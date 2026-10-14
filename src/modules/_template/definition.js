@@ -83,7 +83,7 @@ export default defineModule({
     teacherUnifiedStageTabs: false, // teacher code tabs show stage roles, no Starter/Complete tabs
     explainerBlockMenu: false, // explainer editor offers Scratch block references
   },
-  // runResult: { errorLine, turtle, liveCode } — required exactly when run is 'runtime'.
+  // runResult: { errorLine, turtle, liveCode, stage } — required exactly when run is 'runtime'.
 
   // What the teacher sees on the Starter / stage / Complete tabs (liveState is the Starter work).
   getDisplayState: (task, stage, liveState, tab) => {

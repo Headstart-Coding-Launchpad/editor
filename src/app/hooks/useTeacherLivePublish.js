@@ -24,6 +24,9 @@ export function useTeacherLivePublish({
   // today) publishes.
   codeRef,
   turtleResultRef,
+  // The Python Stage drawing of the last run (useStudentCodeState's stageResult), published as
+  // `stage` through the python wire's liveExtras.
+  stageResultRef = null,
   // The HTML Inspector's Go Live state (useHtmlInspectorLive), for the html wire's liveExtras.
   inspectorRef = null,
   // The name-tag panel's synced state (useVariablesPanel), published as `variablesPanel`.
@@ -99,10 +102,11 @@ export function useTeacherLivePublish({
     // teacherLive is an update() merge, so every module sends both extras (explicit nulls
     // for the ones it doesn't have) — see each definition's wire.liveExtras. A module's own
     // extras come with its work (Arcade's design); Turtle's drawing is a run result.
-    const { arcadeDesign, turtleResult, inspector, variablesPanel } = (
+    const { arcadeDesign, turtleResult, inspector, variablesPanel, stage } = (
       definition?.wire.liveExtras ?? noLiveExtras
     )({
       turtleResult: turtleResultRef?.current,
+      stage: stageResultRef?.current ?? null,
       inspector: inspectorRef?.current ?? null,
       variablesPanel: variablesPanelRef?.current ?? null,
       ...stored?.meta,
@@ -131,6 +135,7 @@ export function useTeacherLivePublish({
       turtleResult,
       inspector: inspector ?? null,
       variablesPanel: variablesPanel ?? null,
+      stage: stage ?? null,
       files: filesMap,
       // A files module's own active file; no other module has one (never a leftover).
       activeFile: !isWorkSlot

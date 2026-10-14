@@ -74,7 +74,7 @@ export default defineModule({
     sideQuests: true,
   },
   // The run's drawing is synced with the run (a run result, like output).
-  runResult: { errorLine: false, turtle: true, liveCode: false },
+  runResult: { errorLine: false, turtle: true, liveCode: false, stage: false },
 
   getDisplayState: (task, stage, liveState, tab) => {
     if (tab === 'complete') return task?.completeCode ?? ''
@@ -189,6 +189,7 @@ export default defineModule({
       turtleResult: compactTurtleResultForSync(turtleResult),
       inspector: null,
       ...variablesPanelLiveExtra({ variablesPanel }),
+      stage: null,
     }),
   }),
   // Generic work slot (useStudentCodeState): the code string, checked when it runs.

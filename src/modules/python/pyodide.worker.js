@@ -6,6 +6,7 @@
  * ────────────────
  * Main → Worker : { type: 'init' }
  *                 { type: 'run',   code: string, capture?: { panel, peekLine, hide } }
+ *                 { type: 'stage_render', id: number, code: string }
  *                 { type: 'input', value: string }
  *                 { type: 'gpio_inputs', values: object, requestId?: number }
  *
@@ -14,7 +15,9 @@
  *                 { type: 'load_error',    msg: string }
  *                 { type: 'output',        text: string, kind: 'stdout'|'stderr', line?: number|null }
  *                 { type: 'input_required', prompt: string }
- *                 { type: 'done',          status: 'success'|'error', variables, variablesPanel }
+ *                 { type: 'done',          status: 'success'|'error', variables, variablesPanel,
+ *                                          turtle, stage }
+ *                 { type: 'stage_rendered', id, status: 'success'|'error', commands, error }
  *                 { type: 'gpio_write',     pin: string, value: 0|1 }
  *                 { type: 'gpio_configure', pin: string, mode: number, pull: number|null }
  *                 { type: 'gpio_poll',      requestId: number }
@@ -40,6 +43,14 @@
  * `commands` the drawn-line log (for rendering + path checks), `calls` the raw
  * command-invocation log (for "command used" checks). Harmless/empty for plain
  * Python and Electronics tasks, which never call the __hsTurtle* bridge below.
+ *
+ * `done` also always carries `stage: { commands }`: the Python Stage drawing (see
+ * src/shared/stage/). The `stage` module is registered in sys.modules once, when Python loads
+ * (STAGE_INSTALL_PY), never prepended to the student's code; each call records one command
+ * through __hsStageCall. Empty when the code never draws.
+ *
+ * `stage_render` runs a task's stageTarget code silently (no output, `input()` answers '') and
+ * replies with its stage commands only. The main thread never sends it while a run is going.
  */
 
 import {
@@ -54,6 +65,8 @@ import {
   applyTurtleSetVisible,
 } from '../turtle/engine.js'
 import { VARIABLE_CAPTURE_PY } from './variableCapture.py.js'
+import { STAGE_INSTALL_PY, STAGE_MODULE_PY } from '../../shared/stage/stagePy.js'
+import { createStageRecorder } from '../../shared/stage/commands.js'
 
 const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
 
@@ -72,6 +85,10 @@ let _turtleCommands = []
 let _turtleCalls = []
 let _turtleFilling = false
 let _turtleFillPoints = []
+// The Python Stage's command log for the current run (src/shared/stage/commands.js).
+let _stageRecorder = createStageRecorder()
+// A stage_render run: no output, and input() answers '' at once.
+let _silentRun = false
 
 // Python wrapper — same AST-transform approach as before, but now running in a Worker.
 // `import js as _js` gives access to this worker's globalThis. The variable-capture helpers
@@ -110,6 +127,41 @@ class _Tx(ast.NodeTransformer):
         return new
 
 _tree = ast.parse(_hs_user_code, filename='<student>')
+
+# The student's top level becomes the body of async def __hs_run__, where Python refuses
+# 'from m import *'. Spell the names out instead (the module's __all__, else its public names),
+# on the same line, so 'from stage import *' works. A module that can't be imported is left
+# alone, so the error is the same as before.
+class _HsStarImports(ast.NodeTransformer):
+    def visit_FunctionDef(self, node):
+        return node
+    def visit_AsyncFunctionDef(self, node):
+        return node
+    def visit_ClassDef(self, node):
+        return node
+    def visit_ImportFrom(self, node):
+        if node.level or not any(a.name == '*' for a in node.names):
+            return node
+        # Turtle's module only exists once its shim (the first line of a Turtle program) has
+        # run, so it could expand on one run and not the one before: leave it as it was.
+        if node.module == 'turtle':
+            return node
+        try:
+            import importlib
+            _hs_mod = importlib.import_module(node.module)
+        except Exception:
+            return node
+        _hs_names = getattr(_hs_mod, '__all__', None)
+        if _hs_names is None:
+            _hs_names = [n for n in dir(_hs_mod) if not n.startswith('_')]
+        _hs_new = ast.ImportFrom(
+            module=node.module,
+            names=[ast.alias(name=str(n), asname=None) for n in _hs_names],
+            level=0,
+        )
+        return ast.copy_location(_hs_new, node)
+
+_HsStarImports().visit(_tree)
 _async_names = set(json.loads(_hs_async_names_json or '[]'))
 _async_names.update({n.name for n in ast.walk(_tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))})
 _async_names.add('input')
@@ -212,6 +264,7 @@ finally:
 
 // Expose input handler on the worker global so Python can call it via `import js`
 globalThis.__hsInput = async (prompt) => {
+  if (_silentRun) return ''
   return new Promise((resolve) => {
     if (prompt) self.postMessage({ type: 'output', text: String(prompt), kind: 'stdout' })
     self.postMessage({ type: 'input_required', prompt: String(prompt) })
@@ -280,6 +333,18 @@ globalThis.__hsGpioSleep = async (seconds) => {
   return new Promise((resolve) => {
     _gpioPollResolvers.set(requestId, resolve)
   })
+}
+
+// ─── Stage bridge (see ../../shared/stage/) ─────────────────────────────────────
+// One call of the `stage` module: '' when it drew, or 'Kind|message' for Python to raise.
+globalThis.__hsStageCall = (name, argsJson) => {
+  let args = []
+  try {
+    args = JSON.parse(String(argsJson))
+  } catch {
+    return `ValueError|${String(name)}(): those values can't be drawn`
+  }
+  return _stageRecorder.call(String(name), args)
 }
 
 // ─── Turtle bridge (see ../turtle/shim.js and ../turtle/engine.js) ────────────
@@ -456,6 +521,8 @@ self.onmessage = async ({ data }) => {
     _turtleCalls = []
     _turtleFilling = false
     _turtleFillPoints = []
+    _stageRecorder = createStageRecorder()
+    _silentRun = false
 
     let _stdoutBuf = ''
     let _stderrBuf = ''
@@ -532,6 +599,7 @@ self.onmessage = async ({ data }) => {
         variables: _lastVariables,
         variablesPanel: _lastVariablesPanel,
         turtle: turtleResult(),
+        stage: { commands: _stageRecorder.commands },
       })
     } catch (err) {
       flushBuffers()
@@ -544,8 +612,14 @@ self.onmessage = async ({ data }) => {
         variables: _lastVariables,
         variablesPanel: _lastVariablesPanel,
         turtle: turtleResult(),
+        stage: { commands: _stageRecorder.commands },
       })
     }
+    return
+  }
+
+  if (data.type === 'stage_render') {
+    self.postMessage({ type: 'stage_rendered', id: data.id, ...(await renderStage(data.code)) })
     return
   }
 
@@ -562,6 +636,35 @@ self.onmessage = async ({ data }) => {
       _gpioPollResolvers.delete(data.requestId)
     }
     return
+  }
+}
+
+// A stageTarget's code, run silently: { status, commands, error }. Output is dropped and input()
+// answers '' at once; the check variables and the name-tag panel are not captured.
+async function renderStage(code) {
+  try {
+    await loadPyodide_()
+  } catch (err) {
+    return { status: 'error', commands: [], error: String(err) }
+  }
+  _inputResolve = null
+  _lastVariables = {}
+  _lastVariablesPanel = null
+  _stageRecorder = createStageRecorder()
+  _silentRun = true
+  pyodide.setStdout({ raw: () => {} })
+  pyodide.setStderr({ raw: () => {} })
+  pyodide.globals.set('_hs_user_code', String(code ?? ''))
+  pyodide.globals.set('_hs_async_names_json', '[]')
+  pyodide.globals.set('_hs_capture_json', JSON.stringify({ panel: false }))
+  try {
+    await pyodide.runPythonAsync(WRAPPER)
+    return { status: 'success', commands: _stageRecorder.commands, error: null }
+  } catch (err) {
+    const { text } = formatPythonError(String(err).replace(/^PythonError:\s*/, ''))
+    return { status: 'error', commands: _stageRecorder.commands, error: text }
+  } finally {
+    _silentRun = false
   }
 }
 
@@ -624,4 +727,7 @@ async function loadPyodide_() {
   const { loadPyodide } = await import(/* @vite-ignore */ PYODIDE_CDN + 'pyodide.mjs')
   self.postMessage({ type: 'progress', msg: 'Starting Python runtime…' })
   pyodide = await loadPyodide({ indexURL: PYODIDE_CDN })
+  // The Python Stage's `stage` module, registered once (see STAGE_INSTALL_PY).
+  pyodide.globals.set('_hs_stage_src', STAGE_MODULE_PY)
+  pyodide.runPython(STAGE_INSTALL_PY)
 }

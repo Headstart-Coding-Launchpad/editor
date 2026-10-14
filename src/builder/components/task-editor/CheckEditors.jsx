@@ -3,6 +3,7 @@ import { MarkdownFieldEditor } from '../ExplainerEditor'
 import { getStageRole } from '../../../shared/taskUtils'
 import { checkMissingOperator } from '../../../modules/checks'
 import { DEFAULT_TEXT_OPERATOR } from '../../../shared/checkHelpers'
+import { STAGE_CHECK_TYPES, describeStageCheck } from '../../../shared/stage/checks.js'
 import {
   formatCheckFailure,
   formatCheckFailureDetail,
@@ -560,6 +561,32 @@ function PredictionCheckRow({ check, index, total, onChange, onRemove }) {
   )
 }
 
+// A Python Stage check (stage_matches_target, stage_pixel, …) is authored in the lesson YAML
+// (docs/authoring/python.md "Stage"); its row here says what it checks, in words, with its hint
+// and Remove.
+function StageCheckRow({ check, index, total, onChange, onRemove }) {
+  return (
+    <div className="te-check-row">
+      {total > 1 && <span className="te-check-index">#{index + 1}</span>}
+      <div className="te-check-editor">
+        <span style={{ gridColumn: '1 / -1', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+          Stage: {describeStageCheck(check)} ({check.type})
+        </span>
+        <input
+          className="te-input"
+          style={{ gridColumn: '1 / -1' }}
+          placeholder="Hint shown when the drawing doesn't pass (name colours in words)"
+          value={check.hint ?? ''}
+          onChange={(e) => onChange({ ...check, hint: e.target.value })}
+        />
+      </div>
+      <button type="button" className="te-check-remove-btn" onClick={onRemove} title="Remove check">
+        ×
+      </button>
+    </div>
+  )
+}
+
 function CheckListEditor({
   checks,
   onChange,
@@ -631,6 +658,18 @@ function CheckListEditor({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
       {checks.map((check, index) => {
+        if (STAGE_CHECK_TYPES.includes(check?.type)) {
+          return (
+            <StageCheckRow
+              key={index}
+              check={check}
+              index={index}
+              total={checks.length}
+              onChange={(updated) => updateCheck(index, updated)}
+              onRemove={() => removeCheck(index)}
+            />
+          )
+        }
         if (check?.type === 'variables_predicted') {
           return (
             <PredictionCheckRow
@@ -762,4 +801,5 @@ export {
   CheckFeedbackControls,
   RunAttemptedFields,
   PredictionCheckRow,
+  StageCheckRow,
 }

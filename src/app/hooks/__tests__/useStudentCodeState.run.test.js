@@ -267,6 +267,26 @@ describe('handleRun — turtle result sync', () => {
   })
 })
 
+describe('handleRun — Python Stage result sync', () => {
+  it('writes the stage drawing after the run and keeps it in state', async () => {
+    const stage = { commands: [{ type: 'circle', x: 1, y: 2, r: 3, colour: '#ff0000' }] }
+    mockModuleRun('python', printing('hi\n', 'success', { stage }))
+    const h = renderStudentCodeState({ lesson: pythonLesson(), currentTaskId: 't1' })
+    await actAsync(() => h.result.current.handleRun())
+    expect(h.writers.writeStudentStageResult).toHaveBeenCalledTimes(1)
+    expect(h.writers.writeStudentStageResult).toHaveBeenCalledWith(ANON, stage)
+    expect(h.result.current.stageResult).toEqual(stage)
+  })
+
+  it('turtle never writes a stage result', async () => {
+    mockModuleRun('turtle', printing('hi\n', 'success', { turtle: { state: {}, commands: [] } }))
+    const h = renderStudentCodeState({ lesson: turtleLesson(), currentTaskId: 't1' })
+    await actAsync(() => h.result.current.handleRun())
+    expect(h.writers.writeStudentStageResult).not.toHaveBeenCalled()
+    expect(h.result.current.stageResult).toBe(null)
+  })
+})
+
 describe('handleRun — electronics', () => {
   it('writes the run with the circuit as code; no check means checkPassed false', async () => {
     mockModuleRun('electronics', () => ({ status: 'success' }))

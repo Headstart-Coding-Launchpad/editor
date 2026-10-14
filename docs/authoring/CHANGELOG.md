@@ -101,6 +101,30 @@ Entries written before 2026-09-29 are not tagged.
 - Affects: scratch, cli · Existing lessons: no changes needed · Resolves:
   authoring-requests/2026-10-14-p6-6-scratch-slow-mo-block-glow-step-and-state-timeline.md
 
+### Python Stage: a drawing pane beside the console (prototype)
+
+- Python tasks can draw: `from stage import *` gives `background`, `rect`, `circle`, `line`,
+  `text`, `stamp`, `grid` (a 2D list as a pixel grid, values indexing `palette` or being colours)
+  and `clear`. A fixed 400 × 400 stage, **top-left origin, y down**. Colours are CSS names, hex
+  codes or the PICO-8 names Arcade Kit uses (CSS wins where a name is both). The pane appears
+  once the code draws, beside the console (above it on narrow screens); `print()` is unchanged.
+  Bad arguments stop the run with a plain-English error on the student's line naming the
+  argument. See [python.md](python.md#stage-drawing-beside-the-console).
+- New optional Python task field `stageTarget: { code, ghost? }`: Python that draws the target
+  picture. Students get a faint ghost to draw over (Target toggle) and, after Run, a Differences
+  toggle that highlights where their drawing differs and says it in words.
+- New checks (Python, need a run, so `lessons test-checks` reports them as needing one):
+  `stage_matches_target` (`tolerance`, needs `stageTarget`), `stage_shape_count` (`kind`, `min`,
+  `max`), `stage_colour_used` (`colour`), `stage_pixel` (`x`/`y` or `row`/`col`, `colour`) and
+  `stage_text_shown` (`text`, `operator`). Write their hints with colours in words.
+- `from module import *` at the top level of a Python task now works (it used to be a
+  SyntaxError, because the program runs inside a function). Turtle tasks are unchanged.
+- The tutor sees each Run's drawing on the student card and in StudentModal, and Go Live
+  broadcasts it. Validation covers `stageTarget` and every stage check field
+  ([validation-errors.md](validation-errors.md)).
+- Affects: python, cli · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-14-p6-2-python-stage-drawing-pane-beside-the-console.md
+
 ### HTML Inspector: box model, "Why this …?" and flex/grid overlays
 
 - New optional HTML task field `inspector: { enabled: true, open?, focus?, show? }` adds an

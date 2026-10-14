@@ -75,7 +75,7 @@ export default defineModule({
     run: 'runtime',
   },
   // MicroPython drives the circuit while it runs (onCodeUpdate), so the work changes mid-run.
-  runResult: { errorLine: false, turtle: false, liveCode: true },
+  runResult: { errorLine: false, turtle: false, liveCode: true, stage: false },
 
   getDisplayState: (task, stage, liveState, tab) => {
     if (tab === 'complete')

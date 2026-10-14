@@ -140,6 +140,7 @@ export default function StudentView({
     writeStudentCode,
     writeStudentArcadeDesign,
     writeStudentTurtleResult,
+    writeStudentStageResult,
     writeStudentSpriteState,
     writeStudentCursor,
     writeStudentBlockDrag,
@@ -296,6 +297,7 @@ export default function StudentView({
     writeStudentCode,
     writeStudentArcadeDesign,
     writeStudentTurtleResult,
+    writeStudentStageResult,
     writeStudentSpriteState,
     writeStudentCursor,
     writeStudentBlockDrag,
@@ -1070,6 +1072,7 @@ export default function StudentView({
     displayArcadeDesign,
     displayTurtleResult,
     displayVariablesPanel,
+    displayStage,
     displaySpriteState,
     displayCursor,
     displayBlockDrag,
@@ -2080,6 +2083,7 @@ export default function StudentView({
               displayArcadeDesign={displayArcadeDesign}
               displayTurtleResult={displayTurtleResult}
               displayVariablesPanel={displayVariablesPanel}
+              displayStage={displayStage}
               displaySpriteState={displaySpriteState}
               displayCursor={displayCursor}
               displayBlockDrag={displayBlockDrag}

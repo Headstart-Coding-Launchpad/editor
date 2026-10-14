@@ -170,6 +170,7 @@ export function useStudentCodeState({
   writeStudentCode,
   writeStudentArcadeDesign,
   writeStudentTurtleResult,
+  writeStudentStageResult,
   writeStudentSpriteState,
   writeStudentCursor,
   writeStudentBlockDrag,
@@ -207,6 +208,9 @@ export function useStudentCodeState({
   // used by TurtleStudentWorkspace to redraw its canvas. Ephemeral/in-memory only (Phase 1) —
   // not persisted or synced to teacher-live yet, so it resets wherever output does.
   const [turtleResult, setTurtleResult] = useState(null)
+  // Python only: the Python Stage drawing of the most recent run ({ commands }, src/shared/stage/),
+  // null when cleared. Shown by the python workspace's stage pane; synced like turtleResult.
+  const [stageResult, setStageResult] = useState(null)
   const [running, setRunning] = useState(false)
   const [runningTests, setRunningTests] = useState(false)
   const [iframeSrc, setIframeSrc] = useState(null)
@@ -317,6 +321,7 @@ export function useStudentCodeState({
   // handler/render pass as setRunStatus, so the "publish on tracked value change" effect
   // (keyed on runStatus) always sees the fresh value the next time it fires.
   const turtleResultRef = useLatestRef(turtleResult)
+  const stageResultRef = useLatestRef(stageResult)
   const arcadeDesignWriteTimerRef = useRef(null)
   const spriteStateLastSentRef = useRef(0)
   const spriteStatePendingTimerRef = useRef(null)
@@ -466,6 +471,7 @@ export function useStudentCodeState({
     setOutput('')
     setTurtleResult(null)
     variablesPanel.clear()
+    setStageResult(null)
     setRunStatus(null)
     setIframeSrc(null)
   }
@@ -781,6 +787,7 @@ export function useStudentCodeState({
     currentTaskIdRef,
     codeRef,
     turtleResultRef,
+    stageResultRef,
     inspectorRef,
     variablesPanelRef: variablesPanel.syncedRef,
     filesRef,
@@ -1109,6 +1116,7 @@ export function useStudentCodeState({
     setOutput('')
     setTurtleResult(null)
     variablesPanel.clear()
+    setStageResult(null)
     setRunStatus(null)
     setErrorLine(null)
     setHtmlErrorLocation(null)
@@ -1493,6 +1501,7 @@ export function useStudentCodeState({
       setOutput('')
       setTurtleResult(null)
       variablesPanel.clear()
+      setStageResult(null)
       setRunStatus(null)
       resetCheckFeedback()
       if (actorId) persistence.saveWork(lesson.type, actorId, currentTaskId, nextFiles)
@@ -1516,6 +1525,7 @@ export function useStudentCodeState({
       setOutput('')
       setTurtleResult(null)
       variablesPanel.clear()
+      setStageResult(null)
       setRunStatus(null)
       resetCheckFeedback()
       if (actorId) {
@@ -1543,6 +1553,7 @@ export function useStudentCodeState({
     setOutput('')
     setTurtleResult(null)
     variablesPanel.clear()
+    setStageResult(null)
     setRunStatus(null)
     setIframeSrc(null)
     resetCheckFeedback()
@@ -1574,6 +1585,7 @@ export function useStudentCodeState({
     setOutput('')
     setTurtleResult(null)
     variablesPanel.clear()
+    setStageResult(null)
     setRunStatus(null)
     setIframeSrc(null)
     resetCheckFeedback()
@@ -1640,6 +1652,7 @@ export function useStudentCodeState({
     setOutput('')
     setTurtleResult(null)
     variablesPanel.clear()
+    setStageResult(null)
     setRunStatus(null)
     setTestResults(null)
     setErrorLine(null)
@@ -1682,6 +1695,7 @@ export function useStudentCodeState({
           setErrorLine,
           setRunStatus,
           setTurtleResult,
+          setStageResult,
           setRunning,
         },
         writers: {
@@ -1690,6 +1704,7 @@ export function useStudentCodeState({
           writeStudentCode,
           writeStudentRun,
           writeStudentTurtleResult,
+          writeStudentStageResult,
           logAttempt,
         },
         live: {
@@ -1863,6 +1878,7 @@ export function useStudentCodeState({
     setOutput('')
     setTurtleResult(null)
     variablesPanel.clear()
+    setStageResult(null)
     setRunStatus(null)
     setTestResults(null)
     resetRunFeedback()
@@ -2660,6 +2676,7 @@ export function useStudentCodeState({
           setOutput('')
           setTurtleResult(null)
           variablesPanel.clear()
+          setStageResult(null)
           setRunStatus(null)
           setIframeSrc(null)
         }
@@ -2716,6 +2733,7 @@ export function useStudentCodeState({
     setOutput('')
     setTurtleResult(null)
     variablesPanel.clear()
+    setStageResult(null)
     setRunStatus(null)
     setIframeSrc(null)
     resetCheckFeedback()
@@ -3099,6 +3117,7 @@ export function useStudentCodeState({
     output,
     runStatus,
     turtleResult,
+    stageResult,
     variablesPanel,
     running,
     runningTests,

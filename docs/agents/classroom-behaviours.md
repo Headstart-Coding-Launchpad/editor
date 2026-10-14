@@ -456,6 +456,17 @@ The student side of the tutor's badge decisions (`sessions/{lessonId}/badges`), 
 - `input()` is handled with a Python AST transform and resolves when `provideInput()` is called.
 - `useStudentCodeState`'s `resetForTaskChange()` calls `runtime.stop()` (and force-clears `running`/`runningTests`) whenever a run is still in flight when the student navigates to another task — a python/electronics execution must not keep running (or its output bleed into the new task) after the task changes. The `'stopped'` result from a run that raced with navigation is only repainted into `output`/`runStatus` if `currentTaskId` still matches the task that was running.
 
+- Top-level `from module import *` works: the wrapper spells out the module's `__all__` (or public names) on the same line, since the student's top level runs inside `async def __hs_run__`, where Python forbids `import *`. A module that can't be imported is left alone, and so is `turtle` (its shim registers it only once the program starts).
+
+## Python Stage (drawing pane)
+
+- `src/shared/stage/` holds the engine (command model, colours, canvas renderer, pure-JS rasteriser, comparison, description, checks, sync shape, SVG); `src/modules/python/` only wires it, so the Stage could later become its own workspace or part of Turtle.
+- The `stage` module is registered in `sys.modules` **once, when Pyodide loads** (`STAGE_INSTALL_PY`), never prepended to student code, so error line numbers stay the student's own. Each call sends `(name, JSON args)` to the worker bridge `__hsStageCall`, which validates (`validateStageCall`) and records one command, or returns a plain-English error that Python raises on the student's line. Caps: 20,000 commands and 200,000 grid cells per run.
+- `done` carries `stage: { commands }` (an ordered, never-pruned list: `clear()` is a command, so a step player can draw any prefix). The python runtime adds `stageTarget` (the target's commands) when the task has one.
+- `stageTarget.code` runs once, silently, through the worker's `stage_render` message (`renderStage` in `pyodide.js`), when the task opens and Python is idle or on the first Run; results are cached by code for the page's life (`src/modules/python/stageTarget.js`). A run waits for an in-flight render; a render never starts during a run; one that takes over 8 s stops Python.
+- The pane appears once the run drew, or from the start with a `stageTarget` (the output side then opens unfolded). Beside the console when the output side is wider than tall (≥ 480 px), otherwise above it; always above on narrow screens. Ghost and Differences toggles are ≥ 44 px; the canvas has a screen-reader description (`describeStage`).
+- Tutor visibility: `runWithRuntime` writes `students/{id}/currentStageResult` on every Run (`runResult.stage`), shown on the student card (thumbnail) and in StudentModal; Go Live carries `teacherLive.stage` through the python wire's `liveExtras` (explicit `null` elsewhere). The tutor side shows the drawing without the target (no Pyodide there). No persistence beyond the code.
+
 ## Runtime Error-Line Highlight
 
 - On a runtime error (Python traceback or an HTML/JS `window.onerror`), the failing line is highlighted red in the CodeMirror editor via `errorLineField`/`setErrorLine` in `src/shared/CodeEditor.jsx` (`.cm-errorLine` in `src/shared/codemirror.js`).

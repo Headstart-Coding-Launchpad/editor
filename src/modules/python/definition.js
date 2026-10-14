@@ -23,6 +23,8 @@ import {
 } from '../moduleContract.js'
 import { SHOW_VARIABLES_TASK_FIELD } from '../../shared/variablesPanel/variablesPanel.js'
 import { validateShowVariables } from '../../shared/variablesPanel/validation.js'
+import { STAGE_TARGET_TASK_FIELD, validateStageTarget } from '../../shared/stage/validation.js'
+import { compactStageForSync } from '../../shared/stage/sync.js'
 import {
   codeCopyStarterToComplete,
   codeDefaultTypeFields,
@@ -76,8 +78,9 @@ export default defineModule({
     // A passed task's side-quests run in a throwaway Python workspace (src/shared/sideQuests.js).
     sideQuests: true,
   },
-  // Pyodide reports the failing line on stderr; the editor highlights it.
-  runResult: { errorLine: true, turtle: false, liveCode: false },
+  // Pyodide reports the failing line on stderr; the editor highlights it. A run's Python Stage
+  // drawing (src/shared/stage/) is written with the run (writeStudentStageResult).
+  runResult: { errorLine: true, turtle: false, liveCode: false, stage: true },
 
   getDisplayState: (task, stage, liveState, tab) => {
     if (tab === 'complete') return task?.completeCode ?? ''
@@ -145,6 +148,7 @@ export default defineModule({
     },
     { name: 'carryCodeFrom', type: 'string' },
     SHOW_VARIABLES_TASK_FIELD,
+    STAGE_TARGET_TASK_FIELD,
   ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeCode',
@@ -212,9 +216,14 @@ export default defineModule({
     composedSandboxFields: (firstTask) => ({ sandboxStarter: firstTask?.starterCode ?? '' }),
   },
   storage: recordStorage({ workKey: 'code', taskMeta: ['output', 'runStatus'] }),
-  // The name-tag panel (showVariables) travels with a Go Live broadcast.
+  // The name-tag panel (showVariables) and the Python Stage drawing travel with a Go Live
+  // broadcast (the stage compacted like students/{id}/currentStageResult).
   wire: codeStringWire({
-    liveExtras: (input = {}) => ({ ...noLiveExtras(), ...variablesPanelLiveExtra(input) }),
+    liveExtras: (input = {}) => ({
+      ...noLiveExtras(),
+      ...variablesPanelLiveExtra(input),
+      stage: compactStageForSync(input.stage),
+    }),
   }),
   // Generic work slot (useStudentCodeState): the code string, checked when it runs.
   checking: { trigger: 'run', buildContext: codeCheckContext },
@@ -228,6 +237,7 @@ export default defineModule({
     validatePythonTests(task, n, errors, warnings)
     warnCompleteCode(task, n, warnings)
     validateShowVariables(task, n, errors, warnings)
+    validateStageTarget(task, n, errors, warnings)
   },
   hasStarterContent: codeStarterPresent,
 })

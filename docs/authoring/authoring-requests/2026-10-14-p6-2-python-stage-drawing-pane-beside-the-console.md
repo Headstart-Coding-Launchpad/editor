@@ -1,6 +1,6 @@
 # Python Stage: a drawing pane beside the console (prototype)
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, sent straight to LaunchPad Dev at Ryan's request, bypassing pipeline-ui), 2026-10-14
 - **Lessons blocked:** none yet. This is build 2 of 6 in Lesson Gen's P6 Visual learning plan, and the plan's keystone.
@@ -106,4 +106,26 @@ Suggested starter library. Names are a proposal; keep it small, and every call s
 - **With build 3:** Python slow-mo should draw the stage step by step, and the name-tag panel (build 1) sits beside the stage.
 
 ## Resolution
+
+Shipped 2026-10-14 on `feature/python-stage`, as option 1: a **Stage pane inside the `python`
+workspace** that appears once the code draws (or from the start with a `stageTarget`). The engine
+(commands, colours, renderer, rasteriser, comparison, description, checks, sync shape) lives in
+`src/shared/stage/`, and the python module only wires it, so options 2 (own workspace) and 3
+(extend Turtle) stay open. See [python.md](../python.md#stage-drawing-beside-the-console).
+
+- **Coordinates:** top-left origin, x right, **y down**, fixed 400 × 400 (Arcade Kit's screen
+  convention, not Turtle's centred y-up world).
+- **Library:** as proposed (`background`, `rect`, `circle`, `line`, `text`, `stamp`, `grid`,
+  `clear`), plus `x=`/`y=` keywords on `grid` and `WIDTH`/`HEIGHT`. `rect` and `text` place their
+  top-left corner; `circle` and `stamp` their centre. `grid` values index `palette`, or without one
+  are the 16 PICO-8 colours; colour strings and `None` (nothing drawn) work too.
+- **Colours:** CSS names, hex codes and the PICO-8 names; where a name is both, CSS wins.
+- **Target and checks:** `stageTarget: { code, ghost? }` gives a ghost and an after-Run Differences
+  view described in words. Checks: `stage_matches_target`, `stage_shape_count`,
+  `stage_colour_used`, `stage_pixel`, `stage_text_shown`. Text and emoji are compared by command,
+  not pixels. `lessons test-checks` reports them as needing a run.
+- `from stage import *` works (top-level `import *` now works in Python tasks generally).
+- Tutor: the drawing syncs to the student card and StudentModal after each Run, and in Go Live.
+- Not done: the Phase 2 picture values and animation loop; slow-mo drawing step by step (build 3
+  builds on the ordered command list).
 

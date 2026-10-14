@@ -39,6 +39,7 @@ const SIDE_QUEST_SESSION_WRITES = {
   ...NOOP_SESSION_WRITES,
   writeStudentHintState: NOOP_ASYNC,
   writeStudentTurtleResult: NOOP_ASYNC,
+  writeStudentStageResult: NOOP_ASYNC,
   writeStudentInputState: NOOP_ASYNC,
   setTeacherLiveReference: NOOP_ASYNC,
   clearTeacherAnswerEdit: NOOP_ASYNC,

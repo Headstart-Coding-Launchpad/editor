@@ -28,9 +28,10 @@ import { lastErrorLine } from '../studentHints.js'
  * - refs: outputRafIdRef, outputMirrorRef, inputPromptRef, inputValueRef, submitInputEchoRef,
  *   appendOutputRef, runtimeCodeRafIdRef, pendingRuntimeCodeRef, lastRuntimeCodeWriteRef,
  *   currentTaskIdRef, phaseRef, inPersonalSandboxRef, teacherAssistedTaskIdsRef
- * - setters: setOutput, setInputPrompt, setErrorLine, setRunStatus, setTurtleResult, setRunning
+ * - setters: setOutput, setInputPrompt, setErrorLine, setRunStatus, setTurtleResult,
+ *   setStageResult (optional), setRunning
  * - writers: writeStudentInputState, writeStudentOutput, writeStudentCode, writeStudentRun,
- *   writeStudentTurtleResult, logAttempt
+ *   writeStudentTurtleResult, writeStudentStageResult (optional), logAttempt
  * - live: canPublishTeacherLive, updateTeacherLive, currentTeacherLivePayload, publishTeacherLive
  * - feedback: applyCheckFeedback, updateTargetedStageOffer, updateSupportStageForAttempt
  * - saveRunRecord(taskId, code, fields): the task's run record (persistence.saveRunRecord)
@@ -237,6 +238,8 @@ export async function runWithRuntime(ctx) {
   if (nextCode !== startCode) setCode(nextCode)
 
   if (status !== 'stopped') setTurtleResult(result.turtle ?? null)
+  // The Python Stage drawing (src/shared/stage/): the pane shows it once the code draws.
+  if (status !== 'stopped' && runResult.stage) setters.setStageResult?.(result.stage ?? null)
   // The name-tag panel (showVariables, useVariablesPanel.js) shows this run and marks the
   // predictions; it hands back `variablePredictions` for the variables_predicted check. Free
   // play (a sandbox) has no task panel.
@@ -251,6 +254,10 @@ export async function runWithRuntime(ctx) {
     status,
     variables: result.variables ?? {},
     turtle: result.turtle ?? null,
+    // The Python Stage checks read the drawing and the task's target drawing (stageTarget).
+    stage: runResult.stage
+      ? { commands: result.stage?.commands ?? [], target: result.stageTarget ?? null }
+      : null,
     ran: true,
     ...panelContext,
   })
@@ -324,6 +331,8 @@ export async function runWithRuntime(ctx) {
     // explicit edits. Lets a teacher open StudentModal and see the student's actual
     // drawing, not just their code.
     if (runResult.turtle) writers.writeStudentTurtleResult(actor.anonymousId, result.turtle ?? null)
+    // The Python Stage drawing is a run result too: the tutor's card and StudentModal draw it.
+    if (runResult.stage) writers.writeStudentStageResult?.(actor.anonymousId, result.stage ?? null)
   }
   if (isFreePlay && !teacherPresentation) {
     signals?.reportSandboxRun({ error: runError, submission: nextCode })

@@ -1,0 +1,201 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { drawStage, sizeStageCanvas } from './canvas.js'
+import { compareStages, comparisonMatches } from './raster.js'
+import { describeComparison, describeStage } from './describe.js'
+
+/**
+ * The Python Stage pane (src/shared/stage/): the run's drawing on a square canvas that scales
+ * to fit its box, with a screen-reader description of what is drawn.
+ *
+ * With a `target` (a task's stageTarget commands) it offers two toggles (44 px touch targets):
+ * - Target: a faint ghost of the target over the drawing (starts as `ghostDefault`);
+ * - Differences (only once `ran`): highlights the cells that differ and says, in words, where
+ *   and which colours (never colour alone).
+ *
+ * `compact` (the tutor's card and StudentModal) drops the toolbar and the summary.
+ * `commands` may be a prefix of a run's commands (a step-by-step player draws one at a time).
+ */
+export default function StagePane({
+  commands,
+  target = null,
+  ghostDefault = true,
+  ran = false,
+  matchTolerance,
+  compact = false,
+  truncated = false,
+  title = 'Stage',
+  style,
+}) {
+  const canvasRef = useRef(null)
+  const [ghostOn, setGhostOn] = useState(ghostDefault)
+  const [diffOn, setDiffOn] = useState(false)
+  const hasTarget = Array.isArray(target) && target.length > 0
+  const list = useMemo(() => (Array.isArray(commands) ? commands : []), [commands])
+  const canDiff = hasTarget && ran && !compact
+  const comparison = useMemo(
+    () => (canDiff ? compareStages(list, target) : null),
+    [canDiff, list, target]
+  )
+  const matches = comparison ? comparisonMatches(comparison, matchTolerance) : false
+  const showDiff = canDiff && diffOn
+  const showGhost = hasTarget && ghostOn && !compact
+  const description = useMemo(() => describeStage(list), [list])
+
+  useEffect(() => {
+    if (!canDiff) setDiffOn(false)
+  }, [canDiff])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return undefined
+    function redraw() {
+      sizeStageCanvas(canvas)
+      // jsdom (unit tests) has no 2D context and returns null.
+      const ctx = canvas.getContext?.('2d')
+      if (ctx)
+        drawStage(ctx, list, {
+          ghost: showGhost ? target : null,
+          diff: showDiff ? comparison : null,
+        })
+    }
+    redraw()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const observer = new ResizeObserver(redraw)
+    observer.observe(canvas)
+    return () => observer.disconnect()
+  }, [list, target, showGhost, showDiff, comparison])
+
+  return (
+    <section style={{ ...s.pane, ...style }} aria-label={title} data-testid="stage-pane">
+      {!compact && (
+        <div style={s.toolbar} className="ui-tabs">
+          <span style={s.title}>{title}</span>
+          {hasTarget && (
+            <div style={s.toggles}>
+              <button
+                type="button"
+                className="btn-ghost-outline"
+                style={{ ...s.toggle, ...(ghostOn ? s.toggleOn : null) }}
+                aria-pressed={ghostOn}
+                onClick={() => setGhostOn((on) => !on)}
+                title="Show the target faintly over your drawing"
+              >
+                Target
+              </button>
+              {canDiff && (
+                <button
+                  type="button"
+                  className="btn-ghost-outline"
+                  style={{ ...s.toggle, ...(diffOn ? s.toggleOn : null) }}
+                  aria-pressed={diffOn}
+                  onClick={() => setDiffOn((on) => !on)}
+                  title="Highlight where your drawing is different from the target"
+                >
+                  Differences
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      <div style={compact ? { ...s.fit, minHeight: 0 } : s.fit}>
+        <div style={s.square}>
+          <canvas ref={canvasRef} style={s.canvas} role="img" aria-label={description} />
+        </div>
+      </div>
+      {!compact && comparison && (diffOn || matches) && (
+        <p style={{ ...s.summary, ...(matches ? s.summaryMatch : null) }} aria-live="polite">
+          {describeComparison(comparison, { matches })}
+        </p>
+      )}
+      {truncated && <p style={s.note}>Showing the newest part of a very big drawing.</p>}
+    </section>
+  )
+}
+
+const s = {
+  pane: {
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+    minWidth: 0,
+    gap: 6,
+  },
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 0,
+    flexWrap: 'wrap',
+  },
+  title: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: '0.86rem',
+    color: 'var(--colour-primary)',
+    padding: '0 10px',
+  },
+  toggles: { marginLeft: 'auto', display: 'flex', gap: 6, paddingRight: 6 },
+  toggle: {
+    minHeight: 44,
+    minWidth: 44,
+    padding: '0 14px',
+    borderRadius: 8,
+    border: '1px solid #d1d5db',
+    background: '#fff',
+    color: '#374151',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: 13,
+    cursor: 'pointer',
+  },
+  toggleOn: {
+    background: '#eef2ff',
+    borderColor: '#6366f1',
+    color: '#3730a3',
+  },
+  // A size container, so the square inside can be as big as fits both ways.
+  fit: {
+    flex: '1 1 auto',
+    minHeight: 120,
+    minWidth: 0,
+    containerType: 'size',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  square: {
+    width: 'min(100cqw, 100cqh)',
+    aspectRatio: '1 / 1',
+    maxWidth: '100%',
+    maxHeight: '100%',
+    border: '1px solid #e5e7eb',
+    borderRadius: 8,
+    overflow: 'hidden',
+    background: '#fff',
+  },
+  canvas: { width: '100%', height: '100%', display: 'block' },
+  summary: {
+    margin: 0,
+    padding: '8px 12px',
+    borderRadius: 8,
+    background: '#fdf2f8',
+    border: '1px solid #fbcfe8',
+    color: '#831843',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.85rem',
+    flexShrink: 0,
+  },
+  summaryMatch: {
+    background: '#f0fdf4',
+    border: '1px solid #bbf7d0',
+    color: '#166534',
+  },
+  note: {
+    margin: 0,
+    color: '#6b7280',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.78rem',
+    flexShrink: 0,
+  },
+}

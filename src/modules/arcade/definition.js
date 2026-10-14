@@ -205,6 +205,7 @@ export default defineModule({
       turtleResult: null,
       inspector: null,
       variablesPanel: null,
+      stage: null,
     }),
   }),
   // Generic work slot (useStudentCodeState): `{ code, arcadeDesign }`. Storage and wire take

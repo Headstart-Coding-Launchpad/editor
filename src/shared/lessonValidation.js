@@ -307,6 +307,16 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
       `Task ${n} has showVariables, but the name-tag panel only works in Python and Turtle tasks — it is ignored`
     )
   }
+  // stageTarget: the Python Stage's target drawing (src/shared/stage/), on the module that
+  // declares it as a task field (python); its validateTask checks the shape.
+  if (
+    task.stageTarget != null &&
+    !definition?.taskFields?.some((field) => field.name === 'stageTarget')
+  ) {
+    warnings.push(
+      `Task ${n} has stageTarget, but the Stage only works in Python tasks — it is ignored`
+    )
+  }
 
   // peerHints: extra preset hints for peer help (src/shared/peerHelp.js). They reach a student
   // without the teacher checking each one, so they are authored text only, short, and few.

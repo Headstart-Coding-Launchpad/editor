@@ -209,6 +209,12 @@ export function validateCodeChecks(
     'code_structure',
     // names (optional) instead of a value; its own validate() checks them.
     'variables_predicted',
+    // The Python Stage's checks have their own fields; validateStageCheck checks them.
+    'stage_matches_target',
+    'stage_shape_count',
+    'stage_colour_used',
+    'stage_pixel',
+    'stage_text_shown',
   ]
   if (html) noValueTypes.push('html_element_attribute', 'html_element_style_property')
   if (normalized.some((check) => !noValueTypes.includes(check.type) && !hasValue(check.value))) {
