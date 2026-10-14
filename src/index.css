@@ -486,6 +486,21 @@ select {
   color: #fff !important;
 }
 
+/* "See example" dialog (src/shared/markdown/ExampleFence.jsx): a full-width bottom sheet on
+   narrow screens. */
+@media (max-width: 640px) {
+  .md-example-backdrop {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .md-example-backdrop > .md-example-dialog {
+    width: 100% !important;
+    max-height: 92vh !important;
+    border-radius: 16px 16px 0 0 !important;
+  }
+}
+
 .ui-modal-backdrop button[title='Close'],
 .ui-modal-backdrop button[aria-label='Close'] {
   background: rgba(255, 255, 255, 0.14) !important;

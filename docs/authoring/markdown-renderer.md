@@ -174,6 +174,32 @@ delete this clone
 
 ---
 
+## Worked Examples ("See an example")
+
+A fence whose info string starts with `example` doesn't render inline. It renders a **button**, and the button opens the example in a wide pop-up, so code that would wrap in a narrow explainer panel reads properly. Use it for a parallel worked example on an open challenge: the same shape with different content, so it shows the pattern without giving the answer.
+
+````
+```example python label="See an example"
+Here's the same Check → Do → Otherwise shape with different weather.
+---
+weather = "sunny"
+if weather == "rainy":
+    print("Grab your wellies!")
+else:
+    print("Sunglasses on!")
+```
+````
+
+- **First line:** `example`, then an optional language, then an optional `label="…"`, the button text (default "See an example", at most 40 characters; use double or single quotes).
+- **Languages:** `python`, `html`, `css`, `js` (or `javascript`), `scratch` (drawn as blocks, using the Scratch fence syntax above) and `text` (plain). With no language the code is plain.
+- **Intro:** the lines before the first line that is just `---` are the intro, shown above the code. It's Markdown, so `**bold**` and inline code work. Leave out the `---` line and everything is code. If your code itself has a `---` line, start the body with `---` (an empty intro).
+- **Where:** a top-level fence in any Markdown field. A fence inside a list or blockquote isn't recognised. Wrapping it in a four-backtick fence shows the syntax as code without making a button (as above).
+- **The pop-up:** about 960px wide with a horizontal scroll for long lines, and a full-width sheet from the bottom on phones. Esc, the ✕ or a click outside closes it; keyboard focus stays inside it while open. In the task explainer, copying from it is blocked just as in the explainer.
+- **The tutor sees it:** when a student opens an example in a task's explainer during a live lesson, the tutor's student card shows 🔍 and the student modal "🔍 Opened example", and the session report records when they first opened it and how often ([session-reports.md](session-reports.md), `exampleOpens`). Solo study, the Builder preview and the presentation window record nothing.
+- Validation warns about an example with no code, an unknown language, stray words on the first line, a missing closing fence, and more than 10 examples in one explainer ([validation-errors.md](validation-errors.md)).
+
+---
+
 ## Lists
 
 ```

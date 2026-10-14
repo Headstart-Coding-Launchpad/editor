@@ -12,7 +12,8 @@ import { TopicLibraryDialog, TopicReference } from './TopicLibraryView'
 import { useBadgeSignals } from './badgeSignalsContext'
 import { TOPIC_LIBRARY_OPEN_ID } from '../badges/signals.js'
 import { InlineScratchBlock, ScratchBlocks, looksLikeScratchBlocks } from './markdown/ScratchBlocks'
-import { parseMarkdownTables } from './markdown/tableParser'
+import { parseMarkdownBlocks } from './markdown/exampleFence'
+import { ExampleFenceButton } from './markdown/ExampleFence'
 import { anchorProps, blockAnchor, rehypeMarkdownAnchors, tableRowAnchor } from './markdown/anchors'
 import { staggerStyle } from './motion'
 
@@ -54,6 +55,53 @@ function InlineHighlightedCode({ lang, code }) {
       }}
       dangerouslySetInnerHTML={{ __html: highlighted }}
     />
+  )
+}
+
+// A worked example's code in the "See example" dialog (./markdown/ExampleFence.jsx): the same
+// highlighting and block style as a fenced code block, with no wrapping (the dialog is wide and
+// scrolls sideways). Scratch examples draw as blocks.
+// Example languages drawn as blocks rather than highlighted text (a fence language, as in
+// ```scratch, not a lesson type).
+const EXAMPLE_BLOCK_RENDERERS = { scratch: ScratchBlocks }
+
+function ExampleCode({ language, code }) {
+  const Blocks = EXAMPLE_BLOCK_RENDERERS[language]
+  if (Blocks) return <Blocks code={code} />
+  const hljsLang = INLINE_LANG_MAP[language]
+  let highlighted = null
+  if (hljsLang) {
+    try {
+      highlighted = hljs.highlight(code, { language: hljsLang }).value
+    } catch {
+      highlighted = null
+    }
+  }
+  return (
+    <pre
+      style={{
+        background: '#fafafa',
+        border: '1px solid #e5e7eb',
+        borderRadius: '8px',
+        padding: '12px 14px',
+        overflowX: 'auto',
+        ...CODE_FONT_STYLE,
+        fontSize: '15px',
+        margin: '10px 0 0',
+        lineHeight: 1.6,
+        whiteSpace: 'pre',
+      }}
+    >
+      {highlighted != null ? (
+        <code
+          className={`hljs language-${hljsLang}`}
+          style={CODE_FONT_STYLE}
+          dangerouslySetInnerHTML={{ __html: highlighted }}
+        />
+      ) : (
+        <code style={CODE_FONT_STYLE}>{code}</code>
+      )}
+    </pre>
   )
 }
 
@@ -577,6 +625,9 @@ export function MarkdownRenderer({
   // Slide list items in one after another. Only the explainer and information task bodies pass
   // it, on a task's first view (useFirstView), so it never replays on a revisit.
   animateLists = false,
+  // Called with (index, example) when the student opens a "See example" fence's dialog; the
+  // task explainer passes it to log the open for the tutor (src/shared/exampleOpens.js).
+  onExampleOpen,
 }) {
   const topicEnabled =
     showLibrary || String(content ?? '').includes('[[') || String(content ?? '').includes('#topic/')
@@ -584,7 +635,7 @@ export function MarkdownRenderer({
   const badgeSignals = useBadgeSignals()
   const [libraryOpen, setLibraryOpen] = React.useState(false)
   const [selectedTopicId, setSelectedTopicId] = React.useState('')
-  const blocks = parseMarkdownTables(topicEnabled ? expandTopicLinks(content, topics) : content)
+  const blocks = parseMarkdownBlocks(topicEnabled ? expandTopicLinks(content, topics) : content)
 
   React.useEffect(() => {
     if (!openTopicId) return
@@ -686,7 +737,24 @@ export function MarkdownRenderer({
                     See markdown/anchors.js. */}
                 {blocks.map((block, i) => (
                   <div key={i} data-md-anchor={blockAnchor(i)}>
-                    {block.type === 'table' ? (
+                    {block.type === 'example' ? (
+                      <ExampleFenceButton
+                        example={block}
+                        onOpen={onExampleOpen}
+                        disableCopy={disableCopy}
+                        renderIntro={(intro) => (
+                          <MarkdownRenderer
+                            content={intro}
+                            textScale={textScale}
+                            topicType={topicType}
+                            disableCopy={disableCopy}
+                          />
+                        )}
+                        renderCode={(language, code) => (
+                          <ExampleCode language={language} code={code} />
+                        )}
+                      />
+                    ) : block.type === 'table' ? (
                       <MarkdownTable
                         headers={block.headers}
                         align={block.align}

@@ -212,6 +212,26 @@ describe('side-quests', () => {
   })
 })
 
+describe('example opens', () => {
+  const logPath = (id, index = 0) => `sessions/${LESSON}/exampleOpenLog/${id}/t2/${index}`
+
+  it('lets a student log their own example opens, and nobody else', async () => {
+    const entry = { openedAt: 1, lastOpenedAt: 2, opens: 2 }
+    await assertSucceeds(ref(as.student, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.student, `${logPath(STUDENT_ID, 9)}/opens`).set(1))
+    await assertFails(ref(as.otherStudent, logPath(STUDENT_ID)).set(entry))
+    await assertFails(ref(as.anonymous, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.teacher, `sessions/${LESSON}/exampleOpenLog`).set(null))
+  })
+
+  it('refuses an example index above 9, bad values and code', async () => {
+    await assertFails(ref(as.student, logPath(STUDENT_ID, 10)).set({ openedAt: 1 }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ opens: 0 }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ openedAt: 'now' }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ code: 'print(1)' }))
+  })
+})
+
 describe('shared workspaces', () => {
   it('only lets teachers approve shares, and requires sharerId and sharedAt', async () => {
     const path = `sessions/${LESSON}/sharedWorkspaces/share-1`

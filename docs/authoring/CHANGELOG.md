@@ -97,6 +97,43 @@ Entries written before 2026-09-29 are not tagged.
 - Affects: python, turtle, html (sideQuests) · Existing lessons: no changes needed · Resolves:
   authoring-requests/2026-10-14-tutor-view-of-side-quests-what-each-task-offers-and-how-each.md
 
+### "See an example" button for worked examples in explainers
+
+- **New Markdown fence, ` ```example `.** It renders a button in the explainer; the button
+  opens the example in a wide pop-up (a full-width sheet on phones), so the code no longer wraps
+  in the narrow panel. First line: `example`, an optional language (`python`, `html`, `css`,
+  `js`, `scratch`, `text`) and an optional `label="…"` (the button text, default "See an
+  example"). Lines before a `---` line are the intro (Markdown); the rest is the code:
+
+  ````
+  ```example python label="See an example"
+  Here's the same Check → Do → Otherwise shape with different weather.
+  ---
+  weather = "sunny"
+  if weather == "rainy":
+      print("Grab your wellies!")
+  else:
+      print("Sunglasses on!")
+  ```
+  ````
+
+  It works in any Markdown field (top-level only, not in a list or blockquote), including the
+  Builder preview and topic cards. There is **no `example` task field**: the request suggested
+  one, but a fence keeps it where it's read, can sit anywhere in the explainer and allows more
+  than one. The guides v35 workaround (leaving the worked example out) can now be undone.
+- **Tutor and report.** When a student opens one in a task's explainer in a live lesson, the
+  tutor's card shows 🔍 and the student modal "🔍 Opened example". The session report adds
+  `exampleOpens` per student task (first open, time after the task started, number of opens) and
+  `exampleOpenStudentCount` per task. See
+  [markdown-renderer.md](markdown-renderer.md#worked-examples-see-an-example) and
+  [session-reports.md](session-reports.md).
+- **Validation warnings** for an example with no code, an unknown language, stray words on the
+  first line (often an unquoted label), no closing fence, or more than 10 in one explainer. See
+  [validation-errors.md](validation-errors.md).
+- Affects: markdown, all · Existing lessons: no changes needed (optionally put worked examples
+  back into Challenge explainers as ` ```example ` fences) · Resolves:
+  authoring-requests/2026-10-14-see-example-button-in-explainers-that-opens-a-worked-example.md
+
 ## 2026-10-09
 
 ### Confidence checks are 1–10; tutors see unsubmitted short answers

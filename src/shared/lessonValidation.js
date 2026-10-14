@@ -29,6 +29,11 @@ import {
 } from './taskUtils.js'
 import { isPlainObject } from './textUtils.js'
 import { validateSideQuests } from './sideQuests.js'
+import {
+  EXAMPLE_LANGUAGES,
+  findExampleFenceProblems,
+  MAX_LOGGED_EXAMPLES,
+} from './markdown/exampleFence.js'
 import { validateDraftLessonStructure } from './draftLesson.js'
 import {
   getModuleCarrySourceIds,
@@ -210,6 +215,31 @@ function validateFeedbackBasics(task, n, errors, warnings) {
   })
 }
 
+// "See example" fences in the explainer (./markdown/exampleFence.js). Warnings only: a bad one
+// still renders (as plain code, or with no code).
+function validateExampleFences(task, n, warnings) {
+  if (typeof task.explainer !== 'string') return
+  for (const { number, problem, detail } of findExampleFenceProblems(task.explainer)) {
+    if (problem === 'empty') {
+      warnings.push(`Task ${n} explainer example ${number} has no code`)
+    } else if (problem === 'unknown-language') {
+      warnings.push(
+        `Task ${n} explainer example ${number} language "${detail}" is not one of: ${EXAMPLE_LANGUAGES.join(', ')}`
+      )
+    } else if (problem === 'unknown-option') {
+      warnings.push(
+        `Task ${n} explainer example ${number} has unrecognised words after its language: ${detail}`
+      )
+    } else if (problem === 'unclosed') {
+      warnings.push(`Task ${n} explainer example ${number} has no closing fence`)
+    } else if (problem === 'too-many') {
+      warnings.push(
+        `Task ${n} explainer has more than ${MAX_LOGGED_EXAMPLES} examples; opens of the rest are not recorded`
+      )
+    }
+  }
+}
+
 function validateActivityTask(task, n, lesson, errors, warnings) {
   const activity = getTaskActivity(task)
   const result = activity?.validateTask(task, { n, lesson }) ?? {}
@@ -295,6 +325,7 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
     )
   }
   validateBadgeHints(task, n, errors, warnings)
+  validateExampleFences(task, n, warnings)
 
   // Drafts deliberately allow missing task-specific authoring fields; the schema/type checks
   // above (and validateDraftLessonStructure) still run so the Builder can load them safely.

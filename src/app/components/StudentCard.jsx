@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { exampleOpenCount } from '../../shared/exampleOpens'
 import { findTaskById, deriveTaskContext } from '../../shared/taskUtils'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { getModuleDefinition } from '../../modules/definitions'
@@ -204,6 +205,8 @@ export default function StudentCard({
   const supportRevealCount = Object.keys(
     session?.supportRevealLog?.[student.anonymousId]?.[currentTask?.id] ?? {}
   ).length
+  // "See example" fences opened in this task's explainer (src/shared/exampleOpens.js).
+  const examplesOpened = exampleOpenCount(session, student.anonymousId, currentTask?.id)
   const checkPassed =
     hasCheck &&
     (hasActiveOverride ? student.checkOverridePassed === true : student.checkPassed === true)
@@ -494,6 +497,15 @@ export default function StudentCard({
               label={`Support${supportRevealCount > 1 ? ` ${supportRevealCount}` : ''}`}
               title={`Opened ${supportRevealCount > 1 ? `${supportRevealCount} support references` : 'a support reference'}`}
               style={s.checkBadgeSupport}
+            />
+          )}
+          {examplesOpened > 0 && (
+            <IconChip
+              icon="🔍"
+              label="Opened example"
+              title={`Opened ${examplesOpened > 1 ? `${examplesOpened} worked examples` : 'the worked example'} in the explainer`}
+              style={s.checkBadgeSupport}
+              testId="card-example-opened"
             />
           )}
           {showsVisiblePanes && (

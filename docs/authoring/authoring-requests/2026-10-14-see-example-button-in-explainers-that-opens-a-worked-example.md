@@ -1,6 +1,6 @@
 # 'See example' button in explainers that opens a worked example in a pop-up
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Ryan (approved by Ryan), 2026-10-14
 - **Lessons blocked:** none yet
@@ -27,4 +27,17 @@ Ryan's idea, 2026-10-13. Could be a Markdown directive instead of a task field; 
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped on branch `feature/explainer-see-example` as a Markdown fence rather than a task field (the dev agent's call the request allowed): it sits where it's read, works anywhere in an explainer, and allows more than one.
+
+    ```example python label="See an example"
+    Here's the same Check → Do → Otherwise shape with different weather.
+    ---
+    weather = "sunny"
+    ...
+    ```
+
+- The button opens a wide, portalled dialog (focus kept inside, Esc closes; a bottom sheet on phones) with the intro and highlighted code (`src/shared/markdown/exampleFence.js`, `ExampleFence.jsx`).
+- Opens in a task explainer during a live lesson are logged per student, task and example (`exampleOpenLog`, `src/shared/exampleOpens.js`; new RTDB data, approved in the 2026-10-14 plan). The tutor's card shows 🔍 and the student modal "🔍 Opened example".
+- Session report: `exampleOpens` per student task (first open, `afterMs`, `opens`) and `exampleOpenStudentCount` per task.
+- Validation warns about empty, unknown-language, malformed, unclosed or too many example fences.
+- Docs: [markdown-renderer.md](../markdown-renderer.md#worked-examples-see-an-example), [session-reports.md](../session-reports.md), [validation-errors.md](../validation-errors.md), CHANGELOG 2026-10-14.

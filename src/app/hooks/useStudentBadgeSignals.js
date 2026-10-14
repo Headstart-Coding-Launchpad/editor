@@ -71,6 +71,8 @@ export function workAreaShortcutFor(event) {
  *   Filesystem / Desktop / Arcade design change)
  * - reportCompleteShown(taskId, via): 'show' | 'preview' | 'teacherReset'
  * - reportSandboxRun({ error, submission }) / reportSandboxRunError(error)
+ * - reportExampleOpen(index, taskId = currentTaskId): a "See example" fence opened in the task
+ *   explainer (not a badge signal: it feeds the tutor and the report, src/shared/exampleOpens.js)
  * plus `enabled` and `context` ('task' | 'sandbox' | 'personal').
  */
 export function useStudentBadgeSignals({
@@ -234,6 +236,17 @@ export function useStudentBadgeSignals({
     []
   )
 
+  const reportExampleOpen = useCallback(
+    (index, taskId) => {
+      const s = stateRef.current
+      const id = taskId ?? s.currentTaskId
+      if (!s.enabled || s.context !== 'task' || id == null || !Number.isInteger(index)) return
+      writersRef.current.recordExampleOpen?.(s.anonymousId, id, index)
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  )
+
   const reportSandboxRun = useCallback(
     ({ error = false, submission } = {}) => {
       const s = stateRef.current
@@ -270,6 +283,7 @@ export function useStudentBadgeSignals({
       reportCompleteShown,
       reportSandboxRun,
       reportSandboxRunError,
+      reportExampleOpen,
     }),
     [
       enabled,
@@ -283,6 +297,7 @@ export function useStudentBadgeSignals({
       reportCompleteShown,
       reportSandboxRun,
       reportSandboxRunError,
+      reportExampleOpen,
     ]
   )
 }

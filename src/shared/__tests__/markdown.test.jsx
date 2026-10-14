@@ -547,3 +547,57 @@ describe('MarkdownRenderer animateLists', () => {
     })
   })
 })
+
+describe('MarkdownRenderer "See example" fences', () => {
+  const content = [
+    'Add an else.',
+    '',
+    '```example python label="Show me one"',
+    'The same shape with **weather**.',
+    '---',
+    'weather = "sunny"',
+    'if weather == "rainy":',
+    '    print("Wellies!")',
+    '```',
+  ].join('\n')
+
+  it('renders a button instead of the code, and opens a labelled dialog with it', () => {
+    const onExampleOpen = vi.fn()
+    render(<MarkdownRenderer content={content} onExampleOpen={onExampleOpen} />)
+    expect(screen.queryByText(/Wellies/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Show me one/ }))
+    const dialog = screen.getByRole('dialog', { name: 'Show me one' })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+    expect(dialog.textContent).toContain('print("Wellies!")')
+    expect(dialog.querySelector('code.language-python')).not.toBeNull()
+    expect(dialog.querySelector('strong')?.textContent).toBe('weather')
+    expect(onExampleOpen).toHaveBeenCalledWith(0, expect.objectContaining({ language: 'python' }))
+  })
+
+  it('closes on Escape and on the close button', () => {
+    render(<MarkdownRenderer content={content} />)
+    fireEvent.click(screen.getByRole('button', { name: /Show me one/ }))
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Show me one/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('keeps Tab focus inside the dialog', () => {
+    render(<MarkdownRenderer content={content} />)
+    fireEvent.click(screen.getByRole('button', { name: /Show me one/ }))
+    const close = screen.getByRole('button', { name: 'Close' })
+    close.focus()
+    const tab = createEvent.keyDown(close, { key: 'Tab' })
+    fireEvent(close, tab)
+    expect(tab.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(close)
+  })
+
+  it('still renders ordinary code fences inline', () => {
+    render(<MarkdownRenderer content={'```python\nprint(1)\n```'} />)
+    expect(screen.queryByRole('button', { name: /example/i })).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+})

@@ -90,6 +90,11 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … side-quest … has unknown fields (…); they are ignored` (warning) | A side-quest has keys other than `title`, `kind`, `explainer`, `starter`. | Remove them; side-quests have no checks. |
 | `Task … sideQuests are not supported on … tasks yet (only python, turtle, html); they are ignored` (warning) | Side-quests only run in Python, Turtle and HTML so far (Scratch later). | Remove them, or move the task to a supported module. |
 | `Task … sideQuests only work on code tasks; they are ignored here` (warning) | `sideQuests` on a quiz, information, activity or Code Arrange task. | Remove them. |
+| `Task … explainer example … has no code` (warning) | A ` ```example ` fence ([markdown-renderer.md](markdown-renderer.md#worked-examples-see-an-example)) has nothing after its `---` line (or is empty). The button opens an empty dialog. | Put the example's code after the `---` line. |
+| `Task … explainer example … language "…" is not one of: …` (warning) | The word after `example` isn't `python`, `html`, `css`, `js`, `scratch` or `text`. The code shows unhighlighted. | Fix the language, or leave it out for plain code. |
+| `Task … explainer example … has unrecognised words after its language: …` (warning) | The fence's first line has words other than the language and `label="…"` (often a label without quotes). | Write `` ```example python label="See an example" ``. |
+| `Task … explainer example … has no closing fence` (warning) | The example fence is never closed, so it runs to the end of the explainer. | Add a closing ` ``` ` line. |
+| `Task … explainer has more than … examples; opens of the rest are not recorded` (warning) | Only the first 10 examples in an explainer are logged for the tutor and the report. | Use fewer examples. |
 | `Task … stage … role must be one of: …` | A `codeStages` entry has an unknown `role`. | Use `starter`, `support` or `complete`. |
 | `Task … stage … is missing a label` | A code stage has no `label`. | Add `label:` to the stage. |
 | `Task ID … is used by … and … - renumber task IDs before publishing` (warning, **Builder only**) | Two tasks share an `id`. | Renumber the task ids. |

@@ -127,6 +127,24 @@
           }
         },
 
+        // "See example" opens per student, task and example index (0-9):
+        // { openedAt, lastOpenedAt, opens } (src/shared/exampleOpens.js). Written by the student
+        // for their own id only, when they open a task explainer's worked example; never any
+        // code. Teacher/admin write (createSession clears it) is inherited from $lessonId.
+        "exampleOpenLog": {
+          "$anonymousId": {
+            "$taskId": {
+              "$index": {
+                ".write": "auth != null && auth.uid === $anonymousId && $index.matches(/^[0-9]$/)",
+                "openedAt": { ".validate": "newData.isNumber()" },
+                "lastOpenedAt": { ".validate": "newData.isNumber()" },
+                "opens": { ".validate": "newData.isNumber() && newData.val() >= 1" },
+                "$other": { ".validate": false }
+              }
+            }
+          }
+        },
+
         // Live class polls ({ question, options, status, showResults, createdAt, closedAt? }).
         // Teacher/admin write is inherited from $lessonId; there is no student rule, so
         // students only answer, on their own node (students/$anonymousId/pollResponses).
