@@ -92,6 +92,11 @@ Accepted phased plan for making lesson capabilities modular: an Activity plugin 
 
 **Load when:** building a new activity or module, working on any phase of the plan, or deciding whether an idea should be an Activity or a workspace module.
 
+### [architecture/requests-2026-10-14-plan.md](architecture/requests-2026-10-14-plan.md)
+Agreed build plan for the 20 platform requests filed 2026-10-14: class roster with tutor matching, cross-lesson carry, typing history, export, Scratch fixes, highlight controls, keyboard modes, and the six P6 visual-learning builds (name tags, Stage, Python and Scratch slow-mo, scrubbing, HTML Inspector), with Ryan's decisions and the build waves.
+
+**Load when:** building any of those features, or changing the class roster, saved work or new Firebase data they add.
+
 ### [architecture/runtime-flows.md](architecture/runtime-flows.md)
 High-level route, student phase, persistence, teacher-live, and Firebase ownership diagrams.
 
