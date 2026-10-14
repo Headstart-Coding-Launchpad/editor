@@ -12,8 +12,8 @@ import { TopicLibraryDialog, TopicReference } from './TopicLibraryView'
 import { useBadgeSignals } from './badgeSignalsContext'
 import { TOPIC_LIBRARY_OPEN_ID } from '../badges/signals.js'
 import { InlineScratchBlock, ScratchBlocks, looksLikeScratchBlocks } from './markdown/ScratchBlocks'
-import { parseMarkdownBlocks } from './markdown/exampleFence'
-import { ExampleFenceButton } from './markdown/ExampleFence'
+import { parseMarkdownBlocks } from './markdown/exampleFence.js'
+import { ExampleFenceButton } from './markdown/ExampleFenceButton.jsx'
 import { anchorProps, blockAnchor, rehypeMarkdownAnchors, tableRowAnchor } from './markdown/anchors'
 import { staggerStyle } from './motion'
 
@@ -58,7 +58,7 @@ function InlineHighlightedCode({ lang, code }) {
   )
 }
 
-// A worked example's code in the "See example" dialog (./markdown/ExampleFence.jsx): the same
+// A worked example's code in the "See example" dialog (./markdown/ExampleFenceButton.jsx): the same
 // highlighting and block style as a fenced code block, with no wrapping (the dialog is wide and
 // scrolls sideways). Scratch examples draw as blocks.
 // Example languages drawn as blocks rather than highlighted text (a fence language, as in

@@ -36,7 +36,7 @@ Shipped on branch `feature/explainer-see-example` as a Markdown fence rather tha
     ...
     ```
 
-- The button opens a wide, portalled dialog (focus kept inside, Esc closes; a bottom sheet on phones) with the intro and highlighted code (`src/shared/markdown/exampleFence.js`, `ExampleFence.jsx`).
+- The button opens a wide, portalled dialog (focus kept inside, Esc closes; a bottom sheet on phones) with the intro and highlighted code (`src/shared/markdown/exampleFence.js`, `ExampleFenceButton.jsx`).
 - Opens in a task explainer during a live lesson are logged per student, task and example (`exampleOpenLog`, `src/shared/exampleOpens.js`; new RTDB data, approved in the 2026-10-14 plan). The tutor's card shows 🔍 and the student modal "🔍 Opened example".
 - Session report: `exampleOpens` per student task (first open, `afterMs`, `opens`) and `exampleOpenStudentCount` per task.
 - Validation warns about empty, unknown-language, malformed, unclosed or too many example fences.

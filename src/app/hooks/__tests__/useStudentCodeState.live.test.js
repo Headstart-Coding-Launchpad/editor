@@ -322,6 +322,7 @@ describe('teacherLive payload (this student is the Go Live source)', () => {
       'code',
       'arcadeDesign',
       'turtleResult',
+      'inspector',
       'variablesPanel',
       'files',
       'activeFile',

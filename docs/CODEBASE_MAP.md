@@ -733,7 +733,7 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs
 | `ScratchBlocks.jsx` | SVG/path Scratch block renderer and fenced-stack parser used by MarkdownRenderer |
 | `tableParser.js` | Pure Markdown table parser used before handing content to ReactMarkdown |
 | `exampleFence.js` | Pure parser for "See example" fences (` ```example python label="…" `, intro before `---`, then code): `splitExampleFences`, `parseMarkdownBlocks` (example fences + tables, MarkdownRenderer's block list), `findExampleFenceProblems` (lesson validation warnings) |
-| `ExampleFence.jsx` | The "See example" button and its wide, portalled, focus-trapped dialog (a bottom sheet on narrow screens); MarkdownRenderer supplies the highlighted code and intro |
+| `ExampleFenceButton.jsx` | The "See example" button and its wide, portalled, focus-trapped dialog (a bottom sheet on narrow screens); MarkdownRenderer supplies the highlighted code and intro |
 | `anchors.js` | Stable `data-md-anchor` content anchors (`b{n}`, `b{n}.p{k}`, `.h{k}`, `.li{k}`, `.img{k}`, `.q{k}`, `.pre{k}`, `.th`/`.tr{k}`): `rehypeMarkdownAnchors` plugin plus the block/table-row helpers MarkdownRenderer uses; Presentation annotations position marks against them |
 
 ### Input Recorder (`src/shared/input/`)

@@ -21,8 +21,18 @@ import { parseMarkdownTables } from './tableParser.js'
 
 export const DEFAULT_EXAMPLE_LABEL = 'See an example'
 
-// The languages an example's code can be shown in. `text` is plain, unhighlighted code.
-export const EXAMPLE_LANGUAGES = Object.freeze(['python', 'html', 'css', 'js', 'scratch', 'text'])
+// The languages an example's code can be shown in, with their display names. `text` is plain,
+// unhighlighted code. A map rather than an inline list: these are fence languages, not lesson
+// types, so they stay out of the type-branch ratchet (src/modules/__tests__/typeBranchRatchet).
+export const EXAMPLE_LANGUAGE_NAMES = Object.freeze({
+  python: 'Python',
+  html: 'HTML',
+  css: 'CSS',
+  js: 'JavaScript',
+  scratch: 'Scratch',
+  text: 'Plain text',
+})
+export const EXAMPLE_LANGUAGES = Object.freeze(Object.keys(EXAMPLE_LANGUAGE_NAMES))
 const LANGUAGE_ALIASES = { javascript: 'js', py: 'python', plain: 'text', plaintext: 'text' }
 
 // The most examples one Markdown text can log opens for (exampleOpenLog's index rule, 0-9).
