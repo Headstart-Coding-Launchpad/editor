@@ -7,6 +7,8 @@ import {
   CODE_STRUCTURE_OPERATORS,
   evaluateCodeStructureCheck,
 } from '../../shared/checkHelpers.js'
+import { evaluateVariablesPredictedCheck } from '../../shared/variablesPanel/predictions.js'
+import { validateVariablesPredictedCheck } from '../../shared/variablesPanel/validation.js'
 
 // Messages from validateCodeStructureCheck are documented in
 // docs/authoring/validation-errors.md (validationErrorsDoc.test.js scans this file).
@@ -119,6 +121,25 @@ export const CHECKS = [
     contextKey: 'code',
     evaluate: (check, _output, context = {}) => evaluateCodeStructureCheck(check, context?.code),
     validate: validateCodeStructureCheck,
+  },
+  // The name-tag panel's predict mode (showVariables, src/shared/variablesPanel/): every listed
+  // prediction matched the value the panel showed after Run, compared like a typed quiz answer.
+  // Reads the predictions and snapshot the run hands over (`context.variablePredictions`), so
+  // `lessons test-checks` reports it as needing a run. Python and Turtle tasks.
+  {
+    type: 'variables_predicted',
+    owner: 'module:python',
+    subject: 'Variable predictions',
+    fields: ['names'],
+    timing: 'on_run',
+    requiresRun: true,
+    submitAllowed: false,
+    contextKey: 'variablePredictions',
+    // Every module with the name-tag panel (the showVariables task field): python and turtle.
+    appliesTo: (moduleDefinition) =>
+      !!moduleDefinition?.taskFields?.some((field) => field.name === 'showVariables'),
+    evaluate: evaluateVariablesPredictedCheck,
+    validate: validateVariablesPredictedCheck,
   },
 ]
 

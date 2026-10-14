@@ -533,6 +533,33 @@ function FeedbackStageOfferControls({ check, stages = [], onChange }) {
   )
 }
 
+// A `variables_predicted` check (the name-tag panel's predictions) is set up from the task's
+// Name-tag panel field, so its row here is a read-only summary with its hint and Remove.
+function PredictionCheckRow({ check, index, total, onChange, onRemove }) {
+  const names = Array.isArray(check.names) ? check.names : []
+  return (
+    <div className="te-check-row">
+      {total > 1 && <span className="te-check-index">#{index + 1}</span>}
+      <div className="te-check-editor">
+        <span style={{ gridColumn: '1 / -1', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+          Every prediction is right{names.length > 0 ? ` (${names.join(', ')})` : ''} — set under
+          Name-tag panel
+        </span>
+        <input
+          className="te-input"
+          style={{ gridColumn: '1 / -1' }}
+          placeholder="Hint shown when a prediction is wrong"
+          value={check.hint ?? ''}
+          onChange={(e) => onChange({ ...check, hint: e.target.value })}
+        />
+      </div>
+      <button type="button" className="te-check-remove-btn" onClick={onRemove} title="Remove check">
+        ×
+      </button>
+    </div>
+  )
+}
+
 function CheckListEditor({
   checks,
   onChange,
@@ -604,6 +631,18 @@ function CheckListEditor({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
       {checks.map((check, index) => {
+        if (check?.type === 'variables_predicted') {
+          return (
+            <PredictionCheckRow
+              key={index}
+              check={check}
+              index={index}
+              total={checks.length}
+              onChange={(updated) => updateCheck(index, updated)}
+              onRemove={() => removeCheck(index)}
+            />
+          )
+        }
         const { subject, aspect, operator } = checkUiFromCheck(check)
         const aspectOptions = getAspectOptions(subject, aspect, {
           allowStructure: allowStructureChecks,
@@ -722,4 +761,5 @@ export {
   CheckListEditor,
   CheckFeedbackControls,
   RunAttemptedFields,
+  PredictionCheckRow,
 }

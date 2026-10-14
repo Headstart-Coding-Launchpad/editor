@@ -12,6 +12,7 @@ import { HIGHLIGHT_EMOJI_OPTIONS } from './constants'
 import { readAnswerDraft } from '../../../shared/answerDrafts'
 import { getMirrorLineHintSets } from './mirrorLineHints'
 import { getInspectorConfig } from '../../../modules/html/inspector/config'
+import TaskVariablesPanel from '../../../shared/variablesPanel/TaskVariablesPanel.jsx'
 
 function answerKey(value) {
   return typeof value === 'string' ? value : JSON.stringify(value ?? null)
@@ -314,6 +315,14 @@ export default function StudentWorkspaceBody({
             openOnOutput
           />
         )}
+        {/* The student's name-tag panel (showVariables): their last run and predictions. */}
+        <TaskVariablesPanel
+          task={task}
+          synced={student.currentVariables ?? null}
+          audience="tutor"
+          hidden={isSessionSandbox}
+          style={s.variablesPanel}
+        />
       </>
     )
 
@@ -335,19 +344,29 @@ export default function StudentWorkspaceBody({
 
   if (mirror === 'view' && ModuleTeacherLiveView) {
     return (
-      <ModuleTeacherLiveView
-        task={task}
-        lesson={lesson}
-        student={student}
-        displayState={moduleDisplayState}
-        liveState={moduleDisplayState}
-        lineHints={lineHints}
-        readOnly
-        onChange={undefined}
-        onActivity={undefined}
-        isInSandbox={false}
-        activeStage={null}
-      />
+      <>
+        <ModuleTeacherLiveView
+          task={task}
+          lesson={lesson}
+          student={student}
+          displayState={moduleDisplayState}
+          liveState={moduleDisplayState}
+          lineHints={lineHints}
+          readOnly
+          onChange={undefined}
+          onActivity={undefined}
+          isInSandbox={false}
+          activeStage={null}
+        />
+        {/* Turtle's name-tag panel (showVariables); nothing for tasks without one. */}
+        <TaskVariablesPanel
+          task={task}
+          synced={student.currentVariables ?? null}
+          audience="tutor"
+          hidden={isSessionSandbox}
+          style={s.variablesPanel}
+        />
+      </>
     )
   }
 
@@ -410,6 +429,7 @@ export default function StudentWorkspaceBody({
 }
 
 const s = {
+  variablesPanel: { flexShrink: 0, maxHeight: 260, marginTop: 8 },
   // The unsubmitted draft above a quiz: dashed so it never reads as the submitted answer.
   draftStack: {
     display: 'flex',

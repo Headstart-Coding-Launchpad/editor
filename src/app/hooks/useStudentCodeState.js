@@ -79,6 +79,7 @@ import { getLessonModule } from '../../modules/registry'
 import { getModuleDefinition } from '../../modules/definitions.js'
 import { cloneArcadeDesign } from '../../modules/arcade/design'
 import { runWithRuntime } from './runWithRuntime'
+import { useVariablesPanel } from './useVariablesPanel'
 import { useStudentBadgeSignals } from './useStudentBadgeSignals'
 import { useStudentTypingStats } from './useStudentTypingStats'
 import { runErrorFor, runErrorName } from '../../badges/signals'
@@ -181,6 +182,8 @@ export function useStudentCodeState({
   recordStudentPaste,
   recordStudentTyping,
   recordStudentTileMiss,
+  writeStudentVariables,
+  recordVariablePredictions,
   writeStudentPersonalSandbox,
   writeStudentPresence,
   registerPresence,
@@ -323,6 +326,17 @@ export function useStudentCodeState({
   const editorSelectionRef = useLatestRef(editorSelection)
   const editorActivityRef = useLatestRef(editorActivity)
   const inPersonalSandboxRef = useLatestRef(inPersonalSandbox)
+  // The name-tag panel (a task's showVariables): see useVariablesPanel.js.
+  const variablesPanel = useVariablesPanel({
+    effectiveIdentity,
+    currentTaskId,
+    sessionRef,
+    phaseRef,
+    activeStudentViewRef,
+    teacherPresentation,
+    writeStudentVariables,
+    recordVariablePredictions,
+  })
   // Live badge signals (topic opens, shortcuts, first edits, complete shown, sandbox runs),
   // gated off for the presentation window, previews and solo.
   const badgeSignals = useStudentBadgeSignals({
@@ -449,6 +463,7 @@ export function useStudentCodeState({
     if (getModuleDefinition(moduleType).workSlot.kind !== 'code') return
     setOutput('')
     setTurtleResult(null)
+    variablesPanel.clear()
     setRunStatus(null)
     setIframeSrc(null)
   }
@@ -759,6 +774,7 @@ export function useStudentCodeState({
     codeRef,
     turtleResultRef,
     inspectorRef,
+    variablesPanelRef: variablesPanel.syncedRef,
     filesRef,
     activeFileRef,
     outputRef,
@@ -781,6 +797,7 @@ export function useStudentCodeState({
     checkAttempted,
     checkSuggestion,
     workValue: renderedStoredWork,
+    variablesPanelState: variablesPanel.syncedState,
     iframeStorageAssets: htmlIframeStorageAssets,
     extraPayloadRef: activityLivePayloadRef,
     updateTeacherLive,
@@ -1072,6 +1089,7 @@ export function useStudentCodeState({
     setRunningTests(false)
     setOutput('')
     setTurtleResult(null)
+    variablesPanel.clear()
     setRunStatus(null)
     setErrorLine(null)
     setHtmlErrorLocation(null)
@@ -1455,6 +1473,7 @@ export function useStudentCodeState({
       })
       setOutput('')
       setTurtleResult(null)
+      variablesPanel.clear()
       setRunStatus(null)
       resetCheckFeedback()
       if (actorId) persistence.saveWork(lesson.type, actorId, currentTaskId, nextFiles)
@@ -1477,6 +1496,7 @@ export function useStudentCodeState({
       )
       setOutput('')
       setTurtleResult(null)
+      variablesPanel.clear()
       setRunStatus(null)
       resetCheckFeedback()
       if (actorId) {
@@ -1503,6 +1523,7 @@ export function useStudentCodeState({
     }
     setOutput('')
     setTurtleResult(null)
+    variablesPanel.clear()
     setRunStatus(null)
     setIframeSrc(null)
     resetCheckFeedback()
@@ -1533,6 +1554,7 @@ export function useStudentCodeState({
     if (session) writeStudentPersonalSandbox(identity.anonymousId, false)
     setOutput('')
     setTurtleResult(null)
+    variablesPanel.clear()
     setRunStatus(null)
     setIframeSrc(null)
     resetCheckFeedback()
@@ -1598,6 +1620,7 @@ export function useStudentCodeState({
     setRunning(true)
     setOutput('')
     setTurtleResult(null)
+    variablesPanel.clear()
     setRunStatus(null)
     setTestResults(null)
     setErrorLine(null)
@@ -1660,6 +1683,7 @@ export function useStudentCodeState({
         saveRunRecord: (taskId, runCode, fields) =>
           persistence.saveRunRecord(moduleType, actor.anonymousId, taskId, runCode, fields),
         signals: badgeSignals,
+        variablesPanel,
       })
       return
     }
@@ -1819,6 +1843,7 @@ export function useStudentCodeState({
     setRunningTests(true)
     setOutput('')
     setTurtleResult(null)
+    variablesPanel.clear()
     setRunStatus(null)
     setTestResults(null)
     resetRunFeedback()
@@ -2602,6 +2627,7 @@ export function useStudentCodeState({
         if (slotDefinition.checking.trigger !== 'change') {
           setOutput('')
           setTurtleResult(null)
+          variablesPanel.clear()
           setRunStatus(null)
           setIframeSrc(null)
         }
@@ -2657,6 +2683,7 @@ export function useStudentCodeState({
       })
     setOutput('')
     setTurtleResult(null)
+    variablesPanel.clear()
     setRunStatus(null)
     setIframeSrc(null)
     resetCheckFeedback()
@@ -3040,6 +3067,7 @@ export function useStudentCodeState({
     output,
     runStatus,
     turtleResult,
+    variablesPanel,
     running,
     runningTests,
     testResults,

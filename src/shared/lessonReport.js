@@ -30,6 +30,10 @@ import {
   summarizeExampleOpens,
 } from './exampleOpens.js'
 import { inspectorReportFields, summarizeInspectorUse } from './inspectorUse.js'
+import {
+  summarizeVariablePredictions,
+  taskPredictionFields,
+} from './variablesPanel/predictionReport.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
 
@@ -755,6 +759,7 @@ export function buildSessionReport({
         ...(sideQuests.length > 0 ? { sideQuests } : {}),
         ...(typing ? { typing } : {}),
         ...(tileMisses.length > 0 ? { tileMisses } : {}),
+        ...taskPredictionFields(task, studentsSnapshot[anonymousId]),
         ...(tutorTileHighlights.length > 0 ? { tutorTileHighlights } : {}),
         ...withInspector(
           inspectorReportFields(studentsSnapshot[anonymousId]?.inspectorLog?.[task.id])
@@ -890,6 +895,7 @@ export function buildSessionReport({
       ...summarizeTyping(perStudent),
       ...summarizeExampleOpens(perStudent),
       ...summarizeInspectorUse(perStudent),
+      ...summarizeVariablePredictions(perStudent),
       ...badgeFields,
       ...(teacherRating ? { teacherRating } : {}),
     }

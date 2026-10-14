@@ -273,6 +273,11 @@ export const TURTLE_SHIM = [
   'sys.modules["turtle"] = _module',
 ].join('\n')
 
+// How many lines buildTurtleProgram puts before the student's code: the worker's line numbers
+// (errors, the name-tag panel's #@peek line, a step recorder) are this much higher than the
+// editor's.
+export const TURTLE_LINE_OFFSET = 2
+
 export function buildTurtleProgram(code) {
   return [`exec(${JSON.stringify(TURTLE_SHIM)}, globals())`, '', code].join('\n')
 }

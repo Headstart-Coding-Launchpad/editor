@@ -73,6 +73,34 @@ A Turtle task can carry up to three optional, unchecked `sideQuests` (`title`, `
 the task. They never change the task's code or what `carryCodeFrom` copies. See
 [Side-quests](AUTHORING_GUIDE.md#side-quests).
 
+## Name-tag panel (`showVariables`)
+
+A Turtle task can show students what is in their variables, exactly as a Python task does:
+`showVariables: { mode: view | predict | target, at: end | marker, hide, predict, target }`, the
+`#@peek` marker and the `variables_predicted` check. The panel sits between the drawing and the
+output. Names imported from `turtle` (`from turtle import forward`) and the turtle module itself
+are never shown, so the panel holds only the student's own variables (a `Turtle()` object they
+make shows as its type). See [python.md](python.md#name-tag-panel-showvariables) for the fields,
+display rules and the forgiving comparison.
+
+```yaml
+  showVariables:
+    mode: predict
+    predict: [size, sides]
+  codeStages:
+    - role: starter
+      code: |
+        import turtle
+        size = 50
+        sides = 4
+        #@peek
+        for i in range(sides):
+            turtle.forward(size)
+            turtle.left(90)
+  check:
+    - type: variables_predicted
+```
+
 ## Coordinate system
 
 Matches real Python `turtle` exactly: `(0, 0)` is the centre of a fixed
@@ -218,8 +246,9 @@ The Builder and `node cli/cli.mjs lessons validate` apply the same rules to
 Turtle checks and feedback checks:
 
 - The `type` must be one of the eight turtle types above, a generic `code`
-  check (including legacy aliases like `code_contains`), or `run_attempted`
-  (completion checks only).
+  check (including legacy aliases like `code_contains`), `run_attempted`
+  (completion checks only), or `variables_predicted` (with
+  `showVariables.mode: predict`; see [Name-tag panel](#name-tag-panel-showvariables)).
 - A `code` check needs a `value`.
 - `turtle_position` needs both `x` and `y`.
 - `turtle_heading`, `turtle_segment_count`, `turtle_path_length` and

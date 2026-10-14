@@ -68,6 +68,7 @@ describe('Template Module definition', () => {
       arcadeDesign: null,
       turtleResult: null,
       inspector: null,
+      variablesPanel: null,
     })
   })
 

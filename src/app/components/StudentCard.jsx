@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { exampleOpenCount } from '../../shared/exampleOpens'
 import { findTaskById, deriveTaskContext } from '../../shared/taskUtils'
+import { variablesCardSummary } from '../../shared/variablesPanel/predictions.js'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { getModuleDefinition } from '../../modules/definitions'
 import PresenceBadge from './PresenceBadge'
@@ -120,6 +121,8 @@ export default function StudentCard({
   }
 
   const currentTask = findTaskById(lesson?.tasks, session?.currentTaskId)
+  // The name-tag panel (showVariables) on a predict / target task: predictions or targets hit.
+  const variablesSummary = variablesCardSummary(currentTask, student.currentVariables)
   const isSubmitMode = currentTask?.interactionMode === 'submit'
   // Composed lessons carry `type: 'composed'`, so the module flags have to come from the
   // task's own moduleType — deriveTaskContext reads lesson.type directly. StudentModal
@@ -409,6 +412,14 @@ export default function StudentCard({
               label={`Pasted${pasteRecord.count > 1 ? ` ×${pasteRecord.count}` : ''}`}
               title={`Pasted ${pasteRecord.chars} characters into the editor on this task${pasteRecord.count > 1 ? ` (${pasteRecord.count} times)` : ''}`}
               style={s.checkBadgePasted}
+            />
+          )}
+          {variablesSummary && (
+            <IconChip
+              icon="🏷️"
+              label={variablesSummary.label}
+              title={variablesSummary.title}
+              style={s.checkBadgeFullscreen}
             />
           )}
           {student.isFullscreen && (

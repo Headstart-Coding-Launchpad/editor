@@ -1,0 +1,92 @@
+// @vitest-environment node
+import { describe, expect, it } from 'vitest'
+import { validateShowVariables, validateVariablesPredictedCheck } from '../validation.js'
+import { getModuleDefinition } from '../../../modules/definitions.js'
+
+function run(task) {
+  const errors = []
+  const warnings = []
+  validateShowVariables(task, 1, errors, warnings)
+  return { errors, warnings }
+}
+
+describe('validateShowVariables', () => {
+  it('accepts the three modes as documented', () => {
+    expect(run({ showVariables: { mode: 'view', at: 'end', hide: ['x'] } })).toEqual({
+      errors: [],
+      warnings: [],
+    })
+    expect(
+      run({
+        showVariables: { mode: 'predict', predict: ['score', 'lives'] },
+        check: [{ type: 'variables_predicted', names: ['score'] }],
+      })
+    ).toEqual({ errors: [], warnings: [] })
+    expect(run({ showVariables: { mode: 'target', target: { score: 10 } } }).errors).toEqual([])
+  })
+
+  it('rejects bad shapes', () => {
+    expect(run({ showVariables: 'yes' }).errors).toEqual([
+      'Task 1 has a showVariables that is not an object — use { mode, at, … }',
+    ])
+    expect(run({ showVariables: { mode: 'guess' } }).errors[0]).toContain('mode "guess"')
+    expect(run({ showVariables: { at: 'start' } }).errors[0]).toContain('at "start"')
+    expect(run({ showVariables: { hide: 'x' } }).errors[0]).toContain('hide that is not a list')
+    expect(run({ showVariables: { hide: ['my score'] } }).errors[0]).toContain('my score')
+    expect(run({ showVariables: { mode: 'predict' } }).errors[0]).toContain('no predict list')
+    expect(run({ showVariables: { mode: 'target' } }).errors[0]).toContain('no target values')
+    expect(run({ showVariables: { mode: 'target', target: { '1x': 2 } } }).errors[0]).toContain(
+      '1x'
+    )
+  })
+
+  it('warns about unused lists and a marker with no #@peek line', () => {
+    expect(
+      run({ showVariables: { mode: 'view', predict: ['a'], target: { a: 1 } } }).warnings
+    ).toHaveLength(2)
+    expect(run({ showVariables: { at: 'marker' }, starterCode: 'x = 1' }).warnings[0]).toContain(
+      '#@peek'
+    )
+    expect(
+      run({
+        showVariables: { at: 'marker' },
+        codeStages: [{ role: 'starter', code: 'x = 1\n  #@peek\ny = 2' }],
+      }).warnings
+    ).toEqual([])
+  })
+
+  it('ties a variables_predicted check to predict mode and its names', () => {
+    expect(run({ check: { type: 'variables_predicted' } }).errors[0]).toContain(
+      'no showVariables with mode: predict'
+    )
+    expect(
+      run({ showVariables: { mode: 'view' }, check: [{ type: 'variables_predicted' }] }).errors[0]
+    ).toContain('mode is not predict')
+    expect(
+      run({
+        showVariables: { mode: 'predict', predict: ['a'] },
+        check: [{ type: 'variables_predicted', names: ['a', 'b'] }],
+      }).errors[0]
+    ).toContain('naming b')
+  })
+})
+
+describe('validateVariablesPredictedCheck', () => {
+  it('only allows modules with the panel, and Python names', () => {
+    const python = getModuleDefinition('python')
+    const turtle = getModuleDefinition('turtle')
+    const html = getModuleDefinition('html')
+    const check = { type: 'variables_predicted', names: ['a'] }
+    expect(validateVariablesPredictedCheck(check, { n: 2, moduleDefinition: python })).toEqual([])
+    expect(validateVariablesPredictedCheck(check, { n: 2, moduleDefinition: turtle })).toEqual([])
+    expect(validateVariablesPredictedCheck(check, { n: 2, moduleDefinition: html })[0]).toContain(
+      'only works in Python and Turtle'
+    )
+    expect(
+      validateVariablesPredictedCheck({ type: 'variables_predicted', names: [] }, { n: 2 })[0]
+    ).toContain('whose names is not a list')
+    expect(
+      validateVariablesPredictedCheck({ type: 'variables_predicted', names: ['a b'] }, { n: 2 })[0]
+    ).toContain('not Python variable names')
+  })
+})

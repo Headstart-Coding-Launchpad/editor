@@ -26,6 +26,8 @@ export function useTeacherLivePublish({
   turtleResultRef,
   // The HTML Inspector's Go Live state (useHtmlInspectorLive), for the html wire's liveExtras.
   inspectorRef = null,
+  // The name-tag panel's synced state (useVariablesPanel), published as `variablesPanel`.
+  variablesPanelRef = null,
   filesRef,
   activeFileRef,
   outputRef,
@@ -51,6 +53,8 @@ export function useTeacherLivePublish({
   checkSuggestion,
   // The current module's work-slot value (null for other modules): a publish trigger.
   workValue = null,
+  // The name-tag panel state: a publish trigger (a run, a prediction typed while live).
+  variablesPanelState = null,
   iframeStorageAssets = null,
   // Optional ref to a function returning extra payload fields for the current task (the
   // activity host adds `answer`, the serialised activity state, on activity tasks).
@@ -95,13 +99,14 @@ export function useTeacherLivePublish({
     // teacherLive is an update() merge, so every module sends both extras (explicit nulls
     // for the ones it doesn't have) — see each definition's wire.liveExtras. A module's own
     // extras come with its work (Arcade's design); Turtle's drawing is a run result.
-    const { arcadeDesign, turtleResult, inspector } = (definition?.wire.liveExtras ?? noLiveExtras)(
-      {
-        turtleResult: turtleResultRef?.current,
-        inspector: inspectorRef?.current ?? null,
-        ...stored?.meta,
-      }
-    )
+    const { arcadeDesign, turtleResult, inspector, variablesPanel } = (
+      definition?.wire.liveExtras ?? noLiveExtras
+    )({
+      turtleResult: turtleResultRef?.current,
+      inspector: inspectorRef?.current ?? null,
+      variablesPanel: variablesPanelRef?.current ?? null,
+      ...stored?.meta,
+    })
     const filesMap = !isWorkSlot
       ? Object.fromEntries(filesRef.current.map((f) => [f.name, f.content]))
       : onFilesChannel
@@ -125,6 +130,7 @@ export function useTeacherLivePublish({
       arcadeDesign,
       turtleResult,
       inspector: inspector ?? null,
+      variablesPanel: variablesPanel ?? null,
       files: filesMap,
       // A files module's own active file; no other module has one (never a leftover).
       activeFile: !isWorkSlot
@@ -225,6 +231,7 @@ export function useTeacherLivePublish({
     checkAttempted,
     checkSuggestion,
     workValue,
+    variablesPanelState,
   ])
 
   // The reference channel only follows work of modules that offer a teacher-live reference

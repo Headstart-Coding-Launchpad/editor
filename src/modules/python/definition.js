@@ -18,7 +18,11 @@ import {
   recordStorage,
   TEACHER_EDIT_CODE_COPY,
   alwaysPersonalSandbox,
+  noLiveExtras,
+  variablesPanelLiveExtra,
 } from '../moduleContract.js'
+import { SHOW_VARIABLES_TASK_FIELD } from '../../shared/variablesPanel/variablesPanel.js'
+import { validateShowVariables } from '../../shared/variablesPanel/validation.js'
 import {
   codeCopyStarterToComplete,
   codeDefaultTypeFields,
@@ -138,6 +142,7 @@ export default defineModule({
       ],
     },
     { name: 'carryCodeFrom', type: 'string' },
+    SHOW_VARIABLES_TASK_FIELD,
   ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeCode',
@@ -205,7 +210,10 @@ export default defineModule({
     composedSandboxFields: (firstTask) => ({ sandboxStarter: firstTask?.starterCode ?? '' }),
   },
   storage: recordStorage({ workKey: 'code', taskMeta: ['output', 'runStatus'] }),
-  wire: codeStringWire(),
+  // The name-tag panel (showVariables) travels with a Go Live broadcast.
+  wire: codeStringWire({
+    liveExtras: (input = {}) => ({ ...noLiveExtras(), ...variablesPanelLiveExtra(input) }),
+  }),
   // Generic work slot (useStudentCodeState): the code string, checked when it runs.
   checking: { trigger: 'run', buildContext: codeCheckContext },
   workSlot: codeWorkSlot({ teacherSandboxReset: true }),
@@ -217,6 +225,7 @@ export default defineModule({
     )
     validatePythonTests(task, n, errors, warnings)
     warnCompleteCode(task, n, warnings)
+    validateShowVariables(task, n, errors, warnings)
   },
   hasStarterContent: codeStarterPresent,
 })

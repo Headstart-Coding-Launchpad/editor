@@ -299,6 +299,7 @@ describe('deriveStudentLiveDisplay', () => {
       'displaySelection',
       'displaySpriteState',
       'displayTurtleResult',
+      'displayVariablesPanel',
       'displayedTaskId',
       'isForcedTeacherLive',
       'isLiveCopyBlocked',

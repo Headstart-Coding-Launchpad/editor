@@ -129,6 +129,7 @@ describe('parseLineHints (python)', () => {
       code: '#> Hint\nx',
       hints: [],
       trailingMarker: false,
+      peek: null,
     })
     expect(parseLineHints(undefined, 'python').code).toBeUndefined()
   })
@@ -148,7 +149,12 @@ describe('parseLineHints (html)', () => {
 
   it('leaves ordinary HTML comments alone', () => {
     const code = '<!-- a normal comment -->\n<p>Hi</p>'
-    expect(parseLineHints(code, 'html')).toEqual({ code, hints: [], trailingMarker: false })
+    expect(parseLineHints(code, 'html')).toEqual({
+      code,
+      hints: [],
+      trailingMarker: false,
+      peek: null,
+    })
   })
 
   it('does not treat Python markers as HTML markers', () => {

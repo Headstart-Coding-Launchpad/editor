@@ -20,7 +20,34 @@
 // trimmed text of that line, used to re-anchor the hint when the student's saved code (which
 // may have moved lines around) is reloaded — see anchorLineHints.
 
+//
+// Peek marker (Python syntax only): a line whose trimmed text is `#@peek` (anything after it is
+// ignored) marks the place a name-tag panel with `showVariables.at: marker` shows the variables
+// — the first time the program is about to run the next line of code (the next non-blank,
+// non-comment line). It is stripped like a hint marker; the task keeps its runtime-only
+// `peekSets` (`[{ source, stageIndex, file, peek: { line, target } }]`, starter first), and
+// getTaskPeekLine re-anchors it on the student's current code the way hints are re-anchored.
+// Only the first peek marker of a piece of code counts.
+
 const HTML_MARKER = /^<!-->([\s\S]*?)-->$/
+
+export const PEEK_MARKER = '#@peek'
+
+// The marker syntaxes with a peek marker (Python's `#` comments).
+const PEEK_SYNTAXES = Object.freeze({ python: true })
+
+// Whether a (raw) line is a peek marker line, for a marker syntax.
+export function isPeekMarkerLine(line, syntax) {
+  if (!Object.hasOwn(PEEK_SYNTAXES, syntax ?? '')) return false
+  const trimmed = String(line ?? '').trim()
+  return trimmed === PEEK_MARKER || /^#@peek(\s|$)/.test(trimmed)
+}
+
+// A line a peek can stop at: code, not a blank line or a comment.
+function isPeekTargetLine(line) {
+  const trimmed = line.trim()
+  return trimmed !== '' && !trimmed.startsWith('#')
+}
 
 // Marker syntax → the hint text of a trimmed marker line (possibly ''), or null for a line
 // that is not a marker.
@@ -50,11 +77,11 @@ function markerText(line, syntax) {
  */
 export function parseLineHints(code, syntax) {
   if (typeof code !== 'string' || !isLineHintSyntax(syntax)) {
-    return { code, hints: [], trailingMarker: false }
+    return { code, hints: [], trailingMarker: false, peek: null }
   }
   const lines = code.split('\n')
-  if (!lines.some((line) => markerText(line, syntax) != null)) {
-    return { code, hints: [], trailingMarker: false }
+  if (!lines.some((line) => markerText(line, syntax) != null || isPeekMarkerLine(line, syntax))) {
+    return { code, hints: [], trailingMarker: false, peek: null }
   }
 
   // A final newline ends the last line rather than starting an empty one: set it aside, so a
@@ -64,13 +91,24 @@ export function parseLineHints(code, syntax) {
   const kept = []
   const hints = []
   let pending = []
+  // Peek: 'none' → 'pending' (marker seen) → the index of the line it stops at.
+  let peekState = 'none'
+  let peekIndex = null
   for (const line of body) {
+    if (isPeekMarkerLine(line, syntax)) {
+      if (peekState === 'none') peekState = 'pending'
+      continue
+    }
     const text = markerText(line, syntax)
     if (text != null) {
       pending.push(text)
       continue
     }
     kept.push(line)
+    if (peekState === 'pending' && isPeekTargetLine(line)) {
+      peekIndex = kept.length - 1
+      peekState = 'placed'
+    }
     for (const hintText of pending) hints.push({ index: kept.length - 1, text: hintText })
     pending = []
   }
@@ -87,7 +125,25 @@ export function parseLineHints(code, syntax) {
       .filter((hint) => hint.text !== '')
       .map(({ index, text }) => ({ line: index + 1, text, target: kept[index].trim() })),
     trailingMarker,
+    // A peek marker with no code line after it stops nowhere (the panel shows the end).
+    peek: peekIndex == null ? null : { line: peekIndex + 1, target: kept[peekIndex].trim() },
   }
+}
+
+/**
+ * The line (1-based, in `code`) where the task's peek marker stops, re-anchored on the student's
+ * current code the way hints are (anchorLineHints): the starter's peek first, then the other
+ * stages'. Null when the task has no peek, or it no longer anchors (its line was deleted or
+ * duplicated).
+ */
+export function getTaskPeekLine(task, code) {
+  const lines = String(code ?? '').split('\n')
+  for (const set of task?.peekSets ?? []) {
+    if ((set?.file ?? null) !== null || !set?.peek) continue
+    const [anchored] = anchorLineHints(lines, [{ ...set.peek, text: PEEK_MARKER }])
+    if (anchored) return anchored.line
+  }
+  return null
 }
 
 // `code` without its marker lines.
@@ -182,6 +238,7 @@ function taskHintSources(task) {
 export function stripTaskLineHints(task, syntax) {
   if (!task || typeof task !== 'object' || !isLineHintSyntax(syntax)) return task
   const sets = []
+  const peekSets = []
   const next = { ...task }
   let changed = false
   const add = (source, stageIndex, file, hints) => {
@@ -193,6 +250,7 @@ export function stripTaskLineHints(task, syntax) {
     if (parsed.code === value) return value
     changed = true
     add(source, stageIndex, null, parsed.hints)
+    if (parsed.peek) peekSets.push({ source, stageIndex, file: null, peek: parsed.peek })
     return parsed.code
   }
   const stripFileList = (files, source, stageIndex) => {
@@ -228,6 +286,7 @@ export function stripTaskLineHints(task, syntax) {
   }
   if (stages) next.codeStages = stages
   next.lineHintSets = [...(task.lineHintSets ?? []), ...sets]
+  if (peekSets.length > 0) next.peekSets = [...(task.peekSets ?? []), ...peekSets]
   return next
 }
 

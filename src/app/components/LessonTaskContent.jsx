@@ -154,6 +154,7 @@ export default function LessonTaskContent({
   displayCode,
   displayArcadeDesign,
   displayTurtleResult,
+  displayVariablesPanel = null,
   displaySpriteState,
   displayCursor,
   displayBlockDrag,
@@ -686,6 +687,7 @@ export default function LessonTaskContent({
           displayCode={displayCode}
           displayArcadeDesign={displayArcadeDesign}
           displayTurtleResult={displayTurtleResult}
+          displayVariablesPanel={displayVariablesPanel}
           displaySpriteState={displaySpriteState}
           displayCursor={displayCursor}
           displayBlockDrag={displayBlockDrag}

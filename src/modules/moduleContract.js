@@ -128,11 +128,18 @@ export function perFileStorage() {
 // teacherLive is a Firebase update() merge, so every payload names every extra explicitly —
 // null when the module has none — or a previous module's value would linger.
 // `inspector` is the HTML Inspector's Go Live state (src/modules/html/inspector).
+// `variablesPanel` is the name-tag panel's synced state (showVariables, src/shared/variablesPanel/).
 export const NO_LIVE_EXTRAS = Object.freeze({
   arcadeDesign: null,
   turtleResult: null,
   inspector: null,
+  variablesPanel: null,
 })
+
+// Python and Turtle: the name-tag panel travels with the broadcast (null when cleared).
+export function variablesPanelLiveExtra({ variablesPanel } = {}) {
+  return { variablesPanel: variablesPanel ?? null }
+}
 
 export function noLiveExtras() {
   return { ...NO_LIVE_EXTRAS }

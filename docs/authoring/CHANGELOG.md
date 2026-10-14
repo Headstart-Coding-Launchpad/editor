@@ -200,6 +200,41 @@ Entries written before 2026-09-29 are not tagged.
   needed · Resolves:
   authoring-requests/2026-10-14-highlight-a-scratch-ui-control-green-flag-stop-tabs-for-the-.md
 
+### Name-tag panel: show what is in the variables (`showVariables`, `#@peek`, `variables_predicted`)
+
+- **New task field `showVariables`** on Python and Turtle tasks, off unless set:
+  `{ mode: view | predict | target, at: end | marker, hide: [names], predict: [names], target: { name: value } }`.
+  The panel draws one name tag per variable (name, type label `text` / `number` / `true/false` /
+  `list` / `dict` / `None`, value; text keeps its quotes; list tiles with indexes; dict rows;
+  **Show all** for long values; "changed" marks on a second Run). Modules, functions, classes,
+  dunder names, names imported from `turtle` and `hide` names are never shown.
+  - `view`: the values after Run. `predict`: students type what each `predict` variable will
+    hold **before** running; Run marks each ✓ / ✗. `target`: target tags turn green with ✓ when
+    the variable matches (display only — keep the `variable_*` checks for completion); a name not
+    made yet reads "not made yet".
+  - `at: marker` stops at a **`#@peek`** marker line: put `#@peek` on its own line just above the
+    line to stop at. It is stripped like a `#>` line hint and follows its line through student
+    edits; the panel shows the variables the first time the program is about to run that line,
+    or the end of the run (with a note) when the line never runs.
+- **New check `variables_predicted`** (`names` optional; default every `predict` name): passes
+  when every prediction matches the value shown after Run, compared forgivingly by the value's
+  type — text with or without quotes (capitals count), `5` = `5.0` but `"5"` ≠ `5`,
+  `true`/`True`, lists and dicts written as Python. Predict mode only; validation rejects it
+  elsewhere. `lessons test-checks` reports it as needing a run.
+- **Variables after an error.** Python variables are now read at the end of a run even when it
+  stops with an error (they were empty before). Completion still fails on an error; only feedback
+  checks can notice.
+- **Tutor and reports.** The tutor card shows a 🏷️ chip (predictions typed / right, targets
+  hit) and StudentModal shows the student's panel, predictions included as they type; Go Live
+  shows the presenter's panel. Session reports add `predictions` per student task (first and
+  latest revealed predictions, each right or not) and `predictionStudentCount`,
+  `predictionFirstAllCorrectCount`, `predictionFirstByName` per task. The Builder has a
+  **Name-tag panel** section. See [python.md](python.md#name-tag-panel-showvariables),
+  [turtle.md](turtle.md#name-tag-panel-showvariables) and
+  [session-reports.md](session-reports.md).
+- Affects: python, turtle · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-14-p6-1-name-tag-panel-show-what-is-in-the-variables.md
+
 ## 2026-10-09
 
 ### Confidence checks are 1–10; tutors see unsubmitted short answers

@@ -12,6 +12,7 @@ import {
 import CopyCodePanel from '../../app/components/CopyCodePanel'
 import { drawTurtleCommands, sizeCanvasToDisplay } from './draw.js'
 import { createTurtleState } from './engine.js'
+import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
 
 const DEFAULT_TURTLE_STATE = createTurtleState()
 
@@ -26,6 +27,7 @@ export default function StudentWorkspace({
   isTeacherEditing,
   displayCode,
   displayTurtleResult,
+  displayVariablesPanel = null,
   teacherLiveCode,
   onVisiblePanesChange,
 }) {
@@ -150,6 +152,15 @@ export default function StudentWorkspace({
       <div style={s.canvasWrap}>
         <canvas ref={setCanvas} style={s.canvas} />
       </div>
+      {/* The name-tag panel (showVariables), between the drawing and the output. */}
+      <TaskVariablesPanel
+        task={isSandbox || cs.inPersonalSandbox ? null : task}
+        panel={cs.variablesPanel}
+        synced={isForcedTeacherLive ? displayVariablesPanel : undefined}
+        running={cs.running}
+        hidden={isViewingPrev || isTeacherEditing}
+        style={s.variablesPanel}
+      />
       {!outputCollapsed && (
         <div style={s.outputPane}>
           <OutputPanel
@@ -234,6 +245,7 @@ const s = {
     overflow: 'hidden',
   },
   canvas: { width: '100%', height: '100%', display: 'block' },
+  variablesPanel: { flex: '0 1 auto', maxHeight: '40%' },
   outputPane: {
     display: 'flex',
     flexDirection: 'column',

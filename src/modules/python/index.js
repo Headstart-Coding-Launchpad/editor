@@ -4,6 +4,7 @@ import CheckEditor from './CheckEditor.jsx'
 import PythonTeacherLiveView from './TeacherLiveView.jsx'
 import { initPyodide, isPyodideReady, runPython, stopPython, provideInput } from './pyodide'
 import { scrollLayoutStyles } from '../sharedStyles.js'
+import { variableCaptureOptions } from '../../shared/variablesPanel/variablesPanel.js'
 import { defineUiModule } from '../defineModule.js'
 import definition from './definition.js'
 
@@ -27,7 +28,9 @@ const pythonModule = defineUiModule(definition, {
     isReady: isPyodideReady,
     stop: stopPython,
     provideInput,
-    run: (code, _task, callbacks) => runPython(code, callbacks),
+    // The name-tag panel (showVariables) asks the worker to capture the variables.
+    run: (code, task, callbacks) =>
+      runPython(code, { ...callbacks, capture: variableCaptureOptions(task, code) }),
     buildPreviewSrc: null,
     waitForPreviewText: null,
   },
