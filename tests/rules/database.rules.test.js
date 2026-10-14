@@ -348,6 +348,50 @@ describe('class roster session fields', () => {
   })
 })
 
+describe('typing history', () => {
+  const path = `sessions/${LESSON}/typingHistory/${STUDENT_ID}`
+  const score = { cpm: 62, accuracy: 0.91, date: 1000 }
+  const node = {
+    byMode: { type_code: { last: score, best: { ...score, cpm: 75 }, first: score, sessions: 2 } },
+    updatedAt: 2000,
+  }
+
+  it('only lets teachers and admins push it, never the student themselves', async () => {
+    await assertFails(ref(as.student, path).set(node))
+    await assertFails(ref(as.otherStudent, path).set(node))
+    await assertSucceeds(ref(as.teacher, path).set(node))
+    await assertSucceeds(ref(as.admin, path).set(null))
+  })
+
+  it('lets the student read their own node', async () => {
+    await assertSucceeds(ref(as.teacher, path).set(node))
+    await assertSucceeds(ref(as.student, path).get())
+  })
+
+  it('accepts numbers only, in the known shape', async () => {
+    const withMode = (mode) => ({ byMode: { type_code: mode } })
+    await assertFails(ref(as.teacher, path).set({ updatedAt: 1 }))
+    await assertFails(ref(as.teacher, path).set(withMode({ last: score, best: score })))
+    await assertFails(
+      ref(as.teacher, path).set(withMode({ last: score, best: score, first: { cpm: 'fast' } }))
+    )
+    await assertFails(
+      ref(as.teacher, path).set(
+        withMode({ last: { ...score, accuracy: 91 }, best: score, first: score })
+      )
+    )
+    await assertFails(ref(as.teacher, path).set({ ...node, name: 'Jamie B.' }))
+    await assertFails(
+      ref(as.teacher, path).set({
+        byMode: { 'Bad Mode': { last: score, best: score, first: score } },
+      })
+    )
+    await assertSucceeds(
+      ref(as.teacher, path).set(withMode({ last: score, best: score, first: score }))
+    )
+  })
+})
+
 describe('live badges', () => {
   const decision = { status: 'awarded', source: 'manual', decidedAt: 1, announce: true }
 

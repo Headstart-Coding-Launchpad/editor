@@ -429,6 +429,53 @@
           }
         },
 
+        // Typing history (W3-b, approved by Ryan 2026-10-14; src/shared/typingHistory.js): each
+        // matched student's last / best / first keyboard scores from earlier lessons, pushed by
+        // the tutor's client for the Keyboard activity's showHistory line. Teacher/admin write is
+        // inherited from $lessonId; students only read it (the session is publicly readable).
+        // Numbers only: no names, no roster ids.
+        "typingHistory": {
+          "$anonymousId": {
+            ".validate": "newData.hasChildren(['byMode'])",
+            "byMode": {
+              "$mode": {
+                ".validate": "$mode.matches(/^[a-z_]{1,32}$/) && newData.hasChildren(['last', 'best', 'first'])",
+                "last": {
+                  ".validate": "newData.hasChildren(['cpm', 'accuracy', 'date'])",
+                  "cpm": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                  "accuracy": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
+                  },
+                  "date": { ".validate": "newData.isNumber()" },
+                  "$other": { ".validate": false }
+                },
+                "best": {
+                  ".validate": "newData.hasChildren(['cpm', 'accuracy', 'date'])",
+                  "cpm": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                  "accuracy": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
+                  },
+                  "date": { ".validate": "newData.isNumber()" },
+                  "$other": { ".validate": false }
+                },
+                "first": {
+                  ".validate": "newData.hasChildren(['cpm', 'accuracy', 'date'])",
+                  "cpm": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                  "accuracy": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
+                  },
+                  "date": { ".validate": "newData.isNumber()" },
+                  "$other": { ".validate": false }
+                },
+                "sessions": { ".validate": "newData.isNumber() && newData.val() >= 1" },
+                "$other": { ".validate": false }
+              }
+            },
+            "updatedAt": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+
         // The teacher's class countdown ({ startedAt, endsAt, durationMs }, server-time ms) or
         // absent. Teacher/admin write is inherited from $lessonId; students cannot write it.
         "classCountdown": {

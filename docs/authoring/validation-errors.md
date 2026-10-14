@@ -201,6 +201,9 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: minKept must be a number above 0 and at most 1.` | `edit_text` `minKept` is a fraction, not a percentage. | Use e.g. `0.9`, or remove it for the default. |
 | `Task …: targetCpm must be a positive number.` | `type_code` `targetCpm` is zero, negative or not a number. | Use a positive number of characters a minute, or remove it to skip the speed goal. |
 | `Task …: type_code language must be one of ….` | `language` is not `python` or `html`. | Use `python` (Tab = 4 spaces) or `html` (Tab = 2 spaces), or remove it for `python`. |
+| `Task …: showHistory must be true or false.` / `Task … item …: showHistory must be true or false.` | `showHistory` is not a boolean. | Write `showHistory: true`, or remove it. |
+| `Task …: showHistory only works on type_text, type_code and falling_words tasks, so it is ignored here.` (warning) | Only typing modes keep a speed and accuracy history. | Remove `showHistory`, or use a typing mode. |
+| `Task … item …: showHistory on an item only works on type_text and type_code tasks, so it is ignored here.` (warning) | Per-item `showHistory` was set on another mode. | Remove it, or set `showHistory` on the task. |
 | `Task … item …: code is required.` | A `type_code` item has no `code`, or only spaces. | Add the block to type (a YAML block scalar keeps its lines and indentation). |
 | `Task … item …: code must be at most … characters.` | A `type_code` block is over 1000 characters. | Split it into several items. |
 | `Task … item …: code must be at most … lines.` | A `type_code` block is over 30 lines. | Split it into several items. |

@@ -664,6 +664,9 @@ export default function StudentGrid({
           catalogueBadges={catalogueBadges}
           sideQuestViewRequest={sideQuestViewRequest}
           rosterName={rosterStatus?.namesByStudent?.[expandedStudent.anonymousId] ?? null}
+          typingEntries={
+            rosterStatus?.typingEntriesByStudent?.[expandedStudent.anonymousId] ?? null
+          }
         />
       )}
     </div>

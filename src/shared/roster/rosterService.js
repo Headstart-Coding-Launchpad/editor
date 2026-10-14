@@ -175,6 +175,17 @@ export async function appendTyping(classId, rosterId, entry) {
   return created.id
 }
 
+// Saves one keyboard result under a fixed id (src/shared/typingHistory.js makeTypingEntryId,
+// which is its dedupe key), so saving the same finished attempt again changes nothing.
+export async function saveTyping(classId, rosterId, entryId, entry) {
+  if (!classId || !rosterId || !entryId) throw new Error('A typing entry path is required')
+  await setDoc(doc(rosterEntryDoc(classId, rosterId), ROSTER_TYPING_SUBCOLLECTION, entryId), {
+    ...(entry ?? {}),
+    recordedAt: serverTimestamp(),
+  })
+  return entryId
+}
+
 // The entry's typing results, newest first.
 export async function listTyping(classId, rosterId, { max = 50 } = {}) {
   if (!classId || !rosterId) return []
@@ -196,6 +207,13 @@ export async function matchStudent(lessonId, anonymousId, rosterId, matchedBy = 
   await update(ref(db, `sessions/${lessonId}/rosterMatches`), {
     [anonymousId]: makeRosterMatch(rosterId, matchedBy),
   })
+}
+
+// Pushes typing-history summaries to students: sessions/{lessonId}/typingHistory/{anonymousId}
+// (teacher/admin write; src/shared/typingHistory.js). `updates` maps anonymousId → node or null.
+export async function setTypingHistoryNodes(lessonId, updates) {
+  if (!lessonId || !updates || Object.keys(updates).length === 0) return
+  await update(ref(db, `sessions/${lessonId}/typingHistory`), updates)
 }
 
 export async function unmatchStudent(lessonId, anonymousId) {

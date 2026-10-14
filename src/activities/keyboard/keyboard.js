@@ -53,6 +53,32 @@ const MAX_TEXT_LENGTH = 200
 
 const capitalsIn = (text) => [...text].filter((c) => c !== c.toLowerCase()).length
 
+// Modes whose results feed typing history (src/shared/typingHistory.js), so `showHistory` means
+// something there.
+const SHOW_HISTORY_MODES = ['type_text', 'type_code', 'falling_words']
+
+function validateShowHistory(task, where, errors, warnings) {
+  const usesHistory = SHOW_HISTORY_MODES.includes(task.mode)
+  if (task.showHistory != null && typeof task.showHistory !== 'boolean') {
+    errors.push(`${where}: showHistory must be true or false.`)
+  } else if (task.showHistory === true && !usesHistory) {
+    warnings.push(
+      `${where}: showHistory only works on type_text, type_code and falling_words tasks, so it is ignored here.`
+    )
+  }
+  const items = Array.isArray(task.items) ? task.items : []
+  items.forEach((item, i) => {
+    if (item?.showHistory == null) return
+    if (typeof item.showHistory !== 'boolean') {
+      errors.push(`${where} item ${i + 1}: showHistory must be true or false.`)
+    } else if (!['type_text', 'type_code'].includes(task.mode)) {
+      warnings.push(
+        `${where} item ${i + 1}: showHistory on an item only works on type_text and type_code tasks, so it is ignored here.`
+      )
+    }
+  })
+}
+
 export function validateKeyboardTask(task, n) {
   const errors = []
   const warnings = []
@@ -85,6 +111,7 @@ export function validateKeyboardTask(task, n) {
   ) {
     errors.push(`${where}: type_code language must be one of ${TYPE_CODE_LANGUAGES.join(', ')}.`)
   }
+  validateShowHistory(task, where, errors, warnings)
   if (task.mode === 'falling_words') {
     errors.push(...validateFallingWordsTask(task, where, (c) => !!getKeyForChar(c, layout)))
     return { errors, warnings }

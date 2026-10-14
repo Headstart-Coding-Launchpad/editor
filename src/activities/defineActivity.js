@@ -116,6 +116,13 @@ export function defineActivity(def) {
     // the Gaps drag mode.
     tileHighlights: () => false,
     checks: [],
+    // Typing history (src/shared/typingHistory.js): null, or hooks that let the tutor's client
+    // keep a matched student's scores across lessons:
+    //   { modes(task) → string[] (empty: this task keeps none),
+    //     results(task, state) → [{ itemId, mode, cpm, wpm, accuracy, corrections, timeMs,
+    //       score?, typed?, solution? }] (finished items only),
+    //     shows(task, item) → boolean (the student sees their history beside the item) }
+    history: null,
     buildSubmission: (task, state) => state,
     getProgress: () => null,
     summarize: () => null,

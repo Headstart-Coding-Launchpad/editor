@@ -15,6 +15,7 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
 The side-quest live work field (`students.{id}.sideQuestCode`) was added with explicit user approval (Ryan, 2026-10-14, reversing the 2026-10-09 "status only" call) for the authoring request "Tutor view of side quests"; written on open, on Run, and per keystroke only while `activeStudentView` matches.
 The class roster session fields (`classId`, `classChosenAt`, `rosterMatches`) and the Firestore `classes/{classId}/roster` subcollection (with its `work` and `typing` subcollections) were added with explicit user approval (Ryan, 2026-10-14, "Identity: class roster, matched by the tutor" in `docs/architecture/requests-2026-10-14-plan.md`); see "Class roster" under Classes below.
 The Firestore `sharedWork` collection (share links from the tutor's "Export work") was added with explicit user approval (Ryan, 2026-10-14); see "Share Links" below.
+The `typingHistory` session node (teacher-write-only last / best / first typing scores per matched student) was added with explicit user approval (Ryan, 2026-10-14, W3-b typing history: "the tutor client … writes a small teacher-write-only RTDB node … Student reads own") for the authoring request "Typing history: speed and accuracy across lessons on the student card"; numbers only.
 The `exampleOpenLog` node was added with explicit user approval ("example opens", 2026-10-14 build plan, `docs/architecture/requests-2026-10-14-plan.md`) for the authoring request "'See example' button in explainers that opens a worked example in a pop-up"; status only, never code (see the Student writes below).
 
 ```json
@@ -51,6 +52,19 @@ The `exampleOpenLog` node was added with explicit user approval ("example opens"
       "classChosenAt": "number | null (when the tutor picked a class or \"No class\"; absent until they choose. Reset on createSession)",
       "rosterMatches": {
         "{anonymousId}": { "rosterId": "string (opaque Firestore id of a classes/{classId}/roster entry; never the name)", "matchedAt": 1234567890, "matchedBy": "teacher uid" }
+      },
+      "typingHistory": {
+        "{anonymousId}": {
+          "byMode": {
+            "{mode: type_text | type_code | falling_words}": {
+              "last": { "cpm": 62, "accuracy": "0-1", "date": 1234567890 },
+              "best": { "cpm": 75, "accuracy": "0-1", "date": 1234567890 },
+              "first": { "cpm": 40, "accuracy": "0-1", "date": 1234567890 },
+              "sessions": "number of earlier sessions in this mode"
+            }
+          },
+          "updatedAt": 1234567890
+        }
       },
       "polls": {
         "{pollId}": { "question": "string (≤200)", "options": ["2-6 strings (≤100 each)"], "status": "open | closed", "showResults": "true (public: live bars on the presentation, students after voting) | false (private)", "createdAt": 1234567890, "closedAt": "number | absent while open" }
@@ -430,6 +444,7 @@ Teacher writes:
 - `fullscreenRequestedAt` (stamped by `requestFullscreenForAll`, reset to `null` on `createSession`/`endSession`) — a class-wide "please go fullscreen" broadcast. The Fullscreen API only fires from a direct user gesture, so this cannot force students into fullscreen; each student client (`StudentView`) shows a centred modal prompt with a "Go Fullscreen" button that calls `document.documentElement.requestFullscreen()` from the student's own click when this timestamp changes. Once `phase` becomes `'ended'`, `StudentView` renders `SessionEndedScreen` instead (the prompt naturally disappears) and calls `document.exitFullscreen()` so a student isn't left stuck in fullscreen
 - `classCountdown` (`startClassCountdown(durationMs)` / `addClassCountdownTime(extraMs)` / `clearClassCountdown()`, from the "⏱ Countdown" popover in `TeacherSessionControls.jsx`, offered while the session is `active` or `sandbox`; reset to `null` on `createSession`/`endSession`) — `{ startedAt, endsAt, durationMs }` in **server time** (`Date.now()` + Firebase `.info/serverTimeOffset`, which `useSession` exposes as `serverTimeOffset`), so every screen counts to the same deadline whatever its clock says. Separate from a task's `estimatedMinutes` timer: not touched by `setTaskId`, so it runs across task changes until the teacher stops it. Adding time to one that already hit zero restarts it from now. `database.rules.json` validates the shape (numeric fields, `durationMs > 0`, `endsAt >= startedAt`, no other children). Students and the presentation window show it in the top bar (`ClassCountdownPill`) and a "Time's up" banner at zero (`useClassCountdown` + `TimesUpBanner`); nothing is locked or paused. See "Class Countdown" in `docs/agents/classroom-behaviours.md`
 - `classId` / `classChosenAt` (`setSessionClass(lessonId, classId | null)` in `src/shared/roster/rosterService.js`, from the Match students panel; changing class also clears `rosterMatches`; reset on `createSession`) and `rosterMatches/{anonymousId}` (`matchStudent` / `unmatchStudent`, `{ rosterId, matchedAt, matchedBy }`) — the class roster; see "Class roster" under Classes. Teacher/admin write only (inherited); `database.rules.json` validates `classId` as a class slug, `classChosenAt` as a number, and each match's shape (no other fields). Kept off `students/{anonymousId}`, which the student can rewrite
+- `typingHistory/{anonymousId}` (`setTypingHistoryNodes` in `rosterService.js`, written by the tutor's `useTypingHistory`; reset on `createSession`) — a matched student's typing history from **earlier** sessions per Keyboard mode: `last` and `first` (the averages of the most recent and the earliest session's finished items), `best` (the best single item: characters a minute, then accuracy) and `sessions`. Rewritten only when the summary changes (once the student's saved typing has loaded after they are matched); set to `null` when they are unmatched or the session has no class. Numbers only, no names or roster ids. Teacher/admin write only (inherited); `database.rules.json` validates the shape (`last` / `best` / `first` each `{ cpm ≥ 0, accuracy 0-1, date }`, mode names `[a-z_]`, no other fields). The student reads their own (the session is publicly readable) for the Keyboard activity's `showHistory` line; the card, StudentModal and session report read it too. See "Typing history" under Class roster
 - `nudgeAwayPushedAt` (stamped by `nudgeAwayStudents` from the "🔔 Nudge Away" item in `StudentGrid`'s ⋯ header menu, reset to `null` on `createSession`/`endSession`) — a class-wide nudge. Each student client's `useNudgeAlert` only reacts if its window is unfocused when the new timestamp arrives. The per-student equivalent is `students/{id}/nudgePushedAt` (`nudgeStudent`, from the 🔔 button on an Away `StudentCard` or the StudentModal header), which always alerts that student. Timestamps already present when a student's session first loads are a baseline and never replay. The alert shows an in-page banner and plays a Web Audio chime; if the window is unfocused it also flashes the tab title and favicon until the window regains focus, and shows an OS `Notification` when permission was already granted (students opt in once via `NudgePermissionPrompt`)
 - any student's `displayName`
 - student node removal
@@ -942,7 +957,17 @@ Approved by Ryan on 2026-10-14 (`docs/architecture/requests-2026-10-14-plan.md`,
     "sourceTaskId": "fork.taskLinks[].sourceTaskId for the task, or its own id",
     "savedAt": "server timestamp"
   },
-  "classes/{classId}/roster/{rosterId}/typing/{entryId}": "keyboard results, shape owned by the typing-history package; recordedAt server timestamp"
+  "classes/{classId}/roster/{rosterId}/typing/{sourceLessonId}__{sourceTaskId}__{itemId}__{attemptHash}": {
+    "date": "ms (the attempt's loggedAt, or when the tutor's client saw the live result)",
+    "sessionId": "String(session.startedAt) (the report's sessionId)",
+    "lessonId": "the session's lesson id (a fork's own id)",
+    "sourceLessonId": "the stock lesson id", "taskId": "string", "sourceTaskId": "string",
+    "itemId": "string ('round' for falling_words)",
+    "mode": "type_text | type_code | falling_words",
+    "cpm": 62, "wpm": 12.4, "accuracy": "0-1", "corrections": 3, "timeMs": 41000,
+    "score": "falling_words only",
+    "recordedAt": "server timestamp"
+  }
 }
 ```
 
@@ -953,6 +978,7 @@ Approved by Ryan on 2026-10-14 (`docs/architecture/requests-2026-10-14-plan.md`,
 - **Saving (tutor-mediated):** students never write Firestore. The tutor's TeacherView (`useRosterWorkSaver`) saves each matched student's work from data it already receives: their last Run on the class's current task (`currentCode` / `currentFiles` with a new `lastRunAt` and a `lastRunStatus`; not in a session sandbox or personal sandbox) and each new `attemptLog` entry or retry (auto-check-on-leave included), whichever is newer, read through the module's `capabilities.rosterWork` (python, turtle: `code`; html: `files`; scratch: `blocks`). Never per keystroke: a save waits 3 s after the last change, and pending saves are flushed when the class moves task (before `setTaskId`'s wipe is seen) or the tab closes. Work is only saved while a tutor tab is open. Content over 200,000 characters is split into 200,000-character chunks so each document stays well under 1 MiB.
 - **Keys:** a fork's work is saved under the stock lesson's ids (`fork.sourceLessonId`, `fork.taskLinks[].sourceTaskId`; `buildLessonFork` copies tasks 1:1, so task ids match today), so a later lesson's fork finds an earlier fork's work.
 - **Privacy:** roster names stay on the tutor's side. Session reports stay anonymous ("Student N"), RTDB holds only opaque roster ids, and nothing roster-related is written to CLI-readable data.
+- **Typing history (W3-b):** the tutor's TeacherView (`useTypingHistory`, pure logic in `src/shared/typingHistory.js`) reads each matched student's typing entries once, then saves every new finished typing result of theirs (activities with `history` hooks: Keyboard `type_text`, `type_code`, `falling_words`) from `students/{id}/currentAnswer` on the current task and this session's `attemptLog`, so results from before the match are saved once they're matched. The document id is the dedupe key: stock lesson, stock task, item and a hash of the result's numbers and typed text, so a finished attempt is saved once however often it is seen (reloads, two tutor tabs, the same result restored from the student's device in a later session). The teacher's Complete (show answers) results (`solution: true`) and answers the tutor edited (`teacherAssisted` attempts, `teacherAssistedTaskId`) are skipped. It then pushes `sessions/{lessonId}/typingHistory/{anonymousId}` (above). Unmatched students and sessions with no class save nothing; only while a tutor tab is open. The session report copies the node into `tasks[].typingHistory` at build time. Admin → Classes → Students → Typing lists an entry's saved scores.
 - **API for later packages:** `listRoster`, `subscribeRoster`, `matchStudent` / `unmatchStudent`, `getSavedWork(classId, rosterId, sourceLessonId, sourceTaskId)`, `saveRosterWork`, `appendTyping` / `listTyping` (`rosterService.js`), and `resolveSourceIds` / `makeRosterWorkId` (`rosterModel.js`).
 
 ## Share Links (`sharedWork` collection)

@@ -14,6 +14,8 @@ import {
 } from './keyboard.js'
 import { applyEditKey, initialEditModel } from './editText.js'
 import { applyTypeCodeKey, normaliseCode, typeCodeStats } from './typeCode.js'
+import TypingHistoryLine from './TypingHistoryLine.jsx'
+import { showsTypingHistory, typingHistoryForMode } from '../../shared/typingHistory.js'
 import {
   DEFAULT_LAYOUT,
   comboOf,
@@ -153,6 +155,8 @@ export function KeyboardStudentView({
   onSubmit,
   readOnly = false,
   device = {},
+  // sessions/{lessonId}/typingHistory/{anonymousId} (src/shared/typingHistory.js) or null.
+  history = null,
 }) {
   const mode = task?.mode ?? 'type_text'
   const layout = task?.layout ?? DEFAULT_LAYOUT
@@ -209,6 +213,7 @@ export function KeyboardStudentView({
         onSubmit={onSubmit}
         readOnly={readOnly}
         device={device}
+        history={history}
       />
     )
   }
@@ -510,6 +515,14 @@ export function KeyboardStudentView({
         }
       />
       <p className="act-prompt">{MODE_PROMPTS[mode]?.(task, current, platform) ?? 'Keyboard'}</p>
+
+      {showsTypingHistory(task, current) && (
+        <TypingHistoryLine
+          modeHistory={typingHistoryForMode(history, mode)}
+          result={result}
+          finished={finished}
+        />
+      )}
 
       {mode === 'type_text' && (
         <TargetText text={String(current.text ?? '')} typed={String(result.typed ?? '')} />

@@ -78,6 +78,7 @@ import TeacherPeerHelpAlertBanner from '../components/peerHelp/TeacherPeerHelpAl
 import MatchStudentsDialog from '../components/roster/MatchStudentsDialog'
 import { useClassList, useClassRoster } from '../hooks/useClassRoster'
 import { useRosterWorkSaver } from '../hooks/useRosterWorkSaver'
+import { useTypingHistory } from '../hooks/useTypingHistory'
 import {
   activeRosterMatches,
   resolveSessionClass,
@@ -232,6 +233,15 @@ export default function TeacherView({ lessonId }) {
     [session?.rosterMatches, roster]
   )
   useRosterWorkSaver({
+    session,
+    lesson,
+    lessonId,
+    classId: sessionClass.classId,
+    matches: rosterMatches,
+  })
+  // Typing history (src/shared/typingHistory.js): saves matched students' keyboard scores to
+  // their roster entry and pushes their last / best scores back to them.
+  const typingEntriesByStudent = useTypingHistory({
     session,
     lesson,
     lessonId,
@@ -683,6 +693,7 @@ export default function TeacherView({ lessonId }) {
       classId: sessionClass.classId,
     }),
     needsClass: sessionClass.source === 'unset',
+    typingEntriesByStudent,
   }
   const sessionClassName =
     sessionClass.source === 'fork'

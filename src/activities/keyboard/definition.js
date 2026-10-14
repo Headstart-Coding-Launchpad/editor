@@ -36,6 +36,8 @@ export const KEYBOARD_MODE_LABELS = {
 }
 
 const ITEM_MODES = KEYBOARD_MODES.filter((mode) => mode !== 'falling_words')
+// Modes whose results carry speed and accuracy, kept as typing history across lessons.
+export const HISTORY_MODES = ['type_text', 'type_code', 'falling_words']
 
 function solutionItem(task, item) {
   switch (task.mode) {
@@ -71,6 +73,30 @@ function solutionItem(task, item) {
     default:
       return {}
   }
+}
+
+// The finished typing results of a history mode's items, for typing history.
+function keyboardHistoryResults(task, state) {
+  if (!HISTORY_MODES.includes(task?.mode)) return []
+  return keyboardItems(task).flatMap((item) => {
+    const result = state?.items?.[item.id]
+    if (!result?.done || !Number.isFinite(Number(result.cpm))) return []
+    if (!(Number(result.timeMs) > 0)) return []
+    return [
+      {
+        itemId: String(item.id),
+        mode: task.mode,
+        cpm: result.cpm,
+        wpm: result.wpm ?? Math.round((Number(result.cpm) / 5) * 10) / 10,
+        accuracy: result.accuracy ?? 0,
+        corrections: result.corrections ?? 0,
+        timeMs: result.timeMs,
+        ...(result.score != null ? { score: result.score } : {}),
+        ...(typeof result.typed === 'string' ? { typed: result.typed } : {}),
+        ...(result.solution ? { solution: true } : {}),
+      },
+    ]
+  })
 }
 
 // The teacher card line for a falling_words round.
@@ -127,6 +153,13 @@ export default defineActivity({
         type: 'number',
         modes: ['type_code'],
         description: 'Optional speed goal in characters a minute; checked only when set.',
+      },
+      {
+        name: 'showHistory',
+        type: 'boolean',
+        modes: HISTORY_MODES,
+        description:
+          "Show the student's last and best score from earlier lessons beside each item, and how far they've come when they finish (needs a class list match). Can also be set per item.",
       },
       {
         name: 'durationSeconds',
@@ -239,6 +272,12 @@ export default defineActivity({
             description: 'Per-item override of the task setting.',
           },
           {
+            name: 'showHistory',
+            type: 'boolean',
+            modes: ['type_text', 'type_code'],
+            description: 'Per-item override of the task setting.',
+          },
+          {
             name: 'hardwareOnly',
             type: 'boolean',
             description: 'Needs a physical keyboard; the on-screen keyboard skips it.',
@@ -267,12 +306,27 @@ export default defineActivity({
     items: Object.fromEntries(keyboardItems(task).map((item) => [item.id, {}])),
   }),
 
+  // Typing modes mark their shown answers `solution: true`, so typing history skips them.
   solutionState: (task) => ({
     v: 1,
     items: Object.fromEntries(
-      keyboardItems(task).map((item) => [item.id, solutionItem(task, item)])
+      keyboardItems(task).map((item) => [
+        item.id,
+        HISTORY_MODES.includes(task.mode)
+          ? { ...solutionItem(task, item), solution: true }
+          : solutionItem(task, item),
+      ])
     ),
   }),
+
+  // Typing history (src/shared/typingHistory.js): every finished type_text, type_code and
+  // falling_words result, shown to the student where `showHistory` is set.
+  history: {
+    modes: (task) => (HISTORY_MODES.includes(task?.mode) ? [task.mode] : []),
+    results: (task, state) => keyboardHistoryResults(task, state),
+    shows: (task, item) =>
+      HISTORY_MODES.includes(task?.mode) && (item?.showHistory ?? task?.showHistory) === true,
+  },
 
   // Keystrokes are continuous (synced only while the teacher watches); finishing an item is a
   // discrete change every teacher card should see.
