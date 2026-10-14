@@ -139,6 +139,8 @@ After the same hint appears twice in a row, solo students can optionally view th
 - The output panel in the student modal opens automatically when the student's run produces output or asks for input
 - Approve or decline a student's request to share their workspace with the class, after previewing the exact snapshot
 - Share a student's workspace with the class without them asking ("Share this with the class")
+- 🎁 **Export work** (More menu, tutor-only, live only) — for Student of the Week: download this task or the whole lesson from what the tutor already has (the live mirror on the current task, the latest logged attempt elsewhere). **Code files**: Python/Turtle `.py`; HTML `.zip` of the files plus a single self-contained `.html` (stylesheets and scripts inlined); Scratch a real `.sb3` that opens in Scratch 3 (costumes drawn to PNG, sounds as WAV/MP3, variables, broadcasts and menus translated; blocks Scratch has no match for are listed) plus a LaunchPad JSON copy of the raw state. **Pictures** (PNG): the Turtle drawing, the Scratch stage, each sprite's scripts as blocks and every costume. File names use the task title and date; the student's first name only when "Include first name in file names" is ticked (off by default). One file downloads as itself, several as one `.zip`. Nothing is sent to the student
+- **Share link** (opt-in per export, current task only) — a frozen, name-hidden, read-only snapshot at `/share/:id` for showing the class: Python code and output, Turtle code and drawing, HTML preview (sandboxed) and files, or the Scratch project in a read-only workspace whose green flag runs it. Lasts 30 days; the tutor can Revoke it from the export dialog and admins from Admin ▸ Shared Work. Snapshots over ~900 KB are refused with a message (the downloads still work)
 
 ### Workspace Sharing
 - On tasks authored with `allowSharing`, students can offer their work to the whole class
@@ -302,6 +304,7 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - **Topic library**: create, edit, and delete topics with full Markdown description and syntax fields; type filters come from the lesson module registry
 - **Shared assets**: manage lesson-type-wide Firebase Storage files and Scratch default sprites, backdrops and sounds, shared across every lesson of a given type
 - **Badges**: see every built-in live badge with its exact rule (rule-backed or tutor-only, auto-awardable), and add, edit, archive or restore manual-only badges that reach tutors' award pickers with no deploy; ids and emoji are checked for clashes on save, and archived badges still show wherever they were awarded
+- **Shared work**: every share link tutors made with Export work (title, module, date, live/expired/revoked, days left), with Revoke for live ones
 - **Version footer**: the bottom of every Admin tab shows `LaunchPad vMAJOR.MINOR.BUILD · commit · built date` (BUILD rises on every merge to `main`), with a Copy button for bug reports; clicking the version opens "What's new" milestone release notes
 
 ---

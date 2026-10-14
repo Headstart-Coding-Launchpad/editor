@@ -221,7 +221,9 @@ function envelope(ctx, gain, start, duration, volume) {
   gain.gain.exponentialRampToValueAtTime(0.001, start + duration)
 }
 
-function playLayer(ctx, layer, t0) {
+// Schedules one synth layer on `ctx` (a live AudioContext, or an OfflineAudioContext when a
+// synth sound is rendered to a file) and returns its source node.
+function scheduleLayer(ctx, layer, t0) {
   const start = t0 + (layer.start ?? 0)
   const volume = layer.volume ?? 0.16
   const gain = ctx.createGain()
@@ -254,7 +256,28 @@ function playLayer(ctx, layer, t0) {
   gain.connect(ctx.destination)
   source.start(start)
   source.stop(start + layer.duration + 0.03)
-  return trackNode(source)
+  return source
+}
+
+function playLayer(ctx, layer, t0) {
+  return trackNode(scheduleLayer(ctx, layer, t0))
+}
+
+/**
+ * Renders a synth sound (SYNTH_SOUNDS) offline to mono samples: `{ samples, sampleRate }`, or
+ * null without Web Audio. Used by the tutor's "Export work" .sb3, where every sound is a file.
+ */
+export async function renderSynthSound(synth, sampleRate = 22050) {
+  const Offline =
+    typeof window !== 'undefined'
+      ? window.OfflineAudioContext || window.webkitOfflineAudioContext
+      : null
+  if (!Offline || !synth?.layers?.length) return null
+  const length = Math.max(1, Math.ceil((synthDuration(synth) + 0.05) * sampleRate))
+  const ctx = new Offline(1, length, sampleRate)
+  for (const layer of synth.layers) scheduleLayer(ctx, layer, 0)
+  const buffer = await ctx.startRendering()
+  return { samples: buffer.getChannelData(0), sampleRate }
 }
 
 function playSynth(ctx, synth) {

@@ -34,6 +34,9 @@ const pythonModule = defineUiModule(definition, {
     buildPreviewSrc: null,
     waitForPreviewText: null,
   },
+
+  // ── Export work (tutor's StudentModal; src/shared/exportWork/exporters.js) ──
+  exportWork: () => import('./exportWork.js'),
 })
 
 export default pythonModule

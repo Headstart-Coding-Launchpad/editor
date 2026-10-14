@@ -23,7 +23,7 @@ Each module is split in two:
 | File | Holds | Imported by |
 |---|---|---|
 | `definition.js` | `defineModule({...})`: pure data and hooks. No JSX, React, DOM or runtimes; explicit `.js` extensions on relative imports. | `src/modules/definitions.js` → CLI, validation, shared type lists, the app |
-| `index.js` | `defineUiModule(definition, { StudentWorkspace, BuilderWorkspace, CheckEditor, FeedbackCheckEditor?, TeacherLiveView, getLayoutStyles, runtime })` | `src/modules/registry.js` → the app |
+| `index.js` | `defineUiModule(definition, { StudentWorkspace, BuilderWorkspace, CheckEditor, FeedbackCheckEditor?, TeacherLiveView, getLayoutStyles, runtime, exportWork? })` | `src/modules/registry.js` → the app |
 | `checks.js` | `CHECKS`: module-owned check types | `src/modules/checks.js` (the check registry) |
 
 `defineModule` (`src/modules/defineModule.js`) validates every field below, fills the optional
@@ -210,6 +210,13 @@ tab state and handlers), `CheckEditor` (+ optional `FeedbackCheckEditor`), `Teac
 (`displayState`, `readOnly`, `onChange` in the sandbox), `getLayoutStyles()` (`sharedStyles.js`),
 `runtime` (`{ init, isReady, stop, provideInput, run, buildPreviewSrc, waitForPreviewText }` for
 a `'runtime'` module, else null).
+
+Optional `exportWork`: `() => import('./exportWork.js')`, the module's "Export work" exporter for
+the tutor's StudentModal and the public `/share/:id` viewer (contract in
+`src/shared/exportWork/exporters.js`: `readLive`, `readSubmission`, `buildFiles`, optional
+`buildPictures`, `sharePayload`, `ShareView`). Loaded lazily so export code and fflate stay out of
+the main bundle. A module without it is simply left out of exports; a new module (e.g. the Python
+Stage) adds pictures by declaring `buildPictures`.
 
 ## Check-Type Registry
 

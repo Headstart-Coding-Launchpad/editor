@@ -95,5 +95,47 @@ service cloud.firestore {
                    && (request.auth.token.role == 'teacher'
                        || request.auth.token.role == 'admin');
     }
+
+    // Share links from "Export work" (StudentModal): a frozen, name-hidden snapshot of one
+    // task's work, shown read-only at /share/{shareId}. Anyone may get a link that is not
+    // revoked and not past expiresAt (30 days); teachers and admins also read their own and
+    // admins list them all (Admin > Shared Work). Teachers and admins create (as themselves,
+    // revoked false, expiry at most 30 days on) and revoke; nothing else changes after.
+    match /sharedWork/{shareId} {
+      function isStaff() {
+        return request.auth != null
+          && (request.auth.token.role == 'teacher' || request.auth.token.role == 'admin');
+      }
+      allow get: if (resource.data.revoked == false
+                     && resource.data.expiresAt > request.time)
+                 || (isStaff() && resource.data.createdBy == request.auth.uid)
+                 || (request.auth != null && request.auth.token.role == 'admin');
+      allow list: if request.auth != null && request.auth.token.role == 'admin';
+      allow create: if isStaff()
+                    && request.resource.data.keys().hasOnly(
+                         ['createdAt', 'createdBy', 'expiresAt', 'revoked', 'kind', 'title', 'payload'])
+                    && request.resource.data.keys().hasAll(
+                         ['createdAt', 'createdBy', 'expiresAt', 'revoked', 'kind', 'title', 'payload'])
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.revoked == false
+                    && request.resource.data.expiresAt is timestamp
+                    && request.resource.data.expiresAt > request.time
+                    && request.resource.data.expiresAt
+                         <= request.time + duration.value(30 * 24 * 60 + 10, 'm')
+                    && request.resource.data.kind is string
+                    && request.resource.data.kind.size() > 0
+                    && request.resource.data.kind.size() <= 40
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() <= 200
+                    && request.resource.data.payload is string
+                    && request.resource.data.payload.size() <= 950000;
+      allow update: if isStaff()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['revoked', 'revokedAt'])
+                    && request.resource.data.revoked == true
+                    && request.resource.data.revokedAt == request.time;
+      allow delete: if request.auth != null && request.auth.token.role == 'admin';
+    }
   }
 }
