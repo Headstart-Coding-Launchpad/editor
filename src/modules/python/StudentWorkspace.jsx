@@ -10,6 +10,8 @@ import {
   CollapseTabButton,
 } from '../../app/components/CollapsiblePanelControls'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
+import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
+import { taskShowsVariables } from '../../shared/variablesPanel/variablesPanel.js'
 
 export default function StudentWorkspace({
   task: lessonTask,
@@ -28,12 +30,16 @@ export default function StudentWorkspace({
   displayCheckPassed,
   displayCheckAttempted,
   displaySelection,
+  displayVariablesPanel = null,
   isTeacherEditing,
   teacherLiveCode,
   onVisiblePanesChange,
 }) {
+  // A task with a name-tag panel (showVariables) opens with the output side showing, so the
+  // student can predict before the first Run.
   const [localOutputCollapsed, setLocalOutputCollapsed] = useState(
-    () => !isForcedTeacherLive && !isTeacherEditing && !isViewingPrev
+    () =>
+      !isForcedTeacherLive && !isTeacherEditing && !isViewingPrev && !taskShowsVariables(lessonTask)
   )
   // While forced-live, the panel state is locked to whatever the broadcast
   // source (teacher/watched student) has it set to — continuous, not a
@@ -203,6 +209,19 @@ export default function StudentWorkspace({
     </div>
   )
 
+  // The name-tag panel (showVariables): under the output, or alone while the output is folded
+  // away on a narrow screen.
+  const variablesPanel = (
+    <TaskVariablesPanel
+      task={task}
+      panel={cs.variablesPanel}
+      synced={isForcedTeacherLive ? displayVariablesPanel : undefined}
+      running={cs.running}
+      hidden={isViewingPrev || isTeacherEditing}
+      style={s.variablesPanel}
+    />
+  )
+
   const output = (
     <div style={s.outputPane}>
       <OutputPanel
@@ -237,6 +256,7 @@ export default function StudentWorkspace({
           ))}
         </div>
       )}
+      {variablesPanel}
     </div>
   )
 
@@ -244,7 +264,7 @@ export default function StudentWorkspace({
     return (
       <div style={s.mobileStack}>
         {editor}
-        {shouldShowOutput && !outputCollapsed && output}
+        {shouldShowOutput && !outputCollapsed ? output : variablesPanel}
       </div>
     )
   }
@@ -301,6 +321,7 @@ const s = {
     minHeight: 0,
     gap: 8,
   },
+  variablesPanel: { flex: '0 1 auto', maxHeight: '55%' },
   outputCollapseBtn: {
     width: 28,
     height: 26,

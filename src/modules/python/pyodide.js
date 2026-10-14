@@ -99,6 +99,8 @@ function handleWorkerMessage({ data }) {
       _runResolve?.({
         status: _stopped ? 'stopped' : data.status,
         variables: data.variables ?? {},
+        // The name-tag panel capture (runPython's `capture`), null without one.
+        variablesPanel: data.variablesPanel ?? null,
         turtle: data.turtle ?? null,
       })
       _runResolve = null
@@ -145,6 +147,9 @@ export async function runPython(
     gpioInputs,
     getGpioInputs,
     asyncNames,
+    // Name-tag panel capture ({ panel, peekLine, hide }, see variableCaptureOptions in
+    // src/shared/variablesPanel/variablesPanel.js); omitted for no panel.
+    capture,
   } = {}
 ) {
   if (!_worker) throw new Error('Pyodide not initialised — call initPyodide first')
@@ -176,6 +181,7 @@ export async function runPython(
       code,
       gpioInputs: _gpioInputs,
       asyncNames: Array.isArray(asyncNames) ? asyncNames : [],
+      capture: capture ?? null,
     })
   })
 }

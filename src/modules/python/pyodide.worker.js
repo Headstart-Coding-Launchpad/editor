@@ -5,7 +5,7 @@
  * Message protocol
  * ────────────────
  * Main → Worker : { type: 'init' }
- *                 { type: 'run',   code: string }
+ *                 { type: 'run',   code: string, capture?: { panel, peekLine, hide } }
  *                 { type: 'input', value: string }
  *                 { type: 'gpio_inputs', values: object, requestId?: number }
  *
@@ -14,7 +14,7 @@
  *                 { type: 'load_error',    msg: string }
  *                 { type: 'output',        text: string, kind: 'stdout'|'stderr', line?: number|null }
  *                 { type: 'input_required', prompt: string }
- *                 { type: 'done',          status: 'success'|'error' }
+ *                 { type: 'done',          status: 'success'|'error', variables, variablesPanel }
  *                 { type: 'gpio_write',     pin: string, value: 0|1 }
  *                 { type: 'gpio_configure', pin: string, mode: number, pull: number|null }
  *                 { type: 'gpio_poll',      requestId: number }
@@ -27,6 +27,13 @@
  * `line` is only meaningful on a 'stderr' output produced from a caught Python
  * exception (see formatPythonError): it is the innermost `<student>` frame's
  * line number, used by the UI to highlight the failing line in the editor.
+ *
+ * `capture` turns on the name-tag panel capture (showVariables, see variableCapture.py.js):
+ * `panel` true reads the visible variables at the end of the run (also when it errors),
+ * `peekLine` (a line of the code as run) also reads them the first time that line is about to
+ * run, and `hide` lists names never to show. `done` then carries `variablesPanel`:
+ * { end, peek, peekLine, peekReached } (null without `capture.panel`). `variables` (the
+ * check variables, { name: { type, json, repr } }) is always sent.
  *
  * `done` also always carries `turtle: { state, commands, calls }` for Turtle-module
  * tasks (see ../turtle/shim.js) — `state` is the final position/heading/pen snapshot,
@@ -46,12 +53,16 @@ import {
   applyTurtleSetBackground,
   applyTurtleSetVisible,
 } from '../turtle/engine.js'
+import { VARIABLE_CAPTURE_PY } from './variableCapture.py.js'
 
 const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
 
 let pyodide = null
 let _inputResolve = null
 let _lastVariables = {}
+// The name-tag panel capture of the current run (showVariables, see variableCapture.py.js):
+// { end, peek, peekLine, peekReached }, or null when the task has no panel / the code never ran.
+let _lastVariablesPanel = null
 let _gpioInputs = {}
 let _gpioOutputs = {}
 let _gpioPollId = 0
@@ -63,8 +74,11 @@ let _turtleFilling = false
 let _turtleFillPoints = []
 
 // Python wrapper — same AST-transform approach as before, but now running in a Worker.
-// `import js as _js` gives access to this worker's globalThis.
-const WRAPPER = `
+// `import js as _js` gives access to this worker's globalThis. The variable-capture helpers
+// (variableCapture.py.js) come first.
+const WRAPPER =
+  VARIABLE_CAPTURE_PY +
+  `
 import js as _js
 import sys, builtins, ast, json
 
@@ -102,10 +116,29 @@ _async_names.add('input')
 _Tx(_async_names).visit(_tree)
 ast.fix_missing_locations(_tree)
 
-_hs_capture = ast.parse(
-    "globals().update({_k: _v for _k, _v in locals().items() if not _k.startswith('_')})"
-).body[0]
-_tree.body.append(_hs_capture)
+# The student's top-level variables are locals of __hs_run__: read them from the frame in a
+# finally, so they are there even when the program raised (see variableCapture.py.js).
+_hs_cfg = json.loads(_hs_capture_json or '{}')
+_hs_panel_on = bool(_hs_cfg.get('panel'))
+_hs_peek_line = _hs_cfg.get('peekLine')
+_hs_hidden = set(_hs_cfg.get('hide') or []) | _hs_imported_names(_tree, ('turtle', 'stage'))
+_hs_end_locals = {}
+_hs_panel = {'end': None, 'peek': None, 'peekLine': _hs_peek_line, 'peekReached': False}
+
+def _hs_end_capture(ns):
+    _hs_end_locals.update(ns)
+
+_hs_body = _tree.body or [ast.Pass()]
+# The finally line sits just past the student's last line, so a line watcher (peek, slow-mo)
+# never mistakes it for one of theirs.
+_hs_after_line = len(_hs_user_code.split(chr(10))) + 1
+_hs_final = ast.parse('_hs_end_capture(locals())').body
+for _hs_node in ast.walk(_hs_final[0]):
+    if hasattr(_hs_node, 'lineno'):
+        _hs_node.lineno = _hs_after_line
+        _hs_node.end_lineno = _hs_after_line
+_hs_try = ast.Try(body=_hs_body, handlers=[], orelse=[], finalbody=_hs_final)
+ast.copy_location(_hs_try, _hs_body[0])
 
 _fn = ast.AsyncFunctionDef(
     name='__hs_run__',
@@ -113,7 +146,7 @@ _fn = ast.AsyncFunctionDef(
         posonlyargs=[], args=[], vararg=None,
         kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[],
     ),
-    body=_tree.body,
+    body=[_hs_try],
     decorator_list=[],
     returns=None,
     lineno=1, col_offset=0,
@@ -125,15 +158,38 @@ ast.fix_missing_locations(_mod)
 
 _g = {
     '_hs_input': _hs_input,
+    '_hs_end_capture': _hs_end_capture,
     '__builtins__': builtins,
     '__name__': '__main__',
 }
 exec(compile(_mod, '<student>', 'exec'), _g)
+
+# '#@peek' (showVariables at: marker): the variables the first time that line is about to run.
+def _hs_on_peek_line(frame, lineno):
+    if lineno != _hs_peek_line:
+        return True
+    _hs_ns, _hs_scope = _hs_frame_namespace(frame)
+    _hs_panel['peek'] = _hs_snapshot(_hs_ns, _hs_hidden, _hs_scope)
+    _hs_panel['peekReached'] = True
+    return False
+
+_hs_watch = _HsLineWatch(_hs_on_peek_line)
+if _hs_panel_on and isinstance(_hs_peek_line, int):
+    _hs_watch.start()
 try:
     await _g['__hs_run__']()
 finally:
+    _hs_watch.stop()
+    if _hs_panel_on:
+        try:
+            _hs_panel['end'] = _hs_snapshot(_hs_end_locals, _hs_hidden)
+        except Exception:
+            _hs_panel['end'] = None
+        _js.__hsSetVariablesPanel(json.dumps(_hs_panel))
     _hs_vars = {}
-    for _name, _value in _g.items():
+    _hs_check_ns = dict(_g)
+    _hs_check_ns.update(_hs_end_locals)
+    for _name, _value in _hs_check_ns.items():
         if _name.startswith('_') or _name in ('__builtins__', '__name__'):
             continue
         try:
@@ -161,6 +217,14 @@ globalThis.__hsInput = async (prompt) => {
     self.postMessage({ type: 'input_required', prompt: String(prompt) })
     _inputResolve = resolve
   })
+}
+
+globalThis.__hsSetVariablesPanel = (json) => {
+  try {
+    _lastVariablesPanel = JSON.parse(String(json))
+  } catch {
+    _lastVariablesPanel = null
+  }
 }
 
 globalThis.__hsSetVariables = (variables) => {
@@ -384,6 +448,7 @@ self.onmessage = async ({ data }) => {
 
     _inputResolve = null
     _lastVariables = {}
+    _lastVariablesPanel = null
     _gpioInputs = normalizeGpioInputs(data.gpioInputs)
     _gpioOutputs = {}
     _turtleState = createTurtleState()
@@ -450,6 +515,7 @@ self.onmessage = async ({ data }) => {
       '_hs_async_names_json',
       JSON.stringify(Array.isArray(data.asyncNames) ? data.asyncNames : [])
     )
+    pyodide.globals.set('_hs_capture_json', JSON.stringify(normalizeCaptureConfig(data.capture)))
 
     const turtleResult = () => ({
       state: _turtleState,
@@ -464,6 +530,7 @@ self.onmessage = async ({ data }) => {
         type: 'done',
         status: 'success',
         variables: _lastVariables,
+        variablesPanel: _lastVariablesPanel,
         turtle: turtleResult(),
       })
     } catch (err) {
@@ -475,6 +542,7 @@ self.onmessage = async ({ data }) => {
         type: 'done',
         status: 'error',
         variables: _lastVariables,
+        variablesPanel: _lastVariablesPanel,
         turtle: turtleResult(),
       })
     }
@@ -495,6 +563,18 @@ self.onmessage = async ({ data }) => {
     }
     return
   }
+}
+
+// Exported for unit testing. The run's capture options as the Python wrapper reads them
+// (_hs_capture_json): { panel, peekLine, hide }, with anything malformed dropped.
+export function normalizeCaptureConfig(capture) {
+  if (!capture || typeof capture !== 'object' || !capture.panel) return { panel: false }
+  const peekLine =
+    Number.isInteger(capture.peekLine) && capture.peekLine > 0 ? capture.peekLine : null
+  const hide = Array.isArray(capture.hide)
+    ? capture.hide.filter((name) => typeof name === 'string' && name)
+    : []
+  return { panel: true, peekLine, hide }
 }
 
 // Exported for unit testing (see src/modules/python/__tests__/pyodide.worker.test.js).

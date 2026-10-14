@@ -131,7 +131,12 @@ export function validateTurtleChecks(checks, n, errors, kind = 'completion') {
   const normalized = normalizeChecks(checks)
   validateCodeCheckValues(normalized, n, errors, kind)
   const unknown = normalized.find(
-    (c) => !TURTLE_CHECK_TYPES.includes(c?.type) && !isCodeCheck(c) && !isRunAttemptedCheck(c)
+    (c) =>
+      !TURTLE_CHECK_TYPES.includes(c?.type) &&
+      !isCodeCheck(c) &&
+      !isRunAttemptedCheck(c) &&
+      // The name-tag panel's predictions (showVariables mode: predict).
+      c?.type !== 'variables_predicted'
   )
   if (unknown) {
     errors.push(`Task ${n} has a turtle ${label} with unknown type "${unknown?.type ?? ''}"`)

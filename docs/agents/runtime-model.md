@@ -56,6 +56,7 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
         "files": { "index__dot__html": "..." },
         "arcadeDesign": "object | null (Arcade only; sent as explicit null for other types because teacherLive is an update() merge)",
         "turtleResult": "object | null (Turtle only, compacted with compactTurtleResultForSync; explicit null for other types)",
+        "variablesPanel": "object | null (the presenter's name-tag panel on a showVariables task, Python / Turtle only, same shape as students/{id}/currentVariables; explicit null otherwise)",
         "output": "...",
         "runStatus": "success | error | stopped | submitted | null",
         "checkPassed": true,
@@ -246,6 +247,7 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
           "currentCode": "string",
           "currentArcadeDesign": "object | null (watched Arcade student's throttled sprite/map snapshot)",
           "currentTurtleResult": "object | null (Turtle student's compacted drawing result, written on Run via writeStudentTurtleResult)",
+          "currentVariables": "object | null (name-tag panel on a showVariables task, compactVariablesForSync: { taskId, status, at, snapshots: [{ vars: [{ n, v }], scope }], index, peekLine, peekReached, changed, ran, predictions: { name: text } | null, results: { name: bool } | null } — written via writeStudentVariables after every Run, when a prediction input loses focus, and throttled (400 ms) while typing predictions if activeStudentView matches; cleared by setTaskId)",
           "currentSpriteState": "object | null ({ spriteStates, cloneStates, backdropName, updatedAt } — watched Scratch student's throttled runtime snapshot, ~8Hz)",
           "currentCursor": "object | null ({ target: 'stage' | 'workspace', spriteId, x, y, at } — watched Scratch student's throttled live pointer position, ~20Hz; stage coords are origin-centred same as sprite x/y, workspace coords are that sprite's Blockly workspace units)",
           "currentBlockDrag": "object | null ({ spriteId, blockId, x, y, at } — the top block of an in-progress drag, live position in that sprite's Blockly workspace units, cleared to null when the drag ends)",
@@ -293,6 +295,11 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
           },
           "typingLog": {
             "{taskId}": { "charsTyped": 148, "activeTypingMs": 151000, "corrections": 23, "longestPauseMs": 48000, "autocompleteAccepts": 2, "copyDistance": "number (copyCode tasks only, from the first Run)" }
+          },
+          "predictionLog": {
+            "{taskId}": {
+              "{pushId}": { "at": "ServerValue.TIMESTAMP", "allCorrect": true, "entries": { "{variableName}": { "value": "what the student typed (≤ 200 chars)", "correct": true } } }
+            }
           },
           "tileMissLog": {
             "{taskId}": {
@@ -434,6 +441,7 @@ Student writes:
 - Class poll answers: own `pollResponses/{pollId}` (`{ choice, answeredAt }`) via `answerPoll` from the poll card (`ClassPollCard.jsx`), only while that poll's `status` is `open` (the rules refuse a student answer to a closed or missing poll). Overwritten when the student changes their answer. Not cleared by `setTaskId`; read by `buildSessionReport` into the report's `polls`.
 - Large pastes: own `pasteLog/{taskId}` via `recordStudentPaste` (`{ count, chars, lastAt, firstAt }`, see `docs/agents/classroom-behaviours.md`). `firstAt` is a server timestamp set on the first large paste only (the badge guards order it against a pass); `lastAt` keeps being overwritten. Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `pastes` and the task summary's `pasteCount`/`pastedStudentCount`.
 - Typing totals: own `typingLog/{taskId}` via `recordStudentTyping` (`{ charsTyped, activeTypingMs, corrections, longestPauseMs, autocompleteAccepts, copyDistance? }`). Counted on the student's device by `useStudentTypingStats` from the shared CodeEditor (keystroke inserts, not pastes or autocomplete; Backspace/Delete presses; 5 s typing bursts) and written as one replaced record per task on Run, on a task change, on leaving the lesson phase and on a hidden tab — never per keystroke, and never once the session has ended or the student was removed. Live lesson python/turtle/html tasks on keyboard devices only (not touch devices, solo, the presentation window, previews or the personal sandbox). Not cleared by `setTaskId`; read by `buildSessionReport` into each code task's `typing` and the task summary's `typingSummary`.
+- Name-tag panel predictions (`showVariables.mode: predict`): own `predictionLog/{taskId}/{pushId}` via `recordVariablePredictions` (`{ at, allCorrect, entries: { name: { value, correct } } }`), one per Run that reveals predictions (`useVariablesPanel`; a Run with the same predictions as the last logged one is skipped), live lesson only (not the presentation window, previews or solo), capped at 30 per task. Not attempts. Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `predictions` and the task summary's `prediction*` fields. The panel itself syncs on `currentVariables` (above) and, in Go Live, on `teacherLive.variablesPanel` (same shape, explicit `null` when cleared; carried by the python / turtle wire's `liveExtras`).
 - Code_arrange tile misses: own `tileMissLog/{taskId}/{pushId}` (`{ slotId, tileId, at }`) via `recordStudentTileMiss`, one per drop of a tile into a blank where the task's tile feedback marks it known-wrong (a distractor, or the blank's `wrongTiles`; see `getTileFlag` in `src/shared/codeArrange.js`), live lesson only, capped at 100 per task. Not attempts. Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `tileMisses` and the task summary's `tileMisses`. Each code_arrange attempt also stores its `placements` (JSON string) on the `attemptLog` entry.
 - Live badge signals: own `studentSignals/{anonymousId}` and `attemptLog` entries' `error`. See "Badge data" below.
 - Stage reference reveal: after a failed attempt, students can reveal their own Python/HTML Support `codeStages` entries. The same `supportRevealLog` record stores `source: "student"`, stage label, attempt count, and server timestamp. Revealing does not change editor contents.

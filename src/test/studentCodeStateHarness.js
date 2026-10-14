@@ -94,6 +94,8 @@ export const WRITER_NAMES = [
   'recordStudentPaste',
   'recordStudentTyping',
   'recordStudentTileMiss',
+  'writeStudentVariables',
+  'recordVariablePredictions',
   'writeStudentPersonalSandbox',
   'writeStudentPresence',
   'registerPresence',

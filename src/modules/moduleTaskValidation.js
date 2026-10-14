@@ -207,6 +207,8 @@ export function validateCodeChecks(
     'variable_exists',
     // inner / outer instead of a value; its own validate() (python/checks.js) checks them.
     'code_structure',
+    // names (optional) instead of a value; its own validate() checks them.
+    'variables_predicted',
   ]
   if (html) noValueTypes.push('html_element_attribute', 'html_element_style_property')
   if (normalized.some((check) => !noValueTypes.includes(check.type) && !hasValue(check.value))) {

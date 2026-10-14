@@ -24,6 +24,8 @@ export function useTeacherLivePublish({
   // today) publishes.
   codeRef,
   turtleResultRef,
+  // The name-tag panel's synced state (useVariablesPanel), published as `variablesPanel`.
+  variablesPanelRef = null,
   filesRef,
   activeFileRef,
   outputRef,
@@ -49,6 +51,8 @@ export function useTeacherLivePublish({
   checkSuggestion,
   // The current module's work-slot value (null for other modules): a publish trigger.
   workValue = null,
+  // The name-tag panel state: a publish trigger (a run, a prediction typed while live).
+  variablesPanelState = null,
   iframeStorageAssets = null,
   // Optional ref to a function returning extra payload fields for the current task (the
   // activity host adds `answer`, the serialised activity state, on activity tasks).
@@ -93,8 +97,11 @@ export function useTeacherLivePublish({
     // teacherLive is an update() merge, so every module sends both extras (explicit nulls
     // for the ones it doesn't have) — see each definition's wire.liveExtras. A module's own
     // extras come with its work (Arcade's design); Turtle's drawing is a run result.
-    const { arcadeDesign, turtleResult } = (definition?.wire.liveExtras ?? noLiveExtras)({
+    const { arcadeDesign, turtleResult, variablesPanel } = (
+      definition?.wire.liveExtras ?? noLiveExtras
+    )({
       turtleResult: turtleResultRef?.current,
+      variablesPanel: variablesPanelRef?.current ?? null,
       ...stored?.meta,
     })
     const filesMap = !isWorkSlot
@@ -119,6 +126,7 @@ export function useTeacherLivePublish({
       code: isWorkSlot ? slotCode : codeRef.current,
       arcadeDesign,
       turtleResult,
+      variablesPanel: variablesPanel ?? null,
       files: filesMap,
       // A files module's own active file; no other module has one (never a leftover).
       activeFile: !isWorkSlot
@@ -219,6 +227,7 @@ export function useTeacherLivePublish({
     checkAttempted,
     checkSuggestion,
     workValue,
+    variablesPanelState,
   ])
 
   // The reference channel only follows work of modules that offer a teacher-live reference

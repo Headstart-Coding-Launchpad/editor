@@ -24,6 +24,10 @@ import {
 import { typingReportFields } from './typingStats.js'
 import { lastDraftFor } from './answerDrafts.js'
 import { normalizeTileHighlightLog } from './tutorTileHighlights.js'
+import {
+  summarizeVariablePredictions,
+  taskPredictionFields,
+} from './variablesPanel/predictionReport.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
 
@@ -745,6 +749,7 @@ export function buildSessionReport({
         ...(sideQuests.length > 0 ? { sideQuests } : {}),
         ...(typing ? { typing } : {}),
         ...(tileMisses.length > 0 ? { tileMisses } : {}),
+        ...taskPredictionFields(task, studentsSnapshot[anonymousId]),
         ...(tutorTileHighlights.length > 0 ? { tutorTileHighlights } : {}),
         ...(itemProgress ? { itemProgress } : {}),
         ...(lastDraft ? { lastDraft } : {}),
@@ -873,6 +878,7 @@ export function buildSessionReport({
       ...summarizeSideQuests(perStudent),
       ...summarizeTimeOnTaskSpread(perStudent),
       ...summarizeTyping(perStudent),
+      ...summarizeVariablePredictions(perStudent),
       ...badgeFields,
       ...(teacherRating ? { teacherRating } : {}),
     }

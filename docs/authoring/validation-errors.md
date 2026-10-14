@@ -339,6 +339,28 @@ message says `feedback check` where it would say `check` (that part is shown as 
 
 See the module docs for each check's required fields.
 
+## Name-tag panel (`showVariables`)
+
+Python and Turtle tasks; see [python.md](python.md#name-tag-panel-showvariables).
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task … has showVariables, but the name-tag panel only works in Python and Turtle tasks — it is ignored` (warning) | `showVariables` is on another module's task. | Remove it, or move the task to Python or Turtle. |
+| `Task … has a showVariables that is not an object — use { mode, at, … }` | `showVariables` is a string, list or `true`. | Write it as a map, e.g. `showVariables: { mode: view }`. |
+| `Task … has showVariables mode "…" — use one of: …` | Unknown `mode`. | Use `view`, `predict` or `target`. |
+| `Task … has showVariables at "…" — use one of: …` | Unknown `at`. | Use `end` or `marker`. |
+| `Task … has showVariables … that is not a list of variable names` | `hide` or `predict` isn't a list. | Write `[score, lives]`. |
+| `Task … has showVariables … with names that are not Python variable names: …` | A `hide` or `predict` entry isn't a Python name (spaces, a leading digit, quotes). | Use the variable names exactly as the code writes them. |
+| `Task … has showVariables mode: predict but no predict list of variable names` | Predict mode needs the tags students fill in. | Add `predict: [score, lives]`. |
+| `Task … has showVariables mode: target but no target values (target: { name: value })` | Target mode needs at least one target. | Add `target: { score: 10 }`. |
+| `Task … has showVariables target names that are not Python variable names: …` | A `target` key isn't a Python name. | Use the variable names as the code writes them. |
+| `Task … has showVariables predict but mode is not predict — it is ignored` / `Task … has showVariables target but mode is not target — it is ignored` (warnings) | The list belongs to the other mode. | Set the matching `mode`, or remove the list. |
+| `Task … has showVariables at: marker but no … line in its code — the panel shows the end of the run` (warning) | `at: marker` stops at a `#@peek` line, and the code has none. | Add a `#@peek` line above the line to stop at, or use `at: end`. |
+| `Task … has a variables_predicted check but no showVariables with mode: predict` / `Task … has a variables_predicted check but showVariables mode is not predict` | The check reads the panel's predictions, which only predict mode collects. | Add `showVariables: { mode: predict, predict: [...] }`, or remove the check. |
+| `Task … has a variables_predicted check naming …, which showVariables predict does not list` | The check's `names` include a variable students are never asked to predict, so it can never pass. | Add the name to `predict`, or remove it from `names` (or drop `names` to mean every prediction). |
+| `Task … has a variables_predicted …, but it only works in Python and Turtle tasks` | The check is on another module's task. | Move it to a Python or Turtle task. |
+| `Task … has a variables_predicted … whose names is not a list of variable names` / `Task … has a variables_predicted … with names that are not Python variable names` | `names` is empty, not a list, or holds something that isn't a Python name. | Write `names: [score, lives]`, or remove `names`. |
+
 ## Python tests
 
 | Message | Meaning | Fix |

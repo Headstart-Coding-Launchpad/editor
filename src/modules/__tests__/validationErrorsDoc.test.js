@@ -38,6 +38,7 @@ const VALIDATOR_FILES = [
   'src/shared/checkAuthoringValidation.js',
   'src/shared/input/checks.js',
   'src/modules/python/checks.js',
+  'src/shared/variablesPanel/validation.js',
   'src/shared/composedLesson.js',
   'src/shared/draftLesson.js',
   'src/shared/topicAudit.js',

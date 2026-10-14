@@ -36,6 +36,7 @@ import { lastErrorLine } from '../studentHints.js'
  * - saveRunRecord(taskId, code, fields): the task's run record (persistence.saveRunRecord)
  * - signals (optional): the live badge reporters (useStudentBadgeSignals); a free-play run is
  *   reported with reportSandboxRun
+ * - variablesPanel (optional): the name-tag panel (useVariablesPanel), handed each finished run
  */
 export async function runWithRuntime(ctx) {
   const {
@@ -236,12 +237,22 @@ export async function runWithRuntime(ctx) {
   if (nextCode !== startCode) setCode(nextCode)
 
   if (status !== 'stopped') setTurtleResult(result.turtle ?? null)
+  // The name-tag panel (showVariables, useVariablesPanel.js) shows this run and marks the
+  // predictions; it hands back `variablePredictions` for the variables_predicted check. Free
+  // play (a sandbox) has no task panel.
+  const panelContext =
+    ctx.variablesPanel?.receiveRun({
+      task: refs.phaseRef.current === 'sandbox' || refs.inPersonalSandboxRef.current ? null : task,
+      status,
+      result,
+    }) ?? {}
   // `ran` tells run_attempted checks this context comes from a real run (see checks.js).
   const checkContext = checking.buildContext(nextCode, {
     status,
     variables: result.variables ?? {},
     turtle: result.turtle ?? null,
     ran: true,
+    ...panelContext,
   })
   // A teacher-started or personal sandbox is free play: the session still points at a
   // lesson task, but sandbox code has nothing to do with that task's check, so scoring

@@ -194,7 +194,11 @@ export default defineModule({
     sandboxMeta: ['arcadeDesign'],
   }),
   wire: codeStringWire({
-    liveExtras: ({ arcadeDesign } = {}) => ({ arcadeDesign, turtleResult: null }),
+    liveExtras: ({ arcadeDesign } = {}) => ({
+      arcadeDesign,
+      turtleResult: null,
+      variablesPanel: null,
+    }),
   }),
   // Generic work slot (useStudentCodeState): `{ code, arcadeDesign }`. Storage and wire take
   // the code as the work and the design as the record's `arcadeDesign` field (stored()).

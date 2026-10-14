@@ -1501,6 +1501,7 @@ describe('useSession', () => {
         currentOutput: '',
         currentCode: '',
         currentArcadeDesign: null,
+        currentVariables: null,
         currentSpriteState: null,
         currentCursor: null,
         currentBlockDrag: null,

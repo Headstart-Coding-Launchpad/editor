@@ -266,6 +266,16 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
   if (task.showBlocks != null && typeof task.showBlocks !== 'boolean') {
     errors.push(`Task ${n} showBlocks must be true or false`)
   }
+  // showVariables: the name-tag panel (src/shared/variablesPanel/), on the modules that declare
+  // it as a task field (python, turtle); their validateTask checks its shape.
+  if (
+    task.showVariables != null &&
+    !definition?.taskFields?.some((field) => field.name === 'showVariables')
+  ) {
+    warnings.push(
+      `Task ${n} has showVariables, but the name-tag panel only works in Python and Turtle tasks — it is ignored`
+    )
+  }
 
   // peerHints: extra preset hints for peer help (src/shared/peerHelp.js). They reach a student
   // without the teacher checking each one, so they are authored text only, short, and few.

@@ -1,6 +1,6 @@
 # Name-tag panel: show what is in the variables (Python and Turtle)
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, sent straight to LaunchPad Dev at Ryan's request, bypassing pipeline-ui), 2026-10-14
 - **Lessons blocked:** none yet. This is build 1 of 6 in Lesson Gen's P6 Visual learning plan. Ryan wants these capabilities built before any lessons are rewritten.
@@ -122,4 +122,35 @@ Display rules:
 - **Order:** P6 build order is 1 this panel, 2 Stage, 3 Python slow-mo, 4 scrubbing, 5 HTML Inspector, 6 Scratch slow-mo.
 
 ## Resolution
+
+Shipped 2026-10-14 (branch `feature/python-variables-panel`) as a feature of the `python` and
+`turtle` workspaces, as requested: a task field, a marker and a check, not a new module or
+activity.
+
+- **`showVariables`** `{ mode: view | predict | target, at: end | marker, hide, predict, target }`
+  on Python and Turtle tasks, exactly as in the example tasks above. Display rules as asked: one
+  tag per variable in first-use order, type labels, quoted text, list tiles with indexes, dict
+  rows, **Show all** for long or nested values, hidden modules / functions / classes / dunders /
+  turtle imports / `hide`, "changed" marks on the next Run, "not made yet" targets.
+- **Marker:** `#@peek` on its own line above the line to stop at (it joins the `#>` line-hint
+  scheme: stripped at lesson load, re-anchored through student edits). The panel shows the state
+  the first time that line is about to run; if it never runs, the end of the run with a note.
+- **Check:** `variables_predicted` (`names` optional), forgiving as asked (trim, `5` = `5.0`,
+  quotes optional for text, decided by type). One call made: **capitals count for text** (the
+  value is the text exactly — `.upper()` / `.lower()` misconceptions need it); True/False/None
+  are case-free. Target mode's green tags are display only; checks are **not** auto-generated
+  from `target` (authors keep the `variable_*` checks, as the request's example does).
+- **Report:** each student task gets `predictions` (first and latest revealed, each right or
+  not); the task summary gets `predictionStudentCount`, `predictionFirstAllCorrectCount`,
+  `predictionFirstByName`. Measure the pilot from `predictions.firstAllCorrect`.
+- **Tutor:** card chip (🏷️ "Predicted 2/3" → "2/3 right", "1/3 on target"), the student's panel
+  with live predictions in StudentModal, and Go Live broadcasts the presenter's panel.
+- **Devices / a11y:** under the output (Python) or between drawing and output (Turtle), stacks
+  on narrow screens, 44 px touch targets, ✓ / ✗ with words, green / amber verdicts, a
+  screen-reader text per tag ("score: number 10").
+- **For build 3 (slow-mo):** the panel takes a sequence of snapshots plus an index, and the
+  worker's capture helpers (`src/modules/python/variableCapture.py.js`: value encoder, frame
+  snapshot, a removable `sys.settrace` line watcher on the student's file) are shared.
+
+See [python.md](../python.md#name-tag-panel-showvariables) and the 2026-10-14 CHANGELOG entry.
 

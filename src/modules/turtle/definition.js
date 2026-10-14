@@ -13,7 +13,10 @@ import {
   recordStorage,
   TEACHER_EDIT_CODE_COPY,
   alwaysPersonalSandbox,
+  variablesPanelLiveExtra,
 } from '../moduleContract.js'
+import { SHOW_VARIABLES_TASK_FIELD } from '../../shared/variablesPanel/variablesPanel.js'
+import { validateShowVariables } from '../../shared/variablesPanel/validation.js'
 import { compactTurtleResultForSync } from './sync.js'
 import {
   codeDefaultTypeFields,
@@ -110,6 +113,7 @@ export default defineModule({
       description: 'Coloured block brackets in the Python editor (default true; false hides them).',
     },
     { name: 'carryCodeFrom', type: 'string' },
+    SHOW_VARIABLES_TASK_FIELD,
   ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeCode',
@@ -172,9 +176,10 @@ export default defineModule({
   storage: recordStorage({ workKey: 'code', taskMeta: ['output', 'runStatus'] }),
   // The drawing is a run result; it is compacted before it travels on teacherLive.
   wire: codeStringWire({
-    liveExtras: ({ turtleResult } = {}) => ({
+    liveExtras: ({ turtleResult, variablesPanel } = {}) => ({
       arcadeDesign: null,
       turtleResult: compactTurtleResultForSync(turtleResult),
+      ...variablesPanelLiveExtra({ variablesPanel }),
     }),
   }),
   // Generic work slot (useStudentCodeState): the code string, checked when it runs.
@@ -182,8 +187,9 @@ export default defineModule({
   workSlot: codeWorkSlot({ teacherSandboxReset: true }),
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
-  validateTask: (task, { n, errors }) => {
+  validateTask: (task, { n, errors, warnings }) => {
     validateTaskChecks(task, (checks, kind) => validateTurtleChecks(checks, n, errors, kind))
+    validateShowVariables(task, n, errors, warnings)
   },
   hasStarterContent: codeStarterPresent,
 })

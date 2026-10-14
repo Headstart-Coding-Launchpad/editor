@@ -493,6 +493,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/currentOutput`] = ''
       updates[`students/${anonymousId}/currentCode`] = ''
       updates[`students/${anonymousId}/currentArcadeDesign`] = null
+      updates[`students/${anonymousId}/currentVariables`] = null
       updates[`students/${anonymousId}/currentSpriteState`] = null
       updates[`students/${anonymousId}/currentCursor`] = null
       updates[`students/${anonymousId}/currentBlockDrag`] = null
@@ -1830,6 +1831,29 @@ export function useSession(lessonId, { enabled = true } = {}) {
     })
   }
 
+  // The name-tag panel (a task's showVariables, src/shared/variablesPanel/) as the tutor sees
+  // it: the variables of the student's last run and their predictions so far
+  // (compactVariablesForSync), or null. Written after each run and when a prediction is
+  // committed (useVariablesPanel); cleared with the other per-task fields by setTaskId.
+  async function writeStudentVariables(anonymousId, state) {
+    if (!anonymousId) return
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/currentVariables`),
+      state ?? null
+    )
+  }
+
+  // One reveal of a student's predictions (a Run in predict mode), pushed under their own node
+  // per task for the session report (src/shared/variablesPanel/predictions.js). useVariablesPanel
+  // caps the entries per task and skips a Run whose predictions didn't change.
+  async function recordVariablePredictions(anonymousId, taskId, entry) {
+    if (!anonymousId || taskId == null || !entry) return
+    await set(
+      push(ref(db, `sessions/${lessonId}/students/${anonymousId}/predictionLog/${taskId}`)),
+      { ...entry, at: serverTimestamp() }
+    )
+  }
+
   // ─── Live badges: student signals ─────────────────────────────────────────
   //
   // sessions/{lessonId}/studentSignals/{anonymousId}, written by the student's own client only
@@ -2274,6 +2298,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
     recordStudentPaste,
     recordStudentTyping,
     recordStudentTileMiss,
+    writeStudentVariables,
+    recordVariablePredictions,
     // student: live badge signals
     recordTopicOpenSignal,
     recordShortcutSignal,

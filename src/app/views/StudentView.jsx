@@ -148,6 +148,8 @@ export default function StudentView({
     recordStudentPaste,
     recordStudentTyping,
     recordStudentTileMiss,
+    writeStudentVariables,
+    recordVariablePredictions,
     recordTopicOpenSignal,
     recordShortcutSignal,
     recordAutocompleteSignal,
@@ -300,6 +302,8 @@ export default function StudentView({
     recordStudentPaste,
     recordStudentTyping,
     recordStudentTileMiss,
+    writeStudentVariables,
+    recordVariablePredictions,
     writeStudentPersonalSandbox,
     writeStudentPresence,
     registerPresence,
@@ -1028,6 +1032,7 @@ export default function StudentView({
     displayCode,
     displayArcadeDesign,
     displayTurtleResult,
+    displayVariablesPanel,
     displaySpriteState,
     displayCursor,
     displayBlockDrag,
@@ -2029,6 +2034,7 @@ export default function StudentView({
               displayCode={displayCode}
               displayArcadeDesign={displayArcadeDesign}
               displayTurtleResult={displayTurtleResult}
+              displayVariablesPanel={displayVariablesPanel}
               displaySpriteState={displaySpriteState}
               displayCursor={displayCursor}
               displayBlockDrag={displayBlockDrag}

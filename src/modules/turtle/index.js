@@ -3,7 +3,8 @@ import BuilderWorkspace from './BuilderWorkspace.jsx'
 import CheckEditor from './CheckEditor.jsx'
 import TurtleTeacherLiveView from './TeacherLiveView.jsx'
 import { initPyodide, isPyodideReady, runPython, stopPython, provideInput } from '../python/pyodide'
-import { buildTurtleProgram } from './shim.js'
+import { buildTurtleProgram, TURTLE_LINE_OFFSET } from './shim.js'
+import { variableCaptureOptions } from '../../shared/variablesPanel/variablesPanel.js'
 import { scrollLayoutStyles } from '../sharedStyles.js'
 import { defineUiModule } from '../defineModule.js'
 import definition from './definition.js'
@@ -25,7 +26,12 @@ const turtleModule = defineUiModule(definition, {
     isReady: isPyodideReady,
     stop: stopPython,
     provideInput,
-    run: (code, _task, callbacks) => runPython(buildTurtleProgram(code), callbacks),
+    run: (code, task, callbacks) =>
+      runPython(buildTurtleProgram(code), {
+        ...callbacks,
+        // The name-tag panel (showVariables); its peek line moves down with the shim's lines.
+        capture: variableCaptureOptions(task, code, { lineOffset: TURTLE_LINE_OFFSET }),
+      }),
     buildPreviewSrc: null,
     waitForPreviewText: null,
   },

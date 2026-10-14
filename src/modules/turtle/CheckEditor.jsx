@@ -4,6 +4,7 @@ import { isCodeCheck } from '../checks'
 import {
   CheckFeedbackControls,
   CheckValueEditor,
+  PredictionCheckRow,
   RunAttemptedFields,
 } from '../../builder/components/task-editor/CheckEditors'
 import {
@@ -300,6 +301,18 @@ export default function CheckEditor({
   return (
     <div style={s.wrap}>
       {checks.map((check, index) => {
+        if (check?.type === 'variables_predicted') {
+          return (
+            <PredictionCheckRow
+              key={index}
+              check={check}
+              index={index}
+              total={checks.length}
+              onChange={(updated) => updateCheck(index, updated)}
+              onRemove={() => setChecks(checks.filter((_, i) => i !== index))}
+            />
+          )
+        }
         const codeCheck = isCodeCheck(check)
         const checkOptions =
           feedbackEditor && check.type !== 'run_attempted'

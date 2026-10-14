@@ -189,7 +189,7 @@ const VALUES = ['hello', 'Hello World', '42', 'led.on()', '^h.*o$']
 
 // Check types added after the legacy dispatcher was frozen have no legacy behaviour to match;
 // they are tested on their own (e.g. ../python/__tests__/codeStructure.test.js).
-const POST_REGISTRY_TYPES = ['code_structure', 'run_attempted']
+const POST_REGISTRY_TYPES = ['code_structure', 'run_attempted', 'variables_predicted']
 const registeredIds = checkRegistry.typeIds().filter((id) => !POST_REGISTRY_TYPES.includes(id))
 const operators = [
   undefined,

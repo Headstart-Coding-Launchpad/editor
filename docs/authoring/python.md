@@ -147,6 +147,120 @@ Evaluated after the Python run completes. `value` accepts a JSON-encoded string 
 | `variable_array_equals` | `name`, `value` | List deep-equals value |
 | `variable_array_nth_item` | `name`, `index`, `value` | List item at zero-based index equals value |
 
+Variables are read from the program's top level when it ends, **including when it stops with an
+error** (since 2026-10-14; before that an erroring run had no variables). A run that errors still
+fails completion, so this only matters to feedback checks.
+
+---
+
+## Name-Tag Panel (`showVariables`)
+
+Shows students what their program is **holding**, not just what it printed: one name tag per
+variable, with its name, a small type label and its value. Off unless a task sets
+`showVariables`. Works on Python and [Turtle](turtle.md#name-tag-panel-showvariables) tasks.
+
+```yaml
+# View: show the variables after Run (or at the #@peek line)
+- id: 12
+  moduleType: python
+  title: What did input() store?
+  showVariables:
+    mode: view          # view (default) | predict | target
+    at: end             # end (default) | marker — stop at the #@peek line
+    hide: [answer2]     # optional: names never shown
+  codeStages:
+    - role: starter
+      code: |
+        name = input("Name? ")
+        shout = name.upper()
+        print("Hi " + shout)
+
+# Predict: students fill empty tags BEFORE running; Run marks each one ✓ or ✗
+- id: 13
+  moduleType: python
+  title: What's in the variables?
+  showVariables:
+    mode: predict
+    predict: [score, lives]   # the tags students fill in
+  codeStages:
+    - role: starter
+      code: |
+        score = 5
+        lives = 3
+        score = score + 5
+        lives = lives - 1
+  check:
+    - type: variables_predicted   # every listed prediction was right
+      names: [score, lives]
+
+# Target: target tags; each turns green (✓ On target) when the variable matches after Run
+- id: 14
+  moduleType: python
+  title: Hit the target
+  showVariables:
+    mode: target
+    target:
+      score: 10
+      lives: 2
+      bag: ["key", "map"]
+  check:
+    - { type: variable_equals, name: score, value: 10 }
+    - { type: variable_equals, name: lives, value: 2 }
+    - { type: variable_array_equals, name: bag, value: ["key", "map"] }
+```
+
+| Field | Notes |
+|---|---|
+| `mode` | `view` (default): show the variables after Run. `predict`: the student types what each `predict` variable will hold, then Run reveals ✓ / ✗ per tag. `target`: the panel shows each `target` value; a tag turns green with ✓ when the variable matches after Run, and an unmade variable reads "not made yet". |
+| `at` | `end` (default): the values when the program finishes, or when it stops with an error. `marker`: the values the **first time** the program is about to run the line after a `#@peek` line (below). |
+| `hide` | Names never shown (on top of the ones always hidden). |
+| `predict` | Predict mode: the variable names students predict, in order. Required in predict mode. |
+| `target` | Target mode: `{ name: value }`. Values are YAML: numbers, text, `true`/`false`/`null`, lists and dicts. Required in target mode. The green tags are **display only** — the `variable_*` checks decide completion, so add them. |
+
+**What a tag shows.** One tag per variable, in the order the code first names them. Type labels:
+`text`, `number`, `true/false`, `list`, `dict`, `None` (and `tuple`, `set`, or the Python type name
+for anything else). Text keeps its quotes, so `"5"` and `5` look different. Lists show a row of
+tiles with the index under each; dicts show key → value rows. Long text, long lists and nested
+values are cut short with a **Show all** button. If the student runs again, tags whose value
+changed are marked "changed". Always hidden: imported modules, functions, classes, `__dunder__`
+names and anything imported from the `turtle` module.
+
+**The `#@peek` marker.** With `at: marker`, put a line reading `#@peek` in the starter code just
+above the line to stop at. Like a [`#>` line hint](#line-hints) it is stripped before the student
+sees the code, and it follows that line if the student moves code about (it is lost if the line is
+deleted or duplicated, and the panel then shows the end of the run). The panel shows the variables
+when the program is **about to run** the marked line for the first time — so a peek above
+`shout = name.upper()` shows `name` but not yet `shout`. Inside a function the tag set includes
+that function's own variables. If the program never reaches the line (a branch that didn't run),
+the panel says so and shows the end of the run. Only the first `#@peek` in the code counts; it
+attaches to the next line of code, skipping blank and comment lines.
+
+**`variables_predicted` check** (`names` optional — default: every `predict` name). Passes when
+every listed prediction matches the value the panel shows after Run, using a forgiving
+comparison decided by the real value's type:
+
+- **text**: quotes optional (`Sam`, `"Sam"` and `'Sam'` all match `"Sam"`); spaces around it don't
+  matter, capitals do.
+- **number**: `5`, `5.0` and `5.00` all match `5`; `"5"` in quotes is text, so it does **not** match
+  the number `5` — that's the point.
+- **True / False / None**: any capitals.
+- **list, tuple, set, dict**: written as Python (`[1, 2]`, `("a", 2)`, `{"a": 1}`), each item by the
+  same rules; set order is ignored.
+
+Use it only with `mode: predict`; validation rejects it otherwise, and names it lists must be in
+`predict`. It needs a real run, so `lessons test-checks` reports it as needing a run. Each Run in
+predict mode (with changed predictions) is recorded for the session report's `predictions`.
+
+**Tutor view.** The student card shows a 🏷️ chip ("Predicted 2/3", then "2/3 right"; "1/3 on
+target" in target mode), and StudentModal shows the student's panel with their predictions as
+they type them. In **Go Live** the presenter's panel, predictions included, shows on every
+screen.
+
+**Devices.** The panel sits under the output (Python) or between the drawing and the output
+(Turtle). On narrow screens it stacks under the code and stays usable with the on-screen keyboard;
+inputs and buttons are at least 44 px on touch screens. Every tag has a screen-reader text such as
+"score: number 10", and ✓ / ✗ always come with words.
+
 ---
 
 ## Output and Code Checks (shared with HTML)
