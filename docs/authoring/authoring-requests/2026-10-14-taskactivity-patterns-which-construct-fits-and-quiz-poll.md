@@ -1,6 +1,6 @@
 # taskActivity patterns: Which Construct Fits? and Quiz, Poll
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** tooling
 - **Requested by:** Ryan (approved by Ryan), 2026-10-14
 - **Lessons blocked:** none yet
@@ -24,4 +24,4 @@ Ryan chose filing a request over changing the Glossary tags (open-notes triage, 
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped on branch `fix/docs-feedback-check-direction` (2026-10-14). New patterns `quiz_which_construct_fits` ("Quiz: Which Construct Fits?") and `quiz_poll` ("Quiz, Poll") in `src/shared/taskActivity.js`; listed in badges.md; CHANGELOG 2026-10-14.

@@ -272,12 +272,14 @@ check:
     outer: "def greet(*):"
 ```
 
-Not nested: the total is printed once, after the loop, not every time round it.
+Catching a misconception: `print(total)` inside the loop prints every time round it. A feedback
+check **matches when its check passes**, so it describes the *mistake*: use `nested_in` (passes
+when the print is inside the loop), not `not_nested_in` (which would fire on the correct code).
 
 ```yaml
 feedbackChecks:
   - type: code_structure
-    operator: not_nested_in
+    operator: nested_in
     inner: "print(total)"
     outer: "for * in *:"
     mode: nudge
@@ -315,7 +317,7 @@ skipped; a statement split over several lines (open brackets, triple-quoted stri
 
 ## Feedback Checks
 
-Python tasks support `feedbackChecks`. They use the same check shapes as completion checks and require a completion `check`. `show: after_attempt` runs after Run/Submit; `show: on_idle` runs after the learner pauses editing and is most useful with code checks. `incorrectChecks` is a legacy alias for blocking feedback.
+Python tasks support `feedbackChecks`. They use the same check shapes as completion checks and require a completion `check`. **A feedback check matches when its check passes**, so write it to detect the mistake, not the correct code: for "the print is still inside the loop" use `code_structure` `nested_in`, not `not_nested_in`. `test-checks` reports which feedback checks matched (`matchedFeedback`). `show: after_attempt` runs after Run/Submit; `show: on_idle` runs after the learner pauses editing and is most useful with code checks. `incorrectChecks` is a legacy alias for blocking feedback.
 
 ```yaml
 feedbackChecks:

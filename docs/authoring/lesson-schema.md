@@ -133,7 +133,7 @@ Lesson ids are random, so the optional `lessonNumber` (a positive whole number) 
 | `copyCode` | No | string | Python, Arcade Kit, Turtle, or HTML code task snippet shown in a read-only reference panel above the student editor. Students cannot select or copy directly from this panel. Missing or blank values hide it. |
 | `arcadeTools` | No | string | Arcade Kit only: `none` (default), `sprites`, `tilemaps`, or `both`; controls which visual editors students receive. |
 | `arcadeDesign` / `completeArcadeDesign` | No | object | Arcade Kit only: portable authored pixel-sprite and tilemap data for Starter / Complete. A code stage may instead carry `arcadeDesign`. See `arcade.md`. |
-| `taskActivity` | No | string | Author-only tag naming the task's Lesson Format Glossary format and pattern, e.g. `Code Task, Debug Code Task` or `Quiz: What Is the Error?`. Never shown to students. Free text, but `src/shared/taskActivity.js` reads the pattern (badges use it) and validation warns about an unrecognised one; `lessons capabilities` → `taskActivity` lists them. |
+| `taskActivity` | No | string | Author-only tag naming the task's Lesson Format Glossary format and pattern, e.g. `Code Task, Debug Code Task` or `Quiz: What Is the Error?`. Never shown to students. Free text, but `src/shared/taskActivity.js` reads the pattern (badges use it) and validation warns about an unrecognised one; `lessons capabilities` → `taskActivity` lists them, and [badges.md](badges.md) has the table (e.g. `Quiz: Which Construct Fits?`, `Quiz, Poll`). |
 | `badgeHints` | No | object | `{ suggest: [badgeId], suppress: [badgeId] }`: treat a real pass here as a pattern badge's trigger, or never suggest a badge from this task. See [badges.md](badges.md#badgehints). |
 | `check` | No | object or array | Completion check. Arrays require every check to pass. A code task with **no** `check` never auto-completes and never completes on Run — its check-passed state stays permanently false and it's never logged as passed in teacher reports. This does **not** block the student from advancing to the next task; forward navigation isn't gated by check state. Arcade is a special case: **Run game** evaluates only generic `code` checks and `run_attempted` (there is no captured output or game-state check yet — see `docs/authoring/arcade.md`), so use `code` checks to gate progression on an Arcade task. Turtle tasks may mix `code` checks with turtle checks. Demo tasks the student only runs use `type: run_attempted` (passes once Run / Run game / Scratch's green flag is pressed; optional `requireSuccess`) in every module with a Run button — see `docs/authoring/python.md` "Run Attempted Check". |
 | `feedbackChecks` | No | object or array | Detect nudges or wrong patterns using the same shape as completion checks. Requires a completion `check`. Supported by Python, HTML, Filesystem, Electronics, and Scratch. `mode: blocking` fails the task when matched; `mode: nudge` shows guidance without failing. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). A feedback check may also set a positive `priority` (lower is shown first) and a `stageOffer` to give targeted help. |
@@ -479,9 +479,18 @@ switching keeps the program (each line's leading spaces become its depth).
 Heating up!
 Round over" }
   feedbackChecks:
-    - check: { type: code_structure, operator: directly_nested_in, inner: 'print("Heating up!")', outer: 'if mode == "warmer":' }
+    - type: code_structure
+      operator: not_nested_in
+      inner: 'print("Heating up!")'
+      outer: 'if mode == "warmer":'
+      mode: nudge
       hint: Which line decides whether "Heating up!" prints? Line it up one step to the right of that line.
 ```
+
+A feedback check **matches when its check passes**, so it describes the mistake: `not_nested_in`
+fires when "Heating up!" has slipped out of the `if mode` block. Each `feedbackChecks` entry is a
+check itself (`type`, `operator`, … with `hint` alongside), not wrapped in `check:`; an entry with
+no `type` is dropped.
 
 A "fix the indent" version of line 6 would be `{ id: L6, code: 'print("Heating up!")', depth: 2, start: 1 }`.
 

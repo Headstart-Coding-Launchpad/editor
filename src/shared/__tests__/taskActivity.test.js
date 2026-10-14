@@ -30,6 +30,8 @@ describe('parseTaskActivity', () => {
     ['Quiz, Multiple Choice', 'quiz', 'quiz_multiple_choice'],
     ['Quiz, Confidence Rating', 'quiz', 'quiz_confidence_rating'],
     ['Quiz: Confidence Check', 'quiz', 'quiz_confidence_check'],
+    ['Quiz: Which Construct Fits?', 'quiz', 'quiz_which_construct_fits'],
+    ['Quiz, Poll', 'quiz', 'quiz_poll'],
   ])('%s', (value, format, pattern) => {
     expect(parseTaskActivity(value)).toEqual({ format, pattern, known: true })
   })
