@@ -67,6 +67,8 @@ describe('activity field declarations', () => {
       'symbols',
       'shortcuts',
       'edit_text',
+      'type_code',
+      'falling_words',
     ])
     const findKeyItems = fieldsForMode(keyboard.fields.task, 'find_key').find(
       (spec) => spec.name === 'items'

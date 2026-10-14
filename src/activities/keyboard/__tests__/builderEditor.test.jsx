@@ -104,3 +104,46 @@ describe('Keyboard BuilderEditor: edit_text', () => {
     expect(changeKeyboardMode(task(), 'type_text')).not.toHaveProperty('minKept')
   })
 })
+
+describe('Keyboard BuilderEditor: type_code and falling_words', () => {
+  it('edits the code, language and speed goal', () => {
+    const { task } = renderBuilderEditor(ui.BuilderEditor, changeKeyboardMode(start(), 'type_code'))
+    fireEvent.change(screen.getByLabelText('Item 1 code'), {
+      target: { value: '<ul>\n  <li>Milk</li>\n</ul>' },
+    })
+    fireEvent.change(screen.getByLabelText('Code language'), { target: { value: 'html' } })
+    fireEvent.change(screen.getByLabelText('Target characters a minute'), {
+      target: { value: '90' },
+    })
+    expect(task()).toMatchObject({
+      mode: 'type_code',
+      language: 'html',
+      targetCpm: 90,
+      items: [{ id: 'a', code: '<ul>\n  <li>Milk</li>\n</ul>' }],
+    })
+    expect(errorsOf(task())).toEqual([])
+    expect(changeKeyboardMode(task(), 'type_text')).not.toHaveProperty('targetCpm')
+  })
+
+  it('edits the falling words and round length, with no items list', () => {
+    const { task } = renderBuilderEditor(
+      ui.BuilderEditor,
+      changeKeyboardMode(start(), 'falling_words')
+    )
+    expect(screen.queryByRole('button', { name: '+ Add item' })).toBeNull()
+    fireEvent.change(screen.getByLabelText('Falling words'), {
+      target: { value: 'print(\n</p>\n\nfor i in' },
+    })
+    fireEvent.change(screen.getByLabelText('Round length in seconds'), { target: { value: '90' } })
+    expect(task()).toMatchObject({
+      mode: 'falling_words',
+      durationSeconds: 90,
+      words: ['print(', '</p>', 'for i in'],
+    })
+    expect(task()).not.toHaveProperty('items')
+    expect(errorsOf(task())).toEqual([])
+    const back = changeKeyboardMode(task(), 'type_text')
+    expect(back).not.toHaveProperty('words')
+    expect(errorsOf(back)).toEqual([])
+  })
+})

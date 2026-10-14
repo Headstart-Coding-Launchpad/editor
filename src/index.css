@@ -3881,6 +3881,129 @@ select {
   border-bottom: 3px solid var(--colour-primary);
 }
 
+/* Keyboard type_code: the code block being typed (TypeCodeBlock.jsx). */
+.act-practice--code {
+  cursor: text;
+  overflow-x: auto;
+}
+
+.act-code-block {
+  margin: 0;
+  font-family: var(--font-code);
+  font-size: 1.15rem;
+  line-height: 1.7;
+  white-space: pre;
+  color: var(--colour-ink-strong);
+}
+
+.act-code-kw {
+  color: var(--colour-primary);
+  font-weight: 600;
+}
+
+.act-code-str {
+  color: var(--colour-success-text);
+}
+
+.act-code-com {
+  color: var(--colour-muted);
+  font-style: italic;
+}
+
+.act-code-num,
+.act-code-attr {
+  color: var(--colour-action-dark);
+}
+
+.act-code-tag {
+  color: var(--colour-info-text);
+}
+
+/* Indentation dots and line-end arrows: faint until typed. */
+.act-code-ws:not(.act-char--ok):not(.act-char--bad) {
+  color: var(--colour-muted-soft);
+}
+
+/* Keyboard falling_words: the play area, its tokens and the typed buffer (FallingWordsView.jsx). */
+.act-falling-area {
+  position: relative;
+  height: 320px;
+  width: 100%;
+  overflow: hidden;
+  border: 2px dashed var(--ui-border-strong);
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface-soft);
+  cursor: text;
+}
+
+.act-falling-area:focus,
+.act-falling-area:focus-visible {
+  outline: none;
+  border-style: solid;
+  border-color: var(--colour-primary);
+  box-shadow: var(--ui-focus);
+}
+
+.act-falling-area--miss {
+  animation: act-falling-shake 0.3s ease-out;
+  border-color: var(--colour-error-edge);
+}
+
+@keyframes act-falling-shake {
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.act-falling-token {
+  position: absolute;
+  padding: 2px 8px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border-strong);
+  font-family: var(--font-code);
+  font-size: 1.15rem;
+  white-space: pre;
+  color: var(--colour-ink-strong);
+}
+
+.act-falling-token--aimed {
+  border-color: var(--colour-primary);
+  box-shadow: var(--ui-focus);
+}
+
+.act-falling-paused {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.82);
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: var(--colour-primary-dark);
+}
+
+.act-falling-buffer code {
+  font-family: var(--font-code);
+  font-size: 1.25rem;
+  white-space: pre;
+}
+
+.act-falling-chip {
+  font-family: var(--font-code);
+  white-space: pre;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .act-falling-area--miss {
+    animation: none;
+  }
+}
+
 .act-osk {
   display: flex;
   flex-direction: column;

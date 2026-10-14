@@ -1,6 +1,6 @@
 # Keyboard type_code mode: type a multi-line block of real code with indentation
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** activity mode
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-10-14
 - **Lessons blocked:** none yet
@@ -54,3 +54,5 @@ Proposed courses that need this (see `Lesson Info/Courses/Proposed Courses/Check
 ## Resolution
 
 <!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+
+Shipped 2026-10-14 on branch `feature/keyboard-type-code-falling-words` (not yet merged): Keyboard activity `mode: type_code` (`src/activities/keyboard/typeCode.js`). Items take a multi-line `code` (≤ 1000 characters, ≤ 30 lines); task fields `language` (python | html), `minAccuracy` (default 0.9) and optional `targetCpm`. Every character is marked, newlines and indentation included; Tab at the start of a line = 4 spaces (Python) / 2 (HTML), Enter with no auto-indent. Per item it records `accuracy`, `cpm`, `wpm`, `corrections`, `timeMs` (the shared typing-result shape). The on-screen keyboard is blocked. Docs: [activities/keyboard.md](../activities/keyboard.md#typing-code-type_code).

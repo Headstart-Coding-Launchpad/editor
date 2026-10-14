@@ -173,11 +173,25 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 
 | Message | Meaning | Fix |
 |---|---|---|
-| `Task …: keyboard mode must be one of ….` | `mode` is missing or unknown. | Use `type_text`, `find_key`, `symbols`, `shortcuts` or `edit_text`. |
+| `Task …: keyboard mode must be one of ….` | `mode` is missing or unknown. | Use `type_text`, `find_key`, `symbols`, `shortcuts`, `edit_text`, `type_code` or `falling_words`. |
 | `Task …: keyboard layout "…" is not supported (use "uk").` | Only the UK layout exists so far. | Remove `layout` or set it to `uk`. |
 | `Task …: minAccuracy must be a number above 0 and at most 1.` | `minAccuracy` is a fraction, not a percentage. | Use e.g. `0.9` for 90%. |
 | `Task …: targetWpm must be a positive number.` | `targetWpm` is zero, negative or not a number. | Use a positive number, or remove it to skip the speed goal. |
 | `Task …: minKept must be a number above 0 and at most 1.` | `edit_text` `minKept` is a fraction, not a percentage. | Use e.g. `0.9`, or remove it for the default. |
+| `Task …: targetCpm must be a positive number.` | `type_code` `targetCpm` is zero, negative or not a number. | Use a positive number of characters a minute, or remove it to skip the speed goal. |
+| `Task …: type_code language must be one of ….` | `language` is not `python` or `html`. | Use `python` (Tab = 4 spaces) or `html` (Tab = 2 spaces), or remove it for `python`. |
+| `Task … item …: code is required.` | A `type_code` item has no `code`, or only spaces. | Add the block to type (a YAML block scalar keeps its lines and indentation). |
+| `Task … item …: code must be at most … characters.` | A `type_code` block is over 1000 characters. | Split it into several items. |
+| `Task … item …: code must be at most … lines.` | A `type_code` block is over 30 lines. | Split it into several items. |
+| `Task … item …: code has a Tab after the start of a line. Use spaces there; Tab only works for indentation.` | The block has a Tab character after some code on a line. In `type_code` Tab only indents. | Replace it with spaces. Tabs at the start of a line are fine (they become 4 or 2 spaces). |
+| `Task … item …: code has characters that can't be typed: …` | The block has characters with no key on the layout (curly quotes, emoji), listed at the end. | Use plain keyboard characters (straight quotes `"` and `'`). |
+| `Task …: durationSeconds must be a whole number from … to ….` | `falling_words` `durationSeconds` is outside 15–300 or not whole. | Use a whole number of seconds from 15 to 300, or remove it for 60. |
+| `Task …: falling_words needs a words list with at least one word or token.` | `words` is missing, not a list, or empty. | Add `words: ["print(", "</p>", …]`. |
+| `Task …: falling_words can have at most … words.` | `words` has more than 100 entries. | Use fewer words; they repeat during the round anyway. |
+| `Task … word …: must be some text to type.` | A word is empty, blank or not text. | Remove it or fill it in (quote tokens such as `"[1, 2]"` in YAML). |
+| `Task … word …: "…" starts or ends with a space, which students can't see.` | A word has a leading or trailing space. | Trim it. Spaces inside a token (`for i in`) are fine. |
+| `Task … word …: must be at most … characters.` | A word is over 20 characters, too long to type while it falls. | Use a shorter token. |
+| `Task … word …: has characters that can't be typed: …` | A word has a newline, tab or a character with no key on the layout. | Use plain keyboard characters on one line. |
 | `Task …: keyboard task needs at least one item.` | `items` is empty. | Add at least one item. |
 | `Task … item …: text is required.` | A `type_text` item has no `text`. | Add the line to type. |
 | `Task … item …: text must be at most … characters.` | A `type_text` line is over 200 characters. | Split it into several items. |

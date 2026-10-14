@@ -4,10 +4,26 @@ import { DEFAULT_LAYOUT, getKeyForChar } from '../../shared/input/index.js'
 import {
   gradeKeyboardItem,
   gradeKeyboardTask,
+  keyboardItems,
   validateKeyboardTask,
   KEYBOARD_MODES,
 } from './keyboard.js'
 import { EDIT_REQUIRE_KEYS, editSolution } from './editText.js'
+import {
+  MAX_CODE_LENGTH,
+  MAX_CODE_LINES,
+  TYPE_CODE_LANGUAGES,
+  normaliseCode,
+  typeCodeSolution,
+} from './typeCode.js'
+import {
+  DEFAULT_FALLING_SECONDS,
+  FALLING_ROUND_ID,
+  MAX_FALLING_SECONDS,
+  MAX_TOKEN_LENGTH,
+  MIN_FALLING_SECONDS,
+  fallingSolution,
+} from './fallingWords.js'
 
 export const KEYBOARD_MODE_LABELS = {
   type_text: 'Type the text',
@@ -15,15 +31,23 @@ export const KEYBOARD_MODE_LABELS = {
   symbols: 'Type the symbols',
   shortcuts: 'Keyboard shortcuts',
   edit_text: 'Fix the text',
+  type_code: 'Type the code',
+  falling_words: 'Falling words',
 }
+
+const ITEM_MODES = KEYBOARD_MODES.filter((mode) => mode !== 'falling_words')
 
 function solutionItem(task, item) {
   switch (task.mode) {
     case 'type_text':
       return {
+        mode: 'type_text',
         typed: item.text,
         accuracy: 1,
         wpm: task.targetWpm ?? 0,
+        cpm: (task.targetWpm ?? 0) * 5,
+        corrections: 0,
+        timeMs: 0,
         shiftCapitals: [...item.text].filter((c) => c !== c.toLowerCase()).length,
         capsLockCapitals: 0,
         source: 'hardware',
@@ -40,9 +64,22 @@ function solutionItem(task, item) {
       return { performed: true, via: 'keyboard', source: 'hardware' }
     case 'edit_text':
       return editSolution(item)
+    case 'type_code':
+      return typeCodeSolution(task, item)
+    case 'falling_words':
+      return fallingSolution(task)
     default:
       return {}
   }
+}
+
+// The teacher card line for a falling_words round.
+function summarizeFalling(result) {
+  if (!result || result.cleared == null) return { text: 'falling: not started', tone: 'neutral' }
+  const counts = `${result.cleared} cleared · ${result.missed ?? 0} missed`
+  return result.done
+    ? { text: `falling: ${counts} · ${result.score ?? 0} pts`, tone: 'success' }
+    : { text: `falling: playing · ${counts}`, tone: 'neutral' }
 }
 
 export default defineActivity({
@@ -51,11 +88,12 @@ export default defineActivity({
   category: 'digital_skills',
   icon: '⌨️',
   description:
-    'Practise typing, capital letters with Shift, symbols on a UK keyboard, and shortcuts like Ctrl+C.',
+    'Practise typing, capital letters with Shift, symbols on a UK keyboard, shortcuts like Ctrl+C, typing real code, and a falling-words warm-up.',
   yaml: { type: 'keyboard' },
   requires: { physicalKeyboard: true },
   // Tablets without a keyboard get the built-in on-screen keyboard; items marked hardwareOnly
-  // still need a real one.
+  // still need a real one, and so do edit_text, type_code and falling_words (the student view
+  // shows a "needs a real keyboard" note for those).
   touchFallback: 'virtual_keyboard',
 
   fields: {
@@ -69,8 +107,41 @@ export default defineActivity({
         modes: ['type_text'],
         description: 'Capitals must be typed with Shift, not Caps Lock (default true).',
       },
-      { name: 'minAccuracy', type: 'number', modes: ['type_text'], description: '0 to 1.' },
+      {
+        name: 'minAccuracy',
+        type: 'number',
+        modes: ['type_text', 'type_code'],
+        description: '0 to 1. Defaults to 1 for type_text, 0.9 for type_code.',
+      },
       { name: 'targetWpm', type: 'number', modes: ['type_text'] },
+      {
+        name: 'language',
+        type: 'string',
+        values: TYPE_CODE_LANGUAGES,
+        modes: ['type_code'],
+        description:
+          'Syntax colouring and the Tab width (4 spaces for python, 2 for html). Defaults to python.',
+      },
+      {
+        name: 'targetCpm',
+        type: 'number',
+        modes: ['type_code'],
+        description: 'Optional speed goal in characters a minute; checked only when set.',
+      },
+      {
+        name: 'durationSeconds',
+        type: 'number',
+        modes: ['falling_words'],
+        description: `Length of the round, ${MIN_FALLING_SECONDS} to ${MAX_FALLING_SECONDS} (default ${DEFAULT_FALLING_SECONDS}).`,
+      },
+      {
+        name: 'words',
+        type: 'array',
+        required: true,
+        authored: true,
+        modes: ['falling_words'],
+        description: `Words or code tokens to type (symbols and spaces allowed, at most ${MAX_TOKEN_LENGTH} characters each).`,
+      },
       {
         name: 'minKept',
         type: 'number',
@@ -89,6 +160,7 @@ export default defineActivity({
         type: 'array',
         required: true,
         authored: true,
+        modes: ITEM_MODES,
         itemFields: [
           { name: 'id', type: 'string', required: true },
           {
@@ -98,6 +170,14 @@ export default defineActivity({
             authored: true,
             modes: ['type_text'],
             description: 'Up to 200 characters, typeable on the layout.',
+          },
+          {
+            name: 'code',
+            type: 'string',
+            required: true,
+            authored: true,
+            modes: ['type_code'],
+            description: `A block of code, with newlines and indentation (at most ${MAX_CODE_LENGTH} characters, ${MAX_CODE_LINES} lines).`,
           },
           {
             name: 'key',
@@ -184,13 +264,13 @@ export default defineActivity({
 
   initialState: (task) => ({
     v: 1,
-    items: Object.fromEntries((task?.items ?? []).map((item) => [item.id, {}])),
+    items: Object.fromEntries(keyboardItems(task).map((item) => [item.id, {}])),
   }),
 
   solutionState: (task) => ({
     v: 1,
     items: Object.fromEntries(
-      (task?.items ?? []).map((item) => [item.id, solutionItem(task, item)])
+      keyboardItems(task).map((item) => [item.id, solutionItem(task, item)])
     ),
   }),
 
@@ -215,7 +295,23 @@ export default defineActivity({
   },
 
   summarize: (task, state) => {
+    if (task?.mode === 'falling_words') return summarizeFalling(state?.items?.[FALLING_ROUND_ID])
     const { total, correct } = gradeKeyboardTask(task, state)
+    if (task?.mode === 'type_code') {
+      // Averages over the blocks typed so far: "2/3 done · 94% · 71 cpm".
+      const typed = keyboardItems(task)
+        .map((item) => state?.items?.[item.id])
+        .filter((result) => result?.done)
+      const average = (field) =>
+        typed.reduce((sum, result) => sum + (result[field] ?? 0), 0) / (typed.length || 1)
+      const stats = typed.length
+        ? ` · ${Math.round(average('accuracy') * 100)}% · ${Math.round(average('cpm'))} cpm`
+        : ''
+      return {
+        text: `${correct}/${total} done${stats}`,
+        tone: correct === total ? 'success' : 'neutral',
+      }
+    }
     // edit_text: say how many finished lines were typed out again instead of edited.
     const retyped =
       task?.mode === 'edit_text'
@@ -231,6 +327,17 @@ export default defineActivity({
   },
 
   printHtml: (task, { esc }) => {
+    const heading = `<p><strong>${esc(KEYBOARD_MODE_LABELS[task.mode] ?? 'Keyboard')}</strong></p>`
+    if (task.mode === 'falling_words') {
+      const words = (task.words ?? []).map((word) => `<code>${esc(word)}</code>`).join(' ')
+      return `${heading}<p>${task.durationSeconds ?? DEFAULT_FALLING_SECONDS} seconds: ${words}</p>`
+    }
+    if (task.mode === 'type_code') {
+      const blocks = (task.items ?? []).map(
+        (item) => `<li><pre><code>${esc(normaliseCode(item.code, task.language))}</code></pre></li>`
+      )
+      return `${heading}<ol>${blocks.join('')}</ol>`
+    }
     const rows = (task.items ?? []).map((item) => {
       const text =
         item.start != null
@@ -239,6 +346,6 @@ export default defineActivity({
       const prompt = item.prompt ? ` — ${esc(item.prompt)}` : ''
       return `<li><code>${esc(text)}</code>${prompt}</li>`
     })
-    return `<p><strong>${esc(KEYBOARD_MODE_LABELS[task.mode] ?? 'Keyboard')}</strong></p><ol>${rows.join('')}</ol>`
+    return `${heading}<ol>${rows.join('')}</ol>`
   },
 })
