@@ -237,6 +237,7 @@ describe('handleScratchChange', () => {
       cloneStates: [],
       backdropName: 'bg',
       selectedSpriteId: 'cat',
+      slowMo: null,
       updatedAt: 10_000,
     })
     actSync(() => vi.advanceTimersByTime(50))
@@ -245,12 +246,13 @@ describe('handleScratchChange', () => {
     expect(h.writers.writeStudentSpriteState).toHaveBeenCalledTimes(1)
     actSync(() => vi.advanceTimersByTime(70))
     expect(h.writers.writeStudentSpriteState).toHaveBeenCalledTimes(2)
-    // The trailing write carries the payload captured by the call that scheduled it.
+    // The trailing write carries the newest payload held back in the window.
     expect(h.writers.writeStudentSpriteState).toHaveBeenLastCalledWith(ANON, {
-      spriteStates: { cat: { x: 2 } },
+      spriteStates: { cat: { x: 3 } },
       cloneStates: [],
       backdropName: 'bg',
       selectedSpriteId: null,
+      slowMo: null,
       updatedAt: 10_050,
     })
   })

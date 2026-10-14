@@ -70,6 +70,8 @@ modules:
     allowAddCostume: false    # optional — students can add costumes (emoji or library) in the Costumes tab; needs showCostumesTab
     allowAddSound: false      # optional — students can add sounds (synth or library file) in the Sounds tab; needs showSoundsTab
     highlight: green_flag     # optional — pulse a control once when the task opens; see Highlighting a Control
+    slowMo:                   # optional — Slow-mo, Pause, Step and Restart under the stage; see Slow-mo
+      enabled: true
     check:
       type: sprite_property
       evaluation: after_run
@@ -519,6 +521,81 @@ pulses.
 
 Tutors can pulse the same controls live, for the whole class ("Highlight Class" in the top bar)
 or one student (the More menu in their workspace view).
+
+---
+
+## Slow-mo
+
+`slowMo` lets students watch their scripts run one block at a time. Use it where the in-between
+states matter, such as two quick costume switches that look like one, or a Next Costume after a
+Switch Costume. Students no longer need wait blocks just to see each state.
+
+```yaml
+  - id: 18
+    moduleType: scratch
+    title: Watch the costumes change
+    slowMo:
+      enabled: true       # off unless true
+      speed: 1            # optional — blocks a second to start at (default 1; the slider goes 0.25–4)
+      timeline: [costume, backdrop, x, y, variables]   # optional — what each timeline card shows (default: all five)
+```
+
+**Controls.** Four large buttons appear under the stage, each with an icon and a word, plus a
+speed slider. The green flag still does a normal, full-speed run.
+
+| Button | What it does |
+|---|---|
+| 🐢 **Slow-mo** | Runs the green-flag scripts slowly, at the slider's speed. Pressed while paused, it carries on |
+| ⏸️ **Pause** | Holds the run before its next block |
+| 👣 **Step** | Runs just the next block, then pauses. Pressed before a run, it starts one paused |
+| ⏮️ **Restart** | Stops the run, puts the stage back to the start and clears the timeline (same as Reset Stage) |
+
+**While it runs:**
+
+- **Glow:** the running block glows in its script. When several scripts run at once, each script's
+  current block glows. Under reduced motion the glow is a still outline.
+- **One frame per block:** the stage redraws after every block, so two quick switches show both
+  costumes.
+- **Speed:** each script runs at most `speed` blocks a second, on its own clock, so scripts that run
+  together move together. A block that takes time (wait, glide, play until done, ask) takes as long
+  as it normally would, and the next block follows straight after.
+- **Other scripts:** key presses, sprite clicks and broadcasts during a slow-mo run go slowly too.
+
+**Step with several scripts.** Each Step lets exactly one block through. The scripts take turns
+(round-robin) in the order they started: with two green-flag scripts, Step runs a block from the
+first, then the second, then the first again. If every script is busy inside a block (for example,
+a `wait 2 seconds`), the Step is kept and the next script that is ready goes. Only one Step is kept,
+so tapping Step five times during a long wait doesn't race five blocks afterwards.
+
+**Timeline.** A strip under the stage gets one card per step, showing the `timeline` fields: the
+running sprite's costume (a picture and its name), the backdrop, x and y (rounded), and each
+variable. On a tablet it scrolls with a swipe. Tapping a card shows the stage as it was at that
+step, with "Back to now" to return. If the run was playing, it pauses; nothing in the run changes.
+Each card has a text label for screen readers, such as "Step 3. Cat: switch costume to costume2.
+Costume costume2, Backdrop Blue Sky, x 0, y 0, score 1". The timeline keeps the first 500 steps,
+then says so. A C block (repeat, forever, if) gets no card of its own, because the blocks inside it
+already have one. `timeline: []` hides the strip.
+
+**Checks.** There are no slow-mo checks. A slow-mo run counts as a green-flag run, so every check
+works as it does after a normal Run:
+
+- `run_attempted` and run-only tasks pass when Slow-mo or Step starts the run.
+- After-run checks are judged when the slow run finishes. Stop and Restart skip that end-of-run check,
+  just as Stop does for a normal run.
+- `after_block_placed` checks and the "still building" rule don't depend on runs, so they're
+  unchanged.
+
+**Tutors.** A tutor watching a student sees the same glow and a line such as "Slow-mo · step 4 ·
+paused" under the stage. In Go Live and presentation, the tutor's own Slow-mo, Pause, Step and
+Restart drive what the class sees: the glowing blocks, the stage and the step number. Students
+can't use the controls while they're watching. The timeline isn't sent, so each person's timeline is
+their own. The session report records slow-mo use per student per task (`slowMoUsed`,
+`slowMoRuns`, `slowMoSteps`; see [Session reports](session-reports.md)).
+
+**Builder:** Scratch setup → Student additions → Slow-mo (on/off, starting speed, timeline fields).
+Validation flags a `slowMo` that isn't an object, an `enabled` that isn't true or false, or a speed
+that isn't a positive number. It warns about a speed outside 0.25–4 (it's clamped), unknown timeline
+fields or keys, and a `slowMo` with no `enabled`.
 
 ---
 

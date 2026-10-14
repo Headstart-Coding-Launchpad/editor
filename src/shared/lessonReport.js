@@ -30,6 +30,7 @@ import {
   summarizeExampleOpens,
 } from './exampleOpens.js'
 import { inspectorReportFields, summarizeInspectorUse } from './inspectorUse.js'
+import { slowMoReportFields, summarizeSlowMoUse } from './slowMoUse.js'
 import {
   summarizeVariablePredictions,
   taskPredictionFields,
@@ -764,6 +765,7 @@ export function buildSessionReport({
         ...withInspector(
           inspectorReportFields(studentsSnapshot[anonymousId]?.inspectorLog?.[task.id])
         ),
+        ...slowMoReportFields(studentsSnapshot[anonymousId]?.slowMoLog?.[task.id]),
         ...(itemProgress ? { itemProgress } : {}),
         ...(lastDraft ? { lastDraft } : {}),
         ...exampleOpenReportFields(session, anonymousId, task.id),
@@ -895,6 +897,7 @@ export function buildSessionReport({
       ...summarizeTyping(perStudent),
       ...summarizeExampleOpens(perStudent),
       ...summarizeInspectorUse(perStudent),
+      ...summarizeSlowMoUse(perStudent),
       ...summarizeVariablePredictions(perStudent),
       ...badgeFields,
       ...(teacherRating ? { teacherRating } : {}),

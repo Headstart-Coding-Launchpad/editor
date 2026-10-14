@@ -258,6 +258,25 @@ describe('HTML Inspector use', () => {
   })
 })
 
+describe('Scratch slow-mo use', () => {
+  const logPath = (id) => `sessions/${LESSON}/students/${id}/slowMoLog/t2`
+
+  it('lets a student record their own slow-mo use, and nobody else', async () => {
+    const entry = { runs: 1, steps: 4, lastAt: 1 }
+    await assertSucceeds(ref(as.student, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.student, `${logPath(STUDENT_ID)}/steps`).set(5))
+    await assertFails(ref(as.otherStudent, logPath(STUDENT_ID)).set(entry))
+    await assertFails(ref(as.anonymous, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.teacher, logPath(STUDENT_ID)).set(null))
+  })
+
+  it('refuses negative counts, bad values and code', async () => {
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ runs: -1 }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ steps: 'lots' }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ code: '{}' }))
+  })
+})
+
 describe('shared workspaces', () => {
   it('only lets teachers approve shares, and requires sharerId and sharedAt', async () => {
     const path = `sessions/${LESSON}/sharedWorkspaces/share-1`

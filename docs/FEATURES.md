@@ -229,6 +229,14 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - Go Live: the tutor's inspect mode, chosen element and property show on every student's screen. The tutor can inspect a student's page in the student modal. The session report records each student's use per task
 - Builder: Task options → HTML Inspector (start in inspect mode, pre-selected element, sections); the Builder preview has the Inspector too
 
+### Scratch Slow-mo
+- On Scratch tasks with `slowMo` enabled, four big buttons under the stage (icon + word, 44 px+ for tablets): **Slow-mo** (run at the speed slider's blocks a second), **Pause**, **Step** (one block) and **Restart**
+- The running block glows in each running script (a still outline with reduced motion), and the stage redraws after every block, so two quick costume switches show both
+- Step with several scripts: one block per Step, the scripts taking turns (round-robin)
+- A timeline strip under the stage records one card per step (costume picture, backdrop, x, y, variables; screen-reader labels); swipe through it, tap a card to see the stage at that moment, then "Back to now"
+- A slow-mo run is a green-flag run, so checks work as normal. Go Live: the tutor's controls drive the glow, stage and step the class sees; a tutor watching a student sees their glow and step. The session report records each student's use per task
+- Builder: Scratch setup → Student additions → Slow-mo
+
 ### input() Support (Python)
 - Execution pauses; an inline input field appears in the output panel
 - Multiple sequential input calls handled in sequence
@@ -273,6 +281,7 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - Starter/complete workspace tabs with isolated state
 - Sprite panel: add/remove, costumes, sounds (built-in synth or audio file), and initial stage properties
 - Student additions: Costumes / Sounds tabs and whether students may add costumes or sounds
+- Slow-mo (on/off, starting speed, timeline fields)
 - Backdrop manager
 - Toolbox editor with block category toggles
 
