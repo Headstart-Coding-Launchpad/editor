@@ -50,6 +50,7 @@ modules:
       <h1>Hello</h1>
     codeStages: []            # optional — intermediate stages (label, role?, files, entryFile?)
     carryCodeFrom: 1          # optional — carry files from task ID (matched by filename)
+    # carryCodeFromLesson: { lesson: html-1-11, task: 4 }  # optional instead — the student's own files from an earlier lesson
     interactionMode: run      # optional — run (default) | submit
     inspector:                # optional — the HTML Inspector on the preview (see below)
       enabled: true
@@ -68,6 +69,8 @@ modules:
 - `submit`: Submit checks code text only; use only submit-compatible checks (`type: code`).
 
 ---
+
+**Carry from an earlier lesson.** `carryCodeFromLesson: { lesson, task }` starts the task from each student's own saved files on that task of an earlier lesson (two-lesson projects), matched to this task's `starterFiles` by filename. Use the stock lesson id. Students the tutor hasn't matched to the class list wait; anyone with nothing saved gets the starter files. Not with `carryCodeFrom` on the same task. See [Two-lesson projects](AUTHORING_GUIDE.md#two-lesson-projects-carry-from-an-earlier-lesson).
 
 ## Line Hints
 

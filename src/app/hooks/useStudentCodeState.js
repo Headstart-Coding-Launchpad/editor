@@ -22,6 +22,7 @@ import {
   getNextRevealableStage,
   getRevealableStages,
   getStageRole,
+  getStarterStage,
   isRevealableStage,
 } from '../../shared/taskUtils'
 import {
@@ -84,6 +85,11 @@ import { useStudentBadgeSignals } from './useStudentBadgeSignals'
 import { useStudentTypingStats } from './useStudentTypingStats'
 import { runErrorFor, runErrorName } from '../../badges/signals'
 import { listTileHighlights } from '../../shared/tutorTileHighlights.js'
+import { useCrossLessonCarry } from './useCrossLessonCarry'
+import {
+  crossLessonFallbackReason,
+  crossLessonFallbackRecord,
+} from '../../shared/roster/crossLessonCarry'
 
 // The generic work slot before any module has loaded work into it.
 const EMPTY_WORK = Object.freeze({ moduleType: null, taskId: null, value: null })
@@ -755,6 +761,61 @@ export function useStudentCodeState({
     sandboxModuleId,
   })
 
+  // Cross-lesson carry (carryCodeFromLesson / carryBlocksFromLesson; see
+  // src/shared/roster/crossLessonCarry.js) for the class's current task. A live task whose
+  // student has no save of their own holds (LessonTaskContent shows CarryHoldNotice) until the
+  // tutor's client writes their carry status; then the task loads again from the carried work
+  // ('found') or its starter. Solo, presentation and Builder preview never hold.
+  function hasOwnTaskWork(taskId) {
+    const anonymousId = effectiveIdentity?.anonymousId
+    const definition = workSlotDefinition(lesson?.type)
+    if (!anonymousId || !definition) return false
+    if (definition.storage.layout === 'perFile') {
+      const task = findTaskById(lesson.tasks, taskId)
+      const files = getStarterStage(task)?.stage?.files ?? task?.starterFiles ?? []
+      return files.some((file) => persistence.readSavedFile(anonymousId, taskId, file.name) != null)
+    }
+    return persistence.readSavedCode(anonymousId, taskId) != null
+  }
+  const crossLessonCarry = useCrossLessonCarry({
+    lessonId,
+    lesson,
+    taskId: currentTaskId,
+    session,
+    anonymousId: effectiveIdentity?.anonymousId ?? null,
+    live: phase === 'lesson' && !teacherPresentation && !previewMode,
+    hasOwnWork: hasOwnTaskWork,
+  })
+  const crossLessonCarryRef = useLatestRef(crossLessonCarry)
+  // The cross-lesson carry of `taskId` when it is the task being loaded, else null.
+  function crossLessonCarryFor(taskId) {
+    const current = crossLessonCarryRef.current
+    return current && String(current.taskId) === String(taskId) ? current : null
+  }
+  const crossLessonSeenRef = useRef({ taskId: null, state: null })
+  useEffect(() => {
+    const { state, carry, taskId } = crossLessonCarry
+    const previous = crossLessonSeenRef.current
+    crossLessonSeenRef.current = { taskId, state }
+    // Starter fallbacks go in carryFallbackLog (recordCarryFallback: live students only).
+    const reason = crossLessonFallbackReason(state)
+    if (reason) recordCarryFallback(crossLessonFallbackRecord(taskId, carry, reason))
+    // The hold ended: load the task again, now from the carried work or the starter. Nothing
+    // was editable while held, so nothing of the student's is replaced.
+    if (
+      previous.taskId === taskId &&
+      previous.state === 'hold' &&
+      state !== 'hold' &&
+      (phase === 'lesson' || phase === 'solo') &&
+      effectiveIdentity &&
+      lesson &&
+      !inPersonalSandboxRef.current
+    ) {
+      loadTaskContent(taskId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [crossLessonCarry.state, crossLessonCarry.taskId])
+
   // The HTML Inspector's Go Live state (useHtmlInspectorLive), read by the html wire's liveExtras.
   const inspectorRef = useRef(null)
   const {
@@ -918,6 +979,8 @@ export function useStudentCodeState({
     const taskId = currentTaskIdRef.current
     if (!id || !currentLesson) return
     if (inPersonalSandboxRef.current) return
+    // A held task shows no workspace: saving its hidden starter would become "their own work".
+    if (crossLessonCarryFor(taskId)?.state === 'hold') return
 
     const task = flattenTasks(currentLesson.tasks).find((t) => t.id === taskId)
     if (task?.taskType === 'information') return
@@ -1036,6 +1099,7 @@ export function useStudentCodeState({
             readSavedFile: (sourceTaskId, filename) =>
               readStored(sourceTaskId, filename)?.work ?? null,
             onCarryFallback: recordCarryFallback,
+            crossLesson: crossLessonCarryFor(taskId),
           })
         : selectPythonTaskCode({
             tasks: lesson.tasks,
@@ -1045,6 +1109,7 @@ export function useStudentCodeState({
             readSavedCode: (sourceTaskId) =>
               persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
             onCarryFallback: recordCarryFallback,
+            crossLesson: crossLessonCarryFor(taskId),
           })
       const own = perFile ? null : readStored(taskId)
       restoreWork(
@@ -2406,6 +2471,8 @@ export function useStudentCodeState({
     const currentLesson = lessonRef.current
     const taskId = currentTaskIdRef.current
     if (!anonymousId || !currentLesson || taskId == null) return
+    // Held for a cross-lesson carry: the student never saw the task's workspace.
+    if (crossLessonCarryFor(taskId)?.state === 'hold') return
     const task = findTaskById(currentLesson.tasks, taskId)
     if (!task || task.taskType === 'information' || isHostedActivityTask(task)) return
     if (normalizeChecks(task.check).length === 0 && !(task.tests?.length > 0)) return
@@ -3182,6 +3249,10 @@ export function useStudentCodeState({
       persistence.saveHtmlFile(effectiveIdentity.anonymousId, taskId, filename, content)
     },
     recordCarryFallback,
+    // Cross-lesson carry for the class's current task ({ state, work, taskId, sourceLabel }):
+    // LessonTaskContent holds on 'hold'; Scratch's workspace reads it via crossLessonCarryFor.
+    crossLessonCarry,
+    crossLessonCarryFor,
     // Coordination helpers (called by StudentView)
     saveCurrentWork: saveCurrentWorkSnapshot,
     autoCheckOnLeave,

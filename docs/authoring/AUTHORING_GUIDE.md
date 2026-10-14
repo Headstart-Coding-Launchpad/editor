@@ -389,6 +389,29 @@ do meanwhile: up to three optional, **unchecked** mini tasks on that code task.
 
 ---
 
+## Two-lesson projects (carry from an earlier lesson)
+
+A project that runs across two lessons (e.g. Lessons 11 and 12) can start each student from **their own** program from the first lesson, so their names, values and extensions carry on. Put the field on the task in the second lesson that should open with the student's earlier work:
+
+```yaml
+# Lesson 12 (python-1-12)
+tasks:
+  - title: Carry on building your game
+    starterCode: |   # used by anyone with nothing saved
+      score = 0
+    carryCodeFromLesson:
+      lesson: python-1-11   # the STOCK lesson id, never a class fork's id
+      task: 6               # the task id in that lesson whose saved work to use
+```
+
+- **Field:** `carryCodeFromLesson` on Python, Turtle and HTML tasks; `carryBlocksFromLesson` on Scratch tasks. Both are `{ lesson, task }`. HTML carries each of this task's `starterFiles` by filename, like `carryCodeFrom`.
+- **Where the work comes from:** the class roster. During a lesson the tutor matches each student to their name on the class list, and the tutor's screen saves each matched student's last Run or submission. The next lesson's tutor screen finds that saved work by the stock lesson and task ids, so a class fork of Lesson 12 finds what was saved in a class fork of Lesson 11. Nothing is read from the student's device.
+- **What students see:** a student who isn't matched yet sees "Waiting for your tutor to find your Lesson 11 work…" instead of the workspace (the task explainer stays). It opens on its own once the tutor matches them, or when the tutor chooses **Use the starter**.
+- **Falls back to the starter** when the student has nothing saved for that task, when the tutor chooses the starter, in a session with "No class", and always in solo study, the presentation window and the Builder preview (they never wait). A student who already has their own saved work for this task keeps it.
+- **Rules:** the field must be the task's own module's field, must name another lesson, and can't be combined with `carryCodeFrom` / `carryBlocksFrom` on the same task (use one or the other). `lessons publish` warns, without failing, when the named lesson or task can't be found or saves a different kind of work.
+- **Reports:** each student's outcome (`found`, `none`, `starter`, `no_class`) is in the session report as `crossLessonCarry`; see [session-reports.md](session-reports.md).
+- Give the task a sensible `starterCode` (or `starterFiles` / `starterBlocks`) anyway: it is what a new or absent student starts from.
+
 ## Task Groups
 
 ```yaml

@@ -17,6 +17,10 @@ import {
 } from '../src/shared/lessonBlocksCodec.js'
 import { lessonNeedsSealing } from '../src/shared/lessonSeal.js'
 import { flattenTaskTree } from '../src/shared/taskUtils.js'
+import {
+  crossLessonCarrySourceWarnings,
+  crossLessonSourceIds,
+} from '../src/shared/roster/crossLessonCarry.js'
 
 export { validateLessonForMcp as validateLesson }
 
@@ -130,6 +134,22 @@ async function fetchTopicLibrary() {
   return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
 }
 
+// Soft check of each cross-lesson carry's source (carryCodeFromLesson / carryBlocksFromLesson):
+// the named lesson and task exist and save the same kind of work. A source that can't be read
+// is skipped rather than failing the publish.
+async function crossLessonSourceWarnings(lesson) {
+  const sources = new Map()
+  for (const id of crossLessonSourceIds(lesson)) {
+    try {
+      const snap = await db.collection('lessons').doc(id).get()
+      sources.set(id, snap.exists ? readLessonDoc(snap) : null)
+    } catch {
+      // Unchecked: left out of the map.
+    }
+  }
+  return sources.size ? crossLessonCarrySourceWarnings(lesson, sources) : []
+}
+
 async function publishLesson(lesson, { allowDraft = true } = {}) {
   const migrated = migrateLessonLevel(lesson)
   const existingSnap = migrated.lesson.id
@@ -169,6 +189,7 @@ async function publishLesson(lesson, { allowDraft = true } = {}) {
       .doc(migrated.level.id)
       .set(migrated.level, { merge: true })
   }
+  const sourceWarnings = await crossLessonSourceWarnings(lessonToPublish)
   const audited = applyLessonAuditMetadata(existingLesson, lessonToPublish)
   if (shouldWriteLesson(audited, existingSnap))
     await writeLessonDoc(lessonToPublish.id, audited.lesson)
@@ -178,7 +199,7 @@ async function publishLesson(lesson, { allowDraft = true } = {}) {
     success: true,
     valid,
     id: lessonToPublish.id,
-    warnings: [...warnings, ...topicValidation.warnings],
+    warnings: [...warnings, ...topicValidation.warnings, ...sourceWarnings],
     version: audited.lesson.version ?? 0,
     noOp: !audited.material,
     level: migrated.level ?? null,

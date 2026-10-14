@@ -116,6 +116,15 @@ isn't listed here, so add a row whenever you add a message.
 | `Code task "…" has a module ID and module type that do not match` | Both are set and they disagree. | Remove one, or make them agree. |
 | `Task … … must reference an earlier task in the same lesson module` | A `carryCodeFrom`/`carryBlocksFrom`/`carryFsFrom`/`carryCircuitFrom`/`carryDesktopFrom` points at a later task or a task using a different module. | Carry only from an earlier task with the same `moduleType`. |
 | `Task … references task … for carry-through but that task does not exist` | The task's module carry field (`carryCodeFrom`, `carryBlocksFrom`, `carryFsFrom`, `carryCircuitFrom` or `carryDesktopFrom`) names a task id that isn't in the lesson. | Use the id of an earlier task, or remove the field. |
+| `Task … … is not supported on this task; use …` | A cross-lesson carry field that belongs to another module, e.g. `carryCodeFromLesson` on a Scratch task. | Use the field the message names (`carryBlocksFromLesson` on Scratch, `carryCodeFromLesson` on Python, Turtle and HTML). |
+| `Task … … is not supported on this task type` | `carryCodeFromLesson` / `carryBlocksFromLesson` on an information, quiz, activity or `code_arrange` task, or a module with no class-roster saving (Arcade, Filesystem, Desktop, Electronics). | Remove it; only Python, Turtle, HTML and Scratch code tasks can carry from an earlier lesson. |
+| `Task … … must be { lesson, task }: the earlier lesson's id and one of its task ids` | The cross-lesson carry isn't a map with a non-empty `lesson` and a `task` id. | Write `carryCodeFromLesson: { lesson: python-1-11, task: 6 }` (stock lesson id). |
+| `Task … … has unknown fields: …` | The cross-lesson carry map has keys other than `lesson` and `task`. | Remove the extra keys. |
+| `Task … … names this lesson; use … to carry within a lesson` | The cross-lesson carry names this lesson (or the stock lesson this fork came from). | Use the in-lesson carry field the message names instead. |
+| `Task … cannot use both … and …` | A task has both a cross-lesson carry and its in-lesson carry field. | Keep one: the earlier lesson's work or an earlier task's. |
+| `Task … …: lesson … was not found, so every student will start from the starter` (warning, **`lessons publish` only**) | The cross-lesson carry names a lesson that isn't published. | Check the stock lesson id (not a class fork's id), or publish the earlier lesson first. |
+| `Task … …: lesson … has no task …` (warning, **`lessons publish` only**) | The earlier lesson exists but has no task with that id. | Use the id of the task whose work should carry on. |
+| `Task … …: task … of lesson … saves a different kind of work, so nothing will carry` (warning, **`lessons publish` only**) | The earlier task isn't a code task of a module saving the same kind of work (code, files or Scratch blocks). | Point at a task of the same kind (a Python/Turtle task for Python/Turtle, HTML for HTML, Scratch for Scratch). |
 
 ## Information and quiz tasks
 

@@ -329,6 +329,55 @@ describe('class roster session fields', () => {
   })
 })
 
+describe('cross-lesson carry', () => {
+  const statusPath = `sessions/${LESSON}/carryStatus/${STUDENT_ID}/3`
+  const status = { status: 'found', sourceLessonId: 'python-1-11', sourceTaskId: '5', at: 1000 }
+  const inboxPath = (id = STUDENT_ID) => `carryInbox/${LESSON}/${id}/3`
+  const entry = {
+    kind: 'code',
+    payload: JSON.stringify({ code: 'print(1)' }),
+    sourceLessonId: 'python-1-11',
+    sourceTaskId: '5',
+    writtenAt: 1000,
+  }
+
+  it('only lets teachers and admins write a carry status, with a known status', async () => {
+    await assertFails(ref(as.student, statusPath).set(status))
+    await assertSucceeds(ref(as.teacher, statusPath).set(status))
+    await assertSucceeds(ref(as.admin, statusPath).set({ ...status, status: 'starter' }))
+    await assertFails(ref(as.teacher, statusPath).set({ ...status, status: 'maybe' }))
+    await assertFails(ref(as.teacher, statusPath).set({ status: 'none' }))
+    await assertFails(ref(as.teacher, statusPath).set({ ...status, name: 'Jamie B.' }))
+  })
+
+  it('only lets teachers and admins write the inbox', async () => {
+    await assertFails(ref(as.student, inboxPath()).set(entry))
+    await assertFails(ref(as.anonymous, inboxPath()).set(entry))
+    await assertSucceeds(ref(as.teacher, inboxPath()).set(entry))
+    await assertSucceeds(ref(as.admin, `carryInbox/${LESSON}`).remove())
+  })
+
+  it('lets a student read only their own inbox entries', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ref(ctx, inboxPath()).set(entry)
+      await ref(ctx, inboxPath(OTHER_STUDENT_ID)).set(entry)
+    })
+    await assertSucceeds(ref(as.student, inboxPath()).get())
+    await assertFails(ref(as.student, inboxPath(OTHER_STUDENT_ID)).get())
+    await assertFails(ref(as.student, `carryInbox/${LESSON}`).get())
+    await assertFails(ref(as.anonymous, inboxPath()).get())
+    await assertSucceeds(ref(as.teacher, `carryInbox/${LESSON}`).get())
+  })
+
+  it('validates the inbox entry shape and payload size', async () => {
+    await assertFails(ref(as.teacher, inboxPath()).set({ ...entry, kind: 'video' }))
+    await assertFails(ref(as.teacher, inboxPath()).set({ kind: 'code' }))
+    await assertFails(ref(as.teacher, inboxPath()).set({ ...entry, extra: true }))
+    await assertFails(ref(as.teacher, inboxPath()).set({ ...entry, payload: 'x'.repeat(1000001) }))
+    await assertSucceeds(ref(as.teacher, inboxPath()).set({ ...entry, kind: 'blocks' }))
+  })
+})
+
 describe('live badges', () => {
   const decision = { status: 'awarded', source: 'manual', decidedAt: 1, announce: true }
 

@@ -39,6 +39,33 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-14
 
+### Carry a student's own work from an earlier lesson (two-lesson projects)
+
+- New optional task fields `carryCodeFromLesson` (Python, Turtle, HTML) and
+  `carryBlocksFromLesson` (Scratch), each `{ lesson, task }`: the **stock** lesson id (never a
+  class fork's) and that lesson's task id. The task starts from each student's own saved work
+  on that task (HTML: each `starterFiles` file by name). See
+  [Two-lesson projects](AUTHORING_GUIDE.md#two-lesson-projects-carry-from-an-earlier-lesson).
+- The work comes from the class roster, through the tutor's screen. A student the tutor hasn't
+  matched yet waits ("Waiting for your tutor to find your Lesson 11 work…") until they are
+  matched or the tutor chooses **Use the starter**. Nothing saved, "No class", solo study, the
+  presentation window and the Builder preview use the task's starter, so keep a sensible
+  `starterCode` / `starterFiles` / `starterBlocks`. A student with their own saved work for the
+  task keeps it.
+- Validation errors: the wrong module's field, a field on a non-code task, anything but
+  `{ lesson, task }`, naming the same lesson, or combining it with `carryCodeFrom` /
+  `carryBlocksFrom` on the same task. `lessons publish` warns (doesn't fail) when the named
+  lesson or task isn't found or saves a different kind of work
+  ([validation-errors.md](validation-errors.md)). Builder: Task options → **Carry from an
+  earlier lesson**. `lessons capabilities` lists each module's `crossLessonCarryField`.
+- Session reports add a per-student `crossLessonCarry` (`found` / `none` / `starter` /
+  `no_class`) and the task's `crossLessonCarryCounts`
+  ([session-reports.md](session-reports.md)).
+- Affects: python, turtle, html, scratch, cli · Existing lessons: no changes needed (Lesson 12's
+  Build Reference starter workaround can move to `carryCodeFromLesson`, keeping the starter as
+  the fallback) · Resolves:
+  authoring-requests/2026-10-14-carry-a-student-s-own-code-from-one-lesson-into-the-next-two.md
+
 ### Scratch test-checks: student-variation cases and Support stages
 
 - `lessons test-checks --cases` now takes Scratch cases: whole `blocks`, or a `stage` (a stage id

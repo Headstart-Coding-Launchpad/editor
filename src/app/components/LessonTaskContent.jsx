@@ -10,6 +10,7 @@ import LessonCompleteScreen from './LessonCompleteScreen'
 import { getModuleHostedActivityUi } from '../../activities/registry.js'
 import ActivityHost from '../../activities/ActivityHost.jsx'
 import CheckFeedbackBanner from './CheckFeedbackBanner'
+import CarryHoldNotice from './CarryHoldNotice'
 import TaskSlideTransition from './TaskSlideTransition'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
 import PanelTabs from './PanelTabs'
@@ -192,6 +193,19 @@ export default function LessonTaskContent({
   forcedPaneCommand,
 }) {
   const badgeSignals = useBadgeSignals()
+  // Cross-lesson carry (src/shared/roster/crossLessonCarry.js): the student's own task is held
+  // until the tutor's client finds their work from the earlier lesson. Only the student's own
+  // live task holds: never a reviewed earlier task, a broadcast, the teacher's edit or a sandbox
+  // (the presentation window and Builder preview never resolve to a hold).
+  const carryHold =
+    cs.crossLessonCarry?.state === 'hold' &&
+    String(cs.crossLessonCarry.taskId) === String(currentTaskId) &&
+    !isSandbox &&
+    !cs.inPersonalSandbox &&
+    !isViewingPrev &&
+    !isForcedTeacherLive &&
+    !isTeacherEditing &&
+    !previewMode
   const [explainerCollapsed, setExplainerCollapsed] = useState(false)
   // Tracks the explainer's own accordion collapse (used whenever `!useSideExplainer` —
   // i.e. lesson types outside SIDE_EXPLAINER_TYPES like Filesystem, and the mobile
@@ -669,6 +683,8 @@ export default function LessonTaskContent({
             teacherLiveFiles={teacherLiveFiles}
           />
         </>
+      ) : carryHold ? (
+        <CarryHoldNotice sourceLabel={cs.crossLessonCarry.sourceLabel} />
       ) : StudentWorkspace ? (
         <StudentWorkspace
           lesson={lesson}

@@ -31,6 +31,10 @@ import {
 } from './exampleOpens.js'
 import { inspectorReportFields, summarizeInspectorUse } from './inspectorUse.js'
 import {
+  crossLessonCarryReportFields,
+  summarizeCrossLessonCarry,
+} from './roster/crossLessonCarry.js'
+import {
   summarizeVariablePredictions,
   taskPredictionFields,
 } from './variablesPanel/predictionReport.js'
@@ -242,6 +246,15 @@ function normalizeCarryFallbackRecord(raw, taskId) {
     skippedSourceTaskIds: normalizeArray(raw.skippedSourceTaskIds),
     fallbackAt: raw.fallbackAt ?? raw.timestamp ?? null,
     ...(raw.files ? { files: normalizeArray(raw.files) } : {}),
+    // Cross-lesson carry fell back to the starter (src/shared/roster/crossLessonCarry.js).
+    ...(raw.crossLesson
+      ? {
+          crossLesson: true,
+          reason: raw.reason ?? null,
+          sourceLessonId: raw.sourceLessonId ?? null,
+          sourceTaskId: raw.sourceTaskId ?? null,
+        }
+      : {}),
   }
 }
 
@@ -767,6 +780,7 @@ export function buildSessionReport({
         ...(itemProgress ? { itemProgress } : {}),
         ...(lastDraft ? { lastDraft } : {}),
         ...exampleOpenReportFields(session, anonymousId, task.id),
+        ...crossLessonCarryReportFields(session, anonymousId, task.id),
         ...(isNotApplicableTask(task)
           ? {}
           : studentTaskBadgeFields({
@@ -894,6 +908,7 @@ export function buildSessionReport({
       ...summarizeTimeOnTaskSpread(perStudent),
       ...summarizeTyping(perStudent),
       ...summarizeExampleOpens(perStudent),
+      ...summarizeCrossLessonCarry(perStudent),
       ...summarizeInspectorUse(perStudent),
       ...summarizeVariablePredictions(perStudent),
       ...badgeFields,

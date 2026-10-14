@@ -222,6 +222,12 @@ export default defineModule({
     { name: 'interactionMode', type: 'string', values: ['run', 'submit'] },
     { name: 'carryCodeFrom', type: 'string' },
     {
+      name: 'carryCodeFromLesson',
+      type: 'object',
+      description:
+        "{ lesson, task }: start from the student's own saved work on that task of an earlier lesson (stock ids; the tutor matches students to the class roster). Not with carryCodeFrom.",
+    },
+    {
       name: 'inspector',
       type: 'object',
       description:

@@ -92,6 +92,8 @@ export default function StudentCard({
   // Match students opener the marker calls.
   rosterName = null,
   rosterUnmatched = false,
+  // Held on a cross-lesson carry task until their earlier-lesson work is found (⏳ marker).
+  carryWaiting = false,
   onOpenRoster = null,
 }) {
   // The 🗺️ "on side-quest" activity opens their side-quest (not in multi-select).
@@ -355,6 +357,30 @@ export default function StudentCard({
               }}
             >
               👥?
+            </span>
+          )}
+          {/* Teacher-only: their task is held until their earlier-lesson work is found. */}
+          {carryWaiting && (
+            <span
+              style={s.rosterUnmatched}
+              role={onOpenRoster ? 'button' : 'img'}
+              tabIndex={onOpenRoster ? 0 : undefined}
+              title="Waiting for their work from an earlier lesson: match them to the class list, or use the starter"
+              aria-label="Waiting for their earlier lesson work"
+              data-testid="carry-waiting"
+              onClick={(event) => {
+                if (!onOpenRoster) return
+                event.stopPropagation()
+                onOpenRoster()
+              }}
+              onKeyDown={(event) => {
+                if (!onOpenRoster || (event.key !== 'Enter' && event.key !== ' ')) return
+                event.preventDefault()
+                event.stopPropagation()
+                onOpenRoster()
+              }}
+            >
+              ⏳
             </span>
           )}
           {/* Teacher-only: StudentCard is only ever rendered in the teacher's grid. */}

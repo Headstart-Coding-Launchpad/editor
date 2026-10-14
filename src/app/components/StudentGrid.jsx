@@ -129,6 +129,8 @@ export default function StudentGrid({
   const showRosterItem = !!onOpenRoster
   const unmatchedCount = rosterStatus?.unmatchedIds?.length ?? 0
   const unmatchedIds = new Set(rosterStatus?.unmatchedIds ?? [])
+  // Held on a cross-lesson carry task until their earlier-lesson work is found.
+  const carryWaitingIds = new Set(rosterStatus?.carryWaitingIds ?? [])
   const hasClassMenu =
     showNudgeItem || showSuggestionsItem || showSelectItem || showReferenceItem || showRosterItem
   const classMenuAttention =
@@ -312,20 +314,27 @@ export default function StudentGrid({
               {joiningCount} joining…
             </span>
           )}
-          {onOpenRoster && (unmatchedCount > 0 || rosterStatus?.needsClass) && (
-            <button
-              type="button"
-              style={{ ...s.checkCountBadge, ...s.rosterChip }}
-              onClick={onOpenRoster}
-              title={
-                rosterStatus?.needsClass
-                  ? 'Pick the class you are teaching, to save students’ work to the class list'
-                  : 'Students not yet matched to the class list (their work is not being saved)'
-              }
-            >
-              👥 {rosterStatus?.needsClass ? 'Pick class' : `${unmatchedCount} unmatched`}
-            </button>
-          )}
+          {onOpenRoster &&
+            (unmatchedCount > 0 || rosterStatus?.needsClass || carryWaitingIds.size > 0) && (
+              <button
+                type="button"
+                style={{ ...s.checkCountBadge, ...s.rosterChip }}
+                onClick={onOpenRoster}
+                title={[
+                  rosterStatus?.needsClass
+                    ? 'Pick the class you are teaching, to save students’ work to the class list'
+                    : 'Students not yet matched to the class list (their work is not being saved)',
+                  carryWaitingIds.size > 0
+                    ? `${carryWaitingIds.size} waiting for their work from an earlier lesson`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join('. ')}
+              >
+                👥 {rosterStatus?.needsClass ? 'Pick class' : `${unmatchedCount} unmatched`}
+                {carryWaitingIds.size > 0 ? ` · ⏳ ${carryWaitingIds.size}` : ''}
+              </button>
+            )}
           {hasCheck && passedCount > 0 && (
             <span
               style={{ ...s.checkCountBadge, background: 'var(--colour-success)' }}
@@ -563,6 +572,7 @@ export default function StudentGrid({
                 onToggleSelect={toggleSelected}
                 rosterName={rosterStatus?.namesByStudent?.[student.anonymousId] ?? null}
                 rosterUnmatched={unmatchedIds.has(student.anonymousId)}
+                carryWaiting={carryWaitingIds.has(student.anonymousId)}
                 onOpenRoster={onOpenRoster}
               />
             ))}
@@ -664,6 +674,12 @@ export default function StudentGrid({
           catalogueBadges={catalogueBadges}
           sideQuestViewRequest={sideQuestViewRequest}
           rosterName={rosterStatus?.namesByStudent?.[expandedStudent.anonymousId] ?? null}
+          carryWaiting={carryWaitingIds.has(expandedStudent.anonymousId)}
+          onUseCarryStarter={
+            rosterStatus?.onUseCarryStarter
+              ? () => rosterStatus.onUseCarryStarter([expandedStudent.anonymousId])
+              : null
+          }
         />
       )}
     </div>

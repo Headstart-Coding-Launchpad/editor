@@ -128,6 +128,10 @@ export default function StudentModal({
   sideQuestViewRequest = null,
   // Tutor-only: the class-list name this student is matched to (src/shared/roster/), or null.
   rosterName = null,
+  // Held on a cross-lesson carry task (src/shared/roster/crossLessonCarry.js), and the tutor's
+  // "Use the starter" override for this student.
+  carryWaiting = false,
+  onUseCarryStarter = null,
 }) {
   const overlayRef = useRef(null)
   const iframeRef = useRef(null)
@@ -695,6 +699,24 @@ export default function StudentModal({
                 data-testid="modal-roster-name"
               >
                 👥 {rosterName}
+              </span>
+            )}
+            {carryWaiting && (
+              <span
+                style={s.rosterName}
+                title="Their task is held until their work from the earlier lesson is found. Match them to the class list, or start them from the starter."
+                data-testid="modal-carry-waiting"
+              >
+                ⏳ Waiting for earlier work
+                {onUseCarryStarter && (
+                  <button
+                    type="button"
+                    style={s.carryStarterButton}
+                    onClick={() => onUseCarryStarter()}
+                  >
+                    Use the starter
+                  </button>
+                )}
               </span>
             )}
             <PresenceBadge student={student} session={session} />
@@ -1698,6 +1720,17 @@ const s = {
     fontWeight: 700,
     fontSize: '1.05rem',
     whiteSpace: 'nowrap',
+  },
+  carryStarterButton: {
+    marginLeft: 6,
+    background: 'rgba(255,255,255,0.9)',
+    color: 'var(--colour-primary)',
+    border: 'none',
+    borderRadius: 999,
+    padding: '0 8px',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    cursor: 'pointer',
   },
   rosterName: {
     fontFamily: 'var(--font-body)',

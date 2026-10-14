@@ -419,6 +419,44 @@
           }
         },
 
+        // Cross-lesson carry (approved by Ryan 2026-10-14; src/shared/roster/crossLessonCarry.js):
+        // the tutor's client records, per student and task, whether their work from an earlier
+        // lesson was found ('found', payload in the top-level carryInbox), not saved ('none'),
+        // or replaced by the starter at the tutor's request ('starter'). A held student's task
+        // waits for this. Teacher/admin write is inherited from $lessonId; students cannot write
+        // it. rosterId is the opaque roster id the work was looked up for, never a name.
+        "carryStatus": {
+          "$anonymousId": {
+            "$taskId": {
+              ".validate": "newData.hasChildren(['status', 'at'])",
+              "status": {
+                ".validate": "newData.isString() && (newData.val() === 'found' || newData.val() === 'none' || newData.val() === 'starter')"
+              },
+              "sourceLessonId": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "sourceTaskId": {
+                ".validate": "newData.isString() && newData.val().length <= 128"
+              },
+              "reason": {
+                ".validate": "newData.isString() && newData.val().length <= 32"
+              },
+              "rosterId": {
+                ".validate": "newData.isString() && newData.val().length <= 128"
+              },
+              "by": {
+                ".validate": "newData.isString() && newData.val().length <= 128"
+              },
+              "at": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        },
+
         // The teacher's class countdown ({ startedAt, endsAt, durationMs }, server-time ms) or
         // absent. Teacher/admin write is inherited from $lessonId; students cannot write it.
         "classCountdown": {
@@ -455,6 +493,45 @@
         // Once approved, the class can read it. Only teachers/admins write.
         "approved": {
           ".read": true
+        }
+      }
+    },
+
+    // ─── Cross-lesson carry inbox (src/shared/roster/crossLessonCarry.js) ─────
+    // The work a matched student saved in an earlier lesson, copied here by the tutor's client
+    // from the class roster (which students can never read). Outside "sessions" so one
+    // student's code is never streamed to the class: a student reads only their own entries,
+    // and only teachers/admins write. `payload` is the work as one JSON string.
+    "carryInbox": {
+      "$lessonId": {
+        ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+        ".read": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+        "$anonymousId": {
+          ".read": "auth != null && auth.uid === $anonymousId",
+          "$taskId": {
+            ".validate": "newData.hasChildren(['kind', 'payload'])",
+            "kind": {
+              ".validate": "newData.isString() && (newData.val() === 'code' || newData.val() === 'files' || newData.val() === 'blocks')"
+            },
+            "payload": {
+              ".validate": "newData.isString() && newData.val().length <= 1000000"
+            },
+            "sourceLessonId": {
+              ".validate": "newData.isString() && newData.val().length <= 200"
+            },
+            "sourceTaskId": {
+              ".validate": "newData.isString() && newData.val().length <= 128"
+            },
+            "savedAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "writtenAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
         }
       }
     },

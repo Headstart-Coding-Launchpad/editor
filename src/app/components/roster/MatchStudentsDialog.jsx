@@ -19,6 +19,10 @@ export default function MatchStudentsDialog({
   onMatch, // (anonymousId, rosterId) => Promise
   onUnmatch, // (anonymousId) => Promise
   onAddStudent, // (displayName) => Promise<{ id }>
+  // Cross-lesson carry: students held on the current task until their earlier-lesson work is
+  // found, and the "Use the starter" override ((anonymousIds) => Promise).
+  carryWaitingIds = [],
+  onUseCarryStarter = null,
 }) {
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -29,6 +33,12 @@ export default function MatchStudentsDialog({
   const matchedBy = new Map(Object.entries(matches).map(([anon, rosterId]) => [rosterId, anon]))
   const namesById = new Map(students.map((st) => [st.anonymousId, st.displayName]))
   const unmatchedRoster = roster.filter((entry) => !matchedBy.has(entry.id))
+  const waiting = new Set(carryWaitingIds)
+  // Held students no match will release: unmatched ones (a match fills their inbox) and, with
+  // no class chosen yet, everyone held.
+  const blockedIds = students
+    .map((student) => student.anonymousId)
+    .filter((id) => waiting.has(id) && !matches[id])
 
   async function run(action) {
     setError(null)
@@ -125,6 +135,28 @@ export default function MatchStudentsDialog({
             </p>
           )}
 
+          {blockedIds.length > 0 && (
+            <div style={s.carryBox} data-testid="carry-blocked">
+              <p style={s.carryText}>
+                ⏳ {blockedIds.length} {blockedIds.length === 1 ? 'student is' : 'students are'}{' '}
+                waiting for their work from an earlier lesson.{' '}
+                {classId
+                  ? 'Match them to find it, or start them from the starter.'
+                  : 'Pick the class to find it, or start them from the starter.'}
+              </p>
+              {onUseCarryStarter && (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={busy}
+                  onClick={() => run(() => onUseCarryStarter(blockedIds))}
+                >
+                  Use the starter for all unmatched
+                </button>
+              )}
+            </div>
+          )}
+
           {classId && (
             <>
               {rosterLoading ? (
@@ -135,9 +167,19 @@ export default function MatchStudentsDialog({
                 <ul style={s.list}>
                   {students.map((student) => {
                     const rosterId = matches[student.anonymousId] ?? ''
+                    const blocked = blockedIds.includes(student.anonymousId)
                     return (
-                      <li key={student.anonymousId} style={s.row}>
+                      <li
+                        key={student.anonymousId}
+                        style={blocked ? { ...s.row, ...s.blockedRow } : s.row}
+                        data-carry-blocked={blocked ? 'true' : undefined}
+                      >
                         <span style={s.joined} title="The name they typed">
+                          {blocked && (
+                            <span title="Waiting for their earlier lesson work" aria-hidden="true">
+                              ⏳{' '}
+                            </span>
+                          )}
                           {student.displayName}
                         </span>
                         <span aria-hidden="true" style={s.arrow}>
@@ -203,6 +245,17 @@ export default function MatchStudentsDialog({
                             >
                               New student
                             </button>
+                            {blocked && onUseCarryStarter && (
+                              <button
+                                type="button"
+                                className="btn-ghost-outline"
+                                style={s.newBtn}
+                                disabled={busy}
+                                onClick={() => run(() => onUseCarryStarter([student.anonymousId]))}
+                              >
+                                Use the starter
+                              </button>
+                            )}
                           </>
                         )}
                       </li>
@@ -279,6 +332,22 @@ const s = {
     whiteSpace: 'nowrap',
   },
   arrow: { color: 'var(--colour-muted)' },
+  blockedRow: {
+    background: 'var(--colour-warning-bg, #fef3c7)',
+    borderRadius: 6,
+    padding: '4px 6px',
+  },
+  carryBox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+    background: 'var(--colour-warning-bg, #fef3c7)',
+    color: 'var(--colour-warning-text, #92400e)',
+    borderRadius: 8,
+    padding: '8px 10px',
+  },
+  carryText: { margin: 0, fontSize: 13, flex: '1 1 240px' },
   select: { padding: '6px 8px', borderRadius: 6, minWidth: 180, maxWidth: '100%' },
   newBtn: { padding: '6px 10px', fontSize: 13 },
   newForm: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' },

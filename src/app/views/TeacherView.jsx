@@ -78,6 +78,9 @@ import TeacherPeerHelpAlertBanner from '../components/peerHelp/TeacherPeerHelpAl
 import MatchStudentsDialog from '../components/roster/MatchStudentsDialog'
 import { useClassList, useClassRoster } from '../hooks/useClassRoster'
 import { useRosterWorkSaver } from '../hooks/useRosterWorkSaver'
+import { useCarryInboxWriter } from '../hooks/useCarryInboxWriter'
+import { carryStarterUpdates, carryWaitingStudentIds } from '../../shared/roster/crossLessonCarry'
+import { applyCarryStarter } from '../../shared/roster/crossLessonCarryService'
 import {
   activeRosterMatches,
   resolveSessionClass,
@@ -237,6 +240,16 @@ export default function TeacherView({ lessonId }) {
     lessonId,
     classId: sessionClass.classId,
     matches: rosterMatches,
+  })
+  // Cross-lesson carry (carryCodeFromLesson / carryBlocksFromLesson): fills each matched
+  // student's carry inbox from their saved work, so their held task can open.
+  useCarryInboxWriter({
+    session,
+    lesson,
+    lessonId,
+    classId: sessionClass.classId,
+    matches: rosterMatches,
+    by: user?.uid ?? null,
   })
   const [showMatchDialog, setShowMatchDialog] = useState(false)
   // The Badge Summary task's class wall, on the teacher's screen.
@@ -683,6 +696,18 @@ export default function TeacherView({ lessonId }) {
       classId: sessionClass.classId,
     }),
     needsClass: sessionClass.source === 'unset',
+    // Students held on the current task until their earlier-lesson work is found, and the
+    // tutor's "Use the starter" override for them (src/shared/roster/crossLessonCarry.js).
+    carryWaitingIds: carryWaitingStudentIds({
+      session,
+      lesson,
+      classSource: sessionClass.source,
+    }),
+    onUseCarryStarter: (anonymousIds) =>
+      applyCarryStarter(
+        lessonId,
+        carryStarterUpdates({ session, lesson, anonymousIds, by: user?.uid ?? null })
+      ),
   }
   const sessionClassName =
     sessionClass.source === 'fork'
@@ -1071,6 +1096,8 @@ export default function TeacherView({ lessonId }) {
           }
           onUnmatch={(anonymousId) => unmatchStudent(lessonId, anonymousId)}
           onAddStudent={(name) => addRosterEntry(sessionClass.classId, name, user?.uid ?? null)}
+          carryWaitingIds={rosterStatus.carryWaitingIds}
+          onUseCarryStarter={rosterStatus.onUseCarryStarter}
         />
       )}
 
