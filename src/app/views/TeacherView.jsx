@@ -64,6 +64,7 @@ import { useTopicLibrary } from '../../shared/topicLibrary'
 import { buildStudentLivePayload } from '../teacherLivePayload'
 import { getModuleDefinition } from '../../modules/definitions'
 import PaneFocusDropdown from '../components/student-modal/PaneFocusDropdown'
+import ControlHighlightDropdown from '../components/student-modal/ControlHighlightMenu'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
 import { describeShareError } from '../sharedWorkspacePayload'
 import { useSandboxArchiveSnapshots } from '../hooks/useSandboxArchiveSnapshots'
@@ -159,6 +160,9 @@ export default function TeacherView({ lessonId }) {
     setTeacherLiveReferenceForClass,
     pushTeacherPaneCommand,
     pushClassPaneCommand,
+    pushClassControlHighlight,
+    clearClassControlHighlight,
+    pushTeacherControlHighlight,
     archiveSandboxStudentSnapshot,
     readSessionArchive,
     decideBadge,
@@ -606,6 +610,12 @@ export default function TeacherView({ lessonId }) {
   const sandboxLesson = getEffectiveLessonForModule(lesson, activeSandboxModuleId)
   const editorLesson = isInSandbox ? sandboxLesson : displayedLesson
   const currentTask = flatTasks.find((t) => t.id === (session?.currentTaskId ?? currentTaskId))
+  // The class highlight menu lists the controls of the task the students are on (in the
+  // sandbox, the sandbox's task), by its effective module type.
+  const classHighlightTask = isInSandbox ? task : currentTask
+  const classHighlightType = isInSandbox
+    ? editorLesson?.type
+    : getEffectiveLessonForTask(lesson, currentTask?.id)?.type
   const displayIndex = flatTasks.findIndex((t) => t.id === displayTaskId)
   // Next / Back in the teacher's navigator find the neighbouring tasks' images already loaded.
   usePreloadNeighbourImages(lesson, flatTasks, displayIndex)
@@ -715,6 +725,18 @@ export default function TeacherView({ lessonId }) {
                 lessonType={editorLesson?.type}
                 onHighlight={(panes) => pushClassPaneCommand({ mode: 'highlight', panes })}
                 onForce={(panes) => pushClassPaneCommand({ mode: 'force', panes })}
+              />
+            )}
+            {/* Pulse one control (Run, the green flag, a block category…) on every student's
+                screen, for the task the class is on (its effective module type). */}
+            {session && !!classHighlightTask && isCodeTask(classHighlightTask) && (
+              <ControlHighlightDropdown
+                label="Highlight Class"
+                lessonType={classHighlightType}
+                onHighlight={(target) =>
+                  pushClassControlHighlight(target, isInSandbox ? null : (currentTask?.id ?? null))
+                }
+                onClear={clearClassControlHighlight}
               />
             )}
             <TeacherSessionControls
@@ -936,6 +958,7 @@ export default function TeacherView({ lessonId }) {
             onAddHighlight={pushTeacherHighlight}
             onRemoveHighlight={removeTeacherHighlight}
             onPushTeacherPaneCommand={pushTeacherPaneCommand}
+            onPushTeacherControlHighlight={pushTeacherControlHighlight}
             onTeacherAnswerEdit={pushTeacherAnswerEdit}
             onPushTileHighlight={pushTeacherTileHighlight}
             onRemoveTileHighlights={removeTeacherTileHighlights}

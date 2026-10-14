@@ -37,6 +37,30 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-14
+
+### Highlight a control: task `highlight` and the tutor's live Highlight menu
+
+- **New optional task field `highlight`** (code tasks): pulses a ring around one control on each
+  student's screen when the task opens, once per task, until they use it or for 20 seconds (a
+  still outline with reduced motion). Write `highlight: green_flag` or
+  `highlight: { target: green_flag }`. Targets: `run` and `stop` on Python, Turtle, Arcade and
+  Electronics (one shared Run/Stop button), `run` on HTML, and on Scratch `green_flag` (or
+  `run`), `stop`, `costumes_tab`, `sounds_tab` and `category:<name>` (`Motion`, `Looks`, `Sound`,
+  `Events`, `Control`, `Sensing`, `Operators`, `Variables`, `My Blocks`; the palette scrolls to
+  it). A control on a hidden tab pulses that tab instead.
+- **Validation:** an unknown target for the task's own module (a composed lesson's `moduleType`)
+  is an error, as is `highlight` on a quiz, information or activity task or on Filesystem or
+  Desktop. `costumes_tab` / `sounds_tab` warn without `showCostumesTab` / `showSoundsTab`. The
+  Builder sets it under Task options → "Highlight a control"; `lessons capabilities` lists each
+  module's `highlightTargets`.
+- **Live:** tutors can pulse the same controls for the whole class ("Highlight Class" in the top
+  bar) or one student (More → Highlight in the student modal). Nothing to author.
+- See [scratch.md](scratch.md#highlighting-a-control) and [lesson-schema.md](lesson-schema.md).
+- Affects: python, turtle, html, arcade, electronics, scratch · Existing lessons: no changes
+  needed · Resolves:
+  authoring-requests/2026-10-14-highlight-a-scratch-ui-control-green-flag-stop-tabs-for-the-.md
+
 ## 2026-10-09
 
 ### Confidence checks are 1–10; tutors see unsubmitted short answers

@@ -168,6 +168,8 @@ export default function StudentWorkspace({
             role="tab"
             aria-selected={activeWorkspaceTab === 'code'}
             onClick={() => setActiveWorkspaceTab('code')}
+            // Run and Stop live on the Code tab: a highlight points here from Sprites/Tilemaps.
+            data-highlight-reveal="run stop"
             style={{
               ...s.workspaceTab,
               ...(activeWorkspaceTab === 'code' ? s.workspaceTabActive : {}),
@@ -216,6 +218,7 @@ export default function StudentWorkspace({
               <button
                 className={running ? 'btn-danger' : 'btn-primary'}
                 style={s.runButton}
+                data-highlight-target="run stop"
                 onClick={running ? stop : run}
               >
                 {running ? 'Stop' : 'Run game'}

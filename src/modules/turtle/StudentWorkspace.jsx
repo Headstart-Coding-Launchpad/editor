@@ -110,6 +110,7 @@ export default function StudentWorkspace({
             <button
               className={cs.running ? 'btn-danger' : 'btn-primary'}
               style={s.primaryBtn}
+              data-highlight-target="run stop"
               onClick={handleRunClick}
               disabled={!cs.running && cs.pyodideStatus === 'loading'}
             >

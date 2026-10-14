@@ -110,7 +110,10 @@ tasks:
     # taskType omitted = code task; use information or quiz for non-code tasks
     moduleType: python        # required on every code task in a new composed lesson
     sideQuests: []            # optional on code tasks — see Side-quests below
+    highlight: run            # optional on code tasks — pulse a control when the task opens
 ```
+
+**Highlighting a control.** `highlight` points a student at one control on their screen when the task opens (once per task): a ring pulses around it until they use it, or for 20 seconds. Use it when younger students keep missing a control they need. Targets: `run` and `stop` (Python, Turtle, Arcade, Electronics; HTML has `run` only), and on Scratch `green_flag`, `stop`, `costumes_tab`, `sounds_tab` and `category:<name>` (e.g. `category:Motion`, `category:My Blocks`). `highlight: { target: green_flag }` works too. If the control is on a hidden tab (a narrow screen's Stage tab, a collapsed stage), that tab or rail pulses instead. Tutors can pulse the same controls live from "Highlight Class" or a student's More menu. See [lesson-schema.md](lesson-schema.md) for the rules.
 
 **Line hints in starter code.** Instead of instructions in code comments, Python, Turtle and HTML starter code (and code stages) can carry marker lines that are shown beside the next line and never become part of the student's code: `#> Change the colour here` (Python, Turtle) or `<!--> Add a heading here -->` (HTML). See [python.md](python.md#line-hints) and [html.md](html.md#line-hints).
 

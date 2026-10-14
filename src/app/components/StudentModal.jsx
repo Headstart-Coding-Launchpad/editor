@@ -25,6 +25,10 @@ import TeacherPeerHelpStudentPanel from './peerHelp/TeacherPeerHelpStudentPanel'
 import MessageCompose from './student-modal/MessageCompose'
 import OverrideDropdown from './student-modal/OverrideDropdown'
 import { PaneFocusControls } from './student-modal/PaneFocusDropdown'
+import {
+  ControlHighlightControls,
+  hasControlHighlightTargets,
+} from './student-modal/ControlHighlightMenu'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
 import StudentHintPanel from './student-modal/StudentHintPanel'
 import ShareRequestPanel from './student-modal/ShareRequestPanel'
@@ -99,6 +103,7 @@ export default function StudentModal({
   onRevealSupportStage,
   onSetTeacherLiveReference,
   onPushTeacherPaneCommand,
+  onPushTeacherControlHighlight,
   onTeacherAnswerEdit,
   // Tutor tile highlights (useSession push/remove/clearTeacherTileHighlights).
   onPushTileHighlight,
@@ -1146,6 +1151,11 @@ export default function StudentModal({
                   !isLiveForAll &&
                   allowsStudentBroadcast(task)
                 const hasFocus = !!onPushTeacherPaneCommand && !isInformation && !isQuizLike
+                const hasControlHighlight =
+                  !!onPushTeacherControlHighlight &&
+                  !isInformation &&
+                  !isQuizLike &&
+                  hasControlHighlightTargets(taskLesson?.type)
                 if (
                   !hasBadge &&
                   !hasNudge &&
@@ -1156,7 +1166,8 @@ export default function StudentModal({
                   !hasVideoCall &&
                   !hasShare &&
                   !hasFullscreen &&
-                  !hasFocus
+                  !hasFocus &&
+                  !hasControlHighlight
                 )
                   return null
                 return (
@@ -1294,6 +1305,24 @@ export default function StudentModal({
                                   mode: 'force',
                                   panes,
                                 })
+                              }
+                              onDone={close}
+                            />
+                          </section>
+                        )}
+                        {/* Pulse one control (Run, the green flag, a category…) on this
+                            student's screen (src/shared/controlHighlight.js) */}
+                        {hasControlHighlight && (
+                          <section aria-label="Highlight" style={s.menuSection}>
+                            <div style={s.menuHeading}>Highlight</div>
+                            <ControlHighlightControls
+                              lessonType={taskLesson?.type}
+                              onHighlight={(target) =>
+                                onPushTeacherControlHighlight(
+                                  student.anonymousId,
+                                  target,
+                                  task?.id ?? null
+                                )
                               }
                               onDone={close}
                             />
