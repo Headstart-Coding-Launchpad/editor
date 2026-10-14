@@ -6,6 +6,7 @@ import { resolveAssetFileUrl } from '../../../shared/assetPaths'
 import { SPRITE_TYPES } from '../../../modules/scratch/ScratchWorkspace'
 import { spriteVisualMode } from '../../../shared/spriteVisuals'
 import { createSpriteFromPreset } from '../../../shared/spritePresets'
+import { getStartingBackdrop, setStartingBackdrop } from '../../../modules/scratch/startingBackdrop'
 import {
   DEFAULT_SPRITE_SOUNDS,
   SYNTH_SOUNDS,
@@ -1068,18 +1069,33 @@ export function BackdropManager({
   function update(id, updates) {
     onChange(backdrops.map((b) => (b.id === id ? { ...b, ...updates } : b)))
   }
+  const startingId = getStartingBackdrop(backdrops)?.id ?? null
+  const startGroupName = `starting-backdrop-${React.useId()}`
 
   return (
     <div className="te-backdrop-manager">
-      {backdrops.map((b, i) => {
+      {backdrops.map((b) => {
         const isImage = b.image !== undefined
         const resolvedUrl = isImage ? resolveAssetFileUrl(assetsPath, b.image) : ''
         const isBrowsing = browsingId === b.id
+        const isStarting = b.id === startingId
         return (
           <div key={b.id} className="te-backdrop-block">
-            {/* Row 1: Default tag + name + type toggle + remove */}
+            {/* Row 1: starting backdrop choice + name + type toggle + remove */}
             <div className="te-backdrop-row">
-              {i === 0 && <span className="te-backdrop-tag">Default</span>}
+              <label
+                className={isStarting ? 'te-backdrop-tag' : 'te-backdrop-start'}
+                title="The Stage shows this backdrop when the task loads and after Reset Stage"
+              >
+                <input
+                  type="radio"
+                  name={startGroupName}
+                  checked={isStarting}
+                  onChange={() => onChange(setStartingBackdrop(backdrops, b.id))}
+                  aria-label={`Starts on this backdrop: ${b.name}`}
+                />{' '}
+                {isStarting ? 'Starts here' : 'Start'}
+              </label>
               <input
                 className="te-input"
                 style={{ flex: '1 1 110px', minWidth: 0 }}

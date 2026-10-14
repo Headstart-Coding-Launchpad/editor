@@ -1,5 +1,6 @@
 // Node-safe half of the Scratch module (see ../defineModule.js). UI lives in index.js.
 import { validateScratchSoundsAndTabs } from './scratchSounds.js'
+import { validateStartingBackdrop } from './startingBackdrop.js'
 import { defineModule } from '../defineModule.js'
 import { codeStagesField } from '../../shared/taskFields.js'
 import {
@@ -323,6 +324,7 @@ export default defineModule({
     )
     warnCompleteBlocks(task, n, warnings)
     validateScratchSoundsAndTabs(task, n, errors, warnings)
+    validateStartingBackdrop(task, n, errors, warnings)
   },
   hasStarterContent: (task) => !!task.starterBlocks,
   // `lessons test-checks` with no --cases: static block checks per stage (checkVerification.js).

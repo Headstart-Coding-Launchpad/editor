@@ -145,7 +145,10 @@ backdrops:
     name: Space               # required — used by backdrop blocks
     image: backdrops/space.png  # optional — relative to assetsPath, or public root path
     colour: "#ffffff"         # optional — CSS colour for solid backdrop
+    current: true             # optional — the Stage starts on this backdrop
 ```
+
+The Stage shows the backdrop marked `current: true` when the task loads and after **Reset Stage**. With none marked it starts on the first one listed, so the list order can stay whatever the project's `next backdrop` steps need. Mark only one: validation warns when more than one backdrop is `current` (the first marked one wins), and errors when `current` isn't `true` or `false`. In the Builder, pick **Start** next to a backdrop; the starting one shows **Starts here**. Like the rest of `backdrops`, the flag is copied by `carryBlocksFrom`.
 
 ---
 
@@ -447,7 +450,7 @@ node cli/cli.mjs assets upload-type scratch ./dog-walk2.png
 
 Three per-task toggles let students extend their own project beyond what the author placed, without breaking checks that assume an author-known sprite/variable set:
 
-- `allowAddSprite` / `addSpritePresetIds` — shows an "Add sprite" picker in the student's sprite panel, sourced from the admin-curated `lessonTypeAssets/scratch.defaultSprites` library (managed in Admin → Shared Assets → Scratch, the same `DefaultSpritesEditor` used to seed the builder's own "Add sprite" picker). `addSpritePresetIds` optionally narrows the picker to a chosen subset of that library for this task; omitted or empty offers the whole library.
+- `allowAddSprite` / `addSpritePresetIds` — shows an "Add sprite" picker in the student's sprite panel, sourced from the admin-curated `lessonTypeAssets/scratch.defaultSprites` library (managed in Admin → Shared Assets → Scratch, the same `DefaultSpritesEditor` used to seed the builder's own "Add sprite" picker). `addSpritePresetIds` optionally narrows the picker to a chosen subset of that library for this task; omitted or empty offers the whole library. The picker opens over the page (below the Add tile, or above it when there's no room) and is sized to the screen, so a student on a small laptop, a tablet or with the browser zoomed in can scroll to the last sprite.
 - `allowAddBackdrop` / `addBackdropPresetIds` — same pattern for backdrops, sourced from `lessonTypeAssets/scratch.defaultBackdrops` (`DefaultBackdropsEditor`).
 - `allowCreateVariable` — adds a "Make a Variable" button to the Variables toolbox flyout. The student is prompted for a name (must be non-empty and not collide, case-insensitively, with any existing variable name); the new variable becomes available immediately in every variable dropdown block (`data_variable`, `data_setvariableto`, etc.) for every sprite in the task.
 - `allowRemoveSprite` — shows a ✕ on each sprite's tile in the student's sprite panel. By default this only ever lets a student remove a sprite *they* added via the "Add sprite" picker above (`studentAdded: true`) — author-placed starter sprites always stay protected, even with this flag on. Set `allowRemoveStarterSprites: true` alongside it to lift that restriction and let removal target every sprite, author-placed or not (used by the freeform Scratch Playground, which has no starter code to protect). A workspace can never be emptied entirely — the ✕ is disabled once only one sprite remains — and removal asks the student to confirm first, since it deletes that sprite's code and costumes.
@@ -496,6 +499,13 @@ Scratch checks can be a single object or an array. Prefer `evaluation: after_blo
 Students should not see a failure just because they are still building. `after_block_placed` checks can pass as soon as the workspace is correct; off-track feedback should be modelled as a nudge/authoring warning rather than a hard fail while the learner is mid-edit.
 
 **When checks run and what logs an attempt.** `after_block_placed` checks (and `on_idle` feedback checks) are evaluated shortly after an edit to the blocks: a block placed, moved or deleted, or a field edit committed — the learner leaves the text field or presses Enter, or picks a dropdown value. Each evaluation is logged as one attempt in the session report. Typing inside a text field (for example a Say message) does not run checks or log attempts; the edit is checked once, with the final text, when the field is committed. `after_run` checks are evaluated when the learner runs the project.
+
+**Still building: no fail while the workspace is unchanged or has a loose block.** While the learner is placing blocks, a failing `after_block_placed` check is held back when either:
+
+- the blocks are the same as when the task opened (the `starterBlocks`, or the blocks carried in by `carryBlocksFrom`); block ids and positions are ignored, so dragging a script around still counts as unchanged; or
+- a block that isn't a hat (`when green flag clicked`, `when this sprite clicked`, `when I start as a clone` and the other `when …` blocks) sits loose on the canvas: a stack, a single block or a reporter not yet snapped under a hat or into another block.
+
+While held back, the learner sees no fail state and no hint, no attempt is logged in the session report, and `on_idle` feedback checks don't show. A **pass is never held back**: as soon as the checks pass the task completes, loose block or not. Once every block is attached (and something has changed), checks are judged as normal. Pressing Run and the Check button are not affected. The tutor still sees the student's blocks live as they build. The rule lives in `src/modules/scratch/stillBuilding.js`, which works on stored workspace JSON so the CLI can use it too.
 
 `feedbackChecks` use the same Scratch check shapes and require a completion `check`. Use `show: on_idle` for guidance after the learner pauses editing blocks, or `show: after_attempt` for feedback after a Scratch check evaluates. `mode: blocking` fails completion when matched; `mode: nudge` shows guidance without failing. `incorrectChecks` is a legacy alias for blocking feedback. Avoid using `after_run` check types (`block_run`, `sprite_property`/`variable_compare` reading run-dependent state) as `on_idle` feedback checks — idle evaluation happens purely from editing, without a fresh run, so an `after_run` check there is judged against the last Run's state rather than the learner's current unedited workspace.
 

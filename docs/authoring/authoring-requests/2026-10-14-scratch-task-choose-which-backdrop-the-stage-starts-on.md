@@ -1,6 +1,6 @@
 # Scratch task: choose which backdrop the Stage starts on
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** activity mode
 - **Requested by:** Ryan (approved by Ryan), 2026-10-14
 - **Lessons blocked:** none yet
@@ -25,4 +25,4 @@ Ryan asked for this candidate in the open-notes triage (2026-10-14). Source: Mis
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped on `fix/scratch-eager-checks-library-backdrop` (package W1-b, 2026-10-14). `backdrops[].current: true` sets the starting backdrop (on load and Reset Stage) through one helper, `getStartingBackdrop` in `src/modules/scratch/startingBackdrop.js`. The Builder's backdrop list has a Start / Starts here choice. Validation warns when more than one backdrop is current. Docs: [scratch.md](../scratch.md#backdrop-object); CHANGELOG 2026-10-14.

@@ -1,6 +1,6 @@
 # Scratch sprite library: student can't scroll to the bottom in Make It Your Own
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** bug
 - **Requested by:** Ryan (approved by Ryan), 2026-10-14
 - **Lessons blocked:** none yet
@@ -23,4 +23,4 @@ From tutor feedback relayed by Ryan, 2026-10-13. One student, recurring; lesson 
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped on `fix/scratch-eager-checks-library-backdrop` (package W1-b, 2026-10-14). The student Add sprite and Add backdrop pickers are now portalled to the page (`src/modules/scratch/AddPickerPopover.jsx`) and positioned from the Add tile by `pickerPosition.js`: below the tile when there's room, else above, with the height capped to the space on screen so the list scrolls to its end. They follow scroll and resize, and close on an outside click or Escape. Docs: scratch.md sprite-library note; CHANGELOG 2026-10-14.

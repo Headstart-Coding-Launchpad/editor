@@ -3390,6 +3390,22 @@ select {
   padding: 2px 6px;
   flex-shrink: 0;
 }
+label.te-backdrop-tag,
+.te-backdrop-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.te-backdrop-start {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: var(--colour-muted-soft);
+  border: 1px solid transparent;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
 .te-backdrop-swatch {
   width: 28px;
   height: 28px;

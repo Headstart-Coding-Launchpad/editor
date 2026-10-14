@@ -1,5 +1,6 @@
 // Scratch module section of the Builder's printable lesson (authoring.printTask). Node-safe.
 import { printCarryFrom } from '../printHelpers.js'
+import { getStartingBackdrop } from './startingBackdrop.js'
 
 function printJsonField(label, value, esc) {
   return `<div class="field"><div class="field-label">${label}</div><pre class="code-block">${esc(JSON.stringify(value, null, 2))}</pre></div>`
@@ -23,8 +24,12 @@ export function printScratchTask(task, { esc }) {
     parts.push(
       `<div class="field"><div class="field-label">Backdrops</div><table class="data-table"><tr><th>Name</th><th>Colour / Image</th></tr>`
     )
+    const starting = getStartingBackdrop(task.backdrops)
     for (const bd of task.backdrops) {
-      parts.push(`<tr><td>${esc(bd.name)}</td><td>${esc(bd.colour || bd.image || '')}</td></tr>`)
+      const startTag = bd === starting && bd.current === true ? ' (starts here)' : ''
+      parts.push(
+        `<tr><td>${esc(bd.name)}${startTag}</td><td>${esc(bd.colour || bd.image || '')}</td></tr>`
+      )
     }
     parts.push(`</table></div>`)
   }
