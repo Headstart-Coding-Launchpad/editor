@@ -27,6 +27,9 @@ const scratchModule = defineUiModule(definition, {
 
   // ── Runtime ──────────────────────────────────────────────────────────────────
   runtime: null,
+
+  // ── Export work (tutor's StudentModal; src/shared/exportWork/exporters.js) ──
+  exportWork: () => import('./exportWork.js'),
 })
 
 export default scratchModule

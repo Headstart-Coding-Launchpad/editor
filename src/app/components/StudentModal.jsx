@@ -24,6 +24,8 @@ import { TEACHER_LIVE_REFERENCE_TYPES } from '../studentLiveDisplay'
 import DropdownMenu from './student-modal/DropdownMenu'
 import TeacherPeerHelpStudentPanel from './peerHelp/TeacherPeerHelpStudentPanel'
 import MessageCompose from './student-modal/MessageCompose'
+// Export work (tutor-only download / share link); loaded on first open.
+const ExportWorkDialog = React.lazy(() => import('./student-modal/ExportWorkDialog'))
 import OverrideDropdown from './student-modal/OverrideDropdown'
 import { PaneFocusControls } from './student-modal/PaneFocusDropdown'
 import {
@@ -155,6 +157,7 @@ export default function StudentModal({
   const [nudged, setNudged] = useState(false)
   const [thumbsUpSent, setThumbsUpSent] = useState(false)
   const [showBadgeDialog, setShowBadgeDialog] = useState(false)
+  const [showExportDialog, setShowExportDialog] = useState(false)
 
   // Teacher highlight: select a range in the mirrored view, tag it, send it
   const [pendingHighlight, setPendingHighlight] = useState(null) // {from, to} | null
@@ -251,6 +254,7 @@ export default function StudentModal({
     setStageDeclinedNotice(false)
     setShowMessageModal(false)
     setShowBadgeDialog(false)
+    setShowExportDialog(false)
     setPendingHighlight(null)
     setHighlightNote('')
   }, [student.anonymousId])
@@ -657,9 +661,13 @@ export default function StudentModal({
 
   // Read through a ref: the listener is bound once, and handleClose → handleCommitEdit
   // must see the teacher's latest typed code/files, not the values from when it was bound.
-  // Escape closes the badge picker first, then the modal.
+  // Escape closes the export dialog or badge picker first, then the modal.
   const handleCloseRef = useLatestRef(() =>
-    showBadgeDialog ? setShowBadgeDialog(false) : handleClose()
+    showExportDialog
+      ? setShowExportDialog(false)
+      : showBadgeDialog
+        ? setShowBadgeDialog(false)
+        : handleClose()
   )
   useEffect(() => {
     function onKey(e) {
@@ -1178,6 +1186,8 @@ export default function StudentModal({
                   student.shareSnapshotRequestedAt == null
                 const hasFullscreen = !!onRequestFullscreen
                 const hasBadge = !!onDecideBadge
+                // Export work: the dialog finds the tasks with work itself.
+                const hasExport = !!lesson?.tasks?.length
                 const hasNudge = !!onNudge && student.online
                 // Broadcasting a student's work is not offered on quiz or activity tasks
                 // (teacher-only broadcasts there).
@@ -1194,6 +1204,7 @@ export default function StudentModal({
                   hasControlHighlightTargets(taskLesson?.type)
                 if (
                   !hasBadge &&
+                  !hasExport &&
                   !hasNudge &&
                   !hasGoLiveForAll &&
                   !hasEdit &&
@@ -1219,6 +1230,18 @@ export default function StudentModal({
                             }}
                           >
                             🏅 Award badge
+                          </button>
+                        )}
+                        {hasExport && (
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              setShowExportDialog(true)
+                            }}
+                            title="Download this student's work, or make a name-hidden share link"
+                          >
+                            🎁 Export work
                           </button>
                         )}
                         {hasNudge && (
@@ -1586,6 +1609,17 @@ export default function StudentModal({
           onRevokeBadge={onRevokeBadge}
           onClose={() => setShowBadgeDialog(false)}
         />
+      )}
+
+      {showExportDialog && (
+        <React.Suspense fallback={null}>
+          <ExportWorkDialog
+            student={student}
+            lesson={lesson}
+            session={session}
+            onClose={() => setShowExportDialog(false)}
+          />
+        </React.Suspense>
       )}
 
       {/* Message compose modal */}

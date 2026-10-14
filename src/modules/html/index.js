@@ -32,6 +32,9 @@ const htmlModule = defineUiModule(definition, {
       buildIframeSrc(state?.files ?? state, state?.entryFile ?? task?.entryFile, opts),
     waitForPreviewText,
   },
+
+  // ── Export work (tutor's StudentModal; src/shared/exportWork/exporters.js) ──
+  exportWork: () => import('./exportWork.js'),
 })
 
 export default htmlModule

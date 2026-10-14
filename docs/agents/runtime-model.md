@@ -14,6 +14,7 @@ The teacher-written `shownResponses` node was added for the 2026-10-02 authoring
 The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLog` node) were added with explicit user approval for the 2026-10-09 authoring request "Side-quests for students who finish a code task while the class waits" (see the Student writes below and "Side-quests" in `docs/agents/classroom-behaviours.md`).
 The side-quest live work field (`students.{id}.sideQuestCode`) was added with explicit user approval (Ryan, 2026-10-14, reversing the 2026-10-09 "status only" call) for the authoring request "Tutor view of side quests"; written on open, on Run, and per keystroke only while `activeStudentView` matches.
 The class roster session fields (`classId`, `classChosenAt`, `rosterMatches`) and the Firestore `classes/{classId}/roster` subcollection (with its `work` and `typing` subcollections) were added with explicit user approval (Ryan, 2026-10-14, "Identity: class roster, matched by the tutor" in `docs/architecture/requests-2026-10-14-plan.md`); see "Class roster" under Classes below.
+The Firestore `sharedWork` collection (share links from the tutor's "Export work") was added with explicit user approval (Ryan, 2026-10-14); see "Share Links" below.
 The `exampleOpenLog` node was added with explicit user approval ("example opens", 2026-10-14 build plan, `docs/architecture/requests-2026-10-14-plan.md`) for the authoring request "'See example' button in explainers that opens a worked example in a pop-up"; status only, never code (see the Student writes below).
 
 ```json
@@ -954,6 +955,28 @@ Approved by Ryan on 2026-10-14 (`docs/architecture/requests-2026-10-14-plan.md`,
 - **Privacy:** roster names stay on the tutor's side. Session reports stay anonymous ("Student N"), RTDB holds only opaque roster ids, and nothing roster-related is written to CLI-readable data.
 - **API for later packages:** `listRoster`, `subscribeRoster`, `matchStudent` / `unmatchStudent`, `getSavedWork(classId, rosterId, sourceLessonId, sourceTaskId)`, `saveRosterWork`, `appendTyping` / `listTyping` (`rosterService.js`), and `resolveSourceIds` / `makeRosterWorkId` (`rosterModel.js`).
 
+## Share Links (`sharedWork` collection)
+
+Added with explicit user approval (Ryan, 2026-10-14, `docs/architecture/requests-2026-10-14-plan.md` "Export"). A tutor's StudentModal **Export work** can make an opt-in, name-hidden share link for the current task: a frozen snapshot shown read-only at `/share/:id` (see URL Structure). Written by the tutor's client only (`src/shared/exportWork/shareService.js`); nothing is written to the student or the session.
+
+```json
+{
+  "createdAt": "serverTimestamp (rules: == request.time)",
+  "createdBy": "uid of the teacher/admin who made it (rules: == request.auth.uid)",
+  "expiresAt": "Timestamp: createdAt + 30 days (rules: in the future and at most 30 days + 10 minutes on)",
+  "revoked": "false on create; true once revoked",
+  "revokedAt": "serverTimestamp (only with revoked: true)",
+  "kind": "the module type that made it (python | turtle | html | scratch); picks the viewer",
+  "title": "the task title only, never a student name (≤ 200)",
+  "payload": "JSON string (≤ ~900 KB) the module's exporter wrote: { code, output } | { code, turtleResult } | { files: [{ name, content }], entryFile } | { state, task: { id, title, sprites, backdrops, variables, toolbox, enableStageCode, showCostumesTab, showSoundsTab }, assetsPath }"
+}
+```
+
+- The payload is a string because Scratch block trees nest deeper than Firestore's map depth limit.
+- **Reads:** anyone may `get` a link while `revoked == false && expiresAt > request.time`; the maker and admins may also get an ended one; only admins may `list` (Admin ▸ Shared Work).
+- **Writes:** teachers and admins create (exact keys, as themselves, `revoked: false`) and revoke (`revoked: true` + `revokedAt` only, nothing else changes); admins may delete. Students never write. Tested by `tests/rules/sharedWork.rules.test.js` under `npm run test:rules`.
+- The id is random (128 bits, `randomShareId`), so links can't be guessed. Expired documents are not cleaned up automatically; the rule stops them showing.
+
 ## localStorage Keys
 
 Do not deviate from these key formats.
@@ -998,6 +1021,7 @@ The landing page validates a selected `.launchpad` file and passes it to `/code`
 | `/code` | Imported `.launchpad` Python code workspace |
 | `/playground/:type` | No-login, no-persistence solo sandbox for `python`/`arcade`/`electronics`/`scratch`; builds an ephemeral in-memory lesson (`__playground__<type>` id) and renders it forced-solo — never shares storage with a real lesson |
 | `/builder` | Lesson builder |
+| `/share/:id` | Public, read-only page for a tutor's "Export work" share link (`SharedWorkView.jsx`; Firestore `sharedWork/{id}`, see Share Links). No login, no student name, nothing written; the module that made the work renders it (its exporter's `ShareView`). A revoked or expired link shows "This link has ended". Approved URL addition (Ryan, 2026-10-14) |
 
 No room IDs. There is one session per lesson.
 

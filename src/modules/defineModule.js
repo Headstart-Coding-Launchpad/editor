@@ -840,5 +840,10 @@ export function defineUiModule(definition, ui) {
   for (const key of Object.keys(ui)) {
     if (key in def) fail(def.type, `UI key "${key}" duplicates a definition field`)
   }
+  // Optional: `exportWork` lazily loads the module's "Export work" exporter (the tutor's
+  // StudentModal and the /share/:id viewer; see src/shared/exportWork/exporters.js).
+  if (ui.exportWork != null && typeof ui.exportWork !== 'function') {
+    fail(def.type, '"exportWork" must be a function returning import() of the exporter, or null')
+  }
   return { ...def, ...ui }
 }

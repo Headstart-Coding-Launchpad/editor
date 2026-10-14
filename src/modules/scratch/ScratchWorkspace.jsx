@@ -72,8 +72,8 @@ import { getStartingBackdrop, getStartingBackdropName } from './startingBackdrop
 import { isScratchStillBuilding } from './stillBuilding.js'
 import { useScratchCategoryReveal } from './scratchHighlight.js'
 
-const STAGE_W = 480
-const STAGE_H = 360
+export const STAGE_W = 480
+export const STAGE_H = 360
 const SYNC_DEBOUNCE = 1000
 const CURSOR_THROTTLE_MS = 50
 const CURSOR_STALE_MS = 2000
@@ -363,7 +363,7 @@ function defaultSpriteState(sp) {
   }
 }
 
-function initSpriteStates(sprites) {
+export function initSpriteStates(sprites) {
   const out = {}
   for (const sp of sprites) out[sp.id] = defaultSpriteState(sp)
   return out
@@ -383,7 +383,7 @@ export function cloneSpriteStates(states) {
 
 // ── Canvas drawing ────────────────────────────────────────────────────────────
 
-function drawScratchSpriteAtOrigin(ctx, type, r) {
+export function drawScratchSpriteAtOrigin(ctx, type, r) {
   switch (type) {
     case 'ball':
       ctx.beginPath()
@@ -479,7 +479,7 @@ function drawScratchSpriteAtOrigin(ctx, type, r) {
   }
 }
 
-function drawEmojiAtOrigin(ctx, emoji, r) {
+export function drawEmojiAtOrigin(ctx, emoji, r) {
   ctx.font = `${r * 2}px 'Noto Color Emoji', serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
@@ -544,7 +544,7 @@ export function wrapScratchBubbleText(ctx, message, maxWidth) {
   })
 }
 
-function drawBubble(ctx, s) {
+export function drawBubble(ctx, s) {
   if (!s.bubble) return
   const cx = toCanvasX(s.x)
   const cy = toCanvasY(s.y)
@@ -666,6 +666,65 @@ function drawSpriteVisual(
     return
   }
   drawSpriteShape(ctx, state, fallbackType ?? 'cat', emoji)
+}
+
+// Paints one stage frame: the backdrop, every sprite and clone, then the speech bubbles on
+// top. Exported for the tutor's "Export work" stage picture (./export/stagePicture.js), which
+// passes its own CORS-loaded `imageCache` ({ resolvedUrl: HTMLImageElement }).
+export function paintStage(
+  ctx,
+  { sprites, backdrops, backdropName, states, clones = {}, assetsPath, imageCache }
+) {
+  ctx.clearRect(0, 0, STAGE_W, STAGE_H)
+
+  const backdrop =
+    (backdropName ? backdrops.find((b) => b.name === backdropName) : null) ??
+    getStartingBackdrop(backdrops)
+
+  if (backdrop?.image) {
+    const url = resolveAssetFileUrl(assetsPath, backdrop.image)
+    const img = imageCache[url]
+    if (img) {
+      ctx.drawImage(img, 0, 0, STAGE_W, STAGE_H)
+    } else {
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, STAGE_W, STAGE_H)
+    }
+  } else {
+    ctx.fillStyle = backdrop?.colour ?? '#ffffff'
+    ctx.fillRect(0, 0, STAGE_W, STAGE_H)
+  }
+
+  for (const sp of sprites) {
+    drawSpriteVisual(
+      ctx,
+      states[sp.id],
+      sp.costumes,
+      sp.type ?? 'cat',
+      sp.emoji,
+      assetsPath,
+      imageCache
+    )
+  }
+  for (const clone of Object.values(clones)) {
+    const base = sprites.find((sp) => sp.id === clone.baseId)
+    drawSpriteVisual(
+      ctx,
+      clone.state,
+      clone.costumes,
+      base?.type ?? 'cat',
+      base?.emoji,
+      assetsPath,
+      imageCache
+    )
+  }
+  for (const sp of sprites) {
+    const state = states[sp.id]
+    if (state?.bubble) drawBubble(ctx, state)
+  }
+  for (const clone of Object.values(clones)) {
+    if (clone.state?.bubble) drawBubble(ctx, clone.state)
+  }
 }
 
 function spriteRadius(s) {
@@ -1322,58 +1381,15 @@ export default function ScratchWorkspace({
     (states, clones = {}, backdropOverride = null) => {
       const canvas = canvasRef.current
       if (!canvas) return
-      const ctx = canvas.getContext('2d')
-      ctx.clearRect(0, 0, STAGE_W, STAGE_H)
-
-      const currentName = backdropOverride ?? backdropNameRef.current
-      const backdrop =
-        (currentName ? backdrops.find((b) => b.name === currentName) : null) ??
-        getStartingBackdrop(backdrops)
-
-      if (backdrop?.image) {
-        const url = resolveAssetFileUrl(assetsPath, backdrop.image)
-        const img = imageCacheRef.current[url]
-        if (img) {
-          ctx.drawImage(img, 0, 0, STAGE_W, STAGE_H)
-        } else {
-          ctx.fillStyle = '#ffffff'
-          ctx.fillRect(0, 0, STAGE_W, STAGE_H)
-        }
-      } else {
-        ctx.fillStyle = backdrop?.colour ?? '#ffffff'
-        ctx.fillRect(0, 0, STAGE_W, STAGE_H)
-      }
-
-      for (const sp of sprites) {
-        drawSpriteVisual(
-          ctx,
-          states[sp.id],
-          sp.costumes,
-          sp.type ?? 'cat',
-          sp.emoji,
-          assetsPath,
-          imageCacheRef.current
-        )
-      }
-      for (const clone of Object.values(clones)) {
-        const base = sprites.find((sp) => sp.id === clone.baseId)
-        drawSpriteVisual(
-          ctx,
-          clone.state,
-          clone.costumes,
-          base?.type ?? 'cat',
-          base?.emoji,
-          assetsPath,
-          imageCacheRef.current
-        )
-      }
-      for (const sp of sprites) {
-        const state = states[sp.id]
-        if (state?.bubble) drawBubble(ctx, state)
-      }
-      for (const clone of Object.values(clones)) {
-        if (clone.state?.bubble) drawBubble(ctx, clone.state)
-      }
+      paintStage(canvas.getContext('2d'), {
+        sprites,
+        backdrops,
+        backdropName: backdropOverride ?? backdropNameRef.current,
+        states,
+        clones,
+        assetsPath,
+        imageCache: imageCacheRef.current,
+      })
     },
     [sprites, backdrops, assetsPath]
   )

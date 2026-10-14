@@ -1,6 +1,6 @@
 # Export a student's work for Student of the Week
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** tooling
 - **Requested by:** Ryan (approved by Ryan), 2026-10-14
 - **Lessons blocked:** none yet
@@ -23,4 +23,20 @@ From tutor feedback relayed by Ryan, 2026-10-13. Mind safeguarding: student name
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped on branch `feature/export-student-work` (2026-10-14). StudentModal ▸ More ▸ **🎁 Export work**
+(tutor-only, live only; nothing is written to the student): this task or the whole lesson, from
+the live mirror on the current task and the latest logged attempt on the others.
+
+- **Code files:** Python/Turtle `.py`; HTML `.zip` of the files plus one self-contained `.html`;
+  Scratch a real `.sb3` (every LaunchPad block mapped to Scratch 3, with menu shadow blocks,
+  variables, broadcasts, costumes drawn to PNG, synth sounds rendered to WAV and MP3/WAV files
+  fetched; anything without a match is listed) plus a LaunchPad JSON copy.
+- **Pictures (PNG):** Turtle drawing, Scratch stage, each sprite's scripts as blocks, every costume.
+- **Names:** task title + date; the first name only when "Include first name in file names" is
+  ticked (off by default).
+- **Share link** (opt-in, current task only): a frozen, name-hidden snapshot at `/share/:id`
+  (Firestore `sharedWork`), read-only, 30 days, revocable from the dialog and Admin ▸ Shared Work.
+
+No lesson fields were added. Modules plug in through an optional `exportWork` UI hook
+(`src/shared/exportWork/exporters.js`). Docs: `docs/FEATURES.md` (Student Actions),
+`docs/agents/runtime-model.md` (Share Links, `/share/:id`).
