@@ -180,7 +180,11 @@ export function serialiseRosterWork(work) {
 // FNV-1a 32-bit over the serialised work and its kind: equal work ⇒ equal hash, so a repeat
 // save of unchanged work is skipped.
 export function hashRosterWork(work) {
-  const text = `${work?.kind ?? ''}:${serialiseRosterWork(work)}`
+  return hashText(`${work?.kind ?? ''}:${serialiseRosterWork(work)}`)
+}
+
+// FNV-1a 32-bit of a string, as 8 hex digits (also keys typing-history entries).
+export function hashText(text) {
   let hash = 0x811c9dc5
   for (let i = 0; i < text.length; i++) {
     hash ^= text.charCodeAt(i)

@@ -660,6 +660,12 @@ export function useStudentCodeState({
         : EMPTY_TILE_HIGHLIGHTS,
     [tileHighlightsLive, myStudentData?.teacherTileHighlights, currentTaskId]
   )
+  // The student's typing history, pushed by the tutor's client to the teacher-write-only
+  // sessions/{lessonId}/typingHistory/{anonymousId} (src/shared/typingHistory.js): the Keyboard
+  // activity's `showHistory` line. Live lesson only, like the tile highlights.
+  const typingHistory = tileHighlightsLive
+    ? (session?.typingHistory?.[identity?.anonymousId] ?? null)
+    : null
   const dismissTileHighlights = useCallback(
     (highlightIds) => {
       if (!identity?.anonymousId || !highlightIds?.length) return
@@ -3114,6 +3120,7 @@ export function useStudentCodeState({
     dismissHighlight,
     tileHighlights,
     dismissTileHighlights,
+    typingHistory,
     errorLine,
     htmlErrorLocation,
     // Refs

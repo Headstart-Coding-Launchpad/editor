@@ -13,6 +13,8 @@ import { readAnswerDraft } from '../../../shared/answerDrafts'
 import { getMirrorLineHintSets } from './mirrorLineHints'
 import { getInspectorConfig } from '../../../modules/html/inspector/config'
 import TaskVariablesPanel from '../../../shared/variablesPanel/TaskVariablesPanel.jsx'
+import { taskHistoryMode, typingHistoryForMode } from '../../../shared/typingHistory'
+import TypingHistoryPanel from './TypingHistoryPanel'
 
 function answerKey(value) {
   return typeof value === 'string' ? value : JSON.stringify(value ?? null)
@@ -92,6 +94,10 @@ export default function StudentWorkspaceBody({
   // highlight-mode tap (onTileTargetTap(targetId, tileId)); see src/shared/tutorTileHighlights.js.
   tileHighlights = null,
   onTileTargetTap = null,
+  // Typing history (src/shared/typingHistory.js): the node pushed to this student and their
+  // saved entries (newest first), for a typing task's history line and "Typing history" list.
+  typingHistory = null,
+  typingEntries = null,
 }) {
   const [editableAnswer, pushEditableAnswer] = useTeacherEditableValue(
     student.currentAnswer ?? '',
@@ -229,6 +235,7 @@ export default function StudentWorkspaceBody({
         result={{ submitted: student.lastRunStatus === 'submitted', passed: student.checkPassed }}
         tileHighlights={tileHighlights}
         onTargetTap={onTileTargetTap}
+        history={typingHistory}
         onChange={(update) => pushEdit(update, false)}
         onSubmit={
           definition?.submitsAnswers
@@ -237,6 +244,21 @@ export default function StudentWorkspaceBody({
         }
       />
     )
+    const historyMode = isSessionSandbox ? null : taskHistoryMode(task)
+    const historyPanel = historyMode ? (
+      <TypingHistoryPanel
+        modeHistory={typingHistoryForMode(typingHistory, historyMode)}
+        entries={typingEntries}
+      />
+    ) : null
+    if (historyPanel && !draftText) {
+      return (
+        <div style={s.draftStack}>
+          {historyPanel}
+          <div style={s.draftView}>{view}</div>
+        </div>
+      )
+    }
     if (!draftText) return view
     return (
       <div style={s.draftStack}>

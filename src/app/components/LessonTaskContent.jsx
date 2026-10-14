@@ -639,6 +639,7 @@ export default function LessonTaskContent({
             entranceKey={taskEntranceKey}
             tileHighlights={cs.tileHighlights}
             onDismissTileHighlights={cs.dismissTileHighlights}
+            history={cs.typingHistory}
             result={
               isForcedTeacherLive
                 ? { submitted: displayRunStatus === 'submitted', passed: displayCheckPassed }

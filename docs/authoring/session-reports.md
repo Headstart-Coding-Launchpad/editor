@@ -121,6 +121,7 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `itemProgress` | `{ correct, total }` items right in the latest submission. | `taskType: activity` only, when submitted | 2026-09-28 |
 | `lastDraft` | The last text the student typed but never submitted (an open or checked short answer, or typed fill-in-the-gaps shown as `print · ___`), from the live [answer drafts](quiz-tasks.md#live-drafts-what-the-tutor-sees-before-submit). Never an attempt. At most 1000 characters. | Omitted when the student submitted the task or typed nothing | 2026-10-09 |
 | `exampleOpens[]` | Each ["See an example" fence](markdown-renderer.md#worked-examples-see-an-example) in the task's explainer the student opened during the live lesson: `{ example (1 = the first in the explainer), openedAt (ms, first open), afterMs (first open after the task started for the class), lastOpenedAt (ms, only when opened again), opens }`. Use it to see whether the worked example helped: compare `afterMs` with the student's attempts and `finalResult`. | Omitted when none | 2026-10-14 |
+| `typingHistory` | A Keyboard typing task (`type_text`, `type_code`, `falling_words`) for a student the tutor matched to the class list who has scores from earlier lessons: this session's score beside the previous ones, `{ mode, cpm, accuracy, previousCpm, previousAccuracy, bestCpm, firstCpm }` ([below](#typing-history)). No names. | Omitted when unmatched or no earlier scores | 2026-10-14 |
 | `timeToFirstEditMs` | Time from the task opening on the student's device to their first real edit (timed on the device). *Graded only.* | Omitted when unknown | 2026-09-30 |
 | `errorAttempts` | Attempts whose run hit a real console error. *Graded only.* | Omitted when 0 | 2026-09-30 |
 | `uniqueFailedAttempts` | Different failed submissions (by content hash). *Graded only.* | Omitted when 0 | 2026-09-30 |
@@ -418,6 +419,23 @@ never per keystroke. Added 2026-10-09.
   already written.
 - Counts span every visit to the task: if the class comes back to it, typing adds to the same
   totals.
+
+### Typing history
+
+`students[].tasks[].typingHistory` puts a matched student's Keyboard typing score next to their
+earlier ones, for typing courses that compare lessons (Typing for Coders). It comes from the
+typing history the tutor's browser keeps on the student's class-list entry (see
+[keyboard.md](activities/keyboard.md#typing-history-showhistory)), pushed to the session as
+`typingHistory/{anonymousId}` and copied into the report when it is built. The report stays
+anonymous ("Student N"): it holds numbers only. Added 2026-10-14.
+
+| Path | Meaning |
+|---|---|
+| `typingHistory.mode` | `type_text`, `type_code` or `falling_words`. |
+| `typingHistory.cpm` / `.accuracy` | This session: the average characters a minute and accuracy (0–1) of the finished items in the latest submission. Omitted when the student never submitted. |
+| `typingHistory.previousCpm` / `.previousAccuracy` | The most recent earlier session in this mode (the average of its finished items). |
+| `typingHistory.bestCpm` | The best single item before this session (characters a minute, then accuracy). |
+| `typingHistory.firstCpm` | The earliest session in this mode (its average), for "from 40 to 75" comparisons. |
 
 ## peerHelp
 

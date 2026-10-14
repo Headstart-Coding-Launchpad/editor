@@ -2,6 +2,7 @@ import yaml from 'js-yaml'
 import { flattenTasks, getTaskPriority } from './taskUtils.js'
 import { buildPeerHelpAudit } from './peerHelp.js'
 import { buildSideQuestReport, getSideQuests } from './sideQuests.js'
+import { typingHistoryReportFields } from './typingHistory.js'
 import { getTaskActivity } from '../activities/registry.pure.js'
 import { SUPPORT_REVEAL_SOURCES } from './taskStages.js'
 import { normalizeCodeSubmission } from './codeSubmission.js'
@@ -633,6 +634,13 @@ export function anonymizeSessionReport(report) {
 //   counted in `badgeSummary[badgeId].suggested`.
 // - `topics`: the Topic Library's topics, for topic titles; `catalogueBadges`: Admin badges.
 // The report is trimmed to fit a Firestore document (capSessionReportSize).
+// The latest attempt's submission as the report shows it (an activity's state), or null.
+function latestSubmission(task, entries) {
+  return entries.length > 0
+    ? normalizeSubmission(task, entries[entries.length - 1].submission)
+    : null
+}
+
 export function buildSessionReport({
   session,
   lesson,
@@ -767,6 +775,7 @@ export function buildSessionReport({
         ...(itemProgress ? { itemProgress } : {}),
         ...(lastDraft ? { lastDraft } : {}),
         ...exampleOpenReportFields(session, anonymousId, task.id),
+        ...typingHistoryReportFields(session, task, anonymousId, latestSubmission(task, entries)),
         ...(isNotApplicableTask(task)
           ? {}
           : studentTaskBadgeFields({

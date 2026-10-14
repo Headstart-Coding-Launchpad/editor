@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
+import TypingHistoryLine from './TypingHistoryLine.jsx'
+import { showsTypingHistory, typingHistoryForMode } from '../../shared/typingHistory.js'
 import { normalizeKeyEvent } from '../../shared/input/index.js'
 import { prefersReducedMotion } from '../../shared/motion.js'
 import {
@@ -48,8 +50,18 @@ export default function FallingWordsView({
   onSubmit,
   readOnly = false,
   device = {},
+  // The student's typing history (src/shared/typingHistory.js), shown with `showHistory`.
+  history = null,
 }) {
   const saved = state?.items?.[FALLING_ROUND_ID] ?? {}
+  const historyLine = (result, done) =>
+    showsTypingHistory(task, null) ? (
+      <TypingHistoryLine
+        modeHistory={typingHistoryForMode(history, task?.mode)}
+        result={result}
+        finished={done}
+      />
+    ) : null
   const durationMs = fallingDurationMs(task)
   const [game, setGame] = useState(null)
   const [paused, setPaused] = useState(false)
@@ -172,6 +184,7 @@ export default function FallingWordsView({
             </React.Fragment>
           ))}
         </p>
+        {historyLine(saved, finished)}
         {saved.cleared != null && <Stats result={saved} />}
         {readOnly && saved.cleared != null && !finished && (
           <p role="status">
@@ -270,6 +283,7 @@ export default function FallingWordsView({
       {game.over && (
         <>
           <Stats result={fallingResult(game)} />
+          {historyLine(fallingResult(game), true)}
           <ActivityCorrect>Round complete!</ActivityCorrect>
           <div className="act-row">
             <button type="button" className="btn-ghost-outline act-btn" onClick={start}>

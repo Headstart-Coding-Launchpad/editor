@@ -27,6 +27,7 @@ vi.mock('../../hooks/useClassRoster', () => ({
   useClassList: () => [],
 }))
 vi.mock('../../hooks/useRosterWorkSaver', () => ({ useRosterWorkSaver: () => {} }))
+vi.mock('../../hooks/useTypingHistory', () => ({ useTypingHistory: () => ({}) }))
 vi.mock('../../../shared/roster/rosterService', () => ({
   addRosterEntry: vi.fn(),
   matchStudent: vi.fn(),

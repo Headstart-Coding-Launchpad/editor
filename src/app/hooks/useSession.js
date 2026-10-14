@@ -221,6 +221,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       classId: null,
       classChosenAt: null,
       rosterMatches: null,
+      // Typing history pushed to matched students (src/shared/typingHistory.js).
+      typingHistory: null,
     })
     // The payload node lives outside the session, so resetting the session
     // does not clear it on its own.

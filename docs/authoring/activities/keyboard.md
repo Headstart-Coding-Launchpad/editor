@@ -130,12 +130,13 @@ tasks:
 | `items` | Yes | One or more items, each with a unique `id`. Every mode except `falling_words`, which has `words` instead. |
 | `requireShiftForCapitals` | No | `type_text`: a capital typed with Caps Lock doesn't count; the hint says to hold Shift. Can also be set per item. |
 | `minAccuracy` | No | `type_text` and `type_code`: fraction of characters that must be right, above 0 and at most 1. Default `1` (exact) for `type_text`, `0.9` for `type_code`. |
-| `targetWpm` | No | `type_text`: optional speed goal in words a minute. Accuracy is always checked; speed only when this is set. No history is kept between lessons. |
+| `targetWpm` | No | `type_text`: optional speed goal in words a minute. Accuracy is always checked; speed only when this is set. Scores are kept across lessons for matched students; see [Typing history](#typing-history-showhistory). |
 | `minKept` | No | `edit_text`: share (above 0, at most 1; default `0.9`) of the characters `start` and `target` have in common that must survive untouched. Deleting the line and typing it again fails. |
 | `showTarget` | No | `edit_text`: show the fixed line above the edit box ("Make it say: …"). Default `true`; set `false` for a find-the-mistakes challenge. |
 | `language` | No | `type_code`: `python` (default) or `html`. Colours the code and sets the Tab width: 4 spaces for Python, 2 for HTML. |
 | `targetCpm` | No | `type_code`: optional speed goal in characters a minute (only correct characters count). Speed is always shown; it is only checked when this is set. |
 | `durationSeconds` | No | `falling_words`: length of the round, a whole number from 15 to 300. Default `60`. |
+| `showHistory` | No | `type_text`, `type_code` and `falling_words`: `true` shows each student their last and best score from earlier lessons beside every item, and how far they've come once they finish it. Items (`type_text`, `type_code`) can set their own `showHistory: true` or `false`. See [Typing history](#typing-history-showhistory). |
 | `words` | Yes (`falling_words`) | `falling_words`: the words or code tokens that fall, at most 100. Tokens may contain symbols and spaces (`for i in`, `[1, 2]`), up to 20 characters each, with no space at either end. Quote them in YAML. |
 
 ## Item fields by mode
@@ -151,7 +152,8 @@ tasks:
 | `falling_words` | No items: the task's `words` list | See [Falling words](#falling-words-falling_words). |
 
 Any item may set `hardwareOnly: true`: it then only counts when typed on a real keyboard, not
-the on-screen one.
+the on-screen one. `type_text` and `type_code` items may also set `showHistory` (overrides the
+task's).
 
 ## Typing code (`type_code`)
 
@@ -202,6 +204,49 @@ way. Every typing mode records `mode`, `accuracy` (0–1), `cpm` (correct charac
 | `type_text` | `typed`, `shiftCapitals`, `capsLockCapitals`, `source` |
 | `type_code` | `typed`, `source` |
 | `falling_words` | `cleared`, `missed`, `score`, `source` (stored as one item with id `round`; `accuracy` is the share of keystrokes that matched the start of a token on screen) |
+
+## Typing history (`showHistory`)
+
+Every finished `type_text`, `type_code` and `falling_words` result is kept across lessons, so
+students, tutors and parents can see progress (no lesson field needed for that). It is saved by
+the **tutor's** browser, not the student's:
+
+- Only for students the tutor has matched to the class list (👥 Match students). A session with
+  no class, or a student who isn't matched, saves nothing. Results a student finished before
+  being matched are saved as soon as they are matched.
+- Each result is saved once (date, lesson, task, item, mode, characters and words a minute,
+  accuracy, corrections, time, and `score` for falling words), on the student's class-list entry.
+  The teacher's **Complete (show answers)** results and answers the tutor edited are never saved.
+- Scores are kept per mode: `type_text`, `type_code` and `falling_words` are compared only with
+  themselves. The class fork of a lesson counts as the stock lesson.
+
+With `showHistory: true` the student sees, beside each item:
+
+```text
+📈 Last time: 62 cpm, 91% · Best: 75 cpm
+```
+
+`Last time` is the average of their most recent earlier session in that mode, and `Best` their
+best single item before today (characters a minute, then accuracy). When they finish an item faster
+than their first session, it adds "You went from 40 to 75 characters a minute." (and "New best!"
+when they beat their best). Nothing shows until the student has a score from an earlier lesson, so
+a first lesson looks exactly as before. Slower results get no comment.
+
+```yaml
+- title: Timed challenge
+  type: keyboard
+  mode: type_code
+  showHistory: true
+  items:
+    - id: a
+      code: print("Ready")
+```
+
+The tutor always sees the history (with or without `showHistory`): a `📈 Last 62 · Best 75 cpm ·
+first 40` line on the student card and a **📈 Typing history** list of recent scores in the
+StudentModal. The [session report](../session-reports.md#typing-history) puts each matched
+student's score next to their previous one, anonymised. Admin → Classes → Students → **Typing**
+lists a student's saved scores for progress conversations with parents.
 
 ## Devices without a keyboard
 

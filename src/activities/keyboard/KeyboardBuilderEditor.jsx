@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import definition, { KEYBOARD_MODE_LABELS } from './definition.js'
+import definition, { HISTORY_MODES, KEYBOARD_MODE_LABELS } from './definition.js'
 import { KEYBOARD_MODES, NAMED_KEYS } from './keyboard.js'
 import { EDIT_REQUIRE_KEYS } from './editText.js'
 import { DEFAULT_TYPE_CODE_ACCURACY, TYPE_CODE_LANGUAGES, tabWidthFor } from './typeCode.js'
@@ -58,6 +58,7 @@ export function changeKeyboardMode(task, mode) {
   if (mode !== 'edit_text') for (const field of EDIT_TEXT_OPTIONS) delete next[field]
   if (mode !== 'type_code') for (const field of TYPE_CODE_OPTIONS) delete next[field]
   if (mode !== 'falling_words') for (const field of FALLING_OPTIONS) delete next[field]
+  if (!HISTORY_MODES.includes(mode)) delete next.showHistory
   if (mode === 'falling_words') {
     // A round has no items: just the words and how long it lasts.
     delete next.items
@@ -451,6 +452,23 @@ export default function KeyboardBuilderEditor({ task, onUpdate }) {
           </InlineField>
           <span className="te-act-note">
             Points only, no lives: the round always runs to the end. Needs a real keyboard.
+          </span>
+        </Field>
+      )}
+
+      {HISTORY_MODES.includes(mode) && (
+        <Field label="Typing history">
+          <label className="te-check-toggle">
+            <input
+              type="checkbox"
+              checked={task.showHistory === true}
+              onChange={(e) => setOptional('showHistory', e.target.checked ? true : undefined)}
+            />
+            Show each student their last and best score from earlier lessons
+          </label>
+          <span className="te-act-note">
+            Scores are kept for students the tutor has matched to the class list. Nothing shows
+            until a student has a score from an earlier lesson.
           </span>
         </Field>
       )}

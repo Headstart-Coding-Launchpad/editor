@@ -128,6 +128,8 @@ export default function StudentModal({
   sideQuestViewRequest = null,
   // Tutor-only: the class-list name this student is matched to (src/shared/roster/), or null.
   rosterName = null,
+  // Tutor-only: the matched student's saved typing entries, newest first (useTypingHistory).
+  typingEntries = null,
 }) {
   const overlayRef = useRef(null)
   const iframeRef = useRef(null)
@@ -1539,6 +1541,8 @@ export default function StudentModal({
                   answerEditing={supportsAnswerEdit && answerEditing}
                   onEditAnswer={(payload) => onTeacherAnswerEdit?.(student.anonymousId, payload)}
                   tileHighlights={shownTileHighlights}
+                  typingHistory={session?.typingHistory?.[student.anonymousId] ?? null}
+                  typingEntries={typingEntries}
                   onTileTargetTap={
                     supportsTileHighlight && tileHighlightMode && !answerEditing
                       ? handleTileHighlightTap

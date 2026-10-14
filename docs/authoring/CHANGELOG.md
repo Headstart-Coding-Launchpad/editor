@@ -39,6 +39,27 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-14
 
+### Keyboard typing history across lessons (`showHistory`)
+
+- Every finished Keyboard `type_text`, `type_code` and `falling_words` result is now kept across
+  lessons for students the tutor has matched to the class list (no lesson field needed): date,
+  lesson, mode, characters and words a minute, accuracy, corrections, time (and the falling-words
+  score). Unmatched students, and sessions with no class, keep nothing.
+- New optional Keyboard field `showHistory: true` (task-level on the three typing modes; per item
+  on `type_text` / `type_code`) shows the student "Last time: 62 cpm, 91% · Best: 75 cpm" beside
+  each item and, when they finish faster than their first lesson, "You went from 40 to 75
+  characters a minute." Hidden until the student has an earlier score. See
+  [keyboard.md](activities/keyboard.md#typing-history-showhistory).
+- Tutors see last / best on the student card and a Typing history list in the StudentModal; the
+  session report adds `tasks[].typingHistory` (`{ mode, cpm, accuracy, previousCpm,
+  previousAccuracy, bestCpm, firstCpm }`, anonymised;
+  [session-reports.md](session-reports.md#typing-history)).
+- Validation: an error for a non-boolean `showHistory`, a warning when it is set on a mode that
+  keeps no history ([validation-errors.md](validation-errors.md)).
+- Affects: keyboard activity, cli (capabilities) · Existing lessons: no changes needed (add
+  `showHistory: true` to timed challenges) · Resolves:
+  authoring-requests/2026-10-14-typing-history-speed-and-accuracy-across-lessons-on-the-stud.md
+
 ### Scratch test-checks: student-variation cases and Support stages
 
 - `lessons test-checks --cases` now takes Scratch cases: whole `blocks`, or a `stage` (a stage id

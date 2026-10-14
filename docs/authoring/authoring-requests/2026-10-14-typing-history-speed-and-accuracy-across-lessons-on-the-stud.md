@@ -1,6 +1,6 @@
 # Typing history: speed and accuracy across lessons on the student card
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-10-14
 - **Lessons blocked:** none yet
@@ -46,4 +46,9 @@ Proposed courses that need this (see `Lesson Info/Courses/Proposed Courses/Check
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped 2026-10-14 on `feature/typing-history` (package W3-b of the 2026-10-14 build plan). Activity: `keyboard`.
+
+- Tutor-mediated, on the class roster: the tutor's browser saves each matched student's finished `type_text`, `type_code` and `falling_words` results to `classes/{classId}/roster/{rosterId}/typing` (one entry per finished attempt; results from before the match are saved once matched). Unmatched students or "No class" save nothing.
+- New `showHistory` field (task, and per item on `type_text` / `type_code`): "Last time: 62 cpm, 91% · Best: 75 cpm" beside the item, and "You went from 40 to 75 characters a minute." after finishing. History is pushed to the student by the tutor (`sessions/{lessonId}/typingHistory/{anonymousId}`).
+- Tutor: card line and StudentModal "Typing history" list. Report: `tasks[].typingHistory` with the previous and best scores, anonymised. Admin → Classes → Students → Typing lists a student's scores.
+- Docs: [keyboard.md](../activities/keyboard.md#typing-history-showhistory), [session-reports.md](../session-reports.md#typing-history), CHANGELOG 2026-10-14.

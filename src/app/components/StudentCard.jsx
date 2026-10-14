@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { exampleOpenCount } from '../../shared/exampleOpens'
+import {
+  currentTypingScore,
+  formatTypingHistoryChip,
+  taskHistoryMode,
+  typingHistoryForMode,
+} from '../../shared/typingHistory'
 import { findTaskById, deriveTaskContext } from '../../shared/taskUtils'
 import { variablesCardSummary } from '../../shared/variablesPanel/predictions.js'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
@@ -160,6 +166,15 @@ export default function StudentCard({
       : null
   const activityState = isActivity ? readActivityAnswer(currentTask, student.currentAnswer) : null
   const activitySubmitted = isActivity && student.lastRunStatus === 'submitted'
+  // Typing history (src/shared/typingHistory.js): a matched student's last and best scores from
+  // earlier lessons on a keyboard typing task, beside this session's score so far.
+  const typingHistory = isActivity
+    ? typingHistoryForMode(
+        session?.typingHistory?.[student.anonymousId],
+        taskHistoryMode(currentTask)
+      )
+    : null
+  const typingNow = typingHistory ? currentTypingScore(currentTask, activityState) : null
   // The answer the student is typing but has not submitted (short answer, typed gaps), for this
   // task only (src/shared/answerDrafts.js). Never counted as an answer.
   const draftText = isActivity ? readAnswerDraft(student, currentTask?.id) : null
@@ -669,6 +684,19 @@ export default function StudentCard({
               {activitySummary?.text ?? 'Activity'}
             </span>
             <ActivityDeviceBadge state={activityState} />
+            {typingHistory && (
+              <span
+                style={s.typingHistoryChip}
+                title={`Typing history: last time ${typingHistory.last.cpm} cpm, ${Math.round(
+                  typingHistory.last.accuracy * 100
+                )}% · best ${typingHistory.best.cpm} cpm · first ${typingHistory.first.cpm} cpm${
+                  typingNow ? ` · now ${typingNow.cpm} cpm` : ''
+                }`}
+                data-testid="card-typing-history"
+              >
+                📈 {formatTypingHistoryChip(typingHistory)}
+              </span>
+            )}
           </div>
         )
       ) : hasConsoleOutput ? (
@@ -803,6 +831,13 @@ const s = {
   selectBoxOn: {
     background: 'var(--colour-primary)',
     borderColor: 'var(--colour-primary)',
+  },
+  typingHistoryChip: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.68rem',
+    fontWeight: 600,
+    color: 'var(--colour-muted)',
+    whiteSpace: 'nowrap',
   },
   rosterUnmatched: {
     fontFamily: 'var(--font-body)',

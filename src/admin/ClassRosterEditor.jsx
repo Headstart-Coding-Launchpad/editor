@@ -1,12 +1,51 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useAuth } from '../auth/useAuth'
 import { useClassRoster } from '../app/hooks/useClassRoster'
 import { ROSTER_NAME_MAX } from '../shared/roster/rosterModel'
 import {
   addRosterEntry,
   deleteRosterEntry,
+  listTyping,
   renameRosterEntry,
 } from '../shared/roster/rosterService'
+import { TYPING_HISTORY_LOAD_MAX } from '../shared/typingHistory'
+import { TypingHistoryTable } from '../app/components/student-modal/TypingHistoryPanel'
+
+// One student's saved typing scores (classes/{classId}/roster/{rosterId}/typing, newest first),
+// for progress conversations with parents. Loaded when opened.
+function RosterTypingHistory({ classId, entry }) {
+  const [state, setState] = useState({ loading: true, entries: [], error: null })
+  useEffect(() => {
+    let cancelled = false
+    listTyping(classId, entry.id, { max: TYPING_HISTORY_LOAD_MAX })
+      .then((entries) => {
+        if (!cancelled) setState({ loading: false, entries, error: null })
+      })
+      .catch((error) => {
+        if (!cancelled) setState({ loading: false, entries: [], error })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [classId, entry.id])
+  let body
+  if (state.loading) body = <p style={s.muted}>Loading typing scores…</p>
+  else if (state.error) {
+    body = <p style={s.error}>Couldn&rsquo;t load typing scores: {state.error.message}</p>
+  } else if (state.entries.length === 0) {
+    body = (
+      <p style={s.muted}>
+        No typing scores yet. They are saved from Keyboard typing tasks once the tutor matches{' '}
+        {entry.displayName} in a session.
+      </p>
+    )
+  } else body = <TypingHistoryTable entries={state.entries} />
+  return (
+    <div style={s.typing} data-testid={`roster-typing-${entry.id}`}>
+      {body}
+    </div>
+  )
+}
 
 // Admin → Classes: one class's roster (first name and initial, e.g. "Jamie B."). Tutors match
 // joined students to these names in a session; each matched student's work and typing scores are
@@ -19,6 +58,7 @@ export default function ClassRosterEditor({ cls }) {
   const [editName, setEditName] = useState('')
   const [status, setStatus] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [typingId, setTypingId] = useState(null)
 
   async function run(action, success) {
     setStatus(null)
@@ -138,6 +178,15 @@ export default function ClassRosterEditor({ cls }) {
                       type="button"
                       className="btn-ghost-outline"
                       style={s.btn}
+                      aria-expanded={typingId === entry.id}
+                      onClick={() => setTypingId(typingId === entry.id ? null : entry.id)}
+                    >
+                      Typing
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost-outline"
+                      style={s.btn}
                       disabled={busy}
                       onClick={() => handleDelete(entry)}
                     >
@@ -145,6 +194,9 @@ export default function ClassRosterEditor({ cls }) {
                     </button>
                   </span>
                 </>
+              )}
+              {typingId === entry.id && editingId !== entry.id && (
+                <RosterTypingHistory classId={cls.id} entry={entry} />
               )}
             </li>
           ))}
@@ -171,6 +223,7 @@ const s = {
     flexWrap: 'wrap',
   },
   name: { fontWeight: 600 },
+  typing: { flexBasis: '100%', overflowX: 'auto' },
   actions: { display: 'flex', gap: 6 },
   muted: { margin: 0, fontSize: '0.82rem', color: 'var(--colour-muted)' },
   error: { margin: 0, fontSize: '0.82rem', color: 'var(--colour-error-text)' },
