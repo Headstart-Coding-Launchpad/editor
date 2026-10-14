@@ -284,6 +284,7 @@ const basePayload = {
   taskId: 't1',
   arcadeDesign: null,
   turtleResult: null,
+  inspector: null,
   files: {},
   activeFile: '',
   output: '',

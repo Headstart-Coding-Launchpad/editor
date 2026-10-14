@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useHtmlInspector } from '../../modules/html/inspector/HtmlInspector'
 
 export default function IframePreview({
   src,
@@ -8,8 +9,20 @@ export default function IframePreview({
   leadingActions = null,
   rightActions = null,
   onConsoleError,
+  // HTML Inspector (src/modules/html/inspector): { config, live?, onLiveChange?, onUse? } — config
+  // from getInspectorConfig(task); `live` (a Go Live viewer) makes it follow that state read-only.
+  inspector = null,
 }) {
   const [tab, setTab] = useState('preview')
+  const inspectorUi = useHtmlInspector({
+    iframeRef,
+    src,
+    visible: tab === 'preview',
+    config: inspector?.config ?? null,
+    ...(inspector && 'live' in inspector ? { live: inspector.live } : {}),
+    onLiveChange: inspector?.onLiveChange,
+    onUse: inspector?.onUse,
+  })
   const [logs, setLogs] = useState([])
   const logEndRef = useRef(null)
 
@@ -75,17 +88,22 @@ export default function IframePreview({
           Console
           {errCount > 0 && <span style={s.badge}>{errCount}</span>}
         </button>
+        {tab === 'preview' && inspectorUi.button}
         {rightActions && <div style={s.trailingActions}>{rightActions}</div>}
       </div>
 
-      {/* Always rendered so the iframe doesn't reload on tab switch */}
-      <iframe
-        ref={iframeRef}
-        src={src ?? 'about:blank'}
-        style={{ ...s.frame, display: tab === 'preview' ? 'block' : 'none' }}
-        sandbox="allow-scripts allow-modals allow-same-origin"
-        title="Output preview"
-      />
+      {/* Always rendered so the iframe doesn't reload on tab switch. The wrapper positions the
+          Inspector layer over the iframe; the Inspector never adds anything inside the page. */}
+      <div style={{ ...s.frameWrap, display: tab === 'preview' ? 'flex' : 'none' }}>
+        <iframe
+          ref={iframeRef}
+          src={src ?? 'about:blank'}
+          style={s.frame}
+          sandbox="allow-scripts allow-modals allow-same-origin"
+          title="Output preview"
+        />
+        {inspectorUi.layer}
+      </div>
 
       {tab === 'console' && (
         <div style={s.consolePane}>
@@ -193,7 +211,14 @@ const s = {
     minWidth: 16,
     textAlign: 'center',
   },
+  frameWrap: {
+    position: 'relative',
+    flex: 1,
+    minHeight: 0,
+    flexDirection: 'column',
+  },
   frame: {
+    display: 'block',
     flex: 1,
     border: 'none',
     width: '100%',

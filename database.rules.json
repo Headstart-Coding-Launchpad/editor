@@ -103,6 +103,16 @@
               // The compact Turtle drawing (compactTurtleResultForSync), as currentTurtleResult.
               "turtleResult": { ".validate": "newData.hasChildren()" },
               "$other": { ".validate": false }
+            },
+            // HTML Inspector use per task for the session report ({ opens, selects, lastAt };
+            // src/shared/inspectorUse.js). Counts only, never page content.
+            "inspectorLog": {
+              "$taskId": {
+                "opens": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "selects": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "lastAt": { ".validate": "newData.isNumber()" },
+                "$other": { ".validate": false }
+              }
             }
           }
         },

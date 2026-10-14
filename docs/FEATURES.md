@@ -221,6 +221,13 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - Tutor view: a 🗺️ Side-quests panel under the task lists the current task's side-quests (title, kind, explainer, starter) with On it now / Done / Probably stuck counts (2 error runs in a row, or no Run for 5 minutes); clicking a count lists the students, and a student (or their card's 🗺️ chip) opens their StudentModal on a read-only Side-quest view (status, code, output/drawing/preview), switchable with Main task. Side-quest code reaches the tutor on every Run, and live while the tutor watches that student
 - The teacher's card shows "🗺️ on side-quest 2/3 · ✓1"; the session report lists each side-quest opened (runs, error runs, done); 🗺️ Side Quester is suggested after 2 (lesson-tunable) are marked done
 
+### HTML Inspector
+- On HTML tasks with `inspector` enabled, an **🔍 Inspect** button on the preview. Pointing at (or tapping) part of the page outlines it with labelled, colour-blind-safe bands for margin, border, padding and content with px sizes; clicking or tapping chooses it
+- A side panel (a bottom sheet on narrow screens; 44 px touch targets; screen-reader readable) shows the element's tag, id and classes; **Box** (the nested boxes and sizes), **Why this …?** (every rule that sets a chosen property, strongest first, the winner highlighted and each loser struck through with a plain-words reason: less specific, earlier in the file, overridden by !important, beaten by the style attribute, or inherited from a parent) and **Layout** (flex main/cross axes and gaps; grid lines and gaps, drawn over the page)
+- Drawn by the classroom over the preview; nothing is added to the student's page, so element checks are unchanged. The preview still only re-renders on Run, and the choice is found again after each Run
+- Go Live: the tutor's inspect mode, chosen element and property show on every student's screen. The tutor can inspect a student's page in the student modal. The session report records each student's use per task
+- Builder: Task options → HTML Inspector (start in inspect mode, pre-selected element, sections); the Builder preview has the Inspector too
+
 ### input() Support (Python)
 - Execution pauses; an inline input field appears in the output panel
 - Multiple sequential input calls handled in sequence
@@ -258,6 +265,7 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - Checks: type-filtered list with run/submit mode; tested/untested flag per check
 - Highlight a control (Task options, code tasks with controls): pick Run, Stop, a Scratch control or block category to pulse when the task opens (`highlight`)
 - Side-quests (Task options, Python/Turtle/HTML): up to three per code task, each a title, kind, Markdown explainer and starter
+- HTML Inspector (Task options, HTML): enable, start in inspect mode, pre-selected element and sections
 - Badge hints (authoring metadata): toggle which live badges this task may also suggest (`badgeHints.suggest`, pattern badges only) or never suggest (`badgeHints.suppress`), with a read-only note of the badges the task's `taskActivity` pattern already triggers
 
 ### Scratch Tools

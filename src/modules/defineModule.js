@@ -81,6 +81,8 @@ export const OPTIONAL_CAPABILITY_BOOLEANS = Object.freeze([
   // student passes it (src/shared/sideQuests.js; python, turtle, html)
   'typingStats', // the student's keystrokes in the shared code editor feed the session report's
   // `typing` measures (useStudentTypingStats; python, turtle, html)
+  'previewInspector', // a task's `inspector` field adds the HTML Inspector to the preview
+  // (src/modules/html/inspector; html)
 ])
 // How the student reaches a task's code stages on their own (StudentView, LessonTaskContent):
 // - 'progressive' reveals support stages as read-only references and previews the complete

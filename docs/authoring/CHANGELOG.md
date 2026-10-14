@@ -39,6 +39,25 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-14
 
+### HTML Inspector: box model, "Why this …?" and flex/grid overlays
+
+- New optional HTML task field `inspector: { enabled: true, open?, focus?, show? }` adds an
+  **Inspect** button to the preview. Off unless `enabled: true`. `open: true` starts in inspect
+  mode; `focus` (a CSS selector) pre-selects an element; `show` picks the panel sections, any of
+  `box`, `cascade`, `layout` (default: all three). See [html.md](html.md#html-inspector).
+- Students point at (or tap) part of the page to see labelled margin, border, padding and content
+  bands with px sizes. The panel explains the cascade in plain words (less specific, earlier in
+  the file, overridden by !important, inherited from …), and draws flex axes, gaps and grid
+  lines. No new checks: the Inspector never changes the page, so `html_*` checks are unchanged.
+- The tutor's inspect state syncs in Go Live, and the session report adds a per-student
+  `inspector` (`{ used, opens, selects }`) and the summary's `inspectorUsedCount`
+  ([session-reports.md](session-reports.md)).
+- Validation: errors for a malformed `inspector`, warnings for unknown keys, a missing
+  `enabled: true`, a submit-mode task, or `inspector` on a non-HTML task
+  ([validation-errors.md](validation-errors.md)).
+- Affects: html, cli · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-14-p6-5-html-inspector-box-model-cascade-and-layout-overlays.md
+
 ### Feedback checks match when their check passes (docs fix)
 
 - **Docs fix, no behaviour change.** A `feedbackChecks` entry matches when its check **passes**,

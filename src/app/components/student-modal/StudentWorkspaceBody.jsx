@@ -11,6 +11,7 @@ import { readActivityAnswer, studentStateField } from '../../../activities/state
 import { HIGHLIGHT_EMOJI_OPTIONS } from './constants'
 import { readAnswerDraft } from '../../../shared/answerDrafts'
 import { getMirrorLineHintSets } from './mirrorLineHints'
+import { getInspectorConfig } from '../../../modules/html/inspector/config'
 
 function answerKey(value) {
   return typeof value === 'string' ? value : JSON.stringify(value ?? null)
@@ -350,6 +351,7 @@ export default function StudentWorkspaceBody({
     )
   }
 
+  const inspectorConfig = mirror === 'files' ? getInspectorConfig(task) : null
   if (mirror === 'files')
     return (
       <>
@@ -392,7 +394,13 @@ export default function StudentWorkspaceBody({
         </div>
         {task?.interactionMode !== 'submit' && (
           <div style={s.iframePane}>
-            <IframePreview src={iframeSrc} iframeRef={iframeRef} fill />
+            {/* The tutor can inspect the student's page too (task `inspector`); never synced. */}
+            <IframePreview
+              src={iframeSrc}
+              iframeRef={iframeRef}
+              fill
+              inspector={inspectorConfig ? { config: { ...inspectorConfig, open: false } } : null}
+            />
           </div>
         )}
       </>

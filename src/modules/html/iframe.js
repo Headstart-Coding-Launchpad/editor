@@ -1,3 +1,5 @@
+import { rememberPreviewFileName } from './inspector/previewFileNames.js'
+
 // Injected into every iframe HTML to relay console output to the parent via postMessage.
 // Parameterised per-load with `loadId` so the parent can match a runtime error
 // back to the specific buildIframeSrc() call it came from (see
@@ -61,6 +63,7 @@ export function buildIframeSrc(
     const mime = getMime(file.type || file.name)
     const blob = new Blob([file.content], { type: mime })
     blobUrls[file.name] = URL.createObjectURL(blob)
+    rememberPreviewFileName(blobUrls[file.name], file.name)
   }
 
   // Find entry HTML file
@@ -85,6 +88,7 @@ export function buildIframeSrc(
   // Return new Blob URL for the rewritten HTML
   const rewrittenBlob = new Blob([injected.html], { type: 'text/html' })
   const src = URL.createObjectURL(rewrittenBlob)
+  rememberPreviewFileName(src, entry.name)
 
   // Non-entry files (e.g. external .js) are served from their own blob with
   // unmodified content/line numbers, so a reported error's filename matching

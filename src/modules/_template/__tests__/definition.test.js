@@ -64,7 +64,11 @@ describe('Template Module definition', () => {
       meta: { output: '', runStatus: 'success' },
     })
     expect(wire.fromCode(wire.toCode('say hi'))).toBe('say hi')
-    expect(wire.liveExtras({})).toEqual({ arcadeDesign: null, turtleResult: null })
+    expect(wire.liveExtras({})).toEqual({
+      arcadeDesign: null,
+      turtleResult: null,
+      inspector: null,
+    })
   })
 
   it('checks the work with the core code checks', () => {

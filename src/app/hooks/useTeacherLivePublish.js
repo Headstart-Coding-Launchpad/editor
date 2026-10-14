@@ -24,6 +24,8 @@ export function useTeacherLivePublish({
   // today) publishes.
   codeRef,
   turtleResultRef,
+  // The HTML Inspector's Go Live state (useHtmlInspectorLive), for the html wire's liveExtras.
+  inspectorRef = null,
   filesRef,
   activeFileRef,
   outputRef,
@@ -93,10 +95,13 @@ export function useTeacherLivePublish({
     // teacherLive is an update() merge, so every module sends both extras (explicit nulls
     // for the ones it doesn't have) — see each definition's wire.liveExtras. A module's own
     // extras come with its work (Arcade's design); Turtle's drawing is a run result.
-    const { arcadeDesign, turtleResult } = (definition?.wire.liveExtras ?? noLiveExtras)({
-      turtleResult: turtleResultRef?.current,
-      ...stored?.meta,
-    })
+    const { arcadeDesign, turtleResult, inspector } = (definition?.wire.liveExtras ?? noLiveExtras)(
+      {
+        turtleResult: turtleResultRef?.current,
+        inspector: inspectorRef?.current ?? null,
+        ...stored?.meta,
+      }
+    )
     const filesMap = !isWorkSlot
       ? Object.fromEntries(filesRef.current.map((f) => [f.name, f.content]))
       : onFilesChannel
@@ -119,6 +124,7 @@ export function useTeacherLivePublish({
       code: isWorkSlot ? slotCode : codeRef.current,
       arcadeDesign,
       turtleResult,
+      inspector: inspector ?? null,
       files: filesMap,
       // A files module's own active file; no other module has one (never a leftover).
       activeFile: !isWorkSlot
