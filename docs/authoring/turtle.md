@@ -623,10 +623,8 @@ write the code that drives it. Grid courses only.
   30). **Use this map** writes the map into the code as `turtle.course_map("""…""")`, replacing
   the map already there, or adding the call straight after `import turtle`. It is offered on
   every device, only on `studentMap` tasks.
-- **Line hints clash:** in starter code, a map row whose text starts with `#>` (the start just
-  inside the left wall, facing east) reads as a [line hint](#line-hints) and is taken out before
-  students see it. Validation warns. Face that start with `^` or `v`, or move it one square in.
-  (Students' own code isn't affected.)
+- **Map rows are never line hints:** a row such as `#>....G#` inside the `"""…"""` string stays
+  in the code; [line hints](#line-hints) are only read outside triple-quoted strings.
 - Tutor views, Go Live and the session report work as for any course: every screen draws the
   student's map from the run.
 

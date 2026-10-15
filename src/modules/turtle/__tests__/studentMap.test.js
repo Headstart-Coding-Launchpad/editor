@@ -286,7 +286,7 @@ describe('validation', () => {
     ])
   })
 
-  it('warns when a starter map row starts with #> (a line hint marker)', () => {
+  it('does not warn about a starter map row that starts with #> (it is not a line hint)', () => {
     const { warnings } = validate(
       { type: 'grid', map: AUTHORED, studentMap: true },
       {
@@ -295,7 +295,6 @@ describe('validation', () => {
         ],
       }
     )
-    expect(warnings).toHaveLength(1)
-    expect(warnings[0]).toMatch(/^Task 2 code stage 1: a course_map\(\) map row starts with #>/)
+    expect(warnings).toEqual([])
   })
 })
