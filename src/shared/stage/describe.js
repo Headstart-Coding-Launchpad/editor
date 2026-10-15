@@ -1,8 +1,9 @@
 // Words for the Python Stage: a screen-reader description of a drawing (the shapes, the text
 // and the grid size) and a comparison summary for the diff view. Colours are always named in
 // words, so nothing relies on colour alone. Pure.
-import { STAGE_SIZE, visibleCommands } from './commands.js'
+import { STAGE_CENTRE, STAGE_SIZE, visibleCommands } from './commands.js'
 import { describeHex } from './colours.js'
+import { angleOf, fillOf, opacityOf, outlineOf } from './geometry.js'
 
 // The description lists at most this many things, then says how many more there are.
 export const MAX_DESCRIBED_ITEMS = 25
@@ -22,18 +23,110 @@ function coloured(noun, hex) {
   return `${/^[aeiou]/i.test(words) ? 'an' : 'a'} ${words} ${noun}`
 }
 
+function article(words) {
+  return /^[aeiou]/i.test(words) ? 'an' : 'a'
+}
+
+// 'in the middle', or 'at x 100, y 80' (`centred` adds 'centred' before 'at').
+function where(command, { centred = false } = {}) {
+  if (Math.abs(command.x - STAGE_CENTRE) < 0.5 && Math.abs(command.y - STAGE_CENTRE) < 0.5) {
+    return 'in the middle'
+  }
+  return `${centred ? 'centred ' : ''}at x ${n(command.x)}, y ${n(command.y)}`
+}
+
+const POLYGON_NAMES = {
+  3: 'triangle',
+  4: 'diamond',
+  5: 'pentagon',
+  6: 'hexagon',
+  7: 'heptagon',
+  8: 'octagon',
+  9: 'nonagon',
+  10: 'decagon',
+}
+
+// The shape's noun: 'square', 'hexagon', '12-sided shape'.
+function shapeNoun(command) {
+  switch (command.type) {
+    case 'rect':
+      return 'rectangle'
+    case 'polygon':
+      return POLYGON_NAMES[command.sides] ?? `${n(command.sides)}-sided shape`
+    default:
+      return command.type
+  }
+}
+
+// 'a red square', 'a red square outline' (colour=None), with 'with a black outline' when both.
+function shapeHead(command) {
+  const noun = shapeNoun(command)
+  const fill = fillOf(command)
+  const outline = outlineOf(command)
+  if (!fill) return coloured(`${noun} outline`, outline)
+  const head = coloured(noun, fill)
+  if (!outline) return head
+  const words = describeHex(outline)
+  return words.startsWith('a colour')
+    ? `${head} with an outline in ${words}`
+    : `${head} with ${article(words)} ${words} outline`
+}
+
+// ', turned 45°', ', see-through (opacity 0.5)': only what differs from the defaults.
+function styleWords(command) {
+  const parts = []
+  const angle = angleOf(command)
+  if (angle) parts.push(`turned ${n(angle)}°`)
+  const opacity = opacityOf(command)
+  if (opacity <= 0) parts.push('invisible (opacity 0)')
+  else if (opacity < 1) parts.push(`see-through (opacity ${Math.round(opacity * 100) / 100})`)
+  return parts
+}
+
+function joined(...parts) {
+  return parts.flat().filter(Boolean).join(', ')
+}
+
 export function describeCommand(command) {
   switch (command?.type) {
     case 'rect':
-      return `${coloured('rectangle', command.colour)} at x ${n(command.x)}, y ${n(command.y)}, ${n(command.w)} wide and ${n(command.h)} tall`
+      return joined(
+        shapeHead(command),
+        `${n(command.w)} wide and ${n(command.h)} tall`,
+        styleWords(command),
+        where(command)
+      )
+    case 'square':
+      return joined(
+        shapeHead(command),
+        `size ${n(command.size)}`,
+        styleWords(command),
+        where(command)
+      )
     case 'circle':
-      return `${coloured('circle', command.colour)} centred at x ${n(command.x)}, y ${n(command.y)}, radius ${n(command.r)}`
+      return joined(
+        shapeHead(command),
+        `radius ${n(command.r)}`,
+        styleWords(command),
+        where(command)
+      )
+    case 'polygon':
+      return joined(
+        shapeHead(command),
+        `${n(command.sides)} sides`,
+        `size ${n(command.size)}`,
+        styleWords(command),
+        where(command)
+      )
     case 'line':
-      return `${coloured('line', command.colour)} from x ${n(command.x1)}, y ${n(command.y1)} to x ${n(command.x2)}, y ${n(command.y2)}`
+      return joined(
+        `${coloured('line', command.colour)} from x ${n(command.x1)}, y ${n(command.y1)} to x ${n(command.x2)}, y ${n(command.y2)}`,
+        styleWords(command)
+      )
     case 'text':
-      return `the text ${quote(command.text)} in ${describeHex(command.colour)} at x ${n(command.x)}, y ${n(command.y)}`
+      return `${joined(`the text ${quote(command.text)} in ${describeHex(command.colour)}`, styleWords(command))} ${where(command, { centred: true })}`
     case 'stamp':
-      return `the emoji ${command.emoji} at x ${n(command.x)}, y ${n(command.y)}`
+      return `${joined(`the emoji ${command.emoji}`, styleWords(command))} ${where(command)}`
     case 'grid': {
       const rows = command.cells?.length ?? 0
       const cols = Math.max(0, ...(command.cells ?? []).map((row) => row?.length ?? 0))

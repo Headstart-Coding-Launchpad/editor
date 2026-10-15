@@ -58,6 +58,36 @@ describe('findScrubLiterals: python', () => {
     expect(colours[1]).toMatchObject({ hex: '#ff0000', style: 'hex', upper: true, short: false })
     expect(texts("fill('hello')", 'python')).toEqual([])
   })
+
+  it('gives Stage angle=, opacity=, light= and hue() numbers their natural ranges', () => {
+    const line = "square(i * 8, angle=i * 9, colour=hue(i * 9, light=60), opacity=1, outline='red')"
+    const literals = findScrubLiterals(line, 'python')
+    const numbers = literals.filter((literal) => literal.kind === 'number')
+    expect(numbers.map((n) => [n.text, n.range ?? null])).toEqual([
+      ['8', null],
+      ['9', null],
+      ['9', { min: 0, max: 360 }],
+      ['60', { min: 0, max: 100 }],
+      ['1', { min: 0, max: 1 }],
+    ])
+    // `angle=i * 9`: only a number right after angle= is the angle.
+    expect(findScrubLiterals('square(80, angle=45)', 'python')[1].range).toEqual({
+      min: 0,
+      max: 360,
+    })
+    // A whole-number opacity scrubs in tenths.
+    const opacity = numbers[4]
+    expect(numberStep(opacity)).toBe(0.1)
+    expect(defaultScrubRange(opacity)).toEqual({ min: 0, max: 1 })
+    expect(defaultScrubRange({ value: 400, decimals: 0, range: { min: 0, max: 360 } })).toEqual({
+      min: 0,
+      max: 400,
+    })
+    // outline= colours scrub like any colour.
+    expect(literals.filter((literal) => literal.kind === 'colour').map((c) => c.text)).toEqual([
+      'red',
+    ])
+  })
 })
 
 describe('findScrubLiterals: css', () => {

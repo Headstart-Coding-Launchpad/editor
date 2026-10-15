@@ -69,8 +69,8 @@ describe('scrubPreviewMode', () => {
   const turtle = { liveRerun: 'preview', needsImport: null, inputCall: 'input' }
 
   it('re-runs drawing programs live', () => {
-    expect(scrubPreviewMode(python, 'from stage import *\nrect(1, 2, 3, 4)')).toBe('preview')
-    expect(scrubPreviewMode(python, 'import stage\nstage.circle(5, 5, 5)')).toBe('preview')
+    expect(scrubPreviewMode(python, 'from stage import *\nrect(120, 60)')).toBe('preview')
+    expect(scrubPreviewMode(python, 'import stage\nstage.circle(50)')).toBe('preview')
     expect(scrubPreviewMode(turtle, 'import turtle\nturtle.forward(100)')).toBe('preview')
     expect(
       scrubPreviewMode({ liveRerun: 'preview', needsImport: null, inputCall: null }, '<p></p>')

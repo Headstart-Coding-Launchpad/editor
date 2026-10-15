@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { describeComparison, describeStage, MAX_DESCRIBED_ITEMS } from '../describe.js'
+import {
+  describeCommand,
+  describeComparison,
+  describeStage,
+  MAX_DESCRIBED_ITEMS,
+} from '../describe.js'
 import { compareStages } from '../raster.js'
 
 describe('describeStage', () => {
@@ -28,12 +33,50 @@ describe('describeStage', () => {
     ])
     expect(text).toBe(
       'Stage, 400 by 400. Background: navy. 5 things drawn: ' +
-        'an orange circle centred at x 200, y 200, radius 50; ' +
-        'a rectangle in a colour close to red (#ff1010) at x 10, y 20, 30 wide and 40 tall; ' +
-        'the text "Score: 3" in white at x 5, y 6; ' +
+        'an orange circle, radius 50, in the middle; ' +
+        'a rectangle in a colour close to red (#ff1010), 30 wide and 40 tall, at x 10, y 20; ' +
+        'the text "Score: 3" in white centred at x 5, y 6; ' +
         'the emoji ⭐ at x 100, y 100; ' +
         'a pixel grid of 2 rows by 3 columns in white and red.'
     )
+  })
+
+  it('says how a shape is turned, faded and outlined', () => {
+    expect(
+      describeCommand({ type: 'square', x: 200, y: 200, size: 80, colour: '#ff0000', angle: 45 })
+    ).toBe('a red square, size 80, turned 45°, in the middle')
+    expect(
+      describeCommand({
+        type: 'polygon',
+        x: 100,
+        y: 80,
+        sides: 6,
+        size: 60,
+        colour: '#008080',
+        opacity: 0.5,
+        outline: '#000000',
+        width: 2,
+      })
+    ).toBe(
+      'a teal hexagon with a black outline, 6 sides, size 60, see-through (opacity 0.5), at x 100, y 80'
+    )
+    expect(
+      describeCommand({
+        type: 'circle',
+        x: 200,
+        y: 200,
+        r: 50,
+        colour: null,
+        outline: '#ff0000',
+        width: 2,
+      })
+    ).toBe('a red circle outline, radius 50, in the middle')
+    expect(
+      describeCommand({ type: 'polygon', x: 200, y: 200, sides: 12, size: 40, colour: '#4169e1' })
+    ).toBe('a royal blue 12-sided shape, 12 sides, size 40, in the middle')
+    expect(
+      describeCommand({ type: 'stamp', emoji: '⭐', x: 200, y: 200, size: 32, angle: 90 })
+    ).toBe('the emoji ⭐, turned 90° in the middle')
   })
 
   it('describes only what is left after clear() and caps the list', () => {
@@ -58,7 +101,7 @@ describe('describeStage', () => {
 })
 
 describe('describeComparison', () => {
-  const target = [{ type: 'rect', x: 0, y: 0, w: 200, h: 200, colour: '#ff0000' }]
+  const target = [{ type: 'rect', x: 100, y: 100, w: 200, h: 200, colour: '#ff0000' }]
 
   it('celebrates a match', () => {
     expect(describeComparison(compareStages(target, target), { matches: true })).toBe(

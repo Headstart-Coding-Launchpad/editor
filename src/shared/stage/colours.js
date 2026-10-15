@@ -99,6 +99,31 @@ export function rgbToHex([r, g, b]) {
   return `#${[r, g, b].map((n) => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0')).join('')}`
 }
 
+/**
+ * A colour round the colour wheel as '#rrggbb': hue(0) red, hue(120) green (lime), hue(240)
+ * blue, wrapping every 360 (negative numbers too). `light` (0 black … 50 full colour … 100
+ * white) gives paler or darker shades. Full saturation (HSL). Shared by the stage module's
+ * hue() (through the worker's __hsStageHue bridge) so Python and the tests agree.
+ */
+export function hueColour(n, light = 50) {
+  const h = (((Number(n) % 360) + 360) % 360) / 360
+  const l = Math.max(0, Math.min(100, Number(light))) / 100
+  const q = l < 0.5 ? l * 2 : 1
+  const p = 2 * l - q
+  const channel = (t) => {
+    let k = t
+    if (k < 0) k += 1
+    if (k > 1) k -= 1
+    if (k < 1 / 6) return p + (q - p) * 6 * k
+    if (k < 1 / 2) return q
+    if (k < 2 / 3) return p + (q - p) * (2 / 3 - k) * 6
+    return p
+  }
+  return rgbToHex(
+    [channel(h + 1 / 3), channel(h), channel(h - 1 / 3)].map((v) => Math.round(v * 255))
+  )
+}
+
 // Two colours count as the same when every channel is within this much (anti-aliasing,
 // near-identical hex codes).
 export const COLOUR_TOLERANCE = 8
@@ -151,6 +176,7 @@ const SPOKEN_NAMES = {
   lightgreen: 'light green',
   skyblue: 'sky blue',
   hotpink: 'hot pink',
+  royalblue: 'royal blue',
 }
 
 /**

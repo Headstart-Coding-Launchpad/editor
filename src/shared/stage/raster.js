@@ -1,9 +1,23 @@
 // Pure-JS rasteriser for the Python Stage (no canvas: jsdom tests and the Node CLI have none).
 // Shapes are sampled at cell centres onto a square grid (100 × 100 by default, so one cell is
-// 4 × 4 stage pixels). Text and emoji are NOT rasterised: they are compared by command (the
+// 4 × 4 stage pixels), as drawn: turned shapes and polygons by their real outline
+// (./geometry.js), outlines on top of fills, and see-through shapes (opacity) blended with what
+// is under them. Text and emoji are NOT rasterised: they are compared by command (the
 // same words or emoji at about the same place), since font rendering differs between devices.
 import { STAGE_BACKGROUND, STAGE_SIZE, visibleCommands } from './commands.js'
 import { coloursMatch, hexToRgb, rgbToHex } from './colours.js'
+import {
+  HIT_EDGE,
+  HIT_FILL,
+  distanceToSegment,
+  fillOf,
+  isFilledShape,
+  opacityOf,
+  outlineOf,
+  outlineWidthOf,
+  shapeHitTest,
+  shapeReach,
+} from './geometry.js'
 
 export const DEFAULT_RESOLUTION = 100
 // Text and emoji count as "the same place" within this many stage pixels on each axis.
@@ -18,6 +32,15 @@ function packHex(hex) {
 
 function unpack(value) {
   return rgbToHex([(value >> 16) & 255, (value >> 8) & 255, value & 255])
+}
+
+// `top` laid over `base` (packed RGB) at `alpha` (0–1), as a canvas blends a see-through fill.
+function blend(base, top, alpha) {
+  if (alpha >= 1) return top
+  if (alpha <= 0) return base
+  const mix = (shift) =>
+    Math.round(((base >> shift) & 255) * (1 - alpha) + ((top >> shift) & 255) * alpha)
+  return (mix(16) << 16) | (mix(8) << 8) | mix(0)
 }
 
 function clampIndex(value, resolution) {
@@ -47,44 +70,56 @@ function paintRect(cells, resolution, x, y, w, h, colour) {
   if (!painted) paintPoint(cells, resolution, x + w / 2, y + h / 2, colour)
 }
 
-function paintPoint(cells, resolution, x, y, colour) {
+function paintPoint(cells, resolution, x, y, colour, alpha = 1) {
   if (x < 0 || y < 0 || x >= STAGE_SIZE || y >= STAGE_SIZE) return
   const scale = STAGE_SIZE / resolution
-  cells[Math.floor(y / scale) * resolution + Math.floor(x / scale)] = colour
+  const index = Math.floor(y / scale) * resolution + Math.floor(x / scale)
+  cells[index] = blend(cells[index], colour, alpha)
 }
 
-function paintCircle(cells, resolution, x, y, r, colour) {
-  if (!(r > 0)) return
+// A filled shape (rect, square, circle, polygon), turned and see-through as drawn: the fill,
+// then the outline band on top. The outline band is at least half a cell wide either side of
+// the edge so a thin outline still shows on the grid. A shape too small to cover any cell
+// centre paints the one cell under its middle.
+function paintShape(cells, resolution, command) {
+  const fill = fillOf(command)
+  const outline = outlineOf(command)
+  if (!fill && !outline) return
   const scale = STAGE_SIZE / resolution
-  const i0 = clampIndex(Math.floor((x - r) / scale), resolution)
-  const i1 = clampIndex(Math.ceil((x + r) / scale), resolution)
-  const j0 = clampIndex(Math.floor((y - r) / scale), resolution)
-  const j1 = clampIndex(Math.ceil((y + r) / scale), resolution)
-  const r2 = r * r
+  const alpha = opacityOf(command)
+  const fillPacked = fill ? packHex(fill) : 0
+  const outlinePacked = outline ? packHex(outline) : 0
+  const hit = shapeHitTest(command, { minHalf: outline ? scale / 2 : 0 })
+  const reach = shapeReach(command) + (outline ? Math.max(outlineWidthOf(command) / 2, scale) : 0)
+  const i0 = clampIndex(Math.floor((command.x - reach) / scale), resolution)
+  const i1 = clampIndex(Math.ceil((command.x + reach) / scale), resolution)
+  const j0 = clampIndex(Math.floor((command.y - reach) / scale), resolution)
+  const j1 = clampIndex(Math.ceil((command.y + reach) / scale), resolution)
   let painted = false
   for (let j = j0; j <= j1; j++) {
-    const dy = (j + 0.5) * scale - y
+    const cy = (j + 0.5) * scale
     for (let i = i0; i <= i1; i++) {
-      const dx = (i + 0.5) * scale - x
-      if (dx * dx + dy * dy > r2) continue
-      cells[j * resolution + i] = colour
-      painted = true
+      const mask = hit((i + 0.5) * scale, cy)
+      if (!mask) continue
+      const index = j * resolution + i
+      if (fill && mask & HIT_FILL) {
+        cells[index] = blend(cells[index], fillPacked, alpha)
+        painted = true
+      }
+      if (outline && mask & HIT_EDGE) {
+        cells[index] = blend(cells[index], outlinePacked, alpha)
+        painted = true
+      }
     }
   }
-  if (!painted) paintPoint(cells, resolution, x, y, colour)
-}
-
-function distanceToSegment(px, py, x1, y1, x2, y2) {
-  const dx = x2 - x1
-  const dy = y2 - y1
-  const lengthSq = dx * dx + dy * dy
-  const t =
-    lengthSq === 0 ? 0 : Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lengthSq))
-  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
+  if (!painted && alpha > 0) {
+    paintPoint(cells, resolution, command.x, command.y, fill ? fillPacked : outlinePacked, alpha)
+  }
 }
 
 function paintLine(cells, resolution, command, colour) {
   const { x1, y1, x2, y2 } = command
+  const alpha = opacityOf(command)
   const scale = STAGE_SIZE / resolution
   // At least half a cell wide, so a thin line always shows up on the grid.
   const half = Math.max((Number(command.width) || 2) / 2, scale / 2)
@@ -96,7 +131,9 @@ function paintLine(cells, resolution, command, colour) {
     const cy = (j + 0.5) * scale
     for (let i = i0; i <= i1; i++) {
       const cx = (i + 0.5) * scale
-      if (distanceToSegment(cx, cy, x1, y1, x2, y2) <= half) cells[j * resolution + i] = colour
+      if (distanceToSegment(cx, cy, x1, y1, x2, y2) <= half) {
+        cells[j * resolution + i] = blend(cells[j * resolution + i], colour, alpha)
+      }
     }
   }
 }
@@ -128,26 +165,16 @@ export function rasteriseStage(commands, resolution = DEFAULT_RESOLUTION) {
   const cells = new Int32Array(resolution * resolution).fill(WHITE)
   for (const command of Array.isArray(commands) ? commands : []) {
     if (!command || typeof command !== 'object') continue
+    if (isFilledShape(command)) {
+      paintShape(cells, resolution, command)
+      continue
+    }
     switch (command.type) {
       case 'clear':
         cells.fill(WHITE)
         break
       case 'background':
         cells.fill(packHex(command.colour))
-        break
-      case 'rect':
-        paintRect(
-          cells,
-          resolution,
-          command.x,
-          command.y,
-          command.w,
-          command.h,
-          packHex(command.colour)
-        )
-        break
-      case 'circle':
-        paintCircle(cells, resolution, command.x, command.y, command.r, packHex(command.colour))
         break
       case 'line':
         paintLine(cells, resolution, command, packHex(command.colour))
@@ -171,45 +198,43 @@ export function rasterColourAt(raster, x, y) {
 }
 
 /**
- * The colour on the stage at point (x, y): the last shape covering it wins (text and emoji are
- * ignored), white when nothing does. Exact geometry, no grid.
+ * The colour on the stage at point (x, y): shapes covering it are laid on in order (the last
+ * solid one wins; see-through ones blend), text and emoji are ignored, white when nothing
+ * covers it. Exact geometry, no grid.
  */
 export function stageColourAt(commands, x, y) {
-  let colour = STAGE_BACKGROUND
+  let colour = packHex(STAGE_BACKGROUND)
   for (const command of Array.isArray(commands) ? commands : []) {
     if (!command || typeof command !== 'object') continue
+    if (isFilledShape(command)) {
+      const mask = shapeHitTest(command, { minHalf: 0.5 })(x, y)
+      const alpha = opacityOf(command)
+      const fill = fillOf(command)
+      const outline = outlineOf(command)
+      if (fill && mask & HIT_FILL) colour = blend(colour, packHex(fill), alpha)
+      if (outline && mask & HIT_EDGE) colour = blend(colour, packHex(outline), alpha)
+      continue
+    }
     switch (command.type) {
       case 'clear':
-        colour = STAGE_BACKGROUND
+        colour = packHex(STAGE_BACKGROUND)
         break
       case 'background':
-        colour = command.colour
-        break
-      case 'rect':
-        if (
-          x >= command.x &&
-          x < command.x + command.w &&
-          y >= command.y &&
-          y < command.y + command.h
-        )
-          colour = command.colour
-        break
-      case 'circle':
-        if (Math.hypot(x - command.x, y - command.y) <= command.r) colour = command.colour
+        colour = packHex(command.colour)
         break
       case 'line':
         if (
           distanceToSegment(x, y, command.x1, command.y1, command.x2, command.y2) <=
           Math.max((Number(command.width) || 2) / 2, 0.5)
         )
-          colour = command.colour
+          colour = blend(colour, packHex(command.colour), opacityOf(command))
         break
       case 'grid': {
         const col = Math.floor((x - command.x) / command.cell)
         const row = Math.floor((y - command.y) / command.cell)
         const index = command.cells?.[row]?.[col]
         if (col >= 0 && row >= 0 && index >= 0 && command.colours?.[index]) {
-          colour = command.colours[index]
+          colour = packHex(command.colours[index])
         }
         break
       }
@@ -217,7 +242,7 @@ export function stageColourAt(commands, x, y) {
         break
     }
   }
-  return colour
+  return unpack(colour)
 }
 
 // Text and emoji on the stage (after the last clear) as comparable items.

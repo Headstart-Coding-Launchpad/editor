@@ -73,7 +73,7 @@ import {
 } from '../turtle/engine.js'
 import { VARIABLE_CAPTURE_PY } from './variableCapture.py.js'
 import { STAGE_INSTALL_PY, STAGE_MODULE_PY } from '../../shared/stage/stagePy.js'
-import { createStageRecorder } from '../../shared/stage/commands.js'
+import { createStageRecorder, readStageCallPayload, stageHue } from '../../shared/stage/commands.js'
 import { PYTHON_SLOW_MO_MAX_STEPS } from './slowMo/config.js'
 
 const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
@@ -600,13 +600,27 @@ globalThis.__hsGpioSleep = async (seconds) => {
 // ─── Stage bridge (see ../../shared/stage/) ─────────────────────────────────────
 // One call of the `stage` module: '' when it drew, or 'Kind|message' for Python to raise.
 globalThis.__hsStageCall = (name, argsJson) => {
-  let args = []
+  let payload = null
   try {
-    args = JSON.parse(String(argsJson))
+    payload = JSON.parse(String(argsJson))
   } catch {
     return `ValueError|${String(name)}(): those values can't be drawn`
   }
-  return _stageRecorder.call(String(name), args)
+  const { args, kwargs } = readStageCallPayload(payload)
+  return _stageRecorder.call(String(name), args, kwargs)
+}
+
+// hue(n, light=50): 'ok|#rrggbb', or 'Kind|message' for Python to raise. Draws nothing.
+globalThis.__hsStageHue = (argsJson) => {
+  let payload = null
+  try {
+    payload = JSON.parse(String(argsJson))
+  } catch {
+    return 'ValueError|hue(): use an ordinary number, like hue(120)'
+  }
+  const { args, kwargs } = readStageCallPayload(payload)
+  const { value, error } = stageHue(args, kwargs)
+  return error ? `${error.kind}|${error.message}` : `ok|${value}`
 }
 
 // ─── Turtle bridge (see ../turtle/shim.js and ../turtle/engine.js) ────────────

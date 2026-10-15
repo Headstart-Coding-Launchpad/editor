@@ -164,8 +164,50 @@ function pythonNumbers(line, from, to, out) {
       litStart = start - 1
     }
     const literal = numberLiteral(litStart, line.slice(litStart, end))
-    if (literal) out.push(literal)
+    if (literal) out.push(withStageRange(line, literal))
   }
+}
+
+// The name of the call whose brackets hold column `at` on the line (`hue` in `hue(i * 9)`), or
+// null when it isn't inside one.
+function enclosingCallName(line, at) {
+  let depth = 0
+  for (let k = at - 1; k >= 0; k--) {
+    const ch = line[k]
+    if (ch === ')') depth += 1
+    else if (ch === '(') {
+      if (depth === 0) {
+        const name = line.slice(0, k).match(/([A-Za-z_][\w.]*)\s*$/)
+        return name ? name[1].split('.').pop() : null
+      }
+      depth -= 1
+    }
+  }
+  return null
+}
+
+// Python Stage values with a natural range (docs/authoring/python.md "Stage"): a turn in
+// degrees, an opacity, a hue() number and its light=.
+const STAGE_KEYWORD_RANGES = {
+  angle: { min: 0, max: 360 },
+  opacity: { min: 0, max: 1 },
+  light: { min: 0, max: 100 },
+}
+
+/**
+ * A Python number literal with its Stage range (`range`) when it is the value of angle=,
+ * opacity= or light=, or a number inside hue(); the literal as it was otherwise. A whole-number
+ * opacity (0 or 1) scrubs in tenths.
+ */
+function withStageRange(line, literal) {
+  const keyword = line.slice(0, literal.from).match(/\b(angle|opacity|light)\s*=\s*$/)
+  let range = keyword ? STAGE_KEYWORD_RANGES[keyword[1]] : null
+  if (!range && enclosingCallName(line, literal.from) === 'hue') range = { min: 0, max: 360 }
+  if (!range) return literal
+  if (keyword?.[1] === 'opacity' && literal.decimals === 0) {
+    return { ...literal, range, decimals: 1 }
+  }
+  return { ...literal, range }
 }
 
 function pythonLiterals(line) {
@@ -350,12 +392,16 @@ export function formatScrubNumber(value, literal) {
 }
 
 /**
- * The range a number scrubs over when the task gives none: from 0 to twice the value (at least
- * 100 for whole numbers, 1 for decimals); a negative value scrubs over the same span either side
- * of 0.
+ * The range a number scrubs over when the task gives none: the literal's own `range` when it has
+ * one (a Stage angle=, opacity=, light= or hue() number; widened to take in the value), else
+ * from 0 to twice the value (at least 100 for whole numbers, 1 for decimals); a negative value
+ * scrubs over the same span either side of 0.
  */
 export function defaultScrubRange(literal) {
   const value = Number(literal?.value ?? 0)
+  if (literal?.range) {
+    return { min: Math.min(literal.range.min, value), max: Math.max(literal.range.max, value) }
+  }
   const floor = (literal?.decimals ?? 0) > 0 ? 1 : 100
   const span = Math.max(Math.abs(value) * 2, floor)
   return value < 0 ? { min: -span, max: span } : { min: 0, max: span }

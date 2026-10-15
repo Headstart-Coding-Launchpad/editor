@@ -11,7 +11,7 @@ function run(task) {
 
 describe('validateStageTarget', () => {
   it('accepts a target with code, and no target at all', () => {
-    expect(run({ stageTarget: { code: 'from stage import *\ncircle(1, 1, 1, "red")' } })).toEqual({
+    expect(run({ stageTarget: { code: 'from stage import *\ncircle(50, "red")' } })).toEqual({
       errors: [],
       warnings: [],
     })

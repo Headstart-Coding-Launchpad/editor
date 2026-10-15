@@ -7,7 +7,13 @@
 // (validationErrorsDoc.test.js scans this file).
 import { compareText } from '../checkHelpers.js'
 import { coloursMatch, colourInWords, parseColour } from './colours.js'
-import { STAGE_SHAPE_KINDS, STAGE_SIZE, stageCommandsOf, visibleCommands } from './commands.js'
+import {
+  MAX_POLYGON_SIDES,
+  STAGE_SHAPE_KINDS,
+  STAGE_SIZE,
+  stageCommandsOf,
+  visibleCommands,
+} from './commands.js'
 import {
   compareStages,
   comparisonMatches,
@@ -39,16 +45,21 @@ function finite(value) {
   return Number.isFinite(number) ? number : null
 }
 
-function countShapes(commands, kind) {
+// How many shapes of `kind` are on the stage; `sides` (polygons only) keeps the polygons with
+// that many sides.
+function countShapes(commands, kind, sides = null) {
   const visible = visibleCommands(commands)
+  if (sides !== null) {
+    return visible.filter((c) => c?.type === 'polygon' && Number(c.sides) === sides).length
+  }
   if (!kind || kind === 'any') {
     return visible.filter((c) => STAGE_SHAPE_KINDS.includes(c?.type)).length
   }
   return visible.filter((c) => c?.type === kind).length
 }
 
-// Every colour actually on the stage (after the last clear): shapes, text, the background and
-// the grid colours some cell uses.
+// Every colour actually on the stage (after the last clear): shapes and their outlines, text,
+// the background and the grid colours some cell uses.
 export function stageColours(commands) {
   const colours = []
   for (const command of visibleCommands(commands)) {
@@ -58,8 +69,9 @@ export function stageColours(commands) {
       for (const row of command.cells ?? [])
         for (const index of row ?? []) if (index >= 0) used.add(index)
       for (const index of used) if (command.colours?.[index]) colours.push(command.colours[index])
-    } else if (typeof command.colour === 'string') {
-      colours.push(command.colour)
+    } else {
+      if (typeof command.colour === 'string') colours.push(command.colour)
+      if (typeof command.outline === 'string') colours.push(command.outline)
     }
   }
   return colours
@@ -90,7 +102,7 @@ export function evaluateStageCheck(check, context = {}) {
       return comparisonMatches(compareStages(commands, target), tolerance)
     }
     case 'stage_shape_count': {
-      const count = countShapes(commands, check.kind)
+      const count = countShapes(commands, check.kind, finite(check.sides))
       const min = finite(check.min)
       const max = finite(check.max)
       if (min === null && max === null) return count >= 1
@@ -129,7 +141,9 @@ export function describeStageCheck(check) {
     case 'stage_matches_target':
       return `The drawing matches the target (up to ${Math.round((finite(check.tolerance) ?? DEFAULT_MATCH_TOLERANCE) * 100)}% different)`
     case 'stage_shape_count': {
-      const kind = !check.kind || check.kind === 'any' ? 'shapes' : `${check.kind} commands`
+      const sides = finite(check.sides)
+      let kind = !check.kind || check.kind === 'any' ? 'shapes' : `${check.kind} commands`
+      if (sides !== null) kind = `polygon commands with ${sides} sides`
       const min = finite(check.min)
       const max = finite(check.max)
       if (min !== null && max !== null) return `Between ${min} and ${max} ${kind} on the stage`
@@ -191,6 +205,18 @@ export function validateStageCheck(check, { n, kind, task, moduleDefinition } = 
       errors.push(
         `Task ${n} has a stage_shape_count ${label} with kind "${check.kind}" — use one of: any, ${STAGE_SHAPE_KINDS.join(', ')}`
       )
+    }
+    if (check.sides != null) {
+      const sides = finite(check.sides)
+      if (sides === null || !Number.isInteger(sides) || sides < 3 || sides > MAX_POLYGON_SIDES) {
+        errors.push(
+          `Task ${n} has a stage_shape_count ${label} whose sides is not a whole number from 3 to 100`
+        )
+      } else if (check.kind !== 'polygon') {
+        errors.push(
+          `Task ${n} has a stage_shape_count ${label} with sides but its kind is not polygon — add kind: polygon`
+        )
+      }
     }
     const min = check.min == null ? null : finite(check.min)
     const max = check.max == null ? null : finite(check.max)
