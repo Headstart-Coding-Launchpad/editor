@@ -460,10 +460,14 @@ describe('cross-lesson carry', () => {
   })
 
   it('lets a student read only their own inbox entries', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await ref(ctx, inboxPath()).set(entry)
-      await ref(ctx, inboxPath(OTHER_STUDENT_ID)).set(entry)
-    })
+    // One database() call per disabled context: a second one throws "Cannot call
+    // useEmulator() after instance has already been initialized".
+    await testEnv.withSecurityRulesDisabled((ctx) =>
+      ctx
+        .database()
+        .ref()
+        .update({ [inboxPath()]: entry, [inboxPath(OTHER_STUDENT_ID)]: entry })
+    )
     await assertSucceeds(ref(as.student, inboxPath()).get())
     await assertFails(ref(as.student, inboxPath(OTHER_STUDENT_ID)).get())
     await assertFails(ref(as.student, `carryInbox/${LESSON}`).get())
