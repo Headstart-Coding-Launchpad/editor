@@ -725,32 +725,6 @@ export function describeCourse(world, pose, { collected = 0, mapLabel = '', outc
 
 // ── Validation (the Builder and the CLI; see ./definition.js) ─────────────────
 
-// A starter's course_map() map row that starts with `#>` reads as a line hint marker
-// (src/shared/lineHints.js), which is taken out of the code before students see it.
-function studentMapHintClashes(task, n) {
-  const sources = [
-    ['starter code', task?.starterCode],
-    ...(Array.isArray(task?.codeStages) ? task.codeStages : []).map((stage, index) => [
-      `code stage ${index + 1}`,
-      stage?.code,
-    ]),
-  ]
-  const warnings = []
-  const seen = new Set()
-  for (const [label, code] of sources) {
-    if (typeof code !== 'string' || seen.has(code)) continue
-    seen.add(code)
-    const call = findStudentMapCall(code)
-    if (!call) continue
-    if (call.text.split('\n').some((line) => line.trim().startsWith('#>'))) {
-      warnings.push(
-        `Task ${n} ${label}: a course_map() map row starts with #>, which is read as a line hint and taken out of the code; face that start with ^ or v, or move it one square in`
-      )
-    }
-  }
-  return warnings
-}
-
 /** Adds errors / warnings for a task's `course` field. */
 export function validateTurtleCourse(task, n, errors, warnings = []) {
   const course = task?.course
@@ -774,7 +748,6 @@ export function validateTurtleCourse(task, n, errors, warnings = []) {
         `Task ${n} course.studentMap only works on grid courses: students can't make their own track yet`
       )
     } else if (course.studentMap) {
-      warnings.push(...studentMapHintClashes(task, n))
     }
   }
   if (course.map !== undefined && course.maps !== undefined) {

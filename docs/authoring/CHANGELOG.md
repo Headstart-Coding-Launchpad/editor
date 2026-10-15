@@ -104,10 +104,11 @@ Entries written before 2026-09-29 are not tagged.
 - **Map editor:** a 🧱 **Map editor** button beside Run on `studentMap` tasks opens a
   tap-to-paint grid (Wall, Road, Goal, Star, Start; 44 px squares; 3 to 30 rows and columns)
   that writes the `turtle.course_map("""…""")` call into the student's code.
-- Validation: `studentMap` must be `true` or `false` and errors on a track; a warning flags a
-  starter map row starting with `#>`, which the line-hint marker would remove (face that start
-  `^` or `v`, or move it in). Add a `code` check for `course_map(` if students must make their
-  own. See [turtle.md](turtle.md#students-make-their-own-map-studentmap) and
+- Validation: `studentMap` must be `true` or `false` and errors on a track. Add a `code` check
+  for `course_map(` if students must make their own.
+- **Line hints are no longer read inside Python triple-quoted strings** (Python and Turtle), so a
+  starter maze row such as `#>....G#` stays in the code instead of being taken out as a `#>`
+  hint. The same goes for `#@peek` and `#@lock` lines inside a `"""…"""` string. See [turtle.md](turtle.md#students-make-their-own-map-studentmap) and
   [validation-errors.md](validation-errors.md).
 - Affects: turtle (course mode; new field `course.studentMap`, new `turtle.course_map()`) ·
   Existing lessons: no changes needed · Resolves:

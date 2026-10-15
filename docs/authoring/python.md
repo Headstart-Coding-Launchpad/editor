@@ -68,7 +68,7 @@ Author starter and complete code as `codeStages` entries with `role: starter` / 
 
 ## Line Hints
 
-Put instructions **next to** a line of starter code instead of in a comment the student has to read around, delete or accidentally break. A line whose trimmed text starts with `#>` is a **line hint**: it is removed from the code and its text is shown beside the next line — a 💡 in the editor gutter (hover for the text) and the text in faded grey after the line. The hint is never part of the student's code.
+Put instructions **next to** a line of starter code instead of in a comment the student has to read around, delete or accidentally break. A line whose trimmed text starts with `#>` is a **line hint**: it is removed from the code and its text is shown beside the next line — a 💡 in the editor gutter (hover for the text) and the text in faded grey after the line. The hint is never part of the student's code. Lines inside a triple-quoted string (`"""…"""` or `'''…'''`) are never hints.
 
 ```yaml
     codeStages:

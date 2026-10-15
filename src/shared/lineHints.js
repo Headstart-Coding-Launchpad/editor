@@ -72,6 +72,34 @@ export function isLineHintSyntax(syntax) {
   return Object.hasOwn(MARKER_TEXT, syntax ?? '')
 }
 
+// Python: which triple-quoted string (`"""` or `'''`) is still open at the end of `line`, given
+// the one open at its start (null for none). Single-quoted strings and `#` comments are skipped
+// so quotes inside them don't count.
+function tripleQuoteStateAfter(line, open) {
+  let i = 0
+  while (i < line.length) {
+    if (open != null) {
+      if (line[i] === '\\') i += 2
+      else if (line.startsWith(open, i)) {
+        i += 3
+        open = null
+      } else i += 1
+      continue
+    }
+    const ch = line[i]
+    if (ch === '#') break
+    if (line.startsWith('"""', i) || line.startsWith("'''", i)) {
+      open = line.slice(i, i + 3)
+      i += 3
+    } else if (ch === '"' || ch === "'") {
+      i += 1
+      while (i < line.length && line[i] !== ch) i += line[i] === '\\' ? 2 : 1
+      i += 1
+    } else i += 1
+  }
+  return open
+}
+
 function markerText(line, syntax) {
   return MARKER_TEXT[syntax](line.trim())
 }
@@ -115,7 +143,16 @@ export function parseLineHints(code, syntax) {
   // Lock: a `#@lock` waiting for the next non-blank line; the indexes of the locked lines.
   let lockPending = false
   const lockIndexes = []
+  // Python syntax: the closing quotes of the triple-quoted string a line is inside, or null.
+  // Lines inside one (e.g. a `turtle.course_map("""…""")` maze row like `#>..G#`) are text,
+  // never markers.
+  let openString = null
   for (const line of body) {
+    if (openString != null) {
+      kept.push(line)
+      openString = tripleQuoteStateAfter(line, openString)
+      continue
+    }
     if (isPeekMarkerLine(line, syntax)) {
       if (peekState === 'none') peekState = 'pending'
       continue
@@ -130,6 +167,7 @@ export function parseLineHints(code, syntax) {
       continue
     }
     kept.push(line)
+    if (syntax === 'python') openString = tripleQuoteStateAfter(line, null)
     if (lockPending && line.trim() !== '') {
       lockIndexes.push(kept.length - 1)
       lockPending = false
