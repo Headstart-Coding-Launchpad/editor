@@ -17,6 +17,7 @@ import PanelTabs from './PanelTabs'
 import SupportStagePanel from './SupportStagePanel'
 import { getCompleteStage, getEffectiveTaskMode, getRevealableStages } from '../../shared/taskUtils'
 import { getStageLineHints } from '../../shared/lineHints'
+import { getTaskLockSets } from '../../shared/lockedLines'
 import {
   TEACHER_LIVE_REFERENCE_TYPES,
   teacherLiveReferenceDisplayState,
@@ -615,6 +616,7 @@ export default function LessonTaskContent({
             <SupportStagePanel
               stage={referenceStage}
               lineHintsFor={lineHintsFor}
+              lockSets={getTaskLockSets(task)}
               lessonType={lesson.type}
               revealed={
                 completeReferenceStage || targetedReferenceStage || teacherLiveReferenceStage

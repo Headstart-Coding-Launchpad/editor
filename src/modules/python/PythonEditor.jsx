@@ -23,6 +23,8 @@ export default function PythonEditor({
   editorStyle,
   errorLine = null,
   lineHints = null,
+  // Locked lines (lock sets, getTaskLockSets in src/shared/lockedLines.js), or null.
+  lockedLines = null,
   onRunShortcut,
   // The task allows block brackets (taskShowsBlocks in ../../shared/blockGuides.js). When it
   // does, the Blocks button turns them on and off for this device; when not, both are hidden.
@@ -103,6 +105,7 @@ export default function PythonEditor({
         onHighlightDismiss={onHighlightDismiss}
         errorLine={errorLine}
         lineHints={lineHints}
+        lockedLines={lockedLines}
         onRunShortcut={onRunShortcut}
         blockGuides={showBlocks && blockGuidesOn}
         scrub={scrub}

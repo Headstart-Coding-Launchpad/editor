@@ -1,6 +1,7 @@
 import { findTaskById, getStarterStage } from '../shared/taskUtils'
 import { getTaskModuleType, isCodeTask } from '../shared/composedLesson'
 import { stripLessonLineHints } from '../shared/lineHints'
+import { resolveLessonPuzzleChecks } from '../shared/puzzle/puzzle.js'
 import { isModuleHostedActivityTask } from '../activities/registry.pure.js'
 import { getModuleDefinition } from '../modules/definitions.js'
 
@@ -9,8 +10,10 @@ import { getModuleDefinition } from '../modules/definitions.js'
  * src/shared/lineHints.js) stripped from every starter, stage and complete solution, so the
  * student never sees, saves, runs, checks, carries or mirrors them, with the hints kept on each
  * task's runtime-only `lineHintSets` for the editors. Each task's markers follow its own module
- * type (a composed lesson's per-task type). Apply after any session override; never save the
- * result (the Teacher's lesson editor keeps the authored lesson).
+ * type (a composed lesson's per-task type). `#@lock` markers and `puzzle.onlyEdit` become each
+ * task's runtime-only `lockSets` the same way, and a `max_lines` check gets its limit from
+ * `puzzle.maxLines` (resolveLessonPuzzleChecks). Apply after any session override; never save
+ * the result (the Teacher's lesson editor keeps the authored lesson).
  */
 export function prepareClassroomLesson(lesson) {
   if (!lesson) return lesson
@@ -21,7 +24,7 @@ export function prepareClassroomLesson(lesson) {
     isCodeTask(task) && !isModuleHostedActivityTask(task)
       ? syntaxOf(getTaskModuleType(lesson, task))
       : null
-  return stripLessonLineHints(lesson, taskSyntax, syntaxOf(lesson.type))
+  return resolveLessonPuzzleChecks(stripLessonLineHints(lesson, taskSyntax, syntaxOf(lesson.type)))
 }
 
 export function canCarryTaskContent(tasks, carryFromId, currentTaskId) {

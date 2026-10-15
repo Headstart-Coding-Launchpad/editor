@@ -20,6 +20,7 @@ import {
   setLineHints,
 } from './codemirror'
 import { chooseLineHints } from './lineHints'
+import { lockedLinesExtension, setLockedLineSets } from './lockedLinesEditor'
 import { blockGuidesExtension } from './blockGuides'
 import { BadgeSignalsContext } from './badgeSignalsContext'
 import { useEditorScrub } from './scrub/useEditorScrub.jsx'
@@ -342,6 +343,10 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     // that fits the loaded text best is shown, re-anchored whenever the value is replaced from
     // outside (task switch, reset, saved code) — see chooseLineHints in ./lineHints.js.
     lineHints = null,
+    // Locked lines for this content: an array of lock sets (getTaskLockSets in ./lockedLines.js).
+    // The set that fits the loaded text best is locked, re-anchored whenever the value is
+    // replaced from outside — see ./lockedLinesEditor.js. Shown read-only too (tutor views).
+    lockedLines = null,
     onRunShortcut,
     // Fires on a document change the user made (see USER_EDIT_EVENTS), never on the external
     // value sync. Without it, the classroom's BadgeSignalsContext (if any) is told instead.
@@ -390,6 +395,8 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
   // Callers build the sets inline, so compare by content: a new array with the same hints must
   // not re-anchor (and so resurrect) hints the student has deleted.
   const lineHintsKey = useMemo(() => JSON.stringify(lineHints ?? []), [lineHints])
+  // Compared by content too: callers build the lock sets inline.
+  const lockedLinesKey = useMemo(() => JSON.stringify(lockedLines ?? []), [lockedLines])
   // The teacher highlights are rebuilt from every session snapshot (even one the student's own
   // selection write caused), so they too are compared by content: only a real change to the
   // set may reach the editor, or the positions it has mapped through edits would be reset.
@@ -416,6 +423,7 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
           teacherHighlightsField,
           errorLineField,
           lineHintsExtension(),
+          lockedLinesExtension(),
           blockGuidesCompartment.of(blockGuidesFor(blockGuides)),
           scrubUi.extension,
           keymap.of([
@@ -541,6 +549,12 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
       effects: setLineHints.of(chooseLineHints(view.state.doc.toString(), lineHintSetsRef.current)),
     })
   }, [lineHintsKey])
+
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    view.dispatch({ effects: setLockedLineSets.of(JSON.parse(lockedLinesKey)) })
+  }, [lockedLinesKey])
 
   useEffect(() => {
     const view = viewRef.current

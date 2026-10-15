@@ -1,6 +1,7 @@
 import React from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 import { getModuleDefinition, getModuleLabel } from '../../modules/definitions'
+import { chooseLockedLines } from '../../shared/lockedLines'
 
 function getLanguageLabel(lessonType) {
   return getModuleLabel(lessonType, 'stageReference') ?? 'Code'
@@ -61,10 +62,18 @@ export default function SupportStagePanel({
   revealed,
   sourceLabel,
   lineHintsFor,
+  // The task's lock sets (getTaskLockSets): a code stage marks the lines a student can't change.
+  lockSets = null,
 }) {
   const text = stageToText(stage, lessonType)
   if (!revealed || !text.trim()) return null
   const hintsByLine = stageHintsByLine(stage, lessonType, lineHintsFor)
+  const lockedIndexes =
+    lockSets &&
+    stage?.code != null &&
+    stageReferenceFor(lessonType) === STAGE_REFERENCE_BY_KIND.code
+      ? new Set(chooseLockedLines(text, lockSets).map((line) => line - 1))
+      : new Set()
 
   const title = stage?.label || 'Stage reference'
   const languageLabel = getLanguageLabel(lessonType)
@@ -92,11 +101,16 @@ export default function SupportStagePanel({
       ) : (
         <pre style={s.pre}>
           <code style={s.code}>
-            {hintsByLine.size === 0
+            {hintsByLine.size === 0 && lockedIndexes.size === 0
               ? text
               : text.split('\n').map((line, index, lines) => (
                   <React.Fragment key={index}>
                     {line}
+                    {lockedIndexes.has(index) && (
+                      <span style={s.lockedTag} title="Locked line">
+                        <span aria-hidden="true">🔒 </span>Locked
+                      </span>
+                    )}
                     {hintsByLine.has(index) && (
                       <span style={s.lineHint} title={hintsByLine.get(index)}>
                         {hintsByLine.get(index)}
@@ -185,6 +199,13 @@ const s = {
     fontFeatureSettings: '"liga" 0, "calt" 0',
   },
   markdown: { overflow: 'auto', padding: '10px 12px', background: '#f8fafc' },
+  lockedTag: {
+    marginLeft: '1.2em',
+    color: '#475569',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.85em',
+    fontWeight: 600,
+  },
   lineHint: {
     marginLeft: '1.5em',
     color: '#9ca3af',

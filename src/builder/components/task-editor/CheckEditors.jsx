@@ -561,6 +561,45 @@ function PredictionCheckRow({ check, index, total, onChange, onRemove }) {
   )
 }
 
+// A `max_lines` check (puzzle rules, src/shared/puzzle/puzzle.js): at most N lines of code. With
+// no number it uses the task's puzzle.maxLines (authored in the lesson YAML).
+function MaxLinesCheckRow({ check, index, total, onChange, onRemove }) {
+  return (
+    <div className="te-check-row">
+      {total > 1 && <span className="te-check-index">#{index + 1}</span>}
+      <div className="te-check-editor">
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 13 }}>
+          At most this many lines of code (blank and comment lines don't count)
+        </span>
+        <input
+          className="te-input"
+          type="number"
+          min={1}
+          placeholder="puzzle.maxLines"
+          value={check.value ?? ''}
+          onChange={(e) => {
+            const value = e.target.value === '' ? undefined : Number(e.target.value)
+            const next = { ...check }
+            if (value === undefined) delete next.value
+            else next.value = value
+            onChange(next)
+          }}
+        />
+        <input
+          className="te-input"
+          style={{ gridColumn: '1 / -1' }}
+          placeholder="Hint (default: Can you do it in N lines? A loop might help.)"
+          value={check.hint ?? ''}
+          onChange={(e) => onChange({ ...check, hint: e.target.value })}
+        />
+      </div>
+      <button type="button" className="te-check-remove-btn" onClick={onRemove} title="Remove check">
+        ×
+      </button>
+    </div>
+  )
+}
+
 // A Python Stage check (stage_matches_target, stage_pixel, …) is authored in the lesson YAML
 // (docs/authoring/python.md "Stage"); its row here says what it checks, in words, with its hint
 // and Remove.
@@ -673,6 +712,18 @@ function CheckListEditor({
         if (check?.type === 'variables_predicted') {
           return (
             <PredictionCheckRow
+              key={index}
+              check={check}
+              index={index}
+              total={checks.length}
+              onChange={(updated) => updateCheck(index, updated)}
+              onRemove={() => removeCheck(index)}
+            />
+          )
+        }
+        if (check?.type === 'max_lines') {
+          return (
+            <MaxLinesCheckRow
               key={index}
               check={check}
               index={index}
@@ -801,5 +852,6 @@ export {
   CheckFeedbackControls,
   RunAttemptedFields,
   PredictionCheckRow,
+  MaxLinesCheckRow,
   StageCheckRow,
 }

@@ -134,6 +134,38 @@ keyboard use.
 - When the drag ends the value is a normal edit, saved and sent to a watching tutor. The session
   report counts each student's scrubs (`scrubs`).
 
+## Locked lines, hidden setup and puzzles
+
+Turtle tasks take the same `#@lock` markers, `setupCode` / `setupNote` and `puzzle` rules
+(`onlyEdit`, `maxLines`, `par`) with the `max_lines` check as Python: see
+[Python → Locked lines, hidden setup and puzzles](python.md#locked-lines-hidden-setup-and-puzzles).
+
+```yaml
+  - id: 33
+    moduleType: turtle
+    title: Draw the star in 4 lines
+    puzzle:
+      onlyEdit: [2]       # only the loop line can change
+      maxLines: 4
+      par: 1
+    check:
+      - type: max_lines
+      - type: turtle_segment_count
+        operator: equals
+        value: '5'
+    codeStages:
+      - role: starter
+        code: |
+          import turtle
+          for _ in range(4):
+              turtle.forward(100)
+              turtle.right(144)
+```
+
+- `setupCode` runs after the turtle module is ready and before the student's code, so it can
+  set variables (sizes, colours, lists of points) or draw something first.
+- Line numbers in errors, `#@peek` and slow-mo stay the student's own.
+
 ## Slow-mo
 
 A Turtle task can use Python's [slow-mo](python.md#slow-mo-slowmo) (`slowMo: { enabled: true,

@@ -5,6 +5,7 @@ import {
   CheckFeedbackControls,
   CheckValueEditor,
   PredictionCheckRow,
+  MaxLinesCheckRow,
   RunAttemptedFields,
 } from '../../builder/components/task-editor/CheckEditors'
 import {
@@ -306,6 +307,18 @@ export default function CheckEditor({
         if (check?.type === 'variables_predicted') {
           return (
             <PredictionCheckRow
+              key={index}
+              check={check}
+              index={index}
+              total={checks.length}
+              onChange={(updated) => updateCheck(index, updated)}
+              onRemove={() => setChecks(checks.filter((_, i) => i !== index))}
+            />
+          )
+        }
+        if (check?.type === 'max_lines') {
+          return (
+            <MaxLinesCheckRow
               key={index}
               check={check}
               index={index}

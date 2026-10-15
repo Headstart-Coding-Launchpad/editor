@@ -1,4 +1,5 @@
 import { chooseLineHints, getTaskLineHintSets } from '../../../shared/lineHints'
+import { getTaskLockSets } from '../../../shared/lockedLines'
 
 // The task's author line hints (💡, src/shared/lineHints.js) on the code the teacher watches in
 // StudentModal. Computed from the lesson the same way the student's editor gets them
@@ -19,6 +20,16 @@ export function getMirrorLineHintSets(task, { mirror, file = null, isSessionSand
   if (isSessionSandbox || !CODE_MIRRORS.has(mirror)) return null
   const sets = getTaskLineHintSets(task, mirror === 'files' ? file : null)
   return sets.length > 0 ? sets : null
+}
+
+/**
+ * The task's locked-line sets (src/shared/lockedLines.js) for the mirrored code ([] for none):
+ * like the hints, display only — the CodeEditor re-anchors them on the mirrored code. Code
+ * mirrors only (locks live on a task's code, never its files); none in a session sandbox.
+ */
+export function getMirrorLockSets(task, { mirror, isSessionSandbox = false }) {
+  if (isSessionSandbox || (mirror !== 'code' && mirror !== 'view')) return []
+  return getTaskLockSets(task)
 }
 
 // How many of the hints show on `code` (what the editor displays: chooseLineHints).

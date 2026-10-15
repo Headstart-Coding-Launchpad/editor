@@ -14,6 +14,7 @@ import {
   evaluateStageCheck,
   validateStageCheck,
 } from '../../shared/stage/checks.js'
+import { evaluateMaxLinesCheck, MAX_LINES_CHECK_TYPE } from '../../shared/puzzle/puzzle.js'
 
 // Messages from validateCodeStructureCheck are documented in
 // docs/authoring/validation-errors.md (validationErrorsDoc.test.js scans this file).
@@ -153,6 +154,23 @@ export const CHECKS = [
       !!moduleDefinition?.taskFields?.some((field) => field.name === 'showVariables'),
     evaluate: evaluateVariablesPredictedCheck,
     validate: validateVariablesPredictedCheck,
+  },
+  // Puzzle rules (task `puzzle`, src/shared/puzzle/puzzle.js): the student's code has at most
+  // `value` lines of code (blank and comment lines don't count; `value` defaults to
+  // puzzle.maxLines). No run needed. Python and Turtle tasks.
+  {
+    type: MAX_LINES_CHECK_TYPE,
+    owner: 'module:python',
+    subject: 'Lines of code',
+    fields: ['value'],
+    timing: 'on_change',
+    requiresRun: false,
+    submitAllowed: true,
+    contextKey: 'code',
+    // Every module with puzzle rules (the puzzle task field): python and turtle.
+    appliesTo: (moduleDefinition) =>
+      !!moduleDefinition?.taskFields?.some((field) => field.name === 'puzzle'),
+    evaluate: (check, _output, context = {}) => evaluateMaxLinesCheck(check, context),
   },
   // The Python Stage (src/shared/stage/): checks on the run's drawing (`context.stage`:
   // { commands, target }). They need a run, so `lessons test-checks` reports them as needing

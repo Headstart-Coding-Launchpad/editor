@@ -239,6 +239,12 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - When the drag or popover ends the value is one real edit (saved, sent to a watching tutor, one Undo step), counted as an edit rather than typed characters. Per-line slider ranges via `scrub.ranges`; the session report counts each student's scrubs per task
 - Builder: Task options → Live scrubbing (numbers, colours, ranges by line)
 
+### Locked Lines, Hidden Setup and Puzzles (Python, Turtle)
+- `#@lock` marker lines (or `puzzle.onlyEdit`) lock lines of starter code: greyed with a 🔒 Locked tag; no typing, deleting, cutting, pasting over or re-indenting, but new lines can go before, between and after them. Arrow keys skip them; a typing attempt or tap shows "This line is locked" (screen-reader announced) and the touch keyboard stays shut there. Locks survive saves, support stages and Reset, and show in StudentModal, Go Live and stage references
+- `setupCode` runs before the student's code on every Run in the same program, never shown; its variables show in the name-tag panel and checks see them; student line numbers are unchanged and a setup error shows only "This task's setup has a problem — tell your tutor." `setupNote` is a line above the editor
+- `puzzle.maxLines` shows a live "3 / 4 lines" counter and the `max_lines` check enforces it; `puzzle.par` shows "Solved at par ⭐" / "Solved in 2 changes (par 1)" after a pass. The tutor's card shows "Solved at par" / "Over line limit"; the session report adds `linesUsed` and `changesFromStarter`
+- Builder: `max_lines` checks show as their own row in the check editor; the fields are authored in lesson YAML
+
 ### Scratch Slow-mo
 - On Scratch tasks with `slowMo` enabled, four big buttons under the stage (icon + word, 44 px+ for tablets): **Slow-mo** (run at the speed slider's blocks a second), **Pause**, **Step** (one block) and **Restart**
 - The running block glows in each running script (a still outline with reduced motion), and the stage redraws after every block, so two quick costume switches show both

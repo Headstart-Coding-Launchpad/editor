@@ -33,6 +33,7 @@ import {
 import { inspectorReportFields, summarizeInspectorUse } from './inspectorUse.js'
 import { slowMoReportFields, summarizeSlowMoUse } from './slowMoUse.js'
 import { scrubReportFields, summarizeScrubUse } from './scrub/scrubUse.js'
+import { puzzleReportFields } from './puzzle/puzzle.js'
 import {
   crossLessonCarryReportFields,
   summarizeCrossLessonCarry,
@@ -789,6 +790,9 @@ export function buildSessionReport({
         ),
         ...slowMoReportFields(studentsSnapshot[anonymousId]?.slowMoLog?.[task.id]),
         ...scrubReportFields(studentsSnapshot[anonymousId]?.scrubLog?.[task.id]),
+        // Puzzle tasks (task `puzzle`): linesUsed and changesFromStarter of the passing run's
+        // code (the attempt log keeps each run's code), so puzzles can be measured.
+        ...puzzleReportFields(task, passingEntry?.submission),
         ...(itemProgress ? { itemProgress } : {}),
         ...(lastDraft ? { lastDraft } : {}),
         ...exampleOpenReportFields(session, anonymousId, task.id),

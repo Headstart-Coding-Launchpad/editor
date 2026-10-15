@@ -136,7 +136,9 @@ export function validateTurtleChecks(checks, n, errors, kind = 'completion') {
       !isCodeCheck(c) &&
       !isRunAttemptedCheck(c) &&
       // The name-tag panel's predictions (showVariables mode: predict).
-      c?.type !== 'variables_predicted'
+      c?.type !== 'variables_predicted' &&
+      // Puzzle rules' line limit (src/shared/puzzle/puzzle.js validates it).
+      c?.type !== 'max_lines'
   )
   if (unknown) {
     errors.push(`Task ${n} has a turtle ${label} with unknown type "${unknown?.type ?? ''}"`)

@@ -209,6 +209,8 @@ export function validateCodeChecks(
     'code_structure',
     // names (optional) instead of a value; its own validate() checks them.
     'variables_predicted',
+    // Its value defaults to puzzle.maxLines; validatePuzzle (src/shared/puzzle/) checks it.
+    'max_lines',
     // The Python Stage's checks have their own fields; validateStageCheck checks them.
     'stage_matches_target',
     'stage_shape_count',
