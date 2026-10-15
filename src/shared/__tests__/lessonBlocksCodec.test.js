@@ -134,6 +134,33 @@ describe('encodeLessonBlocksForFirestore / decodeLessonBlocksFromFirestore', () 
     expect(decodeLessonBlocksFromFirestore(encoded)).toEqual(lesson)
   })
 
+  it('round-trips Turtle course track maps without leaving Firestore-invalid nested arrays', () => {
+    const course = {
+      type: 'track',
+      vehicle: 'car',
+      maps: [
+        {
+          start: { x: -160, y: -160, heading: 90 },
+          goal: { x: 160, y: 160 },
+          walls: [{ rect: [-40, -40, 40, 40] }, [-120, 120, 120, 120]],
+          pickups: [[-160, 0]],
+        },
+      ],
+    }
+    const lesson = {
+      id: 'l1',
+      tasks: [{ type: 'group', subtasks: [{ id: 1, moduleType: 'turtle', course }] }],
+    }
+
+    expect(hasNestedArray(lesson)).toBe(true)
+
+    const encoded = encodeLessonBlocksForFirestore(lesson)
+    expect(typeof encoded.tasks[0].subtasks[0].course).toBe('string')
+    expect(hasNestedArray(encoded)).toBe(false)
+
+    expect(decodeLessonBlocksFromFirestore(encoded)).toEqual(lesson)
+  })
+
   it('leaves legacy Firestore documents (block trees already plain objects) untouched on decode', () => {
     const lesson = {
       id: 'l1',
