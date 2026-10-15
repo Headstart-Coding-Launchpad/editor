@@ -131,6 +131,11 @@ export function describeCommand(command) {
       const rows = command.cells?.length ?? 0
       const cols = Math.max(0, ...(command.cells ?? []).map((row) => row?.length ?? 0))
       const colours = (command.colours ?? []).map(describeHex)
+      // A flat list drawn with width=: "a pixel grid of 24 squares, 8 to a row, in red and white".
+      if (Number.isInteger(command.wrap) && command.wrap > 0) {
+        const count = (command.cells ?? []).reduce((sum, row) => sum + (row?.length ?? 0), 0)
+        return `a pixel grid of ${count} square${count === 1 ? '' : 's'}, ${command.wrap} to a row${colours.length ? `, in ${listWords(colours)}` : ''}`
+      }
       return `a pixel grid of ${rows} row${rows === 1 ? '' : 's'} by ${cols} column${cols === 1 ? '' : 's'}${colours.length ? ` in ${listWords(colours)}` : ''}`
     }
     default:

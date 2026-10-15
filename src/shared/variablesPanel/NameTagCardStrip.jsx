@@ -7,14 +7,15 @@ import {
   visibleVars,
   visualOptions,
 } from './variablesPanel.js'
-import { cardVisuals, describePicture } from './visuals.js'
+import { cardVisuals, describePicture, describeWrapped } from './visuals.js'
 
 const MAX_CHIPS = 12
 const MAX_BARS = 12
 
 /**
  * The tutor's student card: small thumbnails of the student's list visuals from their last Run
- * (up to two variables whose visual is colour swatches, a picture or bars), beside the output.
+ * (up to two variables whose visual is colour swatches, a picture, bars or a wrapped list of
+ * colours), beside the output.
  * Nothing for a task without the name-tag panel, with `visuals: false`, or before a Run of this
  * task. `synced` is the student's students/{id}/currentVariables.
  */
@@ -28,8 +29,9 @@ export default function NameTagCardStrip({ task, synced }) {
   return (
     <div className="ntp-card-strip" data-testid="card-variable-visuals">
       {items.map(({ name, node, visual }) => {
-        const words =
-          visual.kind === 'picture' ? describePicture(name, visual) : describeVariable(name, node)
+        let words = describeVariable(name, node)
+        if (visual.kind === 'picture') words = describePicture(name, visual)
+        if (visual.kind === 'wrapped') words = describeWrapped(name, node, visual)
         return (
           <div key={name} className="ntp-card-thumb" title={words} role="img" aria-label={words}>
             <code className="ntp-card-thumb-name" aria-hidden="true">
@@ -66,6 +68,25 @@ function Thumb({ visual }) {
             key={item.index}
             className={`ntp-thumb-bar${item.number < 0 ? ' is-negative' : ''}`}
             style={{ height: `${Math.max(8, Math.round(item.fraction * 100))}%` }}
+          />
+        ))}
+      </span>
+    )
+  }
+  if (visual.kind === 'wrapped') {
+    // A flat list of colours grid() drew with width=: its items as small squares, that many to
+    // a row.
+    return (
+      <span
+        className="ntp-thumb-picture"
+        style={{ gridTemplateColumns: `repeat(${visual.width}, 1fr)` }}
+        aria-hidden="true"
+      >
+        {visual.items.map((item) => (
+          <span
+            key={item.index}
+            className={`ntp-thumb-pixel${item.hex ? '' : ' is-clear'}`}
+            style={item.hex ? { background: item.hex } : undefined}
           />
         ))}
       </span>

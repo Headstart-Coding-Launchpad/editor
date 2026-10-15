@@ -14,10 +14,13 @@
 //   { type: 'line', x1, y1, x2, y2, colour, width, opacity? }
 //   { type: 'text', x, y, text, colour, size, angle?, opacity? }   centre of the text
 //   { type: 'stamp', emoji, x, y, size, angle?, opacity? }         centre of the emoji
-//   { type: 'grid', x, y, cell, colours, cells }         x, y = the grid's TOP-LEFT corner
+//   { type: 'grid', x, y, cell, colours, cells, wrap? }  x, y = the grid's TOP-LEFT corner
 //                                                        (worked out from the centre the
 //                                                        student gives); cells[row][col]
-//                                                        indexes colours (-1 = nothing drawn)
+//                                                        indexes colours (-1 = nothing drawn);
+//                                                        wrap = the width= a flat list was
+//                                                        drawn with (rows of that many cells,
+//                                                        the last row maybe short)
 //   { type: 'clear' }                                    wipes the stage back to white
 //
 // …style on the filled shapes (rect, square, circle, polygon), each present only when it isn't
@@ -185,6 +188,7 @@ const SIGNATURES = {
   grid: {
     positional: ['rows', 'palette', 'cell', 'x', 'y'],
     required: 1,
+    keywords: ['width'],
     example: 'grid([[0, 1], [1, 0]])',
   },
   clear: { positional: [], required: 0, example: 'clear()' },
@@ -462,8 +466,47 @@ function gridCell(fn, value, where, palette, colours, colourIndex) {
   return hex == null ? -1 : colourIndex(hex)
 }
 
-function buildGrid(fn, values) {
-  const { rows, palette = null, cell = null } = values
+// A flat list (no item is a list) drawn with width= → its rows of `width` cells, left to right,
+// top to bottom (the last row may be short). `label` is the student's name for the list, when
+// the stage module could tell (see readStageCallPayload).
+function flatRows(fn, values, width, label) {
+  const name = label ?? 'the list'
+  if (width === undefined || width === null) {
+    throw typeError(
+      `${fn}(): ${label ? `${label} is` : 'the values are'} one long list. Say how many squares fit in a row, like grid(${label ?? 'pixels'}, width=8)`
+    )
+  }
+  if (typeof width !== 'number' || !Number.isFinite(width)) {
+    throw typeError(
+      `${fn}(): width is how many squares fit in a row, a whole number like width=8, not ${given(width)}`
+    )
+  }
+  if (!Number.isInteger(width) || width < 1) {
+    throw valueError(
+      `${fn}(): width is how many squares fit in a row, so it should be a whole number of 1 or more, like width=8, not ${width}`
+    )
+  }
+  if (values.length === 0) {
+    throw valueError(`${fn}(): ${name} is empty — put some values in it`)
+  }
+  const rows = []
+  for (let i = 0; i < values.length; i += width) rows.push(values.slice(i, i + width))
+  return rows
+}
+
+function buildGrid(fn, values, { label = null } = {}) {
+  const { palette = null, cell = null, width } = values
+  let { rows } = values
+  const flat = Array.isArray(rows) && rows.length > 0 && !rows.some(Array.isArray)
+  let wrap = null
+  if (flat) {
+    rows = flatRows(fn, rows, width, label)
+    wrap = width
+  } else if (Array.isArray(rows) && rows.length > 0 && width !== undefined && width !== null) {
+    throw typeError(
+      `${fn}(): width= is only for one long list. ${label ?? 'This'} is already a list of rows, so take out width=`
+    )
+  }
   if (!Array.isArray(rows) || rows.length === 0) {
     throw typeError(
       `${fn}(): rows should be a list of rows, like [[0, 1], [1, 0]], not ${given(rows)}`
@@ -514,8 +557,10 @@ function buildGrid(fn, values) {
     }
     return lookup.get(hex)
   }
+  // A flat list's cells are named by their place in it: pixels[9].
+  const where = (r, c) => (wrap ? `${label ?? 'values'}[${r * wrap + c}]` : `rows[${r}][${c}]`)
   const cells = rows.map((row, r) =>
-    row.map((value, c) => gridCell(fn, value, `rows[${r}][${c}]`, paletteHex, colours, colourIndex))
+    row.map((value, c) => gridCell(fn, value, where(r, c), paletteHex, colours, colourIndex))
   )
   // The student gives the grid's centre; the command keeps its top-left corner.
   const cx = position(fn, values, 'x')
@@ -527,12 +572,13 @@ function buildGrid(fn, values) {
     cell: cellSize,
     colours,
     cells,
+    ...(wrap ? { wrap } : {}),
   }
 }
 
 // ── Commands ────────────────────────────────────────────────────────────────────────────────
 
-function buildCommand(name, args, kwargs) {
+function buildCommand(name, args, kwargs, { label = null } = {}) {
   const signature = Object.hasOwn(SIGNATURES, name) ? SIGNATURES[name] : null
   if (!signature) {
     throw typeError(
@@ -650,7 +696,7 @@ function buildCommand(name, args, kwargs) {
       }
     }
     case 'grid':
-      return buildGrid(name, values)
+      return buildGrid(name, values, { label })
     case 'clear':
       return { type: 'clear' }
     default:
@@ -666,12 +712,15 @@ function plainKwargs(kwargs) {
  * One stage call → `{ command }`, or `{ error: { kind, message } }` where kind is the Python
  * exception to raise ('TypeError' | 'ValueError'). `args` is the call's positional arguments and
  * `kwargs` its keyword arguments, after JSON (Python None → null; values JSON can't carry arrive
- * as { __hs_type__ }).
+ * as { __hs_type__ }). `options.label` is the student's name for the first value (grid()'s
+ * list), used in its messages when known.
  */
-export function validateStageCall(name, args, kwargs = {}) {
+export function validateStageCall(name, args, kwargs = {}, { label = null } = {}) {
   try {
     return {
-      command: buildCommand(name, Array.isArray(args) ? args : [], plainKwargs(kwargs)),
+      command: buildCommand(name, Array.isArray(args) ? args : [], plainKwargs(kwargs), {
+        label: stageLabel(label),
+      }),
     }
   } catch (err) {
     if (err instanceof StageArgError) return { error: { kind: err.kind, message: err.message } }
@@ -708,15 +757,22 @@ export function stageHue(args, kwargs = {}) {
   }
 }
 
+// A variable name the stage module found for a call's first value, or null.
+function stageLabel(label) {
+  return typeof label === 'string' && /^[A-Za-z_][A-Za-z0-9_]{0,39}$/.test(label) ? label : null
+}
+
 /**
- * The bridge's JSON for one call → { args, kwargs }. Accepts `{ args, kwargs }` or a bare list
- * of positional arguments.
+ * The bridge's JSON for one call → { args, kwargs, label }. Accepts `{ args, kwargs, label? }`
+ * or a bare list of positional arguments. `label` is the student's variable name for the first
+ * value (grid() sends it, for "pixels is one long list"), or null.
  */
 export function readStageCallPayload(payload) {
-  if (Array.isArray(payload)) return { args: payload, kwargs: {} }
+  if (Array.isArray(payload)) return { args: payload, kwargs: {}, label: null }
   return {
     args: Array.isArray(payload?.args) ? payload.args : [],
     kwargs: plainKwargs(payload?.kwargs),
+    label: stageLabel(payload?.label),
   }
 }
 
@@ -729,8 +785,8 @@ export function createStageRecorder() {
   let gridCells = 0
   return {
     commands,
-    call(name, args, kwargs = {}) {
-      const { command, error } = validateStageCall(name, args, kwargs)
+    call(name, args, kwargs = {}, options = {}) {
+      const { command, error } = validateStageCall(name, args, kwargs, options)
       if (error) return `${error.kind}|${error.message}`
       if (commands.length >= MAX_STAGE_COMMANDS) {
         return `RuntimeError|The stage stopped after ${MAX_STAGE_COMMANDS.toLocaleString('en-GB')} drawing commands — is a loop drawing forever?`

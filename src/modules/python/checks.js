@@ -107,7 +107,7 @@ const STAGE_CHECK_FIELDS = {
   stage_matches_target: ['tolerance'],
   stage_shape_count: ['kind', 'sides', 'min', 'max'],
   stage_colour_used: ['colour'],
-  stage_pixel: ['x', 'y', 'row', 'col', 'colour'],
+  stage_pixel: ['x', 'y', 'row', 'col', 'index', 'colour'],
   stage_text_shown: ['text', 'operator'],
 }
 

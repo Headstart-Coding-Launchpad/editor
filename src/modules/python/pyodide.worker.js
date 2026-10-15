@@ -622,8 +622,8 @@ globalThis.__hsStageCall = (name, argsJson) => {
   } catch {
     return `ValueError|${String(name)}(): those values can't be drawn`
   }
-  const { args, kwargs } = readStageCallPayload(payload)
-  return _stageRecorder.call(String(name), args, kwargs)
+  const { args, kwargs, label } = readStageCallPayload(payload)
+  return _stageRecorder.call(String(name), args, kwargs, { label })
 }
 
 // hue(n, light=50): 'ok|#rrggbb', or 'Kind|message' for Python to raise. Draws nothing.

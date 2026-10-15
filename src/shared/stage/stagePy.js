@@ -13,14 +13,17 @@
  * '<student>' frame). `hue()` draws nothing: `__hsStageHue(json)` answers 'ok|#rrggbb' (stageHue
  * in ./commands.js).
  *
- * grid() also remembers the list it drew (`_hs_drawn`, emptied by the worker before each run),
- * so the name-tag panel can show "drawn on the Stage" lists the task's way (showVariables
- * `stageLists`; see _hs_drawn_rows in src/modules/python/variableCapture.py.js).
+ * grid() also remembers the list it drew, with its palette and width= (`_hs_drawn`, emptied by
+ * the worker before each run), so the name-tag panel can show "drawn on the Stage" lists the
+ * task's way (showVariables `stageLists`; a flat list wraps at its width; see _hs_drawn_rows in
+ * src/modules/python/variableCapture.py.js). It also sends the student's name for the list
+ * (`label`, found in the calling frame) so "pixels is one long list" can name it.
  *
  * Exported as plain text; nothing here runs in Node.
  */
 export const STAGE_MODULE_PY = `
 import json as _json
+import sys as _sys
 try:
     import js as _js
 except Exception:
@@ -37,10 +40,12 @@ def _hs_unsendable(value):
     return {'__hs_type__': type(value).__name__}
 
 
-def _payload(name, args, kwargs):
+def _payload(name, args, kwargs, label=None):
+    data = {'args': list(args), 'kwargs': kwargs}
+    if label:
+        data['label'] = label
     try:
-        return _json.dumps({'args': list(args), 'kwargs': kwargs}, allow_nan=False,
-                           default=_hs_unsendable)
+        return _json.dumps(data, allow_nan=False, default=_hs_unsendable)
     except ValueError:
         raise ValueError(name + '(): use ordinary numbers, not infinity or nan') from None
 
@@ -51,8 +56,8 @@ def _raise(problem):
     raise error(message) from None
 
 
-def _draw(name, args, kwargs):
-    payload = _payload(name, args, kwargs)
+def _draw(name, args, kwargs, label=None):
+    payload = _payload(name, args, kwargs, label)
     if _js is None:
         return
     problem = str(_js.__hsStageCall(name, payload) or '')
@@ -109,18 +114,37 @@ def stamp(*args, **kwargs):
     _draw('stamp', args, kwargs)
 
 
-# The lists grid() drew in this run, with their palettes, so the name-tag panel can tell which
-# variables are on the Stage (showVariables stageLists). The worker empties it before each run.
+# The lists grid() drew in this run, with their palettes and width=, so the name-tag panel can
+# tell which variables are on the Stage (showVariables stageLists). The worker empties it before
+# each run.
 _hs_drawn = []
+
+
+# The caller's variable name for a value (the student's 'pixels'), or None.
+def _hs_name_of(value, frame):
+    try:
+        for name, item in list(frame.f_locals.items()):
+            if item is value and not name.startswith('_'):
+                return name
+    except Exception:
+        pass
+    return None
 
 
 def grid(*args, **kwargs):
     """grid(rows, palette, cell, x, y): a 2D list as a pixel grid centred on (x, y).
+    grid(values, width=8): one long list, 8 squares to a row.
     Values index palette, or are colours themselves."""
-    _draw('grid', args, kwargs)
     rows = args[0] if len(args) > 0 else kwargs.get('rows')
+    label = None
+    if isinstance(rows, (list, tuple)):
+        try:
+            label = _hs_name_of(rows, _sys._getframe(1))
+        except Exception:
+            label = None
+    _draw('grid', args, kwargs, label)
     palette = args[1] if len(args) > 1 else kwargs.get('palette')
-    _hs_drawn.append((rows, palette))
+    _hs_drawn.append((rows, palette, kwargs.get('width')))
     if len(_hs_drawn) > 50:
         del _hs_drawn[0]
 

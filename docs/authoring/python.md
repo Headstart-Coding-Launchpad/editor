@@ -301,7 +301,7 @@ variable, with its name, a small type label and its value. Off unless a task set
 | `predict` | Predict mode: the variable names students predict, in order. Required in predict mode. |
 | `target` | Target mode: `{ name: value }`. Values are YAML: numbers, text, `true`/`false`/`null`, lists and dicts. Required in target mode. The green tags are **display only** — the `variable_*` checks decide completion, so add them. A list or dict target is drawn with the same visual as the real value (e.g. target swatches), so "make your palette look like this" works. |
 | `visuals` | `true` (default): lists and dicts are drawn as what they hold (see **List and dict visuals** below). `false`: today's plain tags for the whole task — use it when the automatic choice would mislead (e.g. `["orange", "lime"]` meant as fruit). |
-| `stageLists` | How a list passed to the [Stage](#stage-drawing-beside-the-console)'s `grid()` in this run shows: `size` (default) — just the tag, type and size, e.g. `pixels: list, 8 × 8, drawn on the Stage`, so the picture doesn't appear twice; `picture` — the small picture as well, to teach "the list *is* the picture"; `tiles` — rows of tiles. Ignored with `visuals: false`. |
+| `stageLists` | How a list of rows passed to the [Stage](#stage-drawing-beside-the-console)'s `grid()` in this run shows: `size` (default) — just the tag, type and size, e.g. `pixels: list, 8 × 8, drawn on the Stage`, so the picture doesn't appear twice; `picture` — colour names and hex codes as the small picture as well, to teach "the list *is* the picture" (palette numbers always show as a number table, never a picture); `tiles` — rows of tiles. A flat list drawn with `grid(…, width=…)` always shows as tiles wrapped at that width, whatever `stageLists` says. Ignored with `visuals: false`. |
 
 **What a tag shows.** One tag per variable, in the order the code first names them. Type labels:
 `text`, `number`, `true/false`, `list`, `dict`, `None` (and `tuple`, `set`, or the Python type name
@@ -317,9 +317,10 @@ hidden setup code show like any other variable.
 |---|---|
 | A list where **every** item is a colour the Stage knows (CSS name, PICO-8 name or hex) | Colour swatches, each with its index and its text (`0 "red"`) |
 | A list of numbers | Bars, each labelled with its index and value (Okabe-Ito blue; below zero, striped vermilion) |
+| A flat list that `grid(…, width=…)` drew this run | Tiles wrapped at that width, the indexes running on (`0`–`7`, then `8`–`15` …), so index = row × width + column shows: swatches for colours (see-through cells chequered), plain numbers for palette numbers (never bars), plain tiles for anything else |
 | A list of anything else (text, emoji, mixed, nested lists of different lengths) | Tiles with the index under each |
 | A 2D list (equal-length rows) of colours, with `"none"`/`None` for see-through cells | A small picture, cells outlined, with a row and column ruler |
-| A 2D list of anything else | A small table with row and column indexes |
+| A 2D list of anything else, palette numbers included (whether or not `grid()` drew it) | A small table with row and column indexes, the numbers plain (never tinted); it scrolls inside the tag on narrow screens |
 | A dict | Labelled cards: the key as the title, the value under it; a colour value also shows a swatch |
 | A dict of numbers | Labelled bars |
 
@@ -328,18 +329,21 @@ hidden setup code show like any other variable.
   text, so `"5"` and `5` still differ (a list mixing them stays as tiles).
 - **Mixed or ambiguous lists fall back to tiles.** `["apple", "orange"]` isn't all colours, so it
   shows as tiles. A task that still gets a wrong guess switches visuals off with `visuals: false`.
-- **Palette numbers** (whole numbers 0–15, or indexes into a `palette`) only draw as a picture in a
-  list that `grid()` drew this run, with `stageLists: picture`; they use that call's palette, or the
-  16 Arcade colours without one. A 2D list of numbers that was never drawn is a table, since it may
-  just be a table of numbers.
+- **Palette numbers always show as numbers** (whole numbers 0–15, or indexes into a `palette`):
+  a 2D list as a table, a flat list drawn with `width=` as wrapped number tiles. They are never
+  tinted, drawn as a picture or shown as bars, whatever `stageLists` says: the panel shows the
+  *data*, the Stage shows what it draws. A 2D list that mixes colour names and numbers is a table
+  too; only colour names, hex codes and see-through cells make a picture.
 - **Sizes.** Pictures scale to the panel's width; long lists scroll inside the tag. The panel reads
   up to 50 items a list and about 1,000 values a variable, which fits a 32 × 32 picture; a bigger
   2D list (or one cut short) shows as tiles. In slow-mo each step keeps less (about 20 × 20).
 - **Changed items.** After a re-run, the swatch, bar, cell or card that changed gets an orange ring
   and a ● (and "changed" for screen readers), not only the whole tag. In slow-mo the changed item
   pulses with its tag (never with reduced motion).
-- **Screen readers** hear every item, e.g. "palette, item 0: red", and pictures as a summary:
-  "pixels: 8 by 8 picture, 5 colours: red 12, white 40, …". Colour is never the only signal.
+- **Screen readers** hear every item, e.g. "palette, item 0: red" (in a wrapped list, "pixels,
+  item 9 (row 2, column 2): white"), tables by row ("pixels, row 1: 0, 1, 1, 0") and pictures as
+  a summary: "pixels: 8 by 8 picture, 5 colours: red 12, white 40, …". Colour is never the only
+  signal.
 
 ```yaml
 - id: 21
@@ -347,7 +351,7 @@ hidden setup code show like any other variable.
   title: Add two colours to the palette
   showVariables:
     mode: view
-    stageLists: picture   # a list drawn with grid() shows as a picture here too
+    stageLists: picture   # a list of colour names drawn with grid() shows as a picture here too
   codeStages:
     - role: starter
       code: |
@@ -566,6 +570,7 @@ for i in range(40):                # a spinning rainbow tunnel
 | `text(words, colour, x, y, size=16)` | text centred on `(x, y)`. `words` may be any value (a number is drawn as text) |
 | `stamp(emoji, x, y, size=32)` | one emoji centred on `(x, y)` |
 | `grid(rows, palette=None, cell=None, x, y)` | a 2D list as a pixel grid centred on `(x, y)` (see below) |
+| `grid(values, width=n, …)` | one long (flat) list as a pixel grid, `n` squares to a row (see below) |
 | `clear()` | wipes the stage back to white |
 | `hue(n, light=50)` | draws nothing: returns a colour round the colour wheel (see below) |
 
@@ -620,6 +625,27 @@ Arcade Kit (`"dark_blue"`, `"peach"`, also written with a space), a hex code (`"
 (default: the middle). Rows may be different lengths. A grid is at most 100 × 100. Grids don't
 take `angle`, `opacity` or `outline`.
 
+**One long list with `width=`.** `grid(pixels, width=8)` draws a flat list (no item is a list)
+as rows of 8 squares, left to right, top to bottom; the last row may be short. Values, `palette`,
+`cell`, `x`, `y` and the 100 × 100 limit work as above. This is how real images are stored, and
+students can change a picture with one plain `for` loop before they meet lists of lists:
+
+```python
+pixels = ["red"] * 8 + ["white"] * 8 + ["red"] * 8
+for i in range(len(pixels)):
+    if pixels[i] == "red":
+        pixels[i] = "blue"
+grid(pixels, width=8)
+```
+
+A flat list with no `width` stops with "grid(): pixels is one long list. Say how many squares fit
+in a row, like grid(pixels, width=8)" (naming the student's variable when there is one); a `width`
+that isn't a whole number of 1 or more, or a `width` given with a list of rows, gets its own
+plain-English error. A bad value is named by its place in the list: `grid(): pixels[9] is 'redd',
+which isn't a colour I know …`. The name-tag panel wraps the list's tiles at the same width (see
+**List and dict visuals**), the Stage description says "a pixel grid of 24 squares, 8 to a row,
+in red and white", and `stage_pixel` can pick a square by `index`.
+
 **Mistakes students make** stop the run with a plain-English error on the student's own line,
 naming the argument: `rect(): y should be a number, like 200, not the text '20'`,
 `circle(): 'redd' isn't a colour I know. Try a name like 'red' or a hex code like '#ff0000'`,
@@ -654,7 +680,7 @@ needing a run). They look at what is on the stage after the last `clear()`.
 | `stage_matches_target` | `tolerance` (0–1, default `0.01`) | the shapes differ from the `stageTarget` drawing in at most that fraction of the stage, and every target text and emoji is drawn (same words or emoji within 12 px) with no extra ones. Needs `stageTarget` |
 | `stage_shape_count` | `kind` (`rect`, `square`, `circle`, `polygon`, `line`, `text`, `stamp`, `grid`, or `any` = default), `sides` (3–100, with `kind: polygon` only), `min`, `max` | the number of those calls is between `min` and `max` (neither given: at least 1). `square` counts `square()` calls only (not `rect(80, 80)` or `polygon(4, …)`); `sides` counts only the polygons with that many sides |
 | `stage_colour_used` | `colour` | something on the stage is that colour: a shape's fill or outline, text, the background or a grid cell (a see-through shape counts by its own colour) |
-| `stage_pixel` | `x` and `y` (0–399), **or** `row` and `col`, plus `colour` | that point, or the centre of that cell of the last grid, is that colour |
+| `stage_pixel` | one of: `x` and `y` (0–399), `row` and `col`, or `index`; plus `colour`. `row`, `col` and `index` count from 0 | that point, or the centre of that cell of the last grid, is that colour. `index` is the cell's place in the grid's flat list, row by row (for `grid(pixels, width=8)`, `index: 9` is `pixels[9]`, row 1, column 1); past the end fails |
 | `stage_text_shown` | `text`, `operator` (`contains` = default, `equals`, `matches_regex`) | some drawn text matches (like output checks: `contains` ignores capitals) |
 
 Colours match when each red, green and blue part is within 8 of the expected colour. Shapes are

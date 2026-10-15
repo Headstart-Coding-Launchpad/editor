@@ -41,6 +41,20 @@ describe('describeStage', () => {
     )
   })
 
+  it('says how many squares a flat grid has, and how many to a row', () => {
+    expect(
+      describeCommand({
+        type: 'grid',
+        x: 0,
+        y: 0,
+        cell: 50,
+        colours: ['#ff0000', '#ffffff'],
+        cells: [Array(8).fill(0), Array(8).fill(1), Array(8).fill(0)],
+        wrap: 8,
+      })
+    ).toBe('a pixel grid of 24 squares, 8 to a row, in red and white')
+  })
+
   it('says how a shape is turned, faded and outlined', () => {
     expect(
       describeCommand({ type: 'square', x: 200, y: 200, size: 80, colour: '#ff0000', angle: 45 })

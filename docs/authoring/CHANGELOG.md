@@ -55,6 +55,38 @@ Entries written before 2026-09-29 are not tagged.
 - Affects: python, turtle (name-tag panel `at: marker`) · Existing lessons: no changes needed ·
   Resolves: authoring-requests/2026-10-15-p6-17-peek-marker-show-where-the-program-stopped.md
 
+### Stage: flat pixel lists with `grid(values, width=n)`; palette numbers show as numbers in the panel
+
+- **`grid(pixels, width=8)`** draws a flat list (no item is a list) as rows of 8 squares, left to
+  right, top to bottom; the last row may be short. Values, `palette`, `cell`, `x`, `y` and the
+  100 × 100 limit work as for a list of rows, and slow-mo draws it step by step as before.
+  Plain-English errors: a flat list with no `width` ("grid(): pixels is one long list. Say how
+  many squares fit in a row, like grid(pixels, width=8)", naming the student's variable), a
+  `width` that isn't a whole number of 1 or more, and `width` given with a list of rows. A bad
+  value is named by its place: `pixels[9]`. The Stage description says "a pixel grid of 24
+  squares, 8 to a row, in red and white".
+- **`stage_pixel` gains `index`** (0 or more): the cell at that place in the last grid's flat
+  list, row by row, so `index: 9` after `grid(pixels, width=8)` reads `pixels[9]`. Give exactly
+  one of `x`/`y`, `row`/`col` or `index`; the docs now say all three count from 0. Validation's
+  message changed to "needs one of: x and y, row and col, or index", with a new one for a bad
+  `index`.
+- **Name-tag panel: wrapped lists.** A flat list drawn with `grid(…, width=…)` this run shows its
+  tiles wrapped at the same width, indexes running on (0–7, 8–15 …), whatever `stageLists` says:
+  swatches for colours, plain numbers for palette numbers (never bars), tiles otherwise. Screen
+  readers hear "pixels, item 9 (row 2, column 2): white"; the tutor card shows a wrapped colour
+  list as a small picture.
+- **Palette numbers always show as numbers.** A 2D list holding palette numbers is a plain table
+  with row and column indexes (read by row: "pixels, row 1: 0, 1, 1, 0"), even with
+  `stageLists: picture`; it is never tinted or drawn as the picture. Colour names and hex codes
+  are unchanged: swatches, and a small picture for a 2D list (with `stageLists: picture` for a
+  drawn one). See [python.md](python.md#stage-drawing-beside-the-console) (Grids, Stage checks)
+  and [List and dict visuals](python.md#name-tag-panel-showvariables).
+- Affects: python (Stage `grid()`, `stage_pixel`, name-tag panel) · Existing lessons: no changes
+  needed; a task relying on `stageLists: picture` to show palette numbers as a picture now shows
+  a number table instead · Resolves:
+  authoring-requests/2026-10-15-p6-13-stage-grid-flat-pixel-list-with-a-width.md,
+  authoring-requests/2026-10-15-p6-14-name-tag-panel-palette-numbers-as-a-number-table.md
+
 ### Python and Turtle screen space: one tabbed result pane on smaller screens (`layout.firstPane`)
 
 - **Tablets, 1366 × 768 Chromebooks and small laptops** now show the editor on the left and one

@@ -14,7 +14,15 @@ import {
   visualOptions,
 } from './variablesPanel.js'
 import { formatTargetValue, targetMatches } from './predictions.js'
-import { chooseVisual, describePicture, dictKey, sizeText, targetToNode } from './visuals.js'
+import {
+  chooseVisual,
+  describePicture,
+  describeTable,
+  describeWrapped,
+  dictKey,
+  sizeText,
+  targetToNode,
+} from './visuals.js'
 import ValueVisual from './ValueVisual.jsx'
 
 // How much of a value shows before "Show all".
@@ -224,10 +232,13 @@ function TagTop({ name, node, changed, label }) {
   )
 }
 
-// The tag's screen-reader words: a picture's summary, a Stage list's size, or the value.
+// The tag's screen-reader words: a picture's summary, a Stage list's size, a table by row, a
+// wrapped list's size and width, or the value.
 function describeTag(name, node, visual) {
   if (visual.kind === 'picture') return describePicture(name, visual)
   if (visual.kind === 'size') return `${name}: ${sizeText(node, visual)}`
+  if (visual.kind === 'table') return describeTable(name, visual)
+  if (visual.kind === 'wrapped') return describeWrapped(name, node, visual)
   return describeVariable(name, node)
 }
 
