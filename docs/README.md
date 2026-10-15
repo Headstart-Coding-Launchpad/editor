@@ -97,6 +97,11 @@ Agreed build plan for the 20 platform requests filed 2026-10-14: class roster wi
 
 **Load when:** building any of those features, or changing the class roster, saved work or new Firebase data they add.
 
+### [architecture/requests-2026-10-15-plan.md](architecture/requests-2026-10-15-plan.md)
+Agreed build plan for the six LG-P6 wave 1b requests filed 2026-10-15: name-tag visuals for lists and dicts, locked lines with hidden setup and puzzle rules, Stage shapes (size-first, rotation, polygons, hue), animated Turtle drawing, Turtle course mode (grid and track), and the Python/Turtle tabbed result layout, with Ryan's decisions and the build waves.
+
+**Load when:** building or changing any of those features.
+
 ### [architecture/runtime-flows.md](architecture/runtime-flows.md)
 High-level route, student phase, persistence, teacher-live, and Firebase ownership diagrams.
 
