@@ -1,5 +1,6 @@
 import React from 'react'
 import { TURTLE_COMMAND_NAMES } from './checks.js'
+import { COURSE_CHECK_HINTS, COURSE_CHECK_TYPES } from './courseChecks.js'
 import { isCodeCheck } from '../checks'
 import {
   CheckFeedbackControls,
@@ -30,6 +31,15 @@ const CHECK_OPTIONS = [
   ['turtle_command_used', 'Command used'],
   ['turtle_color_used', 'Colour used'],
   ['turtle_stamp_count', 'Number of stamps'],
+]
+
+// Course mode (task.course, ./course.js): offered on a course task (or for a course check already
+// there).
+const COURSE_OPTIONS = [
+  ['course_goal_reached', 'Course: reaches the goal'],
+  ['course_no_crash', 'Course: no crash'],
+  ['course_pickups', 'Course: pickups collected'],
+  ['course_max_moves', 'Course: at most N moves'],
 ]
 
 // run_attempted (demo tasks): listed with the turtle checks, completion checks only.
@@ -83,6 +93,16 @@ function preserveFeedbackMeta(prev = {}) {
 
 function skeleton(type, prev = {}) {
   const meta = preserveFeedbackMeta(prev)
+  if (COURSE_CHECK_TYPES.includes(type)) {
+    // A new course check starts with a kid-friendly hint (replacing another course check's).
+    const keepHint = prev.hint && !Object.values(COURSE_CHECK_HINTS).includes(prev.hint)
+    return {
+      type,
+      ...(type === 'course_max_moves' ? { max: '10' } : {}),
+      ...meta,
+      hint: keepHint ? prev.hint : COURSE_CHECK_HINTS[type],
+    }
+  }
   if (type === 'turtle_position') return { type, x: '0', y: '0', tolerance: '2', ...meta }
   if (type === 'turtle_heading') return { type, value: '0', tolerance: '2', ...meta }
   if (type === 'turtle_path_closed') return { type, tolerance: '2', ...meta }
@@ -264,6 +284,29 @@ function CheckFields({ check, onChange }) {
     )
   }
 
+  if (check.type === 'course_pickups') {
+    return (
+      <NumberField
+        label="At least (blank: all)"
+        value={check.min}
+        onChange={(min) => {
+          const { min: _old, ...rest } = check
+          onChange(min === '' ? rest : { ...rest, min })
+        }}
+      />
+    )
+  }
+
+  if (check.type === 'course_max_moves') {
+    return (
+      <NumberField
+        label="At most (moves)"
+        value={check.max}
+        onChange={(max) => onChange({ ...check, max })}
+      />
+    )
+  }
+
   if (check.type === 'turtle_stamp_count') {
     return (
       <>
@@ -329,10 +372,12 @@ export default function CheckEditor({
           )
         }
         const codeCheck = isCodeCheck(check)
+        const courseOptions =
+          task?.course || COURSE_CHECK_TYPES.includes(check?.type) ? COURSE_OPTIONS : []
         const checkOptions =
           feedbackEditor && check.type !== 'run_attempted'
-            ? CHECK_OPTIONS
-            : [...CHECK_OPTIONS, RUN_ATTEMPTED_OPTION]
+            ? [...CHECK_OPTIONS, ...courseOptions]
+            : [...CHECK_OPTIONS, ...courseOptions, RUN_ATTEMPTED_OPTION]
         const knownType = codeCheck || checkOptions.some(([value]) => value === check.type)
         const activeCheck = knownType ? check : skeleton('turtle_segment_count')
         const codeOperator = codeCheck ? subjectOpFromCheck(activeCheck).operator : null

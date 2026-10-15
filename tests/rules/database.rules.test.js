@@ -277,6 +277,26 @@ describe('Scratch slow-mo use', () => {
   })
 })
 
+describe('Turtle course runs', () => {
+  const logPath = (id) => `sessions/${LESSON}/students/${id}/courseLog/t2`
+
+  it('lets a student record their own course runs, and nobody else', async () => {
+    const entry = { runs: 2, goalRuns: 1, crashes: 1, pickups: 3, lastGoalReached: true, lastAt: 1 }
+    await assertSucceeds(ref(as.student, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.student, `${logPath(STUDENT_ID)}/runs`).set(3))
+    await assertFails(ref(as.otherStudent, logPath(STUDENT_ID)).set(entry))
+    await assertFails(ref(as.anonymous, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.teacher, logPath(STUDENT_ID)).set(null))
+  })
+
+  it('refuses negative counts, bad values and code', async () => {
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ runs: -1 }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ crashes: 'lots' }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ lastGoalReached: 'yes' }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ code: 'turtle.forward()' }))
+  })
+})
+
 describe('editor scrubbing use', () => {
   const logPath = (id) => `sessions/${LESSON}/students/${id}/scrubLog/t2`
 

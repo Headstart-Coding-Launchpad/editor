@@ -7,7 +7,8 @@
  * The back canvas is redrawn from scratch only when a fill closes (it goes under lines already
  * drawn), or on resize.
  *
- * `drawMarker(ctx, pose, transform)` draws the marker (default the 🐢), so other modes can show
+ * `drawMarker(ctx, pose, transform, frame)` draws the marker (default the 🐢; `frame` is the
+ * playback frame, null for the finished picture), so other modes can show
  * something else moving along the path (e.g. a vehicle).
  */
 import {
@@ -27,13 +28,15 @@ function defaultNow() {
 }
 
 /**
- * Options: canvas, drawMarker, onStatus(status) ('idle' | 'playing' | 'finished'), onFrame(frame),
+ * Options: canvas, drawMarker, drawUnderlay(ctx, transform) (drawn under the drawing, e.g. a course
+ * map; kept on the back canvas), onStatus(status) ('idle' | 'playing' | 'finished'), onFrame(frame),
  * timelineOptions (buildTurtleTimeline), and for tests now/requestFrame/cancelFrame/createCanvas.
  */
 export function createTurtlePlayer(options = {}) {
   const {
     canvas,
     drawMarker = drawTurtleMarker,
+    drawUnderlay = null,
     onStatus = () => {},
     onFrame = () => {},
     timelineOptions = {},
@@ -96,6 +99,7 @@ export function createTurtlePlayer(options = {}) {
       background: data.background,
       turtle: data.finalPose,
       drawMarker,
+      underlay: drawUnderlay,
       logicalWidth: data.logicalWidth,
       logicalHeight: data.logicalHeight,
     })
@@ -120,6 +124,11 @@ export function createTurtlePlayer(options = {}) {
     if (!backCtx) return
     backCtx.save()
     drawTurtleBackground(backCtx, data.background)
+    if (drawUnderlay) {
+      backCtx.save()
+      drawUnderlay(backCtx, transformFor(back))
+      backCtx.restore()
+    }
     drawTurtleItems(backCtx, data.commands, transformFor(back), 0, done)
     backCtx.restore()
     backDone = done
@@ -156,7 +165,7 @@ export function createTurtlePlayer(options = {}) {
     if (frame.active?.kind === 'line') {
       drawPartialTurtleLine(ctx, data.commands[frame.done], frame.progress, transform)
     }
-    drawMarker(ctx, frame.pose, transform)
+    drawMarker(ctx, frame.pose, transform, frame)
     ctx.restore()
   }
 

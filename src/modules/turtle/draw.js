@@ -58,8 +58,11 @@ export function drawTurtleCommands(ctx, commands = [], options = {}) {
     // Final turtle state ({ x, y, heading, visible }) — when given, the 🐢 marker is
     // drawn on top of everything so students can see where it is and which way it faces.
     turtle = null,
-    // Draws the marker instead of the 🐢: (ctx, pose, transform) => void (e.g. a vehicle).
+    // Draws the marker instead of the 🐢: (ctx, pose, transform, frame) => void (e.g. a vehicle);
+    // `frame` is null here (the finished picture).
     drawMarker = drawTurtleMarker,
+    // Drawn over the background and under the drawing: (ctx, transform) => void (a course map).
+    underlay = null,
   } = options
   const transform = computeTurtleTransform(
     ctx.canvas.width,
@@ -70,8 +73,13 @@ export function drawTurtleCommands(ctx, commands = [], options = {}) {
 
   ctx.save()
   drawTurtleBackground(ctx, background)
+  if (underlay) {
+    ctx.save()
+    underlay(ctx, transform)
+    ctx.restore()
+  }
   drawTurtleItems(ctx, commands, transform)
-  drawMarker(ctx, turtle, transform)
+  drawMarker(ctx, turtle, transform, null)
   ctx.restore()
 }
 

@@ -14,8 +14,9 @@ import { prefersReducedMotion } from '../../shared/motion.js'
  *   finished drawing at once. Mid-playback, the same runId again keeps playing.
  * - `animate`: false for views that only ever show finished drawings (a watching tutor).
  * - Reduced motion (prefersReducedMotion): a new run shows at once and `canPlay` offers Play.
- * - `drawMarker`, `timelineOptions`, `onFrame(frame)`: passed to the player (other modes can
- *   draw their own marker and follow the frames, e.g. a vehicle on a course).
+ * - `drawMarker`, `drawUnderlay`, `timelineOptions`, `onFrame(frame)`: passed to the player (other
+ *   modes can draw their own marker and a layer under the drawing, and follow the frames, e.g. a
+ *   vehicle on a course map).
  *
  * Returns { status, playing, canPlay, play, skip, timeline }.
  */
@@ -27,6 +28,7 @@ export function useTurtlePlayback({
   runId = null,
   animate = true,
   drawMarker,
+  drawUnderlay,
   timelineOptions,
   onFrame,
 }) {
@@ -45,6 +47,7 @@ export function useTurtlePlayback({
     const next = createTurtlePlayer({
       canvas,
       drawMarker,
+      drawUnderlay,
       timelineOptions,
       onStatus: setStatus,
       onFrame: (frame) => onFrameRef.current?.(frame),
@@ -58,7 +61,8 @@ export function useTurtlePlayback({
       next.destroy()
       setPlayer(null)
     }
-    // drawMarker/timelineOptions are fixed per mode; a new canvas makes a new player.
+    // drawMarker/drawUnderlay/timelineOptions are fixed per mode (a course reads its current map
+    // through refs); a new canvas makes a new player.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvas])
 

@@ -13,6 +13,10 @@
 // The log includes the motion between drawn items (move, turn, speed, visible; see
 // recorder.js) so a Go Live screen can play the presenter's drawing; `runId` says which Run
 // it came from (useTurtlePlayback.js plays a new one).
+//
+// A course run (./course.js, ./courseRun.js) also carries `course`: each map's outcome and its own
+// drawing, so a Go Live screen and the tutor's views can show every map. The course's own
+// geometry is never sent: every screen rebuilds it from the task.
 const MAX_SYNCED_TURTLE_COMMANDS = 4000
 
 const COORD_KEYS = ['x', 'y', 'x1', 'y1', 'x2', 'y2', 'heading', 'from', 'delta', 'size', 'width']
@@ -39,15 +43,65 @@ function compactTurtleCommand(command, dropped) {
   return next
 }
 
+function compactCommands(list, cap) {
+  const commands = Array.isArray(list) ? list : []
+  const dropped = Math.max(0, commands.length - cap)
+  const trimmed = dropped > 0 ? commands.slice(dropped) : commands
+  return trimmed.map((command) => compactTurtleCommand(command, dropped))
+}
+
+function compactState(state) {
+  return state ? { ...state, x: roundCoord(state.x), y: roundCoord(state.y) } : null
+}
+
+function count(value) {
+  const n = Number(value)
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
+}
+
+// The course part: outcomes and drawings per map, each map's drawing capped to its share.
+function compactCourse(course) {
+  if (!course || !Array.isArray(course.maps)) return null
+  const cap = Math.max(
+    200,
+    Math.floor(MAX_SYNCED_TURTLE_COMMANDS / Math.max(1, course.maps.length))
+  )
+  return {
+    type: String(course.type ?? ''),
+    vehicle: String(course.vehicle ?? 'turtle'),
+    ...(course.taskId !== undefined && course.taskId !== null
+      ? { taskId: String(course.taskId) }
+      : {}),
+    maps: course.maps.map((map, index) => ({
+      index,
+      status: String(map?.status ?? 'success'),
+      goalReached: !!map?.goalReached,
+      crashed: !!map?.crashed,
+      crash: map?.crash
+        ? {
+            message: String(map.crash.message ?? ''),
+            x: roundCoord(map.crash.x),
+            y: roundCoord(map.crash.y),
+          }
+        : null,
+      pickups: count(map?.pickups),
+      pickupsTotal: count(map?.pickupsTotal),
+      moves: count(map?.moves),
+      stopped: map?.stopped ? String(map.stopped) : null,
+      message: map?.message ? String(map.message) : null,
+      commands: compactCommands(map?.commands, cap),
+      state: compactState(map?.state),
+    })),
+  }
+}
+
 export function compactTurtleResultForSync(turtleResult) {
   if (!turtleResult) return null
-  const commands = Array.isArray(turtleResult.commands) ? turtleResult.commands : []
-  const dropped = Math.max(0, commands.length - MAX_SYNCED_TURTLE_COMMANDS)
-  const trimmed = dropped > 0 ? commands.slice(dropped) : commands
-  const state = turtleResult.state
+  const course = compactCourse(turtleResult.course)
   return {
-    state: state ? { ...state, x: roundCoord(state.x), y: roundCoord(state.y) } : null,
-    commands: trimmed.map((command) => compactTurtleCommand(command, dropped)),
+    state: compactState(turtleResult.state),
+    commands: compactCommands(turtleResult.commands, MAX_SYNCED_TURTLE_COMMANDS),
     ...(turtleResult.runId ? { runId: String(turtleResult.runId) } : {}),
+    ...(course ? { course } : {}),
   }
 }

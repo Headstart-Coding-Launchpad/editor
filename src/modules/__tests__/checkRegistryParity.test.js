@@ -201,6 +201,12 @@ const POST_REGISTRY_TYPES = [
   'stage_text_shown',
   // Puzzle rules (src/shared/puzzle, tested in its own __tests__).
   'max_lines',
+
+  // Turtle course mode (src/modules/turtle/courseChecks.js, tested in its own __tests__).
+  'course_goal_reached',
+  'course_no_crash',
+  'course_pickups',
+  'course_max_moves',
 ]
 const registeredIds = checkRegistry.typeIds().filter((id) => !POST_REGISTRY_TYPES.includes(id))
 const operators = [

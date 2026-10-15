@@ -11,7 +11,8 @@ import {
   CollapseTabButton,
 } from '../../app/components/CollapsiblePanelControls'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
-import TurtlePicture from './TurtlePicture.jsx'
+// A course task (task.course) shows its map and vehicle; any other task the plain picture.
+import TurtlePicture from './CoursePicture.jsx'
 import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
 import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
 import { usePythonSlowMo } from '../python/slowMo/usePythonSlowMo.js'
@@ -242,6 +243,7 @@ export default function StudentWorkspace({
   const picture = (
     <div style={s.canvasWrap}>
       <TurtlePicture
+        task={task}
         result={turtleResult}
         animate={!slowMoView}
         onPlayingChange={setDrawingPlaying}

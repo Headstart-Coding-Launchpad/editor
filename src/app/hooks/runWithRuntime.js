@@ -38,6 +38,8 @@ import { lastErrorLine } from '../studentHints.js'
  * - signals (optional): the live badge reporters (useStudentBadgeSignals); a free-play run is
  *   reported with reportSandboxRun
  * - variablesPanel (optional): the name-tag panel (useVariablesPanel), handed each finished run
+ * - recordCourseRun (optional): a Turtle course run's `turtle.course` for the session report
+ *   (useCourseLog); not for free play
  * - runOptions (optional): `{ slowMo: true, onResult(result) }` from a slow-mo Run
  *   (src/modules/python/slowMo/): the runtime records the run for playback, and `onResult` gets
  *   the runtime's result (with its `slowMo` recording) before anything else is done with it.
@@ -361,6 +363,8 @@ export async function runWithRuntime(ctx) {
     // The Python Stage drawing is a run result too: the tutor's card and StudentModal draw it.
     if (runResult.stage) writers.writeStudentStageResult?.(actor.anonymousId, result.stage ?? null)
   }
+  // A Turtle course run (task.course) for the session report.
+  if (!isFreePlay && result.turtle?.course) ctx.recordCourseRun?.(result.turtle.course)
   if (isFreePlay && !teacherPresentation) {
     signals?.reportSandboxRun({ error: runError, submission: nextCode })
   }

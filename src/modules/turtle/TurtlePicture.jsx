@@ -14,7 +14,9 @@ const DEFAULT_TURTLE_STATE = createTurtleState()
  * - `result`: { state, commands, runId? } (a run's turtle result), or null for an empty canvas.
  * - `animate`: false for views that only show finished drawings.
  * - `onPlayingChange(playing)`: the workspace holds the check result back while it plays.
- * - `drawMarker`, `timelineOptions`, `onFrame`: see useTurtlePlayback.js.
+ * - `drawMarker`, `drawUnderlay`, `timelineOptions`, `onFrame`: see useTurtlePlayback.js.
+ * - `description`: the picture's words for screen readers (default: the drawing described).
+ * - `playingMessage`: announced while it plays (default 'The turtle is drawing.').
  * - `children`: drawn over the picture (e.g. a course mode's own labels).
  */
 export default function TurtlePicture({
@@ -22,8 +24,11 @@ export default function TurtlePicture({
   animate = true,
   onPlayingChange,
   drawMarker,
+  drawUnderlay,
   timelineOptions,
   onFrame,
+  description: descriptionOverride,
+  playingMessage = 'The turtle is drawing.',
   style,
   canvasStyle,
   children,
@@ -44,6 +49,7 @@ export default function TurtlePicture({
     runId: result?.runId ?? null,
     animate,
     drawMarker,
+    drawUnderlay,
     timelineOptions,
     onFrame,
   })
@@ -55,10 +61,11 @@ export default function TurtlePicture({
   // Unmounting mid-playback (a layout switch) must not leave the result held back.
   useEffect(() => () => onPlayingChange?.(false), [onPlayingChange])
 
-  const description = useMemo(
+  const drawingDescription = useMemo(
     () => describeTurtleDrawing({ commands, state: finalPose }),
     [commands, finalPose]
   )
+  const description = descriptionOverride ?? drawingDescription
 
   return (
     <div style={{ ...s.wrap, ...style }} className="turtle-picture">
@@ -95,7 +102,7 @@ export default function TurtlePicture({
         </div>
       )}
       <span style={s.srOnly} aria-live="polite">
-        {playing ? 'The turtle is drawing.' : ''}
+        {playing ? playingMessage : ''}
       </span>
     </div>
   )

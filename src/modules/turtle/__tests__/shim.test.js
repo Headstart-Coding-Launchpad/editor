@@ -110,6 +110,31 @@ describe('buildTurtleProgram', () => {
     expect(lines.slice(2).join('\n')).toBe('turtle.forward(10)')
   })
 
+  it('sets up a course map on line 2, so the student code still starts on line 3', () => {
+    const course = { type: 'grid', vehicle: 'rover', map: '#>.G#\n#####', index: 0, count: 1 }
+    const lines = buildTurtleProgram('turtle.forward()', { course }).split('\n')
+    expect(lines).toHaveLength(3)
+    expect(lines[1]).toBe(`_turtle_course_setup(${JSON.stringify(JSON.stringify(course))})`)
+    expect(lines[2]).toBe('turtle.forward()')
+  })
+
+  it('gives the course sensors and quarter-turn defaults to the turtle module', () => {
+    for (const name of [
+      'wall_ahead',
+      'wall_left',
+      'wall_right',
+      'at_goal',
+      'on_pickup',
+      'collected',
+    ]) {
+      expect(TURTLE_SHIM).toContain(`def ${name}(self):`)
+    }
+    expect(TURTLE_SHIM).toContain('def forward(self, distance=None):')
+    expect(TURTLE_SHIM).toContain('def left(self, angle=None):')
+    expect(TURTLE_SHIM).toContain('class _CourseStop(BaseException):')
+    expect(TURTLE_SHIM).toContain('def _turtle_course_setup(spec_json):')
+  })
+
   it('keeps the shim on a single source line so student error line numbers are unaffected', () => {
     const program = buildTurtleProgram('raise ValueError("boom")')
     expect(program.split('\n')[0]).not.toContain('\n')
