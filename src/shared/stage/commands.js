@@ -768,3 +768,10 @@ export function stageCommandsOf(stage) {
   if (Array.isArray(stage)) return stage
   return Array.isArray(stage?.commands) ? stage.commands : []
 }
+
+// Whether a program imports the stage module (`import stage` / `from stage import …`), so the
+// workspace can offer its Picture tab before the first Run (src/shared/resultPane/).
+const IMPORTS_STAGE = /^\s*(?:import\s+stage\b|from\s+stage\s+import\b)/m
+export function codeImportsStage(code) {
+  return IMPORTS_STAGE.test(String(code ?? ''))
+}

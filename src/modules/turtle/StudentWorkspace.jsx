@@ -18,6 +18,13 @@ import { usePythonSlowMo } from '../python/slowMo/usePythonSlowMo.js'
 import SlowMoBar from '../python/slowMo/SlowMoBar.jsx'
 import SlowMoNameTags from '../python/slowMo/SlowMoNameTags.jsx'
 import PuzzleBar from '../../shared/puzzle/PuzzleBar.jsx'
+import { getShowVariables, taskShowsVariables } from '../../shared/variablesPanel/variablesPanel.js'
+import ResultPane from '../../shared/resultPane/ResultPane.jsx'
+import { useResultPane, useRunFinishedToken } from '../../shared/resultPane/useResultPane.js'
+import { useWorkspaceLayout } from '../../shared/resultPane/useWorkspaceLayout.js'
+
+// The editor's share of the width when side by side (percent).
+const TURTLE_SPLIT = 50
 
 export default function StudentWorkspace({
   task,
@@ -94,9 +101,56 @@ export default function StudentWorkspace({
   const [drawingPlaying, setDrawingPlaying] = useState(false)
   const holdResult = (!!slowMoView && !slowMoView.finished) || drawingPlaying
 
+  // Smaller screens (src/shared/resultPane/): the editor plus ONE result pane with tabs Picture ·
+  // Tags · Console, beside the editor or below it on portrait screens and phones. Wide desktops
+  // keep the picture, name tags and output side by side as before.
+  const inFreePlay = isSandbox || cs.inPersonalSandbox
+  const tagsAvailable =
+    !inFreePlay && !isViewingPrev && !isTeacherEditing && taskShowsVariables(task)
+  const resultPanes = ['picture', tagsAvailable && 'tags', 'console'].filter(Boolean)
+  const {
+    ref: workspaceRef,
+    layout,
+    inset,
+  } = useWorkspaceLayout({ isMobile, split: TURTLE_SPLIT, paneCount: resultPanes.length })
+  const tabbed = layout !== 'side'
+  const runToken = useRunFinishedToken({
+    running: !readOnly && cs.running,
+    // A Go Live viewer: each new broadcast run of the presenter's drawing.
+    liveKey: isForcedTeacherLive ? (displayTurtleResult?.runId ?? null) : null,
+  })
+  const shownOutput = slowMoView ? slowMoView.output : cs.output
+  const result = useResultPane({
+    task,
+    available: resultPanes,
+    tabbed,
+    tagsMode: tagsAvailable ? (getShowVariables(task)?.mode ?? null) : null,
+    // A course (a maze or track to drive) is a picture goal from the start.
+    pictureGoal: !inFreePlay && !!task?.course,
+    preferPicture: true,
+    slowMo: !!slowMoView,
+    runToken,
+    drew: (turtleResult?.commands?.length ?? 0) > 0,
+    error: cs.runStatus === 'error',
+    output: shownOutput,
+  })
+
+  // What's on screen, for the tutor's student card ('canvas' is the Picture tab).
+  const stackedIds = ['picture', 'tags']
+  const shownResultPanes = !tabbed
+    ? ['picture']
+    : resultPanes.filter(
+        (id) =>
+          id === result.active ||
+          (result.stacked && stackedIds.includes(id) && stackedIds.includes(result.active))
+      )
+  const visiblePanesKey = [
+    'code',
+    ...shownResultPanes.map((id) => (id === 'picture' ? 'canvas' : id)),
+  ].join(',')
   useEffect(() => {
-    onVisiblePanesChange?.(['code', 'canvas'])
-  }, [onVisiblePanesChange])
+    onVisiblePanesChange?.(visiblePanesKey.split(','))
+  }, [visiblePanesKey, onVisiblePanesChange])
 
   const showCopyCode =
     !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()
@@ -180,55 +234,67 @@ export default function StudentWorkspace({
     </div>
   )
 
+  // The picture: one element for every layout, so a course mode's children and props go here
+  // once. Switching between the side-by-side and tabbed layouts re-parents it, so it remounts
+  // and shows the finished drawing (see useTurtlePlayback.js); switching tabs only hides it, so
+  // a playing drawing carries on. Slow-mo draws its own steps, and a scrub preview has no runId,
+  // so both draw at once.
+  const picture = (
+    <div style={s.canvasWrap}>
+      <TurtlePicture
+        result={turtleResult}
+        animate={!slowMoView}
+        onPlayingChange={setDrawingPlaying}
+      />
+    </div>
+  )
+
+  // The name-tag panel (showVariables); step by step during slow-mo.
+  const variablesStyle = tabbed ? s.variablesFill : s.variablesPanel
+  const variablesPanel = slowMoView ? (
+    <SlowMoNameTags task={task} slowMo={slowMo} style={variablesStyle} />
+  ) : (
+    <TaskVariablesPanel
+      task={inFreePlay ? null : task}
+      panel={cs.variablesPanel}
+      synced={isForcedTeacherLive ? displayVariablesPanel : undefined}
+      running={cs.running}
+      hidden={isViewingPrev || isTeacherEditing}
+      style={variablesStyle}
+    />
+  )
+
+  const outputPanel = (
+    <OutputPanel
+      // During slow-mo the output grows step by step and the check result waits for the
+      // last step (the recorded run was checked like any Run).
+      output={shownOutput}
+      runStatus={holdResult ? null : cs.runStatus}
+      checkPassed={holdResult ? false : cs.checkPassed}
+      hasCheck={holdResult ? false : !!task?.check}
+      checkAttempted={holdResult ? false : cs.checkAttempted}
+      fill
+      collapsible={false}
+      // With tabs the Console is its own tab, so it never folds away.
+      leadingActions={
+        tabbed ? null : (
+          <CollapseTabButton
+            onClick={() => setOutputCollapsed(true)}
+            direction="down"
+            title="Collapse Output"
+            ariaLabel="Collapse Output"
+          />
+        )
+      }
+    />
+  )
+
   const canvasAndOutput = (
     <div style={s.rightPane}>
-      <div style={s.canvasWrap}>
-        {/* Switching between the mobile and split layouts re-parents the picture, so it
-            remounts and shows the finished drawing (see useTurtlePlayback.js). Slow-mo draws
-            its own steps, and a scrub preview has no runId, so both draw at once. */}
-        <TurtlePicture
-          result={turtleResult}
-          animate={!slowMoView}
-          onPlayingChange={setDrawingPlaying}
-        />
-      </div>
-      {/* The name-tag panel (showVariables), between the drawing and the output; step by step
-          during slow-mo. */}
-      {slowMoView ? (
-        <SlowMoNameTags task={task} slowMo={slowMo} style={s.variablesPanel} />
-      ) : (
-        <TaskVariablesPanel
-          task={isSandbox || cs.inPersonalSandbox ? null : task}
-          panel={cs.variablesPanel}
-          synced={isForcedTeacherLive ? displayVariablesPanel : undefined}
-          running={cs.running}
-          hidden={isViewingPrev || isTeacherEditing}
-          style={s.variablesPanel}
-        />
-      )}
-      {!outputCollapsed && (
-        <div style={s.outputPane}>
-          <OutputPanel
-            // During slow-mo the output grows step by step and the check result waits for the
-            // last step (the recorded run was checked like any Run).
-            output={slowMoView ? slowMoView.output : cs.output}
-            runStatus={holdResult ? null : cs.runStatus}
-            checkPassed={holdResult ? false : cs.checkPassed}
-            hasCheck={holdResult ? false : !!task?.check}
-            checkAttempted={holdResult ? false : cs.checkAttempted}
-            fill
-            collapsible={false}
-            leadingActions={
-              <CollapseTabButton
-                onClick={() => setOutputCollapsed(true)}
-                direction="down"
-                title="Collapse Output"
-                ariaLabel="Collapse Output"
-              />
-            }
-          />
-        </div>
-      )}
+      {picture}
+      {/* The name-tag panel, between the drawing and the output. */}
+      {variablesPanel}
+      {!outputCollapsed && <div style={s.outputPane}>{outputPanel}</div>}
       {outputCollapsed && (
         // Output sits *below* the canvas here (not beside it like Python), so it must use
         // the horizontal rail — the vertical one is height: 100% and swallows the pane.
@@ -245,28 +311,80 @@ export default function StudentWorkspace({
     </div>
   )
 
-  if (isMobile) {
-    return (
-      <div style={s.mobileStack}>
-        {editor}
-        {canvasAndOutput}
-      </div>
-    )
-  }
+  // Picture · Tags · Console as tabs.
+  const resultPane = (
+    <ResultPane
+      panes={resultPanes.map((id) => ({
+        id,
+        content: id === 'picture' ? picture : id === 'tags' ? variablesPanel : outputPanel,
+      }))}
+      active={result.active}
+      onSelect={result.select}
+      stacked={result.stacked}
+      badges={result.badges}
+      announcement={result.announcement}
+      idPrefix="turtle-result"
+      label="Result"
+    />
+  )
 
-  return <SplitPane style={s.splitPane} defaultSplit={50} left={editor} right={canvasAndOutput} />
+  const body =
+    layout === 'below' ? (
+      // Phones and portrait screens: the editor above, the result pane below.
+      <div style={s.belowStack}>
+        <div style={s.belowEditor}>{editor}</div>
+        <div style={s.belowResult}>{resultPane}</div>
+      </div>
+    ) : (
+      <SplitPane
+        style={s.splitPane}
+        defaultSplit={TURTLE_SPLIT}
+        left={editor}
+        right={layout === 'tabs' ? resultPane : canvasAndOutput}
+      />
+    )
+
+  // The outer box is measured (never padded, so its size is steady); the inner one makes room
+  // for a tablet's on-screen keyboard so the editor and the result pane stay in view.
+  return (
+    <div ref={workspaceRef} style={s.workspace} data-layout={layout}>
+      <div style={inset ? { ...s.workspaceInner, paddingBottom: inset } : s.workspaceInner}>
+        {body}
+      </div>
+    </div>
+  )
 }
 
 const s = {
   splitPane: { flex: '1 1 auto', minHeight: 0, height: 'auto', overflow: 'hidden' },
-  mobileStack: {
+  // The workspace's measured outer box and its inner box (padded for an on-screen keyboard).
+  workspace: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: '1 1 auto',
+    minHeight: 0,
+    minWidth: 0,
+  },
+  workspaceInner: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: '1 1 auto',
+    minHeight: 0,
+    minWidth: 0,
+  },
+  // Phones and portrait screens: the editor above the result pane.
+  belowStack: {
     display: 'flex',
     flexDirection: 'column',
     gap: 8,
+    flex: '1 1 auto',
     minHeight: 0,
-    height: 'auto',
     overflow: 'hidden',
   },
+  belowEditor: { display: 'flex', flexDirection: 'column', flex: '1 1 55%', minHeight: 160 },
+  belowResult: { display: 'flex', flexDirection: 'column', flex: '1 1 45%', minHeight: 220 },
+  // The name-tag panel filling its own tab.
+  variablesFill: { flex: '1 1 auto', minHeight: 0, maxHeight: '100%' },
   editorPane: {
     display: 'flex',
     flexDirection: 'column',

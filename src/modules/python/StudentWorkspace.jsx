@@ -13,9 +13,13 @@ import {
 import CopyCodePanel from '../../app/components/CopyCodePanel'
 import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
 import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
-import { taskShowsVariables } from '../../shared/variablesPanel/variablesPanel.js'
+import { getShowVariables, taskShowsVariables } from '../../shared/variablesPanel/variablesPanel.js'
 import StagePane from '../../shared/stage/StagePane.jsx'
-import { stageCommandsOf } from '../../shared/stage/commands.js'
+import { codeImportsStage, stageCommandsOf } from '../../shared/stage/commands.js'
+import ResultPane from '../../shared/resultPane/ResultPane.jsx'
+import { getTaskLayout } from '../../shared/resultPane/resultPane.js'
+import { useResultPane, useRunFinishedToken } from '../../shared/resultPane/useResultPane.js'
+import { useWorkspaceLayout } from '../../shared/resultPane/useWorkspaceLayout.js'
 import { readStageResult } from '../../shared/stage/sync.js'
 import { useElementSize } from '../../shared/useElementSize.js'
 import { stageTargetCode, stageTargetGhostOn, useStageTarget } from './stageTarget.js'
@@ -23,6 +27,9 @@ import { usePythonSlowMo } from './slowMo/usePythonSlowMo.js'
 import SlowMoBar from './slowMo/SlowMoBar.jsx'
 import SlowMoNameTags from './slowMo/SlowMoNameTags.jsx'
 import PuzzleBar from '../../shared/puzzle/PuzzleBar.jsx'
+
+// The editor's share of the width when side by side (percent).
+const PYTHON_SPLIT = 58
 
 export default function StudentWorkspace({
   task: lessonTask,
@@ -51,14 +58,16 @@ export default function StudentWorkspace({
   onVisiblePanesChange,
 }) {
   // A task with a name-tag panel (showVariables) opens with the output side showing, so the
-  // student can predict before the first Run; so does one with a Stage target to draw over.
+  // student can predict before the first Run; so does one with a Stage target to draw over, and
+  // one whose author picked the first result tab (layout.firstPane).
   const [localOutputCollapsed, setLocalOutputCollapsed] = useState(
     () =>
       !isForcedTeacherLive &&
       !isTeacherEditing &&
       !isViewingPrev &&
       !taskShowsVariables(lessonTask) &&
-      !stageTargetCode(lessonTask)
+      !stageTargetCode(lessonTask) &&
+      !getTaskLayout(lessonTask)?.firstPane
   )
   // While forced-live, the panel state is locked to whatever the broadcast
   // source (teacher/watched student) has it set to — continuous, not a
@@ -97,9 +106,6 @@ export default function StudentWorkspace({
   const shouldShowOutput =
     task?.interactionMode !== 'submit' || isForcedTeacherLive || isTeacherEditing || isViewingPrev
 
-  useEffect(() => {
-    onVisiblePanesChange?.(shouldShowOutput && !outputCollapsed ? ['code', 'console'] : ['code'])
-  }, [shouldShowOutput, outputCollapsed, onVisiblePanesChange])
   const showCopyCode = typeof task?.copyCode === 'string' && !!task.copyCode.trim()
 
   // Slow-mo (task.slowMo, ./slowMo/): record the run, then play it back line by line. A Go Live
@@ -186,6 +192,60 @@ export default function StudentWorkspace({
         running: false,
       }
     : outputProps
+
+  // Smaller screens (src/shared/resultPane/): the editor plus ONE result pane with tabs Picture ·
+  // Tags · Console — only the panes this task has — beside the editor, or below it on portrait
+  // screens and phones. Wide desktops keep everything side by side. After Run the pane switches
+  // to what the task is about; the Console tab counts unseen lines while hidden.
+  const tagsAvailable = taskShowsVariables(task) && !isViewingPrev && !isTeacherEditing
+  const pictureAvailable =
+    showStage || (!isViewingPrev && !isTeacherEditing && codeImportsStage(code))
+  const resultPanes = shouldShowOutput
+    ? [pictureAvailable && 'picture', tagsAvailable && 'tags', 'console'].filter(Boolean)
+    : []
+  const {
+    ref: workspaceRef,
+    layout,
+    inset,
+  } = useWorkspaceLayout({ isMobile, split: PYTHON_SPLIT, paneCount: resultPanes.length })
+  const tabbed = layout !== 'side' && resultPanes.length > 1
+  const runToken = useRunFinishedToken({
+    running: !readOnly && (cs.running || cs.runningTests),
+    // A Go Live viewer: the presenter's run status arriving marks a finished run.
+    liveKey: isForcedTeacherLive ? (displayRunStatus ?? null) : null,
+  })
+  const result = useResultPane({
+    task,
+    available: resultPanes,
+    tabbed,
+    tagsMode: tagsAvailable ? (getShowVariables(task)?.mode ?? null) : null,
+    pictureGoal: !!stageTargetCode(task),
+    slowMo: !!slowMoView,
+    runToken,
+    drew: stageCommands.length > 0,
+    error: shownOutputProps.runStatus === 'error',
+    output: shownOutputProps.output,
+  })
+
+  // What's on screen, for the tutor's student card ('stage' is the Picture tab).
+  const stackedIds = ['picture', 'tags']
+  const shownResultPanes =
+    !shouldShowOutput || outputCollapsed
+      ? []
+      : !tabbed
+        ? ['console']
+        : resultPanes.filter(
+            (id) =>
+              id === result.active ||
+              (result.stacked && stackedIds.includes(id) && stackedIds.includes(result.active))
+          )
+  const visiblePanesKey = [
+    'code',
+    ...shownResultPanes.map((id) => (id === 'picture' ? 'stage' : id)),
+  ].join(',')
+  useEffect(() => {
+    onVisiblePanesChange?.(visiblePanesKey.split(','))
+  }, [visiblePanesKey, onVisiblePanesChange])
 
   function handleRunClick() {
     if (cs.running || cs.runningTests) {
@@ -302,10 +362,11 @@ export default function StudentWorkspace({
     </div>
   )
 
-  // The name-tag panel (showVariables): under the output, or alone while the output is folded
-  // away on a narrow screen.
+  // The name-tag panel (showVariables): under the output side by side; its own tab on smaller
+  // screens; alone while the output is folded away on a narrow screen.
+  const variablesStyle = tabbed ? s.variablesFill : s.variablesPanel
   const variablesPanel = slowMoView ? (
-    <SlowMoNameTags task={task} slowMo={slowMo} style={s.variablesPanel} />
+    <SlowMoNameTags task={task} slowMo={slowMo} style={variablesStyle} />
   ) : (
     <TaskVariablesPanel
       task={task}
@@ -313,7 +374,18 @@ export default function StudentWorkspace({
       synced={isForcedTeacherLive ? displayVariablesPanel : undefined}
       running={cs.running}
       hidden={isViewingPrev || isTeacherEditing}
-      style={s.variablesPanel}
+      style={variablesStyle}
+    />
+  )
+
+  const collapseDirection = layout === 'below' ? 'down' : 'right'
+  const collapseButton = !isForcedTeacherLive && (
+    <CollapseTabButton
+      onClick={() => setOutputCollapsed(true)}
+      direction={collapseDirection}
+      title="Collapse Output"
+      ariaLabel="Collapse Output"
+      style={tabbed ? s.tabsCollapseBtn : s.outputCollapseBtn}
     />
   )
 
@@ -322,17 +394,40 @@ export default function StudentWorkspace({
       {...shownOutputProps}
       fill
       collapsible={false}
-      leadingActions={
-        !isForcedTeacherLive && (
-          <CollapseTabButton
-            onClick={() => setOutputCollapsed(true)}
-            direction="right"
-            title="Collapse Output"
-            ariaLabel="Collapse Output"
-            style={s.outputCollapseBtn}
-          />
-        )
-      }
+      // With tabs, the collapse button sits at the end of the tab strip instead.
+      leadingActions={tabbed ? null : collapseButton}
+    />
+  )
+
+  const testResultsPanel = !isViewingPrev &&
+    !isForcedTeacherLive &&
+    !isTeacherEditing &&
+    cs.testResults !== null && (
+      <div style={s.testResultsPanel}>
+        {cs.testResults.map((r, i) => (
+          <span
+            key={r.id ?? i}
+            style={{
+              ...s.testResultBadge,
+              background: r.passed ? '#dcfce7' : '#fef3c7',
+              color: r.passed ? '#15803d' : '#b45309',
+            }}
+          >
+            {r.passed ? 'Pass' : 'Check'} {r.name || `Test ${i + 1}`}
+          </span>
+        ))}
+      </div>
+    )
+
+  const stagePane = (
+    <StagePane
+      key={task?.id ?? 'sandbox'}
+      commands={stageCommands}
+      target={stageTarget?.commands ?? null}
+      ghostDefault={stageTargetGhostOn(task)}
+      ran={!!stageResult || !!slowMoView}
+      truncated={stageResult?.truncated === true}
+      style={layout !== 'side' ? s.stageFill : stageBeside ? s.stageBeside : s.stageAbove}
     />
   )
 
@@ -340,70 +435,101 @@ export default function StudentWorkspace({
     <div ref={outputPaneRef} style={s.outputPane}>
       {showStage ? (
         <div style={stageBeside ? s.stageRow : s.stageColumn}>
-          <StagePane
-            key={task?.id ?? 'sandbox'}
-            commands={stageCommands}
-            target={stageTarget?.commands ?? null}
-            ghostDefault={stageTargetGhostOn(task)}
-            ran={!!stageResult || !!slowMoView}
-            truncated={stageResult?.truncated === true}
-            style={isMobile ? s.stageMobile : stageBeside ? s.stageBeside : s.stageAbove}
-          />
-          <div style={isMobile ? s.consoleBoxMobile : s.consoleBox}>{outputPanel}</div>
+          {stagePane}
+          <div style={s.consoleBox}>{outputPanel}</div>
         </div>
       ) : (
         outputPanel
       )}
-      {!isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.testResults !== null && (
-        <div style={s.testResultsPanel}>
-          {cs.testResults.map((r, i) => (
-            <span
-              key={r.id ?? i}
-              style={{
-                ...s.testResultBadge,
-                background: r.passed ? '#dcfce7' : '#fef3c7',
-                color: r.passed ? '#15803d' : '#b45309',
-              }}
-            >
-              {r.passed ? 'Pass' : 'Check'} {r.name || `Test ${i + 1}`}
-            </span>
-          ))}
-        </div>
-      )}
+      {testResultsPanel}
       {variablesPanel}
     </div>
   )
 
-  if (isMobile || !shouldShowOutput) {
-    return (
+  // Picture · Tags · Console as tabs (or the console alone when it is the only pane).
+  const resultPane = (
+    <ResultPane
+      panes={resultPanes.map((id) => ({
+        id,
+        content:
+          id === 'picture' ? (
+            stagePane
+          ) : id === 'tags' ? (
+            variablesPanel
+          ) : (
+            <div style={s.consoleColumn}>
+              {outputPanel}
+              {testResultsPanel}
+            </div>
+          ),
+      }))}
+      active={result.active}
+      onSelect={result.select}
+      stacked={result.stacked}
+      badges={result.badges}
+      announcement={result.announcement}
+      idPrefix="python-result"
+      label="Result"
+      trailing={tabbed ? <span style={s.tabsTrailing}>{collapseButton}</span> : null}
+    />
+  )
+
+  const collapsedRail = (orientation) => (
+    <CollapsedPanelRail
+      onClick={isForcedTeacherLive ? undefined : () => setOutputCollapsed(false)}
+      label="Output"
+      direction={orientation === 'horizontal' ? 'up' : 'left'}
+      orientation={orientation}
+      title={isForcedTeacherLive ? 'Output (collapsed by the presenter)' : 'Show Output'}
+      ariaLabel="Show Output"
+      style={orientation === 'horizontal' ? s.outputRailHorizontal : undefined}
+    />
+  )
+
+  let body
+  if (!shouldShowOutput) {
+    body = (
       <div style={s.mobileStack}>
         {editor}
-        {shouldShowOutput && !outputCollapsed ? output : variablesPanel}
+        {variablesPanel}
       </div>
+    )
+  } else if (layout === 'below') {
+    // Phones and portrait screens: the editor above, the result pane below.
+    body = (
+      <div style={s.belowStack}>
+        <div style={s.belowEditor}>{editor}</div>
+        {outputCollapsed ? (
+          collapsedRail('horizontal')
+        ) : (
+          <div style={s.belowResult}>{resultPane}</div>
+        )}
+      </div>
+    )
+  } else {
+    body = (
+      <SplitPane
+        style={s.pythonSplitPane}
+        defaultSplit={PYTHON_SPLIT}
+        rightCollapsed={outputCollapsed}
+        collapsedRightWidth={44}
+        collapsedRight={collapsedRail('vertical')}
+        left={editor}
+        right={layout === 'tabs' ? resultPane : output}
+      />
     )
   }
 
+  // The outer box is measured (never padded, so its size is steady); the inner one makes room
+  // for a tablet's on-screen keyboard so the editor and the result pane stay in view.
   return (
-    <SplitPane
-      style={s.pythonSplitPane}
-      defaultSplit={58}
-      rightCollapsed={outputCollapsed}
-      collapsedRightWidth={44}
-      collapsedRight={
-        <CollapsedPanelRail
-          onClick={isForcedTeacherLive ? undefined : () => setOutputCollapsed(false)}
-          label="Output"
-          direction="left"
-          title={isForcedTeacherLive ? 'Output (collapsed by the presenter)' : 'Show Output'}
-          ariaLabel="Show Output"
-        />
-      }
-      left={editor}
-      right={output}
-    />
+    <div ref={workspaceRef} style={s.workspace} data-layout={layout}>
+      <div style={inset ? { ...s.workspaceInner, paddingBottom: inset } : s.workspaceInner}>
+        {body}
+      </div>
+    </div>
   )
 }
-
 const s = {
   pythonSplitPane: {
     flex: '1 1 auto',
@@ -441,7 +567,6 @@ const s = {
   stageColumn: { display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0 },
   stageBeside: { flex: '0 0 55%' },
   stageAbove: { flex: '0 0 55%', minHeight: 180 },
-  stageMobile: { flex: '0 0 auto', height: 'min(90vw, 420px)' },
   consoleBox: {
     display: 'flex',
     flexDirection: 'column',
@@ -449,7 +574,46 @@ const s = {
     minHeight: 0,
     minWidth: 0,
   },
-  consoleBoxMobile: { display: 'flex', flexDirection: 'column', minHeight: 160, minWidth: 0 },
+  // The workspace's measured outer box and its inner box (padded for an on-screen keyboard).
+  workspace: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: '1 1 auto',
+    minHeight: 0,
+    minWidth: 0,
+  },
+  workspaceInner: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: '1 1 auto',
+    minHeight: 0,
+    minWidth: 0,
+  },
+  // Phones and portrait screens: the editor above the result pane.
+  belowStack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    flex: '1 1 auto',
+    minHeight: 0,
+    overflow: 'hidden',
+  },
+  belowEditor: { display: 'flex', flexDirection: 'column', flex: '1 1 55%', minHeight: 160 },
+  belowResult: { display: 'flex', flexDirection: 'column', flex: '1 1 45%', minHeight: 220 },
+  outputRailHorizontal: { flexShrink: 0, padding: '6px 12px', minHeight: 44 },
+  // Inside a result tab: the pane fills it.
+  stageFill: { flex: 1, minHeight: 0 },
+  variablesFill: { flex: '1 1 auto', minHeight: 0, maxHeight: '100%' },
+  consoleColumn: { display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0 },
+  tabsTrailing: { marginLeft: 'auto', display: 'flex', alignItems: 'center', paddingRight: 4 },
+  tabsCollapseBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    background: '#fff',
+    color: 'var(--colour-primary)',
+    border: '1px solid #e5e7eb',
+    borderRadius: 8,
+  },
   outputCollapseBtn: {
     width: 28,
     height: 26,

@@ -47,6 +47,8 @@ const VISIBLE_PANE_LABELS = {
   breadboard: 'Breadboard',
   code: 'Code',
   console: 'Console',
+  // Python / Turtle result tabs on smaller screens (src/shared/resultPane/).
+  tags: 'Tags',
   sprites: 'Sprites',
   tilemaps: 'Tilemaps',
   running: 'Running',

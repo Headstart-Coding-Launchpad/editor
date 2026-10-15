@@ -376,6 +376,17 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
       )
     }
   }
+  // layout: the result pane's first tab (src/shared/resultPane/), on code tasks of the modules
+  // that declare it (python, turtle). Activities use their own `layout` (e.g. the keyboard's).
+  if (
+    kind === 'module' &&
+    task.layout != null &&
+    !definition?.taskFields?.some((spec) => spec.name === 'layout')
+  ) {
+    warnings.push(
+      `Task ${n} has layout, but it only works in Python and Turtle tasks — it is ignored`
+    )
+  }
 
   // peerHints: extra preset hints for peer help (src/shared/peerHelp.js). They reach a student
   // without the teacher checking each one, so they are authored text only, short, and few.

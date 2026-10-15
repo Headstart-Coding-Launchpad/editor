@@ -182,6 +182,25 @@ for the checks, and Go Live carries the presenter's playback.
     question: Which way is the turtle facing after pass 2?
 ```
 
+## Screen layout
+
+As in [Python](python.md#screen-layout-layout): on a wide desktop the picture, the name tags and
+the output sit beside the editor. On tablets, 1366 × 768 Chromebooks and small laptops the editor
+has **one result pane** beside it with tabs **Picture · Tags · Console** (Tags only with
+`showVariables`), and on portrait screens and phones the editor sits above the tabs.
+
+- The pane opens on the **Picture** (on **Tags** in predict / target mode, so the empty tags show
+  while the student types).
+- After Run it switches to the **Picture** if the turtle drew (or the task has a `course`),
+  otherwise to Tags in predict / target mode, otherwise to the Console. A run that fails before
+  drawing shows the Console.
+- During slow-mo, and in predict / target mode once there is a drawing, Picture and Tags share one
+  tab, one above the other.
+- The Console tab counts new lines (or shows **!** for an error) while it's hidden. Switching tabs
+  never interrupts a drawing that is playing.
+
+Pick the first tab with `layout: { firstPane: picture | tags | console }` (optional).
+
 ## Coordinate system
 
 Matches real Python `turtle` exactly: `(0, 0)` is the centre of a fixed

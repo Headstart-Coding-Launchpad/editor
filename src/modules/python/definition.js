@@ -22,6 +22,7 @@ import {
   variablesPanelLiveExtra,
 } from '../moduleContract.js'
 import { SHOW_VARIABLES_TASK_FIELD } from '../../shared/variablesPanel/variablesPanel.js'
+import { LAYOUT_TASK_FIELD, validateTaskLayout } from '../../shared/resultPane/resultPane.js'
 import { validateShowVariables } from '../../shared/variablesPanel/validation.js'
 import { PYTHON_SLOW_MO_TASK_FIELD, validatePythonSlowMo } from './slowMo/config.js'
 import {
@@ -176,6 +177,8 @@ export default defineModule({
     SETUP_CODE_TASK_FIELD,
     SETUP_NOTE_TASK_FIELD,
     PUZZLE_TASK_FIELD,
+    // Which result tab shows first on smaller screens (src/shared/resultPane/).
+    LAYOUT_TASK_FIELD,
   ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeCode',
@@ -272,6 +275,7 @@ export default defineModule({
     validateSetupCode(task, n, errors, warnings)
     validatePuzzle(task, n, errors, warnings)
     validateLockedLines(task, n, warnings)
+    validateTaskLayout(task, n, errors, warnings)
   },
   hasStarterContent: codeStarterPresent,
 })

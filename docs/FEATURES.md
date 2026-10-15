@@ -261,6 +261,15 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - Go Live: the presenter's recording goes to every screen once and their controls drive the step the class sees. The session report records each student's use per task. Reduced motion: no pulses; a live region reads each step
 - Builder: task editor → Slow-mo (on/off, starting speed, name tags, question)
 
+### Python and Turtle Screen Layout
+- Wide desktops: the editor, then the Stage / turtle picture, the console and the name-tag panel side by side
+- Tablets, 1366 × 768 Chromebooks and small laptops: the editor on the left and one result pane with tabs **Picture · Tags · Console** (only the tabs the task has); portrait screens and phones put the editor above the tabs
+- Predict / target tasks open on Tags (the code and the empty tags together, kept above a tablet's on-screen keyboard); a `stageTarget` task opens on the Picture with its ghost. After Run the pane switches to the Picture if the program drew, Tags in predict / target mode, otherwise the Console (an error before any drawing shows the Console)
+- Slow-mo (and predict / target mode once there is a picture) shows the Picture and Tags together under one tab
+- The Console tab counts unseen lines (or shows **!** for an error) while hidden; switching tabs never loses a drawing or the output
+- Tabs: arrow keys, 44 px targets, labelled regions, a polite announcement after Run; Go Live follows the same rules
+- Optional task hint `layout: { firstPane: picture | tags | console }`
+
 ### input() Support (Python)
 - Execution pauses; an inline input field appears in the output panel
 - Multiple sequential input calls handled in sequence
