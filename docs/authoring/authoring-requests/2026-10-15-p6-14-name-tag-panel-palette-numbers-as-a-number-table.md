@@ -1,6 +1,6 @@
 # Name-tag panel: palette numbers show as numbers, never as the picture
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, bypassing pipeline-ui, as with builds 1–12), 2026-10-15
 - **Lessons blocked:** none yet. Wave 1c of Lesson Gen's LG-P6 Visual learning plan, from Ryan's click-through of the sandbox (`ocgq3appv6`, task 9). Changes p6-7 (`2026-10-15-p6-7-name-tag-panel-lists-and-dicts-you-can-see.md`). Build on top of `integrate/requests-2026-10-14`.
@@ -56,4 +56,9 @@ Panel: `pixels` as a 3 × 4 table of `0`, `1`, `2`. Stage: the picture.
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped on `feature/stage-flat-grid-panel-numbers` (wave 1c package W1c-a, with P6-13, merged into `integrate/requests-2026-10-14`), 2026-10-15.
+
+- A 2D list holding palette numbers is a plain number table (row and column indexes, scrolling inside the tag), never a picture, including with `stageLists: picture`; screen readers hear it by row. A 2D list mixing colour names and numbers is a table too.
+- A flat number list drawn with `grid(…, width=…)` is wrapped number tiles, never bars.
+- Colour names and hex are unchanged. `stageLists: size` (the default) still shows a drawn list of rows as just its size, and `tiles` as rows of tiles; both already show numbers, so only `picture` changed.
+- Docs: [python.md](../python.md#name-tag-panel-showvariables) (List and dict visuals, `stageLists` row), [CHANGELOG](../CHANGELOG.md#2026-10-15).

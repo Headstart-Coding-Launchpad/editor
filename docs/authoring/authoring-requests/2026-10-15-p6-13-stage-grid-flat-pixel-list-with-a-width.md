@@ -1,6 +1,6 @@
 # Stage: grid() draws a flat pixel list wrapped at a width
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, bypassing pipeline-ui, as with builds 1–12), 2026-10-15
 - **Lessons blocked:** none yet. Wave 1c of Lesson Gen's LG-P6 Visual learning plan, from Ryan's click-through of the sandbox (`ocgq3appv6`). Build on top of `integrate/requests-2026-10-14`, as with wave 1b.
@@ -75,4 +75,9 @@ In the sandbox, Ryan liked recolouring a pixel picture (task 8) but wants it wit
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped on `feature/stage-flat-grid-panel-numbers` (wave 1c package W1c-a, merged into `integrate/requests-2026-10-14`), 2026-10-15.
+
+- `grid(values, width=n)` draws a flat list as rows of `n` (last row may be short), with the plain-English errors asked for; the error names the student's variable when the stage module can find it (otherwise "the values are one long list"). The grid command carries `wrap`, and the Stage description says "a pixel grid of 24 squares, 8 to a row, in …".
+- `stage_pixel` takes `index` (exactly one of `x`/`y`, `row`/`col`, `index`); the docs say all count from 0.
+- The name-tag panel wraps a flat list drawn with `width=` at that width, indexes running on, whatever `stageLists` says (a call: under the default `stageLists: size` the wrapped tiles still show, since they are the point of the feature).
+- Docs: [python.md](../python.md#stage-drawing-beside-the-console) (Grids, Stage checks, List and dict visuals), [validation-errors.md](../validation-errors.md), [CHANGELOG](../CHANGELOG.md#2026-10-15).

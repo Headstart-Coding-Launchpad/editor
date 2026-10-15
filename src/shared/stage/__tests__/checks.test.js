@@ -158,6 +158,34 @@ describe('stage_pixel', () => {
       evaluateStageCheck({ type: 'stage_pixel', row: 0, col: 0, colour: 'white' }, ctx([]))
     ).toBe(false)
   })
+
+  it('reads a cell by its index in the flat list of the last grid', () => {
+    // A flat list drawn with width=3: 7 cells, the last row one cell long.
+    const flat = [
+      {
+        type: 'grid',
+        x: 0,
+        y: 0,
+        cell: 40,
+        colours: ['#ff0000', '#0000ff'],
+        cells: [[0, 0, 0], [0, 1, 0], [1]],
+        wrap: 3,
+      },
+    ]
+    const at = (index, colour) =>
+      evaluateStageCheck({ type: 'stage_pixel', index, colour }, ctx(flat))
+    expect(at(0, 'red')).toBe(true)
+    expect(at(4, 'blue')).toBe(true)
+    expect(at(4, 'red')).toBe(false)
+    expect(at(6, 'blue')).toBe(true)
+    // Past the end, or not a whole number of 0 or more: no cell, so it fails.
+    expect(at(7, 'white')).toBe(false)
+    expect(at(-1, 'red')).toBe(false)
+    expect(at(1.5, 'red')).toBe(false)
+    expect(evaluateStageCheck({ type: 'stage_pixel', index: 0, colour: 'white' }, ctx([]))).toBe(
+      false
+    )
+  })
 })
 
 describe('stage_text_shown', () => {
@@ -197,6 +225,9 @@ describe('describeStageCheck', () => {
     expect(describeStageCheck({ type: 'stage_pixel', row: 1, col: 2, colour: '#ff0000' })).toBe(
       'Grid row 1, column 2 is red'
     )
+    expect(describeStageCheck({ type: 'stage_pixel', index: 9, colour: 'blue' })).toBe(
+      'Grid square 9 is blue'
+    )
     expect(describeStageCheck({ type: 'stage_shape_count', kind: 'circle', min: 3 })).toBe(
       'At least 3 circle commands on the stage'
     )
@@ -222,6 +253,7 @@ describe('validateStageCheck', () => {
     expect(v({ type: 'stage_shape_count', kind: 'polygon', sides: 6, min: 1 })).toEqual([])
     expect(v({ type: 'stage_colour_used', colour: 'peach' })).toEqual([])
     expect(v({ type: 'stage_pixel', row: 0, col: 1, colour: 'red' })).toEqual([])
+    expect(v({ type: 'stage_pixel', index: 0, colour: 'red' })).toEqual([])
     expect(v({ type: 'stage_text_shown', text: 'Hi', operator: 'equals' })).toEqual([])
   })
 
@@ -242,8 +274,15 @@ describe('validateStageCheck', () => {
     ])
     expect(v({ type: 'stage_colour_used', colour: 'redd' })[0]).toMatch(/colour "redd"/)
     expect(v({ type: 'stage_pixel', colour: 'red' })).toEqual([
-      'Task 3 has a stage_pixel check that needs either x and y, or row and col',
+      'Task 3 has a stage_pixel check that needs one of: x and y, row and col, or index',
     ])
+    expect(v({ type: 'stage_pixel', row: 0, col: 0, index: 0, colour: 'red' })).toEqual([
+      'Task 3 has a stage_pixel check that needs one of: x and y, row and col, or index',
+    ])
+    expect(v({ type: 'stage_pixel', index: -1, colour: 'red' })).toEqual([
+      'Task 3 has a stage_pixel check whose index is not a whole number of 0 or more',
+    ])
+    expect(v({ type: 'stage_pixel', index: 'two', colour: 'red' })).toHaveLength(1)
     expect(v({ type: 'stage_pixel', x: 500, y: 1, colour: 'red' })[0]).toMatch(/0 to 399/)
     expect(v({ type: 'stage_text_shown', operator: 'starts_with' })).toHaveLength(2)
     expect(

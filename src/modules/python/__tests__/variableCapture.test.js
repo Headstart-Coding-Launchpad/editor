@@ -48,13 +48,16 @@ describe('variable capture Python source', () => {
     )
   })
 
-  it('marks lists the Stage drew with grid() in this run (g, gp)', () => {
+  it('marks lists the Stage drew with grid() in this run (g, gp, gw)', () => {
     expect(VARIABLE_CAPTURE_PY).toContain('def _hs_drawn_rows():')
     expect(VARIABLE_CAPTURE_PY).toContain("node['g'] = 1")
     expect(VARIABLE_CAPTURE_PY).toContain("node['gp'] = words")
     // The very same object, not an equal copy.
     expect(VARIABLE_CAPTURE_PY).toContain('mark[0] is value')
-    expect(STAGE_MODULE_PY).toContain('_hs_drawn.append((rows, palette))')
+    expect(STAGE_MODULE_PY).toContain("_hs_drawn.append((rows, palette, kwargs.get('width')))")
+    // A flat list's width= (never on a list of rows), for the panel's wrapped tiles.
+    expect(VARIABLE_CAPTURE_PY).toContain('def _hs_drawn_width(value, width):')
+    expect(VARIABLE_CAPTURE_PY).toContain("node['gw'] = width")
   })
 
   it('reads the student file only, so library frames are never traced', () => {

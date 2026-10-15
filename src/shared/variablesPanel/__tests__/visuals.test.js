@@ -5,6 +5,8 @@ import {
   chooseVisual,
   describeItem,
   describePicture,
+  describeTable,
+  describeWrapped,
   nodeColour,
   nodeNumber,
   sizeText,
@@ -128,28 +130,97 @@ describe('chooseVisual: lists the Stage drew (stageLists)', () => {
     expect(visual.rows).toHaveLength(2)
   })
 
-  it('draws palette numbers with stageLists: picture (Arcade colours without a palette)', () => {
+  it('shows palette numbers as a table, never a picture, with stageLists: picture', () => {
     const visual = chooseVisual(pixels, { stageLists: 'picture' })
-    expect(visual.kind).toBe('picture')
-    expect(visual.cells[0].map((cell) => cell.hex)).toEqual(['#000000', '#fff1e8'])
+    expect(visual.kind).toBe('table')
+    expect(visual.cols).toBe(2)
+    const withPalette = chooseVisual(
+      list([list([int(0), int(1), int(2)])], { g: 1, gp: ['white', 'red', 'none'] }),
+      { stageLists: 'picture' }
+    )
+    expect(withPalette.kind).toBe('table')
   })
 
-  it("uses the grid() call's own palette when it gave one", () => {
-    const visual = chooseVisual(
-      list([list([int(0), int(1), int(2)])], { g: 1, gp: ['white', 'red', 'none'] }),
-      {
-        stageLists: 'picture',
-      }
-    )
-    expect(visual.cells[0]).toEqual([
-      { hex: '#ffffff', words: 'white' },
+  it('shows a table if any cell is a palette number, and a picture for colours only', () => {
+    const mixed = list([list([str('red'), int(1)])], { g: 1 })
+    expect(chooseVisual(mixed, { stageLists: 'picture' }).kind).toBe('table')
+    const colours = list([list([str('red'), { t: 'none' }])], { g: 1 })
+    const picture = chooseVisual(colours, { stageLists: 'picture' })
+    expect(picture.kind).toBe('picture')
+    expect(picture.cells[0]).toEqual([
       { hex: '#ff0000', words: 'red' },
       { hex: null, words: 'see-through' },
     ])
   })
 
+  it('reads a table by row for screen readers, counting rows from 1', () => {
+    const visual = chooseVisual(
+      list([list([int(0), int(1), int(1), int(0)]), list([int(1), int(2), int(2), int(1)])])
+    )
+    expect(describeTable('pixels', visual)).toBe(
+      'pixels: 2 by 4 table. pixels, row 1: 0, 1, 1, 0. pixels, row 2: 1, 2, 2, 1'
+    )
+  })
+
   it('ignores stageLists when visuals are off', () => {
     expect(chooseVisual(pixels, { visuals: false, stageLists: 'picture' }).kind).toBe('plain')
+  })
+})
+
+describe('chooseVisual: flat lists grid() drew with width= (gw)', () => {
+  const colours = list([...Array(8).fill(str('red')), str('white'), str('white'), { t: 'none' }], {
+    g: 1,
+    gw: 8,
+  })
+
+  it('wraps colour swatches at the width, whatever stageLists says', () => {
+    for (const stageLists of ['size', 'tiles', 'picture']) {
+      const visual = chooseVisual(colours, { stageLists })
+      expect(visual.kind).toBe('wrapped')
+      expect(visual.width).toBe(8)
+      expect(visual.cells).toBe('swatches')
+    }
+    const visual = chooseVisual(colours)
+    expect(visual.items[0]).toMatchObject({ index: 0, hex: '#ff0000', words: 'red' })
+    expect(visual.items[10]).toMatchObject({ index: 10, hex: null, words: 'see-through' })
+  })
+
+  it('says each item with its row and column (counting from 1)', () => {
+    const visual = chooseVisual(colours)
+    expect(describeItem('pixels', visual, visual.items[9])).toBe(
+      'pixels, item 9 (row 2, column 2): white'
+    )
+    expect(describeWrapped('pixels', colours, visual)).toBe('pixels: list of 11, 8 to a row')
+  })
+
+  it('shows palette numbers as number tiles, never bars', () => {
+    const numbers = list([int(0), int(1), int(1), int(0), int(2)], { g: 1, gw: 2 })
+    const visual = chooseVisual(numbers, { stageLists: 'picture' })
+    expect(visual.kind).toBe('wrapped')
+    expect(visual.cells).toBe('numbers')
+    expect(visual.items.every((item) => item.hex === null)).toBe(true)
+    expect(describeItem('pixels', visual, visual.items[4])).toBe(
+      'pixels, item 4 (row 3, column 1): 2'
+    )
+  })
+
+  it('falls back to plain tiles for anything else', () => {
+    const visual = chooseVisual(list([str('apple'), int(1)], { g: 1, gw: 1 }))
+    expect(visual.kind).toBe('wrapped')
+    expect(visual.cells).toBe('tiles')
+  })
+
+  it('ignores a width on a list of rows, or on a list that was not drawn', () => {
+    expect(chooseVisual(list([list([int(1)])], { g: 1, gw: 4 })).kind).toBe('size')
+    expect(chooseVisual(list([int(1), int(2)], { gw: 4 })).kind).toBe('bars')
+  })
+
+  it('puts a wrapped list of colours on the tutor card, but not wrapped numbers', () => {
+    const vars = [
+      { n: 'numbers', v: list([int(0), int(1)], { g: 1, gw: 2 }) },
+      { n: 'pixels', v: colours },
+    ]
+    expect(cardVisuals(vars, { visuals: true }).map((entry) => entry.name)).toEqual(['pixels'])
   })
 })
 

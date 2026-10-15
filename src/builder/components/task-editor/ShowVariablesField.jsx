@@ -11,10 +11,11 @@ import {
   updateShowVariables,
 } from '../../showVariablesAuthoring'
 
-// How a list the Stage's grid() drew shows in the panel (showVariables.stageLists).
+// How a list of rows the Stage's grid() drew shows in the panel (showVariables.stageLists). A
+// flat list drawn with width= always wraps at that width.
 const STAGE_LISTS = [
   ['size', 'just its size (the Stage shows the picture)'],
-  ['picture', 'as a small picture too'],
+  ['picture', 'as a small picture too (colour names; numbers stay a table)'],
   ['tiles', 'as rows of tiles'],
 ]
 

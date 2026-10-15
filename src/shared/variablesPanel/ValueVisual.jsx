@@ -10,7 +10,8 @@ const FULL_RULER_COLS = 16
 
 /**
  * A value drawn as its visual (chooseVisual in visuals.js): swatches, bars, a picture, a table,
- * rows of tiles, cards, labelled bars or a "drawn on the Stage" size line. Index numbers always
+ * rows of tiles, a flat list wrapped at its grid() width, cards, labelled bars or a "drawn on the
+ * Stage" size line. Index numbers always
  * show; the exact Python value is one tap away (tap the visual or press Show value), so "5" and
  * 5 still read differently. `changedItems` (a Set of item keys) marks the items that changed.
  * Colour is never the only signal: every item carries its text, and each has screen-reader
@@ -242,6 +243,45 @@ function VisualBody({ name, node, visual, changed }) {
             </li>
           ))}
         </ol>
+      )
+    case 'wrapped':
+      // A flat list grid() drew with width=: rows of that many tiles, indexes running on, so
+      // index = row × width + column shows. Scrolls inside the tag when it is too wide.
+      return (
+        <div className="ntp-wrap-scroll">
+          <ol
+            className={`ntp-wrapped ntp-wrapped--${visual.cells}`}
+            start={0}
+            aria-label={`${name}: ${visual.width} to a row`}
+            style={{ '--ntp-wrap': visual.width }}
+          >
+            {visual.items.map((item) => {
+              const on = changed.has(itemKey(item.index))
+              return (
+                <li key={item.index} className={`ntp-tile${on ? ' is-item-changed' : ''}`}>
+                  {visual.cells === 'swatches' && (
+                    <span
+                      className={`ntp-swatch-chip ntp-swatch-chip--small${item.hex ? '' : ' is-clear'}`}
+                      style={item.hex ? { background: item.hex } : undefined}
+                      aria-hidden="true"
+                    />
+                  )}
+                  <code className="ntp-value" aria-hidden="true">
+                    {formatValue(item.node, { maxChars: ITEM_CHARS })}
+                  </code>
+                  <span className="ntp-index" aria-hidden="true">
+                    {item.index}
+                    <ItemMark on={on} />
+                  </span>
+                  <span className="ntp-sr-only">
+                    {describeItem(name, visual, item)}
+                    {changedWords(on)}
+                  </span>
+                </li>
+              )
+            })}
+          </ol>
+        </div>
       )
     case 'size':
       return <code className="ntp-value ntp-size">{sizeText(node, visual)}</code>

@@ -180,7 +180,7 @@ describe('validateStageCall', () => {
       'square() has no rotation= — did you mean angle=?'
     )
     expect(validateStageCall('grid', [[[0]]], { angle: 45 }).error.message).toBe(
-      'grid() has no angle= — it understands rows=, palette=, cell=, x=, y='
+      'grid() has no angle= — it understands rows=, palette=, cell=, x=, y=, width='
     )
     expect(validateStageCall('circle', [50, 'red'], { colour: 'blue' }).error.message).toBe(
       'circle() got colour twice: once as the second value and once as colour='
@@ -259,6 +259,104 @@ describe('validateStageCall', () => {
       )
     })
   })
+
+  describe('grid with width= (one long list)', () => {
+    it('draws a flat list as rows of width cells, the last row maybe short', () => {
+      const pixels = [...Array(8).fill('red'), ...Array(8).fill('white'), 'red', 'red']
+      const { command } = validateStageCall('grid', [pixels], { width: 8 })
+      expect(command.wrap).toBe(8)
+      expect(command.cells).toHaveLength(3)
+      expect(command.cells[0]).toEqual(Array(8).fill(0))
+      expect(command.cells[1]).toEqual(Array(8).fill(1))
+      expect(command.cells[2]).toEqual([0, 0])
+      expect(command.colours).toEqual(['#ff0000', '#ffffff'])
+      // 8 columns × 3 rows of 50-pixel cells centred on the middle.
+      expect(command.cell).toBe(50)
+      expect(command.x).toBe(0)
+      expect(command.y).toBe(125)
+    })
+
+    it('reads palette numbers, None and cell/x/y as for rows', () => {
+      const { command } = validateStageCall(
+        'grid',
+        [
+          [0, 1, null, 1],
+          ['white', 'black'],
+        ],
+        {
+          width: 2,
+          cell: 10,
+          x: 100,
+          y: 100,
+        }
+      )
+      expect(command.cells).toEqual([
+        [0, 1],
+        [-1, 1],
+      ])
+      expect(command.x).toBe(90)
+      expect(command.y).toBe(90)
+    })
+
+    it('names a bad cell by its place in the list', () => {
+      expect(
+        validateStageCall(
+          'grid',
+          [
+            [0, 0, 0, 5],
+            ['white', 'red'],
+          ],
+          { width: 2 },
+          { label: 'pixels' }
+        ).error.message
+      ).toBe('grid(): pixels[3] is 5, but the palette only has 2 colours (numbers 0 to 1)')
+      expect(validateStageCall('grid', [['red', 'redd']], { width: 2 }).error.message).toBe(
+        "grid(): values[1] is 'redd', which isn't a colour I know. Try a name like 'red' or a hex code like '#ff0000'"
+      )
+    })
+
+    it('asks for a width when a flat list has none, naming the list', () => {
+      expect(validateStageCall('grid', [[0, 1, 1, 0]], {}, { label: 'pixels' }).error).toEqual({
+        kind: 'TypeError',
+        message:
+          'grid(): pixels is one long list. Say how many squares fit in a row, like grid(pixels, width=8)',
+      })
+      expect(validateStageCall('grid', [[0, 1]]).error.message).toBe(
+        'grid(): the values are one long list. Say how many squares fit in a row, like grid(pixels, width=8)'
+      )
+    })
+
+    it('explains a width that is not a whole number of 1 or more', () => {
+      expect(validateStageCall('grid', [[0, 1]], { width: 0 }).error).toEqual({
+        kind: 'ValueError',
+        message:
+          'grid(): width is how many squares fit in a row, so it should be a whole number of 1 or more, like width=8, not 0',
+      })
+      expect(validateStageCall('grid', [[0, 1]], { width: 2.5 }).error.kind).toBe('ValueError')
+      expect(validateStageCall('grid', [[0, 1]], { width: '8' }).error).toEqual({
+        kind: 'TypeError',
+        message:
+          "grid(): width is how many squares fit in a row, a whole number like width=8, not the text '8'",
+      })
+    })
+
+    it('explains width= given with a list of rows', () => {
+      expect(validateStageCall('grid', [[[0, 1]]], { width: 2 }, { label: 'art' }).error).toEqual({
+        kind: 'TypeError',
+        message:
+          'grid(): width= is only for one long list. art is already a list of rows, so take out width=',
+      })
+    })
+
+    it('keeps the 100 × 100 limit', () => {
+      expect(validateStageCall('grid', [Array(101).fill(0)], { width: 101 }).error.message).toBe(
+        'grid(): the grid has 101 columns — the most is 100'
+      )
+      expect(validateStageCall('grid', [Array(101).fill(0)], { width: 1 }).error.message).toBe(
+        'grid(): the grid has 101 rows — the most is 100'
+      )
+    })
+  })
 })
 
 describe('stageHue', () => {
@@ -294,9 +392,16 @@ describe('readStageCallPayload', () => {
     expect(readStageCallPayload({ args: [50], kwargs: { angle: 45 } })).toEqual({
       args: [50],
       kwargs: { angle: 45 },
+      label: null,
     })
-    expect(readStageCallPayload([1, 2])).toEqual({ args: [1, 2], kwargs: {} })
-    expect(readStageCallPayload(null)).toEqual({ args: [], kwargs: {} })
+    expect(readStageCallPayload([1, 2])).toEqual({ args: [1, 2], kwargs: {}, label: null })
+    expect(readStageCallPayload(null)).toEqual({ args: [], kwargs: {}, label: null })
+  })
+
+  it("keeps the list's variable name when it is a plain name", () => {
+    expect(readStageCallPayload({ args: [[0]], label: 'pixels' }).label).toBe('pixels')
+    expect(readStageCallPayload({ args: [[0]], label: 'a b' }).label).toBeNull()
+    expect(readStageCallPayload({ args: [[0]], label: 7 }).label).toBeNull()
   })
 })
 
@@ -308,6 +413,13 @@ describe('createStageRecorder', () => {
     expect(recorder.call('square', [10], { angle: 30 })).toBe('')
     expect(recorder.commands).toHaveLength(2)
     expect(recorder.commands[1].angle).toBe(30)
+  })
+
+  it("passes the list's name on to grid()'s messages", () => {
+    const recorder = createStageRecorder()
+    expect(recorder.call('grid', [[0, 1]], {}, { label: 'pixels' })).toMatch(
+      /^TypeError\|grid\(\): pixels is one long list/
+    )
   })
 
   it('stops an endless drawing loop with a plain message', () => {
@@ -339,5 +451,11 @@ describe('the stage Python module source', () => {
     expect(STAGE_MODULE_PY).toContain('__hsStageHue')
     expect(STAGE_INSTALL_PY).toContain("_hs_sys.modules['stage']")
     expect(STAGE_INSTALL_PY).toContain("'<stage>'")
+  })
+
+  it("sends grid()'s list name and records its width= for the panel", () => {
+    expect(STAGE_MODULE_PY).toContain('_hs_name_of(rows, _sys._getframe(1))')
+    expect(STAGE_MODULE_PY).toContain("data['label'] = label")
+    expect(STAGE_MODULE_PY).toContain("_hs_drawn.append((rows, palette, kwargs.get('width')))")
   })
 })

@@ -470,9 +470,10 @@ Python tasks; see [python.md](python.md#stage-drawing-beside-the-console).
 | `Task … has a stage_shape_count … whose min or max is not a whole number of 0 or more` | `min` / `max` is negative, a fraction or text. | Use whole numbers like `min: 1`. |
 | `Task … has a stage_shape_count … whose min is more than its max` | The range is empty, so the check can never pass. | Swap them, or fix one. |
 | `Task … has a … … with colour "…" — use a CSS colour name, a PICO-8 name or a hex code like #ff0000` | `stage_colour_used` / `stage_pixel` has no colour, or one the Stage doesn't know. | Use a name like `red` or `dark_blue`, or a hex code like `"#ff0000"` (quoted in YAML). |
-| `Task … has a stage_pixel … that needs either x and y, or row and col` | Neither a point nor a grid cell, or both. | Give `x` and `y` (a stage point) or `row` and `col` (a cell of the last grid). |
+| `Task … has a stage_pixel … that needs one of: x and y, row and col, or index` | No point or grid cell, or more than one way of picking it. | Give just one: `x` and `y` (a stage point), `row` and `col` (a cell of the last grid), or `index` (a cell by its place in the last grid's flat list). |
 | `Task … has a stage_pixel … whose x and y are not both numbers from 0 to 399` | The point is off the stage. | Use stage coordinates: top-left is `0, 0`, bottom-right `399, 399`. |
 | `Task … has a stage_pixel … whose row and col are not both whole numbers of 0 or more` | `row` / `col` is negative, a fraction or text. | Count rows and columns from 0. |
+| `Task … has a stage_pixel … whose index is not a whole number of 0 or more` | `index` is negative, a fraction or text. | Count from 0: `index: 0` is the first value of the list `grid()` drew. |
 | `Task … has a stage_text_shown … but no text` | The check has nothing to look for. | Add `text: …`. |
 | `Task … has a stage_text_shown … with operator "…" — use one of: …` | Unknown `operator`. | Use `contains` (the default), `equals` or `matches_regex`. |
 

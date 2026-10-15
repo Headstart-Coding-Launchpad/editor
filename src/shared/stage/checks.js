@@ -77,19 +77,39 @@ export function stageColours(commands) {
   return colours
 }
 
-// The stage point a stage_pixel check reads: { x, y }, or the centre of grid cell (row, col) of
-// the last grid on the stage (null when there is no grid).
+// Grid cell `index` (counting from 0) in the flat list of a grid's cells, row by row: { row,
+// col }, or null past the end. A flat list drawn with width= is exactly that list.
+function gridCellAt(grid, index) {
+  let left = index
+  const rows = Array.isArray(grid?.cells) ? grid.cells : []
+  for (let row = 0; row < rows.length; row++) {
+    const length = Array.isArray(rows[row]) ? rows[row].length : 0
+    if (left < length) return { row, col: left }
+    left -= length
+  }
+  return null
+}
+
+// The stage point a stage_pixel check reads: { x, y }, or the centre of a cell of the last grid
+// on the stage, by (row, col) or by its index in the grid's flat list (null when there is no
+// grid, or no such cell).
 export function stagePixelPoint(check, commands) {
   const x = finite(check?.x)
   const y = finite(check?.y)
   if (x !== null && y !== null) return { x, y }
-  const row = finite(check?.row)
-  const col = finite(check?.col)
-  if (row === null || col === null) return null
+  let row = finite(check?.row)
+  let col = finite(check?.col)
+  const index = finite(check?.index)
+  if ((row === null || col === null) && index === null) return null
   const grid = visibleCommands(commands)
     .filter((c) => c?.type === 'grid')
     .at(-1)
   if (!grid) return null
+  if (row === null || col === null) {
+    const cell = Number.isInteger(index) && index >= 0 ? gridCellAt(grid, index) : null
+    if (!cell) return null
+    ;({ row, col } = cell)
+  }
   return { x: grid.x + (col + 0.5) * grid.cell, y: grid.y + (row + 0.5) * grid.cell }
 }
 
@@ -153,10 +173,11 @@ export function describeStageCheck(check) {
     case 'stage_colour_used':
       return `Something ${colourInWords(check.colour)} is on the stage`
     case 'stage_pixel': {
-      const where =
-        finite(check.x) !== null
-          ? `The point x ${check.x}, y ${check.y}`
-          : `Grid row ${check.row}, column ${check.col}`
+      let where = `Grid row ${check.row}, column ${check.col}`
+      if (finite(check.x) !== null) where = `The point x ${check.x}, y ${check.y}`
+      else if (check.row == null && finite(check.index) !== null) {
+        where = `Grid square ${check.index}`
+      }
       return `${where} is ${colourInWords(check.colour)}`
     }
     case 'stage_text_shown':
@@ -241,8 +262,18 @@ export function validateStageCheck(check, { n, kind, task, moduleDefinition } = 
   if (type === 'stage_pixel') {
     const hasPoint = check.x != null || check.y != null
     const hasCell = check.row != null || check.col != null
-    if (hasPoint === hasCell) {
-      errors.push(`Task ${n} has a stage_pixel ${label} that needs either x and y, or row and col`)
+    const hasIndex = check.index != null
+    if ([hasPoint, hasCell, hasIndex].filter(Boolean).length !== 1) {
+      errors.push(
+        `Task ${n} has a stage_pixel ${label} that needs one of: x and y, row and col, or index`
+      )
+    } else if (hasIndex) {
+      const index = finite(check.index)
+      if (index === null || index < 0 || !Number.isInteger(index)) {
+        errors.push(
+          `Task ${n} has a stage_pixel ${label} whose index is not a whole number of 0 or more`
+        )
+      }
     } else if (hasPoint) {
       const x = finite(check.x)
       const y = finite(check.y)

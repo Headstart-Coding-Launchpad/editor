@@ -174,7 +174,7 @@ describe('NameTagPanel visuals', () => {
     ).toBeTruthy()
   })
 
-  it('shows a list grid() drew as its size by default, or as a picture with stageLists', () => {
+  it('shows a list grid() drew as its size by default, and palette numbers as a table', () => {
     const pixels = list([list([int(0), int(8)]), list([int(8), int(0)])], { g: 1 })
     const { rerender, container } = render(
       <NameTagPanel config={view} run={runOf([['pixels', pixels]])} />
@@ -184,7 +184,36 @@ describe('NameTagPanel visuals', () => {
     rerender(
       <NameTagPanel config={{ ...view, stageLists: 'picture' }} run={runOf([['pixels', pixels]])} />
     )
-    expect(container.querySelectorAll('.ntp-pixel')).toHaveLength(4)
+    expect(container.querySelector('.ntp-picture')).toBeNull()
+    expect(container.querySelectorAll('.ntp-table td')).toHaveLength(4)
+    expect(
+      container
+        .querySelector('.ntp-tag')
+        .getAttribute('aria-label')
+        .startsWith('pixels: 2 by 2 table. pixels, row 1: 0, 8. pixels, row 2: 8, 0')
+    ).toBe(true)
+  })
+
+  it('wraps a flat list grid() drew with width= at that width, indexes running on', () => {
+    const pixels = list([...Array(8).fill(str('red')), str('white'), str('white')], { g: 1, gw: 8 })
+    const { container } = render(<NameTagPanel config={view} run={runOf([['pixels', pixels]])} />)
+    const grid = container.querySelector('.ntp-wrapped')
+    expect(grid.style.getPropertyValue('--ntp-wrap')).toBe('8')
+    const tiles = grid.querySelectorAll('.ntp-tile')
+    expect(tiles).toHaveLength(10)
+    expect(tiles[9].querySelector('.ntp-index').textContent).toBe('9')
+    expect(screen.getByText('pixels, item 9 (row 2, column 2): white')).toBeTruthy()
+    expect(container.querySelector('.ntp-tag').getAttribute('aria-label')).toBe(
+      'pixels: list of 10, 8 to a row'
+    )
+  })
+
+  it('shows palette numbers drawn with width= as number tiles, not bars', () => {
+    const pixels = list([int(0), int(1), int(1), int(0)], { g: 1, gw: 2 })
+    const { container } = render(<NameTagPanel config={view} run={runOf([['pixels', pixels]])} />)
+    expect(container.querySelector('.ntp-bars')).toBeNull()
+    expect(container.querySelector('.ntp-wrapped--numbers')).toBeTruthy()
+    expect(container.querySelector('.ntp-swatch-chip')).toBeNull()
   })
 
   it('marks the item that changed since the last run', () => {

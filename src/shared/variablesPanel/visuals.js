@@ -6,28 +6,26 @@
 //   visuals off, a plain value, a set or an empty collection   'plain' (today's tags)
 //   a dict: every value a number                               'dictBars'
 //           anything else                                      'cards' (a colour value adds a swatch)
+//   a flat list grid() drew with width= in this run (node.gw), whatever `stageLists` says:
+//                    'wrapped' its items in rows of that width, indexes running on (0–7, 8–15…):
+//                              swatches (colours, see-through allowed), numbers (whole numbers:
+//                              palette numbers, never bars) or plain tiles
 //   a list (or tuple) the Stage's grid() drew in this run (node.g), by `stageLists`:
 //     size (default)   'size'    the type and size only ("list, 8 × 8, drawn on the Stage")
 //     tiles            'rows'    rows of tiles (or 'tiles' for a flat list)
-//     picture          'picture' when every cell is a colour, see-through or a palette number;
-//                                otherwise the rules below
+//     picture          'picture' when every cell is a colour or see-through; a cell holding a
+//                                palette number makes it a 'table' (the panel shows the data,
+//                                the Stage the picture); otherwise the rules below
 //   a 2D list (equal-length rows, all read):
 //     every cell a colour or see-through (at least one real colour)   'picture'
-//     anything else                                                   'table'
+//     anything else (a table of palette numbers included)             'table'
 //   a flat list: every item a colour the Stage knows                  'swatches'
 //                every item a number                                  'bars'
 //                anything else (text, emoji, mixed, nested)           'tiles'
-// Whole numbers only count as palette numbers in a list grid() drew (they use its palette, or
-// the 16 Arcade colours without one): a 2D list of numbers that was never drawn is a table.
+// Palette numbers always show as numbers, never tinted or drawn as a picture (P6-14).
 // A value whose items were not all read (too long, too deep) still gets its flat-list visual for
 // the items that were read; a 2D value missing rows or cells falls back to tiles.
-import {
-  PICO8_PALETTE,
-  colourInWords,
-  describeHex,
-  isTransparentColour,
-  parseColour,
-} from '../stage/colours.js'
+import { colourInWords, describeHex, isTransparentColour, parseColour } from '../stage/colours.js'
 import {
   DEFAULT_STAGE_LISTS,
   STAGE_LISTS_OPTIONS,
@@ -84,19 +82,8 @@ export function rowsOf2D(node) {
   return rows.map((row) => nodeItems(row))
 }
 
-// A grid()'s palette (node.gp, colour words) as [{ hex, words }] (hex null = see-through).
-function drawnPalette(node) {
-  if (!Array.isArray(node?.gp) || node.gp.length === 0) return null
-  return node.gp.map((word) => {
-    const hex = typeof word !== 'string' || isTransparentColour(word) ? null : parseColour(word)
-    return { hex, words: hex ? colourInWords(word) : 'see-through' }
-  })
-}
-
-const PICO8_ENTRIES = PICO8_PALETTE.map((hex) => ({ hex, words: describeHex(hex) }))
-
 // One picture cell: { ok, hex, words } (hex null = see-through), or { ok: false }.
-function pictureCell(cell, { drawn, palette }) {
+function pictureCell(cell) {
   if (cell?.t === 'none') return { ok: true, hex: null, words: 'see-through', named: false }
   if (cell?.t === 'str' && typeof cell.v === 'string') {
     if (isTransparentColour(cell.v) || !cell.v.trim()) {
@@ -105,22 +92,15 @@ function pictureCell(cell, { drawn, palette }) {
     const hex = nodeColour(cell)
     return hex ? { ok: true, hex, words: colourInWords(cell.v), named: true } : { ok: false }
   }
-  if (drawn && (cell?.t === 'int' || cell?.t === 'bool')) {
-    const index = cell.t === 'bool' ? (cell.v ? 1 : 0) : cell.v
-    const list = palette ?? PICO8_ENTRIES
-    if (!Number.isInteger(index) || index < 0 || index >= list.length) return { ok: false }
-    const entry = list[index]
-    return { ok: true, hex: entry?.hex ?? null, words: entry?.words ?? 'see-through', named: true }
-  }
   return { ok: false }
 }
 
 /**
  * A 2D list as a picture: `{ rows, cols, cells: [[{ hex, words }]], colours: [{ words, hex,
  * count }] }` (colours in first-seen order, see-through included), or null when a cell is not a
- * colour. Whole numbers count only when `drawn` (they index the grid's palette).
+ * colour (palette numbers never make a picture: the panel shows them as numbers).
  */
-export function pictureOf(rows, { drawn = false, palette = null } = {}) {
+export function pictureOf(rows) {
   if (!rows) return null
   const counts = new Map()
   let named = false
@@ -128,7 +108,7 @@ export function pictureOf(rows, { drawn = false, palette = null } = {}) {
   for (const row of rows) {
     const out = []
     for (const cell of row) {
-      const read = pictureCell(cell, { drawn, palette })
+      const read = pictureCell(cell)
       if (!read.ok) return null
       if (read.named) named = true
       const key = read.hex ?? 'none'
@@ -139,8 +119,36 @@ export function pictureOf(rows, { drawn = false, palette = null } = {}) {
     }
     cells.push(out)
   }
-  if (!named && !drawn) return null
+  if (!named) return null
   return { rows: cells.length, cols: cells[0]?.length ?? 0, cells, colours: [...counts.values()] }
+}
+
+// A whole number in a list grid() drew (True/False count, as in grid()): a palette number.
+const isPaletteNumber = (node) => node?.t === 'int' || node?.t === 'bool'
+
+/**
+ * A flat list grid() drew with width= as `{ kind: 'wrapped', width, cells, items: [{ index,
+ * node, hex, words }], notRead }`: `cells` is 'swatches' (every item a colour or see-through, at
+ * least one colour; hex null = see-through), 'numbers' (every item a whole number) or 'tiles'.
+ */
+export function wrappedOf(node, width) {
+  const items = nodeItems(node)
+  const read = items.map((item) => pictureCell(item))
+  let cells = 'tiles'
+  if (read.every((cell) => cell.ok) && read.some((cell) => cell.hex)) cells = 'swatches'
+  else if (items.every(isPaletteNumber)) cells = 'numbers'
+  return {
+    kind: 'wrapped',
+    width,
+    cells,
+    items: items.map((item, index) => ({
+      index,
+      node: item,
+      hex: cells === 'swatches' ? read[index].hex : null,
+      words: cells === 'swatches' ? read[index].words : formatValue(item, { maxChars: 40 }),
+    })),
+    notRead: hiddenItemCount(node),
+  }
 }
 
 /**
@@ -179,6 +187,9 @@ export function chooseVisual(node, { visuals = true, stageLists = DEFAULT_STAGE_
   if (!isListLike(node) || items.length === 0) return { kind: 'plain' }
 
   const rows = rowsOf2D(node)
+  if (node.g && Number.isInteger(node.gw) && node.gw >= 1 && !items.some(isListLike)) {
+    return wrappedOf(node, node.gw)
+  }
   if (node.g) {
     const lists = STAGE_LISTS_OPTIONS.includes(stageLists) ? stageLists : DEFAULT_STAGE_LISTS
     if (lists === 'size') {
@@ -190,8 +201,7 @@ export function chooseVisual(node, { visuals = true, stageLists = DEFAULT_STAGE_
         ? { kind: 'rows', rows: items.map((row) => ({ node: row, cells: nodeItems(row) })) }
         : { kind: 'tiles' }
     }
-    const picture = pictureOf(rows, { drawn: true, palette: drawnPalette(node) })
-    if (picture) return { kind: 'picture', ...picture }
+    // picture: the rules below, which draw colours and show palette numbers as a table.
   }
   if (rows) {
     const picture = pictureOf(rows)
@@ -248,6 +258,24 @@ export function describePicture(name, picture) {
   }: ${listed}${more}`
 }
 
+/**
+ * The screen-reader words for a table, read by row (counting rows from 1): "pixels: 3 by 4
+ * table. pixels, row 1: 0, 1, 1, 0. pixels, row 2: …".
+ */
+export function describeTable(name, visual) {
+  const rows = visual.rows.map(
+    (row, r) =>
+      `${name}, row ${r + 1}: ${row.map((cell) => formatValue(cell, { maxChars: 40 })).join(', ')}`
+  )
+  return `${name}: ${visual.rows.length} by ${visual.cols} table. ${rows.join('. ')}`
+}
+
+// "pixels: list of 24, 8 to a row" (a wrapped tag's summary; each item has its own words).
+export function describeWrapped(name, node, visual) {
+  const kind = node?.t === 'tuple' ? 'tuple' : 'list'
+  return `${name}: ${kind} of ${nodeLength(node)}, ${visual.width} to a row`
+}
+
 // "list, 8 × 8, drawn on the Stage" (a stageLists: size tag).
 export function sizeText(node, visual) {
   const kind = node?.t === 'tuple' ? 'tuple' : 'list'
@@ -261,6 +289,11 @@ export function sizeText(node, visual) {
  * "scores, item 2: 7", "ages, "Sam": 12".
  */
 export function describeItem(name, visual, item) {
+  if (visual.kind === 'wrapped') {
+    const row = Math.floor(item.index / visual.width) + 1
+    const col = (item.index % visual.width) + 1
+    return `${name}, item ${item.index} (row ${row}, column ${col}): ${item.words}`
+  }
   if (visual.kind === 'swatches') return `${name}, item ${item.index}: ${item.words}`
   if (visual.kind === 'bars') return `${name}, item ${item.index}: ${formatValue(item.node)}`
   if (visual.kind === 'cards' || visual.kind === 'dictBars') {
@@ -313,13 +346,15 @@ const CARD_KINDS = new Set(['swatches', 'picture', 'bars'])
 
 /**
  * The visuals worth a thumbnail on the tutor's student card: up to `limit` variables of the
- * shown snapshot whose visual is swatches, a picture or bars, as `[{ name, visual }]`.
+ * shown snapshot whose visual is swatches, a picture, bars or a wrapped list of colours, as
+ * `[{ name, visual }]`.
  */
 export function cardVisuals(vars, options, limit = 2) {
   const out = []
   for (const entry of Array.isArray(vars) ? vars : []) {
     const visual = chooseVisual(entry?.v, options)
-    if (!CARD_KINDS.has(visual.kind)) continue
+    const wrappedColours = visual.kind === 'wrapped' && visual.cells === 'swatches'
+    if (!CARD_KINDS.has(visual.kind) && !wrappedColours) continue
     out.push({ name: entry.n, node: entry.v, visual })
     if (out.length >= limit) break
   }
