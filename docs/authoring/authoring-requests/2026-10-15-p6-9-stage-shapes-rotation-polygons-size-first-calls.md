@@ -1,6 +1,6 @@
 # Stage shapes: rotation, polygons, see-through colours, outlines, hue(), and size-first calls
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, bypassing pipeline-ui, as with builds 1–6), 2026-10-15
 - **Lessons blocked:** none yet. Wave 1b of Lesson Gen's LG-P6 Visual learning plan (v5). Used by pilot lesson A (a `for` loop lesson). Build this on top of `integrate/requests-2026-10-14` (builds 1–6) rather than waiting for them to merge, and merge when ready (Ryan, 2026-10-15): this changes the Stage (`2026-10-14-p6-2-…`).
@@ -85,4 +85,12 @@ Turtle turns anticlockwise with `left()`; the Stage's clockwise `angle` follows 
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped 2026-10-15 on branch `feature/stage-shapes` (c48880c), merged into `integrate/requests-2026-10-14`. It is not on `main` yet: that waits for Ryan's browser pass.
+
+It shipped as a change to the Python Stage:
+  - size-first calls with centre anchors, replacing the old position-first order outright;
+  - new `square`, `polygon` and `hue()`;
+  - new `angle`, `opacity`, `outline`, `width` and `colour=None` keywords;
+  - plain-English errors when the old order is used.
+
+  Shapes default to royal blue `#4169e1`, and text and lines default to black. `stage_shape_count` gains `square`, `polygon` and `sides`. Docs: [python.md](../python.md#stage-drawing-beside-the-console).

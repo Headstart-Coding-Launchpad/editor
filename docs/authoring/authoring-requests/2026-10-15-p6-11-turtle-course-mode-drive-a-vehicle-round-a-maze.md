@@ -1,6 +1,6 @@
 # Turtle course mode: drive a vehicle round a maze or track
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** activity mode
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, bypassing pipeline-ui, as with builds 1–6), 2026-10-15
 - **Lessons blocked:** none yet. Wave 1b of Lesson Gen's LG-P6 Visual learning plan (v5). Used by pilot lesson C (an `if`/`while` lesson). Depends on animated Turtle drawing (`2026-10-15-p6-10-…`). Build this on top of `integrate/requests-2026-10-14` (builds 1–6) rather than waiting for them to merge, and merge when ready (Ryan, 2026-10-15).
@@ -91,4 +91,13 @@ It is **not** a game: no game loop, no keys, no events. Students write instructi
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped 2026-10-15 on branch `feature/turtle-course-mode` (89a424a), merged into `integrate/requests-2026-10-14`. It is not on `main` yet: that waits for Ryan's browser pass.
+
+It shipped as a mode of the `turtle` module, the `course` task field, with `type: grid | track`:
+  - five vehicles;
+  - sensors on `turtle`;
+  - pickups, crashes and several `maps` played in turn;
+  - checks `course_goal_reached`, `course_no_crash`, `course_pickups` and `course_max_moves`;
+  - a card chip and a `courseLog` report.
+
+  A track's `trackCode` is read as a fixed Turtle subset, not run. **Needs a database rules deploy** for `students/{id}/courseLog`. Docs: [turtle.md](../turtle.md) "Course mode".

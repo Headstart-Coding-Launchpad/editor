@@ -1,6 +1,6 @@
 # Name-tag panel: lists and dicts you can see
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, bypassing pipeline-ui, as with builds 1–6), 2026-10-15
 - **Lessons blocked:** none yet. Wave 1b of Lesson Gen's LG-P6 Visual learning plan (v5, "small code, big picture"). Used by pilot lessons A and B. Build this on top of `integrate/requests-2026-10-14` (builds 1–6) rather than waiting for them to merge, and merge when ready (Ryan, 2026-10-15): this builds on the name-tag panel (`2026-10-14-p6-1-…`).
@@ -85,4 +85,6 @@ After Run, `palette` shows as five colour swatches with their indexes and names.
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped 2026-10-15 on branch `feature/name-tag-visuals` (4424cba), merged into `integrate/requests-2026-10-14`. It is not on `main` yet: that waits for Ryan's browser pass.
+
+It shipped as a feature of the `python` and `turtle` name-tag panel: new `showVariables.visuals` and `showVariables.stageLists` fields. Lists and dicts show as colour swatches, number bars, 2D pictures and tables, or dict cards, chosen automatically, with tiles as the fallback. Items are marked one by one when they change, and the exact value is one tap away. Palette numbers draw as a picture only in a list drawn with `grid()` when `stageLists: picture` is set. Capture now reads about 1,000 values per variable (a 32 × 32 picture). Docs: [python.md](../python.md#name-tag-panel-showvariables).

@@ -1,6 +1,6 @@
 # Python screen space: editor, console, Stage and name-tag panel together
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, bypassing pipeline-ui, as with builds 1–6), 2026-10-15
 - **Lessons blocked:** none yet. Wave 1b of Lesson Gen's LG-P6 Visual learning plan (v5). Affects all three pilot lessons. Build this on top of `integrate/requests-2026-10-14` (builds 1–6) rather than waiting for them to merge, and merge when ready (Ryan, 2026-10-15).
@@ -65,4 +65,11 @@ Any Python task with Stage drawing, `showVariables` and `slowMo` together, e.g.:
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped 2026-10-15 on branch `feature/python-screen-space` (708556c), merged into `integrate/requests-2026-10-14`. It is not on `main` yet: that waits for Ryan's browser pass.
+
+It shipped as a shared `ResultPane` for the `python` and `turtle` workspaces:
+  - On tablets, 1366 × 768 screens, and whenever the result side is narrower than 520 px or the workspace is shorter than 600 px, the editor sits beside one result pane with Picture · Tags · Console tabs.
+  - Portrait screens put the editor above the tabs.
+  - The pane switches to the right tab after Run, the Console shows an unread badge, and slow-mo or predict/target mode stacks Picture and Tags.
+
+  New optional `layout.firstPane` field. Wide desktops are unchanged. Docs: [python.md](../python.md), [turtle.md](../turtle.md).

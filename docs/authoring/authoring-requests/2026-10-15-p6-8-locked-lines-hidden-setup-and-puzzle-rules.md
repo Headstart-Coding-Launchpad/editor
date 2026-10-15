@@ -1,6 +1,6 @@
 # Locked lines, hidden setup and puzzle rules in the code editor
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, bypassing pipeline-ui, as with builds 1–6), 2026-10-15
 - **Lessons blocked:** none yet. Wave 1b of Lesson Gen's LG-P6 Visual learning plan (v5). Used by all three pilot lessons. Build this on top of `integrate/requests-2026-10-14` (builds 1–6) rather than waiting for them to merge, and merge when ready (Ryan, 2026-10-15).
@@ -104,4 +104,12 @@ The marker names (`#@lock`, `setupCode`, `puzzle`) are suggestions. Fit them to 
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped 2026-10-15 on branch `feature/locked-lines-setup-puzzles` (684c5a0), merged into `integrate/requests-2026-10-14`. It is not on `main` yet: that waits for Ryan's browser pass.
+
+It shipped as features of the `python` and `turtle` code editor:
+  - a `#@lock` marker line;
+  - `setupCode` and `setupNote` task fields;
+  - a `puzzle: { onlyEdit, maxLines, par }` field;
+  - a new `max_lines` check.
+
+  The CLI can't run Python, so validation only checks `setupCode` for brackets, quotes and indentation. `linesUsed` and `changesFromStarter` come from the passing attempt in `attemptLog`, so there is no new Firebase node. Docs: [python.md](../python.md#hidden-setup-setupcode-setupnote), [turtle.md](../turtle.md).

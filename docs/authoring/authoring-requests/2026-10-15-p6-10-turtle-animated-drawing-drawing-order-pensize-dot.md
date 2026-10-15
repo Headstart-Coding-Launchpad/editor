@@ -1,6 +1,6 @@
 # Turtle: animated drawing, real drawing order, pensize() and dot()
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, bypassing pipeline-ui, as with builds 1–6), 2026-10-15
 - **Lessons blocked:** none yet. Wave 1b of Lesson Gen's LG-P6 Visual learning plan (v5). Used by pilot lessons A and C, and needed by Turtle course mode (`2026-10-15-p6-11-…`). Build this on top of `integrate/requests-2026-10-14` (builds 1–6) rather than waiting for them to merge, and merge when ready (Ryan, 2026-10-15).
@@ -74,4 +74,11 @@ Ryan: "the turtle is a good tool, we need to use it more". Turtle is the classic
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped 2026-10-15 on branch `feature/turtle-animation` (4354e48), merged into `integrate/requests-2026-10-14`. It is not on `main` yet: that waits for Ryan's browser pass.
+
+It shipped as a change to the `turtle` module. Drawings now animate at `speed()`:
+  - with no `speed()` call, a drawing plays at speed 10 and finishes within 4 s;
+  - `speed(1–10)` plays at real-turtle pace;
+  - `speed(0)` draws instantly.
+
+  Skip and Play buttons are 44 px. Under reduced motion, the drawing appears at once and Play animates it. Shapes now draw in code order, with a fill's own outline kept on top of it. New `pensize()`/`width()` and `dot()`, which `turtle_command_used` accepts. A screen-reader description of the drawing. Docs: [turtle.md](../turtle.md).

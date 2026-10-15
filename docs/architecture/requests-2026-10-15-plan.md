@@ -110,3 +110,27 @@ Agreed with Ryan on 2026-10-15. It covers the six LG-P6 wave 1b requests in `doc
 - Add CHANGELOG entries, one per request, each with its `Resolves:` line.
 - Run `npm run docs:check` and the full `npm test`.
 - Update the Hub status file.
+
+## Status (2026-10-15)
+
+All six packages are merged into `integrate/requests-2026-10-14`, and the full suite is green (8,111 passed). The requests are marked shipped. Nothing is pushed or on `main`.
+
+Still to do:
+- Ryan's browser pass, using the checks listed below.
+- A **database rules deploy**, for the new `students/{id}/courseLog` and for the earlier round's nodes.
+
+Decisions the build agents made:
+- **Course pace:** with no `speed()` call, a course plays at real speed 1, capped at 30 s, so the vehicle can be seen moving. Drawings use the 4 s cap.
+- **`setupCode`:** `lessons validate` only checks brackets, quotes and indentation; the CLI has no Pyodide.
+- **Stage default colours:** royal blue `#4169e1` for shapes, black for text and lines.
+- **Picture and Tags together:** on tabbed screens, predict/target tasks that draw get a stacked "Picture + Tags" tab.
+
+Known gap: the Export work PNG and the share page show a course's trail without the map.
+
+Browser checks:
+- **Name-tag visuals (P6-7):** swatches, bars and pictures; per-item change marks; card thumbnails.
+- **Locked lines (P6-8):** editing on and around a locked line; the iPad keyboard; Reset and reload; the setup error message; the line counter and the par note.
+- **Stage shapes (P6-9):** the old-order error; scrubbing the rainbow tunnel; the ghost and Differences views with turned and see-through shapes; the SVG export.
+- **Animated Turtle (P6-10):** the animation, Skip, reduced motion and Play; drawing order; Go Live; resizing mid-animation.
+- **Course mode (P6-11):** the vehicles, crashes, pickups, several maps, the Builder preview, and the plain crash message with no traceback.
+- **Layout (P6-12):** 1366×768, 1024×768, iPad portrait with the keyboard open, 1920×1080, the projector, and switching tabs while a drawing plays.
