@@ -37,6 +37,36 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-15
+
+### Locked lines, hidden setup and puzzle rules (`#@lock`, `setupCode`, `puzzle`, `max_lines`)
+
+- **Locked lines:** a `#@lock` marker line locks the next non-blank line of Python or Turtle code.
+  Students see it greyed with a 🔒 Locked tag and can't type in it, delete it, cut, paste over or
+  re-indent it, but can add lines before, between and after locked lines. Locks follow their line
+  through saving, support stages and Reset, and show in the tutor's views and Go Live.
+- **Hidden setup:** `setupCode` runs first on every Run, in the same program, and is never shown;
+  its variables show in the name-tag panel and the checks see them. `setupNote` is one short line
+  above the editor. Students never see a setup traceback ("This task's setup has a problem — tell
+  your tutor."), and their line numbers are unchanged.
+- **Puzzle rules:** `puzzle: { onlyEdit: [lineNums], maxLines, par }`. `onlyEdit` locks every
+  other non-blank starter line; `maxLines` shows a live "3 / 4 lines" counter; `par` is shown
+  after a pass ("Solved at par ⭐") and never decides it. The new `max_lines` check (Python,
+  Turtle; no run needed) passes at or under `puzzle.maxLines` lines of code (non-blank,
+  non-comment; locked lines count, setup doesn't), with the default hint "Can you do it in 4
+  lines? A loop might help."
+- Validation: `setupCode`'s brackets, quotes and indentation (it can't run Python, so preview
+  the task once), the complete code meets `maxLines` (error) and `par` (warning), `onlyEdit` lines
+  are in the starter, and a warning when the complete code drops a locked line or re-indents it
+  ([validation-errors.md](validation-errors.md#hidden-setup-locked-lines-and-puzzles)). The session
+  report adds `linesUsed` and `changesFromStarter` per student on puzzle tasks; the tutor's card
+  shows "Solved at par" or "Over line limit". See
+  [python.md](python.md#locked-lines-hidden-setup-and-puzzles) and
+  [turtle.md](turtle.md#locked-lines-hidden-setup-and-puzzles).
+- Affects: python, turtle, cli (validate, test-checks, capabilities) · Existing lessons: no
+  changes needed · Resolves:
+  authoring-requests/2026-10-15-p6-8-locked-lines-hidden-setup-and-puzzle-rules.md
+
 ## 2026-10-14
 
 ### Live number and colour scrubbing in the code editor (`scrub`)

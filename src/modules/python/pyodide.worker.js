@@ -6,7 +6,7 @@
  * ────────────────
  * Main → Worker : { type: 'init' }
  *                 { type: 'run',   code: string, capture?: { panel, peekLine, hide },
- *                                  record?: { lineOffset, hide } }
+ *                                  record?: { lineOffset, hide }, setup?: { code, afterLine } }
  *                 { type: 'stage_render', id: number, code: string }
  *                 { type: 'input', value: string }
  *                 { type: 'gpio_inputs', values: object, requestId?: number }
@@ -56,6 +56,13 @@
  * `done` says 'stopped' with `slowMo.status: 'capped'`, so the run is treated like one the
  * student stopped: no check, no attempt.
  *
+ * `setup` is a task's hidden setupCode (src/shared/puzzle/setupCode.js): its statements run
+ * first, in the same program (they join the top of the student's code, after the first
+ * `afterLine` lines, which are the runtime's own — Turtle's shim), so its variables are the
+ * student's too. Its lines are numbered after the student's last line (and the wrapper's
+ * finally line), so the student's line numbers never move; formatPythonError turns an error
+ * raised there into SETUP_ERROR_TEXT instead of its traceback.
+ *
  * `stage_render` runs a task's stageTarget code silently (no output, `input()` answers '') and
  * replies with its stage commands only. The main thread never sends it while a run is going.
  */
@@ -75,6 +82,7 @@ import { VARIABLE_CAPTURE_PY } from './variableCapture.py.js'
 import { STAGE_INSTALL_PY, STAGE_MODULE_PY } from '../../shared/stage/stagePy.js'
 import { createStageRecorder } from '../../shared/stage/commands.js'
 import { PYTHON_SLOW_MO_MAX_STEPS } from './slowMo/config.js'
+import { SETUP_ERROR_TEXT } from '../../shared/puzzle/setupCode.js'
 
 const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
 
@@ -141,6 +149,20 @@ class _Tx(ast.NodeTransformer):
         return new
 
 _tree = ast.parse(_hs_user_code, filename='<student>')
+
+# A task's hidden setupCode (_hs_setup_json): its statements join the top of the student's code,
+# after the runtime's own first lines (afterLine), numbered from two past the student's last
+# line, so the student's line numbers are unchanged and an error there is known as the setup's.
+_hs_setup_cfg = json.loads(_hs_setup_json or '{}')
+_hs_setup_src = _hs_setup_cfg.get('code') or ''
+if _hs_setup_src:
+    _hs_setup_tree = ast.parse(_hs_setup_src, filename='<setup>')
+    ast.increment_lineno(_hs_setup_tree, len(_hs_user_code.split(chr(10))) + 1)
+    _hs_setup_after = int(_hs_setup_cfg.get('afterLine') or 0)
+    _hs_split = 0
+    while _hs_split < len(_tree.body) and _tree.body[_hs_split].lineno <= _hs_setup_after:
+        _hs_split += 1
+    _tree.body[_hs_split:_hs_split] = _hs_setup_tree.body
 
 # The student's top level becomes the body of async def __hs_run__, where Python refuses
 # 'from m import *'. Spell the names out instead (the module's __all__, else its public names),
@@ -297,7 +319,8 @@ def _hs_rec_loops():
         if not isinstance(node, (ast.For, ast.AsyncFor, ast.While)):
             continue
         line = node.lineno - _hs_rec_offset
-        if line < 1:
+        # The runtime's own lines and the task's hidden setup are not the student's loops.
+        if line < 1 or node.lineno > _hs_rec_last:
             continue
         end = max([getattr(b, 'end_lineno', None) or b.lineno for b in node.body] or [node.lineno])
         out.append({'line': line, 'end': end - _hs_rec_offset, 'total': _hs_rec_loop_total(node)})
@@ -849,6 +872,10 @@ self.onmessage = async ({ data }) => {
     pyodide.globals.set('_hs_capture_json', JSON.stringify(normalizeCaptureConfig(data.capture)))
     const record = normalizeRecordConfig(data.record)
     pyodide.globals.set('_hs_record_json', JSON.stringify(record))
+    const setup = normalizeSetupConfig(data.setup)
+    pyodide.globals.set('_hs_setup_json', JSON.stringify(setup))
+    // The first line number of the setup's statements (see the WRAPPER), or null without one.
+    const setupFrom = setup.code ? String(data.code ?? '').split('\n').length + 2 : null
     _slowMo = record.on ? createSlowMoRecording() : null
 
     const turtleResult = () => ({
@@ -874,7 +901,9 @@ self.onmessage = async ({ data }) => {
     } catch (err) {
       flushBuffers()
       const raw = String(err).replace(/^PythonError:\s*/, '')
-      const { text, line } = formatPythonError(raw)
+      const { text, line, setupError } = formatPythonError(raw, { setupFrom })
+      // The setup is the author's: its traceback goes to the console, never to the student.
+      if (setupError) console.warn(`[setupCode] ${raw}`)
       self.postMessage({ type: 'output', text: text + '\n', kind: 'stderr', line })
       slowMoAppendOutput(text + '\n')
       const slowMo = finishSlowMo('error')
@@ -931,6 +960,7 @@ async function renderStage(code) {
   pyodide.globals.set('_hs_async_names_json', '[]')
   pyodide.globals.set('_hs_capture_json', JSON.stringify({ panel: false }))
   pyodide.globals.set('_hs_record_json', JSON.stringify({ on: false }))
+  pyodide.globals.set('_hs_setup_json', '{}')
   _slowMo = null
   try {
     await pyodide.runPythonAsync(WRAPPER)
@@ -967,6 +997,16 @@ export function normalizeRecordConfig(record) {
   return { on: true, lineOffset, hide }
 }
 
+// Exported for unit testing. A task's hidden setup as the Python wrapper reads it
+// (_hs_setup_json): { code, afterLine }, or {} without one.
+export function normalizeSetupConfig(setup) {
+  if (!setup || typeof setup !== 'object') return {}
+  const code = typeof setup.code === 'string' && setup.code.trim() ? setup.code : ''
+  if (!code) return {}
+  const afterLine = Number.isInteger(setup.afterLine) && setup.afterLine > 0 ? setup.afterLine : 0
+  return { code, afterLine }
+}
+
 // Exported for unit testing (see src/modules/python/__tests__/pyodide.worker.test.js).
 // Pyodide's setStdout/setStderr `raw` callback hands over one UTF-8 *byte* at a
 // time, not one character — a multi-byte character (e.g. '£' or an emoji) arrives
@@ -983,21 +1023,40 @@ export function createUtf8ByteDecoder() {
 // shape, still relied on elsewhere); `line` is the parsed student line number
 // (or null when no clean line number could be determined, e.g. a raw
 // SyntaxError before the student's <student> frame exists).
-export function formatPythonError(traceback) {
+//
+// `setupFrom` (a task with hidden setupCode): the first line number of the setup's statements.
+// An error inside the setup — a SyntaxError in it (`<setup>`), or one raised on its lines with
+// no student line calling it — comes back as SETUP_ERROR_TEXT with `setupError: true`. One
+// raised inside setup code that a student line called reports that student line.
+export function formatPythonError(traceback, { setupFrom = null } = {}) {
   const lines = traceback
     .split('\n')
     .map((l) => l.trimEnd())
     .filter(Boolean)
   if (lines.length === 0) return { text: traceback, line: null }
 
-  // Find the innermost <student> frame to get the student's line number
+  const hasSetup = Number.isInteger(setupFrom)
+  if (hasSetup && lines.some((l) => l.includes('File "<setup>"'))) {
+    return { text: SETUP_ERROR_TEXT, line: null, setupError: true }
+  }
+
+  // Find the innermost <student> frame to get the student's line number (the setup's own
+  // lines skipped).
   let lineNum = null
+  let setupFrame = false
   for (let i = lines.length - 1; i >= 0; i--) {
     const m = lines[i].match(/File "<student>", line (\d+)/)
-    if (m) {
-      lineNum = parseInt(m[1], 10)
-      break
+    if (!m) continue
+    const n = parseInt(m[1], 10)
+    if (hasSetup && n >= setupFrom) {
+      setupFrame = true
+      continue
     }
+    lineNum = n
+    break
+  }
+  if (lineNum == null && setupFrame) {
+    return { text: SETUP_ERROR_TEXT, line: null, setupError: true }
   }
 
   // The last line is the actual error type and message

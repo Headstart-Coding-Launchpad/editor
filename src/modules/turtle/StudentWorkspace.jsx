@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import PythonEditor from '../python/PythonEditor'
 import { taskShowsBlocks } from '../../shared/blockGuides'
 import { getTaskLineHintSets } from '../../shared/lineHints'
+import { getTaskLockSets } from '../../shared/lockedLines'
 import OutputPanel from '../../app/components/OutputPanel'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import SplitPane from '../../shared/SplitPane'
@@ -17,6 +18,7 @@ import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
 import { usePythonSlowMo } from '../python/slowMo/usePythonSlowMo.js'
 import SlowMoBar from '../python/slowMo/SlowMoBar.jsx'
 import SlowMoNameTags from '../python/slowMo/SlowMoNameTags.jsx'
+import PuzzleBar from '../../shared/puzzle/PuzzleBar.jsx'
 
 const DEFAULT_TURTLE_STATE = createTurtleState()
 
@@ -178,6 +180,10 @@ export default function StudentWorkspace({
           runDisabled={cs.running || cs.pyodideStatus === 'loading'}
         />
       )}
+      {/* setupNote, the puzzle's line counter and, after a pass, its par (src/shared/puzzle/). */}
+      {!isSandbox && !cs.inPersonalSandbox && (
+        <PuzzleBar task={task} code={code} passed={!readOnly && !!cs.checkPassed} />
+      )}
       <PythonEditor
         code={code}
         readOnly={readOnly}
@@ -189,6 +195,8 @@ export default function StudentWorkspace({
         pyodideStatus={cs.pyodideStatus}
         errorLine={readOnly ? null : cs.errorLine}
         lineHints={readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskLineHintSets(task)}
+        // Locked lines (#@lock, puzzle.onlyEdit) show in every view, Go Live included.
+        lockedLines={isSandbox || cs.inPersonalSandbox ? null : getTaskLockSets(task)}
         showBlocks={taskShowsBlocks(task)}
         onRunShortcut={readOnly ? undefined : handleRunClick}
         slowMoMarker={slowMoView?.marker ?? null}

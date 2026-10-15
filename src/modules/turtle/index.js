@@ -6,6 +6,7 @@ import { initPyodide, isPyodideReady, runPython, stopPython, provideInput } from
 import { buildTurtleProgram, TURTLE_LINE_OFFSET } from './shim.js'
 import { variableCaptureOptions } from '../../shared/variablesPanel/variablesPanel.js'
 import { slowMoRecordOptions } from '../python/slowMo/config.js'
+import { setupRunOptions } from '../../shared/puzzle/setupCode.js'
 import { scrollLayoutStyles } from '../sharedStyles.js'
 import { defineUiModule } from '../defineModule.js'
 import definition from './definition.js'
@@ -27,13 +28,15 @@ const turtleModule = defineUiModule(definition, {
     isReady: isPyodideReady,
     stop: stopPython,
     provideInput,
-    run: (code, task, { slowMo = false, ...callbacks } = {}) =>
+    run: (code, task, { slowMo = false, freePlay = false, ...callbacks } = {}) =>
       runPython(buildTurtleProgram(code), {
         ...callbacks,
         // The name-tag panel (showVariables); its peek line moves down with the shim's lines.
         capture: variableCaptureOptions(task, code, { lineOffset: TURTLE_LINE_OFFSET }),
         // Slow-mo (src/modules/python/slowMo/): recorded lines come back as editor lines.
         record: slowMo ? slowMoRecordOptions(task, { lineOffset: TURTLE_LINE_OFFSET }) : null,
+        // The task's hidden setupCode runs after the shim, before the student's code.
+        setup: freePlay ? null : setupRunOptions(task, { afterLine: TURTLE_LINE_OFFSET }),
       }),
     buildPreviewSrc: null,
     waitForPreviewText: null,

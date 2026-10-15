@@ -456,6 +456,38 @@ Python tasks; see [python.md](python.md#stage-drawing-beside-the-console).
 | `Task … has a stage_text_shown … but no text` | The check has nothing to look for. | Add `text: …`. |
 | `Task … has a stage_text_shown … with operator "…" — use one of: …` | Unknown `operator`. | Use `contains` (the default), `equals` or `matches_regex`. |
 
+## Hidden setup, locked lines and puzzles
+
+Python and Turtle tasks; see [python.md](python.md#locked-lines-hidden-setup-and-puzzles). Validation can't run Python, so `setupCode` gets a quick check only (brackets, quotes, an indented first line); a real error in it shows students "This task's setup has a problem — tell your tutor." and the full error in the browser console, so preview the task once.
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task … has …, but it only works in Python and Turtle tasks — it is ignored` (warning) | `setupCode`, `setupNote` or `puzzle` is on another module's task. | Remove it, or move the task to Python or Turtle. |
+| `Task … setupCode must be Python code (text)` | `setupCode` is a number, list or map. | Write it as a block of text (`setupCode: \|`). |
+| `Task … setupCode is empty; it is ignored` (warning) | `setupCode` has no code. | Add the code, or remove the field. |
+| `Task … setupCode has a syntax problem: …` | A bracket or string in the setup is never closed, a closing bracket has no opener, or the first line is indented. | Fix the setup code, then preview the task. |
+| `Task … setupCode calls input(), which would ask the student a question before their code runs` (warning) | The setup asks for input. | Give the value directly instead. |
+| `Task … setupCode never runs: the task is submitted, not run` (warning) | `interactionMode: submit` tasks are never run. | Remove `setupCode`, or make the task a run task. |
+| `Task … setupNote must be text` | `setupNote` isn't a string. | Write one short line of text. |
+| `Task … setupNote is over … characters; keep it to one short line` (warning) | The note is long for the line above the editor. | Shorten it, e.g. "playlist already exists". |
+| `Task … has a setupNote but no setupCode` (warning) | The note describes setup that isn't there. | Add `setupCode`, or remove the note. |
+| `Task … puzzle must be an object, e.g. { maxLines: 4 }` | `puzzle` is a number, text or list. | Write it as a map with `onlyEdit`, `maxLines` and/or `par`. |
+| `Task … puzzle has unknown key(s) …; they are ignored` (warning) | `puzzle` has keys other than `onlyEdit`, `maxLines`, `par`. | Remove them (check the spelling). |
+| `Task … puzzle.maxLines must be a whole number of lines, 1 or more` | `maxLines` is text, 0, negative or a fraction. | Use a whole number such as `4`. |
+| `Task … puzzle.par must be a whole number of changes, 0 or more` | `par` is text, negative or a fraction. | Use a whole number such as `1`. |
+| `Task … puzzle.onlyEdit must be a list of starter line numbers, e.g. [2, 3]` | `onlyEdit` isn't a list of whole numbers from 1. | List the lines students may change, e.g. `onlyEdit: [2]`. |
+| `Task … puzzle.onlyEdit line … is past the end of the starter code (… lines, not counting marker lines)` | A line number is bigger than the starter. Marker lines (`#>`, `#@lock`, `#@peek`) don't count. | Count lines in the starter as the student sees it. |
+| `Task … puzzle.onlyEdit is empty, so every starter line is locked` (warning) | `onlyEdit: []` leaves nothing editable (students can still add lines). | List the lines students may change, or remove `onlyEdit`. |
+| `Task … has a max_lines … but no limit: set puzzle.maxLines or the check's value` | A `max_lines` check has nothing to compare with. | Add `puzzle: { maxLines: N }` (or `value: N` on the check). |
+| `Task … has a max_lines … whose value is not a whole number of lines` | The check's `value` isn't a whole number from 1. | Use a whole number, or remove `value` to use `puzzle.maxLines`. |
+| `Task … puzzle.maxLines shows a line counter, but no max_lines check enforces it — add { type: max_lines } to the check` (warning) | Students see the counter, but going over the limit still passes. | Add `- type: max_lines` to `check`, unless the limit is only a nudge. |
+| `Task … has puzzle rules but no complete code, so they can't be checked as solvable` (warning) | There's no complete stage to prove the puzzle can be solved within its rules. | Add a `complete` code stage. |
+| `Task … complete code has … lines of code, over puzzle.maxLines …` | The solution breaks its own line limit, so the puzzle can't be solved. | Shorten the solution, or raise `maxLines`. |
+| `Task … complete code takes … changes from the starter, more than puzzle.par …` (warning) | The solution takes more changes than par. | Find a shorter solution, or raise `par`. |
+| `Task … has a #@lock marker with no line after it; it locks nothing` (warning) | A `#@lock` is the last line (or only blank lines follow). | Put it on the line above the line to lock. |
+| `Task … locked line … ("…") is not in the complete code — students can't change or remove a locked line` (warning) | The solution changes or removes a line students can't touch. | Unlock the line, or keep it in the complete code. |
+| `Task … locked line … ("…") is indented differently in the complete code — students can't re-indent a locked line` (warning) | The solution needs the locked line at another indentation. | Lock it at the indentation the solution needs, or unlock it. |
+
 ## Python tests
 
 | Message | Meaning | Fix |

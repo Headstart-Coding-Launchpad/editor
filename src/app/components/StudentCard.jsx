@@ -11,6 +11,7 @@ import { variablesCardSummary } from '../../shared/variablesPanel/predictions.js
 import StagePane from '../../shared/stage/StagePane.jsx'
 import { readStageResult } from '../../shared/stage/sync.js'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
+import { puzzleCardNote } from '../../shared/puzzle/puzzle.js'
 import { getModuleDefinition } from '../../modules/definitions'
 import PresenceBadge from './PresenceBadge'
 import { formatTimeAgo } from '../../shared/timeAgo'
@@ -250,6 +251,10 @@ export default function StudentCard({
     (hasActiveOverride
       ? student.checkOverridePassed === false
       : checkAttempted && student.checkPassed !== true)
+  // Puzzle rules (task `puzzle`, src/shared/puzzle/): "Solved at par" / "Over line limit".
+  const puzzleNote = isSessionSandbox
+    ? null
+    : puzzleCardNote(currentTask, student.currentCode, checkPassed)
   const checkCardStyle = student.needsHelp
     ? s.cardNeedsHelp
     : checkPassed
@@ -526,6 +531,18 @@ export default function StudentCard({
               title="Completion check passed"
               style={s.checkBadgePassed}
             />
+          )}
+          {puzzleNote && (
+            <span
+              style={{
+                ...s.checkBadge,
+                ...(puzzleNote === 'Solved at par' ? s.checkBadgePar : s.checkBadgeOverLimit),
+              }}
+              data-testid="puzzle-note"
+            >
+              {puzzleNote === 'Solved at par' && <span aria-hidden="true">⭐</span>}
+              {puzzleNote}
+            </span>
           )}
           {checkFailed && (
             <IconChip
@@ -1034,6 +1051,16 @@ const s = {
   checkBadgeError: {
     background: '#ea580c',
     color: '#fff',
+  },
+  checkBadgePar: {
+    background: '#fef9c3',
+    color: '#854d0e',
+    border: '1px solid #fde68a',
+  },
+  checkBadgeOverLimit: {
+    background: '#fef2f2',
+    color: '#b91c1c',
+    border: '1px solid #fecaca',
   },
   checkBadgeHint: {
     background: '#fef3c7',

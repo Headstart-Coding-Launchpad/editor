@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import PythonEditor from '../python/PythonEditor'
 import { taskShowsBlocks } from '../../shared/blockGuides'
+import { getTaskLockSets } from '../../shared/lockedLines'
 import SplitPane from '../../shared/SplitPane'
 import { drawTurtleCommands, sizeCanvasToDisplay } from './draw.js'
 import { createTurtleState } from './engine.js'
@@ -22,6 +23,9 @@ export default function TeacherLiveView({
   onChange,
   onActivity,
   lineHints = null,
+  // Lock sets for the shown code; defaults to the task's own (src/shared/lockedLines.js).
+  lockedLines,
+  isInSandbox = false,
 }) {
   const canvasRef = useRef(null)
   const turtleResult = student?.currentTurtleResult ?? null
@@ -56,6 +60,7 @@ export default function TeacherLiveView({
         onChange={onChange}
         onActivity={onActivity}
         lineHints={lineHints}
+        lockedLines={isInSandbox ? null : (lockedLines ?? getTaskLockSets(task))}
         pyodideStatus="ready"
       />
     </div>

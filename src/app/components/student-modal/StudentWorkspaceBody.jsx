@@ -10,7 +10,7 @@ import { getModuleHostedActivityUi } from '../../../activities/registry.js'
 import { readActivityAnswer, studentStateField } from '../../../activities/state.js'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './constants'
 import { readAnswerDraft } from '../../../shared/answerDrafts'
-import { getMirrorLineHintSets } from './mirrorLineHints'
+import { getMirrorLineHintSets, getMirrorLockSets } from './mirrorLineHints'
 import { getInspectorConfig } from '../../../modules/html/inspector/config'
 import TaskVariablesPanel from '../../../shared/variablesPanel/TaskVariablesPanel.jsx'
 import { taskHistoryMode, typingHistoryForMode } from '../../../shared/typingHistory'
@@ -119,6 +119,8 @@ export default function StudentWorkspaceBody({
     file: activeFileObj?.name ?? null,
     isSessionSandbox,
   })
+  // The task's locked lines on the mirrored code (display only, like the hints).
+  const lockedLines = getMirrorLockSets(task, { mirror, isSessionSandbox })
 
   const highlightComposer = canHighlight && (
     <div style={s.highlightComposer}>
@@ -319,6 +321,7 @@ export default function StudentWorkspaceBody({
             remoteSelection={remoteSelection}
             teacherHighlights={highlights}
             lineHints={lineHints}
+            lockedLines={lockedLines}
             onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
             onHighlightDismiss={onDismissHighlight}
             style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
@@ -388,6 +391,7 @@ export default function StudentWorkspaceBody({
           displayState={moduleDisplayState}
           liveState={moduleDisplayState}
           lineHints={lineHints}
+          lockedLines={lockedLines}
           readOnly
           onChange={undefined}
           onActivity={undefined}

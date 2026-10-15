@@ -20,6 +20,16 @@ import { validateShowVariables } from '../../shared/variablesPanel/validation.js
 import { SCRUB_TASK_FIELD, validateScrub } from '../../shared/scrub/scrubConfig.js'
 import { getStarterStage } from '../../shared/taskStages.js'
 import { PYTHON_SLOW_MO_TASK_FIELD, validatePythonSlowMo } from '../python/slowMo/config.js'
+import {
+  PUZZLE_TASK_FIELD,
+  validateLockedLines,
+  validatePuzzle,
+} from '../../shared/puzzle/puzzle.js'
+import {
+  SETUP_CODE_TASK_FIELD,
+  SETUP_NOTE_TASK_FIELD,
+  validateSetupCode,
+} from '../../shared/puzzle/setupCode.js'
 import { compactTurtleResultForSync } from './sync.js'
 import {
   codeDefaultTypeFields,
@@ -136,6 +146,10 @@ export default defineModule({
     SHOW_VARIABLES_TASK_FIELD,
     SCRUB_TASK_FIELD,
     PYTHON_SLOW_MO_TASK_FIELD,
+    // Hidden setup and puzzle rules (src/shared/puzzle/).
+    SETUP_CODE_TASK_FIELD,
+    SETUP_NOTE_TASK_FIELD,
+    PUZZLE_TASK_FIELD,
   ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeCode',
@@ -218,6 +232,9 @@ export default defineModule({
       starterCode: getStarterStage(task)?.stage?.code ?? task.starterCode ?? null,
     })
     validatePythonSlowMo(task, n, errors, warnings)
+    validateSetupCode(task, n, errors, warnings)
+    validatePuzzle(task, n, errors, warnings)
+    validateLockedLines(task, n, warnings)
   },
   hasStarterContent: codeStarterPresent,
 })

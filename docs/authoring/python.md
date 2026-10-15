@@ -94,6 +94,86 @@ Put instructions **next to** a line of starter code instead of in a comment the 
 
 ---
 
+## Locked lines, hidden setup and puzzles
+
+Three tools to save lesson time and focus a task, chosen per task. They work the same in Python and Turtle tasks.
+
+### Locked lines (`#@lock`)
+
+A line whose trimmed text is `#@lock` locks the **next non-blank line**. The marker is stripped like a `#>` hint; the locked line shows greyed with a 🔒 **Locked** tag, and students can't type in it, delete it, cut or paste over it, or re-indent it. They **can** add new lines before, between and after locked lines — the list is made on a locked line, and students add to it below.
+
+```yaml
+- id: 31
+  moduleType: python
+  title: Recolour the picture
+  codeStages:
+    - role: starter
+      code: |
+        from stage import *
+        #@lock
+        pixels = [["red", "red", "white"], ["white", "red", "red"]]
+        # Change every "red" to "blue" here
+
+        #@lock
+        grid(pixels)
+```
+
+- **Enter** on a locked line adds a new line below it (or above it, with the cursor at the start of the line). Backspace or Delete can't join another line onto a locked line, but can remove an empty line next to one. Select-all + Delete removes everything except the locked lines.
+- The arrow keys skip locked lines. Typing on one, or tapping it, shows "This line is locked" (also read out by screen readers); on a tablet the on-screen keyboard stays shut there.
+- Locks follow their line by its text, like hints: they stay right through saving, reloading, a support stage and **Reset** (which puts the starter back with its locks). Write `#@lock` in other `codeStages` too if a stage should lock lines the starter doesn't.
+- Tutors see the locks in the student's card view (StudentModal), Go Live and support-stage references.
+- A `#@lock` can sit with `#>` hints above the same line. A `#@lock` with nothing after it locks nothing (a warning).
+- Validation warns when the complete code drops a locked line or needs it at another indentation — students can't do either.
+- Copy the Code (`copyCode`) is unchanged.
+
+### Hidden setup (`setupCode`, `setupNote`)
+
+`setupCode` is Python that runs **first, every Run, in the same program** as the student's code, and is never shown. Use it for data students shouldn't spend lesson time typing.
+
+```yaml
+- id: 32
+  moduleType: python
+  title: Add three songs
+  setupCode: |
+    playlist = ["Intro", "Theme"]
+  setupNote: playlist already exists
+  showVariables: { mode: view }
+  codeStages:
+    - role: starter
+      code: |
+        # playlist already exists. Add three songs to it.
+```
+
+- Its variables are the student's: they show in the name-tag panel (`showVariables`) and checks (`variable_*`, the Stage) see the whole program's state. Code checks (`code_contains`, `max_lines`, …) see only the student's code.
+- The student's line numbers (errors, the red error line, `#@peek`, slow-mo, hints, `scrub` ranges) are unaffected; slow-mo never steps through the setup.
+- An error in the setup is the author's: students see "This task's setup has a problem — tell your tutor." and never its traceback (the full error is in the browser console). Validation can't run Python, so it checks brackets, quotes and indentation only — **preview the task once**.
+- `setupNote` (optional, one short line) shows above the editor, e.g. "playlist already exists".
+- Works with `carryCodeFrom` (the carried code is the student's; the setup is the task's) and with `tests`. Free play (a sandbox) never runs it. In Turtle the setup runs after the turtle module is ready, so it can draw.
+- Don't call `input()` in setup (a warning); submit-mode tasks never run it.
+
+### Puzzle rules (`puzzle`) and the `max_lines` check
+
+```yaml
+- id: 33
+  moduleType: turtle
+  title: Draw the star in 4 lines
+  puzzle:
+    onlyEdit: [2]   # optional: lock every non-blank starter line except these
+    maxLines: 4     # optional: at most this many lines of code
+    par: 1          # optional: lines changed or added compared with the starter
+  check:
+    - type: max_lines
+```
+
+- `onlyEdit` is a shortcut for `#@lock` on every non-blank starter line except the listed ones. Line numbers count the starter as the student sees it (marker lines don't count). Students can still add lines.
+- `maxLines` shows a live "3 / 4 lines" counter above the editor (read out to screen readers; red when over). **Lines of code** are non-blank lines that aren't only a comment; locked lines count, `setupCode` doesn't.
+- The **`max_lines`** check passes when the code has at most `puzzle.maxLines` lines of code (or the check's own `value`). It needs no run, and its default hint is "Can you do it in 4 lines? A loop might help." (set `hint` to change it). Python and Turtle tasks.
+- `par` is **never** pass/fail. After the task passes, the student sees "Solved in 2 changes (par 1)", or "Solved at par ⭐" when matched (the star always comes with words). Changes are lines of code changed, added or removed compared with the task's own starter (blank and comment lines don't count; re-indenting a line changes it).
+- Every puzzle must be solvable within its rules: validation errors when the complete code is over `maxLines`, and warns when it takes more changes than `par`, or when `maxLines` has no `max_lines` check.
+- The tutor's student card shows "Solved at par" or "Over line limit". The session report adds `linesUsed` and `changesFromStarter` from each student's passing run ([session-reports.md](session-reports.md)).
+
+---
+
 ## Side-quests
 
 A Python code task can carry up to three optional, unchecked `sideQuests` (`title`, `kind`,

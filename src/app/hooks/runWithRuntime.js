@@ -187,6 +187,10 @@ export async function runWithRuntime(ctx) {
     onCodeUpdate: scheduleRuntimeCodeUpdate,
     getRuntimeCode: readCode,
     ...(ctx.runOptions?.slowMo ? { slowMo: true } : {}),
+    // Free play (a sandbox) never runs the task's hidden setupCode.
+    ...(refs.phaseRef.current === 'sandbox' || refs.inPersonalSandboxRef.current
+      ? { freePlay: true }
+      : {}),
   })
   ctx.runOptions?.onResult?.(result)
   refs.submitInputEchoRef.current = null

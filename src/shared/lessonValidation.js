@@ -367,6 +367,16 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
     )
   }
 
+  // Hidden setup and puzzle rules (src/shared/puzzle/), on the modules that declare them as task
+  // fields (python, turtle); their validateTask checks the shapes.
+  for (const field of ['setupCode', 'setupNote', 'puzzle']) {
+    if (task[field] != null && !definition?.taskFields?.some((spec) => spec.name === field)) {
+      warnings.push(
+        `Task ${n} has ${field}, but it only works in Python and Turtle tasks — it is ignored`
+      )
+    }
+  }
+
   // peerHints: extra preset hints for peer help (src/shared/peerHelp.js). They reach a student
   // without the teacher checking each one, so they are authored text only, short, and few.
   if (task.peerHints != null) {

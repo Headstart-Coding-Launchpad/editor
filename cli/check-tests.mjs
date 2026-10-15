@@ -12,6 +12,7 @@ import { getTaskModuleType } from '../src/shared/composedLesson.js'
 import { getTaskValidationKind } from '../src/shared/lessonValidation.js'
 import { getModuleDefinition } from '../src/modules/definitions.js'
 import { getTaskActivityPatternId } from '../src/shared/taskActivity.js'
+import { resolvePuzzleChecks } from '../src/shared/puzzle/puzzle.js'
 
 const EXPECTED_COMPLETION = new Set(['pass', 'fail'])
 
@@ -175,8 +176,10 @@ export function testLessonChecks(lesson, casesFile) {
       throw new Error(`Task ${taskId} must include at least one case`)
     }
 
-    const task = findTaskById(lesson.tasks, taskId)
-    if (!task) throw new Error(`Lesson task ${taskId} was not found`)
+    const found = findTaskById(lesson.tasks, taskId)
+    if (!found) throw new Error(`Lesson task ${taskId} was not found`)
+    // A max_lines check takes its limit (and default hint) from puzzle.maxLines, as in class.
+    const task = resolvePuzzleChecks(found)
 
     taskCases.cases.forEach((testCase, caseIndex) => {
       cases.push(evaluateCase(lesson, task, taskId, testCase, caseIndex))

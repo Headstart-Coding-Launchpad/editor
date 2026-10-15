@@ -14,6 +14,7 @@ import { scrollLayoutStyles } from '../sharedStyles.js'
 import { variableCaptureOptions } from '../../shared/variablesPanel/variablesPanel.js'
 import { loadStageTarget, stageTargetCode } from './stageTarget.js'
 import { slowMoRecordOptions } from './slowMo/config.js'
+import { setupRunOptions } from '../../shared/puzzle/setupCode.js'
 import { defineUiModule } from '../defineModule.js'
 import definition from './definition.js'
 
@@ -41,7 +42,7 @@ const pythonModule = defineUiModule(definition, {
     // stageTarget draws it first (once, cached) and hands its commands back as `stageTarget`
     // for the diff view and the stage_matches_target check (src/shared/stage/). A slow-mo run
     // (callbacks.slowMo, src/modules/python/slowMo/) also records every line for playback.
-    run: async (code, task, { slowMo = false, ...callbacks } = {}) => {
+    run: async (code, task, { slowMo = false, freePlay = false, ...callbacks } = {}) => {
       const targetCode = stageTargetCode(task)
       const stops = getStopCount()
       const target = targetCode ? await loadStageTarget(targetCode) : null
@@ -51,6 +52,8 @@ const pythonModule = defineUiModule(definition, {
         ...callbacks,
         capture: variableCaptureOptions(task, code),
         record: slowMo ? slowMoRecordOptions(task) : null,
+        // The task's hidden setupCode runs first, in the same program.
+        setup: freePlay ? null : setupRunOptions(task),
       })
       return targetCode ? { ...result, stageTarget: target?.commands ?? null } : result
     },

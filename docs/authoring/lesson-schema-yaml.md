@@ -5,7 +5,7 @@ Canonical YAML contract for the shape of a lesson file: the lesson envelope, Dra
 This file does not cover code task fields or quiz task fields:
 
 - **Quiz fields:** `docs/authoring/quiz-tasks.md`
-- **Python code task fields:** `docs/authoring/python-tasks.md`
+- **Python code task fields:** `docs/authoring/python-tasks.md` (hidden setup `setupCode` / `setupNote`, puzzle rules `puzzle` and `#@lock` locked lines, also on Turtle: `docs/authoring/python.md` "Locked lines, hidden setup and puzzles")
 - **Arcade Kit code task fields and API:** `docs/authoring/arcade.md`
 - **HTML code task fields:** `docs/authoring/html-tasks.md`
 - **Filesystem code task fields:** `docs/authoring/filesystem-tasks.md`

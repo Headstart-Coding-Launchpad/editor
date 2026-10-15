@@ -24,6 +24,7 @@ import {
   startsInsideStyle,
   valueForDrag,
 } from './literals.js'
+import { isLockedPos } from '../lockedLinesEditor.js'
 
 /** On a preview change: 'preview' (re-run it) or 'revert' (undoing a preview before the commit). */
 export const scrubPreviewAnnotation = Annotation.define()
@@ -114,6 +115,8 @@ export function cancelScrub(view, session) {
 // ── Finding literals in the document ────────────────────────────────────────────────────────
 
 function lineLiterals(state, line, options) {
+  // A locked line (../lockedLinesEditor.js) can't change, so it has nothing to scrub.
+  if (isLockedPos(state, line.from)) return []
   const inStyle =
     options.syntax === scrubSyntaxFor('html')
       ? startsInsideStyle(

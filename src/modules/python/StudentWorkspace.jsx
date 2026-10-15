@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import PythonEditor from './PythonEditor'
 import { taskShowsBlocks } from '../../shared/blockGuides'
 import { getTaskLineHintSets } from '../../shared/lineHints'
+import { getTaskLockSets } from '../../shared/lockedLines'
 import OutputPanel from '../../app/components/OutputPanel'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import SplitPane from '../../shared/SplitPane'
@@ -21,6 +22,7 @@ import { stageTargetCode, stageTargetGhostOn, useStageTarget } from './stageTarg
 import { usePythonSlowMo } from './slowMo/usePythonSlowMo.js'
 import SlowMoBar from './slowMo/SlowMoBar.jsx'
 import SlowMoNameTags from './slowMo/SlowMoNameTags.jsx'
+import PuzzleBar from '../../shared/puzzle/PuzzleBar.jsx'
 
 export default function StudentWorkspace({
   task: lessonTask,
@@ -268,6 +270,8 @@ export default function StudentWorkspace({
           runDisabled={cs.running || cs.runningTests || cs.pyodideStatus === 'loading'}
         />
       )}
+      {/* setupNote, the puzzle's line counter and, after a pass, its par (src/shared/puzzle/). */}
+      <PuzzleBar task={task} code={code} passed={!!outputProps.checkPassed} />
       <PythonEditor
         code={code}
         readOnly={readOnly}
@@ -288,6 +292,8 @@ export default function StudentWorkspace({
         pyodideStatus={cs.pyodideStatus}
         errorLine={readOnly ? null : cs.errorLine}
         lineHints={readOnly ? null : getTaskLineHintSets(task)}
+        // Locked lines (#@lock, puzzle.onlyEdit) show in every view, Go Live included.
+        lockedLines={getTaskLockSets(task)}
         showBlocks={taskShowsBlocks(task)}
         onRunShortcut={readOnly || task?.interactionMode === 'submit' ? undefined : handleRunClick}
         slowMoMarker={slowMoView?.marker ?? null}

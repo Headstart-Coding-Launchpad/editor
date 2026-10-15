@@ -184,6 +184,9 @@ async function startRun(
     // Slow-mo recording ({ lineOffset, hide }, see slowMoRecordOptions in
     // src/modules/python/slowMo/config.js); omitted for a normal run.
     record,
+    // A task's hidden setupCode ({ code, afterLine }, see setupRunOptions in
+    // src/shared/puzzle/setupCode.js); omitted without one.
+    setup,
   } = {}
 ) {
   if (!_worker) throw new Error('Pyodide not initialised — call initPyodide first')
@@ -220,6 +223,7 @@ async function startRun(
       asyncNames: Array.isArray(asyncNames) ? asyncNames : [],
       capture: capture ?? null,
       record: record ?? null,
+      setup: setup ?? null,
     })
   })
 }

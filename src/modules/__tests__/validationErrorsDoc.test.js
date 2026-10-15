@@ -42,6 +42,8 @@ const VALIDATOR_FILES = [
   'src/shared/stage/checks.js',
   'src/shared/stage/validation.js',
   'src/shared/scrub/scrubConfig.js',
+  'src/shared/puzzle/puzzle.js',
+  'src/shared/puzzle/setupCode.js',
   'src/shared/composedLesson.js',
   'src/shared/draftLesson.js',
   'src/shared/topicAudit.js',
