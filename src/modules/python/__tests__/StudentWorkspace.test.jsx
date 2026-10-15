@@ -371,3 +371,48 @@ describe('Python StudentWorkspace result tabs on smaller screens (P6-12)', () =>
     expect(screen.getByRole('tab', { name: 'Tags' })).toHaveAttribute('aria-selected', 'true')
   })
 })
+
+describe('Python StudentWorkspace hosting a Stage Code Arrange board (P6-15)', () => {
+  afterEach(() => {
+    layoutState.layout = null
+  })
+
+  function renderArrange(props = {}) {
+    const ownCs = { ...cs, variablesPanel: null, stageResult: null, handleRun: vi.fn() }
+    render(
+      <StudentWorkspace
+        task={{ id: 't1' }}
+        cs={ownCs}
+        isSandbox={false}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isMobile={false}
+        isTeacherEditing={false}
+        arrangeBoard={({ onRun }) => (
+          <button type="button" onClick={onRun}>
+            board-run
+          </button>
+        )}
+        {...props}
+      />
+    )
+    return ownCs
+  }
+
+  it("puts the board in the editor's place and shows the Stage and console from the start", () => {
+    const ownCs = renderArrange()
+    expect(screen.queryByText('python-editor')).not.toBeInTheDocument()
+    expect(screen.queryByText('Reset Code')).not.toBeInTheDocument()
+    expect(screen.getByTestId('stage-pane')).toBeInTheDocument()
+    expect(screen.getByText('output-panel')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('board-run'))
+    expect(ownCs.handleRun).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers the Picture tab before the assembled code exists, on smaller screens', () => {
+    layoutState.layout = 'tabs'
+    renderArrange()
+    expect(screen.getByRole('tab', { name: 'Picture' })).toBeInTheDocument()
+    expect(screen.getByText('board-run')).toBeInTheDocument()
+  })
+})

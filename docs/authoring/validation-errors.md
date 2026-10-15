@@ -265,7 +265,7 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 
 | Message | Meaning | Fix |
 |---|---|---|
-| `Task … is a code-arrange task but must use the Python or HTML module` | Code arrange only runs Python or HTML. | Set `moduleType: python` or `html`. |
+| `Task … is a code-arrange task but must use the Python, Python Turtle or HTML module` | Code arrange only runs Python (Stage included), Python Turtle or HTML. | Set `moduleType: python`, `turtle` or `html`. |
 | `Task … is a code-arrange task but has no lines` | `lines` is empty. | Add the program lines. |
 | `Task … line … has no id` / `Task … line … has no parts` | A line is missing its `id` or `parts`. | Give every line an `id` and at least one part. |
 | `Task … line … blank … has no id` / `Task … line … blank … has no correct value` | A `slot` part is incomplete. | Give each slot an `id` and the correct `code`. |
@@ -288,7 +288,7 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `… alsoAccepts lists "…", which is not a blank or distractor id in this task` (warning) | The id matches no tile. | Use a blank id or a distractor id from this task. |
 | `… lists "…" in both wrongTiles and alsoAccepts (alsoAccepts wins, so it is never flagged)` (warning) | The same tile is both wrong and fine in one blank. | Keep it in one list. |
 | `Task … arrangeMode must be slots or indent` | `arrangeMode` has another value. | Use `indent`, or leave it out for tiles into blanks. |
-| `Task … is an indent arrange task but must use the Python module` | Indent mode is Python only. | Set `moduleType: python`. |
+| `Task … is an indent arrange task but must use the Python or Python Turtle module` | Indent mode is for Python code only. | Set `moduleType: python` or `turtle`. |
 | `Task … line … has no code` | Indent mode: a line has no `code`. | Give every line its code. |
 | `Task … line … code starts with spaces (set its depth instead)` | Indent mode: the indent comes from `depth`, not spaces in `code`. | Remove the leading spaces and set `depth`. |
 | `Task … line … depth must be a whole number from 0 to …` (… is 4) | Indent mode: `depth` is missing, not a whole number, or out of range. | Set `depth: 0` to `4`. |

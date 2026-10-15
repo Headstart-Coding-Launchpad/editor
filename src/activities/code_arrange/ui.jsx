@@ -3,10 +3,14 @@ import CodeArrangeTask from './CodeArrangeTask.jsx'
 import CodeArrangeTaskContainer from './CodeArrangeTaskContainer.jsx'
 import CodeArrangeBuilderEditor from './CodeArrangeBuilderEditor.jsx'
 import { convertToCodeArrange } from './codeArrangeBuilder.js'
-import { hostModuleFor } from './definition.js'
+import { hostModuleFor, usesHostWorkspace } from './definition.js'
 import { deriveSlotStateFromCode, getCodeArrangeEntryFile } from '../../shared/codeArrange'
+import CoursePicture from '../../modules/turtle/CoursePicture.jsx'
+import StagePane from '../../shared/stage/StagePane.jsx'
+import { readStageResult } from '../../shared/stage/sync.js'
+import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
 
-// Code Arrange runs inside its host module (python / html), so the classroom renders
+// Code Arrange runs inside its host module (python / html / turtle), so the classroom renders
 // `ModuleWorkspace` (wired to the module's work slot and Run through `cs`) in place of the
 // module's StudentWorkspace, rather than ActivityHost. The other views are the tile board on
 // its own.
@@ -70,7 +74,8 @@ export function CodeArrangeTeacherLiveView({
   return (
     <CodeArrangeTask
       task={task}
-      moduleType={isFilesMirror ? 'html' : 'python'}
+      moduleType={isFilesMirror ? 'html' : hostModuleFor(task?.moduleType)}
+      resultExtra={<ArrangeRunPicture task={task} student={student} />}
       selectedAnswer={selectedAnswer}
       output={student.currentOutput ?? ''}
       runStatus={student.lastRunStatus}
@@ -85,6 +90,53 @@ export function CodeArrangeTeacherLiveView({
       onTargetTap={onTargetTap}
     />
   )
+}
+
+// A Turtle or Stage arrangement (usesHostWorkspace): the watched student's last run, finished —
+// the drawing or course map (currentTurtleResult) or the Stage (currentStageResult) — and their
+// name-tag panel, above the console. Nothing for a plain Python or HTML arrangement.
+function ArrangeRunPicture({ task, student }) {
+  if (!usesHostWorkspace(task)) return null
+  const stageResult =
+    task.moduleType === 'turtle' ? null : readStageResult(student.currentStageResult)
+  return (
+    <>
+      {task.moduleType === 'turtle' ? (
+        <div style={styles.picture} data-testid="code-arrange-tutor-picture">
+          <CoursePicture task={task} result={student.currentTurtleResult ?? null} animate={false} />
+        </div>
+      ) : (
+        <StagePane
+          compact
+          commands={stageResult?.commands ?? []}
+          truncated={stageResult?.truncated === true}
+          ran={!!stageResult}
+          title="Student's stage"
+          style={styles.stage}
+        />
+      )}
+      <TaskVariablesPanel
+        task={task}
+        synced={student.currentVariables ?? null}
+        audience="tutor"
+        style={styles.variables}
+      />
+    </>
+  )
+}
+
+const styles = {
+  picture: {
+    display: 'flex',
+    height: 260,
+    flexShrink: 0,
+    background: '#fff',
+    border: '1px solid #e5e7eb',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  stage: { flexShrink: 0, height: 240 },
+  variables: { flexShrink: 0, maxHeight: 260 },
 }
 
 export default {

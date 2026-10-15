@@ -80,7 +80,7 @@ describe('characterisation: quiz + code_arrange validation messages', () => {
           "Task 1 is a code-arrange task but has no blanks",
         ],
         "code_arrange_wrong_module": [
-          "Task 1 is a code-arrange task but must use the Python or HTML module",
+          "Task 1 is a code-arrange task but must use the Python, Python Turtle or HTML module",
           "Task 1 is a code-arrange task but has no lines",
           "Task 1 is a code-arrange task but has no completion check",
         ],
@@ -219,7 +219,7 @@ describe('CLI lesson validation', () => {
     expect(invalid.valid).toBe(false)
     expect(invalid.errors).toEqual(
       expect.arrayContaining([
-        'Task 1 is a code-arrange task but must use the Python or HTML module',
+        'Task 1 is a code-arrange task but must use the Python, Python Turtle or HTML module',
         'Task 1 is a code-arrange task but has no lines',
         'Task 1 is a code-arrange task but has no completion check',
       ])

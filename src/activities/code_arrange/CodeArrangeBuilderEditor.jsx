@@ -23,6 +23,18 @@ import {
 } from './codeArrangeBuilder.js'
 import { Field } from '../../builder/components/task-editor/TaskEditorFields'
 import TaskPreviewPanel from '../../builder/components/task-editor/TaskPreviewPanel'
+import { getModuleDefinition } from '../../modules/definitions.js'
+import CoursePicture from '../../modules/turtle/CoursePicture.jsx'
+import StagePane from '../../shared/stage/StagePane.jsx'
+import { CODE_ARRANGE_PYTHON_MODULE_TYPES } from '../legacyValidation.js'
+import { hostModuleFor, usesHostWorkspace } from './definition.js'
+
+// The Arrange form's Language choice: the code-arrange host modules.
+const LANGUAGE_CHOICES = [
+  { value: 'python', label: 'Python' },
+  { value: 'turtle', label: 'Python Turtle' },
+  { value: 'html', label: 'HTML' },
+]
 
 let nextFragmentSeq = 1
 function makeFragmentId(prefix) {
@@ -57,9 +69,19 @@ const DEPTH_CHOICES = Array.from({ length: MAX_INDENT_DEPTH + 1 }, (_, depth) =>
 // assembled program through the *same* runtime module the student pipeline
 // uses (getLessonModule(...).runtime), so authors can drag a test
 // arrangement and confirm their checks pass before publishing.
+//
+// A Turtle arrangement's preview also draws the run (its course map(s) too), and a Python one
+// that draws on the Stage shows the Stage; the Turtle and Stage checks read that run. The
+// module's own fields (course, stageTarget, slowMo, showVariables) are kept as authored.
 export default function CodeArrangeEditor({ task, onUpdate }) {
   const indentMode = isIndentArrangeTask(task)
-  const moduleType = !indentMode && task.moduleType === 'html' ? 'html' : 'python'
+  // Indent mode is Python-language only (python, turtle).
+  const moduleType =
+    indentMode && !CODE_ARRANGE_PYTHON_MODULE_TYPES.includes(task.moduleType)
+      ? 'python'
+      : hostModuleFor(task.moduleType)
+  const usesPython = getModuleDefinition(moduleType)?.meta?.language === 'python'
+  const isTurtle = moduleType === 'turtle'
   const lessonMod = getLessonModule(moduleType)
   const lines = task.lines ?? []
   const distractors = task.distractors ?? []
@@ -75,6 +97,9 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
     lessonMod.runtime.isReady?.() ? 'ready' : 'idle'
   )
   const [previewInputPrompt, setPreviewInputPrompt] = useState(null)
+  // The last preview run's Turtle drawing / Stage drawing (with its stageTarget's commands).
+  const [previewTurtle, setPreviewTurtle] = useState(null)
+  const [previewStage, setPreviewStage] = useState(null)
   const iframeRef = React.useRef(null)
   const previewAppendOutputRef = useRef(null)
 
@@ -216,6 +241,8 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
     setPreviewCheckPassed(false)
     setPreviewIframeSrc(null)
     setPreviewInputPrompt(null)
+    setPreviewTurtle(null)
+    setPreviewStage(null)
   }
 
   function buildPreviewFiles(assembledCode) {
@@ -230,7 +257,7 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
     setPreviewRunning(true)
     resetPreviewRun()
 
-    if (moduleType === 'python') {
+    if (usesPython) {
       try {
         if (!lessonMod.runtime.isReady()) {
           setPreviewPyodideStatus('loading')
@@ -252,11 +279,19 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
         if (result.status === 'stopped') return
 
         setPreviewRunStatus(result.status)
+        const stage = result.stage
+          ? { commands: result.stage.commands ?? [], target: result.stageTarget ?? null }
+          : null
+        setPreviewTurtle(result.turtle ?? null)
+        setPreviewStage(stage)
         if (task.check) {
+          // The same context a classroom Run builds (src/app/hooks/runWithRuntime.js).
           const context = {
             status: result.status,
             code: assembled,
             variables: result.variables ?? {},
+            turtle: result.turtle ?? null,
+            stage,
             ran: true,
           }
           const passed = normalizeChecks(task.check).every((c) =>
@@ -365,29 +400,25 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
         />
       )}
 
+      <Field label="Language">
+        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+          {LANGUAGE_CHOICES.filter(
+            (choice) => !indentMode || CODE_ARRANGE_PYTHON_MODULE_TYPES.includes(choice.value)
+          ).map((choice) => (
+            <label key={choice.value} className="te-carry-radio-label">
+              <input
+                type="radio"
+                checked={moduleType === choice.value}
+                onChange={() => onUpdate({ ...task, moduleType: choice.value })}
+              />
+              {choice.label}
+            </label>
+          ))}
+        </div>
+      </Field>
+
       {!indentMode && (
         <>
-          <Field label="Language">
-            <div style={{ display: 'flex', gap: 24 }}>
-              <label className="te-carry-radio-label">
-                <input
-                  type="radio"
-                  checked={moduleType === 'python'}
-                  onChange={() => onUpdate({ ...task, moduleType: 'python' })}
-                />
-                Python
-              </label>
-              <label className="te-carry-radio-label">
-                <input
-                  type="radio"
-                  checked={moduleType === 'html'}
-                  onChange={() => onUpdate({ ...task, moduleType: 'html' })}
-                />
-                HTML
-              </label>
-            </div>
-          </Field>
-
           {moduleType === 'html' && (
             <Field label="Entry file" hint="The assembled lines become this file's content">
               <input
@@ -599,6 +630,20 @@ export default function CodeArrangeEditor({ task, onUpdate }) {
           iframeSrc={previewIframeSrc}
           iframeRef={iframeRef}
           onRun={handlePreviewRun}
+          resultExtra={
+            isTurtle ? (
+              <div style={caStyles.previewPicture}>
+                <CoursePicture task={task} result={previewTurtle} animate={false} />
+              </div>
+            ) : usesHostWorkspace(task) ? (
+              <StagePane
+                commands={previewStage?.commands ?? []}
+                target={previewStage?.target ?? null}
+                ran={!!previewStage}
+                style={caStyles.previewStage}
+              />
+            ) : null
+          }
         />
         {previewCheckAttempted && (
           <div
@@ -1095,6 +1140,17 @@ const codeFont = {
 }
 
 const caStyles = {
+  // The preview run's Turtle picture / Stage, above its console.
+  previewPicture: {
+    display: 'flex',
+    height: 260,
+    flexShrink: 0,
+    background: '#fff',
+    border: '1px solid #e5e7eb',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  previewStage: { flexShrink: 0, height: 260 },
   indentRow: {
     display: 'flex',
     alignItems: 'center',

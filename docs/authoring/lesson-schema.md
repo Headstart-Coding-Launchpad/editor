@@ -276,7 +276,20 @@ sits in a blank, correct or distractor, is exactly what gets spliced into
 the final program and run: a distractor produces a real error or wrong
 output, never a silent exclusion.
 
-Currently supported for `moduleType: python` and `moduleType: html` only.
+Supported for `moduleType: python`, `turtle` and `html`.
+
+**Turtle and Stage arrangements.** With `moduleType: turtle`, or a `python` arrangement whose code
+imports `stage` (`from stage import *` on a fixed line or in a blank) or that has a `stageTarget`,
+the board sits where the code task's editor would, inside that module's own workspace: the Turtle
+canvas (animation and Skip, slow-mo, the name-tag panel, course mode's maps, sensors, crashes and
+map tabs) or the Stage pane (`stageTarget` ghost and Differences), with the console, and the
+same Picture · Tags · Console tabs on smaller screens. The module's own task fields work as on a
+code task: `course`, `slowMo`, `showVariables`, `layout`, `setupCode` on Turtle; `stageTarget`,
+`slowMo`, `showVariables`, `layout`, `setupCode` on Python. So do its checks: `turtle_*` and
+`course_*` checks, or `stage_*` checks, beside `output` / `code` checks. Everything else
+(tiles, blanks, distractors, tile feedback, the tutor's board, the report's attempts) is as
+below. A plain Python arrangement (no `stage`) keeps its board with the console under it.
+
 `interactionMode`, `tests`, and code carry-through (`carryCodeFrom`) are not
 supported for `code_arrange` in this version — omit them. In the Lesson
 Builder, choose **Arrange** in the task format picker (composed lessons
@@ -286,8 +299,8 @@ to a single blank, the whole-line shape, as a starting point).
 | Field | Required | Notes |
 |---|:---:|---|
 | `taskType` | Yes | Must be `"code_arrange"`. |
-| `arrangeMode` | No | `slots` (default, the tiles-into-blanks task this table describes) or `indent` (lines fixed in order, the student sets each line's depth; Python only — see "Indent mode" below). |
-| `moduleType` | Yes | `python` or `html` only. Selects which run pipeline executes the assembled code. |
+| `arrangeMode` | No | `slots` (default, the tiles-into-blanks task this table describes) or `indent` (lines fixed in order, the student sets each line's depth; Python and Python Turtle — see "Indent mode" below). |
+| `moduleType` | Yes | `python`, `turtle` or `html`. Selects which run pipeline executes the assembled code, and for `turtle` (or a `python` arrangement that imports `stage`) the workspace the board sits in (see "Turtle and Stage arrangements" above). |
 | `lines` | Yes | Ordered program lines: `{id, parts}[]`. At least one required. One assembled program line (`parts` joined together) is produced per entry, in order, joined by newlines. |
 | `lines[].id` | Yes | Stable string id for the line (Builder list identity/reordering only — not itself a pool tile id). |
 | `lines[].parts` | Yes | Ordered sequence alternating fixed text and blanks: `{type: "text", text}` or `{type: "slot", id, code}`. A line may have zero `slot` parts (fixed context); the task as a whole needs at least one `slot` part somewhere across all lines. |
@@ -297,7 +310,7 @@ to a single blank, the whole-line shape, as a starting point).
 | `lines[].parts[].alsoAccepts` | No | Slot parts, [tile feedback](#tile-feedback): tile ids that are also fine in this blank (`[tileId]`), never flagged here, e.g. two independent lines that can go either way round. |
 | `distractors` | No | Task-level list of extra wrong tiles, shared by every blank in the task: `{id, code, hint?}[]`. `hint` (optional, [tile feedback](#tile-feedback)) is shown the moment that tile is dropped into any blank. |
 | `entryFile` / `starterFiles` | HTML only | Same shape as ordinary HTML tasks (see `docs/authoring/html.md`); the assembled lines become `entryFile`'s content, so `entryFile` **must** name one of the `starterFiles` (any placeholder `content`, an empty string is fine) — validation fails otherwise. Without `entryFile`, the first starter file is used. Other files (e.g. `style.css`) are not assembled from tiles. |
-| `check` | Yes | Same `output`/`code`/`output_line_count`/`code_no_error`/`code_structure` checks as an ordinary Python task (`code_structure` sees the indentation of the assembled program), or the same `html_element_*`/`output`/`code` checks as an ordinary HTML task — see `docs/authoring/python.md` / `docs/authoring/html.md`. The authored solution (every blank holding its own `code`) is checked against the task's `code` checks when the lesson is validated, and a failure is a warning; `output` and element checks need a real run and are not tried. For Python, a solution line after a block opener (`…:`) that isn't indented also warns. |
+| `check` | Yes | Same `output`/`code`/`output_line_count`/`code_no_error`/`code_structure` checks as an ordinary Python task (`code_structure` sees the indentation of the assembled program), or the same `html_element_*`/`output`/`code` checks as an ordinary HTML task, or the `turtle_*` and `course_*` checks of a Turtle task, or the `stage_*` checks of a Python Stage task — see `docs/authoring/python.md` / `docs/authoring/html.md` / `docs/authoring/turtle.md`. The authored solution (every blank holding its own `code`) is checked against the task's `code` checks when the lesson is validated, and a failure is a warning; `output` and element checks need a real run and are not tried. For Python and Turtle, a solution line after a block opener (`…:`) that isn't indented also warns. |
 | `feedbackChecks` | No | Same shape as other code tasks. |
 
 **What an arrange attempt records.** Run is only enabled once every blank is filled, and each Run
@@ -454,7 +467,7 @@ arrange answers.
 | Field | Required | Notes |
 |---|:---:|---|
 | `arrangeMode` | Yes | `indent`. |
-| `moduleType` | Yes | `python` only. |
+| `moduleType` | Yes | `python` or `turtle` (a Turtle or Stage indent task runs in its workspace like any Turtle or Stage arrangement). |
 | `lines` | Yes | Ordered program lines: `{id, code, depth, start?, locked?}[]`. |
 | `lines[].id` | Yes | Unique string id. |
 | `lines[].code` | Yes | The line's code **without** leading spaces (validation fails if it starts with a space). |

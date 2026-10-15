@@ -232,9 +232,11 @@ export default function LessonTaskContent({
   const isQuizLike = isQuizTask || isActivityTask
   // An activity hosted by this module (code_arrange, isCodeArrangeTask): its ModuleWorkspace
   // replaces the module's StudentWorkspace and drives the module's work slot and Run via `cs`.
-  const ModuleActivityWorkspace = isCodeArrangeTask
-    ? (getModuleHostedActivityUi(task)?.ModuleWorkspace ?? null)
-    : null
+  const moduleHostedActivity = isCodeArrangeTask ? getModuleHostedActivityUi(task) : null
+  const ModuleActivityWorkspace = moduleHostedActivity?.ModuleWorkspace ?? null
+  // The activity sits inside the module's own StudentWorkspace (a Turtle or Stage arrangement),
+  // which lays out and scrolls its own panes like a code task.
+  const activityUsesHostWorkspace = !!moduleHostedActivity?.usesHostWorkspace?.(task)
   const lessonMod = getLessonModule(lesson.type)
   const StudentWorkspace = lessonMod?.StudentWorkspace
   const modStyles = lessonMod?.getLayoutStyles(isMobile) ?? {}
@@ -686,6 +688,20 @@ export default function LessonTaskContent({
             displayCodeArrangeCursor={displayCodeArrangeCursor}
             teacherLiveCode={teacherLiveCode}
             teacherLiveFiles={teacherLiveFiles}
+            // For an activity inside the module's own StudentWorkspace (usesHostWorkspace).
+            lesson={lesson}
+            lessonId={lessonId}
+            identityId={identityId}
+            isMobile={isMobile}
+            displayTurtleResult={displayTurtleResult}
+            displayVariablesPanel={displayVariablesPanel}
+            displayStage={displayStage}
+            displayPythonSlowMo={displayPythonSlowMo}
+            displayOutputCollapsed={displayOutputCollapsed}
+            displaySelection={displaySelection}
+            onVisiblePanesChange={
+              activityUsesHostWorkspace && supportsModulePanes ? setModulePanes : undefined
+            }
           />
         </>
       ) : carryHold ? (
@@ -778,7 +794,7 @@ export default function LessonTaskContent({
           ? {
               ...editorAreaStyle,
               ...s.fluidWorkspace,
-              ...(isCodeArrangeTask ? { overflow: 'auto' } : {}),
+              ...(isCodeArrangeTask && !activityUsesHostWorkspace ? { overflow: 'auto' } : {}),
             }
           : editorAreaStyle
       }

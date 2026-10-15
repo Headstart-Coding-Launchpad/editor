@@ -265,3 +265,55 @@ describe('Turtle StudentWorkspace result tabs on smaller screens (P6-12)', () =>
     expect(screen.getByRole('tablist', { name: 'Result panes' })).toBeInTheDocument()
   })
 })
+
+describe('Turtle StudentWorkspace hosting a Code Arrange board (P6-15)', () => {
+  afterEach(() => {
+    layoutState.layout = null
+  })
+
+  it("puts the board in the editor's place, keeping the picture and the Run it is handed", () => {
+    const cs = makeCs()
+    const arrangeBoard = vi.fn(({ onRun }) => (
+      <button type="button" onClick={onRun}>
+        board-run
+      </button>
+    ))
+    render(
+      <StudentWorkspace task={{ id: 1 }} cs={cs} isMobile={false} arrangeBoard={arrangeBoard} />
+    )
+    expect(screen.queryByText(/python-editor:/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Reset Code')).not.toBeInTheDocument()
+    expect(screen.getByRole('img')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('board-run'))
+    expect(cs.handleRun).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the board inside the result tabs layout on smaller screens', () => {
+    layoutState.layout = 'tabs'
+    render(
+      <StudentWorkspace
+        task={{ id: 1 }}
+        cs={makeCs()}
+        isMobile={false}
+        arrangeBoard={() => <div>the-board</div>}
+      />
+    )
+    expect(screen.getByText('the-board')).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Picture' })).toBeInTheDocument()
+  })
+
+  it('leaves the remote Run to the board', () => {
+    const cs = makeCs({ remoteRunToken: 'token-1', acknowledgeRemoteRun: vi.fn() })
+    render(
+      <StudentWorkspace
+        task={{ id: 1 }}
+        cs={cs}
+        isMobile={false}
+        arrangeBoard={() => <div>the-board</div>}
+      />
+    )
+    // Neither run nor acknowledged here: the board's own trigger handles the token.
+    expect(cs.handleRun).not.toHaveBeenCalled()
+    expect(cs.acknowledgeRemoteRun).not.toHaveBeenCalled()
+  })
+})
