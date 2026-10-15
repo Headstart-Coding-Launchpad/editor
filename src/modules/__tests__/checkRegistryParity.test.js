@@ -199,6 +199,8 @@ const POST_REGISTRY_TYPES = [
   'stage_colour_used',
   'stage_pixel',
   'stage_text_shown',
+  // Puzzle rules (src/shared/puzzle, tested in its own __tests__).
+  'max_lines',
 ]
 const registeredIds = checkRegistry.typeIds().filter((id) => !POST_REGISTRY_TYPES.includes(id))
 const operators = [

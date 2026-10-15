@@ -74,7 +74,7 @@ describe('locked lines StateField', () => {
 
 describe('locked lines edit guard', () => {
   it('blocks typing inside a locked line', () => {
-    const state = edit(lockedState(), { from: 8, insert: 'x' })
+    const state = edit(lockedState(), { from: 7, insert: 'x' })
     expect(state.doc.toString()).toBe(DOC)
   })
 
@@ -155,13 +155,13 @@ describe('locked lines edit guard', () => {
   })
 
   it('never guards a change from outside (task switch, Reset, a teacher edit)', () => {
-    const state = lockedState().update({ changes: { from: 8, insert: 'x' } }).state
+    const state = lockedState().update({ changes: { from: 7, insert: 'x' } }).state
     expect(state.doc.toString()).toBe('a = 1\nbx = 2\nc = 3')
   })
 
   it('does nothing without locks', () => {
     const state = EditorState.create({ doc: DOC, extensions: [lockedLinesExtension()] })
-    expect(edit(state, { from: 8, insert: 'x' }).doc.toString()).toBe('a = 1\nbx = 2\nc = 3')
+    expect(edit(state, { from: 7, insert: 'x' }).doc.toString()).toBe('a = 1\nbx = 2\nc = 3')
   })
 })
 
