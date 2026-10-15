@@ -40,6 +40,23 @@ describe('validateShowVariables', () => {
     )
   })
 
+  it('checks visuals and stageLists', () => {
+    expect(run({ showVariables: { visuals: false } })).toEqual({ errors: [], warnings: [] })
+    expect(run({ showVariables: { stageLists: 'picture' } })).toEqual({
+      errors: [],
+      warnings: [],
+    })
+    expect(run({ showVariables: { visuals: 'yes' } }).errors).toEqual([
+      'Task 1 has showVariables visuals that is not true or false',
+    ])
+    expect(run({ showVariables: { stageLists: 'big' } }).errors).toEqual([
+      'Task 1 has showVariables stageLists "big" — use one of: picture, tiles, size',
+    ])
+    expect(run({ showVariables: { visuals: false, stageLists: 'tiles' } }).warnings).toEqual([
+      'Task 1 has showVariables stageLists but visuals is false — every tag is plain, so it is ignored',
+    ])
+  })
+
   it('warns about unused lists and a marker with no #@peek line', () => {
     expect(
       run({ showVariables: { mode: 'view', predict: ['a'], target: { a: 1 } } }).warnings

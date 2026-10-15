@@ -5,6 +5,7 @@
 import {
   SHOW_VARIABLES_AT,
   SHOW_VARIABLES_MODES,
+  STAGE_LISTS_OPTIONS,
   VARIABLE_NAME_PATTERN,
   getShowVariables,
 } from './variablesPanel.js'
@@ -62,6 +63,19 @@ export function validateShowVariables(task, n, errors, warnings = []) {
   if (raw.at != null && !SHOW_VARIABLES_AT.includes(raw.at)) {
     errors.push(
       `Task ${n} has showVariables at "${raw.at}" — use one of: ${SHOW_VARIABLES_AT.join(', ')}`
+    )
+  }
+  if (raw.visuals != null && typeof raw.visuals !== 'boolean') {
+    errors.push(`Task ${n} has showVariables visuals that is not true or false`)
+  }
+  if (raw.stageLists != null && !STAGE_LISTS_OPTIONS.includes(raw.stageLists)) {
+    errors.push(
+      `Task ${n} has showVariables stageLists "${raw.stageLists}" — use one of: ${STAGE_LISTS_OPTIONS.join(', ')}`
+    )
+  }
+  if (raw.visuals === false && raw.stageLists != null) {
+    warnings.push(
+      `Task ${n} has showVariables stageLists but visuals is false — every tag is plain, so it is ignored`
     )
   }
   for (const field of ['hide', 'predict']) {

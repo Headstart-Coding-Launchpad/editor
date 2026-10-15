@@ -29,7 +29,7 @@
 //
 // A POSITION p (0…steps.length) is how many steps have been played: 0 is "nothing has run yet",
 // p shows steps[p - 1] as the line that just ran, with all its effects.
-import { formatValue } from '../../../shared/variablesPanel/variablesPanel.js'
+import { changedItemKeys, formatValue } from '../../../shared/variablesPanel/variablesPanel.js'
 import { PYTHON_SLOW_MO_MAX_STEPS, clampPythonSlowMoSpeed } from './config.js'
 
 // How many earlier values a name tag keeps (shown struck through).
@@ -260,6 +260,22 @@ export function variablesAt(model, position) {
     changed: p > 0 ? Object.keys(steps[p - 1].s ?? {}) : [],
     history: Object.fromEntries(history),
   }
+}
+
+/**
+ * Which items of each changed variable a step changed (against its value before the step,
+ * `history[name][0]` from variablesAt), so the name-tag panel marks the swatch, bar, cell or card
+ * that changed, not only its tag: `{ name: [item key] }` (see changedItemKeys).
+ */
+export function stepChangedItems(snapshot, changed, history) {
+  const out = {}
+  for (const name of Array.isArray(changed) ? changed : []) {
+    const before = history?.[name]?.[0]
+    const now = snapshot?.vars?.find((entry) => entry.n === name)?.v
+    const keys = changedItemKeys(before, now)
+    if (keys.length > 0) out[name] = keys
+  }
+  return out
 }
 
 /** The output printed by `position` steps (all of it, with any error, once playback ends). */

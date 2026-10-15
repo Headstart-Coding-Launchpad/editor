@@ -1,7 +1,10 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import {
+  MAX_CHANGED_ITEMS,
   buildVariablesRun,
+  changedItemKeys,
+  changedItemSet,
   changedNames,
   compactVariablesForSync,
   currentSnapshot,
@@ -12,6 +15,7 @@ import {
   typeLabel,
   variableCaptureOptions,
   visibleVars,
+  visualOptions,
 } from '../variablesPanel.js'
 
 const str = (v) => ({ t: 'str', v })
@@ -33,18 +37,109 @@ describe('getShowVariables', () => {
       hide: [],
       predict: [],
       target: {},
+      visuals: true,
+      stageLists: 'size',
     })
     expect(
       getShowVariables({
         showVariables: { mode: 'predict', at: 'marker', predict: ['a', ' a ', 'b'], hide: ['x'] },
       })
-    ).toEqual({ mode: 'predict', at: 'marker', hide: ['x'], predict: ['a', 'b'], target: {} })
+    ).toEqual({
+      mode: 'predict',
+      at: 'marker',
+      hide: ['x'],
+      predict: ['a', 'b'],
+      target: {},
+      visuals: true,
+      stageLists: 'size',
+    })
     expect(
       getShowVariables({ showVariables: { mode: 'view', predict: ['a'], target: { a: 1 } } })
     ).toMatchObject({ predict: [], target: {} })
     expect(
       getShowVariables({ showVariables: { mode: 'target', target: { a: 1 } } }).target
     ).toEqual({ a: 1 })
+  })
+
+  it('reads visuals (off only when false) and stageLists (size unless a known option)', () => {
+    expect(getShowVariables({ showVariables: { visuals: false } }).visuals).toBe(false)
+    expect(getShowVariables({ showVariables: { visuals: 'no' } }).visuals).toBe(true)
+    expect(getShowVariables({ showVariables: { stageLists: 'picture' } }).stageLists).toBe(
+      'picture'
+    )
+    expect(getShowVariables({ showVariables: { stageLists: 'tiles' } }).stageLists).toBe('tiles')
+    expect(getShowVariables({ showVariables: { stageLists: 'huge' } }).stageLists).toBe('size')
+    expect(visualOptions({ visuals: false, stageLists: 'tiles' })).toEqual({
+      visuals: false,
+      stageLists: 'tiles',
+    })
+    expect(visualOptions(undefined)).toEqual({ visuals: true, stageLists: 'size' })
+  })
+})
+
+describe('per-item change marks', () => {
+  it('keys changed list items by index, counting new items', () => {
+    expect(changedItemKeys(list([int(1), int(2)]), list([int(1), int(3), int(4)]))).toEqual([
+      '1',
+      '2',
+    ])
+    expect(changedItemKeys(list([str('red')]), list([str('red')]))).toEqual([])
+  })
+
+  it('keys 2D cells as row,col, including every cell of a new row', () => {
+    const before = list([list([str('red'), str('red')])])
+    const after = list([list([str('red'), str('blue')]), list([str('x'), str('y')])])
+    expect(changedItemKeys(before, after)).toEqual(['0,1', '1,0', '1,1'])
+  })
+
+  it('keys dict entries by their key as Python text', () => {
+    const dict = (entries) => ({
+      t: 'dict',
+      len: entries.length,
+      items: entries.map(([k, v]) => ({ k: str(k), v })),
+    })
+    expect(
+      changedItemKeys(
+        dict([['a', int(1)]]),
+        dict([
+          ['a', int(2)],
+          ['b', int(2)],
+        ])
+      )
+    ).toEqual(['k:"a"', 'k:"b"'])
+  })
+
+  it('marks nothing item by item when the kind changed or a side is missing', () => {
+    expect(changedItemKeys(int(1), list([int(1)]))).toEqual([])
+    expect(changedItemKeys(null, list([int(1)]))).toEqual([])
+  })
+
+  it('keeps at most MAX_CHANGED_ITEMS keys', () => {
+    const many = (value) => list(Array.from({ length: MAX_CHANGED_ITEMS + 50 }, () => int(value)))
+    expect(changedItemKeys(many(1), many(2))).toHaveLength(MAX_CHANGED_ITEMS)
+  })
+
+  it('puts the marks in the run state and carries them to the tutor', () => {
+    const config = { at: 'end' }
+    const first = buildVariablesRun({
+      taskId: 1,
+      capture: { end: snap([['palette', list([str('red'), str('blue')])]]) },
+      config,
+    })
+    expect(first.changedItems).toEqual({})
+    const second = buildVariablesRun({
+      taskId: 1,
+      capture: { end: snap([['palette', list([str('red'), str('green')])]]) },
+      config,
+      previous: first,
+    })
+    expect(second.changed).toEqual(['palette'])
+    expect(second.changedItems).toEqual({ palette: ['1'] })
+    expect(changedItemSet(second, 'palette').has('1')).toBe(true)
+    expect(changedItemSet(second, 'other').size).toBe(0)
+    const back = readSyncedVariables(compactVariablesForSync(second, null))
+    expect(back.run.changedItems).toEqual({ palette: ['1'] })
+    expect(readSyncedVariables({ taskId: 1, ran: true }).run.changedItems).toEqual({})
   })
 })
 

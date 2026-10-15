@@ -11,6 +11,13 @@ import {
   updateShowVariables,
 } from '../../showVariablesAuthoring'
 
+// How a list the Stage's grid() drew shows in the panel (showVariables.stageLists).
+const STAGE_LISTS = [
+  ['size', 'just its size (the Stage shows the picture)'],
+  ['picture', 'as a small picture too'],
+  ['tiles', 'as rows of tiles'],
+]
+
 const MODE_OPTIONS = [
   ['view', 'Show the variables after Run'],
   ['predict', 'Predict first, then Run to check'],
@@ -74,6 +81,40 @@ export default function ShowVariablesField({ task, onUpdate }) {
                 program is about to run that line.
               </p>
             )}
+            <div style={s.row}>
+              <label className="te-check-toggle" style={{ alignSelf: 'flex-start' }}>
+                <input
+                  type="checkbox"
+                  checked={config.visuals !== false}
+                  onChange={(e) =>
+                    onUpdate(updateShowVariables(task, { visuals: e.target.checked }))
+                  }
+                />
+                Draw lists and dicts (colour swatches, bars, pictures, cards)
+              </label>
+              {config.visuals !== false && (
+                <label style={s.label}>
+                  A list drawn with grid() shows
+                  <select
+                    className="te-select"
+                    value={
+                      STAGE_LISTS.some(([value]) => value === config.stageLists)
+                        ? config.stageLists
+                        : 'size'
+                    }
+                    onChange={(e) =>
+                      onUpdate(updateShowVariables(task, { stageLists: e.target.value }))
+                    }
+                  >
+                    {STAGE_LISTS.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
             <DraftInput
               label="Hide these names"
               placeholder="e.g. answer2, temp"

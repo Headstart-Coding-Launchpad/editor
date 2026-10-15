@@ -1,6 +1,7 @@
 import React, { useId, useState } from 'react'
 import './NameTagPanel.css'
 import {
+  changedItemSet,
   currentSnapshot,
   describeVariable,
   findVariable,
@@ -10,8 +11,11 @@ import {
   nodeItems,
   typeLabel,
   visibleVars,
+  visualOptions,
 } from './variablesPanel.js'
 import { formatTargetValue, targetMatches } from './predictions.js'
+import { chooseVisual, describePicture, dictKey, sizeText, targetToNode } from './visuals.js'
+import ValueVisual from './ValueVisual.jsx'
 
 // How much of a value shows before "Show all".
 const VALUE_CHARS = 48
@@ -27,7 +31,10 @@ const DICT_LIMIT = 8
  *   `predict` names, `target` values
  * - `run`: a run state (buildVariablesRun) or null before any run. It holds a SEQUENCE of
  *   snapshots and an `index`, so a step-by-step player can drive the same panel; `changed`
- *   names get a brief "changed" mark
+ *   names get a brief "changed" mark, and `changedItems` mark the swatch, bar, cell or card
+ *   that changed
+ * - lists and dicts are drawn as visuals (visuals.js, ValueVisual.jsx) unless the config's
+ *   `visuals` is false; `stageLists` decides how a list grid() drew shows
  * - `predictions`: `{ values: { name: text }, results: { name: bool } | null }`
  * - `onPredictionChange(name, text)` / `onPredictionCommit()`: predict-mode inputs (omit, or
  *   `readOnly`, for a tutor's or a Go Live viewer's copy)
@@ -61,6 +68,7 @@ export default function NameTagPanel({
   const results = predictions?.results ?? null
   const values = predictions?.values ?? {}
   const changed = new Set(Array.isArray(run?.changed) ? run.changed : [])
+  const options = visualOptions(config)
 
   const featured =
     config.mode === 'predict'
@@ -95,6 +103,7 @@ export default function NameTagPanel({
               result={results && name in results ? results[name] : null}
               node={snapshot ? findVariable(snapshot, name) : null}
               revealed={!!snapshot}
+              options={options}
               readOnly={readOnly || !onPredictionChange}
               onChange={(text) => onPredictionChange?.(name, text)}
               onCommit={() => onPredictionCommit?.()}
@@ -107,12 +116,14 @@ export default function NameTagPanel({
         <ul className="ntp-tags" aria-label="Targets">
           {featured.map((name) => (
             <TargetTag
-              key={name}
+              key={changed.has(name) && pulseKey != null ? `${name}@${pulseKey}` : name}
               name={name}
               target={config.target[name]}
               node={snapshot ? findVariable(snapshot, name) : null}
               ran={!!snapshot}
               changed={changed.has(name)}
+              changedItems={changedItemSet(run, name)}
+              options={options}
             />
           ))}
         </ul>
@@ -127,6 +138,8 @@ export default function NameTagPanel({
               name={entry.n}
               node={entry.v}
               changed={changed.has(entry.n)}
+              changedItems={changedItemSet(run, entry.n)}
+              options={options}
               previous={history?.[entry.n] ?? null}
               stepping={history != null}
             />
@@ -191,7 +204,23 @@ function TagTop({ name, node, changed, label }) {
   )
 }
 
-function ValueTag({ name, node, changed, previous = null, stepping = false }) {
+// The tag's screen-reader words: a picture's summary, a Stage list's size, or the value.
+function describeTag(name, node, visual) {
+  if (visual.kind === 'picture') return describePicture(name, visual)
+  if (visual.kind === 'size') return `${name}: ${sizeText(node, visual)}`
+  return describeVariable(name, node)
+}
+
+function ValueTag({
+  name,
+  node,
+  changed,
+  changedItems,
+  options,
+  previous = null,
+  stepping = false,
+}) {
+  const visual = chooseVisual(node, options)
   const earlier = Array.isArray(previous) ? previous.filter(Boolean) : []
   const changedWords = stepping ? ' (changed on this step)' : ' (changed since the last run)'
   const wasWords = earlier.length
@@ -200,10 +229,10 @@ function ValueTag({ name, node, changed, previous = null, stepping = false }) {
   return (
     <li
       className={`ntp-tag${changed ? ' is-changed' : ''}`}
-      aria-label={describeVariable(name, node) + (changed ? changedWords : '') + wasWords}
+      aria-label={describeTag(name, node, visual) + (changed ? changedWords : '') + wasWords}
     >
       <TagTop name={name} node={node} changed={changed} />
-      <ValueView node={node} />
+      <ValueView name={name} node={node} visual={visual} changedItems={changedItems} />
       {earlier.length > 0 && (
         <span className="ntp-history" aria-hidden="true">
           was{' '}
@@ -219,7 +248,17 @@ function ValueTag({ name, node, changed, previous = null, stepping = false }) {
   )
 }
 
-function PredictTag({ name, value, result, node, revealed, readOnly, onChange, onCommit }) {
+function PredictTag({
+  name,
+  value,
+  result,
+  node,
+  revealed,
+  options,
+  readOnly,
+  onChange,
+  onCommit,
+}) {
   const inputId = useId()
   const verdictId = useId()
   const verdictKnown = revealed && result !== null
@@ -279,8 +318,8 @@ function PredictTag({ name, value, result, node, revealed, readOnly, onChange, o
         </div>
       )}
       {verdictKnown && node && (
-        <div aria-hidden="true">
-          <ValueView node={node} />
+        <div className="ntp-reveal">
+          <ValueView name={name} node={node} options={options} />
         </div>
       )}
       {revealed && result === null && (
@@ -290,7 +329,7 @@ function PredictTag({ name, value, result, node, revealed, readOnly, onChange, o
   )
 }
 
-function TargetTag({ name, target, node, ran, changed }) {
+function TargetTag({ name, target, node, ran, changed, changedItems, options }) {
   const hit = ran && targetMatches(node, target)
   const stateClass = ran ? (hit ? ' is-right' : ' is-wrong') : ''
   const label = `${name}: target ${formatTargetValue(target)}, ${
@@ -302,20 +341,57 @@ function TargetTag({ name, target, node, ran, changed }) {
       aria-label={label}
     >
       <TagTop name={name} node={node} changed={changed} />
-      <span className="ntp-target">
-        Target: <code className="ntp-value">{formatTargetValue(target)}</code>
-      </span>
+      <TargetValue name={name} target={target} options={options} />
       {ran &&
-        (node ? <ValueView node={node} /> : <span className="ntp-missing">not made yet</span>)}
+        (node ? (
+          <>
+            {isCollectionNode(node) && options?.visuals !== false && (
+              <span className="ntp-target">Now:</span>
+            )}
+            <ValueView name={name} node={node} options={options} changedItems={changedItems} />
+          </>
+        ) : (
+          <span className="ntp-missing">not made yet</span>
+        ))}
       {ran && <span className="ntp-verdict">{hit ? '✓ On target' : '✗ Not yet'}</span>}
     </li>
   )
 }
 
-/** A value: text / numbers inline, lists as indexed tiles, dicts as key → value rows. */
-export function ValueView({ node }) {
+// A target value: as text, or (a list or dict, with visuals on) drawn like the real value, so
+// "make your palette look like this" works.
+function TargetValue({ name, target, options }) {
+  const node = targetToNode(target)
+  const visual = chooseVisual(node, options)
+  if (!isCollectionNode(node) || visual.kind === 'plain' || visual.kind === 'tiles') {
+    return (
+      <span className="ntp-target">
+        Target: <code className="ntp-value">{formatTargetValue(target)}</code>
+      </span>
+    )
+  }
+  return (
+    <div className="ntp-target-visual">
+      <span className="ntp-target">Target:</span>
+      <ValueView name={`${name} target`} node={node} visual={visual} />
+    </div>
+  )
+}
+
+/**
+ * A value: its visual (swatches, bars, a picture, a table, cards; see visuals.js) when it has
+ * one, else text / numbers inline, lists as indexed tiles and dicts as key → value rows.
+ * `visual` (chooseVisual's answer) may be passed in; otherwise it is chosen with `options`.
+ * `changedItems` (a Set of item keys) marks the items that changed.
+ */
+export function ValueView({ node, name = 'value', options, visual = null, changedItems = null }) {
   const [expanded, setExpanded] = useState(false)
   if (!node) return null
+  const picked = visual ?? chooseVisual(node, options)
+  if (picked.kind !== 'plain' && picked.kind !== 'tiles') {
+    return <ValueVisual name={name} node={node} visual={picked} changedItems={changedItems} />
+  }
+  const marks = changedItems ?? new Set()
   if (!isCollectionNode(node)) {
     const full = formatValue(node)
     const cut = !expanded && (full.length > VALUE_CHARS || node.more > 0)
@@ -354,8 +430,9 @@ export function ValueView({ node }) {
         <dl className="ntp-dict">
           {shown.map((entry, index) => (
             <React.Fragment key={index}>
-              <dt>
+              <dt className={marks.has(dictKey(entry?.k)) ? 'is-item-changed' : undefined}>
                 <code className="ntp-value">{formatValue(entry?.k, { maxChars: TILE_CHARS })}</code>
+                {marks.has(dictKey(entry?.k)) && <ChangedMark />}
               </dt>
               <dd className="ntp-arrow" aria-hidden="true">
                 →
@@ -370,14 +447,18 @@ export function ValueView({ node }) {
         </dl>
       ) : (
         <ol className="ntp-tiles" start={0}>
-          {shown.map((item, index) => (
-            <li key={index} className="ntp-tile">
-              <code className="ntp-value">
-                {formatValue(item, { maxChars: expanded ? Infinity : TILE_CHARS })}
-              </code>
-              {node.t !== 'set' && <span className="ntp-index">{index}</span>}
-            </li>
-          ))}
+          {shown.map((item, index) => {
+            const on = node.t !== 'set' && tileChanged(marks, index)
+            return (
+              <li key={index} className={`ntp-tile${on ? ' is-item-changed' : ''}`}>
+                <code className="ntp-value">
+                  {formatValue(item, { maxChars: expanded ? Infinity : TILE_CHARS })}
+                </code>
+                {node.t !== 'set' && <span className="ntp-index">{index}</span>}
+                {on && <ChangedMark />}
+              </li>
+            )
+          })}
         </ol>
       )}
       {folded > 0 && <span className="ntp-more">+{folded} more</span>}
@@ -387,6 +468,26 @@ export function ValueView({ node }) {
         </span>
       )}
       {anyCut && <ExpandButton expanded={expanded} onToggle={() => setExpanded((v) => !v)} />}
+    </>
+  )
+}
+
+// Whether list item `index` changed: the item itself, or any of its cells (a nested list).
+function tileChanged(marks, index) {
+  if (marks.size === 0) return false
+  if (marks.has(String(index))) return true
+  const prefix = `${index},`
+  for (const key of marks) if (key.startsWith(prefix)) return true
+  return false
+}
+
+function ChangedMark() {
+  return (
+    <>
+      <span className="ntp-item-mark" aria-hidden="true" title="changed">
+        ●
+      </span>
+      <span className="ntp-sr-only"> (changed)</span>
     </>
   )
 }

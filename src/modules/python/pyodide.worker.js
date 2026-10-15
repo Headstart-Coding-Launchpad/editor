@@ -197,6 +197,12 @@ _hs_hidden = (
 _hs_end_locals = {}
 _hs_panel = {'end': None, 'peek': None, 'peekLine': _hs_peek_line, 'peekReached': False}
 
+# The Stage's record of the lists grid() drew (the panel's stageLists) starts empty each run.
+_hs_drawn_list = getattr(sys.modules.get('stage'), '_hs_drawn', None)
+if isinstance(_hs_drawn_list, list):
+    _hs_drawn_list.clear()
+del _hs_drawn_list
+
 def _hs_end_capture(ns):
     _hs_end_locals.update(ns)
 
@@ -312,7 +318,7 @@ def _hs_rec_close(namespace, scope, final=False):
     prev = _hs_rec['prev']
     changed = {}
     seen = set()
-    for item in _hs_snapshot(namespace, _hs_hidden, scope)['vars']:
+    for item in _hs_snapshot(namespace, _hs_hidden, scope, _HS_STEP_NODES, _HS_STEP_VAR_NODES)['vars']:
         name = item['n']
         seen.add(name)
         encoded = json.dumps(item['v'], sort_keys=True)

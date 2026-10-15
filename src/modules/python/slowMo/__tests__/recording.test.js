@@ -14,6 +14,7 @@ import {
   readRecording,
   shrinkValueNode,
   stageAt,
+  stepChangedItems,
   turtleAt,
   variablesAt,
 } from '../recording.js'
@@ -223,6 +224,32 @@ describe('the step model', () => {
       'Step 5 of 11: line 3 ran. total is now 11 (was 4). Loop on line 2: pass 2 of 4.'
     )
     expect(describePosition(model, 11)).toContain('That was the last step.')
+  })
+})
+
+describe('stepChangedItems (per-item marks while stepping)', () => {
+  const str = (v) => ({ t: 'str', v })
+  const list = (items) => ({ t: 'list', len: items.length, items })
+
+  it('marks the item a step changed, against the value before the step', () => {
+    const model = buildSlowMoModel({
+      steps: [
+        { l: 1, k: 0, s: { palette: list([str('red'), str('blue')]) } },
+        { l: 2, k: 0, s: { palette: list([str('red'), str('blue'), str('green')]) } },
+      ],
+      output: '',
+      loops: [],
+      turtle: null,
+      stage: null,
+      status: 'success',
+    })
+    const first = variablesAt(model, 1)
+    // A new variable has no earlier value, so only its tag is marked.
+    expect(stepChangedItems(first.snapshot, first.changed, first.history)).toEqual({})
+    const second = variablesAt(model, 2)
+    expect(stepChangedItems(second.snapshot, second.changed, second.history)).toEqual({
+      palette: ['2'],
+    })
   })
 })
 

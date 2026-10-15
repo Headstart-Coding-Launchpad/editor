@@ -76,8 +76,9 @@ the task. They never change the task's code or what `carryCodeFrom` copies. See
 ## Name-tag panel (`showVariables`)
 
 A Turtle task can show students what is in their variables, exactly as a Python task does:
-`showVariables: { mode: view | predict | target, at: end | marker, hide, predict, target }`, the
-`#@peek` marker and the `variables_predicted` check. The panel sits between the drawing and the
+`showVariables: { mode: view | predict | target, at: end | marker, hide, predict, target, visuals }`,
+the `#@peek` marker and the `variables_predicted` check. Lists and dicts get the same visuals as in
+Python (colour swatches, bars, pictures, cards; `visuals: false` turns them off). The panel sits between the drawing and the
 output. Names imported from `turtle` (`from turtle import forward`) and the turtle module itself
 are never shown, so the panel holds only the student's own variables (a `Turtle()` object they
 make shows as its type). See [python.md](python.md#name-tag-panel-showvariables) for the fields,

@@ -13,6 +13,10 @@
  * '<student>' frame). `hue()` draws nothing: `__hsStageHue(json)` answers 'ok|#rrggbb' (stageHue
  * in ./commands.js).
  *
+ * grid() also remembers the list it drew (`_hs_drawn`, emptied by the worker before each run),
+ * so the name-tag panel can show "drawn on the Stage" lists the task's way (showVariables
+ * `stageLists`; see _hs_drawn_rows in src/modules/python/variableCapture.py.js).
+ *
  * Exported as plain text; nothing here runs in Node.
  */
 export const STAGE_MODULE_PY = `
@@ -105,10 +109,20 @@ def stamp(*args, **kwargs):
     _draw('stamp', args, kwargs)
 
 
+# The lists grid() drew in this run, with their palettes, so the name-tag panel can tell which
+# variables are on the Stage (showVariables stageLists). The worker empties it before each run.
+_hs_drawn = []
+
+
 def grid(*args, **kwargs):
     """grid(rows, palette, cell, x, y): a 2D list as a pixel grid centred on (x, y).
     Values index palette, or are colours themselves."""
     _draw('grid', args, kwargs)
+    rows = args[0] if len(args) > 0 else kwargs.get('rows')
+    palette = args[1] if len(args) > 1 else kwargs.get('palette')
+    _hs_drawn.append((rows, palette))
+    if len(_hs_drawn) > 50:
+        del _hs_drawn[0]
 
 
 def clear(*args, **kwargs):

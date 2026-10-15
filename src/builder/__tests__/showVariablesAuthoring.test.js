@@ -39,6 +39,16 @@ describe('showVariables authoring', () => {
     expect(task.check).toEqual([{ type: 'code', operator: 'contains', value: 'x' }])
   })
 
+  it('stores visuals and stageLists only when they differ from the defaults', () => {
+    let task = { id: 1, showVariables: { mode: 'view', at: 'end' } }
+    task = updateShowVariables(task, { visuals: false })
+    expect(task.showVariables).toEqual({ mode: 'view', at: 'end', visuals: false })
+    task = updateShowVariables(task, { visuals: true, stageLists: 'picture' })
+    expect(task.showVariables).toEqual({ mode: 'view', at: 'end', stageLists: 'picture' })
+    task = updateShowVariables(task, { stageLists: 'size' })
+    expect(task.showVariables).toEqual({ mode: 'view', at: 'end' })
+  })
+
   it('parses name lists and target lines', () => {
     expect(parseNameList('score, lives  score\nbag')).toEqual(['score', 'lives', 'bag'])
     const target = parseTargetLines(

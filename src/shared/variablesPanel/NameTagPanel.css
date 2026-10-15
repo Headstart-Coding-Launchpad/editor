@@ -250,6 +250,369 @@
   text-decoration-thickness: 2px;
 }
 
+/* ─── Visuals (ValueVisual.jsx): swatches, bars, pictures, tables, cards ───────────────────
+   Anything the panel colours itself (bars, change marks) uses the Okabe-Ito palette: blue
+   #0072b2, vermilion #d55e00, orange #e69f00. Swatches and pixels are the student's own colours,
+   always with their text beside them or one tap away. Long lists scroll inside the tag. */
+
+.ntp-visual {
+  max-width: 100%;
+  max-height: 280px;
+  overflow: auto;
+  cursor: pointer;
+}
+
+.ntp-exact {
+  display: block;
+  padding: 4px 6px;
+  border-radius: var(--ui-radius-sm, 6px);
+  background: var(--ui-surface-neutral, #f9fafb);
+  max-height: 160px;
+  overflow: auto;
+}
+
+.ntp-swatches {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ntp-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 44px;
+  padding: 4px 4px 2px;
+  border: 1px solid var(--ui-border-neutral, #e5e7eb);
+  border-radius: var(--ui-radius-sm, 6px);
+  background: var(--ui-surface-neutral, #f9fafb);
+}
+
+.ntp-swatch .ntp-value {
+  font-size: 0.78rem;
+}
+
+.ntp-swatch-chip {
+  display: inline-block;
+  width: 32px;
+  height: 24px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.ntp-swatch-chip--small {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.ntp-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: auto minmax(40px, 1fr) auto;
+  align-items: center;
+  gap: 3px 8px;
+  min-width: 180px;
+}
+
+.ntp-bar-row {
+  display: contents;
+}
+
+.ntp-bar-key {
+  font-family: var(--font-code);
+  font-size: 0.78rem;
+  color: var(--colour-muted, #4b5563);
+  overflow-wrap: anywhere;
+}
+
+.ntp-bar-track {
+  display: block;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--ui-surface-neutral, #f3f4f6);
+  box-shadow: inset 0 0 0 1px var(--ui-border-neutral, #e5e7eb);
+  overflow: hidden;
+}
+
+.ntp-bar {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  background: #0072b2;
+}
+
+/* Below zero: vermilion and striped, and the number keeps its minus sign. */
+.ntp-bar.is-negative {
+  background: repeating-linear-gradient(135deg, #d55e00 0 4px, #e98a4d 4px 8px);
+}
+
+.ntp-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 6px;
+}
+
+.ntp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px 6px;
+  border: 1px solid var(--ui-border-neutral, #e5e7eb);
+  border-radius: var(--ui-radius-sm, 6px);
+  background: var(--ui-surface-neutral, #f9fafb);
+  min-width: 0;
+}
+
+.ntp-card-key {
+  font-family: var(--font-code);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--colour-muted, #4b5563);
+  overflow-wrap: anywhere;
+}
+
+.ntp-card-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* A picture: a ruler row and column around square cells with thin outlines. About 18px a cell,
+   shrinking to fit the panel's width. */
+.ntp-picture {
+  display: grid;
+  grid-template-columns: 1.6em repeat(var(--ntp-cols, 8), minmax(0, 1fr));
+  gap: 1px;
+  width: calc(1.6em + var(--ntp-cols, 8) * 19px);
+  max-width: 100%;
+  min-width: 96px;
+  box-sizing: border-box;
+}
+
+.ntp-pixel {
+  aspect-ratio: 1;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+/* See-through cells: a light checkerboard, like an image editor. */
+.ntp-pixel.is-clear {
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #d1d5db 25%, transparent 25%, transparent 75%, #d1d5db 75%),
+    linear-gradient(45deg, #d1d5db 25%, transparent 25%, transparent 75%, #d1d5db 75%);
+  background-size: 8px 8px;
+  background-position:
+    0 0,
+    4px 4px;
+}
+
+.ntp-ruler {
+  font-family: var(--font-code);
+  font-size: 0.6rem;
+  line-height: 1;
+  color: var(--colour-muted, #4b5563);
+  text-align: center;
+  align-self: end;
+  overflow: hidden;
+}
+
+.ntp-ruler--row {
+  align-self: center;
+  text-align: right;
+  padding-right: 2px;
+}
+
+.ntp-table-wrap {
+  max-width: 100%;
+  overflow: auto;
+}
+
+.ntp-table {
+  border-collapse: collapse;
+}
+
+.ntp-table th,
+.ntp-table td {
+  padding: 2px 6px;
+  border: 1px solid var(--ui-border-neutral, #e5e7eb);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.ntp-table th {
+  font-weight: 400;
+  background: var(--ui-surface-neutral, #f9fafb);
+}
+
+.ntp-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ntp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ntp-row-index {
+  min-width: 1.4em;
+  text-align: right;
+}
+
+.ntp-row .ntp-tiles {
+  flex-wrap: nowrap;
+}
+
+.ntp-size {
+  color: var(--colour-muted, #4b5563);
+}
+
+.ntp-target-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed var(--ui-border-neutral-strong, #d1d5db);
+}
+
+/* Per-item change marks: a dot in words' place (the screen-reader text says "changed") and an
+   Okabe-Ito orange ring, which a brief pulse draws attention to. */
+.ntp-item-mark {
+  margin-left: 2px;
+  font-size: 0.7em;
+  color: #d55e00;
+}
+
+.is-item-changed.ntp-swatch,
+.is-item-changed.ntp-tile,
+.is-item-changed.ntp-card,
+.ntp-table td.is-item-changed,
+.ntp-dict dt.is-item-changed {
+  box-shadow: 0 0 0 2px #e69f00;
+  animation: ntp-item-flash 1.4s ease-out 1;
+}
+
+.is-item-changed.ntp-bar-row > .ntp-bar-track {
+  box-shadow:
+    inset 0 0 0 1px var(--ui-border-neutral, #e5e7eb),
+    0 0 0 2px #e69f00;
+}
+
+/* A changed pixel: a black-and-white double ring, visible on any colour. */
+.ntp-pixel.is-item-changed {
+  box-shadow:
+    inset 0 0 0 2px #000,
+    inset 0 0 0 3px #fff;
+  animation: ntp-item-flash 1.4s ease-out 1;
+}
+
+@keyframes ntp-item-flash {
+  0% {
+    outline: 3px solid rgba(230, 159, 0, 0.9);
+  }
+  100% {
+    outline: 3px solid rgba(230, 159, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-item-changed {
+    animation: none !important;
+  }
+}
+
+.ntp--still .is-item-changed {
+  animation: none;
+}
+
+/* The tutor's student card (NameTagCardStrip.jsx): small thumbnails of list visuals. */
+.ntp-card-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.ntp-card-thumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 6px;
+  border: 1px solid var(--ui-border-neutral, #e5e7eb);
+  border-radius: var(--ui-radius-sm, 6px);
+  background: var(--ui-surface-neutral, #f9fafb);
+}
+
+.ntp-card-thumb-name {
+  font-family: var(--font-code);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--colour-ink-strong, #111827);
+}
+
+.ntp-thumb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  align-items: center;
+}
+
+.ntp-thumb-chip {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.ntp-thumb-more {
+  font-size: 10px;
+  color: var(--colour-muted, #4b5563);
+}
+
+.ntp-thumb-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 18px;
+}
+
+.ntp-thumb-bar {
+  width: 4px;
+  background: #0072b2;
+}
+
+.ntp-thumb-bar.is-negative {
+  background: #d55e00;
+}
+
+.ntp-thumb-picture {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.ntp-thumb-pixel.is-clear {
+  background: #fff;
+}
+
 /* Touch and narrow screens: 44px targets, like quiz tasks, and full-width tags. */
 @media (pointer: coarse), (max-width: 640px) {
   .ntp-expand,
