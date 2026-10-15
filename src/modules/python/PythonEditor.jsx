@@ -37,6 +37,8 @@ export default function PythonEditor({
   // Slow-mo playback (src/modules/python/slowMo/): `{ line, passes: [{ line, label }] }` marks
   // the line that just ran and each loop's pass, or null.
   slowMoMarker = null,
+  // The #@peek "stopped here" band (src/shared/peekBandEditor.js): `{ line, missed }` or null.
+  peekBand = null,
 }) {
   const editorRef = useRef(null)
   const slowMoKey = useMemo(() => JSON.stringify(slowMoMarker ?? null), [slowMoMarker])
@@ -106,6 +108,7 @@ export default function PythonEditor({
         errorLine={errorLine}
         lineHints={lineHints}
         lockedLines={lockedLines}
+        peekBand={peekBand}
         onRunShortcut={onRunShortcut}
         blockGuides={showBlocks && blockGuidesOn}
         scrub={scrub}

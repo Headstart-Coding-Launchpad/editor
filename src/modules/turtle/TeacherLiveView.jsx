@@ -8,6 +8,7 @@ import { createTurtleState } from './engine.js'
 import { describeTurtleDrawing } from './describe.js'
 import { hasTaskCourse } from './course.js'
 import CoursePicture from './CoursePicture.jsx'
+import { getPeekBand, panelRunForTask } from '../../shared/variablesPanel/variablesPanel.js'
 
 const DEFAULT_TURTLE_STATE = createTurtleState()
 
@@ -29,6 +30,9 @@ export default function TeacherLiveView({
   // Lock sets for the shown code; defaults to the task's own (src/shared/lockedLines.js).
   lockedLines,
   isInSandbox = false,
+  // The #@peek "stopped here" band (src/shared/peekBandEditor.js); worked out from the task,
+  // the code and the student's synced run when not given.
+  peekBand,
 }) {
   const canvasRef = useRef(null)
   const turtleResult = student?.currentTurtleResult ?? null
@@ -64,6 +68,19 @@ export default function TeacherLiveView({
         onActivity={onActivity}
         lineHints={lineHints}
         lockedLines={isInSandbox ? null : (lockedLines ?? getTaskLockSets(task))}
+        peekBand={
+          peekBand !== undefined
+            ? peekBand
+            : isInSandbox
+              ? null
+              : getPeekBand(
+                  task,
+                  displayState ?? '',
+                  student
+                    ? panelRunForTask(task, { synced: student.currentVariables ?? null })
+                    : null
+                )
+        }
         pyodideStatus="ready"
       />
     </div>

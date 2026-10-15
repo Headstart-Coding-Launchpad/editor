@@ -1,6 +1,6 @@
 # Name-tag panel: show clearly where a #@peek stopped the program
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, bypassing pipeline-ui, as with builds 1–12), 2026-10-15
 - **Lessons blocked:** none yet. Wave 1c of Lesson Gen's LG-P6 Visual learning plan, from Ryan's click-through of the sandbox (`ocgq3appv6`, task 5). Build on top of `integrate/requests-2026-10-14`.
@@ -56,4 +56,9 @@ Today the `#@peek` marker is stripped, and nothing in the editor or panel shows 
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped 2026-10-15 on `feature/peek-stopped-here-band` (for `integrate/requests-2026-10-14`; not yet on `main`). No new task fields.
+
+- **Editor:** a dashed purple ⏸ band (a CodeMirror block widget, `src/shared/peekBandEditor.js`, CodeEditor's `peekBand` prop) in the gap above the marked line: "The tags show the values here", or "The program never reached this line" after a run that missed it. It shows from when the task opens, follows the line through edits, and is hidden in a sandbox, on a previous task's saved code, while the tutor edits and during slow-mo playback. `role="note"`, and screen readers hear "Values shown just before line N".
+- **Panel:** a "Values just before line N" header (N as the student sees it) in every mode whenever `at: marker` and the peek anchors; "Line N never ran" after a run that missed it (the status note stays).
+- **Tutor views and Go Live:** StudentModal (Python code mirror and Turtle view) and the Go Live viewer's workspace show the band and header, from the synced run. The student card has no editor or panel, so it shows neither.
+- Docs: [python.md](../python.md#name-tag-panel-showvariables) ("The `#@peek` marker"), [CHANGELOG](../CHANGELOG.md) 2026-10-15.

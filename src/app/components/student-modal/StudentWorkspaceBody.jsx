@@ -13,6 +13,7 @@ import { readAnswerDraft } from '../../../shared/answerDrafts'
 import { getMirrorLineHintSets, getMirrorLockSets } from './mirrorLineHints'
 import { getInspectorConfig } from '../../../modules/html/inspector/config'
 import TaskVariablesPanel from '../../../shared/variablesPanel/TaskVariablesPanel.jsx'
+import { getPeekBand, panelRunForTask } from '../../../shared/variablesPanel/variablesPanel.js'
 import { taskHistoryMode, typingHistoryForMode } from '../../../shared/typingHistory'
 import TypingHistoryPanel from './TypingHistoryPanel'
 import StagePane from '../../../shared/stage/StagePane.jsx'
@@ -121,6 +122,11 @@ export default function StudentWorkspaceBody({
   })
   // The task's locked lines on the mirrored code (display only, like the hints).
   const lockedLines = getMirrorLockSets(task, { mirror, isSessionSandbox })
+  // The #@peek "stopped here" band on the mirrored code, as the student's editor shows it.
+  const peekBandFor = (code) =>
+    isSessionSandbox
+      ? null
+      : getPeekBand(task, code, panelRunForTask(task, { synced: student.currentVariables ?? null }))
 
   const highlightComposer = canHighlight && (
     <div style={s.highlightComposer}>
@@ -322,6 +328,7 @@ export default function StudentWorkspaceBody({
             teacherHighlights={highlights}
             lineHints={lineHints}
             lockedLines={lockedLines}
+            peekBand={peekBandFor(student.currentCode ?? '')}
             onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
             onHighlightDismiss={onDismissHighlight}
             style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
@@ -358,6 +365,7 @@ export default function StudentWorkspaceBody({
         <TaskVariablesPanel
           task={task}
           synced={student.currentVariables ?? null}
+          code={student.currentCode ?? ''}
           audience="tutor"
           hidden={isSessionSandbox}
           style={s.variablesPanel}
@@ -392,6 +400,7 @@ export default function StudentWorkspaceBody({
           liveState={moduleDisplayState}
           lineHints={lineHints}
           lockedLines={lockedLines}
+          peekBand={peekBandFor(typeof moduleDisplayState === 'string' ? moduleDisplayState : '')}
           readOnly
           onChange={undefined}
           onActivity={undefined}
@@ -402,6 +411,7 @@ export default function StudentWorkspaceBody({
         <TaskVariablesPanel
           task={task}
           synced={student.currentVariables ?? null}
+          code={typeof moduleDisplayState === 'string' ? moduleDisplayState : ''}
           audience="tutor"
           hidden={isSessionSandbox}
           style={s.variablesPanel}

@@ -19,7 +19,12 @@ import { usePythonSlowMo } from '../python/slowMo/usePythonSlowMo.js'
 import SlowMoBar from '../python/slowMo/SlowMoBar.jsx'
 import SlowMoNameTags from '../python/slowMo/SlowMoNameTags.jsx'
 import PuzzleBar from '../../shared/puzzle/PuzzleBar.jsx'
-import { getShowVariables, taskShowsVariables } from '../../shared/variablesPanel/variablesPanel.js'
+import {
+  getPeekBand,
+  getShowVariables,
+  panelRunForTask,
+  taskShowsVariables,
+} from '../../shared/variablesPanel/variablesPanel.js'
 import ResultPane from '../../shared/resultPane/ResultPane.jsx'
 import { useResultPane, useRunFinishedToken } from '../../shared/resultPane/useResultPane.js'
 import { useWorkspaceLayout } from '../../shared/resultPane/useWorkspaceLayout.js'
@@ -108,6 +113,17 @@ export default function StudentWorkspace({
   const inFreePlay = isSandbox || cs.inPersonalSandbox
   const tagsAvailable =
     !inFreePlay && !isViewingPrev && !isTeacherEditing && taskShowsVariables(task)
+  // The #@peek "stopped here" band (showVariables.at: marker), from when the task opens; not
+  // while the panel is hidden or slow-mo steps through the run.
+  const variablesSynced = isForcedTeacherLive ? displayVariablesPanel : undefined
+  const peekBand =
+    !tagsAvailable || slowMoView
+      ? null
+      : getPeekBand(
+          task,
+          code,
+          panelRunForTask(task, { panel: cs.variablesPanel, synced: variablesSynced })
+        )
   const resultPanes = ['picture', tagsAvailable && 'tags', 'console'].filter(Boolean)
   const {
     ref: workspaceRef,
@@ -231,6 +247,7 @@ export default function StudentWorkspace({
         showBlocks={taskShowsBlocks(task)}
         onRunShortcut={readOnly ? undefined : handleRunClick}
         slowMoMarker={slowMoView?.marker ?? null}
+        peekBand={peekBand}
       />
     </div>
   )
@@ -259,7 +276,8 @@ export default function StudentWorkspace({
     <TaskVariablesPanel
       task={inFreePlay ? null : task}
       panel={cs.variablesPanel}
-      synced={isForcedTeacherLive ? displayVariablesPanel : undefined}
+      synced={variablesSynced}
+      code={code}
       running={cs.running}
       hidden={isViewingPrev || isTeacherEditing}
       style={variablesStyle}

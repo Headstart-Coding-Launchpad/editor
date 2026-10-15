@@ -99,6 +99,41 @@ export function variableCaptureOptions(task, code, { lineOffset = 0 } = {}) {
   return { panel: true, peekLine: peek == null ? null : peek + lineOffset, hide: config.hide }
 }
 
+/**
+ * The line (1-based, as the student sees it in `code`) a task's `at: marker` panel shows the
+ * values just before: its `#@peek` line re-anchored on the code (getTaskPeekLine). Null for a
+ * task without the panel, with `at: end`, or whose peek no longer anchors.
+ */
+export function getPanelPeekLine(task, code) {
+  if (getShowVariables(task)?.at !== 'marker') return null
+  return getTaskPeekLine(task, code)
+}
+
+/**
+ * The editor's "stopped here" band for a task (src/shared/peekBandEditor.js): `{ line, missed }`
+ * or null (see getPanelPeekLine). `run` is the panel's run state for this task (null before
+ * any run); `missed` is true when that run never reached the marked line.
+ */
+export function getPeekBand(task, code, run = null) {
+  const line = getPanelPeekLine(task, code)
+  if (line == null) return null
+  return { line, missed: !!run && run.at === 'marker' && !run.peekReached }
+}
+
+/**
+ * The run state a task's panel shows (null before any run of this task): the synced copy's
+ * (a tutor's view, a Go Live broadcast) when `synced` is given, else the student's own
+ * (`panel`, useVariablesPanel). Task ids can be numbers or strings, so they compare as text.
+ */
+export function panelRunForTask(task, { panel = null, synced = undefined } = {}) {
+  const isThisTask = (value) => value?.taskId != null && String(value.taskId) === String(task?.id)
+  if (synced !== undefined) {
+    const { run } = readSyncedVariables(synced)
+    return run && (run.taskId == null || isThisTask(run)) ? run : null
+  }
+  return isThisTask(panel?.run) ? panel.run : null
+}
+
 // ─── Value nodes ─────────────────────────────────────────────────────────────
 
 const TYPE_LABELS = Object.freeze({

@@ -39,6 +39,22 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-15
 
+### Name-tag panel: `#@peek` now shows where the program stopped
+
+- **A "stopped here" band in the editor.** With `showVariables.at: marker`, a dashed purple ⏸ band
+  sits in the gap above the line the `#@peek` marker stops at, reading "The tags show the values
+  here". It shows from when the task opens (before any run), so predict-mode students know where
+  to predict, and follows the line as the student edits. It is unlike slow-mo's amber band.
+- **A panel header, "Values just before line N"**, with the line number as the student sees it,
+  in every mode (empty predict tags included).
+- **When the marked line never ran**, the panel keeps its note, the band reads "The program never
+  reached this line" and the header "Line N never ran".
+- StudentModal and Go Live show the band and the header too. Screen readers hear "Values shown
+  just before line N". Nothing new to author. See
+  [python.md](python.md#name-tag-panel-showvariables) ("The `#@peek` marker").
+- Affects: python, turtle (name-tag panel `at: marker`) · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-10-15-p6-17-peek-marker-show-where-the-program-stopped.md
+
 ### Python and Turtle screen space: one tabbed result pane on smaller screens (`layout.firstPane`)
 
 - **Tablets, 1366 × 768 Chromebooks and small laptops** now show the editor on the left and one

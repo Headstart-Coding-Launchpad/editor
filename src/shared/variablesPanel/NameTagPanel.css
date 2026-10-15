@@ -38,6 +38,33 @@
   color: var(--colour-muted, #4b5563);
 }
 
+/* "Values just before line N" (at: marker): the same dashed ⏸ look as the editor's
+   stopped-here band (src/shared/peekBandEditor.js), never slow-mo's amber. */
+.ntp-peek-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 3px 8px;
+  border: 2px dashed #6d28d9;
+  border-radius: 6px;
+  background: #f5f3ff;
+  color: #4c1d95;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.ntp-peek-line.is-missed {
+  border-color: #6b7280;
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.ntp-peek-icon {
+  flex-shrink: 0;
+}
+
 .ntp-section-label {
   margin: 4px 0 0;
   font-size: 0.74rem;
