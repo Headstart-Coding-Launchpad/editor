@@ -14,7 +14,8 @@ vi.mock('../../python/PythonEditor', () => ({
 }))
 
 const drawTurtleCommands = vi.fn()
-vi.mock('../draw.js', () => ({
+vi.mock('../draw.js', async (importOriginal) => ({
+  ...(await importOriginal()),
   drawTurtleCommands: (...args) => drawTurtleCommands(...args),
   sizeCanvasToDisplay: () => false,
 }))

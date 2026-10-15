@@ -60,17 +60,7 @@
  * replies with its stage commands only. The main thread never sends it while a run is going.
  */
 
-import {
-  createTurtleState,
-  applyTurtleForward,
-  applyTurtleTurn,
-  applyTurtleSetHeading,
-  applyTurtleGoto,
-  applyTurtleHome,
-  applyTurtleSetFillColor,
-  applyTurtleSetBackground,
-  applyTurtleSetVisible,
-} from '../turtle/engine.js'
+import { createTurtleRecorder } from '../turtle/recorder.js'
 import { VARIABLE_CAPTURE_PY } from './variableCapture.py.js'
 import { STAGE_INSTALL_PY, STAGE_MODULE_PY } from '../../shared/stage/stagePy.js'
 import { createStageRecorder, readStageCallPayload, stageHue } from '../../shared/stage/commands.js'
@@ -88,11 +78,8 @@ let _gpioInputs = {}
 let _gpioOutputs = {}
 let _gpioPollId = 0
 const _gpioPollResolvers = new Map()
-let _turtleState = createTurtleState()
-let _turtleCommands = []
-let _turtleCalls = []
-let _turtleFilling = false
-let _turtleFillPoints = []
+// The Turtle drawing of the current run (../turtle/recorder.js).
+let _turtle = createTurtleRecorder()
 // The Python Stage's command log for the current run (src/shared/stage/commands.js).
 let _stageRecorder = createStageRecorder()
 // A stage_render run: no output, and input() answers '' at once.
@@ -460,20 +447,20 @@ function slowMoAppendOutput(text) {
 
 // Where the Turtle drawing is now: { t, te, ts } (nothing before the first turtle call).
 function slowMoTurtleMarks(rec) {
-  if (_turtleCalls.length === 0) return {}
-  if (_turtleCommands !== rec.turtleArray) {
+  if (_turtle.calls.length === 0) return {}
+  if (_turtle.commands !== rec.turtleArray) {
     // reset() swaps in a new command list: a new epoch.
-    rec.turtleArray = _turtleCommands
-    rec.turtleEpochs.push(_turtleCommands)
+    rec.turtleArray = _turtle.commands
+    rec.turtleEpochs.push(_turtle.commands)
   }
-  const key = JSON.stringify(_turtleState)
+  const key = JSON.stringify(_turtle.state)
   let index = rec.turtleStateKeys.get(key)
   if (index === undefined) {
     index = rec.turtleStates.length
-    rec.turtleStates.push({ ..._turtleState })
+    rec.turtleStates.push({ ..._turtle.state })
     rec.turtleStateKeys.set(key, index)
   }
-  return { t: _turtleCommands.length, te: rec.turtleEpochs.length - 1, ts: index }
+  return { t: _turtle.commands.length, te: rec.turtleEpochs.length - 1, ts: index }
 }
 
 // One step from Python ({ l, k, s?, d?, c? } as JSON). Adds the output and drawing marks that
@@ -629,134 +616,33 @@ globalThis.__hsStageHue = (argsJson) => {
   return error ? `${error.kind}|${error.message}` : `ok|${value}`
 }
 
-// ─── Turtle bridge (see ../turtle/shim.js and ../turtle/engine.js) ────────────
-// Single default turtle only. Every mutating call is recorded in _turtleCalls
-// (for turtle_command_used checks); forward/backward/goto/home also append a
-// drawn-line segment to _turtleCommands when the pen is down, and (Phase 2) a
-// fill-polygon vertex to _turtleFillPoints while begin_fill()/end_fill() is active.
+// ─── Turtle bridge (see ../turtle/shim.js and ../turtle/recorder.js) ──────────
+// Single default turtle only. The recorder keeps the state, the drawing in code order (with the
+// motion between drawn items, for playback) and every call (for turtle_command_used checks).
 
-function _recordTurtleCall(name, args) {
-  _turtleCalls.push({ name, args })
-}
-
-function _trackFillPoint(x, y) {
-  if (_turtleFilling) _turtleFillPoints.push({ x, y })
-}
-
-globalThis.__hsTurtleForward = (distance) => {
-  _recordTurtleCall('forward', [distance])
-  const { nextState, segment } = applyTurtleForward(_turtleState, distance)
-  _turtleState = nextState
-  if (segment) _turtleCommands.push({ type: 'line', ...segment })
-  _trackFillPoint(nextState.x, nextState.y)
-}
-
-globalThis.__hsTurtleTurn = (degrees) => {
-  _recordTurtleCall('turn', [degrees])
-  _turtleState = applyTurtleTurn(_turtleState, degrees)
-}
-
-globalThis.__hsTurtleGoto = (x, y) => {
-  _recordTurtleCall('goto', [x, y])
-  const { nextState, segment } = applyTurtleGoto(_turtleState, x, y)
-  _turtleState = nextState
-  if (segment) _turtleCommands.push({ type: 'line', ...segment })
-  _trackFillPoint(nextState.x, nextState.y)
-}
-
-globalThis.__hsTurtleSetHeading = (degrees) => {
-  _recordTurtleCall('setheading', [degrees])
-  _turtleState = applyTurtleSetHeading(_turtleState, degrees)
-}
-
-globalThis.__hsTurtleHome = () => {
-  _recordTurtleCall('home', [])
-  const { nextState, segment } = applyTurtleHome(_turtleState)
-  _turtleState = nextState
-  if (segment) _turtleCommands.push({ type: 'line', ...segment })
-  _trackFillPoint(nextState.x, nextState.y)
-}
-
-globalThis.__hsTurtleReset = () => {
-  _recordTurtleCall('reset', [])
-  _turtleState = createTurtleState()
-  _turtleCommands = []
-  _turtleFilling = false
-  _turtleFillPoints = []
-}
-
-globalThis.__hsTurtlePenUp = () => {
-  _recordTurtleCall('penup', [])
-  _turtleState = { ..._turtleState, penDown: false }
-}
-
-globalThis.__hsTurtlePenDown = () => {
-  _recordTurtleCall('pendown', [])
-  _turtleState = { ..._turtleState, penDown: true }
-}
-
-globalThis.__hsTurtleSetColor = (color) => {
-  _recordTurtleCall('pencolor', [color])
-  _turtleState = { ..._turtleState, color: String(color) }
-}
-
-globalThis.__hsTurtleSetVisible = (visible) => {
-  _recordTurtleCall(visible ? 'showturtle' : 'hideturtle', [])
-  _turtleState = applyTurtleSetVisible(_turtleState, visible)
-}
-
-globalThis.__hsTurtleGetState = () => JSON.stringify(_turtleState)
-
-// ── Phase 2: fill, circle-detection, stamp, write, background ────────────────
-
-globalThis.__hsTurtleSetFillColor = (color) => {
-  _recordTurtleCall('fillcolor', [color])
-  _turtleState = applyTurtleSetFillColor(_turtleState, color)
-}
-
-globalThis.__hsTurtleSetBackground = (color) => {
-  _recordTurtleCall('bgcolor', [color])
-  _turtleState = applyTurtleSetBackground(_turtleState, color)
-}
-
-globalThis.__hsTurtleBeginFill = () => {
-  _recordTurtleCall('beginfill', [])
-  _turtleFilling = true
-  _turtleFillPoints = [{ x: _turtleState.x, y: _turtleState.y }]
-}
-
-globalThis.__hsTurtleEndFill = () => {
-  _recordTurtleCall('endfill', [])
-  if (_turtleFilling && _turtleFillPoints.length >= 3) {
-    _turtleCommands.push({ type: 'fill', points: _turtleFillPoints, color: _turtleState.fillColor })
-  }
-  _turtleFilling = false
-  _turtleFillPoints = []
-}
-
-globalThis.__hsTurtleStamp = () => {
-  _recordTurtleCall('stamp', [])
-  _turtleCommands.push({
-    type: 'stamp',
-    x: _turtleState.x,
-    y: _turtleState.y,
-    heading: _turtleState.heading,
-    color: _turtleState.color,
-  })
-}
-
-globalThis.__hsTurtleWrite = (text, align, fontSize) => {
-  _recordTurtleCall('write', [text])
-  _turtleCommands.push({
-    type: 'text',
-    x: _turtleState.x,
-    y: _turtleState.y,
-    text: String(text),
-    color: _turtleState.color,
-    align: String(align),
-    fontSize: Number(fontSize) || 8,
-  })
-}
+globalThis.__hsTurtleForward = (distance) => _turtle.forward(distance)
+// `instant`: circle()'s own small turns, which real turtle makes with no delay.
+globalThis.__hsTurtleTurn = (degrees, instant) => _turtle.turn(degrees, !!instant)
+globalThis.__hsTurtleGoto = (x, y) => _turtle.goto(x, y)
+globalThis.__hsTurtleSetHeading = (degrees) => _turtle.setHeading(degrees)
+globalThis.__hsTurtleHome = () => _turtle.home()
+globalThis.__hsTurtleReset = () => _turtle.reset()
+globalThis.__hsTurtlePenUp = () => _turtle.penUp()
+globalThis.__hsTurtlePenDown = () => _turtle.penDown()
+globalThis.__hsTurtleSetColor = (color) => _turtle.setColor(color)
+globalThis.__hsTurtleSetVisible = (visible) => _turtle.setVisible(!!visible)
+globalThis.__hsTurtleGetState = () => JSON.stringify(_turtle.state)
+globalThis.__hsTurtleSetFillColor = (color) => _turtle.setFillColor(color)
+globalThis.__hsTurtleSetBackground = (color) => _turtle.setBackground(color)
+globalThis.__hsTurtleBeginFill = () => _turtle.beginFill()
+globalThis.__hsTurtleEndFill = () => _turtle.endFill()
+globalThis.__hsTurtleStamp = () => _turtle.stamp()
+globalThis.__hsTurtleWrite = (text, align, fontSize) => _turtle.write(text, align, fontSize)
+globalThis.__hsTurtlePensize = (width) => _turtle.setPensize(width)
+globalThis.__hsTurtleSpeed = (value) => _turtle.setSpeed(value)
+// size / colour are None (null) for real turtle's defaults.
+globalThis.__hsTurtleDot = (size, color) =>
+  _turtle.dot(size == null ? null : Number(size), color == null ? null : String(color))
 
 // Records a call (e.g. 'circle') with no drawing/state effect of its own, for
 // turtle_command_used checks — used by shim.js commands built as sugar over
@@ -769,7 +655,7 @@ globalThis.__hsTurtleMarkCommand = (name, argsJson) => {
   } catch {
     args = []
   }
-  _recordTurtleCall(String(name), Array.isArray(args) ? args : [])
+  _turtle.markCommand(String(name), Array.isArray(args) ? args : [])
 }
 
 self.onmessage = async ({ data }) => {
@@ -798,11 +684,7 @@ self.onmessage = async ({ data }) => {
     _lastVariablesPanel = null
     _gpioInputs = normalizeGpioInputs(data.gpioInputs)
     _gpioOutputs = {}
-    _turtleState = createTurtleState()
-    _turtleCommands = []
-    _turtleCalls = []
-    _turtleFilling = false
-    _turtleFillPoints = []
+    _turtle = createTurtleRecorder()
     _stageRecorder = createStageRecorder()
     _silentRun = false
 
@@ -872,9 +754,9 @@ self.onmessage = async ({ data }) => {
     _slowMo = record.on ? createSlowMoRecording() : null
 
     const turtleResult = () => ({
-      state: _turtleState,
-      commands: _turtleCommands,
-      calls: _turtleCalls,
+      state: _turtle.state,
+      commands: _turtle.commands,
+      calls: _turtle.calls,
     })
 
     try {

@@ -133,6 +133,20 @@ describe('evaluateTurtleCheck', () => {
       expect(TURTLE_COMMAND_NAMES).toContain('stamp')
       expect(TURTLE_COMMAND_NAMES).toContain('write')
     })
+    it('accepts pensize (width() records as pensize) and dot', () => {
+      expect(TURTLE_COMMAND_NAMES).toContain('pensize')
+      expect(TURTLE_COMMAND_NAMES).toContain('dot')
+      expect(TURTLE_COMMAND_NAMES).not.toContain('width')
+      const calls = [
+        { name: 'pensize', args: [3] },
+        { name: 'dot', args: [] },
+      ]
+      for (const command of ['pensize', 'dot']) {
+        expect(
+          evaluateTurtleCheck({ type: 'turtle_command_used', command }, context({ calls }))
+        ).toBe(true)
+      }
+    })
     it('passes for a circle() call recorded via the mark-command log entry', () => {
       const calls = [{ name: 'circle', args: [50, 360] }]
       expect(

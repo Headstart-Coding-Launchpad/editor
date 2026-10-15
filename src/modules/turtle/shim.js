@@ -10,6 +10,10 @@
 // reset/clear, position/pos, heading, isdown. Single default turtle only —
 // no Turtle() instances.
 //
+// pensize/width (read back with no argument), dot and speed (P6-10): speed() is recorded so
+// a Run plays the drawing at that pace (./playback.js), and circle()'s own small turns are
+// instant, as in real turtle.
+//
 // Phase 2 adds: circle (built as forward/left steps — see _mark_command),
 // begin_fill/end_fill/fillcolor/color, stamp, write, bgcolor, colormode.
 // colormode is handled entirely here via _format_color — the JS bridge and
@@ -20,7 +24,7 @@
 //
 // `done`/`mainloop`/`bye` and a no-op `Screen()` are included as harmless stubs
 // since they're near-universal turtle boilerplate that would otherwise crash a
-// script for no visual reason in this headless/instant-draw model.
+// script for no visual reason in this headless model.
 export const TURTLE_SHIM = [
   'import sys, types, json, math',
   'try:',
@@ -32,9 +36,34 @@ export const TURTLE_SHIM = [
   '    if _js is not None:',
   '        _js.__hsTurtleForward(float(distance))',
   '',
-  'def _turn(degrees):',
+  'def _turn(degrees, instant=False):',
   '    if _js is not None:',
-  '        _js.__hsTurtleTurn(float(degrees))',
+  '        _js.__hsTurtleTurn(float(degrees), bool(instant))',
+  '',
+  'def _pensize(width):',
+  '    if _js is not None:',
+  '        _js.__hsTurtlePensize(float(width))',
+  '',
+  'def _speed(value):',
+  '    if _js is not None:',
+  '        _js.__hsTurtleSpeed(int(value))',
+  '',
+  'def _dot(size, color):',
+  '    if _js is not None:',
+  '        _js.__hsTurtleDot(None if size is None else float(size), None if color is None else str(color))',
+  '',
+  '_SPEED_NAMES = {"fastest": 0, "fast": 10, "normal": 6, "slow": 3, "slowest": 1}',
+  '',
+  'def _speed_value(speed):',
+  '    if isinstance(speed, str):',
+  '        key = speed.strip().lower()',
+  '        if key not in _SPEED_NAMES:',
+  '            raise ValueError("speed() takes a number from 0 to 10, or one of: fastest, fast, normal, slow, slowest")',
+  '        return _SPEED_NAMES[key]',
+  '    value = float(speed)',
+  '    if 0.5 < value < 10.5:',
+  '        return int(round(value))',
+  '    return 0',
   '',
   'def _goto(x, y):',
   '    if _js is not None:',
@@ -131,6 +160,8 @@ export const TURTLE_SHIM = [
   '            "fillColor": "black",',
   '            "background": "white",',
   '            "visible": True,',
+  '            "pensize": 1,',
+  '            "speed": None,',
   '        }',
   '    return json.loads(str(_js.__hsTurtleGetState()))',
   '',
@@ -198,7 +229,7 @@ export const TURTLE_SHIM = [
   '        turn = step_extent if radius > 0 else -step_extent',
   '        for _ in range(steps):',
   '            self.forward(step_length)',
-  '            self.left(turn)',
+  '            _turn(turn, True)',
   '    def stamp(self):',
   '        return _stamp()',
   '    def write(self, text, move=False, align="left", font=("Arial", 8, "normal")):',
@@ -241,8 +272,24 @@ export const TURTLE_SHIM = [
   '    st = showturtle',
   '    def isvisible(self):',
   '        return bool(_get_state().get("visible", True))',
-  '    def speed(self, *args, **kwargs):',
-  '        pass',
+  '    def speed(self, speed=None):',
+  '        if speed is None:',
+  '            value = _get_state().get("speed")',
+  '            return 10 if value is None else value',
+  '        _speed(_speed_value(speed))',
+  '    def pensize(self, width=None):',
+  '        if width is None:',
+  '            return _get_state().get("pensize", 1)',
+  '        _pensize(width)',
+  '    width = pensize',
+  '    def dot(self, size=None, *color):',
+  '        if not color and isinstance(size, (str, tuple, list)):',
+  '            color, size = (size,), None',
+  '        if color:',
+  '            value = color[0] if len(color) == 1 else color',
+  '            _dot(size, _format_color(value))',
+  '        else:',
+  '            _dot(size, None)',
   '',
   '_default_turtle = _Turtle()',
   '',

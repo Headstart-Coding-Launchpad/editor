@@ -95,6 +95,28 @@ Entries written before 2026-09-29 are not tagged.
   list of words could be mistaken for colours) · Resolves:
   authoring-requests/2026-10-15-p6-7-name-tag-panel-lists-and-dicts-you-can-see.md
 
+### Turtle: animated drawing, real drawing order, `pensize()` and `dot()`
+
+- **Run now plays the drawing**: the 🐢 moves, turns and draws at the `speed()` in the code. With
+  no `speed()` call it plays at speed 10 pace, squeezed to finish within about 4 seconds;
+  `speed(1–10)` (or `"slowest"`, `"slow"`, `"normal"`, `"fast"`) plays at real turtle pace;
+  `speed(0)` / `"fastest"` is instant. A **Skip** button jumps to the end, and the check result
+  shows once the drawing finishes or is skipped. Under reduced motion the drawing appears at once
+  with a **Play** button. Slow-mo still takes over when it's on, scrubbing still redraws
+  instantly, and Go Live plays the presenter's drawing on every screen. See
+  [turtle.md](turtle.md#speed-and-animation).
+- **Drawing order is now the order the code ran** (was fixed layers: fills, lines, stamps, text),
+  so later shapes cover earlier ones. A filled shape's own outline stays on top of its own fill.
+  See [turtle.md](turtle.md#drawing-order). No live lesson used Turtle (checked 2026-10-15).
+- New commands: `pensize(width)` / `width(width)` (no argument reads it back) and
+  `dot(size=None, colour=None)`, as in real turtle.
+- `turtle_command_used` accepts `command: pensize` (`width()` records as `pensize`) and
+  `command: dot`. No other new checks.
+- The picture has a screen-reader description of the drawing.
+- Affects: turtle · Existing lessons: no changes needed (drawings that relied on fills sitting
+  under later lines may now look different; add `turtle.speed(0)` to keep a drawing instant) ·
+  Resolves: authoring-requests/2026-10-15-p6-10-turtle-animated-drawing-drawing-order-pensize-dot.md
+
 ## 2026-10-14
 
 ### Live number and colour scrubbing in the code editor (`scrub`)

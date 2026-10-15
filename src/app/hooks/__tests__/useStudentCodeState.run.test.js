@@ -256,6 +256,20 @@ describe('handleRun — turtle result sync', () => {
     await actAsync(() => h.result.current.handleRun())
     expect(h.writers.writeStudentTurtleResult).toHaveBeenCalledTimes(1)
     expect(h.writers.writeStudentTurtleResult).toHaveBeenCalledWith(ANON, turtle)
+    // The picture plays a Run's drawing: it carries a runId (useTurtlePlayback.js).
+    expect(h.result.current.turtleResult).toEqual({ ...turtle, runId: expect.any(String) })
+  })
+
+  it('gives each Run a new runId, and a slow-mo run none (slow-mo plays it)', async () => {
+    const turtle = { state: { x: 0, y: 0, heading: 0 }, commands: [] }
+    mockModuleRun('turtle', printing('', 'success', { turtle }))
+    const h = renderStudentCodeState({ lesson: turtleLesson(), currentTaskId: 't1' })
+    await actAsync(() => h.result.current.handleRun())
+    const first = h.result.current.turtleResult.runId
+    await actAsync(() => h.result.current.handleRun())
+    expect(h.result.current.turtleResult.runId).toEqual(expect.any(String))
+    expect(h.result.current.turtleResult.runId).not.toBe(first)
+    await actAsync(() => h.result.current.handleRun({ slowMo: true }))
     expect(h.result.current.turtleResult).toEqual(turtle)
   })
 

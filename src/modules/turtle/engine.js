@@ -32,12 +32,18 @@ export function createTurtleState() {
     background: DEFAULT_BACKGROUND,
     // Whether the 🐢 marker is drawn at the turtle's position (hideturtle/showturtle).
     visible: true,
+    // pensize()/width(): line width in turtle units.
+    pensize: 1,
+    // speed(): 0–10 once the code sets it; null means the code never called speed(), so a run
+    // plays at the quick default pace (see ./playback.js).
+    speed: null,
   }
 }
 
 function normalizeDegrees(degrees) {
   const wrapped = degrees % 360
-  return wrapped < 0 ? wrapped + 360 : wrapped
+  // `+ 0` turns -0 (from e.g. -360 % 360) into 0.
+  return wrapped < 0 ? wrapped + 360 : wrapped + 0
 }
 
 function lineSegment(state, nextX, nextY) {

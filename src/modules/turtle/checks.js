@@ -42,6 +42,9 @@ export const TURTLE_COMMAND_NAMES = [
   'write',
   'hideturtle',
   'showturtle',
+  // pensize() and its width() alias both record as 'pensize'.
+  'pensize',
+  'dot',
 ]
 
 function toNumber(value, fallback = 0) {

@@ -162,24 +162,65 @@ be anything — but the logical coordinate space is always mapped to fit it
 ("contain", centred), so `turtle.forward(100)` always covers the same
 fraction of the drawing area regardless of device or screen size.
 
-Drawing is instant, not animated: the whole script runs to completion, then
-the canvas draws the finished result in one pass. There is no step-by-step
-turtle animation.
-
 A 🐢 marker shows where the turtle is and which way it is facing. Before any
 run it sits at `(0, 0)` facing east; after a run it sits at the final position
 and heading. Its head points along the heading, and it stays the right way up
 when the turtle faces left. `hideturtle()` hides it, as in real Python turtle.
 
-### Rendering order
+## Speed and animation
 
-The canvas renders in fixed layers — **fills, then lines, then stamps, then
-text, then the 🐢 marker** — rather than strict chronological command order. A filled shape's own
-pen outline always stays visible on top of its fill, which matters because
-`end_fill()` only produces its polygon once the shape is closed, after the
-outline's own line segments were already logged. This is a deliberate
-simplification for the instant/final-draw model, not a limitation students
-are likely to notice in normal use.
+On **Run** the script runs to completion first (so checks are worked out from
+the finished run, as before), then the canvas **plays the drawing**: the 🐢
+moves, turns visibly and draws each line as it goes, at the pace set by
+`speed()`.
+
+| The code | How it plays |
+|---|---|
+| No `speed()` call | At `speed(10)` ("fast") pace, with the whole drawing squeezed to finish within about **4 seconds**. Short drawings are not stretched. |
+| `speed(1)`–`speed(10)`, or `"slowest"` (1), `"slow"` (3), `"normal"` (6), `"fast"` (10) | Real Python turtle pace for that speed, however long it takes. Moves before the first `speed()` call play at speed 10. `speed()` can change part way through. |
+| `speed(0)` or `"fastest"` | Instant: the finished drawing appears at once. |
+
+- Real turtle's pace: a move of `d` units takes `1 + floor(d / (3 × 1.1^s × s))`
+  steps of 10 ms; a turn of `a` degrees takes `1 + floor(a / (3 × s))` steps.
+  `circle()` turns between its small sides instantly, as in real turtle, and
+  turns or pen-up moves while the turtle is hidden take no time.
+- As in real turtle, numbers outside 0.5–10.5 mean instant, other numbers are
+  rounded, and an unknown name raises an error. `speed()` with no argument
+  returns the current speed (10 when the code never set one).
+- A **Skip** button (bottom right of the picture) jumps to the finished
+  drawing. The Output panel's check result appears once the drawing finishes
+  or is skipped.
+- **Reduced motion** (the device's "reduce motion" setting): the finished
+  drawing appears at once, with a **Play** button to watch it drawn.
+- [Slow-mo](#slow-mo) takes over when it's on: its slider and step buttons
+  control the drawing, and `speed()` is ignored.
+- [Live scrubbing](#live-scrubbing-scrub) always redraws instantly, whatever
+  `speed()` says.
+- **Go Live:** when the presenter runs, every student's screen plays the
+  presenter's drawing. A tutor watching one student (the student card or
+  StudentModal) sees the student's finished drawing, never an animation.
+- The picture has a screen-reader description (what was drawn, in which
+  colours, and where the turtle ended up).
+
+### Drawing order
+
+The canvas draws in the order the code ran, as real turtle does: later lines,
+fills, dots, stamps and text cover earlier ones, and the 🐢 marker is always
+on top. One exception, also as in real turtle: a filled shape's own outline
+stays on top of its own fill, because the fill takes its place in the drawing
+where `begin_fill()` ran (it appears when `end_fill()` closes the shape).
+
+```python
+turtle.fillcolor("gold")
+turtle.begin_fill()
+for _ in range(5):          # a gold star with a black outline on top
+    turtle.forward(150)
+    turtle.right(144)
+turtle.end_fill()
+turtle.penup()
+turtle.goto(60, -20)
+turtle.dot(40, "white")     # drawn later, so it covers the star
+```
 
 ## Supported commands: movement and pen
 
@@ -207,12 +248,13 @@ Single default turtle only — `import turtle; turtle.forward(10)` or
 | `hideturtle()` | `ht` | Hides the 🐢 marker. Drawing is unaffected. |
 | `showturtle()` | `st` | Shows the 🐢 marker again. `reset()` also shows it. |
 | `isvisible()` | | Returns whether the marker is shown. |
-| `speed(...)` | | Accepted but has no effect — drawing is always instant. |
+| `pensize(width=None)` | `width` | Sets the line width for later lines, as in real turtle (`pensize(0)` draws no lines). With no argument, returns the current size (default `1`). Widths under 1.5 draw 1.5 units wide so thin lines stay visible. Both names record as `pensize` for `turtle_command_used`. |
+| `speed(speed=None)` | | Sets how fast the drawing plays (see [Speed and animation](#speed-and-animation)). With no argument, returns the current speed. |
 
 `turtle.done()`, `turtle.mainloop()`, `turtle.bye()`, and `turtle.Screen()`
 (with no-op `exitonclick`/`title`/`setup`) are also accepted as harmless
 no-ops, since they're near-universal turtle boilerplate that would otherwise
-raise an error for no visual reason in this headless, instant-draw model.
+raise an error for no visual reason in this headless model.
 
 `left()`/`right()` both record as the same internal `turn` event (signed
 degrees) — a `turtle_command_used` check targeting `turn` can't currently
@@ -228,6 +270,7 @@ tell which direction was used. `circle()` is drawn from many small
 | `begin_fill()` / `end_fill()` | Marks the path drawn between them as a filled polygon (rendered with `fillcolor`) once closed. Needs at least 3 distinct points to produce a visible fill. |
 | `fillcolor(color=None)` / `fillcolor(r, g, b)` | Reads or sets the fill colour, independently of `pencolor`. |
 | `color(color=None)` / `color(pen, fill)` | Convenience for setting `pencolor` and `fillcolor` together (or reading both back as a tuple). |
+| `dot(size=None, colour=None)` | A filled circle centred on the turtle, which doesn't move. `size` is the diameter (default: the larger of `pensize + 4` and `2 × pensize`); the colour defaults to the pen colour. `dot("red")` and `dot(20, 255, 0, 0)` work as in real turtle. |
 | `stamp()` | Leaves a small triangular marker at the current position/heading in the current pen colour, without moving the turtle. Always returns `0` (stamp ids / `clearstamp()` are not supported). |
 | `write(text, move=False, align="left", font=("Arial", 8, "normal"))` | Draws text at the current position in the current pen colour. Only the font *size* is respected (family/style are ignored); `move` is a no-op. |
 | `bgcolor(color=None)` / `Screen().bgcolor(...)` | Sets the canvas background for the whole run — there's no per-command background history, just whatever it is by the time the script finishes. |
@@ -283,7 +326,7 @@ check:
 | `turtle_path_closed` | `tolerance` (default 2) | The drawn path's start and end points coincide within `tolerance`. |
 | `turtle_segment_count` | `operator`, `value` | The number of drawn line segments compares to `value` (`operator` defaults to "at least"). |
 | `turtle_path_length` | `operator`, `value` | The total length of all drawn segments compares to `value`. |
-| `turtle_command_used` | `command` (one of: `forward`, `backward`, `turn`, `goto`, `setheading`, `home`, `reset`, `penup`, `pendown`, `pencolor`, `fillcolor`, `bgcolor`, `beginfill`, `endfill`, `circle`, `stamp`, `write`, `hideturtle`, `showturtle`), `minCount` (default 1) | That command was called at least `minCount` times. `color()` isn't a canonical name — it records as `pencolor`/`fillcolor`, whichever it actually changed. |
+| `turtle_command_used` | `command` (one of: `forward`, `backward`, `turn`, `goto`, `setheading`, `home`, `reset`, `penup`, `pendown`, `pencolor`, `fillcolor`, `bgcolor`, `beginfill`, `endfill`, `circle`, `stamp`, `write`, `hideturtle`, `showturtle`, `pensize`, `dot`), `minCount` (default 1) | That command was called at least `minCount` times. `color()` isn't a canonical name — it records as `pencolor`/`fillcolor`, whichever it actually changed. |
 | `turtle_color_used` | `kind` (`"pen"` default, or `"fill"`), `color` | The final pen/fill colour (per `kind`), or any matching `pencolor(...)`/`fillcolor(...)` call, matches `color` as text, ignoring case and surrounding spaces. Colour formats are **not** converted: `"red"`, `"#ff0000"` and `(255, 0, 0)` (stored as `"rgb(255,0,0)"`) don't match each other, so use the same form the task asks students to write. |
 | `turtle_stamp_count` | `operator`, `value` | The number of `stamp()` calls compares to `value` (`operator` defaults to "at least"). |
 
@@ -312,7 +355,8 @@ don't need a run.
 ## Runtime notes and limits
 
 - No file I/O, no `pip install` — same as the Python module.
-- The student's own canvas updates only after pressing **Run**; there is no
+- The student's own canvas updates only after pressing **Run** (then plays the
+  drawing; see [Speed and animation](#speed-and-animation)); there is no
   live redraw while typing. The exception is [live scrubbing](#live-scrubbing-scrub): dragging
   a number or picking a colour redraws as the value changes. [Slow-mo](#slow-mo) replays a run's
   drawing step by step.
@@ -338,7 +382,10 @@ stroke, just the finished drawing from the run that just completed:
   also flows through the same channel that already carries live code/output
   (`currentTeacherLivePayload` in `useTeacherLivePublish.js`, mirroring how
   Arcade's `arcadeDesign` is synced) — other students watching the broadcast
-  see it via `displayTurtleResult` in `StudentWorkspace.jsx`.
+  see it via `displayTurtleResult` in `StudentWorkspace.jsx`. Each Run's
+  result carries a `runId`, so their screens play the presenter's new drawing
+  (see [Speed and animation](#speed-and-animation)); the tutor views above
+  always show the finished drawing.
 - Both paths go through `compactTurtleResultForSync`
   (`src/modules/turtle/sync.js`): coordinates are rounded to 1 decimal place
   and the command log is capped to the most recent 4000 commands before

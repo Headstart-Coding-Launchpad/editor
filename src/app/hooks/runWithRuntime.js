@@ -43,6 +43,13 @@ import { lastErrorLine } from '../studentHints.js'
  *   the runtime's result (with its `slowMo` recording) before anything else is done with it.
  *   The recorded run IS the run: output, checks, the attempt and the save are exactly as for Run.
  */
+let turtleRunCount = 0
+
+function newTurtleRunId() {
+  turtleRunCount += 1
+  return `${Date.now().toString(36)}-${turtleRunCount}`
+}
+
 export async function runWithRuntime(ctx) {
   const {
     actor,
@@ -243,7 +250,17 @@ export async function runWithRuntime(ctx) {
   const nextCode = typeof result.updatedCode === 'string' ? result.updatedCode : latestRuntimeCode
   if (nextCode !== startCode) setCode(nextCode)
 
-  if (status !== 'stopped') setTurtleResult(result.turtle ?? null)
+  // A Run's Turtle drawing gets a runId so the picture plays it (src/modules/turtle/
+  // useTurtlePlayback.js), here and on Go Live screens. A slow-mo run has none: slow-mo plays it.
+  if (status !== 'stopped') {
+    setTurtleResult(
+      result.turtle
+        ? ctx.runOptions?.slowMo
+          ? result.turtle
+          : { ...result.turtle, runId: newTurtleRunId() }
+        : null
+    )
+  }
   // The Python Stage drawing (src/shared/stage/): the pane shows it once the code draws.
   if (status !== 'stopped' && runResult.stage) setters.setStageResult?.(result.stage ?? null)
   // The name-tag panel (showVariables, useVariablesPanel.js) shows this run and marks the
