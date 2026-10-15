@@ -26,6 +26,8 @@
 // backward() then default to one square on a grid, left()/right() to 90 degrees, and the sensors
 // wall_ahead/wall_left/wall_right/at_goal/on_pickup/collected answer from the map. Bridge calls
 // that return 'error|…' raise ValueError and 'stop|…' raises _CourseStop (the run ends there).
+// course_map(text) (P6-16) hands the student's own grid map to the recorder (setStudentMap),
+// which allows it only on a `studentMap: true` course and before the first move.
 //
 // `done`/`mainloop`/`bye` and a no-op `Screen()` are included as harmless stubs
 // since they're near-universal turtle boilerplate that would otherwise crash a
@@ -59,6 +61,13 @@ export const TURTLE_SHIM = [
   '        return',
   '    _course_answer(_js.__hsTurtleCourse("setup", spec_json))',
   '    _course_state["type"] = json.loads(spec_json).get("type")',
+  '',
+  'def _course_map(text):',
+  '    if not isinstance(text, str):',
+  '        raise ValueError(\'course_map() needs your map as text in triple quotes: turtle.course_map("""...""")\')',
+  '    if _js is None:',
+  '        return',
+  '    _course_answer(_js.__hsTurtleCourse("map", text))',
   '',
   'def _course_sense(op):',
   '    if _js is None:',
@@ -243,6 +252,9 @@ export const TURTLE_SHIM = [
   '        return _course_sense("on_pickup") == "true"',
   '    def collected(self):',
   '        return int(_course_sense("collected"))',
+  "    # The student's own map (course.studentMap), before the first move.",
+  '    def course_map(self, text=None):',
+  '        _course_map(text)',
   '    def penup(self):',
   '        _pen_up()',
   '    pu = penup',

@@ -159,7 +159,7 @@ export default defineModule({
       name: 'course',
       type: 'object',
       description:
-        "Course mode (docs/authoring/turtle.md): { type: 'grid' | 'track', vehicle?: 'turtle' | 'car' | 'rover' | 'boat' | 'drone', map | maps }. Grid maps are text (# wall, . road, G goal, * pickup, > < ^ v start); a track is { start, goal, walls, pickups, trackCode }. The turtle becomes a vehicle with sensors (wall_ahead, wall_left, wall_right, at_goal, on_pickup, collected).",
+        "Course mode (docs/authoring/turtle.md): { type: 'grid' | 'track', vehicle?: 'turtle' | 'car' | 'rover' | 'boat' | 'drone', map | maps, studentMap?: true }. Grid maps are text (# wall, . road, G goal, * pickup, > < ^ v start); a track is { start, goal, walls, pickups, trackCode }. The turtle becomes a vehicle with sensors (wall_ahead, wall_left, wall_right, at_goal, on_pickup, collected). studentMap: true (grid only) lets the student's code set its own map with turtle.course_map(text); map is shown until then.",
     },
   ],
   carryThroughField: 'carryCodeFrom',

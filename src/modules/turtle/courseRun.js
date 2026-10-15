@@ -16,9 +16,13 @@
  * - `turtle.course`: { type, vehicle, taskId, maps: [map result] }, where a map result is the
  *   map's outcome (courseDrive.js result: goalReached, crashed, crash, pickups, pickupsTotal,
  *   moves, stopped, message) plus its run `status` and its own drawing (`commands`, `state`).
+ *
+ * Student-made maps (course.studentMap): when map 1's run sets the student's own map
+ * (turtle.course_map), that map replaces the task's maps: the run ends there and the result has
+ * one map, carrying the map text (`studentMap`). Code that doesn't set one drives every map.
  */
 import { buildTurtleProgram } from './shim.js'
-import { buildCourseWorld, courseRunSpec, getTaskCourse } from './course.js'
+import { buildCourseWorld, codeCallsCourseMap, courseRunSpec, getTaskCourse } from './course.js'
 
 export function courseMapHeading(index, count) {
   return `── Map ${index + 1} of ${count} ──\n`
@@ -37,9 +41,14 @@ export async function runTurtleTask(
   if (!course) return runPython(buildTurtleProgram(code), { ...callbacks, ...firstRunOptions })
   const stops = getStopCount()
   const count = course.maps.length
+  // Student-made maps: code that sets its own map runs on that one map, so map 1 gets no
+  // "Map 1 of 3" heading.
+  const ownMapExpected = !!course.studentMap && codeCallsCourseMap(code)
   const results = []
   for (let index = 0; index < count; index += 1) {
-    if (count > 1) callbacks.onOutput?.(courseMapHeading(index, count), 'stdout', null)
+    if (count > 1 && !(index === 0 && ownMapExpected)) {
+      callbacks.onOutput?.(courseMapHeading(index, count), 'stdout', null)
+    }
     const program = buildTurtleProgram(code, { course: courseRunSpec(course, index, task?.id) })
     const result = await runPython(program, {
       ...callbacks,
@@ -49,9 +58,19 @@ export async function runTurtleTask(
       return { ...(results[0] ?? {}), ...result, status: 'stopped' }
     }
     results.push(result)
+    // The student's own map (turtle.course_map) replaces the task's maps: one map, this run.
+    const ownMap = index === 0 ? studentMapOf(course, result) : null
+    if (ownMap) return mergeCourseRunResults({ ...course, maps: [ownMap] }, results, task?.id)
     if (result?.status === 'error') break
   }
   return mergeCourseRunResults(course, results, task?.id)
+}
+
+// The student's own map text from a map's run on a studentMap course, or null.
+function studentMapOf(course, result) {
+  if (!course.studentMap) return null
+  const map = result?.turtle?.course?.studentMap
+  return typeof map === 'string' && map ? map : null
 }
 
 function notRunMap(course, index) {

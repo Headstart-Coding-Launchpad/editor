@@ -16,6 +16,10 @@
  *
  * `map` holds one map; `maps` a list played one after another (the same program runs on each).
  * A track's own fields may sit straight on `course` instead of in `map`.
+ *
+ * Student-made maps (P6-16): a grid course with `studentMap: true` lets the student's code call
+ * `turtle.course_map(text)` to drive its own map instead (see "Student-made maps" below). The
+ * authored `map` is shown until the student sets one.
  */
 import { TURTLE_LOGICAL_WIDTH, TURTLE_LOGICAL_HEIGHT } from './engine.js'
 import { trackCodeSegments } from './trackCode.js'
@@ -77,7 +81,9 @@ export function getTaskCourse(task) {
   } else maps = []
   maps = maps.slice(0, COURSE_MAX_MAPS)
   if (maps.length === 0) return null
-  return { type, vehicle, maps }
+  // Student-made maps are for grid courses only (validation errors on a track).
+  const studentMap = type === 'grid' && course.studentMap === true
+  return { type, vehicle, maps, ...(studentMap ? { studentMap: true } : {}) }
 }
 
 export function hasTaskCourse(task) {
@@ -93,6 +99,7 @@ export function courseRunSpec(course, index, taskId = null) {
     index,
     count: course.maps.length,
     ...(taskId !== null && taskId !== undefined ? { taskId: String(taskId) } : {}),
+    ...(course.studentMap ? { studentMap: true } : {}),
   }
 }
 
@@ -215,6 +222,204 @@ export function gridStep(heading) {
       h
     ] ?? null
   )
+}
+
+// ── Student-made maps (course.studentMap, turtle.course_map) ───────────────────
+
+const NUMBER_WORDS = { 2: 'two', 3: 'three', 4: 'four', 5: 'five' }
+
+/**
+ * A student's map text tidied for use: line endings, trailing spaces and blank lines at either
+ * end dropped, and the indentation every line shares removed (so a triple-quoted string inside a
+ * function is fine). Null when it isn't text or has no rows.
+ */
+export function normalizeStudentMapText(text) {
+  if (typeof text !== 'string') return null
+  const lines = text
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/\s+$/, ''))
+  while (lines.length && !lines[0].trim()) lines.shift()
+  while (lines.length && !lines[lines.length - 1].trim()) lines.pop()
+  if (lines.length === 0) return null
+  const indent = Math.min(
+    ...lines.filter((line) => line.trim()).map((line) => line.match(/^ */)[0].length)
+  )
+  return lines.map((line) => line.slice(indent)).join('\n')
+}
+
+function describeCharacter(ch) {
+  return ch === '\t' ? 'a tab' : `"${ch}"`
+}
+
+/**
+ * Problems with a map the student's code passed to turtle.course_map(), in plain words for an
+ * 11–16 year old (empty when it's fine). The same legend and limits as an authored grid map
+ * (gridMapProblems): one start, at least one goal, at most 30 × 30.
+ */
+export function studentMapProblems(text, vehicle = DEFAULT_COURSE_VEHICLE) {
+  if (typeof text !== 'string') {
+    return ['course_map() needs your map as text in triple quotes: turtle.course_map("""…""")']
+  }
+  const tidy = normalizeStudentMapText(text)
+  if (!tidy) {
+    return [
+      'Your map is empty: draw it with # for walls, . for road, G for the goal and > for the start',
+    ]
+  }
+  const rows = tidy.split('\n')
+  const cols = Math.max(...rows.map((row) => row.length))
+  const name = vehicleName(vehicle)
+  const problems = []
+  if (rows.length > GRID_MAX_SIZE) {
+    problems.push(`Your map is ${rows.length} rows tall; the most is ${GRID_MAX_SIZE}`)
+  }
+  if (cols > GRID_MAX_SIZE) {
+    problems.push(`Your map is ${cols} squares wide; the most is ${GRID_MAX_SIZE}`)
+  }
+  const unknown = new Set()
+  const startMarks = new Set()
+  let starts = 0
+  let goals = 0
+  rows.forEach((row) => {
+    for (const ch of row) {
+      if (!(ch in GRID_LEGEND)) unknown.add(ch)
+      else if (GRID_LEGEND[ch] === 'start') {
+        starts += 1
+        startMarks.add(ch)
+      } else if (GRID_LEGEND[ch] === 'goal') goals += 1
+    }
+  })
+  if (unknown.size) {
+    problems.push(
+      `Your map uses ${[...unknown].map(describeCharacter).join(', ')}: use # for walls, . for road, G for the goal, * for stars and > for the start`
+    )
+  }
+  if (starts === 0) {
+    problems.push(
+      `Your map needs a start: put > where the ${name} begins (or < ^ v to face another way)`
+    )
+  } else if (starts > 1) {
+    problems.push(
+      `Your map has ${NUMBER_WORDS[starts] ?? starts} starts (${[...startMarks].join(' ')}): keep just one`
+    )
+  }
+  if (goals === 0) problems.push('Your map needs a G for the goal')
+  return problems
+}
+
+/** Whether a line of `code` that isn't a comment calls course_map(. */
+export function codeCallsCourseMap(code) {
+  return String(code ?? '')
+    .split('\n')
+    .some((line) => {
+      const at = line.search(/\bcourse_map\s*\(/)
+      return at >= 0 && !line.slice(0, at).includes('#')
+    })
+}
+
+const STRING_ESCAPES = { n: '\n', t: '\t', '\\': '\\', "'": "'", '"': '"' }
+
+/**
+ * The first course_map("…") call in `code` whose argument is a plain string literal
+ * (triple-quoted, or on one line with \n escapes): { text, start, end }, where start and end span
+ * the literal (its quotes and any prefix), or null. Calls in comments are skipped.
+ */
+export function findStudentMapCall(code) {
+  const source = String(code ?? '')
+  const pattern = /\bcourse_map\s*\(\s*([rRuU]?)("""|'''|"|')/g
+  let match
+  while ((match = pattern.exec(source))) {
+    const lineStart = source.lastIndexOf('\n', match.index) + 1
+    if (source.slice(lineStart, match.index).includes('#')) continue
+    const prefix = match[1]
+    const quote = match[2]
+    const start = match.index + match[0].length - quote.length - prefix.length
+    const bodyStart = match.index + match[0].length
+    let text = null
+    let close = -1
+    if (quote.length === 3) {
+      close = source.indexOf(quote, bodyStart)
+      if (close >= 0) text = source.slice(bodyStart, close)
+    } else {
+      const raw = /[rR]/.test(prefix)
+      let out = ''
+      for (let i = bodyStart; i < source.length; i += 1) {
+        const ch = source[i]
+        if (ch === '\n') break
+        if (ch === '\\' && !raw && i + 1 < source.length) {
+          out += STRING_ESCAPES[source[i + 1]] ?? `\\${source[i + 1]}`
+          i += 1
+          continue
+        }
+        if (ch === quote) {
+          close = i
+          text = out
+          break
+        }
+        out += ch
+      }
+    }
+    if (text === null) continue
+    const end = close + quote.length
+    if (!/^\s*\)/.test(source.slice(end))) continue
+    return { text, start, end }
+  }
+  return null
+}
+
+/** The map the student's code sets with course_map(), tidied, when it's usable; else null. */
+export function readStudentMapFromCode(code, vehicle = DEFAULT_COURSE_VEHICLE) {
+  const call = findStudentMapCall(code)
+  if (!call || studentMapProblems(call.text, vehicle).length) return null
+  return normalizeStudentMapText(call.text)
+}
+
+/**
+ * `code` with its course_map() map replaced by `mapText` (as a triple-quoted string), or, when
+ * the code has no such call, a call added straight after `import turtle` (or at the top, with
+ * the import, when there is none).
+ */
+export function writeStudentMapToCode(code, mapText) {
+  const source = String(code ?? '')
+  const literal = `"""\n${mapText}\n"""`
+  const call = findStudentMapCall(source)
+  if (call) return source.slice(0, call.start) + literal + source.slice(call.end)
+  const lines = source.split('\n')
+  const importAt = lines.findIndex((line) => /^import\s+turtle(\s+as\s+\w+)?\s*(#.*)?$/.test(line))
+  if (importAt >= 0) {
+    const alias = lines[importAt].match(/^import\s+turtle\s+as\s+(\w+)/)?.[1] ?? 'turtle'
+    lines.splice(importAt + 1, 0, `${alias}.course_map(${literal})`)
+    return lines.join('\n')
+  }
+  return `import turtle\nturtle.course_map(${literal})\n${source}`
+}
+
+/**
+ * The maps a course picture shows: { maps, studentMap }, where `studentMap` says the student's
+ * own map is shown.
+ * - A run that used the student's map (a run map's `studentMap` text): that map.
+ * - No run result with a course part yet (or a slow-mo step or scrub preview, which have none):
+ *   on a studentMap course, the usable map in the student's code (`previewMap`), if any.
+ * - Otherwise the task's maps.
+ */
+export function courseMapsShown(course, courseResult = null, previewMap = null) {
+  if (!course) return { maps: [], studentMap: false }
+  const runMaps = Array.isArray(courseResult?.maps) ? courseResult.maps : null
+  if (runMaps && runMaps.length) {
+    const own = runMaps.map((map) =>
+      typeof map?.studentMap === 'string' && map.studentMap ? map.studentMap : null
+    )
+    if (!own.some(Boolean)) return { maps: course.maps, studentMap: false }
+    return {
+      maps: runMaps.map((_, i) => own[i] ?? course.maps[i] ?? course.maps[0]),
+      studentMap: true,
+    }
+  }
+  if (course.studentMap && typeof previewMap === 'string' && previewMap) {
+    return { maps: [previewMap], studentMap: true }
+  }
+  return { maps: course.maps, studentMap: false }
 }
 
 // ── Track maps ─────────────────────────────────────────────────────────────────
@@ -520,6 +725,32 @@ export function describeCourse(world, pose, { collected = 0, mapLabel = '', outc
 
 // ── Validation (the Builder and the CLI; see ./definition.js) ─────────────────
 
+// A starter's course_map() map row that starts with `#>` reads as a line hint marker
+// (src/shared/lineHints.js), which is taken out of the code before students see it.
+function studentMapHintClashes(task, n) {
+  const sources = [
+    ['starter code', task?.starterCode],
+    ...(Array.isArray(task?.codeStages) ? task.codeStages : []).map((stage, index) => [
+      `code stage ${index + 1}`,
+      stage?.code,
+    ]),
+  ]
+  const warnings = []
+  const seen = new Set()
+  for (const [label, code] of sources) {
+    if (typeof code !== 'string' || seen.has(code)) continue
+    seen.add(code)
+    const call = findStudentMapCall(code)
+    if (!call) continue
+    if (call.text.split('\n').some((line) => line.trim().startsWith('#>'))) {
+      warnings.push(
+        `Task ${n} ${label}: a course_map() map row starts with #>, which is read as a line hint and taken out of the code; face that start with ^ or v, or move it one square in`
+      )
+    }
+  }
+  return warnings
+}
+
 /** Adds errors / warnings for a task's `course` field. */
 export function validateTurtleCourse(task, n, errors, warnings = []) {
   const course = task?.course
@@ -534,6 +765,17 @@ export function validateTurtleCourse(task, n, errors, warnings = []) {
   }
   if (course.vehicle !== undefined && !COURSE_VEHICLES.includes(course.vehicle)) {
     errors.push(`Task ${n} course.vehicle must be one of: ${COURSE_VEHICLES.join(', ')}`)
+  }
+  if (course.studentMap !== undefined && course.studentMap !== null) {
+    if (typeof course.studentMap !== 'boolean') {
+      errors.push(`Task ${n} course.studentMap must be true or false`)
+    } else if (course.studentMap && course.type !== 'grid') {
+      errors.push(
+        `Task ${n} course.studentMap only works on grid courses: students can't make their own track yet`
+      )
+    } else if (course.studentMap) {
+      warnings.push(...studentMapHintClashes(task, n))
+    }
   }
   if (course.map !== undefined && course.maps !== undefined) {
     errors.push(`Task ${n} course has both map and maps; use one`)

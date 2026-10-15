@@ -87,6 +87,32 @@ Entries written before 2026-09-29 are not tagged.
   authoring-requests/2026-10-15-p6-13-stage-grid-flat-pixel-list-with-a-width.md,
   authoring-requests/2026-10-15-p6-14-name-tag-panel-palette-numbers-as-a-number-table.md
 
+### Turtle course mode: students make their own maze (`course.studentMap`, `turtle.course_map`)
+
+- **New optional field `course.studentMap: true`** (grid courses only) lets the student's code
+  set its own map with **`turtle.course_map("""…""")`**, before the vehicle's first move. Same
+  legend and limits as an authored grid map (one start, at least one goal, at most 30 × 30);
+  blank lines at the ends and shared indentation are fine. The authored `map` is still required:
+  it shows until the student sets one.
+- Mistakes stop the run with plain messages ("Your map needs a G for the goal.", "Your map has
+  two starts (>): keep just one.", "Call course_map() before the rover moves: …"). On a task
+  without `studentMap`, `course_map()` says the map is set for you.
+- The student's map shows as soon as it's in the code (before a Run and in slow-mo), and after a
+  Run the picture, the course checks (`course_goal_reached`, `course_no_crash`,
+  `course_pickups`, `course_max_moves`), the tutor views, Go Live and screen-reader words all use
+  the map the run drove. With `maps`, code that sets its own map runs once, on that map.
+- **Map editor:** a 🧱 **Map editor** button beside Run on `studentMap` tasks opens a
+  tap-to-paint grid (Wall, Road, Goal, Star, Start; 44 px squares; 3 to 30 rows and columns)
+  that writes the `turtle.course_map("""…""")` call into the student's code.
+- Validation: `studentMap` must be `true` or `false` and errors on a track; a warning flags a
+  starter map row starting with `#>`, which the line-hint marker would remove (face that start
+  `^` or `v`, or move it in). Add a `code` check for `course_map(` if students must make their
+  own. See [turtle.md](turtle.md#students-make-their-own-map-studentmap) and
+  [validation-errors.md](validation-errors.md).
+- Affects: turtle (course mode; new field `course.studentMap`, new `turtle.course_map()`) ·
+  Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-15-p6-16-turtle-course-student-made-maps.md
+
 ### Python and Turtle screen space: one tabbed result pane on smaller screens (`layout.firstPane`)
 
 - **Tablets, 1366 × 768 Chromebooks and small laptops** now show the editor on the left and one

@@ -648,8 +648,10 @@ globalThis.__hsStageHue = (argsJson) => {
 globalThis.__hsTurtleForward = (distance, part) => _turtle.forward(distance, !!part)
 // `instant`: circle()'s own small turns, which real turtle makes with no delay.
 globalThis.__hsTurtleTurn = (degrees, instant) => _turtle.turn(degrees, !!instant)
-// Course mode: 'setup' with the map spec as JSON (line 2 of the program), else a sensor name.
+// Course mode: 'setup' with the map spec as JSON (line 2 of the program), 'map' with the
+// student's own map text (turtle.course_map), else a sensor name.
 globalThis.__hsTurtleCourse = (op, arg) => {
+  if (String(op) === 'map') return _turtle.setStudentMap(arg == null ? null : String(arg))
   if (String(op) !== 'setup') return _turtle.sense(String(op))
   try {
     return _turtle.setCourse(JSON.parse(String(arg)))

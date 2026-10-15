@@ -1,6 +1,6 @@
 # Turtle course mode: students make their own maze
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** activity mode
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, bypassing pipeline-ui, as with builds 1–12), 2026-10-15
 - **Lessons blocked:** none yet. Wave 1c of Lesson Gen's LG-P6 Visual learning plan, from Ryan's click-through of the sandbox (`ocgq3appv6`). Build on top of `integrate/requests-2026-10-14`.
@@ -67,4 +67,13 @@ After the sandbox, Ryan said students need to build their own things, not only h
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped 2026-10-15 on branch `feature/course-student-maps`, for merging into `integrate/requests-2026-10-14`. It is not on `main` yet: that waits for Ryan's browser pass.
+
+It shipped as part of the `turtle` module's course mode:
+  - a new course field, `studentMap: true` (grid courses only; it errors on a track). The authored `map` is still required and shows until the student sets one;
+  - `turtle.course_map(text)`, allowed only on a `studentMap` task and before the first move or turn. It uses the same legend and limits as authored grid maps, and mistakes get plain messages ("Your map needs a G for the goal.", "Your map has two starts (>): keep just one.");
+  - the student's map shows as soon as it's in the code, and the course checks, tutor views, Go Live, slow-mo and screen-reader words use the map the run drove;
+  - with `maps`, code that sets its own map runs once, on that map; code that doesn't drives every authored map;
+  - the tap-to-paint **Map editor** (Wall, Road, Goal, Star and Start tools, 44 px squares, 3 to 30 rows and columns), which writes `turtle.course_map("""…""")` into the student's code.
+
+  Validation also warns when a starter map row starts with `#>`, because the line-hint marker would take it out of the code. Docs: [turtle.md](../turtle.md) "Students make their own map (`studentMap`)".

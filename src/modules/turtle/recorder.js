@@ -25,6 +25,10 @@
  * from then on moves and turns go through the course drive (walls, pickups, crashes). Course-aware
  * methods return the drive's bridge answer ('' or 'error|…' / 'stop|…'); without a course they
  * return nothing, as before. `course` is the map's outcome for the run result.
+ *
+ * Student-made maps (P6-16): on a course spec with `studentMap: true`, setStudentMap(text)
+ * (turtle.course_map) swaps in the student's own grid map before the first move: the vehicle
+ * jumps to its start and the outcome carries the map text (`course.studentMap`).
  */
 import {
   createTurtleState,
@@ -36,7 +40,13 @@ import {
   applyTurtleSetBackground,
   applyTurtleSetVisible,
 } from './engine.js'
-import { buildCourseWorld, COURSE_TRAIL_COLOR } from './course.js'
+import {
+  buildCourseWorld,
+  normalizeStudentMapText,
+  studentMapProblems,
+  vehicleName,
+  COURSE_TRAIL_COLOR,
+} from './course.js'
 import { createCourseDrive } from './courseDrive.js'
 
 /** Real turtle's dot() size when none is given: max(pensize + 4, 2 * pensize). */
@@ -60,6 +70,8 @@ export function createTurtleRecorder() {
   let fill = null
   // Course mode's drive (./courseDrive.js), or null.
   let drive = null
+  // The course spec setCourse() was given (for turtle.course_map), or null.
+  let courseSpec = null
   const host = {
     get state() {
       return state
@@ -75,6 +87,47 @@ export function createTurtleRecorder() {
 
   function call(name, args = []) {
     calls.push({ name, args })
+  }
+
+  // Puts the vehicle at the start of `world` (a hidden, instant jump there) and starts the
+  // drive. `studentMap`: the student's own map text (turtle.course_map), which replaces the
+  // task's; the pen settings the code chose before it are kept.
+  function startCourse(world, spec, studentMap = null) {
+    const { x, y, heading } = world.start
+    const autoPensize = world.type === 'grid' ? Math.max(2, world.cell * 0.08) : 3
+    const fresh = {
+      ...createTurtleState(),
+      color: COURSE_TRAIL_COLOR,
+      pensize: autoPensize,
+    }
+    const kept = studentMap
+      ? {
+          penDown: state.penDown,
+          color: state.color,
+          fillColor: state.fillColor,
+          background: state.background,
+          visible: state.visible,
+          speed: state.speed,
+          pensize: calls.some((c) => c.name === 'pensize') ? state.pensize : autoPensize,
+        }
+      : {}
+    state = { ...fresh, ...kept, x, y, heading }
+    commands = [
+      { type: 'visible', visible: false },
+      { type: 'move', x1: 0, y1: 0, x2: x, y2: y, heading },
+      { type: 'visible', visible: true },
+    ]
+    if (studentMap && state.speed !== undefined && state.speed !== null) {
+      commands.push({ type: 'speed', speed: state.speed })
+    }
+    if (studentMap && !state.visible) commands.push({ type: 'visible', visible: false })
+    fill = null
+    drive = createCourseDrive(world, host, {
+      index: spec.index ?? 0,
+      count: spec.count ?? 1,
+      taskId: spec.taskId ?? null,
+      studentMap,
+    })
   }
 
   // A move to (x, y) at the current heading: a line when the pen is down, else a `move`.
@@ -128,26 +181,33 @@ export function createTurtleRecorder() {
     setCourse(spec = {}) {
       const world = buildCourseWorld(spec.type, spec.map, spec.vehicle)
       if (world.error) return `error|This task's course map can't be used: ${world.error}.`
-      const { x, y, heading } = world.start
-      state = {
-        ...createTurtleState(),
-        x,
-        y,
-        heading,
-        color: COURSE_TRAIL_COLOR,
-        pensize: world.type === 'grid' ? Math.max(2, world.cell * 0.08) : 3,
+      courseSpec = spec
+      startCourse(world, spec)
+      return ''
+    },
+    /**
+     * turtle.course_map(text): the student's own map replaces the task's for this run (only on
+     * a course with `studentMap: true`, and only before the vehicle's first move). Returns '' or
+     * 'error|<plain message>'.
+     */
+    setStudentMap(text) {
+      if (!drive || !courseSpec) {
+        return 'error|course_map() only works on a course task that lets you make your own map.'
       }
-      commands = [
-        { type: 'visible', visible: false },
-        { type: 'move', x1: 0, y1: 0, x2: x, y2: y, heading },
-        { type: 'visible', visible: true },
-      ]
-      fill = null
-      drive = createCourseDrive(world, host, {
-        index: spec.index ?? 0,
-        count: spec.count ?? 1,
-        taskId: spec.taskId ?? null,
-      })
+      if (!courseSpec.studentMap) {
+        return "error|This task's map is set for you, so course_map() can't change it."
+      }
+      if (courseSpec.type !== 'grid') return 'error|course_map() only works on grid courses.'
+      const name = vehicleName(courseSpec.vehicle)
+      if (drive.moves > 0) {
+        return `error|Call course_map() before the ${name} moves: put it near the top, straight after import turtle.`
+      }
+      const problems = studentMapProblems(text, courseSpec.vehicle)
+      if (problems.length) return `error|${problems[0]}.`
+      const tidy = normalizeStudentMapText(text)
+      const world = buildCourseWorld('grid', tidy, courseSpec.vehicle)
+      if (world.error) return `error|Your map can't be used: ${world.error}.`
+      startCourse(world, courseSpec, tidy)
       return ''
     },
     /** A course sensor (wall_ahead, at_goal, collected, …): its answer as text. */
