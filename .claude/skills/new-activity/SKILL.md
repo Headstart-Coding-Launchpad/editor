@@ -26,7 +26,11 @@ Key references:
 3. Run `node cli/cli.mjs lessons capabilities` and confirm the gap is real: not a new mode of an
    existing activity, a quiz sub-type, or a check type. A new *mode* goes into the existing
    activity folder, not the scaffold.
-4. Ask the user about anything that changes scope (modes, grading rules, device policy) before
+4. Apply the **tutor visibility** principle (`docs/agents/project-rules.md` → Product
+   Principles): the tutor sees the student's work live, before Check, on the card and in
+   StudentModal, and has an action to help (highlight, edit answers, hint). Plan for this up
+   front, not as a follow-up.
+5. Ask the user about anything that changes scope (modes, grading rules, device policy) before
    writing code. Create a `feature/<id>-activity` branch; set the request's status to `planned`.
 
 ## 2. Scaffold

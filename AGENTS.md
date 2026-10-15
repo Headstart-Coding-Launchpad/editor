@@ -26,6 +26,10 @@ Headstart Coding is a browser-based classroom coding platform for live sessions 
 
 No backend server exists or should be added. Firebase provides auth, Firestore, Realtime Database, Storage, and Cloud Functions where already established.
 
+## Core Product Principle: Tutor Visibility
+
+**Tutors (teachers in the code) can see what every student is doing at all times, whether it's submitted or not, and can do something to help.** This is a key principle for how the product is designed. Any feature that takes student input, shows student progress or gives students a new place to work must answer three questions: can the tutor see it live, can they see it before it's submitted, and what can they do about it (nudge, highlight, hint, edit, award)? A feature that hides student work or struggle from the tutor is incomplete. This principle works within the `activeStudentView` write rule, not against it. See `docs/agents/project-rules.md` → Product Principles.
+
 ## Absolute Constraints
 
 - Do not add a backend server or API.
@@ -53,7 +57,7 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | Feature impact analysis / change coupling | `docs/architecture/feature-impact-map.md` |
 | Design intent and architecture decisions | `docs/architecture/` and `docs/adr/` |
 | Product capabilities | `docs/FEATURES.md` |
-| Project rules, stack, shared modules, CLI tool, admin | `docs/agents/project-rules.md` |
+| Product principles (tutor visibility), project rules, stack, shared modules, CLI tool, admin | `docs/agents/project-rules.md` |
 | Firebase, localStorage, URLs, session states, identity | `docs/agents/runtime-model.md` |
 | Classroom live-view, sandbox, Pyodide, carry-through behaviours | `docs/agents/classroom-behaviours.md` |
 | Animations, transitions, UI sounds (motion system) | `docs/architecture/motion-system.md` |

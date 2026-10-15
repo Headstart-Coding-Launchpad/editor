@@ -2,6 +2,34 @@
 
 Load this when a task touches architecture, shared modules, admin, CLI, dependencies, or platform-wide constraints.
 
+## Product Principles
+
+### Tutor visibility: tutors see everything and can always help
+
+Set by Ryan on 2026-10-09 as a key principle for how the product is designed:
+
+> **Tutors see what every student is doing at all times, whether it's submitted or not, and can do something to help.**
+
+Lessons are live and taught in small groups. The tutor's job is to spot a student who is stuck or going the wrong way *before* they give up or submit, then step in. Any part of the platform the tutor can't see becomes a blind spot where a student struggles alone. ("Tutor" is the product word. The code says "teacher".)
+
+**What it means for design.** For every feature that takes student input, shows student progress or gives students a new place to work, answer these questions before building it:
+
+1. **Can the tutor see it live?** It appears on the student card or in StudentModal, not only after submission or in the session report.
+2. **Can they see work before it's submitted?** Drafts, half-arranged tiles, unrun code and partial answers all count. A state kept only in the student's browser is a gap.
+3. **Can they see the context?** Which task it belongs to, what the student is looking at, whether they've stalled.
+4. **What can the tutor do about it?** There must be at least one action: nudge, highlight, pin a hint, edit the work, force a tab, send code, or award a badge.
+5. **Is it in the record?** The session report should show what the tutor saw (for example `lastDraft` for a student who never submitted).
+
+A feature that answers "no" to 1, 2 or 4 is incomplete. Ship it only with the gap written down and agreed with the user.
+
+**How it fits the other rules.**
+
+- The `activeStudentView` write rule still applies (see [classroom-behaviours.md](classroom-behaviours.md)). Per-keystroke data goes to Firebase only while the tutor is viewing that student. Otherwise sync it with a debounce, on a meaningful step (run, check, tile drop), or as a small summary, and don't leave it in the browser.
+- What the tutor sees is see-only unless the feature gives them an explicit action. Seeing a draft never marks it, scores it or turns it into a badge signal.
+- Students stay login-less. Visibility uses the existing anonymous-ID session paths, never new student auth.
+
+**Examples already built:** live short-answer and gap drafts ("✏️ Typing, not submitted"), tutor highlights on arrange and drag-and-drop tiles, badge suggestions that always name their task, the stale-pane badge, the teacher pane highlight/force commands, the tutor hint chip and the "student sees" banner. The six requests filed on 2026-10-09 in `docs/authoring/authoring-requests/` closed the gaps found when the principle was set.
+
 ## Tech Stack
 
 | Concern | Solution |

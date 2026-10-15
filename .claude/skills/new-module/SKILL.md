@@ -28,7 +28,11 @@ Key references:
    All "no" → stop: it is an activity (new-activity skill).
 3. Run `node cli/cli.mjs lessons capabilities` and confirm the gap is real: not a new check type
    or a mode/option on an existing module (those go into that module's folder).
-4. Ask the user about anything that changes scope before writing code: what the student builds,
+4. Apply the **tutor visibility** principle (`docs/agents/project-rules.md` → Product
+   Principles): the tutor sees the student's workspace live, before Run or submit, through
+   `TeacherLiveView` and StudentModal, and can act on it (live edit, highlight, send code, hint).
+   Plan for this up front, not as a follow-up.
+5. Ask the user about anything that changes scope before writing code: what the student builds,
    how it is checked (on change, on run, by the workspace), whether it runs code (a runtime),
    teacher live edit, playground, device needs. Create a `feature/<type>-module` branch; set the
    request's status to `planned`.

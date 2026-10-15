@@ -153,9 +153,9 @@ Decision that built-in live badges are a code registry of `defineBadge` definiti
 These are dense technical references for AI agents and developers. Each covers a specific domain of platform knowledge that is not easily derived from the code alone.
 
 ### [agents/project-rules.md](agents/project-rules.md)
-Tech stack, architecture constraints, repository shape, shared modules that must not be duplicated, admin portal tabs, and CLI tool overview. The primary source of platform rules.
+Product principles (tutor visibility: tutors see all student work, submitted or not, and can act on it), tech stack, architecture constraints, repository shape, shared modules that must not be duplicated, admin portal tabs, and CLI tool overview. The primary source of platform rules.
 
-**Load when:** touching architecture, shared modules, the admin portal, the CLI, or anything where you need to understand platform-wide constraints.
+**Load when:** designing any feature that takes student input or shows student progress, touching architecture, shared modules, the admin portal, the CLI, or anything where you need to understand platform-wide constraints.
 
 ### [agents/runtime-model.md](agents/runtime-model.md)
 Firebase data model (Firestore collections, Realtime Database paths), localStorage key formats, URL structure, session state machine, and student identity model. Explains how data flows through the live app.
