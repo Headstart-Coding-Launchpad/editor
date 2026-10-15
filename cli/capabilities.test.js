@@ -20,6 +20,11 @@ describe('lessons capabilities', () => {
     const python = capabilities.modules.find((m) => m.type === 'python')
     expect(python.checkTypes).not.toContain('fs_path')
     expect(python.checkTypes).toContain('code_structure')
+    // The Python Stage's checks belong to python only.
+    expect(python.checkTypes).toContain('stage_matches_target')
+    expect(capabilities.modules.find((m) => m.type === 'turtle').checkTypes).not.toContain(
+      'stage_pixel'
+    )
     const html = capabilities.modules.find((m) => m.type === 'html')
     expect(html.checkTypes).not.toContain('code_structure')
   })
@@ -44,7 +49,7 @@ describe('lessons capabilities', () => {
     expect(capabilities.activities.find((a) => a.id === 'code_arrange')).toMatchObject({
       yamlType: 'code_arrange',
       taskShape: { taskType: 'code_arrange' },
-      hostModules: ['python', 'html'],
+      hostModules: ['python', 'html', 'turtle'],
     })
     expect(capabilities.requestsHowTo).toMatch(/authoring-requests/)
   })
@@ -52,7 +57,15 @@ describe('lessons capabilities', () => {
   it('lists activity modes, fields per mode and authored-content paths', () => {
     const keyboard = capabilities.activities.find((a) => a.id === 'keyboard')
     expect(keyboard.modeField).toBe('mode')
-    expect(keyboard.modes).toEqual(['type_text', 'find_key', 'symbols', 'shortcuts', 'edit_text'])
+    expect(keyboard.modes).toEqual([
+      'type_text',
+      'find_key',
+      'symbols',
+      'shortcuts',
+      'edit_text',
+      'type_code',
+      'falling_words',
+    ])
     expect(keyboard.fields.find((f) => f.name === 'mode')).toMatchObject({ required: true })
     const findKeyItems = keyboard.fieldsByMode.find_key.find((f) => f.name === 'items')
     expect(findKeyItems.itemFields.map((f) => f.name)).toEqual(

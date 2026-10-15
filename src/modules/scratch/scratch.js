@@ -1930,9 +1930,29 @@ async function runChain(block, context) {
   }
 }
 
+// Whether a run context may keep going (see isActive): for hooks outside the interpreter, such
+// as the slow-mo gate (./slowMo/gate.js), which drops waiters whose script has stopped.
+export function isRunContextActive(context) {
+  return !!context && isActive(context)
+}
+
+// Every block, substacks included, passes through here. Slow-mo (./slowMo/) hangs off two
+// optional signal hooks: `onBlockStart(block, context)` is awaited before the block runs (the
+// gate holds it there until its turn), and `onBlockEnd(block, context)` after it finishes (the
+// stage redraw and the timeline snapshot). Without them a run behaves exactly as before.
 async function runBlock(block, context) {
-  const { state, onUpdate, signal, workspace } = context
+  const { signal } = context
   if (!isActive(context)) return
+  if (signal.onBlockStart) {
+    await signal.onBlockStart(block, context)
+    if (!isActive(context)) return
+  }
+  await runBlockBody(block, context)
+  if (signal.onBlockEnd && isActive(context)) await signal.onBlockEnd(block, context)
+}
+
+async function runBlockBody(block, context) {
+  const { state, onUpdate, signal, workspace } = context
   signal.executedBlocks ??= new Set()
   signal.executedBlocks.add(block.type)
 

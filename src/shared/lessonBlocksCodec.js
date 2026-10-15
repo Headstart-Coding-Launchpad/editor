@@ -6,7 +6,8 @@
 //
 // Firestore also rejects arrays nested directly inside arrays. Arcade Kit pixel
 // sprites store frames as an array of flat pixel arrays, so authored sprite art
-// must be flattened at the Firestore boundary too.
+// must be flattened at the Firestore boundary too. Turtle course mode's `course` holds track
+// maps whose walls and pickups are lists of coordinate lists, so it is stored as text as well.
 //
 // To avoid the cap, block trees (starterBlocks, completeBlocks, codeStages[].blocks, and
 // each prebuiltStacks[].stack on a task or code stage) are stored as JSON strings in Firestore and
@@ -24,6 +25,8 @@ import { sealLesson, unsealLesson } from './lessonSeal.js'
 
 const BLOCK_TREE_FIELDS = ['starterBlocks', 'completeBlocks']
 const ARCADE_DESIGN_FIELDS = ['arcadeDesign', 'completeArcadeDesign']
+// Turtle course mode: `course.map(s)` track walls `[[x1, y1, x2, y2], …]` and pickups `[[x, y], …]`.
+const COURSE_FIELDS = ['course']
 
 // Scratch toolbox snippets: `prebuiltStacks: [{ id, stack }]` on a task and on each code
 // stage. A stack is a root block whose `next.block` chain nests two levels per block, so a
@@ -49,6 +52,9 @@ function mapTasks(tasks, transformJsonField) {
       if (next[field] != null) next[field] = transformJsonField(next[field])
     }
     for (const field of ARCADE_DESIGN_FIELDS) {
+      if (next[field] != null) next[field] = transformJsonField(next[field])
+    }
+    for (const field of COURSE_FIELDS) {
       if (next[field] != null) next[field] = transformJsonField(next[field])
     }
     if (Array.isArray(next.prebuiltStacks))

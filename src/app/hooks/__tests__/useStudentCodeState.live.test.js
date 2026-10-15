@@ -284,6 +284,9 @@ const basePayload = {
   taskId: 't1',
   arcadeDesign: null,
   turtleResult: null,
+  inspector: null,
+  variablesPanel: null,
+  stage: null,
   files: {},
   activeFile: '',
   output: '',
@@ -320,6 +323,9 @@ describe('teacherLive payload (this student is the Go Live source)', () => {
       'code',
       'arcadeDesign',
       'turtleResult',
+      'inspector',
+      'variablesPanel',
+      'stage',
       'files',
       'activeFile',
       'output',
@@ -388,6 +394,8 @@ describe('teacherLive payload (this student is the Go Live source)', () => {
       turtleResult: {
         state: { x: 1.2, y: 2, heading: 90 },
         commands: [{ type: 'line', x1: 0, y1: 0, x2: 10.1, y2: 0 }],
+        // Go Live screens play the presenter's drawing when a new runId arrives.
+        runId: expect.any(String),
       },
     })
   })

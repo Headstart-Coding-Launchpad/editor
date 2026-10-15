@@ -2,6 +2,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Signed-in tutors (role 'teacher') and admins.
+    function isStaff() {
+      return request.auth != null
+             && (request.auth.token.role == 'teacher'
+                 || request.auth.token.role == 'admin');
+    }
+
     // Lessons: public read so unauthenticated students can fetch lesson content.
     // Admin writes are allowed for the Builder/Admin Portal and shared CLI tooling.
     match /lessons/{lessonId} {
@@ -32,6 +39,33 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.auth != null
                    && request.auth.token.role == 'admin';
+
+      // Class roster (approved by Ryan 2026-10-14): first name and initial only
+      // ({ displayName 1-30 chars, createdAt, createdBy }). NOT public: tutors and admins
+      // only. Admins manage it in Admin → Classes; tutors add "New student" in a session.
+      // Students never read or write it: the tutor's signed-in client saves a matched
+      // student's work (`work`, chunked into `work/{id}/chunks` when large) and typing
+      // results (`typing`).
+      match /roster/{rosterId} {
+        allow read, delete: if isStaff();
+        allow create, update: if isStaff()
+                              && request.resource.data.keys().hasOnly(['displayName', 'createdAt', 'createdBy'])
+                              && request.resource.data.displayName is string
+                              && request.resource.data.displayName.size() >= 1
+                              && request.resource.data.displayName.size() <= 30;
+
+        match /work/{workId} {
+          allow read, write: if isStaff();
+
+          match /chunks/{chunkId} {
+            allow read, write: if isStaff();
+          }
+        }
+
+        match /typing/{entryId} {
+          allow read, write: if isStaff();
+        }
+      }
     }
 
     // Users: mirrors the Firebase Auth user list.
@@ -94,6 +128,48 @@ service cloud.firestore {
       allow write: if request.auth != null
                    && (request.auth.token.role == 'teacher'
                        || request.auth.token.role == 'admin');
+    }
+
+    // Share links from "Export work" (StudentModal): a frozen, name-hidden snapshot of one
+    // task's work, shown read-only at /share/{shareId}. Anyone may get a link that is not
+    // revoked and not past expiresAt (30 days); teachers and admins also read their own and
+    // admins list them all (Admin > Shared Work). Teachers and admins create (as themselves,
+    // revoked false, expiry at most 30 days on) and revoke; nothing else changes after.
+    match /sharedWork/{shareId} {
+      function isStaff() {
+        return request.auth != null
+          && (request.auth.token.role == 'teacher' || request.auth.token.role == 'admin');
+      }
+      allow get: if (resource.data.revoked == false
+                     && resource.data.expiresAt > request.time)
+                 || (isStaff() && resource.data.createdBy == request.auth.uid)
+                 || (request.auth != null && request.auth.token.role == 'admin');
+      allow list: if request.auth != null && request.auth.token.role == 'admin';
+      allow create: if isStaff()
+                    && request.resource.data.keys().hasOnly(
+                         ['createdAt', 'createdBy', 'expiresAt', 'revoked', 'kind', 'title', 'payload'])
+                    && request.resource.data.keys().hasAll(
+                         ['createdAt', 'createdBy', 'expiresAt', 'revoked', 'kind', 'title', 'payload'])
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.revoked == false
+                    && request.resource.data.expiresAt is timestamp
+                    && request.resource.data.expiresAt > request.time
+                    && request.resource.data.expiresAt
+                         <= request.time + duration.value(30 * 24 * 60 + 10, 'm')
+                    && request.resource.data.kind is string
+                    && request.resource.data.kind.size() > 0
+                    && request.resource.data.kind.size() <= 40
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() <= 200
+                    && request.resource.data.payload is string
+                    && request.resource.data.payload.size() <= 950000;
+      allow update: if isStaff()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['revoked', 'revokedAt'])
+                    && request.resource.data.revoked == true
+                    && request.resource.data.revokedAt == request.time;
+      allow delete: if request.auth != null && request.auth.token.role == 'admin';
     }
   }
 }

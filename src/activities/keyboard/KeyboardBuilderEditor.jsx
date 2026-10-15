@@ -1,7 +1,13 @@
-import React from 'react'
-import definition, { KEYBOARD_MODE_LABELS } from './definition.js'
+import { useState } from 'react'
+import definition, { HISTORY_MODES, KEYBOARD_MODE_LABELS } from './definition.js'
 import { KEYBOARD_MODES, NAMED_KEYS } from './keyboard.js'
 import { EDIT_REQUIRE_KEYS } from './editText.js'
+import { DEFAULT_TYPE_CODE_ACCURACY, TYPE_CODE_LANGUAGES, tabWidthFor } from './typeCode.js'
+import {
+  DEFAULT_FALLING_SECONDS,
+  MAX_FALLING_SECONDS,
+  MIN_FALLING_SECONDS,
+} from './fallingWords.js'
 import { DEFAULT_LAYOUT } from '../../shared/input/index.js'
 import {
   Field,
@@ -19,6 +25,9 @@ import {
 
 const TYPE_TEXT_OPTIONS = ['requireShiftForCapitals', 'minAccuracy', 'targetWpm']
 const EDIT_TEXT_OPTIONS = ['minKept', 'showTarget']
+const TYPE_CODE_OPTIONS = ['language', 'targetCpm']
+const FALLING_OPTIONS = ['durationSeconds', 'words']
+const DEFAULT_FALLING_WORDS = ['print(', '</p>', 'for i in', 'if x ==', '<h1>', 'input(']
 const REQUIRE_KEY_LABELS = { select: 'Shift selection' }
 
 export function defaultKeyboardItem(mode, id) {
@@ -31,6 +40,8 @@ export function defaultKeyboardItem(mode, id) {
       return { id, combo: 'Ctrl+C', prompt: 'Select a word and copy it' }
     case 'edit_text':
       return { id, start: 'the cat sat on teh mat', target: 'The cat sat on the mat.' }
+    case 'type_code':
+      return { id, code: 'for i in range(3):\n    print("Hi")' }
     default:
       return { id, text: 'Hello World' }
   }
@@ -39,8 +50,23 @@ export function defaultKeyboardItem(mode, id) {
 // Switching mode keeps item ids and hardwareOnly flags; mode-specific fields start again.
 export function changeKeyboardMode(task, mode) {
   const next = { ...task, mode }
-  if (mode !== 'type_text') for (const field of TYPE_TEXT_OPTIONS) delete next[field]
+  // minAccuracy is shared by type_text and type_code.
+  const keep = new Set(mode === 'type_code' ? ['minAccuracy'] : [])
+  if (mode !== 'type_text') {
+    for (const field of TYPE_TEXT_OPTIONS) if (!keep.has(field)) delete next[field]
+  }
   if (mode !== 'edit_text') for (const field of EDIT_TEXT_OPTIONS) delete next[field]
+  if (mode !== 'type_code') for (const field of TYPE_CODE_OPTIONS) delete next[field]
+  if (mode !== 'falling_words') for (const field of FALLING_OPTIONS) delete next[field]
+  if (!HISTORY_MODES.includes(mode)) delete next.showHistory
+  if (mode === 'falling_words') {
+    // A round has no items: just the words and how long it lasts.
+    delete next.items
+    next.words = [...DEFAULT_FALLING_WORDS]
+    next.durationSeconds = DEFAULT_FALLING_SECONDS
+    return next
+  }
+  if (mode === 'type_code') next.language = 'python'
   const items = (task.items ?? []).filter((item) => item?.id != null && item.id !== '')
   next.items = (items.length ? items : [{ id: 'a' }]).map((item) => ({
     ...defaultKeyboardItem(mode, item.id),
@@ -62,7 +88,7 @@ function TextInput({ value, onChange, ariaLabel, placeholder, code = false, list
   )
 }
 
-function ItemFields({ mode, item, update, index }) {
+function ItemFields({ mode, item, update, index, language }) {
   const n = index + 1
   const setOptional = (field, value) => update({ [field]: value === '' ? undefined : value })
   const prompt = (
@@ -160,6 +186,33 @@ function ItemFields({ mode, item, update, index }) {
       </>
     )
   }
+  if (mode === 'type_code') {
+    return (
+      <>
+        <InlineField label="Code to type" wide>
+          <textarea
+            className="te-input te-act-code"
+            rows={Math.min(12, Math.max(3, String(item.code ?? '').split('\n').length + 1))}
+            value={item.code ?? ''}
+            aria-label={`Item ${n} code`}
+            spellCheck={false}
+            onChange={(e) => update({ code: e.target.value })}
+            onKeyDown={(e) => {
+              // Tab indents inside the code box rather than leaving it.
+              if (e.key !== 'Tab' || e.shiftKey) return
+              e.preventDefault()
+              const el = e.currentTarget
+              const at = el.selectionStart ?? el.value.length
+              const indent = ' '.repeat(tabWidthFor(language))
+              const value = `${el.value.slice(0, at)}${indent}${el.value.slice(el.selectionEnd ?? at)}`
+              update({ code: value })
+            }}
+          />
+        </InlineField>
+        {prompt}
+      </>
+    )
+  }
   if (mode === 'shortcuts') {
     return (
       <>
@@ -196,6 +249,25 @@ function ItemFields({ mode, item, update, index }) {
       </InlineField>
       {hardwareOnly}
     </>
+  )
+}
+
+// One word or token per line (tokens may contain spaces). The text is kept as typed so a new
+// empty line can be started; the task gets the non-empty lines.
+function WordsField({ words, onChange }) {
+  const [text, setText] = useState(() => (words ?? []).join('\n'))
+  return (
+    <textarea
+      className="te-input te-act-code"
+      rows={Math.min(14, Math.max(4, (words ?? []).length + 1))}
+      value={text}
+      aria-label="Falling words"
+      spellCheck={false}
+      onChange={(e) => {
+        setText(e.target.value)
+        onChange(e.target.value.split('\n').filter((line) => line.trim() !== ''))
+      }}
+    />
   )
 }
 
@@ -310,23 +382,122 @@ export default function KeyboardBuilderEditor({ task, onUpdate }) {
         </Field>
       )}
 
+      {mode === 'type_code' && (
+        <Field label="Code typing options">
+          <div className="te-act-inline-row">
+            <InlineField label="Language">
+              <select
+                className="te-select"
+                value={task.language ?? 'python'}
+                aria-label="Code language"
+                onChange={(e) => setOptional('language', e.target.value)}
+              >
+                {TYPE_CODE_LANGUAGES.map((value) => (
+                  <option key={value} value={value}>
+                    {value === 'html' ? 'HTML (Tab = 2 spaces)' : 'Python (Tab = 4 spaces)'}
+                  </option>
+                ))}
+              </select>
+            </InlineField>
+            <InlineField label="Min accuracy (0–1)">
+              <input
+                className="te-input te-act-narrow"
+                type="number"
+                min="0.05"
+                max="1"
+                step="0.05"
+                value={task.minAccuracy ?? ''}
+                placeholder={String(DEFAULT_TYPE_CODE_ACCURACY)}
+                aria-label="Minimum accuracy"
+                onChange={(e) => setOptional('minAccuracy', readNumber(e.target.value))}
+              />
+            </InlineField>
+            <InlineField label="Target characters a minute">
+              <input
+                className="te-input te-act-narrow"
+                type="number"
+                min="1"
+                step="1"
+                value={task.targetCpm ?? ''}
+                placeholder="none"
+                aria-label="Target characters a minute"
+                onChange={(e) => setOptional('targetCpm', readNumber(e.target.value))}
+              />
+            </InlineField>
+          </div>
+          <span className="te-act-note">
+            Students type each block line by line: Enter for a new line, Tab or spaces to indent.
+            Needs a real keyboard.
+          </span>
+        </Field>
+      )}
+
+      {mode === 'falling_words' && (
+        <Field label="Falling words">
+          <InlineField label={`Seconds (${MIN_FALLING_SECONDS}–${MAX_FALLING_SECONDS})`}>
+            <input
+              className="te-input te-act-narrow"
+              type="number"
+              min={MIN_FALLING_SECONDS}
+              max={MAX_FALLING_SECONDS}
+              step="5"
+              value={task.durationSeconds ?? ''}
+              placeholder={String(DEFAULT_FALLING_SECONDS)}
+              aria-label="Round length in seconds"
+              onChange={(e) => setOptional('durationSeconds', readNumber(e.target.value))}
+            />
+          </InlineField>
+          <InlineField label="Words or code tokens, one per line" wide>
+            <WordsField words={task.words} onChange={(words) => onUpdate({ ...task, words })} />
+          </InlineField>
+          <span className="te-act-note">
+            Points only, no lives: the round always runs to the end. Needs a real keyboard.
+          </span>
+        </Field>
+      )}
+
+      {HISTORY_MODES.includes(mode) && (
+        <Field label="Typing history">
+          <label className="te-check-toggle">
+            <input
+              type="checkbox"
+              checked={task.showHistory === true}
+              onChange={(e) => setOptional('showHistory', e.target.checked ? true : undefined)}
+            />
+            Show each student their last and best score from earlier lessons
+          </label>
+          <span className="te-act-note">
+            Scores are kept for students the tutor has matched to the class list. Nothing shows
+            until a student has a score from an earlier lesson.
+          </span>
+        </Field>
+      )}
+
       <datalist id="te-keyboard-named-keys">
         {NAMED_KEYS.map((key) => (
           <option key={key} value={key} />
         ))}
       </datalist>
 
-      <RowListEditor
-        label="Items"
-        hint="each needs a unique id"
-        rows={task.items}
-        validation={validation}
-        onChange={(items) => onUpdate({ ...task, items })}
-        makeRow={(items) => defaultKeyboardItem(mode, nextItemId(items))}
-        renderRow={(item, update, index) => (
-          <ItemFields mode={mode} item={item} update={update} index={index} />
-        )}
-      />
+      {mode !== 'falling_words' && (
+        <RowListEditor
+          label="Items"
+          hint="each needs a unique id"
+          rows={task.items}
+          validation={validation}
+          onChange={(items) => onUpdate({ ...task, items })}
+          makeRow={(items) => defaultKeyboardItem(mode, nextItemId(items))}
+          renderRow={(item, update, index) => (
+            <ItemFields
+              mode={mode}
+              item={item}
+              update={update}
+              index={index}
+              language={task.language}
+            />
+          )}
+        />
+      )}
     </div>
   )
 }

@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import { useLatestRef } from '../hooks/useLatestRef'
 import StudentCard from './StudentCard'
 import StudentModal from './StudentModal'
 import { findTaskById } from '../../shared/taskUtils'
@@ -50,6 +51,7 @@ export default function StudentGrid({
   onRevealSupportStage,
   onSetTeacherLiveReference,
   onPushTeacherPaneCommand,
+  onPushTeacherControlHighlight,
   onTeacherAnswerEdit,
   onPushTileHighlight,
   onRemoveTileHighlights,
@@ -75,6 +77,12 @@ export default function StudentGrid({
   catalogueBadges = [],
   collapsed,
   onToggle,
+  // { studentId, at } from TeacherView's side-quest panel: open that student's side-quest.
+  openSideQuestRequest = null,
+  // Tutor-only class roster status (summariseRosterStatus in src/shared/roster/rosterModel.js,
+  // plus `needsClass` while a stock lesson's class isn't chosen) and the Match students opener.
+  rosterStatus = null,
+  onOpenRoster,
 }) {
   const joiningCount = joiningStudents.length
   const [expandedStudentId, setExpandedStudentId] = useState(null)
@@ -118,7 +126,13 @@ export default function StudentGrid({
   const showSuggestionsItem = !!onOpenBadgeSuggestions && (sessionLive || suggestionCount > 0)
   const showSelectItem = !!onDecideBadge && students.length > 0
   const showReferenceItem = topics?.length > 0
-  const hasClassMenu = showNudgeItem || showSuggestionsItem || showSelectItem || showReferenceItem
+  const showRosterItem = !!onOpenRoster
+  const unmatchedCount = rosterStatus?.unmatchedIds?.length ?? 0
+  const unmatchedIds = new Set(rosterStatus?.unmatchedIds ?? [])
+  // Held on a cross-lesson carry task until their earlier-lesson work is found.
+  const carryWaitingIds = new Set(rosterStatus?.carryWaitingIds ?? [])
+  const hasClassMenu =
+    showNudgeItem || showSuggestionsItem || showSelectItem || showReferenceItem || showRosterItem
   const classMenuAttention =
     (showNudgeItem && awayCount > 0) || (showSuggestionsItem && suggestionCount > 0)
 
@@ -155,7 +169,26 @@ export default function StudentGrid({
   function handleExpand(student) {
     onGoLive?.(student.anonymousId)
     setExpandedStudentId(student.anonymousId)
+    setSideQuestViewRequest(null)
   }
+
+  // Opens a student's modal on their side-quest: their card's 🗺️ chip, or the side-quest panel
+  // in TeacherView (`openSideQuestRequest`: { studentId, at }, a fresh object each click).
+  const [sideQuestViewRequest, setSideQuestViewRequest] = useState(null)
+  function handleOpenSideQuest(studentId) {
+    if (!studentId) return
+    // The modal lives in the open grid.
+    if (collapsed) onToggle?.()
+    onGoLive?.(studentId)
+    setExpandedStudentId(studentId)
+    setSideQuestViewRequest(Date.now())
+  }
+  const handleOpenSideQuestRef = useLatestRef(handleOpenSideQuest)
+  useEffect(() => {
+    if (openSideQuestRequest?.studentId) {
+      handleOpenSideQuestRef.current(openSideQuestRequest.studentId)
+    }
+  }, [openSideQuestRequest, handleOpenSideQuestRef])
 
   function handleClose() {
     onStopLive?.()
@@ -281,6 +314,27 @@ export default function StudentGrid({
               {joiningCount} joining…
             </span>
           )}
+          {onOpenRoster &&
+            (unmatchedCount > 0 || rosterStatus?.needsClass || carryWaitingIds.size > 0) && (
+              <button
+                type="button"
+                style={{ ...s.checkCountBadge, ...s.rosterChip }}
+                onClick={onOpenRoster}
+                title={[
+                  rosterStatus?.needsClass
+                    ? 'Pick the class you are teaching, to save students’ work to the class list'
+                    : 'Students not yet matched to the class list (their work is not being saved)',
+                  carryWaitingIds.size > 0
+                    ? `${carryWaitingIds.size} waiting for their work from an earlier lesson`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join('. ')}
+              >
+                👥 {rosterStatus?.needsClass ? 'Pick class' : `${unmatchedCount} unmatched`}
+                {carryWaitingIds.size > 0 ? ` · ⏳ ${carryWaitingIds.size}` : ''}
+              </button>
+            )}
           {hasCheck && passedCount > 0 && (
             <span
               style={{ ...s.checkCountBadge, background: 'var(--colour-success)' }}
@@ -377,6 +431,19 @@ export default function StudentGrid({
                       title="Select several students to award a badge to all of them at once"
                     >
                       {selectMode ? '☑ Done selecting' : '☑ Select'}
+                    </button>
+                  )}
+                  {showRosterItem && (
+                    <button
+                      type="button"
+                      style={s.menuItem}
+                      onClick={() => {
+                        close()
+                        onOpenRoster()
+                      }}
+                      title="Match each student to their name on the class list"
+                    >
+                      👥 Match students
                     </button>
                   )}
                   {showReferenceItem && (
@@ -498,10 +565,15 @@ export default function StudentGrid({
                   badgeSuggestions?.awardedCountByStudent?.[student.anonymousId] ?? 0
                 }
                 activities={activities[student.anonymousId] ?? []}
+                onOpenSideQuest={handleOpenSideQuest}
                 highlighted={highlightedIds.has(student.anonymousId)}
                 selectMode={selectMode}
                 selected={selectedIds.has(student.anonymousId)}
                 onToggleSelect={toggleSelected}
+                rosterName={rosterStatus?.namesByStudent?.[student.anonymousId] ?? null}
+                rosterUnmatched={unmatchedIds.has(student.anonymousId)}
+                carryWaiting={carryWaitingIds.has(student.anonymousId)}
+                onOpenRoster={onOpenRoster}
               />
             ))}
           </div>
@@ -583,6 +655,7 @@ export default function StudentGrid({
           onRevealSupportStage={onRevealSupportStage}
           onSetTeacherLiveReference={onSetTeacherLiveReference}
           onPushTeacherPaneCommand={onPushTeacherPaneCommand}
+          onPushTeacherControlHighlight={onPushTeacherControlHighlight}
           onTeacherAnswerEdit={onTeacherAnswerEdit}
           onPushTileHighlight={onPushTileHighlight}
           onRemoveTileHighlights={onRemoveTileHighlights}
@@ -599,6 +672,17 @@ export default function StudentGrid({
           onDecideBadge={onDecideBadge}
           onRevokeBadge={onRevokeBadge}
           catalogueBadges={catalogueBadges}
+          sideQuestViewRequest={sideQuestViewRequest}
+          rosterName={rosterStatus?.namesByStudent?.[expandedStudent.anonymousId] ?? null}
+          typingEntries={
+            rosterStatus?.typingEntriesByStudent?.[expandedStudent.anonymousId] ?? null
+          }
+          carryWaiting={carryWaitingIds.has(expandedStudent.anonymousId)}
+          onUseCarryStarter={
+            rosterStatus?.onUseCarryStarter
+              ? () => rosterStatus.onUseCarryStarter([expandedStudent.anonymousId])
+              : null
+          }
         />
       )}
     </div>
@@ -677,6 +761,11 @@ const s = {
     cursor: 'pointer',
     textAlign: 'left',
     whiteSpace: 'nowrap',
+  },
+  rosterChip: {
+    background: '#0f766e',
+    border: 'none',
+    cursor: 'pointer',
   },
   checkCountBadge: {
     color: '#fff',

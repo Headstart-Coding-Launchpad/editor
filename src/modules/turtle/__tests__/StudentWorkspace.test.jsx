@@ -1,6 +1,6 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi, beforeAll } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import StudentWorkspace from '../StudentWorkspace'
 
 // jsdom has no real canvas 2D context (getContext returns null) — stub it so the
@@ -14,9 +14,21 @@ vi.mock('../../python/PythonEditor', () => ({
 }))
 
 const drawTurtleCommands = vi.fn()
-vi.mock('../draw.js', () => ({
+vi.mock('../draw.js', async (importOriginal) => ({
+  ...(await importOriginal()),
   drawTurtleCommands: (...args) => drawTurtleCommands(...args),
   sizeCanvasToDisplay: () => false,
+}))
+
+// The layout comes from the workspace's measured size, which jsdom never has: the tests pick
+// it (side by side, or below on a phone, unless a test says otherwise).
+const layoutState = vi.hoisted(() => ({ layout: null }))
+vi.mock('../../../shared/resultPane/useWorkspaceLayout.js', () => ({
+  useWorkspaceLayout: ({ isMobile }) => ({
+    ref: () => {},
+    layout: layoutState.layout ?? (isMobile ? 'below' : 'side'),
+    inset: 0,
+  }),
 }))
 
 function makeCs(overrides = {}) {
@@ -174,5 +186,173 @@ describe('Turtle StudentWorkspace', () => {
     render(<StudentWorkspace task={{}} cs={cs} isMobile={false} isViewingPrev viewingTaskId="t1" />)
     expect(screen.getByText('python-editor:turtle.left(90)')).toBeTruthy()
     expect(screen.queryByText('Run')).toBeNull()
+  })
+})
+
+describe('Turtle StudentWorkspace result tabs on smaller screens (P6-12)', () => {
+  afterEach(() => {
+    layoutState.layout = null
+  })
+
+  const LINE = { type: 'line', x1: 0, y1: 0, x2: 10, y2: 0, color: 'black' }
+
+  it('shows Picture and Console tabs beside the editor, opening on the Picture', () => {
+    layoutState.layout = 'tabs'
+    const onVisiblePanesChange = vi.fn()
+    const { container } = render(
+      <StudentWorkspace
+        task={{ id: 1 }}
+        cs={makeCs()}
+        isMobile={false}
+        onVisiblePanesChange={onVisiblePanesChange}
+      />
+    )
+    expect(screen.getByRole('tab', { name: 'Picture' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByRole('tab', { name: 'Tags' })).toBeNull()
+    expect(container.querySelector('canvas')).toBeVisible()
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code', 'canvas'])
+    // The Console is its own tab, so there is no collapse rail.
+    expect(screen.queryByRole('button', { name: 'Show Output' })).toBeNull()
+
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Picture' }), { key: 'ArrowRight' })
+    expect(screen.getByRole('tab', { name: 'Console' })).toHaveAttribute('aria-selected', 'true')
+    expect(container.querySelector('canvas')).not.toBeVisible()
+    // Hidden, not unmounted: the drawing keeps its canvas.
+    expect(container.querySelector('canvas')).toBeInTheDocument()
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code', 'console'])
+  })
+
+  it('opens predict mode on the Tags tab', () => {
+    layoutState.layout = 'tabs'
+    render(
+      <StudentWorkspace
+        task={{ id: 1, showVariables: { mode: 'predict', predict: ['size'] } }}
+        cs={makeCs({ variablesPanel: null })}
+        isMobile={false}
+      />
+    )
+    expect(screen.getByRole('tab', { name: 'Tags' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('goes back to the Picture after a Run and badges the Console lines it printed', () => {
+    layoutState.layout = 'tabs'
+    const task = { id: 1 }
+    const cs = makeCs()
+    const { rerender } = render(<StudentWorkspace task={task} cs={cs} isMobile={false} />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Console' }))
+    rerender(<StudentWorkspace task={task} cs={{ ...cs, running: true }} isMobile={false} />)
+    rerender(
+      <StudentWorkspace
+        task={task}
+        cs={{
+          ...cs,
+          running: false,
+          output: 'one\ntwo\n',
+          turtleResult: { state: {}, commands: [LINE], runId: 'r1' },
+        }}
+        isMobile={false}
+      />
+    )
+    expect(screen.getByRole('tab', { name: 'Picture' })).toHaveAttribute('aria-selected', 'true')
+    expect(
+      screen.getByRole('tab', { name: 'Console, 2 new lines in the Console' })
+    ).toBeInTheDocument()
+  })
+
+  it('stacks the editor above the tabs on a phone', () => {
+    const { container } = render(<StudentWorkspace task={{ id: 1 }} cs={makeCs()} isMobile />)
+    expect(container.querySelector('[data-layout="below"]')).toBeTruthy()
+    expect(screen.getByRole('tablist', { name: 'Result panes' })).toBeInTheDocument()
+  })
+})
+
+describe('Turtle StudentWorkspace map editor (course.studentMap, P6-16)', () => {
+  const MAP = '#####\n#>.G#\n#####'
+  const ownTask = { id: 3, course: { type: 'grid', vehicle: 'rover', map: MAP, studentMap: true } }
+
+  it('opens the map editor and writes the map into the code', () => {
+    const cs = makeCs({ code: 'import turtle\nturtle.forward(2)' })
+    render(<StudentWorkspace task={ownTask} cs={cs} isMobile={false} />)
+    fireEvent.click(screen.getByRole('button', { name: /Map editor/ }))
+    expect(screen.getByRole('dialog', { name: 'Map editor' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Use this map' }))
+    expect(cs.handleCodeChange).toHaveBeenCalledWith(
+      `import turtle\nturtle.course_map("""\n${MAP}\n""")\nturtle.forward(2)`
+    )
+    expect(screen.queryByRole('dialog', { name: 'Map editor' })).toBeNull()
+  })
+
+  it('has no map editor on a course without studentMap, or when read-only', () => {
+    const { unmount } = render(
+      <StudentWorkspace
+        task={{ id: 4, course: { type: 'grid', map: MAP } }}
+        cs={makeCs()}
+        isMobile={false}
+      />
+    )
+    expect(screen.queryByRole('button', { name: /Map editor/ })).toBeNull()
+    unmount()
+    render(
+      <StudentWorkspace
+        task={ownTask}
+        cs={makeCs()}
+        isMobile={false}
+        isForcedTeacherLive
+        displayCode=""
+      />
+    )
+    expect(screen.queryByRole('button', { name: /Map editor/ })).toBeNull()
+  })
+})
+
+describe('Turtle StudentWorkspace hosting a Code Arrange board (P6-15)', () => {
+  afterEach(() => {
+    layoutState.layout = null
+  })
+
+  it("puts the board in the editor's place, keeping the picture and the Run it is handed", () => {
+    const cs = makeCs()
+    const arrangeBoard = vi.fn(({ onRun }) => (
+      <button type="button" onClick={onRun}>
+        board-run
+      </button>
+    ))
+    render(
+      <StudentWorkspace task={{ id: 1 }} cs={cs} isMobile={false} arrangeBoard={arrangeBoard} />
+    )
+    expect(screen.queryByText(/python-editor:/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Reset Code')).not.toBeInTheDocument()
+    expect(screen.getByRole('img')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('board-run'))
+    expect(cs.handleRun).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the board inside the result tabs layout on smaller screens', () => {
+    layoutState.layout = 'tabs'
+    render(
+      <StudentWorkspace
+        task={{ id: 1 }}
+        cs={makeCs()}
+        isMobile={false}
+        arrangeBoard={() => <div>the-board</div>}
+      />
+    )
+    expect(screen.getByText('the-board')).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Picture' })).toBeInTheDocument()
+  })
+
+  it('leaves the remote Run to the board', () => {
+    const cs = makeCs({ remoteRunToken: 'token-1', acknowledgeRemoteRun: vi.fn() })
+    render(
+      <StudentWorkspace
+        task={{ id: 1 }}
+        cs={cs}
+        isMobile={false}
+        arrangeBoard={() => <div>the-board</div>}
+      />
+    )
+    // Neither run nor acknowledged here: the board's own trigger handles the token.
+    expect(cs.handleRun).not.toHaveBeenCalled()
+    expect(cs.acknowledgeRemoteRun).not.toHaveBeenCalled()
   })
 })

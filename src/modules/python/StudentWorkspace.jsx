@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import PythonEditor from './PythonEditor'
 import { taskShowsBlocks } from '../../shared/blockGuides'
 import { getTaskLineHintSets } from '../../shared/lineHints'
+import { getTaskLockSets } from '../../shared/lockedLines'
 import OutputPanel from '../../app/components/OutputPanel'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import SplitPane from '../../shared/SplitPane'
@@ -10,6 +11,33 @@ import {
   CollapseTabButton,
 } from '../../app/components/CollapsiblePanelControls'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
+import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
+import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
+import {
+  getPeekBand,
+  getShowVariables,
+  panelRunForTask,
+  taskShowsVariables,
+} from '../../shared/variablesPanel/variablesPanel.js'
+import StagePane from '../../shared/stage/StagePane.jsx'
+import { codeImportsStage, stageCommandsOf } from '../../shared/stage/commands.js'
+import ResultPane from '../../shared/resultPane/ResultPane.jsx'
+import { getTaskLayout } from '../../shared/resultPane/resultPane.js'
+import { useResultPane, useRunFinishedToken } from '../../shared/resultPane/useResultPane.js'
+import { useWorkspaceLayout } from '../../shared/resultPane/useWorkspaceLayout.js'
+import { readStageResult } from '../../shared/stage/sync.js'
+import { useElementSize } from '../../shared/useElementSize.js'
+import { stageTargetCode, stageTargetGhostOn, useStageTarget } from './stageTarget.js'
+import { usePythonSlowMo } from './slowMo/usePythonSlowMo.js'
+import PredictRunLockNote, {
+  PREDICT_RUN_LOCK_NOTE_ID,
+} from '../../shared/variablesPanel/PredictRunLockNote.jsx'
+import SlowMoBar from './slowMo/SlowMoBar.jsx'
+import SlowMoNameTags from './slowMo/SlowMoNameTags.jsx'
+import PuzzleBar from '../../shared/puzzle/PuzzleBar.jsx'
+
+// The editor's share of the width when side by side (percent).
+const PYTHON_SPLIT = 58
 
 export default function StudentWorkspace({
   task: lessonTask,
@@ -28,12 +56,33 @@ export default function StudentWorkspace({
   displayCheckPassed,
   displayCheckAttempted,
   displaySelection,
+  displayVariablesPanel = null,
+  // The Python Stage drawing broadcast in Go Live (compactStageForSync's shape).
+  displayStage = null,
+  // The presenter's slow-mo playback in Go Live (teacherLive.pythonSlowMo, ./slowMo/live.js).
+  displayPythonSlowMo = null,
   isTeacherEditing,
   teacherLiveCode,
   onVisiblePanesChange,
+  // A Code Arrange task that draws on the Stage (src/activities/code_arrange/):
+  // `arrangeBoard({ onRun })` renders the tile board in the editor's place, and `arrangeReady`
+  // says every blank is filled. The board owns Run and the tutor's remote Run; the Stage, name
+  // tags, slow-mo and console are this workspace's own, and open from the start.
+  arrangeBoard = null,
+  arrangeReady = true,
 }) {
+  // A task with a name-tag panel (showVariables) opens with the output side showing, so the
+  // student can predict before the first Run; so does one with a Stage target to draw over, and
+  // one whose author picked the first result tab (layout.firstPane).
   const [localOutputCollapsed, setLocalOutputCollapsed] = useState(
-    () => !isForcedTeacherLive && !isTeacherEditing && !isViewingPrev
+    () =>
+      !arrangeBoard &&
+      !isForcedTeacherLive &&
+      !isTeacherEditing &&
+      !isViewingPrev &&
+      !taskShowsVariables(lessonTask) &&
+      !stageTargetCode(lessonTask) &&
+      !getTaskLayout(lessonTask)?.firstPane
   )
   // While forced-live, the panel state is locked to whatever the broadcast
   // source (teacher/watched student) has it set to — continuous, not a
@@ -72,10 +121,65 @@ export default function StudentWorkspace({
   const shouldShowOutput =
     task?.interactionMode !== 'submit' || isForcedTeacherLive || isTeacherEditing || isViewingPrev
 
-  useEffect(() => {
-    onVisiblePanesChange?.(shouldShowOutput && !outputCollapsed ? ['code', 'console'] : ['code'])
-  }, [shouldShowOutput, outputCollapsed, onVisiblePanesChange])
   const showCopyCode = typeof task?.copyCode === 'string' && !!task.copyCode.trim()
+
+  // Slow-mo (task.slowMo, ./slowMo/): record the run, then play it back line by line. A Go Live
+  // viewer follows the presenter's playback.
+  const slowMoShown = !isViewingPrev && !isTeacherEditing && task?.interactionMode !== 'submit'
+  const slowMo = usePythonSlowMo({
+    task: slowMoShown ? task : null,
+    cs,
+    code: cs.code,
+    readOnly,
+    live: isForcedTeacherLive ? displayPythonSlowMo : undefined,
+  })
+  const slowMoView = slowMoShown ? slowMo.view : null
+  // The #@peek "stopped here" band (showVariables.at: marker), from when the task opens; not
+  // while the panel is hidden or slow-mo steps through the run.
+  const variablesSynced = isForcedTeacherLive ? displayVariablesPanel : undefined
+  const peekBand =
+    isViewingPrev || isTeacherEditing || slowMoView
+      ? null
+      : getPeekBand(
+          task,
+          code,
+          panelRunForTask(task, { panel: cs.variablesPanel, synced: variablesSynced })
+        )
+  const slowMoControls = {
+    ...slowMo,
+    slowMo: () => {
+      setOutputCollapsed(false)
+      slowMo.slowMo()
+    },
+    step: () => {
+      setOutputCollapsed(false)
+      slowMo.step()
+    },
+  }
+
+  // The Python Stage (src/shared/stage/): shown once the code draws, or from the start when the
+  // task has a stageTarget to draw over. Go Live shows the broadcast drawing.
+  const stageTarget = useStageTarget(task, { ready: cs.pyodideStatus === 'ready' })
+  const liveStage = useMemo(() => readStageResult(displayStage), [displayStage])
+  const stageResult = isForcedTeacherLive
+    ? liveStage
+    : isViewingPrev || isTeacherEditing
+      ? null
+      : cs.stageResult
+  const stageCommands = slowMoView?.hasStage ? slowMoView.stage : stageCommandsOf(stageResult)
+  // A Stage arrangement (arrangeBoard) shows the Stage from the start, as a stageTarget does.
+  const showStage =
+    !isViewingPrev &&
+    !isTeacherEditing &&
+    (stageCommands.length > 0 ||
+      !!stageTargetCode(task) ||
+      !!slowMoView?.hasStage ||
+      !!arrangeBoard)
+  const [outputPaneRef, outputPaneSize] = useElementSize()
+  // Beside the console when the output side is wider than tall; above it otherwise (and always
+  // on narrow screens).
+  const stageBeside =
+    !isMobile && outputPaneSize.width >= 480 && outputPaneSize.width > outputPaneSize.height * 1.05
   const outputProps =
     isForcedTeacherLive || isTeacherEditing
       ? {
@@ -104,17 +208,92 @@ export default function StudentWorkspace({
             running: cs.running || cs.runningTests,
           }
 
+  // During slow-mo playback the output grows step by step; the check result shows once the
+  // last step has played (the recorded run was checked like any Run).
+  const shownOutputProps = slowMoView
+    ? {
+        ...outputProps,
+        output: slowMoView.output,
+        runStatus: slowMoView.finished ? outputProps.runStatus : null,
+        checkPassed: slowMoView.finished ? outputProps.checkPassed : false,
+        hasCheck: slowMoView.finished ? outputProps.hasCheck : false,
+        checkAttempted: slowMoView.finished ? outputProps.checkAttempted : false,
+        inputPrompt: null,
+        running: false,
+      }
+    : outputProps
+
+  // Smaller screens (src/shared/resultPane/): the editor plus ONE result pane with tabs Picture ·
+  // Tags · Console — only the panes this task has — beside the editor, or below it on portrait
+  // screens and phones. Wide desktops keep everything side by side. After Run the pane switches
+  // to what the task is about; the Console tab counts unseen lines while hidden.
+  const tagsAvailable = taskShowsVariables(task) && !isViewingPrev && !isTeacherEditing
+  const pictureAvailable =
+    showStage || (!isViewingPrev && !isTeacherEditing && codeImportsStage(code))
+  const resultPanes = shouldShowOutput
+    ? [pictureAvailable && 'picture', tagsAvailable && 'tags', 'console'].filter(Boolean)
+    : []
+  const {
+    ref: workspaceRef,
+    layout,
+    inset,
+  } = useWorkspaceLayout({ isMobile, split: PYTHON_SPLIT, paneCount: resultPanes.length })
+  const tabbed = layout !== 'side' && resultPanes.length > 1
+  const runToken = useRunFinishedToken({
+    running: !readOnly && (cs.running || cs.runningTests),
+    // A Go Live viewer: the presenter's run status arriving marks a finished run.
+    liveKey: isForcedTeacherLive ? (displayRunStatus ?? null) : null,
+  })
+  const result = useResultPane({
+    task,
+    available: resultPanes,
+    tabbed,
+    tagsMode: tagsAvailable ? (getShowVariables(task)?.mode ?? null) : null,
+    pictureGoal: !!stageTargetCode(task),
+    slowMo: !!slowMoView,
+    runToken,
+    drew: stageCommands.length > 0,
+    error: shownOutputProps.runStatus === 'error',
+    output: shownOutputProps.output,
+  })
+
+  // What's on screen, for the tutor's student card ('stage' is the Picture tab).
+  const stackedIds = ['picture', 'tags']
+  const shownResultPanes =
+    !shouldShowOutput || outputCollapsed
+      ? []
+      : !tabbed
+        ? ['console']
+        : resultPanes.filter(
+            (id) =>
+              id === result.active ||
+              (result.stacked && stackedIds.includes(id) && stackedIds.includes(result.active))
+          )
+  const visiblePanesKey = [
+    'code',
+    ...shownResultPanes.map((id) => (id === 'picture' ? 'stage' : id)),
+  ].join(',')
+  useEffect(() => {
+    onVisiblePanesChange?.(visiblePanesKey.split(','))
+  }, [visiblePanesKey, onVisiblePanesChange])
+
+  // Predict mode's Run lock (cs.predictRunLock, showVariables.lockRun): Run, slow-mo and the
+  // run shortcut wait for every prediction, until the first Run. Never on a read-only view.
+  const runLock = readOnly ? null : (cs.predictRunLock ?? null)
+
   function handleRunClick() {
     if (cs.running || cs.runningTests) {
       cs.handleStop()
       return
     }
+    if (runLock) return
     setOutputCollapsed(false)
     cs.handleRun()
   }
 
+  // A Code Arrange board handles the tutor's remote Run itself (only a full board can run).
   useRemoteRunTrigger(
-    cs.remoteRunToken,
+    arrangeBoard ? null : cs.remoteRunToken,
     () => {
       if (!cs.running && !cs.runningTests) handleRunClick()
     },
@@ -127,7 +306,21 @@ export default function StudentWorkspace({
     cs.handleRunTests()
   }
 
-  const editor = (
+  // A Code Arrange task: slow-mo's bar above the tile board (slow-mo runs the assembled program,
+  // so it waits for a full board).
+  const arrangePane = arrangeBoard && (
+    <div style={s.arrangePane}>
+      {slowMoShown && (showEditableHeader || slowMoView) && (
+        <SlowMoBar
+          slowMo={slowMoControls}
+          runDisabled={cs.running || cs.pyodideStatus === 'loading' || !arrangeReady || !!runLock}
+        />
+      )}
+      {arrangeBoard({ onRun: handleRunClick })}
+    </div>
+  )
+
+  const editor = arrangePane || (
     <div style={s.editorPane}>
       {showCopyCode && <CopyCodePanel code={task.copyCode} language="python" />}
       {showEditableHeader && (
@@ -143,8 +336,13 @@ export default function StudentWorkspace({
                 <button
                   className={cs.running || cs.runningTests ? 'btn-danger' : 'btn-primary'}
                   style={s.primaryBtn}
+                  data-highlight-target="run stop"
                   onClick={handleRunClick}
-                  disabled={!cs.running && !cs.runningTests && cs.pyodideStatus === 'loading'}
+                  disabled={
+                    !cs.running && !cs.runningTests && (cs.pyodideStatus === 'loading' || !!runLock)
+                  }
+                  title={!cs.running && runLock ? runLock.message : undefined}
+                  aria-describedby={!cs.running && runLock ? PREDICT_RUN_LOCK_NOTE_ID : undefined}
                 >
                   {cs.running || cs.runningTests
                     ? 'Stop'
@@ -162,6 +360,7 @@ export default function StudentWorkspace({
                     {cs.runningTests ? 'Running tests...' : 'Run Tests'}
                   </button>
                 )}
+                {!cs.running && <PredictRunLockNote lock={runLock} />}
               </>
             )}
             <button
@@ -180,10 +379,22 @@ export default function StudentWorkspace({
           </div>
         </div>
       )}
+      {slowMoShown && (showEditableHeader || slowMoView) && (
+        <SlowMoBar
+          slowMo={slowMoControls}
+          runDisabled={cs.running || cs.runningTests || cs.pyodideStatus === 'loading' || !!runLock}
+        />
+      )}
+      {/* setupNote, the puzzle's line counter and, after a pass, its par (src/shared/puzzle/). */}
+      <PuzzleBar task={task} code={code} passed={!!outputProps.checkPassed} />
       <PythonEditor
         code={code}
         readOnly={readOnly}
         onChange={readOnly ? undefined : cs.handleCodeChange}
+        // Live number / colour scrubbing (task `scrub`, src/shared/scrub/); not in a sandbox.
+        scrub={readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskScrub(task)}
+        onScrubPreview={cs.scrubPreview}
+        onScrubCommit={cs.recordScrub}
         onSelectionChange={readOnly ? undefined : cs.handleEditorSelection}
         onActivity={readOnly ? undefined : cs.handleEditorActivity}
         remoteSelection={isForcedTeacherLive ? displaySelection : null}
@@ -196,81 +407,197 @@ export default function StudentWorkspace({
         pyodideStatus={cs.pyodideStatus}
         errorLine={readOnly ? null : cs.errorLine}
         lineHints={readOnly ? null : getTaskLineHintSets(task)}
+        // Locked lines (#@lock, puzzle.onlyEdit) show in every view, Go Live included.
+        lockedLines={getTaskLockSets(task)}
         showBlocks={taskShowsBlocks(task)}
         onRunShortcut={readOnly || task?.interactionMode === 'submit' ? undefined : handleRunClick}
+        slowMoMarker={slowMoView?.marker ?? null}
+        peekBand={peekBand}
       />
       {showSubmitBanner && <div style={s.submitBanner}>Code submitted</div>}
     </div>
   )
 
+  // The name-tag panel (showVariables): under the output side by side; its own tab on smaller
+  // screens; alone while the output is folded away on a narrow screen.
+  const variablesStyle = tabbed ? s.variablesFill : s.variablesPanel
+  const variablesPanel = slowMoView ? (
+    <SlowMoNameTags task={task} slowMo={slowMo} style={variablesStyle} />
+  ) : (
+    <TaskVariablesPanel
+      task={task}
+      panel={cs.variablesPanel}
+      synced={variablesSynced}
+      code={code}
+      running={cs.running}
+      hidden={isViewingPrev || isTeacherEditing}
+      style={variablesStyle}
+    />
+  )
+
+  const collapseDirection = layout === 'below' ? 'down' : 'right'
+  const collapseButton = !isForcedTeacherLive && (
+    <CollapseTabButton
+      onClick={() => setOutputCollapsed(true)}
+      direction={collapseDirection}
+      title="Collapse Output"
+      ariaLabel="Collapse Output"
+      style={tabbed ? s.tabsCollapseBtn : s.outputCollapseBtn}
+    />
+  )
+
+  const outputPanel = (
+    <OutputPanel
+      {...shownOutputProps}
+      fill
+      collapsible={false}
+      // With tabs, the collapse button sits at the end of the tab strip instead.
+      leadingActions={tabbed ? null : collapseButton}
+    />
+  )
+
+  const testResultsPanel = !isViewingPrev &&
+    !isForcedTeacherLive &&
+    !isTeacherEditing &&
+    cs.testResults !== null && (
+      <div style={s.testResultsPanel}>
+        {cs.testResults.map((r, i) => (
+          <span
+            key={r.id ?? i}
+            style={{
+              ...s.testResultBadge,
+              background: r.passed ? '#dcfce7' : '#fef3c7',
+              color: r.passed ? '#15803d' : '#b45309',
+            }}
+          >
+            {r.passed ? 'Pass' : 'Check'} {r.name || `Test ${i + 1}`}
+          </span>
+        ))}
+      </div>
+    )
+
+  const stagePane = (
+    <StagePane
+      key={task?.id ?? 'sandbox'}
+      commands={stageCommands}
+      target={stageTarget?.commands ?? null}
+      ghostDefault={stageTargetGhostOn(task)}
+      ran={!!stageResult || !!slowMoView}
+      truncated={stageResult?.truncated === true}
+      style={layout !== 'side' ? s.stageFill : stageBeside ? s.stageBeside : s.stageAbove}
+    />
+  )
+
   const output = (
-    <div style={s.outputPane}>
-      <OutputPanel
-        {...outputProps}
-        fill
-        collapsible={false}
-        leadingActions={
-          !isForcedTeacherLive && (
-            <CollapseTabButton
-              onClick={() => setOutputCollapsed(true)}
-              direction="right"
-              title="Collapse Output"
-              ariaLabel="Collapse Output"
-              style={s.outputCollapseBtn}
-            />
-          )
-        }
-      />
-      {!isViewingPrev && !isForcedTeacherLive && !isTeacherEditing && cs.testResults !== null && (
-        <div style={s.testResultsPanel}>
-          {cs.testResults.map((r, i) => (
-            <span
-              key={r.id ?? i}
-              style={{
-                ...s.testResultBadge,
-                background: r.passed ? '#dcfce7' : '#fef3c7',
-                color: r.passed ? '#15803d' : '#b45309',
-              }}
-            >
-              {r.passed ? 'Pass' : 'Check'} {r.name || `Test ${i + 1}`}
-            </span>
-          ))}
+    <div ref={outputPaneRef} style={s.outputPane}>
+      {showStage ? (
+        <div style={stageBeside ? s.stageRow : s.stageColumn}>
+          {stagePane}
+          <div style={s.consoleBox}>{outputPanel}</div>
         </div>
+      ) : (
+        outputPanel
       )}
+      {testResultsPanel}
+      {variablesPanel}
     </div>
   )
 
-  if (isMobile || !shouldShowOutput) {
-    return (
+  // Picture · Tags · Console as tabs (or the console alone when it is the only pane).
+  const resultPane = (
+    <ResultPane
+      panes={resultPanes.map((id) => ({
+        id,
+        content:
+          id === 'picture' ? (
+            stagePane
+          ) : id === 'tags' ? (
+            variablesPanel
+          ) : (
+            <div style={s.consoleColumn}>
+              {outputPanel}
+              {testResultsPanel}
+            </div>
+          ),
+      }))}
+      active={result.active}
+      onSelect={result.select}
+      stacked={result.stacked}
+      badges={result.badges}
+      announcement={result.announcement}
+      idPrefix="python-result"
+      label="Result"
+      trailing={tabbed ? <span style={s.tabsTrailing}>{collapseButton}</span> : null}
+    />
+  )
+
+  const collapsedRail = (orientation) => (
+    <CollapsedPanelRail
+      onClick={isForcedTeacherLive ? undefined : () => setOutputCollapsed(false)}
+      label="Output"
+      direction={orientation === 'horizontal' ? 'up' : 'left'}
+      orientation={orientation}
+      title={isForcedTeacherLive ? 'Output (collapsed by the presenter)' : 'Show Output'}
+      ariaLabel="Show Output"
+      style={orientation === 'horizontal' ? s.outputRailHorizontal : undefined}
+    />
+  )
+
+  let body
+  if (!shouldShowOutput) {
+    body = (
       <div style={s.mobileStack}>
         {editor}
-        {shouldShowOutput && !outputCollapsed && output}
+        {variablesPanel}
       </div>
+    )
+  } else if (layout === 'below') {
+    // Phones and portrait screens: the editor above, the result pane below.
+    body = (
+      <div style={s.belowStack}>
+        <div style={s.belowEditor}>{editor}</div>
+        {outputCollapsed ? (
+          collapsedRail('horizontal')
+        ) : (
+          <div style={s.belowResult}>{resultPane}</div>
+        )}
+      </div>
+    )
+  } else {
+    body = (
+      <SplitPane
+        style={s.pythonSplitPane}
+        defaultSplit={PYTHON_SPLIT}
+        rightCollapsed={outputCollapsed}
+        collapsedRightWidth={44}
+        collapsedRight={collapsedRail('vertical')}
+        left={editor}
+        right={layout === 'tabs' ? resultPane : output}
+      />
     )
   }
 
+  // The outer box is measured (never padded, so its size is steady); the inner one makes room
+  // for a tablet's on-screen keyboard so the editor and the result pane stay in view.
   return (
-    <SplitPane
-      style={s.pythonSplitPane}
-      defaultSplit={58}
-      rightCollapsed={outputCollapsed}
-      collapsedRightWidth={44}
-      collapsedRight={
-        <CollapsedPanelRail
-          onClick={isForcedTeacherLive ? undefined : () => setOutputCollapsed(false)}
-          label="Output"
-          direction="left"
-          title={isForcedTeacherLive ? 'Output (collapsed by the presenter)' : 'Show Output'}
-          ariaLabel="Show Output"
-        />
-      }
-      left={editor}
-      right={output}
-    />
+    <div ref={workspaceRef} style={s.workspace} data-layout={layout}>
+      <div style={inset ? { ...s.workspaceInner, paddingBottom: inset } : s.workspaceInner}>
+        {body}
+      </div>
+    </div>
   )
 }
-
 const s = {
+  // A Code Arrange task's tile board, scrolling in the editor's place.
+  arrangePane: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    flex: 1,
+    minHeight: 0,
+    overflow: 'auto',
+    padding: '4px 4px 8px',
+  },
   pythonSplitPane: {
     flex: '1 1 auto',
     minHeight: 0,
@@ -300,6 +627,59 @@ const s = {
     flex: 1,
     minHeight: 0,
     gap: 8,
+  },
+  variablesPanel: { flex: '0 1 auto', maxHeight: '55%' },
+  // The Python Stage beside or above the console (src/shared/stage/StagePane.jsx).
+  stageRow: { display: 'flex', flexDirection: 'row', gap: 8, flex: 1, minHeight: 0 },
+  stageColumn: { display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0 },
+  stageBeside: { flex: '0 0 55%' },
+  stageAbove: { flex: '0 0 55%', minHeight: 180 },
+  consoleBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    minHeight: 0,
+    minWidth: 0,
+  },
+  // The workspace's measured outer box and its inner box (padded for an on-screen keyboard).
+  workspace: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: '1 1 auto',
+    minHeight: 0,
+    minWidth: 0,
+  },
+  workspaceInner: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: '1 1 auto',
+    minHeight: 0,
+    minWidth: 0,
+  },
+  // Phones and portrait screens: the editor above the result pane.
+  belowStack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    flex: '1 1 auto',
+    minHeight: 0,
+    overflow: 'hidden',
+  },
+  belowEditor: { display: 'flex', flexDirection: 'column', flex: '1 1 55%', minHeight: 160 },
+  belowResult: { display: 'flex', flexDirection: 'column', flex: '1 1 45%', minHeight: 220 },
+  outputRailHorizontal: { flexShrink: 0, padding: '6px 12px', minHeight: 44 },
+  // Inside a result tab: the pane fills it.
+  stageFill: { flex: 1, minHeight: 0 },
+  variablesFill: { flex: '1 1 auto', minHeight: 0, maxHeight: '100%' },
+  consoleColumn: { display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0 },
+  tabsTrailing: { marginLeft: 'auto', display: 'flex', alignItems: 'center', paddingRight: 4 },
+  tabsCollapseBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    background: '#fff',
+    color: 'var(--colour-primary)',
+    border: '1px solid #e5e7eb',
+    borderRadius: 8,
   },
   outputCollapseBtn: {
     width: 28,

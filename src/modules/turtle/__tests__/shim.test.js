@@ -67,6 +67,34 @@ describe('TURTLE_SHIM', () => {
     expect(TURTLE_SHIM).toContain('_js.__hsTurtleSetVisible(bool(visible))')
   })
 
+  it('supports pensize() with its width() alias, read back with no argument', () => {
+    expect(TURTLE_SHIM).toContain('def pensize(self, width=None):')
+    expect(TURTLE_SHIM).toContain('width = pensize')
+    expect(TURTLE_SHIM).toContain('return _get_state().get("pensize", 1)')
+    expect(TURTLE_SHIM).toContain('_js.__hsTurtlePensize(float(width))')
+  })
+
+  it('supports dot(size=None, colour) like real turtle', () => {
+    expect(TURTLE_SHIM).toContain('def dot(self, size=None, *color):')
+    // dot("red"): a colour on its own is the colour, not the size.
+    expect(TURTLE_SHIM).toContain('if not color and isinstance(size, (str, tuple, list)):')
+    expect(TURTLE_SHIM).toContain('_js.__hsTurtleDot(')
+  })
+
+  it('records speed() with real turtle names and ranges, and reads it back', () => {
+    expect(TURTLE_SHIM).toContain('def speed(self, speed=None):')
+    expect(TURTLE_SHIM).toContain(
+      '_SPEED_NAMES = {"fastest": 0, "fast": 10, "normal": 6, "slow": 3, "slowest": 1}'
+    )
+    expect(TURTLE_SHIM).toContain('if 0.5 < value < 10.5:')
+    expect(TURTLE_SHIM).toContain('_js.__hsTurtleSpeed(int(value))')
+  })
+
+  it("makes circle()'s own turns instant", () => {
+    const circle = TURTLE_SHIM.slice(TURTLE_SHIM.indexOf('def circle'))
+    expect(circle.slice(0, circle.indexOf('def stamp'))).toContain('_turn(turn, True)')
+  })
+
   it('routes colormode entirely through the shim, never crossing into JS as a concept', () => {
     expect(TURTLE_SHIM).toContain('_format_color')
     expect(TURTLE_SHIM).toContain('_colormode_state')
@@ -80,6 +108,31 @@ describe('buildTurtleProgram', () => {
     expect(lines[0]).toBe(`exec(${JSON.stringify(TURTLE_SHIM)}, globals())`)
     expect(lines[1]).toBe('')
     expect(lines.slice(2).join('\n')).toBe('turtle.forward(10)')
+  })
+
+  it('sets up a course map on line 2, so the student code still starts on line 3', () => {
+    const course = { type: 'grid', vehicle: 'rover', map: '#>.G#\n#####', index: 0, count: 1 }
+    const lines = buildTurtleProgram('turtle.forward()', { course }).split('\n')
+    expect(lines).toHaveLength(3)
+    expect(lines[1]).toBe(`_turtle_course_setup(${JSON.stringify(JSON.stringify(course))})`)
+    expect(lines[2]).toBe('turtle.forward()')
+  })
+
+  it('gives the course sensors and quarter-turn defaults to the turtle module', () => {
+    for (const name of [
+      'wall_ahead',
+      'wall_left',
+      'wall_right',
+      'at_goal',
+      'on_pickup',
+      'collected',
+    ]) {
+      expect(TURTLE_SHIM).toContain(`def ${name}(self):`)
+    }
+    expect(TURTLE_SHIM).toContain('def forward(self, distance=None):')
+    expect(TURTLE_SHIM).toContain('def left(self, angle=None):')
+    expect(TURTLE_SHIM).toContain('class _CourseStop(BaseException):')
+    expect(TURTLE_SHIM).toContain('def _turtle_course_setup(spec_json):')
   })
 
   it('keeps the shim on a single source line so student error line numbers are unaffected', () => {

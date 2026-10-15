@@ -51,6 +51,8 @@ vi.mock('../../../modules/python/pyodide', () => ({
   stopPython: vi.fn(),
   provideInput: vi.fn(),
   isPyodideReady: () => true,
+  getStopCount: () => 0,
+  isPythonRunning: () => false,
 }))
 
 vi.mock('../../../modules/html/iframe', () => ({
@@ -1042,6 +1044,17 @@ describe('StudentView', () => {
       expect(screen.queryByTestId('badge-celebration')).not.toBeInTheDocument()
     })
 
+    // The badge toast is one of several status regions (the control highlight's screen-reader
+    // announcer is always mounted), so pick it out by its class.
+    const findBadgeToast = async () => {
+      let toast
+      await waitFor(() => {
+        toast = screen.getAllByRole('status').find((el) => el.classList.contains('sv-badge-toast'))
+        expect(toast).toBeTruthy()
+      })
+      return toast
+    }
+
     it('celebrates a new award for the student and toasts a classmate', async () => {
       mocks.useSession.mockReturnValue(mkLiveSession())
       const { rerender } = render(<StudentView lessonId="python-1-1" />)
@@ -1057,8 +1070,9 @@ describe('StudentView', () => {
       )
       rerender(<StudentView lessonId="python-1-1" />)
       expect(await screen.findByTestId('badge-celebration')).toHaveTextContent('Bug Hunter')
-      expect(screen.getByRole('status')).toHaveTextContent('Sam earned a badge:')
-      expect(screen.getByRole('status')).toHaveTextContent('Code Fixer')
+      const toast = await findBadgeToast()
+      expect(toast).toHaveTextContent('Sam earned a badge:')
+      expect(toast).toHaveTextContent('Code Fixer')
     })
 
     it('gives the presentation window the toast only', async () => {
@@ -1070,7 +1084,7 @@ describe('StudentView', () => {
         mkLiveSession({ badges: { 'student-1': { bug_hunter: award({ decidedAt: 200 }) } } })
       )
       rerender(<StudentView lessonId="python-1-1" teacherPresentation />)
-      const toast = await screen.findByRole('status')
+      const toast = await findBadgeToast()
       expect(toast).toHaveTextContent('Me earned a badge:')
       expect(toast).toHaveTextContent('Bug Hunter')
       expect(toast.className).toContain('sv-badge-toast--presentation')

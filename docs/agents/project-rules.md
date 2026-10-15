@@ -47,6 +47,7 @@ A feature that answers "no" to 1, 2 or 4 is incomplete. Ship it only with the ga
 | Code editor | CodeMirror 6 |
 | Markdown | `react-markdown` and `rehype-highlight` |
 | Styling | CSS custom properties in `src/index.css` |
+| Zip files | `fflate` (approved 2026-10-14), loaded with `import()` only when Export work builds a `.zip` or `.sb3` |
 | Env vars | App: `.env` in the repo root (Vite default). CLI: `cli/.env` (`GOOGLE_APPLICATION_CREDENTIALS`). Both gitignored |
 
 Do not add major dependencies without confirming with the user.
@@ -119,15 +120,16 @@ Important shared files include `iframe.js`, `CodeEditor.jsx`, `markdown.jsx`, `f
 
 The `/admin` route is available only to users with the admin Firebase role.
 
-9 tabs, defined in `src/admin/AdminPortal.jsx`'s `TABS` array:
+10 tabs, defined in `src/admin/AdminPortal.jsx`'s `TABS` array:
 
 - Lessons: browse all published Firestore lessons in one library (the older type-grouped/filtered view is hardcoded off — `LessonPanel.jsx`'s type-tab UI is dead code behind `{false && ...}`); expand lessons to view session reports and lesson/task feedback with counts and resolve actions; launch as teacher, preview as a student (`?preview=true` — ephemeral, nothing persists), or copy student links; fork a lesson to a class.
 - Levels: manage reusable levels (`LessonPanel.jsx` rendered with `view="levels"`, via `LevelManager`).
-- Classes: manage class records used for lesson forks (`LessonPanel.jsx` rendered with `view="classes"`, via `ClassManager`).
+- Classes: manage class records used for lesson forks (`LessonPanel.jsx` rendered with `view="classes"`, via `ClassManager`), and each class's roster of students (first name and initial) under **Students** (`ClassRosterEditor.jsx`: add, rename, delete; deleting an entry also deletes its saved work and typing scores). Tutors match joined students to the roster in a session; see "Class roster" in `docs/agents/runtime-model.md`.
 - Sessions: Realtime Database `sessions` list filtered to non-`ended` states — lesson, state, paused flag, student/online counts, open duration; "Close Session" removes an abandoned session node.
 - Topic Library: create, edit, and delete topics with Markdown description and syntax fields.
 - Shared Assets: manage lesson-type-wide Firebase Storage files and Scratch default sprites in `lessonTypeAssets/{type}` with storage at `shared/{type}/assets/`.
 - Badges: the live badges. Built-in registry badges read-only (emoji, title, blurb, exact rule, rule-backed or tutor-only, auto-awardable); add, edit, archive and restore manual-only catalogue badges in Firestore `badgeCatalogue` (`BadgesPanel.jsx`). Ids can't collide with the registry and emoji must be unique across every badge; archived badges leave the tutor's picker but still render. New built-in badges come from `npm run new:badge` (the `new-badge` skill).
+- Shared Work: every name-hidden share link tutors made with StudentModal's "Export work" (Firestore `sharedWork`, newest first; live links by default, "Show expired and revoked links too" for the rest), with the link, module, date, days left and **Revoke** (`SharedWorkPanel.jsx`). Only admins can list links (firestore.rules); a teacher revokes their own from the export dialog.
 - Accounts: create teacher/admin accounts, set roles, change other users' passwords, disable/enable, delete via Cloud Functions. Signed-in users change their own password through `/account`.
 - Feedback: real-time list of `platformFeedback` plus lesson/task feedback; lesson/task feedback also appears under each lesson.
 
@@ -138,7 +140,7 @@ The `cli/` package manages lessons, tasks, topics, feedback, and assets against 
 **Storage model:**
 - Lessons → Firestore `lessons/`
 - Reusable levels → Firestore `lessonLevels/`
-- Classes → Firestore `classes/`
+- Classes → Firestore `classes/` (roster: `classes/{classId}/roster/{rosterId}` with `work` and `typing` subcollections, teacher/admin only)
 - Topics → Firestore `topicLibrary/`
 - Assets → Firebase Storage under `lessons/{lessonId}/assets/`; `lesson.storageAssets` is optional metadata, not the source-of-truth inventory
 - Lesson-type-wide shared assets (files, Scratch default sprites/backdrops) → Firestore `lessonTypeAssets/{type}`, files in Storage under `shared/{type}/assets/` — same data the admin "Shared Assets" panel manages

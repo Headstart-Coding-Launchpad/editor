@@ -59,6 +59,11 @@ import ClassPollCard from '../components/polls/ClassPollCard'
 import { PollTaskClassContext } from '../components/quiz/PollTaskClassContext'
 import { getActivePoll, getStudentPollChoice, tallyPoll } from '../../shared/classPolls'
 import LessonTaskContent from '../components/LessonTaskContent'
+import ControlHighlightRing from '../../shared/ControlHighlightRing'
+import {
+  mergeHighlightedPanes,
+  useStudentControlHighlight,
+} from '../hooks/useStudentControlHighlight'
 import { usePreloadNeighbourImages } from '../../shared/preloadImages'
 import SoloNav from '../components/SoloNav'
 import SharedWorkspacePanel from '../components/SharedWorkspacePanel'
@@ -135,6 +140,7 @@ export default function StudentView({
     writeStudentCode,
     writeStudentArcadeDesign,
     writeStudentTurtleResult,
+    writeStudentStageResult,
     writeStudentSpriteState,
     writeStudentCursor,
     writeStudentBlockDrag,
@@ -148,6 +154,8 @@ export default function StudentView({
     recordStudentPaste,
     recordStudentTyping,
     recordStudentTileMiss,
+    writeStudentVariables,
+    recordVariablePredictions,
     recordTopicOpenSignal,
     recordShortcutSignal,
     recordAutocompleteSignal,
@@ -157,11 +165,13 @@ export default function StudentView({
     recordSandboxRunSignal,
     flagSandboxRunError,
     addSandboxTimeSignal,
+    recordExampleOpen,
     writeStudentPersonalSandbox,
     writeSideQuestOpen,
     recordSideQuestOpened,
     recordSideQuestRun,
     setSideQuestDone,
+    writeSideQuestCode,
     writeStudentPresence,
     setTaskId,
     setTeacherLive,
@@ -287,6 +297,7 @@ export default function StudentView({
     writeStudentCode,
     writeStudentArcadeDesign,
     writeStudentTurtleResult,
+    writeStudentStageResult,
     writeStudentSpriteState,
     writeStudentCursor,
     writeStudentBlockDrag,
@@ -300,6 +311,8 @@ export default function StudentView({
     recordStudentPaste,
     recordStudentTyping,
     recordStudentTileMiss,
+    writeStudentVariables,
+    recordVariablePredictions,
     writeStudentPersonalSandbox,
     writeStudentPresence,
     registerPresence,
@@ -323,6 +336,7 @@ export default function StudentView({
       recordSandboxRunSignal,
       flagSandboxRunError,
       addSandboxTimeSignal,
+      recordExampleOpen,
     },
   })
   // Live badge reporters for the shared editor, Blockly and Topic Library components below
@@ -332,6 +346,8 @@ export default function StudentView({
       reportUserEdit: cs.badgeSignals.reportUserEdit,
       reportAutocomplete: cs.badgeSignals.reportAutocomplete,
       reportTopicOpen: cs.badgeSignals.reportTopicOpen,
+      // "See example" opens in the task explainer (src/shared/exampleOpens.js).
+      reportExampleOpen: cs.badgeSignals.reportExampleOpen,
       // Session report typing measures (useStudentTypingStats), from the shared CodeEditor.
       reportTyping: cs.typingStats.reportTyping,
     }),
@@ -339,6 +355,7 @@ export default function StudentView({
       cs.badgeSignals.reportUserEdit,
       cs.badgeSignals.reportAutocomplete,
       cs.badgeSignals.reportTopicOpen,
+      cs.badgeSignals.reportExampleOpen,
       cs.typingStats.reportTyping,
     ]
   )
@@ -617,6 +634,7 @@ export default function StudentView({
     recordSideQuestOpened,
     recordSideQuestRun,
     setSideQuestDone,
+    writeSideQuestCode,
   })
   const [openTopicId, setOpenTopicId] = useState(null)
   const [pendingTopicId, setPendingTopicId] = useState(null)
@@ -847,6 +865,31 @@ export default function StudentView({
     effectivePaneCommand?.mode === 'highlight' ? effectivePaneCommand.panes : null
   const forcedPaneCommand = effectivePaneCommand?.mode === 'force' ? effectivePaneCommand : null
 
+  // Control highlight (src/shared/controlHighlight.js): the task's `highlight` field and the
+  // tutor's live "Highlight ▸" pulse one control on the task on screen; a control in a hidden
+  // compact pane points at that pane through the pane highlight above. Targets come from the
+  // task's effective module (composed lessons), never lesson.type.
+  const highlightTaskId = viewingTaskId ?? currentTaskId
+  const highlightTask = useMemo(
+    () => flattenTasks(lesson?.tasks ?? []).find((item) => item.id === highlightTaskId) ?? null,
+    [lesson, highlightTaskId]
+  )
+  const controlHighlight = useStudentControlHighlight({
+    enabled:
+      !teacherPresentation &&
+      (phase === 'lesson' || phase === 'solo' || phase === 'sandbox') &&
+      !!highlightTask &&
+      isCodeTask(highlightTask),
+    lessonId,
+    identityId: effectiveIdentity?.anonymousId,
+    task: highlightTask,
+    moduleType: lesson ? getEffectiveLessonForTask(lesson, highlightTaskId)?.type : null,
+    studentCommand:
+      session?.students?.[effectiveIdentity?.anonymousId]?.teacherControlHighlight ?? null,
+    classCommand: session?.teacherClassControlHighlight ?? null,
+    serverTimeOffset,
+  })
+
   // ─── Navigation handlers ───────────────────────────────────────────────────
 
   function handleSoloNavigate(taskId) {
@@ -1028,6 +1071,9 @@ export default function StudentView({
     displayCode,
     displayArcadeDesign,
     displayTurtleResult,
+    displayVariablesPanel,
+    displayStage,
+    displayPythonSlowMo,
     displaySpriteState,
     displayCursor,
     displayBlockDrag,
@@ -1993,6 +2039,14 @@ export default function StudentView({
             onToggleDone={() => sideQuests.toggleDone(openSideQuest.index)}
             onClose={sideQuests.closeQuest}
             onRun={({ error }) => sideQuests.reportRun(openSideQuest.index, { error })}
+            liveSync={
+              sideQuests.live
+                ? {
+                    watched: sideQuests.watched,
+                    write: (patch) => sideQuests.syncCode(openSideQuest.index, patch),
+                  }
+                : null
+            }
           />
         ) : (
           <PollTaskClassContext.Provider value={pollTaskClass}>
@@ -2029,6 +2083,9 @@ export default function StudentView({
               displayCode={displayCode}
               displayArcadeDesign={displayArcadeDesign}
               displayTurtleResult={displayTurtleResult}
+              displayVariablesPanel={displayVariablesPanel}
+              displayStage={displayStage}
+              displayPythonSlowMo={displayPythonSlowMo}
               displaySpriteState={displaySpriteState}
               displayCursor={displayCursor}
               displayBlockDrag={displayBlockDrag}
@@ -2063,8 +2120,15 @@ export default function StudentView({
               onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
               openTopicId={phase === 'lesson' ? openTopicId : null}
               onVisiblePanesChange={handleVisiblePanesChange}
-              highlightedPanes={highlightedPanes}
+              highlightedPanes={mergeHighlightedPanes(
+                highlightedPanes,
+                controlHighlight.revealPanes
+              )}
               forcedPaneCommand={forcedPaneCommand}
+            />
+            <ControlHighlightRing
+              ring={controlHighlight.ring}
+              announce={controlHighlight.announce}
             />
           </PollTaskClassContext.Provider>
         )}

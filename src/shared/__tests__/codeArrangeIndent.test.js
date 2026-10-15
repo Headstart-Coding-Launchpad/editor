@@ -170,7 +170,7 @@ describe.each([
     [{ ...INDENT_TASK, arrangeMode: 'spin' }, 'Task 1 arrangeMode must be slots or indent'],
     [
       { ...INDENT_TASK, moduleType: 'html' },
-      'Task 1 is an indent arrange task but must use the Python module',
+      'Task 1 is an indent arrange task but must use the Python or Python Turtle module',
     ],
     [withLine(2, { code: '' }), 'Task 1 line 3 has no code'],
     [

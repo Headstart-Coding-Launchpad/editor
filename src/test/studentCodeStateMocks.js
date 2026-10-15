@@ -13,6 +13,8 @@ export function pyodideMock() {
     provideInput: vi.fn(),
     updateGpioInputs: vi.fn(),
     isPyodideReady: () => true,
+    getStopCount: () => 0,
+    isPythonRunning: () => false,
   }
 }
 

@@ -39,6 +39,8 @@ vi.mock('../../../modules/python/pyodide', () => ({
   stopPython: vi.fn(),
   provideInput: vi.fn(),
   isPyodideReady: () => true,
+  getStopCount: () => 0,
+  isPythonRunning: () => false,
 }))
 
 const ME = { anonymousId: 'anon-1', displayName: 'Ada' }

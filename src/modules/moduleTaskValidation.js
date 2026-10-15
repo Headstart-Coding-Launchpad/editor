@@ -207,6 +207,16 @@ export function validateCodeChecks(
     'variable_exists',
     // inner / outer instead of a value; its own validate() (python/checks.js) checks them.
     'code_structure',
+    // names (optional) instead of a value; its own validate() checks them.
+    'variables_predicted',
+    // Its value defaults to puzzle.maxLines; validatePuzzle (src/shared/puzzle/) checks it.
+    'max_lines',
+    // The Python Stage's checks have their own fields; validateStageCheck checks them.
+    'stage_matches_target',
+    'stage_shape_count',
+    'stage_colour_used',
+    'stage_pixel',
+    'stage_text_shown',
   ]
   if (html) noValueTypes.push('html_element_attribute', 'html_element_style_property')
   if (normalized.some((check) => !noValueTypes.includes(check.type) && !hasValue(check.value))) {

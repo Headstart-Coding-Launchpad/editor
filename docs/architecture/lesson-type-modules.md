@@ -23,7 +23,7 @@ Each module is split in two:
 | File | Holds | Imported by |
 |---|---|---|
 | `definition.js` | `defineModule({...})`: pure data and hooks. No JSX, React, DOM or runtimes; explicit `.js` extensions on relative imports. | `src/modules/definitions.js` → CLI, validation, shared type lists, the app |
-| `index.js` | `defineUiModule(definition, { StudentWorkspace, BuilderWorkspace, CheckEditor, FeedbackCheckEditor?, TeacherLiveView, getLayoutStyles, runtime })` | `src/modules/registry.js` → the app |
+| `index.js` | `defineUiModule(definition, { StudentWorkspace, BuilderWorkspace, CheckEditor, FeedbackCheckEditor?, TeacherLiveView, getLayoutStyles, runtime, exportWork? })` | `src/modules/registry.js` → the app |
 | `checks.js` | `CHECKS`: module-owned check types | `src/modules/checks.js` (the check registry) |
 
 `defineModule` (`src/modules/defineModule.js`) validates every field below, fills the optional
@@ -64,13 +64,15 @@ clips), `teacherSandboxRow` (the teacher sandbox workspace fills a plain flex ro
 `explainerBlockMenu` (explainer editor's Scratch block-reference menu), `sideQuests` (a passed
 code task's `sideQuests` run in a throwaway workspace of this module; `src/shared/sideQuests.js`;
 python, turtle, html), `typingStats` (keystrokes in the shared code editor feed the session
-report's `typing` measures).
+report's `typing` measures), `previewInspector` (a task's `inspector` field adds the HTML Inspector
+to the preview; `src/modules/html/inspector/`; html).
 
 | Field | Values |
 |---|---|
 | `stageReveal` | `'progressive'` (support stages as read-only references, complete previewed first; python, html) \| `'offer'` (offer the next stage after two failed checks) |
 | `studentMirror` | How StudentModal mirrors a watched student: `'code'`, `'files'` (= the files wire channel), `'blocks'`, `'view'` (the module's `TeacherLiveView`) |
 | `cardSummary` (optional) | StudentCard line: `'output'`, `'blocks'`, `'fs'`, null |
+| `rosterWork` (optional) | What the tutor's client saves to a matched student's class roster after a Run or submission (`src/shared/roster/`): `'code'` (python, turtle), `'files'` (html; needs the files wire channel), `'blocks'` (scratch, parsed with `wire.fromCode`), null (default: nothing saved) |
 | `lineHints` (optional) | Author line-hint marker syntax in starter code and stages (`src/shared/lineHints.js`): `'python'` (`#> …`; python, turtle), `'html'` (`<!--> … -->`; html), null (none). The classroom strips markers per task by this (`prepareClassroomLesson`); a trailing marker hints a new empty last line. The module's student editor still has to pass `getTaskLineHintSets(task)` to its `CodeEditor` |
 | `peerHelp` (optional) | `{ anchors: 'lines' \| 'scripts', hints: 'python' \| 'html' \| 'blocks' }` or null (default): a classmate can help with this module's work (`src/shared/peerHelp.js`). `anchors` is what feedback attaches to (`'lines'` also allows suggested edits); `hints` picks the platform's preset hint list. Read through `peerHelpCapability` (`src/app/peerHelpAnchors.js`). Python, Turtle, HTML: lines; Scratch: scripts |
 | `focusPanes` (optional) | Extra `{ id, label }` panes the teacher can highlight/force |
@@ -78,7 +80,7 @@ report's `typing` measures).
 | `sandboxState` | Teacher sandbox work kind: `'code'` (one code string), `'blocks'`, `'fs'`, `'desktop'`, `'files'` |
 | `run` | What Run does (`handleRun` dispatches on it): `'runtime'` (needs `runResult` and a UI `runtime`), `'preview'` (html iframe), `'workspace'` (the workspace runs/checks and reports), `'none'` (default). Remote "Run on student" is offered when not `'none'`. |
 
-`runResult` (exactly for `'runtime'`): `errorLine`, `turtle`, `liveCode` booleans.
+`runResult` (exactly for `'runtime'`): `errorLine`, `turtle`, `liveCode`, `stage` booleans (`stage`: the run's Python Stage drawing is written with the run).
 `moduleDefinitions.test.js` / `moduleRunCapability.test.js` pin the built-in values.
 
 ### Authoring, state and validation hooks
@@ -97,7 +99,9 @@ report's `typing` measures).
   `validateTaskInBrowser` (Builder only). Every message is documented in
   `docs/authoring/validation-errors.md` (`validationErrorsDoc.test.js`). Optional
   `verifyTaskChecks(task, label)` evaluates the task's checks per check against its own authored
-  stages for `lessons test-checks` without `--cases` (Scratch).
+  stages for `lessons test-checks` without `--cases` (Scratch). Optional
+  `testCheckCase(task, testCase, { taskId })` judges one `--cases` case in the module's own work
+  shape (Scratch: blocks, or a stage plus edits); without it a case is source code.
 
 ### `authoring` (the Builder)
 
@@ -209,6 +213,13 @@ tab state and handlers), `CheckEditor` (+ optional `FeedbackCheckEditor`), `Teac
 (`displayState`, `readOnly`, `onChange` in the sandbox), `getLayoutStyles()` (`sharedStyles.js`),
 `runtime` (`{ init, isReady, stop, provideInput, run, buildPreviewSrc, waitForPreviewText }` for
 a `'runtime'` module, else null).
+
+Optional `exportWork`: `() => import('./exportWork.js')`, the module's "Export work" exporter for
+the tutor's StudentModal and the public `/share/:id` viewer (contract in
+`src/shared/exportWork/exporters.js`: `readLive`, `readSubmission`, `buildFiles`, optional
+`buildPictures`, `sharePayload`, `ShareView`). Loaded lazily so export code and fflate stay out of
+the main bundle. A module without it is simply left out of exports; a new module (e.g. the Python
+Stage) adds pictures by declaring `buildPictures`.
 
 ## Check-Type Registry
 

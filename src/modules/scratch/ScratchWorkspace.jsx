@@ -31,6 +31,11 @@ import {
   CREATE_VARIABLE_CALLBACK_KEY,
 } from './scratch'
 import { resolveAssetFileUrl } from '../../shared/assetPaths'
+import { normalizeSlowMo } from './slowMo/config.js'
+import { useScratchSlowMo } from './slowMo/useScratchSlowMo.js'
+import { slowMoStatusText } from './slowMo/live.js'
+import SlowMoControls, { SlowMoMirrorStatus } from './slowMo/SlowMoControls.jsx'
+import SlowMoTimeline, { SlowMoPreviewBanner } from './slowMo/SlowMoTimeline.jsx'
 import {
   drawSpriteWithGraphicEffects,
   hasGraphicEffects,
@@ -62,9 +67,13 @@ import {
   uniqueItemName,
 } from './scratchSounds.js'
 import { CostumesTab, SoundsTab } from './CostumesSoundsPanel.jsx'
+import AddPickerPopover from './AddPickerPopover.jsx'
+import { getStartingBackdrop, getStartingBackdropName } from './startingBackdrop.js'
+import { isScratchStillBuilding } from './stillBuilding.js'
+import { useScratchCategoryReveal } from './scratchHighlight.js'
 
-const STAGE_W = 480
-const STAGE_H = 360
+export const STAGE_W = 480
+export const STAGE_H = 360
 const SYNC_DEBOUNCE = 1000
 const CURSOR_THROTTLE_MS = 50
 const CURSOR_STALE_MS = 2000
@@ -354,7 +363,7 @@ function defaultSpriteState(sp) {
   }
 }
 
-function initSpriteStates(sprites) {
+export function initSpriteStates(sprites) {
   const out = {}
   for (const sp of sprites) out[sp.id] = defaultSpriteState(sp)
   return out
@@ -374,7 +383,7 @@ export function cloneSpriteStates(states) {
 
 // ── Canvas drawing ────────────────────────────────────────────────────────────
 
-function drawScratchSpriteAtOrigin(ctx, type, r) {
+export function drawScratchSpriteAtOrigin(ctx, type, r) {
   switch (type) {
     case 'ball':
       ctx.beginPath()
@@ -470,7 +479,7 @@ function drawScratchSpriteAtOrigin(ctx, type, r) {
   }
 }
 
-function drawEmojiAtOrigin(ctx, emoji, r) {
+export function drawEmojiAtOrigin(ctx, emoji, r) {
   ctx.font = `${r * 2}px 'Noto Color Emoji', serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
@@ -535,7 +544,7 @@ export function wrapScratchBubbleText(ctx, message, maxWidth) {
   })
 }
 
-function drawBubble(ctx, s) {
+export function drawBubble(ctx, s) {
   if (!s.bubble) return
   const cx = toCanvasX(s.x)
   const cy = toCanvasY(s.y)
@@ -657,6 +666,65 @@ function drawSpriteVisual(
     return
   }
   drawSpriteShape(ctx, state, fallbackType ?? 'cat', emoji)
+}
+
+// Paints one stage frame: the backdrop, every sprite and clone, then the speech bubbles on
+// top. Exported for the tutor's "Export work" stage picture (./export/stagePicture.js), which
+// passes its own CORS-loaded `imageCache` ({ resolvedUrl: HTMLImageElement }).
+export function paintStage(
+  ctx,
+  { sprites, backdrops, backdropName, states, clones = {}, assetsPath, imageCache }
+) {
+  ctx.clearRect(0, 0, STAGE_W, STAGE_H)
+
+  const backdrop =
+    (backdropName ? backdrops.find((b) => b.name === backdropName) : null) ??
+    getStartingBackdrop(backdrops)
+
+  if (backdrop?.image) {
+    const url = resolveAssetFileUrl(assetsPath, backdrop.image)
+    const img = imageCache[url]
+    if (img) {
+      ctx.drawImage(img, 0, 0, STAGE_W, STAGE_H)
+    } else {
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, STAGE_W, STAGE_H)
+    }
+  } else {
+    ctx.fillStyle = backdrop?.colour ?? '#ffffff'
+    ctx.fillRect(0, 0, STAGE_W, STAGE_H)
+  }
+
+  for (const sp of sprites) {
+    drawSpriteVisual(
+      ctx,
+      states[sp.id],
+      sp.costumes,
+      sp.type ?? 'cat',
+      sp.emoji,
+      assetsPath,
+      imageCache
+    )
+  }
+  for (const clone of Object.values(clones)) {
+    const base = sprites.find((sp) => sp.id === clone.baseId)
+    drawSpriteVisual(
+      ctx,
+      clone.state,
+      clone.costumes,
+      base?.type ?? 'cat',
+      base?.emoji,
+      assetsPath,
+      imageCache
+    )
+  }
+  for (const sp of sprites) {
+    const state = states[sp.id]
+    if (state?.bubble) drawBubble(ctx, state)
+  }
+  for (const clone of Object.values(clones)) {
+    if (clone.state?.bubble) drawBubble(ctx, clone.state)
+  }
 }
 
 function spriteRadius(s) {
@@ -892,6 +960,8 @@ export default function ScratchWorkspace({
   // Teacher remote Run request (cs.remoteRunToken): presses the green flag.
   runToken = null,
   onRunTokenHandled = null,
+  // Slow-mo use for the session report ({ kind: 'run' | 'step' }); see slowMo/useScratchSlowMo.js.
+  onSlowMoUse = null,
 }) {
   // Sprites/backdrops start from the task's authored lists but become mutable local state so
   // an author-gated student "Add sprite"/"Add backdrop" picker (see below) can grow them during
@@ -988,6 +1058,10 @@ export default function ScratchWorkspace({
   const idleFeedbackTimerRef = useRef(null)
   const evaluateBlockPlacedChecksRef = useRef(null)
   const evaluateIdleFeedbackRef = useRef(null)
+  // The checkable workspaces as the task opened (starter or carried blocks), for the "still
+  // building" rule (stillBuilding.js). Captured once the workspaces load; the component
+  // remounts per task.
+  const openedStatesRef = useRef(null)
   const lastEmittedStateRef = useRef(null)
   const statusRef = useRef('loading')
   const runningRef = useRef(false)
@@ -1006,7 +1080,7 @@ export default function ScratchWorkspace({
   const dragStartRef = useRef(null)
   const dragMovedRef = useRef(false)
   const draggingSpriteIdRef = useRef(null)
-  const backdropNameRef = useRef(backdrops[0]?.name ?? null)
+  const backdropNameRef = useRef(getStartingBackdropName(backdrops))
   const lastCursorSentRef = useRef(0)
   const cursorDotElRef = useRef(null)
   const cursorHaloElRef = useRef(null)
@@ -1030,6 +1104,8 @@ export default function ScratchWorkspace({
       (task?.enableStageCode ? '__stage__' : null)
   )
   const selectedSpriteId = controlledSpriteId ?? internalSelectedSpriteId
+  // A highlighted block category scrolls into view in the palette (src/shared/controlHighlight.js).
+  useScratchCategoryReveal(workspaceRefs, selectedSpriteId)
 
   function canSelectSpriteId(id) {
     return (
@@ -1051,7 +1127,8 @@ export default function ScratchWorkspace({
       spriteStatesRef.current,
       clonesRef.current,
       backdropNameRef.current,
-      id
+      id,
+      slowMoLiveRef.current
     )
   }
 
@@ -1088,10 +1165,46 @@ export default function ScratchWorkspace({
   const [stagePanelCollapsed, setStagePanelCollapsed] = useState(false)
   const [compact, setCompact] = useState(forceCompact)
   const [activePane, setActivePane] = useState(() => loadLayoutTab(activePaneSurface) || 'blocks')
-  const [backdropName, setBackdropName] = useState(backdrops[0]?.name ?? null)
+  const [backdropName, setBackdropName] = useState(() => getStartingBackdropName(backdrops))
   const [imageVersion, setImageVersion] = useState(0)
   const [cursorStale, setCursorStale] = useState(false)
   const canvasRef = useRef(null)
+
+  // ── Slow-mo (task.slowMo; ./slowMo/) ─────────────────────────────────────────
+  // The gate holds each block until its turn, the running blocks glow, and a timeline records
+  // one snapshot per step. Its live state rides with the sprite-state payload (5th argument of
+  // onSpriteStatesChange), so Go Live viewers and a watching tutor see the same glow and step.
+  const slowMoConfig = useMemo(() => normalizeSlowMo(task?.slowMo), [task?.slowMo])
+  const slowMo = useScratchSlowMo({
+    config: slowMoConfig,
+    readOnly,
+    externalLive: externalSpriteState?.slowMo ?? null,
+    status,
+    workspaceRefs,
+    spritesRef,
+    spriteStatesRef,
+    clonesRef,
+    backdropNameRef,
+    onUse: readOnly ? null : onSlowMoUse,
+  })
+  const slowMoRef = useRef(slowMo)
+  slowMoRef.current = slowMo
+  const slowMoLiveRef = useRef(null)
+  const slowMoLiveKey = JSON.stringify(slowMo.live)
+  const lastSlowMoLiveKeyRef = useRef(slowMoLiveKey)
+  useEffect(() => {
+    slowMoLiveRef.current = slowMo.live
+    if (readOnly || !slowMoConfig || lastSlowMoLiveKeyRef.current === slowMoLiveKey) return
+    lastSlowMoLiveKeyRef.current = slowMoLiveKey
+    onSpriteStatesChangeRef.current?.(
+      spriteStatesRef.current,
+      clonesRef.current,
+      backdropNameRef.current,
+      selectedSpriteId,
+      slowMo.live
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slowMoLiveKey])
   const stageToolbarRef = useRef(null)
   const rootRef = useRef(null)
   const [rootSizeRef, rootSize] = useElementSize()
@@ -1265,67 +1378,35 @@ export default function ScratchWorkspace({
 
   // ── Draw stage ──────────────────────────────────────────────────────────────
   const drawStage = useCallback(
-    (states, clones = {}) => {
+    (states, clones = {}, backdropOverride = null) => {
       const canvas = canvasRef.current
       if (!canvas) return
-      const ctx = canvas.getContext('2d')
-      ctx.clearRect(0, 0, STAGE_W, STAGE_H)
-
-      const currentName = backdropNameRef.current
-      const backdrop =
-        (currentName ? backdrops.find((b) => b.name === currentName) : null) ?? backdrops[0]
-
-      if (backdrop?.image) {
-        const url = resolveAssetFileUrl(assetsPath, backdrop.image)
-        const img = imageCacheRef.current[url]
-        if (img) {
-          ctx.drawImage(img, 0, 0, STAGE_W, STAGE_H)
-        } else {
-          ctx.fillStyle = '#ffffff'
-          ctx.fillRect(0, 0, STAGE_W, STAGE_H)
-        }
-      } else {
-        ctx.fillStyle = backdrop?.colour ?? '#ffffff'
-        ctx.fillRect(0, 0, STAGE_W, STAGE_H)
-      }
-
-      for (const sp of sprites) {
-        drawSpriteVisual(
-          ctx,
-          states[sp.id],
-          sp.costumes,
-          sp.type ?? 'cat',
-          sp.emoji,
-          assetsPath,
-          imageCacheRef.current
-        )
-      }
-      for (const clone of Object.values(clones)) {
-        const base = sprites.find((sp) => sp.id === clone.baseId)
-        drawSpriteVisual(
-          ctx,
-          clone.state,
-          clone.costumes,
-          base?.type ?? 'cat',
-          base?.emoji,
-          assetsPath,
-          imageCacheRef.current
-        )
-      }
-      for (const sp of sprites) {
-        const state = states[sp.id]
-        if (state?.bubble) drawBubble(ctx, state)
-      }
-      for (const clone of Object.values(clones)) {
-        if (clone.state?.bubble) drawBubble(ctx, clone.state)
-      }
+      paintStage(canvas.getContext('2d'), {
+        sprites,
+        backdrops,
+        backdropName: backdropOverride ?? backdropNameRef.current,
+        states,
+        clones,
+        assetsPath,
+        imageCache: imageCacheRef.current,
+      })
     },
     [sprites, backdrops, assetsPath]
   )
 
+  // A slow-mo timeline preview draws that step's stage over the live one; the run is untouched.
+  const slowMoPreview = slowMo.preview
   useEffect(() => {
+    if (slowMoPreview) {
+      drawStage(
+        slowMoPreview.spriteStates,
+        slowMoPreview.cloneStates,
+        slowMoPreview.backdropName || null
+      )
+      return
+    }
     drawStage(spriteStates, cloneStates)
-  }, [spriteStates, cloneStates, backdropName, imageVersion, drawStage])
+  }, [spriteStates, cloneStates, backdropName, imageVersion, drawStage, slowMoPreview])
 
   useEffect(() => {
     if (!stagePanelCollapsed) drawStage(spriteStatesRef.current, clonesRef.current)
@@ -1511,7 +1592,8 @@ export default function ScratchWorkspace({
       nextStates,
       clonesRef.current,
       backdropNameRef.current,
-      selectedSpriteId
+      selectedSpriteId,
+      slowMoLiveRef.current
     )
   }
 
@@ -1875,6 +1957,10 @@ export default function ScratchWorkspace({
         // Create stage workspace if enabled
         if (task?.enableStageCode)
           injectWorkspaceFor(Blockly, '__stage__', normInitStates?.['__stage__'])
+
+        openedStatesRef.current = saveCheckableWorkspaceStates(
+          filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
+        )
 
         if (!cancelled) setStatus('ready')
 
@@ -2285,6 +2371,8 @@ export default function ScratchWorkspace({
       clonesRef.current = next
       setCloneStates(next)
     }
+    // While a slow-mo run is going, every run (key presses, sprite clicks) goes slowly too.
+    if (slowMoRef.current?.isRunning()) slowMoRef.current.attach(signal)
     return signal
   }, [backdrops])
 
@@ -2338,6 +2426,23 @@ export default function ScratchWorkspace({
     lastCheckSuggestionRef.current = ''
   }
 
+  // Each checkable workspace saved as JSON, keyed by sprite id (stillBuilding.js's input).
+  function saveCheckableWorkspaceStates(sws) {
+    if (!BlocklyRef.current) return null
+    try {
+      return Object.fromEntries(
+        sws.map((sp) => [sp.id, saveWorkspace(BlocklyRef.current, sp.workspace)])
+      )
+    } catch {
+      return null
+    }
+  }
+
+  function isStillBuilding(sws) {
+    const current = saveCheckableWorkspaceStates(sws)
+    return !!current && isScratchStillBuilding(current, openedStatesRef.current)
+  }
+
   // Evaluates all after_block_placed checks and updates feedback.
   // Called on every debounced workspace change when after_block_placed checks are present.
   function evaluateBlockPlacedChecks() {
@@ -2363,6 +2468,12 @@ export default function ScratchWorkspace({
       )
       notifyCheck(evaluation.passed, false, { suggestion: evaluation.suggestion })
     } else if (results.some((r) => r === 'fail')) {
+      // Still building (unchanged since the task opened, or a loose block): no fail, no hint,
+      // no attempt logged. Passes above are never held back.
+      if (isStillBuilding(sws)) {
+        clearCheckFeedback()
+        return
+      }
       const evaluation = evaluateCheckWithCustomFeedback(
         task,
         false,
@@ -2394,6 +2505,7 @@ export default function ScratchWorkspace({
       idleChecks.every((c) =>
         evalSingleCheck(c, sws, signalRef.current, preRunSpriteStatesRef.current)
       )
+    if (!completionPassed && isStillBuilding(sws)) return
     const evaluation = evaluateCheckWithCustomFeedback(
       task,
       completionPassed,
@@ -2450,11 +2562,23 @@ export default function ScratchWorkspace({
   })
 
   // ── Run / Stop ────────────────────────────────────────────────────────────────
-  async function handleRun() {
+  // `slowMo`: 'play' (the Slow-mo button) or 'step' (Step before a run) starts a slow-mo run; it
+  // is a green-flag run in every other way (checks, run_attempted, the end-of-run check).
+  async function handleRun({ slowMo: slowMoStart = null } = {}) {
     if (status !== 'ready') return
-    onActivityRef.current?.({ type: 'green_flag', at: Date.now() })
+    onActivityRef.current?.({
+      type: 'green_flag',
+      at: Date.now(),
+      ...(slowMoStart ? { mode: 'slow_mo' } : {}),
+    })
     stopAll()
     clearClones()
+    if (slowMoStart && slowMoConfig) {
+      slowMo.begin({ paused: slowMoStart === 'step' })
+      if (slowMoStart === 'step') slowMo.step()
+    } else {
+      slowMo.cancel({ clear: true })
+    }
     lastCheckRef.current = null
     lastCheckSuggestionRef.current = ''
     preRunSpriteStatesRef.current = cloneSpriteStates(spriteStatesRef.current)
@@ -2471,13 +2595,50 @@ export default function ScratchWorkspace({
     } catch (err) {
       signal.onError?.(err)
     }
+    if (slowMoStart && !signal.stopped) slowMoRef.current?.finish()
     finishRun(signal)
+  }
+
+  // The slow-mo buttons (only shown when task.slowMo.enabled).
+  function handleSlowMoPlay() {
+    if (slowMo.isRunning()) {
+      slowMo.resume()
+      return
+    }
+    handleRun({ slowMo: 'play' })
+  }
+
+  function handleSlowMoStep() {
+    if (slowMo.isRunning()) {
+      slowMo.step()
+      return
+    }
+    handleRun({ slowMo: 'step' })
+  }
+
+  // A timeline card's costume picture: the sprite (or clone) whose block ran, as it was then.
+  function renderSlowMoCostume(snapshot) {
+    const sprite = sprites.find((sp) => sp.id === snapshot.baseSpriteId)
+    const state =
+      snapshot.spriteStates?.[snapshot.spriteId] ?? snapshot.cloneStates?.[snapshot.spriteId]?.state
+    if (!sprite || !state) return null
+    return (
+      <SpriteThumb
+        sprite={sprite}
+        state={state}
+        imageCache={imageCacheRef.current}
+        assetsPath={assetsPath}
+        size={28}
+        imageVersion={imageVersion}
+      />
+    )
   }
 
   async function runClickedBlock(block, spriteId) {
     if (runningRef.current || statusRef.current !== 'ready') return
     onActivityRef.current?.({ type: 'block_click', at: Date.now() })
     stopAll()
+    slowMoRef.current?.cancel()
     lastCheckRef.current = null
     lastCheckSuggestionRef.current = ''
     preRunSpriteStatesRef.current = cloneSpriteStates(spriteStatesRef.current)
@@ -2517,6 +2678,8 @@ export default function ScratchWorkspace({
   function handleStop() {
     onActivityRef.current?.({ type: 'stop', at: Date.now() })
     stopAll()
+    // Stop keeps the timeline to look back at; Restart (Reset Stage) clears it.
+    slowMo.cancel()
     clearClones()
     runningRef.current = false
     setRunning(false)
@@ -2527,6 +2690,7 @@ export default function ScratchWorkspace({
 
   function handleResetStage() {
     stopAll()
+    slowMo.cancel({ clear: true })
     clearClones()
     runningRef.current = false
     setRunning(false)
@@ -2535,7 +2699,7 @@ export default function ScratchWorkspace({
     askResolveRef.current = null
     const reset = initSpriteStates(sprites)
     commitSpriteStates(reset)
-    const defaultBackdrop = backdrops[0]?.name ?? null
+    const defaultBackdrop = getStartingBackdropName(backdrops)
     backdropNameRef.current = defaultBackdrop
     setBackdropName(defaultBackdrop)
     variableRuntimeRef.current = {}
@@ -2842,26 +3006,8 @@ export default function ScratchWorkspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readOnly])
 
-  // Close the sprite/backdrop add pickers on an outside click.
-  useEffect(() => {
-    if (!spritePickerOpen && !backdropPickerOpen) return
-    function onPointerDown(e) {
-      if (
-        spritePickerOpen &&
-        spriteAddWrapRef.current &&
-        !spriteAddWrapRef.current.contains(e.target)
-      )
-        setSpritePickerOpen(false)
-      if (
-        backdropPickerOpen &&
-        backdropAddWrapRef.current &&
-        !backdropAddWrapRef.current.contains(e.target)
-      )
-        setBackdropPickerOpen(false)
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [spritePickerOpen, backdropPickerOpen])
+  // The sprite/backdrop add pickers close on an outside click or Escape inside
+  // AddPickerPopover (they're portalled, so a containment check here would miss them).
 
   const showManualCheck = scratchChecks.some((c) => c.evaluation === 'manual')
 
@@ -3119,7 +3265,12 @@ export default function ScratchWorkspace({
               <span style={s.spriteTileName}>Add</span>
             </button>
             {spritePickerOpen && (
-              <div style={s.addPickerPanel} role="listbox" aria-label="Choose a sprite to add">
+              <AddPickerPopover
+                anchorRef={spriteAddWrapRef}
+                onClose={() => setSpritePickerOpen(false)}
+                style={s.addPickerPanel}
+                ariaLabel="Choose a sprite to add"
+              >
                 {spriteLibraryOptions.length === 0 && (
                   <p style={s.addPickerEmpty}>No sprites available</p>
                 )}
@@ -3148,7 +3299,7 @@ export default function ScratchWorkspace({
                     <span style={s.addPickerName}>{preset.name}</span>
                   </button>
                 ))}
-              </div>
+              </AddPickerPopover>
             )}
           </div>
         )}
@@ -3325,6 +3476,7 @@ export default function ScratchWorkspace({
                   type="button"
                   role="tab"
                   aria-selected={assetTab === tab.id}
+                  data-highlight-target={tab.id === 'code' ? undefined : `${tab.id}_tab`}
                   style={{ ...s.assetTab, ...(assetTab === tab.id ? s.assetTabActive : {}) }}
                   onClick={() => setAssetTab(tab.id)}
                 >
@@ -3337,6 +3489,7 @@ export default function ScratchWorkspace({
             <button
               type="button"
               onClick={() => setFlyoutCollapsed((c) => !c)}
+              data-highlight-reveal={flyoutCollapsed ? 'category' : undefined}
               style={flyoutCollapsed ? s.flyoutToggleBtnOpen : s.flyoutToggleBtnHide}
               title={flyoutCollapsed ? 'Show blocks palette' : 'Hide blocks palette'}
             >
@@ -3431,7 +3584,7 @@ export default function ScratchWorkspace({
 
       {/* Stage + controls */}
       {!hideStage && !compact && stagePanelCollapsed && (
-        <div style={s.stageRailPane}>
+        <div style={s.stageRailPane} data-highlight-reveal="green_flag stop">
           <CollapsedPanelRail
             onClick={() => setStagePanelCollapsed(false)}
             label="Stage"
@@ -3486,6 +3639,7 @@ export default function ScratchWorkspace({
               type="button"
               className="btn-ghost-outline"
               style={s.greenFlagBtn}
+              data-highlight-target="green_flag"
               onClick={(e) => {
                 e.currentTarget.blur()
                 handleRun()
@@ -3508,6 +3662,7 @@ export default function ScratchWorkspace({
               type="button"
               className="btn-danger"
               style={s.stopFlagBtn}
+              data-highlight-target="stop"
               onClick={handleStop}
               aria-label="Stop"
               title="Stop all scripts"
@@ -3536,10 +3691,11 @@ export default function ScratchWorkspace({
                   + Backdrop
                 </button>
                 {backdropPickerOpen && (
-                  <div
+                  <AddPickerPopover
+                    anchorRef={backdropAddWrapRef}
+                    onClose={() => setBackdropPickerOpen(false)}
                     style={s.addPickerPanel}
-                    role="listbox"
-                    aria-label="Choose a backdrop to add"
+                    ariaLabel="Choose a backdrop to add"
                   >
                     {backdropLibraryOptions.length === 0 && (
                       <p style={s.addPickerEmpty}>No backdrops available</p>
@@ -3573,7 +3729,7 @@ export default function ScratchWorkspace({
                         <span style={s.addPickerName}>{preset.name}</span>
                       </button>
                     ))}
-                  </div>
+                  </AddPickerPopover>
                 )}
               </div>
             )}
@@ -3589,7 +3745,9 @@ export default function ScratchWorkspace({
                   .map((v) => (
                     <div key={v.name} style={s.variableMonitor}>
                       <span style={s.variableMonitorName}>{v.name}</span>
-                      <span style={s.variableMonitorValue}>{variableValues[v.name] ?? 0}</span>
+                      <span style={s.variableMonitorValue}>
+                        {(slowMoPreview ? slowMoPreview.variables : variableValues)[v.name] ?? 0}
+                      </span>
                     </div>
                   ))}
               </div>
@@ -3604,6 +3762,7 @@ export default function ScratchWorkspace({
                 ))}
               </div>
             )}
+            <SlowMoPreviewBanner snapshot={slowMoPreview} onBackToNow={slowMo.backToNow} />
             <canvas
               ref={canvasRef}
               width={STAGE_W}
@@ -3648,6 +3807,34 @@ export default function ScratchWorkspace({
               </div>
             )}
           </div>
+
+          {slowMoConfig && !readOnly && (
+            <>
+              <SlowMoControls
+                mode={slowMo.view.mode}
+                step={slowMo.view.step}
+                speed={slowMo.speed}
+                disabled={status !== 'ready'}
+                onPlay={handleSlowMoPlay}
+                onPause={slowMo.pause}
+                onStep={handleSlowMoStep}
+                onRestart={handleResetStage}
+                onSpeedChange={slowMo.setSpeed}
+              />
+              <SlowMoTimeline
+                snapshots={slowMo.snapshots}
+                timeline={slowMoConfig.timeline}
+                capped={slowMo.capped}
+                selectedIndex={slowMo.previewIndex}
+                onSelect={slowMo.selectSnapshot}
+                onBackToNow={slowMo.backToNow}
+                renderCostume={renderSlowMoCostume}
+              />
+            </>
+          )}
+          {readOnly && slowMo.receivedLive && (
+            <SlowMoMirrorStatus text={slowMoStatusText(slowMo.receivedLive)} />
+          )}
 
           {spritePanelFull}
 
@@ -3882,18 +4069,12 @@ const s = {
   spriteAddIcon: { fontSize: '1.5rem', lineHeight: 1, fontWeight: 500 },
   // ── Student "Add sprite"/"Add backdrop" pickers ──────────────────────────────
   addPickerWrap: { position: 'relative' },
+  // Position, size and scrolling come from AddPickerPopover (portalled, viewport-clamped).
   addPickerPanel: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    marginTop: 4,
-    zIndex: 20,
     display: 'flex',
     flexWrap: 'wrap',
+    alignContent: 'flex-start',
     gap: 6,
-    width: 220,
-    maxHeight: 220,
-    overflowY: 'auto',
     padding: 8,
     background: '#fff',
     border: '1px solid var(--ui-border-neutral-strong)',

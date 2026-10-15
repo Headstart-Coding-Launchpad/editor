@@ -1,8 +1,9 @@
-import React, { useRef } from 'react'
+import React, { useEffect, useMemo, useRef } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
 import EmojiPickerButton from '../../shared/EmojiPickerButton'
 import { useBlockGuidesOn } from '../../shared/blockGuidesSetting'
+import { applySlowMoMarker } from './slowMo/editorMarker.js'
 
 // Symbols that are fiddly to reach on an on-screen keyboard but come up
 // constantly in Python source — shown as a tap-to-insert row so touch/iPad
@@ -22,12 +23,28 @@ export default function PythonEditor({
   editorStyle,
   errorLine = null,
   lineHints = null,
+  // Locked lines (lock sets, getTaskLockSets in src/shared/lockedLines.js), or null.
+  lockedLines = null,
   onRunShortcut,
   // The task allows block brackets (taskShowsBlocks in ../../shared/blockGuides.js). When it
   // does, the Blocks button turns them on and off for this device; when not, both are hidden.
   showBlocks = true,
+  // Live scrubbing (src/shared/scrub/): getTaskScrub's settings, the preview re-run and the
+  // report hook (see CodeEditor).
+  scrub = null,
+  onScrubPreview,
+  onScrubCommit,
+  // Slow-mo playback (src/modules/python/slowMo/): `{ line, passes: [{ line, label }] }` marks
+  // the line that just ran and each loop's pass, or null.
+  slowMoMarker = null,
+  // The #@peek "stopped here" band (src/shared/peekBandEditor.js): `{ line, missed }` or null.
+  peekBand = null,
 }) {
   const editorRef = useRef(null)
+  const slowMoKey = useMemo(() => JSON.stringify(slowMoMarker ?? null), [slowMoMarker])
+  useEffect(() => {
+    applySlowMoMarker(editorRef.current?.getView?.(), JSON.parse(slowMoKey))
+  }, [slowMoKey])
   const isTouchDevice = useIsTouchDevice()
   const showSymbolButtons = isTouchDevice && !readOnly
   const showEmojiButton = !readOnly
@@ -90,8 +107,13 @@ export default function PythonEditor({
         onHighlightDismiss={onHighlightDismiss}
         errorLine={errorLine}
         lineHints={lineHints}
+        lockedLines={lockedLines}
+        peekBand={peekBand}
         onRunShortcut={onRunShortcut}
         blockGuides={showBlocks && blockGuidesOn}
+        scrub={scrub}
+        onScrubPreview={onScrubPreview}
+        onScrubCommit={onScrubCommit}
         style={{ flex: 1, minHeight: 240, ...editorStyle }}
       />
     </div>

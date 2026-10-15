@@ -66,7 +66,11 @@ export default defineModule({
     stageReveal: 'offer', // 'progressive' (python, html) | 'offer'
     studentMirror: 'view', // how StudentModal mirrors the student: 'code' | 'files' | 'blocks' | 'view'
     cardSummary: null, // StudentCard line: 'output' | 'blocks' | 'fs' | null
+    rosterWork: null, // saved to a matched student's class roster: 'code' | 'files' | 'blocks' | null
     focusPanes: [], // extra panes the teacher can highlight / force: [{ id, label }]
+    // Controls a tutor or a task's `highlight` field can pulse, each marked in the workspace with
+    // data-highlight-target (src/shared/controlHighlight.js): [{ id, label, pane? }]
+    highlightTargets: [],
     teacherEditor: null, // consent-based teacher edit: { surface, workspace?, design? } | null
     sandboxState: 'code', // where teacher sandbox work lives: 'code' | 'blocks' | 'fs' | 'desktop' | 'files'
     // What Run does: 'runtime' (needs runResult + a UI runtime), 'preview', 'workspace' (the
@@ -79,7 +83,7 @@ export default defineModule({
     teacherUnifiedStageTabs: false, // teacher code tabs show stage roles, no Starter/Complete tabs
     explainerBlockMenu: false, // explainer editor offers Scratch block references
   },
-  // runResult: { errorLine, turtle, liveCode } — required exactly when run is 'runtime'.
+  // runResult: { errorLine, turtle, liveCode, stage } — required exactly when run is 'runtime'.
 
   // What the teacher sees on the Starter / stage / Complete tabs (liveState is the Starter work).
   getDisplayState: (task, stage, liveState, tab) => {
@@ -195,4 +199,5 @@ export default defineModule({
   hasCheckValue: null,
   validateTaskInBrowser: null,
   verifyTaskChecks: null,
+  testCheckCase: null,
 })

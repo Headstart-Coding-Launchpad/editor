@@ -659,6 +659,27 @@ describe('buildSessionReport', () => {
     expect(taskById(report.taskSummary, 1)).toMatchObject({ pasteCount: 2, pastedStudentCount: 1 })
   })
 
+  it('reports HTML Inspector use per student task and per task summary', () => {
+    const withInspector = {
+      ...session,
+      students: {
+        ...session.students,
+        alice: {
+          ...session.students.alice,
+          inspectorLog: { 1: { opens: 1, selects: 3, lastAt: 1 } },
+        },
+      },
+    }
+    const report = buildSessionReport({ session: withInspector, lesson })
+    expect(taskById(studentByLabel(report, 'Student 1').tasks, 1).inspector).toEqual({
+      used: true,
+      opens: 1,
+      selects: 3,
+    })
+    expect(taskById(studentByLabel(report, 'Student 2').tasks, 1).inspector).toBeUndefined()
+    expect(taskById(report.taskSummary, 1)).toMatchObject({ inspectorUsedCount: 1 })
+  })
+
   it("folds a live per-task teacher rating into that task's summary", () => {
     const withTaskRating = {
       ...session,

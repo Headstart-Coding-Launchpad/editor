@@ -60,6 +60,12 @@ export const COMMON_TASK_FIELDS = specs(
     { name: 'taskMode', type: 'string' },
     { name: 'allowSharing', type: 'boolean' },
     {
+      name: 'highlight',
+      type: 'string',
+      description:
+        "A control to pulse when the task opens, e.g. run, stop, green_flag, costumes_tab, category:Motion (also { target }); capabilities lists each module's highlightTargets.",
+    },
+    {
       name: 'peerHints',
       type: 'array',
       authored: true,

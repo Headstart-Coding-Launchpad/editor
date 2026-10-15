@@ -18,7 +18,26 @@ import {
   recordStorage,
   TEACHER_EDIT_CODE_COPY,
   alwaysPersonalSandbox,
+  noLiveExtras,
+  variablesPanelLiveExtra,
 } from '../moduleContract.js'
+import { SHOW_VARIABLES_TASK_FIELD } from '../../shared/variablesPanel/variablesPanel.js'
+import { LAYOUT_TASK_FIELD, validateTaskLayout } from '../../shared/resultPane/resultPane.js'
+import { validateShowVariables } from '../../shared/variablesPanel/validation.js'
+import { PYTHON_SLOW_MO_TASK_FIELD, validatePythonSlowMo } from './slowMo/config.js'
+import {
+  PUZZLE_TASK_FIELD,
+  validateLockedLines,
+  validatePuzzle,
+} from '../../shared/puzzle/puzzle.js'
+import {
+  SETUP_CODE_TASK_FIELD,
+  SETUP_NOTE_TASK_FIELD,
+  validateSetupCode,
+} from '../../shared/puzzle/setupCode.js'
+import { STAGE_TARGET_TASK_FIELD, validateStageTarget } from '../../shared/stage/validation.js'
+import { compactStageForSync } from '../../shared/stage/sync.js'
+import { SCRUB_TASK_FIELD, validateScrub } from '../../shared/scrub/scrubConfig.js'
 import {
   codeCopyStarterToComplete,
   codeDefaultTypeFields,
@@ -40,6 +59,14 @@ export default defineModule({
     playground: true,
   },
   capabilities: {
+    // Saved to a matched student's class roster on Run / submission (src/shared/roster/).
+    rosterWork: 'code',
+    // Controls a tutor or a task's `highlight` field can pulse (src/shared/controlHighlight.js).
+    // Run and Stop share one button, which carries data-highlight-target="run stop".
+    highlightTargets: [
+      { id: 'run', label: 'Run button' },
+      { id: 'stop', label: 'Stop button' },
+    ],
     stageReveal: 'progressive',
     teacherStageReveal: true,
     highlights: true,
@@ -63,9 +90,13 @@ export default defineModule({
     peerHelp: { anchors: 'lines', hints: 'python' },
     // A passed task's side-quests run in a throwaway Python workspace (src/shared/sideQuests.js).
     sideQuests: true,
+    // A task's `scrub` (src/shared/scrub/): a scrubbed value re-runs live only in programs that
+    // draw on the Python Stage (import stage) and never ask for input().
+    scrub: { liveRerun: 'preview', needsImport: 'stage', inputCall: 'input' },
   },
-  // Pyodide reports the failing line on stderr; the editor highlights it.
-  runResult: { errorLine: true, turtle: false, liveCode: false },
+  // Pyodide reports the failing line on stderr; the editor highlights it. A run's Python Stage
+  // drawing (src/shared/stage/) is written with the run (writeStudentStageResult).
+  runResult: { errorLine: true, turtle: false, liveCode: false, stage: true },
 
   getDisplayState: (task, stage, liveState, tab) => {
     if (tab === 'complete') return task?.completeCode ?? ''
@@ -132,6 +163,22 @@ export default defineModule({
       ],
     },
     { name: 'carryCodeFrom', type: 'string' },
+    {
+      name: 'carryCodeFromLesson',
+      type: 'object',
+      description:
+        "{ lesson, task }: start from the student's own saved work on that task of an earlier lesson (stock ids; the tutor matches students to the class roster). Not with carryCodeFrom.",
+    },
+    SHOW_VARIABLES_TASK_FIELD,
+    STAGE_TARGET_TASK_FIELD,
+    SCRUB_TASK_FIELD,
+    PYTHON_SLOW_MO_TASK_FIELD,
+    // Hidden setup and puzzle rules (src/shared/puzzle/).
+    SETUP_CODE_TASK_FIELD,
+    SETUP_NOTE_TASK_FIELD,
+    PUZZLE_TASK_FIELD,
+    // Which result tab shows first on smaller screens (src/shared/resultPane/).
+    LAYOUT_TASK_FIELD,
   ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeCode',
@@ -199,7 +246,15 @@ export default defineModule({
     composedSandboxFields: (firstTask) => ({ sandboxStarter: firstTask?.starterCode ?? '' }),
   },
   storage: recordStorage({ workKey: 'code', taskMeta: ['output', 'runStatus'] }),
-  wire: codeStringWire(),
+  // The name-tag panel (showVariables) and the Python Stage drawing travel with a Go Live
+  // broadcast (the stage compacted like students/{id}/currentStageResult).
+  wire: codeStringWire({
+    liveExtras: (input = {}) => ({
+      ...noLiveExtras(),
+      ...variablesPanelLiveExtra(input),
+      stage: compactStageForSync(input.stage),
+    }),
+  }),
   // Generic work slot (useStudentCodeState): the code string, checked when it runs.
   checking: { trigger: 'run', buildContext: codeCheckContext },
   workSlot: codeWorkSlot({ teacherSandboxReset: true }),
@@ -211,6 +266,16 @@ export default defineModule({
     )
     validatePythonTests(task, n, errors, warnings)
     warnCompleteCode(task, n, warnings)
+    validateShowVariables(task, n, errors, warnings)
+    validateStageTarget(task, n, errors, warnings)
+    validateScrub(task, n, errors, warnings, {
+      starterCode: getStarterStage(task)?.stage?.code ?? task.starterCode ?? null,
+    })
+    validatePythonSlowMo(task, n, errors, warnings)
+    validateSetupCode(task, n, errors, warnings)
+    validatePuzzle(task, n, errors, warnings)
+    validateLockedLines(task, n, warnings)
+    validateTaskLayout(task, n, errors, warnings)
   },
   hasStarterContent: codeStarterPresent,
 })

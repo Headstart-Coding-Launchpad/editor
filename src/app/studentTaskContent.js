@@ -1,6 +1,7 @@
 import { findTaskById, getStarterStage } from '../shared/taskUtils'
 import { getTaskModuleType, isCodeTask } from '../shared/composedLesson'
 import { stripLessonLineHints } from '../shared/lineHints'
+import { resolveLessonPuzzleChecks } from '../shared/puzzle/puzzle.js'
 import { isModuleHostedActivityTask } from '../activities/registry.pure.js'
 import { getModuleDefinition } from '../modules/definitions.js'
 
@@ -9,8 +10,10 @@ import { getModuleDefinition } from '../modules/definitions.js'
  * src/shared/lineHints.js) stripped from every starter, stage and complete solution, so the
  * student never sees, saves, runs, checks, carries or mirrors them, with the hints kept on each
  * task's runtime-only `lineHintSets` for the editors. Each task's markers follow its own module
- * type (a composed lesson's per-task type). Apply after any session override; never save the
- * result (the Teacher's lesson editor keeps the authored lesson).
+ * type (a composed lesson's per-task type). `#@lock` markers and `puzzle.onlyEdit` become each
+ * task's runtime-only `lockSets` the same way, and a `max_lines` check gets its limit from
+ * `puzzle.maxLines` (resolveLessonPuzzleChecks). Apply after any session override; never save
+ * the result (the Teacher's lesson editor keeps the authored lesson).
  */
 export function prepareClassroomLesson(lesson) {
   if (!lesson) return lesson
@@ -21,7 +24,7 @@ export function prepareClassroomLesson(lesson) {
     isCodeTask(task) && !isModuleHostedActivityTask(task)
       ? syntaxOf(getTaskModuleType(lesson, task))
       : null
-  return stripLessonLineHints(lesson, taskSyntax, syntaxOf(lesson.type))
+  return resolveLessonPuzzleChecks(stripLessonLineHints(lesson, taskSyntax, syntaxOf(lesson.type)))
 }
 
 export function canCarryTaskContent(tasks, carryFromId, currentTaskId) {
@@ -99,6 +102,14 @@ function notifyCarryFallback(onCarryFallback, fallback) {
   if (fallback) onCarryFallback?.(fallback)
 }
 
+// Cross-lesson carry (src/shared/roster/crossLessonCarry.js): `crossLesson` is the loading
+// task's { state, work } from useCrossLessonCarry, or null. 'own' restores the student's own
+// save for the task in any phase (it began as the carried work); 'found' starts from the
+// carried work; every other state uses the usual starter path.
+function crossLessonState(crossLesson) {
+  return crossLesson?.state ?? null
+}
+
 export function selectPythonTaskCode({
   tasks,
   task,
@@ -106,10 +117,15 @@ export function selectPythonTaskCode({
   phase,
   readSavedCode,
   onCarryFallback,
+  crossLesson = null,
 }) {
-  if (phase === 'solo') {
+  const crossState = crossLessonState(crossLesson)
+  if (phase === 'solo' || crossState === 'own') {
     const ownSaved = readSavedCode(taskId)
     if (ownSaved != null) return ownSaved.code ?? ''
+  }
+  if (crossState === 'found' && typeof crossLesson.work?.code === 'string') {
+    return crossLesson.work.code
   }
 
   let initial = getStarterStage(task)?.stage?.code ?? task.starterCode ?? ''
@@ -135,13 +151,21 @@ export function selectHtmlTaskFiles({
   phase,
   readSavedFile,
   onCarryFallback,
+  crossLesson = null,
 }) {
   const fileFallbacks = []
+  const crossState = crossLessonState(crossLesson)
   const starterFiles = getStarterStage(task)?.stage?.files ?? task.starterFiles ?? []
   const files = starterFiles.map((file) => {
-    if (phase === 'solo') {
+    if (phase === 'solo' || crossState === 'own') {
       const ownSaved = readSavedFile(taskId, file.name)
       if (ownSaved != null) return { ...file, content: ownSaved }
+    }
+    // Each starter file by name, like in-lesson carry; a file the earlier lesson didn't have
+    // keeps its starter content, and files not in this task's starter stay hidden.
+    if (crossState === 'found' && Array.isArray(crossLesson.work?.files)) {
+      const carried = crossLesson.work.files.find((item) => item?.name === file.name)
+      return carried ? { ...file, content: String(carried.content ?? '') } : { ...file }
     }
 
     let content = file.content
@@ -195,9 +219,12 @@ export function selectScratchInitialProject({
   taskId,
   readSavedCode,
   onCarryFallback,
+  crossLesson = null,
 }) {
   const saved = readSavedCode(taskId)
   if (saved != null && hasOwn(saved, 'state')) return saved.state ?? null
+  const crossScratchState = crossLesson?.work?.scratchState
+  if (crossLessonState(crossLesson) === 'found' && crossScratchState) return crossScratchState
 
   let initialProject = null
   if (!tasks && task?.carryBlocksFrom) {

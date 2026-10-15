@@ -74,6 +74,10 @@ export function ActivityView({
   // src/shared/tutorTileHighlights.js.
   tileHighlights = null,
   onTargetTap = null,
+  // The student's typing history pushed by the tutor (sessions/{lessonId}/typingHistory/
+  // {anonymousId}, src/shared/typingHistory.js), for activities with `history` hooks; null when
+  // there is none.
+  history = null,
 }) {
   const ui = getTaskActivityUi(task)
   if (!ui || ui.id === UNKNOWN_ACTIVITY_ID || !ui.StudentView) {
@@ -100,6 +104,7 @@ export function ActivityView({
       result={result}
       tileHighlights={tileHighlights}
       onTargetTap={onTargetTap}
+      history={history}
     />
   )
   return (
@@ -177,6 +182,8 @@ export default function ActivityHost({
   // (cs.dismissTileHighlights): drawn on the student's own board only.
   tileHighlights = null,
   onDismissTileHighlights,
+  // The student's own typing history (cs.typingHistory), passed to ActivityView.
+  history = null,
 }) {
   const capabilities = useInputCapabilities()
   const [keyboardOverride, setKeyboardOverride] = useState(false)
@@ -241,6 +248,7 @@ export default function ActivityHost({
       result={reviewing ? null : result}
       entranceKey={entranceKey}
       tileHighlights={shownTileHighlights}
+      history={history}
     />
   )
   // Quizzes have no device requirements and lay themselves out (see ActivityView).

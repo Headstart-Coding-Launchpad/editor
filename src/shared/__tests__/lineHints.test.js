@@ -129,6 +129,8 @@ describe('parseLineHints (python)', () => {
       code: '#> Hint\nx',
       hints: [],
       trailingMarker: false,
+      peek: null,
+      locks: [],
     })
     expect(parseLineHints(undefined, 'python').code).toBeUndefined()
   })
@@ -148,7 +150,13 @@ describe('parseLineHints (html)', () => {
 
   it('leaves ordinary HTML comments alone', () => {
     const code = '<!-- a normal comment -->\n<p>Hi</p>'
-    expect(parseLineHints(code, 'html')).toEqual({ code, hints: [], trailingMarker: false })
+    expect(parseLineHints(code, 'html')).toEqual({
+      code,
+      hints: [],
+      trailingMarker: false,
+      peek: null,
+      locks: [],
+    })
   })
 
   it('does not treat Python markers as HTML markers', () => {
@@ -360,5 +368,39 @@ describe('stripLessonLineHints', () => {
     const lesson = { type: 'python', tasks: [{ id: 1, starterCode: 'x = 1' }] }
     expect(stripLessonLineHints(lesson, () => 'python')).toBe(lesson)
     expect(stripLessonLineHints(null, () => 'python')).toBeNull()
+  })
+})
+
+describe('parseLineHints inside Python triple-quoted strings', () => {
+  it('keeps a #> maze row inside a triple-quoted string as code', () => {
+    const code = [
+      'import turtle',
+      '#> Draw your maze',
+      'turtle.course_map("""',
+      '#####',
+      '#>.G#',
+      '#####',
+      '""")',
+      '#> Drive it',
+      '',
+    ].join('\n')
+    const parsed = parseLineHints(code, 'python')
+    expect(parsed.code).toBe('import turtle\nturtle.course_map("""\n#####\n#>.G#\n#####\n""")\n')
+    expect(parsed.hints.map((hint) => hint.text)).toEqual(['Draw your maze', 'Drive it'])
+    expect(parsed.hints[0].line).toBe(2)
+  })
+
+  it('reads markers again after the string closes, for both quote styles and one-line strings', () => {
+    const code = ["a = '''", '#> not a hint', "'''", 'b = """x"""', '#> a hint', 'c = 1'].join('\n')
+    const parsed = parseLineHints(code, 'python')
+    expect(parsed.code).toBe(["a = '''", '#> not a hint', "'''", 'b = """x"""', 'c = 1'].join('\n'))
+    expect(parsed.hints).toEqual([{ line: 5, text: 'a hint', target: 'c = 1' }])
+  })
+
+  it('ignores triple quotes inside comments and single-quoted strings', () => {
+    const code = ['s = \'"""\'  # also """ here', '#> hint', 'x = 1'].join('\n')
+    expect(parseLineHints(code, 'python').hints).toEqual([
+      { line: 2, text: 'hint', target: 'x = 1' },
+    ])
   })
 })

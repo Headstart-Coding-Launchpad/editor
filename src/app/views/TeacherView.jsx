@@ -30,6 +30,7 @@ import TeacherFeedbackModal from '../components/TeacherFeedbackModal'
 import TeacherReportModal from '../components/TeacherReportModal'
 import TeacherReportsPanel from '../components/TeacherReportsPanel'
 import CheckConditionsPanel from './teacher/CheckConditionsPanel'
+import SideQuestsPanel from './teacher/SideQuestsPanel'
 import TaskRatingPanel from './teacher/TaskRatingPanel'
 import BadgeSuggestionsPanel from './teacher/BadgeSuggestionsPanel'
 import TeacherEditorPanel from './teacher/TeacherEditorPanel'
@@ -64,6 +65,7 @@ import { useTopicLibrary } from '../../shared/topicLibrary'
 import { buildStudentLivePayload } from '../teacherLivePayload'
 import { getModuleDefinition } from '../../modules/definitions'
 import PaneFocusDropdown from '../components/student-modal/PaneFocusDropdown'
+import ControlHighlightDropdown from '../components/student-modal/ControlHighlightMenu'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
 import { describeShareError } from '../sharedWorkspacePayload'
 import { useSandboxArchiveSnapshots } from '../hooks/useSandboxArchiveSnapshots'
@@ -73,6 +75,24 @@ import { firstViewKey } from '../../shared/motion'
 import { usePeerHelp } from '../hooks/usePeerHelp'
 import TeacherPeerHelpMenu from '../components/peerHelp/TeacherPeerHelpMenu'
 import TeacherPeerHelpAlertBanner from '../components/peerHelp/TeacherPeerHelpAlertBanner'
+import MatchStudentsDialog from '../components/roster/MatchStudentsDialog'
+import { useClassList, useClassRoster } from '../hooks/useClassRoster'
+import { useRosterWorkSaver } from '../hooks/useRosterWorkSaver'
+import { useTypingHistory } from '../hooks/useTypingHistory'
+import { useCarryInboxWriter } from '../hooks/useCarryInboxWriter'
+import { carryStarterUpdates, carryWaitingStudentIds } from '../../shared/roster/crossLessonCarry'
+import { applyCarryStarter } from '../../shared/roster/crossLessonCarryService'
+import {
+  activeRosterMatches,
+  resolveSessionClass,
+  summariseRosterStatus,
+} from '../../shared/roster/rosterModel'
+import {
+  addRosterEntry,
+  matchStudent,
+  setSessionClass,
+  unmatchStudent,
+} from '../../shared/roster/rosterService'
 
 function canRecordAdvanceOverride(task) {
   if (!task || task.taskType === 'information') return false
@@ -159,6 +179,9 @@ export default function TeacherView({ lessonId }) {
     setTeacherLiveReferenceForClass,
     pushTeacherPaneCommand,
     pushClassPaneCommand,
+    pushClassControlHighlight,
+    clearClassControlHighlight,
+    pushTeacherControlHighlight,
     archiveSandboxStudentSnapshot,
     readSessionArchive,
     decideBadge,
@@ -198,6 +221,47 @@ export default function TeacherView({ lessonId }) {
   // The Admin badge catalogue (manual-only badges), read once: the picker, cards, Badge Summary
   // wall and report resolve catalogue badge ids through it.
   const catalogueBadges = useBadgeCatalogue(!!user)
+  // Class roster (Ryan, 2026-10-14): the session's class (a fork's own class, else the tutor's
+  // pick for this session), its roster, the tutor's hand-made matches, and the tutor-side saver
+  // that keeps each matched student's last Run / submission on their roster entry.
+  const sessionClass = useMemo(
+    () => resolveSessionClass(lesson, session),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lesson?.fork?.classId, session?.classId, session?.classChosenAt]
+  )
+  const { roster, loading: rosterLoading } = useClassRoster(sessionClass.classId)
+  const classList = useClassList(!!lesson && sessionClass.source !== 'fork')
+  const rosterMatches = useMemo(
+    () => activeRosterMatches(session?.rosterMatches, roster),
+    [session?.rosterMatches, roster]
+  )
+  useRosterWorkSaver({
+    session,
+    lesson,
+    lessonId,
+    classId: sessionClass.classId,
+    matches: rosterMatches,
+  })
+  // Typing history (src/shared/typingHistory.js): saves matched students' keyboard scores to
+  // their roster entry and pushes their last / best scores back to them.
+  const typingEntriesByStudent = useTypingHistory({
+    session,
+    lesson,
+    lessonId,
+    classId: sessionClass.classId,
+    matches: rosterMatches,
+  })
+  // Cross-lesson carry (carryCodeFromLesson / carryBlocksFromLesson): fills each matched
+  // student's carry inbox from their saved work, so their held task can open.
+  useCarryInboxWriter({
+    session,
+    lesson,
+    lessonId,
+    classId: sessionClass.classId,
+    matches: rosterMatches,
+    by: user?.uid ?? null,
+  })
+  const [showMatchDialog, setShowMatchDialog] = useState(false)
   // The Badge Summary task's class wall, on the teacher's screen.
   const teacherBadgeWall = useMemo(
     () => ({
@@ -247,6 +311,9 @@ export default function TeacherView({ lessonId }) {
   const [teacherShareError, setTeacherShareError] = useState(null)
   const [leftCollapsed, setLeftCollapsed] = useState(() => window.innerWidth < 860)
   const [rightCollapsed, setRightCollapsed] = useState(() => window.innerWidth < 1100)
+  // { studentId, at }: the side-quest panel asking the student grid to open that student's
+  // side-quest in their StudentModal.
+  const [openSideQuestRequest, setOpenSideQuestRequest] = useState(null)
   // The work the teacher's editor shows, one value per sandbox kind
   // (`capabilities.sandboxState`: 'code', 'blocks', 'fs', 'desktop', 'files'), each in the
   // module's stored-work form — see ../teacherSandboxWork.js.
@@ -606,6 +673,12 @@ export default function TeacherView({ lessonId }) {
   const sandboxLesson = getEffectiveLessonForModule(lesson, activeSandboxModuleId)
   const editorLesson = isInSandbox ? sandboxLesson : displayedLesson
   const currentTask = flatTasks.find((t) => t.id === (session?.currentTaskId ?? currentTaskId))
+  // The class highlight menu lists the controls of the task the students are on (in the
+  // sandbox, the sandbox's task), by its effective module type.
+  const classHighlightTask = isInSandbox ? task : currentTask
+  const classHighlightType = isInSandbox
+    ? editorLesson?.type
+    : getEffectiveLessonForTask(lesson, currentTask?.id)?.type
   const displayIndex = flatTasks.findIndex((t) => t.id === displayTaskId)
   // Next / Back in the teacher's navigator find the neighbouring tasks' images already loaded.
   usePreloadNeighbourImages(lesson, flatTasks, displayIndex)
@@ -624,6 +697,33 @@ export default function TeacherView({ lessonId }) {
     () => listJoiningStudents(session?.joiningStudents),
     [session?.joiningStudents]
   )
+  // Tutor-only: each matched student's roster name, and who still needs matching.
+  const rosterStatus = {
+    ...summariseRosterStatus({
+      students,
+      matches: session?.rosterMatches,
+      roster,
+      classId: sessionClass.classId,
+    }),
+    needsClass: sessionClass.source === 'unset',
+    typingEntriesByStudent,
+    // Students held on the current task until their earlier-lesson work is found, and the
+    // tutor's "Use the starter" override for them (src/shared/roster/crossLessonCarry.js).
+    carryWaitingIds: carryWaitingStudentIds({
+      session,
+      lesson,
+      classSource: sessionClass.source,
+    }),
+    onUseCarryStarter: (anonymousIds) =>
+      applyCarryStarter(
+        lessonId,
+        carryStarterUpdates({ session, lesson, anonymousIds, by: user?.uid ?? null })
+      ),
+  }
+  const sessionClassName =
+    sessionClass.source === 'fork'
+      ? (lesson?.fork?.className ?? sessionClass.classId)
+      : (classList.find((cls) => cls.id === sessionClass.classId)?.name ?? sessionClass.classId)
   const isPreviewing = previewTaskId !== null && !isInSandbox
 
   async function handleSendStageToAll(action) {
@@ -715,6 +815,18 @@ export default function TeacherView({ lessonId }) {
                 lessonType={editorLesson?.type}
                 onHighlight={(panes) => pushClassPaneCommand({ mode: 'highlight', panes })}
                 onForce={(panes) => pushClassPaneCommand({ mode: 'force', panes })}
+              />
+            )}
+            {/* Pulse one control (Run, the green flag, a block category…) on every student's
+                screen, for the task the class is on (its effective module type). */}
+            {session && !!classHighlightTask && isCodeTask(classHighlightTask) && (
+              <ControlHighlightDropdown
+                label="Highlight Class"
+                lessonType={classHighlightType}
+                onHighlight={(target) =>
+                  pushClassControlHighlight(target, isInSandbox ? null : (currentTask?.id ?? null))
+                }
+                onClear={clearClassControlHighlight}
               />
             )}
             <TeacherSessionControls
@@ -897,6 +1009,13 @@ export default function TeacherView({ lessonId }) {
           {task?.check != null && !isInSandbox && (
             <CheckConditionsPanel check={task.check} taskTitle={task.title} />
           )}
+          {!isInSandbox && (
+            <SideQuestsPanel
+              lesson={lesson}
+              session={session}
+              onOpenStudent={(studentId) => setOpenSideQuestRequest({ studentId, at: Date.now() })}
+            />
+          )}
         </main>
 
         {/* Right — Student Grid */}
@@ -936,6 +1055,7 @@ export default function TeacherView({ lessonId }) {
             onAddHighlight={pushTeacherHighlight}
             onRemoveHighlight={removeTeacherHighlight}
             onPushTeacherPaneCommand={pushTeacherPaneCommand}
+            onPushTeacherControlHighlight={pushTeacherControlHighlight}
             onTeacherAnswerEdit={pushTeacherAnswerEdit}
             onPushTileHighlight={pushTeacherTileHighlight}
             onRemoveTileHighlights={removeTeacherTileHighlights}
@@ -964,9 +1084,33 @@ export default function TeacherView({ lessonId }) {
             catalogueBadges={catalogueBadges}
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed((v) => !v)}
+            openSideQuestRequest={openSideQuestRequest}
+            rosterStatus={rosterStatus}
+            onOpenRoster={() => setShowMatchDialog(true)}
           />
         </aside>
       </div>
+
+      {showMatchDialog && (
+        <MatchStudentsDialog
+          onClose={() => setShowMatchDialog(false)}
+          classInfo={sessionClass}
+          classes={classList}
+          className={sessionClassName}
+          roster={roster}
+          rosterLoading={rosterLoading}
+          students={students}
+          matches={rosterMatches}
+          onPickClass={(classId) => setSessionClass(lessonId, classId)}
+          onMatch={(anonymousId, rosterId) =>
+            matchStudent(lessonId, anonymousId, rosterId, user?.uid ?? null)
+          }
+          onUnmatch={(anonymousId) => unmatchStudent(lessonId, anonymousId)}
+          onAddStudent={(name) => addRosterEntry(sessionClass.classId, name, user?.uid ?? null)}
+          carryWaitingIds={rosterStatus.carryWaitingIds}
+          onUseCarryStarter={rosterStatus.onUseCarryStarter}
+        />
+      )}
 
       {showEndModal && (
         <TeacherEndSessionModal

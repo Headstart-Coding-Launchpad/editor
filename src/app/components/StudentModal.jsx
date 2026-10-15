@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
+import { exampleOpenCount } from '../../shared/exampleOpens'
 import { CodeEditor } from '../../shared/CodeEditor'
 import { useLatestRef } from '../hooks/useLatestRef'
 import { decodeFileKey } from '../../shared/fileKeys'
@@ -23,11 +24,19 @@ import { TEACHER_LIVE_REFERENCE_TYPES } from '../studentLiveDisplay'
 import DropdownMenu from './student-modal/DropdownMenu'
 import TeacherPeerHelpStudentPanel from './peerHelp/TeacherPeerHelpStudentPanel'
 import MessageCompose from './student-modal/MessageCompose'
+// Export work (tutor-only download / share link); loaded on first open.
+const ExportWorkDialog = React.lazy(() => import('./student-modal/ExportWorkDialog'))
 import OverrideDropdown from './student-modal/OverrideDropdown'
 import { PaneFocusControls } from './student-modal/PaneFocusDropdown'
+import {
+  ControlHighlightControls,
+  hasControlHighlightTargets,
+} from './student-modal/ControlHighlightMenu'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
 import StudentHintPanel from './student-modal/StudentHintPanel'
 import ShareRequestPanel from './student-modal/ShareRequestPanel'
+import StudentSideQuestView, { SideQuestViewToggle } from './student-modal/StudentSideQuestView'
+import { studentOpenSideQuest } from '../../shared/sideQuests'
 import TileHighlightBar from './student-modal/TileHighlightBar'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './student-modal/constants'
 import { countShownLineHints, getMirrorLineHintSets } from './student-modal/mirrorLineHints'
@@ -99,6 +108,7 @@ export default function StudentModal({
   onRevealSupportStage,
   onSetTeacherLiveReference,
   onPushTeacherPaneCommand,
+  onPushTeacherControlHighlight,
   onTeacherAnswerEdit,
   // Tutor tile highlights (useSession push/remove/clearTeacherTileHighlights).
   onPushTileHighlight,
@@ -116,6 +126,16 @@ export default function StudentModal({
   onDecideBadge,
   onRevokeBadge,
   catalogueBadges = [],
+  // Truthy (a fresh value each time) to show the student's side-quest rather than the task.
+  sideQuestViewRequest = null,
+  // Tutor-only: the class-list name this student is matched to (src/shared/roster/), or null.
+  rosterName = null,
+  // Tutor-only: the matched student's saved typing entries, newest first (useTypingHistory).
+  typingEntries = null,
+  // Held on a cross-lesson carry task (src/shared/roster/crossLessonCarry.js), and the tutor's
+  // "Use the starter" override for this student.
+  carryWaiting = false,
+  onUseCarryStarter = null,
 }) {
   const overlayRef = useRef(null)
   const iframeRef = useRef(null)
@@ -132,11 +152,18 @@ export default function StudentModal({
     setTileHighlightMode(false)
     setTileHighlightNote('')
   }, [student.anonymousId, session?.currentTaskId])
+  // 'main' or 'sideQuest' (StudentSideQuestView); a side-quest chip or the side-quest panel
+  // opens the modal on the side-quest (sideQuestViewRequest changes each time).
+  const [bodyView, setBodyView] = useState(sideQuestViewRequest ? 'sideQuest' : 'main')
+  useEffect(() => {
+    if (sideQuestViewRequest) setBodyView('sideQuest')
+  }, [sideQuestViewRequest])
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [fullscreenRequested, setFullscreenRequested] = useState(false)
   const [nudged, setNudged] = useState(false)
   const [thumbsUpSent, setThumbsUpSent] = useState(false)
   const [showBadgeDialog, setShowBadgeDialog] = useState(false)
+  const [showExportDialog, setShowExportDialog] = useState(false)
 
   // Teacher highlight: select a range in the mirrored view, tag it, send it
   const [pendingHighlight, setPendingHighlight] = useState(null) // {from, to} | null
@@ -233,6 +260,7 @@ export default function StudentModal({
     setStageDeclinedNotice(false)
     setShowMessageModal(false)
     setShowBadgeDialog(false)
+    setShowExportDialog(false)
     setPendingHighlight(null)
     setHighlightNote('')
   }, [student.anonymousId])
@@ -537,6 +565,9 @@ export default function StudentModal({
     student.shareSnapshotRequestedAt != null && student.shareRequestedAt == null
   const showShareRequest =
     !!onReadPendingShare && (student.shareRequestedAt != null || awaitingShareSnapshot)
+  // The student's open side-quest (StudentSideQuestView): a "Main task / Side-quest" switch.
+  const sideQuestInfo = studentOpenSideQuest({ student, moduleType: taskLesson?.type, task })
+  const showSideQuestView = bodyView === 'sideQuest' && !!sideQuestInfo
 
   // The task's 💡 line hints still on the watched student's code (the count the mirrored editor
   // shows in StudentWorkspaceBody); null when the task has none or the body shows no code.
@@ -600,6 +631,8 @@ export default function StudentModal({
   const completeStage =
     !isInformation && !isQuizLike && supportsStageReveal ? getCompleteStage(task) : null
   const revealedSupportStages = session?.supportRevealLog?.[student.anonymousId]?.[task?.id] ?? {}
+  // "See example" fences opened in this task's explainer (src/shared/exampleOpens.js).
+  const examplesOpened = exampleOpenCount(session, student.anonymousId, task?.id)
   // "Every task" reference: re-applied by the student's client on each task.
   const canSetAutoReveal = !!onSetAutoReveal && supportsStageReveal
   const autoRevealStage = student.autoRevealStage ?? null
@@ -634,9 +667,13 @@ export default function StudentModal({
 
   // Read through a ref: the listener is bound once, and handleClose → handleCommitEdit
   // must see the teacher's latest typed code/files, not the values from when it was bound.
-  // Escape closes the badge picker first, then the modal.
+  // Escape closes the export dialog or badge picker first, then the modal.
   const handleCloseRef = useLatestRef(() =>
-    showBadgeDialog ? setShowBadgeDialog(false) : handleClose()
+    showExportDialog
+      ? setShowExportDialog(false)
+      : showBadgeDialog
+        ? setShowBadgeDialog(false)
+        : handleClose()
   )
   useEffect(() => {
     function onKey(e) {
@@ -665,6 +702,33 @@ export default function StudentModal({
         <div style={s.header}>
           <div style={s.headerLeft} data-testid="student-modal-status">
             <span style={s.name}>{student.displayName}</span>
+            {rosterName && (
+              <span
+                style={s.rosterName}
+                title="Matched on the class list (only you see this)"
+                data-testid="modal-roster-name"
+              >
+                👥 {rosterName}
+              </span>
+            )}
+            {carryWaiting && (
+              <span
+                style={s.rosterName}
+                title="Their task is held until their work from the earlier lesson is found. Match them to the class list, or start them from the starter."
+                data-testid="modal-carry-waiting"
+              >
+                ⏳ Waiting for earlier work
+                {onUseCarryStarter && (
+                  <button
+                    type="button"
+                    style={s.carryStarterButton}
+                    onClick={() => onUseCarryStarter()}
+                  >
+                    Use the starter
+                  </button>
+                )}
+              </span>
+            )}
             <PresenceBadge student={student} session={session} />
             {isLive && (
               <span style={s.liveBadge}>
@@ -763,6 +827,15 @@ export default function StudentModal({
             {Object.keys(revealedSupportStages).length > 0 && (
               <span style={s.supportBadge} title="Student has opened a stage reference">
                 Reference opened
+              </span>
+            )}
+            {examplesOpened > 0 && (
+              <span
+                style={s.supportBadge}
+                title="Student has opened the worked example in this task's explainer"
+                data-testid="modal-example-opened"
+              >
+                🔍 Opened example{examplesOpened > 1 ? ` (${examplesOpened})` : ''}
               </span>
             )}
             {student.currentTopicId &&
@@ -1137,6 +1210,8 @@ export default function StudentModal({
                   student.shareSnapshotRequestedAt == null
                 const hasFullscreen = !!onRequestFullscreen
                 const hasBadge = !!onDecideBadge
+                // Export work: the dialog finds the tasks with work itself.
+                const hasExport = !!lesson?.tasks?.length
                 const hasNudge = !!onNudge && student.online
                 // Broadcasting a student's work is not offered on quiz or activity tasks
                 // (teacher-only broadcasts there).
@@ -1146,8 +1221,14 @@ export default function StudentModal({
                   !isLiveForAll &&
                   allowsStudentBroadcast(task)
                 const hasFocus = !!onPushTeacherPaneCommand && !isInformation && !isQuizLike
+                const hasControlHighlight =
+                  !!onPushTeacherControlHighlight &&
+                  !isInformation &&
+                  !isQuizLike &&
+                  hasControlHighlightTargets(taskLesson?.type)
                 if (
                   !hasBadge &&
+                  !hasExport &&
                   !hasNudge &&
                   !hasGoLiveForAll &&
                   !hasEdit &&
@@ -1156,7 +1237,8 @@ export default function StudentModal({
                   !hasVideoCall &&
                   !hasShare &&
                   !hasFullscreen &&
-                  !hasFocus
+                  !hasFocus &&
+                  !hasControlHighlight
                 )
                   return null
                 return (
@@ -1172,6 +1254,18 @@ export default function StudentModal({
                             }}
                           >
                             🏅 Award badge
+                          </button>
+                        )}
+                        {hasExport && (
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              setShowExportDialog(true)
+                            }}
+                            title="Download this student's work, or make a name-hidden share link"
+                          >
+                            🎁 Export work
                           </button>
                         )}
                         {hasNudge && (
@@ -1299,6 +1393,24 @@ export default function StudentModal({
                             />
                           </section>
                         )}
+                        {/* Pulse one control (Run, the green flag, a category…) on this
+                            student's screen (src/shared/controlHighlight.js) */}
+                        {hasControlHighlight && (
+                          <section aria-label="Highlight" style={s.menuSection}>
+                            <div style={s.menuHeading}>Highlight</div>
+                            <ControlHighlightControls
+                              lessonType={taskLesson?.type}
+                              onHighlight={(target) =>
+                                onPushTeacherControlHighlight(
+                                  student.anonymousId,
+                                  target,
+                                  task?.id ?? null
+                                )
+                              }
+                              onDone={close}
+                            />
+                          </section>
+                        )}
                       </>
                     )}
                   </DropdownMenu>
@@ -1327,6 +1439,14 @@ export default function StudentModal({
             peerHelp={peerHelp}
           />
         )}
+        {sideQuestInfo && !showShareRequest && (
+          <SideQuestViewToggle
+            view={showSideQuestView ? 'sideQuest' : 'main'}
+            onChange={setBodyView}
+            quest={sideQuestInfo.quest}
+            total={sideQuestInfo.total}
+          />
+        )}
         {showShareRequest ? (
           <ShareRequestPanel
             student={student}
@@ -1336,6 +1456,13 @@ export default function StudentModal({
             onApprove={onApproveShare}
             onDecline={onDeclineShare}
             awaitingSnapshot={awaitingShareSnapshot}
+          />
+        ) : showSideQuestView ? (
+          <StudentSideQuestView
+            student={student}
+            session={session}
+            lesson={taskLesson}
+            task={task}
           />
         ) : (
           <>
@@ -1459,6 +1586,8 @@ export default function StudentModal({
                   answerEditing={supportsAnswerEdit && answerEditing}
                   onEditAnswer={(payload) => onTeacherAnswerEdit?.(student.anonymousId, payload)}
                   tileHighlights={shownTileHighlights}
+                  typingHistory={session?.typingHistory?.[student.anonymousId] ?? null}
+                  typingEntries={typingEntries}
                   onTileTargetTap={
                     supportsTileHighlight && tileHighlightMode && !answerEditing
                       ? handleTileHighlightTap
@@ -1506,6 +1635,17 @@ export default function StudentModal({
           onRevokeBadge={onRevokeBadge}
           onClose={() => setShowBadgeDialog(false)}
         />
+      )}
+
+      {showExportDialog && (
+        <React.Suspense fallback={null}>
+          <ExportWorkDialog
+            student={student}
+            lesson={lesson}
+            session={session}
+            onClose={() => setShowExportDialog(false)}
+          />
+        </React.Suspense>
       )}
 
       {/* Message compose modal */}
@@ -1618,6 +1758,26 @@ const s = {
     fontWeight: 700,
     fontSize: '1.05rem',
     whiteSpace: 'nowrap',
+  },
+  carryStarterButton: {
+    marginLeft: 6,
+    background: 'rgba(255,255,255,0.9)',
+    color: 'var(--colour-primary)',
+    border: 'none',
+    borderRadius: 999,
+    padding: '0 8px',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  rosterName: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: '0.78rem',
+    whiteSpace: 'nowrap',
+    background: 'rgba(255,255,255,0.18)',
+    borderRadius: 999,
+    padding: '1px 8px',
   },
   liveBadge: {
     fontFamily: 'var(--font-body)',

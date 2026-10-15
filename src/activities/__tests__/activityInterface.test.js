@@ -157,7 +157,7 @@ describe('resolve', () => {
     const activity = getActivityDefinition('code_arrange')
     const task = { taskType: 'code_arrange', moduleType: 'python' }
     expect(activity.legacy).toEqual({ taskType: 'code_arrange' })
-    expect(activity.hostModules).toEqual(['python', 'html'])
+    expect(activity.hostModules).toEqual(['python', 'html', 'turtle'])
     expect(activity.storage).toEqual({ persist: true, filename: '__code_arrange_slots__' })
     expect(activity.liveChannel).toBe('codeArrangeSlots')
     expect(activity.report.typeFields(task)).toEqual({ taskType: 'code' })

@@ -110,14 +110,23 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `autoCheck` | The [auto-check on leave](#auto-check-on-leave): `{ result: passed \| failed \| not_run, suggestion (the hint a run would have shown, or null), submission (the work checked), checkedAt (ms) }`, the latest one. *Graded only.* | Omitted unless the student never passed and was auto-checked | 2026-10-01 |
 | `teacherAssisted` | `true`: the passing attempt came after the teacher used **Edit answers** on this student's quiz or activity answer, or Code Arrange tiles, on this task (teacher code edits don't set it). | Omitted unless true | 2026-09-17 |
 | `carryFallback` | Carry-through couldn't use the requested source task: `taskId`, `field` (the carry field), `requestedSourceTaskId`, `resolvedSourceTaskId` (what was used instead, or null), `skippedSourceTaskIds[]`, `fallbackAt` (ms), `files[]` (only when the fallback recorded files). | Omitted when none | 2026-07-22 |
+| `crossLessonCarry` | A task with `carryCodeFromLesson` / `carryBlocksFromLesson` ([two-lesson projects](AUTHORING_GUIDE.md#two-lesson-projects-carry-from-an-earlier-lesson)): `{ outcome, sourceLessonId, sourceTaskId, reason? }`. `outcome`: `found` (their earlier-lesson work was found and handed to them), `none` (nothing saved for them; `reason` `not_saved`, `too_large` or `error`), `starter` (the tutor chose **Use the starter**), `no_class` (the session had "No class"). A student who started from the starter also has a `carryFallback` with `crossLesson: true`, `reason`, `sourceLessonId` and `sourceTaskId`. Anonymous: no class-list names or ids. A student who already had their own work for the task keeps it whatever the outcome. | Omitted when the task has no cross-lesson carry or the student never reached it | 2026-10-14 |
 | `supportReveals[]` | Each support reference opened: `taskId`, `stageIndex`, `stageLabel`, `source` (`student`, `teacher`, `teacher-auto`), `attemptNumber` (attempts made before it), `revealedAt` (ms). See [Support reveals](#support-reveals). | Omitted when none | 2026-07-22 |
 | `pastes` | Large pastes into the editor: `{ count, chars }` (chars = total pasted). Pasting the student's own copied code doesn't count. | Omitted when none | 2026-09-29 |
 | `sideQuests[]` | Each [side-quest](AUTHORING_GUIDE.md#side-quests) the student opened on this task, by index: `{ index, title, kind, openedAt (ms, first open), runs, errorRuns, done, doneAt (ms or null) }`. `done` is self-reported (the student's ✓ I've done it!), never checked. `title`/`kind` come from the lesson and are missing if the side-quest was since removed. Never any code. | Omitted when none | 2026-10-09 |
 | `typing` | How the student typed on this code task ([Typing](#typing)): `{ charsTyped, activeTypingMs, charsPerMin, corrections, longestPauseMs, autocompleteAccepts, copyDistance? }`. Code tasks only (Python, Turtle, HTML); keyboard devices only. | Omitted when the student typed nothing, on touch devices, on other modules (Scratch, Arcade Kit, …), and on quizzes and activities | 2026-10-09 |
+| `inspector` | The student's use of the [HTML Inspector](html.md#html-inspector) on this task: `{ used: true, opens, selects }`, where `opens` counts turning inspect mode on and `selects` counts choosing an element. Counts only, never page content. HTML tasks with `inspector` enabled, live lessons only. | Omitted when the student never used it | 2026-10-14 |
+| `course` | [Turtle course mode](turtle.md#course-mode-course): `{ runs, goalReached, goalRuns, crashes, pickups, lastGoalReached }`: Runs of the course task, whether any run reached the goal (on every map) and how many did, crashes (maps crashed, over all runs), and the last run's pickups (over its maps) and goal. Counts only, never code. Live lessons only. | Omitted when the student never ran the course | 2026-10-15 |
+| `slowMoUsed`, `slowMoRuns`, `slowMoSteps` | The student used slow-mo on this task: `slowMoUsed: true`, how many slow-mo runs they started (Slow-mo, or Step before a run) and the steps. [Scratch slow-mo](scratch.md#slow-mo): `slowMoSteps` counts presses of Step. [Python / Turtle slow-mo](python.md#slow-mo-slowmo): `slowMoRuns` counts recordings and `slowMoSteps` the steps viewed (each line shown going forward, by Step or while playing; a step viewed again after Step back counts again). Counts only, never code. Tasks with `slowMo.enabled`, live lessons only. | Omitted when the student never used it | 2026-10-14 |
+| `linesUsed`, `changesFromStarter` | A [puzzle](python.md#puzzle-rules-puzzle-and-the-max_lines-check) task (`puzzle`): the lines of code (not blank, not only a comment) in the student's passing run, and how many lines of code they changed, added or removed compared with the task's starter. Read from the passing attempt's code. | Omitted when the task has no `puzzle` or the student never passed | 2026-10-15 |
+| `scrubs`, `scrubNumbers`, `scrubColours` | The student changed values by [live scrubbing](python.md#live-scrubbing-scrub) on this task: `scrubs` in all, `scrubNumbers` numbers (a drag or the slider) and `scrubColours` colours (the picker). Each finished scrub that changed the value counts once. Counts only, never code. Python, Turtle and HTML tasks with `scrub`, live lessons only. | Omitted when the student never scrubbed | 2026-10-14 |
 | `tileMisses[]` | Code Arrange [tile feedback](lesson-schema.md#tile-feedback): each time the student dropped a tile into a blank where the task marks it known-wrong, oldest first: `{ slotId (the blank), tileId, at (ms) }`. Not attempts: they never count towards `attempts` or `distinctAttempts`. At most 100 per task. | Omitted when none | 2026-10-09 |
 | `tutorTileHighlights[]` | Each time the tutor highlighted a tile on this student's board as "look again" from StudentModal (code_arrange slot mode, Match, Fill in the Gaps drag mode), oldest first: `{ targetId (the blank: code_arrange slot id, Match prompt pair id, or Fill in the Gaps blank id), tileId (the tile in it then, or null for an empty blank), note (the tutor's note; omitted when none), at (ms) }`. Support, not grading: never attempts, never changes `completed` or `finalResult`. At most 50 per task. See [Tutor Tile Highlights](../agents/classroom-behaviours.md#tutor-tile-highlights-teachertilehighlights). | Omitted when none | 2026-10-09 |
+| `predictions` | A predict-mode [name-tag panel](python.md#name-tag-panel-showvariables) task (`showVariables.mode: predict`): `{ reveals, first, last, firstAllCorrect, lastAllCorrect }`. `first` / `last` are the first and latest revealed predictions, each `[{ name, value (what the student typed, ≤ 200 characters), correct }]` in `predict` order; `reveals` counts the Runs that revealed predictions (a Run with unchanged predictions isn't counted again; at most 30). `firstAllCorrect` is the measure of predicting before running. Not attempts. | Omitted when the student never ran with a prediction typed | 2026-10-14 |
 | `itemProgress` | `{ correct, total }` items right in the latest submission. | `taskType: activity` only, when submitted | 2026-09-28 |
 | `lastDraft` | The last text the student typed but never submitted (an open or checked short answer, or typed fill-in-the-gaps shown as `print · ___`), from the live [answer drafts](quiz-tasks.md#live-drafts-what-the-tutor-sees-before-submit). Never an attempt. At most 1000 characters. | Omitted when the student submitted the task or typed nothing | 2026-10-09 |
+| `exampleOpens[]` | Each ["See an example" fence](markdown-renderer.md#worked-examples-see-an-example) in the task's explainer the student opened during the live lesson: `{ example (1 = the first in the explainer), openedAt (ms, first open), afterMs (first open after the task started for the class), lastOpenedAt (ms, only when opened again), opens }`. Use it to see whether the worked example helped: compare `afterMs` with the student's attempts and `finalResult`. | Omitted when none | 2026-10-14 |
+| `typingHistory` | A Keyboard typing task (`type_text`, `type_code`, `falling_words`) for a student the tutor matched to the class list who has scores from earlier lessons: this session's score beside the previous ones, `{ mode, cpm, accuracy, previousCpm, previousAccuracy, bestCpm, firstCpm }` ([below](#typing-history)). No names. | Omitted when unmatched or no earlier scores | 2026-10-14 |
 | `timeToFirstEditMs` | Time from the task opening on the student's device to their first real edit (timed on the device). *Graded only.* | Omitted when unknown | 2026-09-30 |
 | `errorAttempts` | Attempts whose run hit a real console error. *Graded only.* | Omitted when 0 | 2026-09-30 |
 | `uniqueFailedAttempts` | Different failed submissions (by content hash). *Graded only.* | Omitted when 0 | 2026-09-30 |
@@ -276,6 +285,7 @@ different shapes.
 | `autoPassedCount`, `autoFailedCount`, `autoNotRunCount` | Students with `finalResult` `auto_passed` / `auto_failed` / `auto_not_run`. | Omitted when all 0 | 2026-10-01 |
 | `carryFallbackCount` | Students with a `carryFallback`. | Always | 2026-07-22 |
 | `carryFallbacks[]` | Fallbacks grouped by `field`, `requestedSourceTaskId`, `resolvedSourceTaskId`, `skippedSourceTaskIds`, each with a `count`, most common first. | Always (may be empty) | 2026-07-22 |
+| `crossLessonCarryCounts` | `{ found, none, starter, no_class }` counts of the students' `crossLessonCarry` outcomes (zero counts left out). | Omitted when no student has one | 2026-10-14 |
 | `supportRevealCount` | Total `supportReveals` across students. | Always | 2026-07-22 |
 | `supportRevealStudentCount` | Students with at least one reveal. | Always | 2026-07-22 |
 | `supportRevealSources` | `{ teacher, student }` counts (always present, may be 0), plus `teacher-auto` when any. | Always | 2026-07-22 |
@@ -283,9 +293,17 @@ different shapes.
 | `pastedStudentCount` | Students who pasted. | Omitted when none | 2026-09-29 |
 | `sideQuestStudentCount` | Students who opened at least one side-quest on this task (they had passed it while the class was still on it: a sign the class waited here). | Omitted when none | 2026-10-09 |
 | `sideQuestDoneCount` | Side-quests marked done on this task, across students (self-reported). | Omitted when no side-quest was opened | 2026-10-09 |
+| `exampleOpenStudentCount` | Students who opened a worked example (`exampleOpens`) in this task's explainer. | Omitted when none | 2026-10-14 |
 | `timeToFirstEdit` | `{ medianMs, minMs, maxMs, studentCount }` over students' `timeToFirstEditMs`. | Omitted when none | 2026-09-30 |
 | `timeOnTaskSpread` | `{ medianMs, p90Ms, maxMs, studentCount }` over students' non-null `timeOnTaskMs`: the gap between the median and the slowest student. `p90Ms` is the nearest-rank 90th percentile (with fewer than 10 students it is the slowest or second slowest). | Omitted when no student has a time | 2026-10-09 |
 | `typingSummary` | `{ charsPerMin: { medianPerMin, minPerMin, maxPerMin, studentCount }, correctionsMedian }` over the students' `typing` ([Typing](#typing)). `charsPerMin` counts students with a rate (omitted when none has one); `correctionsMedian` covers every student with `typing`. | Omitted when nobody typed (always on quizzes and activities) | 2026-10-09 |
+| `inspectorUsedCount` | Students who used the HTML Inspector on this task (their `inspector`). | Omitted when none | 2026-10-14 |
+| `courseGoalReachedCount`, `courseCrashedCount` | Students who reached the goal on some run of this course task / who crashed at least once (their `course`). | Omitted when nobody ran the course | 2026-10-15 |
+| `slowMoUsedCount` | Students who used slow-mo (Scratch, Python or Turtle) on this task (their `slowMoUsed`). | Omitted when none | 2026-10-14 |
+| `scrubUsedCount` | Students who scrubbed a value on this task (their `scrubs`). | Omitted when none | 2026-10-14 |
+| `predictionStudentCount` | Students with `predictions` on this task. | Omitted when nobody predicted | 2026-10-14 |
+| `predictionFirstAllCorrectCount` | Of those, students whose first revealed predictions were all right. | Omitted when nobody predicted | 2026-10-14 |
+| `predictionFirstByName[]` | Per predicted variable, `{ name, correct, total }` over the students' first revealed predictions: which variable the class misread. | Omitted when nobody predicted | 2026-10-14 |
 | `errorStudentCount` | Students with `errorAttempts`. | Omitted when 0 | 2026-09-30 |
 | `topicOpens` | `{ student, teacher }` Topic Library opens on this task (task context). | Omitted when 0 | 2026-09-30 |
 | `firstRealPass` | `{ studentLabel, afterMs }`: the class's first *real* pass (not teacher-assisted, overridden, after the complete code was shown or revealed, or after a paste) and how long after the task opened (null if unknown). | Omitted when nobody really passed | 2026-09-30 |
@@ -410,6 +428,23 @@ never per keystroke. Added 2026-10-09.
   already written.
 - Counts span every visit to the task: if the class comes back to it, typing adds to the same
   totals.
+
+### Typing history
+
+`students[].tasks[].typingHistory` puts a matched student's Keyboard typing score next to their
+earlier ones, for typing courses that compare lessons (Typing for Coders). It comes from the
+typing history the tutor's browser keeps on the student's class-list entry (see
+[keyboard.md](activities/keyboard.md#typing-history-showhistory)), pushed to the session as
+`typingHistory/{anonymousId}` and copied into the report when it is built. The report stays
+anonymous ("Student N"): it holds numbers only. Added 2026-10-14.
+
+| Path | Meaning |
+|---|---|
+| `typingHistory.mode` | `type_text`, `type_code` or `falling_words`. |
+| `typingHistory.cpm` / `.accuracy` | This session: the average characters a minute and accuracy (0–1) of the finished items in the latest submission. Omitted when the student never submitted. |
+| `typingHistory.previousCpm` / `.previousAccuracy` | The most recent earlier session in this mode (the average of its finished items). |
+| `typingHistory.bestCpm` | The best single item before this session (characters a minute, then accuracy). |
+| `typingHistory.firstCpm` | The earliest session in this mode (its average), for "from 40 to 75" comparisons. |
 
 ## peerHelp
 

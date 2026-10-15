@@ -13,6 +13,7 @@ import {
   codeCheckContext,
   filesWire,
   filesWorkSlot,
+  NO_LIVE_EXTRAS,
   joinFileContents,
   perFileStorage,
   stageForAction,
@@ -23,6 +24,56 @@ import { getCompleteStage } from '../../shared/taskStages.js'
 import { MARKUP_COPY_CODE_PLACEHOLDER } from '../moduleAuthoring.js'
 import { HTML_FILE_TYPE, HTML_ONLY } from './fileTemplates.js'
 import { printHtmlTask } from './print.js'
+import { SCRUB_TASK_FIELD, validateScrub } from '../../shared/scrub/scrubConfig.js'
+import {
+  INSPECTOR_FOCUS_MAX,
+  INSPECTOR_KEYS,
+  INSPECTOR_SECTIONS,
+  normalizeInspectorLiveState,
+} from './inspector/config.js'
+
+// `inspector` (./inspector/config.js): the HTML Inspector on the preview.
+function validateInspector(task, n, errors, warnings) {
+  const inspector = task?.inspector
+  if (inspector == null) return
+  if (typeof inspector !== 'object' || Array.isArray(inspector)) {
+    errors.push(
+      `Task ${n} inspector must be an object like { enabled: true, show: [box, cascade] }`
+    )
+    return
+  }
+  for (const key of ['enabled', 'open']) {
+    if (inspector[key] != null && typeof inspector[key] !== 'boolean') {
+      errors.push(`Task ${n} inspector.${key} must be true or false`)
+    }
+  }
+  if (
+    inspector.focus != null &&
+    (typeof inspector.focus !== 'string' ||
+      !inspector.focus.trim() ||
+      inspector.focus.length > INSPECTOR_FOCUS_MAX)
+  ) {
+    errors.push(
+      `Task ${n} inspector.focus must be a CSS selector of ${INSPECTOR_FOCUS_MAX} characters or fewer`
+    )
+  }
+  if (
+    inspector.show != null &&
+    (!Array.isArray(inspector.show) ||
+      inspector.show.some((section) => !INSPECTOR_SECTIONS.includes(section)))
+  ) {
+    errors.push(`Task ${n} inspector.show must be a list of: ${INSPECTOR_SECTIONS.join(', ')}`)
+  }
+  const extra = Object.keys(inspector).filter((key) => !INSPECTOR_KEYS.includes(key))
+  if (extra.length > 0) {
+    warnings.push(`Task ${n} inspector has unknown fields (${extra.join(', ')}); they are ignored`)
+  }
+  if (inspector.enabled !== true) {
+    warnings.push(`Task ${n} inspector is not enabled (enabled: true), so students won't see it`)
+  } else if (task.interactionMode === 'submit') {
+    warnings.push(`Task ${n} inspector needs the preview, which submit-mode tasks don't show`)
+  }
+}
 
 const DEFAULT_HTML_FILE = {
   name: 'index.html',
@@ -46,6 +97,11 @@ export default defineModule({
     surfaceLabels: { lessonIntro: 'Web Dev', builderMeta: 'Web', print: 'Web (HTML/CSS/JS)' },
   },
   capabilities: {
+    // Saved to a matched student's class roster on Run / submission (src/shared/roster/).
+    rosterWork: 'files',
+    // Controls a tutor or a task's `highlight` field can pulse (src/shared/controlHighlight.js).
+    // HTML has no Stop: Run re-renders the preview.
+    highlightTargets: [{ id: 'run', label: 'Run button' }],
     stageReveal: 'progressive',
     teacherStageReveal: true,
     highlights: true,
@@ -72,6 +128,11 @@ export default defineModule({
     // A passed task's side-quests run in a throwaway HTML workspace, the starter as index.html
     // (src/shared/sideQuests.js).
     sideQuests: true,
+    // A task's `scrub` (src/shared/scrub/): CSS and attribute values; the student's preview
+    // re-renders live while a value moves (a watching tutor's view updates on Run).
+    scrub: { liveRerun: 'preview', needsImport: null, inputCall: null },
+    // The task's `inspector` field adds the HTML Inspector to the preview (./inspector/).
+    previewInspector: true,
   },
 
   getDisplayState: (task, stage, liveState, tab) => {
@@ -164,6 +225,19 @@ export default defineModule({
     { name: 'copyCode', type: 'string', authored: true, description: 'Read-only code to copy.' },
     { name: 'interactionMode', type: 'string', values: ['run', 'submit'] },
     { name: 'carryCodeFrom', type: 'string' },
+    {
+      name: 'carryCodeFromLesson',
+      type: 'object',
+      description:
+        "{ lesson, task }: start from the student's own saved work on that task of an earlier lesson (stock ids; the tutor matches students to the class roster). Not with carryCodeFrom.",
+    },
+    {
+      name: 'inspector',
+      type: 'object',
+      description:
+        'HTML Inspector on the preview: { enabled: true, open?, focus?: "<CSS selector>", show?: [box, cascade, layout] } (docs/authoring/html.md).',
+    },
+    SCRUB_TASK_FIELD,
   ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeFiles',
@@ -279,7 +353,13 @@ export default defineModule({
     }),
   },
   storage: perFileStorage(),
-  wire: filesWire(),
+  // The HTML Inspector's Go Live state rides along with every payload (null when off).
+  wire: filesWire({
+    liveExtras: ({ inspector } = {}) => ({
+      ...NO_LIVE_EXTRAS,
+      inspector: normalizeInspectorLiveState(inspector),
+    }),
+  }),
   // Generic work slot (useStudentCodeState, plan step 4.5): `{ files, activeFile }`, stored one
   // `{ content }` record per file and sent as a filename → content map on the files channel.
   // Checked when Run builds the preview (and on Submit in submit mode): a code check reads the
@@ -300,6 +380,9 @@ export default defineModule({
       })
     )
     warnCompleteFiles(task, n, warnings)
+    validateInspector(task, n, errors, warnings)
+    // Ranges are lines of whichever file is open, so there is no one starter to check them against.
+    validateScrub(task, n, errors, warnings)
   },
   hasStarterContent: filesStarterPresent,
 })

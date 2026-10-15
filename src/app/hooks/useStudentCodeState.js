@@ -22,6 +22,7 @@ import {
   getNextRevealableStage,
   getRevealableStages,
   getStageRole,
+  getStarterStage,
   isRevealableStage,
 } from '../../shared/taskUtils'
 import {
@@ -58,6 +59,11 @@ import { useSandboxCodePush } from './useSandboxCodePush'
 import { useStudentPresenceReporting } from './useStudentPresenceReporting'
 import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
+import { useHtmlInspectorLive } from './useHtmlInspectorLive'
+import { useSlowMoLog } from './useSlowMoLog'
+import { useCourseLog } from './useCourseLog'
+import { useScrubLog } from './useScrubLog'
+import { useScrubPreview } from './useScrubPreview'
 import { useActivityState } from './useActivityState'
 import {
   getModuleHostedActivity,
@@ -78,10 +84,17 @@ import { getLessonModule } from '../../modules/registry'
 import { getModuleDefinition } from '../../modules/definitions.js'
 import { cloneArcadeDesign } from '../../modules/arcade/design'
 import { runWithRuntime } from './runWithRuntime'
+import { useVariablesPanel } from './useVariablesPanel'
 import { useStudentBadgeSignals } from './useStudentBadgeSignals'
 import { useStudentTypingStats } from './useStudentTypingStats'
 import { runErrorFor, runErrorName } from '../../badges/signals'
 import { listTileHighlights } from '../../shared/tutorTileHighlights.js'
+import { getPredictRunLock } from '../../shared/variablesPanel/variablesPanel.js'
+import { useCrossLessonCarry } from './useCrossLessonCarry'
+import {
+  crossLessonFallbackReason,
+  crossLessonFallbackRecord,
+} from '../../shared/roster/crossLessonCarry'
 
 // The generic work slot before any module has loaded work into it.
 const EMPTY_WORK = Object.freeze({ moduleType: null, taskId: null, value: null })
@@ -167,6 +180,7 @@ export function useStudentCodeState({
   writeStudentCode,
   writeStudentArcadeDesign,
   writeStudentTurtleResult,
+  writeStudentStageResult,
   writeStudentSpriteState,
   writeStudentCursor,
   writeStudentBlockDrag,
@@ -180,6 +194,8 @@ export function useStudentCodeState({
   recordStudentPaste,
   recordStudentTyping,
   recordStudentTileMiss,
+  writeStudentVariables,
+  recordVariablePredictions,
   writeStudentPersonalSandbox,
   writeStudentPresence,
   registerPresence,
@@ -202,6 +218,9 @@ export function useStudentCodeState({
   // used by TurtleStudentWorkspace to redraw its canvas. Ephemeral/in-memory only (Phase 1) —
   // not persisted or synced to teacher-live yet, so it resets wherever output does.
   const [turtleResult, setTurtleResult] = useState(null)
+  // Python only: the Python Stage drawing of the most recent run ({ commands }, src/shared/stage/),
+  // null when cleared. Shown by the python workspace's stage pane; synced like turtleResult.
+  const [stageResult, setStageResult] = useState(null)
   const [running, setRunning] = useState(false)
   const [runningTests, setRunningTests] = useState(false)
   const [iframeSrc, setIframeSrc] = useState(null)
@@ -312,9 +331,11 @@ export function useStudentCodeState({
   // handler/render pass as setRunStatus, so the "publish on tracked value change" effect
   // (keyed on runStatus) always sees the fresh value the next time it fires.
   const turtleResultRef = useLatestRef(turtleResult)
+  const stageResultRef = useLatestRef(stageResult)
   const arcadeDesignWriteTimerRef = useRef(null)
   const spriteStateLastSentRef = useRef(0)
   const spriteStatePendingTimerRef = useRef(null)
+  const spriteStatePendingPayloadRef = useRef(null)
   const outputRef = useLatestRef(output)
   const runStatusRef = useLatestRef(runStatus)
   const sessionRef = useLatestRef(session)
@@ -322,6 +343,23 @@ export function useStudentCodeState({
   const editorSelectionRef = useLatestRef(editorSelection)
   const editorActivityRef = useLatestRef(editorActivity)
   const inPersonalSandboxRef = useLatestRef(inPersonalSandbox)
+  // The name-tag panel (a task's showVariables): see useVariablesPanel.js.
+  const variablesPanel = useVariablesPanel({
+    effectiveIdentity,
+    currentTaskId,
+    sessionRef,
+    phaseRef,
+    activeStudentViewRef,
+    teacherPresentation,
+    writeStudentVariables,
+    recordVariablePredictions,
+  })
+  // Predict mode's Run lock (showVariables.lockRun): never for the presenter or in the personal
+  // sandbox. The workspaces disable Run and slow-mo while it is set; a tutor's remote Run still runs.
+  const predictRunLock =
+    teacherPresentation || inPersonalSandbox
+      ? null
+      : getPredictRunLock(findTaskById(lesson?.tasks, currentTaskId), variablesPanel.predictions)
   // Live badge signals (topic opens, shortcuts, first edits, complete shown, sandbox runs),
   // gated off for the presentation window, previews and solo.
   const badgeSignals = useStudentBadgeSignals({
@@ -448,6 +486,8 @@ export function useStudentCodeState({
     if (getModuleDefinition(moduleType).workSlot.kind !== 'code') return
     setOutput('')
     setTurtleResult(null)
+    variablesPanel.clear()
+    setStageResult(null)
     setRunStatus(null)
     setIframeSrc(null)
   }
@@ -644,6 +684,12 @@ export function useStudentCodeState({
         : EMPTY_TILE_HIGHLIGHTS,
     [tileHighlightsLive, myStudentData?.teacherTileHighlights, currentTaskId]
   )
+  // The student's typing history, pushed by the tutor's client to the teacher-write-only
+  // sessions/{lessonId}/typingHistory/{anonymousId} (src/shared/typingHistory.js): the Keyboard
+  // activity's `showHistory` line. Live lesson only, like the tile highlights.
+  const typingHistory = tileHighlightsLive
+    ? (session?.typingHistory?.[identity?.anonymousId] ?? null)
+    : null
   const dismissTileHighlights = useCallback(
     (highlightIds) => {
       if (!identity?.anonymousId || !highlightIds?.length) return
@@ -739,6 +785,63 @@ export function useStudentCodeState({
     sandboxModuleId,
   })
 
+  // Cross-lesson carry (carryCodeFromLesson / carryBlocksFromLesson; see
+  // src/shared/roster/crossLessonCarry.js) for the class's current task. A live task whose
+  // student has no save of their own holds (LessonTaskContent shows CarryHoldNotice) until the
+  // tutor's client writes their carry status; then the task loads again from the carried work
+  // ('found') or its starter. Solo, presentation and Builder preview never hold.
+  function hasOwnTaskWork(taskId) {
+    const anonymousId = effectiveIdentity?.anonymousId
+    const definition = workSlotDefinition(lesson?.type)
+    if (!anonymousId || !definition) return false
+    if (definition.storage.layout === 'perFile') {
+      const task = findTaskById(lesson.tasks, taskId)
+      const files = getStarterStage(task)?.stage?.files ?? task?.starterFiles ?? []
+      return files.some((file) => persistence.readSavedFile(anonymousId, taskId, file.name) != null)
+    }
+    return persistence.readSavedCode(anonymousId, taskId) != null
+  }
+  const crossLessonCarry = useCrossLessonCarry({
+    lessonId,
+    lesson,
+    taskId: currentTaskId,
+    session,
+    anonymousId: effectiveIdentity?.anonymousId ?? null,
+    live: phase === 'lesson' && !teacherPresentation && !previewMode,
+    hasOwnWork: hasOwnTaskWork,
+  })
+  const crossLessonCarryRef = useLatestRef(crossLessonCarry)
+  // The cross-lesson carry of `taskId` when it is the task being loaded, else null.
+  function crossLessonCarryFor(taskId) {
+    const current = crossLessonCarryRef.current
+    return current && String(current.taskId) === String(taskId) ? current : null
+  }
+  const crossLessonSeenRef = useRef({ taskId: null, state: null })
+  useEffect(() => {
+    const { state, carry, taskId } = crossLessonCarry
+    const previous = crossLessonSeenRef.current
+    crossLessonSeenRef.current = { taskId, state }
+    // Starter fallbacks go in carryFallbackLog (recordCarryFallback: live students only).
+    const reason = crossLessonFallbackReason(state)
+    if (reason) recordCarryFallback(crossLessonFallbackRecord(taskId, carry, reason))
+    // The hold ended: load the task again, now from the carried work or the starter. Nothing
+    // was editable while held, so nothing of the student's is replaced.
+    if (
+      previous.taskId === taskId &&
+      previous.state === 'hold' &&
+      state !== 'hold' &&
+      (phase === 'lesson' || phase === 'solo') &&
+      effectiveIdentity &&
+      lesson &&
+      !inPersonalSandboxRef.current
+    ) {
+      loadTaskContent(taskId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [crossLessonCarry.state, crossLessonCarry.taskId])
+
+  // The HTML Inspector's Go Live state (useHtmlInspectorLive), read by the html wire's liveExtras.
+  const inspectorRef = useRef(null)
   const {
     teacherLiveIframeSrc,
     htmlPreviewCollapsed,
@@ -755,6 +858,9 @@ export function useStudentCodeState({
     currentTaskIdRef,
     codeRef,
     turtleResultRef,
+    stageResultRef,
+    inspectorRef,
+    variablesPanelRef: variablesPanel.syncedRef,
     filesRef,
     activeFileRef,
     outputRef,
@@ -777,10 +883,72 @@ export function useStudentCodeState({
     checkAttempted,
     checkSuggestion,
     workValue: renderedStoredWork,
+    variablesPanelState: variablesPanel.syncedState,
     iframeStorageAssets: htmlIframeStorageAssets,
     extraPayloadRef: activityLivePayloadRef,
     updateTeacherLive,
     setTeacherLiveReference,
+  })
+  const htmlInspector = useHtmlInspectorLive({
+    lessonId,
+    session,
+    phase,
+    teacherPresentation,
+    previewMode,
+    effectiveIdentity,
+    currentTaskId,
+    inPersonalSandboxRef,
+    inspectorRef,
+    canPublishTeacherLive,
+  })
+
+  // Scratch slow-mo use for the session report: recordSlowMoUse (useSlowMoLog).
+  const slowMoLog = useSlowMoLog({
+    lessonId,
+    phase,
+    teacherPresentation,
+    previewMode,
+    effectiveIdentity,
+    currentTaskId,
+    inPersonalSandboxRef,
+  })
+
+  // Turtle course runs for the session report: recordCourseRun (useCourseLog), from each Run.
+  const courseLog = useCourseLog({
+    lessonId,
+    phase,
+    teacherPresentation,
+    previewMode,
+    effectiveIdentity,
+    currentTaskId,
+    inPersonalSandboxRef,
+  })
+
+  // Live number / colour scrubbing in the code editor (a task's `scrub`, src/shared/scrub/):
+  // preview re-runs while a value moves (useScrubPreview) and the report count (useScrubLog).
+  const scrubLog = useScrubLog({
+    lessonId,
+    phase,
+    teacherPresentation,
+    previewMode,
+    effectiveIdentity,
+    currentTaskId,
+    inPersonalSandboxRef,
+  })
+  const scrubPreview = useScrubPreview({
+    moduleType: lesson?.type,
+    task: findTaskById(lesson?.tasks, currentTaskId),
+    running: running || runningTests,
+    readWork: () => storedWork(lesson?.type).work,
+    previewOptions: () => ({
+      assets: lesson?.assets ?? [],
+      assetsPath: resolveAssetsPath(lesson?.assetsPath),
+      storageAssets: htmlIframeStorageAssets,
+    }),
+    setOutput,
+    setTurtleResult,
+    setStageResult,
+    setIframeSrc,
   })
 
   // Hosted activity tasks (taskType 'activity' and legacy quizzes): state, persistence, live
@@ -885,6 +1053,8 @@ export function useStudentCodeState({
     const taskId = currentTaskIdRef.current
     if (!id || !currentLesson) return
     if (inPersonalSandboxRef.current) return
+    // A held task shows no workspace: saving its hidden starter would become "their own work".
+    if (crossLessonCarryFor(taskId)?.state === 'hold') return
 
     const task = flattenTasks(currentLesson.tasks).find((t) => t.id === taskId)
     if (task?.taskType === 'information') return
@@ -1003,6 +1173,7 @@ export function useStudentCodeState({
             readSavedFile: (sourceTaskId, filename) =>
               readStored(sourceTaskId, filename)?.work ?? null,
             onCarryFallback: recordCarryFallback,
+            crossLesson: crossLessonCarryFor(taskId),
           })
         : selectPythonTaskCode({
             tasks: lesson.tasks,
@@ -1012,6 +1183,7 @@ export function useStudentCodeState({
             readSavedCode: (sourceTaskId) =>
               persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
             onCarryFallback: recordCarryFallback,
+            crossLesson: crossLessonCarryFor(taskId),
           })
       const own = perFile ? null : readStored(taskId)
       restoreWork(
@@ -1056,6 +1228,8 @@ export function useStudentCodeState({
     setRunningTests(false)
     setOutput('')
     setTurtleResult(null)
+    variablesPanel.clear()
+    setStageResult(null)
     setRunStatus(null)
     setErrorLine(null)
     setHtmlErrorLocation(null)
@@ -1439,6 +1613,8 @@ export function useStudentCodeState({
       })
       setOutput('')
       setTurtleResult(null)
+      variablesPanel.clear()
+      setStageResult(null)
       setRunStatus(null)
       resetCheckFeedback()
       if (actorId) persistence.saveWork(lesson.type, actorId, currentTaskId, nextFiles)
@@ -1461,6 +1637,8 @@ export function useStudentCodeState({
       )
       setOutput('')
       setTurtleResult(null)
+      variablesPanel.clear()
+      setStageResult(null)
       setRunStatus(null)
       resetCheckFeedback()
       if (actorId) {
@@ -1487,6 +1665,8 @@ export function useStudentCodeState({
     }
     setOutput('')
     setTurtleResult(null)
+    variablesPanel.clear()
+    setStageResult(null)
     setRunStatus(null)
     setIframeSrc(null)
     resetCheckFeedback()
@@ -1517,6 +1697,8 @@ export function useStudentCodeState({
     if (session) writeStudentPersonalSandbox(identity.anonymousId, false)
     setOutput('')
     setTurtleResult(null)
+    variablesPanel.clear()
+    setStageResult(null)
     setRunStatus(null)
     setIframeSrc(null)
     resetCheckFeedback()
@@ -1547,7 +1729,10 @@ export function useStudentCodeState({
     else handleCodeChange(assembled)
   }
 
-  async function handleRun() {
+  // `runOptions` is a slow-mo Run's `{ slowMo: true, onResult }` (runWithRuntime); anything else
+  // (a click event) is a normal Run.
+  async function handleRun(runOptions = null) {
+    const slowMoRun = runOptions?.slowMo === true ? runOptions : null
     const actor = effectiveIdentity
     if (!actor || running) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
@@ -1568,6 +1753,8 @@ export function useStudentCodeState({
       runKind === 'runtime' ||
       (runKind === 'preview' && typeof mod?.runtime?.buildPreviewSrc === 'function')
     if (!runsHere) return
+    // A scrub preview re-run (useScrubPreview) finishes first, so the two never overlap.
+    await scrubPreview.settleScrubPreview()
     syncCodeArrangeSlotBeforeRun(task)
     // The session report's typing totals go with each Run; the first Run on a copyCode task
     // also records how far the code is from the copyCode (no-op outside a live lesson task).
@@ -1582,6 +1769,8 @@ export function useStudentCodeState({
     setRunning(true)
     setOutput('')
     setTurtleResult(null)
+    variablesPanel.clear()
+    setStageResult(null)
     setRunStatus(null)
     setTestResults(null)
     setErrorLine(null)
@@ -1624,6 +1813,7 @@ export function useStudentCodeState({
           setErrorLine,
           setRunStatus,
           setTurtleResult,
+          setStageResult,
           setRunning,
         },
         writers: {
@@ -1632,6 +1822,7 @@ export function useStudentCodeState({
           writeStudentCode,
           writeStudentRun,
           writeStudentTurtleResult,
+          writeStudentStageResult,
           logAttempt,
         },
         live: {
@@ -1644,6 +1835,9 @@ export function useStudentCodeState({
         saveRunRecord: (taskId, runCode, fields) =>
           persistence.saveRunRecord(moduleType, actor.anonymousId, taskId, runCode, fields),
         signals: badgeSignals,
+        variablesPanel,
+        runOptions: slowMoRun,
+        recordCourseRun: courseLog.recordCourseRun,
       })
       return
     }
@@ -1795,6 +1989,7 @@ export function useStudentCodeState({
     if (!task?.tests?.length) return
     const isWatched = session?.activeStudentView === actor.anonymousId
     if (isAlreadySolved()) return
+    await scrubPreview.settleScrubPreview()
     badgeSignals.reportRunCode({
       work: code,
       language: getModuleDefinition(lesson?.type)?.meta?.language ?? null,
@@ -1803,6 +1998,8 @@ export function useStudentCodeState({
     setRunningTests(true)
     setOutput('')
     setTurtleResult(null)
+    variablesPanel.clear()
+    setStageResult(null)
     setRunStatus(null)
     setTestResults(null)
     resetRunFeedback()
@@ -2142,20 +2339,33 @@ export function useStudentCodeState({
 
   const SPRITE_STATE_THROTTLE_MS = 120
 
-  function handleScratchSpriteState(spriteStates, cloneStates, backdropName, selectedSpriteId) {
+  function handleScratchSpriteState(
+    spriteStates,
+    cloneStates,
+    backdropName,
+    selectedSpriteId,
+    slowMo = null
+  ) {
     if (!identity) return
     const payload = {
       spriteStates,
       cloneStates,
       backdropName,
       selectedSpriteId: selectedSpriteId ?? null,
+      // Slow-mo's glow and step (src/modules/scratch/slowMo/live.js), null when not running.
+      slowMo: slowMo ?? null,
       updatedAt: Date.now(),
     }
+    // A throttled send carries the newest payload, not the first one held back (slow-mo's
+    // glow and the stage it drew arrive within one throttle window).
+    spriteStatePendingPayloadRef.current = payload
     const flush = () => {
+      const latest = spriteStatePendingPayloadRef.current ?? payload
+      spriteStatePendingPayloadRef.current = null
       spriteStateLastSentRef.current = Date.now()
-      if (canPublishTeacherLive()) publishTeacherLive({ spriteState: payload })
+      if (canPublishTeacherLive()) publishTeacherLive({ spriteState: latest })
       if (!teacherPresentation && session?.activeStudentView === identity.anonymousId) {
-        writeStudentSpriteState?.(identity.anonymousId, payload)
+        writeStudentSpriteState?.(identity.anonymousId, latest)
       }
     }
     const elapsed = Date.now() - spriteStateLastSentRef.current
@@ -2365,6 +2575,8 @@ export function useStudentCodeState({
     const currentLesson = lessonRef.current
     const taskId = currentTaskIdRef.current
     if (!anonymousId || !currentLesson || taskId == null) return
+    // Held for a cross-lesson carry: the student never saw the task's workspace.
+    if (crossLessonCarryFor(taskId)?.state === 'hold') return
     const task = findTaskById(currentLesson.tasks, taskId)
     if (!task || task.taskType === 'information' || isHostedActivityTask(task)) return
     if (normalizeChecks(task.check).length === 0 && !(task.tests?.length > 0)) return
@@ -2586,6 +2798,8 @@ export function useStudentCodeState({
         if (slotDefinition.checking.trigger !== 'change') {
           setOutput('')
           setTurtleResult(null)
+          variablesPanel.clear()
+          setStageResult(null)
           setRunStatus(null)
           setIframeSrc(null)
         }
@@ -2641,6 +2855,8 @@ export function useStudentCodeState({
       })
     setOutput('')
     setTurtleResult(null)
+    variablesPanel.clear()
+    setStageResult(null)
     setRunStatus(null)
     setIframeSrc(null)
     resetCheckFeedback()
@@ -3024,6 +3240,9 @@ export function useStudentCodeState({
     output,
     runStatus,
     turtleResult,
+    stageResult,
+    variablesPanel,
+    predictRunLock,
     running,
     runningTests,
     testResults,
@@ -3035,6 +3254,14 @@ export function useStudentCodeState({
     htmlPreviewCollapsed,
     setHtmlPreviewCollapsed,
     publishOutputCollapsed,
+    // HTML Inspector: liveInspector, publishInspector, recordInspectorUse (useHtmlInspectorLive).
+    ...htmlInspector,
+    // Scratch slow-mo: recordSlowMoUse (useSlowMoLog).
+    ...slowMoLog,
+    // Editor scrubbing: scrubPreview(code, fileName?) and settleScrubPreview (useScrubPreview),
+    // recordScrub({ kind }) (useScrubLog).
+    ...scrubPreview,
+    ...scrubLog,
     inputPrompt,
     checkPassed,
     checkAttempted,
@@ -3068,6 +3295,7 @@ export function useStudentCodeState({
     dismissHighlight,
     tileHighlights,
     dismissTileHighlights,
+    typingHistory,
     errorLine,
     htmlErrorLocation,
     // Refs
@@ -3136,6 +3364,10 @@ export function useStudentCodeState({
       persistence.saveHtmlFile(effectiveIdentity.anonymousId, taskId, filename, content)
     },
     recordCarryFallback,
+    // Cross-lesson carry for the class's current task ({ state, work, taskId, sourceLabel }):
+    // LessonTaskContent holds on 'hold'; Scratch's workspace reads it via crossLessonCarryFor.
+    crossLessonCarry,
+    crossLessonCarryFor,
     // Coordination helpers (called by StudentView)
     saveCurrentWork: saveCurrentWorkSnapshot,
     autoCheckOnLeave,

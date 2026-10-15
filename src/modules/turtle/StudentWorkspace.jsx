@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import PythonEditor from '../python/PythonEditor'
 import { taskShowsBlocks } from '../../shared/blockGuides'
 import { getTaskLineHintSets } from '../../shared/lineHints'
+import { getTaskLockSets } from '../../shared/lockedLines'
 import OutputPanel from '../../app/components/OutputPanel'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import SplitPane from '../../shared/SplitPane'
@@ -10,10 +11,32 @@ import {
   CollapseTabButton,
 } from '../../app/components/CollapsiblePanelControls'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
-import { drawTurtleCommands, sizeCanvasToDisplay } from './draw.js'
-import { createTurtleState } from './engine.js'
+// A course task (task.course) shows its map and vehicle; any other task the plain picture.
+import TurtlePicture from './CoursePicture.jsx'
+// Course mode's tap-to-paint map editor (course.studentMap, turtle.course_map).
+import CourseMapEditor from './CourseMapEditor.jsx'
+import { getTaskCourse } from './course.js'
+import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
+import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
+import { usePythonSlowMo } from '../python/slowMo/usePythonSlowMo.js'
+import PredictRunLockNote, {
+  PREDICT_RUN_LOCK_NOTE_ID,
+} from '../../shared/variablesPanel/PredictRunLockNote.jsx'
+import SlowMoBar from '../python/slowMo/SlowMoBar.jsx'
+import SlowMoNameTags from '../python/slowMo/SlowMoNameTags.jsx'
+import PuzzleBar from '../../shared/puzzle/PuzzleBar.jsx'
+import {
+  getPeekBand,
+  getShowVariables,
+  panelRunForTask,
+  taskShowsVariables,
+} from '../../shared/variablesPanel/variablesPanel.js'
+import ResultPane from '../../shared/resultPane/ResultPane.jsx'
+import { useResultPane, useRunFinishedToken } from '../../shared/resultPane/useResultPane.js'
+import { useWorkspaceLayout } from '../../shared/resultPane/useWorkspaceLayout.js'
 
-const DEFAULT_TURTLE_STATE = createTurtleState()
+// The editor's share of the width when side by side (percent).
+const TURTLE_SPLIT = 50
 
 export default function StudentWorkspace({
   task,
@@ -26,14 +49,20 @@ export default function StudentWorkspace({
   isTeacherEditing,
   displayCode,
   displayTurtleResult,
+  displayVariablesPanel = null,
+  // The presenter's slow-mo playback in Go Live (teacherLive.pythonSlowMo).
+  displayPythonSlowMo = null,
   teacherLiveCode,
   onVisiblePanesChange,
+  // A Code Arrange task (src/activities/code_arrange/): `arrangeBoard({ onRun })` renders the
+  // tile board in the editor's place, and `arrangeReady` says every blank is filled. The board
+  // owns Run and the tutor's remote Run; the picture, name tags, slow-mo and course maps are
+  // this workspace's own.
+  arrangeBoard = null,
+  arrangeReady = true,
 }) {
-  // The canvas element is tracked in state, not a ref: switching between the mobile and
-  // split layouts re-parents it, so React mounts a new <canvas>. The draw effect must re-run
-  // for that new element, or it stays blank and unsized until the next Run.
-  const [canvas, setCanvas] = useState(null)
   const [outputCollapsed, setOutputCollapsed] = useState(true)
+  const [mapEditorOpen, setMapEditorOpen] = useState(false)
 
   const savedCode = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
@@ -45,62 +74,159 @@ export default function StudentWorkspace({
         ? (savedCode?.code ?? '')
         : cs.code
 
+  // Slow-mo (task.slowMo, src/modules/python/slowMo/): the recorded run drawn step by step. A Go
+  // Live viewer follows the presenter's playback. Free play (a sandbox) has none.
+  const slowMoShown = !isViewingPrev && !isTeacherEditing && !isSandbox && !cs.inPersonalSandbox
+  const slowMo = usePythonSlowMo({
+    task: slowMoShown ? task : null,
+    cs,
+    code: cs.code,
+    readOnly,
+    live: isForcedTeacherLive ? displayPythonSlowMo : undefined,
+  })
+  const slowMoView = slowMoShown ? slowMo.view : null
+  const slowMoControls = {
+    ...slowMo,
+    slowMo: () => {
+      setOutputCollapsed(false)
+      slowMo.slowMo()
+    },
+    step: () => {
+      setOutputCollapsed(false)
+      slowMo.step()
+    },
+  }
+
   // Turtle draw state is ephemeral (not persisted) — the live student's own most recent
   // run, or (Phase 3) the broadcast snapshot synced via teacherLive.turtleResult when
   // watching a "Go Live" turtle task. isViewingPrev/isTeacherEditing still show an empty
   // canvas — there's no saved/editable canvas snapshot for those, only code.
-  const turtleResult = isForcedTeacherLive
-    ? displayTurtleResult
-    : !readOnly
-      ? cs.turtleResult
-      : null
-  const commands = turtleResult?.commands ?? []
-  const background = turtleResult?.state?.background ?? '#ffffff'
-  // Before any run the 🐢 marker sits at the origin facing east, like real turtle.
-  const turtleState = useMemo(
-    () => ({ ...DEFAULT_TURTLE_STATE, ...(turtleResult?.state ?? {}) }),
-    [turtleResult?.state]
+  const slowMoTurtle = useMemo(
+    () =>
+      slowMoView
+        ? { commands: slowMoView.turtle?.commands ?? [], state: slowMoView.turtle?.state ?? null }
+        : null,
+    [slowMoView]
   )
+  const turtleResult = slowMoTurtle
+    ? slowMoTurtle
+    : isForcedTeacherLive
+      ? displayTurtleResult
+      : !readOnly
+        ? cs.turtleResult
+        : null
+  // While a Run's drawing plays (TurtlePicture), the check result waits for it to finish or be
+  // skipped, as it does for slow-mo's last step.
+  const [drawingPlaying, setDrawingPlaying] = useState(false)
+  const holdResult = (!!slowMoView && !slowMoView.finished) || drawingPlaying
 
-  useEffect(() => {
-    onVisiblePanesChange?.(['code', 'canvas'])
-  }, [onVisiblePanesChange])
+  // Smaller screens (src/shared/resultPane/): the editor plus ONE result pane with tabs Picture ·
+  // Tags · Console, beside the editor or below it on portrait screens and phones. Wide desktops
+  // keep the picture, name tags and output side by side as before.
+  const inFreePlay = isSandbox || cs.inPersonalSandbox
+  const tagsAvailable =
+    !inFreePlay && !isViewingPrev && !isTeacherEditing && taskShowsVariables(task)
+  // The #@peek "stopped here" band (showVariables.at: marker), from when the task opens; not
+  // while the panel is hidden or slow-mo steps through the run.
+  const variablesSynced = isForcedTeacherLive ? displayVariablesPanel : undefined
+  const peekBand =
+    !tagsAvailable || slowMoView
+      ? null
+      : getPeekBand(
+          task,
+          code,
+          panelRunForTask(task, { panel: cs.variablesPanel, synced: variablesSynced })
+        )
+  const resultPanes = ['picture', tagsAvailable && 'tags', 'console'].filter(Boolean)
+  const {
+    ref: workspaceRef,
+    layout,
+    inset,
+  } = useWorkspaceLayout({ isMobile, split: TURTLE_SPLIT, paneCount: resultPanes.length })
+  const tabbed = layout !== 'side'
+  const runToken = useRunFinishedToken({
+    running: !readOnly && cs.running,
+    // A Go Live viewer: each new broadcast run of the presenter's drawing.
+    liveKey: isForcedTeacherLive ? (displayTurtleResult?.runId ?? null) : null,
+  })
+  const shownOutput = slowMoView ? slowMoView.output : cs.output
+  const result = useResultPane({
+    task,
+    available: resultPanes,
+    tabbed,
+    tagsMode: tagsAvailable ? (getShowVariables(task)?.mode ?? null) : null,
+    // A course (a maze or track to drive) is a picture goal from the start.
+    pictureGoal: !inFreePlay && !!task?.course,
+    preferPicture: true,
+    slowMo: !!slowMoView,
+    runToken,
+    drew: (turtleResult?.commands?.length ?? 0) > 0,
+    error: cs.runStatus === 'error',
+    output: shownOutput,
+  })
 
+  // What's on screen, for the tutor's student card ('canvas' is the Picture tab).
+  const stackedIds = ['picture', 'tags']
+  const shownResultPanes = !tabbed
+    ? ['picture']
+    : resultPanes.filter(
+        (id) =>
+          id === result.active ||
+          (result.stacked && stackedIds.includes(id) && stackedIds.includes(result.active))
+      )
+  const visiblePanesKey = [
+    'code',
+    ...shownResultPanes.map((id) => (id === 'picture' ? 'canvas' : id)),
+  ].join(',')
   useEffect(() => {
-    if (!canvas) return
-    function redraw() {
-      sizeCanvasToDisplay(canvas)
-      const ctx = canvas.getContext('2d')
-      // jsdom (unit tests) has no real canvas 2D context and returns null.
-      if (ctx) drawTurtleCommands(ctx, commands, { background, turtle: turtleState })
-    }
-    redraw()
-    const observer = new ResizeObserver(redraw)
-    observer.observe(canvas)
-    return () => observer.disconnect()
-  }, [canvas, commands, background, turtleState])
+    onVisiblePanesChange?.(visiblePanesKey.split(','))
+  }, [visiblePanesKey, onVisiblePanesChange])
+
+  // Student-made maps (course.studentMap): the map editor writes turtle.course_map(...) into the code.
+  const taskCourse = useMemo(() => getTaskCourse(task), [task])
+  const mapEditorAvailable = !readOnly && !inFreePlay && !!taskCourse?.studentMap
 
   const showCopyCode =
     !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()
+
+  // Predict mode's Run lock (cs.predictRunLock, showVariables.lockRun): Run, slow-mo and the
+  // run shortcut wait for every prediction, until the first Run. Never on a read-only view.
+  const runLock = readOnly ? null : (cs.predictRunLock ?? null)
 
   function handleRunClick() {
     if (cs.running) {
       cs.handleStop()
       return
     }
+    if (runLock) return
     setOutputCollapsed(false)
     cs.handleRun()
   }
 
+  // A Code Arrange board handles the tutor's remote Run itself (only a full board can run).
   useRemoteRunTrigger(
-    cs.remoteRunToken,
+    arrangeBoard ? null : cs.remoteRunToken,
     () => {
       if (!cs.running) handleRunClick()
     },
     { enabled: !readOnly, onHandled: cs.acknowledgeRemoteRun }
   )
 
-  const editor = (
+  // A Code Arrange task: slow-mo's bar above the tile board (slow-mo runs the assembled program,
+  // so it waits for a full board).
+  const arrangePane = arrangeBoard && (
+    <div style={s.arrangePane}>
+      {slowMoShown && (!readOnly || slowMoView) && (
+        <SlowMoBar
+          slowMo={slowMoControls}
+          runDisabled={cs.running || cs.pyodideStatus === 'loading' || !arrangeReady || !!runLock}
+        />
+      )}
+      {arrangeBoard({ onRun: handleRunClick })}
+    </div>
+  )
+
+  const editor = arrangePane || (
     <div style={s.editorPane}>
       {showCopyCode && <CopyCodePanel code={task.copyCode} language="python" />}
       {!readOnly && (
@@ -110,8 +236,11 @@ export default function StudentWorkspace({
             <button
               className={cs.running ? 'btn-danger' : 'btn-primary'}
               style={s.primaryBtn}
+              data-highlight-target="run stop"
               onClick={handleRunClick}
-              disabled={!cs.running && cs.pyodideStatus === 'loading'}
+              disabled={!cs.running && (cs.pyodideStatus === 'loading' || !!runLock)}
+              title={!cs.running && runLock ? runLock.message : undefined}
+              aria-describedby={!cs.running && runLock ? PREDICT_RUN_LOCK_NOTE_ID : undefined}
             >
               {cs.running
                 ? 'Stop'
@@ -119,6 +248,7 @@ export default function StudentWorkspace({
                   ? 'Getting Python ready...'
                   : 'Run'}
             </button>
+            {!cs.running && <PredictRunLockNote lock={runLock} />}
             <button
               className="btn-ghost-outline"
               style={s.resetBtn}
@@ -128,48 +258,116 @@ export default function StudentWorkspace({
             >
               Reset Code
             </button>
+            {mapEditorAvailable && (
+              <button
+                type="button"
+                className="btn-ghost-outline"
+                style={s.resetBtn}
+                onClick={() => setMapEditorOpen(true)}
+                disabled={cs.running}
+                title="Draw your map by tapping squares"
+              >
+                <span aria-hidden="true">🧱</span> Map editor
+              </button>
+            )}
           </div>
         </div>
+      )}
+      {slowMoShown && (!readOnly || slowMoView) && (
+        <SlowMoBar
+          slowMo={slowMoControls}
+          runDisabled={cs.running || cs.pyodideStatus === 'loading' || !!runLock}
+        />
+      )}
+      {/* setupNote, the puzzle's line counter and, after a pass, its par (src/shared/puzzle/). */}
+      {!isSandbox && !cs.inPersonalSandbox && (
+        <PuzzleBar task={task} code={code} passed={!readOnly && !!cs.checkPassed} />
       )}
       <PythonEditor
         code={code}
         readOnly={readOnly}
         onChange={readOnly ? undefined : cs.handleCodeChange}
+        // Live number / colour scrubbing (task `scrub`, src/shared/scrub/); not in a sandbox.
+        scrub={readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskScrub(task)}
+        onScrubPreview={cs.scrubPreview}
+        onScrubCommit={cs.recordScrub}
         pyodideStatus={cs.pyodideStatus}
         errorLine={readOnly ? null : cs.errorLine}
         lineHints={readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskLineHintSets(task)}
+        // Locked lines (#@lock, puzzle.onlyEdit) show in every view, Go Live included.
+        lockedLines={isSandbox || cs.inPersonalSandbox ? null : getTaskLockSets(task)}
         showBlocks={taskShowsBlocks(task)}
         onRunShortcut={readOnly ? undefined : handleRunClick}
+        slowMoMarker={slowMoView?.marker ?? null}
+        peekBand={peekBand}
       />
     </div>
   )
 
+  // The picture: one element for every layout, so a course mode's children and props go here
+  // once. Switching between the side-by-side and tabbed layouts re-parents it, so it remounts
+  // and shows the finished drawing (see useTurtlePlayback.js); switching tabs only hides it, so
+  // a playing drawing carries on. Slow-mo draws its own steps, and a scrub preview has no runId,
+  // so both draw at once.
+  const picture = (
+    <div style={s.canvasWrap}>
+      <TurtlePicture
+        task={task}
+        code={code}
+        result={turtleResult}
+        animate={!slowMoView}
+        onPlayingChange={setDrawingPlaying}
+      />
+    </div>
+  )
+
+  // The name-tag panel (showVariables); step by step during slow-mo.
+  const variablesStyle = tabbed ? s.variablesFill : s.variablesPanel
+  const variablesPanel = slowMoView ? (
+    <SlowMoNameTags task={task} slowMo={slowMo} style={variablesStyle} />
+  ) : (
+    <TaskVariablesPanel
+      task={inFreePlay ? null : task}
+      panel={cs.variablesPanel}
+      synced={variablesSynced}
+      code={code}
+      running={cs.running}
+      hidden={isViewingPrev || isTeacherEditing}
+      style={variablesStyle}
+    />
+  )
+
+  const outputPanel = (
+    <OutputPanel
+      // During slow-mo the output grows step by step and the check result waits for the
+      // last step (the recorded run was checked like any Run).
+      output={shownOutput}
+      runStatus={holdResult ? null : cs.runStatus}
+      checkPassed={holdResult ? false : cs.checkPassed}
+      hasCheck={holdResult ? false : !!task?.check}
+      checkAttempted={holdResult ? false : cs.checkAttempted}
+      fill
+      collapsible={false}
+      // With tabs the Console is its own tab, so it never folds away.
+      leadingActions={
+        tabbed ? null : (
+          <CollapseTabButton
+            onClick={() => setOutputCollapsed(true)}
+            direction="down"
+            title="Collapse Output"
+            ariaLabel="Collapse Output"
+          />
+        )
+      }
+    />
+  )
+
   const canvasAndOutput = (
     <div style={s.rightPane}>
-      <div style={s.canvasWrap}>
-        <canvas ref={setCanvas} style={s.canvas} />
-      </div>
-      {!outputCollapsed && (
-        <div style={s.outputPane}>
-          <OutputPanel
-            output={cs.output}
-            runStatus={cs.runStatus}
-            checkPassed={cs.checkPassed}
-            hasCheck={!!task?.check}
-            checkAttempted={cs.checkAttempted}
-            fill
-            collapsible={false}
-            leadingActions={
-              <CollapseTabButton
-                onClick={() => setOutputCollapsed(true)}
-                direction="down"
-                title="Collapse Output"
-                ariaLabel="Collapse Output"
-              />
-            }
-          />
-        </div>
-      )}
+      {picture}
+      {/* The name-tag panel, between the drawing and the output. */}
+      {variablesPanel}
+      {!outputCollapsed && <div style={s.outputPane}>{outputPanel}</div>}
       {outputCollapsed && (
         // Output sits *below* the canvas here (not beside it like Python), so it must use
         // the horizontal rail — the vertical one is height: 100% and swallows the pane.
@@ -186,27 +384,100 @@ export default function StudentWorkspace({
     </div>
   )
 
-  if (isMobile) {
-    return (
-      <div style={s.mobileStack}>
-        {editor}
-        {canvasAndOutput}
-      </div>
-    )
-  }
+  // Picture · Tags · Console as tabs.
+  const resultPane = (
+    <ResultPane
+      panes={resultPanes.map((id) => ({
+        id,
+        content: id === 'picture' ? picture : id === 'tags' ? variablesPanel : outputPanel,
+      }))}
+      active={result.active}
+      onSelect={result.select}
+      stacked={result.stacked}
+      badges={result.badges}
+      announcement={result.announcement}
+      idPrefix="turtle-result"
+      label="Result"
+    />
+  )
 
-  return <SplitPane style={s.splitPane} defaultSplit={50} left={editor} right={canvasAndOutput} />
+  const body =
+    layout === 'below' ? (
+      // Phones and portrait screens: the editor above, the result pane below.
+      <div style={s.belowStack}>
+        <div style={s.belowEditor}>{editor}</div>
+        <div style={s.belowResult}>{resultPane}</div>
+      </div>
+    ) : (
+      <SplitPane
+        style={s.splitPane}
+        defaultSplit={TURTLE_SPLIT}
+        left={editor}
+        right={layout === 'tabs' ? resultPane : canvasAndOutput}
+      />
+    )
+
+  // The outer box is measured (never padded, so its size is steady); the inner one makes room
+  // for a tablet's on-screen keyboard so the editor and the result pane stay in view.
+  return (
+    <div ref={workspaceRef} style={s.workspace} data-layout={layout}>
+      <div style={inset ? { ...s.workspaceInner, paddingBottom: inset } : s.workspaceInner}>
+        {body}
+      </div>
+      {mapEditorOpen && mapEditorAvailable && (
+        <CourseMapEditor
+          code={cs.code}
+          course={taskCourse}
+          onApply={(nextCode) => {
+            cs.handleCodeChange(nextCode)
+            setMapEditorOpen(false)
+          }}
+          onClose={() => setMapEditorOpen(false)}
+        />
+      )}
+    </div>
+  )
 }
 
 const s = {
   splitPane: { flex: '1 1 auto', minHeight: 0, height: 'auto', overflow: 'hidden' },
-  mobileStack: {
+  // The workspace's measured outer box and its inner box (padded for an on-screen keyboard).
+  workspace: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: '1 1 auto',
+    minHeight: 0,
+    minWidth: 0,
+  },
+  workspaceInner: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: '1 1 auto',
+    minHeight: 0,
+    minWidth: 0,
+  },
+  // Phones and portrait screens: the editor above the result pane.
+  belowStack: {
     display: 'flex',
     flexDirection: 'column',
     gap: 8,
+    flex: '1 1 auto',
     minHeight: 0,
-    height: 'auto',
     overflow: 'hidden',
+  },
+  belowEditor: { display: 'flex', flexDirection: 'column', flex: '1 1 55%', minHeight: 160 },
+  belowResult: { display: 'flex', flexDirection: 'column', flex: '1 1 45%', minHeight: 220 },
+  // The name-tag panel filling its own tab.
+  variablesFill: { flex: '1 1 auto', minHeight: 0, maxHeight: '100%' },
+  // A Code Arrange task's tile board, scrolling in the editor's place.
+  arrangePane: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    flex: 1,
+    minHeight: 0,
+    overflow: 'auto',
+    padding: '4px 4px 8px',
   },
   editorPane: {
     display: 'flex',
@@ -232,7 +503,7 @@ const s = {
     borderRadius: 8,
     overflow: 'hidden',
   },
-  canvas: { width: '100%', height: '100%', display: 'block' },
+  variablesPanel: { flex: '0 1 auto', maxHeight: '40%' },
   outputPane: {
     display: 'flex',
     flexDirection: 'column',

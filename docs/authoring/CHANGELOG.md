@@ -37,6 +37,658 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-15
+
+### Name-tag panel: predict mode locks Run until every prediction is in (`showVariables.lockRun`)
+
+- **Predict tasks now enforce predicting first.** With `showVariables.mode: predict`, Run, Slow-mo
+  and Step stay disabled until every `predict` tag has an answer (anything non-blank). "Fill in
+  your predictions first" shows beside Run in words, as a tooltip, and as the button's accessible
+  description.
+- **After the first Run the lock is gone** for the rest of the task, so students can change the
+  code and run again. The presenter (Go Live, the presentation window) is never locked, a tutor's
+  remote Run still runs, and the personal sandbox isn't locked.
+- **Off switch:** `showVariables.lockRun: false` (Builder: "Students fill in every prediction
+  before their first Run"). Validation errors on a non-boolean and warns when it's set outside
+  predict mode. See [python.md](python.md#name-tag-panel-showvariables).
+- Affects: python, turtle (name-tag panel predict mode; new field `showVariables.lockRun`) ·
+  Existing lessons: predict tasks now lock Run until the predictions are in; add
+  `lockRun: false` to keep the old behaviour · Resolves:
+  authoring-requests/2026-10-15-p6-18-predict-mode-locks-run-until-every-prediction-is-in.md
+
+### Name-tag panel: `#@peek` now shows where the program stopped
+
+- **A "stopped here" band in the editor.** With `showVariables.at: marker`, a dashed purple ⏸ band
+  sits in the gap above the line the `#@peek` marker stops at, reading "The tags show the values
+  here". It shows from when the task opens (before any run), so predict-mode students know where
+  to predict, and follows the line as the student edits. It is unlike slow-mo's amber band.
+- **A panel header, "Values just before line N"**, with the line number as the student sees it,
+  in every mode (empty predict tags included).
+- **When the marked line never ran**, the panel keeps its note, the band reads "The program never
+  reached this line" and the header "Line N never ran".
+- StudentModal and Go Live show the band and the header too. Screen readers hear "Values shown
+  just before line N". Nothing new to author. See
+  [python.md](python.md#name-tag-panel-showvariables) ("The `#@peek` marker").
+- Affects: python, turtle (name-tag panel `at: marker`) · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-10-15-p6-17-peek-marker-show-where-the-program-stopped.md
+
+### Stage: flat pixel lists with `grid(values, width=n)`; palette numbers show as numbers in the panel
+
+- **`grid(pixels, width=8)`** draws a flat list (no item is a list) as rows of 8 squares, left to
+  right, top to bottom; the last row may be short. Values, `palette`, `cell`, `x`, `y` and the
+  100 × 100 limit work as for a list of rows, and slow-mo draws it step by step as before.
+  Plain-English errors: a flat list with no `width` ("grid(): pixels is one long list. Say how
+  many squares fit in a row, like grid(pixels, width=8)", naming the student's variable), a
+  `width` that isn't a whole number of 1 or more, and `width` given with a list of rows. A bad
+  value is named by its place: `pixels[9]`. The Stage description says "a pixel grid of 24
+  squares, 8 to a row, in red and white".
+- **`stage_pixel` gains `index`** (0 or more): the cell at that place in the last grid's flat
+  list, row by row, so `index: 9` after `grid(pixels, width=8)` reads `pixels[9]`. Give exactly
+  one of `x`/`y`, `row`/`col` or `index`; the docs now say all three count from 0. Validation's
+  message changed to "needs one of: x and y, row and col, or index", with a new one for a bad
+  `index`.
+- **Name-tag panel: wrapped lists.** A flat list drawn with `grid(…, width=…)` this run shows its
+  tiles wrapped at the same width, indexes running on (0–7, 8–15 …), whatever `stageLists` says:
+  swatches for colours, plain numbers for palette numbers (never bars), tiles otherwise. Screen
+  readers hear "pixels, item 9 (row 2, column 2): white"; the tutor card shows a wrapped colour
+  list as a small picture.
+- **Palette numbers always show as numbers.** A 2D list holding palette numbers is a plain table
+  with row and column indexes (read by row: "pixels, row 1: 0, 1, 1, 0"), even with
+  `stageLists: picture`; it is never tinted or drawn as the picture. Colour names and hex codes
+  are unchanged: swatches, and a small picture for a 2D list (with `stageLists: picture` for a
+  drawn one). See [python.md](python.md#stage-drawing-beside-the-console) (Grids, Stage checks)
+  and [List and dict visuals](python.md#name-tag-panel-showvariables).
+- Affects: python (Stage `grid()`, `stage_pixel`, name-tag panel) · Existing lessons: no changes
+  needed; a task relying on `stageLists: picture` to show palette numbers as a picture now shows
+  a number table instead · Resolves:
+  authoring-requests/2026-10-15-p6-13-stage-grid-flat-pixel-list-with-a-width.md,
+  authoring-requests/2026-10-15-p6-14-name-tag-panel-palette-numbers-as-a-number-table.md
+
+### Turtle course mode: students make their own maze (`course.studentMap`, `turtle.course_map`)
+
+- **New optional field `course.studentMap: true`** (grid courses only) lets the student's code
+  set its own map with **`turtle.course_map("""…""")`**, before the vehicle's first move. Same
+  legend and limits as an authored grid map (one start, at least one goal, at most 30 × 30);
+  blank lines at the ends and shared indentation are fine. The authored `map` is still required:
+  it shows until the student sets one.
+- Mistakes stop the run with plain messages ("Your map needs a G for the goal.", "Your map has
+  two starts (>): keep just one.", "Call course_map() before the rover moves: …"). On a task
+  without `studentMap`, `course_map()` says the map is set for you.
+- The student's map shows as soon as it's in the code (before a Run and in slow-mo), and after a
+  Run the picture, the course checks (`course_goal_reached`, `course_no_crash`,
+  `course_pickups`, `course_max_moves`), the tutor views, Go Live and screen-reader words all use
+  the map the run drove. With `maps`, code that sets its own map runs once, on that map.
+- **Map editor:** a 🧱 **Map editor** button beside Run on `studentMap` tasks opens a
+  tap-to-paint grid (Wall, Road, Goal, Star, Start; 44 px squares; 3 to 30 rows and columns)
+  that writes the `turtle.course_map("""…""")` call into the student's code.
+- Validation: `studentMap` must be `true` or `false` and errors on a track. Add a `code` check
+  for `course_map(` if students must make their own.
+- **Line hints are no longer read inside Python triple-quoted strings** (Python and Turtle), so a
+  starter maze row such as `#>....G#` stays in the code instead of being taken out as a `#>`
+  hint. The same goes for `#@peek` and `#@lock` lines inside a `"""…"""` string. See [turtle.md](turtle.md#students-make-their-own-map-studentmap) and
+  [validation-errors.md](validation-errors.md).
+- Affects: turtle (course mode; new field `course.studentMap`, new `turtle.course_map()`) ·
+  Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-15-p6-16-turtle-course-student-made-maps.md
+
+### Code Arrange runs on Turtle (course mode too) and on the Python Stage
+
+- **`type: code_arrange` with `moduleType: turtle`** is new. The tile board sits where the editor
+  would, in the Turtle workspace, so Run plays the program exactly as on a code task: the canvas,
+  animation and Skip, slow-mo if the task turns it on, the name-tag panel and course mode (maps,
+  sensors, crashes, map tabs). `turtle_*` and `course_*` checks work as on a code task, and so do
+  `course`, `slowMo`, `showVariables`, `layout` and `setupCode`.
+- **A Python arrangement whose code imports `stage`** (`from stage import *` on a fixed line or in
+  a blank), or that has a `stageTarget`, gets the Stage pane from the start, the `stageTarget`
+  ghost and Differences, and the `stage_*` checks, as a code task does.
+- On smaller screens both use the Picture · Tags · Console tabs. Tiles, distractors, tile
+  feedback, the tutor's board (now with the student's last picture or Stage under it), Edit
+  answers, tile highlights and the report's attempts are unchanged. A plain Python or HTML
+  arrangement looks as before.
+- **Indent mode** (`arrangeMode: indent`) works for both too: `moduleType: turtle` is now allowed
+  there.
+- Validation: the module message is now "must use the Python, Python Turtle or HTML module" (and
+  "the Python or Python Turtle module" for indent mode); the Turtle module's own rules (course
+  map, Turtle checks) run on a Turtle arrangement. The Builder's Arrange form offers **Python
+  Turtle** under Language and its preview draws the run; it doesn't edit `course`, `slowMo` or
+  `showVariables` yet, so author those in YAML. See [turtle.md](turtle.md#code-arrange-code_arrange),
+  [python.md](python.md#drag-and-drop-runnable-code-code_arrange) and
+  [lesson-schema.md](lesson-schema.md#code-arrange-task-fields).
+- Affects: code_arrange, turtle, python (Stage) · Existing lessons: no changes needed (Turtle
+  `fill_blank` stand-ins can become runnable arrangements) · Resolves:
+  authoring-requests/2026-10-15-p6-15-code-arrange-on-turtle-course-and-stage-tasks.md
+
+### Python and Turtle screen space: one tabbed result pane on smaller screens (`layout.firstPane`)
+
+- **Tablets, 1366 × 768 Chromebooks and small laptops** now show the editor on the left and one
+  result pane on the right with tabs **Picture · Tags · Console**. Portrait screens and phones put
+  the editor above the tabs. Wide desktops keep everything side by side, as before. Only the tabs
+  a task has appear: Picture once the code imports `stage` (or has a `stageTarget`; always on
+  Turtle), Tags with `showVariables`. A Python task with just a console has no tabs.
+- **What the task is about is in view.** Predict and target tasks open on Tags, so the code and
+  the empty tags show together while the student types, and the workspace shrinks above a
+  tablet's on-screen keyboard. A `stageTarget` task opens on the Picture with its ghost. After
+  Run the pane switches to the Picture if the program drew (or there is a target or course), to
+  Tags in predict / target mode, otherwise to the Console. A run that fails before drawing shows
+  the Console.
+- **Slow-mo** (and predict / target mode once there is a picture) shows the Picture and Tags
+  together in one tab, one above the other.
+- **The Console is always one tap away:** while hidden, its tab counts the new lines or shows
+  **!** for an error. Switching tabs never loses a drawing, a playing turtle or the output.
+- Accessibility: the tabs are a proper tab list (arrow keys, Home, End), each pane is a labelled
+  region, tabs are 44 px tall, and a screen reader hears what changed after Run. Go Live and
+  screen share follow the same rules, with tabs large enough for a projector.
+- **New optional field `layout: { firstPane: picture | tags | console }`** on Python and Turtle
+  tasks picks the tab selected when the task opens (and opens a Python task's result side from
+  the start). Most tasks don't need it. Validation rejects an unknown pane, warns about unknown
+  keys or `tags` without `showVariables`, and warns when another module's task has `layout`.
+  See [python.md](python.md#screen-layout-layout), [turtle.md](turtle.md#screen-layout) and the
+  new rows in [validation-errors.md](validation-errors.md#screen-layout-layout).
+- Affects: python, turtle (workspace layout; new task field `layout`) · Existing lessons: no change
+  needed · Resolves:
+  authoring-requests/2026-10-15-p6-12-python-screen-space-console-stage-and-panel.md
+
+### Turtle course mode: drive a vehicle round a maze or track (`course`)
+
+- **New Turtle task field `course`.** The turtle becomes a vehicle the student drives round a map
+  with ordinary Turtle Python: `{ type: grid | track, vehicle, map | maps }`. It is a mode of the
+  `turtle` module, not a game: Run plays the moves; there are no keys or game loop.
+- **Grid** (`type: grid`): a text map, `#` wall, `.` road, `G` goal, `*` pickup, `>` `<` `^` `v`
+  start and heading (space: off the map; at most 30 × 30). `forward()` with no number moves one
+  square and `forward(3)` three; `left()` / `right()` turn 90°; part squares, other angles and
+  `goto` / `home` / `reset` / `circle` stop with a plain message.
+- **Track** (`type: track`): turtle coordinates, `start: { x, y, heading }`, `goal: { x, y, r }`
+  or `{ rect: [x1, y1, x2, y2] }`, `walls` (lines `[x1, y1, x2, y2]` and boxes `{ rect }`),
+  `pickups: [[x, y]]` and an optional `trackCode` snippet whose drawn lines are walls (read, not
+  run: a fixed Turtle subset with `for … in range()` loops). The vehicle is a circle 10 units
+  across from centre to edge; the picture's edge is a wall.
+- **Sensors** on `turtle`: `wall_ahead()`, `wall_left()`, `wall_right()` (the next square; 30
+  units on a track), `at_goal()`, `on_pickup()`, `collected()`. Pickups are collected by driving
+  over them. Driving into a wall bumps, marks the crash and ends the program with a plain message
+  ("The rover hit a wall at row 2, column 5."), counted as a finished run, not an error. A run
+  stops after 1,000 moves or 20,000 sensor checks on a map. The pen is down by default (a faint
+  trail).
+- **Vehicles:** `turtle` (default), `car`, `rover`, `boat`, `drone`, drawn top-down.
+- **`maps`** (up to 6): the code runs once per map; Run plays them in turn with a tick or cross
+  per map. A real Python error on one map leaves the later ones not run.
+- **New checks** (every map): `course_goal_reached`, `course_no_crash`, `course_pickups` (`min`,
+  default all) and `course_max_moves` (`max`; every forward, backward, goto, turn and circle is
+  one move). They need a run (`lessons test-checks` reports them as needing one). The Builder
+  offers them on a course task with a kid-friendly hint. Mix with `code` / `turtle_command_used`
+  checks for the method.
+- Validation covers the course shape (one start, at least one goal, legend, track fields,
+  `trackCode`, course checks only on a course task); it can't run code, so check a solution in
+  the Builder preview, which runs every map. New rows in
+  [validation-errors.md](validation-errors.md). The tutor card shows "Reached goal", "Crashed" or
+  "2/3 maps"; the session report adds per-task `course: { runs, goalReached, goalRuns, crashes,
+  pickups, lastGoalReached }`. See [turtle.md](turtle.md#course-mode-course).
+- Affects: turtle (`course`, course checks, sensors, session report) · Existing lessons: none (a
+  new optional field; `forward()` and `left()` without a number still need one outside course
+  mode) · Resolves: authoring-requests/2026-10-15-p6-11-turtle-course-mode-drive-a-vehicle-round-a-maze.md
+
+### Stage shapes: size-first calls, centre anchors, rotation, polygons, see-through, outlines, `hue()`
+
+- **The Stage's call order changed (breaking).** Calls are now size first, with everything else
+  optional: `circle(r, colour, x, y)`, `square(size, colour, x, y)` (new), `rect(w, h, colour, x,
+  y)`, `polygon(sides, size, colour, x, y)` (new; `size` is centre to corner, one corner up),
+  `text(words, colour, x, y, size=16)`. `line(x1, y1, x2, y2, colour, width=2)` and `stamp(emoji,
+  x, y, size=32)` keep their order; `grid(rows, palette, cell, x, y)` keeps its order but `x, y`
+  are now its centre. The old position-first order is replaced outright (no lesson used it): a
+  call like `circle(200, 200, 50)` stops with "circle(): the second value is the colour, like
+  'red'. To place it, write x=200, y=200, like circle(50, x=200, y=200)".
+- **Centre anchors everywhere.** `x` and `y` are always the middle of the shape, text, emoji or
+  grid, and default to the middle of the stage (200, 200). `(0, 0)` is still top-left and `y`
+  still goes down. Unlike Arcade Kit, where a rectangle is placed by its top-left corner.
+- **Default colours:** royal blue (`#4169e1`) for shapes, black for text and lines.
+- **New keywords** on `circle`, `square`, `rect` and `polygon`: `angle=` (degrees **clockwise**
+  around the centre: the opposite way to Turtle's `left()`), `opacity=` (0–1; see-through shapes
+  blend), `outline=` (colour), `width=` (outline width, default 2), and `colour=None` for an
+  outline only. `text` and `stamp` take `angle=` and `opacity=`; `line` takes `opacity=`.
+  `color=` works as well as `colour=`.
+- **New `hue(n, light=50)`** returns a hex colour round the colour wheel (`hue(0)` red,
+  `hue(120)` green, `hue(240)` blue, wrapping every 360); `light` 0–100 makes it darker or paler.
+  `stage_colour_used` can check it by its hex code.
+- **Checks:** `stage_shape_count`'s `kind` adds `square` and `polygon`, and a new `sides` field
+  (with `kind: polygon`) counts only the polygons with that many sides. `stage_matches_target`,
+  `stage_pixel` and the Differences view compare turned, see-through and outlined shapes as drawn.
+  `stage_colour_used` also finds outline colours.
+- The Stage's screen-reader description says how shapes are turned, faded and outlined ("a red
+  square, size 80, turned 45°, in the middle"). Scrubbing gives `angle=` 0–360, `opacity=` 0–1,
+  `light=` 0–100 and numbers inside `hue()` 0–360; `outline=` colours get the colour picker.
+  See [python.md](python.md#stage-drawing-beside-the-console) and the new rows in
+  [validation-errors.md](validation-errors.md).
+- Affects: python (Stage, stageTarget, stage checks, scrub) · Existing lessons: rewrite any Stage
+  code (starter, complete, `stageTarget`) in the size-first, centred order · Resolves:
+  authoring-requests/2026-10-15-p6-9-stage-shapes-rotation-polygons-size-first-calls.md
+
+### Name-tag panel: lists and dicts you can see (`showVariables.visuals`, `stageLists`)
+
+- The name-tag panel now draws lists and dicts as what they hold, chosen automatically: a list of
+  colours as swatches (index and text on each), a list of numbers as labelled bars, a 2D list of
+  colours as a small picture with a row/column ruler, other 2D lists as a table, a dict as cards
+  (with a swatch for colour values) and a dict of numbers as labelled bars. Anything mixed or
+  ambiguous stays as today's tiles. The exact Python value is one tap away (**Show value**).
+- New optional `showVariables` fields: `visuals` (default `true`; `false` keeps plain tags for the
+  whole task) and `stageLists: picture | tiles | size` (default `size`), how a list passed to the
+  Stage's `grid()` in this run shows — just its size, a picture as well, or rows of tiles. Palette
+  numbers draw as a picture only in a drawn list with `stageLists: picture`.
+- Target mode draws list and dict targets with the same visuals; predict mode shows the real
+  value's visual next to the ✓ / ✗. After a re-run (and in slow-mo) the item that changed is
+  marked, not only the tag. The tutor's card shows small thumbnails; StudentModal and Go Live show
+  the visuals. The panel now reads about 1,000 values per variable (a 32 × 32 picture).
+- Validation checks both fields ([validation-errors.md](validation-errors.md#name-tag-panel-showvariables)).
+  See [python.md](python.md#name-tag-panel-showvariables).
+- Affects: python, turtle · Existing lessons: no changes needed (add `visuals: false` where a
+  list of words could be mistaken for colours) · Resolves:
+  authoring-requests/2026-10-15-p6-7-name-tag-panel-lists-and-dicts-you-can-see.md
+
+### Turtle: animated drawing, real drawing order, `pensize()` and `dot()`
+
+- **Run now plays the drawing**: the 🐢 moves, turns and draws at the `speed()` in the code. With
+  no `speed()` call it plays at speed 10 pace, squeezed to finish within about 4 seconds;
+  `speed(1–10)` (or `"slowest"`, `"slow"`, `"normal"`, `"fast"`) plays at real turtle pace;
+  `speed(0)` / `"fastest"` is instant. A **Skip** button jumps to the end, and the check result
+  shows once the drawing finishes or is skipped. Under reduced motion the drawing appears at once
+  with a **Play** button. Slow-mo still takes over when it's on, scrubbing still redraws
+  instantly, and Go Live plays the presenter's drawing on every screen. See
+  [turtle.md](turtle.md#speed-and-animation).
+- **Drawing order is now the order the code ran** (was fixed layers: fills, lines, stamps, text),
+  so later shapes cover earlier ones. A filled shape's own outline stays on top of its own fill.
+  See [turtle.md](turtle.md#drawing-order). No live lesson used Turtle (checked 2026-10-15).
+- New commands: `pensize(width)` / `width(width)` (no argument reads it back) and
+  `dot(size=None, colour=None)`, as in real turtle.
+- `turtle_command_used` accepts `command: pensize` (`width()` records as `pensize`) and
+  `command: dot`. No other new checks.
+- The picture has a screen-reader description of the drawing.
+- Affects: turtle · Existing lessons: no changes needed (drawings that relied on fills sitting
+  under later lines may now look different; add `turtle.speed(0)` to keep a drawing instant) ·
+  Resolves: authoring-requests/2026-10-15-p6-10-turtle-animated-drawing-drawing-order-pensize-dot.md
+
+### Locked lines, hidden setup and puzzle rules (`#@lock`, `setupCode`, `puzzle`, `max_lines`)
+
+- **Locked lines:** a `#@lock` marker line locks the next non-blank line of Python or Turtle code.
+  Students see it greyed with a 🔒 Locked tag and can't type in it, delete it, cut, paste over or
+  re-indent it, but can add lines before, between and after locked lines. Locks follow their line
+  through saving, support stages and Reset, and show in the tutor's views and Go Live.
+- **Hidden setup:** `setupCode` runs first on every Run, in the same program, and is never shown;
+  its variables show in the name-tag panel and the checks see them. `setupNote` is one short line
+  above the editor. Students never see a setup traceback ("This task's setup has a problem — tell
+  your tutor."), and their line numbers are unchanged.
+- **Puzzle rules:** `puzzle: { onlyEdit: [lineNums], maxLines, par }`. `onlyEdit` locks every
+  other non-blank starter line; `maxLines` shows a live "3 / 4 lines" counter; `par` is shown
+  after a pass ("Solved at par ⭐") and never decides it. The new `max_lines` check (Python,
+  Turtle; no run needed) passes at or under `puzzle.maxLines` lines of code (non-blank,
+  non-comment; locked lines count, setup doesn't), with the default hint "Can you do it in 4
+  lines? A loop might help."
+- Validation: `setupCode`'s brackets, quotes and indentation (it can't run Python, so preview
+  the task once), the complete code meets `maxLines` (error) and `par` (warning), `onlyEdit` lines
+  are in the starter, and a warning when the complete code drops a locked line or re-indents it
+  ([validation-errors.md](validation-errors.md#hidden-setup-locked-lines-and-puzzles)). The session
+  report adds `linesUsed` and `changesFromStarter` per student on puzzle tasks; the tutor's card
+  shows "Solved at par" or "Over line limit". See
+  [python.md](python.md#locked-lines-hidden-setup-and-puzzles) and
+  [turtle.md](turtle.md#locked-lines-hidden-setup-and-puzzles).
+- Affects: python, turtle, cli (validate, test-checks, capabilities) · Existing lessons: no
+  changes needed · Resolves:
+  authoring-requests/2026-10-15-p6-8-locked-lines-hidden-setup-and-puzzle-rules.md
+
+## 2026-10-14
+
+### Live number and colour scrubbing in the code editor (`scrub`)
+
+- New optional task field `scrub: { enabled, numbers, colours, ranges: [{ line, min, max }] }` on
+  Python, Turtle and HTML tasks (`scrub: true` is short for `{ enabled: true }`). Students drag a
+  number (or tap it for a slider; Alt+Enter from the keyboard) and click a colour for a picker
+  (colour-blind-safe colours first, then names, then hex). Whole numbers stay whole, decimals step
+  by their last place, CSS units are kept, and a colour is written back as a name or hex to match.
+- While a value moves, Turtle, Python programs that draw on the Stage, and HTML/CSS re-run live as
+  a preview (no attempt, checks, save or tutor update). Programs that call `input()`, and Python
+  without the Stage, show "Press Run to see it". When the drag ends the value is one normal edit.
+  Arcade has no scrubbing. See [python.md](python.md#live-scrubbing-scrub),
+  [turtle.md](turtle.md#live-scrubbing-scrub) and [html.md](html.md#live-scrubbing-scrub).
+- The session report adds `scrubs`, `scrubNumbers` and `scrubColours` per student task, and
+  `scrubUsedCount` per task ([session-reports.md](session-reports.md)). Validation checks the
+  field's shape and ranges ([validation-errors.md](validation-errors.md#live-scrubbing-scrub)).
+- Affects: python, turtle, html, cli (capabilities, validate) · Existing lessons: no changes needed
+  (add `scrub: { enabled: true }` to Modify tasks) · Resolves:
+  authoring-requests/2026-10-14-p6-4-live-number-and-colour-scrubbing-in-the-editor.md
+
+### Python and Turtle slow-mo: step through a run line by line
+
+- New optional Python and Turtle task field `slowMo: { enabled: true, speed?, showVariables?,
+  question? }` adds **Slow-mo**, **Pause**, **Step**, **Step back** and **Restart** above the
+  code, plus a speed slider. It is off unless `enabled: true`. `speed` is the starting lines a
+  second (default 1; the slider goes 0.25–4), `showVariables: true` shows name tags step by step,
+  and `question` shows while paused. See [python.md](python.md#slow-mo-slowmo) and
+  [turtle.md](turtle.md#slow-mo).
+- The run is recorded first, then played back: the line that just ran is highlighted, each loop
+  header shows "pass 3 of 4" (when the code writes the count) or "pass 3", changed name tags
+  pulse once with earlier values struck through, output grows line by line, and the Stage and
+  Turtle drawing build up step by step. `input()` is asked while recording; the answers appear at
+  the right step. Recordings stop at 2,000 steps ("Slow-mo stops after 2,000 steps. Is there a
+  loop that never ends?"), and that run counts as stopped.
+- No new checks. The recorded run is the run, so checks and the attempt log behave exactly as for
+  Run (the result shows when playback reaches the last line). Editing the code ends slow-mo.
+- Go Live: the presenter's recording and step go to every screen. The session report's
+  `slowMoUsed`, `slowMoRuns`, `slowMoSteps` and `slowMoUsedCount` now cover Python and Turtle too
+  ([session-reports.md](session-reports.md)).
+- Validation: errors for a malformed `slowMo` or wrong-typed keys; warnings for an out-of-range
+  speed, a question over 200 characters, unknown keys and a missing `enabled`. Pair slow-mo with a
+  prediction or a single question: step-through alone doesn't teach.
+- Also: Python Export work now saves the Stage drawing as a PNG, and a share link shows it.
+- Affects: python, turtle, cli (capabilities) · Existing lessons: no changes needed (add `slowMo`
+  where students should trace a loop or a reassignment) · Resolves:
+  authoring-requests/2026-10-14-p6-3-python-slow-mo-step-through-runs.md
+
+### Keyboard typing history across lessons (`showHistory`)
+
+- Every finished Keyboard `type_text`, `type_code` and `falling_words` result is now kept across
+  lessons for students the tutor has matched to the class list (no lesson field needed): date,
+  lesson, mode, characters and words a minute, accuracy, corrections, time (and the falling-words
+  score). Unmatched students, and sessions with no class, keep nothing.
+- New optional Keyboard field `showHistory: true` (task-level on the three typing modes; per item
+  on `type_text` / `type_code`) shows the student "Last time: 62 cpm, 91% · Best: 75 cpm" beside
+  each item and, when they finish faster than their first lesson, "You went from 40 to 75
+  characters a minute." Hidden until the student has an earlier score. See
+  [keyboard.md](activities/keyboard.md#typing-history-showhistory).
+- Tutors see last / best on the student card and a Typing history list in the StudentModal; the
+  session report adds `tasks[].typingHistory` (`{ mode, cpm, accuracy, previousCpm,
+  previousAccuracy, bestCpm, firstCpm }`, anonymised;
+  [session-reports.md](session-reports.md#typing-history)).
+- Validation: an error for a non-boolean `showHistory`, a warning when it is set on a mode that
+  keeps no history ([validation-errors.md](validation-errors.md)).
+- Affects: keyboard activity, cli (capabilities) · Existing lessons: no changes needed (add
+  `showHistory: true` to timed challenges) · Resolves:
+  authoring-requests/2026-10-14-typing-history-speed-and-accuracy-across-lessons-on-the-stud.md
+
+### Carry a student's own work from an earlier lesson (two-lesson projects)
+
+- New optional task fields `carryCodeFromLesson` (Python, Turtle, HTML) and
+  `carryBlocksFromLesson` (Scratch), each `{ lesson, task }`: the **stock** lesson id (never a
+  class fork's) and that lesson's task id. The task starts from each student's own saved work
+  on that task (HTML: each `starterFiles` file by name). See
+  [Two-lesson projects](AUTHORING_GUIDE.md#two-lesson-projects-carry-from-an-earlier-lesson).
+- The work comes from the class roster, through the tutor's screen. A student the tutor hasn't
+  matched yet waits ("Waiting for your tutor to find your Lesson 11 work…") until they are
+  matched or the tutor chooses **Use the starter**. Nothing saved, "No class", solo study, the
+  presentation window and the Builder preview use the task's starter, so keep a sensible
+  `starterCode` / `starterFiles` / `starterBlocks`. A student with their own saved work for the
+  task keeps it.
+- Validation errors: the wrong module's field, a field on a non-code task, anything but
+  `{ lesson, task }`, naming the same lesson, or combining it with `carryCodeFrom` /
+  `carryBlocksFrom` on the same task. `lessons publish` warns (doesn't fail) when the named
+  lesson or task isn't found or saves a different kind of work
+  ([validation-errors.md](validation-errors.md)). Builder: Task options → **Carry from an
+  earlier lesson**. `lessons capabilities` lists each module's `crossLessonCarryField`.
+- Session reports add a per-student `crossLessonCarry` (`found` / `none` / `starter` /
+  `no_class`) and the task's `crossLessonCarryCounts`
+  ([session-reports.md](session-reports.md)).
+- Affects: python, turtle, html, scratch, cli · Existing lessons: no changes needed (Lesson 12's
+  Build Reference starter workaround can move to `carryCodeFromLesson`, keeping the starter as
+  the fallback) · Resolves:
+  authoring-requests/2026-10-14-carry-a-student-s-own-code-from-one-lesson-into-the-next-two.md
+
+### Scratch test-checks: student-variation cases and Support stages
+
+- `lessons test-checks --cases` now takes Scratch cases: whole `blocks`, or a `stage` (a stage id
+  or a role) plus `edits` (`appendBlock`, `replaceOpcode`, `setField`, `removeBlock`), with
+  `expect: { completion, blocking?, feedback? }`. Each completion and feedback check is reported
+  as pass / fail / skipped (needs a run) against the expectation, mismatches are listed, and
+  `stillBuilding` says whether the variant counts as still building in class (its
+  `after_block_placed` fails held back). A cases file may also be a flat `cases:` list whose
+  entries name their `task`. See
+  [scratch.md](scratch.md#testing-student-variations).
+- Without `--cases`, Support-role code stages with `blocks` are now checked too
+  (`support:<label>`), and a Support stage that passes completion is a warning (exit status 1).
+- Affects: scratch, cli · Existing lessons: no changes needed (a Support stage that passes
+  completion now warns in `test-checks`) · Resolves:
+  authoring-requests/2026-10-14-scratch-test-checks-student-variation-cases-and-support-stag.md
+
+### Scratch slow-mo: block glow, Step and a state timeline
+
+- New optional Scratch task field `slowMo: { enabled: true, speed?, timeline? }` adds four big
+  buttons under the stage: **Slow-mo**, **Pause**, **Step** (one block) and **Restart**, plus a
+  speed slider. It is off unless `enabled: true`. `speed` is the starting blocks per second
+  (default 1; the slider goes 0.25–4). `timeline` lists what each timeline card shows, any of
+  `costume`, `backdrop`, `x`, `y`, `variables` (default: all five; `[]` hides the strip). See
+  [scratch.md](scratch.md#slow-mo).
+- The running block glows in each running script, and the stage redraws after every block, so
+  "two quick switches" visibly shows both costumes. With several scripts, Step lets one block
+  through at a time, the scripts taking turns (round-robin). Under reduced motion the glow is a
+  still outline.
+- The timeline records one labelled card per step. Students swipe through it and tap a card to
+  see the stage at that moment.
+- No new checks. A slow-mo run is a green-flag run, so existing checks (`run_attempted`,
+  after-run checks at the end of the run) and the "still building" rule work as before. You no
+  longer need wait blocks just to show each state.
+- In Go Live, the tutor's controls drive the glow, stage and step the class sees. The session
+  report adds `slowMoUsed`, `slowMoRuns` and `slowMoSteps` per student and `slowMoUsedCount` per
+  task ([session-reports.md](session-reports.md)).
+- Validation: errors for a malformed `slowMo`; warnings for an out-of-range speed, unknown
+  timeline fields or keys, and a missing `enabled` ([validation-errors.md](validation-errors.md)).
+- Affects: scratch, cli · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-14-p6-6-scratch-slow-mo-block-glow-step-and-state-timeline.md
+
+### Python Stage: a drawing pane beside the console (prototype)
+
+- Python tasks can draw: `from stage import *` gives `background`, `rect`, `circle`, `line`,
+  `text`, `stamp`, `grid` (a 2D list as a pixel grid, values indexing `palette` or being colours)
+  and `clear`. A fixed 400 × 400 stage, **top-left origin, y down**. Colours are CSS names, hex
+  codes or the PICO-8 names Arcade Kit uses (CSS wins where a name is both). The pane appears
+  once the code draws, beside the console (above it on narrow screens); `print()` is unchanged.
+  Bad arguments stop the run with a plain-English error on the student's line naming the
+  argument. See [python.md](python.md#stage-drawing-beside-the-console).
+- New optional Python task field `stageTarget: { code, ghost? }`: Python that draws the target
+  picture. Students get a faint ghost to draw over (Target toggle) and, after Run, a Differences
+  toggle that highlights where their drawing differs and says it in words.
+- New checks (Python, need a run, so `lessons test-checks` reports them as needing one):
+  `stage_matches_target` (`tolerance`, needs `stageTarget`), `stage_shape_count` (`kind`, `min`,
+  `max`), `stage_colour_used` (`colour`), `stage_pixel` (`x`/`y` or `row`/`col`, `colour`) and
+  `stage_text_shown` (`text`, `operator`). Write their hints with colours in words.
+- `from module import *` at the top level of a Python task now works (it used to be a
+  SyntaxError, because the program runs inside a function). Turtle tasks are unchanged.
+- The tutor sees each Run's drawing on the student card and in StudentModal, and Go Live
+  broadcasts it. Validation covers `stageTarget` and every stage check field
+  ([validation-errors.md](validation-errors.md)).
+- Affects: python, cli · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-14-p6-2-python-stage-drawing-pane-beside-the-console.md
+
+### HTML Inspector: box model, "Why this …?" and flex/grid overlays
+
+- New optional HTML task field `inspector: { enabled: true, open?, focus?, show? }` adds an
+  **Inspect** button to the preview. Off unless `enabled: true`. `open: true` starts in inspect
+  mode; `focus` (a CSS selector) pre-selects an element; `show` picks the panel sections, any of
+  `box`, `cascade`, `layout` (default: all three). See [html.md](html.md#html-inspector).
+- Students point at (or tap) part of the page to see labelled margin, border, padding and content
+  bands with px sizes. The panel explains the cascade in plain words (less specific, earlier in
+  the file, overridden by !important, inherited from …), and draws flex axes, gaps and grid
+  lines. No new checks: the Inspector never changes the page, so `html_*` checks are unchanged.
+- The tutor's inspect state syncs in Go Live, and the session report adds a per-student
+  `inspector` (`{ used, opens, selects }`) and the summary's `inspectorUsedCount`
+  ([session-reports.md](session-reports.md)).
+- Validation: errors for a malformed `inspector`, warnings for unknown keys, a missing
+  `enabled: true`, a submit-mode task, or `inspector` on a non-HTML task
+  ([validation-errors.md](validation-errors.md)).
+- Affects: html, cli · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-14-p6-5-html-inspector-box-model-cascade-and-layout-overlays.md
+
+### Feedback checks match when their check passes (docs fix)
+
+- **Docs fix, no behaviour change.** A `feedbackChecks` entry matches when its check **passes**,
+  so it must describe the mistake. The python.md Code Structure example used `not_nested_in` for
+  "Move `print(total)` out of the loop", which fired on correct code; it now uses `nested_in`.
+  The lesson-schema.md Indent mode example used `directly_nested_in` for a "line it up" hint (now
+  `not_nested_in`) and wrapped the entry in `check: {...}`, a shape that is silently dropped; it
+  is now a plain check with `hint` alongside. python.md Feedback Checks states the rule.
+- **Check your lessons:** a `code_structure` feedback check copied from the old examples fires
+  the wrong way round. Invert its operator, and unwrap any `- check: {...}` feedback entry. Confirm
+  with `test-checks` (`matchedFeedback`).
+- Affects: python, code_arrange · Existing lessons: invert `code_structure` feedback checks copied
+  from the old examples; unwrap `- check:` feedback entries · Resolves:
+  authoring-requests/2026-10-14-python-md-not-nested-in-feedbackchecks-example-has-its-hint-.md
+
+### `taskActivity` patterns: Which Construct Fits? and Poll
+
+- `Quiz: Which Construct Fits?` (`quiz_which_construct_fits`) and `Quiz, Poll` (`quiz_poll`) are
+  now recognised patterns, so they no longer warn "not a recognised pattern". See the table in
+  [badges.md](badges.md).
+- Affects: all · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-14-taskactivity-patterns-which-construct-fits-and-quiz-poll.md
+
+### Scratch: no fail while still building; starting backdrop; sprite library fits the screen
+
+- **Still building.** A failing `after_block_placed` check no longer shows a fail or hint, or logs
+  an attempt, while the blocks are unchanged since the task opened (starter or carried blocks,
+  ignoring block ids and positions) or while a non-hat block sits loose on the canvas. `on_idle`
+  feedback is held back the same way. Passes are never held back. Run and Check are unchanged. See
+  [scratch.md](scratch.md#scratch-check-types) ("Still building").
+- **`backdrops[].current: true`** sets the backdrop the Stage starts on (and returns to on Reset
+  Stage). Without it the first backdrop is used, as before. Validation warns when more than one
+  backdrop is `current` and errors when it isn't a boolean. The Builder's backdrop list has a
+  **Start** choice. See [scratch.md](scratch.md#backdrop-object).
+- **Sprite and backdrop library pickers** now open over the page, sized to the screen, so every
+  item can be reached on small laptops, tablets and zoomed browsers. Nothing to author.
+- Affects: scratch · Existing lessons: no changes needed; a lesson that reordered `backdrops` to
+  get the right starting scene can restore its order and mark the scene `current: true` ·
+  Resolves: authoring-requests/2026-10-14-scratch-don-t-mark-work-wrong-while-the-workspace-is-unchang.md,
+  authoring-requests/2026-10-14-scratch-sprite-library-student-can-t-scroll-to-the-bottom-in.md,
+  authoring-requests/2026-10-14-scratch-task-choose-which-backdrop-the-stage-starts-on.md
+
+### Tutors can see side-quests and the students on them
+
+- A **🗺️ Side-quests** panel under the task in the teacher's view lists the current task's
+  side-quests (title, kind, explainer, starter code), each with **On it now**, **Done** and
+  **Probably stuck** counts. Probably stuck: on it, and the last 2 Runs in a row hit an error,
+  or no Run for 5 minutes. Clicking a count lists those students. Clicking a student, or the
+  🗺️ chip on their card, opens their StudentModal on a read-only **Side-quest** view (status,
+  code, output, drawing or preview), with a Main task / Side-quest switch.
+- Side-quest code now reaches the tutor: on every Run, and live while the tutor has that
+  student open. This reverses the 2026-10-09 "status only" note. It is still never saved as the
+  task's work and never feeds `carryCodeFrom`. No new lesson fields and no report changes.
+- Authoring tip: the tutor reads each side-quest's `explainer` in the panel to help, so keep it
+  clear about what "done" looks like. See [AUTHORING_GUIDE.md](AUTHORING_GUIDE.md#side-quests).
+- Affects: python, turtle, html (sideQuests) · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-14-tutor-view-of-side-quests-what-each-task-offers-and-how-each.md
+
+### "See an example" button for worked examples in explainers
+
+- **New Markdown fence, ` ```example `.** It renders a button in the explainer; the button
+  opens the example in a wide pop-up (a full-width sheet on phones), so the code no longer wraps
+  in the narrow panel. First line: `example`, an optional language (`python`, `html`, `css`,
+  `js`, `scratch`, `text`) and an optional `label="…"` (the button text, default "See an
+  example"). Lines before a `---` line are the intro (Markdown); the rest is the code:
+
+  ````
+  ```example python label="See an example"
+  Here's the same Check → Do → Otherwise shape with different weather.
+  ---
+  weather = "sunny"
+  if weather == "rainy":
+      print("Grab your wellies!")
+  else:
+      print("Sunglasses on!")
+  ```
+  ````
+
+  It works in any Markdown field (top-level only, not in a list or blockquote), including the
+  Builder preview and topic cards. There is **no `example` task field**: the request suggested
+  one, but a fence keeps it where it's read, can sit anywhere in the explainer and allows more
+  than one. The guides v35 workaround (leaving the worked example out) can now be undone.
+- **Tutor and report.** When a student opens one in a task's explainer in a live lesson, the
+  tutor's card shows 🔍 and the student modal "🔍 Opened example". The session report adds
+  `exampleOpens` per student task (first open, time after the task started, number of opens) and
+  `exampleOpenStudentCount` per task. See
+  [markdown-renderer.md](markdown-renderer.md#worked-examples-see-an-example) and
+  [session-reports.md](session-reports.md).
+- **Validation warnings** for an example with no code, an unknown language, stray words on the
+  first line (often an unquoted label), no closing fence, or more than 10 in one explainer. See
+  [validation-errors.md](validation-errors.md).
+- Affects: markdown, all · Existing lessons: no changes needed (optionally put worked examples
+  back into Challenge explainers as ` ```example ` fences) · Resolves:
+  authoring-requests/2026-10-14-see-example-button-in-explainers-that-opens-a-worked-example.md
+
+### Keyboard: `type_code` and `falling_words` modes
+
+- **`mode: type_code`** types whole blocks of real code. Each item has a multi-line `code`
+  (≤ 1000 characters, ≤ 30 lines, a YAML `|` block is easiest). Task fields: `language`
+  (`python`, the default, or `html`: syntax colouring and the Tab width), `minAccuracy` (default
+  `0.9` here) and an optional `targetCpm` (characters a minute; speed is always shown, checked only
+  when set). Every typed character is marked right or wrong, newlines and indentation included.
+  Enter types a newline with no auto-indent; at the start of a line Tab counts as 4 spaces
+  (Python) or 2 (HTML), so Tab and spaces are both right. Needs a real keyboard (no on-screen
+  keyboard). See [activities/keyboard.md](activities/keyboard.md#typing-code-type_code).
+- **`mode: falling_words`** is a timed warm-up: `words` (code tokens with symbols and spaces are
+  fine, ≤ 20 characters each, ≤ 100 words) fall and typing one exactly clears it. Points only, no
+  lives; the round always runs for `durationSeconds` (15–300, default 60) and then completes.
+  The task has **no `items`**. Respects reduced motion and pauses when the tab is hidden. Needs a
+  real keyboard. See [activities/keyboard.md](activities/keyboard.md#falling-words-falling_words).
+- **Results for typing history.** `type_text`, `type_code` and `falling_words` results all record
+  `mode`, `accuracy`, `cpm`, `wpm`, `corrections`, `timeMs` and `done` (falling words adds
+  `cleared`, `missed`, `score`); `type_text` gains `mode`, `cpm`, `corrections` and `timeMs`
+  alongside its existing fields. Tutor cards read `2/3 done · 94% · 71 cpm` and `falling: 23
+  cleared · 4 missed · 250 pts`. New validation messages are in
+  [validation-errors.md](validation-errors.md) (Keyboard).
+- Affects: keyboard · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-14-keyboard-type-code-mode-type-a-multi-line-block-of-real-code.md,
+  authoring-requests/2026-10-14-keyboard-falling-words-mode-with-code-tokens.md
+
+### Highlight a control: task `highlight` and the tutor's live Highlight menu
+
+- **New optional task field `highlight`** (code tasks): pulses a ring around one control on each
+  student's screen when the task opens, once per task, until they use it or for 20 seconds (a
+  still outline with reduced motion). Write `highlight: green_flag` or
+  `highlight: { target: green_flag }`. Targets: `run` and `stop` on Python, Turtle, Arcade and
+  Electronics (one shared Run/Stop button), `run` on HTML, and on Scratch `green_flag` (or
+  `run`), `stop`, `costumes_tab`, `sounds_tab` and `category:<name>` (`Motion`, `Looks`, `Sound`,
+  `Events`, `Control`, `Sensing`, `Operators`, `Variables`, `My Blocks`; the palette scrolls to
+  it). A control on a hidden tab pulses that tab instead.
+- **Validation:** an unknown target for the task's own module (a composed lesson's `moduleType`)
+  is an error, as is `highlight` on a quiz, information or activity task or on Filesystem or
+  Desktop. `costumes_tab` / `sounds_tab` warn without `showCostumesTab` / `showSoundsTab`. The
+  Builder sets it under Task options → "Highlight a control"; `lessons capabilities` lists each
+  module's `highlightTargets`.
+- **Live:** tutors can pulse the same controls for the whole class ("Highlight Class" in the top
+  bar) or one student (More → Highlight in the student modal). Nothing to author.
+- See [scratch.md](scratch.md#highlighting-a-control) and [lesson-schema.md](lesson-schema.md).
+- Affects: python, turtle, html, arcade, electronics, scratch · Existing lessons: no changes
+  needed · Resolves:
+  authoring-requests/2026-10-14-highlight-a-scratch-ui-control-green-flag-stop-tabs-for-the-.md
+
+### Name-tag panel: show what is in the variables (`showVariables`, `#@peek`, `variables_predicted`)
+
+- **New task field `showVariables`** on Python and Turtle tasks, off unless set:
+  `{ mode: view | predict | target, at: end | marker, hide: [names], predict: [names], target: { name: value } }`.
+  The panel draws one name tag per variable (name, type label `text` / `number` / `true/false` /
+  `list` / `dict` / `None`, value; text keeps its quotes; list tiles with indexes; dict rows;
+  **Show all** for long values; "changed" marks on a second Run). Modules, functions, classes,
+  dunder names, names imported from `turtle` and `hide` names are never shown.
+  - `view`: the values after Run. `predict`: students type what each `predict` variable will
+    hold **before** running; Run marks each ✓ / ✗. `target`: target tags turn green with ✓ when
+    the variable matches (display only — keep the `variable_*` checks for completion); a name not
+    made yet reads "not made yet".
+  - `at: marker` stops at a **`#@peek`** marker line: put `#@peek` on its own line just above the
+    line to stop at. It is stripped like a `#>` line hint and follows its line through student
+    edits; the panel shows the variables the first time the program is about to run that line,
+    or the end of the run (with a note) when the line never runs.
+- **New check `variables_predicted`** (`names` optional; default every `predict` name): passes
+  when every prediction matches the value shown after Run, compared forgivingly by the value's
+  type — text with or without quotes (capitals count), `5` = `5.0` but `"5"` ≠ `5`,
+  `true`/`True`, lists and dicts written as Python. Predict mode only; validation rejects it
+  elsewhere. `lessons test-checks` reports it as needing a run.
+- **Variables after an error.** Python variables are now read at the end of a run even when it
+  stops with an error (they were empty before). Completion still fails on an error; only feedback
+  checks can notice.
+- **Tutor and reports.** The tutor card shows a 🏷️ chip (predictions typed / right, targets
+  hit) and StudentModal shows the student's panel, predictions included as they type; Go Live
+  shows the presenter's panel. Session reports add `predictions` per student task (first and
+  latest revealed predictions, each right or not) and `predictionStudentCount`,
+  `predictionFirstAllCorrectCount`, `predictionFirstByName` per task. The Builder has a
+  **Name-tag panel** section. See [python.md](python.md#name-tag-panel-showvariables),
+  [turtle.md](turtle.md#name-tag-panel-showvariables) and
+  [session-reports.md](session-reports.md).
+- Affects: python, turtle · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-14-p6-1-name-tag-panel-show-what-is-in-the-variables.md
+
 ## 2026-10-09
 
 ### Confidence checks are 1–10; tutors see unsubmitted short answers

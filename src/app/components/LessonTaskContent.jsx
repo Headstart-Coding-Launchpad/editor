@@ -10,18 +10,21 @@ import LessonCompleteScreen from './LessonCompleteScreen'
 import { getModuleHostedActivityUi } from '../../activities/registry.js'
 import ActivityHost from '../../activities/ActivityHost.jsx'
 import CheckFeedbackBanner from './CheckFeedbackBanner'
+import CarryHoldNotice from './CarryHoldNotice'
 import TaskSlideTransition from './TaskSlideTransition'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
 import PanelTabs from './PanelTabs'
 import SupportStagePanel from './SupportStagePanel'
 import { getCompleteStage, getEffectiveTaskMode, getRevealableStages } from '../../shared/taskUtils'
 import { getStageLineHints } from '../../shared/lineHints'
+import { getTaskLockSets } from '../../shared/lockedLines'
 import {
   TEACHER_LIVE_REFERENCE_TYPES,
   teacherLiveReferenceDisplayState,
 } from '../studentLiveDisplay'
 import { useElementSize } from '../../shared/useElementSize'
 import { firstViewKey } from '../../shared/motion'
+import { useBadgeSignals } from '../../shared/badgeSignalsContext'
 import { loadLayoutTab, saveLayoutTab } from '../studentStorage'
 import { NARROW_BREAKPOINT as SCRATCH_CODE_WIDE_WIDTH } from '../../modules/scratch/ScratchWorkspace'
 
@@ -153,6 +156,9 @@ export default function LessonTaskContent({
   displayCode,
   displayArcadeDesign,
   displayTurtleResult,
+  displayVariablesPanel = null,
+  displayStage = null,
+  displayPythonSlowMo = null,
   displaySpriteState,
   displayCursor,
   displayBlockDrag,
@@ -189,6 +195,20 @@ export default function LessonTaskContent({
   highlightedPanes,
   forcedPaneCommand,
 }) {
+  const badgeSignals = useBadgeSignals()
+  // Cross-lesson carry (src/shared/roster/crossLessonCarry.js): the student's own task is held
+  // until the tutor's client finds their work from the earlier lesson. Only the student's own
+  // live task holds: never a reviewed earlier task, a broadcast, the teacher's edit or a sandbox
+  // (the presentation window and Builder preview never resolve to a hold).
+  const carryHold =
+    cs.crossLessonCarry?.state === 'hold' &&
+    String(cs.crossLessonCarry.taskId) === String(currentTaskId) &&
+    !isSandbox &&
+    !cs.inPersonalSandbox &&
+    !isViewingPrev &&
+    !isForcedTeacherLive &&
+    !isTeacherEditing &&
+    !previewMode
   const [explainerCollapsed, setExplainerCollapsed] = useState(false)
   // Tracks the explainer's own accordion collapse (used whenever `!useSideExplainer` —
   // i.e. lesson types outside SIDE_EXPLAINER_TYPES like Filesystem, and the mobile
@@ -212,9 +232,11 @@ export default function LessonTaskContent({
   const isQuizLike = isQuizTask || isActivityTask
   // An activity hosted by this module (code_arrange, isCodeArrangeTask): its ModuleWorkspace
   // replaces the module's StudentWorkspace and drives the module's work slot and Run via `cs`.
-  const ModuleActivityWorkspace = isCodeArrangeTask
-    ? (getModuleHostedActivityUi(task)?.ModuleWorkspace ?? null)
-    : null
+  const moduleHostedActivity = isCodeArrangeTask ? getModuleHostedActivityUi(task) : null
+  const ModuleActivityWorkspace = moduleHostedActivity?.ModuleWorkspace ?? null
+  // The activity sits inside the module's own StudentWorkspace (a Turtle or Stage arrangement),
+  // which lays out and scrolls its own panes like a code task.
+  const activityUsesHostWorkspace = !!moduleHostedActivity?.usesHostWorkspace?.(task)
   const lessonMod = getLessonModule(lesson.type)
   const StudentWorkspace = lessonMod?.StudentWorkspace
   const modStyles = lessonMod?.getLayoutStyles(isMobile) ?? {}
@@ -498,6 +520,13 @@ export default function LessonTaskContent({
             ? surfaceId(SURFACE_KINDS.explainer, task.id)
             : null
         }
+        // "See example" opens are logged for the tutor from the task's own explainer only
+        // (src/shared/exampleOpens.js); the reporter is a no-op outside a live lesson.
+        onExampleOpen={
+          !hasSandboxExplainer && !showsCompleteCode && badgeSignals?.reportExampleOpen
+            ? (index) => badgeSignals.reportExampleOpen(index, task?.id)
+            : undefined
+        }
       />
     </div>
   ) : null
@@ -589,6 +618,7 @@ export default function LessonTaskContent({
             <SupportStagePanel
               stage={referenceStage}
               lineHintsFor={lineHintsFor}
+              lockSets={getTaskLockSets(task)}
               lessonType={lesson.type}
               revealed={
                 completeReferenceStage || targetedReferenceStage || teacherLiveReferenceStage
@@ -629,6 +659,7 @@ export default function LessonTaskContent({
             entranceKey={taskEntranceKey}
             tileHighlights={cs.tileHighlights}
             onDismissTileHighlights={cs.dismissTileHighlights}
+            history={cs.typingHistory}
             result={
               isForcedTeacherLive
                 ? { submitted: displayRunStatus === 'submitted', passed: displayCheckPassed }
@@ -657,8 +688,24 @@ export default function LessonTaskContent({
             displayCodeArrangeCursor={displayCodeArrangeCursor}
             teacherLiveCode={teacherLiveCode}
             teacherLiveFiles={teacherLiveFiles}
+            // For an activity inside the module's own StudentWorkspace (usesHostWorkspace).
+            lesson={lesson}
+            lessonId={lessonId}
+            identityId={identityId}
+            isMobile={isMobile}
+            displayTurtleResult={displayTurtleResult}
+            displayVariablesPanel={displayVariablesPanel}
+            displayStage={displayStage}
+            displayPythonSlowMo={displayPythonSlowMo}
+            displayOutputCollapsed={displayOutputCollapsed}
+            displaySelection={displaySelection}
+            onVisiblePanesChange={
+              activityUsesHostWorkspace && supportsModulePanes ? setModulePanes : undefined
+            }
           />
         </>
+      ) : carryHold ? (
+        <CarryHoldNotice sourceLabel={cs.crossLessonCarry.sourceLabel} />
       ) : StudentWorkspace ? (
         <StudentWorkspace
           lesson={lesson}
@@ -677,6 +724,9 @@ export default function LessonTaskContent({
           displayCode={displayCode}
           displayArcadeDesign={displayArcadeDesign}
           displayTurtleResult={displayTurtleResult}
+          displayVariablesPanel={displayVariablesPanel}
+          displayStage={displayStage}
+          displayPythonSlowMo={displayPythonSlowMo}
           displaySpriteState={displaySpriteState}
           displayCursor={displayCursor}
           displayBlockDrag={displayBlockDrag}
@@ -744,7 +794,7 @@ export default function LessonTaskContent({
           ? {
               ...editorAreaStyle,
               ...s.fluidWorkspace,
-              ...(isCodeArrangeTask ? { overflow: 'auto' } : {}),
+              ...(isCodeArrangeTask && !activityUsesHostWorkspace ? { overflow: 'auto' } : {}),
             }
           : editorAreaStyle
       }

@@ -14,6 +14,7 @@ export default function CollapsibleIframePreview({
   onToggle,
   animate = false,
   onConsoleError,
+  inspector = null,
 }) {
   if (collapsed) {
     return (
@@ -33,6 +34,7 @@ export default function CollapsibleIframePreview({
       iframeRef={iframeRef}
       fill={fill}
       onConsoleError={onConsoleError}
+      inspector={inspector}
       leadingActions={
         <CollapseTabButton
           onClick={onToggle}

@@ -3,8 +3,19 @@ import KeyboardBuilderEditor from './KeyboardBuilderEditor.jsx'
 import ItemNav from '../ui/ItemNav.jsx'
 import ActivityCorrect, { SpinTick } from '../ui/ActivityCorrect.jsx'
 import OnScreenKeyboard, { codesForKey } from './OnScreenKeyboard.jsx'
-import { NAMED_KEYS, describeComboPart, describeItem, gradeKeyboardItem } from './keyboard.js'
+import TypeCodeBlock from './TypeCodeBlock.jsx'
+import FallingWordsView from './FallingWordsView.jsx'
+import {
+  NAMED_KEYS,
+  describeComboPart,
+  describeItem,
+  gradeKeyboardItem,
+  keyboardItems,
+} from './keyboard.js'
 import { applyEditKey, initialEditModel } from './editText.js'
+import { applyTypeCodeKey, normaliseCode, typeCodeStats } from './typeCode.js'
+import TypingHistoryLine from './TypingHistoryLine.jsx'
+import { showsTypingHistory, typingHistoryForMode } from '../../shared/typingHistory.js'
 import {
   DEFAULT_LAYOUT,
   comboOf,
@@ -20,11 +31,14 @@ import {
 // Keyboard activity UI. Input is recorded from a focused practice area (hardware keys) or the
 // on-screen keyboard (source 'virtual'); raw events stay in memory and each item stores a small
 // result that keyboard.js grades:
-//   type_text: { typed, accuracy, wpm, shiftCapitals, capsLockCapitals, source, done }
+//   type_text: { mode, typed, accuracy, cpm, wpm, corrections, timeMs, shiftCapitals,
+//                capsLockCapitals, source, done }
 //   find_key:  { pressed, source }
 //   symbols:   { typedChar, shift, source }
 //   shortcuts: { performed, via: 'keyboard' | 'menu', source }
 //   edit_text: { text, orig, caret, anchor, used, source, done }   (see editText.js)
+//   type_code: { mode, typed, accuracy, cpm, wpm, corrections, timeMs, source, done }
+//   falling_words: one 'round' item, run by FallingWordsView.jsx (see fallingWords.js)
 // Keystrokes are continuous changes (synced only while the teacher watches); finishing an
 // item is discrete (see classifyChange in definition.js).
 
@@ -50,11 +64,20 @@ const MODE_PROMPTS = {
   shortcuts: (task, item, platform) =>
     item.prompt ?? `Use the shortcut ${describeItem(task, item, platform)}`,
   edit_text: (task, item) => item.prompt ?? 'Fix the mistakes in this line',
+  type_code: (task, item) => item.prompt ?? 'Type this code, spaces and all',
+}
+
+// Modes the on-screen keyboard can't do: edit_text needs arrow keys and Delete; type_code needs
+// Tab and the symbols it hides (falling_words shows its own note).
+const REAL_KEYBOARD_NOTES = {
+  edit_text: '⌨️ This one needs a real keyboard with arrow keys and a Delete key.',
+  type_code:
+    '⌨️ This one needs a real keyboard: the on-screen keyboard hides Tab and most symbols.',
 }
 
 function isItemFinished(mode, result) {
   if (!result) return false
-  if (mode === 'type_text' || mode === 'edit_text') return !!result.done
+  if (['type_text', 'edit_text', 'type_code', 'falling_words'].includes(mode)) return !!result.done
   if (mode === 'find_key') return !!result.pressed
   if (mode === 'symbols') return !!result.typedChar
   return !!result.performed
@@ -132,10 +155,12 @@ export function KeyboardStudentView({
   onSubmit,
   readOnly = false,
   device = {},
+  // sessions/{lessonId}/typingHistory/{anonymousId} (src/shared/typingHistory.js) or null.
+  history = null,
 }) {
   const mode = task?.mode ?? 'type_text'
   const layout = task?.layout ?? DEFAULT_LAYOUT
-  const items = task?.items ?? []
+  const items = keyboardItems(task)
   const [index, setIndex] = useState(() => {
     const firstOpen = items.findIndex((item) => !isItemFinished(mode, state?.items?.[item.id]))
     return firstOpen === -1 ? 0 : firstOpen
@@ -179,6 +204,19 @@ export function KeyboardStudentView({
   }, [mode, readOnly])
 
   if (!current) return <p>This keyboard task has no items yet.</p>
+  if (mode === 'falling_words') {
+    return (
+      <FallingWordsView
+        task={task}
+        state={state}
+        onChange={onChange}
+        onSubmit={onSubmit}
+        readOnly={readOnly}
+        device={device}
+        history={history}
+      />
+    )
+  }
 
   // Updates the current item's result from the host's latest state (not this render's), so
   // fast typing never drops a key between renders. Returns the new result.
@@ -241,11 +279,16 @@ export function KeyboardStudentView({
       else nextTyped = typed + event.key
       if (nextTyped.length >= text.length) done = true
       justFinished = done
-      const stats = typingStats(text, nextTyped, event.t - startedAtRef.current)
+      const timeMs = event.t - startedAtRef.current
+      const stats = typingStats(text, nextTyped, timeMs)
       return {
+        mode: 'type_text',
         typed: nextTyped,
         accuracy: stats.accuracy,
         wpm: stats.wpm,
+        cpm: timeMs > 0 ? Math.round(stats.correctChars / (timeMs / 60000)) : 0,
+        corrections: (prevResult.corrections ?? 0) + (event.key === 'Backspace' && typed ? 1 : 0),
+        timeMs,
         shiftCapitals: chars.filter((c) => c.method === 'shift').length,
         capsLockCapitals: chars.filter((c) => c.method === 'caps_lock').length,
         source: recorded.some((e) => e.source === 'virtual') ? 'virtual' : 'hardware',
@@ -254,6 +297,38 @@ export function KeyboardStudentView({
     })
     if (justFinished) advanceAfter({ ...(state?.items ?? {}), [current.id]: next })
     return true
+  }
+
+  function handleTypeCode(event) {
+    const target = normaliseCode(current.code, task.language)
+    let handled = false
+    let justFinished = false
+    const next = updateResult((prevResult) => {
+      if (prevResult.done) return prevResult
+      const typed = String(prevResult.typed ?? '')
+      const applied = applyTypeCodeKey(typed, event, task.language)
+      if (!applied) return prevResult
+      handled = true
+      if (startedAtRef.current == null) startedAtRef.current = event.t
+      const timeMs = event.t - startedAtRef.current
+      const stats = typeCodeStats(target, applied.typed, timeMs)
+      const done = applied.typed.length >= target.length
+      justFinished = done
+      return {
+        mode: 'type_code',
+        typed: applied.typed,
+        accuracy: stats.accuracy,
+        cpm: stats.cpm,
+        wpm: stats.wpm,
+        corrections: (prevResult.corrections ?? 0) + (applied.correction ? 1 : 0),
+        timeMs,
+        source:
+          prevResult.source === 'virtual' || event.source === 'virtual' ? 'virtual' : 'hardware',
+        done,
+      }
+    })
+    if (justFinished) advanceAfter({ ...(state?.items ?? {}), [current.id]: next })
+    return handled
   }
 
   // The line as the student has left it (their saved result, or the item's start).
@@ -349,6 +424,10 @@ export function KeyboardStudentView({
       if (finished) return false
       return handleEditText(event)
     }
+    if (mode === 'type_code') {
+      if (finished) return false
+      return handleTypeCode(event)
+    }
     if (finished) return false
     if (mode === 'find_key') return handleFindKey(event)
     if (mode === 'symbols') return handleSymbols(event)
@@ -367,8 +446,14 @@ export function KeyboardStudentView({
   function onPracticeKeyDown(domEvent) {
     const event = normalizeKeyEvent(domEvent)
     // Tab must still be able to leave the practice area unless it is the key being practised.
-    const practisesTab = (mode === 'find_key' && current.key === 'Tab') || tabPractice
+    const practisesTab =
+      (mode === 'find_key' && current.key === 'Tab') || tabPractice || mode === 'type_code'
     if (event.key === 'Tab' && !practisesTab) return
+    // type_code keeps Tab for indentation, so Esc lets keyboard users leave the typing area.
+    if (mode === 'type_code' && event.key === 'Escape') {
+      domEvent.currentTarget.blur?.()
+      return
+    }
     if (handleKeyEvent(event)) domEvent.preventDefault()
   }
 
@@ -412,8 +497,7 @@ export function KeyboardStudentView({
   const hintKey = mode === 'find_key' ? current.key : mode === 'symbols' ? current.char : null
   const highlightCodes = showHint && hintKey ? codesForKey(hintKey, layout) : []
   const showPicture = !virtualKeyboard && (mode === 'find_key' || mode === 'symbols')
-  // edit_text needs arrow keys and Delete, which the on-screen keyboard doesn't have (v1).
-  const needsRealKeyboard = mode === 'edit_text' && virtualKeyboard
+  const needsRealKeyboard = !!REAL_KEYBOARD_NOTES[mode] && virtualKeyboard
 
   return (
     <div className="act-panel" data-testid="keyboard-activity">
@@ -422,9 +506,23 @@ export function KeyboardStudentView({
         currentIndex={index}
         onSelect={setIndex}
         statusFor={statusFor}
-        noun={mode === 'type_text' || mode === 'edit_text' ? 'Line' : 'Step'}
+        noun={
+          mode === 'type_code'
+            ? 'Block'
+            : mode === 'type_text' || mode === 'edit_text'
+              ? 'Line'
+              : 'Step'
+        }
       />
       <p className="act-prompt">{MODE_PROMPTS[mode]?.(task, current, platform) ?? 'Keyboard'}</p>
+
+      {showsTypingHistory(task, current) && (
+        <TypingHistoryLine
+          modeHistory={typingHistoryForMode(history, mode)}
+          result={result}
+          finished={finished}
+        />
+      )}
 
       {mode === 'type_text' && (
         <TargetText text={String(current.text ?? '')} typed={String(result.typed ?? '')} />
@@ -439,8 +537,30 @@ export function KeyboardStudentView({
 
       {needsRealKeyboard ? (
         <p className="act-hint" role="status" data-testid="keyboard-needs-keyboard">
-          ⌨️ This one needs a real keyboard with arrow keys and a Delete key.
+          {REAL_KEYBOARD_NOTES[mode]}
         </p>
+      ) : mode === 'type_code' ? (
+        <div
+          ref={practiceRef}
+          className="act-practice act-practice--code"
+          role="textbox"
+          aria-multiline="true"
+          tabIndex={readOnly ? -1 : 0}
+          aria-readonly={readOnly || undefined}
+          aria-label={`Typing area: type this ${task.language === 'html' ? 'HTML' : 'Python'} code line by line, pressing Enter at each line end and Tab or spaces to indent. Press Esc to leave. Code: ${normaliseCode(current.code, task.language)}`}
+          data-keyboard-practice="true"
+          data-testid="keyboard-type-code"
+          onKeyDown={onPracticeKeyDown}
+          onPaste={(e) => e.preventDefault()}
+          onDrop={(e) => e.preventDefault()}
+        >
+          <TypeCodeBlock
+            code={normaliseCode(current.code, task.language)}
+            typed={String(result.typed ?? '')}
+            language={task.language}
+            showCaret={!readOnly && !finished}
+          />
+        </div>
       ) : mode === 'edit_text' ? (
         <div
           ref={practiceRef}
@@ -538,6 +658,17 @@ export function KeyboardStudentView({
               {result.wpm ?? 0} words a minute (aim for {task.targetWpm})
             </span>
           ) : null}
+        </p>
+      )}
+
+      {mode === 'type_code' && (result.typed ?? '') !== '' && (
+        <p className="act-row" aria-live="polite" data-testid="type-code-stats">
+          <span className="act-badge">Accuracy {Math.round((result.accuracy ?? 1) * 100)}%</span>
+          <span className="act-badge">
+            {result.cpm ?? 0} characters a minute
+            {task.targetCpm ? ` (aim for ${task.targetCpm})` : ''}
+          </span>
+          <span className="act-badge">Corrections {result.corrections ?? 0}</span>
         </p>
       )}
 

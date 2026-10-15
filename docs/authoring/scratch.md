@@ -57,6 +57,7 @@ modules:
     prebuiltStacks: []        # optional — drag-in block stacks shown in the toolbox
     codeStages: []            # optional — intermediate stages (label, role?, blocks, prebuiltStacks)
     carryBlocksFrom: null     # optional — carry saved blocks from task ID
+    # carryBlocksFromLesson: { lesson: scratch-1-11, task: 5 }  # optional instead — the student's own project from an earlier lesson
     allowAddSprite: false     # optional — show a student-facing "Add sprite" picker (default false)
     addSpritePresetIds: []    # optional — restrict the picker to these `lessonTypeAssets/scratch.defaultSprites` ids; omitted/empty = whole library
     allowAddBackdrop: false   # optional — show a student-facing "Add backdrop" picker (default false)
@@ -69,6 +70,9 @@ modules:
     showSoundsTab: false      # optional — show a Sounds tab beside the block editor (default false)
     allowAddCostume: false    # optional — students can add costumes (emoji or library) in the Costumes tab; needs showCostumesTab
     allowAddSound: false      # optional — students can add sounds (synth or library file) in the Sounds tab; needs showSoundsTab
+    highlight: green_flag     # optional — pulse a control once when the task opens; see Highlighting a Control
+    slowMo:                   # optional — Slow-mo, Pause, Step and Restart under the stage; see Slow-mo
+      enabled: true
     check:
       type: sprite_property
       evaluation: after_run
@@ -79,6 +83,8 @@ modules:
 ```
 
 ---
+
+**Carry from an earlier lesson.** `carryBlocksFromLesson: { lesson, task }` starts the task from each student's own saved project (sprites, blocks, backdrops) on that task of an earlier lesson (two-lesson projects), using the stock lesson id. Students the tutor hasn't matched to the class list wait; anyone with nothing saved gets `starterBlocks`. Not with `carryBlocksFrom` on the same task. See [Two-lesson projects](AUTHORING_GUIDE.md#two-lesson-projects-carry-from-an-earlier-lesson).
 
 ## Sprite Object
 
@@ -145,7 +151,10 @@ backdrops:
     name: Space               # required — used by backdrop blocks
     image: backdrops/space.png  # optional — relative to assetsPath, or public root path
     colour: "#ffffff"         # optional — CSS colour for solid backdrop
+    current: true             # optional — the Stage starts on this backdrop
 ```
+
+The Stage shows the backdrop marked `current: true` when the task loads and after **Reset Stage**. With none marked it starts on the first one listed, so the list order can stay whatever the project's `next backdrop` steps need. Mark only one: validation warns when more than one backdrop is `current` (the first marked one wins), and errors when `current` isn't `true` or `false`. In the Builder, pick **Start** next to a backdrop; the starting one shows **Starts here**. Like the rest of `backdrops`, the flag is copied by `carryBlocksFrom`.
 
 ---
 
@@ -447,7 +456,7 @@ node cli/cli.mjs assets upload-type scratch ./dog-walk2.png
 
 Three per-task toggles let students extend their own project beyond what the author placed, without breaking checks that assume an author-known sprite/variable set:
 
-- `allowAddSprite` / `addSpritePresetIds` — shows an "Add sprite" picker in the student's sprite panel, sourced from the admin-curated `lessonTypeAssets/scratch.defaultSprites` library (managed in Admin → Shared Assets → Scratch, the same `DefaultSpritesEditor` used to seed the builder's own "Add sprite" picker). `addSpritePresetIds` optionally narrows the picker to a chosen subset of that library for this task; omitted or empty offers the whole library.
+- `allowAddSprite` / `addSpritePresetIds` — shows an "Add sprite" picker in the student's sprite panel, sourced from the admin-curated `lessonTypeAssets/scratch.defaultSprites` library (managed in Admin → Shared Assets → Scratch, the same `DefaultSpritesEditor` used to seed the builder's own "Add sprite" picker). `addSpritePresetIds` optionally narrows the picker to a chosen subset of that library for this task; omitted or empty offers the whole library. The picker opens over the page (below the Add tile, or above it when there's no room) and is sized to the screen, so a student on a small laptop, a tablet or with the browser zoomed in can scroll to the last sprite.
 - `allowAddBackdrop` / `addBackdropPresetIds` — same pattern for backdrops, sourced from `lessonTypeAssets/scratch.defaultBackdrops` (`DefaultBackdropsEditor`).
 - `allowCreateVariable` — adds a "Make a Variable" button to the Variables toolbox flyout. The student is prompted for a name (must be non-empty and not collide, case-insensitively, with any existing variable name); the new variable becomes available immediately in every variable dropdown block (`data_variable`, `data_setvariableto`, etc.) for every sprite in the task.
 - `allowRemoveSprite` — shows a ✕ on each sprite's tile in the student's sprite panel. By default this only ever lets a student remove a sprite *they* added via the "Add sprite" picker above (`studentAdded: true`) — author-placed starter sprites always stay protected, even with this flag on. Set `allowRemoveStarterSprites: true` alongside it to lift that restriction and let removal target every sprite, author-placed or not (used by the freeform Scratch Playground, which has no starter code to protect). A workspace can never be emptied entirely — the ✕ is disabled once only one sprite remains — and removal asks the student to confirm first, since it deletes that sprite's code and costumes.
@@ -489,6 +498,110 @@ Scratch Playground turns all four toggles on.
 
 ---
 
+## Highlighting a Control
+
+`highlight` pulses a ring around one control on each student's screen when the task opens (once
+per task), so a Level 1 student who keeps missing the green flag can't miss it. It stops when
+the student uses the control (presses it, opens the tab, taps the category heading) or after 20
+seconds. With reduced motion it's a still outline.
+
+```yaml
+    highlight: green_flag            # or: highlight: { target: green_flag }
+```
+
+| Target | Points at |
+|---|---|
+| `green_flag` (or `run`) | The green flag above the stage |
+| `stop` | The stop sign |
+| `costumes_tab` | The Costumes tab (needs `showCostumesTab`, or validation warns) |
+| `sounds_tab` | The Sounds tab (needs `showSoundsTab`, or validation warns) |
+| `category:<name>` | A category heading in the block palette: `Motion`, `Looks`, `Sound`, `Events`, `Control`, `Sensing`, `Operators`, `Variables` or `My Blocks`. The palette scrolls to it |
+
+Any other target is a validation error. When the control is out of sight, the way to it pulses
+instead: the **Stage** or **Blocks** tab on a narrow screen, the collapsed Stage rail, or the
+"Show blocks palette" button. A category your `toolbox` leaves out has no heading, so nothing
+pulses.
+
+Tutors can pulse the same controls live, for the whole class ("Highlight Class" in the top bar)
+or one student (the More menu in their workspace view).
+
+---
+
+## Slow-mo
+
+`slowMo` lets students watch their scripts run one block at a time. Use it where the in-between
+states matter, such as two quick costume switches that look like one, or a Next Costume after a
+Switch Costume. Students no longer need wait blocks just to see each state.
+
+```yaml
+  - id: 18
+    moduleType: scratch
+    title: Watch the costumes change
+    slowMo:
+      enabled: true       # off unless true
+      speed: 1            # optional — blocks a second to start at (default 1; the slider goes 0.25–4)
+      timeline: [costume, backdrop, x, y, variables]   # optional — what each timeline card shows (default: all five)
+```
+
+**Controls.** Four large buttons appear under the stage, each with an icon and a word, plus a
+speed slider. The green flag still does a normal, full-speed run.
+
+| Button | What it does |
+|---|---|
+| 🐢 **Slow-mo** | Runs the green-flag scripts slowly, at the slider's speed. Pressed while paused, it carries on |
+| ⏸️ **Pause** | Holds the run before its next block |
+| 👣 **Step** | Runs just the next block, then pauses. Pressed before a run, it starts one paused |
+| ⏮️ **Restart** | Stops the run, puts the stage back to the start and clears the timeline (same as Reset Stage) |
+
+**While it runs:**
+
+- **Glow:** the running block glows in its script. When several scripts run at once, each script's
+  current block glows. Under reduced motion the glow is a still outline.
+- **One frame per block:** the stage redraws after every block, so two quick switches show both
+  costumes.
+- **Speed:** each script runs at most `speed` blocks a second, on its own clock, so scripts that run
+  together move together. A block that takes time (wait, glide, play until done, ask) takes as long
+  as it normally would, and the next block follows straight after.
+- **Other scripts:** key presses, sprite clicks and broadcasts during a slow-mo run go slowly too.
+
+**Step with several scripts.** Each Step lets exactly one block through. The scripts take turns
+(round-robin) in the order they started: with two green-flag scripts, Step runs a block from the
+first, then the second, then the first again. If every script is busy inside a block (for example,
+a `wait 2 seconds`), the Step is kept and the next script that is ready goes. Only one Step is kept,
+so tapping Step five times during a long wait doesn't race five blocks afterwards.
+
+**Timeline.** A strip under the stage gets one card per step, showing the `timeline` fields: the
+running sprite's costume (a picture and its name), the backdrop, x and y (rounded), and each
+variable. On a tablet it scrolls with a swipe. Tapping a card shows the stage as it was at that
+step, with "Back to now" to return. If the run was playing, it pauses; nothing in the run changes.
+Each card has a text label for screen readers, such as "Step 3. Cat: switch costume to costume2.
+Costume costume2, Backdrop Blue Sky, x 0, y 0, score 1". The timeline keeps the first 500 steps,
+then says so. A C block (repeat, forever, if) gets no card of its own, because the blocks inside it
+already have one. `timeline: []` hides the strip.
+
+**Checks.** There are no slow-mo checks. A slow-mo run counts as a green-flag run, so every check
+works as it does after a normal Run:
+
+- `run_attempted` and run-only tasks pass when Slow-mo or Step starts the run.
+- After-run checks are judged when the slow run finishes. Stop and Restart skip that end-of-run check,
+  just as Stop does for a normal run.
+- `after_block_placed` checks and the "still building" rule don't depend on runs, so they're
+  unchanged.
+
+**Tutors.** A tutor watching a student sees the same glow and a line such as "Slow-mo · step 4 ·
+paused" under the stage. In Go Live and presentation, the tutor's own Slow-mo, Pause, Step and
+Restart drive what the class sees: the glowing blocks, the stage and the step number. Students
+can't use the controls while they're watching. The timeline isn't sent, so each person's timeline is
+their own. The session report records slow-mo use per student per task (`slowMoUsed`,
+`slowMoRuns`, `slowMoSteps`; see [Session reports](session-reports.md)).
+
+**Builder:** Scratch setup → Student additions → Slow-mo (on/off, starting speed, timeline fields).
+Validation flags a `slowMo` that isn't an object, an `enabled` that isn't true or false, or a speed
+that isn't a positive number. It warns about a speed outside 0.25–4 (it's clamped), unknown timeline
+fields or keys, and a `slowMo` with no `enabled`.
+
+---
+
 ## Scratch Check Types
 
 Scratch checks can be a single object or an array. Prefer `evaluation: after_block_placed` for block-structure checks that can pass while the learner edits, and `evaluation: after_run` for checks that need the green flag/run state. `manual` is a legacy value and should not be used in new lessons.
@@ -496,6 +609,13 @@ Scratch checks can be a single object or an array. Prefer `evaluation: after_blo
 Students should not see a failure just because they are still building. `after_block_placed` checks can pass as soon as the workspace is correct; off-track feedback should be modelled as a nudge/authoring warning rather than a hard fail while the learner is mid-edit.
 
 **When checks run and what logs an attempt.** `after_block_placed` checks (and `on_idle` feedback checks) are evaluated shortly after an edit to the blocks: a block placed, moved or deleted, or a field edit committed — the learner leaves the text field or presses Enter, or picks a dropdown value. Each evaluation is logged as one attempt in the session report. Typing inside a text field (for example a Say message) does not run checks or log attempts; the edit is checked once, with the final text, when the field is committed. `after_run` checks are evaluated when the learner runs the project.
+
+**Still building: no fail while the workspace is unchanged or has a loose block.** While the learner is placing blocks, a failing `after_block_placed` check is held back when either:
+
+- the blocks are the same as when the task opened (the `starterBlocks`, or the blocks carried in by `carryBlocksFrom`); block ids and positions are ignored, so dragging a script around still counts as unchanged; or
+- a block that isn't a hat (`when green flag clicked`, `when this sprite clicked`, `when I start as a clone` and the other `when …` blocks) sits loose on the canvas: a stack, a single block or a reporter not yet snapped under a hat or into another block.
+
+While held back, the learner sees no fail state and no hint, no attempt is logged in the session report, and `on_idle` feedback checks don't show. A **pass is never held back**: as soon as the checks pass the task completes, loose block or not. Once every block is attached (and something has changed), checks are judged as normal. Pressing Run and the Check button are not affected. The tutor still sees the student's blocks live as they build. The rule lives in `src/modules/scratch/stillBuilding.js`, which works on stored workspace JSON so the CLI can use it too.
 
 `feedbackChecks` use the same Scratch check shapes and require a completion `check`. Use `show: on_idle` for guidance after the learner pauses editing blocks, or `show: after_attempt` for feedback after a Scratch check evaluates. `mode: blocking` fails completion when matched; `mode: nudge` shows guidance without failing. `incorrectChecks` is a legacy alias for blocking feedback. Avoid using `after_run` check types (`block_run`, `sprite_property`/`variable_compare` reading run-dependent state) as `on_idle` feedback checks — idle evaluation happens purely from editing, without a fresh run, so an `after_run` check there is judged against the last Run's state rather than the learner's current unedited workspace.
 
@@ -705,7 +825,7 @@ node cli/cli.mjs lessons test-checks lesson.yaml --yaml          # every Scratch
 node cli/cli.mjs lessons test-checks lesson.yaml --task 7         # one task
 ```
 
-Each task is checked against these stages: `complete` (`completeBlocks`), `starter` (the first Starter stage's `blocks`, else `starterBlocks`), and `complete:<label>` for each Complete-role code stage (legacy `solution` stages included). Checks go through the same per-sprite rules as the classroom: a check with `spriteName` looks at that sprite, falling back to the first sprite when no sprite has that name; one without passes if any sprite satisfies it.
+Each task is checked against these stages: `complete` (`completeBlocks`), `starter` (the first Starter stage's `blocks`, else `starterBlocks`), `complete:<label>` for each Complete-role code stage (legacy `solution` stages included), and `support:<label>` for each Support-role code stage that has `blocks` (a stage with no `role` is Support), in authored order. Checks go through the same per-sprite rules as the classroom: a check with `spriteName` looks at that sprite, falling back to the first sprite when no sprite has that name; one without passes if any sprite satisfies it.
 
 Only block checks are evaluated: `block_used`, `blocks_in_order` and `block_count`. Run-time checks (`sprite_property`, `sprite_property_delta`, `sprite_property_changed`, costume, variable and `block_run` checks) need a Run and are reported as `skipped`, so a stage whose block checks pass but has run-time checks reads `incomplete`. Verify those in the Builder.
 
@@ -754,10 +874,77 @@ summary:
 - a Complete stage that fails a completion check (`Task … <stage> stage fails completion check N (type)`);
 - a feedback check that fires on a Complete stage (it would show to a student who got it right);
 - a starter that already passes every completion check;
+- a Support stage that passes completion (`Task … support:<label> stage passes every completion check`), or passes every block check with run-time checks skipped: revealing it would hand the student the answer;
 - a Debug Code Task (`taskActivity`) whose blocking feedback checks all stay silent on the starter (the bug they describe isn't in the starter);
 - stage blocks that aren't valid JSON.
 
 The command exits with status 1 when there are warnings. `lessons validate` also warns when the Complete blocks fail a block check, or the starter already passes, without the per-check detail.
+
+### Testing student variations
+
+`--cases` takes Scratch cases too, so you can check each check against the wrong and partial answers students actually make (a block appended at the bottom, the wrong sound block, a dropdown left on its default, a Support stage resubmitted unchanged) without hand-reading Blockly JSON. A case gives either whole `blocks` (the same JSON shape as `starterBlocks`), or a `stage` to start from plus `edits`:
+
+```bash
+node cli/cli.mjs lessons test-checks lesson.yaml --cases scratch-cases.yaml
+```
+
+```yaml
+cases:                                   # or tasks: [{ id: 7, cases: [...] }], as for code cases
+  - task: 7
+    name: start sound instead of play sound until done
+    stage: complete                      # a stage id from the no --cases run, or a role
+    edits:
+      - op: replaceOpcode
+        target: sound_playuntildone
+        opcode: sound_play
+    expect:
+      completion: fail                   # pass | fail (required)
+      blocking: fail                     # optional: fail = a blocking feedback check fires
+      feedback: [1]                      # optional: the feedback checks that should fire
+  - task: 7
+    name: extra block appended at the bottom
+    stage: complete
+    edits:
+      - { op: appendBlock, opcode: motion_movesteps, inputs: { STEPS: 10 } }
+    expect: { completion: pass, feedback: [] }
+  - task: 7
+    name: Support stage resubmitted unchanged
+    stage: support                       # the first Support stage with blocks
+    expect: { completion: fail }
+  - task: 7
+    name: whole workspace
+    blocks:
+      sprite1:
+        blocks:
+          blocks:
+            - type: event_whenflagclicked
+    expect: { completion: fail }
+```
+
+**`stage`** is a stage id as the no-`--cases` run prints it (`complete`, `starter`, `complete:<label>`, `support:<label>`; labels ignore case), or a role (`complete`, `starter`, `support`) for the first stage of that role.
+
+**`edits`** run in order on a copy of the stage's blocks. Each names a block with `target` (or `after` / `inside`): an opcode (the first in reading order), `{ opcode, nth }` (the nth one, counting from 1), or `{ path: [script, position] }` (counting from 1 down a script's top-level stack). `sprite` (name or id) picks the sprite; the default is the first sprite, and `Stage` is the Stage.
+
+| `op` | Fields | Does |
+|---|---|---|
+| `appendBlock` | `opcode` with optional `fields` and `inputs`, or a whole `block` (Blockly JSON); where: `after`, `inside` (+ `input`, default `SUBSTACK`), `newScript: true`, or `script` N (default 1) | Adds the block after a block, at the end of a C block's slot, loose on the canvas, or at the bottom of script N. An `inputs` number becomes a number slot, any other value a text slot. |
+| `replaceOpcode` | `target`, `opcode`, optional `fields` / `inputs` | Changes the block's opcode, keeping its fields and inputs (e.g. `sound_playuntildone` → `sound_play`). |
+| `setField` | `target`, `field`, `value` | Sets the block's own field (a dropdown such as `TO`), else the value in the input of that name (`STEPS`, a menu). |
+| `removeBlock` | `target`, optional `withBelow: true` | Removes the block; the blocks below move up unless `withBelow`. |
+
+An edit that can't be applied stops the run with an error naming it, such as `Task 7 case "…" edit 2 (setField): the looks_say block has no field or input "TO" (it has: MESSAGE)`.
+
+**`expect.feedback`** lists the feedback checks that should fire: a number is a check's index (from 1), any other text matches a check's `id`, else part of its `hint`. Every other feedback check is expected to stay silent. Leave `feedback` out to skip comparing feedback.
+
+Each case reports:
+
+- `actual.completion`: `pass`, `fail`, `incomplete` (the block checks pass, run-time checks skipped) or `none` (no completion check, compared as `fail`). An `incomplete` completion is not compared; it is listed in `unconfirmed` and counted in `summary.skipped`.
+- `actual.blocking`: `fail` when a blocking feedback check fires, `skipped` when none fires but a blocking one needs a run (not compared), else `pass`.
+- `actual.checks` and `actual.feedback`: each check's result with its `sprite`, `reason` and `actual` blocks, as in the no-`--cases` run. With `expect.feedback`, each feedback check also gets `expected` (`fires` / `silent`) and `mismatch: true` when it differs. `matchedFeedback` lists the ones that fire.
+- `stillBuilding`: whether the variant counts as still building in class (see [Still building](#scratch-check-types)): `value`, a `reason` (`the blocks are the same as the starter` or `a block is loose on the canvas`), and `failsHeldBack`, true when the task has an `after_block_placed` completion check that would fail here, so the student sees no fail and no hint while editing (Run and the Check button still judge it).
+- `mismatches`: each difference from `expect`. The command exits with status 1 when any case has one.
+
+A lesson's cases file can mix code cases and Scratch cases: each task is judged by its own module.
 
 ---
 

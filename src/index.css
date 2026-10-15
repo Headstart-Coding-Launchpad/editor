@@ -387,6 +387,50 @@ select {
   z-index: 1;
 }
 
+/* Control highlight (src/shared/ControlHighlightRing.jsx): a ring drawn over one control (Run,
+   the green flag, a Costumes tab, a block category) by a tutor or a task's `highlight` field.
+   It sits above the control and lets clicks through. Under one pulse a second (never more than
+   3 flashes/s), and finite: 16 pulses cover the 20 s the highlight lasts. `--reveal` marks a
+   control that reveals the target (a collapsed panel rail), drawn dashed. */
+@keyframes control-highlight-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 3px rgba(255, 255, 255, 0.95),
+      0 0 10px 3px rgba(245, 158, 11, 0.55);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow:
+      0 0 0 3px rgba(255, 255, 255, 0.95),
+      0 0 22px 8px rgba(245, 158, 11, 0.9);
+  }
+}
+
+.control-highlight-ring {
+  position: fixed;
+  z-index: 1500;
+  pointer-events: none;
+  box-sizing: border-box;
+  border: 3px solid #f59e0b;
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.95),
+    0 0 14px 5px rgba(245, 158, 11, 0.7);
+  animation: control-highlight-pulse 1.2s ease-in-out 16;
+}
+
+.control-highlight-ring--reveal {
+  border-style: dashed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .control-highlight-ring {
+    animation: none;
+  }
+}
+
 .ui-popover {
   border: 1px solid var(--ui-border) !important;
   border-radius: var(--ui-radius) !important;
@@ -445,6 +489,17 @@ select {
   }
 }
 
+/* HTML Inspector bottom sheet (src/modules/html/inspector/HtmlInspector.jsx). The component
+   skips the animation when reduced motion is on. */
+@keyframes hsc-inspector-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
 @keyframes ui-modal-in {
   from {
     opacity: 0;
@@ -484,6 +539,21 @@ select {
 .ui-modal-backdrop > div > div:first-child > span:first-child,
 .ui-modal-backdrop > div > div:first-child > h2:first-child {
   color: #fff !important;
+}
+
+/* "See example" dialog (src/shared/markdown/ExampleFence.jsx): a full-width bottom sheet on
+   narrow screens. */
+@media (max-width: 640px) {
+  .md-example-backdrop {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .md-example-backdrop > .md-example-dialog {
+    width: 100% !important;
+    max-height: 92vh !important;
+    border-radius: 16px 16px 0 0 !important;
+  }
 }
 
 .ui-modal-backdrop button[title='Close'],
@@ -3390,6 +3460,22 @@ select {
   padding: 2px 6px;
   flex-shrink: 0;
 }
+label.te-backdrop-tag,
+.te-backdrop-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.te-backdrop-start {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: var(--colour-muted-soft);
+  border: 1px solid transparent;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
 .te-backdrop-swatch {
   width: 28px;
   height: 28px;
@@ -3879,6 +3965,129 @@ select {
 
 .act-char--next {
   border-bottom: 3px solid var(--colour-primary);
+}
+
+/* Keyboard type_code: the code block being typed (TypeCodeBlock.jsx). */
+.act-practice--code {
+  cursor: text;
+  overflow-x: auto;
+}
+
+.act-code-block {
+  margin: 0;
+  font-family: var(--font-code);
+  font-size: 1.15rem;
+  line-height: 1.7;
+  white-space: pre;
+  color: var(--colour-ink-strong);
+}
+
+.act-code-kw {
+  color: var(--colour-primary);
+  font-weight: 600;
+}
+
+.act-code-str {
+  color: var(--colour-success-text);
+}
+
+.act-code-com {
+  color: var(--colour-muted);
+  font-style: italic;
+}
+
+.act-code-num,
+.act-code-attr {
+  color: var(--colour-action-dark);
+}
+
+.act-code-tag {
+  color: var(--colour-info-text);
+}
+
+/* Indentation dots and line-end arrows: faint until typed. */
+.act-code-ws:not(.act-char--ok):not(.act-char--bad) {
+  color: var(--colour-muted-soft);
+}
+
+/* Keyboard falling_words: the play area, its tokens and the typed buffer (FallingWordsView.jsx). */
+.act-falling-area {
+  position: relative;
+  height: 320px;
+  width: 100%;
+  overflow: hidden;
+  border: 2px dashed var(--ui-border-strong);
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface-soft);
+  cursor: text;
+}
+
+.act-falling-area:focus,
+.act-falling-area:focus-visible {
+  outline: none;
+  border-style: solid;
+  border-color: var(--colour-primary);
+  box-shadow: var(--ui-focus);
+}
+
+.act-falling-area--miss {
+  animation: act-falling-shake 0.3s ease-out;
+  border-color: var(--colour-error-edge);
+}
+
+@keyframes act-falling-shake {
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.act-falling-token {
+  position: absolute;
+  padding: 2px 8px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border-strong);
+  font-family: var(--font-code);
+  font-size: 1.15rem;
+  white-space: pre;
+  color: var(--colour-ink-strong);
+}
+
+.act-falling-token--aimed {
+  border-color: var(--colour-primary);
+  box-shadow: var(--ui-focus);
+}
+
+.act-falling-paused {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.82);
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: var(--colour-primary-dark);
+}
+
+.act-falling-buffer code {
+  font-family: var(--font-code);
+  font-size: 1.25rem;
+  white-space: pre;
+}
+
+.act-falling-chip {
+  font-family: var(--font-code);
+  white-space: pre;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .act-falling-area--miss {
+    animation: none;
+  }
 }
 
 .act-osk {
@@ -5376,4 +5585,53 @@ select {
   .poll-bar__fill {
     transition: none;
   }
+}
+
+/* Python / Turtle result pane (src/shared/resultPane/ResultPane.jsx): Picture · Tags · Console
+   tabs with 44 px touch targets, readable on a projector, and the Console's unread badge. */
+.result-pane__tabs {
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+}
+
+.result-pane__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 6px 16px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.panel-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  background: #b45309;
+  color: #fff;
+}
+
+.panel-tab-badge--error {
+  background: #b91c1c;
+}
+
+.result-pane__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }

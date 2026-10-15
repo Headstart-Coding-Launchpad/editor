@@ -189,7 +189,25 @@ const VALUES = ['hello', 'Hello World', '42', 'led.on()', '^h.*o$']
 
 // Check types added after the legacy dispatcher was frozen have no legacy behaviour to match;
 // they are tested on their own (e.g. ../python/__tests__/codeStructure.test.js).
-const POST_REGISTRY_TYPES = ['code_structure', 'run_attempted']
+const POST_REGISTRY_TYPES = [
+  'code_structure',
+  'run_attempted',
+  'variables_predicted',
+  // The Python Stage (src/shared/stage/checks.js, tested in its own __tests__).
+  'stage_matches_target',
+  'stage_shape_count',
+  'stage_colour_used',
+  'stage_pixel',
+  'stage_text_shown',
+  // Puzzle rules (src/shared/puzzle, tested in its own __tests__).
+  'max_lines',
+
+  // Turtle course mode (src/modules/turtle/courseChecks.js, tested in its own __tests__).
+  'course_goal_reached',
+  'course_no_crash',
+  'course_pickups',
+  'course_max_moves',
+]
 const registeredIds = checkRegistry.typeIds().filter((id) => !POST_REGISTRY_TYPES.includes(id))
 const operators = [
   undefined,

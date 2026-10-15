@@ -9,6 +9,7 @@ import FileManager from '../FileManager'
 import { Field, CodeWorkspaceTabs, StageMetadataEditor } from './TaskEditorFields'
 import TaskCheckResults from './TaskCheckResults'
 import { getStageRole } from '../../../shared/taskUtils'
+import { getInspectorConfig } from '../../../modules/html/inspector/config'
 
 export default function HtmlTaskWorkspace({
   task,
@@ -249,6 +250,9 @@ export default function HtmlTaskWorkspace({
                       src={iframeSrc}
                       iframeRef={iframeRef}
                       fill
+                      inspector={
+                        getInspectorConfig(task) ? { config: getInspectorConfig(task) } : null
+                      }
                       leadingActions={
                         <CollapseTabButton
                           onClick={() => setHtmlPreviewOpen(false)}

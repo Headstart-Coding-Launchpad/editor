@@ -47,6 +47,12 @@ export default defineModule({
     playground: true,
   },
   capabilities: {
+    // Controls a tutor or a task's `highlight` field can pulse (src/shared/controlHighlight.js).
+    // Run and Stop share one button, which carries data-highlight-target="run stop".
+    highlightTargets: [
+      { id: 'run', label: 'Run button' },
+      { id: 'stop', label: 'Stop button' },
+    ],
     stageReveal: 'offer',
     teacherStageReveal: true,
     highlights: false,
@@ -69,7 +75,7 @@ export default defineModule({
     run: 'runtime',
   },
   // MicroPython drives the circuit while it runs (onCodeUpdate), so the work changes mid-run.
-  runResult: { errorLine: false, turtle: false, liveCode: true },
+  runResult: { errorLine: false, turtle: false, liveCode: true, stage: false },
 
   getDisplayState: (task, stage, liveState, tab) => {
     if (tab === 'complete')

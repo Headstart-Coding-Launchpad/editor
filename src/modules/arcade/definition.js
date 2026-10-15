@@ -48,6 +48,12 @@ export default defineModule({
     surfaceLabels: { stageReference: 'Python' },
   },
   capabilities: {
+    // Controls a tutor or a task's `highlight` field can pulse (src/shared/controlHighlight.js).
+    // Run and Stop share one button, which carries data-highlight-target="run stop".
+    highlightTargets: [
+      { id: 'run', label: 'Run button' },
+      { id: 'stop', label: 'Stop button' },
+    ],
     stageReveal: 'offer',
     teacherStageReveal: true,
     highlights: false,
@@ -194,7 +200,13 @@ export default defineModule({
     sandboxMeta: ['arcadeDesign'],
   }),
   wire: codeStringWire({
-    liveExtras: ({ arcadeDesign } = {}) => ({ arcadeDesign, turtleResult: null }),
+    liveExtras: ({ arcadeDesign } = {}) => ({
+      arcadeDesign,
+      turtleResult: null,
+      inspector: null,
+      variablesPanel: null,
+      stage: null,
+    }),
   }),
   // Generic work slot (useStudentCodeState): `{ code, arcadeDesign }`. Storage and wire take
   // the code as the work and the design as the record's `arcadeDesign` field (stored()).

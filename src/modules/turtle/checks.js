@@ -1,4 +1,5 @@
 import { compareValues } from '../../shared/checkHelpers.js'
+import { COURSE_CHECKS } from './courseChecks.js'
 
 export const TURTLE_CHECK_TYPES = [
   'turtle_position',
@@ -42,6 +43,9 @@ export const TURTLE_COMMAND_NAMES = [
   'write',
   'hideturtle',
   'showturtle',
+  // pensize() and its width() alias both record as 'pensize'.
+  'pensize',
+  'dot',
 ]
 
 function toNumber(value, fallback = 0) {
@@ -144,12 +148,16 @@ export function evaluateTurtleCheck(check, context = {}) {
 // Check-type registry definitions (see ../checkRegistry.js). Turtle checks read the
 // drawing captured by a run (`context.turtle`) but have never been in the
 // RUN_REQUIRED list, so `requiresRun` stays false to keep checkRequiresRun unchanged.
-export const CHECKS = TURTLE_CHECK_TYPES.map((type) => ({
-  type,
-  owner: 'module:turtle',
-  timing: 'on_run',
-  requiresRun: false,
-  submitAllowed: false,
-  contextKey: 'turtle',
-  evaluate: (check, _output, context = {}) => evaluateTurtleCheck(check, context),
-}))
+// Course mode's checks (./courseChecks.js) read the same run result and register here too.
+export const CHECKS = [
+  ...TURTLE_CHECK_TYPES.map((type) => ({
+    type,
+    owner: 'module:turtle',
+    timing: 'on_run',
+    requiresRun: false,
+    submitAllowed: false,
+    contextKey: 'turtle',
+    evaluate: (check, _output, context = {}) => evaluateTurtleCheck(check, context),
+  })),
+  ...COURSE_CHECKS,
+]

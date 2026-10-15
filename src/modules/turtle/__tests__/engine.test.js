@@ -23,6 +23,8 @@ describe('createTurtleState', () => {
       fillColor: 'black',
       background: '#ffffff',
       visible: true,
+      pensize: 1,
+      speed: null,
     })
   })
 })

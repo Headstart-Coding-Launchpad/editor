@@ -10,7 +10,14 @@ import { getModuleHostedActivityUi } from '../../../activities/registry.js'
 import { readActivityAnswer, studentStateField } from '../../../activities/state.js'
 import { HIGHLIGHT_EMOJI_OPTIONS } from './constants'
 import { readAnswerDraft } from '../../../shared/answerDrafts'
-import { getMirrorLineHintSets } from './mirrorLineHints'
+import { getMirrorLineHintSets, getMirrorLockSets } from './mirrorLineHints'
+import { getInspectorConfig } from '../../../modules/html/inspector/config'
+import TaskVariablesPanel from '../../../shared/variablesPanel/TaskVariablesPanel.jsx'
+import { getPeekBand, panelRunForTask } from '../../../shared/variablesPanel/variablesPanel.js'
+import { taskHistoryMode, typingHistoryForMode } from '../../../shared/typingHistory'
+import TypingHistoryPanel from './TypingHistoryPanel'
+import StagePane from '../../../shared/stage/StagePane.jsx'
+import { readStageResult } from '../../../shared/stage/sync.js'
 
 function answerKey(value) {
   return typeof value === 'string' ? value : JSON.stringify(value ?? null)
@@ -90,6 +97,10 @@ export default function StudentWorkspaceBody({
   // highlight-mode tap (onTileTargetTap(targetId, tileId)); see src/shared/tutorTileHighlights.js.
   tileHighlights = null,
   onTileTargetTap = null,
+  // Typing history (src/shared/typingHistory.js): the node pushed to this student and their
+  // saved entries (newest first), for a typing task's history line and "Typing history" list.
+  typingHistory = null,
+  typingEntries = null,
 }) {
   const [editableAnswer, pushEditableAnswer] = useTeacherEditableValue(
     student.currentAnswer ?? '',
@@ -109,6 +120,13 @@ export default function StudentWorkspaceBody({
     file: activeFileObj?.name ?? null,
     isSessionSandbox,
   })
+  // The task's locked lines on the mirrored code (display only, like the hints).
+  const lockedLines = getMirrorLockSets(task, { mirror, isSessionSandbox })
+  // The #@peek "stopped here" band on the mirrored code, as the student's editor shows it.
+  const peekBandFor = (code) =>
+    isSessionSandbox
+      ? null
+      : getPeekBand(task, code, panelRunForTask(task, { synced: student.currentVariables ?? null }))
 
   const highlightComposer = canHighlight && (
     <div style={s.highlightComposer}>
@@ -227,6 +245,7 @@ export default function StudentWorkspaceBody({
         result={{ submitted: student.lastRunStatus === 'submitted', passed: student.checkPassed }}
         tileHighlights={tileHighlights}
         onTargetTap={onTileTargetTap}
+        history={typingHistory}
         onChange={(update) => pushEdit(update, false)}
         onSubmit={
           definition?.submitsAnswers
@@ -235,6 +254,21 @@ export default function StudentWorkspaceBody({
         }
       />
     )
+    const historyMode = isSessionSandbox ? null : taskHistoryMode(task)
+    const historyPanel = historyMode ? (
+      <TypingHistoryPanel
+        modeHistory={typingHistoryForMode(typingHistory, historyMode)}
+        entries={typingEntries}
+      />
+    ) : null
+    if (historyPanel && !draftText) {
+      return (
+        <div style={s.draftStack}>
+          {historyPanel}
+          <div style={s.draftView}>{view}</div>
+        </div>
+      )
+    }
     if (!draftText) return view
     return (
       <div style={s.draftStack}>
@@ -278,6 +312,9 @@ export default function StudentWorkspaceBody({
     }
   }
 
+  // The Python Stage drawing of the student's last run (currentStageResult), if it drew.
+  const stageResult = mirror === 'code' ? readStageResult(student.currentStageResult) : null
+
   if (mirror === 'code')
     return (
       <>
@@ -290,11 +327,22 @@ export default function StudentWorkspaceBody({
             remoteSelection={remoteSelection}
             teacherHighlights={highlights}
             lineHints={lineHints}
+            lockedLines={lockedLines}
+            peekBand={peekBandFor(student.currentCode ?? '')}
             onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
             onHighlightDismiss={onDismissHighlight}
             style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
           />
         </div>
+        {stageResult && (
+          <StagePane
+            compact
+            commands={stageResult.commands}
+            truncated={stageResult.truncated}
+            title="Student's stage"
+            style={s.stagePane}
+          />
+        )}
         {task?.interactionMode === 'submit' && !isSessionSandbox ? (
           <div style={s.submitNotice}>
             {student.lastRunStatus === 'submitted' ? 'Code submitted' : 'Waiting for submission'}
@@ -313,6 +361,15 @@ export default function StudentWorkspaceBody({
             openOnOutput
           />
         )}
+        {/* The student's name-tag panel (showVariables): their last run and predictions. */}
+        <TaskVariablesPanel
+          task={task}
+          synced={student.currentVariables ?? null}
+          code={student.currentCode ?? ''}
+          audience="tutor"
+          hidden={isSessionSandbox}
+          style={s.variablesPanel}
+        />
       </>
     )
 
@@ -334,22 +391,36 @@ export default function StudentWorkspaceBody({
 
   if (mirror === 'view' && ModuleTeacherLiveView) {
     return (
-      <ModuleTeacherLiveView
-        task={task}
-        lesson={lesson}
-        student={student}
-        displayState={moduleDisplayState}
-        liveState={moduleDisplayState}
-        lineHints={lineHints}
-        readOnly
-        onChange={undefined}
-        onActivity={undefined}
-        isInSandbox={false}
-        activeStage={null}
-      />
+      <>
+        <ModuleTeacherLiveView
+          task={task}
+          lesson={lesson}
+          student={student}
+          displayState={moduleDisplayState}
+          liveState={moduleDisplayState}
+          lineHints={lineHints}
+          lockedLines={lockedLines}
+          peekBand={peekBandFor(typeof moduleDisplayState === 'string' ? moduleDisplayState : '')}
+          readOnly
+          onChange={undefined}
+          onActivity={undefined}
+          isInSandbox={false}
+          activeStage={null}
+        />
+        {/* Turtle's name-tag panel (showVariables); nothing for tasks without one. */}
+        <TaskVariablesPanel
+          task={task}
+          synced={student.currentVariables ?? null}
+          code={typeof moduleDisplayState === 'string' ? moduleDisplayState : ''}
+          audience="tutor"
+          hidden={isSessionSandbox}
+          style={s.variablesPanel}
+        />
+      </>
     )
   }
 
+  const inspectorConfig = mirror === 'files' ? getInspectorConfig(task) : null
   if (mirror === 'files')
     return (
       <>
@@ -392,7 +463,13 @@ export default function StudentWorkspaceBody({
         </div>
         {task?.interactionMode !== 'submit' && (
           <div style={s.iframePane}>
-            <IframePreview src={iframeSrc} iframeRef={iframeRef} fill />
+            {/* The tutor can inspect the student's page too (task `inspector`); never synced. */}
+            <IframePreview
+              src={iframeSrc}
+              iframeRef={iframeRef}
+              fill
+              inspector={inspectorConfig ? { config: { ...inspectorConfig, open: false } } : null}
+            />
           </div>
         )}
       </>
@@ -402,6 +479,9 @@ export default function StudentWorkspaceBody({
 }
 
 const s = {
+  variablesPanel: { flexShrink: 0, maxHeight: 260, marginTop: 8 },
+  // The Python Stage drawing, between the code and the console.
+  stagePane: { flexShrink: 0, height: 240, marginTop: 8 },
   // The unsubmitted draft above a quiz: dashed so it never reads as the submitted answer.
   draftStack: {
     display: 'flex',

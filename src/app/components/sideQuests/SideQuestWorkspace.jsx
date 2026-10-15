@@ -3,6 +3,7 @@ import { useStudentCodeState } from '../../hooks/useStudentCodeState'
 import LessonTaskContent from '../LessonTaskContent'
 import { NOOP_SESSION_WRITES, seedSharedWorkspace } from '../SharedWorkspaceViewer'
 import { loadSideQuestWork, saveSideQuestWork } from '../../studentStorage'
+import { useSideQuestLiveSync } from './useSideQuestLiveSync'
 import {
   buildSideQuestTask,
   SIDE_QUEST_TASK_ID,
@@ -19,7 +20,8 @@ import {
  * second, throwaway useStudentCodeState instance:
  *   - `previewMode: true` and a namespaced lessonId, so its saves go to the in-memory store and
  *     can never touch the task's saved work or anything carryCodeFrom reads;
- *   - no-op session writers and `phase: 'solo'`, so nothing reaches Firebase;
+ *   - no-op session writers and `phase: 'solo'`, so the throwaway copy writes nothing to
+ *     Firebase itself; the tutor's live copy goes through `liveSync` (useSideQuestLiveSync);
  *   - a task built from the side-quest (buildSideQuestTask): its starter, its explainer, no
  *     check.
  * Its code is kept in localStorage under the side-quest's own key (studentStorage.js
@@ -37,6 +39,7 @@ const SIDE_QUEST_SESSION_WRITES = {
   ...NOOP_SESSION_WRITES,
   writeStudentHintState: NOOP_ASYNC,
   writeStudentTurtleResult: NOOP_ASYNC,
+  writeStudentStageResult: NOOP_ASYNC,
   writeStudentInputState: NOOP_ASYNC,
   setTeacherLiveReference: NOOP_ASYNC,
   clearTeacherAnswerEdit: NOOP_ASYNC,
@@ -63,6 +66,9 @@ export default function SideQuestWorkspace({
   onClose,
   // ({ error }) once per Run (error: false), and once more if that run hit an error.
   onRun,
+  // { watched, write(patch) } in a real live lesson, else null: mirrors the work to the tutor
+  // (useSideQuestLiveSync).
+  liveSync = null,
 }) {
   const index = quest.index
   const viewerLessonId = sideQuestViewerLessonId(lessonId, task?.id, index)
@@ -148,11 +154,15 @@ export default function SideQuestWorkspace({
     onRun?.({ error: true })
   }, [hasError, onRun])
 
+  // The tutor's live copy (students/{id}/sideQuestCode): on Run, and per keystroke while watched.
+  const { beginRun } = useSideQuestLiveSync({ liveSync, moduleType, cs, loaded })
+
   const handleRun = (...args) => {
     // A press while a program is still running does nothing (handleRun ignores it too).
     if (cs.running) return cs.handleRun(...args)
     runRef.current = { started: true, errored: false }
     onRun?.({ error: false })
+    beginRun()
     return cs.handleRun(...args)
   }
   const sideQuestCs = { ...cs, handleRun }

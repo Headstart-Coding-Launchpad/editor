@@ -20,6 +20,7 @@ import {
 import { isIndentArrangeTask } from '../../shared/codeArrangeIndent'
 import CodeArrangeIndentBoard from './CodeArrangeIndentBoard.jsx'
 import TutorTileHighlightNote from '../../app/components/quiz/TutorTileHighlightNote.jsx'
+import { getModuleDefinition } from '../../modules/definitions.js'
 
 // Matches ScratchWorkspace's live-cursor mirror (see CURSOR_THROTTLE_MS /
 // CURSOR_STALE_MS there) so both task types feel the same during Go Live.
@@ -56,6 +57,10 @@ const DRAG_CURSOR_STALE_MS = 2000
 // An indent-mode task (`arrangeMode: indent`) swaps the program and tile pool
 // for CodeArrangeIndentBoard (fixed lines, the student sets each depth); the
 // Run row and output below are shared.
+//
+// `showResult: false` leaves the console / preview out: the board then sits in a host module's
+// own StudentWorkspace (Turtle, a Python Stage arrangement), which shows the result itself.
+// `resultExtra` goes above the console (a tutor's or the Builder's picture of the run).
 export default function CodeArrangeTask({
   task,
   moduleType,
@@ -85,6 +90,8 @@ export default function CodeArrangeTask({
   externalDragCursor = null,
   tileHighlights = null,
   onTargetTap = null,
+  showResult = true,
+  resultExtra = null,
 }) {
   const indentMode = isIndentArrangeTask(task)
   const lines = getLines(task)
@@ -176,8 +183,10 @@ export default function CodeArrangeTask({
 
   // A blank holding a tile id that isn't in the pool shows empty, so it counts as left to fill.
   const remainingCount = slotIds.filter((id) => !pool.some((f) => f.id === state[id])).length
-  const pythonLoading = moduleType === 'python' && pyodideStatus === 'loading'
-  const pythonFailed = moduleType === 'python' && pyodideStatus === 'error'
+  // Python and Python Turtle both run in Pyodide.
+  const usesPython = getModuleDefinition(moduleType)?.meta?.language === 'python'
+  const pythonLoading = usesPython && pyodideStatus === 'loading'
+  const pythonFailed = usesPython && pyodideStatus === 'error'
   const runLabel = running ? 'Stop' : pythonLoading ? 'Getting Python ready...' : 'Run'
 
   function renderTargetContent(placedFragment, canReceive, emptyPlaceholder) {
@@ -383,7 +392,8 @@ export default function CodeArrangeTask({
           </div>
         )}
 
-        {moduleType === 'html' ? (
+        {showResult && resultExtra}
+        {!showResult ? null : moduleType === 'html' ? (
           <div style={ca.previewShell}>
             <CollapsibleIframePreview
               src={iframeSrc}

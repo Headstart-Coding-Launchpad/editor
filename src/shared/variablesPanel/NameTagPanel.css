@@ -1,0 +1,703 @@
+/* Name-tag panel (src/shared/variablesPanel/NameTagPanel.jsx). Grown-up, quiet styling: each
+   variable is a tag with its name on a coloured strip, a type label and the value. Verdicts use
+   words and ✓ / ✗ as well as colour; the colours are the success (green) and warning (amber)
+   families, which colour-blind viewers can still tell apart by lightness. */
+
+.ntp {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--ui-surface, #fff);
+  border: 1px solid var(--ui-border-neutral, #e5e7eb);
+  border-radius: var(--ui-radius, 8px);
+  font-family: var(--font-body);
+  color: var(--colour-text);
+  min-height: 0;
+  overflow: auto;
+}
+
+.ntp-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.ntp-title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--colour-primary);
+}
+
+.ntp-status {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--colour-muted, #4b5563);
+}
+
+/* "Values just before line N" (at: marker): the same dashed ⏸ look as the editor's
+   stopped-here band (src/shared/peekBandEditor.js), never slow-mo's amber. */
+.ntp-peek-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 3px 8px;
+  border: 2px dashed #6d28d9;
+  border-radius: 6px;
+  background: #f5f3ff;
+  color: #4c1d95;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.ntp-peek-line.is-missed {
+  border-color: #6b7280;
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.ntp-peek-icon {
+  flex-shrink: 0;
+}
+
+.ntp-section-label {
+  margin: 4px 0 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--colour-muted, #4b5563);
+}
+
+.ntp-tags {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ntp-tag {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+  max-width: 100%;
+  padding: 0 10px 8px;
+  border: 1px solid var(--ui-border-neutral-strong, #d1d5db);
+  border-radius: var(--ui-radius, 8px);
+  background: var(--ui-surface, #fff);
+  box-sizing: border-box;
+}
+
+.ntp-tag-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 -10px;
+  padding: 4px 10px;
+  border-radius: var(--ui-radius, 8px) var(--ui-radius, 8px) 0 0;
+  background: var(--ui-surface-tint, #f3eeff);
+  border-bottom: 1px solid var(--ui-border, #e6e0f0);
+}
+
+.ntp-name {
+  font-family: var(--font-code);
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--colour-ink-strong, #111827);
+  overflow-wrap: anywhere;
+}
+
+.ntp-type {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--colour-muted, #4b5563);
+  white-space: nowrap;
+}
+
+.ntp-value {
+  font-family: var(--font-code);
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--colour-ink-strong, #111827);
+}
+
+.ntp-tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ntp-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 32px;
+  padding: 3px 6px 2px;
+  border: 1px solid var(--ui-border-neutral, #e5e7eb);
+  border-radius: var(--ui-radius-sm, 6px);
+  background: var(--ui-surface-neutral, #f9fafb);
+}
+
+.ntp-index {
+  font-family: var(--font-code);
+  font-size: 0.68rem;
+  color: var(--colour-muted, #4b5563);
+}
+
+.ntp-empty {
+  font-family: var(--font-code);
+  font-size: 0.85rem;
+  color: var(--colour-muted, #4b5563);
+}
+
+.ntp-dict {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 2px 6px;
+  margin: 0;
+}
+
+.ntp-dict dt,
+.ntp-dict dd {
+  margin: 0;
+}
+
+.ntp-arrow {
+  color: var(--colour-muted, #4b5563);
+}
+
+.ntp-more {
+  font-size: 0.78rem;
+  color: var(--colour-muted, #4b5563);
+}
+
+.ntp-expand {
+  align-self: flex-start;
+  min-height: 32px;
+  padding: 2px 10px;
+  font-size: 0.78rem;
+}
+
+.ntp-input {
+  font-family: var(--font-code);
+  font-size: 0.95rem;
+  min-height: 40px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ntp-target {
+  font-size: 0.8rem;
+  color: var(--colour-muted, #4b5563);
+}
+
+.ntp-missing {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--colour-muted, #4b5563);
+}
+
+.ntp-verdict {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.ntp-tag.is-right {
+  border-color: var(--colour-success-edge);
+  background: var(--colour-success-bg);
+}
+.ntp-tag.is-right .ntp-verdict {
+  color: var(--colour-success-text);
+}
+
+.ntp-tag.is-wrong {
+  border-color: var(--colour-warning-edge);
+  background: var(--colour-warning-bg);
+}
+.ntp-tag.is-wrong .ntp-verdict {
+  color: var(--colour-warning-text);
+}
+
+.ntp-changed {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--colour-primary);
+  white-space: nowrap;
+}
+
+.ntp-tag.is-changed {
+  border-color: var(--colour-primary);
+  animation: ntp-flash 1.4s ease-out 1;
+}
+
+@keyframes ntp-flash {
+  0% {
+    box-shadow: 0 0 0 4px rgba(98, 34, 204, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(98, 34, 204, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ntp-tag.is-changed {
+    animation: none;
+  }
+}
+
+/* Step-by-step playback (Python slow-mo): earlier values, struck through, newest first. Fast
+   playback turns the pulse off (.ntp--still) so a tag never flashes 3 or more times a second. */
+.ntp--still .ntp-tag.is-changed {
+  animation: none;
+}
+
+.ntp-history {
+  font-size: 0.74rem;
+  color: var(--colour-muted, #4b5563);
+}
+
+.ntp-history-value {
+  font-family: 'JetBrains Mono', monospace;
+  text-decoration-thickness: 2px;
+}
+
+/* ─── Visuals (ValueVisual.jsx): swatches, bars, pictures, tables, cards ───────────────────
+   Anything the panel colours itself (bars, change marks) uses the Okabe-Ito palette: blue
+   #0072b2, vermilion #d55e00, orange #e69f00. Swatches and pixels are the student's own colours,
+   always with their text beside them or one tap away. Long lists scroll inside the tag. */
+
+.ntp-visual {
+  max-width: 100%;
+  max-height: 280px;
+  overflow: auto;
+  cursor: pointer;
+}
+
+.ntp-exact {
+  display: block;
+  padding: 4px 6px;
+  border-radius: var(--ui-radius-sm, 6px);
+  background: var(--ui-surface-neutral, #f9fafb);
+  max-height: 160px;
+  overflow: auto;
+}
+
+.ntp-swatches {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ntp-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 44px;
+  padding: 4px 4px 2px;
+  border: 1px solid var(--ui-border-neutral, #e5e7eb);
+  border-radius: var(--ui-radius-sm, 6px);
+  background: var(--ui-surface-neutral, #f9fafb);
+}
+
+.ntp-swatch .ntp-value {
+  font-size: 0.78rem;
+}
+
+.ntp-swatch-chip {
+  display: inline-block;
+  width: 32px;
+  height: 24px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.ntp-swatch-chip--small {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.ntp-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: auto minmax(40px, 1fr) auto;
+  align-items: center;
+  gap: 3px 8px;
+  min-width: 180px;
+}
+
+.ntp-bar-row {
+  display: contents;
+}
+
+.ntp-bar-key {
+  font-family: var(--font-code);
+  font-size: 0.78rem;
+  color: var(--colour-muted, #4b5563);
+  overflow-wrap: anywhere;
+}
+
+.ntp-bar-track {
+  display: block;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--ui-surface-neutral, #f3f4f6);
+  box-shadow: inset 0 0 0 1px var(--ui-border-neutral, #e5e7eb);
+  overflow: hidden;
+}
+
+.ntp-bar {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  background: #0072b2;
+}
+
+/* Below zero: vermilion and striped, and the number keeps its minus sign. */
+.ntp-bar.is-negative {
+  background: repeating-linear-gradient(135deg, #d55e00 0 4px, #e98a4d 4px 8px);
+}
+
+.ntp-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 6px;
+}
+
+.ntp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px 6px;
+  border: 1px solid var(--ui-border-neutral, #e5e7eb);
+  border-radius: var(--ui-radius-sm, 6px);
+  background: var(--ui-surface-neutral, #f9fafb);
+  min-width: 0;
+}
+
+.ntp-card-key {
+  font-family: var(--font-code);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--colour-muted, #4b5563);
+  overflow-wrap: anywhere;
+}
+
+.ntp-card-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* A picture: a ruler row and column around square cells with thin outlines. About 18px a cell,
+   shrinking to fit the panel's width. */
+.ntp-picture {
+  display: grid;
+  grid-template-columns: 1.6em repeat(var(--ntp-cols, 8), minmax(0, 1fr));
+  gap: 1px;
+  width: calc(1.6em + var(--ntp-cols, 8) * 19px);
+  max-width: 100%;
+  min-width: 96px;
+  box-sizing: border-box;
+}
+
+.ntp-pixel {
+  aspect-ratio: 1;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+/* See-through cells: a light checkerboard, like an image editor. */
+.ntp-pixel.is-clear {
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #d1d5db 25%, transparent 25%, transparent 75%, #d1d5db 75%),
+    linear-gradient(45deg, #d1d5db 25%, transparent 25%, transparent 75%, #d1d5db 75%);
+  background-size: 8px 8px;
+  background-position:
+    0 0,
+    4px 4px;
+}
+
+.ntp-ruler {
+  font-family: var(--font-code);
+  font-size: 0.6rem;
+  line-height: 1;
+  color: var(--colour-muted, #4b5563);
+  text-align: center;
+  align-self: end;
+  overflow: hidden;
+}
+
+.ntp-ruler--row {
+  align-self: center;
+  text-align: right;
+  padding-right: 2px;
+}
+
+.ntp-table-wrap {
+  max-width: 100%;
+  overflow: auto;
+}
+
+.ntp-table {
+  border-collapse: collapse;
+}
+
+.ntp-table th,
+.ntp-table td {
+  padding: 2px 6px;
+  border: 1px solid var(--ui-border-neutral, #e5e7eb);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.ntp-table th {
+  font-weight: 400;
+  background: var(--ui-surface-neutral, #f9fafb);
+}
+
+.ntp-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ntp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ntp-row-index {
+  min-width: 1.4em;
+  text-align: right;
+}
+
+.ntp-row .ntp-tiles {
+  flex-wrap: nowrap;
+}
+
+/* A flat list grid() drew with width=: that many tiles to a row, scrolling inside the tag. */
+.ntp-wrap-scroll {
+  max-width: 100%;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.ntp-wrapped {
+  list-style: none;
+  margin: 0;
+  padding: 2px;
+  display: grid;
+  grid-template-columns: repeat(var(--ntp-wrap, 8), minmax(32px, max-content));
+  gap: 4px;
+  width: max-content;
+}
+
+.ntp-wrapped .ntp-tile {
+  gap: 1px;
+}
+
+.ntp-wrapped--swatches .ntp-value {
+  font-size: 0.72rem;
+}
+
+.ntp-swatch-chip.is-clear {
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #d1d5db 25%, transparent 25%, transparent 75%, #d1d5db 75%),
+    linear-gradient(45deg, #d1d5db 25%, transparent 25%, transparent 75%, #d1d5db 75%);
+  background-size: 8px 8px;
+  background-position:
+    0 0,
+    4px 4px;
+}
+
+.ntp-size {
+  color: var(--colour-muted, #4b5563);
+}
+
+.ntp-target-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed var(--ui-border-neutral-strong, #d1d5db);
+}
+
+/* Per-item change marks: a dot in words' place (the screen-reader text says "changed") and an
+   Okabe-Ito orange ring, which a brief pulse draws attention to. */
+.ntp-item-mark {
+  margin-left: 2px;
+  font-size: 0.7em;
+  color: #d55e00;
+}
+
+.is-item-changed.ntp-swatch,
+.is-item-changed.ntp-tile,
+.is-item-changed.ntp-card,
+.ntp-table td.is-item-changed,
+.ntp-dict dt.is-item-changed {
+  box-shadow: 0 0 0 2px #e69f00;
+  animation: ntp-item-flash 1.4s ease-out 1;
+}
+
+.is-item-changed.ntp-bar-row > .ntp-bar-track {
+  box-shadow:
+    inset 0 0 0 1px var(--ui-border-neutral, #e5e7eb),
+    0 0 0 2px #e69f00;
+}
+
+/* A changed pixel: a black-and-white double ring, visible on any colour. */
+.ntp-pixel.is-item-changed {
+  box-shadow:
+    inset 0 0 0 2px #000,
+    inset 0 0 0 3px #fff;
+  animation: ntp-item-flash 1.4s ease-out 1;
+}
+
+@keyframes ntp-item-flash {
+  0% {
+    outline: 3px solid rgba(230, 159, 0, 0.9);
+  }
+  100% {
+    outline: 3px solid rgba(230, 159, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-item-changed {
+    animation: none !important;
+  }
+}
+
+.ntp--still .is-item-changed {
+  animation: none;
+}
+
+/* The tutor's student card (NameTagCardStrip.jsx): small thumbnails of list visuals. */
+.ntp-card-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.ntp-card-thumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 6px;
+  border: 1px solid var(--ui-border-neutral, #e5e7eb);
+  border-radius: var(--ui-radius-sm, 6px);
+  background: var(--ui-surface-neutral, #f9fafb);
+}
+
+.ntp-card-thumb-name {
+  font-family: var(--font-code);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--colour-ink-strong, #111827);
+}
+
+.ntp-thumb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  align-items: center;
+}
+
+.ntp-thumb-chip {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.ntp-thumb-more {
+  font-size: 10px;
+  color: var(--colour-muted, #4b5563);
+}
+
+.ntp-thumb-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 18px;
+}
+
+.ntp-thumb-bar {
+  width: 4px;
+  background: #0072b2;
+}
+
+.ntp-thumb-bar.is-negative {
+  background: #d55e00;
+}
+
+.ntp-thumb-picture {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.ntp-thumb-pixel.is-clear {
+  background: #fff;
+}
+
+/* Touch and narrow screens: 44px targets, like quiz tasks, and full-width tags. */
+@media (pointer: coarse), (max-width: 640px) {
+  .ntp-expand,
+  .ntp-input {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 640px) {
+  .ntp-tag {
+    flex: 1 1 100%;
+  }
+}
+
+.ntp-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

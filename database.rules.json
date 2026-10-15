@@ -74,6 +74,78 @@
             // (src/shared/sideQuests.js).
             "sideQuestOpen": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2"
+            },
+
+            // The open side-quest's live work, for the tutor (src/shared/sideQuests.js):
+            // { taskId, index, openedAt, updatedAt, code | files, output, turtleResult,
+            //   runStatus, lastRunAt, errorStreak }. Written on open, on Run, and per keystroke
+            // only while activeStudentView is this student; cleared on close.
+            "sideQuestCode": {
+              ".validate": "newData.hasChildren(['index', 'updatedAt'])",
+              "taskId": { ".validate": "newData.isString() || newData.isNumber()" },
+              "index": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2"
+              },
+              "openedAt": { ".validate": "newData.isNumber()" },
+              "updatedAt": { ".validate": "newData.isNumber()" },
+              "lastRunAt": { ".validate": "newData.isNumber()" },
+              "errorStreak": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+              "runStatus": {
+                ".validate": "newData.isString() && newData.val().length <= 20"
+              },
+              "code": { ".validate": "newData.isString() && newData.val().length <= 100000" },
+              "files": {
+                "$file": {
+                  ".validate": "newData.isString() && newData.val().length <= 100000"
+                }
+              },
+              "output": { ".validate": "newData.isString() && newData.val().length <= 20000" },
+              // The compact Turtle drawing (compactTurtleResultForSync), as currentTurtleResult.
+              "turtleResult": { ".validate": "newData.hasChildren()" },
+              "$other": { ".validate": false }
+            },
+            // HTML Inspector use per task for the session report ({ opens, selects, lastAt };
+            // src/shared/inspectorUse.js). Counts only, never page content.
+            "inspectorLog": {
+              "$taskId": {
+                "opens": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "selects": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "lastAt": { ".validate": "newData.isNumber()" },
+                "$other": { ".validate": false }
+              }
+            },
+            // Scratch slow-mo use per task for the session report ({ runs, steps, lastAt };
+            // src/shared/slowMoUse.js). Counts only, never code.
+            "slowMoLog": {
+              "$taskId": {
+                "runs": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "steps": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "lastAt": { ".validate": "newData.isNumber()" },
+                "$other": { ".validate": false }
+              }
+            },
+            // Turtle course runs per task for the session report ({ runs, goalRuns, crashes,
+            // pickups, lastGoalReached, lastAt }; src/shared/courseUse.js). Counts only, never code.
+            "courseLog": {
+              "$taskId": {
+                "runs": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "goalRuns": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "crashes": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "pickups": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "lastGoalReached": { ".validate": "newData.isBoolean()" },
+                "lastAt": { ".validate": "newData.isNumber()" },
+                "$other": { ".validate": false }
+              }
+            },
+            // Editor scrubbing per task for the session report ({ numbers, colours, lastAt };
+            // src/shared/scrub/scrubUse.js). Counts only, never code.
+            "scrubLog": {
+              "$taskId": {
+                "numbers": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "colours": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                "lastAt": { ".validate": "newData.isNumber()" },
+                "$other": { ".validate": false }
+              }
             }
           }
         },
@@ -92,6 +164,24 @@
                 "errorRuns": { ".validate": "newData.isNumber() && newData.val() >= 0" },
                 "done": { ".validate": "newData.isBoolean()" },
                 "doneAt": { ".validate": "newData.isNumber()" },
+                "$other": { ".validate": false }
+              }
+            }
+          }
+        },
+
+        // "See example" opens per student, task and example index (0-9):
+        // { openedAt, lastOpenedAt, opens } (src/shared/exampleOpens.js). Written by the student
+        // for their own id only, when they open a task explainer's worked example; never any
+        // code. Teacher/admin write (createSession clears it) is inherited from $lessonId.
+        "exampleOpenLog": {
+          "$anonymousId": {
+            "$taskId": {
+              "$index": {
+                ".write": "auth != null && auth.uid === $anonymousId && $index.matches(/^[0-9]$/)",
+                "openedAt": { ".validate": "newData.isNumber()" },
+                "lastOpenedAt": { ".validate": "newData.isNumber()" },
+                "opens": { ".validate": "newData.isNumber() && newData.val() >= 1" },
                 "$other": { ".validate": false }
               }
             }
@@ -331,6 +421,122 @@
           }
         },
 
+        // Class roster (approved by Ryan 2026-10-14). The class a stock lesson's session uses
+        // (a class fork always uses its own fork.classId): `classId` (a class slug), absent for
+        // "No class", and `classChosenAt` once the tutor has chosen. `rosterMatches` holds the
+        // tutor's hand-made match of each joined student to a roster entry. Kept off
+        // students/{anonymousId}, which each student can rewrite: teacher/admin write is
+        // inherited from $lessonId, so students cannot write these. Roster names never come
+        // here: rosterId is an opaque Firestore id.
+        "classId": {
+          ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9-]{1,64}$/)"
+        },
+        "classChosenAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "rosterMatches": {
+          "$anonymousId": {
+            ".validate": "newData.hasChildren(['rosterId', 'matchedAt'])",
+            "rosterId": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128"
+            },
+            "matchedAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "matchedBy": {
+              ".validate": "newData.isString() && newData.val().length <= 128"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+
+        // Typing history (W3-b, approved by Ryan 2026-10-14; src/shared/typingHistory.js): each
+        // matched student's last / best / first keyboard scores from earlier lessons, pushed by
+        // the tutor's client for the Keyboard activity's showHistory line. Teacher/admin write is
+        // inherited from $lessonId; students only read it (the session is publicly readable).
+        // Numbers only: no names, no roster ids.
+        "typingHistory": {
+          "$anonymousId": {
+            ".validate": "newData.hasChildren(['byMode'])",
+            "byMode": {
+              "$mode": {
+                ".validate": "$mode.matches(/^[a-z_]{1,32}$/) && newData.hasChildren(['last', 'best', 'first'])",
+                "last": {
+                  ".validate": "newData.hasChildren(['cpm', 'accuracy', 'date'])",
+                  "cpm": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                  "accuracy": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
+                  },
+                  "date": { ".validate": "newData.isNumber()" },
+                  "$other": { ".validate": false }
+                },
+                "best": {
+                  ".validate": "newData.hasChildren(['cpm', 'accuracy', 'date'])",
+                  "cpm": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                  "accuracy": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
+                  },
+                  "date": { ".validate": "newData.isNumber()" },
+                  "$other": { ".validate": false }
+                },
+                "first": {
+                  ".validate": "newData.hasChildren(['cpm', 'accuracy', 'date'])",
+                  "cpm": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                  "accuracy": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
+                  },
+                  "date": { ".validate": "newData.isNumber()" },
+                  "$other": { ".validate": false }
+                },
+                "sessions": { ".validate": "newData.isNumber() && newData.val() >= 1" },
+                "$other": { ".validate": false }
+              }
+            },
+            "updatedAt": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        // Cross-lesson carry (approved by Ryan 2026-10-14; src/shared/roster/crossLessonCarry.js):
+        // the tutor's client records, per student and task, whether their work from an earlier
+        // lesson was found ('found', payload in the top-level carryInbox), not saved ('none'),
+        // or replaced by the starter at the tutor's request ('starter'). A held student's task
+        // waits for this. Teacher/admin write is inherited from $lessonId; students cannot write
+        // it. rosterId is the opaque roster id the work was looked up for, never a name.
+        "carryStatus": {
+          "$anonymousId": {
+            "$taskId": {
+              ".validate": "newData.hasChildren(['status', 'at'])",
+              "status": {
+                ".validate": "newData.isString() && (newData.val() === 'found' || newData.val() === 'none' || newData.val() === 'starter')"
+              },
+              "sourceLessonId": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "sourceTaskId": {
+                ".validate": "newData.isString() && newData.val().length <= 128"
+              },
+              "reason": {
+                ".validate": "newData.isString() && newData.val().length <= 32"
+              },
+              "rosterId": {
+                ".validate": "newData.isString() && newData.val().length <= 128"
+              },
+              "by": {
+                ".validate": "newData.isString() && newData.val().length <= 128"
+              },
+              "at": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        },
+
         // The teacher's class countdown ({ startedAt, endsAt, durationMs }, server-time ms) or
         // absent. Teacher/admin write is inherited from $lessonId; students cannot write it.
         "classCountdown": {
@@ -367,6 +573,45 @@
         // Once approved, the class can read it. Only teachers/admins write.
         "approved": {
           ".read": true
+        }
+      }
+    },
+
+    // ─── Cross-lesson carry inbox (src/shared/roster/crossLessonCarry.js) ─────
+    // The work a matched student saved in an earlier lesson, copied here by the tutor's client
+    // from the class roster (which students can never read). Outside "sessions" so one
+    // student's code is never streamed to the class: a student reads only their own entries,
+    // and only teachers/admins write. `payload` is the work as one JSON string.
+    "carryInbox": {
+      "$lessonId": {
+        ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+        ".read": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
+        "$anonymousId": {
+          ".read": "auth != null && auth.uid === $anonymousId",
+          "$taskId": {
+            ".validate": "newData.hasChildren(['kind', 'payload'])",
+            "kind": {
+              ".validate": "newData.isString() && (newData.val() === 'code' || newData.val() === 'files' || newData.val() === 'blocks')"
+            },
+            "payload": {
+              ".validate": "newData.isString() && newData.val().length <= 1000000"
+            },
+            "sourceLessonId": {
+              ".validate": "newData.isString() && newData.val().length <= 200"
+            },
+            "sourceTaskId": {
+              ".validate": "newData.isString() && newData.val().length <= 128"
+            },
+            "savedAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "writtenAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
         }
       }
     },

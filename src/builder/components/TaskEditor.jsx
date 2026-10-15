@@ -32,6 +32,11 @@ import { useTaskEditorState } from '../hooks/useTaskEditorState'
 import TaskPreviewPanel from './task-editor/TaskPreviewPanel'
 import TaskOptionsSection from './task-editor/TaskOptionsSection'
 import BadgeHintsField from './task-editor/BadgeHintsField'
+import ShowVariablesField from './task-editor/ShowVariablesField'
+import StageTargetField from './task-editor/StageTargetField'
+import ScrubField from './task-editor/ScrubField'
+import PythonSlowMoField from '../../modules/python/slowMo/SlowMoField'
+import { declaresPythonSlowMo } from '../../modules/python/slowMo/config'
 import { getLessonModule } from '../../modules/registry'
 import { getModuleAuthoring, getModuleDefinition } from '../../modules/definitions'
 import { MARKUP_COPY_CODE_PLACEHOLDER } from '../../modules/moduleAuthoring'
@@ -87,6 +92,14 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
   // Modules whose Python editor draws block brackets declare a showBlocks task field; the
   // brackets show unless the task sets showBlocks: false (src/shared/blockGuides.js).
   const usesPythonEditor = !!moduleDefinition?.taskFields?.some((f) => f.name === 'showBlocks')
+  // Modules that declare the showVariables task field (python, turtle) offer the name-tag panel.
+  const usesVariablesPanel = !!moduleDefinition?.taskFields?.some((f) => f.name === 'showVariables')
+  // Modules that declare the stageTarget task field (python) offer the Python Stage's target.
+  const usesStageTarget = !!moduleDefinition?.taskFields?.some((f) => f.name === 'stageTarget')
+  // Modules that declare the scrub task field (python, turtle, html) offer live scrubbing.
+  const usesScrub = !!moduleDefinition?.taskFields?.some((f) => f.name === 'scrub')
+  // Modules that declare Python slow-mo's own slowMo field (python, turtle) offer slow-mo.
+  const usesPythonSlowMo = declaresPythonSlowMo(moduleDefinition)
   // Task format from the activity registry: 'information', 'quiz', 'activity', a
   // module-hosted activity's id ('code_arrange') or 'code' (drafts keep their own taskType and
   // edit like code tasks, as before).
@@ -191,6 +204,8 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
       'carryFsFrom',
       'carryDesktopFrom',
       'carryCircuitFrom',
+      'carryCodeFromLesson',
+      'carryBlocksFromLesson',
       'check',
       'feedbackChecks',
       'incorrectChecks',
@@ -361,6 +376,8 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
         check: _check,
         carryCodeFrom: _c1,
         carryBlocksFrom: _c2,
+        carryCodeFromLesson: _c3,
+        carryBlocksFromLesson: _c4,
         starterCode: _sc,
         completeCode: _cc,
         starterFiles: _sf,
@@ -816,6 +833,24 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
             />
             Show coloured brackets for each indented block (students can hide them)
           </label>
+        </Field>
+      )}
+
+      {!isQuiz && !isInformation && !showsActivity && !isCodeArrange && usesVariablesPanel && (
+        <ShowVariablesField task={task} onUpdate={onUpdate} />
+      )}
+
+      {!isQuiz && !isInformation && !showsActivity && !isCodeArrange && usesStageTarget && (
+        <StageTargetField task={task} onUpdate={onUpdate} />
+      )}
+
+      {!isQuiz && !isInformation && !showsActivity && !isCodeArrange && usesScrub && (
+        <ScrubField task={task} onUpdate={onUpdate} />
+      )}
+
+      {!isQuiz && !isInformation && !showsActivity && !isCodeArrange && usesPythonSlowMo && (
+        <Field label="Slow-mo" hint="optional">
+          <PythonSlowMoField task={task} onUpdate={onUpdate} />
         </Field>
       )}
 

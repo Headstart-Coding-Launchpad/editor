@@ -11,7 +11,13 @@ The top-level `liveInk/{lessonId}` node (Presentation annotations) was likewise 
 The session-level `classCountdown` node (the teacher's class countdown) was also added with explicit user approval.
 The live class poll fields (`polls`, `activePollId`, `students.{id}.pollResponses`) were added with explicit user approval (teacher feedback, 2026-10-01); see the `polls/{pollId}` write rule and "Class poll answers" below.
 The teacher-written `shownResponses` node was added for the 2026-10-02 authoring request "Open short answer: teacher shows chosen answers on the presentation window"; see `shownResponses/{responseId}` below.
-The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLog` node) were added with explicit user approval for the 2026-10-09 authoring request "Side-quests for students who finish a code task while the class waits"; status only, never code (see the Student writes below and "Side-quests" in `docs/agents/classroom-behaviours.md`).
+The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLog` node) were added with explicit user approval for the 2026-10-09 authoring request "Side-quests for students who finish a code task while the class waits" (see the Student writes below and "Side-quests" in `docs/agents/classroom-behaviours.md`).
+The side-quest live work field (`students.{id}.sideQuestCode`) was added with explicit user approval (Ryan, 2026-10-14, reversing the 2026-10-09 "status only" call) for the authoring request "Tutor view of side quests"; written on open, on Run, and per keystroke only while `activeStudentView` matches.
+The class roster session fields (`classId`, `classChosenAt`, `rosterMatches`) and the Firestore `classes/{classId}/roster` subcollection (with its `work` and `typing` subcollections) were added with explicit user approval (Ryan, 2026-10-14, "Identity: class roster, matched by the tutor" in `docs/architecture/requests-2026-10-14-plan.md`); see "Class roster" under Classes below.
+The Firestore `sharedWork` collection (share links from the tutor's "Export work") was added with explicit user approval (Ryan, 2026-10-14); see "Share Links" below.
+The `typingHistory` session node (teacher-write-only last / best / first typing scores per matched student) was added with explicit user approval (Ryan, 2026-10-14, W3-b typing history: "the tutor client … writes a small teacher-write-only RTDB node … Student reads own") for the authoring request "Typing history: speed and accuracy across lessons on the student card"; numbers only.
+The cross-lesson carry nodes (`sessions/{lessonId}/carryStatus` and the top-level `carryInbox/{lessonId}`, both teacher-written) were added with explicit user approval (Ryan, 2026-10-14, "a carry inbox the tutor writes to" in `docs/architecture/requests-2026-10-14-plan.md`, package W3-a); see "Cross-lesson carry" under Classes below.
+The `exampleOpenLog` node was added with explicit user approval ("example opens", 2026-10-14 build plan, `docs/architecture/requests-2026-10-14-plan.md`) for the authoring request "'See example' button in explainers that opens a worked example in a pop-up"; status only, never code (see the Student writes below).
 
 ```json
 {
@@ -30,6 +36,11 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
         "panes": ["instructions", "breadboard", "code", "blocks", "stage", "..."],
         "pushedAt": 1234567890
       },
+      "teacherClassControlHighlight": {
+        "target": "run | stop | green_flag | costumes_tab | sounds_tab | category:<name>",
+        "taskId": "number | string | null",
+        "pushedAt": "server-time ms"
+      },
       "sandboxExplainer": "string | null",
       "explainerShowComplete": false,
       "teacherLiveReferenceVisibleToAll": "number | null (\"📌 Keep showing live code to class\" pin: the time it was pinned; legacy true still counts; not cleared by setTaskId; cleared by endSession; pinning or unpinning also clears every per-student false override — see classroom-behaviours.md \"Teacher-Live-Code Reference\")",
@@ -38,6 +49,29 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
       "videoCallLink": "string | null (http(s) URL only, validated at the write boundary; ephemeral — reset to null on createSession/restartSession/endSession, so the teacher re-enters it each session)",
       "videoCallBroadcastAt": "1234567890 | null (class-wide \"Send to all\" video-call push; reaches name-entry, waiting-room and lesson/sandbox students; reset to null on createSession/endSession)",
       "classCountdown": "{ startedAt, endsAt, durationMs } | null (teacher's class countdown, server-time ms; survives setTaskId; reset to null on createSession/endSession)",
+      "classId": "string | null (a stock lesson's class for this session, picked by the tutor in Match students; absent for \"No class\" or not chosen yet; a class fork uses its own fork.classId instead. Reset on createSession)",
+      "classChosenAt": "number | null (when the tutor picked a class or \"No class\"; absent until they choose. Reset on createSession)",
+      "rosterMatches": {
+        "{anonymousId}": { "rosterId": "string (opaque Firestore id of a classes/{classId}/roster entry; never the name)", "matchedAt": 1234567890, "matchedBy": "teacher uid" }
+      },
+      "typingHistory": {
+        "{anonymousId}": {
+          "byMode": {
+            "{mode: type_text | type_code | falling_words}": {
+              "last": { "cpm": 62, "accuracy": "0-1", "date": 1234567890 },
+              "best": { "cpm": 75, "accuracy": "0-1", "date": 1234567890 },
+              "first": { "cpm": 40, "accuracy": "0-1", "date": 1234567890 },
+              "sessions": "number of earlier sessions in this mode"
+            }
+          },
+          "updatedAt": 1234567890
+        }
+      },
+      "carryStatus": {
+        "{anonymousId}": {
+          "{taskId}": { "status": "found | none | starter", "sourceLessonId": "string (stock lesson id)", "sourceTaskId": "string", "reason": "not_saved | too_large | error | null (why 'none')", "rosterId": "opaque roster id looked up | null", "by": "teacher uid | null", "at": 1234567890 }
+        }
+      },
       "polls": {
         "{pollId}": { "question": "string (≤200)", "options": ["2-6 strings (≤100 each)"], "status": "open | closed", "showResults": "true (public: live bars on the presentation, students after voting) | false (private)", "createdAt": 1234567890, "closedAt": "number | absent while open" }
       },
@@ -56,17 +90,20 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
         "files": { "index__dot__html": "..." },
         "arcadeDesign": "object | null (Arcade only; sent as explicit null for other types because teacherLive is an update() merge)",
         "turtleResult": "object | null (Turtle only, compacted with compactTurtleResultForSync; explicit null for other types)",
+        "variablesPanel": "object | null (the presenter's name-tag panel on a showVariables task, Python / Turtle only, same shape as students/{id}/currentVariables; explicit null otherwise)",
+        "stage": "object | null (the presenter's Python Stage drawing, Python only, same shape as students/{id}/currentStageResult; explicit null otherwise)",
         "output": "...",
         "runStatus": "success | error | stopped | submitted | null",
         "checkPassed": true,
         "selection": { "from": 0, "to": 5, "file": "index.html" },
         "activity": { "type": "copy | paste | click | block_drag | block_click | green_flag | stop | sprite_drag", "at": 1234567890, "file": "index.html" },
-        "spriteState": "object | null (watched Scratch student's throttled sprite/clone/backdrop snapshot, ~8Hz)",
+        "spriteState": "object | null (watched Scratch student's throttled sprite/clone/backdrop snapshot, ~8Hz; its slowMo is the source's Scratch slow-mo state or null, as in currentSpriteState)",
         "cursor": "object | null (watched Scratch student's throttled live pointer position, ~20Hz — see students.{id}.currentCursor shape)",
         "blockDrag": "object | null ({ spriteId, blockId, x, y, at } — watched Scratch student's in-progress block-drag position within a sprite's Blockly workspace, read live off Blockly's own drag tracking and throttled with the cursor, ~20Hz; null once the drag ends)",
         "codeArrangeSlots": "object | null (watched code_arrange student's live tile placements — { slotId: fragmentId, ... }, same shape as students.{id}.currentCodeArrangeSlots; a forced-teacher-live viewer prefers this over deriving the board from code/files)",
         "codeArrangeCursor": "object | null ({ tileId, x, y, at } — watched code_arrange student's in-progress tile-drag position, x/y normalized 0-1 against the task's own board container, throttled ~20Hz like Scratch's cursor; null once the drag ends)",
         "outputCollapsed": "boolean (source's output/preview panel expand-collapse state — Python/Electronics console, HTML iframe preview; mirrored continuously to forced-live viewers via publishOutputCollapsed, a standalone update() merge rather than part of the main payload/dependency-tracked publish effect — see useTeacherLivePublish.js. A forced-live viewer's own toggle is locked/hidden while mirroring: see displayOutputCollapsed in studentLiveDisplay.js)",
+        "inspector": "{ on, selector, property } | null (HTML Inspector: the source's inspect mode, chosen element as a selector path, and \"Why this …?\" property. Sent in every payload by the html wire's liveExtras (explicit null on other modules) and written straight to teacherLive/inspector by publishInspector, without bumping updatedAt, so a click doesn't rebuild viewers' preview iframes — see useHtmlInspectorLive.js)",
         "updatedAt": 1234567890
       },
       "sharedWorkspaces": {
@@ -139,7 +176,8 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
             "requestedSourceTaskId": 2,
             "resolvedSourceTaskId": 1,
             "skippedSourceTaskIds": [2],
-            "fallbackAt": "ServerValue.TIMESTAMP"
+            "fallbackAt": "ServerValue.TIMESTAMP",
+            "crossLesson": "true only for a cross-lesson carry that used the starter (field carryCodeFromLesson | carryBlocksFromLesson), with reason (none | starter | no_class | missing), sourceLessonId and sourceTaskId instead of the requested/resolved ids"
           }
         }
       },
@@ -175,6 +213,17 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
               "errorRuns": "number (runs that hit an error, transaction)",
               "done": "boolean (self-reported ✓ I've done it!, never checked)",
               "doneAt": "ServerValue.TIMESTAMP | null"
+            }
+          }
+        }
+      },
+      "exampleOpenLog": {
+        "{anonymousId}": {
+          "{taskId}": {
+            "{index 0-9}": {
+              "openedAt": "ServerValue.TIMESTAMP (first open of the explainer's example n+1; written once)",
+              "lastOpenedAt": "ServerValue.TIMESTAMP (latest open)",
+              "opens": "number (one per open, transaction)"
             }
           }
         }
@@ -246,7 +295,9 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
           "currentCode": "string",
           "currentArcadeDesign": "object | null (watched Arcade student's throttled sprite/map snapshot)",
           "currentTurtleResult": "object | null (Turtle student's compacted drawing result, written on Run via writeStudentTurtleResult)",
-          "currentSpriteState": "object | null ({ spriteStates, cloneStates, backdropName, updatedAt } — watched Scratch student's throttled runtime snapshot, ~8Hz)",
+          "currentStageResult": "object | null (Python Stage drawing of the last Run, compactStageForSync: { commands: [{ type: background | rect | circle | line | text | stamp | grid | clear, ... }], count, truncated? } — commands after the last clear()/background(), coordinates rounded to 0.1, capped at 3,000 commands / 40,000 grid cells (newest kept); written via writeStudentStageResult on every Run of a python task (null when it drew nothing); cleared by setTaskId)",
+          "currentVariables": "object | null (name-tag panel on a showVariables task, compactVariablesForSync: { taskId, status, at, snapshots: [{ vars: [{ n, v }], scope }], index, peekLine, peekReached, changed, ran, predictions: { name: text } | null, results: { name: bool } | null } — written via writeStudentVariables after every Run, when a prediction input loses focus, and throttled (400 ms) while typing predictions if activeStudentView matches; cleared by setTaskId)",
+          "currentSpriteState": "object | null ({ spriteStates, cloneStates, backdropName, selectedSpriteId, slowMo, updatedAt } — watched Scratch student's throttled runtime snapshot, ~8Hz. slowMo: { mode: 'playing' | 'paused' | 'finished', step, speed, glow: [{ spriteId, blockId }] } while a Scratch slow-mo run is going, else null (src/modules/scratch/slowMo/live.js))",
           "currentCursor": "object | null ({ target: 'stage' | 'workspace', spriteId, x, y, at } — watched Scratch student's throttled live pointer position, ~20Hz; stage coords are origin-centred same as sprite x/y, workspace coords are that sprite's Blockly workspace units)",
           "currentBlockDrag": "object | null ({ spriteId, blockId, x, y, at } — the top block of an in-progress drag, live position in that sprite's Blockly workspace units, cleared to null when the drag ends)",
           "currentCodeArrangeSlots": "object | null (code_arrange student's live tile placements, written on every placement whether or not watched — { slotId: fragmentId, ... }, same shape CodeArrangeTask uses locally; updated on every tile move, independent of currentCode/currentFiles which only sync once the arrangement is fully assembled)",
@@ -274,6 +325,7 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
           "needsHelp": "true | null",
           "inPersonalSandbox": "true | null",
           "sideQuestOpen": "0-2 | null (the side-quest open on the student's screen; student-written on open/close, cleared by setTaskId)",
+          "sideQuestCode": "object | null ({ taskId, index: 0-2, openedAt, updatedAt, code? (python/turtle), files? (encoded keys, html), output?, turtleResult?, runStatus?, lastRunAt?, errorStreak? } — the open side-quest's work for the tutor's StudentModal and the side-quest panel's 'probably stuck'. Student-written: a fresh record on open (writeSideQuestOpen), merged on every Run and when the run ends (writeSideQuestCode), and per keystroke/output change only while activeStudentView is this student; cleared on close and by setTaskId)",
           "videoCallLinkPushedAt": "number | null (stamped by sendVideoCallLink to pop VideoCallPrompt for this one student mid-lesson; independent of the session-level videoCallLink above)",
           "checkOverridePassed": "boolean | null",
           "checkOverrideHint": "string | null",
@@ -293,6 +345,20 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
           },
           "typingLog": {
             "{taskId}": { "charsTyped": 148, "activeTypingMs": 151000, "corrections": 23, "longestPauseMs": 48000, "autocompleteAccepts": 2, "copyDistance": "number (copyCode tasks only, from the first Run)" }
+          },
+          "inspectorLog": {
+            "{taskId}": { "opens": 1, "selects": 4, "lastAt": 1234567890 }
+          },
+          "slowMoLog": {
+            "{taskId}": { "runs": 1, "steps": 12, "lastAt": 1234567890 }
+          },
+          "courseLog": {
+            "{taskId}": { "runs": 3, "goalRuns": 1, "crashes": 2, "pickups": 1, "lastGoalReached": true, "lastAt": 1234567890 }
+          },
+          "predictionLog": {
+            "{taskId}": {
+              "{pushId}": { "at": "ServerValue.TIMESTAMP", "allCorrect": true, "entries": { "{variableName}": { "value": "what the student typed (≤ 200 chars)", "correct": true } } }
+            }
           },
           "tileMissLog": {
             "{taskId}": {
@@ -352,6 +418,11 @@ The side-quest status fields (`students.{id}.sideQuestOpen` and the `sideQuestLo
             "mode": "highlight | force",
             "panes": ["instructions", "breadboard", "code", "blocks", "stage", "..."],
             "pushedAt": 1234567890
+          },
+          "teacherControlHighlight": {
+            "target": "run | stop | green_flag | costumes_tab | sounds_tab | category:<name>",
+            "taskId": "number | string | null",
+            "pushedAt": "server-time ms"
           }
         }
       }
@@ -384,6 +455,9 @@ Teacher writes:
 - `lessonOverrideTasks` (session-only task edits from `EditLessonModal`; `pushLessonOverride`/`clearLessonOverride`) — reset to `null` on `createSession`/`endSession`. Task IDs inside it are never renumbered, so they stay valid against `currentTaskId`, carry-through references, and student per-task localStorage keys
 - `fullscreenRequestedAt` (stamped by `requestFullscreenForAll`, reset to `null` on `createSession`/`endSession`) — a class-wide "please go fullscreen" broadcast. The Fullscreen API only fires from a direct user gesture, so this cannot force students into fullscreen; each student client (`StudentView`) shows a centred modal prompt with a "Go Fullscreen" button that calls `document.documentElement.requestFullscreen()` from the student's own click when this timestamp changes. Once `phase` becomes `'ended'`, `StudentView` renders `SessionEndedScreen` instead (the prompt naturally disappears) and calls `document.exitFullscreen()` so a student isn't left stuck in fullscreen
 - `classCountdown` (`startClassCountdown(durationMs)` / `addClassCountdownTime(extraMs)` / `clearClassCountdown()`, from the "⏱ Countdown" popover in `TeacherSessionControls.jsx`, offered while the session is `active` or `sandbox`; reset to `null` on `createSession`/`endSession`) — `{ startedAt, endsAt, durationMs }` in **server time** (`Date.now()` + Firebase `.info/serverTimeOffset`, which `useSession` exposes as `serverTimeOffset`), so every screen counts to the same deadline whatever its clock says. Separate from a task's `estimatedMinutes` timer: not touched by `setTaskId`, so it runs across task changes until the teacher stops it. Adding time to one that already hit zero restarts it from now. `database.rules.json` validates the shape (numeric fields, `durationMs > 0`, `endsAt >= startedAt`, no other children). Students and the presentation window show it in the top bar (`ClassCountdownPill`) and a "Time's up" banner at zero (`useClassCountdown` + `TimesUpBanner`); nothing is locked or paused. See "Class Countdown" in `docs/agents/classroom-behaviours.md`
+- `classId` / `classChosenAt` (`setSessionClass(lessonId, classId | null)` in `src/shared/roster/rosterService.js`, from the Match students panel; changing class also clears `rosterMatches`; reset on `createSession`) and `rosterMatches/{anonymousId}` (`matchStudent` / `unmatchStudent`, `{ rosterId, matchedAt, matchedBy }`) — the class roster; see "Class roster" under Classes. Teacher/admin write only (inherited); `database.rules.json` validates `classId` as a class slug, `classChosenAt` as a number, and each match's shape (no other fields). Kept off `students/{anonymousId}`, which the student can rewrite
+- `typingHistory/{anonymousId}` (`setTypingHistoryNodes` in `rosterService.js`, written by the tutor's `useTypingHistory`; reset on `createSession`) — a matched student's typing history from **earlier** sessions per Keyboard mode: `last` and `first` (the averages of the most recent and the earliest session's finished items), `best` (the best single item: characters a minute, then accuracy) and `sessions`. Rewritten only when the summary changes (once the student's saved typing has loaded after they are matched); set to `null` when they are unmatched or the session has no class. Numbers only, no names or roster ids. Teacher/admin write only (inherited); `database.rules.json` validates the shape (`last` / `best` / `first` each `{ cpm ≥ 0, accuracy 0-1, date }`, mode names `[a-z_]`, no other fields). The student reads their own (the session is publicly readable) for the Keyboard activity's `showHistory` line; the card, StudentModal and session report read it too. See "Typing history" under Class roster
+- `carryStatus/{anonymousId}/{taskId}` (cross-lesson carry; `fillCarryInbox` / `applyCarryStarter` in `src/shared/roster/crossLessonCarryService.js`, from `useCarryInboxWriter` and the tutor's "Use the starter") — written once per student and task, never overwritten by the writer; `found` is written only after the payload is in `carryInbox/{lessonId}/{anonymousId}/{taskId}`. Teacher/admin write only (inherited), shape-validated in `database.rules.json`. Reset on `createSession` and `endSession` (after the report is built); the top-level `carryInbox/{lessonId}` is removed then too (and on the teacher's disconnect after ending)
 - `nudgeAwayPushedAt` (stamped by `nudgeAwayStudents` from the "🔔 Nudge Away" item in `StudentGrid`'s ⋯ header menu, reset to `null` on `createSession`/`endSession`) — a class-wide nudge. Each student client's `useNudgeAlert` only reacts if its window is unfocused when the new timestamp arrives. The per-student equivalent is `students/{id}/nudgePushedAt` (`nudgeStudent`, from the 🔔 button on an Away `StudentCard` or the StudentModal header), which always alerts that student. Timestamps already present when a student's session first loads are a baseline and never replay. The alert shows an in-page banner and plays a Web Audio chime; if the window is unfocused it also flashes the tab title and favicon until the window regains focus, and shows an OS `Notification` when permission was already granted (students opt in once via `NudgePermissionPrompt`)
 - any student's `displayName`
 - student node removal
@@ -400,6 +474,7 @@ Teacher per-student actions:
 - Highlight code (`pushTeacherHighlight`) adds an entry under `teacherHighlights/{highlightId}`; the teacher (or the student — see below) can remove any entry (`removeTeacherHighlight`). All entries cleared by `setTaskId`.
 - Highlight a tile (`pushTeacherTileHighlight`, StudentModal's "👀 Highlight tiles" mode on code_arrange slot mode, Match and Fill in the Gaps drag mode) writes, in one update: `teacherTileHighlights/{highlightId}` (`{ taskId, targetId, tileId, note, createdAt }`), null for any older entries on the same blank (`replaceIds`), and a `tileHighlightLog/{taskId}/{pushId}` record (`{ targetId, tileId, note, at }`, at most 50 per task) for the report. A second tap on the blank removes its entries (`removeTeacherTileHighlights`); "Clear all" nulls the whole `teacherTileHighlights` node (`clearTeacherTileHighlights`). `setTaskId` nulls `teacherTileHighlights`; `tileHighlightLog` is not cleared, so `buildSessionReport` reads it. No change to completion, attempts or overrides. See "Tutor Tile Highlights" in `docs/agents/classroom-behaviours.md` and `src/shared/tutorTileHighlights.js`.
 - Highlight or force a tab/panel (`pushTeacherPaneCommand`/`clearTeacherPaneCommand`) writes `teacherPaneCommand: { mode, panes, pushedAt }` — `mode: 'highlight'` pulses a glow on the named tab(s)/panel(s) without moving anything; `mode: 'force'` immediately switches the student to them (a one-time jump, not a lock — the student is free to navigate away again right after). `panes` is drawn from `instructions` (every lesson type), plus `breadboard`/`code` for Electronics or `blocks`/`stage` for Scratch — see `PaneFocusDropdown.jsx`. There is no consent step (unlike `teacherStageRequestedAt`/`teacherEditRequestedAt`). Dismissal ("clears when the student looks at it") is tracked client-side in `StudentView`, not by writing back to Firebase — this matters for `teacherClassPaneCommand` above, since it's one shared node and one student looking at it must not clear it for the rest of the class. Cleared by `setTaskId`.
+- Highlight a control (`pushTeacherControlHighlight` per student from StudentModal's More menu, `pushClassControlHighlight`/`clearClassControlHighlight` for the class from TeacherView's "Highlight Class") writes `teacherControlHighlight` / the session-level `teacherClassControlHighlight`: `{ target, taskId, pushedAt }` (server time). The student's screen pulses that control (`useStudentControlHighlight`, `src/shared/controlHighlight.js`) and ends it on its own when the student uses it or after 20 s; nothing is written back. It ignores a command for a different task and one older than 20 s (a reload or late join). Not cleared by `setTaskId` (the `taskId` makes it inert on the next task). Both nodes sit under the existing write rules (the student node, the teacher-only `$lessonId` write), so no rules change. See "Control Highlights" in `docs/agents/classroom-behaviours.md`.
 - Remote edit (Python/Scratch only): `requestTeacherEdit` sets `teacherEditRequestedAt` and clears `teacherEditAcceptedAt`/`teacherLiveCode`/`teacherEditApplyCode`/`teacherEditAppliedAt`, prompting the student for consent. Once accepted, `pushTeacherLiveCode` streams `teacherLiveCode` as the teacher types; `commitTeacherEdit` writes the final code to `teacherEditApplyCode` + `teacherEditAppliedAt` and directly to the student's `currentCode`; `cancelTeacherEdit` clears the request without committing. All eight `teacherEdit*`/`teacherLiveCode` fields are cleared by `setTaskId`.
 - Remote stage push: `requestTeacherStage` sets `teacherStageRequestedAt` and `teacherStagePendingAction` (a reset-action string, same shape as `remoteResetAction`) and clears `teacherStageAcceptedAt`, prompting the student for consent before the stage change is applied; `clearTeacherStage` clears all three fields. Cleared by `setTaskId`.
 - Stage reference reveal: `recordSupportStageReveal` writes `supportRevealLog/{anonymousId}/{taskId}/{stageIndex}` with `source: "teacher"`, stage label, attempt count, and server timestamp. This reveals a read-only Python/HTML stage reference to that one student and does not write to their editor.
@@ -423,7 +498,8 @@ Student writes:
 - Quiz attempts are reportable even when the task has no explicit `check`. The attempt log stores structured submissions for fill-blank and match, numeric ratings for confidence, and text for open short-answer. Confidence and open short-answer use the internal passed flag only as a UI completion signal; reports translate them to `finalResult: not_applicable` and `passed: null`.
 - Carry-through walk-back: when a live lesson task carries from a skipped source and resolves to an earlier saved source in the authored carry chain, the student writes own `carryFallbackLog/{taskId}` with the carry field, requested source, resolved source, skipped source ids, and server timestamp. Empty saved state is not skipped.
 - Personal sandbox: own `inPersonalSandbox` set to `true` on entry and `null` on exit.
-- Side-quests (live lesson phase only; never solo, preview or the presentation window): own `sideQuestOpen` (the index, or `null`) on opening and closing one (`writeSideQuestOpen`), and own `sideQuestLog/{taskId}/{index}`: `openedAt` the first time (`recordSideQuestOpened`), `runs` / `errorRuns` by transaction once per Run / per errored run (`recordSideQuestRun`), `done` + `doneAt` when the student taps ✓ (`setSideQuestDone`). Never per keystroke and never any code. `setTaskId` nulls every `sideQuestOpen`; `sideQuestLog` survives it (a sibling of `students`, like `attemptLog`), `createSession` clears it, and `buildSessionReport` reads it. See "Side-quests" in `docs/agents/classroom-behaviours.md`.
+- Side-quests (live lesson phase only; never solo, preview or the presentation window): own `sideQuestOpen` (the index, or `null`) on opening and closing one (`writeSideQuestOpen`), and own `sideQuestLog/{taskId}/{index}`: `openedAt` the first time (`recordSideQuestOpened`), `runs` / `errorRuns` by transaction once per Run / per errored run (`recordSideQuestRun`), `done` + `doneAt` when the student taps ✓ (`setSideQuestDone`). Own `sideQuestCode` (the open side-quest's work for the tutor): a fresh `{ taskId, index, openedAt }` on open and `null` on close (`writeSideQuestOpen`), merged by `writeSideQuestCode` on every Run (code or files, `lastRunAt`) and when the run ends (output, Turtle drawing, `runStatus`, `errorStreak`), and per keystroke or output change only while `activeStudentView` is this student (`useSideQuestLiveSync`). `setTaskId` nulls every `sideQuestOpen` and `sideQuestCode`; `sideQuestLog` survives it (a sibling of `students`, like `attemptLog`), `createSession` clears it, and `buildSessionReport` reads it. See "Side-quests" in `docs/agents/classroom-behaviours.md`.
+- "See example" opens (live lesson phase only, task context; never solo, the sandbox, a Builder preview or the presentation window): own `exampleOpenLog/{taskId}/{index}` when the student opens a ` ```example ` fence's dialog in the task explainer (`recordExampleOpen`, reached through `BadgeSignalsContext.reportExampleOpen` from `useStudentBadgeSignals`): `openedAt` the first time, `lastOpenedAt` every time, `opens` by transaction. `index` is the fence's place in the explainer (0-9). Never any code. The tutor's `StudentCard` (🔍) and `StudentModal` ("🔍 Opened example") read it for the current task; `setTaskId` leaves it (a sibling of `students`), `createSession` clears it, and `buildSessionReport` reads it (`exampleOpens`, `src/shared/exampleOpens.js`).
 - Topic library: own `currentTopicId` when a topic opens; cleared when dialog closes and by `setTaskId`.
 - Name entry: own `joiningStudents/{tempId}` during name-entry phase (`{ joinedAt }` via `registerJoining`); removed on joining or leaving. While the student types, `NameEntry` shares the trimmed name as `typedName` (`setJoiningTypedName` via `useStudentPhase`'s `reportTypedName`; leading + trailing throttle, at most one write per 750ms, capped at the input's 30 characters, removed when the box is empty). No typedName write happens once the marker is gone, and the rules reject one that would recreate it.
 - Teacher "Pull in" (student side): `useStudentPhase` listens to its own marker (`subscribeJoiningMarker`, a dedicated listener because the phase logic ignores session changes during name entry). When `admit = { name, at }` appears it calls the normal `handleNameSubmit` once with the admitted name, after the same duplicate-name suffixing NameEntry applies (`applyNameSuffix` in `src/app/joiningStudents.js`), so identity creation, `joinSession` and the next phase (waiting room if the session is waiting, lesson/sandbox if live) are exactly a normal submit. It ignores admits stamped before the marker's `joinedAt`, admits without a usable name, and admits arriving while the student's own Join is in flight.
@@ -434,11 +510,15 @@ Student writes:
 - Class poll answers: own `pollResponses/{pollId}` (`{ choice, answeredAt }`) via `answerPoll` from the poll card (`ClassPollCard.jsx`), only while that poll's `status` is `open` (the rules refuse a student answer to a closed or missing poll). Overwritten when the student changes their answer. Not cleared by `setTaskId`; read by `buildSessionReport` into the report's `polls`.
 - Large pastes: own `pasteLog/{taskId}` via `recordStudentPaste` (`{ count, chars, lastAt, firstAt }`, see `docs/agents/classroom-behaviours.md`). `firstAt` is a server timestamp set on the first large paste only (the badge guards order it against a pass); `lastAt` keeps being overwritten. Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `pastes` and the task summary's `pasteCount`/`pastedStudentCount`.
 - Typing totals: own `typingLog/{taskId}` via `recordStudentTyping` (`{ charsTyped, activeTypingMs, corrections, longestPauseMs, autocompleteAccepts, copyDistance? }`). Counted on the student's device by `useStudentTypingStats` from the shared CodeEditor (keystroke inserts, not pastes or autocomplete; Backspace/Delete presses; 5 s typing bursts) and written as one replaced record per task on Run, on a task change, on leaving the lesson phase and on a hidden tab — never per keystroke, and never once the session has ended or the student was removed. Live lesson python/turtle/html tasks on keyboard devices only (not touch devices, solo, the presentation window, previews or the personal sandbox). Not cleared by `setTaskId`; read by `buildSessionReport` into each code task's `typing` and the task summary's `typingSummary`.
+- HTML Inspector use: own `inspectorLog/{taskId}` (`{ opens, selects, lastAt }`, counts via `increment`) written by `useHtmlInspectorLive` (batched, at most one write per 3 s; live lessons only, never the presentation window, Builder preview, solo or a personal sandbox). Counts only, never page content. Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `inspector` and the task summary's `inspectorUsedCount` (`src/shared/inspectorUse.js`).
+- Turtle course runs (task `course`): own `courseLog/{taskId}` (`{ runs, goalRuns, crashes, pickups, lastGoalReached, lastAt }`; `runs` / `goalRuns` / `crashes` via `increment`, the rest the last run) written by `useCourseLog` once per Run (from `runWithRuntime`; live lessons only, never the presentation window, Builder preview, solo, free play or a personal sandbox). Counts only, never code. Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `course` and the task summary's `courseGoalReachedCount` / `courseCrashedCount` (`src/shared/courseUse.js`). A course run's `currentTurtleResult` / `teacherLive.turtleResult` also carries `course: { type, vehicle, taskId, maps: [outcome + drawing] }` (`compactTurtleResultForSync`).
+- Scratch slow-mo use: own `slowMoLog/{taskId}` (`{ runs, steps, lastAt }`, counts via `increment`) written by `useSlowMoLog` (batched, at most one write per 3 s; live lessons only, never the presentation window, Builder preview, solo or a personal sandbox). Counts only, never code. Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `slowMoUsed` / `slowMoRuns` / `slowMoSteps` and the task summary's `slowMoUsedCount` (`src/shared/slowMoUse.js`).
+- Name-tag panel predictions (`showVariables.mode: predict`): own `predictionLog/{taskId}/{pushId}` via `recordVariablePredictions` (`{ at, allCorrect, entries: { name: { value, correct } } }`), one per Run that reveals predictions (`useVariablesPanel`; a Run with the same predictions as the last logged one is skipped), live lesson only (not the presentation window, previews or solo), capped at 30 per task. Not attempts. Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `predictions` and the task summary's `prediction*` fields. The panel itself syncs on `currentVariables` (above) and, in Go Live, on `teacherLive.variablesPanel` (same shape, explicit `null` when cleared; carried by the python / turtle wire's `liveExtras`).
 - Code_arrange tile misses: own `tileMissLog/{taskId}/{pushId}` (`{ slotId, tileId, at }`) via `recordStudentTileMiss`, one per drop of a tile into a blank where the task's tile feedback marks it known-wrong (a distractor, or the blank's `wrongTiles`; see `getTileFlag` in `src/shared/codeArrange.js`), live lesson only, capped at 100 per task. Not attempts. Not cleared by `setTaskId`; read by `buildSessionReport` into each student task's `tileMisses` and the task summary's `tileMisses`. Each code_arrange attempt also stores its `placements` (JSON string) on the `attemptLog` entry.
 - Live badge signals: own `studentSignals/{anonymousId}` and `attemptLog` entries' `error`. See "Badge data" below.
 - Stage reference reveal: after a failed attempt, students can reveal their own Python/HTML Support `codeStages` entries. The same `supportRevealLog` record stores `source: "student"`, stage label, attempt count, and server timestamp. Revealing does not change editor contents.
 
-Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields (including `badges` and `badgeSettings`), `overrideLog`, and `supportRevealLog`. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, their own `attemptLog/{anonymousId}` node, their own `carryFallbackLog/{anonymousId}` node, their own `supportRevealLog/{anonymousId}` node, their own `sideQuestLog/{anonymousId}/{taskId}/{0-2}` entries (`openedAt`, `runs`, `errorRuns`, `done`, `doneAt` only; numbers and a boolean), and the listed paths of their own `studentSignals/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers), but every write must leave `joinedAt` (a number) in place, `typedName` must be a string of at most 30 characters, no other fields are allowed, and only teachers/admins can write `admit` (`{ name: string 1-30, at: number }` and nothing else). Removal (on join or disconnect) is unrestricted. The top-level `sessionArchive/{lessonId}` is teacher/admin read and write only. The top-level `liveInk/{lessonId}` (Presentation annotations) is publicly readable and teacher/admin write, with shape validation (see "Presentation Annotations").
+Firebase Realtime Database security rules are in `database.rules.json`. Sessions are publicly readable. Teachers/admins (email auth with `role` custom claim) can write session-level fields (including `badges` and `badgeSettings`), `overrideLog`, and `supportRevealLog`. Students (anonymous auth) can write only to their own `students/{anonymousId}` node, their own `attemptLog/{anonymousId}` node, their own `carryFallbackLog/{anonymousId}` node, their own `supportRevealLog/{anonymousId}` node, their own `sideQuestLog/{anonymousId}/{taskId}/{0-2}` entries (`openedAt`, `runs`, `errorRuns`, `done`, `doneAt` only; numbers and a boolean), their own `students/{anonymousId}/sideQuestCode` (needs `index` 0-2 and `updatedAt`; `code` and each `files/$file` strings of at most 100,000 characters, `output` at most 20,000, no other fields), their own `exampleOpenLog/{anonymousId}/{taskId}/{0-9}` entries (`openedAt`, `lastOpenedAt`, `opens` ≥ 1 only; numbers), and the listed paths of their own `studentSignals/{anonymousId}` node, where `$anonymousId` must equal `auth.uid`. Any authenticated user can write to `joiningStudents/{tempId}` (name-entry presence markers), but every write must leave `joinedAt` (a number) in place, `typedName` must be a string of at most 30 characters, no other fields are allowed, and only teachers/admins can write `admit` (`{ name: string 1-30, at: number }` and nothing else). Removal (on join or disconnect) is unrestricted. The top-level `sessionArchive/{lessonId}` is teacher/admin read and write only. The top-level `carryInbox/{lessonId}` (cross-lesson carry payloads) is teacher/admin write; teachers/admins read all of it and a student reads only `carryInbox/{lessonId}/{their uid}`; each entry needs `kind` (`code` | `files` | `blocks`) and `payload` (a string of at most 1,000,000 characters), with optional `sourceLessonId`, `sourceTaskId`, `savedAt`, `writtenAt` and nothing else. The top-level `liveInk/{lessonId}` (Presentation annotations) is publicly readable and teacher/admin write, with shape validation (see "Presentation Annotations").
 
 ## Workspace Sharing
 
@@ -865,6 +945,89 @@ Class forks keep lineage on the lesson document:
 
 Creating a fork again overwrites the fork lesson document, resets the title from the source lesson and class name, rebuilds exact 1:1 task lineage, and clears the fork lesson's `sessionReports` and `feedback` subcollections. It does not copy stock lesson reports, feedback, or live session data.
 
+### Class roster (`classes/{classId}/roster`)
+
+Approved by Ryan on 2026-10-14 (`docs/architecture/requests-2026-10-14-plan.md`, "Identity"). Each class has a roster of students, first name and initial only. Students still type a name on join and stay anonymous; the tutor matches each joined student to a roster entry **by hand** (no auto-match, no suggestions). Code: `src/shared/roster/` (pure `rosterModel.js` and `rosterWorkChanges.js`, Firebase `rosterService.js`).
+
+```json
+{
+  "classes/{classId}/roster/{rosterId}": {
+    "displayName": "Jamie B. (1-30 characters)",
+    "createdAt": 1234567890,
+    "createdBy": "uid | null"
+  },
+  "classes/{classId}/roster/{rosterId}/work/{sourceLessonId}__{sourceTaskId}": {
+    "kind": "code | files | blocks (the module's capabilities.rosterWork)",
+    "moduleType": "python | turtle | html | scratch",
+    "code": "string (kind code)",
+    "files": "[{ name, content }] (kind files; real file names, an array so no keys hold dots)",
+    "scratchState": "string (kind blocks: the Blockly project as JSON, since it nests arrays)",
+    "chunkCount": "0, or n when the content (JSON of the content field) is in chunks/{0..n-1} { data } instead",
+    "hash": "FNV-1a of the work (unchanged work is not rewritten)",
+    "origin": "run | submission | leave",
+    "sessionLessonId": "the lesson the session ran (a fork's own id)",
+    "taskId": "the session lesson's task id",
+    "sourceLessonId": "fork.sourceLessonId, or the lesson id when not forked",
+    "sourceTaskId": "fork.taskLinks[].sourceTaskId for the task, or its own id",
+    "savedAt": "server timestamp"
+  },
+  "classes/{classId}/roster/{rosterId}/typing/{sourceLessonId}__{sourceTaskId}__{itemId}__{attemptHash}": {
+    "date": "ms (the attempt's loggedAt, or when the tutor's client saw the live result)",
+    "sessionId": "String(session.startedAt) (the report's sessionId)",
+    "lessonId": "the session's lesson id (a fork's own id)",
+    "sourceLessonId": "the stock lesson id", "taskId": "string", "sourceTaskId": "string",
+    "itemId": "string ('round' for falling_words)",
+    "mode": "type_text | type_code | falling_words",
+    "cpm": 62, "wpm": 12.4, "accuracy": "0-1", "corrections": 3, "timeMs": 41000,
+    "score": "falling_words only",
+    "recordedAt": "server timestamp"
+  }
+}
+```
+
+- **Rules:** not public. Teachers and admins read and write the roster and its `work` (and `work/{id}/chunks`) and `typing` subcollections; nobody else can. Entries hold only `displayName` (string, 1-30), `createdAt` and `createdBy`. The parent `classes/{classId}` record keeps its public-read, admin-write rule.
+- **Managing:** admins add, rename and delete entries in Admin → Classes → Students (`ClassRosterEditor.jsx`); tutors add a "New student" from the Match students panel during a session. Deleting an entry deletes its saved work (with chunks) and typing scores.
+- **Which class:** `resolveSessionClass(lesson, session)` — a class fork's `fork.classId`, else the session's tutor-picked `classId` (stock lessons; "No class" saves nothing).
+- **Matching:** the Match students panel (`MatchStudentsDialog.jsx`, from the Student Grid's ⋯ menu or its "👥 n unmatched" / "👥 Pick class" chip) writes `sessions/{lessonId}/rosterMatches/{anonymousId}`. A card shows a small 👥? marker while the session has a class and that student isn't matched; the StudentModal header shows the matched name. Tutor-only.
+- **Saving (tutor-mediated):** students never write Firestore. The tutor's TeacherView (`useRosterWorkSaver`) saves each matched student's work from data it already receives: their last Run on the class's current task (`currentCode` / `currentFiles` with a new `lastRunAt` and a `lastRunStatus`; not in a session sandbox or personal sandbox) and each new `attemptLog` entry or retry (auto-check-on-leave included), whichever is newer, read through the module's `capabilities.rosterWork` (python, turtle: `code`; html: `files`; scratch: `blocks`). Never per keystroke: a save waits 3 s after the last change, and pending saves are flushed when the class moves task (before `setTaskId`'s wipe is seen) or the tab closes. Work is only saved while a tutor tab is open. Content over 200,000 characters is split into 200,000-character chunks so each document stays well under 1 MiB.
+- **Keys:** a fork's work is saved under the stock lesson's ids (`fork.sourceLessonId`, `fork.taskLinks[].sourceTaskId`; `buildLessonFork` copies tasks 1:1, so task ids match today), so a later lesson's fork finds an earlier fork's work.
+- **Privacy:** roster names stay on the tutor's side. Session reports stay anonymous ("Student N"), RTDB holds only opaque roster ids, and nothing roster-related is written to CLI-readable data.
+- **Typing history (W3-b):** the tutor's TeacherView (`useTypingHistory`, pure logic in `src/shared/typingHistory.js`) reads each matched student's typing entries once, then saves every new finished typing result of theirs (activities with `history` hooks: Keyboard `type_text`, `type_code`, `falling_words`) from `students/{id}/currentAnswer` on the current task and this session's `attemptLog`, so results from before the match are saved once they're matched. The document id is the dedupe key: stock lesson, stock task, item and a hash of the result's numbers and typed text, so a finished attempt is saved once however often it is seen (reloads, two tutor tabs, the same result restored from the student's device in a later session). The teacher's Complete (show answers) results (`solution: true`) and answers the tutor edited (`teacherAssisted` attempts, `teacherAssistedTaskId`) are skipped. It then pushes `sessions/{lessonId}/typingHistory/{anonymousId}` (above). Unmatched students and sessions with no class save nothing; only while a tutor tab is open. The session report copies the node into `tasks[].typingHistory` at build time. Admin → Classes → Students → Typing lists an entry's saved scores.
+- **API for later packages:** `listRoster`, `subscribeRoster`, `matchStudent` / `unmatchStudent`, `getSavedWork(classId, rosterId, sourceLessonId, sourceTaskId)`, `saveRosterWork`, `appendTyping` / `listTyping` (`rosterService.js`), and `resolveSourceIds` / `makeRosterWorkId` (`rosterModel.js`).
+
+### Cross-lesson carry (`carryCodeFromLesson` / `carryBlocksFromLesson`)
+
+Package W3-a (Ryan, 2026-10-14). A task can start from the student's own saved work on a task of an earlier lesson. Code: `src/shared/roster/crossLessonCarry.js` (pure), `crossLessonCarryService.js` (Firebase), `src/app/hooks/useCarryInboxWriter.js` (tutor), `src/app/hooks/useCrossLessonCarry.js` (student).
+
+- **Field:** the module's `carryThroughField` + `Lesson` on modules with `capabilities.rosterWork` (python, turtle, html: `carryCodeFromLesson`; scratch: `carryBlocksFromLesson`), `{ lesson: <stock lesson id>, task: <stock task id> }`. The saver keys roster work by stock ids, so forks need no mapping.
+- **Tutor-mediated:** students never read the roster. TeacherView's `useCarryInboxWriter` runs whenever the session has a class: for each matched, joined student and each carry task in the lesson with no `carryStatus` yet (every carry task, so later tasks are ready), it calls `getSavedWork(classId, rosterId, lesson, task)`, writes the work to `carryInbox/{lessonId}/{anonymousId}/{taskId}` (`{ kind, payload: JSON string, sourceLessonId, sourceTaskId, savedAt, writtenAt }`; over 1,000,000 characters → `none`/`too_large`), then `carryStatus` `found`, or `none` (`not_saved` / `error`). Once per student/task/roster entry per tab, no automatic retry, never overwriting a status (re-matching after the status was written doesn't refresh it).
+- **Student hold:** `useStudentCodeState` calls `useCrossLessonCarry` for the class's current task. Outcome (`resolveCrossLessonCarry`): `own` when the student already has saved work for the task (checked once per task load; it is restored in any phase); `solo` when not a live lesson student (solo, presentation window, Builder preview); `no_class` when the session is "No class"; else the `carryStatus` (`found` / `none` / `starter`), or `hold`. `found` stays a hold until the student's `get()` of their own inbox entry returns (`missing` if unreadable). While held, `LessonTaskContent` shows `CarryHoldNotice` instead of the module workspace (the explainer stays; never when reviewing an earlier task, forced live, being edited, or in a sandbox), and the leaving-task snapshot save and auto-check-on-leave skip the task. When the hold ends the task loads again: `found` starts from the carried work (`crossLesson` param of `selectPythonTaskCode` / `selectHtmlTaskFiles` — per starter file by name — and `selectScratchInitialProject`, where the workspace only mounts after the hold). `none`, `starter`, `no_class` and `missing` use the starter and write a `carryFallbackLog` entry with `crossLesson: true` and the reason (live students only); `solo` falls back silently. No localStorage scanning.
+- **Tutor visibility:** `carryWaitingStudentIds` (joined students on the current carry task with no status, unless "No class") drives a ⏳ marker on the card, a "⏳ Waiting for earlier work" chip with **Use the starter** in the StudentModal header, a "· ⏳ n" count on the grid's roster chip, and in Match students a highlighted row plus **Use the starter** per waiting unmatched student and **Use the starter for all unmatched** (`carryStarterUpdates` → `carryStatus` `starter`).
+- **Report:** `crossLessonCarryReportFields` / `summarizeCrossLessonCarry` (per-student `crossLessonCarry`, task `crossLessonCarryCounts`); anonymous.
+- **Validation:** shared core (`validateCrossLessonCarry` in `lessonValidation.js`); the CLI's `lessons publish` adds soft source warnings (`crossLessonCarrySourceWarnings`).
+
+## Share Links (`sharedWork` collection)
+
+Added with explicit user approval (Ryan, 2026-10-14, `docs/architecture/requests-2026-10-14-plan.md` "Export"). A tutor's StudentModal **Export work** can make an opt-in, name-hidden share link for the current task: a frozen snapshot shown read-only at `/share/:id` (see URL Structure). Written by the tutor's client only (`src/shared/exportWork/shareService.js`); nothing is written to the student or the session.
+
+```json
+{
+  "createdAt": "serverTimestamp (rules: == request.time)",
+  "createdBy": "uid of the teacher/admin who made it (rules: == request.auth.uid)",
+  "expiresAt": "Timestamp: createdAt + 30 days (rules: in the future and at most 30 days + 10 minutes on)",
+  "revoked": "false on create; true once revoked",
+  "revokedAt": "serverTimestamp (only with revoked: true)",
+  "kind": "the module type that made it (python | turtle | html | scratch); picks the viewer",
+  "title": "the task title only, never a student name (≤ 200)",
+  "payload": "JSON string (≤ ~900 KB) the module's exporter wrote: { code, output } | { code, turtleResult } | { files: [{ name, content }], entryFile } | { state, task: { id, title, sprites, backdrops, variables, toolbox, enableStageCode, showCostumesTab, showSoundsTab }, assetsPath }"
+}
+```
+
+- The payload is a string because Scratch block trees nest deeper than Firestore's map depth limit.
+- **Reads:** anyone may `get` a link while `revoked == false && expiresAt > request.time`; the maker and admins may also get an ended one; only admins may `list` (Admin ▸ Shared Work).
+- **Writes:** teachers and admins create (exact keys, as themselves, `revoked: false`) and revoke (`revoked: true` + `revokedAt` only, nothing else changes); admins may delete. Students never write. Tested by `tests/rules/sharedWork.rules.test.js` under `npm run test:rules`.
+- The id is random (128 bits, `randomShareId`), so links can't be guessed. Expired documents are not cleaned up automatically; the rule stops them showing.
+
 ## localStorage Keys
 
 Do not deviate from these key formats.
@@ -909,6 +1072,7 @@ The landing page validates a selected `.launchpad` file and passes it to `/code`
 | `/code` | Imported `.launchpad` Python code workspace |
 | `/playground/:type` | No-login, no-persistence solo sandbox for `python`/`arcade`/`electronics`/`scratch`; builds an ephemeral in-memory lesson (`__playground__<type>` id) and renders it forced-solo — never shares storage with a real lesson |
 | `/builder` | Lesson builder |
+| `/share/:id` | Public, read-only page for a tutor's "Export work" share link (`SharedWorkView.jsx`; Firestore `sharedWork/{id}`, see Share Links). No login, no student name, nothing written; the module that made the work renders it (its exporter's `ShareView`). A revoked or expired link shows "This link has ended". Approved URL addition (Ryan, 2026-10-14) |
 
 No room IDs. There is one session per lesson.
 

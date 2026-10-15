@@ -11,6 +11,8 @@ import { buildIframeSrc } from './iframe'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import { selectHtmlTaskFiles } from '../../app/studentTaskContent'
 import { getTaskLineHintSets } from '../../shared/lineHints'
+import { getInspectorConfig } from './inspector/config'
+import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
 
 export default function StudentWorkspace({
   lesson,
@@ -84,6 +86,19 @@ export default function StudentWorkspace({
       ? viewedIframeSrc
       : cs.iframeSrc
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
+  // HTML Inspector (task `inspector`): a forced-live viewer follows the broadcast's state.
+  const inspectorConfig = isSandbox || cs.inPersonalSandbox ? null : getInspectorConfig(task)
+  const previewInspector = inspectorConfig
+    ? isForcedTeacherLive
+      ? { config: inspectorConfig, live: cs.liveInspector ?? null }
+      : {
+          config: inspectorConfig,
+          onLiveChange: cs.publishInspector,
+          onUse: isViewingPrev ? undefined : cs.recordInspectorUse,
+        }
+    : null
+  // Live scrubbing of CSS and attribute values (task `scrub`, src/shared/scrub/).
+  const scrub = readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskScrub(task)
   const lineHintSetsFor =
     readOnly || isSandbox || cs.inPersonalSandbox
       ? undefined
@@ -156,6 +171,9 @@ export default function StudentWorkspace({
             storageAssets={htmlStorageAssets}
             errorLine={errorLine}
             lineHintSetsFor={lineHintSetsFor}
+            scrub={scrub}
+            onScrubPreview={cs.scrubPreview}
+            onScrubCommit={cs.recordScrub}
             onRunShortcut={
               readOnly || task?.interactionMode === 'submit' ? undefined : cs.handleRun
             }
@@ -166,6 +184,7 @@ export default function StudentWorkspace({
             <CollapsibleIframePreview
               src={previewSrc}
               iframeRef={cs.iframeRef}
+              inspector={previewInspector}
               fill
               collapsed={previewCollapsed}
               onToggle={isForcedTeacherLive ? undefined : () => setPreviewCollapsed((v) => !v)}
@@ -230,6 +249,9 @@ export default function StudentWorkspace({
               storageAssets={htmlStorageAssets}
               errorLine={errorLine}
               lineHintSetsFor={lineHintSetsFor}
+              scrub={scrub}
+              onScrubPreview={cs.scrubPreview}
+              onScrubCommit={cs.recordScrub}
               onRunShortcut={
                 readOnly || task?.interactionMode === 'submit' ? undefined : cs.handleRun
               }
@@ -240,6 +262,7 @@ export default function StudentWorkspace({
           <CollapsibleIframePreview
             src={previewSrc}
             iframeRef={cs.iframeRef}
+            inspector={previewInspector}
             fill
             collapsed={false}
             onToggle={isForcedTeacherLive ? undefined : () => setPreviewCollapsed(true)}

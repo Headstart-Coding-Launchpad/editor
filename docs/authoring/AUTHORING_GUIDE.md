@@ -28,14 +28,14 @@ node cli/cli.mjs lessons upsert lesson.yaml                 # accepts YAML or JS
 # verify code checks against named student-code examples (JSON or YAML cases file):
 node cli/cli.mjs lessons test-checks lesson.yaml --cases check-cases.yaml
 
-# verify Scratch block checks against each task's complete, starter and Complete stages (no cases file):
+# verify Scratch block checks against each task's complete, starter, Complete and Support stages (no cases file):
 node cli/cli.mjs lessons test-checks lesson.yaml
 
 # fetch an existing lesson as YAML:
 node cli/cli.mjs lessons get python-for-loops --format yaml
 ```
 
-`test-checks` runs named source-code examples through the same code-check evaluator used by LaunchPad and reports any feedback checks that match. Without `--cases` it verifies Scratch tasks instead, per check and per stage — see [Verifying Scratch checks](scratch.md#verifying-scratch-checks). For example, `check-cases.yaml` can be:
+`test-checks` runs named source-code examples through the same code-check evaluator used by LaunchPad and reports any feedback checks that match. Without `--cases` it verifies Scratch tasks instead, per check and per stage — see [Verifying Scratch checks](scratch.md#verifying-scratch-checks). Scratch tasks take cases too, as blocks or a stage plus edits — see [Testing student variations](scratch.md#testing-student-variations). For example, `check-cases.yaml` can be:
 
 ```yaml
 tasks:
@@ -48,7 +48,7 @@ tasks:
         completion: pass
 ```
 
-**Checks that need a run are skipped, not failed.** `test-checks` never runs code, so it only judges checks it can evaluate from the source (`code`, `code_structure` and their aliases). A check that needs a run — `output`, `output_not_empty`, `output_empty`, `output_line_count`, `code_no_error`, `run_attempted`, `variable_*`, Turtle and HTML element checks — and any check reading state a cases file can't supply (Filesystem, Desktop, Electronics circuit, `answer`) is reported per check as `result: skipped` with a `reason`, in `actual.checks` (completion) and `skippedFeedback` (feedback checks). The case's completion is then decided like this:
+**Checks that need a run are skipped, not failed.** `test-checks` never runs code, so it only judges checks it can evaluate from the source (`code`, `code_structure` and their aliases). A check that needs a run — `output`, `output_not_empty`, `output_empty`, `output_line_count`, `code_no_error`, `run_attempted`, `variable_*`, `variables_predicted`, the Python Stage's `stage_*` checks, Turtle and HTML element checks — and any check reading state a cases file can't supply (Filesystem, Desktop, Electronics circuit, `answer`) is reported per check as `result: skipped` with a `reason`, in `actual.checks` (completion) and `skippedFeedback` (feedback checks). The case's completion is then decided like this:
 
 | Completion checks | `actual.completion` |
 |---|---|
@@ -110,7 +110,10 @@ tasks:
     # taskType omitted = code task; use information or quiz for non-code tasks
     moduleType: python        # required on every code task in a new composed lesson
     sideQuests: []            # optional on code tasks — see Side-quests below
+    highlight: run            # optional on code tasks — pulse a control when the task opens
 ```
+
+**Highlighting a control.** `highlight` points a student at one control on their screen when the task opens (once per task): a ring pulses around it until they use it, or for 20 seconds. Use it when younger students keep missing a control they need. Targets: `run` and `stop` (Python, Turtle, Arcade, Electronics; HTML has `run` only), and on Scratch `green_flag`, `stop`, `costumes_tab`, `sounds_tab` and `category:<name>` (e.g. `category:Motion`, `category:My Blocks`). `highlight: { target: green_flag }` works too. If the control is on a hidden tab (a narrow screen's Stage tab, a collapsed stage), that tab or rail pulses instead. Tutors can pulse the same controls live from "Highlight Class" or a student's More menu. See [lesson-schema.md](lesson-schema.md) for the rules.
 
 **Line hints in starter code.** Instead of instructions in code comments, Python, Turtle and HTML starter code (and code stages) can carry marker lines that are shown beside the next line and never become part of the student's code: `#> Change the colour here` (Python, Turtle) or `<!--> Add a heading here -->` (HTML). See [python.md](python.md#line-hints) and [html.md](html.md#line-hints).
 
@@ -361,19 +364,53 @@ do meanwhile: up to three optional, **unchecked** mini tasks on that code task.
   says "🎉 You've finished! Try a side-quest" with a button per side-quest.
 - **Isolated:** each opens in place of the task in its own scratch editor of the task's module
   (Python, Turtle or HTML; Scratch later). It never changes the task's saved code and never feeds
-  `carryCodeFrom`. Its code is kept on the student's device for the session.
+  `carryCodeFrom`. Its code is kept on the student's device for the session, and a copy goes to
+  the tutor (see Tutor view).
 - **Unchecked:** no checks run. The student taps **✓ I've done it!**; that is recorded, never
   verified. When the teacher moves the class on, the side-quest closes and the student goes to the
   next task as normal.
-- **Teacher:** the student's card shows "🗺️ on side-quest 2/3 · ✓1" (status only, never the
-  side-quest's code). The session report lists each side-quest a student opened on each task
-  (opened, runs, error runs, done), and 🗺️ Side Quester is suggested after
-  `sideQuesterMinDone` (default 2) are marked done ([badges.md](badges.md)).
+- **Tutor view:** a **🗺️ Side-quests** panel under the task in the teacher's centre column lists
+  the current task's side-quests (title, kind, explainer, starter code), each with three counts:
+  **On it now**, **Done** (self-reported) and **Probably stuck**. Probably stuck means on it and
+  either the last 2 Runs in a row hit an error, or no Run for 5 minutes since the last Run (or
+  since opening it); a student who marked it done is never stuck. Click a count to list those
+  students, and a student to open their StudentModal on the side-quest. The student's card shows
+  "🗺️ on side-quest 2/3 · ✓1"; clicking it does the same. In the StudentModal, **Main task /
+  🗺️ Side-quest** switches between the two: the side-quest view shows its status (runs, errors,
+  done, stuck) and the student's side-quest code read-only, with the output, drawing or preview.
+  The code arrives on every Run, and live while the tutor has that student's modal open. The
+  session report lists each side-quest a student opened on each task (opened, runs, error runs,
+  done), and 🗺️ Side Quester is suggested after `sideQuesterMinDone` (default 2) are marked
+  done ([badges.md](badges.md)). A good explainer helps here too: it's what the tutor reads
+  first.
 - **Builder:** Task options → **Side-quests**.
 - Write side-quests that practise the task's concept (a small change, a bug to fix, a prediction,
   an earlier skill), never the next task's content: in lockstep the class meets that next.
 
 ---
+
+## Two-lesson projects (carry from an earlier lesson)
+
+A project that runs across two lessons (e.g. Lessons 11 and 12) can start each student from **their own** program from the first lesson, so their names, values and extensions carry on. Put the field on the task in the second lesson that should open with the student's earlier work:
+
+```yaml
+# Lesson 12 (python-1-12)
+tasks:
+  - title: Carry on building your game
+    starterCode: |   # used by anyone with nothing saved
+      score = 0
+    carryCodeFromLesson:
+      lesson: python-1-11   # the STOCK lesson id, never a class fork's id
+      task: 6               # the task id in that lesson whose saved work to use
+```
+
+- **Field:** `carryCodeFromLesson` on Python, Turtle and HTML tasks; `carryBlocksFromLesson` on Scratch tasks. Both are `{ lesson, task }`. HTML carries each of this task's `starterFiles` by filename, like `carryCodeFrom`.
+- **Where the work comes from:** the class roster. During a lesson the tutor matches each student to their name on the class list, and the tutor's screen saves each matched student's last Run or submission. The next lesson's tutor screen finds that saved work by the stock lesson and task ids, so a class fork of Lesson 12 finds what was saved in a class fork of Lesson 11. Nothing is read from the student's device.
+- **What students see:** a student who isn't matched yet sees "Waiting for your tutor to find your Lesson 11 work…" instead of the workspace (the task explainer stays). It opens on its own once the tutor matches them, or when the tutor chooses **Use the starter**.
+- **Falls back to the starter** when the student has nothing saved for that task, when the tutor chooses the starter, in a session with "No class", and always in solo study, the presentation window and the Builder preview (they never wait). A student who already has their own saved work for this task keeps it.
+- **Rules:** the field must be the task's own module's field, must name another lesson, and can't be combined with `carryCodeFrom` / `carryBlocksFrom` on the same task (use one or the other). `lessons publish` warns, without failing, when the named lesson or task can't be found or saves a different kind of work.
+- **Reports:** each student's outcome (`found`, `none`, `starter`, `no_class`) is in the session report as `crossLessonCarry`; see [session-reports.md](session-reports.md).
+- Give the task a sensible `starterCode` (or `starterFiles` / `starterBlocks`) anyway: it is what a new or absent student starts from.
 
 ## Task Groups
 

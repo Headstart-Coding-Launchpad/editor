@@ -1,5 +1,7 @@
 // Node-safe half of the Scratch module (see ../defineModule.js). UI lives in index.js.
 import { validateScratchSoundsAndTabs } from './scratchSounds.js'
+import { validateStartingBackdrop } from './startingBackdrop.js'
+import { validateScratchSlowMo } from './slowMo/config.js'
 import { defineModule } from '../defineModule.js'
 import { codeStagesField } from '../../shared/taskFields.js'
 import {
@@ -9,6 +11,7 @@ import {
   warnCompleteBlocks,
 } from '../moduleTaskValidation.js'
 import { evaluateScratchWorkWithoutRun, verifyScratchTask } from './checkVerification.js'
+import { evaluateScratchCheckCase } from './checkCases.js'
 import {
   identityFromStored,
   identityStored,
@@ -44,6 +47,8 @@ export default defineModule({
     pickerOrder: 4,
   },
   capabilities: {
+    // Saved to a matched student's class roster on Run / submission (src/shared/roster/).
+    rosterWork: 'blocks',
     // A classmate can help, attaching feedback to scripts (src/shared/peerHelp.js).
     peerHelp: { anchors: 'scripts', hints: 'blocks' },
     stageReveal: 'offer',
@@ -57,6 +62,31 @@ export default defineModule({
     focusPanes: [
       { id: 'blocks', label: 'Blocks' },
       { id: 'stage', label: 'Stage' },
+    ],
+    // Controls a tutor or a task's `highlight` field can pulse (src/shared/controlHighlight.js).
+    // `pane` is the compact-layout tab that holds each one; `category:<name>` points at a
+    // category heading in the block palette.
+    highlightTargets: [
+      { id: 'green_flag', label: 'Green flag', pane: 'stage', aliases: ['run'] },
+      { id: 'stop', label: 'Stop sign', pane: 'stage' },
+      { id: 'costumes_tab', label: 'Costumes tab', pane: 'blocks' },
+      { id: 'sounds_tab', label: 'Sounds tab', pane: 'blocks' },
+      {
+        id: 'category',
+        label: 'Block category',
+        pane: 'blocks',
+        options: [
+          'Motion',
+          'Looks',
+          'Sound',
+          'Events',
+          'Control',
+          'Sensing',
+          'Operators',
+          'Variables',
+          'My Blocks',
+        ],
+      },
     ],
     teacherEditor: { surface: 'blocks' },
     sideExplainer: true,
@@ -146,6 +176,18 @@ export default defineModule({
     { name: 'allowAddCostume', type: 'boolean' },
     { name: 'allowAddSound', type: 'boolean' },
     { name: 'carryBlocksFrom', type: 'string' },
+    {
+      name: 'carryBlocksFromLesson',
+      type: 'object',
+      description:
+        "{ lesson, task }: start from the student's own saved work on that task of an earlier lesson (stock ids; the tutor matches students to the class roster). Not with carryBlocksFrom.",
+    },
+    {
+      name: 'slowMo',
+      type: 'object',
+      description:
+        'Slow-mo controls under the stage: { enabled: true, speed: blocks per second (default 1, 0.25–4), timeline: [costume, backdrop, x, y, variables] }. Off unless enabled.',
+    },
   ],
   carryThroughField: 'carryBlocksFrom',
   completeField: 'completeBlocks',
@@ -323,10 +365,14 @@ export default defineModule({
     )
     warnCompleteBlocks(task, n, warnings)
     validateScratchSoundsAndTabs(task, n, errors, warnings)
+    validateStartingBackdrop(task, n, errors, warnings)
+    validateScratchSlowMo(task, n, errors, warnings)
   },
   hasStarterContent: (task) => !!task.starterBlocks,
   // `lessons test-checks` with no --cases: static block checks per stage (checkVerification.js).
   verifyTaskChecks: verifyScratchTask,
+  // `lessons test-checks --cases`: block variations (blocks, or a stage plus edits; checkCases.js).
+  testCheckCase: evaluateScratchCheckCase,
   hasCheckValue: anyCheckHasValue,
   // Builder only: the CLI has no XML parser, so the toolbox is checked where DOMParser exists.
   validateTaskInBrowser: (task, { n, errors }) => {

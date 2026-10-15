@@ -256,6 +256,20 @@ describe('handleRun — turtle result sync', () => {
     await actAsync(() => h.result.current.handleRun())
     expect(h.writers.writeStudentTurtleResult).toHaveBeenCalledTimes(1)
     expect(h.writers.writeStudentTurtleResult).toHaveBeenCalledWith(ANON, turtle)
+    // The picture plays a Run's drawing: it carries a runId (useTurtlePlayback.js).
+    expect(h.result.current.turtleResult).toEqual({ ...turtle, runId: expect.any(String) })
+  })
+
+  it('gives each Run a new runId, and a slow-mo run none (slow-mo plays it)', async () => {
+    const turtle = { state: { x: 0, y: 0, heading: 0 }, commands: [] }
+    mockModuleRun('turtle', printing('', 'success', { turtle }))
+    const h = renderStudentCodeState({ lesson: turtleLesson(), currentTaskId: 't1' })
+    await actAsync(() => h.result.current.handleRun())
+    const first = h.result.current.turtleResult.runId
+    await actAsync(() => h.result.current.handleRun())
+    expect(h.result.current.turtleResult.runId).toEqual(expect.any(String))
+    expect(h.result.current.turtleResult.runId).not.toBe(first)
+    await actAsync(() => h.result.current.handleRun({ slowMo: true }))
     expect(h.result.current.turtleResult).toEqual(turtle)
   })
 
@@ -264,6 +278,26 @@ describe('handleRun — turtle result sync', () => {
     const h = renderStudentCodeState({ lesson: pythonLesson(), currentTaskId: 't1' })
     await actAsync(() => h.result.current.handleRun())
     expect(h.writers.writeStudentTurtleResult).not.toHaveBeenCalled()
+  })
+})
+
+describe('handleRun — Python Stage result sync', () => {
+  it('writes the stage drawing after the run and keeps it in state', async () => {
+    const stage = { commands: [{ type: 'circle', x: 1, y: 2, r: 3, colour: '#ff0000' }] }
+    mockModuleRun('python', printing('hi\n', 'success', { stage }))
+    const h = renderStudentCodeState({ lesson: pythonLesson(), currentTaskId: 't1' })
+    await actAsync(() => h.result.current.handleRun())
+    expect(h.writers.writeStudentStageResult).toHaveBeenCalledTimes(1)
+    expect(h.writers.writeStudentStageResult).toHaveBeenCalledWith(ANON, stage)
+    expect(h.result.current.stageResult).toEqual(stage)
+  })
+
+  it('turtle never writes a stage result', async () => {
+    mockModuleRun('turtle', printing('hi\n', 'success', { turtle: { state: {}, commands: [] } }))
+    const h = renderStudentCodeState({ lesson: turtleLesson(), currentTaskId: 't1' })
+    await actAsync(() => h.result.current.handleRun())
+    expect(h.writers.writeStudentStageResult).not.toHaveBeenCalled()
+    expect(h.result.current.stageResult).toBe(null)
   })
 })
 

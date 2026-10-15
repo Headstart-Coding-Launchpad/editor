@@ -29,6 +29,12 @@ import {
 } from './taskUtils.js'
 import { isPlainObject } from './textUtils.js'
 import { validateSideQuests } from './sideQuests.js'
+import {
+  EXAMPLE_LANGUAGES,
+  findExampleFenceProblems,
+  MAX_LOGGED_EXAMPLES,
+} from './markdown/exampleFence.js'
+import { validateTaskHighlight } from './controlHighlight.js'
 import { validateDraftLessonStructure } from './draftLesson.js'
 import {
   getModuleCarrySourceIds,
@@ -37,6 +43,11 @@ import {
   validateComposedStructure,
 } from './composedLesson.js'
 import { CARRY_THROUGH_FIELDS, getModuleDefinition } from '../modules/definitions.js'
+import {
+  CROSS_LESSON_CARRY_FIELDS,
+  crossLessonCarryField,
+  normaliseCarrySpec,
+} from './roster/crossLessonCarry.js'
 import {
   codeCheckHasValue,
   collectFeedbackChecks,
@@ -210,6 +221,31 @@ function validateFeedbackBasics(task, n, errors, warnings) {
   })
 }
 
+// "See example" fences in the explainer (./markdown/exampleFence.js). Warnings only: a bad one
+// still renders (as plain code, or with no code).
+function validateExampleFences(task, n, warnings) {
+  if (typeof task.explainer !== 'string') return
+  for (const { number, problem, detail } of findExampleFenceProblems(task.explainer)) {
+    if (problem === 'empty') {
+      warnings.push(`Task ${n} explainer example ${number} has no code`)
+    } else if (problem === 'unknown-language') {
+      warnings.push(
+        `Task ${n} explainer example ${number} language "${detail}" is not one of: ${EXAMPLE_LANGUAGES.join(', ')}`
+      )
+    } else if (problem === 'unknown-option') {
+      warnings.push(
+        `Task ${n} explainer example ${number} has unrecognised words after its language: ${detail}`
+      )
+    } else if (problem === 'unclosed') {
+      warnings.push(`Task ${n} explainer example ${number} has no closing fence`)
+    } else if (problem === 'too-many') {
+      warnings.push(
+        `Task ${n} explainer has more than ${MAX_LOGGED_EXAMPLES} examples; opens of the rest are not recorded`
+      )
+    }
+  }
+}
+
 function validateActivityTask(task, n, lesson, errors, warnings) {
   const activity = getTaskActivity(task)
   const result = activity?.validateTask(task, { n, lesson }) ?? {}
@@ -222,6 +258,42 @@ function taskHasStarter(task, { kind, legacy, definition }) {
   if (legacy) return !!legacy.hasStarter(task)
   if (!definition) return filesStarterPresent(task)
   return definition.hasStarterContent ? !!definition.hasStarterContent(task) : true
+}
+
+// Cross-lesson carry (`carryCodeFromLesson` / `carryBlocksFromLesson`: { lesson, task }; see
+// src/shared/roster/crossLessonCarry.js). The field must be the task's own module's (its
+// carryThroughField + 'Lesson', on modules that save roster work), name another lesson, and not
+// be combined with in-lesson carry. Whether the source lesson and task exist needs Firestore:
+// the CLI's publish checks that softly (crossLessonCarrySourceWarnings).
+function validateCrossLessonCarry(task, { n, lesson, kind, definition, errors }) {
+  const ownField = kind === 'module' ? crossLessonCarryField(definition) : null
+  for (const field of CROSS_LESSON_CARRY_FIELDS) {
+    const value = task[field]
+    if (value == null) continue
+    if (field !== ownField) {
+      if (ownField) errors.push(`Task ${n} ${field} is not supported on this task; use ${ownField}`)
+      else errors.push(`Task ${n} ${field} is not supported on this task type`)
+      continue
+    }
+    const spec = normaliseCarrySpec(value)
+    if (!spec) {
+      errors.push(
+        `Task ${n} ${field} must be { lesson, task }: the earlier lesson's id and one of its task ids`
+      )
+      continue
+    }
+    const extra = Object.keys(value).filter((key) => key !== 'lesson' && key !== 'task')
+    if (extra.length) errors.push(`Task ${n} ${field} has unknown fields: ${extra.join(', ')}`)
+    const ownLessonIds = [lesson?.id, lesson?.fork?.sourceLessonId].filter(Boolean)
+    if (ownLessonIds.includes(spec.lesson)) {
+      errors.push(
+        `Task ${n} ${field} names this lesson; use ${definition.carryThroughField} to carry within a lesson`
+      )
+    }
+    if (task[definition.carryThroughField] != null) {
+      errors.push(`Task ${n} cannot use both ${field} and ${definition.carryThroughField}`)
+    }
+  }
 }
 
 /**
@@ -266,6 +338,55 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
   if (task.showBlocks != null && typeof task.showBlocks !== 'boolean') {
     errors.push(`Task ${n} showBlocks must be true or false`)
   }
+  // showVariables: the name-tag panel (src/shared/variablesPanel/), on the modules that declare
+  // it as a task field (python, turtle); their validateTask checks its shape.
+  if (
+    task.showVariables != null &&
+    !definition?.taskFields?.some((field) => field.name === 'showVariables')
+  ) {
+    warnings.push(
+      `Task ${n} has showVariables, but the name-tag panel only works in Python and Turtle tasks — it is ignored`
+    )
+  }
+  // stageTarget: the Python Stage's target drawing (src/shared/stage/), on the module that
+  // declares it as a task field (python); its validateTask checks the shape.
+  if (
+    task.stageTarget != null &&
+    !definition?.taskFields?.some((field) => field.name === 'stageTarget')
+  ) {
+    warnings.push(
+      `Task ${n} has stageTarget, but the Stage only works in Python tasks — it is ignored`
+    )
+  }
+
+  // scrub: live number / colour scrubbing in the code editor (src/shared/scrub/), on the modules
+  // that declare it as a task field (python, turtle, html); their validateTask checks the shape.
+  if (task.scrub != null && !definition?.taskFields?.some((field) => field.name === 'scrub')) {
+    warnings.push(
+      `Task ${n} has scrub, but scrubbing only works in Python, Turtle and HTML tasks — it is ignored`
+    )
+  }
+
+  // Hidden setup and puzzle rules (src/shared/puzzle/), on the modules that declare them as task
+  // fields (python, turtle); their validateTask checks the shapes.
+  for (const field of ['setupCode', 'setupNote', 'puzzle']) {
+    if (task[field] != null && !definition?.taskFields?.some((spec) => spec.name === field)) {
+      warnings.push(
+        `Task ${n} has ${field}, but it only works in Python and Turtle tasks — it is ignored`
+      )
+    }
+  }
+  // layout: the result pane's first tab (src/shared/resultPane/), on code tasks of the modules
+  // that declare it (python, turtle). Activities use their own `layout` (e.g. the keyboard's).
+  if (
+    kind === 'module' &&
+    task.layout != null &&
+    !definition?.taskFields?.some((spec) => spec.name === 'layout')
+  ) {
+    warnings.push(
+      `Task ${n} has layout, but it only works in Python and Turtle tasks — it is ignored`
+    )
+  }
 
   // peerHints: extra preset hints for peer help (src/shared/peerHelp.js). They reach a student
   // without the teacher checking each one, so they are authored text only, short, and few.
@@ -286,6 +407,17 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
 
   // sideQuests: optional, unchecked extras for students who passed the task (./sideQuests.js).
   validateSideQuests(task, { n, moduleType, isCodeTask: kind === 'module' }, errors, warnings)
+  // highlight: a control to pulse when the task opens (./controlHighlight.js), checked against
+  // the task's effective module.
+  validateTaskHighlight(task, { n, moduleType, isModuleTask: kind === 'module' }, errors, warnings)
+
+  // inspector: the HTML Inspector (src/modules/html/inspector); the html module validates its shape.
+  if (
+    task.inspector != null &&
+    !(kind === 'module' && getModuleDefinition(moduleType)?.capabilities.previewInspector)
+  ) {
+    warnings.push(`Task ${n} inspector only works on html tasks; it is ignored here`)
+  }
 
   // taskActivity names a Lesson Format Glossary pattern (src/shared/taskActivity.js); badges read
   // it, so an unrecognised one is worth a warning (never an error: it's free text).
@@ -295,6 +427,7 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
     )
   }
   validateBadgeHints(task, n, errors, warnings)
+  validateExampleFences(task, n, warnings)
 
   // Drafts deliberately allow missing task-specific authoring fields; the schema/type checks
   // above (and validateDraftLessonStructure) still run so the Builder can load them safely.
@@ -321,6 +454,8 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
     definition?.validateTask(task, { n, lesson, errors, warnings })
     validateRegisteredChecks(task, n, errors, { moduleDefinition: definition, warnings })
   }
+
+  validateCrossLessonCarry(task, { n, lesson, kind, definition, errors })
 
   if (kind === 'module') {
     const carryField = definition?.carryThroughField ?? 'carryCodeFrom'

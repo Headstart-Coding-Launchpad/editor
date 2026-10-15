@@ -1,6 +1,6 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import StudentWorkspace from '../StudentWorkspace'
 
 vi.mock('../PythonEditor', () => ({
@@ -15,6 +15,16 @@ vi.mock('../../../app/components/OutputPanel', () => ({
 }))
 vi.mock('../../../app/components/CopyCodePanel', () => ({
   default: () => <div>copy-code-panel</div>,
+}))
+// The layout comes from the workspace's measured size, which jsdom never has: the tests pick
+// it (side by side unless a test says otherwise, like an unmeasured workspace).
+const layoutState = vi.hoisted(() => ({ layout: null }))
+vi.mock('../../../shared/resultPane/useWorkspaceLayout.js', () => ({
+  useWorkspaceLayout: ({ isMobile }) => ({
+    ref: () => {},
+    layout: layoutState.layout ?? (isMobile ? 'below' : 'side'),
+    inset: 0,
+  }),
 }))
 
 const cs = {
@@ -249,5 +259,207 @@ describe('Python StudentWorkspace in a teacher-started sandbox', () => {
     expect(screen.queryByText('copy-code-panel')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('Run'))
     expect(outputPanelSpy).toHaveBeenLastCalledWith(expect.objectContaining({ hasCheck: false }))
+  })
+})
+
+describe('Python StudentWorkspace result tabs on smaller screens (P6-12)', () => {
+  afterEach(() => {
+    layoutState.layout = null
+  })
+
+  const CIRCLE = { type: 'circle', x: 200, y: 200, r: 40, colour: '#ff0000' }
+
+  function renderWorkspace(props = {}, csOverrides = {}) {
+    const ownCs = { ...cs, variablesPanel: null, stageResult: null, ...csOverrides }
+    const utils = render(
+      <StudentWorkspace
+        task={{ id: 't1' }}
+        cs={ownCs}
+        lessonId="lesson-1"
+        identityId="student-1"
+        viewingTaskId={null}
+        isSandbox={false}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isMobile={false}
+        isTeacherEditing={false}
+        teacherLiveCode=""
+        {...props}
+      />
+    )
+    return { ...utils, cs: ownCs }
+  }
+
+  it('keeps everything side by side on a wide screen (no tabs)', () => {
+    renderWorkspace({ task: { id: 't1', showVariables: { mode: 'view' } } })
+    expect(screen.queryByRole('tablist', { name: 'Result panes' })).toBeNull()
+  })
+
+  it('opens predict mode on the Tags tab beside the editor, and reports the visible panes', () => {
+    layoutState.layout = 'tabs'
+    const onVisiblePanesChange = vi.fn()
+    renderWorkspace({
+      task: { id: 't1', showVariables: { mode: 'predict', predict: ['size'] } },
+      onVisiblePanesChange,
+    })
+    expect(screen.getByText('python-editor')).toBeVisible()
+    expect(screen.getByRole('tab', { name: 'Tags' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByRole('tab', { name: 'Picture' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Console' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Variables' })).toBeVisible()
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code', 'tags'])
+  })
+
+  it("offers a Picture tab when the code imports stage, and an author's firstPane picks the first tab", () => {
+    layoutState.layout = 'tabs'
+    renderWorkspace(
+      { task: { id: 't1', layout: { firstPane: 'picture' } } },
+      { code: 'from stage import *\ncircle(40)\n' }
+    )
+    expect(screen.getByRole('tab', { name: 'Picture' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByTestId('stage-pane')).toBeVisible()
+  })
+
+  it('switches to the Picture after a Run that drew, with a badge for the hidden Console', () => {
+    layoutState.layout = 'tabs'
+    const task = { id: 't1' }
+    const code = 'from stage import *\ncircle(40)\nprint("hi")\n'
+    const { rerender, cs: ownCs } = renderWorkspace({ task }, { code })
+    // The output side starts folded away (no name tags, no target); Run opens it.
+    fireEvent.click(screen.getByText('Run'))
+    expect(screen.getByRole('tab', { name: 'Console' })).toHaveAttribute('aria-selected', 'true')
+
+    const props = {
+      task,
+      lessonId: 'lesson-1',
+      identityId: 'student-1',
+      viewingTaskId: null,
+      isSandbox: false,
+      isViewingPrev: false,
+      isForcedTeacherLive: false,
+      isMobile: false,
+      isTeacherEditing: false,
+      teacherLiveCode: '',
+    }
+    rerender(<StudentWorkspace {...props} cs={{ ...ownCs, running: true }} />)
+    rerender(
+      <StudentWorkspace
+        {...props}
+        cs={{ ...ownCs, running: false, output: 'hi\n', stageResult: { commands: [CIRCLE] } }}
+      />
+    )
+    expect(screen.getByRole('tab', { name: 'Picture' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Console, 1 new line in the Console' })).toBeVisible()
+    expect(screen.getByText('Picture updated. 1 new line in the Console')).toBeInTheDocument()
+  })
+
+  it('puts the collapse button at the end of the tab strip', () => {
+    layoutState.layout = 'tabs'
+    cs.publishOutputCollapsed.mockClear()
+    renderWorkspace({ task: { id: 't1', showVariables: { mode: 'view' } } })
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse Output' }))
+    expect(cs.publishOutputCollapsed).toHaveBeenCalledWith(true)
+    expect(screen.getByRole('button', { name: 'Show Output' })).toBeInTheDocument()
+  })
+
+  it('stacks the editor above the tabs on portrait screens and phones', () => {
+    const { container } = renderWorkspace({
+      task: { id: 't1', showVariables: { mode: 'target', target: { size: 3 } } },
+      isMobile: true,
+    })
+    expect(container.querySelector('[data-layout="below"]')).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tags' })).toHaveAttribute('aria-selected', 'true')
+  })
+})
+
+describe('Python StudentWorkspace hosting a Stage Code Arrange board (P6-15)', () => {
+  afterEach(() => {
+    layoutState.layout = null
+  })
+
+  function renderArrange(props = {}) {
+    const ownCs = { ...cs, variablesPanel: null, stageResult: null, handleRun: vi.fn() }
+    render(
+      <StudentWorkspace
+        task={{ id: 't1' }}
+        cs={ownCs}
+        isSandbox={false}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isMobile={false}
+        isTeacherEditing={false}
+        arrangeBoard={({ onRun }) => (
+          <button type="button" onClick={onRun}>
+            board-run
+          </button>
+        )}
+        {...props}
+      />
+    )
+    return ownCs
+  }
+
+  it("puts the board in the editor's place and shows the Stage and console from the start", () => {
+    const ownCs = renderArrange()
+    expect(screen.queryByText('python-editor')).not.toBeInTheDocument()
+    expect(screen.queryByText('Reset Code')).not.toBeInTheDocument()
+    expect(screen.getByTestId('stage-pane')).toBeInTheDocument()
+    expect(screen.getByText('output-panel')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('board-run'))
+    expect(ownCs.handleRun).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers the Picture tab before the assembled code exists, on smaller screens', () => {
+    layoutState.layout = 'tabs'
+    renderArrange()
+    expect(screen.getByRole('tab', { name: 'Picture' })).toBeInTheDocument()
+    expect(screen.getByText('board-run')).toBeInTheDocument()
+  })
+})
+
+describe("Python StudentWorkspace predict mode's Run lock (P6-18)", () => {
+  const lock = { message: 'Fill in your predictions first', missing: ['coins'] }
+  const task = { id: 1, showVariables: { mode: 'predict', predict: ['coins'] } }
+
+  it('disables Run with the reason in words, and the run shortcut does nothing', () => {
+    const handleRun = vi.fn()
+    render(
+      <StudentWorkspace
+        task={task}
+        cs={{ ...cs, handleRun, predictRunLock: lock }}
+        isMobile={false}
+      />
+    )
+    const run = screen.getByRole('button', { name: 'Run' })
+    expect(run).toBeDisabled()
+    expect(run).toHaveAttribute('title', 'Fill in your predictions first')
+    expect(run).toHaveAccessibleDescription(/Fill in your predictions first/)
+    expect(document.getElementById('predict-run-lock-note')).toHaveTextContent(
+      'Fill in your predictions first'
+    )
+    fireEvent.click(run)
+    expect(handleRun).not.toHaveBeenCalled()
+  })
+
+  it('runs as normal once the lock lifts, and never locks a read-only view', () => {
+    const handleRun = vi.fn()
+    const { rerender } = render(
+      <StudentWorkspace
+        task={task}
+        cs={{ ...cs, handleRun, predictRunLock: null }}
+        isMobile={false}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Run' }))
+    expect(handleRun).toHaveBeenCalledTimes(1)
+    rerender(
+      <StudentWorkspace
+        task={task}
+        cs={{ ...cs, handleRun, predictRunLock: lock }}
+        isMobile={false}
+        isForcedTeacherLive
+      />
+    )
+    expect(screen.queryByText('Fill in your predictions first')).toBeNull()
   })
 })

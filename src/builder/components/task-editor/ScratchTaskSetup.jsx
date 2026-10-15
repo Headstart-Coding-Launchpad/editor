@@ -18,6 +18,7 @@ import {
   VariableManager,
   PrebuiltStacksEditor,
 } from '../../../modules/scratch/scratchEditors'
+import SlowMoField from '../../../modules/scratch/slowMo/SlowMoField'
 
 // A checked-subset picker for the two "student additions" library restrictions
 // (`addSpritePresetIds` / `addBackdropPresetIds`). No checks = the author is offering the
@@ -691,6 +692,7 @@ export default function ScratchTaskSetup({ task, lesson, onUpdate, checkResult, 
                           decorative — they never satisfy a check that targets an author-known
                           sprite or variable name.
                         </p>
+                        <SlowMoField task={task} onUpdate={onUpdate} />
                       </div>
                     )}
                   </div>

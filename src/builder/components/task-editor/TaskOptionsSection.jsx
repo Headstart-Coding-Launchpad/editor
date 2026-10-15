@@ -7,6 +7,14 @@ import { getLessonModule } from '../../../modules/registry'
 import { canTaskAllowSharing } from '../../../shared/taskUtils'
 import { supportsSideQuests } from '../../../shared/sideQuests'
 import SideQuestsEditor from './SideQuestsEditor'
+import CrossLessonCarryField from './CrossLessonCarryField'
+import {
+  listHighlightTargets,
+  moduleHasHighlightTargets,
+  resolveHighlightTarget,
+} from '../../../shared/controlHighlight'
+import InspectorField from './InspectorField'
+import { getModuleDefinition } from '../../../modules/definitions'
 
 export default function TaskOptionsSection({
   task,
@@ -31,6 +39,7 @@ export default function TaskOptionsSection({
   const summaryParts = []
   if (task.check) summaryParts.push('check enabled')
   if (task.interactionMode === 'submit') summaryParts.push('submit mode')
+  if (task.inspector?.enabled) summaryParts.push('inspector')
   if (task.sideQuests?.length) {
     summaryParts.push(
       `${task.sideQuests.length} side-quest${task.sideQuests.length === 1 ? '' : 's'}`
@@ -64,6 +73,8 @@ export default function TaskOptionsSection({
             onUpdate={onUpdate}
             lessonMod={lessonMod}
           />
+
+          <CrossLessonCarryField task={task} lesson={lesson} onUpdate={onUpdate} />
 
           {lessonMod?.supportsInteractionMode && (
             <Field label="Student interaction">
@@ -193,6 +204,32 @@ export default function TaskOptionsSection({
                 </span>
               </label>
             </Field>
+          )}
+
+          {moduleHasHighlightTargets(lesson.type) && (
+            <Field label="Highlight a control" hint="pulses when the task opens">
+              <select
+                className="te-select"
+                aria-label="Highlight a control"
+                value={resolveHighlightTarget(lesson.type, task.highlight)?.id ?? ''}
+                onChange={(e) => set('highlight', e.target.value || undefined)}
+              >
+                <option value="">None</option>
+                {listHighlightTargets(lesson.type).map((target) => (
+                  <option key={target.id} value={target.id}>
+                    {target.group ? `${target.group}: ${target.label}` : target.label}
+                  </option>
+                ))}
+              </select>
+              <p className="te-option-note">
+                Pulses this control once on each student&apos;s screen when they open the task,
+                until they use it (or 20 seconds). Tutors can also highlight controls live.
+              </p>
+            </Field>
+          )}
+
+          {getModuleDefinition(lesson.type)?.capabilities.previewInspector && (
+            <InspectorField task={task} onUpdate={onUpdate} />
           )}
 
           {supportsSideQuests(lesson.type) && (

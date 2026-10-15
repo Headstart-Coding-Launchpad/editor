@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useRef } from 'react'
 import PythonEditor from '../python/PythonEditor'
 import { taskShowsBlocks } from '../../shared/blockGuides'
+import { getTaskLockSets } from '../../shared/lockedLines'
 import SplitPane from '../../shared/SplitPane'
 import { drawTurtleCommands, sizeCanvasToDisplay } from './draw.js'
 import { createTurtleState } from './engine.js'
+import { describeTurtleDrawing } from './describe.js'
+import { hasTaskCourse } from './course.js'
+import CoursePicture from './CoursePicture.jsx'
+import { getPeekBand, panelRunForTask } from '../../shared/variablesPanel/variablesPanel.js'
 
 const DEFAULT_TURTLE_STATE = createTurtleState()
 
@@ -22,6 +27,12 @@ export default function TeacherLiveView({
   onChange,
   onActivity,
   lineHints = null,
+  // Lock sets for the shown code; defaults to the task's own (src/shared/lockedLines.js).
+  lockedLines,
+  isInSandbox = false,
+  // The #@peek "stopped here" band (src/shared/peekBandEditor.js); worked out from the task,
+  // the code and the student's synced run when not given.
+  peekBand,
 }) {
   const canvasRef = useRef(null)
   const turtleResult = student?.currentTurtleResult ?? null
@@ -56,14 +67,39 @@ export default function TeacherLiveView({
         onChange={onChange}
         onActivity={onActivity}
         lineHints={lineHints}
+        lockedLines={isInSandbox ? null : (lockedLines ?? getTaskLockSets(task))}
+        peekBand={
+          peekBand !== undefined
+            ? peekBand
+            : isInSandbox
+              ? null
+              : getPeekBand(
+                  task,
+                  displayState ?? '',
+                  student
+                    ? panelRunForTask(task, { synced: student.currentVariables ?? null })
+                    : null
+                )
+        }
         pyodideStatus="ready"
       />
     </div>
   )
 
-  const canvas = (
+  // A course task (task.course) shows the student's last run on its map(s), finished.
+  const canvas = hasTaskCourse(task) ? (
     <div style={s.canvasWrap}>
-      <canvas ref={canvasRef} style={s.canvas} />
+      <CoursePicture task={task} code={displayState ?? ''} result={turtleResult} animate={false} />
+    </div>
+  ) : (
+    <div style={s.canvasWrap}>
+      {/* A watching tutor sees the finished drawing (no playback). */}
+      <canvas
+        ref={canvasRef}
+        style={s.canvas}
+        role="img"
+        aria-label={describeTurtleDrawing({ commands, state: turtleState })}
+      />
     </div>
   )
 

@@ -1,7 +1,20 @@
 import React, { useState, useEffect } from 'react'
+import { exampleOpenCount } from '../../shared/exampleOpens'
+import {
+  currentTypingScore,
+  formatTypingHistoryChip,
+  taskHistoryMode,
+  typingHistoryForMode,
+} from '../../shared/typingHistory'
 import { findTaskById, deriveTaskContext } from '../../shared/taskUtils'
+import { variablesCardSummary } from '../../shared/variablesPanel/predictions.js'
+import NameTagCardStrip from '../../shared/variablesPanel/NameTagCardStrip.jsx'
+import StagePane from '../../shared/stage/StagePane.jsx'
+import { readStageResult } from '../../shared/stage/sync.js'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
+import { puzzleCardNote } from '../../shared/puzzle/puzzle.js'
 import { getModuleDefinition } from '../../modules/definitions'
+import { courseCardChip } from '../../modules/turtle/courseRun.js'
 import PresenceBadge from './PresenceBadge'
 import { formatTimeAgo } from '../../shared/timeAgo'
 import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
@@ -35,6 +48,8 @@ const VISIBLE_PANE_LABELS = {
   breadboard: 'Breadboard',
   code: 'Code',
   console: 'Console',
+  // Python / Turtle result tabs on smaller screens (src/shared/resultPane/).
+  tags: 'Tags',
   sprites: 'Sprites',
   tilemaps: 'Tilemaps',
   running: 'Running',
@@ -83,7 +98,20 @@ export default function StudentCard({
   selectMode = false,
   selected = false,
   onToggleSelect,
+  // (anonymousId): opens the StudentModal on their side-quest; the 🗺️ activity becomes a button.
+  onOpenSideQuest = null,
+  // Tutor-only class roster: the name this student is matched to (shown on hover), whether the
+  // session has a class roster this student isn't matched to yet (a small 👥? marker), and the
+  // Match students opener the marker calls.
+  rosterName = null,
+  rosterUnmatched = false,
+  // Held on a cross-lesson carry task until their earlier-lesson work is found (⏳ marker).
+  carryWaiting = false,
+  onOpenRoster = null,
 }) {
+  // The 🗺️ "on side-quest" activity opens their side-quest (not in multi-select).
+  const opensSideQuest = (activity) =>
+    activity?.kind === 'side_quest' && !!onOpenSideQuest && !selectMode
   const [editing, setEditing] = useState(false)
   const [nameValue, setNameValue] = useState(student.displayName)
   const [isActive, setIsActive] = useState(false)
@@ -114,6 +142,8 @@ export default function StudentCard({
   }
 
   const currentTask = findTaskById(lesson?.tasks, session?.currentTaskId)
+  // The name-tag panel (showVariables) on a predict / target task: predictions or targets hit.
+  const variablesSummary = variablesCardSummary(currentTask, student.currentVariables)
   const isSubmitMode = currentTask?.interactionMode === 'submit'
   // Composed lessons carry `type: 'composed'`, so the module flags have to come from the
   // task's own moduleType — deriveTaskContext reads lesson.type directly. StudentModal
@@ -139,12 +169,26 @@ export default function StudentCard({
     Array.isArray(student.visiblePanes) &&
     student.visiblePanes.length > 0
   const activityUi = isActivity ? getTaskActivityUi(currentTask) : null
+  // Turtle course mode (task.course): the last run's outcome — "Reached goal", "Crashed" or
+  // "2/3 maps" (only for a run of this task).
+  const courseChip = isSessionSandbox
+    ? null
+    : courseCardChip(currentTask, student.currentTurtleResult)
   const activitySummary =
     isActivity && !activityUi?.CardSummary
       ? summarizeActivityAnswer(currentTask, student.currentAnswer)
       : null
   const activityState = isActivity ? readActivityAnswer(currentTask, student.currentAnswer) : null
   const activitySubmitted = isActivity && student.lastRunStatus === 'submitted'
+  // Typing history (src/shared/typingHistory.js): a matched student's last and best scores from
+  // earlier lessons on a keyboard typing task, beside this session's score so far.
+  const typingHistory = isActivity
+    ? typingHistoryForMode(
+        session?.typingHistory?.[student.anonymousId],
+        taskHistoryMode(currentTask)
+      )
+    : null
+  const typingNow = typingHistory ? currentTypingScore(currentTask, activityState) : null
   // The answer the student is typing but has not submitted (short answer, typed gaps), for this
   // task only (src/shared/answerDrafts.js). Never counted as an answer.
   const draftText = isActivity ? readAnswerDraft(student, currentTask?.id) : null
@@ -153,6 +197,8 @@ export default function StudentCard({
   // file tree changed (filesystem); anything else gets the generic "HTML project" line.
   const cardSummary = getModuleDefinition(moduleType)?.capabilities.cardSummary ?? null
   const hasConsoleOutput = cardSummary === 'output'
+  // The Python Stage drawing of the last run (currentStageResult): a thumbnail beside the output.
+  const cardStage = hasConsoleOutput ? readStageResult(student.currentStageResult) : null
   const itemProgress = isSessionSandbox ? null : getTaskItemProgress(currentTask, student)
   // Tiles the tutor highlighted on this student's board that are still where they were.
   const tileHighlightCount = isSessionSandbox
@@ -199,6 +245,8 @@ export default function StudentCard({
   const supportRevealCount = Object.keys(
     session?.supportRevealLog?.[student.anonymousId]?.[currentTask?.id] ?? {}
   ).length
+  // "See example" fences opened in this task's explainer (src/shared/exampleOpens.js).
+  const examplesOpened = exampleOpenCount(session, student.anonymousId, currentTask?.id)
   const checkPassed =
     hasCheck &&
     (hasActiveOverride ? student.checkOverridePassed === true : student.checkPassed === true)
@@ -212,6 +260,10 @@ export default function StudentCard({
     (hasActiveOverride
       ? student.checkOverridePassed === false
       : checkAttempted && student.checkPassed !== true)
+  // Puzzle rules (task `puzzle`, src/shared/puzzle/): "Solved at par" / "Over line limit".
+  const puzzleNote = isSessionSandbox
+    ? null
+    : puzzleCardNote(currentTask, student.currentCode, checkPassed)
   const checkCardStyle = student.needsHelp
     ? s.cardNeedsHelp
     : checkPassed
@@ -305,8 +357,63 @@ export default function StudentCard({
               />
             </form>
           ) : (
-            <span style={s.name} title={student.displayName}>
+            <span
+              style={s.name}
+              title={
+                rosterName
+                  ? `${student.displayName} — class list: ${rosterName}`
+                  : student.displayName
+              }
+            >
               {student.displayName}
+            </span>
+          )}
+          {/* Teacher-only: not matched to the class list, so their work isn't being saved. */}
+          {rosterUnmatched && (
+            <span
+              style={s.rosterUnmatched}
+              role={onOpenRoster ? 'button' : 'img'}
+              tabIndex={onOpenRoster ? 0 : undefined}
+              title="Not matched to the class list yet: their work isn't being saved"
+              aria-label="Not matched to the class list"
+              data-testid="roster-unmatched"
+              onClick={(event) => {
+                if (!onOpenRoster) return
+                event.stopPropagation()
+                onOpenRoster()
+              }}
+              onKeyDown={(event) => {
+                if (!onOpenRoster || (event.key !== 'Enter' && event.key !== ' ')) return
+                event.preventDefault()
+                event.stopPropagation()
+                onOpenRoster()
+              }}
+            >
+              👥?
+            </span>
+          )}
+          {/* Teacher-only: their task is held until their earlier-lesson work is found. */}
+          {carryWaiting && (
+            <span
+              style={s.rosterUnmatched}
+              role={onOpenRoster ? 'button' : 'img'}
+              tabIndex={onOpenRoster ? 0 : undefined}
+              title="Waiting for their work from an earlier lesson: match them to the class list, or use the starter"
+              aria-label="Waiting for their earlier lesson work"
+              data-testid="carry-waiting"
+              onClick={(event) => {
+                if (!onOpenRoster) return
+                event.stopPropagation()
+                onOpenRoster()
+              }}
+              onKeyDown={(event) => {
+                if (!onOpenRoster || (event.key !== 'Enter' && event.key !== ' ')) return
+                event.preventDefault()
+                event.stopPropagation()
+                onOpenRoster()
+              }}
+            >
+              ⏳
             </span>
           )}
           {/* Teacher-only: StudentCard is only ever rendered in the teacher's grid. */}
@@ -403,6 +510,30 @@ export default function StudentCard({
               style={s.checkBadgePasted}
             />
           )}
+          {variablesSummary && (
+            <IconChip
+              icon="🏷️"
+              label={variablesSummary.label}
+              title={variablesSummary.title}
+              style={s.checkBadgeFullscreen}
+            />
+          )}
+          {courseChip && (
+            <span
+              style={{
+                ...s.checkBadge,
+                ...(courseChip.tone === 'good'
+                  ? s.checkBadgePassed
+                  : courseChip.tone === 'bad'
+                    ? s.checkBadgeFailed
+                    : s.checkBadgeFullscreen),
+              }}
+              title={courseChip.title}
+              data-testid="course-chip"
+            >
+              <span aria-hidden="true">{courseChip.icon}</span> {courseChip.label}
+            </span>
+          )}
           {student.isFullscreen && (
             <IconChip
               icon="⛶"
@@ -425,6 +556,18 @@ export default function StudentCard({
               title="Completion check passed"
               style={s.checkBadgePassed}
             />
+          )}
+          {puzzleNote && (
+            <span
+              style={{
+                ...s.checkBadge,
+                ...(puzzleNote === 'Solved at par' ? s.checkBadgePar : s.checkBadgeOverLimit),
+              }}
+              data-testid="puzzle-note"
+            >
+              {puzzleNote === 'Solved at par' && <span aria-hidden="true">⭐</span>}
+              {puzzleNote}
+            </span>
           )}
           {checkFailed && (
             <IconChip
@@ -491,6 +634,15 @@ export default function StudentCard({
               style={s.checkBadgeSupport}
             />
           )}
+          {examplesOpened > 0 && (
+            <IconChip
+              icon="🔍"
+              label="Opened example"
+              title={`Opened ${examplesOpened > 1 ? `${examplesOpened} worked examples` : 'the worked example'} in the explainer`}
+              style={s.checkBadgeSupport}
+              testId="card-example-opened"
+            />
+          )}
           {showsVisiblePanes && (
             <IconChip
               icon="🪟"
@@ -527,20 +679,52 @@ export default function StudentCard({
             </span>
           )}
           {/* Anything else they're doing, after the "Now:" one below. */}
-          {activities.slice(1).map((activity) => (
-            <IconChip
-              key={activity.kind}
-              icon={activity.icon}
-              label={activity.title}
-              style={s.checkBadgeShare}
-            />
-          ))}
+          {activities.slice(1).map((activity) =>
+            opensSideQuest(activity) ? (
+              <button
+                key={activity.kind}
+                type="button"
+                style={{ ...s.checkBadge, ...s.iconChip, ...s.checkBadgeShare, ...s.chipButton }}
+                title={`${activity.title}. Click to see their side-quest.`}
+                aria-label={`${activity.title}. See their side-quest`}
+                data-testid="card-side-quest-chip"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onOpenSideQuest(student.anonymousId)
+                }}
+              >
+                {activity.icon}
+              </button>
+            ) : (
+              <IconChip
+                key={activity.kind}
+                icon={activity.icon}
+                label={activity.title}
+                style={s.checkBadgeShare}
+              />
+            )
+          )}
         </div>
-        {activities[0] && (
-          <div style={s.nowLine} title={activities[0].title} data-testid="card-now">
-            <span style={s.nowLabel}>Now:</span> {activities[0].icon} {activities[0].text}
-          </div>
-        )}
+        {activities[0] &&
+          (opensSideQuest(activities[0]) ? (
+            <button
+              type="button"
+              style={{ ...s.nowLine, ...s.nowLineButton }}
+              title={`${activities[0].title}. Click to see their side-quest.`}
+              data-testid="card-now"
+              onClick={(event) => {
+                event.stopPropagation()
+                onOpenSideQuest(student.anonymousId)
+              }}
+            >
+              <span style={s.nowLabel}>Now:</span> {activities[0].icon}{' '}
+              <span style={s.nowLink}>{activities[0].text}</span>
+            </button>
+          ) : (
+            <div style={s.nowLine} title={activities[0].title} data-testid="card-now">
+              <span style={s.nowLabel}>Now:</span> {activities[0].icon} {activities[0].text}
+            </div>
+          ))}
       </div>
 
       {/* Output / preview snippet */}
@@ -572,6 +756,19 @@ export default function StudentCard({
               {activitySummary?.text ?? 'Activity'}
             </span>
             <ActivityDeviceBadge state={activityState} />
+            {typingHistory && (
+              <span
+                style={s.typingHistoryChip}
+                title={`Typing history: last time ${typingHistory.last.cpm} cpm, ${Math.round(
+                  typingHistory.last.accuracy * 100
+                )}% · best ${typingHistory.best.cpm} cpm · first ${typingHistory.first.cpm} cpm${
+                  typingNow ? ` · now ${typingNow.cpm} cpm` : ''
+                }`}
+                data-testid="card-typing-history"
+              >
+                📈 {formatTypingHistoryChip(typingHistory)}
+              </span>
+            )}
           </div>
         )
       ) : hasConsoleOutput ? (
@@ -585,6 +782,20 @@ export default function StudentCard({
               <span style={{ color: '#9ca3af' }}>Waiting for submission</span>
             )}
           </pre>
+        ) : cardStage ? (
+          <div style={s.stageSnippetRow}>
+            <StagePane
+              compact
+              commands={cardStage.commands}
+              title="Stage drawing"
+              style={s.cardStage}
+            />
+            <pre style={{ ...s.snippet, flex: 1, minWidth: 0 }}>
+              {(student.currentOutput ?? '').split('\n').slice(0, 2).join('\n') || (
+                <span style={{ color: '#9ca3af' }}>No output yet</span>
+              )}
+            </pre>
+          </div>
         ) : (
           <pre style={s.snippet}>
             {(student.currentOutput ?? '').split('\n').slice(0, 2).join('\n') || (
@@ -612,6 +823,9 @@ export default function StudentCard({
             <span style={{ color: '#9ca3af', fontSize: 12 }}>No run yet</span>
           )}
         </div>
+      )}
+      {!isInformation && !isActivity && (
+        <NameTagCardStrip task={currentTask} synced={student.currentVariables} />
       )}
       {draftText && (
         <div style={s.draftLine} data-testid="card-draft" title={draftText}>
@@ -669,6 +883,9 @@ export default function StudentCard({
 }
 
 const s = {
+  // The Python Stage thumbnail beside the output lines.
+  stageSnippetRow: { display: 'flex', gap: 8, alignItems: 'stretch' },
+  cardStage: { flex: '0 0 auto', width: 64, height: 64 },
   card: {
     display: 'flex',
     flexDirection: 'column',
@@ -706,6 +923,24 @@ const s = {
   selectBoxOn: {
     background: 'var(--colour-primary)',
     borderColor: 'var(--colour-primary)',
+  },
+  typingHistoryChip: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.68rem',
+    fontWeight: 600,
+    color: 'var(--colour-muted)',
+    whiteSpace: 'nowrap',
+  },
+  rosterUnmatched: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.68rem',
+    fontWeight: 700,
+    color: 'var(--colour-warning-text)',
+    background: 'var(--colour-warning-bg)',
+    borderRadius: 999,
+    padding: '0 5px',
+    flexShrink: 0,
+    cursor: 'pointer',
   },
   badgeCount: {
     position: 'relative',
@@ -802,6 +1037,19 @@ const s = {
     marginTop: 2,
   },
   nowLabel: { fontWeight: 700, color: 'var(--colour-muted)' },
+  nowLineButton: {
+    display: 'block',
+    width: '100%',
+    textAlign: 'left',
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    cursor: 'pointer',
+    font: 'inherit',
+    fontSize: 12,
+  },
+  nowLink: { textDecoration: 'underline', textDecorationStyle: 'dotted' },
+  chipButton: { cursor: 'pointer', font: 'inherit' },
   cardHighlighted: {
     outline: '3px solid var(--colour-secondary)',
     outlineOffset: 1,
@@ -831,6 +1079,16 @@ const s = {
   checkBadgeError: {
     background: '#ea580c',
     color: '#fff',
+  },
+  checkBadgePar: {
+    background: '#fef9c3',
+    color: '#854d0e',
+    border: '1px solid #fde68a',
+  },
+  checkBadgeOverLimit: {
+    background: '#fef2f2',
+    color: '#b91c1c',
+    border: '1px solid #fecaca',
   },
   checkBadgeHint: {
     background: '#fef3c7',

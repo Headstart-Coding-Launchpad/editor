@@ -9,7 +9,8 @@ import {
   isArrangementComplete,
 } from '../../shared/codeArrange'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
-import definition from './definition.js'
+import definition, { usesHostWorkspace } from './definition.js'
+import { getLessonModule } from '../../modules/registry'
 import { useIsLeavingTaskSlide } from '../../app/components/TaskSlideTransition'
 import { useBoardTileHighlights } from '../../app/hooks/useBoardTileHighlights.js'
 import { supportsTileHighlights } from '../../shared/tutorTileHighlights.js'
@@ -73,6 +74,12 @@ function fileContent(files, name) {
 // → teacherLive.codeArrangeCursor → displayCodeArrangeCursor), broadcast-only,
 // so a Go-Live viewer sees the tile move as it's dragged rather than only
 // snapping into place on drop — mirrors ScratchWorkspace's cursor/blockDrag.
+//
+// A Turtle arrangement, or a Python one that draws on the Stage (definition.usesHostWorkspace),
+// renders the host module's own StudentWorkspace with this board in the editor's place
+// (`arrangeBoard`), so the picture, name tags, slow-mo, course maps and smaller-screen result tabs
+// are exactly the code task's. The rest of the props (`hostProps`: lesson, isMobile, the Go Live
+// display state, onVisiblePanesChange …) go straight to that workspace.
 export default function CodeArrangeTaskContainer({
   task,
   cs,
@@ -91,6 +98,7 @@ export default function CodeArrangeTaskContainer({
   displayCodeArrangeCursor,
   teacherLiveCode,
   teacherLiveFiles,
+  ...hostProps
 }) {
   const isHtml = task.moduleType === 'html'
   const entryFile = getCodeArrangeEntryFile(task)
@@ -287,6 +295,50 @@ export default function CodeArrangeTaskContainer({
     : isTeacherEditing || isViewingPrev
       ? null
       : cs.iframeSrc
+
+  const HostWorkspace = usesHostWorkspace(task)
+    ? (getLessonModule(task.moduleType)?.StudentWorkspace ?? null)
+    : null
+  if (HostWorkspace) {
+    return (
+      <HostWorkspace
+        {...hostProps}
+        task={task}
+        cs={cs}
+        viewingTaskId={viewingTaskId}
+        currentTaskId={currentTaskId}
+        isSandbox={false}
+        isViewingPrev={isViewingPrev}
+        isForcedTeacherLive={isForcedTeacherLive}
+        isTeacherEditing={isTeacherEditing}
+        displayCode={displayCode}
+        displayOutput={displayOutput}
+        displayRunStatus={displayRunStatus}
+        displayCheckPassed={displayCheckPassed}
+        displayCheckAttempted={displayCheckAttempted}
+        teacherLiveCode={teacherLiveCode}
+        arrangeReady={isArrangementComplete(task, selectedAnswer)}
+        arrangeBoard={({ onRun }) => (
+          <CodeArrangeTask
+            task={task}
+            moduleType={task.moduleType}
+            selectedAnswer={selectedAnswer}
+            onSelectAnswer={detached ? undefined : handleSlotStateChange}
+            running={readOnly ? false : cs.running}
+            pyodideStatus={cs.pyodideStatus}
+            onRun={detached ? undefined : onRun}
+            onStop={detached ? undefined : cs.handleStop}
+            onDragCursor={detached ? undefined : cs.handleCodeArrangeDragCursor}
+            externalDragCursor={isForcedTeacherLive ? displayCodeArrangeCursor : null}
+            tileHighlights={tileHighlights}
+            disabled={readOnly}
+            showQuestion={false}
+            showResult={false}
+          />
+        )}
+      />
+    )
+  }
 
   return (
     <CodeArrangeTask

@@ -1,0 +1,262 @@
+/* Scratch slow-mo (src/modules/scratch/slowMo/). Controls for ages 7–11: big (44px+) buttons with an
+   icon and a word. The running-block glow is a short pulse when a block starts, then a still
+   outline (no endless animation); reduced motion gets the still outline only. */
+
+/* ── Running-block glow (glow.js puts the class on the block's SVG group) ── */
+.scratch-slowmo-glow > .blocklyPath {
+  stroke: #f59e0b;
+  stroke-width: 4px;
+  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.9));
+  animation: scratch-slowmo-glow-in 600ms ease-out 1;
+}
+
+@keyframes scratch-slowmo-glow-in {
+  0% {
+    filter: drop-shadow(0 0 0 rgba(245, 158, 11, 0));
+    stroke-width: 2px;
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(245, 158, 11, 1));
+    stroke-width: 6px;
+  }
+  100% {
+    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.9));
+    stroke-width: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scratch-slowmo-glow > .blocklyPath {
+    animation: none;
+    filter: none;
+    stroke: #b45309;
+    stroke-width: 4px;
+  }
+}
+
+/* ── Controls ── */
+.slowmo-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0 0;
+  font-family: var(--font-body);
+}
+
+.slowmo-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.slowmo-btn {
+  min-height: 52px;
+  min-width: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border: 2px solid #d1d5db;
+  border-radius: 10px;
+  background: #fff;
+  color: #1f2937;
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.slowmo-btn:hover:not(:disabled) {
+  border-color: #9ca3af;
+}
+
+.slowmo-btn:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.slowmo-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.slowmo-btn--play[aria-pressed='true'] {
+  border-color: #16a34a;
+  background: #dcfce7;
+}
+
+.slowmo-btn-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.slowmo-speed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #374151;
+}
+
+.slowmo-speed-label {
+  font-weight: 700;
+}
+
+.slowmo-speed input[type='range'] {
+  flex: 1 1 auto;
+  min-width: 80px;
+  min-height: 44px;
+}
+
+.slowmo-speed-value {
+  min-width: 9em;
+  color: #4b5563;
+}
+
+.slowmo-status,
+.slowmo-mirror-status {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #4b5563;
+}
+
+.slowmo-mirror-status {
+  padding: 6px 0 0;
+  font-weight: 600;
+}
+
+/* ── Timeline ── */
+.slowmo-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+  font-family: var(--font-body);
+  min-width: 0;
+}
+
+.slowmo-timeline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.slowmo-timeline-title {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.slowmo-timeline-empty,
+.slowmo-timeline-note {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+.slowmo-timeline-strip {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 2px 2px 8px;
+  list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+}
+
+.slowmo-snap-item {
+  flex: 0 0 auto;
+  scroll-snap-align: end;
+}
+
+.slowmo-snap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 88px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2937;
+  font-family: var(--font-body);
+  font-size: 0.74rem;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.slowmo-snap:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.slowmo-snap--selected {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.slowmo-snap-step {
+  font-weight: 700;
+}
+
+.slowmo-snap-costume {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.slowmo-snap-costume-name {
+  max-width: 8em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slowmo-snap-label {
+  color: #6b7280;
+}
+
+.slowmo-now-btn {
+  min-height: 44px;
+  padding: 4px 12px;
+  border: 2px solid #2563eb;
+  border-radius: 8px;
+  background: #fff;
+  color: #1d4ed8;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* The banner over the stage while it shows an earlier step. */
+.slowmo-preview-banner {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 4px 4px 10px;
+  border-radius: 8px;
+  background: rgba(255, 251, 235, 0.95);
+  border: 2px solid #f59e0b;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #78350f;
+}

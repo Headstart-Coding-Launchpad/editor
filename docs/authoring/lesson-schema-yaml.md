@@ -5,7 +5,7 @@ Canonical YAML contract for the shape of a lesson file: the lesson envelope, Dra
 This file does not cover code task fields or quiz task fields:
 
 - **Quiz fields:** `docs/authoring/quiz-tasks.md`
-- **Python code task fields:** `docs/authoring/python-tasks.md`
+- **Python code task fields:** `docs/authoring/python-tasks.md` (hidden setup `setupCode` / `setupNote`, puzzle rules `puzzle` and `#@lock` locked lines, also on Turtle: `docs/authoring/python.md` "Locked lines, hidden setup and puzzles")
 - **Arcade Kit code task fields and API:** `docs/authoring/arcade.md`
 - **HTML code task fields:** `docs/authoring/html-tasks.md`
 - **Filesystem code task fields:** `docs/authoring/filesystem-tasks.md`
@@ -192,6 +192,16 @@ tasks:
 Module sandboxes use the existing type-specific sandbox fields: `sandboxStarter` for Python, Arcade Kit and Turtle; `sandboxStarterFiles` for HTML; `sandboxStarter`, `sandboxToolbox`, `sandboxSprites`, and `sandboxBackdrops` for Scratch; `sandboxStarterFs` for Filesystem; and `sandboxStarterCircuit` for Electronics. If a named module has no authored `sandbox`, its sandbox starts from that module's first code task. A task's `moduleType` and its named module's `type` must agree.
 
 Carry-through stays inside the same named module: use the existing type-specific carry field (`carryCodeFrom`, `carryBlocksFrom`, `carryFsFrom`, `carryDesktopFrom`, or `carryCircuitFrom`) and select an earlier task in that module only.
+
+To start from a student's own work in an **earlier lesson** (two-lesson projects), use `carryCodeFromLesson` (Python, Turtle, HTML) or `carryBlocksFromLesson` (Scratch), each a `{ lesson, task }` map with the stock lesson id and its task id:
+
+```yaml
+carryCodeFromLesson:
+  lesson: python-1-11
+  task: 6
+```
+
+It can't be combined with the task's in-lesson carry field. See [Two-lesson projects](AUTHORING_GUIDE.md#two-lesson-projects-carry-from-an-earlier-lesson).
 
 ---
 

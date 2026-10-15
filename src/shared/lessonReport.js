@@ -2,6 +2,7 @@ import yaml from 'js-yaml'
 import { flattenTasks, getTaskPriority } from './taskUtils.js'
 import { buildPeerHelpAudit } from './peerHelp.js'
 import { buildSideQuestReport, getSideQuests } from './sideQuests.js'
+import { typingHistoryReportFields } from './typingHistory.js'
 import { getTaskActivity } from '../activities/registry.pure.js'
 import { SUPPORT_REVEAL_SOURCES } from './taskStages.js'
 import { normalizeCodeSubmission } from './codeSubmission.js'
@@ -24,8 +25,29 @@ import {
 import { typingReportFields } from './typingStats.js'
 import { lastDraftFor } from './answerDrafts.js'
 import { normalizeTileHighlightLog } from './tutorTileHighlights.js'
+import {
+  exampleOpenReportFields,
+  exampleOpenStudentIds,
+  summarizeExampleOpens,
+} from './exampleOpens.js'
+import { inspectorReportFields, summarizeInspectorUse } from './inspectorUse.js'
+import { slowMoReportFields, summarizeSlowMoUse } from './slowMoUse.js'
+import { courseReportFields, summarizeCourseUse } from './courseUse.js'
+import { scrubReportFields, summarizeScrubUse } from './scrub/scrubUse.js'
+import { puzzleReportFields } from './puzzle/puzzle.js'
+import {
+  crossLessonCarryReportFields,
+  summarizeCrossLessonCarry,
+} from './roster/crossLessonCarry.js'
+import {
+  summarizeVariablePredictions,
+  taskPredictionFields,
+} from './variablesPanel/predictionReport.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
+
+// The HTML Inspector's per-student `inspector` block (./inspectorUse.js), when used.
+const withInspector = (inspector) => (inspector ? { inspector } : {})
 
 function getAnonymousStudentLabel(index) {
   return `Student ${index + 1}`
@@ -229,6 +251,15 @@ function normalizeCarryFallbackRecord(raw, taskId) {
     skippedSourceTaskIds: normalizeArray(raw.skippedSourceTaskIds),
     fallbackAt: raw.fallbackAt ?? raw.timestamp ?? null,
     ...(raw.files ? { files: normalizeArray(raw.files) } : {}),
+    // Cross-lesson carry fell back to the starter (src/shared/roster/crossLessonCarry.js).
+    ...(raw.crossLesson
+      ? {
+          crossLesson: true,
+          reason: raw.reason ?? null,
+          sourceLessonId: raw.sourceLessonId ?? null,
+          sourceTaskId: raw.sourceTaskId ?? null,
+        }
+      : {}),
   }
 }
 
@@ -620,6 +651,13 @@ export function anonymizeSessionReport(report) {
 //   counted in `badgeSummary[badgeId].suggested`.
 // - `topics`: the Topic Library's topics, for topic titles; `catalogueBadges`: Admin badges.
 // The report is trimmed to fit a Firestore document (capSessionReportSize).
+// The latest attempt's submission as the report shows it (an activity's state), or null.
+function latestSubmission(task, entries) {
+  return entries.length > 0
+    ? normalizeSubmission(task, entries[entries.length - 1].submission)
+    : null
+}
+
 export function buildSessionReport({
   session,
   lesson,
@@ -646,6 +684,7 @@ export function buildSessionReport({
       ...Object.keys(carryFallbackLog),
       ...Object.keys(supportRevealLog),
       ...Object.keys(sideQuestLog),
+      ...exampleOpenStudentIds(session),
       ...Object.keys(session?.draftLog ?? {}),
       ...Object.keys(session?.badges ?? {}),
       ...Object.keys(session?.studentSignals ?? {}),
@@ -745,9 +784,23 @@ export function buildSessionReport({
         ...(sideQuests.length > 0 ? { sideQuests } : {}),
         ...(typing ? { typing } : {}),
         ...(tileMisses.length > 0 ? { tileMisses } : {}),
+        ...taskPredictionFields(task, studentsSnapshot[anonymousId]),
         ...(tutorTileHighlights.length > 0 ? { tutorTileHighlights } : {}),
+        ...withInspector(
+          inspectorReportFields(studentsSnapshot[anonymousId]?.inspectorLog?.[task.id])
+        ),
+        ...slowMoReportFields(studentsSnapshot[anonymousId]?.slowMoLog?.[task.id]),
+        // Turtle course runs (task.course): goal reached, crashes, pickups.
+        ...courseReportFields(studentsSnapshot[anonymousId]?.courseLog?.[task.id]),
+        ...scrubReportFields(studentsSnapshot[anonymousId]?.scrubLog?.[task.id]),
+        // Puzzle tasks (task `puzzle`): linesUsed and changesFromStarter of the passing run's
+        // code (the attempt log keeps each run's code), so puzzles can be measured.
+        ...puzzleReportFields(task, passingEntry?.submission),
         ...(itemProgress ? { itemProgress } : {}),
         ...(lastDraft ? { lastDraft } : {}),
+        ...exampleOpenReportFields(session, anonymousId, task.id),
+        ...typingHistoryReportFields(session, task, anonymousId, latestSubmission(task, entries)),
+        ...crossLessonCarryReportFields(session, anonymousId, task.id),
         ...(isNotApplicableTask(task)
           ? {}
           : studentTaskBadgeFields({
@@ -838,6 +891,7 @@ export function buildSessionReport({
         ...summarizeCarryFallbacks(perStudent),
         ...summarizeSupportReveals(perStudent),
         ...summarizePastes(perStudent),
+        ...summarizeExampleOpens(perStudent),
         ...badgeFields,
         ...(teacherRating ? { teacherRating } : {}),
       }
@@ -873,6 +927,13 @@ export function buildSessionReport({
       ...summarizeSideQuests(perStudent),
       ...summarizeTimeOnTaskSpread(perStudent),
       ...summarizeTyping(perStudent),
+      ...summarizeExampleOpens(perStudent),
+      ...summarizeCrossLessonCarry(perStudent),
+      ...summarizeInspectorUse(perStudent),
+      ...summarizeSlowMoUse(perStudent),
+      ...summarizeCourseUse(perStudent),
+      ...summarizeScrubUse(perStudent),
+      ...summarizeVariablePredictions(perStudent),
       ...badgeFields,
       ...(teacherRating ? { teacherRating } : {}),
     }

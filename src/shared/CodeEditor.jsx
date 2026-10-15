@@ -20,8 +20,12 @@ import {
   setLineHints,
 } from './codemirror'
 import { chooseLineHints } from './lineHints'
+import { lockedLinesExtension, setLockedLineSets } from './lockedLinesEditor'
+import { getPeekBandState, peekBandExtension, setPeekBand } from './peekBandEditor'
 import { blockGuidesExtension } from './blockGuides'
 import { BadgeSignalsContext } from './badgeSignalsContext'
+import { useEditorScrub } from './scrub/useEditorScrub.jsx'
+import { isScrubPreviewUpdate, SCRUB_USER_EVENT } from './scrub/scrubExtension.js'
 
 // The CodeMirror user-event types that are the student's own editing (typing, pasting,
 // deleting, dragging text, undo/redo). A value replaced from outside (task switch, carry-through,
@@ -48,7 +52,8 @@ export function isAutocompletePick(update) {
 // a paste ('input.paste', reported separately), a drop ('input.drop'), an accepted autocomplete
 // ('input.complete'), undo/redo and every outside value sync are never typing. Enter's
 // auto-indent is one keystroke, so whitespace right after an inserted newline isn't counted.
-const NOT_TYPED_INPUT_EVENTS = ['input.paste', 'input.drop', 'input.complete']
+// A finished scrub ('input.scrub', ./scrub/scrubExtension.js) is one edit, never typed characters.
+const NOT_TYPED_INPUT_EVENTS = ['input.paste', 'input.drop', 'input.complete', SCRUB_USER_EVENT]
 
 export function typedCharsInUpdate(update) {
   let chars = 0
@@ -339,18 +344,38 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     // that fits the loaded text best is shown, re-anchored whenever the value is replaced from
     // outside (task switch, reset, saved code) — see chooseLineHints in ./lineHints.js.
     lineHints = null,
+    // Locked lines for this content: an array of lock sets (getTaskLockSets in ./lockedLines.js).
+    // The set that fits the loaded text best is locked, re-anchored whenever the value is
+    // replaced from outside — see ./lockedLinesEditor.js. Shown read-only too (tutor views).
+    lockedLines = null,
+    // The #@peek "stopped here" band (./peekBandEditor.js): `{ line, missed }` for the code as
+    // it is now (getPeekBand in ./variablesPanel/variablesPanel.js), or null. Shown read-only too.
+    peekBand = null,
     onRunShortcut,
     // Fires on a document change the user made (see USER_EDIT_EVENTS), never on the external
     // value sync. Without it, the classroom's BadgeSignalsContext (if any) is told instead.
     onUserEdit,
     // Draw coloured Python block brackets beside indented code (only PythonEditor sets it).
     blockGuides = false,
+    // Live number / colour scrubbing (./scrub/): getTaskScrub's settings or null, the preview
+    // re-run (returns 'preview' | 'press-run') and the report hook for a finished scrub.
+    scrub = null,
+    onScrubPreview,
+    onScrubCommit,
     style,
   },
   ref
 ) {
   const containerRef = useRef(null)
   const viewRef = useRef(null)
+  const scrubUi = useEditorScrub({
+    viewRef,
+    scrub,
+    language,
+    readOnly,
+    onScrubPreview,
+    onScrubCommit,
+  })
   const onChangeRef = useRef(onChange)
   const onSelectionChangeRef = useRef(onSelectionChange)
   const onActivityRef = useRef(onActivity)
@@ -374,6 +399,12 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
   // Callers build the sets inline, so compare by content: a new array with the same hints must
   // not re-anchor (and so resurrect) hints the student has deleted.
   const lineHintsKey = useMemo(() => JSON.stringify(lineHints ?? []), [lineHints])
+  // Compared by content too: callers build the lock sets inline.
+  const lockedLinesKey = useMemo(() => JSON.stringify(lockedLines ?? []), [lockedLines])
+  const peekBandKey = useMemo(
+    () => JSON.stringify(peekBand ? { line: peekBand.line, missed: !!peekBand.missed } : null),
+    [peekBand]
+  )
   // The teacher highlights are rebuilt from every session snapshot (even one the student's own
   // selection write caused), so they too are compared by content: only a real change to the
   // set may reach the editor, or the positions it has mapped through edits would be reset.
@@ -400,7 +431,10 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
           teacherHighlightsField,
           errorLineField,
           lineHintsExtension(),
+          lockedLinesExtension(),
+          peekBandExtension(),
           blockGuidesCompartment.of(blockGuidesFor(blockGuides)),
+          scrubUi.extension,
           keymap.of([
             {
               key: 'Mod-Enter',
@@ -412,6 +446,8 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
             },
           ]),
           EditorView.updateListener.of((update) => {
+            // A value still being scrubbed is a preview, not an edit (./scrub/scrubExtension.js).
+            if (isScrubPreviewUpdate(update)) return
             if (update.docChanged) {
               onChangeRef.current?.(update.state.doc.toString())
               if (isUserEditUpdate(update)) onUserEditRef.current?.('editor')
@@ -526,6 +562,21 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
+    view.dispatch({ effects: setLockedLineSets.of(JSON.parse(lockedLinesKey)) })
+  }, [lockedLinesKey])
+
+  // The band follows its line through edits by itself; it is only re-placed when it differs
+  // from what the caller worked out for the code (so no transaction per keystroke).
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    if (JSON.stringify(getPeekBandState(view.state)) === peekBandKey) return
+    view.dispatch({ effects: setPeekBand.of(JSON.parse(peekBandKey)) })
+  }, [peekBandKey, value])
+
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
     view.dispatch({ effects: setRemoteSelection.of(remoteSelection) })
   }, [remoteSelection])
 
@@ -561,21 +612,26 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
         })
         view.focus()
       },
+      // The CodeMirror view, for add-ons kept in their own files (Python slow-mo's line marker).
+      getView: () => viewRef.current,
     }),
     [readOnly]
   )
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        height: '100%',
-        overflow: 'auto',
-        border: readOnly ? '1px solid rgba(239,68,68,0.3)' : '1px solid #e5e7eb',
-        borderRadius: '8px',
-        background: readOnly ? 'rgba(239,68,68,0.04)' : '#fafafa',
-        ...style,
-      }}
-    />
+    <>
+      <div
+        ref={containerRef}
+        style={{
+          height: '100%',
+          overflow: 'auto',
+          border: readOnly ? '1px solid rgba(239,68,68,0.3)' : '1px solid #e5e7eb',
+          borderRadius: '8px',
+          background: readOnly ? 'rgba(239,68,68,0.04)' : '#fafafa',
+          ...style,
+        }}
+      />
+      {scrubUi.element}
+    </>
   )
 })

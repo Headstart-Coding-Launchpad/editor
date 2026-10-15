@@ -3,6 +3,7 @@ import { MarkdownFieldEditor } from '../ExplainerEditor'
 import { getStageRole } from '../../../shared/taskUtils'
 import { checkMissingOperator } from '../../../modules/checks'
 import { DEFAULT_TEXT_OPERATOR } from '../../../shared/checkHelpers'
+import { STAGE_CHECK_TYPES, describeStageCheck } from '../../../shared/stage/checks.js'
 import {
   formatCheckFailure,
   formatCheckFailureDetail,
@@ -533,6 +534,98 @@ function FeedbackStageOfferControls({ check, stages = [], onChange }) {
   )
 }
 
+// A `variables_predicted` check (the name-tag panel's predictions) is set up from the task's
+// Name-tag panel field, so its row here is a read-only summary with its hint and Remove.
+function PredictionCheckRow({ check, index, total, onChange, onRemove }) {
+  const names = Array.isArray(check.names) ? check.names : []
+  return (
+    <div className="te-check-row">
+      {total > 1 && <span className="te-check-index">#{index + 1}</span>}
+      <div className="te-check-editor">
+        <span style={{ gridColumn: '1 / -1', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+          Every prediction is right{names.length > 0 ? ` (${names.join(', ')})` : ''} — set under
+          Name-tag panel
+        </span>
+        <input
+          className="te-input"
+          style={{ gridColumn: '1 / -1' }}
+          placeholder="Hint shown when a prediction is wrong"
+          value={check.hint ?? ''}
+          onChange={(e) => onChange({ ...check, hint: e.target.value })}
+        />
+      </div>
+      <button type="button" className="te-check-remove-btn" onClick={onRemove} title="Remove check">
+        ×
+      </button>
+    </div>
+  )
+}
+
+// A `max_lines` check (puzzle rules, src/shared/puzzle/puzzle.js): at most N lines of code. With
+// no number it uses the task's puzzle.maxLines (authored in the lesson YAML).
+function MaxLinesCheckRow({ check, index, total, onChange, onRemove }) {
+  return (
+    <div className="te-check-row">
+      {total > 1 && <span className="te-check-index">#{index + 1}</span>}
+      <div className="te-check-editor">
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 13 }}>
+          At most this many lines of code (blank and comment lines don't count)
+        </span>
+        <input
+          className="te-input"
+          type="number"
+          min={1}
+          placeholder="puzzle.maxLines"
+          value={check.value ?? ''}
+          onChange={(e) => {
+            const value = e.target.value === '' ? undefined : Number(e.target.value)
+            const next = { ...check }
+            if (value === undefined) delete next.value
+            else next.value = value
+            onChange(next)
+          }}
+        />
+        <input
+          className="te-input"
+          style={{ gridColumn: '1 / -1' }}
+          placeholder="Hint (default: Can you do it in N lines? A loop might help.)"
+          value={check.hint ?? ''}
+          onChange={(e) => onChange({ ...check, hint: e.target.value })}
+        />
+      </div>
+      <button type="button" className="te-check-remove-btn" onClick={onRemove} title="Remove check">
+        ×
+      </button>
+    </div>
+  )
+}
+
+// A Python Stage check (stage_matches_target, stage_pixel, …) is authored in the lesson YAML
+// (docs/authoring/python.md "Stage"); its row here says what it checks, in words, with its hint
+// and Remove.
+function StageCheckRow({ check, index, total, onChange, onRemove }) {
+  return (
+    <div className="te-check-row">
+      {total > 1 && <span className="te-check-index">#{index + 1}</span>}
+      <div className="te-check-editor">
+        <span style={{ gridColumn: '1 / -1', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+          Stage: {describeStageCheck(check)} ({check.type})
+        </span>
+        <input
+          className="te-input"
+          style={{ gridColumn: '1 / -1' }}
+          placeholder="Hint shown when the drawing doesn't pass (name colours in words)"
+          value={check.hint ?? ''}
+          onChange={(e) => onChange({ ...check, hint: e.target.value })}
+        />
+      </div>
+      <button type="button" className="te-check-remove-btn" onClick={onRemove} title="Remove check">
+        ×
+      </button>
+    </div>
+  )
+}
+
 function CheckListEditor({
   checks,
   onChange,
@@ -604,6 +697,42 @@ function CheckListEditor({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
       {checks.map((check, index) => {
+        if (STAGE_CHECK_TYPES.includes(check?.type)) {
+          return (
+            <StageCheckRow
+              key={index}
+              check={check}
+              index={index}
+              total={checks.length}
+              onChange={(updated) => updateCheck(index, updated)}
+              onRemove={() => removeCheck(index)}
+            />
+          )
+        }
+        if (check?.type === 'variables_predicted') {
+          return (
+            <PredictionCheckRow
+              key={index}
+              check={check}
+              index={index}
+              total={checks.length}
+              onChange={(updated) => updateCheck(index, updated)}
+              onRemove={() => removeCheck(index)}
+            />
+          )
+        }
+        if (check?.type === 'max_lines') {
+          return (
+            <MaxLinesCheckRow
+              key={index}
+              check={check}
+              index={index}
+              total={checks.length}
+              onChange={(updated) => updateCheck(index, updated)}
+              onRemove={() => removeCheck(index)}
+            />
+          )
+        }
         const { subject, aspect, operator } = checkUiFromCheck(check)
         const aspectOptions = getAspectOptions(subject, aspect, {
           allowStructure: allowStructureChecks,
@@ -722,4 +851,7 @@ export {
   CheckListEditor,
   CheckFeedbackControls,
   RunAttemptedFields,
+  PredictionCheckRow,
+  MaxLinesCheckRow,
+  StageCheckRow,
 }

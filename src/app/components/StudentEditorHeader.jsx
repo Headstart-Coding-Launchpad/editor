@@ -10,6 +10,7 @@ export default function StudentEditorHeader({ task, running, onRun, onSubmit, on
         <button
           className="btn-primary sv-editor-primary-btn"
           onClick={isSubmit ? onSubmit : onRun}
+          data-highlight-target={isSubmit ? undefined : 'run'}
           disabled={running}
         >
           {isSubmit ? 'Submit' : running ? 'Running…' : 'Run'}

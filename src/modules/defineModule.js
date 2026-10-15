@@ -9,6 +9,7 @@
 import { fieldWorkSlotHooks } from './moduleContract.js'
 import { LINE_HINT_SYNTAXES, isLineHintSyntax } from '../shared/lineHints.js'
 import { normaliseFieldSpecs } from '../shared/fieldSpec.js'
+import { scrubCapabilityProblem } from '../shared/scrub/scrubConfig.js'
 
 const REQUIRED_FUNCTIONS = [
   'getDisplayState',
@@ -81,6 +82,8 @@ export const OPTIONAL_CAPABILITY_BOOLEANS = Object.freeze([
   // student passes it (src/shared/sideQuests.js; python, turtle, html)
   'typingStats', // the student's keystrokes in the shared code editor feed the session report's
   // `typing` measures (useStudentTypingStats; python, turtle, html)
+  'previewInspector', // a task's `inspector` field adds the HTML Inspector to the preview
+  // (src/modules/html/inspector; html)
 ])
 // How the student reaches a task's code stages on their own (StudentView, LessonTaskContent):
 // - 'progressive' reveals support stages as read-only references and previews the complete
@@ -99,6 +102,12 @@ export const STUDENT_MIRROR_KINDS = Object.freeze(['code', 'files', 'blocks', 'v
 // "HTML project" / "No run yet" line): the first lines of console output ('output'), whether
 // blocks were edited ('blocks') or whether the file tree changed ('fs').
 export const CARD_SUMMARY_KINDS = Object.freeze(['output', 'blocks', 'fs', null])
+// What the tutor's client saves to a matched student's class roster after a Run or submission
+// (optional; null = nothing saved; src/shared/roster/rosterWork.js):
+// - 'code'   the `currentCode` string / a code-string submission (python, turtle)
+// - 'files'  the `currentFiles` map / a files-map submission (html; the 'files' wire channel)
+// - 'blocks' the Blockly project, parsed from `currentCode` with `wire.fromCode` (scratch)
+export const ROSTER_WORK_KINDS = Object.freeze(['code', 'files', 'blocks', null])
 // `capabilities.peerHelp` (optional; null = students keep the plain ✋ Help): how a classmate can
 // help with this module's work (src/shared/peerHelp.js). `anchors` is what feedback attaches to:
 // 'lines' (lines of code; suggested edits allowed) or 'scripts' (Scratch scripts; no edits).
@@ -138,7 +147,8 @@ export const RUN_KINDS = Object.freeze(['runtime', 'preview', 'workspace', 'none
 // - turtle:    the run's turtle drawing is written with the run (writeStudentTurtleResult)
 // - liveCode:  the runtime rewrites the work while it runs (onCodeUpdate, electronics), and a
 //              stopped run still saves { code, output }
-export const RUN_RESULT_FLAGS = Object.freeze(['errorLine', 'turtle', 'liveCode'])
+// - stage:     the run's Python Stage drawing is written with the run (writeStudentStageResult)
+export const RUN_RESULT_FLAGS = Object.freeze(['errorLine', 'turtle', 'liveCode', 'stage'])
 
 // Contract v2 hook groups (see ./moduleContract.js for the shared builders and
 // docs/architecture/lesson-type-modules.md, "Contract v2"). Each group is a frozen object.
@@ -361,6 +371,10 @@ function validateAuthoring(type, def) {
 //   the task's checks evaluated against its own authored stages, per check, with no cases file
 //   (`lessons test-checks` without --cases; scratch). `activityPattern` is the task's
 //   taskActivity pattern id, resolved by the CLI. Pure / Node-safe; null = not supported.
+// - testCheckCase(task, testCase, { taskId }) → one `lessons test-checks --cases` case judged
+//   against the module's own work shape (scratch: blocks, or a stage plus edits), returning
+//   `{ taskId, name, expected, actual, mismatches, ... }`. Pure / Node-safe; null = the case is
+//   source code, judged by the shared code-check evaluator.
 const OPTIONAL_FUNCTIONS = [
   'initCompleteTab',
   'initStageTab',
@@ -370,6 +384,7 @@ const OPTIONAL_FUNCTIONS = [
   'hasCheckValue',
   'validateTaskInBrowser',
   'verifyTaskChecks',
+  'testCheckCase',
 ]
 
 // Keys the UI half must provide. A value may be null where the app already allows it
@@ -415,6 +430,12 @@ function validateUiGates(type, def, workSlot) {
   if (!CARD_SUMMARY_KINDS.includes(caps.cardSummary ?? null)) {
     fail(type, `"capabilities.cardSummary" must be one of: ${CARD_SUMMARY_KINDS.join(', ')}`)
   }
+  if (!ROSTER_WORK_KINDS.includes(caps.rosterWork ?? null)) {
+    fail(type, `"capabilities.rosterWork" must be one of: ${ROSTER_WORK_KINDS.join(', ')}`)
+  }
+  if ((caps.rosterWork === 'files') !== filesChannel && caps.rosterWork != null) {
+    fail(type, '"capabilities.rosterWork" is "files" exactly when "wire.sandboxChannel" is')
+  }
   if (caps.lineHints != null && !isLineHintSyntax(caps.lineHints)) {
     fail(type, `"capabilities.lineHints" must be one of: ${LINE_HINT_SYNTAXES.join(', ')}, or null`)
   }
@@ -428,6 +449,11 @@ function validateUiGates(type, def, workSlot) {
       `"capabilities.peerHelp" must be null or { anchors: ${PEER_HELP_ANCHORS.join('|')}, hints: ${PEER_HELP_HINT_LISTS.join('|')} }`
     )
   }
+  // `capabilities.scrub` (optional; null = no scrubbing): live number / colour scrubbing in the
+  // code editor for a task's `scrub` field — { liveRerun: 'preview' | 'none', needsImport,
+  // inputCall } (src/shared/scrub/scrubConfig.js; python, turtle, html).
+  const scrubProblem = scrubCapabilityProblem(caps.scrub)
+  if (scrubProblem) fail(type, scrubProblem)
   const panes = caps.focusPanes ?? []
   if (
     !Array.isArray(panes) ||
@@ -476,10 +502,12 @@ function validateUiGates(type, def, workSlot) {
   if (workSlot && (editor !== null) !== workSlot.teacherEdit) {
     fail(type, '"capabilities.teacherEditor" is declared exactly when "workSlot.teacherEdit" is')
   }
+  const highlightTargets = validateHighlightTargets(type, caps.highlightTargets ?? [], panes)
   return {
     focusPanes: Object.freeze(
       panes.map((pane) => Object.freeze({ id: pane.id, label: pane.label }))
     ),
+    highlightTargets,
     teacherEditor:
       editor === null
         ? null
@@ -489,6 +517,52 @@ function validateUiGates(type, def, workSlot) {
             design: editor.design ?? false,
           }),
   }
+}
+
+// `capabilities.highlightTargets`: the controls a tutor (or a task's `highlight` field) can
+// pulse on the student's screen (src/shared/controlHighlight.js). Each is { id, label, pane?,
+// aliases?, options? }: `pane` is the focusPanes id that holds the control in a compact layout,
+// `aliases` other ids authors may write, and `options` makes it a family (`category:<option>`).
+// The workspace marks each control with `data-highlight-target="<id>"`.
+const HIGHLIGHT_TARGET_ID = /^[a-z][a-z0-9_]*$/
+function validateHighlightTargets(type, targets, panes) {
+  if (!Array.isArray(targets)) fail(type, '"capabilities.highlightTargets" must be an array')
+  const paneIds = new Set(panes.map((pane) => pane.id))
+  const seen = new Set()
+  return Object.freeze(
+    targets.map((target) => {
+      const ids = [target?.id, ...(target?.aliases ?? [])]
+      if (
+        typeof target?.label !== 'string' ||
+        !target.label ||
+        !Array.isArray(target.aliases ?? []) ||
+        ids.some((id) => typeof id !== 'string' || !HIGHLIGHT_TARGET_ID.test(id) || seen.has(id))
+      ) {
+        fail(
+          type,
+          '"capabilities.highlightTargets" must be { id, label, pane?, aliases?, options? } with unique snake_case ids'
+        )
+      }
+      ids.forEach((id) => seen.add(id))
+      if (target.pane != null && !paneIds.has(target.pane)) {
+        fail(type, `"capabilities.highlightTargets" pane "${target.pane}" is not a focusPanes id`)
+      }
+      if (
+        target.options != null &&
+        (!Array.isArray(target.options) ||
+          target.options.some((option) => typeof option !== 'string' || !option))
+      ) {
+        fail(type, '"capabilities.highlightTargets" options must be a list of names')
+      }
+      return Object.freeze({
+        id: target.id,
+        label: target.label,
+        pane: target.pane ?? null,
+        aliases: Object.freeze([...(target.aliases ?? [])]),
+        options: target.options ? Object.freeze([...target.options]) : null,
+      })
+    })
+  )
 }
 
 export function defineModule(def) {
@@ -680,7 +754,7 @@ export function defineModule(def) {
       ...Object.fromEntries(WORK_SLOT_FLAGS.map((key) => [key, def.workSlot[key] ?? false])),
     })
   }
-  const { focusPanes, teacherEditor } = validateUiGates(type, def, workSlot)
+  const { focusPanes, highlightTargets, teacherEditor } = validateUiGates(type, def, workSlot)
   const authoring = validateAuthoring(type, def)
   for (const key of REQUIRED_BOOLEANS) {
     if (typeof def[key] !== 'boolean') fail(type, `missing required boolean "${key}"`)
@@ -730,7 +804,10 @@ export function defineModule(def) {
       ...def.capabilities,
       run: runKind,
       cardSummary: def.capabilities.cardSummary ?? null,
+      rosterWork: def.capabilities.rosterWork ?? null,
+      scrub: def.capabilities.scrub ? Object.freeze({ ...def.capabilities.scrub }) : null,
       focusPanes,
+      highlightTargets,
       teacherEditor,
     }),
     lifecycle: Object.freeze({ playgroundTask: null, ...def.lifecycle }),
@@ -770,6 +847,11 @@ export function defineUiModule(definition, ui) {
   }
   for (const key of Object.keys(ui)) {
     if (key in def) fail(def.type, `UI key "${key}" duplicates a definition field`)
+  }
+  // Optional: `exportWork` lazily loads the module's "Export work" exporter (the tutor's
+  // StudentModal and the /share/:id viewer; see src/shared/exportWork/exporters.js).
+  if (ui.exportWork != null && typeof ui.exportWork !== 'function') {
+    fail(def.type, '"exportWork" must be a function returning import() of the exporter, or null')
   }
   return { ...def, ...ui }
 }

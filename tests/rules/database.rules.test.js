@@ -163,6 +163,157 @@ describe('side-quests', () => {
     await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ done: 'yes' }))
     await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ code: 'print(1)' }))
   })
+
+  describe('sideQuestCode (the tutor live copy)', () => {
+    const codePath = (id) => `sessions/${LESSON}/students/${id}/sideQuestCode`
+    const record = { taskId: 't2', index: 1, openedAt: 1, updatedAt: 2 }
+
+    it('lets a student write and clear their own live side-quest work', async () => {
+      await assertSucceeds(ref(as.student, codePath(STUDENT_ID)).set(record))
+      await assertSucceeds(
+        ref(as.student, codePath(STUDENT_ID)).update({
+          index: 1,
+          updatedAt: 3,
+          code: 'print(1)',
+          output: '1\n',
+          runStatus: 'success',
+          lastRunAt: 3,
+          errorStreak: 0,
+        })
+      )
+      await assertSucceeds(
+        ref(as.student, codePath(STUDENT_ID)).update({
+          index: 1,
+          updatedAt: 4,
+          files: { index__dot__html: '<p>hi</p>' },
+        })
+      )
+      await assertSucceeds(ref(as.student, codePath(STUDENT_ID)).set(null))
+    })
+
+    it('lets the teacher read and clear it, and nobody else write it', async () => {
+      await assertSucceeds(ref(as.student, codePath(STUDENT_ID)).set(record))
+      await assertSucceeds(ref(as.teacher, codePath(STUDENT_ID)).get())
+      await assertSucceeds(ref(as.teacher, codePath(STUDENT_ID)).set(null))
+      await assertFails(ref(as.otherStudent, codePath(STUDENT_ID)).set(record))
+      await assertFails(ref(as.anonymous, codePath(STUDENT_ID)).set(record))
+    })
+
+    it('refuses a missing index, an index above 2, bad values and unknown fields', async () => {
+      await assertFails(ref(as.student, codePath(STUDENT_ID)).set({ taskId: 't2', updatedAt: 1 }))
+      await assertFails(ref(as.student, codePath(STUDENT_ID)).set({ ...record, index: 3 }))
+      await assertFails(ref(as.student, codePath(STUDENT_ID)).set({ ...record, code: 42 }))
+      await assertFails(ref(as.student, codePath(STUDENT_ID)).set({ ...record, errorStreak: -1 }))
+      await assertFails(
+        ref(as.student, codePath(STUDENT_ID)).set({ ...record, output: 'x'.repeat(20001) })
+      )
+      await assertFails(ref(as.student, codePath(STUDENT_ID)).set({ ...record, secret: 'x' }))
+    })
+  })
+})
+
+describe('example opens', () => {
+  const logPath = (id, index = 0) => `sessions/${LESSON}/exampleOpenLog/${id}/t2/${index}`
+
+  it('lets a student log their own example opens, and nobody else', async () => {
+    const entry = { openedAt: 1, lastOpenedAt: 2, opens: 2 }
+    await assertSucceeds(ref(as.student, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.student, `${logPath(STUDENT_ID, 9)}/opens`).set(1))
+    await assertFails(ref(as.otherStudent, logPath(STUDENT_ID)).set(entry))
+    await assertFails(ref(as.anonymous, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.teacher, `sessions/${LESSON}/exampleOpenLog`).set(null))
+  })
+
+  it('refuses an example index above 9, bad values and code', async () => {
+    await assertFails(ref(as.student, logPath(STUDENT_ID, 10)).set({ openedAt: 1 }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ opens: 0 }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ openedAt: 'now' }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ code: 'print(1)' }))
+  })
+})
+
+describe('HTML Inspector use', () => {
+  const logPath = (id) => `sessions/${LESSON}/students/${id}/inspectorLog/t2`
+
+  it('lets a student record their own Inspector use, and nobody else', async () => {
+    const entry = { opens: 1, selects: 3, lastAt: 1 }
+    await assertSucceeds(ref(as.student, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.student, `${logPath(STUDENT_ID)}/selects`).set(4))
+    await assertFails(ref(as.otherStudent, logPath(STUDENT_ID)).set(entry))
+    await assertFails(ref(as.anonymous, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.teacher, logPath(STUDENT_ID)).set(null))
+  })
+
+  it('refuses negative counts, bad values and page content', async () => {
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ opens: -1 }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ selects: 'many' }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ html: '<p>hi</p>' }))
+  })
+
+  it('lets only teachers write the Go Live inspector state', async () => {
+    const path = `sessions/${LESSON}/teacherLive/inspector`
+    const state = { on: true, selector: 'body > p:nth-of-type(1)', property: 'color' }
+    await assertSucceeds(ref(as.teacher, path).set(state))
+    await assertFails(ref(as.student, path).set(state))
+  })
+})
+
+describe('Scratch slow-mo use', () => {
+  const logPath = (id) => `sessions/${LESSON}/students/${id}/slowMoLog/t2`
+
+  it('lets a student record their own slow-mo use, and nobody else', async () => {
+    const entry = { runs: 1, steps: 4, lastAt: 1 }
+    await assertSucceeds(ref(as.student, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.student, `${logPath(STUDENT_ID)}/steps`).set(5))
+    await assertFails(ref(as.otherStudent, logPath(STUDENT_ID)).set(entry))
+    await assertFails(ref(as.anonymous, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.teacher, logPath(STUDENT_ID)).set(null))
+  })
+
+  it('refuses negative counts, bad values and code', async () => {
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ runs: -1 }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ steps: 'lots' }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ code: '{}' }))
+  })
+})
+
+describe('Turtle course runs', () => {
+  const logPath = (id) => `sessions/${LESSON}/students/${id}/courseLog/t2`
+
+  it('lets a student record their own course runs, and nobody else', async () => {
+    const entry = { runs: 2, goalRuns: 1, crashes: 1, pickups: 3, lastGoalReached: true, lastAt: 1 }
+    await assertSucceeds(ref(as.student, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.student, `${logPath(STUDENT_ID)}/runs`).set(3))
+    await assertFails(ref(as.otherStudent, logPath(STUDENT_ID)).set(entry))
+    await assertFails(ref(as.anonymous, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.teacher, logPath(STUDENT_ID)).set(null))
+  })
+
+  it('refuses negative counts, bad values and code', async () => {
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ runs: -1 }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ crashes: 'lots' }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ lastGoalReached: 'yes' }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ code: 'turtle.forward()' }))
+  })
+})
+
+describe('editor scrubbing use', () => {
+  const logPath = (id) => `sessions/${LESSON}/students/${id}/scrubLog/t2`
+
+  it('lets a student record their own scrubbing, and nobody else', async () => {
+    const entry = { numbers: 3, colours: 1, lastAt: 1 }
+    await assertSucceeds(ref(as.student, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.student, `${logPath(STUDENT_ID)}/numbers`).set(4))
+    await assertFails(ref(as.otherStudent, logPath(STUDENT_ID)).set(entry))
+    await assertFails(ref(as.anonymous, logPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.teacher, logPath(STUDENT_ID)).set(null))
+  })
+
+  it('refuses negative counts, bad values and code', async () => {
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ numbers: -1 }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ colours: 'lots' }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ code: 'print(1)' }))
+  })
 })
 
 describe('shared workspaces', () => {
@@ -206,6 +357,126 @@ describe('class countdown', () => {
     await assertFails(ref(as.teacher, path).set({ ...countdown, endsAt: 500 }))
     await assertFails(ref(as.teacher, path).set({ ...countdown, endsAt: 'soon' }))
     await assertFails(ref(as.teacher, path).set({ ...countdown, label: 'x' }))
+  })
+})
+
+describe('class roster session fields', () => {
+  const matchPath = `sessions/${LESSON}/rosterMatches/${STUDENT_ID}`
+  const match = { rosterId: 'r1', matchedAt: 1000, matchedBy: 'teacher-1' }
+
+  it('only lets teachers and admins match students, never the student themselves', async () => {
+    await assertFails(ref(as.student, matchPath).set(match))
+    await assertFails(ref(as.otherStudent, matchPath).set(match))
+    await assertSucceeds(ref(as.teacher, matchPath).set(match))
+    await assertSucceeds(ref(as.admin, matchPath).set(null))
+  })
+
+  it('requires rosterId and matchedAt, and nothing unknown', async () => {
+    await assertFails(ref(as.teacher, matchPath).set({ rosterId: 'r1' }))
+    await assertFails(ref(as.teacher, matchPath).set({ ...match, rosterId: '' }))
+    await assertFails(ref(as.teacher, matchPath).set({ ...match, name: 'Jamie B.' }))
+    await assertSucceeds(ref(as.teacher, matchPath).set({ rosterId: 'r1', matchedAt: 1 }))
+  })
+
+  it('lets only teachers and admins choose the session class', async () => {
+    await assertFails(ref(as.student, `sessions/${LESSON}/classId`).set('maple'))
+    await assertSucceeds(ref(as.teacher, `sessions/${LESSON}/classId`).set('maple'))
+    await assertFails(ref(as.teacher, `sessions/${LESSON}/classId`).set('Maple Class'))
+    await assertSucceeds(ref(as.teacher, `sessions/${LESSON}/classChosenAt`).set(1000))
+    await assertFails(ref(as.teacher, `sessions/${LESSON}/classChosenAt`).set('now'))
+  })
+})
+
+describe('typing history', () => {
+  const path = `sessions/${LESSON}/typingHistory/${STUDENT_ID}`
+  const score = { cpm: 62, accuracy: 0.91, date: 1000 }
+  const node = {
+    byMode: { type_code: { last: score, best: { ...score, cpm: 75 }, first: score, sessions: 2 } },
+    updatedAt: 2000,
+  }
+
+  it('only lets teachers and admins push it, never the student themselves', async () => {
+    await assertFails(ref(as.student, path).set(node))
+    await assertFails(ref(as.otherStudent, path).set(node))
+    await assertSucceeds(ref(as.teacher, path).set(node))
+    await assertSucceeds(ref(as.admin, path).set(null))
+  })
+
+  it('lets the student read their own node', async () => {
+    await assertSucceeds(ref(as.teacher, path).set(node))
+    await assertSucceeds(ref(as.student, path).get())
+  })
+
+  it('accepts numbers only, in the known shape', async () => {
+    const withMode = (mode) => ({ byMode: { type_code: mode } })
+    await assertFails(ref(as.teacher, path).set({ updatedAt: 1 }))
+    await assertFails(ref(as.teacher, path).set(withMode({ last: score, best: score })))
+    await assertFails(
+      ref(as.teacher, path).set(withMode({ last: score, best: score, first: { cpm: 'fast' } }))
+    )
+    await assertFails(
+      ref(as.teacher, path).set(
+        withMode({ last: { ...score, accuracy: 91 }, best: score, first: score })
+      )
+    )
+    await assertFails(ref(as.teacher, path).set({ ...node, name: 'Jamie B.' }))
+    await assertFails(
+      ref(as.teacher, path).set({
+        byMode: { 'Bad Mode': { last: score, best: score, first: score } },
+      })
+    )
+    await assertSucceeds(
+      ref(as.teacher, path).set(withMode({ last: score, best: score, first: score }))
+    )
+  })
+})
+
+describe('cross-lesson carry', () => {
+  const statusPath = `sessions/${LESSON}/carryStatus/${STUDENT_ID}/3`
+  const status = { status: 'found', sourceLessonId: 'python-1-11', sourceTaskId: '5', at: 1000 }
+  const inboxPath = (id = STUDENT_ID) => `carryInbox/${LESSON}/${id}/3`
+  const entry = {
+    kind: 'code',
+    payload: JSON.stringify({ code: 'print(1)' }),
+    sourceLessonId: 'python-1-11',
+    sourceTaskId: '5',
+    writtenAt: 1000,
+  }
+
+  it('only lets teachers and admins write a carry status, with a known status', async () => {
+    await assertFails(ref(as.student, statusPath).set(status))
+    await assertSucceeds(ref(as.teacher, statusPath).set(status))
+    await assertSucceeds(ref(as.admin, statusPath).set({ ...status, status: 'starter' }))
+    await assertFails(ref(as.teacher, statusPath).set({ ...status, status: 'maybe' }))
+    await assertFails(ref(as.teacher, statusPath).set({ status: 'none' }))
+    await assertFails(ref(as.teacher, statusPath).set({ ...status, name: 'Jamie B.' }))
+  })
+
+  it('only lets teachers and admins write the inbox', async () => {
+    await assertFails(ref(as.student, inboxPath()).set(entry))
+    await assertFails(ref(as.anonymous, inboxPath()).set(entry))
+    await assertSucceeds(ref(as.teacher, inboxPath()).set(entry))
+    await assertSucceeds(ref(as.admin, `carryInbox/${LESSON}`).remove())
+  })
+
+  it('lets a student read only their own inbox entries', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ref(ctx, inboxPath()).set(entry)
+      await ref(ctx, inboxPath(OTHER_STUDENT_ID)).set(entry)
+    })
+    await assertSucceeds(ref(as.student, inboxPath()).get())
+    await assertFails(ref(as.student, inboxPath(OTHER_STUDENT_ID)).get())
+    await assertFails(ref(as.student, `carryInbox/${LESSON}`).get())
+    await assertFails(ref(as.anonymous, inboxPath()).get())
+    await assertSucceeds(ref(as.teacher, `carryInbox/${LESSON}`).get())
+  })
+
+  it('validates the inbox entry shape and payload size', async () => {
+    await assertFails(ref(as.teacher, inboxPath()).set({ ...entry, kind: 'video' }))
+    await assertFails(ref(as.teacher, inboxPath()).set({ kind: 'code' }))
+    await assertFails(ref(as.teacher, inboxPath()).set({ ...entry, extra: true }))
+    await assertFails(ref(as.teacher, inboxPath()).set({ ...entry, payload: 'x'.repeat(1000001) }))
+    await assertSucceeds(ref(as.teacher, inboxPath()).set({ ...entry, kind: 'blocks' }))
   })
 })
 

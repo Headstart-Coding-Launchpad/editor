@@ -7,6 +7,14 @@ import {
   CODE_STRUCTURE_OPERATORS,
   evaluateCodeStructureCheck,
 } from '../../shared/checkHelpers.js'
+import { evaluateVariablesPredictedCheck } from '../../shared/variablesPanel/predictions.js'
+import { validateVariablesPredictedCheck } from '../../shared/variablesPanel/validation.js'
+import {
+  STAGE_CHECK_TYPES,
+  evaluateStageCheck,
+  validateStageCheck,
+} from '../../shared/stage/checks.js'
+import { evaluateMaxLinesCheck, MAX_LINES_CHECK_TYPE } from '../../shared/puzzle/puzzle.js'
 
 // Messages from validateCodeStructureCheck are documented in
 // docs/authoring/validation-errors.md (validationErrorsDoc.test.js scans this file).
@@ -95,6 +103,14 @@ export function evaluatePythonCheck(check, output, context = {}) {
   return false
 }
 
+const STAGE_CHECK_FIELDS = {
+  stage_matches_target: ['tolerance'],
+  stage_shape_count: ['kind', 'sides', 'min', 'max'],
+  stage_colour_used: ['colour'],
+  stage_pixel: ['x', 'y', 'row', 'col', 'index', 'colour'],
+  stage_text_shown: ['text', 'operator'],
+}
+
 // Check-type registry definitions (see ../checkRegistry.js). Evaluated against the
 // variables captured after a run (`context.variables`).
 export const CHECKS = [
@@ -120,6 +136,57 @@ export const CHECKS = [
     evaluate: (check, _output, context = {}) => evaluateCodeStructureCheck(check, context?.code),
     validate: validateCodeStructureCheck,
   },
+  // The name-tag panel's predict mode (showVariables, src/shared/variablesPanel/): every listed
+  // prediction matched the value the panel showed after Run, compared like a typed quiz answer.
+  // Reads the predictions and snapshot the run hands over (`context.variablePredictions`), so
+  // `lessons test-checks` reports it as needing a run. Python and Turtle tasks.
+  {
+    type: 'variables_predicted',
+    owner: 'module:python',
+    subject: 'Variable predictions',
+    fields: ['names'],
+    timing: 'on_run',
+    requiresRun: true,
+    submitAllowed: false,
+    contextKey: 'variablePredictions',
+    // Every module with the name-tag panel (the showVariables task field): python and turtle.
+    appliesTo: (moduleDefinition) =>
+      !!moduleDefinition?.taskFields?.some((field) => field.name === 'showVariables'),
+    evaluate: evaluateVariablesPredictedCheck,
+    validate: validateVariablesPredictedCheck,
+  },
+  // Puzzle rules (task `puzzle`, src/shared/puzzle/puzzle.js): the student's code has at most
+  // `value` lines of code (blank and comment lines don't count; `value` defaults to
+  // puzzle.maxLines). No run needed. Python and Turtle tasks.
+  {
+    type: MAX_LINES_CHECK_TYPE,
+    owner: 'module:python',
+    subject: 'Lines of code',
+    fields: ['value'],
+    timing: 'on_change',
+    requiresRun: false,
+    submitAllowed: true,
+    contextKey: 'code',
+    // Every module with puzzle rules (the puzzle task field): python and turtle.
+    appliesTo: (moduleDefinition) =>
+      !!moduleDefinition?.taskFields?.some((field) => field.name === 'puzzle'),
+    evaluate: (check, _output, context = {}) => evaluateMaxLinesCheck(check, context),
+  },
+  // The Python Stage (src/shared/stage/): checks on the run's drawing (`context.stage`:
+  // { commands, target }). They need a run, so `lessons test-checks` reports them as needing
+  // one. Fields are per type (see docs/authoring/python.md "Stage").
+  ...STAGE_CHECK_TYPES.map((type) => ({
+    type,
+    owner: 'module:python',
+    subject: 'Stage drawing',
+    fields: STAGE_CHECK_FIELDS[type],
+    timing: 'on_run',
+    requiresRun: true,
+    submitAllowed: false,
+    contextKey: 'stage',
+    evaluate: (check, _output, context = {}) => evaluateStageCheck(check, context),
+    validate: validateStageCheck,
+  })),
 ]
 
 // `code_structure` reads Python indentation, so it only works in Python tasks (including

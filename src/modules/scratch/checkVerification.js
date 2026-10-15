@@ -16,8 +16,10 @@ import { buildJsonSpriteWorkspaces } from './jsonWorkspace.js'
 
 // The stages worth checking: the task's Complete blocks, its starter (the first Starter stage's
 // blocks, else `starterBlocks` — what Reset loads) and each Complete-role code stage (legacy
-// `solution` stages included). `kind` is 'complete' or 'starter'.
-export function getScratchVerificationStages(task) {
+// `solution` stages included). With `includeSupport`, each Support-role code stage that has
+// blocks too (`support:<label>`), in authored order. `kind` is 'complete', 'starter' or
+// 'support'.
+export function getScratchVerificationStages(task, { includeSupport = false } = {}) {
   const stages = []
   if (task?.completeBlocks != null) {
     stages.push({ stage: 'complete', kind: 'complete', blocks: task.completeBlocks })
@@ -28,9 +30,14 @@ export function getScratchVerificationStages(task) {
     blocks: getStarterStage(task)?.stage?.blocks ?? task?.starterBlocks ?? null,
   })
   ;(task?.codeStages ?? []).forEach((codeStage, index) => {
-    if (getStageRole(codeStage) !== 'complete' || codeStage?.blocks == null) return
+    if (codeStage?.blocks == null) return
+    const role = getStageRole(codeStage)
     const label = String(codeStage.label ?? '').trim() || `stage ${index + 1}`
-    stages.push({ stage: `complete:${label}`, kind: 'complete', blocks: codeStage.blocks })
+    if (role === 'complete') {
+      stages.push({ stage: `complete:${label}`, kind: 'complete', blocks: codeStage.blocks })
+    } else if (role === 'support' && includeSupport) {
+      stages.push({ stage: `support:${label}`, kind: 'support', blocks: codeStage.blocks })
+    }
   })
   return stages
 }
@@ -219,48 +226,60 @@ function isDebugTask(activityPattern) {
 
 /**
  * Verifies one Scratch task: per-stage results plus warnings, each starting `Task ${label}`.
- * Warnings: a Complete stage fails a static completion check; a feedback check fires on a
- * Complete stage; the starter already passes every completion check; a Debug Code Task whose
- * static blocking feedback checks all stay silent on the starter.
+ * Stages include Support-role code stages. Warnings: a Complete stage fails a static completion
+ * check; a feedback check fires on a Complete stage; the starter already passes every completion
+ * check; a Support stage passes completion (every check, or every block check with run-time
+ * ones skipped); a Debug Code Task whose static blocking feedback checks all stay silent on the
+ * starter.
  */
 export function verifyScratchTask(task, label = task?.id, { activityPattern = null } = {}) {
   const warnings = []
-  const stages = getScratchVerificationStages(task).map(({ stage, kind, blocks }) => {
-    let evaluated
-    try {
-      evaluated = evaluateScratchStage(task, blocks)
-    } catch (error) {
-      warnings.push(`Task ${label} ${stage} blocks are not valid JSON (${error.message})`)
-      return { stage, error: 'blocks are not valid JSON' }
+  const stages = getScratchVerificationStages(task, { includeSupport: true }).map(
+    ({ stage, kind, blocks }) => {
+      let evaluated
+      try {
+        evaluated = evaluateScratchStage(task, blocks)
+      } catch (error) {
+        warnings.push(`Task ${label} ${stage} blocks are not valid JSON (${error.message})`)
+        return { stage, error: 'blocks are not valid JSON' }
+      }
+      const { completion, feedback } = evaluated
+      if (kind === 'complete') {
+        for (const check of completion.checks.filter((c) => c.result === 'fail')) {
+          warnings.push(
+            `Task ${label} ${stage} stage fails completion check ${check.index} (${check.type})`
+          )
+        }
+        for (const check of feedback.filter((c) => c.result === 'fires')) {
+          warnings.push(
+            `Task ${label} feedback check ${check.index} (${check.type}) fires on the ${stage} stage`
+          )
+        }
+      } else if (kind === 'support') {
+        if (completion.result === 'pass') {
+          warnings.push(`Task ${label} ${stage} stage passes every completion check`)
+        } else if (completion.result === 'incomplete') {
+          warnings.push(
+            `Task ${label} ${stage} stage passes every block completion check (run-time checks not judged)`
+          )
+        }
+      } else if (kind === 'starter') {
+        if (completion.result === 'pass') {
+          warnings.push(`Task ${label} starter already passes every completion check`)
+        }
+        const blocking = feedback.filter((c) => c.mode === 'blocking' && c.result !== 'skipped')
+        if (
+          isDebugTask(activityPattern) &&
+          blocking.length > 0 &&
+          !blocking.some((c) => c.result === 'fires')
+        ) {
+          warnings.push(
+            `Task ${label} is a Debug task but none of its blocking feedback checks fires on the starter`
+          )
+        }
+      }
+      return { stage, completion, feedback }
     }
-    const { completion, feedback } = evaluated
-    if (kind === 'complete') {
-      for (const check of completion.checks.filter((c) => c.result === 'fail')) {
-        warnings.push(
-          `Task ${label} ${stage} stage fails completion check ${check.index} (${check.type})`
-        )
-      }
-      for (const check of feedback.filter((c) => c.result === 'fires')) {
-        warnings.push(
-          `Task ${label} feedback check ${check.index} (${check.type}) fires on the ${stage} stage`
-        )
-      }
-    } else if (kind === 'starter') {
-      if (completion.result === 'pass') {
-        warnings.push(`Task ${label} starter already passes every completion check`)
-      }
-      const blocking = feedback.filter((c) => c.mode === 'blocking' && c.result !== 'skipped')
-      if (
-        isDebugTask(activityPattern) &&
-        blocking.length > 0 &&
-        !blocking.some((c) => c.result === 'fires')
-      ) {
-        warnings.push(
-          `Task ${label} is a Debug task but none of its blocking feedback checks fires on the starter`
-        )
-      }
-    }
-    return { stage, completion, feedback }
-  })
+  )
   return { taskId: task?.id ?? null, title: task?.title ?? '', stages, warnings }
 }

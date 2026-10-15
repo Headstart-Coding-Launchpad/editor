@@ -286,12 +286,12 @@ await yargs(hideBin(process.argv))
 
       .command(
         'test-checks <lessonPath>',
-        'Test checks: source-code cases from a --cases file, or (no --cases) each Scratch task against its own stages',
+        'Test checks: named cases from a --cases file (source code, or Scratch blocks / a stage plus edits), or (no --cases) each Scratch task against its own stages, Support stages included',
         {
           cases: {
             type: 'string',
             describe:
-              'JSON or YAML file of named task cases; source-code checks are judged, checks that need a run (output, code_no_error, variable_*, tests) are reported as skipped; omit for Scratch tasks',
+              'JSON or YAML file of named task cases: code for source-code tasks; blocks, or a stage plus edits (appendBlock, replaceOpcode, setField, removeBlock), for Scratch tasks. Checks that need a run are reported as skipped',
           },
           task: {
             type: 'string',

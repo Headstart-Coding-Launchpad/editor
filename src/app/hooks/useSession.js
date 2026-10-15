@@ -12,10 +12,13 @@ import {
   runTransaction,
 } from 'firebase/database'
 import { db } from '../../shared/firebase'
+import { buildControlHighlightCommand } from '../../shared/controlHighlight.js'
 import { clearPeerHelpData } from './usePeerHelp'
+import { clearCarryInbox } from '../../shared/roster/crossLessonCarryService'
 import { encodeFileKey, decodeFileKey } from '../../shared/fileKeys'
 import { sealTasks } from '../../shared/lessonSeal'
 import { compactTurtleResultForSync } from '../../modules/turtle/sync.js'
+import { compactStageForSync } from '../../shared/stage/sync.js'
 import { AUTO_REVEAL_MODES, SUPPORT_REVEAL_SOURCES } from '../../shared/taskStages.js'
 import {
   buildShareIndexEntry,
@@ -46,6 +49,7 @@ import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liv
 import { buildClassCountdown, extendClassCountdown } from '../../shared/classCountdown'
 import { clipRunError } from '../studentHints.js'
 import { bumpSideQuestCount } from '../../shared/sideQuests.js'
+import { bumpExampleOpenCount, exampleOpenPath } from '../../shared/exampleOpens.js'
 import { draftLogUpdates } from '../../shared/answerDrafts.js'
 import {
   MAX_TILE_HIGHLIGHT_LOG_PER_TASK,
@@ -210,12 +214,26 @@ export function useSession(lessonId, { enabled = true } = {}) {
       studentSignals: null,
       // Side-quest status (src/shared/sideQuests.js) belongs to one session.
       sideQuestLog: null,
+      // "See example" opens (src/shared/exampleOpens.js) belong to one session.
+      exampleOpenLog: null,
       // Unsubmitted answer drafts kept for the report (src/shared/answerDrafts.js).
       draftLog: null,
+      // Class roster (src/shared/roster/): a stock lesson's class is picked again for each
+      // session, and matches belong to this session's anonymous students.
+      classId: null,
+      classChosenAt: null,
+      rosterMatches: null,
+      // Typing history pushed to matched students (src/shared/typingHistory.js).
+      typingHistory: null,
+      // Cross-lesson carry statuses (src/shared/roster/crossLessonCarry.js) belong to this
+      // session's anonymous students.
+      carryStatus: null,
     })
     // The payload node lives outside the session, so resetting the session
     // does not clear it on its own.
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
+    // Nor the cross-lesson carry inbox.
+    await clearCarryInbox(lessonId)
     // Neither does the teacher-sandbox archive.
     await archiveQuietly(remove(ref(db, sessionArchivePath())))
     // Nor the Presentation annotations.
@@ -309,8 +327,11 @@ export function useSession(lessonId, { enabled = true } = {}) {
       peerHelperOff: null,
       // Students' unsubmitted drafts: the report (built before this) holds them as lastDraft.
       draftLog: null,
+      // Cross-lesson carry outcomes: the report (built before this) holds them.
+      carryStatus: null,
     })
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
+    await clearCarryInbox(lessonId)
     await clearLiveInkQuietly()
     await clearPeerHelpData(lessonId)
     // When the teacher closes the tab, remove the session entirely so the
@@ -322,6 +343,11 @@ export function useSession(lessonId, { enabled = true } = {}) {
       .remove()
       .catch(() => {
         // Non-fatal: worst case a payload subtree outlives its session.
+      })
+    onDisconnect(ref(db, `carryInbox/${lessonId}`))
+      .remove()
+      .catch(() => {
+        // Non-fatal: worst case an inbox outlives its session until the next createSession.
       })
     // The sandbox archive has been read into the saved report by now (handleEndSession builds
     // the report before calling this), so it goes with the session.
@@ -493,6 +519,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/currentOutput`] = ''
       updates[`students/${anonymousId}/currentCode`] = ''
       updates[`students/${anonymousId}/currentArcadeDesign`] = null
+      updates[`students/${anonymousId}/currentVariables`] = null
+      updates[`students/${anonymousId}/currentStageResult`] = null
       updates[`students/${anonymousId}/currentSpriteState`] = null
       updates[`students/${anonymousId}/currentCursor`] = null
       updates[`students/${anonymousId}/currentBlockDrag`] = null
@@ -536,6 +564,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       updates[`students/${anonymousId}/teacherPaneCommand`] = null
       // A side-quest closes when the class moves on (sideQuestLog keeps what happened).
       updates[`students/${anonymousId}/sideQuestOpen`] = null
+      updates[`students/${anonymousId}/sideQuestCode`] = null
       // The previous task's panes mean nothing on the new one; the student's StudentView
       // re-reports the new task's panes (its dedupe resets per task).
       updates[`students/${anonymousId}/visiblePanes`] = null
@@ -1368,6 +1397,30 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await set(ref(db, `sessions/${lessonId}/teacherClassPaneCommand`), null)
   }
 
+  // Control highlights (src/shared/controlHighlight.js): pulse one control (Run, the green flag,
+  // a Costumes tab…) on one student's screen or the whole class's. { target, taskId, pushedAt }
+  // in server time; each student's screen ends it on its own (used, or 20 s), so the node stays
+  // until the next push or a clear.
+  async function pushTeacherControlHighlight(anonymousId, target, taskId) {
+    if (!anonymousId || !target) return
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherControlHighlight`),
+      buildControlHighlightCommand(target, taskId, serverNow())
+    )
+  }
+
+  async function pushClassControlHighlight(target, taskId) {
+    if (!target) return
+    await set(
+      ref(db, `sessions/${lessonId}/teacherClassControlHighlight`),
+      buildControlHighlightCommand(target, taskId, serverNow())
+    )
+  }
+
+  async function clearClassControlHighlight() {
+    await set(ref(db, `sessions/${lessonId}/teacherClassControlHighlight`), null)
+  }
+
   // ─── Presentation annotations (liveInk/{lessonId}) ─────────────────────────
   // Pointer, ink and highlights from the Presentation window. A top-level node, not part of
   // the session: every client streams sessions/{lessonId} in full, and the pointer moves at
@@ -1677,6 +1730,16 @@ export function useSession(lessonId, { enabled = true } = {}) {
     )
   }
 
+  // The Python Stage drawing of the student's last run (src/shared/stage/), compacted for sync
+  // (compactStageForSync), or null when it drew nothing. Written with each run, like Turtle's.
+  async function writeStudentStageResult(anonymousId, stage) {
+    if (!anonymousId) return
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/currentStageResult`),
+      compactStageForSync(stage)
+    )
+  }
+
   async function writeStudentSpriteState(anonymousId, spriteState) {
     await set(
       ref(db, `sessions/${lessonId}/students/${anonymousId}/currentSpriteState`),
@@ -1828,6 +1891,29 @@ export function useSession(lessonId, { enabled = true } = {}) {
       tileId: String(tileId),
       at: serverTimestamp(),
     })
+  }
+
+  // The name-tag panel (a task's showVariables, src/shared/variablesPanel/) as the tutor sees
+  // it: the variables of the student's last run and their predictions so far
+  // (compactVariablesForSync), or null. Written after each run and when a prediction is
+  // committed (useVariablesPanel); cleared with the other per-task fields by setTaskId.
+  async function writeStudentVariables(anonymousId, state) {
+    if (!anonymousId) return
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/currentVariables`),
+      state ?? null
+    )
+  }
+
+  // One reveal of a student's predictions (a Run in predict mode), pushed under their own node
+  // per task for the session report (src/shared/variablesPanel/predictions.js). useVariablesPanel
+  // caps the entries per task and skips a Run whose predictions didn't change.
+  async function recordVariablePredictions(anonymousId, taskId, entry) {
+    if (!anonymousId || taskId == null || !entry) return
+    await set(
+      push(ref(db, `sessions/${lessonId}/students/${anonymousId}/predictionLog/${taskId}`)),
+      { ...entry, at: serverTimestamp() }
+    )
   }
 
   // ─── Live badges: student signals ─────────────────────────────────────────
@@ -2024,19 +2110,47 @@ export function useSession(lessonId, { enabled = true } = {}) {
   }
 
   // ─── Side-quests (src/shared/sideQuests.js) ────────────────────────────────
-  // Status only: which side-quest is open, and per side-quest when it was first opened, how
-  // often it was run (and errored) and whether the student marked it Done. Written on open,
-  // close, Run and Done, never per keystroke, and never any code.
+  // Status: which side-quest is open, and per side-quest when it was first opened, how often it
+  // was run (and errored) and whether the student marked it Done. Written on open, close, Run
+  // and Done. The open side-quest's live work goes to students/{id}/sideQuestCode for the tutor
+  // (writeSideQuestCode): on open, on Run, and per keystroke only while activeStudentView is
+  // this student (SideQuestWorkspace decides when).
   const sideQuestPath = (anonymousId, taskId, index) =>
     `sessions/${lessonId}/sideQuestLog/${anonymousId}/${taskId}/${index}`
+  const sideQuestCodePath = (anonymousId) =>
+    `sessions/${lessonId}/students/${anonymousId}/sideQuestCode`
 
-  /** The side-quest open on the student's screen right now (its index), or null. */
-  async function writeSideQuestOpen(anonymousId, index) {
+  /**
+   * The side-quest open on the student's screen right now (its index), or null. Opening starts
+   * a fresh live record ({ taskId, index, openedAt }); closing clears it.
+   */
+  async function writeSideQuestOpen(anonymousId, index, taskId = null) {
     if (!anonymousId) return
+    const open = Number.isInteger(index) ? index : null
     await set(
-      ref(db, `sessions/${lessonId}/students/${anonymousId}/sideQuestOpen`),
-      Number.isInteger(index) ? index : null
+      ref(db, sideQuestCodePath(anonymousId)),
+      open != null && taskId != null
+        ? { taskId, index: open, openedAt: serverTimestamp(), updatedAt: serverTimestamp() }
+        : null
     )
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/sideQuestOpen`), open)
+  }
+
+  /**
+   * Merges the open side-quest's live work into students/{id}/sideQuestCode (the caller always
+   * sends `taskId` and `index`). `files` is a { name: content } map; `turtleResult` is compacted
+   * like currentTurtleResult. Never call it per keystroke unless activeStudentView is this
+   * student.
+   */
+  async function writeSideQuestCode(anonymousId, patch) {
+    if (!anonymousId || !patch || !Number.isInteger(patch.index)) return
+    const next = { ...patch, updatedAt: serverTimestamp() }
+    if (patch.files !== undefined) next.files = patch.files ? encodeFileKeys(patch.files) : null
+    if (patch.turtleResult !== undefined) {
+      next.turtleResult = patch.turtleResult ? compactTurtleResultForSync(patch.turtleResult) : null
+    }
+    if (patch.lastRunAt === true) next.lastRunAt = serverTimestamp()
+    await update(ref(db, sideQuestCodePath(anonymousId)), next)
   }
 
   /** Stamps `openedAt` the first time the student opens this side-quest. */
@@ -2063,6 +2177,25 @@ export function useSession(lessonId, { enabled = true } = {}) {
   }
 
   /** The student's self-reported Done (or un-Done). Recorded, never checked. */
+  /**
+   * A student opened a "See example" fence in a task explainer (src/shared/exampleOpens.js):
+   * stamps `openedAt` the first time, `lastOpenedAt` every time, and bumps `opens`.
+   */
+  async function recordExampleOpen(anonymousId, taskId, index) {
+    if (!anonymousId || taskId == null || !Number.isInteger(index) || index < 0 || index > 9) return
+    const path = exampleOpenPath(lessonId, anonymousId, taskId, index)
+    const first = session?.exampleOpenLog?.[anonymousId]?.[taskId]?.[index]?.openedAt == null
+    try {
+      await update(ref(db, path), {
+        ...(first ? { openedAt: serverTimestamp() } : {}),
+        lastOpenedAt: serverTimestamp(),
+      })
+      await runTransaction(ref(db, `${path}/opens`), bumpExampleOpenCount)
+    } catch (err) {
+      console.warn('[examples] could not record an example open', err)
+    }
+  }
+
   async function setSideQuestDone(anonymousId, taskId, index, done) {
     if (!anonymousId || taskId == null || !Number.isInteger(index)) return
     await update(ref(db, sideQuestPath(anonymousId, taskId, index)), {
@@ -2233,6 +2366,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
     clearTeacherPaneCommand,
     pushClassPaneCommand,
     clearClassPaneCommand,
+    pushTeacherControlHighlight,
+    pushClassControlHighlight,
+    clearClassControlHighlight,
     // Presentation annotations (LiveInkProvider)
     subscribeLiveInk,
     createLiveInkWriter,
@@ -2261,6 +2397,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     writeStudentCode,
     writeStudentArcadeDesign,
     writeStudentTurtleResult,
+    writeStudentStageResult,
     writeStudentSpriteState,
     writeStudentCursor,
     writeStudentBlockDrag,
@@ -2274,6 +2411,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
     recordStudentPaste,
     recordStudentTyping,
     recordStudentTileMiss,
+    writeStudentVariables,
+    recordVariablePredictions,
     // student: live badge signals
     recordTopicOpenSignal,
     recordShortcutSignal,
@@ -2288,9 +2427,11 @@ export function useSession(lessonId, { enabled = true } = {}) {
     writeStudentPersonalSandbox,
     // student: side-quest status
     writeSideQuestOpen,
+    writeSideQuestCode,
     recordSideQuestOpened,
     recordSideQuestRun,
     setSideQuestDone,
+    recordExampleOpen,
     setTeacherLiveReferenceForStudent,
     setTeacherLiveReferenceForClass,
     writeStudentPresence,

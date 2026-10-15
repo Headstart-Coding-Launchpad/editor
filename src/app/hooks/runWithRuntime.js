@@ -28,15 +28,30 @@ import { lastErrorLine } from '../studentHints.js'
  * - refs: outputRafIdRef, outputMirrorRef, inputPromptRef, inputValueRef, submitInputEchoRef,
  *   appendOutputRef, runtimeCodeRafIdRef, pendingRuntimeCodeRef, lastRuntimeCodeWriteRef,
  *   currentTaskIdRef, phaseRef, inPersonalSandboxRef, teacherAssistedTaskIdsRef
- * - setters: setOutput, setInputPrompt, setErrorLine, setRunStatus, setTurtleResult, setRunning
+ * - setters: setOutput, setInputPrompt, setErrorLine, setRunStatus, setTurtleResult,
+ *   setStageResult (optional), setRunning
  * - writers: writeStudentInputState, writeStudentOutput, writeStudentCode, writeStudentRun,
- *   writeStudentTurtleResult, logAttempt
+ *   writeStudentTurtleResult, writeStudentStageResult (optional), logAttempt
  * - live: canPublishTeacherLive, updateTeacherLive, currentTeacherLivePayload, publishTeacherLive
  * - feedback: applyCheckFeedback, updateTargetedStageOffer, updateSupportStageForAttempt
  * - saveRunRecord(taskId, code, fields): the task's run record (persistence.saveRunRecord)
  * - signals (optional): the live badge reporters (useStudentBadgeSignals); a free-play run is
  *   reported with reportSandboxRun
+ * - variablesPanel (optional): the name-tag panel (useVariablesPanel), handed each finished run
+ * - recordCourseRun (optional): a Turtle course run's `turtle.course` for the session report
+ *   (useCourseLog); not for free play
+ * - runOptions (optional): `{ slowMo: true, onResult(result) }` from a slow-mo Run
+ *   (src/modules/python/slowMo/): the runtime records the run for playback, and `onResult` gets
+ *   the runtime's result (with its `slowMo` recording) before anything else is done with it.
+ *   The recorded run IS the run: output, checks, the attempt and the save are exactly as for Run.
  */
+let turtleRunCount = 0
+
+function newTurtleRunId() {
+  turtleRunCount += 1
+  return `${Date.now().toString(36)}-${turtleRunCount}`
+}
+
 export async function runWithRuntime(ctx) {
   const {
     actor,
@@ -180,7 +195,13 @@ export async function runWithRuntime(ctx) {
     },
     onCodeUpdate: scheduleRuntimeCodeUpdate,
     getRuntimeCode: readCode,
+    ...(ctx.runOptions?.slowMo ? { slowMo: true } : {}),
+    // Free play (a sandbox) never runs the task's hidden setupCode.
+    ...(refs.phaseRef.current === 'sandbox' || refs.inPersonalSandboxRef.current
+      ? { freePlay: true }
+      : {}),
   })
+  ctx.runOptions?.onResult?.(result)
   refs.submitInputEchoRef.current = null
   outputMirror.cancel()
   if (refs.outputMirrorRef.current === outputMirror) refs.outputMirrorRef.current = null
@@ -235,13 +256,39 @@ export async function runWithRuntime(ctx) {
   const nextCode = typeof result.updatedCode === 'string' ? result.updatedCode : latestRuntimeCode
   if (nextCode !== startCode) setCode(nextCode)
 
-  if (status !== 'stopped') setTurtleResult(result.turtle ?? null)
+  // A Run's Turtle drawing gets a runId so the picture plays it (src/modules/turtle/
+  // useTurtlePlayback.js), here and on Go Live screens. A slow-mo run has none: slow-mo plays it.
+  if (status !== 'stopped') {
+    setTurtleResult(
+      result.turtle
+        ? ctx.runOptions?.slowMo
+          ? result.turtle
+          : { ...result.turtle, runId: newTurtleRunId() }
+        : null
+    )
+  }
+  // The Python Stage drawing (src/shared/stage/): the pane shows it once the code draws.
+  if (status !== 'stopped' && runResult.stage) setters.setStageResult?.(result.stage ?? null)
+  // The name-tag panel (showVariables, useVariablesPanel.js) shows this run and marks the
+  // predictions; it hands back `variablePredictions` for the variables_predicted check. Free
+  // play (a sandbox) has no task panel.
+  const panelContext =
+    ctx.variablesPanel?.receiveRun({
+      task: refs.phaseRef.current === 'sandbox' || refs.inPersonalSandboxRef.current ? null : task,
+      status,
+      result,
+    }) ?? {}
   // `ran` tells run_attempted checks this context comes from a real run (see checks.js).
   const checkContext = checking.buildContext(nextCode, {
     status,
     variables: result.variables ?? {},
     turtle: result.turtle ?? null,
+    // The Python Stage checks read the drawing and the task's target drawing (stageTarget).
+    stage: runResult.stage
+      ? { commands: result.stage?.commands ?? [], target: result.stageTarget ?? null }
+      : null,
     ran: true,
+    ...panelContext,
   })
   // A teacher-started or personal sandbox is free play: the session still points at a
   // lesson task, but sandbox code has nothing to do with that task's check, so scoring
@@ -313,7 +360,11 @@ export async function runWithRuntime(ctx) {
     // explicit edits. Lets a teacher open StudentModal and see the student's actual
     // drawing, not just their code.
     if (runResult.turtle) writers.writeStudentTurtleResult(actor.anonymousId, result.turtle ?? null)
+    // The Python Stage drawing is a run result too: the tutor's card and StudentModal draw it.
+    if (runResult.stage) writers.writeStudentStageResult?.(actor.anonymousId, result.stage ?? null)
   }
+  // A Turtle course run (task.course) for the session report.
+  if (!isFreePlay && result.turtle?.course) ctx.recordCourseRun?.(result.turtle.course)
   if (isFreePlay && !teacherPresentation) {
     signals?.reportSandboxRun({ error: runError, submission: nextCode })
   }
