@@ -59,3 +59,19 @@ describe('showVariables authoring', () => {
     expect(parseTargetLines('d = {"a": 1}')).toEqual({ d: { a: 1 } })
   })
 })
+
+describe('showVariables lockRun authoring (P6-18)', () => {
+  const predictTask = { id: 1, showVariables: { mode: 'predict', at: 'end', predict: ['a'] } }
+
+  it('writes lockRun only to turn the lock off', () => {
+    const off = updateShowVariables(predictTask, { lockRun: false })
+    expect(off.showVariables.lockRun).toBe(false)
+    const on = updateShowVariables(off, { lockRun: true })
+    expect(on.showVariables).not.toHaveProperty('lockRun')
+  })
+
+  it('drops lockRun when the mode leaves predict', () => {
+    const off = updateShowVariables(predictTask, { lockRun: false })
+    expect(updateShowVariables(off, { mode: 'view' }).showVariables).not.toHaveProperty('lockRun')
+  })
+})

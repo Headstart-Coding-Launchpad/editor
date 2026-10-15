@@ -28,7 +28,7 @@ export const SHOW_VARIABLES_TASK_FIELD = Object.freeze({
   name: 'showVariables',
   type: 'object',
   description:
-    'Name-tag panel showing what is in the variables after Run (off unless set): { mode: view | predict | target, at: end | marker (the #@peek line), hide: [names], predict: [names] (predict mode), target: { name: value } (target mode), visuals: true | false (lists and dicts drawn as swatches, bars, pictures and cards; default true), stageLists: picture | tiles | size (how a list drawn with grid() shows; default size) }.',
+    'Name-tag panel showing what is in the variables after Run (off unless set): { mode: view | predict | target, at: end | marker (the #@peek line), hide: [names], predict: [names] (predict mode), target: { name: value } (target mode), visuals: true | false (lists and dicts drawn as swatches, bars, pictures and cards; default true), stageLists: picture | tiles | size (how a list drawn with grid() shows; default size), lockRun: true | false (predict mode: Run waits until every prediction is in, until the first Run; default true) }.',
 })
 
 // Python names (identifiers), for author-given names.
@@ -53,9 +53,10 @@ function nameList(value) {
 
 /**
  * The task's `showVariables`, normalised: `{ mode, at, hide, predict, target, visuals,
- * stageLists }`, or null when the task has no panel (the panel is off unless a task turns it
- * on). `predict` is only kept in predict mode and `target` only in target mode. `visuals` is
- * false only when the task says so; `stageLists` is picture | tiles | size (default size).
+ * stageLists, lockRun }`, or null when the task has no panel (the panel is off unless a task
+ * turns it on). `predict` is only kept in predict mode and `target` only in target mode.
+ * `visuals` is false only when the task says so; `stageLists` is picture | tiles | size (default
+ * size). `lockRun` is true only in predict mode, unless the task turns it off.
  */
 export function getShowVariables(task) {
   const raw = task?.showVariables
@@ -69,7 +70,28 @@ export function getShowVariables(task) {
     target: mode === 'target' && isPlainObject(raw.target) ? { ...raw.target } : {},
     visuals: raw.visuals !== false,
     stageLists: STAGE_LISTS_OPTIONS.includes(raw.stageLists) ? raw.stageLists : DEFAULT_STAGE_LISTS,
+    lockRun: mode === 'predict' && raw.lockRun !== false,
   }
+}
+
+export const PREDICT_RUN_LOCK_MESSAGE = 'Fill in your predictions first'
+
+/**
+ * Predict mode's Run lock (`showVariables.lockRun`, on by default): until the student's first
+ * Run of the task, Run, slow-mo and its steps wait for an answer in every predict tag, so the
+ * prediction is made before the program shows the values. `predictions` is the student's
+ * prediction state (`{ taskId, values, results, ran }`, useVariablesPanel). Returns
+ * `{ message, missing }` (the names still blank) while locked, else null. The presenter is never
+ * locked; useStudentCodeState leaves it out.
+ */
+export function getPredictRunLock(task, predictions) {
+  const config = getShowVariables(task)
+  if (!config?.lockRun || config.predict.length === 0) return null
+  const own = predictions && String(predictions.taskId) === String(task?.id) ? predictions : null
+  if (own?.ran) return null
+  const values = own?.values ?? {}
+  const missing = config.predict.filter((name) => !String(values[name] ?? '').trim())
+  return missing.length > 0 ? { message: PREDICT_RUN_LOCK_MESSAGE, missing } : null
 }
 
 /** The visual options of a normalised config (chooseVisual in visuals.js reads them). */

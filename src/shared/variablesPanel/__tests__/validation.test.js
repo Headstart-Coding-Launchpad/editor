@@ -88,6 +88,24 @@ describe('validateShowVariables', () => {
   })
 })
 
+describe('validateShowVariables lockRun (P6-18)', () => {
+  it('accepts true or false in predict mode', () => {
+    expect(run({ showVariables: { mode: 'predict', predict: ['a'], lockRun: false } })).toEqual({
+      errors: [],
+      warnings: [],
+    })
+  })
+
+  it('rejects a value that is not true or false, and warns outside predict mode', () => {
+    expect(
+      run({ showVariables: { mode: 'predict', predict: ['a'], lockRun: 'no' } }).errors
+    ).toEqual(['Task 1 has showVariables lockRun that is not true or false'])
+    expect(run({ showVariables: { mode: 'view', lockRun: true } }).warnings).toEqual([
+      'Task 1 has showVariables lockRun but its mode is not predict — only predict mode locks Run, so it is ignored',
+    ])
+  })
+})
+
 describe('validateVariablesPredictedCheck', () => {
   it('only allows modules with the panel, and Python names', () => {
     const python = getModuleDefinition('python')

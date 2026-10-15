@@ -45,7 +45,8 @@ export function useVariablesPanel({
   recordVariablePredictions,
 }) {
   const [run, setRun] = useState(null)
-  // { taskId, values: { name: text }, results: { name: bool } | null }
+  // { taskId, values: { name: text }, results: { name: bool } | null, ran: bool } (`ran` once a
+  // Run of the task finished: it lifts predict mode's Run lock, getPredictRunLock)
   const [predictions, setPredictions] = useState(null)
   const runRef = useRef(null)
   const predictionsRef = useRef(null)
@@ -136,7 +137,7 @@ export function useVariablesPanel({
         const values = sameTaskId(current?.taskId, taskId) ? { ...current.values } : {}
         const snapshot = currentSnapshot(next)
         const evaluation = snapshot ? evaluatePredictions(config.predict, values, snapshot) : null
-        setPredictionState({ taskId, values, results: evaluation?.results ?? null })
+        setPredictionState({ taskId, values, results: evaluation?.results ?? null, ran: true })
         extras.variablePredictions = { names: config.predict, values, snapshot }
         const typedAny = Object.values(values).some((value) => String(value ?? '').trim())
         const key = `${taskId}`
@@ -187,7 +188,7 @@ export function useVariablesPanel({
         results = { ...results }
         delete results[name]
       }
-      setPredictionState({ taskId, values, results })
+      setPredictionState({ taskId, values, results, ran: !!current?.ran })
       if (isWatched() && !watchedWriteTimerRef.current) {
         watchedWriteTimerRef.current = setTimeout(() => {
           watchedWriteTimerRef.current = null

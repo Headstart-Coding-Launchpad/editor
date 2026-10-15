@@ -39,6 +39,23 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-15
 
+### Name-tag panel: predict mode locks Run until every prediction is in (`showVariables.lockRun`)
+
+- **Predict tasks now enforce predicting first.** With `showVariables.mode: predict`, Run, Slow-mo
+  and Step stay disabled until every `predict` tag has an answer (anything non-blank). "Fill in
+  your predictions first" shows beside Run in words, as a tooltip, and as the button's accessible
+  description.
+- **After the first Run the lock is gone** for the rest of the task, so students can change the
+  code and run again. The presenter (Go Live, the presentation window) is never locked, a tutor's
+  remote Run still runs, and the personal sandbox isn't locked.
+- **Off switch:** `showVariables.lockRun: false` (Builder: "Students fill in every prediction
+  before their first Run"). Validation errors on a non-boolean and warns when it's set outside
+  predict mode. See [python.md](python.md#name-tag-panel-showvariables).
+- Affects: python, turtle (name-tag panel predict mode; new field `showVariables.lockRun`) ·
+  Existing lessons: predict tasks now lock Run until the predictions are in; add
+  `lockRun: false` to keep the old behaviour · Resolves:
+  authoring-requests/2026-10-15-p6-18-predict-mode-locks-run-until-every-prediction-is-in.md
+
 ### Name-tag panel: `#@peek` now shows where the program stopped
 
 - **A "stopped here" band in the editor.** With `showVariables.at: marker`, a dashed purple ⏸ band
