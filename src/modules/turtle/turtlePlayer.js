@@ -59,6 +59,12 @@ export function createTurtlePlayer(options = {}) {
   let backDone = 0
   let redrawIndex = 0
 
+  // Animating needs a real 2D context: test stubs (jsdom, `getContext: () => ({})`) don't
+  // count, so the drawing just shows finished.
+  function usable(ctx) {
+    return ctx && typeof ctx.save === 'function' ? ctx : null
+  }
+
   function context() {
     return canvas?.getContext?.('2d') ?? null
   }
@@ -99,7 +105,7 @@ export function createTurtlePlayer(options = {}) {
     if (!canvas) return null
     if (!back) {
       back = createCanvas()
-      backCtx = back?.getContext?.('2d') ?? null
+      backCtx = usable(back?.getContext?.('2d'))
     }
     if (!backCtx) return null
     if (back.width !== canvas.width || back.height !== canvas.height) {
@@ -195,7 +201,7 @@ export function createTurtlePlayer(options = {}) {
     play() {
       cancel()
       // Nothing takes any time (speed(0)), or no canvas to animate on (jsdom): show it finished.
-      if (!(timeline.totalMs > 0) || !context()) {
+      if (!(timeline.totalMs > 0) || !usable(context())) {
         finish()
         return
       }
