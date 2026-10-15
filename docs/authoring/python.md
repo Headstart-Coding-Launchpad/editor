@@ -366,6 +366,19 @@ that function's own variables. If the program never reaches the line (a branch t
 the panel says so and shows the end of the run. Only the first `#@peek` in the code counts; it
 attaches to the next line of code, skipping blank and comment lines.
 
+**Where it stopped is shown, not just explained.** With `at: marker` and a `#@peek` line, the
+editor draws a dashed purple band with ⏸ in the gap above the marked line, reading **"The tags
+show the values here"**. It is there from when the task opens, before any run, so in predict mode
+students see where to predict, and it moves with the line as they edit. It looks nothing like
+slow-mo's amber "this line ran" band. The panel gets a header line, **"Values just before line
+N"**, with N the line number the student sees in the editor, in every mode (empty predict tags
+included). After a run that never reached the line, the panel keeps its note, the band reads
+**"The program never reached this line"** and the header says **"Line N never ran"**. The tutor's
+StudentModal and Go Live show the band and the header too. Screen readers hear "Values shown just
+before line N". There is nothing to author beyond `at: marker` and the `#@peek` line, and a hint
+can point at it ("Stop at the bar. Which lines have run so far?"). Prefer predicting from the end;
+use a peek when a part-way stop is the point of the task.
+
 **`variables_predicted` check** (`names` optional — default: every `predict` name). Passes when
 every listed prediction matches the value the panel shows after Run, using a forgiving
 comparison decided by the real value's type:

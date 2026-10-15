@@ -40,6 +40,8 @@ const DICT_LIMIT = 8
  *   `readOnly`, for a tutor's or a Go Live viewer's copy)
  * - `running`: the program is running now
  * - `audience`: 'student' (default) or 'tutor' (wording)
+ * - `peekLine`: with `at: marker`, the line (as the editor numbers it) the values are shown
+ *   just before — a "Values just before line N" header in every mode (getPanelPeekLine)
  *
  * Step-by-step players (Python slow-mo) also pass:
  * - `history`: `{ name: [earlier value nodes, newest first] }`, shown struck through on the tag
@@ -60,6 +62,7 @@ export default function NameTagPanel({
   status = null,
   pulseKey = null,
   pulse = true,
+  peekLine = null,
   style,
 }) {
   if (!config) return null
@@ -92,6 +95,10 @@ export default function NameTagPanel({
           {status ?? statusText({ config, run, snapshot, results, running, audience })}
         </p>
       </div>
+
+      {config.at === 'marker' && Number.isInteger(peekLine) && (
+        <PeekLineHeader line={peekLine} missed={!!run && !run.peekReached && !running} />
+      )}
 
       {config.mode === 'predict' && featured.length > 0 && (
         <ul className="ntp-tags" aria-label="Predictions">
@@ -192,6 +199,19 @@ function statusText({ config, run, snapshot, results, running, audience }) {
     parts.push(`${hit} of ${names.length} on target.`)
   }
   return parts.join(' ')
+}
+
+// Which line an `at: marker` panel shows the values before (the editor's ⏸ band marks it).
+// Once a run has missed the line, it says so instead (the status line explains the values).
+function PeekLineHeader({ line, missed = false }) {
+  return (
+    <p className={`ntp-peek-line${missed ? ' is-missed' : ''}`} data-testid="ntp-peek-line">
+      <span className="ntp-peek-icon" aria-hidden="true">
+        ⏸
+      </span>
+      {missed ? `Line ${line} never ran` : `Values just before line ${line}`}
+    </p>
+  )
 }
 
 function TagTop({ name, node, changed, label }) {

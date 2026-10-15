@@ -13,7 +13,12 @@ import {
 import CopyCodePanel from '../../app/components/CopyCodePanel'
 import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
 import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
-import { getShowVariables, taskShowsVariables } from '../../shared/variablesPanel/variablesPanel.js'
+import {
+  getPeekBand,
+  getShowVariables,
+  panelRunForTask,
+  taskShowsVariables,
+} from '../../shared/variablesPanel/variablesPanel.js'
 import StagePane from '../../shared/stage/StagePane.jsx'
 import { codeImportsStage, stageCommandsOf } from '../../shared/stage/commands.js'
 import ResultPane from '../../shared/resultPane/ResultPane.jsx'
@@ -119,6 +124,17 @@ export default function StudentWorkspace({
     live: isForcedTeacherLive ? displayPythonSlowMo : undefined,
   })
   const slowMoView = slowMoShown ? slowMo.view : null
+  // The #@peek "stopped here" band (showVariables.at: marker), from when the task opens; not
+  // while the panel is hidden or slow-mo steps through the run.
+  const variablesSynced = isForcedTeacherLive ? displayVariablesPanel : undefined
+  const peekBand =
+    isViewingPrev || isTeacherEditing || slowMoView
+      ? null
+      : getPeekBand(
+          task,
+          code,
+          panelRunForTask(task, { panel: cs.variablesPanel, synced: variablesSynced })
+        )
   const slowMoControls = {
     ...slowMo,
     slowMo: () => {
@@ -357,6 +373,7 @@ export default function StudentWorkspace({
         showBlocks={taskShowsBlocks(task)}
         onRunShortcut={readOnly || task?.interactionMode === 'submit' ? undefined : handleRunClick}
         slowMoMarker={slowMoView?.marker ?? null}
+        peekBand={peekBand}
       />
       {showSubmitBanner && <div style={s.submitBanner}>Code submitted</div>}
     </div>
@@ -371,7 +388,8 @@ export default function StudentWorkspace({
     <TaskVariablesPanel
       task={task}
       panel={cs.variablesPanel}
-      synced={isForcedTeacherLive ? displayVariablesPanel : undefined}
+      synced={variablesSynced}
+      code={code}
       running={cs.running}
       hidden={isViewingPrev || isTeacherEditing}
       style={variablesStyle}

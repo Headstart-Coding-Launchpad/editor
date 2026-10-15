@@ -202,8 +202,9 @@ export function createBaseExtensions(type = 'python', readOnly = false) {
 // chooseLineHints) to replace the hints; `[]` or null clears them.
 export const setLineHints = StateEffect.define()
 
-// Whether a change removed the whole line [from, to] together with a line break next to it.
-function lineRemoved(changes, from, to) {
+// Whether a change removed the whole line [from, to] together with a line break next to it
+// (also used by the #@peek band, ./peekBandEditor.js).
+export function lineRemoved(changes, from, to) {
   let removed = false
   changes.iterChangedRanges((fromA, toA) => {
     if (fromA <= from && toA >= to && (fromA < from || toA > to)) removed = true
