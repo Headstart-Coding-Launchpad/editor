@@ -142,6 +142,16 @@ export default function ShowVariablesField({ task, onUpdate }) {
                   />
                   Complete the task when every prediction is right (a variables_predicted check)
                 </label>
+                <label className="te-check-toggle" style={{ alignSelf: 'flex-start' }}>
+                  <input
+                    type="checkbox"
+                    checked={config.lockRun !== false}
+                    onChange={(e) =>
+                      onUpdate(updateShowVariables(task, { lockRun: e.target.checked }))
+                    }
+                  />
+                  Students fill in every prediction before their first Run
+                </label>
               </>
             )}
             {mode === 'target' && (

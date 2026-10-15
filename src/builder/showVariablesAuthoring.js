@@ -51,6 +51,8 @@ export function updateShowVariables(task, patch) {
   if (Array.isArray(next.hide) && next.hide.length === 0) delete next.hide
   if (next.visuals !== false) delete next.visuals
   if (next.stageLists == null || next.stageLists === 'size') delete next.stageLists
+  // lockRun is only written to turn predict mode's Run lock off.
+  if (next.mode !== 'predict' || next.lockRun !== false) delete next.lockRun
   let updated = { ...task, showVariables: next }
   if (hasPredictionCheck(updated)) {
     const checks = checkList(updated.check)

@@ -416,3 +416,50 @@ describe('Python StudentWorkspace hosting a Stage Code Arrange board (P6-15)', (
     expect(screen.getByText('board-run')).toBeInTheDocument()
   })
 })
+
+describe("Python StudentWorkspace predict mode's Run lock (P6-18)", () => {
+  const lock = { message: 'Fill in your predictions first', missing: ['coins'] }
+  const task = { id: 1, showVariables: { mode: 'predict', predict: ['coins'] } }
+
+  it('disables Run with the reason in words, and the run shortcut does nothing', () => {
+    const handleRun = vi.fn()
+    render(
+      <StudentWorkspace
+        task={task}
+        cs={{ ...cs, handleRun, predictRunLock: lock }}
+        isMobile={false}
+      />
+    )
+    const run = screen.getByRole('button', { name: 'Run' })
+    expect(run).toBeDisabled()
+    expect(run).toHaveAttribute('title', 'Fill in your predictions first')
+    expect(run).toHaveAccessibleDescription(/Fill in your predictions first/)
+    expect(document.getElementById('predict-run-lock-note')).toHaveTextContent(
+      'Fill in your predictions first'
+    )
+    fireEvent.click(run)
+    expect(handleRun).not.toHaveBeenCalled()
+  })
+
+  it('runs as normal once the lock lifts, and never locks a read-only view', () => {
+    const handleRun = vi.fn()
+    const { rerender } = render(
+      <StudentWorkspace
+        task={task}
+        cs={{ ...cs, handleRun, predictRunLock: null }}
+        isMobile={false}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Run' }))
+    expect(handleRun).toHaveBeenCalledTimes(1)
+    rerender(
+      <StudentWorkspace
+        task={task}
+        cs={{ ...cs, handleRun, predictRunLock: lock }}
+        isMobile={false}
+        isForcedTeacherLive
+      />
+    )
+    expect(screen.queryByText('Fill in your predictions first')).toBeNull()
+  })
+})

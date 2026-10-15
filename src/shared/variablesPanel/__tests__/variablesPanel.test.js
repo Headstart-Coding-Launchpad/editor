@@ -1,6 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import {
+  getPredictRunLock,
+  PREDICT_RUN_LOCK_MESSAGE,
   MAX_CHANGED_ITEMS,
   buildVariablesRun,
   changedItemKeys,
@@ -39,6 +41,7 @@ describe('getShowVariables', () => {
       target: {},
       visuals: true,
       stageLists: 'size',
+      lockRun: false,
     })
     expect(
       getShowVariables({
@@ -52,6 +55,7 @@ describe('getShowVariables', () => {
       target: {},
       visuals: true,
       stageLists: 'size',
+      lockRun: true,
     })
     expect(
       getShowVariables({ showVariables: { mode: 'view', predict: ['a'], target: { a: 1 } } })
@@ -317,5 +321,38 @@ describe('sync shape', () => {
     const back = readSyncedVariables({ taskId: 1, ran: true, at: 'end' })
     expect(back.run.snapshots).toEqual([])
     expect(back.run.changed).toEqual([])
+  })
+})
+
+describe("predict mode's Run lock (getPredictRunLock, P6-18)", () => {
+  const task = { id: 7, showVariables: { mode: 'predict', predict: ['coins', 'gems'] } }
+
+  it('locks until every predict tag has a non-blank answer', () => {
+    expect(getPredictRunLock(task, null)).toEqual({
+      message: PREDICT_RUN_LOCK_MESSAGE,
+      missing: ['coins', 'gems'],
+    })
+    const some = { taskId: 7, values: { coins: '13', gems: '  ' }, results: null }
+    expect(getPredictRunLock(task, some).missing).toEqual(['gems'])
+    const all = { taskId: 7, values: { coins: '13', gems: '5' }, results: null }
+    expect(getPredictRunLock(task, all)).toBeNull()
+  })
+
+  it('lifts for good after the first Run, even if a tag is cleared again', () => {
+    expect(getPredictRunLock(task, { taskId: 7, values: { coins: '' }, ran: true })).toBeNull()
+  })
+
+  it("ignores another task's predictions", () => {
+    const other = { taskId: 8, values: { coins: '1', gems: '2' }, ran: true }
+    expect(getPredictRunLock(task, other).missing).toEqual(['coins', 'gems'])
+  })
+
+  it('never locks with lockRun: false, outside predict mode, or with nothing to predict', () => {
+    expect(
+      getPredictRunLock({ id: 7, showVariables: { ...task.showVariables, lockRun: false } }, null)
+    ).toBeNull()
+    expect(getPredictRunLock({ id: 7, showVariables: { mode: 'view' } }, null)).toBeNull()
+    expect(getPredictRunLock({ id: 7, showVariables: { mode: 'predict' } }, null)).toBeNull()
+    expect(getPredictRunLock({ id: 7 }, null)).toBeNull()
   })
 })

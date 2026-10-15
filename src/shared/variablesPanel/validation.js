@@ -68,6 +68,14 @@ export function validateShowVariables(task, n, errors, warnings = []) {
   if (raw.visuals != null && typeof raw.visuals !== 'boolean') {
     errors.push(`Task ${n} has showVariables visuals that is not true or false`)
   }
+  if (raw.lockRun != null && typeof raw.lockRun !== 'boolean') {
+    errors.push(`Task ${n} has showVariables lockRun that is not true or false`)
+  }
+  if (raw.lockRun != null && raw.mode !== 'predict') {
+    warnings.push(
+      `Task ${n} has showVariables lockRun but its mode is not predict — only predict mode locks Run, so it is ignored`
+    )
+  }
   if (raw.stageLists != null && !STAGE_LISTS_OPTIONS.includes(raw.stageLists)) {
     errors.push(
       `Task ${n} has showVariables stageLists "${raw.stageLists}" — use one of: ${STAGE_LISTS_OPTIONS.join(', ')}`

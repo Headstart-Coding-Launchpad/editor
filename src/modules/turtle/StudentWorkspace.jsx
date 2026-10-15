@@ -19,6 +19,9 @@ import { getTaskCourse } from './course.js'
 import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
 import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
 import { usePythonSlowMo } from '../python/slowMo/usePythonSlowMo.js'
+import PredictRunLockNote, {
+  PREDICT_RUN_LOCK_NOTE_ID,
+} from '../../shared/variablesPanel/PredictRunLockNote.jsx'
 import SlowMoBar from '../python/slowMo/SlowMoBar.jsx'
 import SlowMoNameTags from '../python/slowMo/SlowMoNameTags.jsx'
 import PuzzleBar from '../../shared/puzzle/PuzzleBar.jsx'
@@ -186,11 +189,16 @@ export default function StudentWorkspace({
   const showCopyCode =
     !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()
 
+  // Predict mode's Run lock (cs.predictRunLock, showVariables.lockRun): Run, slow-mo and the
+  // run shortcut wait for every prediction, until the first Run. Never on a read-only view.
+  const runLock = readOnly ? null : (cs.predictRunLock ?? null)
+
   function handleRunClick() {
     if (cs.running) {
       cs.handleStop()
       return
     }
+    if (runLock) return
     setOutputCollapsed(false)
     cs.handleRun()
   }
@@ -211,7 +219,7 @@ export default function StudentWorkspace({
       {slowMoShown && (!readOnly || slowMoView) && (
         <SlowMoBar
           slowMo={slowMoControls}
-          runDisabled={cs.running || cs.pyodideStatus === 'loading' || !arrangeReady}
+          runDisabled={cs.running || cs.pyodideStatus === 'loading' || !arrangeReady || !!runLock}
         />
       )}
       {arrangeBoard({ onRun: handleRunClick })}
@@ -230,7 +238,9 @@ export default function StudentWorkspace({
               style={s.primaryBtn}
               data-highlight-target="run stop"
               onClick={handleRunClick}
-              disabled={!cs.running && cs.pyodideStatus === 'loading'}
+              disabled={!cs.running && (cs.pyodideStatus === 'loading' || !!runLock)}
+              title={!cs.running && runLock ? runLock.message : undefined}
+              aria-describedby={!cs.running && runLock ? PREDICT_RUN_LOCK_NOTE_ID : undefined}
             >
               {cs.running
                 ? 'Stop'
@@ -238,6 +248,7 @@ export default function StudentWorkspace({
                   ? 'Getting Python ready...'
                   : 'Run'}
             </button>
+            {!cs.running && <PredictRunLockNote lock={runLock} />}
             <button
               className="btn-ghost-outline"
               style={s.resetBtn}
@@ -265,7 +276,7 @@ export default function StudentWorkspace({
       {slowMoShown && (!readOnly || slowMoView) && (
         <SlowMoBar
           slowMo={slowMoControls}
-          runDisabled={cs.running || cs.pyodideStatus === 'loading'}
+          runDisabled={cs.running || cs.pyodideStatus === 'loading' || !!runLock}
         />
       )}
       {/* setupNote, the puzzle's line counter and, after a pass, its par (src/shared/puzzle/). */}
