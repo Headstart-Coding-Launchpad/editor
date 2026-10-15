@@ -9,43 +9,45 @@
 // most recent N commands so a pathological drawing can't blow up the synced payload;
 // drop the raw call log entirely since only student-side checks need it, never a
 // read-only teacher canvas.
+//
+// The log includes the motion between drawn items (move, turn, speed, visible; see
+// recorder.js) so a Go Live screen can play the presenter's drawing; `runId` says which Run
+// it came from (useTurtlePlayback.js plays a new one).
 const MAX_SYNCED_TURTLE_COMMANDS = 4000
+
+const COORD_KEYS = ['x', 'y', 'x1', 'y1', 'x2', 'y2', 'heading', 'from', 'delta', 'size', 'width']
 
 function roundCoord(value) {
   return Math.round(Number(value) * 10) / 10
 }
 
-function compactTurtleCommand(command) {
+function compactTurtleCommand(command, dropped) {
   if (!command || typeof command !== 'object') return command
-  if (command.type === 'line' || command.type === 'stamp' || command.type === 'text') {
-    const next = { ...command }
-    if ('x' in next) next.x = roundCoord(next.x)
-    if ('y' in next) next.y = roundCoord(next.y)
-    if ('x1' in next) next.x1 = roundCoord(next.x1)
-    if ('y1' in next) next.y1 = roundCoord(next.y1)
-    if ('x2' in next) next.x2 = roundCoord(next.x2)
-    if ('y2' in next) next.y2 = roundCoord(next.y2)
-    return next
-  }
   if (command.type === 'fill') {
-    return {
+    const next = {
       ...command,
       points: (command.points ?? []).map((p) => ({ x: roundCoord(p.x), y: roundCoord(p.y) })),
     }
+    // closedAt counts records from the start of the log: shift it when the start was cut.
+    if (Number.isFinite(command.closedAt)) next.closedAt = Math.max(0, command.closedAt - dropped)
+    return next
   }
-  return command
+  const next = { ...command }
+  for (const key of COORD_KEYS) {
+    if (key in next && Number.isFinite(Number(next[key]))) next[key] = roundCoord(next[key])
+  }
+  return next
 }
 
 export function compactTurtleResultForSync(turtleResult) {
   if (!turtleResult) return null
   const commands = Array.isArray(turtleResult.commands) ? turtleResult.commands : []
-  const trimmed =
-    commands.length > MAX_SYNCED_TURTLE_COMMANDS
-      ? commands.slice(commands.length - MAX_SYNCED_TURTLE_COMMANDS)
-      : commands
+  const dropped = Math.max(0, commands.length - MAX_SYNCED_TURTLE_COMMANDS)
+  const trimmed = dropped > 0 ? commands.slice(dropped) : commands
   const state = turtleResult.state
   return {
     state: state ? { ...state, x: roundCoord(state.x), y: roundCoord(state.y) } : null,
-    commands: trimmed.map(compactTurtleCommand),
+    commands: trimmed.map((command) => compactTurtleCommand(command, dropped)),
+    ...(turtleResult.runId ? { runId: String(turtleResult.runId) } : {}),
   }
 }

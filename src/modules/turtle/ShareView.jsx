@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { ShareCode, SharePanel, shareStyles } from '../../shared/exportWork/ShareParts.jsx'
 import { drawTurtleCommands, sizeCanvasToDisplay } from './draw.js'
 import { createTurtleState } from './engine.js'
+import { describeTurtleDrawing } from './describe.js'
 
 export default function TurtleShareView({ payload }) {
   const canvasRef = useRef(null)
@@ -33,7 +34,12 @@ export default function TurtleShareView({ payload }) {
     <div style={shareStyles.grid}>
       {commands.length > 0 && (
         <SharePanel title="Drawing">
-          <canvas ref={canvasRef} style={s.canvas} aria-label="Turtle drawing" />
+          <canvas
+            ref={canvasRef}
+            style={s.canvas}
+            role="img"
+            aria-label={describeTurtleDrawing({ commands, state: turtle })}
+          />
         </SharePanel>
       )}
       <ShareCode code={payload?.code} language="python" />

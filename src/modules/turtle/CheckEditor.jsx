@@ -54,6 +54,8 @@ const COMMAND_LABELS = {
   write: 'Write text',
   hideturtle: 'Hide turtle (hideturtle/ht)',
   showturtle: 'Show turtle (showturtle/st)',
+  pensize: 'Change pen size (pensize/width)',
+  dot: 'Draw a dot',
 }
 
 const NUMBER_OPERATORS = [

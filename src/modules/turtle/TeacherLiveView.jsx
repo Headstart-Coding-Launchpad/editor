@@ -4,6 +4,7 @@ import { taskShowsBlocks } from '../../shared/blockGuides'
 import SplitPane from '../../shared/SplitPane'
 import { drawTurtleCommands, sizeCanvasToDisplay } from './draw.js'
 import { createTurtleState } from './engine.js'
+import { describeTurtleDrawing } from './describe.js'
 
 const DEFAULT_TURTLE_STATE = createTurtleState()
 
@@ -63,7 +64,13 @@ export default function TeacherLiveView({
 
   const canvas = (
     <div style={s.canvasWrap}>
-      <canvas ref={canvasRef} style={s.canvas} />
+      {/* A watching tutor sees the finished drawing (no playback). */}
+      <canvas
+        ref={canvasRef}
+        style={s.canvas}
+        role="img"
+        aria-label={describeTurtleDrawing({ commands, state: turtleState })}
+      />
     </div>
   )
 

@@ -10,15 +10,12 @@ import {
   CollapseTabButton,
 } from '../../app/components/CollapsiblePanelControls'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
-import { drawTurtleCommands, sizeCanvasToDisplay } from './draw.js'
-import { createTurtleState } from './engine.js'
+import TurtlePicture from './TurtlePicture.jsx'
 import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
 import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
 import { usePythonSlowMo } from '../python/slowMo/usePythonSlowMo.js'
 import SlowMoBar from '../python/slowMo/SlowMoBar.jsx'
 import SlowMoNameTags from '../python/slowMo/SlowMoNameTags.jsx'
-
-const DEFAULT_TURTLE_STATE = createTurtleState()
 
 export default function StudentWorkspace({
   task,
@@ -37,10 +34,6 @@ export default function StudentWorkspace({
   teacherLiveCode,
   onVisiblePanesChange,
 }) {
-  // The canvas element is tracked in state, not a ref: switching between the mobile and
-  // split layouts re-parents it, so React mounts a new <canvas>. The draw effect must re-run
-  // for that new element, or it stays blank and unsized until the next Run.
-  const [canvas, setCanvas] = useState(null)
   const [outputCollapsed, setOutputCollapsed] = useState(true)
 
   const savedCode = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
@@ -94,31 +87,14 @@ export default function StudentWorkspace({
       : !readOnly
         ? cs.turtleResult
         : null
-  const commands = useMemo(() => turtleResult?.commands ?? [], [turtleResult])
-  const background = turtleResult?.state?.background ?? '#ffffff'
-  // Before any run the 🐢 marker sits at the origin facing east, like real turtle.
-  const turtleState = useMemo(
-    () => ({ ...DEFAULT_TURTLE_STATE, ...(turtleResult?.state ?? {}) }),
-    [turtleResult?.state]
-  )
+  // While a Run's drawing plays (TurtlePicture), the check result waits for it to finish or be
+  // skipped, as it does for slow-mo's last step.
+  const [drawingPlaying, setDrawingPlaying] = useState(false)
+  const holdResult = (!!slowMoView && !slowMoView.finished) || drawingPlaying
 
   useEffect(() => {
     onVisiblePanesChange?.(['code', 'canvas'])
   }, [onVisiblePanesChange])
-
-  useEffect(() => {
-    if (!canvas) return
-    function redraw() {
-      sizeCanvasToDisplay(canvas)
-      const ctx = canvas.getContext('2d')
-      // jsdom (unit tests) has no real canvas 2D context and returns null.
-      if (ctx) drawTurtleCommands(ctx, commands, { background, turtle: turtleState })
-    }
-    redraw()
-    const observer = new ResizeObserver(redraw)
-    observer.observe(canvas)
-    return () => observer.disconnect()
-  }, [canvas, commands, background, turtleState])
 
   const showCopyCode =
     !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()
@@ -199,7 +175,14 @@ export default function StudentWorkspace({
   const canvasAndOutput = (
     <div style={s.rightPane}>
       <div style={s.canvasWrap}>
-        <canvas ref={setCanvas} style={s.canvas} />
+        {/* Switching between the mobile and split layouts re-parents the picture, so it
+            remounts and shows the finished drawing (see useTurtlePlayback.js). Slow-mo draws
+            its own steps, and a scrub preview has no runId, so both draw at once. */}
+        <TurtlePicture
+          result={turtleResult}
+          animate={!slowMoView}
+          onPlayingChange={setDrawingPlaying}
+        />
       </div>
       {/* The name-tag panel (showVariables), between the drawing and the output; step by step
           during slow-mo. */}
@@ -221,10 +204,10 @@ export default function StudentWorkspace({
             // During slow-mo the output grows step by step and the check result waits for the
             // last step (the recorded run was checked like any Run).
             output={slowMoView ? slowMoView.output : cs.output}
-            runStatus={slowMoView && !slowMoView.finished ? null : cs.runStatus}
-            checkPassed={slowMoView && !slowMoView.finished ? false : cs.checkPassed}
-            hasCheck={slowMoView && !slowMoView.finished ? false : !!task?.check}
-            checkAttempted={slowMoView && !slowMoView.finished ? false : cs.checkAttempted}
+            runStatus={holdResult ? null : cs.runStatus}
+            checkPassed={holdResult ? false : cs.checkPassed}
+            hasCheck={holdResult ? false : !!task?.check}
+            checkAttempted={holdResult ? false : cs.checkAttempted}
             fill
             collapsible={false}
             leadingActions={
@@ -300,7 +283,6 @@ const s = {
     borderRadius: 8,
     overflow: 'hidden',
   },
-  canvas: { width: '100%', height: '100%', display: 'block' },
   variablesPanel: { flex: '0 1 auto', maxHeight: '40%' },
   outputPane: {
     display: 'flex',

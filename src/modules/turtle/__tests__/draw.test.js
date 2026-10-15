@@ -6,6 +6,9 @@ import {
   sizeCanvasToDisplay,
   turtleMarkerTransform,
   TURTLE_MARKER_EMOJI,
+  isTurtleFillShown,
+  drawTurtleItems,
+  drawPartialTurtleLine,
 } from '../draw.js'
 
 // jsdom has no real canvas 2D context, and we're not adding the `canvas` npm
@@ -24,6 +27,7 @@ function createMockContext(width, height) {
     lineTo: (...args) => calls.push(['lineTo', ...args]),
     stroke: () => calls.push(['stroke']),
     fill: () => calls.push(['fill']),
+    arc: (...args) => calls.push(['arc', ...args]),
     translate: (...args) => calls.push(['translate', ...args]),
     rotate: (...args) => calls.push(['rotate', ...args]),
     scale: (...args) => calls.push(['scale', ...args]),
@@ -134,24 +138,117 @@ describe('drawTurtleCommands', () => {
     expect(ctx._calls.filter((c) => c[0] === 'fill')).toHaveLength(0)
   })
 
-  it('renders fills before lines regardless of command-log order', () => {
+  const triangle = [
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 100, y: 100 },
+  ]
+
+  it('draws in code order, so a later fill covers an earlier line', () => {
     const ctx = createMockContext(400, 400)
     const commands = [
       { type: 'line', x1: 0, y1: 0, x2: 100, y2: 0, color: 'black' },
-      {
-        type: 'fill',
-        color: 'green',
-        points: [
-          { x: 0, y: 0 },
-          { x: 100, y: 0 },
-          { x: 100, y: 100 },
-        ],
-      },
+      { type: 'fill', color: 'green', points: triangle },
+    ]
+    drawTurtleCommands(ctx, commands)
+    const fillIndex = ctx._calls.findIndex((c) => c[0] === 'fill')
+    const strokeIndex = ctx._calls.findIndex((c) => c[0] === 'stroke')
+    expect(strokeIndex).toBeLessThan(fillIndex)
+  })
+
+  it("keeps a fill's own outline on top: the fill record comes before its outline", () => {
+    const ctx = createMockContext(400, 400)
+    // As the recorder logs it: begin_fill() puts the fill first, closed after 3 more records.
+    const commands = [
+      { type: 'fill', color: 'green', points: triangle, closedAt: 3 },
+      { type: 'line', x1: 0, y1: 0, x2: 100, y2: 0, color: 'black' },
+      { type: 'line', x1: 100, y1: 0, x2: 100, y2: 100, color: 'black' },
     ]
     drawTurtleCommands(ctx, commands)
     const fillIndex = ctx._calls.findIndex((c) => c[0] === 'fill')
     const strokeIndex = ctx._calls.findIndex((c) => c[0] === 'stroke')
     expect(fillIndex).toBeLessThan(strokeIndex)
+  })
+
+  it('a later line covers an earlier dot and the other way round', () => {
+    const ctx = createMockContext(400, 400)
+    drawTurtleCommands(ctx, [
+      { type: 'dot', x: 0, y: 0, size: 20, color: 'red' },
+      { type: 'line', x1: 0, y1: 0, x2: 50, y2: 0, color: 'blue' },
+      { type: 'dot', x: 50, y: 0, size: 20, color: 'white' },
+    ])
+    const order = ctx._calls.filter((c) => c[0] === 'arc' || c[0] === 'stroke').map((c) => c[0])
+    expect(order).toEqual(['arc', 'stroke', 'arc'])
+  })
+
+  it('skips motion records (move, turn, speed, visible)', () => {
+    const ctx = createMockContext(400, 400)
+    drawTurtleCommands(ctx, [
+      { type: 'move', x1: 0, y1: 0, x2: 50, y2: 0, heading: 0 },
+      { type: 'turn', from: 0, delta: 90 },
+      { type: 'speed', speed: 3 },
+      { type: 'visible', visible: false },
+    ])
+    expect(ctx._calls.filter((c) => ['stroke', 'fill', 'arc'].includes(c[0]))).toHaveLength(0)
+  })
+
+  it('draws lines at their pensize, never thinner than 1.5 units', () => {
+    const ctx = createMockContext(400, 400)
+    drawTurtleCommands(ctx, [
+      { type: 'line', x1: 0, y1: 0, x2: 10, y2: 0, color: 'black', width: 1 },
+      { type: 'line', x1: 0, y1: 0, x2: 10, y2: 0, color: 'black', width: 6 },
+      { type: 'line', x1: 0, y1: 0, x2: 10, y2: 0, color: 'black' },
+    ])
+    expect(ctx._calls.filter((c) => c[0] === 'lineWidth').map((c) => c[1])).toEqual([1.5, 6, 1.5])
+  })
+
+  it('draws nothing for pensize 0', () => {
+    const ctx = createMockContext(400, 400)
+    drawTurtleCommands(ctx, [{ type: 'line', x1: 0, y1: 0, x2: 10, y2: 0, width: 0 }])
+    expect(ctx._calls.filter((c) => c[0] === 'stroke')).toHaveLength(0)
+  })
+
+  it('draws a dot as a filled circle of the given diameter, centred on the turtle', () => {
+    const ctx = createMockContext(400, 400)
+    drawTurtleCommands(ctx, [{ type: 'dot', x: 10, y: 20, size: 30, color: 'gold' }])
+    expect(ctx._calls).toContainEqual(['fillStyle', 'gold'])
+    const arc = ctx._calls.find((c) => c[0] === 'arc')
+    expect(arc.slice(1, 4)).toEqual([210, 180, 15])
+  })
+
+  it('hides a fill until the shown records include where it closed', () => {
+    const commands = [
+      { type: 'fill', color: 'green', points: triangle, closedAt: 3 },
+      { type: 'line', x1: 0, y1: 0, x2: 100, y2: 0, color: 'black' },
+      { type: 'line', x1: 100, y1: 0, x2: 100, y2: 100, color: 'black' },
+    ]
+    expect(isTurtleFillShown(commands[0], 2)).toBe(false)
+    expect(isTurtleFillShown(commands[0], 3)).toBe(true)
+    // A fill from before closedAt existed (an old synced drawing) always shows.
+    expect(isTurtleFillShown({ type: 'fill', points: triangle })).toBe(true)
+    const ctx = createMockContext(400, 400)
+    drawTurtleItems(ctx, commands, computeTurtleTransform(400, 400), 0, 2)
+    expect(ctx._calls.filter((c) => c[0] === 'fill')).toHaveLength(0)
+  })
+
+  it('draws part of a line for playback', () => {
+    const ctx = createMockContext(400, 400)
+    drawPartialTurtleLine(
+      ctx,
+      { type: 'line', x1: 0, y1: 0, x2: 100, y2: 0, color: 'black' },
+      0.5,
+      computeTurtleTransform(400, 400)
+    )
+    expect(ctx._calls).toContainEqual(['lineTo', 250, 200])
+  })
+
+  it('uses a custom marker when one is given', () => {
+    const ctx = createMockContext(400, 400)
+    const drawMarker = vi.fn()
+    const turtle = { x: 0, y: 0, heading: 0, visible: true }
+    drawTurtleCommands(ctx, [], { turtle, drawMarker })
+    expect(drawMarker).toHaveBeenCalledWith(ctx, turtle, expect.objectContaining({ scale: 1 }))
+    expect(ctx._calls.some((c) => c[1] === TURTLE_MARKER_EMOJI)).toBe(false)
   })
 
   it('draws a stamp as a rotated/translated triangle', () => {
