@@ -102,6 +102,11 @@ Agreed build plan for the six LG-P6 wave 1b requests filed 2026-10-15: name-tag 
 
 **Load when:** building or changing any of those features.
 
+### [architecture/requests-2026-10-15c-plan.md](architecture/requests-2026-10-15c-plan.md)
+Agreed build plan for the five LG-P6 wave 1c requests from Ryan's sandbox click-through: flat pixel lists in `grid(…, width=)`, palette numbers as numbers in the name-tag panel, runnable Code Arrange on Turtle and Stage, student-made course mazes with a paint editor, and the `#@peek` stopped-here band, with Ryan's decisions.
+
+**Load when:** building or changing any of those features.
+
 ### [architecture/runtime-flows.md](architecture/runtime-flows.md)
 High-level route, student phase, persistence, teacher-live, and Firebase ownership diagrams.
 
