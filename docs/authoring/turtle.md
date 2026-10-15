@@ -675,6 +675,74 @@ faces, the pickups and the goal ("Rover at row 2, column 3, facing east. 1 of 2 
 collected. Goal at row 1, column 7."). What happened on each map is announced in a polite live
 region. Map tabs, Skip and Play are at least 44 px.
 
+## Code Arrange (`code_arrange`)
+
+`type: code_arrange` with `moduleType: turtle` is the "no typing yet" step: students drag code
+tiles into the blanks of a Turtle program, then Run it. The board sits where the editor would, in
+the Turtle workspace, so the run looks exactly like a code task's: the canvas with its animation
+and Skip, [slow-mo](#slow-mo) if the task turns it on, the
+[name-tag panel](#name-tag-panel-showvariables), and [course mode](#course-mode-course) (maps,
+sensors, crashes and map tabs), with the Picture · Tags · Console tabs on smaller screens. Run is
+enabled once every blank is filled.
+
+- Any Turtle check works: `turtle_*` and `course_*` checks beside `output` / `code` checks, as on
+  a code task.
+- `course`, `slowMo`, `showVariables`, `layout` and `setupCode` work as on a code task.
+- Tiles, blanks, distractors, tile feedback, indent mode (`arrangeMode: indent`), the tutor's
+  board (with the student's last picture or course map under it) and the report's attempts are
+  those of every arrange task: see `docs/authoring/lesson-schema.md` ("Code Arrange Task Fields").
+- Write each line with its own leading spaces (4 per level); validation warns when a solution
+  line after a `…:` line isn't indented.
+
+```yaml
+- title: Get the rover to the flag
+  type: code_arrange
+  moduleType: turtle
+  explainer: Drag the lines into place so the rover turns at walls and reaches the flag on both maps.
+  course:
+    type: grid
+    vehicle: rover
+    maps:
+      - |
+        ########
+        #>....G#
+        ########
+      - |
+        #####
+        #>..#
+        ###.#
+        ###G#
+        #####
+  lines:
+    - id: L1
+      parts: [{ type: text, text: "import turtle" }]
+    - id: L2
+      parts: [{ type: text, text: "while not turtle.at_goal():" }]
+    - id: L3
+      parts:
+        - { type: text, text: "    if turtle." }
+        - { type: slot, id: S1, code: "wall_ahead" }
+        - { type: text, text: "():" }
+    - id: L4
+      parts: [{ type: slot, id: L4, code: "        turtle.right()" }]
+    - id: L5
+      parts: [{ type: text, text: "    else:" }]
+    - id: L6
+      parts: [{ type: slot, id: L6, code: "        turtle.forward()" }]
+  distractors:
+    - { id: D1, code: "at_goal" }
+    - { id: D2, code: "        turtle.left()" }
+  checks:
+    - type: course_goal_reached
+      hint: Watch where the rover stops. Which way should it turn at a wall?
+    - type: course_no_crash
+      hint: Look before every move.
+```
+
+In the Builder, choose **Arrange** and then **Python Turtle** under Language; the preview draws
+the run (every map of a course). The Arrange form doesn't edit `course`, `slowMo` or
+`showVariables` yet: author those in YAML.
+
 ## Runtime notes and limits
 
 - No file I/O, no `pip install` — same as the Python module.

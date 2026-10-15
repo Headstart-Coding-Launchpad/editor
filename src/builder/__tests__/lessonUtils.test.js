@@ -241,7 +241,7 @@ describe('validateLesson', () => {
     )
     expect(invalid.errors).toEqual(
       expect.arrayContaining([
-        'Task 1 is a code-arrange task but must use the Python or HTML module',
+        'Task 1 is a code-arrange task but must use the Python, Python Turtle or HTML module',
         'Task 1 line 1 blank 1 has no correct value',
         'Task 1 is a code-arrange task but has duplicate blank/distractor ids',
         'Task 1 is a code-arrange task but has no completion check',

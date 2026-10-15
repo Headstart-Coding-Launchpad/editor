@@ -61,12 +61,19 @@ export default function StudentWorkspace({
   isTeacherEditing,
   teacherLiveCode,
   onVisiblePanesChange,
+  // A Code Arrange task that draws on the Stage (src/activities/code_arrange/):
+  // `arrangeBoard({ onRun })` renders the tile board in the editor's place, and `arrangeReady`
+  // says every blank is filled. The board owns Run and the tutor's remote Run; the Stage, name
+  // tags, slow-mo and console are this workspace's own, and open from the start.
+  arrangeBoard = null,
+  arrangeReady = true,
 }) {
   // A task with a name-tag panel (showVariables) opens with the output side showing, so the
   // student can predict before the first Run; so does one with a Stage target to draw over, and
   // one whose author picked the first result tab (layout.firstPane).
   const [localOutputCollapsed, setLocalOutputCollapsed] = useState(
     () =>
+      !arrangeBoard &&
       !isForcedTeacherLive &&
       !isTeacherEditing &&
       !isViewingPrev &&
@@ -157,10 +164,14 @@ export default function StudentWorkspace({
       ? null
       : cs.stageResult
   const stageCommands = slowMoView?.hasStage ? slowMoView.stage : stageCommandsOf(stageResult)
+  // A Stage arrangement (arrangeBoard) shows the Stage from the start, as a stageTarget does.
   const showStage =
     !isViewingPrev &&
     !isTeacherEditing &&
-    (stageCommands.length > 0 || !!stageTargetCode(task) || !!slowMoView?.hasStage)
+    (stageCommands.length > 0 ||
+      !!stageTargetCode(task) ||
+      !!slowMoView?.hasStage ||
+      !!arrangeBoard)
   const [outputPaneRef, outputPaneSize] = useElementSize()
   // Beside the console when the output side is wider than tall; above it otherwise (and always
   // on narrow screens).
@@ -272,8 +283,9 @@ export default function StudentWorkspace({
     cs.handleRun()
   }
 
+  // A Code Arrange board handles the tutor's remote Run itself (only a full board can run).
   useRemoteRunTrigger(
-    cs.remoteRunToken,
+    arrangeBoard ? null : cs.remoteRunToken,
     () => {
       if (!cs.running && !cs.runningTests) handleRunClick()
     },
@@ -286,7 +298,21 @@ export default function StudentWorkspace({
     cs.handleRunTests()
   }
 
-  const editor = (
+  // A Code Arrange task: slow-mo's bar above the tile board (slow-mo runs the assembled program,
+  // so it waits for a full board).
+  const arrangePane = arrangeBoard && (
+    <div style={s.arrangePane}>
+      {slowMoShown && (showEditableHeader || slowMoView) && (
+        <SlowMoBar
+          slowMo={slowMoControls}
+          runDisabled={cs.running || cs.pyodideStatus === 'loading' || !arrangeReady}
+        />
+      )}
+      {arrangeBoard({ onRun: handleRunClick })}
+    </div>
+  )
+
+  const editor = arrangePane || (
     <div style={s.editorPane}>
       {showCopyCode && <CopyCodePanel code={task.copyCode} language="python" />}
       {showEditableHeader && (
@@ -549,6 +575,16 @@ export default function StudentWorkspace({
   )
 }
 const s = {
+  // A Code Arrange task's tile board, scrolling in the editor's place.
+  arrangePane: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    flex: 1,
+    minHeight: 0,
+    overflow: 'auto',
+    padding: '4px 4px 8px',
+  },
   pythonSplitPane: {
     flex: '1 1 auto',
     minHeight: 0,

@@ -1008,6 +1008,37 @@ assembled program runs for real through this same Pyodide pipeline. Full
 field reference: `docs/authoring/lesson-schema.md` ("Code Arrange Task
 Fields").
 
+**On the Stage.** An arrangement whose code imports `stage` (`from stage import *` on a fixed
+line or in a blank), or that has a `stageTarget`, sits in the Python workspace in the editor's
+place: the Stage pane shows from the start (with the `stageTarget` ghost and Differences), the
+console beside or below it, and the Picture · Tags · Console tabs on smaller screens. `stage_*`
+checks, `slowMo`, `showVariables` and `layout` work as on a code task. Indent mode
+(`arrangeMode: indent`) works the same way. A Turtle arrangement is in
+[turtle.md](turtle.md#code-arrange-code_arrange).
+
+```yaml
+- title: Draw the sun
+  type: code_arrange
+  moduleType: python
+  explainer: Drag the right colour into the blank so the sun matches the picture.
+  lines:
+    - id: L1
+      parts: [{ type: text, text: "from stage import *" }]
+    - id: L2
+      parts:
+        - { type: text, text: 'circle(50, "' }
+        - { type: slot, id: S1, code: "yellow" }
+        - { type: text, text: '")' }
+  distractors:
+    - { id: D1, code: "blue", hint: "Look at the target: what colour is the sun?" }
+  stageTarget:
+    code: |
+      from stage import *
+      circle(50, "yellow")
+  checks:
+    - type: stage_matches_target
+```
+
 ```yaml
 - title: Print the first five even numbers
   taskType: code_arrange

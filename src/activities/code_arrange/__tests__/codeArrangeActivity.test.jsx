@@ -60,7 +60,9 @@ describe('code_arrange activity', () => {
     expect(
       definition.validateTask({ ...PYTHON_CODE_ARRANGE_TASK, moduleType: undefined }, { n: 8 })
         .errors
-    ).toContain('Task 8 is a code-arrange task but must use the Python or HTML module')
+    ).toContain(
+      'Task 8 is a code-arrange task but must use the Python, Python Turtle or HTML module'
+    )
     expect(
       definition.validateTask(
         { ...PYTHON_CODE_ARRANGE_TASK, moduleType: undefined },

@@ -1,6 +1,6 @@
 # Code Arrange that runs on Turtle (including course mode) and Stage tasks
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** activity mode
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, bypassing pipeline-ui, as with builds 1–12), 2026-10-15
 - **Lessons blocked:** none yet. Wave 1c of Lesson Gen's LG-P6 Visual learning plan, from Ryan's click-through of the sandbox (`ocgq3appv6`, task 13). Build on top of `integrate/requests-2026-10-14`.
@@ -87,4 +87,23 @@ A Stage example would be the same shape with `moduleType: python`, `from stage i
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Shipped on `feature/code-arrange-turtle-stage` (wave 1c, on top of `integrate/requests-2026-10-14`), 2026-10-15.
+
+- **Activity:** `code_arrange` now hosts `turtle` as well as `python` and `html`
+  (`hostModules: ['python', 'html', 'turtle']`). A Turtle arrangement, and a Python one that
+  imports `stage` or has a `stageTarget` (`usesHostWorkspace` in
+  `src/activities/code_arrange/definition.js`), renders the module's own StudentWorkspace with the
+  tile board in the editor's place (`arrangeBoard`), so the canvas, animation and Skip, slow-mo,
+  name tags, course mode and the P6-12 tabs are the code task's own. Turtle, course and Stage
+  checks run unchanged through the normal Run.
+- **Indent mode:** fell out of the shared code, so it is kept: `arrangeMode: indent` accepts
+  `moduleType: turtle`, and a Stage indent task gets the Stage pane.
+- **Tutor's view:** the StudentModal board shows the student's last Turtle picture / course map or
+  Stage, and their name tags, above the console.
+- **Builder:** the Arrange form offers Python Turtle under Language and its preview draws the run
+  (every map). Follow-up: it doesn't edit `course`, `slowMo` or `showVariables` for an
+  arrangement yet (YAML only), and the slow-mo line marker has no board equivalent.
+- **Docs:** [turtle.md](../turtle.md#code-arrange-code_arrange),
+  [python.md](../python.md#drag-and-drop-runnable-code-code_arrange),
+  [lesson-schema.md](../lesson-schema.md#code-arrange-task-fields),
+  [validation-errors.md](../validation-errors.md#code-arrange-tasks), CHANGELOG 2026-10-15.

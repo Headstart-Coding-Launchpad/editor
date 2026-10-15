@@ -57,7 +57,7 @@ function describeActivity(def) {
     description: def.description,
     yamlType: def.yaml?.type ?? def.id,
     taskShape: def.legacy ?? { taskType: 'activity', activityType: def.id },
-    // Activities that run inside a workspace module (code_arrange: python / html, composed
+    // Activities that run inside a workspace module (code_arrange: python / html / turtle, composed
     // lessons only) name their host modules.
     ...(def.hostModules ? { hostModules: [...def.hostModules] } : {}),
     completion: def.completion,

@@ -113,6 +113,33 @@ Entries written before 2026-09-29 are not tagged.
   Existing lessons: no changes needed · Resolves:
   authoring-requests/2026-10-15-p6-16-turtle-course-student-made-maps.md
 
+### Code Arrange runs on Turtle (course mode too) and on the Python Stage
+
+- **`type: code_arrange` with `moduleType: turtle`** is new. The tile board sits where the editor
+  would, in the Turtle workspace, so Run plays the program exactly as on a code task: the canvas,
+  animation and Skip, slow-mo if the task turns it on, the name-tag panel and course mode (maps,
+  sensors, crashes, map tabs). `turtle_*` and `course_*` checks work as on a code task, and so do
+  `course`, `slowMo`, `showVariables`, `layout` and `setupCode`.
+- **A Python arrangement whose code imports `stage`** (`from stage import *` on a fixed line or in
+  a blank), or that has a `stageTarget`, gets the Stage pane from the start, the `stageTarget`
+  ghost and Differences, and the `stage_*` checks, as a code task does.
+- On smaller screens both use the Picture · Tags · Console tabs. Tiles, distractors, tile
+  feedback, the tutor's board (now with the student's last picture or Stage under it), Edit
+  answers, tile highlights and the report's attempts are unchanged. A plain Python or HTML
+  arrangement looks as before.
+- **Indent mode** (`arrangeMode: indent`) works for both too: `moduleType: turtle` is now allowed
+  there.
+- Validation: the module message is now "must use the Python, Python Turtle or HTML module" (and
+  "the Python or Python Turtle module" for indent mode); the Turtle module's own rules (course
+  map, Turtle checks) run on a Turtle arrangement. The Builder's Arrange form offers **Python
+  Turtle** under Language and its preview draws the run; it doesn't edit `course`, `slowMo` or
+  `showVariables` yet, so author those in YAML. See [turtle.md](turtle.md#code-arrange-code_arrange),
+  [python.md](python.md#drag-and-drop-runnable-code-code_arrange) and
+  [lesson-schema.md](lesson-schema.md#code-arrange-task-fields).
+- Affects: code_arrange, turtle, python (Stage) · Existing lessons: no changes needed (Turtle
+  `fill_blank` stand-ins can become runnable arrangements) · Resolves:
+  authoring-requests/2026-10-15-p6-15-code-arrange-on-turtle-course-and-stage-tasks.md
+
 ### Python and Turtle screen space: one tabbed result pane on smaller screens (`layout.firstPane`)
 
 - **Tablets, 1366 × 768 Chromebooks and small laptops** now show the editor on the left and one

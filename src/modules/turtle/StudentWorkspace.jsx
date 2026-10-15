@@ -51,6 +51,12 @@ export default function StudentWorkspace({
   displayPythonSlowMo = null,
   teacherLiveCode,
   onVisiblePanesChange,
+  // A Code Arrange task (src/activities/code_arrange/): `arrangeBoard({ onRun })` renders the
+  // tile board in the editor's place, and `arrangeReady` says every blank is filled. The board
+  // owns Run and the tutor's remote Run; the picture, name tags, slow-mo and course maps are
+  // this workspace's own.
+  arrangeBoard = null,
+  arrangeReady = true,
 }) {
   const [outputCollapsed, setOutputCollapsed] = useState(true)
   const [mapEditorOpen, setMapEditorOpen] = useState(false)
@@ -189,15 +195,30 @@ export default function StudentWorkspace({
     cs.handleRun()
   }
 
+  // A Code Arrange board handles the tutor's remote Run itself (only a full board can run).
   useRemoteRunTrigger(
-    cs.remoteRunToken,
+    arrangeBoard ? null : cs.remoteRunToken,
     () => {
       if (!cs.running) handleRunClick()
     },
     { enabled: !readOnly, onHandled: cs.acknowledgeRemoteRun }
   )
 
-  const editor = (
+  // A Code Arrange task: slow-mo's bar above the tile board (slow-mo runs the assembled program,
+  // so it waits for a full board).
+  const arrangePane = arrangeBoard && (
+    <div style={s.arrangePane}>
+      {slowMoShown && (!readOnly || slowMoView) && (
+        <SlowMoBar
+          slowMo={slowMoControls}
+          runDisabled={cs.running || cs.pyodideStatus === 'loading' || !arrangeReady}
+        />
+      )}
+      {arrangeBoard({ onRun: handleRunClick })}
+    </div>
+  )
+
+  const editor = arrangePane || (
     <div style={s.editorPane}>
       {showCopyCode && <CopyCodePanel code={task.copyCode} language="python" />}
       {!readOnly && (
@@ -437,6 +458,16 @@ const s = {
   belowResult: { display: 'flex', flexDirection: 'column', flex: '1 1 45%', minHeight: 220 },
   // The name-tag panel filling its own tab.
   variablesFill: { flex: '1 1 auto', minHeight: 0, maxHeight: '100%' },
+  // A Code Arrange task's tile board, scrolling in the editor's place.
+  arrangePane: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    flex: 1,
+    minHeight: 0,
+    overflow: 'auto',
+    padding: '4px 4px 8px',
+  },
   editorPane: {
     display: 'flex',
     flexDirection: 'column',

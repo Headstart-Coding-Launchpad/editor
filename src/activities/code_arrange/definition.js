@@ -1,8 +1,8 @@
 // Code Arrange (legacy `taskType: 'code_arrange'`): students drag code tiles into the blanks of
 // a program, then run it. Unlike the other activities it is hosted by a workspace module
-// (`hostModules`), not by ActivityHost: the assembled program goes through the python / html
-// module's normal work slot, Run and checks (useStudentCodeState), so the program is marked by
-// running it. The activity owns only the tile arrangement:
+// (`hostModules`), not by ActivityHost: the assembled program goes through the python / html /
+// turtle module's normal work slot, Run and checks (useStudentCodeState), so the program is
+// marked by running it. The activity owns only the tile arrangement:
 //
 //   state          slot map { [slotId]: tileId } (a slot's own id is its correct tile's id)
 //   localStorage   aux file `__code_arrange_slots__` (JSON slot map), saved on every placement
@@ -24,6 +24,12 @@
 // storage, live channel and teacher edits; the shared helpers in src/shared/codeArrange.js
 // (prune, assemble, solution, derive) hand indent tasks over to it.
 //
+// Where the board sits (usesHostWorkspace): a plain Python or HTML arrangement is the board with
+// the console or preview under it. A Turtle arrangement, and a Python one that draws on the Stage
+// (its code imports `stage`, or the task has a stageTarget), sits in the module's own
+// StudentWorkspace in the editor's place, so the picture, name tags, slow-mo, course maps and
+// the smaller-screen result tabs are the code task's own.
+//
 // Only composed lessons offer it (the Builder's Arrange format). Pure and Node-safe.
 import { defineActivity } from '../defineActivity.js'
 import {
@@ -32,6 +38,7 @@ import {
   validateCodeArrangeTask,
 } from '../legacyValidation.js'
 import {
+  assembleCodeArrangement,
   buildSolutionSlotState,
   getSlotIds,
   isArrangementComplete,
@@ -45,6 +52,7 @@ import {
   isIndentArrangementCorrect,
 } from '../../shared/codeArrangeIndent.js'
 import { normalizeCodeSubmission } from '../../shared/codeSubmission.js'
+import { codeImportsStage } from '../../shared/stage/commands.js'
 
 export const CODE_ARRANGE_SLOTS_FILENAME = '__code_arrange_slots__'
 
@@ -127,6 +135,22 @@ export function hostModuleFor(moduleType) {
   return CODE_ARRANGE_MODULE_TYPES.includes(moduleType) ? moduleType : CODE_ARRANGE_MODULE_TYPES[0]
 }
 
+// Whether the arrangement draws on the Python Stage: a stageTarget to draw over, or authored code
+// (the solution: every blank holding its own tile, or the indent lines) that imports `stage`.
+function drawsOnStage(task) {
+  const targetCode = task?.stageTarget?.code
+  if (typeof targetCode === 'string' && targetCode.trim()) return true
+  return codeImportsStage(assembleCodeArrangement(task, buildSolutionSlotState(task)) ?? '')
+}
+
+// Whether the board sits inside the host module's own StudentWorkspace (in the editor's place)
+// rather than above a plain console / preview: Turtle, and a Python arrangement that draws on
+// the Stage.
+export function usesHostWorkspace(task) {
+  if (task?.moduleType === 'turtle') return true
+  return task?.moduleType === 'python' && drawsOnStage(task)
+}
+
 export default defineActivity({
   id: 'code_arrange',
   label: 'Arrange',
@@ -138,6 +162,7 @@ export default defineActivity({
   // The Builder offers Arrange only in composed lessons.
   availableIn: (lesson) => lesson?.type === 'composed',
   hostModules: CODE_ARRANGE_MODULE_TYPES,
+  usesHostWorkspace,
 
   fields: {
     modeField: 'arrangeMode',
@@ -147,13 +172,15 @@ export default defineActivity({
         type: 'string',
         values: ['slots', INDENT_MODE],
         description:
-          "slots (default): drag tiles into blanks. indent: lines fixed in order, the student sets each line's depth (Python only).",
+          "slots (default): drag tiles into blanks. indent: lines fixed in order, the student sets each line's depth (Python and Python Turtle).",
       },
       {
         name: 'moduleType',
         type: 'string',
         required: true,
         values: CODE_ARRANGE_MODULE_TYPES,
+        description:
+          "The host module. turtle runs in the Turtle workspace (course mode too); a python arrangement that imports stage gets the Stage pane. The module's own task fields (course, stageTarget, slowMo, showVariables, layout) work as on a code task.",
       },
       {
         name: 'lines',

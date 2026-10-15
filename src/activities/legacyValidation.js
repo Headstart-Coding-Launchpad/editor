@@ -17,8 +17,11 @@ import {
 import { evaluateSingleCheck, isCodeCheck, normalizeChecks } from '../modules/checks.js'
 import { joinFileContents } from '../modules/moduleContract.js'
 
-// Module types a code-arrange task can run in.
-export const CODE_ARRANGE_MODULE_TYPES = Object.freeze(['python', 'html'])
+// Module types a code-arrange task can run in. Python first: the Builder's default.
+export const CODE_ARRANGE_MODULE_TYPES = Object.freeze(['python', 'html', 'turtle'])
+
+// The code-arrange host modules whose code is Python (indent mode, the solution's indent check).
+export const CODE_ARRANGE_PYTHON_MODULE_TYPES = Object.freeze(['python', 'turtle'])
 
 export function validateQuizTask(task, { n, errors, warnings = [] }) {
   const quizType = task.quizType ?? 'multiple_choice'
@@ -100,7 +103,9 @@ export function validateCodeArrangeTask(task, { n, moduleType, errors, warnings 
   }
   const errorCount = errors.length
   if (!CODE_ARRANGE_MODULE_TYPES.includes(moduleType)) {
-    errors.push(`Task ${n} is a code-arrange task but must use the Python or HTML module`)
+    errors.push(
+      `Task ${n} is a code-arrange task but must use the Python, Python Turtle or HTML module`
+    )
   }
   const lines = Array.isArray(task.lines) ? task.lines : []
   if (lines.length === 0) errors.push(`Task ${n} is a code-arrange task but has no lines`)
@@ -220,8 +225,10 @@ function isDepthValue(value) {
 // depth; the student sets the depths.
 function validateIndentArrangeTask(task, { n, moduleType, errors, warnings }) {
   const errorCount = errors.length
-  if (moduleType !== 'python') {
-    errors.push(`Task ${n} is an indent arrange task but must use the Python module`)
+  if (!CODE_ARRANGE_PYTHON_MODULE_TYPES.includes(moduleType)) {
+    errors.push(
+      `Task ${n} is an indent arrange task but must use the Python or Python Turtle module`
+    )
   }
   const lines = Array.isArray(task.lines) ? task.lines : []
   if (lines.length === 0) errors.push(`Task ${n} is a code-arrange task but has no lines`)
@@ -294,7 +301,7 @@ function validateCodeArrangeSolution(task, { n, moduleType, warnings }) {
       warnings.push(`Task ${n} solution arrangement does not pass its own code check`)
     }
   }
-  if (moduleType === 'python') {
+  if (CODE_ARRANGE_PYTHON_MODULE_TYPES.includes(moduleType)) {
     const lines = code.split('\n')
     const indentOf = (line) => line.length - line.trimStart().length
     let previous = null

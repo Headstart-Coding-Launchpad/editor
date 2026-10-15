@@ -49,7 +49,7 @@ describe('lessons capabilities', () => {
     expect(capabilities.activities.find((a) => a.id === 'code_arrange')).toMatchObject({
       yamlType: 'code_arrange',
       taskShape: { taskType: 'code_arrange' },
-      hostModules: ['python', 'html'],
+      hostModules: ['python', 'html', 'turtle'],
     })
     expect(capabilities.requestsHowTo).toMatch(/authoring-requests/)
   })
