@@ -826,6 +826,9 @@ A Python / Turtle task's `showVariables` (docs/authoring/python.md "Name-Tag Pan
 | `validation.js` | `validateShowVariables` (python / turtle `validateTask`) and the `variables_predicted` check's registry `validate` |
 | `NameTagPanel.jsx` (+ `.css`) | Presentational panel: a tag per variable (name, type label, value; list tiles with indexes, dict rows, Show all), predict inputs with ✓ / ✗, target tags, "changed" marks, screen-reader text; takes `run.snapshots` + `run.index` so a step player can drive it |
 | `TaskVariablesPanel.jsx` | The panel for a task: from `cs.variablesPanel` (the student) or a synced copy (StudentModal, Go Live), read-only |
+| `visuals.js` | Pure: `chooseVisual(node, { visuals, stageLists })` picks a list / dict visual (swatches, bars, picture, table, rows, cards, dictBars, size, or tiles / plain), `pictureOf`, `describePicture` / `describeItem` (screen-reader words), item keys for change marks, `targetToNode` (target values as nodes), `cardVisuals` (tutor card). `changedItemKeys` / `changedItemsMap` (per-item marks in the run state's `changedItems`) live in `variablesPanel.js` |
+| `ValueVisual.jsx` | Draws one visual with index numbers, per-item change marks and a Show value toggle for the exact Python text |
+| `NameTagCardStrip.jsx` | The student card's thumbnails (up to two swatch / picture / bar variables) |
 
 ### Python slow-mo (`src/modules/python/slowMo/`)
 

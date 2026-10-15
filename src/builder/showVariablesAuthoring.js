@@ -39,9 +39,9 @@ export function setShowVariablesEnabled(task, enabled) {
 
 /**
  * Merges `patch` into showVariables, dropping fields the mode doesn't use (predict outside
- * predict mode, target outside target mode, an empty hide list) and keeping the
- * variables_predicted check's names equal to the predict list (or removing the check when the
- * mode is no longer predict).
+ * predict mode, target outside target mode, an empty hide list) and the defaults (visuals:
+ * true, stageLists: size), and keeping the variables_predicted check's names equal to the
+ * predict list (or removing the check when the mode is no longer predict).
  */
 export function updateShowVariables(task, patch) {
   const current = task?.showVariables ?? { mode: 'view', at: 'end' }
@@ -49,6 +49,8 @@ export function updateShowVariables(task, patch) {
   if (next.mode !== 'predict') delete next.predict
   if (next.mode !== 'target') delete next.target
   if (Array.isArray(next.hide) && next.hide.length === 0) delete next.hide
+  if (next.visuals !== false) delete next.visuals
+  if (next.stageLists == null || next.stageLists === 'size') delete next.stageLists
   let updated = { ...task, showVariables: next }
   if (hasPredictionCheck(updated)) {
     const checks = checkList(updated.check)

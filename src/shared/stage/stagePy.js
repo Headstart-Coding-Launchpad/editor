@@ -11,6 +11,10 @@
  * '<stage>', so the error's line is the student's call (formatPythonError reads the innermost
  * '<student>' frame).
  *
+ * grid() also remembers the list it drew (`_hs_drawn`, emptied by the worker before each run),
+ * so the name-tag panel can show "drawn on the Stage" lists the task's way (showVariables
+ * `stageLists`; see _hs_drawn_rows in src/modules/python/variableCapture.py.js).
+ *
  * Exported as plain text; nothing here runs in Node.
  */
 export const STAGE_MODULE_PY = `
@@ -74,9 +78,17 @@ def stamp(emoji, x, y, size=32):
     _draw('stamp', [emoji, x, y, size])
 
 
+# The lists grid() drew in this run, with their palettes, so the name-tag panel can tell which
+# variables are on the Stage (showVariables stageLists). The worker empties it before each run.
+_hs_drawn = []
+
+
 def grid(rows, palette=None, cell=None, x=0, y=0):
     """A 2D list as a pixel grid. Values index palette, or are colours themselves."""
     _draw('grid', [rows, palette, cell, x, y])
+    _hs_drawn.append((rows, palette))
+    if len(_hs_drawn) > 50:
+        del _hs_drawn[0]
 
 
 def clear():

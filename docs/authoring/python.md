@@ -219,15 +219,62 @@ variable, with its name, a small type label and its value. Off unless a task set
 | `at` | `end` (default): the values when the program finishes, or when it stops with an error. `marker`: the values the **first time** the program is about to run the line after a `#@peek` line (below). |
 | `hide` | Names never shown (on top of the ones always hidden). |
 | `predict` | Predict mode: the variable names students predict, in order. Required in predict mode. |
-| `target` | Target mode: `{ name: value }`. Values are YAML: numbers, text, `true`/`false`/`null`, lists and dicts. Required in target mode. The green tags are **display only** — the `variable_*` checks decide completion, so add them. |
+| `target` | Target mode: `{ name: value }`. Values are YAML: numbers, text, `true`/`false`/`null`, lists and dicts. Required in target mode. The green tags are **display only** — the `variable_*` checks decide completion, so add them. A list or dict target is drawn with the same visual as the real value (e.g. target swatches), so "make your palette look like this" works. |
+| `visuals` | `true` (default): lists and dicts are drawn as what they hold (see **List and dict visuals** below). `false`: today's plain tags for the whole task — use it when the automatic choice would mislead (e.g. `["orange", "lime"]` meant as fruit). |
+| `stageLists` | How a list passed to the [Stage](#stage-drawing-beside-the-console)'s `grid()` in this run shows: `size` (default) — just the tag, type and size, e.g. `pixels: list, 8 × 8, drawn on the Stage`, so the picture doesn't appear twice; `picture` — the small picture as well, to teach "the list *is* the picture"; `tiles` — rows of tiles. Ignored with `visuals: false`. |
 
 **What a tag shows.** One tag per variable, in the order the code first names them. Type labels:
 `text`, `number`, `true/false`, `list`, `dict`, `None` (and `tuple`, `set`, or the Python type name
-for anything else). Text keeps its quotes, so `"5"` and `5` look different. Lists show a row of
-tiles with the index under each; dicts show key → value rows. Long text, long lists and nested
-values are cut short with a **Show all** button. If the student runs again, tags whose value
-changed are marked "changed". Always hidden: imported modules, functions, classes, `__dunder__`
-names and anything imported from the `turtle` module.
+for anything else). Text keeps its quotes, so `"5"` and `5` look different. Long text, long lists
+and nested values are cut short with a **Show all** button. If the student runs again, tags whose
+value changed are marked "changed". Always hidden: imported modules, functions, classes,
+`__dunder__` names and anything imported from the `turtle` or `stage` modules. Variables made by
+hidden setup code show like any other variable.
+
+**List and dict visuals** (`visuals`, on by default). The panel picks the visual from the value:
+
+| Value | Shows as |
+|---|---|
+| A list where **every** item is a colour the Stage knows (CSS name, PICO-8 name or hex) | Colour swatches, each with its index and its text (`0 "red"`) |
+| A list of numbers | Bars, each labelled with its index and value (Okabe-Ito blue; below zero, striped vermilion) |
+| A list of anything else (text, emoji, mixed, nested lists of different lengths) | Tiles with the index under each |
+| A 2D list (equal-length rows) of colours, with `"none"`/`None` for see-through cells | A small picture, cells outlined, with a row and column ruler |
+| A 2D list of anything else | A small table with row and column indexes |
+| A dict | Labelled cards: the key as the title, the value under it; a colour value also shows a swatch |
+| A dict of numbers | Labelled bars |
+
+- **Index numbers always show** on list visuals.
+- **The exact Python value is one tap away**: tap the visual or press **Show value** to see it as
+  text, so `"5"` and `5` still differ (a list mixing them stays as tiles).
+- **Mixed or ambiguous lists fall back to tiles.** `["apple", "orange"]` isn't all colours, so it
+  shows as tiles. A task that still gets a wrong guess switches visuals off with `visuals: false`.
+- **Palette numbers** (whole numbers 0–15, or indexes into a `palette`) only draw as a picture in a
+  list that `grid()` drew this run, with `stageLists: picture`; they use that call's palette, or the
+  16 Arcade colours without one. A 2D list of numbers that was never drawn is a table, since it may
+  just be a table of numbers.
+- **Sizes.** Pictures scale to the panel's width; long lists scroll inside the tag. The panel reads
+  up to 50 items a list and about 1,000 values a variable, which fits a 32 × 32 picture; a bigger
+  2D list (or one cut short) shows as tiles. In slow-mo each step keeps less (about 20 × 20).
+- **Changed items.** After a re-run, the swatch, bar, cell or card that changed gets an orange ring
+  and a ● (and "changed" for screen readers), not only the whole tag. In slow-mo the changed item
+  pulses with its tag (never with reduced motion).
+- **Screen readers** hear every item, e.g. "palette, item 0: red", and pictures as a summary:
+  "pixels: 8 by 8 picture, 5 colours: red 12, white 40, …". Colour is never the only signal.
+
+```yaml
+- id: 21
+  moduleType: python
+  title: Add two colours to the palette
+  showVariables:
+    mode: view
+    stageLists: picture   # a list drawn with grid() shows as a picture here too
+  codeStages:
+    - role: starter
+      code: |
+        palette = ["red", "orange", "gold"]
+        palette.append("green")
+        palette.append("blue")
+```
 
 **The `#@peek` marker.** With `at: marker`, put a line reading `#@peek` in the starter code just
 above the line to stop at. Like a [`#>` line hint](#line-hints) it is stripped before the student
@@ -256,9 +303,13 @@ Use it only with `mode: predict`; validation rejects it otherwise, and names it 
 predict mode (with changed predictions) is recorded for the session report's `predictions`.
 
 **Tutor view.** The student card shows a 🏷️ chip ("Predicted 2/3", then "2/3 right"; "1/3 on
-target" in target mode), and StudentModal shows the student's panel with their predictions as
-they type them. In **Go Live** the presenter's panel, predictions included, shows on every
-screen.
+target" in target mode) and, after a Run, small thumbnails of up to two list visuals (swatches, a
+picture or bars). StudentModal shows the student's panel, visuals included, with their predictions
+as they type them. In **Go Live** the presenter's panel, predictions and visuals included, shows on
+every screen.
+
+**Predict mode** is unchanged for students: predictions are typed as text. After Run, the real
+value shows with its visual next to the ✓ / ✗.
 
 **Devices.** The panel sits under the output (Python) or between the drawing and the output
 (Turtle). On narrow screens it stacks under the code and stays usable with the on-screen keyboard;

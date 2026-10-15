@@ -37,6 +37,29 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-15
+
+### Name-tag panel: lists and dicts you can see (`showVariables.visuals`, `stageLists`)
+
+- The name-tag panel now draws lists and dicts as what they hold, chosen automatically: a list of
+  colours as swatches (index and text on each), a list of numbers as labelled bars, a 2D list of
+  colours as a small picture with a row/column ruler, other 2D lists as a table, a dict as cards
+  (with a swatch for colour values) and a dict of numbers as labelled bars. Anything mixed or
+  ambiguous stays as today's tiles. The exact Python value is one tap away (**Show value**).
+- New optional `showVariables` fields: `visuals` (default `true`; `false` keeps plain tags for the
+  whole task) and `stageLists: picture | tiles | size` (default `size`), how a list passed to the
+  Stage's `grid()` in this run shows — just its size, a picture as well, or rows of tiles. Palette
+  numbers draw as a picture only in a drawn list with `stageLists: picture`.
+- Target mode draws list and dict targets with the same visuals; predict mode shows the real
+  value's visual next to the ✓ / ✗. After a re-run (and in slow-mo) the item that changed is
+  marked, not only the tag. The tutor's card shows small thumbnails; StudentModal and Go Live show
+  the visuals. The panel now reads about 1,000 values per variable (a 32 × 32 picture).
+- Validation checks both fields ([validation-errors.md](validation-errors.md#name-tag-panel-showvariables)).
+  See [python.md](python.md#name-tag-panel-showvariables).
+- Affects: python, turtle · Existing lessons: no changes needed (add `visuals: false` where a
+  list of words could be mistaken for colours) · Resolves:
+  authoring-requests/2026-10-15-p6-7-name-tag-panel-lists-and-dicts-you-can-see.md
+
 ## 2026-10-14
 
 ### Live number and colour scrubbing in the code editor (`scrub`)

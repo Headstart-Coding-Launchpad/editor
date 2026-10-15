@@ -8,6 +8,7 @@ import {
 } from '../../shared/typingHistory'
 import { findTaskById, deriveTaskContext } from '../../shared/taskUtils'
 import { variablesCardSummary } from '../../shared/variablesPanel/predictions.js'
+import NameTagCardStrip from '../../shared/variablesPanel/NameTagCardStrip.jsx'
 import StagePane from '../../shared/stage/StagePane.jsx'
 import { readStageResult } from '../../shared/stage/sync.js'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
@@ -781,6 +782,9 @@ export default function StudentCard({
             <span style={{ color: '#9ca3af', fontSize: 12 }}>No run yet</span>
           )}
         </div>
+      )}
+      {!isInformation && !isActivity && (
+        <NameTagCardStrip task={currentTask} synced={student.currentVariables} />
       )}
       {draftText && (
         <div style={s.draftLine} data-testid="card-draft" title={draftText}>

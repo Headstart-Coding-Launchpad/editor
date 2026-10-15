@@ -13,18 +13,22 @@
 //     index,                                    // (slow-mo) can drive the same panel
 //     peekLine, peekReached,                    // marker mode: whether the peek line ran
 //     changed: [name],                          // tags whose value differs from the last run
+//     changedItems: { name: [item key] },       // which items of those changed (changedItemKeys)
 //   }
 import { getTaskPeekLine } from '../lineHints.js'
 
 export const SHOW_VARIABLES_MODES = Object.freeze(['view', 'predict', 'target'])
 export const SHOW_VARIABLES_AT = Object.freeze(['end', 'marker'])
+// How a list the Stage's grid() drew shows (showVariables.stageLists; see visuals.js).
+export const STAGE_LISTS_OPTIONS = Object.freeze(['picture', 'tiles', 'size'])
+export const DEFAULT_STAGE_LISTS = 'size'
 
 // The task field, as python and turtle declare it in their definitions' taskFields.
 export const SHOW_VARIABLES_TASK_FIELD = Object.freeze({
   name: 'showVariables',
   type: 'object',
   description:
-    'Name-tag panel showing what is in the variables after Run (off unless set): { mode: view | predict | target, at: end | marker (the #@peek line), hide: [names], predict: [names] (predict mode), target: { name: value } (target mode) }.',
+    'Name-tag panel showing what is in the variables after Run (off unless set): { mode: view | predict | target, at: end | marker (the #@peek line), hide: [names], predict: [names] (predict mode), target: { name: value } (target mode), visuals: true | false (lists and dicts drawn as swatches, bars, pictures and cards; default true), stageLists: picture | tiles | size (how a list drawn with grid() shows; default size) }.',
 })
 
 // Python names (identifiers), for author-given names.
@@ -48,9 +52,10 @@ function nameList(value) {
 }
 
 /**
- * The task's `showVariables`, normalised: `{ mode, at, hide, predict, target }`, or null when
- * the task has no panel (the panel is off unless a task turns it on). `predict` is only kept in
- * predict mode and `target` only in target mode.
+ * The task's `showVariables`, normalised: `{ mode, at, hide, predict, target, visuals,
+ * stageLists }`, or null when the task has no panel (the panel is off unless a task turns it
+ * on). `predict` is only kept in predict mode and `target` only in target mode. `visuals` is
+ * false only when the task says so; `stageLists` is picture | tiles | size (default size).
  */
 export function getShowVariables(task) {
   const raw = task?.showVariables
@@ -62,6 +67,18 @@ export function getShowVariables(task) {
     hide: nameList(raw.hide),
     predict: mode === 'predict' ? nameList(raw.predict) : [],
     target: mode === 'target' && isPlainObject(raw.target) ? { ...raw.target } : {},
+    visuals: raw.visuals !== false,
+    stageLists: STAGE_LISTS_OPTIONS.includes(raw.stageLists) ? raw.stageLists : DEFAULT_STAGE_LISTS,
+  }
+}
+
+/** The visual options of a normalised config (chooseVisual in visuals.js reads them). */
+export function visualOptions(config) {
+  return {
+    visuals: config?.visuals !== false,
+    stageLists: STAGE_LISTS_OPTIONS.includes(config?.stageLists)
+      ? config.stageLists
+      : DEFAULT_STAGE_LISTS,
   }
 }
 
@@ -222,6 +239,61 @@ export function changedNames(previous, next) {
     .map((entry) => entry.n)
 }
 
+// The most item keys one variable's change marks keep (a 32 × 32 picture all changed is 1,024).
+export const MAX_CHANGED_ITEMS = 400
+
+const isListNode = (node) => node?.t === 'list' || node?.t === 'tuple'
+
+/**
+ * Which items of a value changed between two runs (or two slow-mo steps), for the per-item
+ * marks on a visual: list items as their index ('3'), 2D cells as 'row,col' ('2,1') and dict
+ * entries as 'k:' plus the key as Python text ('k:"Sam"'). New items count as changed. Empty
+ * when either value isn't a collection, or they are different kinds (the whole tag is marked).
+ */
+export function changedItemKeys(previous, next) {
+  if (!previous || !next) return []
+  const keys = []
+  const push = (key) => {
+    if (keys.length < MAX_CHANGED_ITEMS) keys.push(key)
+  }
+  if (previous.t === 'dict' && next.t === 'dict') {
+    const before = new Map(
+      nodeItems(previous).map((entry) => [formatNode(entry?.k), formatNode(entry?.v)])
+    )
+    for (const entry of nodeItems(next)) {
+      const key = formatNode(entry?.k)
+      if (before.get(key) !== formatNode(entry?.v)) push(`k:${key}`)
+    }
+    return keys
+  }
+  if (!isListNode(previous) || !isListNode(next)) return []
+  const before = nodeItems(previous)
+  nodeItems(next).forEach((item, row) => {
+    const old = before[row]
+    if (isListNode(item) && (old === undefined || isListNode(old))) {
+      const oldCells = nodeItems(old)
+      nodeItems(item).forEach((cell, col) => {
+        if (col >= oldCells.length || formatNode(oldCells[col]) !== formatNode(cell)) {
+          push(`${row},${col}`)
+        }
+      })
+    } else if (old === undefined || formatNode(old) !== formatNode(item)) {
+      push(String(row))
+    }
+  })
+  return keys
+}
+
+/** `{ name: [item keys] }` for the changed names that are collections with changed items. */
+export function changedItemsMap(previous, next, names) {
+  const out = {}
+  for (const name of names) {
+    const keys = changedItemKeys(findVariable(previous, name), findVariable(next, name))
+    if (keys.length > 0) out[name] = keys
+  }
+  return out
+}
+
 /**
  * The run state for a finished run (see RUN STATE above). `capture` is the worker's
  * `variablesPanel` ({ end, peek, peekLine, peekReached }, null when the code never ran, e.g. a
@@ -236,6 +308,7 @@ export function buildVariablesRun({ taskId, status = null, capture = null, confi
     previous?.taskId != null && String(previous.taskId) === String(taskId)
       ? currentSnapshot(previous)
       : null
+  const changed = snapshot && prevShown ? changedNames(prevShown, snapshot) : []
   return {
     taskId: taskId ?? null,
     status: status === 'success' || status === 'error' ? status : null,
@@ -244,8 +317,15 @@ export function buildVariablesRun({ taskId, status = null, capture = null, confi
     index: 0,
     peekLine: Number.isInteger(capture?.peekLine) ? capture.peekLine : null,
     peekReached,
-    changed: snapshot && prevShown ? changedNames(prevShown, snapshot) : [],
+    changed,
+    changedItems: changed.length > 0 ? changedItemsMap(prevShown, snapshot, changed) : {},
   }
+}
+
+// A run state's per-item change marks for one name, as a Set (tolerating synced data).
+export function changedItemSet(run, name) {
+  const keys = isPlainObject(run?.changedItems) ? run.changedItems[name] : null
+  return new Set(Array.isArray(keys) ? keys.filter((key) => typeof key === 'string') : [])
 }
 
 // The snapshot a run state is showing (its `index`), or null.
@@ -289,6 +369,7 @@ export function compactVariablesForSync(run, predictionState = null) {
     peekLine: run?.peekLine ?? null,
     peekReached: !!run?.peekReached,
     changed: run?.changed ?? [],
+    changedItems: isPlainObject(run?.changedItems) ? run.changedItems : {},
     ran: !!run,
     predictions: hasPredictions ? { ...predictions } : null,
     results: isPlainObject(predictionState?.results) ? { ...predictionState.results } : null,
@@ -308,6 +389,7 @@ export function readSyncedVariables(synced) {
         peekLine: synced.peekLine ?? null,
         peekReached: !!synced.peekReached,
         changed: Array.isArray(synced.changed) ? synced.changed : [],
+        changedItems: isPlainObject(synced.changedItems) ? synced.changedItems : {},
       }
     : null
   const predictions =
