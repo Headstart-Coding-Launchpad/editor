@@ -185,7 +185,7 @@ describe('NameTagPanel visuals', () => {
       <NameTagPanel config={{ ...view, stageLists: 'picture' }} run={runOf([['pixels', pixels]])} />
     )
     expect(container.querySelector('.ntp-picture')).toBeNull()
-    expect(container.querySelectorAll('.ntp-table td')).toHaveLength(4)
+    expect(container.querySelectorAll('.ntp-table tbody td')).toHaveLength(4)
     expect(
       container
         .querySelector('.ntp-tag')

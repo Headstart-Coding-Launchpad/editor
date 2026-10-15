@@ -54,7 +54,7 @@ describe('CourseMapEditor', () => {
     expect(screen.getByRole('dialog', { name: 'Map editor' })).toBeTruthy()
     const square = screen.getByRole('button', { name: 'Row 2, column 3: road' })
     expect(square.style.width).toBe('44px')
-    fireEvent.click(screen.getByRole('button', { name: /Star/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Star$/ }))
     // A keyboard press (detail 0) paints the square.
     fireEvent.click(square, { detail: 0 })
     expect(screen.getByRole('button', { name: 'Row 2, column 3: star' })).toBeTruthy()

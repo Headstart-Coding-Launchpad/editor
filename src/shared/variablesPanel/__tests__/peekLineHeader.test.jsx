@@ -36,7 +36,14 @@ const CODE = TASK.codeStages[0].code
 
 describe('NameTagPanel peek header', () => {
   it('says which line the values are shown before, even on empty predict tags', () => {
-    render(<NameTagPanel config={predictMarker} peekLine={6} />)
+    render(
+      <NameTagPanel
+        config={predictMarker}
+        peekLine={6}
+        predictions={{ values: { coins: '' }, results: null }}
+        onPredictionChange={() => {}}
+      />
+    )
     expect(screen.getByTestId('ntp-peek-line').textContent).toBe('⏸Values just before line 6')
     expect(screen.getByLabelText('coins')).toBeTruthy()
   })

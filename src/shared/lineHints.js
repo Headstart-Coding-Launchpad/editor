@@ -72,6 +72,9 @@ export function isLineHintSyntax(syntax) {
   return Object.hasOwn(MARKER_TEXT, syntax ?? '')
 }
 
+// The marker syntaxes whose code has triple-quoted strings (Python's).
+const TRIPLE_QUOTE_SYNTAXES = Object.freeze({ python: true })
+
 // Python: which triple-quoted string (`"""` or `'''`) is still open at the end of `line`, given
 // the one open at its start (null for none). Single-quoted strings and `#` comments are skipped
 // so quotes inside them don't count.
@@ -167,7 +170,7 @@ export function parseLineHints(code, syntax) {
       continue
     }
     kept.push(line)
-    if (syntax === 'python') openString = tripleQuoteStateAfter(line, null)
+    if (Object.hasOwn(TRIPLE_QUOTE_SYNTAXES, syntax)) openString = tripleQuoteStateAfter(line, null)
     if (lockPending && line.trim() !== '') {
       lockIndexes.push(kept.length - 1)
       lockPending = false

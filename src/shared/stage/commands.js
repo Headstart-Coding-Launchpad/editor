@@ -497,7 +497,13 @@ function flatRows(fn, values, width, label) {
 function buildGrid(fn, values, { label = null } = {}) {
   const { palette = null, cell = null, width } = values
   let { rows } = values
-  const flat = Array.isArray(rows) && rows.length > 0 && !rows.some(Array.isArray)
+  // Text rows like ["0101", "1010"] with no width= are rows written as text, not one long list:
+  // they get the rows[r] message below.
+  const textRows =
+    (width === undefined || width === null) &&
+    Array.isArray(rows) &&
+    rows.every((value) => typeof value === 'string' && /^\d{2,}$/.test(value))
+  const flat = Array.isArray(rows) && rows.length > 0 && !rows.some(Array.isArray) && !textRows
   let wrap = null
   if (flat) {
     rows = flatRows(fn, rows, width, label)
