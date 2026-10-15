@@ -5,6 +5,8 @@ import SplitPane from '../../shared/SplitPane'
 import { drawTurtleCommands, sizeCanvasToDisplay } from './draw.js'
 import { createTurtleState } from './engine.js'
 import { describeTurtleDrawing } from './describe.js'
+import { hasTaskCourse } from './course.js'
+import CoursePicture from './CoursePicture.jsx'
 
 const DEFAULT_TURTLE_STATE = createTurtleState()
 
@@ -62,7 +64,12 @@ export default function TeacherLiveView({
     </div>
   )
 
-  const canvas = (
+  // A course task (task.course) shows the student's last run on its map(s), finished.
+  const canvas = hasTaskCourse(task) ? (
+    <div style={s.canvasWrap}>
+      <CoursePicture task={task} result={turtleResult} animate={false} />
+    </div>
+  ) : (
     <div style={s.canvasWrap}>
       {/* A watching tutor sees the finished drawing (no playback). */}
       <canvas

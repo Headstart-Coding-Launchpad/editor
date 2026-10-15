@@ -21,6 +21,7 @@ import { SCRUB_TASK_FIELD, validateScrub } from '../../shared/scrub/scrubConfig.
 import { getStarterStage } from '../../shared/taskStages.js'
 import { PYTHON_SLOW_MO_TASK_FIELD, validatePythonSlowMo } from '../python/slowMo/config.js'
 import { compactTurtleResultForSync } from './sync.js'
+import { validateTurtleCourse } from './course.js'
 import {
   codeDefaultTypeFields,
   MARKUP_COPY_CODE_PLACEHOLDER,
@@ -136,6 +137,12 @@ export default defineModule({
     SHOW_VARIABLES_TASK_FIELD,
     SCRUB_TASK_FIELD,
     PYTHON_SLOW_MO_TASK_FIELD,
+    {
+      name: 'course',
+      type: 'object',
+      description:
+        "Course mode (docs/authoring/turtle.md): { type: 'grid' | 'track', vehicle?: 'turtle' | 'car' | 'rover' | 'boat' | 'drone', map | maps }. Grid maps are text (# wall, . road, G goal, * pickup, > < ^ v start); a track is { start, goal, walls, pickups, trackCode }. The turtle becomes a vehicle with sensors (wall_ahead, wall_left, wall_right, at_goal, on_pickup, collected).",
+    },
   ],
   carryThroughField: 'carryCodeFrom',
   completeField: 'completeCode',
@@ -218,6 +225,9 @@ export default defineModule({
       starterCode: getStarterStage(task)?.stage?.code ?? task.starterCode ?? null,
     })
     validatePythonSlowMo(task, n, errors, warnings)
+    // Course mode (./course.js): the map(s). Course checks on a task with no course are caught
+    // by their own registry `validate` (./courseChecks.js).
+    validateTurtleCourse(task, n, errors, warnings)
   },
   hasStarterContent: codeStarterPresent,
 })

@@ -52,4 +52,72 @@ describe('compactTurtleResultForSync', () => {
     const short = compactTurtleResultForSync({ state: null, commands: [{ ...fill, closedAt: 3 }] })
     expect(short.commands[0].closedAt).toBe(3)
   })
+
+  it("keeps a course run: each map's outcome and drawing, rounded, with no gaps for Firebase", () => {
+    const synced = compactTurtleResultForSync({
+      state: { x: 1.26, y: 0 },
+      commands: [],
+      runId: 'r1',
+      course: {
+        type: 'grid',
+        vehicle: 'rover',
+        taskId: 51,
+        maps: [
+          {
+            index: 0,
+            status: 'success',
+            goalReached: false,
+            crashed: true,
+            crash: { message: 'The rover hit a wall at row 2, column 5.', x: -22.222, y: 44.444 },
+            pickups: 1,
+            pickupsTotal: 2,
+            moves: 3,
+            stopped: null,
+            message: 'The rover hit a wall at row 2, column 5.',
+            commands: [{ type: 'pickup', index: 0, x: 1.234, y: 5.678 }],
+            state: { x: 3.333, y: 4.444, heading: 0, crashed: true },
+          },
+          { index: 1, status: 'not_run', commands: [], state: null },
+        ],
+      },
+    })
+    expect(synced.course).toEqual({
+      type: 'grid',
+      vehicle: 'rover',
+      taskId: '51',
+      maps: [
+        {
+          index: 0,
+          status: 'success',
+          goalReached: false,
+          crashed: true,
+          crash: { message: 'The rover hit a wall at row 2, column 5.', x: -22.2, y: 44.4 },
+          pickups: 1,
+          pickupsTotal: 2,
+          moves: 3,
+          stopped: null,
+          message: 'The rover hit a wall at row 2, column 5.',
+          commands: [{ type: 'pickup', index: 0, x: 1.2, y: 5.7 }],
+          state: { x: 3.3, y: 4.4, heading: 0, crashed: true },
+        },
+        {
+          index: 1,
+          status: 'not_run',
+          goalReached: false,
+          crashed: false,
+          crash: null,
+          pickups: 0,
+          pickupsTotal: 0,
+          moves: 0,
+          stopped: null,
+          message: null,
+          commands: [],
+          state: null,
+        },
+      ],
+    })
+    const json = JSON.stringify(synced)
+    expect(json).not.toContain('undefined')
+    expect(compactTurtleResultForSync({ state: null, commands: [] })).not.toHaveProperty('course')
+  })
 })

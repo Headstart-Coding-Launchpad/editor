@@ -32,6 +32,7 @@ import {
 } from './exampleOpens.js'
 import { inspectorReportFields, summarizeInspectorUse } from './inspectorUse.js'
 import { slowMoReportFields, summarizeSlowMoUse } from './slowMoUse.js'
+import { courseReportFields, summarizeCourseUse } from './courseUse.js'
 import { scrubReportFields, summarizeScrubUse } from './scrub/scrubUse.js'
 import {
   crossLessonCarryReportFields,
@@ -788,6 +789,8 @@ export function buildSessionReport({
           inspectorReportFields(studentsSnapshot[anonymousId]?.inspectorLog?.[task.id])
         ),
         ...slowMoReportFields(studentsSnapshot[anonymousId]?.slowMoLog?.[task.id]),
+        // Turtle course runs (task.course): goal reached, crashes, pickups.
+        ...courseReportFields(studentsSnapshot[anonymousId]?.courseLog?.[task.id]),
         ...scrubReportFields(studentsSnapshot[anonymousId]?.scrubLog?.[task.id]),
         ...(itemProgress ? { itemProgress } : {}),
         ...(lastDraft ? { lastDraft } : {}),
@@ -924,6 +927,7 @@ export function buildSessionReport({
       ...summarizeCrossLessonCarry(perStudent),
       ...summarizeInspectorUse(perStudent),
       ...summarizeSlowMoUse(perStudent),
+      ...summarizeCourseUse(perStudent),
       ...summarizeScrubUse(perStudent),
       ...summarizeVariablePredictions(perStudent),
       ...badgeFields,

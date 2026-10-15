@@ -39,6 +39,44 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-15
 
+### Turtle course mode: drive a vehicle round a maze or track (`course`)
+
+- **New Turtle task field `course`.** The turtle becomes a vehicle the student drives round a map
+  with ordinary Turtle Python: `{ type: grid | track, vehicle, map | maps }`. It is a mode of the
+  `turtle` module, not a game: Run plays the moves; there are no keys or game loop.
+- **Grid** (`type: grid`): a text map, `#` wall, `.` road, `G` goal, `*` pickup, `>` `<` `^` `v`
+  start and heading (space: off the map; at most 30 × 30). `forward()` with no number moves one
+  square and `forward(3)` three; `left()` / `right()` turn 90°; part squares, other angles and
+  `goto` / `home` / `reset` / `circle` stop with a plain message.
+- **Track** (`type: track`): turtle coordinates, `start: { x, y, heading }`, `goal: { x, y, r }`
+  or `{ rect: [x1, y1, x2, y2] }`, `walls` (lines `[x1, y1, x2, y2]` and boxes `{ rect }`),
+  `pickups: [[x, y]]` and an optional `trackCode` snippet whose drawn lines are walls (read, not
+  run: a fixed Turtle subset with `for … in range()` loops). The vehicle is a circle 10 units
+  across from centre to edge; the picture's edge is a wall.
+- **Sensors** on `turtle`: `wall_ahead()`, `wall_left()`, `wall_right()` (the next square; 30
+  units on a track), `at_goal()`, `on_pickup()`, `collected()`. Pickups are collected by driving
+  over them. Driving into a wall bumps, marks the crash and ends the program with a plain message
+  ("The rover hit a wall at row 2, column 5."), counted as a finished run, not an error. A run
+  stops after 1,000 moves or 20,000 sensor checks on a map. The pen is down by default (a faint
+  trail).
+- **Vehicles:** `turtle` (default), `car`, `rover`, `boat`, `drone`, drawn top-down.
+- **`maps`** (up to 6): the code runs once per map; Run plays them in turn with a tick or cross
+  per map. A real Python error on one map leaves the later ones not run.
+- **New checks** (every map): `course_goal_reached`, `course_no_crash`, `course_pickups` (`min`,
+  default all) and `course_max_moves` (`max`; every forward, backward, goto, turn and circle is
+  one move). They need a run (`lessons test-checks` reports them as needing one). The Builder
+  offers them on a course task with a kid-friendly hint. Mix with `code` / `turtle_command_used`
+  checks for the method.
+- Validation covers the course shape (one start, at least one goal, legend, track fields,
+  `trackCode`, course checks only on a course task); it can't run code, so check a solution in
+  the Builder preview, which runs every map. New rows in
+  [validation-errors.md](validation-errors.md). The tutor card shows "Reached goal", "Crashed" or
+  "2/3 maps"; the session report adds per-task `course: { runs, goalReached, goalRuns, crashes,
+  pickups, lastGoalReached }`. See [turtle.md](turtle.md#course-mode-course).
+- Affects: turtle (`course`, course checks, sensors, session report) · Existing lessons: none (a
+  new optional field; `forward()` and `left()` without a number still need one outside course
+  mode) · Resolves: authoring-requests/2026-10-15-p6-11-turtle-course-mode-drive-a-vehicle-round-a-maze.md
+
 ### Stage shapes: size-first calls, centre anchors, rotation, polygons, see-through, outlines, `hue()`
 
 - **The Stage's call order changed (breaking).** Calls are now size first, with everything else

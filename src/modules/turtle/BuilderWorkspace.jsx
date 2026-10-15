@@ -5,8 +5,10 @@ import {
   StageMetadataEditor,
 } from '../../builder/components/task-editor/TaskEditorFields'
 import { getStageRole } from '../../shared/taskUtils'
-import { initPyodide, runPython, stopPython } from '../python/pyodide'
-import { buildTurtleProgram } from './shim.js'
+import { getStopCount, initPyodide, runPython, stopPython } from '../python/pyodide'
+import { runTurtleTask } from './courseRun.js'
+import { hasTaskCourse } from './course.js'
+import CoursePicture from './CoursePicture.jsx'
 import { drawTurtleCommands, sizeCanvasToDisplay } from './draw.js'
 import { createTurtleState } from './engine.js'
 
@@ -32,6 +34,9 @@ export default function BuilderWorkspace({
   const [output, setOutput] = useState('')
   const [commands, setCommands] = useState([])
   const [turtleState, setTurtleState] = useState(DEFAULT_TURTLE_STATE)
+  // Course mode (task.course): the last preview run, every map, shown on the map(s).
+  const [courseRun, setCourseRun] = useState(null)
+  const isCourse = hasTaskCourse(task)
 
   const match = codeTab.match(/^stage_(\d+)$/)
   const stageIndex = match ? Number(match[1]) : null
@@ -77,8 +82,12 @@ export default function BuilderWorkspace({
     setOutput('')
     setCommands([])
     setTurtleState(DEFAULT_TURTLE_STATE)
+    setCourseRun(null)
     await initPyodide()
-    const result = await runPython(buildTurtleProgram(activePythonCode), {
+    // A course task runs once per map (./courseRun.js).
+    const result = await runTurtleTask(activePythonCode, task, {
+      runPython,
+      getStopCount: () => getStopCount(),
       onOutput: (text) => setOutput((prev) => prev + text),
     })
     setRunning(false)
@@ -86,6 +95,7 @@ export default function BuilderWorkspace({
     setStatus(result.status)
     setCommands(result.turtle?.commands ?? [])
     setTurtleState({ ...DEFAULT_TURTLE_STATE, ...(result.turtle?.state ?? {}) })
+    setCourseRun(isCourse ? (result.turtle ?? null) : null)
   }
 
   return (
@@ -138,7 +148,11 @@ export default function BuilderWorkspace({
             </button>
           </div>
           <div style={s.canvasWrap}>
-            <canvas ref={canvasRef} style={s.canvas} />
+            {isCourse ? (
+              <CoursePicture task={task} result={courseRun} animate={false} />
+            ) : (
+              <canvas ref={canvasRef} style={s.canvas} />
+            )}
           </div>
           {(output || status === 'error') && (
             <pre style={{ ...s.output, color: status === 'error' ? '#b91c1c' : '#334155' }}>

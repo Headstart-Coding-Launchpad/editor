@@ -377,6 +377,21 @@ message says `feedback check` where it would say `check` (that part is shown as 
 | `Task … has a turtle … but no check value` | A heading/count/length check has no `value`. | Add `value:`. |
 | `Task … has a turtle command … with no valid command (one of: …)` | `turtle_command_used` names an unknown command. | Use one of the listed names, e.g. `forward`, `turn`, `circle`. |
 | `Task … has a turtle colour … but no colour` | `turtle_color_used` has no `color`. | Add the colour exactly as students will write it. |
+| `Task … has a course_… check but no course: add a course (a map to drive round)` | A `course_goal_reached`, `course_no_crash`, `course_pickups` or `course_max_moves` check is on a Turtle task with no `course`. | Add a `course` ([turtle.md](turtle.md#course-mode-course)), or use the ordinary Turtle checks. |
+| `Task … has a course_… check, but course checks only work in Turtle tasks` | A course check is on another module's task. | Move it to a Turtle task with a `course`. |
+| `Task … has a course_max_moves … with no max (a whole number of moves)` | `course_max_moves` needs `max`. | Add `max: 8` (every forward, backward, goto, turn and circle is one move). |
+| `Task … has a course_pickups … whose min isn't a whole number` | `course_pickups`'s `min` is text, negative or a fraction. | Use 0, 1, 2, …, or remove `min` (all pickups). |
+| `Task … course must be an object with type and map (or maps)` | `course` is text or a list. | Write `course: { type: grid, map: … }` ([turtle.md](turtle.md#course-mode-course)). |
+| `Task … course.type must be grid or track` | `type` is missing or another word. | Use `grid` (a text map) or `track` (free movement). |
+| `Task … course.vehicle must be one of: turtle, car, rover, boat, drone` | An unknown vehicle. | Pick one of the five, or remove it (the turtle). |
+| `Task … course has both map and maps; use one` | Both are set. | Keep `map` for one map, `maps` for several. |
+| `Task … course.maps must be a list of maps` / `… course.maps has N maps; the most is 6` | `maps` is empty, not a list, or too long. | List 1 to 6 maps. |
+| `Task … course has no map: …` / `Task … course has no track: …` | No `map` or `maps` (and, for a track, no `start`/`goal`/`walls` on `course`). | Add the map. |
+| `Task … course map[ N]: the grid map …` | A grid map is empty, larger than 30 × 30, uses a character outside the legend, has no start or more than one, or no goal. The message names the problem. | Use `#` `.` `G` `*` and one of `>` `<` `^` `v`; add a `G`. |
+| `Task … course map[ N]: the track has no goal …` / `goal …` / `start …` / `wall N …` / `pickup N …` | A track field is missing or the wrong shape: `goal` needs `x`, `y` (and `r` above 0) or `rect: [x1, y1, x2, y2]`; walls are `[x1, y1, x2, y2]` or `{ rect: [x1, y1, x2, y2] }`; pickups `[x, y]`; `start` inside -200 to 200. | Fix the field the message names. |
+| `Task … course map[ N]: trackCode line N: …` | `trackCode` uses something it can't read (a variable, `print`, an `if`, a command outside the list). | Use plain numbers and the commands listed in [turtle.md](turtle.md#tracks-type-track). |
+| `Task … course map[ N]: the start is touching a wall, so the vehicle may crash as soon as it moves` (warning) | A track start is closer than 10 units to a wall or the picture's edge. | Move the start into the open. |
+| `Task … course map[ N]: the vehicle starts in the goal` (warning) | A track start is inside the goal zone. | Move the start or the goal. |
 | `Task … has an … …, but … tasks don't record input — input checks work in Desktop tasks` | An `input_gesture`, `input_shortcut` or `input_modifier` check is on a task whose module doesn't record how the student works (only Desktop does). | Move the check to a Desktop task, or check the outcome instead. |
 | `Task … has an … … whose min is not a positive whole number` | An input check's `min` is 0, negative or not a whole number. | Use 1, 2, 3, … or remove `min` (it defaults to 1). |
 | `Task … has an input_gesture … with gesture "…" — use one of: …` | `gesture` is missing or unknown. | Use `click`, `double_click`, `right_click`, `drag`, `scroll` or `hover` (see `desktop.md`). |

@@ -13,6 +13,7 @@ import StagePane from '../../shared/stage/StagePane.jsx'
 import { readStageResult } from '../../shared/stage/sync.js'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { getModuleDefinition } from '../../modules/definitions'
+import { courseCardChip } from '../../modules/turtle/courseRun.js'
 import PresenceBadge from './PresenceBadge'
 import { formatTimeAgo } from '../../shared/timeAgo'
 import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
@@ -165,6 +166,11 @@ export default function StudentCard({
     Array.isArray(student.visiblePanes) &&
     student.visiblePanes.length > 0
   const activityUi = isActivity ? getTaskActivityUi(currentTask) : null
+  // Turtle course mode (task.course): the last run's outcome — "Reached goal", "Crashed" or
+  // "2/3 maps" (only for a run of this task).
+  const courseChip = isSessionSandbox
+    ? null
+    : courseCardChip(currentTask, student.currentTurtleResult)
   const activitySummary =
     isActivity && !activityUi?.CardSummary
       ? summarizeActivityAnswer(currentTask, student.currentAnswer)
@@ -504,6 +510,22 @@ export default function StudentCard({
               title={variablesSummary.title}
               style={s.checkBadgeFullscreen}
             />
+          )}
+          {courseChip && (
+            <span
+              style={{
+                ...s.checkBadge,
+                ...(courseChip.tone === 'good'
+                  ? s.checkBadgePassed
+                  : courseChip.tone === 'bad'
+                    ? s.checkBadgeFailed
+                    : s.checkBadgeFullscreen),
+              }}
+              title={courseChip.title}
+              data-testid="course-chip"
+            >
+              <span aria-hidden="true">{courseChip.icon}</span> {courseChip.label}
+            </span>
           )}
           {student.isFullscreen && (
             <IconChip

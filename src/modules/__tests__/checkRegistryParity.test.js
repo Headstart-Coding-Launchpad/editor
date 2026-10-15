@@ -199,6 +199,11 @@ const POST_REGISTRY_TYPES = [
   'stage_colour_used',
   'stage_pixel',
   'stage_text_shown',
+  // Turtle course mode (src/modules/turtle/courseChecks.js, tested in its own __tests__).
+  'course_goal_reached',
+  'course_no_crash',
+  'course_pickups',
+  'course_max_moves',
 ]
 const registeredIds = checkRegistry.typeIds().filter((id) => !POST_REGISTRY_TYPES.includes(id))
 const operators = [

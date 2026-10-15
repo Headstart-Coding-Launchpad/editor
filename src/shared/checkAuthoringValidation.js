@@ -1,6 +1,7 @@
 import { normalizeChecks, isCodeCheck, isRunAttemptedCheck } from '../modules/checks.js'
 import { normalizeFsCheck } from '../modules/filesystem/checks.js'
 import { TURTLE_CHECK_TYPES, TURTLE_COMMAND_NAMES } from '../modules/turtle/checks.js'
+import { COURSE_CHECK_TYPES } from '../modules/turtle/courseChecks.js'
 
 // Shared between the Builder (src/builder/lessonUtils.js) and the CLI (cli/validate.mjs) so
 // the two publish paths can't validate filesystem/electronics/turtle checks differently — before
@@ -133,6 +134,8 @@ export function validateTurtleChecks(checks, n, errors, kind = 'completion') {
   const unknown = normalized.find(
     (c) =>
       !TURTLE_CHECK_TYPES.includes(c?.type) &&
+      // Course mode (task.course; the course itself is validated with the task).
+      !COURSE_CHECK_TYPES.includes(c?.type) &&
       !isCodeCheck(c) &&
       !isRunAttemptedCheck(c) &&
       // The name-tag panel's predictions (showVariables mode: predict).
@@ -158,5 +161,13 @@ export function validateTurtleChecks(checks, n, errors, kind = 'completion') {
   }
   if (normalized.some((c) => c.type === 'turtle_color_used' && !String(c.color ?? '').trim())) {
     errors.push(`Task ${n} has a turtle colour ${label} but no colour`)
+  }
+  const isCount = (value) =>
+    hasValue(value) && Number.isInteger(Number(value)) && Number(value) >= 0
+  if (normalized.some((c) => c.type === 'course_max_moves' && !isCount(c.max))) {
+    errors.push(`Task ${n} has a course_max_moves ${label} with no max (a whole number of moves)`)
+  }
+  if (normalized.some((c) => c.type === 'course_pickups' && hasValue(c.min) && !isCount(c.min))) {
+    errors.push(`Task ${n} has a course_pickups ${label} whose min isn't a whole number`)
   }
 }

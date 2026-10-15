@@ -620,9 +620,20 @@ globalThis.__hsStageHue = (argsJson) => {
 // Single default turtle only. The recorder keeps the state, the drawing in code order (with the
 // motion between drawn items, for playback) and every call (for turtle_command_used checks).
 
-globalThis.__hsTurtleForward = (distance) => _turtle.forward(distance)
+// On a course (../turtle/course.js) the movement calls answer '' / 'error|…' / 'stop|…' (the shim
+// raises on the last two); otherwise they answer nothing. `part`: one of circle()'s own steps.
+globalThis.__hsTurtleForward = (distance, part) => _turtle.forward(distance, !!part)
 // `instant`: circle()'s own small turns, which real turtle makes with no delay.
 globalThis.__hsTurtleTurn = (degrees, instant) => _turtle.turn(degrees, !!instant)
+// Course mode: 'setup' with the map spec as JSON (line 2 of the program), else a sensor name.
+globalThis.__hsTurtleCourse = (op, arg) => {
+  if (String(op) !== 'setup') return _turtle.sense(String(op))
+  try {
+    return _turtle.setCourse(JSON.parse(String(arg)))
+  } catch {
+    return "error|This task's course map can't be read."
+  }
+}
 globalThis.__hsTurtleGoto = (x, y) => _turtle.goto(x, y)
 globalThis.__hsTurtleSetHeading = (degrees) => _turtle.setHeading(degrees)
 globalThis.__hsTurtleHome = () => _turtle.home()
@@ -655,7 +666,7 @@ globalThis.__hsTurtleMarkCommand = (name, argsJson) => {
   } catch {
     args = []
   }
-  _turtle.markCommand(String(name), Array.isArray(args) ? args : [])
+  return _turtle.markCommand(String(name), Array.isArray(args) ? args : [])
 }
 
 self.onmessage = async ({ data }) => {
@@ -757,6 +768,8 @@ self.onmessage = async ({ data }) => {
       state: _turtle.state,
       commands: _turtle.commands,
       calls: _turtle.calls,
+      // Course mode: the map's outcome (../turtle/courseDrive.js), else null.
+      course: _turtle.course,
     })
 
     try {
@@ -776,6 +789,25 @@ self.onmessage = async ({ data }) => {
     } catch (err) {
       flushBuffers()
       const raw = String(err).replace(/^PythonError:\s*/, '')
+      // A Turtle course run that stopped itself (a crash, too many moves): the program ended
+      // there, so it is shown as the plain message and the run counts as finished, not as an error.
+      const courseHalt = _turtle.courseHalt
+      if (courseHalt && raw.includes('_CourseStop')) {
+        const message = `${courseHalt.message}\n`
+        self.postMessage({ type: 'output', text: message, kind: 'stdout' })
+        slowMoAppendOutput(message)
+        const slowMo = finishSlowMo('success')
+        self.postMessage({
+          type: 'done',
+          status: slowMo?.status === 'capped' ? 'stopped' : 'success',
+          variables: _lastVariables,
+          variablesPanel: _lastVariablesPanel,
+          turtle: turtleResult(),
+          stage: { commands: _stageRecorder.commands },
+          slowMo,
+        })
+        return
+      }
       const { text, line } = formatPythonError(raw)
       self.postMessage({ type: 'output', text: text + '\n', kind: 'stderr', line })
       slowMoAppendOutput(text + '\n')

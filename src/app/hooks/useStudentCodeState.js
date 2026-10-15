@@ -61,6 +61,7 @@ import { createStudentPersistence } from './createStudentPersistence'
 import { useTeacherLivePublish } from './useTeacherLivePublish'
 import { useHtmlInspectorLive } from './useHtmlInspectorLive'
 import { useSlowMoLog } from './useSlowMoLog'
+import { useCourseLog } from './useCourseLog'
 import { useScrubLog } from './useScrubLog'
 import { useScrubPreview } from './useScrubPreview'
 import { useActivityState } from './useActivityState'
@@ -896,6 +897,17 @@ export function useStudentCodeState({
 
   // Scratch slow-mo use for the session report: recordSlowMoUse (useSlowMoLog).
   const slowMoLog = useSlowMoLog({
+    lessonId,
+    phase,
+    teacherPresentation,
+    previewMode,
+    effectiveIdentity,
+    currentTaskId,
+    inPersonalSandboxRef,
+  })
+
+  // Turtle course runs for the session report: recordCourseRun (useCourseLog), from each Run.
+  const courseLog = useCourseLog({
     lessonId,
     phase,
     teacherPresentation,
@@ -1818,6 +1830,7 @@ export function useStudentCodeState({
         signals: badgeSignals,
         variablesPanel,
         runOptions: slowMoRun,
+        recordCourseRun: courseLog.recordCourseRun,
       })
       return
     }

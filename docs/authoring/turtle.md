@@ -337,7 +337,8 @@ Feedback/incorrect checks use the same types.
 The Builder and `node cli/cli.mjs lessons validate` apply the same rules to
 Turtle checks and feedback checks:
 
-- The `type` must be one of the eight turtle types above, a generic `code`
+- The `type` must be one of the eight turtle types above, a course check
+  ([Course mode](#course-mode-course)), a generic `code`
   check (including legacy aliases like `code_contains`), `run_attempted`
   (completion checks only), or `variables_predicted` (with
   `showVariables.mode: predict`; see [Name-tag panel](#name-tag-panel-showvariables)).
@@ -351,6 +352,203 @@ Turtle checks and feedback checks:
 `test-checks` reports turtle checks as `skipped`, because they need a real run —
 use the Builder preview to confirm a complete solution passes. Code checks
 don't need a run.
+
+## Course mode (`course`)
+
+A Turtle task with a `course` turns the turtle into a vehicle the student drives round a map:
+walls, a goal, pickups to collect, and sensors to look ahead. It isn't a game: there's no game
+loop and no keys. Students write instructions, press **Run**, and watch the vehicle follow them,
+one visible move at a time. The student still writes ordinary Turtle Python (`import turtle`).
+
+```yaml
+- title: Get the rover to the flag
+  moduleType: turtle
+  course:
+    type: grid              # grid | track
+    vehicle: rover          # turtle (default) | car | rover | boat | drone
+    map: |
+      #########
+      #>..#..G#
+      #.#.#.#.#
+      #...*...#
+      #########
+  codeStages:
+    - role: starter
+      code: |
+        import turtle
+        while not turtle.at_goal():
+            if turtle.wall_ahead():
+                turtle.right()
+            else:
+                turtle.forward()
+  check:
+    - type: course_goal_reached
+      hint: Watch where the rover stops. Which move takes it off the route?
+    - type: course_no_crash
+```
+
+### Grid maps (`type: grid`)
+
+`map` is text, one line per row:
+
+| Character | Means |
+|---|---|
+| `#` | Wall |
+| `.` | Road |
+| `G` | Goal (at least one) |
+| `*` | Pickup |
+| `>` `<` `^` `v` | The start, facing east, west, north or south (exactly one) |
+| space | Off the map (a wall) |
+
+Rows may differ in length (short rows are padded with off-map squares). The most is 30 × 30.
+The map is scaled to fit the picture, so a small map has big squares.
+
+- `forward()` with no number moves one square; `forward(3)` moves three; `backward()` works too.
+  Part squares (`forward(1.5)`) stop with a plain message.
+- `left()` and `right()` with no number turn 90°. Any angle that isn't a whole number of quarter
+  turns stops with "On a grid, the rover turns in quarter turns: use left() or left(90), not
+  left(45)." `setheading()` takes 0, 90, 180 or 270.
+- `goto()`, `setpos()`, `home()`, `reset()`, `clear()` and `circle()` can't be used on a grid
+  (a plain message says so).
+
+### Tracks (`type: track`)
+
+Free movement in ordinary turtle coordinates: the centre is (0, 0), `y` goes up, and the picture
+runs from -200 to 200 both ways. `forward()` needs a distance (`forward(50)`); turns take any
+angle (`left()` alone is 90°). `goto()` drives in a straight line.
+
+```yaml
+course:
+  type: track
+  vehicle: car
+  map:
+    start: { x: -160, y: -160, heading: 90 }   # default (0, 0) facing east
+    goal: { x: 160, y: 160, r: 25 }             # a circle; or goal: { rect: [x1, y1, x2, y2] }
+    walls:
+      - [-100, -200, -100, 100]                 # a line wall from (x1, y1) to (x2, y2)
+      - { rect: [0, -100, 60, 200] }            # a solid box between two corners
+    pickups:
+      - [-160, 0]
+      - [-40, 150]
+    trackCode: |                                # optional: lines this Turtle code draws are walls
+      turtle.penup()
+      turtle.goto(100, -200)
+      turtle.pendown()
+      turtle.left(90)
+      turtle.forward(150)
+```
+
+- The vehicle is a circle 10 units from centre to edge. It crashes when its edge touches a wall
+  or the edge of the picture.
+- `wall_ahead()`, `wall_left()` and `wall_right()` look **30 units** ahead, left or right.
+- A pickup is collected when the vehicle's centre passes within 12 units of it.
+- A goal circle's `r` defaults to 20.
+- The track's fields can also sit straight on `course` (without `map:`).
+- `trackCode` is read, not run: it may use `forward`/`fd`, `backward`/`bk`/`back`,
+  `left`/`lt`, `right`/`rt`, `goto`/`setpos`/`setposition`, `setheading`/`seth`, `home`,
+  `penup`/`pu`/`up`, `pendown`/`pd`/`down` and `circle(radius, extent)` with plain numbers,
+  `for i in range(n):` loops, `import turtle`, and comments. Its turtle starts at (0, 0) facing
+  east with the pen down; every line it draws is a wall. Anything else is a validation error
+  naming the line. This keeps the track drawable before the first Run, in the Builder and by
+  `lessons validate`.
+
+### Sensors and the vehicle
+
+All on `turtle`, so one `import turtle` is enough:
+
+| Function | Returns |
+|---|---|
+| `turtle.wall_ahead()` | `True` if a wall is straight ahead (grid: the next square; track: within 30) |
+| `turtle.wall_left()`, `turtle.wall_right()` | The same, to the left or right of the heading |
+| `turtle.at_goal()` | `True` on the goal |
+| `turtle.on_pickup()` | `True` on a pickup's square or spot (it's collected as the vehicle arrives) |
+| `turtle.collected()` | How many pickups so far (a name-tag panel can show it if the code stores it) |
+
+- **Pickups** are collected by driving over them.
+- **Crashing:** driving into a wall stops the vehicle with a small bump and a crash mark, and the
+  program stops there with a plain message, not a traceback: "The rover hit a wall at row 2,
+  column 5." (grid: the wall's square, rows and columns counted from 1 at the top left) or "The
+  car hit a wall at x 120, y -40." (track: where the car is). A crash isn't an error: the run
+  counts as finished, and the checks decide.
+- **Loops that never end:** a run stops after 1,000 moves on one map ("Is a loop going round
+  forever?") or 20,000 sensor checks, with a plain message. Stop still works.
+- **Trail:** the pen is down by default with a faint blue line, so students see the route.
+  `penup()`, `pencolor()` and `pensize()` work as usual.
+- **Vehicles:** `turtle` (default), `car`, `rover`, `boat`, `drone`: clean top-down drawings
+  that turn with the heading.
+- **Speed:** with no `speed()` call a course plays at real turtle's speed 1, so each move can be
+  followed (a very long run is squeezed into 30 seconds). Skip jumps to the end of the map.
+- **Slow-mo** steps line by line (one step per line run; `forward(3)` is one step). Slow-mo and
+  the name-tag panel follow map 1.
+
+### Several maps (`maps`)
+
+```yaml
+course:
+  type: grid
+  vehicle: rover
+  maps:
+    - |
+      #######
+      #>...G#
+      #######
+    - |
+      #####
+      #>..#
+      ###.#
+      #G..#
+      #####
+```
+
+The student's code runs once per map (up to 6), each with a fresh vehicle at that map's start.
+Run plays the maps one after another; a tab per map shows a tick or a cross once it has played,
+and pressing a tab shows that map again. The output starts each map with "── Map 2 of 3 ──". If
+the code raises a real Python error on one map, the later maps aren't run (and count as not
+reached). Use several maps to ask for a general solution with sensors rather than a fixed list of
+moves. In track mode, `maps` is a list of track definitions.
+
+### Course checks
+
+| Type | Fields | Passes when |
+|---|---|---|
+| `course_goal_reached` | none | The vehicle ends on the goal, on every map. |
+| `course_no_crash` | none | It never hits a wall, on every map. |
+| `course_pickups` | `min` (optional; default all) | It collects at least `min` pickups (or all of them) on every map. |
+| `course_max_moves` | `max` (required) | It uses at most `max` moves on every map. Every `forward`, `backward`, `goto`, turn and `circle` call is one move. |
+
+Use `code` and `turtle_command_used` checks for the method, e.g. "used `while`" or "used
+`wall_ahead`" (`{ type: code, operator: contains, value: "wall_ahead(" }`). Course checks need a
+run, like every Turtle check (`lessons test-checks` reports them as needing one). The Builder
+offers them on a task with a course and fills in a kid-friendly hint. The usual Turtle checks
+(`turtle_position` and so on) read map 1's run.
+
+### Course validation
+
+The Builder and `lessons validate` check that `course.type` is `grid` or `track`, the vehicle is
+one of the five, there is `map` or `maps` (not both, at most 6), every grid map uses only the
+legend with exactly one start and at least one goal, every track has a goal and well-formed walls,
+pickups and `trackCode`, and course checks sit on a Turtle task with a course
+(`course_max_moves` needs a whole-number `max`). A track whose start touches a wall or sits in
+the goal gets a warning. They can't run the code, so they don't check that a solution reaches the
+goal: run it in the Builder preview, which runs every map. See
+[validation-errors.md](validation-errors.md).
+
+### Tutor and report
+
+- The tutor's student card shows the last run: "Reached goal", "Crashed" or "2/3 maps". The
+  student modal shows the maps, finished; Go Live plays the presenter's run on every screen.
+- The session report adds, per student per task, `course: { runs, goalReached, goalRuns,
+  crashes, pickups, lastGoalReached }`, and per task `courseGoalReachedCount` and
+  `courseCrashedCount` (see [session-reports.md](session-reports.md)).
+
+### Accessibility
+
+Walls are dark and hatched, road pale with grid lines, the goal a chequered flag, pickups gold
+stars (a dashed ring once collected) and a crash a red burst, so they differ by shape and pattern
+as well as colour. The picture's words for screen readers say where the vehicle is, which way it
+faces, the pickups and the goal ("Rover at row 2, column 3, facing east. 1 of 2 pickups
+collected. Goal at row 1, column 7."). What happened on each map is announced in a polite live
+region. Map tabs, Skip and Play are at least 44 px.
 
 ## Runtime notes and limits
 

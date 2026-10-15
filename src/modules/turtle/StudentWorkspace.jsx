@@ -10,7 +10,8 @@ import {
   CollapseTabButton,
 } from '../../app/components/CollapsiblePanelControls'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
-import TurtlePicture from './TurtlePicture.jsx'
+// A course task (task.course) shows its map and vehicle; any other task the plain picture.
+import TurtlePicture from './CoursePicture.jsx'
 import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
 import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
 import { usePythonSlowMo } from '../python/slowMo/usePythonSlowMo.js'
@@ -179,6 +180,7 @@ export default function StudentWorkspace({
             remounts and shows the finished drawing (see useTurtlePlayback.js). Slow-mo draws
             its own steps, and a scrub preview has no runId, so both draw at once. */}
         <TurtlePicture
+          task={task}
           result={turtleResult}
           animate={!slowMoView}
           onPlayingChange={setDrawingPlaying}

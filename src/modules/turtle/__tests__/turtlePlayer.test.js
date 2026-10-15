@@ -83,7 +83,8 @@ describe('createTurtlePlayer', () => {
     expect(t.drawMarker).toHaveBeenLastCalledWith(
       expect.anything(),
       { x: 100, y: 0, heading: 0 },
-      expect.anything()
+      expect.anything(),
+      null
     )
     expect(t.player.status).toBe('idle')
   })

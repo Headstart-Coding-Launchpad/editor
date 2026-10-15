@@ -247,7 +247,13 @@ describe('drawTurtleCommands', () => {
     const drawMarker = vi.fn()
     const turtle = { x: 0, y: 0, heading: 0, visible: true }
     drawTurtleCommands(ctx, [], { turtle, drawMarker })
-    expect(drawMarker).toHaveBeenCalledWith(ctx, turtle, expect.objectContaining({ scale: 1 }))
+    // The fourth argument is the playback frame: null for a finished picture.
+    expect(drawMarker).toHaveBeenCalledWith(
+      ctx,
+      turtle,
+      expect.objectContaining({ scale: 1 }),
+      null
+    )
     expect(ctx._calls.some((c) => c[1] === TURTLE_MARKER_EMOJI)).toBe(false)
   })
 
