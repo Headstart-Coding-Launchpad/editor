@@ -384,6 +384,9 @@ message says `feedback check` where it would say `check` (that part is shown as 
 | `Task … course must be an object with type and map (or maps)` | `course` is text or a list. | Write `course: { type: grid, map: … }` ([turtle.md](turtle.md#course-mode-course)). |
 | `Task … course.type must be grid or track` | `type` is missing or another word. | Use `grid` (a text map) or `track` (free movement). |
 | `Task … course.vehicle must be one of: turtle, car, rover, boat, drone` | An unknown vehicle. | Pick one of the five, or remove it (the turtle). |
+| `Task … course.studentMap must be true or false` | `studentMap` is text or a number. | Write `studentMap: true` (or remove it). |
+| `Task … course.studentMap only works on grid courses: students can't make their own track yet` | `studentMap: true` on a `type: track` course. | Use a grid course, or remove `studentMap` ([turtle.md](turtle.md#students-make-their-own-map-studentmap)). |
+| `Task … starter code: a course_map() map row starts with #>, which is read as a line hint and taken out of the code; …` / `… code stage N: …` (warning) | A `studentMap` task's starter `turtle.course_map("""…""")` map has a row beginning `#>` (the start just inside the left wall, facing east), which the line-hint marker removes before students see it. | Face that start with `^` or `v`, or move it one square in. |
 | `Task … course has both map and maps; use one` | Both are set. | Keep `map` for one map, `maps` for several. |
 | `Task … course.maps must be a list of maps` / `… course.maps has N maps; the most is 6` | `maps` is empty, not a list, or too long. | List 1 to 6 maps. |
 | `Task … course has no map: …` / `Task … course has no track: …` | No `map` or `maps` (and, for a track, no `start`/`goal`/`walls` on `course`). | Add the map. |

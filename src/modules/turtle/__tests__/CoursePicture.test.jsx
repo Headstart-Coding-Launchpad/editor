@@ -144,3 +144,43 @@ describe('CoursePicture', () => {
     )
   })
 })
+
+describe('CoursePicture: student-made maps (course.studentMap)', () => {
+  const OWN = '#####\n#.>.#\n#..G#\n#####'
+  const ownTask = {
+    id: 9,
+    course: { type: 'grid', vehicle: 'rover', map: MAP_A, studentMap: true },
+  }
+
+  it("shows the map in the student's code before any run, described like an authored map", () => {
+    const code = `import turtle\nturtle.course_map("""\n${OWN}\n""")`
+    render(<CoursePicture task={ownTask} code={code} result={null} animate={false} />)
+    expect(screen.getByRole('img').getAttribute('aria-label')).toBe(
+      'Your map. Rover at row 2, column 3, facing east. Goal at row 3, column 4.'
+    )
+  })
+
+  it("shows the task's map while the code's map can't be used", () => {
+    const code = 'import turtle\nturtle.course_map("""\n#>..#\n""")'
+    render(<CoursePicture task={ownTask} code={code} result={null} animate={false} />)
+    expect(screen.getByRole('img').getAttribute('aria-label')).toBe(
+      'Rover at row 2, column 2, facing east. Goal at row 2, column 4.'
+    )
+  })
+
+  it("shows the run's own map (from the synced result), even with no code", () => {
+    const result = {
+      commands: [],
+      state: null,
+      course: {
+        type: 'grid',
+        vehicle: 'rover',
+        maps: [{ status: 'success', goalReached: false, studentMap: OWN, commands: [] }],
+      },
+    }
+    render(<CoursePicture task={ownTask} result={result} animate={false} />)
+    expect(screen.getByRole('img').getAttribute('aria-label')).toMatch(
+      /^Your map\. Rover at row 2, column 3, facing east\. Goal at row 3, column 4\./
+    )
+  })
+})

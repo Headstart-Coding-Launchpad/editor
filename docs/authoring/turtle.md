@@ -558,6 +558,78 @@ the code raises a real Python error on one map, the later maps aren't run (and c
 reached). Use several maps to ask for a general solution with sensors rather than a fixed list of
 moves. In track mode, `maps` is a list of track definitions.
 
+### Students make their own map (`studentMap`)
+
+For a Make It Your Own task, `studentMap: true` lets the student design their own maze and then
+write the code that drives it. Grid courses only.
+
+```yaml
+- title: Make your own maze
+  moduleType: turtle
+  course:
+    type: grid
+    vehicle: rover
+    studentMap: true          # the student's code may set the map
+    map: |                    # shown until the student sets one (still required)
+      #######
+      #>...G#
+      #######
+  codeStages:
+    - role: starter
+      code: |
+        import turtle
+        #> Draw your own maze: # for walls, . for road, G for the goal, * for stars, ^ for the start
+        turtle.course_map("""
+        #########
+        #.......#
+        #^#####.#
+        #G......#
+        #########
+        """)
+        #> Now write code that gets the rover to the goal
+  check:
+    - type: course_goal_reached
+    - { type: code, operator: contains, value: "course_map(" }
+```
+
+- **`turtle.course_map(text)`** replaces the task's map for this run. It uses the same legend and
+  limits as an authored grid map (`#` `.` `G` `*` and one of `>` `<` `^` `v`; one start, at least
+  one goal, at most 30 × 30). Blank lines at either end and indentation every line shares are
+  fine, so a triple-quoted string can sit inside a function.
+- It must come **before the vehicle's first move or turn** (put it straight after
+  `import turtle`). Calling it again before moving replaces the map again. Pen settings chosen
+  before it (`pencolor()`, `speed()`, …) are kept.
+- **Mistakes stop the run with a plain message**, not the authored map: "Your map needs a G for
+  the goal.", "Your map has two starts (>): keep just one.", "Your map needs a start: put > where
+  the rover begins (or < ^ v to face another way).", "Your map uses "x": use # for walls, . for
+  road, G for the goal, * for stars and > for the start.", "Your map is 32 squares wide; the most
+  is 30.", "Your map is empty: …", and "Call course_map() before the rover moves: put it near the
+  top, straight after import turtle." On a task without `studentMap`, `course_map()` stops with
+  "This task's map is set for you, so course_map() can't change it."
+- **The map shows straight away.** Before the first Run (and during slow-mo) the picture shows
+  the usable map in the student's code, so they see their maze as they make it (the task's `map`
+  while the code's map has a mistake). After a Run it shows the map that run used, even if the
+  code only drew the map and has no driving code yet.
+- **Checks read the student's map**: `course_goal_reached`, `course_no_crash`, `course_pickups`
+  (default: all of the student's stars) and `course_max_moves` judge the run on the map it used.
+  Add a `code` check for `course_map(` if the student must make their own.
+- **With `maps`** (several authored maps): code that sets its own map runs **once, on that map**
+  (no "Map 1 of 3" headings; the checks see one map). Code that doesn't call `course_map()` drives
+  every authored map as usual.
+- **Map editor:** a **Map editor** button (🧱) beside Run opens a tap-to-paint grid with Wall,
+  Road, Goal, Star and Start tools. Squares are at least 44 px, so it works on a tablet, where
+  typing a maze is fiddly. It opens on the map in the student's code (or the task's map), keeps
+  exactly one start (tapping the start again turns it), and has Rows and Columns buttons (3 to
+  30). **Use this map** writes the map into the code as `turtle.course_map("""…""")`, replacing
+  the map already there, or adding the call straight after `import turtle`. It is offered on
+  every device, only on `studentMap` tasks.
+- **Line hints clash:** in starter code, a map row whose text starts with `#>` (the start just
+  inside the left wall, facing east) reads as a [line hint](#line-hints) and is taken out before
+  students see it. Validation warns. Face that start with `^` or `v`, or move it one square in.
+  (Students' own code isn't affected.)
+- Tutor views, Go Live and the session report work as for any course: every screen draws the
+  student's map from the run.
+
 ### Course checks
 
 | Type | Fields | Passes when |
@@ -579,8 +651,10 @@ The Builder and `lessons validate` check that `course.type` is `grid` or `track`
 one of the five, there is `map` or `maps` (not both, at most 6), every grid map uses only the
 legend with exactly one start and at least one goal, every track has a goal and well-formed walls,
 pickups and `trackCode`, and course checks sit on a Turtle task with a course
-(`course_max_moves` needs a whole-number `max`). A track whose start touches a wall or sits in
-the goal gets a warning. They can't run the code, so they don't check that a solution reaches the
+(`course_max_moves` needs a whole-number `max`). `studentMap` must be `true` or `false` and only
+works on a grid course (which still needs its `map`). A track whose start touches a wall or sits
+in the goal gets a warning, and so does a `studentMap` starter whose `course_map()` map has a row
+starting with `#>`. They can't run the code, so they don't check that a solution reaches the
 goal: run it in the Builder preview, which runs every map. See
 [validation-errors.md](validation-errors.md).
 

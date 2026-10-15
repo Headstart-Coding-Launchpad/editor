@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import TurtlePicture from './TurtlePicture.jsx'
-import { buildCourseWorlds, describeCourse, getTaskCourse, vehicleName } from './course.js'
+import {
+  buildCourseWorld,
+  courseMapsShown,
+  describeCourse,
+  getTaskCourse,
+  readStudentMapFromCode,
+  vehicleName,
+} from './course.js'
 import { courseMarksAt, drawCourseMap, drawCourseTop } from './drawCourse.js'
 import { readCourseResult } from './courseRun.js'
 import { createTurtleState } from './engine.js'
@@ -30,12 +37,19 @@ const MOTION_WORDS = {
  * - What happened (a crash, the goal reached) is shown and announced (a polite live region); the
  *   canvas's words describe the vehicle, pickups and goal.
  * - A result with no course part (a slow-mo step, a scrub preview) is drawn on map 1.
+ * - Student-made maps (course.studentMap, turtle.course_map): a run on the student's own map
+ *   shows that map (the run's `studentMap` text). With no run yet, or a slow-mo step, the usable
+ *   map in `code` (the student's code, optional) is shown, so a maze shows as soon as it's drawn.
  */
-export default function CoursePicture({ task, ...props }) {
+export default function CoursePicture({ task, code = null, ...props }) {
   const courseField = task?.course
   const course = useMemo(() => getTaskCourse({ course: courseField }), [courseField])
+  const previewMap = useMemo(
+    () => (course?.studentMap && code ? readStudentMapFromCode(code, course.vehicle) : null),
+    [course, code]
+  )
   if (!course) return <TurtlePicture {...props} />
-  return <CourseView course={course} {...props} />
+  return <CourseView course={course} previewMap={previewMap} {...props} />
 }
 
 function mapOutcome(map) {
@@ -57,6 +71,7 @@ function outcomeWords(map, name) {
 
 function CourseView({
   course,
+  previewMap = null,
   result,
   animate = true,
   onPlayingChange,
@@ -64,10 +79,20 @@ function CourseView({
   canvasStyle,
   children,
 }) {
-  const worlds = useMemo(() => buildCourseWorlds(course), [course])
-  const count = worlds.length
   const name = vehicleName(course.vehicle)
   const courseResult = readCourseResult(result)
+  // The task's maps, or the student's own (course.studentMap).
+  const shownMaps = useMemo(
+    () => courseMapsShown(course, courseResult, previewMap),
+    [course, courseResult, previewMap]
+  )
+  const mapsKey = shownMaps.studentMap ? JSON.stringify(shownMaps.maps) : null
+  const worlds = useMemo(
+    () => shownMaps.maps.map((map) => buildCourseWorld(course.type, map, course.vehicle)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rebuilt only when the maps change
+    [course, mapsKey]
+  )
+  const count = worlds.length
   const maps = useMemo(() => {
     if (courseResult) return courseResult.maps
     if (result) return [{ commands: result.commands ?? [], state: result.state ?? null }]
@@ -139,6 +164,7 @@ function CourseView({
   const revealedCount = sequence ? revealed : count
   const isRevealed = (i) => i < revealedCount
   const label = (i) => (count > 1 ? `Map ${i + 1}` : '')
+  const ownMap = shownMaps.studentMap
   // What happened on a map, announced once each time it is shown after a Run.
   const lastAnnouncedRef = useRef(null)
   const announce = useCallback(
@@ -194,7 +220,7 @@ function CourseView({
         { ...pictureResult.state },
         {
           collected,
-          mapLabel: count > 1 ? `Map ${index + 1} of ${count}` : '',
+          mapLabel: count > 1 ? `Map ${index + 1} of ${count}` : ownMap ? 'Your map' : '',
           outcome: showOutcome ? { ...map, message: map.crash?.message ?? map.message } : null,
         }
       )

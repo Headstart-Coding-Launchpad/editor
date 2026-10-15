@@ -149,7 +149,12 @@ export default function BuilderWorkspace({
           </div>
           <div style={s.canvasWrap}>
             {isCourse ? (
-              <CoursePicture task={task} result={courseRun} animate={false} />
+              <CoursePicture
+                task={task}
+                code={activePythonCode}
+                result={courseRun}
+                animate={false}
+              />
             ) : (
               <canvas ref={canvasRef} style={s.canvas} />
             )}

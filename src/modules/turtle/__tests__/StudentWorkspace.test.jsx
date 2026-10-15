@@ -265,3 +265,42 @@ describe('Turtle StudentWorkspace result tabs on smaller screens (P6-12)', () =>
     expect(screen.getByRole('tablist', { name: 'Result panes' })).toBeInTheDocument()
   })
 })
+
+describe('Turtle StudentWorkspace map editor (course.studentMap, P6-16)', () => {
+  const MAP = '#####\n#>.G#\n#####'
+  const ownTask = { id: 3, course: { type: 'grid', vehicle: 'rover', map: MAP, studentMap: true } }
+
+  it('opens the map editor and writes the map into the code', () => {
+    const cs = makeCs({ code: 'import turtle\nturtle.forward(2)' })
+    render(<StudentWorkspace task={ownTask} cs={cs} isMobile={false} />)
+    fireEvent.click(screen.getByRole('button', { name: /Map editor/ }))
+    expect(screen.getByRole('dialog', { name: 'Map editor' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Use this map' }))
+    expect(cs.handleCodeChange).toHaveBeenCalledWith(
+      `import turtle\nturtle.course_map("""\n${MAP}\n""")\nturtle.forward(2)`
+    )
+    expect(screen.queryByRole('dialog', { name: 'Map editor' })).toBeNull()
+  })
+
+  it('has no map editor on a course without studentMap, or when read-only', () => {
+    const { unmount } = render(
+      <StudentWorkspace
+        task={{ id: 4, course: { type: 'grid', map: MAP } }}
+        cs={makeCs()}
+        isMobile={false}
+      />
+    )
+    expect(screen.queryByRole('button', { name: /Map editor/ })).toBeNull()
+    unmount()
+    render(
+      <StudentWorkspace
+        task={ownTask}
+        cs={makeCs()}
+        isMobile={false}
+        isForcedTeacherLive
+        displayCode=""
+      />
+    )
+    expect(screen.queryByRole('button', { name: /Map editor/ })).toBeNull()
+  })
+})

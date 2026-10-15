@@ -72,7 +72,7 @@ export default function TeacherLiveView({
   // A course task (task.course) shows the student's last run on its map(s), finished.
   const canvas = hasTaskCourse(task) ? (
     <div style={s.canvasWrap}>
-      <CoursePicture task={task} result={turtleResult} animate={false} />
+      <CoursePicture task={task} code={displayState ?? ''} result={turtleResult} animate={false} />
     </div>
   ) : (
     <div style={s.canvasWrap}>

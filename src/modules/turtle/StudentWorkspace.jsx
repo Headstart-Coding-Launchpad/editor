@@ -13,6 +13,9 @@ import {
 import CopyCodePanel from '../../app/components/CopyCodePanel'
 // A course task (task.course) shows its map and vehicle; any other task the plain picture.
 import TurtlePicture from './CoursePicture.jsx'
+// Course mode's tap-to-paint map editor (course.studentMap, turtle.course_map).
+import CourseMapEditor from './CourseMapEditor.jsx'
+import { getTaskCourse } from './course.js'
 import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
 import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
 import { usePythonSlowMo } from '../python/slowMo/usePythonSlowMo.js'
@@ -45,6 +48,7 @@ export default function StudentWorkspace({
   onVisiblePanesChange,
 }) {
   const [outputCollapsed, setOutputCollapsed] = useState(true)
+  const [mapEditorOpen, setMapEditorOpen] = useState(false)
 
   const savedCode = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
@@ -153,6 +157,10 @@ export default function StudentWorkspace({
     onVisiblePanesChange?.(visiblePanesKey.split(','))
   }, [visiblePanesKey, onVisiblePanesChange])
 
+  // Student-made maps (course.studentMap): the map editor writes turtle.course_map(...) into the code.
+  const taskCourse = useMemo(() => getTaskCourse(task), [task])
+  const mapEditorAvailable = !readOnly && !inFreePlay && !!taskCourse?.studentMap
+
   const showCopyCode =
     !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()
 
@@ -202,6 +210,18 @@ export default function StudentWorkspace({
             >
               Reset Code
             </button>
+            {mapEditorAvailable && (
+              <button
+                type="button"
+                className="btn-ghost-outline"
+                style={s.resetBtn}
+                onClick={() => setMapEditorOpen(true)}
+                disabled={cs.running}
+                title="Draw your map by tapping squares"
+              >
+                <span aria-hidden="true">🧱</span> Map editor
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -244,6 +264,7 @@ export default function StudentWorkspace({
     <div style={s.canvasWrap}>
       <TurtlePicture
         task={task}
+        code={code}
         result={turtleResult}
         animate={!slowMoView}
         onPlayingChange={setDrawingPlaying}
@@ -353,6 +374,17 @@ export default function StudentWorkspace({
       <div style={inset ? { ...s.workspaceInner, paddingBottom: inset } : s.workspaceInner}>
         {body}
       </div>
+      {mapEditorOpen && mapEditorAvailable && (
+        <CourseMapEditor
+          code={cs.code}
+          course={taskCourse}
+          onApply={(nextCode) => {
+            cs.handleCodeChange(nextCode)
+            setMapEditorOpen(false)
+          }}
+          onClose={() => setMapEditorOpen(false)}
+        />
+      )}
     </div>
   )
 }

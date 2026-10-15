@@ -16,8 +16,11 @@
 //
 // A course run (./course.js, ./courseRun.js) also carries `course`: each map's outcome and its own
 // drawing, so a Go Live screen and the tutor's views can show every map. The course's own
-// geometry is never sent: every screen rebuilds it from the task.
+// geometry is never sent: every screen rebuilds it from the task, or, for a student-made map
+// (turtle.course_map, P6-16), from the map's text (`studentMap`, at most 30 × 30 characters).
 const MAX_SYNCED_TURTLE_COMMANDS = 4000
+// A 30 × 30 map is 929 characters; anything longer can't be a usable map, so it isn't sent.
+const MAX_SYNCED_STUDENT_MAP = 1000
 
 const COORD_KEYS = ['x', 'y', 'x1', 'y1', 'x2', 'y2', 'heading', 'from', 'delta', 'size', 'width']
 
@@ -91,6 +94,11 @@ function compactCourse(course) {
       message: map?.message ? String(map.message) : null,
       commands: compactCommands(map?.commands, cap),
       state: compactState(map?.state),
+      ...(typeof map?.studentMap === 'string' &&
+      map.studentMap &&
+      map.studentMap.length <= MAX_SYNCED_STUDENT_MAP
+        ? { studentMap: map.studentMap }
+        : {}),
     })),
   }
 }

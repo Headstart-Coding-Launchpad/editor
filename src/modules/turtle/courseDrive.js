@@ -54,8 +54,14 @@ function formatNumber(value) {
 /**
  * A course drive over `world`. `host` is the recorder: { state, setState(next), push(command) }.
  * Returns the bridge methods (forward, turn, setHeading, goto, refuse, sense) and `result`.
+ * `studentMap`: the map text when the world is the student's own (turtle.course_map); the result
+ * carries it so every screen can draw the map the run used.
  */
-export function createCourseDrive(world, host, { index = 0, count = 1, taskId = null } = {}) {
+export function createCourseDrive(
+  world,
+  host,
+  { index = 0, count = 1, taskId = null, studentMap = null } = {}
+) {
   const name = vehicleName(world.vehicle)
   const collected = new Set()
   let moves = 0
@@ -356,6 +362,11 @@ export function createCourseDrive(world, host, { index = 0, count = 1, taskId = 
       return halt
     },
 
+    /** How many moves so far (turtle.course_map() must come before the first). */
+    get moves() {
+      return moves
+    },
+
     /** The map's outcome, as the run result carries it (turtle.course). */
     get result() {
       return {
@@ -372,6 +383,8 @@ export function createCourseDrive(world, host, { index = 0, count = 1, taskId = 
         moves,
         stopped: halt && halt.kind !== 'crash' ? halt.kind : null,
         message: halt ? halt.message : null,
+        // The student's own map (turtle.course_map), tidied: screens rebuild the map from it.
+        ...(typeof studentMap === 'string' ? { studentMap } : {}),
       }
     },
   }
