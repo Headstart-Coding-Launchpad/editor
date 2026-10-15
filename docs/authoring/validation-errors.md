@@ -446,7 +446,9 @@ Python tasks; see [python.md](python.md#stage-drawing-beside-the-console).
 | `Task … has a … …, but stage checks only work in Python tasks` | A `stage_*` check is on another module's task. | Move it to a Python task. |
 | `Task … has a stage_matches_target … but no stageTarget code to compare with` | The check compares with the target, and there is none. | Add `stageTarget: { code: … }`, or use another stage check. |
 | `Task … has a stage_matches_target … with tolerance "…" — use a fraction from 0 to 1, e.g. 0.02` | `tolerance` isn't a number from 0 to 1 (it is a fraction, not a percentage). | Write e.g. `tolerance: 0.02` for 2%. |
-| `Task … has a stage_shape_count … with kind "…" — use one of: any, …` | Unknown `kind`. | Use `any`, `rect`, `circle`, `line`, `text`, `stamp` or `grid`. |
+| `Task … has a stage_shape_count … with kind "…" — use one of: any, …` | Unknown `kind`. | Use `any`, `rect`, `square`, `circle`, `polygon`, `line`, `text`, `stamp` or `grid`. |
+| `Task … has a stage_shape_count … whose sides is not a whole number from 3 to 100` | `sides` is below 3, above 100, a fraction or text. | Use a whole number, like `sides: 6` for hexagons. |
+| `Task … has a stage_shape_count … with sides but its kind is not polygon — add kind: polygon` | `sides` only filters polygons. | Add `kind: polygon`, or remove `sides`. |
 | `Task … has a stage_shape_count … whose min or max is not a whole number of 0 or more` | `min` / `max` is negative, a fraction or text. | Use whole numbers like `min: 1`. |
 | `Task … has a stage_shape_count … whose min is more than its max` | The range is empty, so the check can never pass. | Swap them, or fix one. |
 | `Task … has a … … with colour "…" — use a CSS colour name, a PICO-8 name or a hex code like #ff0000` | `stage_colour_used` / `stage_pixel` has no colour, or one the Stage doesn't know. | Use a name like `red` or `dark_blue`, or a hex code like `"#ff0000"` (quoted in YAML). |

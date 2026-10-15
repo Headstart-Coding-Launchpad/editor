@@ -37,6 +37,43 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-15
+
+### Stage shapes: size-first calls, centre anchors, rotation, polygons, see-through, outlines, `hue()`
+
+- **The Stage's call order changed (breaking).** Calls are now size first, with everything else
+  optional: `circle(r, colour, x, y)`, `square(size, colour, x, y)` (new), `rect(w, h, colour, x,
+  y)`, `polygon(sides, size, colour, x, y)` (new; `size` is centre to corner, one corner up),
+  `text(words, colour, x, y, size=16)`. `line(x1, y1, x2, y2, colour, width=2)` and `stamp(emoji,
+  x, y, size=32)` keep their order; `grid(rows, palette, cell, x, y)` keeps its order but `x, y`
+  are now its centre. The old position-first order is replaced outright (no lesson used it): a
+  call like `circle(200, 200, 50)` stops with "circle(): the second value is the colour, like
+  'red'. To place it, write x=200, y=200, like circle(50, x=200, y=200)".
+- **Centre anchors everywhere.** `x` and `y` are always the middle of the shape, text, emoji or
+  grid, and default to the middle of the stage (200, 200). `(0, 0)` is still top-left and `y`
+  still goes down. Unlike Arcade Kit, where a rectangle is placed by its top-left corner.
+- **Default colours:** royal blue (`#4169e1`) for shapes, black for text and lines.
+- **New keywords** on `circle`, `square`, `rect` and `polygon`: `angle=` (degrees **clockwise**
+  around the centre: the opposite way to Turtle's `left()`), `opacity=` (0–1; see-through shapes
+  blend), `outline=` (colour), `width=` (outline width, default 2), and `colour=None` for an
+  outline only. `text` and `stamp` take `angle=` and `opacity=`; `line` takes `opacity=`.
+  `color=` works as well as `colour=`.
+- **New `hue(n, light=50)`** returns a hex colour round the colour wheel (`hue(0)` red,
+  `hue(120)` green, `hue(240)` blue, wrapping every 360); `light` 0–100 makes it darker or paler.
+  `stage_colour_used` can check it by its hex code.
+- **Checks:** `stage_shape_count`'s `kind` adds `square` and `polygon`, and a new `sides` field
+  (with `kind: polygon`) counts only the polygons with that many sides. `stage_matches_target`,
+  `stage_pixel` and the Differences view compare turned, see-through and outlined shapes as drawn.
+  `stage_colour_used` also finds outline colours.
+- The Stage's screen-reader description says how shapes are turned, faded and outlined ("a red
+  square, size 80, turned 45°, in the middle"). Scrubbing gives `angle=` 0–360, `opacity=` 0–1,
+  `light=` 0–100 and numbers inside `hue()` 0–360; `outline=` colours get the colour picker.
+  See [python.md](python.md#stage-drawing-beside-the-console) and the new rows in
+  [validation-errors.md](validation-errors.md).
+- Affects: python (Stage, stageTarget, stage checks, scrub) · Existing lessons: rewrite any Stage
+  code (starter, complete, `stageTarget`) in the size-first, centred order · Resolves:
+  authoring-requests/2026-10-15-p6-9-stage-shapes-rotation-polygons-size-first-calls.md
+
 ## 2026-10-14
 
 ### Live number and colour scrubbing in the code editor (`scrub`)

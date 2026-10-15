@@ -13,7 +13,7 @@ const BLUE = '#0000ff'
 describe('rasteriseStage', () => {
   it('starts white and paints shapes in order', () => {
     const raster = rasteriseStage([
-      { type: 'rect', x: 0, y: 0, w: 200, h: 400, colour: RED },
+      { type: 'rect', x: 100, y: 200, w: 200, h: 400, colour: RED },
       { type: 'circle', x: 300, y: 200, r: 50, colour: BLUE },
     ])
     expect(raster.resolution).toBe(100)
@@ -24,7 +24,7 @@ describe('rasteriseStage', () => {
 
   it('wipes on clear and fills on background', () => {
     const raster = rasteriseStage([
-      { type: 'rect', x: 0, y: 0, w: 400, h: 400, colour: RED },
+      { type: 'rect', x: 200, y: 200, w: 400, h: 400, colour: RED },
       { type: 'clear' },
       { type: 'background', colour: BLUE },
     ])
@@ -66,10 +66,91 @@ describe('rasteriseStage', () => {
   })
 })
 
+describe('rasteriseStage: turned, polygon, see-through and outlined shapes', () => {
+  it('paints a square turned 45° as a diamond', () => {
+    const raster = rasteriseStage([
+      { type: 'square', x: 200, y: 200, size: 200, colour: RED, angle: 45 },
+    ])
+    // The diamond's tips reach about 141 from the centre along the axes…
+    expect(rasterColourAt(raster, 200, 70)).toBe(RED)
+    expect(rasterColourAt(raster, 330, 200)).toBe(RED)
+    // …and its old corners are now outside it.
+    expect(rasterColourAt(raster, 110, 110)).toBe('#ffffff')
+    expect(rasterColourAt(raster, 290, 290)).toBe('#ffffff')
+  })
+
+  it('turns a rectangle clockwise around its centre', () => {
+    const raster = rasteriseStage([
+      { type: 'rect', x: 200, y: 200, w: 300, h: 40, colour: RED, angle: 90 },
+    ])
+    expect(rasterColourAt(raster, 200, 70)).toBe(RED)
+    expect(rasterColourAt(raster, 70, 200)).toBe('#ffffff')
+  })
+
+  it('paints a polygon with one corner straight up', () => {
+    const raster = rasteriseStage([
+      { type: 'polygon', x: 200, y: 200, sides: 3, size: 150, colour: BLUE },
+    ])
+    expect(rasterColourAt(raster, 200, 70)).toBe(BLUE)
+    expect(rasterColourAt(raster, 200, 260)).toBe(BLUE)
+    // A triangle pointing up leaves the top corners of its box empty.
+    expect(rasterColourAt(raster, 90, 80)).toBe('#ffffff')
+    expect(rasterColourAt(raster, 310, 80)).toBe('#ffffff')
+  })
+
+  it('blends a see-through shape with what is under it', () => {
+    const raster = rasteriseStage([
+      { type: 'background', colour: BLUE },
+      { type: 'circle', x: 200, y: 200, r: 100, colour: RED, opacity: 0.5 },
+    ])
+    expect(rasterColourAt(raster, 200, 200)).toBe('#800080')
+    expect(rasterColourAt(raster, 10, 10)).toBe(BLUE)
+  })
+
+  it('draws an outline on top of the fill, and an outline-only shape as just its edge', () => {
+    const raster = rasteriseStage([
+      { type: 'square', x: 100, y: 200, size: 120, colour: RED, outline: BLUE, width: 8 },
+      { type: 'circle', x: 300, y: 200, r: 60, colour: null, outline: BLUE, width: 4 },
+    ])
+    expect(rasterColourAt(raster, 100, 200)).toBe(RED)
+    expect(rasterColourAt(raster, 42, 200)).toBe(BLUE)
+    expect(rasterColourAt(raster, 300, 200)).toBe('#ffffff')
+    expect(rasterColourAt(raster, 358, 200)).toBe(BLUE)
+  })
+
+  it('rasterises a 40-shape see-through tunnel quickly enough to scrub', () => {
+    const tunnel = Array.from({ length: 40 }, (_, i) => ({
+      type: 'square',
+      x: 200,
+      y: 200,
+      size: i * 8,
+      colour: RED,
+      angle: (i * 9) % 360,
+      opacity: 0.5,
+    }))
+    const started = performance.now()
+    rasteriseStage(tunnel)
+    expect(performance.now() - started).toBeLessThan(200)
+  })
+})
+
 describe('stageColourAt', () => {
+  it('follows turns, opacity and outlines exactly', () => {
+    const commands = [
+      { type: 'background', colour: BLUE },
+      { type: 'square', x: 200, y: 200, size: 100, colour: RED, angle: 45, opacity: 0.5 },
+      { type: 'polygon', x: 50, y: 50, sides: 6, size: 30, colour: null, outline: RED, width: 4 },
+    ]
+    expect(stageColourAt(commands, 200, 200)).toBe('#800080')
+    expect(stageColourAt(commands, 200, 140)).toBe('#800080')
+    expect(stageColourAt(commands, 155, 155)).toBe(BLUE)
+    expect(stageColourAt(commands, 50, 50)).toBe(BLUE)
+    expect(stageColourAt(commands, 50, 20)).toBe(RED)
+  })
+
   it('is the last shape covering the point', () => {
     const commands = [
-      { type: 'rect', x: 0, y: 0, w: 100, h: 100, colour: RED },
+      { type: 'rect', x: 50, y: 50, w: 100, h: 100, colour: RED },
       { type: 'circle', x: 50, y: 50, r: 10, colour: BLUE },
       { type: 'text', x: 50, y: 50, text: 'hi', colour: '#000000', size: 16 },
     ]
@@ -86,12 +167,12 @@ describe('stageColourAt', () => {
 })
 
 describe('compareStages', () => {
-  const target = [{ type: 'rect', x: 0, y: 0, w: 200, h: 200, colour: RED }]
+  const target = [{ type: 'rect', x: 100, y: 100, w: 200, h: 200, colour: RED }]
 
   it('matches an identical drawing however it was made', () => {
     const same = [
-      { type: 'rect', x: 0, y: 0, w: 100, h: 200, colour: RED },
-      { type: 'rect', x: 100, y: 0, w: 100, h: 200, colour: '#fd0101' },
+      { type: 'rect', x: 50, y: 100, w: 100, h: 200, colour: RED },
+      { type: 'rect', x: 150, y: 100, w: 100, h: 200, colour: '#fd0101' },
     ]
     const comparison = compareStages(same, target)
     expect(comparison.differing).toBe(0)
@@ -99,7 +180,7 @@ describe('compareStages', () => {
   })
 
   it('counts the differing fraction and names the first difference', () => {
-    const half = [{ type: 'rect', x: 0, y: 0, w: 100, h: 200, colour: RED }]
+    const half = [{ type: 'rect', x: 50, y: 100, w: 100, h: 200, colour: RED }]
     const comparison = compareStages(half, target)
     expect(comparison.fraction).toBeCloseTo(0.125, 5)
     expect(comparison.firstDifference).toEqual({

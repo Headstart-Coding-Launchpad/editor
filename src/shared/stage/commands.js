@@ -1,26 +1,43 @@
 // The Python Stage's command model (src/shared/stage/). Pure and Node-safe.
 //
 // The `stage` Python module (stagePy.js) hands every call to the worker's JS bridge as
-// (name, JSON args); validateStageCall turns it into one plain, serialisable command or a
-// friendly error the Python side raises. A run's drawing is the ordered command list:
+// (name, JSON { args, kwargs }); validateStageCall binds them to the function's parameters and
+// turns them into one plain, serialisable command or a friendly error the Python side raises.
+// A run's drawing is the ordered command list:
 //
 //   { type: 'background', colour }                       fills the whole stage
-//   { type: 'rect', x, y, w, h, colour }                 top-left corner, width, height
-//   { type: 'circle', x, y, r, colour }                  centre and radius
-//   { type: 'line', x1, y1, x2, y2, colour, width }
-//   { type: 'text', x, y, text, colour, size }           top-left of the text
-//   { type: 'stamp', emoji, x, y, size }                 centre of the emoji
-//   { type: 'grid', x, y, cell, colours, cells }         cells[row][col] indexes colours
-//                                                        (-1 = nothing drawn there)
+//   { type: 'rect', x, y, w, h, colour, …style }         centre, width, height
+//   { type: 'square', x, y, size, colour, …style }       centre, side length
+//   { type: 'circle', x, y, r, colour, …style }          centre and radius
+//   { type: 'polygon', x, y, sides, size, colour, …style }  centre; size = centre to corner,
+//                                                        one corner straight up at angle 0
+//   { type: 'line', x1, y1, x2, y2, colour, width, opacity? }
+//   { type: 'text', x, y, text, colour, size, angle?, opacity? }   centre of the text
+//   { type: 'stamp', emoji, x, y, size, angle?, opacity? }         centre of the emoji
+//   { type: 'grid', x, y, cell, colours, cells }         x, y = the grid's TOP-LEFT corner
+//                                                        (worked out from the centre the
+//                                                        student gives); cells[row][col]
+//                                                        indexes colours (-1 = nothing drawn)
 //   { type: 'clear' }                                    wipes the stage back to white
 //
+// …style on the filled shapes (rect, square, circle, polygon), each present only when it isn't
+// the default: angle (degrees clockwise around the centre, 0–360), opacity (0–1, default 1),
+// outline ('#rrggbb') and width (outline width, default 2 with an outline). `colour` is null
+// for an outline-only shape (colour=None). See ./geometry.js.
+//
 // Colours are '#rrggbb'. Coordinates: top-left origin, x to the right, y DOWN, on a fixed
-// 400 × 400 stage. Commands are never pruned (clear() is a command too), so a step-by-step
-// player (slow-mo) can replay a prefix: the picture after N steps is commands.slice(0, N).
-import { PICO8_PALETTE, isTransparentColour, parseColour } from './colours.js'
+// 400 × 400 stage; every x, y a student writes is a centre, defaulting to the middle (200, 200).
+// Commands are never pruned (clear() is a command too), so a step-by-step player (slow-mo) can
+// replay a prefix: the picture after N steps is commands.slice(0, N).
+import { PICO8_PALETTE, hueColour, isTransparentColour, parseColour } from './colours.js'
 
 export const STAGE_SIZE = 400
 export const STAGE_BACKGROUND = '#ffffff'
+// Where a shape goes when no x, y is given: the middle of the stage.
+export const STAGE_CENTRE = STAGE_SIZE / 2
+// The fill of a shape with no colour given (royal blue: clear on white), and of text and lines.
+export const DEFAULT_SHAPE_COLOUR = '#4169e1'
+export const DEFAULT_INK_COLOUR = '#000000'
 // A run that draws more than this stops with a plain message (an endless drawing loop).
 export const MAX_STAGE_COMMANDS = 20000
 export const MAX_GRID_SIDE = 100
@@ -28,11 +45,14 @@ export const MAX_GRID_SIDE = 100
 export const MAX_GRID_CELLS = 200000
 export const MAX_TEXT_CHARS = 200
 export const MAX_EMOJI_CHARS = 16
+export const MAX_POLYGON_SIDES = 100
 
 export const STAGE_FUNCTIONS = Object.freeze([
   'background',
   'rect',
+  'square',
   'circle',
+  'polygon',
   'line',
   'text',
   'stamp',
@@ -41,7 +61,16 @@ export const STAGE_FUNCTIONS = Object.freeze([
 ])
 
 // Shape kinds a stage_shape_count check can count ('any' = every drawn command).
-export const STAGE_SHAPE_KINDS = Object.freeze(['rect', 'circle', 'line', 'text', 'stamp', 'grid'])
+export const STAGE_SHAPE_KINDS = Object.freeze([
+  'rect',
+  'square',
+  'circle',
+  'polygon',
+  'line',
+  'text',
+  'stamp',
+  'grid',
+])
 
 const COLOUR_EXAMPLE = "a name like 'red' or a hex code like '#ff0000'"
 
@@ -103,14 +132,305 @@ function colour(fn, name, value) {
   return hex
 }
 
-function argCount(fn, args, min, max, names) {
-  if (args.length < min || args.length > max) {
-    const wanted = names.slice(0, max).join(', ')
+// ── Binding a call's values to the function's parameters ────────────────────────────────────
+
+const STYLE_KEYWORDS = ['angle', 'opacity', 'outline', 'width']
+
+// Per function: the values it takes in order, how many must be given, the extra keyword-only
+// names, what each needs in words (for a missing value) and a call to copy.
+const SIGNATURES = {
+  background: { positional: ['colour'], required: 1, example: "background('navy')" },
+  circle: {
+    positional: ['r', 'colour', 'x', 'y'],
+    required: 1,
+    keywords: STYLE_KEYWORDS,
+    example: 'circle(50)',
+  },
+  square: {
+    positional: ['size', 'colour', 'x', 'y'],
+    required: 1,
+    keywords: STYLE_KEYWORDS,
+    example: 'square(80)',
+  },
+  rect: {
+    positional: ['w', 'h', 'colour', 'x', 'y'],
+    required: 2,
+    keywords: STYLE_KEYWORDS,
+    example: 'rect(120, 60)',
+  },
+  polygon: {
+    positional: ['sides', 'size', 'colour', 'x', 'y'],
+    required: 2,
+    keywords: STYLE_KEYWORDS,
+    example: 'polygon(6, 60)',
+  },
+  line: {
+    positional: ['x1', 'y1', 'x2', 'y2', 'colour', 'width'],
+    required: 4,
+    keywords: ['opacity'],
+    example: 'line(0, 0, 400, 400)',
+  },
+  text: {
+    positional: ['words', 'colour', 'x', 'y', 'size'],
+    required: 1,
+    keywords: ['angle', 'opacity'],
+    example: "text('Hello')",
+  },
+  stamp: {
+    positional: ['emoji', 'x', 'y', 'size'],
+    required: 1,
+    keywords: ['angle', 'opacity'],
+    example: 'stamp("⭐")',
+  },
+  grid: {
+    positional: ['rows', 'palette', 'cell', 'x', 'y'],
+    required: 1,
+    example: 'grid([[0, 1], [1, 0]])',
+  },
+  clear: { positional: [], required: 0, example: 'clear()' },
+}
+
+// A parameter's name in words, for "needs …" messages.
+const NEEDS_WORDS = {
+  colour: 'a colour',
+  r: 'a radius',
+  size: 'a size',
+  w: 'a width',
+  h: 'a height',
+  sides: 'a number of sides',
+  x1: 'x1',
+  y1: 'y1',
+  x2: 'x2',
+  y2: 'y2',
+  words: 'some words',
+  emoji: 'an emoji',
+  rows: 'a list of rows',
+}
+
+// Keywords a student might reach for, and the one the stage uses.
+const KEYWORD_SUGGESTIONS = {
+  rotation: 'angle',
+  rotate: 'angle',
+  turn: 'angle',
+  heading: 'angle',
+  alpha: 'opacity',
+  transparency: 'opacity',
+  border: 'outline',
+  stroke: 'outline',
+  fill: 'colour',
+  radius: 'r',
+  thickness: 'width',
+  length: 'size',
+}
+
+const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth']
+
+function joinWords(items) {
+  if (items.length <= 1) return items.join('')
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+}
+
+/**
+ * The call's values by parameter name: `{ values, positionOf }`, where positionOf[name] is the
+ * 0-based position the value was given at (undefined for a keyword). `color=` is read as
+ * `colour=`.
+ */
+function bindCall(fn, signature, args, kwargs) {
+  const { positional, required, keywords = [], example } = signature
+  if (args.length > positional.length) {
+    const names = positional.length ? ` (${positional.join(', ')})` : ''
     throw typeError(
-      `${fn}() takes ${wanted} — you gave ${args.length} value${args.length === 1 ? '' : 's'}`
+      positional.length === 0
+        ? `${fn}() takes no values — write ${example}`
+        : `${fn}() takes at most ${positional.length} value${positional.length === 1 ? '' : 's'} in order${names} — you gave ${args.length}. Give the others by name, like x=100`
     )
   }
+  const values = {}
+  const positionOf = {}
+  args.forEach((value, i) => {
+    values[positional[i]] = value
+    positionOf[positional[i]] = i
+  })
+  const allowed = [...positional, ...keywords]
+  for (const [rawKey, value] of Object.entries(kwargs ?? {})) {
+    const key = rawKey === 'color' && allowed.includes('colour') ? 'colour' : rawKey
+    if (!allowed.includes(key)) {
+      const suggestion = KEYWORD_SUGGESTIONS[key]
+      const hint =
+        suggestion && allowed.includes(suggestion)
+          ? ` — did you mean ${suggestion}=?`
+          : ` — it understands ${allowed.map((name) => `${name}=`).join(', ')}`
+      throw typeError(`${fn}() has no ${key}=${hint}`)
+    }
+    if (Object.hasOwn(values, key)) {
+      throw typeError(
+        positionOf[key] !== undefined
+          ? `${fn}() got ${key} twice: once as the ${ORDINALS[positionOf[key]] ?? 'next'} value and once as ${key}=`
+          : `${fn}() got ${key} twice`
+      )
+    }
+    values[key] = value
+  }
+  const missing = positional
+    .slice(0, required)
+    .filter((name) => values[name] === undefined || values[name] === null)
+  if (missing.length > 0) {
+    throw typeError(
+      `${fn}() needs ${joinWords(missing.map((name) => NEEDS_WORDS[name] ?? name))}, like ${example}`
+    )
+  }
+  return { values, positionOf }
 }
+
+function isNumberish(value) {
+  return (
+    (typeof value === 'number' && Number.isFinite(value)) ||
+    (typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value)))
+  )
+}
+
+function pyString(value) {
+  return `'${String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
+}
+
+function tidy(value) {
+  return String(Math.round(Number(value) * 100) / 100)
+}
+
+// The stage's old position-first order (before 2026-10-15), recognised so the error can show
+// the same drawing written the new way: `{ x, y, call }` or null.
+function oldOrderCall(fn, args) {
+  const colourPart = (value) => (typeof value === 'string' ? `, ${pyString(value)}` : '')
+  if (fn === 'circle' && args.length >= 3 && args.slice(0, 3).every(isNumberish)) {
+    const [x, y, r, c] = args
+    return { x, y, call: `circle(${r}${colourPart(c)}, x=${x}, y=${y})` }
+  }
+  if (fn === 'rect' && args.length >= 4 && args.slice(0, 4).every(isNumberish)) {
+    const [x, y, w, h, c] = args
+    const cx = tidy(Number(x) + Number(w) / 2)
+    const cy = tidy(Number(y) + Number(h) / 2)
+    return { x: cx, y: cy, call: `rect(${w}, ${h}${colourPart(c)}, x=${cx}, y=${cy})` }
+  }
+  if (fn === 'text' && args.length >= 3 && isNumberish(args[0]) && isNumberish(args[1])) {
+    const [x, y, words, c] = args
+    return { x, y, call: `text(${pyString(words)}${colourPart(c)}, x=${x}, y=${y})` }
+  }
+  return null
+}
+
+// A generic example of placing the shape, for a colour given in the wrong place.
+const PLACED_EXAMPLES = {
+  circle: "circle(50, 'red', x=100, y=80)",
+  square: "square(80, 'red', x=100, y=80)",
+  rect: "rect(120, 60, 'red', x=100, y=80)",
+  polygon: "polygon(6, 60, 'red', x=100, y=80)",
+  text: "text('Hello', 'red', x=100, y=80)",
+  line: "line(0, 0, 400, 400, 'red')",
+}
+
+/**
+ * The fill colour from the call: '#rrggbb', null for colour=None (outline only, when
+ * `allowNone`), or `fallback` when none was given. A number where the colour goes is almost
+ * always the old position-first order, so the message says how to place the shape instead.
+ */
+function fillColour(fn, { values, positionOf }, args, { fallback, allowNone = false }) {
+  if (!Object.hasOwn(values, 'colour')) return fallback
+  const value = values.colour
+  if (value === null && allowNone) return null
+  const at = positionOf.colour
+  if (at !== undefined && typeof value === 'number') {
+    const old = oldOrderCall(fn, args)
+    const ordinal = ORDINALS[at]
+    if (fn === 'line') {
+      throw typeError(
+        `${fn}(): the ${ordinal} value is the colour, like 'red'. A line takes x1, y1, x2, y2 and then its colour, like ${PLACED_EXAMPLES.line}`
+      )
+    }
+    if (old) {
+      throw typeError(
+        `${fn}(): the ${ordinal} value is the colour, like 'red'. To place it, write x=${old.x}, y=${old.y}, like ${old.call}`
+      )
+    }
+    throw typeError(
+      `${fn}(): the ${ordinal} value is the colour, like 'red'. To place it, write x= and y=, like ${PLACED_EXAMPLES[fn] ?? `${fn}(…, x=100, y=80)`}`
+    )
+  }
+  return colour(fn, 'colour', value)
+}
+
+function position(fn, values, name) {
+  const value = values[name]
+  if (value === undefined || value === null) return STAGE_CENTRE
+  return number(fn, name, value, { example: '200' })
+}
+
+// { x, y }: the centre the call gives, or the middle of the stage. Read after the colour, so an
+// old position-first call is explained by its colour rather than by a stray x or y.
+function centreOf(fn, values) {
+  return { x: position(fn, values, 'x'), y: position(fn, values, 'y') }
+}
+
+function size(fn, values, name, label, { example = '50', fallback } = {}) {
+  const value = values[name]
+  if ((value === undefined || value === null) && fallback !== undefined) return fallback
+  return atLeast(fn, label, number(fn, label, value, { example }), 0, "can't be negative")
+}
+
+/**
+ * angle, opacity, outline and width for a filled shape, text or stamp: only the ones that
+ * differ from the defaults, ready to spread into the command.
+ */
+function styleOf(fn, values, { outlines = true } = {}) {
+  const style = {}
+  if (values.angle !== undefined && values.angle !== null) {
+    const angle = number(fn, 'angle', values.angle, { example: '45' })
+    const turned = ((angle % 360) + 360) % 360
+    if (turned !== 0) style.angle = turned
+  }
+  if (values.opacity !== undefined && values.opacity !== null) {
+    const opacity = number(fn, 'opacity', values.opacity, { example: '0.5' })
+    if (opacity < 0 || opacity > 1) {
+      throw valueError(
+        `${fn}(): opacity goes from 0 (invisible) to 1 (solid), like opacity=0.5, not ${opacity}`
+      )
+    }
+    if (opacity < 1) style.opacity = opacity
+  }
+  if (!outlines) return style
+  if (values.outline !== undefined && values.outline !== null) {
+    style.outline = colour(fn, 'outline', values.outline)
+    style.width = 2
+  }
+  if (values.width !== undefined && values.width !== null) {
+    if (!style.outline) {
+      throw valueError(
+        `${fn}(): width= is how thick the outline is, so it needs an outline too, like outline='black', width=4`
+      )
+    }
+    style.width = atLeast(
+      fn,
+      'width',
+      number(fn, 'width', values.width, { example: '4' }),
+      0.1,
+      'should be more than 0'
+    )
+  }
+  return style
+}
+
+// A filled shape's fill + style, checking that something would show.
+function filledShape(fn, bound, args) {
+  const fill = fillColour(fn, bound, args, { fallback: DEFAULT_SHAPE_COLOUR, allowNone: true })
+  const style = styleOf(fn, bound.values)
+  if (fill === null && !style.outline) {
+    throw valueError(
+      `${fn}(): with colour=None and no outline nothing would show — give it a colour, or an outline like outline='black'`
+    )
+  }
+  return { colour: fill, ...style }
+}
+
+// ── Grids ───────────────────────────────────────────────────────────────────────────────────
 
 // A grid cell's value → an index into `colours` (adding colours as they turn up), or -1.
 function gridCell(fn, value, where, palette, colours, colourIndex) {
@@ -142,8 +462,8 @@ function gridCell(fn, value, where, palette, colours, colourIndex) {
   return hex == null ? -1 : colourIndex(hex)
 }
 
-function buildGrid(fn, args) {
-  const [rows, palette = null, cell = null, x = 0, y = 0] = args
+function buildGrid(fn, values) {
+  const { rows, palette = null, cell = null } = values
   if (!Array.isArray(rows) || rows.length === 0) {
     throw typeError(
       `${fn}(): rows should be a list of rows, like [[0, 1], [1, 0]], not ${given(rows)}`
@@ -197,97 +517,112 @@ function buildGrid(fn, args) {
   const cells = rows.map((row, r) =>
     row.map((value, c) => gridCell(fn, value, `rows[${r}][${c}]`, paletteHex, colours, colourIndex))
   )
+  // The student gives the grid's centre; the command keeps its top-left corner.
+  const cx = position(fn, values, 'x')
+  const cy = position(fn, values, 'y')
   return {
     type: 'grid',
-    x: number(fn, 'x', x),
-    y: number(fn, 'y', y),
+    x: cx - (cols * cellSize) / 2,
+    y: cy - (rows.length * cellSize) / 2,
     cell: cellSize,
     colours,
     cells,
   }
 }
 
-function buildCommand(name, args) {
+// ── Commands ────────────────────────────────────────────────────────────────────────────────
+
+function buildCommand(name, args, kwargs) {
+  const signature = Object.hasOwn(SIGNATURES, name) ? SIGNATURES[name] : null
+  if (!signature) {
+    throw typeError(
+      `The stage has no ${String(name)}() — use one of: ${STAGE_FUNCTIONS.join(', ')}, hue`
+    )
+  }
+  const bound = bindCall(name, signature, args, kwargs)
+  const { values } = bound
   switch (name) {
     case 'background':
-      argCount(name, args, 1, 1, ['colour'])
-      return { type: 'background', colour: colour(name, 'colour', args[0]) }
-    case 'rect': {
-      argCount(name, args, 5, 5, ['x', 'y', 'w', 'h', 'colour'])
-      const [x, y, w, h, c] = args
-      return {
-        type: 'rect',
-        x: number(name, 'x', x),
-        y: number(name, 'y', y),
-        w: atLeast(name, 'w (the width)', number(name, 'w (the width)', w), 0, "can't be negative"),
-        h: atLeast(
-          name,
-          'h (the height)',
-          number(name, 'h (the height)', h),
-          0,
-          "can't be negative"
-        ),
-        colour: colour(name, 'colour', c),
-      }
-    }
+      return { type: 'background', colour: colour(name, 'colour', values.colour) }
     case 'circle': {
-      argCount(name, args, 4, 4, ['x', 'y', 'r', 'colour'])
-      const [x, y, r, c] = args
-      return {
-        type: 'circle',
-        x: number(name, 'x', x),
-        y: number(name, 'y', y),
-        r: atLeast(
-          name,
-          'r (the radius)',
-          number(name, 'r (the radius)', r),
-          0,
-          "can't be negative"
-        ),
-        colour: colour(name, 'colour', c),
+      const r = size(name, values, 'r', 'r (the radius)')
+      const look = filledShape(name, bound, args)
+      return { type: 'circle', ...centreOf(name, values), r, ...look }
+    }
+    case 'square': {
+      const side = size(name, values, 'size', 'size', { example: '80' })
+      const look = filledShape(name, bound, args)
+      return { type: 'square', ...centreOf(name, values), size: side, ...look }
+    }
+    case 'rect': {
+      const w = size(name, values, 'w', 'w (the width)', { example: '120' })
+      const h = size(name, values, 'h', 'h (the height)', { example: '60' })
+      const look = filledShape(name, bound, args)
+      return { type: 'rect', ...centreOf(name, values), w, h, ...look }
+    }
+    case 'polygon': {
+      const sides = number(name, 'sides', values.sides, { example: '6' })
+      if (!Number.isInteger(sides) || sides < 3 || sides > MAX_POLYGON_SIDES) {
+        throw valueError(
+          `${name}(): sides should be a whole number from 3 to ${MAX_POLYGON_SIDES}, like 6 for a hexagon, not ${sides}`
+        )
       }
+      if (typeof values.size === 'string') {
+        throw typeError(
+          `${name}(): the second value is the size, like polygon(${sides}, 60). Put the colour after it, like polygon(${sides}, 60, ${pyString(values.size)})`
+        )
+      }
+      const side = size(name, values, 'size', 'size', { example: '60' })
+      const look = filledShape(name, bound, args)
+      return { type: 'polygon', ...centreOf(name, values), sides, size: side, ...look }
     }
     case 'line': {
-      argCount(name, args, 5, 6, ['x1', 'y1', 'x2', 'y2', 'colour', 'width'])
-      const [x1, y1, x2, y2, c, width = 2] = args
-      return {
+      const command = {
         type: 'line',
-        x1: number(name, 'x1', x1),
-        y1: number(name, 'y1', y1),
-        x2: number(name, 'x2', x2),
-        y2: number(name, 'y2', y2),
-        colour: colour(name, 'colour', c),
-        width: atLeast(
-          name,
-          'width',
-          number(name, 'width', width, { example: '2' }),
-          0.1,
-          'should be more than 0'
-        ),
+        x1: number(name, 'x1', values.x1),
+        y1: number(name, 'y1', values.y1),
+        x2: number(name, 'x2', values.x2),
+        y2: number(name, 'y2', values.y2),
+        colour: fillColour(name, bound, args, { fallback: DEFAULT_INK_COLOUR }),
+        width:
+          values.width === undefined || values.width === null
+            ? 2
+            : atLeast(
+                name,
+                'width',
+                number(name, 'width', values.width, { example: '2' }),
+                0.1,
+                'should be more than 0'
+              ),
       }
+      return { ...command, ...styleOf(name, values, { outlines: false }) }
     }
     case 'text': {
-      argCount(name, args, 4, 5, ['x', 'y', 'words', 'colour', 'size'])
-      const [x, y, words, c, size = 16] = args
-      const textValue = typeof words === 'string' ? words : given(words)
+      const fill = fillColour(name, bound, args, { fallback: DEFAULT_INK_COLOUR })
+      const words = values.words
+      const textValue =
+        typeof words === 'string' ? words : typeof words === 'number' ? String(words) : given(words)
       return {
         type: 'text',
-        x: number(name, 'x', x),
-        y: number(name, 'y', y),
+        x: position(name, values, 'x'),
+        y: position(name, values, 'y'),
         text: textValue.length > MAX_TEXT_CHARS ? textValue.slice(0, MAX_TEXT_CHARS) : textValue,
-        colour: colour(name, 'colour', c),
-        size: atLeast(
-          name,
-          'size',
-          number(name, 'size', size, { example: '16' }),
-          1,
-          'should be at least 1'
-        ),
+        colour: fill,
+        size:
+          values.size === undefined || values.size === null
+            ? 16
+            : atLeast(
+                name,
+                'size',
+                number(name, 'size', values.size, { example: '16' }),
+                1,
+                'should be at least 1'
+              ),
+        ...styleOf(name, values, { outlines: false }),
       }
     }
     case 'stamp': {
-      argCount(name, args, 3, 4, ['emoji', 'x', 'y', 'size'])
-      const [emoji, x, y, size = 32] = args
+      const { emoji } = values
       if (typeof emoji !== 'string' || !emoji.trim()) {
         throw typeError(
           `stamp(): emoji should be an emoji in quotes, like "⭐", not ${given(emoji)}`
@@ -299,38 +634,45 @@ function buildCommand(name, args) {
       return {
         type: 'stamp',
         emoji: emoji.trim(),
-        x: number(name, 'x', x),
-        y: number(name, 'y', y),
-        size: atLeast(
-          name,
-          'size',
-          number(name, 'size', size, { example: '32' }),
-          1,
-          'should be at least 1'
-        ),
+        x: position(name, values, 'x'),
+        y: position(name, values, 'y'),
+        size:
+          values.size === undefined || values.size === null
+            ? 32
+            : atLeast(
+                name,
+                'size',
+                number(name, 'size', values.size, { example: '32' }),
+                1,
+                'should be at least 1'
+              ),
+        ...styleOf(name, values, { outlines: false }),
       }
     }
     case 'grid':
-      argCount(name, args, 1, 5, ['rows', 'palette', 'cell', 'x', 'y'])
-      return buildGrid(name, args)
+      return buildGrid(name, values)
     case 'clear':
-      argCount(name, args, 0, 0, [])
       return { type: 'clear' }
     default:
-      throw typeError(
-        `The stage has no ${String(name)}() — use one of: ${STAGE_FUNCTIONS.join(', ')}`
-      )
+      return null
   }
+}
+
+function plainKwargs(kwargs) {
+  return kwargs && typeof kwargs === 'object' && !Array.isArray(kwargs) ? kwargs : {}
 }
 
 /**
  * One stage call → `{ command }`, or `{ error: { kind, message } }` where kind is the Python
- * exception to raise ('TypeError' | 'ValueError'). `args` is the call's positional arguments
- * after JSON (Python None → null; values JSON can't carry arrive as { __hs_type__ }).
+ * exception to raise ('TypeError' | 'ValueError'). `args` is the call's positional arguments and
+ * `kwargs` its keyword arguments, after JSON (Python None → null; values JSON can't carry arrive
+ * as { __hs_type__ }).
  */
-export function validateStageCall(name, args) {
+export function validateStageCall(name, args, kwargs = {}) {
   try {
-    return { command: buildCommand(name, Array.isArray(args) ? args : []) }
+    return {
+      command: buildCommand(name, Array.isArray(args) ? args : [], plainKwargs(kwargs)),
+    }
   } catch (err) {
     if (err instanceof StageArgError) return { error: { kind: err.kind, message: err.message } }
     throw err
@@ -338,16 +680,57 @@ export function validateStageCall(name, args) {
 }
 
 /**
- * A run's command log with the caps (MAX_STAGE_COMMANDS, MAX_GRID_CELLS). `call(name, args)`
- * returns '' when the command was drawn, or 'Kind|message' for Python to raise.
+ * hue(n, light=50) → `{ value: '#rrggbb' }` or `{ error: { kind, message } }`. Draws nothing;
+ * the colour goes back to Python as a string (see hueColour in ./colours.js).
+ */
+export function stageHue(args, kwargs = {}) {
+  try {
+    const bound = bindCall(
+      'hue',
+      { positional: ['n', 'light'], required: 1, example: 'hue(120)' },
+      Array.isArray(args) ? args : [],
+      plainKwargs(kwargs)
+    )
+    const n = number('hue', 'n', bound.values.n, { example: '120' })
+    let light = 50
+    if (bound.values.light !== undefined && bound.values.light !== null) {
+      light = number('hue', 'light', bound.values.light)
+      if (light < 0 || light > 100) {
+        throw valueError(
+          `hue(): light goes from 0 (black) to 100 (white), with 50 the full colour, not ${light}`
+        )
+      }
+    }
+    return { value: hueColour(n, light) }
+  } catch (err) {
+    if (err instanceof StageArgError) return { error: { kind: err.kind, message: err.message } }
+    throw err
+  }
+}
+
+/**
+ * The bridge's JSON for one call → { args, kwargs }. Accepts `{ args, kwargs }` or a bare list
+ * of positional arguments.
+ */
+export function readStageCallPayload(payload) {
+  if (Array.isArray(payload)) return { args: payload, kwargs: {} }
+  return {
+    args: Array.isArray(payload?.args) ? payload.args : [],
+    kwargs: plainKwargs(payload?.kwargs),
+  }
+}
+
+/**
+ * A run's command log with the caps (MAX_STAGE_COMMANDS, MAX_GRID_CELLS). `call(name, args,
+ * kwargs)` returns '' when the command was drawn, or 'Kind|message' for Python to raise.
  */
 export function createStageRecorder() {
   const commands = []
   let gridCells = 0
   return {
     commands,
-    call(name, args) {
-      const { command, error } = validateStageCall(name, args)
+    call(name, args, kwargs = {}) {
+      const { command, error } = validateStageCall(name, args, kwargs)
       if (error) return `${error.kind}|${error.message}`
       if (commands.length >= MAX_STAGE_COMMANDS) {
         return `RuntimeError|The stage stopped after ${MAX_STAGE_COMMANDS.toLocaleString('en-GB')} drawing commands — is a loop drawing forever?`

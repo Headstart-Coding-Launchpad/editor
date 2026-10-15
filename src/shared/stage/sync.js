@@ -19,11 +19,29 @@ function round(value) {
   return Number.isFinite(number) ? Math.round(number * 10) / 10 : 0
 }
 
-const ROUNDED_KEYS = ['x', 'y', 'w', 'h', 'r', 'x1', 'y1', 'x2', 'y2', 'width', 'size', 'cell']
+const ROUNDED_KEYS = [
+  'x',
+  'y',
+  'w',
+  'h',
+  'r',
+  'x1',
+  'y1',
+  'x2',
+  'y2',
+  'width',
+  'size',
+  'cell',
+  'angle',
+]
 
 function compactCommand(command) {
   const next = { ...command }
   for (const key of ROUNDED_KEYS) if (key in next) next[key] = round(next[key])
+  // Opacity keeps two decimals (a 0.05 fade still shows); an outline-only shape's colour is
+  // null, which Firebase drops, so it is left out (readers treat a missing colour as no fill).
+  if ('opacity' in next) next.opacity = Math.round(Number(next.opacity) * 100) / 100
+  if (next.colour === null) delete next.colour
   if (next.type === 'grid') next.cell = Math.max(0.1, next.cell)
   return next
 }

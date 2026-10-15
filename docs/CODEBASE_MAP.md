@@ -848,10 +848,11 @@ The drawing pane of a Python task (docs/authoring/python.md "Stage"). The engine
 
 | File | Role |
 |---|---|
-| `colours.js` | Pure: `parseColour` (CSS names, PICO-8 names from Arcade's palette, `#rgb` / `#rrggbb`), `PICO8_PALETTE`, `coloursMatch` (per-channel tolerance), `describeHex` / `colourInWords` (colours in words) |
-| `commands.js` | Pure: the command model (`background`, `rect`, `circle`, `line`, `text`, `stamp`, `grid`, `clear`), `validateStageCall(name, args)` (friendly TypeError / ValueError messages naming the argument), `createStageRecorder` (caps: 20,000 commands, 200,000 grid cells), `visibleCommands`, `STAGE_SIZE` |
+| `colours.js` | Pure: `parseColour` (CSS names, PICO-8 names from Arcade's palette, `#rgb` / `#rrggbb`), `PICO8_PALETTE`, `coloursMatch` (per-channel tolerance), `describeHex` / `colourInWords` (colours in words), `hueColour` (the stage `hue()`) |
+| `commands.js` | Pure: the command model (`background`, `rect`, `square`, `circle`, `polygon`, `line`, `text`, `stamp`, `grid`, `clear`; size-first, centre-anchored, with `angle` / `opacity` / `outline` / `width`), `validateStageCall(name, args, kwargs)` (binds Python args + kwargs; friendly TypeError / ValueError messages naming the argument, incl. the old position-first order), `stageHue` (`hue()`), `readStageCallPayload`, `createStageRecorder` (caps: 20,000 commands, 200,000 grid cells), `visibleCommands`, `STAGE_SIZE`, default colours |
+| `geometry.js` | Pure: filled-shape geometry shared by canvas, SVG and raster: `shapeCorners` (rect / square / polygon, corner up), `shapeHitTest` (fill + outline band, turned), `angleOf` / `opacityOf` / `fillOf` / `outlineOf` / `outlineWidthOf` |
 | `stagePy.js` | Python source of the `stage` module (`STAGE_MODULE_PY`) and its one-time `sys.modules` install (`STAGE_INSTALL_PY`) |
-| `raster.js` | Pure-JS rasteriser (no canvas): `rasteriseStage` (100 × 100 by default), `stageColourAt`, `compareStages` (differing cells + text / emoji compared by command), `comparisonMatches` |
+| `raster.js` | Pure-JS rasteriser (no canvas), as drawn (turned, polygons, outlines, opacity blended): `rasteriseStage` (100 × 100 by default), `stageColourAt`, `compareStages` (differing cells + text / emoji compared by command), `comparisonMatches` |
 | `describe.js` | `describeStage` (screen-reader text: shapes, text, grid size, colours in words), `describeComparison` (the Differences summary) |
 | `checks.js` | The five `stage_*` checks: `evaluateStageCheck`, `validateStageCheck`, `describeStageCheck` (registered by `python/checks.js`) |
 | `validation.js` | `STAGE_TARGET_TASK_FIELD`, `validateStageTarget` (python `validateTask`) |

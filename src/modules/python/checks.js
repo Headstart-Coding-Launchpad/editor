@@ -104,7 +104,7 @@ export function evaluatePythonCheck(check, output, context = {}) {
 
 const STAGE_CHECK_FIELDS = {
   stage_matches_target: ['tolerance'],
-  stage_shape_count: ['kind', 'min', 'max'],
+  stage_shape_count: ['kind', 'sides', 'min', 'max'],
   stage_colour_used: ['colour'],
   stage_pixel: ['x', 'y', 'row', 'col', 'colour'],
   stage_text_shown: ['text', 'operator'],

@@ -2,6 +2,15 @@
 // the 400 × 400 logical stage to the canvas's size. Pure with respect to the commands, so it is
 // safe to call again on resize, for a ghost target, or for a prefix of the commands (slow-mo).
 import { STAGE_BACKGROUND, STAGE_SIZE } from './commands.js'
+import {
+  angleOf,
+  fillOf,
+  isFilledShape,
+  opacityOf,
+  outlineOf,
+  outlineWidthOf,
+  shapeCorners,
+} from './geometry.js'
 
 const EMOJI_FONT = '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif'
 const TEXT_FONT = 'system-ui, "Segoe UI", sans-serif'
@@ -18,7 +27,49 @@ export function sizeStageCanvas(canvas) {
   return true
 }
 
+// Runs `paint` with the command's opacity and turn applied around its centre (x, y), which
+// becomes the origin. The canvas's own alpha (a ghost's) is kept and multiplied.
+function withPlacement(ctx, command, paint) {
+  ctx.save()
+  ctx.globalAlpha *= opacityOf(command)
+  ctx.translate(command.x, command.y)
+  const angle = angleOf(command)
+  if (angle) ctx.rotate((angle * Math.PI) / 180)
+  paint()
+  ctx.restore()
+}
+
+// A filled shape (rect, square, circle, polygon): its fill, then its outline on top.
+function drawShape(ctx, command) {
+  withPlacement(ctx, command, () => {
+    ctx.beginPath()
+    if (command.type === 'circle') {
+      ctx.arc(0, 0, Math.max(0, command.r), 0, Math.PI * 2)
+    } else {
+      const corners = shapeCorners(command)
+      corners.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)))
+      ctx.closePath()
+    }
+    const fill = fillOf(command)
+    if (fill) {
+      ctx.fillStyle = fill
+      ctx.fill()
+    }
+    const outline = outlineOf(command)
+    if (outline) {
+      ctx.strokeStyle = outline
+      ctx.lineWidth = outlineWidthOf(command)
+      ctx.lineJoin = 'round'
+      ctx.stroke()
+    }
+  })
+}
+
 function drawCommand(ctx, command) {
+  if (isFilledShape(command)) {
+    drawShape(ctx, command)
+    return
+  }
   switch (command?.type) {
     case 'clear':
       ctx.fillStyle = STAGE_BACKGROUND
@@ -28,17 +79,9 @@ function drawCommand(ctx, command) {
       ctx.fillStyle = command.colour
       ctx.fillRect(0, 0, STAGE_SIZE, STAGE_SIZE)
       break
-    case 'rect':
-      ctx.fillStyle = command.colour
-      ctx.fillRect(command.x, command.y, command.w, command.h)
-      break
-    case 'circle':
-      ctx.fillStyle = command.colour
-      ctx.beginPath()
-      ctx.arc(command.x, command.y, Math.max(0, command.r), 0, Math.PI * 2)
-      ctx.fill()
-      break
     case 'line':
+      ctx.save()
+      ctx.globalAlpha *= opacityOf(command)
       ctx.strokeStyle = command.colour
       ctx.lineWidth = command.width || 2
       ctx.lineCap = 'round'
@@ -46,19 +89,24 @@ function drawCommand(ctx, command) {
       ctx.moveTo(command.x1, command.y1)
       ctx.lineTo(command.x2, command.y2)
       ctx.stroke()
+      ctx.restore()
       break
     case 'text':
-      ctx.fillStyle = command.colour
-      ctx.font = `${command.size || 16}px ${TEXT_FONT}`
-      ctx.textAlign = 'left'
-      ctx.textBaseline = 'top'
-      ctx.fillText(String(command.text ?? ''), command.x, command.y)
+      withPlacement(ctx, command, () => {
+        ctx.fillStyle = command.colour
+        ctx.font = `${command.size || 16}px ${TEXT_FONT}`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(String(command.text ?? ''), 0, 0)
+      })
       break
     case 'stamp':
-      ctx.font = `${command.size || 32}px ${EMOJI_FONT}`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(String(command.emoji ?? ''), command.x, command.y)
+      withPlacement(ctx, command, () => {
+        ctx.font = `${command.size || 32}px ${EMOJI_FONT}`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(String(command.emoji ?? ''), 0, 0)
+      })
       break
     case 'grid': {
       const colours = command.colours ?? []

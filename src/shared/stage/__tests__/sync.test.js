@@ -31,6 +31,34 @@ describe('compactStageForSync', () => {
     ).toEqual({ commands: [], count: 2 })
   })
 
+  it("rounds turns and opacity, and leaves out an outline-only shape's missing fill", () => {
+    const result = compactStageForSync([
+      {
+        type: 'square',
+        x: 200,
+        y: 200,
+        size: 80.04,
+        colour: null,
+        angle: 33.333,
+        opacity: 0.1234,
+        outline: '#000000',
+        width: 2,
+      },
+    ])
+    expect(result.commands).toEqual([
+      {
+        type: 'square',
+        x: 200,
+        y: 200,
+        size: 80,
+        angle: 33.3,
+        opacity: 0.12,
+        outline: '#000000',
+        width: 2,
+      },
+    ])
+  })
+
   it('keeps the newest commands when the drawing is too big', () => {
     const commands = Array.from({ length: MAX_SYNCED_STAGE_COMMANDS + 5 }, (_, i) => ({
       type: 'circle',
@@ -84,7 +112,9 @@ describe('stageToSvg', () => {
     expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"')).toBe(
       true
     )
-    expect(svg).toContain('<rect x="1" y="2" width="3" height="4" fill="#ff0000"/>')
+    expect(svg).toContain(
+      '<polygon points="-1.5,-2 1.5,-2 1.5,2 -1.5,2" transform="translate(1 2)" fill="#ff0000"/>'
+    )
     expect(svg).toContain('&#60;b&#62;&#38;')
   })
 })

@@ -394,19 +394,63 @@ console. Drawing is instant, like Turtle.
         value: "Rows: 4"
 ```
 
-**The library.** `from stage import *` (or `import stage` and `stage.rect(...)`). Every call draws
-straight away; later calls draw on top.
+**The library.** `from stage import *` (or `import stage` and `stage.circle(...)`). Every call
+draws straight away; later calls draw on top. Calls are **size first**: the simplest call is just
+the size, and colour, position and the rest are added as students grow.
+
+```python
+from stage import *
+circle(50)                         # a circle of radius 50 in the middle
+circle(50, "red")
+square(80, angle=45)               # a diamond in the middle
+rect(120, 60, "gold")
+polygon(6, 60, colour="teal")      # a hexagon, 60 from centre to corner
+circle(50, "red", x=100, y=80)
+for i in range(40):                # a spinning rainbow tunnel
+    square(i * 8, angle=i * 9, colour=hue(i * 9), opacity=0.6)
+```
 
 | Call | Draws |
 |---|---|
 | `background(colour)` | fills the whole stage |
-| `rect(x, y, w, h, colour)` | a rectangle; `(x, y)` is its top-left corner |
-| `circle(x, y, r, colour)` | a circle centred on `(x, y)` with radius `r` |
-| `line(x1, y1, x2, y2, colour, width=2)` | a line |
-| `text(x, y, words, colour, size=16)` | text; `(x, y)` is its top-left corner. `words` may be any value (a number is drawn as text) |
+| `circle(r, colour, x, y, …)` | a circle of radius `r` |
+| `square(size, colour, x, y, …)` | a square `size` along each side |
+| `rect(w, h, colour, x, y, …)` | a rectangle `w` wide and `h` tall |
+| `polygon(sides, size, colour, x, y, …)` | a regular shape with 3–100 `sides`, `size` from its centre to each corner, one corner pointing straight up at `angle=0` |
+| `line(x1, y1, x2, y2, colour, width=2)` | a line between two points |
+| `text(words, colour, x, y, size=16)` | text centred on `(x, y)`. `words` may be any value (a number is drawn as text) |
 | `stamp(emoji, x, y, size=32)` | one emoji centred on `(x, y)` |
-| `grid(rows, palette=None, cell=None, x=0, y=0)` | a 2D list as a pixel grid (see below) |
+| `grid(rows, palette=None, cell=None, x, y)` | a 2D list as a pixel grid centred on `(x, y)` (see below) |
 | `clear()` | wipes the stage back to white |
+| `hue(n, light=50)` | draws nothing: returns a colour round the colour wheel (see below) |
+
+Only the first value is needed (the first two for `rect` and `polygon`, the four ends for
+`line`). Every value can also be given by name (`colour="red"`, `x=100`; `color=` works too).
+
+**Centre anchors.** `x` and `y` are always the middle of the shape, text, emoji or grid, and
+default to the middle of the stage, `(200, 200)`. The default colour is **royal blue**
+(`#4169e1`) for shapes and **black** for text and lines, so a first `circle(50)` shows clearly on
+the white stage. (Arcade Kit places a rectangle by its top-left corner instead; the Stage centres
+everything so a shape can turn around its middle.)
+
+**Keywords on every shape** (`circle`, `square`, `rect`, `polygon`):
+
+| Keyword | Meaning |
+|---|---|
+| `angle=` | turn in degrees, **clockwise**, around the shape's centre (also on `text` and `stamp`) |
+| `opacity=` | `0` (invisible) to `1` (solid, the default); see-through shapes blend with what is under them (also on `line`, `text` and `stamp`) |
+| `outline=` | outline colour, drawn on top of the fill |
+| `width=` | outline width (default `2` when `outline` is given; `width=` without `outline=` is an error) |
+| `colour=None` | no fill: just the outline (needs `outline=`) |
+
+The Stage's `angle` turns **clockwise**, the screen and CSS convention with `y` going down. This
+is the opposite way to Turtle, where `left()` turns anticlockwise.
+
+**`hue(n, light=50)`** returns a colour as a hex string, round the colour wheel: `hue(0)` red,
+`hue(60)` yellow, `hue(120)` green (`#00ff00`), `hue(240)` blue, wrapping every 360 (negative
+numbers too). `light` (0–100) makes it darker (below 50; `0` is black) or paler (above 50; `100`
+is white). Because it is a string, `print(hue(30))` shows `#ff8000`, and `stage_colour_used`
+can check a `hue()` colour by its hex code.
 
 `WIDTH` and `HEIGHT` are both `400`.
 
@@ -415,10 +459,10 @@ scales to fit the screen. (This is the screen convention of Arcade Kit and most 
 libraries; Turtle's centred, y-up world is different on purpose.)
 
 **Colours.** A colour is text: a CSS colour name (`"red"`, `"cornflowerblue"`), a PICO-8 name from
-Arcade Kit (`"dark_blue"`, `"peach"`, also written with a space), or a hex code (`"#f00"`,
-`"#ff0000"`). Where a name is both, the CSS colour wins (`"white"` is `#ffffff`, `"red"` is
-`#ff0000`); the PICO-8-only names are `dark_blue`, `dark_purple`, `dark_green`, `dark_gray`,
-`light_gray` and `peach` (`grey` spellings work too).
+Arcade Kit (`"dark_blue"`, `"peach"`, also written with a space), a hex code (`"#f00"`,
+`"#ff0000"`), or what `hue()` returns. Where a name is both, the CSS colour wins (`"white"` is
+`#ffffff`, `"red"` is `#ff0000`); the PICO-8-only names are `dark_blue`, `dark_purple`,
+`dark_green`, `dark_gray`, `light_gray` and `peach` (`grey` spellings work too).
 
 **Grids.** `rows` is a list of rows; each value is drawn as one square cell:
 - with a `palette` (a list of colours), a whole number picks that palette colour (`0` is the first);
@@ -427,15 +471,20 @@ Arcade Kit (`"dark_blue"`, `"peach"`, also written with a space), or a hex code 
 - a colour name or hex code is drawn as that colour;
 - `None`, `"none"` or `"transparent"` draws nothing there.
 
-`cell` is the cell size (default: the biggest that fits the stage), `x`/`y` the top-left corner.
-Rows may be different lengths. A grid is at most 100 × 100.
+`cell` is the cell size (default: the biggest that fits the stage), `x`/`y` the grid's centre
+(default: the middle). Rows may be different lengths. A grid is at most 100 × 100. Grids don't
+take `angle`, `opacity` or `outline`.
 
 **Mistakes students make** stop the run with a plain-English error on the student's own line,
-naming the argument: `rect(): y should be a number, like 50, not the text '20'`,
+naming the argument: `rect(): y should be a number, like 200, not the text '20'`,
 `circle(): 'redd' isn't a colour I know. Try a name like 'red' or a hex code like '#ff0000'`,
-`grid(): rows[0][1] is 2, but the palette only has 2 colours (numbers 0 to 1)`. A run that draws
-more than 20,000 commands (or more than 200,000 grid cells) stops with "The stage stopped after
-20,000 drawing commands — is a loop drawing forever?".
+`circle() needs a radius, like circle(50)`, `square() has no rotation= — did you mean angle=?`,
+`grid(): rows[0][1] is 2, but the palette only has 2 colours (numbers 0 to 1)`. The old
+position-first order (before 2026-10-15) is explained rather than drawn wrongly:
+`circle(200, 200, 50)` stops with "circle(): the second value is the colour, like 'red'. To place
+it, write x=200, y=200, like circle(50, x=200, y=200)". A run that draws more than 20,000 commands
+(or more than 200,000 grid cells) stops with "The stage stopped after 20,000 drawing commands — is
+a loop drawing forever?".
 
 ### Target picture (`stageTarget`)
 
@@ -458,15 +507,18 @@ needing a run). They look at what is on the stage after the last `clear()`.
 | Type | Fields | Passes when |
 |---|---|---|
 | `stage_matches_target` | `tolerance` (0–1, default `0.01`) | the shapes differ from the `stageTarget` drawing in at most that fraction of the stage, and every target text and emoji is drawn (same words or emoji within 12 px) with no extra ones. Needs `stageTarget` |
-| `stage_shape_count` | `kind` (`rect`, `circle`, `line`, `text`, `stamp`, `grid`, or `any` = default), `min`, `max` | the number of those calls is between `min` and `max` (neither given: at least 1) |
-| `stage_colour_used` | `colour` | something on the stage is that colour: a shape, text, the background or a grid cell |
+| `stage_shape_count` | `kind` (`rect`, `square`, `circle`, `polygon`, `line`, `text`, `stamp`, `grid`, or `any` = default), `sides` (3–100, with `kind: polygon` only), `min`, `max` | the number of those calls is between `min` and `max` (neither given: at least 1). `square` counts `square()` calls only (not `rect(80, 80)` or `polygon(4, …)`); `sides` counts only the polygons with that many sides |
+| `stage_colour_used` | `colour` | something on the stage is that colour: a shape's fill or outline, text, the background or a grid cell (a see-through shape counts by its own colour) |
 | `stage_pixel` | `x` and `y` (0–399), **or** `row` and `col`, plus `colour` | that point, or the centre of that cell of the last grid, is that colour |
 | `stage_text_shown` | `text`, `operator` (`contains` = default, `equals`, `matches_regex`) | some drawn text matches (like output checks: `contains` ignores capitals) |
 
 Colours match when each red, green and blue part is within 8 of the expected colour. Shapes are
 compared on a 100 × 100 grid (each cell 4 × 4 stage pixels), so a 1 px difference doesn't fail a
-target; text and emoji are compared by what they say and where, not by pixels, because fonts differ
-between devices. Use `code` checks for the method (for example `code` contains `grid(`).
+target. They are compared **as drawn**: turned shapes and polygons by their real outline, outlines
+on top of fills, and see-through shapes blended with what is under them (so `stage_pixel` on a
+half-see-through red circle over blue reads purple). Text and emoji are compared by what they say
+and where, not by pixels, because fonts differ between devices. Use `code` checks for the method
+(for example `code` contains `angle=`, or `grid(`).
 
 **Hints name colours in words.** Write hints that never rely on colour alone: "Colour the top
 middle square red", not "make it this colour". The Builder's check row and the CLI describe a
@@ -475,7 +527,8 @@ stage check in words too ("Something dark blue is on the stage").
 **Tutor view and Go Live.** After each Run the drawing goes to the student card (a small
 thumbnail beside the output lines) and to StudentModal (between the code and the console). In
 **Go Live** the presenter's drawing shows on every screen. The Stage has a screen-reader
-description listing the shapes, text and grid size with colours in words.
+description listing the shapes, text and grid size with colours in words, and how each shape is
+turned, faded and outlined ("a red square, size 80, turned 45°, in the middle").
 
 **Persistence.** None beyond the code: the drawing is redrawn by the next Run.
 
@@ -501,7 +554,7 @@ It's off unless set, and works on Python, Turtle and HTML tasks.
         code: |
           from stage import *
           background('white')
-          rect(50, 50, 100, 100, 'red')
+          square(100, 'red', angle=30)
 ```
 
 What students get:
@@ -530,6 +583,11 @@ What students get:
 
 Numbers in code are scrubbed, not numbers in strings or comments, or inside names like `x2`. A
 minus sign belongs to the number (`-5` in `left(-5)`), but not in `a - 5`.
+
+Stage values get their natural range when the author gives none: `angle=` 0–360, `opacity=` 0–1
+(a whole `opacity=1` steps by 0.1), `light=` 0–100, and every number inside `hue(…)` 0–360 (so
+dragging the `9` in `hue(i * 9)` sweeps the colours). `outline=` colours get a swatch and picker
+like any colour string.
 
 No new checks. **Tutor:** the tutor sees the edit when the drag ends, like any edit, and the
 session report counts each student's scrubs on the task (`scrubs`,
