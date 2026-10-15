@@ -1,6 +1,6 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi, beforeAll } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import StudentWorkspace from '../StudentWorkspace'
 
 // jsdom has no real canvas 2D context (getContext returns null) — stub it so the
@@ -18,6 +18,17 @@ vi.mock('../draw.js', async (importOriginal) => ({
   ...(await importOriginal()),
   drawTurtleCommands: (...args) => drawTurtleCommands(...args),
   sizeCanvasToDisplay: () => false,
+}))
+
+// The layout comes from the workspace's measured size, which jsdom never has: the tests pick
+// it (side by side, or below on a phone, unless a test says otherwise).
+const layoutState = vi.hoisted(() => ({ layout: null }))
+vi.mock('../../../shared/resultPane/useWorkspaceLayout.js', () => ({
+  useWorkspaceLayout: ({ isMobile }) => ({
+    ref: () => {},
+    layout: layoutState.layout ?? (isMobile ? 'below' : 'side'),
+    inset: 0,
+  }),
 }))
 
 function makeCs(overrides = {}) {
@@ -175,5 +186,82 @@ describe('Turtle StudentWorkspace', () => {
     render(<StudentWorkspace task={{}} cs={cs} isMobile={false} isViewingPrev viewingTaskId="t1" />)
     expect(screen.getByText('python-editor:turtle.left(90)')).toBeTruthy()
     expect(screen.queryByText('Run')).toBeNull()
+  })
+})
+
+describe('Turtle StudentWorkspace result tabs on smaller screens (P6-12)', () => {
+  afterEach(() => {
+    layoutState.layout = null
+  })
+
+  const LINE = { type: 'line', x1: 0, y1: 0, x2: 10, y2: 0, color: 'black' }
+
+  it('shows Picture and Console tabs beside the editor, opening on the Picture', () => {
+    layoutState.layout = 'tabs'
+    const onVisiblePanesChange = vi.fn()
+    const { container } = render(
+      <StudentWorkspace
+        task={{ id: 1 }}
+        cs={makeCs()}
+        isMobile={false}
+        onVisiblePanesChange={onVisiblePanesChange}
+      />
+    )
+    expect(screen.getByRole('tab', { name: 'Picture' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByRole('tab', { name: 'Tags' })).toBeNull()
+    expect(container.querySelector('canvas')).toBeVisible()
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code', 'canvas'])
+    // The Console is its own tab, so there is no collapse rail.
+    expect(screen.queryByRole('button', { name: 'Show Output' })).toBeNull()
+
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Picture' }), { key: 'ArrowRight' })
+    expect(screen.getByRole('tab', { name: 'Console' })).toHaveAttribute('aria-selected', 'true')
+    expect(container.querySelector('canvas')).not.toBeVisible()
+    // Hidden, not unmounted: the drawing keeps its canvas.
+    expect(container.querySelector('canvas')).toBeInTheDocument()
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code', 'console'])
+  })
+
+  it('opens predict mode on the Tags tab', () => {
+    layoutState.layout = 'tabs'
+    render(
+      <StudentWorkspace
+        task={{ id: 1, showVariables: { mode: 'predict', predict: ['size'] } }}
+        cs={makeCs({ variablesPanel: null })}
+        isMobile={false}
+      />
+    )
+    expect(screen.getByRole('tab', { name: 'Tags' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('goes back to the Picture after a Run and badges the Console lines it printed', () => {
+    layoutState.layout = 'tabs'
+    const task = { id: 1 }
+    const cs = makeCs()
+    const { rerender } = render(<StudentWorkspace task={task} cs={cs} isMobile={false} />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Console' }))
+    rerender(<StudentWorkspace task={task} cs={{ ...cs, running: true }} isMobile={false} />)
+    rerender(
+      <StudentWorkspace
+        task={task}
+        cs={{
+          ...cs,
+          running: false,
+          output: 'one\ntwo\n',
+          turtleResult: { state: {}, commands: [LINE], runId: 'r1' },
+        }}
+        isMobile={false}
+      />
+    )
+    expect(screen.getByRole('tab', { name: 'Picture' })).toHaveAttribute('aria-selected', 'true')
+    expect(
+      screen.getByRole('tab', { name: 'Console, 2 new lines in the Console' })
+    ).toBeInTheDocument()
+  })
+
+  it('stacks the editor above the tabs on a phone', () => {
+    const { container } = render(<StudentWorkspace task={{ id: 1 }} cs={makeCs()} isMobile />)
+    expect(container.querySelector('[data-layout="below"]')).toBeTruthy()
+    expect(screen.getByRole('tablist', { name: 'Result panes' })).toBeInTheDocument()
   })
 })

@@ -39,6 +39,36 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-15
 
+### Python and Turtle screen space: one tabbed result pane on smaller screens (`layout.firstPane`)
+
+- **Tablets, 1366 × 768 Chromebooks and small laptops** now show the editor on the left and one
+  result pane on the right with tabs **Picture · Tags · Console**. Portrait screens and phones put
+  the editor above the tabs. Wide desktops keep everything side by side, as before. Only the tabs
+  a task has appear: Picture once the code imports `stage` (or has a `stageTarget`; always on
+  Turtle), Tags with `showVariables`. A Python task with just a console has no tabs.
+- **What the task is about is in view.** Predict and target tasks open on Tags, so the code and
+  the empty tags show together while the student types, and the workspace shrinks above a
+  tablet's on-screen keyboard. A `stageTarget` task opens on the Picture with its ghost. After
+  Run the pane switches to the Picture if the program drew (or there is a target or course), to
+  Tags in predict / target mode, otherwise to the Console. A run that fails before drawing shows
+  the Console.
+- **Slow-mo** (and predict / target mode once there is a picture) shows the Picture and Tags
+  together in one tab, one above the other.
+- **The Console is always one tap away:** while hidden, its tab counts the new lines or shows
+  **!** for an error. Switching tabs never loses a drawing, a playing turtle or the output.
+- Accessibility: the tabs are a proper tab list (arrow keys, Home, End), each pane is a labelled
+  region, tabs are 44 px tall, and a screen reader hears what changed after Run. Go Live and
+  screen share follow the same rules, with tabs large enough for a projector.
+- **New optional field `layout: { firstPane: picture | tags | console }`** on Python and Turtle
+  tasks picks the tab selected when the task opens (and opens a Python task's result side from
+  the start). Most tasks don't need it. Validation rejects an unknown pane, warns about unknown
+  keys or `tags` without `showVariables`, and warns when another module's task has `layout`.
+  See [python.md](python.md#screen-layout-layout), [turtle.md](turtle.md#screen-layout) and the
+  new rows in [validation-errors.md](validation-errors.md#screen-layout-layout).
+- Affects: python, turtle (workspace layout; new task field `layout`) · Existing lessons: no change
+  needed · Resolves:
+  authoring-requests/2026-10-15-p6-12-python-screen-space-console-stage-and-panel.md
+
 ### Stage shapes: size-first calls, centre anchors, rotation, polygons, see-through, outlines, `hue()`
 
 - **The Stage's call order changed (breaking).** Calls are now size first, with everything else

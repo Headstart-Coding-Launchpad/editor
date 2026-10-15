@@ -490,9 +490,10 @@ of the wrong type or a speed that isn't a positive number; it warns about a spee
 
 A Python task can also draw. Code that imports the `stage` module gets a **Stage** pane: a fixed
 400 × 400 drawing that appears once the code draws (or from the start when the task has a
-`stageTarget`). `print()` still goes to the console. On desktop the Stage sits beside the console
-when the output side is wide enough, and above it otherwise; on narrow screens it stacks above the
-console. Drawing is instant, like Turtle.
+`stageTarget`). `print()` still goes to the console. On a wide desktop the Stage sits beside the
+console when the output side is wide enough, and above it otherwise; on tablets and small screens
+it is the **Picture** tab of the result pane (see [Screen layout](#screen-layout-layout)). Drawing
+is instant, like Turtle.
 
 ```yaml
   - id: 20
@@ -726,6 +727,46 @@ session report counts each student's scrubs on the task (`scrubs`,
 turns it on and adds ranges.
 
 ---
+
+## Screen layout (`layout`)
+
+On a wide desktop a Python task shows everything side by side: the editor, then the Stage, the
+console and the name-tag panel. When that doesn't fit (tablets, 1366 × 768 Chromebooks and small
+laptops), the editor stays on the left and **one result pane** on the right has tabs
+**Picture · Tags · Console**. On portrait screens and phones the editor sits above the tabs.
+Only the tabs the task has appear: Picture once the code imports `stage` (or the task has a
+`stageTarget`), Tags with `showVariables`. A task with just a console has no tabs at all.
+
+- **Before Run:** predict and target tasks open on **Tags**, so the code and the empty tags show
+  together while the student types (on a tablet, the workspace shrinks above the on-screen
+  keyboard so both stay in view). A `stageTarget` task opens on the **Picture** with its ghost.
+  Others open on the Console.
+- **After Run** the pane switches to what the task is about: the **Picture** if the program drew
+  (or the task has a `stageTarget`), **Tags** in predict / target mode, otherwise the **Console**.
+  A run that fails before drawing anything shows the Console.
+- **Picture + Tags together:** during slow-mo, and in predict / target mode once there is a
+  picture, the Picture and Tags share one tab, one above the other, so the highlighted line, the
+  tags and the drawing are seen together.
+- **The Console is one tap away:** while it's hidden its tab counts the new lines (or shows **!**
+  for an error). Switching tabs never loses a drawing or the output.
+- Tabs work with the arrow keys, each pane is a labelled region, and a screen reader hears what
+  changed after Run ("Picture updated. 3 new lines in the Console").
+- **Go Live** and screen share use the same rules, with large tabs that read well on a projector.
+
+Most tasks need nothing. To pick the first tab yourself, add `layout`:
+
+```yaml
+  - id: 61
+    moduleType: python
+    title: Predict the tunnel
+    showVariables: { mode: predict, predict: [size] }
+    slowMo: { enabled: true }
+    layout: { firstPane: console } # optional — picture | tags | console
+```
+
+`firstPane` only sets the tab selected when the task opens (and opens the result side on a task
+that would otherwise start with it folded away); Run still switches as above. A tab the task
+doesn't have is ignored. Turtle tasks take the same field.
 
 ## Output and Code Checks (shared with HTML)
 

@@ -176,7 +176,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `InformationTask.jsx` | Read-only information/introduction task rendering for lesson flow; `informationType: badges` renders `BadgeSummaryTask` with the `badgeWall` prop (`{ decisions, students, viewerId, variant }`) |
 | `LessonCompleteScreen.jsx` | "Lesson complete!" screen shown after Next off the last task in solo mode, with an Open Playground button for playground-supported lesson types — see `docs/agents/classroom-behaviours.md` |
 | `CollapsiblePanelControls.jsx` | Shared collapse/expand tab controls for classroom and builder panels |
-| `PanelTabs.jsx` | Generic `role="tablist"` tab switcher (`PanelTabs`, `PanelTabPanel`); inactive panels are hidden via `display:none`, never unmounted; styled by `.ui-tabs`/`.ui-tab` in index.css |
+| `PanelTabs.jsx` | Generic `role="tablist"` tab switcher (`PanelTabs`, `PanelTabPanel`); inactive panels are hidden via `display:none`, never unmounted; arrow / Home / End keys with a roving tab stop; optional `idPrefix`, per-tab `badge` and `trailing` controls; styled by `.ui-tabs`/`.ui-tab` in index.css |
 | `TaskSlideTransition.jsx` | Direction-aware slide transition wrapper used when switching between tasks (`LessonTaskContent.jsx`, the teacher's explainer in `TeacherView.jsx`): `order` (the task's flat index) picks forward (enter from the right) or backward (enter from the left); timing is `MOTION_MS.slow` / `--motion-slow`. `useIsLeavingTaskSlide()` marks the inert leaving copy, see `docs/agents/classroom-behaviours.md` |
 | `StudentEditorHeader.jsx` | Shared editor header bar (Code label + Run/Submit/Reset buttons) for HTML task editors |
 | `LoadingScreen.jsx` | Branded reusable spinner/loading/error message screen for route, auth, and StudentView phases |
@@ -409,7 +409,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `python/index.js` | Python module: layout styles, `makeCodeTaskFields`, `makeNewStage`, `initCompleteTab`, `defaultCheck`, capability flags |
 | `python/checks.js` | Python-exclusive check evaluation: `PYTHON_CHECK_TYPES`, `evaluatePythonCheck`, registry `CHECKS` — all `variable_*` types |
 | `python/PythonEditor.jsx` | Python CodeEditor wrapper with Pyodide loading/error status; shows a tap-to-insert row of common Python symbols above the editor on touch devices (`useIsTouchDevice`) plus an always-visible `EmojiPickerButton`, both while interactive, inserting via `CodeEditor`'s `insertAtCursor` ref API; a **Blocks** toggle (also read-only) for the block brackets (`useBlockGuidesOn`), hidden with the brackets when the caller passes `showBlocks={false}` (`taskShowsBlocks(task)`). Shared by Turtle, Arcade, and Electronics student/live views since they reuse this component for their Python/MicroPython code |
-| `python/StudentWorkspace.jsx` | Student Python editor + Run/Stop/Output panel (extracted from `LessonTaskContent`) |
+| `python/StudentWorkspace.jsx` | Student Python editor + Run/Stop/Output panel (extracted from `LessonTaskContent`); Stage, name tags and console side by side on wide screens, or a tabbed result pane (`src/shared/resultPane/`) on tablets and small screens |
 | `python/BuilderWorkspace.jsx` | Re-export of `PythonTaskWorkspace` |
 | `python/CheckEditor.jsx` | `CheckListEditor` wrapper with Python-appropriate flags |
 | `python/pyodide.js` | Pyodide Web Worker manager: `initPyodide()`, `runPython()`, `stopPython()`, `provideInput()`, `isPyodideReady()`, `renderStage(code)` (a stageTarget run silently; never overlaps a run), `isPythonRunning()`, `getStopCount()` |
@@ -539,7 +539,7 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `turtle/describe.js` | Pure screen-reader description of a Turtle drawing (`describeTurtleDrawing`, `describeHeading`) |
 | `turtle/checks.js` | Registry `CHECKS` + `turtle_position`/`turtle_heading`/`turtle_path_closed`/`turtle_segment_count`/`turtle_path_length`/`turtle_command_used`/`turtle_color_used`/`turtle_stamp_count` check evaluators |
 | `turtle/sync.js` | `compactTurtleResultForSync` — rounds coordinates and caps the command log before a run result is synced live to a teacher, shared by both `useTeacherLivePublish.js` and `useSession.js`'s `writeStudentTurtleResult` |
-| `turtle/StudentWorkspace.jsx` | Student Turtle workspace: Python editor, canvas, Run/Stop controls, collapsible output panel |
+| `turtle/StudentWorkspace.jsx` | Student Turtle workspace: Python editor, canvas, Run/Stop controls, collapsible output panel; a tabbed Picture · Tags · Console result pane (`src/shared/resultPane/`) on tablets and small screens |
 | `turtle/BuilderWorkspace.jsx` | Builder Turtle code-stage editor with a self-contained on-demand drawing preview (own Pyodide run, like Arcade Kit's Builder preview) |
 | `turtle/CheckEditor.jsx` | Turtle check list editor with a Turtle/Code subject picker; code checks reuse `CheckValueEditor` and `checkEditorUtils.js` |
 | `turtle/TeacherLiveView.jsx` | Teacher's read-only code + canvas view of a student's turtle task, driven by the synced `currentTurtleResult`/`turtleResult`; optional `lineHints` (StudentModal) shows the task's 💡 line hints |
@@ -895,6 +895,18 @@ A Python or Turtle task's `setupCode` / `setupNote` and `puzzle` (`onlyEdit`, `m
 | `setupCode.js` | Pure: `SETUP_CODE_TASK_FIELD`, `SETUP_NOTE_TASK_FIELD`, `getTaskSetupCode` / `getTaskSetupNote`, `setupRunOptions(task, { afterLine })` (the worker's `setup`; the worker joins it to the top of the program numbered after the student's lines), `SETUP_ERROR_TEXT`, `findSetupSyntaxProblem` (no-Python bracket/quote/indent check), `validateSetupCode` |
 | `puzzle.js` | Pure: `PUZZLE_TASK_FIELD`, `getTaskPuzzle`, `countCodeLines`, `countChangesFromStarter` (LCS of lines of code), `lineCounter`, `parResult`, the `max_lines` check (`evaluateMaxLinesCheck`, `resolvePuzzleChecks` / `resolveLessonPuzzleChecks` fill its limit and hint from `puzzle.maxLines`), `validatePuzzle`, `validateLockedLines`, `puzzleReportFields` (`linesUsed`, `changesFromStarter` from the passing attempt), `puzzleCardNote` ("Solved at par" / "Over line limit") |
 | `PuzzleBar.jsx` | The line above the Python / Turtle editor: the setupNote, the live "3 / 4 lines" counter (a live region) and, after a pass, the par note |
+
+### Result pane: Python / Turtle screen layout (`src/shared/resultPane/`)
+
+On tablets and small screens a Python or Turtle task shows the editor plus ONE result pane with tabs Picture · Tags · Console (beside the editor, or below it on portrait screens and phones); wide desktops keep the old side-by-side markup (docs/authoring/python.md "Screen layout"). Used by `src/modules/python/StudentWorkspace.jsx` and `src/modules/turtle/StudentWorkspace.jsx`.
+
+| File | Role |
+|---|---|
+| `resultPane.js` | Pure: `chooseWorkspaceLayout` ('side' / 'tabs' / 'below' from the workspace's measured size, the editor's split and the pane count), `initialResultPane` (task `layout.firstPane`, predict/target → Tags, picture goal → Picture), `paneAfterRun` (drew → Picture, predict/target → Tags, else Console; an error before drawing → Console; slow-mo → Picture), `stacksPictureAndTags`, `countOutputLines`, `consoleBadge`, `runAnnouncement`, `LAYOUT_TASK_FIELD`, `getTaskLayout`, `validateTaskLayout` |
+| `useResultPane.js` | `useResultPane` (the selected tab per task, auto-switch after each Run and when slow-mo starts, the Console's unread-lines / error badge, the polite announcement) and `useRunFinishedToken` (counts finished runs: `running` falling, or a Go Live viewer's new result key) |
+| `ResultPane.jsx` | The tab strip (`PanelTabs` with `idPrefix`, badges, arrow keys) and the panes, all kept mounted in place and hidden when inactive; Picture + Tags stacked under one tab; a plain labelled region when there is one pane; a polite live region |
+| `useWorkspaceLayout.js` | Measures the workspace (`useElementSize`) and picks the layout; adds the keyboard inset in the compact layouts |
+| `useKeyboardInset.js` | How much of an element the on-screen keyboard covers (`window.visualViewport`), so the workspace pads its bottom and the editor and tags stay visible on a tablet |
 
 ---
 

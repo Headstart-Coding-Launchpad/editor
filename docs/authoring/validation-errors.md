@@ -493,6 +493,18 @@ Python and Turtle tasks; see [python.md](python.md#locked-lines-hidden-setup-and
 | `Task … locked line … ("…") is not in the complete code — students can't change or remove a locked line` (warning) | The solution changes or removes a line students can't touch. | Unlock the line, or keep it in the complete code. |
 | `Task … locked line … ("…") is indented differently in the complete code — students can't re-indent a locked line` (warning) | The solution needs the locked line at another indentation. | Lock it at the indentation the solution needs, or unlock it. |
 
+## Screen layout (`layout`)
+
+Python and Turtle tasks; see [python.md](python.md#screen-layout-layout).
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task … has layout, but it only works in Python and Turtle tasks — it is ignored` (warning) | A code task of another module has `layout`. (An activity's own `layout`, like the keyboard's, is unaffected.) | Remove it, or move the task to Python or Turtle. |
+| `Task … layout must be an object like layout: { firstPane: picture }` | `layout` is text, a number or a list. | Write it as a map: `layout: { firstPane: console }`. |
+| `Task … layout has unknown fields (…); they are ignored` (warning) | `layout` has keys other than `firstPane`. | Remove them (check the spelling). |
+| `Task … layout.firstPane must be one of: picture, tags, console` | An unknown tab name, e.g. `stage`. | Use `picture` (the Stage or turtle drawing), `tags` or `console`. |
+| `Task … layout.firstPane is tags, but the task has no showVariables name-tag panel; it is ignored` (warning) | There's no Tags tab without `showVariables`. | Add `showVariables`, or pick another pane. |
+
 ## Python tests
 
 | Message | Meaning | Fix |
