@@ -77,8 +77,11 @@ export default function ShortAnswerQuiz({
           </button>
         )}
         {submitted && (
-          <div style={sm.submittedAnswer}>
-            Your answer: <strong style={sm.submittedAnswerText}>{submittedAnswer}</strong>
+          // A clear "it went" after Submit (the plain grey strip was easy to miss). Worded to fit
+          // a solo lesson too, where nobody is sent anything.
+          <div style={sm.submittedAnswer} role="status">
+            <span style={sm.submittedTick}>✅ Got it!</span> Your answer:{' '}
+            <strong style={sm.submittedAnswerText}>{submittedAnswer}</strong>
           </div>
         )}
       </div>

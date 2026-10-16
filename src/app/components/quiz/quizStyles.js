@@ -191,9 +191,13 @@ export const interactionStyles = {
     gap: 10,
     alignItems: 'center',
   },
+  // The word to match: a soft label with a purple edge, not a solid purple block (which read as
+  // a button to press).
   promptCell: {
-    background: 'var(--colour-primary)',
-    color: '#fff',
+    background: 'var(--ui-surface-tint)',
+    color: 'var(--colour-primary-dark)',
+    border: '1px solid var(--ui-border-strong)',
+    borderLeft: '5px solid var(--colour-primary)',
     padding: '12px 16px',
     borderRadius: 8,
     fontFamily: 'var(--font-body)',
@@ -276,11 +280,24 @@ export const interactionStyles = {
     borderRadius: 8,
     padding: 12,
   },
+  poolHeader: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    gap: '4px 12px',
+  },
+  // How to use the tiles (tap or drag), for a child who has not met this kind of task yet.
+  poolHow: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: '0.88rem',
+    color: 'var(--colour-ink-strong)',
+  },
   poolLabel: {
     fontFamily: 'var(--font-title)',
     fontWeight: 700,
     fontSize: '0.78rem',
-    color: '#6b7280',
+    color: 'var(--colour-muted)',
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
   },
@@ -335,7 +352,8 @@ export const interactionStyles = {
     fontFeatureSettings: '"liga" 0, "calt" 0',
     fontSize: '0.88em',
     margin: 0,
-    lineHeight: 1.8,
+    // Room between lines so blanks on lines next to each other don't touch.
+    lineHeight: 2.4,
     whiteSpace: 'pre',
   },
   fillWrap: {
@@ -367,7 +385,8 @@ export const interactionStyles = {
     fontWeight: 600,
     fontSize: '1rem',
     textAlign: 'center',
-    margin: '0 2px',
+    // Space between blanks side by side, so each reads as its own gap.
+    margin: '0 6px',
     verticalAlign: 'middle',
     transition: 'background 0.1s, border-color 0.1s',
   },
@@ -453,12 +472,15 @@ export const interactionStyles = {
   },
   submittedAnswer: {
     fontFamily: 'var(--font-body)',
-    fontSize: '0.9rem',
-    color: '#4b5563',
-    padding: '8px 12px',
-    background: '#f9fafb',
-    border: '1px solid #e5e7eb',
+    fontSize: '0.95rem',
+    color: 'var(--colour-success-text)',
+    padding: '10px 14px',
+    background: 'var(--colour-success-bg)',
+    border: '1px solid var(--colour-success-edge)',
     borderRadius: 6,
+  },
+  submittedTick: {
+    fontWeight: 700,
   },
   submittedAnswerText: {
     whiteSpace: 'pre-wrap',

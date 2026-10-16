@@ -85,9 +85,7 @@ export default function MatchQuiz({
                 style={{ ...sm.matchRow, ...rowEntrance.style }}
               >
                 <div style={sm.promptCell}>
-                  <span style={s.markdownOnDark}>
-                    <InlineMarkdown content={pair.prompt} />
-                  </span>
+                  <InlineMarkdown content={pair.prompt} />
                 </div>
                 <div style={sm.matchArrow}>→</div>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -150,7 +148,12 @@ export default function MatchQuiz({
           onDragOver={dnd.handlePoolDragOver}
           onDrop={(event) => dnd.handlePoolDrop(event, state, publishState)}
         >
-          <div style={sm.poolLabel}>Answers</div>
+          <div style={sm.poolHeader}>
+            <span style={sm.poolLabel}>Answers</span>
+            {!blocked && (
+              <span style={sm.poolHow}>Tap an answer, then tap its box. Or drag it.</span>
+            )}
+          </div>
           <div style={sm.poolTiles}>
             {shuffledAnswers
               .filter((p) => !placedIds.has(p.id))
