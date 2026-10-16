@@ -3689,6 +3689,29 @@ label.te-backdrop-tag,
   color: var(--colour-primary);
 }
 
+/* An activity's title and instructions, styled like the task explainer card (ExplainerPanel):
+   a purple title bar over the text. */
+.act-header {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  overflow: hidden;
+}
+
+.act-header .act-title {
+  margin: 0;
+  padding: 7px 12px 8px;
+  background: var(--colour-primary);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.act-header__body {
+  padding: 10px 14px;
+}
+
 .act-notice {
   display: flex;
   flex-wrap: wrap;
@@ -3732,6 +3755,17 @@ label.te-backdrop-tag,
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+/* The Check my work row stays in reach at the foot of the scrolling task area: on a tablet the
+   on-screen keyboard or the mouse area pushed it below the screen, with no hint to scroll. */
+.act-row--submit {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding: 8px 0 10px;
+  background: var(--ui-surface);
+  box-shadow: 0 -10px 12px -8px rgba(15, 23, 42, 0.12);
 }
 
 .act-prompt {
@@ -3806,11 +3840,13 @@ label.te-backdrop-tag,
   padding: 4px 2px;
 }
 
+/* The place values (8 4 2 1) are the key to the task, so they read clearly, not as a caption. */
 .act-bit-place {
   text-align: center;
   font-family: var(--font-code);
-  font-size: 0.8rem;
-  color: var(--colour-muted);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--colour-primary-dark);
 }
 
 .act-bit {

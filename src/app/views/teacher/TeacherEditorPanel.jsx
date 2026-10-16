@@ -53,19 +53,28 @@ export default function TeacherEditorPanel({
   // question, since the teacher's screen is often projected.
   if (!isInSandbox && isHostedActivityTask(task)) {
     const activity = getTaskActivity(task)
-    return (
+    const showsAnswers = activity.previewState !== 'initial'
+    const view = (
       <ActivityView
         task={task}
-        state={
-          activity.previewState === 'initial'
-            ? activity.initialState(task)
-            : solutionOrInitialState(activity, task)
-        }
+        state={showsAnswers ? solutionOrInitialState(activity, task) : activity.initialState(task)}
         teacher
         readOnly
         lessonType={lesson?.type}
         entranceKey={entranceKey}
       />
+    )
+    if (!showsAnswers) return view
+    // The finished answers read as a student's work ("✓ Correct" beside students who were "Not
+    // started", HSC Audit 14), so say what they are.
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <p className="act-notice" role="note" data-testid="activity-answer-key-note">
+          🔑 Answer key: what a finished task looks like. Each student&apos;s own work is on their
+          card.
+        </p>
+        {view}
+      </div>
     )
   }
   // Module-hosted activities (Arrange tasks) assemble from drag-and-drop tiles,

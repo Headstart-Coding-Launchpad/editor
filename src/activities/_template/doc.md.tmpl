@@ -6,7 +6,7 @@ stay complete and valid: authoringDocExamples.test.js parses and validates it. -
 A Template Activity task is an **activity**: a bounded exercise that can sit anywhere in a
 lesson, between code tasks of any module. There is no Run button, no personal sandbox, no
 sharing and no carry-through. Progress is saved on the device, mirrored to the teacher's student
-card, and marked when the student presses **Check answers**.
+card, and marked when the student presses **Check my work**.
 
 Write `type: template_activity` on the task (the YAML shorthand for `taskType: activity` +
 `activityType: template_activity`, which also works). In the Builder, choose the **Activity**
@@ -23,7 +23,7 @@ description: A short lesson using the Template Activity activity.
 tasks:
   - title: Answer the questions
     type: template_activity
-    description: Type your answer, then press Check answers.
+    description: Type your answer, then press Check my work.
     items:
       - id: a
         prompt: What is 2 + 2?
@@ -50,7 +50,7 @@ tasks:
 
 ## Marking and hints
 
-- **Check answers** marks every question. The task passes when all are right.
+- **Check my work** marks every question. The task passes when all are right.
 - Wrong answers get a short hint that never gives the answer away. The hint shows in the usual
   feedback banner.
 - Typing is a *continuous* change: it only streams to the teacher while they are watching that

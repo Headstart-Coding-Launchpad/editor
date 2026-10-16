@@ -86,9 +86,9 @@ export function TemplateActivityStudentView({ task, state, onChange, onSubmit, r
       {result?.correct && <ActivityCorrect />}
 
       {!readOnly && (
-        <div className="act-row">
+        <div className="act-row act-row--submit">
           <button type="button" className="btn-primary act-btn" onClick={handleCheck}>
-            Check answers
+            Check my work
           </button>
         </div>
       )}

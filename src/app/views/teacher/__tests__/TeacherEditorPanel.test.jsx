@@ -99,3 +99,24 @@ describe('TeacherEditorPanel — editor stack sizing', () => {
     expect(container.firstChild.style.minHeight).toBe('0px')
   })
 })
+
+describe('TeacherEditorPanel — hosted activities', () => {
+  const BINARY_TASK = {
+    id: 3,
+    title: 'Make 5',
+    taskType: 'activity',
+    activityType: 'binary',
+    mode: 'make_number',
+    bits: 4,
+    items: [{ id: 'a', target: 5 }],
+  }
+
+  it('labels the finished answers as an answer key, not student work', () => {
+    render(
+      <TeacherEditorPanel
+        {...mkProps({ lesson: { type: 'python', tasks: [BINARY_TASK] }, task: BINARY_TASK })}
+      />
+    )
+    expect(screen.getByTestId('activity-answer-key-note')).toHaveTextContent('Answer key')
+  })
+})
