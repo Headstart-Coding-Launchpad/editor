@@ -92,6 +92,24 @@ function hostColorOf(hostInfo) {
   return typeof hostInfo === 'string' ? hostInfo : (hostInfo?.color ?? '#7c7c7c')
 }
 
+// Blocks whose `[...]` inputs are typed text, not menus: Scratch draws them as white ovals
+// with no dropdown arrow. The arrow on `say [Hello!]` was something a real say block doesn't
+// have (HSC Audit 08). As in scratchblocks syntax, `[... v]` still forces a dropdown.
+const TEXT_INPUT_OPCODES = new Set([
+  'looks_say',
+  'looks_sayforsecs',
+  'looks_think',
+  'looks_thinkforsecs',
+  'sensing_askandwait',
+])
+
+function squareSlot(content, hostInfo) {
+  const forcedDropdown = /\s+v$/.exec(content)
+  if (forcedDropdown) return { kind: 'dropdown', content: content.slice(0, forcedDropdown.index) }
+  const opcode = typeof hostInfo === 'string' ? null : hostInfo?.opcode
+  return { kind: TEXT_INPUT_OPCODES.has(opcode) ? 'value' : 'dropdown', content }
+}
+
 function blockTextParts(text, depth = 0, hostInfo = fallbackInfo()) {
   const parts = []
   let buffer = ''
@@ -110,10 +128,11 @@ function blockTextParts(text, depth = 0, hostInfo = fallbackInfo()) {
       const found = findBalanced(text, i, '[', ']')
       if (found) {
         flush()
+        const slot = squareSlot(found.content, hostInfo)
         parts.push({
           type: 'slot',
-          kind: 'dropdown',
-          content: found.content,
+          kind: slot.kind,
+          content: slot.content,
           depth,
           hostColor,
           key: `slot-${i}`,

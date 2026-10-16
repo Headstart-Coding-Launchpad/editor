@@ -3675,6 +3675,13 @@ label.te-backdrop-tag,
   }
 }
 
+/* Scratch block pictures in a quiz question (QuestionPanel) read at about 11px on a projected
+   or tablet screen (HSC Audit 08). zoom scales the whole stack, SVG and text together, so its
+   measured widths stay consistent. */
+.quiz-question-body [data-scratch-stack='true'] {
+  zoom: 1.35;
+}
+
 /* ─── Activities (src/activities) ──────────────────────────────────────────────
    Shared surface for hosted activities (Binary, Keyboard, Mouse). Aimed at 8-14 year
    olds: every control is at least 44px, focus is always visible, and motion is optional. */
