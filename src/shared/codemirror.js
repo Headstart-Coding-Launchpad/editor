@@ -168,7 +168,25 @@ export function getIndentUnit(type) {
   return ' '.repeat(getTabSize(type))
 }
 
-export function createBaseExtensions(type = 'python', readOnly = false) {
+// Soft line wrapping for touch screens. A tablet hides CodeMirror's horizontal scrollbar, so a
+// long line was simply cut off at the panel edge. Wrapped rows get a hanging indent so they
+// read as the same line, never as a new (wrongly indented) Python line.
+const lineWrapTheme = EditorView.theme({
+  '.cm-lineWrapping .cm-line': {
+    paddingLeft: 'calc(14px + 2ch)',
+    textIndent: '-2ch',
+  },
+})
+
+export function lineWrapExtension(wrap) {
+  return wrap ? [EditorView.lineWrapping, lineWrapTheme] : []
+}
+
+export function createBaseExtensions(
+  type = 'python',
+  readOnly = false,
+  { wrapLines = false } = {}
+) {
   return [
     lineNumbers(),
     highlightActiveLine(),
@@ -187,6 +205,7 @@ export function createBaseExtensions(type = 'python', readOnly = false) {
     tabSizeCompartment.of(EditorState.tabSize.of(getTabSize(type))),
     indentUnitCompartment.of(indentUnit.of(getIndentUnit(type))),
     readOnlyCompartment.of(EditorState.readOnly.of(readOnly)),
+    lineWrapExtension(wrapLines),
   ]
 }
 
