@@ -113,7 +113,10 @@ export default function TeacherLiveView({
 
 const s = {
   wrap: { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 },
-  editor: { flex: '1 1 220px', minHeight: 0 },
+  // Never shorter than PythonEditor itself (its 240px editor plus the Blocks row): with
+  // minHeight 0 the editor shrank in the tutor's scrolling column and its code spilled over the
+  // "Current student design" panel below it (HSC Audit 12, tablet).
+  editor: { flex: '1 1 220px', minHeight: 290, display: 'flex', flexDirection: 'column' },
   design: {
     flex: '0 1 auto',
     overflow: 'auto',
