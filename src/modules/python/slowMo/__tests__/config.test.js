@@ -3,6 +3,7 @@ import {
   declaresPythonSlowMo,
   getPythonSlowMo,
   slowMoRecordOptions,
+  slowMoThroughRun,
   validatePythonSlowMo,
 } from '../config.js'
 import pythonDefinition from '../../definition.js'
@@ -28,13 +29,31 @@ describe('getPythonSlowMo', () => {
       speed: 1,
       showVariables: false,
       question: null,
+      separateButton: false,
     })
     expect(
       getPythonSlowMo({
         slowMo: { enabled: true, speed: 9, showVariables: true, question: '  What is total? ' },
       })
-    ).toEqual({ speed: 4, showVariables: true, question: 'What is total?' })
+    ).toEqual({ speed: 4, showVariables: true, question: 'What is total?', separateButton: false })
     expect(getPythonSlowMo({ slowMo: { enabled: true, speed: 0.1 } }).speed).toBe(0.25)
+  })
+})
+
+describe('slowMoThroughRun', () => {
+  it('makes Run play in slow-mo by default, and not with separateButton', () => {
+    expect(slowMoThroughRun(getPythonSlowMo({ slowMo: { enabled: true } }))).toBe(true)
+    expect(
+      slowMoThroughRun(getPythonSlowMo({ slowMo: { enabled: true, separateButton: true } }))
+    ).toBe(false)
+    expect(
+      slowMoThroughRun(getPythonSlowMo({ slowMo: { enabled: true, separateButton: 'yes' } }))
+    ).toBe(true)
+  })
+
+  it('is off when slow-mo is off', () => {
+    expect(slowMoThroughRun(getPythonSlowMo({}))).toBe(false)
+    expect(slowMoThroughRun(getPythonSlowMo({ slowMo: { separateButton: false } }))).toBe(false)
   })
 })
 
@@ -52,12 +71,14 @@ describe('validatePythonSlowMo', () => {
     expect(
       validate({ enabled: true, speed: 1.5, showVariables: true, question: 'What is total?' })
     ).toEqual({ errors: [], warnings: [] })
+    expect(validate({ enabled: true, separateButton: true })).toEqual({ errors: [], warnings: [] })
   })
 
   it('rejects wrong types', () => {
     expect(validate('on').errors).toHaveLength(1)
     const { errors } = validate({ enabled: 'yes', speed: 'fast', showVariables: 1, question: 3 })
     expect(errors).toHaveLength(4)
+    expect(validate({ enabled: true, separateButton: 'yes' }).errors[0]).toMatch(/separateButton/)
   })
 
   it('warns about out-of-range speed, unknown keys, long questions and a field left off', () => {

@@ -334,7 +334,7 @@ variable, with its name, a small type label and its value. Off unless a task set
 | `visuals` | `true` (default): lists and dicts are drawn as what they hold (see **List and dict visuals** below). `false`: today's plain tags for the whole task — use it when the automatic choice would mislead (e.g. `["orange", "lime"]` meant as fruit). |
 | `stageLists` | How a list of rows passed to the [Stage](#stage-drawing-beside-the-console)'s `grid()` in this run shows: `size` (default) — just the tag, type and size, e.g. `pixels: list, 8 × 8, drawn on the Stage`, so the picture doesn't appear twice; `picture` — colour names and hex codes as the small picture as well, to teach "the list *is* the picture" (palette numbers always show as a number table, never a picture); `tiles` — rows of tiles. A flat list drawn with `grid(…, width=…)` always shows as tiles wrapped at that width, whatever `stageLists` says. Ignored with `visuals: false`. |
 | `link` | `true` (default): each tag and its variable in the code are **linked** — see **Linked tags** below. `false`: tags and code are not marked. |
-| `lockRun` | Predict mode only. `true` (default): **Run, Slow-mo and Step stay disabled until every `predict` tag has an answer** (anything non-blank), with "Fill in your predictions first" beside Run in words (a tooltip too, and the button's accessible description). After the student's first Run of the task the lock is gone for good, so they can change the code and run again. The presenter (Go Live, the presentation window) is never locked, a tutor's remote Run still runs, and the personal sandbox isn't locked. `false`: Run works with the tags empty. |
+| `lockRun` | Predict mode only. `true` (default): **Run (on a slow-mo task, ▶ Run (slow-mo); with `slowMo.separateButton`, Slow-mo and Step too) stays disabled until every `predict` tag has an answer** (anything non-blank), with "Fill in your predictions first" beside Run in words (a tooltip too, and the button's accessible description). After the student's first Run of the task the lock is gone for good, so they can change the code and run again. The presenter (Go Live, the presentation window) is never locked, a tutor's remote Run still runs, and the personal sandbox isn't locked. `false`: Run works with the tags empty. |
 
 **Linked tags** (`link`, on by default). Each tag gets one of six clearly different colours **and** a small number, and every real use of that variable in the editor gets the same: a coloured underline with a soft background, and the number drawn small above the end of the name. So the `small` tag and the `small` on line 3 match by colour and number, never colour alone (colour-blind students, projectors). Predict tags are linked from the moment the task opens; view-mode tags once a run shows them; target tags from the start. Featured tags (predict or target names) come first, then the other variables; at most six tags are linked.
 
@@ -472,6 +472,7 @@ by step.
       speed: 1.0                # optional — starting lines a second (default 1; slider 0.25–4)
       showVariables: true       # optional — name tags step by step (default false)
       question: After pass 3, what is total?   # optional — shown while paused
+      separateButton: false     # optional — true: Run runs normally beside a 🐢 Slow-mo button
     codeStages:
       - role: starter
         code: |
@@ -481,17 +482,27 @@ by step.
           print(total)
 ```
 
-**Controls** (above the editor; 44 px+ buttons, an icon and a word each):
+**Run plays it in slow-mo.** On a slow-mo task the Run button reads **▶ Run (slow-mo)**: it runs
+the program and plays it back at the slider's speed. There is no separate Slow-mo button. The run
+shortcut (Ctrl/Cmd+Enter), a Code Arrange board's Run and the tutor's remote Run do the same.
+Pressing Run again records a fresh run (`input()` is asked again) and plays it from the start.
+Before the first Run only the **speed slider** (starting at `speed`) shows above the editor; once
+a run is playing or paused these controls join it (44 px+ buttons, an icon and a word each):
 
 | Button | What it does |
 |---|---|
-| 🐢 **Slow-mo** | Runs the program, then plays it back at the slider's speed. Pressed while paused, it carries on; once finished, it plays again from the start |
-| ⏸ **Pause** | Stops on the current line |
-| 👣 **Step** | One line forward (the first press runs the program and shows line 1) |
+| ⏸ **Pause** / ▶ **Play** | Pause stops on the current line; while paused the same button is Play, which carries on (once finished, it plays again from the start) |
+| 👣 **Step** | One line forward |
 | ↩ **Step back** | One line back, with the variables, output and drawing as they were |
 | ⏮ **Restart** | Back to before the first line |
+| ⏭ **Finish** | Straight to the end of the run, for a student who has seen enough. The output, drawing and check result are exactly as for a normal Run |
 
-**Run** still runs the program normally.
+**`separateButton: true`** keeps the older layout, for a task that wants plain runs plus optional
+slow-mo (a Solo Challenge, say): **Run** runs the program normally, and a 🐢 **Slow-mo** button
+sits beside Pause, Step, Step back, Restart and Finish, all shown from the start. Slow-mo runs the
+program and plays it back (pressed while paused it carries on; once finished it plays again from
+the start), and Step's first press runs the program and shows line 1. Pressing Run ends a slow-mo
+playback.
 
 **While stepping:**
 
@@ -512,20 +523,24 @@ by step.
 **How it works (record, then replay).** A browser can't pause Python mid-run here, so Slow-mo
 runs the whole program first, recording every line, and then plays the recording. `input()` is
 asked while it records, before playback starts; the answers appear at the right step. Editing the
-code ends slow-mo (the recording no longer matches), and so does pressing Run.
+code ends slow-mo (the recording no longer matches), and so does Run Tests (and, with
+`separateButton: true`, Run).
 
 **Checks.** There are no slow-mo checks. The recorded run *is* the run: output, checks, the
 attempt log and the tutor's card update exactly as for Run, once. The check result appears when
-playback reaches the last line.
+playback reaches the last line, or when ⏭ Finish is pressed.
 
 **Runaway programs.** A recording stops at 2,000 lines run. The program is ended there, the
 student sees "Slow-mo stops after 2,000 steps. Is there a loop that never ends?", and the run is
 treated like one the student stopped (no check result, no attempt; `run_attempted` still passes).
 Keep slow-mo programs short.
 
-**Tutors.** In **Go Live** and presentation, the presenter's recording goes to every screen
-once and their Slow-mo, Pause, Step and Restart drive the line, tags, output and drawing the class
-sees. Viewers see "🐢 Slow-mo · Step 4 of 12 · line 3", the question when paused, and no
+**Predict mode.** The [Run lock](#name-tag-panel-showvariables) (`lockRun`) applies to the slow-mo
+Run as to any Run: a slow-mo predict task waits for every prediction before Run plays.
+
+**Tutors.** In **Go Live** and presentation, the presenter's Run plays slow-mo on every screen:
+their recording goes to every screen once and their Pause/Play, Step, Step back, Restart and
+Finish drive the line, tags, output and drawing the class sees. Viewers see "🐢 Slow-mo · Step 4 of 12 · line 3", the question when paused, and no
 controls. A very large recording is slimmed to fit (shorter values first, then no variables,
 then no drawing). The session report records slow-mo use per student per task (`slowMoUsed`,
 `slowMoRuns`, `slowMoSteps`; see [Session reports](session-reports.md)).
@@ -535,9 +550,10 @@ also stops above 2 lines a second, so nothing flashes 3 or more times a second. 
 reads each step ("Step 5 of 11: line 3 ran. total is now 11 (was 4). Loop on line 2: pass 2 of
 4.") while paused or playing at 1 line a second or slower.
 
-**Builder:** the task editor's **Slow-mo** field (on/off, starting speed, name tags, question).
-Validation flags a `slowMo` that isn't an object and an `enabled`, `showVariables` or `question`
-of the wrong type or a speed that isn't a positive number; it warns about a speed outside
+**Builder:** the task editor's **Slow-mo** field (on/off, starting speed, name tags, question,
+and "Keep a separate 🐢 Slow-mo button" for `separateButton`). Validation flags a `slowMo` that
+isn't an object and an `enabled`, `showVariables`, `question` or `separateButton` of the wrong
+type or a speed that isn't a positive number; it warns about a speed outside
 0.25–4, a question over 200 characters, unknown keys, and a `slowMo` with no `enabled`.
 
 ---

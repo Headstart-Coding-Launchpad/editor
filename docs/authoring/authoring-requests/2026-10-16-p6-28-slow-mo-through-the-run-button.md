@@ -1,6 +1,6 @@
 # Slow-mo through the Run button: one button, not two
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (Ryan asked for it, filed straight to LaunchPad Dev, as with builds 1–25), 2026-10-16
 - **Lessons blocked:** none. Affects the LG-P6 pilot Python Level 2B Lesson 8 (`qj8152siy2`, taught Tue 20 Oct), task 19 "Go-Kart Race", the only slow-mo task in a real lesson so far.
@@ -46,3 +46,5 @@ The student presses Run and watches it play line by line, with Pause and Step to
 ## Notes
 
 - **Plan:** `Lesson Gen Agent/Plans/LG-P6 Lesson plan - Python L2B Lesson 8 for loops.md`.
+
+Shipped 2026-10-16 on `feature/p6-28-slow-mo-run` (not yet on `main`). On a slow-mo task Run reads "▶ Run (slow-mo)" and records then plays the run (the shortcut, a Code Arrange board's Run and the tutor's remote Run too); Pause (Play while paused), Step, Step back, Restart and a new ⏭ Finish (playbackReducer `finish`) show once a run plays; new `slowMo.separateButton: true` keeps the old Run + 🐢 Slow-mo layout (validated, Builder checkbox). Docs: [python.md](../python.md#slow-mo-slowmo), turtle.md, validation-errors.md, FEATURES, CHANGELOG.

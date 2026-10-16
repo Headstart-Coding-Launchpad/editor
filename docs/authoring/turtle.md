@@ -187,8 +187,9 @@ Turtle tasks take the same `#@lock` markers, `setupCode` / `setupNote` and `puzz
 ## Slow-mo
 
 A Turtle task can use Python's [slow-mo](python.md#slow-mo-slowmo) (`slowMo: { enabled: true,
-speed?, showVariables?, question? }`): Slow-mo, Pause, Step, Step back and Restart above the code.
-The drawing builds up line by line and the 🐢 marker moves with it, so students see which line
+speed?, showVariables?, question?, separateButton? }`): **▶ Run (slow-mo)** plays the run line by
+line, with Pause / Play, Step, Step back, Restart and ⏭ Finish above the code once it is playing
+(`separateButton: true` keeps a plain Run beside a 🐢 Slow-mo button). The drawing builds up line by line and the 🐢 marker moves with it, so students see which line
 drew which side. The current line, loop pass counter ("pass 2 of 4" for `range(4)`), name tags
 and output work as in Python. The shim's own lines are never steps. The recorded run is the run
 for the checks, and Go Live carries the presenter's playback.
