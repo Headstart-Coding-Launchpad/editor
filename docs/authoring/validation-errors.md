@@ -419,6 +419,7 @@ Python and Turtle tasks; see [python.md](python.md#name-tag-panel-showvariables)
 | `Task … has showVariables mode "…" — use one of: …` | Unknown `mode`. | Use `view`, `predict` or `target`. |
 | `Task … has showVariables at "…" — use one of: …` | Unknown `at`. | Use `end` or `marker`. |
 | `Task … has showVariables visuals that is not true or false` | `visuals` is text or a number. | Use `visuals: false` to turn the list and dict visuals off, or leave it out (on). |
+| `Task … has showVariables link that is not true or false` | `link` must be a boolean. | Use `true` (the default) or `false` to stop linking tags to the code. |
 | `Task … has showVariables lockRun that is not true or false` | `lockRun` must be a boolean. | Use `true` (the default in predict mode) or `false`. |
 | `Task … has showVariables lockRun but its mode is not predict — only predict mode locks Run, so it is ignored` (warning) | `lockRun` on a view or target task. | Remove it, or set `mode: predict`. |
 | `Task … has showVariables stageLists "…" — use one of: …` | Unknown `stageLists`. | Use `picture`, `tiles` or `size`. |
@@ -443,15 +444,17 @@ Python, Turtle and HTML tasks; see [python.md](python.md#live-scrubbing-scrub).
 |---|---|---|
 | `Task … has scrub, but scrubbing only works in Python, Turtle and HTML tasks — it is ignored` (warning) | `scrub` is on another module's task (Arcade, Scratch, …). | Remove it, or move the task to Python, Turtle or HTML. |
 | `Task … has a scrub that is not an object — write it as scrub: { enabled: true }` | `scrub` is a string, number or list. | Write `scrub: { enabled: true }` (or `scrub: true`). |
-| `Task … has scrub … that is not true or false` | `enabled`, `numbers` or `colours` is text or a number. | Use `true` or `false`. |
+| `Task … has scrub … that is not true or false` | `enabled`, `numbers`, `colours` or `checkOnRelease` is text or a number. | Use `true` or `false`. |
 | `Task … has scrub with numbers and colours both off — nothing can be scrubbed` (warning) | Both kinds are turned off. | Turn one on, or remove `scrub`. |
-| `Task … has scrub fields it does not use (…) — they are ignored` (warning) | `scrub` has keys other than `enabled`, `numbers`, `colours` and `ranges`. | Remove them (check the spelling of `colours`). |
+| `Task … has scrub fields it does not use (…) — they are ignored` (warning) | `scrub` has keys other than `enabled`, `numbers`, `colours`, `ranges` and `checkOnRelease`. | Remove them (check the spelling of `colours`). |
 | `Task … has scrub ranges that is not a list — write ranges: [{ line, min, max }]` | `ranges` is a map or a string. | Write a list of `{ line, min, max }`. |
 | `Task … has a scrub range without a line number of 1 or more` | A range has no `line`, or it isn't a whole number from 1. | Give the line the student sees, e.g. `line: 3`. |
 | `Task … has a scrub range on line … whose min or max is not a number` | `min` / `max` is missing or text. | Write numbers, e.g. `min: 10, max: 200`. |
 | `Task … has a scrub range on line … whose min is not less than its max` | The range is empty or backwards. | Swap them, or fix one. |
 | `Task … has two scrub ranges for line … — only the first is used` (warning) | Two ranges name the same line. | Keep one. |
 | `Task … has a scrub range on line …, but the starter code has only … lines` (warning) | The line is past the end of the starter code (Python, Turtle). | Fix the line number. |
+| `Task … has runOnOpen that is not true or false` | `runOnOpen` is text or a number. | Use `true` or `false`. |
+| `Task … has runOnOpen but its starter code calls input() — it can't run on open, so runOnOpen is ignored` (warning) | The opening run would stop to ask a question. | Remove `runOnOpen`, or take `input()` out of the starter. |
 
 ## Python Stage (`stageTarget` and `stage_*` checks)
 
@@ -510,6 +513,8 @@ Python and Turtle tasks; see [python.md](python.md#locked-lines-hidden-setup-and
 | `Task … complete code has … lines of code, over puzzle.maxLines …` | The solution breaks its own line limit, so the puzzle can't be solved. | Shorten the solution, or raise `maxLines`. |
 | `Task … complete code takes … changes from the starter, more than puzzle.par …` (warning) | The solution takes more changes than par. | Find a shorter solution, or raise `par`. |
 | `Task … has a #@lock marker with no line after it; it locks nothing` (warning) | A `#@lock` is the last line (or only blank lines follow). | Put it on the line above the line to lock. |
+| `Task … has a #@lock-values marker with no line after it; it locks nothing` (warning) | A `#@lock-values` is the last line (or only blank lines follow). | Put it on the line above the line to lock. |
+| `Task … has a #@lock-values line … with no string or number to change — it is fully locked` (warning) | The marked line has no plain string or number (f-strings and names don't count). | Use `#@lock`, or mark a line with a value. |
 | `Task … locked line … ("…") is not in the complete code — students can't change or remove a locked line` (warning) | The solution changes or removes a line students can't touch. | Unlock the line, or keep it in the complete code. |
 | `Task … locked line … ("…") is indented differently in the complete code — students can't re-indent a locked line` (warning) | The solution needs the locked line at another indentation. | Lock it at the indentation the solution needs, or unlock it. |
 

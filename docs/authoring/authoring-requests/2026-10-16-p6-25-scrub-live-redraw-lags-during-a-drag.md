@@ -1,6 +1,6 @@
 # Bug: live scrub redraw seems to wait until the drag stops
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** bug
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, as with builds 1–21), 2026-10-16
 - **Lessons blocked:** none. Affects the LG-P6 pilot, Python Level 1 Lesson 8 (Draft `caakmdqj5j`, taught Tue 20 Oct), task 21 "Slide the Sentence".
@@ -38,3 +38,7 @@ Ryan's click-through, 2026-10-16, on Draft `caakmdqj5j`: "It doesn't feel like 2
 
 - It may be slower on Ryan's machine or in the Builder preview than in the student view, so please check both.
 - **Plan:** `Lesson Gen Agent/Plans/LG-P6 Lesson plan - Python L1 Lesson 8 poster.md`.
+
+## Resolution
+
+Shipped 2026-10-16 on `feature/p6-19-21-name-tag-links-scrub` (not yet on `main`). Cause: the preview scheduler (`src/shared/scrub/previewScheduler.js`) was a debounce — every new value restarted its 200 ms wait, so a drag that never paused for 200 ms only redrew when it stopped. It is now a throttle: the first value runs at once and the latest value runs at most every 200 ms while the drag moves, still never overlapping a running preview. Pyodide's worker was already reused between previews (no restart). Docs now describe about five redraws a second for a quick program ([python.md](../python.md#live-scrubbing-scrub), FEATURES, CHANGELOG). Builder preview uses the same path; not checked in a browser here.

@@ -1,6 +1,6 @@
 # Run the starter when the task opens (see it, change it, see the difference)
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, as with builds 1–21), 2026-10-16
 - **Lessons blocked:** none. Improves the LG-P6 pilot, Python Level 1 Lesson 8 (Draft `caakmdqj5j`, taught Tue 20 Oct), task 21 "Slide the Sentence", and every scrub or Modify task.
@@ -41,3 +41,7 @@ The sentence is on the Stage as soon as the task opens; the student drags the `2
 ## Notes
 
 - **Plan:** `Lesson Gen Agent/Plans/LG-P6 Lesson plan - Python L1 Lesson 8 poster.md`. Until this ships, the pilot's task 21 tells students to press Run first.
+
+## Resolution
+
+Shipped 2026-10-16 on `feature/p6-19-21-name-tag-links-scrub` (not yet on `main`). New task field `runOnOpen` (Python, Turtle; default on when `scrub` is on): once the runtime is ready the task's code runs once through the scrub preview run (`useScrubPreview`): output and Stage / turtle drawing show straight away, with no checks, no attempt, no save and no Run counted. Never for programs that call `input()` (validation warns), never in free play; no focus change. No Builder control yet (YAML only). Docs: [python.md](../python.md#live-scrubbing-scrub), turtle.md, validation-errors.md, FEATURES, CHANGELOG.

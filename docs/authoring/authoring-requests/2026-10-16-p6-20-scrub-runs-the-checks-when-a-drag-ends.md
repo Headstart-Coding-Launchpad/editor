@@ -1,6 +1,6 @@
 # Live scrubbing: run the checks when a drag ends
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, as with builds 1–18), 2026-10-16
 - **Lessons blocked:** none. Improves the LG-P6 pilot, Python Level 1 Lesson 8 (Draft `caakmdqj5j`, taught Tue 20 Oct), task 21 ("Slide the Sentence"), and every later scrub task.
@@ -49,3 +49,7 @@ Drag the `200` to `100` and let go: the checks run and the task passes.
 ## Notes
 
 - **Plan:** `Lesson Gen Agent/Plans/LG-P6 Lesson plan - Python L1 Lesson 8 poster.md`. Until this ships, the pilot's explainer tells students to press Run after dragging.
+
+## Resolution
+
+Shipped 2026-10-16 on `feature/p6-19-21-name-tag-links-scrub` (not yet on `main`). New field `scrub.checkOnRelease` (default true). When a drag ends, a slider step ends (pointer up, arrow key up, − / + tap: each step is kept as its own edit) or a colour is picked, `useScrubPreview.scrubCommitted` runs the checks once through `handleRun({ source: 'scrub' })`, so the attempt, result and tutor card are a Run's; skipped for programs that don't preview live, submit-mode tasks and while predict mode's Run lock holds. Attempts are stored with `source: 'scrub'` (`attemptLog`) and reported as `distinctAttempts[].source` (session-reports.md). Docs: [python.md](../python.md#live-scrubbing-scrub), turtle.md, validation-errors.md, FEATURES, CHANGELOG.

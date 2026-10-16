@@ -37,6 +37,47 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-16
+
+### Linked name tags, checks when a drag ends, live redraw with `input()` and on open, `#@lock-values`
+
+- **Name tags link to their variables** (`showVariables.link`, on by default). Each tag and every
+  real use of that variable in the code share one of six colours and a small number (never colour
+  alone). Strings, comments, attributes (`city.lower`) and keyword names (`size=26`) are not
+  marked. Hovering, focusing or tapping a tag strengthens its marks in the code, and the reverse.
+  Predict tags are linked from the start. `link: false` turns it off (Builder: "Link each tag to
+  its variable in the code"). See [python.md](python.md#name-tag-panel-showvariables).
+- **A drag runs the checks when it ends** (`scrub.checkOnRelease`, on by default). When a drag, a
+  slider step or a colour pick ends, the task's checks run once exactly as a Run: attempt logged,
+  result shown, tutor card updated. The attempt is marked `source: 'scrub'` in the session report
+  (`distinctAttempts[].source`). Previews during the drag stay check-free. Programs that don't
+  preview live, and predict tasks still waiting for predictions, wait for the next Run.
+- **Programs with `input()` redraw live** by replaying the answers from the student's last Run,
+  with "Using your last answers: Ada, Mars, teal" near the result. Before a Run the student sees
+  "Press Run and answer the questions first".
+- **Live redraw keeps up with the drag.** Previews used to wait for the drag to pause; they now
+  run about every 200 ms while the value keeps moving.
+- **Draggable numbers are marked** with an always-visible dashed box, with no hover or tap needed.
+- **`runOnOpen`** (Python, Turtle; default on when `scrub` is on): the task's code runs once as a
+  preview when it opens, so the picture shows straight away. No checks, no attempt, not a Run.
+  Ignored, with a warning, when the starter calls `input()`.
+- **`#@lock-values`** locks the next line except its values (plain string contents, empty strings
+  too, and numbers), shown in the same dashed "you can change this" box as draggable numbers.
+  Validation warns when the line has nothing to change. See
+  [python.md](python.md#locked-lines-with-editable-values-lock-values).
+- Affects: python, turtle (new fields `showVariables.link`, `scrub.checkOnRelease`, `runOnOpen`;
+  new marker `#@lock-values`), html (`scrub.checkOnRelease`, live redraw), session reports
+  (`distinctAttempts[].source`) · Existing lessons: no changes needed (scrub tasks now check on
+  release and run on open; add `checkOnRelease: false` or `runOnOpen: false` to keep the old
+  behaviour; explainers that say "press Run after dragging" can drop it) · Resolves:
+  authoring-requests/2026-10-16-p6-19-name-tags-colour-linked-to-their-variables-in-the-code.md,
+  authoring-requests/2026-10-16-p6-20-scrub-runs-the-checks-when-a-drag-ends.md,
+  authoring-requests/2026-10-16-p6-21-scrub-live-redraw-for-programs-with-input.md,
+  authoring-requests/2026-10-16-p6-22-locked-lines-with-editable-values.md,
+  authoring-requests/2026-10-16-p6-23-run-the-starter-when-the-task-opens.md,
+  authoring-requests/2026-10-16-p6-24-scrub-visible-marker-on-draggable-values.md,
+  authoring-requests/2026-10-16-p6-25-scrub-live-redraw-lags-during-a-drag.md
+
 ## 2026-10-15
 
 ### Name-tag panel: predict mode locks Run until every prediction is in (`showVariables.lockRun`)

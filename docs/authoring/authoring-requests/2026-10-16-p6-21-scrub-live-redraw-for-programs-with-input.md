@@ -1,6 +1,6 @@
 # Live scrubbing: redraw programs that use input(), replaying the last Run's answers
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, as with builds 1–18), 2026-10-16
 - **Lessons blocked:** none. Improves the LG-P6 pilot, Python Level 1 Lesson 8 (Draft `caakmdqj5j`, taught Tue 20 Oct), task 37 ("Make the Poster Yours"), and any Make It Your Own on an `input()` build.
@@ -56,3 +56,7 @@ After one Run (Ada, Mars, teal), dragging `size=26` redraws the poster live with
 ## Notes
 
 - **Plan:** `Lesson Gen Agent/Plans/LG-P6 Lesson plan - Python L1 Lesson 8 poster.md`. Until this ships, the pilot's task 37 has scrub on with "drag, then press Run".
+
+## Resolution
+
+Shipped 2026-10-16 on `feature/p6-19-21-name-tag-links-scrub` (not yet on `main`). Previews of `input()` programs replay the answers from the student's last Run, in order (`rememberRunAnswers` in `useScrubPreview`, recorded by `handleRun` / `handleInputSubmit`), with "Using your last answers: Ada, Mars, teal" (`ScrubReplayNote`, up to three answers, long ones cut) near the result. No Run yet, or a preview asking more than the last Run answered: "Press Run and answer the questions first". The checks on release (P6-20) replay the same answers. Previews stay check-free. Docs: [python.md](../python.md#live-scrubbing-scrub), turtle.md, FEATURES, CHANGELOG.

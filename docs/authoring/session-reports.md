@@ -143,8 +143,9 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `distinctAttempts[].suggestion` | The failure hint shown to the student, or null. |
 | `distinctAttempts[].submission` | The submitted code or answer. Code is a string; object-shaped work (files, Scratch workspaces, activity state) is an object, or a JSON string in reports read back from Firestore. |
 | `distinctAttempts[].placements` | Code Arrange only: the tiles on the board when Run was pressed, `{ <blank id>: <tile id> }` (a tile id is a blank's own id, i.e. that blank's correct tile, or a distractor's id). Lets you tell a wrong-blank guess (a right tile in another blank) from a wrong-content one (a distractor). A retry keeps the first entry's. Omitted on other tasks, indent-mode tasks, and attempts before 2026-10-09. |
+| `distinctAttempts[].source` | `scrub`: the attempt was made by the checks that run when a [live scrub](python.md#live-scrubbing-scrub) drag ends (`scrub.checkOnRelease`), not by pressing Run. A retry keeps the first entry's. Omitted on attempts from a Run (and on attempts before 2026-10-16). Count them out of `attempts` when you want "presses of Run". |
 
-The first five fields date from 2026-07-13; `placements` from 2026-10-09.
+The first five fields date from 2026-07-13; `placements` from 2026-10-09; `source` from 2026-10-16.
 
 **How attempts are logged** (`logAttempt` in `src/app/hooks/useSession.js`): attempts are logged
 only on tasks with a `check` (code tasks without one log nothing), only during the lesson (not the

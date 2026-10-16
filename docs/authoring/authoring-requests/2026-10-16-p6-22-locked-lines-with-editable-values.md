@@ -1,6 +1,6 @@
 # Locked lines: lock the name and quote marks but let the value change
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, as with builds 1–21), 2026-10-16
 - **Lessons blocked:** none. Would improve the LG-P6 pilot, Python Level 1 Lesson 8 (Draft `caakmdqj5j`, taught Tue 20 Oct), and any task where students personalise given data.
@@ -54,3 +54,7 @@ Students can change `Zara` and `Leeds` (and nothing else on those lines), then R
 ## Notes
 
 - **Plan:** `Lesson Gen Agent/Plans/LG-P6 Lesson plan - Python L1 Lesson 8 poster.md`.
+
+## Resolution
+
+Shipped 2026-10-16 on `feature/p6-19-21-name-tag-links-scrub` (not yet on `main`). New marker `#@lock-values`: locks the next line except its values (plain string contents, empty strings too, and numbers; f-strings, prefixed and triple-quoted strings stay locked). `scanLineValues` / `valueSkeleton` in `src/shared/lockedLines.js`; the lock anchors by value skeleton, and `lockedLinesEditor.js` lets an edit through only when the line's skeleton is unchanged, snaps the caret into the nearest value, and draws each value in the shared dashed "you can change this" box (`src/shared/editableValueStyle.js`, also used by P6-24), with an empty box for `""`. Its numbers and colours still scrub. Validation warns when the line has nothing to change. Docs: [python.md](../python.md#locked-lines-with-editable-values-lock-values), validation-errors.md, FEATURES, CHANGELOG.

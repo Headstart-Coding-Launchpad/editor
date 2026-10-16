@@ -1,6 +1,6 @@
 # Live scrubbing: draggable values carry a visible marker without hovering
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, as with builds 1–21), 2026-10-16
 - **Lessons blocked:** none. Improves the LG-P6 pilot, Python Level 1 Lesson 8 (Draft `caakmdqj5j`, taught Tue 20 Oct), tasks 21 and 37, and every scrub task.
@@ -34,3 +34,7 @@ Task 21 "Slide the Sentence": the `200` and `24` in `text(sentence, "navy", y=20
 ## Notes
 
 - **Plan:** `Lesson Gen Agent/Plans/LG-P6 Lesson plan - Python L1 Lesson 8 poster.md`.
+
+## Resolution
+
+Shipped 2026-10-16 on `feature/p6-19-21-name-tag-links-scrub` (not yet on `main`). Every scrubbable number now carries an always-visible marker: a light box with a dashed outline (shape, not only colour; no animation), on desktop and touch, strengthened on hover as before. It is the one shared "you can change this" style (`src/shared/editableValueStyle.js`) also used by `#@lock-values` values (P6-22), and is deliberately unlike the linked name-tag marks (P6-19: solid coloured underline and a number). Ranges on hover were not added. Docs: [python.md](../python.md#live-scrubbing-scrub), turtle.md, FEATURES, CHANGELOG.

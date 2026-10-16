@@ -76,7 +76,7 @@ the task. They never change the task's code or what `carryCodeFrom` copies. See
 ## Name-tag panel (`showVariables`)
 
 A Turtle task can show students what is in their variables, exactly as a Python task does:
-`showVariables: { mode: view | predict | target, at: end | marker, hide, predict, target, visuals }`,
+`showVariables: { mode: view | predict | target, at: end | marker, hide, predict, target, visuals, link }`,
 the `#@peek` marker and the `variables_predicted` check. Lists and dicts get the same visuals as in
 Python (colour swatches, bars, pictures, cards; `visuals: false` turns them off). The panel sits between the drawing and the
 output. Names imported from `turtle` (`from turtle import forward`) and the turtle module itself
@@ -129,10 +129,16 @@ keyboard use.
 ```
 
 - Every Turtle program re-runs live while a value moves (a preview: no attempt, checks, save or
-  tutor update), unless it calls `input()`: then the student sees "Press Run to see it".
+  tutor update), about every 200 ms while the drag keeps moving. A program that calls `input()`
+  replays the answers from the student's last Run ("Using your last answers: …"); before a Run
+  the student sees "Press Run and answer the questions first".
+- Draggable numbers carry an always-visible dashed box, as in Python.
 - Colour strings use CSS names (`'red'`, `'cornflowerblue'`) or hex (`'#ff0000'`).
-- When the drag ends the value is a normal edit, saved and sent to a watching tutor. The session
-  report counts each student's scrubs (`scrubs`).
+- When the drag ends the value is a normal edit, saved and sent to a watching tutor, and (with
+  `checkOnRelease`, on by default) the checks run once as a Run, the attempt marked
+  `source: 'scrub'`. The session report counts each student's scrubs (`scrubs`).
+- `runOnOpen` (default on with `scrub`) draws the starter as soon as the task opens, as a preview
+  (no checks, not a Run). See [Python → Live scrubbing](python.md#live-scrubbing-scrub).
 
 ## Locked lines, hidden setup and puzzles
 

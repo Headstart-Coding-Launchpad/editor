@@ -1,6 +1,6 @@
 # Name-tag panel: each tag and its variable in the code share a colour
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (approved by Ryan, filed straight to LaunchPad Dev at Ryan's request, as with builds 1–18), 2026-10-16
 - **Lessons blocked:** none. Improves the LG-P6 pilot, Python Level 1 Lesson 8 (Draft `caakmdqj5j`, taught Tue 20 Oct), and every later predict task.
@@ -48,3 +48,7 @@ The `small` tag and the word `small` on line 3 carry the same colour and marker.
 
 - **Plan:** `Lesson Gen Agent/Plans/LG-P6 Lesson plan - Python L1 Lesson 8 poster.md`; `LG-P6 Visual learning.md`.
 - An optional per-task off switch (e.g. `showVariables.link: false`) would be useful, defaulting to on.
+
+## Resolution
+
+Shipped 2026-10-16 on `feature/p6-19-21-name-tag-links-scrub` (not yet on `main`). New field `showVariables.link` (default true): `getVariableLinks` in `src/shared/variablesPanel/links.js` gives each linked tag one of six colours and a number 1–6; `src/shared/variableLinksEditor.js` marks every real use of the variable in the editor (syntax-tree `VariableName` only: strings, comments, attributes and keyword names are skipped) with a coloured underline, soft background and the number drawn above the name, without moving the layout. Hover / focus / tap on a tag strengthens the code marks and the reverse (`useVariableLinks`). Predict, view and target modes; Python and Turtle workspaces, slow-mo tags and the tutor's StudentModal code view. Validation and the Builder field know `link`. Docs: [python.md](../python.md#name-tag-panel-showvariables), turtle.md, lesson-schema.md, validation-errors.md, FEATURES, CHANGELOG.
