@@ -143,6 +143,27 @@ describe('buildSideQuestTask', () => {
     expect(task.codeStages[0]).toMatchObject({ role: 'starter', entryFile: 'index.html' })
     expect(task.check).toBeUndefined()
   })
+
+  it('strips #> hints and #@lock / #@lock-values markers from the starter (P6-29)', () => {
+    const starter =
+      'from stage import *\n#> Add y after x\ncircle(20, "orange", x)\n#@lock-values\nsize = 20\n#> Add 80 to y here'
+    const task = buildSideQuestTask(codeTask(), { ...debug, starter }, 'python')
+    // A closing hint leaves an empty line to type on.
+    expect(task.starterCode).toBe('from stage import *\ncircle(20, "orange", x)\nsize = 20\n')
+    expect(task.codeStages[0].code).toBe(task.starterCode)
+    expect(task.lineHintSets[0].hints.map((h) => h.text)).toEqual([
+      'Add y after x',
+      'Add 80 to y here',
+    ])
+    expect(task.lockSets[0].locks).toEqual([expect.objectContaining({ values: true })])
+  })
+
+  it('strips <!--> hints from an HTML starter', () => {
+    const starter = '<!--> Change the words -->\n<p>Hi</p>'
+    const task = buildSideQuestTask(codeTask(), { ...debug, starter }, 'html')
+    expect(task.starterFiles[0].content).toBe('<p>Hi</p>')
+    expect(task.lineHintSets.length).toBeGreaterThan(0)
+  })
 })
 
 describe('canShowSideQuests', () => {
