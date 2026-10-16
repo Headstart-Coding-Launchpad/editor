@@ -23,7 +23,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 |---|---|
 | `AuthContext.jsx` | `AuthProvider` — `onAuthStateChanged` listener; provides `{ user, role, loading }` via React context |
 | `useAuth.js` | `useAuth()` hook — thin re-export of `AuthContext` |
-| `ProtectedRoute.jsx` | Route guard — shows loading screen, then redirects to `/login?redirect=…` if unauthenticated or wrong role |
+| `ProtectedRoute.jsx` | Route guard — shows loading screen, then redirects to `/login?redirect=…` if unauthenticated; a signed-in account without the role sees "You need an admin (or tutor) account to see this page" with Go back and a sign-in link |
 | `AccountSettings.jsx` | Authenticated account page where teachers/admins change their own Firebase Auth password |
 
 ---

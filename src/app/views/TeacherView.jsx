@@ -841,7 +841,9 @@ export default function TeacherView({ lessonId }) {
               onStartSession={startSession}
               onEndSession={() => setShowEndModal(true)}
               onRestartSession={restartSession}
-              onReturnToAdmin={() => navigate('/admin')}
+              // Only admins can open the Admin Portal, so only they get the button (HSC Audit,
+              // Visual Review 28).
+              onReturnToAdmin={role === 'admin' ? () => navigate('/admin') : null}
               onUpdateVideoCallLink={updateVideoCallLink}
               onBroadcastVideoCallLink={broadcastVideoCallLink}
               onRemoveSharedWorkspace={removeSharedWorkspace}
