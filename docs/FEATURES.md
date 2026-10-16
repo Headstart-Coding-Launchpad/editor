@@ -221,7 +221,7 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - Returns to the lesson when the student closes it or the teacher advances the class
 
 ### Side-quests
-- On Python, Turtle and HTML code tasks with `sideQuests`, a student who passes sees "🎉 You've finished! Try a side-quest" with up to three side-quests (🏆 Mini challenge, 🐞 Debug it, 🔮 Predict, then run)
+- On Python, Turtle and HTML code tasks with `sideQuests`, a student who passes sees "🎉 You've finished! Try a side-quest" with up to three side-quests (🏆 Mini challenge, 🐞 Debug it, 🤔 Predict, then run)
 - Live: only while the class is still on that task; solo: after a pass
 - Each opens in its own scratch editor of the task's module: its own instructions and starter, nothing checked, and the task's code (and what the next task carries) never changes. Its code is kept on the device for the session
 - **✓ I've done it!** is self-reported and recorded; when the teacher moves the class on, the side-quest closes and the student moves on as normal

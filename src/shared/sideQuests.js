@@ -30,7 +30,7 @@ export const SIDE_QUEST_TITLE_MAX = 60
 export const SIDE_QUEST_KIND_META = Object.freeze({
   challenge: Object.freeze({ icon: '🏆', label: 'Mini challenge' }),
   debug: Object.freeze({ icon: '🐞', label: 'Debug it' }),
-  predict: Object.freeze({ icon: '🔮', label: 'Predict, then run' }),
+  predict: Object.freeze({ icon: '🤔', label: 'Predict, then run' }),
 })
 
 // The task id the throwaway side-quest workspace runs under, and the storage pseudo task id.
