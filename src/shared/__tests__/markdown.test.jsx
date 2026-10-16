@@ -269,9 +269,7 @@ describe('MarkdownRenderer', () => {
 
   it('draws say / think text inputs as typed-text ovals, not dropdowns (HSC Audit 08)', () => {
     const { container } = render(
-      <MarkdownRenderer content={'```scratch
-say [Hello!] for (2) seconds
-```'} />
+      <MarkdownRenderer content={'```scratch\nsay [Hello!] for (2) seconds\n```'} />
     )
     const block = container.querySelector('[data-scratch-opcode="looks_sayforsecs"]')
     expect(block.querySelector('[data-scratch-slot="dropdown"]')).toBeNull()
@@ -280,9 +278,7 @@ say [Hello!] for (2) seconds
 
   it('still draws a dropdown for a [... v] input, without the v', () => {
     const { container } = render(
-      <MarkdownRenderer content={'```scratch
-when [space v] key pressed
-```'} />
+      <MarkdownRenderer content={'```scratch\nwhen [space v] key pressed\n```'} />
     )
     const slot = container.querySelector('[data-scratch-slot="dropdown"]')
     expect(slot).toHaveTextContent('space')
