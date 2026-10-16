@@ -248,6 +248,44 @@ describe('handleRun — input()', () => {
   })
 })
 
+describe('handleRun — input() while not watched', () => {
+  it('shares the waiting prompt once (for the tutor card) and clears it when answered', async () => {
+    let release
+    const answered = new Promise((resolve) => {
+      release = resolve
+    })
+    mockModuleRun('python', async (callbacks) => {
+      callbacks.onOutput('Name? ', 'stdout')
+      callbacks.onInputRequired('Name? ')
+      await answered
+      return { status: 'success' }
+    })
+    const h = renderStudentCodeState({ lesson: pythonLesson(), currentTaskId: 't3' })
+    h.writers.writeStudentInputState.mockClear()
+    let runPromise
+    act(() => {
+      runPromise = h.result.current.handleRun()
+    })
+    await act(async () => {})
+    expect(h.writers.writeStudentInputState.mock.calls).toEqual([
+      [ANON, { prompt: 'Name? ', value: '', output: 'Name? ' }],
+    ])
+    // Typing is never mirrored while unwatched.
+    actSync(() => h.result.current.handleInputChange('Sa'))
+    expect(h.writers.writeStudentInputState).toHaveBeenCalledTimes(1)
+    actSync(() => h.result.current.handleInputSubmit('Sam'))
+    expect(h.writers.writeStudentInputState).toHaveBeenLastCalledWith(ANON, {
+      prompt: null,
+      value: '',
+    })
+    release()
+    await act(async () => {
+      await runPromise
+    })
+    expect(h.writers.writeStudentInputState).toHaveBeenCalledTimes(2)
+  })
+})
+
 describe('handleRun — turtle result sync', () => {
   it('writes the raw turtle result after the run and keeps it in state', async () => {
     const turtle = { state: { x: 1.23456, y: 2, heading: 90 }, commands: [{ type: 'forward' }] }

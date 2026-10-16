@@ -97,6 +97,9 @@ export async function runWithRuntime(ctx) {
   if (isWatchedNow()) {
     writers.writeStudentInputState(actor.anonymousId, { prompt: null, value: '', output: '' })
   }
+  // Set while an unwatched run's input() prompt has been mirrored (see onInputRequired), so
+  // it is cleared again once answered or when the run ends.
+  let unwatchedPromptShared = false
   let outputBuffer = createStudentOutputBuffer()
   // Leading + trailing throttle (200ms) so the tail of a burst of output
   // always reaches the teacher instead of waiting for the run to end.
@@ -138,6 +141,10 @@ export async function runWithRuntime(ctx) {
         value: '',
         output: outputBuffer.raw,
       })
+    } else if (unwatchedPromptShared) {
+      // The answer is in: the card stops saying "Waiting for input".
+      unwatchedPromptShared = false
+      writers.writeStudentInputState(actor.anonymousId, { prompt: null, value: '' })
     }
   }
   let latestRuntimeCode = startCode
@@ -191,6 +198,16 @@ export async function runWithRuntime(ctx) {
         })
       } else {
         outputMirror.flush()
+        // Tutor visibility: an unwatched student's card would otherwise say "No output yet"
+        // while their program sits waiting for input() (HSC Audit, Visual Review 03). One
+        // write per prompt (never per keystroke): the prompt and the output so far, so the
+        // card can say "Waiting for input". The typed value stays unmirrored.
+        unwatchedPromptShared = true
+        writers.writeStudentInputState(actor.anonymousId, {
+          prompt,
+          value: '',
+          output: outputBuffer.raw,
+        })
       }
     },
     onCodeUpdate: scheduleRuntimeCodeUpdate,
@@ -208,7 +225,10 @@ export async function runWithRuntime(ctx) {
   refs.inputPromptRef.current = null
   refs.inputValueRef.current = ''
   setInputPrompt(null)
-  if (isWatchedNow()) writers.writeStudentInputState(actor.anonymousId, { prompt: null, value: '' })
+  if (isWatchedNow() || unwatchedPromptShared) {
+    writers.writeStudentInputState(actor.anonymousId, { prompt: null, value: '' })
+  }
+  unwatchedPromptShared = false
 
   // Cancel any pending RAF and sync final output immediately
   if (refs.outputRafIdRef.current !== null) {

@@ -272,9 +272,9 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
     expect(pick('cardSummary')).toEqual({
       python: 'output',
       arcade: 'output',
-      turtle: null,
+      turtle: 'drawing',
       scratch: 'blocks',
-      html: null,
+      html: 'page',
       filesystem: 'fs',
       desktop: null,
       electronics: 'output',
