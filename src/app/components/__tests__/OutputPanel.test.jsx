@@ -2,7 +2,7 @@ import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import OutputPanel, { splitEmojiRuns } from '../OutputPanel'
+import OutputPanel, { outputPlaceholder, outputStatus, splitEmojiRuns } from '../OutputPanel'
 
 describe('OutputPanel input prompt focus', () => {
   it('focuses the input when a non-collapsible output panel shows a prompt', () => {
@@ -183,5 +183,43 @@ describe('splitEmojiRuns', () => {
 
   it('returns a single empty plain run for empty text', () => {
     expect(splitEmojiRuns('')).toEqual([{ text: '', emoji: false }])
+  })
+})
+
+describe('OutputPanel status and placeholder', () => {
+  it('says "Waiting for your answer" (not "Not run") while input() waits', () => {
+    render(
+      <OutputPanel
+        output="What is your favourite animal?"
+        inputPrompt="What is your favourite animal?"
+        running
+        onInputSubmit={vi.fn()}
+        collapsible={false}
+      />
+    )
+    expect(screen.getByText('Waiting for your answer')).toBeInTheDocument()
+    expect(screen.queryByText(/Not run/)).not.toBeInTheDocument()
+  })
+
+  it('never shows "Run your code to see output here" under "Ran OK"', () => {
+    render(<OutputPanel output="" runStatus="success" collapsible={false} />)
+    expect(screen.getByText('Ran OK')).toBeInTheDocument()
+    expect(screen.queryByText('Run your code to see output here.')).not.toBeInTheDocument()
+    expect(screen.getByText("Your code ran. It didn't print anything.")).toBeInTheDocument()
+  })
+
+  it('invites a first run before anything has run', () => {
+    render(<OutputPanel output="" collapsible={false} />)
+    expect(screen.getByText('Not run yet')).toBeInTheDocument()
+    expect(screen.getByText('Run your code to see output here.')).toBeInTheDocument()
+  })
+
+  it('maps each state to a label', () => {
+    expect(outputStatus({ running: true }).label).toBe('Running…')
+    expect(outputStatus({ runStatus: 'error' }).label).toBe('Error')
+    expect(outputStatus({ runStatus: 'success', waitingForInput: true }).label).toBe(
+      'Waiting for your answer'
+    )
+    expect(outputPlaceholder({ running: true })).toBeNull()
   })
 })

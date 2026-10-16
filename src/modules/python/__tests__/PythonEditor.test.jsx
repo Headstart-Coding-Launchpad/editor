@@ -12,7 +12,13 @@ const insertAtCursor = vi.fn()
 vi.mock('../../../shared/CodeEditor', () => ({
   CodeEditor: React.forwardRef(function MockCodeEditor(props, ref) {
     React.useImperativeHandle(ref, () => ({ insertAtCursor }))
-    return <div data-testid="code-editor" data-block-guides={String(props.blockGuides)} />
+    return (
+      <div
+        data-testid="code-editor"
+        data-block-guides={String(props.blockGuides)}
+        data-line-wrapping={String(!!props.lineWrapping)}
+      />
+    )
   }),
 }))
 
@@ -63,6 +69,20 @@ describe('PythonEditor — touch symbol bar', () => {
     await user.click(screen.getByRole('button', { name: ':' }))
 
     expect(insertAtCursor).toHaveBeenCalledWith(':')
+  })
+})
+
+describe('PythonEditor — long lines', () => {
+  it('wraps long lines on a touch device (no visible sideways scroll on a tablet)', () => {
+    touchDevice = true
+    render(<PythonEditor code="" onChange={vi.fn()} />)
+    expect(screen.getByTestId('code-editor')).toHaveAttribute('data-line-wrapping', 'true')
+  })
+
+  it('keeps long lines unwrapped with a mouse and keyboard', () => {
+    touchDevice = false
+    render(<PythonEditor code="" onChange={vi.fn()} />)
+    expect(screen.getByTestId('code-editor')).toHaveAttribute('data-line-wrapping', 'false')
   })
 })
 

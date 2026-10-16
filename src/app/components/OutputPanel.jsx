@@ -34,6 +34,23 @@ export function splitEmojiRuns(text) {
   return runs
 }
 
+// The header's status: what the program is doing now. A program paused on input() is waiting
+// for the student, not "Not run".
+export function outputStatus({ runStatus, running, waitingForInput }) {
+  if (waitingForInput) return { colour: '#f59e0b', label: 'Waiting for your answer' }
+  if (running) return { colour: '#60a5fa', label: 'Running…' }
+  if (runStatus === 'success') return { colour: '#22c55e', label: 'Ran OK' }
+  if (runStatus === 'error') return { colour: '#ef4444', label: 'Error' }
+  return { colour: '#d1d5db', label: 'Not run yet' }
+}
+
+// The grey line in an empty output: never "Run your code…" under a "Ran OK".
+export function outputPlaceholder({ runStatus, running, waitingForInput }) {
+  if (running || waitingForInput) return null
+  if (runStatus === 'success') return "Your code ran. It didn't print anything."
+  return 'Run your code to see output here.'
+}
+
 export default function OutputPanel({
   title = 'Output',
   output = '',
@@ -115,10 +132,16 @@ export default function OutputPanel({
     onInputChange?.(e.target.value)
   }
 
-  const statusColour =
-    runStatus === 'success' ? '#22c55e' : runStatus === 'error' ? '#ef4444' : '#9ca3af'
-  const statusLabel =
-    runStatus === 'success' ? 'Ran OK' : runStatus === 'error' ? 'Error' : 'Not run'
+  const { colour: statusColour, label: statusLabel } = outputStatus({
+    runStatus,
+    running,
+    waitingForInput: inputPrompt !== null,
+  })
+  const placeholder = outputPlaceholder({
+    runStatus,
+    running,
+    waitingForInput: inputPrompt !== null,
+  })
   const showCursor = running || (output && displayedOutput !== output)
   return (
     <div
@@ -156,19 +179,17 @@ export default function OutputPanel({
 
       {!contentCollapsed && (
         <pre ref={preRef} style={s.pre}>
-          {displayedOutput ? (
-            splitEmojiRuns(displayedOutput).map((run, index) =>
-              run.emoji ? (
-                <span key={index} style={s.emoji}>
-                  {run.text}
-                </span>
-              ) : (
-                <React.Fragment key={index}>{run.text}</React.Fragment>
+          {displayedOutput
+            ? splitEmojiRuns(displayedOutput).map((run, index) =>
+                run.emoji ? (
+                  <span key={index} style={s.emoji}>
+                    {run.text}
+                  </span>
+                ) : (
+                  <React.Fragment key={index}>{run.text}</React.Fragment>
+                )
               )
-            )
-          ) : (
-            <span style={{ color: '#9ca3af' }}>Run your code to see output here.</span>
-          )}
+            : placeholder && <span style={s.placeholder}>{placeholder}</span>}
           {showCursor && <span className="terminal-cursor" />}
 
           {inputPrompt !== null && inputReadOnly && (
@@ -259,7 +280,11 @@ const s = {
   statusLabel: {
     fontFamily: 'var(--font-body)',
     fontSize: '0.8rem',
-    opacity: 0.85,
+    opacity: 0.9,
+    whiteSpace: 'nowrap',
+  },
+  placeholder: {
+    color: 'var(--colour-muted)',
   },
   pre: {
     flex: 1,
