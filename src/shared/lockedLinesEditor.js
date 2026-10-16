@@ -24,6 +24,16 @@
 // skeleton as it was (so the name, `=`, quote marks and brackets can't change); clicking or
 // moving onto the line puts the caret in the nearest value.
 //
+// EDIT ZONES (P6-30):
+//   - A FENCED lock (`#@lock-first` / `#@lock-last`) is a locked line nothing can be added
+//     before / after. Typing, Enter or a paste on the fenced side goes to the other side of the
+//     line instead, with "This line stays last. Add your code above it."; any other edit that
+//     would add there is dropped with that note. Enter on the line adds on its open side.
+//   - A SLOT (`#@slot`, `#@slot n`) is an editable stretch of at most n lines (one by default):
+//     an edit that would give it more lines, or join a line onto it, is dropped with "This space
+//     takes one line". It is outlined, with a "Write one line here" tag.
+//   - `puzzle.noNewLines`: an edit that adds lines outside the slots is dropped.
+//
 // Dispatch `setLockedLineSets.of(sets)` (the task's lock sets, getTaskLockSets) to (re)place the
 // locks; `[]` or null clears them.
 import {
@@ -43,7 +53,7 @@ import {
   showTooltip,
 } from '@codemirror/view'
 import { insertNewlineAndIndent } from '@codemirror/commands'
-import { chooseLocks, lineValueSpans, scanLineValues } from './lockedLines.js'
+import { chooseZones, lineValueSpans, scanLineValues } from './lockedLines.js'
 import {
   EDITABLE_VALUE_CLASS,
   EDITABLE_VALUE_EMPTY_CLASS,
@@ -53,19 +63,42 @@ import {
 export const LOCKED_LINE_NOTE = 'This line is locked'
 export const LOCKED_VALUES_NOTE = 'Only the values on this line can change'
 export const LOCKED_VALUES_TAG = 'Change the values only'
+export const FENCE_LAST_NOTE = 'This line stays last. Add your code above it.'
+export const FENCE_FIRST_NOTE = 'This line stays first. Add your code below it.'
+export const NO_NEW_LINES_NOTE = 'No new lines in this task. Change the lines you can edit.'
+export const slotNote = (size) =>
+  size > 1 ? `This space takes up to ${size} lines` : 'This space takes one line'
+export const slotTag = (size) =>
+  size > 1 ? `Write up to ${size} lines here` : 'Write one line here'
 const NOTE_MS = 1800
 
 export const setLockedLineSets = StateEffect.define()
 // Shows the "This line is locked" note at a position (null hides it).
 export const showLockedNote = StateEffect.define()
 
-// `{ positions, values }`: the start of each locked line, and of each values-locked one.
+// `{ positions, values, first, last, slots, noNewLines }`: the start of each locked line, of
+// each values-locked one and of the fenced ones (null when none); each slot's `{ from, to,
+// size }` (its first line's start, its last line's end); and puzzle.noNewLines.
 function anchorPositions(doc, sets) {
-  const locks = chooseLocks(doc.toString(), sets)
+  const { locks, slots, noNewLines } = chooseZones(doc.toString(), sets)
+  const start = (lock) => (lock ? doc.line(lock.line).from : null)
   return {
-    positions: locks.map((lock) => doc.line(lock.line).from),
-    values: locks.filter((lock) => lock.values).map((lock) => doc.line(lock.line).from),
+    positions: locks.map(start),
+    values: locks.filter((lock) => lock.values).map(start),
+    first: start(locks.find((lock) => lock.fence === 'first')),
+    last: start(locks.find((lock) => lock.fence === 'last')),
+    slots: slots.map((slot) => ({
+      from: doc.line(slot.line).from,
+      to: doc.line(slot.line + slot.lines - 1).to,
+      size: slot.size,
+    })),
+    noNewLines,
   }
+}
+
+// A slot's edges through a change: its start stays before text typed there, its end after.
+function mapSlot(slot, changes) {
+  return { from: changes.mapPos(slot.from, -1), to: changes.mapPos(slot.to, 1), size: slot.size }
 }
 
 function mapLineStarts(starts, tr) {
@@ -90,18 +123,23 @@ function isGuardedEdit(tr) {
  */
 export const lockedLinesField = StateField.define({
   create() {
-    return { sets: [], positions: [], values: [] }
+    return { sets: [], positions: [], values: [], first: null, last: null, slots: [] }
   },
   update(value, tr) {
     let next = value
     if (tr.docChanged && value.sets.length > 0) {
       if (isGuardedEdit(tr)) {
         // A guarded edit never breaks a locked line (a values line only changes inside its
-        // values), so each one moves with its line.
+        // values) or a slot's edges, so each one moves with its line.
+        const mapStart = (pos) => (pos == null ? null : mapLineStarts([pos], tr)[0])
         next = {
           sets: value.sets,
           positions: mapLineStarts(value.positions, tr),
           values: mapLineStarts(value.values, tr),
+          first: mapStart(value.first),
+          last: mapStart(value.last),
+          slots: value.slots.map((slot) => mapSlot(slot, tr.changes)),
+          noNewLines: value.noNewLines,
         }
       } else {
         next = { sets: value.sets, ...anchorPositions(tr.state.doc, value.sets) }
@@ -300,6 +338,122 @@ const lockedEditFilter = EditorState.transactionFilter.of((tr) => {
   }
 })
 
+// ─── Edit zones (P6-30) ──────────────────────────────────────────────────────
+
+const newlineCount = (text) => (text.match(/\n/g) ?? []).length
+
+/**
+ * What is wrong with a student's edit (`changes`) against the edit zones of `state`: null when
+ * nothing, else `{ kind, at, size? }` — 'slot' (a slot would have too many lines, or a line would
+ * join onto it), 'last' / 'first' (something added on a fenced side) or 'noNewLines' (lines added
+ * outside the slots). `at` is where its note shows.
+ */
+export function zoneViolation(state, changes) {
+  const field = state.field(lockedLinesField, false)
+  if (!field) return null
+  const oldDoc = state.doc
+  const newDoc = changes.apply(oldDoc)
+  let slotGrowth = 0
+  for (const slot of field.slots) {
+    const from = changes.mapPos(slot.from, -1)
+    const to = changes.mapPos(slot.to, 1)
+    const fromLine = newDoc.lineAt(from)
+    const toLine = newDoc.lineAt(to)
+    const lines = toLine.number - fromLine.number + 1
+    if (fromLine.from !== from || toLine.to !== to || lines > slot.size) {
+      return { kind: 'slot', size: slot.size, at: slot.from }
+    }
+    slotGrowth += lines - (oldDoc.lineAt(slot.to).number - oldDoc.lineAt(slot.from).number + 1)
+  }
+  if (field.last != null) {
+    const oldTail = oldDoc.sliceString(oldDoc.lineAt(field.last).to)
+    const newTail = newDoc.sliceString(newDoc.lineAt(changes.mapPos(field.last, 1)).to)
+    if (newTail.trim() !== '' || newlineCount(newTail) > newlineCount(oldTail)) {
+      return { kind: 'last', at: field.last }
+    }
+  }
+  if (field.first != null) {
+    const oldHead = oldDoc.sliceString(0, field.first)
+    const newHead = newDoc.sliceString(0, newDoc.lineAt(changes.mapPos(field.first, 1)).from)
+    if (newHead.trim() !== '' || newlineCount(newHead) > newlineCount(oldHead)) {
+      return { kind: 'first', at: field.first }
+    }
+  }
+  if (field.noNewLines && newDoc.lines - oldDoc.lines > slotGrowth) {
+    return { kind: 'noNewLines', at: state.selection.main.head }
+  }
+  return null
+}
+
+/**
+ * An edit made wholly on a fenced side, moved to the open side of the fenced line (`violation`
+ * 'last' / 'first'): what was typed or pasted goes on a new line just above a last line (below a
+ * first line), with the line's indentation, and the cursor ends after it. Null when the edit
+ * isn't wholly on that side or deletes anything.
+ */
+function moveFencedEdit(state, changes, violation) {
+  const line = state.doc.lineAt(violation.at)
+  let inserted = ''
+  let wholly = true
+  changes.iterChanges((fromA, toA, _fromB, _toB, text) => {
+    if (fromA !== toA) wholly = false
+    if (violation.kind === 'last' ? fromA < line.to : toA > line.from) wholly = false
+    inserted += text.toString()
+  })
+  if (!wholly) return null
+  const text = inserted.replace(/^\n+/, '').replace(/\n+$/, '')
+  const body = text.trim() === '' ? '' : text
+  const indent = /^\s*/.exec(line.text)[0]
+  if (violation.kind === 'last') {
+    const insert = `${indent}${body}\n`
+    return {
+      changes: { from: line.from, insert },
+      selection: EditorSelection.cursor(line.from + insert.length - 1),
+    }
+  }
+  const insert = `\n${indent}${body}`
+  return {
+    changes: { from: line.to, insert },
+    selection: EditorSelection.cursor(line.to + insert.length),
+  }
+}
+
+function hasZones(field) {
+  return (
+    !!field &&
+    (field.first != null || field.last != null || field.slots.length > 0 || field.noNewLines)
+  )
+}
+
+// The guard for the edit zones: drops a student's edit that breaks them, or moves one made on a
+// fenced side to the open side. Runs after lockedEditFilter, on what that left.
+const zoneEditFilter = EditorState.transactionFilter.of((tr) => {
+  if (!tr.docChanged || !isGuardedEdit(tr)) return tr
+  const state = tr.startState
+  if (!hasZones(state.field(lockedLinesField, false))) return tr
+  const violation = zoneViolation(state, tr.changes)
+  if (!violation) return tr
+  const event = tr.annotation(Transaction.userEvent)
+  const effects = state.readOnly
+    ? []
+    : [showLockedNote.of({ pos: violation.at, kind: violation.kind, size: violation.size })]
+  if (violation.kind === 'last' || violation.kind === 'first') {
+    const moved = moveFencedEdit(state, tr.changes, violation)
+    const changes = moved && state.changes(moved.changes)
+    // The moved edit must itself be allowed (e.g. not a new line under puzzle.noNewLines).
+    if (changes && !zoneViolation(state, changes)) {
+      return {
+        changes,
+        selection: moved.selection,
+        scrollIntoView: true,
+        effects,
+        annotations: event ? [Transaction.userEvent.of(event)] : [],
+      }
+    }
+  }
+  return { effects }
+})
+
 // The arrow keys skip locked lines; a tap or click on one shows the note.
 const lockedSelectionFilter = EditorState.transactionFilter.of((tr) => {
   if (tr.docChanged || !tr.selection || !tr.isUserEvent('select')) return tr
@@ -386,7 +540,8 @@ function valuesLineSelection(state, tr, line, spans) {
 }
 
 // Enter on a locked line: a new line above it (cursor at or before its first character) or
-// below it (anywhere else).
+// below it (anywhere else). A fenced line adds on its open side only: above a last line, below a
+// first one.
 function enterOnLockedLine(view) {
   const { state } = view
   if (state.readOnly) return false
@@ -395,7 +550,11 @@ function enterOnLockedLine(view) {
   const line = lockedLineAt(state, sel.head)
   if (!line) return false
   const indent = /^\s*/.exec(line.text)[0]
-  if (sel.head <= line.from + indent.length && sel.head < line.to) {
+  const field = state.field(lockedLinesField)
+  const above =
+    field.last === line.from ||
+    (field.first !== line.from && sel.head <= line.from + indent.length && sel.head < line.to)
+  if (above) {
     view.dispatch({
       changes: { from: line.from, insert: `${indent}\n` },
       selection: { anchor: line.from + indent.length },
@@ -410,22 +569,38 @@ function enterOnLockedLine(view) {
 
 // ─── Showing the locks ───────────────────────────────────────────────────────
 
+// The tag at the end of a locked line ("🔒 Locked", a fenced line's "🔒 Locked · nothing
+// below"), or of a slot's first line ("✏️ Write one line here").
 class LockedTagWidget extends WidgetType {
-  eq() {
-    return true
+  constructor(label = 'Locked', title = LOCKED_LINE_NOTE, icon = '🔒', className = 'cm-lockedTag') {
+    super()
+    this.label = label
+    this.title = title
+    this.icon = icon
+    this.className = className
+  }
+  eq(other) {
+    return other.label === this.label && other.title === this.title && other.icon === this.icon
   }
   toDOM() {
     const tag = document.createElement('span')
-    tag.className = 'cm-lockedTag'
-    tag.title = LOCKED_LINE_NOTE
+    tag.className = this.className
+    tag.title = this.title
     const icon = document.createElement('span')
     icon.setAttribute('aria-hidden', 'true')
-    icon.textContent = '🔒 '
+    icon.textContent = `${this.icon} `
     tag.appendChild(icon)
-    tag.appendChild(document.createTextNode('Locked'))
+    tag.appendChild(document.createTextNode(this.label))
     return tag
   }
 }
+
+const FENCE_TAGS = {
+  last: new LockedTagWidget('Locked · nothing below', FENCE_LAST_NOTE),
+  first: new LockedTagWidget('Locked · nothing above', FENCE_FIRST_NOTE),
+}
+
+const slotLineDeco = Decoration.line({ class: 'cm-slotLine' })
 
 const lockedLineDeco = Decoration.line({
   class: 'cm-lockedLine',
@@ -492,7 +667,23 @@ const lockedDecorations = EditorView.decorations.compute([lockedLinesField], (st
       continue
     }
     ranges.push(lockedLineDeco.range(line.from))
-    ranges.push(Decoration.widget({ widget: new LockedTagWidget(), side: 1 }).range(line.to))
+    const fence = pos === field.last ? 'last' : pos === field.first ? 'first' : null
+    const widget = fence ? FENCE_TAGS[fence] : new LockedTagWidget()
+    ranges.push(Decoration.widget({ widget, side: 1 }).range(line.to))
+  }
+  for (const slot of field.slots) {
+    const first = state.doc.lineAt(slot.from)
+    const last = state.doc.lineAt(slot.to)
+    for (let n = first.number; n <= last.number; n += 1) {
+      ranges.push(slotLineDeco.range(state.doc.line(n).from))
+    }
+    const tag = new LockedTagWidget(
+      slotTag(slot.size),
+      slotNote(slot.size),
+      '✏️',
+      'cm-lockedTag cm-slotTag'
+    )
+    ranges.push(Decoration.widget({ widget: tag, side: 1 }).range(first.to))
   }
   return Decoration.set(ranges, true)
 })
@@ -510,7 +701,17 @@ const lockedInputMode = EditorView.contentAttributes.compute(
   }
 )
 
-// The note: `{ pos, id }` while it shows.
+// The words of a note (showLockedNote's value: a position, `{ pos, values }`, or an edit zone's
+// `{ pos, kind, size }`).
+function noteWords(raw) {
+  if (raw.kind === 'last') return FENCE_LAST_NOTE
+  if (raw.kind === 'first') return FENCE_FIRST_NOTE
+  if (raw.kind === 'slot') return slotNote(raw.size ?? 1)
+  if (raw.kind === 'noNewLines') return NO_NEW_LINES_NOTE
+  return raw.values ? LOCKED_VALUES_NOTE : LOCKED_LINE_NOTE
+}
+
+// The note: `{ pos, words, id }` while it shows.
 const lockedNoteField = StateField.define({
   create() {
     return null
@@ -519,14 +720,15 @@ const lockedNoteField = StateField.define({
     let next = value && tr.docChanged ? { ...value, pos: tr.changes.mapPos(value.pos) } : value
     for (const effect of tr.effects) {
       if (!effect.is(showLockedNote)) continue
-      // A position, or `{ pos, values }` (a values-locked line: say only its values change).
       const raw = typeof effect.value === 'number' ? { pos: effect.value } : effect.value
       next =
         raw == null
           ? null
           : {
               pos: Math.min(Math.max(raw.pos, 0), tr.state.doc.length),
-              values: !!raw.values,
+              words: noteWords(raw),
+              // A slot isn't locked: its note gets the pencil of its tag.
+              icon: raw.kind === 'slot' ? '✏️' : '🔒',
               id: (value?.id ?? 0) + 1,
             }
     }
@@ -544,7 +746,7 @@ const lockedNoteField = StateField.define({
           dom.className = 'cm-lockedNote'
           // Announced through the live region below, not here.
           dom.setAttribute('aria-hidden', 'true')
-          dom.textContent = `🔒 ${note.values ? LOCKED_VALUES_NOTE : LOCKED_LINE_NOTE}`
+          dom.textContent = `${note.icon} ${note.words}`
           return { dom }
         },
       }
@@ -569,7 +771,7 @@ const lockedNotePlugin = ViewPlugin.fromClass(
       if (!note || note.id === before?.id) return
       this.region.textContent = ''
       // A fresh text node, so the same words are announced again.
-      const words = note.values ? LOCKED_VALUES_NOTE : LOCKED_LINE_NOTE
+      const words = note.words
       setTimeout(() => {
         this.region.textContent = words
       }, 30)
@@ -614,6 +816,18 @@ const lockedTheme = EditorView.baseTheme({
     pointerEvents: 'none',
     whiteSpace: 'nowrap',
   },
+  // A slot: the dashed "you can change this" outline, around the whole line.
+  '.cm-slotLine': {
+    outline: '1.5px dashed #94a3b8',
+    outlineOffset: '-2px',
+    borderRadius: '4px',
+    backgroundColor: 'rgba(250, 204, 21, 0.08)',
+  },
+  '.cm-lockedTag.cm-slotTag': {
+    borderStyle: 'dashed',
+    background: '#fffbeb',
+    color: '#78350f !important',
+  },
   '.cm-tooltip.cm-lockedNote': {
     padding: '4px 10px',
     borderRadius: '6px',
@@ -639,6 +853,7 @@ export function lockedLinesExtension() {
   return [
     lockedLinesField,
     lockedEditFilter,
+    zoneEditFilter,
     lockedSelectionFilter,
     Prec.highest(keymap.of([{ key: 'Enter', run: enterOnLockedLine }])),
     lockedDecorations,

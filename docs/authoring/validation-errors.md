@@ -552,6 +552,7 @@ Python and Turtle tasks; see [python.md](python.md#locked-lines-hidden-setup-and
 | `Task … puzzle has unknown key(s) …; they are ignored` (warning) | `puzzle` has keys other than `onlyEdit`, `maxLines`, `par`. | Remove them (check the spelling). |
 | `Task … puzzle.maxLines must be a whole number of lines, 1 or more` | `maxLines` is text, 0, negative or a fraction. | Use a whole number such as `4`. |
 | `Task … puzzle.par must be a whole number of changes, 0 or more` | `par` is text, negative or a fraction. | Use a whole number such as `1`. |
+| `Task … puzzle.noNewLines must be true or false` | `noNewLines` is text or a number. | Write `noNewLines: true`, or leave it out. |
 | `Task … puzzle.onlyEdit must be a list of starter line numbers, e.g. [2, 3]` | `onlyEdit` isn't a list of whole numbers from 1. | List the lines students may change, e.g. `onlyEdit: [2]`. |
 | `Task … puzzle.onlyEdit line … is past the end of the starter code (… lines, not counting marker lines)` | A line number is bigger than the starter. Marker lines (`#>`, `#@lock`, `#@peek`) don't count. | Count lines in the starter as the student sees it. |
 | `Task … puzzle.onlyEdit is empty, so every starter line is locked` (warning) | `onlyEdit: []` leaves nothing editable (students can still add lines). | List the lines students may change, or remove `onlyEdit`. |
@@ -564,6 +565,9 @@ Python and Turtle tasks; see [python.md](python.md#locked-lines-hidden-setup-and
 | `Task … has a #@lock marker with no line after it; it locks nothing` (warning) | A `#@lock` is the last line (or only blank lines follow). | Put it on the line above the line to lock. |
 | `Task … has a #@lock-values marker with no line after it; it locks nothing` (warning) | A `#@lock-values` is the last line (or only blank lines follow). | Put it on the line above the line to lock. |
 | `Task … has a #@lock-values line … with no string or number to change — it is fully locked` (warning) | The marked line has no plain string or number (f-strings and names don't count). | Use `#@lock`, or mark a line with a value. |
+| `Task … has … #@lock-… markers; only one line can stay …` (warning) | More than one `#@lock-first` (or `#@lock-last`) marker in the starter. | Keep one of each; use `#@lock` for the others. |
+| `Task … has a #@lock-… marker with no line after it; it locks nothing` (warning) | A `#@lock-first` or `#@lock-last` marker is the last line, or only blank lines follow. | Put it on the line above the line to lock. |
+| `Task … complete code has lines … its #@lock-… line ("…"), which students can't add` (warning) | The complete code has code before a `#@lock-first` line or after a `#@lock-last` line, so students couldn't write it. | Move that code to the open side of the fenced line, or use `#@lock`. |
 | `Task … locked line … ("…") is not in the complete code — students can't change or remove a locked line` (warning) | The solution changes or removes a line students can't touch. | Unlock the line, or keep it in the complete code. |
 | `Task … locked line … ("…") is indented differently in the complete code — students can't re-indent a locked line` (warning) | The solution needs the locked line at another indentation. | Lock it at the indentation the solution needs, or unlock it. |
 

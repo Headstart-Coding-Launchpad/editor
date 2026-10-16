@@ -152,6 +152,40 @@ codeStages:
 - The lock follows its line by its shape (the line with its values blanked out), so it survives saving, reloading, a support stage, **Undo** and **Reset**. Checks see the whole program as usual.
 - Validation warns when a `#@lock-values` line has no string or number to change (it is then fully locked), and when one has no line after it.
 
+### Edit zones: one-line slots and lines that stay first or last (`#@slot`, `#@lock-first`, `#@lock-last`, `puzzle.noNewLines`)
+
+For tasks where the student should write or change **one specific line**, or where nothing may go before or after a line.
+
+```yaml
+- title: Give the Robot an Antenna
+  moduleType: python
+  setupCode: |
+    def draw(robot):
+        ...
+  setupNote: draw() is ready-made. It draws whatever parts are in the robot dictionary.
+  puzzle: { noNewLines: true }
+  codeStages:
+    - role: starter
+      code: |
+        #@lock-first
+        from stage import *
+        #@lock
+        robot = {"body": "steelblue", "head": "silver"}
+        #> Add the antenna here
+        #@slot
+
+        #@lock-last
+        draw(robot)
+```
+
+- **`#@lock-last`** locks the next non-blank line like `#@lock`, and **nothing can be added after it**. Typing, Enter or a paste below it puts the new line just **above** it instead, with "This line stays last. Add your code above it." (read out to screen readers). Enter on the line itself also adds above it. Its tag reads 🔒 **Locked · nothing below**. Use it for the line that uses the student's work (`draw(robot)`, `grid(pixels)`).
+- **`#@lock-first`** is the same the other way round: **nothing can be added before it**; new lines go **below** it ("This line stays first. Add your code below it."), tag 🔒 **Locked · nothing above**.
+- At most one of each per task. Validation warns when there are more, when one has no line after it, and when the complete code has lines on a fenced side.
+- **`#@slot`** marks the **next line, blank or not**, as a place the student types **exactly one line**. It has a dashed outline and a ✏️ **Write one line here** tag. Enter there doesn't make a new line, a multi-line paste is refused, and Backspace or Delete can't join another line onto it ("This space takes one line"). It keeps its indentation, so a slot in a loop body stays in the loop. Start it empty with a `#>` hint saying what to write, or give it a line to change. **`#@slot 2`** (up to 5) allows a small block of up to that many lines. Several slots per task are fine.
+- **`puzzle.noNewLines: true`**: students can't add a line anywhere ("No new lines in this task. Change the lines you can edit."); they edit the editable lines and fill the slots. With slots, everything is fixed except the line the student writes. With `onlyEdit`, it is "change one line, add nothing", the Debug task case: `puzzle: { onlyEdit: [4], noNewLines: true }`.
+- These guard the student's own typing only. Reset, a support stage, carried code and a tutor's edit go through as written. Slots and fences follow their lines through saving and reloading, as locks do.
+- Python and Turtle tasks, side-quest starters included. Tutors see the same outline and tags in the student's card view and Go Live.
+
 ### Hidden setup (`setupCode`, `setupNote`)
 
 `setupCode` is Python that runs **first, every Run, in the same program** as the student's code, and is never shown. Use it for data students shouldn't spend lesson time typing.
@@ -187,11 +221,12 @@ codeStages:
     onlyEdit: [2]   # optional: lock every non-blank starter line except these
     maxLines: 4     # optional: at most this many lines of code
     par: 1          # optional: lines changed or added compared with the starter
+    noNewLines: true  # optional: students can't add lines (see Edit zones above)
   check:
     - type: max_lines
 ```
 
-- `onlyEdit` is a shortcut for `#@lock` on every non-blank starter line except the listed ones. Line numbers count the starter as the student sees it (marker lines don't count). Students can still add lines.
+- `onlyEdit` is a shortcut for `#@lock` on every non-blank starter line except the listed ones. Line numbers count the starter as the student sees it (marker lines don't count). Students can still add lines, unless `noNewLines` is on.
 - `maxLines` shows a live "3 / 4 lines" counter above the editor (read out to screen readers; red when over). **Lines of code** are non-blank lines that aren't only a comment; locked lines count, `setupCode` doesn't.
 - The **`max_lines`** check passes when the code has at most `puzzle.maxLines` lines of code (or the check's own `value`). It needs no run, and its default hint is "Can you do it in 4 lines? A loop might help." (set `hint` to change it). Python and Turtle tasks.
 - `par` is **never** pass/fail. After the task passes, the student sees "Solved in 2 changes (par 1)", or "Solved at par ⭐" when matched (the star always comes with words). Changes are lines of code changed, added or removed compared with the task's own starter (blank and comment lines don't count; re-indenting a line changes it).

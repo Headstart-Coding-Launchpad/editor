@@ -181,7 +181,7 @@ keyboard use.
 
 ## Locked lines, hidden setup and puzzles
 
-Turtle tasks take the same `#@lock` markers, `setupCode` / `setupNote` and `puzzle` rules
+Turtle tasks take the same `#@lock` markers (and `#@lock-values`, `#@lock-first`, `#@lock-last`, `#@slot`), `setupCode` / `setupNote` and `puzzle` rules
 (`onlyEdit`, `maxLines`, `par`) with the `max_lines` check as Python: see
 [Python → Locked lines, hidden setup and puzzles](python.md#locked-lines-hidden-setup-and-puzzles).
 

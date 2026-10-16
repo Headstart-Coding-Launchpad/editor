@@ -31,6 +31,13 @@ describe('getTaskPuzzle', () => {
       onlyEdit: [2],
       maxLines: 4,
       par: 0,
+      noNewLines: false,
+    })
+    expect(getTaskPuzzle({ puzzle: { noNewLines: true } })).toEqual({
+      onlyEdit: null,
+      maxLines: null,
+      par: null,
+      noNewLines: true,
     })
     expect(getTaskPuzzle({ puzzle: { maxLines: 0 } })).toBeNull()
     expect(getTaskPuzzle({})).toBeNull()
@@ -198,6 +205,44 @@ describe('validatePuzzle', () => {
     expect(warnings).toContain(
       'Task 1 puzzle.maxLines shows a line counter, but no max_lines check enforces it — add { type: max_lines } to the check'
     )
+  })
+})
+
+describe('edit zones validation (P6-30)', () => {
+  it('passes a robot task whose complete code fills the slot', () => {
+    const { errors, warnings } = validate({
+      puzzle: { noNewLines: true },
+      codeStages: [
+        {
+          role: 'starter',
+          code: '#@lock-first\nfrom stage import *\n#@slot\n\n#@lock-last\ndraw(robot)\n',
+        },
+        { role: 'complete', code: 'from stage import *\nrobot = {}\ndraw(robot)\n' },
+      ],
+    })
+    expect(errors).toEqual([])
+    expect(warnings).toEqual([])
+  })
+
+  it('warns about two fences, a fence with no line, and code on a fenced side', () => {
+    const { warnings } = validate({
+      codeStages: [
+        { role: 'starter', code: '#@lock-last\na()\n#@lock-last\nb()\n#@lock-first' },
+        { role: 'complete', code: 'a()\nb()\nc()\n' },
+      ],
+    })
+    expect(warnings).toEqual(
+      expect.arrayContaining([
+        'Task 1 has 2 #@lock-last markers; only one line can stay last',
+        'Task 1 has a #@lock-first marker with no line after it; it locks nothing',
+        'Task 1 complete code has lines after its #@lock-last line ("a()"), which students can\'t add',
+      ])
+    )
+  })
+
+  it('noNewLines must be true or false', () => {
+    const { errors } = validate({ puzzle: { noNewLines: 'yes' }, starterCode: 'x = 1' })
+    expect(errors).toEqual(['Task 1 puzzle.noNewLines must be true or false'])
   })
 })
 

@@ -8,6 +8,8 @@
 //                     # max_lines check's limit
 //     par: 1          # lines changed or added compared with the starter. Never pass/fail: after
 //                     # a pass the student sees "Solved in 2 changes (par 1)" / "Solved at par ⭐"
+//     noNewLines: true  # students can't add a line anywhere, only edit lines and slots (P6-30;
+//                       # see ../lockedLinesEditor.js)
 //
 // Lines of code (maxLines, linesUsed) are the non-blank lines that aren't only a comment.
 // Locked lines count; a task's hidden setupCode never does (it isn't in the student's code).
@@ -15,6 +17,7 @@ import { parseLineHints } from '../lineHints.js'
 import {
   isLockMarkerLine,
   isLockValuesMarkerLine,
+  lockFenceOfMarkerLine,
   lineValueSpans,
   onlyEditLocks,
   valueSkeleton,
@@ -34,10 +37,10 @@ export const PUZZLE_TASK_FIELD = Object.freeze({
   name: 'puzzle',
   type: 'object',
   description:
-    'Puzzle rules: { onlyEdit: [starter line numbers the student may change; every other non-blank line is locked], maxLines: most lines of code allowed (blank and comment lines do not count; shows a live counter; the max_lines check enforces it), par: lines changed or added compared with the starter (never pass/fail; shown after a pass) }.',
+    'Puzzle rules: { onlyEdit: [starter line numbers the student may change; every other non-blank line is locked], maxLines: most lines of code allowed (blank and comment lines do not count; shows a live counter; the max_lines check enforces it), par: lines changed or added compared with the starter (never pass/fail; shown after a pass), noNewLines: true (students cannot add a line anywhere; they edit the editable lines and #@slot slots only) }.',
 })
 
-const KNOWN_KEYS = new Set(['onlyEdit', 'maxLines', 'par'])
+const KNOWN_KEYS = new Set(['onlyEdit', 'maxLines', 'par', 'noNewLines'])
 
 function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -46,8 +49,8 @@ function isPlainObject(value) {
 const isWholeNumber = (value, min) => Number.isInteger(value) && value >= min
 
 /**
- * The task's puzzle rules, normalised — `{ onlyEdit, maxLines, par }` (each null when unset) —
- * or null when the task has none.
+ * The task's puzzle rules, normalised — `{ onlyEdit, maxLines, par, noNewLines }` (each null,
+ * or false, when unset) — or null when the task has none.
  */
 export function getTaskPuzzle(task) {
   const raw = task?.puzzle
@@ -57,8 +60,9 @@ export function getTaskPuzzle(task) {
     : null
   const maxLines = isWholeNumber(raw.maxLines, 1) ? raw.maxLines : null
   const par = isWholeNumber(raw.par, 0) ? raw.par : null
-  if (onlyEdit == null && maxLines == null && par == null) return null
-  return { onlyEdit, maxLines, par }
+  const noNewLines = raw.noNewLines === true
+  if (onlyEdit == null && maxLines == null && par == null && !noNewLines) return null
+  return { onlyEdit, maxLines, par, noNewLines }
 }
 
 // A line of code: not blank, and not only a comment.
@@ -281,6 +285,9 @@ export function validatePuzzle(task, n, errors, warnings) {
   if (raw.par != null && !isWholeNumber(raw.par, 0)) {
     errors.push(`Task ${n} puzzle.par must be a whole number of changes, 0 or more`)
   }
+  if (raw.noNewLines != null && typeof raw.noNewLines !== 'boolean') {
+    errors.push(`Task ${n} puzzle.noNewLines must be true or false`)
+  }
 
   const starter = puzzleStarterCode(task)
   const starterLines = starter.split('\n')
@@ -332,6 +339,43 @@ export function validatePuzzle(task, n, errors, warnings) {
 }
 
 /**
+ * Warnings for a task's edit zones (P6-30): more than one #@lock-first or #@lock-last, a fence
+ * marker with no line after it, and complete code with lines on a fenced side (students couldn't
+ * write it).
+ */
+function validateEditZones(task, n, rawStarter, parsed, warnings) {
+  const markers = { first: 0, last: 0 }
+  for (const line of rawStarter.split('\n')) {
+    const fence = lockFenceOfMarkerLine(line, 'python')
+    if (fence) markers[fence] += 1
+  }
+  for (const fence of ['first', 'last']) {
+    if (markers[fence] > 1) {
+      warnings.push(
+        `Task ${n} has ${markers[fence]} #@lock-${fence} markers; only one line can stay ${fence}`
+      )
+    }
+    const lock = parsed.locks.find((l) => l.fence === fence)
+    if (markers[fence] > 0 && !lock) {
+      warnings.push(
+        `Task ${n} has a #@lock-${fence} marker with no line after it; it locks nothing`
+      )
+    }
+    const complete = puzzleCompleteCode(task)
+    if (!lock || complete == null) continue
+    const lines = complete.split('\n')
+    const index = lines.findIndex((line) => line.trim() === lock.target)
+    if (index < 0) continue
+    const fenced = fence === 'last' ? lines.slice(index + 1) : lines.slice(0, index)
+    if (fenced.some((line) => line.trim() !== '')) {
+      warnings.push(
+        `Task ${n} complete code has lines ${fence === 'last' ? 'after' : 'before'} its #@lock-${fence} line ("${lock.target}"), which students can't add`
+      )
+    }
+  }
+}
+
+/**
  * Warnings for a Python or Turtle task's locked lines (#@lock markers and puzzle.onlyEdit) that
  * the complete code doesn't keep: a locked line missing from it (students can't remove one), or
  * one at a different indentation (students can't re-indent one).
@@ -340,7 +384,9 @@ export function validateLockedLines(task, n, warnings) {
   const rawStarter = getStarterStage(task)?.stage?.code ?? task?.starterCode
   if (typeof rawStarter !== 'string') return
   const parsed = parseLineHints(rawStarter, 'python')
-  const locks = [...parsed.locks]
+  validateEditZones(task, n, rawStarter, parsed, warnings)
+  // Slots (#@slot) are editable: only the locked lines are checked here.
+  const locks = parsed.locks.filter((lock) => typeof lock.target === 'string')
   const onlyEdit = Array.isArray(task?.puzzle?.onlyEdit) ? task.puzzle.onlyEdit : null
   if (onlyEdit) {
     for (const lock of onlyEditLocks(parsed.code, onlyEdit)) {
