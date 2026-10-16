@@ -19,9 +19,9 @@ modules:
     type: scratch
     sandbox:
       sandboxStarter: null         # optional — Blockly workspace state for this sandbox (an object or a JSON string)
-      sandboxToolbox: "<xml>...</xml>"   # optional — Scratch XML toolbox (Builder only for now)
-      sandboxSprites: []                 # optional — sprite array (Builder only for now)
-      sandboxBackdrops: []               # optional — backdrop array (Builder only for now)
+      sandboxToolbox: "<xml>...</xml>"   # optional — Scratch XML toolbox
+      sandboxSprites: []                 # optional — sprite array
+      sandboxBackdrops: []               # optional — backdrop array
 ```
 
 ---

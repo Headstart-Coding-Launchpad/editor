@@ -12,6 +12,8 @@ import {
 } from '../moduleTaskValidation.js'
 import { evaluateScratchWorkWithoutRun, verifyScratchTask } from './checkVerification.js'
 import { evaluateScratchCheckCase } from './checkCases.js'
+import { SCRATCH_CHECK_CATALOG } from './checks.js'
+import { parseScratchSandboxStarter } from './sandboxStarter.js'
 import {
   identityFromStored,
   identityStored,
@@ -221,6 +223,9 @@ export default defineModule({
   supportsTests: false,
   supportsVariableChecks: false,
   supportsDomChecks: false,
+  // Check types judged inside the workspace rather than the shared registry (checks.js);
+  // `lessons capabilities` lists them, and validateScratchChecks rejects any other type.
+  moduleCheckCatalog: SCRATCH_CHECK_CATALOG,
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: ['scratch'],
@@ -308,15 +313,9 @@ export default defineModule({
     },
     hasComplete: (task) => !!task?.completeBlocks,
     teacherCompleteTab: (task) => task?.completeBlocks != null,
-    sandboxStarter: (lesson, task) => {
-      if (lesson?.sandboxStarter != null) {
-        try {
-          return JSON.parse(lesson.sandboxStarter)
-        } catch {}
-      }
-      return task?.starterBlocks ?? null
-    },
-    // Lesson-level Scratch sandbox starters are stored as a JSON string.
+    sandboxStarter: (lesson, task) =>
+      parseScratchSandboxStarter(lesson?.sandboxStarter) ?? task?.starterBlocks ?? null,
+    // Lesson-level Scratch sandbox starters are stored as a JSON string (an object is read too).
     composedSandboxFields: (firstTask) => {
       const blocks = firstTask?.starterBlocks ?? null
       return { sandboxStarter: blocks == null ? null : JSON.stringify(blocks) }
@@ -341,14 +340,7 @@ export default defineModule({
     stage: (task, stageIndex) => task?.codeStages?.[stageIndex]?.blocks ?? null,
     complete: (task) => task?.completeBlocks ?? null,
     // The personal sandbox is read by the workspace itself; this is the lesson's starter.
-    sandbox: (lesson) => {
-      if (lesson?.sandboxStarter == null) return null
-      try {
-        return JSON.parse(lesson.sandboxStarter)
-      } catch {
-        return null
-      }
-    },
+    sandbox: (lesson) => parseScratchSandboxStarter(lesson?.sandboxStarter),
     fromResetTarget: (target) => target.blocks,
     empty: () => null,
     normalise: (states) => states,

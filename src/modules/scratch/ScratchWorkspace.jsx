@@ -45,6 +45,7 @@ import { FEEDBACK_TIMING, evaluateCheckWithCustomFeedback } from '../checks'
 import {
   evaluateScratchCheckForSprites,
   isScratchRunAttemptedOnly,
+  isScratchRunJudgedCheck,
   partialEvaluateScratchCheckForSprites,
 } from './checkDispatch.js'
 import { useTypeAssets } from '../../shared/useTypeAssets'
@@ -186,7 +187,7 @@ const SPRITE_TYPE_COLOR = {
   ball: '#4C97FF',
   star: '#FFD700',
   arrow: '#9966FF',
-  bat: 'var(--colour-ink-strong)',
+  bat: '#374151',
   parrot: '#22c55e',
 }
 
@@ -383,6 +384,10 @@ export function cloneSpriteStates(states) {
 
 // ── Canvas drawing ────────────────────────────────────────────────────────────
 
+// The built-in bat's body and wings. A literal colour: a canvas can't read CSS variables, so
+// 'var(--colour-ink-strong)' was ignored and the bat took the last fill colour used.
+export const BAT_COLOUR = '#374151'
+
 export function drawScratchSpriteAtOrigin(ctx, type, r) {
   switch (type) {
     case 'ball':
@@ -427,15 +432,15 @@ export function drawScratchSpriteAtOrigin(ctx, type, r) {
     case 'bat':
       ctx.beginPath()
       ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2)
-      ctx.fillStyle = 'var(--colour-ink-strong)'
+      ctx.fillStyle = BAT_COLOUR
       ctx.fill()
       ctx.beginPath()
       ctx.ellipse(-r * 0.9, -r * 0.1, r * 0.55, r * 0.3, -0.3, 0, Math.PI * 2)
-      ctx.fillStyle = 'var(--colour-ink-strong)'
+      ctx.fillStyle = BAT_COLOUR
       ctx.fill()
       ctx.beginPath()
       ctx.ellipse(r * 0.9, -r * 0.1, r * 0.55, r * 0.3, 0.3, 0, Math.PI * 2)
-      ctx.fillStyle = 'var(--colour-ink-strong)'
+      ctx.fillStyle = BAT_COLOUR
       ctx.fill()
       break
     case 'parrot':
@@ -2521,13 +2526,13 @@ export default function ScratchWorkspace({
   }
   evaluateIdleFeedbackRef.current = evaluateIdleFeedback
 
-  // The end-of-run check: the after-run checks against the finished run's signal.
+  // The end-of-run check: every non-manual check against the finished run's signal. Block checks
+  // (after_block_placed ones too) are judged against the current blocks, so a missing block
+  // can't pass just because the run-time checks did.
   function evaluateAfterRunChecks(signal) {
     const sws = filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
-    const afterRunChecks = scratchChecks.filter(
-      (c) => c.evaluation !== 'manual' && c.evaluation !== 'after_block_placed'
-    )
-    const completionPassed = afterRunChecks.every((c) =>
+    const runJudgedChecks = scratchChecks.filter(isScratchRunJudgedCheck)
+    const completionPassed = runJudgedChecks.every((c) =>
       evalSingleCheck(c, sws, signal, preRunSpriteStatesRef.current)
     )
     const evaluation = evaluateCheckWithCustomFeedback(

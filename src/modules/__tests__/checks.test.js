@@ -17,6 +17,7 @@ import {
   substituteTestInputs,
   resolveTestCheck,
   FEEDBACK_TIMING,
+  getCheckDefinition,
 } from '../checks.js'
 
 // ─── normalizeChecks ──────────────────────────────────────────────────────────
@@ -102,6 +103,13 @@ describe('evaluateSingleCheck — multiple contains options ("opt1","opt2" forma
   it('answer_contains fails when answer contains none of the options', () => {
     const check = { type: 'answer_contains', value: '"paris","london"' }
     expect(evaluateSingleCheck(check, '', { answer: 'berlin' })).toBe(false)
+  })
+
+  it('answer_not_equals passes for any other answer (audit #58)', () => {
+    const check = { type: 'answer_not_equals', value: 'Paris' }
+    expect(evaluateSingleCheck(check, '', { answer: 'London' })).toBe(true)
+    expect(evaluateSingleCheck(check, '', { answer: 'paris' })).toBe(false)
+    expect(getCheckDefinition('answer_not_equals')?.type).toBe('answer')
   })
 
   it('multiple options matching is case-insensitive', () => {

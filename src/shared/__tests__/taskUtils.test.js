@@ -2,6 +2,9 @@
 import { describe, it, expect } from 'vitest'
 import { getTeacherLivePin, isTeacherLivePinLogged } from '../taskStages.js'
 import {
+  TASK_MODES,
+  equivalentTaskIds,
+  normalizeTaskIdRef,
   flattenTasks,
   filterTasksByMode,
   getEffectiveTaskMode,
@@ -762,5 +765,29 @@ describe('teacher live-code pins', () => {
     expect(isTeacherLivePinLogged(log, 3000)).toBe(false)
     expect(isTeacherLivePinLogged(undefined, 1000)).toBe(false)
     expect(isTeacherLivePinLogged(log, null)).toBe(false)
+  })
+})
+
+describe('task id references (audit #52)', () => {
+  it('stores an all-digit task id as a number', () => {
+    expect(normalizeTaskIdRef('4')).toBe(4)
+    expect(normalizeTaskIdRef(' 12 ')).toBe(12)
+    expect(normalizeTaskIdRef(4)).toBe(4)
+    expect(normalizeTaskIdRef('intro-1')).toBe('intro-1')
+    expect(normalizeTaskIdRef('')).toBeNull()
+    expect(normalizeTaskIdRef(null)).toBeNull()
+  })
+
+  it('lists the stored forms that mean the same task', () => {
+    expect(equivalentTaskIds(4)).toEqual([4, '4'])
+    expect(equivalentTaskIds('4')).toEqual(['4', 4])
+    expect(equivalentTaskIds('intro')).toEqual(['intro'])
+    expect(equivalentTaskIds(null)).toEqual([])
+  })
+})
+
+describe('TASK_MODES (audit #55)', () => {
+  it('lists the modes filterTasksByMode understands', () => {
+    expect(TASK_MODES).toEqual(['both', 'live', 'solo'])
   })
 })

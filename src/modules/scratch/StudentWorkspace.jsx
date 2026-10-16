@@ -7,6 +7,7 @@ import {
   selectScratchToolboxSnippets,
 } from '../../app/studentTaskContent'
 import { parseScratchState } from '../../shared/workspaceData'
+import { parseScratchSandboxStarter, scratchSandboxTask } from './sandboxStarter.js'
 import { useIsLeavingTaskSlide } from '../../app/components/TaskSlideTransition'
 
 export default function StudentWorkspace({
@@ -36,9 +37,22 @@ export default function StudentWorkspace({
   const isLeavingSlide = useIsLeavingTaskSlide()
   const detached = isViewingPrev || isForcedTeacherLive || isTeacherEditing || isLeavingSlide
   const forcedPane = forcedPaneCommand?.panes?.find((p) => p === 'blocks' || p === 'stage') ?? null
-  const personalSandboxScratchState = cs.inPersonalSandbox
-    ? (loadPersonalSandboxCode(lessonId, identityId)?.state ?? lesson.sandboxStarter ?? null)
-    : null
+  // The student's saved sandbox, else the lesson's sandbox starter (stored as a JSON string by
+  // the Builder, or an object). Memoised: a fresh object every render would make the workspace
+  // reload it on every render.
+  const personalSandboxScratchState = useMemo(
+    () =>
+      cs.inPersonalSandbox
+        ? (loadPersonalSandboxCode(lessonId, identityId)?.state ??
+          parseScratchSandboxStarter(lesson.sandboxStarter))
+        : null,
+    [cs.inPersonalSandbox, lessonId, identityId, lesson.sandboxStarter]
+  )
+  // The lesson's sandbox sprites, toolbox and backdrops (null: default sprite, full toolbox).
+  const personalSandboxTask = useMemo(
+    () => (cs.inPersonalSandbox ? scratchSandboxTask(lesson) : null),
+    [cs.inPersonalSandbox, lesson]
+  )
   // Passed as a thunk: ScratchWorkspace resolves it inside its init effect, after
   // the previous task's workspace has unmounted and flushed its pending save.
   const initialProject = cs.inPersonalSandbox
@@ -126,12 +140,12 @@ export default function StudentWorkspace({
         )}
       <ScratchWorkspace
         key={`scratch-${viewingTaskId ?? currentTaskId}-${isSandbox ? 'sandbox' : cs.inPersonalSandbox ? 'personal-sandbox' : 'task'}-${liveEndEpoch}`}
-        task={cs.inPersonalSandbox ? null : task}
+        task={cs.inPersonalSandbox ? personalSandboxTask : task}
         predefinedBlocks={predefinedBlocks}
         prebuiltStacks={prebuiltStacks}
         respectStudentEditable={!cs.inPersonalSandbox}
         readOnly={isViewingPrev || isForcedTeacherLive || isTeacherEditing}
-        unrestricted={isSandbox || cs.inPersonalSandbox}
+        unrestricted={isSandbox || (cs.inPersonalSandbox && !personalSandboxTask?.toolbox)}
         assetsPath={resolveAssetsPath(lesson.assetsPath) || undefined}
         initialState={initialProject}
         onStateChange={detached ? undefined : cs.handleScratchChange}

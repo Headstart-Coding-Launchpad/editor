@@ -92,6 +92,41 @@ things that never work. Check existing lessons for these first:
   run-time check type, `variable_compare` with `name:`, or a bad `taskMode` now fail validation ·
   Resolves: none
 
+### HSC Audit app fixes: Scratch checks, quiz answers, new validation rules
+
+- **Scratch: a Run judges every check.** In a list mixing `after_block_placed` and `after_run`
+  checks, the block checks are judged against the current blocks when the run is judged, so a
+  missing block can no longer pass. `run_attempted` with block checks needs the blocks as well as
+  the green flag (judged the moment the flag is pressed).
+- **Scratch: a missing `evaluation` means `after_run`** (the Builder now shows that).
+  `after_block_placed` works only on `block_used`, `blocks_in_order` and `block_count`;
+  validation errors on any other type.
+- **Scratch `block_count`** while blocks are placed now supports every operator a run does
+  (`not_equals`, `greater_than_or_equal`, `less_than_or_equal` too), so it agrees with
+  `lessons test-checks`.
+- **Scratch check types are listed and checked.** `lessons capabilities` lists the 11 Scratch
+  check types on the Scratch module (owner `module:scratch`), and a misspelt Scratch check type is
+  a validation error. `variable_compare` written with `name` (it reads `variableName`) is an error.
+- **Scratch sandbox:** `sandboxStarter` may be the state object or a JSON string, and the
+  student's personal sandbox now uses `sandboxSprites`, `sandboxToolbox` and `sandboxBackdrops`.
+- **Quizzes:** a YAML `answer:` written as an option's text (or an id in other capitals) becomes
+  that option's id; a multiple-choice answer that is no option id is an error. `answer_not_equals`
+  now works (it always failed before).
+- **Arcade:** `game.clear`, `game.rect` and `game.text` take `colour=` as well as `color=`.
+  `interactionMode` is not an Arcade field (there is no Submit button); setting it warns.
+- **New rules:** `taskMode` must be `both`, `live` or `solo`; the CLI rejects two tasks with the
+  same id (YAML mixing explicit and omitted ids); an unquoted number `key` on
+  `variable_dict_key_value` is accepted. `lessons capabilities` now says
+  `requireShiftForCapitals` is off when left out.
+- **Feedback CLI:** `--task-id 4` is stored as the number 4, so it shows in the Builder.
+- **Topic links:** `types: [python]` topics now resolve on a composed lesson's information and
+  quiz slides. See [validation-errors.md](validation-errors.md) for every new message.
+- Affects: scratch, arcade, quiz_multiple_choice, quiz_short_answer, keyboard, cli, topics, all
+  (taskMode, task ids) · Existing lessons: fix any new validation error (misspelt Scratch check
+  types, `after_block_placed` on a run-time Scratch check, `variable_compare` with `name`, a quiz
+  answer that is not an option id, a `taskMode` typo, clashing task ids); Scratch tasks that mixed
+  check timings may now need the blocks to be present on Run · Resolves: none
+
 ## 2026-10-15
 
 ### Name-tag panel: predict mode locks Run until every prediction is in (`showVariables.lockRun`)

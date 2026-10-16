@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { validateLessonForMcp } from './validate.mjs'
 import { validateLesson } from '../src/builder/lessonUtils.js'
+import { parseYamlLesson } from './yaml-converter.mjs'
 import {
   ALL_LEGACY_ACTIVITY_TASKS,
   INVALID_LEGACY_ACTIVITY_TASKS,
@@ -605,5 +606,79 @@ describe('input_* checks (Desktop records input)', () => {
       'Task 1 has an input_shortcut check for "ctrl+w", which the browser keeps for itself — students can\'t perform it in a lesson (teach it with a quiz instead)',
     ])
     expect(validateLesson(reserved).errors).toEqual(cli)
+  })
+})
+
+describe('HSC Audit validation rules', () => {
+  const info = (extra) => ({ title: 'Info', taskType: 'information', explainer: 'Hi', ...extra })
+  const lesson = (tasks) => ({
+    id: 'audit-rules',
+    type: 'composed',
+    title: 'Audit rules',
+    description: 'd',
+    tasks,
+  })
+
+  it('rejects a taskMode other than both, live or solo, in both validators (#55)', () => {
+    const typo = lesson([info({ id: 1, taskMode: 'Solo' })])
+    const message = 'Task 1 taskMode must be one of: both, live, solo'
+    expect(validateLessonForMcp(typo).errors).toContain(message)
+    expect(validateLesson(typo).errors).toContain(message)
+    for (const taskMode of ['both', 'live', 'solo', '', null]) {
+      expect(validateLessonForMcp(lesson([info({ id: 1, taskMode })])).errors).not.toContain(
+        message
+      )
+    }
+  })
+
+  it('rejects clashing task ids in the CLI, e.g. YAML mixing explicit and omitted ids (#58)', () => {
+    const lessonWithIds = parseYamlLesson(`
+id: audit-ids
+type: composed
+title: Ids
+description: d
+tasks:
+  - type: information
+    title: First
+    explainer: a
+  - type: information
+    id: 1
+    title: Second
+    explainer: b
+`)
+    expect(validateLessonForMcp(lessonWithIds).errors).toContain(
+      'Task 2 has the same id (1) as task 1 — give every task its own id, or leave out every task id so they are numbered in order'
+    )
+    // The Builder renumbers on export, so it only warns.
+    expect(validateLesson(lessonWithIds).errors.some((e) => e.includes('same id'))).toBe(false)
+  })
+
+  it('maps a YAML answer written as option text to the option id; rejects a non-id answer (#7)', () => {
+    const yamlQuiz = (answer) =>
+      parseYamlLesson(`
+id: audit-quiz
+type: composed
+title: Quiz
+description: d
+tasks:
+  - type: quiz
+    title: Q
+    explainer: Which shows text?
+    options:
+      - id: a
+        text: input()
+      - id: b
+        text: print()
+    answer: ${answer}
+`)
+    expect(yamlQuiz('"print()"').tasks[0].check).toEqual({ type: 'answer_equals', value: 'b' })
+    expect(yamlQuiz('B').tasks[0].check).toEqual({ type: 'answer_equals', value: 'b' })
+    expect(yamlQuiz('a').tasks[0].check).toEqual({ type: 'answer_equals', value: 'a' })
+    const wrong = yamlQuiz('len()')
+    expect(wrong.tasks[0].check.value).toBe('len()')
+    const message =
+      'Task 1 is a quiz but its answer "len()" is not one of the option ids — set answer to the correct option\'s id (e.g. a)'
+    expect(validateLessonForMcp(wrong).errors).toContain(message)
+    expect(validateLesson(wrong).errors).toContain(message)
   })
 })

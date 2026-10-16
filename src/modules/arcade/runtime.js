@@ -398,6 +398,11 @@ class _Camera:
             self.y = self.target.y + self.target.height / 2 - game.height / 2
         js.hsArcadeSetCamera(self.x, self.y)
 
+def _pick_colour(colour, color, default):
+    if colour is not None: return colour
+    if color is not None: return color
+    return default
+
 class _Game:
     def __init__(self):
         self.width, self.height, self._namespace = 160, 120, None
@@ -405,9 +410,10 @@ class _Game:
     def size(self, width, height):
         self.width, self.height = int(width), int(height)
         js.hsArcadeResize(self.width, self.height)
-    def clear(self, color='black'): js.hsArcadeClear(color)
-    def rect(self, x, y, width, height, color='white'): js.hsArcadeRect(x, y, width, height, color)
-    def text(self, text, x, y, color='white', size=8): js.hsArcadeText(text, x, y, color, size)
+    # colour= (UK spelling) and color= both work; a positional colour fills colour.
+    def clear(self, colour=None, color=None): js.hsArcadeClear(_pick_colour(colour, color, 'black'))
+    def rect(self, x, y, width, height, colour=None, color=None): js.hsArcadeRect(x, y, width, height, _pick_colour(colour, color, 'white'))
+    def text(self, text, x, y, colour=None, size=8, color=None): js.hsArcadeText(text, x, y, _pick_colour(colour, color, 'white'), size)
     @property
     def delta(self): return float(js.hsArcadeDelta())
     @property

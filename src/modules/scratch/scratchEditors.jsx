@@ -17,6 +17,7 @@ import {
   predefinedBlockToStack,
 } from './scratch'
 import { normalizeSequenceItem, opcodeSpecOpcodes } from './checks'
+import { getScratchCheckEvaluation, getScratchCheckEvaluationOptions } from './checkDispatch.js'
 
 const SCRATCH_BLOCK_OPTIONS = SCRATCH_TOOLBOX_GROUPS.flatMap((group) => group.blocks)
 const SCRATCH_ALL_BLOCK_TYPES = SCRATCH_BLOCK_OPTIONS.map(([type]) => type)
@@ -911,10 +912,11 @@ function OpcodeAlternativesNote({ spec, onUseSingle }) {
 function describeCheck(check, sprites) {
   const spriteName = check.spriteName ?? sprites[0]?.name ?? 'Sprite 1'
   const propLabel = check.property ?? 'x'
+  const evaluation = getScratchCheckEvaluation(check)
   const evalLabel =
-    check.evaluation === 'after_run'
+    evaluation === 'after_run'
       ? 'After running'
-      : check.evaluation === 'after_block_placed'
+      : evaluation === 'after_block_placed'
         ? 'After block placed'
         : 'When checked manually'
 
@@ -1112,17 +1114,15 @@ function ScratchCheckEditor({
         {type !== 'block_run' && type !== 'run_attempted' && (
           <select
             className="te-select"
-            value={
-              check.evaluation ??
-              (type === 'block_used' || type === 'blocks_in_order' || type === 'block_count'
-                ? 'after_block_placed'
-                : 'after_run')
-            }
+            value={getScratchCheckEvaluation(check)}
             onChange={(e) => onChange({ ...check, evaluation: e.target.value })}
           >
             <option value="manual">manual</option>
             <option value="after_run">after run</option>
-            <option value="after_block_placed">after block placed</option>
+            {(getScratchCheckEvaluationOptions(check).includes('after_block_placed') ||
+              check.evaluation === 'after_block_placed') && (
+              <option value="after_block_placed">after block placed</option>
+            )}
           </select>
         )}
       </div>

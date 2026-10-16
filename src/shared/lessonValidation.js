@@ -25,6 +25,7 @@ import {
   isValidStageRole,
   isValidTaskPriority,
   STAGE_ROLES,
+  TASK_MODES,
   TASK_PRIORITIES,
 } from './taskUtils.js'
 import { isPlainObject } from './textUtils.js'
@@ -326,6 +327,10 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
   }
   if (task.priority != null && !isValidTaskPriority(task.priority)) {
     errors.push(`Task ${n} priority must be one of: ${TASK_PRIORITIES.join(', ')}`)
+  }
+  // Left out (or blank) means both. Any other value hides the task in both modes.
+  if (task.taskMode != null && task.taskMode !== '' && !TASK_MODES.includes(task.taskMode)) {
+    errors.push(`Task ${n} taskMode must be one of: ${TASK_MODES.join(', ')}`)
   }
   if (task.allowSharing != null) {
     if (typeof task.allowSharing !== 'boolean') {

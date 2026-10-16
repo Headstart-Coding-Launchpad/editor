@@ -6,11 +6,14 @@ import TaskSlideTransition from '../../../app/components/TaskSlideTransition'
 
 const mountCount = vi.fn()
 const externalStateSpy = vi.fn()
+const workspacePropsSpy = vi.fn()
 const mockMountBehaviour = { reportPassOnMount: false }
 vi.mock('../ScratchWorkspace', () => ({
   // Empty-deps effect fires once per actual mount (new `key` => new instance),
   // unlike a call in the render body which would also fire on every re-render.
-  default: function MockScratchWorkspace({ initialState, externalState, onCheckResult }) {
+  default: function MockScratchWorkspace(props) {
+    const { initialState, externalState, onCheckResult } = props
+    workspacePropsSpy(props)
     useEffect(() => {
       mountCount()
       // Mirror the real component's contract: initialState is a thunk resolved on mount.
@@ -283,5 +286,40 @@ describe('Scratch StudentWorkspace inside a task slide transition', () => {
       mockMountBehaviour.reportPassOnMount = false
       vi.useRealTimers()
     }
+  })
+})
+
+describe('Scratch personal sandbox starter (audit #28)', () => {
+  const sandboxCs = { ...cs, inPersonalSandbox: true }
+  const starter = { cat: { blocks: { blocks: [] } } }
+  const sandboxSprites = [{ id: 'cat', name: 'Cat', type: 'cat' }]
+
+  function lastProps() {
+    return workspacePropsSpy.mock.calls.at(-1)[0]
+  }
+
+  it('reads the starter from a JSON string or an object', () => {
+    for (const sandboxStarter of [JSON.stringify(starter), starter]) {
+      workspacePropsSpy.mockClear()
+      renderWorkspace({ cs: sandboxCs, lesson: { ...lesson, sandboxStarter } }).unmount()
+      expect(lastProps().externalState).toEqual(starter)
+    }
+  })
+
+  it('gives the sandbox the lesson sandbox sprites, toolbox and backdrops', () => {
+    workspacePropsSpy.mockClear()
+    renderWorkspace({
+      cs: sandboxCs,
+      lesson: { ...lesson, sandboxSprites, sandboxToolbox: '<xml></xml>' },
+    }).unmount()
+    expect(lastProps().task).toMatchObject({ sprites: sandboxSprites, toolbox: '<xml></xml>' })
+    expect(lastProps().unrestricted).toBe(false)
+  })
+
+  it('keeps the default sprite and full toolbox when the lesson sets none', () => {
+    workspacePropsSpy.mockClear()
+    renderWorkspace({ cs: sandboxCs }).unmount()
+    expect(lastProps().task).toBeNull()
+    expect(lastProps().unrestricted).toBe(true)
   })
 })

@@ -28,9 +28,9 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `modules` | No | `{id, type, title?, sandbox?}[]` | Named workspace instances for a composed lesson. Use `moduleId` on code tasks to select one. |
 | `sandboxStarter` | No | string (Scratch: object or JSON string) | Python, Arcade Kit or Turtle sandbox starter code, or the Scratch sandbox's starting workspace state. |
 | `sandboxStarterFiles` | No | file array | HTML sandbox pre-loaded files. |
-| `sandboxToolbox` | No | string | Scratch XML toolbox for sandbox mode. Builder only for now: the student's sandbox gets the full toolbox. |
-| `sandboxSprites` | No | sprite array | Scratch sandbox sprites. Builder only for now: the student's sandbox gets the default sprite. |
-| `sandboxBackdrops` | No | backdrop array | Scratch sandbox backdrops. Builder only for now. |
+| `sandboxToolbox` | No | string | Scratch XML toolbox for the student's personal sandbox. |
+| `sandboxSprites` | No | sprite array | Scratch sprites for the student's personal sandbox. |
+| `sandboxBackdrops` | No | backdrop array | Scratch backdrops for the student's personal sandbox. |
 | `sandboxStarterFs` | No | path map | Filesystem sandbox initial state. |
 | `sandboxStarterDesktop` | No | desktop state object | Desktop sandbox initial desktop (`fs`, `recycleBin`, `windows`). See `desktop.md`. |
 | `sandboxStarterCircuit` | No | circuit object | Electronics sandbox initial breadboard. |

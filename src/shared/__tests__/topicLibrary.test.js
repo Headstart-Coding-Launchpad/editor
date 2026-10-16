@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   expandTopicLinks,
+  filterTopicsForType,
   findAllTopicSuggestions,
   findTopicSuggestion,
   normalizeTopicLibrary,
@@ -92,5 +93,23 @@ describe('topic library utilities', () => {
     expect(result[0]).toEqual(
       expect.objectContaining({ topic: expect.objectContaining({ id: 'selectors' }) })
     )
+  })
+})
+
+describe('filterTopicsForType (audit: composed-lesson topic types)', () => {
+  const library = [
+    { id: 'loops', types: ['python'] },
+    { id: 'tags', types: ['html'] },
+    { id: 'any', types: [] },
+  ]
+  const ids = (list) => list.map((topic) => topic.id)
+
+  it('filters by a module type', () => {
+    expect(ids(filterTopicsForType(library, 'python'))).toEqual(['loops', 'any'])
+  })
+
+  it('keeps every topic for a composed lesson slide or no type', () => {
+    expect(ids(filterTopicsForType(library, 'composed'))).toEqual(['loops', 'tags', 'any'])
+    expect(ids(filterTopicsForType(library, null))).toEqual(['loops', 'tags', 'any'])
   })
 })

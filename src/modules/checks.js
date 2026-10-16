@@ -130,6 +130,7 @@ const CORE_LEGACY_CHECK_ALIASES = {
   answer_contains: { type: 'answer', operator: 'contains' },
   answer_not_contains: { type: 'answer', operator: 'not_contains' },
   answer_equals: { type: 'answer', operator: 'equals' },
+  answer_not_equals: { type: 'answer', operator: 'not_equals' },
   answer_matches_regex: { type: 'answer', operator: 'matches_regex' },
   answer_not_matches_regex: { type: 'answer', operator: 'not_matches_regex' },
 }
