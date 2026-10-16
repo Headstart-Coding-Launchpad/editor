@@ -201,6 +201,64 @@
   box-sizing: border-box;
 }
 
+/* Predict answers (p6-27): a text answer between quote marks, a number field, and answer
+   buttons (True / False, an author's choices, type labels): words on every button, at least
+   44 px, the picked one pressed and marked with ● as well as its colour. */
+.ntp-text-answer {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.ntp-quote {
+  font-family: var(--font-code);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--colour-muted, #4b5563);
+}
+.ntp-input--number {
+  max-width: 10em;
+}
+.ntp-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ntp-choice {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 4px 12px;
+  font-family: var(--font-code);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--colour-ink-strong, #111827);
+  background: #fff;
+  border: 2px solid var(--ui-border-neutral, #d1d5db);
+  border-radius: var(--ui-radius-sm, 6px);
+  cursor: pointer;
+}
+.ntp-choice:hover {
+  border-color: var(--colour-primary);
+}
+.ntp-choice:focus-visible {
+  outline: 3px solid var(--colour-primary);
+  outline-offset: 2px;
+}
+.ntp-choice.is-picked {
+  border-color: var(--colour-primary);
+  background: var(--colour-primary-tint, #f0eafa);
+  color: var(--colour-primary);
+}
+.ntp-type-ask {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: var(--colour-muted, #4b5563);
+}
+.ntp-type--reveal {
+  margin-left: 0;
+  font-size: 0.82rem;
+}
+
 .ntp-target {
   font-size: 0.8rem;
   color: var(--colour-muted, #4b5563);

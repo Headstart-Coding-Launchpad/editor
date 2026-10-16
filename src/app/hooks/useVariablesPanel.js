@@ -10,6 +10,7 @@ import {
   MAX_PREDICTION_LOG_ENTRIES,
   buildPredictionLogEntry,
   evaluatePredictions,
+  evaluateTypePredictions,
 } from '../../shared/variablesPanel/predictions.js'
 
 // Task ids arrive as numbers or strings, so compare them as text.
@@ -45,8 +46,9 @@ export function useVariablesPanel({
   recordVariablePredictions,
 }) {
   const [run, setRun] = useState(null)
-  // { taskId, values: { name: text }, results: { name: bool } | null, ran: bool } (`ran` once a
-  // Run of the task finished: it lifts predict mode's Run lock, getPredictRunLock)
+  // { taskId, values: { name: text }, results: { name: bool } | null, types: { name: type
+  // label }, typeResults: { name: bool } | null, ran: bool } (`types` the predictType picks;
+  // `ran` once a Run of the task finished: it lifts predict mode's Run lock, getPredictRunLock)
   const [predictions, setPredictions] = useState(null)
   const runRef = useRef(null)
   const predictionsRef = useRef(null)
@@ -134,14 +136,35 @@ export function useVariablesPanel({
       const extras = {}
       if (config.mode === 'predict') {
         const current = predictionsRef.current
-        const values = sameTaskId(current?.taskId, taskId) ? { ...current.values } : {}
+        const own = sameTaskId(current?.taskId, taskId) ? current : null
+        const values = own ? { ...own.values } : {}
+        const types = own?.types ? { ...own.types } : {}
         const snapshot = currentSnapshot(next)
         const evaluation = snapshot ? evaluatePredictions(config.predict, values, snapshot) : null
-        setPredictionState({ taskId, values, results: evaluation?.results ?? null, ran: true })
-        extras.variablePredictions = { names: config.predict, values, snapshot }
-        const typedAny = Object.values(values).some((value) => String(value ?? '').trim())
+        const typeEvaluation =
+          snapshot && config.predictType.length > 0
+            ? evaluateTypePredictions(config.predictType, types, snapshot)
+            : null
+        setPredictionState({
+          taskId,
+          values,
+          results: evaluation?.results ?? null,
+          types,
+          typeResults: typeEvaluation?.results ?? null,
+          ran: true,
+        })
+        extras.variablePredictions = {
+          names: config.predict,
+          values,
+          typeNames: config.predictType,
+          types,
+          snapshot,
+        }
+        const typedAny = [...Object.values(values), ...Object.values(types)].some((value) =>
+          String(value ?? '').trim()
+        )
         const key = `${taskId}`
-        const signature = JSON.stringify(values)
+        const signature = JSON.stringify([values, types])
         const logged =
           sessionRef?.current?.students?.[actorRef.current?.anonymousId]?.predictionLog?.[taskId]
         const loggedCount = logged && typeof logged === 'object' ? Object.keys(logged).length : 0
@@ -156,7 +179,7 @@ export function useVariablesPanel({
           writersRef.current.recordVariablePredictions?.(
             actorRef.current.anonymousId,
             taskId,
-            buildPredictionLogEntry(evaluation, Date.now())
+            buildPredictionLogEntry(evaluation, Date.now(), { typeEvaluation })
           )
         }
       }
@@ -188,7 +211,13 @@ export function useVariablesPanel({
         results = { ...results }
         delete results[name]
       }
-      setPredictionState({ taskId, values, results, ran: !!current?.ran })
+      setPredictionState({
+        ...(current ?? {}),
+        taskId,
+        values,
+        results,
+        ran: !!current?.ran,
+      })
       if (isWatched() && !watchedWriteTimerRef.current) {
         watchedWriteTimerRef.current = setTimeout(() => {
           watchedWriteTimerRef.current = null
@@ -197,6 +226,34 @@ export function useVariablesPanel({
       }
     },
     [taskIdRef, setPredictionState, isWatched, sync]
+  )
+
+  // A type picked on a predictType tag (p6-27): one tap, so the tutor sees it at once (a single
+  // write per pick, never per keystroke). Changing a revealed pick hides its tick or cross.
+  const setTypePrediction = useCallback(
+    (name, label) => {
+      const taskId = taskIdRef.current
+      const current = sameTaskId(predictionsRef.current?.taskId, taskId)
+        ? predictionsRef.current
+        : null
+      const types = { ...(current?.types ?? {}), [name]: String(label ?? '') }
+      let typeResults = current?.typeResults ?? null
+      if (typeResults && name in typeResults) {
+        typeResults = { ...typeResults }
+        delete typeResults[name]
+      }
+      setPredictionState({
+        values: {},
+        results: null,
+        ...(current ?? {}),
+        taskId,
+        types,
+        typeResults,
+        ran: !!current?.ran,
+      })
+      sync()
+    },
+    [taskIdRef, setPredictionState, sync]
   )
 
   // A prediction input lost focus: the tutor sees the predictions so far.
@@ -214,6 +271,7 @@ export function useVariablesPanel({
     receiveRun,
     clear,
     setPrediction,
+    setTypePrediction,
     commitPredictions,
   }
 }

@@ -38,6 +38,9 @@ describe('getShowVariables', () => {
       at: 'end',
       hide: [],
       predict: [],
+      answers: {},
+      predictType: [],
+      typeChoices: {},
       target: {},
       visuals: true,
       stageLists: 'size',
@@ -53,6 +56,9 @@ describe('getShowVariables', () => {
       at: 'marker',
       hide: ['x'],
       predict: ['a', 'b'],
+      answers: { a: { answer: null, choices: null }, b: { answer: null, choices: null } },
+      predictType: [],
+      typeChoices: {},
       target: {},
       visuals: true,
       stageLists: 'size',
@@ -80,6 +86,41 @@ describe('getShowVariables', () => {
       stageLists: 'tiles',
     })
     expect(visualOptions(undefined)).toEqual({ visuals: true, stageLists: 'size' })
+  })
+
+  it('reads typed answers, choices and predictType (P6-27)', () => {
+    const config = getShowVariables({
+      showVariables: {
+        mode: 'predict',
+        predict: [
+          { name: 'door_open', answer: 'boolean' },
+          { name: 'coins', answer: 'number' },
+          { name: 'colour', choices: ['red', 'blue', { no: 1 }] },
+          { name: 'odd', answer: 'colour' },
+          'greeting',
+          { name: 'greeting', answer: 'text' },
+        ],
+        predictType: ['typed', { name: 'age', choices: ['number', 'text', 'word'] }],
+      },
+    })
+    expect(config.predict).toEqual(['door_open', 'coins', 'colour', 'odd', 'greeting'])
+    expect(config.answers).toEqual({
+      door_open: { answer: 'boolean', choices: null },
+      coins: { answer: 'number', choices: null },
+      colour: { answer: null, choices: ['red', 'blue'] },
+      odd: { answer: null, choices: null },
+      greeting: { answer: null, choices: null },
+    })
+    expect(config.predictType).toEqual(['typed', 'age'])
+    // The panel's own type labels, in its order; `choices` limits them.
+    expect(config.typeChoices).toEqual({
+      typed: ['text', 'number', 'true/false', 'list'],
+      age: ['text', 'number'],
+    })
+    // Only predict mode keeps them.
+    expect(
+      getShowVariables({ showVariables: { mode: 'view', predictType: ['a'] } }).predictType
+    ).toEqual([])
   })
 })
 
@@ -319,6 +360,29 @@ describe('sync shape', () => {
     expect(readSyncedVariables(synced).run).toBeNull()
   })
 
+  it('carries type predictions and their results only when there are some (P6-27)', () => {
+    const synced = compactVariablesForSync(null, {
+      taskId: 3,
+      values: {},
+      types: { age: 'number' },
+      typeResults: { age: false },
+    })
+    expect(synced).toMatchObject({
+      taskId: 3,
+      typePredictions: { age: 'number' },
+      typeResults: { age: false },
+    })
+    expect(readSyncedVariables(synced).predictions).toEqual({
+      taskId: 3,
+      values: {},
+      results: null,
+      types: { age: 'number' },
+      typeResults: { age: false },
+    })
+    const plain = compactVariablesForSync(null, { taskId: 3, values: { a: '1' } })
+    expect(plain).not.toHaveProperty('typePredictions')
+  })
+
   it('tolerates the realtime database dropping empty arrays', () => {
     const back = readSyncedVariables({ taskId: 1, ran: true, at: 'end' })
     expect(back.run.snapshots).toEqual([])
@@ -347,6 +411,21 @@ describe("predict mode's Run lock (getPredictRunLock, P6-18)", () => {
   it("ignores another task's predictions", () => {
     const other = { taskId: 8, values: { coins: '1', gems: '2' }, ran: true }
     expect(getPredictRunLock(task, other).missing).toEqual(['coins', 'gems'])
+  })
+
+  it('waits for a type picked on every predictType tag too (P6-27)', () => {
+    const typed = {
+      id: 7,
+      showVariables: { mode: 'predict', predict: ['coins'], predictType: ['age'] },
+    }
+    expect(getPredictRunLock(typed, { taskId: 7, values: { coins: '3' } }).missing).toEqual([
+      'age (type)',
+    ])
+    expect(
+      getPredictRunLock(typed, { taskId: 7, values: { coins: '3' }, types: { age: 'number' } })
+    ).toBeNull()
+    const typesOnly = { id: 7, showVariables: { mode: 'predict', predictType: ['age'] } }
+    expect(getPredictRunLock(typesOnly, null).message).toBe(PREDICT_RUN_LOCK_MESSAGE)
   })
 
   it('never locks with lockRun: false, outside predict mode, or with nothing to predict', () => {

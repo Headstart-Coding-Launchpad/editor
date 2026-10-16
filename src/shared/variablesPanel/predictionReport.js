@@ -13,5 +13,5 @@ export { summarizeVariablePredictions }
 export function taskPredictionFields(task, studentNode) {
   const config = getShowVariables(task)
   if (config?.mode !== 'predict') return {}
-  return variablePredictionReportFields(task, studentNode, config.predict)
+  return variablePredictionReportFields(task, studentNode, config.predict, config.predictType)
 }

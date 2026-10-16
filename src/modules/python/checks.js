@@ -7,8 +7,14 @@ import {
   CODE_STRUCTURE_OPERATORS,
   evaluateCodeStructureCheck,
 } from '../../shared/checkHelpers.js'
-import { evaluateVariablesPredictedCheck } from '../../shared/variablesPanel/predictions.js'
-import { validateVariablesPredictedCheck } from '../../shared/variablesPanel/validation.js'
+import {
+  evaluateTypesPredictedCheck,
+  evaluateVariablesPredictedCheck,
+} from '../../shared/variablesPanel/predictions.js'
+import {
+  validateTypesPredictedCheck,
+  validateVariablesPredictedCheck,
+} from '../../shared/variablesPanel/validation.js'
 import {
   STAGE_CHECK_TYPES,
   evaluateStageCheck,
@@ -154,6 +160,23 @@ export const CHECKS = [
       !!moduleDefinition?.taskFields?.some((field) => field.name === 'showVariables'),
     evaluate: evaluateVariablesPredictedCheck,
     validate: validateVariablesPredictedCheck,
+  },
+  // Predict mode's type predictions (showVariables.predictType, p6-27): every listed name's
+  // picked type label is the one the panel showed after Run. Like variables_predicted it reads
+  // `context.variablePredictions`, so it needs a real run. Python and Turtle tasks.
+  {
+    type: 'types_predicted',
+    owner: 'module:python',
+    subject: 'Type predictions',
+    fields: ['names'],
+    timing: 'on_run',
+    requiresRun: true,
+    submitAllowed: false,
+    contextKey: 'variablePredictions',
+    appliesTo: (moduleDefinition) =>
+      !!moduleDefinition?.taskFields?.some((field) => field.name === 'showVariables'),
+    evaluate: evaluateTypesPredictedCheck,
+    validate: validateTypesPredictedCheck,
   },
   // Puzzle rules (task `puzzle`, src/shared/puzzle/puzzle.js): the student's code has at most
   // `value` lines of code (blank and comment lines don't count; `value` defaults to

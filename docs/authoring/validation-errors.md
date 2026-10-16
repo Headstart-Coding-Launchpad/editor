@@ -442,15 +442,24 @@ Python and Turtle tasks; see [python.md](python.md#name-tag-panel-showvariables)
 | `Task … has showVariables stageLists but visuals is false — every tag is plain, so it is ignored` (warning) | With `visuals: false` every tag is plain text, including lists drawn with `grid()`. | Remove `stageLists`, or turn `visuals` back on. |
 | `Task … has showVariables … that is not a list of variable names` | `hide` or `predict` isn't a list. | Write `[score, lives]`. |
 | `Task … has showVariables … with names that are not Python variable names: …` | A `hide` or `predict` entry isn't a Python name (spaces, a leading digit, quotes). | Use the variable names exactly as the code writes them. |
-| `Task … has showVariables mode: predict but no predict list of variable names` | Predict mode needs the tags students fill in. | Add `predict: [score, lives]`. |
+| `Task … has showVariables mode: predict but no predict or predictType list of variable names` | Predict mode needs the tags students fill in. | Add `predict: [score, lives]` (values) or `predictType: [age]` (types). |
+| `Task … has showVariables predict … with answer "…" — use one of: …` | A `predict` entry's `answer` isn't a known kind. | Use `boolean`, `number` or `text`, or leave `answer` out for the free text box. |
+| `Task … has showVariables predict … with choices that are not a list of at least two values (text, numbers, true/false)` | `choices` is empty, has one value, or holds a list or map. | Write two or more plain values, e.g. `choices: [red, blue, green]`. |
+| `Task … has showVariables predict … with both answer and choices — the choices show as buttons, so answer is ignored` (warning) | An entry sets both. | Remove `answer` (or `choices`). |
+| `Task … has showVariables predictType … with choices that are not at least two of: …` | A `predictType` entry's `choices` aren't the panel's type labels. | Use two or more of `text`, `number`, `true/false`, `list`. |
+| `Task … has showVariables predict and predictType both naming … — students predict its value and its type` (warning) | The same variable is in both lists. | Fine if intended; otherwise remove it from one list. |
+| `Task … has showVariables predictType but mode is not predict — it is ignored` (warning) | `predictType` on a view or target task. | Set `mode: predict`, or remove it. |
 | `Task … has showVariables mode: target but no target values (target: { name: value })` | Target mode needs at least one target. | Add `target: { score: 10 }`. |
 | `Task … has showVariables target names that are not Python variable names: …` | A `target` key isn't a Python name. | Use the variable names as the code writes them. |
 | `Task … has showVariables predict but mode is not predict — it is ignored` / `Task … has showVariables target but mode is not target — it is ignored` (warnings) | The list belongs to the other mode. | Set the matching `mode`, or remove the list. |
 | `Task … has showVariables at: marker but no … line in its code — the panel shows the end of the run` (warning) | `at: marker` stops at a `#@peek` line, and the code has none. | Add a `#@peek` line above the line to stop at, or use `at: end`. |
 | `Task … has a variables_predicted check but no showVariables with mode: predict` / `Task … has a variables_predicted check but showVariables mode is not predict` | The check reads the panel's predictions, which only predict mode collects. | Add `showVariables: { mode: predict, predict: [...] }`, or remove the check. |
 | `Task … has a variables_predicted check naming …, which showVariables predict does not list` | The check's `names` include a variable students are never asked to predict, so it can never pass. | Add the name to `predict`, or remove it from `names` (or drop `names` to mean every prediction). |
-| `Task … has a variables_predicted …, but it only works in Python and Turtle tasks` | The check is on another module's task. | Move it to a Python or Turtle task. |
-| `Task … has a variables_predicted … whose names is not a list of variable names` / `Task … has a variables_predicted … with names that are not Python variable names` | `names` is empty, not a list, or holds something that isn't a Python name. | Write `names: [score, lives]`, or remove `names`. |
+| `Task … has a variables_predicted check but no showVariables predict list — use types_predicted for predictType` | The task only predicts types, so there are no value predictions to check. | Use `types_predicted`, or add `predict`. |
+| `Task … has a types_predicted check but no showVariables predictType list (mode: predict)` | `types_predicted` reads the type predictions, which only `predictType` collects. | Add `showVariables: { mode: predict, predictType: [...] }`, or remove the check. |
+| `Task … has a types_predicted check naming …, which showVariables predictType does not list` | The check's `names` include a variable whose type students are never asked for. | Add it to `predictType`, or remove it from `names`. |
+| `Task … has a … …, but it only works in Python and Turtle tasks` (the check type, `variables_predicted` or `types_predicted`, then check or feedback check) | The check is on another module's task. | Move it to a Python or Turtle task. |
+| `Task … has a … … whose names is not a list of variable names` / `Task … has a … … with names that are not Python variable names` (`variables_predicted` or `types_predicted`) | `names` is empty, not a list, or holds something that isn't a Python name. | Write `names: [score, lives]`, or remove `names`. |
 
 ## Live scrubbing (`scrub`)
 

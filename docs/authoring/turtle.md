@@ -88,8 +88,10 @@ the task. They never change the task's code or what `carryCodeFrom` copies. See
 ## Name-tag panel (`showVariables`)
 
 A Turtle task can show students what is in their variables, exactly as a Python task does:
-`showVariables: { mode: view | predict | target, at: end | marker, hide, predict, target, visuals, link }`,
-the `#@peek` marker and the `variables_predicted` check. Lists and dicts get the same visuals as in
+`showVariables: { mode: view | predict | target, at: end | marker, hide, predict, predictType, target, visuals, link }`,
+the `#@peek` marker and the `variables_predicted` and `types_predicted` checks (predict entries may
+say what answer they take: `{ name, answer: boolean | number | text, choices }`; see
+[Answer boxes](python.md#name-tag-panel-showvariables)). Lists and dicts get the same visuals as in
 Python (colour swatches, bars, pictures, cards; `visuals: false` turns them off). The panel sits between the drawing and the
 output. Names imported from `turtle` (`from turtle import forward`) and the turtle module itself
 are never shown, so the panel holds only the student's own variables (a `Turtle()` object they
@@ -422,8 +424,9 @@ Turtle checks and feedback checks:
 - The `type` must be one of the eight turtle types above, a course check
   ([Course mode](#course-mode-course)), a generic `code`
   check (including legacy aliases like `code_contains`), `run_attempted`
-  (completion checks only), or `variables_predicted` (with
-  `showVariables.mode: predict`; see [Name-tag panel](#name-tag-panel-showvariables)).
+  (completion checks only), `variables_predicted` or `types_predicted` (with
+  `showVariables.mode: predict`; see [Name-tag panel](#name-tag-panel-showvariables)), or
+  `max_lines`.
 - A `code` check needs a `value`.
 - `turtle_position` needs both `x` and `y`.
 - `turtle_heading`, `turtle_segment_count`, `turtle_path_length` and

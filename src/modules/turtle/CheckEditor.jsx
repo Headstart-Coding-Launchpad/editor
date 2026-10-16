@@ -6,6 +6,7 @@ import {
   CheckFeedbackControls,
   CheckValueEditor,
   PredictionCheckRow,
+  PREDICTION_CHECK_TYPES,
   MaxLinesCheckRow,
   RunAttemptedFields,
 } from '../../builder/components/task-editor/CheckEditors'
@@ -347,7 +348,7 @@ export default function CheckEditor({
   return (
     <div style={s.wrap}>
       {checks.map((check, index) => {
-        if (check?.type === 'variables_predicted') {
+        if (PREDICTION_CHECK_TYPES.includes(check?.type)) {
           return (
             <PredictionCheckRow
               key={index}

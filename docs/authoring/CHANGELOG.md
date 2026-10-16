@@ -39,6 +39,44 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-16
 
+### Predict mode: answer boxes that fit the value, and predicting the type (p6-27)
+
+A `showVariables.predict` entry can now say what answer its tag takes, and a new `predictType`
+list asks for the **type** of a value instead of the value:
+
+```yaml
+showVariables:
+  mode: predict
+  predict:
+    - name: door_open
+      answer: boolean          # True / False buttons
+    - name: coins
+      answer: number           # number field, numeric keypad on tablets
+    - name: greeting
+      answer: text             # text box between quote marks
+    - name: colour
+      choices: [red, blue]     # one button per choice
+    - lives                    # a plain name: today's free text box, unchanged
+  predictType: [typed, age]    # pick text / number / true/false / list
+check:
+  - type: variables_predicted
+  - type: types_predicted      # new: every predictType was right (names optional)
+```
+
+- `variables_predicted` judges typed and picked answers by the same forgiving rules as before.
+- `predictType` entries may be `{ name, choices: [text, number] }` to limit the type labels.
+- Run's lock (`lockRun`) waits for type picks too. The tutor's 🏷️ chip counts them; the session
+  report's `predictions` lists them after the values, marked `kind: 'type'`.
+- New validation messages: [validation-errors.md](validation-errors.md#name-tag-panel-showvariables).
+  The "no predict list" error now reads "no predict or predictType list".
+- The Builder's "Students predict" box keeps an entry's `answer` / `choices` when you edit the
+  names, and has a "Students predict the type of" box; answer kinds are YAML-only for now.
+- See [python.md](python.md#name-tag-panel-showvariables) (Answer boxes, `types_predicted`).
+
+- Affects: python, turtle · Existing lessons: no changes needed (plain names work as before; give
+  true/false and number tags an `answer` for better boxes) ·
+  Resolves: authoring-requests/2026-10-16-p6-27-predict-mode-typed-answers-and-predicting-the-type.md
+
 ### Authoring docs corrected to match the app (HSC Audit)
 
 The HSC Audit checked every claim in these docs against the app. Some docs told authors to write

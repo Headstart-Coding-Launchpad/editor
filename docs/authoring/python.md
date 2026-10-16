@@ -307,6 +307,34 @@ variable, with its name, a small type label and its value. Off unless a task set
     - type: variables_predicted   # every listed prediction was right
       names: [score, lives]
 
+# Predict with answer boxes that fit the value, and predicting the TYPE (p6-27)
+- id: 15
+  moduleType: python
+  title: Text or Number?
+  showVariables:
+    mode: predict
+    predict:
+      - name: door_open
+        answer: boolean        # True / False buttons
+      - name: coins
+        answer: number         # a number field (numeric keypad on tablets)
+      - name: colour
+        choices: [red, blue, green]   # buttons
+      - greeting               # a plain name: today's free text box
+    predictType: [typed, age]  # pick the kind of value, not the value
+  codeStages:
+    - role: starter
+      code: |
+        typed = "12"      # what the player typed
+        age = int(typed)
+        door_open = not True
+        coins = 3 + 4
+        colour = "blue"
+        greeting = "Hi"
+  check:
+    - type: variables_predicted
+    - type: types_predicted       # every predictType was right
+
 # Target: target tags; each turns green (✓ On target) when the variable matches after Run
 - id: 14
   moduleType: python
@@ -328,12 +356,13 @@ variable, with its name, a small type label and its value. Off unless a task set
 | `mode` | `view` (default): show the variables after Run. `predict`: the student types what each `predict` variable will hold, then Run reveals ✓ / ✗ per tag. `target`: the panel shows each `target` value; a tag turns green with ✓ when the variable matches after Run, and an unmade variable reads "not made yet". |
 | `at` | `end` (default): the values when the program finishes, or when it stops with an error. `marker`: the values the **first time** the program is about to run the line after a `#@peek` line (below). |
 | `hide` | Names never shown (on top of the ones always hidden). |
-| `predict` | Predict mode: the variable names students predict, in order. Required in predict mode. |
+| `predict` | Predict mode: the variables students predict, in order. Each entry is a plain name (today's free text box) or `{ name, answer, choices }`, where `answer` says what the tag takes: `boolean` (**True** / **False** buttons), `number` (a number field: whole numbers and decimals, numeric keypad on touch screens) or `text` (the text box between quote marks, so it reads as text); `choices: [...]` (two or more values: text, numbers, `true`/`false`) shows one button per choice instead. See **Answer boxes** below. Predict mode needs `predict` or `predictType`. |
+| `predictType` | Predict mode: the variables whose **type** students predict, not their value. Each entry is a name or `{ name, choices }`: the student picks one of the panel's own type labels, **text**, **number**, **true/false** and **list**; `choices` (two or more of those labels) limits them, e.g. `choices: [text, number]` before a level has met lists. After Run the real type label shows with ✓ / ✗. A task may predict one variable's value and another's type. Check with `types_predicted`. |
 | `target` | Target mode: `{ name: value }`. Values are YAML: numbers, text, `true`/`false`/`null`, lists and dicts. Required in target mode. The green tags are **display only** — the `variable_*` checks decide completion, so add them. A list or dict target is drawn with the same visual as the real value (e.g. target swatches), so "make your palette look like this" works. |
 | `visuals` | `true` (default): lists and dicts are drawn as what they hold (see **List and dict visuals** below). `false`: today's plain tags for the whole task — use it when the automatic choice would mislead (e.g. `["orange", "lime"]` meant as fruit). |
 | `stageLists` | How a list of rows passed to the [Stage](#stage-drawing-beside-the-console)'s `grid()` in this run shows: `size` (default) — just the tag, type and size, e.g. `pixels: list, 8 × 8, drawn on the Stage`, so the picture doesn't appear twice; `picture` — colour names and hex codes as the small picture as well, to teach "the list *is* the picture" (palette numbers always show as a number table, never a picture); `tiles` — rows of tiles. A flat list drawn with `grid(…, width=…)` always shows as tiles wrapped at that width, whatever `stageLists` says. Ignored with `visuals: false`. |
 | `link` | `true` (default): each tag and its variable in the code are **linked** — see **Linked tags** below. `false`: tags and code are not marked. |
-| `lockRun` | Predict mode only. `true` (default): **Run, Slow-mo and Step stay disabled until every `predict` tag has an answer** (anything non-blank), with "Fill in your predictions first" beside Run in words (a tooltip too, and the button's accessible description). After the student's first Run of the task the lock is gone for good, so they can change the code and run again. The presenter (Go Live, the presentation window) is never locked, a tutor's remote Run still runs, and the personal sandbox isn't locked. `false`: Run works with the tags empty. |
+| `lockRun` | Predict mode only. `true` (default): **Run, Slow-mo and Step stay disabled until every `predict` tag has an answer** (anything non-blank) **and every `predictType` tag has a type picked**, with "Fill in your predictions first" beside Run in words (a tooltip too, and the button's accessible description). After the student's first Run of the task the lock is gone for good, so they can change the code and run again. The presenter (Go Live, the presentation window) is never locked, a tutor's remote Run still runs, and the personal sandbox isn't locked. `false`: Run works with the tags empty. |
 
 **Linked tags** (`link`, on by default). Each tag gets one of six clearly different colours **and** a small number, and every real use of that variable in the editor gets the same: a coloured underline with a soft background, and the number drawn small above the end of the name. So the `small` tag and the `small` on line 3 match by colour and number, never colour alone (colour-blind students, projectors). Predict tags are linked from the moment the task opens; view-mode tags once a run shows them; target tags from the start. Featured tags (predict or target names) come first, then the other variables; at most six tags are linked.
 
@@ -436,19 +465,42 @@ comparison decided by the real value's type:
 Use it only with `mode: predict`; validation rejects it otherwise, and names it lists must be in
 `predict`. It needs a real run, so `lessons test-checks` reports it as needing a run. Each Run in
 predict mode (with changed predictions) is recorded for the session report's `predictions`.
+Picked answers (True / False, a choice) and number-field answers are judged by exactly the same
+rules as typed ones.
+
+**`types_predicted` check** (`names` optional — default: every `predictType` name). Passes when
+every listed type prediction is the type label the panel shows for the real value after Run
+(`"12"` is **text**, `int("12")` is a **number**). Needs `predictType` (validation rejects it
+otherwise, and its `names` must be in `predictType`); needs a real run, like
+`variables_predicted`. Type predictions are recorded in the same `predictions` report field,
+marked `kind: type`.
 
 **Tutor view.** The student card shows a 🏷️ chip ("Predicted 2/3", then "2/3 right"; "1/3 on
-target" in target mode) and, after a Run, small thumbnails of up to two list visuals (swatches, a
-picture or bars). StudentModal shows the student's panel, visuals included, with their predictions
-as they type them. In **Go Live** the presenter's panel, predictions and visuals included, shows on
-every screen.
+target" in target mode; type predictions count in the same chip) and, after a Run, small
+thumbnails of up to two list visuals (swatches, a picture or bars). StudentModal shows the
+student's panel, visuals included, with their predictions as they type or pick them. In **Go
+Live** the presenter's panel, predictions and visuals included, shows on every screen.
 
-**Predict mode** is unchanged for students: predictions are typed as text. After Run, the real
-value shows with its visual next to the ✓ / ✗.
+**Answer boxes** (`predict` entries, p6-27). A plain name keeps the free text box, which takes any
+value. Tell the panel what the answer will be and the box fits it:
+
+- `answer: boolean` — two buttons, **True** and **False** (words, never colour alone), so a typo or
+  `yes` can't be marked wrong for spelling. Screen readers hear "door_open: predict True or False".
+- `answer: number` — a number field: whole numbers and decimals (`-3`, `2.5`), anything else is
+  dropped as it's typed, and tablets show the number keypad.
+- `answer: text` — the text box with quote marks drawn around it, so it reads as text.
+- `choices: [red, blue, green]` — one button per choice, written as the panel writes values (text
+  in quotes: `"red"`; `true` as `True`). A choice `"5"` is text and `5` is a number, so they can
+  sit side by side. With `choices`, `answer` is ignored (a warning).
+
+After Run, the real value shows with its visual next to the ✓ / ✗, whatever the box. A
+`predictType` tag asks "— what type?" with one button per type label; after Run it shows "✓ Right
+— it's number" or "✗ Not quite — it's text".
 
 **Devices.** The panel sits under the output (Python) or between the drawing and the output
 (Turtle). On narrow screens it stacks under the code and stays usable with the on-screen keyboard;
-inputs and buttons are at least 44 px on touch screens. Every tag has a screen-reader text such as
+inputs and buttons are at least 44 px on touch screens (answer buttons — True / False, choices,
+type labels — always). Every tag has a screen-reader text such as
 "score: number 10", and ✓ / ✗ always come with words.
 
 ---
