@@ -64,6 +64,44 @@ describe('PaneFocusDropdown', () => {
     expect(screen.queryByRole('checkbox', { name: 'Breadboard' })).not.toBeInTheDocument()
   })
 
+  it('labels the two steps: choose the part, then highlight or switch', async () => {
+    const user = userEvent.setup()
+    render(<PaneFocusDropdown lessonType="python" onHighlight={vi.fn()} onForce={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: /Focus/ }))
+    expect(screen.getByText('1. Choose the part of their screen')).toBeInTheDocument()
+    expect(screen.getByText('2. Then')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /They stay where they are/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Moves their screen there now/ })).toBeInTheDocument()
+  })
+
+  it('with clearHeader, opens below the whole top bar so it never covers the row beneath', async () => {
+    const user = userEvent.setup()
+    const spy = vi
+      .spyOn(Element.prototype, 'getBoundingClientRect')
+      .mockImplementation(function () {
+        const bottom = this.tagName === 'HEADER' ? 110 : 60
+        return { top: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0, bottom }
+      })
+    try {
+      render(
+        <header>
+          <PaneFocusDropdown
+            lessonType="python"
+            label="Focus Class"
+            clearHeader
+            onHighlight={vi.fn()}
+            onForce={vi.fn()}
+          />
+        </header>
+      )
+      await user.click(screen.getByRole('button', { name: /Focus Class/ }))
+      const panel = screen.getByText('2. Then').closest('.ui-popover')
+      expect(panel.style.top).toBe('calc(100% + 56px)')
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
   it('uses a custom label when provided (e.g. the whole-class "Focus Class" control)', () => {
     render(
       <PaneFocusDropdown

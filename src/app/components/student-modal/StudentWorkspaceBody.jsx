@@ -8,7 +8,7 @@ import { ActivityView } from '../../../activities/ActivityHost.jsx'
 import { getTaskActivity } from '../../../activities/registry.pure.js'
 import { getModuleHostedActivityUi } from '../../../activities/registry.js'
 import { readActivityAnswer, studentStateField } from '../../../activities/state.js'
-import { HIGHLIGHT_EMOJI_OPTIONS } from './constants'
+import { HIGHLIGHT_EMOJI_LABELS, HIGHLIGHT_EMOJI_OPTIONS } from './constants'
 import { readAnswerDraft } from '../../../shared/answerDrafts'
 import { getMirrorLineHintSets, getMirrorLockSets } from './mirrorLineHints'
 import { getInspectorConfig } from '../../../modules/html/inspector/config'
@@ -130,7 +130,10 @@ export default function StudentWorkspaceBody({
 
   const highlightComposer = canHighlight && (
     <div style={s.highlightComposer}>
-      <div style={s.highlightEmojiRow}>
+      <div style={s.highlightEmojiRow} role="group" aria-label="Highlight mark">
+        <span style={s.highlightEmojiLabel} aria-hidden="true">
+          Mark:
+        </span>
         {HIGHLIGHT_EMOJI_OPTIONS.map((emoji) => (
           <button
             key={emoji}
@@ -139,6 +142,9 @@ export default function StudentWorkspaceBody({
               ...s.highlightEmojiBtn,
               ...(emoji === highlightEmoji ? s.highlightEmojiBtnActive : {}),
             }}
+            aria-pressed={emoji === highlightEmoji}
+            aria-label={HIGHLIGHT_EMOJI_LABELS[emoji] ?? emoji}
+            title={HIGHLIGHT_EMOJI_LABELS[emoji] ?? emoji}
             onClick={() => onHighlightEmojiChange(emoji)}
           >
             {emoji}
@@ -587,7 +593,15 @@ const s = {
   },
   highlightEmojiRow: {
     display: 'flex',
+    alignItems: 'center',
     gap: 2,
+  },
+  highlightEmojiLabel: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    color: '#1e40af',
+    marginRight: 4,
   },
   highlightEmojiBtn: {
     border: '1px solid transparent',

@@ -89,7 +89,7 @@ export default function ControlHighlightDropdown({
 }) {
   if (!hasControlHighlightTargets(lessonType)) return null
   return (
-    <DropdownMenu label={label} buttonClassName="btn-ghost" buttonStyle={buttonStyle}>
+    <DropdownMenu label={label} buttonClassName="btn-ghost" buttonStyle={buttonStyle} clearHeader>
       {(close) => (
         <ControlHighlightControls
           lessonType={lessonType}

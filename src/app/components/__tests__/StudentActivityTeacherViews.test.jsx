@@ -222,7 +222,9 @@ describe('Go Live restriction', () => {
     )
     const header = screen.getByRole('dialog')
     fireEvent.click(within(header).getByRole('button', { name: /^More/ }))
-    fireEvent.click(within(header).getByRole('button', { name: '📡 Go Live for All' }))
+    fireEvent.click(
+      within(header).getByRole('button', { name: '📡 Go Live for All: takes over every screen' })
+    )
     expect(onGoLiveForAll).toHaveBeenCalled()
   })
 
@@ -235,7 +237,9 @@ describe('Go Live restriction', () => {
     )
     const header = screen.getByRole('dialog')
     fireEvent.click(within(header).getByRole('button', { name: /^More/ }))
-    fireEvent.click(within(header).getByRole('button', { name: '📺 Show to class (keep coding)' }))
+    fireEvent.click(
+      within(header).getByRole('button', { name: '📺 Show to class: they keep coding' })
+    )
     expect(onGoLiveForAll).toHaveBeenCalledWith('panel')
   })
 })

@@ -812,6 +812,7 @@ export default function TeacherView({ lessonId }) {
             {session && !isInformationTask && (isInSandbox || !isHostedActivityTask(task)) && (
               <PaneFocusDropdown
                 label="Focus Class"
+                clearHeader
                 lessonType={editorLesson?.type}
                 onHighlight={(panes) => pushClassPaneCommand({ mode: 'highlight', panes })}
                 onForce={(panes) => pushClassPaneCommand({ mode: 'force', panes })}

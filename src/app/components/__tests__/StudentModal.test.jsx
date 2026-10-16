@@ -299,6 +299,19 @@ describe('StudentModal', () => {
     expect(screen.getByText('Jamie')).toBeInTheDocument()
   })
 
+  it('names each highlight mark (✅ ❌ ❓ 💡 ⭐) for the tutor', () => {
+    render(<StudentModal {...mkProps({ isLive: true })} />)
+    expect(screen.getByRole('button', { name: 'Mark as right' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+    expect(screen.getByRole('button', { name: 'Mark as a mistake' })).toHaveAttribute(
+      'title',
+      'Mark as a mistake'
+    )
+    expect(screen.getByRole('button', { name: 'Mark as great work' })).toBeInTheDocument()
+  })
+
   it('renders the presence badge', () => {
     render(<StudentModal {...mkProps()} />)
     expect(screen.getByText('Online')).toBeInTheDocument()
@@ -1069,8 +1082,38 @@ describe('StudentModal header', () => {
     expect(onNudge).toHaveBeenCalledWith('student-1')
     expect(screen.getByText('✓ Nudged')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /^More/ }))
-    await user.click(screen.getByRole('button', { name: '📡 Go Live for All' }))
+    await user.click(
+      screen.getByRole('button', { name: '📡 Go Live for All: takes over every screen' })
+    )
     expect(onGoLiveForAll).toHaveBeenCalled()
+  })
+
+  it('groups More under headings and says what each way of showing the class does', async () => {
+    const user = userEvent.setup()
+    render(
+      <StudentModal
+        {...mkProps({
+          onNudge: vi.fn(),
+          onGoLiveForAll: vi.fn(),
+          onDecideBadge: vi.fn(),
+          onRequestShareSnapshot: vi.fn(),
+          onSendMessage: vi.fn(),
+        })}
+      />
+    )
+    await user.click(screen.getByRole('button', { name: /^More/ }))
+    expect(screen.getByText('Encourage')).toBeInTheDocument()
+    expect(screen.getByText('Show the class')).toBeInTheDocument()
+    expect(screen.getByText('Help this student')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '📡 Go Live for All: takes over every screen' })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '📺 Show to class: they keep coding' })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '📤 Share a copy with the class' })
+    ).toBeInTheDocument()
   })
 
   it('sends a 👍 from the header and confirms it', async () => {

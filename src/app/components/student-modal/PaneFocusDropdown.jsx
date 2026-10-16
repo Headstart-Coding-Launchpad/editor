@@ -31,10 +31,12 @@ export function PaneFocusControls({ lessonType, onHighlight, onForce, onDone }) 
     })
   }
 
+  // Two numbered steps, so it's clear the tick-boxes choose what the buttons act on (HSC Audit,
+  // Visual Review 17).
   return (
     <>
-      <span style={s.heading}>Show on student screen:</span>
-      <div style={s.optionsList}>
+      <span style={s.heading}>1. Choose the part of their screen</span>
+      <div style={s.optionsList} role="group" aria-label="Parts of the student screen">
         {options.map((opt) => (
           <label key={opt.id} style={s.optionRow}>
             <input type="checkbox" checked={checked.has(opt.id)} onChange={() => toggle(opt.id)} />
@@ -42,6 +44,7 @@ export function PaneFocusControls({ lessonType, onHighlight, onForce, onDone }) 
           </label>
         ))}
       </div>
+      <span style={s.heading}>2. Then</span>
       <button
         type="button"
         style={s.actionBtn}
@@ -53,6 +56,7 @@ export function PaneFocusControls({ lessonType, onHighlight, onForce, onDone }) 
         title="Draws a pulsing glow on these tabs without changing what the student is looking at"
       >
         ✨ Highlight
+        <span style={s.actionHint}>Makes it glow. They stay where they are.</span>
       </button>
       <button
         type="button"
@@ -70,6 +74,9 @@ export function PaneFocusControls({ lessonType, onHighlight, onForce, onDone }) 
         title="Immediately switches the student to these tabs — they're free to navigate away again after"
       >
         👉 Switch to this
+        <span style={{ ...s.actionHint, color: 'rgba(255,255,255,0.85)' }}>
+          Moves their screen there now.
+        </span>
       </button>
     </>
   )
@@ -83,9 +90,16 @@ export default function PaneFocusDropdown({
   onForce,
   label = 'Focus',
   buttonStyle,
+  clearHeader = false,
 }) {
   return (
-    <DropdownMenu label={label} buttonClassName="btn-ghost" buttonStyle={buttonStyle}>
+    <DropdownMenu
+      label={label}
+      buttonClassName="btn-ghost"
+      buttonStyle={buttonStyle}
+      clearHeader={clearHeader}
+      panelStyle={s.panel}
+    >
       {(close) => (
         <PaneFocusControls
           lessonType={lessonType}
@@ -99,11 +113,19 @@ export default function PaneFocusDropdown({
 }
 
 const s = {
+  panel: { minWidth: 230 },
   heading: {
     fontFamily: 'var(--font-body)',
+    fontSize: 12,
+    fontWeight: 700,
+    color: '#4b5563',
+  },
+  actionHint: {
+    display: 'block',
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 500,
     color: '#6b7280',
+    marginTop: 2,
   },
   optionsList: {
     display: 'flex',
