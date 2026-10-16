@@ -5,6 +5,8 @@
 // - HTML: text and attribute values. `<!-- -->` comments never count, nor CSS `/* */` and JS
 //   `//` / `/* */` comments inside <style> and <script> (or in a .css / .js file of the project).
 // Typed, pasted or picked from the emoji picker all look the same here.
+// Emoji the task already gave the student (its code stages, copyCode, a tutor's sandbox code)
+// don't count (Ryan, 2026-10-16): only ones the student added (codeHasNewEmoji).
 
 // Extended_Pictographic is the emoji set without the plain characters the Emoji property also
 // covers (digits, #, *). Flags are pairs of regional indicators, and a keycap (1️⃣) is a digit
@@ -16,11 +18,17 @@ const NOT_EMOJI = new Set(['©', '®', '™'])
 
 /** Whether `text` contains an emoji (see EMOJI_PATTERN; © ® ™ don't count). */
 export function containsEmoji(text) {
-  if (typeof text !== 'string' || !text) return false
+  return emojiCountsIn(text).size > 0
+}
+
+/** How many of each emoji `text` contains (a Map of emoji → count). */
+function emojiCountsIn(text, counts = new Map()) {
+  if (typeof text !== 'string' || !text) return counts
   for (const match of text.matchAll(EMOJI_PATTERN)) {
-    if (!NOT_EMOJI.has(match[0])) return true
+    if (NOT_EMOJI.has(match[0])) continue
+    counts.set(match[0], (counts.get(match[0]) ?? 0) + 1)
   }
-  return false
+  return counts
 }
 
 /**
@@ -151,14 +159,62 @@ function filesOf(work) {
  * any other language (or none) is never scanned.
  */
 export function codeHasEmoji(work, language) {
-  if (!canDetectEmojiIn(language) || work == null) return false
+  return emojiCounts(work, language).size > 0
+}
+
+/** How many of each emoji the program would show (codeHasEmoji's reading), as a Map. */
+export function emojiCounts(work, language) {
+  const counts = new Map()
+  if (!canDetectEmojiIn(language) || work == null) return counts
   const asLanguage = LANGUAGE_TEXT[language]
-  if (typeof work === 'string') return containsEmoji(asLanguage(work))
-  if (typeof work !== 'object') return false
-  return filesOf(work).some(({ name, content }) => {
-    if (typeof content !== 'string' || !content) return false
+  if (typeof work === 'string') return emojiCountsIn(asLanguage(work), counts)
+  if (typeof work !== 'object') return counts
+  for (const { name, content } of filesOf(work)) {
+    if (typeof content !== 'string' || !content) continue
     const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : ''
     const textOf = Object.hasOwn(FILE_TEXT, ext) ? FILE_TEXT[ext] : asLanguage
-    return containsEmoji(textOf(content))
-  })
+    emojiCountsIn(textOf(content), counts)
+  }
+  return counts
+}
+
+/**
+ * Whether the work has an emoji the student added: one emoji more of some kind than any of the
+ * `given` works (the code the task gave them, givenCodeOf) has. Running given code unchanged
+ * doesn't count; adding another 🐍 to a starter that has one does.
+ */
+export function codeHasNewEmoji(work, language, given = []) {
+  const counts = emojiCounts(work, language)
+  if (counts.size === 0) return false
+  const givenMax = new Map()
+  for (const item of given) {
+    for (const [emoji, n] of emojiCounts(item, language)) {
+      givenMax.set(emoji, Math.max(givenMax.get(emoji) ?? 0, n))
+    }
+  }
+  for (const [emoji, n] of counts) {
+    if (n > (givenMax.get(emoji) ?? 0)) return true
+  }
+  return false
+}
+
+/**
+ * The code a task gives the student, as works for codeHasNewEmoji: every code stage (starter,
+ * support, complete; `code` or `files`), the legacy starterCode / starterFiles, the copyCode, and
+ * `extra` (e.g. the tutor's sandbox code).
+ */
+export function givenCodeOf(task, extra = []) {
+  const given = []
+  const add = (work) => {
+    if (typeof work === 'string' ? work : Array.isArray(work) && work.length) given.push(work)
+  }
+  for (const stage of Array.isArray(task?.codeStages) ? task.codeStages : []) {
+    add(stage?.code)
+    add(stage?.files)
+  }
+  add(task?.starterCode)
+  add(task?.starterFiles)
+  add(task?.copyCode)
+  for (const work of extra) add(work)
+  return given
 }

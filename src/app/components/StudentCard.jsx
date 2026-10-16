@@ -50,6 +50,8 @@ const VISIBLE_PANE_LABELS = {
   instructions: 'Info',
   blocks: 'Blocks',
   stage: 'Stage',
+  // Turtle's drawing.
+  canvas: 'Stage',
   breadboard: 'Breadboard',
   code: 'Code',
   console: 'Console',

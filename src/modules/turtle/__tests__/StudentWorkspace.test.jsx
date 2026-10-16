@@ -222,6 +222,22 @@ describe('Turtle StudentWorkspace result tabs on smaller screens (P6-12)', () =>
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code', 'console'])
   })
 
+  it('side by side, reports the Stage and the Console once it is open (Can see)', () => {
+    layoutState.layout = 'side'
+    const onVisiblePanesChange = vi.fn()
+    render(
+      <StudentWorkspace
+        task={{ id: 1 }}
+        cs={makeCs()}
+        isMobile={false}
+        onVisiblePanesChange={onVisiblePanesChange}
+      />
+    )
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code', 'canvas'])
+    fireEvent.click(screen.getByRole('button', { name: 'Show Output' }))
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code', 'canvas', 'console'])
+  })
+
   it('opens predict mode on the Tags tab', () => {
     layoutState.layout = 'tabs'
     render(

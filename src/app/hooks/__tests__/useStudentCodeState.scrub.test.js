@@ -220,3 +220,48 @@ describe('run on open (P6-23)', () => {
     expect(run).not.toHaveBeenCalled()
   })
 })
+
+describe('typed edits redraw (Ryan, 2026-10-16)', () => {
+  it('re-runs the latest code once the typing pauses', async () => {
+    const run = mockModuleRun('python', (callbacks) => {
+      callbacks.onOutput('drawn\n', 'stdout')
+      return { status: 'success' }
+    })
+    const h = renderStudentCodeState({ lesson: scrubLesson(DRAW), currentTaskId: 't1' })
+    actSync(() => h.result.current.handleCodeChange(DRAW.replace('navy', 'red')))
+    actSync(() => h.result.current.handleCodeChange(DRAW.replace('navy', 'blue')))
+    await wait(200)
+    expect(run).not.toHaveBeenCalled()
+    await wait(500)
+    await act(async () => {})
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(run.mock.calls[0][0]).toContain('"blue"')
+    expect(h.result.current.output).toContain('drawn')
+    expect(h.writers.logAttempt).not.toHaveBeenCalled()
+  })
+
+  it('keeps the last picture when the half-typed code errors', async () => {
+    const run = mockModuleRun('python', (callbacks) => {
+      callbacks.onOutput('SyntaxError\n', 'stderr')
+      return { status: 'error' }
+    })
+    const h = renderStudentCodeState({ lesson: scrubLesson(DRAW), currentTaskId: 't1' })
+    const before = h.result.current.output
+    actSync(() => h.result.current.handleCodeChange('from stage import *\ntext("hi", "na'))
+    await wait(700)
+    await act(async () => {})
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(h.result.current.output).toEqual(before)
+  })
+
+  it('does nothing on a task without scrub, runOnOpen or values locks', async () => {
+    const run = mockModuleRun('python', () => ({ status: 'success' }))
+    const h = renderStudentCodeState({
+      lesson: scrubLesson(DRAW, { enabled: false }),
+      currentTaskId: 't1',
+    })
+    actSync(() => h.result.current.handleCodeChange(DRAW.replace('navy', 'red')))
+    await wait(700)
+    expect(run).not.toHaveBeenCalled()
+  })
+})

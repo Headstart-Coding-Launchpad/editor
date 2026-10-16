@@ -39,6 +39,21 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-16
 
+### Typing a value redraws; two result panes stay side by side longer; Emoji Artist counts new emoji only
+
+- **Typing redraws like scrubbing.** On a Python or Turtle task with `scrub`, `runOnOpen` or a
+  `#@lock-values` line, the Stage or drawing re-runs as a preview half a second after the student
+  stops typing, as a scrub does: no attempt, no checks, nothing saved beyond the edit. Half-typed
+  code that errors leaves the last picture in place. See
+  [python.md](python.md#live-scrubbing-scrub).
+- **Picture + Console stay side by side** down to a 400 px wide, 420 px tall result side, so a
+  task without name tags no longer turns into tabs on a 1366 × 768 Chromebook. Three panes
+  (with Tags) tab as before. See [python.md](python.md#screen-layout-layout).
+- **🤩 Emoji Artist** only counts emoji the student added. Emoji already in the task's code
+  stages, `copyCode` or the tutor's sandbox code don't count, so a starter with emoji no longer
+  awards it on the first Run. See [badges.md](badges.md).
+- Affects: python, turtle, html, badges · Existing lessons: no changes needed · Resolves: none
+
 ### Authoring docs corrected to match the app (HSC Audit)
 
 The HSC Audit checked every claim in these docs against the app. Some docs told authors to write

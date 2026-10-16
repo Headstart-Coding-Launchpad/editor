@@ -41,6 +41,13 @@ describe('chooseWorkspaceLayout', () => {
     expect(chooseWorkspaceLayout({ width: 740, height: 600, paneCount: 2, split: 50 })).toBe('tabs')
   })
 
+  it('keeps the picture and the console side by side on a 1366 × 768 Chromebook', () => {
+    expect(chooseWorkspaceLayout({ width: 980, height: 550, paneCount: 2, split: 58 })).toBe('side')
+    expect(chooseWorkspaceLayout({ width: 980, height: 550, paneCount: 2, split: 50 })).toBe('side')
+    // Too short even for two.
+    expect(chooseWorkspaceLayout({ width: 980, height: 400, paneCount: 2, split: 50 })).toBe('tabs')
+  })
+
   it('keeps a wide desktop (1920 × 1080) side by side', () => {
     expect(chooseWorkspaceLayout({ width: 1400, height: 820, paneCount: 3, split: 58 })).toBe(
       'side'

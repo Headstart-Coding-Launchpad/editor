@@ -21,6 +21,11 @@ export const RESULT_PANE_LABELS = Object.freeze({
 // once. Below either, the panes become tabs.
 export const SIDE_BY_SIDE_MIN_RESULT_WIDTH = 520
 export const SIDE_BY_SIDE_MIN_HEIGHT = 600
+// Two panes (the picture and the console, no name tags) fit in far less room, so they stay side
+// by side on a 1366 × 768 Chromebook and only tab on tablets (Ryan, 2026-10-16: "it shouldn't
+// collapse that quickly").
+export const TWO_PANE_MIN_RESULT_WIDTH = 400
+export const TWO_PANE_MIN_HEIGHT = 420
 // A workspace this much taller than wide is portrait: the editor goes above the result pane.
 export const PORTRAIT_RATIO = 1.1
 
@@ -47,7 +52,10 @@ export function chooseWorkspaceLayout({
   if (height > width * PORTRAIT_RATIO) return 'below'
   if (paneCount <= 1) return 'side'
   const resultWidth = width * (1 - split / 100)
-  if (resultWidth < SIDE_BY_SIDE_MIN_RESULT_WIDTH || height < SIDE_BY_SIDE_MIN_HEIGHT) {
+  const twoPanes = paneCount === 2
+  const minWidth = twoPanes ? TWO_PANE_MIN_RESULT_WIDTH : SIDE_BY_SIDE_MIN_RESULT_WIDTH
+  const minHeight = twoPanes ? TWO_PANE_MIN_HEIGHT : SIDE_BY_SIDE_MIN_HEIGHT
+  if (resultWidth < minWidth || height < minHeight) {
     return 'tabs'
   }
   return 'side'

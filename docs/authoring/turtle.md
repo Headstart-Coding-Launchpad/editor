@@ -205,7 +205,8 @@ for the checks, and Go Live carries the presenter's playback.
 As in [Python](python.md#screen-layout-layout): on a wide desktop the picture, the name tags and
 the output sit beside the editor. On tablets, 1366 × 768 Chromebooks and small laptops the editor
 has **one result pane** beside it with tabs **Picture · Tags · Console** (Tags only with
-`showVariables`), and on portrait screens and phones the editor sits above the tabs.
+`showVariables`), and on portrait screens and phones the editor sits above the tabs. Without
+Tags (just the Picture and the Console) it stays side by side on a 1366 × 768 Chromebook.
 
 - The pane opens on the **Picture** (on **Tags** in predict / target mode, so the empty tags show
   while the student types).

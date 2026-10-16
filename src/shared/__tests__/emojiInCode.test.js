@@ -3,7 +3,9 @@ import { describe, it, expect } from 'vitest'
 import {
   canDetectEmojiIn,
   codeHasEmoji,
+  codeHasNewEmoji,
   containsEmoji,
+  givenCodeOf,
   htmlContentText,
   pythonStringText,
   stripCLikeComments,
@@ -108,5 +110,37 @@ describe('codeHasEmoji', () => {
     expect(codeHasEmoji('😀', null)).toBe(false)
     expect(codeHasEmoji('😀', 'toString')).toBe(false)
     expect(codeHasEmoji(null, 'python')).toBe(false)
+  })
+})
+
+describe('codeHasNewEmoji (only emoji the student added count)', () => {
+  const starter = 'print("Hello 🐍")'
+  it('running the given code unchanged does not count', () => {
+    expect(codeHasNewEmoji(starter, 'python', [starter])).toBe(false)
+    expect(codeHasNewEmoji('print("Bye 🐍")', 'python', [starter])).toBe(false)
+  })
+  it('a new emoji, or one more of a given one, counts', () => {
+    expect(codeHasNewEmoji('print("Hello 🐍 🚀")', 'python', [starter])).toBe(true)
+    expect(codeHasNewEmoji('print("Hello 🐍🐍")', 'python', [starter])).toBe(true)
+    expect(codeHasNewEmoji(starter, 'python', [])).toBe(true)
+  })
+  it('reads the task: every code stage, legacy starters and copyCode', () => {
+    const task = {
+      codeStages: [
+        { role: 'starter', code: 'print("hi")' },
+        { role: 'complete', code: 'print("hi 🎉")' },
+      ],
+      copyCode: 'print("🚀")',
+    }
+    const given = givenCodeOf(task, [null, 'print("🌟")'])
+    expect(given).toHaveLength(4)
+    expect(codeHasNewEmoji('print("hi 🎉 🚀 🌟")', 'python', given)).toBe(false)
+    expect(codeHasNewEmoji('print("hi 😀")', 'python', given)).toBe(true)
+    const html = {
+      codeStages: [{ role: 'starter', files: [{ name: 'index.html', content: '<p>⭐</p>' }] }],
+    }
+    expect(
+      codeHasNewEmoji([{ name: 'index.html', content: '<p>⭐</p>' }], 'html', givenCodeOf(html))
+    ).toBe(false)
   })
 })
