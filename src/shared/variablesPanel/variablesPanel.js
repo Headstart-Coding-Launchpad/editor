@@ -28,7 +28,7 @@ export const SHOW_VARIABLES_TASK_FIELD = Object.freeze({
   name: 'showVariables',
   type: 'object',
   description:
-    'Name-tag panel showing what is in the variables after Run (off unless set): { mode: view | predict | target, at: end | marker (the #@peek line), hide: [names], predict: [names] (predict mode), target: { name: value } (target mode), visuals: true | false (lists and dicts drawn as swatches, bars, pictures and cards; default true), stageLists: picture | tiles | size (how a list drawn with grid() shows; default size), lockRun: true | false (predict mode: Run waits until every prediction is in, until the first Run; default true), link: true | false (each tag and its variable in the code share a colour and a number; default true) }.',
+    "Name-tag panel showing what is in the variables after Run (off unless set): { mode: view | predict | target, at: end | marker (the #@peek line), hide: [names], predict: [names, or { name, answer: boolean | number | text, choices: [values] }] (predict mode), predictType: [names, or { name, choices: [type labels] }] (predict mode: the student picks each one's type, not its value), target: { name: value } (target mode), visuals: true | false (lists and dicts drawn as swatches, bars, pictures and cards; default true), stageLists: picture | tiles | size (how a list drawn with grid() shows; default size), lockRun: true | false (predict mode: Run waits until every prediction is in, until the first Run; default true), link: true | false (each tag and its variable in the code share a colour and a number; default true) }.",
 })
 
 // Python names (identifiers), for author-given names.
@@ -51,10 +51,73 @@ function nameList(value) {
   return out
 }
 
+// The kinds of answer a predict tag takes (showVariables.predict entries, p6-27): text (a text
+// box, the default), number (a number field) or boolean (True / False buttons).
+export const PREDICT_ANSWER_KINDS = Object.freeze(['text', 'number', 'boolean'])
+// The type labels a predictType tag offers (the panel's own labels, typeLabel below), in order.
+export const PREDICT_TYPE_LABELS = Object.freeze(['text', 'number', 'true/false', 'list'])
+
+// The name of a predict / predictType entry: a plain name, or `{ name, … }`.
+export function predictEntryName(entry) {
+  if (typeof entry === 'string') return entry.trim()
+  return isPlainObject(entry) && typeof entry.name === 'string' ? entry.name.trim() : ''
+}
+
+// A choice (an author's YAML value) as the text the student picks and the check compares, the
+// way the panel writes values: text in double quotes ("red"), True / False / None, numbers as
+// written.
+export function predictChoiceText(choice) {
+  if (choice === null) return 'None'
+  if (choice === true) return 'True'
+  if (choice === false) return 'False'
+  if (typeof choice === 'string') return JSON.stringify(choice)
+  return String(choice)
+}
+
+export const isPredictChoiceValue = (value) =>
+  value === null || ['string', 'number', 'boolean'].includes(typeof value)
+
 /**
- * The task's `showVariables`, normalised: `{ mode, at, hide, predict, target, visuals,
- * stageLists, lockRun, link }`, or null when the task has no panel (the panel is off unless a task
- * turns it on). `predict` is only kept in predict mode and `target` only in target mode.
+ * The entries of a predict-style list (`predict` or `predictType`), normalised: `[{ name,
+ * answer, choices }]` in order, repeats and blank names dropped. `answer` is one of
+ * PREDICT_ANSWER_KINDS, or null when the author didn't say (a plain name: today's free text box,
+ * which takes any value), and `choices` the author's choice list (each a scalar), or null. For
+ * predictType, `answer` is unused and `choices` (type labels) limits PREDICT_TYPE_LABELS.
+ */
+function predictEntries(value) {
+  if (!Array.isArray(value)) return []
+  const seen = new Set()
+  const out = []
+  for (const item of value) {
+    const name = predictEntryName(item)
+    if (!name || seen.has(name)) continue
+    seen.add(name)
+    const answer =
+      isPlainObject(item) && PREDICT_ANSWER_KINDS.includes(item.answer) ? item.answer : null
+    const choices =
+      isPlainObject(item) && Array.isArray(item.choices)
+        ? item.choices.filter(isPredictChoiceValue)
+        : []
+    out.push({ name, answer, choices: choices.length > 0 ? choices : null })
+  }
+  return out
+}
+
+// The type labels one predictType tag offers: PREDICT_TYPE_LABELS, limited by its `choices`.
+function typeChoicesOf(entry) {
+  if (!entry.choices) return [...PREDICT_TYPE_LABELS]
+  const wanted = new Set(entry.choices.map((choice) => String(choice).trim()))
+  const limited = PREDICT_TYPE_LABELS.filter((label) => wanted.has(label))
+  return limited.length > 0 ? limited : [...PREDICT_TYPE_LABELS]
+}
+
+/**
+ * The task's `showVariables`, normalised: `{ mode, at, hide, predict, answers, predictType,
+ * typeChoices, target, visuals, stageLists, lockRun, link }`, or null when the task has no panel
+ * (the panel is off unless a task turns it on). `predict` (the names, in order), `answers`
+ * (`{ name: { answer, choices } }`: what each predict tag takes, p6-27), `predictType` (the
+ * names whose type is predicted) and `typeChoices` (`{ name: [type labels] }`) are only kept in
+ * predict mode, and `target` only in target mode.
  * `visuals` is false only when the task says so; `stageLists` is picture | tiles | size (default
  * size). `lockRun` is true only in predict mode, unless the task turns it off. `link` (each tag
  * and its variable in the code share a colour and a number, ./links.js) is true unless the task
@@ -64,11 +127,18 @@ export function getShowVariables(task) {
   const raw = task?.showVariables
   if (!isPlainObject(raw)) return null
   const mode = SHOW_VARIABLES_MODES.includes(raw.mode) ? raw.mode : 'view'
+  const predicted = mode === 'predict' ? predictEntries(raw.predict) : []
+  const typed = mode === 'predict' ? predictEntries(raw.predictType) : []
   return {
     mode,
     at: raw.at === 'marker' ? 'marker' : 'end',
     hide: nameList(raw.hide),
-    predict: mode === 'predict' ? nameList(raw.predict) : [],
+    predict: predicted.map((entry) => entry.name),
+    answers: Object.fromEntries(
+      predicted.map(({ name, answer, choices }) => [name, { answer, choices }])
+    ),
+    predictType: typed.map((entry) => entry.name),
+    typeChoices: Object.fromEntries(typed.map((entry) => [entry.name, typeChoicesOf(entry)])),
     target: mode === 'target' && isPlainObject(raw.target) ? { ...raw.target } : {},
     visuals: raw.visuals !== false,
     stageLists: STAGE_LISTS_OPTIONS.includes(raw.stageLists) ? raw.stageLists : DEFAULT_STAGE_LISTS,
@@ -81,19 +151,27 @@ export const PREDICT_RUN_LOCK_MESSAGE = 'Fill in your predictions first'
 
 /**
  * Predict mode's Run lock (`showVariables.lockRun`, on by default): until the student's first
- * Run of the task, Run, slow-mo and its steps wait for an answer in every predict tag, so the
- * prediction is made before the program shows the values. `predictions` is the student's
- * prediction state (`{ taskId, values, results, ran }`, useVariablesPanel). Returns
- * `{ message, missing }` (the names still blank) while locked, else null. The presenter is never
- * locked; useStudentCodeState leaves it out.
+ * Run of the task, Run, slow-mo and its steps wait for an answer in every predict tag and a type
+ * picked in every predictType tag, so the prediction is made before the program shows the
+ * values. `predictions` is the student's prediction state (`{ taskId, values, types, results,
+ * typeResults, ran }`, useVariablesPanel). Returns `{ message, missing }` (the names still
+ * blank; a type tag's as "name (type)") while locked, else null. The presenter is never locked;
+ * useStudentCodeState leaves it out. Run-count boxes (task `runCounts: predict`) share this
+ * lock: see getRunCountLock in ../runCounts.js.
  */
 export function getPredictRunLock(task, predictions) {
   const config = getShowVariables(task)
-  if (!config?.lockRun || config.predict.length === 0) return null
+  if (!config?.lockRun || config.predict.length + config.predictType.length === 0) return null
   const own = predictions && String(predictions.taskId) === String(task?.id) ? predictions : null
   if (own?.ran) return null
   const values = own?.values ?? {}
-  const missing = config.predict.filter((name) => !String(values[name] ?? '').trim())
+  const types = own?.types ?? {}
+  const missing = [
+    ...config.predict.filter((name) => !String(values[name] ?? '').trim()),
+    ...config.predictType
+      .filter((name) => !String(types[name] ?? '').trim())
+      .map((name) => `${name} (type)`),
+  ]
   return missing.length > 0 ? { message: PREDICT_RUN_LOCK_MESSAGE, missing } : null
 }
 
@@ -412,16 +490,26 @@ function stripUndefined(value) {
 /**
  * The panel state as the tutor sees it (students/{id}/currentVariables, teacherLive.variablesPanel):
  * the run state with only the shown snapshot, plus the student's predictions
- * (`{ name: text }`) and, once revealed, `results` (`{ name: true | false }`). Null when there is
- * nothing to show (no run and no predictions). Never undefined values (Firebase refuses them).
+ * (`{ name: text }`) and, once revealed, `results` (`{ name: true | false }`), and their type
+ * predictions (predictType: `typePredictions: { name: type label }`, `typeResults`), and the
+ * task's run counts (`runCounts`, ../runCounts.js: `countPredictions: { L3: text }`,
+ * `countResults: { L3: bool }`, `lineCounts: { L3: count }` from `countRun`, the last run's
+ * counts). Null when there is nothing to show (no run, no counts and no predictions). Never
+ * undefined values (Firebase refuses them). The count keys are `L<line>`, never bare numbers, so
+ * the realtime database keeps them as a map.
  */
-export function compactVariablesForSync(run, predictionState = null) {
+export function compactVariablesForSync(run, predictionState = null, countRun = null) {
   const predictions = isPlainObject(predictionState?.values) ? predictionState.values : null
   const hasPredictions = predictions && Object.values(predictions).some((v) => String(v ?? ''))
-  if (!run && !hasPredictions) return null
+  const types = isPlainObject(predictionState?.types) ? predictionState.types : null
+  const hasTypes = types && Object.values(types).some((v) => String(v ?? ''))
+  const counts = isPlainObject(predictionState?.counts) ? predictionState.counts : null
+  const hasCounts = counts && Object.values(counts).some((v) => String(v ?? ''))
+  const lineCounts = isPlainObject(countRun?.counts) ? countRun.counts : null
+  if (!run && !hasPredictions && !hasTypes && !hasCounts && !lineCounts) return null
   const snapshot = run ? currentSnapshot(run) : null
   return stripUndefined({
-    taskId: run?.taskId ?? predictionState?.taskId ?? null,
+    taskId: run?.taskId ?? predictionState?.taskId ?? countRun?.taskId ?? null,
     status: run?.status ?? null,
     at: run?.at ?? 'end',
     snapshots: snapshot ? [snapshot] : [],
@@ -433,12 +521,26 @@ export function compactVariablesForSync(run, predictionState = null) {
     ran: !!run,
     predictions: hasPredictions ? { ...predictions } : null,
     results: isPlainObject(predictionState?.results) ? { ...predictionState.results } : null,
+    // Only on a task with type predictions, so other tasks keep their shape.
+    ...(hasTypes ? { typePredictions: { ...types } } : {}),
+    ...(isPlainObject(predictionState?.typeResults)
+      ? { typeResults: { ...predictionState.typeResults } }
+      : {}),
+    // Only on a task with run counts (runCounts / line_run_count).
+    ...(hasCounts ? { countPredictions: { ...counts } } : {}),
+    ...(isPlainObject(predictionState?.countResults)
+      ? { countResults: { ...predictionState.countResults } }
+      : {}),
+    ...(lineCounts ? { lineCounts: { ...lineCounts } } : {}),
   })
 }
 
-/** Reads a synced panel state back (tutor views): the run part and the prediction part. */
+/**
+ * Reads a synced panel state back (tutor views): the run part, the prediction part and the
+ * run-count part (`runCounts: { taskId, values, results, counts }`, null without any).
+ */
 export function readSyncedVariables(synced) {
-  if (!isPlainObject(synced)) return { run: null, predictions: null }
+  if (!isPlainObject(synced)) return { run: null, predictions: null, runCounts: null }
   const run = synced.ran
     ? {
         taskId: synced.taskId ?? null,
@@ -453,12 +555,29 @@ export function readSyncedVariables(synced) {
       }
     : null
   const predictions =
-    isPlainObject(synced.predictions) || isPlainObject(synced.results)
+    isPlainObject(synced.predictions) ||
+    isPlainObject(synced.results) ||
+    isPlainObject(synced.typePredictions) ||
+    isPlainObject(synced.typeResults)
       ? {
           taskId: synced.taskId ?? null,
           values: isPlainObject(synced.predictions) ? synced.predictions : {},
           results: isPlainObject(synced.results) ? synced.results : null,
+          // Type predictions (predictType), only when the student has made some.
+          ...(isPlainObject(synced.typePredictions) ? { types: synced.typePredictions } : {}),
+          ...(isPlainObject(synced.typeResults) ? { typeResults: synced.typeResults } : {}),
         }
       : null
-  return { run, predictions }
+  const runCounts =
+    isPlainObject(synced.countPredictions) ||
+    isPlainObject(synced.countResults) ||
+    isPlainObject(synced.lineCounts)
+      ? {
+          taskId: synced.taskId ?? null,
+          values: isPlainObject(synced.countPredictions) ? synced.countPredictions : {},
+          results: isPlainObject(synced.countResults) ? synced.countResults : null,
+          counts: isPlainObject(synced.lineCounts) ? synced.lineCounts : null,
+        }
+      : null
+  return { run, predictions, runCounts }
 }

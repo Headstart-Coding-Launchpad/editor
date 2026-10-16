@@ -4,10 +4,13 @@ import {
   formatNameList,
   formatTargetLines,
   hasPredictionCheck,
+  hasTypePredictionCheck,
+  mergePredictEntries,
   parseNameList,
   parseTargetLines,
   setPredictionCheck,
   setShowVariablesEnabled,
+  setTypePredictionCheck,
   updateShowVariables,
 } from '../../showVariablesAuthoring'
 
@@ -139,9 +142,36 @@ export default function ShowVariablesField({ task, onUpdate }) {
                   placeholder="e.g. score, lives"
                   value={formatNameList(config.predict)}
                   onCommit={(text) =>
-                    onUpdate(updateShowVariables(task, { predict: parseNameList(text) }))
+                    onUpdate(
+                      updateShowVariables(task, {
+                        // A name's answer kind (YAML `{ name, answer, choices }`) is kept.
+                        predict: mergePredictEntries(config.predict, parseNameList(text)),
+                      })
+                    )
                   }
                 />
+                <DraftInput
+                  label="Students predict the type of (text, number, true/false, list)"
+                  placeholder="e.g. typed, age"
+                  value={formatNameList(config.predictType)}
+                  onCommit={(text) =>
+                    onUpdate(
+                      updateShowVariables(task, {
+                        predictType: mergePredictEntries(config.predictType, parseNameList(text)),
+                      })
+                    )
+                  }
+                />
+                {Array.isArray(config.predictType) && config.predictType.length > 0 && (
+                  <label className="te-check-toggle" style={{ alignSelf: 'flex-start' }}>
+                    <input
+                      type="checkbox"
+                      checked={hasTypePredictionCheck(task)}
+                      onChange={(e) => onUpdate(setTypePredictionCheck(task, e.target.checked))}
+                    />
+                    Complete the task when every type prediction is right (a types_predicted check)
+                  </label>
+                )}
                 <label className="te-check-toggle" style={{ alignSelf: 'flex-start' }}>
                   <input
                     type="checkbox"

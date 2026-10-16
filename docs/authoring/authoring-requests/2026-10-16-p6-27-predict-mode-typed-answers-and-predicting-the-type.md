@@ -1,6 +1,6 @@
 # Predict mode: answer boxes that fit the value, and predicting the type
 
-- **Status:** open
+- **Status:** shipped — `predict` entries take `{ name, answer: boolean | number | text, choices }`, new `predictType` and `types_predicted` check (2026-10-16, branch `feature/p6-26-27-predict-counts-and-types`).
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (Ryan asked for it, filed straight to LaunchPad Dev, as with builds 1–25), 2026-10-16
 - **Lessons blocked:** none. Improves the LG-P6 pilots, Python Level 1 Lesson 8 (`caakmdqj5j`) and Level 2B Lesson 8 (`qj8152siy2`), both taught Tue 20 Oct, and every later predict task.
@@ -84,3 +84,7 @@ showVariables:
 
 - **Plan:** `Lesson Gen Agent/Plans/LG-P6 Lesson plan - Python L2B Lesson 8 for loops.md`.
 - p6-26's "how many times?" box is a `number` answer in this sense, so the two can share the field.
+
+## Resolution
+
+Shipped 2026-10-16 on `feature/p6-26-27-predict-counts-and-types` (not yet on `main`). `getShowVariables` reads each `predict` entry's `answer` / `choices` (`answers`) and the new `predictType` (`typeChoices`); the panel's `PredictAnswerField` shows True / False buttons, a number field (`inputmode="decimal"`, `answerFields.js`), a quoted text box or choice buttons, and `predictType` tags offer the type labels with ✓ / ✗ after Run. A plain name keeps today's free box. New check `types_predicted`; `variables_predicted` unchanged. Run lock, tutor chip, StudentModal / Go Live (the synced `typePredictions` / `typeResults` in `currentVariables`, no new Firebase path) and the report (`kind: 'type'` entries) cover type picks. Docs: python.md (Answer boxes), turtle.md, lesson-schema.md, validation-errors.md, session-reports.md, CHANGELOG. Builder: names keep their YAML answer kinds; a "Students predict the type of" box; answer kinds are YAML-only.

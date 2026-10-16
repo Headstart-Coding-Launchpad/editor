@@ -35,6 +35,7 @@ import {
   taskShowsVariables,
 } from '../../shared/variablesPanel/variablesPanel.js'
 import ResultPane from '../../shared/resultPane/ResultPane.jsx'
+import { getRunCountWidgets } from '../../shared/runCounts.js'
 import { useResultPane, useRunFinishedToken } from '../../shared/resultPane/useResultPane.js'
 import { useWorkspaceLayout } from '../../shared/resultPane/useWorkspaceLayout.js'
 
@@ -137,6 +138,18 @@ export default function StudentWorkspace({
   // Linked name tags (showVariables.link): each tag and its variable in the code share a colour
   // and a number.
   const variableLinks = useVariableLinks(task, panelRun, { enabled: tagsAvailable })
+  // Run-count boxes and counts at the end of #@count lines (task runCounts, src/shared/
+  // runCounts.js; a stamp line counts its stamps): the student's own, or the presenter's in Go
+  // Live. Not in free play, on a previous task, the tutor editing, or during slow-mo playback.
+  const runCountWidgets =
+    inFreePlay || isViewingPrev || isTeacherEditing || slowMoView
+      ? null
+      : getRunCountWidgets(
+          task,
+          code,
+          isForcedTeacherLive ? { synced: displayVariablesPanel } : { panel: cs.variablesPanel },
+          { readOnly, running: cs.running }
+        )
   const resultPanes = ['picture', tagsAvailable && 'tags', 'console'].filter(Boolean)
   const {
     ref: workspaceRef,
@@ -329,6 +342,13 @@ export default function StudentWorkspace({
         slowMoMarker={slowMoView?.marker ?? null}
         peekBand={peekBand}
         variableLinks={variableLinks.editor}
+        runCounts={
+          runCountWidgets && {
+            ...runCountWidgets,
+            onChange: cs.variablesPanel?.setCountPrediction,
+            onCommit: cs.variablesPanel?.commitPredictions,
+          }
+        }
       />
     </div>
   )

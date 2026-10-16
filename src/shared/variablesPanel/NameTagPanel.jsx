@@ -24,6 +24,7 @@ import {
   targetToNode,
 } from './visuals.js'
 import ValueVisual from './ValueVisual.jsx'
+import PredictAnswerField, { ChoiceButtons } from './PredictAnswerField.jsx'
 import { linkFor } from './links.js'
 
 // How much of a value shows before "Show all".
@@ -44,9 +45,12 @@ const DICT_LIMIT = 8
  *   that changed
  * - lists and dicts are drawn as visuals (visuals.js, ValueVisual.jsx) unless the config's
  *   `visuals` is false; `stageLists` decides how a list grid() drew shows
- * - `predictions`: `{ values: { name: text }, results: { name: bool } | null }`
+ * - `predictions`: `{ values: { name: text }, results: { name: bool } | null, types: { name:
+ *   type label }, typeResults: { name: bool } | null }`
  * - `onPredictionChange(name, text)` / `onPredictionCommit()`: predict-mode inputs (omit, or
- *   `readOnly`, for a tutor's or a Go Live viewer's copy)
+ *   `readOnly`, for a tutor's or a Go Live viewer's copy). Each predict tag's control follows
+ *   `config.answers` (PredictAnswerField: text box, number field, True / False or choices)
+ * - `onTypePredictionChange(name, label)`: a type picked on a `predictType` tag (p6-27)
  * - `running`: the program is running now
  * - `audience`: 'student' (default) or 'tutor' (wording)
  * - `peekLine`: with `at: marker`, the line (as the editor numbers it) the values are shown
@@ -67,6 +71,7 @@ export default function NameTagPanel({
   predictions = null,
   onPredictionChange,
   onPredictionCommit,
+  onTypePredictionChange,
   readOnly = false,
   running = false,
   audience = 'student',
@@ -92,12 +97,15 @@ export default function NameTagPanel({
   const vars = visibleVars(snapshot, config.hide)
   const results = predictions?.results ?? null
   const values = predictions?.values ?? {}
+  const typeResults = predictions?.typeResults ?? null
+  const types = predictions?.types ?? {}
   const changed = new Set(Array.isArray(run?.changed) ? run.changed : [])
   const options = visualOptions(config)
+  const predictType = config.mode === 'predict' ? (config.predictType ?? []) : []
 
   const featured =
     config.mode === 'predict'
-      ? config.predict
+      ? [...new Set([...config.predict, ...predictType])]
       : config.mode === 'target'
         ? Object.keys(config.target ?? {})
         : []
@@ -114,7 +122,7 @@ export default function NameTagPanel({
       <div className="ntp-head">
         <h3 className="ntp-title">Variables</h3>
         <p className="ntp-status" role="status" aria-live="polite">
-          {status ?? statusText({ config, run, snapshot, results, running, audience })}
+          {status ?? statusText({ config, run, snapshot, results, typeResults, running, audience })}
         </p>
       </div>
 
@@ -124,10 +132,11 @@ export default function NameTagPanel({
 
       {config.mode === 'predict' && featured.length > 0 && (
         <ul className="ntp-tags" aria-label="Predictions">
-          {featured.map((name) => (
+          {config.predict.map((name) => (
             <PredictTag
               key={name}
               name={name}
+              spec={config.answers?.[name] ?? null}
               value={values[name] ?? ''}
               result={results && name in results ? results[name] : null}
               node={snapshot ? findVariable(snapshot, name) : null}
@@ -136,6 +145,20 @@ export default function NameTagPanel({
               readOnly={readOnly || !onPredictionChange}
               onChange={(text) => onPredictionChange?.(name, text)}
               onCommit={() => onPredictionCommit?.()}
+              {...linkOf(name)}
+            />
+          ))}
+          {predictType.map((name) => (
+            <PredictTypeTag
+              key={`type:${name}`}
+              name={name}
+              choices={config.typeChoices?.[name] ?? null}
+              value={types[name] ?? ''}
+              result={typeResults && name in typeResults ? typeResults[name] : null}
+              node={snapshot ? findVariable(snapshot, name) : null}
+              revealed={!!snapshot}
+              readOnly={readOnly || !onTypePredictionChange}
+              onPick={(label) => onTypePredictionChange?.(name, label)}
               {...linkOf(name)}
             />
           ))}
@@ -182,13 +205,14 @@ export default function NameTagPanel({
   )
 }
 
-function statusText({ config, run, snapshot, results, running, audience }) {
+function statusText({ config, run, snapshot, results, typeResults, running, audience }) {
   const them = audience === 'tutor'
   if (running) return 'Running…'
   if (!run) {
     if (config.mode === 'predict') {
-      return them
-        ? 'Not run yet. Their predictions show as they type them.'
+      if (them) return 'Not run yet. Their predictions show as they type them.'
+      return config.predict.length === 0 && (config.predictType ?? []).length > 0
+        ? 'Pick the type of value you think each variable will hold, then press Run.'
         : 'Fill in what you think each variable will hold, then press Run.'
     }
     if (config.mode === 'target') {
@@ -211,10 +235,13 @@ function statusText({ config, run, snapshot, results, running, audience }) {
   } else {
     parts.push('The values when the program finished.')
   }
-  if (config.mode === 'predict' && results) {
+  if (config.mode === 'predict' && (results || typeResults)) {
     const names = config.predict
-    const right = names.filter((name) => results[name] === true).length
-    parts.push(`${right} of ${names.length} predictions right.`)
+    const typeNames = config.predictType ?? []
+    const right =
+      names.filter((name) => results?.[name] === true).length +
+      typeNames.filter((name) => typeResults?.[name] === true).length
+    parts.push(`${right} of ${names.length + typeNames.length} predictions right.`)
   }
   if (config.mode === 'target') {
     const names = Object.keys(config.target ?? {})
@@ -337,6 +364,7 @@ function ValueTag({
 
 function PredictTag({
   name,
+  spec = null,
   value,
   result,
   node,
@@ -354,17 +382,21 @@ function PredictTag({
   const verdictId = useId()
   const verdictKnown = revealed && result !== null
   const stateClass = verdictKnown ? (result ? ' is-right' : ' is-wrong') : ''
+  // True / False and choices are buttons, named by their group (no input to label).
+  const usesButtons =
+    (Array.isArray(spec?.choices) && spec.choices.length > 0) || spec?.answer === 'boolean'
   return (
     <li
       className={`ntp-tag ntp-tag--predict${stateClass}${linked.className}`}
       style={linked.style}
+      data-answer={spec?.choices ? 'choices' : (spec?.answer ?? 'free')}
       {...linked.handlers}
     >
       <TagTop
         node={verdictKnown ? node : null}
         link={link}
         label={
-          readOnly ? (
+          readOnly || usesButtons ? (
             <span className="ntp-name">
               {name}
               {link && <span className="ntp-sr-only">{linkWords(link)}</span>}
@@ -389,19 +421,14 @@ function PredictTag({
           )}
         </span>
       ) : (
-        <input
+        <PredictAnswerField
           id={inputId}
-          className="ntp-input"
-          type="text"
+          name={name}
+          spec={spec}
           value={value}
-          placeholder="Your prediction"
-          autoComplete="off"
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-          aria-describedby={verdictKnown ? verdictId : undefined}
-          onChange={(event) => onChange(event.target.value)}
-          onBlur={onCommit}
+          onChange={onChange}
+          onCommit={onCommit}
+          describedBy={verdictKnown ? verdictId : undefined}
         />
       )}
       {verdictKnown && (
@@ -420,6 +447,88 @@ function PredictTag({
       {verdictKnown && node && (
         <div className="ntp-reveal">
           <ValueView name={name} node={node} options={options} />
+        </div>
+      )}
+      {revealed && result === null && (
+        <span className="ntp-more">Changed — press Run to check it again.</span>
+      )}
+    </li>
+  )
+}
+
+/**
+ * A predictType tag (p6-27): the student picks the KIND of value — one of the panel's own type
+ * labels (text, number, true/false, list; `choices` may limit them) — not the value. After Run
+ * the real type label shows with ✓ / ✗ and words, as a value prediction's verdict does.
+ */
+function PredictTypeTag({
+  name,
+  choices,
+  value,
+  result,
+  node,
+  revealed,
+  readOnly,
+  onPick,
+  link = null,
+  linkActive = false,
+  onLinkActive,
+}) {
+  const linked = tagLinkProps({ name, link, linkActive, onLinkActive })
+  const verdictId = useId()
+  const verdictKnown = revealed && result !== null
+  const stateClass = verdictKnown ? (result ? ' is-right' : ' is-wrong') : ''
+  const labels = Array.isArray(choices) && choices.length > 0 ? choices : []
+  return (
+    <li
+      className={`ntp-tag ntp-tag--predict ntp-tag--predict-type${stateClass}${linked.className}`}
+      style={linked.style}
+      data-answer="type"
+      {...linked.handlers}
+    >
+      <TagTop
+        node={null}
+        link={link}
+        label={
+          <span className="ntp-name">
+            {name}
+            <span className="ntp-type-ask"> — what type?</span>
+            {link && <span className="ntp-sr-only">{linkWords(link)}</span>}
+          </span>
+        }
+      />
+      {readOnly ? (
+        <span className="ntp-value">
+          {value ? (
+            <>
+              <span className="ntp-sr-only">Type prediction: </span>
+              {value}
+            </>
+          ) : (
+            <span className="ntp-missing">no prediction yet</span>
+          )}
+        </span>
+      ) : (
+        <ChoiceButtons
+          label={`${name}: predict its type, ${labels.join(', ')}`}
+          options={labels.map((label) => ({ value: label, text: label }))}
+          value={value}
+          onPick={onPick}
+          describedBy={verdictKnown ? verdictId : undefined}
+        />
+      )}
+      {verdictKnown && (
+        <div id={verdictId} className="ntp-verdict">
+          {result ? '✓ Right' : '✗ Not quite'}
+          {node ? (
+            <>
+              {' '}
+              — it&apos;s <span className="ntp-type ntp-type--reveal">{typeLabel(node)}</span>
+              <span className="ntp-sr-only">, {describeVariable(name, node)}</span>
+            </>
+          ) : (
+            <span> — {name} was never made</span>
+          )}
         </div>
       )}
       {revealed && result === null && (

@@ -33,6 +33,9 @@ export default function TeacherLiveView({
   // The #@peek "stopped here" band (src/shared/peekBandEditor.js); worked out from the task,
   // the code and the student's synced run when not given.
   peekBand,
+  // Run-count widgets on #@count lines (src/shared/runCounts.js getRunCountWidgets, read-only),
+  // or null.
+  runCounts = null,
 }) {
   const canvasRef = useRef(null)
   const turtleResult = student?.currentTurtleResult ?? null
@@ -81,6 +84,7 @@ export default function TeacherLiveView({
                     : null
                 )
         }
+        runCounts={isInSandbox ? null : runCounts}
         pyodideStatus="ready"
       />
     </div>

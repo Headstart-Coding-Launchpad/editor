@@ -1,6 +1,6 @@
 # Predict how many times a line runs
 
-- **Status:** open
+- **Status:** shipped — `#@count` marker, task field `runCounts: predict | show`, checks `runs_predicted` and `line_run_count` (2026-10-16, branch `feature/p6-26-27-predict-counts-and-types`).
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (Ryan asked for it, filed straight to LaunchPad Dev, as with builds 1–25), 2026-10-16
 - **Lessons blocked:** none. Improves the LG-P6 pilot A, Python Level 2B Lesson 8 (for loops, taught Tue 20 Oct), whose "how many times?" predictions fall back to multiple choice until this ships, and every later loop lesson (`while` in Lesson 9, list loops at Level 3).
@@ -61,3 +61,7 @@ The student predicts 3 and 1, presses Run, and sees "ran 3 times ✓" and "ran 1
 - Sits beside p6-27 (typed predictions): a count box is a number field.
 - Tutor view: the same chip as predict mode ("Predicted 2/2").
 - Go Live: the presenter's counts show on every screen, as with the panel.
+
+## Resolution
+
+Shipped 2026-10-16 on `feature/p6-26-27-predict-counts-and-types` (not yet on `main`). Marker `#@count` (`src/shared/lineHints.js`, runtime-only `countSets`), task field `runCounts: predict | show` (`src/shared/runCounts.js`), the worker counts the marked lines on the same line watch as `#@peek` and slow-mo (`capture.countLines`, `done.lineCounts`), and the editor shows a number box at the end of each marked line, then "ran 3 times ✓" (`src/shared/runCountsEditor.js`; the number rules shared with p6-27's field, `answerFields.js`). Run is locked by predict mode's lock and words until every box is filled. Checks `runs_predicted` (optional `lines`) and `line_run_count` (`line` or the marked line, `operator` equals / min / max, `value`); `line` numbers are starter lines as the student sees them. Tutor chip, StudentModal, Go Live and the report (`runCountPredictions`, `runCountFirstByLine` with `offByOne`) are covered, synced in the existing `currentVariables` / `predictionLog` (no new Firebase path). Not done: "printed 3 lines" for a print line (optional; the line's run count shows instead), and `#@count` in side-quest starters (side quests don't carry the task's `runCounts`).

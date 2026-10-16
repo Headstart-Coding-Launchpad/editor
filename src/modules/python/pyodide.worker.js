@@ -17,7 +17,7 @@
  *                 { type: 'output',        text: string, kind: 'stdout'|'stderr', line?: number|null }
  *                 { type: 'input_required', prompt: string }
  *                 { type: 'done',          status: 'success'|'error'|'stopped', variables,
- *                                          variablesPanel, turtle, stage, slowMo }
+ *                                          variablesPanel, lineCounts, turtle, stage, slowMo }
  *                 { type: 'stage_rendered', id, status: 'success'|'error', commands, error }
  *                 { type: 'gpio_write',     pin: string, value: 0|1 }
  *                 { type: 'gpio_configure', pin: string, mode: number, pull: number|null }
@@ -37,7 +37,11 @@
  * `peekLine` (a line of the code as run) also reads them the first time that line is about to
  * run, and `hide` lists names never to show. `done` then carries `variablesPanel`:
  * { end, peek, peekLine, peekReached } (null without `capture.panel`). `variables` (the
- * check variables, { name: { type, json, repr } }) is always sent.
+ * check variables, { name: { type, json, repr } }) is always sent. `capture.countLines` (editor
+ * lines, with `capture.lineOffset` runtime lines before them; with or without the panel) counts
+ * how many times each of those lines ran — the same 'line' events the peek and slow-mo watch —
+ * and `done` carries `lineCounts: { "<line>": count }` (0 for a line that never ran; null when
+ * nothing was counted or the code never started, e.g. a syntax error). See src/shared/runCounts.js.
  *
  * `done` also always carries `turtle: { state, commands, calls }` for Turtle-module
  * tasks (see ../turtle/shim.js) — `state` is the final position/heading/pen snapshot,
@@ -82,6 +86,9 @@ let _lastVariables = {}
 // The name-tag panel capture of the current run (showVariables, see variableCapture.py.js):
 // { end, peek, peekLine, peekReached }, or null when the task has no panel / the code never ran.
 let _lastVariablesPanel = null
+// The run counts of the current run (capture.countLines, task runCounts / #@count): { line:
+// count } by editor line, or null when nothing is counted / the code never ran.
+let _lastLineCounts = null
 let _gpioInputs = {}
 let _gpioOutputs = {}
 let _gpioPollId = 0
@@ -196,6 +203,16 @@ ast.fix_missing_locations(_tree)
 _hs_cfg = json.loads(_hs_capture_json or '{}')
 _hs_panel_on = bool(_hs_cfg.get('panel'))
 _hs_peek_line = _hs_cfg.get('peekLine')
+# Run counts (task runCounts / #@count, src/shared/runCounts.js): how many times each listed line
+# of the student's code ran. Lines are the editor's; the runtime's own first lines (Turtle's shim)
+# are added on, so the same 'line' events the peek and slow-mo watch are counted.
+_hs_count_offset = int(_hs_cfg.get('lineOffset') or 0)
+_hs_line_counts = {
+    int(n) + _hs_count_offset: 0
+    for n in (_hs_cfg.get('countLines') or [])
+    if isinstance(n, int) and not isinstance(n, bool) and n > 0
+}
+_hs_count_on = bool(_hs_line_counts)
 _hs_rec_cfg = json.loads(_hs_record_json or '{}')
 _hs_rec_on = bool(_hs_rec_cfg.get('on'))
 _hs_hidden = (
@@ -369,14 +386,18 @@ if _hs_rec_on:
 _hs_peek_on = [_hs_panel_on and isinstance(_hs_peek_line, int)]
 
 def _hs_on_line(frame, lineno):
+    # A 'line' event fires each time a line is about to run (a loop body once per pass), so
+    # it is one run of that line. Counting keeps the watch on for the whole run.
+    if _hs_count_on and lineno in _hs_line_counts:
+        _hs_line_counts[lineno] += 1
     if _hs_peek_on[0]:
         _hs_peek_on[0] = bool(_hs_on_peek_line(frame, lineno))
     if _hs_rec_on:
         return _hs_rec_on_line(frame, lineno)
-    return _hs_peek_on[0]
+    return _hs_peek_on[0] or _hs_count_on
 
 _hs_watch = _HsLineWatch(_hs_on_line)
-if _hs_peek_on[0] or _hs_rec_on:
+if _hs_peek_on[0] or _hs_rec_on or _hs_count_on:
     _hs_watch.start()
 try:
     await _g['__hs_run__']()
@@ -395,6 +416,10 @@ finally:
         except Exception:
             _hs_panel['end'] = None
         _js.__hsSetVariablesPanel(json.dumps(_hs_panel))
+    if _hs_count_on:
+        _js.__hsSetLineCounts(json.dumps({
+            str(n - _hs_count_offset): c for n, c in _hs_line_counts.items()
+        }))
     _hs_vars = {}
     _hs_check_ns = dict(_g)
     _hs_check_ns.update(_hs_end_locals)
@@ -558,6 +583,15 @@ globalThis.__hsSetVariablesPanel = (json) => {
   }
 }
 
+// The run counts of the listed lines (capture.countLines): { "<editor line>": count }.
+globalThis.__hsSetLineCounts = (json) => {
+  try {
+    _lastLineCounts = JSON.parse(String(json))
+  } catch {
+    _lastLineCounts = null
+  }
+}
+
 globalThis.__hsSetVariables = (variables) => {
   _lastVariables = variables?.toJs
     ? variables.toJs({ dict_converter: Object.fromEntries })
@@ -718,6 +752,7 @@ self.onmessage = async ({ data }) => {
     _inputResolve = null
     _lastVariables = {}
     _lastVariablesPanel = null
+    _lastLineCounts = null
     _gpioInputs = normalizeGpioInputs(data.gpioInputs)
     _gpioOutputs = {}
     _turtle = createTurtleRecorder()
@@ -811,6 +846,7 @@ self.onmessage = async ({ data }) => {
         status: slowMo?.status === 'capped' ? 'stopped' : 'success',
         variables: _lastVariables,
         variablesPanel: _lastVariablesPanel,
+        lineCounts: _lastLineCounts,
         turtle: turtleResult(),
         stage: { commands: _stageRecorder.commands },
         slowMo,
@@ -831,6 +867,7 @@ self.onmessage = async ({ data }) => {
           status: slowMo?.status === 'capped' ? 'stopped' : 'success',
           variables: _lastVariables,
           variablesPanel: _lastVariablesPanel,
+          lineCounts: _lastLineCounts,
           turtle: turtleResult(),
           stage: { commands: _stageRecorder.commands },
           slowMo,
@@ -848,6 +885,7 @@ self.onmessage = async ({ data }) => {
         status: 'error',
         variables: _lastVariables,
         variablesPanel: _lastVariablesPanel,
+        lineCounts: _lastLineCounts,
         turtle: turtleResult(),
         stage: { commands: _stageRecorder.commands },
         slowMo,
@@ -888,6 +926,7 @@ async function renderStage(code) {
   _inputResolve = null
   _lastVariables = {}
   _lastVariablesPanel = null
+  _lastLineCounts = null
   _stageRecorder = createStageRecorder()
   _silentRun = true
   pyodide.setStdout({ raw: () => {} })
@@ -909,16 +948,31 @@ async function renderStage(code) {
   }
 }
 
+// The most lines one run counts (task runCounts marks plus line_run_count check lines).
+const MAX_COUNT_LINES = 20
+
 // Exported for unit testing. The run's capture options as the Python wrapper reads them
-// (_hs_capture_json): { panel, peekLine, hide }, with anything malformed dropped.
+// (_hs_capture_json): { panel, peekLine, hide } for the name-tag panel, plus { countLines,
+// lineOffset } when lines are counted (run counts, src/shared/runCounts.js: editor lines, and
+// how many runtime lines come first), with anything malformed dropped.
 export function normalizeCaptureConfig(capture) {
-  if (!capture || typeof capture !== 'object' || !capture.panel) return { panel: false }
+  if (!capture || typeof capture !== 'object') return { panel: false }
+  const countLines = Array.isArray(capture.countLines)
+    ? [...new Set(capture.countLines.filter((line) => Number.isInteger(line) && line > 0))].slice(
+        0,
+        MAX_COUNT_LINES
+      )
+    : []
+  const lineOffset =
+    Number.isInteger(capture.lineOffset) && capture.lineOffset > 0 ? capture.lineOffset : 0
+  const counting = countLines.length > 0 ? { countLines, lineOffset } : {}
+  if (!capture.panel) return { panel: false, ...counting }
   const peekLine =
     Number.isInteger(capture.peekLine) && capture.peekLine > 0 ? capture.peekLine : null
   const hide = Array.isArray(capture.hide)
     ? capture.hide.filter((name) => typeof name === 'string' && name)
     : []
-  return { panel: true, peekLine, hide }
+  return { panel: true, peekLine, hide, ...counting }
 }
 
 // Exported for unit testing. The run's slow-mo recording options as the Python wrapper reads

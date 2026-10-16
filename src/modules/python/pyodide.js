@@ -116,6 +116,8 @@ function handleWorkerMessage({ data }) {
         variables: data.variables ?? {},
         // The name-tag panel capture (runPython's `capture`), null without one.
         variablesPanel: data.variablesPanel ?? null,
+        // Run counts of the capture's countLines ({ "<line>": count }, src/shared/runCounts.js).
+        lineCounts: data.lineCounts ?? null,
         turtle: data.turtle ?? null,
         // The Python Stage drawing ({ commands }, src/shared/stage/).
         stage: data.stage ?? null,
@@ -178,8 +180,8 @@ async function startRun(
     gpioInputs,
     getGpioInputs,
     asyncNames,
-    // Name-tag panel capture ({ panel, peekLine, hide }, see variableCaptureOptions in
-    // src/shared/variablesPanel/variablesPanel.js); omitted for no panel.
+    // Name-tag panel capture and run counts ({ panel, peekLine, hide, countLines, lineOffset },
+    // see runCaptureOptions in src/shared/runCounts.js); omitted for neither.
     capture,
     // Slow-mo recording ({ lineOffset, hide }, see slowMoRecordOptions in
     // src/modules/python/slowMo/config.js); omitted for a normal run.

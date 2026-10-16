@@ -140,6 +140,10 @@ export function validateTurtleChecks(checks, n, errors, kind = 'completion') {
       !isRunAttemptedCheck(c) &&
       // The name-tag panel's predictions (showVariables mode: predict).
       c?.type !== 'variables_predicted' &&
+      c?.type !== 'types_predicted' &&
+      // Run counts (runCounts / #@count; src/shared/runCountsValidation.js validates them).
+      c?.type !== 'runs_predicted' &&
+      c?.type !== 'line_run_count' &&
       // Puzzle rules' line limit (src/shared/puzzle/puzzle.js validates it).
       c?.type !== 'max_lines'
   )

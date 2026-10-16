@@ -4,6 +4,7 @@ import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
 import EmojiPickerButton from '../../shared/EmojiPickerButton'
 import { useBlockGuidesOn } from '../../shared/blockGuidesSetting'
 import { applySlowMoMarker } from './slowMo/editorMarker.js'
+import { describeRunCount } from '../../shared/runCounts.js'
 
 // Symbols that are fiddly to reach on an on-screen keyboard but come up
 // constantly in Python source — shown as a tap-to-insert row so touch/iPad
@@ -41,6 +42,9 @@ export default function PythonEditor({
   peekBand = null,
   // Linked name tags (src/shared/variableLinksEditor.js): `{ links, active, onActive }` or null.
   variableLinks = null,
+  // Run-count boxes and counts on #@count lines (src/shared/runCountsEditor.js): getRunCountWidgets'
+  // `{ mode, readOnly, marks }` plus `onChange` / `onCommit`, or null.
+  runCounts = null,
 }) {
   const editorRef = useRef(null)
   const slowMoKey = useMemo(() => JSON.stringify(slowMoMarker ?? null), [slowMoMarker])
@@ -112,6 +116,7 @@ export default function PythonEditor({
         lockedLines={lockedLines}
         peekBand={peekBand}
         variableLinks={variableLinks}
+        runCounts={runCounts}
         onRunShortcut={onRunShortcut}
         blockGuides={showBlocks && blockGuidesOn}
         // On a tablet a long line was cut off with no visible sideways scroll: wrap it instead.
@@ -121,11 +126,48 @@ export default function PythonEditor({
         onScrubCommit={onScrubCommit}
         style={{ flex: 1, minHeight: 240, ...editorStyle }}
       />
+      {runCounts && <RunCountAnnouncement runCounts={runCounts} />}
     </div>
   )
 }
 
+/**
+ * Says each counted line's count once a Run reports it ("Line 3 ran 4 times. You predicted 4:
+ * right."), in a polite live region: the widgets inside the editor are read in place, but a
+ * screen reader only announces text that changes in a region already on the page. Only on a
+ * task with run counts (it is there from when the task opens, so the first counts are heard).
+ */
+function RunCountAnnouncement({ runCounts }) {
+  const text = (runCounts?.marks ?? [])
+    .filter((mark) => Number.isInteger(mark.count))
+    .map((mark) =>
+      describeRunCount({
+        line: mark.line,
+        count: mark.count,
+        value: runCounts.mode === 'predict' ? mark.value : '',
+        correct: mark.correct,
+      })
+    )
+    .join(' ')
+  return (
+    <p role="status" aria-live="polite" style={s.srOnly} data-testid="run-count-announcement">
+      {text}
+    </p>
+  )
+}
+
 const s = {
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    border: 0,
+  },
   wrap: {
     display: 'flex',
     flexDirection: 'column',

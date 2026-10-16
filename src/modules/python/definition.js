@@ -24,6 +24,8 @@ import {
 import { SHOW_VARIABLES_TASK_FIELD } from '../../shared/variablesPanel/variablesPanel.js'
 import { LAYOUT_TASK_FIELD, validateTaskLayout } from '../../shared/resultPane/resultPane.js'
 import { validateShowVariables } from '../../shared/variablesPanel/validation.js'
+import { RUN_COUNTS_TASK_FIELD } from '../../shared/runCounts.js'
+import { validateRunCounts } from '../../shared/runCountsValidation.js'
 import { PYTHON_SLOW_MO_TASK_FIELD, validatePythonSlowMo } from './slowMo/config.js'
 import {
   PUZZLE_TASK_FIELD,
@@ -171,6 +173,8 @@ export default defineModule({
         "{ lesson, task }: start from the student's own saved work on that task of an earlier lesson (stock ids; the tutor matches students to the class roster). Not with carryCodeFrom.",
     },
     SHOW_VARIABLES_TASK_FIELD,
+    // How many times each #@count line ran (src/shared/runCounts.js, p6-26).
+    RUN_COUNTS_TASK_FIELD,
     STAGE_TARGET_TASK_FIELD,
     SCRUB_TASK_FIELD,
     RUN_ON_OPEN_TASK_FIELD,
@@ -269,6 +273,7 @@ export default defineModule({
     validatePythonTests(task, n, errors, warnings)
     warnCompleteCode(task, n, warnings)
     validateShowVariables(task, n, errors, warnings)
+    validateRunCounts(task, n, errors, warnings)
     validateStageTarget(task, n, errors, warnings)
     validateScrub(task, n, errors, warnings, {
       starterCode: getStarterStage(task)?.stage?.code ?? task.starterCode ?? null,

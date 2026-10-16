@@ -131,6 +131,8 @@ describe('parseLineHints (python)', () => {
       trailingMarker: false,
       peek: null,
       locks: [],
+      counts: [],
+      countMissed: 0,
     })
     expect(parseLineHints(undefined, 'python').code).toBeUndefined()
   })
@@ -156,6 +158,8 @@ describe('parseLineHints (html)', () => {
       trailingMarker: false,
       peek: null,
       locks: [],
+      counts: [],
+      countMissed: 0,
     })
   })
 

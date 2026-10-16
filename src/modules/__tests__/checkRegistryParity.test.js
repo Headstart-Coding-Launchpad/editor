@@ -193,6 +193,10 @@ const POST_REGISTRY_TYPES = [
   'code_structure',
   'run_attempted',
   'variables_predicted',
+  // Predict mode's type predictions (p6-27) and run counts (p6-26), tested in their own suites.
+  'types_predicted',
+  'runs_predicted',
+  'line_run_count',
   // The Python Stage (src/shared/stage/checks.js, tested in its own __tests__).
   'stage_matches_target',
   'stage_shape_count',

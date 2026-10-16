@@ -15,6 +15,7 @@ import { getInspectorConfig } from '../../../modules/html/inspector/config'
 import TaskVariablesPanel from '../../../shared/variablesPanel/TaskVariablesPanel.jsx'
 import { useVariableLinks } from '../../../shared/variablesPanel/useVariableLinks.js'
 import { getPeekBand, panelRunForTask } from '../../../shared/variablesPanel/variablesPanel.js'
+import { getRunCountWidgets } from '../../../shared/runCounts.js'
 import { taskHistoryMode, typingHistoryForMode } from '../../../shared/typingHistory'
 import TypingHistoryPanel from './TypingHistoryPanel'
 import StagePane from '../../../shared/stage/StagePane.jsx'
@@ -128,6 +129,18 @@ export default function StudentWorkspaceBody({
     isSessionSandbox
       ? null
       : getPeekBand(task, code, panelRunForTask(task, { synced: student.currentVariables ?? null }))
+  // The run-count boxes / counts on the mirrored code's #@count lines (task runCounts,
+  // src/shared/runCounts.js), read-only: the student's predictions as they type them (when
+  // watched) and their last Run's counts.
+  const runCountsFor = (code) =>
+    isSessionSandbox
+      ? null
+      : getRunCountWidgets(
+          task,
+          code,
+          { synced: student.currentVariables ?? null },
+          { readOnly: true }
+        )
   // Linked name tags (showVariables.link) on the mirrored Python code, as the student sees them.
   const variableLinks = useVariableLinks(
     task,
@@ -342,6 +355,7 @@ export default function StudentWorkspaceBody({
             lineHints={lineHints}
             lockedLines={lockedLines}
             peekBand={peekBandFor(student.currentCode ?? '')}
+            runCounts={runCountsFor(student.currentCode ?? '')}
             variableLinks={variableLinks.editor}
             onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
             onHighlightDismiss={onDismissHighlight}
@@ -416,6 +430,7 @@ export default function StudentWorkspaceBody({
           lineHints={lineHints}
           lockedLines={lockedLines}
           peekBand={peekBandFor(typeof moduleDisplayState === 'string' ? moduleDisplayState : '')}
+          runCounts={runCountsFor(typeof moduleDisplayState === 'string' ? moduleDisplayState : '')}
           readOnly
           onChange={undefined}
           onActivity={undefined}

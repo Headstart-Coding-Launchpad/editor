@@ -11,6 +11,10 @@
 //   True / False / None   any capitals (true matches True).
 //   list, tuple, set, dict   written as Python: [1, 2], ("a", 2), {"a": 1}; the same rules
 //             apply to each item, so ['key', "map"] matches ["key", "map"]. Set order is ignored.
+//
+// TYPE PREDICTIONS (showVariables.predictType, p6-27): the student picks one of the panel's own
+// type labels (text, number, true/false, list); it is right when it is the label the panel
+// shows for the real value (typeLabel). Checked by `types_predicted`.
 import {
   currentSnapshot,
   findVariable,
@@ -19,8 +23,10 @@ import {
   nodeItems,
   nodeLength,
   readSyncedVariables,
+  typeLabel,
 } from './variablesPanel.js'
 import { answerTextMatches } from '../quizAnswers.js'
+import { countLogEntries, countPredictionItems } from '../runCounts.js'
 
 function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -353,39 +359,117 @@ export function evaluateVariablesPredictedCheck(check, _output, context = {}) {
   return evaluatePredictions(names, state.values, state.snapshot).allCorrect
 }
 
+/** Whether a picked type label is the one the panel shows for the real value (p6-27). */
+export function typePredictionMatches(label, node) {
+  if (!node || typeof node !== 'object') return false
+  const picked = String(label ?? '').trim()
+  return !!picked && picked === typeLabel(node)
+}
+
+/**
+ * Marks each type prediction (showVariables.predictType) against a snapshot, as
+ * evaluatePredictions does values: `{ results, entries: [{ name, value, correct }], allCorrect }`
+ * with `value` the picked type label. A name the program never made, or left unpicked, is wrong.
+ */
+export function evaluateTypePredictions(names, types, snapshot) {
+  const picked = isPlainObject(types) ? types : {}
+  const entries = (names ?? []).map((name) => {
+    const value = typeof picked[name] === 'string' ? picked[name] : ''
+    const node = findVariable(snapshot, name)
+    return { name, value, correct: !!node && typePredictionMatches(value, node) }
+  })
+  return {
+    results: Object.fromEntries(entries.map((entry) => [entry.name, entry.correct])),
+    entries,
+    allCorrect: entries.length > 0 && entries.every((entry) => entry.correct),
+  }
+}
+
+/**
+ * The `types_predicted` check: every listed name (or, without `names`, every predictType name)
+ * had its type predicted right. Reads `context.variablePredictions` (`{ typeNames, types,
+ * snapshot }`, from the name-tag panel at Run), so it can't pass without a real run.
+ */
+export function evaluateTypesPredictedCheck(check, _output, context = {}) {
+  const state = context?.variablePredictions
+  if (!state || !state.snapshot) return false
+  const names =
+    Array.isArray(check?.names) && check.names.length > 0 ? check.names : state.typeNames
+  if (!Array.isArray(names) || names.length === 0) return false
+  return evaluateTypePredictions(names, state.types, state.snapshot).allCorrect
+}
+
 // ─── Tutor card ──────────────────────────────────────────────────────────────
+
+/**
+ * A predict-mode task's predictions as the tutor's chip counts them: `[{ label, value, result }]`
+ * (`result` true / false once revealed, else null), the value tags first, then the type tags
+ * (labelled "name (type)"). `predictions` is readSyncedVariables' prediction part.
+ */
+export function predictionItems(config, predictions) {
+  const values = predictions?.values ?? {}
+  const results = predictions?.results ?? null
+  const types = predictions?.types ?? {}
+  const typeResults = predictions?.typeResults ?? null
+  const resultOf = (map, name) => (map && name in map ? map[name] === true : null)
+  return [
+    ...(config?.predict ?? []).map((name) => ({
+      label: name,
+      value: String(values[name] ?? ''),
+      result: resultOf(results, name),
+    })),
+    ...(config?.predictType ?? []).map((name) => ({
+      label: `${name} (type)`,
+      value: String(types[name] ?? ''),
+      result: resultOf(typeResults, name),
+    })),
+  ]
+}
+
+/**
+ * The tutor chip for a list of prediction items (predictionItems, or run-count boxes):
+ * "n/m right" once any is revealed, "Predicted n/m" while they type, null before anything.
+ */
+export function predictionChipSummary(items) {
+  if (!Array.isArray(items) || items.length === 0) return null
+  if (items.some((item) => item.result !== null)) {
+    const right = items.filter((item) => item.result === true).length
+    return {
+      label: `${right}/${items.length} right`,
+      title: `Predictions: ${items
+        .map((item) => `${item.label} = ${item.value || '(blank)'} ${item.result ? '✓' : '✗'}`)
+        .join(', ')}`,
+    }
+  }
+  const typed = items.filter((item) => item.value.trim()).length
+  if (typed === 0) return null
+  return {
+    label: `Predicted ${typed}/${items.length}`,
+    title: `Predictions so far (not run yet): ${items
+      .map((item) => `${item.label} = ${item.value || '(blank)'}`)
+      .join(', ')}`,
+  }
+}
 
 /**
  * The tutor card's one-line summary of a student's name-tag panel (`synced`: their
  * students/{id}/currentVariables) on a predict or target task: `{ label, title }`, or null
- * when there is nothing to say (no panel, view mode, another task, nothing typed or run yet).
+ * when there is nothing to say (no panel, view mode, another task, nothing typed or run yet). A
+ * `runCounts: predict` task's count boxes (../runCounts.js) count in the same chip, with or
+ * without the panel.
  */
 export function variablesCardSummary(task, synced) {
   const config = getShowVariables(task)
-  if (!config || config.mode === 'view' || !isPlainObject(synced)) return null
+  const countItems = countPredictionItems(task, synced)
+  if (!isPlainObject(synced)) return null
+  if (config?.mode !== 'predict' && config?.mode !== 'target' && countItems.length === 0) {
+    return null
+  }
   if (synced.taskId != null && String(synced.taskId) !== String(task?.id)) return null
   const { run, predictions } = readSyncedVariables(synced)
-  if (config.mode === 'predict') {
-    const names = config.predict
-    const values = predictions?.values ?? {}
-    const typed = names.filter((name) => String(values[name] ?? '').trim()).length
-    const results = predictions?.results
-    if (results && names.some((name) => name in results)) {
-      const right = names.filter((name) => results[name] === true).length
-      return {
-        label: `${right}/${names.length} right`,
-        title: `Predictions: ${names
-          .map((name) => `${name} = ${values[name] || '(blank)'} ${results[name] ? '✓' : '✗'}`)
-          .join(', ')}`,
-      }
-    }
-    if (typed === 0) return null
-    return {
-      label: `Predicted ${typed}/${names.length}`,
-      title: `Predictions so far (not run yet): ${names
-        .map((name) => `${name} = ${values[name] || '(blank)'}`)
-        .join(', ')}`,
-    }
+  if (config?.mode === 'predict' || countItems.length > 0) {
+    const panelItems = config?.mode === 'predict' ? predictionItems(config, predictions) : []
+    return predictionChipSummary([...panelItems, ...countItems])
   }
   const snapshot = run ? currentSnapshot(run) : null
   if (!snapshot) return null
@@ -404,33 +488,60 @@ export function variablesCardSummary(task, synced) {
 // Most prediction reveals kept per student per task (students/{id}/predictionLog/{taskId}).
 export const MAX_PREDICTION_LOG_ENTRIES = 30
 
+const logEntries = (evaluation) =>
+  Object.fromEntries(
+    (evaluation?.entries ?? []).map((entry) => [
+      entry.name,
+      { value: String(entry.value ?? '').slice(0, 200), correct: !!entry.correct },
+    ])
+  )
+
 /**
  * One reveal as stored in students/{id}/predictionLog/{taskId}/{pushId}:
- * `{ at, allCorrect, entries: { name: { value, correct } } }`.
+ * `{ at, allCorrect, entries: { name: { value, correct } }, types? }` — `types` (the same shape,
+ * the picked type labels) only when the task predicts types (`typeEvaluation`,
+ * evaluateTypePredictions), and `counts` (`{ L3: { value, ran, correct } }`) only when it
+ * predicts run counts (`countEvaluation`, evaluateCountPredictions in ../runCounts.js).
+ * `allCorrect` covers them all.
  */
-export function buildPredictionLogEntry(evaluation, at) {
+export function buildPredictionLogEntry(
+  evaluation,
+  at,
+  { typeEvaluation = null, countEvaluation = null } = {}
+) {
+  const typeEntries = typeEvaluation?.entries ?? []
+  const countEntries = countEvaluation?.entries ?? []
+  const all = [...(evaluation?.entries ?? []), ...typeEntries, ...countEntries]
   return {
     at,
-    allCorrect: !!evaluation?.allCorrect,
-    entries: Object.fromEntries(
-      (evaluation?.entries ?? []).map((entry) => [
-        entry.name,
-        { value: String(entry.value ?? '').slice(0, 200), correct: !!entry.correct },
-      ])
-    ),
+    allCorrect: all.length > 0 && all.every((entry) => entry.correct),
+    entries: logEntries(evaluation),
+    ...(typeEntries.length > 0 ? { types: logEntries(typeEvaluation) } : {}),
+    ...(countEntries.length > 0 ? { counts: countLogEntries(countEvaluation) } : {}),
   }
 }
 
-function normalizeLogEntry(raw, names) {
-  if (!isPlainObject(raw) || !isPlainObject(raw.entries)) return null
-  const order = names.length > 0 ? names : Object.keys(raw.entries)
-  const entries = order
-    .filter((name) => isPlainObject(raw.entries[name]))
+function logEntryList(map, order, kind = null) {
+  if (!isPlainObject(map)) return []
+  return (order.length > 0 ? order : Object.keys(map))
+    .filter((name) => isPlainObject(map[name]))
     .map((name) => ({
       name,
-      value: String(raw.entries[name].value ?? ''),
-      correct: raw.entries[name].correct === true,
+      value: String(map[name].value ?? ''),
+      correct: map[name].correct === true,
+      ...(kind ? { kind } : {}),
     }))
+}
+
+function normalizeLogEntry(raw, names, typeNames = []) {
+  if (!isPlainObject(raw) || (!isPlainObject(raw.entries) && !isPlainObject(raw.types))) {
+    return null
+  }
+  // Type predictions (predictType) are marked `kind: 'type'`; value predictions have no kind.
+  const entries = [
+    ...logEntryList(raw.entries, names),
+    ...logEntryList(raw.types, typeNames, 'type'),
+  ]
   if (entries.length === 0) return null
   return {
     at: typeof raw.at === 'number' ? raw.at : null,
@@ -443,13 +554,14 @@ function normalizeLogEntry(raw, names) {
  * The per-student report fields of a predict-mode task: `{ predictions: { reveals, first, last,
  * firstAllCorrect, lastAllCorrect } }` (`first` / `last` are `[{ name, value, correct }]`), or
  * `{}` when the student never revealed a prediction. `names` orders the entries (the task's
- * showVariables.predict).
+ * showVariables.predict); `typeNames` (its predictType) orders the type predictions, which come
+ * after the values marked `kind: 'type'`.
  */
-export function variablePredictionReportFields(task, studentNode, names = []) {
+export function variablePredictionReportFields(task, studentNode, names = [], typeNames = []) {
   const raw = studentNode?.predictionLog?.[task?.id]
   if (!isPlainObject(raw)) return {}
   const reveals = Object.values(raw)
-    .map((entry) => normalizeLogEntry(entry, names))
+    .map((entry) => normalizeLogEntry(entry, names, typeNames))
     .filter(Boolean)
     .sort((a, b) => (a.at ?? 0) - (b.at ?? 0))
   if (reveals.length === 0) return {}
@@ -477,10 +589,17 @@ export function summarizeVariablePredictions(perStudent) {
   const byName = new Map()
   for (const task of predicted) {
     for (const entry of task.predictions.first ?? []) {
-      const tally = byName.get(entry.name) ?? { name: entry.name, correct: 0, total: 0 }
+      // A type prediction tallies apart from a value prediction of the same name.
+      const key = entry.kind === 'type' ? `type:${entry.name}` : entry.name
+      const tally = byName.get(key) ?? {
+        name: entry.name,
+        ...(entry.kind === 'type' ? { kind: 'type' } : {}),
+        correct: 0,
+        total: 0,
+      }
       tally.total += 1
       if (entry.correct) tally.correct += 1
-      byName.set(entry.name, tally)
+      byName.set(key, tally)
     }
   }
   return {
