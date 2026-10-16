@@ -315,6 +315,21 @@ describe.each(VALIDATORS)('run_attempted validation (%s)', (_name, validate) => 
     )
   })
 
+  it('ignores (and warns about) submit mode on Arcade, which always runs', () => {
+    const arcade = validate(
+      lessonOf('arcade', {
+        starterCode: 'game.run()',
+        interactionMode: 'submit',
+        check: RUN_ATTEMPTED,
+      })
+    )
+    expect(has(arcade.errors, 'uses submit mode')).toBe(false)
+    expect(has(arcade.warnings, 'but Arcade tasks always run — it is ignored')).toBe(true)
+    expect(
+      getModuleDefinition('arcade').taskFields.some((field) => field.name === 'interactionMode')
+    ).toBe(false)
+  })
+
   it('warns that requireSuccess is ignored on Arcade, but not on Python', () => {
     const arcade = validate(
       lessonOf('arcade', { starterCode: 'game.run()', check: REQUIRE_SUCCESS })

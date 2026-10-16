@@ -131,7 +131,6 @@ export default defineModule({
       description: 'Coloured block brackets in the Python editor (default true; false hides them).',
     },
     { name: 'arcadeTools', type: 'string', values: ['none', 'sprites', 'tilemaps', 'both'] },
-    { name: 'interactionMode', type: 'string', values: ['run', 'submit'] },
     { name: 'carryCodeFrom', type: 'string' },
   ],
   carryThroughField: 'carryCodeFrom',
@@ -249,9 +248,13 @@ export default defineModule({
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
   validateTask: (task, { n, errors, warnings }) => {
-    validateTaskChecks(task, (checks, kind) =>
-      validateCodeChecks(checks, n, errors, kind, { interactionMode: task.interactionMode })
-    )
+    validateTaskChecks(task, (checks, kind) => validateCodeChecks(checks, n, errors, kind))
+    // Arcade games always run (there is no Submit button), so submit mode would do nothing.
+    if (task.interactionMode != null && task.interactionMode !== 'run') {
+      warnings.push(
+        `Task ${n} has interactionMode ${task.interactionMode}, but Arcade tasks always run — it is ignored`
+      )
+    }
     warnArcadeUnevaluatedChecks(
       [...normalizeChecks(task.check), ...collectFeedbackChecks(task)],
       n,

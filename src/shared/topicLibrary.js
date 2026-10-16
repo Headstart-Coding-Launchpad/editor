@@ -92,13 +92,18 @@ export function useTopicLibrary(lessonType = null, enabled = true) {
       })
   }, [shouldFetch])
 
-  const filteredTopics = !offered
-    ? []
-    : lessonType
-      ? topics.filter((topic) => topic.types.length === 0 || topic.types.includes(lessonType))
-      : topics
+  const filteredTopics = !offered ? [] : filterTopicsForType(topics, lessonType)
 
   return { topics: filteredTopics, allTopics: topics, loading, error }
+}
+
+// The topics a lesson of `lessonType` can link to: untyped topics plus those naming the type.
+// Only a module type filters. A composed lesson's information and quiz slides belong to no
+// module (their lesson keeps type 'composed'), so they see every topic, as the Builder and the
+// teacher view do; otherwise a `types: [python]` topic would never resolve there.
+export function filterTopicsForType(topics, lessonType) {
+  if (!lessonType || !getModuleDefinition(lessonType)) return topics
+  return topics.filter((topic) => topic.types.length === 0 || topic.types.includes(lessonType))
 }
 
 export function searchTopics(topics, query) {
