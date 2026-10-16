@@ -21,27 +21,19 @@ describe('WaitingRoom', () => {
     expect(screen.queryByText(/Learn the basics/)).not.toBeInTheDocument()
   })
 
-  it('shows the initial waiting message with one dot', () => {
+  it('says the tutor is getting ready, in fixed words that never show a stray ".."', () => {
     vi.useFakeTimers()
     render(<WaitingRoom lessonTitle="Lesson" />)
-    expect(screen.getByText('Your teacher is getting ready.')).toBeInTheDocument()
-  })
-
-  it('advances the dot animation after each interval', () => {
-    vi.useFakeTimers()
-    render(<WaitingRoom lessonTitle="Lesson" />)
+    const message = screen.getByText('Your tutor is getting ready')
+    expect(message).toBeInTheDocument()
     act(() => {
-      vi.advanceTimersByTime(600)
+      vi.advanceTimersByTime(1800)
     })
-    expect(screen.getByText('Your teacher is getting ready..')).toBeInTheDocument()
-    act(() => {
-      vi.advanceTimersByTime(600)
-    })
-    expect(screen.getByText('Your teacher is getting ready...')).toBeInTheDocument()
-    act(() => {
-      vi.advanceTimersByTime(600)
-    })
-    expect(screen.getByText('Your teacher is getting ready.')).toBeInTheDocument()
+    expect(message).toHaveTextContent(/^Your tutor is getting ready$/)
+    // The live "still waiting" cue is three animated dots, hidden from screen readers.
+    const dots = message.querySelector('.activity-dots')
+    expect(dots).toHaveAttribute('aria-hidden', 'true')
+    expect(dots.children).toHaveLength(3)
   })
 
   it('renders the sit-tight sub-message', () => {

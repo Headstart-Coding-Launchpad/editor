@@ -1,14 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import EntryScreenCard, { centredBody } from './EntryScreenCard'
 
 export default function WaitingRoom({ lessonTitle, lessonDescription, videoCallLink }) {
-  const [dots, setDots] = useState('.')
-
-  useEffect(() => {
-    const t = setInterval(() => setDots((d) => (d.length < 3 ? d + '.' : '.')), 600)
-    return () => clearInterval(t)
-  }, [])
-
+  // The words stay fixed (a cycling "." / ".." / "..." read as a typo when caught mid-cycle);
+  // three bouncing dots after them show it is live. They stop under reduced motion.
   return (
     <EntryScreenCard
       title={lessonTitle}
@@ -16,7 +11,14 @@ export default function WaitingRoom({ lessonTitle, lessonDescription, videoCallL
       cardStyle={s.card}
       bodyStyle={centredBody}
     >
-      <p style={s.waiting}>Your teacher is getting ready{dots}</p>
+      <p style={s.waiting}>
+        Your tutor is getting ready
+        <span className="activity-dots" style={s.dots} aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </span>
+      </p>
       <p style={s.sub}>The session will start shortly. Sit tight!</p>
       {videoCallLink && (
         <div style={s.videoBox}>
@@ -46,6 +48,7 @@ const s = {
     color: 'var(--colour-primary)',
     minHeight: '1.5em',
   },
+  dots: { marginLeft: 2, verticalAlign: 'baseline' },
   sub: {
     fontFamily: 'var(--font-body)',
     fontSize: '0.95rem',
