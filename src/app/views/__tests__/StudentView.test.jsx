@@ -289,6 +289,28 @@ describe('StudentView', () => {
     })
   })
 
+  it('a playground shows no task navigation (no Previous / Task 1 of 1 / Next, no task dot)', async () => {
+    render(
+      <StudentView
+        lessonId="__playground__python"
+        forceSolo
+        allowUnrestrictedTaskNavigation
+        lesson={{
+          id: '__playground__python',
+          isPlayground: true,
+          title: 'Python Playground',
+          type: 'python',
+          tasks: [{ id: 'playground', title: 'Python Playground', starterCode: '' }],
+        }}
+      />
+    )
+    await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+    expect(screen.queryByText(/Task 1 of 1/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Task progress')).not.toBeInTheDocument()
+  })
+
   it('passes predefined Scratch blocks to the student workspace', async () => {
     const predefinedBlocks = [
       {

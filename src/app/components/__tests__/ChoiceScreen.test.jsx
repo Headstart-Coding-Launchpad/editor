@@ -27,17 +27,17 @@ describe('ChoiceScreen', () => {
     expect(screen.queryByText(/Learn the basics/)).not.toBeInTheDocument()
   })
 
-  it('renders both the Wait for Teacher and Start Solo buttons', () => {
+  it('renders both the Join Live Lesson and Start Solo buttons', () => {
     render(<ChoiceScreen lessonTitle="Lesson" onJoinLive={vi.fn()} onGoSolo={vi.fn()} />)
-    expect(screen.getByRole('button', { name: 'Wait for Teacher' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Join Live Lesson' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Start Solo' })).toBeInTheDocument()
   })
 
-  it('calls onJoinLive when Wait for Teacher is clicked', async () => {
+  it('calls onJoinLive when Join Live Lesson is clicked', async () => {
     const user = userEvent.setup()
     const onJoinLive = vi.fn()
     render(<ChoiceScreen lessonTitle="Lesson" onJoinLive={onJoinLive} onGoSolo={vi.fn()} />)
-    await user.click(screen.getByRole('button', { name: 'Wait for Teacher' }))
+    await user.click(screen.getByRole('button', { name: 'Join Live Lesson' }))
     expect(onJoinLive).toHaveBeenCalledOnce()
   })
 
@@ -47,5 +47,11 @@ describe('ChoiceScreen', () => {
     render(<ChoiceScreen lessonTitle="Lesson" onJoinLive={vi.fn()} onGoSolo={onGoSolo} />)
     await user.click(screen.getByRole('button', { name: 'Start Solo' }))
     expect(onGoSolo).toHaveBeenCalledOnce()
+  })
+
+  it('makes joining live the main (primary) choice and solo the quieter one', () => {
+    render(<ChoiceScreen lessonTitle="Lesson" onJoinLive={vi.fn()} onGoSolo={vi.fn()} />)
+    expect(screen.getByRole('button', { name: 'Join Live Lesson' })).toHaveClass('btn-primary')
+    expect(screen.getByRole('button', { name: 'Start Solo' })).toHaveClass('btn-ghost-outline')
   })
 })

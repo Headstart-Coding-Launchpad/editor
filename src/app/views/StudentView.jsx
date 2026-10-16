@@ -1467,38 +1467,42 @@ export default function StudentView({
   const teacherLiveWorkspace = myStudentTeacherEdit?.teacherLiveWorkspace ?? null
   const teacherLiveArcadeDesign = myStudentTeacherEdit?.teacherLiveArcadeDesign ?? null
 
-  const taskProgressControl = !isSandbox ? (
-    <TaskProgressDots
-      compact
-      tasks={visibleTasks}
-      currentTaskId={currentTaskId}
-      viewingTaskId={viewingTaskId}
-      isSolo={isSolo}
-      pseudoTask={
-        explainerPseudoTask
-          ? {
-              id: explainerPseudoTask.id,
-              title: explainerPseudoTask.title,
-              beforeTaskId: currentTaskId,
-            }
-          : null
-      }
-      canSelectTask={(id) => {
-        if (!isSolo) return true
-        const idIdx = flatTasks.findIndex((t) => t.id === id)
-        return (
-          allowUnrestrictedTaskNavigation || idIdx <= currentIndex || idIdx === currentIndex + 1
-        )
-      }}
-      onDotClick={(id) => {
-        if (isSolo) {
-          if (id !== currentTaskId || viewingExplainerSlide) handleSoloNavigate(id)
-        } else if (id < currentTaskId) {
-          setViewingTaskId(id === currentTaskId ? null : id)
+  // A playground is one open coding space, not a lesson: no task dots (an unlabelled orange "1")
+  // and no "Previous / Task 1 of 1 / Next".
+  const isPlayground = !!(lessonProp?.isPlayground || lesson?.isPlayground)
+  const taskProgressControl =
+    !isSandbox && !isPlayground ? (
+      <TaskProgressDots
+        compact
+        tasks={visibleTasks}
+        currentTaskId={currentTaskId}
+        viewingTaskId={viewingTaskId}
+        isSolo={isSolo}
+        pseudoTask={
+          explainerPseudoTask
+            ? {
+                id: explainerPseudoTask.id,
+                title: explainerPseudoTask.title,
+                beforeTaskId: currentTaskId,
+              }
+            : null
         }
-      }}
-    />
-  ) : null
+        canSelectTask={(id) => {
+          if (!isSolo) return true
+          const idIdx = flatTasks.findIndex((t) => t.id === id)
+          return (
+            allowUnrestrictedTaskNavigation || idIdx <= currentIndex || idIdx === currentIndex + 1
+          )
+        }}
+        onDotClick={(id) => {
+          if (isSolo) {
+            if (id !== currentTaskId || viewingExplainerSlide) handleSoloNavigate(id)
+          } else if (id < currentTaskId) {
+            setViewingTaskId(id === currentTaskId ? null : id)
+          }
+        }}
+      />
+    ) : null
 
   const topBarRight = teacherPresentation ? (
     <div style={s.presentationControls}>
@@ -1629,7 +1633,7 @@ export default function StudentView({
           </button>
         )
       )}
-      {isSolo && (
+      {isSolo && !isPlayground && (
         <SoloNav
           flatTasks={flatTasksForNav}
           currentIndex={currentIndexForNav}
