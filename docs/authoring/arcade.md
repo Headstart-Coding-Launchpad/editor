@@ -53,19 +53,22 @@ description: Make a player respond to the arrow keys.
 tasks:
   - title: Move the player
     moduleType: arcade
-    starterCode: |
-      from headstart_arcade import game, Sprite, keys
+    codeStages:
+      - role: starter
+        label: Starter
+        code: |
+          from headstart_arcade import game, Sprite, keys
 
-      player = Sprite("player.png", x=72, y=100)
+          player = Sprite("player.png", x=72, y=100)
 
-      def update():
-          player.x += keys.horizontal * 2
+          def update():
+              player.x += keys.horizontal * 2
 
-      def draw():
-          game.clear("dark_blue")
-          player.draw()
+          def draw():
+              game.clear("dark_blue")
+              player.draw()
 
-      game.run()
+          game.run()
 ```
 
 Students start a game with **Run game**. Editing or resetting code stops it;
@@ -421,10 +424,13 @@ the validator warns about it. Full reference:
 - title: 🎮 Watch It Move
   moduleType: arcade
   taskActivity: Code Task, Visual Fun Application
-  starterCode: |
-    from headstart_arcade import game, keys
-    # ...
-    game.run()
+  codeStages:
+    - role: starter
+      label: Starter
+      code: |
+        from headstart_arcade import game, keys
+        # ...
+        game.run()
   check:
     type: run_attempted
     hint: Press **Run game**, then try the arrow keys.

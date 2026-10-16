@@ -26,11 +26,14 @@ A flat path map. Directories end with `/`; files do not. Root `/` always exists.
 |---|:---:|---|
 | `starterFs` | No | Initial filesystem when no carry-through exists. Defaults to `{ "/": { type: "dir" } }`. |
 | `completeFs` | No | Reference solution shown in "See complete". |
-| `codeStages` | No | Array of `{ label, fs, role? }` snapshots. Stage role metadata is available for teacher labelling; read-only reveal UI is currently implemented for Python/HTML stages only. |
+| `codeStages` | No | Array of `{ label, fs, role? }` snapshots. See "How students reach the stages" below. |
 | `carryFsFrom` | No | Task ID to carry the saved filesystem from. |
 | `startsInDir` | No | Directory path the explorer opens in. Defaults to `/`. Must end with `/`. |
 
-**Stage object:** `role` may be `support`, `core`, `extension`, or `solution`; omitted `role` defaults to `support`. Support stages are offerable references where the lesson type provides a read-only reveal UI; that UI is currently implemented for Python/HTML stages only. As with every task type, the `check` is defined once on the task, never on a stage — see "Code stage runtime behaviour" in `docs/authoring/lesson-schema.md`.
+**Stage object:** `role` is `starter`, `support` or `complete`; omitted `role` defaults to `support`. (`core` and `extension` are legacy names for `support`, and `solution` for `complete`.)
+
+**How students reach the stages (solo mode):** there is no read-only reveal here (that's Python and HTML). Instead, after a student's check has failed **twice** on the task, solo mode offers to load the next stage into their workspace, replacing their work; after the last stage it offers the complete solution. Live students don't get the offer: the tutor applies stages from the teacher view.
+ As with every task type, the `check` is defined once on the task, never on a stage — see "Code stage runtime behaviour" in `docs/authoring/lesson-schema.md`.
 
 ---
 

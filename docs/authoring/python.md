@@ -186,9 +186,12 @@ the task. They never change the task's code or what `carryCodeFrom` copies. See
 ```yaml
   - title: Greet the user
     explainer: Ask for a name and print `Hello <name>`.
-    starterCode: |
-      name = input('What is your name? ')
-      print('Hello', name)
+    codeStages:
+      - role: starter
+        label: Starter
+        code: |
+          name = input('What is your name? ')
+          print('Hello', name)
     tests:
       - id: t1
         name: Greet Alice
@@ -226,12 +229,14 @@ Evaluated after the Python run completes. `value` accepts a JSON-encoded string 
 | `variable_not_equals` | `name`, `value` | Variable does not equal value |
 | `variable_dict_contains` | `name`, `value` | Dict contains value (any key) |
 | `variable_dict_equals` | `name`, `value` | Dict deep-equals value |
-| `variable_dict_key_value` | `name`, `key`, `value` | Dict key `key` equals value |
+| `variable_dict_key_value` | `name`, `key`, `value` | Dict key `key` equals value. `key` is compared as text, so `key: 1` and `key: "1"` are the same; quote it anyway for clarity |
 | `variable_array_contains` | `name`, `value` | List contains value |
 | `variable_array_equals` | `name`, `value` | List deep-equals value |
 | `variable_array_nth_item` | `name`, `index`, `value` | List item at zero-based index equals value |
 
-Variables are read from the program's top level when it ends, **including when it stops with an
+Variables are read from the program's top level when it ends. Names starting with `_` (such as
+`_total` or `_`) are never captured, so a variable check can't see them:
+give checked variables a plain name. They are read **including when the program stops with an
 error** (since 2026-10-14; before that an erroring run had no variables). A run that errors still
 fails completion, so this only matters to feedback checks.
 
@@ -877,11 +882,14 @@ Worked example — a required-path demo task:
   taskActivity: Code Task, Complete Example
   explainer: |
     Press **Run** and watch the turtle draw a square. Nothing to change this time!
-  starterCode: |
-    import turtle
-    for side in range(4):
-        turtle.forward(100)
-        turtle.left(90)
+  codeStages:
+    - role: starter
+      label: Starter
+      code: |
+        import turtle
+        for side in range(4):
+            turtle.forward(100)
+            turtle.left(90)
   check:
     type: run_attempted
     hint: Press **Run** to see the program work.

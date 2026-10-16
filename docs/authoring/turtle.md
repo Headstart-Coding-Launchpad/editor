@@ -14,9 +14,15 @@ workspaces yet.
 ## Lesson and task shape
 
 Use `type: composed` at lesson level and `moduleType: turtle` on each Turtle
-task. Turtle tasks use the same source-stage fields as a Python code task:
-`starterCode`, `completeCode`, `codeStages`, `carryCodeFrom`, and `copyCode`, plus
-`showBlocks` (block brackets in the editor, see [python.md](python.md)).
+task. Turtle tasks use the same source fields as a Python code task:
+`codeStages` (roles `starter`, `support`, `complete`), `carryCodeFrom` and `copyCode`, plus
+`showBlocks` (block brackets in the editor, see [python.md](python.md)). The legacy
+`starterCode` / `completeCode` still load, but the Builder writes `codeStages`, so use them.
+
+Stages reach students differently from Python: there is no read-only reference. After a
+student's check fails **twice**, solo mode offers to load the next stage into the editor
+(replacing their code), and after the last stage the complete code. Live students don't get
+the offer; the tutor applies stages.
 
 ```yaml
 id: draw-a-square
@@ -26,12 +32,15 @@ description: Use a loop to draw a square with the turtle.
 tasks:
   - title: Draw a square
     moduleType: turtle
-    starterCode: |
-      import turtle
+    codeStages:
+      - role: starter
+        label: Starter
+        code: |
+          import turtle
 
-      for _ in range(4):
-          turtle.forward(100)
-          turtle.left(90)
+          for _ in range(4):
+              turtle.forward(100)
+              turtle.left(90)
     check:
       - type: turtle_path_closed
         tolerance: 2
@@ -51,15 +60,18 @@ next line (a 💡 in the gutter and faded text after the line), so instructions
 never sit in the student's code.
 
 ```yaml
-    starterCode: |
-      import turtle
+    codeStages:
+      - role: starter
+        label: Starter
+        code: |
+          import turtle
 
-      #> Try a different colour name here
-      turtle.color("blue")
-      for _ in range(4):
-          #> Change 100 to make the square bigger
-          turtle.forward(100)
-          turtle.left(90)
+          #> Try a different colour name here
+          turtle.color("blue")
+          for _ in range(4):
+              #> Change 100 to make the square bigger
+              turtle.forward(100)
+              turtle.left(90)
 ```
 
 The rules (stacking, trailing markers, stripping before run/check/carry,
@@ -306,6 +318,17 @@ Single default turtle only — `import turtle; turtle.forward(10)` or
 (with no-op `exitonclick`/`title`/`setup`) are also accepted as harmless
 no-ops, since they're near-universal turtle boilerplate that would otherwise
 raise an error for no visual reason in this headless model.
+
+**Not supported yet** (each stops the program with an `AttributeError` or `TypeError`, so keep
+them out of starter, complete and example code):
+
+- `turtle.Turtle()` (a second turtle, or even `t = turtle.Turtle()` for the default one): use
+  the module functions, `turtle.forward(…)`;
+- `shape()`, `tracer()` / `update()`, `towards()` / `distance()`, `clearstamp()`,
+  `onkey()` / `listen()` / `onclick()`;
+- module-level `turtle.exitonclick()`, `turtle.title()` and `turtle.setup()`: call them on
+  the screen instead, `turtle.Screen().exitonclick()`;
+- anything else not listed in the tables on this page.
 
 `left()`/`right()` both record as the same internal `turn` event (signed
 degrees) — a `turtle_command_used` check targeting `turn` can't currently
