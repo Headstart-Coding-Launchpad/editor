@@ -21,11 +21,6 @@ export const RESULT_PANE_LABELS = Object.freeze({
 // once. Below either, the panes become tabs.
 export const SIDE_BY_SIDE_MIN_RESULT_WIDTH = 520
 export const SIDE_BY_SIDE_MIN_HEIGHT = 600
-// Two panes (the picture and the console, no name tags) fit in far less room, so they stay side
-// by side on a 1366 × 768 Chromebook and only tab on tablets (Ryan, 2026-10-16: "it shouldn't
-// collapse that quickly").
-export const TWO_PANE_MIN_RESULT_WIDTH = 400
-export const TWO_PANE_MIN_HEIGHT = 420
 // A workspace this much taller than wide is portrait: the editor goes above the result pane.
 export const PORTRAIT_RATIO = 1.1
 
@@ -33,7 +28,8 @@ export const PORTRAIT_RATIO = 1.1
  * How the workspace lays out its editor and result panes:
  *
  * - 'side': editor | everything side by side (wide desktops; also before the workspace has
- *   been measured, and whenever there is only one result pane to show);
+ *   been measured, and in landscape whenever there are at most two result panes: the picture
+ *   sits above the console and shrinks to fit, so it never needs tabs — Ryan, 2026-10-16);
  * - 'tabs': editor | one tabbed result pane;
  * - 'below': editor above, result pane (tabbed when it has more than one pane) below — phones
  *   and portrait screens.
@@ -50,12 +46,9 @@ export function chooseWorkspaceLayout({
   if (isMobile) return 'below'
   if (!(width > 0) || !(height > 0)) return 'side'
   if (height > width * PORTRAIT_RATIO) return 'below'
-  if (paneCount <= 1) return 'side'
+  if (paneCount <= 2) return 'side'
   const resultWidth = width * (1 - split / 100)
-  const twoPanes = paneCount === 2
-  const minWidth = twoPanes ? TWO_PANE_MIN_RESULT_WIDTH : SIDE_BY_SIDE_MIN_RESULT_WIDTH
-  const minHeight = twoPanes ? TWO_PANE_MIN_HEIGHT : SIDE_BY_SIDE_MIN_HEIGHT
-  if (resultWidth < minWidth || height < minHeight) {
+  if (resultWidth < SIDE_BY_SIDE_MIN_RESULT_WIDTH || height < SIDE_BY_SIDE_MIN_HEIGHT) {
     return 'tabs'
   }
   return 'side'

@@ -46,9 +46,9 @@ Entries written before 2026-09-29 are not tagged.
   stops typing, as a scrub does: no attempt, no checks, nothing saved beyond the edit. Half-typed
   code that errors leaves the last picture in place. See
   [python.md](python.md#live-scrubbing-scrub).
-- **Picture + Console stay side by side** down to a 400 px wide, 420 px tall result side, so a
-  task without name tags no longer turns into tabs on a 1366 × 768 Chromebook. Three panes
-  (with Tags) tab as before. See [python.md](python.md#screen-layout-layout).
+- **Picture + Console never turn into tabs** in landscape: without name tags, the Picture sits
+  above the Console and shrinks to fit, on Chromebooks and tablets alike. Three panes (with Tags)
+  tab as before, and portrait screens and phones still put the editor above the result. See [python.md](python.md#screen-layout-layout).
 - **🤩 Emoji Artist** only counts emoji the student added. Emoji already in the task's code
   stages, `copyCode` or the tutor's sandbox code don't count, so a starter with emoji no longer
   awards it on the first Run. See [badges.md](badges.md).

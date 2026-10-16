@@ -853,8 +853,8 @@ On a wide desktop a Python task shows everything side by side: the editor, then 
 console and the name-tag panel. When that doesn't fit (tablets, 1366 × 768 Chromebooks and small
 laptops), the editor stays on the left and **one result pane** on the right has tabs
 **Picture · Tags · Console**. On portrait screens and phones the editor sits above the tabs.
-A task with just the Picture and the Console (no Tags) needs far less room, so it stays side by
-side on a 1366 × 768 Chromebook and only tabs on tablets.
+A task with just the Picture and the Console (no Tags) never uses tabs in landscape: the Picture
+sits above the Console and shrinks to fit.
 Only the tabs the task has appear: Picture once the code imports `stage` (or the task has a
 `stageTarget`), Tags with `showVariables`. A task with just a console has no tabs at all.
 

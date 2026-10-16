@@ -31,21 +31,23 @@ describe('chooseWorkspaceLayout', () => {
     )
   })
 
-  it('uses tabs on a 1366 × 768 Chromebook and a 1024 × 768 tablet in landscape', () => {
+  it('uses tabs for three panes on a 1366 × 768 Chromebook in landscape', () => {
     // 1366 × 768: the explainer takes ~26%, the workspace is ~980 × 550.
     expect(chooseWorkspaceLayout({ width: 980, height: 550, paneCount: 3, split: 58 })).toBe('tabs')
     // Explainer folded away: wider, but still too short for three panes.
     expect(chooseWorkspaceLayout({ width: 1300, height: 560, paneCount: 3, split: 58 })).toBe(
       'tabs'
     )
-    expect(chooseWorkspaceLayout({ width: 740, height: 600, paneCount: 2, split: 50 })).toBe('tabs')
   })
 
-  it('keeps the picture and the console side by side on a 1366 × 768 Chromebook', () => {
+  it('never tabs the picture and the console alone in landscape (picture above console)', () => {
     expect(chooseWorkspaceLayout({ width: 980, height: 550, paneCount: 2, split: 58 })).toBe('side')
-    expect(chooseWorkspaceLayout({ width: 980, height: 550, paneCount: 2, split: 50 })).toBe('side')
-    // Too short even for two.
-    expect(chooseWorkspaceLayout({ width: 980, height: 400, paneCount: 2, split: 50 })).toBe('tabs')
+    expect(chooseWorkspaceLayout({ width: 740, height: 600, paneCount: 2, split: 50 })).toBe('side')
+    expect(chooseWorkspaceLayout({ width: 980, height: 400, paneCount: 2, split: 50 })).toBe('side')
+    // Portrait still puts the editor above the result pane.
+    expect(chooseWorkspaceLayout({ width: 600, height: 1000, paneCount: 2, split: 50 })).toBe(
+      'below'
+    )
   })
 
   it('keeps a wide desktop (1920 × 1080) side by side', () => {
