@@ -220,6 +220,9 @@ describe('OutputPanel status and placeholder', () => {
     expect(outputStatus({ runStatus: 'success', waitingForInput: true }).label).toBe(
       'Waiting for your answer'
     )
+    expect(outputStatus({ waitingForInput: true, mirror: true }).label).toBe(
+      'Waiting for an answer'
+    )
     expect(outputPlaceholder({ running: true })).toBeNull()
   })
 })

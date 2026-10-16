@@ -35,9 +35,14 @@ export function splitEmojiRuns(text) {
 }
 
 // The header's status: what the program is doing now. A program paused on input() is waiting
-// for the student, not "Not run".
-export function outputStatus({ runStatus, running, waitingForInput }) {
-  if (waitingForInput) return { colour: '#f59e0b', label: 'Waiting for your answer' }
+// for the student, not "Not run". `mirror`: the tutor's read-only copy of a student's output.
+export function outputStatus({ runStatus, running, waitingForInput, mirror = false }) {
+  if (waitingForInput) {
+    return {
+      colour: '#f59e0b',
+      label: mirror ? 'Waiting for an answer' : 'Waiting for your answer',
+    }
+  }
   if (running) return { colour: '#60a5fa', label: 'Running…' }
   if (runStatus === 'success') return { colour: '#22c55e', label: 'Ran OK' }
   if (runStatus === 'error') return { colour: '#ef4444', label: 'Error' }
@@ -136,6 +141,7 @@ export default function OutputPanel({
     runStatus,
     running,
     waitingForInput: inputPrompt !== null,
+    mirror: inputReadOnly,
   })
   const placeholder = outputPlaceholder({
     runStatus,
