@@ -367,7 +367,7 @@ do meanwhile: up to three optional, **unchecked** mini tasks on that code task.
 ```
 
 - **Markers in the starter:** a side-quest's `starter` takes the same markers as a task's starter
-  code: `#>` line hints (HTML: `<!--> … -->`), `#@lock`, `#@lock-values` and `#@peek`. They're
+  code: `#>` line hints (HTML: `<!--> … -->`), `#@lock`, `#@lock-values`, `#@lock-first`, `#@lock-last`, `#@slot` and `#@peek`. They're
   stripped from the code, shown the same way (💡 hint, locked or values-only lines), and never
   run or saved.
 - **Unlock:** only after the task's own completion check passes (so the task needs a `check`).

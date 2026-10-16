@@ -39,6 +39,23 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-16
 
+### Edit zones: one-line slots, and lines that stay first or last (P6-30)
+
+- **`#@lock-last`** / **`#@lock-first`** lock the next line like `#@lock`, and nothing can be added
+  after / before it: typing or a paste on that side goes to the other side of the line instead,
+  with "This line stays last. Add your code above it." Use `#@lock-last` on the line that uses the
+  student's work (`draw(robot)`, `grid(pixels)`). One of each per task.
+- **`#@slot`** marks the next line (blank lines too) as a place the student types exactly one
+  line: dashed outline, "Write one line here" tag; Enter and multi-line pastes don't add lines.
+  `#@slot 2` (up to 5) allows a small block.
+- **`puzzle.noNewLines: true`**: students can't add a line anywhere; they edit the editable lines
+  and fill the slots. `puzzle: { onlyEdit: [4], noNewLines: true }` is "change one line, add
+  nothing".
+- Python and Turtle tasks, side-quest starters included. See
+  [python.md](python.md#edit-zones-one-line-slots-and-lines-that-stay-first-or-last-slot-lock-first-lock-last-puzzlenonewlines).
+- Affects: python, turtle · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-16-p6-30-edit-zones-one-line-slots-and-fenced-locks.md
+
 ### Run counts: predict how many times a line runs (p6-26)
 
 New task field `runCounts` (Python and Turtle; not under `showVariables`, works with or without

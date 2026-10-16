@@ -41,12 +41,17 @@
 // Lock marker (Python syntax only): a line whose trimmed text is `#@lock` locks the next
 // non-blank line (see ./lockedLines.js). It is stripped like a hint marker; the task keeps its
 // runtime-only `lockSets` (`[{ source, stageIndex, file, locks: [{ line, target }] }]`, starter
-// first). A task's `puzzle.onlyEdit` adds locks to the starter's set.
+// first). A task's `puzzle.onlyEdit` adds locks to the starter's set. `#@lock-first` /
+// `#@lock-last` lock the next non-blank line and fence it (`fence`), and `#@slot [n]` makes the
+// next line, blank or not, a one-line (n-line) slot (P6-30, ./lockedLines.js); both are stripped
+// the same way. `puzzle.noNewLines` adds a `{ noNewLines: true }` entry to each code lock set.
 
 import {
   isLockMarkerLine,
   isLockSyntax,
   isLockValuesMarkerLine,
+  lockFenceOfMarkerLine,
+  slotMarkerSize,
   mergeLocks,
   onlyEditLocks,
   valueSkeleton,
@@ -156,7 +161,9 @@ export function parseLineHints(code, syntax) {
         isPeekMarkerLine(line, syntax) ||
         isCountMarkerLine(line, syntax) ||
         isLockMarkerLine(line, syntax) ||
-        isLockValuesMarkerLine(line, syntax)
+        isLockValuesMarkerLine(line, syntax) ||
+        lockFenceOfMarkerLine(line, syntax) ||
+        slotMarkerSize(line, syntax) != null
     )
   ) {
     return { code, ...none, countMissed: 0 }
@@ -176,6 +183,9 @@ export function parseLineHints(code, syntax) {
   // `values`: a `#@lock-values` marker (only the line's values stay editable).
   let lockPending = null
   const lockIndexes = []
+  // Slot: a `#@slot` waiting for the next line (blank or not); the slots' `{ index, size }`.
+  let slotPending = null
+  const slotIndexes = []
   // Count: how many `#@count` markers wait for the next line of code; the marked lines' indexes.
   let countPending = 0
   const countIndexes = []
@@ -205,6 +215,16 @@ export function parseLineHints(code, syntax) {
       lockPending = { values: true }
       continue
     }
+    const fence = lockFenceOfMarkerLine(line, syntax)
+    if (fence) {
+      lockPending = { values: false, fence }
+      continue
+    }
+    const slotSize = slotMarkerSize(line, syntax)
+    if (slotSize != null) {
+      slotPending = slotSize
+      continue
+    }
     const text = markerText(line, syntax)
     if (text != null) {
       pending.push(text)
@@ -213,8 +233,12 @@ export function parseLineHints(code, syntax) {
     kept.push(line)
     if (Object.hasOwn(TRIPLE_QUOTE_SYNTAXES, syntax)) openString = tripleQuoteStateAfter(line, null)
     if (lockPending && line.trim() !== '') {
-      lockIndexes.push({ index: kept.length - 1, values: lockPending.values })
+      lockIndexes.push({ index: kept.length - 1, ...lockPending })
       lockPending = null
+    }
+    if (slotPending != null) {
+      slotIndexes.push({ index: kept.length - 1, size: slotPending })
+      slotPending = null
     }
     if (peekState === 'pending' && isPeekTargetLine(line)) {
       peekIndex = kept.length - 1
@@ -229,10 +253,11 @@ export function parseLineHints(code, syntax) {
   }
   // Trailing markers point at a new empty last line: the code ends in a newline either way, so
   // the editor's final (empty) line is the one they describe.
-  const trailingMarker = pending.length > 0
+  const trailingMarker = pending.length > 0 || slotPending != null
   if (trailingMarker) {
     kept.push('')
     for (const hintText of pending) hints.push({ index: kept.length - 1, text: hintText })
+    if (slotPending != null) slotIndexes.push({ index: kept.length - 1, size: slotPending })
   }
   return {
     code: kept.join('\n') + (endsWithNewline && !trailingMarker ? '\n' : ''),
@@ -243,11 +268,20 @@ export function parseLineHints(code, syntax) {
     // A peek marker with no code line after it stops nowhere (the panel shows the end).
     peek: peekIndex == null ? null : { line: peekIndex + 1, target: kept[peekIndex].trim() },
     // A lock marker with no non-blank line after it locks nothing.
-    locks: lockIndexes.map(({ index, values }) =>
-      values
-        ? { line: index + 1, target: valueSkeleton(kept[index]), values: true }
-        : { line: index + 1, target: kept[index].trim() }
-    ),
+    locks: [
+      ...lockIndexes.map(({ index, values, fence }) =>
+        values
+          ? { line: index + 1, target: valueSkeleton(kept[index]), values: true }
+          : { line: index + 1, target: kept[index].trim(), ...(fence ? { fence } : {}) }
+      ),
+      // Slots, anchored by the lines either side (anchorSlots in ./lockedLines.js).
+      ...slotIndexes.map(({ index, size }) => ({
+        line: index + 1,
+        slot: size,
+        after: index > 0 ? kept[index - 1].trim() : null,
+        before: index + 1 < kept.length ? kept[index + 1].trim() : null,
+      })),
+    ],
     // A count marker with no code line after it counts nothing (validation warns).
     counts: countIndexes.map((index) => ({ line: index + 1, target: kept[index].trim() })),
     countMissed: countPending > 0 ? 1 : 0,
@@ -416,7 +450,8 @@ export function stripTaskLineHints(task, syntax) {
   }
   if (stages) next.codeStages = stages
   const puzzleLocks = onlyEditStarterLocks(task, next, syntax)
-  if (!changed && !puzzleLocks) return task
+  const noNewLines = noNewLinesRuleNeeded(task, syntax)
+  if (!changed && !puzzleLocks && !noNewLines) return task
   for (const field of ['starterCode', 'starterFiles', 'completeCode', 'completeFiles']) {
     if (task[field] === undefined) delete next[field]
   }
@@ -446,8 +481,29 @@ export function stripTaskLineHints(task, syntax) {
       })
     }
   }
+  if (noNewLines) {
+    // puzzle.noNewLines (P6-30): every code lock set carries the rule; a starter set holds it
+    // when there are no locks.
+    const rule = { noNewLines: true }
+    let codeSets = 0
+    allLockSets.forEach((set, index) => {
+      if ((set.file ?? null) !== null) return
+      codeSets += 1
+      allLockSets[index] = { ...set, locks: [...set.locks, rule] }
+    })
+    if (codeSets === 0) {
+      allLockSets.unshift({ source: 'starter', stageIndex: null, file: null, locks: [rule] })
+    }
+  }
   if (allLockSets.length > 0) next.lockSets = allLockSets
   return next
+}
+
+// Whether a task's `puzzle.noNewLines` still needs its rule added to the lock sets (not when it
+// was added already: stripping twice is safe).
+function noNewLinesRuleNeeded(task, syntax) {
+  if (!isLockSyntax(syntax) || task?.puzzle?.noNewLines !== true) return false
+  return !(task.lockSets ?? []).some((set) => set?.locks?.some((lock) => lock?.noNewLines))
 }
 
 // The starter code of a (stripped) task: its first starter stage's code, else starterCode.

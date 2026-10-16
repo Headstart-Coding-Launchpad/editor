@@ -12,6 +12,16 @@
 //       between a plain string's quote marks (empty strings too) and its numbers. The name, `=`,
 //       quote marks, brackets and the rest stay read-only (./lockedLinesEditor.js).
 //
+//   `#@lock-first` / `#@lock-last` markers (P6-30)  lock the next non-blank line like `#@lock` and
+//       fence one side of it: nothing can be added before (first) or after (last) it. A lock is
+//       then `{ line, target, fence: 'first' | 'last' }`.
+//   `#@slot` marker (P6-30)  the next line (blank lines too) is a one-line slot: the student types
+//       exactly one line there (`#@slot 2`: up to 2). Its entry in a lock list is
+//       `{ line, slot, after, before }`, anchored by the lines either side of it (anchorSlots),
+//       since its own text changes.
+//   `puzzle.noNewLines: true` (P6-30)  no new lines anywhere: stripTaskLineHints adds a
+//       `{ noNewLines: true }` entry to each of the task's code lock lists.
+//
 // A lock is `{ line, target }`: `line` is 1-based in the stripped code and `target` the line's
 // trimmed text. A values lock is `{ line, target, values: true }`, its `target` the line's value
 // skeleton (valueSkeleton: the values blanked out), since its values can change. A stripped task keeps its locks on the runtime-only `lockSets`
@@ -42,6 +52,30 @@ export function isLockMarkerLine(line, syntax) {
 export function isLockValuesMarkerLine(line, syntax) {
   if (!isLockSyntax(syntax)) return false
   return /^#@lock-values(\s|$)/.test(String(line ?? '').trim())
+}
+
+export const LOCK_FIRST_MARKER = '#@lock-first'
+export const LOCK_LAST_MARKER = '#@lock-last'
+export const SLOT_MARKER = '#@slot'
+// The most lines a `#@slot N` can take.
+export const MAX_SLOT_SIZE = 5
+
+/** The fence of a (raw) `#@lock-first` / `#@lock-last` marker line: 'first', 'last' or null. */
+export function lockFenceOfMarkerLine(line, syntax) {
+  if (!isLockSyntax(syntax)) return null
+  return /^#@lock-(first|last)(\s|$)/.exec(String(line ?? '').trim())?.[1] ?? null
+}
+
+/**
+ * The size of a (raw) `#@slot` marker line (`#@slot` is 1, `#@slot 2` is 2, capped at
+ * MAX_SLOT_SIZE), or null for a line that is not one.
+ */
+export function slotMarkerSize(line, syntax) {
+  if (!isLockSyntax(syntax)) return null
+  const match = /^#@slot(?:\s+(\S+))?(\s|$)/.exec(String(line ?? '').trim())
+  if (!match) return null
+  const size = match[1] == null ? 1 : Number(match[1])
+  return Number.isInteger(size) && size >= 1 ? Math.min(size, MAX_SLOT_SIZE) : 1
 }
 
 // ─── Values (#@lock-values) ──────────────────────────────────────────────────
@@ -186,10 +220,72 @@ export function anchorLocks(code, locks) {
       }
     }
     if (line == null) continue
-    anchored.push({ line, values: !!lock.values })
+    anchored.push({ line, values: !!lock.values, ...(lock.fence ? { fence: lock.fence } : {}) })
     after = line
   }
   return anchored
+}
+
+/**
+ * Places the slots of a lock list (`{ line, slot, after, before }` entries; others are skipped)
+ * on the lines of `code`: on its own line when the line before it still reads `after` (or it is
+ * the first line and `after` is null), else on the one line that follows a line reading `after`,
+ * else on its own line number. Each slot runs on while the next line isn't `before`, up to its
+ * size. Returns `[{ line, size, lines }]` (1-based; `lines` the slot's current line count).
+ */
+export function anchorSlots(code, entries) {
+  const lines = Array.isArray(code) ? code : String(code ?? '').split('\n')
+  const trimmed = lines.map((line) => line.trim())
+  const follows = (index, after) => (after == null ? index === 0 : trimmed[index - 1] === after)
+  const anchored = []
+  let from = 0 // the lowest index the next slot may take
+  for (const entry of entries ?? []) {
+    if (!Number.isInteger(entry?.slot) || !Number.isInteger(entry.line)) continue
+    const after = typeof entry.after === 'string' ? entry.after : null
+    let index = entry.line - 1
+    if (!(index >= from && index < lines.length && follows(index, after))) {
+      const matches = []
+      for (let i = from; i < lines.length; i += 1) if (follows(i, after)) matches.push(i)
+      if (matches.length === 1) index = matches[0]
+      else if (!(index >= from && index < lines.length)) continue
+    }
+    const before = typeof entry.before === 'string' ? entry.before : null
+    let count = 1
+    while (
+      count < entry.slot &&
+      index + count < lines.length &&
+      (before == null || trimmed[index + count] !== before)
+    ) {
+      count += 1
+    }
+    // With no line after it, a slot runs to the end of the code (its last line may be empty).
+    anchored.push({ line: index + 1, size: entry.slot, lines: count })
+    from = index + count
+  }
+  return anchored
+}
+
+/**
+ * What the editor enforces on `code` from the task's lock lists (getTaskLockSets): the list that
+ * fits best (the most locks and slots that anchor, the earliest on a tie) as `{ locks, slots,
+ * noNewLines }` — `locks` from anchorLocks (with `fence`), `slots` from anchorSlots, and
+ * `noNewLines` from puzzle.noNewLines.
+ */
+export function chooseZones(code, lockSets) {
+  const lines = String(code ?? '').split('\n')
+  let best = { locks: [], slots: [], noNewLines: false }
+  let bestCount = -1
+  for (const entries of lockSets ?? []) {
+    if (!Array.isArray(entries)) continue
+    const locks = anchorLocks(lines, entries)
+    const slots = anchorSlots(lines, entries)
+    const count = locks.length + slots.length
+    if (count > bestCount) {
+      best = { locks, slots, noNewLines: entries.some((entry) => entry?.noNewLines === true) }
+      bestCount = count
+    }
+  }
+  return best
 }
 
 /** anchorLocks as line numbers only. */
