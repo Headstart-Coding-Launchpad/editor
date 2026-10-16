@@ -37,6 +37,61 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-16
+
+### Authoring docs corrected to match the app (HSC Audit)
+
+The HSC Audit checked every claim in these docs against the app. Some docs told authors to write
+things that never work. Check existing lessons for these first:
+
+- **Code regexes never see spaces.** `code` checks remove every space, tab and newline outside
+  strings before comparing, and regex checks run on that squashed text. So `\s`, `\s+`, `\n`,
+  literal spaces, `^`/`$` and the `m` flag never match in a `code` regex: the old Turtle example
+  `for\s+\w+\s+in\s+range\(` never passed. Write `for\w+inrange\(`, or use `contains`
+  `"for * in range("`. Non-regex code checks also ignore case, so `code not_contains "Print"`
+  rejects `print` too. See [python.md](python.md#output-and-code-checks-shared-with-html).
+- **HTML style checks read computed values.** `html_element_style_property` compares the
+  browser's computed style, so colours are `rgb(255, 0, 0)` and sizes are in `px`: `value: red`
+  never passes. See [html.md](html.md#html-element-checks-run-mode-only).
+- **Multiple-choice `answer:` is the option's id** (`answer: b`), not its text. The converter now
+  maps option text to its id, and a value matching no option fails validation. Options are never
+  shuffled, so vary where the right answer sits.
+- **Fill-in-the-blank uses `___`** (three underscores), not `{{blank}}`.
+- **Arcade:** `game.clear`, `game.rect` and `game.text` take `colour=` (as documented) and `color=`;
+  before this fix `colour=` crashed with a TypeError.
+- **The asset CLI is `node cli/cli.mjs assets …`** (`assets upload-sound`, `set-default-sounds`,
+  `list-type`), not `lessons assets …`. There is no `lessons export` either: use
+  `lessons get <id> --format yaml` or `lessons json-to-yaml`.
+- **Scratch checks:** leaving out `evaluation` means `after_run`; only `block_used`,
+  `blocks_in_order` and `block_count` may use `after_block_placed` (others now fail validation); a
+  run judges every check in a mixed list, block checks included, so `run_attempted` with block
+  checks needs the blocks too; `block_count` supports all six comparison operators live;
+  `sprite_property_delta` works on `x`, `y`, `size` and `direction` only; `variable_compare` needs
+  `variableName` (`name:` fails validation); a `CLONE_OPTION` takes `_myself_` or a sprite id, not
+  `_mouse_`. The task `toolbox` doesn't apply to Stage code, and toolbox categories keep their
+  written order.
+- **Envelope and fields:** use `levelId`, not a plain `level` (publishing turns it into a new
+  level record), and don't set `version`. HTML `starterFiles` is required, not legacy. `taskMode`
+  other than `both`, `live` or `solo` fails validation. Short-answer quizzes take one `answer_*`
+  check object; multiple choice exactly one `answer_equals`. `"a","b"` option lists work with
+  `contains` / `not_contains` only. Desktop tasks with Browser downloads must list `/Downloads/`
+  in an authored `fs`. Authored Electronics wires without `color` draw red. `fs_opened` needs
+  `itemType`. Mixing explicit and omitted task ids can clash.
+- **Also documented:** Turtle commands that don't work yet (`Turtle()`, `shape`, `tracer`,
+  `towards`, module-level `exitonclick`), stage "offer" behaviour in Turtle and Filesystem,
+  feedback checks in all eight modules, `answer_not_equals` / `answer_not_matches_regex` and
+  `flags`, `*` in answers, Markdown limits (merged callouts, table cells, same-tab links,
+  `---` headings, no strikethrough), the servo control, `sandboxStarterDesktop`, Scratch sound and
+  tab validation messages, feedback deletion with its lesson, and numeric CLI `--task-id`.
+  Examples now use `codeStages` and the canonical check form.
+- Affects: all (python, turtle, html, scratch, arcade, desktop, filesystem, electronics, quiz, cli,
+  markdown) · Existing lessons: fix `code` regexes that use `\s`, `\n`, `^`/`$` or the `m` flag;
+  change HTML style-check values to computed `rgb(…)` / `px`; check multiple-choice `answer:` is
+  an option id (text is now mapped, unmatched text fails validation); replace `{{blank}}` with
+  `___`; `"a","b"` lists only under `contains` / `not_contains`; Scratch `after_block_placed` on a
+  run-time check type, `variable_compare` with `name:`, or a bad `taskMode` now fail validation ·
+  Resolves: none
+
 ## 2026-10-15
 
 ### Name-tag panel: predict mode locks Run until every prediction is in (`showVariables.lockRun`)
@@ -1047,8 +1102,8 @@ Entries written before 2026-09-29 are not tagged.
   Students may add to any sprite; additions are saved with their work. See
   [scratch.md](scratch.md#costumes-and-sounds-tabs).
 - New admin library `lessonTypeAssets/scratch.defaultSounds` (`{ id, name, audio }`), with CLI
-  `lessons assets upload-sound scratch <file>` and `lessons assets set-default-sounds scratch
-  [file]`. `lessons assets list-type scratch` now returns `defaultSounds` alongside `defaultSprites` / `defaultBackdrops` (`[]` when none), so check it before asking for a new sound file.
+  `node cli/cli.mjs assets upload-sound scratch <file>` and `node cli/cli.mjs assets set-default-sounds scratch
+  [file]` (`assets` is a top-level command; corrected 2026-10-16). `node cli/cli.mjs assets list-type scratch` now returns `defaultSounds` alongside `defaultSprites` / `defaultBackdrops` (`[]` when none), so check it before asking for a new sound file.
 - Affects: scratch, cli · Existing lessons: no changes needed · Resolves: authoring-requests/2026-10-02-assets-list-type-scratch-include-defaultsounds.md
 
 ## 2026-10-01
@@ -1459,7 +1514,7 @@ Entries written before 2026-09-29 are not tagged.
 
 - YAML shorthand: `type: binary`, `type: keyboard` or `type: mouse` on a task (any activity's
   YAML type) becomes `taskType: activity` + `activityType: <id>`. The explicit two-field form
-  still works; `lessons export` now writes the shorthand. An `activityType` this version doesn't
+  still works; `lessons get <id> --format yaml` and `lessons json-to-yaml` now write the shorthand (there is no `lessons export`; corrected 2026-10-16). An `activityType` this version doesn't
   know is exported explicitly. Quizzes keep `type: quiz` + `quizType`. See
   [lesson-schema-yaml.md](lesson-schema-yaml.md#activity-tasks) and the pages in
   [activities/](activities/), whose examples now use the shorthand.

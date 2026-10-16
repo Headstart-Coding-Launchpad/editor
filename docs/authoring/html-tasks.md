@@ -8,7 +8,7 @@ Field reference for `html` module code tasks in a `composed` lesson. Set `module
 
 | Field | Required | Type | Notes |
 |---|:---:|---|---|
-| `starterFiles` | No | file array | Files shown as editor tabs. |
+| `starterFiles` | **Yes** | file array | Files shown as editor tabs. Validation needs at least one file, with at least one HTML file (`Task … has no files`), even when the task also has `codeStages`. |
 | `completeFiles` | No | file array | Reference solution files. |
 | `copyCode` | No | string | Read-only reference panel shown above the student editor; does not replace the student's files. |
 | `codeStages` | No | stage array | Intermediate stages (`label`, `files`, `entryFile?`, optional `role`). Support stages open read-only without replacing student files. |

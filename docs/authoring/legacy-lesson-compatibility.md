@@ -10,19 +10,19 @@ The compatibility layer preserves existing single-type lesson documents, task ID
 
 | Legacy format | Current model | Kept behaviour |
 |---|---|---|
-| Lesson `type` is `python`, `arcade`, `html`, `scratch`, `filesystem`, or `electronics` | New lessons use `type: composed` and choose a `moduleType` per code task. | The original single-type workspace, task routing, persistence, sandbox, reports, and URLs continue to work. |
+| Lesson `type` is `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics` | New lessons use `type: composed` and choose a `moduleType` per code task. | The original single-type workspace, task routing, persistence, sandbox, reports, and URLs continue to work. |
 | Scalar or object `level` | `levelId` or `levelRef` points to a reusable level. | The level remains readable and displayed; publishing migrates a scalar value when no reusable-level reference exists. Legacy type-scoped levels remain readable. |
-| Lesson-envelope sandbox fields such as `sandboxStarter`, `sandboxStarterFiles`, `sandboxToolbox`, `sandboxSprites`, `sandboxBackdrops`, `sandboxStarterFs`, and `sandboxStarterCircuit` | A composed lesson keeps sandbox configuration in `modules[].sandbox`. | Envelope fields still supply the sandbox for legacy single-type lessons. |
+| Lesson-envelope sandbox fields such as `sandboxStarter`, `sandboxStarterFiles`, `sandboxToolbox`, `sandboxSprites`, `sandboxBackdrops`, `sandboxStarterFs`, `sandboxStarterDesktop`, and `sandboxStarterCircuit` | A composed lesson keeps sandbox configuration in `modules[].sandbox`. | Envelope fields still supply the sandbox for legacy single-type lessons. |
 | Early composed draft: task `moduleId` resolves through `lesson.modules[]`, with no task `moduleType` | Every composed code task now has `moduleType`; `moduleId` optionally selects a named instance. | The runtime finds the module type from the named legacy module entry. |
-| `taskType: draft` placeholder records | Draft is now lesson-level (`draft: true`); tasks have a real type. | Placeholder tasks are retained in stored data but removed from task lists, navigation, progress, counts, and lesson flow. |
+| `taskType: draft` placeholder records | Draft is now lesson-level (`draft: true`); tasks have a real type. | Placeholder tasks are retained in stored data but removed from task lists, navigation, progress, counts, and lesson flow. Validation rejects new ones (`taskType must be information, quiz, code_arrange or activity`). |
 | Scratch block trees stored as plain objects in Firestore | New Firestore writes encode deep block trees as JSON strings. | Reads leave legacy object values intact, so old Scratch lessons continue to load. |
 
 ## Code-task content and stages
 
 | Legacy format | Current model | Kept behaviour |
 |---|---|---|
-| Python/Arcade `starterCode` and `completeCode` | `codeStages` with `starter`, `support`, and `complete` roles. | Student, teacher-live, reset, carry-through, preview, print, and sandbox paths still use the old fields when an equivalent stage is absent. Python and HTML's newer authoring UI does not create or edit these fields. |
-| HTML `starterFiles`, `completeFiles`, `entryFile`, and `completeEntryFile` | Role-based file stages. | The file sets and entry files still initialise, reset, carry, preview, print, and render legacy HTML tasks. |
+| Python/Arcade/Turtle `starterCode` and `completeCode` | `codeStages` with `starter`, `support`, and `complete` roles. | Student, teacher-live, reset, carry-through, preview, print, and sandbox paths still use the old fields when an equivalent stage is absent. Python and HTML's newer authoring UI does not create or edit these fields. |
+| HTML `completeFiles`, `entryFile`, and `completeEntryFile` | Role-based file stages. | The file sets and entry files still initialise, reset, carry, preview, print, and render legacy HTML tasks. (`starterFiles` is **not** legacy: every HTML task still needs it, with at least one HTML file.) |
 | Stage role `core` or `extension` | `support` | Both values resolve as offerable Support stages. |
 | Stage role `solution` | `complete` | The stage remains a complete/solution stage. |
 | Legacy stage ordering without feedback priorities | `feedbackChecks[].priority` selects the lowest matching value. | When priority is absent, matching feedback keeps its existing array order. |

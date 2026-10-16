@@ -102,7 +102,7 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `quizType` | `multiple_choice`, `match`, `fill_blank`, `short_answer`, `confidence`, `poll` (since 2026-10-01). | Quizzes only | 2026-07-22 |
 | `activityType` | The activity id (`binary`, `keyboard`, `mouse`, …). | Activities only | 2026-09-28 |
 | `ratingScale` | The scale the confidence ratings in `distinctAttempts` were given on: `10`. A confidence entry without it is from before 2026-10-09 and was rated 1–5. | Confidence quizzes only | 2026-10-09 |
-| `completed` | Graded: passed, passed by a tutor's hand override, or auto-checked correct when the class moved on (`auto_passed`). Moving the class on past a graded code task the student never passed **no longer** makes it complete (quizzes and activities moved past still count as complete) (since 2026-10-01; see [Overrides](#overrides)). Ungraded: responded at all. | Always | 2026-07-13 (changed 2026-10-01) |
+| `completed` | Graded: passed, passed by a tutor's hand override, or auto-checked correct when the class moved on (`auto_passed`). Moving the class on past a graded code task the student never passed **no longer** makes it complete (quizzes and activities moved past still count as complete, and that includes Code Arrange, which is an activity) (since 2026-10-01; see [Overrides](#overrides)). Ungraded: responded at all. | Always | 2026-07-13 (changed 2026-10-01) |
 | `attempts` | Total submissions including identical resubmissions: Σ(1 + `retries`) over `distinctAttempts`. | Always | 2026-07-13 |
 | `finalResult` | See [finalResult](#finalresult). | Always | 2026-07-13 (values changed 2026-07-22) |
 | `timeOnTaskMs` | From when the teacher (last) moved the class onto the task to the passing attempt / override / correct auto-check, or, if not completed, to the latest attempt. Null when there's no start time or no attempt/override. | Always (may be null) | 2026-07-14 |
@@ -486,8 +486,9 @@ Each student's own sandbox counters are on `students[].teacherSandbox`.
 
 `{ <badgeId>: { suggested, awarded, autoAwarded, manual, dismissed, revoked } }`, added
 2026-09-30. `suggested` counts rule-made suggestions (accepted, dismissed, auto-awarded, or still
-pending at session end); `awarded` counts badges still held, split into `autoAwarded` and
-`manual`. See [badges.md](badges.md).
+pending at session end); `awarded` counts badges still held. `autoAwarded` and `manual` count two
+kinds of those, but a suggestion the tutor **accepted** counts only in `awarded`, so
+`awarded` can be more than `autoAwarded + manual`. See [badges.md](badges.md).
 
 ## Teacher feedback
 

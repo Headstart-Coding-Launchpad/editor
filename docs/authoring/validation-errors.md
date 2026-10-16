@@ -37,7 +37,7 @@ isn't listed here, so add a row whenever you add a message.
 | `badgeOptions must be an object when provided` | `badgeOptions` isn't a mapping. | Write it as `badgeOptions:` with option names under it ([badges.md](badges.md#badgeoptions)). |
 | `badgeOptions.… is not a badge option and is ignored` (warning) | A key under `badgeOptions` isn't one of `quizMasterThreshold`, `quizMasterMinQuizzes`, `persistenceMinFails`, `readyToCodeSeconds`, `earlyBirdMinutes`, `sideQuesterMinDone` or `wordSmithMinTasks`. | Fix the spelling or remove it. |
 | `badgeOptions.… must be a number from 0 to 1` | `quizMasterThreshold` is outside 0–1 (it's a share, not a percentage). | Write `0.8`, not `80`. |
-| `badgeOptions.… must be a whole number of at least 1` | `quizMasterMinQuizzes` or `persistenceMinFails` is below 1 or not a whole number. | Use a whole number, 1 or more. |
+| `badgeOptions.… must be a whole number of at least 1` | `quizMasterMinQuizzes`, `persistenceMinFails`, `sideQuesterMinDone` or `wordSmithMinTasks` is below 1 or not a whole number. | Use a whole number, 1 or more. |
 | `badgeOptions.… must be a positive number of seconds` | `readyToCodeSeconds` is 0, negative or not a number. | Use a number of seconds above 0. |
 | `badgeOptions.… must be a positive number of minutes` | `earlyBirdMinutes` is 0, negative or not a number. | Use a number of minutes above 0. |
 
@@ -56,7 +56,7 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … is missing a title` / `… is missing a title` | A task has no `title`. | Add a title. |
 | `… must be an object` | A task entry is not a mapping (e.g. a bare string). | Write each task as `- title: …` with fields under it. |
 | `… taskType must be information, quiz, code_arrange or activity when provided` | `taskType` has an unsupported value. Allowed: `information`, `quiz`, `code_arrange`, `activity`; leave it out for code tasks. | Fix the value or remove `taskType`. In YAML, `type: information` / `type: quiz` also work. |
-| `… has an invalid task-type value` | The YAML `type:` shorthand isn't a known task type. | Use `information`, `quiz` or `group`, or omit it for a code task. |
+| `… has an invalid task-type value` | The YAML `type:` shorthand isn't a known task type. | Use `information`, `quiz`, `code_arrange` or an activity (`binary`, `keyboard`, `mouse`), or omit it for a code task. A group is written `group:` + `tasks:`, not `type: group`. |
 | `… has an invalid quiz type` | `quizType` isn't one of the six quiz types. | Use `multiple_choice`, `match`, `fill_blank`, `short_answer`, `confidence` or `poll`. |
 | `… intent must be a non-empty Markdown string while lesson draft is enabled` | Draft lessons need an `intent` on every real task. | Add `intent:` describing what the task is for. |
 | `… intent must be a Markdown string when provided` | `intent` isn't text. | Make it a string. |
@@ -146,13 +146,13 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … is an information task but has no explainer` | Information tasks are just their explainer (except `informationType: introduction` and `badges`). | Add `explainer:` Markdown. |
 | `Task … is a quiz but has fewer than 2 options` | Multiple-choice needs at least two options. | Add options. |
 | `Task … is a quiz but has an empty option text` | An option has no text. | Fill in or remove it. |
-| `Task … is a quiz but no correct answer has been selected` | No option is marked correct. | In YAML, set `answer:` to the correct option text; in JSON, set `check` to that option's id. |
+| `Task … is a quiz but no correct answer has been selected` | No option is marked correct, or the check isn't a single `answer_equals`. | Set `answer:` to the correct option's **id** (e.g. `answer: b`), or write `check: { type: answer_equals, value: b }`. (YAML option text is mapped to its id; a value matching no option fails validation.) |
 | `Task … is a match quiz but has fewer than 2 pairs` | Match quizzes need two or more pairs. | Add pairs. |
 | `Task … is a match quiz but has an empty prompt or answer` | A pair is half-empty. | Fill in both sides. |
-| `Task … is a fill-in-the-blank quiz but has no blanks in the text` | The quiz text has no `{{blank}}` markers. | Add blanks to `text`. |
+| `Task … is a fill-in-the-blank quiz but has no blanks in the text` | The quiz `text` has no `___` (three underscores) markers. | Put a `___` in `text` for each entry in `blanks`. |
 | `Task … is a fill-in-the-blank quiz but has no blank answers` | `blanks` is empty. | Add an answer per blank. |
 | `Task … is a fill-in-the-blank quiz but has an empty answer` | A blank has no answer. | Fill it in. |
-| `Task … is a short-answer quiz with a check enabled but no check value` | The short-answer check has no `value`. | Add the expected answer, or remove the check for an ungraded question. |
+| `Task … is a short-answer quiz with a check enabled but no check value` | The short-answer check has no `value`, **or** it isn't a single `answer_*` check object (a `checks:` list or an `output`/`type` + `operator` check gives this message too). | Write one check such as `check: { type: answer_contains, value: … }`, or remove the check for an ungraded question. |
 | `Task … is a poll but has fewer than 2 options` | A poll (`quizType: poll`) needs at least two options. | Add options. |
 | `Task … is a poll but has more than 6 options` | Polls take 2 to 6 options. | Remove options, or split the question. |
 | `Task … is a poll but has an empty option text` | A poll option has no text. | Fill in or remove it. |
@@ -348,6 +348,14 @@ message says `feedback check` where it would say `check` (that part is shown as 
 | `Task … has a Scratch variable … but no variable name` / `Task … has a Scratch variable … but no expected value` / `Task … has a Scratch variable … but no operator` | A Scratch `variable_equals` / `variable_compare` check is incomplete. | Set `variableName`, `value` and (for compare) `operator`. |
 | `Task … has a Scratch costume … but no costume name` | `costume_is` has no `value`. | Add the costume name. |
 | `Task … has invalid toolbox XML` (**Builder only**) | A Scratch task's `toolbox` isn't well-formed XML. | Fix the XML (see `scratch-toolbox-xml.md`). |
+| `Task … … must be true or false` | `showCostumesTab`, `showSoundsTab`, `allowAddCostume` or `allowAddSound` isn't a boolean. | Use `true` or `false` ([scratch.md](scratch.md#costumes-and-sounds-tabs)). |
+| `Task … allowAddCostume has no effect without showCostumesTab` (warning) | Students can't add a costume when the Costumes tab is hidden. | Add `showCostumesTab: true`, or remove `allowAddCostume`. |
+| `Task … allowAddSound has no effect without showSoundsTab` (warning) | Students can't add a sound when the Sounds tab is hidden. | Add `showSoundsTab: true`, or remove `allowAddSound`. |
+| `… sounds must be a list` (`…` is `Task N sprite "Name"`, as in the rows below) | A sprite's `sounds` isn't a list. | Write `sounds:` as a list of `{ name, synth }` or `{ name, audio }`. |
+| `… has a sound with no name` | A sound entry has no `name`. | Give every sound a name. |
+| `… has two sounds named "…"` | Two sounds on one sprite share a name, so a `start sound` block can't tell them apart. | Rename one. |
+| `… sound "…" needs exactly one of synth or audio` | A sound has both `synth` and `audio`, or neither. | Keep one. |
+| `… sound "…" uses unknown synth "…" (known: …)` | `synth` isn't one of the built-in tones listed. | Use a listed synth id, or an `audio` file. |
 | `Task … has a filesystem … but no path` | A Filesystem or Desktop `fs_*` check has no `path`. | Add `path:`. |
 | `Task … has a window_state … but no appId` | A Desktop `window_state` check doesn't name the app. | Add `appId:` (`fileManager`, `textEditor`, `imageViewer`, `paint` or `browser`). |
 | `Task … has a window_state moved_to … with zone "…" — use one of: …` | `moved_to` has no `zone`, or an unknown one. | Use `left_half`, `right_half`, `top_half`, `bottom_half`, `top_left`, `top_right`, `bottom_left` or `bottom_right` (see `desktop.md`). |
@@ -558,12 +566,18 @@ Python and Turtle tasks; see [python.md](python.md#screen-layout-layout).
 | `forked lesson id must be '…'` | Fork ids are `{source}-{classId}`. | Use the id shown. |
 | `fork.taskLinks must be an array when provided` | `taskLinks` isn't a list. | Let `lessons fork` generate it. |
 
+## Publishing
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Draft lessons cannot be published. Clear draft only after full validation passes.` | `lessons publish-yaml` (and `lessons fork`) only publish finished lessons, and this one has `draft: true`. (`lessons upsert` still saves drafts.) | Finish every task, remove `draft: true` (or set it to `false`), and validate again. |
+
 ## Topic Library
 
 | Message | Meaning | Fix |
 |---|---|---|
 | `Cannot save a lesson while Topic Library entries are missing: …` | The lesson links `[[topic-id]]`s that don't exist. | Create the topics first (`topics upsert`), or add them to `topicProposals` while drafting. |
-| `Missing Topic Library entries: …` | Warning form of the above, for draft lessons. | Create the topics before clearing `draft`. |
+| `Missing Topic Library entries: …` (warning) | Always shown alongside the error above, naming the same topics. (On `lessons publish`, a draft lesson skips the topic check, so neither appears.) | Create the topics (`topics upsert`) before publishing a non-draft lesson. |
 | `Unused topic proposals: …` | `topicProposals` lists topics the lesson never links. | Link them or remove the proposals. |
 | `… is missing an id` / `… id must be a topic slug` / `… duplicates id "…"` | A topic proposal's id is missing, malformed or repeated. | Use unique lowercase slugs. |
 | `… is missing a description` | A topic proposal has no description. | Add one. |

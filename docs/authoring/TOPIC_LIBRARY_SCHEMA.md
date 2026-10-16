@@ -82,7 +82,7 @@ A single-item `topics:` array (or bare single-item array) is also accepted as a 
 |---|:---:|---|---|
 | `id` | Yes | string | Unique slug. Used in `[[wiki-links]]` and URL hash. Lowercase letters, digits, dots, underscores, and hyphens only. |
 | `title` | Yes | string | Display name in the library list and hover card. |
-| `types` | No | string array | Lesson types this topic applies to. Empty or omitted = all types. Valid values: `"python"`, `"html"`, `"scratch"` — but see the Scratch note under Type Filtering below: `"scratch"` is currently a no-op. |
+| `types` | No | string array | Lesson types this topic applies to. Empty or omitted = all types. Valid values: any workspace module type, `"python"`, `"arcade"`, `"turtle"`, `"html"`, `"scratch"`, `"filesystem"`, `"desktop"`, `"electronics"` (Admin offers all eight). In a composed lesson the type is the task's own `moduleType`. But see the Scratch note under Type Filtering below: `"scratch"` is currently a no-op. |
 | `category` | No | string | Short label under the title (e.g. `"Function"`, `"Concept"`, `"CSS property"`). |
 | `summary` | No | string | One-sentence description in the hover card. **Plain text only — no Markdown.** |
 | `description` | No | string | Full body text rendered with the Markdown renderer. |
@@ -99,6 +99,7 @@ A single-item `topics:` array (or bare single-item array) is also accepted as a 
 | `[]` or omitted | All lesson types (except Scratch — see note) |
 | `["python"]` | Python lessons only |
 | `["html"]` | HTML lessons only |
+| `["turtle", "python"]` | Turtle and Python tasks (the same for any other module types listed) |
 | `["scratch"]` | Never — see note |
 | `["python", "scratch"]` | Python lessons only — the Scratch half never applies |
 

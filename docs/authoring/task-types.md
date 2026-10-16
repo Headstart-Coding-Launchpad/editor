@@ -18,6 +18,14 @@ Just something for students to read — no editor, no check. Used to explain a c
 
 An interactive question with no code editor. Students pick an answer, drag tiles, or type a short response. See `docs/authoring/quiz-types.md` for the different quiz styles.
 
+## Code Arrange Task
+
+Students build a working program by dragging code tiles into the gaps (or, in indent mode, by indenting lines to the right depth), then run it. It runs for real in Python, Python Turtle or HTML, so the program's output is checked, not just which tile went where. See "Code Arrange Task Fields" in `docs/authoring/lesson-schema.md`.
+
+## Activity Task
+
+A bounded exercise with no Run button or editor, which can sit anywhere in a lesson: binary (bits, conversions, hex, pixels), keyboard skills (typing, Shift capitals, shortcuts) and mouse skills (click, drag, scroll, hover). The student checks their answers, and the tutor sees their progress on the student card. See the pages in `docs/authoring/activities/`.
+
 ## Group
 
 A small, ordered bundle of tasks nested inside one entry — a way of keeping a handful of closely related tasks together as a single step in the lesson.

@@ -17,6 +17,7 @@ Field reference for `python` module code tasks in a `composed` lesson. Set `modu
 | `tests` | No | test array | Automated test cases. See **Task Tests** below. |
 | `setupCode` | No | string | Hidden setup: Python run first on every Run, in the same program, never shown. See [python.md](python.md#hidden-setup-setupcode-setupnote). Also on Turtle tasks. |
 | `setupNote` | No | string | One short line above the editor saying what `setupCode` made. |
+| `showBlocks` | No | boolean | Default `true`: coloured block brackets beside the lines each `:` line controls, with a **Blocks** button to hide them. `false` hides both. See [python.md](python.md). |
 | `puzzle` | No | object | Puzzle rules `{ onlyEdit, maxLines, par }` and the `max_lines` check. See [python.md](python.md#puzzle-rules-puzzle-and-the-max_lines-check). Also on Turtle tasks. Lock single lines with a `#@lock` marker line above them ([python.md](python.md#locked-lines-lock)). |
 
 **`interactionMode` combinations:**

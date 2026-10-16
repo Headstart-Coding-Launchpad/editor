@@ -11,7 +11,7 @@ id: python-for-loops
 type: composed
 title: Python For Loops
 description: Practise loops in Python.
-level: 1
+levelId: python-level-1
 modules:
   - id: python-practice
     type: python
@@ -186,9 +186,12 @@ the task. They never change the task's code or what `carryCodeFrom` copies. See
 ```yaml
   - title: Greet the user
     explainer: Ask for a name and print `Hello <name>`.
-    starterCode: |
-      name = input('What is your name? ')
-      print('Hello', name)
+    codeStages:
+      - role: starter
+        label: Starter
+        code: |
+          name = input('What is your name? ')
+          print('Hello', name)
     tests:
       - id: t1
         name: Greet Alice
@@ -226,12 +229,14 @@ Evaluated after the Python run completes. `value` accepts a JSON-encoded string 
 | `variable_not_equals` | `name`, `value` | Variable does not equal value |
 | `variable_dict_contains` | `name`, `value` | Dict contains value (any key) |
 | `variable_dict_equals` | `name`, `value` | Dict deep-equals value |
-| `variable_dict_key_value` | `name`, `key`, `value` | Dict key `key` equals value |
+| `variable_dict_key_value` | `name`, `key`, `value` | Dict key `key` equals value. `key` is compared as text, so `key: 1` and `key: "1"` are the same; quote it anyway for clarity |
 | `variable_array_contains` | `name`, `value` | List contains value |
 | `variable_array_equals` | `name`, `value` | List deep-equals value |
 | `variable_array_nth_item` | `name`, `index`, `value` | List item at zero-based index equals value |
 
-Variables are read from the program's top level when it ends, **including when it stops with an
+Variables are read from the program's top level when it ends. Names starting with `_` (such as
+`_total` or `_`) are never captured, so a variable check can't see them:
+give checked variables a plain name. They are read **including when the program stops with an
 error** (since 2026-10-14; before that an erroring run had no variables). A run that errors still
 fails completion, so this only matters to feedback checks.
 
@@ -829,7 +834,13 @@ Legacy aliases such as `output_contains`, `output_equals`, `output_matches_regex
 
 **Regex:** `matches_regex` and `not_matches_regex` use JavaScript `RegExp(pattern, flags)`. Put the regex pattern in `value`; put flags such as `i`, `m`, or `s` in `flags`. Regex is case-sensitive unless `flags: i` is set. Anchors (`^`, `$`), groups, alternation, lookarounds, and backreferences follow the browser JavaScript regex engine.
 
-**Normalisation:** output checks normalise `\r\n` to `\n` and compare case-insensitively except regex. Exact output checks trim trailing newline characters only, not other leading/trailing spaces. Code checks normalise whitespace outside quoted strings before contains/equality checks; regex checks see that same normalised source. Because indentation is removed too, use [`code_structure`](#code-structure-checks-code_structure) to check nesting.
+**Normalisation:** output checks normalise `\r\n` to `\n` and compare case-insensitively except regex. Exact output checks trim trailing newline characters only, not other leading/trailing spaces. Code checks **remove every space, tab and newline outside quoted strings** (in the student's code and in your `value`), then compare **case-insensitively**, except regex: `code not_contains "Print"` also rejects `print`. Because indentation is removed too, use [`code_structure`](#code-structure-checks-code_structure) to check nesting.
+
+**Code regexes see the squashed source.** `matches_regex` / `not_matches_regex` on `code` run against that same whitespace-free text (case kept), so `for i in range(5):` is tested as `foriinrange(5):`. In a code regex:
+
+- don't use `\s`, `\n` or literal spaces: they never match. Write `for\w+inrange\(`, not `for\s+\w+\s+in\s+range\(`;
+- `^`, `$` and the `m` flag are no use, because the whole program is one line;
+- or skip the regex: `code` `contains` `"for * in range("` does the same job (the spaces in `value` are removed too).
 
 **Wildcards and option lists:** for non-regex contains/equality checks, `*` matches any sequence including newlines. A value written as `"opt1","opt2"` passes `contains` if any option is present, and passes `not_contains` only if none of them are. An invalid regex fails both `matches_regex` and `not_matches_regex`, so a typo in a pattern never lets every student pass.
 
@@ -871,11 +882,14 @@ Worked example — a required-path demo task:
   taskActivity: Code Task, Complete Example
   explainer: |
     Press **Run** and watch the turtle draw a square. Nothing to change this time!
-  starterCode: |
-    import turtle
-    for side in range(4):
-        turtle.forward(100)
-        turtle.left(90)
+  codeStages:
+    - role: starter
+      label: Starter
+      code: |
+        import turtle
+        for side in range(4):
+            turtle.forward(100)
+            turtle.left(90)
   check:
     type: run_attempted
     hint: Press **Run** to see the program work.

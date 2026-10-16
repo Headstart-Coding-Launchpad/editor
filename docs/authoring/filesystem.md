@@ -11,7 +11,7 @@ id: file-organiser
 type: composed
 title: File Organiser
 description: Practise organising files and folders.
-level: 1
+levelId: filesystem-level-1
 modules:
   - id: filesystem-practice
     type: filesystem
@@ -73,10 +73,10 @@ All `path` and `dir` fields are matched **case-insensitively**, so `Documents` a
 | Pattern | Matches |
 |---|---|
 | `*` | Any sequence of characters except `/` |
-| `**` | Any sequence of characters including `/` |
+| `**` | One or more characters, including `/` |
 | `?` | Exactly one character (not `/`) |
 
-Examples: `/Documents/*.txt`, `/Pro*/`, `/**/*.py`
+Examples: `/Documents/*.txt`, `/Pro*/`, `/**/*.py`. Paths match case-insensitively. `**` needs at least one character, so `/**/*.py` matches `/code/a.py` but **not** `/a.py` in the root folder: add a second check (or use `/*.py`) when the file may sit in the root.
 
 | Type | Operators | Fields | Notes |
 |---|---|---|---|
@@ -86,6 +86,8 @@ Examples: `/Documents/*.txt`, `/Pro*/`, `/**/*.py`
 | `fs_file_location` | `in_folder` | `path`, `dir` | File exists and its direct parent equals `dir` |
 | `fs_folder_count` | `equals`, `not_equals`, `greater_than`, `greater_than_or_equal`, `less_than`, `less_than_or_equal` | `path`, `itemType: file \| dir`, `value` | Count direct child files or folders |
 | `fs_opened` | `is_open` | `path`, `itemType: file \| dir` | Student opened the file or navigated to the folder |
+
+**`itemType` when you leave it out:** `fs_path` treats it as `any` (a file or a folder at that path counts); `fs_folder_count` counts **files** only; `fs_opened` **always fails**, so always set `itemType: file` or `itemType: dir` on it.
 
 Legacy aliases such as `fs_file_exists`, `fs_dir_exists`, `fs_not_exists`, `fs_content_contains`, `fs_content_equals`, `fs_file_in_dir`, `fs_dir_opened`, and `fs_file_opened` still load, but new lessons should use the canonical form above.
 
