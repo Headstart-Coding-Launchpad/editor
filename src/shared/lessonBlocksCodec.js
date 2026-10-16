@@ -89,7 +89,17 @@ function stringifyJsonField(v) {
 // Blocks/designs only. Lesson writes use encodeLessonForFirestore (below), which also seals.
 export function encodeLessonBlocksForFirestore(lesson) {
   if (!lesson?.tasks) return lesson
-  return { ...lesson, tasks: mapTasks(lesson.tasks, stringifyJsonField) }
+  const encoded = { ...lesson, tasks: mapTasks(lesson.tasks, stringifyJsonField) }
+  // A Scratch sandbox starter written as a state object (the Builder stores a JSON string, and
+  // the app reads both) is a block tree too: store it as text like the task blocks.
+  if (isPlainObject(lesson.sandboxStarter)) {
+    encoded.sandboxStarter = JSON.stringify(lesson.sandboxStarter)
+  }
+  return encoded
+}
+
+function isPlainObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
 }
 
 function safeParseJsonField(v) {
