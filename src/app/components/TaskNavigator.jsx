@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { flattenTasks, getTaskPriority } from '../../shared/taskUtils'
+import { isHostedActivityTask } from '../../activities/registry.pure.js'
 
 function OptionalBadge({ task }) {
   if (getTaskPriority(task) !== 'optional') return null
@@ -26,6 +27,17 @@ export default function TaskNavigator({
   const total = students.length
   const runCount = students.filter((st) => st.lastRunStatus != null && st.lastRunAt).length
   const checkCount = students.filter((st) => st.checkPassed).length
+  // The current task's line under its title. An information task has nothing to run, so it
+  // has no line (it used to say "0/2 run"); a quiz or activity counts answers, not runs.
+  function statLine(task) {
+    if (task?.taskType === 'information') return null
+    const checked = task?.check != null ? ` · ${checkCount} ✅` : ''
+    if (isHostedActivityTask(task)) {
+      const answered = students.filter((st) => st.lastRunStatus != null).length
+      return `${answered}/${total} answered${checked}`
+    }
+    return `${runCount}/${total} run${checked}`
+  }
   const flatTasks = flattenTasks(tasks)
   // Navigate Prev/Next relative to what's currently displayed (preview or session task)
   const displayId = previewTaskId ?? currentTaskId
@@ -94,7 +106,6 @@ export default function TaskNavigator({
                   subtasks.map((task) => {
                     const isCurrent = task.id === currentTaskId
                     const isPreview = previewTaskId && task.id === previewTaskId
-                    const hasCheck = task.check != null
 
                     return (
                       <button
@@ -113,11 +124,8 @@ export default function TaskNavigator({
                         <div style={s.detail}>
                           <span style={s.taskTitle}>{task.title}</span>
                           <OptionalBadge task={task} />
-                          {isCurrent && total > 0 && (
-                            <span style={s.stat}>
-                              {runCount}/{total} run
-                              {hasCheck ? ` · ${checkCount} ✅` : ''}
-                            </span>
+                          {isCurrent && total > 0 && statLine(task) && (
+                            <span style={s.stat}>{statLine(task)}</span>
                           )}
                         </div>
                         {isCurrent && <span style={s.arrow}>◀</span>}
@@ -132,7 +140,6 @@ export default function TaskNavigator({
           // Standalone task
           const isCurrent = item.id === currentTaskId
           const isPreview = previewTaskId && item.id === previewTaskId
-          const hasCheck = item.check != null
 
           return (
             <button
@@ -149,11 +156,8 @@ export default function TaskNavigator({
               <div style={s.detail}>
                 <span style={s.taskTitle}>{item.title}</span>
                 <OptionalBadge task={item} />
-                {isCurrent && total > 0 && (
-                  <span style={s.stat}>
-                    {runCount}/{total} run
-                    {hasCheck ? ` · ${checkCount} ✅` : ''}
-                  </span>
+                {isCurrent && total > 0 && statLine(item) && (
+                  <span style={s.stat}>{statLine(item)}</span>
                 )}
               </div>
               {isCurrent && <span style={s.arrow}>◀</span>}

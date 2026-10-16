@@ -74,3 +74,21 @@ describe('TaskNavigator Prev/Next during sandbox mode', () => {
     expect(next).toHaveStyle({ opacity: 0.45 })
   })
 })
+
+describe('TaskNavigator current-task line', () => {
+  const students = [
+    { anonymousId: 'a', lastRunStatus: 'success', lastRunAt: 1, checkPassed: true },
+    { anonymousId: 'b', lastRunStatus: null },
+  ]
+
+  it('counts runs on a code task', () => {
+    render(<TaskNavigator tasks={tasks} currentTaskId={1} students={students} />)
+    expect(screen.getByText('1/2 run')).toBeInTheDocument()
+  })
+
+  it('shows no run count on an information task', () => {
+    const infoTasks = [{ id: 1, title: 'Read me', taskType: 'information' }]
+    render(<TaskNavigator tasks={infoTasks} currentTaskId={1} students={students} />)
+    expect(screen.queryByText(/ run/)).not.toBeInTheDocument()
+  })
+})
