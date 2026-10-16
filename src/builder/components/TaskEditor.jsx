@@ -50,11 +50,28 @@ import {
 // Re-export for backward compatibility
 export { ScratchToolboxPicker, SpriteManager, BackdropManager }
 
-export default function TaskEditor({ task, lesson, onUpdate, parentGroup, composedLesson = null }) {
+// "15 Oct 2026, 14:01" rather than a raw ISO timestamp; anything unparseable as it is.
+function formatAuditTime(value) {
+  const date = new Date(value)
+  if (value == null || Number.isNaN(date.getTime())) return String(value ?? '')
+  return date.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+export default function TaskEditor({
+  task,
+  lesson,
+  onUpdate,
+  parentGroup,
+  composedLesson = null,
+  // The Classroom's Edit Lesson: authoring metadata starts folded, at the bottom.
+  sessionEdit = false,
+}) {
   const [selectedFile, setSelectedFile] = useState(task.starterFiles?.[0]?.name ?? '')
   // Visible by default while authoring a Draft lesson; collapsed by default once Draft is off,
   // since this section is author-only and adds noise for a lesson ready for full validation.
-  const [authoringMetaCollapsed, setAuthoringMetaCollapsed] = useState(() => lesson.draft !== true)
+  const [authoringMetaCollapsed, setAuthoringMetaCollapsed] = useState(
+    () => sessionEdit || lesson.draft !== true
+  )
   // What the module declares for the Builder (null for an unregistered lesson type).
   const moduleDefinition = getModuleDefinition(lesson.type)
   const moduleAuthoring = moduleDefinition?.authoring ?? null
@@ -467,6 +484,74 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
     </button>
   ) : null
 
+  // Author-only notes. In the Classroom's Edit Lesson (`sessionEdit`) they start folded and
+  // sit at the bottom, under what a tutor changes mid-lesson (HSC Audit, Visual Review 26).
+  const authoringMeta = authoringMetaCollapsed ? (
+    <CollapsedPanelRail
+      onClick={() => setAuthoringMetaCollapsed(false)}
+      label="Authoring metadata"
+      direction="down"
+      orientation="horizontal"
+      title="Show authoring metadata"
+      ariaLabel="Show authoring metadata"
+    />
+  ) : (
+    <AnimatedPanelShell animate>
+      <div style={s.authoringMetaSection}>
+        <div style={s.authoringMetaHeader}>
+          <span style={s.authoringMetaHeaderLabel}>Authoring metadata</span>
+          <CollapseTabButton
+            onClick={() => setAuthoringMetaCollapsed(true)}
+            direction="left"
+            title="Collapse authoring metadata"
+            ariaLabel="Collapse authoring metadata"
+            style={s.authoringMetaCollapseBtn}
+          />
+        </div>
+
+        <Field
+          label="Authoring intent (Markdown)"
+          hint="Visible to authors only; students never see this field."
+        >
+          <ExplainerEditor
+            title={task.title || 'Task intent'}
+            value={task.intent ?? ''}
+            onChange={(value) => set('intent', value)}
+            lessonType={lesson.type}
+            inlineCodeLanguages={explainerInlineCodeLanguages}
+            assets={lesson.assets ?? []}
+            assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+            storageAssets={allStorageAssets}
+          />
+        </Field>
+
+        <Field label="Task activity" hint="Visible to authors only; students never see this field.">
+          <input
+            className="te-input"
+            value={task.taskActivity ?? ''}
+            onChange={(e) => set('taskActivity', e.target.value)}
+            placeholder="e.g. Pair-share discussion, quick demo, whiteboard sketch"
+          />
+        </Field>
+
+        {task.taskType !== 'information' && (
+          <BadgeHintsField task={task} onChange={setBadgeHints} />
+        )}
+
+        {(task.intentLastChangedAt || task.taskLastChangedAt) && (
+          <div style={s.auditMeta}>
+            {task.intentLastChangedAt && (
+              <span>Intent updated: {formatAuditTime(task.intentLastChangedAt)}</span>
+            )}
+            {task.taskLastChangedAt && (
+              <span>Task content updated: {formatAuditTime(task.taskLastChangedAt)}</span>
+            )}
+          </div>
+        )}
+      </div>
+    </AnimatedPanelShell>
+  )
+
   return (
     <div className="te-wrap">
       {parentGroup ? (
@@ -509,74 +594,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
         />
       </Field>
 
-      {authoringMetaCollapsed ? (
-        <CollapsedPanelRail
-          onClick={() => setAuthoringMetaCollapsed(false)}
-          label="Authoring metadata"
-          direction="down"
-          orientation="horizontal"
-          title="Show authoring metadata"
-          ariaLabel="Show authoring metadata"
-        />
-      ) : (
-        <AnimatedPanelShell animate>
-          <div style={s.authoringMetaSection}>
-            <div style={s.authoringMetaHeader}>
-              <span style={s.authoringMetaHeaderLabel}>Authoring metadata</span>
-              <CollapseTabButton
-                onClick={() => setAuthoringMetaCollapsed(true)}
-                direction="left"
-                title="Collapse authoring metadata"
-                ariaLabel="Collapse authoring metadata"
-                style={s.authoringMetaCollapseBtn}
-              />
-            </div>
-
-            <Field
-              label="Authoring intent (Markdown)"
-              hint="Visible to authors only; students never see this field."
-            >
-              <ExplainerEditor
-                title={task.title || 'Task intent'}
-                value={task.intent ?? ''}
-                onChange={(value) => set('intent', value)}
-                lessonType={lesson.type}
-                inlineCodeLanguages={explainerInlineCodeLanguages}
-                assets={lesson.assets ?? []}
-                assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
-                storageAssets={allStorageAssets}
-              />
-            </Field>
-
-            <Field
-              label="Task activity"
-              hint="Visible to authors only; students never see this field."
-            >
-              <input
-                className="te-input"
-                value={task.taskActivity ?? ''}
-                onChange={(e) => set('taskActivity', e.target.value)}
-                placeholder="e.g. Pair-share discussion, quick demo, whiteboard sketch"
-              />
-            </Field>
-
-            {task.taskType !== 'information' && (
-              <BadgeHintsField task={task} onChange={setBadgeHints} />
-            )}
-
-            {(task.intentLastChangedAt || task.taskLastChangedAt) && (
-              <div style={s.auditMeta}>
-                {task.intentLastChangedAt && (
-                  <span>Intent updated: {String(task.intentLastChangedAt)}</span>
-                )}
-                {task.taskLastChangedAt && (
-                  <span>Task content updated: {String(task.taskLastChangedAt)}</span>
-                )}
-              </div>
-            )}
-          </div>
-        </AnimatedPanelShell>
-      )}
+      {!sessionEdit && authoringMeta}
 
       <Field label="Priority">
         <div className="te-priority-grid">
@@ -997,6 +1015,7 @@ export default function TaskEditor({ task, lesson, onUpdate, parentGroup, compos
           Unrecognised lesson type "{lesson.type}" — no builder workspace available for this task.
         </div>
       )}
+      {sessionEdit && authoringMeta}
     </div>
   )
 }
