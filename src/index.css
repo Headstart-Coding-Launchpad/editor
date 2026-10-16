@@ -1304,7 +1304,6 @@ select {
 
 .information-recap__left p {
   font-size: 1.35em;
-  line-height: 1.3;
 }
 
 /* Lets an information task's image sit beside its paragraph text instead of always
