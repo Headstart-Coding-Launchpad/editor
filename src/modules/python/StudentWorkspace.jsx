@@ -35,7 +35,8 @@ import { usePythonSlowMo } from './slowMo/usePythonSlowMo.js'
 import PredictRunLockNote, {
   PREDICT_RUN_LOCK_NOTE_ID,
 } from '../../shared/variablesPanel/PredictRunLockNote.jsx'
-import SlowMoBar from './slowMo/SlowMoBar.jsx'
+import SlowMoBar, { SlowMoRunLabel } from './slowMo/SlowMoBar.jsx'
+import { PYTHON_SLOW_MO_RUN_TITLE } from './slowMo/config.js'
 import SlowMoNameTags from './slowMo/SlowMoNameTags.jsx'
 import PuzzleBar from '../../shared/puzzle/PuzzleBar.jsx'
 
@@ -68,9 +69,9 @@ export default function StudentWorkspace({
   teacherLiveCode,
   onVisiblePanesChange,
   // A Code Arrange task that draws on the Stage (src/activities/code_arrange/):
-  // `arrangeBoard({ onRun })` renders the tile board in the editor's place, and `arrangeReady`
-  // says every blank is filled. The board owns Run and the tutor's remote Run; the Stage, name
-  // tags, slow-mo and console are this workspace's own, and open from the start.
+  // `arrangeBoard({ onRun, runLabel })` renders the tile board in the editor's place, and
+  // `arrangeReady` says every blank is filled. The board owns Run and the tutor's remote Run; the
+  // Stage, name tags, slow-mo and console are this workspace's own, and open from the start.
   arrangeBoard = null,
   arrangeReady = true,
 }) {
@@ -286,6 +287,11 @@ export default function StudentWorkspace({
   // run shortcut wait for every prediction, until the first Run. Never on a read-only view.
   const runLock = readOnly ? null : (cs.predictRunLock ?? null)
 
+  // On a slow-mo task Run plays the run in slow-mo ("▶ Run (slow-mo)"), unless the task keeps a
+  // separate Slow-mo button (slowMo.separateButton). The run shortcut, a Code Arrange board's Run
+  // and the tutor's remote Run go through here too.
+  const runIsSlowMo = slowMoShown && slowMo.throughRun
+
   function handleRunClick() {
     if (cs.running || cs.runningTests) {
       cs.handleStop()
@@ -293,7 +299,8 @@ export default function StudentWorkspace({
     }
     if (runLock) return
     setOutputCollapsed(false)
-    cs.handleRun()
+    if (runIsSlowMo) slowMo.run()
+    else cs.handleRun()
   }
 
   // A Code Arrange board handles the tutor's remote Run itself (only a full board can run).
@@ -321,7 +328,10 @@ export default function StudentWorkspace({
           runDisabled={cs.running || cs.pyodideStatus === 'loading' || !arrangeReady || !!runLock}
         />
       )}
-      {arrangeBoard({ onRun: handleRunClick })}
+      {arrangeBoard({
+        onRun: handleRunClick,
+        runLabel: runIsSlowMo ? <SlowMoRunLabel /> : undefined,
+      })}
     </div>
   )
 
@@ -346,14 +356,24 @@ export default function StudentWorkspace({
                   disabled={
                     !cs.running && !cs.runningTests && (cs.pyodideStatus === 'loading' || !!runLock)
                   }
-                  title={!cs.running && runLock ? runLock.message : undefined}
+                  title={
+                    !cs.running && runLock
+                      ? runLock.message
+                      : runIsSlowMo && !cs.running
+                        ? PYTHON_SLOW_MO_RUN_TITLE
+                        : undefined
+                  }
                   aria-describedby={!cs.running && runLock ? PREDICT_RUN_LOCK_NOTE_ID : undefined}
                 >
-                  {cs.running || cs.runningTests
-                    ? 'Stop'
-                    : cs.pyodideStatus === 'loading'
-                      ? 'Getting Python ready...'
-                      : 'Run'}
+                  {cs.running || cs.runningTests ? (
+                    'Stop'
+                  ) : cs.pyodideStatus === 'loading' ? (
+                    'Getting Python ready...'
+                  ) : runIsSlowMo ? (
+                    <SlowMoRunLabel />
+                  ) : (
+                    'Run'
+                  )}
                 </button>
                 {task?.tests?.length > 0 && (
                   <button

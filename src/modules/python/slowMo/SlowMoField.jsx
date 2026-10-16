@@ -7,8 +7,9 @@ import {
 
 /**
  * Builder control for a Python or Turtle task's `slowMo` (docs/authoring/python.md "Slow-mo"):
- * the on/off switch, the starting speed, step-by-step name tags and the question shown while
- * paused. The question keeps its own draft and saves on blur.
+ * the on/off switch, the starting speed, step-by-step name tags, the question shown while
+ * paused, and a separate Slow-mo button (separateButton) instead of Run playing in slow-mo. The
+ * question keeps its own draft and saves on blur.
  */
 export default function PythonSlowMoField({ task, onUpdate }) {
   const config = task?.slowMo ?? null
@@ -38,6 +39,7 @@ export default function PythonSlowMoField({ task, onUpdate }) {
         speed: config?.speed ?? PYTHON_SLOW_MO_DEFAULT_SPEED,
         showVariables: config?.showVariables ?? true,
         ...(config?.question ? { question: config.question } : {}),
+        ...(config?.separateButton === true ? { separateButton: true } : {}),
       },
     })
   }
@@ -47,8 +49,8 @@ export default function PythonSlowMoField({ task, onUpdate }) {
       <label style={s.toggle}>
         <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
         <span style={{ fontWeight: 600 }}>
-          Slow-mo: Slow-mo, Pause, Step, Step back and Restart buttons that play the run back one
-          line at a time
+          Slow-mo: Run plays the program back one line at a time, with Pause, Step, Step back,
+          Restart and Finish buttons
         </span>
       </label>
       {enabled && (
@@ -88,9 +90,17 @@ export default function PythonSlowMoField({ task, onUpdate }) {
               onBlur={() => update({ question: question.trim() || undefined })}
             />
           </label>
+          <label style={s.row}>
+            <input
+              type="checkbox"
+              checked={config?.separateButton === true}
+              onChange={(e) => update({ separateButton: e.target.checked || undefined })}
+            />
+            <span>Keep a separate 🐢 Slow-mo button (Run runs the program normally)</span>
+          </label>
           <p style={s.help}>
-            Pair it with a prediction or a question: students predict first, then watch. Run still
-            runs the program normally, and checks work the same either way.
+            Pair it with a prediction or a question: students predict first, then watch. Checks work
+            the same either way: once, when the run plays to the end or Finish is pressed.
           </p>
         </div>
       )}

@@ -79,6 +79,9 @@ export default function CodeArrangeTask({
   iframeRef = null,
   onRun,
   onStop,
+  // The Run button's words when it isn't running: a host workspace's "▶ Run (slow-mo)" on a
+  // slow-mo task (src/modules/python/slowMo/), 'Run' otherwise.
+  runLabel: idleRunLabel = 'Run',
   disabled = false,
   showQuestion = false,
   // Live drag mirror for a teacher's "Go Live to Students" broadcast (see
@@ -187,7 +190,7 @@ export default function CodeArrangeTask({
   const usesPython = getModuleDefinition(moduleType)?.meta?.language === 'python'
   const pythonLoading = usesPython && pyodideStatus === 'loading'
   const pythonFailed = usesPython && pyodideStatus === 'error'
-  const runLabel = running ? 'Stop' : pythonLoading ? 'Getting Python ready...' : 'Run'
+  const runLabel = running ? 'Stop' : pythonLoading ? 'Getting Python ready...' : idleRunLabel
   const runDisabled = !running && (!complete || pythonLoading || pythonFailed)
 
   function renderTargetContent(placedFragment, canReceive, emptyPlaceholder) {

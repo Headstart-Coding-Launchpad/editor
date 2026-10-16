@@ -260,12 +260,12 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - Builder: Scratch setup → Student additions → Slow-mo
 
 ### Python and Turtle Slow-mo
-- On Python and Turtle tasks with `slowMo` enabled, five big buttons above the code (icon + word, 44 px+): **Slow-mo** (play at the slider's lines a second, 0.25–4), **Pause**, **Step**, **Step back** and **Restart**. Run still runs normally
+- On Python and Turtle tasks with `slowMo` enabled, Run reads **▶ Run (slow-mo)** and plays the run at the slider's lines a second (0.25–4); once it is playing, big buttons above the code (icon + word, 44 px+): **Pause** (turning into **Play** while paused), **Step**, **Step back**, **Restart** and **⏭ Finish** (straight to the end, checks as for Run). The run shortcut, a Code Arrange board's Run and the tutor's remote Run do the same; the predict-mode Run lock still applies. `slowMo.separateButton: true` keeps the older layout: a plain Run beside a **🐢 Slow-mo** button
 - Record, then replay: the whole run is recorded first (up to 2,000 lines; `input()` is asked while it records), then played back, so Step back is exact
 - The line that just ran is highlighted; each loop header shows "pass 3 of 4" (or "pass 3" when the count isn't written in the code); name tags update step by step, a changed tag pulses once with its earlier values struck through; output grows line by line; the Stage and Turtle drawing build up step by step; the task's question shows while paused
 - The recorded run is the run: checks, the attempt and the tutor's card update once, as for Run. Editing the code ends slow-mo. A runaway program stops at 2,000 steps with "Slow-mo stops after 2,000 steps. Is there a loop that never ends?"
 - Go Live: the presenter's recording goes to every screen once and their controls drive the step the class sees. The session report records each student's use per task. Reduced motion: no pulses; a live region reads each step
-- Builder: task editor → Slow-mo (on/off, starting speed, name tags, question)
+- Builder: task editor → Slow-mo (on/off, starting speed, name tags, question, separate Slow-mo button)
 
 ### Python and Turtle Screen Layout
 - Wide desktops: the editor, then the Stage / turtle picture, the console and the name-tag panel side by side

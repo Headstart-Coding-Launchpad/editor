@@ -39,6 +39,25 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-16
 
+### Slow-mo plays through the Run button (`slowMo.separateButton`)
+
+On a Python or Turtle task with `slowMo.enabled`, **Run now plays the program in slow-mo**. The
+button reads **▶ Run (slow-mo)**, and there is no separate 🐢 Slow-mo button. Once a run is
+playing or paused, Pause (Play while paused), Step, Step back and Restart show above the code, with
+a new **⏭ Finish** that jumps to the end of the run. The output and check result are as for a
+normal Run, and checks still run once. The speed slider stays and starts at `slowMo.speed`. The run
+shortcut, a Code Arrange board's Run and the tutor's remote Run do the same. The predict-mode Run
+lock still applies, and in Go Live the presenter's Run plays slow-mo on every screen.
+
+`slowMo.separateButton: true` keeps the old layout: Run runs normally beside a 🐢 Slow-mo button
+(say for a Solo Challenge that wants plain runs plus optional slow-mo). It is validated as true or
+false, and the Builder's Slow-mo field has a "Keep a separate 🐢 Slow-mo button" box. See
+[python.md](python.md#slow-mo-slowmo).
+
+- Affects: python, turtle, code_arrange · Existing lessons: no changes needed (slow-mo tasks now
+  play through Run; add `separateButton: true` to keep a plain Run) · Resolves:
+  authoring-requests/2026-10-16-p6-28-slow-mo-through-the-run-button.md
+
 ### Authoring docs corrected to match the app (HSC Audit)
 
 The HSC Audit checked every claim in these docs against the app. Some docs told authors to write

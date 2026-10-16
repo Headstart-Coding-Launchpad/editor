@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { getPythonSlowMo } from './config.js'
+import { getPythonSlowMo, slowMoThroughRun } from './config.js'
 import {
   buildSlowMoModel,
   describePosition,
@@ -38,10 +38,11 @@ const sameId = (a, b) => a != null && b != null && String(a) === String(b)
  * record the run, then play it back line by line.
  *
  * Two sources:
- * - the student's (or presenting tutor's) own workspace: Slow-mo and Step start a slow-mo Run
+ * - the student's (or presenting tutor's) own workspace: Run (`run`, when `throughRun`: the
+ *   default) or, with `separateButton`, Slow-mo and Step start a slow-mo Run
  *   (cs.handleRun({ slowMo: true })) — that run IS the run, so output, checks, the attempt and
- *   the save happen exactly as for Run — and then play its recording; editing the code, a
- *   normal Run or another task ends slow-mo. Use is counted for the session report
+ *   the save happen exactly as for Run — and then play its recording; Finish jumps to its end.
+ *   Editing the code, a normal Run or another task ends slow-mo. Use is counted for the session report
  *   (cs.recordSlowMoUse: one 'run' per recording, one 'step' per step shown). In a Go Live
  *   broadcast it sends the recording once and then each step (teacherLive.pythonSlowMo).
  * - a Go Live viewer (`live` = displayPythonSlowMo): follows the presenter's recording and step,
@@ -53,6 +54,8 @@ export function usePythonSlowMo({ task, cs, code, readOnly = false, live = undef
   const config = useMemo(() => getPythonSlowMo(task), [task])
   const isViewer = live !== undefined
   const enabled = !!config && !readOnly && !isViewer
+  // Run itself plays the run in slow-mo (no separate 🐢 button) unless `separateButton`.
+  const throughRun = enabled && slowMoThroughRun(config)
 
   // ── The student's own recording ──
   const [own, setOwn] = useState(null) // { id, code, taskId, model }
@@ -211,6 +214,7 @@ export function usePythonSlowMo({ task, cs, code, readOnly = false, live = undef
   return {
     config,
     enabled,
+    throughRun,
     isViewer,
     active: !!view,
     pending,
@@ -219,11 +223,14 @@ export function usePythonSlowMo({ task, cs, code, readOnly = false, live = undef
     pulse: !(mode === 'playing' && speed > PULSE_MAX_SPEED),
     view,
     // Actions (the student's own workspace only).
+    // Run on a slow-mo task: always a fresh recording (input() asked again), played from the start.
+    run: () => record('play'),
     slowMo: () => (own ? dispatch({ type: 'play' }) : record('play')),
     pause: () => dispatch({ type: 'pause' }),
     step: () => (own ? dispatch({ type: 'step' }) : record('step')),
     back: () => dispatch({ type: 'back' }),
     restart: () => dispatch({ type: 'restart' }),
+    finish: () => dispatch({ type: 'finish' }),
     setSpeed: (value) => dispatch({ type: 'speed', speed: value }),
     exit: clear,
   }
