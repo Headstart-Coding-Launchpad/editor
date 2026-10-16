@@ -18,7 +18,10 @@ import { getActivityDefinition } from '../../activities/registry.pure.js'
 // validateTask + the activity registry). Only the environment-specific extras below may differ
 // (ADR 0008); every other message must come out of both validators identically.
 
-const CLI_ONLY_ERRORS = ['description is required']
+const CLI_ONLY_ERRORS = [
+  'description is required',
+  /^Task \d+ has the same id \(.*\) as task \d+ — give every task its own id/,
+]
 const BUILDER_ONLY_ERRORS = [/ has invalid toolbox XML$/]
 const BUILDER_ONLY_WARNINGS = [
   / has a completion check that hasn't been tested — run the task to verify it$/,

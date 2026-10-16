@@ -14,7 +14,7 @@ import { useTypeAssets } from '../../shared/useTypeAssets'
 import { isComposedLesson } from '../../shared/composedLesson'
 import { getModuleAuthoring, SPRITE_LIBRARY_MODULE_TYPE } from '../../modules/definitions'
 import { buildPrintHtml } from '../printLesson'
-import { flattenTasks, applyTaskUpdate } from '../../shared/taskUtils'
+import { flattenTasks, applyTaskUpdate, equivalentTaskIds } from '../../shared/taskUtils'
 import { normalizeTasksForExport } from '../lessonUtils'
 import { decodeLessonFromFirestore, encodeLessonForFirestore } from '../../shared/lessonBlocksCodec'
 import { lessonNeedsSealing } from '../../shared/lessonSeal'
@@ -77,7 +77,8 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
     getDocs(
       query(
         collection(firestore, 'lessons', lesson.id, 'feedback'),
-        where('taskId', '==', selectedTaskId)
+        // Feedback added from the CLI before ids were normalised stored the id as text ("4").
+        where('taskId', 'in', equivalentTaskIds(selectedTaskId))
       )
     )
       .then((snap) => {

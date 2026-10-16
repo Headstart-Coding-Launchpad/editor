@@ -154,6 +154,28 @@ function makeGroupId(rawItem, lessonId, groupIdCounts) {
   return count === 0 ? safeBase : `${safeBase}-${count + 1}`
 }
 
+// The `answer:` shorthand names the correct option's id (`answer: b`). Authors often write the
+// option's text instead, which could never be marked right, so text that matches exactly one
+// option (ignoring case and surrounding spaces) becomes that option's id. Anything else is kept
+// as written, and validation reports an answer that is not an option id.
+export function answerOptionId(answer, options) {
+  const value = String(answer)
+  if (!Array.isArray(options)) return value
+  if (options.some((option) => option?.id === value)) return value
+  const wanted = value.trim().toLowerCase()
+  const byId = options.filter(
+    (option) => typeof option?.id === 'string' && option.id.trim().toLowerCase() === wanted
+  )
+  if (byId.length === 1) return byId[0].id
+  const byText = options.filter(
+    (option) =>
+      typeof option?.text === 'string' &&
+      typeof option.id === 'string' &&
+      option.text.trim().toLowerCase() === wanted
+  )
+  return byText.length === 1 ? byText[0].id : value
+}
+
 function convertTask(raw, id, lessonType) {
   const { type, checks, answer, group: _g, tasks: _t, ...rest } = raw
   const task = { id, ...rest }
@@ -177,7 +199,7 @@ function convertTask(raw, id, lessonType) {
 
   // `answer: a` shorthand for multiple_choice quizzes
   if (answer != null && task.check == null) {
-    task.check = { type: 'answer_equals', value: String(answer) }
+    task.check = { type: 'answer_equals', value: answerOptionId(answer, task.options) }
   }
 
   // `checks:` (plural) → `check:` normalisation
