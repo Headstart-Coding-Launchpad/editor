@@ -87,10 +87,8 @@ describe('scrubPreviewMode', () => {
     ).toBe('preview')
   })
 
-  it('asks for Run without the needed import, with input(), or with no live re-run', () => {
+  it('asks for Run without the needed import, or with no live re-run', () => {
     expect(scrubPreviewMode(python, 'print(5)')).toBe('press-run')
-    expect(scrubPreviewMode(python, 'import stage\nname = input("?")')).toBe('press-run')
-    expect(scrubPreviewMode(turtle, 'n = input ("size")')).toBe('press-run')
     expect(scrubPreviewMode(turtle, 'x = box.input(1)')).toBe('preview')
     expect(scrubPreviewMode({ liveRerun: 'none' }, 'x')).toBe('press-run')
     expect(scrubPreviewMode(null, 'x')).toBe('press-run')

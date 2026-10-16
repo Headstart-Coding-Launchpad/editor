@@ -813,9 +813,7 @@ export default function StudentCard({
         <div style={s.iframeThumb}>
           <span style={{ color: student.currentCode ? '#6b7280' : '#9ca3af', fontSize: 12 }}>
             {student.currentCode
-              ? moduleType === 'desktop'
-                ? 'Desktop project'
-                : 'Filesystem project'
+              ? `${getModuleDefinition(moduleType)?.meta?.label || 'Filesystem'} project`
               : 'No changes yet'}
           </span>
         </div>

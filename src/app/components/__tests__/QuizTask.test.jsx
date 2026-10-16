@@ -615,7 +615,8 @@ describe('characterisation: QuizTask onSelectAnswer per legacy fixture', () => {
 describe('QuizTask student-facing clarity (HSC Audit)', () => {
   it('short answer shows a clear confirmation once submitted', () => {
     render(<QuizTask task={SHORT_ANSWER_TASK} selectedAnswer="I made a game" submitted />)
-    const status = screen.getByRole('status')
+    const status = screen.getAllByRole('status').find((el) => el.textContent.includes('Got it!'))
+    expect(status).toBeTruthy()
     expect(status).toHaveTextContent('✅ Got it!')
     expect(status).toHaveTextContent('Your answer: I made a game')
   })

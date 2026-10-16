@@ -29,9 +29,9 @@ describe('lessons capabilities', () => {
 
   it('says requireShiftForCapitals is off when left out (audit #37)', () => {
     const keyboard = capabilities.activities.find((a) => a.id === 'keyboard')
-    const field = JSON.stringify(keyboard.fields)
-    expect(field).not.toMatch(/default true/)
-    expect(field).toMatch(/Off when left out/)
+    const field = keyboard.fields.find((f) => f.name === 'requireShiftForCapitals')
+    expect(field.description).not.toMatch(/default true/)
+    expect(field.description).toMatch(/Off when left out/)
   })
 
   it('attributes check types to the module that owns them', () => {
