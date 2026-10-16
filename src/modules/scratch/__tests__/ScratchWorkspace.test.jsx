@@ -13,6 +13,8 @@ import {
   evalSingleCheckPartial,
   blockPlacedCheckHasFailed,
   routeWorkspaceEdit,
+  BAT_COLOUR,
+  drawScratchSpriteAtOrigin,
 } from '../ScratchWorkspace'
 import { FEEDBACK_TIMING, evaluateCheckWithCustomFeedback } from '../../checks'
 
@@ -377,5 +379,24 @@ describe('routeWorkspaceEdit', () => {
     routeWorkspaceEdit({ type: 'delete', blockId: 'b1' }, actions)
     expect(actions.clearCheckFeedback).not.toHaveBeenCalled()
     expect(actions.scheduleChecks).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('built-in bat sprite colour (style spec S6)', () => {
+  it('fills the bat with #374151, never a CSS variable the canvas cannot read', () => {
+    const fills = []
+    const ctx = {
+      beginPath: vi.fn(),
+      arc: vi.fn(),
+      ellipse: vi.fn(),
+      fill: vi.fn(),
+      set fillStyle(value) {
+        fills.push(value)
+      },
+    }
+    drawScratchSpriteAtOrigin(ctx, 'bat', 20)
+    expect(BAT_COLOUR).toBe('#374151')
+    expect(fills).toHaveLength(3)
+    expect(fills.every((value) => value === '#374151')).toBe(true)
   })
 })

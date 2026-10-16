@@ -187,7 +187,7 @@ const SPRITE_TYPE_COLOR = {
   ball: '#4C97FF',
   star: '#FFD700',
   arrow: '#9966FF',
-  bat: 'var(--colour-ink-strong)',
+  bat: '#374151',
   parrot: '#22c55e',
 }
 
@@ -384,6 +384,10 @@ export function cloneSpriteStates(states) {
 
 // ── Canvas drawing ────────────────────────────────────────────────────────────
 
+// The built-in bat's body and wings. A literal colour: a canvas can't read CSS variables, so
+// 'var(--colour-ink-strong)' was ignored and the bat took the last fill colour used.
+export const BAT_COLOUR = '#374151'
+
 export function drawScratchSpriteAtOrigin(ctx, type, r) {
   switch (type) {
     case 'ball':
@@ -428,15 +432,15 @@ export function drawScratchSpriteAtOrigin(ctx, type, r) {
     case 'bat':
       ctx.beginPath()
       ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2)
-      ctx.fillStyle = 'var(--colour-ink-strong)'
+      ctx.fillStyle = BAT_COLOUR
       ctx.fill()
       ctx.beginPath()
       ctx.ellipse(-r * 0.9, -r * 0.1, r * 0.55, r * 0.3, -0.3, 0, Math.PI * 2)
-      ctx.fillStyle = 'var(--colour-ink-strong)'
+      ctx.fillStyle = BAT_COLOUR
       ctx.fill()
       ctx.beginPath()
       ctx.ellipse(r * 0.9, -r * 0.1, r * 0.55, r * 0.3, 0.3, 0, Math.PI * 2)
-      ctx.fillStyle = 'var(--colour-ink-strong)'
+      ctx.fillStyle = BAT_COLOUR
       ctx.fill()
       break
     case 'parrot':

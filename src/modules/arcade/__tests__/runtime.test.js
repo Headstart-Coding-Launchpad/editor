@@ -52,7 +52,12 @@ describe('buildArcadeIframeSrc', () => {
     expect(src).toContain('context.drawImage(img, sourceFrame * sourceWidth')
     expect(src).toContain('const palette =')
     expect(src).toContain('function arcadeColour(value, fallback)')
-    expect(src).toContain("def clear(self, color='black')")
+    // Audit #13: colour= (UK) and color= both work on clear, rect and text.
+    expect(src).toContain('def clear(self, colour=None, color=None)')
+    expect(src).toContain('def rect(self, x, y, width, height, colour=None, color=None)')
+    expect(src).toContain('def text(self, text, x, y, colour=None, size=8, color=None)')
+    expect(src).toContain("_pick_colour(colour, color, 'black')")
+    expect(src).toContain('def _pick_colour(colour, color, default):')
   })
 
   it('passes named assets to the sandbox without permitting markup injection', () => {
