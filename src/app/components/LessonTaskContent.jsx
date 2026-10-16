@@ -101,6 +101,9 @@ const MODULE_PANES_TYPES = getModuleTypesWithCapability('modulePanes')
 // percentage split — Scratch explainers often carry block-pill images/markdown that need
 // real width, and a fixed size is simpler and more predictable than a shrinking one.
 const EXPLAINER_FIXED_WIDTH = 320
+// The side explainer's collapse arrow (s.sideExplainerCollapse: 28px wide, 4px from the right)
+// plus a gap, kept clear at the end of the title bar so the title never runs into it.
+const SIDE_COLLAPSE_INSET = 4 + 28 + 6
 // Gap between the explainer and code columns (s.scratchFixedSplit) — must be included in
 // the threshold below, or the code area ends up ~12px short of SCRATCH_CODE_WIDE_WIDTH
 // right at the boundary, letting ScratchWorkspace's own Blocks/Stage tabs sneak in a hair
@@ -508,6 +511,8 @@ export default function LessonTaskContent({
         openTopicId={openTopicId}
         disableCopy
         fill={useSideExplainer}
+        // Clear of the collapse arrow laid over the title bar's right end (s.sideExplainerCollapse).
+        titleEndInset={useSideExplainer ? SIDE_COLLAPSE_INSET : 0}
         collapsible={!useSideExplainer}
         markdownTextScale={useSideExplainer ? 1.08 : 1}
         onCollapsedChange={!useSideExplainer ? setAccordionExplainerCollapsed : undefined}

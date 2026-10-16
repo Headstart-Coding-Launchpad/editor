@@ -28,6 +28,9 @@ export default function ExplainerPanel({
   // Logs a student's open of a "See example" fence in this content (the task explainer only;
   // see MarkdownRenderer's onExampleOpen).
   onExampleOpen,
+  // Room (px) to keep clear at the right of the title bar for a control laid over it (the side
+  // explainer's collapse arrow), so a long title wraps before it rather than running under it.
+  titleEndInset = 0,
 }) {
   const isFirstView = useFirstView(
     entranceKey == null ? null : firstViewKey('explainer', entranceKey)
@@ -50,6 +53,8 @@ export default function ExplainerPanel({
   const panelRef = useRef(null)
   const contentRef = useRef(null)
   const isCollapsed = collapsible && collapsed
+  const titleBarStyle =
+    titleEndInset > 0 ? { ...s.titleBar, paddingRight: 12 + titleEndInset } : s.titleBar
   const canExpandOverlay = !fill
 
   // Reports this accordion's own open/closed state upward — used by LessonTaskContent so
@@ -112,7 +117,7 @@ export default function ExplainerPanel({
       {collapsible ? (
         <button
           className={highlighted ? 'pane-highlight-pulse' : undefined}
-          style={s.titleBar}
+          style={titleBarStyle}
           onClick={() => {
             setEntrance((current) => ({ ...current, over: true }))
             setCollapsed((c) => !c)
@@ -124,7 +129,7 @@ export default function ExplainerPanel({
         </button>
       ) : (
         title && (
-          <div style={s.titleBar}>
+          <div style={titleBarStyle}>
             <h2 style={s.titleText}>{title}</h2>
           </div>
         )
