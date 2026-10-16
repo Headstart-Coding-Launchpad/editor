@@ -38,6 +38,7 @@ import {
 import { STAGE_TARGET_TASK_FIELD, validateStageTarget } from '../../shared/stage/validation.js'
 import { compactStageForSync } from '../../shared/stage/sync.js'
 import { SCRUB_TASK_FIELD, validateScrub } from '../../shared/scrub/scrubConfig.js'
+import { RUN_ON_OPEN_TASK_FIELD, validateRunOnOpen } from '../../shared/scrub/runOnOpen.js'
 import {
   codeCopyStarterToComplete,
   codeDefaultTypeFields,
@@ -172,6 +173,7 @@ export default defineModule({
     SHOW_VARIABLES_TASK_FIELD,
     STAGE_TARGET_TASK_FIELD,
     SCRUB_TASK_FIELD,
+    RUN_ON_OPEN_TASK_FIELD,
     PYTHON_SLOW_MO_TASK_FIELD,
     // Hidden setup and puzzle rules (src/shared/puzzle/).
     SETUP_CODE_TASK_FIELD,
@@ -269,6 +271,9 @@ export default defineModule({
     validateShowVariables(task, n, errors, warnings)
     validateStageTarget(task, n, errors, warnings)
     validateScrub(task, n, errors, warnings, {
+      starterCode: getStarterStage(task)?.stage?.code ?? task.starterCode ?? null,
+    })
+    validateRunOnOpen(task, n, errors, warnings, {
       starterCode: getStarterStage(task)?.stage?.code ?? task.starterCode ?? null,
     })
     validatePythonSlowMo(task, n, errors, warnings)

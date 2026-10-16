@@ -173,7 +173,7 @@ export default function StudentWorkspace({
             lineHintSetsFor={lineHintSetsFor}
             scrub={scrub}
             onScrubPreview={cs.scrubPreview}
-            onScrubCommit={cs.recordScrub}
+            onScrubCommit={cs.handleScrubCommit}
             onRunShortcut={
               readOnly || task?.interactionMode === 'submit' ? undefined : cs.handleRun
             }
@@ -251,7 +251,7 @@ export default function StudentWorkspace({
               lineHintSetsFor={lineHintSetsFor}
               scrub={scrub}
               onScrubPreview={cs.scrubPreview}
-              onScrubCommit={cs.recordScrub}
+              onScrubCommit={cs.handleScrubCommit}
               onRunShortcut={
                 readOnly || task?.interactionMode === 'submit' ? undefined : cs.handleRun
               }

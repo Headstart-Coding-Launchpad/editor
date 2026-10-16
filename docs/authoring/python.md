@@ -126,6 +126,31 @@ A line whose trimmed text is `#@lock` locks the **next non-blank line**. The mar
 - Validation warns when the complete code drops a locked line or needs it at another indentation — students can't do either.
 - Copy the Code (`copyCode`) is unchanged.
 
+### Locked lines with editable values (`#@lock-values`)
+
+A line whose trimmed text is `#@lock-values` locks the **next non-blank line except its values**: the text between a plain string's quote marks, and its numbers. The name, `=`, the quote marks, brackets and everything else on the line stay read-only, so a Level 1 student can make `hero = "Zara"` their own without breaking the quote marks or the name.
+
+```yaml
+codeStages:
+  - role: starter
+    code: |
+      from stage import *
+      #@lock-values
+      hero = "Zara"
+      #@lock-values
+      city = "Leeds"
+      headline = f"{hero} wins in {city}"
+      text(headline, "black", y=200, size=24)
+```
+
+- Each value has a light box with a dashed outline — the same "you can change this" look as a draggable number with [live scrubbing](#live-scrubbing-scrub) — and the line ends in a 🔒 **Change the values only** tag. The rest of the line is greyed like a locked line.
+- Clicking or tapping the line puts the cursor in the nearest value; the arrow keys jump from value to value along the line. Typing that would change anything outside a value (the name, a quote mark, a new line) does nothing and shows "Only the values on this line can change".
+- An empty string (`name = ""`) stays editable: a small box between the quote marks shows where to type. A student can empty a string, but not delete a number completely (it must stay a number).
+- Values are plain strings and numbers. f-strings (their `{name}` is code), `r"…"`/`b"…"` strings, triple-quoted strings and comments stay locked.
+- Scrubbing works on the line's numbers and colour strings.
+- The lock follows its line by its shape (the line with its values blanked out), so it survives saving, reloading, a support stage, **Undo** and **Reset**. Checks see the whole program as usual.
+- Validation warns when a `#@lock-values` line has no string or number to change (it is then fully locked), and when one has no line after it.
+
 ### Hidden setup (`setupCode`, `setupNote`)
 
 `setupCode` is Python that runs **first, every Run, in the same program** as the student's code, and is never shown. Use it for data students shouldn't spend lesson time typing.
@@ -307,7 +332,14 @@ variable, with its name, a small type label and its value. Off unless a task set
 | `target` | Target mode: `{ name: value }`. Values are YAML: numbers, text, `true`/`false`/`null`, lists and dicts. Required in target mode. The green tags are **display only** — the `variable_*` checks decide completion, so add them. A list or dict target is drawn with the same visual as the real value (e.g. target swatches), so "make your palette look like this" works. |
 | `visuals` | `true` (default): lists and dicts are drawn as what they hold (see **List and dict visuals** below). `false`: today's plain tags for the whole task — use it when the automatic choice would mislead (e.g. `["orange", "lime"]` meant as fruit). |
 | `stageLists` | How a list of rows passed to the [Stage](#stage-drawing-beside-the-console)'s `grid()` in this run shows: `size` (default) — just the tag, type and size, e.g. `pixels: list, 8 × 8, drawn on the Stage`, so the picture doesn't appear twice; `picture` — colour names and hex codes as the small picture as well, to teach "the list *is* the picture" (palette numbers always show as a number table, never a picture); `tiles` — rows of tiles. A flat list drawn with `grid(…, width=…)` always shows as tiles wrapped at that width, whatever `stageLists` says. Ignored with `visuals: false`. |
+| `link` | `true` (default): each tag and its variable in the code are **linked** — see **Linked tags** below. `false`: tags and code are not marked. |
 | `lockRun` | Predict mode only. `true` (default): **Run, Slow-mo and Step stay disabled until every `predict` tag has an answer** (anything non-blank), with "Fill in your predictions first" beside Run in words (a tooltip too, and the button's accessible description). After the student's first Run of the task the lock is gone for good, so they can change the code and run again. The presenter (Go Live, the presentation window) is never locked, a tutor's remote Run still runs, and the personal sandbox isn't locked. `false`: Run works with the tags empty. |
+
+**Linked tags** (`link`, on by default). Each tag gets one of six clearly different colours **and** a small number, and every real use of that variable in the editor gets the same: a coloured underline with a soft background, and the number drawn small above the end of the name. So the `small` tag and the `small` on line 3 match by colour and number, never colour alone (colour-blind students, projectors). Predict tags are linked from the moment the task opens; view-mode tags once a run shows them; target tags from the start. Featured tags (predict or target names) come first, then the other variables; at most six tags are linked.
+
+- Only real uses of the variable are marked: not the same word inside a string or a comment, after a dot (`city.lower`), or as a keyword argument's name (`size=26`). An f-string's `{name}` is code, so it is marked.
+- Hovering, focusing or tapping a tag marks its variable in the code more strongly; hovering a marked variable in the code, or putting the cursor on it, outlines its tag. The marks never move the code's lines or hide the cursor.
+- Tutors see the same links in StudentModal's code view and in Go Live.
 
 **What a tag shows.** One tag per variable, in the order the code first names them. Type labels:
 `text`, `number`, `true/false`, `list`, `dict`, `None` (and `tuple`, `set`, or the Python type name
@@ -726,6 +758,8 @@ It's off unless set, and works on Python, Turtle and HTML tasks.
         - line: 3
           min: 10
           max: 200
+      checkOnRelease: true   # optional — run the checks once when a drag ends (default true)
+    runOnOpen: true          # optional — preview the code when the task opens (default: on with scrub)
     codeStages:
       - role: starter
         code: |
@@ -736,8 +770,11 @@ It's off unless set, and works on Python, Turtle and HTML tasks.
 
 What students get:
 
-- **Numbers.** On a computer, a number underlines when the pointer is over it; dragging left or
-  right changes it. Whole numbers stay whole; a decimal steps by its last decimal place (`0.5`
+- **Numbers.** Every number that can be dragged carries a light box with a dashed outline from the
+  moment the task opens, on computers and tablets alike — the same "you can change this" look as
+  the values on a [`#@lock-values`](#locked-lines-with-editable-values-lock-values) line. It is
+  calm (no animation) and its dashed shape reads without colour. On a computer, a number also
+  underlines when the pointer is over it; dragging left or right changes it. Whole numbers stay whole; a decimal steps by its last decimal place (`0.5`
   steps by 0.1, `0.25` by 0.01). On a tablet, tapping a number opens a slider beside it, with
   − and + buttons (all at least 44 px). The keyboard works too: **Alt+Enter** on a number opens
   the slider, and the arrow keys move it.
@@ -749,14 +786,36 @@ What students get:
   Without a range, a number scrubs from 0 to twice its value (at least 0–100; 0–1 for decimals),
   or the same distance either side of 0 when it's negative. A value already outside an author's
   range widens it, so grabbing a number never makes it jump.
-- **Live redraw.** While a value moves, the program re-runs about every 200 ms, as a preview: no
-  attempt, no checks, no save, and nothing is sent to the tutor. A preview never starts while the
-  last one is still running. Only programs that draw on the Stage (`from stage import *` or
-  `import stage`) and don't call `input()` re-run live; for anything else the student sees
-  "Press Run to see it".
-- **When the drag ends** (or the slider or picker closes), the new value is a normal edit: saved,
-  sent to a watching tutor like typing, one Undo step, and checked on the next Run as usual. It
-  counts as an edit, not as typed characters, in the typing measures.
+- **Live redraw.** While a value moves, the program re-runs as a preview: the first change at
+  once, then the latest value about every 200 ms for as long as the drag keeps moving (a quick
+  program redraws about five times a second; a slow one as soon as its last preview finishes,
+  since a preview never starts while the last one is still running). A preview is check-free: no
+  attempt, no checks, no save, and nothing is sent to the tutor. In Python, only programs that
+  draw on the Stage (`from stage import *` or `import stage`) re-run live; for anything else the
+  student sees "Press Run to see it".
+- **Programs with `input()`.** A preview replays, in order, the answers the student gave on their
+  **last Run**, and a small line near the result says which: "Using your last answers: Ada, Mars,
+  teal" (up to three answers, long ones cut short). Before the first Run, or when the preview asks
+  more questions than the last Run answered, the student sees "Press Run and answer the questions
+  first" instead.
+- **When the drag ends** (the pointer or finger lifts, or a slider step ends: letting go of the
+  slider, an arrow key, or a − / + tap; or a colour is picked), the new value is a normal edit:
+  saved, sent to a watching tutor like typing, one Undo step. It counts as an edit, not as typed
+  characters, in the typing measures. Then, with `checkOnRelease` (on by default), **the task's
+  checks run once, exactly as a Run**: the attempt is logged, the result shows, and the tutor's
+  card updates. The attempt is marked `source: 'scrub'` in the session report. A program that
+  doesn't preview live is left for the student's next Run, and so is a predict task still waiting
+  for its predictions (`lockRun`). An `input()` program's checks replay the last Run's answers.
+  `checkOnRelease: false` puts back "checked on the next Run". Escape in the slider still puts
+  back the value from before it opened.
+- **Run on open** (`runOnOpen`, a task field beside `scrub`, Python and Turtle). With `runOnOpen:
+  true` — the default when `scrub` is on — the task's code (the starter, or the student's saved
+  code) runs once as a preview when the task opens, so the Stage, the Turtle drawing or the
+  console shows straight away and the first drag redraws at once. It is not an attempt: no
+  checks, nothing logged, not counted as a Run, so opening a task never passes it. It never
+  steals focus or opens the on-screen keyboard. Programs that call `input()` never run on open
+  (validation warns). `runOnOpen: false` turns it off on a scrub task; `runOnOpen: true` turns it
+  on for a task without `scrub`.
 
 Numbers in code are scrubbed, not numbers in strings or comments, or inside names like `x2`. A
 minus sign belongs to the number (`-5` in `left(-5)`), but not in `a - 5`.
@@ -766,9 +825,10 @@ Stage values get their natural range when the author gives none: `angle=` 0–36
 dragging the `9` in `hue(i * 9)` sweeps the colours). `outline=` colours get a swatch and picker
 like any colour string.
 
-No new checks. **Tutor:** the tutor sees the edit when the drag ends, like any edit, and the
-session report counts each student's scrubs on the task (`scrubs`,
-[session reports](session-reports.md)). In the Builder, the task's **Live scrubbing** setting
+No new checks. **Tutor:** the tutor sees the edit when the drag ends, like any edit, and with
+`checkOnRelease` the attempt and result reach their card exactly as a Run's. The session report
+counts each student's scrubs on the task (`scrubs`) and marks attempts made on a drag's release
+(`distinctAttempts[].source: scrub`, [session reports](session-reports.md)). In the Builder, the task's **Live scrubbing** setting
 turns it on and adds ranges.
 
 ---

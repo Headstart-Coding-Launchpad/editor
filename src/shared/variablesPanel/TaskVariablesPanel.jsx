@@ -18,6 +18,9 @@ import {
  * `code` is the code the editor beside it shows, so an `at: marker` panel can say which line
  * it shows the values before ("Values just before line N", getPanelPeekLine).
  *
+ * `links` / `activeLink` / `onLinkActive`: linked tags (./links.js), as NameTagPanel takes them;
+ * the workspace builds them so the editor beside it marks the same names.
+ *
  * `hidden` covers the views with no panel data (a previous task's saved code, the tutor
  * editing the student's code).
  */
@@ -29,6 +32,9 @@ export default function TaskVariablesPanel({
   running = false,
   audience = 'student',
   hidden = false,
+  links = null,
+  activeLink = null,
+  onLinkActive,
   style,
 }) {
   const config = getShowVariables(task)
@@ -48,6 +54,9 @@ export default function TaskVariablesPanel({
         peekLine={peekLine}
         readOnly
         audience={audience}
+        links={links}
+        activeLink={activeLink}
+        onLinkActive={onLinkActive}
         style={style}
       />
     )
@@ -63,6 +72,9 @@ export default function TaskVariablesPanel({
       onPredictionCommit={panel?.commitPredictions}
       running={running}
       audience={audience}
+      links={links}
+      activeLink={activeLink}
+      onLinkActive={onLinkActive}
       style={style}
     />
   )

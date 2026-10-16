@@ -17,7 +17,11 @@ const MARGIN = 8
  * The popover beside a scrubbed literal (./scrubExtension.js openPopover): a slider for a number
  * (touch, or Alt-Enter), or the colour picker. Its changes preview live; Done, Enter, choosing a
  * colour or tapping outside keeps the value as one edit, Escape puts the original back.
- * `request` is `{ view, literal, range, step }`.
+ * `request` is `{ view, literal, range, step, settleSteps }`. With `settleSteps` (the task's
+ * scrub.checkOnRelease) each finished slider step — lifting a finger or the mouse off the
+ * slider, letting go of an arrow key, a − or + tap — is kept as its own edit at once, so the
+ * task's checks run on it (a drag that has ended); Escape still puts the value from before the
+ * popover opened back.
  */
 export default function ScrubPopover({ request, onClose }) {
   const { view, literal } = request
@@ -28,10 +32,26 @@ export default function ScrubPopover({ request, onClose }) {
 
   function close(keep) {
     const session = sessionRef.current
-    if (keep) commitScrub(view, session)
-    else cancelScrub(view, session)
+    if (keep) {
+      commitScrub(view, session)
+    } else if (session.original !== literal.text) {
+      // Steps were already kept as edits: putting the first value back is an edit too.
+      previewScrub(view, session, literal.text)
+      commitScrub(view, session)
+    } else {
+      cancelScrub(view, session)
+    }
     onClose()
     view.focus()
+  }
+
+  // Keeps the current value as an edit and carries on scrubbing from it (settleSteps).
+  function settle() {
+    const session = sessionRef.current
+    if (!request.settleSteps || session.dead || session.current === session.original) return
+    const { from, current, kind } = session
+    if (!commitScrub(view, session)) return
+    sessionRef.current = beginScrub(view, { from, text: current, kind })
   }
   const closeRef = useRef(close)
   closeRef.current = close
@@ -92,7 +112,12 @@ export default function ScrubPopover({ request, onClose }) {
       onKeyDown={onKeyDown}
     >
       {literal.kind === 'number' ? (
-        <NumberSlider request={request} session={sessionRef.current} onDone={() => close(true)} />
+        <NumberSlider
+          request={request}
+          sessionRef={sessionRef}
+          onSettle={settle}
+          onDone={() => close(true)}
+        />
       ) : (
         <ColourPicker
           request={request}
@@ -106,7 +131,19 @@ export default function ScrubPopover({ request, onClose }) {
   )
 }
 
-function NumberSlider({ request, session, onDone }) {
+// Keys that move a range input: letting go of one ends a step.
+const SLIDER_KEYS = new Set([
+  'ArrowLeft',
+  'ArrowRight',
+  'ArrowUp',
+  'ArrowDown',
+  'PageUp',
+  'PageDown',
+  'Home',
+  'End',
+])
+
+function NumberSlider({ request, sessionRef, onSettle, onDone }) {
   const { view, literal, range, step } = request
   const [value, setValue] = useState(literal.value)
   const sliderRef = useRef(null)
@@ -115,7 +152,12 @@ function NumberSlider({ request, session, onDone }) {
   function change(next) {
     const clamped = clampScrubValue(next, range, step)
     setValue(clamped)
-    previewScrub(view, session, formatScrubNumber(clamped, literal))
+    previewScrub(view, sessionRef.current, formatScrubNumber(clamped, literal))
+  }
+
+  function stepBy(delta) {
+    change(value + delta)
+    onSettle()
   }
 
   const shown = formatScrubNumber(value, literal)
@@ -132,7 +174,7 @@ function NumberSlider({ request, session, onDone }) {
           type="button"
           style={s.stepBtn}
           aria-label={`Smaller (minus ${step})`}
-          onClick={() => change(value - step)}
+          onClick={() => stepBy(-step)}
         >
           −
         </button>
@@ -147,12 +189,16 @@ function NumberSlider({ request, session, onDone }) {
           aria-label={`Number on line ${literal.line}`}
           aria-valuetext={shown}
           onChange={(event) => change(Number(event.target.value))}
+          onPointerUp={onSettle}
+          onKeyUp={(event) => {
+            if (SLIDER_KEYS.has(event.key)) onSettle()
+          }}
         />
         <button
           type="button"
           style={s.stepBtn}
           aria-label={`Bigger (plus ${step})`}
-          onClick={() => change(value + step)}
+          onClick={() => stepBy(step)}
         >
           +
         </button>

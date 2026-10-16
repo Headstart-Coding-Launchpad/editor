@@ -12,7 +12,13 @@
 // Lines of code (maxLines, linesUsed) are the non-blank lines that aren't only a comment.
 // Locked lines count; a task's hidden setupCode never does (it isn't in the student's code).
 import { parseLineHints } from '../lineHints.js'
-import { isLockMarkerLine, onlyEditLocks } from '../lockedLines.js'
+import {
+  isLockMarkerLine,
+  isLockValuesMarkerLine,
+  lineValueSpans,
+  onlyEditLocks,
+  valueSkeleton,
+} from '../lockedLines.js'
 import { getCompleteStage, getStarterStage } from '../taskStages.js'
 
 // A check field as a list (no import of ../../modules/checks.js: its registry imports this file).
@@ -345,23 +351,40 @@ export function validateLockedLines(task, n, warnings) {
     if (rawStarter.split('\n').some((line) => isLockMarkerLine(line, 'python'))) {
       warnings.push(`Task ${n} has a #@lock marker with no line after it; it locks nothing`)
     }
+    if (rawStarter.split('\n').some((line) => isLockValuesMarkerLine(line, 'python'))) {
+      warnings.push(`Task ${n} has a #@lock-values marker with no line after it; it locks nothing`)
+    }
     return
+  }
+  const starterLines = parsed.code.split('\n')
+  // A #@lock-values line needs a value (a string or a number) for students to change.
+  for (const lock of locks) {
+    if (!lock.values) continue
+    if (lineValueSpans(starterLines[lock.line - 1] ?? '').length === 0) {
+      warnings.push(
+        `Task ${n} has a #@lock-values line ${lock.line} with no string or number to change — it is fully locked`
+      )
+    }
   }
   const complete = puzzleCompleteCode(task)
   if (complete == null) return
-  const starterLines = parsed.code.split('\n')
   const completeLines = complete.split('\n')
   for (const lock of locks.sort((a, b) => a.line - b.line)) {
     const starterLine = starterLines[lock.line - 1] ?? ''
     const indent = /^\s*/.exec(starterLine)[0]
-    const matches = completeLines.filter((line) => line.trim() === lock.target)
+    const shown = starterLine.trim()
+    const matches = completeLines.filter((line) =>
+      lock.values
+        ? line.trim() !== '' && valueSkeleton(line) === lock.target
+        : line.trim() === lock.target
+    )
     if (matches.length === 0) {
       warnings.push(
-        `Task ${n} locked line ${lock.line} ("${lock.target}") is not in the complete code — students can't change or remove a locked line`
+        `Task ${n} locked line ${lock.line} ("${shown}") is not in the complete code — students can't change or remove a locked line`
       )
     } else if (!matches.some((line) => /^\s*/.exec(line)[0] === indent)) {
       warnings.push(
-        `Task ${n} locked line ${lock.line} ("${lock.target}") is indented differently in the complete code — students can't re-indent a locked line`
+        `Task ${n} locked line ${lock.line} ("${shown}") is indented differently in the complete code — students can't re-indent a locked line`
       )
     }
   }

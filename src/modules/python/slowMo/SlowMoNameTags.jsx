@@ -19,7 +19,14 @@ const VIEW_CONFIG = Object.freeze({
  * stepping (its verdicts belong to the finished run); a target-mode panel keeps its targets.
  * Lists and dicts keep their visuals (the task's `visuals`), and the items a step changed pulse.
  */
-export default function SlowMoNameTags({ task, slowMo, style }) {
+export default function SlowMoNameTags({
+  task,
+  slowMo,
+  links = null,
+  activeLink = null,
+  onLinkActive,
+  style,
+}) {
   const view = slowMo?.view
   if (!view) return null
   const taskConfig = getShowVariables(task)
@@ -57,6 +64,9 @@ export default function SlowMoNameTags({ task, slowMo, style }) {
       status={status}
       pulseKey={view.position}
       pulse={slowMo.pulse}
+      links={links}
+      activeLink={activeLink}
+      onLinkActive={onLinkActive}
       style={style}
     />
   )

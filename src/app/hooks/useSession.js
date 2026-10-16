@@ -1604,6 +1604,9 @@ export function useSession(lessonId, { enabled = true } = {}) {
   //
   // `placements` (code_arrange: { blankId: tileId }) is stored beside the submission as a JSON
   // string (authored ids needn't be valid RTDB keys); a retry keeps the first entry's.
+  //
+  // `source: 'scrub'` marks an attempt the checks on a live scrub's release made (P6-20) rather
+  // than a press of Run; a retry keeps the first entry's.
   async function logAttempt(
     anonymousId,
     taskId,
@@ -1617,6 +1620,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       autoResult,
       changeable,
       placements,
+      source,
     } = {}
   ) {
     const cacheKey = `${anonymousId}:${taskId}`
@@ -1673,6 +1677,8 @@ export function useSession(lessonId, { enabled = true } = {}) {
       teacherAssisted: teacherAssisted ? true : null,
       error: storedError(error),
       placements: storedPlacements(placements),
+      // 'scrub': the checks a live scrub ran when it ended (scrub.checkOnRelease), not a Run.
+      source: source === 'scrub' ? 'scrub' : null,
       attemptNumber,
       retries: 0,
       loggedAt: serverTimestamp(),

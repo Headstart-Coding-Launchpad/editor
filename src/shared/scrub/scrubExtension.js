@@ -6,6 +6,9 @@
 // - Touch and pen: tapping a number opens a slider popover, tapping a colour the picker.
 // - Keyboard: Alt-Enter on a number or colour opens its popover (arrow keys move the slider).
 // - Colour literals get a small swatch before them.
+// - Every scrubbable number carries an always-visible marker (P6-24): the shared "you can change
+//   this" look (../editableValueStyle.js), the same as a #@lock-values line's values, on desktop
+//   and touch alike, with no hover or tap needed. Hovering strengthens it as before.
 //
 // While a value is moving the document changes with `scrubPreviewAnnotation` (and no undo
 // history): the editor's owner must not treat those as edits (no save, no live write, no typing
@@ -24,7 +27,8 @@ import {
   startsInsideStyle,
   valueForDrag,
 } from './literals.js'
-import { isLockedPos } from '../lockedLinesEditor.js'
+import { isFullyLockedPos } from '../lockedLinesEditor.js'
+import { EDITABLE_VALUE_CLASS, editableValueTheme } from '../editableValueStyle.js'
 
 /** On a preview change: 'preview' (re-run it) or 'revert' (undoing a preview before the commit). */
 export const scrubPreviewAnnotation = Annotation.define()
@@ -115,8 +119,9 @@ export function cancelScrub(view, session) {
 // ── Finding literals in the document ────────────────────────────────────────────────────────
 
 function lineLiterals(state, line, options) {
-  // A locked line (../lockedLinesEditor.js) can't change, so it has nothing to scrub.
-  if (isLockedPos(state, line.from)) return []
+  // A locked line (../lockedLinesEditor.js) can't change, so it has nothing to scrub. A
+  // values-locked line (#@lock-values) can: its numbers and colours are its values.
+  if (isFullyLockedPos(state, line.from)) return []
   const inStyle =
     options.syntax === scrubSyntaxFor('html')
       ? startsInsideStyle(
@@ -209,15 +214,25 @@ class SwatchWidget extends WidgetType {
   }
 }
 
+const scrubbableNumberMark = Decoration.mark({
+  class: `${EDITABLE_VALUE_CLASS} cm-scrubbable`,
+  attributes: { title: 'Drag or tap to change this number' },
+})
+
+// Colour swatches and the always-visible marker on every scrubbable number (P6-24).
 function swatchDecorations(view, options) {
-  if (!options.colours) return Decoration.none
+  if (!options.colours && !options.numbers) return Decoration.none
   const ranges = []
   for (const { from, to } of view.visibleRanges) {
     let pos = from
     while (pos <= to) {
       const line = view.state.doc.lineAt(pos)
       for (const literal of lineLiterals(view.state, line, options)) {
-        if (literal.kind !== 'colour') continue
+        if (literal.kind === 'number') {
+          if (literal.from < literal.to)
+            ranges.push(scrubbableNumberMark.range(literal.from, literal.to))
+          continue
+        }
         ranges.push(
           Decoration.widget({ widget: new SwatchWidget(literal.hex), side: -1 }).range(literal.from)
         )
@@ -258,10 +273,10 @@ const scrubTheme = EditorView.baseTheme({
 
 /**
  * The scrub extension for an editable editor, or [] when nothing can be scrubbed.
- * - `config`: getTaskScrub's `{ numbers, colours, ranges }`.
+ * - `config`: getTaskScrub's `{ numbers, colours, ranges, checkOnRelease }`.
  * - `language`: the editor language (python, html, css; others are not scrubbed).
  * - `handlersRef.current`: `{ onPreview(code, { view, from }), onCommit({ kind }),
- *   openPopover({ view, literal, range, step }) }`, read at call time so the owner can change them.
+ *   openPopover({ view, literal, range, step, settleSteps }) }`, read at call time so the owner can change them.
  */
 export function scrubExtension({ config, language, handlersRef }) {
   const syntax = scrubSyntaxFor(language)
@@ -271,6 +286,8 @@ export function scrubExtension({ config, language, handlersRef }) {
     numbers: !!config.numbers,
     colours: !!config.colours,
     ranges: config.ranges ?? [],
+    // checkOnRelease: the slider popover keeps each step as an edit, so the checks run on it.
+    settleSteps: config.checkOnRelease !== false,
   }
   const handlers = () => handlersRef?.current ?? {}
 
@@ -281,6 +298,7 @@ export function scrubExtension({ config, language, handlersRef }) {
       literal,
       range: scrubRangeFor(literal, literal.line, options.ranges),
       step: numberStep(literal),
+      settleSteps: options.settleSteps,
     }
   }
 
@@ -404,6 +422,7 @@ export function scrubExtension({ config, language, handlersRef }) {
     hoverField,
     swatches,
     scrubTheme,
+    editableValueTheme,
     EditorView.updateListener.of((update) => {
       for (const tr of update.transactions) {
         const preview = tr.annotation(scrubPreviewAnnotation)

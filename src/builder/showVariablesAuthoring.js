@@ -40,7 +40,7 @@ export function setShowVariablesEnabled(task, enabled) {
 /**
  * Merges `patch` into showVariables, dropping fields the mode doesn't use (predict outside
  * predict mode, target outside target mode, an empty hide list) and the defaults (visuals:
- * true, stageLists: size), and keeping the variables_predicted check's names equal to the
+ * true, stageLists: size, link: true), and keeping the variables_predicted check's names equal to the
  * predict list (or removing the check when the mode is no longer predict).
  */
 export function updateShowVariables(task, patch) {
@@ -50,6 +50,8 @@ export function updateShowVariables(task, patch) {
   if (next.mode !== 'target') delete next.target
   if (Array.isArray(next.hide) && next.hide.length === 0) delete next.hide
   if (next.visuals !== false) delete next.visuals
+  // link (linked tags and code) is only written to turn it off.
+  if (next.link !== false) delete next.link
   if (next.stageLists == null || next.stageLists === 'size') delete next.stageLists
   // lockRun is only written to turn predict mode's Run lock off.
   if (next.mode !== 'predict' || next.lockRun !== false) delete next.lockRun

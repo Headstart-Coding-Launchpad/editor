@@ -13,6 +13,7 @@ import { readAnswerDraft } from '../../../shared/answerDrafts'
 import { getMirrorLineHintSets, getMirrorLockSets } from './mirrorLineHints'
 import { getInspectorConfig } from '../../../modules/html/inspector/config'
 import TaskVariablesPanel from '../../../shared/variablesPanel/TaskVariablesPanel.jsx'
+import { useVariableLinks } from '../../../shared/variablesPanel/useVariableLinks.js'
 import { getPeekBand, panelRunForTask } from '../../../shared/variablesPanel/variablesPanel.js'
 import { taskHistoryMode, typingHistoryForMode } from '../../../shared/typingHistory'
 import TypingHistoryPanel from './TypingHistoryPanel'
@@ -127,6 +128,12 @@ export default function StudentWorkspaceBody({
     isSessionSandbox
       ? null
       : getPeekBand(task, code, panelRunForTask(task, { synced: student.currentVariables ?? null }))
+  // Linked name tags (showVariables.link) on the mirrored Python code, as the student sees them.
+  const variableLinks = useVariableLinks(
+    task,
+    panelRunForTask(task, { synced: student.currentVariables ?? null }),
+    { enabled: mirror === 'code' && !isSessionSandbox }
+  )
 
   const highlightComposer = canHighlight && (
     <div style={s.highlightComposer}>
@@ -329,6 +336,7 @@ export default function StudentWorkspaceBody({
             lineHints={lineHints}
             lockedLines={lockedLines}
             peekBand={peekBandFor(student.currentCode ?? '')}
+            variableLinks={variableLinks.editor}
             onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
             onHighlightDismiss={onDismissHighlight}
             style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
@@ -369,6 +377,7 @@ export default function StudentWorkspaceBody({
           audience="tutor"
           hidden={isSessionSandbox}
           style={s.variablesPanel}
+          {...variableLinks.panel}
         />
       </>
     )

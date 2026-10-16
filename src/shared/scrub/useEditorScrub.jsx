@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Compartment } from '@codemirror/state'
 import { scrubExtension } from './scrubExtension.js'
 import ScrubPopover from './ScrubPopover.jsx'
+import { scrubNoticeText } from './replay.js'
 
 // The scrub extension sits in its own compartment, reconfigured when the task's settings, the
 // language or read-only change.
@@ -15,9 +16,12 @@ const NOTICE_MS = 2500
  * for the editor's initial state and the `element` (popover and "Press Run to see it" notice)
  * the editor renders beside itself.
  * - `scrub`: getTaskScrub's settings, or null for none. Read-only editors never scrub.
- * - `onScrubPreview(code)`: re-runs the code as a preview; returns 'preview', or 'press-run' when
- *   the program can't re-run live (the notice is shown).
- * - `onScrubCommit({ kind })`: a scrub ended as an edit (for the session report).
+ * - `onScrubPreview(code, { notify })`: re-runs the code as a preview; returns 'preview', or
+ *   'press-run' / 'press-run-answers' when the program can't re-run live (the notice is shown).
+ *   A preview that finds out later it can't run (an input() program asking for more answers
+ *   than the last Run gave) calls `notify('press-run-answers')`.
+ * - `onScrubCommit({ kind })`: a scrub ended as an edit (the session report, and the checks on
+ *   release, useScrubPreview).
  */
 export function useEditorScrub({
   viewRef,
@@ -34,12 +38,17 @@ export function useEditorScrub({
   const popoverIdRef = useRef(0)
   handlersRef.current = {
     onPreview(code, { view, from } = {}) {
-      const status = onScrubPreview?.(code) ?? null
-      if (status !== 'press-run' || !view) return
-      const coords = view.coordsAtPos(Math.min(from ?? 0, view.state.doc.length))
-      clearTimeout(noticeTimerRef.current)
-      setNotice(coords ? { left: coords.left, top: coords.top } : { left: 16, top: 16 })
-      noticeTimerRef.current = setTimeout(() => setNotice(null), NOTICE_MS)
+      const show = (status) => {
+        const text = scrubNoticeText(status)
+        if (!text || !view) return
+        const coords = view.coordsAtPos(Math.min(from ?? 0, view.state.doc.length))
+        clearTimeout(noticeTimerRef.current)
+        setNotice(
+          coords ? { left: coords.left, top: coords.top, text } : { left: 16, top: 16, text }
+        )
+        noticeTimerRef.current = setTimeout(() => setNotice(null), NOTICE_MS)
+      }
+      show(onScrubPreview?.(code, { notify: show }) ?? null)
     },
     onCommit(info) {
       onScrubCommit?.(info)
@@ -79,11 +88,11 @@ export function useEditorScrub({
             role="status"
             style={{
               ...s.notice,
-              left: Math.max(8, Math.min(notice.left, window.innerWidth - 180)),
+              left: Math.max(8, Math.min(notice.left, window.innerWidth - 300)),
               top: Math.max(8, notice.top - 34),
             }}
           >
-            Press Run to see it
+            {notice.text}
           </div>,
           document.body
         )}

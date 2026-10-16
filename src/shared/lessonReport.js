@@ -818,6 +818,8 @@ export function buildSessionReport({
             suggestion: entry.suggestion || null,
             submission: normalizeSubmission(task, entry.submission),
             ...(placements ? { placements } : {}),
+            // The checks a live scrub ran when it ended (P6-20), not a press of Run.
+            ...(entry.source === 'scrub' ? { source: 'scrub' } : {}),
           }
         }),
       }

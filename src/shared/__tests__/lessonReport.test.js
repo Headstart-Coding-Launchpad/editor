@@ -1874,3 +1874,42 @@ describe('buildSessionReport: tutor tile highlights', () => {
     expect(quiet.students[0].tasks[0]).not.toHaveProperty('tutorTileHighlights')
   })
 })
+
+// P6-20: an attempt the checks on a live scrub's release made is marked source: 'scrub'.
+describe('buildSessionReport: scrub attempts', () => {
+  const session = {
+    startedAt: 1000,
+    endedAt: 9000,
+    taskStartTimes: { 1: 1000 },
+    students: { alice: { displayName: 'Alice' } },
+    attemptLog: {
+      alice: {
+        1: {
+          a1: {
+            attemptNumber: 1,
+            submission: 'print("hi")',
+            passed: false,
+            retries: 0,
+            loggedAt: 1200,
+          },
+          a2: {
+            attemptNumber: 2,
+            submission: 'print("hello")',
+            passed: true,
+            retries: 0,
+            source: 'scrub',
+            loggedAt: 1400,
+            passedAt: 1400,
+          },
+        },
+      },
+    },
+  }
+
+  it('keeps source on scrub attempts only', () => {
+    const report = buildSessionReport({ session, lesson })
+    const attempts = report.students[0].tasks.find((t) => t.taskId === 1).distinctAttempts
+    expect(attempts[0]).not.toHaveProperty('source')
+    expect(attempts[1]).toMatchObject({ passed: true, source: 'scrub' })
+  })
+})

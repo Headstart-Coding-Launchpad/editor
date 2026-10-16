@@ -290,3 +290,48 @@ describe('NameTagCardStrip', () => {
     expect(other.container.innerHTML).toBe('')
   })
 })
+
+describe('NameTagPanel linked tags (P6-19)', () => {
+  const predict = { mode: 'predict', at: 'end', hide: [], predict: ['small'], target: {} }
+  const links = [{ name: 'small', number: 1, colour: '#0b63c4' }]
+
+  it('gives a linked tag its colour and number, and reports hover and focus', () => {
+    const onLinkActive = vi.fn()
+    const { container } = render(
+      <NameTagPanel
+        config={predict}
+        predictions={{ values: {}, results: null }}
+        onPredictionChange={() => {}}
+        links={links}
+        onLinkActive={onLinkActive}
+      />
+    )
+    const tag = container.querySelector('.ntp-tag.has-link')
+    expect(tag).not.toBeNull()
+    expect(tag.style.getPropertyValue('--ntp-link')).toBe('#0b63c4')
+    expect(tag.querySelector('.ntp-link-number').textContent).toBe('1')
+    expect(screen.getByLabelText(/small, marked 1 in the code/)).toBeTruthy()
+    fireEvent.mouseEnter(tag)
+    expect(onLinkActive).toHaveBeenLastCalledWith('small')
+    fireEvent.mouseLeave(tag)
+    expect(onLinkActive).toHaveBeenLastCalledWith(null)
+    fireEvent.focus(tag.querySelector('input'))
+    expect(onLinkActive).toHaveBeenLastCalledWith('small')
+  })
+
+  it('marks the active link and leaves unlinked tags plain', () => {
+    const { container } = render(
+      <NameTagPanel
+        config={view}
+        run={runOf([
+          ['small', int(1)],
+          ['other', int(2)],
+        ])}
+        links={links}
+        activeLink="small"
+      />
+    )
+    expect(container.querySelectorAll('.ntp-tag.has-link')).toHaveLength(1)
+    expect(container.querySelector('.ntp-tag.is-link-active')).not.toBeNull()
+  })
+})
