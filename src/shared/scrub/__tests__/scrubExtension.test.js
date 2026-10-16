@@ -125,8 +125,7 @@ describe('scrubExtension', () => {
 // this" look (src/shared/editableValueStyle.js).
 describe('always-visible marker on scrubbable numbers', () => {
   it('marks each number, and none with numbers off', () => {
-    const { view } = makeView('rect(120, 60)
-name = "Sam"')
+    const { view } = makeView('rect(120, 60)\nname = "Sam"')
     const marked = [...view.dom.querySelectorAll('.cm-editableValue.cm-scrubbable')]
     expect(marked.map((el) => el.textContent)).toEqual(['120', '60'])
     const off = makeView('rect(120, 60)', { config: { ...CONFIG, numbers: false } })

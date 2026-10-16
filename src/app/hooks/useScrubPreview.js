@@ -9,6 +9,7 @@ import {
   scrubPreviewMode,
 } from '../../shared/scrub/scrubConfig.js'
 import { appendStudentOutput, createStudentOutputBuffer } from './studentOutputBuffer'
+import { codeCallsInput, getTaskRunOnOpen } from '../../shared/scrub/runOnOpen.js'
 
 // A preview run that hasn't finished by now is stopped (a draw-only program should be quick).
 const PREVIEW_TIMEOUT_MS = 4000
@@ -16,6 +17,8 @@ const PREVIEW_TIMEOUT_MS = 4000
 export const SCRUB_RELEASE_DELAY_MS = 150
 // While a run is still going, the checks on release wait and try again this often.
 const SCRUB_RELEASE_RETRY_MS = 300
+// The opening run (runOnOpen) waits this long after the task opens, so its code has loaded.
+export const RUN_ON_OPEN_DELAY_MS = 120
 
 /**
  * Live preview re-runs while a value is scrubbed in the code editor (a task's `scrub`;
@@ -48,6 +51,12 @@ const SCRUB_RELEASE_RETRY_MS = 300
  * which is handleRun, so the attempt, the result and the tutor's card are exactly a Run's. Only
  * for a program that previews live (so never one that would stop to ask for input), never while
  * predict mode's Run lock holds (`isRunLocked()`), and never on a submit-mode task.
+ *
+ * Run on open (P6-23, the task's runOnOpen; on by default with scrub): once the runtime is ready
+ * (`runtimeReady`) and the task has opened, its code runs once through the same preview run — no
+ * attempt, no checks, no save, not a Run — so the picture shows straight away and the first drag
+ * redraws at once. Never for a program that calls input(), never in free play (`freePlay`), and
+ * only for a 'runtime' module (python, turtle).
  */
 export function useScrubPreview({
   moduleType,
@@ -61,6 +70,8 @@ export function useScrubPreview({
   setIframeSrc,
   runChecks = null,
   isRunLocked = null,
+  runtimeReady = false,
+  freePlay = false,
 }) {
   const contextRef = useRef(null)
   contextRef.current = {
@@ -168,6 +179,33 @@ export function useScrubPreview({
   }, [task?.id, moduleType])
 
   useEffect(() => () => clearTimeout(releaseTimerRef.current), [])
+
+  // Run on open: once per task opening, after its code has loaded and the runtime is ready.
+  const openedRef = useRef(null)
+  const taskKey = task?.id == null ? null : `${moduleType}:${task.id}`
+  useEffect(() => {
+    if (taskKey == null || freePlay) return undefined
+    if (!runtimeReady || openedRef.current === taskKey) return undefined
+    if (!getTaskRunOnOpen(task)) return undefined
+    if (getModuleDefinition(moduleType)?.capabilities?.run !== 'runtime') return undefined
+    const timer = setTimeout(() => {
+      const ctx = contextRef.current
+      if (`${ctx.moduleType}:${ctx.task?.id}` !== taskKey || ctx.running) return
+      openedRef.current = taskKey
+      const work = ctx.readWork?.()
+      if (typeof work !== 'string' || !work.trim() || codeCallsInput(work)) return
+      schedulerRef.current.request({
+        code: work,
+        fileName: null,
+        moduleType: ctx.moduleType,
+        taskId: ctx.task?.id ?? null,
+        answers: null,
+        notify: null,
+      })
+    }, RUN_ON_OPEN_DELAY_MS)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskKey, runtimeReady, freePlay])
 
   // How the code shows a scrub now: scrubPreviewMode with the last Run's answers, and
   // 'press-run-answers' once a preview of this task has run out of them. `answers` is what a

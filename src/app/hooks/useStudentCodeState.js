@@ -958,6 +958,12 @@ export function useStudentCodeState({
     // predict mode's Run lock.
     runChecks: (options) => handleRunRef.current?.(options),
     isRunLocked: () => !!predictRunLock,
+    // Run on open (runOnOpen): a preview once the runtime is ready; never in free play.
+    // (A runtime already warm from an earlier task never reports 'ready': it stays 'idle'.)
+    runtimeReady:
+      pyodideStatus === 'ready' ||
+      (pyodideStatus === 'idle' && !!getLessonModule(lesson?.type)?.runtime?.isReady?.()),
+    freePlay: phase === 'sandbox' || inPersonalSandbox,
   })
 
   // A scrub that ended as an edit (the code editor's onScrubCommit): counted for the session

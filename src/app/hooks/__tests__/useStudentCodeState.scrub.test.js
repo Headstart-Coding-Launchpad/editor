@@ -28,7 +28,8 @@ afterEach(() => {
 const DRAW = 'from stage import *\ntext("hi", "navy", y=200)'
 const ASK = 'from stage import *\nname = input("Who? ")\ntext(name, "navy", y=200)'
 
-function scrubLesson(starterCode, scrub = { enabled: true }) {
+// runOnOpen is off here (it defaults on with scrub) so only the runs a test makes happen.
+function scrubLesson(starterCode, scrub = { enabled: true }, extra = { runOnOpen: false }) {
   return pythonLesson({
     tasks: [
       {
@@ -36,6 +37,7 @@ function scrubLesson(starterCode, scrub = { enabled: true }) {
         title: 'Slide it',
         starterCode,
         scrub,
+        ...extra,
         check: { type: 'output_contains', value: 'hi', hint: 'Print hi' },
       },
     ],
@@ -189,5 +191,32 @@ describe('previews of programs with input() (P6-21)', () => {
     expect(run).toHaveBeenCalledTimes(1)
     expect(h.result.current.inputPrompt).toBeNull()
     expect(h.result.current.output).toContain('hi Ada')
+  })
+})
+
+describe('run on open (P6-23)', () => {
+  it('runs the code once as a preview: no attempt, no run written', async () => {
+    const run = mockModuleRun('python', (callbacks) => {
+      callbacks.onOutput('drawn\n', 'stdout')
+      return { status: 'success' }
+    })
+    const h = renderStudentCodeState({
+      lesson: scrubLesson(DRAW, { enabled: true }, {}),
+      currentTaskId: 't1',
+    })
+    await wait(500)
+    await act(async () => {})
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(h.result.current.output).toContain('drawn')
+    expect(h.writers.logAttempt).not.toHaveBeenCalled()
+    expect(h.writers.writeStudentRun).not.toHaveBeenCalled()
+  })
+
+  it('never runs a program that calls input(), or with runOnOpen: false', async () => {
+    const run = mockModuleRun('python', () => ({ status: 'success' }))
+    renderStudentCodeState({ lesson: scrubLesson(ASK, { enabled: true }, {}), currentTaskId: 't1' })
+    renderStudentCodeState({ lesson: scrubLesson(DRAW), currentTaskId: 't1' })
+    await wait(500)
+    expect(run).not.toHaveBeenCalled()
   })
 })
