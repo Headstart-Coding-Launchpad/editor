@@ -606,6 +606,10 @@ fields or keys, and a `slowMo` with no `enabled`.
 
 Scratch checks can be a single object or an array. Prefer `evaluation: after_block_placed` for block-structure checks that can pass while the learner edits, and `evaluation: after_run` for checks that need the green flag/run state. `manual` is a legacy value and should not be used in new lessons.
 
+- **Leaving `evaluation` out means `after_run`.** The Builder shows the same default.
+- **Only `block_used`, `blocks_in_order` and `block_count` can use `evaluation: after_block_placed`.** They are the checks decided by the blocks alone. Any other type (`sprite_property`, `variable_compare`, `block_run`, …) needs a run, so validation rejects it with `after_block_placed`.
+- **Mixed lists: every check must pass.** You can mix `after_block_placed` and `after_run` checks in one list. While the learner edits, the `after_block_placed` checks are judged as they build. When the learner runs the project, **every** check in the list is judged, block checks included (against the blocks as they are now), so a missing block can't pass on a run alone.
+
 Students should not see a failure just because they are still building. `after_block_placed` checks can pass as soon as the workspace is correct; off-track feedback should be modelled as a nudge/authoring warning rather than a hard fail while the learner is mid-edit.
 
 **When checks run and what logs an attempt.** `after_block_placed` checks (and `on_idle` feedback checks) are evaluated shortly after an edit to the blocks: a block placed, moved or deleted, or a field edit committed — the learner leaves the text field or presses Enter, or picks a dropdown value. Each evaluation is logged as one attempt in the session report. Typing inside a text field (for example a Say message) does not run checks or log attempts; the edit is checked once, with the final text, when the field is committed. `after_run` checks are evaluated when the learner runs the project.
@@ -686,9 +690,10 @@ check:
   evaluation: after_run
   spriteName: Rocket
   property: x          # x | y | size | direction | visible | costume
-  operator: greater_than   # equals | greater_than | less_than
+  operator: greater_than   # equals | not_equals | greater_than | greater_than_or_equal | less_than | less_than_or_equal
   value: 50
 ```
+The four "bigger/smaller" operators need numbers; `costume` (a name) works with `equals` and `not_equals` only.
 
 ### `sprite_property_delta`
 ```yaml
@@ -696,10 +701,12 @@ check:
   type: sprite_property_delta
   evaluation: after_run
   spriteName: Rocket
-  property: x          # x | y | size | direction | visible | costume
-  operator: greater_than   # equals | greater_than | less_than
+  property: x          # x | y | size | direction
+  operator: greater_than   # equals | not_equals | greater_than | greater_than_or_equal | less_than | less_than_or_equal
   value: 10
 ```
+The change is a number, so use it with `x`, `y`, `size` or `direction` only: with `costume` it always fails. For "the costume must switch", use `sprite_property_changed`.
+
 Compares the change in `property` between the state just before Run and the state after Run finishes — use this for "moved by at least N" style checks rather than an absolute position.
 
 ### `sprite_property_changed`
@@ -727,10 +734,10 @@ check:
   type: variable_compare
   evaluation: after_run
   variableName: score
-  operator: greater_than   # equals | greater_than | less_than
+  operator: greater_than   # equals | not_equals | greater_than | greater_than_or_equal | less_than | less_than_or_equal
   value: 5
 ```
-Use `variable_compare` for non-equality operators; `variable_equals` is legacy but still supported.
+Use `variable_compare` for non-equality operators; `variable_equals` is legacy but still supported. The field is `variableName`: a `variable_compare` written with `name:` instead fails validation (it would otherwise never pass).
 
 ### `blocks_in_order`
 ```yaml
@@ -760,7 +767,7 @@ check:
   operator: equals
   value: 3
 ```
-`block_count` counts blocks by opcode only. It doesn't use `fieldValues`. With a list of
+`operator` is one of `equals`, `not_equals`, `greater_than`, `greater_than_or_equal`, `less_than`, `less_than_or_equal`. The live check (while the learner builds and on Run) and `test-checks` support the same six. `block_count` counts blocks by opcode only. It doesn't use `fieldValues`. With a list of
 opcodes, for example `opcode: [motion_turnright, motion_turnleft]`, it counts the blocks of
 every listed opcode together: one turn right and two turn lefts count as 3. `fieldValues` on a
 long-form entry are ignored here too, and validation warns about them.
@@ -807,7 +814,8 @@ For demo tasks ("press the green flag and watch"): passes once the learner has p
 the moment the flag is pressed, so a project with a `forever` loop, or one the learner stops,
 still completes. Scratch has no error status, so `requireSuccess` is ignored (the validator warns).
 Leave `evaluation` unset; `after_block_placed` is rejected. It is a completion check only, and
-combines with block checks in a list. `test-checks` reports it as skipped (it needs a run). Full
+combines with block checks in a list: then the flag press alone isn't enough, and the block checks
+must pass too (judged against the blocks when the flag is pressed). `test-checks` reports it as skipped (it needs a run). Full
 reference: [python.md](python.md#run-attempted-check-run_attempted).
 
 ```yaml

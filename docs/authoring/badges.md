@@ -194,7 +194,8 @@ tasks:
     explainer: The greeting has a mistake in it. Fix it so it prints hello.
     starterCode: 'prnt("hello")'
     check:
-      type: output_contains
+      type: output
+      operator: contains
       value: hello
   - title: Read, then write
     moduleType: python
@@ -206,7 +207,8 @@ tasks:
       for i in range(3):
           print(i)
     check:
-      type: output_contains
+      type: output
+      operator: contains
       value: '4'
 ```
 

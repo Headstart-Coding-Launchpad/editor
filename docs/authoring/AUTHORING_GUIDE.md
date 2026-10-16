@@ -9,6 +9,7 @@ YAML-first reference for writing HSC lessons and topics. Use the CLI to convert 
 - HTML: `docs/authoring/html.md`
 - Scratch: `docs/authoring/scratch.md`
 - Filesystem: `docs/authoring/filesystem.md`
+- Desktop: `docs/authoring/desktop.md`
 - Electronics: `docs/authoring/electronics.md`
 
 **Other references:** `docs/authoring/CHANGELOG.md` · `docs/authoring/validation-errors.md` · `docs/authoring/feedback-cli.md` · `docs/authoring/quiz-tasks.md` · `docs/authoring/lesson-schema.md` · `docs/authoring/lesson-schema-yaml.md` · `docs/authoring/lesson-assets-cli.md` · `docs/authoring/markdown-renderer.md`
@@ -70,8 +71,8 @@ type: composed               # required for every new lesson
 title: Python For Loops      # required
 description: Practise loops. # required — shown on the entry screen
 draft: false                 # optional; true enables incomplete real tasks while authoring
-version: 3                   # LaunchPad-managed save version; do not set it in source YAML
-level: 1                     # optional — difficulty badge in the TopBar
+levelId: python-level-1      # optional — reusable level record (difficulty badge in the TopBar)
+# level: 1                   # legacy — don't use: publishing turns a plain level into a new level record
 lessonNumber: 9              # optional — position within the level; orders lesson lists ("9 · Title")
 
 # Assets
@@ -88,7 +89,9 @@ modules: []                  # optional named workspace instances; see lesson-sc
 tasks: []                    # required — ordered task list (see below)
 ```
 
-Each code task in a composed lesson needs `moduleType`: `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, or `electronics`. Add `modules` plus task `moduleId` when a lesson needs named or repeated workspace instances. Put module-specific sandbox configuration in `modules[].sandbox`; see `lesson-schema-yaml.md` for the full model.
+Don't set `version`: LaunchPad manages it on save. Use `levelId` (an id from `lessonLevels/`) for the level; a plain `level` is legacy, and publishing it creates a new level record.
+
+Each code task in a composed lesson needs `moduleType`: `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics`. Add `modules` plus task `moduleId` when a lesson needs named or repeated workspace instances. Put module-specific sandbox configuration in `modules[].sandbox`; see `lesson-schema-yaml.md` for the full model.
 
 ---
 
@@ -158,13 +161,13 @@ want one; with no title it defaults to "🎖️ Today's Coding Moments". The exp
     # Multiple choice (default quizType)
     title: Loop quiz
     explainer: Which keyword starts a counted loop?
-    options:
+    options:                  # shown in the order written (never shuffled)
       - id: a
-        text: for
-      - id: b
         text: while
         feedback: This runs until a condition is false.
-    answer: a                 # shorthand — expands to check: {type: answer_equals, value: a}
+      - id: b
+        text: for
+    answer: b                 # the correct option's id, not its text — expands to check: {type: answer_equals, value: b}
 
     # Match
     quizType: match
@@ -225,7 +228,7 @@ on the teacher's student card and marked when the student checks their answers.
 | Mouse skills (click, double-click, right-click, drag, scroll, hover) | `mouse` | [activities/mouse.md](activities/mouse.md) |
 
 - The explicit JSON form `taskType: activity` + `activityType: <id>` also works in YAML;
-  `lessons export` writes the `type:` shorthand. Quizzes stay `type: quiz` + `quizType`.
+  `lessons get <id> --format yaml` and `lessons json-to-yaml` write the `type:` shorthand. Quizzes stay `type: quiz` + `quizType`.
 - `node cli/cli.mjs lessons capabilities` lists every activity with its modes and fields
   (`fields`, `fieldsByMode`, and `authoredFields` for the content paths such as
   `items[].text`), each module's own task fields, the common task fields (`taskFields`), every
@@ -250,6 +253,8 @@ check:
   value: Hello
   hint: Check that your print statement says `Hello`.   # optional
 ```
+
+**Quiz tasks are the exception.** A multiple-choice quiz needs exactly one `answer_equals` check whose `value` is the correct option's `id` (or the `answer:` shorthand). A short-answer quiz takes a single `answer_*` check object (or none, for an open answer), not a `checks:` list and not the general `type` + `operator` form. Anything else fails with a misleading "no correct answer" or "no check value" error. Match and fill-in-the-blank quizzes need no check. See [quiz-tasks.md](quiz-tasks.md).
 
 ### Multiple checks (all must pass)
 
@@ -279,7 +284,7 @@ feedbackChecks:
     hint: Change `Hello World` to `Hello Headstart`.
 ```
 
-`feedbackChecks` are supported by Python, HTML, Filesystem, Electronics, and Scratch tasks and require a completion `check`. Blocking feedback fails the task if it matches, even when the completion check passes. `mode: nudge` shows guidance without blocking completion. `show` defaults to `after_attempt`; use `on_idle` to show feedback after the learner pauses editing. For HTML, `on_idle` is limited to code-safe checks; DOM/output feedback should run `after_attempt`. `incorrectChecks` is a legacy alias for blocking feedback, and legacy `show: on_pause` is treated as `on_idle`.
+`feedbackChecks` are supported by all eight workspace modules (Python, Turtle, Arcade Kit, HTML, Scratch, Filesystem, Desktop, Electronics) and require a completion `check`. Blocking feedback fails the task if it matches, even when the completion check passes. `mode: nudge` shows guidance without blocking completion. `show` defaults to `after_attempt`; use `on_idle` to show feedback after the learner pauses editing. For HTML, `on_idle` is limited to code-safe checks; DOM/output feedback should run `after_attempt`. `incorrectChecks` is a legacy alias for blocking feedback, and legacy `show: on_pause` is treated as `on_idle`.
 
 ### Which hint is shown
 
@@ -322,9 +327,11 @@ The practical consequences:
 
 **Wildcards and option lists:** `*` matches any sequence (including newlines) in `value` for containment/equality checks. `"opt1","opt2"` passes `contains` if any option is present and `not_contains` only if none are. These operators mean the same thing in every module (output, answers, file content, HTML elements, Scratch block inputs), because all of them use one shared implementation (`compareText` in `src/shared/checkHelpers.js`).
 
-**Multi-option values:** `"option1","option2"` format — passes if the actual value matches any option. Works for `output_contains`, `code_contains`, `element_value`, `answer_contains`.
+**Multi-option values:** `"option1","option2"` format — passes if the actual value contains any option. It works **only with `contains` and `not_contains`** (`output`, `code`, `html_element_value`, `answer_contains` and the other text checks). With `equals` (or any other operator) the list is compared as one literal string, so the check never passes.
 
 **Case sensitivity:** Regex checks use JavaScript `RegExp`; add `flags: i` for case-insensitive regex. All other string comparisons are case-insensitive.
+
+**Code checks ignore spaces.** `code` checks remove every space, tab and newline outside quoted strings before comparing, regex included, so a code regex must not use `\s`, `\n`, `^`/`$` or the `m` flag. See [python.md](python.md#output-and-code-checks-shared-with-html).
 
 ---
 
@@ -341,7 +348,7 @@ do meanwhile: up to three optional, **unchecked** mini tasks on that code task.
     copyCode: |
       for i in range(3):
           print("Hello")
-    check: { type: output_contains, value: Hello }
+    check: { type: output, operator: contains, value: Hello }
     sideQuests:                      # optional, up to 3, shown in order
       - title: Break it, then fix it  # required, ≤ 60 characters (it is a button)
         kind: debug                  # challenge (default) | debug | predict: label and icon only
@@ -456,7 +463,7 @@ Groups cannot be nested. Group IDs are auto-generated.
 
 ## Draft lessons
 
-`draft` is a lesson-level boolean for CLI-first authoring. Draft tasks are always real tasks: omit task `type` for a code task, use `type: information` for information, or `type: quiz` for quizzes. There are no task-level draft records.
+`draft` is a lesson-level boolean for CLI-first authoring. Draft tasks are always real tasks: omit task `type` for a code task, or use `type: information`, `type: quiz`, `type: code_arrange` or an activity type (`binary`, `keyboard`, `mouse`). There are no task-level draft records.
 
 Every Draft task needs a `title`, its normal real task type, and a non-empty Markdown `intent`. `intent` is author-only: LaunchPad stores it but never renders it to students. Draft permits omitted learner-facing and task-specific fields so the task can be completed in Builder; it still rejects malformed field shapes and invalid type values.
 
@@ -487,7 +494,7 @@ id: python-loops-skeleton
 type: composed
 title: Python Loops
 description: Repeat code with for loops and range().
-level: 2
+levelId: python-level-2
 draft: true
 tasks:
   - type: information
@@ -681,11 +688,11 @@ tasks:
     explainer: Which Python function generates a range of numbers?
     options:
       - id: a
-        text: "`range()`"
-      - id: b
         text: "`repeat()`"
         feedback: "`repeat()` is a Scratch block, not a Python function."
-    answer: a
+      - id: b
+        text: "`range()`"
+    answer: b
 
   - title: Repeat a move
     moduleType: scratch

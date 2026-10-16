@@ -30,22 +30,32 @@ Default `quizType` — omit `quizType` for multiple choice.
   explainer: Which keyword starts a counted loop?
   options:
     - id: a
-      text: for
-    - id: b
       text: while
       feedback: This runs until a condition is false, not a fixed number of times.
-    - id: c
+    - id: b
       text: repeat
       feedback: "`repeat` is used in Scratch, not Python."
-  answer: a             # shorthand — expands to check: {type: answer_equals, value: a}
+    - id: c
+      text: for
+  answer: c             # the correct option's id — expands to check: {type: answer_equals, value: c}
 ```
 
 Without the `answer:` shorthand:
 ```yaml
   check:
     type: answer_equals
-    value: a
+    value: c
 ```
+
+**Options show in the order you write them; they are never shuffled.** Vary where the right
+answer sits from question to question, or students learn that it's always the first one.
+
+**`answer` is the option's `id`** (e.g. `c`), not its text. If you write the option's text
+instead, the converter swaps it for the matching option's id; a value that matches no option's
+id or text fails validation.
+
+A multiple-choice quiz takes exactly one `answer_equals` check (or the `answer:` shorthand): no
+`checks:` list, no other check type, no `operator` form.
 
 | Field | Required | Notes |
 |---|:---:|---|
@@ -53,7 +63,8 @@ Without the `answer:` shorthand:
 | `options[].id` | Yes | Stable identifier matched by the check. |
 | `options[].text` | Yes | Shown to students. Markdown supported, including fenced code and Scratch stacks. |
 | `options[].feedback` | No | Shown when this wrong option is selected. Markdown supported. |
-| `answer` | No | Shorthand for `check: {type: answer_equals, value: <id>}` |
+| `options[].hint` | No | Older name for `feedback`, still read when `feedback` is missing. Use `feedback`. |
+| `answer` | No | Shorthand for `check: {type: answer_equals, value: <id>}`. Option text is mapped to its id. |
 
 ---
 
@@ -78,7 +89,7 @@ Student drags tiles to match each prompt with its answer. Each placed tile gets 
       answer: Permanent storage
 ```
 
-Tiles are shuffled on render. No `check` needed — completion is automatic when all pairs are correct (equivalent to `quiz_result`). Markdown supported in both `prompt` and `answer`.
+Tiles are shuffled on render. No `check` needed — completion is automatic when all pairs are correct, and any `check` is ignored. Markdown supported in both `prompt` and `answer`.
 
 ---
 
@@ -117,7 +128,7 @@ Student fills blanks in a sentence or code snippet. Each filled blank gets immed
       answer: print
 ```
 
-One `___` in `text` per entry in `blanks`, in order. No `check` needed. `distractors` are ignored in type mode.
+One `___` (three underscores) in `text` per entry in `blanks`, in order. No `check` needed; any `check` is ignored. `distractors` are ignored in type mode.
 
 In a live lesson the tutor sees what a student has typed into the gaps before they press
 Submit, as an unsubmitted draft (see [Live drafts](#live-drafts-what-the-tutor-sees-before-submit)).
@@ -179,7 +190,9 @@ Student types a free-text answer.
     value: Central Processing Unit
 ```
 
-Supported check types: `answer_equals`, `answer_contains`, `answer_not_contains`, `answer_matches_regex`.
+Supported check types: `answer_equals`, `answer_not_equals`, `answer_contains`, `answer_not_contains`, `answer_matches_regex`, `answer_not_matches_regex`.
+
+Give **one** check object, not a `checks:` list and not the general `type` + `operator` form. Anything else fails validation with "a check enabled but no check value", which is misleading: the value is fine, the shape isn't.
 
 ### Open-ended (teacher review only)
 
@@ -312,12 +325,18 @@ These check types apply to quiz tasks regardless of which composed-lesson worksp
 
 | Type | Fields | Notes |
 |---|---|---|
-| `answer_equals` | `type`, `value` | Selected option ID or text equals value |
+| `answer_equals` | `type`, `value` | Multiple choice: the selected option's id equals `value`. Short answer: the answer equals `value` |
+| `answer_not_equals` | `type`, `value` | Short answer: the answer is not `value` |
 | `answer_contains` | `type`, `value` | Free-text answer contains value |
 | `answer_not_contains` | `type`, `value` | Free-text answer does not contain value |
-| `answer_matches_regex` | `type`, `value` | Free-text answer matches regex |
-| `quiz_result` | `type` | All pairs/blanks correct (match, fill_blank). No `value` needed. |
+| `answer_matches_regex` | `type`, `value`, optional `flags` | Free-text answer matches regex |
+| `answer_not_matches_regex` | `type`, `value`, optional `flags` | Free-text answer doesn't match regex |
+
+Match and fill-in-the-blank quizzes take no check: they complete when every pair or blank is
+right. (The Builder's preview calls this "quiz result"; it isn't a check type to write.)
 
 The `answer:` shorthand on multiple choice tasks auto-generates `check: { type: answer_equals, value: <id> }`.
 
-**Multi-option:** `"option1","option2"` format for `answer_contains` — passes if the answer contains any option. **Regex:** `answer_matches_regex` uses JavaScript `RegExp(pattern, flags)` with optional `flags`; it is case-sensitive unless `flags: i` is set. All other answer comparisons are case-insensitive.
+**Wildcard:** `*` in a non-regex `value` matches anything, so `value: "**"` passes every answer. To look for a real star, use `answer_matches_regex` with `\*`.
+
+**Multi-option:** `"option1","option2"` format for `answer_contains` / `answer_not_contains` only — passes if the answer contains any option. **Regex:** `answer_matches_regex` uses JavaScript `RegExp(pattern, flags)` with optional `flags`; it is case-sensitive unless `flags: i` is set. All other answer comparisons are case-insensitive.

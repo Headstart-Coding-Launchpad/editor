@@ -829,7 +829,13 @@ Legacy aliases such as `output_contains`, `output_equals`, `output_matches_regex
 
 **Regex:** `matches_regex` and `not_matches_regex` use JavaScript `RegExp(pattern, flags)`. Put the regex pattern in `value`; put flags such as `i`, `m`, or `s` in `flags`. Regex is case-sensitive unless `flags: i` is set. Anchors (`^`, `$`), groups, alternation, lookarounds, and backreferences follow the browser JavaScript regex engine.
 
-**Normalisation:** output checks normalise `\r\n` to `\n` and compare case-insensitively except regex. Exact output checks trim trailing newline characters only, not other leading/trailing spaces. Code checks normalise whitespace outside quoted strings before contains/equality checks; regex checks see that same normalised source. Because indentation is removed too, use [`code_structure`](#code-structure-checks-code_structure) to check nesting.
+**Normalisation:** output checks normalise `\r\n` to `\n` and compare case-insensitively except regex. Exact output checks trim trailing newline characters only, not other leading/trailing spaces. Code checks **remove every space, tab and newline outside quoted strings** (in the student's code and in your `value`), then compare **case-insensitively**, except regex: `code not_contains "Print"` also rejects `print`. Because indentation is removed too, use [`code_structure`](#code-structure-checks-code_structure) to check nesting.
+
+**Code regexes see the squashed source.** `matches_regex` / `not_matches_regex` on `code` run against that same whitespace-free text (case kept), so `for i in range(5):` is tested as `foriinrange(5):`. In a code regex:
+
+- don't use `\s`, `\n` or literal spaces: they never match. Write `for\w+inrange\(`, not `for\s+\w+\s+in\s+range\(`;
+- `^`, `$` and the `m` flag are no use, because the whole program is one line;
+- or skip the regex: `code` `contains` `"for * in range("` does the same job (the spaces in `value` are removed too).
 
 **Wildcards and option lists:** for non-regex contains/equality checks, `*` matches any sequence including newlines. A value written as `"opt1","opt2"` passes `contains` if any option is present, and passes `not_contains` only if none of them are. An invalid regex fails both `matches_regex` and `not_matches_regex`, so a typo in a pattern never lets every student pass.
 

@@ -28,9 +28,9 @@ type: composed               # required for new lessons; legacy types still load
 title: Python For Loops      # required
 draft: false                 # optional; true permits incomplete real tasks during authoring
 soloOnly: false               # optional; true hard-forces solo mode, hiding the live/wait choice
-version: 3                   # current successful-save version (managed by CLI/Builder)
+# version: 3                 # managed by CLI/Builder on save — don't set it in source YAML
 description: Practise loops. # required — shown on the entry screen
-level: Level 1               # optional legacy display fallback; prefer levelId/levelRef
+# level: Level 1             # legacy — publishing turns a plain level into a new level record; use levelId
 levelId: python-level-1      # optional reusable level id from lessonLevels/
 lessonNumber: 9              # optional — position within the level (positive whole number)
 levelRef:                    # optional reusable level reference
@@ -130,7 +130,7 @@ tasks:
 | `peerHints` | No | list of strings | Up to 6 short hints (≤ 60 characters; helpers see at most 6 hint cards) a classmate can send when helping on this task (peer help). Keep them general and kind, never the answer. Not valid on `quiz` or `information` tasks. |
 | `allowSharing` | No | boolean | Lets students offer this workspace to the whole class, subject to teacher approval. Off unless set to `true`. Not valid on `quiz` or `information` tasks. |
 | `sideQuests` | No | list | Up to 3 optional, unchecked side-quests (`title`, `kind`, `explainer`, `starter`) a student can open once they pass this code task. Python, Turtle and HTML only. See [Side-quests](AUTHORING_GUIDE.md#side-quests). |
-| `taskMode` | No | string | `both` (default), `live`, or `solo`. |
+| `taskMode` | No | string | `both` (default), `live`, or `solo`. Any other value fails validation. |
 | `moduleType` | Yes for a code task in a new composed lesson | string | Workspace type: `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics`. |
 | `moduleId` | No | string | ID of the named workspace instance in `modules`. Use it to give related tasks one workspace identity, or to distinguish two instances of the same `moduleType`. |
 | `intent` | Required for drafts; otherwise No | string | Authoring brief. Remains stored after Draft is cleared and is never student-facing. |
@@ -139,7 +139,7 @@ tasks:
 | `intentLastChangedAt` | No | timestamp string | LaunchPad-managed; callers must not set it. Changes only when `intent` changes. |
 | `taskLastChangedAt` | No | timestamp string | LaunchPad-managed; callers must not set it. Changes only when learner-facing task content/configuration changes. |
 | `check` | No | object or array | Completion check. Arrays require every check to pass. A code task with **no** `check` never auto-completes and never completes on Run, but it also doesn't block advancing to the next task — it just never shows as passed in reports. See `docs/authoring/lesson-schema.md` for the full behaviour, including the Arcade-specific caveat. |
-| `feedbackChecks` | No | object or array | Supported by Python, HTML, Filesystem, Electronics, and Scratch. Requires a completion `check`. `mode: blocking` fails when matched; `mode: nudge` guides without blocking. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). |
+| `feedbackChecks` | No | object or array | Supported by all eight workspace modules (Python, Turtle, Arcade Kit, HTML, Scratch, Filesystem, Desktop, Electronics). Requires a completion `check`. `mode: blocking` fails when matched; `mode: nudge` guides without blocking. `show: after_attempt` is the default; `show: on_idle` runs after the learner pauses editing (HTML idle feedback is code-check only). |
 | `incorrectChecks` | No | object or array | Legacy alias for blocking `feedbackChecks`. |
 
 ---
@@ -189,7 +189,7 @@ tasks:
         content: "<!doctype html><title>Showcase</title><h1></h1>"
 ```
 
-Module sandboxes use the existing type-specific sandbox fields: `sandboxStarter` for Python, Arcade Kit and Turtle; `sandboxStarterFiles` for HTML; `sandboxStarter`, `sandboxToolbox`, `sandboxSprites`, and `sandboxBackdrops` for Scratch; `sandboxStarterFs` for Filesystem; and `sandboxStarterCircuit` for Electronics. If a named module has no authored `sandbox`, its sandbox starts from that module's first code task. A task's `moduleType` and its named module's `type` must agree.
+Module sandboxes use the existing type-specific sandbox fields: `sandboxStarter` for Python, Arcade Kit and Turtle; `sandboxStarterFiles` for HTML; `sandboxStarter`, `sandboxToolbox`, `sandboxSprites`, and `sandboxBackdrops` for Scratch; `sandboxStarterFs` for Filesystem; `sandboxStarterDesktop` for Desktop; and `sandboxStarterCircuit` for Electronics. Scratch's `sandboxStarter` can be an object or a JSON string; `sandboxToolbox`, `sandboxSprites` and `sandboxBackdrops` reach the Builder only for now (students get the full toolbox and the default sprite). If a named module has no authored `sandbox`, its sandbox starts from that module's first code task. A task's `moduleType` and its named module's `type` must agree.
 
 Carry-through stays inside the same named module: use the existing type-specific carry field (`carryCodeFrom`, `carryBlocksFrom`, `carryFsFrom`, `carryDesktopFrom`, or `carryCircuitFrom`) and select an earlier task in that module only.
 

@@ -343,16 +343,18 @@ A Turtle task can mix two kinds of check in the same `check` (or
   `matches_regex`, `not_matches_regex`, plus `value`). They look at what the
   student wrote, e.g. "uses a loop", and are evaluated on the same Run. See
   [python.md](python.md#output-and-code-checks-shared-with-html) for
-  normalisation rules. `contains` trims surrounding spaces from `value`, so
-  `"for "` also matches `forward`. Use a regex such as `for\s+\w+\s+in` to
-  detect a loop.
+  normalisation rules. Code checks remove every space and newline outside
+  strings (in the code and in `value`) and ignore case, except regex. So
+  `"for "` also matches `forward`, and a code regex never sees a space:
+  `\s`, `\n`, `^`/`$` and the `m` flag don't work there. Detect a loop with
+  the regex `for\w+inrange\(` or with `contains` `"for * in range("`.
 
 ```yaml
 check:
   - type: turtle_path_closed
   - type: code
     operator: matches_regex
-    value: 'for\s+\w+\s+in\s+range\('
+    value: 'for\w+inrange\('
     hint: Use a for loop to repeat the sides.
 ```
 

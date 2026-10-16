@@ -24,4 +24,4 @@ Student rates how confident they feel about a topic on a 1–10 scale. There's n
 
 ## Poll
 
-Student picks the option they prefer, such as what the class should do next. There's no right or wrong answer, the student can change their mind, and nobody sees anyone else's choice; the teacher sees the totals in the session report. (A teacher can also run a quick poll during a live lesson without changing the lesson.)
+Student picks the option they prefer, such as what the class should do next. There's no right or wrong answer and the student can change their mind. In a live lesson, once they've voted, students see how the class split (never who chose what) unless the lesson turns that off; the teacher sees each choice and the totals in the session report. (A teacher can also run a quick poll during a live lesson without changing the lesson.)
