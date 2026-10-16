@@ -1,6 +1,6 @@
 # Predict how many times a line runs
 
-- **Status:** shipped — `#@count` marker, task field `runCounts: predict | show`, checks `runs_predicted` and `line_run_count` (2026-10-16, branch `feature/p6-26-27-predict-counts-and-types`).
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (Ryan asked for it, filed straight to LaunchPad Dev, as with builds 1–25), 2026-10-16
 - **Lessons blocked:** none. Improves the LG-P6 pilot A, Python Level 2B Lesson 8 (for loops, taught Tue 20 Oct), whose "how many times?" predictions fall back to multiple choice until this ships, and every later loop lesson (`while` in Lesson 9, list loops at Level 3).

@@ -1,6 +1,6 @@
 # Predict mode: answer boxes that fit the value, and predicting the type
 
-- **Status:** shipped — `predict` entries take `{ name, answer: boolean | number | text, choices }`, new `predictType` and `types_predicted` check (2026-10-16, branch `feature/p6-26-27-predict-counts-and-types`).
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Lesson Gen agent (Ryan asked for it, filed straight to LaunchPad Dev, as with builds 1–25), 2026-10-16
 - **Lessons blocked:** none. Improves the LG-P6 pilots, Python Level 1 Lesson 8 (`caakmdqj5j`) and Level 2B Lesson 8 (`qj8152siy2`), both taught Tue 20 Oct, and every later predict task.

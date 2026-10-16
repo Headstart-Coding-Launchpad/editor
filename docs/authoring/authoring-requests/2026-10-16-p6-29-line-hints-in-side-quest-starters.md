@@ -1,6 +1,6 @@
 # Line hints (`#>`) don't work in side-quest starters (bug)
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** bug
 - **Requested by:** Lesson Gen agent (Ryan found it, filed straight to LaunchPad Dev, as with builds 1–25), 2026-10-16
 - **Lessons blocked:** none, but every lesson's side quests use `#>` hints. Seen on the LG-P6 pilot Python Level 2B Lesson 8 (`qj8152siy2`, taught Tue 20 Oct).
@@ -31,3 +31,7 @@ Python Level 1 Lesson 8 (`caakmdqj5j`) and older lessons' side quests probably u
 
 - **Plan:** `Lesson Gen Agent/Plans/LG-P6 Lesson plan - Python L2B Lesson 8 for loops.md`.
 - If it's a quick fix, before Tue 20 Oct would help both pilots.
+
+## Resolution
+
+Shipped 2026-10-16. `buildSideQuestTask` (`src/shared/sideQuests.js`) strips the side-quest starter with `stripTaskLineHints`, as lesson tasks are, so `#>` hints (HTML `<!--> … -->`), `#@lock`, `#@lock-values`, `#@peek` and `#@count` markers work there: stripped, shown the same way, never run or saved. Documented in AUTHORING_GUIDE.md Side-quests and CHANGELOG. No validation warning was needed, since every marker is supported.
