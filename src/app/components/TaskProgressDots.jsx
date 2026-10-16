@@ -1,5 +1,6 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { getProgressItems } from '../../shared/taskUtils'
+import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
 
 const DOT_WIDTH = 32
 const DOT_GAP = 6
@@ -7,6 +8,13 @@ const DOT_GAP = 6
 // the row scrolls sideways (the current dot kept in view) rather than wrapping the bar.
 const COMPACT_DOT_WIDTH = 26
 const COMPACT_DOT_GAP = 4
+// On a touch device (a tablet) the compact dots stay finger-sized.
+const TOUCH_DOT_WIDTH = 34
+const TOUCH_DOT_GAP = 6
+// Compact row padding (room for the current dot's scale(1.15) inside a clipping row).
+const COMPACT_PAD = 3
+// Width of the fade at a scrolling row's edge: the sign that there are more dots that way.
+const FADE_PX = 18
 // Below this many dots' worth of room, scrolling stops being useful: show the "x/y" counter.
 const MIN_SCROLL_DOTS = 5
 
@@ -33,8 +41,10 @@ export default function TaskProgressDots({
   compact = false,
 }) {
   const rowRef = useRef(null)
-  const dotWidth = compact ? COMPACT_DOT_WIDTH : DOT_WIDTH
-  const dotGap = compact ? COMPACT_DOT_GAP : DOT_GAP
+  const touch = useIsTouchDevice()
+  const dotWidth = compact ? (touch ? TOUCH_DOT_WIDTH : COMPACT_DOT_WIDTH) : DOT_WIDTH
+  const dotGap = compact ? (touch ? TOUCH_DOT_GAP : COMPACT_DOT_GAP) : DOT_GAP
+  const step = dotWidth + dotGap
   const baseItems = getProgressItems(tasks)
   const pseudoIndex = pseudoTask
     ? baseItems.findIndex((item) => item.taskIds.includes(pseudoTask.beforeTaskId))
@@ -53,17 +63,24 @@ export default function TaskProgressDots({
           },
           ...baseItems.slice(pseudoIndex),
         ]
-  const naturalWidth = items.length * (dotWidth + dotGap) - dotGap + (compact ? 6 : 0)
-  const minScrollWidth = Math.min(naturalWidth, MIN_SCROLL_DOTS * (dotWidth + dotGap) - dotGap)
+  const pad = compact ? COMPACT_PAD * 2 : 0
+  const naturalWidth = items.length * step - dotGap + pad
+  const minScrollWidth = Math.min(naturalWidth, MIN_SCROLL_DOTS * step - dotGap)
   const [mode, setMode] = useState('probing') // 'probing' | 'fits' | 'scroll' | 'collapsed'
+  // Scroll mode: the row is narrowed to a whole number of dots, so none is cut in half.
+  const [scrollWidth, setScrollWidth] = useState(null)
+  const [edges, setEdges] = useState({ left: false, right: false })
 
   useLayoutEffect(() => {
     if (mode !== 'probing') return
     const width = rowRef.current?.getBoundingClientRect().width ?? 0
     if (width >= naturalWidth) setMode('fits')
-    else if (compact && width >= minScrollWidth) setMode('scroll')
-    else setMode('collapsed')
-  }, [mode, naturalWidth, minScrollWidth, compact])
+    else if (compact && width >= minScrollWidth) {
+      const wholeDots = Math.max(1, Math.floor((width - pad + dotGap) / step))
+      setScrollWidth(wholeDots * step - dotGap + pad)
+      setMode('scroll')
+    } else setMode('collapsed')
+  }, [mode, naturalWidth, minScrollWidth, compact, pad, dotGap, step])
 
   useEffect(() => {
     setMode('probing')
@@ -77,15 +94,40 @@ export default function TaskProgressDots({
 
   const currentIndex = items.findIndex((item) => item.taskIds.includes(currentTaskId))
   const currentNumber = Math.max(1, currentIndex + 1)
+  // The dot to keep in view: the one being looked at (solo browsing, the explainer entry), else
+  // the current task.
+  const viewingIndex =
+    viewingTaskId != null ? items.findIndex((item) => item.taskIds.includes(viewingTaskId)) : -1
+  const focusIndex = viewingIndex !== -1 ? viewingIndex : currentIndex
 
-  // Scrolling row: keep the current dot in view (centred where possible).
-  useEffect(() => {
+  const updateEdges = useCallback(() => {
+    const row = rowRef.current
+    if (!row) return
+    const max = row.scrollWidth - row.clientWidth
+    const next = { left: row.scrollLeft > 1, right: row.scrollLeft < max - 1 }
+    setEdges((prev) => (prev.left === next.left && prev.right === next.right ? prev : next))
+  }, [])
+
+  // Scrolling row: keep the focus dot in view (centred where possible), on entering scroll mode
+  // and whenever the task changes. The dot's position is measured against the row itself (an
+  // earlier version used offsetLeft, which is relative to the nearest positioned ancestor, not
+  // the row, so it scrolled to the far end). The offset is rounded to whole dots so the row
+  // never shows half a dot.
+  useLayoutEffect(() => {
     if (mode !== 'scroll') return
     const row = rowRef.current
-    const dot = row?.children?.[currentIndex]
+    const dot = row?.children?.[focusIndex]
     if (!row || !dot) return
-    row.scrollLeft = Math.max(0, dot.offsetLeft - (row.clientWidth - dot.offsetWidth) / 2)
-  }, [mode, currentIndex])
+    const dotLeft =
+      dot.getBoundingClientRect().left -
+      row.getBoundingClientRect().left +
+      row.scrollLeft -
+      (compact ? COMPACT_PAD : 0)
+    const centred = dotLeft - (row.clientWidth - dotWidth) / 2
+    const max = Math.max(0, row.scrollWidth - row.clientWidth)
+    row.scrollLeft = Math.min(max, Math.max(0, Math.round(centred / step) * step))
+    updateEdges()
+  }, [mode, focusIndex, scrollWidth, step, dotWidth, compact, updateEdges])
 
   if (mode === 'collapsed') {
     return (
@@ -103,10 +145,15 @@ export default function TaskProgressDots({
         gap: dotGap,
         ...(compact ? s.rowCompact : null),
         ...(mode === 'scroll' ? s.rowScroll : null),
+        ...(mode === 'scroll' && scrollWidth != null ? { maxWidth: scrollWidth } : null),
+        ...(mode === 'scroll' ? fadeMask(edges) : null),
         visibility: mode === 'probing' ? 'hidden' : 'visible',
       }}
       title="Task progress"
       data-mode={mode}
+      data-fade-left={mode === 'scroll' && edges.left ? 'true' : undefined}
+      data-fade-right={mode === 'scroll' && edges.right ? 'true' : undefined}
+      onScroll={mode === 'scroll' ? updateEdges : undefined}
     >
       {items.map((item, index) => {
         // A pseudo item (the "explainer shrunk" nav entry) has a synthetic id that
@@ -120,7 +167,8 @@ export default function TaskProgressDots({
               key={item.id}
               style={{
                 ...s.dot,
-                ...(compact ? s.dotCompact : null),
+                ...(compact ? compactDot(dotWidth, touch) : null),
+                ...(mode === 'scroll' ? s.dotSnap : null),
                 ...s.dotPseudo,
                 ...(isViewing ? s.dotViewing : {}),
                 cursor: 'pointer',
@@ -147,8 +195,9 @@ export default function TaskProgressDots({
             key={item.id}
             style={{
               ...s.dot,
-              ...(compact ? s.dotCompact : null),
-              ...(isGroup ? (compact ? s.dotGroupCompact : s.dotGroup) : {}),
+              ...(compact ? compactDot(dotWidth, touch) : null),
+              ...(mode === 'scroll' ? s.dotSnap : null),
+              ...(isGroup ? (compact ? { borderRadius: 7, width: dotWidth + 4 } : s.dotGroup) : {}),
               ...(isCurrent ? s.dotCurrent : {}),
               ...(isViewing ? s.dotViewing : {}),
               ...(isPast ? s.dotPast : {}),
@@ -168,6 +217,19 @@ export default function TaskProgressDots({
   )
 }
 
+function compactDot(width, touch) {
+  return { width, height: width, fontSize: touch ? '0.85rem' : '0.72rem' }
+}
+
+// Fades the edge(s) of a scrolling row that have more dots beyond them.
+function fadeMask({ left, right }) {
+  if (!left && !right) return null
+  const start = left ? `transparent 0, #000 ${FADE_PX}px` : '#000 0'
+  const end = right ? `#000 calc(100% - ${FADE_PX}px), transparent 100%` : '#000 100%'
+  const mask = `linear-gradient(to right, ${start}, ${end})`
+  return { maskImage: mask, WebkitMaskImage: mask }
+}
+
 const s = {
   row: {
     display: 'flex',
@@ -179,13 +241,19 @@ const s = {
   },
   rowCompact: {
     // Room for the current dot's scale(1.15) inside a row that may clip (scroll mode).
-    padding: '3px 3px',
+    padding: `${COMPACT_PAD}px ${COMPACT_PAD}px`,
   },
   rowScroll: {
     overflowX: 'auto',
     overflowY: 'hidden',
     justifyContent: 'flex-start',
     scrollbarWidth: 'none',
+    // Swiping lands on a whole dot, never half of one.
+    scrollSnapType: 'x mandatory',
+    scrollPaddingLeft: COMPACT_PAD,
+  },
+  dotSnap: {
+    scrollSnapAlign: 'start',
   },
   counter: {
     fontFamily: 'var(--font-body)',
@@ -215,15 +283,6 @@ const s = {
   dotGroup: {
     borderRadius: 8,
     width: 36,
-  },
-  dotCompact: {
-    width: COMPACT_DOT_WIDTH,
-    height: COMPACT_DOT_WIDTH,
-    fontSize: '0.72rem',
-  },
-  dotGroupCompact: {
-    borderRadius: 7,
-    width: COMPACT_DOT_WIDTH + 4,
   },
   dotPseudo: {
     borderStyle: 'dashed',
