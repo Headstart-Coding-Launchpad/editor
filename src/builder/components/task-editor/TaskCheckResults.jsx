@@ -28,7 +28,9 @@ export function TargetedStageOfferPreview({ task, lessonType, incorrectCheckResu
         stageActionLabel={
           isReplacement
             ? `Try ${stage.label || 'guided stage'}`
-            : `Show ${stage.label || 'reference'}`
+            : stage.label
+              ? `Show hint: ${stage.label}`
+              : 'Show me a hint'
         }
         stageActionConfirm={
           isReplacement

@@ -26,7 +26,13 @@ describe('HelpRequestButton', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Need Help' }))
     expect(onAskTeacher).toHaveBeenCalled()
     rerender(<HelpRequestButton requested onAskTeacher={onAskTeacher} />)
-    expect(screen.getByRole('button', { name: 'Help requested' })).toBeDisabled()
+    const requestedBtn = screen.getByRole('button', { name: 'Help requested' })
+    // Stays bright (not greyed out by `disabled`) so it reads as "on", and a second tap is a no-op.
+    expect(requestedBtn).not.toBeDisabled()
+    expect(requestedBtn).toHaveAttribute('aria-disabled', 'true')
+    onAskTeacher.mockClear()
+    fireEvent.click(requestedBtn)
+    expect(onAskTeacher).not.toHaveBeenCalled()
   })
 })
 

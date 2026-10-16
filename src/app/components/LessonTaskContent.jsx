@@ -561,10 +561,13 @@ export default function LessonTaskContent({
               : undefined
       }
       stageActionLabel={
+        // The prompt reads "Want a hint?", so the action says "hint" too (not "reference").
         targetedOfferStage
-          ? `Show ${targetedOfferStage.label || 'reference'}`
+          ? targetedOfferStage.label
+            ? `Show hint: ${targetedOfferStage.label}`
+            : 'Show me a hint'
           : cs.offeredSupportStageIndex != null
-            ? 'Show reference'
+            ? 'Show me a hint'
             : genericNextStage
               ? `Use ${genericNextStage.label || 'next stage'}`
               : undefined

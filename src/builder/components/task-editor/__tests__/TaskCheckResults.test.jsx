@@ -32,7 +32,7 @@ describe('TargetedStageOfferPreview', () => {
 
     expect(screen.getByText('Student feedback preview')).toBeInTheDocument()
     expect(screen.getByText('Use a loop')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /Show Loop reference/i }))
+    await user.click(screen.getByRole('button', { name: /Show hint: Loop reference/i }))
     expect(screen.getByText(/for name in names/i)).toBeInTheDocument()
   })
 })

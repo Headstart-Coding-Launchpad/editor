@@ -1396,7 +1396,7 @@ describe('StudentView', () => {
       const needHelpBtn = screen.getByRole('button', { name: /Need Help/i })
       // Short on screen (the top bar is one row); the full name stays in the label and title.
       expect(needHelpBtn).toHaveTextContent(/^✋ Help$/)
-      expect(needHelpBtn).toHaveAttribute('title', 'Ask your teacher for help')
+      expect(needHelpBtn).toHaveAttribute('title', 'Ask your tutor for help')
       await user.click(needHelpBtn)
 
       expect(requestHelp).toHaveBeenCalledWith('student-1')
@@ -1431,7 +1431,7 @@ describe('StudentView', () => {
       await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
 
       const needHelpBtn = screen.getByRole('button', { name: /Help requested/i })
-      expect(needHelpBtn).toBeDisabled()
+      expect(needHelpBtn).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('does not appear in solo mode (no teacher on the other end to help)', async () => {
