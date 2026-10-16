@@ -131,7 +131,8 @@ export default defineActivity({
         name: 'requireShiftForCapitals',
         type: 'boolean',
         modes: ['type_text'],
-        description: 'Capitals must be typed with Shift, not Caps Lock (default true).',
+        description:
+          'Capitals must be typed with Shift, not Caps Lock. Off when left out (a new task made in the Builder turns it on).',
       },
       {
         name: 'minAccuracy',

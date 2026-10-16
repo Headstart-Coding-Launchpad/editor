@@ -3,6 +3,10 @@ import { describe, it, expect } from 'vitest'
 import {
   evaluateScratchCheckForSprites,
   findScratchCheckTarget,
+  getScratchCheckEvaluation,
+  getScratchCheckEvaluationOptions,
+  isScratchAfterRunCheck,
+  isScratchRunJudgedCheck,
   isScratchStaticCheck,
   partialEvaluateScratchCheckForSprites,
 } from '../checkDispatch.js'
@@ -128,5 +132,47 @@ describe('partialEvaluateScratchCheckForSprites', () => {
     )
     expect(partialEvaluateScratchCheckForSprites(check, [])).toBe('pending')
     expect(partialEvaluateScratchCheckForSprites({}, sprites)).toBe('fail')
+  })
+})
+
+describe('check evaluation timing (audit #4, #6)', () => {
+  it('a missing evaluation means after_run', () => {
+    expect(getScratchCheckEvaluation({ type: 'block_used' })).toBe('after_run')
+    expect(getScratchCheckEvaluation({ type: 'block_used', evaluation: 'bogus' })).toBe('after_run')
+    expect(getScratchCheckEvaluation({ type: 'block_used', evaluation: 'manual' })).toBe('manual')
+    expect(
+      getScratchCheckEvaluation({ type: 'block_count', evaluation: 'after_block_placed' })
+    ).toBe('after_block_placed')
+    expect(isScratchAfterRunCheck({ type: 'block_used' })).toBe(true)
+  })
+
+  it('offers after_block_placed only for the block checks', () => {
+    for (const type of ['block_used', 'blocks_in_order', 'block_count']) {
+      expect(getScratchCheckEvaluationOptions({ type })).toContain('after_block_placed')
+    }
+    for (const type of ['block_run', 'sprite_property', 'variable_equals', 'costume_is']) {
+      expect(getScratchCheckEvaluationOptions({ type })).not.toContain('after_block_placed')
+    }
+  })
+
+  it('a run judges every check except manual ones', () => {
+    expect(isScratchRunJudgedCheck({ type: 'block_used', evaluation: 'after_block_placed' })).toBe(
+      true
+    )
+    expect(isScratchRunJudgedCheck({ type: 'sprite_property' })).toBe(true)
+    expect(isScratchRunJudgedCheck({ type: 'costume_is', evaluation: 'manual' })).toBe(false)
+    expect(isScratchRunJudgedCheck(null)).toBe(false)
+  })
+
+  it('a missing block fails a mixed list judged at Run', () => {
+    const sprites = [sprite('Cat', [['event_whenflagclicked', 'motion_movesteps']])]
+    const checks = [
+      { type: 'block_used', opcode: 'looks_sayforsecs', evaluation: 'after_block_placed' },
+      { type: 'run_attempted' },
+    ]
+    const passed = checks
+      .filter(isScratchRunJudgedCheck)
+      .every((check) => evaluateScratchCheckForSprites(check, sprites, { greenFlagPressed: true }))
+    expect(passed).toBe(false)
   })
 })

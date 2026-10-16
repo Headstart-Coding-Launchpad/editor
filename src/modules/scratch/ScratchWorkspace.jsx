@@ -45,6 +45,7 @@ import { FEEDBACK_TIMING, evaluateCheckWithCustomFeedback } from '../checks'
 import {
   evaluateScratchCheckForSprites,
   isScratchRunAttemptedOnly,
+  isScratchRunJudgedCheck,
   partialEvaluateScratchCheckForSprites,
 } from './checkDispatch.js'
 import { useTypeAssets } from '../../shared/useTypeAssets'
@@ -2521,13 +2522,13 @@ export default function ScratchWorkspace({
   }
   evaluateIdleFeedbackRef.current = evaluateIdleFeedback
 
-  // The end-of-run check: the after-run checks against the finished run's signal.
+  // The end-of-run check: every non-manual check against the finished run's signal. Block checks
+  // (after_block_placed ones too) are judged against the current blocks, so a missing block
+  // can't pass just because the run-time checks did.
   function evaluateAfterRunChecks(signal) {
     const sws = filterCheckableSpriteWorkspaces(buildSpriteWorkspaces())
-    const afterRunChecks = scratchChecks.filter(
-      (c) => c.evaluation !== 'manual' && c.evaluation !== 'after_block_placed'
-    )
-    const completionPassed = afterRunChecks.every((c) =>
+    const runJudgedChecks = scratchChecks.filter(isScratchRunJudgedCheck)
+    const completionPassed = runJudgedChecks.every((c) =>
       evalSingleCheck(c, sws, signal, preRunSpriteStatesRef.current)
     )
     const evaluation = evaluateCheckWithCustomFeedback(

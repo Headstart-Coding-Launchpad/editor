@@ -45,8 +45,15 @@ function describeModule(def) {
           def.inheritsCheckTypes?.includes(check.type) ||
           check.appliesTo?.(def) === true
       )
-      .map((check) => check.type),
+      .map((check) => check.type)
+      .concat((def.moduleCheckCatalog ?? []).map((check) => check.type)),
   }
+}
+
+// Check types a module judges itself, outside the shared registry (Scratch's block, sprite and
+// variable checks: src/modules/scratch/checks.js SCRATCH_CHECK_CATALOG).
+function moduleCatalogChecks() {
+  return getModuleDefinitions().flatMap((def) => def.moduleCheckCatalog ?? [])
 }
 
 function describeActivity(def) {
@@ -159,7 +166,9 @@ export function buildCapabilities({ requests = readAuthoringRequests() } = {}) {
     activities: getActivityDefinitions().map(describeActivity),
     // Fields every task can carry, and the non-module task types (information, group).
     taskFields: describeTaskFields(),
-    checkTypes: checkRegistry.list().map(describeCheck),
+    // The shared registry, then the module-owned catalogues (Scratch's variable_equals shares
+    // its name with Python's: tell them apart by `owner`).
+    checkTypes: [...checkRegistry.list(), ...moduleCatalogChecks()].map(describeCheck),
     taskActivity: describeTaskActivity(),
     badges: describeBadges(),
     // What is already asked for: { file, title, kind, status, requestedBy, lessonsBlocked }.

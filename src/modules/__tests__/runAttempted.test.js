@@ -169,6 +169,22 @@ describe('run_attempted — Scratch (green flag only)', () => {
       isScratchRunAttemptedOnly([RUN_ATTEMPTED, { type: 'block_run', opcode: 'looks_say' }])
     ).toBe(false)
     expect(isScratchRunAttemptedOnly([])).toBe(false)
+    // Audit #4: block checks with no evaluation are decided by the blocks, so still judged at
+    // the green flag (and must pass then); manual checks are ignored.
+    expect(
+      isScratchRunAttemptedOnly([RUN_ATTEMPTED, { type: 'block_count', opcode: 'x', value: 2 }])
+    ).toBe(true)
+    expect(
+      isScratchRunAttemptedOnly([RUN_ATTEMPTED, { type: 'costume_is', evaluation: 'manual' }])
+    ).toBe(true)
+    expect(isScratchRunAttemptedOnly([{ type: 'block_used', opcode: 'x' }])).toBe(false)
+  })
+
+  it('judges every non-manual check at the green flag, block checks included (audit #4)', () => {
+    const source = readRepoFile('src/modules/scratch/ScratchWorkspace.jsx')
+    const start = source.indexOf('function evaluateAfterRunChecks(')
+    const body = source.slice(start, source.indexOf('\n  }\n', start))
+    expect(body).toContain('isScratchRunJudgedCheck')
   })
 
   it('only the green flag sets the flag in ScratchWorkspace (a clicked script never does)', () => {

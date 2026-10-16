@@ -3,6 +3,109 @@
 
 import { compareText, compareValues } from '../../shared/checkHelpers.js'
 
+// The Scratch check types (plus the core run_attempted, registered in ../checks.js). They are
+// judged inside the Scratch workspace (evaluateScratchCheck needs the blocks and sprite state),
+// so they stay out of the shared evaluate registry, where Scratch's variable_equals would also
+// collide with Python's. This catalogue is what `lessons capabilities` lists for Scratch and
+// what validation (moduleTaskValidation.js) accepts: a misspelt type is an error.
+const NUMBER_OPERATORS = [
+  'equals',
+  'not_equals',
+  'greater_than',
+  'greater_than_or_equal',
+  'less_than',
+  'less_than_or_equal',
+]
+const EVALUATION = 'evaluation'
+export const SCRATCH_CHECK_CATALOG = Object.freeze(
+  [
+    {
+      type: 'block_used',
+      subject: 'blocks',
+      timing: 'on_change',
+      fields: ['opcode', 'fieldValues', 'spriteName', EVALUATION],
+    },
+    {
+      type: 'blocks_in_order',
+      subject: 'blocks',
+      timing: 'on_change',
+      fields: ['sequence', 'spriteName', EVALUATION],
+    },
+    {
+      type: 'block_count',
+      subject: 'blocks',
+      timing: 'on_change',
+      operators: NUMBER_OPERATORS,
+      fields: ['opcode', 'operator', 'value', 'spriteName', EVALUATION],
+    },
+    {
+      type: 'block_run',
+      subject: 'run',
+      timing: 'on_run',
+      requiresRun: true,
+      fields: ['opcode', 'fieldValues', 'spriteName'],
+    },
+    {
+      type: 'sprite_property',
+      subject: 'sprite',
+      timing: 'on_run',
+      requiresRun: true,
+      operators: NUMBER_OPERATORS,
+      fields: ['property', 'operator', 'value', 'spriteName', EVALUATION],
+    },
+    {
+      type: 'sprite_property_delta',
+      subject: 'sprite',
+      timing: 'on_run',
+      requiresRun: true,
+      operators: NUMBER_OPERATORS,
+      fields: ['property', 'operator', 'value', 'spriteName', EVALUATION],
+    },
+    {
+      type: 'sprite_property_changed',
+      subject: 'sprite',
+      timing: 'on_run',
+      requiresRun: true,
+      fields: ['property', 'spriteName', EVALUATION],
+    },
+    {
+      type: 'costume_is',
+      subject: 'sprite',
+      timing: 'on_run',
+      requiresRun: true,
+      fields: ['value', 'spriteName', EVALUATION],
+    },
+    {
+      type: 'variable_equals',
+      subject: 'variable',
+      timing: 'on_run',
+      requiresRun: true,
+      fields: ['variableName', 'value', EVALUATION],
+    },
+    {
+      type: 'variable_compare',
+      subject: 'variable',
+      timing: 'on_run',
+      requiresRun: true,
+      operators: NUMBER_OPERATORS,
+      fields: ['variableName', 'operator', 'value', EVALUATION],
+    },
+  ].map((def) =>
+    Object.freeze({
+      owner: 'module:scratch',
+      requiresRun: false,
+      submitAllowed: false,
+      ...def,
+    })
+  )
+)
+
+// Every check type a Scratch task may use (its own plus the core run_attempted).
+export const SCRATCH_CHECK_TYPES = Object.freeze([
+  ...SCRATCH_CHECK_CATALOG.map((def) => def.type),
+  'run_attempted',
+])
+
 export const DEFAULT_SPRITES = [
   { id: 'sprite1', name: 'Sprite 1', type: 'cat', x: 0, y: 0, size: 100, direction: 90 },
 ]
@@ -222,13 +325,26 @@ export function partialEvaluateScratchCheck(check, workspace) {
           .getAllBlocks(false)
           .filter((b) => hasSpecOpcode(b, check.opcode)).length
         const target = Number(check.value)
-        if (check.operator === 'equals') {
-          if (count === target) return 'pass'
-          return count < target ? 'pending' : 'fail'
+        // Every operator the Run-time check (compareValues) and `lessons test-checks` support,
+        // so a block-placed verdict agrees with them. "Too few" is still building (pending);
+        // "too many" is a definite fail.
+        switch (check.operator ?? 'equals') {
+          case 'equals':
+            if (count === target) return 'pass'
+            return count < target ? 'pending' : 'fail'
+          case 'not_equals':
+            return count !== target ? 'pass' : 'pending'
+          case 'greater_than':
+            return count > target ? 'pass' : 'pending'
+          case 'greater_than_or_equal':
+            return count >= target ? 'pass' : 'pending'
+          case 'less_than':
+            return count < target ? 'pass' : 'fail'
+          case 'less_than_or_equal':
+            return count <= target ? 'pass' : 'fail'
+          default:
+            return 'pending'
         }
-        if (check.operator === 'greater_than') return count > target ? 'pass' : 'pending'
-        if (check.operator === 'less_than') return count < target ? 'pass' : 'fail'
-        return 'pending'
       }
       default:
         return 'pending'

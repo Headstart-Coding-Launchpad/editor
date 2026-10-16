@@ -12,6 +12,7 @@ import {
 } from '../moduleTaskValidation.js'
 import { evaluateScratchWorkWithoutRun, verifyScratchTask } from './checkVerification.js'
 import { evaluateScratchCheckCase } from './checkCases.js'
+import { SCRATCH_CHECK_CATALOG } from './checks.js'
 import {
   identityFromStored,
   identityStored,
@@ -221,6 +222,9 @@ export default defineModule({
   supportsTests: false,
   supportsVariableChecks: false,
   supportsDomChecks: false,
+  // Check types judged inside the workspace rather than the shared registry (checks.js);
+  // `lessons capabilities` lists them, and validateScratchChecks rejects any other type.
+  moduleCheckCatalog: SCRATCH_CHECK_CATALOG,
 
   stageLabels: { starterLabel: 'Starter', completeLabel: 'Complete' },
   explainerInlineCodeLanguages: ['scratch'],

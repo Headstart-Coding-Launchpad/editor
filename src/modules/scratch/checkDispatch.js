@@ -16,18 +16,45 @@ export function isScratchStaticCheck(check) {
   return SCRATCH_STATIC_CHECK_TYPES.includes(check?.type)
 }
 
-// Checks the workspace judges after a run (green flag, key press, clicked script): every check
-// not marked `manual` or `after_block_placed`.
+// When a check is judged: 'after_run' (also when `evaluation` is left out), 'after_block_placed'
+// or 'manual'. The Builder shows this, so its label matches what the workspace does.
+export function getScratchCheckEvaluation(check) {
+  const evaluation = check?.evaluation
+  return evaluation === 'manual' || evaluation === 'after_block_placed' ? evaluation : 'after_run'
+}
+
+// The evaluation timings a check type can use: after_block_placed only works for the block
+// checks (any other type would stay pending for ever, and validation rejects it).
+export function getScratchCheckEvaluationOptions(check) {
+  return isScratchStaticCheck(check)
+    ? ['manual', 'after_run', 'after_block_placed']
+    : ['manual', 'after_run']
+}
+
+// Checks only a run can decide (green flag, key press, clicked script): every check not marked
+// `manual` or `after_block_placed`. A missing `evaluation` means after-run.
 export function isScratchAfterRunCheck(check) {
   return check?.evaluation !== 'manual' && check?.evaluation !== 'after_block_placed'
 }
 
-// Whether every after-run check is a run_attempted: the task is then decided the moment the green
-// flag is pressed (ScratchWorkspace judges it then, since a forever loop never finishes and Stop
-// skips the end-of-run check).
+// Checks judged when a run is judged: every check except `manual` ones. A run judges the whole
+// list, so an after_block_placed block check (judged against the current blocks) still has to
+// pass: a missing block can't hide behind a passing run-time check.
+export function isScratchRunJudgedCheck(check) {
+  return !!check?.type && check.evaluation !== 'manual'
+}
+
+// Whether the task is decided the moment the green flag is pressed: it has a run_attempted
+// check and every other run-judged check is a block check (decided by the blocks alone, which a
+// run doesn't change). ScratchWorkspace judges it then, since a forever loop never finishes and
+// Stop skips the end-of-run check. The block checks still have to pass, so run_attempted plus
+// block checks needs the blocks as well as the green flag.
 export function isScratchRunAttemptedOnly(checks) {
-  const afterRun = (checks ?? []).filter((check) => check?.type && isScratchAfterRunCheck(check))
-  return afterRun.length > 0 && afterRun.every((check) => check.type === 'run_attempted')
+  const judged = (checks ?? []).filter(isScratchRunJudgedCheck)
+  return (
+    judged.some((check) => check.type === 'run_attempted') &&
+    judged.every((check) => check.type === 'run_attempted' || isScratchStaticCheck(check))
+  )
 }
 
 // A check naming a sprite targets that sprite; an unknown name falls back to the first sprite.
