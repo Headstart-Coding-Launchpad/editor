@@ -188,6 +188,7 @@ export default function CodeArrangeTask({
   const pythonLoading = usesPython && pyodideStatus === 'loading'
   const pythonFailed = usesPython && pyodideStatus === 'error'
   const runLabel = running ? 'Stop' : pythonLoading ? 'Getting Python ready...' : 'Run'
+  const runDisabled = !running && (!complete || pythonLoading || pythonFailed)
 
   function renderTargetContent(placedFragment, canReceive, emptyPlaceholder) {
     if (placedFragment) return placedFragment.code
@@ -371,10 +372,12 @@ export default function CodeArrangeTask({
           <div style={ca.runRow}>
             <button
               type="button"
-              className={running ? 'btn-danger' : 'btn-primary'}
-              style={ca.runBtn}
+              // Not ready to run: a plain grey outline at full opacity, rather than the faded
+              // amber (white on pale tan) the global disabled style gave it.
+              className={running ? 'btn-danger' : runDisabled ? 'btn-ghost-outline' : 'btn-primary'}
+              style={runDisabled ? { ...ca.runBtn, ...ca.runBtnWaiting } : ca.runBtn}
               onClick={running ? onStop : onRun}
-              disabled={!running && (!complete || pythonLoading || pythonFailed)}
+              disabled={runDisabled}
             >
               {runLabel}
             </button>
@@ -638,11 +641,12 @@ const ca = {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 36,
-    minHeight: 26,
-    padding: '2px 8px',
-    margin: '0 2px',
-    borderRadius: 5,
+    // Big enough to drop a tile on with a finger (they were about 45x26px on a tablet).
+    minWidth: 52,
+    minHeight: 36,
+    padding: '4px 10px',
+    margin: '2px 3px',
+    borderRadius: 6,
     border: '2px dashed',
     ...codeFont,
     fontSize: '0.9rem',
@@ -743,10 +747,17 @@ const ca = {
     fontSize: 14,
     flexShrink: 0,
   },
+  runBtnWaiting: {
+    opacity: 1,
+    color: 'var(--colour-ink-strong)',
+    borderColor: 'var(--ui-border-neutral-strong)',
+    background: 'var(--ui-surface)',
+  },
   runHint: {
     fontFamily: 'var(--font-body)',
-    fontSize: '0.82rem',
-    color: '#6b7280',
+    fontSize: '0.9rem',
+    fontWeight: 600,
+    color: 'var(--colour-ink-strong)',
   },
   runError: {
     fontFamily: 'var(--font-body)',

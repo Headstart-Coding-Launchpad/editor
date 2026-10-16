@@ -4,6 +4,7 @@ import {
   expandTopicLinks,
   filterTopicsForType,
   findAllTopicSuggestions,
+  findRelatedTopicId,
   findTopicSuggestion,
   normalizeTopicLibrary,
   parseTopicHref,
@@ -111,5 +112,33 @@ describe('filterTopicsForType (audit: composed-lesson topic types)', () => {
   it('keeps every topic for a composed lesson slide or no type', () => {
     expect(ids(filterTopicsForType(library, 'composed'))).toEqual(['loops', 'tags', 'any'])
     expect(ids(filterTopicsForType(library, null))).toEqual(['loops', 'tags', 'any'])
+  })
+})
+
+describe('findRelatedTopicId', () => {
+  const library = normalizeTopicLibrary({
+    topics: [
+      { id: 'accumulators', title: 'Accumulators', summary: 'Collect.' },
+      { id: 'print', title: 'print()', summary: 'Show text.' },
+      { id: 'for-loop', title: 'For loops', summary: 'Repeat.', aliases: ['for loop'] },
+    ],
+  })
+
+  it('prefers an explicit topic link', () => {
+    expect(findRelatedTopicId('Use a for loop, see [[print]].', library)).toBe('print')
+    expect(findRelatedTopicId('See [the loop](#topic/for-loop).', library)).toBe('for-loop')
+  })
+
+  it('matches an inline code span named like a topic', () => {
+    expect(findRelatedTopicId('Write a `print()` call with a message.', library)).toBe('print')
+  })
+
+  it('falls back to the earliest topic named in the text', () => {
+    expect(findRelatedTopicId('A for loop with accumulators.', library)).toBe('for-loop')
+  })
+
+  it('returns null when nothing matches', () => {
+    expect(findRelatedTopicId('Draw a square.', library)).toBeNull()
+    expect(findRelatedTopicId('', library)).toBeNull()
   })
 })

@@ -11,12 +11,36 @@ export default function SessionEndedScreen({
   onOpenPlayground,
   moments = [],
 }) {
+  const workedOnCount = savedCodeTaskCount + savedOtherTaskCount
+  const momentCount = moments.length
   return (
     <div style={s.centreScreen}>
       <h2 style={s.title}>Session ended</h2>
-      <p style={{ color: 'var(--colour-text)', fontFamily: 'var(--font-body)', marginBottom: 8 }}>
-        Great work today! Your progress has been saved in this browser.
-      </p>
+      {/* A small celebration first: what they did today, before any housekeeping. */}
+      <section style={s.celebration} aria-label="What you did today">
+        <span style={s.celebrationIcon} aria-hidden="true">
+          🎉
+        </span>
+        <p style={s.celebrationTitle}>Great work today!</p>
+        {(workedOnCount > 0 || momentCount > 0) && (
+          <p style={s.celebrationText}>
+            {workedOnCount > 0 && (
+              <>
+                You worked on <strong>{workedOnCount}</strong>{' '}
+                {workedOnCount === 1 ? 'task' : 'tasks'}
+              </>
+            )}
+            {workedOnCount > 0 && momentCount > 0 && ' and earned '}
+            {workedOnCount === 0 && momentCount > 0 && 'You earned '}
+            {momentCount > 0 && (
+              <>
+                <strong>{momentCount}</strong> coding {momentCount === 1 ? 'moment' : 'moments'}
+              </>
+            )}
+            .
+          </p>
+        )}
+      </section>
       {moments.length > 0 && (
         <section style={s.moments} aria-label="Your coding moments">
           <h3 style={s.momentsTitle}>
@@ -25,29 +49,39 @@ export default function SessionEndedScreen({
           <BadgeStickerSheet moments={moments} animate />
         </section>
       )}
-      {savedCodeTaskCount > 0 && (
+      {workedOnCount > 0 && (
+        // One notice for all saved work (there used to be two near-identical yellow boxes).
         <div style={s.backupNotice}>
-          <strong>Saved only on this device.</strong> Browser data can be cleared or lost when you
-          change device. Download your{' '}
-          {savedCodeTaskCount === 1 ? 'Python code' : `${savedCodeTaskCount} Python code tasks`} to
-          keep a copy.
-          <button className="btn-primary" style={s.downloadButton} onClick={onDownloadAllCode}>
-            Download all my code
-          </button>
-        </div>
-      )}
-      {savedOtherTaskCount > 0 && (
-        <div style={s.backupNotice}>
-          <strong>Saved only on this device.</strong> Work in{' '}
-          {savedOtherTaskCount === 1
-            ? 'one other task is'
-            : `${savedOtherTaskCount} other tasks are`}{' '}
-          saved locally too, but isn&apos;t downloadable yet. Browser data can be cleared or lost
-          when you change device.
+          <strong>Saved only on this device.</strong>
+          <span>
+            Your work is kept in this browser, which can be cleared, or lost if you change device.
+            {savedCodeTaskCount > 0 &&
+              ` Download your ${
+                savedCodeTaskCount === 1 ? 'Python code' : `${savedCodeTaskCount} Python code tasks`
+              } to keep a copy.`}
+            {savedOtherTaskCount > 0 &&
+              (savedCodeTaskCount > 0
+                ? ` Your work in ${
+                    savedOtherTaskCount === 1
+                      ? 'one other task'
+                      : `${savedOtherTaskCount} other tasks`
+                  } can't be downloaded yet.`
+                : ` It can't be downloaded yet.`)}
+          </span>
+          {savedCodeTaskCount > 0 && (
+            <button className="btn-primary" style={s.downloadButton} onClick={onDownloadAllCode}>
+              Download all my code
+            </button>
+          )}
         </div>
       )}
       <p
-        style={{ color: '#6b7280', fontFamily: 'var(--font-body)', fontSize: '0.9rem', margin: 0 }}
+        style={{
+          color: 'var(--colour-muted)',
+          fontFamily: 'var(--font-body)',
+          fontSize: '0.95rem',
+          margin: 0,
+        }}
       >
         What would you like to do next?
       </p>
@@ -93,6 +127,26 @@ const s = {
     fontWeight: 700,
     fontSize: '1.5rem',
     color: 'var(--colour-primary)',
+  },
+  celebration: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 4,
+  },
+  celebrationIcon: { fontSize: '2.6rem', lineHeight: 1 },
+  celebrationTitle: {
+    margin: 0,
+    fontFamily: 'var(--font-title)',
+    fontWeight: 700,
+    fontSize: '1.2rem',
+    color: 'var(--colour-text)',
+  },
+  celebrationText: {
+    margin: 0,
+    fontFamily: 'var(--font-body)',
+    fontSize: '1rem',
+    color: 'var(--colour-text)',
   },
   backupNotice: {
     maxWidth: 500,

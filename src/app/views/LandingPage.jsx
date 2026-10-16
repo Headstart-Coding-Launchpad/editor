@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { createLaunchpadCodeFile, parseLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
+import EntryScreenCard from '../components/EntryScreenCard'
 
 export default function LandingPage() {
   const [searchParams] = useSearchParams()
@@ -36,14 +37,14 @@ export default function LandingPage() {
   }
 
   return (
-    <div style={s.page}>
-      <div style={s.card} className="card">
-        <div style={s.brand}>
-          <span style={s.logo}>Headstart Coding - LaunchPad</span>
-        </div>
-
-        <h1 style={s.heading}>{isTeacher ? 'Teacher Dashboard' : 'Join a lesson'}</h1>
-
+    // The same purple card as the name and waiting screens that follow, so joining feels like
+    // one app from the first screen.
+    <>
+      <EntryScreenCard
+        title={isTeacher ? 'Teacher Dashboard' : 'Join a lesson'}
+        pageStyle={s.page}
+        cardStyle={s.card}
+      >
         <form onSubmit={handleGo} style={s.form}>
           <label style={s.label} htmlFor="lesson-code">
             {isTeacher ? 'Lesson code' : 'Enter your lesson code'}
@@ -82,7 +83,7 @@ export default function LandingPage() {
             >
               Open saved code
             </button>
-            <p style={s.openCodeText}>Open a LaunchPad file to continue your Python code.</p>
+            <p style={s.openCodeText}>Carry on with Python code you downloaded from a lesson.</p>
             <button
               className="btn-ghost-outline"
               type="button"
@@ -98,7 +99,7 @@ export default function LandingPage() {
             )}
           </div>
         )}
-      </div>
+      </EntryScreenCard>
       {playgroundPickerOpen && (
         <div
           className="ui-modal-backdrop"
@@ -150,44 +151,16 @@ export default function LandingPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
 
 const s = {
   page: {
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#f5f5f5',
     padding: 16,
   },
   card: {
-    width: '100%',
-    maxWidth: 420,
-    padding: '36px 32px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 20,
-  },
-  brand: {
-    display: 'flex',
-    justifyContent: 'center',
-  },
-  logo: {
-    fontFamily: 'var(--font-title)',
-    fontWeight: 700,
-    fontSize: '1.5rem',
-    color: 'var(--colour-primary)',
-  },
-  heading: {
-    fontFamily: 'var(--font-title)',
-    fontWeight: 700,
-    fontSize: '1.15rem',
-    color: 'var(--colour-text)',
-    textAlign: 'center',
-    marginTop: -4,
+    width: 420,
   },
   form: {
     display: 'flex',
@@ -234,8 +207,8 @@ const s = {
     margin: 0,
     textAlign: 'center',
     fontFamily: 'var(--font-body)',
-    fontSize: '0.82rem',
-    color: '#6b7280',
+    fontSize: '0.85rem',
+    color: 'var(--colour-muted)',
   },
   error: {
     margin: 0,

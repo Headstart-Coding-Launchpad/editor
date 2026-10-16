@@ -73,8 +73,9 @@ const s = {
   logo: {
     fontFamily: 'var(--font-title)',
     fontWeight: 700,
-    fontSize: '0.85rem',
-    color: 'var(--colour-secondary)',
+    fontSize: '0.9rem',
+    // A lighter amber than the brand's #fba504, which is too faint on the purple header.
+    color: '#ffd166',
   },
   title: {
     fontFamily: 'var(--font-title)',
@@ -113,8 +114,9 @@ export const ghostLink = {
   background: 'none',
   border: 'none',
   fontFamily: 'var(--font-body)',
-  fontSize: '0.85rem',
-  color: '#9ca3af',
+  fontSize: '0.9rem',
+  // Muted but readable (the old #9ca3af was under 3:1 on white).
+  color: 'var(--colour-muted)',
   cursor: 'pointer',
   textDecoration: 'underline',
   padding: 0,

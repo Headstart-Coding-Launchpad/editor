@@ -27,7 +27,8 @@ import { lastErrorLine } from '../studentHints.js'
  *   keeps the slot's ref fresh synchronously, as the old `codeRef.current = pending` did)
  * - refs: outputRafIdRef, outputMirrorRef, inputPromptRef, inputValueRef, submitInputEchoRef,
  *   appendOutputRef, runtimeCodeRafIdRef, pendingRuntimeCodeRef, lastRuntimeCodeWriteRef,
- *   currentTaskIdRef, phaseRef, inPersonalSandboxRef, teacherAssistedTaskIdsRef
+ *   currentTaskIdRef, phaseRef, inPersonalSandboxRef, teacherAssistedTaskIdsRef, and optionally
+ *   runEpochRef (bumped by a task change, so a run it stopped never paints onto the next task)
  * - setters: setOutput, setInputPrompt, setErrorLine, setRunStatus, setTurtleResult,
  *   setStageResult (optional), setRunning
  * - writers: writeStudentInputState, writeStudentOutput, writeStudentCode, writeStudentRun,
@@ -89,6 +90,14 @@ export async function runWithRuntime(ctx) {
     currentTeacherLivePayload,
     publishTeacherLive,
   } = live
+
+  // Whether the student is still on the task this run belongs to. The task id alone is not
+  // enough: a task change stops the run and resets the output before the new id reaches
+  // currentTaskIdRef (on the next render), so a stop resolving in between still matched and
+  // painted the old task's output (an input() prompt) onto the new task. The epoch catches it.
+  const runEpoch = refs.runEpochRef?.current
+  const stillOnTask = () =>
+    currentTaskId === refs.currentTaskIdRef.current && refs.runEpochRef?.current === runEpoch
 
   if (refs.outputRafIdRef.current !== null) {
     cancelAnimationFrame(refs.outputRafIdRef.current)
@@ -241,7 +250,7 @@ export async function runWithRuntime(ctx) {
   // student is still on the task: a stop triggered by navigating away reports nothing.
   const stoppedRunCounts =
     result.status === 'stopped' &&
-    currentTaskId === refs.currentTaskIdRef.current &&
+    stillOnTask() &&
     !alreadySolved &&
     refs.phaseRef.current !== 'sandbox' &&
     !refs.inPersonalSandboxRef.current &&
@@ -253,7 +262,7 @@ export async function runWithRuntime(ctx) {
     // Only repaint the buffered output if the student is still on the task that
     // produced it — a stop triggered by navigating away must not overwrite the
     // freshly reset state for the task they moved to.
-    if (currentTaskId === refs.currentTaskIdRef.current) setOutput(outputBuffer.display)
+    if (stillOnTask()) setOutput(outputBuffer.display)
     if (runResult.liveCode)
       saveRunRecord(currentTaskId, latestRuntimeCode, { output: outputBuffer.raw })
     if (canPublishTeacherLive())

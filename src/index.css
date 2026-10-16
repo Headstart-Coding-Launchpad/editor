@@ -1260,7 +1260,9 @@ select {
 
 .information-task--recap {
   display: grid;
-  grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.4fr);
+  /* The left panel usually holds one short line ("Today you learned"), so it takes the
+     narrower share and its text is set larger, rather than a big, mostly empty purple half. */
+  grid-template-columns: minmax(200px, 0.6fr) minmax(0, 1.6fr);
   gap: 16px;
 }
 
@@ -1298,6 +1300,10 @@ select {
 .information-recap__left td,
 .information-recap__left th {
   color: inherit;
+}
+
+.information-recap__left p {
+  font-size: 1.35em;
 }
 
 /* Lets an information task's image sit beside its paragraph text instead of always
@@ -5634,4 +5640,27 @@ label.te-backdrop-tag,
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* Check feedback popup (CheckFeedbackBanner). Bottom-left so it never covers the Run button,
+   the file tabs, the top of the student's code or the output; bottom-right belongs to the peer
+   help cards. Positioned with left/bottom only: the fail banner's motion-wobble animates
+   `transform`. */
+.check-feedback-popup {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 45;
+  width: min(calc(100vw - 32px), 360px);
+  max-height: 45vh;
+  overflow-y: auto;
+  font-size: 0.92rem;
+}
+
+@media (max-width: 1100px) {
+  .check-feedback-popup {
+    width: min(calc(100vw - 32px), 290px);
+    max-height: 40vh;
+    font-size: 0.84rem;
+  }
 }

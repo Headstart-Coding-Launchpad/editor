@@ -22,6 +22,25 @@ describe('ExplainerPanel', () => {
     expect(screen.getByRole('heading', { name: 'Introduction' })).toBeInTheDocument()
   })
 
+  it('keeps room at the end of the title bar for a control laid over it (titleEndInset)', () => {
+    render(
+      <ExplainerPanel
+        title="A long task title"
+        content="Text"
+        collapsible={false}
+        titleEndInset={38}
+      />
+    )
+    const bar = screen.getByRole('heading', { name: 'A long task title' }).parentElement
+    expect(bar.style.paddingRight).toBe('50px')
+  })
+
+  it('uses the normal title bar padding without an inset', () => {
+    render(<ExplainerPanel title="Short" content="Text" collapsible={false} />)
+    const bar = screen.getByRole('heading', { name: 'Short' }).parentElement
+    expect(bar.style.paddingRight).toBe('12px')
+  })
+
   it('renders content via MarkdownRenderer', () => {
     render(<ExplainerPanel title="Section" content="Hello world" />)
     expect(screen.getByTestId('markdown')).toHaveTextContent('Hello world')

@@ -80,12 +80,14 @@ const s = {
     padding: 0,
     boxShadow: 'none',
   },
+  // Tinted with a purple edge, not plain white: a folded panel (e.g. OUTPUT before the first
+  // Run) was easy to miss as a blank strip.
   rail: {
     width: '100%',
     height: '100%',
-    border: '1px solid #e5e7eb',
+    border: '1.5px solid var(--ui-border-strong)',
     borderRadius: 8,
-    background: '#fff',
+    background: 'var(--ui-surface-tint)',
     color: 'var(--colour-primary)',
     cursor: 'pointer',
     display: 'flex',
@@ -104,16 +106,16 @@ const s = {
   railLabel: {
     writingMode: 'vertical-rl',
     transform: 'rotate(180deg)',
-    fontSize: '0.78rem',
+    fontSize: '0.85rem',
     letterSpacing: '0.08em',
     textTransform: 'uppercase',
   },
   railHorizontal: {
     width: '100%',
     height: 'auto',
-    border: '1px solid #e5e7eb',
+    border: '1.5px solid var(--ui-border-strong)',
     borderRadius: 8,
-    background: '#fff',
+    background: 'var(--ui-surface-tint)',
     color: 'var(--colour-primary)',
     cursor: 'pointer',
     display: 'flex',

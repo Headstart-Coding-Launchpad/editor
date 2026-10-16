@@ -27,9 +27,11 @@ export default function ThumbsUpToast({ shownAt }) {
 const s = {
   // The positioned wrapper keeps the centring off the animated element, whose keyframes set
   // their own transform.
+  // Bottom-centre (over the bottom of the editor, usually empty): at the top it sat over the
+  // editor toolbar and the check feedback popup.
   wrap: {
     position: 'fixed',
-    top: 72,
+    bottom: 24,
     left: 0,
     right: 0,
     // Above the badge card layer (1240), below the nudge banner (1250).

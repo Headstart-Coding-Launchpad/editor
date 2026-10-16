@@ -250,15 +250,21 @@ describe('CheckFeedbackBanner', () => {
       }
     })
 
-    it('points to the persistent Need Help control instead of rendering its own button on fail', () => {
+    it('points to the persistent ✋ Help control (by its real name) instead of rendering its own button on fail', () => {
       render(<CheckFeedbackBanner passed={false} />)
-      expect(screen.getByText(/Need Help/i)).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /^Need Help$/i })).not.toBeInTheDocument()
+      expect(screen.getByText(/Still stuck\? Tap “✋ Help”/)).toBeInTheDocument()
+      expect(screen.queryByText(/Need Help/i)).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Help/i })).not.toBeInTheDocument()
     })
 
     it('does not show the help pointer on pass', () => {
       render(<CheckFeedbackBanner passed={true} />)
-      expect(screen.queryByText(/Need Help/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/Still stuck/i)).not.toBeInTheDocument()
+    })
+
+    it('uses the corner-anchored popup class so it stays clear of the toolbar and code', () => {
+      render(<CheckFeedbackBanner passed={false} />)
+      expect(screen.getByRole('status')).toHaveClass('check-feedback-popup')
     })
   })
 

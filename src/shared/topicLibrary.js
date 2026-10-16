@@ -171,3 +171,34 @@ export function findAllTopicSuggestions(content, topics = []) {
   }
   return results
 }
+
+// The topic a piece of task text is about, for opening the Topic Library on it rather than on
+// the first topic alphabetically: the first [[topic]] / #topic/ link to a known topic, else the
+// first inline code span named exactly like a topic (`print()`), else the earliest topic named
+// in the text. Null when nothing matches.
+export function findRelatedTopicId(content, topics = []) {
+  const text = String(content ?? '')
+  if (!text || topics.length === 0) return null
+  const byId = new Map(topics.map((topic) => [topic.id.toLowerCase(), topic.id]))
+  const link = /\[\[([a-z0-9][a-z0-9._-]*)(?:\|[^\]\n]+)?\]\]|\(#topic\/([^)\s]+)\)/gi
+  for (const match of text.matchAll(link)) {
+    const id = byId.get(decodeURIComponent(match[1] ?? match[2]).toLowerCase())
+    if (id) return id
+  }
+  const byName = new Map()
+  for (const topic of topics) {
+    for (const name of [topic.title, ...(topic.aliases ?? [])]) {
+      const key = String(name ?? '')
+        .trim()
+        .toLowerCase()
+      if (key && !byName.has(key)) byName.set(key, topic.id)
+    }
+  }
+  for (const match of text.matchAll(/`([^`\n]+)`/g)) {
+    const id = byName.get(match[1].trim().toLowerCase())
+    if (id) return id
+  }
+  const named = findAllTopicSuggestions(text, topics)
+  if (named.length === 0) return null
+  return named.reduce((first, item) => (item.start < first.start ? item : first)).topic.id
+}

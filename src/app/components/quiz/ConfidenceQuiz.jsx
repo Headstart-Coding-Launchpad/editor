@@ -45,7 +45,9 @@ export default function ConfidenceQuiz({
                 className={buttonEntrance.className}
                 style={{
                   ...sc.btn,
-                  background: isSelected ? colour : '#f3f4f6',
+                  // Unpicked levels carry a tint of their colour, so the pale amber and yellow
+                  // (4 and 5) read as coloured tiles rather than faint outlines.
+                  background: isSelected ? colour : `${colour}2e`,
                   borderColor: colour,
                   color: isSelected ? confidenceTextColour(level) : lightLevel ? '#374151' : colour,
                   opacity: blocked && !isSelected ? 0.35 : 1,

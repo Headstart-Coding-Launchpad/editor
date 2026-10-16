@@ -114,6 +114,8 @@ export default function PythonEditor({
         variableLinks={variableLinks}
         onRunShortcut={onRunShortcut}
         blockGuides={showBlocks && blockGuidesOn}
+        // On a tablet a long line was cut off with no visible sideways scroll: wrap it instead.
+        lineWrapping={isTouchDevice}
         scrub={scrub}
         onScrubPreview={onScrubPreview}
         onScrubCommit={onScrubCommit}

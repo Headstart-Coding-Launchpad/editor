@@ -411,7 +411,8 @@ export default function StudentWorkspace({
         }
         pyodideStatus={cs.pyodideStatus}
         errorLine={readOnly ? null : cs.errorLine}
-        lineHints={readOnly ? null : getTaskLineHintSets(task)}
+        // Line hints are scaffolding: once the check passes they go, not linger after the code.
+        lineHints={readOnly || cs.checkPassed ? null : getTaskLineHintSets(task)}
         // Locked lines (#@lock, puzzle.onlyEdit) show in every view, Go Live included.
         lockedLines={getTaskLockSets(task)}
         showBlocks={taskShowsBlocks(task)}

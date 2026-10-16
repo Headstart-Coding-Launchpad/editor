@@ -330,6 +330,14 @@ function blockGuidesFor(on) {
   return on ? blockGuidesExtension() : []
 }
 
+// Soft line wrapping, on only while the `lineWrapping` prop is set (PythonEditor on a touch
+// device, where a long line was cut off with no visible way to scroll sideways).
+const lineWrappingCompartment = new Compartment()
+
+function lineWrappingFor(on) {
+  return on ? EditorView.lineWrapping : []
+}
+
 export const CodeEditor = React.forwardRef(function CodeEditor(
   {
     value = '',
@@ -362,6 +370,8 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     onUserEdit,
     // Draw coloured Python block brackets beside indented code (only PythonEditor sets it).
     blockGuides = false,
+    // Wrap long lines instead of scrolling sideways.
+    lineWrapping = false,
     // Live number / colour scrubbing (./scrub/): getTaskScrub's settings or null, the preview
     // re-run (returns 'preview' | 'press-run') and the report hook for a finished scrub.
     scrub = null,
@@ -445,6 +455,7 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
           peekBandExtension(),
           variableLinksExtension({ onActiveRef: onVariableLinkActiveRef }),
           blockGuidesCompartment.of(blockGuidesFor(blockGuides)),
+          lineWrappingCompartment.of(lineWrappingFor(lineWrapping)),
           scrubUi.extension,
           keymap.of([
             {
@@ -547,6 +558,14 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
       effects: blockGuidesCompartment.reconfigure(blockGuidesFor(blockGuides)),
     })
   }, [blockGuides])
+
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    view.dispatch({
+      effects: lineWrappingCompartment.reconfigure(lineWrappingFor(lineWrapping)),
+    })
+  }, [lineWrapping])
 
   // Sync external value changes (e.g. task switch, sandbox push)
   useEffect(() => {

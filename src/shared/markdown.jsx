@@ -7,7 +7,12 @@ import hljsPython from 'highlight.js/lib/languages/python'
 import hljsXml from 'highlight.js/lib/languages/xml'
 import hljsCss from 'highlight.js/lib/languages/css'
 import hljsJs from 'highlight.js/lib/languages/javascript'
-import { expandTopicLinks, parseTopicHref, useTopicLibrary } from './topicLibrary'
+import {
+  expandTopicLinks,
+  findRelatedTopicId,
+  parseTopicHref,
+  useTopicLibrary,
+} from './topicLibrary'
 import { TopicLibraryDialog, TopicReference } from './TopicLibraryView'
 import { useBadgeSignals } from './badgeSignalsContext'
 import { TOPIC_LIBRARY_OPEN_ID } from '../badges/signals.js'
@@ -654,6 +659,9 @@ export function MarkdownRenderer({
   }
 
   function handleLibraryButton() {
+    // Open on the topic this text is about, where one is known (not the first alphabetically).
+    const related = findRelatedTopicId(content, topics)
+    if (related) setSelectedTopicId(related)
     setLibraryOpen(true)
     badgeSignals?.reportTopicOpen?.(TOPIC_LIBRARY_OPEN_ID, { via: 'button' })
   }

@@ -4,6 +4,11 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import TaskProgressDots from '../TaskProgressDots'
 
+let touchDevice = false
+vi.mock('../../../shared/useIsTouchDevice', () => ({
+  useIsTouchDevice: () => touchDevice,
+}))
+
 // The component measures its dots row synchronously via getBoundingClientRect
 // (not ResizeObserver — see the comment in TaskProgressDots.jsx for why an async
 // measurement is unsafe here). jsdom always reports 0 for layout geometry, so we
@@ -30,7 +35,78 @@ let activeRestore
 afterEach(() => {
   activeRestore?.()
   activeRestore = undefined
+  touchDevice = false
 })
+
+// A fuller layout stub for the scrolling row: the row is `width` wide (or its snapped
+// maxWidth), each dot sits at padding + index * step inside it, and scrollLeft is a real,
+// settable number. jsdom reports 0 for all of these on its own.
+function stubScrollLayout(width, { step = 30, pad = 3, count = 12 } = {}) {
+  const proto = HTMLElement.prototype
+  const saved = {
+    rect: proto.getBoundingClientRect,
+    clientWidth: Object.getOwnPropertyDescriptor(proto, 'clientWidth'),
+    scrollWidth: Object.getOwnPropertyDescriptor(proto, 'scrollWidth'),
+    scrollLeft: Object.getOwnPropertyDescriptor(Element.prototype, 'scrollLeft'),
+  }
+  const scroll = new WeakMap()
+  const isRow = (el) => el.getAttribute?.('title') === 'Task progress'
+  const rowWidth = (el) => parseFloat(el.style.maxWidth) || width
+  proto.getBoundingClientRect = function () {
+    let left = 0
+    let w = width
+    if (this.tagName === 'BUTTON' && this.parentElement && isRow(this.parentElement)) {
+      const index = Array.from(this.parentElement.children).indexOf(this)
+      left = pad + index * step - (scroll.get(this.parentElement) ?? 0)
+      w = step
+    } else if (isRow(this)) {
+      w = rowWidth(this)
+    }
+    return {
+      width: w,
+      height: 32,
+      top: 0,
+      left,
+      right: left + w,
+      bottom: 32,
+      x: left,
+      y: 0,
+      toJSON() {},
+    }
+  }
+  Object.defineProperty(proto, 'clientWidth', {
+    configurable: true,
+    get() {
+      return isRow(this) ? rowWidth(this) : 0
+    },
+  })
+  Object.defineProperty(proto, 'scrollWidth', {
+    configurable: true,
+    get() {
+      return isRow(this) ? count * step - (step - 26) + pad * 2 : 0
+    },
+  })
+  Object.defineProperty(Element.prototype, 'scrollLeft', {
+    configurable: true,
+    get() {
+      return scroll.get(this) ?? 0
+    },
+    set(value) {
+      scroll.set(this, value)
+    },
+  })
+  return () => {
+    proto.getBoundingClientRect = saved.rect
+    for (const [key, target] of [
+      ['clientWidth', proto],
+      ['scrollWidth', proto],
+      ['scrollLeft', Element.prototype],
+    ]) {
+      if (saved[key]) Object.defineProperty(target, key, saved[key])
+      else delete target[key]
+    }
+  }
+}
 
 // Three simple standalone tasks used across most tests
 const THREE_TASKS = [
@@ -358,6 +434,69 @@ describe('TaskProgressDots', () => {
       render(<TaskProgressDots compact tasks={TWELVE} currentTaskId={11} onDotClick={vi.fn()} />)
       expect(screen.queryAllByRole('button')).toHaveLength(0)
       expect(screen.getByTitle('Task progress')).toHaveTextContent('11/12')
+    })
+
+    // 12 compact dots, step 30 (26px dot + 4px gap). A 200px row holds 6 whole dots, so it is
+    // narrowed to 6*30-4+6 = 182px and can scroll 362-182 = 180px.
+    it('narrows the scrolling row to whole dots so none is cut in half', () => {
+      activeRestore = stubScrollLayout(200)
+      render(<TaskProgressDots compact tasks={TWELVE} currentTaskId={1} onDotClick={vi.fn()} />)
+      expect(screen.getByTitle('Task progress').style.maxWidth).toBe('182px')
+    })
+
+    it('starts at the beginning on task 1 (not scrolled to the end) and fades the right edge', () => {
+      activeRestore = stubScrollLayout(200)
+      render(<TaskProgressDots compact tasks={TWELVE} currentTaskId={1} onDotClick={vi.fn()} />)
+      const row = screen.getByTitle('Task progress')
+      expect(row.scrollLeft).toBe(0)
+      expect(row).toHaveAttribute('data-fade-right', 'true')
+      expect(row).not.toHaveAttribute('data-fade-left')
+    })
+
+    it('scrolls a late current task into view, by whole dots, and fades the left edge', () => {
+      activeRestore = stubScrollLayout(200)
+      render(<TaskProgressDots compact tasks={TWELVE} currentTaskId={11} onDotClick={vi.fn()} />)
+      const row = screen.getByTitle('Task progress')
+      expect(row.scrollLeft).toBe(180)
+      expect(row).toHaveAttribute('data-fade-left', 'true')
+      expect(row).not.toHaveAttribute('data-fade-right')
+    })
+
+    it('follows the current task when it changes', () => {
+      activeRestore = stubScrollLayout(200)
+      const { rerender } = render(
+        <TaskProgressDots compact tasks={TWELVE} currentTaskId={1} onDotClick={vi.fn()} />
+      )
+      const row = screen.getByTitle('Task progress')
+      expect(row.scrollLeft).toBe(0)
+      rerender(<TaskProgressDots compact tasks={TWELVE} currentTaskId={6} onDotClick={vi.fn()} />)
+      // Dot 6 sits at 150px; centring it in 182px and rounding to whole dots gives 60px.
+      expect(row.scrollLeft).toBe(60)
+      expect(row.scrollLeft % 30).toBe(0)
+    })
+
+    it('keeps the dot being viewed in view in solo mode', () => {
+      activeRestore = stubScrollLayout(200)
+      render(
+        <TaskProgressDots
+          compact
+          isSolo
+          tasks={TWELVE}
+          currentTaskId={11}
+          viewingTaskId={1}
+          onDotClick={vi.fn()}
+        />
+      )
+      expect(screen.getByTitle('Task progress').scrollLeft).toBe(0)
+    })
+
+    it('uses bigger, finger-sized dots on a touch device', () => {
+      touchDevice = true
+      activeRestore = stubRowWidth(2000)
+      render(<TaskProgressDots compact tasks={TWELVE} currentTaskId={1} onDotClick={vi.fn()} />)
+      const dot = screen.getAllByRole('button')[0]
+      expect(dot.style.width).toBe('34px')
+      expect(dot.style.height).toBe('34px')
     })
   })
 })

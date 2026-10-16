@@ -295,7 +295,12 @@ export default function StudentWorkspace({
         onScrubCommit={cs.handleScrubCommit}
         pyodideStatus={cs.pyodideStatus}
         errorLine={readOnly ? null : cs.errorLine}
-        lineHints={readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskLineHintSets(task)}
+        // Line hints are scaffolding: once the check passes they go, not linger after the code.
+        lineHints={
+          readOnly || isSandbox || cs.inPersonalSandbox || cs.checkPassed
+            ? null
+            : getTaskLineHintSets(task)
+        }
         // Locked lines (#@lock, puzzle.onlyEdit) show in every view, Go Live included.
         lockedLines={isSandbox || cs.inPersonalSandbox ? null : getTaskLockSets(task)}
         showBlocks={taskShowsBlocks(task)}
