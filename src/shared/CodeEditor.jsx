@@ -22,6 +22,8 @@ import {
 import { chooseLineHints } from './lineHints'
 import { lockedLinesExtension, setLockedLineSets } from './lockedLinesEditor'
 import { getPeekBandState, peekBandExtension, setPeekBand } from './peekBandEditor'
+import { setVariableLinks, variableLinksExtension } from './variableLinksEditor'
+import { variableLinksKey } from './variablesPanel/links.js'
 import { blockGuidesExtension } from './blockGuides'
 import { BadgeSignalsContext } from './badgeSignalsContext'
 import { useEditorScrub } from './scrub/useEditorScrub.jsx'
@@ -351,6 +353,9 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     // The #@peek "stopped here" band (./peekBandEditor.js): `{ line, missed }` for the code as
     // it is now (getPeekBand in ./variablesPanel/variablesPanel.js), or null. Shown read-only too.
     peekBand = null,
+    // Linked name tags (./variableLinksEditor.js, showVariables.link): `{ links: [{ name, number,
+    // colour }], active, onActive(name | null) }` or null. Shown read-only too.
+    variableLinks = null,
     onRunShortcut,
     // Fires on a document change the user made (see USER_EDIT_EVENTS), never on the external
     // value sync. Without it, the classroom's BadgeSignalsContext (if any) is told instead.
@@ -401,6 +406,11 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
   const lineHintsKey = useMemo(() => JSON.stringify(lineHints ?? []), [lineHints])
   // Compared by content too: callers build the lock sets inline.
   const lockedLinesKey = useMemo(() => JSON.stringify(lockedLines ?? []), [lockedLines])
+  const variableLinksRef = useRef(variableLinks)
+  variableLinksRef.current = variableLinks
+  const onVariableLinkActiveRef = useRef(null)
+  onVariableLinkActiveRef.current = variableLinks?.onActive ?? null
+  const variableLinksStateKey = `${variableLinksKey(variableLinks?.links)}|${variableLinks?.active ?? ''}`
   const peekBandKey = useMemo(
     () => JSON.stringify(peekBand ? { line: peekBand.line, missed: !!peekBand.missed } : null),
     [peekBand]
@@ -433,6 +443,7 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
           lineHintsExtension(),
           lockedLinesExtension(),
           peekBandExtension(),
+          variableLinksExtension({ onActiveRef: onVariableLinkActiveRef }),
           blockGuidesCompartment.of(blockGuidesFor(blockGuides)),
           scrubUi.extension,
           keymap.of([
@@ -573,6 +584,18 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     if (JSON.stringify(getPeekBandState(view.state)) === peekBandKey) return
     view.dispatch({ effects: setPeekBand.of(JSON.parse(peekBandKey)) })
   }, [peekBandKey, value])
+
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    const current = variableLinksRef.current
+    view.dispatch({
+      effects: setVariableLinks.of({
+        links: current?.links ?? [],
+        active: current?.active ?? null,
+      }),
+    })
+  }, [variableLinksStateKey])
 
   useEffect(() => {
     const view = viewRef.current

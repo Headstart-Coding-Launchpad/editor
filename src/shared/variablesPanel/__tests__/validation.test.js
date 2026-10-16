@@ -125,3 +125,15 @@ describe('validateVariablesPredictedCheck', () => {
     ).toContain('not Python variable names')
   })
 })
+
+describe('validateShowVariables link (P6-19)', () => {
+  it('accepts true or false and rejects anything else', () => {
+    expect(run({ showVariables: { mode: 'view', link: false } })).toEqual({
+      errors: [],
+      warnings: [],
+    })
+    expect(run({ showVariables: { mode: 'view', link: 'off' } }).errors).toEqual([
+      'Task 1 has showVariables link that is not true or false',
+    ])
+  })
+})

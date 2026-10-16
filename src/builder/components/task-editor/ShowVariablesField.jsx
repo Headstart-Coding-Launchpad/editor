@@ -93,6 +93,14 @@ export default function ShowVariablesField({ task, onUpdate }) {
                 />
                 Draw lists and dicts (colour swatches, bars, pictures, cards)
               </label>
+              <label className="te-check-toggle" style={{ alignSelf: 'flex-start' }}>
+                <input
+                  type="checkbox"
+                  checked={config.link !== false}
+                  onChange={(e) => onUpdate(updateShowVariables(task, { link: e.target.checked }))}
+                />
+                Link each tag to its variable in the code (same colour and number)
+              </label>
               {config.visuals !== false && (
                 <label style={s.label}>
                   A list drawn with grid() shows

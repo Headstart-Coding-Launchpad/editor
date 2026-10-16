@@ -24,6 +24,7 @@ import {
   targetToNode,
 } from './visuals.js'
 import ValueVisual from './ValueVisual.jsx'
+import { linkFor } from './links.js'
 
 // How much of a value shows before "Show all".
 const VALUE_CHARS = 48
@@ -50,6 +51,9 @@ const DICT_LIMIT = 8
  * - `audience`: 'student' (default) or 'tutor' (wording)
  * - `peekLine`: with `at: marker`, the line (as the editor numbers it) the values are shown
  *   just before — a "Values just before line N" header in every mode (getPanelPeekLine)
+ * - `links`: linked tags (getVariableLinks in ./links.js): each linked tag gets its colour and
+ *   number, as its variable does in the editor. `activeLink` is the name marked more strongly
+ *   (from either side); `onLinkActive(name | null)` reports hovering, focusing or tapping a tag
  *
  * Step-by-step players (Python slow-mo) also pass:
  * - `history`: `{ name: [earlier value nodes, newest first] }`, shown struck through on the tag
@@ -71,9 +75,19 @@ export default function NameTagPanel({
   pulseKey = null,
   pulse = true,
   peekLine = null,
+  links = null,
+  activeLink = null,
+  onLinkActive,
   style,
 }) {
   if (!config) return null
+  // The linked-tag props for one tag (see TagLink): its link, whether it is active, and the
+  // handlers that report hovering, focusing or tapping it.
+  const linkOf = (name) => {
+    const link = linkFor(links, name)
+    if (!link) return {}
+    return { link, linkActive: activeLink === name, onLinkActive }
+  }
   const snapshot = currentSnapshot(run)
   const vars = visibleVars(snapshot, config.hide)
   const results = predictions?.results ?? null
@@ -122,6 +136,7 @@ export default function NameTagPanel({
               readOnly={readOnly || !onPredictionChange}
               onChange={(text) => onPredictionChange?.(name, text)}
               onCommit={() => onPredictionCommit?.()}
+              {...linkOf(name)}
             />
           ))}
         </ul>
@@ -139,6 +154,7 @@ export default function NameTagPanel({
               changed={changed.has(name)}
               changedItems={changedItemSet(run, name)}
               options={options}
+              {...linkOf(name)}
             />
           ))}
         </ul>
@@ -157,6 +173,7 @@ export default function NameTagPanel({
               options={options}
               previous={history?.[entry.n] ?? null}
               stepping={history != null}
+              {...linkOf(entry.n)}
             />
           ))}
         </ul>
@@ -222,14 +239,45 @@ function PeekLineHeader({ line, missed = false }) {
   )
 }
 
-function TagTop({ name, node, changed, label }) {
+function TagTop({ name, node, changed, label, link = null }) {
   return (
     <div className="ntp-tag-top">
+      {link && (
+        <span className="ntp-link-number" aria-hidden="true">
+          {link.number}
+        </span>
+      )}
       {label ?? <span className="ntp-name">{name}</span>}
       {changed && <span className="ntp-changed">changed</span>}
       {node && <span className="ntp-type">{typeLabel(node)}</span>}
     </div>
   )
+}
+
+/**
+ * A linked tag's extra `<li>` props (showVariables.link): its colour as `--ntp-link`, the
+ * classes, and the handlers that report it to the editor — hovering (a tap on a tablet counts),
+ * or focus anywhere inside it (a predict tag's input). Empty for a tag without a link.
+ */
+function tagLinkProps({ name, link, linkActive, onLinkActive }) {
+  if (!link) return { className: '', style: undefined, handlers: {} }
+  const report = (next) => onLinkActive?.(next)
+  return {
+    className: ` has-link${linkActive ? ' is-link-active' : ''}`,
+    style: { '--ntp-link': link.colour },
+    handlers: {
+      'data-link-number': link.number,
+      onMouseEnter: () => report(name),
+      onMouseLeave: () => report(null),
+      onFocus: () => report(name),
+      onBlur: () => report(null),
+    },
+  }
+}
+
+// What screen readers hear about a tag's link: its number, matching the code's marks.
+function linkWords(link) {
+  return link ? `, marked ${link.number} in the code` : ''
 }
 
 // The tag's screen-reader words: a picture's summary, a Stage list's size, a table by row, a
@@ -250,7 +298,11 @@ function ValueTag({
   options,
   previous = null,
   stepping = false,
+  link = null,
+  linkActive = false,
+  onLinkActive,
 }) {
+  const linked = tagLinkProps({ name, link, linkActive, onLinkActive })
   const visual = chooseVisual(node, options)
   const earlier = Array.isArray(previous) ? previous.filter(Boolean) : []
   const changedWords = stepping ? ' (changed on this step)' : ' (changed since the last run)'
@@ -259,10 +311,14 @@ function ValueTag({
     : ''
   return (
     <li
-      className={`ntp-tag${changed ? ' is-changed' : ''}`}
-      aria-label={describeTag(name, node, visual) + (changed ? changedWords : '') + wasWords}
+      className={`ntp-tag${changed ? ' is-changed' : ''}${linked.className}`}
+      style={linked.style}
+      aria-label={
+        describeTag(name, node, visual) + linkWords(link) + (changed ? changedWords : '') + wasWords
+      }
+      {...linked.handlers}
     >
-      <TagTop name={name} node={node} changed={changed} />
+      <TagTop name={name} node={node} changed={changed} link={link} />
       <ValueView name={name} node={node} visual={visual} changedItems={changedItems} />
       {earlier.length > 0 && (
         <span className="ntp-history" aria-hidden="true">
@@ -289,21 +345,34 @@ function PredictTag({
   readOnly,
   onChange,
   onCommit,
+  link = null,
+  linkActive = false,
+  onLinkActive,
 }) {
+  const linked = tagLinkProps({ name, link, linkActive, onLinkActive })
   const inputId = useId()
   const verdictId = useId()
   const verdictKnown = revealed && result !== null
   const stateClass = verdictKnown ? (result ? ' is-right' : ' is-wrong') : ''
   return (
-    <li className={`ntp-tag ntp-tag--predict${stateClass}`}>
+    <li
+      className={`ntp-tag ntp-tag--predict${stateClass}${linked.className}`}
+      style={linked.style}
+      {...linked.handlers}
+    >
       <TagTop
         node={verdictKnown ? node : null}
+        link={link}
         label={
           readOnly ? (
-            <span className="ntp-name">{name}</span>
+            <span className="ntp-name">
+              {name}
+              {link && <span className="ntp-sr-only">{linkWords(link)}</span>}
+            </span>
           ) : (
             <label className="ntp-name" htmlFor={inputId}>
               {name}
+              {link && <span className="ntp-sr-only">{linkWords(link)}</span>}
             </label>
           )
         }
@@ -360,18 +429,32 @@ function PredictTag({
   )
 }
 
-function TargetTag({ name, target, node, ran, changed, changedItems, options }) {
+function TargetTag({
+  name,
+  target,
+  node,
+  ran,
+  changed,
+  changedItems,
+  options,
+  link = null,
+  linkActive = false,
+  onLinkActive,
+}) {
+  const linked = tagLinkProps({ name, link, linkActive, onLinkActive })
   const hit = ran && targetMatches(node, target)
   const stateClass = ran ? (hit ? ' is-right' : ' is-wrong') : ''
   const label = `${name}: target ${formatTargetValue(target)}, ${
     !ran ? 'not run yet' : node ? describeVariable(name, node) : 'not made yet'
-  }${ran ? (hit ? ', on target' : ', not on target yet') : ''}`
+  }${ran ? (hit ? ', on target' : ', not on target yet') : ''}${linkWords(link)}`
   return (
     <li
-      className={`ntp-tag ntp-tag--target${stateClass}${changed ? ' is-changed' : ''}`}
+      className={`ntp-tag ntp-tag--target${stateClass}${changed ? ' is-changed' : ''}${linked.className}`}
+      style={linked.style}
       aria-label={label}
+      {...linked.handlers}
     >
-      <TagTop name={name} node={node} changed={changed} />
+      <TagTop name={name} node={node} changed={changed} link={link} />
       <TargetValue name={name} target={target} options={options} />
       {ran &&
         (node ? (

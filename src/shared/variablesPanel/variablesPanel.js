@@ -28,7 +28,7 @@ export const SHOW_VARIABLES_TASK_FIELD = Object.freeze({
   name: 'showVariables',
   type: 'object',
   description:
-    'Name-tag panel showing what is in the variables after Run (off unless set): { mode: view | predict | target, at: end | marker (the #@peek line), hide: [names], predict: [names] (predict mode), target: { name: value } (target mode), visuals: true | false (lists and dicts drawn as swatches, bars, pictures and cards; default true), stageLists: picture | tiles | size (how a list drawn with grid() shows; default size), lockRun: true | false (predict mode: Run waits until every prediction is in, until the first Run; default true) }.',
+    'Name-tag panel showing what is in the variables after Run (off unless set): { mode: view | predict | target, at: end | marker (the #@peek line), hide: [names], predict: [names] (predict mode), target: { name: value } (target mode), visuals: true | false (lists and dicts drawn as swatches, bars, pictures and cards; default true), stageLists: picture | tiles | size (how a list drawn with grid() shows; default size), lockRun: true | false (predict mode: Run waits until every prediction is in, until the first Run; default true), link: true | false (each tag and its variable in the code share a colour and a number; default true) }.',
 })
 
 // Python names (identifiers), for author-given names.
@@ -53,10 +53,12 @@ function nameList(value) {
 
 /**
  * The task's `showVariables`, normalised: `{ mode, at, hide, predict, target, visuals,
- * stageLists, lockRun }`, or null when the task has no panel (the panel is off unless a task
+ * stageLists, lockRun, link }`, or null when the task has no panel (the panel is off unless a task
  * turns it on). `predict` is only kept in predict mode and `target` only in target mode.
  * `visuals` is false only when the task says so; `stageLists` is picture | tiles | size (default
- * size). `lockRun` is true only in predict mode, unless the task turns it off.
+ * size). `lockRun` is true only in predict mode, unless the task turns it off. `link` (each tag
+ * and its variable in the code share a colour and a number, ./links.js) is true unless the task
+ * turns it off.
  */
 export function getShowVariables(task) {
   const raw = task?.showVariables
@@ -71,6 +73,7 @@ export function getShowVariables(task) {
     visuals: raw.visuals !== false,
     stageLists: STAGE_LISTS_OPTIONS.includes(raw.stageLists) ? raw.stageLists : DEFAULT_STAGE_LISTS,
     lockRun: mode === 'predict' && raw.lockRun !== false,
+    link: raw.link !== false,
   }
 }
 
