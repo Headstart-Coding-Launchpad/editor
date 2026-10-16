@@ -8,6 +8,7 @@ import { MarkdownRenderer } from '../../shared/markdown'
 import BadgeAwardDialog from './badges/BadgeAwardDialog'
 import DropdownMenu from './student-modal/DropdownMenu'
 import JoiningStudentsList from './JoiningStudentsList'
+import ShareRequestsBanner from './ShareRequestsBanner'
 import ClassActivityStrip from './ClassActivityStrip'
 import CommonHintsStrip from './CommonHintsStrip'
 import ConfidenceSpreadStrip from './ConfidenceSpreadStrip'
@@ -229,11 +230,30 @@ export default function StudentGrid({
 
   if (collapsed) {
     const runCount = students.filter((s) => s.lastRunStatus != null).length
+    const helpCount = students.filter((st) => st.needsHelp).length
+    const shareCount = students.filter((st) => st.shareRequestedAt != null).length
 
+    // The whole rail opens the panel (a tablet folds the grid here by default), and the
+    // button at the top says so in words, not just an arrow.
     return (
-      <div style={s.collapsedWrap}>
-        <button style={s.collapseBtn} onClick={onToggle} title="Show Students">
-          ‹
+      <div
+        style={s.collapsedWrap}
+        onClick={onToggle}
+        data-testid="student-grid-rail"
+        title="Show the students panel"
+      >
+        <button
+          type="button"
+          style={s.collapseBtn}
+          onClick={(event) => {
+            event.stopPropagation()
+            onToggle?.()
+          }}
+          title="Show Students"
+          aria-label="Show the students panel"
+        >
+          <span aria-hidden="true">‹</span>
+          <span style={s.collapseBtnText}>Show</span>
         </button>
 
         <div style={s.collapsedStat}>
@@ -282,6 +302,20 @@ export default function StudentGrid({
           </div>
         )}
 
+        {/* Asks that need the tutor, so a folded panel never hides them. */}
+        {helpCount > 0 && (
+          <div style={s.collapsedStat} title="Students asking for help">
+            <span style={{ ...s.collapsedBadge, background: '#f59e0b' }}>{helpCount}</span>
+            <span style={s.collapsedStatLabel}>✋ help</span>
+          </div>
+        )}
+        {shareCount > 0 && (
+          <div style={s.collapsedStat} title="Students who want to share their work">
+            <span style={{ ...s.collapsedBadge, background: '#0d9488' }}>{shareCount}</span>
+            <span style={s.collapsedStatLabel}>📤 share</span>
+          </div>
+        )}
+
         {suggestionCount > 0 && (
           <div style={s.collapsedStat} title="Badge suggestions waiting">
             <span style={{ ...s.collapsedBadge, background: 'var(--colour-primary)' }}>
@@ -296,16 +330,127 @@ export default function StudentGrid({
     )
   }
 
+  // The header's ⋯ menu (occasional class actions).
+  const classMenu = (
+    <DropdownMenu
+      label="⋯"
+      caret={false}
+      buttonClassName=""
+      buttonStyle={s.moreBtn}
+      ariaLabel={
+        classMenuAttention ? 'More class actions (something needs attention)' : 'More class actions'
+      }
+      title="More class actions"
+      indicator={classMenuAttention}
+      panelStyle={s.menuPanel}
+    >
+      {(close) => (
+        <>
+          {showNudgeItem && (
+            <button
+              type="button"
+              style={s.menuItem}
+              disabled={awayCount === 0}
+              onClick={() => {
+                close()
+                handleNudgeAway()
+              }}
+              title="Flash the tab and chime for every student whose window isn't focused"
+            >
+              🔔 Nudge Away ({awayCount})
+            </button>
+          )}
+          {showSuggestionsItem && (
+            <button
+              type="button"
+              style={s.menuItem}
+              onClick={() => {
+                close()
+                onOpenBadgeSuggestions()
+              }}
+              title="Open the badge suggestions panel"
+              aria-label={`Badge suggestions: ${suggestionCount} pending`}
+            >
+              🏅 Suggestions ({suggestionCount})
+            </button>
+          )}
+          {showSelectItem && (
+            <button
+              type="button"
+              style={s.menuItem}
+              aria-pressed={selectMode}
+              onClick={() => {
+                close()
+                if (selectMode) exitSelectMode()
+                else setSelectMode(true)
+              }}
+              title="Select several students to award a badge to all of them at once"
+            >
+              {selectMode ? '☑ Done selecting' : '☑ Select'}
+            </button>
+          )}
+          {showRosterItem && (
+            <button
+              type="button"
+              style={s.menuItem}
+              onClick={() => {
+                close()
+                onOpenRoster()
+              }}
+              title="Match each student to their name on the class list"
+            >
+              👥 Match students
+            </button>
+          )}
+          {showReferenceItem && (
+            <button
+              type="button"
+              style={s.menuItem}
+              onClick={() => {
+                close()
+                setShowTopicsDialog(true)
+              }}
+              title="Open topic library"
+            >
+              📖 Reference
+            </button>
+          )}
+        </>
+      )}
+    </DropdownMenu>
+  )
+
+  // The status row under the title: count chips and Fullscreen All.
+  const hasStatusRow =
+    joiningCount > 0 ||
+    (!!onOpenRoster &&
+      (unmatchedCount > 0 || !!rosterStatus?.needsClass || carryWaitingIds.size > 0)) ||
+    (hasCheck && (passedCount > 0 || failedCount > 0)) ||
+    errorCount > 0 ||
+    nudgedAway ||
+    (!!onRequestFullscreenAll && students.length > 0)
+
   return (
     <div style={s.wrap}>
-      {/* One line, never wrapping: the title and count, Fullscreen All, a ⋯ menu for the
-          occasional class actions (its dot means someone is Away or a badge suggestion is
-          waiting) and the collapse arrow. */}
+      {/* Two rows, so nothing prints over the title at any panel width (HSC Audit, Visual
+          Review #3). The title line holds the title and count, a ⋯ menu for the occasional
+          class actions (its dot means someone is Away or a badge suggestion is waiting) and
+          the collapse arrow. The status row under it holds the count chips and Fullscreen
+          All, and wraps rather than overlapping. */}
       <div style={s.header}>
         <span style={s.label}>
           Students <span style={s.labelCount}>({students.length})</span>
         </span>
         <div style={s.headerRight}>
+          {hasClassMenu && classMenu}
+          <button style={s.toggleBtn} onClick={onToggle} title="Collapse Students">
+            ›
+          </button>
+        </div>
+      </div>
+
+      {hasStatusRow && (
+        <div style={s.statusRow} data-testid="student-grid-status-row">
           {joiningCount > 0 && (
             <span
               style={{ ...s.checkCountBadge, background: '#f59e0b' }}
@@ -364,6 +509,7 @@ export default function StudentGrid({
               ✓ Nudged
             </span>
           )}
+          <span style={s.statusSpacer} aria-hidden="true" />
           {onRequestFullscreenAll && students.length > 0 && (
             <button
               style={s.topicsBtn}
@@ -373,103 +519,17 @@ export default function StudentGrid({
               {fullscreenRequested ? '✓ Requested' : '⛶ Fullscreen All'}
             </button>
           )}
-          {hasClassMenu && (
-            <DropdownMenu
-              label="⋯"
-              caret={false}
-              buttonClassName=""
-              buttonStyle={s.moreBtn}
-              ariaLabel={
-                classMenuAttention
-                  ? 'More class actions (something needs attention)'
-                  : 'More class actions'
-              }
-              title="More class actions"
-              indicator={classMenuAttention}
-              panelStyle={s.menuPanel}
-            >
-              {(close) => (
-                <>
-                  {showNudgeItem && (
-                    <button
-                      type="button"
-                      style={s.menuItem}
-                      disabled={awayCount === 0}
-                      onClick={() => {
-                        close()
-                        handleNudgeAway()
-                      }}
-                      title="Flash the tab and chime for every student whose window isn't focused"
-                    >
-                      🔔 Nudge Away ({awayCount})
-                    </button>
-                  )}
-                  {showSuggestionsItem && (
-                    <button
-                      type="button"
-                      style={s.menuItem}
-                      onClick={() => {
-                        close()
-                        onOpenBadgeSuggestions()
-                      }}
-                      title="Open the badge suggestions panel"
-                      aria-label={`Badge suggestions: ${suggestionCount} pending`}
-                    >
-                      🏅 Suggestions ({suggestionCount})
-                    </button>
-                  )}
-                  {showSelectItem && (
-                    <button
-                      type="button"
-                      style={s.menuItem}
-                      aria-pressed={selectMode}
-                      onClick={() => {
-                        close()
-                        if (selectMode) exitSelectMode()
-                        else setSelectMode(true)
-                      }}
-                      title="Select several students to award a badge to all of them at once"
-                    >
-                      {selectMode ? '☑ Done selecting' : '☑ Select'}
-                    </button>
-                  )}
-                  {showRosterItem && (
-                    <button
-                      type="button"
-                      style={s.menuItem}
-                      onClick={() => {
-                        close()
-                        onOpenRoster()
-                      }}
-                      title="Match each student to their name on the class list"
-                    >
-                      👥 Match students
-                    </button>
-                  )}
-                  {showReferenceItem && (
-                    <button
-                      type="button"
-                      style={s.menuItem}
-                      onClick={() => {
-                        close()
-                        setShowTopicsDialog(true)
-                      }}
-                      title="Open topic library"
-                    >
-                      📖 Reference
-                    </button>
-                  )}
-                </>
-              )}
-            </DropdownMenu>
-          )}
-          <button style={s.toggleBtn} onClick={onToggle} title="Collapse Students">
-            ›
-          </button>
         </div>
-      </div>
+      )}
 
       <JoiningStudentsList joiningStudents={joiningStudents} onAdmit={onAdmitJoining} />
+      {onReadPendingShare && (
+        <ShareRequestsBanner
+          students={students}
+          onReview={handleExpand}
+          onDecline={onDeclineShare}
+        />
+      )}
 
       {students.length === 0 ? (
         <div style={s.empty}>
@@ -588,6 +648,7 @@ export default function StudentGrid({
           }))}
           decisions={session?.badges ?? {}}
           catalogueBadges={catalogueBadges}
+          suggestions={badgeSuggestions?.suggestions ?? []}
           taskId={session?.currentTaskId ?? null}
           onDecideBadge={onDecideBadge}
           onClose={() => setShowBadgeDialog(false)}
@@ -672,6 +733,7 @@ export default function StudentGrid({
           onDecideBadge={onDecideBadge}
           onRevokeBadge={onRevokeBadge}
           catalogueBadges={catalogueBadges}
+          badgeSuggestions={badgeSuggestions?.suggestions ?? []}
           sideQuestViewRequest={sideQuestViewRequest}
           rosterName={rosterStatus?.namesByStudent?.[expandedStudent.anonymousId] ?? null}
           typingEntries={
@@ -714,8 +776,21 @@ const s = {
     alignItems: 'center',
     flexWrap: 'nowrap',
     justifyContent: 'flex-end',
-    minWidth: 0,
+    flexShrink: 0,
   },
+  // Under the title: the count chips (left) and Fullscreen All (right). Wraps onto a second
+  // line in a narrow panel instead of overlapping.
+  statusRow: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    padding: '6px 10px',
+    background: 'var(--colour-primary-dark)',
+    color: '#fff',
+    flexShrink: 0,
+  },
+  statusSpacer: { flex: 1, minWidth: 0 },
   label: {
     fontFamily: 'var(--font-title)',
     fontWeight: 700,
@@ -858,21 +933,30 @@ const s = {
     borderLeft: '1px solid #e5e7eb',
     paddingTop: 8,
     gap: 8,
+    cursor: 'pointer',
   },
+  // At least 40px each way, so it is easy to tap on a tablet.
   collapseBtn: {
     background: 'var(--colour-primary)',
     border: 'none',
     color: '#fff',
     fontSize: '1.1rem',
     cursor: 'pointer',
-    width: 28,
-    height: 28,
-    borderRadius: 4,
+    width: 40,
+    minHeight: 44,
+    borderRadius: 6,
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 0,
+    gap: 1,
+    padding: '4px 0',
     lineHeight: 1,
+  },
+  collapseBtnText: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.62rem',
+    fontWeight: 700,
   },
   collapsedLabel: {
     writingMode: 'vertical-rl',
@@ -907,8 +991,9 @@ const s = {
   },
   collapsedStatLabel: {
     fontFamily: 'var(--font-body)',
-    fontSize: '0.6rem',
-    color: '#9ca3af',
+    fontSize: '0.68rem',
+    fontWeight: 600,
+    color: 'var(--colour-muted)',
     textAlign: 'center',
   },
 }

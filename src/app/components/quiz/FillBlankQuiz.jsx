@@ -243,7 +243,10 @@ export default function FillBlankQuiz({
             onDragOver={dnd.handlePoolDragOver}
             onDrop={(event) => dnd.handlePoolDrop(event, state, publishState)}
           >
-            <div style={sm.poolLabel}>Answer bank</div>
+            <div style={sm.poolHeader}>
+              <span style={sm.poolLabel}>Answer bank</span>
+              {!blocked && <span style={sm.poolHow}>Tap a word, then tap a gap. Or drag it.</span>}
+            </div>
             <div style={sm.poolTiles}>
               {tilePool
                 .filter((t) => !placedIds.has(t.id))

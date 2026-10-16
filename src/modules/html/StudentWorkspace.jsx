@@ -99,8 +99,9 @@ export default function StudentWorkspace({
     : null
   // Live scrubbing of CSS and attribute values (task `scrub`, src/shared/scrub/).
   const scrub = readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskScrub(task)
+  // Line hints are scaffolding: once the check passes they go, not linger after the code.
   const lineHintSetsFor =
-    readOnly || isSandbox || cs.inPersonalSandbox
+    readOnly || isSandbox || cs.inPersonalSandbox || cs.checkPassed
       ? undefined
       : (fileName) => getTaskLineHintSets(task, fileName)
   useRemoteRunTrigger(cs.remoteRunToken, () => cs.handleRun(), {
@@ -173,7 +174,7 @@ export default function StudentWorkspace({
             lineHintSetsFor={lineHintSetsFor}
             scrub={scrub}
             onScrubPreview={cs.scrubPreview}
-            onScrubCommit={cs.recordScrub}
+            onScrubCommit={cs.handleScrubCommit}
             onRunShortcut={
               readOnly || task?.interactionMode === 'submit' ? undefined : cs.handleRun
             }
@@ -251,7 +252,7 @@ export default function StudentWorkspace({
               lineHintSetsFor={lineHintSetsFor}
               scrub={scrub}
               onScrubPreview={cs.scrubPreview}
-              onScrubCommit={cs.recordScrub}
+              onScrubCommit={cs.handleScrubCommit}
               onRunShortcut={
                 readOnly || task?.interactionMode === 'submit' ? undefined : cs.handleRun
               }

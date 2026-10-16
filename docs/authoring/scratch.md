@@ -13,12 +13,12 @@ id: scratch-motion
 type: composed
 title: Moving Sprites
 description: Move sprites around the stage.
-level: 1
+levelId: scratch-level-1
 modules:
   - id: scratch-practice
     type: scratch
     sandbox:
-      sandboxStarter: null         # optional — Blockly workspace state for this sandbox
+      sandboxStarter: null         # optional — Blockly workspace state for this sandbox (an object or a JSON string)
       sandboxToolbox: "<xml>...</xml>"   # optional — Scratch XML toolbox
       sandboxSprites: []                 # optional — sprite array
       sandboxBackdrops: []               # optional — backdrop array
@@ -33,7 +33,7 @@ modules:
     moduleType: scratch
     moduleId: scratch-practice # optional — omit when one Scratch workspace is enough
     explainer: Make the sprite move to the right.
-    toolbox: "<xml>...</xml>" # optional — restricts available blocks; empty/omitted = full toolbox
+    toolbox: "<xml>...</xml>" # optional — restricts available blocks; empty/omitted = full toolbox (sprites only: Stage code always gets the full Stage toolbox)
     sprites:                  # optional — defaults to one cat sprite
       - id: sprite1
         name: Rocket
@@ -88,7 +88,7 @@ modules:
 
 ## Sprite Object
 
-**Stage object:** `role` may be `starter`, `support`, or `complete`; omitted `role` defaults to `support`. The first Starter is the default, and teachers may apply any Starter to a class or individual learner. Starter stages carry `blocks`, `predefinedBlocks`, and `prebuiltStacks`. Every Support stage is an offerable read-only reference and carries two fields with different jobs:
+**Stage object:** `role` may be `starter`, `support`, or `complete`; omitted `role` defaults to `support`. The first Starter is the default, and teachers may apply any Starter to a class or individual learner. Starter stages carry `blocks` and `prebuiltStacks` (`predefinedBlocks` is a legacy name, still read; use `prebuiltStacks`). Every Support stage is an offerable read-only reference and carries two fields with different jobs:
 
 | Support stage field | What it's for | If it's missing |
 | --- | --- | --- |
@@ -109,9 +109,11 @@ sprites:
     visible: true             # optional — initial visibility (default true)
     rotationStyle: all around # optional — all around | left-right | don't rotate
     costume: rocket           # optional — initial costume name
-    costumes:                 # optional — image costumes
+    costumes:                 # optional — each costume is an image or an emoji
       - name: rocket
         image: sprites/rocket.png   # relative to assetsPath, or /assets/shared/...
+      - name: boom
+        emoji: "💥"           # an emoji costume: { name, emoji }, no image
     emoji: "🚀"               # optional — emoji rendered on stage when no costume image is active
     sounds:                   # optional — this sprite's sounds; omitted = pop, meow, click, chime
       - name: launch
@@ -140,6 +142,7 @@ sound has a `name` and exactly one source:
 Validation errors on a sound with no name, two sounds with the same name on one sprite, a
 sound with both or neither of `synth`/`audio`, or an unknown `synth` id. Sound names in
 `starterBlocks`/`completeBlocks` (the `SOUND_MENU` field) must match the sprite's sound names.
+Validation doesn't check this, so test the blocks in the Builder.
 
 ---
 
@@ -295,7 +298,7 @@ the key `__stage__`.
 Use that object (or its JSON string) as `starterBlocks`, `completeBlocks`, or a
 stage’s `blocks` value; the Builder and CLI serialise it when saving. For example, this support stage supplies a connected
 green-flag-and-say stack for `sprite1` (loaded if the stage replaces the student's work) plus
-the `markdown` the student reads in the reference panel; a `solution` stage uses the identical
+the `markdown` the student reads in the reference panel; a `complete` stage uses the identical
 `blocks` shape and differs only in `role`.
 
 ```json
@@ -374,9 +377,9 @@ shadow) offers "random position", "mouse pointer", and every sprite on stage:
 | `_mouse_` | mouse pointer |
 | a sprite's `id` (e.g. `sprite1`, `rocket` — see `sprites[].id` above; not the display `name`) | that sprite |
 
-The same `_random_` / `_mouse_` / sprite-`id` shape also backs
-`control_create_clone_of`'s `CLONE_OPTION` (which adds a `_myself_` option
-instead of `_random_`), `sensing_touchingobject`'s `TOUCHINGOBJECTMENU`
+A similar shape backs `control_create_clone_of`'s `CLONE_OPTION`, which takes
+only `_myself_` or a sprite `id` (no `_random_` and no `_mouse_`),
+`sensing_touchingobject`'s `TOUCHINGOBJECTMENU`
 (which adds `_edge_`), and `sensing_distanceto`'s `DISTANCETOMENU` (no
 `_random_` option). A costume/backdrop-target menu —
 `looks_switchcostumeto`'s `COSTUME`, `looks_switchbackdropto` /
@@ -486,7 +489,7 @@ Both are off by default, and the Stage (with `enableStageCode`) always shows onl
 - `showSoundsTab` — a **Sounds** tab listing the sprite's sounds with a ▶ preview.
   `allowAddSound` adds an **+ Add sound** button offering every built-in synth sound plus the
   admin sound-file library (`lessonTypeAssets/scratch.defaultSounds`, managed in Admin → Shared
-  Assets → Scratch → Default sounds, or `lessons assets upload-sound scratch <file>`). An added
+  Assets → Scratch → Default sounds, or `node cli/cli.mjs assets upload-sound scratch <file>`). An added
   sound appears in that sprite's sound blocks immediately.
 
 Students can add costumes and sounds to **any** sprite, including author-placed ones. Added
@@ -604,7 +607,11 @@ fields or keys, and a `slowMo` with no `enabled`.
 
 ## Scratch Check Types
 
-Scratch checks can be a single object or an array. Prefer `evaluation: after_block_placed` for block-structure checks that can pass while the learner edits, and `evaluation: after_run` for checks that need the green flag/run state. `manual` is a legacy value and should not be used in new lessons.
+Scratch checks can be a single object or an array. Every Scratch check type on this page is listed by `node cli/cli.mjs lessons capabilities`, and a misspelt Scratch check type fails validation. Prefer `evaluation: after_block_placed` for block-structure checks that can pass while the learner edits, and `evaluation: after_run` for checks that need the green flag/run state. `manual` is a legacy value and should not be used in new lessons.
+
+- **Leaving `evaluation` out means `after_run`.** The Builder shows the same default.
+- **Only `block_used`, `blocks_in_order` and `block_count` can use `evaluation: after_block_placed`.** They are the checks decided by the blocks alone. Any other type (`sprite_property`, `variable_compare`, `block_run`, …) needs a run, so validation rejects it with `after_block_placed`.
+- **Mixed lists: every check must pass.** You can mix `after_block_placed` and `after_run` checks in one list. While the learner edits, the `after_block_placed` checks are judged as they build. When the learner runs the project, **every** check in the list is judged, block checks included (against the blocks as they are now), so a missing block can't pass on a run alone.
 
 Students should not see a failure just because they are still building. `after_block_placed` checks can pass as soon as the workspace is correct; off-track feedback should be modelled as a nudge/authoring warning rather than a hard fail while the learner is mid-edit.
 
@@ -686,9 +693,10 @@ check:
   evaluation: after_run
   spriteName: Rocket
   property: x          # x | y | size | direction | visible | costume
-  operator: greater_than   # equals | greater_than | less_than
+  operator: greater_than   # equals | not_equals | greater_than | greater_than_or_equal | less_than | less_than_or_equal
   value: 50
 ```
+The four "bigger/smaller" operators need numbers; `costume` (a name) works with `equals` and `not_equals` only.
 
 ### `sprite_property_delta`
 ```yaml
@@ -696,10 +704,12 @@ check:
   type: sprite_property_delta
   evaluation: after_run
   spriteName: Rocket
-  property: x          # x | y | size | direction | visible | costume
-  operator: greater_than   # equals | greater_than | less_than
+  property: x          # x | y | size | direction
+  operator: greater_than   # equals | not_equals | greater_than | greater_than_or_equal | less_than | less_than_or_equal
   value: 10
 ```
+The change is a number, so use it with `x`, `y`, `size` or `direction` only: with `costume` it always fails. For "the costume must switch", use `sprite_property_changed`.
+
 Compares the change in `property` between the state just before Run and the state after Run finishes — use this for "moved by at least N" style checks rather than an absolute position.
 
 ### `sprite_property_changed`
@@ -727,10 +737,10 @@ check:
   type: variable_compare
   evaluation: after_run
   variableName: score
-  operator: greater_than   # equals | greater_than | less_than
+  operator: greater_than   # equals | not_equals | greater_than | greater_than_or_equal | less_than | less_than_or_equal
   value: 5
 ```
-Use `variable_compare` for non-equality operators; `variable_equals` is legacy but still supported.
+Use `variable_compare` for non-equality operators; `variable_equals` is legacy but still supported. The field is `variableName`: a `variable_compare` written with `name:` instead fails validation (it would otherwise never pass).
 
 ### `blocks_in_order`
 ```yaml
@@ -760,7 +770,7 @@ check:
   operator: equals
   value: 3
 ```
-`block_count` counts blocks by opcode only. It doesn't use `fieldValues`. With a list of
+`operator` is one of `equals`, `not_equals`, `greater_than`, `greater_than_or_equal`, `less_than`, `less_than_or_equal`. The live check (while the learner builds and on Run) and `test-checks` support the same six. `block_count` counts blocks by opcode only. It doesn't use `fieldValues`. With a list of
 opcodes, for example `opcode: [motion_turnright, motion_turnleft]`, it counts the blocks of
 every listed opcode together: one turn right and two turn lefts count as 3. `fieldValues` on a
 long-form entry are ignored here too, and validation warns about them.
@@ -807,7 +817,8 @@ For demo tasks ("press the green flag and watch"): passes once the learner has p
 the moment the flag is pressed, so a project with a `forever` loop, or one the learner stops,
 still completes. Scratch has no error status, so `requireSuccess` is ignored (the validator warns).
 Leave `evaluation` unset; `after_block_placed` is rejected. It is a completion check only, and
-combines with block checks in a list. `test-checks` reports it as skipped (it needs a run). Full
+combines with block checks in a list: then the flag press alone isn't enough, and the block checks
+must pass too (judged against the blocks when the flag is pressed). `test-checks` reports it as skipped (it needs a run). Full
 reference: [python.md](python.md#run-attempted-check-run_attempted).
 
 ```yaml
@@ -1047,9 +1058,12 @@ Use these blocks:
 
 | Pattern | Meaning |
 |---|---|
-| `move [] steps` | Numeric or text input slot |
-| `if <> then` | Boolean input slot |
-| `set [score] to []` | Dropdown or variable field + input slot |
+| `move (10) steps` | Number input: round brackets with a value |
+| `say [Hello!]` | Text input: square brackets with the text |
+| `if <touching [edge]?> then` | Boolean input slot |
+| `set [score] to (0)` | Dropdown or variable field + input |
+
+Always put a value in the brackets. An empty `[]` doesn't match any block, so it draws a grey "unknown" block (see [Scratch Markdown Block Reference](scratch-markdown-blocks.md)).
 | `key [space] pressed?` | Dropdown value |
 
 Inline Scratch blocks must use the `scratch:` prefix. Fenced `scratch` code blocks are the right format for full stacks, nested C-block mouths, and reporter/Boolean inputs. See `docs/authoring/markdown-renderer.md` for the full Scratch block rendering reference.

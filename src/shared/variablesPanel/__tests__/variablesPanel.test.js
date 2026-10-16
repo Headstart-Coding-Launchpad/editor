@@ -42,6 +42,7 @@ describe('getShowVariables', () => {
       visuals: true,
       stageLists: 'size',
       lockRun: false,
+      link: true,
     })
     expect(
       getShowVariables({
@@ -56,6 +57,7 @@ describe('getShowVariables', () => {
       visuals: true,
       stageLists: 'size',
       lockRun: true,
+      link: true,
     })
     expect(
       getShowVariables({ showVariables: { mode: 'view', predict: ['a'], target: { a: 1 } } })

@@ -13,6 +13,7 @@ import {
   normaliseDirPath,
 } from './filesystem.js'
 import { resolveAssetFileUrl } from '../../shared/assetPaths.js'
+import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
 
 const ICON_DIR = '📁'
 const ICON_FILE = '📄'
@@ -476,18 +477,30 @@ function AddressBar({ currentDir, onNavigate }) {
     if (i > 0) accumulated = target
     return { label: part === '/' ? 'root' : part, target }
   })
+  // A labelled path box, not bare text: a lone "root" at the end of the toolbar read as stray
+  // text (HSC Audit 13).
   return (
     <div
+      aria-label="Current folder"
       style={{
         display: 'flex',
         alignItems: 'center',
+        flexWrap: 'wrap',
         gap: 2,
         fontSize: '0.8rem',
         fontFamily: 'var(--font-body)',
         color: 'var(--colour-text)',
         flex: 1,
+        minWidth: 140,
+        padding: '4px 10px',
+        border: '1px solid var(--ui-border)',
+        borderRadius: 6,
+        background: '#fff',
       }}
     >
+      <span aria-hidden="true" style={{ marginRight: 4 }}>
+        📂
+      </span>
       {crumbs.map((c, i) => (
         <span key={c.target} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           {i > 0 && <span style={{ color: '#9ca3af' }}>/</span>}
@@ -533,6 +546,11 @@ export default function FilesystemTask({
   const [contextMenu, setContextMenu] = useState(null) // { x, y, targetPath }
   const [clipboard, setClipboard] = useState(null) // { path, mode: 'copy' | 'cut' }
   const [statusMessage, setStatusMessage] = useState(null)
+  // Toolbar buttons were about 24px tall: too small for a finger (HSC Audit 13).
+  const isTouchDevice = useIsTouchDevice()
+  const toolBtnStyle = isTouchDevice
+    ? { fontSize: '0.85rem', padding: '8px 12px', minHeight: 40 }
+    : { fontSize: '0.8rem', padding: '4px 10px', minHeight: 30 }
 
   // Auto-dismiss the status message after a few seconds.
   useEffect(() => {
@@ -845,8 +863,8 @@ export default function FilesystemTask({
         }}
       >
         <button
-          className="btn-ghost-outline"
-          style={{ fontSize: '0.78rem', padding: '3px 10px' }}
+          className="btn-ghost-outline fs-tool-btn"
+          style={toolBtnStyle}
           onClick={handleGoUp}
           disabled={currentDir === '/'}
           aria-label="Go up one folder"
@@ -856,37 +874,32 @@ export default function FilesystemTask({
         {!disabled && (
           <>
             <button
-              className="btn-ghost-outline"
-              style={{ fontSize: '0.78rem', padding: '3px 10px' }}
+              className="btn-ghost-outline fs-tool-btn"
+              style={toolBtnStyle}
               onClick={() => setCreating('folder')}
               disabled={creating !== null}
             >
               📁 New Folder
             </button>
             <button
-              className="btn-ghost-outline"
-              style={{ fontSize: '0.78rem', padding: '3px 10px' }}
+              className="btn-ghost-outline fs-tool-btn"
+              style={toolBtnStyle}
               onClick={() => setCreating('file')}
               disabled={creating !== null}
             >
               📄 New File
             </button>
             <button
-              className="btn-ghost-outline"
-              style={{ fontSize: '0.78rem', padding: '3px 10px' }}
+              className="btn-ghost-outline fs-tool-btn"
+              style={toolBtnStyle}
               disabled={!selected || renamingPath !== null}
               onClick={() => setRenamingPath(selected)}
             >
               ✏️ Rename
             </button>
             <button
-              className="btn-ghost-outline"
-              style={{
-                fontSize: '0.78rem',
-                padding: '3px 10px',
-                color: '#dc2626',
-                borderColor: '#fca5a5',
-              }}
+              className="btn-ghost-outline fs-tool-btn fs-tool-btn--danger"
+              style={toolBtnStyle}
               disabled={!selected || selected === '/'}
               onClick={handleDelete}
             >
@@ -901,24 +914,24 @@ export default function FilesystemTask({
               }}
             />
             <button
-              className="btn-ghost-outline"
-              style={{ fontSize: '0.78rem', padding: '3px 10px' }}
+              className="btn-ghost-outline fs-tool-btn"
+              style={toolBtnStyle}
               disabled={!selected || selected === '/'}
               onClick={() => handleCopy(selected)}
             >
               📄 Copy
             </button>
             <button
-              className="btn-ghost-outline"
-              style={{ fontSize: '0.78rem', padding: '3px 10px' }}
+              className="btn-ghost-outline fs-tool-btn"
+              style={toolBtnStyle}
               disabled={!selected || selected === '/'}
               onClick={() => handleCut(selected)}
             >
               ✂️ Cut
             </button>
             <button
-              className="btn-ghost-outline"
-              style={{ fontSize: '0.78rem', padding: '3px 10px' }}
+              className="btn-ghost-outline fs-tool-btn"
+              style={toolBtnStyle}
               disabled={!clipboard}
               onClick={() => handlePaste()}
             >

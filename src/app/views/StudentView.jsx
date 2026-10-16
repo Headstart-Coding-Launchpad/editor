@@ -1467,38 +1467,42 @@ export default function StudentView({
   const teacherLiveWorkspace = myStudentTeacherEdit?.teacherLiveWorkspace ?? null
   const teacherLiveArcadeDesign = myStudentTeacherEdit?.teacherLiveArcadeDesign ?? null
 
-  const taskProgressControl = !isSandbox ? (
-    <TaskProgressDots
-      compact
-      tasks={visibleTasks}
-      currentTaskId={currentTaskId}
-      viewingTaskId={viewingTaskId}
-      isSolo={isSolo}
-      pseudoTask={
-        explainerPseudoTask
-          ? {
-              id: explainerPseudoTask.id,
-              title: explainerPseudoTask.title,
-              beforeTaskId: currentTaskId,
-            }
-          : null
-      }
-      canSelectTask={(id) => {
-        if (!isSolo) return true
-        const idIdx = flatTasks.findIndex((t) => t.id === id)
-        return (
-          allowUnrestrictedTaskNavigation || idIdx <= currentIndex || idIdx === currentIndex + 1
-        )
-      }}
-      onDotClick={(id) => {
-        if (isSolo) {
-          if (id !== currentTaskId || viewingExplainerSlide) handleSoloNavigate(id)
-        } else if (id < currentTaskId) {
-          setViewingTaskId(id === currentTaskId ? null : id)
+  // A playground is one open coding space, not a lesson: no task dots (an unlabelled orange "1")
+  // and no "Previous / Task 1 of 1 / Next".
+  const isPlayground = !!(lessonProp?.isPlayground || lesson?.isPlayground)
+  const taskProgressControl =
+    !isSandbox && !isPlayground ? (
+      <TaskProgressDots
+        compact
+        tasks={visibleTasks}
+        currentTaskId={currentTaskId}
+        viewingTaskId={viewingTaskId}
+        isSolo={isSolo}
+        pseudoTask={
+          explainerPseudoTask
+            ? {
+                id: explainerPseudoTask.id,
+                title: explainerPseudoTask.title,
+                beforeTaskId: currentTaskId,
+              }
+            : null
         }
-      }}
-    />
-  ) : null
+        canSelectTask={(id) => {
+          if (!isSolo) return true
+          const idIdx = flatTasks.findIndex((t) => t.id === id)
+          return (
+            allowUnrestrictedTaskNavigation || idIdx <= currentIndex || idIdx === currentIndex + 1
+          )
+        }}
+        onDotClick={(id) => {
+          if (isSolo) {
+            if (id !== currentTaskId || viewingExplainerSlide) handleSoloNavigate(id)
+          } else if (id < currentTaskId) {
+            setViewingTaskId(id === currentTaskId ? null : id)
+          }
+        }}
+      />
+    ) : null
 
   const topBarRight = teacherPresentation ? (
     <div style={s.presentationControls}>
@@ -1508,7 +1512,7 @@ export default function StudentView({
         variant="presentation"
       />
       <button
-        className="btn-ghost"
+        className="btn-ghost presentation-header-btn"
         style={s.presentationBtn}
         disabled={currentIndex <= 0}
         onClick={() => handleSoloNavigate(flatTasks[currentIndex - 1]?.id)}
@@ -1521,7 +1525,7 @@ export default function StudentView({
         Task {currentIndex + 1} / {flatTasks.length}
       </span>
       <button
-        className="btn-ghost"
+        className="btn-ghost presentation-header-btn"
         style={s.presentationBtn}
         disabled={currentIndex >= flatTasks.length - 1}
         onClick={() => handleSoloNavigate(flatTasks[currentIndex + 1]?.id)}
@@ -1531,7 +1535,7 @@ export default function StudentView({
         Next ›
       </button>
       <button
-        className={isTeacherLiveActive ? 'btn-danger' : 'btn-primary'}
+        className={`${isTeacherLiveActive ? 'btn-danger' : 'btn-primary'} presentation-header-btn`}
         style={s.presentationBtn}
         onClick={handleToggleTeacherLive}
         aria-label={isTeacherLiveActive ? 'Stop Live to Students' : 'Go Live to Students'}
@@ -1548,7 +1552,7 @@ export default function StudentView({
           <button
             key={opt.key}
             type="button"
-            className="btn-ghost"
+            className="btn-ghost presentation-header-btn"
             style={s.presentationBtn}
             aria-pressed={presenterLayout === opt.key}
             title={opt.full}
@@ -1586,12 +1590,13 @@ export default function StudentView({
           onClick={sharePending ? handleCancelShare : handleShareWorkspace}
           title={
             sharePending
-              ? 'Waiting for your teacher to check it — click to withdraw'
-              : 'Offer your work to the class (your teacher approves it first)'
+              ? 'Your tutor is checking it before the class sees it. Tap to take it back.'
+              : 'Offer your work to the class (your tutor checks it first)'
           }
-          aria-label={sharePending ? 'Waiting for teacher' : 'Share with class'}
+          aria-label={sharePending ? 'Waiting for your tutor to approve' : 'Share with class'}
         >
-          {sharePending ? '⏳ Waiting' : '📤 Share'}
+          {/* Says who it is waiting for: a bare "⏳ Waiting" left students guessing. */}
+          {sharePending ? '⏳ Tutor checking…' : '📤 Share'}
         </button>
       )}
       {canSeeSharedWork && (
@@ -1628,7 +1633,7 @@ export default function StudentView({
           </button>
         )
       )}
-      {isSolo && (
+      {isSolo && !isPlayground && (
         <SoloNav
           flatTasks={flatTasksForNav}
           currentIndex={currentIndexForNav}
@@ -1656,9 +1661,11 @@ export default function StudentView({
     <div style={{ ...s.page, background: isForcedTeacherLive ? '#dde0e5' : '#f5f5f5' }}>
       {isPaused && (
         <div style={s.pauseOverlay}>
-          <span style={s.pauseIcon}>⏸</span>
+          <span style={s.pauseIcon} aria-hidden="true">
+            ⏸
+          </span>
           <h2 style={s.pauseTitle}>Coding Paused</h2>
-          <p style={s.pauseSubtitle}>Your teacher will resume the session shortly</p>
+          <p style={s.pauseSubtitle}>Your tutor will be back in a moment.</p>
         </div>
       )}
       <TopBar
@@ -2181,7 +2188,7 @@ const s = {
   presentationControls: {
     display: 'flex',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     flexWrap: 'nowrap',
     justifyContent: 'flex-end',
     minWidth: 0,
@@ -2268,11 +2275,18 @@ const s = {
     gap: 12,
     zIndex: 999,
   },
+  // A solid white disc behind the ⏸ so it reads on the purple (the bare glyph was pale).
   pauseIcon: {
-    fontSize: '3rem',
+    width: 84,
+    height: 84,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#fff',
+    color: 'var(--colour-primary)',
+    fontSize: '2.6rem',
     lineHeight: 1,
-    color: '#fff',
-    opacity: 0.8,
   },
   pauseTitle: {
     fontFamily: 'var(--font-title)',
@@ -2283,8 +2297,8 @@ const s = {
   },
   pauseSubtitle: {
     fontFamily: 'var(--font-body)',
-    fontSize: '1rem',
-    color: 'rgba(255,255,255,0.75)',
+    fontSize: '1.1rem',
+    color: 'rgba(255,255,255,0.92)',
     margin: 0,
   },
   consentOverlay: {

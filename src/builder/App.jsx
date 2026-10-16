@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 import { fetchLessonList } from '../shared/lessonService'
@@ -187,8 +187,16 @@ export default function BuilderApp() {
 }
 
 function LessonTypeChooser({ onChoose, onUpload }) {
-  const { role } = useAuth()
+  const { role, user } = useAuth()
+  const navigate = useNavigate()
   const [firestoreOpen, setFirestoreOpen] = useState(false)
+
+  // A way back (HSC Audit, Visual Review 27): to the page the tutor came from, or, when the
+  // Builder opened in its own tab, the Admin Portal (admins) or the home page.
+  function handleBack() {
+    if (window.history.length > 1) navigate(-1)
+    else navigate(role === 'admin' ? '/admin' : '/')
+  }
 
   function handleUpload() {
     const input = document.createElement('input')
@@ -215,27 +223,37 @@ function LessonTypeChooser({ onChoose, onUpload }) {
   return (
     <div style={s.centreScreen}>
       <div style={{ ...s.card, ...s.choiceCard }} className="card">
-        <div style={s.cardHeader}>
-          <span style={s.logo}>Headstart Coding - LaunchPad | Lesson Builder</span>
+        <div style={{ ...s.cardHeader, ...s.cardHeaderRow }}>
+          <button type="button" style={s.backBtn} onClick={handleBack} aria-label="Back">
+            ← Back
+          </button>
+          <span style={{ ...s.logo, flex: 1, minWidth: 0 }}>
+            Headstart Coding - LaunchPad | Lesson Builder
+          </span>
+          {user && (
+            <button type="button" style={s.backBtn} onClick={() => navigate('/account')}>
+              Account
+            </button>
+          )}
         </div>
         <div style={s.cardBody}>
           <div>
             <h1 style={s.choiceTitle}>Create a lesson</h1>
             <p style={s.choiceText}>
-              Add the coding environments you need as lesson modules, in any order.
+              A lesson can use several kinds of task (Python, Scratch, HTML and more), in any order.
             </p>
           </div>
           <div style={s.choiceGrid}>
             <button style={s.choiceButton} onClick={onChoose}>
-              <span style={s.choiceName}>Create composed lesson</span>
+              <span style={s.choiceName}>Create a lesson with several module types</span>
               <span style={s.choiceDescription}>
-                Start with an empty lesson, then add {MODULE_LABEL_LIST} modules.
+                Start with an empty lesson, then add {MODULE_LABEL_LIST} tasks.
               </span>
             </button>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn-ghost-outline" style={s.uploadBtn} onClick={handleUpload}>
-              Upload existing JSON
+              Open a lesson file (JSON)
             </button>
             {role === 'admin' && (
               <button
@@ -449,6 +467,20 @@ const s = {
   cardHeader: {
     background: 'var(--colour-primary)',
     padding: '20px 24px 16px',
+  },
+  cardHeaderRow: { display: 'flex', alignItems: 'center', gap: 12 },
+  backBtn: {
+    background: 'rgba(255,255,255,0.15)',
+    border: '1px solid rgba(255,255,255,0.4)',
+    color: '#fff',
+    borderRadius: 6,
+    padding: '6px 12px',
+    minHeight: 36,
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    flexShrink: 0,
   },
   logo: {
     fontFamily: 'var(--font-title)',

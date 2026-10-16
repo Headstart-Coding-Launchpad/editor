@@ -120,3 +120,24 @@ describe('scrubExtension', () => {
     expect(commitScrub(view, session)).toBe(false)
   })
 })
+
+// P6-24: every scrubbable number is marked without hovering, in the shared "you can change
+// this" look (src/shared/editableValueStyle.js).
+describe('always-visible marker on scrubbable numbers', () => {
+  it('marks each number, and none with numbers off', () => {
+    const { view } = makeView('rect(120, 60)\nname = "Sam"')
+    const marked = [...view.dom.querySelectorAll('.cm-editableValue.cm-scrubbable')]
+    expect(marked.map((el) => el.textContent)).toEqual(['120', '60'])
+    const off = makeView('rect(120, 60)', { config: { ...CONFIG, numbers: false } })
+    expect(off.view.dom.querySelector('.cm-scrubbable')).toBeNull()
+  })
+
+  it('marks pickable colours the same way, with the swatch kept beside the box', () => {
+    const { view } = makeView('background("gold")')
+    const marked = [...view.dom.querySelectorAll('.cm-editableValue.cm-scrubbable')]
+    expect(marked.map((el) => el.textContent)).toEqual(['gold'])
+    expect(view.dom.querySelector('.cm-scrubSwatch')).not.toBeNull()
+    const off = makeView('background("gold")', { config: { ...CONFIG, colours: false } })
+    expect(off.view.dom.querySelector('.cm-scrubbable')).toBeNull()
+  })
+})

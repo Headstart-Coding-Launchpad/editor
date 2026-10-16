@@ -701,3 +701,34 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* Linked tags (showVariables.link, ./links.js): the tag's colour on a strip down the left of its
+   name bar and on its number badge, the same colour and number the variable has in the code
+   (src/shared/variableLinksEditor.js). The number means colour is never the only link. */
+.ntp-tag.has-link .ntp-tag-top {
+  box-shadow: inset 4px 0 0 var(--ntp-link);
+}
+
+.ntp-link-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 1.35em;
+  height: 1.35em;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--ntp-link);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+/* Hovered, focused or tapped here, or pointed at in the code. */
+.ntp-tag.is-link-active {
+  outline: 3px solid var(--ntp-link);
+  outline-offset: 1px;
+}

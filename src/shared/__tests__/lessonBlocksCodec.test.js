@@ -245,4 +245,12 @@ describe('encodeLessonBlocksForFirestore / decodeLessonBlocksFromFirestore', () 
     expect(encodeLessonBlocksForFirestore({ title: 'x' })).toEqual({ title: 'x' })
     expect(decodeLessonBlocksFromFirestore(undefined)).toBeUndefined()
   })
+
+  it('stores a Scratch sandboxStarter object as text; leaves strings alone (audit #28)', () => {
+    const starter = { sprite1: { blocks: { blocks: [deepBlockChain(15)] } } }
+    const encoded = encodeLessonBlocksForFirestore({ tasks: [], sandboxStarter: starter })
+    expect(encoded.sandboxStarter).toBe(JSON.stringify(starter))
+    const text = encodeLessonBlocksForFirestore({ tasks: [], sandboxStarter: 'print(1)' })
+    expect(text.sandboxStarter).toBe('print(1)')
+  })
 })

@@ -1,4 +1,4 @@
-import { getStageRole, getStarterStages, getCompleteStage } from './taskStages.js'
+import { getStarterStages, getCompleteStage, formatStageLabel } from './taskStages.js'
 import { getModuleDefinition } from '../modules/definitions.js'
 import {
   getTaskActivity,
@@ -10,6 +10,7 @@ export {
   STAGE_ROLES,
   isValidStageRole,
   getStageRole,
+  formatStageLabel,
   isRevealableStage,
   getRevealableStages,
   getStarterStages,
@@ -254,7 +255,7 @@ export function buildStageOptions(task, lessonType) {
           ...starterOptions,
           {
             value: `stage_${complete.index}`,
-            label: `Complete: ${complete.stage.label || 'Solution'}`,
+            label: formatStageLabel(complete.stage, complete.index),
           },
         ]
       : starterOptions
@@ -268,10 +269,10 @@ export function buildStageOptions(task, lessonType) {
 
   const opts = [{ value: 'starter', label: starterLabel }]
   codeStages.forEach((stage, i) => {
-    const role = getStageRole(stage)
-    const displayRole = ['core', 'extension'].includes(stage?.role) ? stage.role : role
-    const rolePrefix = displayRole === 'support' ? '' : `${displayRole}: `
-    opts.push({ value: `stage_${i}`, label: `${rolePrefix}${stage.label || `Stage ${i + 1}`}` })
+    opts.push({
+      value: `stage_${i}`,
+      label: formatStageLabel(stage, i, { showSupportRole: false }),
+    })
   })
   if (hasComplete) opts.push({ value: 'complete', label: completeLabel })
   return opts
@@ -287,6 +288,29 @@ export function isBadgeSummaryTask(task) {
     task?.taskType === 'information' && task?.informationType === BADGE_SUMMARY_INFORMATION_TYPE
   )
 }
+
+// A task id as stored on records that point at a task (feedback's `taskId`): lesson task ids
+// are numbers, so an all-digit string (a CLI `--task-id 4`) becomes the number 4. Blank → null.
+export function normalizeTaskIdRef(taskId) {
+  if (taskId == null) return null
+  if (typeof taskId === 'string') {
+    const trimmed = taskId.trim()
+    if (trimmed === '') return null
+    return /^\d+$/.test(trimmed) ? Number(trimmed) : trimmed
+  }
+  return taskId
+}
+
+// The stored forms that mean the same task id (the number and its text), for queries that must
+// also find records written before ids were normalised (feedback saved as "4").
+export function equivalentTaskIds(taskId) {
+  if (taskId == null || taskId === '') return []
+  const normalized = normalizeTaskIdRef(taskId)
+  return [...new Set([taskId, normalized, String(normalized)])]
+}
+
+// The values a task's `taskMode` may take (validation rejects anything else).
+export const TASK_MODES = Object.freeze(['both', 'live', 'solo'])
 
 // The mode a task shows in: its `taskMode` (absent = 'both'), except that a Badge Summary task
 // is always live-only.

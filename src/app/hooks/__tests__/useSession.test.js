@@ -1995,7 +1995,24 @@ describe('useSession', () => {
         expect.objectContaining({
           path: 'sessions/lesson-1/attemptLog/student-plain/6/mockHighlightId',
         }),
-        expect.objectContaining({ placements: null })
+        expect.objectContaining({ placements: null, source: null })
+      )
+    })
+
+    it('marks an attempt made by the checks on a scrub release (P6-20)', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-scrub', 7, {
+          submission: 'x = 1',
+          passed: true,
+          source: 'scrub',
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: 'sessions/lesson-1/attemptLog/student-scrub/7/mockHighlightId',
+        }),
+        expect.objectContaining({ passed: true, source: 'scrub' })
       )
     })
 

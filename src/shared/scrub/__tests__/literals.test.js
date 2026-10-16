@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   SCRUB_COMMON_COLOURS,
+  SCRUB_SAFE_COLOUR_NAMES,
   SCRUB_SAFE_COLOURS,
   clampScrubValue,
   defaultScrubRange,
@@ -220,6 +221,24 @@ describe('colours', () => {
     expect(
       formatScrubColour({ hex: '#0000ff', name: 'blue' }, { style: 'name', text: 'RED' })
     ).toBe('BLUE')
+  })
+
+  it('names only (scrub.colourNames): a named pick replaces a hex literal by name', () => {
+    expect(
+      formatScrubColour(
+        { hex: '#008080', name: 'teal' },
+        { style: 'hex', text: '#E69F00' },
+        { namesOnly: true }
+      )
+    ).toBe('teal')
+  })
+
+  it('offers the colour-blind-safe palette under real CSS names', () => {
+    expect(SCRUB_SAFE_COLOUR_NAMES).toHaveLength(SCRUB_SAFE_COLOURS.length)
+    for (const choice of SCRUB_SAFE_COLOUR_NAMES) {
+      expect(choice.name).toBe(choice.label)
+      expect(choice.hex).toMatch(/^#[0-9a-f]{6}$/)
+    }
   })
 
   it('writes hex when the original is hex, or the choice has no name', () => {

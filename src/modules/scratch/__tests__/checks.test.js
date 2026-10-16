@@ -1094,6 +1094,22 @@ describe('evaluateScratchCheck', () => {
           )
         ).toBe('fail')
       })
+
+      // Audit #26: the block-placed verdict supports every operator the Run-time check does.
+      it.each([
+        ['greater_than_or_equal', 2, ['m', 'm'], 'pass'],
+        ['greater_than_or_equal', 2, ['m'], 'pending'],
+        ['less_than_or_equal', 2, ['m', 'm'], 'pass'],
+        ['less_than_or_equal', 2, ['m', 'm', 'm'], 'fail'],
+        ['not_equals', 2, ['m'], 'pass'],
+        ['not_equals', 2, ['m', 'm'], 'pending'],
+      ])('%s %i with %j blocks is %s', (operator, value, blocks, expected) => {
+        const ws = makeWorkspace(blocks.map(() => 'motion_movesteps'))
+        const check = { type: 'block_count', opcode: 'motion_movesteps', operator, value }
+        expect(partialEvaluateScratchCheck(check, ws)).toBe(expected)
+        // A pass agrees with the Run-time check.
+        if (expected === 'pass') expect(evaluateScratchCheck(check, ws)).toBe(true)
+      })
     })
 
     describe('unknown or non-block types', () => {

@@ -28,10 +28,46 @@ describe('SessionEndedScreen', () => {
     render(<SessionEndedScreen savedOtherTaskCount={3} onContinueSolo={vi.fn()} />)
 
     expect(screen.getByText(/saved only on this device/i)).toBeInTheDocument()
-    expect(
-      screen.getByText(/3 other tasks are saved locally too, but isn't downloadable yet/i)
-    ).toBeInTheDocument()
+    expect(screen.getByText(/It can't be downloaded yet\./)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /download all my code/i })).not.toBeInTheDocument()
+  })
+
+  it('shows one saved-work notice (not two look-alikes) when there is code and other work', () => {
+    render(
+      <SessionEndedScreen
+        savedCodeTaskCount={4}
+        savedOtherTaskCount={6}
+        onDownloadAllCode={vi.fn()}
+        onContinueSolo={vi.fn()}
+      />
+    )
+    expect(screen.getAllByText(/saved only on this device/i)).toHaveLength(1)
+    expect(
+      screen.getByText(/Download your 4 Python code tasks to keep a copy\./)
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/Your work in 6 other tasks can't be downloaded yet\./)
+    ).toBeInTheDocument()
+  })
+
+  it('celebrates what the student did: tasks worked on and coding moments', () => {
+    render(
+      <SessionEndedScreen
+        savedCodeTaskCount={2}
+        savedOtherTaskCount={1}
+        moments={[]}
+        onContinueSolo={vi.fn()}
+      />
+    )
+    const today = screen.getByRole('region', { name: 'What you did today' })
+    expect(today).toHaveTextContent('Great work today!')
+    expect(today).toHaveTextContent('You worked on 3 tasks.')
+  })
+
+  it('still says "Great work today!" when there is nothing to count', () => {
+    render(<SessionEndedScreen onContinueSolo={vi.fn()} />)
+    expect(screen.getByText('Great work today!')).toBeInTheDocument()
+    expect(screen.queryByText(/You worked on/)).not.toBeInTheDocument()
   })
 
   it('shows neither notice when nothing was saved in either category', () => {

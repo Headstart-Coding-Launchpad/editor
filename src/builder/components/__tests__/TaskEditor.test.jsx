@@ -152,6 +152,26 @@ describe('TaskEditor authoring metadata (Task Activity field + collapse)', () =>
     // The preview panel's read-only copy remains collapsed independently.
     expect(screen.getAllByRole('button', { name: 'Show authoring metadata' })).toHaveLength(1)
   })
+
+  it('in the Classroom’s Edit Lesson, starts folded below Priority, even on a draft', () => {
+    const task = makeInformationTask()
+    render(
+      <TaskEditor task={task} lesson={makeLesson({ draft: true })} onUpdate={vi.fn()} sessionEdit />
+    )
+    expect(screen.queryByDisplayValue('Pair-share discussion')).not.toBeInTheDocument()
+    const [priority] = screen.getAllByText('Priority')
+    const [editorMeta] = screen
+      .getAllByRole('button', { name: 'Show authoring metadata' })
+      .filter((button) => priority.compareDocumentPosition(button) & 4)
+    expect(editorMeta).toBeTruthy()
+  })
+
+  it('shows the audit times as readable dates, not raw timestamps', () => {
+    const task = { ...makeInformationTask(), intentLastChangedAt: '2026-10-15T14:01:59.909Z' }
+    render(<TaskEditor task={task} lesson={makeLesson({ draft: true })} onUpdate={vi.fn()} />)
+    expect(screen.queryByText(/2026-10-15T14:01:59/)).not.toBeInTheDocument()
+    expect(screen.getByText(/Intent updated: 15 Oct 2026/)).toBeInTheDocument()
+  })
 })
 
 describe('TaskEditor block brackets toggle', () => {

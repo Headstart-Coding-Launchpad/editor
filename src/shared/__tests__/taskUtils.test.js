@@ -1,7 +1,10 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { getTeacherLivePin, isTeacherLivePinLogged } from '../taskStages.js'
+import { formatStageLabel, getTeacherLivePin, isTeacherLivePinLogged } from '../taskStages.js'
 import {
+  TASK_MODES,
+  equivalentTaskIds,
+  normalizeTaskIdRef,
   flattenTasks,
   filterTasksByMode,
   getEffectiveTaskMode,
@@ -38,6 +41,30 @@ const task2 = { id: 't2', title: 'Task 2' }
 const sub1 = { id: 's1', title: 'Group A - 1' }
 const sub2 = { id: 's2', title: 'Group A - 2' }
 const group = { id: 'g1', type: 'group', title: 'Group A', subtasks: [sub1, sub2] }
+
+// ─── formatStageLabel ─────────────────────────────────────────────────────────
+
+describe('formatStageLabel', () => {
+  it('shows the role once, capitalised', () => {
+    expect(formatStageLabel({ role: 'starter', label: 'Say Hello!' }, 0)).toBe(
+      'Starter: Say Hello!'
+    )
+    expect(formatStageLabel({ role: 'complete', label: 'Complete' }, 2)).toBe('Complete')
+    expect(formatStageLabel({ role: 'starter', label: 'starter' }, 0)).toBe('starter')
+    expect(formatStageLabel({ role: 'complete' }, 2)).toBe('Complete')
+  })
+
+  it('names unlabelled support stages by number and can drop the Support prefix', () => {
+    expect(formatStageLabel({}, 1)).toBe('Stage 2')
+    expect(formatStageLabel({ label: 'Loop hint' }, 1)).toBe('Support: Loop hint')
+    expect(formatStageLabel({ label: 'Loop hint' }, 1, { showSupportRole: false })).toBe(
+      'Loop hint'
+    )
+    expect(formatStageLabel({ label: 'Go further', role: 'extension' }, 1)).toBe(
+      'Extension: Go further'
+    )
+  })
+})
 
 // ─── flattenTasks ─────────────────────────────────────────────────────────────
 
@@ -625,6 +652,19 @@ describe('buildStageOptions', () => {
     ])
   })
 
+  it('never repeats a role the stage is named after ("Complete", not "Complete: Complete")', () => {
+    const task = {
+      codeStages: [
+        { label: 'Starter', role: 'starter', code: '' },
+        { label: 'Complete', role: 'complete', code: 'print(1)' },
+      ],
+    }
+    expect(buildStageOptions(task, 'python')).toEqual([
+      { value: 'stage_0', label: 'Starter' },
+      { value: 'stage_1', label: 'Complete' },
+    ])
+  })
+
   it('uses local stage metadata labels for scratch lessons', () => {
     const opts = buildStageOptions({ completeBlocks: 'x' }, 'scratch')
     expect(opts[0].label).toBe('Starter')
@@ -668,7 +708,7 @@ describe('buildStageOptions', () => {
     const task = { codeStages: [{ label: 'Nudge' }, { label: 'Harder', role: 'extension' }] }
     const opts = buildStageOptions(task, 'python')
     expect(opts[1]).toEqual({ value: 'stage_0', label: 'Nudge' })
-    expect(opts[2]).toEqual({ value: 'stage_1', label: 'extension: Harder' })
+    expect(opts[2]).toEqual({ value: 'stage_1', label: 'Extension: Harder' })
   })
 
   it('falls back to "Stage N" when stage has no label', () => {
@@ -762,5 +802,29 @@ describe('teacher live-code pins', () => {
     expect(isTeacherLivePinLogged(log, 3000)).toBe(false)
     expect(isTeacherLivePinLogged(undefined, 1000)).toBe(false)
     expect(isTeacherLivePinLogged(log, null)).toBe(false)
+  })
+})
+
+describe('task id references (audit #52)', () => {
+  it('stores an all-digit task id as a number', () => {
+    expect(normalizeTaskIdRef('4')).toBe(4)
+    expect(normalizeTaskIdRef(' 12 ')).toBe(12)
+    expect(normalizeTaskIdRef(4)).toBe(4)
+    expect(normalizeTaskIdRef('intro-1')).toBe('intro-1')
+    expect(normalizeTaskIdRef('')).toBeNull()
+    expect(normalizeTaskIdRef(null)).toBeNull()
+  })
+
+  it('lists the stored forms that mean the same task', () => {
+    expect(equivalentTaskIds(4)).toEqual([4, '4'])
+    expect(equivalentTaskIds('4')).toEqual(['4', 4])
+    expect(equivalentTaskIds('intro')).toEqual(['intro'])
+    expect(equivalentTaskIds(null)).toEqual([])
+  })
+})
+
+describe('TASK_MODES (audit #55)', () => {
+  it('lists the modes filterTasksByMode understands', () => {
+    expect(TASK_MODES).toEqual(['both', 'live', 'solo'])
   })
 })

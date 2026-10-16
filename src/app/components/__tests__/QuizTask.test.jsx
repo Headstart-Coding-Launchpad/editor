@@ -611,3 +611,25 @@ describe('characterisation: QuizTask onSelectAnswer per legacy fixture', () => {
     expect(onSelectAnswer.mock.calls).toEqual([['4', true]])
   })
 })
+
+describe('QuizTask student-facing clarity (HSC Audit)', () => {
+  it('short answer shows a clear confirmation once submitted', () => {
+    render(<QuizTask task={SHORT_ANSWER_TASK} selectedAnswer="I made a game" submitted />)
+    const status = screen.getAllByRole('status').find((el) => el.textContent.includes('Got it!'))
+    expect(status).toBeTruthy()
+    expect(status).toHaveTextContent('✅ Got it!')
+    expect(status).toHaveTextContent('Your answer: I made a game')
+  })
+
+  it('match says how to use the answers (tap or drag) until it is done', () => {
+    const { rerender } = render(<QuizTask task={MATCH_TASK} />)
+    expect(screen.getByText('Tap an answer, then tap its box. Or drag it.')).toBeInTheDocument()
+    rerender(<QuizTask task={MATCH_TASK} disabled />)
+    expect(screen.queryByText(/Tap an answer/)).not.toBeInTheDocument()
+  })
+
+  it('fill in the blank (drag) says how to use the word bank', () => {
+    render(<QuizTask task={FILL_DRAG_TASK} />)
+    expect(screen.getByText('Tap a word, then tap a gap. Or drag it.')).toBeInTheDocument()
+  })
+})

@@ -8,15 +8,20 @@
 //       with the `#>` hint markers (parseLineHints in ./lineHints.js), so students never see them.
 //   `puzzle.onlyEdit: [lineNums]`  locks every non-blank line of the starter code except the
 //       listed ones (1-based, in the starter as the student sees it: marker lines don't count).
+//   `#@lock-values` marker (P6-22)  locks the next non-blank line EXCEPT its values: the text
+//       between a plain string's quote marks (empty strings too) and its numbers. The name, `=`,
+//       quote marks, brackets and the rest stay read-only (./lockedLinesEditor.js).
 //
 // A lock is `{ line, target }`: `line` is 1-based in the stripped code and `target` the line's
-// trimmed text. A stripped task keeps its locks on the runtime-only `lockSets`
+// trimmed text. A values lock is `{ line, target, values: true }`, its `target` the line's value
+// skeleton (valueSkeleton: the values blanked out), since its values can change. A stripped task keeps its locks on the runtime-only `lockSets`
 // (`[{ source, stageIndex, file, locks }]`, starter first), the way it keeps `lineHintSets`.
 // The editor re-anchors a set on whatever code it shows (the student's saved code, a support
 // stage, Reset's starter) by text — chooseLockedLines — and enforces it
 // (./lockedLinesEditor.js). Since a student can't change a locked line, its text always anchors.
 
 export const LOCK_MARKER = '#@lock'
+export const LOCK_VALUES_MARKER = '#@lock-values'
 
 // The marker syntaxes with a lock marker (Python's `#` comments: python and turtle).
 const LOCK_SYNTAXES = Object.freeze({ python: true })
@@ -33,6 +38,117 @@ export function isLockMarkerLine(line, syntax) {
   return trimmed === LOCK_MARKER || /^#@lock(\s|$)/.test(trimmed)
 }
 
+// Whether a (raw) line is a values-lock marker line (`#@lock-values`), for a marker syntax.
+export function isLockValuesMarkerLine(line, syntax) {
+  if (!isLockSyntax(syntax)) return false
+  return /^#@lock-values(\s|$)/.test(String(line ?? '').trim())
+}
+
+// ─── Values (#@lock-values) ──────────────────────────────────────────────────
+
+// Stands for a number in a value skeleton (never in real code).
+const NUMBER_MARK = '\u0000'
+const IDENTIFIER_CHAR = /[A-Za-z0-9_]/
+
+/**
+ * Reads one line of Python for its values: `{ skeleton, spans }`. `spans` are the editable
+ * values, `[{ from, to, kind: 'string' | 'number' }]` (character offsets in `text`): a plain
+ * string's contents between its quote marks (`from === to` for an empty string) and each
+ * number. `skeleton` is the line with every string's contents removed and every number replaced
+ * by one mark, so two lines that differ only in their values have the same skeleton. Prefixed
+ * strings (f"…", r"…", b"…") and triple-quoted ones are not values (an f-string's {name} is
+ * code); a comment ends the line.
+ */
+export function scanLineValues(text) {
+  const line = String(text ?? '')
+  const spans = []
+  let skeleton = ''
+  let i = 0
+  while (i < line.length) {
+    const ch = line[i]
+    if (ch === '#') {
+      skeleton += line.slice(i)
+      break
+    }
+    if (ch === '"' || ch === "'") {
+      const prev = i > 0 ? line[i - 1] : ''
+      const prefixed = IDENTIFIER_CHAR.test(prev)
+      const triple = line.startsWith(ch.repeat(3), i)
+      // Find the closing quote (a backslash escapes the next character).
+      const open = triple ? 3 : 1
+      let j = i + open
+      let close = -1
+      while (j < line.length) {
+        if (line[j] === '\\') {
+          j += 2
+          continue
+        }
+        if (line.startsWith(ch.repeat(open), j)) {
+          close = j
+          break
+        }
+        j += 1
+      }
+      if (close < 0) {
+        // An unclosed string runs to the end of the line: not a value.
+        skeleton += line.slice(i)
+        break
+      }
+      const end = close + open
+      if (prefixed || triple) {
+        skeleton += line.slice(i, end)
+      } else {
+        spans.push({ from: i + 1, to: close, kind: 'string' })
+        skeleton += ch + ch
+      }
+      i = end
+      continue
+    }
+    if (/[0-9]/.test(ch) || (ch === '.' && /[0-9]/.test(line[i + 1] ?? ''))) {
+      const prev = i > 0 ? line[i - 1] : ''
+      if (IDENTIFIER_CHAR.test(prev) || prev === '.') {
+        // Part of a name (x2) or an attribute: copy the run as it is.
+        let j = i + 1
+        while (j < line.length && IDENTIFIER_CHAR.test(line[j])) j += 1
+        skeleton += line.slice(i, j)
+        i = j
+        continue
+      }
+      const match = /^(?:\d[\d_]*(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/.exec(line.slice(i))
+      const length = match ? match[0].length : 1
+      spans.push({ from: i, to: i + length, kind: 'number' })
+      skeleton += NUMBER_MARK
+      i += length
+      continue
+    }
+    if (IDENTIFIER_CHAR.test(ch)) {
+      let j = i
+      while (j < line.length && IDENTIFIER_CHAR.test(line[j])) j += 1
+      skeleton += line.slice(i, j)
+      i = j
+      continue
+    }
+    skeleton += ch
+    i += 1
+  }
+  return { skeleton, spans }
+}
+
+/** A line's value skeleton (scanLineValues), trimmed: a values lock's `target`. */
+export function valueSkeleton(text) {
+  return scanLineValues(String(text ?? '').trim()).skeleton
+}
+
+/** The editable value spans of a line (scanLineValues). */
+export function lineValueSpans(text) {
+  return scanLineValues(text).spans
+}
+
+// The text a lock compares with each line: the trimmed line, or its value skeleton.
+function lockKey(lock, trimmedLine) {
+  return lock?.values ? valueSkeleton(trimmedLine) : trimmedLine
+}
+
 // A line a lock can hold: anything but a blank line.
 export function isLockableLine(line) {
   return String(line ?? '').trim() !== ''
@@ -40,11 +156,12 @@ export function isLockableLine(line) {
 
 /**
  * Places locks on the lines of `code` (a string or an array of lines), in order: each lock goes
- * on its own line when that line still reads the same (trimmed) and comes after the previous
- * lock's line, else on the first later line that reads the same. A lock with no such line is
- * dropped. Returns the locked line numbers (1-based, ascending, no repeats).
+ * on its own line when that line still reads the same (trimmed; a values lock compares value
+ * skeletons) and comes after the previous lock's line, else on the first later line that reads
+ * the same. A lock with no such line is dropped. Returns `[{ line, values }]` (1-based,
+ * ascending, no repeats).
  */
-export function anchorLockedLines(code, locks) {
+export function anchorLocks(code, locks) {
   const lines = Array.isArray(code) ? code : String(code ?? '').split('\n')
   const trimmed = lines.map((line) => line.trim())
   const anchored = []
@@ -53,36 +170,51 @@ export function anchorLockedLines(code, locks) {
     const target = typeof lock?.target === 'string' ? lock.target : null
     if (!target) continue
     let line = null
-    if (Number.isInteger(lock.line) && lock.line > after && trimmed[lock.line - 1] === target) {
+    if (
+      Number.isInteger(lock.line) &&
+      lock.line > after &&
+      trimmed[lock.line - 1] != null &&
+      lockKey(lock, trimmed[lock.line - 1]) === target
+    ) {
       line = lock.line
     } else {
       for (let i = after; i < trimmed.length; i += 1) {
-        if (trimmed[i] === target) {
+        if (trimmed[i] !== '' && lockKey(lock, trimmed[i]) === target) {
           line = i + 1
           break
         }
       }
     }
     if (line == null) continue
-    anchored.push(line)
+    anchored.push({ line, values: !!lock.values })
     after = line
   }
   return anchored
 }
 
+/** anchorLocks as line numbers only. */
+export function anchorLockedLines(code, locks) {
+  return anchorLocks(code, locks).map((lock) => lock.line)
+}
+
 /**
  * The lock set that best fits `code` — the one with the most locks that anchor, the earliest on
- * a tie — as locked line numbers. `lockSets` is an array of lock arrays. [] when none anchor.
+ * a tie — as `[{ line, values }]`. `lockSets` is an array of lock arrays. [] when none anchor.
  */
-export function chooseLockedLines(code, lockSets) {
+export function chooseLocks(code, lockSets) {
   const lines = String(code ?? '').split('\n')
   let best = []
   for (const locks of lockSets ?? []) {
     if (!Array.isArray(locks)) continue
-    const anchored = anchorLockedLines(lines, locks)
+    const anchored = anchorLocks(lines, locks)
     if (anchored.length > best.length) best = anchored
   }
   return best
+}
+
+/** chooseLocks as locked line numbers (values locks included). */
+export function chooseLockedLines(code, lockSets) {
+  return chooseLocks(code, lockSets).map((lock) => lock.line)
 }
 
 /**

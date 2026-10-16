@@ -11,7 +11,7 @@ id: html-heading
 type: composed
 title: HTML Headings
 description: Add headings with HTML tags.
-level: 1
+levelId: html-level-1
 modules:
   - id: html-practice
     type: html
@@ -203,6 +203,19 @@ All element checks require a `selector` (CSS selector).
 | `html_element_attribute` | `exists`, `contains`, `not_contains`, `equals`, `not_equals`, `matches_regex`, `not_matches_regex` | `selector`, `attribute`, optional `value`, optional `flags` | Attribute on the selected element |
 | `html_element_style_property` | `exists`, `contains`, `not_contains`, `equals`, `not_equals`, `matches_regex`, `not_matches_regex` | `selector`, `property`, optional `value`, optional `flags` | Computed CSS property; URL values are normalised to filenames for equality/contains |
 
+All element checks except `html_element` and `html_element_count` look at the **first** element the selector matches, not every match. Use a more specific selector (`li:nth-child(2)`, `#title`) to pick another one.
+
+**Style checks read the browser's computed value, not what the student typed.** Colours come back as `rgb(…)` and sizes in `px`, whatever the CSS says:
+
+| Student writes | Computed value to check for |
+|---|---|
+| `color: red` / `#f00` / `#ff0000` | `rgb(255, 0, 0)` |
+| `background-color: rgba(0,0,0,0.5)` | `rgba(0, 0, 0, 0.5)` |
+| `font-size: 2em` (in a 16px parent) | `32px` |
+| `margin: 1rem` | check `margin-top` etc.: `16px` |
+
+So `value: red` never passes. Write the `rgb(…)` / `px` form with `equals`, use `matches_regex` (e.g. `^rgb\(255, 0, 0\)$`), or check the source with a `code` check (`code contains "color:red"`) when you care how the student wrote it. Shorthands like `margin` or `border` may come back empty; check a longhand property (`margin-top`, `border-top-color`). Comparison is case-insensitive.
+
 Legacy aliases such as `element_exists`, `element_count`, `element_value`, `element_value_equals`, `element_attribute`, and `element_style_property` still load, but new lessons should use the canonical `html_element_*` form.
 
 ---
@@ -224,7 +237,9 @@ Legacy aliases such as `output_contains`, `output_equals`, `output_matches_regex
 
 **Regex:** `matches_regex` and `not_matches_regex` use JavaScript `RegExp(pattern, flags)`. Put the regex pattern in `value`; put flags such as `i`, `m`, or `s` in `flags`. Regex is case-sensitive unless `flags: i` is set.
 
-**Normalisation:** output checks normalise `\r\n` to `\n` and compare case-insensitively except regex. Exact output checks trim trailing newline characters only. Code checks normalise whitespace outside quoted strings before contains/equality checks; regex checks see that same normalised source. Element text/value checks use the rendered text or input value.
+**Normalisation:** output checks normalise `\r\n` to `\n` and compare case-insensitively except regex. Exact output checks trim trailing newline characters only. Code checks remove every space, tab and newline outside quoted strings (in the code and in `value`) and compare case-insensitively, except regex, which keeps case but sees the same whitespace-free source: don't use `\s`, `\n`, `^`/`$` or the `m` flag in a code regex (see [python.md](python.md#output-and-code-checks-shared-with-html)). Element text/value checks use the rendered text or input value.
+
+**What "output" means for HTML:** `output` and `output_line_count` checks read the page's visible text (`document.body.innerText`) once the page has loaded, not the HTML source and not the console.
 
 **Wildcards and option lists:** for non-regex contains/equality checks, `*` matches any sequence including newlines. A value written as `"opt1","opt2"` passes `contains` if any option is present, and passes `not_contains` only if none of them are. An invalid regex fails both `matches_regex` and `not_matches_regex`, so a typo in a pattern never lets every student pass.
 

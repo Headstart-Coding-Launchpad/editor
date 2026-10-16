@@ -53,19 +53,22 @@ description: Make a player respond to the arrow keys.
 tasks:
   - title: Move the player
     moduleType: arcade
-    starterCode: |
-      from headstart_arcade import game, Sprite, keys
+    codeStages:
+      - role: starter
+        label: Starter
+        code: |
+          from headstart_arcade import game, Sprite, keys
 
-      player = Sprite("player.png", x=72, y=100)
+          player = Sprite("player.png", x=72, y=100)
 
-      def update():
-          player.x += keys.horizontal * 2
+          def update():
+              player.x += keys.horizontal * 2
 
-      def draw():
-          game.clear("dark_blue")
-          player.draw()
+          def draw():
+              game.clear("dark_blue")
+              player.draw()
 
-      game.run()
+          game.run()
 ```
 
 Students start a game with **Run game**. Editing or resetting code stops it;
@@ -82,10 +85,14 @@ from headstart_arcade import game, Sprite, keys
 | API | Description |
 |---|---|
 | `game.run()` | Starts the animation loop. Calls `setup()` once when present, then calls `update()` and `draw()` every frame. Place this at the end of the source file. |
-| `game.size(width, height)` | Sets the logical pixel dimensions of the game canvas. The displayed canvas scales responsively while preserving that ratio; Arcade Kit renders through a higher-resolution backing canvas, so existing logical coordinates remain stable when enlarged and sprites retain crisp pixel edges. |
+| `game.size(width, height)` | Sets the logical pixel dimensions of the game canvas (160 × 120 if you never call it). The displayed canvas scales responsively while preserving that ratio; Arcade Kit renders through a higher-resolution backing canvas, so existing logical coordinates remain stable when enlarged and sprites retain crisp pixel edges. |
 | `game.clear(colour='black')` | Fills the entire canvas with a palette colour. |
 | `game.rect(x, y, width, height, colour='white')` | Draws a filled rectangle using a palette colour. |
 | `game.text(text, x, y, colour='white', size=8)` | Draws text using a pixel-style monospace font and a palette colour. |
+
+`colour=` and the US spelling `color=` both work as the keyword in `game.clear`, `game.rect` and
+`game.text`; use `colour=` in UK lessons. You can also pass the colour without a keyword, in the
+position shown above.
 | `game.sound(name, volume=1)` | Plays a named OGG or WAV sound effect. Some browsers require a click in the game before sound can play. |
 | `game.music(name, volume=0.5)` | Starts (or resumes) a looping music track. Starting a different track replaces the current one. |
 | `game.stop_music()` | Stops the current music track. |
@@ -301,7 +308,7 @@ arcadeDesign:
       name: world             # sanitised; becomes the "world.tilemap" asset name
       columns: 16              # 1-64, default 16
       tileSize: 16             # 1-64, default 16 (logical pixels per tile)
-      rows:                    # one string per row, each padded/truncated to `columns` chars; "." = empty
+      rows:                    # one string per row (1-64 rows, default 12), each padded/truncated to `columns` chars; "." = empty
         - "................"
         - "....##..##......"
       tiles:                   # map of tile symbol -> tile definition
@@ -415,11 +422,15 @@ the validator warns about it. Full reference:
 
 ```yaml
 - title: 🎮 Watch It Move
+  moduleType: arcade
   taskActivity: Code Task, Visual Fun Application
-  starterCode: |
-    from headstart_arcade import game, keys
-    # ...
-    game.run()
+  codeStages:
+    - role: starter
+      label: Starter
+      code: |
+        from headstart_arcade import game, keys
+        # ...
+        game.run()
   check:
     type: run_attempted
     hint: Press **Run game**, then try the arrow keys.

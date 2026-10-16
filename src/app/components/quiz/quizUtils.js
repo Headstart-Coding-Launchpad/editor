@@ -161,7 +161,8 @@ export function QuestionPanel({ task }) {
     React.createElement('div', { style: baseStyles.questionLabel }, task.title || 'Question'),
     React.createElement(
       'div',
-      { style: baseStyles.questionBody },
+      // quiz-question-body enlarges Scratch block pictures in the question (index.css).
+      { style: baseStyles.questionBody, className: 'quiz-question-body' },
       React.createElement(MarkdownRenderer, {
         title: task.title,
         content: task.explainer,

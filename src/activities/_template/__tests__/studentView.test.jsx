@@ -105,7 +105,7 @@ describe.skipIf(!getActivityDefinition('template_activity'))(
       render(<StudentView lessonId={LESSON.id} lesson={LESSON} />)
       await user.type(await screen.findByLabelText('Your answer'), '4')
       expect(screen.queryByRole('button', { name: 'Run' })).not.toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Check answers' }))
+      await user.click(screen.getByRole('button', { name: 'Check my work' }))
       const answer = JSON.stringify({ v: 1, items: { a: { answer: '4' } } })
       await waitFor(() =>
         expect(mocks.session.writeStudentRun).toHaveBeenCalledWith('student-1', {

@@ -68,6 +68,9 @@ export function validateShowVariables(task, n, errors, warnings = []) {
   if (raw.visuals != null && typeof raw.visuals !== 'boolean') {
     errors.push(`Task ${n} has showVariables visuals that is not true or false`)
   }
+  if (raw.link != null && typeof raw.link !== 'boolean') {
+    errors.push(`Task ${n} has showVariables link that is not true or false`)
+  }
   if (raw.lockRun != null && typeof raw.lockRun !== 'boolean') {
     errors.push(`Task ${n} has showVariables lockRun that is not true or false`)
   }

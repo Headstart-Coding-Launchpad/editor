@@ -57,9 +57,14 @@ export default function MultipleChoiceQuiz({
             content.style.setProperty('--quiz-option-scale', String(scale))
             setOptionsScale(scale)
           },
+          // An option's own text scrolls sideways rather than spilling (unbroken code), so
+          // check each one too: shrink before falling back to a scroll.
           isOverflowing: () =>
             content.scrollHeight > container.clientHeight + 1 ||
-            content.scrollWidth > container.clientWidth + 1,
+            content.scrollWidth > container.clientWidth + 1 ||
+            Array.from(content.querySelectorAll('.quiz-option-text')).some(
+              (text) => text.scrollWidth > text.clientWidth + 1
+            ),
         })
       } finally {
         options.forEach((option) => option.style.removeProperty('transform'))
@@ -147,6 +152,7 @@ export default function MultipleChoiceQuiz({
                   {option.id}
                 </span>
                 <div
+                  className="quiz-option-text"
                   style={{ ...s.optionText, ...(usesScratchMarkdown ? s.scratchOptionText : {}) }}
                 >
                   {usesScratchMarkdown ? (

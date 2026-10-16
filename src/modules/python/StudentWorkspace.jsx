@@ -12,7 +12,10 @@ import {
 } from '../../app/components/CollapsiblePanelControls'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
 import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
+import { useVariableLinks } from '../../shared/variablesPanel/useVariableLinks.js'
+import { codeCallsInput, getTaskRunOnOpen } from '../../shared/scrub/runOnOpen.js'
 import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
+import ScrubReplayNote from '../../shared/scrub/ScrubReplayNote.jsx'
 import {
   getPeekBand,
   getShowVariables,
@@ -73,7 +76,8 @@ export default function StudentWorkspace({
 }) {
   // A task with a name-tag panel (showVariables) opens with the output side showing, so the
   // student can predict before the first Run; so does one with a Stage target to draw over, and
-  // one whose author picked the first result tab (layout.firstPane).
+  // one whose author picked the first result tab (layout.firstPane), and one that runs on open
+  // (runOnOpen), so its opening preview is in view.
   const [localOutputCollapsed, setLocalOutputCollapsed] = useState(
     () =>
       !arrangeBoard &&
@@ -82,7 +86,8 @@ export default function StudentWorkspace({
       !isViewingPrev &&
       !taskShowsVariables(lessonTask) &&
       !stageTargetCode(lessonTask) &&
-      !getTaskLayout(lessonTask)?.firstPane
+      !getTaskLayout(lessonTask)?.firstPane &&
+      !(getTaskRunOnOpen(lessonTask) && !codeCallsInput(cs.code))
   )
   // While forced-live, the panel state is locked to whatever the broadcast
   // source (teacher/watched student) has it set to — continuous, not a
@@ -137,14 +142,14 @@ export default function StudentWorkspace({
   // The #@peek "stopped here" band (showVariables.at: marker), from when the task opens; not
   // while the panel is hidden or slow-mo steps through the run.
   const variablesSynced = isForcedTeacherLive ? displayVariablesPanel : undefined
+  const panelRun = panelRunForTask(task, { panel: cs.variablesPanel, synced: variablesSynced })
   const peekBand =
-    isViewingPrev || isTeacherEditing || slowMoView
-      ? null
-      : getPeekBand(
-          task,
-          code,
-          panelRunForTask(task, { panel: cs.variablesPanel, synced: variablesSynced })
-        )
+    isViewingPrev || isTeacherEditing || slowMoView ? null : getPeekBand(task, code, panelRun)
+  // Linked name tags (showVariables.link): each tag and its variable in the code share a colour
+  // and a number. Not on views without the panel (a previous task, the tutor editing).
+  const variableLinks = useVariableLinks(task, panelRun, {
+    enabled: !isViewingPrev && !isTeacherEditing,
+  })
   const slowMoControls = {
     ...slowMo,
     slowMo: () => {
@@ -393,8 +398,11 @@ export default function StudentWorkspace({
         onChange={readOnly ? undefined : cs.handleCodeChange}
         // Live number / colour scrubbing (task `scrub`, src/shared/scrub/); not in a sandbox.
         scrub={readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskScrub(task)}
-        onScrubPreview={cs.scrubPreview}
-        onScrubCommit={cs.recordScrub}
+        onScrubPreview={
+          cs.scrubPreview ? (value, options) => cs.scrubPreview(value, null, options) : undefined
+        }
+        // A finished scrub: counted for the report, and checked once as a Run (checkOnRelease).
+        onScrubCommit={cs.handleScrubCommit}
         onSelectionChange={readOnly ? undefined : cs.handleEditorSelection}
         onActivity={readOnly ? undefined : cs.handleEditorActivity}
         remoteSelection={isForcedTeacherLive ? displaySelection : null}
@@ -406,13 +414,15 @@ export default function StudentWorkspace({
         }
         pyodideStatus={cs.pyodideStatus}
         errorLine={readOnly ? null : cs.errorLine}
-        lineHints={readOnly ? null : getTaskLineHintSets(task)}
+        // Line hints are scaffolding: once the check passes they go, not linger after the code.
+        lineHints={readOnly || cs.checkPassed ? null : getTaskLineHintSets(task)}
         // Locked lines (#@lock, puzzle.onlyEdit) show in every view, Go Live included.
         lockedLines={getTaskLockSets(task)}
         showBlocks={taskShowsBlocks(task)}
         onRunShortcut={readOnly || task?.interactionMode === 'submit' ? undefined : handleRunClick}
         slowMoMarker={slowMoView?.marker ?? null}
         peekBand={peekBand}
+        variableLinks={variableLinks.editor}
       />
       {showSubmitBanner && <div style={s.submitBanner}>Code submitted</div>}
     </div>
@@ -422,7 +432,7 @@ export default function StudentWorkspace({
   // screens; alone while the output is folded away on a narrow screen.
   const variablesStyle = tabbed ? s.variablesFill : s.variablesPanel
   const variablesPanel = slowMoView ? (
-    <SlowMoNameTags task={task} slowMo={slowMo} style={variablesStyle} />
+    <SlowMoNameTags task={task} slowMo={slowMo} style={variablesStyle} {...variableLinks.panel} />
   ) : (
     <TaskVariablesPanel
       task={task}
@@ -432,6 +442,7 @@ export default function StudentWorkspace({
       running={cs.running}
       hidden={isViewingPrev || isTeacherEditing}
       style={variablesStyle}
+      {...variableLinks.panel}
     />
   )
 
@@ -476,6 +487,9 @@ export default function StudentWorkspace({
       </div>
     )
 
+  // "Using your last answers: …" while a scrub preview replays the last Run's input() answers.
+  const replayNote = <ScrubReplayNote answers={readOnly ? null : cs.scrubReplayAnswers} />
+
   const stagePane = (
     <StagePane
       key={task?.id ?? 'sandbox'}
@@ -490,6 +504,7 @@ export default function StudentWorkspace({
 
   const output = (
     <div ref={outputPaneRef} style={s.outputPane}>
+      {replayNote}
       {showStage ? (
         <div style={stageBeside ? s.stageRow : s.stageColumn}>
           {stagePane}
@@ -510,11 +525,15 @@ export default function StudentWorkspace({
         id,
         content:
           id === 'picture' ? (
-            stagePane
+            <div style={s.consoleColumn}>
+              {replayNote}
+              {stagePane}
+            </div>
           ) : id === 'tags' ? (
             variablesPanel
           ) : (
             <div style={s.consoleColumn}>
+              {replayNote}
               {outputPanel}
               {testResultsPanel}
             </div>

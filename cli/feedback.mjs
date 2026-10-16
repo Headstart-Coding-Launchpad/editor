@@ -1,4 +1,6 @@
 import { db } from './firebase.mjs'
+// --task-id 4 is stored as the number 4, matching lesson task ids (the Builder's lookup).
+import { normalizeTaskIdRef } from '../src/shared/taskUtils.js'
 
 async function batchArchiveRefs(refs) {
   const BATCH_SIZE = 500
@@ -129,7 +131,7 @@ export async function addLessonFeedback(
     .add({
       lessonId,
       lessonTitle: lessonTitle ?? null,
-      taskId: taskId ?? null,
+      taskId: normalizeTaskIdRef(taskId),
       taskTitle: taskTitle ?? null,
       text: text.trim(),
       teacherEmail: teacherEmail ?? '',
@@ -150,7 +152,7 @@ export async function addPlatformFeedback({
   const ref = await db.collection('platformFeedback').add({
     lessonId: lessonId ?? null,
     lessonTitle: lessonTitle ?? null,
-    taskId: taskId ?? null,
+    taskId: normalizeTaskIdRef(taskId),
     taskTitle: taskTitle ?? null,
     text: text.trim(),
     teacherEmail: teacherEmail ?? '',

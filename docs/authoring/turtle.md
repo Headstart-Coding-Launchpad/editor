@@ -14,9 +14,15 @@ workspaces yet.
 ## Lesson and task shape
 
 Use `type: composed` at lesson level and `moduleType: turtle` on each Turtle
-task. Turtle tasks use the same source-stage fields as a Python code task:
-`starterCode`, `completeCode`, `codeStages`, `carryCodeFrom`, and `copyCode`, plus
-`showBlocks` (block brackets in the editor, see [python.md](python.md)).
+task. Turtle tasks use the same source fields as a Python code task:
+`codeStages` (roles `starter`, `support`, `complete`), `carryCodeFrom` and `copyCode`, plus
+`showBlocks` (block brackets in the editor, see [python.md](python.md)). The legacy
+`starterCode` / `completeCode` still load, but the Builder writes `codeStages`, so use them.
+
+Stages reach students differently from Python: there is no read-only reference. After a
+student's check fails **twice**, solo mode offers to load the next stage into the editor
+(replacing their code), and after the last stage the complete code. Live students don't get
+the offer; the tutor applies stages.
 
 ```yaml
 id: draw-a-square
@@ -26,12 +32,15 @@ description: Use a loop to draw a square with the turtle.
 tasks:
   - title: Draw a square
     moduleType: turtle
-    starterCode: |
-      import turtle
+    codeStages:
+      - role: starter
+        label: Starter
+        code: |
+          import turtle
 
-      for _ in range(4):
-          turtle.forward(100)
-          turtle.left(90)
+          for _ in range(4):
+              turtle.forward(100)
+              turtle.left(90)
     check:
       - type: turtle_path_closed
         tolerance: 2
@@ -51,15 +60,18 @@ next line (a 💡 in the gutter and faded text after the line), so instructions
 never sit in the student's code.
 
 ```yaml
-    starterCode: |
-      import turtle
+    codeStages:
+      - role: starter
+        label: Starter
+        code: |
+          import turtle
 
-      #> Try a different colour name here
-      turtle.color("blue")
-      for _ in range(4):
-          #> Change 100 to make the square bigger
-          turtle.forward(100)
-          turtle.left(90)
+          #> Try a different colour name here
+          turtle.color("blue")
+          for _ in range(4):
+              #> Change 100 to make the square bigger
+              turtle.forward(100)
+              turtle.left(90)
 ```
 
 The rules (stacking, trailing markers, stripping before run/check/carry,
@@ -76,7 +88,7 @@ the task. They never change the task's code or what `carryCodeFrom` copies. See
 ## Name-tag panel (`showVariables`)
 
 A Turtle task can show students what is in their variables, exactly as a Python task does:
-`showVariables: { mode: view | predict | target, at: end | marker, hide, predict, target, visuals }`,
+`showVariables: { mode: view | predict | target, at: end | marker, hide, predict, target, visuals, link }`,
 the `#@peek` marker and the `variables_predicted` check. Lists and dicts get the same visuals as in
 Python (colour swatches, bars, pictures, cards; `visuals: false` turns them off). The panel sits between the drawing and the
 output. Names imported from `turtle` (`from turtle import forward`) and the turtle module itself
@@ -129,10 +141,16 @@ keyboard use.
 ```
 
 - Every Turtle program re-runs live while a value moves (a preview: no attempt, checks, save or
-  tutor update), unless it calls `input()`: then the student sees "Press Run to see it".
+  tutor update), about every 200 ms while the drag keeps moving. A program that calls `input()`
+  replays the answers from the student's last Run ("Using your last answers: …"); before a Run
+  the student sees "Press Run and answer the questions first".
+- Draggable numbers carry an always-visible dashed box, as in Python.
 - Colour strings use CSS names (`'red'`, `'cornflowerblue'`) or hex (`'#ff0000'`).
-- When the drag ends the value is a normal edit, saved and sent to a watching tutor. The session
-  report counts each student's scrubs (`scrubs`).
+- When the drag ends the value is a normal edit, saved and sent to a watching tutor, and (with
+  `checkOnRelease`, on by default) the checks run once as a Run, the attempt marked
+  `source: 'scrub'`. The session report counts each student's scrubs (`scrubs`).
+- `runOnOpen` (default on with `scrub`) draws the starter as soon as the task opens, as a preview
+  (no checks, not a Run). See [Python → Live scrubbing](python.md#live-scrubbing-scrub).
 
 ## Locked lines, hidden setup and puzzles
 
@@ -307,6 +325,17 @@ Single default turtle only — `import turtle; turtle.forward(10)` or
 no-ops, since they're near-universal turtle boilerplate that would otherwise
 raise an error for no visual reason in this headless model.
 
+**Not supported yet** (each stops the program with an `AttributeError` or `TypeError`, so keep
+them out of starter, complete and example code):
+
+- `turtle.Turtle()` (a second turtle, or even `t = turtle.Turtle()` for the default one): use
+  the module functions, `turtle.forward(…)`;
+- `shape()`, `tracer()` / `update()`, `towards()` / `distance()`, `clearstamp()`,
+  `onkey()` / `listen()` / `onclick()`;
+- module-level `turtle.exitonclick()`, `turtle.title()` and `turtle.setup()`: call them on
+  the screen instead, `turtle.Screen().exitonclick()`;
+- anything else not listed in the tables on this page.
+
 `left()`/`right()` both record as the same internal `turn` event (signed
 degrees) — a `turtle_command_used` check targeting `turn` can't currently
 tell which direction was used. `circle()` is drawn from many small
@@ -343,16 +372,18 @@ A Turtle task can mix two kinds of check in the same `check` (or
   `matches_regex`, `not_matches_regex`, plus `value`). They look at what the
   student wrote, e.g. "uses a loop", and are evaluated on the same Run. See
   [python.md](python.md#output-and-code-checks-shared-with-html) for
-  normalisation rules. `contains` trims surrounding spaces from `value`, so
-  `"for "` also matches `forward`. Use a regex such as `for\s+\w+\s+in` to
-  detect a loop.
+  normalisation rules. Code checks remove every space and newline outside
+  strings (in the code and in `value`) and ignore case, except regex. So
+  `"for "` also matches `forward`, and a code regex never sees a space:
+  `\s`, `\n`, `^`/`$` and the `m` flag don't work there. Detect a loop with
+  the regex `for\w+inrange\(` or with `contains` `"for * in range("`.
 
 ```yaml
 check:
   - type: turtle_path_closed
   - type: code
     operator: matches_regex
-    value: 'for\s+\w+\s+in\s+range\('
+    value: 'for\w+inrange\('
     hint: Use a for loop to repeat the sides.
 ```
 

@@ -65,7 +65,10 @@ export default function Desktop({ state, onStateChange, apps, availableApps, dis
               disabled={disabled}
               style={{
                 pointerEvents: 'auto',
-                width: 84,
+                width: 96,
+                // A read-only desktop (the tutor's Starter preview) keeps its icons readable:
+                // the global button:disabled fade made them too faint to read (HSC Audit 13).
+                opacity: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -77,9 +80,16 @@ export default function Desktop({ state, onStateChange, apps, availableApps, dis
                 borderRadius: 6,
               }}
             >
-              <span style={{ fontSize: '2rem', lineHeight: 1 }}>{apps[appId]?.icon ?? '🗔'}</span>
+              <span style={{ fontSize: '2.25rem', lineHeight: 1 }}>{apps[appId]?.icon ?? '🗔'}</span>
+              {/* About 11px before (HSC Audit 13); now readable from a child's seat. */}
               <span
-                style={{ fontSize: '0.72rem', textAlign: 'center', color: 'var(--colour-text)' }}
+                style={{
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  lineHeight: 1.2,
+                  textAlign: 'center',
+                  color: 'var(--colour-text)',
+                }}
               >
                 {apps[appId]?.title ?? appId}
               </span>

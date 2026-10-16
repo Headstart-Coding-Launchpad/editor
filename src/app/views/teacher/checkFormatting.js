@@ -61,6 +61,7 @@ export function formatCheckValue(c) {
   if (c.type === 'answer_equals') return `answer equals "${c.value}"`
   if (c.type === 'answer_contains') return `answer contains "${c.value}"`
   if (c.type === 'answer_not_contains') return `answer does not contain "${c.value}"`
+  if (c.type === 'answer_not_equals') return `answer does not equal "${c.value}"`
   if (c.type === 'answer_matches_regex') return `answer matches /${c.value}/`
   if (c.type === 'quiz_result') return 'all pairs / blanks correct'
   // Filesystem

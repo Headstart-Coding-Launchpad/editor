@@ -17,7 +17,7 @@ export default function PeerHelpAskBubble({ onYes, onNo }) {
 
   return (
     <div style={s.bubble} role="dialog" aria-label="Can a classmate help too?">
-      <span style={s.line}>Your teacher is coming.</span>
+      <span style={s.line}>Your tutor is coming.</span>
       <strong style={s.question}>Can a classmate help too?</strong>
       <div style={s.actions}>
         <button type="button" className="btn-primary" style={s.btn} onClick={onYes}>
@@ -32,9 +32,11 @@ export default function PeerHelpAskBubble({ onYes, onNo }) {
 }
 
 const s = {
+  // Bottom-right, with the other peer help cards: top-right covered the output header and the
+  // first lines of output, and the check feedback popup holds the bottom-left corner.
   bubble: {
     position: 'fixed',
-    top: 64,
+    bottom: 16,
     right: 16,
     zIndex: 950,
     width: 'min(300px, calc(100vw - 32px))',

@@ -14,18 +14,18 @@ const task = {
 }
 
 describe('Builder activity preview (ActivityHost, in-memory state)', () => {
-  it('plays the task through ActivityHost and grades on Check answers', async () => {
+  it('plays the task through ActivityHost and grades on Check my work', async () => {
     const user = userEvent.setup()
     render(<ActivityPreview task={task} />)
     const preview = screen.getByTestId('activity-preview')
     expect(within(preview).getByTestId('activity-host')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /check answers/i }))
+    await user.click(screen.getByRole('button', { name: /check my work/i }))
     expect(screen.getByText(/^Not yet/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Show answers' }))
     expect(screen.queryByText(/^Not yet/)).toBeNull()
-    await user.click(screen.getByRole('button', { name: /check answers/i }))
+    await user.click(screen.getByRole('button', { name: /check my work/i }))
     expect(screen.getByText(/All correct/)).toBeInTheDocument()
   })
 

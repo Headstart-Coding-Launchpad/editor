@@ -700,7 +700,7 @@ export function KeyboardStudentView({
       )}
 
       {!readOnly && (
-        <div className="act-row">
+        <div className="act-row act-row--submit">
           {finished && (
             <button type="button" className="btn-ghost-outline act-btn" onClick={retry}>
               Try again

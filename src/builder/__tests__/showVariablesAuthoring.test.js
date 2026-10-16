@@ -75,3 +75,14 @@ describe('showVariables lockRun authoring (P6-18)', () => {
     expect(updateShowVariables(off, { mode: 'view' }).showVariables).not.toHaveProperty('lockRun')
   })
 })
+
+describe('showVariables link authoring (P6-19)', () => {
+  const viewTask = { id: 1, showVariables: { mode: 'view', at: 'end' } }
+
+  it('writes link only to turn the linked tags off', () => {
+    const off = updateShowVariables(viewTask, { link: false })
+    expect(off.showVariables.link).toBe(false)
+    const on = updateShowVariables(off, { link: true })
+    expect(on.showVariables).not.toHaveProperty('link')
+  })
+})

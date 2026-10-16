@@ -57,7 +57,12 @@ export const COMMON_TASK_FIELDS = specs(
     { name: 'topicLinks', type: 'array' },
     { name: 'estimatedMinutes', type: 'number' },
     { name: 'priority', type: 'string' },
-    { name: 'taskMode', type: 'string' },
+    {
+      name: 'taskMode',
+      type: 'string',
+      values: ['both', 'live', 'solo'],
+      description: 'Where the task shows: both (the default), live or solo.',
+    },
     { name: 'allowSharing', type: 'boolean' },
     {
       name: 'highlight',

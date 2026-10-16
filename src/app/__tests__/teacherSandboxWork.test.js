@@ -333,7 +333,12 @@ function legacyStarterTabWork(type, task) {
       desktop: normaliseDesktop(task.starterDesktop ?? makeDefaultDesktop(task.availableApps)),
     }
   } else if (type === 'electronics') {
-    return { code: serializeCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT) }
+    // HSC Audit 09: an empty (or missing) `starterCircuit` falls back to a wired starter stage,
+    // the board students actually start with.
+    const own = task.starterCircuit
+    const stageCircuit = getStarterStage(task)?.stage?.circuit
+    const useStage = !(own?.components?.length > 0) && stageCircuit?.components?.length > 0
+    return { code: serializeCircuit((useStage ? stageCircuit : own) ?? DEFAULT_CIRCUIT) }
   }
   return { files: getStarterStage(task)?.stage?.files ?? task.starterFiles ?? [] }
 }

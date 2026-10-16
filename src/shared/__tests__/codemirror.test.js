@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
+import { EditorView } from '@codemirror/view'
 import {
   getTabSize,
   getIndentUnit,
@@ -121,5 +122,11 @@ describe('createBaseExtensions', () => {
     const exts = createBaseExtensions()
     expect(Array.isArray(exts)).toBe(true)
     expect(exts.length).toBeGreaterThan(0)
+  })
+
+  it('adds soft line wrapping only when wrapLines is set', () => {
+    const wraps = (exts) => exts.flat(Infinity).includes(EditorView.lineWrapping)
+    expect(wraps(createBaseExtensions('python'))).toBe(false)
+    expect(wraps(createBaseExtensions('python', false, { wrapLines: true }))).toBe(true)
   })
 })

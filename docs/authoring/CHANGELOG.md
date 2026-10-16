@@ -37,6 +37,186 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-16
+
+### Authoring docs corrected to match the app (HSC Audit)
+
+The HSC Audit checked every claim in these docs against the app. Some docs told authors to write
+things that never work. Check existing lessons for these first:
+
+- **Code regexes never see spaces.** `code` checks remove every space, tab and newline outside
+  strings before comparing, and regex checks run on that squashed text. So `\s`, `\s+`, `\n`,
+  literal spaces, `^`/`$` and the `m` flag never match in a `code` regex: the old Turtle example
+  `for\s+\w+\s+in\s+range\(` never passed. Write `for\w+inrange\(`, or use `contains`
+  `"for * in range("`. Non-regex code checks also ignore case, so `code not_contains "Print"`
+  rejects `print` too. See [python.md](python.md#output-and-code-checks-shared-with-html).
+- **HTML style checks read computed values.** `html_element_style_property` compares the
+  browser's computed style, so colours are `rgb(255, 0, 0)` and sizes are in `px`: `value: red`
+  never passes. See [html.md](html.md#html-element-checks-run-mode-only).
+- **Multiple-choice `answer:` is the option's id** (`answer: b`), not its text. The converter now
+  maps option text to its id, and a value matching no option fails validation. Options are never
+  shuffled, so vary where the right answer sits.
+- **Fill-in-the-blank uses `___`** (three underscores), not `{{blank}}`.
+- **Arcade:** `game.clear`, `game.rect` and `game.text` take `colour=` (as documented) and `color=`;
+  before this fix `colour=` crashed with a TypeError.
+- **The asset CLI is `node cli/cli.mjs assets …`** (`assets upload-sound`, `set-default-sounds`,
+  `list-type`), not `lessons assets …`. There is no `lessons export` either: use
+  `lessons get <id> --format yaml` or `lessons json-to-yaml`.
+- **Scratch checks:** leaving out `evaluation` means `after_run`; only `block_used`,
+  `blocks_in_order` and `block_count` may use `after_block_placed` (others now fail validation); a
+  run judges every check in a mixed list, block checks included, so `run_attempted` with block
+  checks needs the blocks too; `block_count` supports all six comparison operators live;
+  `sprite_property_delta` works on `x`, `y`, `size` and `direction` only; `variable_compare` needs
+  `variableName` (`name:` fails validation); a `CLONE_OPTION` takes `_myself_` or a sprite id, not
+  `_mouse_`. The task `toolbox` doesn't apply to Stage code, and toolbox categories keep their
+  written order.
+- **Envelope and fields:** use `levelId`, not a plain `level` (publishing turns it into a new
+  level record), and don't set `version`. HTML `starterFiles` is required, not legacy. `taskMode`
+  other than `both`, `live` or `solo` fails validation. Short-answer quizzes take one `answer_*`
+  check object; multiple choice exactly one `answer_equals`. `"a","b"` option lists work with
+  `contains` / `not_contains` only. Desktop tasks with Browser downloads must list `/Downloads/`
+  in an authored `fs`. Authored Electronics wires without `color` draw red. `fs_opened` needs
+  `itemType`. Mixing explicit and omitted task ids can clash.
+- **Also documented:** Turtle commands that don't work yet (`Turtle()`, `shape`, `tracer`,
+  `towards`, module-level `exitonclick`), stage "offer" behaviour in Turtle and Filesystem,
+  feedback checks in all eight modules, `answer_not_equals` / `answer_not_matches_regex` and
+  `flags`, `*` in answers, Markdown limits (merged callouts, table cells, same-tab links,
+  `---` headings, no strikethrough), the servo control, `sandboxStarterDesktop`, Scratch sound and
+  tab validation messages, feedback deletion with its lesson, and numeric CLI `--task-id`.
+  Examples now use `codeStages` and the canonical check form.
+- Affects: all (python, turtle, html, scratch, arcade, desktop, filesystem, electronics, quiz, cli,
+  markdown) · Existing lessons: fix `code` regexes that use `\s`, `\n`, `^`/`$` or the `m` flag;
+  change HTML style-check values to computed `rgb(…)` / `px`; check multiple-choice `answer:` is
+  an option id (text is now mapped, unmatched text fails validation); replace `{{blank}}` with
+  `___`; `"a","b"` lists only under `contains` / `not_contains`; Scratch `after_block_placed` on a
+  run-time check type, `variable_compare` with `name:`, or a bad `taskMode` now fail validation ·
+  Resolves: none
+
+### HSC Audit app fixes: Scratch checks, quiz answers, new validation rules
+
+- **Scratch: a Run judges every check.** In a list mixing `after_block_placed` and `after_run`
+  checks, the block checks are judged against the current blocks when the run is judged, so a
+  missing block can no longer pass. `run_attempted` with block checks needs the blocks as well as
+  the green flag (judged the moment the flag is pressed).
+- **Scratch: a missing `evaluation` means `after_run`** (the Builder now shows that).
+  `after_block_placed` works only on `block_used`, `blocks_in_order` and `block_count`;
+  validation errors on any other type.
+- **Scratch `block_count`** while blocks are placed now supports every operator a run does
+  (`not_equals`, `greater_than_or_equal`, `less_than_or_equal` too), so it agrees with
+  `lessons test-checks`.
+- **Scratch check types are listed and checked.** `lessons capabilities` lists the 11 Scratch
+  check types on the Scratch module (owner `module:scratch`), and a misspelt Scratch check type is
+  a validation error. `variable_compare` written with `name` (it reads `variableName`) is an error.
+- **Scratch sandbox:** `sandboxStarter` may be the state object or a JSON string, and the
+  student's personal sandbox now uses `sandboxSprites`, `sandboxToolbox` and `sandboxBackdrops`.
+- **Quizzes:** a YAML `answer:` written as an option's text (or an id in other capitals) becomes
+  that option's id; a multiple-choice answer that is no option id is an error. `answer_not_equals`
+  now works (it always failed before).
+- **Arcade:** `game.clear`, `game.rect` and `game.text` take `colour=` as well as `color=`.
+  `interactionMode` is not an Arcade field (there is no Submit button); setting it warns.
+- **New rules:** `taskMode` must be `both`, `live` or `solo`; the CLI rejects two tasks with the
+  same id (YAML mixing explicit and omitted ids); an unquoted number `key` on
+  `variable_dict_key_value` is accepted. `lessons capabilities` now says
+  `requireShiftForCapitals` is off when left out.
+- **Feedback CLI:** `--task-id 4` is stored as the number 4, so it shows in the Builder.
+- **Topic links:** `types: [python]` topics now resolve on a composed lesson's information and
+  quiz slides. See [validation-errors.md](validation-errors.md) for every new message.
+- Affects: scratch, arcade, quiz_multiple_choice, quiz_short_answer, keyboard, cli, topics, all
+  (taskMode, task ids) · Existing lessons: fix any new validation error (misspelt Scratch check
+  types, `after_block_placed` on a run-time Scratch check, `variable_compare` with `name`, a quiz
+  answer that is not an option id, a `taskMode` typo, clashing task ids); Scratch tasks that mixed
+  check timings may now need the blocks to be present on Run · Resolves: none
+
+### Scrub follow-ups from the pilot click-through: colour names only, colour boxes, run on open
+
+- **The colour picker writes colour names only** (`scrub.colourNames`, on by default; Ryan,
+  2026-10-16). The colour-blind-safe colours are offered under their nearest CSS names
+  (`black`, `orange`, `cornflowerblue`, `teal`, `gold`, `steelblue`, `orangered`,
+  `palevioletred`), then the other common names; there's no hex box, and each choice is labelled
+  with the word it writes. `colourNames: false` brings back the hex colours and the hex box.
+- **Pickable colours get the dashed "you can change this" box** that numbers and
+  `#@lock-values` values have, with the swatch beside it.
+- **`runOnOpen` tasks open with the output side showing**, so the opening preview is in view (it
+  was drawn into a folded panel, so it looked as if nothing ran).
+- Affects: python, turtle · Existing lessons: none need changes; explainers can say "pick a colour"
+  without warning about hex · Resolves: none (follow-ups to p6-23 and p6-24, logged in
+  `HSC Hub\Handoffs.md` on 2026-10-16)
+
+### Linked name tags, checks when a drag ends, live redraw with `input()` and on open, `#@lock-values`
+
+- **Name tags link to their variables** (`showVariables.link`, on by default). Each tag and every
+  real use of that variable in the code share one of six colours and a small number (never colour
+  alone). Strings, comments, attributes (`city.lower`) and keyword names (`size=26`) are not
+  marked. Hovering, focusing or tapping a tag strengthens its marks in the code, and the reverse.
+  Predict tags are linked from the start. `link: false` turns it off (Builder: "Link each tag to
+  its variable in the code"). See [python.md](python.md#name-tag-panel-showvariables).
+- **A drag runs the checks when it ends** (`scrub.checkOnRelease`, on by default). When a drag, a
+  slider step or a colour pick ends, the task's checks run once exactly as a Run: attempt logged,
+  result shown, tutor card updated. The attempt is marked `source: 'scrub'` in the session report
+  (`distinctAttempts[].source`). Previews during the drag stay check-free. Programs that don't
+  preview live, and predict tasks still waiting for predictions, wait for the next Run.
+- **Programs with `input()` redraw live** by replaying the answers from the student's last Run,
+  with "Using your last answers: Ada, Mars, teal" near the result. Before a Run the student sees
+  "Press Run and answer the questions first".
+- **Live redraw keeps up with the drag.** Previews used to wait for the drag to pause; they now
+  run about every 200 ms while the value keeps moving.
+- **Draggable numbers are marked** with an always-visible dashed box, with no hover or tap needed.
+- **`runOnOpen`** (Python, Turtle; default on when `scrub` is on): the task's code runs once as a
+  preview when it opens, so the picture shows straight away. No checks, no attempt, not a Run.
+  Ignored, with a warning, when the starter calls `input()`.
+- **`#@lock-values`** locks the next line except its values (plain string contents, empty strings
+  too, and numbers), shown in the same dashed "you can change this" box as draggable numbers.
+  Validation warns when the line has nothing to change. See
+  [python.md](python.md#locked-lines-with-editable-values-lock-values).
+- Affects: python, turtle (new fields `showVariables.link`, `scrub.checkOnRelease`, `runOnOpen`;
+  new marker `#@lock-values`), html (`scrub.checkOnRelease`, live redraw), session reports
+  (`distinctAttempts[].source`) · Existing lessons: no changes needed (scrub tasks now check on
+  release and run on open; add `checkOnRelease: false` or `runOnOpen: false` to keep the old
+  behaviour; explainers that say "press Run after dragging" can drop it) · Resolves:
+  authoring-requests/2026-10-16-p6-19-name-tags-colour-linked-to-their-variables-in-the-code.md,
+  authoring-requests/2026-10-16-p6-20-scrub-runs-the-checks-when-a-drag-ends.md,
+  authoring-requests/2026-10-16-p6-21-scrub-live-redraw-for-programs-with-input.md,
+  authoring-requests/2026-10-16-p6-22-locked-lines-with-editable-values.md,
+  authoring-requests/2026-10-16-p6-23-run-the-starter-when-the-task-opens.md,
+  authoring-requests/2026-10-16-p6-24-scrub-visible-marker-on-draggable-values.md,
+  authoring-requests/2026-10-16-p6-25-scrub-live-redraw-lags-during-a-drag.md
+
+### Student screens from the HSC Audit: what lesson text can rely on
+
+- **The `copyCode` panel is titled "⌨️ Type this out".** Lesson text should name it ("type out
+  the code in the *Type this out* box") rather than say where it is: "the panel above" read
+  wrongly, because the panel sits above the editor, beside the instructions.
+- **The Topic Library button opens on the task's topic.** It picks the first `[[topic]]` link in
+  the explainer, else the first inline code span named exactly like a topic (`` `print()` ``),
+  else the first topic named in the text. Add a `[[topic]]` link to choose it yourself.
+- **Line hints go once the check passes**, so they never linger as ghost text after the
+  finished code.
+- **Recap `leftContent` is shown larger in a narrower panel.** Keep it to one short line
+  ("Today you learned"), with no stray punctuation.
+- **The fail pop-up names the help button "✋ Help"**, and its stage offer reads "Want a hint?
+  Show me a hint" (or "Show hint: <stage label>"). Hints that mention help should call it the
+  Help button.
+- Affects: python, turtle, arcade, html (copyCode, line hints, check feedback), information
+  (recap), markdown (topic library) · Existing lessons: change "the panel above" to the
+  *Type this out* box where a lesson points at `copyCode` · Resolves: none
+
+### HSC Audit visual fixes: wording and pictures authors refer to
+
+- **Binary's button is now "Check my work"**, like Keyboard and Mouse (it said "Check answers").
+  Lesson text that tells students to press "Check answers" should say "Check my work".
+- **Scratch block pictures:** the text inputs of `say`, `think` and `ask … and wait` (for
+  example `say [Hello!] for (2) seconds`) draw as white typed-text ovals with no dropdown arrow,
+  as in Scratch. Every other `[…]` stays a dropdown, and `[… v]` (scratchblocks syntax) always
+  draws a dropdown, without the ` v`. Scratch pictures in a quiz question are drawn bigger. See
+  [markdown-renderer.md](markdown-renderer.md).
+- **Activities show a purple title bar and a Topic library chip** over their instructions, like
+  other tasks.
+- **Electronics:** the tutor's Starter board now shows the starter stage's board when
+  `starterCircuit` is missing or empty, matching what students load. Still write
+  `starterCircuit` (see [electronics.md](electronics.md)).
+- Affects: binary, scratch, markdown, activities, electronics · Existing lessons: change "Check
+  answers" to "Check my work" in Binary task text; otherwise no changes needed · Resolves: none
+
 ## 2026-10-15
 
 ### Name-tag panel: predict mode locks Run until every prediction is in (`showVariables.lockRun`)
@@ -1047,8 +1227,8 @@ Entries written before 2026-09-29 are not tagged.
   Students may add to any sprite; additions are saved with their work. See
   [scratch.md](scratch.md#costumes-and-sounds-tabs).
 - New admin library `lessonTypeAssets/scratch.defaultSounds` (`{ id, name, audio }`), with CLI
-  `lessons assets upload-sound scratch <file>` and `lessons assets set-default-sounds scratch
-  [file]`. `lessons assets list-type scratch` now returns `defaultSounds` alongside `defaultSprites` / `defaultBackdrops` (`[]` when none), so check it before asking for a new sound file.
+  `node cli/cli.mjs assets upload-sound scratch <file>` and `node cli/cli.mjs assets set-default-sounds scratch
+  [file]` (`assets` is a top-level command; corrected 2026-10-16). `node cli/cli.mjs assets list-type scratch` now returns `defaultSounds` alongside `defaultSprites` / `defaultBackdrops` (`[]` when none), so check it before asking for a new sound file.
 - Affects: scratch, cli · Existing lessons: no changes needed · Resolves: authoring-requests/2026-10-02-assets-list-type-scratch-include-defaultsounds.md
 
 ## 2026-10-01
@@ -1459,7 +1639,7 @@ Entries written before 2026-09-29 are not tagged.
 
 - YAML shorthand: `type: binary`, `type: keyboard` or `type: mouse` on a task (any activity's
   YAML type) becomes `taskType: activity` + `activityType: <id>`. The explicit two-field form
-  still works; `lessons export` now writes the shorthand. An `activityType` this version doesn't
+  still works; `lessons get <id> --format yaml` and `lessons json-to-yaml` now write the shorthand (there is no `lessons export`; corrected 2026-10-16). An `activityType` this version doesn't
   know is exported explicitly. Quizzes keep `type: quiz` + `quizType`. See
   [lesson-schema-yaml.md](lesson-schema-yaml.md#activity-tasks) and the pages in
   [activities/](activities/), whose examples now use the shorthand.

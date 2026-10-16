@@ -23,7 +23,7 @@ export default function HtmlEditor({
   lineHintSetsFor,
   onRunShortcut,
   // Live scrubbing of CSS and attribute values (src/shared/scrub/): getTaskScrub's settings,
-  // onScrubPreview(content, fileName) (the preview re-run) and onScrubCommit({ kind }).
+  // onScrubPreview(content, fileName, { notify }) (the preview re-run) and onScrubCommit({ kind }).
   scrub = null,
   onScrubPreview,
   onScrubCommit,
@@ -101,7 +101,9 @@ export default function HtmlEditor({
           onRunShortcut={onRunShortcut}
           scrub={scrub}
           onScrubPreview={
-            onScrubPreview ? (content) => onScrubPreview(content, current.name) : undefined
+            onScrubPreview
+              ? (content, options) => onScrubPreview(content, current.name, options)
+              : undefined
           }
           onScrubCommit={onScrubCommit}
           style={{ flex: 1, minHeight: 240, ...(attachedTop ? s.editorAttachedTop : {}) }}

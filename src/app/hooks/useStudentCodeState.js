@@ -263,6 +263,9 @@ export function useStudentCodeState({
 
   const iframeRef = useRef(null)
   const appendOutputRef = useRef(null)
+  // Bumped on every task change; a run started before it is a previous task's run
+  // (runWithRuntime's stillOnTask).
+  const runEpochRef = useRef(0)
   // Set by handleRun while a program is running: echoes a submitted input()
   // line into the output and mirrors it in one write (see handleInputSubmit).
   const submitInputEchoRef = useRef(null)
@@ -287,6 +290,11 @@ export function useStudentCodeState({
   // Latest in-progress input() state, kept regardless of whether a teacher is
   // watching, so opening StudentModal mid-prompt can publish it immediately.
   const inputPromptRef = useRef(null)
+  // The input() answers of the Run in progress (handleRun, handleInputSubmit), handed to the
+  // scrub previews afterwards so programs with input() can preview live (useScrubPreview).
+  const runAnswersRef = useRef(null)
+  // The latest handleRun, for the checks a scrub runs when it ends (useScrubPreview runChecks).
+  const handleRunRef = useRef(null)
   const inputValueRef = useRef('')
   const lastRuntimeCodeWriteRef = useRef(0)
   const outputRafIdRef = useRef(null)
@@ -949,7 +957,24 @@ export function useStudentCodeState({
     setTurtleResult,
     setStageResult,
     setIframeSrc,
+    // Checks on release (scrub.checkOnRelease): a Run with `source: 'scrub'`, never past
+    // predict mode's Run lock.
+    runChecks: (options) => handleRunRef.current?.(options),
+    isRunLocked: () => !!predictRunLock,
+    // Run on open (runOnOpen): a preview once the runtime is ready; never in free play.
+    // (A runtime already warm from an earlier task never reports 'ready': it stays 'idle'.)
+    runtimeReady:
+      pyodideStatus === 'ready' ||
+      (pyodideStatus === 'idle' && !!getLessonModule(lesson?.type)?.runtime?.isReady?.()),
+    freePlay: phase === 'sandbox' || inPersonalSandbox,
   })
+
+  // A scrub that ended as an edit (the code editor's onScrubCommit): counted for the session
+  // report (useScrubLog) and, with scrub.checkOnRelease, checked once as a Run (useScrubPreview).
+  function handleScrubCommit(info) {
+    scrubLog.recordScrub(info)
+    scrubPreview.scrubCommitted()
+  }
 
   // Hosted activity tasks (taskType 'activity' and legacy quizzes): state, persistence, live
   // sync, grading, reset and teacher edits. See useActivityState.js for the write rules.
@@ -1219,10 +1244,16 @@ export function useStudentCodeState({
 
   // Exposed to StudentView for coordination (save before task change, navigation)
   function resetForTaskChange() {
+    runEpochRef.current += 1
     // A python/electronics run left mid-flight (e.g. a loop or input() wait) must not
     // keep executing once the student has moved to a different task.
     if (running || runningTests) {
       getLessonModule(lesson?.type)?.runtime?.stop()
+    }
+    // A frame of the old run's output still waiting to paint would land on the new task.
+    if (outputRafIdRef.current !== null) {
+      cancelAnimationFrame(outputRafIdRef.current)
+      outputRafIdRef.current = null
     }
     setRunning(false)
     setRunningTests(false)
@@ -1729,10 +1760,13 @@ export function useStudentCodeState({
     else handleCodeChange(assembled)
   }
 
-  // `runOptions` is a slow-mo Run's `{ slowMo: true, onResult }` (runWithRuntime); anything else
-  // (a click event) is a normal Run.
+  // `runOptions` is a slow-mo Run's `{ slowMo: true, onResult }` or the checks a scrub runs when
+  // it ends, `{ source: 'scrub', inputAnswers? }` (useScrubPreview; runWithRuntime replays the
+  // answers and the attempt is logged with `source: 'scrub'`); anything else (a click event) is
+  // a normal Run.
   async function handleRun(runOptions = null) {
     const slowMoRun = runOptions?.slowMo === true ? runOptions : null
+    const scrubRun = !slowMoRun && runOptions?.source === 'scrub' ? runOptions : null
     const actor = effectiveIdentity
     if (!actor || running) return
     const task = findTaskById(lesson?.tasks, currentTaskId)
@@ -1775,9 +1809,16 @@ export function useStudentCodeState({
     setTestResults(null)
     setErrorLine(null)
     setHtmlErrorLocation(null)
+    // A Run's output replaces a scrub preview's, so its "Using your last answers" note goes.
+    scrubPreview.clearScrubReplay()
     if (!alreadySolved) resetRunFeedback()
 
     if (runKind === 'runtime') {
+      // The answers given on this Run (typed, or replayed by a scrub's checks), for the scrub
+      // previews after it (useScrubPreview rememberRunAnswers).
+      const runAnswers = []
+      runAnswersRef.current = runAnswers
+      const runTaskId = currentTaskId
       await runWithRuntime({
         actor,
         task,
@@ -1799,6 +1840,7 @@ export function useStudentCodeState({
           inputValueRef,
           submitInputEchoRef,
           appendOutputRef,
+          runEpochRef,
           runtimeCodeRafIdRef,
           pendingRuntimeCodeRef,
           lastRuntimeCodeWriteRef,
@@ -1836,9 +1878,12 @@ export function useStudentCodeState({
           persistence.saveRunRecord(moduleType, actor.anonymousId, taskId, runCode, fields),
         signals: badgeSignals,
         variablesPanel,
-        runOptions: slowMoRun,
+        runOptions: slowMoRun ?? scrubRun,
+        onInputAnswer: (value) => runAnswers.push(value),
         recordCourseRun: courseLog.recordCourseRun,
       })
+      if (runAnswersRef.current === runAnswers) runAnswersRef.current = null
+      scrubPreview.rememberRunAnswers(runTaskId, runAnswers)
       return
     }
 
@@ -1940,6 +1985,7 @@ export function useStudentCodeState({
           suggestion,
           teacherAssisted: teacherAssistedTaskIdsRef.current.has(taskIdAtRunTime),
           error: runError,
+          ...(scrubRun ? { source: 'scrub' } : {}),
         })
       }
       if (phaseRef.current === 'sandbox' || inPersonalSandboxRef.current) {
@@ -1953,11 +1999,14 @@ export function useStudentCodeState({
     })
   }
 
+  handleRunRef.current = handleRun
+
   function handleStop() {
     getLessonModule(lesson?.type)?.runtime?.stop()
   }
 
   function handleInputSubmit(value) {
+    runAnswersRef.current?.push(value)
     inputPromptRef.current = null
     inputValueRef.current = ''
     setInputPrompt(null)
@@ -3258,10 +3307,12 @@ export function useStudentCodeState({
     ...htmlInspector,
     // Scratch slow-mo: recordSlowMoUse (useSlowMoLog).
     ...slowMoLog,
-    // Editor scrubbing: scrubPreview(code, fileName?) and settleScrubPreview (useScrubPreview),
-    // recordScrub({ kind }) (useScrubLog).
+    // Editor scrubbing: scrubPreview(code, fileName?, { notify }?), settleScrubPreview and
+    // scrubReplayAnswers (useScrubPreview), recordScrub({ kind }) (useScrubLog), and
+    // handleScrubCommit({ kind }) for the editor's onScrubCommit (the count and the checks).
     ...scrubPreview,
     ...scrubLog,
+    handleScrubCommit,
     inputPrompt,
     checkPassed,
     checkAttempted,

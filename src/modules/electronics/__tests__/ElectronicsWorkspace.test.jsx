@@ -1,6 +1,9 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import ElectronicsWorkspace from '../ElectronicsWorkspace.jsx'
+import ElectronicsWorkspace, {
+  TOUCH_FIT_MIN_SCALE,
+  boardFitScale,
+} from '../ElectronicsWorkspace.jsx'
 import { DEFAULT_CIRCUIT, makeComponent } from '../circuit.js'
 
 function potentiometerCircuit(componentOverrides = {}) {
@@ -692,5 +695,40 @@ describe('ElectronicsWorkspace — forced-live output-collapse lock', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Hide' }))
     expect(onOutputCollapsedChange).toHaveBeenCalledWith(true)
+  })
+})
+
+describe('boardFitScale (auto-fit zoom)', () => {
+  const board = { boardWidth: 1000, boardHeight: 600 }
+
+  it('fits the board, never past 100%', () => {
+    expect(boardFitScale({ availableWidth: 570, availableHeight: 600, ...board })).toBe(0.57)
+    expect(boardFitScale({ availableWidth: 2000, availableHeight: 2000, ...board })).toBe(1)
+  })
+
+  it('stays at a touch-friendly zoom on touch screens (HSC Audit 09)', () => {
+    expect(
+      boardFitScale({
+        availableWidth: 570,
+        availableHeight: 600,
+        ...board,
+        minScale: TOUCH_FIT_MIN_SCALE,
+      })
+    ).toBe(TOUCH_FIT_MIN_SCALE)
+  })
+
+  it('returns null before the pane has any space', () => {
+    expect(boardFitScale({ availableWidth: 0, availableHeight: 300, ...board })).toBeNull()
+  })
+})
+
+describe('ElectronicsWorkspace part labels', () => {
+  it('keeps a long part name whole in its title', () => {
+    const mcu = makeComponent('microcontroller', 1, { row: 2, col: 2 })
+    render(<ElectronicsWorkspace circuit={{ ...DEFAULT_CIRCUIT, components: [mcu] }} />)
+    const label = screen.getByTitle(mcu.label)
+    expect(label.tagName).toBe('STRONG')
+    expect(label.style.textOverflow).toBe('ellipsis')
+    cleanup()
   })
 })

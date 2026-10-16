@@ -49,6 +49,8 @@ export default defineModule({
     unifiedStages: false,
     sandboxState: 'desktop',
     teacherFillHeight: true,
+    // Nothing to run: the card says whether the desktop changed, not "No run yet" (HSC Audit 13).
+    cardSummary: 'fs',
   },
 
   getDisplayState: (task, stage, liveState, tab) => {

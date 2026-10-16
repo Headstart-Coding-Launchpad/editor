@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   getActivePoll,
   normalizePollDraft,
@@ -9,6 +9,7 @@ import {
   tallyPoll,
 } from '../../../shared/classPolls'
 import PollResultBars from './PollResultBars'
+import { rightAlignedPopoverShift } from '../../../shared/popoverPosition'
 
 const EMPTY_DRAFT = () => ({ question: '', options: ['', ''], keepPrivate: false })
 
@@ -31,6 +32,9 @@ export default function TeacherPollControl({
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
   const wrapRef = useRef(null)
+  const panelRef = useRef(null)
+  // How far the panel moves right to stay on screen (it is right-aligned to the button).
+  const [panelShift, setPanelShift] = useState(0)
 
   const activePoll = getActivePoll(session)
   const tally = activePoll ? tallyPoll(session, activePoll.pollId) : null
@@ -44,6 +48,25 @@ export default function TeacherPollControl({
     }
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
+  }, [open])
+
+  useLayoutEffect(() => {
+    if (!open) return undefined
+    function place() {
+      const anchor = wrapRef.current?.getBoundingClientRect()
+      const width = panelRef.current?.offsetWidth ?? 0
+      if (!anchor) return
+      setPanelShift(
+        rightAlignedPopoverShift({
+          anchorRight: anchor.right,
+          width,
+          viewportWidth: window.innerWidth,
+        })
+      )
+    }
+    place()
+    window.addEventListener('resize', place)
+    return () => window.removeEventListener('resize', place)
   }, [open])
 
   async function run(action) {
@@ -93,7 +116,13 @@ export default function TeacherPollControl({
         {buttonLabel}
       </button>
       {open && (
-        <div className="ui-popover teacher-poll-panel" role="group" aria-label="Class poll">
+        <div
+          ref={panelRef}
+          className="ui-popover teacher-poll-panel"
+          role="group"
+          aria-label="Class poll"
+          style={panelShift ? { right: -panelShift } : undefined}
+        >
           {showForm ? (
             <form className="teacher-poll-form" onSubmit={handleLaunch}>
               <label className="teacher-poll-form__label">
@@ -157,7 +186,7 @@ export default function TeacherPollControl({
               <p className="teacher-poll-panel__note">
                 {draft.keepPrivate
                   ? 'Students answer in a card while they work. Only you see the results until you show them.'
-                  : 'Students answer in a card while they work. The presentation shows live percentages, and students see them once they have voted. Nobody sees who chose what.'}
+                  : 'Students answer in a card while they work. The presentation shows live percentages, and students see them once they have voted. Students can’t see who chose what; only you can.'}
                 {activePoll ? ' Launching closes the current poll.' : ''}
               </p>
               <div className="teacher-poll-panel__actions">

@@ -84,6 +84,12 @@ describe('TopBar', () => {
     expect(screen.getByText('Headstart Coding - LaunchPad')).toBeInTheDocument()
   })
 
+  it('lets the one-row bar hide the brand name on narrow screens, keeping the full title on hover', () => {
+    render(<TopBar lessonTitle="A long lesson title" singleRow />)
+    expect(screen.getByText('Headstart Coding - LaunchPad')).toHaveClass('top-bar__logo-text')
+    expect(screen.getByText('A long lesson title')).toHaveAttribute('title', 'A long lesson title')
+  })
+
   it('singleRow keeps one fixed-height row and shows the name as a chip', () => {
     render(
       <TopBar

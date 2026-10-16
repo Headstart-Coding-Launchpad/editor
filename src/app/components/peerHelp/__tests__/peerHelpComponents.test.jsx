@@ -26,7 +26,13 @@ describe('HelpRequestButton', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Need Help' }))
     expect(onAskTeacher).toHaveBeenCalled()
     rerender(<HelpRequestButton requested onAskTeacher={onAskTeacher} />)
-    expect(screen.getByRole('button', { name: 'Help requested' })).toBeDisabled()
+    const requestedBtn = screen.getByRole('button', { name: 'Help requested' })
+    // Stays bright (not greyed out by `disabled`) so it reads as "on", and a second tap is a no-op.
+    expect(requestedBtn).not.toBeDisabled()
+    expect(requestedBtn).toHaveAttribute('aria-disabled', 'true')
+    onAskTeacher.mockClear()
+    fireEvent.click(requestedBtn)
+    expect(onAskTeacher).not.toHaveBeenCalled()
   })
 })
 
@@ -335,6 +341,15 @@ describe('teacher peer help', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
     expect(ph.approveItem).toHaveBeenCalledWith('r1', 'i1')
     fireEvent.click(screen.getByRole('button', { name: 'End all peer help' }))
+    expect(ph.pauseAllPeerHelp).toHaveBeenCalled()
+  })
+
+  it('has no red "End all peer help" while nobody is helping, just a switch to turn it off', () => {
+    const ph = peerHelp({ allRequests: {}, allPeerHelp: {} })
+    render(<TeacherPeerHelpMenu session={session} lesson={null} peerHelp={ph} />)
+    fireEvent.click(screen.getByRole('button', { name: /Peer help/ }))
+    expect(screen.queryByRole('button', { name: 'End all peer help' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Turn peer help off' }))
     expect(ph.pauseAllPeerHelp).toHaveBeenCalled()
   })
 })

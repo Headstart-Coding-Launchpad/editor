@@ -7,7 +7,11 @@ import { getActivityUi, getTaskActivityUi } from '../registry.js'
 import { ACTIVITY_IDS } from '../registry.pure.js'
 
 vi.mock('../../shared/markdown', () => ({
-  MarkdownRenderer: ({ content }) => <div data-testid="activity-markdown">{content}</div>,
+  MarkdownRenderer: ({ content, showLibrary }) => (
+    <div data-testid="activity-markdown" data-show-library={String(!!showLibrary)}>
+      {content}
+    </div>
+  ),
 }))
 
 const BINARY = {
@@ -71,8 +75,30 @@ describe('ActivityHost', () => {
     expect(screen.getByTestId('activity-markdown')).toHaveTextContent('Turn bits **on**')
     fireEvent.click(screen.getByRole('switch', { name: 'Bits 1 column' }))
     expect(activity.onChange).toHaveBeenCalledTimes(1)
-    fireEvent.click(screen.getByRole('button', { name: 'Check answers' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Check my work' }))
     expect(activity.onSubmit).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the title as a header bar, with the Topic library only when the classroom wires it', () => {
+    const activity = activityFor(BINARY, binary.initialState(BINARY))
+    const { container, rerender } = render(<ActivityHost task={BINARY} activity={activity} />)
+    expect(container.querySelector('.act-header .act-title')).toHaveTextContent('Make 5')
+    expect(screen.getByTestId('activity-markdown')).toHaveAttribute('data-show-library', 'false')
+    rerender(
+      <ActivityHost
+        task={BINARY}
+        activity={activity}
+        topicLibrary={{ onTopicOpen: vi.fn(), onTopicClose: vi.fn(), openTopicId: null }}
+      />
+    )
+    expect(screen.getByTestId('activity-markdown')).toHaveAttribute('data-show-library', 'true')
+  })
+
+  it('keeps Check my work in a sticky submit row', () => {
+    const activity = activityFor(BINARY, binary.initialState(BINARY))
+    render(<ActivityHost task={BINARY} activity={activity} />)
+    const check = screen.getByRole('button', { name: 'Check my work' })
+    expect(check.closest('.act-row--submit')).not.toBeNull()
   })
 
   it("renders a teacher's broadcast read-only from teacherLive.answer", () => {
@@ -82,7 +108,7 @@ describe('ActivityHost', () => {
     const four = screen.getByRole('switch', { name: 'Bits 4 column' })
     expect(four).toHaveAttribute('aria-checked', 'true')
     expect(four).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Check answers' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
   })
 
   it('shows the initial state while a broadcast has not sent an answer yet', () => {

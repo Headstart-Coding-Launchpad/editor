@@ -53,7 +53,12 @@ export default function TopBar({
                 <path d="M232 388C237 415 245 441 256 466C267 441 275 415 280 388H232Z" />
               </g>
             </svg>
-            Headstart Coding - LaunchPad
+            {/* In the one-row student bar the name hides below 1180px (index.css), so the
+                right-hand controls can't squash the lesson title to "H…" or cover the
+                LIVE / SANDBOX badge on a tablet (HSC Audit #6, 23, 24). */}
+            <span className={singleRow ? 'top-bar__logo-text' : undefined}>
+              Headstart Coding - LaunchPad
+            </span>
           </span>
         )}
         {!isMobile && <span style={s.divider}>·</span>}
@@ -63,7 +68,9 @@ export default function TopBar({
             Lesson {number}
           </span>
         )}
-        <span style={{ ...s.title, fontSize: isMobile ? '0.8rem' : '0.95rem' }}>{lessonTitle}</span>
+        <span style={{ ...s.title, fontSize: isMobile ? '0.8rem' : '0.95rem' }} title={lessonTitle}>
+          {lessonTitle}
+        </span>
         {isSandbox && <span style={s.sandboxBadge}>SANDBOX</span>}
         {!isSandbox &&
           (isMobile ? (

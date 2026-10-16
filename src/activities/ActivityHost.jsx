@@ -35,13 +35,29 @@ export function UnavailableActivityNotice() {
   )
 }
 
-function ActivityHeader({ task, lessonType }) {
+// The same purple title bar and Topic library chip as other tasks' instructions (HSC Audit 14).
+// `topicLibrary` ({ onTopicOpen, onTopicClose, openTopicId }) reports opens to the tutor, as the
+// task explainer does; without it (Builder preview, StudentModal) there is no chip.
+function ActivityHeader({ task, lessonType, topicLibrary = null }) {
   const text = task?.explainer ?? task?.description ?? ''
+  if (!task?.title && !text) return null
   return (
-    <>
+    <section className="act-header">
       {task?.title && <h2 className="act-title">{task.title}</h2>}
-      {text && <MarkdownRenderer content={text} topicType={lessonType ?? null} disableCopy />}
-    </>
+      {text && (
+        <div className="act-header__body">
+          <MarkdownRenderer
+            content={text}
+            topicType={lessonType ?? null}
+            disableCopy
+            showLibrary={!!topicLibrary}
+            onTopicOpen={topicLibrary?.onTopicOpen}
+            onTopicClose={topicLibrary?.onTopicClose}
+            openTopicId={topicLibrary?.openTopicId}
+          />
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -78,12 +94,16 @@ export function ActivityView({
   // {anonymousId}, src/shared/typingHistory.js), for activities with `history` hooks; null when
   // there is none.
   history = null,
+  // { onTopicOpen, onTopicClose, openTopicId }: shows the header's Topic library chip.
+  topicLibrary = null,
 }) {
   const ui = getTaskActivityUi(task)
   if (!ui || ui.id === UNKNOWN_ACTIVITY_ID || !ui.StudentView) {
     return (
       <div className="act-host">
-        {showHeader && <ActivityHeader task={task} lessonType={lessonType} />}
+        {showHeader && (
+          <ActivityHeader task={task} lessonType={lessonType} topicLibrary={topicLibrary} />
+        )}
         <UnavailableActivityNotice />
       </div>
     )
@@ -113,7 +133,9 @@ export function ActivityView({
         view
       ) : (
         <div className="act-host" data-activity={ui.id}>
-          {showHeader && <ActivityHeader task={task} lessonType={lessonType} />}
+          {showHeader && (
+            <ActivityHeader task={task} lessonType={lessonType} topicLibrary={topicLibrary} />
+          )}
           {view}
         </div>
       )}
@@ -184,6 +206,9 @@ export default function ActivityHost({
   onDismissTileHighlights,
   // The student's own typing history (cs.typingHistory), passed to ActivityView.
   history = null,
+  // { onTopicOpen, onTopicClose, openTopicId } from the classroom, for the header's Topic
+  // library chip (opens are reported to the tutor like the task explainer's).
+  topicLibrary = null,
 }) {
   const capabilities = useInputCapabilities()
   const [keyboardOverride, setKeyboardOverride] = useState(false)
@@ -225,7 +250,7 @@ export default function ActivityHost({
   if (blocked) {
     return (
       <div className="act-host">
-        <ActivityHeader task={task} lessonType={lessonType} />
+        <ActivityHeader task={task} lessonType={lessonType} topicLibrary={topicLibrary} />
         <RequirementNotice
           unmet={unmet}
           fallback={fallback}
@@ -249,6 +274,7 @@ export default function ActivityHost({
       entranceKey={entranceKey}
       tileHighlights={shownTileHighlights}
       history={history}
+      topicLibrary={topicLibrary}
     />
   )
   // Quizzes have no device requirements and lay themselves out (see ActivityView).

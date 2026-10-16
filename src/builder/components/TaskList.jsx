@@ -98,6 +98,63 @@ function insertTaskIntoTree(items, task, target) {
   return next
 }
 
+// The selected task's row actions, on their own line under its title so the titles of the
+// other rows get the full width (they were cut to a few letters). Buttons are big enough to
+// tap, and Delete sits apart from Copy (HSC Audit, Visual Review 26).
+function RowActions({
+  onUp,
+  onDown,
+  canUp,
+  canDown,
+  onDuplicate,
+  onDelete,
+  duplicateTitle,
+  deleteTitle,
+}) {
+  return (
+    <div style={s.rowActions} onClick={(e) => e.stopPropagation()} data-testid="task-row-actions">
+      <button
+        type="button"
+        style={s.rowBtn}
+        onClick={onUp}
+        title="Move up"
+        aria-label="Move up"
+        disabled={!canUp}
+      >
+        ▲
+      </button>
+      <button
+        type="button"
+        style={s.rowBtn}
+        onClick={onDown}
+        title="Move down"
+        aria-label="Move down"
+        disabled={!canDown}
+      >
+        ▼
+      </button>
+      <button
+        type="button"
+        style={s.rowBtn}
+        onClick={onDuplicate}
+        title={duplicateTitle}
+        aria-label={duplicateTitle}
+      >
+        ⧉ Copy
+      </button>
+      <button
+        type="button"
+        style={{ ...s.rowBtn, ...s.rowBtnDanger }}
+        onClick={onDelete}
+        title={deleteTitle}
+        aria-label={deleteTitle}
+      >
+        ✕ Delete
+      </button>
+    </div>
+  )
+}
+
 export default function TaskList({
   tasks,
   selectedTaskId,
@@ -398,38 +455,18 @@ export default function TaskList({
                             {subtask.title || <em style={{ opacity: 0.5 }}>Untitled</em>}
                           </span>
                           <PriorityBadge priority={subtask.priority} />
-                          <div style={s.actions} onClick={(e) => e.stopPropagation()}>
-                            <button
-                              style={s.iconBtn}
-                              onClick={() => moveSubtaskUp(item.id, j, subtasks)}
-                              title="Move up"
-                              disabled={j === 0}
-                            >
-                              ▲
-                            </button>
-                            <button
-                              style={s.iconBtn}
-                              onClick={() => moveSubtaskDown(item.id, j, subtasks)}
-                              title="Move down"
-                              disabled={j === subtasks.length - 1}
-                            >
-                              ▼
-                            </button>
-                            <button
-                              style={s.iconBtn}
-                              onClick={() => onDuplicate(subtask, item.id)}
-                              title="Duplicate subtask"
-                            >
-                              ⧉
-                            </button>
-                            <button
-                              style={{ ...s.iconBtn, color: '#ef4444' }}
-                              onClick={() => onDelete(subtask.id)}
-                              title="Delete subtask"
-                            >
-                              ✕
-                            </button>
-                          </div>
+                          {isActive && (
+                            <RowActions
+                              onUp={() => moveSubtaskUp(item.id, j, subtasks)}
+                              onDown={() => moveSubtaskDown(item.id, j, subtasks)}
+                              canUp={j > 0}
+                              canDown={j < subtasks.length - 1}
+                              onDuplicate={() => onDuplicate(subtask, item.id)}
+                              onDelete={() => onDelete(subtask.id)}
+                              duplicateTitle="Duplicate subtask"
+                              deleteTitle="Delete subtask"
+                            />
+                          )}
                         </div>
                       )
                     })}
@@ -486,34 +523,18 @@ export default function TaskList({
                 {item.title || <em style={{ opacity: 0.5 }}>Untitled</em>}
               </span>
               <PriorityBadge priority={item.priority} />
-              <div style={s.actions} onClick={(e) => e.stopPropagation()}>
-                <button
-                  style={s.iconBtn}
-                  onClick={() => moveUp(i)}
-                  title="Move up"
-                  disabled={i === 0}
-                >
-                  ▲
-                </button>
-                <button
-                  style={s.iconBtn}
-                  onClick={() => moveDown(i)}
-                  title="Move down"
-                  disabled={i === tasks.length - 1}
-                >
-                  ▼
-                </button>
-                <button style={s.iconBtn} onClick={() => onDuplicate(item)} title="Duplicate">
-                  ⧉
-                </button>
-                <button
-                  style={{ ...s.iconBtn, color: '#ef4444' }}
-                  onClick={() => onDelete(item.id)}
-                  title="Delete"
-                >
-                  ✕
-                </button>
-              </div>
+              {isActive && (
+                <RowActions
+                  onUp={() => moveUp(i)}
+                  onDown={() => moveDown(i)}
+                  canUp={i > 0}
+                  canDown={i < tasks.length - 1}
+                  onDuplicate={() => onDuplicate(item)}
+                  onDelete={() => onDelete(item.id)}
+                  duplicateTitle="Duplicate"
+                  deleteTitle="Delete"
+                />
+              )}
             </div>
           )
         })}
@@ -599,6 +620,7 @@ const s = {
   item: {
     display: 'flex',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
     padding: '8px 10px 8px 14px',
     cursor: 'pointer',
@@ -625,6 +647,7 @@ const s = {
   },
   title: {
     flex: 1,
+    minWidth: 0,
     fontFamily: 'var(--font-body)',
     fontSize: '0.87rem',
     fontWeight: 600,
@@ -646,6 +669,27 @@ const s = {
   },
   activityEmoji: { fontSize: 13, lineHeight: 1 },
   actions: { display: 'flex', gap: 2, flexShrink: 0 },
+  rowActions: {
+    flexBasis: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  rowBtn: {
+    minWidth: 36,
+    minHeight: 34,
+    padding: '4px 8px',
+    background: '#fff',
+    border: '1px solid #d1d5db',
+    borderRadius: 6,
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    color: '#4b5563',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  rowBtnDanger: { marginLeft: 'auto', color: '#b91c1c', borderColor: '#fecaca' },
   iconBtn: {
     background: 'transparent',
     border: 'none',
@@ -721,6 +765,7 @@ const s = {
   subtaskItem: {
     display: 'flex',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
     padding: '7px 10px 7px 10px',
     cursor: 'pointer',

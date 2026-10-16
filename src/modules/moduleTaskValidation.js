@@ -17,7 +17,7 @@ import {
   normalizeFeedbackChecks,
 } from './checks.js'
 import { normalizeHtmlCheck } from './html/checks.js'
-import { normalizeSequenceItem, opcodeSpecOpcodes } from './scratch/checks.js'
+import { SCRATCH_CHECK_TYPES, normalizeSequenceItem, opcodeSpecOpcodes } from './scratch/checks.js'
 import { VALUE_INPUT_DEFAULTS } from './scratch/blockInputs.js'
 import { isScratchStaticCheck } from './scratch/checkDispatch.js'
 import { evaluateScratchStage, getScratchVerificationStages } from './scratch/checkVerification.js'
@@ -186,7 +186,12 @@ export function validateCodeChecks(
   if (normalized.some((check) => check.type?.startsWith('variable_') && !check.name?.trim())) {
     errors.push(`Task ${n} has a variable ${label} but no variable name`)
   }
-  if (normalized.some((check) => check.type === 'variable_dict_key_value' && !check.key?.trim())) {
+  // `key` is compared as text (python/checks.js), so an unquoted YAML number (key: 1) is fine.
+  if (
+    normalized.some(
+      (check) => check.type === 'variable_dict_key_value' && !String(check.key ?? '').trim()
+    )
+  ) {
     errors.push(`Task ${n} has a dictionary key-value ${label} but no key`)
   }
   if (
@@ -270,6 +275,12 @@ export function validateScratchChecks(checks, n, errors, kind = 'completion', wa
     }
   }
   for (const check of normalizeChecks(checks)) {
+    if (check?.type && !SCRATCH_CHECK_TYPES.includes(check.type)) {
+      errors.push(
+        `Task ${n} has a Scratch ${label} of unknown type ${check.type} — use one of ${SCRATCH_CHECK_TYPES.join(', ')}`
+      )
+      continue
+    }
     if (check.type === 'block_used' || check.type === 'block_run' || check.type === 'block_count') {
       const problem = opcodeSpecProblem(check.opcode)
       if (problem === 'missing') {
@@ -335,9 +346,32 @@ export function validateScratchChecks(checks, n, errors, kind = 'completion', wa
     if (check.type === 'sprite_property_changed' && !check.property) {
       errors.push(`Task ${n} has a Scratch sprite-changed ${label} but no property`)
     }
+    // Only the block checks can be judged as blocks are placed; any other type would stay
+    // pending for ever (run_attempted has its own message in validateRunAttemptedChecks).
     if (
+      check.evaluation === 'after_block_placed' &&
+      check.type !== 'run_attempted' &&
+      !isScratchStaticCheck(check)
+    ) {
+      errors.push(
+        `Task ${n} has a Scratch ${label} of type ${check.type} with evaluation after_block_placed — only block_used, blocks_in_order and block_count can use it, so use after_run`
+      )
+    }
+    // variable_compare reads `variableName` only (variable_equals also takes `name`).
+    if (
+      check.type === 'variable_compare' &&
+      !check.variableName?.trim?.() &&
+      typeof check.name === 'string' &&
+      check.name.trim()
+    ) {
+      errors.push(
+        `Task ${n} has a Scratch variable-compare ${label} with name instead of variableName — rename name to variableName`
+      )
+    } else if (
       (check.type === 'variable_equals' || check.type === 'variable_compare') &&
-      !(check.variableName ?? check.name)?.trim?.()
+      !(
+        check.type === 'variable_compare' ? check.variableName : (check.variableName ?? check.name)
+      )?.trim?.()
     ) {
       errors.push(`Task ${n} has a Scratch variable ${label} but no variable name`)
     }

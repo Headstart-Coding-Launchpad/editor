@@ -39,6 +39,8 @@ export default function PythonEditor({
   slowMoMarker = null,
   // The #@peek "stopped here" band (src/shared/peekBandEditor.js): `{ line, missed }` or null.
   peekBand = null,
+  // Linked name tags (src/shared/variableLinksEditor.js): `{ links, active, onActive }` or null.
+  variableLinks = null,
 }) {
   const editorRef = useRef(null)
   const slowMoKey = useMemo(() => JSON.stringify(slowMoMarker ?? null), [slowMoMarker])
@@ -109,8 +111,11 @@ export default function PythonEditor({
         lineHints={lineHints}
         lockedLines={lockedLines}
         peekBand={peekBand}
+        variableLinks={variableLinks}
         onRunShortcut={onRunShortcut}
         blockGuides={showBlocks && blockGuidesOn}
+        // On a tablet a long line was cut off with no visible sideways scroll: wrap it instead.
+        lineWrapping={isTouchDevice}
         scrub={scrub}
         onScrubPreview={onScrubPreview}
         onScrubCommit={onScrubCommit}

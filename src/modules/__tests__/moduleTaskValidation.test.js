@@ -2,7 +2,11 @@
 import { describe, expect, it } from 'vitest'
 import { checkRegistry } from '../checks.js'
 import { getModuleDefinitions } from '../definitions.js'
-import { validateRegisteredChecks, validateScratchChecks } from '../moduleTaskValidation.js'
+import {
+  validateCodeChecks,
+  validateRegisteredChecks,
+  validateScratchChecks,
+} from '../moduleTaskValidation.js'
 import { validateLesson } from '../../builder/lessonUtils.js'
 import { validateLessonForMcp } from '../../../cli/validate.mjs'
 
@@ -229,5 +233,107 @@ describe('Scratch opcode alternatives', () => {
       'Task 1 has a Scratch check whose shared fieldValues key DEGREES is not an input of every alternative opcode — give each alternative its own fieldValues'
     expect(validateLesson(lesson).warnings).toContain(message)
     expect(validateLessonForMcp(lesson).warnings).toContain(message)
+  })
+})
+
+describe('Scratch check types and timing (audit #5, #33, #58)', () => {
+  function run(checks, kind = 'completion') {
+    const errors = []
+    validateScratchChecks(checks, 1, errors, kind, [])
+    return errors
+  }
+
+  it('rejects a misspelt Scratch check type', () => {
+    expect(run({ type: 'block_usd', opcode: 'motion_movesteps' })).toEqual([
+      expect.stringMatching(/^Task 1 has a Scratch check of unknown type block_usd — use one of /),
+    ])
+    expect(run({ type: 'run_attempted' })).toEqual([])
+    expect(run({ type: 'costume_is', value: 'costume2' })).toEqual([])
+  })
+
+  it('allows after_block_placed only on the block checks', () => {
+    expect(
+      run({
+        type: 'block_count',
+        opcode: 'x',
+        operator: 'equals',
+        value: 1,
+        evaluation: 'after_block_placed',
+      })
+    ).toEqual([])
+    expect(
+      run({
+        type: 'sprite_property',
+        property: 'x',
+        operator: 'equals',
+        value: 10,
+        evaluation: 'after_block_placed',
+      })
+    ).toEqual([
+      'Task 1 has a Scratch check of type sprite_property with evaluation after_block_placed — only block_used, blocks_in_order and block_count can use it, so use after_run',
+    ])
+  })
+
+  it('rejects variable_compare written with name instead of variableName', () => {
+    expect(run({ type: 'variable_compare', name: 'score', operator: 'equals', value: 1 })).toEqual([
+      'Task 1 has a Scratch variable-compare check with name instead of variableName — rename name to variableName',
+    ])
+    expect(
+      run({ type: 'variable_compare', variableName: 'score', operator: 'equals', value: 1 })
+    ).toEqual([])
+    // variable_equals reads either field.
+    expect(run({ type: 'variable_equals', name: 'score', value: 1 })).toEqual([])
+  })
+
+  it('reaches both the Builder and the CLI validators', () => {
+    const lesson = {
+      id: 'scratch-types',
+      type: 'composed',
+      title: 'Types',
+      description: 'd',
+      tasks: [
+        {
+          id: 1,
+          title: 'Python',
+          moduleType: 'python',
+          starterCode: 'x',
+          check: { type: 'code', operator: 'contains', value: 'x' },
+        },
+        {
+          id: 2,
+          title: 'Scratch',
+          moduleType: 'scratch',
+          check: { type: 'blok_used', opcode: 'x' },
+        },
+      ],
+    }
+    for (const result of [validateLesson(lesson), validateLessonForMcp(lesson)]) {
+      expect(
+        result.errors.some((e) =>
+          e.startsWith('Task 2 has a Scratch check of unknown type blok_used')
+        )
+      ).toBe(true)
+      expect(result.errors.some((e) => e.startsWith('Task 1 has a Scratch'))).toBe(false)
+    }
+  })
+})
+
+describe('variable_dict_key_value key (audit #24)', () => {
+  it('accepts an unquoted number key without crashing', () => {
+    const errors = []
+    expect(() =>
+      validateCodeChecks(
+        { type: 'variable_dict_key_value', name: 'd', key: 1, value: 'x' },
+        1,
+        errors
+      )
+    ).not.toThrow()
+    expect(errors).toEqual([])
+    validateCodeChecks(
+      { type: 'variable_dict_key_value', name: 'd', key: '  ', value: 'x' },
+      1,
+      errors
+    )
+    expect(errors).toEqual(['Task 1 has a dictionary key-value check but no key'])
   })
 })

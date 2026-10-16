@@ -28,6 +28,9 @@ export default function ExplainerPanel({
   // Logs a student's open of a "See example" fence in this content (the task explainer only;
   // see MarkdownRenderer's onExampleOpen).
   onExampleOpen,
+  // Room (px) to keep clear at the right of the title bar for a control laid over it (the side
+  // explainer's collapse arrow), so a long title wraps before it rather than running under it.
+  titleEndInset = 0,
 }) {
   const isFirstView = useFirstView(
     entranceKey == null ? null : firstViewKey('explainer', entranceKey)
@@ -50,6 +53,8 @@ export default function ExplainerPanel({
   const panelRef = useRef(null)
   const contentRef = useRef(null)
   const isCollapsed = collapsible && collapsed
+  const titleBarStyle =
+    titleEndInset > 0 ? { ...s.titleBar, paddingRight: 12 + titleEndInset } : s.titleBar
   const canExpandOverlay = !fill
 
   // Reports this accordion's own open/closed state upward — used by LessonTaskContent so
@@ -112,7 +117,7 @@ export default function ExplainerPanel({
       {collapsible ? (
         <button
           className={highlighted ? 'pane-highlight-pulse' : undefined}
-          style={s.titleBar}
+          style={titleBarStyle}
           onClick={() => {
             setEntrance((current) => ({ ...current, over: true }))
             setCollapsed((c) => !c)
@@ -124,7 +129,7 @@ export default function ExplainerPanel({
         </button>
       ) : (
         title && (
-          <div style={s.titleBar}>
+          <div style={titleBarStyle}>
             <h2 style={s.titleText}>{title}</h2>
           </div>
         )
@@ -163,6 +168,7 @@ export default function ExplainerPanel({
           </div>
           {!expanded && canExpandOverlay && canScroll && !atBottom && (
             <div style={s.showMoreBar}>
+              <span style={s.showMoreFade} aria-hidden="true" />
               <button
                 type="button"
                 className="btn-primary"
@@ -330,7 +336,7 @@ const s = {
     boxShadow: 'none',
   },
   content: {
-    padding: '10px 14px 42px',
+    padding: '10px 14px 12px',
     overflowY: 'auto',
     maxHeight: 'clamp(48px, calc(30vh - 132px), 180px)',
     minHeight: 0,
@@ -348,22 +354,30 @@ const s = {
     overflowY: 'auto',
     padding: '14px 18px 48px',
   },
+  // Its own row under the text, never floating over it: on a tablet the clamped content is only
+  // a few lines tall, and an overlaid button hid most of the tutor's instructions (HSC Audit #6).
   showMoreBar: {
+    position: 'relative',
+    flexShrink: 0,
+    display: 'flex',
+    justifyContent: 'center',
+    padding: '4px 12px 6px',
+    borderTop: '1px solid #f1f5f9',
+    background: '#fff',
+  },
+  showMoreFade: {
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0,
-    display: 'flex',
-    justifyContent: 'center',
-    padding: '24px 12px 8px',
+    bottom: '100%',
+    height: 18,
     pointerEvents: 'none',
-    background: 'linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.96) 45%)',
+    background: 'linear-gradient(to bottom, rgba(255,255,255,0), #fff)',
   },
   showMoreBtn: {
-    pointerEvents: 'auto',
-    padding: '7px 16px',
-    fontSize: 13,
+    padding: '5px 14px',
+    fontSize: 12.5,
     borderRadius: 999,
-    boxShadow: '0 6px 18px rgba(0,0,0,0.14)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
   },
 }

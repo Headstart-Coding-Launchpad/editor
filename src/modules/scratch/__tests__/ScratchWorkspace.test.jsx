@@ -13,6 +13,10 @@ import {
   evalSingleCheckPartial,
   blockPlacedCheckHasFailed,
   routeWorkspaceEdit,
+  BAT_COLOUR,
+  drawScratchSpriteAtOrigin,
+  revealBlocksBesideFlyout,
+  SCRATCH_COMPACT_BREAKPOINT,
 } from '../ScratchWorkspace'
 import { FEEDBACK_TIMING, evaluateCheckWithCustomFeedback } from '../../checks'
 
@@ -82,6 +86,59 @@ describe('computeStageScale', () => {
     const compact = computeStageScale(500, 0, { compact: true, flyoutCollapsed: false })
     expect(nonCompact).toBeCloseTo(0.357, 3)
     expect(compact).toBe(1)
+  })
+})
+
+describe('computeStageScale on a tablet-width workspace (HSC Audit 08)', () => {
+  it('keeps the stage beside the blocks, at a smaller size, above the compact breakpoint', () => {
+    expect(SCRATCH_COMPACT_BREAKPOINT).toBeLessThan(990)
+    expect(computeStageScale(990, 600, { compact: false, flyoutCollapsed: false })).toBe(0.65)
+  })
+
+  it('leaves the wide layout full size', () => {
+    expect(computeStageScale(1200, 900, { compact: false, flyoutCollapsed: false })).toBe(1)
+  })
+})
+
+describe('revealBlocksBesideFlyout (HSC Audit 08)', () => {
+  function rect(left, width) {
+    return { left, right: left + width, width }
+  }
+  function setup({ flyout = rect(0, 300), blocks = [rect(280, 200)] } = {}) {
+    const div = document.createElement('div')
+    const flyoutEl = document.createElement('div')
+    flyoutEl.className = 'blocklyFlyout'
+    flyoutEl.getBoundingClientRect = () => flyout
+    div.appendChild(flyoutEl)
+    const ws = {
+      scrollX: 10,
+      scrollY: 5,
+      scroll: vi.fn(),
+      getTopBlocks: () =>
+        blocks.map((r) => ({ getSvgRoot: () => ({ getBoundingClientRect: () => r }) })),
+    }
+    return { ws, div, flyoutEl }
+  }
+
+  it('scrolls the canvas right so a block under the palette clears it', () => {
+    const { ws, div } = setup()
+    expect(revealBlocksBesideFlyout(ws, div)).toBe(true)
+    // palette right 300 + 16px gap - block left 280 = 36px
+    expect(ws.scroll).toHaveBeenCalledWith(46, 5)
+  })
+
+  it('leaves blocks that are already clear of the palette', () => {
+    const { ws, div } = setup({ blocks: [rect(340, 200)] })
+    expect(revealBlocksBesideFlyout(ws, div)).toBe(false)
+    expect(ws.scroll).not.toHaveBeenCalled()
+  })
+
+  it('does nothing while the palette is hidden or nothing is measured', () => {
+    const hidden = setup()
+    hidden.flyoutEl.style.display = 'none'
+    expect(revealBlocksBesideFlyout(hidden.ws, hidden.div)).toBe(false)
+    const empty = setup({ blocks: [rect(0, 0)] })
+    expect(revealBlocksBesideFlyout(empty.ws, empty.div)).toBe(false)
   })
 })
 
@@ -377,5 +434,24 @@ describe('routeWorkspaceEdit', () => {
     routeWorkspaceEdit({ type: 'delete', blockId: 'b1' }, actions)
     expect(actions.clearCheckFeedback).not.toHaveBeenCalled()
     expect(actions.scheduleChecks).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('built-in bat sprite colour (style spec S6)', () => {
+  it('fills the bat with #374151, never a CSS variable the canvas cannot read', () => {
+    const fills = []
+    const ctx = {
+      beginPath: vi.fn(),
+      arc: vi.fn(),
+      ellipse: vi.fn(),
+      fill: vi.fn(),
+      set fillStyle(value) {
+        fills.push(value)
+      },
+    }
+    drawScratchSpriteAtOrigin(ctx, 'bat', 20)
+    expect(BAT_COLOUR).toBe('#374151')
+    expect(fills).toHaveLength(3)
+    expect(fills.every((value) => value === '#374151')).toBe(true)
   })
 })

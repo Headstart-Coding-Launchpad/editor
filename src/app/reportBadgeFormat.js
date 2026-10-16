@@ -69,6 +69,14 @@ export function studentTaskSignalLabels(task) {
   return labels
 }
 
+// A teacher-sandbox visit shorter than this is a quick demo, not a sign of a lesson gap.
+export const LESSON_GAP_MIN_MS = 2 * 60 * 1000
+
+/** Whether a teacher-sandbox visit was long enough to flag as "a possible lesson gap?". */
+export function isPossibleLessonGap(visit) {
+  return Number(visit?.durationMs) >= LESSON_GAP_MIN_MS
+}
+
 /** "The class spent 14 min in the teacher sandbox after Task 7". */
 export function teacherSandboxCallout(visit) {
   const after = visit.previousTaskTitle

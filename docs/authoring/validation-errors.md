@@ -33,11 +33,12 @@ isn't listed here, so add a row whenever you add a message.
 | `tasks must contain at least one task or group` | `tasks` is empty. | Add a task. |
 | `… is nested … levels deep at … — Firestore rejects documents nested deeper than … levels, so the lesson can't be saved. Flatten or shorten that part of the lesson` | Firestore refuses a document whose maps and lists nest more than 20 levels below the document root (each map key and each list index is one level). The lesson is measured **as it will be stored**: Scratch block trees (`starterBlocks`, `completeBlocks`, code-stage `blocks`, `prebuiltStacks[].stack`), Arcade designs and sealed answer fields are saved as text and don't count. The message names the task (`Task 15 ("Title")`, or `The lesson` for a field outside the tasks) and the deepest path, e.g. `tasks[14].sprites[0].extra.child.child…`; a run of stacked Scratch blocks is shortened to `(.next.block ×N)`. Without this check the save fails with Firestore's `Input object is deeper than 20 levels`. | Flatten the named field: move deeply nested data into a list of shallower entries, or remove it. |
 | `draft must be a boolean when provided` | `draft` is not `true` or `false`. | Use `draft: true` or remove it. |
+| `Draft lessons cannot be published. Clear draft only after full validation passes.` (**CLI only**, on publish) | The lesson has `draft: true`, and the publish command wasn't told to allow drafts. | Finish every task, remove `draft: true`, validate again, then publish. |
 | `version must be a non-negative integer when provided` | `version` was hand-edited. | Remove `version` from source files; LaunchPad manages it. |
 | `badgeOptions must be an object when provided` | `badgeOptions` isn't a mapping. | Write it as `badgeOptions:` with option names under it ([badges.md](badges.md#badgeoptions)). |
 | `badgeOptions.… is not a badge option and is ignored` (warning) | A key under `badgeOptions` isn't one of `quizMasterThreshold`, `quizMasterMinQuizzes`, `persistenceMinFails`, `readyToCodeSeconds`, `earlyBirdMinutes`, `sideQuesterMinDone` or `wordSmithMinTasks`. | Fix the spelling or remove it. |
 | `badgeOptions.… must be a number from 0 to 1` | `quizMasterThreshold` is outside 0–1 (it's a share, not a percentage). | Write `0.8`, not `80`. |
-| `badgeOptions.… must be a whole number of at least 1` | `quizMasterMinQuizzes` or `persistenceMinFails` is below 1 or not a whole number. | Use a whole number, 1 or more. |
+| `badgeOptions.… must be a whole number of at least 1` | `quizMasterMinQuizzes`, `persistenceMinFails`, `sideQuesterMinDone` or `wordSmithMinTasks` is below 1 or not a whole number. | Use a whole number, 1 or more. |
 | `badgeOptions.… must be a positive number of seconds` | `readyToCodeSeconds` is 0, negative or not a number. | Use a number of seconds above 0. |
 | `badgeOptions.… must be a positive number of minutes` | `earlyBirdMinutes` is 0, negative or not a number. | Use a number of minutes above 0. |
 
@@ -56,7 +57,7 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … is missing a title` / `… is missing a title` | A task has no `title`. | Add a title. |
 | `… must be an object` | A task entry is not a mapping (e.g. a bare string). | Write each task as `- title: …` with fields under it. |
 | `… taskType must be information, quiz, code_arrange or activity when provided` | `taskType` has an unsupported value. Allowed: `information`, `quiz`, `code_arrange`, `activity`; leave it out for code tasks. | Fix the value or remove `taskType`. In YAML, `type: information` / `type: quiz` also work. |
-| `… has an invalid task-type value` | The YAML `type:` shorthand isn't a known task type. | Use `information`, `quiz` or `group`, or omit it for a code task. |
+| `… has an invalid task-type value` | The YAML `type:` shorthand isn't a known task type. | Use `information`, `quiz`, `code_arrange` or an activity (`binary`, `keyboard`, `mouse`), or omit it for a code task. A group is written `group:` + `tasks:`, not `type: group`. |
 | `… has an invalid quiz type` | `quizType` isn't one of the six quiz types. | Use `multiple_choice`, `match`, `fill_blank`, `short_answer`, `confidence` or `poll`. |
 | `… intent must be a non-empty Markdown string while lesson draft is enabled` | Draft lessons need an `intent` on every real task. | Add `intent:` describing what the task is for. |
 | `… intent must be a Markdown string when provided` | `intent` isn't text. | Make it a string. |
@@ -74,6 +75,8 @@ isn't listed here, so add a row whenever you add a message.
 | `… … must be an object when provided` | A mapping field (e.g. `starterBlocks`, `starterCircuit`) holds a string. | Provide the object, not JSON text. |
 | `Task … estimated time must be a positive number of minutes` | `estimatedMinutes` is 0, negative or not a number. | Use e.g. `estimatedMinutes: 5`, or remove it. |
 | `Task … priority must be one of: …` | `priority` isn't `core` or `optional`. | Fix the value or remove it (default is core). |
+| `Task … taskMode must be one of: …` | `taskMode` isn't `both`, `live` or `solo` (a typo such as `Solo` would hide the task in both modes). | Fix the value, or remove it (the default is both). |
+| `Task … has the same id (…) as task … — give every task its own id, or leave out every task id so they are numbered in order` (**CLI only**) | Two tasks share an id. In YAML this usually means some tasks have an `id` and others don't: tasks without one are numbered by position, so `id: 2` clashes with the second task. | Give every task its own id, or remove all the task ids. |
 | `Task … allowSharing must be true or false` | `allowSharing` isn't a boolean. | Use `true` or `false`. |
 | `Task … showBlocks must be true or false` | `showBlocks` isn't a boolean. | Use `true` (the default: block brackets show) or `false` (hide them). |
 | `Task … allowSharing is not supported on quiz or information tasks` | Only code tasks have a workspace to share. | Remove `allowSharing` from that task. |
@@ -146,13 +149,14 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … is an information task but has no explainer` | Information tasks are just their explainer (except `informationType: introduction` and `badges`). | Add `explainer:` Markdown. |
 | `Task … is a quiz but has fewer than 2 options` | Multiple-choice needs at least two options. | Add options. |
 | `Task … is a quiz but has an empty option text` | An option has no text. | Fill in or remove it. |
-| `Task … is a quiz but no correct answer has been selected` | No option is marked correct. | In YAML, set `answer:` to the correct option text; in JSON, set `check` to that option's id. |
+| `Task … is a quiz but its answer "…" is not one of the option ids — set answer to the correct option's id (e.g. a)` | The multiple-choice answer matches no option `id`, so no choice could ever be marked right. In YAML, an `answer:` that matches exactly one option's text (or an id in different capitals) is turned into that option's id for you. | Set `answer:` (or `check.value`) to the correct option's `id`, e.g. `answer: b`. |
+| `Task … is a quiz but no correct answer has been selected` | No option is marked correct, or the check isn't a single `answer_equals`. | Set `answer:` to the correct option's **id** (e.g. `answer: b`), or write `check: { type: answer_equals, value: b }`. In YAML, option text is mapped to its id for you. |
 | `Task … is a match quiz but has fewer than 2 pairs` | Match quizzes need two or more pairs. | Add pairs. |
 | `Task … is a match quiz but has an empty prompt or answer` | A pair is half-empty. | Fill in both sides. |
-| `Task … is a fill-in-the-blank quiz but has no blanks in the text` | The quiz text has no `{{blank}}` markers. | Add blanks to `text`. |
+| `Task … is a fill-in-the-blank quiz but has no blanks in the text` | The quiz `text` has no `___` (three underscores) markers. | Put a `___` in `text` for each entry in `blanks`. |
 | `Task … is a fill-in-the-blank quiz but has no blank answers` | `blanks` is empty. | Add an answer per blank. |
 | `Task … is a fill-in-the-blank quiz but has an empty answer` | A blank has no answer. | Fill it in. |
-| `Task … is a short-answer quiz with a check enabled but no check value` | The short-answer check has no `value`. | Add the expected answer, or remove the check for an ungraded question. |
+| `Task … is a short-answer quiz with a check enabled but no check value` | The short-answer check has no `value`, **or** it isn't a single `answer_*` check object (a `checks:` list or an `output`/`type` + `operator` check gives this message too). | Write one check such as `check: { type: answer_contains, value: … }`, or remove the check for an ungraded question. |
 | `Task … is a poll but has fewer than 2 options` | A poll (`quizType: poll`) needs at least two options. | Add options. |
 | `Task … is a poll but has more than 6 options` | Polls take 2 to 6 options. | Remove options, or split the question. |
 | `Task … is a poll but has an empty option text` | A poll option has no text. | Fill in or remove it. |
@@ -347,7 +351,18 @@ message says `feedback check` where it would say `check` (that part is shown as 
 | `Task … has a Scratch sprite-changed … but no property` | `sprite_property_changed` has no `property`. | Add `property:`. |
 | `Task … has a Scratch variable … but no variable name` / `Task … has a Scratch variable … but no expected value` / `Task … has a Scratch variable … but no operator` | A Scratch `variable_equals` / `variable_compare` check is incomplete. | Set `variableName`, `value` and (for compare) `operator`. |
 | `Task … has a Scratch costume … but no costume name` | `costume_is` has no `value`. | Add the costume name. |
+| `Task … has a Scratch … of unknown type … — use one of …` | A Scratch check's `type` isn't a Scratch check type (often a misspelling), so it could never pass. `lessons capabilities` lists the Scratch check types. | Fix the spelling, or use one of the types the message lists. |
+| `Task … has a Scratch … of type … with evaluation after_block_placed — only block_used, blocks_in_order and block_count can use it, so use after_run` | Only the block checks can be judged while blocks are placed; any other type would stay pending for ever. | Remove `evaluation` (it then means `after_run`) or set `evaluation: after_run`. |
+| `Task … has a Scratch variable-compare … with name instead of variableName — rename name to variableName` | `variable_compare` reads `variableName` only, so with `name` it always fails. (`variable_equals` accepts either.) | Rename `name:` to `variableName:`. |
 | `Task … has invalid toolbox XML` (**Builder only**) | A Scratch task's `toolbox` isn't well-formed XML. | Fix the XML (see `scratch-toolbox-xml.md`). |
+| `Task … … must be true or false` | `showCostumesTab`, `showSoundsTab`, `allowAddCostume` or `allowAddSound` isn't a boolean. | Use `true` or `false` ([scratch.md](scratch.md#costumes-and-sounds-tabs)). |
+| `Task … allowAddCostume has no effect without showCostumesTab` (warning) | Students can't add a costume when the Costumes tab is hidden. | Add `showCostumesTab: true`, or remove `allowAddCostume`. |
+| `Task … allowAddSound has no effect without showSoundsTab` (warning) | Students can't add a sound when the Sounds tab is hidden. | Add `showSoundsTab: true`, or remove `allowAddSound`. |
+| `… sounds must be a list` (`…` is `Task N sprite "Name"`, as in the rows below) | A sprite's `sounds` isn't a list. | Write `sounds:` as a list of `{ name, synth }` or `{ name, audio }`. |
+| `… has a sound with no name` | A sound entry has no `name`. | Give every sound a name. |
+| `… has two sounds named "…"` | Two sounds on one sprite share a name, so a `start sound` block can't tell them apart. | Rename one. |
+| `… sound "…" needs exactly one of synth or audio` | A sound has both `synth` and `audio`, or neither. | Keep one. |
+| `… sound "…" uses unknown synth "…" (known: …)` | `synth` isn't one of the built-in tones listed. | Use a listed synth id, or an `audio` file. |
 | `Task … has a filesystem … but no path` | A Filesystem or Desktop `fs_*` check has no `path`. | Add `path:`. |
 | `Task … has a window_state … but no appId` | A Desktop `window_state` check doesn't name the app. | Add `appId:` (`fileManager`, `textEditor`, `imageViewer`, `paint` or `browser`). |
 | `Task … has a window_state moved_to … with zone "…" — use one of: …` | `moved_to` has no `zone`, or an unknown one. | Use `left_half`, `right_half`, `top_half`, `bottom_half`, `top_left`, `top_right`, `bottom_left` or `bottom_right` (see `desktop.md`). |
@@ -370,6 +385,7 @@ message says `feedback check` where it would say `check` (that part is shown as 
 | `Task … has a run_attempted feedback check — run_attempted can only be a completion check` | A feedback check matching "the student ran it" would fire on every run. | Move it to the completion `check`. |
 | `Task … has a run_attempted check whose requireSuccess is not true or false` | `requireSuccess` is a string or number. | Write `requireSuccess: true`, or remove it (any run counts). |
 | `Task … has a run_attempted check with requireSuccess, but … runs never report an error — requireSuccess is ignored there` (warning) | Arcade, HTML and Scratch runs have no error status, so any run passes. | Remove `requireSuccess`. |
+| `Task … has interactionMode …, but Arcade tasks always run — it is ignored` (warning) | Arcade has no Submit button, so `interactionMode: submit` does nothing. | Remove `interactionMode`. |
 | `Task … has a run_attempted check with evaluation after_block_placed — it is judged when the green flag runs, so remove its evaluation` | A Scratch `run_attempted` was marked to be judged while editing blocks, where no run has happened. | Remove `evaluation` (or use `after_run`). |
 | `Task … has a run_attempted check and tests — a task with tests is completed by its tests, so the run_attempted check is never used` (warning) | Python `tests` replace the completion check. | Remove the `tests` for a demo task, or remove `run_attempted`. |
 | `Task … has a run_attempted check but no Micro Controller — an Electronics task only has a Run button when its board has one` (warning) | Electronics' Run lives in the Code tab, which needs a Micro Controller on the board (or `microcontroller.enabled: true`). | Add a Micro Controller to the starter board, or use circuit checks. |
@@ -419,6 +435,7 @@ Python and Turtle tasks; see [python.md](python.md#name-tag-panel-showvariables)
 | `Task … has showVariables mode "…" — use one of: …` | Unknown `mode`. | Use `view`, `predict` or `target`. |
 | `Task … has showVariables at "…" — use one of: …` | Unknown `at`. | Use `end` or `marker`. |
 | `Task … has showVariables visuals that is not true or false` | `visuals` is text or a number. | Use `visuals: false` to turn the list and dict visuals off, or leave it out (on). |
+| `Task … has showVariables link that is not true or false` | `link` must be a boolean. | Use `true` (the default) or `false` to stop linking tags to the code. |
 | `Task … has showVariables lockRun that is not true or false` | `lockRun` must be a boolean. | Use `true` (the default in predict mode) or `false`. |
 | `Task … has showVariables lockRun but its mode is not predict — only predict mode locks Run, so it is ignored` (warning) | `lockRun` on a view or target task. | Remove it, or set `mode: predict`. |
 | `Task … has showVariables stageLists "…" — use one of: …` | Unknown `stageLists`. | Use `picture`, `tiles` or `size`. |
@@ -443,15 +460,17 @@ Python, Turtle and HTML tasks; see [python.md](python.md#live-scrubbing-scrub).
 |---|---|---|
 | `Task … has scrub, but scrubbing only works in Python, Turtle and HTML tasks — it is ignored` (warning) | `scrub` is on another module's task (Arcade, Scratch, …). | Remove it, or move the task to Python, Turtle or HTML. |
 | `Task … has a scrub that is not an object — write it as scrub: { enabled: true }` | `scrub` is a string, number or list. | Write `scrub: { enabled: true }` (or `scrub: true`). |
-| `Task … has scrub … that is not true or false` | `enabled`, `numbers` or `colours` is text or a number. | Use `true` or `false`. |
+| `Task … has scrub … that is not true or false` | `enabled`, `numbers`, `colours`, `checkOnRelease` or `colourNames` is text or a number. | Use `true` or `false`. |
 | `Task … has scrub with numbers and colours both off — nothing can be scrubbed` (warning) | Both kinds are turned off. | Turn one on, or remove `scrub`. |
-| `Task … has scrub fields it does not use (…) — they are ignored` (warning) | `scrub` has keys other than `enabled`, `numbers`, `colours` and `ranges`. | Remove them (check the spelling of `colours`). |
+| `Task … has scrub fields it does not use (…) — they are ignored` (warning) | `scrub` has keys other than `enabled`, `numbers`, `colours`, `ranges` and `checkOnRelease`. | Remove them (check the spelling of `colours`). |
 | `Task … has scrub ranges that is not a list — write ranges: [{ line, min, max }]` | `ranges` is a map or a string. | Write a list of `{ line, min, max }`. |
 | `Task … has a scrub range without a line number of 1 or more` | A range has no `line`, or it isn't a whole number from 1. | Give the line the student sees, e.g. `line: 3`. |
 | `Task … has a scrub range on line … whose min or max is not a number` | `min` / `max` is missing or text. | Write numbers, e.g. `min: 10, max: 200`. |
 | `Task … has a scrub range on line … whose min is not less than its max` | The range is empty or backwards. | Swap them, or fix one. |
 | `Task … has two scrub ranges for line … — only the first is used` (warning) | Two ranges name the same line. | Keep one. |
 | `Task … has a scrub range on line …, but the starter code has only … lines` (warning) | The line is past the end of the starter code (Python, Turtle). | Fix the line number. |
+| `Task … has runOnOpen that is not true or false` | `runOnOpen` is text or a number. | Use `true` or `false`. |
+| `Task … has runOnOpen but its starter code calls input() — it can't run on open, so runOnOpen is ignored` (warning) | The opening run would stop to ask a question. | Remove `runOnOpen`, or take `input()` out of the starter. |
 
 ## Python Stage (`stageTarget` and `stage_*` checks)
 
@@ -510,6 +529,8 @@ Python and Turtle tasks; see [python.md](python.md#locked-lines-hidden-setup-and
 | `Task … complete code has … lines of code, over puzzle.maxLines …` | The solution breaks its own line limit, so the puzzle can't be solved. | Shorten the solution, or raise `maxLines`. |
 | `Task … complete code takes … changes from the starter, more than puzzle.par …` (warning) | The solution takes more changes than par. | Find a shorter solution, or raise `par`. |
 | `Task … has a #@lock marker with no line after it; it locks nothing` (warning) | A `#@lock` is the last line (or only blank lines follow). | Put it on the line above the line to lock. |
+| `Task … has a #@lock-values marker with no line after it; it locks nothing` (warning) | A `#@lock-values` is the last line (or only blank lines follow). | Put it on the line above the line to lock. |
+| `Task … has a #@lock-values line … with no string or number to change — it is fully locked` (warning) | The marked line has no plain string or number (f-strings and names don't count). | Use `#@lock`, or mark a line with a value. |
 | `Task … locked line … ("…") is not in the complete code — students can't change or remove a locked line` (warning) | The solution changes or removes a line students can't touch. | Unlock the line, or keep it in the complete code. |
 | `Task … locked line … ("…") is indented differently in the complete code — students can't re-indent a locked line` (warning) | The solution needs the locked line at another indentation. | Lock it at the indentation the solution needs, or unlock it. |
 
@@ -558,12 +579,18 @@ Python and Turtle tasks; see [python.md](python.md#screen-layout-layout).
 | `forked lesson id must be '…'` | Fork ids are `{source}-{classId}`. | Use the id shown. |
 | `fork.taskLinks must be an array when provided` | `taskLinks` isn't a list. | Let `lessons fork` generate it. |
 
+## Publishing
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Draft lessons cannot be published. Clear draft only after full validation passes.` | `lessons publish-yaml` (and `lessons fork`) only publish finished lessons, and this one has `draft: true`. (`lessons upsert` still saves drafts.) | Finish every task, remove `draft: true` (or set it to `false`), and validate again. |
+
 ## Topic Library
 
 | Message | Meaning | Fix |
 |---|---|---|
 | `Cannot save a lesson while Topic Library entries are missing: …` | The lesson links `[[topic-id]]`s that don't exist. | Create the topics first (`topics upsert`), or add them to `topicProposals` while drafting. |
-| `Missing Topic Library entries: …` | Warning form of the above, for draft lessons. | Create the topics before clearing `draft`. |
+| `Missing Topic Library entries: …` (warning) | Always shown alongside the error above, naming the same topics. (On `lessons publish`, a draft lesson skips the topic check, so neither appears.) | Create the topics (`topics upsert`) before publishing a non-draft lesson. |
 | `Unused topic proposals: …` | `topicProposals` lists topics the lesson never links. | Link them or remove the proposals. |
 | `… is missing an id` / `… id must be a topic slug` / `… duplicates id "…"` | A topic proposal's id is missing, malformed or repeated. | Use unique lowercase slugs. |
 | `… is missing a description` | A topic proposal has no description. | Add one. |

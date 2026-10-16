@@ -34,7 +34,7 @@ export default function CheckFeedbackBanner({
   // once. Callers remount this per check (see above), which replays the one-shot class.
   return (
     <div
-      className={passed ? 'motion-pop-in' : 'motion-wobble'}
+      className={`check-feedback-popup ${passed ? 'motion-pop-in' : 'motion-wobble'}`}
       style={{ ...s.banner, ...(passed ? s.pass : s.fail) }}
       role="status"
     >
@@ -102,7 +102,7 @@ export default function CheckFeedbackBanner({
         </div>
       )}
       {!passed && (
-        <span style={s.helpNote}>Still stuck? Tap “Need Help” at the top of the page.</span>
+        <span style={s.helpNote}>Still stuck? Tap “✋ Help” at the top of the page.</span>
       )}
       {passed && onGoPersonalSandbox && (
         <button type="button" style={s.sandboxLink} onClick={onGoPersonalSandbox}>
@@ -114,19 +114,11 @@ export default function CheckFeedbackBanner({
 }
 
 const s = {
-  // Floating, top-center, and out of document flow — this used to be a full-width inline
-  // banner that pushed the workspace down; now it overlays instead, so it never affects
-  // page layout, and auto-dismisses (see AUTO_DISMISS_MS) rather than needing to be cleared.
+  // Floating and out of document flow, so it never affects page layout, and auto-dismisses
+  // (see AUTO_DISMISS_MS). Where it sits lives in `.check-feedback-popup` (src/index.css):
+  // the bottom-left corner, clear of the Run button, the file tabs, the top of the student's
+  // code and the output, and smaller on a tablet. Bottom-right is kept for peer help.
   banner: {
-    position: 'fixed',
-    top: 64,
-    // Centred with auto margins, not translateX(-50%): the fail banner's motion-wobble animates
-    // `transform`, which would override a centring transform while it plays.
-    left: 0,
-    right: 0,
-    marginInline: 'auto',
-    zIndex: 45,
-    width: 'min(92vw, 380px)',
     display: 'flex',
     flexDirection: 'column',
     gap: 8,
@@ -135,7 +127,6 @@ const s = {
     border: '1px solid',
     boxShadow: '0 12px 32px rgba(15,23,42,0.2)',
     fontFamily: 'var(--font-body)',
-    fontSize: '0.92rem',
     fontWeight: 700,
   },
   pass: {

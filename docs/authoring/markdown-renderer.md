@@ -21,6 +21,8 @@ The `explainer`, `description`, and `syntax` fields are rendered by the shared `
 
 Plain text becomes a paragraph. A single line break in the source becomes a `<br>` (remark-breaks is active), so each new line starts a new visual line without needing a blank line.
 
+**`---` straight under a line of text turns that line into a heading** (a Markdown "setext" heading), not a rule. Leave a blank line above `---` when you want a horizontal rule.
+
 ---
 
 ## Bold and Italic
@@ -124,6 +126,8 @@ Scratch block bodies are drawn with SVG paths for Blockly-like geometry. Hat blo
 - Numbers and quoted strings -> white pill with dark text
 - `(input)` spans -> white rounded input bubble with dark text
 - `[dropdown]` spans -> darker coloured dropdown field with a small arrow
+- `[text]` in `say`, `say … for … seconds`, `think`, `think … for … seconds` and `ask … and wait` -> white typed-text oval with no arrow, as in Scratch (these inputs are typed, not picked from a menu)
+- `[… v]` spans (scratchblocks syntax) -> always a dropdown, drawn without the ` v`
 - `<condition>` spans -> Boolean-shaped slot; recognised Boolean blocks render as nested hexagonal blocks
 
 **Scratch block system:**
@@ -226,7 +230,12 @@ GFM pipe tables with optional column alignment:
 | left     |    right |
 ```
 
-Alignment: `---` (left), `---:` (right), `:---:` (centre). Table cells support inline Markdown.
+Alignment: `---` (left), `---:` (right), `:---:` (centre).
+
+Table limits:
+
+- Cells take only **bold**, *italic*, `inline code` and topic links. Images (and other Markdown) in a cell don't show.
+- A `|` inside a cell always starts a new cell, even inside backticks, so a cell can't show `a | b`. Write the pipe outside the table, or describe it in words.
 
 ---
 
@@ -236,8 +245,11 @@ Alignment: `---` (left), `---:` (right), `:---:` (centre). Table cells support i
 > Standard callout.
 
 > :warning Warning callout.
+
 > :error Error callout.
+
 > :success Success callout.
+
 > :info Info callout.
 ```
 
@@ -250,6 +262,10 @@ Alignment: `---` (left), `---:` (right), `:---:` (centre). Table cells support i
 | *(plain `>`)* | Brand secondary | Warm white |
 
 The marker text is stripped from rendered output.
+
+`>` lines that follow each other with no blank line between them merge into **one** callout
+box, even when each starts with its own marker. Put a blank line (with no `>`) between callouts
+you want as separate boxes.
 
 ---
 
@@ -274,10 +290,21 @@ markdown, nothing to opt into — driven by `MarkdownRenderer`'s `imageLayout="f
 [link text](https://example.com)
 ```
 
+Links open in the **same tab**, taking the student away from the lesson, so link out sparingly
+and tell students to come back (or to Ctrl-click / long-press). A bare URL is not turned into a
+link: always use the bracket form shown above.
+
 Topic library links (`parseTopicHref`, `src/shared/markdown.jsx`) work anywhere `MarkdownRenderer`/`InlineMarkdown` is used — `explainer`, `description`, and `syntax` fields alike — **except Scratch lessons**, where the topic library is disabled outright (see `docs/authoring/TOPIC_LIBRARY_SCHEMA.md`'s Scratch note) and these links render as plain text instead:
 ```
 [link text](#topic/topic-id)
 ```
+
+---
+
+## Not supported
+
+These GitHub-style extras show as plain text: ~~strikethrough~~, task lists (`- [ ]` / `- [x]`),
+bare-URL autolinks, footnotes, and `h5`/`h6` headings.
 
 ---
 

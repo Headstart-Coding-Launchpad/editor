@@ -101,6 +101,8 @@ export default function BadgeSummaryTask({
   variant = 'student',
   catalogueBadges = [],
   disableCopy = false,
+  // Teacher variant: badge suggestions waiting for the tutor, so an empty wall can say so.
+  pendingCount = 0,
 }) {
   const live = decisions !== undefined
   const wall = useMemo(
@@ -158,7 +160,16 @@ export default function BadgeSummaryTask({
       aria-label={title}
     >
       <div className="badge-summary__content">
-        <h1 className="badge-summary__title">{title}</h1>
+        {/* The tutor's Copy class summary sits beside the title, and only once there is
+            something to copy (HSC Audit, Visual Review 16). */}
+        {live && variant === 'teacher' && wall.length > 0 ? (
+          <div className="badge-summary__title-row">
+            <h1 className="badge-summary__title">{title}</h1>
+            <CopyClassSummaryButton text={classWallText(wall, { title })} />
+          </div>
+        ) : (
+          <h1 className="badge-summary__title">{title}</h1>
+        )}
         {explainer && (
           <div className="badge-summary__explainer">
             <MarkdownRenderer
@@ -208,16 +219,16 @@ export default function BadgeSummaryTask({
               )}
               <ClassWall
                 wall={wall}
-                emptyText="Coding moments will appear here as they're celebrated."
+                emptyText={
+                  variant === 'teacher' && pendingCount > 0
+                    ? `Nothing celebrated yet. ${pendingCount} badge ${
+                        pendingCount === 1 ? 'suggestion is' : 'suggestions are'
+                      } waiting for you in Badge suggestions above: award one and it shows here.`
+                    : "Coding moments will appear here as they're celebrated."
+                }
                 rowMotion={rowMotion}
               />
             </section>
-
-            {variant === 'teacher' && (
-              <div className="badge-summary__actions">
-                <CopyClassSummaryButton text={classWallText(wall, { title })} />
-              </div>
-            )}
           </>
         )}
       </div>

@@ -22,9 +22,12 @@ import {
 import { chooseLineHints } from './lineHints'
 import { lockedLinesExtension, setLockedLineSets } from './lockedLinesEditor'
 import { getPeekBandState, peekBandExtension, setPeekBand } from './peekBandEditor'
+import { setVariableLinks, variableLinksExtension } from './variableLinksEditor'
+import { variableLinksKey } from './variablesPanel/links.js'
 import { blockGuidesExtension } from './blockGuides'
 import { BadgeSignalsContext } from './badgeSignalsContext'
 import { useEditorScrub } from './scrub/useEditorScrub.jsx'
+import { useIsTouchDevice } from './useIsTouchDevice'
 import { isScrubPreviewUpdate, SCRUB_USER_EVENT } from './scrub/scrubExtension.js'
 
 // The CodeMirror user-event types that are the student's own editing (typing, pasting,
@@ -328,6 +331,14 @@ function blockGuidesFor(on) {
   return on ? blockGuidesExtension() : []
 }
 
+// Soft line wrapping, on only while the `lineWrapping` prop is set (PythonEditor on a touch
+// device, where a long line was cut off with no visible way to scroll sideways).
+const lineWrappingCompartment = new Compartment()
+
+function lineWrappingFor(on) {
+  return on ? EditorView.lineWrapping : []
+}
+
 export const CodeEditor = React.forwardRef(function CodeEditor(
   {
     value = '',
@@ -351,21 +362,31 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     // The #@peek "stopped here" band (./peekBandEditor.js): `{ line, missed }` for the code as
     // it is now (getPeekBand in ./variablesPanel/variablesPanel.js), or null. Shown read-only too.
     peekBand = null,
+    // Linked name tags (./variableLinksEditor.js, showVariables.link): `{ links: [{ name, number,
+    // colour }], active, onActive(name | null) }` or null. Shown read-only too.
+    variableLinks = null,
     onRunShortcut,
     // Fires on a document change the user made (see USER_EDIT_EVENTS), never on the external
     // value sync. Without it, the classroom's BadgeSignalsContext (if any) is told instead.
     onUserEdit,
     // Draw coloured Python block brackets beside indented code (only PythonEditor sets it).
     blockGuides = false,
+    // Wrap long lines instead of scrolling sideways.
+    lineWrapping = false,
     // Live number / colour scrubbing (./scrub/): getTaskScrub's settings or null, the preview
     // re-run (returns 'preview' | 'press-run') and the report hook for a finished scrub.
     scrub = null,
     onScrubPreview,
     onScrubCommit,
+    // Soft-wrap long lines. Defaults to on for touch screens, where the horizontal scrollbar is
+    // hidden and a long line would otherwise be cut off at the panel edge (HSC Audit #6).
+    wrapLines,
     style,
   },
   ref
 ) {
+  const isTouchDevice = useIsTouchDevice()
+  const shouldWrap = wrapLines ?? isTouchDevice
   const containerRef = useRef(null)
   const viewRef = useRef(null)
   const scrubUi = useEditorScrub({
@@ -401,6 +422,11 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
   const lineHintsKey = useMemo(() => JSON.stringify(lineHints ?? []), [lineHints])
   // Compared by content too: callers build the lock sets inline.
   const lockedLinesKey = useMemo(() => JSON.stringify(lockedLines ?? []), [lockedLines])
+  const variableLinksRef = useRef(variableLinks)
+  variableLinksRef.current = variableLinks
+  const onVariableLinkActiveRef = useRef(null)
+  onVariableLinkActiveRef.current = variableLinks?.onActive ?? null
+  const variableLinksStateKey = `${variableLinksKey(variableLinks?.links)}|${variableLinks?.active ?? ''}`
   const peekBandKey = useMemo(
     () => JSON.stringify(peekBand ? { line: peekBand.line, missed: !!peekBand.missed } : null),
     [peekBand]
@@ -426,14 +452,16 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
       state: EditorState.create({
         doc: value,
         extensions: [
-          ...createBaseExtensions(language, readOnly),
+          ...createBaseExtensions(language, readOnly, { wrapLines: shouldWrap }),
           remoteSelectionField,
           teacherHighlightsField,
           errorLineField,
           lineHintsExtension(),
           lockedLinesExtension(),
           peekBandExtension(),
+          variableLinksExtension({ onActiveRef: onVariableLinkActiveRef }),
           blockGuidesCompartment.of(blockGuidesFor(blockGuides)),
+          lineWrappingCompartment.of(lineWrappingFor(lineWrapping)),
           scrubUi.extension,
           keymap.of([
             {
@@ -537,6 +565,14 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     })
   }, [blockGuides])
 
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    view.dispatch({
+      effects: lineWrappingCompartment.reconfigure(lineWrappingFor(lineWrapping)),
+    })
+  }, [lineWrapping])
+
   // Sync external value changes (e.g. task switch, sandbox push)
   useEffect(() => {
     const view = viewRef.current
@@ -573,6 +609,18 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     if (JSON.stringify(getPeekBandState(view.state)) === peekBandKey) return
     view.dispatch({ effects: setPeekBand.of(JSON.parse(peekBandKey)) })
   }, [peekBandKey, value])
+
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    const current = variableLinksRef.current
+    view.dispatch({
+      effects: setVariableLinks.of({
+        links: current?.links ?? [],
+        active: current?.active ?? null,
+      }),
+    })
+  }, [variableLinksStateKey])
 
   useEffect(() => {
     const view = viewRef.current
@@ -622,6 +670,9 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     <>
       <div
         ref={containerRef}
+        // The pale red border means read-only: say so on hover (HSC Audit, Visual Review 05).
+        title={readOnly ? 'Read-only: you can look, but not type here' : undefined}
+        data-readonly={readOnly ? 'true' : undefined}
         style={{
           height: '100%',
           overflow: 'auto',

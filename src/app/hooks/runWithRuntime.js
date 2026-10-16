@@ -27,7 +27,8 @@ import { lastErrorLine } from '../studentHints.js'
  *   keeps the slot's ref fresh synchronously, as the old `codeRef.current = pending` did)
  * - refs: outputRafIdRef, outputMirrorRef, inputPromptRef, inputValueRef, submitInputEchoRef,
  *   appendOutputRef, runtimeCodeRafIdRef, pendingRuntimeCodeRef, lastRuntimeCodeWriteRef,
- *   currentTaskIdRef, phaseRef, inPersonalSandboxRef, teacherAssistedTaskIdsRef
+ *   currentTaskIdRef, phaseRef, inPersonalSandboxRef, teacherAssistedTaskIdsRef, and optionally
+ *   runEpochRef (bumped by a task change, so a run it stopped never paints onto the next task)
  * - setters: setOutput, setInputPrompt, setErrorLine, setRunStatus, setTurtleResult,
  *   setStageResult (optional), setRunning
  * - writers: writeStudentInputState, writeStudentOutput, writeStudentCode, writeStudentRun,
@@ -44,6 +45,12 @@ import { lastErrorLine } from '../studentHints.js'
  *   (src/modules/python/slowMo/): the runtime records the run for playback, and `onResult` gets
  *   the runtime's result (with its `slowMo` recording) before anything else is done with it.
  *   The recorded run IS the run: output, checks, the attempt and the save are exactly as for Run.
+ *   Or `{ source: 'scrub', inputAnswers? }`: the checks a live scrub runs when it ends
+ *   (useScrubPreview, scrub.checkOnRelease). It is a Run in every way, except that input()
+ *   questions are answered from `inputAnswers` (the last Run's answers, in order; a question past
+ *   them is asked as usual) and the attempt is logged with `source: 'scrub'`.
+ * - onInputAnswer (optional): told each answer given to input() on this run (typed by the
+ *   student, through handleInputSubmit, is recorded by the caller; replayed ones come here)
  */
 let turtleRunCount = 0
 
@@ -84,6 +91,14 @@ export async function runWithRuntime(ctx) {
     publishTeacherLive,
   } = live
 
+  // Whether the student is still on the task this run belongs to. The task id alone is not
+  // enough: a task change stops the run and resets the output before the new id reaches
+  // currentTaskIdRef (on the next render), so a stop resolving in between still matched and
+  // painted the old task's output (an input() prompt) onto the new task. The epoch catches it.
+  const runEpoch = refs.runEpochRef?.current
+  const stillOnTask = () =>
+    currentTaskId === refs.currentTaskIdRef.current && refs.runEpochRef?.current === runEpoch
+
   if (refs.outputRafIdRef.current !== null) {
     cancelAnimationFrame(refs.outputRafIdRef.current)
     refs.outputRafIdRef.current = null
@@ -97,6 +112,9 @@ export async function runWithRuntime(ctx) {
   if (isWatchedNow()) {
     writers.writeStudentInputState(actor.anonymousId, { prompt: null, value: '', output: '' })
   }
+  // Set while an unwatched run's input() prompt has been mirrored (see onInputRequired), so
+  // it is cleared again once answered or when the run ends.
+  let unwatchedPromptShared = false
   let outputBuffer = createStudentOutputBuffer()
   // Leading + trailing throttle (200ms) so the tail of a burst of output
   // always reaches the teacher instead of waiting for the run to end.
@@ -138,6 +156,10 @@ export async function runWithRuntime(ctx) {
         value: '',
         output: outputBuffer.raw,
       })
+    } else if (unwatchedPromptShared) {
+      // The answer is in: the card stops saying "Waiting for input".
+      unwatchedPromptShared = false
+      writers.writeStudentInputState(actor.anonymousId, { prompt: null, value: '' })
     }
   }
   let latestRuntimeCode = startCode
@@ -167,6 +189,11 @@ export async function runWithRuntime(ctx) {
     refs.runtimeCodeRafIdRef.current = requestAnimationFrame(flushRuntimeCodeUpdate)
   }
   refs.appendOutputRef.current = echoOutput
+  // A scrub's checks answer input() from the last Run's answers (see runOptions above).
+  const replayAnswers = Array.isArray(ctx.runOptions?.inputAnswers)
+    ? ctx.runOptions.inputAnswers
+    : []
+  let replayed = 0
   const result = await runtime.run(startCode, task, {
     onOutput: (text, kind, line) => {
       echoOutput(text)
@@ -175,6 +202,14 @@ export async function runWithRuntime(ctx) {
       }
     },
     onInputRequired: (prompt) => {
+      if (replayed < replayAnswers.length) {
+        const answer = String(replayAnswers[replayed])
+        replayed += 1
+        refs.submitInputEchoRef.current?.(answer)
+        ctx.onInputAnswer?.(answer)
+        runtime.provideInput?.(answer)
+        return
+      }
       refs.inputPromptRef.current = prompt
       refs.inputValueRef.current = ''
       setInputPrompt(prompt)
@@ -191,6 +226,16 @@ export async function runWithRuntime(ctx) {
         })
       } else {
         outputMirror.flush()
+        // Tutor visibility: an unwatched student's card would otherwise say "No output yet"
+        // while their program sits waiting for input() (HSC Audit, Visual Review 03). One
+        // write per prompt (never per keystroke): the prompt and the output so far, so the
+        // card can say "Waiting for input". The typed value stays unmirrored.
+        unwatchedPromptShared = true
+        writers.writeStudentInputState(actor.anonymousId, {
+          prompt,
+          value: '',
+          output: outputBuffer.raw,
+        })
       }
     },
     onCodeUpdate: scheduleRuntimeCodeUpdate,
@@ -208,7 +253,10 @@ export async function runWithRuntime(ctx) {
   refs.inputPromptRef.current = null
   refs.inputValueRef.current = ''
   setInputPrompt(null)
-  if (isWatchedNow()) writers.writeStudentInputState(actor.anonymousId, { prompt: null, value: '' })
+  if (isWatchedNow() || unwatchedPromptShared) {
+    writers.writeStudentInputState(actor.anonymousId, { prompt: null, value: '' })
+  }
+  unwatchedPromptShared = false
 
   // Cancel any pending RAF and sync final output immediately
   if (refs.outputRafIdRef.current !== null) {
@@ -222,7 +270,7 @@ export async function runWithRuntime(ctx) {
   // student is still on the task: a stop triggered by navigating away reports nothing.
   const stoppedRunCounts =
     result.status === 'stopped' &&
-    currentTaskId === refs.currentTaskIdRef.current &&
+    stillOnTask() &&
     !alreadySolved &&
     refs.phaseRef.current !== 'sandbox' &&
     !refs.inPersonalSandboxRef.current &&
@@ -234,7 +282,7 @@ export async function runWithRuntime(ctx) {
     // Only repaint the buffered output if the student is still on the task that
     // produced it — a stop triggered by navigating away must not overwrite the
     // freshly reset state for the task they moved to.
-    if (currentTaskId === refs.currentTaskIdRef.current) setOutput(outputBuffer.display)
+    if (stillOnTask()) setOutput(outputBuffer.display)
     if (runResult.liveCode)
       saveRunRecord(currentTaskId, latestRuntimeCode, { output: outputBuffer.raw })
     if (canPublishTeacherLive())
@@ -381,6 +429,7 @@ export async function runWithRuntime(ctx) {
       suggestion,
       teacherAssisted: refs.teacherAssistedTaskIdsRef.current.has(currentTaskId),
       error: runError,
+      ...(ctx.runOptions?.source === 'scrub' ? { source: 'scrub' } : {}),
     })
   }
   setRunning(false)

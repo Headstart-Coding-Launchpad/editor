@@ -712,9 +712,9 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
       {liveResult?.correct && <ActivityCorrect />}
 
       {!readOnly && (
-        <div className="act-row">
+        <div className="act-row act-row--submit">
           <button type="button" className="btn-primary act-btn" onClick={handleCheck}>
-            Check answers
+            Check my work
           </button>
         </div>
       )}

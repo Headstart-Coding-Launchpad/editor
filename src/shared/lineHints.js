@@ -35,7 +35,14 @@
 // runtime-only `lockSets` (`[{ source, stageIndex, file, locks: [{ line, target }] }]`, starter
 // first). A task's `puzzle.onlyEdit` adds locks to the starter's set.
 
-import { isLockMarkerLine, isLockSyntax, mergeLocks, onlyEditLocks } from './lockedLines.js'
+import {
+  isLockMarkerLine,
+  isLockSyntax,
+  isLockValuesMarkerLine,
+  mergeLocks,
+  onlyEditLocks,
+  valueSkeleton,
+} from './lockedLines.js'
 import { getStarterStage } from './taskStages.js'
 
 const HTML_MARKER = /^<!-->([\s\S]*?)-->$/
@@ -110,7 +117,8 @@ function markerText(line, syntax) {
 /**
  * Splits marker lines out of `code`. Returns `{ code, hints, trailingMarker, peek, locks }`
  * (`peek` the peek marker's `{ line, target }` or null, `locks` the `#@lock` markers'
- * `[{ line, target }]`): the code
+ * `[{ line, target }]` and the `#@lock-values` markers' `[{ line, target, values: true }]`, the
+ * target a value skeleton; see ./lockedLines.js): the code
  * without its marker lines (unchanged, byte for byte, when there are none), the hints in
  * document order, and whether any marker had no line after it (it then attaches to a new empty
  * last line, which takes the place of the code's final newline). `syntax` is a marker syntax
@@ -127,7 +135,8 @@ export function parseLineHints(code, syntax) {
       (line) =>
         markerText(line, syntax) != null ||
         isPeekMarkerLine(line, syntax) ||
-        isLockMarkerLine(line, syntax)
+        isLockMarkerLine(line, syntax) ||
+        isLockValuesMarkerLine(line, syntax)
     )
   ) {
     return { code, hints: [], trailingMarker: false, peek: null, locks: [] }
@@ -144,7 +153,8 @@ export function parseLineHints(code, syntax) {
   let peekState = 'none'
   let peekIndex = null
   // Lock: a `#@lock` waiting for the next non-blank line; the indexes of the locked lines.
-  let lockPending = false
+  // `values`: a `#@lock-values` marker (only the line's values stay editable).
+  let lockPending = null
   const lockIndexes = []
   // Python syntax: the closing quotes of the triple-quoted string a line is inside, or null.
   // Lines inside one (e.g. a `turtle.course_map("""…""")` maze row like `#>..G#`) are text,
@@ -161,7 +171,11 @@ export function parseLineHints(code, syntax) {
       continue
     }
     if (isLockMarkerLine(line, syntax)) {
-      lockPending = true
+      lockPending = { values: false }
+      continue
+    }
+    if (isLockValuesMarkerLine(line, syntax)) {
+      lockPending = { values: true }
       continue
     }
     const text = markerText(line, syntax)
@@ -172,8 +186,8 @@ export function parseLineHints(code, syntax) {
     kept.push(line)
     if (Object.hasOwn(TRIPLE_QUOTE_SYNTAXES, syntax)) openString = tripleQuoteStateAfter(line, null)
     if (lockPending && line.trim() !== '') {
-      lockIndexes.push(kept.length - 1)
-      lockPending = false
+      lockIndexes.push({ index: kept.length - 1, values: lockPending.values })
+      lockPending = null
     }
     if (peekState === 'pending' && isPeekTargetLine(line)) {
       peekIndex = kept.length - 1
@@ -198,7 +212,11 @@ export function parseLineHints(code, syntax) {
     // A peek marker with no code line after it stops nowhere (the panel shows the end).
     peek: peekIndex == null ? null : { line: peekIndex + 1, target: kept[peekIndex].trim() },
     // A lock marker with no non-blank line after it locks nothing.
-    locks: lockIndexes.map((index) => ({ line: index + 1, target: kept[index].trim() })),
+    locks: lockIndexes.map(({ index, values }) =>
+      values
+        ? { line: index + 1, target: valueSkeleton(kept[index]), values: true }
+        : { line: index + 1, target: kept[index].trim() }
+    ),
   }
 }
 

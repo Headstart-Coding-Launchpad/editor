@@ -18,7 +18,9 @@ export default function CopyCodePanel({ code, language = 'python' }) {
       onContextMenu={(e) => e.preventDefault()}
     >
       <div style={s.header}>
-        <span style={s.title}>{languageLabel} reference</span>
+        {/* Says what to do, not where it is: lesson text pointing at "the panel above" read
+            wrongly beside the instructions. Lessons can name it: the "Type this out" box. */}
+        <span style={s.title}>⌨️ Type this out</span>
       </div>
       <pre style={s.pre}>
         <code style={s.code}>{text}</code>

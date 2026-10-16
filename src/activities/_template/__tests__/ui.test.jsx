@@ -37,7 +37,7 @@ describe('Template Activity UI', () => {
   it('checks, shows a hint for a wrong item and jumps to it', async () => {
     const { onSubmit } = renderView()
     fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: '4' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Check answers' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Check my work' }))
     expect(onSubmit).toHaveBeenCalledTimes(1)
     expect(await screen.findByText(/Type your answer first/)).toBeInTheDocument()
     expect(screen.getByText('Name the colour of grass.')).toBeInTheDocument()
@@ -56,7 +56,7 @@ describe('Template Activity UI', () => {
   it('is read-only for a teacher view', () => {
     renderView({ readOnly: true, initialState: definition.solutionState(TASK) })
     expect(screen.getByLabelText('Your answer')).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Check answers' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
     expect(screen.getByText('Correct')).toBeInTheDocument()
   })
 })

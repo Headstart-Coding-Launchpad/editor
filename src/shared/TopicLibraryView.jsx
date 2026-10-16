@@ -154,7 +154,7 @@ export function TopicLibraryDialog({
             <div style={s.subheading}>Look up commands, concepts and building blocks.</div>
           </div>
           <button type="button" style={s.close} onClick={onClose} aria-label="Close topic library">
-            x
+            ×
           </button>
         </header>
         <div style={s.body}>
@@ -380,8 +380,8 @@ const s = {
     cursor: 'pointer',
   },
   previewCategory: {
-    color: '#6b7280',
-    fontSize: '0.72rem',
+    color: 'var(--colour-ink-strong)',
+    fontSize: '0.75rem',
     fontWeight: 700,
     textTransform: 'uppercase',
   },
@@ -418,15 +418,18 @@ const s = {
   },
   heading: { margin: 0, fontFamily: 'var(--font-title)', fontSize: '1.35rem' },
   subheading: { marginTop: 3, fontSize: '0.83rem', opacity: 0.9 },
+  // A finger-sized close (it was 34px with a small "x").
   close: {
-    width: 34,
-    height: 34,
-    border: '1px solid rgba(255,255,255,0.45)',
-    borderRadius: 8,
-    background: 'transparent',
+    flexShrink: 0,
+    width: 44,
+    height: 44,
+    border: '1.5px solid rgba(255,255,255,0.6)',
+    borderRadius: 10,
+    background: 'rgba(255,255,255,0.12)',
     color: '#fff',
     cursor: 'pointer',
-    fontSize: '1rem',
+    fontSize: '1.6rem',
+    lineHeight: 1,
   },
   body: { display: 'grid', gridTemplateColumns: '290px 1fr', minHeight: 0, flex: 1 },
   listPane: {
@@ -459,7 +462,7 @@ const s = {
   },
   topicResultActive: { background: '#f0eafa' },
   resultTitle: { color: 'var(--colour-text)', fontFamily: 'var(--font-body)', fontWeight: 700 },
-  resultMeta: { color: '#6b7280', fontSize: '0.75rem' },
+  resultMeta: { color: 'var(--colour-ink-strong)', fontSize: '0.8rem', fontWeight: 600 },
   detail: {
     overflowY: 'auto',
     padding: '28px 32px',
@@ -476,7 +479,7 @@ const s = {
   },
   detailCategory: {
     color: 'var(--colour-primary)',
-    fontSize: '0.76rem',
+    fontSize: '0.82rem',
     fontWeight: 700,
     textTransform: 'uppercase',
   },

@@ -19,6 +19,7 @@ import { SHOW_VARIABLES_TASK_FIELD } from '../../shared/variablesPanel/variables
 import { LAYOUT_TASK_FIELD, validateTaskLayout } from '../../shared/resultPane/resultPane.js'
 import { validateShowVariables } from '../../shared/variablesPanel/validation.js'
 import { SCRUB_TASK_FIELD, validateScrub } from '../../shared/scrub/scrubConfig.js'
+import { RUN_ON_OPEN_TASK_FIELD, validateRunOnOpen } from '../../shared/scrub/runOnOpen.js'
 import { getStarterStage } from '../../shared/taskStages.js'
 import { PYTHON_SLOW_MO_TASK_FIELD, validatePythonSlowMo } from '../python/slowMo/config.js'
 import {
@@ -74,6 +75,7 @@ export default defineModule({
     fixedExplainer: false,
     topicLibrary: true,
     studentMirror: 'view',
+    cardSummary: 'drawing',
     teacherEditor: { surface: 'code' },
     sideExplainer: true,
     modulePanes: true,
@@ -147,6 +149,7 @@ export default defineModule({
     },
     SHOW_VARIABLES_TASK_FIELD,
     SCRUB_TASK_FIELD,
+    RUN_ON_OPEN_TASK_FIELD,
     PYTHON_SLOW_MO_TASK_FIELD,
     // Hidden setup and puzzle rules (src/shared/puzzle/).
     SETUP_CODE_TASK_FIELD,
@@ -240,6 +243,9 @@ export default defineModule({
     validateTaskChecks(task, (checks, kind) => validateTurtleChecks(checks, n, errors, kind))
     validateShowVariables(task, n, errors, warnings)
     validateScrub(task, n, errors, warnings, {
+      starterCode: getStarterStage(task)?.stage?.code ?? task.starterCode ?? null,
+    })
+    validateRunOnOpen(task, n, errors, warnings, {
       starterCode: getStarterStage(task)?.stage?.code ?? task.starterCode ?? null,
     })
     validatePythonSlowMo(task, n, errors, warnings)

@@ -571,7 +571,22 @@ describe('StudentCard', () => {
       expect(screen.queryByText('HTML project')).not.toBeInTheDocument()
     })
 
-    it('still shows the HTML fallback for an HTML task', () => {
+    it('shows desktop changes, not "No run yet", for a Desktop task (nothing to run)', () => {
+      const { unmount } = render(
+        <StudentCard {...mkProps({ lesson: composedLesson('desktop') })} />
+      )
+      expect(screen.getByText('No changes yet')).toBeInTheDocument()
+      expect(screen.queryByText('No run yet')).not.toBeInTheDocument()
+      unmount()
+      render(
+        <StudentCard
+          {...mkProps({ lesson: composedLesson('desktop') }, { currentCode: '{"windows":[]}' })}
+        />
+      )
+      expect(screen.getByText('Desktop project')).toBeInTheDocument()
+    })
+
+    it('says an HTML student is editing but has not run yet', () => {
       render(
         <StudentCard
           {...mkProps(
@@ -580,8 +595,69 @@ describe('StudentCard', () => {
           )}
         />
       )
-      expect(screen.getByText('HTML project')).toBeInTheDocument()
+      expect(screen.getByText('Editing, not run yet')).toBeInTheDocument()
     })
+
+    it('shows a picture of an HTML page after a Run', () => {
+      const createObjectURL = vi.fn(() => 'blob:page')
+      const original = URL.createObjectURL
+      URL.createObjectURL = createObjectURL
+      try {
+        render(
+          <StudentCard
+            {...mkProps(
+              { lesson: composedLesson('html') },
+              {
+                lastRunStatus: 'success',
+                lastRunAt: 1,
+                currentFiles: { index__dot__html: '<h1>Hello</h1>' },
+              }
+            )}
+          />
+        )
+        const preview = screen.getByTestId('card-page-preview')
+        expect(preview.querySelector('iframe')).toHaveAttribute('sandbox', 'allow-same-origin')
+      } finally {
+        URL.createObjectURL = original
+      }
+    })
+
+    it('shows the turtle run outcome, not "No run yet", after a run', () => {
+      render(
+        <StudentCard
+          {...mkProps({ lesson: composedLesson('turtle') }, { lastRunStatus: 'success' })}
+        />
+      )
+      expect(screen.getByTestId('card-drawing')).toHaveTextContent('Drawing ran')
+      expect(screen.queryByText('No run yet')).not.toBeInTheDocument()
+    })
+
+    it('says Scratch starter blocks are untouched rather than "No blocks yet"', () => {
+      const lesson = {
+        type: 'composed',
+        tasks: [{ id: 1, title: 'Task 1', moduleType: 'scratch', starterBlocks: { blocks: {} } }],
+      }
+      render(<StudentCard {...mkProps({ lesson })} />)
+      expect(screen.getByText('Starter blocks, not changed yet')).toBeInTheDocument()
+    })
+
+    it('says "Waiting for input" while their Python program waits on input()', () => {
+      render(
+        <StudentCard
+          {...mkProps(
+            { lesson: composedLesson('python') },
+            { currentInputPrompt: 'Name? ', currentOutput: 'Hi!\nName? ' }
+          )}
+        />
+      )
+      expect(screen.getByTestId('card-waiting-input')).toHaveTextContent('Waiting for input')
+      expect(screen.getByTestId('card-waiting-input')).toHaveTextContent('Name?')
+    })
+  })
+
+  it('labels a help request in words, not just ✋', () => {
+    render(<StudentCard {...mkProps({}, { needsHelp: true })} />)
+    expect(screen.getByTestId('card-needs-help')).toHaveTextContent('Needs help')
   })
 
   // The wall runs in a ~283px single column at eight students. A full-width Expand

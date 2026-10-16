@@ -32,6 +32,14 @@ export function validateQuizTask(task, { n, errors, warnings = [] }) {
       errors.push(`Task ${n} is a quiz but has an empty option text`)
     if (task.check?.type !== 'answer_equals' || !task.check.value)
       errors.push(`Task ${n} is a quiz but no correct answer has been selected`)
+    else if (
+      Array.isArray(task.options) &&
+      task.options.length > 0 &&
+      !task.options.some((option) => option?.id === String(task.check.value))
+    )
+      errors.push(
+        `Task ${n} is a quiz but its answer "${task.check.value}" is not one of the option ids — set answer to the correct option's id (e.g. a)`
+      )
   } else if (quizType === 'match') {
     if (!task.pairs || task.pairs.length < 2)
       errors.push(`Task ${n} is a match quiz but has fewer than 2 pairs`)

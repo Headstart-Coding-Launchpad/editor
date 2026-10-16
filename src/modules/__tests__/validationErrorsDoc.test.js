@@ -32,6 +32,8 @@ const VALIDATOR_FILES = [
   'src/builder/lessonUtils.js',
   'src/shared/lessonValidation.js',
   'src/modules/moduleTaskValidation.js',
+  // Scratch costumes/sounds tab flags and per-sprite sounds (validateScratchSoundsAndTabs).
+  'src/modules/scratch/scratchSounds.js',
   'src/activities/legacyValidation.js',
   ...MODULE_DEFINITION_FILES,
   ...ACTIVITY_DEFINITION_FILES,
@@ -50,6 +52,8 @@ const VALIDATOR_FILES = [
   'src/badges/validation.js',
 ]
 
+const PUBLISH_FILES = ['cli/lessons.mjs']
+
 const normalize = (text) => text.replace(/\s+/g, ' ').trim()
 
 function validatorMessages() {
@@ -57,6 +61,15 @@ function validatorMessages() {
   for (const file of VALIDATOR_FILES) {
     const source = readFileSync(resolve(process.cwd(), file), 'utf8')
     const pattern = /(?:errors|warnings)\.push\(\s*([`'"])([\s\S]*?)\1\s*\)/g
+    let match
+    while ((match = pattern.exec(source))) {
+      messages.add(normalize(match[2].replace(/\$\{[^}]*\}/g, '…')))
+    }
+  }
+  // Publish-time refusals returned as a literal list (`errors: ['…']`), e.g. the draft refusal.
+  for (const file of PUBLISH_FILES) {
+    const source = readFileSync(resolve(process.cwd(), file), 'utf8')
+    const pattern = /errors:\s*\[\s*([`'"])([\s\S]*?)\1\s*,?\s*\]/g
     let match
     while ((match = pattern.exec(source))) {
       messages.add(normalize(match[2].replace(/\$\{[^}]*\}/g, '…')))

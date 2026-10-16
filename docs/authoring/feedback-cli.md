@@ -30,7 +30,7 @@ node cli/cli.mjs feedback all python-3-2             # both kinds, one lesson
 
 | Flag | Effect |
 |---|---|
-| `--task-id <id>` | Only feedback about this task |
+| `--task-id <id>` | Only feedback about this task (an all-digit id is matched as a number) |
 | `--scope lesson` | Only whole-lesson feedback (no task) |
 | `--scope task` | Only task-specific feedback |
 | `--lesson-id <id>` | `platform` only: platform feedback that mentions this lesson |
@@ -43,12 +43,16 @@ node cli/cli.mjs feedback add-lesson python-3-2 --text "Task 4 hint gives the an
 node cli/cli.mjs feedback add-platform --text "Stage reveal button is hard to find" --lesson-id python-3-2
 ```
 
-`--email`, `--lesson-title` and `--task-title` are optional and only for display.
+`--email`, `--lesson-title` and `--task-title` are optional and only for display. `--task-id` is
+stored as a number when it is all digits (task ids are numbers), so the item shows in that task's
+Builder feedback panel.
 
 ## Archive
 
-Feedback is **archived, never deleted**. Archived items drop out of list results and the Admin
-and Builder views, but stay in Firestore.
+Archiving never deletes: archived items drop out of list results and the Admin and Builder
+views, but stay in Firestore. The one exception: **deleting a lesson** (Admin or
+`lessons delete`) deletes its lesson feedback too, and re-creating a class fork with
+`lessons fork` clears that fork's feedback. Read the feedback before you delete a lesson.
 
 ```bash
 node cli/cli.mjs feedback archive-lesson python-3-2 <feedbackId>

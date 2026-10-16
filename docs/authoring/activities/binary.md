@@ -5,7 +5,7 @@ code tasks of any module. Students toggle bit tiles, type decimal answers, add i
 overflow, convert to and from hex, use ASCII codes and draw pixel pictures. There
 is no Run button, no personal sandbox, no sharing and no carry-through. Progress is saved on the
 device, mirrored to the teacher's student card, and marked when the student presses
-**Check answers**.
+**Check my work**.
 
 Write `type: binary` on the task (the YAML shorthand for `taskType: activity` +
 `activityType: binary`, which also works). In the Builder, choose the **Activity** format and
@@ -211,7 +211,7 @@ tasks:
 
 ## Marking and hints
 
-- **Check answers** marks every question. The task passes when all are right.
+- **Check my work** marks every question. The task passes when all are right.
 - Wrong answers get a short hint that never gives the answer away, e.g. "Your bits make 6,
   which is too big. Check the 2 column." The hint shows in the usual feedback banner.
 - Toggling a bit or a pixel, or answering Yes/No, is a *discrete* change: the teacher's card

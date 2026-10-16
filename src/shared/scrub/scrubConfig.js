@@ -3,8 +3,11 @@
 // validator, the CLI, the Builder and the classroom share one reading of the field.
 //
 // Task field (python, turtle and html declare it in their definitions' taskFields):
-//   scrub: { enabled: true, numbers: true, colours: true, ranges: [{ line, min, max }] }
-// `scrub: true` is short for `{ enabled: true }`. Numbers and colours default to on.
+//   scrub: { enabled: true, numbers: true, colours: true, ranges: [{ line, min, max }],
+//            checkOnRelease: true }
+// `scrub: true` is short for `{ enabled: true }`. Numbers, colours and checkOnRelease default to
+// on. checkOnRelease: when a drag (or a slider step, or a colour pick) ends on a program that
+// previews live, the task's checks run once, exactly as a Run (useScrubPreview).
 //
 // Module capability (`capabilities.scrub`, src/modules/defineModule.js), null = no scrubbing:
 //   { liveRerun: 'preview' | 'none', needsImport: string | null, inputCall: string | null }
@@ -12,18 +15,19 @@
 //   checks or saves; useScrubPreview); 'none': the student presses Run to see it.
 // - needsImport: the program only re-runs live when it imports this module (python: 'stage', so
 //   only drawing programs re-run).
-// - inputCall: a program calling this function (input) never re-runs live: it would stop to ask.
+// - inputCall: a program calling this function (input) re-runs live only by replaying the answers
+//   the student gave on their last Run (useScrubPreview); before a Run it can't.
 
 export const SCRUB_TASK_FIELD = Object.freeze({
   name: 'scrub',
   type: 'object',
   description:
-    'Live scrubbing in the code editor (off unless set): { enabled: true, numbers: true (drag or tap a number for a slider), colours: true (click a colour for a picker), ranges: [{ line, min, max }] (per-line slider ranges; otherwise a range around the value) }. Drawing programs re-run live while a value changes.',
+    'Live scrubbing in the code editor (off unless set): { enabled: true, numbers: true (drag or tap a number for a slider), colours: true (click a colour for a picker), ranges: [{ line, min, max }] (per-line slider ranges; otherwise a range around the value), checkOnRelease: true (when a drag ends, the checks run once as a Run would) }. Drawing programs re-run live while a value changes; programs with input() replay the answers from the last Run.',
 })
 
 export const SCRUB_LIVE_RERUN_KINDS = Object.freeze(['preview', 'none'])
 
-const SCRUB_KEYS = ['enabled', 'numbers', 'colours', 'ranges']
+const SCRUB_KEYS = ['enabled', 'numbers', 'colours', 'ranges', 'checkOnRelease']
 
 function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -34,13 +38,14 @@ function isWholeLine(value) {
 }
 
 /**
- * The task's scrub settings, normalised — `{ numbers, colours, ranges: [{ line, min, max }] }` —
- * or null when scrubbing is off (no field, `enabled: false`, or both kinds off). Invalid ranges
+ * The task's scrub settings, normalised — `{ numbers, colours, ranges: [{ line, min, max }],
+ * checkOnRelease, colourNames }` — or null when scrubbing is off (no field, `enabled: false`, or both kinds off). Invalid ranges
  * are dropped; the first range for a line wins.
  */
 export function getTaskScrub(task) {
   const raw = task?.scrub
-  if (raw === true) return { numbers: true, colours: true, ranges: [] }
+  if (raw === true)
+    return { numbers: true, colours: true, ranges: [], checkOnRelease: true, colourNames: true }
   if (!isPlainObject(raw) || raw.enabled === false) return null
   const numbers = raw.numbers !== false
   const colours = raw.colours !== false
@@ -56,7 +61,14 @@ export function getTaskScrub(task) {
     seen.add(line)
     ranges.push({ line, min, max })
   }
-  return { numbers, colours, ranges }
+  return {
+    numbers,
+    colours,
+    ranges,
+    checkOnRelease: raw.checkOnRelease !== false,
+    // The colour picker writes CSS colour names only (Ryan, 2026-10-16); false brings hex back.
+    colourNames: raw.colourNames !== false,
+  }
 }
 
 /** The module's scrub capability, normalised (`{ liveRerun, needsImport, inputCall }`), or null. */
@@ -89,12 +101,21 @@ function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+/** Whether `code` calls the capability's input function (Python's input()). */
+export function scrubCodeAsksForInput(capability, code) {
+  if (!capability?.inputCall) return false
+  const call = new RegExp(`(?<![\\w.])${escapeRegExp(capability.inputCall)}\\s*\\(`)
+  return call.test(String(code ?? ''))
+}
+
 /**
- * How a scrub shows its result for this code: 'preview' (re-run live) or 'press-run' (the
- * student presses Run to see it: the module doesn't re-run live, the program doesn't import the
- * module it needs, or it asks for input).
+ * How a scrub shows its result for this code: 'preview' (re-run live), 'press-run' (the student
+ * presses Run to see it: the module doesn't re-run live, or the program doesn't import the
+ * module it needs) or 'press-run-answers' (the program asks for input and there are no answers
+ * from a last Run to replay). `inputAnswers` is the answers the student gave on their last Run
+ * of the task (an array, maybe empty), or null when there was none.
  */
-export function scrubPreviewMode(capability, code) {
+export function scrubPreviewMode(capability, code, { inputAnswers = null } = {}) {
   if (!capability || capability.liveRerun !== 'preview') return 'press-run'
   const text = String(code ?? '')
   if (capability.needsImport) {
@@ -102,9 +123,8 @@ export function scrubPreviewMode(capability, code) {
     const imports = new RegExp(`^\\s*(?:import\\s+${name}\\b|from\\s+${name}\\s+import\\b)`, 'm')
     if (!imports.test(text)) return 'press-run'
   }
-  if (capability.inputCall) {
-    const call = new RegExp(`(?<![\\w.])${escapeRegExp(capability.inputCall)}\\s*\\(`)
-    if (call.test(text)) return 'press-run'
+  if (scrubCodeAsksForInput(capability, text) && !Array.isArray(inputAnswers)) {
+    return 'press-run-answers'
   }
   return 'preview'
 }
@@ -123,7 +143,7 @@ export function validateScrub(task, n, errors, warnings = [], { starterCode = nu
     )
     return
   }
-  for (const key of ['enabled', 'numbers', 'colours']) {
+  for (const key of ['enabled', 'numbers', 'colours', 'checkOnRelease', 'colourNames']) {
     if (raw[key] != null && typeof raw[key] !== 'boolean') {
       errors.push(`Task ${n} has scrub ${key} that is not true or false`)
     }

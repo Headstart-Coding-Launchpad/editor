@@ -2,6 +2,7 @@ import { buildCapabilities } from './capabilities.mjs'
 import { MODULE_TYPES, getModuleDefinitions } from '../src/modules/definitions.js'
 import { ACTIVITY_IDS } from '../src/activities/registry.pure.js'
 import { checkRegistry } from '../src/modules/checks.js'
+import { SCRATCH_CHECK_CATALOG, SCRATCH_CHECK_TYPES } from '../src/modules/scratch/checks.js'
 
 describe('lessons capabilities', () => {
   const capabilities = buildCapabilities()
@@ -9,9 +10,28 @@ describe('lessons capabilities', () => {
   it('lists every registered module, activity and check type', () => {
     expect(capabilities.modules.map((m) => m.type)).toEqual([...MODULE_TYPES])
     expect(capabilities.activities.map((a) => a.id)).toEqual([...ACTIVITY_IDS])
-    expect(capabilities.checkTypes.map((c) => c.type)).toEqual(
-      checkRegistry.list().map((c) => c.type)
-    )
+    expect(capabilities.checkTypes.map((c) => c.type)).toEqual([
+      ...checkRegistry.list().map((c) => c.type),
+      ...SCRATCH_CHECK_CATALOG.map((c) => c.type),
+    ])
+  })
+
+  it('lists the Scratch check types on the Scratch module (audit #33)', () => {
+    const scratch = capabilities.modules.find((m) => m.type === 'scratch')
+    expect(scratch.checkTypes).toEqual(expect.arrayContaining([...SCRATCH_CHECK_TYPES]))
+    expect(scratch.checkTypes).toHaveLength(11)
+    expect(
+      capabilities.checkTypes.find((c) => c.type === 'block_count' && c.owner === 'module:scratch')
+    ).toMatchObject({ operators: expect.arrayContaining(['greater_than_or_equal']) })
+    const python = capabilities.modules.find((m) => m.type === 'python')
+    expect(python.checkTypes).not.toContain('block_used')
+  })
+
+  it('says requireShiftForCapitals is off when left out (audit #37)', () => {
+    const keyboard = capabilities.activities.find((a) => a.id === 'keyboard')
+    const field = keyboard.fields.find((f) => f.name === 'requireShiftForCapitals')
+    expect(field.description).not.toMatch(/default true/)
+    expect(field.description).toMatch(/Off when left out/)
   })
 
   it('attributes check types to the module that owns them', () => {

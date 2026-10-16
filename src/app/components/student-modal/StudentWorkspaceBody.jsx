@@ -8,11 +8,12 @@ import { ActivityView } from '../../../activities/ActivityHost.jsx'
 import { getTaskActivity } from '../../../activities/registry.pure.js'
 import { getModuleHostedActivityUi } from '../../../activities/registry.js'
 import { readActivityAnswer, studentStateField } from '../../../activities/state.js'
-import { HIGHLIGHT_EMOJI_OPTIONS } from './constants'
+import { HIGHLIGHT_EMOJI_LABELS, HIGHLIGHT_EMOJI_OPTIONS } from './constants'
 import { readAnswerDraft } from '../../../shared/answerDrafts'
 import { getMirrorLineHintSets, getMirrorLockSets } from './mirrorLineHints'
 import { getInspectorConfig } from '../../../modules/html/inspector/config'
 import TaskVariablesPanel from '../../../shared/variablesPanel/TaskVariablesPanel.jsx'
+import { useVariableLinks } from '../../../shared/variablesPanel/useVariableLinks.js'
 import { getPeekBand, panelRunForTask } from '../../../shared/variablesPanel/variablesPanel.js'
 import { taskHistoryMode, typingHistoryForMode } from '../../../shared/typingHistory'
 import TypingHistoryPanel from './TypingHistoryPanel'
@@ -127,10 +128,19 @@ export default function StudentWorkspaceBody({
     isSessionSandbox
       ? null
       : getPeekBand(task, code, panelRunForTask(task, { synced: student.currentVariables ?? null }))
+  // Linked name tags (showVariables.link) on the mirrored Python code, as the student sees them.
+  const variableLinks = useVariableLinks(
+    task,
+    panelRunForTask(task, { synced: student.currentVariables ?? null }),
+    { enabled: mirror === 'code' && !isSessionSandbox }
+  )
 
   const highlightComposer = canHighlight && (
     <div style={s.highlightComposer}>
-      <div style={s.highlightEmojiRow}>
+      <div style={s.highlightEmojiRow} role="group" aria-label="Highlight mark">
+        <span style={s.highlightEmojiLabel} aria-hidden="true">
+          Mark:
+        </span>
         {HIGHLIGHT_EMOJI_OPTIONS.map((emoji) => (
           <button
             key={emoji}
@@ -139,6 +149,9 @@ export default function StudentWorkspaceBody({
               ...s.highlightEmojiBtn,
               ...(emoji === highlightEmoji ? s.highlightEmojiBtnActive : {}),
             }}
+            aria-pressed={emoji === highlightEmoji}
+            aria-label={HIGHLIGHT_EMOJI_LABELS[emoji] ?? emoji}
+            title={HIGHLIGHT_EMOJI_LABELS[emoji] ?? emoji}
             onClick={() => onHighlightEmojiChange(emoji)}
           >
             {emoji}
@@ -329,6 +342,7 @@ export default function StudentWorkspaceBody({
             lineHints={lineHints}
             lockedLines={lockedLines}
             peekBand={peekBandFor(student.currentCode ?? '')}
+            variableLinks={variableLinks.editor}
             onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
             onHighlightDismiss={onDismissHighlight}
             style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
@@ -369,6 +383,7 @@ export default function StudentWorkspaceBody({
           audience="tutor"
           hidden={isSessionSandbox}
           style={s.variablesPanel}
+          {...variableLinks.panel}
         />
       </>
     )
@@ -587,7 +602,15 @@ const s = {
   },
   highlightEmojiRow: {
     display: 'flex',
+    alignItems: 'center',
     gap: 2,
+  },
+  highlightEmojiLabel: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    color: '#1e40af',
+    marginRight: 4,
   },
   highlightEmojiBtn: {
     border: '1px solid transparent',

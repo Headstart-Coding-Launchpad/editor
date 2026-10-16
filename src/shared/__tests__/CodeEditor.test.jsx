@@ -410,3 +410,17 @@ describe('CodeEditor onUserEdit', () => {
     expect(onUserEdit).not.toHaveBeenCalled()
   })
 })
+
+describe('CodeEditor line wrapping (HSC Audit: tablet code cut off)', () => {
+  it('soft-wraps long lines when wrapLines is set', async () => {
+    const { render } = await import('@testing-library/react')
+    const { container } = render(<CodeEditor value="print(1)" wrapLines />)
+    expect(container.querySelector('.cm-content.cm-lineWrapping')).not.toBeNull()
+  })
+
+  it('does not wrap when wrapLines is false', async () => {
+    const { render } = await import('@testing-library/react')
+    const { container } = render(<CodeEditor value="print(1)" wrapLines={false} />)
+    expect(container.querySelector('.cm-lineWrapping')).toBeNull()
+  })
+})

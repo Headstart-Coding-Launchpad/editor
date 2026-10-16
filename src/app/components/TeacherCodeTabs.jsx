@@ -1,5 +1,5 @@
 import React from 'react'
-import { getStageRole } from '../../shared/taskUtils'
+import { formatStageLabel, getStageRole } from '../../shared/taskUtils'
 
 export default function TeacherCodeTabs({
   activeTab,
@@ -18,6 +18,14 @@ export default function TeacherCodeTabs({
   onToggleLiveReference,
 }) {
   const isLiveTab = activeTab === 'live'
+  // Unified stage tabs have no separate Starter / Complete tab, so the default 'starter' (and
+  // 'complete') tab is shown on the stage with that role: otherwise no tab looked selected.
+  let shownTab = activeTab
+  if (unifiedStages && (activeTab === 'starter' || activeTab === 'complete')) {
+    const index = stages.findIndex((stage) => getStageRole(stage) === activeTab)
+    if (index >= 0) shownTab = `stage_${index}`
+    else if (activeTab === 'starter' && stages.length > 0) shownTab = 'stage_0'
+  }
   return (
     <div className="ui-tabs ui-tabs--editor" role="tablist" aria-label="Teacher code workspace">
       {!unifiedStages && (
@@ -32,19 +40,17 @@ export default function TeacherCodeTabs({
         </button>
       )}
       {stages.map((stage, i) => {
-        const role = getStageRole(stage)
-        const rolePrefix = unifiedStages ? `${role}: ` : role === 'support' ? '' : `${role}: `
+        const selected = shownTab === `stage_${i}`
         return (
           <button
             key={i}
             type="button"
-            className={`ui-tab${activeTab === `stage_${i}` ? ' is-active' : ''}`}
+            className={`ui-tab${selected ? ' is-active' : ''}`}
             role="tab"
-            aria-selected={activeTab === `stage_${i}`}
+            aria-selected={selected}
             onClick={() => onStage?.(i)}
           >
-            {rolePrefix}
-            {stage.label || `Stage ${i + 1}`}
+            {formatStageLabel(stage, i, { showSupportRole: unifiedStages })}
           </button>
         )
       })}

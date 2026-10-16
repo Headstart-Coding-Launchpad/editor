@@ -101,7 +101,7 @@ export default function NameEntry({
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {waitingForSession && (
             <p style={s.waitNote}>
-              Enter your name and we&apos;ll put you in the waiting room until your teacher starts.
+              Enter your name and we&apos;ll put you in the waiting room until your tutor starts.
             </p>
           )}
           <label style={s.label}>
@@ -124,7 +124,8 @@ export default function NameEntry({
             <button
               type="button"
               onClick={onGoSolo}
-              style={{ ...ghostLink, textAlign: 'center' }}
+              // Clearly readable but still second to the join button (it was pale grey).
+              style={{ ...ghostLink, ...s.soloLink }}
               disabled={submitting}
             >
               Work Solo instead
@@ -165,10 +166,19 @@ const s = {
     lineHeight: 1.6,
     marginBottom: 4,
   },
+  soloLink: {
+    textAlign: 'center',
+    alignSelf: 'center',
+    minHeight: 40,
+    padding: '0 12px',
+    fontSize: '0.95rem',
+    fontWeight: 600,
+    color: 'var(--colour-primary)',
+  },
   waitNote: {
     fontFamily: 'var(--font-body)',
     fontSize: '0.88rem',
-    color: '#6b7280',
+    color: 'var(--colour-muted)',
     lineHeight: 1.5,
     margin: 0,
     textAlign: 'center',

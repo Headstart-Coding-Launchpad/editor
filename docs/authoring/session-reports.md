@@ -102,7 +102,7 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `quizType` | `multiple_choice`, `match`, `fill_blank`, `short_answer`, `confidence`, `poll` (since 2026-10-01). | Quizzes only | 2026-07-22 |
 | `activityType` | The activity id (`binary`, `keyboard`, `mouse`, …). | Activities only | 2026-09-28 |
 | `ratingScale` | The scale the confidence ratings in `distinctAttempts` were given on: `10`. A confidence entry without it is from before 2026-10-09 and was rated 1–5. | Confidence quizzes only | 2026-10-09 |
-| `completed` | Graded: passed, passed by a tutor's hand override, or auto-checked correct when the class moved on (`auto_passed`). Moving the class on past a graded code task the student never passed **no longer** makes it complete (quizzes and activities moved past still count as complete) (since 2026-10-01; see [Overrides](#overrides)). Ungraded: responded at all. | Always | 2026-07-13 (changed 2026-10-01) |
+| `completed` | Graded: passed, passed by a tutor's hand override, or auto-checked correct when the class moved on (`auto_passed`). Moving the class on past a graded code task the student never passed **no longer** makes it complete (quizzes and activities moved past still count as complete, and that includes Code Arrange, which is an activity) (since 2026-10-01; see [Overrides](#overrides)). Ungraded: responded at all. | Always | 2026-07-13 (changed 2026-10-01) |
 | `attempts` | Total submissions including identical resubmissions: Σ(1 + `retries`) over `distinctAttempts`. | Always | 2026-07-13 |
 | `finalResult` | See [finalResult](#finalresult). | Always | 2026-07-13 (values changed 2026-07-22) |
 | `timeOnTaskMs` | From when the teacher (last) moved the class onto the task to the passing attempt / override / correct auto-check, or, if not completed, to the latest attempt. Null when there's no start time or no attempt/override. | Always (may be null) | 2026-07-14 |
@@ -143,8 +143,9 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `distinctAttempts[].suggestion` | The failure hint shown to the student, or null. |
 | `distinctAttempts[].submission` | The submitted code or answer. Code is a string; object-shaped work (files, Scratch workspaces, activity state) is an object, or a JSON string in reports read back from Firestore. |
 | `distinctAttempts[].placements` | Code Arrange only: the tiles on the board when Run was pressed, `{ <blank id>: <tile id> }` (a tile id is a blank's own id, i.e. that blank's correct tile, or a distractor's id). Lets you tell a wrong-blank guess (a right tile in another blank) from a wrong-content one (a distractor). A retry keeps the first entry's. Omitted on other tasks, indent-mode tasks, and attempts before 2026-10-09. |
+| `distinctAttempts[].source` | `scrub`: the attempt was made by the checks that run when a [live scrub](python.md#live-scrubbing-scrub) drag ends (`scrub.checkOnRelease`), not by pressing Run. A retry keeps the first entry's. Omitted on attempts from a Run (and on attempts before 2026-10-16). Count them out of `attempts` when you want "presses of Run". |
 
-The first five fields date from 2026-07-13; `placements` from 2026-10-09.
+The first five fields date from 2026-07-13; `placements` from 2026-10-09; `source` from 2026-10-16.
 
 **How attempts are logged** (`logAttempt` in `src/app/hooks/useSession.js`): attempts are logged
 only on tasks with a `check` (code tasks without one log nothing), only during the lesson (not the
@@ -486,8 +487,9 @@ Each student's own sandbox counters are on `students[].teacherSandbox`.
 
 `{ <badgeId>: { suggested, awarded, autoAwarded, manual, dismissed, revoked } }`, added
 2026-09-30. `suggested` counts rule-made suggestions (accepted, dismissed, auto-awarded, or still
-pending at session end); `awarded` counts badges still held, split into `autoAwarded` and
-`manual`. See [badges.md](badges.md).
+pending at session end); `awarded` counts badges still held. `autoAwarded` and `manual` count two
+kinds of those, but a suggestion the tutor **accepted** counts only in `awarded`, so
+`awarded` can be more than `autoAwarded + manual`. See [badges.md](badges.md).
 
 ## Teacher feedback
 

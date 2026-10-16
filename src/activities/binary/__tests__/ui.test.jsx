@@ -52,7 +52,7 @@ describe('Binary UI', () => {
   it('checks, shows the hint for a wrong item and jumps to it', async () => {
     const { onSubmit } = renderBinary(MAKE)
     fireEvent.click(screen.getByRole('switch', { name: 'Bits 8 column' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Check answers' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Check my work' }))
     expect(onSubmit).toHaveBeenCalledTimes(1)
     expect(
       await screen.findByText(/Your bits make 8, which is too big. Check the 8 column./)
@@ -69,7 +69,7 @@ describe('Binary UI', () => {
     const { rerender } = render(
       <BinaryStudentView task={task} state={checked} onChange={() => {}} onSubmit={onSubmit} />
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Check answers' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Check my work' }))
     expect(await screen.findByText(/Correct/)).toBeInTheDocument()
     // A teacher reset (or Start again) replaces the state without a student edit.
     rerender(
@@ -110,7 +110,7 @@ describe('Binary UI', () => {
     // Answer question 1 correctly (5 = 0101) and check; question 2 is untouched.
     fireEvent.click(screen.getByRole('switch', { name: 'Bits 4 column' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Bits 1 column' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Check answers' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Check my work' }))
     expect(await screen.findByRole('button', { name: 'Question 1, done' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Question 2' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /not right yet/ })).not.toBeInTheDocument()
@@ -160,7 +160,7 @@ describe('Binary UI', () => {
   it('is read-only for a teacher view', () => {
     renderBinary(MAKE, { readOnly: true, initialState: binary.solutionState(MAKE) })
     for (const tile of screen.getAllByRole('switch')) expect(tile).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Check answers' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
     expect(screen.getByText('Correct')).toBeInTheDocument()
   })
 })
