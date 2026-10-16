@@ -574,7 +574,7 @@ describe('StudentModal', () => {
       })
       render(<StudentModal {...props} />)
       await user.click(screen.getByRole('button', { name: /^Support/ }))
-      await user.click(screen.getByRole('button', { name: /Reveal solution: Complete/i }))
+      await user.click(screen.getByRole('button', { name: /^Reveal solution$/i }))
 
       expect(props.onRevealSupportStage).toHaveBeenCalledWith('student-1', 1, 1, {
         source: 'teacher',
@@ -933,7 +933,9 @@ describe('StudentModal line hints', () => {
         {...mkProps({ lesson: HINTED_LESSON }, { currentCode: "name = 'Ali'\nprint(name)\n" })}
       />
     )
-    expect(screen.getByTestId('modal-line-hint-count')).toHaveTextContent('💡 1 hint showing')
+    expect(screen.getByTestId('modal-line-hint-count')).toHaveTextContent(
+      '💡 1 line hint left in their code'
+    )
   })
 
   it('shows no hint count for a task without hint markers', () => {

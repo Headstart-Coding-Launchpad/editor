@@ -12,7 +12,11 @@ import {
   getCompleteStage,
   getRevealableStages,
 } from '../../shared/taskUtils'
-import { TEACHER_LIVE_REVEAL_KEY, getTeacherLivePin } from '../../shared/taskStages.js'
+import {
+  TEACHER_LIVE_REVEAL_KEY,
+  formatStageLabel,
+  getTeacherLivePin,
+} from '../../shared/taskStages.js'
 import PresenceBadge from './PresenceBadge'
 import ScratchWorkspace from '../../modules/scratch/ScratchWorkspace.jsx'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
@@ -795,13 +799,14 @@ export default function StudentModal({
                 📖 Every task: {AUTO_REVEAL_OPTIONS.find((o) => o.mode === autoRevealStage)?.label}
               </span>
             )}
-            {shownLineHintCount != null && teacherEditState !== 'editing' && (
+            {shownLineHintCount > 0 && teacherEditState !== 'editing' && (
               <span
                 style={s.supportBadge}
                 title="The lesson's 💡 line hints still on this student's code (hints on lines the student has changed are gone)"
                 data-testid="modal-line-hint-count"
               >
-                💡 {shownLineHintCount} {shownLineHintCount === 1 ? 'hint' : 'hints'} showing
+                💡 {shownLineHintCount} line {shownLineHintCount === 1 ? 'hint' : 'hints'} left in
+                their code
               </span>
             )}
             {teacherLiveReferencePinned && (
@@ -955,7 +960,12 @@ export default function StudentModal({
                               )
                             }}
                           >
-                            Reveal solution: {completeStage.stage.label || 'Complete'}
+                            {/* "Reveal solution", or "Reveal solution: Answer" for a named one;
+                                never "Reveal solution: Complete". */}
+                            {formatStageLabel(completeStage.stage, completeStage.index).replace(
+                              /^Complete(?=:|$)/i,
+                              'Reveal solution'
+                            )}
                           </button>
                         )}
                         {canSetAutoReveal && (

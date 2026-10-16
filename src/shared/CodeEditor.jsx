@@ -622,6 +622,9 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     <>
       <div
         ref={containerRef}
+        // The pale red border means read-only: say so on hover (HSC Audit, Visual Review 05).
+        title={readOnly ? 'Read-only: you can look, but not type here' : undefined}
+        data-readonly={readOnly ? 'true' : undefined}
         style={{
           height: '100%',
           overflow: 'auto',

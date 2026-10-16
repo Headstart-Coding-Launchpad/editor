@@ -136,6 +136,15 @@ export default function TeacherEditorPanel({
           onToggleLiveReference={onToggleLiveReference}
         />
       )}
+      {readOnly && (
+        // Explains the editor's pale red read-only border (HSC Audit, Visual Review 05).
+        <div style={styles.readOnlyNote} data-testid="teacher-panel-readonly-note">
+          <span aria-hidden="true">🔒</span>{' '}
+          {isLiveTab
+            ? 'Read-only: your live code from the presentation window.'
+            : 'Read-only: the code students get at this stage. Edit it in Edit Lesson or the sandbox.'}
+        </div>
+      )}
       <LiveView
         key={`teacher-${displayTaskId}-${isInSandbox ? 'sandbox' : teacherCodeTab}`}
         task={task}
@@ -153,6 +162,13 @@ export default function TeacherEditorPanel({
 }
 
 const styles = {
+  readOnlyNote: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.76rem',
+    color: 'var(--colour-muted)',
+    padding: '4px 8px',
+    flexShrink: 0,
+  },
   sandboxRow: {
     flex: 1,
     minHeight: 0,

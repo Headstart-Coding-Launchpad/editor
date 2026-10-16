@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { getTeacherLivePin, isTeacherLivePinLogged } from '../taskStages.js'
+import { formatStageLabel, getTeacherLivePin, isTeacherLivePinLogged } from '../taskStages.js'
 import {
   flattenTasks,
   filterTasksByMode,
@@ -38,6 +38,30 @@ const task2 = { id: 't2', title: 'Task 2' }
 const sub1 = { id: 's1', title: 'Group A - 1' }
 const sub2 = { id: 's2', title: 'Group A - 2' }
 const group = { id: 'g1', type: 'group', title: 'Group A', subtasks: [sub1, sub2] }
+
+// ─── formatStageLabel ─────────────────────────────────────────────────────────
+
+describe('formatStageLabel', () => {
+  it('shows the role once, capitalised', () => {
+    expect(formatStageLabel({ role: 'starter', label: 'Say Hello!' }, 0)).toBe(
+      'Starter: Say Hello!'
+    )
+    expect(formatStageLabel({ role: 'complete', label: 'Complete' }, 2)).toBe('Complete')
+    expect(formatStageLabel({ role: 'starter', label: 'starter' }, 0)).toBe('starter')
+    expect(formatStageLabel({ role: 'complete' }, 2)).toBe('Complete')
+  })
+
+  it('names unlabelled support stages by number and can drop the Support prefix', () => {
+    expect(formatStageLabel({}, 1)).toBe('Stage 2')
+    expect(formatStageLabel({ label: 'Loop hint' }, 1)).toBe('Support: Loop hint')
+    expect(formatStageLabel({ label: 'Loop hint' }, 1, { showSupportRole: false })).toBe(
+      'Loop hint'
+    )
+    expect(formatStageLabel({ label: 'Go further', role: 'extension' }, 1)).toBe(
+      'Extension: Go further'
+    )
+  })
+})
 
 // ─── flattenTasks ─────────────────────────────────────────────────────────────
 
@@ -622,6 +646,19 @@ describe('buildStageOptions', () => {
       { value: 'stage_0', label: 'Gentle start' },
       { value: 'stage_3', label: 'More structure' },
       { value: 'stage_2', label: 'Complete: Solution' },
+    ])
+  })
+
+  it('never repeats a role the stage is named after ("Complete", not "Complete: Complete")', () => {
+    const task = {
+      codeStages: [
+        { label: 'Starter', role: 'starter', code: '' },
+        { label: 'Complete', role: 'complete', code: 'print(1)' },
+      ],
+    }
+    expect(buildStageOptions(task, 'python')).toEqual([
+      { value: 'stage_0', label: 'Starter' },
+      { value: 'stage_1', label: 'Complete' },
     ])
   })
 

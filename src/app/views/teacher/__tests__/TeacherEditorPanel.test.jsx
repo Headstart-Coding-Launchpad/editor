@@ -99,3 +99,28 @@ describe('TeacherEditorPanel — editor stack sizing', () => {
     expect(container.firstChild.style.minHeight).toBe('0px')
   })
 })
+
+describe('TeacherEditorPanel — read-only note', () => {
+  it('says the stage editor is read-only outside the sandbox', () => {
+    render(
+      <TeacherEditorPanel
+        {...mkProps({ lesson: PYTHON_LESSON, task: PYTHON_TASK, displayTaskId: 2 })}
+      />
+    )
+    expect(screen.getByTestId('teacher-panel-readonly-note')).toHaveTextContent(/Read-only/)
+  })
+
+  it('has no read-only note in the sandbox, where the tutor can type', () => {
+    render(
+      <TeacherEditorPanel
+        {...mkProps({
+          lesson: PYTHON_LESSON,
+          task: PYTHON_TASK,
+          displayTaskId: 2,
+          isInSandbox: true,
+        })}
+      />
+    )
+    expect(screen.queryByTestId('teacher-panel-readonly-note')).not.toBeInTheDocument()
+  })
+})
