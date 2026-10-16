@@ -535,6 +535,24 @@ describe('core-surface capabilities (plan step 4.8)', () => {
     }
   })
 
+  it("electronics' teacherStarter falls back to the starter stage's board when starterCircuit is empty", () => {
+    const { workSlot } = getModuleDefinition('electronics')
+    const wired = {
+      board: { rows: 14, cols: 20 },
+      components: [{ id: 'led1', type: 'led', label: 'LED', pins: ['anode', 'cathode'] }],
+      wires: [],
+    }
+    const empty = { board: { rows: 14, cols: 20 }, components: [], wires: [] }
+    const stageOnly = { codeStages: [{ label: 'Starter', role: 'starter', circuit: wired }] }
+    const emptyOwn = { ...stageOnly, starterCircuit: empty }
+    expect(JSON.parse(workSlot.teacherStarter(stageOnly)).components).toHaveLength(1)
+    expect(JSON.parse(workSlot.teacherStarter(emptyOwn)).components).toHaveLength(1)
+    // A starterCircuit with parts of its own still wins, as before.
+    const twoLeds = [wired.components[0], { ...wired.components[0], id: 'led2' }]
+    const ownWired = { ...stageOnly, starterCircuit: { ...wired, components: twoLeds } }
+    expect(JSON.parse(workSlot.teacherStarter(ownWired)).components).toHaveLength(2)
+  })
+
   it('meta.pickerOrder defaults to meta.order (html and scratch swap in the picker)', () => {
     expect(getModuleDefinition('python').meta.pickerOrder).toBe(0)
     expect(getModuleDefinition('html').meta.pickerOrder).toBe(3)

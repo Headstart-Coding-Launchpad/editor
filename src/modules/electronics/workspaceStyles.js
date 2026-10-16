@@ -21,7 +21,7 @@ export const SELECTION_COLOUR = '#6222cc'
 export const s = {
   split: { flex: 1, minHeight: 0 },
   shell: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-  header: { flexShrink: 0 },
+  header: { flexShrink: 0, flexWrap: 'wrap' },
   title: {
     fontFamily: 'var(--font-body)',
     fontWeight: 700,
@@ -40,7 +40,18 @@ export const s = {
     marginRight: 4,
   },
   tabs: { display: 'flex', alignItems: 'center' },
-  actions: { marginLeft: 'auto', display: 'flex', gap: 8, paddingRight: 8 },
+  // Both rows wrap rather than run off the pane: on a 1024px tablet "Run MicroPython", "Check
+  // Circuit" and "Reset" were pushed past the right edge, so the task couldn't be done (HSC Audit 09).
+  actions: {
+    marginLeft: 'auto',
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+    paddingRight: 8,
+    paddingBottom: 4,
+  },
   actionBtn: { fontSize: 13, padding: '7px 12px' },
   zoomControls: { display: 'flex', alignItems: 'center', gap: 4 },
   zoomBtn: { fontSize: 13, padding: '5px 10px', lineHeight: 1 },
@@ -212,21 +223,30 @@ export const s = {
     height: '100%',
     transformOrigin: 'center',
   },
+  // One line, never running under the lock mark: "Micro Controller" read "Micro Controlle"
+  // with the lock covering its last letter (HSC Audit 09). componentLabelLocked leaves the
+  // lock's corner free; a name still too long ends in "…" (the full name is the title).
   componentLabel: {
     position: 'absolute',
     zIndex: 4,
-    left: 6,
+    left: 4,
     top: 4,
-    fontSize: 11,
+    maxWidth: 'calc(100% - 8px)',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 10.5,
+    letterSpacing: '-0.01em',
     color: 'var(--colour-text)',
     background: 'rgba(255,255,255,0.72)',
     borderRadius: 4,
-    padding: '1px 4px',
+    padding: '1px 3px',
   },
+  componentLabelLocked: { maxWidth: 'calc(100% - 26px)' },
   fixedBadge: {
     position: 'absolute',
     zIndex: 4,
-    right: 5,
+    right: 3,
     top: 4,
     display: 'grid',
     placeItems: 'center',

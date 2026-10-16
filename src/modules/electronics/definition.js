@@ -235,8 +235,16 @@ export default defineModule({
         getStarterStage(task)?.stage?.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
       ),
     // TeacherView's Starter tab has always shown the task's `starterCircuit`, not a starter
-    // stage's circuit.
-    teacherStarter: (task) => serializeCircuit(task.starterCircuit ?? DEFAULT_CIRCUIT),
+    // stage's circuit. But a task whose board lives only in its starter stage (no
+    // `starterCircuit`, or an empty one) showed the tutor an empty board while students started
+    // wired (HSC Audit 09), so the stage's board fills in then.
+    teacherStarter: (task) => {
+      const own = task.starterCircuit
+      const stageCircuit = getStarterStage(task)?.stage?.circuit
+      const ownIsEmpty = !own || !(own.components?.length > 0)
+      const useStage = ownIsEmpty && stageCircuit?.components?.length > 0
+      return serializeCircuit((useStage ? stageCircuit : own) ?? DEFAULT_CIRCUIT)
+    },
     stage: (task, stageIndex) =>
       serializeCircuit(
         task?.codeStages?.[stageIndex]?.circuit ?? task.starterCircuit ?? DEFAULT_CIRCUIT
