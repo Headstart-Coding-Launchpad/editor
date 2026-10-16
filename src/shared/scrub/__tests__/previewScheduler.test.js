@@ -21,16 +21,30 @@ describe('createPreviewScheduler', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
 
-  it('debounces: only the value that settles runs', async () => {
+  it('runs the first request at once after a quiet spell', async () => {
     const { run, calls } = controlledRun()
     const scheduler = createPreviewScheduler({ run })
     scheduler.request('a')
-    await vi.advanceTimersByTimeAsync(SCRUB_PREVIEW_DELAY_MS - 50)
-    scheduler.request('b')
-    await vi.advanceTimersByTimeAsync(SCRUB_PREVIEW_DELAY_MS - 50)
-    expect(run).not.toHaveBeenCalled()
-    await vi.advanceTimersByTimeAsync(50)
-    expect(calls).toEqual(['b'])
+    await vi.advanceTimersByTimeAsync(0)
+    expect(calls).toEqual(['a'])
+  })
+
+  // P6-25: a drag that never pauses must still redraw, about every delayMs (it used to wait
+  // for the requests to stop for delayMs: a debounce).
+  it('throttles: a steady stream of requests redraws about every delayMs', async () => {
+    const run = vi.fn(async () => {})
+    const scheduler = createPreviewScheduler({ run })
+    // A new value every 20 ms for a second, never pausing.
+    for (let i = 0; i < 50; i += 1) {
+      scheduler.request(`v${i}`)
+      await vi.advanceTimersByTimeAsync(20)
+    }
+    const count = run.mock.calls.length
+    expect(count).toBeGreaterThanOrEqual(1000 / SCRUB_PREVIEW_DELAY_MS - 1)
+    expect(count).toBeLessThanOrEqual(1000 / SCRUB_PREVIEW_DELAY_MS + 1)
+    // The last value still runs once the stream stops.
+    await vi.advanceTimersByTimeAsync(SCRUB_PREVIEW_DELAY_MS)
+    expect(run.mock.calls.at(-1)[0]).toBe('v49')
   })
 
   it('never starts a run while one is going, then runs only the latest request', async () => {
