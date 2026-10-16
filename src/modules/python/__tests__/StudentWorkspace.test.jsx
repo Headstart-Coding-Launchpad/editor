@@ -3,8 +3,12 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import StudentWorkspace from '../StudentWorkspace'
 
+const pythonEditorSpy = vi.fn()
 vi.mock('../PythonEditor', () => ({
-  default: () => <div>python-editor</div>,
+  default: (props) => {
+    pythonEditorSpy(props)
+    return <div>python-editor</div>
+  },
 }))
 const outputPanelSpy = vi.fn()
 vi.mock('../../../app/components/OutputPanel', () => ({
@@ -461,5 +465,41 @@ describe("Python StudentWorkspace predict mode's Run lock (P6-18)", () => {
       />
     )
     expect(screen.queryByText('Fill in your predictions first')).toBeNull()
+  })
+})
+
+describe('Python StudentWorkspace line hints', () => {
+  const hintTask = {
+    lineHintSets: [{ file: null, hints: [{ line: 1, text: 'Write your print() line here' }] }],
+  }
+  const renderWith = (codeState) =>
+    render(
+      <StudentWorkspace
+        task={hintTask}
+        cs={codeState}
+        lessonId="lesson-1"
+        identityId="student-1"
+        viewingTaskId={null}
+        isSandbox={false}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isMobile={false}
+        isTeacherEditing={false}
+        teacherLiveCode=""
+      />
+    )
+
+  it('shows the line hints while the task is not yet passed', () => {
+    pythonEditorSpy.mockClear()
+    renderWith(cs)
+    expect(pythonEditorSpy.mock.lastCall[0].lineHints).toEqual([
+      [{ line: 1, text: 'Write your print() line here' }],
+    ])
+  })
+
+  it('drops the line hints once the check passes (no ghost text after finished code)', () => {
+    pythonEditorSpy.mockClear()
+    renderWith({ ...cs, checkPassed: true })
+    expect(pythonEditorSpy.mock.lastCall[0].lineHints).toBeNull()
   })
 })
