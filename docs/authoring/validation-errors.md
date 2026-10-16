@@ -461,6 +461,29 @@ Python and Turtle tasks; see [python.md](python.md#name-tag-panel-showvariables)
 | `Task … has a … …, but it only works in Python and Turtle tasks` (the check type, `variables_predicted` or `types_predicted`, then check or feedback check) | The check is on another module's task. | Move it to a Python or Turtle task. |
 | `Task … has a … … whose names is not a list of variable names` / `Task … has a … … with names that are not Python variable names` (`variables_predicted` or `types_predicted`) | `names` is empty, not a list, or holds something that isn't a Python name. | Write `names: [score, lives]`, or remove `names`. |
 
+## Run counts (`runCounts`, `#@count`)
+
+Python and Turtle tasks; see [python.md](python.md#run-counts-runcounts-count). Line numbers in
+these checks count the starter as the student sees it: `#@count`, `#@peek`, `#@lock` and `#>`
+lines don't count.
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task … has runCounts "…" — use one of: …` | Unknown `runCounts`. | Use `predict` or `show`. |
+| `Task … has … #@count lines — only the first 3 are counted` (warning) | More than three marked lines in one piece of code. | Keep the three that matter; split the rest into another task. |
+| `Task … has a #@count marker with no line of code after it; it counts nothing` (warning) | The marker is the last thing in the code (or only blank and comment lines follow). | Put it on the line just above the line to count. |
+| `Task … has runCounts but no #@count line in its code — put #@count on the line above the line to count` (warning) | Nothing is marked, so nothing shows. | Add a `#@count` line, or remove `runCounts`. |
+| `Task … has #@count lines but no runCounts — add runCounts: predict or show to show the counts` (warning) | Marked lines with nothing to show them (and no `line_run_count` check). | Add `runCounts: predict` or `show`, or remove the markers. |
+| `Task … has a runs_predicted check but runCounts is not predict` | Only predict mode collects the "how many times?" predictions. | Set `runCounts: predict`, or use `line_run_count`. |
+| `Task … has a runs_predicted check naming line …, which is not a #@count line of the starter — the marked lines are …` | A `lines` entry isn't a marked line (or counts the marker lines in). | Use the line numbers listed, or drop `lines` to mean every marked line. |
+| `Task … has a line_run_count check with no line and no #@count line in its starter` | Without `line` the check counts the first `#@count` line, and there is none. | Add `line:` or a `#@count` marker. |
+| `Task … has a line_run_count check on line …, which is not a line of code in the starter (lines count without marker lines)` | `line` is past the end, blank, or a comment. | Use the number of the line to count, as the student sees the starter. |
+| `Task … has a runs_predicted …, but it only works in Python and Turtle tasks` / `Task … has a line_run_count …, but it only works in Python and Turtle tasks` | The check is on another module's task. | Move it to a Python or Turtle task. |
+| `Task … has a runs_predicted … whose lines is not a list of line numbers` | `lines` is empty or holds something that isn't a whole number from 1. | Write `lines: [2, 3]`, or remove `lines`. |
+| `Task … has a line_run_count … whose line is not a line number` | `line` isn't a whole number from 1. | Write `line: 2`, or remove it for the marked line. |
+| `Task … has a line_run_count … with operator "…" — use one of: …` | Unknown `operator`. | Use `equals` (the default), `min` or `max`. |
+| `Task … has a line_run_count … without a whole-number value` | `value` is missing, negative or not a whole number. | Write `value: 5`. |
+
 ## Live scrubbing (`scrub`)
 
 Python, Turtle and HTML tasks; see [python.md](python.md#live-scrubbing-scrub).

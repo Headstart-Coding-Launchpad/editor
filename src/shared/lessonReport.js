@@ -40,8 +40,10 @@ import {
   summarizeCrossLessonCarry,
 } from './roster/crossLessonCarry.js'
 import {
+  summarizeRunCountPredictions,
   summarizeVariablePredictions,
   taskPredictionFields,
+  taskRunCountFields,
 } from './variablesPanel/predictionReport.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
@@ -785,6 +787,8 @@ export function buildSessionReport({
         ...(typing ? { typing } : {}),
         ...(tileMisses.length > 0 ? { tileMisses } : {}),
         ...taskPredictionFields(task, studentsSnapshot[anonymousId]),
+        // Run-count predictions (task runCounts: predict): each "how many times?" and its count.
+        ...taskRunCountFields(task, studentsSnapshot[anonymousId]),
         ...(tutorTileHighlights.length > 0 ? { tutorTileHighlights } : {}),
         ...withInspector(
           inspectorReportFields(studentsSnapshot[anonymousId]?.inspectorLog?.[task.id])
@@ -936,6 +940,7 @@ export function buildSessionReport({
       ...summarizeCourseUse(perStudent),
       ...summarizeScrubUse(perStudent),
       ...summarizeVariablePredictions(perStudent),
+      ...summarizeRunCountPredictions(perStudent),
       ...badgeFields,
       ...(teacherRating ? { teacherRating } : {}),
     }

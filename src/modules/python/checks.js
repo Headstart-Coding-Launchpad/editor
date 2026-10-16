@@ -16,6 +16,19 @@ import {
   validateVariablesPredictedCheck,
 } from '../../shared/variablesPanel/validation.js'
 import {
+  RUN_COUNT_CHECK_OPERATORS,
+  evaluateLineRunCountCheck,
+  evaluateRunsPredictedCheck,
+} from '../../shared/runCounts.js'
+import {
+  validateLineRunCountCheck,
+  validateRunsPredictedCheck,
+} from '../../shared/runCountsValidation.js'
+
+// Every module with run counts (the runCounts task field): python and turtle.
+const hasRunCounts = (moduleDefinition) =>
+  !!moduleDefinition?.taskFields?.some((field) => field.name === 'runCounts')
+import {
   STAGE_CHECK_TYPES,
   evaluateStageCheck,
   validateStageCheck,
@@ -177,6 +190,38 @@ export const CHECKS = [
       !!moduleDefinition?.taskFields?.some((field) => field.name === 'showVariables'),
     evaluate: evaluateTypesPredictedCheck,
     validate: validateTypesPredictedCheck,
+  },
+  // Run counts (task runCounts / #@count, src/shared/runCounts.js, p6-26): every marked line's
+  // "how many times?" prediction (or those `lines` names) matched its real count. Reads
+  // `context.runCounts` from the run. Python and Turtle tasks.
+  {
+    type: 'runs_predicted',
+    owner: 'module:python',
+    subject: 'Run-count predictions',
+    fields: ['lines'],
+    timing: 'on_run',
+    requiresRun: true,
+    submitAllowed: false,
+    contextKey: 'runCounts',
+    appliesTo: hasRunCounts,
+    evaluate: evaluateRunsPredictedCheck,
+    validate: validateRunsPredictedCheck,
+  },
+  // A counted line ran `value` times (equals, min, max): `line` (a starter line) or the first
+  // #@count line. Reads `context.runCounts`. Python and Turtle tasks.
+  {
+    type: 'line_run_count',
+    owner: 'module:python',
+    subject: 'How many times a line ran',
+    operators: RUN_COUNT_CHECK_OPERATORS,
+    fields: ['line', 'operator', 'value'],
+    timing: 'on_run',
+    requiresRun: true,
+    submitAllowed: false,
+    contextKey: 'runCounts',
+    appliesTo: hasRunCounts,
+    evaluate: evaluateLineRunCountCheck,
+    validate: validateLineRunCountCheck,
   },
   // Puzzle rules (task `puzzle`, src/shared/puzzle/puzzle.js): the student's code has at most
   // `value` lines of code (blank and comment lines don't count; `value` defaults to

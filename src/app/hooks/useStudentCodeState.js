@@ -90,6 +90,7 @@ import { useStudentTypingStats } from './useStudentTypingStats'
 import { runErrorFor, runErrorName } from '../../badges/signals'
 import { listTileHighlights } from '../../shared/tutorTileHighlights.js'
 import { getPredictRunLock } from '../../shared/variablesPanel/variablesPanel.js'
+import { combineRunLocks, getRunCountLock } from '../../shared/runCounts.js'
 import { useCrossLessonCarry } from './useCrossLessonCarry'
 import {
   crossLessonFallbackReason,
@@ -362,12 +363,6 @@ export function useStudentCodeState({
     writeStudentVariables,
     recordVariablePredictions,
   })
-  // Predict mode's Run lock (showVariables.lockRun): never for the presenter or in the personal
-  // sandbox. The workspaces disable Run and slow-mo while it is set; a tutor's remote Run still runs.
-  const predictRunLock =
-    teacherPresentation || inPersonalSandbox
-      ? null
-      : getPredictRunLock(findTaskById(lesson?.tasks, currentTaskId), variablesPanel.predictions)
   // Live badge signals (topic opens, shortcuts, first edits, complete shown, sandbox runs),
   // gated off for the presentation window, previews and solo.
   const badgeSignals = useStudentBadgeSignals({
@@ -537,6 +532,18 @@ export function useStudentCodeState({
   // trigger (null for a workspace-owned module, which publishes each report itself).
   const code = codeOfSlot(work)
   const { files, activeFile } = filesWorkOfSlot(work)
+  // Predict mode's Run lock (showVariables.lockRun), shared by run-count boxes (runCounts:
+  // predict, src/shared/runCounts.js, the boxes shown on the current code): never for the
+  // presenter or in the personal sandbox. The workspaces disable Run and slow-mo while it is
+  // set; a tutor's remote Run still runs.
+  const predictRunLock = (() => {
+    if (teacherPresentation || inPersonalSandbox) return null
+    const lockTask = findTaskById(lesson?.tasks, currentTaskId)
+    return combineRunLocks(
+      getPredictRunLock(lockTask, variablesPanel.predictions),
+      getRunCountLock(lockTask, variablesPanel.predictions, code)
+    )
+  })()
   const lessonSlotDefinition = workSlotDefinition(lesson?.type)
   const renderedStoredWork =
     lessonSlotDefinition && !lessonSlotDefinition.workSlot.workspaceOwned

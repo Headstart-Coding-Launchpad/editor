@@ -318,13 +318,15 @@ export async function runWithRuntime(ctx) {
   // The Python Stage drawing (src/shared/stage/): the pane shows it once the code draws.
   if (status !== 'stopped' && runResult.stage) setters.setStageResult?.(result.stage ?? null)
   // The name-tag panel (showVariables, useVariablesPanel.js) shows this run and marks the
-  // predictions; it hands back `variablePredictions` for the variables_predicted check. Free
-  // play (a sandbox) has no task panel.
+  // predictions; it hands back `variablePredictions` for the variables_predicted check, and the
+  // run counts (runCounts / #@count, src/shared/runCounts.js: placed on the code that ran) as
+  // `runCounts` for runs_predicted / line_run_count. Free play (a sandbox) has no task panel.
   const panelContext =
     ctx.variablesPanel?.receiveRun({
       task: refs.phaseRef.current === 'sandbox' || refs.inPersonalSandboxRef.current ? null : task,
       status,
       result,
+      code: startCode,
     }) ?? {}
   // `ran` tells run_attempted checks this context comes from a real run (see checks.js).
   const checkContext = checking.buildContext(nextCode, {

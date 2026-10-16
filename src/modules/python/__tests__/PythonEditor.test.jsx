@@ -150,3 +150,42 @@ describe('PythonEditor — Blocks button', () => {
     expect(screen.getByTestId('code-editor')).toHaveAttribute('data-block-guides', 'false')
   })
 })
+
+describe('PythonEditor — run counts read aloud (P6-26)', () => {
+  const mark = (line, extra) => ({ key: `L${line}`, line, value: '', editable: false, ...extra })
+
+  it('says each count after a Run in a polite live region', () => {
+    render(
+      <PythonEditor
+        code=""
+        onChange={vi.fn()}
+        runCounts={{
+          mode: 'predict',
+          readOnly: false,
+          marks: [
+            mark(2, { value: '3', count: 3, correct: true }),
+            mark(3, { value: '3', count: 1, correct: false }),
+          ],
+        }}
+      />
+    )
+    const region = screen.getByTestId('run-count-announcement')
+    expect(region).toHaveAttribute('aria-live', 'polite')
+    expect(region.textContent).toBe(
+      'Line 2 ran 3 times. You predicted 3: right. Line 3 ran 1 time. You predicted 3: not quite.'
+    )
+  })
+
+  it('is empty before a Run, and absent on a task without run counts', () => {
+    const { rerender } = render(
+      <PythonEditor
+        code=""
+        onChange={vi.fn()}
+        runCounts={{ mode: 'predict', marks: [mark(2, { count: null, editable: true })] }}
+      />
+    )
+    expect(screen.getByTestId('run-count-announcement').textContent).toBe('')
+    rerender(<PythonEditor code="" onChange={vi.fn()} />)
+    expect(screen.queryByTestId('run-count-announcement')).not.toBeInTheDocument()
+  })
+})

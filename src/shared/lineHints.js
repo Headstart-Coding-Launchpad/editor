@@ -30,6 +30,14 @@
 // getTaskPeekLine re-anchors it on the student's current code the way hints are re-anchored.
 // Only the first peek marker of a piece of code counts.
 //
+// Count marker (Python syntax only, p6-26): a line whose trimmed text is `#@count` (anything
+// after it is ignored) marks the next line of code (the next non-blank, non-comment line, as for
+// a peek) whose runs are counted (a task's `runCounts`, ../runCounts.js). Stripped like a hint
+// marker; the task keeps its runtime-only `countSets` (`[{ source, stageIndex, file, counts:
+// [{ line, target }] }]`, starter first), re-anchored on the student's code by line text the way
+// hints are (anchorCountMarks in ../runCounts.js). Every count marker counts (validation warns
+// over 3; the classroom keeps the first 3). Several markers above one line mark it once.
+//
 // Lock marker (Python syntax only): a line whose trimmed text is `#@lock` locks the next
 // non-blank line (see ./lockedLines.js). It is stripped like a hint marker; the task keeps its
 // runtime-only `lockSets` (`[{ source, stageIndex, file, locks: [{ line, target }] }]`, starter
@@ -59,7 +67,15 @@ export function isPeekMarkerLine(line, syntax) {
   return trimmed === PEEK_MARKER || /^#@peek(\s|$)/.test(trimmed)
 }
 
-// A line a peek can stop at: code, not a blank line or a comment.
+export const COUNT_MARKER = '#@count'
+
+// Whether a (raw) line is a count marker line (`#@count`), for a marker syntax.
+export function isCountMarkerLine(line, syntax) {
+  if (!Object.hasOwn(PEEK_SYNTAXES, syntax ?? '')) return false
+  return /^#@count(\s|$)/.test(String(line ?? '').trim())
+}
+
+// A line a peek (or a count) can stop at: code, not a blank line or a comment.
 function isPeekTargetLine(line) {
   const trimmed = line.trim()
   return trimmed !== '' && !trimmed.startsWith('#')
@@ -115,8 +131,10 @@ function markerText(line, syntax) {
 }
 
 /**
- * Splits marker lines out of `code`. Returns `{ code, hints, trailingMarker, peek, locks }`
- * (`peek` the peek marker's `{ line, target }` or null, `locks` the `#@lock` markers'
+ * Splits marker lines out of `code`. Returns `{ code, hints, trailingMarker, peek, locks,
+ * counts, countMissed }` (`counts` the `#@count` markers' `[{ line, target }]`, in order, one per
+ * marked line; `countMissed` how many count markers had no line of code after them;
+ * `peek` the peek marker's `{ line, target }` or null, `locks` the `#@lock` markers'
  * `[{ line, target }]` and the `#@lock-values` markers' `[{ line, target, values: true }]`, the
  * target a value skeleton; see ./lockedLines.js): the code
  * without its marker lines (unchanged, byte for byte, when there are none), the hints in
@@ -126,8 +144,9 @@ function markerText(line, syntax) {
  * hints.
  */
 export function parseLineHints(code, syntax) {
+  const none = { hints: [], trailingMarker: false, peek: null, locks: [], counts: [] }
   if (typeof code !== 'string' || !isLineHintSyntax(syntax)) {
-    return { code, hints: [], trailingMarker: false, peek: null, locks: [] }
+    return { code, ...none, countMissed: 0 }
   }
   const lines = code.split('\n')
   if (
@@ -135,11 +154,12 @@ export function parseLineHints(code, syntax) {
       (line) =>
         markerText(line, syntax) != null ||
         isPeekMarkerLine(line, syntax) ||
+        isCountMarkerLine(line, syntax) ||
         isLockMarkerLine(line, syntax) ||
         isLockValuesMarkerLine(line, syntax)
     )
   ) {
-    return { code, hints: [], trailingMarker: false, peek: null, locks: [] }
+    return { code, ...none, countMissed: 0 }
   }
 
   // A final newline ends the last line rather than starting an empty one: set it aside, so a
@@ -156,6 +176,9 @@ export function parseLineHints(code, syntax) {
   // `values`: a `#@lock-values` marker (only the line's values stay editable).
   let lockPending = null
   const lockIndexes = []
+  // Count: how many `#@count` markers wait for the next line of code; the marked lines' indexes.
+  let countPending = 0
+  const countIndexes = []
   // Python syntax: the closing quotes of the triple-quoted string a line is inside, or null.
   // Lines inside one (e.g. a `turtle.course_map("""…""")` maze row like `#>..G#`) are text,
   // never markers.
@@ -168,6 +191,10 @@ export function parseLineHints(code, syntax) {
     }
     if (isPeekMarkerLine(line, syntax)) {
       if (peekState === 'none') peekState = 'pending'
+      continue
+    }
+    if (isCountMarkerLine(line, syntax)) {
+      countPending += 1
       continue
     }
     if (isLockMarkerLine(line, syntax)) {
@@ -193,6 +220,10 @@ export function parseLineHints(code, syntax) {
       peekIndex = kept.length - 1
       peekState = 'placed'
     }
+    if (countPending > 0 && isPeekTargetLine(line)) {
+      countIndexes.push(kept.length - 1)
+      countPending = 0
+    }
     for (const hintText of pending) hints.push({ index: kept.length - 1, text: hintText })
     pending = []
   }
@@ -217,6 +248,9 @@ export function parseLineHints(code, syntax) {
         ? { line: index + 1, target: valueSkeleton(kept[index]), values: true }
         : { line: index + 1, target: kept[index].trim() }
     ),
+    // A count marker with no code line after it counts nothing (validation warns).
+    counts: countIndexes.map((index) => ({ line: index + 1, target: kept[index].trim() })),
+    countMissed: countPending > 0 ? 1 : 0,
   }
 }
 
@@ -321,7 +355,8 @@ function taskHintSources(task) {
  * code/files and every code stage, plus a runtime-only `lineHintSets` list
  * (`[{ source, stageIndex, file, hints }]`, starter first) the student editors read through
  * getTaskLineHintSets. The same task object comes back when it has no markers (so running it
- * twice is safe: an already-stripped task keeps its `lineHintSets`). `#@lock` markers and
+ * twice is safe: an already-stripped task keeps its `lineHintSets`). `#@peek` and `#@count`
+ * markers give it runtime-only `peekSets` / `countSets`. `#@lock` markers and
  * `puzzle.onlyEdit` give it a runtime-only `lockSets` list too (see ./lockedLines.js). `syntax` is the task's
  * marker syntax (its module's `capabilities.lineHints`); without one the task comes back
  * untouched.
@@ -331,6 +366,7 @@ export function stripTaskLineHints(task, syntax) {
   const sets = []
   const peekSets = []
   const lockSets = []
+  const countSets = []
   const next = { ...task }
   let changed = false
   const add = (source, stageIndex, file, hints) => {
@@ -343,6 +379,9 @@ export function stripTaskLineHints(task, syntax) {
     changed = true
     add(source, stageIndex, null, parsed.hints)
     if (parsed.peek) peekSets.push({ source, stageIndex, file: null, peek: parsed.peek })
+    if (parsed.counts.length > 0) {
+      countSets.push({ source, stageIndex, file: null, counts: parsed.counts })
+    }
     if (parsed.locks.length > 0) {
       lockSets.push({ source, stageIndex, file: null, locks: parsed.locks })
     }
@@ -383,6 +422,7 @@ export function stripTaskLineHints(task, syntax) {
   }
   if (changed) next.lineHintSets = [...(task.lineHintSets ?? []), ...sets]
   if (peekSets.length > 0) next.peekSets = [...(task.peekSets ?? []), ...peekSets]
+  if (countSets.length > 0) next.countSets = [...(task.countSets ?? []), ...countSets]
   const allLockSets = [...(task.lockSets ?? []), ...lockSets]
   if (puzzleLocks) {
     // puzzle.onlyEdit's locks join the starter's own #@lock set (the editor shows one set).

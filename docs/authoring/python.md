@@ -505,6 +505,76 @@ type labels — always). Every tag has a screen-reader text such as
 
 ---
 
+## Run counts (`runCounts`, `#@count`)
+
+"How many times will this line run?" is the prediction worth making in a loop lesson: off-by-one
+with `range()`, a line left outside the loop (it runs once), a nested loop (rows × columns). Mark
+the line to count with `#@count` on the line above it, and set `runCounts` on the task. It works
+with or without the [name-tag panel](#name-tag-panel-showvariables), on Python and
+[Turtle](turtle.md#run-counts-runcounts-count) tasks.
+
+```yaml
+- id: 14
+  moduleType: python
+  title: Hip Hip Hooray
+  runCounts: predict          # predict | show
+  codeStages:
+    - role: starter
+      code: |
+        for i in range(3):
+            #@count
+            print("Hip")
+        #@count
+        print("Hooray")
+  check:
+    - type: runs_predicted    # every marked line's prediction was right
+```
+
+The student predicts 3 and 1, presses Run, and sees **ran 3 times ✓** and **ran 1 time ✓**. A
+student who predicted 3 for Hooray sees **ran 1 time ✗ · you said 3** next to the line that isn't
+indented.
+
+| Field / marker | Notes |
+|---|---|
+| `#@count` | A line whose trimmed text is `#@count` marks the **next line of code** (blank and comment lines are skipped), like [`#@peek`](#name-tag-panel-showvariables). It is stripped before the student sees the code and follows its line by its text when code moves (a deleted or duplicated line loses its count). Up to **3** marked lines a task: validation warns over 3 (only the first 3 count) and when a marker has no line after it. Mark the line inside the loop: marking a `for` / `while` line counts every check of the loop, one more than its passes. |
+| `runCounts: predict` | A small number box at the **end** of each marked line in the editor ("How many times will this run?" for screen readers; whole numbers, the number keypad on tablets, at least 44 px on touch screens). **Run, Slow-mo and Step stay disabled until every box has a number**, with predict mode's words "Fill in your predictions first" — the same lock as the [name-tag panel's](#name-tag-panel-showvariables) `lockRun` (`showVariables.lockRun: false` turns both off). After the first Run the boxes become the count: **ran 3 times ✓**, **ran 1 time ✗ · you said 3**, **ran 0 times** for a line that never ran; every later Run updates the counts against the same predictions. |
+| `runCounts: show` | No boxes: after each Run, each marked line reads **ran 3 times**. Useful in a Debug task ("this ran once; why?"). |
+
+- **Counting** is each time the line is about to run (a loop body once a pass, a function's line
+  once a call). On the Turtle Stage a marked `stamp()` or drawing line counts its runs, so "how many
+  stars will it stamp?" is the same task: mark the `stamp` line.
+- **Screen readers** hear "Line 3 ran 4 times. You predicted 4: right." after each Run.
+- **Tutor view.** The student card's 🏷️ chip counts the boxes ("Predicted 1/2", then "1/2 right"),
+  with the name-tag panel's predictions if the task has both. StudentModal shows the boxes' numbers
+  as the student types them (while watched) and the counts after their Run. In **Go Live** the
+  presenter's boxes and counts show on every screen; the presenter is never locked.
+- **Session report:** each Run that reveals counts is recorded: `runCountPredictions` per student
+  and `runCountFirstByLine` (with `offByOne`) per task — see [session-reports.md](session-reports.md).
+- Not in slow-mo playback (the counts would give the run away), free play or a previous task's code.
+
+**`runs_predicted` check** (`lines` optional). Passes when every marked line's prediction (or the
+lines listed in `lines`) matches its real count: whole numbers, spaces ignored. Needs
+`runCounts: predict`. `lines` are line numbers of the starter **as the student sees it** (marker
+lines don't count): in the example above, `print("Hip")` is line 2 and `print("Hooray")` line 3.
+
+**`line_run_count` check.** `line` (a starter line number, as above; default: the first `#@count`
+line), `operator` (`equals`, the default, `min` or `max`) and `value` (a whole number). Passes when
+that line ran that many times (at least / at most), so a completion check can say "the stamp line
+ran 5 times" without depending on the drawing. It counts its line whether or not `runCounts` is
+set (a task can count without showing anything).
+
+```yaml
+  check:
+    - type: line_run_count
+      line: 2          # or leave out for the #@count line
+      operator: equals # equals | min | max
+      value: 5
+```
+
+Both checks need a real run, so `lessons test-checks` reports them as needing a run.
+
+---
+
 ## Slow-mo (`slowMo`)
 
 `slowMo` lets students watch their program run one line at a time: which line ran, what each

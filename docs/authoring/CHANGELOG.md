@@ -39,6 +39,46 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-16
 
+### Run counts: predict how many times a line runs (p6-26)
+
+New task field `runCounts` (Python and Turtle; not under `showVariables`, works with or without
+the name-tag panel) and a new marker, `#@count`, on the line above the line to count (up to 3 a
+task; stripped like `#@peek`, and it follows its line when code moves):
+
+```yaml
+runCounts: predict              # predict | show
+codeStages:
+  - role: starter
+    code: |
+      for i in range(3):
+          #@count
+          print("Hip")
+      #@count
+      print("Hooray")
+check:
+  - type: runs_predicted        # new: every marked line's prediction was right (lines optional)
+  - type: line_run_count        # new: line (default: the #@count line), operator, value
+    operator: equals            # equals | min | max
+    value: 3
+```
+
+- `predict`: a "How many times will this run?" number box at the end of each marked line; Run waits
+  until every box is filled (predict mode's lock and words; `showVariables.lockRun: false` turns it
+  off). After Run: "ran 3 times ✓" / "ran 1 time ✗ · you said 3" / "ran 0 times". `show`: "ran 3
+  times" after each Run.
+- A Turtle `stamp()` or drawing line counts its runs. Mark the line inside a loop, not the `for`
+  line (that counts every check of the loop).
+- `line` / `lines` in the checks are starter line numbers as the student sees them (marker lines
+  removed). `line_run_count` counts its line even without `runCounts`.
+- Tutor chip, StudentModal and Go Live show the boxes and counts; the session report adds
+  `runCountPredictions` per student and `runCountFirstByLine` (with `offByOne`) per task.
+- New validation messages: [validation-errors.md](validation-errors.md#run-counts-runcounts-count).
+- See [python.md](python.md#run-counts-runcounts-count) and [turtle.md](turtle.md#run-counts-runcounts-count).
+
+- Affects: python, turtle · Existing lessons: no changes needed (the multiple-choice "how many
+  times?" questions can become `#@count` lines with `runCounts: predict`) ·
+  Resolves: authoring-requests/2026-10-16-p6-26-predict-how-many-times-a-line-runs.md
+
 ### Predict mode: answer boxes that fit the value, and predicting the type (p6-27)
 
 A `showVariables.predict` entry can now say what answer its tag takes, and a new `predictType`

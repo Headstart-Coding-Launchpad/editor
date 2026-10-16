@@ -26,6 +26,7 @@ import {
   typeLabel,
 } from './variablesPanel.js'
 import { answerTextMatches } from '../quizAnswers.js'
+import { countLogEntries, countPredictionItems } from '../runCounts.js'
 
 function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -453,15 +454,22 @@ export function predictionChipSummary(items) {
 /**
  * The tutor card's one-line summary of a student's name-tag panel (`synced`: their
  * students/{id}/currentVariables) on a predict or target task: `{ label, title }`, or null
- * when there is nothing to say (no panel, view mode, another task, nothing typed or run yet).
+ * when there is nothing to say (no panel, view mode, another task, nothing typed or run yet). A
+ * `runCounts: predict` task's count boxes (../runCounts.js) count in the same chip, with or
+ * without the panel.
  */
 export function variablesCardSummary(task, synced) {
   const config = getShowVariables(task)
-  if (!config || config.mode === 'view' || !isPlainObject(synced)) return null
+  const countItems = countPredictionItems(task, synced)
+  if (!isPlainObject(synced)) return null
+  if (config?.mode !== 'predict' && config?.mode !== 'target' && countItems.length === 0) {
+    return null
+  }
   if (synced.taskId != null && String(synced.taskId) !== String(task?.id)) return null
   const { run, predictions } = readSyncedVariables(synced)
-  if (config.mode === 'predict') {
-    return predictionChipSummary(predictionItems(config, predictions))
+  if (config?.mode === 'predict' || countItems.length > 0) {
+    const panelItems = config?.mode === 'predict' ? predictionItems(config, predictions) : []
+    return predictionChipSummary([...panelItems, ...countItems])
   }
   const snapshot = run ? currentSnapshot(run) : null
   if (!snapshot) return null
@@ -492,16 +500,24 @@ const logEntries = (evaluation) =>
  * One reveal as stored in students/{id}/predictionLog/{taskId}/{pushId}:
  * `{ at, allCorrect, entries: { name: { value, correct } }, types? }` — `types` (the same shape,
  * the picked type labels) only when the task predicts types (`typeEvaluation`,
- * evaluateTypePredictions). `allCorrect` covers both.
+ * evaluateTypePredictions), and `counts` (`{ L3: { value, ran, correct } }`) only when it
+ * predicts run counts (`countEvaluation`, evaluateCountPredictions in ../runCounts.js).
+ * `allCorrect` covers them all.
  */
-export function buildPredictionLogEntry(evaluation, at, { typeEvaluation = null } = {}) {
+export function buildPredictionLogEntry(
+  evaluation,
+  at,
+  { typeEvaluation = null, countEvaluation = null } = {}
+) {
   const typeEntries = typeEvaluation?.entries ?? []
-  const all = [...(evaluation?.entries ?? []), ...typeEntries]
+  const countEntries = countEvaluation?.entries ?? []
+  const all = [...(evaluation?.entries ?? []), ...typeEntries, ...countEntries]
   return {
     at,
     allCorrect: all.length > 0 && all.every((entry) => entry.correct),
     entries: logEntries(evaluation),
     ...(typeEntries.length > 0 ? { types: logEntries(typeEvaluation) } : {}),
+    ...(countEntries.length > 0 ? { counts: countLogEntries(countEvaluation) } : {}),
   }
 }
 

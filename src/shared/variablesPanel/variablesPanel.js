@@ -491,19 +491,25 @@ function stripUndefined(value) {
  * The panel state as the tutor sees it (students/{id}/currentVariables, teacherLive.variablesPanel):
  * the run state with only the shown snapshot, plus the student's predictions
  * (`{ name: text }`) and, once revealed, `results` (`{ name: true | false }`), and their type
- * predictions (predictType: `typePredictions: { name: type label }`, `typeResults`). Null when
- * there is nothing to show (no run and no predictions). Never undefined values (Firebase refuses
- * them).
+ * predictions (predictType: `typePredictions: { name: type label }`, `typeResults`), and the
+ * task's run counts (`runCounts`, ../runCounts.js: `countPredictions: { L3: text }`,
+ * `countResults: { L3: bool }`, `lineCounts: { L3: count }` from `countRun`, the last run's
+ * counts). Null when there is nothing to show (no run, no counts and no predictions). Never
+ * undefined values (Firebase refuses them). The count keys are `L<line>`, never bare numbers, so
+ * the realtime database keeps them as a map.
  */
-export function compactVariablesForSync(run, predictionState = null) {
+export function compactVariablesForSync(run, predictionState = null, countRun = null) {
   const predictions = isPlainObject(predictionState?.values) ? predictionState.values : null
   const hasPredictions = predictions && Object.values(predictions).some((v) => String(v ?? ''))
   const types = isPlainObject(predictionState?.types) ? predictionState.types : null
   const hasTypes = types && Object.values(types).some((v) => String(v ?? ''))
-  if (!run && !hasPredictions && !hasTypes) return null
+  const counts = isPlainObject(predictionState?.counts) ? predictionState.counts : null
+  const hasCounts = counts && Object.values(counts).some((v) => String(v ?? ''))
+  const lineCounts = isPlainObject(countRun?.counts) ? countRun.counts : null
+  if (!run && !hasPredictions && !hasTypes && !hasCounts && !lineCounts) return null
   const snapshot = run ? currentSnapshot(run) : null
   return stripUndefined({
-    taskId: run?.taskId ?? predictionState?.taskId ?? null,
+    taskId: run?.taskId ?? predictionState?.taskId ?? countRun?.taskId ?? null,
     status: run?.status ?? null,
     at: run?.at ?? 'end',
     snapshots: snapshot ? [snapshot] : [],
@@ -520,12 +526,21 @@ export function compactVariablesForSync(run, predictionState = null) {
     ...(isPlainObject(predictionState?.typeResults)
       ? { typeResults: { ...predictionState.typeResults } }
       : {}),
+    // Only on a task with run counts (runCounts / line_run_count).
+    ...(hasCounts ? { countPredictions: { ...counts } } : {}),
+    ...(isPlainObject(predictionState?.countResults)
+      ? { countResults: { ...predictionState.countResults } }
+      : {}),
+    ...(lineCounts ? { lineCounts: { ...lineCounts } } : {}),
   })
 }
 
-/** Reads a synced panel state back (tutor views): the run part and the prediction part. */
+/**
+ * Reads a synced panel state back (tutor views): the run part, the prediction part and the
+ * run-count part (`runCounts: { taskId, values, results, counts }`, null without any).
+ */
 export function readSyncedVariables(synced) {
-  if (!isPlainObject(synced)) return { run: null, predictions: null }
+  if (!isPlainObject(synced)) return { run: null, predictions: null, runCounts: null }
   const run = synced.ran
     ? {
         taskId: synced.taskId ?? null,
@@ -553,5 +568,16 @@ export function readSyncedVariables(synced) {
           ...(isPlainObject(synced.typeResults) ? { typeResults: synced.typeResults } : {}),
         }
       : null
-  return { run, predictions }
+  const runCounts =
+    isPlainObject(synced.countPredictions) ||
+    isPlainObject(synced.countResults) ||
+    isPlainObject(synced.lineCounts)
+      ? {
+          taskId: synced.taskId ?? null,
+          values: isPlainObject(synced.countPredictions) ? synced.countPredictions : {},
+          results: isPlainObject(synced.countResults) ? synced.countResults : null,
+          counts: isPlainObject(synced.lineCounts) ? synced.lineCounts : null,
+        }
+      : null
+  return { run, predictions, runCounts }
 }

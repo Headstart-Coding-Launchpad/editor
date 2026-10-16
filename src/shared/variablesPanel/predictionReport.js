@@ -2,8 +2,17 @@
 // of lessonReport.js so that file only spreads these in. Shapes: docs/authoring/session-reports.md.
 import { getShowVariables } from './variablesPanel.js'
 import { summarizeVariablePredictions, variablePredictionReportFields } from './predictions.js'
+import { runCountReportFields, summarizeRunCountPredictions } from '../runCounts.js'
 
-export { summarizeVariablePredictions }
+export { summarizeVariablePredictions, summarizeRunCountPredictions }
+
+/**
+ * A student's run-count prediction fields for one task (`{ runCountPredictions }`, task
+ * `runCounts: predict`, from the same predictionLog), or `{}`.
+ */
+export function taskRunCountFields(task, studentNode) {
+  return runCountReportFields(task, studentNode)
+}
 
 /**
  * A student's prediction fields for one task (`{ predictions }`, from

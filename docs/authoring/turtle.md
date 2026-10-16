@@ -116,6 +116,31 @@ display rules and the forgiving comparison.
     - type: variables_predicted
 ```
 
+## Run counts (`runCounts`, `#@count`)
+
+"How many stars will it stamp?" works exactly like Python's "how many times will this line run?":
+mark the `stamp()` (or any drawing) line with `#@count` on the line above and set
+`runCounts: predict` (a box at the end of the line, Run waits for it) or `show` (just "ran 5
+times" after each Run). A drawing line's count is how many times it ran. Check it with
+`runs_predicted` or, to say "the stamp line ran 5 times" without depending on the picture,
+`line_run_count`. See [Python → Run counts](python.md#run-counts-runcounts-count) for the
+fields, the lock, the checks, tutor view and the report.
+
+```yaml
+  runCounts: predict
+  codeStages:
+    - role: starter
+      code: |
+        import turtle
+        for i in range(5):
+            turtle.forward(40)
+            #@count
+            turtle.stamp()
+  check:
+    - type: line_run_count
+      value: 5
+```
+
 ## Live scrubbing (`scrub`)
 
 `scrub` lets students drag a number (or tap it for a slider) and pick a colour from a picker,
@@ -425,7 +450,8 @@ Turtle checks and feedback checks:
   ([Course mode](#course-mode-course)), a generic `code`
   check (including legacy aliases like `code_contains`), `run_attempted`
   (completion checks only), `variables_predicted` or `types_predicted` (with
-  `showVariables.mode: predict`; see [Name-tag panel](#name-tag-panel-showvariables)), or
+  `showVariables.mode: predict`; see [Name-tag panel](#name-tag-panel-showvariables)),
+  `runs_predicted` or `line_run_count` (see [Run counts](#run-counts-runcounts-count)), or
   `max_lines`.
 - A `code` check needs a `value`.
 - `turtle_position` needs both `x` and `y`.

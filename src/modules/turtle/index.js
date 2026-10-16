@@ -12,7 +12,7 @@ import {
 } from '../python/pyodide'
 import { TURTLE_LINE_OFFSET } from './shim.js'
 import { runTurtleTask } from './courseRun.js'
-import { variableCaptureOptions } from '../../shared/variablesPanel/variablesPanel.js'
+import { runCaptureOptions } from '../../shared/runCounts.js'
 import { slowMoRecordOptions } from '../python/slowMo/config.js'
 import { setupRunOptions } from '../../shared/puzzle/setupCode.js'
 import { scrollLayoutStyles } from '../sharedStyles.js'
@@ -45,8 +45,9 @@ const turtleModule = defineUiModule(definition, {
         runPython,
         getStopCount: () => getStopCount(),
         firstRunOptions: {
-          // The name-tag panel (showVariables); its peek line moves down with the shim's lines.
-          capture: variableCaptureOptions(task, code, { lineOffset: TURTLE_LINE_OFFSET }),
+          // The name-tag panel (showVariables) and run counts (src/shared/runCounts.js); the peek
+          // and counted lines move down with the shim's lines.
+          capture: runCaptureOptions(task, code, { lineOffset: TURTLE_LINE_OFFSET }),
           // Slow-mo (src/modules/python/slowMo/): recorded lines come back as editor lines.
           record: slowMo ? slowMoRecordOptions(task, { lineOffset: TURTLE_LINE_OFFSET }) : null,
         },

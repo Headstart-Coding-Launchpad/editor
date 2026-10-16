@@ -383,6 +383,33 @@ describe('sync shape', () => {
     expect(plain).not.toHaveProperty('typePredictions')
   })
 
+  it('carries run counts and count predictions, keyed L<line> (P6-26)', () => {
+    const synced = compactVariablesForSync(
+      null,
+      { taskId: 4, values: {}, counts: { L2: '3' }, countResults: { L2: true } },
+      { taskId: 4, counts: { L2: 3 } }
+    )
+    expect(synced).toMatchObject({
+      taskId: 4,
+      ran: false,
+      countPredictions: { L2: '3' },
+      countResults: { L2: true },
+      lineCounts: { L2: 3 },
+    })
+    expect(readSyncedVariables(synced).runCounts).toEqual({
+      taskId: 4,
+      values: { L2: '3' },
+      results: { L2: true },
+      counts: { L2: 3 },
+    })
+    // Counts alone (show mode) are worth syncing; nothing at all is not.
+    expect(compactVariablesForSync(null, null, { taskId: 4, counts: { L2: 0 } })).toMatchObject({
+      lineCounts: { L2: 0 },
+    })
+    expect(compactVariablesForSync(null, null, null)).toBeNull()
+    expect(readSyncedVariables(null).runCounts).toBeNull()
+  })
+
   it('tolerates the realtime database dropping empty arrays', () => {
     const back = readSyncedVariables({ taskId: 1, ran: true, at: 'end' })
     expect(back.run.snapshots).toEqual([])

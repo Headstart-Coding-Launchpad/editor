@@ -11,7 +11,7 @@ import {
   provideInput,
 } from './pyodide'
 import { scrollLayoutStyles } from '../sharedStyles.js'
-import { variableCaptureOptions } from '../../shared/variablesPanel/variablesPanel.js'
+import { runCaptureOptions } from '../../shared/runCounts.js'
 import { loadStageTarget, stageTargetCode } from './stageTarget.js'
 import { slowMoRecordOptions } from './slowMo/config.js'
 import { setupRunOptions } from '../../shared/puzzle/setupCode.js'
@@ -38,7 +38,8 @@ const pythonModule = defineUiModule(definition, {
     isReady: isPyodideReady,
     stop: stopPython,
     provideInput,
-    // The name-tag panel (showVariables) asks the worker to capture the variables. A task with a
+    // The name-tag panel (showVariables) asks the worker to capture the variables, and run counts
+    // (runCounts / #@count, src/shared/runCounts.js) to count the marked lines. A task with a
     // stageTarget draws it first (once, cached) and hands its commands back as `stageTarget`
     // for the diff view and the stage_matches_target check (src/shared/stage/). A slow-mo run
     // (callbacks.slowMo, src/modules/python/slowMo/) also records every line for playback.
@@ -50,7 +51,7 @@ const pythonModule = defineUiModule(definition, {
       if (getStopCount() !== stops) return { status: 'stopped' }
       const result = await runPython(code, {
         ...callbacks,
-        capture: variableCaptureOptions(task, code),
+        capture: runCaptureOptions(task, code),
         record: slowMo ? slowMoRecordOptions(task) : null,
         // The task's hidden setupCode runs first, in the same program.
         setup: freePlay ? null : setupRunOptions(task),

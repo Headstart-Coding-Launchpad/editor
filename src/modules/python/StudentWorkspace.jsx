@@ -22,6 +22,7 @@ import {
   panelRunForTask,
   taskShowsVariables,
 } from '../../shared/variablesPanel/variablesPanel.js'
+import { getRunCountWidgets } from '../../shared/runCounts.js'
 import StagePane from '../../shared/stage/StagePane.jsx'
 import { codeImportsStage, stageCommandsOf } from '../../shared/stage/commands.js'
 import ResultPane from '../../shared/resultPane/ResultPane.jsx'
@@ -150,6 +151,18 @@ export default function StudentWorkspace({
   const variableLinks = useVariableLinks(task, panelRun, {
     enabled: !isViewingPrev && !isTeacherEditing,
   })
+  // Run-count boxes and counts at the end of #@count lines (task runCounts, src/shared/
+  // runCounts.js): the student's own, or the presenter's in Go Live. Not on a previous task, the
+  // tutor editing, or while slow-mo plays the run back (the counts would give it away).
+  const runCountWidgets =
+    isViewingPrev || isTeacherEditing || slowMoView
+      ? null
+      : getRunCountWidgets(
+          task,
+          code,
+          isForcedTeacherLive ? { synced: displayVariablesPanel } : { panel: cs.variablesPanel },
+          { readOnly, running: cs.running }
+        )
   const slowMoControls = {
     ...slowMo,
     slowMo: () => {
@@ -423,6 +436,13 @@ export default function StudentWorkspace({
         slowMoMarker={slowMoView?.marker ?? null}
         peekBand={peekBand}
         variableLinks={variableLinks.editor}
+        runCounts={
+          runCountWidgets && {
+            ...runCountWidgets,
+            onChange: cs.variablesPanel?.setCountPrediction,
+            onCommit: cs.variablesPanel?.commitPredictions,
+          }
+        }
       />
       {showSubmitBanner && <div style={s.submitBanner}>Code submitted</div>}
     </div>
