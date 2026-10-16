@@ -186,7 +186,7 @@ export default function TeacherPollControl({
               <p className="teacher-poll-panel__note">
                 {draft.keepPrivate
                   ? 'Students answer in a card while they work. Only you see the results until you show them.'
-                  : 'Students answer in a card while they work. The presentation shows live percentages, and students see them once they have voted. Students can't see who chose what.'}
+                  : "Students answer in a card while they work. The presentation shows live percentages, and students see them once they have voted. Students can't see who chose what."}
                 {activePoll ? ' Launching closes the current poll.' : ''}
               </p>
               <div className="teacher-poll-panel__actions">
