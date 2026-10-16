@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   expandTopicLinks,
   findAllTopicSuggestions,
+  findRelatedTopicId,
   findTopicSuggestion,
   normalizeTopicLibrary,
   parseTopicHref,
@@ -92,5 +93,33 @@ describe('topic library utilities', () => {
     expect(result[0]).toEqual(
       expect.objectContaining({ topic: expect.objectContaining({ id: 'selectors' }) })
     )
+  })
+})
+
+describe('findRelatedTopicId', () => {
+  const library = normalizeTopicLibrary({
+    topics: [
+      { id: 'accumulators', title: 'Accumulators', summary: 'Collect.' },
+      { id: 'print', title: 'print()', summary: 'Show text.' },
+      { id: 'for-loop', title: 'For loops', summary: 'Repeat.', aliases: ['for loop'] },
+    ],
+  })
+
+  it('prefers an explicit topic link', () => {
+    expect(findRelatedTopicId('Use a for loop, see [[print]].', library)).toBe('print')
+    expect(findRelatedTopicId('See [the loop](#topic/for-loop).', library)).toBe('for-loop')
+  })
+
+  it('matches an inline code span named like a topic', () => {
+    expect(findRelatedTopicId('Write a `print()` call with a message.', library)).toBe('print')
+  })
+
+  it('falls back to the earliest topic named in the text', () => {
+    expect(findRelatedTopicId('A for loop with accumulators.', library)).toBe('for-loop')
+  })
+
+  it('returns null when nothing matches', () => {
+    expect(findRelatedTopicId('Draw a square.', library)).toBeNull()
+    expect(findRelatedTopicId('', library)).toBeNull()
   })
 })
