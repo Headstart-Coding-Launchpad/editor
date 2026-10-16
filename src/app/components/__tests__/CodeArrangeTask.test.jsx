@@ -107,6 +107,25 @@ describe('CodeArrangeTask — single-slot ("whole line") lines', () => {
     expect(screen.getByRole('button', { name: 'Run' })).toBeEnabled()
   })
 
+  it('shows a not-yet-ready Run as a plain outline (readable), and the amber Run once complete', () => {
+    const { rerender } = render(
+      <CodeArrangeTask task={PYTHON_TASK} moduleType="python" selectedAnswer={{}} onRun={vi.fn()} />
+    )
+    const waiting = screen.getByRole('button', { name: 'Run' })
+    expect(waiting).toHaveClass('btn-ghost-outline')
+    expect(waiting).not.toHaveClass('btn-primary')
+    expect(waiting.style.opacity).toBe('1')
+    rerender(
+      <CodeArrangeTask
+        task={PYTHON_TASK}
+        moduleType="python"
+        selectedAnswer={{ L1: 'L1', L2: 'L2' }}
+        onRun={vi.fn()}
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Run' })).toHaveClass('btn-primary')
+  })
+
   it('calls onRun when Run is clicked with a complete arrangement', async () => {
     const user = userEvent.setup()
     const onRun = vi.fn()

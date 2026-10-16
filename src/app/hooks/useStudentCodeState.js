@@ -263,6 +263,9 @@ export function useStudentCodeState({
 
   const iframeRef = useRef(null)
   const appendOutputRef = useRef(null)
+  // Bumped on every task change; a run started before it is a previous task's run
+  // (runWithRuntime's stillOnTask).
+  const runEpochRef = useRef(0)
   // Set by handleRun while a program is running: echoes a submitted input()
   // line into the output and mirrors it in one write (see handleInputSubmit).
   const submitInputEchoRef = useRef(null)
@@ -1219,10 +1222,16 @@ export function useStudentCodeState({
 
   // Exposed to StudentView for coordination (save before task change, navigation)
   function resetForTaskChange() {
+    runEpochRef.current += 1
     // A python/electronics run left mid-flight (e.g. a loop or input() wait) must not
     // keep executing once the student has moved to a different task.
     if (running || runningTests) {
       getLessonModule(lesson?.type)?.runtime?.stop()
+    }
+    // A frame of the old run's output still waiting to paint would land on the new task.
+    if (outputRafIdRef.current !== null) {
+      cancelAnimationFrame(outputRafIdRef.current)
+      outputRafIdRef.current = null
     }
     setRunning(false)
     setRunningTests(false)
@@ -1799,6 +1808,7 @@ export function useStudentCodeState({
           inputValueRef,
           submitInputEchoRef,
           appendOutputRef,
+          runEpochRef,
           runtimeCodeRafIdRef,
           pendingRuntimeCodeRef,
           lastRuntimeCodeWriteRef,

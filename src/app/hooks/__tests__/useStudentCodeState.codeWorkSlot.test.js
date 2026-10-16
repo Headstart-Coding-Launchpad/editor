@@ -391,6 +391,26 @@ describe('runWithRuntime — stop mid-run', () => {
     expect(h.result.current.running).toBe(false)
   })
 
+  it('a stop that resolves before the new task id arrives still leaves the output empty', async () => {
+    // A task change stops the run (an input() wait) and resets the output; the stop can resolve
+    // before the re-render that moves currentTaskIdRef to the new task. The old task's prompt
+    // must not be painted back (it showed as stale output on the next Code Arrange task).
+    stoppableRun('python')
+    const h = renderStudentCodeState({ lesson: pythonLesson(), currentTaskId: 't1' })
+    let runPromise
+    act(() => {
+      runPromise = h.result.current.handleRun()
+    })
+    await act(async () => {})
+    await act(async () => {
+      h.result.current.resetForTaskChange()
+      await runPromise
+    })
+    expect(h.result.current.output).toBe('')
+    expect(h.result.current.runStatus).toBe(null)
+    expect(h.result.current.running).toBe(false)
+  })
+
   it('electronics: a circuit update mid-run is read back at once and saved when stopped', async () => {
     let readBack
     stoppableRun('electronics', async (callbacks) => {
