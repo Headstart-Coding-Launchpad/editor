@@ -18,6 +18,19 @@ describe('name-tag panel capture config (worker side)', () => {
     expect(normalizeCaptureConfig({ panel: true, peekLine: 0 }).peekLine).toBeNull()
     expect(normalizeCaptureConfig({ panel: true, peekLine: 2.5 }).peekLine).toBeNull()
   })
+
+  it('counts lines with or without the panel (run counts, P6-26)', () => {
+    expect(normalizeCaptureConfig({ panel: false, countLines: [3, 2, 3], lineOffset: 4 })).toEqual({
+      panel: false,
+      countLines: [3, 2],
+      lineOffset: 4,
+    })
+    expect(
+      normalizeCaptureConfig({ panel: true, peekLine: 4, countLines: [2, 0, 1.5, 'x'] })
+    ).toEqual({ panel: true, peekLine: 4, hide: [], countLines: [2], lineOffset: 0 })
+    // Nothing valid to count: no count keys at all.
+    expect(normalizeCaptureConfig({ panel: false, countLines: [0] })).toEqual({ panel: false })
+  })
 })
 
 describe('variable capture Python source', () => {

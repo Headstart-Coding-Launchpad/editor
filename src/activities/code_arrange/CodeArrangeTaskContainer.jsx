@@ -318,7 +318,7 @@ export default function CodeArrangeTaskContainer({
         displayCheckAttempted={displayCheckAttempted}
         teacherLiveCode={teacherLiveCode}
         arrangeReady={isArrangementComplete(task, selectedAnswer)}
-        arrangeBoard={({ onRun }) => (
+        arrangeBoard={({ onRun, runLabel }) => (
           <CodeArrangeTask
             task={task}
             moduleType={task.moduleType}
@@ -327,6 +327,7 @@ export default function CodeArrangeTaskContainer({
             running={readOnly ? false : cs.running}
             pyodideStatus={cs.pyodideStatus}
             onRun={detached ? undefined : onRun}
+            runLabel={runLabel}
             onStop={detached ? undefined : cs.handleStop}
             onDragCursor={detached ? undefined : cs.handleCodeArrangeDragCursor}
             externalDragCursor={isForcedTeacherLive ? displayCodeArrangeCursor : null}

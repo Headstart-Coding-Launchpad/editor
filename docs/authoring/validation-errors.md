@@ -117,6 +117,7 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … slowMo.speed must be a number of steps per second above 0` | A Python or Turtle `slowMo.speed` is text, zero or negative ([python.md](python.md#slow-mo-slowmo)). | Use a number such as `1` or `0.5`, or remove it (default 1). |
 | `Task … slowMo.showVariables must be true or false` | Python / Turtle `showVariables` inside `slowMo` isn't a boolean. | Use `true` or `false`. |
 | `Task … slowMo.question must be text` | Python / Turtle `slowMo.question` isn't a string. | Write the question as text. |
+| `Task … slowMo.separateButton must be true or false` | Python / Turtle `slowMo.separateButton` isn't a boolean. | Use `true` (a separate Slow-mo button; Run runs normally) or remove it (Run plays in slow-mo). |
 | `Task … slowMo.speed … is outside 0.25–4 steps per second; it will be clamped` (warning) | A Python / Turtle starting speed is outside the slider's range. | Use a speed from 0.25 to 4. |
 | `Task … slowMo.question is over 200 characters; keep it to one short question` (warning) | The question is long for the small box it shows in. | Shorten it to one question. |
 | `Task … stage … role must be one of: …` | A `codeStages` entry has an unknown `role`. | Use `starter`, `support` or `complete`. |
@@ -442,15 +443,47 @@ Python and Turtle tasks; see [python.md](python.md#name-tag-panel-showvariables)
 | `Task … has showVariables stageLists but visuals is false — every tag is plain, so it is ignored` (warning) | With `visuals: false` every tag is plain text, including lists drawn with `grid()`. | Remove `stageLists`, or turn `visuals` back on. |
 | `Task … has showVariables … that is not a list of variable names` | `hide` or `predict` isn't a list. | Write `[score, lives]`. |
 | `Task … has showVariables … with names that are not Python variable names: …` | A `hide` or `predict` entry isn't a Python name (spaces, a leading digit, quotes). | Use the variable names exactly as the code writes them. |
-| `Task … has showVariables mode: predict but no predict list of variable names` | Predict mode needs the tags students fill in. | Add `predict: [score, lives]`. |
+| `Task … has showVariables mode: predict but no predict or predictType list of variable names` | Predict mode needs the tags students fill in. | Add `predict: [score, lives]` (values) or `predictType: [age]` (types). |
+| `Task … has showVariables predict … with answer "…" — use one of: …` | A `predict` entry's `answer` isn't a known kind. | Use `boolean`, `number` or `text`, or leave `answer` out for the free text box. |
+| `Task … has showVariables predict … with choices that are not a list of at least two values (text, numbers, true/false)` | `choices` is empty, has one value, or holds a list or map. | Write two or more plain values, e.g. `choices: [red, blue, green]`. |
+| `Task … has showVariables predict … with both answer and choices — the choices show as buttons, so answer is ignored` (warning) | An entry sets both. | Remove `answer` (or `choices`). |
+| `Task … has showVariables predictType … with choices that are not at least two of: …` | A `predictType` entry's `choices` aren't the panel's type labels. | Use two or more of `text`, `number`, `true/false`, `list`. |
+| `Task … has showVariables predict and predictType both naming … — students predict its value and its type` (warning) | The same variable is in both lists. | Fine if intended; otherwise remove it from one list. |
+| `Task … has showVariables predictType but mode is not predict — it is ignored` (warning) | `predictType` on a view or target task. | Set `mode: predict`, or remove it. |
 | `Task … has showVariables mode: target but no target values (target: { name: value })` | Target mode needs at least one target. | Add `target: { score: 10 }`. |
 | `Task … has showVariables target names that are not Python variable names: …` | A `target` key isn't a Python name. | Use the variable names as the code writes them. |
 | `Task … has showVariables predict but mode is not predict — it is ignored` / `Task … has showVariables target but mode is not target — it is ignored` (warnings) | The list belongs to the other mode. | Set the matching `mode`, or remove the list. |
 | `Task … has showVariables at: marker but no … line in its code — the panel shows the end of the run` (warning) | `at: marker` stops at a `#@peek` line, and the code has none. | Add a `#@peek` line above the line to stop at, or use `at: end`. |
 | `Task … has a variables_predicted check but no showVariables with mode: predict` / `Task … has a variables_predicted check but showVariables mode is not predict` | The check reads the panel's predictions, which only predict mode collects. | Add `showVariables: { mode: predict, predict: [...] }`, or remove the check. |
 | `Task … has a variables_predicted check naming …, which showVariables predict does not list` | The check's `names` include a variable students are never asked to predict, so it can never pass. | Add the name to `predict`, or remove it from `names` (or drop `names` to mean every prediction). |
-| `Task … has a variables_predicted …, but it only works in Python and Turtle tasks` | The check is on another module's task. | Move it to a Python or Turtle task. |
-| `Task … has a variables_predicted … whose names is not a list of variable names` / `Task … has a variables_predicted … with names that are not Python variable names` | `names` is empty, not a list, or holds something that isn't a Python name. | Write `names: [score, lives]`, or remove `names`. |
+| `Task … has a variables_predicted check but no showVariables predict list — use types_predicted for predictType` | The task only predicts types, so there are no value predictions to check. | Use `types_predicted`, or add `predict`. |
+| `Task … has a types_predicted check but no showVariables predictType list (mode: predict)` | `types_predicted` reads the type predictions, which only `predictType` collects. | Add `showVariables: { mode: predict, predictType: [...] }`, or remove the check. |
+| `Task … has a types_predicted check naming …, which showVariables predictType does not list` | The check's `names` include a variable whose type students are never asked for. | Add it to `predictType`, or remove it from `names`. |
+| `Task … has a … …, but it only works in Python and Turtle tasks` (the check type, `variables_predicted` or `types_predicted`, then check or feedback check) | The check is on another module's task. | Move it to a Python or Turtle task. |
+| `Task … has a … … whose names is not a list of variable names` / `Task … has a … … with names that are not Python variable names` (`variables_predicted` or `types_predicted`) | `names` is empty, not a list, or holds something that isn't a Python name. | Write `names: [score, lives]`, or remove `names`. |
+
+## Run counts (`runCounts`, `#@count`)
+
+Python and Turtle tasks; see [python.md](python.md#run-counts-runcounts-count). Line numbers in
+these checks count the starter as the student sees it: `#@count`, `#@peek`, `#@lock` and `#>`
+lines don't count.
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task … has runCounts "…" — use one of: …` | Unknown `runCounts`. | Use `predict` or `show`. |
+| `Task … has … #@count lines — only the first 3 are counted` (warning) | More than three marked lines in one piece of code. | Keep the three that matter; split the rest into another task. |
+| `Task … has a #@count marker with no line of code after it; it counts nothing` (warning) | The marker is the last thing in the code (or only blank and comment lines follow). | Put it on the line just above the line to count. |
+| `Task … has runCounts but no #@count line in its code — put #@count on the line above the line to count` (warning) | Nothing is marked, so nothing shows. | Add a `#@count` line, or remove `runCounts`. |
+| `Task … has #@count lines but no runCounts — add runCounts: predict or show to show the counts` (warning) | Marked lines with nothing to show them (and no `line_run_count` check). | Add `runCounts: predict` or `show`, or remove the markers. |
+| `Task … has a runs_predicted check but runCounts is not predict` | Only predict mode collects the "how many times?" predictions. | Set `runCounts: predict`, or use `line_run_count`. |
+| `Task … has a runs_predicted check naming line …, which is not a #@count line of the starter — the marked lines are …` | A `lines` entry isn't a marked line (or counts the marker lines in). | Use the line numbers listed, or drop `lines` to mean every marked line. |
+| `Task … has a line_run_count check with no line and no #@count line in its starter` | Without `line` the check counts the first `#@count` line, and there is none. | Add `line:` or a `#@count` marker. |
+| `Task … has a line_run_count check on line …, which is not a line of code in the starter (lines count without marker lines)` | `line` is past the end, blank, or a comment. | Use the number of the line to count, as the student sees the starter. |
+| `Task … has a runs_predicted …, but it only works in Python and Turtle tasks` / `Task … has a line_run_count …, but it only works in Python and Turtle tasks` | The check is on another module's task. | Move it to a Python or Turtle task. |
+| `Task … has a runs_predicted … whose lines is not a list of line numbers` | `lines` is empty or holds something that isn't a whole number from 1. | Write `lines: [2, 3]`, or remove `lines`. |
+| `Task … has a line_run_count … whose line is not a line number` | `line` isn't a whole number from 1. | Write `line: 2`, or remove it for the marked line. |
+| `Task … has a line_run_count … with operator "…" — use one of: …` | Unknown `operator`. | Use `equals` (the default), `min` or `max`. |
+| `Task … has a line_run_count … without a whole-number value` | `value` is missing, negative or not a whole number. | Write `value: 5`. |
 
 ## Live scrubbing (`scrub`)
 

@@ -22,6 +22,7 @@ import {
 import { chooseLineHints } from './lineHints'
 import { lockedLinesExtension, setLockedLineSets } from './lockedLinesEditor'
 import { getPeekBandState, peekBandExtension, setPeekBand } from './peekBandEditor'
+import { getRunCountsState, runCountsExtension, setRunCountWidgets } from './runCountsEditor'
 import { setVariableLinks, variableLinksExtension } from './variableLinksEditor'
 import { variableLinksKey } from './variablesPanel/links.js'
 import { blockGuidesExtension } from './blockGuides'
@@ -365,6 +366,10 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     // Linked name tags (./variableLinksEditor.js, showVariables.link): `{ links: [{ name, number,
     // colour }], active, onActive(name | null) }` or null. Shown read-only too.
     variableLinks = null,
+    // Run-count boxes and counts at the end of #@count lines (./runCountsEditor.js, task
+    // runCounts): getRunCountWidgets' `{ mode, readOnly, marks }` plus `onChange(key, text)` /
+    // `onCommit()` for the student's own boxes, or null. Shown read-only too (tutor, Go Live).
+    runCounts = null,
     onRunShortcut,
     // Fires on a document change the user made (see USER_EDIT_EVENTS), never on the external
     // value sync. Without it, the classroom's BadgeSignalsContext (if any) is told instead.
@@ -431,6 +436,32 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     () => JSON.stringify(peekBand ? { line: peekBand.line, missed: !!peekBand.missed } : null),
     [peekBand]
   )
+  // The run-count widgets compared by content (callers rebuild them each render); the handlers
+  // are read through a ref, so a new callback never re-places the boxes.
+  const runCountHandlersRef = useRef(null)
+  runCountHandlersRef.current = runCounts
+    ? { onChange: runCounts.onChange, onCommit: runCounts.onCommit }
+    : null
+  const runCountsKey = useMemo(
+    () =>
+      JSON.stringify(
+        runCounts?.marks?.length
+          ? {
+              mode: runCounts.mode === 'show' ? 'show' : 'predict',
+              readOnly: !!runCounts.readOnly,
+              marks: runCounts.marks.map((mark) => ({
+                key: mark.key,
+                value: mark.value ?? null,
+                count: mark.count ?? null,
+                correct: mark.correct ?? null,
+                editable: mark.editable ?? null,
+                line: mark.line,
+              })),
+            }
+          : null
+      ),
+    [runCounts]
+  )
   // The teacher highlights are rebuilt from every session snapshot (even one the student's own
   // selection write caused), so they too are compared by content: only a real change to the
   // set may reach the editor, or the positions it has mapped through edits would be reset.
@@ -459,6 +490,7 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
           lineHintsExtension(),
           lockedLinesExtension(),
           peekBandExtension(),
+          runCountsExtension({ handlersRef: runCountHandlersRef }),
           variableLinksExtension({ onActiveRef: onVariableLinkActiveRef }),
           blockGuidesCompartment.of(blockGuidesFor(blockGuides)),
           lineWrappingCompartment.of(lineWrappingFor(lineWrapping)),
@@ -609,6 +641,34 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     if (JSON.stringify(getPeekBandState(view.state)) === peekBandKey) return
     view.dispatch({ effects: setPeekBand.of(JSON.parse(peekBandKey)) })
   }, [peekBandKey, value])
+
+  // The run-count widgets follow their lines through edits by themselves; like the band, they
+  // are only re-placed when they differ from what the caller worked out for the code.
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    const wanted = JSON.parse(runCountsKey)
+    const current = getRunCountsState(view.state)
+    const comparable = (state) =>
+      state
+        ? JSON.stringify({
+            mode: state.mode,
+            readOnly: state.readOnly,
+            marks: [...state.marks]
+              .map((mark) => ({
+                key: mark.key,
+                value: mark.value ?? null,
+                count: mark.count ?? null,
+                correct: mark.correct ?? null,
+                editable: mark.editable ?? null,
+                line: mark.line,
+              }))
+              .sort((a, b) => a.line - b.line),
+          })
+        : 'null'
+    if (comparable(current) === comparable(wanted)) return
+    view.dispatch({ effects: setRunCountWidgets.of(wanted) })
+  }, [runCountsKey, value])
 
   useEffect(() => {
     const view = viewRef.current

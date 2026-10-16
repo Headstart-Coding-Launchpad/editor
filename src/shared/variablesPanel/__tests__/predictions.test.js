@@ -3,15 +3,19 @@ import { describe, expect, it } from 'vitest'
 import {
   buildPredictionLogEntry,
   evaluatePredictions,
+  evaluateTypePredictions,
+  evaluateTypesPredictedCheck,
   evaluateVariablesPredictedCheck,
   formatTargetValue,
   parsePythonLiteral,
   predictionMatches,
   summarizeVariablePredictions,
   targetMatches,
+  typePredictionMatches,
   variablePredictionReportFields,
   variablesCardSummary,
 } from '../predictions.js'
+import { predictChoiceText } from '../variablesPanel.js'
 import { taskPredictionFields } from '../predictionReport.js'
 import { evaluateSingleCheck, getCheckDefinition } from '../../../modules/checks.js'
 
@@ -257,5 +261,144 @@ describe('session report fields', () => {
       ],
     })
     expect(summarizeVariablePredictions([{}])).toEqual({})
+  })
+})
+
+describe('typed and picked answers (P6-27)', () => {
+  const bool = (v) => ({ t: 'bool', v })
+
+  it('judges a picked True / False, a number field and a choice by the same forgiving rules', () => {
+    expect(predictionMatches('True', bool(true))).toBe(true)
+    expect(predictionMatches('False', bool(true))).toBe(false)
+    expect(predictionMatches('5.5', float(5.5, '5.5'))).toBe(true)
+    expect(predictionMatches('-3', int(-3))).toBe(true)
+    // A choice is stored as the panel writes values: text quoted, so "5" stays text.
+    expect(predictChoiceText('red')).toBe('"red"')
+    expect(predictChoiceText(5)).toBe('5')
+    expect(predictChoiceText(true)).toBe('True')
+    expect(predictChoiceText(null)).toBe('None')
+    expect(predictionMatches(predictChoiceText('red'), str('red'))).toBe(true)
+    expect(predictionMatches(predictChoiceText('5'), int(5))).toBe(false)
+    expect(predictionMatches(predictChoiceText(5), int(5))).toBe(true)
+  })
+})
+
+describe('type predictions (P6-27)', () => {
+  const snapshot = snap([
+    ['typed', str('12')],
+    ['age', int(12)],
+    ['open', { t: 'bool', v: false }],
+    ['bag', list([str('key')])],
+  ])
+
+  it("matches the panel's own type label", () => {
+    expect(typePredictionMatches('text', str('12'))).toBe(true)
+    expect(typePredictionMatches('number', str('12'))).toBe(false)
+    expect(typePredictionMatches('number', float(1.5, '1.5'))).toBe(true)
+    expect(typePredictionMatches('true/false', { t: 'bool', v: true })).toBe(true)
+    expect(typePredictionMatches('list', list([]))).toBe(true)
+    expect(typePredictionMatches('', int(1))).toBe(false)
+    expect(typePredictionMatches('number', null)).toBe(false)
+  })
+
+  it('marks each type prediction, a name never made or left blank as wrong', () => {
+    const result = evaluateTypePredictions(
+      ['typed', 'age', 'missing', 'open'],
+      { typed: 'number', age: 'number', missing: 'text' },
+      snapshot
+    )
+    expect(result.results).toEqual({ typed: false, age: true, missing: false, open: false })
+    expect(result.allCorrect).toBe(false)
+    expect(
+      evaluateTypePredictions(['typed', 'bag'], { typed: 'text', bag: 'list' }, snapshot).allCorrect
+    ).toBe(true)
+  })
+
+  it('types_predicted passes when every listed type is right, and needs a run', () => {
+    const context = {
+      variablePredictions: {
+        names: [],
+        values: {},
+        typeNames: ['typed', 'age'],
+        types: { typed: 'text', age: 'text' },
+        snapshot,
+      },
+    }
+    expect(evaluateTypesPredictedCheck({ type: 'types_predicted' }, '', context)).toBe(false)
+    expect(
+      evaluateTypesPredictedCheck({ type: 'types_predicted', names: ['typed'] }, '', context)
+    ).toBe(true)
+    expect(evaluateTypesPredictedCheck({ type: 'types_predicted' }, '', {})).toBe(false)
+    expect(evaluateSingleCheck({ type: 'types_predicted', names: ['typed'] }, '', context)).toBe(
+      true
+    )
+    const def = getCheckDefinition('types_predicted')
+    expect(def.requiresRun).toBe(true)
+    expect(def.submitAllowed).toBe(false)
+  })
+
+  it('counts type predictions on the tutor chip', () => {
+    const task = {
+      id: 4,
+      showVariables: { mode: 'predict', predict: ['a'], predictType: ['age'] },
+    }
+    expect(
+      variablesCardSummary(task, {
+        taskId: 4,
+        ran: false,
+        predictions: { a: '1' },
+        typePredictions: { age: 'number' },
+      }).label
+    ).toBe('Predicted 2/2')
+    const revealed = variablesCardSummary(task, {
+      taskId: 4,
+      ran: true,
+      predictions: { a: '1' },
+      results: { a: true },
+      typePredictions: { age: 'text' },
+      typeResults: { age: false },
+    })
+    expect(revealed.label).toBe('1/2 right')
+    expect(revealed.title).toContain('age (type) = text ✗')
+  })
+
+  it('logs and reports type predictions marked as such', () => {
+    const task = {
+      id: 15,
+      showVariables: { mode: 'predict', predict: ['age'], predictType: ['typed', 'age'] },
+    }
+    const entry = buildPredictionLogEntry(
+      { entries: [{ name: 'age', value: '12', correct: true }] },
+      100,
+      {
+        typeEvaluation: {
+          entries: [
+            { name: 'typed', value: 'number', correct: false },
+            { name: 'age', value: 'number', correct: true },
+          ],
+        },
+      }
+    )
+    expect(entry).toEqual({
+      at: 100,
+      allCorrect: false,
+      entries: { age: { value: '12', correct: true } },
+      types: {
+        typed: { value: 'number', correct: false },
+        age: { value: 'number', correct: true },
+      },
+    })
+    const fields = taskPredictionFields(task, { predictionLog: { 15: { p1: entry } } })
+    expect(fields.predictions.first).toEqual([
+      { name: 'age', value: '12', correct: true },
+      { name: 'typed', value: 'number', correct: false, kind: 'type' },
+      { name: 'age', value: 'number', correct: true, kind: 'type' },
+    ])
+    expect(fields.predictions.firstAllCorrect).toBe(false)
+    expect(summarizeVariablePredictions([fields]).predictionFirstByName).toEqual([
+      { name: 'age', correct: 1, total: 1 },
+      { name: 'typed', kind: 'type', correct: 0, total: 1 },
+      { name: 'age', kind: 'type', correct: 1, total: 1 },
+    ])
   })
 })

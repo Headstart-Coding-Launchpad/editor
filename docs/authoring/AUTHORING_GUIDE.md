@@ -49,7 +49,7 @@ tasks:
         completion: pass
 ```
 
-**Checks that need a run are skipped, not failed.** `test-checks` never runs code, so it only judges checks it can evaluate from the source (`code`, `code_structure` and their aliases). A check that needs a run — `output`, `output_not_empty`, `output_empty`, `output_line_count`, `code_no_error`, `run_attempted`, `variable_*`, `variables_predicted`, the Python Stage's `stage_*` checks, Turtle and HTML element checks — and any check reading state a cases file can't supply (Filesystem, Desktop, Electronics circuit, `answer`) is reported per check as `result: skipped` with a `reason`, in `actual.checks` (completion) and `skippedFeedback` (feedback checks). The case's completion is then decided like this:
+**Checks that need a run are skipped, not failed.** `test-checks` never runs code, so it only judges checks it can evaluate from the source (`code`, `code_structure` and their aliases). A check that needs a run — `output`, `output_not_empty`, `output_empty`, `output_line_count`, `code_no_error`, `run_attempted`, `variable_*`, `variables_predicted`, `types_predicted`, `runs_predicted`, `line_run_count`, the Python Stage's `stage_*` checks, Turtle and HTML element checks — and any check reading state a cases file can't supply (Filesystem, Desktop, Electronics circuit, `answer`) is reported per check as `result: skipped` with a `reason`, in `actual.checks` (completion) and `skippedFeedback` (feedback checks). The case's completion is then decided like this:
 
 | Completion checks | `actual.completion` |
 |---|---|
@@ -366,6 +366,10 @@ do meanwhile: up to three optional, **unchecked** mini tasks on that code task.
                   print("*")
 ```
 
+- **Markers in the starter:** a side-quest's `starter` takes the same markers as a task's starter
+  code: `#>` line hints (HTML: `<!--> … -->`), `#@lock`, `#@lock-values` and `#@peek`. They're
+  stripped from the code, shown the same way (💡 hint, locked or values-only lines), and never
+  run or saved.
 - **Unlock:** only after the task's own completion check passes (so the task needs a `check`).
   Live: only while the class is still on that task; solo: after a pass. A bar above the workspace
   says "🎉 You've finished! Try a side-quest" with a button per side-quest.

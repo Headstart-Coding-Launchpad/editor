@@ -1,6 +1,10 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { validateShowVariables, validateVariablesPredictedCheck } from '../validation.js'
+import {
+  validateShowVariables,
+  validateTypesPredictedCheck,
+  validateVariablesPredictedCheck,
+} from '../validation.js'
 import { getModuleDefinition } from '../../../modules/definitions.js'
 
 function run(task) {
@@ -33,7 +37,9 @@ describe('validateShowVariables', () => {
     expect(run({ showVariables: { at: 'start' } }).errors[0]).toContain('at "start"')
     expect(run({ showVariables: { hide: 'x' } }).errors[0]).toContain('hide that is not a list')
     expect(run({ showVariables: { hide: ['my score'] } }).errors[0]).toContain('my score')
-    expect(run({ showVariables: { mode: 'predict' } }).errors[0]).toContain('no predict list')
+    expect(run({ showVariables: { mode: 'predict' } }).errors[0]).toContain(
+      'no predict or predictType list'
+    )
     expect(run({ showVariables: { mode: 'target' } }).errors[0]).toContain('no target values')
     expect(run({ showVariables: { mode: 'target', target: { '1x': 2 } } }).errors[0]).toContain(
       '1x'
@@ -123,6 +129,105 @@ describe('validateVariablesPredictedCheck', () => {
     expect(
       validateVariablesPredictedCheck({ type: 'variables_predicted', names: ['a b'] }, { n: 2 })[0]
     ).toContain('not Python variable names')
+  })
+})
+
+describe('validateShowVariables typed answers and predictType (P6-27)', () => {
+  it('accepts plain names, answer kinds, choices and predictType', () => {
+    expect(
+      run({
+        showVariables: {
+          mode: 'predict',
+          predict: [
+            { name: 'door_open', answer: 'boolean' },
+            { name: 'coins', answer: 'number' },
+            { name: 'colour', choices: ['red', 'blue', 'green'] },
+            'greeting',
+          ],
+          predictType: ['typed', { name: 'age', choices: ['text', 'number'] }],
+        },
+        check: [{ type: 'variables_predicted' }, { type: 'types_predicted', names: ['age'] }],
+      })
+    ).toEqual({ errors: [], warnings: [] })
+    // predictType alone is enough for predict mode.
+    expect(run({ showVariables: { mode: 'predict', predictType: ['age'] } }).errors).toEqual([])
+  })
+
+  it('rejects unknown answer kinds, bad choices and bad names', () => {
+    expect(
+      run({ showVariables: { mode: 'predict', predict: [{ name: 'a', answer: 'colour' }] } }).errors
+    ).toEqual([
+      'Task 1 has showVariables predict a with answer "colour" — use one of: text, number, boolean',
+    ])
+    expect(
+      run({ showVariables: { mode: 'predict', predict: [{ name: 'a', choices: ['red'] }] } })
+        .errors[0]
+    ).toContain('choices that are not a list of at least two values')
+    expect(
+      run({
+        showVariables: { mode: 'predict', predictType: [{ name: 'a', choices: ['text', 'word'] }] },
+      }).errors[0]
+    ).toContain('predictType a with choices that are not at least two of')
+    expect(
+      run({ showVariables: { mode: 'predict', predict: [{ name: 'my score' }] } }).errors[0]
+    ).toContain('my score')
+    expect(run({ showVariables: { mode: 'predict', predictType: 'age' } }).errors[0]).toContain(
+      'predictType that is not a list'
+    )
+  })
+
+  it('warns about answer with choices, a name in both lists, and predictType outside predict', () => {
+    expect(
+      run({
+        showVariables: {
+          mode: 'predict',
+          predict: [{ name: 'a', answer: 'number', choices: [1, 2] }],
+        },
+      }).warnings[0]
+    ).toContain('both answer and choices')
+    expect(
+      run({ showVariables: { mode: 'predict', predict: ['a'], predictType: ['a'] } }).warnings[0]
+    ).toContain('predict and predictType both naming a')
+    expect(run({ showVariables: { mode: 'view', predictType: ['a'] } }).warnings).toEqual([
+      'Task 1 has showVariables predictType but mode is not predict — it is ignored',
+    ])
+  })
+
+  it('ties a types_predicted check to predictType and its names', () => {
+    expect(run({ check: { type: 'types_predicted' } }).errors[0]).toContain(
+      'types_predicted check but no showVariables predictType list'
+    )
+    expect(
+      run({
+        showVariables: { mode: 'predict', predict: ['a'] },
+        check: [{ type: 'types_predicted' }],
+      }).errors[0]
+    ).toContain('no showVariables predictType list')
+    expect(
+      run({
+        showVariables: { mode: 'predict', predictType: ['a'] },
+        check: [{ type: 'types_predicted', names: ['b'] }],
+      }).errors[0]
+    ).toContain('naming b, which showVariables predictType does not list')
+    expect(
+      run({
+        showVariables: { mode: 'predict', predictType: ['a'] },
+        check: [{ type: 'variables_predicted' }],
+      }).errors[0]
+    ).toContain('use types_predicted for predictType')
+  })
+
+  it('validates the types_predicted check shape like variables_predicted', () => {
+    const html = getModuleDefinition('html')
+    const python = getModuleDefinition('python')
+    const check = { type: 'types_predicted', names: ['a'] }
+    expect(validateTypesPredictedCheck(check, { n: 2, moduleDefinition: python })).toEqual([])
+    expect(validateTypesPredictedCheck(check, { n: 2, moduleDefinition: html })).toEqual([
+      'Task 2 has a types_predicted check, but it only works in Python and Turtle tasks',
+    ])
+    expect(validateTypesPredictedCheck({ names: [] }, { n: 2 })).toEqual([
+      'Task 2 has a types_predicted check whose names is not a list of variable names',
+    ])
   })
 })
 

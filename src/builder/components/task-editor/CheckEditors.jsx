@@ -534,17 +534,46 @@ function FeedbackStageOfferControls({ check, stages = [], onChange }) {
   )
 }
 
-// A `variables_predicted` check (the name-tag panel's predictions) is set up from the task's
-// Name-tag panel field, so its row here is a read-only summary with its hint and Remove.
-function PredictionCheckRow({ check, index, total, onChange, onRemove }) {
+// The prediction checks set up from a task's own fields, not here: `variables_predicted` and
+// `types_predicted` (the name-tag panel), `runs_predicted` and `line_run_count` (run counts), so
+// their row is a read-only summary.
+const PREDICTION_CHECK_TYPES = [
+  'variables_predicted',
+  'types_predicted',
+  // Run counts (task runCounts / #@count lines, src/shared/runCounts.js): YAML-authored.
+  'runs_predicted',
+  'line_run_count',
+]
+
+const RUN_COUNT_OPERATOR_WORDS = { equals: 'exactly', min: 'at least', max: 'at most' }
+
+function predictionCheckSummary(check) {
   const names = Array.isArray(check.names) ? check.names : []
+  const list = names.length > 0 ? ` (${names.join(', ')})` : ''
+  if (check.type === 'types_predicted') {
+    return `Every type prediction is right${list} — set under Name-tag panel`
+  }
+  if (check.type === 'runs_predicted') {
+    const lines = Array.isArray(check.lines) ? ` (lines ${check.lines.join(', ')})` : ''
+    return `Every "how many times?" prediction is right${lines} — set in the lesson YAML (runCounts, #@count)`
+  }
+  if (check.type === 'line_run_count') {
+    const where = check.line != null ? `Line ${check.line}` : 'The #@count line'
+    const how = RUN_COUNT_OPERATOR_WORDS[check.operator] ?? 'exactly'
+    return `${where} ran ${how} ${check.value ?? '?'} times — set in the lesson YAML`
+  }
+  return `Every prediction is right${list} — set under Name-tag panel`
+}
+
+// A prediction check (PREDICTION_CHECK_TYPES) is set up from the task's own fields, so its row
+// here is a read-only summary with its hint and Remove.
+function PredictionCheckRow({ check, index, total, onChange, onRemove }) {
   return (
     <div className="te-check-row">
       {total > 1 && <span className="te-check-index">#{index + 1}</span>}
       <div className="te-check-editor">
         <span style={{ gridColumn: '1 / -1', fontFamily: 'var(--font-body)', fontSize: 13 }}>
-          Every prediction is right{names.length > 0 ? ` (${names.join(', ')})` : ''} — set under
-          Name-tag panel
+          {predictionCheckSummary(check)}
         </span>
         <input
           className="te-input"
@@ -709,7 +738,7 @@ function CheckListEditor({
             />
           )
         }
-        if (check?.type === 'variables_predicted') {
+        if (PREDICTION_CHECK_TYPES.includes(check?.type)) {
           return (
             <PredictionCheckRow
               key={index}
@@ -852,6 +881,7 @@ export {
   CheckFeedbackControls,
   RunAttemptedFields,
   PredictionCheckRow,
+  PREDICTION_CHECK_TYPES,
   MaxLinesCheckRow,
   StageCheckRow,
 }

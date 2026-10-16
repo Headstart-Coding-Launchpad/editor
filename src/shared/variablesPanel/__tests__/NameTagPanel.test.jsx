@@ -96,6 +96,137 @@ describe('NameTagPanel', () => {
   })
 })
 
+describe('NameTagPanel typed answers and type predictions (P6-27)', () => {
+  const predictConfig = (extra) => ({ ...view, mode: 'predict', predict: [], ...extra })
+
+  it('shows True / False buttons in words, and a pick commits at once', () => {
+    const onPredictionChange = vi.fn()
+    const onPredictionCommit = vi.fn()
+    render(
+      <NameTagPanel
+        config={predictConfig({
+          predict: ['door_open'],
+          answers: { door_open: { answer: 'boolean', choices: null } },
+        })}
+        predictions={{ values: { door_open: 'False' }, results: null }}
+        onPredictionChange={onPredictionChange}
+        onPredictionCommit={onPredictionCommit}
+      />
+    )
+    const group = screen.getByRole('group', { name: 'door_open: predict True or False' })
+    expect(group).toBeTruthy()
+    expect(screen.getByRole('button', { name: /False/ }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'True' }))
+    expect(onPredictionChange).toHaveBeenCalledWith('door_open', 'True')
+    expect(onPredictionCommit).toHaveBeenCalled()
+  })
+
+  it('gives a number answer a numeric field that drops anything but a number', () => {
+    const onPredictionChange = vi.fn()
+    render(
+      <NameTagPanel
+        config={predictConfig({
+          predict: ['coins'],
+          answers: { coins: { answer: 'number', choices: null } },
+        })}
+        predictions={{ values: {}, results: null }}
+        onPredictionChange={onPredictionChange}
+      />
+    )
+    const input = screen.getByLabelText('coins')
+    expect(input.getAttribute('inputmode')).toBe('decimal')
+    fireEvent.change(input, { target: { value: '1a2.5x' } })
+    expect(onPredictionChange).toHaveBeenCalledWith('coins', '12.5')
+  })
+
+  it('shows a text answer between quote marks, and a plain name as today', () => {
+    const { container } = render(
+      <NameTagPanel
+        config={predictConfig({
+          predict: ['greeting', 'score'],
+          answers: {
+            greeting: { answer: 'text', choices: null },
+            score: { answer: null, choices: null },
+          },
+        })}
+        predictions={{ values: {}, results: null }}
+        onPredictionChange={vi.fn()}
+      />
+    )
+    expect(container.querySelectorAll('.ntp-quote')).toHaveLength(2)
+    expect(screen.getByLabelText('greeting')).toBeTruthy()
+    expect(screen.getByLabelText('score').getAttribute('inputmode')).toBeNull()
+  })
+
+  it('shows choices as buttons, written as the panel writes values', () => {
+    const onPredictionChange = vi.fn()
+    render(
+      <NameTagPanel
+        config={predictConfig({
+          predict: ['colour'],
+          answers: { colour: { answer: null, choices: ['red', 'blue', 3] } },
+        })}
+        predictions={{ values: {}, results: null }}
+        onPredictionChange={onPredictionChange}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: '"blue"' }))
+    expect(onPredictionChange).toHaveBeenCalledWith('colour', '"blue"')
+    expect(screen.getByRole('button', { name: '3' })).toBeTruthy()
+  })
+
+  it('asks for a type, then shows the real type with a tick or cross in words', () => {
+    const onTypePredictionChange = vi.fn()
+    const config = predictConfig({
+      predictType: ['typed', 'age'],
+      typeChoices: { typed: ['text', 'number'], age: ['text', 'number', 'true/false', 'list'] },
+    })
+    const { rerender } = render(
+      <NameTagPanel
+        config={config}
+        predictions={{ values: {}, results: null, types: {} }}
+        onTypePredictionChange={onTypePredictionChange}
+      />
+    )
+    const typedGroup = screen.getByRole('group', { name: 'typed: predict its type, text, number' })
+    fireEvent.click(typedGroup.querySelector('button'))
+    expect(onTypePredictionChange).toHaveBeenCalledWith('typed', 'text')
+    expect(screen.getByRole('status').textContent).toContain('Pick the type')
+    rerender(
+      <NameTagPanel
+        config={config}
+        run={runOf([
+          ['typed', str('12')],
+          ['age', int(12)],
+        ])}
+        predictions={{
+          values: {},
+          results: null,
+          types: { typed: 'number', age: 'number' },
+          typeResults: { typed: false, age: true },
+        }}
+        onTypePredictionChange={onTypePredictionChange}
+      />
+    )
+    expect(screen.getByText('✓ Right', { exact: false }).textContent).toContain('number')
+    expect(screen.getByText('✗ Not quite', { exact: false }).textContent).toContain('text')
+    expect(screen.getByRole('status').textContent).toContain('1 of 2 predictions right')
+  })
+
+  it("shows a tutor the student's type picks read-only", () => {
+    render(
+      <NameTagPanel
+        config={predictConfig({ predictType: ['age'], typeChoices: { age: ['number'] } })}
+        predictions={{ values: {}, results: null, types: { age: 'number' } }}
+        readOnly
+        audience="tutor"
+      />
+    )
+    expect(screen.queryByRole('button')).toBeNull()
+    expect(screen.getByText('number')).toBeTruthy()
+  })
+})
+
 describe('TaskVariablesPanel', () => {
   it('renders nothing for a task without showVariables', () => {
     const { container } = render(<TaskVariablesPanel task={{ id: 1 }} panel={null} />)

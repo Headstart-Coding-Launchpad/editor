@@ -6,9 +6,11 @@
 //     speed: 1               # steps a second to start with; the student's slider goes 0.25–4
 //     showVariables: true    # name tags step by step (the name-tag panel)
 //     question: After pass 3, what is total?   # shown while paused
+//     separateButton: false  # true: Run runs normally beside a separate 🐢 Slow-mo button
 //
 // Off unless `enabled` is true. Slow-mo records the whole run first (the run IS the run for the
-// checks), then plays the recording back one line at a time.
+// checks), then plays the recording back one line at a time. By default Run itself plays the
+// run in slow-mo ("▶ Run (slow-mo)"); `separateButton: true` keeps the older two-button layout.
 
 export const PYTHON_SLOW_MO_MIN_SPEED = 0.25
 export const PYTHON_SLOW_MO_MAX_SPEED = 4
@@ -17,10 +19,12 @@ export const PYTHON_SLOW_MO_DEFAULT_SPEED = 1
 export const PYTHON_SLOW_MO_MAX_STEPS = 2000
 export const PYTHON_SLOW_MO_CAP_MESSAGE =
   'Slow-mo stops after 2,000 steps. Is there a loop that never ends?'
+// The Run button's tooltip when Run plays the run in slow-mo (slowMoThroughRun).
+export const PYTHON_SLOW_MO_RUN_TITLE = 'Run your program slowly, one line at a time'
 // A question longer than this gets a validation warning (it shows in a small box).
 export const PYTHON_SLOW_MO_QUESTION_CHARS = 200
 
-const KNOWN_KEYS = new Set(['enabled', 'speed', 'showVariables', 'question'])
+const KNOWN_KEYS = new Set(['enabled', 'speed', 'showVariables', 'question', 'separateButton'])
 
 // The task field, as python and turtle declare it in their definitions' taskFields. The Builder
 // shows its control for a module that declares it (declaresPythonSlowMo, TaskEditor.jsx).
@@ -28,7 +32,7 @@ export const PYTHON_SLOW_MO_TASK_FIELD = Object.freeze({
   name: 'slowMo',
   type: 'object',
   description:
-    'Slow-mo: record the run, then play it back line by line with Slow-mo, Pause, Step, Step back and Restart buttons. { enabled: true, speed: steps per second (default 1, 0.25–4), showVariables: true | false (name tags step by step), question: text shown while paused }. Off unless enabled.',
+    'Slow-mo: record the run, then play it back line by line. Run plays it in slow-mo, with Pause, Step, Step back, Restart and Finish buttons. { enabled: true, speed: steps per second (default 1, 0.25–4), showVariables: true | false (name tags step by step), question: text shown while paused, separateButton: true (Run runs normally beside a separate Slow-mo button) }. Off unless enabled.',
 })
 
 /**
@@ -54,8 +58,8 @@ function isPlainObject(value) {
 }
 
 /**
- * The task's slow-mo settings — `{ speed, showVariables, question }` — or null when slow-mo is
- * off (the field is missing, or `enabled` isn't true).
+ * The task's slow-mo settings — `{ speed, showVariables, question, separateButton }` — or null
+ * when slow-mo is off (the field is missing, or `enabled` isn't true).
  */
 export function getPythonSlowMo(task) {
   const raw = task?.slowMo
@@ -65,7 +69,17 @@ export function getPythonSlowMo(task) {
     speed: clampPythonSlowMoSpeed(raw.speed ?? PYTHON_SLOW_MO_DEFAULT_SPEED),
     showVariables: raw.showVariables === true,
     question: question || null,
+    separateButton: raw.separateButton === true,
   }
+}
+
+/**
+ * Whether Run itself plays the run in slow-mo (the default for a slow-mo task), rather than
+ * running normally beside a separate 🐢 Slow-mo button (`separateButton: true`). Takes
+ * getPythonSlowMo's settings.
+ */
+export function slowMoThroughRun(config) {
+  return !!config && config.separateButton !== true
 }
 
 /**
@@ -103,6 +117,9 @@ export function validatePythonSlowMo(task, n, errors, warnings) {
   }
   if (raw.showVariables !== undefined && typeof raw.showVariables !== 'boolean') {
     errors.push(`Task ${n} slowMo.showVariables must be true or false`)
+  }
+  if (raw.separateButton !== undefined && typeof raw.separateButton !== 'boolean') {
+    errors.push(`Task ${n} slowMo.separateButton must be true or false`)
   }
   if (raw.question !== undefined) {
     if (typeof raw.question !== 'string') {

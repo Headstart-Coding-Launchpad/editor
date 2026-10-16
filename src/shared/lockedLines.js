@@ -258,6 +258,11 @@ export function taskHasLocks(task) {
   return getTaskLockSets(task).some((locks) => locks.length > 0)
 }
 
+// Whether a stripped task has a values lock (#@lock-values) on its code.
+export function taskHasValueLocks(task) {
+  return getTaskLockSets(task).some((locks) => locks.some((lock) => lock?.values === true))
+}
+
 /**
  * The locked line numbers of `code` for a stripped task (what the editor would lock), e.g. for a
  * read-only stage reference. [] without locks.

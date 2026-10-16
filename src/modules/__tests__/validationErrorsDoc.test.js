@@ -41,6 +41,7 @@ const VALIDATOR_FILES = [
   'src/shared/input/checks.js',
   'src/modules/python/checks.js',
   'src/shared/variablesPanel/validation.js',
+  'src/shared/runCountsValidation.js',
   'src/shared/stage/checks.js',
   'src/shared/stage/validation.js',
   'src/shared/scrub/scrubConfig.js',

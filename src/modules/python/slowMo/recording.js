@@ -362,6 +362,7 @@ function settle(state, position, mode) {
  *   step     one line forward, then pause
  *   back     one line back, then pause
  *   restart  back to before the first line, paused
+ *   finish   straight to the end (the last line, finished)
  *   tick     the timer: one line forward while playing
  *   seek { position, mode }   a Go Live viewer following the presenter
  *   speed { speed }           steps per second, clamped to 0.25–4
@@ -389,6 +390,9 @@ export function playbackReducer(state, action) {
     case 'restart':
       if (state.mode === 'idle') return state
       return { ...state, position: 0, mode: 'paused' }
+    case 'finish':
+      if (state.mode === 'idle') return state
+      return settle(state, state.count, 'paused')
     case 'tick':
       if (state.mode !== 'playing') return state
       return settle(state, state.position + 1, 'playing')

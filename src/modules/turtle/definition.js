@@ -18,6 +18,8 @@ import {
 import { SHOW_VARIABLES_TASK_FIELD } from '../../shared/variablesPanel/variablesPanel.js'
 import { LAYOUT_TASK_FIELD, validateTaskLayout } from '../../shared/resultPane/resultPane.js'
 import { validateShowVariables } from '../../shared/variablesPanel/validation.js'
+import { RUN_COUNTS_TASK_FIELD } from '../../shared/runCounts.js'
+import { validateRunCounts } from '../../shared/runCountsValidation.js'
 import { SCRUB_TASK_FIELD, validateScrub } from '../../shared/scrub/scrubConfig.js'
 import { RUN_ON_OPEN_TASK_FIELD, validateRunOnOpen } from '../../shared/scrub/runOnOpen.js'
 import { getStarterStage } from '../../shared/taskStages.js'
@@ -148,6 +150,8 @@ export default defineModule({
         "{ lesson, task }: start from the student's own saved work on that task of an earlier lesson (stock ids; the tutor matches students to the class roster). Not with carryCodeFrom.",
     },
     SHOW_VARIABLES_TASK_FIELD,
+    // How many times each #@count line ran (src/shared/runCounts.js, p6-26).
+    RUN_COUNTS_TASK_FIELD,
     SCRUB_TASK_FIELD,
     RUN_ON_OPEN_TASK_FIELD,
     PYTHON_SLOW_MO_TASK_FIELD,
@@ -242,6 +246,7 @@ export default defineModule({
   validateTask: (task, { n, errors, warnings }) => {
     validateTaskChecks(task, (checks, kind) => validateTurtleChecks(checks, n, errors, kind))
     validateShowVariables(task, n, errors, warnings)
+    validateRunCounts(task, n, errors, warnings)
     validateScrub(task, n, errors, warnings, {
       starterCode: getStarterStage(task)?.stage?.code ?? task.starterCode ?? null,
     })

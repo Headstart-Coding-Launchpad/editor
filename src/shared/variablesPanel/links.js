@@ -21,7 +21,8 @@ export const MAX_VARIABLE_LINKS = VARIABLE_LINK_COLOURS.length
 
 /**
  * The linked tags, in the panel's order: `[{ name, number (1–6), colour }]`. Featured tags come
- * first (predict mode's `predict` names, target mode's target names), then the other variables
+ * first (predict mode's `predict` then `predictType` names, target mode's target names), then
+ * the other variables
  * the shown run left (view mode has tags only after a run). At most six; later tags are not
  * linked. Empty when the task has no panel or turns `link` off.
  * - `config`: getShowVariables(task)
@@ -31,7 +32,7 @@ export function getVariableLinks(config, run = null) {
   if (!config || config.link === false) return []
   const featured =
     config.mode === 'predict'
-      ? config.predict
+      ? [...config.predict, ...(config.predictType ?? [])]
       : config.mode === 'target'
         ? Object.keys(config.target ?? {})
         : []

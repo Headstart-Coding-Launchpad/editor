@@ -4,14 +4,15 @@ import { autocompleteEvent, emojiRunEvent } from '../timeline.js'
 
 // The student's client records the first Run of code with an emoji in a Python string, or in
 // HTML text or an attribute (src/shared/emojiInCode.js; comments never count), as
-// `studentSignals.emojiRun`. Typed, pasted or picked from the emoji picker all count.
+// `studentSignals.emojiRun`. Only emoji the student added count, not ones the task's code
+// already had. Typed, pasted or picked from the emoji picker all count.
 export default defineBadge({
   id: 'emoji_artist',
   emoji: '🤩',
   title: 'Emoji Artist',
   blurb: 'Brought their code to life with an emoji.',
   ruleText:
-    'Ran Python or HTML code with an emoji in a string, or in HTML text or an attribute (comments do not count), in a task or a sandbox. Typed, pasted or picked from the emoji picker all count.',
+    'Ran Python or HTML code with an emoji they added in a string, or in HTML text or an attribute (comments, and emoji already in the task code, do not count), in a task or a sandbox. Typed, pasted or picked from the emoji picker all count.',
   rule: anySignal('emoji_run'),
   reasonText: () => 'Ran code with an emoji in it',
   autoAwardable: false,

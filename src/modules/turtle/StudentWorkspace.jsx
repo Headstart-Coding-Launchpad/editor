@@ -24,7 +24,8 @@ import { usePythonSlowMo } from '../python/slowMo/usePythonSlowMo.js'
 import PredictRunLockNote, {
   PREDICT_RUN_LOCK_NOTE_ID,
 } from '../../shared/variablesPanel/PredictRunLockNote.jsx'
-import SlowMoBar from '../python/slowMo/SlowMoBar.jsx'
+import SlowMoBar, { SlowMoRunLabel } from '../python/slowMo/SlowMoBar.jsx'
+import { PYTHON_SLOW_MO_RUN_TITLE } from '../python/slowMo/config.js'
 import SlowMoNameTags from '../python/slowMo/SlowMoNameTags.jsx'
 import PuzzleBar from '../../shared/puzzle/PuzzleBar.jsx'
 import {
@@ -34,6 +35,7 @@ import {
   taskShowsVariables,
 } from '../../shared/variablesPanel/variablesPanel.js'
 import ResultPane from '../../shared/resultPane/ResultPane.jsx'
+import { getRunCountWidgets } from '../../shared/runCounts.js'
 import { useResultPane, useRunFinishedToken } from '../../shared/resultPane/useResultPane.js'
 import { useWorkspaceLayout } from '../../shared/resultPane/useWorkspaceLayout.js'
 
@@ -56,10 +58,10 @@ export default function StudentWorkspace({
   displayPythonSlowMo = null,
   teacherLiveCode,
   onVisiblePanesChange,
-  // A Code Arrange task (src/activities/code_arrange/): `arrangeBoard({ onRun })` renders the
-  // tile board in the editor's place, and `arrangeReady` says every blank is filled. The board
-  // owns Run and the tutor's remote Run; the picture, name tags, slow-mo and course maps are
-  // this workspace's own.
+  // A Code Arrange task (src/activities/code_arrange/): `arrangeBoard({ onRun, runLabel })`
+  // renders the tile board in the editor's place, and `arrangeReady` says every blank is filled.
+  // The board owns Run and the tutor's remote Run; the picture, name tags, slow-mo and course maps
+  // are this workspace's own.
   arrangeBoard = null,
   arrangeReady = true,
 }) {
@@ -136,6 +138,18 @@ export default function StudentWorkspace({
   // Linked name tags (showVariables.link): each tag and its variable in the code share a colour
   // and a number.
   const variableLinks = useVariableLinks(task, panelRun, { enabled: tagsAvailable })
+  // Run-count boxes and counts at the end of #@count lines (task runCounts, src/shared/
+  // runCounts.js; a stamp line counts its stamps): the student's own, or the presenter's in Go
+  // Live. Not in free play, on a previous task, the tutor editing, or during slow-mo playback.
+  const runCountWidgets =
+    inFreePlay || isViewingPrev || isTeacherEditing || slowMoView
+      ? null
+      : getRunCountWidgets(
+          task,
+          code,
+          isForcedTeacherLive ? { synced: displayVariablesPanel } : { panel: cs.variablesPanel },
+          { readOnly, running: cs.running }
+        )
   const resultPanes = ['picture', tagsAvailable && 'tags', 'console'].filter(Boolean)
   const {
     ref: workspaceRef,
@@ -166,8 +180,9 @@ export default function StudentWorkspace({
 
   // What's on screen, for the tutor's student card ('canvas' is the Picture tab).
   const stackedIds = ['picture', 'tags']
+  // Side by side: the picture, the tags and the console unless it is folded away.
   const shownResultPanes = !tabbed
-    ? ['picture']
+    ? resultPanes.filter((id) => id !== 'console' || !outputCollapsed)
     : resultPanes.filter(
         (id) =>
           id === result.active ||
@@ -192,6 +207,11 @@ export default function StudentWorkspace({
   // run shortcut wait for every prediction, until the first Run. Never on a read-only view.
   const runLock = readOnly ? null : (cs.predictRunLock ?? null)
 
+  // On a slow-mo task Run plays the run in slow-mo ("▶ Run (slow-mo)"), unless the task keeps a
+  // separate Slow-mo button (slowMo.separateButton). The run shortcut, a Code Arrange board's Run
+  // and the tutor's remote Run go through here too.
+  const runIsSlowMo = slowMoShown && slowMo.throughRun
+
   function handleRunClick() {
     if (cs.running) {
       cs.handleStop()
@@ -199,7 +219,8 @@ export default function StudentWorkspace({
     }
     if (runLock) return
     setOutputCollapsed(false)
-    cs.handleRun()
+    if (runIsSlowMo) slowMo.run()
+    else cs.handleRun()
   }
 
   // A Code Arrange board handles the tutor's remote Run itself (only a full board can run).
@@ -221,7 +242,10 @@ export default function StudentWorkspace({
           runDisabled={cs.running || cs.pyodideStatus === 'loading' || !arrangeReady || !!runLock}
         />
       )}
-      {arrangeBoard({ onRun: handleRunClick })}
+      {arrangeBoard({
+        onRun: handleRunClick,
+        runLabel: runIsSlowMo ? <SlowMoRunLabel /> : undefined,
+      })}
     </div>
   )
 
@@ -238,14 +262,24 @@ export default function StudentWorkspace({
               data-highlight-target="run stop"
               onClick={handleRunClick}
               disabled={!cs.running && (cs.pyodideStatus === 'loading' || !!runLock)}
-              title={!cs.running && runLock ? runLock.message : undefined}
+              title={
+                !cs.running && runLock
+                  ? runLock.message
+                  : runIsSlowMo && !cs.running
+                    ? PYTHON_SLOW_MO_RUN_TITLE
+                    : undefined
+              }
               aria-describedby={!cs.running && runLock ? PREDICT_RUN_LOCK_NOTE_ID : undefined}
             >
-              {cs.running
-                ? 'Stop'
-                : cs.pyodideStatus === 'loading'
-                  ? 'Getting Python ready...'
-                  : 'Run'}
+              {cs.running ? (
+                'Stop'
+              ) : cs.pyodideStatus === 'loading' ? (
+                'Getting Python ready...'
+              ) : runIsSlowMo ? (
+                <SlowMoRunLabel />
+              ) : (
+                'Run'
+              )}
             </button>
             {!cs.running && <PredictRunLockNote lock={runLock} />}
             <button
@@ -308,6 +342,13 @@ export default function StudentWorkspace({
         slowMoMarker={slowMoView?.marker ?? null}
         peekBand={peekBand}
         variableLinks={variableLinks.editor}
+        runCounts={
+          runCountWidgets && {
+            ...runCountWidgets,
+            onChange: cs.variablesPanel?.setCountPrediction,
+            onCommit: cs.variablesPanel?.commitPredictions,
+          }
+        }
       />
     </div>
   )

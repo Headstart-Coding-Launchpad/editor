@@ -39,6 +39,127 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-16
 
+### Run counts: predict how many times a line runs (p6-26)
+
+New task field `runCounts` (Python and Turtle; not under `showVariables`, works with or without
+the name-tag panel) and a new marker, `#@count`, on the line above the line to count (up to 3 a
+task; stripped like `#@peek`, and it follows its line when code moves):
+
+```yaml
+runCounts: predict              # predict | show
+codeStages:
+  - role: starter
+    code: |
+      for i in range(3):
+          #@count
+          print("Hip")
+      #@count
+      print("Hooray")
+check:
+  - type: runs_predicted        # new: every marked line's prediction was right (lines optional)
+  - type: line_run_count        # new: line (default: the #@count line), operator, value
+    operator: equals            # equals | min | max
+    value: 3
+```
+
+- `predict`: a "How many times will this run?" number box at the end of each marked line; Run waits
+  until every box is filled (predict mode's lock and words; `showVariables.lockRun: false` turns it
+  off). After Run: "ran 3 times ✓" / "ran 1 time ✗ · you said 3" / "ran 0 times". `show`: "ran 3
+  times" after each Run.
+- A Turtle `stamp()` or drawing line counts its runs. Mark the line inside a loop, not the `for`
+  line (that counts every check of the loop).
+- `line` / `lines` in the checks are starter line numbers as the student sees them (marker lines
+  removed). `line_run_count` counts its line even without `runCounts`.
+- Tutor chip, StudentModal and Go Live show the boxes and counts; the session report adds
+  `runCountPredictions` per student and `runCountFirstByLine` (with `offByOne`) per task.
+- New validation messages: [validation-errors.md](validation-errors.md#run-counts-runcounts-count).
+- See [python.md](python.md#run-counts-runcounts-count) and [turtle.md](turtle.md#run-counts-runcounts-count).
+
+- Affects: python, turtle · Existing lessons: no changes needed (the multiple-choice "how many
+  times?" questions can become `#@count` lines with `runCounts: predict`) ·
+  Resolves: authoring-requests/2026-10-16-p6-26-predict-how-many-times-a-line-runs.md
+
+### Predict mode: answer boxes that fit the value, and predicting the type (p6-27)
+
+A `showVariables.predict` entry can now say what answer its tag takes, and a new `predictType`
+list asks for the **type** of a value instead of the value:
+
+```yaml
+showVariables:
+  mode: predict
+  predict:
+    - name: door_open
+      answer: boolean          # True / False buttons
+    - name: coins
+      answer: number           # number field, numeric keypad on tablets
+    - name: greeting
+      answer: text             # text box between quote marks
+    - name: colour
+      choices: [red, blue]     # one button per choice
+    - lives                    # a plain name: today's free text box, unchanged
+  predictType: [typed, age]    # pick text / number / true/false / list
+check:
+  - type: variables_predicted
+  - type: types_predicted      # new: every predictType was right (names optional)
+```
+
+- `variables_predicted` judges typed and picked answers by the same forgiving rules as before.
+- `predictType` entries may be `{ name, choices: [text, number] }` to limit the type labels.
+- Run's lock (`lockRun`) waits for type picks too. The tutor's 🏷️ chip counts them; the session
+  report's `predictions` lists them after the values, marked `kind: 'type'`.
+- New validation messages: [validation-errors.md](validation-errors.md#name-tag-panel-showvariables).
+  The "no predict list" error now reads "no predict or predictType list".
+- The Builder's "Students predict" box keeps an entry's `answer` / `choices` when you edit the
+  names, and has a "Students predict the type of" box; answer kinds are YAML-only for now.
+- See [python.md](python.md#name-tag-panel-showvariables) (Answer boxes, `types_predicted`).
+
+- Affects: python, turtle · Existing lessons: no changes needed (plain names work as before; give
+  true/false and number tags an `answer` for better boxes) ·
+  Resolves: authoring-requests/2026-10-16-p6-27-predict-mode-typed-answers-and-predicting-the-type.md
+
+### Slow-mo plays through the Run button (`slowMo.separateButton`)
+
+On a Python or Turtle task with `slowMo.enabled`, **Run now plays the program in slow-mo**. The
+button reads **▶ Run (slow-mo)**, and there is no separate 🐢 Slow-mo button. Once a run is
+playing or paused, Pause (Play while paused), Step, Step back and Restart show above the code, with
+a new **⏭ Finish** that jumps to the end of the run. The output and check result are as for a
+normal Run, and checks still run once. The speed slider stays and starts at `slowMo.speed`. The run
+shortcut, a Code Arrange board's Run and the tutor's remote Run do the same. The predict-mode Run
+lock still applies, and in Go Live the presenter's Run plays slow-mo on every screen.
+
+`slowMo.separateButton: true` keeps the old layout: Run runs normally beside a 🐢 Slow-mo button
+(say for a Solo Challenge that wants plain runs plus optional slow-mo). It is validated as true or
+false, and the Builder's Slow-mo field has a "Keep a separate 🐢 Slow-mo button" box. See
+[python.md](python.md#slow-mo-slowmo).
+
+- Affects: python, turtle, code_arrange · Existing lessons: no changes needed (slow-mo tasks now
+  play through Run; add `separateButton: true` to keep a plain Run) · Resolves:
+  authoring-requests/2026-10-16-p6-28-slow-mo-through-the-run-button.md
+
+### Typing a value redraws; two result panes stay side by side longer; Emoji Artist counts new emoji only
+
+- **Typing redraws like scrubbing.** On a Python or Turtle task with `scrub`, `runOnOpen` or a
+  `#@lock-values` line, the Stage or drawing re-runs as a preview half a second after the student
+  stops typing, as a scrub does: no attempt, no checks, nothing saved beyond the edit. Half-typed
+  code that errors leaves the last picture in place. See
+  [python.md](python.md#live-scrubbing-scrub).
+- **Picture + Console never turn into tabs** in landscape: without name tags, the Picture sits
+  above the Console and shrinks to fit, on Chromebooks and tablets alike. Three panes (with Tags)
+  tab as before, and portrait screens and phones still put the editor above the result. See [python.md](python.md#screen-layout-layout).
+- **🤩 Emoji Artist** only counts emoji the student added. Emoji already in the task's code
+  stages, `copyCode` or the tutor's sandbox code don't count, so a starter with emoji no longer
+  awards it on the first Run. See [badges.md](badges.md).
+- Affects: python, turtle, html, badges · Existing lessons: no changes needed · Resolves: none
+
+### Line hints and locks work in side-quest starters (P6-29)
+
+- A side-quest's `starter` now handles `#>` line hints (HTML `<!--> … -->`), `#@lock`,
+  `#@lock-values` and `#@peek` exactly as a task's starter does. Before, the marker lines showed
+  as plain comments. See [AUTHORING_GUIDE.md](AUTHORING_GUIDE.md#side-quests).
+- Affects: python, turtle, html · Existing lessons: no changes needed (markers already written
+  in side-quest starters now work) · Resolves:
+  authoring-requests/2026-10-16-p6-29-line-hints-in-side-quest-starters.md
+
 ### Authoring docs corrected to match the app (HSC Audit)
 
 The HSC Audit checked every claim in these docs against the app. Some docs told authors to write

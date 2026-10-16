@@ -70,6 +70,7 @@ export default function TaskVariablesPanel({
       peekLine={peekLine}
       onPredictionChange={panel?.setPrediction}
       onPredictionCommit={panel?.commitPredictions}
+      onTypePredictionChange={panel?.setTypePrediction}
       running={running}
       audience={audience}
       links={links}

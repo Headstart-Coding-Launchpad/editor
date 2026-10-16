@@ -289,6 +289,19 @@ describe('playbackReducer', () => {
     expect(state).toMatchObject({ position: 0, mode: 'paused' })
   })
 
+  it('finishes straight away (Finish), from playing or paused', () => {
+    const playing = loaded({ play: true })
+    expect(playbackReducer(playing, { type: 'finish' })).toMatchObject({
+      position: 3,
+      mode: 'finished',
+    })
+    const paused = playbackReducer(loaded({ step: true }), { type: 'finish' })
+    expect(paused).toMatchObject({ position: 3, mode: 'finished' })
+    expect(playbackReducer(paused, { type: 'back' })).toMatchObject({ position: 2, mode: 'paused' })
+    const idle = initialPlayback(1)
+    expect(playbackReducer(idle, { type: 'finish' })).toBe(idle)
+  })
+
   it('plays again from the start once finished', () => {
     const finished = { ...loaded(), position: 3, mode: 'finished' }
     expect(playbackReducer(finished, { type: 'play' })).toMatchObject({

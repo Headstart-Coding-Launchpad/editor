@@ -147,7 +147,8 @@ codeStages:
 - Clicking or tapping the line puts the cursor in the nearest value; the arrow keys jump from value to value along the line. Typing that would change anything outside a value (the name, a quote mark, a new line) does nothing and shows "Only the values on this line can change".
 - An empty string (`name = ""`) stays editable: a small box between the quote marks shows where to type. A student can empty a string, but not delete a number completely (it must stay a number).
 - Values are plain strings and numbers. f-strings (their `{name}` is code), `r"…"`/`b"…"` strings, triple-quoted strings and comments stay locked.
-- Scrubbing works on the line's numbers and colour strings.
+- Scrubbing works on the line's numbers and colour strings, and typing a new value redraws the
+  Stage half a second after the student stops typing (see [Live scrubbing](#live-scrubbing-scrub)).
 - The lock follows its line by its shape (the line with its values blanked out), so it survives saving, reloading, a support stage, **Undo** and **Reset**. Checks see the whole program as usual.
 - Validation warns when a `#@lock-values` line has no string or number to change (it is then fully locked), and when one has no line after it.
 
@@ -307,6 +308,34 @@ variable, with its name, a small type label and its value. Off unless a task set
     - type: variables_predicted   # every listed prediction was right
       names: [score, lives]
 
+# Predict with answer boxes that fit the value, and predicting the TYPE (p6-27)
+- id: 15
+  moduleType: python
+  title: Text or Number?
+  showVariables:
+    mode: predict
+    predict:
+      - name: door_open
+        answer: boolean        # True / False buttons
+      - name: coins
+        answer: number         # a number field (numeric keypad on tablets)
+      - name: colour
+        choices: [red, blue, green]   # buttons
+      - greeting               # a plain name: today's free text box
+    predictType: [typed, age]  # pick the kind of value, not the value
+  codeStages:
+    - role: starter
+      code: |
+        typed = "12"      # what the player typed
+        age = int(typed)
+        door_open = not True
+        coins = 3 + 4
+        colour = "blue"
+        greeting = "Hi"
+  check:
+    - type: variables_predicted
+    - type: types_predicted       # every predictType was right
+
 # Target: target tags; each turns green (✓ On target) when the variable matches after Run
 - id: 14
   moduleType: python
@@ -328,12 +357,13 @@ variable, with its name, a small type label and its value. Off unless a task set
 | `mode` | `view` (default): show the variables after Run. `predict`: the student types what each `predict` variable will hold, then Run reveals ✓ / ✗ per tag. `target`: the panel shows each `target` value; a tag turns green with ✓ when the variable matches after Run, and an unmade variable reads "not made yet". |
 | `at` | `end` (default): the values when the program finishes, or when it stops with an error. `marker`: the values the **first time** the program is about to run the line after a `#@peek` line (below). |
 | `hide` | Names never shown (on top of the ones always hidden). |
-| `predict` | Predict mode: the variable names students predict, in order. Required in predict mode. |
+| `predict` | Predict mode: the variables students predict, in order. Each entry is a plain name (today's free text box) or `{ name, answer, choices }`, where `answer` says what the tag takes: `boolean` (**True** / **False** buttons), `number` (a number field: whole numbers and decimals, numeric keypad on touch screens) or `text` (the text box between quote marks, so it reads as text); `choices: [...]` (two or more values: text, numbers, `true`/`false`) shows one button per choice instead. See **Answer boxes** below. Predict mode needs `predict` or `predictType`. |
+| `predictType` | Predict mode: the variables whose **type** students predict, not their value. Each entry is a name or `{ name, choices }`: the student picks one of the panel's own type labels, **text**, **number**, **true/false** and **list**; `choices` (two or more of those labels) limits them, e.g. `choices: [text, number]` before a level has met lists. After Run the real type label shows with ✓ / ✗. A task may predict one variable's value and another's type. Check with `types_predicted`. |
 | `target` | Target mode: `{ name: value }`. Values are YAML: numbers, text, `true`/`false`/`null`, lists and dicts. Required in target mode. The green tags are **display only** — the `variable_*` checks decide completion, so add them. A list or dict target is drawn with the same visual as the real value (e.g. target swatches), so "make your palette look like this" works. |
 | `visuals` | `true` (default): lists and dicts are drawn as what they hold (see **List and dict visuals** below). `false`: today's plain tags for the whole task — use it when the automatic choice would mislead (e.g. `["orange", "lime"]` meant as fruit). |
 | `stageLists` | How a list of rows passed to the [Stage](#stage-drawing-beside-the-console)'s `grid()` in this run shows: `size` (default) — just the tag, type and size, e.g. `pixels: list, 8 × 8, drawn on the Stage`, so the picture doesn't appear twice; `picture` — colour names and hex codes as the small picture as well, to teach "the list *is* the picture" (palette numbers always show as a number table, never a picture); `tiles` — rows of tiles. A flat list drawn with `grid(…, width=…)` always shows as tiles wrapped at that width, whatever `stageLists` says. Ignored with `visuals: false`. |
 | `link` | `true` (default): each tag and its variable in the code are **linked** — see **Linked tags** below. `false`: tags and code are not marked. |
-| `lockRun` | Predict mode only. `true` (default): **Run, Slow-mo and Step stay disabled until every `predict` tag has an answer** (anything non-blank), with "Fill in your predictions first" beside Run in words (a tooltip too, and the button's accessible description). After the student's first Run of the task the lock is gone for good, so they can change the code and run again. The presenter (Go Live, the presentation window) is never locked, a tutor's remote Run still runs, and the personal sandbox isn't locked. `false`: Run works with the tags empty. |
+| `lockRun` | Predict mode only. `true` (default): **Run (on a slow-mo task, ▶ Run (slow-mo); with `slowMo.separateButton`, Slow-mo and Step too) stays disabled until every `predict` tag has an answer** (anything non-blank) **and every `predictType` tag has a type picked**, with "Fill in your predictions first" beside Run in words (a tooltip too, and the button's accessible description). After the student's first Run of the task the lock is gone for good, so they can change the code and run again. The presenter (Go Live, the presentation window) is never locked, a tutor's remote Run still runs, and the personal sandbox isn't locked. `false`: Run works with the tags empty. |
 
 **Linked tags** (`link`, on by default). Each tag gets one of six clearly different colours **and** a small number, and every real use of that variable in the editor gets the same: a coloured underline with a soft background, and the number drawn small above the end of the name. So the `small` tag and the `small` on line 3 match by colour and number, never colour alone (colour-blind students, projectors). Predict tags are linked from the moment the task opens; view-mode tags once a run shows them; target tags from the start. Featured tags (predict or target names) come first, then the other variables; at most six tags are linked.
 
@@ -436,20 +466,113 @@ comparison decided by the real value's type:
 Use it only with `mode: predict`; validation rejects it otherwise, and names it lists must be in
 `predict`. It needs a real run, so `lessons test-checks` reports it as needing a run. Each Run in
 predict mode (with changed predictions) is recorded for the session report's `predictions`.
+Picked answers (True / False, a choice) and number-field answers are judged by exactly the same
+rules as typed ones.
+
+**`types_predicted` check** (`names` optional — default: every `predictType` name). Passes when
+every listed type prediction is the type label the panel shows for the real value after Run
+(`"12"` is **text**, `int("12")` is a **number**). Needs `predictType` (validation rejects it
+otherwise, and its `names` must be in `predictType`); needs a real run, like
+`variables_predicted`. Type predictions are recorded in the same `predictions` report field,
+marked `kind: type`.
 
 **Tutor view.** The student card shows a 🏷️ chip ("Predicted 2/3", then "2/3 right"; "1/3 on
-target" in target mode) and, after a Run, small thumbnails of up to two list visuals (swatches, a
-picture or bars). StudentModal shows the student's panel, visuals included, with their predictions
-as they type them. In **Go Live** the presenter's panel, predictions and visuals included, shows on
-every screen.
+target" in target mode; type predictions count in the same chip) and, after a Run, small
+thumbnails of up to two list visuals (swatches, a picture or bars). StudentModal shows the
+student's panel, visuals included, with their predictions as they type or pick them. In **Go
+Live** the presenter's panel, predictions and visuals included, shows on every screen.
 
-**Predict mode** is unchanged for students: predictions are typed as text. After Run, the real
-value shows with its visual next to the ✓ / ✗.
+**Answer boxes** (`predict` entries, p6-27). A plain name keeps the free text box, which takes any
+value. Tell the panel what the answer will be and the box fits it:
+
+- `answer: boolean` — two buttons, **True** and **False** (words, never colour alone), so a typo or
+  `yes` can't be marked wrong for spelling. Screen readers hear "door_open: predict True or False".
+- `answer: number` — a number field: whole numbers and decimals (`-3`, `2.5`), anything else is
+  dropped as it's typed, and tablets show the number keypad.
+- `answer: text` — the text box with quote marks drawn around it, so it reads as text.
+- `choices: [red, blue, green]` — one button per choice, written as the panel writes values (text
+  in quotes: `"red"`; `true` as `True`). A choice `"5"` is text and `5` is a number, so they can
+  sit side by side. With `choices`, `answer` is ignored (a warning).
+
+After Run, the real value shows with its visual next to the ✓ / ✗, whatever the box. A
+`predictType` tag asks "— what type?" with one button per type label; after Run it shows "✓ Right
+— it's number" or "✗ Not quite — it's text".
 
 **Devices.** The panel sits under the output (Python) or between the drawing and the output
 (Turtle). On narrow screens it stacks under the code and stays usable with the on-screen keyboard;
-inputs and buttons are at least 44 px on touch screens. Every tag has a screen-reader text such as
+inputs and buttons are at least 44 px on touch screens (answer buttons — True / False, choices,
+type labels — always). Every tag has a screen-reader text such as
 "score: number 10", and ✓ / ✗ always come with words.
+
+---
+
+## Run counts (`runCounts`, `#@count`)
+
+"How many times will this line run?" is the prediction worth making in a loop lesson: off-by-one
+with `range()`, a line left outside the loop (it runs once), a nested loop (rows × columns). Mark
+the line to count with `#@count` on the line above it, and set `runCounts` on the task. It works
+with or without the [name-tag panel](#name-tag-panel-showvariables), on Python and
+[Turtle](turtle.md#run-counts-runcounts-count) tasks.
+
+```yaml
+- id: 14
+  moduleType: python
+  title: Hip Hip Hooray
+  runCounts: predict          # predict | show
+  codeStages:
+    - role: starter
+      code: |
+        for i in range(3):
+            #@count
+            print("Hip")
+        #@count
+        print("Hooray")
+  check:
+    - type: runs_predicted    # every marked line's prediction was right
+```
+
+The student predicts 3 and 1, presses Run, and sees **ran 3 times ✓** and **ran 1 time ✓**. A
+student who predicted 3 for Hooray sees **ran 1 time ✗ · you said 3** next to the line that isn't
+indented.
+
+| Field / marker | Notes |
+|---|---|
+| `#@count` | A line whose trimmed text is `#@count` marks the **next line of code** (blank and comment lines are skipped), like [`#@peek`](#name-tag-panel-showvariables). It is stripped before the student sees the code and follows its line by its text when code moves (a deleted or duplicated line loses its count). Up to **3** marked lines a task: validation warns over 3 (only the first 3 count) and when a marker has no line after it. Mark the line inside the loop: marking a `for` / `while` line counts every check of the loop, one more than its passes. |
+| `runCounts: predict` | A small number box at the **end** of each marked line in the editor ("How many times will this run?" for screen readers; whole numbers, the number keypad on tablets, at least 44 px on touch screens). **Run, Slow-mo and Step stay disabled until every box has a number**, with predict mode's words "Fill in your predictions first" — the same lock as the [name-tag panel's](#name-tag-panel-showvariables) `lockRun` (`showVariables.lockRun: false` turns both off). After the first Run the boxes become the count: **ran 3 times ✓**, **ran 1 time ✗ · you said 3**, **ran 0 times** for a line that never ran; every later Run updates the counts against the same predictions. |
+| `runCounts: show` | No boxes: after each Run, each marked line reads **ran 3 times**. Useful in a Debug task ("this ran once; why?"). |
+
+- **Counting** is each time the line is about to run (a loop body once a pass, a function's line
+  once a call). On the Turtle Stage a marked `stamp()` or drawing line counts its runs, so "how many
+  stars will it stamp?" is the same task: mark the `stamp` line.
+- **Screen readers** hear "Line 3 ran 4 times. You predicted 4: right." after each Run.
+- **Tutor view.** The student card's 🏷️ chip counts the boxes ("Predicted 1/2", then "1/2 right"),
+  with the name-tag panel's predictions if the task has both. StudentModal shows the boxes' numbers
+  as the student types them (while watched) and the counts after their Run. In **Go Live** the
+  presenter's boxes and counts show on every screen; the presenter is never locked.
+- **Session report:** each Run that reveals counts is recorded: `runCountPredictions` per student
+  and `runCountFirstByLine` (with `offByOne`) per task — see [session-reports.md](session-reports.md).
+- Not in slow-mo playback (the counts would give the run away), free play or a previous task's code.
+
+**`runs_predicted` check** (`lines` optional). Passes when every marked line's prediction (or the
+lines listed in `lines`) matches its real count: whole numbers, spaces ignored. Needs
+`runCounts: predict`. `lines` are line numbers of the starter **as the student sees it** (marker
+lines don't count): in the example above, `print("Hip")` is line 2 and `print("Hooray")` line 3.
+
+**`line_run_count` check.** `line` (a starter line number, as above; default: the first `#@count`
+line), `operator` (`equals`, the default, `min` or `max`) and `value` (a whole number). Passes when
+that line ran that many times (at least / at most), so a completion check can say "the stamp line
+ran 5 times" without depending on the drawing. It counts its line whether or not `runCounts` is
+set (a task can count without showing anything).
+
+```yaml
+  check:
+    - type: line_run_count
+      line: 2          # or leave out for the #@count line
+      operator: equals # equals | min | max
+      value: 5
+```
+
+Both checks need a real run, so `lessons test-checks` reports them as needing a run.
 
 ---
 
@@ -471,6 +594,7 @@ by step.
       speed: 1.0                # optional — starting lines a second (default 1; slider 0.25–4)
       showVariables: true       # optional — name tags step by step (default false)
       question: After pass 3, what is total?   # optional — shown while paused
+      separateButton: false     # optional — true: Run runs normally beside a 🐢 Slow-mo button
     codeStages:
       - role: starter
         code: |
@@ -480,17 +604,27 @@ by step.
           print(total)
 ```
 
-**Controls** (above the editor; 44 px+ buttons, an icon and a word each):
+**Run plays it in slow-mo.** On a slow-mo task the Run button reads **▶ Run (slow-mo)**: it runs
+the program and plays it back at the slider's speed. There is no separate Slow-mo button. The run
+shortcut (Ctrl/Cmd+Enter), a Code Arrange board's Run and the tutor's remote Run do the same.
+Pressing Run again records a fresh run (`input()` is asked again) and plays it from the start.
+Before the first Run only the **speed slider** (starting at `speed`) shows above the editor; once
+a run is playing or paused these controls join it (44 px+ buttons, an icon and a word each):
 
 | Button | What it does |
 |---|---|
-| 🐢 **Slow-mo** | Runs the program, then plays it back at the slider's speed. Pressed while paused, it carries on; once finished, it plays again from the start |
-| ⏸ **Pause** | Stops on the current line |
-| 👣 **Step** | One line forward (the first press runs the program and shows line 1) |
+| ⏸ **Pause** / ▶ **Play** | Pause stops on the current line; while paused the same button is Play, which carries on (once finished, it plays again from the start) |
+| 👣 **Step** | One line forward |
 | ↩ **Step back** | One line back, with the variables, output and drawing as they were |
 | ⏮ **Restart** | Back to before the first line |
+| ⏭ **Finish** | Straight to the end of the run, for a student who has seen enough. The output, drawing and check result are exactly as for a normal Run |
 
-**Run** still runs the program normally.
+**`separateButton: true`** keeps the older layout, for a task that wants plain runs plus optional
+slow-mo (a Solo Challenge, say): **Run** runs the program normally, and a 🐢 **Slow-mo** button
+sits beside Pause, Step, Step back, Restart and Finish, all shown from the start. Slow-mo runs the
+program and plays it back (pressed while paused it carries on; once finished it plays again from
+the start), and Step's first press runs the program and shows line 1. Pressing Run ends a slow-mo
+playback.
 
 **While stepping:**
 
@@ -511,20 +645,24 @@ by step.
 **How it works (record, then replay).** A browser can't pause Python mid-run here, so Slow-mo
 runs the whole program first, recording every line, and then plays the recording. `input()` is
 asked while it records, before playback starts; the answers appear at the right step. Editing the
-code ends slow-mo (the recording no longer matches), and so does pressing Run.
+code ends slow-mo (the recording no longer matches), and so does Run Tests (and, with
+`separateButton: true`, Run).
 
 **Checks.** There are no slow-mo checks. The recorded run *is* the run: output, checks, the
 attempt log and the tutor's card update exactly as for Run, once. The check result appears when
-playback reaches the last line.
+playback reaches the last line, or when ⏭ Finish is pressed.
 
 **Runaway programs.** A recording stops at 2,000 lines run. The program is ended there, the
 student sees "Slow-mo stops after 2,000 steps. Is there a loop that never ends?", and the run is
 treated like one the student stopped (no check result, no attempt; `run_attempted` still passes).
 Keep slow-mo programs short.
 
-**Tutors.** In **Go Live** and presentation, the presenter's recording goes to every screen
-once and their Slow-mo, Pause, Step and Restart drive the line, tags, output and drawing the class
-sees. Viewers see "🐢 Slow-mo · Step 4 of 12 · line 3", the question when paused, and no
+**Predict mode.** The [Run lock](#name-tag-panel-showvariables) (`lockRun`) applies to the slow-mo
+Run as to any Run: a slow-mo predict task waits for every prediction before Run plays.
+
+**Tutors.** In **Go Live** and presentation, the presenter's Run plays slow-mo on every screen:
+their recording goes to every screen once and their Pause/Play, Step, Step back, Restart and
+Finish drive the line, tags, output and drawing the class sees. Viewers see "🐢 Slow-mo · Step 4 of 12 · line 3", the question when paused, and no
 controls. A very large recording is slimmed to fit (shorter values first, then no variables,
 then no drawing). The session report records slow-mo use per student per task (`slowMoUsed`,
 `slowMoRuns`, `slowMoSteps`; see [Session reports](session-reports.md)).
@@ -534,9 +672,10 @@ also stops above 2 lines a second, so nothing flashes 3 or more times a second. 
 reads each step ("Step 5 of 11: line 3 ran. total is now 11 (was 4). Loop on line 2: pass 2 of
 4.") while paused or playing at 1 line a second or slower.
 
-**Builder:** the task editor's **Slow-mo** field (on/off, starting speed, name tags, question).
-Validation flags a `slowMo` that isn't an object and an `enabled`, `showVariables` or `question`
-of the wrong type or a speed that isn't a positive number; it warns about a speed outside
+**Builder:** the task editor's **Slow-mo** field (on/off, starting speed, name tags, question,
+and "Keep a separate 🐢 Slow-mo button" for `separateButton`). Validation flags a `slowMo` that
+isn't an object and an `enabled`, `showVariables`, `question` or `separateButton` of the wrong
+type or a speed that isn't a positive number; it warns about a speed outside
 0.25–4, a question over 200 characters, unknown keys, and a `slowMo` with no `enabled`.
 
 ---
@@ -824,6 +963,11 @@ What students get:
   steals focus or opens the on-screen keyboard. Programs that call `input()` never run on open
   (validation warns). `runOnOpen: false` turns it off on a scrub task; `runOnOpen: true` turns it
   on for a task without `scrub`.
+- **Typing redraws too.** On a task with `scrub`, `runOnOpen` or a `#@lock-values` line (Python
+  and Turtle), the code re-runs as the same preview half a second after the student stops
+  typing, so typing a new number, colour or name updates the Stage or drawing like a scrub. If the
+  half-typed code errors, the last picture and output stay. It's not a Run: no checks, nothing
+  logged. Not in a sandbox.
 
 Numbers in code are scrubbed, not numbers in strings or comments, or inside names like `x2`. A
 minus sign belongs to the number (`-5` in `left(-5)`), but not in `a - 5`.
@@ -847,6 +991,8 @@ On a wide desktop a Python task shows everything side by side: the editor, then 
 console and the name-tag panel. When that doesn't fit (tablets, 1366 × 768 Chromebooks and small
 laptops), the editor stays on the left and **one result pane** on the right has tabs
 **Picture · Tags · Console**. On portrait screens and phones the editor sits above the tabs.
+A task with just the Picture and the Console (no Tags) never uses tabs in landscape: the Picture
+sits above the Console and shrinks to fit.
 Only the tabs the task has appear: Picture once the code imports `stage` (or the task has a
 `stageTarget`), Tags with `showVariables`. A task with just a console has no tabs at all.
 
