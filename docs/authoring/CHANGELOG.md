@@ -37,6 +37,27 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-16
+
+### Student screens from the HSC Audit: what lesson text can rely on
+
+- **The `copyCode` panel is titled "⌨️ Type this out".** Lesson text should name it ("type out
+  the code in the *Type this out* box") rather than say where it is: "the panel above" read
+  wrongly, because the panel sits above the editor, beside the instructions.
+- **The Topic Library button opens on the task's topic.** It picks the first `[[topic]]` link in
+  the explainer, else the first inline code span named exactly like a topic (`` `print()` ``),
+  else the first topic named in the text. Add a `[[topic]]` link to choose it yourself.
+- **Line hints go once the check passes**, so they never linger as ghost text after the
+  finished code.
+- **Recap `leftContent` is shown larger in a narrower panel.** Keep it to one short line
+  ("Today you learned"), with no stray punctuation.
+- **The fail pop-up names the help button "✋ Help"**, and its stage offer reads "Want a hint?
+  Show me a hint" (or "Show hint: <stage label>"). Hints that mention help should call it the
+  Help button.
+- Affects: python, turtle, arcade, html (copyCode, line hints, check feedback), information
+  (recap), markdown (topic library) · Existing lessons: change "the panel above" to the
+  *Type this out* box where a lesson points at `copyCode` · Resolves: none
+
 ## 2026-10-15
 
 ### Name-tag panel: predict mode locks Run until every prediction is in (`showVariables.lockRun`)
