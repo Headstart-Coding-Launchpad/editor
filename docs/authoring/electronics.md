@@ -183,7 +183,8 @@ Electronics tasks with a `microcontroller` component can also use the shared gen
 checks:
   - type: circuit_has_component
     component: { type: microcontroller }
-  - type: code_contains
+  - type: code
+    operator: contains
     value: Pin("GP0", Pin.OUT)
 ```
 

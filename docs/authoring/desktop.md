@@ -15,7 +15,7 @@ id: desktop-basics
 type: composed
 title: Desktop Basics
 description: Practise opening apps and organising files on a windowed desktop.
-level: 1
+levelId: desktop-level-1
 modules:
   - id: desktop-practice
     type: desktop
@@ -300,7 +300,7 @@ id: desktop-input-methods
 type: composed
 title: Mouse and Keyboard on the Desktop
 description: Move and copy files the way you practised with the mouse and keyboard.
-level: 1
+levelId: desktop-level-1
 modules:
   - id: desktop-input
     type: desktop

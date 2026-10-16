@@ -11,7 +11,7 @@ id: html-heading
 type: composed
 title: HTML Headings
 description: Add headings with HTML tags.
-level: 1
+levelId: html-level-1
 modules:
   - id: html-practice
     type: html

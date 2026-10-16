@@ -11,7 +11,7 @@ id: python-for-loops
 type: composed
 title: Python For Loops
 description: Practise loops in Python.
-level: 1
+levelId: python-level-1
 modules:
   - id: python-practice
     type: python

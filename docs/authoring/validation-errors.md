@@ -351,11 +351,11 @@ message says `feedback check` where it would say `check` (that part is shown as 
 | `Task … … must be true or false` | `showCostumesTab`, `showSoundsTab`, `allowAddCostume` or `allowAddSound` isn't a boolean. | Use `true` or `false` ([scratch.md](scratch.md#costumes-and-sounds-tabs)). |
 | `Task … allowAddCostume has no effect without showCostumesTab` (warning) | Students can't add a costume when the Costumes tab is hidden. | Add `showCostumesTab: true`, or remove `allowAddCostume`. |
 | `Task … allowAddSound has no effect without showSoundsTab` (warning) | Students can't add a sound when the Sounds tab is hidden. | Add `showSoundsTab: true`, or remove `allowAddSound`. |
-| `Task … sprite "…" sounds must be a list` | A sprite's `sounds` isn't a list. | Write `sounds:` as a list of `{ name, synth }` or `{ name, audio }`. |
-| `Task … sprite "…" has a sound with no name` | A sound entry has no `name`. | Give every sound a name. |
-| `Task … sprite "…" has two sounds named "…"` | Two sounds on one sprite share a name, so a `start sound` block can't tell them apart. | Rename one. |
-| `Task … sprite "…" sound "…" needs exactly one of synth or audio` | A sound has both `synth` and `audio`, or neither. | Keep one. |
-| `Task … sprite "…" sound "…" uses unknown synth "…" (known: …)` | `synth` isn't one of the built-in tones listed. | Use a listed synth id, or an `audio` file. |
+| `… sounds must be a list` (`…` is `Task N sprite "Name"`, as in the rows below) | A sprite's `sounds` isn't a list. | Write `sounds:` as a list of `{ name, synth }` or `{ name, audio }`. |
+| `… has a sound with no name` | A sound entry has no `name`. | Give every sound a name. |
+| `… has two sounds named "…"` | Two sounds on one sprite share a name, so a `start sound` block can't tell them apart. | Rename one. |
+| `… sound "…" needs exactly one of synth or audio` | A sound has both `synth` and `audio`, or neither. | Keep one. |
+| `… sound "…" uses unknown synth "…" (known: …)` | `synth` isn't one of the built-in tones listed. | Use a listed synth id, or an `audio` file. |
 | `Task … has a filesystem … but no path` | A Filesystem or Desktop `fs_*` check has no `path`. | Add `path:`. |
 | `Task … has a window_state … but no appId` | A Desktop `window_state` check doesn't name the app. | Add `appId:` (`fileManager`, `textEditor`, `imageViewer`, `paint` or `browser`). |
 | `Task … has a window_state moved_to … with zone "…" — use one of: …` | `moved_to` has no `zone`, or an unknown one. | Use `left_half`, `right_half`, `top_half`, `bottom_half`, `top_left`, `top_right`, `bottom_left` or `bottom_right` (see `desktop.md`). |

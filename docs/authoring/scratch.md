@@ -13,7 +13,7 @@ id: scratch-motion
 type: composed
 title: Moving Sprites
 description: Move sprites around the stage.
-level: 1
+levelId: scratch-level-1
 modules:
   - id: scratch-practice
     type: scratch
@@ -607,7 +607,7 @@ fields or keys, and a `slowMo` with no `enabled`.
 
 ## Scratch Check Types
 
-Scratch checks can be a single object or an array. Prefer `evaluation: after_block_placed` for block-structure checks that can pass while the learner edits, and `evaluation: after_run` for checks that need the green flag/run state. `manual` is a legacy value and should not be used in new lessons.
+Scratch checks can be a single object or an array. Every Scratch check type on this page is listed by `node cli/cli.mjs lessons capabilities`, and a misspelt Scratch check type fails validation. Prefer `evaluation: after_block_placed` for block-structure checks that can pass while the learner edits, and `evaluation: after_run` for checks that need the green flag/run state. `manual` is a legacy value and should not be used in new lessons.
 
 - **Leaving `evaluation` out means `after_run`.** The Builder shows the same default.
 - **Only `block_used`, `blocks_in_order` and `block_count` can use `evaluation: after_block_placed`.** They are the checks decided by the blocks alone. Any other type (`sprite_property`, `variable_compare`, `block_run`, …) needs a run, so validation rejects it with `after_block_placed`.

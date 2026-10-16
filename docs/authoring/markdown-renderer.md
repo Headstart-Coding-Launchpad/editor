@@ -290,7 +290,7 @@ markdown, nothing to opt into — driven by `MarkdownRenderer`'s `imageLayout="f
 
 Links open in the **same tab**, taking the student away from the lesson, so link out sparingly
 and tell students to come back (or to Ctrl-click / long-press). A bare URL is not turned into a
-link: always use `[text](url)`.
+link: always use the bracket form shown above.
 
 Topic library links (`parseTopicHref`, `src/shared/markdown.jsx`) work anywhere `MarkdownRenderer`/`InlineMarkdown` is used — `explainer`, `description`, and `syntax` fields alike — **except Scratch lessons**, where the topic library is disabled outright (see `docs/authoring/TOPIC_LIBRARY_SCHEMA.md`'s Scratch note) and these links render as plain text instead:
 ```

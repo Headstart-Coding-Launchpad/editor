@@ -11,7 +11,7 @@ id: file-organiser
 type: composed
 title: File Organiser
 description: Practise organising files and folders.
-level: 1
+levelId: filesystem-level-1
 modules:
   - id: filesystem-practice
     type: filesystem

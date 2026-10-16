@@ -122,7 +122,7 @@ tasks:
 
 | Field | Required | Type | Notes |
 |---|:---:|---|---|
-| `id` | No | integer | Auto-assigned sequential integer if omitted. |
+| `id` | No | integer | If omitted, the task gets its position in the lesson (1, 2, 3 … counting subtasks). Give every task an `id` or none: mixing them can give two tasks the same id (an explicit `id: 3` on task 1 clashes with task 3's position), which fails validation. |
 | `title` | Yes | string | Short task title. |
 | `explainer` | Yes in final mode | string | Markdown shown to students. Draft permits it to be omitted. |
 | `estimatedMinutes` | No | positive number | Approximate duration in minutes (decimals allowed, e.g. `7.5`); totalled in the builder. |
@@ -307,7 +307,7 @@ tasks:
           value: 5
 ```
 
-Groups cannot be nested. Group IDs are auto-generated (e.g. `g-1234567890`). `carryCodeFrom` / `carryBlocksFrom` references from within a subtask use the subtask's own integer `id`.
+Groups cannot be nested. Group IDs are generated from the lesson id and group title (e.g. `g-python-loops-counting-with-range`), unless the group sets its own `id`. `carryCodeFrom` / `carryBlocksFrom` references from within a subtask use the subtask's own integer `id`.
 
 ### Subtask titles
 
