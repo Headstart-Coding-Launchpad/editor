@@ -204,9 +204,11 @@ export default function TaskNavigator({
       {/* Sandbox toggle */}
       <div style={s.sandboxArea}>
         {isSandbox ? (
-          <button className="btn-danger" style={{ width: '100%' }} onClick={onSandbox}>
-            Deactivate Sandbox
-          </button>
+          // The yellow sandbox bar above the work area has the one Deactivate Sandbox button
+          // (there used to be two; HSC Audit, Visual Review 24).
+          <p style={s.sandboxNote} data-testid="task-nav-sandbox-live">
+            Sandbox is live. End it with Deactivate Sandbox in the yellow bar.
+          </p>
         ) : sandboxStaging ? (
           <button
             className="btn-ghost-outline"
@@ -484,5 +486,12 @@ const s = {
     padding: '8px 12px 12px',
     borderTop: '1px solid #e5e7eb',
     flexShrink: 0,
+  },
+  sandboxNote: {
+    margin: 0,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.78rem',
+    lineHeight: 1.35,
+    color: '#92400e',
   },
 }

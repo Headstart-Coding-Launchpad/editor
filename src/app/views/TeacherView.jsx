@@ -64,6 +64,7 @@ import {
 import { useTopicLibrary } from '../../shared/topicLibrary'
 import { buildStudentLivePayload } from '../teacherLivePayload'
 import { getModuleDefinition } from '../../modules/definitions'
+import { sandboxModuleLabel } from './teacher/sandboxModuleLabel'
 import PaneFocusDropdown from '../components/student-modal/PaneFocusDropdown'
 import ControlHighlightDropdown from '../components/student-modal/ControlHighlightMenu'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
@@ -951,7 +952,7 @@ export default function TeacherView({ lessonId }) {
                   >
                     {lessonModules.map((module) => (
                       <option key={module.id} value={module.id}>
-                        {module.title || module.id} ({module.type})
+                        {sandboxModuleLabel(module)}
                       </option>
                     ))}
                   </select>

@@ -75,6 +75,14 @@ describe('TaskNavigator Prev/Next during sandbox mode', () => {
   })
 })
 
+describe('TaskNavigator while the sandbox is live', () => {
+  it('has no second Deactivate Sandbox button (the yellow bar has the one)', () => {
+    render(<TaskNavigator tasks={tasks} currentTaskId={2} isSandbox onSandbox={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: 'Deactivate Sandbox' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('task-nav-sandbox-live')).toBeInTheDocument()
+  })
+})
+
 describe('TaskNavigator current-task line', () => {
   const students = [
     { anonymousId: 'a', lastRunStatus: 'success', lastRunAt: 1, checkPassed: true },
