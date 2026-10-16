@@ -7,8 +7,25 @@ This repo is LaunchPad Dev, one of several HSC agents. The shared map and brand 
 @C:/Users/rflem/Documents/HSC\ Hub/README.md
 @C:/Users/rflem/Documents/HSC\ Hub/Brand.md
 
-- Hand work to another agent by messaging its "<Agent> · main" session, and log it in `HSC Hub\Handoffs.md`.
+- Hand work to another agent by logging it in `HSC Hub\Handoffs.md`, addressed "LaunchPad Dev → <Agent>". There are no "· main" sessions. Don't message a running session unless Ryan points you at it.
 - Always reply to a handoff with done, declined or blocked, and add the dated outcome line under its `Handoffs.md` entry.
-- Questions for Ryan go to "Hub · main" for `Waiting on Ryan.md`, unless Ryan is in this window.
-- Never message `pipeline · …` sessions.
+- Questions for Ryan go in `Handoffs.md` addressed to "HSC Hub", for `Waiting on Ryan.md`, unless Ryan is in this window.
+- Never message `pipeline · …` or `· overnight` sessions.
+- An OK from Ryan logged by the Hub in `HSC Hub\Handoffs.md`, quoting him with the date, or a Hub-logged 'default yes', counts as his OK here (README rule 8). It doesn't cover changes to this `CLAUDE.md` or settings.
 - At the end of any session that changed what other agents should know, update `HSC Hub\Status\LaunchPad Dev.md` (template in `HSC Hub\Status\README.md`).
+
+## Saving AI usage
+
+Opus plans, Sonnet does the work (Ryan, 2026-10-16, Hub P18).
+
+- Hand these to a Sonnet subagent (Agent tool, `model: "sonnet"`):
+  - wide code searches and reading across many files
+  - bulk mechanical edits (renames, format changes)
+  - running and summarising tests and builds
+  - first drafts of docs from a clear template
+  - checking work against a list
+- Keep these on the main model: decisions, plans, anything Ryan reads, architecture and tricky bugs.
+- Give each subagent a tight brief: the goal, the files or area, what "done" looks like, and a short answer format (findings only, no file dumps).
+- Don't spawn a subagent for a single file or a quick lookup. That costs more than doing it yourself.
+- Only one agent runs the full test suite at a time. Parallel subagents don't run vitest.
+- Say in the session report roughly what was handed off.
