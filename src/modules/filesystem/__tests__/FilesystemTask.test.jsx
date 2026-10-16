@@ -26,6 +26,15 @@ describe('FilesystemTask', () => {
     expect(up).toBeDisabled()
   })
 
+  it('marks toolbar buttons for the File Manager styles and labels the current folder', () => {
+    render(<FilesystemTask fs={fs} onFsChange={vi.fn()} />)
+    const rename = screen.getByRole('button', { name: /Rename/ })
+    expect(rename).toBeDisabled()
+    expect(rename).toHaveClass('fs-tool-btn')
+    expect(screen.getByRole('button', { name: /Delete/ })).toHaveClass('fs-tool-btn--danger')
+    expect(screen.getByLabelText('Current folder')).toHaveTextContent('root')
+  })
+
   it('renders an asset-backed image preview and reports browse interactions', () => {
     const onInteraction = vi.fn()
     render(

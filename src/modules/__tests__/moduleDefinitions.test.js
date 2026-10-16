@@ -276,7 +276,7 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
       scratch: 'blocks',
       html: null,
       filesystem: 'fs',
-      desktop: null,
+      desktop: 'fs',
       electronics: 'output',
     })
   })
