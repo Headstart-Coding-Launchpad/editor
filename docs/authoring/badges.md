@@ -41,7 +41,7 @@ student per lesson.
 | 🤝 Helpful Coder | `helpful_coder` | Helped a stuck classmate through peer help, and the classmate pressed 👍 Useful on something they sent or used their suggested change (on the task the help was for) | – |
 | 🗺️ Side Quester | `side_quester` | Marked at least `sideQuesterMinDone` [side-quests](AUTHORING_GUIDE.md#side-quests) Done in the session, on any tasks. Done is self-reported, so it is suggested only and the tutor decides | – |
 | 📖 Word Smith | `word_smith` | Right **first time** on every vocab task they have tried (a graded quiz tagged `Quiz: Vocabulary Check` or `Quiz: Vocabulary Match`, any quiz type), and at least `wordSmithMinTasks` of them (see [Vocab tasks](#vocab-tasks)) | – |
-| 🤩 Emoji Artist | `emoji_artist` | Ran Python or HTML code with an emoji in a string, or in HTML text or an attribute (comments don't count), in a task or a sandbox; typed, pasted or picked all count | – |
+| 🤩 Emoji Artist | `emoji_artist` | Ran Python or HTML code with an emoji they added in a string, or in HTML text or an attribute (comments, and emoji the task's code already had, don't count), in a task or a sandbox; typed, pasted or picked all count | – |
 | 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🧘 Focused Coder · 🧭 Project Explorer · 📈 Knowledge Builder · 🙋 Great Question · 🏹 Sharp Shooter · ✍️ Word Wizard · 🎨 Design Master · 🦸 Independent Coder · 🌡️ Honest Check-in · 🦁 Brave Coder · 🌱 Growing Coder · 🔁 Comeback Coder · 🎤 Show and Tell · 💬 Great Answer · 🧑‍🏫 Code Teacher · 🕵️ Teacher Trap · 🧹 Tidy Coder · 🔦 Edge Explorer · 🏁 Finisher · 🧷 Careful Checker | `problem_solver`, `experimenter`, `creative_coder`, `comedy_coder`, `focused_coder`, `project_explorer`, `knowledge_builder`, `great_question`, `sharp_shooter`, `word_wizard`, `design_master`, `independent_coder`, `honest_check_in`, `brave_coder`, `growing_coder`, `comeback_coder`, `show_and_tell`, `great_answer`, `code_teacher`, `teacher_trap`, `tidy_coder`, `edge_explorer`, `finisher`, `careful_checker` | Tutor-only: never suggested | – |
 
 "First in class" is decided per task, in the order the tasks were first passed. Each student
@@ -249,8 +249,9 @@ helper's item the stuck classmate marked 👍 Useful or whose change they used; 
 read each other's peer help, so it is never a student signal), `side_quest_done` (a side-quest
 the student marked Done, from `sideQuestLog`; self-reported and never checked) and `emoji_run`.
 
-`emoji_run` is the student's first Run (or Run tests) of code with an emoji the program would
-show: inside a Python string literal, or in HTML text or an attribute value. Python `#` comments,
+`emoji_run` is the student's first Run (or Run tests) of code with an emoji they added that the
+program would show (emoji already in the task's code stages, `copyCode` or the tutor's sandbox
+code don't count; one more of the same emoji does): inside a Python string literal, or in HTML text or an attribute value. Python `#` comments,
 HTML `<!-- -->` comments and CSS / JavaScript comments (in `<style>`, `<script>`, `.css` and `.js`
 files) don't count, and plain digits, `#`, `*`, ©, ® and ™ aren't emoji. The student's device
 checks the code on Run (`src/shared/emojiInCode.js`, for modules whose `meta.language` is

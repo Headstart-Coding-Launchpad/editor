@@ -28,7 +28,8 @@ export const PORTRAIT_RATIO = 1.1
  * How the workspace lays out its editor and result panes:
  *
  * - 'side': editor | everything side by side (wide desktops; also before the workspace has
- *   been measured, and whenever there is only one result pane to show);
+ *   been measured, and in landscape whenever there are at most two result panes: the picture
+ *   sits above the console and shrinks to fit, so it never needs tabs — Ryan, 2026-10-16);
  * - 'tabs': editor | one tabbed result pane;
  * - 'below': editor above, result pane (tabbed when it has more than one pane) below — phones
  *   and portrait screens.
@@ -45,7 +46,7 @@ export function chooseWorkspaceLayout({
   if (isMobile) return 'below'
   if (!(width > 0) || !(height > 0)) return 'side'
   if (height > width * PORTRAIT_RATIO) return 'below'
-  if (paneCount <= 1) return 'side'
+  if (paneCount <= 2) return 'side'
   const resultWidth = width * (1 - split / 100)
   if (resultWidth < SIDE_BY_SIDE_MIN_RESULT_WIDTH || height < SIDE_BY_SIDE_MIN_HEIGHT) {
     return 'tabs'

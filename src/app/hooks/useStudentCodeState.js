@@ -32,6 +32,7 @@ import {
   isTeacherLivePinLogged,
 } from '../../shared/taskStages.js'
 import { resolveAssetsPath } from '../../shared/assetPaths'
+import { givenCodeOf } from '../../shared/emojiInCode.js'
 import { isFlaggablePaste, isSamePasteText, measurePaste } from '../../shared/pasteDetection'
 import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesystem'
 import { DEFAULT_CIRCUIT } from '../../modules/electronics/circuit'
@@ -1798,6 +1799,8 @@ export function useStudentCodeState({
     badgeSignals.reportRunCode({
       work: storedWork(moduleType).work,
       language: definition?.meta?.language ?? null,
+      // Emoji the task (or the tutor's sandbox code) gave them don't count.
+      given: givenCodeOf(task, [session?.sandboxCode]),
     })
 
     setRunning(true)
@@ -2042,6 +2045,7 @@ export function useStudentCodeState({
     badgeSignals.reportRunCode({
       work: code,
       language: getModuleDefinition(lesson?.type)?.meta?.language ?? null,
+      given: givenCodeOf(task, [session?.sandboxCode]),
     })
 
     setRunningTests(true)
@@ -2169,6 +2173,8 @@ export function useStudentCodeState({
     const moduleType = lesson?.type
     if (!isCodeStringWork(workSlotDefinition(moduleType))) return
     handleWorkChange(withCode(moduleType, newCode), { moduleType })
+    // A scrub task redraws a moment after typing pauses, as a scrub does (useScrubPreview).
+    scrubPreview.typedEdit(newCode)
   }
 
   // Arcade's sprite/sound design editor. The design is part of Arcade's work; it is saved with

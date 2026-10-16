@@ -4,6 +4,7 @@
 // uses what the tutor already has (the live mirror and logged submissions; see
 // src/shared/exportWork/collect.js). Nothing is written to the student.
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '../../../auth/useAuth'
 import { collectExportItems, exportableTasks } from '../../../shared/exportWork/collect.js'
 import { hasExporter, loadExporters } from '../../../shared/exportWork/exporters.js'
@@ -128,8 +129,11 @@ export default function ExportWorkDialog({ student, lesson, session, onClose }) 
     }
   }
 
-  return (
+  // On document.body, like the other dialogs over the student modal: inside the modal's own
+  // .ui-modal-backdrop, the shared header rule (src/index.css) painted this whole dialog purple.
+  return createPortal(
     <div
+      className="ui-modal-backdrop"
       style={s.overlay}
       onClick={(e) => {
         if (e.target === e.currentTarget && !busy) onClose()
@@ -294,7 +298,8 @@ export default function ExportWorkDialog({ student, lesson, session, onClose }) 
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

@@ -166,8 +166,9 @@ export default function StudentWorkspace({
 
   // What's on screen, for the tutor's student card ('canvas' is the Picture tab).
   const stackedIds = ['picture', 'tags']
+  // Side by side: the picture, the tags and the console unless it is folded away.
   const shownResultPanes = !tabbed
-    ? ['picture']
+    ? resultPanes.filter((id) => id !== 'console' || !outputCollapsed)
     : resultPanes.filter(
         (id) =>
           id === result.active ||

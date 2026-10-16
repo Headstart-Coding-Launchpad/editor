@@ -147,7 +147,8 @@ codeStages:
 - Clicking or tapping the line puts the cursor in the nearest value; the arrow keys jump from value to value along the line. Typing that would change anything outside a value (the name, a quote mark, a new line) does nothing and shows "Only the values on this line can change".
 - An empty string (`name = ""`) stays editable: a small box between the quote marks shows where to type. A student can empty a string, but not delete a number completely (it must stay a number).
 - Values are plain strings and numbers. f-strings (their `{name}` is code), `r"…"`/`b"…"` strings, triple-quoted strings and comments stay locked.
-- Scrubbing works on the line's numbers and colour strings.
+- Scrubbing works on the line's numbers and colour strings, and typing a new value redraws the
+  Stage half a second after the student stops typing (see [Live scrubbing](#live-scrubbing-scrub)).
 - The lock follows its line by its shape (the line with its values blanked out), so it survives saving, reloading, a support stage, **Undo** and **Reset**. Checks see the whole program as usual.
 - Validation warns when a `#@lock-values` line has no string or number to change (it is then fully locked), and when one has no line after it.
 
@@ -824,6 +825,11 @@ What students get:
   steals focus or opens the on-screen keyboard. Programs that call `input()` never run on open
   (validation warns). `runOnOpen: false` turns it off on a scrub task; `runOnOpen: true` turns it
   on for a task without `scrub`.
+- **Typing redraws too.** On a task with `scrub`, `runOnOpen` or a `#@lock-values` line (Python
+  and Turtle), the code re-runs as the same preview half a second after the student stops
+  typing, so typing a new number, colour or name updates the Stage or drawing like a scrub. If the
+  half-typed code errors, the last picture and output stay. It's not a Run: no checks, nothing
+  logged. Not in a sandbox.
 
 Numbers in code are scrubbed, not numbers in strings or comments, or inside names like `x2`. A
 minus sign belongs to the number (`-5` in `left(-5)`), but not in `a - 5`.
@@ -847,6 +853,8 @@ On a wide desktop a Python task shows everything side by side: the editor, then 
 console and the name-tag panel. When that doesn't fit (tablets, 1366 × 768 Chromebooks and small
 laptops), the editor stays on the left and **one result pane** on the right has tabs
 **Picture · Tags · Console**. On portrait screens and phones the editor sits above the tabs.
+A task with just the Picture and the Console (no Tags) never uses tabs in landscape: the Picture
+sits above the Console and shrinks to fit.
 Only the tabs the task has appear: Picture once the code imports `stage` (or the task has a
 `stageTarget`), Tags with `showVariables`. A task with just a console has no tabs at all.
 

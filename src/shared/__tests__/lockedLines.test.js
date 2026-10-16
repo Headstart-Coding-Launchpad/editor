@@ -7,6 +7,7 @@ import {
   mergeLocks,
   onlyEditLocks,
   taskHasLocks,
+  taskHasValueLocks,
 } from '../lockedLines.js'
 import { parseLineHints, stripLessonLineHints, stripTaskLineHints } from '../lineHints.js'
 
@@ -178,5 +179,17 @@ describe('stripTaskLineHints lock sets', () => {
     const lesson = { tasks: [{ id: 6, starterCode: '#@lock\nx = 1\n' }] }
     const prepared = stripLessonLineHints(lesson, () => 'python')
     expect(getTaskLockSets(prepared.tasks[0])).toEqual([[{ line: 1, target: 'x = 1' }]])
+  })
+})
+
+describe('taskHasValueLocks', () => {
+  it('is true only with a #@lock-values lock', () => {
+    const code = 'from stage import *\n#@lock-values\nhero = "Zara"\n#@lock\ntext(hero)'
+    const task = stripTaskLineHints({ id: 't', starterCode: code }, 'python')
+    expect(taskHasValueLocks(task)).toBe(true)
+    const plain = stripTaskLineHints({ id: 't', starterCode: '#@lock\nprint(1)' }, 'python')
+    expect(taskHasLocks(plain)).toBe(true)
+    expect(taskHasValueLocks(plain)).toBe(false)
+    expect(taskHasValueLocks({})).toBe(false)
   })
 })

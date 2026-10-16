@@ -264,11 +264,12 @@ export default function StudentWorkspace({
 
   // What's on screen, for the tutor's student card ('stage' is the Picture tab).
   const stackedIds = ['picture', 'tags']
+  // Side by side, every pane is on screen: the Stage once it shows, the tags and the console.
   const shownResultPanes =
     !shouldShowOutput || outputCollapsed
       ? []
       : !tabbed
-        ? ['console']
+        ? [showStage && 'picture', tagsAvailable && 'tags', 'console'].filter(Boolean)
         : resultPanes.filter(
             (id) =>
               id === result.active ||

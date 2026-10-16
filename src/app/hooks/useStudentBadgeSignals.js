@@ -9,7 +9,7 @@ import {
 } from '../../badges/signals'
 import { isDesktopKeyboardShortcut, matchKeyboardWizardShortcut } from '../../badges/shortcuts'
 import { comboOf, normalizeKeyEvent } from '../../shared/input/events.js'
-import { canDetectEmojiIn, codeHasEmoji } from '../../shared/emojiInCode.js'
+import { canDetectEmojiIn, codeHasNewEmoji } from '../../shared/emojiInCode.js'
 
 // Signals are recorded only while a real student is in a live lesson or the teacher's sandbox —
 // the same phases useStudentPresenceReporting reports in. Never solo, never the presentation
@@ -63,9 +63,10 @@ export function workAreaShortcutFor(event) {
  * - reportTopicOpen(topicId, { source = 'student', via })
  * - reportShortcut(shortcutId)
  * - reportAutocomplete(): an accepted code-editor autocomplete suggestion (first use only)
- * - reportRunCode({ work, language }): a Run (Run or Run tests) of `work` (a code string or the
- *   project's files) in the module's `meta.language`; records `emojiRun` the first time the work
- *   has an emoji in a string or HTML text (src/shared/emojiInCode.js). Scanned on Run only.
+ * - reportRunCode({ work, language, given }): a Run (Run or Run tests) of `work` (a code string
+ *   or the project's files) in the module's `meta.language`; records `emojiRun` the first time
+ *   the work has an emoji in a string or HTML text that isn't in the `given` code (the task's
+ *   own, src/shared/emojiInCode.js givenCodeOf). Scanned on Run only.
  * - handleWorkAreaKeyDown(event): a keydown (capture phase) on the lesson work area
  * - reportUserEdit(surface): a real edit (CodeEditor onUserEdit, a Blockly user event, a
  *   Filesystem / Desktop / Arcade design change)
@@ -184,10 +185,10 @@ export function useStudentBadgeSignals({
   const emojiRunDoneRef = useRef(false)
   const emojiRunRecordedRef = useLatestRef(!!session?.studentSignals?.[anonymousId]?.emojiRun)
   const reportRunCode = useCallback(
-    ({ work, language } = {}) => {
+    ({ work, language, given = [] } = {}) => {
       const s = stateRef.current
       if (!s.enabled || emojiRunDoneRef.current || emojiRunRecordedRef.current) return
-      if (!canDetectEmojiIn(language) || !codeHasEmoji(work, language)) return
+      if (!canDetectEmojiIn(language) || !codeHasNewEmoji(work, language, given)) return
       emojiRunDoneRef.current = true
       writersRef.current.recordEmojiRunSignal?.(s.anonymousId, {
         context: s.context,

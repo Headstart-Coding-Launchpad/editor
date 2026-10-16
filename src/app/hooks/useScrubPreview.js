@@ -10,6 +10,7 @@ import {
 } from '../../shared/scrub/scrubConfig.js'
 import { appendStudentOutput, createStudentOutputBuffer } from './studentOutputBuffer'
 import { codeCallsInput, getTaskRunOnOpen } from '../../shared/scrub/runOnOpen.js'
+import { taskHasValueLocks } from '../../shared/lockedLines.js'
 
 // A preview run that hasn't finished by now is stopped (a draw-only program should be quick).
 const PREVIEW_TIMEOUT_MS = 4000
@@ -19,6 +20,8 @@ export const SCRUB_RELEASE_DELAY_MS = 150
 const SCRUB_RELEASE_RETRY_MS = 300
 // The opening run (runOnOpen) waits this long after the task opens, so its code has loaded.
 export const RUN_ON_OPEN_DELAY_MS = 120
+// A typed edit on a scrub task re-runs the preview once the student pauses this long.
+export const TYPED_PREVIEW_DELAY_MS = 500
 
 /**
  * Live preview re-runs while a value is scrubbed in the code editor (a task's `scrub`;
@@ -57,6 +60,12 @@ export const RUN_ON_OPEN_DELAY_MS = 120
  * attempt, no checks, no save, not a Run — so the picture shows straight away and the first drag
  * redraws at once. Never for a program that calls input(), never in free play (`freePlay`), and
  * only for a 'runtime' module (python, turtle).
+ *
+ * Typed edits (Ryan, 2026-10-16): on a task with scrub, runOnOpen or a `#@lock-values` line
+ * ("Change the values only"), in a 'runtime' module, `typedEdit(code)` (each edit, from
+ * handleCodeChange) re-runs the same preview once the student pauses for TYPED_PREVIEW_DELAY_MS,
+ * so typing a new value redraws as a scrub does. A preview that ends in an error (half-typed
+ * code) leaves the last picture and output as they were. Never in free play.
  */
 export function useScrubPreview({
   moduleType,
@@ -162,6 +171,7 @@ export function useScrubPreview({
       return
     }
     if (!result || result.status === 'stopped' || after.running) return
+    if (job.quietErrors && result.status === 'error') return
     if (after.moduleType !== job.moduleType || after.task?.id !== job.taskId) return
     setReplayAnswers(used > 0 ? answers.slice(0, used) : null)
     after.setOutput(output.display)
@@ -179,6 +189,39 @@ export function useScrubPreview({
   }, [task?.id, moduleType])
 
   useEffect(() => () => clearTimeout(releaseTimerRef.current), [])
+
+  // Typed edits: one preview once the typing pauses (see the comment above useScrubPreview).
+  const typedTimerRef = useRef(null)
+  useEffect(() => {
+    clearTimeout(typedTimerRef.current)
+    typedTimerRef.current = null
+  }, [task?.id, moduleType])
+  useEffect(() => () => clearTimeout(typedTimerRef.current), [])
+
+  function typedEdit(code) {
+    const ctx = contextRef.current
+    if (freePlay || !ctx.task) return
+    const live = getTaskScrub(ctx.task) || getTaskRunOnOpen(ctx.task) || taskHasValueLocks(ctx.task)
+    if (!live) return
+    if (getModuleDefinition(ctx.moduleType)?.capabilities?.run !== 'runtime') return
+    clearTimeout(typedTimerRef.current)
+    typedTimerRef.current = setTimeout(() => {
+      typedTimerRef.current = null
+      const now = contextRef.current
+      if (now.running || typeof code !== 'string' || !code.trim()) return
+      const { mode, answers } = previewModeFor(code)
+      if (mode !== 'preview') return
+      schedulerRef.current.request({
+        code,
+        fileName: null,
+        moduleType: now.moduleType,
+        taskId: now.task?.id ?? null,
+        answers,
+        notify: null,
+        quietErrors: true,
+      })
+    }, TYPED_PREVIEW_DELAY_MS)
+  }
 
   // Run on open: once per task opening, after its code has loaded and the runtime is ready.
   const openedRef = useRef(null)
@@ -274,5 +317,6 @@ export function useScrubPreview({
     clearScrubReplay: () => setReplayAnswers(null),
     rememberRunAnswers,
     scrubCommitted,
+    typedEdit,
   }
 }
