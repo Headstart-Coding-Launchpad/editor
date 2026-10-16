@@ -44,6 +44,12 @@ import { lastErrorLine } from '../studentHints.js'
  *   (src/modules/python/slowMo/): the runtime records the run for playback, and `onResult` gets
  *   the runtime's result (with its `slowMo` recording) before anything else is done with it.
  *   The recorded run IS the run: output, checks, the attempt and the save are exactly as for Run.
+ *   Or `{ source: 'scrub', inputAnswers? }`: the checks a live scrub runs when it ends
+ *   (useScrubPreview, scrub.checkOnRelease). It is a Run in every way, except that input()
+ *   questions are answered from `inputAnswers` (the last Run's answers, in order; a question past
+ *   them is asked as usual) and the attempt is logged with `source: 'scrub'`.
+ * - onInputAnswer (optional): told each answer given to input() on this run (typed by the
+ *   student, through handleInputSubmit, is recorded by the caller; replayed ones come here)
  */
 let turtleRunCount = 0
 
@@ -167,6 +173,11 @@ export async function runWithRuntime(ctx) {
     refs.runtimeCodeRafIdRef.current = requestAnimationFrame(flushRuntimeCodeUpdate)
   }
   refs.appendOutputRef.current = echoOutput
+  // A scrub's checks answer input() from the last Run's answers (see runOptions above).
+  const replayAnswers = Array.isArray(ctx.runOptions?.inputAnswers)
+    ? ctx.runOptions.inputAnswers
+    : []
+  let replayed = 0
   const result = await runtime.run(startCode, task, {
     onOutput: (text, kind, line) => {
       echoOutput(text)
@@ -175,6 +186,14 @@ export async function runWithRuntime(ctx) {
       }
     },
     onInputRequired: (prompt) => {
+      if (replayed < replayAnswers.length) {
+        const answer = String(replayAnswers[replayed])
+        replayed += 1
+        refs.submitInputEchoRef.current?.(answer)
+        ctx.onInputAnswer?.(answer)
+        runtime.provideInput?.(answer)
+        return
+      }
       refs.inputPromptRef.current = prompt
       refs.inputValueRef.current = ''
       setInputPrompt(prompt)
@@ -381,6 +400,7 @@ export async function runWithRuntime(ctx) {
       suggestion,
       teacherAssisted: refs.teacherAssistedTaskIdsRef.current.has(currentTaskId),
       error: runError,
+      ...(ctx.runOptions?.source === 'scrub' ? { source: 'scrub' } : {}),
     })
   }
   setRunning(false)

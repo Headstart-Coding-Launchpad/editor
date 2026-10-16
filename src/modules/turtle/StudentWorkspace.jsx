@@ -17,7 +17,9 @@ import TurtlePicture from './CoursePicture.jsx'
 import CourseMapEditor from './CourseMapEditor.jsx'
 import { getTaskCourse } from './course.js'
 import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
+import { useVariableLinks } from '../../shared/variablesPanel/useVariableLinks.js'
 import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
+import ScrubReplayNote from '../../shared/scrub/ScrubReplayNote.jsx'
 import { usePythonSlowMo } from '../python/slowMo/usePythonSlowMo.js'
 import PredictRunLockNote, {
   PREDICT_RUN_LOCK_NOTE_ID,
@@ -129,14 +131,11 @@ export default function StudentWorkspace({
   // The #@peek "stopped here" band (showVariables.at: marker), from when the task opens; not
   // while the panel is hidden or slow-mo steps through the run.
   const variablesSynced = isForcedTeacherLive ? displayVariablesPanel : undefined
-  const peekBand =
-    !tagsAvailable || slowMoView
-      ? null
-      : getPeekBand(
-          task,
-          code,
-          panelRunForTask(task, { panel: cs.variablesPanel, synced: variablesSynced })
-        )
+  const panelRun = panelRunForTask(task, { panel: cs.variablesPanel, synced: variablesSynced })
+  const peekBand = !tagsAvailable || slowMoView ? null : getPeekBand(task, code, panelRun)
+  // Linked name tags (showVariables.link): each tag and its variable in the code share a colour
+  // and a number.
+  const variableLinks = useVariableLinks(task, panelRun, { enabled: tagsAvailable })
   const resultPanes = ['picture', tagsAvailable && 'tags', 'console'].filter(Boolean)
   const {
     ref: workspaceRef,
@@ -289,8 +288,11 @@ export default function StudentWorkspace({
         onChange={readOnly ? undefined : cs.handleCodeChange}
         // Live number / colour scrubbing (task `scrub`, src/shared/scrub/); not in a sandbox.
         scrub={readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskScrub(task)}
-        onScrubPreview={cs.scrubPreview}
-        onScrubCommit={cs.recordScrub}
+        onScrubPreview={
+          cs.scrubPreview ? (value, options) => cs.scrubPreview(value, null, options) : undefined
+        }
+        // A finished scrub: counted for the report, and checked once as a Run (checkOnRelease).
+        onScrubCommit={cs.handleScrubCommit}
         pyodideStatus={cs.pyodideStatus}
         errorLine={readOnly ? null : cs.errorLine}
         lineHints={readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskLineHintSets(task)}
@@ -300,6 +302,7 @@ export default function StudentWorkspace({
         onRunShortcut={readOnly ? undefined : handleRunClick}
         slowMoMarker={slowMoView?.marker ?? null}
         peekBand={peekBand}
+        variableLinks={variableLinks.editor}
       />
     </div>
   )
@@ -311,6 +314,8 @@ export default function StudentWorkspace({
   // so both draw at once.
   const picture = (
     <div style={s.canvasWrap}>
+      {/* "Using your last answers: …" while a scrub preview replays the last Run's answers. */}
+      <ScrubReplayNote answers={readOnly ? null : cs.scrubReplayAnswers} style={s.replayNote} />
       <TurtlePicture
         task={task}
         code={code}
@@ -324,7 +329,7 @@ export default function StudentWorkspace({
   // The name-tag panel (showVariables); step by step during slow-mo.
   const variablesStyle = tabbed ? s.variablesFill : s.variablesPanel
   const variablesPanel = slowMoView ? (
-    <SlowMoNameTags task={task} slowMo={slowMo} style={variablesStyle} />
+    <SlowMoNameTags task={task} slowMo={slowMo} style={variablesStyle} {...variableLinks.panel} />
   ) : (
     <TaskVariablesPanel
       task={inFreePlay ? null : task}
@@ -334,6 +339,7 @@ export default function StudentWorkspace({
       running={cs.running}
       hidden={isViewingPrev || isTeacherEditing}
       style={variablesStyle}
+      {...variableLinks.panel}
     />
   )
 
@@ -494,7 +500,10 @@ const s = {
     minHeight: 0,
     gap: 8,
   },
+  // Over the top of the picture, so the drawing keeps its size.
+  replayNote: { position: 'absolute', top: 6, left: 6, right: 6, zIndex: 1, width: 'fit-content' },
   canvasWrap: {
+    position: 'relative',
     display: 'flex',
     flex: '1 1 0',
     minHeight: 160,

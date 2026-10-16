@@ -258,10 +258,10 @@ const scrubTheme = EditorView.baseTheme({
 
 /**
  * The scrub extension for an editable editor, or [] when nothing can be scrubbed.
- * - `config`: getTaskScrub's `{ numbers, colours, ranges }`.
+ * - `config`: getTaskScrub's `{ numbers, colours, ranges, checkOnRelease }`.
  * - `language`: the editor language (python, html, css; others are not scrubbed).
  * - `handlersRef.current`: `{ onPreview(code, { view, from }), onCommit({ kind }),
- *   openPopover({ view, literal, range, step }) }`, read at call time so the owner can change them.
+ *   openPopover({ view, literal, range, step, settleSteps }) }`, read at call time so the owner can change them.
  */
 export function scrubExtension({ config, language, handlersRef }) {
   const syntax = scrubSyntaxFor(language)
@@ -271,6 +271,8 @@ export function scrubExtension({ config, language, handlersRef }) {
     numbers: !!config.numbers,
     colours: !!config.colours,
     ranges: config.ranges ?? [],
+    // checkOnRelease: the slider popover keeps each step as an edit, so the checks run on it.
+    settleSteps: config.checkOnRelease !== false,
   }
   const handlers = () => handlersRef?.current ?? {}
 
@@ -281,6 +283,7 @@ export function scrubExtension({ config, language, handlersRef }) {
       literal,
       range: scrubRangeFor(literal, literal.line, options.ranges),
       step: numberStep(literal),
+      settleSteps: options.settleSteps,
     }
   }
 

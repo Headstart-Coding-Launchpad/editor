@@ -4,6 +4,7 @@ import {
   getTaskScrub,
   scrubCapabilityOf,
   scrubCapabilityProblem,
+  scrubCodeAsksForInput,
   scrubPreviewMode,
   validateScrub,
 } from '../scrubConfig.js'
@@ -14,12 +15,21 @@ describe('getTaskScrub', () => {
   it('is off unless set, and defaults numbers and colours on', () => {
     expect(getTaskScrub({})).toBeNull()
     expect(getTaskScrub({ scrub: { enabled: false } })).toBeNull()
-    expect(getTaskScrub({ scrub: true })).toEqual({ numbers: true, colours: true, ranges: [] })
+    expect(getTaskScrub({ scrub: true })).toEqual({
+      numbers: true,
+      colours: true,
+      ranges: [],
+      checkOnRelease: true,
+    })
     expect(getTaskScrub({ scrub: { enabled: true, colours: false } })).toEqual({
       numbers: true,
       colours: false,
       ranges: [],
+      checkOnRelease: true,
     })
+    expect(getTaskScrub({ scrub: { enabled: true, checkOnRelease: false } }).checkOnRelease).toBe(
+      false
+    )
     expect(getTaskScrub({ scrub: { numbers: false, colours: false } })).toBeNull()
   })
 
@@ -85,6 +95,17 @@ describe('scrubPreviewMode', () => {
     expect(scrubPreviewMode({ liveRerun: 'none' }, 'x')).toBe('press-run')
     expect(scrubPreviewMode(null, 'x')).toBe('press-run')
   })
+
+  it('replays the last Run’s answers for input(), and asks for a Run without them (P6-21)', () => {
+    const code = 'import stage\nname = input("?")'
+    expect(scrubPreviewMode(python, code)).toBe('press-run-answers')
+    expect(scrubPreviewMode(turtle, 'n = input ("size")')).toBe('press-run-answers')
+    expect(scrubPreviewMode(python, code, { inputAnswers: ['Ada'] })).toBe('preview')
+    // An empty list is a Run with no answers: the preview finds out it needs more.
+    expect(scrubPreviewMode(python, code, { inputAnswers: [] })).toBe('preview')
+    expect(scrubCodeAsksForInput(python, code)).toBe(true)
+    expect(scrubCodeAsksForInput(python, 'x = box.input(1)')).toBe(false)
+  })
 })
 
 describe('validateScrub', () => {
@@ -109,6 +130,10 @@ describe('validateScrub', () => {
     expect(run({ enabled: 'yes' }).errors).toEqual([
       'Task 4 has scrub enabled that is not true or false',
     ])
+    expect(run({ enabled: true, checkOnRelease: 'no' }).errors).toEqual([
+      'Task 4 has scrub checkOnRelease that is not true or false',
+    ])
+    expect(run({ enabled: true, checkOnRelease: false })).toEqual({ errors: [], warnings: [] })
     expect(run({ enabled: true, ranges: { line: 1 } }).errors[0]).toMatch(/not a list/)
     const { errors, warnings } = run(
       {
