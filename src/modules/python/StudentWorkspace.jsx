@@ -13,6 +13,7 @@ import {
 import CopyCodePanel from '../../app/components/CopyCodePanel'
 import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
 import { useVariableLinks } from '../../shared/variablesPanel/useVariableLinks.js'
+import { codeCallsInput, getTaskRunOnOpen } from '../../shared/scrub/runOnOpen.js'
 import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
 import ScrubReplayNote from '../../shared/scrub/ScrubReplayNote.jsx'
 import {
@@ -75,7 +76,8 @@ export default function StudentWorkspace({
 }) {
   // A task with a name-tag panel (showVariables) opens with the output side showing, so the
   // student can predict before the first Run; so does one with a Stage target to draw over, and
-  // one whose author picked the first result tab (layout.firstPane).
+  // one whose author picked the first result tab (layout.firstPane), and one that runs on open
+  // (runOnOpen), so its opening preview is in view.
   const [localOutputCollapsed, setLocalOutputCollapsed] = useState(
     () =>
       !arrangeBoard &&
@@ -84,7 +86,8 @@ export default function StudentWorkspace({
       !isViewingPrev &&
       !taskShowsVariables(lessonTask) &&
       !stageTargetCode(lessonTask) &&
-      !getTaskLayout(lessonTask)?.firstPane
+      !getTaskLayout(lessonTask)?.firstPane &&
+      !(getTaskRunOnOpen(lessonTask) && !codeCallsInput(cs.code))
   )
   // While forced-live, the panel state is locked to whatever the broadcast
   // source (teacher/watched student) has it set to — continuous, not a

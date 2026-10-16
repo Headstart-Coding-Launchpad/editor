@@ -219,7 +219,13 @@ const scrubbableNumberMark = Decoration.mark({
   attributes: { title: 'Drag or tap to change this number' },
 })
 
-// Colour swatches and the always-visible marker on every scrubbable number (P6-24).
+// Pickable colours carry the same "you can change this" box as numbers, swatch beside it.
+const scrubbableColourMark = Decoration.mark({
+  class: `${EDITABLE_VALUE_CLASS} cm-scrubbable`,
+  attributes: { title: 'Click or tap to pick a colour' },
+})
+
+// Colour swatches and the always-visible marker on every scrubbable number and colour (P6-24).
 function swatchDecorations(view, options) {
   if (!options.colours && !options.numbers) return Decoration.none
   const ranges = []
@@ -236,6 +242,8 @@ function swatchDecorations(view, options) {
         ranges.push(
           Decoration.widget({ widget: new SwatchWidget(literal.hex), side: -1 }).range(literal.from)
         )
+        if (literal.from < literal.to)
+          ranges.push(scrubbableColourMark.range(literal.from, literal.to))
       }
       pos = line.to + 1
     }

@@ -55,6 +55,38 @@ const cs = {
   readSavedTaskCode: vi.fn(),
 }
 
+describe('Python StudentWorkspace output side on open', () => {
+  const renderTask = (task) =>
+    render(
+      <StudentWorkspace
+        task={task}
+        cs={{ ...cs, code: 'from stage import *\ntext("hi", y=200)' }}
+        lessonId="lesson-1"
+        identityId="student-1"
+        viewingTaskId={null}
+        isSandbox={false}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isMobile={false}
+        isTeacherEditing={false}
+        teacherLiveCode=""
+      />
+    )
+
+  it('opens with the output side showing for a task that runs on open (scrub on), P6-23', () => {
+    renderTask({ id: 't1', scrub: { enabled: true } })
+    expect(screen.queryByTitle('Show Output')).not.toBeInTheDocument()
+  })
+
+  it('stays folded for a plain task, and for runOnOpen: false', () => {
+    const { unmount } = renderTask({ id: 't1' })
+    expect(screen.getByTitle('Show Output')).toBeInTheDocument()
+    unmount()
+    renderTask({ id: 't1', scrub: { enabled: true }, runOnOpen: false })
+    expect(screen.getByTitle('Show Output')).toBeInTheDocument()
+  })
+})
+
 describe('Python StudentWorkspace onVisiblePanesChange reporting (teacher live-status badge)', () => {
   it('reports just "code" while output is collapsed, and adds "console" once shown', () => {
     const onVisiblePanesChange = vi.fn()

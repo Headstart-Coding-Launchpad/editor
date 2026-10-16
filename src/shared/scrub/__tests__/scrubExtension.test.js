@@ -131,4 +131,13 @@ describe('always-visible marker on scrubbable numbers', () => {
     const off = makeView('rect(120, 60)', { config: { ...CONFIG, numbers: false } })
     expect(off.view.dom.querySelector('.cm-scrubbable')).toBeNull()
   })
+
+  it('marks pickable colours the same way, with the swatch kept beside the box', () => {
+    const { view } = makeView('background("gold")')
+    const marked = [...view.dom.querySelectorAll('.cm-editableValue.cm-scrubbable')]
+    expect(marked.map((el) => el.textContent)).toEqual(['gold'])
+    expect(view.dom.querySelector('.cm-scrubSwatch')).not.toBeNull()
+    const off = makeView('background("gold")', { config: { ...CONFIG, colours: false } })
+    expect(off.view.dom.querySelector('.cm-scrubbable')).toBeNull()
+  })
 })
