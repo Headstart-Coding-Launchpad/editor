@@ -1508,7 +1508,7 @@ export default function StudentView({
         variant="presentation"
       />
       <button
-        className="btn-ghost"
+        className="btn-ghost presentation-header-btn"
         style={s.presentationBtn}
         disabled={currentIndex <= 0}
         onClick={() => handleSoloNavigate(flatTasks[currentIndex - 1]?.id)}
@@ -1521,7 +1521,7 @@ export default function StudentView({
         Task {currentIndex + 1} / {flatTasks.length}
       </span>
       <button
-        className="btn-ghost"
+        className="btn-ghost presentation-header-btn"
         style={s.presentationBtn}
         disabled={currentIndex >= flatTasks.length - 1}
         onClick={() => handleSoloNavigate(flatTasks[currentIndex + 1]?.id)}
@@ -1531,7 +1531,7 @@ export default function StudentView({
         Next ›
       </button>
       <button
-        className={isTeacherLiveActive ? 'btn-danger' : 'btn-primary'}
+        className={`${isTeacherLiveActive ? 'btn-danger' : 'btn-primary'} presentation-header-btn`}
         style={s.presentationBtn}
         onClick={handleToggleTeacherLive}
         aria-label={isTeacherLiveActive ? 'Stop Live to Students' : 'Go Live to Students'}
@@ -1548,7 +1548,7 @@ export default function StudentView({
           <button
             key={opt.key}
             type="button"
-            className="btn-ghost"
+            className="btn-ghost presentation-header-btn"
             style={s.presentationBtn}
             aria-pressed={presenterLayout === opt.key}
             title={opt.full}
@@ -2181,7 +2181,7 @@ const s = {
   presentationControls: {
     display: 'flex',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     flexWrap: 'nowrap',
     justifyContent: 'flex-end',
     minWidth: 0,

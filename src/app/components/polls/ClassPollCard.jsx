@@ -106,8 +106,8 @@ export default function ClassPollCard({ poll, choice = null, tally, onAnswer, pr
           <p className="class-poll-card__note">
             {choice == null
               ? resultsPublic
-                ? 'Pick one to see how the class voted. Nobody sees who chose what.'
-                : 'Pick one. Only your teacher sees who chose what.'
+                ? "Pick one to see how the class voted. Other students can't see what you chose."
+                : 'Pick one. Only your tutor sees who chose what.'
               : 'Thanks! You can change your answer until the poll closes.'}
           </p>
         </>

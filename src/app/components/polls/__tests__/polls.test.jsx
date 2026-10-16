@@ -132,6 +132,8 @@ describe('ClassPollCard', () => {
     const { rerender } = render(<ClassPollCard poll={poll} choice={null} tally={tally} />)
     expect(screen.queryByLabelText('Poll results')).not.toBeInTheDocument()
     expect(screen.getByText(/Pick one to see how the class voted/)).toBeInTheDocument()
+    // The tutor does see names, so the note says other students can't (HSC Audit 21).
+    expect(screen.getByText(/Other students can't see what you chose/)).toBeInTheDocument()
     rerender(<ClassPollCard poll={poll} choice={1} tally={tally} />)
     expect(screen.getByLabelText('Poll results')).toBeInTheDocument()
     // Still open: the student can change their answer.

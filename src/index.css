@@ -858,6 +858,23 @@ select {
 
 /* Teacher's class countdown (ClassCountdownPill, TimesUpBanner). Static colours only: no
    looping animation on student UI; the banner's motion-pop-in handles reduced motion. */
+/* TopBar (one-row student bar): below 1180px the logo keeps its rocket but drops its name. */
+@media (max-width: 1180px) {
+  .top-bar__logo-text {
+    display: none;
+  }
+}
+
+/* Presentation window header buttons (StudentView): finger-sized on touch screens, where they
+   were about 28px tall and tightly packed (HSC Audit 20). */
+@media (pointer: coarse) {
+  .presentation-header-btn {
+    min-height: 38px;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+}
+
 .class-countdown {
   display: inline-flex;
   align-items: center;
@@ -5124,10 +5141,11 @@ label.te-backdrop-tag,
 }
 
 .live-ink-toolbar {
-  /* Bottom centre: the class badge toast already owns the bottom-left corner. */
+  /* Bottom right: the class badge toast already owns the bottom-left corner, and in the
+     centre it sat over the foot of the left panel (HSC Audit 20). Lesson text is left-aligned,
+     so the right-hand corner covers the least. */
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 16px;
   bottom: 16px;
   z-index: 75;
   display: flex;
@@ -5334,10 +5352,12 @@ label.te-backdrop-tag,
   line-height: 1.6;
 }
 
+/* The privacy line matters to students, so it reads as text, not a faint caption (HSC Audit 21). */
 .class-poll-card__note {
   margin: 0;
-  font-size: 12.5px;
-  color: var(--colour-muted);
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--colour-ink-strong);
 }
 
 .class-poll-card--presentation .class-poll-card__note {
