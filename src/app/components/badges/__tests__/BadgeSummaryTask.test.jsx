@@ -280,5 +280,21 @@ describe('BadgeSummaryTask', () => {
       act(() => vi.advanceTimersByTime(2000))
       expect(screen.getByRole('button', { name: /copy class summary/i })).toBeInTheDocument()
     })
+
+    it('has nothing to copy on an empty wall, and points the tutor at waiting suggestions', () => {
+      render(
+        <BadgeSummaryTask
+          task={task}
+          decisions={{}}
+          students={students}
+          variant="teacher"
+          pendingCount={6}
+        />
+      )
+      expect(screen.queryByRole('button', { name: /copy class summary/i })).not.toBeInTheDocument()
+      expect(
+        screen.getByText(/Nothing celebrated yet\. 6 badge suggestions are waiting/)
+      ).toBeInTheDocument()
+    })
   })
 })

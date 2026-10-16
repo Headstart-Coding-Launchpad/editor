@@ -269,8 +269,9 @@ export default function TeacherView({ lessonId }) {
       students: session?.students ?? {},
       variant: 'teacher',
       catalogueBadges,
+      pendingCount: badgeSuggestions.suggestions.length,
     }),
-    [session?.badges, session?.students, catalogueBadges]
+    [session?.badges, session?.students, catalogueBadges, badgeSuggestions.suggestions.length]
   )
   // The suggestions panel's open state lives here so the grid's 🏅 Suggestions button can open
   // and focus it (bumping badgePanelFocus).

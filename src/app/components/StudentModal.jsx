@@ -130,6 +130,8 @@ export default function StudentModal({
   onDecideBadge,
   onRevokeBadge,
   catalogueBadges = [],
+  // The rules' pending badge suggestions (BadgeSuggestion[]), ranked at the top of the picker.
+  badgeSuggestions = [],
   // Truthy (a fresh value each time) to show the student's side-quest rather than the task.
   sideQuestViewRequest = null,
   // Tutor-only: the class-list name this student is matched to (src/shared/roster/), or null.
@@ -1663,6 +1665,7 @@ export default function StudentModal({
           students={[{ anonymousId: student.anonymousId, displayName: student.displayName }]}
           decisions={session?.badges ?? {}}
           catalogueBadges={catalogueBadges}
+          suggestions={badgeSuggestions}
           taskId={session?.currentTaskId ?? null}
           onDecideBadge={onDecideBadge}
           onRevokeBadge={onRevokeBadge}

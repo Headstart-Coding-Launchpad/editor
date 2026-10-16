@@ -624,6 +624,7 @@ export default function StudentGrid({
           }))}
           decisions={session?.badges ?? {}}
           catalogueBadges={catalogueBadges}
+          suggestions={badgeSuggestions?.suggestions ?? []}
           taskId={session?.currentTaskId ?? null}
           onDecideBadge={onDecideBadge}
           onClose={() => setShowBadgeDialog(false)}
@@ -708,6 +709,7 @@ export default function StudentGrid({
           onDecideBadge={onDecideBadge}
           onRevokeBadge={onRevokeBadge}
           catalogueBadges={catalogueBadges}
+          badgeSuggestions={badgeSuggestions?.suggestions ?? []}
           sideQuestViewRequest={sideQuestViewRequest}
           rosterName={rosterStatus?.namesByStudent?.[expandedStudent.anonymousId] ?? null}
           typingEntries={

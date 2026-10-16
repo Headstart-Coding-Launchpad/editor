@@ -4715,6 +4715,15 @@ label.te-backdrop-tag,
   justify-content: flex-end;
 }
 
+/* The tutor's title with Copy class summary beside it (wraps under it when narrow). */
+.badge-summary__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 /* Badge Summary entrance (first view only; BadgeSummaryTask.jsx works out the delays). Student:
    "The whole class" and the rows drop in (`motion-drop-in`) once the stickers have landed. */
 .badge-summary__content .badge-summary__heading--drop,

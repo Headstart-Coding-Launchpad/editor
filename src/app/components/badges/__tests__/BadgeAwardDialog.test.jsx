@@ -2,7 +2,7 @@ import React from 'react'
 import { render, screen, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
-import BadgeAwardDialog from '../BadgeAwardDialog'
+import BadgeAwardDialog, { suggestedBadgeRanking } from '../BadgeAwardDialog'
 import { getBadgeDefinitions } from '../../../../badges/registry'
 
 const ALEX = { anonymousId: 's1', displayName: 'Alex' }
@@ -182,13 +182,61 @@ describe('BadgeAwardDialog', () => {
 
   it('groups badges into rule-backed, tutor-awarded and (only when present) admin sections', () => {
     renderDialog()
-    const rules = screen.getByRole('group', { name: 'Suggested by rules' })
+    const rules = screen.getByRole('group', { name: 'Other badges with a rule' })
     const tutor = screen.getByRole('group', { name: 'Tutor-awarded' })
     expect(screen.queryByRole('group', { name: 'Admin badges' })).not.toBeInTheDocument()
     for (const badge of getBadgeDefinitions()) {
       const section = badge.tutorOnly ? tutor : rules
       expect(within(section).getByTestId(`badge-option-${badge.id}`)).toBeInTheDocument()
     }
+  })
+
+  it('shows what each badge is for under its name, so Code Fixer and Bug Hunter differ', () => {
+    renderDialog()
+    expect(screen.getByTestId('badge-option-line-bug_hunter')).toHaveTextContent(
+      'Found and fixed a bug.'
+    )
+    expect(screen.getByTestId('badge-option-line-code_fixer')).toHaveTextContent(
+      'Read an error and fixed it.'
+    )
+  })
+
+  it('puts the rules’ suggestions for this student first, ranked, with the reason', () => {
+    renderDialog({
+      suggestions: [
+        { studentId: 's1', badgeId: 'code_fixer', reason: 'Fixed a NameError', at: 10 },
+        { studentId: 's1', badgeId: 'bug_hunter', reason: 'Fixed two bugs', at: 20 },
+        { studentId: 's2', badgeId: 'persistence', reason: 'Kept going', at: 30 },
+      ],
+    })
+    const suggested = screen.getByRole('group', { name: 'Suggested now (best first)' })
+    const tiles = within(suggested).getAllByRole('button')
+    expect(tiles.map((tile) => tile.dataset.testid)).toEqual([
+      'badge-option-bug_hunter',
+      'badge-option-code_fixer',
+    ])
+    expect(within(suggested).getByText('Fixed two bugs')).toBeInTheDocument()
+    // Not listed twice, and another student's suggestion is not shown.
+    const rules = screen.getByRole('group', { name: 'Other badges with a rule' })
+    expect(within(rules).queryByTestId('badge-option-bug_hunter')).not.toBeInTheDocument()
+    expect(within(rules).getByTestId('badge-option-persistence')).toBeInTheDocument()
+  })
+
+  it('ranks a badge suggested for more of the selected students first', () => {
+    expect(
+      suggestedBadgeRanking(
+        [
+          { studentId: 's1', badgeId: 'a', at: 50 },
+          { studentId: 's1', badgeId: 'b', at: 1 },
+          { studentId: 's2', badgeId: 'b', at: 2 },
+          { studentId: 's9', badgeId: 'c', at: 99 },
+        ],
+        ['s1', 's2']
+      ).map((entry) => [entry.badgeId, entry.count])
+    ).toEqual([
+      ['b', 2],
+      ['a', 1],
+    ])
   })
 
   it('puts catalogue badges under Admin badges', () => {

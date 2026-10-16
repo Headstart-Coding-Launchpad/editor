@@ -18,20 +18,54 @@ function namesOf(students) {
   return `${students.length} students`
 }
 
-/** The picker's sections, in order; a section with no badges isn't shown. */
+/**
+ * The picker's sections, in order; a section with no badges isn't shown. "Suggested now" comes
+ * first when the rules have suggestions for these students (see suggestedBadgeRanking); the
+ * badges in it are left out of "Other badges with a rule".
+ */
 export const BADGE_PICKER_GROUPS = Object.freeze([
-  { id: 'rules', label: 'Suggested by rules', test: (badge) => !badge.tutorOnly },
+  { id: 'rules', label: 'Other badges with a rule', test: (badge) => !badge.tutorOnly },
   { id: 'tutor', label: 'Tutor-awarded', test: (badge) => badge.tutorOnly && !badge.catalogue },
   { id: 'admin', label: 'Admin badges', test: (badge) => !!badge.catalogue },
 ])
 
 /**
+ * The rules' pending suggestions for these students, one entry per badge, best first: the
+ * badge suggested for the most of them, then the most recent. Each keeps the rule's reason
+ * (what the student did) so the tile can say why. Pure.
+ *
+ * @param {object[]} suggestions BadgeSuggestion[] (useBadgeSuggestions)
+ * @param {string[]} studentIds who the picker is for
+ * @returns {{ badgeId: string, count: number, reason: string|null, at: number }[]}
+ */
+export function suggestedBadgeRanking(suggestions = [], studentIds = []) {
+  const ids = new Set(studentIds)
+  const byBadge = new Map()
+  for (const suggestion of suggestions ?? []) {
+    if (!suggestion || !ids.has(suggestion.studentId)) continue
+    const entry = byBadge.get(suggestion.badgeId) ?? {
+      badgeId: suggestion.badgeId,
+      count: 0,
+      reason: null,
+      at: 0,
+    }
+    entry.count += 1
+    entry.reason ??= suggestion.reason || null
+    entry.at = Math.max(entry.at, Number(suggestion.at) || 0)
+    byBadge.set(suggestion.badgeId, entry)
+  }
+  return [...byBadge.values()].sort((a, b) => b.count - a.count || b.at - a.at)
+}
+
+/**
  * The tutor's manual badge picker (docs/architecture/live-badges-plan.md, "Tutor experience"):
  * opened from a student's More → 🏅 Award badge, or from the grid's select mode for several
- * students at once. Lists every badge in three sections: "Suggested by rules" (registry
- * rule-backed), "Tutor-awarded" (registry tutor-only) and "Admin badges" (the Admin catalogue via
- * `catalogueBadges`, only when there are any). A badge every selected student already holds is
- * greyed.
+ * students at once. Lists every badge in sections: "Suggested now" (the rules' pending
+ * `suggestions` for these students, ranked by suggestedBadgeRanking, each with its reason),
+ * "Other badges with a rule" (registry rule-backed), "Tutor-awarded" (registry tutor-only) and
+ * "Admin badges" (the Admin catalogue via `catalogueBadges`, only when there are any). Every tile
+ * shows a short line under its name: the reason, or what the badge is for. A badge every
+ * selected student already holds is greyed.
  *
  * Select, then confirm: clicking a tile selects it (aria-pressed) and shows its blurb and exact
  * rule, and the Award button (disabled until a badge is selected) awards it (source 'manual').
@@ -61,6 +95,9 @@ export default function BadgeAwardDialog({
   onDecideBadge,
   onRevokeBadge,
   onClose,
+  // The rules' pending suggestions (BadgeSuggestion[], any students): the ones for these
+  // students head the picker, ranked, with the reason on each tile.
+  suggestions = [],
 }) {
   const [announce, setAnnounce] = useState(true)
   const [pending, setPending] = useState(() => new Set())
@@ -69,15 +106,34 @@ export default function BadgeAwardDialog({
   const [hoverId, setHoverId] = useState(null)
 
   const badges = useMemo(() => listAwardableBadges(catalogueBadges), [catalogueBadges])
-  const groups = useMemo(
+  const studentKey = students.map((st) => st.anonymousId).join('\u0000')
+  const ranking = useMemo(
     () =>
-      BADGE_PICKER_GROUPS.map((group) => ({
+      suggestedBadgeRanking(
+        suggestions,
+        students.map((st) => st.anonymousId)
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [suggestions, studentKey]
+  )
+  const reasons = useMemo(
+    () => Object.fromEntries(ranking.map((entry) => [entry.badgeId, entry])),
+    [ranking]
+  )
+  const groups = useMemo(() => {
+    const suggestedBadges = ranking
+      .map((entry) => badges.find((badge) => badge.id === entry.badgeId))
+      .filter(Boolean)
+    const suggestedIds = new Set(suggestedBadges.map((badge) => badge.id))
+    return [
+      { id: 'suggested', label: 'Suggested now (best first)', badges: suggestedBadges },
+      ...BADGE_PICKER_GROUPS.map((group) => ({
         id: group.id,
         label: group.label,
-        badges: badges.filter(group.test),
-      })).filter((group) => group.badges.length > 0),
-    [badges]
-  )
+        badges: badges.filter((badge) => group.test(badge) && !suggestedIds.has(badge.id)),
+      })),
+    ].filter((group) => group.badges.length > 0)
+  }, [badges, ranking])
   const single = students.length === 1 ? students[0] : null
   const held = single
     ? Object.entries(decisions?.[single.anonymousId] ?? {})
@@ -280,7 +336,18 @@ export default function BadgeAwardDialog({
                     const allHold = students.length > 0 && holders === students.length
                     const busy = pending.has(badge.id)
                     const isSelected = selectedId === badge.id
+                    const suggestion = reasons[badge.id] ?? null
+                    // A short visible line under the name (HSC Audit, Visual Review 16): why
+                    // the rules suggest it, else what the badge is for ("Code Fixer" vs "Bug
+                    // Hunter").
+                    const line =
+                      suggestion?.reason && students.length === 1
+                        ? suggestion.reason
+                        : suggestion && students.length > 1
+                          ? `Suggested for ${suggestion.count} of ${students.length}`
+                          : (badge.blurb ?? '')
                     const hint = [
+                      suggestion?.reason ? `Why: ${suggestion.reason}` : null,
                       badge.blurb,
                       badge.ruleText,
                       holders > 0 && students.length > 1
@@ -307,7 +374,17 @@ export default function BadgeAwardDialog({
                         data-testid={`badge-option-${badge.id}`}
                       >
                         <BadgeEmoji badge={badge} size="1.25rem" />
-                        <span style={s.optionTitle}>{badge.title}</span>
+                        <span style={s.optionText}>
+                          <span style={s.optionTitle}>{badge.title}</span>
+                          {line && (
+                            <span
+                              style={{ ...s.optionLine, ...(suggestion ? s.optionReason : null) }}
+                              data-testid={`badge-option-line-${badge.id}`}
+                            >
+                              {line}
+                            </span>
+                          )}
+                        </span>
                         {allHold && <span style={s.optionState}>Awarded</span>}
                         {busy && <span style={s.optionState}>Awarding…</span>}
                       </button>
@@ -493,14 +570,25 @@ const s = {
   },
   optionHeld: { opacity: 0.5 },
   // Full names: a long title wraps onto a second line rather than being cut off.
+  optionText: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 },
   optionTitle: {
-    flex: 1,
     minWidth: 0,
     fontWeight: 600,
     lineHeight: 1.2,
     whiteSpace: 'normal',
     overflowWrap: 'anywhere',
   },
+  // One or two lines of what it's for (or why it's suggested); the full text is the tooltip.
+  optionLine: {
+    fontSize: '0.74rem',
+    lineHeight: 1.25,
+    color: 'var(--colour-muted)',
+    overflow: 'hidden',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+  },
+  optionReason: { color: 'var(--colour-primary-dark)' },
   optionState: { fontSize: '0.7rem', color: 'var(--colour-muted)', flexShrink: 0 },
   detail: {
     minHeight: 48,

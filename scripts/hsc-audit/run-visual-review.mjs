@@ -341,7 +341,8 @@ async function runWidth(browser, wName) {
       .filter({ hasNotText: /Award|Cancel|Close|✕|×/ })
       .first()
       .click()
-    await picker.getByRole('button', { name: /^Award$/ }).click({ timeout: 6000 })
+    // Once a badge is selected the button reads "Award 🐛 Bug Hunter", never just "Award".
+    await picker.getByTestId('badge-award-confirm').click({ timeout: 6000 })
     await wait(ben, 800)
     await shot(ben, '16 Live badges', 'student', 'badge card')
     await wait(ben, 4000)
