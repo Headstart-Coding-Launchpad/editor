@@ -2,6 +2,7 @@ import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import TeacherEditorPanel from '../TeacherEditorPanel'
+import keyboard from '../../../../activities/keyboard/definition.js'
 
 vi.mock('../../../../shared/CodeEditor', () => ({
   CodeEditor: () => <div data-testid="code-editor" />,
@@ -97,6 +98,18 @@ describe('TeacherEditorPanel — editor stack sizing', () => {
       />
     )
     expect(container.firstChild.style.minHeight).toBe('0px')
+  })
+})
+
+describe('TeacherEditorPanel — activity answer key', () => {
+  it('labels an activity shown finished as the answer key', () => {
+    const task = keyboard.defaultTask({ id: 3, title: 'Keys' })
+    render(
+      <TeacherEditorPanel
+        {...mkProps({ lesson: { type: 'python', tasks: [task] }, task, displayTaskId: 3 })}
+      />
+    )
+    expect(screen.getByTestId('teacher-answer-key-note')).toHaveTextContent('Answer key')
   })
 })
 

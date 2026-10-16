@@ -58,7 +58,8 @@ export default function TeacherEditorPanel({
   // question, since the teacher's screen is often projected.
   if (!isInSandbox && isHostedActivityTask(task)) {
     const activity = getTaskActivity(task)
-    return (
+    const showsAnswers = activity.previewState !== 'initial' && !!activity.solutionState
+    const activityView = (
       <ActivityView
         task={task}
         state={
@@ -71,6 +72,19 @@ export default function TeacherEditorPanel({
         lessonType={lesson?.type}
         entranceKey={entranceKey}
       />
+    )
+    if (!showsAnswers) return activityView
+    // The finished state ("✓ Correct", "All done") is the answer key, not the class's progress:
+    // say so, since the students' cards beside it may all say "Not started" (HSC Audit, Visual
+    // Review 14).
+    return (
+      <>
+        <div style={styles.answerKeyNote} data-testid="teacher-answer-key-note">
+          <span aria-hidden="true">🔑</span> Answer key: what a finished task looks like. Only you
+          see this; each student&apos;s progress is on their card.
+        </div>
+        {activityView}
+      </>
     )
   }
   // Module-hosted activities (Arrange tasks) assemble from drag-and-drop tiles,
@@ -167,6 +181,16 @@ export default function TeacherEditorPanel({
 }
 
 const styles = {
+  answerKeyNote: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.8rem',
+    color: '#92400e',
+    background: '#fffbeb',
+    border: '1px solid #fde68a',
+    borderRadius: 6,
+    padding: '6px 10px',
+    marginBottom: 8,
+  },
   readOnlyNote: {
     fontFamily: 'var(--font-body)',
     fontSize: '0.76rem',
