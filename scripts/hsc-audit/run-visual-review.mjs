@@ -126,7 +126,11 @@ async function openGrid(tutor) {
       .catch(() => false)
   )
     return
-  await tutor.getByRole('button', { name: '‹' }).last().click({ timeout: 4000 })
+  // The folded tablet rail opens from its "‹ Show" button (older builds: a bare "‹").
+  await tutor
+    .getByRole('button', { name: /^‹( Show)?$/ })
+    .last()
+    .click({ timeout: 4000 })
   await wait(tutor, 800)
 }
 
@@ -349,13 +353,30 @@ async function runWidth(browser, wName) {
     await shot(ava, '16 Live badges', 'student', 'classmate toast')
   })
   await step('19 Student modal', 'close modal', tutor, async () => {
+    // Escape closes the badge picker first, then the modal; the header ✕ is named "Close".
     await tutor.keyboard.press('Escape')
-    await click(tutor, /^✕$/).catch(() => {})
+    await wait(tutor, 300)
+    if (
+      await tutor
+        .locator('[role=dialog]')
+        .first()
+        .isVisible()
+        .catch(() => false)
+    ) {
+      await tutor.keyboard.press('Escape')
+      await wait(tutor, 300)
+    }
+    await modal(tutor)
+      .getByRole('button', { name: 'Close', exact: true })
+      .first()
+      .click({ timeout: 2000 })
+      .catch(() => {})
   })
 
   // --- Help, peer help, sharing
   await step('22 Help and peer help', 'help', ben, async () => {
-    await click(ben, /Help/)
+    // Skipped when an earlier step already asked for help ("✋ Help requested").
+    await click(ben, /^✋ Help$/, 3000).catch(() => {})
     await wait(ben, 1000)
     await shot(ben, '22 Help and peer help', 'student', 'help bubble')
     await wait(tutor, 1500)
