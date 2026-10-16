@@ -366,6 +366,10 @@ do meanwhile: up to three optional, **unchecked** mini tasks on that code task.
                   print("*")
 ```
 
+- **Markers in the starter:** a side-quest's `starter` takes the same markers as a task's starter
+  code: `#>` line hints (HTML: `<!--> … -->`), `#@lock`, `#@lock-values` and `#@peek`. They're
+  stripped from the code, shown the same way (💡 hint, locked or values-only lines), and never
+  run or saved.
 - **Unlock:** only after the task's own completion check passes (so the task needs a `check`).
   Live: only while the class is still on that task; solo: after a pass. A bar above the workspace
   says "🎉 You've finished! Try a side-quest" with a button per side-quest.

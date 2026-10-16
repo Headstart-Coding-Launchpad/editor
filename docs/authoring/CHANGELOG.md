@@ -39,6 +39,15 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-16
 
+### Line hints and locks work in side-quest starters (P6-29)
+
+- A side-quest's `starter` now handles `#>` line hints (HTML `<!--> … -->`), `#@lock`,
+  `#@lock-values` and `#@peek` exactly as a task's starter does. Before, the marker lines showed
+  as plain comments. See [AUTHORING_GUIDE.md](AUTHORING_GUIDE.md#side-quests).
+- Affects: python, turtle, html · Existing lessons: no changes needed (markers already written
+  in side-quest starters now work) · Resolves:
+  authoring-requests/2026-10-16-p6-29-line-hints-in-side-quest-starters.md
+
 ### Authoring docs corrected to match the app (HSC Audit)
 
 The HSC Audit checked every claim in these docs against the app. Some docs told authors to write

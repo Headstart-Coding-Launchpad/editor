@@ -18,6 +18,7 @@
 // side-quest closes or the class moves on. Side-quest code never writes the task's saved work
 // and never feeds carryCodeFrom.
 import { getModuleDefinition, getModuleTypesWithCapability } from '../modules/definitions.js'
+import { stripTaskLineHints } from './lineHints.js'
 
 export const SIDE_QUEST_MAX = 3
 export const SIDE_QUEST_KINDS = Object.freeze(['challenge', 'debug', 'predict'])
@@ -128,9 +129,16 @@ export function validateSideQuests(task, { n, moduleType, isCodeTask }, errors, 
 /**
  * The throwaway task a side-quest runs as: the module's starter shape filled from the side-quest's
  * `starter`, its explainer as the instructions, and nothing else (no check, tests, copy code,
- * stages to reveal or carry-through).
+ * stages to reveal or carry-through). Its markers (`#>` line hints, `#@lock`, `#@lock-values`,
+ * `#@peek`) are stripped as a lesson task's are (stripTaskLineHints, P6-29), so the starter shows
+ * the hints and locks and never runs or saves the marker lines.
  */
 export function buildSideQuestTask(task, quest, moduleType) {
+  const syntax = getModuleDefinition(moduleType)?.capabilities?.lineHints ?? null
+  return stripTaskLineHints(sideQuestTaskShape(task, quest, moduleType), syntax)
+}
+
+function sideQuestTaskShape(task, quest, moduleType) {
   const base = {
     id: SIDE_QUEST_TASK_ID,
     title: `${sideQuestKindMeta(quest.kind).icon} ${quest.title}`,
