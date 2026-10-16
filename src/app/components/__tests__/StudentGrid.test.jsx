@@ -288,6 +288,33 @@ describe('StudentGrid', () => {
     })
   })
 
+  describe('share requests', () => {
+    const sharing = STUDENTS.map((st) =>
+      st.anonymousId === 's1' ? { ...st, shareRequestedAt: 5 } : st
+    )
+
+    it('prompts the tutor with Review / Not now for a student who wants to share', async () => {
+      const user = userEvent.setup()
+      const onDeclineShare = vi.fn()
+      render(
+        <StudentGrid
+          {...mkProps({ students: sharing, onReadPendingShare: vi.fn(), onDeclineShare })}
+        />
+      )
+      const banner = screen.getByTestId('share-request-banner')
+      expect(banner).toHaveTextContent('Alice wants to share their work with the class')
+      await user.click(within(banner).getByRole('button', { name: 'Not now' }))
+      expect(onDeclineShare).toHaveBeenCalledWith('s1')
+      await user.click(within(banner).getByRole('button', { name: 'Review' }))
+      expect(screen.getByTestId('modal-name')).toHaveTextContent('Alice')
+    })
+
+    it('shows no prompt when nobody wants to share', () => {
+      render(<StudentGrid {...mkProps({ onReadPendingShare: vi.fn() })} />)
+      expect(screen.queryByTestId('share-request-banner')).not.toBeInTheDocument()
+    })
+  })
+
   describe('collapsed state', () => {
     function renderCollapsed(studentOverrides = {}) {
       return render(

@@ -188,7 +188,7 @@ export default function TeacherPeerHelpMenu({ session, lesson, peerHelp }) {
             >
               Turn peer help back on
             </button>
-          ) : (
+          ) : active.length > 0 ? (
             <button
               type="button"
               className="btn-danger"
@@ -196,6 +196,18 @@ export default function TeacherPeerHelpMenu({ session, lesson, peerHelp }) {
               onClick={() => peerHelp.pauseAllPeerHelp()}
             >
               End all peer help
+            </button>
+          ) : (
+            // Nobody is helping: no red stop button, just the switch that keeps peer help off
+            // (HSC Audit, Visual Review 22).
+            <button
+              type="button"
+              className="btn-ghost-outline"
+              style={s.btn}
+              onClick={() => peerHelp.pauseAllPeerHelp()}
+              title="Stop students offering or asking for peer help until you turn it back on"
+            >
+              Turn peer help off
             </button>
           )}
         </section>

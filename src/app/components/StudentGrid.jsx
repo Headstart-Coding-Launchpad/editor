@@ -8,6 +8,7 @@ import { MarkdownRenderer } from '../../shared/markdown'
 import BadgeAwardDialog from './badges/BadgeAwardDialog'
 import DropdownMenu from './student-modal/DropdownMenu'
 import JoiningStudentsList from './JoiningStudentsList'
+import ShareRequestsBanner from './ShareRequestsBanner'
 import ClassActivityStrip from './ClassActivityStrip'
 import CommonHintsStrip from './CommonHintsStrip'
 import ConfidenceSpreadStrip from './ConfidenceSpreadStrip'
@@ -229,6 +230,8 @@ export default function StudentGrid({
 
   if (collapsed) {
     const runCount = students.filter((s) => s.lastRunStatus != null).length
+    const helpCount = students.filter((st) => st.needsHelp).length
+    const shareCount = students.filter((st) => st.shareRequestedAt != null).length
 
     // The whole rail opens the panel (a tablet folds the grid here by default), and the
     // button at the top says so in words, not just an arrow.
@@ -296,6 +299,20 @@ export default function StudentGrid({
           <div style={s.collapsedStat}>
             <span style={{ ...s.collapsedBadge, background: '#ea580c' }}>{errorCount}</span>
             <span style={s.collapsedStatLabel}>errored</span>
+          </div>
+        )}
+
+        {/* Asks that need the tutor, so a folded panel never hides them. */}
+        {helpCount > 0 && (
+          <div style={s.collapsedStat} title="Students asking for help">
+            <span style={{ ...s.collapsedBadge, background: '#f59e0b' }}>{helpCount}</span>
+            <span style={s.collapsedStatLabel}>✋ help</span>
+          </div>
+        )}
+        {shareCount > 0 && (
+          <div style={s.collapsedStat} title="Students who want to share their work">
+            <span style={{ ...s.collapsedBadge, background: '#0d9488' }}>{shareCount}</span>
+            <span style={s.collapsedStatLabel}>📤 share</span>
           </div>
         )}
 
@@ -506,6 +523,13 @@ export default function StudentGrid({
       )}
 
       <JoiningStudentsList joiningStudents={joiningStudents} onAdmit={onAdmitJoining} />
+      {onReadPendingShare && (
+        <ShareRequestsBanner
+          students={students}
+          onReview={handleExpand}
+          onDecline={onDeclineShare}
+        />
+      )}
 
       {students.length === 0 ? (
         <div style={s.empty}>
