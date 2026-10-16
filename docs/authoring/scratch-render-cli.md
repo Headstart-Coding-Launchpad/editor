@@ -24,7 +24,7 @@ node cli/cli.mjs scratch render blocks.json --sprite Dog --out dog.svg
 |---|---|
 | `[file]` | A lesson (YAML or JSON) or a bare block state: one sprite's `{ blocks: { blocks: [...] } }`, a whole workspace state keyed by sprite id, or a single root block. |
 | `--lesson <id>` | Fetch the lesson from Firestore instead of a file. |
-| `--task <n\|id>` | Task index (0-based, as `tasks get` counts) or task id. The default is the first task with blocks. |
+| `--task <n\|id>` | Task index (0-based, as `tasks get` counts) or task id. **Any all-digit value is read as an index**, so `--task 4` is the fifth task, not task id 4 (unlike `lessons test-checks --task`, which takes an id). The default is the first task with blocks. |
 | `--field` | `complete` (`completeBlocks`, else the last Complete code stage), `starter` (the first Starter code stage, else `starterBlocks`), `stage:<n>` (`codeStages[n].blocks`) or `stack:<id>` (a `prebuiltStacks` entry). The default is complete, then starter, then the first Support stage. |
 | `--sprite <id\|name>` | Which sprite's script to draw, or `stage`. The default is the first sprite with blocks. |
 | `--out <path.svg>` | Where to save the SVG. The default is `<taskId>-<spriteId>.svg` in the current folder. The block map is saved beside it as `.json`. |
