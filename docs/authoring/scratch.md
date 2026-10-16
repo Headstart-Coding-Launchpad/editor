@@ -486,7 +486,7 @@ Both are off by default, and the Stage (with `enableStageCode`) always shows onl
 - `showSoundsTab` — a **Sounds** tab listing the sprite's sounds with a ▶ preview.
   `allowAddSound` adds an **+ Add sound** button offering every built-in synth sound plus the
   admin sound-file library (`lessonTypeAssets/scratch.defaultSounds`, managed in Admin → Shared
-  Assets → Scratch → Default sounds, or `lessons assets upload-sound scratch <file>`). An added
+  Assets → Scratch → Default sounds, or `node cli/cli.mjs assets upload-sound scratch <file>`). An added
   sound appears in that sprite's sound blocks immediately.
 
 Students can add costumes and sounds to **any** sprite, including author-placed ones. Added

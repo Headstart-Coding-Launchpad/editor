@@ -1047,8 +1047,8 @@ Entries written before 2026-09-29 are not tagged.
   Students may add to any sprite; additions are saved with their work. See
   [scratch.md](scratch.md#costumes-and-sounds-tabs).
 - New admin library `lessonTypeAssets/scratch.defaultSounds` (`{ id, name, audio }`), with CLI
-  `lessons assets upload-sound scratch <file>` and `lessons assets set-default-sounds scratch
-  [file]`. `lessons assets list-type scratch` now returns `defaultSounds` alongside `defaultSprites` / `defaultBackdrops` (`[]` when none), so check it before asking for a new sound file.
+  `node cli/cli.mjs assets upload-sound scratch <file>` and `node cli/cli.mjs assets set-default-sounds scratch
+  [file]` (`assets` is a top-level command; corrected 2026-10-16). `node cli/cli.mjs assets list-type scratch` now returns `defaultSounds` alongside `defaultSprites` / `defaultBackdrops` (`[]` when none), so check it before asking for a new sound file.
 - Affects: scratch, cli · Existing lessons: no changes needed · Resolves: authoring-requests/2026-10-02-assets-list-type-scratch-include-defaultsounds.md
 
 ## 2026-10-01
@@ -1459,7 +1459,7 @@ Entries written before 2026-09-29 are not tagged.
 
 - YAML shorthand: `type: binary`, `type: keyboard` or `type: mouse` on a task (any activity's
   YAML type) becomes `taskType: activity` + `activityType: <id>`. The explicit two-field form
-  still works; `lessons export` now writes the shorthand. An `activityType` this version doesn't
+  still works; `lessons get <id> --format yaml` and `lessons json-to-yaml` now write the shorthand (there is no `lessons export`; corrected 2026-10-16). An `activityType` this version doesn't
   know is exported explicitly. Quizzes keep `type: quiz` + `quizType`. See
   [lesson-schema-yaml.md](lesson-schema-yaml.md#activity-tasks) and the pages in
   [activities/](activities/), whose examples now use the shorthand.

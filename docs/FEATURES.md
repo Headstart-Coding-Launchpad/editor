@@ -37,7 +37,7 @@ New lessons are composed lessons: each code task selects one of the workspace ty
 - **Match** — drag-and-drop pairs
 - **Fill in the blank** — fill blanks by dragging tiles or typing
 - **Short answer** — free-text response; an open one (no check) with `showResponses: teacher_picks` lets the teacher pick answers from the student cards (📺 Show) to put on the presentation window, anonymous unless the teacher turns a name on
-- **Confidence** — 1–5 self-rating, no right/wrong answer
+- **Confidence** — 1–10 self-rating, no right/wrong answer
 - **Poll** — pick the option you prefer (2–6 options), no right/wrong answer, changeable; in a live lesson students see the class split (percentages, not names) after choosing and the presentation shows it live, unless the task sets `showResults: false`; the teacher sees each choice on the student cards and the counts in the session report
 
 ---
@@ -383,7 +383,7 @@ The builder's **Task Feedback Panel** shows submitted lesson and task feedback f
 
 ### CLI management
 
-The CLI can list, add, archive, and bulk-archive feedback items in both collections; nothing is hard-deleted. See `docs/authoring/feedback-cli.md`.
+The CLI can list, add, archive, and bulk-archive feedback items in both collections; archiving never deletes. Deleting a lesson (Admin or `lessons delete`) does delete its lesson feedback, along with its session reports, and so does re-creating a class fork with `lessons fork`. See `docs/authoring/feedback-cli.md`.
 
 ---
 

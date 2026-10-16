@@ -45,11 +45,15 @@ modules:
       fs:
         "/":
           type: dir
+        "/Downloads/":            # include it: an authored fs gets no Downloads folder
+          type: dir
       recycleBin: []
       windows: []                 # start with no windows open; the student opens File Manager themselves
     completeDesktop:              # optional — reference solution
       fs:
         "/":
+          type: dir
+        "/Downloads/":
           type: dir
         "/Documents/":
           type: dir
@@ -67,7 +71,7 @@ modules:
 
 **Desktop state model:** `{ fs, recycleBin, windows, browserVisited, lastSearchQuery }`.
 
-- `fs` is the same flat path map as the Filesystem module (see `docs/authoring/filesystem.md`) and is seeded with a `/Downloads/` folder by default.
+- `fs` is the same flat path map as the Filesystem module (see `docs/authoring/filesystem.md`). A `/Downloads/` folder is added **only when `fs` is left out**: an authored `fs` gets exactly what you write. A Browser download into a missing `/Downloads/` folder fails without a message, so **any task with a Browser download must list `"/Downloads/"` (type `dir`) in its authored `fs`** (and in every stage's).
 - `recycleBin` is an array of soft-deleted items (`{ path, entries, originalParent, deletedAt }`), populated automatically as the student deletes files — do not author this by hand except to pre-seed a "restore this" starting scenario.
 - `windows` is the initial window layout: an array of `{ id, appId, x, y, width, height, minimized, maximized, zIndex, filePath?, draftContent?, pageId?, searchQuery? }`. Leave empty (`[]`) to start with a bare desktop the student must open apps from, or pre-populate to start a task with a window already open (e.g. mid-lesson checkpoints).
   - `filePath` (Text Editor, Image Viewer) — the file that window is showing; omit for a blank/untitled window.
@@ -182,8 +186,9 @@ makes a real network request.
   (reuse the existing `fs_path`/`fs_file_content` checks to verify a download happened).
 - `links` navigate to another page by id. A `to` that doesn't resolve to a page (e.g. simulating a
   dead link without authoring the target) shows the same unreachable-page message as `kind: broken`.
-- `searchable` opts a page into the search index: `keywords` and title score highest, `snippet`
-  scores lowest, and results are ranked by total match score. `sponsored: true` pins a result to
+- `searchable` opts a page into the search index. The query is split into words; each word found
+  in the title scores 3, in `keywords` 2 and in `snippet` 1 (substring matches, case-insensitive),
+  and results are ranked by total score. A page scoring 0 isn't listed. `sponsored: true` pins a result to
   the top of its results list (ahead of organic matches) and labels it "Ad" — the search engine
   does not otherwise judge relevance or truthfulness; an authored irrelevant/misleading page ranks
   exactly as well as its keywords earn. That's deliberate — Unit 3 teaches pupils to *tell apart*
@@ -208,7 +213,7 @@ Additional Desktop-only check types:
 | `fs_recycle_bin` | `is_in`, `not_in` | `path` | Whether an item (matched by its original path) is currently in the Recycle Bin |
 | `window_state` | `opened`, `closed`, `minimized`, `maximized`, `moved_to`, `resized` | `appId`; `zone` (`moved_to`); `size`, `minWidth`, `minHeight`, `maxWidth`, `maxHeight` (`resized`) | State of the named app's window (`fileManager`, `textEditor`, `imageViewer`, `paint`, or `browser`). `moved_to` and `resized` are described below |
 | `windows_arranged_side_by_side` | `is_arranged` | `appIds` (two app IDs) | Tolerant geometry check: both windows visible, each occupying a meaningful share of the student's desktop, minimal overlap. Assesses "arranged side by side" as an outcome, not exact pixel positions |
-| `browser_visited` | `visited`, `not_visited` | `pageId` | Whether the student has ever navigated to that `siteGraph` page id, in any Browser window |
+| `browser_visited` | `visited`, `not_visited` | `pageId` | Whether the student has ever navigated to that `siteGraph` page id, in any Browser window. The page a window **opens on** (the homepage, or an authored `pageId`) isn't counted until the student navigates to it, so don't use the start page as the target |
 | `search_query` | `contains`, `not_contains`, `equals` | `text` | Compares the most recent search-engine query (case-insensitive) against `text` |
 
 ### Moving and resizing windows
@@ -229,7 +234,7 @@ or maximised window never counts as moved or resized.
 
 ```yaml
 - title: Window Wrangler
-  type: desktop
+  moduleType: desktop
   availableApps: [textEditor, browser]
   check:
     - type: window_state
