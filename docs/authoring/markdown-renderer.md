@@ -126,6 +126,8 @@ Scratch block bodies are drawn with SVG paths for Blockly-like geometry. Hat blo
 - Numbers and quoted strings -> white pill with dark text
 - `(input)` spans -> white rounded input bubble with dark text
 - `[dropdown]` spans -> darker coloured dropdown field with a small arrow
+- `[text]` in `say`, `say … for … seconds`, `think`, `think … for … seconds` and `ask … and wait` -> white typed-text oval with no arrow, as in Scratch (these inputs are typed, not picked from a menu)
+- `[… v]` spans (scratchblocks syntax) -> always a dropdown, drawn without the ` v`
 - `<condition>` spans -> Boolean-shaped slot; recognised Boolean blocks render as nested hexagonal blocks
 
 **Scratch block system:**

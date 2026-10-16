@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import SplitPane from '../../shared/SplitPane'
+import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
 import OutputPanel from '../../app/components/OutputPanel'
 import PythonEditor from '../python/PythonEditor.jsx'
 import {
@@ -56,8 +57,27 @@ const BOARD_SCALE_STEP = 0.1
 // Breathing room kept around the board when auto-fitting it to the pane.
 const BOARD_FIT_MARGIN = 40
 
+// On a touch screen the auto-fit never goes below this: at 57% (a full 20x14 board in a tablet
+// pane) the pins were a few pixels across, too small to wire with a finger (HSC Audit 09). The
+// board scrolls and pans instead, and Fit / − still zoom further out on request.
+export const TOUCH_FIT_MIN_SCALE = 0.85
+
 function clampBoardScale(value) {
   return Math.min(BOARD_SCALE_MAX, Math.max(BOARD_SCALE_MIN, Math.round(value * 100) / 100))
+}
+
+// The auto-fit zoom: the largest scale (never past 100%) at which the board fits the space,
+// floored at `minScale` (TOUCH_FIT_MIN_SCALE on touch screens). Null when there is no space yet.
+export function boardFitScale({
+  availableWidth,
+  availableHeight,
+  boardWidth,
+  boardHeight,
+  minScale = 0,
+}) {
+  if (availableWidth <= 0 || availableHeight <= 0) return null
+  const fit = Math.min(1, availableWidth / boardWidth, availableHeight / boardHeight)
+  return clampBoardScale(Math.max(fit, minScale))
 }
 
 export default function ElectronicsWorkspace({
@@ -107,6 +127,7 @@ export default function ElectronicsWorkspace({
   const [isPanning, setIsPanning] = useState(false)
   const [wireColor, setWireColor] = useState('auto')
   const [boardScale, setBoardScale] = useState(1)
+  const isTouchDevice = useIsTouchDevice()
   // Mirrors `hasCodeTab` below, not `showCodeTab`: a task whose Micro Controller comes
   // from the circuit rather than `task.microcontroller.enabled` still gets the MicroPython
   // tab, so it should get the output panel open alongside it.
@@ -184,10 +205,13 @@ export default function ElectronicsWorkspace({
   function computeFitScale() {
     const pane = boardWrapRef.current
     if (!pane) return null
-    const availableWidth = pane.clientWidth - BOARD_FIT_MARGIN
-    const availableHeight = pane.clientHeight - BOARD_FIT_MARGIN
-    if (availableWidth <= 0 || availableHeight <= 0) return null
-    return clampBoardScale(Math.min(1, availableWidth / boardWidth, availableHeight / boardHeight))
+    // The Fit button: the whole board, even on a touch screen.
+    return boardFitScale({
+      availableWidth: pane.clientWidth - BOARD_FIT_MARGIN,
+      availableHeight: pane.clientHeight - BOARD_FIT_MARGIN,
+      boardWidth,
+      boardHeight,
+    })
   }
 
   function fitBoardToPane() {
@@ -217,12 +241,14 @@ export default function ElectronicsWorkspace({
 
     function applyFit() {
       if (userSetZoomRef.current) return
-      const availableWidth = pane.clientWidth - BOARD_FIT_MARGIN
-      const availableHeight = pane.clientHeight - BOARD_FIT_MARGIN
-      if (availableWidth <= 0 || availableHeight <= 0) return
-      setBoardScale(
-        clampBoardScale(Math.min(1, availableWidth / boardWidth, availableHeight / boardHeight))
-      )
+      const scale = boardFitScale({
+        availableWidth: pane.clientWidth - BOARD_FIT_MARGIN,
+        availableHeight: pane.clientHeight - BOARD_FIT_MARGIN,
+        boardWidth,
+        boardHeight,
+        minScale: isTouchDevice ? TOUCH_FIT_MIN_SCALE : 0,
+      })
+      if (scale != null) setBoardScale(scale)
     }
 
     applyFit()
@@ -230,7 +256,7 @@ export default function ElectronicsWorkspace({
     const observer = new ResizeObserver(applyFit)
     observer.observe(pane)
     return () => observer.disconnect()
-  }, [selectedTab, boardWidth, boardHeight])
+  }, [selectedTab, boardWidth, boardHeight, isTouchDevice])
 
   // Teacher "force switch tab" — a one-time jump to Breadboard or MicroPython, applied via
   // the same local `tab` state a manual click would use (not the persistent `activeTab`
@@ -1220,7 +1246,15 @@ export default function ElectronicsWorkspace({
                         caption underneath was redundant, and spelling out "Fixed" beside
                         the name collided with it on narrower parts - a lock mark carries
                         the same meaning in the corner without competing for the width. */}
-                      <strong style={s.componentLabel}>{component.label}</strong>
+                      <strong
+                        style={{
+                          ...s.componentLabel,
+                          ...(component.locked ? s.componentLabelLocked : {}),
+                        }}
+                        title={component.label}
+                      >
+                        {component.label}
+                      </strong>
                       {component.locked && (
                         <span
                           style={s.fixedBadge}

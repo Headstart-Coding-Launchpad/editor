@@ -33,7 +33,7 @@ describe('Binary UI: overflow', () => {
     renderBinary(task)
     fireEvent.click(screen.getByRole('switch', { name: 'Answer 2 column' }))
     fireEvent.click(screen.getByRole('button', { name: 'No' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Check answers' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Check my work' }))
     expect(await screen.findByText(/so it was lost. That is an overflow./)).toBeInTheDocument()
   })
 })

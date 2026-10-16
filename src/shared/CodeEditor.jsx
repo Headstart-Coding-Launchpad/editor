@@ -27,6 +27,7 @@ import { variableLinksKey } from './variablesPanel/links.js'
 import { blockGuidesExtension } from './blockGuides'
 import { BadgeSignalsContext } from './badgeSignalsContext'
 import { useEditorScrub } from './scrub/useEditorScrub.jsx'
+import { useIsTouchDevice } from './useIsTouchDevice'
 import { isScrubPreviewUpdate, SCRUB_USER_EVENT } from './scrub/scrubExtension.js'
 
 // The CodeMirror user-event types that are the student's own editing (typing, pasting,
@@ -377,10 +378,15 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     scrub = null,
     onScrubPreview,
     onScrubCommit,
+    // Soft-wrap long lines. Defaults to on for touch screens, where the horizontal scrollbar is
+    // hidden and a long line would otherwise be cut off at the panel edge (HSC Audit #6).
+    wrapLines,
     style,
   },
   ref
 ) {
+  const isTouchDevice = useIsTouchDevice()
+  const shouldWrap = wrapLines ?? isTouchDevice
   const containerRef = useRef(null)
   const viewRef = useRef(null)
   const scrubUi = useEditorScrub({
@@ -446,7 +452,7 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
       state: EditorState.create({
         doc: value,
         extensions: [
-          ...createBaseExtensions(language, readOnly),
+          ...createBaseExtensions(language, readOnly, { wrapLines: shouldWrap }),
           remoteSelectionField,
           teacherHighlightsField,
           errorLineField,

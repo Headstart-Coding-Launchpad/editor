@@ -134,6 +134,22 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* File Manager toolbar (FilesystemTask): a disabled button must look switched off, not just
+   a little paler than a live one (HSC Audit 13). */
+.fs-tool-btn--danger {
+  color: #dc2626 !important;
+  border-color: #fca5a5 !important;
+}
+.fs-tool-btn:disabled {
+  background: #f3f4f6 !important;
+  color: #9ca3af !important;
+  border-color: #e5e7eb !important;
+  border-style: dashed !important;
+  box-shadow: none;
+  filter: grayscale(1);
+  opacity: 0.75;
+}
+
 /* The style guide documents a visible focus ring "through the global --ui-focus ring" for
    the whole app, but until now that ring was only ever wired up for form inputs (below) —
    buttons, tabs, and links had no focus-visible rule at all, so keyboard/screen-reader
@@ -842,6 +858,23 @@ select {
 
 /* Teacher's class countdown (ClassCountdownPill, TimesUpBanner). Static colours only: no
    looping animation on student UI; the banner's motion-pop-in handles reduced motion. */
+/* TopBar (one-row student bar): below 1180px the logo keeps its rocket but drops its name. */
+@media (max-width: 1180px) {
+  .top-bar__logo-text {
+    display: none;
+  }
+}
+
+/* Presentation window header buttons (StudentView): finger-sized on touch screens, where they
+   were about 28px tall and tightly packed (HSC Audit 20). */
+@media (pointer: coarse) {
+  .presentation-header-btn {
+    min-height: 38px;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+}
+
 .class-countdown {
   display: inline-flex;
   align-items: center;
@@ -3665,6 +3698,13 @@ label.te-backdrop-tag,
   }
 }
 
+/* Scratch block pictures in a quiz question (QuestionPanel) read at about 11px on a projected
+   or tablet screen (HSC Audit 08). zoom scales the whole stack, SVG and text together, so its
+   measured widths stay consistent. */
+.quiz-question-body [data-scratch-stack='true'] {
+  zoom: 1.35;
+}
+
 /* ─── Activities (src/activities) ──────────────────────────────────────────────
    Shared surface for hosted activities (Binary, Keyboard, Mouse). Aimed at 8-14 year
    olds: every control is at least 44px, focus is always visible, and motion is optional. */
@@ -3693,6 +3733,29 @@ label.te-backdrop-tag,
   font-family: var(--font-title);
   font-size: 1.2rem;
   color: var(--colour-primary);
+}
+
+/* An activity's title and instructions, styled like the task explainer card (ExplainerPanel):
+   a purple title bar over the text. */
+.act-header {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  overflow: hidden;
+}
+
+.act-header .act-title {
+  margin: 0;
+  padding: 7px 12px 8px;
+  background: var(--colour-primary);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.act-header__body {
+  padding: 10px 14px;
 }
 
 .act-notice {
@@ -3738,6 +3801,17 @@ label.te-backdrop-tag,
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+/* The Check my work row stays in reach at the foot of the scrolling task area: on a tablet the
+   on-screen keyboard or the mouse area pushed it below the screen, with no hint to scroll. */
+.act-row--submit {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding: 8px 0 10px;
+  background: var(--ui-surface);
+  box-shadow: 0 -10px 12px -8px rgba(15, 23, 42, 0.12);
 }
 
 .act-prompt {
@@ -3812,11 +3886,13 @@ label.te-backdrop-tag,
   padding: 4px 2px;
 }
 
+/* The place values (8 4 2 1) are the key to the task, so they read clearly, not as a caption. */
 .act-bit-place {
   text-align: center;
   font-family: var(--font-code);
-  font-size: 0.8rem;
-  color: var(--colour-muted);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--colour-primary-dark);
 }
 
 .act-bit {
@@ -5071,10 +5147,11 @@ label.te-backdrop-tag,
 }
 
 .live-ink-toolbar {
-  /* Bottom centre: the class badge toast already owns the bottom-left corner. */
+  /* Bottom right: the class badge toast already owns the bottom-left corner, and in the
+     centre it sat over the foot of the left panel (HSC Audit 20). Lesson text is left-aligned,
+     so the right-hand corner covers the least. */
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 16px;
   bottom: 16px;
   z-index: 75;
   display: flex;
@@ -5281,10 +5358,12 @@ label.te-backdrop-tag,
   line-height: 1.6;
 }
 
+/* The privacy line matters to students, so it reads as text, not a faint caption (HSC Audit 21). */
 .class-poll-card__note {
   margin: 0;
-  font-size: 12.5px;
-  color: var(--colour-muted);
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--colour-ink-strong);
 }
 
 .class-poll-card--presentation .class-poll-card__note {

@@ -812,7 +812,11 @@ export default function StudentCard({
       ) : cardSummary === 'fs' ? (
         <div style={s.iframeThumb}>
           <span style={{ color: student.currentCode ? '#6b7280' : '#9ca3af', fontSize: 12 }}>
-            {student.currentCode ? 'Filesystem project' : 'No changes yet'}
+            {student.currentCode
+              ? moduleType === 'desktop'
+                ? 'Desktop project'
+                : 'Filesystem project'
+              : 'No changes yet'}
           </span>
         </div>
       ) : (

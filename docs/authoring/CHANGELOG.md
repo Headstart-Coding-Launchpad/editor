@@ -185,6 +185,23 @@ things that never work. Check existing lessons for these first:
   (recap), markdown (topic library) · Existing lessons: change "the panel above" to the
   *Type this out* box where a lesson points at `copyCode` · Resolves: none
 
+### HSC Audit visual fixes: wording and pictures authors refer to
+
+- **Binary's button is now "Check my work"**, like Keyboard and Mouse (it said "Check answers").
+  Lesson text that tells students to press "Check answers" should say "Check my work".
+- **Scratch block pictures:** the text inputs of `say`, `think` and `ask … and wait` (for
+  example `say [Hello!] for (2) seconds`) draw as white typed-text ovals with no dropdown arrow,
+  as in Scratch. Every other `[…]` stays a dropdown, and `[… v]` (scratchblocks syntax) always
+  draws a dropdown, without the ` v`. Scratch pictures in a quiz question are drawn bigger. See
+  [markdown-renderer.md](markdown-renderer.md).
+- **Activities show a purple title bar and a Topic library chip** over their instructions, like
+  other tasks.
+- **Electronics:** the tutor's Starter board now shows the starter stage's board when
+  `starterCircuit` is missing or empty, matching what students load. Still write
+  `starterCircuit` (see [electronics.md](electronics.md)).
+- Affects: binary, scratch, markdown, activities, electronics · Existing lessons: change "Check
+  answers" to "Check my work" in Binary task text; otherwise no changes needed · Resolves: none
+
 ## 2026-10-15
 
 ### Name-tag panel: predict mode locks Run until every prediction is in (`showVariables.lockRun`)

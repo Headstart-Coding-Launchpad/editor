@@ -95,9 +95,10 @@ const MIN_EDITOR_WIDTH = 420
 const MIN_EDITOR_WIDTH_COMPACT = 320
 const MIN_EDITOR_WIDTH_COLLAPSED = 280
 const MIN_EDITOR_WIDTH_COLLAPSED_COMPACT = 180
-// Below this width, side-by-side editor+stage is too cramped — switch to an explicit
-// Blocks/Stage tab switcher instead (see the `compact` state below). Matches the threshold
-// LessonTaskContent.jsx uses for its own Instructions/Code tab tier. Exported:
+// Below this width the workspace is "narrow": the stage shrinks beside the blocks, and below
+// SCRATCH_COMPACT_BREAKPOINT it moves to a Blocks/Stage tab switcher (the `compact` state
+// below). Matches the threshold LessonTaskContent.jsx uses for its own Instructions/Code tab
+// tier. Exported:
 // LessonTaskContent.jsx reuses this to decide when to tab Instructions away *before* the
 // code area would otherwise be squeezed under it (see EXPLAINER_FIXED_WIDTH there) — the
 // two thresholds must stay in lockstep, not just coincidentally match. Height has no
@@ -114,6 +115,14 @@ export const NARROW_BREAKPOINT_HEIGHT = 600
 // container to clear the breakpoint by this margin before *exiting* compact — entry keeps the
 // original threshold — breaks that loop without moving the documented 1000px entry point.
 const COMPACT_EXIT_HYSTERESIS = 48
+// The workspace's own Blocks/Stage tab switch now happens below this narrower width, not
+// NARROW_BREAKPOINT: on a 1024px tablet (a ~990px workspace) the stage was on a separate tab,
+// so a student clicked a block, switched tabs and missed the speech bubble (HSC Audit 08).
+// Between this and NARROW_BREAKPOINT the stage sits beside the blocks at a smaller size
+// (NARROW_STAGE_SCALE_MAX). NARROW_BREAKPOINT itself is unchanged: LessonTaskContent still
+// tabs Instructions away from 1000px, which is what leaves the blocks and stage room here.
+export const SCRATCH_COMPACT_BREAKPOINT = 860
+const NARROW_STAGE_SCALE_MAX = 0.65
 const SCRATCH_PANEL_TABS_SURFACE = 'scratch_panel'
 // Separate persisted tab surface for the always-compact "watch one student" view
 // (forceCompact — see ScratchTeacherLiveView). It must not share scratch_panel with
@@ -161,9 +170,35 @@ export function computeStageScale(width, height, { compact, flyoutCollapsed }) {
     : (width - editorReserve - 8) / (STAGE_W + 2)
   const heightScale =
     height > 0 ? (height - STAGE_TOOLBAR_HEIGHT_RESERVE) / (STAGE_H + 2) : Infinity
-  const nextScale = Math.min(1, Math.max(MIN_STAGE_SCALE, Math.min(widthScale, heightScale)))
+  // Side by side on a narrow (tablet-width) workspace: a smaller stage leaves the blocks room.
+  const maxScale = !compact && width > 0 && width < NARROW_BREAKPOINT ? NARROW_STAGE_SCALE_MAX : 1
+  const nextScale = Math.min(maxScale, Math.max(MIN_STAGE_SCALE, Math.min(widthScale, heightScale)))
   return Number.isFinite(nextScale) ? nextScale : 1
 }
+// Scrolls a workspace so no top-level block starts under the always-open palette. On desktop the
+// starter "say Hello! for 2 seconds" block loaded half hidden behind the palette while the
+// instructions said "Click the block stack" (HSC Audit 08). Measured from the DOM, since the
+// palette overlays the canvas: shifts the canvas right (scrollX grows as the canvas moves right)
+// by just enough to clear the palette's right edge plus a small gap. Returns whether it scrolled.
+const FLYOUT_CLEAR_GAP = 16
+export function revealBlocksBesideFlyout(ws, div) {
+  if (!ws || !div) return false
+  const flyoutEl = div.querySelector?.('.blocklyFlyout')
+  if (!flyoutEl || flyoutEl.style?.display === 'none') return false
+  const flyoutRect = flyoutEl.getBoundingClientRect()
+  if (!flyoutRect?.width) return false
+  let leftmost = Infinity
+  for (const block of ws.getTopBlocks?.(false) ?? []) {
+    const rect = block.getSvgRoot?.()?.getBoundingClientRect?.()
+    if (rect?.width) leftmost = Math.min(leftmost, rect.left)
+  }
+  if (!Number.isFinite(leftmost)) return false
+  const shortfall = flyoutRect.right + FLYOUT_CLEAR_GAP - leftmost
+  if (shortfall <= 0) return false
+  ws.scroll(ws.scrollX + shortfall, ws.scrollY)
+  return true
+}
+
 const PAGE_NAVIGATION_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '])
 const STAGE_RUNTIME_STATE = {
   x: 0,
@@ -1046,6 +1081,9 @@ export default function ScratchWorkspace({
 
   const blocksDivRefs = useRef({})
   const workspaceRefs = useRef({})
+  // Sprite ids whose canvas the student has pressed: from then on the view is theirs, so
+  // revealBlocksBesideFlyout no longer scrolls it.
+  const workspaceTouchedRef = useRef(new Set())
   const spriteStatesRef = useRef(initSpriteStates(sprites))
   const clonesRef = useRef({})
   const preRunSpriteStatesRef = useRef({})
@@ -1534,7 +1572,7 @@ export default function ScratchWorkspace({
     // naturally so it accounts for the flyout appearing/disappearing.
     const isWindowResize = isWindowResizeRef.current
     isWindowResizeRef.current = false
-    for (const ws of Object.values(workspaceRefs.current)) {
+    for (const [spriteId, ws] of Object.entries(workspaceRefs.current)) {
       try {
         try {
           ws.setScale(blockScaleRef.current)
@@ -1551,6 +1589,12 @@ export default function ScratchWorkspace({
           ws.scrollX = scrollX
           ws.scrollY = scrollY
           ws.translate?.(scrollX, scrollY)
+        }
+        // Until the student first touches this canvas, keep its blocks clear of the palette
+        // (the layout settles over several resizes after load). A hidden sprite's canvas
+        // measures zero and is left alone.
+        if (!workspaceTouchedRef.current.has(spriteId)) {
+          revealBlocksBesideFlyout(ws, blocksDivRefs.current[spriteId])
         }
       } catch {}
     }
@@ -1917,6 +1961,9 @@ export default function ScratchWorkspace({
       readOnly,
     })
     workspaceRefs.current[spriteId] = ws
+    div.addEventListener('pointerdown', () => workspaceTouchedRef.current.add(spriteId), {
+      once: true,
+    })
     setWorkspaceBlocklyContext(ws, () => blocklyContextForWorkspace(spriteId))
     Blockly.svgResize(ws)
     if (canCreateVariable && !readOnly) {
@@ -2254,7 +2301,9 @@ export default function ScratchWorkspace({
     const wasCompact = compactRef.current
     const isCompact =
       forceCompact ||
-      (wasCompact ? w < NARROW_BREAKPOINT + COMPACT_EXIT_HYSTERESIS : w < NARROW_BREAKPOINT)
+      (wasCompact
+        ? w < SCRATCH_COMPACT_BREAKPOINT + COMPACT_EXIT_HYSTERESIS
+        : w < SCRATCH_COMPACT_BREAKPOINT)
     setCompact(isCompact)
     compactRef.current = isCompact
     blockScaleRef.current = computeBlockScale(w, h)

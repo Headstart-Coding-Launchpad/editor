@@ -263,7 +263,26 @@ describe('MarkdownRenderer', () => {
     )
     const block = container.querySelector('[data-scratch-opcode="looks_thinkforsecs"]')
 
-    expect(Number.parseFloat(block.style.width)).toBeGreaterThanOrEqual(300)
+    // The text input is a white oval (no dropdown arrow), so it is a little narrower.
+    expect(Number.parseFloat(block.style.width)).toBeGreaterThanOrEqual(290)
+  })
+
+  it('draws say / think text inputs as typed-text ovals, not dropdowns (HSC Audit 08)', () => {
+    const { container } = render(
+      <MarkdownRenderer content={'```scratch\nsay [Hello!] for (2) seconds\n```'} />
+    )
+    const block = container.querySelector('[data-scratch-opcode="looks_sayforsecs"]')
+    expect(block.querySelector('[data-scratch-slot="dropdown"]')).toBeNull()
+    expect(block.querySelector('[data-scratch-slot="value"]')).toHaveTextContent('Hello!')
+  })
+
+  it('still draws a dropdown for a [... v] input, without the v', () => {
+    const { container } = render(
+      <MarkdownRenderer content={'```scratch\nwhen [space v] key pressed\n```'} />
+    )
+    const slot = container.querySelector('[data-scratch-slot="dropdown"]')
+    expect(slot).toHaveTextContent('space')
+    expect(slot).not.toHaveTextContent('space v')
   })
 
   it('uses the browser-measured Scratch content row once it is available', () => {

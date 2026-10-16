@@ -626,7 +626,7 @@ describe('StudentView module click-through', () => {
     await waitFor(() =>
       expect(mocks.session.writeStudentAnswer).toHaveBeenCalledWith('student-1', answer)
     )
-    await user.click(screen.getByRole('button', { name: 'Check answers' }))
+    await user.click(screen.getByRole('button', { name: 'Check my work' }))
     await waitFor(() =>
       expect(mocks.session.writeStudentRun).toHaveBeenCalledWith('student-1', {
         answer,
@@ -673,7 +673,7 @@ describe('StudentView module click-through', () => {
     const { user, view } = renderLesson(lesson, { currentTaskId: 2 })
     await user.click(await screen.findByRole('switch', { name: 'Bits 1 column' }))
     expect(screen.queryByRole('button', { name: 'Run' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Check answers' }))
+    await user.click(screen.getByRole('button', { name: 'Check my work' }))
     await waitFor(() =>
       expect(mocks.session.writeStudentRun).toHaveBeenCalledWith(
         'student-1',

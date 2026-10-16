@@ -571,6 +571,21 @@ describe('StudentCard', () => {
       expect(screen.queryByText('HTML project')).not.toBeInTheDocument()
     })
 
+    it('shows desktop changes, not "No run yet", for a Desktop task (nothing to run)', () => {
+      const { unmount } = render(
+        <StudentCard {...mkProps({ lesson: composedLesson('desktop') })} />
+      )
+      expect(screen.getByText('No changes yet')).toBeInTheDocument()
+      expect(screen.queryByText('No run yet')).not.toBeInTheDocument()
+      unmount()
+      render(
+        <StudentCard
+          {...mkProps({ lesson: composedLesson('desktop') }, { currentCode: '{"windows":[]}' })}
+        />
+      )
+      expect(screen.getByText('Desktop project')).toBeInTheDocument()
+    })
+
     it('still shows the HTML fallback for an HTML task', () => {
       render(
         <StudentCard

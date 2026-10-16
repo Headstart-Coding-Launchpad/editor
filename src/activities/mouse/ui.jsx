@@ -447,7 +447,7 @@ export function MouseStudentView({
         })}
       </div>
       {!readOnly && (
-        <div className="act-row">
+        <div className="act-row act-row--submit">
           <button type="button" className="btn-primary act-btn" onClick={() => onSubmit?.()}>
             Check my work
           </button>

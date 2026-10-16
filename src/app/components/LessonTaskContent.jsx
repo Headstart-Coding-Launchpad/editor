@@ -668,6 +668,9 @@ export default function LessonTaskContent({
             tileHighlights={cs.tileHighlights}
             onDismissTileHighlights={cs.dismissTileHighlights}
             history={cs.typingHistory}
+            topicLibrary={
+              (moduleCaps?.topicLibrary ?? true) ? { onTopicOpen, onTopicClose, openTopicId } : null
+            }
             result={
               isForcedTeacherLive
                 ? { submitted: displayRunStatus === 'submitted', passed: displayCheckPassed }
