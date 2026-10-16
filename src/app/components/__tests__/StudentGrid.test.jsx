@@ -219,10 +219,11 @@ describe('StudentGrid', () => {
   })
 
   describe('header', () => {
-    it('is one non-wrapping line: Students (n), Fullscreen All, ⋯ and the collapse arrow', () => {
+    it('keeps the title line to Students (n), ⋯ and the collapse arrow; chips and Fullscreen All go in the row below', () => {
       render(
         <StudentGrid
           {...mkProps({
+            lesson: LESSON_WITH_CHECK,
             onRequestFullscreenAll: vi.fn(),
             onNudgeAway: vi.fn(),
             onDecideBadge: vi.fn(),
@@ -234,9 +235,18 @@ describe('StudentGrid', () => {
       expect(screen.getByText('Students')).toHaveTextContent('Students (3)')
       const header = screen.getByText('Students').parentElement
       expect(header.style.flexWrap).toBe('nowrap')
-      expect(within(header).getByText('⛶ Fullscreen All')).toBeInTheDocument()
+      expect(within(header).queryByText('⛶ Fullscreen All')).not.toBeInTheDocument()
+      expect(
+        within(header).queryByTitle('Students who passed the completion check')
+      ).not.toBeInTheDocument()
       expect(within(header).getByRole('button', { name: 'More class actions' })).toBeInTheDocument()
       expect(within(header).getByTitle('Collapse Students')).toBeInTheDocument()
+      const statusRow = screen.getByTestId('student-grid-status-row')
+      expect(statusRow.style.flexWrap).toBe('wrap')
+      expect(within(statusRow).getByText('⛶ Fullscreen All')).toBeInTheDocument()
+      expect(
+        within(statusRow).getByTitle('Students who passed the completion check')
+      ).toBeInTheDocument()
       // Everything else lives in the menu until it's opened.
       expect(screen.queryByText(/Suggestions \(/)).not.toBeInTheDocument()
       expect(screen.queryByText('☑ Select')).not.toBeInTheDocument()
@@ -286,6 +296,16 @@ describe('StudentGrid', () => {
         />
       )
     }
+
+    it('opens from a labelled Show button or a tap anywhere on the rail', async () => {
+      const user = userEvent.setup()
+      const onToggle = vi.fn()
+      renderCollapsed({ onToggle })
+      await user.click(screen.getByRole('button', { name: 'Show the students panel' }))
+      expect(onToggle).toHaveBeenCalledTimes(1)
+      await user.click(screen.getByText('joined'))
+      expect(onToggle).toHaveBeenCalledTimes(2)
+    })
 
     it('shows the total student count badge', () => {
       renderCollapsed()
