@@ -29,8 +29,8 @@ test.describe('Builder — initial load', () => {
     await expect(page.getByText('Web')).toBeVisible({ timeout: 5000 })
     await expect(page.getByText('Scratch')).toBeVisible({ timeout: 5000 })
 
-    // Upload existing JSON button
-    await expect(page.getByRole('button', { name: 'Upload existing JSON' })).toBeVisible({
+    // Open a lesson file (JSON) button
+    await expect(page.getByRole('button', { name: 'Open a lesson file (JSON)' })).toBeVisible({
       timeout: 5000,
     })
   })

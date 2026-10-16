@@ -2,6 +2,7 @@ import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import TeacherEditorPanel from '../TeacherEditorPanel'
+import keyboard from '../../../../activities/keyboard/definition.js'
 
 vi.mock('../../../../shared/CodeEditor', () => ({
   CodeEditor: () => <div data-testid="code-editor" />,
@@ -100,23 +101,39 @@ describe('TeacherEditorPanel — editor stack sizing', () => {
   })
 })
 
-describe('TeacherEditorPanel — hosted activities', () => {
-  const BINARY_TASK = {
-    id: 3,
-    title: 'Make 5',
-    taskType: 'activity',
-    activityType: 'binary',
-    mode: 'make_number',
-    bits: 4,
-    items: [{ id: 'a', target: 5 }],
-  }
-
-  it('labels the finished answers as an answer key, not student work', () => {
+describe('TeacherEditorPanel — activity answer key', () => {
+  it('labels an activity shown finished as the answer key', () => {
+    const task = keyboard.defaultTask({ id: 3, title: 'Keys' })
     render(
       <TeacherEditorPanel
-        {...mkProps({ lesson: { type: 'python', tasks: [BINARY_TASK] }, task: BINARY_TASK })}
+        {...mkProps({ lesson: { type: 'python', tasks: [task] }, task, displayTaskId: 3 })}
       />
     )
-    expect(screen.getByTestId('activity-answer-key-note')).toHaveTextContent('Answer key')
+    expect(screen.getByTestId('teacher-answer-key-note')).toHaveTextContent('Answer key')
+  })
+})
+
+describe('TeacherEditorPanel — read-only note', () => {
+  it('says the stage editor is read-only outside the sandbox', () => {
+    render(
+      <TeacherEditorPanel
+        {...mkProps({ lesson: PYTHON_LESSON, task: PYTHON_TASK, displayTaskId: 2 })}
+      />
+    )
+    expect(screen.getByTestId('teacher-panel-readonly-note')).toHaveTextContent(/Read-only/)
+  })
+
+  it('has no read-only note in the sandbox, where the tutor can type', () => {
+    render(
+      <TeacherEditorPanel
+        {...mkProps({
+          lesson: PYTHON_LESSON,
+          task: PYTHON_TASK,
+          displayTaskId: 2,
+          isInSandbox: true,
+        })}
+      />
+    )
+    expect(screen.queryByTestId('teacher-panel-readonly-note')).not.toBeInTheDocument()
   })
 })

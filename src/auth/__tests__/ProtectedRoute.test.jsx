@@ -41,14 +41,31 @@ describe('ProtectedRoute', () => {
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('no signed-in user'))
   })
 
-  it('logs why it redirected when the role does not satisfy the requirement', () => {
+  it('tells a signed-in user without the role that they need another account, with a way back', () => {
     useAuth.mockReturnValue({ user: { uid: 'student-uid' }, role: 'student', loading: false })
 
     renderProtected({ requiredRole: 'teacher' })
 
-    expect(screen.getByText('login page')).toBeInTheDocument()
+    expect(screen.queryByText('login page')).not.toBeInTheDocument()
+    expect(screen.queryByText('secret')).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('You need a tutor account to see this page')
+    expect(screen.getByRole('button', { name: '← Go back' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Sign in with a different account' })).toHaveAttribute(
+      'href',
+      '/login'
+    )
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('role "student" does not satisfy required role "teacher"')
+    )
+  })
+
+  it('names the admin account when a tutor opens an admin page', () => {
+    useAuth.mockReturnValue({ user: { uid: 'tutor-uid' }, role: 'teacher', loading: false })
+
+    renderProtected({ requiredRole: 'admin' })
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'You need an admin account to see this page'
     )
   })
 

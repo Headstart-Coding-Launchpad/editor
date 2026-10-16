@@ -1,4 +1,4 @@
-import { getStageRole, getStarterStages, getCompleteStage } from './taskStages.js'
+import { getStarterStages, getCompleteStage, formatStageLabel } from './taskStages.js'
 import { getModuleDefinition } from '../modules/definitions.js'
 import {
   getTaskActivity,
@@ -10,6 +10,7 @@ export {
   STAGE_ROLES,
   isValidStageRole,
   getStageRole,
+  formatStageLabel,
   isRevealableStage,
   getRevealableStages,
   getStarterStages,
@@ -254,7 +255,7 @@ export function buildStageOptions(task, lessonType) {
           ...starterOptions,
           {
             value: `stage_${complete.index}`,
-            label: `Complete: ${complete.stage.label || 'Solution'}`,
+            label: formatStageLabel(complete.stage, complete.index),
           },
         ]
       : starterOptions
@@ -268,10 +269,10 @@ export function buildStageOptions(task, lessonType) {
 
   const opts = [{ value: 'starter', label: starterLabel }]
   codeStages.forEach((stage, i) => {
-    const role = getStageRole(stage)
-    const displayRole = ['core', 'extension'].includes(stage?.role) ? stage.role : role
-    const rolePrefix = displayRole === 'support' ? '' : `${displayRole}: `
-    opts.push({ value: `stage_${i}`, label: `${rolePrefix}${stage.label || `Stage ${i + 1}`}` })
+    opts.push({
+      value: `stage_${i}`,
+      label: formatStageLabel(stage, i, { showSupportRole: false }),
+    })
   })
   if (hasComplete) opts.push({ value: 'complete', label: completeLabel })
   return opts

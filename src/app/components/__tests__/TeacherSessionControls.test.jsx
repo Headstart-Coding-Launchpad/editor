@@ -56,6 +56,11 @@ describe('TeacherSessionControls', () => {
     expect(props.onReturnToAdmin).toHaveBeenCalledOnce()
   })
 
+  it('has no Admin button for a teacher account (no handler)', () => {
+    renderControls({ onReturnToAdmin: null })
+    expect(screen.queryByRole('button', { name: 'Admin' })).not.toBeInTheDocument()
+  })
+
   it('shows waiting-session Start Session button', () => {
     const props = renderControls({ session: { state: 'waiting' } })
 

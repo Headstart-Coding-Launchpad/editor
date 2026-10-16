@@ -110,6 +110,7 @@ export default defineModule({
     fixedExplainer: false,
     topicLibrary: true,
     studentMirror: 'files',
+    cardSummary: 'page',
     teacherEditor: { surface: 'files' },
     sideExplainer: true,
     modulePanes: true,

@@ -178,6 +178,7 @@ export default function EditLessonModal({
                 task={selectedTask}
                 lesson={lessonForEditor}
                 parentGroup={selectedTaskGroup}
+                sessionEdit
                 onUpdate={(updated) => {
                   handleLessonUpdate((prev) => ({
                     ...prev,

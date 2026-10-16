@@ -39,22 +39,27 @@ export default function TeacherEditorPanel({
   const usesUnifiedStages = !!mod?.capabilities?.teacherUnifiedStageTabs
 
   if (!isInSandbox && isInformationTask) {
+    // A size container: the tutor's centre column can be narrow (a tablet with the students
+    // panel open), so the recap and image layouts follow its width, not the window's (see
+    // `.information-task-host` in index.css; HSC Audit, Visual Review 02).
     return (
-      <InformationTask
-        task={task}
-        lesson={lesson}
-        fill
-        badgeWall={badgeWall}
-        entranceKey={entranceKey}
-      />
+      <div className="information-task-host" data-testid="teacher-information-host">
+        <InformationTask
+          task={task}
+          lesson={lesson}
+          fill
+          badgeWall={badgeWall}
+          entranceKey={entranceKey}
+        />
+      </div>
     )
   }
   // Activities show their answers read-only; quizzes (previewState 'initial') show just the
   // question, since the teacher's screen is often projected.
   if (!isInSandbox && isHostedActivityTask(task)) {
     const activity = getTaskActivity(task)
-    const showsAnswers = activity.previewState !== 'initial'
-    const view = (
+    const showsAnswers = activity.previewState !== 'initial' && !!activity.solutionState
+    const activityView = (
       <ActivityView
         task={task}
         state={showsAnswers ? solutionOrInitialState(activity, task) : activity.initialState(task)}
@@ -64,17 +69,18 @@ export default function TeacherEditorPanel({
         entranceKey={entranceKey}
       />
     )
-    if (!showsAnswers) return view
-    // The finished answers read as a student's work ("✓ Correct" beside students who were "Not
-    // started", HSC Audit 14), so say what they are.
+    if (!showsAnswers) return activityView
+    // The finished state ("✓ Correct", "All done") is the answer key, not the class's progress:
+    // say so, since the students' cards beside it may all say "Not started" (HSC Audit, Visual
+    // Review 14).
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <p className="act-notice" role="note" data-testid="activity-answer-key-note">
-          🔑 Answer key: what a finished task looks like. Each student&apos;s own work is on their
-          card.
-        </p>
-        {view}
-      </div>
+      <>
+        <div style={styles.answerKeyNote} data-testid="teacher-answer-key-note">
+          <span aria-hidden="true">🔑</span> Answer key: what a finished task looks like. Only you
+          see this; each student&apos;s progress is on their card.
+        </div>
+        {activityView}
+      </>
     )
   }
   // Module-hosted activities (Arrange tasks) assemble from drag-and-drop tiles,
@@ -145,6 +151,15 @@ export default function TeacherEditorPanel({
           onToggleLiveReference={onToggleLiveReference}
         />
       )}
+      {readOnly && (
+        // Explains the editor's pale red read-only border (HSC Audit, Visual Review 05).
+        <div style={styles.readOnlyNote} data-testid="teacher-panel-readonly-note">
+          <span aria-hidden="true">🔒</span>{' '}
+          {isLiveTab
+            ? 'Read-only: your live code from the presentation window.'
+            : 'Read-only: the code students get at this stage. Edit it in Edit Lesson or the sandbox.'}
+        </div>
+      )}
       <LiveView
         key={`teacher-${displayTaskId}-${isInSandbox ? 'sandbox' : teacherCodeTab}`}
         task={task}
@@ -162,6 +177,23 @@ export default function TeacherEditorPanel({
 }
 
 const styles = {
+  answerKeyNote: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.8rem',
+    color: '#92400e',
+    background: '#fffbeb',
+    border: '1px solid #fde68a',
+    borderRadius: 6,
+    padding: '6px 10px',
+    marginBottom: 8,
+  },
+  readOnlyNote: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.76rem',
+    color: 'var(--colour-muted)',
+    padding: '4px 8px',
+    flexShrink: 0,
+  },
   sandboxRow: {
     flex: 1,
     minHeight: 0,

@@ -343,4 +343,13 @@ describe('teacher peer help', () => {
     fireEvent.click(screen.getByRole('button', { name: 'End all peer help' }))
     expect(ph.pauseAllPeerHelp).toHaveBeenCalled()
   })
+
+  it('has no red "End all peer help" while nobody is helping, just a switch to turn it off', () => {
+    const ph = peerHelp({ allRequests: {}, allPeerHelp: {} })
+    render(<TeacherPeerHelpMenu session={session} lesson={null} peerHelp={ph} />)
+    fireEvent.click(screen.getByRole('button', { name: /Peer help/ }))
+    expect(screen.queryByRole('button', { name: 'End all peer help' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Turn peer help off' }))
+    expect(ph.pauseAllPeerHelp).toHaveBeenCalled()
+  })
 })

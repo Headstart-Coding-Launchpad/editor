@@ -75,6 +75,7 @@ export default defineModule({
     fixedExplainer: false,
     topicLibrary: true,
     studentMirror: 'view',
+    cardSummary: 'drawing',
     teacherEditor: { surface: 'code' },
     sideExplainer: true,
     modulePanes: true,

@@ -62,6 +62,20 @@ export function getStageRole(stage) {
   return isValidStageRole(stage?.role) ? stage.role : 'support'
 }
 
+// A stage's name for tutor tabs and menus: "Starter", "Complete", or "Starter: Say Hello!".
+// The role is shown once, capitalised, and never twice ("complete: Complete") when the author
+// named the stage after its role. `showSupportRole: false` drops the "Support: " prefix (the
+// default role), as the older stage tabs did. Legacy core/extension roles keep their own name.
+export function formatStageLabel(stage, index = 0, { showSupportRole = true } = {}) {
+  const displayRole = ['core', 'extension'].includes(stage?.role) ? stage.role : getStageRole(stage)
+  const roleName = displayRole.charAt(0).toUpperCase() + displayRole.slice(1)
+  const label = typeof stage?.label === 'string' ? stage.label.trim() : ''
+  if (!label) return displayRole === 'support' ? `Stage ${index + 1}` : roleName
+  if (label.toLowerCase() === displayRole.toLowerCase()) return label
+  if (displayRole === 'support' && !showSupportRole) return label
+  return `${roleName}: ${label}`
+}
+
 export function isRevealableStage(stage) {
   return getStageRole(stage) === 'support'
 }

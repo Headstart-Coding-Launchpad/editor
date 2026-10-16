@@ -38,6 +38,22 @@ describe('TeacherCodeTabs', () => {
     expect(props.onStage).toHaveBeenCalledWith(1)
   })
 
+  it('unified stages: names each stage once and selects the starter stage by default', () => {
+    renderTabs({
+      activeTab: 'starter',
+      unifiedStages: true,
+      stages: [
+        { label: 'Starter', role: 'starter' },
+        { label: 'Support', role: 'support' },
+        { label: 'Complete', role: 'complete' },
+      ],
+    })
+    expect(screen.getByRole('tab', { name: 'Starter' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Support' })).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByRole('tab', { name: 'Complete' })).toBeInTheDocument()
+    expect(screen.queryByText(/complete: Complete/i)).not.toBeInTheDocument()
+  })
+
   it('renders complete tab when onComplete is provided', () => {
     const props = renderTabs({ onComplete: vi.fn(), completeLabel: 'Answer' })
     const completeBtn = screen.getByRole('tab', { name: 'Answer' })

@@ -2,12 +2,28 @@ import React, { useMemo, useState } from 'react'
 import { classWallText, reportClassWall } from '../../badges/badgeSummary'
 import { ClassWall } from './badges/BadgeSummaryTask'
 import CopyClassSummaryButton from './badges/CopyClassSummaryButton'
-import { formatReportDuration, teacherSandboxCallout } from '../reportBadgeFormat'
+import {
+  formatReportDuration,
+  isPossibleLessonGap,
+  teacherSandboxCallout,
+} from '../reportBadgeFormat'
+import { resolveBadge } from '../../badges/badgeDisplay'
+import { getKeyboardWizardShortcut } from '../../badges/shortcuts'
 
 // The session report's live-badge sections (docs/architecture/live-badges-plan.md, "Session
 // report"): Coding moments, quiz groups, the teacher-sandbox callout and a student's badge
 // details. The formatters for the new table columns are in ../reportBadgeFormat.js. The report
 // is already anonymised (studentLabel only), so every name here is a "Student n" label.
+
+// "Ctrl+Enter (run)" for a Keyboard Wizard shortcut id ("run"), not the bare id.
+function shortcutName(id) {
+  const shortcut = getKeyboardWizardShortcut(id)
+  if (!shortcut) return id
+  const what = shortcut.description?.trim()
+  return what && what.toLowerCase() !== shortcut.label.toLowerCase()
+    ? `${shortcut.label} (${what.toLowerCase()})`
+    : shortcut.label
+}
 
 function sandboxActivityText(activity) {
   if (!activity) return null
@@ -97,10 +113,13 @@ export function CodingMomentsSection({ report }) {
             </thead>
             <tbody>
               {summary.map(([badgeId, counts]) => {
-                const row = wall.find((r) => r.badgeId === badgeId)
+                // A badge nobody was awarded isn't on the wall: name it from the registry, never
+                // the raw id ("challenge_solver"; HSC Audit, Visual Review 25).
+                const badge =
+                  wall.find((r) => r.badgeId === badgeId)?.badge ?? resolveBadge(badgeId)
                 return (
                   <tr key={badgeId}>
-                    <td style={s.td}>{row ? `${row.badge.emoji} ${row.badge.title}` : badgeId}</td>
+                    <td style={s.td}>{`${badge.emoji} ${badge.title}`}</td>
                     {SUMMARY_COLUMNS.map(([key]) => (
                       <td key={key} style={s.td}>
                         {counts[key] ?? 0}
@@ -115,9 +134,9 @@ export function CodingMomentsSection({ report }) {
       )}
       {report?.shortcutSummary && (
         <p style={s.note}>
-          Shortcuts:{' '}
+          Keyboard shortcuts used:{' '}
           {Object.entries(report.shortcutSummary)
-            .map(([id, n]) => `${id} (${n} student${n === 1 ? '' : 's'})`)
+            .map(([id, n]) => `${shortcutName(id)} by ${n} student${n === 1 ? '' : 's'}`)
             .join(', ')}
         </p>
       )}
@@ -174,7 +193,10 @@ function SandboxVisit({ visit }) {
     <div style={s.callout}>
       <button style={s.calloutHeader} onClick={() => setExpanded((v) => !v)}>
         <span style={s.expandArrow}>{expanded ? '▾' : '▸'}</span>
-        <span>🧭 {teacherSandboxCallout(visit)}. A possible lesson gap?</span>
+        <span>
+          🧭 {teacherSandboxCallout(visit)}.
+          {isPossibleLessonGap(visit) ? ' A possible lesson gap?' : ''}
+        </span>
       </button>
       {expanded && (
         <div style={s.calloutBody}>

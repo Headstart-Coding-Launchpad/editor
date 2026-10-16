@@ -95,16 +95,20 @@ const s = {
   },
   columns: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(10, minmax(28px, 1fr))',
-    gap: 4,
+    // Ten columns that always fit the students panel (it is about 260px wide): at a fixed
+    // 28px minimum, level 10 was cut off on the right (HSC Audit, Visual Review 06).
+    gridTemplateColumns: 'repeat(10, minmax(0, 1fr))',
+    gap: 2,
     maxWidth: 520,
+    minWidth: 0,
   },
   column: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     gap: 2,
-    padding: '4px 2px',
+    padding: '4px 0',
+    minWidth: 0,
     borderRadius: 6,
     border: '1px solid var(--ui-border)',
     background: 'var(--ui-surface-neutral-sunk)',
@@ -135,10 +139,10 @@ const s = {
     width: '100%',
   },
   level: {
-    minWidth: 20,
-    padding: '1px 4px',
+    minWidth: 0,
+    padding: '1px 2px',
     borderRadius: 4,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 700,
     textAlign: 'center',
     lineHeight: 1.3,

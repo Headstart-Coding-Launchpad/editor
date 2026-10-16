@@ -1361,6 +1361,48 @@ select {
   color: inherit;
 }
 
+/* Code in a multiple-choice option never breaks mid-word (print("Goo / d morning!")): the
+   options shrink to fit, then the option scrolls sideways (HSC Audit, Visual Review 06). */
+.quiz-option-text code {
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+/* The tutor's information task sits in a centre column that can be much narrower than the
+   window (a tablet with the students panel open), so it lays out by the column's width:
+   the recap stacks and floated images drop under their text, instead of squashing the text
+   to a few words a line (HSC Audit, Visual Review 02). */
+.information-task-host {
+  container-type: inline-size;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@container (max-width: 640px) {
+  .information-task--recap {
+    grid-template-columns: 1fr;
+    grid-auto-rows: max-content;
+  }
+
+  .information-recap__left {
+    min-height: 120px;
+  }
+
+  .information-recap__content {
+    overflow: visible;
+  }
+
+  .markdown-img--float {
+    float: none;
+    max-width: 100%;
+    margin: 10px 0;
+  }
+}
+
 .information-recap__content {
   overflow: auto;
   border-radius: 8px;
@@ -4753,6 +4795,15 @@ label.te-backdrop-tag,
 .badge-summary__actions {
   display: flex;
   justify-content: flex-end;
+}
+
+/* The tutor's title with Copy class summary beside it (wraps under it when narrow). */
+.badge-summary__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 /* Badge Summary entrance (first view only; BadgeSummaryTask.jsx works out the delays). Student:

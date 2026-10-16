@@ -14,9 +14,24 @@ export default function DropdownMenu({
   title,
   indicator = false,
   panelStyle,
+  // Open below the whole top bar (the enclosing <header>) rather than straight under the
+  // button, so a menu in the bar's first row never covers the row of buttons beneath it
+  // (Countdown, End Session; HSC Audit, Visual Review 17).
+  clearHeader = false,
 }) {
   const [open, setOpen] = useState(false)
+  const [headerOffset, setHeaderOffset] = useState(0)
   const ref = useRef(null)
+
+  function toggle() {
+    if (!open && clearHeader && ref.current) {
+      const header = ref.current.closest('header')
+      const button = ref.current.getBoundingClientRect()
+      const below = header ? header.getBoundingClientRect().bottom - button.bottom : 0
+      setHeaderOffset(below > 0 ? below : 0)
+    }
+    setOpen((v) => !v)
+  }
 
   useEffect(() => {
     if (!open) return
@@ -45,7 +60,7 @@ export default function DropdownMenu({
         type="button"
         className={buttonClassName}
         style={{ fontSize: 13, padding: '5px 12px', whiteSpace: 'nowrap', ...buttonStyle }}
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         aria-expanded={open}
         aria-label={ariaLabel}
         title={title}
@@ -55,7 +70,14 @@ export default function DropdownMenu({
         {indicator && <span style={s.dot} data-testid="dropdown-indicator" aria-hidden="true" />}
       </button>
       {open && (
-        <div style={{ ...s.panel, ...panelStyle }} className="ui-popover">
+        <div
+          style={{
+            ...s.panel,
+            ...(headerOffset > 0 ? { top: `calc(100% + ${headerOffset + 6}px)` } : null),
+            ...panelStyle,
+          }}
+          className="ui-popover"
+        >
           {typeof children === 'function' ? children(() => setOpen(false)) : children}
         </div>
       )}

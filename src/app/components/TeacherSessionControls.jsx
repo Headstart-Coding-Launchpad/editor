@@ -193,15 +193,17 @@ export default function TeacherSessionControls({
               >
                 Edit Lesson
               </button>
-              <button
-                style={sDD.item}
-                onClick={() => {
-                  setMenuOpen(false)
-                  onReturnToAdmin()
-                }}
-              >
-                Admin
-              </button>
+              {onReturnToAdmin && (
+                <button
+                  style={sDD.item}
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onReturnToAdmin()
+                  }}
+                >
+                  Admin
+                </button>
+              )}
               <button
                 style={sDD.item}
                 onClick={() => {
@@ -231,9 +233,15 @@ export default function TeacherSessionControls({
           <button className="btn-ghost teacher-session-controls__action" onClick={onOpenEditLesson}>
             Edit Lesson
           </button>
-          <button className="btn-ghost teacher-session-controls__action" onClick={onReturnToAdmin}>
-            Admin
-          </button>
+          {/* Admin accounts only (TeacherView passes no handler to a teacher). */}
+          {onReturnToAdmin && (
+            <button
+              className="btn-ghost teacher-session-controls__action"
+              onClick={onReturnToAdmin}
+            >
+              Admin
+            </button>
+          )}
           <button className="btn-ghost teacher-session-controls__action" onClick={openAccount}>
             Account
           </button>

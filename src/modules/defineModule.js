@@ -100,8 +100,9 @@ export const STAGE_REVEAL_KINDS = Object.freeze(['progressive', 'offer'])
 export const STUDENT_MIRROR_KINDS = Object.freeze(['code', 'files', 'blocks', 'view'])
 // What a StudentCard shows under the name for a code task (optional; null = the generic
 // "HTML project" / "No run yet" line): the first lines of console output ('output'), whether
-// blocks were edited ('blocks') or whether the file tree changed ('fs').
-export const CARD_SUMMARY_KINDS = Object.freeze(['output', 'blocks', 'fs', null])
+// blocks were edited ('blocks'), whether the file tree changed ('fs'), the last run's turtle
+// drawing and output ('drawing'), or a small picture of the page from the last Run ('page').
+export const CARD_SUMMARY_KINDS = Object.freeze(['output', 'blocks', 'fs', 'drawing', 'page', null])
 // What the tutor's client saves to a matched student's class roster after a Run or submission
 // (optional; null = nothing saved; src/shared/roster/rosterWork.js):
 // - 'code'   the `currentCode` string / a code-string submission (python, turtle)

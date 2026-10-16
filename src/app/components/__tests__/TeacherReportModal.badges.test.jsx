@@ -110,7 +110,40 @@ describe('TeacherReportModal: live badge sections', () => {
         .map((row) => row.textContent)
     ).toEqual(['🐛Bug HunterStudent 1, Student 2'])
     expect(screen.queryByText(/Alex|Sam/)).toBeNull()
-    expect(screen.getByText(/run \(1 student\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Ctrl\+Enter \(run\) by 1 student/)).toBeInTheDocument()
+  })
+
+  it('names a suggested-only badge from the registry, not by its raw id', () => {
+    render(
+      <TeacherReportModal
+        report={{
+          ...report,
+          badgeSummary: {
+            ...report.badgeSummary,
+            challenge_solver: { suggested: 1, awarded: 0 },
+          },
+        }}
+        onClose={vi.fn()}
+      />
+    )
+    expect(screen.queryByText('challenge_solver')).toBeNull()
+    expect(screen.getByText(/Challenge Solver/)).toBeInTheDocument()
+  })
+
+  it('does not call a sandbox visit under 2 minutes a possible lesson gap', () => {
+    const visit = report.teacherSandbox.visits[0]
+    render(
+      <TeacherReportModal
+        report={{
+          ...report,
+          teacherSandbox: { ...report.teacherSandbox, visits: [{ ...visit, durationMs: 40000 }] },
+        }}
+        onClose={vi.fn()}
+      />
+    )
+    expect(screen.getByRole('button', { name: /in the teacher sandbox/ })).not.toHaveTextContent(
+      'lesson gap'
+    )
   })
 
   it('copies the class summary with anonymised labels', async () => {

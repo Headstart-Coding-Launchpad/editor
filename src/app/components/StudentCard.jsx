@@ -1,4 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { decodeFileKey } from '../../shared/fileKeys'
+import { resolveAssetsPath } from '../../shared/assetPaths'
+import { decodeSessionFiles } from '../../shared/workspaceData'
+import { getLessonModule } from '../../modules/registry'
+import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
 import { exampleOpenCount } from '../../shared/exampleOpens'
 import {
   currentTypingScore,
@@ -60,18 +65,79 @@ function formatVisiblePanes(panes) {
 }
 
 // A status chip as a single icon: the words are its tooltip and its accessible name, so the
-// card stays compact (the teacher hovers for detail).
-function IconChip({ icon, label, title, style, testId }) {
+// card stays compact (the teacher hovers for detail). A touch screen has no hover, so there
+// (and for chips that ask the tutor to act, `showLabel`) the words show beside the icon.
+function IconChip({ icon, label, title, style, testId, showLabel = false }) {
+  const touch = useIsTouchDevice()
+  const labelled = showLabel || touch
   return (
     <span
-      style={{ ...s.checkBadge, ...s.iconChip, ...style }}
+      style={{
+        ...s.checkBadge,
+        ...s.iconChip,
+        ...(touch ? s.iconChipTouch : null),
+        ...style,
+        ...(labelled ? s.iconChipLabelled : null),
+      }}
       title={title ?? label}
       aria-label={label}
       role="img"
       data-testid={testId}
     >
       {icon}
+      {labelled && <span style={s.iconChipText}>{label}</span>}
     </span>
+  )
+}
+
+// The last non-empty line of a run's output (an input() prompt is usually the last thing
+// printed).
+function lastOutputLine(output) {
+  const lines = String(output ?? '')
+    .split('\n')
+    .filter((line) => line.trim())
+  return lines[lines.length - 1] ?? ''
+}
+
+// A small, static picture of an HTML student's page from their last Run (HSC Audit, Visual
+// Review 11). Built only when lastRunAt changes, so a watched student's per-keystroke file
+// mirror never re-renders it (AGENTS.md: render only on Run). Scripts are off in the thumbnail.
+function CardPagePreview({ student, task, lesson, moduleType }) {
+  const filesRef = useRef(student.currentFiles)
+  filesRef.current = student.currentFiles
+  const src = useMemo(() => {
+    const files = decodeSessionFiles(filesRef.current, decodeFileKey, 'html')
+    if (!files.length) return null
+    try {
+      return (
+        getLessonModule(moduleType)?.runtime?.buildPreviewSrc?.(
+          { files, entryFile: task?.entryFile ?? 'index.html' },
+          task,
+          { assetsPath: resolveAssetsPath(lesson?.assetsPath) || '', assets: lesson?.assets ?? [] }
+        ) ?? null
+      )
+    } catch {
+      return null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student.lastRunAt, task?.id, moduleType])
+  if (!src) {
+    return (
+      <div style={s.iframeThumb}>
+        <span style={{ color: '#6b7280', fontSize: 12 }}>HTML project</span>
+      </div>
+    )
+  }
+  return (
+    <div style={s.pageThumb} data-testid="card-page-preview" aria-hidden="true">
+      <iframe
+        src={src}
+        title={`${student.displayName}'s page`}
+        sandbox="allow-same-origin"
+        tabIndex={-1}
+        style={s.pageThumbFrame}
+      />
+    </div>
   )
 }
 
@@ -197,6 +263,13 @@ export default function StudentCard({
   // file tree changed (filesystem); anything else gets the generic "HTML project" line.
   const cardSummary = getModuleDefinition(moduleType)?.capabilities.cardSummary ?? null
   const hasConsoleOutput = cardSummary === 'output'
+  // Their program is waiting for input() right now (currentInputPrompt, runWithRuntime.js).
+  const waitingForInput =
+    hasConsoleOutput && !isSessionSandbox && student.currentInputPrompt != null
+  // An unedited Scratch task still has its starter blocks: say so, not "No blocks yet".
+  const hasStarter =
+    cardSummary === 'blocks' &&
+    !!getModuleDefinition(moduleType)?.hasStarterContent?.(currentTask ?? {})
   // The Python Stage drawing of the last run (currentStageResult): a thumbnail beside the output.
   const cardStage = hasConsoleOutput ? readStageResult(student.currentStageResult) : null
   const itemProgress = isSessionSandbox ? null : getTaskItemProgress(currentTask, student)
@@ -616,7 +689,14 @@ export default function StudentCard({
             />
           )}
           {student.needsHelp && (
-            <IconChip icon="✋" label="Help" title="Asked for help" style={s.checkBadgeHelp} />
+            <IconChip
+              icon="✋"
+              label="Needs help"
+              title="Asked for help: open them to help"
+              style={s.checkBadgeHelp}
+              testId="card-needs-help"
+              showLabel
+            />
           )}
           {student.shareRequestedAt != null && (
             <IconChip
@@ -624,6 +704,7 @@ export default function StudentCard({
               label="Sharing"
               title="Wants to share their work with the class: open them to review it"
               style={s.checkBadgeShare}
+              showLabel
             />
           )}
           {supportRevealCount > 0 && (
@@ -796,6 +877,13 @@ export default function StudentCard({
               )}
             </pre>
           </div>
+        ) : waitingForInput ? (
+          // Their program is paused on input() (mirrored once per prompt, runWithRuntime.js).
+          <pre style={s.snippet} data-testid="card-waiting-input">
+            <span style={s.waitingInput}>⌨️ Waiting for input</span>
+            {'\n'}
+            {lastOutputLine(student.currentOutput)}
+          </pre>
         ) : (
           <pre style={s.snippet}>
             {(student.currentOutput ?? '').split('\n').slice(0, 2).join('\n') || (
@@ -806,9 +894,42 @@ export default function StudentCard({
       ) : cardSummary === 'blocks' ? (
         <div style={s.iframeThumb}>
           <span style={{ color: student.currentCode ? '#6b7280' : '#9ca3af', fontSize: 12 }}>
-            {student.currentCode ? 'Blocks edited' : 'No blocks yet'}
+            {student.currentCode
+              ? 'Blocks edited'
+              : hasStarter
+                ? 'Starter blocks, not changed yet'
+                : 'No blocks yet'}
           </span>
         </div>
+      ) : cardSummary === 'drawing' ? (
+        // Turtle: the outcome of their last run on this task (lastRunStatus resets per task).
+        student.lastRunStatus != null ? (
+          <pre style={s.snippet} data-testid="card-drawing">
+            <span style={student.lastRunStatus === 'error' ? s.runErrorText : s.ranText}>
+              {student.lastRunStatus === 'error' ? '🐢 Ran with an error' : '🐢 Drawing ran'}
+            </span>
+            {student.currentOutput ? `\n${lastOutputLine(student.currentOutput)}` : ''}
+          </pre>
+        ) : (
+          <div style={s.iframeThumb}>
+            <span style={{ color: '#9ca3af', fontSize: 12 }}>No run yet</span>
+          </div>
+        )
+      ) : cardSummary === 'page' ? (
+        student.currentFiles && student.lastRunStatus != null ? (
+          <CardPagePreview
+            student={student}
+            task={currentTask}
+            lesson={taskLesson}
+            moduleType={moduleType}
+          />
+        ) : (
+          <div style={s.iframeThumb}>
+            <span style={{ color: '#9ca3af', fontSize: 12 }}>
+              {student.currentFiles ? 'Editing, not run yet' : 'No run yet'}
+            </span>
+          </div>
+        )
       ) : cardSummary === 'fs' ? (
         <div style={s.iframeThumb}>
           <span style={{ color: student.currentCode ? '#6b7280' : '#9ca3af', fontSize: 12 }}>
@@ -1030,6 +1151,10 @@ const s = {
     borderRadius: 4,
   },
   iconChip: { minWidth: 22, justifyContent: 'center', padding: '1px 5px', fontSize: 12 },
+  // Bigger on a touch screen (they were about 14px), and tall enough to read at a glance.
+  iconChipTouch: { minWidth: 28, minHeight: 24, fontSize: 15, padding: '2px 7px' },
+  iconChipLabelled: { gap: 4, textTransform: 'none', letterSpacing: 0 },
+  iconChipText: { fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap' },
   nowLine: {
     fontSize: 12,
     color: 'var(--colour-ink-strong)',
@@ -1214,6 +1339,26 @@ const s = {
     maxHeight: 36,
     overflow: 'hidden',
     color: 'var(--colour-text)',
+  },
+  waitingInput: { color: 'var(--colour-primary)', fontWeight: 700 },
+  ranText: { color: 'var(--colour-success-text)', fontWeight: 700 },
+  runErrorText: { color: '#c2410c', fontWeight: 700 },
+  // The page thumbnail: a 1/4-scale iframe, so a 4× wider page fits the card.
+  pageThumb: {
+    height: 64,
+    borderRadius: 6,
+    overflow: 'hidden',
+    background: '#fff',
+    border: '1px solid var(--ui-border)',
+    position: 'relative',
+  },
+  pageThumbFrame: {
+    width: '400%',
+    height: 256,
+    border: 'none',
+    transform: 'scale(0.25)',
+    transformOrigin: '0 0',
+    pointerEvents: 'none',
   },
   iframeThumb: {
     height: 30,

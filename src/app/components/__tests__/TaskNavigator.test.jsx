@@ -74,3 +74,29 @@ describe('TaskNavigator Prev/Next during sandbox mode', () => {
     expect(next).toHaveStyle({ opacity: 0.45 })
   })
 })
+
+describe('TaskNavigator while the sandbox is live', () => {
+  it('has no second Deactivate Sandbox button (the yellow bar has the one)', () => {
+    render(<TaskNavigator tasks={tasks} currentTaskId={2} isSandbox onSandbox={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: 'Deactivate Sandbox' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('task-nav-sandbox-live')).toBeInTheDocument()
+  })
+})
+
+describe('TaskNavigator current-task line', () => {
+  const students = [
+    { anonymousId: 'a', lastRunStatus: 'success', lastRunAt: 1, checkPassed: true },
+    { anonymousId: 'b', lastRunStatus: null },
+  ]
+
+  it('counts runs on a code task', () => {
+    render(<TaskNavigator tasks={tasks} currentTaskId={1} students={students} />)
+    expect(screen.getByText('1/2 run')).toBeInTheDocument()
+  })
+
+  it('shows no run count on an information task', () => {
+    const infoTasks = [{ id: 1, title: 'Read me', taskType: 'information' }]
+    render(<TaskNavigator tasks={infoTasks} currentTaskId={1} students={students} />)
+    expect(screen.queryByText(/ run/)).not.toBeInTheDocument()
+  })
+})

@@ -64,6 +64,7 @@ import {
 import { useTopicLibrary } from '../../shared/topicLibrary'
 import { buildStudentLivePayload } from '../teacherLivePayload'
 import { getModuleDefinition } from '../../modules/definitions'
+import { sandboxModuleLabel } from './teacher/sandboxModuleLabel'
 import PaneFocusDropdown from '../components/student-modal/PaneFocusDropdown'
 import ControlHighlightDropdown from '../components/student-modal/ControlHighlightMenu'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
@@ -269,8 +270,9 @@ export default function TeacherView({ lessonId }) {
       students: session?.students ?? {},
       variant: 'teacher',
       catalogueBadges,
+      pendingCount: badgeSuggestions.suggestions.length,
     }),
-    [session?.badges, session?.students, catalogueBadges]
+    [session?.badges, session?.students, catalogueBadges, badgeSuggestions.suggestions.length]
   )
   // The suggestions panel's open state lives here so the grid's 🏅 Suggestions button can open
   // and focus it (bumping badgePanelFocus).
@@ -812,6 +814,7 @@ export default function TeacherView({ lessonId }) {
             {session && !isInformationTask && (isInSandbox || !isHostedActivityTask(task)) && (
               <PaneFocusDropdown
                 label="Focus Class"
+                clearHeader
                 lessonType={editorLesson?.type}
                 onHighlight={(panes) => pushClassPaneCommand({ mode: 'highlight', panes })}
                 onForce={(panes) => pushClassPaneCommand({ mode: 'force', panes })}
@@ -838,7 +841,9 @@ export default function TeacherView({ lessonId }) {
               onStartSession={startSession}
               onEndSession={() => setShowEndModal(true)}
               onRestartSession={restartSession}
-              onReturnToAdmin={() => navigate('/admin')}
+              // Only admins can open the Admin Portal, so only they get the button (HSC Audit,
+              // Visual Review 28).
+              onReturnToAdmin={role === 'admin' ? () => navigate('/admin') : null}
               onUpdateVideoCallLink={updateVideoCallLink}
               onBroadcastVideoCallLink={broadcastVideoCallLink}
               onRemoveSharedWorkspace={removeSharedWorkspace}
@@ -949,7 +954,7 @@ export default function TeacherView({ lessonId }) {
                   >
                     {lessonModules.map((module) => (
                       <option key={module.id} value={module.id}>
-                        {module.title || module.id} ({module.type})
+                        {sandboxModuleLabel(module)}
                       </option>
                     ))}
                   </select>

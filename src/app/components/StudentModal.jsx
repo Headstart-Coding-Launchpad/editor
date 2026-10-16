@@ -12,7 +12,11 @@ import {
   getCompleteStage,
   getRevealableStages,
 } from '../../shared/taskUtils'
-import { TEACHER_LIVE_REVEAL_KEY, getTeacherLivePin } from '../../shared/taskStages.js'
+import {
+  TEACHER_LIVE_REVEAL_KEY,
+  formatStageLabel,
+  getTeacherLivePin,
+} from '../../shared/taskStages.js'
 import PresenceBadge from './PresenceBadge'
 import ScratchWorkspace from '../../modules/scratch/ScratchWorkspace.jsx'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
@@ -126,6 +130,8 @@ export default function StudentModal({
   onDecideBadge,
   onRevokeBadge,
   catalogueBadges = [],
+  // The rules' pending badge suggestions (BadgeSuggestion[]), ranked at the top of the picker.
+  badgeSuggestions = [],
   // Truthy (a fresh value each time) to show the student's side-quest rather than the task.
   sideQuestViewRequest = null,
   // Tutor-only: the class-list name this student is matched to (src/shared/roster/), or null.
@@ -795,13 +801,14 @@ export default function StudentModal({
                 📖 Every task: {AUTO_REVEAL_OPTIONS.find((o) => o.mode === autoRevealStage)?.label}
               </span>
             )}
-            {shownLineHintCount != null && teacherEditState !== 'editing' && (
+            {shownLineHintCount > 0 && teacherEditState !== 'editing' && (
               <span
                 style={s.supportBadge}
                 title="The lesson's 💡 line hints still on this student's code (hints on lines the student has changed are gone)"
                 data-testid="modal-line-hint-count"
               >
-                💡 {shownLineHintCount} {shownLineHintCount === 1 ? 'hint' : 'hints'} showing
+                💡 {shownLineHintCount} line {shownLineHintCount === 1 ? 'hint' : 'hints'} left in
+                their code
               </span>
             )}
             {teacherLiveReferencePinned && (
@@ -955,7 +962,12 @@ export default function StudentModal({
                               )
                             }}
                           >
-                            Reveal solution: {completeStage.stage.label || 'Complete'}
+                            {/* "Reveal solution", or "Reveal solution: Answer" for a named one;
+                                never "Reveal solution: Complete". */}
+                            {formatStageLabel(completeStage.stage, completeStage.index).replace(
+                              /^Complete(?=:|$)/i,
+                              'Reveal solution'
+                            )}
                           </button>
                         )}
                         {canSetAutoReveal && (
@@ -1245,6 +1257,9 @@ export default function StudentModal({
                   <DropdownMenu label="More" buttonClassName="btn-ghost" panelStyle={s.menuPanel}>
                     {(close) => (
                       <>
+                        {/* Grouped with headings (HSC Audit, Visual Review 19): the three ways of
+                            showing this student's work to the class say what each one does. */}
+                        {(hasBadge || hasNudge) && <div style={s.menuHeadingFirst}>Encourage</div>}
                         {hasBadge && (
                           <button
                             style={sTo.toolBtn}
@@ -1254,18 +1269,6 @@ export default function StudentModal({
                             }}
                           >
                             🏅 Award badge
-                          </button>
-                        )}
-                        {hasExport && (
-                          <button
-                            style={sTo.toolBtn}
-                            onClick={() => {
-                              close()
-                              setShowExportDialog(true)
-                            }}
-                            title="Download this student's work, or make a name-hidden share link"
-                          >
-                            🎁 Export work
                           </button>
                         )}
                         {hasNudge && (
@@ -1280,6 +1283,11 @@ export default function StudentModal({
                             🔔 Nudge
                           </button>
                         )}
+                        {(hasGoLiveForAll || hasShare) && (
+                          <div style={hasBadge || hasNudge ? s.menuHeading : s.menuHeadingFirst}>
+                            Show the class
+                          </div>
+                        )}
                         {hasGoLiveForAll && (
                           <button
                             style={sTo.toolBtn}
@@ -1287,9 +1295,9 @@ export default function StudentModal({
                               close()
                               onGoLiveForAll()
                             }}
-                            title="Show this student's work on every screen"
+                            title="Put this student's work on every screen, live. The class watches until you press Stop Live."
                           >
-                            📡 Go Live for All
+                            📡 Go Live for All: takes over every screen
                           </button>
                         )}
                         {hasGoLiveForAll && (
@@ -1299,10 +1307,33 @@ export default function StudentModal({
                               close()
                               onGoLiveForAll('panel')
                             }}
-                            title="Offer this student's work to the class: everyone keeps coding and can watch it or try a copy"
+                            title="Offer this student's work to the class, live: everyone keeps coding and can watch it or try a copy"
                           >
-                            📺 Show to class (keep coding)
+                            📺 Show to class: they keep coding
                           </button>
+                        )}
+                        {hasShare && (
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              onRequestShareSnapshot(student.anonymousId)
+                            }}
+                            title="Take a copy of this student's work as it is now. You check it, then classmates can open the copy."
+                          >
+                            📤 Share a copy with the class
+                          </button>
+                        )}
+                        {(hasEdit || hasTopic || hasMessage || hasVideoCall || hasFullscreen) && (
+                          <div
+                            style={
+                              hasBadge || hasNudge || hasGoLiveForAll || hasShare
+                                ? s.menuHeading
+                                : s.menuHeadingFirst
+                            }
+                          >
+                            Help this student
+                          </div>
                         )}
                         {hasEdit && (
                           <button
@@ -1348,17 +1379,6 @@ export default function StudentModal({
                             📹 Send Video Call Link
                           </button>
                         )}
-                        {hasShare && (
-                          <button
-                            style={sTo.toolBtn}
-                            onClick={() => {
-                              close()
-                              onRequestShareSnapshot(student.anonymousId)
-                            }}
-                          >
-                            📤 Share this with the class
-                          </button>
-                        )}
                         {hasFullscreen && (
                           <button
                             style={sTo.toolBtn}
@@ -1371,10 +1391,25 @@ export default function StudentModal({
                             {fullscreenRequested ? '✓ Requested' : '⛶ Ask to go fullscreen'}
                           </button>
                         )}
+                        {hasExport && (
+                          <>
+                            <div style={s.menuHeading}>Their work</div>
+                            <button
+                              style={sTo.toolBtn}
+                              onClick={() => {
+                                close()
+                                setShowExportDialog(true)
+                              }}
+                              title="Download this student's work, or make a name-hidden share link"
+                            >
+                              🎁 Export work
+                            </button>
+                          </>
+                        )}
                         {/* Highlight/force a tab or the Instructions pane on this student's screen */}
                         {hasFocus && (
                           <section aria-label="Focus" style={s.menuSection}>
-                            <div style={s.menuHeading}>Focus</div>
+                            <div style={s.menuHeading}>Focus their screen</div>
                             <PaneFocusControls
                               lessonType={taskLesson?.type}
                               onHighlight={(panes) =>
@@ -1630,6 +1665,7 @@ export default function StudentModal({
           students={[{ anonymousId: student.anonymousId, displayName: student.displayName }]}
           decisions={session?.badges ?? {}}
           catalogueBadges={catalogueBadges}
+          suggestions={badgeSuggestions}
           taskId={session?.currentTaskId ?? null}
           onDecideBadge={onDecideBadge}
           onRevokeBadge={onRevokeBadge}
