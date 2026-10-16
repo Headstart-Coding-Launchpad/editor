@@ -1586,12 +1586,13 @@ export default function StudentView({
           onClick={sharePending ? handleCancelShare : handleShareWorkspace}
           title={
             sharePending
-              ? 'Waiting for your teacher to check it — click to withdraw'
-              : 'Offer your work to the class (your teacher approves it first)'
+              ? 'Your tutor is checking it before the class sees it. Tap to take it back.'
+              : 'Offer your work to the class (your tutor checks it first)'
           }
-          aria-label={sharePending ? 'Waiting for teacher' : 'Share with class'}
+          aria-label={sharePending ? 'Waiting for your tutor to approve' : 'Share with class'}
         >
-          {sharePending ? '⏳ Waiting' : '📤 Share'}
+          {/* Says who it is waiting for: a bare "⏳ Waiting" left students guessing. */}
+          {sharePending ? '⏳ Tutor checking…' : '📤 Share'}
         </button>
       )}
       {canSeeSharedWork && (
@@ -1656,9 +1657,11 @@ export default function StudentView({
     <div style={{ ...s.page, background: isForcedTeacherLive ? '#dde0e5' : '#f5f5f5' }}>
       {isPaused && (
         <div style={s.pauseOverlay}>
-          <span style={s.pauseIcon}>⏸</span>
+          <span style={s.pauseIcon} aria-hidden="true">
+            ⏸
+          </span>
           <h2 style={s.pauseTitle}>Coding Paused</h2>
-          <p style={s.pauseSubtitle}>Your teacher will resume the session shortly</p>
+          <p style={s.pauseSubtitle}>Your tutor will be back in a moment.</p>
         </div>
       )}
       <TopBar
@@ -2268,11 +2271,18 @@ const s = {
     gap: 12,
     zIndex: 999,
   },
+  // A solid white disc behind the ⏸ so it reads on the purple (the bare glyph was pale).
   pauseIcon: {
-    fontSize: '3rem',
+    width: 84,
+    height: 84,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#fff',
+    color: 'var(--colour-primary)',
+    fontSize: '2.6rem',
     lineHeight: 1,
-    color: '#fff',
-    opacity: 0.8,
   },
   pauseTitle: {
     fontFamily: 'var(--font-title)',
@@ -2283,8 +2293,8 @@ const s = {
   },
   pauseSubtitle: {
     fontFamily: 'var(--font-body)',
-    fontSize: '1rem',
-    color: 'rgba(255,255,255,0.75)',
+    fontSize: '1.1rem',
+    color: 'rgba(255,255,255,0.92)',
     margin: 0,
   },
   consentOverlay: {

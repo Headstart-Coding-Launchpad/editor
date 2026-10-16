@@ -1434,6 +1434,13 @@ describe('StudentView', () => {
       expect(needHelpBtn).toHaveAttribute('aria-disabled', 'true')
     })
 
+    it('the pause screen tells the student their tutor will be back, in a full sentence', async () => {
+      mocks.useSession.mockReturnValue(mkLiveSession({ isPaused: true }))
+      render(<StudentView lessonId="python-1-1" />)
+      expect(await screen.findByText('Coding Paused')).toBeInTheDocument()
+      expect(screen.getByText('Your tutor will be back in a moment.')).toBeInTheDocument()
+    })
+
     it('does not appear in solo mode (no teacher on the other end to help)', async () => {
       render(<StudentView lessonId="python-1-1" forceSolo />)
       await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
