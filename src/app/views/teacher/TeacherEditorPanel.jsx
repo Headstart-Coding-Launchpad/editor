@@ -39,14 +39,19 @@ export default function TeacherEditorPanel({
   const usesUnifiedStages = !!mod?.capabilities?.teacherUnifiedStageTabs
 
   if (!isInSandbox && isInformationTask) {
+    // A size container: the tutor's centre column can be narrow (a tablet with the students
+    // panel open), so the recap and image layouts follow its width, not the window's (see
+    // `.information-task-host` in index.css; HSC Audit, Visual Review 02).
     return (
-      <InformationTask
-        task={task}
-        lesson={lesson}
-        fill
-        badgeWall={badgeWall}
-        entranceKey={entranceKey}
-      />
+      <div className="information-task-host" data-testid="teacher-information-host">
+        <InformationTask
+          task={task}
+          lesson={lesson}
+          fill
+          badgeWall={badgeWall}
+          entranceKey={entranceKey}
+        />
+      </div>
     )
   }
   // Activities show their answers read-only; quizzes (previewState 'initial') show just the
