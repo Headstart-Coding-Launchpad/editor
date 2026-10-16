@@ -708,7 +708,7 @@ describe('buildStageOptions', () => {
     const task = { codeStages: [{ label: 'Nudge' }, { label: 'Harder', role: 'extension' }] }
     const opts = buildStageOptions(task, 'python')
     expect(opts[1]).toEqual({ value: 'stage_0', label: 'Nudge' })
-    expect(opts[2]).toEqual({ value: 'stage_1', label: 'extension: Harder' })
+    expect(opts[2]).toEqual({ value: 'stage_1', label: 'Extension: Harder' })
   })
 
   it('falls back to "Stage N" when stage has no label', () => {
