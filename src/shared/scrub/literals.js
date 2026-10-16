@@ -458,6 +458,21 @@ export const SCRUB_SAFE_COLOURS = Object.freeze([
   { label: 'Reddish purple', hex: '#cc79a7', name: null },
 ])
 
+// The safe palette under its nearest CSS colour names (by RGB distance, kept distinct and
+// readable), offered first when the picker writes names only (`scrub.colourNames`, the default).
+export const SCRUB_SAFE_COLOUR_NAMES = Object.freeze(
+  [
+    'black',
+    'orange',
+    'cornflowerblue',
+    'teal',
+    'gold',
+    'steelblue',
+    'orangered',
+    'palevioletred',
+  ].map((name) => ({ label: name, hex: CSS_COLOURS[name], name }))
+)
+
 // Common CSS colour names, offered after the safe palette (written as names).
 export const SCRUB_COMMON_COLOURS = Object.freeze(
   ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'brown', 'grey', 'white'].map(
@@ -488,9 +503,11 @@ function matchNameCase(name, original) {
  * pick has one (keeping the original's capitalisation), otherwise it is written as hex — in the
  * literal's case, and in 3-digit form when the literal was and the colour allows it.
  */
-export function formatScrubColour(choice, literal) {
+export function formatScrubColour(choice, literal, { namesOnly = false } = {}) {
   const hex = parseColour(choice?.hex ?? '') ?? '#000000'
   if (literal?.style === 'name' && choice?.name) return matchNameCase(choice.name, literal.text)
+  // Names only (scrub.colourNames, the default): a named pick replaces a hex literal by name.
+  if (namesOnly && choice?.name) return choice.name
   let digits = hex.slice(1)
   if (
     literal?.short &&

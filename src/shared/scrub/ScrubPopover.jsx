@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import { createPortal } from 'react-dom'
 import {
   SCRUB_COMMON_COLOURS,
+  SCRUB_SAFE_COLOUR_NAMES,
   SCRUB_SAFE_COLOURS,
   clampScrubValue,
   formatScrubColour,
@@ -222,9 +223,17 @@ function ColourPicker({ request, session, onPick, onCancel }) {
   const firstRef = useRef(null)
   useEffect(() => firstRef.current?.focus(), [])
   const current = useMemo(() => literal.hex?.toLowerCase(), [literal.hex])
+  // Names only (scrub.colourNames, on by default): the safe palette under CSS names, then the
+  // other named colours, and no hex box.
+  const namesOnly = request.colourNames !== false
+  const safeColours = namesOnly ? SCRUB_SAFE_COLOUR_NAMES : SCRUB_SAFE_COLOURS
+  const safeNames = new Set(safeColours.map((choice) => choice.name).filter(Boolean))
+  const commonColours = namesOnly
+    ? SCRUB_COMMON_COLOURS.filter((choice) => !safeNames.has(choice.name))
+    : SCRUB_COMMON_COLOURS
 
   function pick(choice) {
-    previewScrub(view, session, formatScrubColour(choice, literal))
+    previewScrub(view, session, formatScrubColour(choice, literal, { namesOnly }))
     onPick()
   }
 
@@ -246,12 +255,14 @@ function ColourPicker({ request, session, onPick, onCancel }) {
         ...s.swatchBtn,
         ...(choice.hex === current ? s.swatchBtnCurrent : null),
       }}
-      aria-label={`${choice.label} (${choice.name ?? choice.hex})`}
+      aria-label={
+        namesOnly && choice.name ? choice.name : `${choice.label} (${choice.name ?? choice.hex})`
+      }
       aria-pressed={choice.hex === current}
       onClick={() => pick(choice)}
     >
       <span aria-hidden="true" style={{ ...s.swatchChip, background: choice.hex }} />
-      <span style={s.swatchLabel}>{choice.label}</span>
+      <span style={s.swatchLabel}>{namesOnly && choice.name ? choice.name : choice.label}</span>
     </button>
   )
 
@@ -261,42 +272,44 @@ function ColourPicker({ request, session, onPick, onCancel }) {
         Colour-blind-safe colours
       </span>
       <div style={s.swatchGrid} role="group" aria-labelledby="scrub-safe-colours">
-        {SCRUB_SAFE_COLOURS.map((choice, index) => swatch(choice, index, firstRef))}
+        {safeColours.map((choice, index) => swatch(choice, index, firstRef))}
       </div>
       <span style={s.title} id="scrub-common-colours">
         More colours
       </span>
       <div style={s.swatchGrid} role="group" aria-labelledby="scrub-common-colours">
-        {SCRUB_COMMON_COLOURS.map((choice, index) => swatch(choice, index + 1, null))}
+        {commonColours.map((choice, index) => swatch(choice, index + 1, null))}
       </div>
-      <form
-        style={s.hexRow}
-        onSubmit={(event) => {
-          event.preventDefault()
-          applyHex()
-        }}
-      >
-        <label style={s.hexLabel} htmlFor="scrub-hex-input">
-          Hex
-        </label>
-        <input
-          id="scrub-hex-input"
-          data-hex-input="true"
-          style={{ ...s.hexInput, ...(hexError ? s.hexInputError : null) }}
-          value={hexDraft}
-          spellCheck={false}
-          aria-invalid={hexError}
-          aria-describedby={hexError ? 'scrub-hex-error' : undefined}
-          onChange={(event) => {
-            setHexDraft(event.target.value)
-            setHexError(false)
+      {!namesOnly && (
+        <form
+          style={s.hexRow}
+          onSubmit={(event) => {
+            event.preventDefault()
+            applyHex()
           }}
-        />
-        <button type="submit" className="btn-primary" style={s.doneBtn}>
-          Use
-        </button>
-      </form>
-      {hexError && (
+        >
+          <label style={s.hexLabel} htmlFor="scrub-hex-input">
+            Hex
+          </label>
+          <input
+            id="scrub-hex-input"
+            data-hex-input="true"
+            style={{ ...s.hexInput, ...(hexError ? s.hexInputError : null) }}
+            value={hexDraft}
+            spellCheck={false}
+            aria-invalid={hexError}
+            aria-describedby={hexError ? 'scrub-hex-error' : undefined}
+            onChange={(event) => {
+              setHexDraft(event.target.value)
+              setHexError(false)
+            }}
+          />
+          <button type="submit" className="btn-primary" style={s.doneBtn}>
+            Use
+          </button>
+        </form>
+      )}
+      {!namesOnly && hexError && (
         <span id="scrub-hex-error" style={s.hexErrorText}>
           Write a hex colour like #ff0000
         </span>
@@ -369,7 +382,7 @@ const s = {
     borderRadius: 6,
     border: '1px solid rgba(0, 0, 0, 0.3)',
   },
-  swatchLabel: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' },
+  swatchLabel: { minWidth: 0, overflowWrap: 'anywhere', textAlign: 'left', lineHeight: 1.15 },
   hexRow: { display: 'flex', alignItems: 'center', gap: 8 },
   hexLabel: { fontSize: '0.85rem', fontWeight: 600 },
   hexInput: {

@@ -759,6 +759,7 @@ It's off unless set, and works on Python, Turtle and HTML tasks.
           min: 10
           max: 200
       checkOnRelease: true   # optional — run the checks once when a drag ends (default true)
+      colourNames: true      # optional — the colour picker writes names only (default true)
     runOnOpen: true          # optional — preview the code when the task opens (default: on with scrub)
     codeStages:
       - role: starter
@@ -778,10 +779,17 @@ What students get:
   steps by 0.1, `0.25` by 0.01). On a tablet, tapping a number opens a slider beside it, with
   − and + buttons (all at least 44 px). The keyboard works too: **Alt+Enter** on a number opens
   the slider, and the arrow keys move it.
-- **Colours.** A colour string (`'red'`, `"#ff0000"`) gets a small swatch. Clicking or tapping it
-  opens a picker: colour-blind-safe colours first, then common colour names, then a hex box.
-  Every choice has a text label. A name stays a name when the choice has one; otherwise, and for
-  hex, it's written as hex in the same style (`#F00` stays short and in capitals when it can).
+- **Colours.** A colour string (`'red'`, `"#ff0000"`) gets a small swatch and the same dashed
+  "you can change this" box as a number. Clicking or tapping it opens a picker that writes
+  **colour names only** (`colourNames`, on by default): the colour-blind-safe colours first, under
+  their nearest CSS names (`black`, `orange`, `cornflowerblue`, `teal`, `gold`, `steelblue`,
+  `orangered`, `palevioletred`), then the other common names (`red`, `yellow`, `green`, `blue`,
+  `purple`, `pink`, `brown`, `grey`, `white`). Each choice is labelled with the exact word it
+  writes, and a hex literal is replaced by the name. Picking a colour redraws like a drag and,
+  with `checkOnRelease`, runs the checks. `colourNames: false` brings back the original
+  colour-blind-safe hex colours (written as hex, `#E69F00`) and a hex box; there, a name stays a
+  name when the choice has one, and hex keeps its style (`#F00` stays short and in capitals when
+  it can).
 - **Ranges.** `line` counts lines as the student sees them (`#>` line-hint markers don't count).
   Without a range, a number scrubs from 0 to twice its value (at least 0–100; 0–1 for decimals),
   or the same distance either side of 0 when it's negative. A value already outside an author's

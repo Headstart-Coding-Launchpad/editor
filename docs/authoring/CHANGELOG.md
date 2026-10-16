@@ -127,6 +127,21 @@ things that never work. Check existing lessons for these first:
   answer that is not an option id, a `taskMode` typo, clashing task ids); Scratch tasks that mixed
   check timings may now need the blocks to be present on Run · Resolves: none
 
+### Scrub follow-ups from the pilot click-through: colour names only, colour boxes, run on open
+
+- **The colour picker writes colour names only** (`scrub.colourNames`, on by default; Ryan,
+  2026-10-16). The colour-blind-safe colours are offered under their nearest CSS names
+  (`black`, `orange`, `cornflowerblue`, `teal`, `gold`, `steelblue`, `orangered`,
+  `palevioletred`), then the other common names; there's no hex box, and each choice is labelled
+  with the word it writes. `colourNames: false` brings back the hex colours and the hex box.
+- **Pickable colours get the dashed "you can change this" box** that numbers and
+  `#@lock-values` values have, with the swatch beside it.
+- **`runOnOpen` tasks open with the output side showing**, so the opening preview is in view (it
+  was drawn into a folded panel, so it looked as if nothing ran).
+- Affects: python, turtle · Existing lessons: none need changes; explainers can say "pick a colour"
+  without warning about hex · Resolves: none (follow-ups to p6-23 and p6-24, logged in
+  `HSC Hub\Handoffs.md` on 2026-10-16)
+
 ### Linked name tags, checks when a drag ends, live redraw with `input()` and on open, `#@lock-values`
 
 - **Name tags link to their variables** (`showVariables.link`, on by default). Each tag and every

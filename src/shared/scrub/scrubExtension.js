@@ -296,11 +296,13 @@ export function scrubExtension({ config, language, handlersRef }) {
     ranges: config.ranges ?? [],
     // checkOnRelease: the slider popover keeps each step as an edit, so the checks run on it.
     settleSteps: config.checkOnRelease !== false,
+    colourNames: config.colourNames !== false,
   }
   const handlers = () => handlersRef?.current ?? {}
 
   function popoverRequest(view, literal) {
-    if (literal.kind !== 'number') return { view, literal, range: null, step: null }
+    if (literal.kind !== 'number')
+      return { view, literal, range: null, step: null, colourNames: options.colourNames }
     return {
       view,
       literal,

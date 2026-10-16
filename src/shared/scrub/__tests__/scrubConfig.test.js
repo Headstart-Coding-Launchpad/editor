@@ -20,12 +20,14 @@ describe('getTaskScrub', () => {
       colours: true,
       ranges: [],
       checkOnRelease: true,
+      colourNames: true,
     })
     expect(getTaskScrub({ scrub: { enabled: true, colours: false } })).toEqual({
       numbers: true,
       colours: false,
       ranges: [],
       checkOnRelease: true,
+      colourNames: true,
     })
     expect(getTaskScrub({ scrub: { enabled: true, checkOnRelease: false } }).checkOnRelease).toBe(
       false

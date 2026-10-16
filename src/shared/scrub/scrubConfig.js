@@ -39,12 +39,13 @@ function isWholeLine(value) {
 
 /**
  * The task's scrub settings, normalised — `{ numbers, colours, ranges: [{ line, min, max }],
- * checkOnRelease }` — or null when scrubbing is off (no field, `enabled: false`, or both kinds off). Invalid ranges
+ * checkOnRelease, colourNames }` — or null when scrubbing is off (no field, `enabled: false`, or both kinds off). Invalid ranges
  * are dropped; the first range for a line wins.
  */
 export function getTaskScrub(task) {
   const raw = task?.scrub
-  if (raw === true) return { numbers: true, colours: true, ranges: [], checkOnRelease: true }
+  if (raw === true)
+    return { numbers: true, colours: true, ranges: [], checkOnRelease: true, colourNames: true }
   if (!isPlainObject(raw) || raw.enabled === false) return null
   const numbers = raw.numbers !== false
   const colours = raw.colours !== false
@@ -60,7 +61,14 @@ export function getTaskScrub(task) {
     seen.add(line)
     ranges.push({ line, min, max })
   }
-  return { numbers, colours, ranges, checkOnRelease: raw.checkOnRelease !== false }
+  return {
+    numbers,
+    colours,
+    ranges,
+    checkOnRelease: raw.checkOnRelease !== false,
+    // The colour picker writes CSS colour names only (Ryan, 2026-10-16); false brings hex back.
+    colourNames: raw.colourNames !== false,
+  }
 }
 
 /** The module's scrub capability, normalised (`{ liveRerun, needsImport, inputCall }`), or null. */
@@ -135,7 +143,7 @@ export function validateScrub(task, n, errors, warnings = [], { starterCode = nu
     )
     return
   }
-  for (const key of ['enabled', 'numbers', 'colours', 'checkOnRelease']) {
+  for (const key of ['enabled', 'numbers', 'colours', 'checkOnRelease', 'colourNames']) {
     if (raw[key] != null && typeof raw[key] !== 'boolean') {
       errors.push(`Task ${n} has scrub ${key} that is not true or false`)
     }
