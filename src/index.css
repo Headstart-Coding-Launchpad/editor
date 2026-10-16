@@ -1322,6 +1322,14 @@ select {
   color: inherit;
 }
 
+/* Code in a multiple-choice option never breaks mid-word (print("Goo / d morning!")): the
+   options shrink to fit, then the option scrolls sideways (HSC Audit, Visual Review 06). */
+.quiz-option-text code {
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
 /* The tutor's information task sits in a centre column that can be much narrower than the
    window (a tablet with the students panel open), so it lays out by the column's width:
    the recap stacks and floated images drop under their text, instead of squashing the text
