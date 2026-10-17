@@ -7,16 +7,6 @@ import { formatLessonLabel, isAttachedCompanion } from '../shared/lessonOrder'
 import { decodeLessonFromFirestore } from '../shared/lessonBlocksCodec'
 import { useAuth } from '../auth/useAuth'
 import BuilderView from './views/BuilderView'
-import { LESSON_MODULE_TYPES } from '../shared/composedLesson'
-import { getModuleLabel } from '../modules/definitions'
-
-// "Python, Arcade Kit, …, or Electronics" — every registered module, in picker order.
-const MODULE_LABEL_LIST = (() => {
-  const labels = LESSON_MODULE_TYPES.map((type) => getModuleLabel(type))
-  return labels.length > 1
-    ? `${labels.slice(0, -1).join(', ')}, or ${labels[labels.length - 1]}`
-    : (labels[0] ?? '')
-})()
 
 const LS_KEY = 'headstart_builder_current'
 
@@ -39,6 +29,9 @@ const normalizeLoadedLesson = (lesson) => ({
 export default function BuilderApp() {
   const [searchParams] = useSearchParams()
   const loadIdOnMount = useRef(searchParams.get('load'))
+  // Hand-building tools (new blank lesson, upload JSON, module set-up) stay hidden unless the
+  // URL carries ?advanced=1.
+  const advanced = searchParams.get('advanced') === '1'
   const [lesson, setLesson] = useState(null)
   const [dirty, setDirty] = useState(false)
   const [restorePrompt, setRestorePrompt] = useState(false)
@@ -151,7 +144,8 @@ export default function BuilderApp() {
 
   if (!lesson) {
     return (
-      <LessonTypeChooser
+      <LessonListScreen
+        advanced={advanced}
         onChoose={() => {
           setLesson(blankLesson())
           setDirty(false)
@@ -186,10 +180,22 @@ export default function BuilderApp() {
   )
 }
 
-function LessonTypeChooser({ onChoose, onUpload }) {
+function LessonListScreen({ advanced, onChoose, onUpload }) {
   const { role, user } = useAuth()
   const navigate = useNavigate()
-  const [firestoreOpen, setFirestoreOpen] = useState(false)
+  const [lessons, setLessons] = useState(null)
+  const [error, setError] = useState(null)
+  const [loadingId, setLoadingId] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchLessonList()
+      .then((items) => !cancelled && setLessons(items))
+      .catch((err) => !cancelled && setError(err.message))
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // A way back (HSC Audit, Visual Review 27): to the page the tutor came from, or, when the
   // Builder opened in its own tab, the Admin Portal (admins) or the home page.
@@ -220,9 +226,34 @@ function LessonTypeChooser({ onChoose, onUpload }) {
     input.click()
   }
 
+  async function handleSelect(lessonId) {
+    setLoadingId(lessonId)
+    try {
+      const snap = await getDoc(doc(firestore, 'lessons', lessonId))
+      if (!snap.exists()) {
+        alert('Lesson not found.')
+        return
+      }
+      onUpload(normalizeLoadedLesson(decodeLessonFromFirestore(snap.data())))
+    } catch (err) {
+      alert('Could not load lesson: ' + err.message)
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
   return (
     <div style={s.centreScreen}>
-      <div style={{ ...s.card, ...s.choiceCard }} className="card">
+      <div
+        style={{
+          ...s.card,
+          ...s.choiceCard,
+          maxHeight: '90%',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+        className="card"
+      >
         <div style={{ ...s.cardHeader, ...s.cardHeaderRow }}>
           <button type="button" style={s.backBtn} onClick={handleBack} aria-label="Back">
             ← Back
@@ -236,113 +267,46 @@ function LessonTypeChooser({ onChoose, onUpload }) {
             </button>
           )}
         </div>
-        <div style={s.cardBody}>
+        <div style={{ ...s.cardBody, overflowY: 'auto' }}>
           <div>
-            <h1 style={s.choiceTitle}>Create a lesson</h1>
-            <p style={s.choiceText}>
-              A lesson can use several kinds of task (Python, Scratch, HTML and more), in any order.
-            </p>
+            <h1 style={s.choiceTitle}>Open a lesson</h1>
+            <p style={s.choiceText}>Pick a lesson to look over and edit.</p>
           </div>
-          <div style={s.choiceGrid}>
-            <button style={s.choiceButton} onClick={onChoose}>
-              <span style={s.choiceName}>Create a lesson with several module types</span>
-              <span style={s.choiceDescription}>
-                Start with an empty lesson, then add {MODULE_LABEL_LIST} tasks.
-              </span>
-            </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {!lessons && !error && <p style={fp.hint}>Loading lessons…</p>}
+            {error && <p style={{ ...fp.hint, color: '#ef4444' }}>Error: {error}</p>}
+            {lessons && lessons.length === 0 && <p style={fp.hint}>No lessons yet.</p>}
+            {lessons &&
+              lessons.map((lesson) => {
+                // fetchLessonList returns the shared order, so a Solo Challenge follows its parent.
+                const isCompanion = isAttachedCompanion(lesson, lessons)
+                return (
+                  <button
+                    key={lesson.id}
+                    style={isCompanion ? { ...fp.row, ...fp.companionRow } : fp.row}
+                    onClick={() => handleSelect(lesson.id)}
+                    disabled={loadingId === lesson.id}
+                  >
+                    <span style={fp.rowTitle}>
+                      {formatLessonLabel(lesson)}
+                      {lesson.draft === true && <span style={fp.draftTag}>Draft</span>}
+                      {isCompanion && <span style={fp.companionTag}>Solo Challenge</span>}
+                    </span>
+                    {loadingId === lesson.id && <span style={fp.rowLoading}>Loading…</span>}
+                  </button>
+                )
+              })}
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn-ghost-outline" style={s.uploadBtn} onClick={handleUpload}>
-              Open a lesson file (JSON)
-            </button>
-            {role === 'admin' && (
-              <button
-                className="btn-ghost-outline"
-                style={s.uploadBtn}
-                onClick={() => setFirestoreOpen(true)}
-              >
-                Open from Firestore
+          {advanced && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn-ghost-outline" style={s.uploadBtn} onClick={onChoose}>
+                New blank lesson
               </button>
-            )}
-          </div>
-        </div>
-      </div>
-      {firestoreOpen && (
-        <FirestoreLessonPicker onLoad={onUpload} onClose={() => setFirestoreOpen(false)} />
-      )}
-    </div>
-  )
-}
-
-function FirestoreLessonPicker({ onLoad, onClose }) {
-  const [lessons, setLessons] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [loadingId, setLoadingId] = useState(null)
-
-  useEffect(() => {
-    fetchLessonList()
-      .then((items) => setLessons(items))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false))
-  }, [])
-
-  async function handleSelect(lessonId) {
-    setLoadingId(lessonId)
-    try {
-      const snap = await getDoc(doc(firestore, 'lessons', lessonId))
-      if (!snap.exists()) {
-        alert('Lesson not found.')
-        return
-      }
-      onLoad(normalizeLoadedLesson(decodeLessonFromFirestore(snap.data())))
-    } catch (err) {
-      alert('Could not load lesson: ' + err.message)
-    } finally {
-      setLoadingId(null)
-    }
-  }
-
-  return (
-    <div
-      style={fp.backdrop}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-    >
-      <div style={fp.modal} className="card">
-        <div style={fp.header}>
-          <span style={fp.title}>Open from Firestore</span>
-          <button style={fp.closeBtn} onClick={onClose}>
-            ×
-          </button>
-        </div>
-        <div style={fp.body}>
-          {loading && <p style={fp.hint}>Loading lessons…</p>}
-          {error && <p style={{ ...fp.hint, color: '#ef4444' }}>Error: {error}</p>}
-          {lessons && lessons.length === 0 && <p style={fp.hint}>No lessons found in Firestore.</p>}
-          {lessons &&
-            lessons.map((lesson) => {
-              // fetchLessonList returns the shared order, so a Solo Challenge follows its parent.
-              const isCompanion = isAttachedCompanion(lesson, lessons)
-              return (
-                <button
-                  key={lesson.id}
-                  style={isCompanion ? { ...fp.row, ...fp.companionRow } : fp.row}
-                  onClick={() => handleSelect(lesson.id)}
-                  disabled={loadingId === lesson.id}
-                >
-                  <span style={fp.rowTitle}>
-                    {formatLessonLabel(lesson)}
-                    {isCompanion && <span style={fp.companionTag}>Solo Challenge</span>}
-                  </span>
-                  <span style={fp.rowMeta}>
-                    {lesson.id} · {lesson.type}
-                  </span>
-                  {loadingId === lesson.id && <span style={fp.rowLoading}>Loading…</span>}
-                </button>
-              )
-            })}
+              <button className="btn-ghost-outline" style={s.uploadBtn} onClick={handleUpload}>
+                Open a lesson file (JSON)
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -433,6 +397,16 @@ const fp = {
     borderRadius: 999,
     background: '#ede9fe',
     color: '#5b21b6',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    verticalAlign: 'middle',
+  },
+  draftTag: {
+    marginLeft: 8,
+    padding: '1px 7px',
+    borderRadius: 999,
+    background: '#fef3c7',
+    color: '#92400e',
     fontSize: '0.72rem',
     fontWeight: 700,
     verticalAlign: 'middle',

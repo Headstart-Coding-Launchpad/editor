@@ -3,6 +3,7 @@ import React from 'react'
 export default function BuilderToolbar({
   dirty,
   role,
+  advanced = false,
   errors,
   saveStatus,
   hasNoTasks,
@@ -13,6 +14,8 @@ export default function BuilderToolbar({
   onDownload,
   onSave,
   onBack,
+  user = null,
+  onAccount,
 }) {
   return (
     <header style={s.topBar}>
@@ -20,17 +23,22 @@ export default function BuilderToolbar({
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         {dirty && <span style={s.dirtyDot} title="Unsaved changes" />}
 
-        {role === 'admin' && (
-          <button className="btn-ghost" style={s.btn} onClick={onBack}>
-            Back to Admin
+        <button className="btn-ghost" style={s.btn} onClick={onBack}>
+          {role === 'admin' ? '← Back to Admin' : '← Back to app'}
+        </button>
+        {user && (
+          <button className="btn-ghost" style={s.btn} onClick={onAccount}>
+            Account
           </button>
         )}
         <button className="btn-ghost" style={s.btn} onClick={onNew}>
-          New
+          All lessons
         </button>
-        <button className="btn-ghost" style={s.btn} onClick={onUpload}>
-          Upload
-        </button>
+        {advanced && (
+          <button className="btn-ghost" style={s.btn} onClick={onUpload}>
+            Upload file
+          </button>
+        )}
         <button
           className="btn-ghost"
           style={s.btn}
@@ -55,7 +63,7 @@ export default function BuilderToolbar({
           onClick={onDownload}
           disabled={errors.length > 0}
         >
-          Download JSON
+          Download lesson file
         </button>
         {role === 'admin' && (
           <button
