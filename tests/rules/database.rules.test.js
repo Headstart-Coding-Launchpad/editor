@@ -789,3 +789,38 @@ describe('live class polls', () => {
     )
   })
 })
+
+describe('solo study log', () => {
+  const soloPath = (id) => `soloLog/${LESSON}/${id}`
+  const entry = {
+    startedAt: 1,
+    lastAt: 3,
+    finishedAt: 5,
+    tasks: { t1: { attempts: 2, passed: true, firstTry: false, firstAt: 2, passedAt: 3 } },
+  }
+
+  it('lets a student write their own solo log, and nobody else', async () => {
+    await assertSucceeds(ref(as.student, soloPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.student, `${soloPath(STUDENT_ID)}/tasks/t2`).set({ attempts: 1 }))
+    await assertFails(ref(as.otherStudent, soloPath(STUDENT_ID)).set(entry))
+    await assertFails(ref(as.anonymous, soloPath(STUDENT_ID)).set(entry))
+  })
+
+  it('refuses bad values, extra fields and code', async () => {
+    await assertFails(ref(as.student, soloPath(STUDENT_ID)).set({ startedAt: 'now' }))
+    await assertFails(ref(as.student, soloPath(STUDENT_ID)).set({ code: 'print(1)' }))
+    await assertFails(ref(as.student, `${soloPath(STUDENT_ID)}/tasks/t1`).set({ attempts: -1 }))
+    await assertFails(
+      ref(as.student, `${soloPath(STUDENT_ID)}/tasks/t1`).set({ attempts: 1, code: 'x' })
+    )
+    await assertFails(ref(as.student, `${soloPath(STUDENT_ID)}/tasks/t1/passed`).set('yes'))
+  })
+
+  it('lets only tutors and admins read it, and the teacher clear a lesson', async () => {
+    await assertSucceeds(ref(as.student, soloPath(STUDENT_ID)).set(entry))
+    await assertSucceeds(ref(as.teacher, 'soloLog').get())
+    await assertFails(ref(as.student, soloPath(STUDENT_ID)).get())
+    await assertFails(ref(as.anonymous, 'soloLog').get())
+    await assertSucceeds(ref(as.teacher, `soloLog/${LESSON}`).set(null))
+  })
+})

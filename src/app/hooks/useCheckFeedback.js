@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 
-export function useCheckFeedback({ myStudentData } = {}) {
+export function useCheckFeedback({ myStudentData, onCheckResult } = {}) {
   const [checkPassed, setCheckPassed] = useState(false)
   const [checkAttempted, setCheckAttempted] = useState(false)
   const [checkSuggestion, setCheckSuggestion] = useState('')
@@ -15,6 +15,8 @@ export function useCheckFeedback({ myStudentData } = {}) {
   checkPassedRef.current = checkPassed
   const checkSuggestionRef = useRef('')
   checkSuggestionRef.current = checkSuggestion
+  const onCheckResultRef = useRef(onCheckResult)
+  onCheckResultRef.current = onCheckResult
 
   function resetRunFeedback() {
     // Clears per-run transient state. Does NOT reset checkFailCount or offeredStageIndex
@@ -36,7 +38,10 @@ export function useCheckFeedback({ myStudentData } = {}) {
     setStagePromptAccepted(false)
   }
 
-  function applyCheckFeedback(passed, suggestion = '') {
+  // `skipLog` keeps a restored or automatic result (idle feedback, Show complete) out of the solo
+  // log: only a checked Run the student made reports through `onCheckResult`.
+  function applyCheckFeedback(passed, suggestion = '', { skipLog = false } = {}) {
+    if (!skipLog) onCheckResultRef.current?.(passed)
     const nextSuggestion = String(suggestion ?? '').trim()
     setCheckPassed(passed)
     setCheckAttempted(true)

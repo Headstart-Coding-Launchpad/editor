@@ -273,6 +273,16 @@ await yargs(hideBin(process.argv))
       )
 
       .command(
+        'solo-log <id>',
+        'Who did this lesson solo (a Solo Challenge, or any lesson opened solo): started, finished, first-attempt passes per student, anonymised ("Student N", no names)',
+        {},
+        cmd(async ({ id }) => {
+          const { getLessonSoloLog } = await loadLessons()
+          print(await getLessonSoloLog(id))
+        })
+      )
+
+      .command(
         'validate [file]',
         'Validate a lesson from JSON or YAML — file path or stdin',
         {},

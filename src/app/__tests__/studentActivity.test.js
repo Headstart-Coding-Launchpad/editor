@@ -71,6 +71,24 @@ describe('studentActivities', () => {
     ).toEqual([])
   })
 
+  it('leads with the side-quest over a topic, and still shows it without the task in the lesson', () => {
+    const onQuest = {
+      anonymousId: 'kit',
+      displayName: 'Kit',
+      online: true,
+      sideQuestOpen: 0,
+      currentTopicId: 't1',
+    }
+    const all = studentActivities({
+      student: onQuest,
+      session,
+      topics: [{ id: 't1', title: 'Loops' }],
+    })
+    // No lesson (or a task id it doesn't hold): no n/m, but the marker is still there, first.
+    expect(all.map((a) => a.kind)).toEqual(['side_quest', 'topic'])
+    expect(all[0].text).toBe('on side-quest')
+  })
+
   it('says when a student is waiting for a classmate', () => {
     const waiting = studentActivities({
       student: students.sam,

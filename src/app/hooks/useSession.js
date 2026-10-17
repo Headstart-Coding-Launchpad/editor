@@ -2133,13 +2133,15 @@ export function useSession(lessonId, { enabled = true } = {}) {
   async function writeSideQuestOpen(anonymousId, index, taskId = null) {
     if (!anonymousId) return
     const open = Number.isInteger(index) ? index : null
+    // The marker the tutor's card reads goes first, so a rejected live-work mirror below can never
+    // leave the card without its "on side-quest" line (it used to follow the mirror's write).
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/sideQuestOpen`), open)
     await set(
       ref(db, sideQuestCodePath(anonymousId)),
       open != null && taskId != null
         ? { taskId, index: open, openedAt: serverTimestamp(), updatedAt: serverTimestamp() }
         : null
     )
-    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/sideQuestOpen`), open)
   }
 
   /**
