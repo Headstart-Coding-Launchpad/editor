@@ -3511,6 +3511,7 @@ export default function ScratchWorkspace({
 
       {/* Block editor — all workspace divs stacked, only selected one visible */}
       <div
+        data-testid="scratch-blocks"
         style={
           compact
             ? { ...s.editorPane, display: activePane === 'blocks' ? 'flex' : 'none' }
@@ -3650,6 +3651,7 @@ export default function ScratchWorkspace({
       )}
       {!hideStage && (compact || !stagePanelCollapsed) && (
         <div
+          data-testid="scratch-stage"
           style={
             compact
               ? {

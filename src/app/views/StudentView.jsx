@@ -103,6 +103,9 @@ export default function StudentView({
   teacherPresentation = false,
   allowUnrestrictedTaskNavigation = false,
   previewMode = false,
+  // The screenshot page (ShotView) hides the "Live + Solo" preview banner so a capture shows
+  // the task exactly as a student sees it.
+  showPreviewBanner = true,
   initialTaskId = null,
   onTaskChange = null,
 }) {
@@ -2091,6 +2094,7 @@ export default function StudentView({
               transitionKey={transitionKey}
               transitionOrder={transitionOrder}
               previewMode={previewMode}
+              showPreviewBanner={showPreviewBanner}
               isSandbox={isSandbox}
               isViewingPrev={isViewingPrev}
               isForcedTeacherLive={isForcedTeacherLive}

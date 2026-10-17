@@ -433,7 +433,7 @@ export default function StudentGrid({
     (!!onRequestFullscreenAll && students.length > 0)
 
   return (
-    <div style={s.wrap}>
+    <div style={s.wrap} data-testid="student-grid">
       {/* Two rows, so nothing prints over the title at any panel width (HSC Audit, Visual
           Review #3). The title line holds the title and count, a ⋯ menu for the occasional
           class actions (its dot means someone is Away or a badge suggestion is waiting) and

@@ -158,6 +158,9 @@ export default function SharedWorkspaceViewer({
     connected: false,
     teacherPresentation: false,
     previewMode: true,
+    // The mount-time clear ran before the load, so the classmate's work was wiped and the
+    // viewer showed the task's starter instead (platform request #76).
+    keepSeededWork: true,
     ...NOOP_SESSION_WRITES,
   })
 
@@ -249,6 +252,7 @@ export default function SharedWorkspaceViewer({
           viewingTaskId={null}
           transitionKey={`shared-${shareId}`}
           previewMode
+          showPreviewBanner={false}
           isSandbox={false}
           isViewingPrev={false}
           isForcedTeacherLive={false}

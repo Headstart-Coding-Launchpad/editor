@@ -173,6 +173,9 @@ export function useStudentCodeState({
   connected,
   teacherPresentation,
   previewMode,
+  // A throwaway copy that seeds the in-memory store before mounting (SharedWorkspaceViewer)
+  // keeps what it seeded instead of starting clean.
+  keepSeededWork = false,
   // Session write commands
   writeStudentRun,
   writeStudentHintState,
@@ -1088,7 +1091,7 @@ export function useStudentCodeState({
   // Presentation/preview persist to an in-memory store (see createStudentPersistence);
   // start each such session clean so stale state from a previous preview can't leak in.
   useEffect(() => {
-    if (teacherPresentation || previewMode) clearEphemeralStorage()
+    if ((teacherPresentation || previewMode) && !keepSeededWork) clearEphemeralStorage()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

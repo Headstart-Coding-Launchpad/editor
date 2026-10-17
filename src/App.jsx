@@ -13,6 +13,7 @@ const LoginPage = lazy(() => import('./app/views/LoginPage'))
 const AdminPortal = lazy(() => import('./admin/AdminPortal'))
 const BuilderApp = lazy(() => import('./builder/App'))
 const AccountSettings = lazy(() => import('./auth/AccountSettings'))
+const ShotView = lazy(() => import('./app/views/ShotView'))
 
 export default function App() {
   return (
@@ -42,6 +43,7 @@ export default function App() {
               }
             />
             <Route path="/builder" element={<BuilderApp />} />
+            <Route path="/shot" element={<ShotView />} />
             <Route path="*" element={<LandingPage />} />
           </Routes>
         </Suspense>

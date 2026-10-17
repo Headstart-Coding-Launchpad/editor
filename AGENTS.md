@@ -83,6 +83,7 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | What a validation error or warning means and how to fix it | `docs/authoring/validation-errors.md` |
 | Draft lessons (incomplete tasks, intent, clearing draft) | `docs/authoring/AUTHORING_GUIDE.md` Draft lessons |
 | Lesson assets via CLI | `docs/authoring/lesson-assets-cli.md` |
+| Lesson screenshots via CLI | `docs/authoring/lesson-screenshot-cli.md` |
 | Reading, adding, or archiving teacher feedback via CLI | `docs/authoring/feedback-cli.md` |
 | Reading or reviewing session reports (field reference) | `docs/authoring/session-reports.md` |
 | Test strategy | `docs/TESTING.md` |

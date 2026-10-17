@@ -145,6 +145,7 @@ const s = {
     padding: 14,
     borderRadius: 10,
     background: 'var(--colour-surface, #fff)',
+    color: 'var(--colour-text)',
     border: '1px solid #0d9488',
     boxShadow: '0 12px 32px rgba(0,0,0,0.22)',
     display: 'flex',
@@ -169,6 +170,9 @@ const s = {
     maxHeight: '80vh',
     overflow: 'auto',
     background: 'var(--colour-surface, #fff)',
+    // The gallery button sits in the top bar, whose text is white: without its own colour the
+    // title and sharer names inherited it and vanished (platform request #76).
+    color: 'var(--colour-text)',
     borderRadius: 12,
     padding: 16,
     display: 'flex',

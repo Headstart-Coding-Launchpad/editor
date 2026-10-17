@@ -68,7 +68,12 @@ export default function TurtlePicture({
   const description = descriptionOverride ?? drawingDescription
 
   return (
-    <div style={{ ...s.wrap, ...style }} className="turtle-picture">
+    <div
+      style={{ ...s.wrap, ...style }}
+      className="turtle-picture"
+      data-testid="turtle-canvas"
+      data-playing={playing ? 'true' : undefined}
+    >
       <canvas
         ref={setCanvas}
         style={{ ...s.canvas, ...canvasStyle }}

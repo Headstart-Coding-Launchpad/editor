@@ -57,7 +57,7 @@ export default function PythonEditor({
   const [blockGuidesOn, setBlockGuidesOn] = useBlockGuidesOn()
 
   return (
-    <div style={s.wrap}>
+    <div style={s.wrap} data-testid="editor-panel">
       {pyodideStatus === 'loading' && <div style={s.pyBanner}>⏳ Getting Python ready…</div>}
       {pyodideStatus === 'error' && (
         <div style={{ ...s.pyBanner, background: '#fef2f2', color: '#b91c1c' }}>

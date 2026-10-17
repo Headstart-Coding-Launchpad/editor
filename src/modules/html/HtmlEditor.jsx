@@ -34,7 +34,7 @@ export default function HtmlEditor({
   const hasAssets = !!(assetsPath && assets?.length) || storageAssets?.length > 0
 
   return (
-    <div style={s.wrap}>
+    <div style={s.wrap} data-testid="editor-panel">
       {/* File tabs + Assets toggle */}
       <div style={{ ...s.tabs, ...(attachedTop ? s.tabsAttachedTop : {}) }} className="ui-tabs">
         {files.map((f) => (
