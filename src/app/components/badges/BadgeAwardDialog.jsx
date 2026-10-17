@@ -8,6 +8,7 @@ import {
   resolveBadge,
 } from '../../../badges/badgeDisplay'
 import { catalogueBadgeSnapshot } from '../../../badges/catalogue'
+import { rankStudentSuggestions } from '../../../badges/suggestionRanking'
 
 function holds(decisions, studentId, badgeId) {
   return decisions?.[studentId]?.[badgeId]?.status === 'awarded'
@@ -107,15 +108,23 @@ export default function BadgeAwardDialog({
 
   const badges = useMemo(() => listAwardableBadges(catalogueBadges), [catalogueBadges])
   const studentKey = students.map((st) => st.anonymousId).join('\u0000')
-  const ranking = useMemo(
-    () =>
-      suggestedBadgeRanking(
+  const ranking = useMemo(() => {
+    // One student: the shared one-tap ranking (current task, recency, fewer holders in class).
+    if (students.length === 1) {
+      return rankStudentSuggestions({
         suggestions,
-        students.map((st) => st.anonymousId)
-      ),
+        studentId: students[0].anonymousId,
+        decisions: {},
+        catalogueBadges,
+        currentTaskId: taskId,
+      }).map((row) => ({ badgeId: row.badgeId, count: 1, reason: row.reason, at: row.at ?? 0 }))
+    }
+    return suggestedBadgeRanking(
+      suggestions,
+      students.map((st) => st.anonymousId)
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [suggestions, studentKey]
-  )
+  }, [suggestions, studentKey, catalogueBadges, taskId])
   const reasons = useMemo(
     () => Object.fromEntries(ranking.map((entry) => [entry.badgeId, entry])),
     [ranking]
@@ -340,12 +349,13 @@ export default function BadgeAwardDialog({
                     // A short visible line under the name (HSC Audit, Visual Review 16): why
                     // the rules suggest it, else what the badge is for ("Code Fixer" vs "Bug
                     // Hunter").
-                    const line =
+                    const why =
                       suggestion?.reason && students.length === 1
                         ? suggestion.reason
                         : suggestion && students.length > 1
                           ? `Suggested for ${suggestion.count} of ${students.length}`
-                          : (badge.blurb ?? '')
+                          : ''
+                    const line = badge.blurb ?? ''
                     const hint = [
                       suggestion?.reason ? `Why: ${suggestion.reason}` : null,
                       badge.blurb,
@@ -376,9 +386,17 @@ export default function BadgeAwardDialog({
                         <BadgeEmoji badge={badge} size="1.25rem" />
                         <span style={s.optionText}>
                           <span style={s.optionTitle}>{badge.title}</span>
+                          {why && (
+                            <span
+                              style={{ ...s.optionLine, ...s.optionReason }}
+                              data-testid={`badge-option-why-${badge.id}`}
+                            >
+                              {why}
+                            </span>
+                          )}
                           {line && (
                             <span
-                              style={{ ...s.optionLine, ...(suggestion ? s.optionReason : null) }}
+                              style={s.optionLine}
                               data-testid={`badge-option-line-${badge.id}`}
                             >
                               {line}
@@ -585,7 +603,7 @@ const s = {
     color: 'var(--colour-muted)',
     overflow: 'hidden',
     display: '-webkit-box',
-    WebkitLineClamp: 2,
+    WebkitLineClamp: 1,
     WebkitBoxOrient: 'vertical',
   },
   optionReason: { color: 'var(--colour-primary-dark)' },
