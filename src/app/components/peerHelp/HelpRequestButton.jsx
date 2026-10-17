@@ -1,4 +1,5 @@
 import React from 'react'
+import { HELP_BUTTON_LABEL } from './helpLabel'
 
 /**
  * The student's ✋ Help: one tap tells the teacher (PeerHelpAskBubble may then follow). Once
@@ -16,7 +17,7 @@ export default function HelpRequestButton({ requested, onAskTeacher, style }) {
       title={requested ? 'Your tutor knows you need help' : 'Ask your tutor for help'}
       aria-label={requested ? 'Help requested' : 'Need Help'}
     >
-      {requested ? '✋ Help requested' : '✋ Help'}
+      {requested ? `${HELP_BUTTON_LABEL} requested` : HELP_BUTTON_LABEL}
     </button>
   )
 }

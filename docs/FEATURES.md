@@ -44,7 +44,7 @@ New lessons are composed lessons: each code task selects one of the workspace ty
 
 ## Completion Checks
 
-Evaluated automatically on Run or Submit. Pass or fail shows a small floating popup (top-center, auto-dismisses after 45s or via its own close button — doesn't push the workspace around); fail shows a hint from the first failing check. A specific wrong-pattern hint can be shown if the student's answer matches a known incorrect pattern. The popup is hidden while a student is watching a teacher/peer broadcast ("Go Live to Students") — that's not their own check result.
+Evaluated automatically on Run or Submit. Pass or fail shows a strip docked at the bottom of the output panel (Python/Turtle console and result pane, HTML and Arcade preview, Scratch stage) — absolutely positioned inside the panel so it never covers the editor, Run/Reset or file tabs and never moves the layout; it stays until dismissed or the next result, scrolls if the hint is long, and on Scratch's Blocks/Stage tabs a dot on the Stage tab shows a result is waiting. Quizzes and panels with no output area keep a small floating corner popup (auto-dismisses after 45s); fail shows a hint from the first failing check. A specific wrong-pattern hint can be shown if the student's answer matches a known incorrect pattern. The popup is hidden while a student is watching a teacher/peer broadcast ("Go Live to Students") — that's not their own check result.
 
 Checks can verify:
 

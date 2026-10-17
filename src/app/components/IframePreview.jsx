@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useHtmlInspector } from '../../modules/html/inspector/HtmlInspector'
+import { CheckResultSlot } from '../../shared/checkResultDock/CheckResultDock'
 
 export default function IframePreview({
   src,
@@ -64,8 +65,8 @@ export default function IframePreview({
   }, [iframeRef, onConsoleError, src])
 
   const wrapStyle = fill
-    ? { ...s.wrap, flex: 1, minHeight: 0, flexShrink: 1 }
-    : { ...s.wrap, height }
+    ? { ...s.wrap, position: 'relative', flex: 1, minHeight: 0, flexShrink: 1 }
+    : { ...s.wrap, position: 'relative', height }
 
   const errCount = logs.filter((l) => l.level === 'error').length
 
@@ -120,6 +121,8 @@ export default function IframePreview({
           <div ref={logEndRef} />
         </div>
       )}
+      {/* The check result docks here (src/shared/checkResultDock): over the preview only. */}
+      <CheckResultSlot />
     </div>
   )
 }

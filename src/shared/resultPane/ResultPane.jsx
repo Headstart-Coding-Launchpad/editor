@@ -1,5 +1,6 @@
 import PanelTabs from '../../app/components/PanelTabs.jsx'
 import { RESULT_PANE_LABELS } from './resultPane.js'
+import { CheckResultSlot } from '../checkResultDock/CheckResultDock.jsx'
 
 /**
  * One result pane for Python and Turtle tasks on smaller screens: tabs Picture · Tags · Console
@@ -80,6 +81,8 @@ export default function ResultPane({
           )
         })}
       </div>
+      {/* The check result docks here: inside the pane's box, over output only. */}
+      <CheckResultSlot />
       <p className="result-pane__sr-only" role="status" aria-live="polite">
         {announcement}
       </p>
