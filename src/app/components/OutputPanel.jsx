@@ -158,6 +158,7 @@ export default function OutputPanel({
         maxHeight: contentCollapsed ? 'auto' : fill ? 'none' : 300,
       }}
       className="card"
+      data-testid="output-panel"
     >
       <div
         style={{

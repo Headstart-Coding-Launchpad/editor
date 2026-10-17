@@ -133,6 +133,7 @@ export default function LessonTaskContent({
   // The displayed task's flat index, so the task slide knows forward from back.
   transitionOrder,
   previewMode,
+  showPreviewBanner = true,
   isSandbox,
   isViewingPrev,
   isForcedTeacherLive,
@@ -477,6 +478,7 @@ export default function LessonTaskContent({
   // broadcast: it can carry a pushed sandbox explainer or the complete-code reveal.
   const taskExplainer = hasTaskExplainer ? (
     <div
+      data-testid="task-instructions"
       style={useSideExplainer ? s.sideExplainerShell : undefined}
       className={isLiveCopyBlocked ? 'live-copy-blocked' : undefined}
       onCopyCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
@@ -800,6 +802,7 @@ export default function LessonTaskContent({
 
   const editorArea = (
     <div
+      data-testid="task-workspace"
       style={
         useFluidWorkspace
           ? {
@@ -835,7 +838,7 @@ export default function LessonTaskContent({
       order={transitionOrder}
       style={transitionStyle}
     >
-      {previewMode && task && !isSandbox && (
+      {previewMode && showPreviewBanner && task && !isSandbox && (
         <Banner
           accent="#0ea5e9"
           color="#0369a1"

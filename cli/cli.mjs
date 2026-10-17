@@ -195,6 +195,8 @@ const loadCheckTests = () => import('./check-tests.mjs')
 const loadCapabilities = () => import('./capabilities.mjs')
 const loadScratchRenderInput = () => import('./scratch-render-input.mjs')
 const loadScratchRender = () => import('./scratch-render.mjs')
+const loadLessonScreenshotInput = () => import('./lesson-screenshot-input.mjs')
+const loadLessonScreenshot = () => import('./lesson-screenshot.mjs')
 
 // A lesson or block file for `scratch render`: JSON, lesson YAML, or plain YAML blocks.
 async function readScratchSource(file) {
@@ -561,6 +563,160 @@ await yargs(hideBin(process.argv))
       )
 
       .command(
+        'screenshot [id]',
+        'PNG of a task as a student (or tutor) sees it, for lesson images. Student views need no session and work on Drafts; tutor, grid and Shared work views run on a throwaway copy with the test tutor and made-up students (needs the repo dev dependencies and Playwright Chromium)',
+        {
+          file: {
+            type: 'string',
+            describe: 'Read the lesson from this JSON or YAML file instead of Firestore',
+          },
+          task: { type: 'string', describe: 'Task id to capture' },
+          'open-task': {
+            type: 'string',
+            describe: 'Show this task instead (e.g. the next one), keeping --task for the name',
+          },
+          spec: {
+            type: 'string',
+            describe:
+              'JSON file listing many shots ([{ task, view, crop, code, run, inputs, ... }]); command-line options are defaults for each',
+          },
+          view: {
+            type: 'string',
+            describe:
+              'student (default) | student-live | tutor | tutor-grid | student-modal | shared-work',
+          },
+          crop: {
+            type: 'string',
+            describe:
+              'page (default) | workspace | instructions | editor | output | console | stage',
+          },
+          device: {
+            type: 'string',
+            describe: 'desktop (1440x900, default) | tablet (1024x768, touch)',
+          },
+          width: { type: 'number', describe: 'Viewport width (overrides --device)' },
+          height: { type: 'number', describe: 'Viewport height (overrides --device)' },
+          scale: {
+            type: 'number',
+            default: 1,
+            describe: 'Device pixel ratio (2 for sharper images)',
+          },
+          code: {
+            type: 'string',
+            describe:
+              'Code to show instead of the starter: text, or @file. HTML: the entry file. Scratch: blocks JSON',
+          },
+          'code-stage': {
+            type: 'string',
+            describe:
+              'Show a code stage instead of the starter: complete, starter, a stage label or index',
+          },
+          run: { type: 'boolean', describe: 'Press Run before the capture' },
+          inputs: {
+            type: 'string',
+            describe: 'Answers to input() prompts, in order, comma-separated (needs --run)',
+          },
+          click: {
+            type: 'array',
+            string: true,
+            describe: 'Buttons or tabs to click before the capture, by name (repeatable)',
+          },
+          'tutor-click': {
+            type: 'array',
+            string: true,
+            describe: 'Session views: buttons the tutor clicks before the capture (repeatable)',
+          },
+          wait: { type: 'number', describe: 'Extra milliseconds before the capture' },
+          students: {
+            type: 'string',
+            describe: 'Session views: made-up student names, comma-separated (each starts "Test")',
+          },
+          student: {
+            type: 'string',
+            describe: 'Session views: whose screen or modal to capture (default: the first)',
+          },
+          out: { type: 'string', describe: 'PNG path for a single shot' },
+          'out-dir': { type: 'string', default: '.', describe: 'Folder for the PNGs' },
+          base: {
+            type: 'string',
+            describe: 'LaunchPad URL (default: the live site), e.g. http://localhost:5173/editor/',
+          },
+        },
+        cmd(async (argv) => {
+          if (!argv.id && !argv.file) throw new Error('Pass a lesson id or --file <lesson>')
+          if (argv.id && argv.file) throw new Error('Pass a lesson id or --file, not both')
+          const lesson = argv.file
+            ? parseLessonJsonOrYaml(argv.file, await readText(argv.file))
+            : await (await loadLessons()).getLesson(argv.id)
+          const { normaliseShot, normaliseShots, readSpecCode } = await loadLessonScreenshotInput()
+          const readCode = (value, dir) => readSpecCode(value, dir, (p) => readFile(p, 'utf-8'))
+          const defaults = {
+            view: argv.view,
+            crop: argv.crop,
+            device: argv.device,
+            width: argv.width,
+            height: argv.height,
+            run: argv.run,
+            inputs: argv.inputs?.split(',').map((s) => s.trim()),
+            click: argv.click,
+            tutorClick: argv['tutor-click'],
+            wait: argv.wait,
+            students: argv.students?.split(',').map((s) => s.trim()),
+            student: argv.student,
+            code: await readCode(argv.code, process.cwd()),
+            codeStage: argv['code-stage'],
+          }
+          for (const k of Object.keys(defaults)) if (defaults[k] === undefined) delete defaults[k]
+          let shots
+          if (argv.spec) {
+            const specDir = dirname(resolve(argv.spec))
+            const spec = parseJson(await readFile(argv.spec, 'utf-8'))
+            const list = Array.isArray(spec) ? spec : spec?.shots
+            const withCode = Array.isArray(list)
+              ? await Promise.all(
+                  list.map(async (s) => ({
+                    ...s,
+                    ...(s?.code != null ? { code: await readCode(s.code, specDir) } : {}),
+                    ...(Array.isArray(s?.students)
+                      ? {
+                          students: await Promise.all(
+                            s.students.map(async (st) =>
+                              st && typeof st === 'object'
+                                ? { ...st, code: await readCode(st.code, specDir) }
+                                : st
+                            )
+                          ),
+                        }
+                      : {}),
+                  }))
+                )
+              : list
+            shots = normaliseShots(withCode, defaults)
+          } else {
+            shots = [
+              normaliseShot({
+                ...defaults,
+                task: argv.task,
+                openTask: argv['open-task'],
+                out: argv.out,
+              }),
+            ]
+          }
+          const { captureLessonShots, DEFAULT_BASE } = await loadLessonScreenshot()
+          const results = await captureLessonShots({
+            lesson,
+            shots,
+            base: argv.base ?? DEFAULT_BASE,
+            outDir: argv['out-dir'],
+            scale: argv.scale,
+            log: (line) => process.stderr.write(`${line}\n`),
+          })
+          print(results.map((r) => (r.file ? { ...r, file: printRelativePath(r.file) } : r)))
+          if (results.some((r) => r.error)) process.exit(1)
+        })
+      )
+
+      .command(
         'topics <id>',
         'Audit lesson topic references against the Firestore Topic Library',
         {},
@@ -572,7 +728,7 @@ await yargs(hideBin(process.argv))
 
       .demandCommand(
         1,
-        'Specify a subcommand: list | get | skeleton | validate | upsert | delete | fork | forks | lineage | yaml-to-json | json-to-yaml | preflight | publish-yaml | topics'
+        'Specify a subcommand: list | get | skeleton | validate | upsert | delete | fork | forks | lineage | yaml-to-json | json-to-yaml | preflight | publish-yaml | topics | screenshot'
       )
       .help()
   )

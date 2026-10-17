@@ -70,7 +70,7 @@ export default function IframePreview({
   const errCount = logs.filter((l) => l.level === 'error').length
 
   return (
-    <div style={wrapStyle}>
+    <div style={wrapStyle} data-testid="iframe-preview">
       <div style={s.header} className="ui-tabs">
         {leadingActions && <div style={s.leadingActions}>{leadingActions}</div>}
         <button

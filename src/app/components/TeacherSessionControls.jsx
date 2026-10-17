@@ -274,7 +274,7 @@ export default function TeacherSessionControls({
             📤 Shared work ({shareEntries.length})
           </button>
           {sharesOpen && (
-            <div style={sDD.panel} className="ui-popover">
+            <div style={{ ...sDD.panel, minWidth: 300 }} className="ui-popover">
               <p style={sShare.note}>
                 Approved shares stay available to the class until you remove them.
               </p>
@@ -457,6 +457,8 @@ const sDD = {
     flexDirection: 'column',
     gap: 6,
     background: '#fff',
+    // The top bar's text is white; without this, names in the Shared work list vanished (#76).
+    color: 'var(--colour-text)',
     boxShadow: '0 8px 28px rgba(0,0,0,0.18)',
     borderRadius: 8,
   },
@@ -526,6 +528,13 @@ const sShare = {
     gap: 4,
   },
   row: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  rowText: { fontSize: 12, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' },
+  rowText: {
+    flex: 1,
+    fontSize: 12,
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
   rowActions: { display: 'flex', gap: 4, flexShrink: 0 },
 }

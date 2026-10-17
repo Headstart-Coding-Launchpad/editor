@@ -39,6 +39,25 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-17
 
+### Lesson screenshots by CLI (`lessons screenshot`)
+
+- **New command:** `node cli/cli.mjs lessons screenshot <lessonId> --task <id>` saves a PNG of a
+  task as a student sees it, for lesson images: optional code (`--code`, `--code-stage complete`),
+  Run with `input()` answers, a crop (`workspace`, `instructions`, `editor`, `output`,
+  `console`, `stage`) and desktop or tablet size. Student views need no session and work on
+  Drafts; nothing is written to Firebase.
+- **Session views** (`tutor`, `tutor-grid`, `student-modal`, `shared-work`, `student-live`) run on
+  a throwaway Draft copy with the test tutor and made-up `Test …` students, deleted afterwards.
+- `--spec shots.json` takes many shots in one run (what Attach assets calls). A shot that can't
+  find its panel fails with the task named and writes no file. See
+  [lesson-screenshot-cli.md](lesson-screenshot-cli.md).
+- **Fixed (request #76):** the Shared work gallery and its toast showed blank sharer names and
+  title, and **Open** showed the task's starter instead of the classmate's work. The shared-work
+  viewer no longer shows the "Live + Solo" preview banner.
+- Affects: cli, python, turtle, html, scratch · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-17-lesson-screenshot-command-cli-png-of-a-task-s-editor-output-.md,
+  authoring-requests/2026-10-17-shared-work-list-shows-blank-names-and-opens-the-starter-code.md
+
 ### One after-class feedback step (session report feedback and lesson feedback merged)
 
 - The tutor reaches **one feedback step after every way of ending a session**: rating 1-5,

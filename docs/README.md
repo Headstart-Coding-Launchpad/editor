@@ -343,6 +343,11 @@ How to write a Scratch toolbox XML string: XML structure, all categories with th
 
 **Load when:** writing a Scratch task `toolbox` field by hand, or troubleshooting a missing block in the student palette.
 
+### [authoring/lesson-screenshot-cli.md](authoring/lesson-screenshot-cli.md)
+`hsc lessons screenshot`: PNGs of lesson tasks as students and tutors see them (code, Run, inputs, crops, tablet size), single or batch from a spec. Student views need no session and work on Drafts; tutor, grid and Shared work views run on a throwaway copy.
+
+**Load when:** taking screenshots for lesson images, or changing the screenshot command or the panels it crops.
+
 ### [authoring/scratch-render-cli.md](authoring/scratch-render-cli.md)
 `hsc scratch render`: draw a lesson's Scratch script as the classroom shows it and save a standalone SVG plus a block map with a stable id on each block.
 

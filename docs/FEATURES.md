@@ -403,3 +403,4 @@ The CLI can list, add, archive, and bulk-archive feedback items in both collecti
 - Read, add, archive, and bulk-archive platform and per-lesson feedback from Firestore via the CLI
 - Create/list/delete reusable lesson levels with `node cli/cli.mjs levels`
 - Create/archive classes and create/list/inspect lesson forks with `node cli/cli.mjs classes` and `node cli/cli.mjs lessons fork`
+- Take lesson screenshots with `node cli/cli.mjs lessons screenshot`: a task as a student sees it (code, Run, inputs, crops, desktop or tablet) with no session, Drafts included, or tutor / grid / Shared work views on a throwaway copy with made-up students

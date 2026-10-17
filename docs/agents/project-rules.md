@@ -157,7 +157,7 @@ node cli/cli.mjs <command> <subcommand> [args]
 ```
 
 Command groups:
-- `lessons list|get|skeleton|validate|test-checks|upsert|delete|fork|forks|lineage|link-solo|yaml-to-json|json-to-yaml|preflight|publish-yaml|topics`
+- `lessons list|get|skeleton|validate|test-checks|upsert|delete|fork|forks|lineage|link-solo|yaml-to-json|json-to-yaml|preflight|publish-yaml|topics|screenshot` (`screenshot`: PNGs of tasks for lesson images; needs the root dev dependencies and Playwright Chromium, see `docs/authoring/lesson-screenshot-cli.md`)
 - `tasks get|upsert|append`
 - `topics list|get|upsert|upsert-library|yaml-to-json|json-to-yaml|publish-yaml|delete`
 - `feedback platform|lesson|all|add-lesson|add-platform|archive-lesson|archive-platform|clear-lesson|clear-platform`
