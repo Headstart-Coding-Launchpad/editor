@@ -1,110 +1,82 @@
 import React, { useState } from 'react'
-import DropdownMenu from './DropdownMenu'
 
-export default function OverrideDropdown({ student, task, onOverrideCheck }) {
-  const [showFailModal, setShowFailModal] = useState(false)
-  const [failHint, setFailHint] = useState('')
-  const hasOverride = !!student.checkOverridePushedAt
+// "Mark the task" override (Pass / Fail with an optional hint). The Pass and Fail items sit in
+// the student modal's More menu (OverrideItems); the Fail hint dialog (OverrideFailModal) is
+// rendered by the modal itself so it survives the menu closing.
 
-  function applyOverride(passed, hint) {
-    onOverrideCheck(student.anonymousId, passed, passed ? null : hint || null, task?.id)
-    setShowFailModal(false)
-    setFailHint('')
-  }
+/** The override's current state as a label: "Pass", "Fail" or null. */
+export function overrideLabel(student) {
+  if (!student?.checkOverridePushedAt) return null
+  return student.checkOverridePassed ? 'Pass' : 'Fail'
+}
 
+/** The Pass and Fail items, for a menu. `onFail` opens the hint dialog. */
+export function OverrideItems({ student, task, onOverrideCheck, onFail, close }) {
+  const current = overrideLabel(student)
   return (
     <>
-      <DropdownMenu
-        label={
-          hasOverride
-            ? student.checkOverridePassed
-              ? 'Override: Pass'
-              : 'Override: Fail'
-            : 'Override'
-        }
-        buttonClassName="btn-ghost"
+      <button
+        style={s.passBtn}
+        onClick={() => {
+          close?.()
+          onOverrideCheck(student.anonymousId, true, null, task?.id)
+        }}
       >
-        {(close) => (
-          <>
-            <button
-              style={s.passBtn}
-              onClick={() => {
-                close()
-                applyOverride(true, null)
-              }}
-            >
-              ✓ Pass
-            </button>
-            <button
-              style={s.failBtn}
-              onClick={() => {
-                close()
-                setShowFailModal(true)
-              }}
-            >
-              ✕ Fail
-            </button>
-          </>
-        )}
-      </DropdownMenu>
-
-      {showFailModal && (
-        <div
-          style={s.modalOverlay}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowFailModal(false)
-              setFailHint('')
-            }
-          }}
-        >
-          <div style={s.modal}>
-            <div style={s.modalHeader}>
-              <span style={s.modalTitle}>Override: Fail</span>
-              <button
-                style={s.modalClose}
-                onClick={() => {
-                  setShowFailModal(false)
-                  setFailHint('')
-                }}
-              >
-                ✕
-              </button>
-            </div>
-            <div style={s.modalBody}>
-              <p style={s.modalHint}>Optional hint for student (supports Markdown):</p>
-              <textarea
-                style={s.hintTextarea}
-                placeholder="e.g. Check your indentation, or try using a `for` loop…"
-                value={failHint}
-                onChange={(e) => setFailHint(e.target.value)}
-                rows={5}
-                autoFocus
-              />
-            </div>
-            <div style={s.modalFooter}>
-              <button
-                className="btn-ghost-outline"
-                style={{ fontSize: 13 }}
-                onClick={() => {
-                  setShowFailModal(false)
-                  setFailHint('')
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn-danger"
-                style={{ fontSize: 13 }}
-                onClick={() => applyOverride(false, failHint)}
-              >
-                Apply Fail
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        {current === 'Pass' ? '✓ Marked passed' : '✓ Mark task passed'}
+      </button>
+      <button
+        style={s.failBtn}
+        onClick={() => {
+          close?.()
+          onFail()
+        }}
+      >
+        {current === 'Fail' ? '✕ Marked failed (change hint)' : '✕ Mark task failed, with a hint'}
+      </button>
     </>
+  )
+}
+
+/**
+ * The "Fail" override's hint dialog.
+ */
+export function OverrideFailModal({ onApply, onCancel }) {
+  const [failHint, setFailHint] = useState('')
+  return (
+    <div
+      style={s.modalOverlay}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCancel()
+      }}
+    >
+      <div style={s.modal}>
+        <div style={s.modalHeader}>
+          <span style={s.modalTitle}>Override: Fail</span>
+          <button style={s.modalClose} onClick={onCancel} aria-label="Close">
+            ✕
+          </button>
+        </div>
+        <div style={s.modalBody}>
+          <p style={s.modalHint}>Optional hint for student (supports Markdown):</p>
+          <textarea
+            style={s.hintTextarea}
+            placeholder="e.g. Check your indentation, or try using a `for` loop…"
+            value={failHint}
+            onChange={(e) => setFailHint(e.target.value)}
+            rows={5}
+            autoFocus
+          />
+        </div>
+        <div style={s.modalFooter}>
+          <button className="btn-ghost-outline" style={{ fontSize: 13 }} onClick={onCancel}>
+            Cancel
+          </button>
+          <button className="btn-danger" style={{ fontSize: 13 }} onClick={() => onApply(failHint)}>
+            Apply Fail
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 

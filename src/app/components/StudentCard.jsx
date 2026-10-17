@@ -21,6 +21,8 @@ import { puzzleCardNote } from '../../shared/puzzle/puzzle.js'
 import { getModuleDefinition } from '../../modules/definitions'
 import { courseCardChip } from '../../modules/turtle/courseRun.js'
 import PresenceBadge from './PresenceBadge'
+import OneTapAwardButton from './badges/OneTapAwardButton'
+import TipButton from './TipButton'
 import { formatTimeAgo } from '../../shared/timeAgo'
 import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
 import { readActivityAnswer, summarizeActivityAnswer } from '../../activities/state.js'
@@ -153,6 +155,12 @@ export default function StudentCard({
   onExpand,
   onNudge,
   onThumbsUp,
+  // One-tap badge award on the card (OneTapAwardButton): the pending rule suggestions, the
+  // catalogue (for descriptions) and the award/revoke writers.
+  badgeSuggestionList = [],
+  catalogueBadges = [],
+  onDecideBadge = null,
+  onRevokeBadge = null,
   onShowResponse,
   onHideResponse,
   onSetShownResponseName,
@@ -547,7 +555,7 @@ export default function StudentCard({
             />
           )}
           {onNudge && student.online && student.windowFocused === false && (
-            <button
+            <TipButton
               style={s.nudgeBtn}
               onClick={(event) => {
                 event.stopPropagation()
@@ -555,14 +563,13 @@ export default function StudentCard({
                 setNudged(true)
                 setTimeout(() => setNudged(false), 2000)
               }}
-              title="Nudge: flash this student's tab and play a chime"
-              aria-label={`Nudge ${student.displayName}`}
+              label={`Nudge ${student.displayName}`}
             >
               {nudged ? '✓' : '🔔'}
-            </button>
+            </TipButton>
           )}
           {onThumbsUp && student.online && (
-            <button
+            <TipButton
               style={{ ...s.thumbsUpBtn, ...(thumbsUpSent ? s.thumbsUpBtnSent : null) }}
               disabled={thumbsUpSent}
               onClick={(event) => {
@@ -571,11 +578,22 @@ export default function StudentCard({
                 setThumbsUpSent(true)
                 setTimeout(() => setThumbsUpSent(false), 2000)
               }}
-              title="Send a 👍: tells this student they're on the right track"
-              aria-label={`Send ${student.displayName} a thumbs up`}
+              label={`Send ${student.displayName} a thumbs up`}
             >
               {thumbsUpSent ? '✓' : '👍'}
-            </button>
+            </TipButton>
+          )}
+          {onDecideBadge && student.online && !selectMode && (
+            <OneTapAwardButton
+              student={student}
+              suggestions={badgeSuggestionList}
+              decisions={session?.badges ?? {}}
+              catalogueBadges={catalogueBadges}
+              currentTaskId={session?.currentTaskId ?? null}
+              onDecideBadge={onDecideBadge}
+              onRevokeBadge={onRevokeBadge}
+              variant="card"
+            />
           )}
           {pasteRecord?.count > 0 && (
             <IconChip
