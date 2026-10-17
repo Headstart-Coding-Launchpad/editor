@@ -191,7 +191,8 @@ describe('tutor tile highlights', () => {
   it('highlights a tapped blank with the note, without editing the student’s tiles', () => {
     const props = highlightProps({ onTeacherAnswerEdit: vi.fn() })
     render(<StudentModal {...props} />)
-    fireEvent.click(screen.getByTestId('tile-highlight-toggle'))
+    fireEvent.click(screen.getByRole('button', { name: /^More/ }))
+    fireEvent.click(screen.getByRole('button', { name: '👀 Highlight tiles' }))
     fireEvent.change(screen.getByLabelText('Note for the next highlighted tile'), {
       target: { value: 'Is this line needed?' },
     })
@@ -221,7 +222,8 @@ describe('tutor tile highlights', () => {
       'true'
     )
     expect(screen.getByTestId('tile-highlight-bar')).toHaveTextContent('1 tile highlighted')
-    fireEvent.click(screen.getByTestId('tile-highlight-toggle'))
+    fireEvent.click(screen.getByRole('button', { name: /^More/ }))
+    fireEvent.click(screen.getByRole('button', { name: '👀 Highlight tiles' }))
     fireEvent.click(screen.getByTestId('code-arrange-slot-L1'))
     expect(props.onRemoveTileHighlights).toHaveBeenCalledWith('student-1', ['h1'])
     fireEvent.click(screen.getByTestId('tile-highlight-clear-all'))
