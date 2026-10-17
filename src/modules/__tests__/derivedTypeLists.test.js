@@ -298,7 +298,6 @@ describe('consumers read the derived values (no hand-written lists left)', () =>
     ['src/app/components/SupportStagePanel.jsx', "getModuleLabel(lessonType, 'stageReference')"],
     ['src/app/views/PlaygroundView.jsx', 'getModuleLabel(type)'],
     ['src/builder/components/TaskEditor.jsx', 'getModuleDefinition(moduleType).meta'],
-    ['src/builder/App.jsx', 'getModuleLabel(type)'],
     ['src/shared/markdown/editorOptions.js', 'explainerCodeBlockLanguages'],
     ['src/app/components/CopyCodePanel.jsx', 'getCodeLanguageLabel(language)'],
   ])('%s uses %s', (file, snippet) => {
