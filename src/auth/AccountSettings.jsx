@@ -2,9 +2,11 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { updatePassword } from 'firebase/auth'
 import { useAuth } from './useAuth'
+import { useExtraClassToolsOn } from '../shared/extraClassToolsSetting'
 
 export default function AccountSettings() {
   const { user, role } = useAuth()
+  const [showExtraTools, setShowExtraTools] = useExtraClassToolsOn()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [status, setStatus] = useState(null)
@@ -84,6 +86,23 @@ export default function AccountSettings() {
             {saving ? 'Updating...' : 'Update Password'}
           </button>
         </form>
+        {role !== 'student' && (
+          <div style={{ ...s.body, paddingTop: 0 }}>
+            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <input
+                type="checkbox"
+                checked={showExtraTools}
+                onChange={(e) => setShowExtraTools(e.target.checked)}
+                style={{ marginTop: 3 }}
+              />
+              <span style={s.label}>
+                Show extra class tools (quick polls, Coding Paused, Edit Lesson)
+                <br />
+                <small>Off by default. Saved on this device. The countdown is always shown.</small>
+              </span>
+            </label>
+          </div>
+        )}
       </main>
     </div>
   )
