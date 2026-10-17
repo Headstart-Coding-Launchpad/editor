@@ -1,6 +1,11 @@
 import { initializeApp } from 'firebase/app'
 import { getDatabase } from 'firebase/database'
-import { getAuth, browserLocalPersistence, setPersistence } from 'firebase/auth'
+import {
+  initializeAuth,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  indexedDBLocalPersistence,
+} from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getFunctions } from 'firebase/functions'
 import { getStorage } from 'firebase/storage'
@@ -18,14 +23,18 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 
 export const db = getDatabase(app)
-export const auth = getAuth(app)
+// Sign-in lives in localStorage. Don't use getAuth() + setPersistence(): getAuth() prefers
+// IndexedDB, so every newly opened tab moved the saved user out of localStorage and back
+// again. The removal fired a storage event that looked like a sign-out in every other open
+// tab, and a slow move back bounced them to /login (Ryan's Admin "auth issue", HSC Audit
+// item 8; same family as #180/#279). IndexedDB is listed last only to rescue a user left
+// there by the old code: it is migrated into localStorage once, with no removal event.
+export const auth = initializeAuth(app, {
+  persistence: [browserLocalPersistence, browserSessionPersistence, indexedDBLocalPersistence],
+})
 export const firestore = getFirestore(app)
 export const functions = getFunctions(
   app,
   import.meta.env.VITE_FIREBASE_FUNCTIONS_REGION || 'europe-west1'
 )
 export const storage = getStorage(app)
-
-setPersistence(auth, browserLocalPersistence).catch((err) =>
-  console.warn('Auth: localStorage unavailable, falling back to session persistence.', err)
-)

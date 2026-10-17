@@ -49,6 +49,7 @@ function normalizeFeedbackDoc(doc, source, lessonId = null) {
     taskTitle: data.taskTitle ?? null,
     teacherEmail: data.teacherEmail ?? '',
     text: data.text ?? '',
+    reportId: data.reportId ?? null,
     submittedAt,
     archived: data.archived ?? false,
   }

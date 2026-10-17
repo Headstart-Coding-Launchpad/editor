@@ -216,6 +216,11 @@ describe('BadgeAwardDialog', () => {
       'badge-option-code_fixer',
     ])
     expect(within(suggested).getByText('Fixed two bugs')).toBeInTheDocument()
+    // The reason and the one-line description are both visible text under the name.
+    expect(screen.getByTestId('badge-option-why-bug_hunter')).toHaveTextContent('Fixed two bugs')
+    expect(screen.getByTestId('badge-option-line-bug_hunter')).toHaveTextContent(
+      'Found and fixed a bug.'
+    )
     // Not listed twice, and another student's suggestion is not shown.
     const rules = screen.getByRole('group', { name: 'Other badges with a rule' })
     expect(within(rules).queryByTestId('badge-option-bug_hunter')).not.toBeInTheDocument()

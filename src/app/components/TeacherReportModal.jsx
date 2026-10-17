@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { anonymizeSessionReport, reportToYamlText } from '../../shared/lessonReport'
-import { FeedbackFields, StarRatingDisplay } from './StarRatingFeedbackFields'
+import { StarRatingDisplay } from './StarRatingFeedbackFields'
+import AfterClassFeedbackForm from './AfterClassFeedbackForm'
 import {
   CodingMomentsSection,
   QuizGroupsSection,
@@ -296,52 +297,28 @@ function StudentSection({ student }) {
   )
 }
 
-function TeacherFeedbackForm({ onSave }) {
-  const [rating, setRating] = useState(0)
-  const [whatWorkedWell, setWhatWorkedWell] = useState('')
-  const [whatDidntWork, setWhatDidntWork] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  async function handleSave() {
-    setSaving(true)
-    try {
-      await onSave({ rating: rating > 0 ? rating : null, whatWorkedWell, whatDidntWork })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div style={s.feedbackBox}>
-      <p style={s.feedbackFormIntro}>
-        Optional: rate this lesson run and leave any notes for next time.
-      </p>
-
-      <FeedbackFields
-        ratingLabel="How did this lesson go?"
-        rating={rating}
-        onRatingChange={setRating}
-        whatWorkedWell={whatWorkedWell}
-        onWhatWorkedWellChange={setWhatWorkedWell}
-        whatDidntWork={whatDidntWork}
-        onWhatDidntWorkChange={setWhatDidntWork}
-      />
-
-      <button
-        className="btn-primary"
-        style={s.feedbackSaveBtn}
-        onClick={handleSave}
-        disabled={saving}
-      >
-        {saving ? 'Saving…' : 'Save Feedback'}
-      </button>
-    </div>
-  )
-}
-
 export default function TeacherReportModal({ report, onClose, onSaveFeedback }) {
   const overlayRef = useRef(null)
-  const displayReport = useMemo(() => anonymizeSessionReport(report), [report])
+  const [savedFeedback, setSavedFeedback] = useState(null)
+  const [editingFeedback, setEditingFeedback] = useState(false)
+  const displayReport = useMemo(() => {
+    const anonymised = anonymizeSessionReport(report)
+    return savedFeedback && anonymised
+      ? { ...anonymised, teacherFeedback: savedFeedback }
+      : anonymised
+  }, [report, savedFeedback])
+  const feedbackTasks = useMemo(
+    () => (report?.taskSummary ?? []).map((task) => ({ taskId: task.taskId, title: task.title })),
+    [report]
+  )
+
+  // The one after-class feedback step (also reachable later from past reports): saving
+  // writes teacherFeedback on this report and any per-task notes to the lesson feedback store.
+  async function handleSaveFeedback(feedback, taskNotes) {
+    const updated = await onSaveFeedback(feedback, taskNotes)
+    if (updated?.teacherFeedback) setSavedFeedback(updated.teacherFeedback)
+    setEditingFeedback(false)
+  }
 
   function handleExportYaml() {
     const yamlText = reportToYamlText(displayReport)
@@ -385,7 +362,7 @@ export default function TeacherReportModal({ report, onClose, onSaveFeedback }) 
         </div>
 
         <div style={s.body}>
-          {displayReport.teacherFeedback ? (
+          {displayReport.teacherFeedback && !editingFeedback ? (
             <section>
               <h3 style={s.sectionTitle}>Teacher Feedback</h3>
               <div style={s.feedbackBox}>
@@ -402,12 +379,28 @@ export default function TeacherReportModal({ report, onClose, onSaveFeedback }) 
                     <p style={s.feedbackText}>{displayReport.teacherFeedback.whatDidntWork}</p>
                   </div>
                 )}
+                {onSaveFeedback && (
+                  <button
+                    className="btn-ghost-outline"
+                    style={s.feedbackSaveBtn}
+                    onClick={() => setEditingFeedback(true)}
+                  >
+                    Edit feedback
+                  </button>
+                )}
               </div>
             </section>
           ) : onSaveFeedback ? (
             <section>
-              <h3 style={s.sectionTitle}>Rate This Session</h3>
-              <TeacherFeedbackForm onSave={onSaveFeedback} />
+              <h3 style={s.sectionTitle}>
+                {displayReport.teacherFeedback ? 'Edit Feedback' : 'Add Feedback'}
+              </h3>
+              <AfterClassFeedbackForm
+                initial={displayReport.teacherFeedback}
+                tasks={feedbackTasks}
+                onSave={handleSaveFeedback}
+                onSkip={displayReport.teacherFeedback ? () => setEditingFeedback(false) : undefined}
+              />
             </section>
           ) : null}
 

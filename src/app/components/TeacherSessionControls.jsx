@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { sortedShareEntries } from '../sharedWorkspacePayload'
 import ClassCountdownControl from './ClassCountdownControl'
 import TeacherPollControl from './polls/TeacherPollControl'
+import { useExtraClassToolsOn } from '../../shared/extraClassToolsSetting'
 
 const BREAKPOINT_NARROW = 1300 // collapse secondary buttons into Menu dropdown
 const BREAKPOINT_COMPACT = 950 // also hide status text from bar (shown inside dropdown instead)
@@ -9,8 +10,8 @@ const BREAKPOINT_COMPACT = 950 // also hide status text from bar (shown inside d
 export default function TeacherSessionControls({
   session,
   onOpenPresentationWindow,
-  onOpenFeedback,
   onOpenReports,
+  onReportProblem,
   onOpenEditLesson,
   onStartSession,
   onEndSession,
@@ -36,6 +37,7 @@ export default function TeacherSessionControls({
   // reachable whether or not Presentation View is showing the task.
   onUnpinLiveReference,
 }) {
+  const [showExtraTools] = useExtraClassToolsOn()
   const state = session?.state
   const isRunning = state === 'active' || state === 'sandbox'
 
@@ -170,29 +172,33 @@ export default function TeacherSessionControls({
                 style={sDD.item}
                 onClick={() => {
                   setMenuOpen(false)
-                  onOpenFeedback()
-                }}
-              >
-                Feedback
-              </button>
-              <button
-                style={sDD.item}
-                onClick={() => {
-                  setMenuOpen(false)
                   onOpenReports()
                 }}
               >
                 Reports
               </button>
-              <button
-                style={sDD.item}
-                onClick={() => {
-                  setMenuOpen(false)
-                  onOpenEditLesson()
-                }}
-              >
-                Edit Lesson
-              </button>
+              {showExtraTools && (
+                <button
+                  style={sDD.item}
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onOpenEditLesson()
+                  }}
+                >
+                  Edit Lesson
+                </button>
+              )}
+              {onReportProblem && (
+                <button
+                  style={sDD.item}
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onReportProblem()
+                  }}
+                >
+                  Report a problem
+                </button>
+              )}
               {onReturnToAdmin && (
                 <button
                   style={sDD.item}
@@ -224,15 +230,25 @@ export default function TeacherSessionControls({
           >
             Presentation Window
           </button>
-          <button className="btn-ghost teacher-session-controls__action" onClick={onOpenFeedback}>
-            Feedback
-          </button>
           <button className="btn-ghost teacher-session-controls__action" onClick={onOpenReports}>
             Reports
           </button>
-          <button className="btn-ghost teacher-session-controls__action" onClick={onOpenEditLesson}>
-            Edit Lesson
-          </button>
+          {showExtraTools && (
+            <button
+              className="btn-ghost teacher-session-controls__action"
+              onClick={onOpenEditLesson}
+            >
+              Edit Lesson
+            </button>
+          )}
+          {onReportProblem && (
+            <button
+              className="btn-ghost teacher-session-controls__action"
+              onClick={onReportProblem}
+            >
+              Report a problem
+            </button>
+          )}
           {/* Admin accounts only (TeacherView passes no handler to a teacher). */}
           {onReturnToAdmin && (
             <button
@@ -318,7 +334,7 @@ export default function TeacherSessionControls({
         </button>
       )}
 
-      {session && isRunning && onLaunchPoll && (
+      {showExtraTools && session && isRunning && onLaunchPoll && (
         <TeacherPollControl
           session={session}
           onLaunch={onLaunchPoll}

@@ -13,6 +13,7 @@ const LessonPanel = lazy(() => import('./LessonPanel'))
 const SessionsPanel = lazy(() => import('./SessionsPanel'))
 const SharedAssetsPanel = lazy(() => import('./SharedAssetsPanel'))
 const SharedWorkPanel = lazy(() => import('./SharedWorkPanel'))
+const SoloPanel = lazy(() => import('./SoloPanel'))
 const TopicLibraryPanel = lazy(() => import('./TopicLibraryPanel'))
 
 const TABS = [
@@ -20,6 +21,7 @@ const TABS = [
   { id: 'levels', label: 'Levels' },
   { id: 'classes', label: 'Classes' },
   { id: 'sessions', label: 'Sessions' },
+  { id: 'solo', label: 'Solo & side-quests' },
   { id: 'topics', label: 'Topic Library' },
   { id: 'shared-assets', label: 'Shared Assets' },
   { id: 'badges', label: 'Badges' },
@@ -87,6 +89,7 @@ export default function AdminPortal() {
           {activeTab === 'levels' && <LessonPanel view="levels" />}
           {activeTab === 'classes' && <LessonPanel view="classes" />}
           {activeTab === 'sessions' && <SessionsPanel />}
+          {activeTab === 'solo' && <SoloPanel />}
           {activeTab === 'topics' && <TopicLibraryPanel />}
           {activeTab === 'shared-assets' && (
             <SharedAssetsPanel subtab={subtab} onSubtabChange={handleSubtabChange} />

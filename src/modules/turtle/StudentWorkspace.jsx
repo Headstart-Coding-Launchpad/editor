@@ -35,6 +35,7 @@ import {
   taskShowsVariables,
 } from '../../shared/variablesPanel/variablesPanel.js'
 import ResultPane from '../../shared/resultPane/ResultPane.jsx'
+import { CheckResultSlot } from '../../shared/checkResultDock/CheckResultDock.jsx'
 import { getRunCountWidgets } from '../../shared/runCounts.js'
 import { useResultPane, useRunFinishedToken } from '../../shared/resultPane/useResultPane.js'
 import { useWorkspaceLayout } from '../../shared/resultPane/useWorkspaceLayout.js'
@@ -433,6 +434,7 @@ export default function StudentWorkspace({
           style={s.outputRail}
         />
       )}
+      <CheckResultSlot />
     </div>
   )
 
@@ -540,6 +542,7 @@ const s = {
     paddingBottom: 4,
   },
   rightPane: {
+    position: 'relative',
     display: 'flex',
     flexDirection: 'column',
     flex: 1,

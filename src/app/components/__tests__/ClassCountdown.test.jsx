@@ -131,7 +131,6 @@ describe('ClassCountdownControl', () => {
 describe('TeacherSessionControls countdown button', () => {
   const baseProps = {
     onOpenPresentationWindow: vi.fn(),
-    onOpenFeedback: vi.fn(),
     onOpenReports: vi.fn(),
     onOpenEditLesson: vi.fn(),
     onStartSession: vi.fn(),

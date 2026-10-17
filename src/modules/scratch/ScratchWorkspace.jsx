@@ -50,6 +50,10 @@ import {
 } from './checkDispatch.js'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import PanelTabs, { PanelTabPanel } from '../../app/components/PanelTabs'
+import {
+  CheckResultSlot,
+  useCheckResultWaiting,
+} from '../../shared/checkResultDock/CheckResultDock'
 import { loadLayoutTab, saveLayoutTab } from '../../app/studentStorage'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import {
@@ -1208,6 +1212,7 @@ export default function ScratchWorkspace({
   const [stagePanelCollapsed, setStagePanelCollapsed] = useState(false)
   const [compact, setCompact] = useState(forceCompact)
   const [activePane, setActivePane] = useState(() => loadLayoutTab(activePaneSurface) || 'blocks')
+  const resultWaiting = useCheckResultWaiting()
   const [backdropName, setBackdropName] = useState(() => getStartingBackdropName(backdrops))
   const [imageVersion, setImageVersion] = useState(0)
   const [cursorStale, setCursorStale] = useState(false)
@@ -3501,7 +3506,15 @@ export default function ScratchWorkspace({
           label="Scratch panel"
           tabs={[
             { id: 'blocks', label: 'Blocks' },
-            { id: 'stage', label: 'Stage' },
+            {
+              id: 'stage',
+              label: 'Stage',
+              // A check result is docked on the Stage: flag it while the Blocks tab is showing.
+              badge:
+                resultWaiting && activePane !== 'stage'
+                  ? { text: '●', label: 'result waiting', tone: 'info' }
+                  : null,
+            },
           ]}
           activeId={activePane}
           onChange={handleActivePaneChange}
@@ -3817,6 +3830,8 @@ export default function ScratchWorkspace({
               </div>
             )}
             <SlowMoPreviewBanner snapshot={slowMoPreview} onBackToNow={slowMo.backToNow} />
+            {/* The check result docks here, over the stage only (src/shared/checkResultDock). */}
+            <CheckResultSlot />
             <canvas
               ref={canvasRef}
               width={STAGE_W}

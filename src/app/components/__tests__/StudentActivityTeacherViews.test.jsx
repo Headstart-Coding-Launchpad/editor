@@ -137,7 +137,8 @@ describe('StudentModal on an activity task', () => {
     if (more) fireEvent.click(more)
     expect(screen.queryByRole('button', { name: /Go Live for All/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '▶ Run on student' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /^Support/ }))
+    // Support is a section of the open More menu now.
+    expect(screen.getByRole('region', { name: 'Support' })).toBeInTheDocument()
     expect(screen.queryByText('Reveal')).not.toBeInTheDocument()
   })
 
@@ -151,9 +152,10 @@ describe('StudentModal on an activity task', () => {
   it('lets the teacher edit the activity and pushes the serialised state', () => {
     const onTeacherAnswerEdit = vi.fn()
     render(<StudentModal {...modalProps({ onTeacherAnswerEdit })} />)
+    fireEvent.click(screen.getByRole('button', { name: /^More/ }))
     fireEvent.click(screen.getByRole('button', { name: '✏️ Edit answers' }))
     // Question 1 is already right; move to question 2 and make 2.
-    fireEvent.click(screen.getByRole('button', { name: /Next/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^(?!Next student)Next/ }))
     fireEvent.click(screen.getByRole('switch', { name: 'Bits 2 column' }))
     const solved = {
       v: 1,
@@ -174,6 +176,7 @@ describe('StudentModal on an activity task', () => {
   it('pushes a partial edit unmarked', () => {
     const onTeacherAnswerEdit = vi.fn()
     render(<StudentModal {...modalProps({ onTeacherAnswerEdit })} />)
+    fireEvent.click(screen.getByRole('button', { name: /^More/ }))
     fireEvent.click(screen.getByRole('button', { name: '✏️ Edit answers' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Bits 8 column' }))
     expect(onTeacherAnswerEdit).toHaveBeenLastCalledWith('student-1', {
@@ -188,7 +191,7 @@ describe('StudentModal on an activity task', () => {
       { value: 'starter', label: 'Start again' },
       { value: 'complete', label: 'Complete (show answers)' },
     ])
-    fireEvent.click(screen.getByRole('button', { name: /^Support/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^More/ }))
     expect(screen.getByText('Set stage')).toBeInTheDocument()
   })
 })
@@ -223,7 +226,7 @@ describe('Go Live restriction', () => {
     const header = screen.getByRole('dialog')
     fireEvent.click(within(header).getByRole('button', { name: /^More/ }))
     fireEvent.click(
-      within(header).getByRole('button', { name: '📡 Go Live for All: takes over every screen' })
+      within(header).getByRole('button', { name: '📡 Take over every screen (Go Live for All)' })
     )
     expect(onGoLiveForAll).toHaveBeenCalled()
   })
@@ -236,10 +239,8 @@ describe('Go Live restriction', () => {
       />
     )
     const header = screen.getByRole('dialog')
-    fireEvent.click(within(header).getByRole('button', { name: /^More/ }))
-    fireEvent.click(
-      within(header).getByRole('button', { name: '📺 Show to class: they keep coding' })
-    )
+    // One tap in the header now, not in More.
+    fireEvent.click(within(header).getByRole('button', { name: /Show to class/ }))
     expect(onGoLiveForAll).toHaveBeenCalledWith('panel')
   })
 })

@@ -66,6 +66,7 @@ import {
 } from '../hooks/useStudentControlHighlight'
 import { usePreloadNeighbourImages } from '../../shared/preloadImages'
 import SoloNav from '../components/SoloNav'
+import { recordSoloAttempt, recordSoloFinished, recordSoloStarted } from '../soloLogService'
 import SharedWorkspacePanel from '../components/SharedWorkspacePanel'
 import { applySharedWorkspaceCopy, describeShareError } from '../sharedWorkspacePayload'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
@@ -292,6 +293,8 @@ export default function StudentView({
     writeStudentRun,
     writeStudentHintState,
     logAttempt,
+    recordSoloAttempt: (anonymousId, taskId, passed) =>
+      recordSoloAttempt(lessonId, anonymousId, taskId, passed),
     writeStudentAnswer,
     writeStudentDraft,
     writeStudentCode,
@@ -782,6 +785,24 @@ export default function StudentView({
       cancelled = true
     }
   }, [lessonId])
+  // The solo study log (src/shared/soloLog.js): a real solo student's arrival and reaching the
+  // completion screen, so tutors can see who did a Solo Challenge. Discrete events only; never in
+  // a live lesson, the presentation window, a Builder preview or the playground.
+  const soloLogged =
+    phase === 'solo' &&
+    !teacherPresentation &&
+    !previewMode &&
+    !(lessonProp?.isPlayground || lesson?.isPlayground)
+  const soloAnonymousId = identity?.anonymousId ?? null
+  const soloDisplayName = identity?.displayName ?? null
+  useEffect(() => {
+    if (!soloLogged || !soloAnonymousId || !lessonId) return
+    recordSoloStarted(lessonId, soloAnonymousId, soloDisplayName).catch(() => {})
+  }, [soloLogged, soloAnonymousId, soloDisplayName, lessonId])
+  useEffect(() => {
+    if (!soloLogged || !soloAnonymousId || !lessonId || !viewingCompletionScreen) return
+    recordSoloFinished(lessonId, soloAnonymousId).catch(() => {})
+  }, [soloLogged, soloAnonymousId, lessonId, viewingCompletionScreen])
   function handleTrySoloChallenge() {
     window.location.hash = `#/lesson/${soloCompanion.id}?solo=true`
   }

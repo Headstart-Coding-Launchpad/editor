@@ -9,9 +9,10 @@ export default function TeacherFeedbackModal({
   currentTaskTitle,
   teacherEmail,
   onClose,
+  platformOnly = false,
 }) {
   const overlayRef = useRef(null)
-  const [activeTab, setActiveTab] = useState('lesson')
+  const [activeTab, setActiveTab] = useState(platformOnly ? 'platform' : 'lesson')
   const [lessonText, setLessonText] = useState('')
   const [taskText, setTaskText] = useState('')
   const [platformText, setPlatformText] = useState('')
@@ -113,43 +114,45 @@ export default function TeacherFeedbackModal({
     >
       <div style={s.modal}>
         <div style={s.header}>
-          <span style={s.title}>Feedback</span>
+          <span style={s.title}>{platformOnly ? 'Report a problem' : 'Feedback'}</span>
           <button className="btn-ghost" style={s.closeBtn} onClick={onClose} aria-label="Close">
             ✕
           </button>
         </div>
 
-        <div style={s.tabs}>
-          <button
-            style={{ ...s.tab, ...(activeTab === 'lesson' ? s.tabActive : {}) }}
-            onClick={() => {
-              setActiveTab('lesson')
-              setSubmitError(null)
-            }}
-          >
-            Lesson Feedback
-          </button>
-          {currentTaskTitle && (
+        {!platformOnly && (
+          <div style={s.tabs}>
             <button
-              style={{ ...s.tab, ...(activeTab === 'task' ? s.tabActive : {}) }}
+              style={{ ...s.tab, ...(activeTab === 'lesson' ? s.tabActive : {}) }}
               onClick={() => {
-                setActiveTab('task')
+                setActiveTab('lesson')
                 setSubmitError(null)
               }}
             >
-              Task Feedback
+              Lesson Feedback
             </button>
-          )}
-          <button
-            style={{ ...s.tab, ...(activeTab === 'platform' ? s.tabActive : {}) }}
-            onClick={() => {
-              setActiveTab('platform')
-              setSubmitError(null)
-            }}
-          >
-            Platform Feedback
-          </button>
-        </div>
+            {currentTaskTitle && (
+              <button
+                style={{ ...s.tab, ...(activeTab === 'task' ? s.tabActive : {}) }}
+                onClick={() => {
+                  setActiveTab('task')
+                  setSubmitError(null)
+                }}
+              >
+                Task Feedback
+              </button>
+            )}
+            <button
+              style={{ ...s.tab, ...(activeTab === 'platform' ? s.tabActive : {}) }}
+              onClick={() => {
+                setActiveTab('platform')
+                setSubmitError(null)
+              }}
+            >
+              Platform Feedback
+            </button>
+          </div>
+        )}
 
         <div style={s.body}>
           {activeTab === 'lesson' ? (

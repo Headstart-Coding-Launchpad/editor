@@ -9,6 +9,7 @@ import BadgeAwardDialog from './badges/BadgeAwardDialog'
 import DropdownMenu from './student-modal/DropdownMenu'
 import JoiningStudentsList from './JoiningStudentsList'
 import ShareRequestsBanner from './ShareRequestsBanner'
+import { useExtraClassToolsOn } from '../../shared/extraClassToolsSetting'
 import ClassActivityStrip from './ClassActivityStrip'
 import CommonHintsStrip from './CommonHintsStrip'
 import ConfidenceSpreadStrip from './ConfidenceSpreadStrip'
@@ -85,6 +86,7 @@ export default function StudentGrid({
   rosterStatus = null,
   onOpenRoster,
 }) {
+  const [showExtraTools] = useExtraClassToolsOn()
   const joiningCount = joiningStudents.length
   const [expandedStudentId, setExpandedStudentId] = useState(null)
   const [showTopicsDialog, setShowTopicsDialog] = useState(false)
@@ -615,6 +617,10 @@ export default function StudentGrid({
                 onExpand={handleExpand}
                 onNudge={onNudgeStudent}
                 onThumbsUp={onThumbsUpStudent}
+                badgeSuggestionList={badgeSuggestions?.suggestions ?? []}
+                catalogueBadges={catalogueBadges}
+                onDecideBadge={onDecideBadge}
+                onRevokeBadge={onRevokeBadge}
                 onShowResponse={onShowResponse}
                 onHideResponse={onHideResponse}
                 onSetShownResponseName={onSetShownResponseName}
@@ -655,17 +661,21 @@ export default function StudentGrid({
         />
       )}
 
-      {onTogglePaused && (session?.state === 'active' || session?.state === 'sandbox') && (
-        <div style={s.pauseRow}>
-          <button
-            className={session?.isPaused ? 'btn-paused' : 'btn-ghost-outline'}
-            style={s.pauseBtn}
-            onClick={onTogglePaused}
-          >
-            {session?.isPaused ? 'Resume Coding' : 'Pause Coding'}
-          </button>
-        </div>
-      )}
+      {/* Hidden unless "Show extra class tools" is on, but always shown while paused so the
+          tutor can resume. */}
+      {onTogglePaused &&
+        (showExtraTools || session?.isPaused) &&
+        (session?.state === 'active' || session?.state === 'sandbox') && (
+          <div style={s.pauseRow}>
+            <button
+              className={session?.isPaused ? 'btn-paused' : 'btn-ghost-outline'}
+              style={s.pauseBtn}
+              onClick={onTogglePaused}
+            >
+              {session?.isPaused ? 'Resume Coding' : 'Pause Coding'}
+            </button>
+          </div>
+        )}
 
       {showTopicsDialog && topics?.length > 0 && (
         <TopicLibraryDialog

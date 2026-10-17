@@ -16,6 +16,7 @@ import {
   encodeLessonForFirestore,
 } from '../src/shared/lessonBlocksCodec.js'
 import { lessonNeedsSealing } from '../src/shared/lessonSeal.js'
+import { buildSoloExport, SOLO_LOG_ROOT } from '../src/shared/soloLog.js'
 import { flattenTaskTree } from '../src/shared/taskUtils.js'
 import {
   crossLessonCarrySourceWarnings,
@@ -284,6 +285,27 @@ export async function getLesson(id) {
     version: data.version ?? 0,
     lessonNumber: getLessonNumber(data),
   }
+}
+
+// Solo study log for one lesson (src/shared/soloLog.js), read from the Realtime Database with the
+// service account. Anonymised like a session report: "Student N", no names, ids or code. Needs the
+// database URL: FIREBASE_DATABASE_URL, or the project's default `<project>-default-rtdb` one.
+export async function getLessonSoloLog(id) {
+  const lesson = await getLesson(id)
+  const { getDatabaseWithUrl } = await import('firebase-admin/database')
+  const { getApp } = await import('firebase-admin/app')
+  const projectId = getApp().options.projectId
+  const url =
+    process.env.FIREBASE_DATABASE_URL ||
+    (projectId ? `https://${projectId}-default-rtdb.firebaseio.com` : null)
+  if (!url) throw new Error('Set FIREBASE_DATABASE_URL in cli/.env to read the solo log')
+  const snap = await getDatabaseWithUrl(url, getApp()).ref(`${SOLO_LOG_ROOT}/${id}`).get()
+  return buildSoloExport({
+    lessonId: id,
+    lessonTitle: lesson.title ?? null,
+    lessonLog: snap.val() ?? {},
+    lessonTasks: lesson.tasks ?? null,
+  })
 }
 
 export async function getLessonSkeleton(id) {

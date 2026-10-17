@@ -24,12 +24,19 @@ import { useAuth } from '../../auth/useAuth'
 import { useTopicLibrary } from '../../shared/topicLibrary'
 import { collectLessonTopicReferences, validateLessonTopics } from '../../shared/topicAudit'
 
-export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSaved }) {
+export default function BuilderView({
+  lesson,
+  dirty,
+  advanced = false,
+  onUpdate,
+  onNew,
+  onMarkSaved,
+}) {
   const [previewing, setPreviewing] = useState(false)
   const [metaOpen, setMetaOpen] = useState(false)
   const [saveStatus, setSaveStatus] = useState(null) // null | 'saving' | 'done' | 'error'
   const [taskFeedback, setTaskFeedback] = useState([])
-  const { role } = useAuth()
+  const { role, user } = useAuth()
   const navigate = useNavigate()
   const {
     allTopics,
@@ -220,6 +227,8 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
       <BuilderToolbar
         dirty={dirty}
         role={role}
+        user={user}
+        advanced={advanced}
         errors={errors}
         saveStatus={saveStatus}
         hasNoTasks={lesson.tasks.length === 0}
@@ -229,7 +238,8 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
         onPrint={handlePrint}
         onDownload={handleDownload}
         onSave={handleSave}
-        onBack={() => navigate('/admin')}
+        onBack={() => navigate(role === 'admin' ? '/admin' : '/')}
+        onAccount={() => navigate('/account')}
       />
 
       {lesson.draft === true && (
@@ -252,6 +262,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
             <LessonMetaPanel
               lesson={lesson}
               onUpdate={onUpdate}
+              advanced={advanced}
               onCollapse={() => setMetaOpen(false)}
               topicState={{ topics: allTopics, loading: topicsLoading, error: topicsError }}
             />
@@ -310,6 +321,7 @@ export default function BuilderView({ lesson, dirty, onUpdate, onNew, onMarkSave
                 task={selectedTask}
                 lesson={lessonForEditor}
                 composedLesson={lesson.type === 'composed' ? lesson : null}
+                advanced={advanced}
                 parentGroup={selectedTaskGroup}
                 onUpdate={(updated) => {
                   handleLessonUpdate((prev) => ({

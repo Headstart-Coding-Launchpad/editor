@@ -63,6 +63,7 @@ export default function TaskEditor({
   onUpdate,
   parentGroup,
   composedLesson = null,
+  advanced = true, // the Builder passes false unless ?advanced=1 (hides the task module picker)
   // The Classroom's Edit Lesson: authoring metadata starts folded, at the bottom.
   sessionEdit = false,
 }) {
@@ -691,34 +692,38 @@ export default function TaskEditor({
         </div>
       </Field>
 
-      {!isInformation && !isQuiz && !showsActivity && composedLesson?.type === 'composed' && (
-        <Field
-          label="Code task module"
-          hint="Choose the workspace for this task. Changing it clears code, checks, stages, and carry-through settings."
-        >
-          <div className="te-info-type-grid">
-            {(moduleActivity?.hostModules ?? LESSON_MODULE_TYPES).map((moduleType) => {
-              const active = task.moduleType === moduleType
-              const { icon, shortLabel, pickerHint } = getModuleDefinition(moduleType).meta
-              return (
-                <button
-                  key={moduleType}
-                  type="button"
-                  className={
-                    active ? 'te-info-type-btn te-info-type-btn--active' : 'te-info-type-btn'
-                  }
-                  onClick={() => handleModuleChange(moduleType)}
-                >
-                  <span className="te-info-type-label">
-                    {icon} {shortLabel}
-                  </span>
-                  <span className="te-info-type-hint">{pickerHint}</span>
-                </button>
-              )
-            })}
-          </div>
-        </Field>
-      )}
+      {!isInformation &&
+        !isQuiz &&
+        !showsActivity &&
+        advanced &&
+        composedLesson?.type === 'composed' && (
+          <Field
+            label="Code task module"
+            hint="Choose the workspace for this task. Changing it clears code, checks, stages, and carry-through settings."
+          >
+            <div className="te-info-type-grid">
+              {(moduleActivity?.hostModules ?? LESSON_MODULE_TYPES).map((moduleType) => {
+                const active = task.moduleType === moduleType
+                const { icon, shortLabel, pickerHint } = getModuleDefinition(moduleType).meta
+                return (
+                  <button
+                    key={moduleType}
+                    type="button"
+                    className={
+                      active ? 'te-info-type-btn te-info-type-btn--active' : 'te-info-type-btn'
+                    }
+                    onClick={() => handleModuleChange(moduleType)}
+                  >
+                    <span className="te-info-type-label">
+                      {icon} {shortLabel}
+                    </span>
+                    <span className="te-info-type-hint">{pickerHint}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </Field>
+        )}
 
       {isInformation && (
         <Field label="Information type">

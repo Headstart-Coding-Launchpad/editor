@@ -118,6 +118,38 @@ describe('StudentCard', () => {
     })
   })
 
+  describe('one-tap badge award', () => {
+    const SUGGESTION = {
+      badgeId: 'bug_hunter',
+      studentId: 'student-1',
+      taskId: 1,
+      reason: 'Fixed an error without help',
+      at: 10,
+    }
+
+    it('awards the top suggestion without expanding the card, with an Undo that revokes', async () => {
+      const user = userEvent.setup()
+      const onDecideBadge = vi.fn(async () => ({ committed: true }))
+      const onRevokeBadge = vi.fn(async () => ({ committed: true }))
+      const props = mkProps({ onDecideBadge, onRevokeBadge, badgeSuggestionList: [SUGGESTION] })
+      render(<StudentCard {...props} />)
+      await user.click(screen.getByTestId('one-tap-award'))
+      expect(onDecideBadge).toHaveBeenCalledWith(
+        'student-1',
+        'bug_hunter',
+        expect.objectContaining({ status: 'awarded', source: 'rule' })
+      )
+      expect(props.onExpand).not.toHaveBeenCalled()
+      await user.click(await screen.findByRole('button', { name: 'Undo' }))
+      expect(onRevokeBadge).toHaveBeenCalledWith('student-1', 'bug_hunter')
+    })
+
+    it('shows nothing on the card when no badge is suggested', () => {
+      render(<StudentCard {...mkProps({ onDecideBadge: vi.fn(), badgeSuggestionList: [] })} />)
+      expect(screen.queryByTestId('one-tap-award')).not.toBeInTheDocument()
+    })
+  })
+
   describe('presence badge', () => {
     // Online is the default and is already carried by the status dot. Spending a badge
     // on it put a green pill on every card in the column, which is the same noise the

@@ -1,4 +1,5 @@
 import {
+  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -141,6 +142,22 @@ export async function saveSessionReport(lessonId, sessionId, report) {
     doc(firestore, 'lessons', lessonId, 'sessionReports', sessionId),
     encodeSessionReportForFirestore(report)
   )
+}
+
+// Merges only the after-class `teacherFeedback` block onto an existing report, so a later
+// "Add / Edit feedback" never rewrites the rest of the report.
+export async function saveReportTeacherFeedback(lessonId, sessionId, teacherFeedback) {
+  await setDoc(
+    doc(firestore, 'lessons', lessonId, 'sessionReports', sessionId),
+    { teacherFeedback },
+    { merge: true }
+  )
+}
+
+// Adds one per-task note from the after-class step to the lesson feedback store
+// (lessons/{lessonId}/feedback), tagged with the run's report id.
+export async function addReportTaskNote(lessonId, note) {
+  await addDoc(collection(firestore, 'lessons', lessonId, 'feedback'), note)
 }
 
 export async function fetchSessionReports(lessonId) {

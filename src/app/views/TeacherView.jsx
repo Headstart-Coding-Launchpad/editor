@@ -12,7 +12,10 @@ import {
 } from '../../shared/lessonService'
 import { prepareClassroomLesson } from '../studentTaskContent'
 import { listJoiningStudents } from '../joiningStudents'
-import { attachTeacherFeedback, buildSessionReport } from '../../shared/lessonReport'
+import { buildSessionReport } from '../../shared/lessonReport'
+import { saveAfterClassFeedback } from '../afterClassFeedback'
+import TeacherFeedbackModal from '../components/TeacherFeedbackModal'
+import AfterClassFeedbackModal from '../components/AfterClassFeedbackModal'
 import { decodeLessonFromFirestore } from '../../shared/lessonBlocksCodec'
 import EditLessonModal from '../components/EditLessonModal'
 import TopBar from '../components/TopBar'
@@ -26,7 +29,6 @@ import TeacherSessionControls from '../components/TeacherSessionControls'
 import TeacherPreviewBanner from '../components/TeacherPreviewBanner'
 import TeacherSandboxBanner from '../components/TeacherSandboxBanner'
 import TeacherEndSessionModal from '../components/TeacherEndSessionModal'
-import TeacherFeedbackModal from '../components/TeacherFeedbackModal'
 import TeacherReportModal from '../components/TeacherReportModal'
 import TeacherReportsPanel from '../components/TeacherReportsPanel'
 import CheckConditionsPanel from './teacher/CheckConditionsPanel'
@@ -283,7 +285,8 @@ export default function TeacherView({ lessonId }) {
   // previewTaskId: non-null while the teacher is previewing a task locally without moving students
   const [previewTaskId, setPreviewTaskId] = useState(null)
   const [showEndModal, setShowEndModal] = useState(false)
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [showProblemModal, setShowProblemModal] = useState(false)
+  const [goHomeReport, setGoHomeReport] = useState(null)
   const [showEditLessonModal, setShowEditLessonModal] = useState(false)
   const [lastReport, setLastReport] = useState(null)
   const [showReportsPanel, setShowReportsPanel] = useState(false)
@@ -578,15 +581,23 @@ export default function TeacherView({ lessonId }) {
     presentationWindowRef.current?.close()
     presentationWindowRef.current = null
     setShowEndModal(false)
+    // Every way of ending reaches the after-class feedback step: the report modal for
+    // "End Session", a short step with Skip before leaving for "End & Go to Home".
     if (report && !goHome) setLastReport(report)
-    if (goHome) navigate('/')
+    else if (report && goHome) setGoHomeReport(report)
+    else if (goHome) navigate('/')
   }
 
-  async function handleSaveSessionFeedback(feedback) {
-    const updatedReport = attachTeacherFeedback(lastReport, feedback)
-    if (updatedReport !== lastReport)
-      await saveSessionReport(lessonId, updatedReport.sessionId, updatedReport)
-    setLastReport(updatedReport)
+  async function handleSaveSessionFeedback(feedback, taskNotes, report = lastReport) {
+    const updatedReport = await saveAfterClassFeedback({
+      lessonId,
+      report,
+      feedback,
+      taskNotes,
+      teacherEmail: user?.email ?? '',
+    })
+    if (report === lastReport) setLastReport(updatedReport)
+    return updatedReport
   }
 
   async function handleApplySessionLessonEdit(tasks) {
@@ -835,8 +846,8 @@ export default function TeacherView({ lessonId }) {
             <TeacherSessionControls
               session={session}
               onOpenPresentationWindow={handleOpenPresentationWindow}
-              onOpenFeedback={() => setShowFeedbackModal(true)}
               onOpenReports={() => setShowReportsPanel(true)}
+              onReportProblem={() => setShowProblemModal(true)}
               onOpenEditLesson={() => setShowEditLessonModal(true)}
               onStartSession={startSession}
               onEndSession={() => setShowEndModal(true)}
@@ -1125,14 +1136,29 @@ export default function TeacherView({ lessonId }) {
         />
       )}
 
-      {showFeedbackModal && (
+      {showProblemModal && (
         <TeacherFeedbackModal
+          platformOnly
           lessonId={lessonId}
           lessonTitle={lesson?.title ?? ''}
           currentTaskId={displayTaskId}
           currentTaskTitle={task?.title ?? null}
           teacherEmail={user?.email ?? ''}
-          onClose={() => setShowFeedbackModal(false)}
+          onClose={() => setShowProblemModal(false)}
+        />
+      )}
+
+      {goHomeReport && (
+        <AfterClassFeedbackModal
+          report={goHomeReport}
+          tasks={(goHomeReport.taskSummary ?? []).map((x) => ({
+            taskId: x.taskId,
+            title: x.title,
+          }))}
+          onSave={(feedback, taskNotes) =>
+            handleSaveSessionFeedback(feedback, taskNotes, goHomeReport)
+          }
+          onDone={() => navigate('/')}
         />
       )}
 

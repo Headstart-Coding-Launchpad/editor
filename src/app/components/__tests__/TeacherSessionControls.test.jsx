@@ -6,6 +6,7 @@ import TeacherSessionControls from '../TeacherSessionControls'
 // Simulate a wide desktop viewport so secondary buttons render directly
 // rather than being collapsed into the Menu dropdown (threshold: 1300px).
 beforeEach(() => {
+  window.localStorage.removeItem('headstart_extra_class_tools')
   Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1400 })
 })
 
@@ -13,13 +14,13 @@ function renderControls(overrides = {}) {
   const props = {
     session: { state: 'active', isPaused: false },
     onOpenPresentationWindow: vi.fn(),
-    onOpenFeedback: vi.fn(),
     onOpenReports: vi.fn(),
     onOpenEditLesson: vi.fn(),
     onStartSession: vi.fn(),
     onEndSession: vi.fn(),
     onRestartSession: vi.fn(),
     onReturnToAdmin: vi.fn(),
+    onReportProblem: vi.fn(),
     ...overrides,
   }
   render(<TeacherSessionControls {...props} />)
@@ -70,10 +71,12 @@ describe('TeacherSessionControls', () => {
     expect(screen.queryByRole('button', { name: 'End Session' })).not.toBeInTheDocument()
   })
 
-  it('shows active-session End Session and Feedback buttons', () => {
+  it('shows the active-session End Session button and no in-lesson Feedback button', () => {
     const props = renderControls({ session: { state: 'active' } })
 
-    expect(screen.getByRole('button', { name: 'Feedback' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Feedback' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Report a problem' }))
+    expect(props.onReportProblem).toHaveBeenCalledOnce()
     fireEvent.click(screen.getByRole('button', { name: 'End Session' }))
 
     expect(props.onEndSession).toHaveBeenCalledOnce()
@@ -85,7 +88,20 @@ describe('TeacherSessionControls', () => {
     expect(props.onOpenReports).toHaveBeenCalledOnce()
   })
 
+  it('hides Edit Lesson and the quick poll button by default', () => {
+    renderControls({ onLaunchPoll: vi.fn() })
+    expect(screen.queryByRole('button', { name: 'Edit Lesson' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Poll/ })).not.toBeInTheDocument()
+  })
+
+  it('shows the quick poll button when extra class tools are on', () => {
+    window.localStorage.setItem('headstart_extra_class_tools', '1')
+    renderControls({ onLaunchPoll: vi.fn() })
+    expect(screen.getByRole('button', { name: /Poll/ })).toBeInTheDocument()
+  })
+
   it('delegates opening the edit lesson modal', () => {
+    window.localStorage.setItem('headstart_extra_class_tools', '1')
     const props = renderControls()
     fireEvent.click(screen.getByRole('button', { name: 'Edit Lesson' }))
     expect(props.onOpenEditLesson).toHaveBeenCalledOnce()
