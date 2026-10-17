@@ -10,6 +10,7 @@ export default function TeacherSessionControls({
   session,
   onOpenPresentationWindow,
   onOpenReports,
+  onReportProblem,
   onOpenEditLesson,
   onStartSession,
   onEndSession,
@@ -183,6 +184,17 @@ export default function TeacherSessionControls({
               >
                 Edit Lesson
               </button>
+              {onReportProblem && (
+                <button
+                  style={sDD.item}
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onReportProblem()
+                  }}
+                >
+                  Report a problem
+                </button>
+              )}
               {onReturnToAdmin && (
                 <button
                   style={sDD.item}
@@ -220,6 +232,14 @@ export default function TeacherSessionControls({
           <button className="btn-ghost teacher-session-controls__action" onClick={onOpenEditLesson}>
             Edit Lesson
           </button>
+          {onReportProblem && (
+            <button
+              className="btn-ghost teacher-session-controls__action"
+              onClick={onReportProblem}
+            >
+              Report a problem
+            </button>
+          )}
           {/* Admin accounts only (TeacherView passes no handler to a teacher). */}
           {onReturnToAdmin && (
             <button

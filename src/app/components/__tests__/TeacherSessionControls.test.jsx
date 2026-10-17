@@ -19,6 +19,7 @@ function renderControls(overrides = {}) {
     onEndSession: vi.fn(),
     onRestartSession: vi.fn(),
     onReturnToAdmin: vi.fn(),
+    onReportProblem: vi.fn(),
     ...overrides,
   }
   render(<TeacherSessionControls {...props} />)
@@ -73,6 +74,8 @@ describe('TeacherSessionControls', () => {
     const props = renderControls({ session: { state: 'active' } })
 
     expect(screen.queryByRole('button', { name: 'Feedback' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Report a problem' }))
+    expect(props.onReportProblem).toHaveBeenCalledOnce()
     fireEvent.click(screen.getByRole('button', { name: 'End Session' }))
 
     expect(props.onEndSession).toHaveBeenCalledOnce()

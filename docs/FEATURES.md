@@ -369,7 +369,7 @@ One step after every way of ending a session: a 1-5 rating, "What worked well", 
 - **End Session** opens the session report with the step at the top; **End & Go to Home** shows the step (with Skip) before leaving.
 - It can be added or edited later from a past report (Reports in the session, or Admin > Lessons): **Add feedback** / **Edit feedback**.
 - The rating and notes become `teacherFeedback` on that run's report; each task note is stored in `lessons/{lessonId}/feedback` with the task and a `reportId` linking it to the run (read by the feedback CLI, Builder task panel and Admin).
-- The per-task rating panel during the lesson is separate and unchanged. The in-session Feedback button was removed from the live tutor header (the Builder preview still has it).
+- The per-task rating panel during the lesson is separate and unchanged. The in-session Feedback button was removed from the live tutor header. Bug reports stay reachable through **Report a problem** in the session controls (Menu), which opens only the Platform Feedback form (the Builder preview still has the full modal).
 
 ### Viewing and deleting feedback (admin)
 

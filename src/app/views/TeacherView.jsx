@@ -14,6 +14,7 @@ import { prepareClassroomLesson } from '../studentTaskContent'
 import { listJoiningStudents } from '../joiningStudents'
 import { buildSessionReport } from '../../shared/lessonReport'
 import { saveAfterClassFeedback } from '../afterClassFeedback'
+import TeacherFeedbackModal from '../components/TeacherFeedbackModal'
 import AfterClassFeedbackModal from '../components/AfterClassFeedbackModal'
 import { decodeLessonFromFirestore } from '../../shared/lessonBlocksCodec'
 import EditLessonModal from '../components/EditLessonModal'
@@ -284,6 +285,7 @@ export default function TeacherView({ lessonId }) {
   // previewTaskId: non-null while the teacher is previewing a task locally without moving students
   const [previewTaskId, setPreviewTaskId] = useState(null)
   const [showEndModal, setShowEndModal] = useState(false)
+  const [showProblemModal, setShowProblemModal] = useState(false)
   const [goHomeReport, setGoHomeReport] = useState(null)
   const [showEditLessonModal, setShowEditLessonModal] = useState(false)
   const [lastReport, setLastReport] = useState(null)
@@ -845,6 +847,7 @@ export default function TeacherView({ lessonId }) {
               session={session}
               onOpenPresentationWindow={handleOpenPresentationWindow}
               onOpenReports={() => setShowReportsPanel(true)}
+              onReportProblem={() => setShowProblemModal(true)}
               onOpenEditLesson={() => setShowEditLessonModal(true)}
               onStartSession={startSession}
               onEndSession={() => setShowEndModal(true)}
@@ -1130,6 +1133,18 @@ export default function TeacherView({ lessonId }) {
           onClose={() => setShowEndModal(false)}
           onEnd={() => handleEndSession(false)}
           onEndAndGoHome={() => handleEndSession(true)}
+        />
+      )}
+
+      {showProblemModal && (
+        <TeacherFeedbackModal
+          platformOnly
+          lessonId={lessonId}
+          lessonTitle={lesson?.title ?? ''}
+          currentTaskId={displayTaskId}
+          currentTaskTitle={task?.title ?? null}
+          teacherEmail={user?.email ?? ''}
+          onClose={() => setShowProblemModal(false)}
         />
       )}
 
