@@ -836,7 +836,7 @@
     // Solo study log (src/shared/soloLog.js): what a real student did in a lesson on their own,
     // outside any live session, so tutors can see who did a Solo Challenge and when. One node per
     // lesson and student: { startedAt, lastAt, finishedAt, name, tasks: { taskId: { attempts, passed,
-    // firstTry, firstAt, passedAt } } }. Counts and times only, never code or a name. Kept outside
+    // firstTry, firstAt, passedAt } } }. Counts, times and the display name only, never code. Kept outside
     // "sessions" because createSession clears those. Students write their own node only (auth.uid
     // is the key); teachers/admins read and clear it.
     "soloLog": {
