@@ -81,6 +81,33 @@ function mkProps(overrides = {}) {
   }
 }
 
+describe('StudentGrid pause control visibility', () => {
+  beforeEach(() => window.localStorage.removeItem('headstart_extra_class_tools'))
+
+  it('hides Pause Coding by default', () => {
+    render(<StudentGrid {...mkProps({ onTogglePaused: vi.fn() })} />)
+    expect(screen.queryByText('Pause Coding')).not.toBeInTheDocument()
+  })
+
+  it('shows Pause Coding when extra class tools are on', () => {
+    window.localStorage.setItem('headstart_extra_class_tools', '1')
+    render(<StudentGrid {...mkProps({ onTogglePaused: vi.fn() })} />)
+    expect(screen.getByText('Pause Coding')).toBeInTheDocument()
+  })
+
+  it('still shows Resume Coding while paused, even with the setting off', () => {
+    render(
+      <StudentGrid
+        {...mkProps({
+          onTogglePaused: vi.fn(),
+          session: { ...ACTIVE_SESSION, isPaused: true },
+        })}
+      />
+    )
+    expect(screen.getByText('Resume Coding')).toBeInTheDocument()
+  })
+})
+
 describe('StudentGrid', () => {
   describe('expanded (default) state', () => {
     it('renders one card per student', () => {
