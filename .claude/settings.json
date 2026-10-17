@@ -1,5 +1,20 @@
 {
   "worktree": { "bgIsolation": "none" },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["C:/Users/rflem/Documents/HSC Hub/scripts/session-brief.mjs", "dev"],
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(npm test)",
