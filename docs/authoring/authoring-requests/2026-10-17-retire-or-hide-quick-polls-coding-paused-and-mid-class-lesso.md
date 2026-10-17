@@ -1,6 +1,6 @@
 # Retire or hide quick polls, Coding Paused and mid-class lesson editing (keep the countdown)
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** tooling
 - **Requested by:** Ryan (approved by Ryan), 2026-10-17
 - **Lessons blocked:** none yet

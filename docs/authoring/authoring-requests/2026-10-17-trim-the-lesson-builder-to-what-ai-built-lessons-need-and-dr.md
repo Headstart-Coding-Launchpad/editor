@@ -1,6 +1,6 @@
 # Trim the Lesson Builder to what AI-built lessons need, and drop the 'which lesson' step
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** tooling
 - **Requested by:** Ryan (approved by Ryan), 2026-10-17
 - **Lessons blocked:** none yet

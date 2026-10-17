@@ -1,6 +1,6 @@
 # Scratch layout: starter block hidden behind the palette, and the stage on another tab on tablets
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** bug
 - **Requested by:** Ryan (approved by Ryan), 2026-10-17
 - **Lessons blocked:** none yet

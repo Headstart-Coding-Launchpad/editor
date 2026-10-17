@@ -1,6 +1,6 @@
 # Merge the session report feedback and lesson feedback into one step after class (task rating stays in the lesson)
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** tooling
 - **Requested by:** Ryan (approved by Ryan), 2026-10-17
 - **Lessons blocked:** none yet

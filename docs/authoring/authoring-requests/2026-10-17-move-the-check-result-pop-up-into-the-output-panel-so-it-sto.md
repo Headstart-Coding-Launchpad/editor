@@ -1,6 +1,6 @@
 # Move the check result pop-up into the output panel so it stops covering the code
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Ryan (approved by Ryan), 2026-10-17
 - **Lessons blocked:** none yet

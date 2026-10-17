@@ -1,6 +1,6 @@
 # One-tap badge awarding, and fewer controls on the one-student view
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Ryan (approved by Ryan), 2026-10-17
 - **Lessons blocked:** none yet

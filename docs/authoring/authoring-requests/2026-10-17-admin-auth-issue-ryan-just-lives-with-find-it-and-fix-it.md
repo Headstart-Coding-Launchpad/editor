@@ -1,6 +1,6 @@
 # Admin auth issue Ryan 'just lives with': find it and fix it
 
-- **Status:** open
+- **Status:** shipped
 - **Kind:** bug
 - **Requested by:** Ryan (approved by Ryan), 2026-10-17
 - **Lessons blocked:** none yet
