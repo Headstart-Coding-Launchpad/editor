@@ -8,15 +8,17 @@ once it's dealt with. All commands need CLI credentials (see "CLI credentials" i
 
 | Kind | Firestore location | Written from | Seen in |
 |---|---|---|---|
-| Lesson feedback | `lessons/{lessonId}/feedback` | Teacher's Feedback button during a lesson, for the whole lesson or one task | Builder task feedback panel, Admin > Lessons |
+| Lesson feedback | `lessons/{lessonId}/feedback` | The tutor's per-task notes in the after-class feedback step (from 2026-10-17, tagged with `reportId`); before that, the Feedback button during a lesson (whole lesson or one task) | Builder task feedback panel, Admin > Lessons |
 | Platform feedback | `platformFeedback` | Bug reports and feature ideas | Admin > Feedback |
 
 This is not the feedback inside a session report. A report carries its own rated
-`teacherFeedback` (per session run) and per-task `teacherRating`, which the CLI can't read; see
+`teacherFeedback` (per session run, given in the same after-class step) and per-task
+`teacherRating`, which the CLI can't read; see
 [session-reports.md](session-reports.md#teacher-feedback).
 
 Each item has `id`, `lessonId`, `lessonTitle`, `taskId` (null for whole-lesson feedback),
-`taskTitle`, `teacherEmail`, `text`, `submittedAt` (Unix ms) and `archived`. List results also
+`taskTitle`, `teacherEmail`, `text`, `reportId` (the session run's report id for notes from the
+after-class step, otherwise null), `submittedAt` (Unix ms) and `archived`. List results also
 include `source: "lesson" | "platform"`, sorted newest first.
 
 ## Read

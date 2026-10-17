@@ -37,6 +37,25 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-17
+
+### One after-class feedback step (session report feedback and lesson feedback merged)
+
+- The tutor reaches **one feedback step after every way of ending a session**: rating 1-5,
+  "What worked well", "What didn't work", and optional per-task notes. **End & Go to Home** now
+  shows the step (with Skip) too, and past reports gain **Add feedback / Edit feedback**, so
+  `teacherFeedback` can be added after the fact.
+- `teacherFeedback` is unchanged: `{ rating, whatWorkedWell, whatDidntWork, submittedAt }` on
+  that run's report. `taskSummary[].teacherRating` and the during-lesson task rating panel are
+  unchanged.
+- Per-task notes go to `lessons/{lessonId}/feedback` (the feedback CLI store) with a new
+  `reportId` field linking to the run's report. `feedback lesson` / `feedback all` now print
+  `reportId` (null for older items). The in-lesson Feedback button was removed from the live
+  tutor header. See [session-reports.md](session-reports.md#teacher-feedback) and
+  [feedback-cli.md](feedback-cli.md).
+- Affects: all · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-17-merge-the-session-report-feedback-and-lesson-feedback-into-o-2.md
+
 ## 2026-10-16
 
 ### Edit zones: one-line slots, and lines that stay first or last (P6-30)

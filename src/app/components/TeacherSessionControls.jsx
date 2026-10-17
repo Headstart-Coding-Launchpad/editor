@@ -10,8 +10,8 @@ const BREAKPOINT_COMPACT = 950 // also hide status text from bar (shown inside d
 export default function TeacherSessionControls({
   session,
   onOpenPresentationWindow,
-  onOpenFeedback,
   onOpenReports,
+  onReportProblem,
   onOpenEditLesson,
   onStartSession,
   onEndSession,
@@ -172,15 +172,6 @@ export default function TeacherSessionControls({
                 style={sDD.item}
                 onClick={() => {
                   setMenuOpen(false)
-                  onOpenFeedback()
-                }}
-              >
-                Feedback
-              </button>
-              <button
-                style={sDD.item}
-                onClick={() => {
-                  setMenuOpen(false)
                   onOpenReports()
                 }}
               >
@@ -195,6 +186,17 @@ export default function TeacherSessionControls({
                   }}
                 >
                   Edit Lesson
+                </button>
+              )}
+              {onReportProblem && (
+                <button
+                  style={sDD.item}
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onReportProblem()
+                  }}
+                >
+                  Report a problem
                 </button>
               )}
               {onReturnToAdmin && (
@@ -228,9 +230,6 @@ export default function TeacherSessionControls({
           >
             Presentation Window
           </button>
-          <button className="btn-ghost teacher-session-controls__action" onClick={onOpenFeedback}>
-            Feedback
-          </button>
           <button className="btn-ghost teacher-session-controls__action" onClick={onOpenReports}>
             Reports
           </button>
@@ -240,6 +239,14 @@ export default function TeacherSessionControls({
               onClick={onOpenEditLesson}
             >
               Edit Lesson
+            </button>
+          )}
+          {onReportProblem && (
+            <button
+              className="btn-ghost teacher-session-controls__action"
+              onClick={onReportProblem}
+            >
+              Report a problem
             </button>
           )}
           {/* Admin accounts only (TeacherView passes no handler to a teacher). */}

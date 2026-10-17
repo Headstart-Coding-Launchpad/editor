@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { fetchSessionReports } from '../../shared/lessonService'
 import TeacherReportModal from './TeacherReportModal'
+import { useAuth } from '../../auth/useAuth'
+import { saveAfterClassFeedback } from '../afterClassFeedback'
 
 export default function TeacherReportsPanel({ lessonId, liveReport, onClose }) {
   const overlayRef = useRef(null)
+  const user = useAuth()?.user
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -38,7 +41,30 @@ export default function TeacherReportsPanel({ lessonId, liveReport, onClose }) {
   }, [onClose])
 
   if (selectedReport) {
-    return <TeacherReportModal report={selectedReport} onClose={() => setSelectedReport(null)} />
+    // Past (saved) runs can have feedback added or edited later; the live in-progress report can't.
+    const canEditFeedback = selectedReport !== liveReport
+    return (
+      <TeacherReportModal
+        report={selectedReport}
+        onClose={() => setSelectedReport(null)}
+        onSaveFeedback={
+          canEditFeedback
+            ? async (feedback, taskNotes) => {
+                const updated = await saveAfterClassFeedback({
+                  lessonId,
+                  report: selectedReport,
+                  feedback,
+                  taskNotes,
+                  teacherEmail: user?.email ?? '',
+                })
+                setReports((prev) => prev.map((r) => (r === selectedReport ? updated : r)))
+                setSelectedReport(updated)
+                return updated
+              }
+            : undefined
+        }
+      />
+    )
   }
 
   return (

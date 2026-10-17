@@ -14,13 +14,13 @@ function renderControls(overrides = {}) {
   const props = {
     session: { state: 'active', isPaused: false },
     onOpenPresentationWindow: vi.fn(),
-    onOpenFeedback: vi.fn(),
     onOpenReports: vi.fn(),
     onOpenEditLesson: vi.fn(),
     onStartSession: vi.fn(),
     onEndSession: vi.fn(),
     onRestartSession: vi.fn(),
     onReturnToAdmin: vi.fn(),
+    onReportProblem: vi.fn(),
     ...overrides,
   }
   render(<TeacherSessionControls {...props} />)
@@ -71,10 +71,12 @@ describe('TeacherSessionControls', () => {
     expect(screen.queryByRole('button', { name: 'End Session' })).not.toBeInTheDocument()
   })
 
-  it('shows active-session End Session and Feedback buttons', () => {
+  it('shows the active-session End Session button and no in-lesson Feedback button', () => {
     const props = renderControls({ session: { state: 'active' } })
 
-    expect(screen.getByRole('button', { name: 'Feedback' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Feedback' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Report a problem' }))
+    expect(props.onReportProblem).toHaveBeenCalledOnce()
     fireEvent.click(screen.getByRole('button', { name: 'End Session' }))
 
     expect(props.onEndSession).toHaveBeenCalledOnce()

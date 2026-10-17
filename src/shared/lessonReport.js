@@ -1019,6 +1019,26 @@ export function attachTeacherFeedback(report, feedback) {
   }
 }
 
+// Builds the lessons/{lessonId}/feedback docs for the after-class step's per-task notes: the
+// same shape the old in-lesson Feedback button wrote (taskId, taskTitle, text, teacherEmail,
+// submittedAt) plus `reportId`, the id of the session run's report. Blank notes are dropped.
+export function buildReportTaskNotes(report, notes, teacherEmail, now = Date.now()) {
+  if (!report || !Array.isArray(notes)) return []
+  return notes
+    .map((note) => ({ ...note, text: String(note?.text ?? '').trim() }))
+    .filter((note) => note.text && note.taskId != null)
+    .map((note) => ({
+      lessonId: report.lessonId ?? null,
+      lessonTitle: report.lessonTitle ?? '',
+      taskId: note.taskId,
+      taskTitle: note.taskTitle ?? null,
+      text: note.text,
+      teacherEmail: teacherEmail ?? '',
+      submittedAt: now,
+      reportId: report.sessionId != null ? String(report.sessionId) : null,
+    }))
+}
+
 export function reportToYamlText(report) {
   return yaml.dump(anonymizeSessionReport(report), YAML_OPTIONS)
 }
