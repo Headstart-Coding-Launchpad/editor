@@ -516,14 +516,14 @@ describe('StudentModal', () => {
     it('offers the stages in the Support menu when stages are available', async () => {
       const user = userEvent.setup()
       render(<StudentModal {...mkProps({ lesson: LESSON_WITH_STAGES })} />)
-      await user.click(screen.getByRole('button', { name: /^Support/ }))
+      await user.click(screen.getByRole('button', { name: /^More/ }))
       expect(screen.getByText('Set stage')).toBeInTheDocument()
     })
 
     it('opens the stage dropdown and shows stage options when clicked', async () => {
       const user = userEvent.setup()
       render(<StudentModal {...mkProps({ lesson: LESSON_WITH_STAGES })} />)
-      await user.click(screen.getByRole('button', { name: /^Support/ }))
+      await user.click(screen.getByRole('button', { name: /^More/ }))
       expect(screen.getByRole('button', { name: 'Starter' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Stage 1' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Complete' })).toBeInTheDocument()
@@ -534,7 +534,7 @@ describe('StudentModal', () => {
       const onRequestTeacherStage = vi.fn()
       const props = mkProps({ lesson: LESSON_WITH_STAGES, onRequestTeacherStage })
       render(<StudentModal {...props} />)
-      await user.click(screen.getByRole('button', { name: /^Support/ }))
+      await user.click(screen.getByRole('button', { name: /^More/ }))
       await user.click(screen.getByRole('button', { name: 'Starter' }))
       expect(onRequestTeacherStage).toHaveBeenCalledWith('student-1', 'starter')
       expect(screen.getByText(/Waiting for Jamie/i)).toBeInTheDocument()
@@ -551,7 +551,7 @@ describe('StudentModal', () => {
         onClearTeacherStage,
       })
       const { rerender } = render(<StudentModal {...props} />)
-      await user.click(screen.getByRole('button', { name: /^Support/ }))
+      await user.click(screen.getByRole('button', { name: /^More/ }))
       await user.click(screen.getByRole('button', { name: 'Starter' }))
       rerender(
         <StudentModal
@@ -586,7 +586,7 @@ describe('StudentModal', () => {
         onRevealSupportStage: vi.fn(),
       })
       render(<StudentModal {...props} />)
-      await user.click(screen.getByRole('button', { name: /^Support/ }))
+      await user.click(screen.getByRole('button', { name: /^More/ }))
       await user.click(screen.getByRole('button', { name: /^Reveal solution$/i }))
 
       expect(props.onRevealSupportStage).toHaveBeenCalledWith('student-1', 1, 1, {
@@ -600,14 +600,14 @@ describe('StudentModal', () => {
       const user = userEvent.setup()
       const props = mkProps({ lesson: LESSON_WITH_COMPLETE_STAGE, onSetAutoReveal: vi.fn() })
       const { rerender } = render(<StudentModal {...props} />)
-      await user.click(screen.getByRole('button', { name: /^Support/ }))
+      await user.click(screen.getByRole('button', { name: /^More/ }))
       expect(screen.getByText('Show on every task')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'First hint' }))
       expect(props.onSetAutoReveal).toHaveBeenCalledWith('student-1', 'first')
 
       rerender(<StudentModal {...props} student={{ ...props.student, autoRevealStage: 'first' }} />)
       expect(screen.getByText(/Every task: First hint/)).toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: /^Support/ }))
+      await user.click(screen.getByRole('button', { name: /^More/ }))
       await user.click(screen.getByRole('button', { name: 'Off' }))
       expect(props.onSetAutoReveal).toHaveBeenLastCalledWith('student-1', null)
     })
@@ -876,6 +876,7 @@ describe('StudentModal item progress', () => {
     expect(screen.getByTestId('quiz-task')).toHaveAttribute('data-disabled', 'true')
     expect(screen.queryByRole('button', { name: 'mock-edit' })).not.toBeInTheDocument()
 
+    fireEvent.click(screen.getByRole('button', { name: /^More/ }))
     fireEvent.click(screen.getByRole('button', { name: '✏️ Edit answers' }))
     expect(screen.getByTestId('quiz-task')).toHaveAttribute('data-disabled', 'false')
     fireEvent.click(screen.getByRole('button', { name: 'mock-edit' }))
@@ -894,18 +895,23 @@ describe('StudentModal item progress', () => {
   it('does not offer answer editing for ordinary code tasks', () => {
     render(<StudentModal {...mkProps({ onTeacherAnswerEdit: vi.fn() })} />)
     expect(screen.queryByRole('button', { name: '✏️ Edit answers' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Done editing' })).not.toBeInTheDocument()
   })
   it('sends a remote Run for an online student and confirms it was sent', () => {
     const onRemoteRun = vi.fn()
     render(<StudentModal {...mkProps({ onRemoteRun })} />)
+    expect(screen.queryByRole('button', { name: '▶ Run on student' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^More/ }))
     fireEvent.click(screen.getByRole('button', { name: '▶ Run on student' }))
     expect(onRemoteRun).toHaveBeenCalledWith('student-1')
+    fireEvent.click(screen.getByRole('button', { name: /^More/ }))
     expect(screen.getByRole('button', { name: 'Run sent ✓' })).toBeInTheDocument()
   })
 
   it('disables remote Run for an offline student and hides it for quizzes', () => {
     const onRemoteRun = vi.fn()
     const { unmount } = render(<StudentModal {...mkProps({ onRemoteRun }, { online: false })} />)
+    fireEvent.click(screen.getByRole('button', { name: /^More/ }))
     expect(screen.getByRole('button', { name: '▶ Run on student' })).toBeDisabled()
     unmount()
 
@@ -978,13 +984,13 @@ describe('StudentModal live badges', () => {
     expect(screen.getByTestId('modal-badge-count')).toHaveTextContent('🏅 2')
   })
 
-  it('opens the badge picker from More and awards manually', async () => {
+  it('opens the badge picker from the header Award badge button and awards manually', async () => {
     const user = userEvent.setup()
     const onDecideBadge = vi.fn(async () => ({ committed: true }))
     const onClose = vi.fn()
     render(<StudentModal {...mkProps({ onDecideBadge, onRevokeBadge: vi.fn(), onClose })} />)
-    await user.click(screen.getByRole('button', { name: /^More/ }))
-    await user.click(screen.getByRole('button', { name: '🏅 Award badge' }))
+    // Nothing suggested: the button opens the normal picker.
+    await user.click(screen.getByTestId('one-tap-award'))
     expect(screen.getByRole('dialog', { name: /Award badge · Jamie/ })).toBeInTheDocument()
     await user.click(screen.getByTestId('badge-option-problem_solver'))
     expect(onDecideBadge).not.toHaveBeenCalled()
@@ -1052,14 +1058,14 @@ describe('StudentModal header', () => {
     )
     expect(screen.queryByRole('button', { name: /^Reveal/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Set Stage/ })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    await user.click(screen.getByRole('button', { name: /^More/ }))
     expect(screen.getByText('Reveal')).toBeInTheDocument()
     expect(screen.getByText('Set stage')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Reveal: Hint/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Starter' })).toBeInTheDocument()
   })
 
-  it('moves Nudge, Go Live for All, Focus and Award badge into More', async () => {
+  it('keeps Nudge, Go Live for All and Focus in More, with Award badge in the header', async () => {
     const user = userEvent.setup()
     const onNudge = vi.fn()
     const onGoLiveForAll = vi.fn()
@@ -1075,15 +1081,16 @@ describe('StudentModal header', () => {
     )
     expect(screen.queryByRole('button', { name: /Nudge/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Go Live for All/ })).not.toBeInTheDocument()
+    expect(screen.getByTestId('one-tap-award')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /^More/ }))
-    expect(screen.getByRole('button', { name: '🏅 Award badge' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '🏅 Award badge' })).not.toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Focus' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '🔔 Nudge' }))
     expect(onNudge).toHaveBeenCalledWith('student-1')
     expect(screen.getByText('✓ Nudged')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /^More/ }))
     await user.click(
-      screen.getByRole('button', { name: '📡 Go Live for All: takes over every screen' })
+      screen.getByRole('button', { name: '📡 Take over every screen (Go Live for All)' })
     )
     expect(onGoLiveForAll).toHaveBeenCalled()
   })
@@ -1104,13 +1111,13 @@ describe('StudentModal header', () => {
     await user.click(screen.getByRole('button', { name: /^More/ }))
     expect(screen.getByText('Encourage')).toBeInTheDocument()
     expect(screen.getByText('Show the class')).toBeInTheDocument()
-    expect(screen.getByText('Help this student')).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: '📡 Go Live for All: takes over every screen' })
+      screen.getByRole('button', { name: '📡 Take over every screen (Go Live for All)' })
     ).toBeInTheDocument()
+    // Show to class and Help are one tap in the header, not in More.
     expect(
-      screen.getByRole('button', { name: '📺 Show to class: they keep coding' })
-    ).toBeInTheDocument()
+      screen.queryByRole('button', { name: '📺 Show to class: they keep coding' })
+    ).not.toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: '📤 Share a copy with the class' })
     ).toBeInTheDocument()
@@ -1129,12 +1136,12 @@ describe('StudentModal header', () => {
 
   it('closes an open menu on Escape without closing the modal', async () => {
     const user = userEvent.setup()
-    const props = mkProps({ onDecideBadge: vi.fn() })
+    const props = mkProps({ onNudge: vi.fn() })
     render(<StudentModal {...props} />)
     await user.click(screen.getByRole('button', { name: /^More/ }))
-    expect(screen.getByRole('button', { name: '🏅 Award badge' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '🔔 Nudge' })).toBeInTheDocument()
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('button', { name: '🏅 Award badge' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '🔔 Nudge' })).not.toBeInTheDocument()
     expect(props.onClose).not.toHaveBeenCalled()
   })
 })
@@ -1221,7 +1228,7 @@ describe('teacher live code reference (Support menu)', () => {
     const user = userEvent.setup()
     const props = liveProps()
     render(<StudentModal {...props} />)
-    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    await user.click(screen.getByRole('button', { name: /^More/ }))
     await user.click(screen.getByRole('button', { name: 'Reveal live code' }))
     expect(props.onRevealSupportStage).toHaveBeenCalledWith('student-1', 1, 'teacherLive', {
       source: 'teacher',
@@ -1243,7 +1250,7 @@ describe('teacher live code reference (Support menu)', () => {
         })}
       />
     )
-    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    await user.click(screen.getByRole('button', { name: /^More/ }))
     expect(screen.getByRole('button', { name: 'Opened: live code' })).toBeDisabled()
   })
 
@@ -1260,7 +1267,7 @@ describe('teacher live code reference (Support menu)', () => {
         })}
       />
     )
-    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    await user.click(screen.getByRole('button', { name: /^More/ }))
     expect(screen.getByRole('button', { name: 'Reveal live code' })).toBeEnabled()
   })
 
@@ -1268,7 +1275,7 @@ describe('teacher live code reference (Support menu)', () => {
     const user = userEvent.setup()
     const props = liveProps()
     render(<StudentModal {...props} />)
-    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    await user.click(screen.getByRole('button', { name: /^More/ }))
     const pinBtn = screen.getByRole('button', { name: '📌 Keep showing live code' })
     expect(pinBtn).toHaveAttribute('aria-pressed', 'false')
     await user.click(pinBtn)
@@ -1282,7 +1289,7 @@ describe('teacher live code reference (Support menu)', () => {
     render(<StudentModal {...props} />)
     // Header chip, so the pin is obvious without opening the menu.
     expect(screen.getByText('📌 Live code: kept on')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    await user.click(screen.getByRole('button', { name: /^More/ }))
     const pinBtn = screen.getByRole('button', { name: '📌 Live code: kept on' })
     expect(pinBtn).toHaveAttribute('aria-pressed', 'true')
     await user.click(pinBtn)
@@ -1304,7 +1311,7 @@ describe('teacher live code reference (Support menu)', () => {
     const user = userEvent.setup()
     const props = liveProps({ session: { ...PRESENTING, teacherLiveReferenceVisibleToAll: 1000 } })
     render(<StudentModal {...props} />)
-    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    await user.click(screen.getByRole('button', { name: /^More/ }))
     const pinBtn = screen.getByRole('button', { name: '📌 Live code: kept on' })
     expect(pinBtn).toHaveAttribute('aria-pressed', 'true')
     await user.click(pinBtn)
@@ -1326,7 +1333,7 @@ describe('teacher live code reference (Support menu)', () => {
     render(<StudentModal {...props} />)
     expect(screen.getByText('📌 Live code: hidden for this student')).toBeInTheDocument()
     expect(screen.queryByText('📌 Live code: kept on')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    await user.click(screen.getByRole('button', { name: /^More/ }))
     const btn = screen.getByRole('button', { name: '📌 Show class live code again' })
     expect(btn).toBeEnabled()
     expect(btn).toHaveAttribute('aria-pressed', 'false')
@@ -1340,7 +1347,7 @@ describe('teacher live code reference (Support menu)', () => {
       session: { ...ACTIVE_SESSION, teacherLiveReferenceVisibleToAll: 1000 },
     })
     render(<StudentModal {...props} />)
-    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    await user.click(screen.getByRole('button', { name: /^More/ }))
     const pinBtn = screen.getByRole('button', { name: '📌 Live code: kept on' })
     expect(pinBtn).toBeEnabled()
     await user.click(pinBtn)
@@ -1359,8 +1366,64 @@ describe('teacher live code reference (Support menu)', () => {
         })}
       />
     )
-    await user.click(screen.getByRole('button', { name: /^Support/ }))
+    await user.click(screen.getByRole('button', { name: /^More/ }))
     expect(screen.getByRole('button', { name: 'Reveal live code' })).toBeDisabled()
     expect(screen.getByRole('button', { name: '📌 Keep showing live code' })).toBeDisabled()
+  })
+})
+
+describe('StudentModal header: four common actions, the rest in More', () => {
+  const SUGGESTION = {
+    badgeId: 'bug_hunter',
+    studentId: 'student-1',
+    taskId: 1,
+    reason: 'Fixed an error without help',
+    at: 1000,
+  }
+
+  it('shows Award badge, Thumbs up, Show to class and Help, and one More menu', () => {
+    render(
+      <StudentModal
+        {...mkProps({
+          onDecideBadge: vi.fn(),
+          onThumbsUp: vi.fn(),
+          onGoLiveForAll: vi.fn(),
+          onSendMessage: vi.fn(),
+          onRemoteRun: vi.fn(),
+          onNudge: vi.fn(),
+        })}
+      />
+    )
+    expect(screen.getByTestId('one-tap-award')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Send Jamie a thumbs up' })).toHaveTextContent(
+      'Thumbs up'
+    )
+    expect(screen.getByRole('button', { name: /Show to class/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Help/ })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /^More/ })).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: /^Support/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Override/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '▶ Run on student' })).not.toBeInTheDocument()
+  })
+
+  it('awards the top suggestion in one tap and undoes it through revoke', async () => {
+    const user = userEvent.setup()
+    const onDecideBadge = vi.fn(async () => ({ committed: true }))
+    const onRevokeBadge = vi.fn(async () => ({ committed: true }))
+    render(
+      <StudentModal
+        {...mkProps({ onDecideBadge, onRevokeBadge, badgeSuggestions: [SUGGESTION] })}
+      />
+    )
+    await user.click(screen.getByTestId('one-tap-award'))
+    expect(onDecideBadge).toHaveBeenCalledWith(
+      'student-1',
+      'bug_hunter',
+      expect.objectContaining({ status: 'awarded', source: 'rule', taskId: 1 })
+    )
+    expect(screen.queryByRole('dialog', { name: /Award badge/ })).not.toBeInTheDocument()
+    expect(await screen.findByTestId('award-toast')).toHaveTextContent('awarded to Jamie')
+    await user.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(onRevokeBadge).toHaveBeenCalledWith('student-1', 'bug_hunter')
   })
 })

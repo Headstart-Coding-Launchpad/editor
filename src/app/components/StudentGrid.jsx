@@ -615,6 +615,10 @@ export default function StudentGrid({
                 onExpand={handleExpand}
                 onNudge={onNudgeStudent}
                 onThumbsUp={onThumbsUpStudent}
+                badgeSuggestionList={badgeSuggestions?.suggestions ?? []}
+                catalogueBadges={catalogueBadges}
+                onDecideBadge={onDecideBadge}
+                onRevokeBadge={onRevokeBadge}
                 onShowResponse={onShowResponse}
                 onHideResponse={onHideResponse}
                 onSetShownResponseName={onSetShownResponseName}

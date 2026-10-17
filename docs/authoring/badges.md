@@ -16,6 +16,10 @@ only:
 `node cli/cli.mjs lessons capabilities` lists the badges (`badges.badges`), the options
 (`badges.badgeOptions`) and the `taskActivity` patterns (`taskActivity.patterns`).
 
+## One-tap award
+
+The tutor can award a student's top suggested badge in one tap, from the student's card or the one-student view. The suggestions for that student are ranked by `rankStudentSuggestions` (`src/badges/suggestionRanking.js`): a rule that matched on the class's current task first, then the most recent match, then the badge fewer classmates already hold. The button names the badge and carries the badge's one-line description and the rule's reason (for example "Fixed an error without help") as its tooltip. The award uses the same write as the suggestions panel (source `rule`), and an **Undo** toast for 6 seconds revokes it with the normal revoke. When nothing is suggested the one-student view button opens the full picker instead. Nothing changes in how lessons or badge rules are written.
+
 ## The badges
 
 A **real pass** is a passing check with none of these before it: teacher help, a teacher override

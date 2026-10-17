@@ -30,7 +30,9 @@ import TeacherPeerHelpStudentPanel from './peerHelp/TeacherPeerHelpStudentPanel'
 import MessageCompose from './student-modal/MessageCompose'
 // Export work (tutor-only download / share link); loaded on first open.
 const ExportWorkDialog = React.lazy(() => import('./student-modal/ExportWorkDialog'))
-import OverrideDropdown from './student-modal/OverrideDropdown'
+import { OverrideItems, OverrideFailModal } from './student-modal/OverrideDropdown'
+import OneTapAwardButton from './badges/OneTapAwardButton'
+import TipButton from './TipButton'
 import { PaneFocusControls } from './student-modal/PaneFocusDropdown'
 import {
   ControlHighlightControls,
@@ -168,6 +170,7 @@ export default function StudentModal({
   const [fullscreenRequested, setFullscreenRequested] = useState(false)
   const [nudged, setNudged] = useState(false)
   const [thumbsUpSent, setThumbsUpSent] = useState(false)
+  const [markFailOpen, setMarkFailOpen] = useState(false)
   const [showBadgeDialog, setShowBadgeDialog] = useState(false)
   const [showExportDialog, setShowExportDialog] = useState(false)
 
@@ -860,22 +863,22 @@ export default function StudentModal({
           </div>
           <div style={s.headerRight}>
             <div style={s.navButtons}>
-              <button
+              <TipButton
                 style={{ ...s.navBtn, opacity: hasPrev ? 1 : 0.35 }}
                 disabled={!hasPrev}
                 onClick={onPrev}
-                title="Previous student"
+                label="Previous student"
               >
                 ←
-              </button>
-              <button
+              </TipButton>
+              <TipButton
                 style={{ ...s.navBtn, opacity: hasNext ? 1 : 0.35 }}
                 disabled={!hasNext}
                 onClick={onNext}
-                title="Next student"
+                label="Next student"
               >
                 →
-              </button>
+              </TipButton>
             </div>
 
             {/* A stage request waits on the student's consent. */}
@@ -892,228 +895,39 @@ export default function StudentModal({
               </>
             )}
 
-            {/* Support: the Reveal references and Set Stage, in labelled sections. */}
-            {(canReveal || (canSetStage && stageRequestState !== 'requesting')) && (
-              <DropdownMenu
-                label={stageDeclinedNotice ? 'Support · declined' : 'Support'}
-                buttonClassName="btn-ghost"
-                buttonStyle={
-                  stageDeclinedNotice ? { color: '#fca5a5', borderColor: '#fca5a5' } : undefined
-                }
-                title={
-                  stageDeclinedNotice
-                    ? 'The student declined your last stage change'
-                    : 'Reveal a reference or set this student’s code stage'
-                }
-                panelStyle={s.menuPanel}
-              >
-                {(close) => (
-                  <>
-                    {canReveal && (
-                      <>
-                        <div style={s.menuHeadingFirst}>Reveal</div>
-                        {canRevealLiveReference && (
-                          <button
-                            style={sTo.toolBtn}
-                            disabled={
-                              !teacherLiveReferenceMatchesTask || teacherLiveReferenceRevealed
-                            }
-                            title={
-                              teacherLiveReferenceMatchesTask
-                                ? 'Show your live code for this task only'
-                                : "Will work once you're presenting this task in Presentation View"
-                            }
-                            onClick={() => {
-                              close()
-                              handleRevealTeacherLiveReference()
-                            }}
-                          >
-                            {teacherLiveReferenceRevealed
-                              ? 'Opened: live code'
-                              : 'Reveal live code'}
-                          </button>
-                        )}
-                        {revealableStages.map(({ stage, index }) => {
-                          const alreadyRevealed = !!revealedSupportStages[index]
-                          return (
-                            <button
-                              key={index}
-                              style={sTo.toolBtn}
-                              disabled={alreadyRevealed}
-                              onClick={() => {
-                                close()
-                                handleRevealSupportStage(index, stage)
-                              }}
-                            >
-                              {alreadyRevealed ? 'Opened: ' : 'Reveal: '}
-                              {stage.label || `Stage ${index + 1}`}
-                            </button>
-                          )
-                        })}
-                        {completeStage && (
-                          <button
-                            style={sTo.toolBtn}
-                            onClick={() => {
-                              close()
-                              handleRevealSupportStage(completeStage.index, completeStage.stage)
-                              onRemoteReset?.(
-                                student.anonymousId,
-                                `reveal_stage_${completeStage.index}`
-                              )
-                            }}
-                          >
-                            {/* "Reveal solution", or "Reveal solution: Answer" for a named one;
-                                never "Reveal solution: Complete". */}
-                            {formatStageLabel(completeStage.stage, completeStage.index).replace(
-                              /^Complete(?=:|$)/i,
-                              'Reveal solution'
-                            )}
-                          </button>
-                        )}
-                        {canSetAutoReveal && (
-                          <>
-                            <div style={s.autoRevealHeading}>Show on every task</div>
-                            {AUTO_REVEAL_OPTIONS.map(({ mode, label }) => (
-                              <button
-                                key={mode ?? 'off'}
-                                style={sTo.toolBtn}
-                                aria-pressed={autoRevealStage === mode}
-                                onClick={() => {
-                                  close()
-                                  onSetAutoReveal(student.anonymousId, mode)
-                                }}
-                              >
-                                {autoRevealStage === mode ? '✓ ' : ''}
-                                {label}
-                              </button>
-                            ))}
-                          </>
-                        )}
-                        {canShowLiveReference && (
-                          <>
-                            {!canSetAutoReveal && (
-                              <div style={s.autoRevealHeading}>Show on every task</div>
-                            )}
-                            <button
-                              style={sTo.toolBtn}
-                              aria-pressed={teacherLiveReferencePinned}
-                              disabled={
-                                !teacherLiveReferencePinned &&
-                                !teacherLiveReferenceHiddenForStudent &&
-                                !teacherLiveReferenceMatchesTask
-                              }
-                              title={
-                                teacherLiveReferencePinned
-                                  ? teacherLiveReferencePinnedForClass
-                                    ? 'Hide your live code for this student (it stays on for the rest of the class)'
-                                    : 'Stop showing your live code to this student'
-                                  : teacherLiveReferenceHiddenForStudent
-                                    ? 'Show your class-pinned live code to this student again'
-                                    : teacherLiveReferenceMatchesTask
-                                      ? 'Keep showing your live code on every task until you turn it off'
-                                      : "Will work once you're presenting this task in Presentation View"
-                              }
-                              onClick={() => {
-                                close()
-                                // On → off (written as `false` while the class pin is on);
-                                // hidden → follow the class pin again (null); off → pin.
-                                onSetTeacherLiveReference(
-                                  student.anonymousId,
-                                  teacherLiveReferencePinned
-                                    ? false
-                                    : teacherLiveReferenceHiddenForStudent
-                                      ? null
-                                      : true
-                                )
-                              }}
-                            >
-                              {teacherLiveReferencePinned
-                                ? '📌 Live code: kept on'
-                                : teacherLiveReferenceHiddenForStudent
-                                  ? '📌 Show class live code again'
-                                  : '📌 Keep showing live code'}
-                            </button>
-                          </>
-                        )}
-                      </>
-                    )}
-                    {canSetStage && stageRequestState !== 'requesting' && (
-                      <>
-                        <div style={canReveal ? s.menuHeading : s.menuHeadingFirst}>Set stage</div>
-                        {stageDeclinedNotice && (
-                          <div style={s.menuNote}>The student declined the last change.</div>
-                        )}
-                        {stageOptions.map((opt) => (
-                          <button
-                            key={opt.value}
-                            style={sTo.toolBtn}
-                            onClick={() => {
-                              close()
-                              handleRequestStage(opt.value, opt.label)
-                            }}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                      </>
-                    )}
-                  </>
-                )}
-              </DropdownMenu>
-            )}
-
-            {supportsRemoteRun && (
+            {/* Modes that stay visible while they are on, so they can be switched off. The rest of
+                the rarely used controls (Support, Run on student, Edit answers, Highlight tiles,
+                Mark the task) are in More. */}
+            {supportsAnswerEdit && answerEditing && (
               <button
                 type="button"
-                className="btn-ghost"
-                style={{ fontSize: 13, padding: '5px 12px', whiteSpace: 'nowrap' }}
-                onClick={handleRemoteRun}
-                disabled={!student.online}
-                title={
-                  student.online
-                    ? "Run this student's code on their own screen"
-                    : 'Student is offline'
-                }
+                className="btn-primary"
+                style={{ fontSize: 13, padding: '5px 12px', minHeight: 44, whiteSpace: 'nowrap' }}
+                onClick={() => setAnswerEditing(false)}
               >
-                {remoteRunSent ? 'Run sent ✓' : '▶ Run on student'}
+                Done editing
               </button>
             )}
-
-            {supportsAnswerEdit && (
+            {supportsTileHighlight && tileHighlightMode && (
               <button
                 type="button"
-                className={answerEditing ? 'btn-primary' : 'btn-ghost'}
-                style={{ fontSize: 13, padding: '5px 12px', whiteSpace: 'nowrap' }}
-                onClick={() => {
-                  setAnswerEditing((editing) => !editing)
-                  setTileHighlightMode(false)
-                }}
-                title="Change this student's answers — updates their screen live"
-              >
-                {answerEditing ? 'Done editing' : '✏️ Edit answers'}
-              </button>
-            )}
-
-            {supportsTileHighlight && (
-              <button
-                type="button"
-                className={tileHighlightMode ? 'btn-primary' : 'btn-ghost'}
-                style={{ fontSize: 13, padding: '5px 12px', whiteSpace: 'nowrap' }}
-                onClick={() => {
-                  setTileHighlightMode((on) => !on)
-                  setAnswerEditing(false)
-                }}
-                aria-pressed={tileHighlightMode}
-                title="Tap a tile on the student's board to outline it on their screen: look again"
+                className="btn-primary"
+                style={{ fontSize: 13, padding: '5px 12px', minHeight: 44, whiteSpace: 'nowrap' }}
+                onClick={() => setTileHighlightMode(false)}
+                aria-pressed={true}
                 data-testid="tile-highlight-toggle"
               >
-                {tileHighlightMode ? 'Done highlighting' : '👀 Highlight tiles'}
+                Done highlighting
               </button>
             )}
-
-            {/* Override dropdown */}
-            {onOverrideCheck && task?.check != null && (
-              <OverrideDropdown student={student} task={task} onOverrideCheck={onOverrideCheck} />
+            {markFailOpen && (
+              <OverrideFailModal
+                onCancel={() => setMarkFailOpen(false)}
+                onApply={(hint) => {
+                  onOverrideCheck(student.anonymousId, false, hint || null, task?.id)
+                  setMarkFailOpen(false)
+                }}
+              />
             )}
 
             {/* Active edit states (shown outside More dropdown while in progress) */}
@@ -1180,11 +994,26 @@ export default function StudentModal({
               </button>
             )}
 
-            {/* A transient 👍 "on the right track" toast on the student's screen. */}
+            {/* The four common actions, with visible words (a tired tutor on a tablet has no hover):
+                Award badge (one tap on the top suggestion), Thumbs up, Show to class, Help.
+                Everything else is behind More. */}
+            {onDecideBadge && (
+              <OneTapAwardButton
+                student={student}
+                suggestions={badgeSuggestions}
+                decisions={session?.badges ?? {}}
+                catalogueBadges={catalogueBadges}
+                currentTaskId={session?.currentTaskId ?? null}
+                onDecideBadge={onDecideBadge}
+                onRevokeBadge={onRevokeBadge}
+                onOpenPicker={() => setShowBadgeDialog(true)}
+                variant="header"
+              />
+            )}
             {onThumbsUp && student.online && (
               <button
                 className="btn-ghost"
-                style={{ fontSize: 13, padding: '5px 10px', whiteSpace: 'nowrap' }}
+                style={{ fontSize: 13, padding: '5px 10px', minHeight: 44, whiteSpace: 'nowrap' }}
                 disabled={thumbsUpSent}
                 onClick={() => {
                   onThumbsUp(student.anonymousId)
@@ -1194,263 +1023,469 @@ export default function StudentModal({
                 title="Send a 👍: tells this student they're on the right track"
                 aria-label={`Send ${student.displayName} a thumbs up`}
               >
-                {thumbsUpSent ? '✓ Sent' : '👍'}
+                {thumbsUpSent ? '✓ Sent' : '👍 Thumbs up'}
+              </button>
+            )}
+            {onGoLiveForAll && !isInformation && !isLiveForAll && allowsStudentBroadcast(task) && (
+              <button
+                className="btn-ghost"
+                style={{ fontSize: 13, padding: '5px 10px', minHeight: 44, whiteSpace: 'nowrap' }}
+                onClick={() => onGoLiveForAll('panel')}
+                title="Offer this student's work to the class, live: everyone keeps coding and can watch it or try a copy"
+              >
+                📺 Show to class
+              </button>
+            )}
+            {onSendMessage && (
+              <button
+                className="btn-ghost"
+                style={{ fontSize: 13, padding: '5px 10px', minHeight: 44, whiteSpace: 'nowrap' }}
+                onClick={() => setShowMessageModal(true)}
+                title="Help this student: send them a message"
+              >
+                ✉ Help
               </button>
             )}
 
             {/* More: badge, nudge, broadcast, topic, message, edit code, focus — grouped when idle */}
-            {teacherEditState === 'idle' &&
-              (() => {
-                const hasEdit = !!(
-                  onRequestTeacherEdit &&
-                  supportsTeacherEdit &&
-                  !isInformation &&
-                  !isQuiz
-                )
-                const hasTopic = !!(onSendToTopic && topics?.length > 0)
-                const hasMessage = !!onSendMessage
-                const hasVideoCall = !!onSendVideoCallLink
-                // A teacher cannot build the snapshot themselves: currentCode is
-                // only fresh while activeStudentView matches. So this asks the
-                // student's own device for one, then reuses the same preview and
-                // Approve step as a student-initiated share.
-                const hasShare =
-                  !!onRequestShareSnapshot &&
-                  !isInformation &&
-                  !isQuizLike &&
-                  student.shareRequestedAt == null &&
-                  student.shareSnapshotRequestedAt == null
-                const hasFullscreen = !!onRequestFullscreen
-                const hasBadge = !!onDecideBadge
-                // Export work: the dialog finds the tasks with work itself.
-                const hasExport = !!lesson?.tasks?.length
-                const hasNudge = !!onNudge && student.online
-                // Broadcasting a student's work is not offered on quiz or activity tasks
-                // (teacher-only broadcasts there).
-                const hasGoLiveForAll =
-                  !!onGoLiveForAll &&
-                  !isInformation &&
-                  !isLiveForAll &&
-                  allowsStudentBroadcast(task)
-                const hasFocus = !!onPushTeacherPaneCommand && !isInformation && !isQuizLike
-                const hasControlHighlight =
-                  !!onPushTeacherControlHighlight &&
-                  !isInformation &&
-                  !isQuizLike &&
-                  hasControlHighlightTargets(taskLesson?.type)
-                if (
-                  !hasBadge &&
-                  !hasExport &&
-                  !hasNudge &&
-                  !hasGoLiveForAll &&
-                  !hasEdit &&
-                  !hasTopic &&
-                  !hasMessage &&
-                  !hasVideoCall &&
-                  !hasShare &&
-                  !hasFullscreen &&
-                  !hasFocus &&
-                  !hasControlHighlight
-                )
-                  return null
-                return (
-                  <DropdownMenu label="More" buttonClassName="btn-ghost" panelStyle={s.menuPanel}>
-                    {(close) => (
-                      <>
-                        {/* Grouped with headings (HSC Audit, Visual Review 19): the three ways of
-                            showing this student's work to the class say what each one does. */}
-                        {(hasBadge || hasNudge) && <div style={s.menuHeadingFirst}>Encourage</div>}
-                        {hasBadge && (
+            {(() => {
+              const hasEdit = !!(
+                teacherEditState === 'idle' &&
+                onRequestTeacherEdit &&
+                supportsTeacherEdit &&
+                !isInformation &&
+                !isQuiz
+              )
+              const hasTopic = !!(onSendToTopic && topics?.length > 0)
+              const hasVideoCall = !!onSendVideoCallLink
+              // A teacher cannot build the snapshot themselves: currentCode is
+              // only fresh while activeStudentView matches. So this asks the
+              // student's own device for one, then reuses the same preview and
+              // Approve step as a student-initiated share.
+              const hasShare =
+                !!onRequestShareSnapshot &&
+                !isInformation &&
+                !isQuizLike &&
+                student.shareRequestedAt == null &&
+                student.shareSnapshotRequestedAt == null
+              const hasFullscreen = !!onRequestFullscreen
+              // Moved here from the header row (HSC Audit, Visual Review 19): one menu, no
+              // second "Support" or "Override" drop-downs beside it.
+              const hasSupport = canReveal || (canSetStage && stageRequestState !== 'requesting')
+              const hasRunOnStudent = supportsRemoteRun
+              const hasAnswerEditItem = supportsAnswerEdit && !answerEditing
+              const hasTileItem = supportsTileHighlight && !tileHighlightMode
+              const hasMarkOverride = !!(onOverrideCheck && task?.check != null)
+              const renderSupport = (close) => (
+                <>
+                  {canReveal && (
+                    <>
+                      <div style={s.menuHeadingFirst}>Reveal</div>
+                      {canRevealLiveReference && (
+                        <button
+                          style={sTo.toolBtn}
+                          disabled={
+                            !teacherLiveReferenceMatchesTask || teacherLiveReferenceRevealed
+                          }
+                          title={
+                            teacherLiveReferenceMatchesTask
+                              ? 'Show your live code for this task only'
+                              : "Will work once you're presenting this task in Presentation View"
+                          }
+                          onClick={() => {
+                            close()
+                            handleRevealTeacherLiveReference()
+                          }}
+                        >
+                          {teacherLiveReferenceRevealed ? 'Opened: live code' : 'Reveal live code'}
+                        </button>
+                      )}
+                      {revealableStages.map(({ stage, index }) => {
+                        const alreadyRevealed = !!revealedSupportStages[index]
+                        return (
                           <button
+                            key={index}
                             style={sTo.toolBtn}
+                            disabled={alreadyRevealed}
                             onClick={() => {
                               close()
-                              setShowBadgeDialog(true)
+                              handleRevealSupportStage(index, stage)
                             }}
                           >
-                            🏅 Award badge
+                            {alreadyRevealed ? 'Opened: ' : 'Reveal: '}
+                            {stage.label || `Stage ${index + 1}`}
                           </button>
-                        )}
-                        {hasNudge && (
-                          <button
-                            style={sTo.toolBtn}
-                            onClick={() => {
-                              close()
-                              handleNudge()
-                            }}
-                            title="Nudge: flash this student's tab and play a chime"
-                          >
-                            🔔 Nudge
-                          </button>
-                        )}
-                        {(hasGoLiveForAll || hasShare) && (
-                          <div style={hasBadge || hasNudge ? s.menuHeading : s.menuHeadingFirst}>
-                            Show the class
-                          </div>
-                        )}
-                        {hasGoLiveForAll && (
-                          <button
-                            style={sTo.toolBtn}
-                            onClick={() => {
-                              close()
-                              onGoLiveForAll()
-                            }}
-                            title="Put this student's work on every screen, live. The class watches until you press Stop Live."
-                          >
-                            📡 Go Live for All: takes over every screen
-                          </button>
-                        )}
-                        {hasGoLiveForAll && (
-                          <button
-                            style={sTo.toolBtn}
-                            onClick={() => {
-                              close()
-                              onGoLiveForAll('panel')
-                            }}
-                            title="Offer this student's work to the class, live: everyone keeps coding and can watch it or try a copy"
-                          >
-                            📺 Show to class: they keep coding
-                          </button>
-                        )}
-                        {hasShare && (
-                          <button
-                            style={sTo.toolBtn}
-                            onClick={() => {
-                              close()
-                              onRequestShareSnapshot(student.anonymousId)
-                            }}
-                            title="Take a copy of this student's work as it is now. You check it, then classmates can open the copy."
-                          >
-                            📤 Share a copy with the class
-                          </button>
-                        )}
-                        {(hasEdit || hasTopic || hasMessage || hasVideoCall || hasFullscreen) && (
-                          <div
-                            style={
-                              hasBadge || hasNudge || hasGoLiveForAll || hasShare
-                                ? s.menuHeading
-                                : s.menuHeadingFirst
-                            }
-                          >
-                            Help this student
-                          </div>
-                        )}
-                        {hasEdit && (
-                          <button
-                            style={sTo.toolBtn}
-                            onClick={() => {
-                              close()
-                              handleStartEdit()
-                            }}
-                          >
-                            ✏ {moduleDefinition?.meta.teacherEditCopy?.action}
-                          </button>
-                        )}
-                        {hasTopic && (
-                          <button
-                            style={sTo.toolBtn}
-                            onClick={() => {
-                              close()
-                              setShowTopicLibrary(true)
-                            }}
-                          >
-                            📖 Send Topic
-                          </button>
-                        )}
-                        {hasMessage && (
-                          <button
-                            style={sTo.toolBtn}
-                            onClick={() => {
-                              close()
-                              setShowMessageModal(true)
-                            }}
-                          >
-                            ✉ Message
-                          </button>
-                        )}
-                        {hasVideoCall && (
-                          <button
-                            style={sTo.toolBtn}
-                            onClick={() => {
-                              close()
-                              onSendVideoCallLink(student.anonymousId)
-                            }}
-                          >
-                            📹 Send Video Call Link
-                          </button>
-                        )}
-                        {hasFullscreen && (
-                          <button
-                            style={sTo.toolBtn}
-                            onClick={() => {
-                              close()
-                              handleRequestFullscreen()
-                            }}
-                            title="Each student must click a prompt to accept — this can't force it"
-                          >
-                            {fullscreenRequested ? '✓ Requested' : '⛶ Ask to go fullscreen'}
-                          </button>
-                        )}
-                        {hasExport && (
-                          <>
-                            <div style={s.menuHeading}>Their work</div>
+                        )
+                      })}
+                      {completeStage && (
+                        <button
+                          style={sTo.toolBtn}
+                          onClick={() => {
+                            close()
+                            handleRevealSupportStage(completeStage.index, completeStage.stage)
+                            onRemoteReset?.(
+                              student.anonymousId,
+                              `reveal_stage_${completeStage.index}`
+                            )
+                          }}
+                        >
+                          {/* "Reveal solution", or "Reveal solution: Answer" for a named one;
+                                never "Reveal solution: Complete". */}
+                          {formatStageLabel(completeStage.stage, completeStage.index).replace(
+                            /^Complete(?=:|$)/i,
+                            'Reveal solution'
+                          )}
+                        </button>
+                      )}
+                      {canSetAutoReveal && (
+                        <>
+                          <div style={s.autoRevealHeading}>Show on every task</div>
+                          {AUTO_REVEAL_OPTIONS.map(({ mode, label }) => (
                             <button
+                              key={mode ?? 'off'}
                               style={sTo.toolBtn}
+                              aria-pressed={autoRevealStage === mode}
                               onClick={() => {
                                 close()
-                                setShowExportDialog(true)
+                                onSetAutoReveal(student.anonymousId, mode)
                               }}
-                              title="Download this student's work, or make a name-hidden share link"
                             >
-                              🎁 Export work
+                              {autoRevealStage === mode ? '✓ ' : ''}
+                              {label}
                             </button>
-                          </>
-                        )}
-                        {/* Highlight/force a tab or the Instructions pane on this student's screen */}
-                        {hasFocus && (
-                          <section aria-label="Focus" style={s.menuSection}>
-                            <div style={s.menuHeading}>Focus their screen</div>
-                            <PaneFocusControls
-                              lessonType={taskLesson?.type}
-                              onHighlight={(panes) =>
-                                onPushTeacherPaneCommand(student.anonymousId, {
-                                  mode: 'highlight',
-                                  panes,
-                                })
-                              }
-                              onForce={(panes) =>
-                                onPushTeacherPaneCommand(student.anonymousId, {
-                                  mode: 'force',
-                                  panes,
-                                })
-                              }
-                              onDone={close}
-                            />
-                          </section>
-                        )}
-                        {/* Pulse one control (Run, the green flag, a category…) on this
+                          ))}
+                        </>
+                      )}
+                      {canShowLiveReference && (
+                        <>
+                          {!canSetAutoReveal && (
+                            <div style={s.autoRevealHeading}>Show on every task</div>
+                          )}
+                          <button
+                            style={sTo.toolBtn}
+                            aria-pressed={teacherLiveReferencePinned}
+                            disabled={
+                              !teacherLiveReferencePinned &&
+                              !teacherLiveReferenceHiddenForStudent &&
+                              !teacherLiveReferenceMatchesTask
+                            }
+                            title={
+                              teacherLiveReferencePinned
+                                ? teacherLiveReferencePinnedForClass
+                                  ? 'Hide your live code for this student (it stays on for the rest of the class)'
+                                  : 'Stop showing your live code to this student'
+                                : teacherLiveReferenceHiddenForStudent
+                                  ? 'Show your class-pinned live code to this student again'
+                                  : teacherLiveReferenceMatchesTask
+                                    ? 'Keep showing your live code on every task until you turn it off'
+                                    : "Will work once you're presenting this task in Presentation View"
+                            }
+                            onClick={() => {
+                              close()
+                              // On → off (written as `false` while the class pin is on);
+                              // hidden → follow the class pin again (null); off → pin.
+                              onSetTeacherLiveReference(
+                                student.anonymousId,
+                                teacherLiveReferencePinned
+                                  ? false
+                                  : teacherLiveReferenceHiddenForStudent
+                                    ? null
+                                    : true
+                              )
+                            }}
+                          >
+                            {teacherLiveReferencePinned
+                              ? '📌 Live code: kept on'
+                              : teacherLiveReferenceHiddenForStudent
+                                ? '📌 Show class live code again'
+                                : '📌 Keep showing live code'}
+                          </button>
+                        </>
+                      )}
+                    </>
+                  )}
+                  {canSetStage && stageRequestState !== 'requesting' && (
+                    <>
+                      <div style={canReveal ? s.menuHeading : s.menuHeadingFirst}>Set stage</div>
+                      {stageDeclinedNotice && (
+                        <div style={s.menuNote}>The student declined the last change.</div>
+                      )}
+                      {stageOptions.map((opt) => (
+                        <button
+                          key={opt.value}
+                          style={sTo.toolBtn}
+                          onClick={() => {
+                            close()
+                            handleRequestStage(opt.value, opt.label)
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </>
+              )
+              // Export work: the dialog finds the tasks with work itself.
+              const hasExport = !!lesson?.tasks?.length
+              const hasNudge = !!onNudge && student.online
+              // Broadcasting a student's work is not offered on quiz or activity tasks
+              // (teacher-only broadcasts there).
+              const hasGoLiveForAll =
+                !!onGoLiveForAll && !isInformation && !isLiveForAll && allowsStudentBroadcast(task)
+              const hasFocus = !!onPushTeacherPaneCommand && !isInformation && !isQuizLike
+              const hasControlHighlight =
+                !!onPushTeacherControlHighlight &&
+                !isInformation &&
+                !isQuizLike &&
+                hasControlHighlightTargets(taskLesson?.type)
+              if (
+                !hasSupport &&
+                !hasRunOnStudent &&
+                !hasAnswerEditItem &&
+                !hasTileItem &&
+                !hasMarkOverride &&
+                !hasExport &&
+                !hasNudge &&
+                !hasGoLiveForAll &&
+                !hasEdit &&
+                !hasTopic &&
+                !hasVideoCall &&
+                !hasShare &&
+                !hasFullscreen &&
+                !hasFocus &&
+                !hasControlHighlight
+              )
+                return null
+              return (
+                <DropdownMenu label="More" buttonClassName="btn-ghost" panelStyle={s.menuPanel}>
+                  {(close) => (
+                    <>
+                      {/* Grouped with headings (HSC Audit, Visual Review 19): the three ways of
+                            showing this student's work to the class say what each one does. */}
+                      {hasNudge && <div style={s.menuHeadingFirst}>Encourage</div>}
+                      {hasNudge && (
+                        <button
+                          style={sTo.toolBtn}
+                          onClick={() => {
+                            close()
+                            handleNudge()
+                          }}
+                          title="Nudge: flash this student's tab and play a chime"
+                        >
+                          🔔 Nudge
+                        </button>
+                      )}
+                      {(hasGoLiveForAll || hasShare) && (
+                        <div style={hasNudge ? s.menuHeading : s.menuHeadingFirst}>
+                          Show the class
+                        </div>
+                      )}
+                      {hasGoLiveForAll && (
+                        <button
+                          style={sTo.toolBtn}
+                          onClick={() => {
+                            close()
+                            onGoLiveForAll()
+                          }}
+                          title="Put this student's work on every screen, live. The class watches until you press Stop Live."
+                        >
+                          📡 Take over every screen (Go Live for All)
+                        </button>
+                      )}
+                      {hasShare && (
+                        <button
+                          style={sTo.toolBtn}
+                          onClick={() => {
+                            close()
+                            onRequestShareSnapshot(student.anonymousId)
+                          }}
+                          title="Take a copy of this student's work as it is now. You check it, then classmates can open the copy."
+                        >
+                          📤 Share a copy with the class
+                        </button>
+                      )}
+                      {(hasEdit || hasTopic || hasVideoCall || hasFullscreen) && (
+                        <div
+                          style={
+                            hasNudge || hasGoLiveForAll || hasShare
+                              ? s.menuHeading
+                              : s.menuHeadingFirst
+                          }
+                        >
+                          Help this student
+                        </div>
+                      )}
+                      {hasEdit && (
+                        <button
+                          style={sTo.toolBtn}
+                          onClick={() => {
+                            close()
+                            handleStartEdit()
+                          }}
+                        >
+                          ✏ {moduleDefinition?.meta.teacherEditCopy?.action}
+                        </button>
+                      )}
+                      {hasTopic && (
+                        <button
+                          style={sTo.toolBtn}
+                          onClick={() => {
+                            close()
+                            setShowTopicLibrary(true)
+                          }}
+                        >
+                          📖 Send Topic
+                        </button>
+                      )}
+                      {hasVideoCall && (
+                        <button
+                          style={sTo.toolBtn}
+                          onClick={() => {
+                            close()
+                            onSendVideoCallLink(student.anonymousId)
+                          }}
+                        >
+                          📹 Send Video Call Link
+                        </button>
+                      )}
+                      {hasFullscreen && (
+                        <button
+                          style={sTo.toolBtn}
+                          onClick={() => {
+                            close()
+                            handleRequestFullscreen()
+                          }}
+                          title="Each student must click a prompt to accept — this can't force it"
+                        >
+                          {fullscreenRequested ? '✓ Requested' : '⛶ Ask to go fullscreen'}
+                        </button>
+                      )}
+                      {hasMarkOverride && (
+                        <section aria-label="Mark the task" style={s.menuSection}>
+                          <div style={s.menuHeading}>Mark the task</div>
+                          <OverrideItems
+                            student={student}
+                            task={task}
+                            onOverrideCheck={onOverrideCheck}
+                            onFail={() => setMarkFailOpen(true)}
+                            close={close}
+                          />
+                        </section>
+                      )}
+                      {(hasRunOnStudent || hasAnswerEditItem || hasTileItem) && (
+                        <div style={s.menuHeading}>Their screen and answers</div>
+                      )}
+                      {hasRunOnStudent && (
+                        <button
+                          style={sTo.toolBtn}
+                          disabled={!student.online}
+                          onClick={() => {
+                            close()
+                            handleRemoteRun()
+                          }}
+                          title={
+                            student.online
+                              ? "Run this student's code on their own screen"
+                              : 'Student is offline'
+                          }
+                        >
+                          {remoteRunSent ? 'Run sent ✓' : '▶ Run on student'}
+                        </button>
+                      )}
+                      {hasAnswerEditItem && (
+                        <button
+                          style={sTo.toolBtn}
+                          onClick={() => {
+                            close()
+                            setAnswerEditing(true)
+                            setTileHighlightMode(false)
+                          }}
+                          title="Change this student's answers — updates their screen live"
+                        >
+                          ✏️ Edit answers
+                        </button>
+                      )}
+                      {hasTileItem && (
+                        <button
+                          style={sTo.toolBtn}
+                          onClick={() => {
+                            close()
+                            setTileHighlightMode(true)
+                            setAnswerEditing(false)
+                          }}
+                          title="Tap a tile on the student's board to outline it on their screen: look again"
+                        >
+                          👀 Highlight tiles
+                        </button>
+                      )}
+                      {hasSupport && (
+                        <section aria-label="Support" style={s.menuSection}>
+                          <div style={s.menuHeading}>
+                            {stageDeclinedNotice ? 'Support · declined' : 'Support'}
+                          </div>
+                          {renderSupport(close)}
+                        </section>
+                      )}
+                      {hasExport && (
+                        <>
+                          <div style={s.menuHeading}>Their work</div>
+                          <button
+                            style={sTo.toolBtn}
+                            onClick={() => {
+                              close()
+                              setShowExportDialog(true)
+                            }}
+                            title="Download this student's work, or make a name-hidden share link"
+                          >
+                            🎁 Export work
+                          </button>
+                        </>
+                      )}
+                      {/* Highlight/force a tab or the Instructions pane on this student's screen */}
+                      {hasFocus && (
+                        <section aria-label="Focus" style={s.menuSection}>
+                          <div style={s.menuHeading}>Point at their screen</div>
+                          <PaneFocusControls
+                            lessonType={taskLesson?.type}
+                            onHighlight={(panes) =>
+                              onPushTeacherPaneCommand(student.anonymousId, {
+                                mode: 'highlight',
+                                panes,
+                              })
+                            }
+                            onForce={(panes) =>
+                              onPushTeacherPaneCommand(student.anonymousId, {
+                                mode: 'force',
+                                panes,
+                              })
+                            }
+                            onDone={close}
+                          />
+                        </section>
+                      )}
+                      {/* Pulse one control (Run, the green flag, a category…) on this
                             student's screen (src/shared/controlHighlight.js) */}
-                        {hasControlHighlight && (
-                          <section aria-label="Highlight" style={s.menuSection}>
-                            <div style={s.menuHeading}>Highlight</div>
-                            <ControlHighlightControls
-                              lessonType={taskLesson?.type}
-                              onHighlight={(target) =>
-                                onPushTeacherControlHighlight(
-                                  student.anonymousId,
-                                  target,
-                                  task?.id ?? null
-                                )
-                              }
-                              onDone={close}
-                            />
-                          </section>
-                        )}
-                      </>
-                    )}
-                  </DropdownMenu>
-                )
-              })()}
+                      {hasControlHighlight && (
+                        <section aria-label="Highlight" style={s.menuSection}>
+                          <ControlHighlightControls
+                            lessonType={taskLesson?.type}
+                            onHighlight={(target) =>
+                              onPushTeacherControlHighlight(
+                                student.anonymousId,
+                                target,
+                                task?.id ?? null
+                              )
+                            }
+                            onDone={close}
+                          />
+                        </section>
+                      )}
+                    </>
+                  )}
+                </DropdownMenu>
+              )
+            })()}
           </div>
           <button
             className="btn-ghost"
@@ -1768,7 +1803,7 @@ const s = {
     letterSpacing: '0.04em',
   },
   menuNote: { fontSize: 12, color: 'var(--colour-error-text)', padding: '0 2px' },
-  closeBtnHeader: { flexShrink: 0, fontSize: 13, padding: '5px 10px' },
+  closeBtnHeader: { flexShrink: 0, fontSize: 13, padding: '5px 10px', minWidth: 44, minHeight: 44 },
   navButtons: {
     display: 'flex',
     gap: 2,
