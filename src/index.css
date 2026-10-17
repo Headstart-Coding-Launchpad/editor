@@ -5787,36 +5787,6 @@ label.te-backdrop-tag,
   font-size: 0.92rem;
 }
 
-/* Docked in an output panel (src/shared/checkResultDock): the slot is absolutely positioned inside
-   the panel's box, so it never shifts the layout and only ever covers output. The strip scrolls
-   if the hint is long. */
-.check-result-slot {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 6;
-  max-height: 70%;
-  overflow-y: auto;
-  pointer-events: none;
-}
-
-.check-result-slot:empty {
-  display: none;
-}
-
-.check-feedback-popup.check-feedback-popup--docked {
-  position: relative;
-  left: auto;
-  bottom: auto;
-  width: auto;
-  max-height: none;
-  overflow: visible;
-  margin: 6px;
-  font-size: 0.88rem;
-  pointer-events: auto;
-}
-
 @media (max-width: 1100px) {
   .check-feedback-popup {
     width: min(calc(100vw - 32px), 290px);

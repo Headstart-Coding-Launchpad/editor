@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { MarkdownRenderer } from '../../shared/markdown'
-import { useCheckResultDock } from '../../shared/checkResultDock/context'
 import { HELP_BUTTON_LABEL } from './peerHelp/helpLabel'
 
 // Auto-dismiss delay for the popup — long enough to read, short enough not to linger
@@ -22,37 +20,22 @@ export default function CheckFeedbackBanner({
 }) {
   const hint = String(suggestion ?? '').trim()
   const [dismissed, setDismissed] = useState(false)
-  // Docked in the output panel's strip when the module has one (src/shared/checkResultDock): it
-  // covers only output, so it stays until dismissed or the next result. Without a slot it floats
-  // in the corner and auto-dismisses.
-  const dock = useCheckResultDock()
-  const slot = dock?.slot ?? null
-  const setWaiting = dock?.setWaiting
 
   // Callers remount this component (via a `key` tied to the check result) whenever a new
   // check/stage event actually happens, so this timer — and any earlier dismissal — is
   // naturally reset for a genuinely new popup rather than carried over from a stale one.
   useEffect(() => {
-    if (slot) return undefined
     const timer = setTimeout(() => setDismissed(true), AUTO_DISMISS_MS)
     return () => clearTimeout(timer)
-  }, [slot])
-
-  // Tells a tabbed layout (Scratch's Blocks / Stage tabs) that a result waits in the output.
-  const docked = !dismissed && !!slot
-  useEffect(() => {
-    if (!setWaiting || !docked) return undefined
-    setWaiting(true)
-    return () => setWaiting(false)
-  }, [setWaiting, docked])
+  }, [])
 
   if (dismissed) return null
 
   // Motion: a fail banner wobbles each time it appears; a pass banner pops in while its ✓ spins
   // once. Callers remount this per check (see above), which replays the one-shot class.
-  const banner = (
+  return (
     <div
-      className={`check-feedback-popup${slot ? ' check-feedback-popup--docked' : ''} ${passed ? 'motion-pop-in' : 'motion-wobble'}`}
+      className={`check-feedback-popup ${passed ? 'motion-pop-in' : 'motion-wobble'}`}
       style={{ ...s.banner, ...(passed ? s.pass : s.fail) }}
       role="status"
     >
@@ -131,7 +114,6 @@ export default function CheckFeedbackBanner({
       )}
     </div>
   )
-  return slot ? createPortal(banner, slot) : banner
 }
 
 const s = {
