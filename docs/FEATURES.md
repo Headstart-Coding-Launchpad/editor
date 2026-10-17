@@ -362,15 +362,14 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 
 ## Feedback
 
-### Submitting feedback (teacher in-session)
+### After-class feedback (teacher)
 
-Teachers can open the Feedback modal at any point during a session. It has three tabs:
+One step after every way of ending a session: a 1-5 rating, "What worked well", "What didn't work", and optional notes about individual tasks.
 
-- **Lesson Feedback** — general feedback about the lesson as a whole; stored in `lessons/{lessonId}/feedback` and visible in the builder's task panel
-- **Task Feedback** — feedback specific to the current task (tab only shown when a task is active); stored in the same subcollection with the task ID attached
-- **Platform Feedback** — bug reports and feature suggestions about the platform itself; stored in the `platformFeedback` top-level collection, visible only to admins
-
-Each submission captures the teacher's email, the lesson and task context, the feedback text, and a timestamp.
+- **End Session** opens the session report with the step at the top; **End & Go to Home** shows the step (with Skip) before leaving.
+- It can be added or edited later from a past report (Reports in the session, or Admin > Lessons): **Add feedback** / **Edit feedback**.
+- The rating and notes become `teacherFeedback` on that run's report; each task note is stored in `lessons/{lessonId}/feedback` with the task and a `reportId` linking it to the run (read by the feedback CLI, Builder task panel and Admin).
+- The per-task rating panel during the lesson is separate and unchanged. The in-session Feedback button was removed from the live tutor header (the Builder preview still has it).
 
 ### Viewing and deleting feedback (admin)
 

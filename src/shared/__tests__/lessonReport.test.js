@@ -4,6 +4,7 @@ import yaml from 'js-yaml'
 import {
   anonymizeSessionReport,
   attachTeacherFeedback,
+  buildReportTaskNotes,
   buildSessionReport,
   encodeSessionReportForFirestore,
   reportToYamlText,
@@ -776,6 +777,39 @@ describe('attachTeacherFeedback', () => {
       whatDidntWork: '',
     })
     expect(result.teacherFeedback.rating).toBeNull()
+  })
+})
+
+describe('buildReportTaskNotes', () => {
+  const report = { lessonId: 'demo', lessonTitle: 'Demo', sessionId: 1000 }
+
+  it('builds lesson-feedback docs tagged with the report id, dropping blanks', () => {
+    const docs = buildReportTaskNotes(
+      report,
+      [
+        { taskId: 2, taskTitle: 'Loops', text: ' Too long ' },
+        { taskId: 3, taskTitle: 'Blank', text: '   ' },
+      ],
+      't@x.test',
+      5
+    )
+    expect(docs).toEqual([
+      {
+        lessonId: 'demo',
+        lessonTitle: 'Demo',
+        taskId: 2,
+        taskTitle: 'Loops',
+        text: 'Too long',
+        teacherEmail: 't@x.test',
+        submittedAt: 5,
+        reportId: '1000',
+      },
+    ])
+  })
+
+  it('returns nothing without a report or notes', () => {
+    expect(buildReportTaskNotes(null, [{ taskId: 1, text: 'x' }], '')).toEqual([])
+    expect(buildReportTaskNotes(report, undefined, '')).toEqual([])
   })
 })
 

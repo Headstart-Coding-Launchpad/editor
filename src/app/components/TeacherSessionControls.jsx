@@ -9,7 +9,6 @@ const BREAKPOINT_COMPACT = 950 // also hide status text from bar (shown inside d
 export default function TeacherSessionControls({
   session,
   onOpenPresentationWindow,
-  onOpenFeedback,
   onOpenReports,
   onOpenEditLesson,
   onStartSession,
@@ -170,15 +169,6 @@ export default function TeacherSessionControls({
                 style={sDD.item}
                 onClick={() => {
                   setMenuOpen(false)
-                  onOpenFeedback()
-                }}
-              >
-                Feedback
-              </button>
-              <button
-                style={sDD.item}
-                onClick={() => {
-                  setMenuOpen(false)
                   onOpenReports()
                 }}
               >
@@ -223,9 +213,6 @@ export default function TeacherSessionControls({
             onClick={onOpenPresentationWindow}
           >
             Presentation Window
-          </button>
-          <button className="btn-ghost teacher-session-controls__action" onClick={onOpenFeedback}>
-            Feedback
           </button>
           <button className="btn-ghost teacher-session-controls__action" onClick={onOpenReports}>
             Reports

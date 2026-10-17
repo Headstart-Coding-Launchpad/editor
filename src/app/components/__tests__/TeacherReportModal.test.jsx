@@ -267,14 +267,14 @@ describe('TeacherReportModal', () => {
   it('does not render a teacher feedback section when absent and no onSaveFeedback is given', () => {
     render(<TeacherReportModal report={report} onClose={vi.fn()} />)
     expect(screen.queryByText('Teacher Feedback')).not.toBeInTheDocument()
-    expect(screen.queryByText('Rate This Session')).not.toBeInTheDocument()
+    expect(screen.queryByText('Add Feedback')).not.toBeInTheDocument()
   })
 
   it('renders an editable feedback form when onSaveFeedback is given and no feedback exists yet', async () => {
     const onSaveFeedback = vi.fn().mockResolvedValue(undefined)
     render(<TeacherReportModal report={report} onClose={vi.fn()} onSaveFeedback={onSaveFeedback} />)
 
-    expect(screen.getByText('Rate This Session')).toBeInTheDocument()
+    expect(screen.getByText('Add Feedback')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('radio', { name: '4 stars' }))
     fireEvent.change(screen.getByLabelText('What worked well?'), {
       target: { value: 'Great pace' },
@@ -284,11 +284,29 @@ describe('TeacherReportModal', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Save Feedback' }))
 
-    expect(onSaveFeedback).toHaveBeenCalledWith({
-      rating: 4,
-      whatWorkedWell: 'Great pace',
-      whatDidntWork: 'Iframe crashed once',
-    })
+    expect(onSaveFeedback).toHaveBeenCalledWith(
+      {
+        rating: 4,
+        whatWorkedWell: 'Great pace',
+        whatDidntWork: 'Iframe crashed once',
+      },
+      []
+    )
+  })
+
+  it('passes a per-task note picked in the after-class step to onSaveFeedback', () => {
+    const onSaveFeedback = vi.fn().mockResolvedValue(undefined)
+    render(<TeacherReportModal report={report} onClose={vi.fn()} onSaveFeedback={onSaveFeedback} />)
+
+    fireEvent.change(screen.getByLabelText('Task for note'), { target: { value: '1' } })
+    fireEvent.change(screen.getByLabelText('Task note'), { target: { value: 'Hint too long' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add task note' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save Feedback' }))
+
+    expect(onSaveFeedback).toHaveBeenCalledWith(
+      { rating: null, whatWorkedWell: '', whatDidntWork: '' },
+      [{ taskId: 1, taskTitle: 'Task One', text: 'Hint too long' }]
+    )
   })
 
   it('renders a per-task teacher rating in the task summary table', () => {
@@ -312,7 +330,7 @@ describe('TeacherReportModal', () => {
     expect(screen.getByText(/Instructions were unclear/)).toBeInTheDocument()
   })
 
-  it('does not show the editable form once the report already has feedback', () => {
+  it('shows saved feedback with an Edit feedback button once the report already has feedback', () => {
     const onSaveFeedback = vi.fn()
     const reportWithFeedback = {
       ...report,
@@ -325,7 +343,9 @@ describe('TeacherReportModal', () => {
         onSaveFeedback={onSaveFeedback}
       />
     )
-    expect(screen.queryByText('Rate This Session')).not.toBeInTheDocument()
+    expect(screen.queryByText('Add Feedback')).not.toBeInTheDocument()
     expect(screen.getByText('Teacher Feedback')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit feedback' }))
+    expect(screen.getByText('Edit Feedback')).toBeInTheDocument()
   })
 })

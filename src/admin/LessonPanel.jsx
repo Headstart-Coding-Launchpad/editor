@@ -39,6 +39,8 @@ import {
 import { compareLessonsInLevel, formatLessonLabel, sortLessons } from '../shared/lessonOrder'
 import { validateLesson } from '../builder/lessonUtils'
 import TeacherReportModal from '../app/components/TeacherReportModal'
+import { useAuth } from '../auth/useAuth'
+import { saveAfterClassFeedback } from '../app/afterClassFeedback'
 import { AdminCell, AdminTable } from './AdminUi'
 import ClassRosterEditor from './ClassRosterEditor'
 
@@ -213,6 +215,7 @@ function makeLessonFamilyGroups(lessons) {
 }
 
 export default function LessonPanel({ view = 'lessons' }) {
+  const user = useAuth()?.user
   const [lessons, setLessons] = useState([])
   const [levels, setLevels] = useState([])
   const [classes, setClasses] = useState([])
@@ -553,7 +556,19 @@ export default function LessonPanel({ view = 'lessons' }) {
       )}
 
       {selectedReport && (
-        <TeacherReportModal report={selectedReport} onClose={() => setSelectedReport(null)} />
+        <TeacherReportModal
+          report={selectedReport}
+          onClose={() => setSelectedReport(null)}
+          onSaveFeedback={(feedback, taskNotes) =>
+            saveAfterClassFeedback({
+              lessonId: selectedReport.lessonId,
+              report: selectedReport,
+              feedback,
+              taskNotes,
+              teacherEmail: user?.email ?? '',
+            })
+          }
+        />
       )}
     </section>
   )

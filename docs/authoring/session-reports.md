@@ -506,13 +506,29 @@ There are two kinds of teacher feedback inside a report, both with the same shap
 
 - **One per session run**, on that run's report document. A lesson taught five times has up to
   five, one per report; a class copy's runs are on the fork lesson's own reports.
-- Given in the **report modal that opens after the teacher ends the session** (**End Session** →
-  report → rating and "What worked well" / "What didn't work, or was broken" → Save Feedback).
-  Saving rewrites the report document with the block attached.
-- **Absent** when the teacher left it blank or closed the modal, and always absent when the
-  teacher ended with **End & Go to Home** (the modal never opens). It can't be added later: past
-  reports open read-only.
-- Added 2026-09-01.
+- Given in the **one after-class feedback step** (rating, "What worked well", "What didn't work,
+  or was broken", plus optional per-task notes). It appears after every way of ending a session:
+  **End Session** opens the report with the step at the top; **End & Go to Home** shows the step
+  (with **Skip**) before leaving. It can also be added or edited **later** from the lesson's
+  past reports (**Reports** in the session, or Admin > Lessons > the lesson's reports): the
+  report shows **Add feedback** or **Edit feedback**. Saving merges only `teacherFeedback` onto
+  that run's report document, in the shape above.
+- **Absent** when the step was skipped or left blank (no empty stub is ever written). Reports
+  written before 2026-10-17 are unchanged; reports from "End & Go to Home" can now gain it
+  afterwards.
+- Added 2026-09-01; reachable after every ending and editable later from 2026-10-17.
+
+### Per-task notes from the after-class step
+
+- Optional: the tutor picks a task and writes a note (as many as they like). Each note is stored
+  as an item in **`lessons/{lessonId}/feedback`**, the same store and shape the old in-lesson
+  Feedback button wrote (`taskId`, `taskTitle`, `text`, `teacherEmail`, `submittedAt`), plus
+  **`reportId`**: the id of the session run's report (its `sessionId`, which is also the report
+  document id in `lessons/{lessonId}/sessionReports`).
+- They are **not** inside the report YAML. Read them with the [feedback CLI](feedback-cli.md)
+  (`feedback lesson <id>` shows `reportId`) or in Admin > Lessons. The in-lesson Feedback button
+  no longer exists in the live tutor header; older items without `reportId` still read as before.
+- Added 2026-10-17.
 
 ### Per-task `teacherRating`
 
@@ -526,9 +542,9 @@ There are two kinds of teacher feedback inside a report, both with the same shap
 
 ### How this differs from CLI feedback
 
-The [feedback CLI](feedback-cli.md) reads a **different** store: the free-text notes teachers
-leave with the **Feedback** button during a lesson (`lessons/{lessonId}/feedback`, about the whole
-lesson or one task), plus platform feedback. Those items have `text`, `teacherEmail` and an
+The [feedback CLI](feedback-cli.md) reads a **different** store: free-text lesson and task notes
+(`lessons/{lessonId}/feedback`; since 2026-10-17 the task notes come from the after-class step,
+before that from the in-lesson Feedback button), plus platform feedback. Those items have `text`, `teacherEmail` and an
 `archived` flag, are not tied to a session run, and can be added and archived from the CLI.
 Report feedback (`teacherFeedback`, `teacherRating`) is rated, lives only inside the report, is
 never archived, and is only visible through the exported report YAML.
