@@ -666,16 +666,16 @@ export default function StudentGrid({
       {onTogglePaused &&
         (showExtraTools || session?.isPaused) &&
         (session?.state === 'active' || session?.state === 'sandbox') && (
-        <div style={s.pauseRow}>
-          <button
-            className={session?.isPaused ? 'btn-paused' : 'btn-ghost-outline'}
-            style={s.pauseBtn}
-            onClick={onTogglePaused}
-          >
-            {session?.isPaused ? 'Resume Coding' : 'Pause Coding'}
-          </button>
-        </div>
-      )}
+          <div style={s.pauseRow}>
+            <button
+              className={session?.isPaused ? 'btn-paused' : 'btn-ghost-outline'}
+              style={s.pauseBtn}
+              onClick={onTogglePaused}
+            >
+              {session?.isPaused ? 'Resume Coding' : 'Pause Coding'}
+            </button>
+          </div>
+        )}
 
       {showTopicsDialog && topics?.length > 0 && (
         <TopicLibraryDialog
