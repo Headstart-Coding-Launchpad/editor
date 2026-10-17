@@ -106,7 +106,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `CollapsibleIframePreview.jsx` | Slide-in toggle wrapper around IframePreview |
 | `QuizTask.jsx` | Polymorphic quiz: multiple-choice (grid), match (drag-drop), fill-blank (drag/type), short-answer, confidence (1–5 rating), poll (`PollQuiz`) |
 | `CodeArrangeTask.jsx`, `CodeArrangeTaskContainer.jsx` | Thin re-exports of the code_arrange activity's tile board and module workspace (moved to `src/activities/code_arrange/`) |
-| `CheckFeedbackBanner.jsx` | Pass/fail strip docked in the output panel via `src/shared/checkResultDock/` (`CheckResultSlot` in ResultPane, IframePreview, ArcadePreview, Scratch stage); fallback popup (floating in the bottom-left corner via `.check-feedback-popup` in `src/index.css`, smaller on a tablet, clear of the Run button, file tabs, code and output; auto-dismisses after 45s or via its own close button — not inline in the layout) with optional hint and "see complete code" action; points at the top bar's "✋ Help" by name rather than hosting its own button; a pass spins the ✓ icon once and a fail wobbles the banner (positioned with left/bottom, not a transform) |
+| `CheckFeedbackBanner.jsx` | Pass/fail popup (floating in the bottom-left corner via `.check-feedback-popup` in `src/index.css`, smaller on a tablet, clear of the Run button, file tabs, code and output; auto-dismisses after 45s or via its own close button — not inline in the layout) with optional hint and "see complete code" action; points at the top bar's Help button by name (`HELP_BUTTON_LABEL`) rather than hosting its own button; a pass spins the ✓ icon once and a fail wobbles the banner (positioned with left/bottom, not a transform) |
 | `AfterClassFeedbackForm.jsx` / `AfterClassFeedbackModal.jsx` | The after-class feedback step (rating, what worked / didn't, per-task notes): inside the end-of-session report, before End & Go to Home (with Skip), and as Add / Edit feedback on past reports |
 | `CarryHoldNotice.jsx` | "Waiting for your tutor to find your Lesson N work…" card that `LessonTaskContent` shows in place of the workspace while a cross-lesson carry holds |
 | `WaitingRoom.jsx` | Full-screen modal: lesson title + "Your tutor is getting ready" with three animated dots (`.activity-dots`); shows a "📹 Join Video Call" link when the session's `videoCallLink` is set |
@@ -933,13 +933,6 @@ A Python or Turtle task's `setupCode` / `setupNote` and `puzzle` (`onlyEdit`, `m
 | `setupCode.js` | Pure: `SETUP_CODE_TASK_FIELD`, `SETUP_NOTE_TASK_FIELD`, `getTaskSetupCode` / `getTaskSetupNote`, `setupRunOptions(task, { afterLine })` (the worker's `setup`; the worker joins it to the top of the program numbered after the student's lines), `SETUP_ERROR_TEXT`, `findSetupSyntaxProblem` (no-Python bracket/quote/indent check), `validateSetupCode` |
 | `puzzle.js` | Pure: `PUZZLE_TASK_FIELD` (incl. `noNewLines`), `getTaskPuzzle`, `countCodeLines`, `countChangesFromStarter` (LCS of lines of code), `lineCounter`, `parResult`, the `max_lines` check (`evaluateMaxLinesCheck`, `resolvePuzzleChecks` / `resolveLessonPuzzleChecks` fill its limit and hint from `puzzle.maxLines`), `validatePuzzle`, `validateLockedLines`, `puzzleReportFields` (`linesUsed`, `changesFromStarter` from the passing attempt), `puzzleCardNote` ("Solved at par" / "Over line limit") |
 | `PuzzleBar.jsx` | The line above the Python / Turtle editor: the setupNote, the live "3 / 4 lines" counter (a live region) and, after a pass, the par note |
-
-### Check result dock (`src/shared/checkResultDock/`)
-
-| File | Role |
-|---|---|
-| `context.js` | Dock context: a `CheckResultSlot` in a module's output panel registers its element; `CheckFeedbackBanner` portals the Correct! / Not quite strip into the latest slot, or falls back to the floating popup when there is none |
-| `CheckResultDock.jsx` | `CheckResultDockProvider` (one per task slide, in `LessonTaskContent`) , `CheckResultSlot` (absolutely positioned inside the output panel, so it never covers the editor or shifts the layout) and `useCheckResultWaiting` (drives the waiting dot on a hidden Stage tab) |
 
 ### Result pane: Python / Turtle screen layout (`src/shared/resultPane/`)
 

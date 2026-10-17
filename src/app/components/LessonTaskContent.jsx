@@ -12,7 +12,6 @@ import ActivityHost from '../../activities/ActivityHost.jsx'
 import CheckFeedbackBanner from './CheckFeedbackBanner'
 import CarryHoldNotice from './CarryHoldNotice'
 import TaskSlideTransition from './TaskSlideTransition'
-import { CheckResultDockProvider } from '../../shared/checkResultDock/CheckResultDock'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
 import PanelTabs from './PanelTabs'
 import SupportStagePanel from './SupportStagePanel'
@@ -836,121 +835,119 @@ export default function LessonTaskContent({
       order={transitionOrder}
       style={transitionStyle}
     >
-      <CheckResultDockProvider>
-        {previewMode && task && !isSandbox && (
-          <Banner
-            accent="#0ea5e9"
-            color="#0369a1"
-            style={{ padding: '5px 16px', fontSize: 12, fontWeight: 600 }}
-          >
-            {getEffectiveTaskMode(task) === 'live'
-              ? 'Live sessions only'
-              : getEffectiveTaskMode(task) === 'solo'
-                ? 'Solo mode only'
-                : 'Live + Solo'}
-          </Banner>
-        )}
+      {previewMode && task && !isSandbox && (
+        <Banner
+          accent="#0ea5e9"
+          color="#0369a1"
+          style={{ padding: '5px 16px', fontSize: 12, fontWeight: 600 }}
+        >
+          {getEffectiveTaskMode(task) === 'live'
+            ? 'Live sessions only'
+            : getEffectiveTaskMode(task) === 'solo'
+              ? 'Solo mode only'
+              : 'Live + Solo'}
+        </Banner>
+      )}
 
-        {feedbackBanner}
+      {feedbackBanner}
 
-        {useSideExplainer && showExplainerPane && showCodePane && isFixedExplainerLesson ? (
-          // Explainer and code panes are ALWAYS the same two divs, in the same tree
-          // position, in both compact (tabbed) and split (fixed-width) modes — only their
-          // `style` (and, for the explainer, whether it shows the rail) changes between
-          // modes. This is deliberate: if the two modes rendered structurally different
-          // trees here (e.g. PanelTabPanel-wrapped vs plain divs), React would unmount and
-          // remount everything below on every threshold crossing — destroying and
-          // re-injecting every Blockly workspace inside ScratchWorkspace each time,
-          // which can leave its own compact-detection mid-remeasurement and stuck.
-          <div ref={taskPanelSizeRef} style={s.scratchTaskPanelWrap}>
-            {taskPanelCompact && (
-              <PanelTabs
-                label="Task panel"
-                tabs={[
-                  { id: 'instructions', label: 'Instructions' },
-                  { id: 'code', label: 'Code' },
-                ]}
-                activeId={taskPanelTab}
-                onChange={handleTaskPanelTabChange}
-                highlightedIds={highlightedPanes}
-              />
-            )}
-            <div style={s.scratchFixedSplit}>
-              <div
-                role={taskPanelCompact ? 'tabpanel' : undefined}
-                id={taskPanelCompact ? 'panel-tabpanel-instructions' : undefined}
-                aria-labelledby={taskPanelCompact ? 'panel-tab-instructions' : undefined}
-                hidden={taskPanelCompact ? taskPanelTab !== 'instructions' : undefined}
-                style={
-                  taskPanelCompact
-                    ? {
-                        ...s.scratchCodeFlex,
-                        display: taskPanelTab === 'instructions' ? 'flex' : 'none',
-                      }
-                    : explainerCollapsed
-                      ? s.scratchExplainerRail
-                      : s.scratchExplainerFixed
-                }
-              >
-                {!taskPanelCompact && explainerCollapsed ? (
-                  <CollapsedPanelRail
-                    onClick={() => setExplainerCollapsed(false)}
-                    label="Explainer"
-                    direction="right"
-                    title="Show Explainer"
-                    ariaLabel="Show Explainer"
-                    highlighted={instructionsHighlighted}
-                  />
-                ) : (
-                  taskExplainer
-                )}
-              </div>
-              <div
-                role={taskPanelCompact ? 'tabpanel' : undefined}
-                id={taskPanelCompact ? 'panel-tabpanel-code' : undefined}
-                aria-labelledby={taskPanelCompact ? 'panel-tab-code' : undefined}
-                hidden={taskPanelCompact ? taskPanelTab !== 'code' : undefined}
-                style={
-                  taskPanelCompact
-                    ? { ...s.scratchCodeFlex, display: taskPanelTab === 'code' ? 'flex' : 'none' }
-                    : s.scratchCodeFlex
-                }
-              >
-                {editorArea}
-              </div>
+      {useSideExplainer && showExplainerPane && showCodePane && isFixedExplainerLesson ? (
+        // Explainer and code panes are ALWAYS the same two divs, in the same tree
+        // position, in both compact (tabbed) and split (fixed-width) modes — only their
+        // `style` (and, for the explainer, whether it shows the rail) changes between
+        // modes. This is deliberate: if the two modes rendered structurally different
+        // trees here (e.g. PanelTabPanel-wrapped vs plain divs), React would unmount and
+        // remount everything below on every threshold crossing — destroying and
+        // re-injecting every Blockly workspace inside ScratchWorkspace each time,
+        // which can leave its own compact-detection mid-remeasurement and stuck.
+        <div ref={taskPanelSizeRef} style={s.scratchTaskPanelWrap}>
+          {taskPanelCompact && (
+            <PanelTabs
+              label="Task panel"
+              tabs={[
+                { id: 'instructions', label: 'Instructions' },
+                { id: 'code', label: 'Code' },
+              ]}
+              activeId={taskPanelTab}
+              onChange={handleTaskPanelTabChange}
+              highlightedIds={highlightedPanes}
+            />
+          )}
+          <div style={s.scratchFixedSplit}>
+            <div
+              role={taskPanelCompact ? 'tabpanel' : undefined}
+              id={taskPanelCompact ? 'panel-tabpanel-instructions' : undefined}
+              aria-labelledby={taskPanelCompact ? 'panel-tab-instructions' : undefined}
+              hidden={taskPanelCompact ? taskPanelTab !== 'instructions' : undefined}
+              style={
+                taskPanelCompact
+                  ? {
+                      ...s.scratchCodeFlex,
+                      display: taskPanelTab === 'instructions' ? 'flex' : 'none',
+                    }
+                  : explainerCollapsed
+                    ? s.scratchExplainerRail
+                    : s.scratchExplainerFixed
+              }
+            >
+              {!taskPanelCompact && explainerCollapsed ? (
+                <CollapsedPanelRail
+                  onClick={() => setExplainerCollapsed(false)}
+                  label="Explainer"
+                  direction="right"
+                  title="Show Explainer"
+                  ariaLabel="Show Explainer"
+                  highlighted={instructionsHighlighted}
+                />
+              ) : (
+                taskExplainer
+              )}
+            </div>
+            <div
+              role={taskPanelCompact ? 'tabpanel' : undefined}
+              id={taskPanelCompact ? 'panel-tabpanel-code' : undefined}
+              aria-labelledby={taskPanelCompact ? 'panel-tab-code' : undefined}
+              hidden={taskPanelCompact ? taskPanelTab !== 'code' : undefined}
+              style={
+                taskPanelCompact
+                  ? { ...s.scratchCodeFlex, display: taskPanelTab === 'code' ? 'flex' : 'none' }
+                  : s.scratchCodeFlex
+              }
+            >
+              {editorArea}
             </div>
           </div>
-        ) : useSideExplainer && showExplainerPane && showCodePane ? (
-          <SplitPane
-            style={s.sideBySideLayout}
-            // 25% put the explainer - the thing a student has to read to know what to do -
-            // in a ~310px column wrapping at five or six words, while the editor beside it
-            // held ~900px for a 40-character line. Prose was in the narrow column and code
-            // had the wide one. 26% keeps the explainer's measure readable while giving the
-            // workspace noticeably more room than the previous 32% did.
-            defaultSplit={26}
-            leftCollapsed={explainerCollapsed}
-            collapsedLeftWidth={44}
-            collapsedLeft={
-              <CollapsedPanelRail
-                onClick={() => setExplainerCollapsed(false)}
-                label="Explainer"
-                direction="right"
-                title="Show Explainer"
-                ariaLabel="Show Explainer"
-                highlighted={instructionsHighlighted}
-              />
-            }
-            left={taskExplainer}
-            right={editorArea}
-          />
-        ) : (
-          <>
-            {showExplainerPane && taskExplainer}
-            {showCodePane && editorArea}
-          </>
-        )}
-      </CheckResultDockProvider>
+        </div>
+      ) : useSideExplainer && showExplainerPane && showCodePane ? (
+        <SplitPane
+          style={s.sideBySideLayout}
+          // 25% put the explainer - the thing a student has to read to know what to do -
+          // in a ~310px column wrapping at five or six words, while the editor beside it
+          // held ~900px for a 40-character line. Prose was in the narrow column and code
+          // had the wide one. 26% keeps the explainer's measure readable while giving the
+          // workspace noticeably more room than the previous 32% did.
+          defaultSplit={26}
+          leftCollapsed={explainerCollapsed}
+          collapsedLeftWidth={44}
+          collapsedLeft={
+            <CollapsedPanelRail
+              onClick={() => setExplainerCollapsed(false)}
+              label="Explainer"
+              direction="right"
+              title="Show Explainer"
+              ariaLabel="Show Explainer"
+              highlighted={instructionsHighlighted}
+            />
+          }
+          left={taskExplainer}
+          right={editorArea}
+        />
+      ) : (
+        <>
+          {showExplainerPane && taskExplainer}
+          {showCodePane && editorArea}
+        </>
+      )}
     </TaskSlideTransition>
   )
 }

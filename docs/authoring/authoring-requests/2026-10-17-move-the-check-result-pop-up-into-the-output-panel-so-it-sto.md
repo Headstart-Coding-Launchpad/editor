@@ -31,3 +31,5 @@ Ryan's note: the old banner broke the layout, so the fix must not bring that bac
 ## Resolution
 
 Branch `feature/check-result-in-output-panel` (not merged). The check result now docks as a scrollable strip at the bottom of the output panel (new `src/shared/checkResultDock/`: `CheckResultSlot` in the Python/Turtle result pane and side output, HTML/Arcade preview, Scratch stage), absolutely positioned so nothing else is covered and the layout never shifts. It stays until dismissed or the next result. Scratch's Stage tab shows a dot while a result waits on the Blocks tab. Fail text takes the Help label from `HELP_BUTTON_LABEL`. Quizzes and collapsed output keep the old floating popup. Peer-help/thumbs-up toasts left where they are. Docs: docs/FEATURES.md, docs/agents/classroom-behaviours.md. No authoring change.
+
+Ryan, 2026-10-17, after seeing it live: the docked strip "covers the variables panel. I think the bottom left was better." The dock was reverted on `fix/check-result-bottom-left`: the result is back to the floating bottom-left popup. The Help label fix (`HELP_BUTTON_LABEL`) stays.
