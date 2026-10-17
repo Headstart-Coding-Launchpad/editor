@@ -294,7 +294,8 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 
 ### Lesson Configuration
 - ID, title, description, stage, a reusable referenced level, an optional lesson number (position within the level), and ordered tasks with per-task workspace selection (new lessons)
-- "Open from Firestore" lists lessons in the shared LaunchPad order (level, then `lessonNumber`, each Solo Challenge indented under its parent) as "9 · Title"
+- The Builder opens straight on the lesson in the link (`#/builder?load=<lessonId>`, as Admin's Edit links pass). With no lesson it shows a plain "Open a lesson" list in the shared LaunchPad order (level, then `lessonNumber`, each Solo Challenge indented under its parent) as "9 · Title", with a Draft flag. The header has a Back button (to Admin, or the app), Account and All lessons
+- Hand-building tools are hidden unless the URL has `?advanced=1`: New blank lesson, Open a lesson file (JSON), Upload file, the Lesson type badge, Sandbox starter and a task's module picker. Admin's "New lesson" opens with the flag. Kept by default: viewing tasks, editing intents and text, task feedback, Draft on/off, Preview, Print, Download, Save
 - Forked lessons show their stock lesson and class lineage in Lesson Details
 - Asset list for the in-lesson asset browser
 - Independent sandbox state per workspace type used in the lesson

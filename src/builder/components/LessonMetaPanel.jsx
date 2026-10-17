@@ -28,7 +28,13 @@ import StorageAssetUploader from './lesson-meta/StorageAssetUploader'
 import { s } from './lesson-meta/styles'
 import { isValidRecordingUrl } from '../../shared/youtube'
 
-export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicState }) {
+export default function LessonMetaPanel({
+  lesson,
+  onUpdate,
+  onCollapse,
+  topicState,
+  advanced = false,
+}) {
   const [sandboxOpen, setSandboxOpen] = useState(false)
   const { lessonAssets, loading: assetsLoading } = useAssets()
   const { storageAssets: lessonStorageAssets, refresh: refreshLessonStorageAssets } =
@@ -136,9 +142,11 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
         )}
       </div>
       <div style={s.fields}>
-        <Field label="Lesson type">
-          <div style={s.typeBadge}>{lessonTypeLabel}</div>
-        </Field>
+        {advanced && (
+          <Field label="Lesson type">
+            <div style={s.typeBadge}>{lessonTypeLabel}</div>
+          </Field>
+        )}
 
         <Field label="Lesson ID" hint="e.g. python-intro">
           <input
@@ -339,21 +347,23 @@ export default function LessonMetaPanel({ lesson, onUpdate, onCollapse, topicSta
 
         <div style={s.divider} />
 
-        <div style={s.sandboxSummary}>
-          <div>
-            <span style={s.fieldLabel}>Sandbox starter</span>
-            <p style={s.summaryText}>{getSandboxStarterSummary(lesson)}</p>
+        {advanced && (
+          <div style={s.sandboxSummary}>
+            <div>
+              <span style={s.fieldLabel}>Sandbox starter</span>
+              <p style={s.summaryText}>{getSandboxStarterSummary(lesson)}</p>
+            </div>
+            <button
+              className="btn-ghost-outline"
+              style={s.secondaryBtn}
+              onClick={() => setSandboxOpen(true)}
+            >
+              Edit
+            </button>
           </div>
-          <button
-            className="btn-ghost-outline"
-            style={s.secondaryBtn}
-            onClick={() => setSandboxOpen(true)}
-          >
-            Edit
-          </button>
-        </div>
+        )}
 
-        {sandboxOpen && (
+        {advanced && sandboxOpen && (
           <SandboxStarterModal
             lesson={lesson}
             onSetField={set}

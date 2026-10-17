@@ -400,7 +400,7 @@ export default function LessonPanel({ view = 'lessons' }) {
 
   function handleNewLesson() {
     window.open(
-      `${window.location.origin}${window.location.pathname}#/builder`,
+      `${window.location.origin}${window.location.pathname}#/builder?advanced=1`,
       '_blank',
       'noopener,noreferrer'
     )
