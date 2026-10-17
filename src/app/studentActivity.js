@@ -10,10 +10,11 @@ import { findTaskById } from '../shared/taskUtils'
 //   🤝 helping / being helped (peer help)
 //   👀 looking at / ▶ trying a "Show to class" broadcast (students/{id}/watchingLive)
 //   📤 viewing a classmate's shared work (viewingShareId)
+//   🗺️ on a side-quest (sideQuestOpen), or ✓ side-quests marked Done on this task (sideQuestLog);
+//      status only, never the side-quest's code (src/shared/sideQuests.js). Above the topic and
+//      sandbox lines so the card's "Now:" line says it (a lone icon chip was easy to miss)
 //   📖 reading a Topic Library topic (currentTopicId)
 //   🧪 in their own sandbox (inPersonalSandbox)
-//   🗺️ on a side-quest (sideQuestOpen), or ✓ side-quests marked Done on this task (sideQuestLog);
-//      status only, never the side-quest's code (src/shared/sideQuests.js)
 // Only online students are doing anything.
 
 const nameOf = (session, id) => session?.students?.[id]?.displayName ?? 'a classmate'
@@ -108,27 +109,6 @@ export function studentActivities({
     })
   }
 
-  if (student.currentTopicId) {
-    const title = topics?.find((t) => t.id === student.currentTopicId)?.title
-    out.push({
-      kind: 'topic',
-      group: 'topic',
-      icon: '📖',
-      text: `reading “${title ?? student.currentTopicId}”`,
-      title: `Reading the topic “${title ?? student.currentTopicId}”`,
-    })
-  }
-
-  if (student.inPersonalSandbox) {
-    out.push({
-      kind: 'sandbox',
-      group: 'sandbox',
-      icon: '🧪',
-      text: 'in their own sandbox',
-      title: 'In their personal sandbox',
-    })
-  }
-
   // Side-quests on the class's current task: status only, never their code.
   const currentTask = lesson ? findTaskById(lesson.tasks, session?.currentTaskId) : null
   const quests = sideQuestStatus({ student, session, task: currentTask })
@@ -150,6 +130,28 @@ export function studentActivities({
       title: `Marked ${quests.done} of ${quests.total} side-quests done (self-reported)`,
     })
   }
+
+  if (student.currentTopicId) {
+    const title = topics?.find((t) => t.id === student.currentTopicId)?.title
+    out.push({
+      kind: 'topic',
+      group: 'topic',
+      icon: '📖',
+      text: `reading “${title ?? student.currentTopicId}”`,
+      title: `Reading the topic “${title ?? student.currentTopicId}”`,
+    })
+  }
+
+  if (student.inPersonalSandbox) {
+    out.push({
+      kind: 'sandbox',
+      group: 'sandbox',
+      icon: '🧪',
+      text: 'in their own sandbox',
+      title: 'In their personal sandbox',
+    })
+  }
+
   return out
 }
 
@@ -191,10 +193,10 @@ export function summariseClassActivities({ session, activities }) {
     'looking',
     'trying',
     'shared',
-    'topic',
-    'sandbox',
     'side_quest',
     'side_quest_done',
+    'topic',
+    'sandbox',
   ]
   const live = session?.teacherLive
   const owner = possessive(live?.sourceStudentName ?? 'a classmate')

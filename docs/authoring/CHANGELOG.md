@@ -37,6 +37,26 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-17
+
+### Solo study log: who did a Solo Challenge, and the side-quests per session
+
+Tutors can now see who did a Solo Challenge (or any lesson opened solo) and who opened
+side-quests, per lesson. No lesson fields change.
+
+- **Admin ▸ Solo & side-quests** lists, per class and lesson, each solo student's started /
+  finished times, tasks passed and first-attempt passes, and each side-quest opened in an ended
+  session (when, runs, ✓ self-reported). **Download (no names)** gives the anonymised JSON.
+- **CLI:** `lessons solo-log <lessonId>` prints the lesson's solo log anonymised ("Student N", no
+  names or ids): `{ lessonId, lessonTitle, students: [{ studentLabel, startedAt, lastAt,
+  finishedAt, taskCount, tasksPassed, firstAttemptPasses, tasks[] }] }`. Fields are in
+  [session-reports.md](session-reports.md#solo-study-log). Side-quests per session are already in
+  each session report's `sideQuests[]`.
+- The live "on side-quest" line on the student card is now written before the live-work mirror and
+  ranks above topic / sandbox lines, so it leads the card's "Now:" line.
+- Affects: cli, python, turtle, html · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-17-tutor-view-of-solo-challenge-and-side-quest-completion-who-d.md
+
 ## 2026-10-16
 
 ### Edit zones: one-line slots, and lines that stay first or last (P6-30)

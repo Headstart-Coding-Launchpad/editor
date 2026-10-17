@@ -533,10 +533,43 @@ lesson or one task), plus platform feedback. Those items have `text`, `teacherEm
 Report feedback (`teacherFeedback`, `teacherRating`) is rated, lives only inside the report, is
 never archived, and is only visible through the exported report YAML.
 
+## Solo study log
+
+Solo study (a Solo Challenge, or any lesson opened with `?solo=true` or `soloOnly`) has no live
+session, so it is not in a session report. It has its own log, read with the CLI or the Admin
+portal's **Solo & side-quests** tab:
+
+```bash
+node cli/cli.mjs lessons solo-log <lessonId>
+```
+
+The output is anonymised like a report: students are `Student 1`, `Student 2`… in the order they
+started, with no names, ids or code. Times are ms.
+
+| Field | Meaning |
+|---|---|
+| `lessonId`, `lessonTitle` | The lesson read. |
+| `students[].studentLabel` | `Student N`, by start order. Not comparable with a session report's labels. |
+| `students[].startedAt` | First time the student opened the lesson solo on a real device. |
+| `students[].lastAt` | Latest logged event (arrival, checked Run or finish). |
+| `students[].finishedAt` | When they reached the lesson-complete screen; `null` if they haven't. |
+| `students[].taskCount`, `tasksPassed` | Graded (non-information) tasks in the lesson, and how many they passed. |
+| `students[].firstAttemptPasses` | Tasks whose very first checked Run passed. |
+| `students[].tasks[]` | Per task: `{ taskId, title, attempts, passed, firstTry, firstAt, passedAt }`. `attempts` counts checked Runs up to and including the pass (nothing is counted after it). |
+
+Recorded on discrete events only (arrival, each checked Run, completion screen), never per
+keystroke, and never any code. Not recorded in a live lesson, the presentation window, a Builder
+preview, the playground or a personal sandbox. A restored or automatic result (idle feedback,
+Show complete) is not an attempt.
+
+Side-quests per student per session are the `sideQuests[]` on each task in the session report
+(above). The Admin tab flattens them across a lesson's ended sessions; the download adds them as
+`sideQuests[]` beside `students[]`.
+
 ## Not in reports
 
 - Information tasks (except as `taskTimeline` entries).
 - Student names, anonymous ids or devices.
 - Attempts on tasks without a `check`, sandbox runs' code, or attempts after the student passed.
 - Individual keystrokes or typing timestamps (only the per-task `typing` totals).
-- Anything after the session ended (solo study is never reported).
+- Anything after the session ended. Solo study is not in a session report: see "Solo study log" above.
