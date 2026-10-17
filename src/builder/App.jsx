@@ -162,6 +162,7 @@ export default function BuilderApp() {
     <BuilderView
       lesson={lesson}
       dirty={dirty}
+      advanced={advanced}
       onUpdate={updateLesson}
       onNew={() => {
         if (
