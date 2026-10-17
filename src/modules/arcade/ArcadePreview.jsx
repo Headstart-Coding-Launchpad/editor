@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildArcadeIframeSrc } from './runtime'
 import OutputPanel from '../../app/components/OutputPanel'
+import { CheckResultSlot } from '../../shared/checkResultDock/CheckResultDock'
 
 export default function ArcadePreview({
   code,
@@ -93,12 +94,14 @@ export default function ArcadePreview({
         collapsible
         defaultCollapsed
       />
+      <CheckResultSlot />
     </div>
   )
 }
 
 const s = {
   preview: {
+    position: 'relative',
     display: 'flex',
     flexDirection: 'column',
     flex: '1 1 auto',
