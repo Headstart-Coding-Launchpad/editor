@@ -52,6 +52,11 @@ Change-type map for finding adjacent code, docs, and tests that usually move tog
 
 **Load when:** starting feature work, changing runtime contracts, adding source files, or deciding which docs/tests a change should update.
 
+### [architecture/firestore-europe-plan.md](architecture/firestore-europe-plan.md)
+Plan for moving Firestore from the US (`nam5`) to Europe (Hub P24): where each Firebase service sits now, options (new named database, recreate, new project), location, data copy, downtime, rollback and cost, with the decisions for Ryan.
+
+**Load when:** planning or carrying out the Firestore move, or changing where Firestore is opened.
+
 ### [architecture/lesson-type-modules.md](architecture/lesson-type-modules.md)
 Design intent and contract for `src/modules/<type>/` lesson modules, including student, builder, teacher-live, persistence, check editor, runtime, sandbox, and carry-through responsibilities.
 
