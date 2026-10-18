@@ -974,6 +974,7 @@ On tablets and small screens a Python or Turtle task shows the editor plus ONE r
 | `scripts/hsc-audit/run-visual-review.mjs` | HSC Audit: Playwright run on the live site as the test tutor (`AUDIT_TUTOR_*` in `.env`) with two made-up students; screenshots every feature group in student and tutor views at desktop and tablet widths and writes `manifest.json` (shots plus steps it couldn't do) |
 | `scripts/hsc-audit/cleanup.mjs` | HSC Audit: removes the test lesson's RTDB nodes (signed in as the test tutor) and its Firestore document with subcollections; dry run unless `--apply` |
 | `scripts/hsc-audit/usage-counts.mjs` | HSC Audit: read-only aggregate counts from session reports and other collections for the in-scope courses (counts only; `COURSE_BY_LEVEL` lists the courses) |
+| `scripts/firestore-copy.mjs` | Hub P24 move to London (`docs/architecture/firestore-europe-plan.md` Runbook): copies every Firestore document, subcollections included (also those under deleted parents), from `--from` (default `(default)`) to `--to` with the same ids and Timestamps, then prints a count and checksum per collection for both sides; read-only unless `--apply`, `--since` copies only documents changed after a time (rollback), never deletes |
 | `scripts/build-info.mjs` | `getBuildInfo({ packageVersion })`: build metadata for the app version label — MAJOR.MINOR from `package.json`, build number = `git rev-list --count HEAD` (null in a shallow clone), short commit and build time; used by `vite.config.js` (tested by `scripts/__tests__/buildInfo.test.mjs`) |
 
 ---
@@ -984,6 +985,7 @@ On tablets and small screens a Python or Turtle task shows the editor plus ONE r
 |---|---|
 | `firebase.json` | Firebase project config: Firestore rules, Storage rules, and Cloud Functions source |
 | `.firebaserc` | Firebase project alias (`headstartcoding-repl`) |
+| `firestore.closed.rules` | Hub P24: rules for the old `(default)` database once the app moves to `eu` (no app reads or writes; the service account still reads it for rollback). Not deployed until the Runbook in `docs/architecture/firestore-europe-plan.md` |
 | `firestore.rules` | Firestore security rules: lessons public read; users admin/self read; all writes via Cloud Functions; `sharedWork` share links public-get only while live (not revoked, before `expiresAt`), teacher/admin create and revoke, admin list |
 | `storage.rules` | Firebase Storage security rules: lesson assets public read; admin write only |
 | `storage.cors.json` | Storage bucket CORS rules (GET/HEAD from the Pages origin and local Vite ports) so the app can `fetch` assets such as Scratch audio; not deployed by `firebase deploy` — apply with `gcloud storage buckets update gs://headstartcoding-repl.firebasestorage.app --cors-file=storage.cors.json` |

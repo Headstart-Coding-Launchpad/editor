@@ -5,6 +5,9 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https')
 
 initializeApp()
 
+// Same database id as the app (VITE_FIRESTORE_DATABASE_ID); see docs/architecture/firestore-europe-plan.md.
+const db = () => getFirestore(process.env.FIRESTORE_DATABASE_ID || '(default)')
+
 function requireAdmin(auth) {
   if (!auth || auth.token.role !== 'admin') {
     throw new HttpsError('permission-denied', 'Admin access required.')
@@ -28,7 +31,7 @@ exports.createAccount = onCall(
     const user = await getAuth().createUser({ email, password, displayName: displayName ?? '' })
     await getAuth().setCustomUserClaims(user.uid, { role })
     try {
-      await getFirestore()
+      await db()
         .collection('users')
         .doc(user.uid)
         .set({
@@ -62,7 +65,7 @@ exports.setUserRole = onCall(
       throw new HttpsError('invalid-argument', 'uid and a valid role are required.')
     }
     await getAuth().setCustomUserClaims(uid, { role })
-    await getFirestore().collection('users').doc(uid).update({ role })
+    await db().collection('users').doc(uid).update({ role })
   }
 )
 
@@ -77,7 +80,7 @@ exports.disableAccount = onCall(
       throw new HttpsError('invalid-argument', 'Cannot disable your own account.')
     }
     await getAuth().updateUser(uid, { disabled: true })
-    await getFirestore().collection('users').doc(uid).update({ disabled: true })
+    await db().collection('users').doc(uid).update({ disabled: true })
   }
 )
 
@@ -89,7 +92,7 @@ exports.enableAccount = onCall(
     const { uid } = data
     if (!uid) throw new HttpsError('invalid-argument', 'uid is required.')
     await getAuth().updateUser(uid, { disabled: false })
-    await getFirestore().collection('users').doc(uid).update({ disabled: false })
+    await db().collection('users').doc(uid).update({ disabled: false })
   }
 )
 
@@ -104,7 +107,7 @@ exports.deleteAccount = onCall(
       throw new HttpsError('invalid-argument', 'Cannot delete your own account.')
     }
     // Delete Firestore document first — if it fails, the Auth user still exists and the op is retryable.
-    await getFirestore().collection('users').doc(uid).delete()
+    await db().collection('users').doc(uid).delete()
     await getAuth().deleteUser(uid)
   }
 )

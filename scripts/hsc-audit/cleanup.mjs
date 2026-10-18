@@ -77,7 +77,9 @@ for (const top of lessonKeyed) {
   if (res?.error) console.warn(`  could not remove ${path}: ${res.error}`)
 }
 
-const fs = getFirestore()
+const fs = getFirestore(
+  process.env.FIRESTORE_DATABASE_ID || process.env.VITE_FIRESTORE_DATABASE_ID || '(default)'
+)
 const lessonDoc = fs.collection('lessons').doc(LESSON_ID)
 if ((await lessonDoc.get()).exists) {
   for (const sub of await lessonDoc.listCollections()) {

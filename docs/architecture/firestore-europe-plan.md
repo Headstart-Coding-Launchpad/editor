@@ -1,7 +1,9 @@
 # Moving Firestore from the US to Europe (Hub P24)
 
-Status: **plan, waiting on Ryan's pick.** Nothing live has changed. Written 2026-10-18 for the
-Hub handoff "plan moving Firestore from the US to Europe (P24)".
+Status: **approved by Ryan 2026-10-18** ("Sounds good": option A, `europe-west2`, half term,
+delete the empty `new-db`). Nothing live has changed yet. The code reads the database id from an
+env var (still `(default)`), and the copy script and the [runbook](#runbook) below are ready. The
+live steps run in a day session with Ryan there.
 
 ## Why
 
@@ -112,8 +114,84 @@ The bucket is in `US-EAST1` but holds only lesson pictures and sounds, no childr
 bucket can't move either, so moving it means a new bucket and rewriting asset URLs in every
 lesson. Leave it for now; revisit if student uploads ever go to Storage.
 
-## Decisions for Ryan
+## Decisions (Ryan, 2026-10-18)
 
-1. Option A, B or C (recommended **A**: new `eu` database, same project).
-2. Location (recommended **`europe-west2`, London**).
-3. Window (recommended **half term, w/c 26 Oct**, in a day session).
+1. Option **A**: new `eu` database, same project.
+2. Location **`europe-west2`, London**.
+3. Window **half term, w/c 26 Oct**, in a day session. Delete `new-db` too.
+
+## Runbook
+
+About 75 minutes with Ryan there. Every command runs from the repo root on `main`. `(default)` is
+never written to or deleted in this runbook.
+
+### What is already in the code
+
+- The app reads `VITE_FIRESTORE_DATABASE_ID` (`src/shared/firebase.js`); the CLI and
+  `scripts/hsc-audit/cleanup.mjs` read `FIRESTORE_DATABASE_ID` (or the `VITE_` one);
+  `functions/index.js` reads `FIRESTORE_DATABASE_ID`. Empty means `(default)`.
+- `node scripts/firestore-copy.mjs` copies every document, subcollections included (also
+  session reports under deleted lessons), with the same ids and Timestamps, then prints a count
+  and checksum per collection for both sides. Without `--apply` it only reads. It never deletes.
+  On 2026-10-18 the dry run counted **437 documents** in `(default)`.
+
+### The day before
+
+1. `npm test` green on `main`, everything pushed and deployed, and `launchpad-main` pulled.
+2. Tell tutors: no live sessions or Builder edits during the slot.
+3. Ryan: check `gcloud` is signed in to `headstartcoding-repl` (`gcloud config get project`).
+
+### On the day
+
+1. **Backup (5 min).** Managed export of `(default)`:
+   `gcloud firestore export gs://headstartcoding-repl.firebasestorage.app/backups/2026-10-pre-eu --database="(default)"`.
+   Wait for "SUCCESSFUL" (`gcloud firestore operations list`).
+2. **Create `eu` (5 min).**
+   `gcloud firestore databases create --database=eu --location=europe-west2 --type=firestore-native --delete-protection --enable-pitr`.
+3. **Rules and indexes on `eu` (5 min).** In `firebase.json`, make `firestore` a list with one
+   entry each for `(default)` and `eu`, both with `firestore.rules` and
+   `firestore.indexes.json`, except that `(default)` uses `firestore.closed.rules` (no app
+   access; the service account still reads it). Then `firebase deploy --only firestore`. From
+   here until step 5 the live site can't reach Firestore, which is why the slot is frozen, and
+   nothing can land in `(default)` after the copy.
+4. **Copy (5 min).** `node scripts/firestore-copy.mjs --to eu --apply`. It must end with
+   "Every collection matches." and 437 or more documents. If not, stop and look (nothing has
+   switched yet).
+5. **Switch (15 min).** On a branch, in one commit:
+   - `.github/workflows/deploy.yml`: add `VITE_FIRESTORE_DATABASE_ID: eu` to the build env.
+   - `functions/index.js`: change the `'(default)'` fallback to `'eu'` (deployed Functions
+     don't get our `.env`).
+   - `cli/.env` and the repo `.env` (local, not committed): `FIRESTORE_DATABASE_ID=eu` and
+     `VITE_FIRESTORE_DATABASE_ID=eu`. Same in `launchpad-main`'s `cli/.env`.
+   Merge, push (Pages deploys after CI), and `firebase deploy --only functions`.
+6. **Checks (20 min).** On the live site, with the test tutor and a private window as a student:
+   - Tutor signs in and lands on the Builder; Admin lists both users (reads `users`).
+   - A lesson opens from the Builder list and as a student link (reads `lessons`).
+   - A tutor's earlier work shows: an old session report opens in its lesson (reads
+     `sessionReports`); the class roster page lists the classes.
+   - Run a 2-minute test session: a student joins, runs code, the tutor sees it live, and
+     ending it writes a session report. `node cli/cli.mjs lessons list` shows the lesson and
+     `node scripts/firestore-copy.mjs --to eu` shows the new report on the `eu` side only.
+   - Admin creates and deletes a throwaway tutor account (Functions write to `users` in `eu`).
+   - Lesson Gen's CLI: `git -C <launchpad-main> pull --ff-only`, then a read-only `lessons list`.
+7. **Delete `new-db` (2 min).** Check it is still empty
+   (`node scripts/firestore-copy.mjs --from new-db` prints 0), then
+   `gcloud firestore databases delete --database=new-db`.
+8. **Write it up.** `docs/agents/runtime-model.md` (database id), the Hub outcome line,
+   `Status\LaunchPad Dev.md`, and with Ryan's say-so a "stored in the UK" line for `Brand.md`.
+
+### Rollback
+
+Any check in step 6 fails and isn't a five-minute fix:
+
+1. Revert the switch commit and push; set the `.env` lines back to empty;
+   `firebase deploy --only functions`. The site is back on `(default)` once Pages deploys.
+2. Point `(default)` back at `firestore.rules` in `firebase.json` and `firebase deploy --only firestore`.
+3. Copy back anything written to `eu` since the switch:
+   `node scripts/firestore-copy.mjs --from eu --to "(default)" --since <switch time> --apply`.
+4. Leave `eu` in place to look at later; it costs pennies.
+
+### After
+
+`(default)` stays closed to the app (`firestore.closed.rules`) for 30 days. Deleting it is a separate OK from Ryan, after a backup
+export of `eu`.

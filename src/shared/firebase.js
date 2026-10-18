@@ -32,7 +32,12 @@ export const db = getDatabase(app)
 export const auth = initializeAuth(app, {
   persistence: [browserLocalPersistence, browserSessionPersistence, indexedDBLocalPersistence],
 })
-export const firestore = getFirestore(app)
+// Which Firestore database to use (Hub P24: the move to `eu` in London, see
+// docs/architecture/firestore-europe-plan.md). The CLI, Functions and audit scripts use the same id.
+export const firestore = getFirestore(
+  app,
+  import.meta.env.VITE_FIRESTORE_DATABASE_ID || '(default)'
+)
 export const functions = getFunctions(
   app,
   import.meta.env.VITE_FIREBASE_FUNCTIONS_REGION || 'europe-west1'

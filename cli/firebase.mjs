@@ -55,5 +55,8 @@ try {
   })
 }
 
-export const db = getFirestore()
+// Same database id as the app (VITE_FIRESTORE_DATABASE_ID); see docs/architecture/firestore-europe-plan.md.
+export const firestoreDatabaseId =
+  process.env.FIRESTORE_DATABASE_ID || process.env.VITE_FIRESTORE_DATABASE_ID || '(default)'
+export const db = getFirestore(firestoreDatabaseId)
 export const storage = getStorage()
