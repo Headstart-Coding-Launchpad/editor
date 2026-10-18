@@ -4,7 +4,13 @@ import TeacherReportModal from './TeacherReportModal'
 import { useAuth } from '../../auth/useAuth'
 import { saveAfterClassFeedback } from '../afterClassFeedback'
 
-export default function TeacherReportsPanel({ lessonId, liveReport, onClose }) {
+export default function TeacherReportsPanel({
+  lessonId,
+  liveReport,
+  liveNamedBadgeRows = null,
+  lesson = null,
+  onClose,
+}) {
   const overlayRef = useRef(null)
   const user = useAuth()?.user
   const [reports, setReports] = useState([])
@@ -46,6 +52,8 @@ export default function TeacherReportsPanel({ lessonId, liveReport, onClose }) {
     return (
       <TeacherReportModal
         report={selectedReport}
+        namedBadgeRows={selectedReport === liveReport ? liveNamedBadgeRows : null}
+        lesson={lesson}
         onClose={() => setSelectedReport(null)}
         onSaveFeedback={
           canEditFeedback

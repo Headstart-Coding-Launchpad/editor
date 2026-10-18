@@ -18,6 +18,7 @@ import {
   formatTopicOpens,
   studentTaskSignalLabels,
 } from '../reportBadgeFormat'
+import NamedBadgeExportButton from './NamedBadgeExportButton'
 
 function renderSubmission(submission) {
   if (submission == null) return '(none)'
@@ -297,7 +298,13 @@ function StudentSection({ student }) {
   )
 }
 
-export default function TeacherReportModal({ report, onClose, onSaveFeedback }) {
+export default function TeacherReportModal({
+  report,
+  onClose,
+  onSaveFeedback,
+  namedBadgeRows = null,
+  lesson = null,
+}) {
   const overlayRef = useRef(null)
   const [savedFeedback, setSavedFeedback] = useState(null)
   const [editingFeedback, setEditingFeedback] = useState(false)
@@ -352,6 +359,11 @@ export default function TeacherReportModal({ report, onClose, onSaveFeedback }) 
             <div style={s.subtitle}>{displayReport.lessonTitle}</div>
           </div>
           <div style={s.headerActions}>
+            <NamedBadgeExportButton
+              rows={namedBadgeRows}
+              lesson={lesson ?? { title: displayReport.lessonTitle, id: displayReport.lessonId }}
+              style={s.exportBtn}
+            />
             <button className="btn-primary" style={s.exportBtn} onClick={handleExportYaml}>
               Export YAML
             </button>

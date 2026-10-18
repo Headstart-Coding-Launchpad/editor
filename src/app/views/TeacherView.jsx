@@ -30,6 +30,7 @@ import TeacherPreviewBanner from '../components/TeacherPreviewBanner'
 import TeacherSandboxBanner from '../components/TeacherSandboxBanner'
 import TeacherEndSessionModal from '../components/TeacherEndSessionModal'
 import TeacherReportModal from '../components/TeacherReportModal'
+import { buildNamedBadgeRows } from '../../badges/namedBadgeExport'
 import TeacherReportsPanel from '../components/TeacherReportsPanel'
 import CheckConditionsPanel from './teacher/CheckConditionsPanel'
 import SideQuestsPanel from './teacher/SideQuestsPanel'
@@ -238,6 +239,19 @@ export default function TeacherView({ lessonId }) {
     () => activeRosterMatches(session?.rosterMatches, roster),
     [session?.rosterMatches, roster]
   )
+  // Tutor-only badge export with names (src/badges/namedBadgeExport.js): roster name per matched
+  // student. Built in this browser and only downloaded; the saved report stays anonymous.
+  const rosterNames = useMemo(() => {
+    const byId = new Map((roster ?? []).map((entry) => [entry.id, entry.displayName]))
+    return Object.fromEntries(
+      Object.entries(rosterMatches).map(([anonymousId, rosterId]) => [
+        anonymousId,
+        byId.get(rosterId),
+      ])
+    )
+  }, [roster, rosterMatches])
+  const namedBadgeRows = () =>
+    buildNamedBadgeRows({ session, lesson, rosterNames, catalogueBadges })
   useRosterWorkSaver({
     session,
     lesson,
@@ -289,6 +303,7 @@ export default function TeacherView({ lessonId }) {
   const [goHomeReport, setGoHomeReport] = useState(null)
   const [showEditLessonModal, setShowEditLessonModal] = useState(false)
   const [lastReport, setLastReport] = useState(null)
+  const [lastNamedBadgeRows, setLastNamedBadgeRows] = useState([])
   const [showReportsPanel, setShowReportsPanel] = useState(false)
   // The teacher-sandbox archive for the in-progress report, read once each time the Reports
   // panel opens during a session (null until it loads; the preview leaves the sandbox out).
@@ -571,6 +586,8 @@ export default function TeacherView({ lessonId }) {
     // before endSession wipes the live data. A failed archive read leaves the sandbox out rather
     // than losing the report.
     let report = null
+    // Read before endSession wipes the names; kept only in this tab's state.
+    const badgeRows = session?.startedAt ? namedBadgeRows() : []
     if (session?.startedAt) {
       const sessionArchive = await readSessionArchive({ endedAt: Date.now() }).catch(() => null)
       const peerHelpLog = await peerHelp.readPeerHelpForReport().catch(() => null)
@@ -583,6 +600,7 @@ export default function TeacherView({ lessonId }) {
     setShowEndModal(false)
     // Every way of ending reaches the after-class feedback step: the report modal for
     // "End Session", a short step with Skip before leaving for "End & Go to Home".
+    setLastNamedBadgeRows(badgeRows)
     if (report && !goHome) setLastReport(report)
     else if (report && goHome) setGoHomeReport(report)
     else if (goHome) navigate('/')
@@ -1151,6 +1169,8 @@ export default function TeacherView({ lessonId }) {
       {goHomeReport && (
         <AfterClassFeedbackModal
           report={goHomeReport}
+          namedBadgeRows={lastNamedBadgeRows}
+          lesson={lesson}
           tasks={(goHomeReport.taskSummary ?? []).map((x) => ({
             taskId: x.taskId,
             title: x.title,
@@ -1165,7 +1185,12 @@ export default function TeacherView({ lessonId }) {
       {lastReport && (
         <TeacherReportModal
           report={lastReport}
-          onClose={() => setLastReport(null)}
+          namedBadgeRows={lastNamedBadgeRows}
+          lesson={lesson}
+          onClose={() => {
+            setLastReport(null)
+            setLastNamedBadgeRows([])
+          }}
           onSaveFeedback={handleSaveSessionFeedback}
         />
       )}
@@ -1178,6 +1203,10 @@ export default function TeacherView({ lessonId }) {
               ? buildSessionReport(sessionReportInputs(liveReportArchive, peerHelp.allPeerHelp))
               : null
           }
+          liveNamedBadgeRows={
+            session?.state === 'active' || session?.state === 'sandbox' ? namedBadgeRows() : null
+          }
+          lesson={lesson}
           onClose={() => setShowReportsPanel(false)}
         />
       )}
