@@ -2,10 +2,10 @@ See @AGENTS.md
 
 ## HSC Hub
 
-This repo is LaunchPad Dev, one of several HSC agents. The shared map and brand facts load from the HSC Hub:
+This repo is LaunchPad Dev, one of several HSC agents. The shared map and brand facts are in the HSC Hub. Read them when a task needs them (who owns what, handoffs, brand claims):
 
-@C:/Users/rflem/Documents/HSC\ Hub/README.md
-@C:/Users/rflem/Documents/HSC\ Hub/Brand.md
+- `C:\Users\rflem\Documents\HSC Hub\README.md`
+- `C:\Users\rflem\Documents\HSC Hub\Brand.md`
 
 - Hand work to another agent by logging it in `HSC Hub\Handoffs.md`, addressed "LaunchPad Dev → <Agent>". There are no "· main" sessions. Don't message a running session unless Ryan points you at it.
 - Always reply to a handoff with done, declined or blocked, and add the dated outcome line under its `Handoffs.md` entry.
