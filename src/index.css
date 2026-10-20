@@ -1361,11 +1361,12 @@ select {
   color: inherit;
 }
 
-/* Code in a multiple-choice option never breaks mid-word (print("Goo / d morning!")): the
-   options shrink to fit, then the option scrolls sideways (HSC Audit, Visual Review 06). */
+/* Code in a multiple-choice option keeps its spaces and wraps at them; only a single token
+   wider than the option breaks. The options shrink to fit first. No scroll bars (live report,
+   2026-10-20; HSC Audit, Visual Review 06 first asked for no mid-word breaks). */
 .quiz-option-text code {
-  white-space: pre;
-  overflow-wrap: normal;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
   word-break: normal;
 }
 
