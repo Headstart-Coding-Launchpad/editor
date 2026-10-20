@@ -330,6 +330,36 @@ describe('handleRun — Python Stage result sync', () => {
     expect(h.result.current.stageResult).toEqual(stage)
   })
 
+  it('shows the drawing so far while input() waits, then the finished drawing', async () => {
+    const begin = { commands: [{ type: 'background', colour: 'navy' }] }
+    const final = { commands: [...begin.commands, { type: 'background', colour: 'purple' }] }
+    let release
+    const answered = new Promise((resolve) => {
+      release = resolve
+    })
+    mockModuleRun('python', async (callbacks) => {
+      callbacks.onInputRequired('Turn or stop? ', { stage: begin })
+      await answered
+      return { status: 'success', stage: final }
+    })
+    const h = renderStudentCodeState({ lesson: pythonLesson(), currentTaskId: 't1' })
+    let runPromise
+    act(() => {
+      runPromise = h.result.current.handleRun()
+    })
+    await act(async () => {})
+    expect(h.result.current.inputPrompt).toBe('Turn or stop? ')
+    expect(h.result.current.stageResult).toEqual(begin)
+    expect(h.writers.writeStudentStageResult).toHaveBeenCalledWith(ANON, begin)
+    actSync(() => h.result.current.handleInputSubmit('turn'))
+    release()
+    await act(async () => {
+      await runPromise
+    })
+    expect(h.result.current.stageResult).toEqual(final)
+    expect(h.writers.writeStudentStageResult).toHaveBeenLastCalledWith(ANON, final)
+  })
+
   it('turtle never writes a stage result', async () => {
     mockModuleRun('turtle', printing('hi\n', 'success', { turtle: { state: {}, commands: [] } }))
     const h = renderStudentCodeState({ lesson: turtleLesson(), currentTaskId: 't1' })

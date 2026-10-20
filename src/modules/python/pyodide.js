@@ -107,7 +107,8 @@ function handleWorkerMessage({ data }) {
       break
 
     case 'input_required':
-      if (!_stopped) _onInputRequired?.(data.prompt)
+      // `stage`: the Stage drawn so far ({ commands }), when the program has drawn (P6-32).
+      if (!_stopped) _onInputRequired?.(data.prompt, data.stage ? { stage: data.stage } : {})
       break
 
     case 'done':

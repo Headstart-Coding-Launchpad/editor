@@ -37,6 +37,17 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-20
+
+- **The Stage shows the drawing while `input()` waits** (P6-32). When a Stage program stops to
+  ask a question, the Stage (and the tutor's view) shows everything drawn so far, at every
+  `input()` in the run; the finished run's picture replaces it, and checks read the final
+  picture as before. Two-question stories (draw a scene, then ask the next question) now show
+  each scene in turn. Not in Slow-mo (it replays), and not the Turtle drawing. See
+  [python.md](python.md#stage-drawing-beside-the-console).
+- Affects: python · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-20-p6-32-stage-shows-drawing-while-input-waits.md
+
 ## 2026-10-17
 
 ### Lesson screenshots by CLI (`lessons screenshot`)

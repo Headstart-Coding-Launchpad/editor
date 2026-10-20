@@ -15,7 +15,7 @@
  *                 { type: 'ready' }
  *                 { type: 'load_error',    msg: string }
  *                 { type: 'output',        text: string, kind: 'stdout'|'stderr', line?: number|null }
- *                 { type: 'input_required', prompt: string }
+ *                 { type: 'input_required', prompt: string, stage?: { commands } }
  *                 { type: 'done',          status: 'success'|'error'|'stopped', variables,
  *                                          variablesPanel, lineCounts, turtle, stage, slowMo }
  *                 { type: 'stage_rendered', id, status: 'success'|'error', commands, error }
@@ -449,7 +449,10 @@ globalThis.__hsInput = async (prompt) => {
   if (_silentRun) return ''
   return new Promise((resolve) => {
     if (prompt) self.postMessage({ type: 'output', text: String(prompt), kind: 'stdout' })
-    self.postMessage({ type: 'input_required', prompt: String(prompt) })
+    // The Stage drawn so far, so the page can show it while the prompt waits (P6-32).
+    const stage =
+      _stageRecorder.commands.length > 0 ? { stage: { commands: _stageRecorder.commands } } : {}
+    self.postMessage({ type: 'input_required', prompt: String(prompt), ...stage })
     slowMoAppendOutput(String(prompt ?? ''))
     // The classroom echoes the answer into the output; the recording does the same.
     _inputResolve = (value) => {
