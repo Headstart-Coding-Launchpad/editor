@@ -15,9 +15,9 @@ const FLUSH_MS = 3000
 
 /**
  * Scrub use for the session report (src/shared/scrub/scrubUse.js), called from
- * useStudentCodeState: `recordScrub({ kind: 'number' | 'colour' })` (the code editor's
+ * useStudentCodeState: `recordScrub({ kind: 'number' | 'colour' | 'boolean' })` (the code editor's
  * onScrubCommit, once per finished scrub) adds to the student's own
- * `students/{id}/scrubLog/{taskId}` `{ numbers, colours, lastAt }`, batched (one write per few
+ * `students/{id}/scrubLog/{taskId}` `{ numbers, colours, booleans, lastAt }`, batched (one write per few
  * seconds at most). Live lessons only: never the presentation window, Builder preview, solo or a
  * personal sandbox.
  */
@@ -39,20 +39,23 @@ export function useScrubLog({
     const pending = pendingRef.current
     pendingRef.current = null
     if (!pending || !lessonId) return
+    const path = `sessions/${lessonId}/students/${pending.anonymousId}/scrubLog/${pending.taskId}`
     rtdb()
-      .then(({ db, ref, update, increment }) =>
-        update(
-          ref(
-            db,
-            `sessions/${lessonId}/students/${pending.anonymousId}/scrubLog/${pending.taskId}`
-          ),
-          {
+      .then(({ db, ref, update, increment }) => {
+        const writes = []
+        if (pending.numbers || pending.colours) {
+          writes.push({
             ...(pending.numbers ? { numbers: increment(pending.numbers) } : {}),
             ...(pending.colours ? { colours: increment(pending.colours) } : {}),
             lastAt: Date.now(),
-          }
-        )
-      )
+          })
+        }
+        // Its own write, so a database without the booleans rule yet still keeps the others.
+        if (pending.booleans) {
+          writes.push({ booleans: increment(pending.booleans), lastAt: Date.now() })
+        }
+        return Promise.all(writes.map((data) => update(ref(db, path), data).catch(() => {})))
+      })
       .catch(() => {})
   }
 
@@ -73,8 +76,10 @@ export function useScrubLog({
       taskId: currentTaskId,
       numbers: 0,
       colours: 0,
+      booleans: 0,
     }
     if (kind === 'number') next.numbers += 1
+    else if (kind === 'boolean') next.booleans += 1
     else next.colours += 1
     pendingRef.current = next
     if (!timerRef.current) timerRef.current = setTimeout(flush, FLUSH_MS)

@@ -493,8 +493,8 @@ Python, Turtle and HTML tasks; see [python.md](python.md#live-scrubbing-scrub).
 |---|---|---|
 | `Task … has scrub, but scrubbing only works in Python, Turtle and HTML tasks — it is ignored` (warning) | `scrub` is on another module's task (Arcade, Scratch, …). | Remove it, or move the task to Python, Turtle or HTML. |
 | `Task … has a scrub that is not an object — write it as scrub: { enabled: true }` | `scrub` is a string, number or list. | Write `scrub: { enabled: true }` (or `scrub: true`). |
-| `Task … has scrub … that is not true or false` | `enabled`, `numbers`, `colours`, `checkOnRelease` or `colourNames` is text or a number. | Use `true` or `false`. |
-| `Task … has scrub with numbers and colours both off — nothing can be scrubbed` (warning) | Both kinds are turned off. | Turn one on, or remove `scrub`. |
+| `Task … has scrub … that is not true or false` | `enabled`, `numbers`, `colours`, `booleans`, `checkOnRelease` or `colourNames` is text or a number. | Use `true` or `false`. |
+| `Task … has scrub with numbers, colours and booleans all off — nothing can be scrubbed` (warning) | Every kind is turned off. | Turn one on, or remove `scrub`. |
 | `Task … has scrub fields it does not use (…) — they are ignored` (warning) | `scrub` has keys other than `enabled`, `numbers`, `colours`, `ranges` and `checkOnRelease`. | Remove them (check the spelling of `colours`). |
 | `Task … has scrub ranges that is not a list — write ranges: [{ line, min, max }]` | `ranges` is a map or a string. | Write a list of `{ line, min, max }`. |
 | `Task … has a scrub range without a line number of 1 or more` | A range has no `line`, or it isn't a whole number from 1. | Give the line the student sees, e.g. `line: 3`. |

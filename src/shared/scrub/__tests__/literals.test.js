@@ -7,6 +7,7 @@ import {
   clampScrubValue,
   defaultScrubRange,
   findScrubLiterals,
+  flippedBoolean,
   formatScrubColour,
   formatScrubNumber,
   literalAtColumn,
@@ -58,6 +59,31 @@ describe('findScrubLiterals: python', () => {
     expect(colours[0]).toMatchObject({ hex: '#ff0000', style: 'name', from: 18, to: 21 })
     expect(colours[1]).toMatchObject({ hex: '#ff0000', style: 'hex', upper: true, short: false })
     expect(texts("fill('hello')", 'python')).toEqual([])
+  })
+
+  it('finds the keywords True and False in code, with the name they are assigned to', () => {
+    const [flag] = findScrubLiterals('is_tall_enough = True', 'python')
+    expect(flag).toMatchObject({
+      kind: 'boolean',
+      from: 17,
+      to: 21,
+      text: 'True',
+      value: true,
+      name: 'is_tall_enough',
+    })
+    expect(findScrubLiterals('if x == False:', 'python')[0]).toMatchObject({
+      text: 'False',
+      value: false,
+      name: null,
+    })
+    expect(texts('show(True, 3)', 'python')).toEqual(['boolean:True', 'number:3'])
+    expect(flippedBoolean('True')).toBe('False')
+    expect(flippedBoolean('False')).toBe('True')
+  })
+
+  it('skips True and False in strings, comments, names and other spellings', () => {
+    expect(texts('print("True")  # set False to hide it', 'python')).toEqual([])
+    expect(texts('is_true = TrueColour or False_ or x.True or true', 'python')).toEqual([])
   })
 
   it('gives Stage angle=, opacity=, light= and hue() numbers their natural ranges', () => {

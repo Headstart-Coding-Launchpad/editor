@@ -1,11 +1,13 @@
-// Number and colour literals the code editor can scrub (a task's `scrub` field; see
+// Number, colour and True / False literals the code editor can scrub (a task's `scrub` field; see
 // ./scrubExtension.js). Pure and Node-safe: finding literals on a line, stepping and clamping
 // numbers, and writing a picked colour back in the literal's own style.
 //
 // A line is read on its own (plus whether it sits inside an HTML <style> block), so a literal
 // never spans lines. What counts as a literal depends on the editor syntax:
 // - python: number literals in code (not in identifiers, strings or comments; a unary minus is
-//   part of the number), and colour strings ("red", '#ff0000': the text inside the quotes).
+//   part of the number), the keywords True and False in code (a click flips them; not in
+//   names like is_true, strings or comments), and colour strings ("red", '#ff0000': the text
+//   inside the quotes).
 // - markup (HTML): CSS declaration values inside <style> blocks and style="…" attributes
 //   (`margin: 20px`, `color: red`), and attribute values that are a whole number (+ unit) or a
 //   colour (`width="200"`, `fill="#f00"`). Text content is never scrubbed.
@@ -210,11 +212,47 @@ function withStageRange(line, literal) {
   return { ...literal, range }
 }
 
+// True and False in a code segment, as whole words (not part of a name or an attribute).
+function pythonBooleans(line, from, to, out) {
+  const pattern = /\b(True|False)\b/g
+  const code = line.slice(from, to)
+  let match
+  while ((match = pattern.exec(code))) {
+    const start = from + match.index
+    if (line[start - 1] === '.') continue
+    out.push(booleanLiteral(start, match[1], line))
+  }
+}
+
+// `is_tall_enough = True` → 'is_tall_enough': the name a flag is assigned to, for its label.
+function assignedName(line, at) {
+  const match = line.slice(0, at).match(/([A-Za-z_]\w*)\s*=\s*$/)
+  return match ? match[1] : null
+}
+
+function booleanLiteral(from, text, line) {
+  return {
+    kind: 'boolean',
+    from,
+    to: from + text.length,
+    text,
+    value: text === 'True',
+    name: assignedName(line, from),
+  }
+}
+
+/** The other Python boolean keyword: 'True' ↔ 'False'. */
+export function flippedBoolean(text) {
+  return text === 'True' ? 'False' : 'True'
+}
+
 function pythonLiterals(line) {
   const out = []
   for (const segment of pythonSegments(line)) {
-    if (segment.kind === 'code') pythonNumbers(line, segment.from, segment.to, out)
-    else if (segment.kind === 'string') {
+    if (segment.kind === 'code') {
+      pythonNumbers(line, segment.from, segment.to, out)
+      pythonBooleans(line, segment.from, segment.to, out)
+    } else if (segment.kind === 'string') {
       const literal = colourLiteral(segment.from, line.slice(segment.from, segment.to))
       if (literal) out.push(literal)
     }
@@ -348,8 +386,9 @@ function markupLiterals(line, { inStyle = false } = {}) {
 
 /**
  * Every scrubbable literal on one line, sorted by position: numbers `{ kind: 'number', from, to,
- * text, value, decimals, unit }` and colours `{ kind: 'colour', from, to, text, hex, style,
- * upper, short }` (from / to are offsets in the line). `inStyle` (markup only) is whether the
+ * text, value, decimals, unit }`, colours `{ kind: 'colour', from, to, text, hex, style,
+ * upper, short }` and (python) booleans `{ kind: 'boolean', from, to, text, value, name }` (name:
+ * the variable it is assigned to, or null). from / to are offsets in the line. `inStyle` (markup only) is whether the
  * line starts inside a <style> block.
  */
 export function findScrubLiterals(line, syntax, { inStyle = false } = {}) {

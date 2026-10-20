@@ -917,8 +917,8 @@ turned, faded and outlined ("a red square, size 80, turned 45°, in the middle")
 
 ### Live scrubbing (`scrub`)
 
-`scrub` lets students change a value without typing: drag a number, or pick a colour, and the
-Stage redraws as it changes. Use it on **Modify** tasks ("one change, one visible difference").
+`scrub` lets students change a value without typing: drag a number, pick a colour, or click a
+`True` or `False` to flip it, and the Stage redraws as it changes. Use it on **Modify** tasks ("one change, one visible difference").
 It's off unless set, and works on Python, Turtle and HTML tasks.
 
 ```yaml
@@ -928,6 +928,7 @@ It's off unless set, and works on Python, Turtle and HTML tasks.
       enabled: true          # required (scrub: true is short for this)
       numbers: true          # optional — drag a number, or tap it for a slider (default true)
       colours: true          # optional — click a colour string for a picker (default true)
+      booleans: true         # optional — click a True or False to flip it (default true)
       ranges:                # optional — per-line slider ranges; otherwise a range around the value
         - line: 3
           min: 10
@@ -964,6 +965,15 @@ What students get:
   colour-blind-safe hex colours (written as hex, `#E69F00`) and a hex box; there, a name stays a
   name when the choice has one, and hex keeps its style (`#F00` stays short and in capitals when
   it can).
+- **True and False.** Every `True` and `False` in code gets the same dashed box. One click or tap
+  flips it (`True` ↔ `False`) and redraws like a drag; with `checkOnRelease` the checks run once.
+  It is one edit and one Undo step, and works on a `#@lock-values` line too, so a locked flag
+  line can still be flipped (typing over the word there is still blocked). Only the keywords
+  count: not the words in strings or comments, or names like `is_true`. The keyboard flip is
+  **Alt+Enter** on the word, as for numbers and colours (Space and Enter type in the editor). A
+  screen reader reads the box as "is_tall_enough, True, press to change to False" (the name it
+  is assigned to, when there is one). The word is always shown, so it never relies on colour.
+  `booleans: false` turns it off.
 - **Ranges.** `line` counts lines as the student sees them (`#>` line-hint markers don't count).
   Without a range, a number scrubs from 0 to twice its value (at least 0–100; 0–1 for decimals),
   or the same distance either side of 0 when it's negative. A value already outside an author's
@@ -1014,7 +1024,7 @@ like any colour string.
 
 No new checks. **Tutor:** the tutor sees the edit when the drag ends, like any edit, and with
 `checkOnRelease` the attempt and result reach their card exactly as a Run's. The session report
-counts each student's scrubs on the task (`scrubs`) and marks attempts made on a drag's release
+counts each student's scrubs on the task (`scrubs`; flips are `scrubBooleans`) and marks attempts made on a drag's release
 (`distinctAttempts[].source: scrub`, [session reports](session-reports.md)). In the Builder, the task's **Live scrubbing** setting
 turns it on and adds ranges.
 

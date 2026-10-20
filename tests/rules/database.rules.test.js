@@ -304,6 +304,7 @@ describe('editor scrubbing use', () => {
     const entry = { numbers: 3, colours: 1, lastAt: 1 }
     await assertSucceeds(ref(as.student, logPath(STUDENT_ID)).set(entry))
     await assertSucceeds(ref(as.student, `${logPath(STUDENT_ID)}/numbers`).set(4))
+    await assertSucceeds(ref(as.student, `${logPath(STUDENT_ID)}/booleans`).set(2))
     await assertFails(ref(as.otherStudent, logPath(STUDENT_ID)).set(entry))
     await assertFails(ref(as.anonymous, logPath(STUDENT_ID)).set(entry))
     await assertSucceeds(ref(as.teacher, logPath(STUDENT_ID)).set(null))
@@ -312,6 +313,7 @@ describe('editor scrubbing use', () => {
   it('refuses negative counts, bad values and code', async () => {
     await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ numbers: -1 }))
     await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ colours: 'lots' }))
+    await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ booleans: -2 }))
     await assertFails(ref(as.student, logPath(STUDENT_ID)).set({ code: 'print(1)' }))
   })
 })

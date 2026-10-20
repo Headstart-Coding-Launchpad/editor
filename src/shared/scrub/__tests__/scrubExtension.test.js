@@ -8,6 +8,7 @@ import {
   beginScrub,
   cancelScrub,
   commitScrub,
+  flipBoolean,
   isScrubPreviewUpdate,
   previewScrub,
   scrubExtension,
@@ -123,6 +124,51 @@ describe('scrubExtension', () => {
 
 // P6-24: every scrubbable number is marked without hovering, in the shared "you can change
 // this" look (src/shared/editableValueStyle.js).
+describe('True and False (P6-31)', () => {
+  const BOOLEANS = { ...CONFIG, booleans: true }
+
+  it('marks each True and False with the box, a label and what a click does', () => {
+    const { view } = makeView('tall = True\nprint("True")', { config: BOOLEANS })
+    const marked = [...view.dom.querySelectorAll('.cm-scrubBoolean.cm-editableValue')]
+    expect(marked.map((el) => el.textContent)).toEqual(['True'])
+    expect(marked[0].getAttribute('aria-label')).toBe('tall, True, press to change to False')
+    expect(marked[0].getAttribute('role')).toBe('button')
+    expect(marked[0].getAttribute('title')).toBe('Click or tap to change to False')
+    const off = makeView('tall = True', { config: { ...BOOLEANS, booleans: false } })
+    expect(off.view.dom.querySelector('.cm-scrubBoolean')).toBeNull()
+  })
+
+  it('a flip is one undoable scrub edit that previews and commits', () => {
+    const { view, handlers, updates } = makeView('tall = True', { config: BOOLEANS })
+    const literal = scrubLiteralAt(view.state, 8, { syntax: 'python', ...BOOLEANS })
+    expect(literal).toMatchObject({ kind: 'boolean', text: 'True' })
+    expect(flipBoolean(view, literal)).toBe(true)
+    expect(view.state.doc.toString()).toBe('tall = False')
+    const edits = updates.filter((u) => u.docChanged)
+    expect(edits).toHaveLength(1)
+    expect(edits[0].transactions[0].isUserEvent(SCRUB_USER_EVENT)).toBe(true)
+    expect(handlers.onPreview).toHaveBeenCalledWith('tall = False', expect.anything())
+    expect(handlers.onCommit).toHaveBeenCalledWith({ kind: 'boolean' })
+    undo(view)
+    expect(view.state.doc.toString()).toBe('tall = True')
+  })
+
+  it('does nothing when the word is no longer True or False', () => {
+    const { view, handlers } = makeView('tall = Tree', { config: BOOLEANS })
+    expect(flipBoolean(view, { from: 7, to: 11 })).toBe(false)
+    expect(handlers.onCommit).not.toHaveBeenCalled()
+  })
+
+  it('Alt-Enter on a True or False flips it', () => {
+    const { view } = makeView('tall = True', { config: BOOLEANS })
+    view.dispatch({ selection: { anchor: 9 } })
+    view.contentDOM.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', altKey: true, bubbles: true })
+    )
+    expect(view.state.doc.toString()).toBe('tall = False')
+  })
+})
+
 describe('always-visible marker on scrubbable numbers', () => {
   it('marks each number, and none with numbers off', () => {
     const { view } = makeView('rect(120, 60)\nname = "Sam"')

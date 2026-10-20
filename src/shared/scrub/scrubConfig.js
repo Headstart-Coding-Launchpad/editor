@@ -1,12 +1,12 @@
-// A task's `scrub` field (live number and colour scrubbing in the code editor) and the module
-// capability that says how a scrub re-runs the program. Pure and Node-safe: the lesson
+// A task's `scrub` field (live number, colour and True / False scrubbing in the code editor) and
+// the module capability that says how a scrub re-runs the program. Pure and Node-safe: the lesson
 // validator, the CLI, the Builder and the classroom share one reading of the field.
 //
 // Task field (python, turtle and html declare it in their definitions' taskFields):
-//   scrub: { enabled: true, numbers: true, colours: true, ranges: [{ line, min, max }],
-//            checkOnRelease: true }
-// `scrub: true` is short for `{ enabled: true }`. Numbers, colours and checkOnRelease default to
-// on. checkOnRelease: when a drag (or a slider step, or a colour pick) ends on a program that
+//   scrub: { enabled: true, numbers: true, colours: true, booleans: true,
+//            ranges: [{ line, min, max }], checkOnRelease: true }
+// `scrub: true` is short for `{ enabled: true }`. Numbers, colours, booleans (a click flips a
+// Python True / False, P6-31) and checkOnRelease default to on. checkOnRelease: when a drag (or a slider step, or a colour pick) ends on a program that
 // previews live, the task's checks run once, exactly as a Run (useScrubPreview).
 //
 // Module capability (`capabilities.scrub`, src/modules/defineModule.js), null = no scrubbing:
@@ -22,12 +22,12 @@ export const SCRUB_TASK_FIELD = Object.freeze({
   name: 'scrub',
   type: 'object',
   description:
-    'Live scrubbing in the code editor (off unless set): { enabled: true, numbers: true (drag or tap a number for a slider), colours: true (click a colour for a picker), ranges: [{ line, min, max }] (per-line slider ranges; otherwise a range around the value), checkOnRelease: true (when a drag ends, the checks run once as a Run would) }. Drawing programs re-run live while a value changes; programs with input() replay the answers from the last Run.',
+    'Live scrubbing in the code editor (off unless set): { enabled: true, numbers: true (drag or tap a number for a slider), colours: true (click a colour for a picker), booleans: true (click a Python True or False to flip it), ranges: [{ line, min, max }] (per-line slider ranges; otherwise a range around the value), checkOnRelease: true (when a drag ends, the checks run once as a Run would) }. Drawing programs re-run live while a value changes; programs with input() replay the answers from the last Run.',
 })
 
 export const SCRUB_LIVE_RERUN_KINDS = Object.freeze(['preview', 'none'])
 
-const SCRUB_KEYS = ['enabled', 'numbers', 'colours', 'ranges', 'checkOnRelease']
+const SCRUB_KEYS = ['enabled', 'numbers', 'colours', 'booleans', 'ranges', 'checkOnRelease']
 
 function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -38,18 +38,27 @@ function isWholeLine(value) {
 }
 
 /**
- * The task's scrub settings, normalised — `{ numbers, colours, ranges: [{ line, min, max }],
- * checkOnRelease, colourNames }` — or null when scrubbing is off (no field, `enabled: false`, or both kinds off). Invalid ranges
- * are dropped; the first range for a line wins.
+ * The task's scrub settings, normalised — `{ numbers, colours, booleans, ranges: [{ line, min,
+ * max }], checkOnRelease, colourNames }` — or null when scrubbing is off (no field, `enabled:
+ * false`, or every kind off). Invalid ranges are dropped; the first range for a line wins.
  */
 export function getTaskScrub(task) {
   const raw = task?.scrub
-  if (raw === true)
-    return { numbers: true, colours: true, ranges: [], checkOnRelease: true, colourNames: true }
+  if (raw === true) {
+    return {
+      numbers: true,
+      colours: true,
+      booleans: true,
+      ranges: [],
+      checkOnRelease: true,
+      colourNames: true,
+    }
+  }
   if (!isPlainObject(raw) || raw.enabled === false) return null
   const numbers = raw.numbers !== false
   const colours = raw.colours !== false
-  if (!numbers && !colours) return null
+  const booleans = raw.booleans !== false
+  if (!numbers && !colours && !booleans) return null
   const ranges = []
   const seen = new Set()
   for (const range of Array.isArray(raw.ranges) ? raw.ranges : []) {
@@ -64,6 +73,7 @@ export function getTaskScrub(task) {
   return {
     numbers,
     colours,
+    booleans,
     ranges,
     checkOnRelease: raw.checkOnRelease !== false,
     // The colour picker writes CSS colour names only (Ryan, 2026-10-16); false brings hex back.
@@ -143,13 +153,27 @@ export function validateScrub(task, n, errors, warnings = [], { starterCode = nu
     )
     return
   }
-  for (const key of ['enabled', 'numbers', 'colours', 'checkOnRelease', 'colourNames']) {
+  for (const key of [
+    'enabled',
+    'numbers',
+    'colours',
+    'booleans',
+    'checkOnRelease',
+    'colourNames',
+  ]) {
     if (raw[key] != null && typeof raw[key] !== 'boolean') {
       errors.push(`Task ${n} has scrub ${key} that is not true or false`)
     }
   }
-  if (raw.numbers === false && raw.colours === false && raw.enabled !== false) {
-    warnings.push(`Task ${n} has scrub with numbers and colours both off — nothing can be scrubbed`)
+  if (
+    raw.numbers === false &&
+    raw.colours === false &&
+    raw.booleans === false &&
+    raw.enabled !== false
+  ) {
+    warnings.push(
+      `Task ${n} has scrub with numbers, colours and booleans all off — nothing can be scrubbed`
+    )
   }
   const extra = Object.keys(raw).filter((key) => !SCRUB_KEYS.includes(key))
   if (extra.length > 0) {
