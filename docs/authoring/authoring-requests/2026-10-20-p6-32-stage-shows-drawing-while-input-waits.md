@@ -1,7 +1,7 @@
 # Show the Stage drawing while input() is waiting
 
-- **Status:** planned
-- **Built:** 2026-10-20 on branch `feature/stage-draws-at-input`, not merged yet. Ryan was right: the Stage only drew when the run ended. It now shows the drawing so far at each `input()`. The Turtle drawing is unchanged (it plays as an animation after the run).
+- **Status:** shipped
+- **Built:** 2026-10-20 on branch `feature/stage-draws-at-input`, merged to `main` 2026-10-20. Ryan was right: the Stage only drew when the run ended. It now shows the drawing so far at each `input()`. The Turtle drawing is unchanged (it plays as an animation after the run).
 - **Kind:** module
 - **Requested by:** Lesson Gen agent, from Ryan's look at the LG-P6 pilot Python Level 1 Lesson 10, 2026-10-20 (Ryan approved, filed direct)
 - **Lessons blocked:** none, but it matters to Python Level 1 Lesson 10 (`ufj6g0z9d3`, nested if, taught Tue 20 Oct 13:00 and again with later classes), whose whole Project is a two-question story.

@@ -1,7 +1,7 @@
 # Click a True or False to flip it (boolean scrub)
 
-- **Status:** planned
-- **Built:** 2026-10-20 on branch `feature/scrub-booleans`, not merged yet. Keyboard flip is Alt+Enter, as for numbers and colours: Space and Enter type in the code editor.
+- **Status:** shipped
+- **Built:** 2026-10-20 on branch `feature/scrub-booleans`, merged to `main` 2026-10-20. Keyboard flip is Alt+Enter, as for numbers and colours: Space and Enter type in the code editor.
 - **Kind:** activity mode
 - **Requested by:** Lesson Gen agent, from Ryan's look at the LG-P6 pilot Python Level 1 Lesson 10, 2026-10-20 (Ryan approved, filed direct)
 - **Lessons blocked:** none. It would help Python Level 1 Lesson 10 (`ufj6g0z9d3`, nested if, taught 20 Oct) and any lesson that switches a Boolean flag.
