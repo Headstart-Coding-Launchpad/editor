@@ -64,6 +64,7 @@ import { useHtmlInspectorLive } from './useHtmlInspectorLive'
 import { useSlowMoLog } from './useSlowMoLog'
 import { useCourseLog } from './useCourseLog'
 import { useScrubLog } from './useScrubLog'
+import { useScrubAfterPass } from './useScrubAfterPass'
 import { useScrubPreview } from './useScrubPreview'
 import { useActivityState } from './useActivityState'
 import {
@@ -999,7 +1000,19 @@ export function useStudentCodeState({
   function handleScrubCommit(info) {
     scrubLog.recordScrub(info)
     scrubPreview.scrubCommitted()
+    scrubAfterPass.dismissCue()
   }
+
+  // scrub.afterPass: the scrub boxes and #@lock-values values stay shut until the task's first
+  // pass (its checks or the tutor's pass), then open for good on this device.
+  const scrubAfterPass = useScrubAfterPass({
+    task: findTaskById(lesson?.tasks, currentTaskId),
+    taskId: currentTaskId,
+    checkPassed,
+    actorId: effectiveIdentity?.anonymousId ?? null,
+    persistence,
+    inPersonalSandbox,
+  })
 
   // Hosted activity tasks (taskType 'activity' and legacy quizzes): state, persistence, live
   // sync, grading, reset and teacher edits. See useActivityState.js for the write rules.
@@ -3343,6 +3356,10 @@ export function useStudentCodeState({
     ...scrubPreview,
     ...scrubLog,
     handleScrubCommit,
+    // scrub.afterPass (useScrubAfterPass): scrubHeld while the values wait for the first pass;
+    // scrubJustOpened for the "Now make it yours" cue.
+    scrubHeld: scrubAfterPass.held,
+    scrubJustOpened: scrubAfterPass.justOpened,
     inputPrompt,
     checkPassed,
     checkAttempted,

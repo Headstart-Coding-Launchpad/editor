@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import PythonEditor from './PythonEditor'
 import { taskShowsBlocks } from '../../shared/blockGuides'
 import { getTaskLineHintSets } from '../../shared/lineHints'
-import { getTaskLockSets } from '../../shared/lockedLines'
+import { freezeValueLocks, getTaskLockSets } from '../../shared/lockedLines'
 import OutputPanel from '../../app/components/OutputPanel'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import SplitPane from '../../shared/SplitPane'
@@ -16,6 +16,7 @@ import { useVariableLinks } from '../../shared/variablesPanel/useVariableLinks.j
 import { codeCallsInput, getTaskRunOnOpen } from '../../shared/scrub/runOnOpen.js'
 import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
 import ScrubReplayNote from '../../shared/scrub/ScrubReplayNote.jsx'
+import ScrubOpenedCue from '../../shared/scrub/ScrubOpenedCue.jsx'
 import {
   getPeekBand,
   getShowVariables,
@@ -449,6 +450,7 @@ export default function StudentWorkspace({
       )}
       {/* setupNote, the puzzle's line counter and, after a pass, its par (src/shared/puzzle/). */}
       <PuzzleBar task={task} code={code} passed={!!outputProps.checkPassed} />
+      <ScrubOpenedCue show={!readOnly && cs.scrubJustOpened} />
       {tagsAbove && (
         <TaskVariablesPanel
           task={task}
@@ -466,7 +468,10 @@ export default function StudentWorkspace({
         readOnly={readOnly}
         onChange={readOnly ? undefined : cs.handleCodeChange}
         // Live number / colour scrubbing (task `scrub`, src/shared/scrub/); not in a sandbox.
-        scrub={readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskScrub(task)}
+        // scrub.afterPass: none until the task's first pass (cs.scrubHeld).
+        scrub={
+          readOnly || isSandbox || cs.inPersonalSandbox || cs.scrubHeld ? null : getTaskScrub(task)
+        }
         onScrubPreview={
           cs.scrubPreview ? (value, options) => cs.scrubPreview(value, null, options) : undefined
         }
@@ -486,7 +491,12 @@ export default function StudentWorkspace({
         // Line hints are scaffolding: once the check passes they go, not linger after the code.
         lineHints={readOnly || cs.checkPassed ? null : getTaskLineHintSets(task)}
         // Locked lines (#@lock, puzzle.onlyEdit) show in every view, Go Live included.
-        lockedLines={getTaskLockSets(task)}
+        // scrub.afterPass holds #@lock-values values shut until the first pass.
+        lockedLines={
+          !readOnly && cs.scrubHeld
+            ? freezeValueLocks(getTaskLockSets(task))
+            : getTaskLockSets(task)
+        }
         showBlocks={taskShowsBlocks(task)}
         onRunShortcut={readOnly || task?.interactionMode === 'submit' ? undefined : handleRunClick}
         slowMoMarker={slowMoView?.marker ?? null}

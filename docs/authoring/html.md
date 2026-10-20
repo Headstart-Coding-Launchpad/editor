@@ -189,7 +189,9 @@ While a value moves, the student's own preview re-renders about every 200 ms (a 
 attempt, checks or save). A watching tutor's view still updates only when the student runs, as
 always. When the drag ends the value is a normal edit, saved and sent like typing. `ranges` lines
 count in the file being edited, in every file. The session report counts each student's scrubs
-(`scrubs`).
+(`scrubs`). `afterPass: true` keeps the scrub boxes shut until the task is first passed, then
+opens them with a "Now make it yours" line (see
+[Python → Live scrubbing](python.md#live-scrubbing-scrub)).
 
 ## HTML Element Checks (run mode only)
 

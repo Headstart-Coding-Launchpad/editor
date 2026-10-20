@@ -4,10 +4,12 @@
 //
 // Task field (python, turtle and html declare it in their definitions' taskFields):
 //   scrub: { enabled: true, numbers: true, colours: true, booleans: true,
-//            ranges: [{ line, min, max }], checkOnRelease: true }
+//            ranges: [{ line, min, max }], checkOnRelease: true, afterPass: false }
 // `scrub: true` is short for `{ enabled: true }`. Numbers, colours, booleans (a click flips a
 // Python True / False, P6-31) and checkOnRelease default to on. checkOnRelease: when a drag (or a slider step, or a colour pick) ends on a program that
-// previews live, the task's checks run once, exactly as a Run (useScrubPreview).
+// previews live, the task's checks run once, exactly as a Run (useScrubPreview). afterPass
+// (off by default): the scrub boxes and a #@lock-values line's values stay shut until the task's
+// first pass, so the student does the step before making it theirs (useScrubAfterPass).
 //
 // Module capability (`capabilities.scrub`, src/modules/defineModule.js), null = no scrubbing:
 //   { liveRerun: 'preview' | 'none', needsImport: string | null, inputCall: string | null }
@@ -22,12 +24,20 @@ export const SCRUB_TASK_FIELD = Object.freeze({
   name: 'scrub',
   type: 'object',
   description:
-    'Live scrubbing in the code editor (off unless set): { enabled: true, numbers: true (drag or tap a number for a slider), colours: true (click a colour for a picker), booleans: true (click a Python True or False to flip it), ranges: [{ line, min, max }] (per-line slider ranges; otherwise a range around the value), checkOnRelease: true (when a drag ends, the checks run once as a Run would) }. Drawing programs re-run live while a value changes; programs with input() replay the answers from the last Run.',
+    'Live scrubbing in the code editor (off unless set): { enabled: true, numbers: true (drag or tap a number for a slider), colours: true (click a colour for a picker), booleans: true (click a Python True or False to flip it), ranges: [{ line, min, max }] (per-line slider ranges; otherwise a range around the value), checkOnRelease: true (when a drag ends, the checks run once as a Run would), afterPass: false (true: the scrub boxes and #@lock-values values stay shut until the task is first passed, then open with a "Now make it yours" cue) }. Drawing programs re-run live while a value changes; programs with input() replay the answers from the last Run.',
 })
 
 export const SCRUB_LIVE_RERUN_KINDS = Object.freeze(['preview', 'none'])
 
-const SCRUB_KEYS = ['enabled', 'numbers', 'colours', 'booleans', 'ranges', 'checkOnRelease']
+const SCRUB_KEYS = [
+  'enabled',
+  'numbers',
+  'colours',
+  'booleans',
+  'ranges',
+  'checkOnRelease',
+  'afterPass',
+]
 
 function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -39,7 +49,7 @@ function isWholeLine(value) {
 
 /**
  * The task's scrub settings, normalised — `{ numbers, colours, booleans, ranges: [{ line, min,
- * max }], checkOnRelease, colourNames }` — or null when scrubbing is off (no field, `enabled:
+ * max }], checkOnRelease, colourNames, afterPass }` — or null when scrubbing is off (no field, `enabled:
  * false`, or every kind off). Invalid ranges are dropped; the first range for a line wins.
  */
 export function getTaskScrub(task) {
@@ -52,6 +62,7 @@ export function getTaskScrub(task) {
       ranges: [],
       checkOnRelease: true,
       colourNames: true,
+      afterPass: false,
     }
   }
   if (!isPlainObject(raw) || raw.enabled === false) return null
@@ -78,7 +89,16 @@ export function getTaskScrub(task) {
     checkOnRelease: raw.checkOnRelease !== false,
     // The colour picker writes CSS colour names only (Ryan, 2026-10-16); false brings hex back.
     colourNames: raw.colourNames !== false,
+    afterPass: raw.afterPass === true,
   }
+}
+
+/**
+ * Whether a task holds its scrub boxes and #@lock-values values shut until its first pass
+ * (`scrub.afterPass`).
+ */
+export function taskScrubsAfterPass(task) {
+  return getTaskScrub(task)?.afterPass === true
 }
 
 /** The module's scrub capability, normalised (`{ liveRerun, needsImport, inputCall }`), or null. */
@@ -160,6 +180,7 @@ export function validateScrub(task, n, errors, warnings = [], { starterCode = nu
     'booleans',
     'checkOnRelease',
     'colourNames',
+    'afterPass',
   ]) {
     if (raw[key] != null && typeof raw[key] !== 'boolean') {
       errors.push(`Task ${n} has scrub ${key} that is not true or false`)

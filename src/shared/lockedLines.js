@@ -220,7 +220,12 @@ export function anchorLocks(code, locks) {
       }
     }
     if (line == null) continue
-    anchored.push({ line, values: !!lock.values, ...(lock.fence ? { fence: lock.fence } : {}) })
+    // A held values lock (`frozen`, freezeValueLocks) anchors by its skeleton but locks fully.
+    anchored.push({
+      line,
+      values: !!lock.values && !lock.frozen,
+      ...(lock.fence ? { fence: lock.fence } : {}),
+    })
     after = line
   }
   return anchored
@@ -352,6 +357,20 @@ export function getTaskLockSets(task, file = null) {
 // Whether a stripped task has any locks on its code.
 export function taskHasLocks(task) {
   return getTaskLockSets(task).some((locks) => locks.length > 0)
+}
+
+/**
+ * Lock sets (getTaskLockSets) with every values lock (#@lock-values) held shut: each still
+ * anchors by its value skeleton, but locks the whole line, values included (`frozen: true`).
+ * For `scrub.afterPass` before the task's first pass. Sets without a values lock come back as
+ * they were.
+ */
+export function freezeValueLocks(lockSets) {
+  return (lockSets ?? []).map((locks) =>
+    Array.isArray(locks) && locks.some((lock) => lock?.values === true)
+      ? locks.map((lock) => (lock?.values === true ? { ...lock, frozen: true } : lock))
+      : locks
+  )
 }
 
 // Whether a stripped task has a values lock (#@lock-values) on its code.
