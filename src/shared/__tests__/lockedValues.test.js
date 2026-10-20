@@ -4,6 +4,7 @@ import { EditorState } from '@codemirror/state'
 import {
   anchorLocks,
   chooseLockedLines,
+  freezeValueLocks,
   isLockMarkerLine,
   isLockValuesMarkerLine,
   lineValueSpans,
@@ -123,5 +124,37 @@ describe('values-locked lines in the editor', () => {
     expect(valuesChangeAllowed(doc, line1, { from: 7, to: 11, insert: 'Yes' })).toBe(false)
     const line2 = { from: 12, to: 21 }
     expect(valuesChangeAllowed(doc, line2, { from: 16, to: 21, insert: 'True' })).toBe(true)
+  })
+})
+
+describe('freezeValueLocks (scrub.afterPass before the first pass)', () => {
+  const DOC = 'a = 1\nhero = "Zara"\nc = 3'
+  const SETS = [
+    [
+      { line: 1, target: 'a = 1' },
+      { line: 2, target: valueSkeleton('hero = "Zara"'), values: true },
+    ],
+  ]
+  const edit = (s, changes) => s.update({ changes, userEvent: 'input.type' }).state
+
+  it('marks only values locks frozen, leaving other sets as they were', () => {
+    const plain = [{ line: 1, target: 'a = 1' }]
+    const frozen = freezeValueLocks([SETS[0], plain])
+    expect(frozen[0][1]).toMatchObject({ values: true, frozen: true })
+    expect(frozen[0][0]).toBe(SETS[0][0])
+    expect(frozen[1]).toBe(plain)
+    expect(freezeValueLocks(null)).toEqual([])
+  })
+
+  it('still anchors by the skeleton after a value change, but locks the whole line', () => {
+    expect(anchorLocks('a = 1\nhero = "Ada"', freezeValueLocks(SETS)[0])).toEqual([
+      { line: 1, values: false },
+      { line: 2, values: false },
+    ])
+    const created = EditorState.create({ doc: DOC, extensions: [lockedLinesExtension()] })
+    const s = created.update({ effects: setLockedLineSets.of(freezeValueLocks(SETS)) }).state
+    expect(isFullyLockedPos(s, 8)).toBe(true)
+    expect(lockedValueSpansAt(s, 15)).toBeNull()
+    expect(edit(s, { from: 14, to: 18, insert: 'Ada' }).doc.toString()).toBe(DOC)
   })
 })

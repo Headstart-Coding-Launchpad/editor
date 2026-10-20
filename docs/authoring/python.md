@@ -942,6 +942,7 @@ It's off unless set, and works on Python, Turtle and HTML tasks.
           max: 200
       checkOnRelease: true   # optional — run the checks once when a drag ends (default true)
       colourNames: true      # optional — the colour picker writes names only (default true)
+      afterPass: false       # optional — true: values stay shut until the task is passed (default false)
     runOnOpen: true          # optional — preview the code when the task opens (default: on with scrub)
     codeStages:
       - role: starter
@@ -1020,6 +1021,17 @@ What students get:
   typing, so typing a new number, colour or name updates the Stage or drawing like a scrub. If the
   half-typed code errors, the last picture and output stay. It's not a Run: no checks, nothing
   logged. Not in a sandbox.
+- **Make it yours after the pass** (`afterPass: true`, off by default). The scrub boxes **and the
+  values on every `#@lock-values` line** stay shut until the task's first pass: no dashed boxes,
+  no flips, and a `#@lock-values` line is locked like a `#@lock` line (its values can't be typed
+  in either). So a student can't scrub instead of doing the step, and no `source: scrub`
+  attempts happen before the pass. On the first pass (the checks, or the tutor's pass) the boxes
+  and editable values appear with a short "✨ Now make it yours: change the values in the dashed
+  boxes." line above the editor, which goes when the student scrubs or leaves the task. They stay
+  open on that device after a reload, Reset Code or coming back to the task. Python, Turtle and
+  HTML (where it holds the scrub boxes; HTML has no `#@lock-values`). A task with `#@lock-values`
+  and no `scrub` gets this with `scrub: { afterPass: true }`, which also turns scrubbing on. Use
+  it on a Project's build steps whose step isn't a number or colour change.
 
 Numbers in code are scrubbed, not numbers in strings or comments, or inside names like `x2`. A
 minus sign belongs to the number (`-5` in `left(-5)`), but not in `a - 5`.

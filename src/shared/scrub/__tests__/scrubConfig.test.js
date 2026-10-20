@@ -6,6 +6,7 @@ import {
   scrubCapabilityProblem,
   scrubCodeAsksForInput,
   scrubPreviewMode,
+  taskScrubsAfterPass,
   validateScrub,
 } from '../scrubConfig.js'
 import { scrubReportFields, summarizeScrubUse } from '../scrubUse.js'
@@ -22,6 +23,7 @@ describe('getTaskScrub', () => {
       ranges: [],
       checkOnRelease: true,
       colourNames: true,
+      afterPass: false,
     })
     expect(getTaskScrub({ scrub: { enabled: true, colours: false } })).toEqual({
       numbers: true,
@@ -30,6 +32,7 @@ describe('getTaskScrub', () => {
       ranges: [],
       checkOnRelease: true,
       colourNames: true,
+      afterPass: false,
     })
     expect(getTaskScrub({ scrub: { enabled: true, checkOnRelease: false } }).checkOnRelease).toBe(
       false
@@ -190,5 +193,26 @@ describe('scrub report fields', () => {
     })
     expect(summarizeScrubUse([{ scrubs: 2 }, {}, { scrubs: 1 }])).toEqual({ scrubUsedCount: 2 })
     expect(summarizeScrubUse([{}])).toEqual({})
+  })
+})
+
+describe('scrub.afterPass', () => {
+  it('is off by default and only true when set to true', () => {
+    expect(taskScrubsAfterPass({ scrub: true })).toBe(false)
+    expect(taskScrubsAfterPass({ scrub: { enabled: true } })).toBe(false)
+    expect(taskScrubsAfterPass({ scrub: { afterPass: true } })).toBe(true)
+    expect(getTaskScrub({ scrub: { afterPass: true } })).toMatchObject({ numbers: true })
+    expect(taskScrubsAfterPass({ scrub: { enabled: false, afterPass: true } })).toBe(false)
+    expect(taskScrubsAfterPass({})).toBe(false)
+  })
+
+  it('validates as a known true / false field', () => {
+    const errors = []
+    const warnings = []
+    validateScrub({ scrub: { afterPass: true } }, 1, errors, warnings)
+    expect(errors).toEqual([])
+    expect(warnings).toEqual([])
+    validateScrub({ scrub: { afterPass: 'yes' } }, 1, errors, warnings)
+    expect(errors).toEqual(['Task 1 has scrub afterPass that is not true or false'])
   })
 })

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import PythonEditor from '../python/PythonEditor'
 import { taskShowsBlocks } from '../../shared/blockGuides'
 import { getTaskLineHintSets } from '../../shared/lineHints'
-import { getTaskLockSets } from '../../shared/lockedLines'
+import { freezeValueLocks, getTaskLockSets } from '../../shared/lockedLines'
 import OutputPanel from '../../app/components/OutputPanel'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import SplitPane from '../../shared/SplitPane'
@@ -20,6 +20,7 @@ import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.j
 import { useVariableLinks } from '../../shared/variablesPanel/useVariableLinks.js'
 import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
 import ScrubReplayNote from '../../shared/scrub/ScrubReplayNote.jsx'
+import ScrubOpenedCue from '../../shared/scrub/ScrubOpenedCue.jsx'
 import { usePythonSlowMo } from '../python/slowMo/usePythonSlowMo.js'
 import PredictRunLockNote, {
   PREDICT_RUN_LOCK_NOTE_ID,
@@ -316,12 +317,16 @@ export default function StudentWorkspace({
       {!isSandbox && !cs.inPersonalSandbox && (
         <PuzzleBar task={task} code={code} passed={!readOnly && !!cs.checkPassed} />
       )}
+      <ScrubOpenedCue show={!readOnly && cs.scrubJustOpened} />
       <PythonEditor
         code={code}
         readOnly={readOnly}
         onChange={readOnly ? undefined : cs.handleCodeChange}
         // Live number / colour scrubbing (task `scrub`, src/shared/scrub/); not in a sandbox.
-        scrub={readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskScrub(task)}
+        // scrub.afterPass: none until the task's first pass (cs.scrubHeld).
+        scrub={
+          readOnly || isSandbox || cs.inPersonalSandbox || cs.scrubHeld ? null : getTaskScrub(task)
+        }
         onScrubPreview={
           cs.scrubPreview ? (value, options) => cs.scrubPreview(value, null, options) : undefined
         }
@@ -336,7 +341,14 @@ export default function StudentWorkspace({
             : getTaskLineHintSets(task)
         }
         // Locked lines (#@lock, puzzle.onlyEdit) show in every view, Go Live included.
-        lockedLines={isSandbox || cs.inPersonalSandbox ? null : getTaskLockSets(task)}
+        // scrub.afterPass holds #@lock-values values shut until the first pass.
+        lockedLines={
+          isSandbox || cs.inPersonalSandbox
+            ? null
+            : !readOnly && cs.scrubHeld
+              ? freezeValueLocks(getTaskLockSets(task))
+              : getTaskLockSets(task)
+        }
         showBlocks={taskShowsBlocks(task)}
         onRunShortcut={readOnly ? undefined : handleRunClick}
         slowMoMarker={slowMoView?.marker ?? null}

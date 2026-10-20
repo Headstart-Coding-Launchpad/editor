@@ -178,6 +178,8 @@ keyboard use.
   `source: 'scrub'`. The session report counts each student's scrubs (`scrubs`).
 - `runOnOpen` (default on with `scrub`) draws the starter as soon as the task opens, as a preview
   (no checks, not a Run). See [Python → Live scrubbing](python.md#live-scrubbing-scrub).
+- `afterPass: true` keeps the scrub boxes and `#@lock-values` values shut until the task is first
+  passed, as in [Python](python.md#live-scrubbing-scrub).
 
 ## Locked lines, hidden setup and puzzles
 

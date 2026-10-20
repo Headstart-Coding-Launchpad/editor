@@ -13,6 +13,7 @@ import { selectHtmlTaskFiles } from '../../app/studentTaskContent'
 import { getTaskLineHintSets } from '../../shared/lineHints'
 import { getInspectorConfig } from './inspector/config'
 import { getTaskScrub } from '../../shared/scrub/scrubConfig.js'
+import ScrubOpenedCue from '../../shared/scrub/ScrubOpenedCue.jsx'
 
 export default function StudentWorkspace({
   lesson,
@@ -98,7 +99,9 @@ export default function StudentWorkspace({
         }
     : null
   // Live scrubbing of CSS and attribute values (task `scrub`, src/shared/scrub/).
-  const scrub = readOnly || isSandbox || cs.inPersonalSandbox ? null : getTaskScrub(task)
+  // scrub.afterPass: none until the task's first pass (cs.scrubHeld).
+  const scrub =
+    readOnly || isSandbox || cs.inPersonalSandbox || cs.scrubHeld ? null : getTaskScrub(task)
   // Line hints are scaffolding: once the check passes they go, not linger after the code.
   const lineHintSetsFor =
     readOnly || isSandbox || cs.inPersonalSandbox || cs.checkPassed
@@ -154,6 +157,7 @@ export default function StudentWorkspace({
               onReset={cs.handleResetCode}
             />
           )}
+          <ScrubOpenedCue show={!readOnly && cs.scrubJustOpened} />
           <HtmlEditor
             files={files}
             activeFile={activeFile}
@@ -232,6 +236,7 @@ export default function StudentWorkspace({
                 onReset={cs.handleResetCode}
               />
             )}
+            <ScrubOpenedCue show={!readOnly && cs.scrubJustOpened} />
             <HtmlEditor
               files={files}
               activeFile={activeFile}

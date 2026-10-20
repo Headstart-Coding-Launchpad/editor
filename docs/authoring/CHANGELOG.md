@@ -39,6 +39,18 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-20
 
+- **Scrub and `#@lock-values` open only after the pass** (`scrub.afterPass: true`, off by
+  default). Until the task's first pass, there are no scrub boxes or True / False flips, and a
+  `#@lock-values` line is fully locked, so students do the step instead of scrubbing and no
+  `source: scrub` attempts happen first. On the first pass (checks or the tutor's pass) the
+  boxes and editable values appear with "✨ Now make it yours: change the values in the dashed
+  boxes." above the editor, and stay open on that device after a reload or Reset Code. A task
+  with `#@lock-values` and no `scrub` uses `scrub: { afterPass: true }` (which also turns
+  scrubbing on). See [python.md](python.md#live-scrubbing-scrub).
+- Affects: python, turtle, html · Existing lessons: no changes needed; add `afterPass: true` to
+  `scrub` on a Project's build steps · Resolves:
+  authoring-requests/2026-10-20-scrub-and-editable-locked-values-open-only-after-the-task-is.md
+
 - **Click a True or False to flip it** (`scrub.booleans`, on by default; P6-31). On a task with
   `scrub`, every `True` and `False` in code gets the dashed "you can change this" box; one click
   or tap (or Alt+Enter) flips it and redraws the Stage like a drag, and `checkOnRelease` runs
