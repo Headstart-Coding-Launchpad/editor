@@ -1,6 +1,6 @@
 # Scrub and editable locked values open only after the task is passed
 
-- **Status:** open
+- **Status:** planned
 - **Kind:** activity mode
 - **Requested by:** Ryan (approved by Ryan), 2026-10-20
 - **Lessons blocked:** none yet
@@ -41,4 +41,4 @@ Also covers HTML/Turtle scrub if cheap. Suggest default off so existing lessons 
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Built 2026-10-20 on `feature/scrub-after-pass` (LaunchPad Dev), not merged yet. `scrub: { afterPass: true }` (off by default) in Python, Turtle and HTML. Before the first pass (checks or the tutor's pass) there are no scrub boxes and `#@lock-values` lines are fully locked. After it, the boxes open with "✨ Now make it yours" and stay open after a reload or Reset Code (remembered per device in a `__scrub_open__` per-task file). Docs: python.md (Live scrubbing), turtle.md, html.md, CHANGELOG 2026-10-20.
