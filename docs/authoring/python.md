@@ -759,6 +759,13 @@ is instant, like Turtle.
 draws straight away; later calls draw on top. Calls are **size first**: the simplest call is just
 the size, and colour, position and the rest are added as students grow.
 
+**While `input()` waits.** When the program stops to ask a question, the Stage shows everything
+drawn so far (the tutor's view too), so a story that draws a scene and then asks the next
+question shows that scene while the student answers. After the answer, drawing carries on as
+before and the finished run's picture replaces it. Every `input()` in a run does this. Stage
+checks still read the final picture. (In Slow-mo the drawing builds up on replay instead. The
+Turtle drawing still appears when the run ends.)
+
 ```python
 from stage import *
 circle(50)                         # a circle of radius 50 in the middle

@@ -201,7 +201,7 @@ export async function runWithRuntime(ctx) {
         setErrorLine(line)
       }
     },
-    onInputRequired: (prompt) => {
+    onInputRequired: (prompt, { stage } = {}) => {
       if (replayed < replayAnswers.length) {
         const answer = String(replayAnswers[replayed])
         replayed += 1
@@ -213,6 +213,13 @@ export async function runWithRuntime(ctx) {
       refs.inputPromptRef.current = prompt
       refs.inputValueRef.current = ''
       setInputPrompt(prompt)
+      // The Stage shows what the program has drawn so far while the question waits (P6-32), for
+      // the student and (one write per prompt) the tutor; the finished run's drawing replaces it.
+      // Slow-mo plays the drawing back after the run instead.
+      if (stage && runResult.stage && !ctx.runOptions?.slowMo) {
+        setters.setStageResult?.(stage)
+        writers.writeStudentStageResult?.(actor.anonymousId, stage)
+      }
       if (isWatchedNow()) {
         // Bundle any output still waiting on the throttle (usually the
         // prompt text itself) with the prompt row appearing.
