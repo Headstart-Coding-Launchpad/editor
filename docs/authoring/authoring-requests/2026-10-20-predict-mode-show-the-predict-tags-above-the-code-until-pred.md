@@ -1,6 +1,6 @@
 # Predict mode: show the predict tags above the code until predictions are in
 
-- **Status:** open
+- **Status:** planned
 - **Kind:** module
 - **Requested by:** Ryan (approved by Ryan), 2026-10-20
 - **Lessons blocked:** none yet
@@ -38,4 +38,4 @@ Replaces #80; decline #80 as a duplicate when approving this.
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Built 2026-10-20 on `feature/predict-tags-above` (LaunchPad Dev), not merged yet. `showVariables.placement: above` (Python): the tags sit above the code until the first Run, then go back with their ticks and crosses. Every predict task (Python and Turtle): empty tags glow until filled, and "Fill in your predictions first" is a button that puts the cursor in the first empty tag. Builder toggle added. Docs: python.md (name-tag panel, `placement` row), CHANGELOG 2026-10-20. Placement is opt-in: add `placement: above` to a lesson's first predict tasks. #80 can be declined as a duplicate.

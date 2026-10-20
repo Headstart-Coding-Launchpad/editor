@@ -439,7 +439,7 @@ Python and Turtle tasks; see [python.md](python.md#name-tag-panel-showvariables)
 | `Task … has showVariables link that is not true or false` | `link` must be a boolean. | Use `true` (the default) or `false` to stop linking tags to the code. |
 | `Task … has showVariables lockRun that is not true or false` | `lockRun` must be a boolean. | Use `true` (the default in predict mode) or `false`. |
 | `Task … has showVariables lockRun but its mode is not predict — only predict mode locks Run, so it is ignored` (warning) | `lockRun` on a view or target task. | Remove it, or set `mode: predict`. |
-| `Task … has showVariables placement "…" — use one of: side, above` | `placement` isn't one of the two values. | Use `above` (tags above the code until the first Run) or `side` (the default). |
+| `Task … has showVariables placement "…" — use one of: …` | `placement` isn't one of the two values. | Use `above` (tags above the code until the first Run) or `side` (the default). |
 | `Task … has showVariables placement but its mode is not predict — only predict tags move above the code, so it is ignored` (warning) | `placement` on a view or target task. | Remove it, or set `mode: predict`. |
 | `Task … has showVariables stageLists "…" — use one of: …` | Unknown `stageLists`. | Use `picture`, `tiles` or `size`. |
 | `Task … has showVariables stageLists but visuals is false — every tag is plain, so it is ignored` (warning) | With `visuals: false` every tag is plain text, including lists drawn with `grid()`. | Remove `stageLists`, or turn `visuals` back on. |
