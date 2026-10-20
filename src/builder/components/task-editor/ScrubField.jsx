@@ -3,7 +3,8 @@ import { Field } from './TaskEditorFields'
 
 /**
  * Builder control for a task's live scrubbing (`scrub`, src/shared/scrub/; docs/authoring
- * python.md, turtle.md, html.md): on / off, numbers and colours, and per-line slider ranges.
+ * python.md, turtle.md, html.md): on / off, numbers, colours and True / False, and per-line
+ * slider ranges.
  */
 export default function ScrubField({ task, onUpdate }) {
   const raw = task?.scrub
@@ -70,6 +71,14 @@ export default function ScrubField({ task, onUpdate }) {
                 onChange={(e) => update({ ...config, colours: e.target.checked })}
               />
               Colours (click for a picker)
+            </label>
+            <label className="te-check-toggle" style={{ alignSelf: 'flex-start' }}>
+              <input
+                type="checkbox"
+                checked={config.booleans !== false}
+                onChange={(e) => update({ ...config, booleans: e.target.checked })}
+              />
+              True and False (click to flip, Python)
             </label>
             <div style={s.rangesHead}>
               Slider ranges by line (optional; otherwise a range around the value)

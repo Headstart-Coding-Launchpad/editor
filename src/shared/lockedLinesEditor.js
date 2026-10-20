@@ -220,14 +220,27 @@ export function isFullyLockedPos(state, pos) {
 /**
  * Whether one change keeps a values-locked line (`range`, `{ from, to }` in `doc`) intact: it
  * stays inside the line, adds no line break, and leaves the line's value skeleton as it was
- * (only string contents and numbers changed).
+ * (only string contents and numbers changed), or flips one whole True / False to the other (a
+ * scrub's click, P6-31; typing over one still can't, as a half-typed word changes the skeleton).
  */
 export function valuesChangeAllowed(doc, range, change) {
   const insert = change.insert ?? ''
   if (change.from < range.from || change.to > range.to || insert.includes('\n')) return false
   const text = doc.sliceString(range.from, range.to)
-  const next = text.slice(0, change.from - range.from) + insert + text.slice(change.to - range.from)
+  const from = change.from - range.from
+  const to = change.to - range.from
+  if (isBooleanFlip(text, from, to, insert)) return true
+  const next = text.slice(0, from) + insert + text.slice(to)
   return scanLineValues(next).skeleton === scanLineValues(text).skeleton
+}
+
+const BOOLEAN_FLIPS = { True: 'False', False: 'True' }
+
+// Whether replacing text[from, to) with `insert` swaps a whole True for False or back.
+function isBooleanFlip(text, from, to, insert) {
+  const word = text.slice(from, to)
+  if (BOOLEAN_FLIPS[word] !== insert) return false
+  return !/[\w.]/.test(text[from - 1] ?? '') && !/\w/.test(text[to] ?? '')
 }
 
 /**

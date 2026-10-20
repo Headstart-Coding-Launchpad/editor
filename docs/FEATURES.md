@@ -242,10 +242,11 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - On code tasks with `scrub` enabled, numbers and colours in the code are live controls: every draggable number carries an always-visible dashed "you can change this" box (shared with `#@lock-values` values); hovering a number underlines it (ew-resize cursor) and dragging left/right changes it (whole numbers stay whole, decimals step by their last place, CSS units kept); on a tablet a tap opens a slider beside it (− / + buttons, 44 px+); Alt+Enter opens it from the keyboard
 - Colour strings and CSS colours get a swatch; clicking or tapping opens a picker with colour-blind-safe colours first, then common names, then a hex box (text labels throughout). A name stays a name, hex stays hex
 - While a value moves, drawing programs re-run as a throttled preview, about every 200 ms while the drag keeps moving (Turtle, Python with the Stage, HTML/CSS in the student's own preview): no attempt, checks, save or tutor update, and never overlapping the last run. Programs with `input()` replay the answers from the student's last Run ("Using your last answers: …"), or show "Press Run and answer the questions first"; Python without the Stage shows "Press Run to see it"
-- When a drag, slider step or colour pick ends, the task's checks run once exactly as a Run (attempt logged with `source: 'scrub'`, result shown, tutor card updated); `scrub.checkOnRelease: false` turns it off
+- On a Python or Turtle `scrub` task every `True` and `False` in code gets the same box; one click or tap (or Alt+Enter) flips it and redraws like a drag, on `#@lock-values` lines too (`scrub.booleans`, default on; not strings, comments or names)
+- When a drag, slider step, colour pick or True / False flip ends, the task's checks run once exactly as a Run (attempt logged with `source: 'scrub'`, result shown, tutor card updated); `scrub.checkOnRelease: false` turns it off
 - `runOnOpen` (Python, Turtle; default on with `scrub`) runs the code once as a preview when the task opens, so the picture shows straight away: no checks, no attempt, not a Run; never for `input()` programs
 - When the drag or popover ends the value is one real edit (saved, sent to a watching tutor, one Undo step), counted as an edit rather than typed characters. Per-line slider ranges via `scrub.ranges`; the session report counts each student's scrubs per task
-- Builder: Task options → Live scrubbing (numbers, colours, ranges by line)
+- Builder: Task options → Live scrubbing (numbers, colours, True / False, ranges by line)
 
 ### Locked Lines, Hidden Setup and Puzzles (Python, Turtle)
 - `#@lock-values` locks a line except its values (plain string contents, empty strings too, and numbers): the values get a dashed "you can change this" box, the cursor snaps into them, and anything else on the line is read-only ("Only the values on this line can change")
@@ -318,7 +319,7 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - Highlight a control (Task options, code tasks with controls): pick Run, Stop, a Scratch control or block category to pulse when the task opens (`highlight`)
 - Side-quests (Task options, Python/Turtle/HTML): up to three per code task, each a title, kind, Markdown explainer and starter
 - HTML Inspector (Task options, HTML): enable, start in inspect mode, pre-selected element and sections
-- Live scrubbing (Task options, Python/Turtle/HTML): numbers, colours and per-line slider ranges
+- Live scrubbing (Task options, Python/Turtle/HTML): numbers, colours, True / False flips and per-line slider ranges
 - Badge hints (authoring metadata): toggle which live badges this task may also suggest (`badgeHints.suggest`, pattern badges only) or never suggest (`badgeHints.suppress`), with a read-only note of the badges the task's `taskActivity` pattern already triggers
 
 ### Scratch Tools

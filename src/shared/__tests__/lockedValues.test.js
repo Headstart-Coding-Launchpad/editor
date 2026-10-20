@@ -113,4 +113,15 @@ describe('values-locked lines in the editor', () => {
     expect(valuesChangeAllowed(doc, range, { from: 18, to: 18, insert: '\n' })).toBe(false)
     expect(valuesChangeAllowed(doc, range, { from: 5, to: 6, insert: '' })).toBe(false)
   })
+
+  it('lets a whole True or False flip, but not be typed over or renamed', () => {
+    const doc = EditorState.create({ doc: 'tall = True\nb = False' }).doc
+    const line1 = { from: 0, to: 11 }
+    expect(valuesChangeAllowed(doc, line1, { from: 7, to: 11, insert: 'False' })).toBe(true)
+    expect(valuesChangeAllowed(doc, line1, { from: 7, to: 11, insert: 'Fals' })).toBe(false)
+    expect(valuesChangeAllowed(doc, line1, { from: 7, to: 8, insert: 'F' })).toBe(false)
+    expect(valuesChangeAllowed(doc, line1, { from: 7, to: 11, insert: 'Yes' })).toBe(false)
+    const line2 = { from: 12, to: 21 }
+    expect(valuesChangeAllowed(doc, line2, { from: 16, to: 21, insert: 'True' })).toBe(true)
+  })
 })

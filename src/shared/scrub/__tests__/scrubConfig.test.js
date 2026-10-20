@@ -18,6 +18,7 @@ describe('getTaskScrub', () => {
     expect(getTaskScrub({ scrub: true })).toEqual({
       numbers: true,
       colours: true,
+      booleans: true,
       ranges: [],
       checkOnRelease: true,
       colourNames: true,
@@ -25,6 +26,7 @@ describe('getTaskScrub', () => {
     expect(getTaskScrub({ scrub: { enabled: true, colours: false } })).toEqual({
       numbers: true,
       colours: false,
+      booleans: true,
       ranges: [],
       checkOnRelease: true,
       colourNames: true,
@@ -32,7 +34,11 @@ describe('getTaskScrub', () => {
     expect(getTaskScrub({ scrub: { enabled: true, checkOnRelease: false } }).checkOnRelease).toBe(
       false
     )
-    expect(getTaskScrub({ scrub: { numbers: false, colours: false } })).toBeNull()
+    expect(getTaskScrub({ scrub: { numbers: false, colours: false } })).toMatchObject({
+      booleans: true,
+    })
+    expect(getTaskScrub({ scrub: { enabled: true, booleans: false } }).booleans).toBe(false)
+    expect(getTaskScrub({ scrub: { numbers: false, colours: false, booleans: false } })).toBeNull()
   })
 
   it('keeps valid ranges, the first per line', () => {
@@ -154,9 +160,15 @@ describe('validateScrub', () => {
     ])
   })
 
-  it('warns when both kinds are off', () => {
-    expect(run({ enabled: true, numbers: false, colours: false }).warnings).toEqual([
-      'Task 4 has scrub with numbers and colours both off — nothing can be scrubbed',
+  it('warns when every kind is off', () => {
+    expect(run({ enabled: true, numbers: false, colours: false }).warnings).toEqual([])
+    expect(
+      run({ enabled: true, numbers: false, colours: false, booleans: false }).warnings
+    ).toEqual([
+      'Task 4 has scrub with numbers, colours and booleans all off — nothing can be scrubbed',
+    ])
+    expect(run({ enabled: true, booleans: 'yes' }).errors).toEqual([
+      'Task 4 has scrub booleans that is not true or false',
     ])
   })
 })
@@ -169,6 +181,12 @@ describe('scrub report fields', () => {
       scrubs: 4,
       scrubNumbers: 3,
       scrubColours: 1,
+    })
+    expect(scrubReportFields({ numbers: 1, booleans: 2 })).toEqual({
+      scrubs: 3,
+      scrubNumbers: 1,
+      scrubColours: 0,
+      scrubBooleans: 2,
     })
     expect(summarizeScrubUse([{ scrubs: 2 }, {}, { scrubs: 1 }])).toEqual({ scrubUsedCount: 2 })
     expect(summarizeScrubUse([{}])).toEqual({})

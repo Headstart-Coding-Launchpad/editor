@@ -923,7 +923,7 @@ Live number and colour scrubbing in the shared code editor, for a task's `scrub`
 | `scrubExtension.js` | The CodeMirror extension: hover underline, colour swatches, mouse drag, tap / Alt-Enter popovers, `scrubPreviewAnnotation` previews (no history, skipped by `CodeEditor`'s change handling) and the one-edit commit (`input.scrub`) |
 | `ScrubPopover.jsx` | The slider popover (− / + / Done, 44 px, keyboard) and the colour picker (labelled swatches, hex box) |
 | `useEditorScrub.jsx` | `CodeEditor`'s hook-up: the compartment, handlers, popover and "Press Run to see it" notice |
-| `scrubUse.js` | Pure: `scrubReportFields` (`scrubs`, `scrubNumbers`, `scrubColours` from `scrubLog`) and `summarizeScrubUse` (`scrubUsedCount`) for `lessonReport.js` |
+| `scrubUse.js` | Pure: `scrubReportFields` (`scrubs`, `scrubNumbers`, `scrubColours`, `scrubBooleans` from `scrubLog`) and `summarizeScrubUse` (`scrubUsedCount`) for `lessonReport.js` |
 
 ### Hidden setup and puzzle rules (`src/shared/puzzle/`)
 

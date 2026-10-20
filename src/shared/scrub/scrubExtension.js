@@ -1,10 +1,13 @@
-// CodeMirror 6 extension for live number and colour scrubbing (a task's `scrub` field;
-// ./scrubConfig.js). The shared CodeEditor turns it on through a Compartment (./useEditorScrub.jsx).
+// CodeMirror 6 extension for live number, colour and True / False scrubbing (a task's `scrub`
+// field; ./scrubConfig.js). The shared CodeEditor turns it on through a Compartment
+// (./useEditorScrub.jsx).
 //
 // - Desktop: hovering a number underlines it with an ew-resize cursor; dragging left / right
 //   changes it (./literals.js steps, clamps and formats). Clicking a colour opens the picker.
 // - Touch and pen: tapping a number opens a slider popover, tapping a colour the picker.
-// - Keyboard: Alt-Enter on a number or colour opens its popover (arrow keys move the slider).
+// - A click or tap on a Python True or False flips it (P6-31): one edit, no popover.
+// - Keyboard: Alt-Enter on a number or colour opens its popover (arrow keys move the slider);
+//   on a True or False it flips it.
 // - Colour literals get a small swatch before them.
 // - Every scrubbable number carries an always-visible marker (P6-24): the shared "you can change
 //   this" look (../editableValueStyle.js), the same as a #@lock-values line's values, on desktop
@@ -19,6 +22,7 @@ import { Annotation, Prec, StateEffect, StateField, Transaction } from '@codemir
 import { Decoration, EditorView, ViewPlugin, WidgetType, keymap } from '@codemirror/view'
 import {
   findScrubLiterals,
+  flippedBoolean,
   formatScrubNumber,
   literalAtColumn,
   numberStep,
@@ -32,7 +36,7 @@ import { EDITABLE_VALUE_CLASS, editableValueTheme } from '../editableValueStyle.
 
 /** On a preview change: 'preview' (re-run it) or 'revert' (undoing a preview before the commit). */
 export const scrubPreviewAnnotation = Annotation.define()
-/** On the committed edit: `{ kind: 'number' | 'colour' }`. */
+/** On the committed edit: `{ kind: 'number' | 'colour' | 'boolean', from? }`. */
 export const scrubCommitAnnotation = Annotation.define()
 /** The committed edit's user event: an 'input' edit, but never typed characters. */
 export const SCRUB_USER_EVENT = 'input.scrub'
@@ -107,6 +111,21 @@ export function commitScrub(view, session) {
   return true
 }
 
+/**
+ * Flips the True / False at `literal` (document positions) as ONE real edit, as a finished
+ * scrub. Returns whether it changed (false when the word there is no longer True or False).
+ */
+export function flipBoolean(view, literal) {
+  const text = view.state.doc.sliceString(literal.from, literal.to)
+  if (text !== 'True' && text !== 'False') return false
+  view.dispatch({
+    changes: { from: literal.from, to: literal.to, insert: flippedBoolean(text) },
+    userEvent: SCRUB_USER_EVENT,
+    annotations: scrubCommitAnnotation.of({ kind: 'boolean', from: literal.from }),
+  })
+  return true
+}
+
 /** Ends the session, putting the original value back (and previewing it again). */
 export function cancelScrub(view, session) {
   if (!session) return
@@ -118,9 +137,13 @@ export function cancelScrub(view, session) {
 
 // ── Finding literals in the document ────────────────────────────────────────────────────────
 
+// A literal's kind → the scrub option that turns it on.
+const KIND_OPTION = { number: 'numbers', colour: 'colours', boolean: 'booleans' }
+
 function lineLiterals(state, line, options) {
   // A locked line (../lockedLinesEditor.js) can't change, so it has nothing to scrub. A
-  // values-locked line (#@lock-values) can: its numbers and colours are its values.
+  // values-locked line (#@lock-values) can: its numbers and colours are its values, and its
+  // True / False flips (valuesChangeAllowed lets a whole-word flip through).
   if (isFullyLockedPos(state, line.from)) return []
   const inStyle =
     options.syntax === scrubSyntaxFor('html')
@@ -129,7 +152,7 @@ function lineLiterals(state, line, options) {
         )
       : false
   return findScrubLiterals(line.text, options.syntax, { inStyle })
-    .filter((literal) => (literal.kind === 'number' ? options.numbers : options.colours))
+    .filter((literal) => options[KIND_OPTION[literal.kind]])
     .map((literal) => ({
       ...literal,
       from: line.from + literal.from,
@@ -225,9 +248,26 @@ const scrubbableColourMark = Decoration.mark({
   attributes: { title: 'Click or tap to pick a colour' },
 })
 
-// Colour swatches and the always-visible marker on every scrubbable number and colour (P6-24).
+// A True / False: the same box, with its name, value and what a click does for the title and a
+// screen reader ("is_tall_enough, True, press to change to False"). The word itself is shown, so
+// it never relies on colour.
+function booleanMark(literal) {
+  const next = flippedBoolean(literal.text)
+  const label = `${literal.name ? `${literal.name}, ` : ''}${literal.text}, press to change to ${next}`
+  return Decoration.mark({
+    class: `${EDITABLE_VALUE_CLASS} cm-scrubbable cm-scrubBoolean`,
+    attributes: {
+      title: `Click or tap to change to ${next}`,
+      role: 'button',
+      'aria-label': label,
+    },
+  })
+}
+
+// Colour swatches and the always-visible marker on every scrubbable number, colour and
+// True / False (P6-24).
 function swatchDecorations(view, options) {
-  if (!options.colours && !options.numbers) return Decoration.none
+  if (!options.colours && !options.numbers && !options.booleans) return Decoration.none
   const ranges = []
   for (const { from, to } of view.visibleRanges) {
     let pos = from
@@ -237,6 +277,10 @@ function swatchDecorations(view, options) {
         if (literal.kind === 'number') {
           if (literal.from < literal.to)
             ranges.push(scrubbableNumberMark.range(literal.from, literal.to))
+          continue
+        }
+        if (literal.kind === 'boolean') {
+          ranges.push(booleanMark(literal).range(literal.from, literal.to))
           continue
         }
         ranges.push(
@@ -265,6 +309,7 @@ const scrubTheme = EditorView.baseTheme({
     textUnderlineOffset: '3px',
   },
   '&.cm-scrubbing .cm-content, &.cm-scrubbing .cm-scrubNumber': { cursor: 'ew-resize' },
+  '.cm-scrubBoolean': { cursor: 'pointer' },
   '.cm-scrubSwatch': {
     display: 'inline-block',
     width: '0.8em',
@@ -281,18 +326,19 @@ const scrubTheme = EditorView.baseTheme({
 
 /**
  * The scrub extension for an editable editor, or [] when nothing can be scrubbed.
- * - `config`: getTaskScrub's `{ numbers, colours, ranges, checkOnRelease }`.
+ * - `config`: getTaskScrub's `{ numbers, colours, booleans, ranges, checkOnRelease }`.
  * - `language`: the editor language (python, html, css; others are not scrubbed).
  * - `handlersRef.current`: `{ onPreview(code, { view, from }), onCommit({ kind }),
  *   openPopover({ view, literal, range, step, settleSteps }) }`, read at call time so the owner can change them.
  */
 export function scrubExtension({ config, language, handlersRef }) {
   const syntax = scrubSyntaxFor(language)
-  if (!config || !syntax || (!config.numbers && !config.colours)) return []
+  if (!config || !syntax || (!config.numbers && !config.colours && !config.booleans)) return []
   const options = {
     syntax,
     numbers: !!config.numbers,
     colours: !!config.colours,
+    booleans: !!config.booleans,
     ranges: config.ranges ?? [],
     // checkOnRelease: the slider popover keeps each step as an edit, so the checks run on it.
     settleSteps: config.checkOnRelease !== false,
@@ -374,7 +420,8 @@ export function scrubExtension({ config, language, handlersRef }) {
     window.addEventListener('keydown', onKey, true)
   }
 
-  // A tap (or a click on a colour): pointer up close to where it went down opens the popover.
+  // A tap (or a click on a colour or a True / False): pointer up close to where it went down
+  // opens the popover, or flips the True / False.
   function trackTap(view, literal, event) {
     const startX = event.clientX
     const startY = event.clientY
@@ -384,6 +431,10 @@ export function scrubExtension({ config, language, handlersRef }) {
       window.removeEventListener('pointercancel', onAbort)
       const moved = Math.hypot(e.clientX - startX, e.clientY - startY)
       if (moved > TAP_SLOP_PX || Date.now() - startedAt > 800) return
+      if (literal.kind === 'boolean') {
+        flipBoolean(view, literal)
+        return
+      }
       // After CodeMirror has placed the caret for this click.
       setTimeout(() => openPopover(view, literal), 0)
     }
@@ -441,7 +492,7 @@ export function scrubExtension({ config, language, handlersRef }) {
           const session = activeSessions.get(update.view)
           handlers().onPreview?.(update.state.doc.toString(), {
             view: update.view,
-            from: session?.from ?? update.state.selection.main.head,
+            from: session?.from ?? commit?.from ?? update.state.selection.main.head,
           })
         }
         if (commit) handlers().onCommit?.({ kind: commit.kind })
@@ -465,6 +516,12 @@ export function scrubExtension({ config, language, handlersRef }) {
         if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return false
         const literal = literalAtPointer(view, event, options)
         if (!literal) return false
+        if (literal.kind === 'boolean') {
+          // A mouse click flips it without moving the caret or starting a selection.
+          if (event.pointerType === 'mouse') event.preventDefault()
+          trackTap(view, literal, event)
+          return event.pointerType === 'mouse'
+        }
         if (event.pointerType === 'mouse' && literal.kind === 'number') {
           // Cancelling pointerdown stops CodeMirror's mousedown text selection.
           event.preventDefault()
@@ -483,7 +540,8 @@ export function scrubExtension({ config, language, handlersRef }) {
             if (view.state.readOnly) return false
             const literal = scrubLiteralAt(view.state, view.state.selection.main.head, options)
             if (!literal) return false
-            openPopover(view, literal)
+            if (literal.kind === 'boolean') flipBoolean(view, literal)
+            else openPopover(view, literal)
             return true
           },
         },

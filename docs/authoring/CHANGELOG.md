@@ -37,6 +37,19 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-20
+
+- **Click a True or False to flip it** (`scrub.booleans`, on by default; P6-31). On a task with
+  `scrub`, every `True` and `False` in code gets the dashed "you can change this" box; one click
+  or tap (or Alt+Enter) flips it and redraws the Stage like a drag, and `checkOnRelease` runs
+  the checks once. It works on `#@lock-values` lines. Strings, comments and names like `is_true`
+  are left alone. A flip counts as an attempt with `source: scrub` and adds to `scrubs` (and the
+  new `scrubBooleans`) in the session report. `booleans: false` turns it off. Every existing
+  `scrub` task now boxes its `True` / `False` too. See
+  [python.md](python.md#live-scrubbing-scrub).
+- Affects: python, turtle · Existing lessons: no changes needed (L1 L10 task 15 can now say
+  "click True") · Resolves: authoring-requests/2026-10-20-p6-31-click-a-true-or-false-to-flip-it-boolean-scrub.md
+
 ## 2026-10-17
 
 ### Lesson screenshots by CLI (`lessons screenshot`)
