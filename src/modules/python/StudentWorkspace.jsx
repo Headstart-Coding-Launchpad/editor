@@ -20,6 +20,7 @@ import {
   getPeekBand,
   getShowVariables,
   panelRunForTask,
+  predictTagsAbove,
   taskShowsVariables,
 } from '../../shared/variablesPanel/variablesPanel.js'
 import { getRunCountWidgets } from '../../shared/runCounts.js'
@@ -246,7 +247,20 @@ export default function StudentWorkspace({
   // Tags · Console — only the panes this task has — beside the editor, or below it on portrait
   // screens and phones. Wide desktops keep everything side by side. After Run the pane switches
   // to what the task is about; the Console tab counts unseen lines while hidden.
-  const tagsAvailable = taskShowsVariables(task) && !isViewingPrev && !isTeacherEditing
+  // Predict tags above the code (showVariables.placement: above) until the first Run; then the
+  // panel goes back to its usual place (beside the output, or its Tags tab). Not on a Code
+  // Arrange board (no code editor to sit above).
+  const tagsAbove =
+    !isViewingPrev &&
+    !isTeacherEditing &&
+    !slowMoView &&
+    !arrangeBoard &&
+    predictTagsAbove(task, {
+      run: panelRun,
+      predictions: isForcedTeacherLive ? null : cs.variablesPanel?.predictions,
+    })
+  const tagsAvailable =
+    taskShowsVariables(task) && !isViewingPrev && !isTeacherEditing && !tagsAbove
   const pictureAvailable =
     showStage || (!isViewingPrev && !isTeacherEditing && codeImportsStage(code))
   const resultPanes = shouldShowOutput
@@ -291,6 +305,7 @@ export default function StudentWorkspace({
           )
   const visiblePanesKey = [
     'code',
+    ...(tagsAbove ? ['tags'] : []),
     ...shownResultPanes.map((id) => (id === 'picture' ? 'stage' : id)),
   ].join(',')
   useEffect(() => {
@@ -300,6 +315,14 @@ export default function StudentWorkspace({
   // Predict mode's Run lock (cs.predictRunLock, showVariables.lockRun): Run, slow-mo and the
   // run shortcut wait for every prediction, until the first Run. Never on a read-only view.
   const runLock = readOnly ? null : (cs.predictRunLock ?? null)
+
+  // The lock note takes the student to the first empty tag: unfold the output and, with tabs,
+  // open the Tags tab first (tags above the code are already in view).
+  function revealTags() {
+    if (tagsAbove) return
+    setOutputCollapsed(false)
+    if (tabbed && resultPanes.includes('tags')) result.select('tags')
+  }
 
   // On a slow-mo task Run plays the run in slow-mo ("▶ Run (slow-mo)"), unless the task keeps a
   // separate Slow-mo button (slowMo.separateButton). The run shortcut, a Code Arrange board's Run
@@ -399,7 +422,7 @@ export default function StudentWorkspace({
                     {cs.runningTests ? 'Running tests...' : 'Run Tests'}
                   </button>
                 )}
-                {!cs.running && <PredictRunLockNote lock={runLock} />}
+                {!cs.running && <PredictRunLockNote lock={runLock} onReveal={revealTags} />}
               </>
             )}
             <button
@@ -426,6 +449,18 @@ export default function StudentWorkspace({
       )}
       {/* setupNote, the puzzle's line counter and, after a pass, its par (src/shared/puzzle/). */}
       <PuzzleBar task={task} code={code} passed={!!outputProps.checkPassed} />
+      {tagsAbove && (
+        <TaskVariablesPanel
+          task={task}
+          panel={cs.variablesPanel}
+          synced={variablesSynced}
+          code={code}
+          running={cs.running}
+          placement="above"
+          style={s.variablesAbove}
+          {...variableLinks.panel}
+        />
+      )}
       <PythonEditor
         code={code}
         readOnly={readOnly}
@@ -555,7 +590,7 @@ export default function StudentWorkspace({
         outputPanel
       )}
       {testResultsPanel}
-      {variablesPanel}
+      {!tagsAbove && variablesPanel}
     </div>
   )
 
@@ -608,7 +643,7 @@ export default function StudentWorkspace({
     body = (
       <div style={s.mobileStack}>
         {editor}
-        {variablesPanel}
+        {!tagsAbove && variablesPanel}
       </div>
     )
   } else if (layout === 'below') {
@@ -689,6 +724,8 @@ const s = {
     gap: 8,
   },
   variablesPanel: { flex: '0 1 auto', maxHeight: '55%' },
+  // Predict tags above the code: never more than about half the editor pane, scrolling inside.
+  variablesAbove: { flex: '0 0 auto', maxHeight: '45%', marginBottom: 6 },
   // The Python Stage beside or above the console (src/shared/stage/StagePane.jsx).
   stageRow: { display: 'flex', flexDirection: 'row', gap: 8, flex: 1, minHeight: 0 },
   stageColumn: { display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0 },

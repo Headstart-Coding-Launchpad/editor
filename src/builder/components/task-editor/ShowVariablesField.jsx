@@ -190,6 +190,20 @@ export default function ShowVariablesField({ task, onUpdate }) {
                   />
                   Students fill in every prediction before their first Run
                 </label>
+                <label className="te-check-toggle" style={{ alignSelf: 'flex-start' }}>
+                  <input
+                    type="checkbox"
+                    checked={config.placement === 'above'}
+                    onChange={(e) =>
+                      onUpdate(
+                        updateShowVariables(task, {
+                          placement: e.target.checked ? 'above' : 'side',
+                        })
+                      )
+                    }
+                  />
+                  Show the predictions above the code until the first Run
+                </label>
               </>
             )}
             {mode === 'target' && (

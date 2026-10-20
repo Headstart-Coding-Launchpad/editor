@@ -319,6 +319,35 @@
   }
 }
 
+/* An empty predict tag waiting for the student's answer (before the first Run): a primary
+   border and a slow glow, so it is the first thing the eye lands on. Filled tags stop. */
+.ntp-tag.is-awaiting {
+  border-color: var(--colour-primary);
+  animation: ntp-await 2.4s ease-in-out infinite;
+}
+
+@keyframes ntp-await {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(98, 34, 204, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(98, 34, 204, 0.28);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ntp-tag.is-awaiting {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(98, 34, 204, 0.28);
+  }
+}
+
+/* Predict tags above the code (showVariables.placement: above), until the first Run. */
+.ntp--above {
+  border-color: var(--colour-primary);
+}
+
 /* Step-by-step playback (Python slow-mo): earlier values, struck through, newest first. Fast
    playback turns the pulse off (.ntp--still) so a tag never flashes 3 or more times a second. */
 .ntp--still .ntp-tag.is-changed {

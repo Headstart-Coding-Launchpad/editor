@@ -112,6 +112,23 @@ describe('validateShowVariables lockRun (P6-18)', () => {
   })
 })
 
+describe('validateShowVariables placement', () => {
+  it('accepts side or above in predict mode', () => {
+    expect(run({ showVariables: { mode: 'predict', predict: ['a'], placement: 'above' } })).toEqual(
+      { errors: [], warnings: [] }
+    )
+  })
+
+  it('rejects another value, and warns outside predict mode', () => {
+    expect(
+      run({ showVariables: { mode: 'predict', predict: ['a'], placement: 'top' } }).errors
+    ).toEqual(['Task 1 has showVariables placement "top" — use one of: side, above'])
+    expect(run({ showVariables: { mode: 'view', placement: 'above' } }).warnings).toEqual([
+      'Task 1 has showVariables placement but its mode is not predict — only predict tags move above the code, so it is ignored',
+    ])
+  })
+})
+
 describe('validateVariablesPredictedCheck', () => {
   it('only allows modules with the panel, and Python names', () => {
     const python = getModuleDefinition('python')

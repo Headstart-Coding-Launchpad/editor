@@ -281,7 +281,15 @@ export default function StudentWorkspace({
                 'Run'
               )}
             </button>
-            {!cs.running && <PredictRunLockNote lock={runLock} />}
+            {!cs.running && (
+              <PredictRunLockNote
+                lock={runLock}
+                // To the first empty tag: with tabs, open the Tags tab first.
+                onReveal={() => {
+                  if (tabbed && resultPanes.includes('tags')) result.select('tags')
+                }}
+              />
+            )}
             <button
               className="btn-ghost-outline"
               style={s.resetBtn}

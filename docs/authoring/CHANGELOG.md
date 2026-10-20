@@ -39,6 +39,19 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-20
 
+- **Predict tags above the code** (`showVariables.placement: above`, off by default). On a
+  Python predict task, the empty tags sit above the editor until the student's first Run, then
+  go back to their usual place with the ticks and crosses. On a tablet or small screen there's no
+  Tags tab until then, so the tags stay in view. On every predict task (Python and Turtle), each
+  empty tag the student can still fill now has a purple border and a slow glow (a still ring
+  with reduced motion). The words "Fill in your predictions first" beside a locked Run are now a
+  button that puts the cursor in the first empty tag, switching to the Tags tab if needed.
+  Builder: "Show the predictions above the code until the first Run". See
+  [python.md](python.md#name-tag-panel-showvariables).
+- Affects: python (placement), python + turtle (glow, lock button) · Existing lessons: no
+  changes needed; add `placement: above` to the first predict tasks of a lesson · Resolves:
+  authoring-requests/2026-10-20-predict-mode-show-the-predict-tags-above-the-code-until-pred.md
+
 - **Click a True or False to flip it** (`scrub.booleans`, on by default; P6-31). On a task with
   `scrub`, every `True` and `False` in code gets the dashed "you can change this" box; one click
   or tap (or Alt+Enter) flips it and redraws the Stage like a drag, and `checkOnRelease` runs

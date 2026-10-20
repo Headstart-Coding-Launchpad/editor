@@ -13,6 +13,7 @@ import {
   describeVariable,
   formatValue,
   getShowVariables,
+  predictTagsAbove,
   readSyncedVariables,
   typeLabel,
   variableCaptureOptions,
@@ -45,6 +46,7 @@ describe('getShowVariables', () => {
       visuals: true,
       stageLists: 'size',
       lockRun: false,
+      placement: 'side',
       link: true,
     })
     expect(
@@ -63,6 +65,7 @@ describe('getShowVariables', () => {
       visuals: true,
       stageLists: 'size',
       lockRun: true,
+      placement: 'side',
       link: true,
     })
     expect(
@@ -462,5 +465,34 @@ describe("predict mode's Run lock (getPredictRunLock, P6-18)", () => {
     expect(getPredictRunLock({ id: 7, showVariables: { mode: 'view' } }, null)).toBeNull()
     expect(getPredictRunLock({ id: 7, showVariables: { mode: 'predict' } }, null)).toBeNull()
     expect(getPredictRunLock({ id: 7 }, null)).toBeNull()
+  })
+})
+
+describe('predictTagsAbove (showVariables.placement: above)', () => {
+  const task = { id: 7, showVariables: { mode: 'predict', predict: ['coins'], placement: 'above' } }
+
+  it('shows the tags above the code until the first Run', () => {
+    expect(getShowVariables(task).placement).toBe('above')
+    expect(predictTagsAbove(task)).toBe(true)
+    expect(predictTagsAbove(task, { predictions: { taskId: 7, values: { coins: '3' } } })).toBe(
+      true
+    )
+    expect(predictTagsAbove(task, { run: { taskId: 7 } })).toBe(false)
+    // A reload loses the run but keeps `ran`.
+    expect(predictTagsAbove(task, { predictions: { taskId: '7', ran: true } })).toBe(false)
+    // Another task's `ran` doesn't count.
+    expect(predictTagsAbove(task, { predictions: { taskId: 8, ran: true } })).toBe(true)
+  })
+
+  it('is off by default, outside predict mode, and with nothing to predict', () => {
+    expect(predictTagsAbove({ id: 7, showVariables: { mode: 'predict', predict: ['a'] } })).toBe(
+      false
+    )
+    const view = { id: 7, showVariables: { mode: 'view', placement: 'above' } }
+    expect(getShowVariables(view).placement).toBe('side')
+    expect(predictTagsAbove(view)).toBe(false)
+    expect(
+      predictTagsAbove({ id: 7, showVariables: { mode: 'predict', placement: 'above' } })
+    ).toBe(false)
   })
 })

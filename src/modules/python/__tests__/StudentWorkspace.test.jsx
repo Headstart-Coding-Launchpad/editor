@@ -500,6 +500,53 @@ describe("Python StudentWorkspace predict mode's Run lock (P6-18)", () => {
   })
 })
 
+describe('Python StudentWorkspace predict tags above the code (placement: above)', () => {
+  const task = {
+    id: 1,
+    showVariables: { mode: 'predict', predict: ['coins'], placement: 'above' },
+  }
+  const panel = (extra = {}) => ({
+    run: null,
+    predictions: { taskId: 1, values: {} },
+    setPrediction: vi.fn(),
+    commitPredictions: vi.fn(),
+    ...extra,
+  })
+  const isBefore = (a, b) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+
+  afterEach(() => {
+    layoutState.layout = null
+  })
+
+  it('puts the tags above the editor until the first Run, with no Tags tab', () => {
+    layoutState.layout = 'tabs'
+    const { container } = render(
+      <StudentWorkspace task={task} cs={{ ...cs, variablesPanel: panel() }} isMobile={false} />
+    )
+    const tags = container.querySelector('.ntp')
+    expect(tags).toHaveClass('ntp--above')
+    expect(isBefore(tags, screen.getByText('python-editor'))).toBe(true)
+    expect(container.querySelectorAll('.ntp')).toHaveLength(1)
+    expect(screen.queryByRole('tab', { name: /Tags/ })).toBeNull()
+  })
+
+  it('goes back to its usual place after the first Run', () => {
+    const { container } = render(
+      <StudentWorkspace
+        task={task}
+        cs={{
+          ...cs,
+          variablesPanel: panel({ predictions: { taskId: 1, values: { coins: '3' }, ran: true } }),
+        }}
+        isMobile={false}
+      />
+    )
+    const tags = container.querySelector('.ntp')
+    expect(tags).not.toHaveClass('ntp--above')
+    expect(isBefore(screen.getByText('python-editor'), tags)).toBe(true)
+  })
+})
+
 describe('Python StudentWorkspace line hints', () => {
   const hintTask = {
     lineHintSets: [{ file: null, hints: [{ line: 1, text: 'Write your print() line here' }] }],
