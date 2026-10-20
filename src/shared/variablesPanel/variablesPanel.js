@@ -22,13 +22,16 @@ export const SHOW_VARIABLES_AT = Object.freeze(['end', 'marker'])
 // How a list the Stage's grid() drew shows (showVariables.stageLists; see visuals.js).
 export const STAGE_LISTS_OPTIONS = Object.freeze(['picture', 'tiles', 'size'])
 export const DEFAULT_STAGE_LISTS = 'size'
+// Where predict mode's tags sit until the first Run (showVariables.placement): in the panel's
+// usual place (side), or above the code (above), so they are the first thing the eye lands on.
+export const SHOW_VARIABLES_PLACEMENTS = Object.freeze(['side', 'above'])
 
 // The task field, as python and turtle declare it in their definitions' taskFields.
 export const SHOW_VARIABLES_TASK_FIELD = Object.freeze({
   name: 'showVariables',
   type: 'object',
   description:
-    "Name-tag panel showing what is in the variables after Run (off unless set): { mode: view | predict | target, at: end | marker (the #@peek line), hide: [names], predict: [names, or { name, answer: boolean | number | text, choices: [values] }] (predict mode), predictType: [names, or { name, choices: [type labels] }] (predict mode: the student picks each one's type, not its value), target: { name: value } (target mode), visuals: true | false (lists and dicts drawn as swatches, bars, pictures and cards; default true), stageLists: picture | tiles | size (how a list drawn with grid() shows; default size), lockRun: true | false (predict mode: Run waits until every prediction is in, until the first Run; default true), link: true | false (each tag and its variable in the code share a colour and a number; default true) }.",
+    "Name-tag panel showing what is in the variables after Run (off unless set): { mode: view | predict | target, at: end | marker (the #@peek line), hide: [names], predict: [names, or { name, answer: boolean | number | text, choices: [values] }] (predict mode), predictType: [names, or { name, choices: [type labels] }] (predict mode: the student picks each one's type, not its value), target: { name: value } (target mode), visuals: true | false (lists and dicts drawn as swatches, bars, pictures and cards; default true), stageLists: picture | tiles | size (how a list drawn with grid() shows; default size), lockRun: true | false (predict mode: Run waits until every prediction is in, until the first Run; default true), placement: side | above (predict mode, Python: above shows the tags above the code until the first Run, then in their usual place; default side), link: true | false (each tag and its variable in the code share a colour and a number; default true) }.",
 })
 
 // Python names (identifiers), for author-given names.
@@ -119,7 +122,8 @@ function typeChoicesOf(entry) {
  * names whose type is predicted) and `typeChoices` (`{ name: [type labels] }`) are only kept in
  * predict mode, and `target` only in target mode.
  * `visuals` is false only when the task says so; `stageLists` is picture | tiles | size (default
- * size). `lockRun` is true only in predict mode, unless the task turns it off. `link` (each tag
+ * size). `lockRun` is true only in predict mode, unless the task turns it off. `placement` is
+ * 'above' only in predict mode when the task says so, else 'side'. `link` (each tag
  * and its variable in the code share a colour and a number, ./links.js) is true unless the task
  * turns it off.
  */
@@ -143,11 +147,33 @@ export function getShowVariables(task) {
     visuals: raw.visuals !== false,
     stageLists: STAGE_LISTS_OPTIONS.includes(raw.stageLists) ? raw.stageLists : DEFAULT_STAGE_LISTS,
     lockRun: mode === 'predict' && raw.lockRun !== false,
+    placement: mode === 'predict' && raw.placement === 'above' ? 'above' : 'side',
     link: raw.link !== false,
   }
 }
 
+/**
+ * Whether a predict task's tags show above the code right now (`showVariables.placement:
+ * above`): until the first Run of the task, then they go back to the panel's usual place with
+ * their ticks and crosses. `run` is the panel's run for this task (panelRunForTask) and
+ * `predictions` the student's prediction state (its `ran` survives a reload, a run doesn't).
+ */
+export function predictTagsAbove(task, { run = null, predictions = null } = {}) {
+  const config = getShowVariables(task)
+  if (config?.placement !== 'above') return false
+  if (config.predict.length + config.predictType.length === 0) return false
+  if (run) return false
+  const own = predictions && String(predictions.taskId) === String(task?.id) ? predictions : null
+  return !own?.ran
+}
+
 export const PREDICT_RUN_LOCK_MESSAGE = 'Fill in your predictions first'
+
+// How a predictType tag is named in the Run lock's `missing` list and on its tag's
+// data-predict-tag (a value tag uses its plain name), so the lock can point at the tag.
+export function predictTypeTagKey(name) {
+  return `${name} (type)`
+}
 
 /**
  * Predict mode's Run lock (`showVariables.lockRun`, on by default): until the student's first
@@ -170,7 +196,7 @@ export function getPredictRunLock(task, predictions) {
     ...config.predict.filter((name) => !String(values[name] ?? '').trim()),
     ...config.predictType
       .filter((name) => !String(types[name] ?? '').trim())
-      .map((name) => `${name} (type)`),
+      .map(predictTypeTagKey),
   ]
   return missing.length > 0 ? { message: PREDICT_RUN_LOCK_MESSAGE, missing } : null
 }

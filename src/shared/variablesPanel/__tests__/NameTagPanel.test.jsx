@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import NameTagPanel from '../NameTagPanel.jsx'
 import TaskVariablesPanel from '../TaskVariablesPanel.jsx'
 import NameTagCardStrip from '../NameTagCardStrip.jsx'
+import PredictRunLockNote, { focusFirstMissingPrediction } from '../PredictRunLockNote.jsx'
 import { compactVariablesForSync } from '../variablesPanel.js'
 
 const int = (v) => ({ t: 'int', v })
@@ -464,5 +465,86 @@ describe('NameTagPanel linked tags (P6-19)', () => {
     )
     expect(container.querySelectorAll('.ntp-tag.has-link')).toHaveLength(1)
     expect(container.querySelector('.ntp-tag.is-link-active')).not.toBeNull()
+  })
+})
+
+describe('NameTagPanel empty predict tags (placement: above request)', () => {
+  const config = {
+    ...view,
+    mode: 'predict',
+    predict: ['coins', 'gems'],
+    answers: {},
+    predictType: ['age'],
+    typeChoices: { age: ['number', 'text'] },
+  }
+
+  it('highlights only the empty tags the student can still fill, before the run', () => {
+    const { container, rerender } = render(
+      <NameTagPanel
+        config={config}
+        predictions={{ values: { coins: '3' } }}
+        onPredictionChange={() => {}}
+        onTypePredictionChange={() => {}}
+      />
+    )
+    const awaiting = [...container.querySelectorAll('.is-awaiting')].map((el) =>
+      el.getAttribute('data-predict-tag')
+    )
+    expect(awaiting).toEqual(['gems', 'age (type)'])
+    // A tutor's read-only copy and a finished run never pulse.
+    rerender(<NameTagPanel config={config} predictions={{ values: {} }} readOnly />)
+    expect(container.querySelector('.is-awaiting')).toBeNull()
+    rerender(
+      <NameTagPanel
+        config={config}
+        run={runOf([['coins', int(3)]])}
+        predictions={{ values: {} }}
+        onPredictionChange={() => {}}
+        onTypePredictionChange={() => {}}
+      />
+    )
+    expect(container.querySelector('.is-awaiting')).toBeNull()
+  })
+
+  it('frames the panel when it sits above the code', () => {
+    const { container } = render(<NameTagPanel config={config} placement="above" />)
+    expect(container.querySelector('.ntp')).toHaveClass('ntp--above')
+  })
+
+  it("the lock note's button focuses the first empty tag", () => {
+    const onReveal = vi.fn()
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => cb())
+    render(
+      <>
+        <NameTagPanel
+          config={config}
+          predictions={{ values: { coins: '3' } }}
+          onPredictionChange={() => {}}
+          onTypePredictionChange={() => {}}
+        />
+        <PredictRunLockNote
+          lock={{ message: 'Fill in your predictions first', missing: ['gems', 'age (type)'] }}
+          onReveal={onReveal}
+        />
+      </>
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Fill in your predictions first/ }))
+    expect(onReveal).toHaveBeenCalledTimes(1)
+    expect(document.activeElement).toBe(screen.getByLabelText('gems'))
+    raf.mockRestore()
+  })
+
+  it('focusFirstMissingPrediction skips names with no tag on screen', () => {
+    render(
+      <NameTagPanel
+        config={config}
+        predictions={{ values: { coins: '3', gems: '1' } }}
+        onPredictionChange={() => {}}
+        onTypePredictionChange={() => {}}
+      />
+    )
+    expect(focusFirstMissingPrediction(['nowhere', 'age (type)'])).toBe(true)
+    expect(document.activeElement).toHaveTextContent('number')
+    expect(focusFirstMissingPrediction(['nowhere'])).toBe(false)
   })
 })

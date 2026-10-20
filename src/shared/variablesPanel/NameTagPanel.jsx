@@ -9,6 +9,7 @@ import {
   hiddenItemCount,
   isCollectionNode,
   nodeItems,
+  predictTypeTagKey,
   typeLabel,
   visibleVars,
   visualOptions,
@@ -55,6 +56,8 @@ const DICT_LIMIT = 8
  * - `audience`: 'student' (default) or 'tutor' (wording)
  * - `peekLine`: with `at: marker`, the line (as the editor numbers it) the values are shown
  *   just before — a "Values just before line N" header in every mode (getPanelPeekLine)
+ * - `placement`: 'above' when the predict tags sit above the code (predictTagsAbove), for its
+ *   framing; 'side' (default) otherwise
  * - `links`: linked tags (getVariableLinks in ./links.js): each linked tag gets its colour and
  *   number, as its variable does in the editor. `activeLink` is the name marked more strongly
  *   (from either side); `onLinkActive(name | null)` reports hovering, focusing or tapping a tag
@@ -80,6 +83,7 @@ export default function NameTagPanel({
   pulseKey = null,
   pulse = true,
   peekLine = null,
+  placement = 'side',
   links = null,
   activeLink = null,
   onLinkActive,
@@ -114,7 +118,7 @@ export default function NameTagPanel({
 
   return (
     <section
-      className={`ntp${pulse ? '' : ' ntp--still'}`}
+      className={`ntp${pulse ? '' : ' ntp--still'}${placement === 'above' ? ' ntp--above' : ''}`}
       aria-label="Variables"
       style={style}
       data-mode={config.mode}
@@ -362,6 +366,14 @@ function ValueTag({
   )
 }
 
+/**
+ * An empty predict tag the student can still fill, before the run shows the values: highlighted
+ * (.is-awaiting, a gentle pulse) so it is the first thing the eye lands on.
+ */
+function awaitingClass({ readOnly, revealed, value }) {
+  return !readOnly && !revealed && !String(value ?? '').trim() ? ' is-awaiting' : ''
+}
+
 function PredictTag({
   name,
   spec = null,
@@ -381,7 +393,11 @@ function PredictTag({
   const inputId = useId()
   const verdictId = useId()
   const verdictKnown = revealed && result !== null
-  const stateClass = verdictKnown ? (result ? ' is-right' : ' is-wrong') : ''
+  const stateClass = verdictKnown
+    ? result
+      ? ' is-right'
+      : ' is-wrong'
+    : awaitingClass({ readOnly, revealed, value })
   // True / False and choices are buttons, named by their group (no input to label).
   const usesButtons =
     (Array.isArray(spec?.choices) && spec.choices.length > 0) || spec?.answer === 'boolean'
@@ -390,6 +406,7 @@ function PredictTag({
       className={`ntp-tag ntp-tag--predict${stateClass}${linked.className}`}
       style={linked.style}
       data-answer={spec?.choices ? 'choices' : (spec?.answer ?? 'free')}
+      data-predict-tag={name}
       {...linked.handlers}
     >
       <TagTop
@@ -477,13 +494,18 @@ function PredictTypeTag({
   const linked = tagLinkProps({ name, link, linkActive, onLinkActive })
   const verdictId = useId()
   const verdictKnown = revealed && result !== null
-  const stateClass = verdictKnown ? (result ? ' is-right' : ' is-wrong') : ''
+  const stateClass = verdictKnown
+    ? result
+      ? ' is-right'
+      : ' is-wrong'
+    : awaitingClass({ readOnly, revealed, value })
   const labels = Array.isArray(choices) && choices.length > 0 ? choices : []
   return (
     <li
       className={`ntp-tag ntp-tag--predict ntp-tag--predict-type${stateClass}${linked.className}`}
       style={linked.style}
       data-answer="type"
+      data-predict-tag={predictTypeTagKey(name)}
       {...linked.handlers}
     >
       <TagTop

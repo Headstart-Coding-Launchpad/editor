@@ -83,6 +83,8 @@ export function updateShowVariables(task, patch) {
   if (next.stageLists == null || next.stageLists === 'size') delete next.stageLists
   // lockRun is only written to turn predict mode's Run lock off.
   if (next.mode !== 'predict' || next.lockRun !== false) delete next.lockRun
+  // placement is only written to move predict tags above the code.
+  if (next.mode !== 'predict' || next.placement !== 'above') delete next.placement
   let updated = { ...task, showVariables: next }
   // Each prediction check's names follow its list; outside predict mode the checks go.
   for (const [type, field] of [

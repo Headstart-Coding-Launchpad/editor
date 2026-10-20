@@ -7,6 +7,7 @@ import {
   PREDICT_TYPE_LABELS,
   SHOW_VARIABLES_AT,
   SHOW_VARIABLES_MODES,
+  SHOW_VARIABLES_PLACEMENTS,
   STAGE_LISTS_OPTIONS,
   VARIABLE_NAME_PATTERN,
   getShowVariables,
@@ -144,6 +145,15 @@ export function validateShowVariables(task, n, errors, warnings = []) {
   if (raw.lockRun != null && raw.mode !== 'predict') {
     warnings.push(
       `Task ${n} has showVariables lockRun but its mode is not predict — only predict mode locks Run, so it is ignored`
+    )
+  }
+  if (raw.placement != null && !SHOW_VARIABLES_PLACEMENTS.includes(raw.placement)) {
+    errors.push(
+      `Task ${n} has showVariables placement "${raw.placement}" — use one of: ${SHOW_VARIABLES_PLACEMENTS.join(', ')}`
+    )
+  } else if (raw.placement != null && raw.mode !== 'predict') {
+    warnings.push(
+      `Task ${n} has showVariables placement but its mode is not predict — only predict tags move above the code, so it is ignored`
     )
   }
   if (raw.stageLists != null && !STAGE_LISTS_OPTIONS.includes(raw.stageLists)) {

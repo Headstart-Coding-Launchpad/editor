@@ -21,6 +21,8 @@ import {
  * `links` / `activeLink` / `onLinkActive`: linked tags (./links.js), as NameTagPanel takes them;
  * the workspace builds them so the editor beside it marks the same names.
  *
+ * `placement`: 'above' while a predict task's tags sit above the code (predictTagsAbove).
+ *
  * `hidden` covers the views with no panel data (a previous task's saved code, the tutor
  * editing the student's code).
  */
@@ -32,6 +34,7 @@ export default function TaskVariablesPanel({
   running = false,
   audience = 'student',
   hidden = false,
+  placement = 'side',
   links = null,
   activeLink = null,
   onLinkActive,
@@ -54,6 +57,7 @@ export default function TaskVariablesPanel({
         peekLine={peekLine}
         readOnly
         audience={audience}
+        placement={placement}
         links={links}
         activeLink={activeLink}
         onLinkActive={onLinkActive}
@@ -73,6 +77,7 @@ export default function TaskVariablesPanel({
       onTypePredictionChange={panel?.setTypePrediction}
       running={running}
       audience={audience}
+      placement={placement}
       links={links}
       activeLink={activeLink}
       onLinkActive={onLinkActive}
