@@ -5,7 +5,7 @@
 There are two kinds of shot:
 
 - **Student views** (`--view student`, the default) render the task on its own, with no session. The lesson is handed straight to the page, so **Drafts work** and nothing is written to Firebase: no session, solo log, progress or saved code.
-- **Session views** (`student-live`, `tutor`, `tutor-grid`, `student-modal`, `shared-work`) need a real live session. The command copies the lesson to a throwaway Draft (`[Screenshot] <title>`, id `shot-…`), the test tutor runs a session on it with made-up `Test …` students, and afterwards the copy, its session reports and its live-session data are deleted, even when a shot fails. The real lesson's sessions and reports are never touched.
+- **Session views** (`student-live`, `tutor`, `tutor-grid`, `student-modal`, `shared-work`) need a real live session. The command copies the lesson to a throwaway Draft (`[Screenshot] <title>`, id `shot-…`), the test tutor runs a session on it with made-up `Test …` students, and afterwards the copy, its session reports, the share links its End Session made and its live-session data are deleted, even when a shot fails. The real lesson's sessions and reports are never touched.
 
 ## Requirements
 

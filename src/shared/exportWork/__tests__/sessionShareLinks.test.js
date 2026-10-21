@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { studentShareKey } from '../shareLink.js'
 import { makeSessionShareLinks, sessionStudents, withTimeout } from '../sessionShareLinks.js'
+import { exportableTasks } from '../collect.js'
 
 const lesson = {
   id: 'L1',
@@ -119,5 +120,23 @@ describe('withTimeout', () => {
     vi.advanceTimersByTime(100)
     await expect(pending).resolves.toBe('late')
     vi.useRealTimers()
+  })
+})
+
+describe('exportableTasks', () => {
+  it('expands groups, so grouped lessons get links too', () => {
+    const grouped = {
+      ...lesson,
+      tasks: [
+        { id: 1, title: 'First', taskType: 'code' },
+        {
+          type: 'group',
+          id: 'g1',
+          title: 'Group',
+          subtasks: [{ id: 21, title: 'Inside', taskType: 'code' }],
+        },
+      ],
+    }
+    expect(exportableTasks(grouped, {}, () => true).map((c) => c.task.id)).toEqual([1, 21])
   })
 })
