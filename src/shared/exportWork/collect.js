@@ -7,7 +7,7 @@
 // UI hook; see ./exporters.js), so this file never compares lesson types.
 import { realAttemptEntries } from '../autoCheck.js'
 import { getEffectiveLessonForTask } from '../composedLesson.js'
-import { deriveTaskContext } from '../taskUtils.js'
+import { deriveTaskContext, flattenTasks } from '../taskUtils.js'
 
 function attemptTime(entry) {
   return typeof entry?.loggedAt === 'number' ? entry.loggedAt : 0
@@ -34,11 +34,11 @@ export function latestSubmission(session, anonymousId, taskId, { realOnly = fals
 }
 
 /**
- * The tasks an export can cover, in lesson order: code tasks whose module has an exporter.
- * `hasExporter(type)` answers from the module registry.
+ * The tasks an export can cover, in lesson order: code tasks whose module has an exporter,
+ * with groups expanded to their subtasks. `hasExporter(type)` answers from the module registry.
  */
 export function exportableTasks(lesson, session, hasExporter) {
-  return (lesson?.tasks ?? [])
+  return flattenTasks(lesson?.tasks ?? [])
     .map((task) => {
       const taskLesson = getEffectiveLessonForTask(lesson, task)
       // The task's own context, not the session sandbox's: a sandbox parks on a task.

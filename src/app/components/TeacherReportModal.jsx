@@ -9,6 +9,7 @@ import {
   TeacherSandboxSection,
 } from './ReportBadgeSections'
 import ReportPollsSection from './polls/ReportPollsSection'
+import ReportShareLinksSection from './ReportShareLinksSection'
 import { reportConfidenceScale } from '../../shared/confidenceScale'
 import {
   formatErrorStudents,
@@ -415,6 +416,8 @@ export default function TeacherReportModal({
               />
             </section>
           ) : null}
+
+          <ReportShareLinksSection report={displayReport} />
 
           <CodingMomentsSection report={displayReport} />
 

@@ -180,6 +180,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `quiz/ShownResponsesWall.jsx` | Presentation-only grid of the short answers the teacher picked to show (`getShownResponses` in `src/shared/shownResponses.js`), names only where turned on |
 | `polls/PollResultBars.jsx` | Horizontal result bars (`{ index, text, count }` options, percent of votes, the viewer's own answer highlighted), shared by the teacher tally, student card, presentation and report |
 | `polls/ReportPollsSection.jsx` | The session report's "Class polls" section (`report.polls`), rendered in `TeacherReportModal` (so also the Reports panel and Admin) |
+| `ReportShareLinksSection.jsx` | The session report's "Share links for parents" section (`report.shareLinks`, made at End Session): Open, Copy, Copy all and Revoke per link, labelled by `studentKey` → `studentLabel`; rendered in `TeacherReportModal` |
 | `InformationTask.jsx` | Read-only information/introduction task rendering for lesson flow; `informationType: badges` renders `BadgeSummaryTask` with the `badgeWall` prop (`{ decisions, students, viewerId, variant }`) |
 | `LessonCompleteScreen.jsx` | "Lesson complete!" screen shown after Next off the last task in solo mode, with an Open Playground button for playground-supported lesson types — see `docs/agents/classroom-behaviours.md` |
 | `CollapsiblePanelControls.jsx` | Shared collapse/expand tab controls for classroom and builder panels |
@@ -727,7 +728,8 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs
 | `exportWork/naming.js` | Pure file names: `exportFileStem` (`Title_YYYY-MM-DD`, first name only when asked), `slugifyTitle`, `firstNameForFile`, `uniqueFileName` |
 | `exportWork/zip.js` | `toZipEntries` (safe relative paths, repeats renamed) and `buildZip` (fflate via dynamic `import()`) |
 | `exportWork/pictures.js` | Browser: `makeCanvas`, `canvasToPngBytes`, CORS-safe `fetchBytes` / `loadImage`, `svgToPngBytes`, `downloadFile` |
-| `exportWork/shareLink.js`, `exportWork/shareService.js` | Share links: pure helpers (`SHARE_TTL_DAYS` 30, `MAX_SHARE_PAYLOAD_BYTES` 900 KB, `checkSharePayload`, `isShareLive`, `shareStatus`, `shareDaysLeft`, `randomShareId`, `shareUrl`) and Firestore `sharedWork` calls (`createShareLink`, `revokeShareLink`, `loadShareLink`, `listShareLinks`) |
+| `exportWork/shareLink.js`, `exportWork/shareService.js` | Share links: pure helpers (`SHARE_TTL_DAYS` 30, `MAX_SHARE_PAYLOAD_BYTES` 900 KB, `checkSharePayload`, `isShareLive`, `shareStatus`, `shareDaysLeft`, `randomShareId`, `shareUrl`, `studentShareKey`) and Firestore `sharedWork` calls (`createShareLink`, `revokeShareLink`, `loadShareLink`, `listShareLinks`) |
+| `exportWork/sessionShareLinks.js` | Share links made for every student at End Session (request #77): `makeSessionShareLinks` (one link per student with work, last task with work, via the Export work exporters and `createShareLink`), `sessionStudents`, `withTimeout`; called from `handleEndSession` in `TeacherView.jsx`, saved as `report.shareLinks` |
 | `exportWork/ShareParts.jsx` | Read-only pieces for module share viewers: `ShareCode`, `ShareOutput`, `SharePanel`, `shareStyles` |
 | `AssetBrowser.jsx` | Read-only lesson asset browser: file tree, click-to-copy paths, image hover preview |
 | `AssetImagePreview.jsx` | Shared asset image thumbnail and preview presentation |

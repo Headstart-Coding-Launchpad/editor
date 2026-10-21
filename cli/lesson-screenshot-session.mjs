@@ -121,6 +121,17 @@ async function removeThrowawayLesson(db, id, env, log) {
   } catch (e) {
     problems.push(e.message)
   }
+  // Ending the session made a share link per Test student (request #77); they go too.
+  try {
+    const reports = await db.collection('lessons').doc(id).collection('sessionReports').get()
+    for (const report of reports.docs) {
+      for (const link of report.data().shareLinks ?? []) {
+        if (link?.shareId) await db.collection('sharedWork').doc(link.shareId).delete()
+      }
+    }
+  } catch (e) {
+    problems.push(`share links: ${e.message}`)
+  }
   await db.recursiveDelete(db.collection('lessons').doc(id))
   if (problems.length) log(`! cleanup of ${id} left: ${problems.join('; ')}`)
   else log(`Removed the throwaway copy ${id}`)

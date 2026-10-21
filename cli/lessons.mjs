@@ -530,3 +530,62 @@ export async function publishYamlLesson(yamlText, includeLesson = false) {
   if (includeLesson && result.success) result.lesson = lesson
   return result
 }
+
+// Share links made for every student at End Session (request #77): read from the session
+// reports (`shareLinks`), never the share documents. Anonymous: a stable studentKey per child,
+// no names. `--since` scans every lesson's reports that started on or after that date.
+const SHARE_LINK_REPORT_FIELDS = ['lessonId', 'lessonTitle', 'sessionId', 'startedAt', 'shareLinks']
+
+function isoOrNull(ms) {
+  return typeof ms === 'number' && Number.isFinite(ms) ? new Date(ms).toISOString() : null
+}
+
+export function shareLinksFromReports(reports) {
+  return reports
+    .filter((report) => Array.isArray(report.shareLinks) && report.shareLinks.length > 0)
+    .sort((a, b) => (a.startedAt ?? 0) - (b.startedAt ?? 0))
+    .map((report) => {
+      const made = report.shareLinks.filter((link) => link?.url)
+      return {
+        lessonId: report.lessonId,
+        lessonTitle: report.lessonTitle ?? null,
+        sessionId: report.sessionId,
+        sessionStartedAt: isoOrNull(report.startedAt),
+        links: made.map((link) => ({
+          studentKey: link.studentKey,
+          kind: link.kind,
+          taskTitle: link.taskTitle ?? null,
+          url: link.url,
+          expiresAt: isoOrNull(link.expiresAt),
+        })),
+        ...(made.length < report.shareLinks.length
+          ? { notMade: report.shareLinks.length - made.length }
+          : {}),
+      }
+    })
+}
+
+export async function getSessionShareLinks({ lessonId, session, since } = {}) {
+  const sinceMs = since != null ? Date.parse(since) : null
+  if (since != null && !Number.isFinite(sinceMs)) throw new Error(`Bad --since date '${since}'`)
+  if (!lessonId && sinceMs == null) throw new Error('Give a lesson id or --since <date>')
+  const lessonIds = lessonId
+    ? [lessonId]
+    : (await db.collection('lessons').select().get()).docs.map((doc) => doc.id)
+  const reports = (
+    await Promise.all(
+      lessonIds.map(async (id) => {
+        const col = db.collection('lessons').doc(id).collection('sessionReports')
+        if (session != null) {
+          const snap = await col.doc(String(session)).get()
+          return snap.exists ? [{ lessonId: id, ...snap.data() }] : []
+        }
+        let q = col.select(...SHARE_LINK_REPORT_FIELDS)
+        if (sinceMs != null) q = q.where('startedAt', '>=', sinceMs)
+        const snap = await q.get()
+        return snap.docs.map((doc) => ({ lessonId: id, sessionId: doc.id, ...doc.data() }))
+      })
+    )
+  ).flat()
+  return shareLinksFromReports(reports)
+}

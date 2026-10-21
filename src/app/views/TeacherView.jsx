@@ -97,6 +97,15 @@ import {
   setSessionClass,
   unmatchStudent,
 } from '../../shared/roster/rosterService'
+import { hasExporter, loadExporters } from '../../shared/exportWork/exporters.js'
+import { exportableTasks } from '../../shared/exportWork/collect.js'
+import { shareUrl } from '../../shared/exportWork/shareLink.js'
+import { createShareLink } from '../../shared/exportWork/shareService.js'
+import {
+  SESSION_SHARE_TIMEOUT_MS,
+  makeSessionShareLinks,
+  withTimeout,
+} from '../../shared/exportWork/sessionShareLinks.js'
 
 function canRecordAdvanceOverride(task) {
   if (!task || task.taskType === 'information') return false
@@ -581,6 +590,21 @@ export default function TeacherView({ lessonId }) {
     }
   }
 
+  async function endSessionShareLinks() {
+    const candidates = exportableTasks(lesson, session, hasExporter)
+    if (!candidates.length || !user?.uid) return []
+    const exporters = await loadExporters(candidates.map((c) => c.moduleType))
+    return makeSessionShareLinks({
+      lesson,
+      session,
+      uid: user.uid,
+      hasExporter,
+      getExporter: (type) => exporters[type],
+      create: createShareLink,
+      urlFor: (id) => shareUrl(id, { base: import.meta.env.BASE_URL }),
+    })
+  }
+
   async function handleEndSession(goHome) {
     // The teacher-sandbox archive is read before the report is built, and the report is saved
     // before endSession wipes the live data. A failed archive read leaves the sandbox out rather
@@ -592,6 +616,14 @@ export default function TeacherView({ lessonId }) {
       const sessionArchive = await readSessionArchive({ endedAt: Date.now() }).catch(() => null)
       const peerHelpLog = await peerHelp.readPeerHelpForReport().catch(() => null)
       report = buildSessionReport(sessionReportInputs(sessionArchive, peerHelpLog))
+      // A share link per student for parents (request #77), made from the live work before
+      // endSession wipes it. A failure or a slow write never stops the session ending.
+      const shareLinks = await withTimeout(
+        endSessionShareLinks().catch(() => []),
+        SESSION_SHARE_TIMEOUT_MS,
+        []
+      )
+      if (shareLinks.length) report = { ...report, shareLinks }
     }
     if (report) await saveSessionReport(lessonId, report.sessionId, report)
     await endSession()

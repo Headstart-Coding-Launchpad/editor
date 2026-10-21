@@ -22,7 +22,8 @@ reads reports.
   and lesson feedback.
 - **Exported** to YAML only from the web app: the report modal after **End Session**, or Teacher
   view → session menu → **Reports** → open a report, then **Export YAML** (`reportToYamlText`, via `TeacherReportModal.jsx`). There is no CLI command that reads or
-  exports reports.
+  exports whole reports; `sessions share-links` reads only the share links
+  ([Share links](#share-links)).
 - **Never regenerated.** A report is a snapshot written once (plus the optional teacher feedback
   added straight after). Older reports permanently lack fields added after they were written: use
   the **Added** dates below, and treat a missing field as "not recorded", never as zero.
@@ -67,6 +68,7 @@ each student's `tasks[]`, even when nobody attempted it.
 | `shortcutSummary` | `{ <shortcutId>: <number of students who used it> }` for the Keyboard Wizard shortcuts. | Omitted when nobody used one | 2026-09-30 |
 | `polls[]` | The teacher's live class polls, oldest first ([polls](#polls)). | Omitted when the teacher ran no poll | 2026-10-01 |
 | `peerHelp[]` | Every peer help request: who helped whom (as student labels) and everything sent ([peerHelp](#peerhelp)). | Omitted when nobody asked for peer help | 2026-10-02 |
+| `shareLinks[]` | Share links for parents made at End Session ([Share links](#share-links)). | Omitted when no student had code work to share (and on reports before 2026-10-21) | 2026-10-21 |
 | `sizeNote` | Plain-text note saying sandbox code was left out to fit the 1 MiB limit. | Only on a trimmed report | 2026-09-30 |
 | `teacherFeedback` | The teacher's end-of-session rating and notes ([Teacher feedback](#teacher-feedback)). | Omitted unless the teacher saved some | 2026-09-01 |
 
@@ -79,6 +81,7 @@ signals, or a teacher-sandbox snapshot.
 | Path | Meaning | Present | Added |
 |---|---|---|---|
 | `students[].studentLabel` | `Student N`. | Always | 2026-07-16 |
+| `students[].studentKey` | A stable anonymous key (`s_…`, a one-way hash of the device id): the same child on the same device gets the same key in every session, so links and results can be matched across sessions without names. A child on a new device or with a cleared browser gets a new key. | Always (reports from 2026-10-21) | 2026-10-21 |
 | `students[].joinedAt` | When the student first joined (ms, the student's clock). Written once and never overwritten by a later name entry or reload. | Omitted when unknown (sessions before 2026-10-01, or a student the teacher removed) | 2026-10-01 |
 | `students[].joinedAfterMs` | `joinedAt` minus the session's `startedAt`, clamped to 0 for a waiting-room join. Compares the student's clock with the teacher's, so allow for a little skew. | Omitted when `joinedAt` or `startedAt` is unknown | 2026-10-01 |
 | `students[].joinedAtTaskId` | The class's current task when the student first joined. Untouched tasks before it mean "not present yet", not "skipped". | Omitted when `joinedAt` is unknown | 2026-10-01 |
@@ -548,6 +551,37 @@ before that from the in-lesson Feedback button), plus platform feedback. Those i
 `archived` flag, are not tied to a session run, and can be added and archived from the CLI.
 Report feedback (`teacherFeedback`, `teacherRating`) is rated, lives only inside the report, is
 never archived, and is only visible through the exported report YAML.
+
+## Share links
+
+When the tutor ends a live session (End Session, or End & Go to Home), LaunchPad makes one
+read-only share link per student who has code work (Python, Scratch, Turtle, web page or any
+module with an Export work exporter), for the **last task in lesson order with work**: the live
+work on the current task, otherwise the latest submission. It is the same name-hidden snapshot
+as Export work's share link (`sharedWork/{id}`, 30 days, revocable). Nothing is sent anywhere.
+The report screen lists them under **Share links for parents** with Open, Copy, Revoke and
+**Copy all**; the Reports panel and Admin lesson panel show the same list.
+
+| Path | Meaning |
+|---|---|
+| `shareLinks[].studentKey` | The student's `studentKey` (matches `students[].studentKey`). |
+| `shareLinks[].kind` | The module type (`python`, `scratch`, `html`, …). |
+| `shareLinks[].taskId`, `taskTitle` | The task shared. |
+| `shareLinks[].shareId`, `url` | The share document id and its public URL. |
+| `shareLinks[].expiresAt` | When the link stops working (ms). |
+| `shareLinks[].error` | Instead of the fields above when that student's link couldn't be made (work too big, or the write failed). |
+
+Read them with the CLI (anonymous: `studentKey`, no names):
+
+```bash
+node cli/cli.mjs sessions share-links <lessonId> --yaml                 # every session of a lesson
+node cli/cli.mjs sessions share-links <lessonId> --session <sessionId>  # one session
+node cli/cli.mjs sessions share-links --since 2026-10-21 --yaml         # every lesson, since a date
+```
+
+Each row is `{ lessonId, lessonTitle, sessionId, sessionStartedAt, links: [{ studentKey, kind,
+taskTitle, url, expiresAt }], notMade? }`, oldest session first; `notMade` counts links that
+couldn't be made. Dates are ISO strings.
 
 ## Solo study log
 

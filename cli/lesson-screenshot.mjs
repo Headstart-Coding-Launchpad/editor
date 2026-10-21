@@ -89,6 +89,9 @@ async function settle(page, ms) {
 }
 
 export async function clickByName(page, name) {
+  // An open dialog's button first: "End Session" is both the header button and the confirm.
+  const inDialog = page.getByRole('dialog').last().getByRole('button', { name }).first()
+  if (await inDialog.isVisible().catch(() => false)) return inDialog.click({ timeout: 6000 })
   const byRole = page.getByRole('button', { name }).first()
   if (await byRole.isVisible().catch(() => false)) return byRole.click({ timeout: 6000 })
   const tab = page.getByRole('tab', { name }).first()

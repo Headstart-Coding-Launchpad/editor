@@ -43,8 +43,10 @@ import {
   buildLessonListRows,
   deleteLesson,
   getLesson,
+  getSessionShareLinks,
   listLessons,
   publishYamlLesson,
+  shareLinksFromReports,
   upsertLesson,
 } from './lessons.mjs'
 
@@ -369,5 +371,55 @@ describe('CLI lessonNumber', () => {
       ['good', 3],
       ['bad', null],
     ])
+  })
+})
+
+describe('CLI sessions share-links', () => {
+  const report = {
+    lessonId: 'L1',
+    lessonTitle: 'Name Tags',
+    sessionId: '1760976000000',
+    startedAt: 1760976000000,
+    shareLinks: [
+      {
+        studentKey: 's_abc',
+        kind: 'python',
+        taskId: 3,
+        taskTitle: 'Hello',
+        shareId: 'id1',
+        url: 'https://x/#/share/id1',
+        expiresAt: 1763568000000,
+      },
+      { studentKey: 's_def', error: 'too big' },
+    ],
+  }
+
+  it('lists made links with ISO dates and counts the ones not made', () => {
+    expect(shareLinksFromReports([report, { sessionId: 'old', startedAt: 1 }])).toEqual([
+      {
+        lessonId: 'L1',
+        lessonTitle: 'Name Tags',
+        sessionId: '1760976000000',
+        sessionStartedAt: '2025-10-20T16:00:00.000Z',
+        links: [
+          {
+            studentKey: 's_abc',
+            kind: 'python',
+            taskTitle: 'Hello',
+            url: 'https://x/#/share/id1',
+            expiresAt: '2025-11-19T16:00:00.000Z',
+          },
+        ],
+        notMade: 1,
+      },
+    ])
+  })
+
+  it('reads one session by id and needs a lesson or --since', async () => {
+    state.records.set('lessons/L1/sessionReports/1760976000000', report)
+    const rows = await getSessionShareLinks({ lessonId: 'L1', session: '1760976000000' })
+    expect(rows[0].links).toHaveLength(1)
+    await expect(getSessionShareLinks({})).rejects.toThrow(/lesson id or --since/)
+    await expect(getSessionShareLinks({ since: 'nope' })).rejects.toThrow(/Bad --since/)
   })
 })
