@@ -132,16 +132,15 @@ export const baseStyles = {
     fontWeight: 700,
     textTransform: 'uppercase',
   },
-  // Words wrap whole; code never breaks mid-word (`.quiz-option-text code` in index.css),
-  // which matters on a "spot the quote marks" question. The options shrink to fit first;
-  // a line still too long scrolls sideways (HSC Audit, Visual Review 06).
+  // Words wrap whole, and code keeps its spaces but wraps at them (`.quiz-option-text code`
+  // in index.css). No overflow:auto here: it put scroll bars on every answer and the shrink
+  // loop could not clear them (live report, 2026-10-20).
   optionText: {
     minWidth: 0,
     maxWidth: '100%',
     lineHeight: 1.35,
     whiteSpace: 'pre-wrap',
     overflowWrap: 'break-word',
-    overflowX: 'auto',
   },
   scratchOptionText: {
     flex: '1 1 0',
