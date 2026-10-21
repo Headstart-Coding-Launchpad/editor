@@ -45,6 +45,7 @@ import {
   taskPredictionFields,
   taskRunCountFields,
 } from './variablesPanel/predictionReport.js'
+import { studentShareKey } from './exportWork/shareLink.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
 
@@ -831,6 +832,8 @@ export function buildSessionReport({
 
     return {
       studentLabel: getAnonymousStudentLabel(index),
+      // Stable across sessions, never the device id (src/shared/exportWork/shareLink.js).
+      studentKey: studentShareKey(anonymousId),
       ...studentJoinFields(studentsSnapshot[anonymousId], session),
       ...studentBadgeFields({ session, studentId: anonymousId, timeline, catalogueBadges }),
       tasks: taskResults,

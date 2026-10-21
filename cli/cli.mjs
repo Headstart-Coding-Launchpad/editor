@@ -1526,6 +1526,25 @@ await yargs(hideBin(process.argv))
       .demandCommand(1, 'Specify a subcommand: list | upsert | delete')
       .help()
   )
+  // --- SESSIONS -------------------------------------------------------------
+
+  .command('sessions', 'Read what ended live sessions left behind', (yargs) =>
+    yargs
+      .command(
+        'share-links [lessonId]',
+        'Share links made for every student at End Session (no names; a stable studentKey per child)',
+        {
+          session: { type: 'string', describe: "Only this session (the report's sessionId)" },
+          since: { type: 'string', describe: 'Sessions started on or after this date, any lesson' },
+        },
+        cmd(async ({ lessonId, session, since }) => {
+          const { getSessionShareLinks } = await loadLessons()
+          print(await getSessionShareLinks({ lessonId, session, since }))
+        })
+      )
+      .demandCommand(1, 'Specify a subcommand: share-links')
+      .help()
+  )
   // --- CLASSES --------------------------------------------------------------
 
   .command('classes', 'Manage admin-only durable class records used for lesson forks', (yargs) =>

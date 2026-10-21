@@ -37,6 +37,17 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-21
+
+- **Share links for every student at End Session.** Ending a live session now makes one
+  name-hidden, read-only link per student with code work, for their last task with work (the
+  Export work share: 30 days, revocable). The report lists them under "Share links for parents"
+  (Copy, Copy all, Revoke). New report fields: `students[].studentKey` (stable anonymous key) and
+  `shareLinks[]`. New CLI: `sessions share-links [lessonId] [--session <id>] [--since <date>]`.
+  See [session-reports.md](session-reports.md#share-links). Nothing is sent anywhere.
+- Affects: cli, session reports, all code modules · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-10-18-share-links-built-for-every-student-at-the-end-of-each-sessi.md
+
 ## 2026-10-20
 
 - **Predict tags above the code** (`showVariables.placement: above`, off by default). On a

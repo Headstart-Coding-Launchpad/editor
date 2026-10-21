@@ -347,7 +347,7 @@ describe('buildSessionReport: live badges', () => {
     for (const key of ['quizGroups', 'teacherSandbox', 'badgeSummary', 'shortcutSummary']) {
       expect(report).not.toHaveProperty(key)
     }
-    expect(Object.keys(report.students[0])).toEqual(['studentLabel', 'tasks'])
+    expect(Object.keys(report.students[0])).toEqual(['studentLabel', 'studentKey', 'tasks'])
   })
 })
 
