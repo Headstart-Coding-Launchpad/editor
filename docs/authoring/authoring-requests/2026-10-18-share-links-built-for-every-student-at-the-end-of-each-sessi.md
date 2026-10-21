@@ -1,6 +1,6 @@
 # Share links built for every student at the end of each session, listed in the tutor view and CLI
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** tooling
 - **Requested by:** Ryan (approved by Ryan), 2026-10-18
 - **Lessons blocked:** none yet
@@ -59,7 +59,8 @@ From HSC Hub handoff 2026-10-16 'parents see their child's work through a link i
 
 ## Resolution
 
-Built on branch `feature/end-session-share-links` (2026-10-21), waiting on Ryan's merge OK.
+Shipped 2026-10-21: live on `main` (464672b9), checked end to end on the live site. Works on
+lessons with task groups too (bec42ea2).
 Links last 30 days (today's share setting); a per-child projects page can come later on top of
 the stable `studentKey`. Class labels aren't in the CLI output (reports don't carry one). Docs:
 [session-reports.md](../session-reports.md#share-links).
