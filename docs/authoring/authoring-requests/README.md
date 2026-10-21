@@ -61,7 +61,7 @@ Anything else: age range, links to course plans, screenshots.
 
 ## How requests are handled
 
-1. Status moves `open` → `planned` (with the PR link) → `shipped` (with docs link), or `declined` with a reason. The lesson workspace reads the **Status** line back automatically, so keep those exact words and fill in **Resolution** when it ships. The change's CHANGELOG entry names the request on its `Resolves:` line (see the CHANGELOG's "Entry format").
+1. Status moves `open` → `planned` (with the PR link) → `shipped` (with docs link), or `declined` with a reason. The lesson workspace reads the **Status** line back automatically, so keep those exact words and fill in **Resolution** when it ships. The change's CHANGELOG entry names the request on its `Resolves:` line (see the CHANGELOG's "Entry format"). When a request is marked `shipped` (or `declined`), LaunchPad Dev also adds a dated outcome line under the `HSC Hub\Handoffs.md` entry that raised it, giving the request number and "shipped", so the Hub and Lesson Gen don't queue it for Ryan again.
 2. Each kind is handled differently:
 
    | Kind | How it's handled | Done when |
