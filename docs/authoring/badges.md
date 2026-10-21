@@ -154,6 +154,10 @@ with one if you want one. It is also the first line of **Copy class summary**.
 - **Solo:** skipped, exactly as if it were `taskMode: live` (solo badges are a later feature).
 - The session report has the same wall in its **Coding moments** section, with student labels
   ("Student 3") because reports are anonymised.
+- **Badges with names (CSV):** the tutor can download who earned which badge, by name (roster
+  name when matched, else the typed name), from the end-of-session report, the End & Go to Home
+  step, or the live report in Reports. It is made in the tutor's browser from the live session
+  and never saved, so it can't be fetched once that window is closed. For Pencilcase awards.
 
 ## badgeOptions
 

@@ -1,9 +1,17 @@
 import React from 'react'
 import AfterClassFeedbackForm from './AfterClassFeedbackForm'
+import NamedBadgeExportButton from './NamedBadgeExportButton'
 
 // Shown after "End & Go to Home" so the tutor still reaches the after-class feedback step.
 // Save or Skip both finish via onDone (which navigates home).
-export default function AfterClassFeedbackModal({ report, tasks, onSave, onDone }) {
+export default function AfterClassFeedbackModal({
+  report,
+  tasks,
+  onSave,
+  onDone,
+  namedBadgeRows = null,
+  lesson = null,
+}) {
   return (
     <div
       className="ui-modal-backdrop"
@@ -14,6 +22,7 @@ export default function AfterClassFeedbackModal({ report, tasks, onSave, onDone 
     >
       <div style={s.modal}>
         <h3 style={s.title}>How did {report?.lessonTitle || 'the lesson'} go?</h3>
+        <NamedBadgeExportButton rows={namedBadgeRows} lesson={lesson} style={s.badgeExport} />
         <AfterClassFeedbackForm
           tasks={tasks}
           saveLabel="Save and go home"
@@ -48,6 +57,7 @@ const s = {
     padding: 20,
     boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
   },
+  badgeExport: { marginBottom: 12 },
   title: {
     fontFamily: 'var(--font-title)',
     fontWeight: 700,
