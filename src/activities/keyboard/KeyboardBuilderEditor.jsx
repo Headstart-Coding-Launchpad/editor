@@ -300,6 +300,24 @@ export default function KeyboardBuilderEditor({ task, onUpdate }) {
         </select>
       </Field>
 
+      {mode !== 'falling_words' && (
+        <Field
+          label="Core items (rest are bonus)"
+          hint="How many make the round. The task passes at this many; later items are bonus reps. Blank means all."
+        >
+          <input
+            className="te-input te-act-narrow"
+            type="number"
+            min="1"
+            max={(task.items ?? []).length || undefined}
+            step="1"
+            value={task.coreItems ?? ''}
+            aria-label="Core items"
+            onChange={(e) => setOptional('coreItems', readNumber(e.target.value))}
+          />
+        </Field>
+      )}
+
       <Field label="Keyboard layout">
         <span className="te-act-note">
           {String(task.layout ?? DEFAULT_LAYOUT).toUpperCase()}: UK is the only layout so far.

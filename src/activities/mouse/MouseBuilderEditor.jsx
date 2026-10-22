@@ -252,9 +252,32 @@ export default function MouseBuilderEditor({ task, onUpdate }) {
     })
   }
 
+  function setCoreItems(value) {
+    const next = { ...task }
+    if (value === undefined) delete next.coreItems
+    else next.coreItems = value
+    onUpdate(next)
+  }
+
   return (
     <div className="te-act-editor" data-activity-editor="mouse">
       <ValidationMessages messages={validation.general} />
+
+      <Field
+        label="Core items (rest are bonus)"
+        hint="How many make the round. The task passes at this many; later items are bonus reps. Blank means all."
+      >
+        <input
+          className="te-input te-act-narrow"
+          type="number"
+          min="1"
+          max={(task.items ?? []).length || undefined}
+          step="1"
+          value={task.coreItems ?? ''}
+          aria-label="Core items"
+          onChange={(e) => setCoreItems(readNumber(e.target.value))}
+        />
+      </Field>
 
       <Field label="On a touch screen">
         <ChoiceCards
