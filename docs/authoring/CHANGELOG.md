@@ -39,6 +39,14 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-22
 
+- **Session reports keep the final code of tasks with no check.** Each student's task gains
+  `finalRun: { code, unchecked?, truncated?, at }`, the code of their last Run in the session.
+  It's flagged `unchecked` on a task with no check, and also appears when they ran new code after
+  passing. It is never an attempt or a pass, and is capped at 20,000 characters. Only sessions run
+  after this ships have it. See [session-reports.md](session-reports.md).
+- Affects: session reports (python, turtle and other run-based modules) · Existing lessons: no
+  changes needed · Resolves: HSC Hub handoff #89 item 4
+
 - **Predict tags sit above the code by default.** Every Python predict task now shows its tags
   above the code until the first Run, without `showVariables.placement: above`. Ryan, 2026-10-22:
   "all of them instead of opt in". `placement: side` keeps the old place. See

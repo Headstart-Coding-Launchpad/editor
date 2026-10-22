@@ -46,6 +46,7 @@ import {
   taskRunCountFields,
 } from './variablesPanel/predictionReport.js'
 import { studentShareKey } from './exportWork/shareLink.js'
+import { latestRun } from './exportWork/collect.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
 
@@ -655,6 +656,31 @@ export function anonymizeSessionReport(report) {
 // - `topics`: the Topic Library's topics, for topic titles; `catalogueBadges`: Admin badges.
 // The report is trimmed to fit a Firestore document (capSessionReportSize).
 // The latest attempt's submission as the report shows it (an activity's state), or null.
+// The longest code a report keeps for a task's last Run; longer code is cut and flagged.
+export const FINAL_RUN_MAX_CHARS = 20000
+
+/**
+ * The code of the student's last Run on a task (students/{id}/lastRuns), when the attempts
+ * don't already hold it: on a task with no check (no attempts are logged), or after the pass
+ * (attempts stop there). `unchecked` marks a task with no check. Never an attempt or a pass.
+ */
+function finalRunFields(task, student, entries) {
+  const run = latestRun(student, task.id)
+  if (!run) return {}
+  const lastEntry = entries[entries.length - 1]
+  if (lastEntry && lastEntry.submission === run.code) return {}
+  if (lastEntry && typeof lastEntry.loggedAt === 'number' && lastEntry.loggedAt >= run.at) return {}
+  const cut = run.code.length > FINAL_RUN_MAX_CHARS
+  return {
+    finalRun: {
+      code: cut ? run.code.slice(0, FINAL_RUN_MAX_CHARS) : run.code,
+      ...(cut ? { truncated: true } : {}),
+      ...(task.check ? {} : { unchecked: true }),
+      ...(run.at ? { at: run.at } : {}),
+    },
+  }
+}
+
 function latestSubmission(task, entries) {
   return entries.length > 0
     ? normalizeSubmission(task, entries[entries.length - 1].submission)
@@ -803,6 +829,7 @@ export function buildSessionReport({
         ...puzzleReportFields(task, passingEntry?.submission),
         ...(itemProgress ? { itemProgress } : {}),
         ...(lastDraft ? { lastDraft } : {}),
+        ...finalRunFields(task, studentsSnapshot[anonymousId], entries),
         ...exampleOpenReportFields(session, anonymousId, task.id),
         ...typingHistoryReportFields(session, task, anonymousId, latestSubmission(task, entries)),
         ...crossLessonCarryReportFields(session, anonymousId, task.id),
