@@ -57,6 +57,21 @@ Entries written before 2026-09-29 are not tagged.
   [real_or_ai.md](activities/real_or_ai.md).
 - Affects: real_or_ai · Existing lessons: no changes needed · Resolves:
   authoring-requests/2026-10-21-real-or-ai-activity-ai-level-1.md
+- **New activity: `next_word` (Next Word predictor, AI Level 1).** The student picks one of the
+  task's `texts` (or pastes their own when `allowPaste: true`, capped at 1200 characters); a
+  word-pair (bigram) model is built from it live in the browser (no API, no network). They type
+  or choose a word to see probability bars ("net: 3 of 7 times"), answer `items` by predicting
+  the next word after `prompt` and pressing Reveal, and use Generate with an optional
+  temperature slider (`showTemperature: true`) as unmarked free play. Words are lower-cased with
+  punctuation stripped from both ends. Each item is marked against the model built from the text
+  the **student chose**: any word tied for most likely is right; `answer` is validated against
+  the **first** text and is not used on other or pasted texts. Item progress goes to the tutor
+  card and session report; the tutor sees the chosen text, typed word, predictions (revealed or
+  not) and the generated text. New fields: `texts[].title`, `texts[].body`, `allowPaste`,
+  `showTemperature`, `items[].id|prompt|answer`. See
+  [activities/next_word.md](activities/next_word.md).
+- Affects: next_word (new activity) · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-10-21-next-word-predictor-activity-ai-level-1.md
 
 ## 2026-10-21
 

@@ -682,6 +682,10 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `real_or_ai/real_or_ai.js` | Pure Real or AI activity logic: authoring validation (`tells`, pair fields), solutions, per-pair grading (right pick, clue match), reveal lines, clue labels, card summary text |
 | `real_or_ai/definition.js` | Real or AI activity definition wrapping `real_or_ai.js`: default task, validation, state (`{ pick, tell, done }` per pair), discrete changes, `completion: 'auto'`, sealed `items`, grading, progress, card summary, session-report `itemResults`, print |
 | `real_or_ai/ui.jsx` | Real or AI StudentView (controlled by `ActivityHost`): side-by-side pair (stacked on narrow screens), pick then clue then Reveal, running score; the tutor's `teacher` view shows the unrevealed picks and the answer key. Resolves picture paths with `assetsPath` |
+| `next_word/next_word.js` | Pure Next Word activity logic: authoring validation (answer checked against the first text's model), the chosen text (task text or capped pasted text), per-item grading against the student's chosen text with ties and child-friendly hints, whole-task progress |
+| `next_word/ngram.js` | Pure word-pair (bigram) model for Next Word: word normalising, counts, next-word odds, ties, seedable temperature sampling and text generation, size caps |
+| `next_word/definition.js` | Next Word activity definition wrapping `next_word.js`: default task, validation, state, change classification (clicks discrete, typing and slider continuous), grading, progress, card summary (chosen text + n/m right), print |
+| `next_word/ui.jsx` | Next Word StudentView: text picker (and paste box), word explorer with probability bars (numbers in words), predict-then-reveal items, Generate with temperature slider; the read-only tutor view shows the same |
 
 ---
 

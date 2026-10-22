@@ -287,6 +287,25 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … item …: altA must be text.` | `altA` is not text. | Write the alt text as a string. |
 | `Task … item …: altB must be text.` | `altB` is not text. | Write the alt text as a string. |
 
+### Next Word ([activities/next_word.md](activities/next_word.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: next_word task needs at least one text in texts.` | `texts` is missing or empty. | Add at least one `{ title, body }` text. |
+| `Task … text …: title is required.` | A text has no `title`. | Give it a short title; it names the option the student picks. |
+| `Task … text …: body is required.` | A text has no `body`. | Add the text the model is built from. |
+| `Task … text …: body is longer than … characters.` | A `body` is over 4000 characters. | Shorten it, or split it into two texts. |
+| `Task … text …: body needs at least 2 words.` | A `body` has fewer than two words, so there are no word pairs. | Write a few sentences. |
+| `Task …: … must be true or false.` | `allowPaste` or `showTemperature` is not a YAML boolean. | Use `true` or `false`, unquoted. |
+| `Task …: next_word task needs at least one item.` | `items` is empty. | Add at least one predict-then-reveal item. |
+| `Task … item …: needs an id.` | An item has no `id`. | Give each item a short unique `id` (`a`, `b`). |
+| `Task … item …: id "…" is used more than once.` | Two items share an `id`. | Make each `id` unique. |
+| `Task … item …: prompt is required.` | An item has no `prompt`, or it has no words. | Add the words the student continues from. |
+| `Task … item …: answer is required.` | An item has no `answer`. | Add the expected next word. |
+| `Task … item …: answer must be one word.` | `answer` has more than one word. | Use the single most likely next word. |
+| `Task … item …: "…" never has a word after it in the first text.` | The prompt's last word is missing from the first text, or only ends it. | Change the prompt, or add the pair to the first text. |
+| `Task … item …: answer "…" is not the most likely word after "…" in the first text (it is "…").` | `answer` is not a most-likely next word in the first text. | Use the word named in the message, or change the text or prompt. Words tied for most likely are all accepted. |
+
 ## Code-arrange tasks
 
 | Message | Meaning | Fix |
