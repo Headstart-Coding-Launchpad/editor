@@ -1,6 +1,6 @@
 # Next-Word Predictor activity (AI Level 1)
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** activity
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-10-21
 - **Lessons blocked:** none yet
@@ -46,4 +46,6 @@ Cut to three activities for January (Hub-logged default yes, 2026-10-21).
 
 ## Resolution
 
-Built as the `next_word` activity on branch `feature/next-word-activity` (2026-10-22), waiting on Ryan's merge OK. Docs: [activities/next_word.md](../activities/next_word.md). Decisions: the student's chosen text builds the model; an item is right when the revealed prediction is a most-likely next word of that model (any word tied for most likely counts); `answer` is validated against the first text and ignored on other or pasted texts. Pasted text is capped at 1200 characters and written on "Use my text", not per keystroke. Needs no database rules change.
+Shipped 2026-10-22: live on `main` (5221fe93, Ryan's OK in session). Not yet clicked through in a real browser (HSC Hub #93).
+
+Built as the `next_word` activity on branch `feature/next-word-activity` (2026-10-22), merged 2026-10-22. Docs: [activities/next_word.md](../activities/next_word.md). Decisions: the student's chosen text builds the model; an item is right when the revealed prediction is a most-likely next word of that model (any word tied for most likely counts); `answer` is validated against the first text and ignored on other or pasted texts. Pasted text is capped at 1200 characters and written on "Use my text", not per keystroke. Needs no database rules change.

@@ -1,6 +1,6 @@
 # StudentModal: student code and Stage drawing too cramped to read
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Ryan (approved by Ryan), 2026-10-21
 - **Lessons blocked:** none yet
@@ -19,7 +19,9 @@ Supersedes #84, which wrongly described the student's own Stage task layout. Pos
 
 ## Resolution
 
-Built on branch `fix/student-modal-code-stage-split` (2026-10-22), waiting on Ryan's merge OK. In
+Shipped 2026-10-22: live on `main` (5221fe93, Ryan's OK in session). Not yet clicked through in a real browser (HSC Hub #93).
+
+Built on branch `fix/student-modal-code-stage-split` (2026-10-22), merged 2026-10-22. In
 StudentModal the code and the Stage drawing sit side by side when the modal is at least 640 px
 wide, so the code keeps its full height and the drawing is a large square; narrower, they stack
 as before. A **Bigger picture** toggle gives the drawing more room either way. Code font is

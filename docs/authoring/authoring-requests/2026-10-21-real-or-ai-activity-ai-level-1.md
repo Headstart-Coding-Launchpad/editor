@@ -1,6 +1,6 @@
 # Real-or-AI activity (AI Level 1)
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** activity
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-10-21
 - **Lessons blocked:** none yet
@@ -47,4 +47,6 @@ Cut to three activities for January (Hub-logged default yes, 2026-10-21). Conten
 
 ## Resolution
 
-Built as the `real_or_ai` activity on branch `feature/real-or-ai-activity` (2026-10-22), waiting on Ryan's merge OK. Docs: [real_or_ai.md](../activities/real_or_ai.md). Task fields as in the example above, plus optional `altA` / `altB` (image alt text) and `kind: text` pairs. Picks and clues are mirrored to the tutor before Reveal; `itemProgress` is pairs picked right, and the report task summary has `itemResults[]` (right pick and clue match per pair). Revealing the last pair finishes the task whether right or wrong. Items are sealed in the stored lesson, like quiz answers.
+Shipped 2026-10-22: live on `main` (5221fe93, Ryan's OK in session). Not yet clicked through in a real browser (HSC Hub #93).
+
+Built as the `real_or_ai` activity on branch `feature/real-or-ai-activity` (2026-10-22), merged 2026-10-22. Docs: [real_or_ai.md](../activities/real_or_ai.md). Task fields as in the example above, plus optional `altA` / `altB` (image alt text) and `kind: text` pairs. Picks and clues are mirrored to the tutor before Reveal; `itemProgress` is pairs picked right, and the report task summary has `itemResults[]` (right pick and clue match per pair). Revealing the last pair finishes the task whether right or wrong. Items are sealed in the stored lesson, like quiz answers.

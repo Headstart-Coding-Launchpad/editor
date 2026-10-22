@@ -1,6 +1,6 @@
 # Train-a-Classifier activity (AI Level 1)
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** activity
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-10-21
 - **Lessons blocked:** none yet
@@ -43,7 +43,9 @@ Cut to three activities for January (Hub-logged default yes, 2026-10-21). Bias E
 
 ## Resolution
 
-Built on branch `feature/classifier-activity` (not merged; waiting on Ryan's merge OK, 2026-10-22).
+Shipped 2026-10-22: live on `main` (5221fe93, Ryan's OK in session). Not yet clicked through in a real browser (HSC Hub #93).
+
+Built on branch `feature/classifier-activity` (not merged; merged 2026-10-22, 2026-10-22).
 Activity id `classifier`, docs: [activities/classifier.md](../activities/classifier.md).
 
 - **Drawing mode is complete.** Pointer-event drawing pad (mouse, touch, pen), drawings shrunk to

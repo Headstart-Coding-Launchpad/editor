@@ -1,6 +1,6 @@
 # Stage: draw emoji with Noto Color Emoji in text() and stamp()
 
-- **Status:** planned
+- **Status:** shipped
 - **Kind:** module
 - **Requested by:** Ryan (approved by Ryan), 2026-10-21
 - **Lessons blocked:** none yet
@@ -19,7 +19,9 @@ Both text() and stamp(), and anything else that draws an emoji on the Stage (sta
 
 ## Resolution
 
-Built on branch `feature/stage-noto-emoji` (2026-10-22), waiting on Ryan's merge OK. No font file
+Shipped 2026-10-22: live on `main` (5221fe93, Ryan's OK in session). Not yet clicked through in a real browser (HSC Hub #93).
+
+Built on branch `feature/stage-noto-emoji` (2026-10-22), merged 2026-10-22. No font file
 is bundled: the app already loads Noto Color Emoji from Google Fonts (`src/index.css`, also used by
 Scratch). The Stage canvas puts it first for `stamp()` and lets emoji in `text()` fall through to
 it, and redraws once the font has loaded. The SVG/PNG export (Export work) names it too, but an SVG
