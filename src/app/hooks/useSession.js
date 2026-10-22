@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { withoutPresenter } from '../../shared/presenter.js'
 import {
   ref,
   onValue,
@@ -106,7 +107,7 @@ function countAttemptRuns(entries) {
  * Subscribes to a Firebase session and exposes helpers for reading/writing state.
  * Used by both the teacher view and the student view.
  */
-export function useSession(lessonId, { enabled = true } = {}) {
+export function useSession(lessonId, { enabled = true, keepPresenter = false } = {}) {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(enabled)
   const [connected, setConnected] = useState(null)
@@ -152,12 +153,14 @@ export function useSession(lessonId, { enabled = true } = {}) {
     sessionRef.current = r
 
     const unsub = onValue(r, (snap) => {
-      setSession(snap.exists() ? snap.val() : null)
+      // Only the presentation window itself sees its own student node (TEACHER_PRESENTER_ID).
+      const value = snap.exists() ? snap.val() : null
+      setSession(keepPresenter ? value : withoutPresenter(value))
       setLoading(false)
     })
 
     return () => unsub()
-  }, [enabled, lessonId])
+  }, [enabled, lessonId, keepPresenter])
 
   // A new session (createSession clears studentSignals) starts this tab's guards afresh.
   useEffect(() => {

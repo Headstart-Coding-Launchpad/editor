@@ -242,7 +242,7 @@ describe('StudentView', () => {
     await waitFor(() => {
       expect(screen.getByText(/Python 1\.1 SOLO/)).toBeInTheDocument()
     })
-    expect(mocks.useSession).toHaveBeenCalledWith(null, { enabled: false })
+    expect(mocks.useSession).toHaveBeenCalledWith(null, { enabled: false, keepPresenter: false })
     expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
   })
 

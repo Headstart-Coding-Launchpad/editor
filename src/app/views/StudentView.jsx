@@ -1,4 +1,5 @@
 import { applyCopyCodeOverrides } from '../../shared/copyCodeOverrides'
+import { TEACHER_PRESENTER_ID } from '../../shared/presenter.js'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useIsMobile } from '../../shared/useIsMobile'
 import { useSession } from '../hooks/useSession'
@@ -200,7 +201,10 @@ export default function StudentView({
     pushClassPaneCommand,
     subscribeLiveInk,
     createLiveInkWriter,
-  } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
+  } = useSession(useRealtimeSession ? lessonId : null, {
+    enabled: useRealtimeSession,
+    keepPresenter: teacherPresentation,
+  })
   const {
     identity,
     loaded: identityLoaded,
@@ -211,7 +215,7 @@ export default function StudentView({
     updateDisplayName,
   } = useIdentity()
   const effectiveIdentity = teacherPresentation
-    ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' }
+    ? { anonymousId: TEACHER_PRESENTER_ID, displayName: 'Teacher' }
     : identity
 
   // A tutor's own "Type this out" text for the class or this student (copyCodeOverrides).
