@@ -6,6 +6,7 @@
 // Each module says how to read its own work through its exporter (the optional `exportWork`
 // UI hook; see ./exporters.js), so this file never compares lesson types.
 import { realAttemptEntries } from '../autoCheck.js'
+import { encodeFileKey } from '../fileKeys'
 import { getEffectiveLessonForTask } from '../composedLesson.js'
 import { deriveTaskContext, flattenTasks } from '../taskUtils.js'
 
@@ -31,6 +32,13 @@ export function latestSubmission(session, anonymousId, taskId, { realOnly = fals
     if (diff === 0 && (entry.attemptNumber ?? 0) >= (best.attemptNumber ?? 0)) return entry
     return best
   })
+}
+
+/** The student's latest Run on a task ({ code, at }, students/{id}/lastRuns), or null. */
+export function latestRun(student, taskId) {
+  const entry = student?.lastRuns?.[encodeFileKey(String(taskId))]
+  if (typeof entry?.code !== 'string' || !entry.code) return null
+  return { code: entry.code, at: typeof entry.at === 'number' ? entry.at : 0 }
 }
 
 /**
@@ -71,8 +79,13 @@ export function collectExportItems({ candidates, session, student, getExporter }
       if (work) source = 'live'
     }
     if (!work) {
+      // The newer of the latest logged attempt and the latest Run (lastRuns): attempts stop at
+      // the pass and are never logged on a task without a check (a Take it further, say).
       const attempt = latestSubmission(session, student?.anonymousId, task.id)
-      work = attempt ? (exporter.readSubmission?.(attempt.submission, task) ?? null) : null
+      const lastRun = latestRun(student, task.id)
+      const useRun = lastRun && (!attempt || lastRun.at > attemptTime(attempt))
+      const code = useRun ? lastRun.code : attempt?.submission
+      work = code != null ? (exporter.readSubmission?.(code, task) ?? null) : null
       if (work) source = 'submission'
     }
     if (work) items.push({ ...candidate, exporter, work, source })

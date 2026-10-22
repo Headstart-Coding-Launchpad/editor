@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ref, onValue, remove } from 'firebase/database'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db, firestore } from '../shared/firebase'
 import { getLessonLinks } from '../shared/lessonLinks'
 import { formatClock } from '../shared/timeAgo'
+import { isStaleSession } from '../shared/staleSessions'
 import {
   AdminBadge,
   AdminCell,
@@ -31,6 +32,8 @@ export default function SessionsPanel() {
   const [closingId, setClosingId] = useState(null)
   const [closeError, setCloseError] = useState(null)
   const [now, setNow] = useState(() => Date.now())
+  const [clearedStale, setClearedStale] = useState([])
+  const clearingRef = useRef(new Set())
 
   useEffect(() => {
     const r = ref(db, 'sessions')
@@ -77,6 +80,18 @@ export default function SessionsPanel() {
       .sort((a, b) => (a.createdAt ?? Infinity) - (b.createdAt ?? Infinity))
   }, [sessionsById])
 
+  // Sessions a tutor left without ending (no tutor tab for 2 hours, or open over 12 hours from
+  // before tutor tabs were marked) are cleared here, so nobody deletes them by hand.
+  useEffect(() => {
+    for (const [lessonId, session] of Object.entries(sessionsById)) {
+      if (clearingRef.current.has(lessonId) || !isStaleSession(session, now)) continue
+      clearingRef.current.add(lessonId)
+      remove(ref(db, `sessions/${lessonId}`))
+        .then(() => setClearedStale((list) => [...list, lessonId]))
+        .catch(() => clearingRef.current.delete(lessonId))
+    }
+  }, [sessionsById, now])
+
   async function handleClose(lessonId) {
     const title = titlesById[lessonId] || lessonId
     if (
@@ -101,6 +116,12 @@ export default function SessionsPanel() {
       {loading && <AdminMessage>Loading sessions…</AdminMessage>}
       {error && <AdminMessage tone="error">Could not load sessions: {error}</AdminMessage>}
       {closeError && <AdminMessage tone="error">{closeError}</AdminMessage>}
+      {clearedStale.length > 0 && (
+        <AdminMessage>
+          Cleared {clearedStale.length} {clearedStale.length === 1 ? 'session' : 'sessions'} left
+          open with no tutor: {clearedStale.map((id) => titlesById[id] || id).join(', ')}.
+        </AdminMessage>
+      )}
 
       {!loading && !error && openSessions.length === 0 && (
         <AdminMessage>No sessions are currently open.</AdminMessage>

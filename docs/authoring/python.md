@@ -971,8 +971,9 @@ What students get:
   **colour names only** (`colourNames`, on by default): the colour-blind-safe colours first, under
   their nearest CSS names (`black`, `orange`, `cornflowerblue`, `teal`, `gold`, `steelblue`,
   `orangered`, `palevioletred`), then the other common names (`red`, `yellow`, `green`, `blue`,
-  `purple`, `pink`, `brown`, `grey`, `white`). Each choice is labelled with the exact word it
-  writes, and a hex literal is replaced by the name. Picking a colour redraws like a drag and,
+  `purple`, `pink`, `brown`, `grey`, `white`), and **All colours** opens every CSS colour name
+  (139, one per colour, greys first then round the colour wheel) with a **Find a colour** box. Each
+  choice is labelled with the exact word it writes, and a hex literal is replaced by the name. Picking a colour redraws like a drag and,
   with `checkOnRelease`, runs the checks. `colourNames: false` brings back the original
   colour-blind-safe hex colours (written as hex, `#E69F00`) and a hex box; there, a name stays a
   name when the choice has one, and hex keeps its style (`#F00` stays short and in capitals when

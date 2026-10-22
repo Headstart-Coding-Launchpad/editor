@@ -133,4 +133,24 @@ describe('SessionsPanel', () => {
 
     expect(firebaseDbMocks.remove).not.toHaveBeenCalled()
   })
+
+  it('clears sessions left open with no tutor, and keeps live ones', async () => {
+    const now = Date.now()
+    render(<SessionsPanel />)
+    fireSessions({
+      crashed: {
+        state: 'active',
+        createdAt: now - 3 * 3600_000,
+        teacherLeftAt: now - 3 * 3600_000,
+      },
+      live: { state: 'active', createdAt: now - 3 * 3600_000, teacherPresence: { taba: true } },
+      brief: { state: 'waiting', createdAt: now - 600_000, teacherLeftAt: now - 300_000 },
+    })
+    await act(async () => {})
+    const removed = firebaseDbMocks.remove.mock.calls.map(([r]) => r.path)
+    expect(removed).toEqual(['sessions/crashed'])
+    expect(
+      screen.getByText(/Cleared 1 session left open with no tutor: crashed/)
+    ).toBeInTheDocument()
+  })
 })
