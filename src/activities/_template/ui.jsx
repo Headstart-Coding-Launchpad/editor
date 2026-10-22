@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import ItemNav from '../ui/ItemNav.jsx'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
+import RoundProgress, { RoundFinished } from '../ui/RoundProgress.jsx'
+import TutorItemPicker from '../ui/TutorItemPicker.jsx'
+import { useRoundFlow } from '../ui/useRoundFlow.js'
 import { gradeItem } from './template_activity.js'
 
 // Template Activity UI. Controlled view: ActivityHost passes `state`, `onChange(next | prev =>
-// next)`, `onSubmit()` (grades and reports; resolves to { passed }), `readOnly` (teacher views
-// and review) and `device` ({ touch, virtualKeyboard }). Never write to Firebase or storage
+// next)`, `onSubmit()` (grades and reports; resolves to { passed }; unused here because the
+// activity is marked as you go), `readOnly` (teacher views and review) and `device` ({ touch, virtualKeyboard }). Never write to Firebase or storage
 // here: useActivityState owns persistence and live sync.
 //
 // UI rules (docs/UI_STYLE_GUIDE.md, docs/architecture/activities.md): controls at least 44px,
@@ -17,50 +19,65 @@ function itemStateOf(state, item) {
   return { answer: state?.items?.[item.id]?.answer ?? '' }
 }
 
-export function TemplateActivityStudentView({ task, state, onChange, onSubmit, readOnly = false }) {
+export function TemplateActivityStudentView({
+  task,
+  state,
+  onChange,
+  readOnly = false,
+  teacher = false,
+}) {
+  // A tutor (read-only view, or editing a student's answers) never lingers or advances: they
+  // follow the student's item or pick one in the tutor-only picker.
+  const tutor = readOnly || teacher
   const items = task?.items ?? []
-  const [index, setIndex] = useState(0)
-  // Results captured when Check was pressed. An item's result clears as soon as the student
-  // changes it, so work is never marked live.
-  const [results, setResults] = useState({})
-  const current = items[Math.min(index, items.length - 1)]
+  const isDone = (item) => gradeItem(task, item, itemStateOf(state, item)).correct
+  // An activity task is one round: a single goal of a few reps that moves on by itself, with no
+  // in-task navigation. useRoundFlow shows the first question that is not done, holds its tick
+  // for a moment, then moves on. The tutor's read-only view picks any question to look at.
+  const flow = useRoundFlow(items, isDone, { readOnly: tutor })
+  const [tutorPickId, setTutorPickId] = useState(null)
+  const lastItem = items[items.length - 1]
+  const current = tutor
+    ? (items.find((item) => item.id === tutorPickId) ??
+      items.find((item) => !isDone(item)) ??
+      lastItem)
+    : (flow.current ?? lastItem)
   if (!current) return <p>This task has no questions yet.</p>
+  if (!tutor && flow.finished) {
+    // Play again clears the answers on this device; the task stays passed.
+    return (
+      <div className="act-panel" data-testid="template_activity-activity">
+        <RoundFinished total={items.length} onPlayAgain={() => onChange?.({ v: 1, items: {} })} />
+      </div>
+    )
+  }
   const itemState = itemStateOf(state, current)
-  const result = readOnly ? gradeItem(task, current, itemState) : results[current.id]
+  const result = gradeItem(task, current, itemState)
 
   function update(patch) {
-    if (readOnly) return
-    setResults((prev) => {
-      if (!(current.id in prev)) return prev
-      const { [current.id]: _dropped, ...rest } = prev
-      return rest
-    })
+    if (readOnly || flow.lingering) return
     onChange?.((prev) => ({
       ...(prev ?? { v: 1 }),
       items: { ...(prev?.items ?? {}), [current.id]: { ...itemStateOf(prev, current), ...patch } },
     }))
   }
 
-  async function handleCheck() {
-    const outcome = await onSubmit?.()
-    const next = {}
-    for (const item of items) next[item.id] = gradeItem(task, item, itemStateOf(state, item))
-    setResults(next)
-    if (!outcome?.passed) {
-      const firstWrong = items.findIndex((item) => !next[item.id]?.correct)
-      if (firstWrong >= 0) setIndex(firstWrong)
-    }
-  }
-
   const statusFor = (item) => {
-    const itemResult = readOnly ? gradeItem(task, item, itemStateOf(state, item)) : results[item.id]
-    if (!itemResult) return null
-    return itemResult.correct ? 'done' : 'wrong'
+    const itemResult = gradeItem(task, item, itemStateOf(state, item))
+    return itemResult.correct ? 'done' : null
   }
 
   return (
     <div className="act-panel" data-testid="template_activity-activity">
-      <ItemNav items={items} currentIndex={index} onSelect={setIndex} statusFor={statusFor} />
+      <RoundProgress done={flow.doneCount} total={items.length} />
+      {tutor && (
+        <TutorItemPicker
+          items={items}
+          currentId={current.id}
+          onSelect={setTutorPickId}
+          statusFor={statusFor}
+        />
+      )}
       <p className="act-prompt">{current.prompt}</p>
       <label className="act-row">
         <span style={{ fontWeight: 600 }}>Answer</span>
@@ -69,28 +86,18 @@ export function TemplateActivityStudentView({ task, state, onChange, onSubmit, r
           type="text"
           autoComplete="off"
           value={itemState.answer}
-          disabled={readOnly}
+          disabled={readOnly || flow.lingering}
           aria-label="Your answer"
           onChange={(event) => update({ answer: event.target.value })}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !readOnly) handleCheck()
-          }}
         />
       </label>
 
-      {result && !result.correct && result.hint && (
+      {/* Marked as you go: a tick the moment it is right, nothing "wrong" until then. */}
+      {result.correct && <ActivityCorrect />}
+      {readOnly && !result.correct && itemState.answer && result.hint && (
         <p className="act-hint" role="status">
           💡 {result.hint}
         </p>
-      )}
-      {result?.correct && <ActivityCorrect />}
-
-      {!readOnly && (
-        <div className="act-row act-row--submit">
-          <button type="button" className="btn-primary act-btn" onClick={handleCheck}>
-            Check my work
-          </button>
-        </div>
       )}
     </div>
   )

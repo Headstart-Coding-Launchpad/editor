@@ -98,6 +98,10 @@ pictures the same size and shape, so the pair is not given away by the crop.
 - Picks and clues can be changed until **Reveal**. After Reveal the pair is locked (so the
   reveal can't be gamed by trying again); the teacher's **Stage → Start again** resets it.
 - The task is complete when every pair has been revealed. Task score = pairs picked right.
+- **One round, no in-task navigation.** The student sees a progress strip (`3 of 5 done`) and moves
+  to the next pair with **Next pair →** after reading the reveal (it is not timed, so the
+  explanation can be read). There are no Previous / numbered buttons; tutors can open any pair
+  from a tutor-only picker. An activity task is one round: a single goal of 3-8 reps that moves on by itself, with no in-task navigation; if you want the class to look at one answer together, make it its own task.
 
 ## Teacher tools
 

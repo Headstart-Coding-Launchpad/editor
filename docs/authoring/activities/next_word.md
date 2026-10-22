@@ -16,7 +16,9 @@ straight after which. The student can then:
 
 There is no API and no network: nothing leaves the device. No Run button, personal sandbox,
 sharing or carry-through. Progress is saved on the device, mirrored to the teacher's student
-card, and reported when the student presses **Check my work**.
+card, and reported when the student presses **Check my work**. The task is one round: the
+prediction prompts move on by themselves (no Previous / Next or numbered buttons; the student
+sees `3 of 5 done`), and a prompt ticks once it is revealed and right. An activity task is one round: a single goal of 3-8 reps that moves on by itself, with no in-task navigation; if you want the class to look at one answer together, make it its own task.
 
 Write `type: next_word` on the task (the YAML shorthand for `taskType: activity` +
 `activityType: next_word`, which also works). In the Builder, choose the **Activity** format and
@@ -99,8 +101,10 @@ tasks:
   - If **nothing follows** the prompt's last word in the chosen text (for instance a pasted text
     that never says it, or it is the final word), the item cannot be right and the hint says to
     pick another text.
-- An item counts only once **revealed**. **Check my work** passes the task when every item is
-  right; otherwise it jumps to the first item not right and shows its hint.
+- An item counts only once **revealed**. A right prediction ticks, then the next prompt appears
+  by itself; a wrong one shows its hint and **Try again**. **Check my work** passes the task when
+  every item is right and shows the hint of the prompt the student is on. Tutors can open any
+  prompt from a tutor-only picker.
 - **Generate** and the temperature slider are free play: no check, no marks.
 
 ### Temperature

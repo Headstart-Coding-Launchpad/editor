@@ -3,6 +3,8 @@
 // ascii, pixels; step 2.7). Node-safe so the CLI and the Builder share validation. See
 // docs/architecture/modular-activities-plan.md.
 
+import { coreCountOf, validateCoreItems } from '../round.js'
+
 export const BINARY_MODES = [
   'make_number',
   'to_binary',
@@ -244,6 +246,10 @@ export function validateBinaryTask(task, n) {
   }
   const items = Array.isArray(task.items) ? task.items : []
   if (items.length === 0) errors.push(`${where}: binary task needs at least one item.`)
+  else {
+    const coreError = validateCoreItems(task, where, items.length)
+    if (coreError) errors.push(coreError)
+  }
   const seen = new Set()
   items.forEach((item, i) => {
     const label = `${where} item ${i + 1}`
@@ -506,10 +512,12 @@ export function gradeItem(task, item, itemState = {}) {
   }
 }
 
-// Whole-task progress for the teacher card and completion: { total, correct, done }.
-export function gradeTask(task, state = {}) {
+// Whole-task progress for the teacher card and completion: { total, correct, core, done }. The
+// task is done once the core items are right (all of them unless task.coreItems says fewer).
+export function gradeTask(task, state) {
   const items = task?.items ?? []
-  const results = items.map((item) => gradeItem(task, item, state.items?.[item.id]))
+  const results = items.map((item) => gradeItem(task, item, state?.items?.[item.id]))
   const correct = results.filter((r) => r.correct).length
-  return { total: items.length, correct, done: items.length > 0 && correct === items.length }
+  const core = coreCountOf(task, items.length)
+  return { total: items.length, correct, core, done: items.length > 0 && correct >= core }
 }

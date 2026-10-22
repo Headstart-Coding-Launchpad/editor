@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
 import MouseBuilderEditor from './MouseBuilderEditor.jsx'
 import { SpinTick } from '../ui/ActivityCorrect.jsx'
+import RoundProgress, { BonusBanner, RoundFinished } from '../ui/RoundProgress.jsx'
+import { useRoundFlow } from '../ui/useRoundFlow.js'
+import { coreCountOf } from '../round.js'
 import { activeMouseItems, describeMouseItem, gradeMouseItem } from './mouse.js'
 import {
   DEFAULT_GESTURE_OPTIONS,
@@ -54,8 +57,8 @@ export function MouseStudentView({
   task,
   state,
   onChange,
-  onSubmit,
   readOnly = false,
+  teacher = false,
   device = {},
 }) {
   const touch = !!state?.device?.touch || !!device.touch
@@ -63,8 +66,14 @@ export function MouseStudentView({
   const items = activeMouseItems(task, { touch })
   const allowTouch = (task?.touch ?? 'equivalent') !== 'block'
   const isDone = (item) => gradeMouseItem(task, item, state?.items?.[item.id]).correct
-  const current = items.find((item) => !isDone(item)) ?? null
-  const currentIndex = current ? items.indexOf(current) : items.length
+  const core = coreCountOf(task, items.length)
+  // A tutor (read-only view, or editing a student's answers) never lingers or advances: they
+  // follow the student's item or pick one in the tutor-only picker.
+  const tutor = readOnly || teacher
+  // The round moves on by itself: an item ticks when done, shows its done moment, then the next
+  // appears. While the tick shows, gestures are ignored (no current item to answer).
+  const flow = useRoundFlow(items, isDone, { readOnly: tutor })
+  const current = flow.lingering ? null : flow.current
   const [message, setMessage] = useState(null)
   const [drag, setDrag] = useState(null)
   const stageRef = useRef(null)
@@ -159,11 +168,7 @@ export function MouseStudentView({
         }
         recorderRef.current.reset()
         handledRef.current.clear()
-        const remaining = items.filter((other) => other !== item && !isDone(other))
-        if (remaining.length === 0) {
-          // Every item done: mark the task (the host grades, logs and shows feedback).
-          setTimeout(() => onSubmit?.(), 0)
-        }
+        // Marked as you go: finishing the core passes the task (useActivityState auto-submits).
         return
       }
     }
@@ -354,22 +359,46 @@ export function MouseStudentView({
     )
   }
 
+  // Every rep done (core and bonus): the finish card. Play again clears the items on this
+  // device; the task stays passed (a clear is never a submit).
+  if (!tutor && flow.finished) {
+    return (
+      <div className="act-panel" data-testid="mouse-activity">
+        <RoundFinished
+          total={items.length}
+          onPlayAgain={() => {
+            recorderRef.current.reset()
+            handledRef.current.clear()
+            setMessage(null)
+            onChange?.((prev) => ({ ...(prev ?? { v: 1 }), items: {} }))
+          }}
+        />
+      </div>
+    )
+  }
+
   const currentResult = current ? state?.items?.[current.id] : null
   const hint =
     current && currentResult?.via ? gradeMouseItem(task, current, currentResult).hint : null
+  const inBonus = flow.doneCount >= core && core < items.length
+  const isBonus = !!current && items.indexOf(current) >= core
   const scrollTargets = new Set(
     items.filter((item) => item.action === 'scroll').map((item) => item.target)
   )
 
   return (
     <div className="act-panel" data-testid="mouse-activity">
+      <RoundProgress done={flow.doneCount} total={items.length} core={core} />
+      {!tutor && inBonus && !flow.finished && <BonusBanner />}
       <p className="act-row" aria-live="polite">
-        <span className="act-badge">
-          {Math.min(currentIndex + (current ? 1 : 0), items.length)} of {items.length}
-        </span>
+        {isBonus && <span className="act-badge">Bonus</span>}
         <span className="act-prompt" data-testid="mouse-instruction">
           {current ? (
             instructionFor(task, current, touch)
+          ) : flow.lingering ? (
+            <>
+              <SpinTick /> Got it!
+            </>
           ) : (
             <>
               <SpinTick /> All done — great mousing!
@@ -446,13 +475,6 @@ export function MouseStudentView({
           )
         })}
       </div>
-      {!readOnly && (
-        <div className="act-row act-row--submit">
-          <button type="button" className="btn-primary act-btn" onClick={() => onSubmit?.()}>
-            Check my work
-          </button>
-        </div>
-      )}
     </div>
   )
 }

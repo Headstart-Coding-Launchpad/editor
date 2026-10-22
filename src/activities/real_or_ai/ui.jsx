@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import ItemNav from '../ui/ItemNav.jsx'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
+import RoundProgress from '../ui/RoundProgress.jsx'
+import TutorItemPicker from '../ui/TutorItemPicker.jsx'
 import RealOrAiBuilderEditor from './RealOrAiBuilderEditor.jsx'
 import { resolveAssetFileUrl } from '../../shared/assetPaths.js'
 import {
@@ -150,13 +151,18 @@ export function RealOrAiStudentView({
       <p className="act-rai__score" role="status" aria-live="polite">
         Score: {correct} right out of {doneCount} done ({total} {total === 1 ? 'pair' : 'pairs'})
       </p>
-      <ItemNav
-        items={items}
-        currentIndex={shownIndex}
-        onSelect={select}
-        statusFor={statusFor}
-        noun="Pair"
-      />
+      <RoundProgress done={doneCount} total={items.length} />
+      {/* Students never pick a pair: they move on with Next pair after reading the reveal. The
+          picker is for the tutor's view only. */}
+      {(teacher || readOnly) && (
+        <TutorItemPicker
+          items={items}
+          currentId={current.id}
+          onSelect={(id) => select(items.findIndex((item) => item.id === id))}
+          statusFor={statusFor}
+          noun="Pair"
+        />
+      )}
 
       <p className="act-prompt" ref={promptRef} tabIndex={-1}>
         {kindOf(current) === 'image'

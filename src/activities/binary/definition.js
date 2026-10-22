@@ -1,5 +1,6 @@
 // Binary activity definition (pure). Wraps the logic in ./binary.js in the activity contract.
 import { defineActivity } from '../defineActivity.js'
+import { roundSummaryText } from '../round.js'
 import {
   DEFAULT_BITS,
   BINARY_MODES,
@@ -62,6 +63,8 @@ export default defineActivity({
   description:
     'Toggle bits to make numbers, convert between binary, decimal and hex, add in binary, spot overflow, and use ASCII codes and pixel pictures.',
   yaml: { type: 'binary' },
+  // Marked as you go: an item ticks the moment it is right and the task passes at the core.
+  completion: 'auto',
 
   fields: {
     modeField: 'mode',
@@ -78,6 +81,12 @@ export default defineActivity({
       { name: 'height', type: 'number', required: true, modes: ['pixels'] },
       { name: 'codeFormat', type: 'string', values: ASCII_CODE_FORMATS, modes: ['ascii'] },
       { name: 'showTable', type: 'boolean', modes: ['ascii'] },
+      {
+        name: 'coreItems',
+        type: 'number',
+        description:
+          'How many items make the round (1 to the number of items). The task passes when that many are right; the rest are bonus reps. Defaults to all items.',
+      },
       { name: 'showPlaceValues', type: 'boolean' },
       { name: 'showDecimal', type: 'boolean' },
       { name: 'requireCarries', type: 'boolean', modes: ['add', 'overflow'] },
@@ -172,7 +181,10 @@ export default defineActivity({
   // Typing an answer, a character code or a row of bits is continuous (synced only while the
   // teacher watches); toggling a bit or a pixel, or answering yes/no, is a discrete action like
   // choosing a quiz answer.
-  classifyChange: (prev, next) => {
+  // A typed answer that becomes right ticks the question and may pass the task, so that change
+  // is discrete too (the host only auto-submits on discrete changes).
+  classifyChange: (prev, next, task) => {
+    if (task && gradeTask(task, prev).correct !== gradeTask(task, next).correct) return 'discrete'
     const ids = new Set([...Object.keys(prev?.items ?? {}), ...Object.keys(next?.items ?? {})])
     for (const id of ids) {
       for (const field of TYPED_FIELDS) {
@@ -202,13 +214,24 @@ export default defineActivity({
   },
 
   getProgress: (task, state) => {
-    const { total, correct } = gradeTask(task, state)
-    return { kind: 'items', filled: correct, total, correct }
+    const { total, correct, core } = gradeTask(task, state)
+    // Counted against the core; reps after it are reported as bonus.
+    const counted = Math.min(correct, core)
+    return {
+      kind: 'items',
+      filled: counted,
+      total: core,
+      correct: counted,
+      bonus: Math.max(0, Math.min(correct, total) - core),
+    }
   },
 
   summarize: (task, state) => {
-    const { total, correct } = gradeTask(task, state)
-    return { text: `${correct}/${total} correct`, tone: correct === total ? 'success' : 'neutral' }
+    const { total, correct, core, done } = gradeTask(task, state)
+    return {
+      text: roundSummaryText(correct, total, core, 'correct'),
+      tone: done ? 'success' : 'neutral',
+    }
   },
 
   printHtml: (task, { esc }) => {

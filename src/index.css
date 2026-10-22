@@ -3893,37 +3893,53 @@ label.te-backdrop-tag,
   display: inline-block;
 }
 
-.act-item-nav {
+/* Round progress: non-interactive dots + "3 of 5 done" (ui/RoundProgress.jsx). */
+.act-round {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: 10px;
+}
+
+.act-round__dots {
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
-.act-item-dot {
-  min-width: 44px;
-  min-height: 44px;
+.act-round__dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
   border: 2px solid var(--ui-border-strong);
   background: var(--ui-surface);
-  font-weight: 600;
-  color: var(--colour-ink-strong);
-  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
-.act-item-dot[aria-current='step'] {
-  border-color: var(--colour-primary);
-  background: var(--ui-surface-tint);
-}
-
-.act-item-dot--done {
+.act-round__dot--done {
   border-color: var(--colour-success-edge);
   color: var(--colour-success-text);
 }
 
-.act-item-dot--wrong {
-  border-color: var(--colour-error-edge);
-  color: var(--colour-error-text);
+.act-round__dot--bonus {
+  border-style: dashed;
+}
+
+.act-round__text {
+  font-weight: 600;
+  color: var(--colour-ink-strong);
+}
+
+.act-round-finished {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 /* Binary */

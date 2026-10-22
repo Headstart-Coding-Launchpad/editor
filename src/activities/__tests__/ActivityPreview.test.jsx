@@ -14,29 +14,29 @@ const task = {
 }
 
 describe('Builder activity preview (ActivityHost, in-memory state)', () => {
-  it('plays the task through ActivityHost and grades on Check my work', async () => {
+  it('plays the task through ActivityHost and marks as you go (no Check button)', async () => {
     const user = userEvent.setup()
     render(<ActivityPreview task={task} />)
     const preview = screen.getByTestId('activity-preview')
     expect(within(preview).getByTestId('activity-host')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /check my work/i })).toBeNull()
 
-    await user.click(screen.getByRole('button', { name: /check my work/i }))
-    expect(screen.getByText(/^Not yet/)).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Show answers' }))
-    expect(screen.queryByText(/^Not yet/)).toBeNull()
-    await user.click(screen.getByRole('button', { name: /check my work/i }))
+    // A wrong entry reports nothing; the change that makes it right passes the preview.
+    await user.click(screen.getByRole('switch', { name: 'Bits 2 column' }))
+    expect(screen.queryByText(/All correct/)).toBeNull()
+    await user.click(screen.getByRole('switch', { name: 'Bits 2 column' }))
+    await user.click(screen.getByRole('switch', { name: 'Bits 1 column' }))
     expect(screen.getByText(/All correct/)).toBeInTheDocument()
   })
 
   it('keeps the preview state in memory while the task is unchanged, and restarts on edit', async () => {
     const user = userEvent.setup()
     const { unmount } = render(<ActivityPreview task={task} />)
-    await user.click(screen.getByRole('button', { name: 'Show answers' }))
+    await user.click(screen.getByRole('switch', { name: 'Bits 2 column' }))
     const pressedBits = () =>
       screen.getAllByRole('switch').filter((b) => b.getAttribute('aria-checked') === 'true').length
     const shown = pressedBits()
-    expect(shown).toBeGreaterThan(0)
+    expect(shown).toBe(1)
     unmount()
 
     const { unmount: unmount2 } = render(<ActivityPreview task={task} />)

@@ -17,12 +17,21 @@ const MAKE = {
   ],
 }
 
+// The done moment (~700 ms) plus slack on a slow machine.
+const MOMENT = { timeout: 3000 }
+
 function renderBinary(task, options = {}) {
   return renderActivityUi(BinaryStudentView, {
     task,
     initialState: binary.initialState(task),
     ...options,
   })
+}
+
+// Makes 5 (0101) on the first question.
+function makeFive() {
+  fireEvent.click(screen.getByRole('switch', { name: 'Bits 4 column' }))
+  fireEvent.click(screen.getByRole('switch', { name: 'Bits 1 column' }))
 }
 
 describe('Binary UI', () => {
@@ -49,81 +58,50 @@ describe('Binary UI', () => {
     expect(screen.queryByTestId('live-decimal')).not.toBeInTheDocument()
   })
 
-  it('checks, shows the hint for a wrong item and jumps to it', async () => {
+  it('has no Check button and no in-task navigation, just a progress strip', () => {
+    renderBinary(MAKE)
+    expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Next|Previous/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Question/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'Round progress' })).toHaveAttribute(
+      'aria-valuenow',
+      '0'
+    )
+    expect(screen.getByText('0 of 2 done')).toBeInTheDocument()
+  })
+
+  it('says only "Not yet" for a wrong entry: no hint, no wrong mark, no submit', () => {
     const { onSubmit } = renderBinary(MAKE)
     fireEvent.click(screen.getByRole('switch', { name: 'Bits 8 column' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Check my work' }))
-    expect(onSubmit).toHaveBeenCalledTimes(1)
-    expect(
-      await screen.findByText(/Your bits make 8, which is too big. Check the 8 column./)
-    ).toBeInTheDocument()
-    // The hint clears as soon as the student changes the item.
-    fireEvent.click(screen.getByRole('switch', { name: 'Bits 8 column' }))
+    expect(screen.getByText('Not yet')).toBeInTheDocument()
     expect(screen.queryByText(/too big/)).not.toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
   })
 
-  it('drops check marks when the state or the answer changes from outside', async () => {
-    const task = { ...MAKE, items: [{ id: 'a', target: 8 }] }
-    const checked = { v: 1, items: { a: { bits: '1000' } } }
-    const onSubmit = vi.fn(() => Promise.resolve({ passed: true }))
-    const { rerender } = render(
-      <BinaryStudentView task={task} state={checked} onChange={() => {}} onSubmit={onSubmit} />
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'Check my work' }))
-    expect(await screen.findByText(/Correct/)).toBeInTheDocument()
-    // A teacher reset (or Start again) replaces the state without a student edit.
-    rerender(
-      <BinaryStudentView
-        task={task}
-        state={binary.initialState(task)}
-        onChange={() => {}}
-        onSubmit={onSubmit}
-      />
-    )
-    expect(screen.queryByText(/Correct/)).not.toBeInTheDocument()
-    // Back to the checked entry, but the author has changed the answer.
-    rerender(
-      <BinaryStudentView
-        task={{ ...task, items: [{ id: 'a', target: 4 }] }}
-        state={checked}
-        onChange={() => {}}
-        onSubmit={onSubmit}
-      />
-    )
-    expect(screen.queryByText(/Correct/)).not.toBeInTheDocument()
+  it('ticks a number the moment the bits make it, then moves on by itself', async () => {
+    renderBinary(MAKE)
+    makeFive()
+    // Straight away: a tick on the item and the strip counts it. The tiles are locked meanwhile.
+    expect(screen.getByText('Correct')).toBeInTheDocument()
+    expect(screen.getByText('1 of 2 done')).toBeInTheDocument()
+    expect(screen.getByText('Make the number 5')).toBeInTheDocument()
+    for (const tile of screen.getAllByRole('switch')) expect(tile).toBeDisabled()
+    // Then it advances to the next question without any click.
+    expect(await screen.findByText('Make the number 3', {}, MOMENT)).toBeInTheDocument()
+    expect(screen.queryByText('Correct')).not.toBeInTheDocument()
   })
 
-  it('shows the question a teacher edit changed, without writing anything back', () => {
+  it('starts on the first question not done and follows a teacher edit without writing back', () => {
     const onChange = vi.fn()
     const start = binary.initialState(MAKE)
     const { rerender } = render(<BinaryStudentView task={MAKE} state={start} onChange={onChange} />)
     expect(screen.getByText('Make the number 5')).toBeInTheDocument()
-    // The teacher sets question 2 (target 3 = 0011) while the student is on question 1.
+    // The teacher finishes question 2 while the student is still on question 1.
     const edited = { ...start, items: { ...start.items, b: { ...start.items.b, bits: '0011' } } }
     rerender(<BinaryStudentView task={MAKE} state={edited} onChange={onChange} />)
-    expect(screen.getByText('Make the number 3')).toBeInTheDocument()
+    expect(screen.getByText('Make the number 5')).toBeInTheDocument()
+    expect(screen.getByText('1 of 2 done')).toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
-  })
-
-  it('leaves questions the student has not started unmarked when they check', async () => {
-    renderBinary(MAKE)
-    // Answer question 1 correctly (5 = 0101) and check; question 2 is untouched.
-    fireEvent.click(screen.getByRole('switch', { name: 'Bits 4 column' }))
-    fireEvent.click(screen.getByRole('switch', { name: 'Bits 1 column' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Check my work' }))
-    expect(await screen.findByRole('button', { name: 'Question 1, done' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Question 2' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /not right yet/ })).not.toBeInTheDocument()
-    // It still moves on to the unanswered question.
-    expect(screen.getByText('Make the number 3')).toBeInTheDocument()
-  })
-
-  it('navigates between questions', () => {
-    renderBinary(MAKE)
-    expect(screen.getByText('Question 1 of 2')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Next/ }))
-    expect(screen.getByText('Question 2 of 2')).toBeInTheDocument()
-    expect(screen.getByText('Make the number 3')).toBeInTheDocument()
   })
 
   it('moves focus between tiles with the arrow keys', () => {
@@ -157,10 +135,41 @@ describe('Binary UI', () => {
     await waitFor(() => expect(binary.grade(task, state()).passed).toBe(true))
   })
 
-  it('is read-only for a teacher view', () => {
+  it('is read-only for a teacher view, and the tutor can pick any question', () => {
     renderBinary(MAKE, { readOnly: true, initialState: binary.solutionState(MAKE) })
     for (const tile of screen.getAllByRole('switch')) expect(tile).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
     expect(screen.getByText('Correct')).toBeInTheDocument()
+    // Tutor-only picker: look at question 1 after the student has moved on.
+    fireEvent.click(screen.getByRole('button', { name: 'Item 1, done' }))
+    expect(screen.getByText('Make the number 5')).toBeInTheDocument()
+    expect(screen.queryByText('Play again')).not.toBeInTheDocument()
+  })
+})
+
+describe('Binary UI: core and bonus rounds', () => {
+  const task = { ...MAKE, coreItems: 1 }
+
+  it('shows the bonus moment once the core is done and labels later items Bonus', async () => {
+    const { onSubmit } = renderBinary(task)
+    expect(screen.queryByTestId('round-bonus')).not.toBeInTheDocument()
+    makeFive()
+    expect(screen.getByText('Done! ⭐ Bonus round')).toBeInTheDocument()
+    expect(await screen.findByText('Make the number 3', {}, MOMENT)).toBeInTheDocument()
+    expect(screen.getByText('Bonus')).toBeInTheDocument()
+    expect(screen.getByText('1 of 1 done')).toBeInTheDocument()
+    // The host marks the task; the view never submits.
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('shows the finish card when everything is done, and Play again clears it locally', async () => {
+    const { onSubmit, state } = renderBinary(task, { initialState: binary.solutionState(task) })
+    expect(screen.getByText('You did it! 2 done')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Play again' }))
+    expect(binary.grade(task, state()).passed).toBe(false)
+    // A clear is never a submit: nothing is logged and the task is not un-passed by the view.
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(screen.getByText('Make the number 5')).toBeInTheDocument()
+    expect(screen.getByText('0 of 1 done')).toBeInTheDocument()
   })
 })

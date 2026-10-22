@@ -39,6 +39,26 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-22
 
+- **An activity task is one round: marked as you go, with core and bonus reps.** Keyboard, Binary
+  and Mouse no longer have **Check my work**: an item ticks the moment it is right, and the task
+  passes when the core is done. The in-task Previous / numbered dots / Next bar is gone from
+  Keyboard, Binary, Next Word and Real or AI; students see a progress strip ("3 of 5 done") and
+  items move on by themselves after a short tick (Real or AI keeps **Next pair →** so the reveal
+  can be read; Next Word keeps its **Check my work**). New optional task field `coreItems` (a whole
+  number from 1 to the number of `items`; default all) on keyboard, binary and mouse: the task
+  passes when that many items are done, the rest are bonus reps ("Done! ⭐ Bonus round"), and a
+  finish card ("You did it! N done") has **Play again**, which clears the items on the device and
+  never un-passes the task or logs a fail. `coreItems` outside 1 to the item count is a
+  validation error; on keyboard `falling_words` it is ignored with a warning. Writing rule: an
+  activity task is one round, a single goal of 3-8 reps that moves on by itself, with no in-task
+  navigation; if you want the class to look at one answer together, make it its own task. See
+  [binary.md](activities/binary.md), [keyboard.md](activities/keyboard.md),
+  [mouse.md](activities/mouse.md).
+- Affects: keyboard, binary, mouse, next_word, real_or_ai (activities) · Existing lessons: no
+  changes needed (no `coreItems` means every item is the goal, as before; `on_submit` Check is
+  replaced by marking as you go); optionally set `coreItems` on long item lists and move any "look
+  at one answer together" item into its own task · Resolves: HSC Hub handoff #97
+
 - **Session reports keep the final code of tasks with no check.** Each student's task gains
   `finalRun: { code, unchecked?, truncated?, at }`, the code of their last Run in the session.
   It's flagged `unchecked` on a task with no check, and also appears when they ran new code after

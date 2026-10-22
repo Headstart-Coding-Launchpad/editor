@@ -4,8 +4,13 @@ A Binary task is an **activity**: a bounded exercise that can sit anywhere in a 
 code tasks of any module. Students toggle bit tiles, type decimal answers, add in binary, spot
 overflow, convert to and from hex, use ASCII codes and draw pixel pictures. There
 is no Run button, no personal sandbox, no sharing and no carry-through. Progress is saved on the
-device, mirrored to the teacher's student card, and marked when the student presses
-**Check my work**.
+device, mirrored to the teacher's student card, and marked as the student goes: there is no Check
+button.
+
+**One round.** An activity task is one round: a single goal of 3-8 reps that moves on by itself, with no in-task navigation; if you want the class to look at one answer together, make it its own task. A number ticks the moment the bits make it, shows a short tick,
+then the next question appears by itself. The student sees only a progress strip (`3 of 5 done`),
+never Previous / Next or numbered buttons. A wrong entry is just "Not yet": there is no wrong mark
+or hint until it is right. Tutors can open any question from a tutor-only picker.
 
 Write `type: binary` on the task (the YAML shorthand for `taskType: activity` +
 `activityType: binary`, which also works). In the Builder, choose the **Activity** format and
@@ -73,7 +78,8 @@ tasks:
 | `codeFormat` | No | `ascii` only: `binary` (8-bit codes, default) or `decimal` (65, 66, …). |
 | `showTable` | No | `ascii` only: show a fold-out ASCII lookup table. Default `false`. |
 | `width`, `height` | `pixels` | `pixels` only: grid size, each a whole number from 1 to 16. |
-| `items` | Yes | One or more questions. Each needs a unique `id` (keeps saved progress attached to the right question). |
+| `coreItems` | No | How many questions make the round, 1 to the number of `items`. The task passes when that many are right; the questions after them are **bonus** reps. Default: all items. |
+| `items` | Yes | One or more questions, played in order. Each needs a unique `id` (keeps saved progress attached to the right question). |
 
 ## Modes and item fields
 
@@ -211,9 +217,15 @@ tasks:
 
 ## Marking and hints
 
-- **Check my work** marks every question. The task passes when all are right.
-- Wrong answers get a short hint that never gives the answer away, e.g. "Your bits make 6,
-  which is too big. Check the 2 column." The hint shows in the usual feedback banner.
+- **Marked as you go.** A question is done the moment it is right. The task passes when
+  `coreItems` questions are done (all of them by default); the passing change is submitted once, and
+  bonus reps after it log nothing more.
+- **Core, then bonus.** Once the core is done the student sees "Done! ⭐ Bonus round" and the
+  remaining questions are labelled Bonus. When every question is done they get a finish card, "You
+  did it! N done", with **Play again**, which clears the questions on that device. The task stays
+  passed: Play again never logs a fail or un-passes.
+- There is no "wrong" state for the student, only "Not yet". The hint for a wrong entry (e.g. "Your bits make 6, which is too big.
+  Check the 2 column.") shows to tutors in the student modal.
 - Toggling a bit or a pixel, or answering Yes/No, is a *discrete* change: the teacher's card
   updates within a moment. Typing (a decimal or hex answer, an ASCII code or text, a row of
   pixel bits) is *continuous*: it only streams while the teacher is watching that student.

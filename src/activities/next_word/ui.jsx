@@ -1,7 +1,9 @@
 ﻿import { useId, useState } from 'react'
 import NextWordBuilderEditor from './NextWordBuilderEditor.jsx'
-import ItemNav from '../ui/ItemNav.jsx'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
+import RoundProgress from '../ui/RoundProgress.jsx'
+import TutorItemPicker from '../ui/TutorItemPicker.jsx'
+import { useRoundFlow } from '../ui/useRoundFlow.js'
 import {
   chosenText,
   gradeItem,
@@ -70,17 +72,37 @@ function NextWordBars({ info, label }) {
   )
 }
 
-export function NextWordStudentView({ task, state, onChange, onSubmit, readOnly = false }) {
+export function NextWordStudentView({
+  task,
+  state,
+  onChange,
+  onSubmit,
+  readOnly = false,
+  teacher = false,
+}) {
+  // A tutor (read-only view, or editing a student's answers) never lingers or advances: they
+  // follow the student's item or pick one in the tutor-only picker.
+  const tutor = readOnly || teacher
   const groupId = useId()
   const texts = textsOf(task)
   const items = task?.items ?? []
   const text = chosenText(task, state)
-  const [index, setIndex] = useState(0)
+  const [tutorPickId, setTutorPickId] = useState(null)
   const [pasteOpen, setPasteOpen] = useState(state?.source === 'paste')
   const [draft, setDraft] = useState(state?.pasted ?? '')
   const [checked, setChecked] = useState({})
   const [notice, setNotice] = useState('')
-  const current = items[Math.min(index, items.length - 1)]
+  // The round moves on by itself: the prediction you get right ticks, then the next prompt
+  // appears. The student never picks a prompt; the tutor's read-only view follows the student, or
+  // shows the prompt picked in the tutor-only picker.
+  const isDone = (item) => gradeItem(task, item, state).correct
+  const flow = useRoundFlow(items, isDone, { readOnly: tutor })
+  const lastItem = items[items.length - 1]
+  const current = tutor
+    ? (items.find((item) => item.id === tutorPickId) ??
+      items.find((item) => !isDone(item)) ??
+      lastItem)
+    : (flow.current ?? lastItem)
   const model = text ? modelFor(text.body) : null
   const probe = String(state?.probe ?? '')
   const temperature = Number.isFinite(state?.temperature) ? state.temperature : DEFAULT_TEMPERATURE
@@ -144,10 +166,7 @@ export function NextWordStudentView({ task, state, onChange, onSubmit, readOnly 
   async function handleCheck() {
     const outcome = await onSubmit?.()
     setChecked(Object.fromEntries(items.map((item) => [item.id, true])))
-    if (!outcome?.passed) {
-      const firstWrong = items.findIndex((item) => !gradeItem(task, item, state).correct)
-      if (firstWrong >= 0) setIndex(firstWrong)
-    }
+    return outcome
   }
 
   const statusFor = (item) => {
@@ -275,15 +294,19 @@ export function NextWordStudentView({ task, state, onChange, onSubmit, readOnly 
           <h3 className="act-nw-heading" id={`${groupId}-predict`}>
             3. Predict the next word
           </h3>
-          <ItemNav
-            items={items}
-            currentIndex={Math.min(index, items.length - 1)}
-            onSelect={(i) => {
-              setIndex(i)
-              setNotice('')
-            }}
-            statusFor={statusFor}
-          />
+          <RoundProgress done={flow.doneCount} total={items.length} />
+          {tutor && (
+            <TutorItemPicker
+              items={items}
+              currentId={current.id}
+              onSelect={(id) => {
+                setTutorPickId(id)
+                setNotice('')
+              }}
+              statusFor={statusFor}
+              noun="Prompt"
+            />
+          )}
           <p className="act-prompt">{current.prompt} …</p>
           <div className="act-row">
             <label htmlFor={`${groupId}-guess`} style={{ fontWeight: 600 }}>
@@ -328,6 +351,11 @@ export function NextWordStudentView({ task, state, onChange, onSubmit, readOnly 
           )}
           {promptInfo && <NextWordBars info={promptInfo} />}
           {result?.correct && <ActivityCorrect />}
+          {flow.finished && !tutor && items.length > 1 && (
+            <p className="act-result act-result--pass" role="status">
+              All predictions done!
+            </p>
+          )}
           {hint && (
             <p className="act-hint" role="status">
               💡 {hint}

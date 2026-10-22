@@ -14,6 +14,7 @@ import {
 } from '../../shared/input/index.js'
 import { gradeEditItem, validateEditItem } from './editText.js'
 import { TYPE_CODE_LANGUAGES, gradeTypeCodeItem, validateTypeCodeItem } from './typeCode.js'
+import { coreCountOf, validateCoreItems } from '../round.js'
 import { FALLING_ROUND_ID, gradeFallingRound, validateFallingWordsTask } from './fallingWords.js'
 
 export const KEYBOARD_MODES = [
@@ -113,11 +114,20 @@ export function validateKeyboardTask(task, n) {
   }
   validateShowHistory(task, where, errors, warnings)
   if (task.mode === 'falling_words') {
+    if (task.coreItems != null) {
+      warnings.push(
+        `${where}: coreItems is ignored for falling_words (it is one round, not a list of items).`
+      )
+    }
     errors.push(...validateFallingWordsTask(task, where, (c) => !!getKeyForChar(c, layout)))
     return { errors, warnings }
   }
   const items = Array.isArray(task.items) ? task.items : []
   if (items.length === 0) errors.push(`${where}: keyboard task needs at least one item.`)
+  else {
+    const coreError = validateCoreItems(task, where, items.length)
+    if (coreError) errors.push(coreError)
+  }
   const seen = new Set()
   items.forEach((item, i) => {
     const label = `${where} item ${i + 1}`
@@ -292,11 +302,14 @@ export function gradeKeyboardTask(task, state = {}) {
     gradeKeyboardItem(task, item, state?.items?.[item.id], options)
   )
   const correct = results.filter((r) => r.correct).length
+  // The goal is the core items (all of them unless task.coreItems says fewer); the rest are bonus.
+  const core = task?.mode === 'falling_words' ? items.length : coreCountOf(task, items.length)
   const firstWrong = results.find((r) => !r.correct)
   return {
     total: items.length,
     correct,
-    done: items.length > 0 && correct === items.length,
+    core,
+    done: items.length > 0 && correct >= core,
     hint: firstWrong?.hint ?? null,
   }
 }

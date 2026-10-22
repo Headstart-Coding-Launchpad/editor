@@ -123,12 +123,13 @@ describe('useActivityState: load and persist', () => {
 describe('useActivityState: live writes', () => {
   it('writes discrete changes debounced, even when no teacher is watching', () => {
     const { result, writers } = render()
+    // (0101 would pass the task and auto-submit, so use entries that are not the answer.)
     act(() => result.current.activity.onChange(bitsState('0001')))
-    act(() => result.current.activity.onChange(bitsState('0101')))
+    act(() => result.current.activity.onChange(bitsState('0110')))
     expect(writers.writeStudentAnswer).not.toHaveBeenCalled()
     act(() => vi.advanceTimersByTime(ACTIVITY_ANSWER_DEBOUNCE_MS))
     expect(writers.writeStudentAnswer).toHaveBeenCalledTimes(1)
-    expect(writers.writeStudentAnswer).toHaveBeenCalledWith(ANON, JSON.stringify(bitsState('0101')))
+    expect(writers.writeStudentAnswer).toHaveBeenCalledWith(ANON, JSON.stringify(bitsState('0110')))
   })
 
   it('never writes continuous changes while unwatched', () => {
@@ -185,7 +186,7 @@ describe('useActivityState: live writes', () => {
 
   it('drops a pending write when the task changes', () => {
     const { result, writers, update } = render()
-    act(() => result.current.activity.onChange(bitsState('0101')))
+    act(() => result.current.activity.onChange(bitsState('0110')))
     update({ currentTaskId: 1 })
     act(() => vi.advanceTimersByTime(1000))
     expect(writers.writeStudentAnswer).not.toHaveBeenCalled()
@@ -218,8 +219,8 @@ describe('useActivityState: grading', () => {
 
   it('marks a correct answer as passed', async () => {
     const { result, writers } = render()
-    act(() => result.current.activity.onChange(bitsState('0101')))
-    await actAsync(() => result.current.activity.onSubmit())
+    act(() => result.current.activity.onChange(bitsState('0100')))
+    await actAsync(() => result.current.activity.onChange(bitsState('0101')))
     expect(result.current.checkPassed).toBe(true)
     expect(writers.writeStudentRun).toHaveBeenCalledWith(ANON, {
       answer: JSON.stringify(bitsState('0101')),
@@ -231,6 +232,38 @@ describe('useActivityState: grading', () => {
       2,
       expect.objectContaining({ passed: true, suggestion: '' })
     )
+  })
+
+  it('auto-submits only on the change from not passed to passed', async () => {
+    const { result, writers } = render()
+    // Wrong entries are never submitted: marked as you go has no "wrong" attempt.
+    await actAsync(() => result.current.activity.onChange(bitsState('0100')))
+    expect(writers.logAttempt).not.toHaveBeenCalled()
+    // The change that passes is submitted once.
+    await actAsync(() => result.current.activity.onChange(bitsState('0101')))
+    expect(writers.logAttempt).toHaveBeenCalledTimes(1)
+    expect(writers.logAttempt).toHaveBeenCalledWith(
+      ANON,
+      2,
+      expect.objectContaining({ passed: true })
+    )
+    // A further change while still passed (a bonus rep) logs nothing more.
+    await actAsync(() =>
+      result.current.activity.onChange({ v: 1, items: { a: { bits: '0101', carries: '0' } } })
+    )
+    expect(writers.logAttempt).toHaveBeenCalledTimes(1)
+  })
+
+  it('Play again (clearing the items) logs no fail and does not un-pass the task', async () => {
+    const { result, writers } = render()
+    await actAsync(() => result.current.activity.onChange(bitsState('0101')))
+    expect(result.current.checkPassed).toBe(true)
+    expect(writers.logAttempt).toHaveBeenCalledTimes(1)
+    await actAsync(() => result.current.activity.onChange(binary.initialState(MAKE_NUMBER)))
+    expect(binary.grade(MAKE_NUMBER, result.current.activity.state).passed).toBe(false)
+    expect(writers.logAttempt).toHaveBeenCalledTimes(1)
+    expect(writers.writeStudentRun).toHaveBeenCalledTimes(1)
+    expect(result.current.checkPassed).toBe(true)
   })
 
   it('an unknown activity renders nothing to grade and writes nothing', async () => {
@@ -312,16 +345,16 @@ describe('useActivityState: teacher controls', () => {
       session: makeSession({ teacherLive: { active: true, source: 'teacher', taskId: 2 } }),
     })
     writers.updateTeacherLive.mockClear()
-    act(() => result.current.activity.onChange(bitsState('0101')))
+    act(() => result.current.activity.onChange(bitsState('0110')))
     expect(writers.updateTeacherLive).toHaveBeenCalledWith(
       expect.objectContaining({
         source: 'teacher',
         taskId: 2,
-        answer: JSON.stringify(bitsState('0101')),
+        answer: JSON.stringify(bitsState('0110')),
       })
     )
     expect(result.current.currentTeacherLivePayload().answer).toBe(
-      JSON.stringify(bitsState('0101'))
+      JSON.stringify(bitsState('0110'))
     )
     expect(writers.writeStudentAnswer).not.toHaveBeenCalled()
   })
@@ -350,7 +383,7 @@ describe('useActivityState: teacher controls', () => {
       }),
     })
     writers.updateTeacherLive.mockClear()
-    act(() => result.current.activity.onChange(bitsState('0101')))
+    act(() => result.current.activity.onChange(bitsState('0110')))
     act(() => vi.advanceTimersByTime(1000))
     expect(writers.updateTeacherLive).not.toHaveBeenCalled()
   })
