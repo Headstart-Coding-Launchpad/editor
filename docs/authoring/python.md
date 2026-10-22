@@ -919,7 +919,9 @@ middle square red", not "make it this colour". The Builder's check row and the C
 stage check in words too ("Something dark blue is on the stage").
 
 **Tutor view and Go Live.** After each Run the drawing goes to the student card (a small
-thumbnail beside the output lines) and to StudentModal (between the code and the console). In
+thumbnail beside the output lines) and to StudentModal: beside the code when the modal is wide,
+so the code keeps its full height, and between the code and the console when it is narrow. **Bigger
+picture** gives the drawing more room. In
 **Go Live** the presenter's drawing shows on every screen. The Stage has a screen-reader
 description listing the shapes, text and grid size with colours in words, and how each shape is
 turned, faded and outlined ("a red square, size 80, turned 45°, in the middle").

@@ -211,7 +211,7 @@ fonts differ between devices.
 ## 9. What the tutor sees
 
 - The student's card shows a small thumbnail of their last drawing; the student modal shows it
-  full size between the code and the console.
+  beside their code (under it on a narrow screen), with **Bigger picture** for more room.
 - While the tutor has a student open, scrub and typing previews redraw on the tutor's screen too,
   not only on Run.
 - After a scrub, the card and modal show whether the checks passed or failed with the new value.
