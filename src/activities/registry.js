@@ -14,6 +14,7 @@ import quizShortAnswerUi from './quiz_short_answer/ui.jsx'
 import quizConfidenceUi from './quiz_confidence/ui.jsx'
 import quizPollUi from './quiz_poll/ui.jsx'
 import codeArrangeUi from './code_arrange/ui.jsx'
+import classifierUi from './classifier/ui.jsx'
 
 export const ACTIVITY_UIS = Object.freeze({
   binary: binaryUi,
@@ -26,6 +27,7 @@ export const ACTIVITY_UIS = Object.freeze({
   quiz_confidence: quizConfidenceUi,
   quiz_poll: quizPollUi,
   code_arrange: codeArrangeUi,
+  classifier: classifierUi,
 })
 
 const merged = new Map()

@@ -15,6 +15,7 @@ import quizConfidence from './quiz_confidence/definition.js'
 import quizPoll from './quiz_poll/definition.js'
 import codeArrange from './code_arrange/definition.js'
 import unknown from './unknown/definition.js'
+import classifier from './classifier/definition.js'
 import { UNKNOWN_ACTIVITY_ID, getActivityId } from './resolve.js'
 
 const ACTIVITIES = [
@@ -28,6 +29,7 @@ const ACTIVITIES = [
   quizConfidence,
   quizPoll,
   codeArrange,
+  classifier,
   unknown,
 ]
 

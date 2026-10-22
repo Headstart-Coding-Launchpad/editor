@@ -29,6 +29,8 @@ function storageFileOf(definition) {
  * shares the session writers, check feedback and teacher-live publishing with every other task
  * kind. The write rules live here once for every activity:
  *
+ * - what leaves the device is `definition.serializeShared(state)` (defaults to `serialize`; the
+ *   classifier uses it to keep raw drawings local); the aux file keeps the full `serialize`;
  * - every change persists to the per-task aux file `__activity_state__` (in-memory store in
  *   presentation/preview, via createStudentPersistence);
  * - discrete changes write `currentAnswer` debounced, always (live lesson and session sandbox;
@@ -139,7 +141,7 @@ export function useActivityState({
     !teacherPresentation &&
     !!identityIdRef.current &&
     sessionRef.current?.activeStudentView === identityIdRef.current
-  const serializeCurrent = () => definitionRef.current?.serialize(stateRef.current) ?? null
+  const serializeCurrent = () => definitionRef.current?.serializeShared(stateRef.current) ?? null
   const writeAnswer = (serialized) => {
     if (serialized == null || !writesToSession()) return
     callbacksRef.current.writeStudentAnswer?.(actorIdRef.current, serialized)
@@ -265,7 +267,7 @@ export function useActivityState({
   if (livePayloadRef) {
     livePayloadRef.current = () => {
       const def = definitionRef.current
-      return def ? { answer: def.serialize(stateRef.current) } : {}
+      return def ? { answer: def.serializeShared(stateRef.current) } : {}
     }
   }
 
@@ -326,7 +328,7 @@ export function useActivityState({
     const cb = callbacksRef.current
     cb.applyCheckFeedback(passed, suggestion)
     cb.setRunStatus?.('submitted')
-    const serialized = def.serialize(submitted)
+    const serialized = def.serializeShared(submitted)
     cancelPendingWrites()
     writersRef.current.teacherLive.cancel()
     // The answer is in: whatever was being typed is no longer a draft.
@@ -409,7 +411,7 @@ export function useActivityState({
       cancelDraftWrites()
       writeDraft(draftRef.current.latest)
     }
-    if (serialized === def?.serialize(def.initialState(taskRef.current))) return
+    if (serialized === def?.serializeShared(def.initialState(taskRef.current))) return
     cancelPendingWrites()
     writeAnswer(serialized)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -444,7 +446,7 @@ export function useActivityState({
     callbacksRef.current.setRunStatus?.(null)
     cancelPendingWrites()
     clearDraft()
-    writeAnswer(def.serialize(next))
+    writeAnswer(def.serializeShared(next))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetPushedAt, !!myStudentData])
 
