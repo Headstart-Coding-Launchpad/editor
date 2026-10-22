@@ -332,6 +332,9 @@ export function validateLessonTask(task, { n, lesson, flat, errors, warnings }) 
   if (task.taskMode != null && task.taskMode !== '' && !TASK_MODES.includes(task.taskMode)) {
     errors.push(`Task ${n} taskMode must be one of: ${TASK_MODES.join(', ')}`)
   }
+  if (task.mustSee != null && typeof task.mustSee !== 'boolean') {
+    errors.push(`Task ${n} mustSee must be true or false`)
+  }
   if (task.allowSharing != null) {
     if (typeof task.allowSharing !== 'boolean') {
       errors.push(`Task ${n} allowSharing must be true or false`)

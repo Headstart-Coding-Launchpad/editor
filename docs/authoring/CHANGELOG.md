@@ -62,6 +62,23 @@ Entries written before 2026-09-29 are not tagged.
 - Affects: cli, session reports · Existing lessons: no changes needed ·
   Resolves: authoring-requests/2026-10-21-cli-list-and-download-a-lesson-s-session-reports.md
 
+- **`mustSee: true` stops the class skipping a task by accident.** Add it to any task the tutor
+  shouldn't skip (for example the task where students run code to see an error on purpose). In a
+  live session, moving the class forward past a `mustSee` task it hasn't been on yet (Next twice,
+  or jumping from the task list) asks "Skip “…”?" with **Go to it** and **Skip anyway**; being on
+  the task once clears the warning. The Builder has a "Must see (warn before the class skips it)"
+  box. It must be `true` or `false`. See [lesson-schema.md](lesson-schema.md) (`mustSee`).
+- Affects: all task types (live sessions) · Existing lessons: no changes needed; add `mustSee:
+  true` to tasks tutors skipped in the pilots · Resolves: HSC Hub handoff #92 item 3
+
+- **Stage hints wait until the code runs.** When a Python Run ends in an error, the hint of a
+  stage check (`stage_matches_target`, `stage_pixel`, `stage_shape_count`, `stage_colour_used`,
+  `stage_text_shown`), as a completion check or a feedback check, is no longer shown; the
+  student and the tutor's card see the error help instead. Once the code runs without an error,
+  hints work as before. Turtle's drawing checks are unchanged. See [python.md](python.md#stage-checks).
+- Affects: python (Stage checks) · Existing lessons: no changes needed · Resolves: HSC Hub
+  handoff #92 item 4
+
 ## 2026-10-21
 
 - **Share links for every student at End Session.** Ending a live session now makes one

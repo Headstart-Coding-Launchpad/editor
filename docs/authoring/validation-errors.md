@@ -78,6 +78,7 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … taskMode must be one of: …` | `taskMode` isn't `both`, `live` or `solo` (a typo such as `Solo` would hide the task in both modes). | Fix the value, or remove it (the default is both). |
 | `Task … has the same id (…) as task … — give every task its own id, or leave out every task id so they are numbered in order` (**CLI only**) | Two tasks share an id. In YAML this usually means some tasks have an `id` and others don't: tasks without one are numbered by position, so `id: 2` clashes with the second task. | Give every task its own id, or remove all the task ids. |
 | `Task … allowSharing must be true or false` | `allowSharing` isn't a boolean. | Use `true` or `false`. |
+| `Task … mustSee must be true or false` | `mustSee` isn't a boolean. | Use `true` (warn the tutor before the class skips this task) or `false`. |
 | `Task … showBlocks must be true or false` | `showBlocks` isn't a boolean. | Use `true` (the default: block brackets show) or `false` (hide them). |
 | `Task … allowSharing is not supported on quiz or information tasks` | Only code tasks have a workspace to share. | Remove `allowSharing` from that task. |
 | `Task … peerHints must be a list of short hint texts` | `peerHints` isn't a list, or holds an empty or non-text entry. | Write `peerHints: ["Did you use a loop?"]`. |
