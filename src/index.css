@@ -2115,6 +2115,15 @@ select {
   width: 110px;
   font-family: var(--font-code);
 }
+.te-act-tap {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.te-act-editor .te-act-tap-input {
+  min-height: 44px;
+}
+
 .te-act-narrow {
   width: 96px;
 }
