@@ -31,7 +31,7 @@ export const SHOW_VARIABLES_TASK_FIELD = Object.freeze({
   name: 'showVariables',
   type: 'object',
   description:
-    "Name-tag panel showing what is in the variables after Run (off unless set): { mode: view | predict | target, at: end | marker (the #@peek line), hide: [names], predict: [names, or { name, answer: boolean | number | text, choices: [values] }] (predict mode), predictType: [names, or { name, choices: [type labels] }] (predict mode: the student picks each one's type, not its value), target: { name: value } (target mode), visuals: true | false (lists and dicts drawn as swatches, bars, pictures and cards; default true), stageLists: picture | tiles | size (how a list drawn with grid() shows; default size), lockRun: true | false (predict mode: Run waits until every prediction is in, until the first Run; default true), placement: side | above (predict mode, Python: above shows the tags above the code until the first Run, then in their usual place; default side), link: true | false (each tag and its variable in the code share a colour and a number; default true) }.",
+    "Name-tag panel showing what is in the variables after Run (off unless set): { mode: view | predict | target, at: end | marker (the #@peek line), hide: [names], predict: [names, or { name, answer: boolean | number | text, choices: [values] }] (predict mode), predictType: [names, or { name, choices: [type labels] }] (predict mode: the student picks each one's type, not its value), target: { name: value } (target mode), visuals: true | false (lists and dicts drawn as swatches, bars, pictures and cards; default true), stageLists: picture | tiles | size (how a list drawn with grid() shows; default size), lockRun: true | false (predict mode: Run waits until every prediction is in, until the first Run; default true), placement: above | side (predict mode, Python: above shows the tags above the code until the first Run, then in their usual place; side keeps them in the panel; default above), link: true | false (each tag and its variable in the code share a colour and a number; default true) }.",
 })
 
 // Python names (identifiers), for author-given names.
@@ -123,7 +123,8 @@ function typeChoicesOf(entry) {
  * predict mode, and `target` only in target mode.
  * `visuals` is false only when the task says so; `stageLists` is picture | tiles | size (default
  * size). `lockRun` is true only in predict mode, unless the task turns it off. `placement` is
- * 'above' only in predict mode when the task says so, else 'side'. `link` (each tag
+ * 'above' in predict mode unless the task says 'side' (Ryan, 2026-10-22: all of them, not opt
+ * in), else 'side'. `link` (each tag
  * and its variable in the code share a colour and a number, ./links.js) is true unless the task
  * turns it off.
  */
@@ -147,7 +148,7 @@ export function getShowVariables(task) {
     visuals: raw.visuals !== false,
     stageLists: STAGE_LISTS_OPTIONS.includes(raw.stageLists) ? raw.stageLists : DEFAULT_STAGE_LISTS,
     lockRun: mode === 'predict' && raw.lockRun !== false,
-    placement: mode === 'predict' && raw.placement === 'above' ? 'above' : 'side',
+    placement: mode === 'predict' && raw.placement !== 'side' ? 'above' : 'side',
     link: raw.link !== false,
   }
 }

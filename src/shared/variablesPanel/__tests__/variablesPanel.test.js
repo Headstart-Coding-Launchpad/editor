@@ -65,7 +65,7 @@ describe('getShowVariables', () => {
       visuals: true,
       stageLists: 'size',
       lockRun: true,
-      placement: 'side',
+      placement: 'above',
       link: true,
     })
     expect(
@@ -484,10 +484,16 @@ describe('predictTagsAbove (showVariables.placement: above)', () => {
     expect(predictTagsAbove(task, { predictions: { taskId: 8, ran: true } })).toBe(true)
   })
 
-  it('is off by default, outside predict mode, and with nothing to predict', () => {
+  it('is on by default in predict mode, off with side, outside predict mode and with nothing to predict', () => {
     expect(predictTagsAbove({ id: 7, showVariables: { mode: 'predict', predict: ['a'] } })).toBe(
-      false
+      true
     )
+    expect(
+      predictTagsAbove({
+        id: 7,
+        showVariables: { mode: 'predict', predict: ['a'], placement: 'side' },
+      })
+    ).toBe(false)
     const view = { id: 7, showVariables: { mode: 'view', placement: 'above' } }
     expect(getShowVariables(view).placement).toBe('side')
     expect(predictTagsAbove(view)).toBe(false)

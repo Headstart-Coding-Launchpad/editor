@@ -39,6 +39,14 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-22
 
+- **Predict tags sit above the code by default.** Every Python predict task now shows its tags
+  above the code until the first Run, without `showVariables.placement: above`. Ryan, 2026-10-22:
+  "all of them instead of opt in". `placement: side` keeps the old place. See
+  [python.md](python.md) (`placement`).
+- Affects: python (showVariables predict) · Existing lessons: no changes needed; drop
+  `placement: above` when next editing a task (it is now the default), and set `placement: side`
+  only where a task needs the tags in the panel · Resolves: HSC Hub handoff #89 item 2
+
 - **Read session reports from the CLI.** `lessons reports list <lessonId> [--since <ISO date>]`
   lists a lesson's session reports, newest first (startedAt, endedAt, studentCount, sessionId), and
   `lessons reports get <lessonId> <startedAt> --yaml` prints one report as the same anonymised YAML
