@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import ItemNav from '../ui/ItemNav.jsx'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
+import RealOrAiBuilderEditor from './RealOrAiBuilderEditor.jsx'
 import { resolveAssetFileUrl } from '../../shared/assetPaths.js'
 import {
   firstOpenIndex,
@@ -280,4 +281,5 @@ export function RealOrAiStudentView({
 
 export default {
   StudentView: RealOrAiStudentView,
+  BuilderEditor: RealOrAiBuilderEditor,
 }

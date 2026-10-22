@@ -94,10 +94,19 @@ export function RowListEditor({
   min = 1,
   addLabel = '+ Add item',
   onRenameId,
+  // true adds Move up / Move down buttons to each row.
+  movable = false,
 }) {
   const list = Array.isArray(rows) ? rows : []
   function update(index, patch) {
     onChange(list.map((row, i) => (i === index ? { ...row, ...patch } : row)))
+  }
+  function move(index, by) {
+    const target = index + by
+    if (target < 0 || target >= list.length) return
+    const next = [...list]
+    ;[next[index], next[target]] = [next[target], next[index]]
+    onChange(next)
   }
   return (
     <Field label={label} hint={hint}>
@@ -119,6 +128,28 @@ export function RowListEditor({
                   }}
                 />
               </label>
+              {movable && (
+                <>
+                  <button
+                    type="button"
+                    className="btn-ghost-outline te-act-tap"
+                    onClick={() => move(index, -1)}
+                    disabled={index === 0}
+                    aria-label={`Move ${kind} ${index + 1} up`}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost-outline te-act-tap"
+                    onClick={() => move(index, 1)}
+                    disabled={index === list.length - 1}
+                    aria-label={`Move ${kind} ${index + 1} down`}
+                  >
+                    ↓
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 className="te-remove-btn"

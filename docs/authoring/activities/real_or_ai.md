@@ -54,6 +54,15 @@ tasks:
         reveal: "AI text often sounds smooth and general, with no small real details."
 ```
 
+## Builder
+
+In the Builder, choose the **Activity** format and pick **Real or AI**. The editor has a
+**Clues** list (add, rename, remove; renaming a clue updates the pairs that use it) and a
+**Pairs** list (add, remove, move up / down). Each pair has Pictures / Texts, side A and B (image
+URL or path, or text), alt text for pictures, which side is AI, the clue (chosen from the Clues
+list), whether the clue is reliable, and the reveal text. Problems show under the pair they are
+about.
+
 ## Task fields
 
 | Field | Required | Notes |
