@@ -519,6 +519,31 @@ export const SCRUB_COMMON_COLOURS = Object.freeze(
   )
 )
 
+// Every CSS colour name, one per colour (British 'grey', 'cyan' and 'magenta' over their
+// aliases), greys first from dark to light, then round the colour wheel: the picker's
+// "All colours" list (Ryan, 2026-10-22: offer all colours, not a selection).
+const ALIAS_LOSERS = new Set(['aqua', 'fuchsia'])
+function hueOrder(hex) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const light = (max + min) / 2
+  const chroma = max - min
+  if (chroma < 0.08) return [0, 0, light]
+  let hue
+  if (max === r) hue = ((g - b) / chroma + 6) % 6
+  else if (max === g) hue = (b - r) / chroma + 2
+  else hue = (r - g) / chroma + 4
+  return [1, Math.round(hue * 60) % 360, light]
+}
+export const SCRUB_ALL_COLOURS = Object.freeze(
+  Object.entries(CSS_COLOURS)
+    .filter(([name]) => !name.includes('gray') && !ALIAS_LOSERS.has(name))
+    .map(([name, hex]) => ({ label: name, hex, name, order: hueOrder(hex) }))
+    .sort((a, b) => a.order[0] - b.order[0] || a.order[1] - b.order[1] || a.order[2] - b.order[2])
+    .map(({ label, hex, name }) => Object.freeze({ label, hex, name }))
+)
+
 /** A typed hex colour ('#abc', 'aabbcc') as '#rrggbb', or null. */
 export function normaliseHexInput(text) {
   const raw = String(text ?? '').trim()

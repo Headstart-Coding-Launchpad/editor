@@ -9,7 +9,7 @@
 // - only tasks still in the lesson the class is using: the session-edited lesson (Edit Lesson →
 //   "Apply for this session") in its live form (`liveBadgeLesson`). Task events on a task that
 //   has gone are dropped; sandbox events keep no task.
-import { isAutoAttempt } from '../shared/autoCheck.js'
+import { isAutoAttempt, isFailedScrubAttempt } from '../shared/autoCheck.js'
 import { decodeFileKey } from '../shared/fileKeys.js'
 import { filterTasksByMode, flattenTasks } from '../shared/taskUtils.js'
 import { getStageRole } from '../shared/taskStages.js'
@@ -83,7 +83,7 @@ export function buildTaskLookup(lesson) {
 // not attempts: they never make an attempt, a first try, an error or a pass.
 function attemptEventsFor(task, logEntries) {
   const ordered = entries(logEntries)
-    .filter(([, entry]) => !isAutoAttempt(entry))
+    .filter(([, entry]) => !isAutoAttempt(entry) && !isFailedScrubAttempt(entry))
     .sort(
       ([keyA, a], [keyB, b]) =>
         timeOrInfinity(a.loggedAt) - timeOrInfinity(b.loggedAt) || (keyA < keyB ? -1 : 1)

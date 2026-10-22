@@ -471,8 +471,12 @@ function buildCheckFeedbackResult(
   feedbackResults,
   output,
   context = {},
-  isCompletionCheckFailed = null
+  isCompletionCheckFailed = null,
+  { runErrored = false } = {}
 ) {
+  // A Run that ended in an error has no picture to judge: hold back the hints of picture checks
+  // (the Python Stage's) so the error help shows instead. See isPictureCheck.
+  if (runErrored) feedbackResults = feedbackResults.filter((result) => !isPictureCheck(result))
   const blockingMatch = getHighestPriorityFeedbackMatch(
     feedbackResults.filter((result) => (result.mode ?? 'blocking') === 'blocking')
   )
@@ -495,7 +499,7 @@ function buildCheckFeedbackResult(
         ? String(matchedFeedbackHint.hint).trim()
         : isCompletionCheckFailed
           ? getFirstFailedCheckHintCustom(task?.check, isCompletionCheckFailed)
-          : getFirstFailedCheckHint(task?.check, output, context)
+          : getFirstFailedCheckHint(task?.check, output, context, { runErrored })
 
   return {
     passed,
@@ -509,10 +513,14 @@ function buildCheckFeedbackResult(
   }
 }
 
+// `options.runErrored`: the Run ended in an error (runWithRuntime), so hints of picture checks
+// are held back; completion and hints of every other check behave as normal.
 export function evaluateCheckWithFeedback(task, output, context = {}, options = {}) {
   const completionPassed = options.completionPassed ?? evaluateCheck(task?.check, output, context)
   const feedbackResults = evaluateFeedbackCheckResults(task, output, context, options)
-  return buildCheckFeedbackResult(task, completionPassed, feedbackResults, output, context)
+  return buildCheckFeedbackResult(task, completionPassed, feedbackResults, output, context, null, {
+    runErrored: options.runErrored === true,
+  })
 }
 
 export function evaluateCheckWithCustomFeedback(
@@ -548,9 +556,18 @@ export function evaluateCheckWithCustomFeedback(
   )
 }
 
-export function getFirstFailedCheckHint(check, output, context = {}) {
+// A check that judges the Python Stage's drawing (stage_matches_target, stage_pixel, ...). When a
+// Run errored, the code never finished drawing, so the picture says nothing useful.
+export function isPictureCheck(check) {
+  const normalized = normalizeCheckShape(check)
+  const def = normalized?.type ? getCheckDefinition(normalized.type) : null
+  return def?.contextKey === 'stage'
+}
+
+export function getFirstFailedCheckHint(check, output, context = {}, { runErrored = false } = {}) {
   const failed = evaluateCheckResults(check, output, context).find(
-    (result) => !result.passed && String(result.hint ?? '').trim()
+    (result) =>
+      !result.passed && String(result.hint ?? '').trim() && !(runErrored && isPictureCheck(result))
   )
   return failed ? String(failed.hint).trim() : ''
 }

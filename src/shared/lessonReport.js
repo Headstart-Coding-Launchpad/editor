@@ -6,7 +6,12 @@ import { typingHistoryReportFields } from './typingHistory.js'
 import { getTaskActivity } from '../activities/registry.pure.js'
 import { SUPPORT_REVEAL_SOURCES } from './taskStages.js'
 import { normalizeCodeSubmission } from './codeSubmission.js'
-import { isAutoAttempt, latestLeaveAttempt, leaveAttemptResult } from './autoCheck.js'
+import {
+  isAutoAttempt,
+  isFailedScrubAttempt,
+  latestLeaveAttempt,
+  leaveAttemptResult,
+} from './autoCheck.js'
 import { buildShownResponsesByTask } from './shownResponses.js'
 import { buildPollsReport } from './classPolls.js'
 import {
@@ -33,7 +38,12 @@ import {
 import { inspectorReportFields, summarizeInspectorUse } from './inspectorUse.js'
 import { slowMoReportFields, summarizeSlowMoUse } from './slowMoUse.js'
 import { courseReportFields, summarizeCourseUse } from './courseUse.js'
-import { scrubReportFields, summarizeScrubUse } from './scrub/scrubUse.js'
+import {
+  scrubCheckFields,
+  scrubReportFields,
+  summarizeScrubChecks,
+  summarizeScrubUse,
+} from './scrub/scrubUse.js'
 import { puzzleReportFields } from './puzzle/puzzle.js'
 import {
   crossLessonCarryReportFields,
@@ -46,6 +56,7 @@ import {
   taskRunCountFields,
 } from './variablesPanel/predictionReport.js'
 import { studentShareKey } from './exportWork/shareLink.js'
+import { latestRun } from './exportWork/collect.js'
 
 const YAML_OPTIONS = { lineWidth: 100, noRefs: true, sortKeys: false, quotingType: '"' }
 
@@ -655,6 +666,31 @@ export function anonymizeSessionReport(report) {
 // - `topics`: the Topic Library's topics, for topic titles; `catalogueBadges`: Admin badges.
 // The report is trimmed to fit a Firestore document (capSessionReportSize).
 // The latest attempt's submission as the report shows it (an activity's state), or null.
+// The longest code a report keeps for a task's last Run; longer code is cut and flagged.
+export const FINAL_RUN_MAX_CHARS = 20000
+
+/**
+ * The code of the student's last Run on a task (students/{id}/lastRuns), when the attempts
+ * don't already hold it: on a task with no check (no attempts are logged), or after the pass
+ * (attempts stop there). `unchecked` marks a task with no check. Never an attempt or a pass.
+ */
+function finalRunFields(task, student, entries) {
+  const run = latestRun(student, task.id)
+  if (!run) return {}
+  const lastEntry = entries[entries.length - 1]
+  if (lastEntry && lastEntry.submission === run.code) return {}
+  if (lastEntry && typeof lastEntry.loggedAt === 'number' && lastEntry.loggedAt >= run.at) return {}
+  const cut = run.code.length > FINAL_RUN_MAX_CHARS
+  return {
+    finalRun: {
+      code: cut ? run.code.slice(0, FINAL_RUN_MAX_CHARS) : run.code,
+      ...(cut ? { truncated: true } : {}),
+      ...(task.check ? {} : { unchecked: true }),
+      ...(run.at ? { at: run.at } : {}),
+    },
+  }
+}
+
 function latestSubmission(task, entries) {
   return entries.length > 0
     ? normalizeSubmission(task, entries[entries.length - 1].submission)
@@ -718,9 +754,14 @@ export function buildSessionReport({
       const allEntries = Object.values(studentAttempts[task.id] ?? {})
       // Auto-check-on-leave records are not attempts: they never count towards attempts,
       // retries, distinctAttempts or common failures, and only decide the result (getAutoCheck).
-      const entries = allEntries
+      // Failed live-scrub releases (source 'scrub') are not attempts either: `entries` leaves them
+      // out of every count and outcome, `scrubEntries` keeps them for scrubChecks and
+      // distinctAttempts (marked source: 'scrub').
+      const realEntries = allEntries
         .filter((entry) => !isAutoAttempt(entry))
         .sort((a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0))
+      const entries = realEntries.filter((entry) => !isFailedScrubAttempt(entry))
+      const scrubEntries = realEntries.filter(isFailedScrubAttempt)
       const autoCheck = isGradedTask(task) ? getAutoCheck(task, allEntries) : null
       const override = getStudentTaskOverride(overrideLog, anonymousId, task.id, entries, task)
       const carryFallback = normalizeCarryFallbackRecord(
@@ -798,11 +839,13 @@ export function buildSessionReport({
         // Turtle course runs (task.course): goal reached, crashes, pickups.
         ...courseReportFields(studentsSnapshot[anonymousId]?.courseLog?.[task.id]),
         ...scrubReportFields(studentsSnapshot[anonymousId]?.scrubLog?.[task.id]),
+        ...scrubCheckFields(scrubEntries),
         // Puzzle tasks (task `puzzle`): linesUsed and changesFromStarter of the passing run's
         // code (the attempt log keeps each run's code), so puzzles can be measured.
         ...puzzleReportFields(task, passingEntry?.submission),
         ...(itemProgress ? { itemProgress } : {}),
         ...(lastDraft ? { lastDraft } : {}),
+        ...finalRunFields(task, studentsSnapshot[anonymousId], entries),
         ...exampleOpenReportFields(session, anonymousId, task.id),
         ...typingHistoryReportFields(session, task, anonymousId, latestSubmission(task, entries)),
         ...crossLessonCarryReportFields(session, anonymousId, task.id),
@@ -814,7 +857,7 @@ export function buildSessionReport({
               taskId: task.id,
               firstPass: firstPasses.get(String(task.id)) ?? null,
             })),
-        distinctAttempts: entries.map((entry) => {
+        distinctAttempts: realEntries.map((entry) => {
           const placements = normalizePlacements(entry.placements)
           return {
             attemptNumber: entry.attemptNumber,
@@ -864,7 +907,7 @@ export function buildSessionReport({
     const failureCounts = new Map()
     for (const t of perStudent) {
       for (const attempt of t.distinctAttempts) {
-        if (attempt.passed || !attempt.suggestion) continue
+        if (attempt.passed || !attempt.suggestion || attempt.source === 'scrub') continue
         failureCounts.set(attempt.suggestion, (failureCounts.get(attempt.suggestion) ?? 0) + 1)
       }
     }
@@ -942,6 +985,7 @@ export function buildSessionReport({
       ...summarizeSlowMoUse(perStudent),
       ...summarizeCourseUse(perStudent),
       ...summarizeScrubUse(perStudent),
+      ...summarizeScrubChecks(perStudent),
       ...summarizeVariablePredictions(perStudent),
       ...summarizeRunCountPredictions(perStudent),
       ...badgeFields,

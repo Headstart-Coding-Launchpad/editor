@@ -399,7 +399,7 @@ variable, with its name, a small type label and its value. Off unless a task set
 | `stageLists` | How a list of rows passed to the [Stage](#stage-drawing-beside-the-console)'s `grid()` in this run shows: `size` (default) — just the tag, type and size, e.g. `pixels: list, 8 × 8, drawn on the Stage`, so the picture doesn't appear twice; `picture` — colour names and hex codes as the small picture as well, to teach "the list *is* the picture" (palette numbers always show as a number table, never a picture); `tiles` — rows of tiles. A flat list drawn with `grid(…, width=…)` always shows as tiles wrapped at that width, whatever `stageLists` says. Ignored with `visuals: false`. |
 | `link` | `true` (default): each tag and its variable in the code are **linked** — see **Linked tags** below. `false`: tags and code are not marked. |
 | `lockRun` | Predict mode only. `true` (default): **Run (on a slow-mo task, ▶ Run (slow-mo); with `slowMo.separateButton`, Slow-mo and Step too) stays disabled until every `predict` tag has an answer** (anything non-blank) **and every `predictType` tag has a type picked**, with "Fill in your predictions first" beside Run in words (a tooltip too, and the button's accessible description). After the student's first Run of the task the lock is gone for good, so they can change the code and run again. The presenter (Go Live, the presentation window) is never locked, a tutor's remote Run still runs, and the personal sandbox isn't locked. `false`: Run works with the tags empty. |
-| `placement` | Predict mode only, Python. `side` (default): the tags sit in the panel's usual place. `above`: **until the student's first Run of the task, the tags sit above the code**, framed in purple, so they are the first thing the student sees; on a tablet or small screen there is no Tags tab until then, so they stay in view with the editor. After the first Run (it survives a reload) the panel goes back to its usual place with the ticks and crosses. Use it on a lesson's first predict tasks. Every predict task, whatever its placement, gives each **empty tag a purple border and a slow glow** until it's filled (a still ring with reduced motion; never on the tutor's copy), and the "Fill in your predictions first" words beside a locked Run are a button that puts the cursor in the first empty tag. |
+| `placement` | Predict mode only, Python. `above` (default since 2026-10-22): **until the student's first Run of the task, the tags sit above the code**, framed in purple, so they are the first thing the student sees; on a tablet or small screen there is no Tags tab until then, so they stay in view with the editor. After the first Run (it survives a reload) the panel goes back to its usual place with the ticks and crosses. `side`: the tags sit in the panel's usual place from the start; set it only where a task needs that. Every predict task, whatever its placement, gives each **empty tag a purple border and a slow glow** until it's filled (a still ring with reduced motion; never on the tutor's copy), and the "Fill in your predictions first" words beside a locked Run are a button that puts the cursor in the first empty tag. |
 
 **Linked tags** (`link`, on by default). Each tag gets one of six clearly different colours **and** a small number, and every real use of that variable in the editor gets the same: a coloured underline with a soft background, and the number drawn small above the end of the name. So the `small` tag and the `small` on line 3 match by colour and number, never colour alone (colour-blind students, projectors). Predict tags are linked from the moment the task opens; view-mode tags once a run shows them; target tags from the start. Featured tags (predict or target names) come first, then the other variables; at most six tags are linked.
 
@@ -898,6 +898,8 @@ Both toggles are at least 44 px.
 All stage checks read the run's drawing, so they need a Run (`lessons test-checks` reports them as
 needing a run). They look at what is on the stage after the last `clear()`.
 
+When a Run ends in an error, the hint of a stage check is held back (in the completion `check` and in `feedbackChecks`), so the student and the tutor's card see the error help instead; once the code runs without an error, hints work as before.
+
 | Type | Fields | Passes when |
 |---|---|---|
 | `stage_matches_target` | `tolerance` (0–1, default `0.01`) | the shapes differ from the `stageTarget` drawing in at most that fraction of the stage, and every target text and emoji is drawn (same words or emoji within 12 px) with no extra ones. Needs `stageTarget` |
@@ -971,8 +973,9 @@ What students get:
   **colour names only** (`colourNames`, on by default): the colour-blind-safe colours first, under
   their nearest CSS names (`black`, `orange`, `cornflowerblue`, `teal`, `gold`, `steelblue`,
   `orangered`, `palevioletred`), then the other common names (`red`, `yellow`, `green`, `blue`,
-  `purple`, `pink`, `brown`, `grey`, `white`). Each choice is labelled with the exact word it
-  writes, and a hex literal is replaced by the name. Picking a colour redraws like a drag and,
+  `purple`, `pink`, `brown`, `grey`, `white`), and **All colours** opens every CSS colour name
+  (139, one per colour, greys first then round the colour wheel) with a **Find a colour** box. Each
+  choice is labelled with the exact word it writes, and a hex literal is replaced by the name. Picking a colour redraws like a drag and,
   with `checkOnRelease`, runs the checks. `colourNames: false` brings back the original
   colour-blind-safe hex colours (written as hex, `#E69F00`) and a hex box; there, a name stays a
   name when the choice has one, and hex keeps its style (`#F00` stays short and in capitals when

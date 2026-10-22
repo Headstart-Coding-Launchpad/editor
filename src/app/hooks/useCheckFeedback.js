@@ -40,14 +40,17 @@ export function useCheckFeedback({ myStudentData, onCheckResult } = {}) {
 
   // `skipLog` keeps a restored or automatic result (idle feedback, Show complete) out of the solo
   // log: only a checked Run the student made reports through `onCheckResult`.
-  function applyCheckFeedback(passed, suggestion = '', { skipLog = false } = {}) {
-    if (!skipLog) onCheckResultRef.current?.(passed)
+  // `scrub` marks the checks on a live scrub's release: a failed one shows its feedback but is
+  // not a failed attempt (no solo-log attempt, no fail-streak step); a passing one counts as usual.
+  function applyCheckFeedback(passed, suggestion = '', { skipLog = false, scrub = false } = {}) {
+    const scrubMiss = scrub && !passed
+    if (!skipLog && !scrubMiss) onCheckResultRef.current?.(passed)
     const nextSuggestion = String(suggestion ?? '').trim()
     setCheckPassed(passed)
     setCheckAttempted(true)
     setCheckSuggestion(nextSuggestion)
     setStagePromptAccepted(false)
-    setCheckFailCount((prev) => (passed ? 0 : prev + 1))
+    setCheckFailCount((prev) => (passed ? 0 : scrubMiss ? prev : prev + 1))
     if (passed) setOfferedStageIndex(-1)
     if (passed) setCompletePreviewShown(false)
     setRepeatedSuggestionCount((prev) => {

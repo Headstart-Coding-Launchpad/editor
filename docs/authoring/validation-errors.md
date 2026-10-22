@@ -78,6 +78,7 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … taskMode must be one of: …` | `taskMode` isn't `both`, `live` or `solo` (a typo such as `Solo` would hide the task in both modes). | Fix the value, or remove it (the default is both). |
 | `Task … has the same id (…) as task … — give every task its own id, or leave out every task id so they are numbered in order` (**CLI only**) | Two tasks share an id. In YAML this usually means some tasks have an `id` and others don't: tasks without one are numbered by position, so `id: 2` clashes with the second task. | Give every task its own id, or remove all the task ids. |
 | `Task … allowSharing must be true or false` | `allowSharing` isn't a boolean. | Use `true` or `false`. |
+| `Task … mustSee must be true or false` | `mustSee` isn't a boolean. | Use `true` (warn the tutor before the class skips this task) or `false`. |
 | `Task … showBlocks must be true or false` | `showBlocks` isn't a boolean. | Use `true` (the default: block brackets show) or `false` (hide them). |
 | `Task … allowSharing is not supported on quiz or information tasks` | Only code tasks have a workspace to share. | Remove `allowSharing` from that task. |
 | `Task … peerHints must be a list of short hint texts` | `peerHints` isn't a list, or holds an empty or non-text entry. | Write `peerHints: ["Did you use a loop?"]`. |
@@ -439,7 +440,7 @@ Python and Turtle tasks; see [python.md](python.md#name-tag-panel-showvariables)
 | `Task … has showVariables link that is not true or false` | `link` must be a boolean. | Use `true` (the default) or `false` to stop linking tags to the code. |
 | `Task … has showVariables lockRun that is not true or false` | `lockRun` must be a boolean. | Use `true` (the default in predict mode) or `false`. |
 | `Task … has showVariables lockRun but its mode is not predict — only predict mode locks Run, so it is ignored` (warning) | `lockRun` on a view or target task. | Remove it, or set `mode: predict`. |
-| `Task … has showVariables placement "…" — use one of: …` | `placement` isn't one of the two values. | Use `above` (tags above the code until the first Run) or `side` (the default). |
+| `Task … has showVariables placement "…" — use one of: …` | `placement` isn't one of the two values. | Use `above` (the default: tags above the code until the first Run) or `side` (tags in the panel). |
 | `Task … has showVariables placement but its mode is not predict — only predict tags move above the code, so it is ignored` (warning) | `placement` on a view or target task. | Remove it, or set `mode: predict`. |
 | `Task … has showVariables stageLists "…" — use one of: …` | Unknown `stageLists`. | Use `picture`, `tiles` or `size`. |
 | `Task … has showVariables stageLists but visuals is false — every tag is plain, so it is ignored` (warning) | With `visuals: false` every tag is plain text, including lists drawn with `grid()`. | Remove `stageLists`, or turn `visuals` back on. |

@@ -29,6 +29,21 @@ export function realAttemptEntries(entries) {
   return (entries ?? []).filter((entry) => !isAutoAttempt(entry))
 }
 
+/**
+ * Whether an attemptLog entry is a live scrub's release that did not pass (`source: 'scrub'`,
+ * scrub.checkOnRelease). A mid-exploration release is not a failed attempt: it never counts
+ * towards attempts, retries, failures or error streaks. A scrub release that passes is the
+ * pass, so it still counts.
+ */
+export function isFailedScrubAttempt(entry) {
+  return !!entry && typeof entry === 'object' && entry.source === 'scrub' && entry.passed !== true
+}
+
+/** The entries that count as attempts: real ones, minus failed scrub releases. */
+export function countedAttemptEntries(entries) {
+  return realAttemptEntries(entries).filter((entry) => !isFailedScrubAttempt(entry))
+}
+
 /** The most recent leave attempt (by loggedAt, then list order), or null. */
 export function latestLeaveAttempt(entries) {
   let latest = null

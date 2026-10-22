@@ -32,7 +32,8 @@ import { lastErrorLine } from '../studentHints.js'
  * - setters: setOutput, setInputPrompt, setErrorLine, setRunStatus, setTurtleResult,
  *   setStageResult (optional), setRunning
  * - writers: writeStudentInputState, writeStudentOutput, writeStudentCode, writeStudentRun,
- *   writeStudentTurtleResult, writeStudentStageResult (optional), logAttempt
+ *   writeStudentTurtleResult, writeStudentStageResult (optional), writeStudentTaskRun (optional),
+ *   logAttempt
  * - live: canPublishTeacherLive, updateTeacherLive, currentTeacherLivePayload, publishTeacherLive
  * - feedback: applyCheckFeedback, updateTargetedStageOffer, updateSupportStageForAttempt
  * - saveRunRecord(taskId, code, fields): the task's run record (persistence.saveRunRecord)
@@ -384,6 +385,8 @@ export async function runWithRuntime(ctx) {
             completionPassed:
               !runFailureBlocksCompletion &&
               evaluateCheck(checkTask.check, outputBuffer.raw, checkContext),
+            // An errored Run: no Stage hint (the error help shows instead).
+            runErrored: status === 'error',
           })
         : null
     if (evaluation) {
@@ -391,8 +394,12 @@ export async function runWithRuntime(ctx) {
       suggestion = evaluation.suggestion
       feedback.updateTargetedStageOffer(checkTask, evaluation, passed)
     }
-    if (!hasTests && checkTask?.check) feedback.applyCheckFeedback(passed, suggestion)
-    feedback.updateSupportStageForAttempt(status !== 'error' && (!checkTask?.check || passed))
+    if (!hasTests && checkTask?.check)
+      feedback.applyCheckFeedback(passed, suggestion, { scrub: isScrubRun })
+    // A failed scrub release is not a failed attempt, so it does not step the support offers.
+    if (!(isScrubRun && !passed)) {
+      feedback.updateSupportStageForAttempt(status !== 'error' && (!checkTask?.check || passed))
+    }
   }
 
   if (canPublishTeacherLive()) {
@@ -433,6 +440,11 @@ export async function runWithRuntime(ctx) {
   if (!isFreePlay && result.turtle?.course) ctx.recordCourseRun?.(result.turtle.course)
   if (isFreePlay && !teacherPresentation) {
     signals?.reportSandboxRun({ error: runError, submission: nextCode })
+  }
+  // Every lesson Run keeps its code per task, checked or not, solved or not (lastRuns): what the
+  // End Session share link and the session report use for a task's final code.
+  if (!teacherPresentation && !isFreePlay && refs.phaseRef.current === 'lesson') {
+    writers.writeStudentTaskRun?.(actor.anonymousId, currentTaskId, nextCode)
   }
   if (
     !teacherPresentation &&

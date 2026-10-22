@@ -193,7 +193,7 @@ export default function ShowVariablesField({ task, onUpdate }) {
                 <label className="te-check-toggle" style={{ alignSelf: 'flex-start' }}>
                   <input
                     type="checkbox"
-                    checked={config.placement === 'above'}
+                    checked={config.placement !== 'side'}
                     onChange={(e) =>
                       onUpdate(
                         updateShowVariables(task, {

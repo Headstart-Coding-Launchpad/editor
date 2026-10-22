@@ -80,6 +80,8 @@ import { usePeerHelp } from '../hooks/usePeerHelp'
 import TeacherPeerHelpMenu from '../components/peerHelp/TeacherPeerHelpMenu'
 import TeacherPeerHelpAlertBanner from '../components/peerHelp/TeacherPeerHelpAlertBanner'
 import MatchStudentsDialog from '../components/roster/MatchStudentsDialog'
+import MustSeeSkipDialog from '../components/MustSeeSkipDialog'
+import { findSkippedMustSeeTask } from '../../shared/mustSee'
 import { useClassList, useClassRoster } from '../hooks/useClassRoster'
 import { useRosterWorkSaver } from '../hooks/useRosterWorkSaver'
 import { useTypingHistory } from '../hooks/useTypingHistory'
@@ -100,6 +102,7 @@ import {
 import { hasExporter, loadExporters } from '../../shared/exportWork/exporters.js'
 import { exportableTasks } from '../../shared/exportWork/collect.js'
 import { shareUrl } from '../../shared/exportWork/shareLink.js'
+import { useTeacherPresence } from '../hooks/useTeacherPresence'
 import { createShareLink } from '../../shared/exportWork/shareService.js'
 import {
   SESSION_SHARE_TIMEOUT_MS,
@@ -122,6 +125,7 @@ export default function TeacherView({ lessonId }) {
   const {
     session,
     loading,
+    connected,
     createSession,
     restartSession,
     startSession,
@@ -202,6 +206,12 @@ export default function TeacherView({ lessonId }) {
     revokeBadge,
     setBadgeSettings,
   } = useSession(lessonId)
+  // This tab is on the open session, so a tab that crashes leaves it marked stale, not open.
+  useTeacherPresence(lessonId, {
+    open: !!session && session.state !== 'ended',
+    connected,
+    sessionKey: session?.createdAt ?? null,
+  })
   // Peer help: every request in the lesson, the review queue and the teacher's switches.
   const peerHelp = usePeerHelp({ lessonId, session, role: 'teacher' })
 
@@ -309,6 +319,7 @@ export default function TeacherView({ lessonId }) {
   // previewTaskId: non-null while the teacher is previewing a task locally without moving students
   const [previewTaskId, setPreviewTaskId] = useState(null)
   const [showEndModal, setShowEndModal] = useState(false)
+  const [mustSeePrompt, setMustSeePrompt] = useState(null)
   const [showProblemModal, setShowProblemModal] = useState(false)
   const [goHomeReport, setGoHomeReport] = useState(null)
   const [showEditLessonModal, setShowEditLessonModal] = useState(false)
@@ -486,8 +497,21 @@ export default function TeacherView({ lessonId }) {
     session?.teacherLiveReference?.taskId,
   ])
 
-  async function handleTaskChange(taskId) {
+  async function handleTaskChange(taskId, { skipMustSeeCheck = false } = {}) {
     const leavingTaskId = session?.currentTaskId ?? currentTaskId
+    if (!skipMustSeeCheck) {
+      // Moving the class past a must-see task it hasn't been on: ask first (src/shared/mustSee.js).
+      const skipped = findSkippedMustSeeTask(
+        flatTasks,
+        leavingTaskId,
+        taskId,
+        session?.taskStartTimes
+      )
+      if (skipped) {
+        setMustSeePrompt({ targetTaskId: taskId, task: skipped })
+        return
+      }
+    }
     const leavingTask = flatTasks.find((t) => t.id === leavingTaskId)
     if (
       session?.state === 'active' &&
@@ -1177,6 +1201,23 @@ export default function TeacherView({ lessonId }) {
           onAddStudent={(name) => addRosterEntry(sessionClass.classId, name, user?.uid ?? null)}
           carryWaitingIds={rosterStatus.carryWaitingIds}
           onUseCarryStarter={rosterStatus.onUseCarryStarter}
+        />
+      )}
+
+      {mustSeePrompt && (
+        <MustSeeSkipDialog
+          taskTitle={mustSeePrompt.task.title}
+          onClose={() => setMustSeePrompt(null)}
+          onGoToIt={() => {
+            const target = mustSeePrompt.task.id
+            setMustSeePrompt(null)
+            handleTaskChange(target)
+          }}
+          onSkip={() => {
+            const target = mustSeePrompt.targetTaskId
+            setMustSeePrompt(null)
+            handleTaskChange(target, { skipMustSeeCheck: true })
+          }}
         />
       )}
 

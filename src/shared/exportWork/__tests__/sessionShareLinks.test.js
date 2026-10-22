@@ -89,6 +89,35 @@ describe('makeSessionShareLinks', () => {
     expect(JSON.stringify(create.mock.calls)).not.toMatch(/Ann|Ben/)
   })
 
+  it('takes a later task with no check from its last Run (lastRuns), not an earlier attempt', async () => {
+    const session = {
+      currentTaskId: 1,
+      students: {
+        b: { displayName: 'Ben', lastRuns: { 2: { code: 'print("further")', at: 9 } } },
+      },
+      attemptLog: {
+        b: { 1: { x: { submission: 'print(1)', loggedAt: 5, attemptNumber: 1 } } },
+      },
+    }
+    const { run, create } = setup(session)
+    const links = await run()
+    expect(links).toEqual([expect.objectContaining({ taskId: 2, taskTitle: 'Second' })])
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ payload: { code: 'print("further")' } })
+    )
+  })
+
+  it('prefers a newer logged attempt over an older Run on the same task', async () => {
+    const session = {
+      currentTaskId: 1,
+      students: { b: { displayName: 'Ben', lastRuns: { 2: { code: 'old', at: 3 } } } },
+      attemptLog: { b: { 2: { x: { submission: 'new', loggedAt: 7, attemptNumber: 1 } } } },
+    }
+    const { run, create } = setup(session)
+    await run()
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ payload: { code: 'new' } }))
+  })
+
   it('skips students with no work and reports a link that could not be made', async () => {
     const session = {
       currentTaskId: 1,

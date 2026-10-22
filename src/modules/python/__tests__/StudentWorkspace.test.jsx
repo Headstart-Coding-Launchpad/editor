@@ -335,7 +335,8 @@ describe('Python StudentWorkspace result tabs on smaller screens (P6-12)', () =>
     layoutState.layout = 'tabs'
     const onVisiblePanesChange = vi.fn()
     renderWorkspace({
-      task: { id: 't1', showVariables: { mode: 'predict', predict: ['size'] } },
+      // placement: side keeps the tags in the panel (the default puts them above the code).
+      task: { id: 't1', showVariables: { mode: 'predict', predict: ['size'], placement: 'side' } },
       onVisiblePanesChange,
     })
     expect(screen.getByText('python-editor')).toBeVisible()

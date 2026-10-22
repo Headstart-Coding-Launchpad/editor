@@ -39,12 +39,55 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-22
 
+- **Session reports keep the final code of tasks with no check.** Each student's task gains
+  `finalRun: { code, unchecked?, truncated?, at }`, the code of their last Run in the session.
+  It's flagged `unchecked` on a task with no check, and also appears when they ran new code after
+  passing. It is never an attempt or a pass, and is capped at 20,000 characters. Only sessions run
+  after this ships have it. See [session-reports.md](session-reports.md).
+- Affects: session reports (python, turtle and other run-based modules) · Existing lessons: no
+  changes needed · Resolves: HSC Hub handoff #89 item 4
+
+- **Predict tags sit above the code by default.** Every Python predict task now shows its tags
+  above the code until the first Run, without `showVariables.placement: above`. Ryan, 2026-10-22:
+  "all of them instead of opt in". `placement: side` keeps the old place. See
+  [python.md](python.md) (`placement`).
+- Affects: python (showVariables predict) · Existing lessons: no changes needed; drop
+  `placement: above` when next editing a task (it is now the default), and set `placement: side`
+  only where a task needs the tags in the panel · Resolves: HSC Hub handoff #89 item 2
+
 - **Read session reports from the CLI.** `lessons reports list <lessonId> [--since <ISO date>]`
   lists a lesson's session reports, newest first (startedAt, endedAt, studentCount, sessionId), and
   `lessons reports get <lessonId> <startedAt> --yaml` prints one report as the same anonymised YAML
   End Session exports. Read-only. See [session-reports.md](session-reports.md).
 - Affects: cli, session reports · Existing lessons: no changes needed ·
   Resolves: authoring-requests/2026-10-21-cli-list-and-download-a-lesson-s-session-reports.md
+
+- **Scrub releases that miss are no longer failed attempts.** When a student lets go of a live
+  scrub and `scrub.checkOnRelease` runs the checks, a release that does not pass is not counted
+  as an attempt, a retry or a failure anywhere: not in the report (`attempts`, `avgAttempts`,
+  `commonFailures`, `finalResult`, badge metrics), the tutor's "Failed N times in a row", or the
+  student's hint escalation and solo log. A release that passes is still the pass. New per-task
+  report field `scrubChecks` (and a task-summary total) counts the missed releases, and they stay
+  in `distinctAttempts` marked `source: scrub`. See [session-reports.md](session-reports.md),
+  which also gains "Reading predict and scrub data (for pipeline-ui)".
+- Affects: session reports, python, turtle and html tasks with `scrub` · Existing lessons: no
+  changes needed · Resolves: HSC Hub handoff #92 items 1 and 5
+- **`mustSee: true` stops the class skipping a task by accident.** Add it to any task the tutor
+  shouldn't skip (for example the task where students run code to see an error on purpose). In a
+  live session, moving the class forward past a `mustSee` task it hasn't been on yet (Next twice,
+  or jumping from the task list) asks "Skip “…”?" with **Go to it** and **Skip anyway**; being on
+  the task once clears the warning. The Builder has a "Must see (warn before the class skips it)"
+  box. It must be `true` or `false`. See [lesson-schema.md](lesson-schema.md) (`mustSee`).
+- Affects: all task types (live sessions) · Existing lessons: no changes needed; add `mustSee:
+  true` to tasks tutors skipped in the pilots · Resolves: HSC Hub handoff #92 item 3
+
+- **Stage hints wait until the code runs.** When a Python Run ends in an error, the hint of a
+  stage check (`stage_matches_target`, `stage_pixel`, `stage_shape_count`, `stage_colour_used`,
+  `stage_text_shown`), as a completion check or a feedback check, is no longer shown; the
+  student and the tutor's card see the error help instead. Once the code runs without an error,
+  hints work as before. Turtle's drawing checks are unchanged. See [python.md](python.md#stage-checks).
+- Affects: python (Stage checks) · Existing lessons: no changes needed · Resolves: HSC Hub
+  handoff #92 item 4
 
 ## 2026-10-21
 

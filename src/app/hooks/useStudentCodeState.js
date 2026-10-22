@@ -189,6 +189,7 @@ export function useStudentCodeState({
   writeStudentArcadeDesign,
   writeStudentTurtleResult,
   writeStudentStageResult,
+  writeStudentTaskRun,
   writeStudentSpriteState,
   writeStudentCursor,
   writeStudentBlockDrag,
@@ -1914,6 +1915,7 @@ export function useStudentCodeState({
           writeStudentRun,
           writeStudentTurtleResult,
           writeStudentStageResult,
+          writeStudentTaskRun,
           logAttempt,
         },
         live: {
@@ -1984,14 +1986,14 @@ export function useStudentCodeState({
         suggestion = task?.check ? evaluation.suggestion : ''
         if (scrubRun && task?.check) scrubPassed = passed
         updateTargetedStageOffer(task, evaluation, passed)
-        if (task?.check) applyCheckFeedback(passed, suggestion)
+        if (task?.check) applyCheckFeedback(passed, suggestion, { scrub: !!scrubRun })
         const supportAttempt = htmlSupportAttemptsRef.current.get(src)
         const supportPassed = !supportAttempt?.hasError && (!task?.check || passed)
         if (supportAttempt) {
           supportAttempt.outcomeApplied = true
           supportAttempt.passed = supportPassed
         }
-        updateSupportStageForAttempt(supportPassed)
+        if (!(scrubRun && !supportPassed)) updateSupportStageForAttempt(supportPassed)
       } else {
         passed = true
       }

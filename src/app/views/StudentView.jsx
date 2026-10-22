@@ -1,4 +1,6 @@
 import { applyCopyCodeOverrides } from '../../shared/copyCodeOverrides'
+import { TEACHER_PRESENTER_ID } from '../../shared/presenter.js'
+import { isStaleSession } from '../../shared/staleSessions.js'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useIsMobile } from '../../shared/useIsMobile'
 import { useSession } from '../hooks/useSession'
@@ -125,7 +127,7 @@ export default function StudentView({
 
   const useRealtimeSession = !soloMode || teacherPresentation
   const {
-    session,
+    session: liveSession,
     loading: sessionLoading,
     connected,
     serverTimeOffset,
@@ -146,6 +148,7 @@ export default function StudentView({
     writeStudentArcadeDesign,
     writeStudentTurtleResult,
     writeStudentStageResult,
+    writeStudentTaskRun,
     writeStudentSpriteState,
     writeStudentCursor,
     writeStudentBlockDrag,
@@ -200,7 +203,16 @@ export default function StudentView({
     pushClassPaneCommand,
     subscribeLiveInk,
     createLiveInkWriter,
-  } = useSession(useRealtimeSession ? lessonId : null, { enabled: useRealtimeSession })
+  } = useSession(useRealtimeSession ? lessonId : null, {
+    enabled: useRealtimeSession,
+    keepPresenter: teacherPresentation,
+  })
+  // A session its tutor left without ending (crashed tab) is no session: students get the
+  // Join/Solo choice instead of waiting for a tutor who isn't coming (staleSessions.js).
+  const session = useMemo(
+    () => (isStaleSession(liveSession, Date.now(), { byAge: false }) ? null : liveSession),
+    [liveSession]
+  )
   const {
     identity,
     loaded: identityLoaded,
@@ -211,7 +223,7 @@ export default function StudentView({
     updateDisplayName,
   } = useIdentity()
   const effectiveIdentity = teacherPresentation
-    ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' }
+    ? { anonymousId: TEACHER_PRESENTER_ID, displayName: 'Teacher' }
     : identity
 
   // A tutor's own "Type this out" text for the class or this student (copyCodeOverrides).
@@ -316,6 +328,7 @@ export default function StudentView({
     writeStudentArcadeDesign,
     writeStudentTurtleResult,
     writeStudentStageResult,
+    writeStudentTaskRun,
     writeStudentSpriteState,
     writeStudentCursor,
     writeStudentBlockDrag,

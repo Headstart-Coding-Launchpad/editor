@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { withoutPresenter } from '../../shared/presenter.js'
 import {
   ref,
   onValue,
@@ -42,7 +43,7 @@ import {
   normaliseSessionArchive,
 } from '../../badges/sessionArchive'
 import { findShownResponse, normalizeShownText } from '../../shared/shownResponses'
-import { AUTO_CHECK_LEAVE, AUTO_CHECK_RESULTS, realAttemptEntries } from '../../shared/autoCheck'
+import { AUTO_CHECK_LEAVE, AUTO_CHECK_RESULTS, countedAttemptEntries } from '../../shared/autoCheck'
 import { liveInkPath } from '../liveInk/liveInkData'
 import { normalizePollDraft, pollChoiceIndex } from '../../shared/classPolls.js'
 import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liveInkWriter'
@@ -93,9 +94,9 @@ function encodeWorkspaceFiles(files) {
 // The attempts a student really ran or submitted: auto-check-on-leave records
 // (src/shared/autoCheck.js) are not attempts.
 function getAttemptEntries(session, anonymousId, taskId) {
-  return realAttemptEntries(Object.values(session?.attemptLog?.[anonymousId]?.[taskId] ?? {})).sort(
-    (a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0)
-  )
+  return countedAttemptEntries(
+    Object.values(session?.attemptLog?.[anonymousId]?.[taskId] ?? {})
+  ).sort((a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0))
 }
 
 function countAttemptRuns(entries) {
@@ -106,7 +107,7 @@ function countAttemptRuns(entries) {
  * Subscribes to a Firebase session and exposes helpers for reading/writing state.
  * Used by both the teacher view and the student view.
  */
-export function useSession(lessonId, { enabled = true } = {}) {
+export function useSession(lessonId, { enabled = true, keepPresenter = false } = {}) {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(enabled)
   const [connected, setConnected] = useState(null)
@@ -152,12 +153,14 @@ export function useSession(lessonId, { enabled = true } = {}) {
     sessionRef.current = r
 
     const unsub = onValue(r, (snap) => {
-      setSession(snap.exists() ? snap.val() : null)
+      // Only the presentation window itself sees its own student node (TEACHER_PRESENTER_ID).
+      const value = snap.exists() ? snap.val() : null
+      setSession(keepPresenter ? value : withoutPresenter(value))
       setLoading(false)
     })
 
     return () => unsub()
-  }, [enabled, lessonId])
+  }, [enabled, lessonId, keepPresenter])
 
   // A new session (createSession clears studentSignals) starts this tab's guards afresh.
   useEffect(() => {
@@ -1664,7 +1667,13 @@ export function useSession(lessonId, { enabled = true } = {}) {
       return
     }
 
-    if (cached && cached.serialized === serialized) {
+    // A failed scrub release is not a retry of a Run's attempt (nothing new to log), and a Run or
+    // a pass is not a retry of a failed scrub release (it gets its own entry, so the release
+    // stays uncounted).
+    const scrubMiss = source === 'scrub' && !passed
+    const sameCode = cached && cached.serialized === serialized
+    if (sameCode && scrubMiss && !cached.scrubMiss) return
+    if (sameCode && (!cached.scrubMiss || scrubMiss)) {
       const nextRetries = cached.retries + 1
       const updates = { retries: nextRetries }
       if (passed) {
@@ -1709,6 +1718,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
       attemptNumber,
       retries: 0,
       passed,
+      scrubMiss,
     }
   }
 
@@ -1762,6 +1772,20 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await set(
       ref(db, `sessions/${lessonId}/students/${anonymousId}/currentStageResult`),
       compactStageForSync(stage)
+    )
+  }
+
+  // The code of a student's latest Run on each task, checked or not (lastRuns/{taskId}): the
+  // End Session share link and the session report read it, since attempts are only logged for
+  // checked tasks until they pass (handoff #88 share links, #87 unchecked tasks).
+  async function writeStudentTaskRun(anonymousId, taskId, code) {
+    if (!anonymousId || taskId == null || typeof code !== 'string') return
+    await set(
+      ref(
+        db,
+        `sessions/${lessonId}/students/${anonymousId}/lastRuns/${encodeFileKey(String(taskId))}`
+      ),
+      { code, at: serverTimestamp() }
     )
   }
 
@@ -2426,6 +2450,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     writeStudentArcadeDesign,
     writeStudentTurtleResult,
     writeStudentStageResult,
+    writeStudentTaskRun,
     writeStudentSpriteState,
     writeStudentCursor,
     writeStudentBlockDrag,
