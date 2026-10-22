@@ -597,7 +597,9 @@ export function summariseSessionReports(docs, { since } = {}) {
   if (since != null && !Number.isFinite(sinceMs)) throw new Error(`Bad --since date '${since}'`)
   return docs
     .map((d) => ({
-      startedAt: d.startedAt ?? Number(d.sessionId ?? d.id) ?? null,
+      startedAt:
+        d.startedAt ??
+        (Number.isFinite(Number(d.sessionId ?? d.id)) ? Number(d.sessionId ?? d.id) : null),
       endedAt: d.endedAt ?? null,
       studentCount: Array.isArray(d.students) ? d.students.length : 0,
       sessionId: String(d.sessionId ?? d.id),
