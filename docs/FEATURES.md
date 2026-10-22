@@ -80,6 +80,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Create, start, pause/resume, sandbox, end, and restart sessions
 - Share a live join link with students
 - Lesson elapsed timer and per-task countdown that flashes when time expires
+- Task change flash: when the tutor moves the class to a new task, student screens and the presentation window briefly show a full-width "Task 4 · Title" band (about 1.6 s, announced to screen readers, a fade under reduced motion); not shown in solo mode or when a student browses back
 - ⏱ Class countdown: the teacher starts a countdown (1/2/5/10 min presets or custom minutes), can add a minute or stop it, and every student screen and the presentation window shows the time left. At zero students get a "Time's up!" banner and a gentle chime (respecting their mute and the tutor's Sounds off); nothing is locked. It keeps running across task changes until the teacher stops it or the session ends
 - Ending a session ends it immediately for students; the report shown afterwards offers an optional 1-5 star rating plus "what worked well" / "what didn't work, or was broken" notes, saved onto that session's report
 - The session report shows how many references (support stages) were opened per task — count, students, and teacher vs student — and which ones each student opened

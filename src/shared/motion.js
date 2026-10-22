@@ -14,6 +14,8 @@ export const MOTION_MS = Object.freeze({
   // Class lengths JS has to wait out (`.motion-spin-once`, `.motion-tumble-in`).
   spin: 620,
   tumble: 720,
+  // The whole task-change flash (`.task-change-flash`): slide in, hold, slide out.
+  taskFlash: 1600,
 })
 
 /** A stagger never waits for more than this many items, so a long list doesn't drag. */
