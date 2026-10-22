@@ -20,8 +20,10 @@ card, and reported when the student presses **Check my work**.
 
 Write `type: next_word` on the task (the YAML shorthand for `taskType: activity` +
 `activityType: next_word`, which also works). In the Builder, choose the **Activity** format and
-pick **Next Word**; the Builder shows the task's validation but edit `texts` and `items` in
-YAML.
+pick **Next Word**. The Builder editor edits the texts (add, remove, title, body with a
+character count out of 4000), the paste and temperature switches, and the items (id, prompt,
+answer). Under each item it shows the likeliest next word(s) for the prompt in the first text, so
+you can set `answer` correctly; validation shows beside the item it is about.
 
 ## Complete example
 
