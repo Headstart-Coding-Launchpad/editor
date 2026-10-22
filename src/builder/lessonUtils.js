@@ -146,6 +146,7 @@ export function normalizeTasksForExport(tasks, { preserveIds = false } = {}) {
       }
       if (task.estimatedMinutes != null) exported.estimatedMinutes = task.estimatedMinutes
       if (task.priority != null) exported.priority = task.priority
+      if (task.mustSee === true) exported.mustSee = true
       if ((task.informationType ?? 'standard') !== 'standard')
         exported.informationType = task.informationType
       if (task.leftContent) exported.leftContent = task.leftContent

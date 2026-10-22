@@ -65,6 +65,12 @@ export const COMMON_TASK_FIELDS = specs(
     },
     { name: 'allowSharing', type: 'boolean' },
     {
+      name: 'mustSee',
+      type: 'boolean',
+      description:
+        'true: the tutor gets a "Skip this?" confirm before the class moves past this task without having been on it (any task type).',
+    },
+    {
       name: 'highlight',
       type: 'string',
       description:

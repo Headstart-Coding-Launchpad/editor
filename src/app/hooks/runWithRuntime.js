@@ -385,6 +385,8 @@ export async function runWithRuntime(ctx) {
             completionPassed:
               !runFailureBlocksCompletion &&
               evaluateCheck(checkTask.check, outputBuffer.raw, checkContext),
+            // An errored Run: no Stage hint (the error help shows instead).
+            runErrored: status === 'error',
           })
         : null
     if (evaluation) {

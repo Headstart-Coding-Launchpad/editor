@@ -10,6 +10,7 @@ export const COMMON_TASK_FIELDS = Object.freeze([
   'description',
   'explainer',
   'priority',
+  'mustSee',
   'taskMode',
   'estimatedMinutes',
   'intent',

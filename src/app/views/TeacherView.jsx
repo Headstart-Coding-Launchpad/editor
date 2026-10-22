@@ -80,6 +80,8 @@ import { usePeerHelp } from '../hooks/usePeerHelp'
 import TeacherPeerHelpMenu from '../components/peerHelp/TeacherPeerHelpMenu'
 import TeacherPeerHelpAlertBanner from '../components/peerHelp/TeacherPeerHelpAlertBanner'
 import MatchStudentsDialog from '../components/roster/MatchStudentsDialog'
+import MustSeeSkipDialog from '../components/MustSeeSkipDialog'
+import { findSkippedMustSeeTask } from '../../shared/mustSee'
 import { useClassList, useClassRoster } from '../hooks/useClassRoster'
 import { useRosterWorkSaver } from '../hooks/useRosterWorkSaver'
 import { useTypingHistory } from '../hooks/useTypingHistory'
@@ -317,6 +319,7 @@ export default function TeacherView({ lessonId }) {
   // previewTaskId: non-null while the teacher is previewing a task locally without moving students
   const [previewTaskId, setPreviewTaskId] = useState(null)
   const [showEndModal, setShowEndModal] = useState(false)
+  const [mustSeePrompt, setMustSeePrompt] = useState(null)
   const [showProblemModal, setShowProblemModal] = useState(false)
   const [goHomeReport, setGoHomeReport] = useState(null)
   const [showEditLessonModal, setShowEditLessonModal] = useState(false)
@@ -494,8 +497,21 @@ export default function TeacherView({ lessonId }) {
     session?.teacherLiveReference?.taskId,
   ])
 
-  async function handleTaskChange(taskId) {
+  async function handleTaskChange(taskId, { skipMustSeeCheck = false } = {}) {
     const leavingTaskId = session?.currentTaskId ?? currentTaskId
+    if (!skipMustSeeCheck) {
+      // Moving the class past a must-see task it hasn't been on: ask first (src/shared/mustSee.js).
+      const skipped = findSkippedMustSeeTask(
+        flatTasks,
+        leavingTaskId,
+        taskId,
+        session?.taskStartTimes
+      )
+      if (skipped) {
+        setMustSeePrompt({ targetTaskId: taskId, task: skipped })
+        return
+      }
+    }
     const leavingTask = flatTasks.find((t) => t.id === leavingTaskId)
     if (
       session?.state === 'active' &&
@@ -1185,6 +1201,23 @@ export default function TeacherView({ lessonId }) {
           onAddStudent={(name) => addRosterEntry(sessionClass.classId, name, user?.uid ?? null)}
           carryWaitingIds={rosterStatus.carryWaitingIds}
           onUseCarryStarter={rosterStatus.onUseCarryStarter}
+        />
+      )}
+
+      {mustSeePrompt && (
+        <MustSeeSkipDialog
+          taskTitle={mustSeePrompt.task.title}
+          onClose={() => setMustSeePrompt(null)}
+          onGoToIt={() => {
+            const target = mustSeePrompt.task.id
+            setMustSeePrompt(null)
+            handleTaskChange(target)
+          }}
+          onSkip={() => {
+            const target = mustSeePrompt.targetTaskId
+            setMustSeePrompt(null)
+            handleTaskChange(target, { skipMustSeeCheck: true })
+          }}
         />
       )}
 

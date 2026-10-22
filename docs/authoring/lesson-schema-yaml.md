@@ -129,6 +129,7 @@ tasks:
 | `priority` | No | string | `core` (default) or `optional`. Teacher-facing only; students do not see task priority. |
 | `peerHints` | No | list of strings | Up to 6 short hints (≤ 60 characters; helpers see at most 6 hint cards) a classmate can send when helping on this task (peer help). Keep them general and kind, never the answer. Not valid on `quiz` or `information` tasks. |
 | `allowSharing` | No | boolean | Lets students offer this workspace to the whole class, subject to teacher approval. Off unless set to `true`. Not valid on `quiz` or `information` tasks. |
+| `mustSee` | No | boolean | `true` marks a task the tutor shouldn't skip (for example the task where students run code to see an error on purpose). In a live session, when the tutor moves the class forward past a `mustSee` task the class hasn't been on yet (Next twice, or jumping from the task list), the app asks "Skip “…”?" with **Go to it** and **Skip anyway**. Being on the task once clears the warning. Any task type; ignored in solo mode. |
 | `sideQuests` | No | list | Up to 3 optional, unchecked side-quests (`title`, `kind`, `explainer`, `starter`) a student can open once they pass this code task. Python, Turtle and HTML only. See [Side-quests](AUTHORING_GUIDE.md#side-quests). |
 | `taskMode` | No | string | `both` (default), `live`, or `solo`. Any other value fails validation. |
 | `moduleType` | Yes for a code task in a new composed lesson | string | Workspace type: `python`, `arcade`, `turtle`, `html`, `scratch`, `filesystem`, `desktop`, or `electronics`. |

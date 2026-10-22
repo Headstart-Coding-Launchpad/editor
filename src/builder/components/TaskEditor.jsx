@@ -621,6 +621,25 @@ export default function TaskEditor({
         </div>
       </Field>
 
+      <Field label="Must see">
+        <label
+          className={
+            task.mustSee
+              ? 'te-option-toggle-card te-option-toggle-card--active'
+              : 'te-option-toggle-card'
+          }
+        >
+          <input
+            type="checkbox"
+            checked={!!task.mustSee}
+            onChange={(e) => set('mustSee', e.target.checked ? true : undefined)}
+            className="te-option-choice-input"
+            data-testid="task-must-see"
+          />
+          <span className="te-option-choice-title">Must see (warn before the class skips it)</span>
+        </label>
+      </Field>
+
       <Field label="Available in">
         <div className="te-info-type-grid">
           {[
