@@ -898,6 +898,8 @@ Both toggles are at least 44 px.
 All stage checks read the run's drawing, so they need a Run (`lessons test-checks` reports them as
 needing a run). They look at what is on the stage after the last `clear()`.
 
+When a Run ends in an error, the hint of a stage check is held back (in the completion `check` and in `feedbackChecks`), so the student and the tutor's card see the error help instead; once the code runs without an error, hints work as before.
+
 | Type | Fields | Passes when |
 |---|---|---|
 | `stage_matches_target` | `tolerance` (0–1, default `0.01`) | the shapes differ from the `stageTarget` drawing in at most that fraction of the stage, and every target text and emoji is drawn (same words or emoji within 12 px) with no extra ones. Needs `stageTarget` |
