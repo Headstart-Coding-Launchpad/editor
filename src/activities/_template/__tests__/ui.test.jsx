@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { TemplateActivityStudentView } from '../ui.jsx'
 import definition from '../definition.js'
@@ -34,23 +34,28 @@ describe('Template Activity UI', () => {
     expect(state().items).toEqual({ a: { answer: '4' }, b: { answer: '' } })
   })
 
-  it('checks, shows a hint for a wrong item and jumps to it', async () => {
-    const { onSubmit } = renderView()
-    fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: '4' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Check my work' }))
-    expect(onSubmit).toHaveBeenCalledTimes(1)
-    expect(await screen.findByText(/Type your answer first/)).toBeInTheDocument()
-    expect(screen.getByText('Name the colour of grass.')).toBeInTheDocument()
-    // The hint clears as soon as the student changes the item.
-    fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: 'g' } })
-    expect(screen.queryByText(/Type your answer first/)).not.toBeInTheDocument()
+  it('has no Check button or in-task navigation, and shows round progress', () => {
+    renderView()
+    expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Next|Previous/ })).not.toBeInTheDocument()
+    expect(screen.getByText('0 of 2 done')).toBeInTheDocument()
   })
 
-  it('submits with Enter', async () => {
-    const { onSubmit } = renderView()
-    fireEvent.keyDown(screen.getByLabelText('Your answer'), { key: 'Enter' })
-    expect(onSubmit).toHaveBeenCalledTimes(1)
-    expect(await screen.findByText(/Type your answer first/)).toBeInTheDocument()
+  it('ticks a right answer straight away, then moves on by itself', async () => {
+    renderView()
+    fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: '4' } })
+    expect(screen.getByText('Correct')).toBeInTheDocument()
+    expect(screen.getByText('1 of 2 done')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('Name the colour of grass.')).toBeInTheDocument(), {
+      timeout: 3000,
+    })
+  })
+
+  it('shows no hint or wrong mark to a student while an answer is not right yet', () => {
+    renderView()
+    fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: '5' } })
+    expect(screen.queryByText(/Type your answer first/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Correct')).not.toBeInTheDocument()
   })
 
   it('is read-only for a teacher view', () => {

@@ -130,6 +130,8 @@ describe('StudentCard on an activity task', () => {
 describe('StudentModal on an activity task', () => {
   it("shows the student's activity read-only, without code tools or student Go Live", () => {
     render(<StudentModal {...modalProps({ onRemoteRun: vi.fn() })} />)
+    // The tutor's view follows the student to question 2; the tutor-only picker opens question 1.
+    fireEvent.click(screen.getByRole('button', { name: 'Item 1, done' }))
     const four = screen.getByRole('switch', { name: 'Bits 4 column' })
     expect(four).toHaveAttribute('aria-checked', 'true')
     expect(four).toBeDisabled()
@@ -154,8 +156,9 @@ describe('StudentModal on an activity task', () => {
     render(<StudentModal {...modalProps({ onTeacherAnswerEdit })} />)
     fireEvent.click(screen.getByRole('button', { name: /^More/ }))
     fireEvent.click(screen.getByRole('button', { name: '✏️ Edit answers' }))
-    // Question 1 is already right; move to question 2 and make 2.
-    fireEvent.click(screen.getByRole('button', { name: /^(?!Next student)Next/ }))
+    // Question 1 is already right, so the tutor's view is on question 2: make 2. (The tutor-only
+    // picker can open any question; students have no in-task navigation.)
+    expect(screen.getByRole('button', { name: 'Item 1, done' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('switch', { name: 'Bits 2 column' }))
     const solved = {
       v: 1,

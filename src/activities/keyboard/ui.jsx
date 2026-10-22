@@ -157,6 +157,7 @@ export function KeyboardStudentView({
   onChange,
   onSubmit,
   readOnly = false,
+  teacher = false,
   device = {},
   // sessions/{lessonId}/typingHistory/{anonymousId} (src/shared/typingHistory.js) or null.
   history = null,
@@ -173,6 +174,9 @@ export function KeyboardStudentView({
   // Keys are named as the student's keyboard names them: this device's platform while working,
   // the student's recorded one in the teacher's read-only view.
   const platform = readOnly ? state?.device?.platform : device.platform
+  // A tutor (read-only view, or editing a student's answers) never lingers or advances: they
+  // follow the student's item or pick one in the tutor-only picker.
+  const tutor = readOnly || teacher
   // An item is done once finished and right. The round moves on by itself (useRoundFlow): the
   // student never picks an item. The tutor's read-only view follows the student's item, or shows
   // the one picked in the tutor-only picker.
@@ -184,10 +188,10 @@ export function KeyboardStudentView({
     )
   }
   const core = coreCountOf(task, items.length)
-  const flow = useRoundFlow(items, isDone, { readOnly })
+  const flow = useRoundFlow(items, isDone, { readOnly: tutor })
   const [tutorPickId, setTutorPickId] = useState(null)
   const lastItem = items[items.length - 1]
-  const current = readOnly
+  const current = tutor
     ? (items.find((item) => item.id === tutorPickId) ??
       items.find((item) => !isDone(item)) ??
       lastItem)
@@ -235,7 +239,7 @@ export function KeyboardStudentView({
     )
   }
   // Every rep done (core and bonus): the finish card. Play again clears the items on this device.
-  if (!readOnly && flow.finished) {
+  if (!tutor && flow.finished) {
     return (
       <div className="act-panel" data-testid="keyboard-activity">
         <RoundFinished total={items.length} onPlayAgain={playAgain} />
@@ -521,7 +525,7 @@ export function KeyboardStudentView({
   return (
     <div className="act-panel" data-testid="keyboard-activity">
       <RoundProgress done={flow.doneCount} total={items.length} core={core} />
-      {readOnly && (
+      {tutor && (
         <TutorItemPicker
           items={items}
           currentId={current.id}
@@ -529,7 +533,7 @@ export function KeyboardStudentView({
           statusFor={statusFor}
         />
       )}
-      {!readOnly && inBonus && <BonusBanner />}
+      {!tutor && inBonus && <BonusBanner />}
       <p className="act-prompt">
         {isBonus && <span className="act-badge">Bonus</span>}{' '}
         {MODE_PROMPTS[mode]?.(task, current, platform) ?? 'Keyboard'}

@@ -43,7 +43,8 @@ describe('Keyboard UI: type_text', () => {
       done: true,
     })
     expect(keyboard.grade(TYPE, state()).passed).toBe(true)
-    expect(onSubmit).toHaveBeenCalledTimes(1)
+    // Marked as you go: the host auto-submits the change that passes; the view has no Check.
+    expect(onSubmit).not.toHaveBeenCalled()
     expect(screen.getByText('Well done!')).toBeInTheDocument()
   })
 
@@ -126,7 +127,7 @@ describe('Keyboard UI: shortcuts', () => {
     expect(screen.getByText(/Use the keys this time: Ctrl \+ C/)).toBeInTheDocument()
   })
 
-  it('counts Shift with a non-typing key, including Shift+Tab', () => {
+  it('counts Shift with a non-typing key, including Shift+Tab', async () => {
     const task = {
       ...SHORTCUT,
       items: [
@@ -138,9 +139,12 @@ describe('Keyboard UI: shortcuts', () => {
     const box = screen.getByRole('textbox', { name: /Practice box/ })
     press(box, 'ArrowLeft', { code: 'ArrowLeft', shiftKey: true })
     expect(state().items.a).toEqual({ performed: true, via: 'keyboard', source: 'hardware' })
-    // Shift+Tab is practised in a row of fields, and focus is left free to move back one.
+    // Shift+Tab is practised in a row of fields, and focus is left free to move back one. The
+    // round moves on to it by itself after the first item's done moment.
+    expect(
+      await screen.findByTestId('keyboard-tab-fields', {}, { timeout: 3000 })
+    ).toBeInTheDocument()
     const fields = screen.getAllByRole('textbox')
-    expect(screen.getByTestId('keyboard-tab-fields')).toBeInTheDocument()
     expect(fields).toHaveLength(3)
     expect(document.activeElement).toBe(fields[2])
     const notCancelled = fireEvent.keyDown(fields[2], { key: 'Tab', code: 'Tab', shiftKey: true })
@@ -148,7 +152,7 @@ describe('Keyboard UI: shortcuts', () => {
     expect(state().items.b).toEqual({ performed: true, via: 'keyboard', source: 'hardware' })
   })
 
-  it('catches the shortcut pressed outside the practice box, but not copy', () => {
+  it('catches the shortcut pressed outside the practice box, but not copy', async () => {
     const task = {
       ...SHORTCUT,
       items: [
@@ -165,7 +169,9 @@ describe('Keyboard UI: shortcuts', () => {
       code: 'KeyC',
       ctrlKey: true,
     })
-    // Ctrl+S anywhere on the page counts and never opens the browser's save dialog.
+    // Ctrl+S anywhere on the page counts and never opens the browser's save dialog. Wait for the
+    // round to move on to it after the first item's done moment.
+    await screen.findByText('Save', {}, { timeout: 3000 })
     const saveOutside = fireEvent.keyDown(document.body, { key: 's', code: 'KeyS', ctrlKey: true })
     expect(saveOutside).toBe(false)
     expect(state().items.b).toEqual({ performed: true, via: 'keyboard', source: 'hardware' })

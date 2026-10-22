@@ -75,8 +75,9 @@ describe('ActivityHost', () => {
     expect(screen.getByTestId('activity-markdown')).toHaveTextContent('Turn bits **on**')
     fireEvent.click(screen.getByRole('switch', { name: 'Bits 1 column' }))
     expect(activity.onChange).toHaveBeenCalledTimes(1)
-    fireEvent.click(screen.getByRole('button', { name: 'Check my work' }))
-    expect(activity.onSubmit).toHaveBeenCalledTimes(1)
+    // Marked as you go: the host auto-submits the passing change, so there is no Check button.
+    expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
+    expect(activity.onSubmit).not.toHaveBeenCalled()
   })
 
   it('shows the title as a header bar, with the Topic library only when the classroom wires it', () => {
@@ -94,11 +95,11 @@ describe('ActivityHost', () => {
     expect(screen.getByTestId('activity-markdown')).toHaveAttribute('data-show-library', 'true')
   })
 
-  it('keeps Check my work in a sticky submit row', () => {
+  it('keeps a Check button only for activities that still submit by hand', () => {
+    // Binary is marked as you go; the classifier still has Check my work in its sticky row.
     const activity = activityFor(BINARY, binary.initialState(BINARY))
     render(<ActivityHost task={BINARY} activity={activity} />)
-    const check = screen.getByRole('button', { name: 'Check my work' })
-    expect(check.closest('.act-row--submit')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Check my work' })).toBeNull()
   })
 
   it("renders a teacher's broadcast read-only from teacherLive.answer", () => {

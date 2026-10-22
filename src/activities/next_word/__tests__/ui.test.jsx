@@ -187,22 +187,31 @@ describe('Next Word UI: predict then reveal', () => {
     expect(state().items.a.revealed).toBe(false)
   })
 
-  it('moves between items', () => {
+  it('has no item navigation: just round progress, and the next prompt appears by itself', async () => {
     renderView()
     expect(screen.getByText(/the ball goes into the/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Question 2' }))
-    expect(screen.getByText(/the keeper looks at the/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Question|Next|Previous/ })).not.toBeInTheDocument()
+    expect(screen.getByText('0 of 2 done')).toBeInTheDocument()
+    chooseFootball()
+    guess('net')
+    fireEvent.click(screen.getByRole('button', { name: 'Reveal' }))
+    expect(screen.getByText('1 of 2 done')).toBeInTheDocument()
+    expect(
+      await screen.findByText(/the keeper looks at the/, {}, { timeout: 3000 })
+    ).toBeInTheDocument()
   })
 
-  it('checks: submits and jumps to the first item not right', async () => {
+  it('checks: submits and shows the hint for the prompt the student is on', async () => {
     const { onSubmit } = renderView()
     chooseFootball()
     guess('net')
     fireEvent.click(screen.getByRole('button', { name: 'Reveal' }))
+    expect(
+      await screen.findByText(/the keeper looks at the/, {}, { timeout: 3000 })
+    ).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Check my work' }))
     expect(onSubmit).toHaveBeenCalledTimes(1)
-    expect(await screen.findByText(/the keeper looks at the/)).toBeInTheDocument()
-    expect(screen.getByText(/Type your prediction first/)).toBeInTheDocument()
+    expect(await screen.findByText(/Type your prediction first/)).toBeInTheDocument()
   })
 })
 
@@ -262,6 +271,8 @@ describe('Next Word UI: teacher (read-only) view', () => {
     expect(screen.getByLabelText('Type a word')).toBeDisabled()
     expect(screen.getByText('Correct')).toBeInTheDocument()
     expect(screen.getByText('the net the ball')).toBeInTheDocument()
+    // The tutor-only picker lets a tutor look at any prompt.
+    expect(screen.getByRole('button', { name: 'Prompt 1, done' })).toBeInTheDocument()
     for (const name of ['Reveal', 'Check my work', 'Generate', 'Try again']) {
       expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
     }

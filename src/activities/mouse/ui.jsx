@@ -53,16 +53,26 @@ function gestureKey(gesture) {
   return `${gesture.gesture}:${gesture.targetId}:${gesture.toTargetId ?? ''}:${gesture.at}`
 }
 
-export function MouseStudentView({ task, state, onChange, readOnly = false, device = {} }) {
+export function MouseStudentView({
+  task,
+  state,
+  onChange,
+  readOnly = false,
+  teacher = false,
+  device = {},
+}) {
   const touch = !!state?.device?.touch || !!device.touch
   const blocked = (task?.touch ?? 'equivalent') === 'block' && touch && !readOnly
   const items = activeMouseItems(task, { touch })
   const allowTouch = (task?.touch ?? 'equivalent') !== 'block'
   const isDone = (item) => gradeMouseItem(task, item, state?.items?.[item.id]).correct
   const core = coreCountOf(task, items.length)
+  // A tutor (read-only view, or editing a student's answers) never lingers or advances: they
+  // follow the student's item or pick one in the tutor-only picker.
+  const tutor = readOnly || teacher
   // The round moves on by itself: an item ticks when done, shows its done moment, then the next
   // appears. While the tick shows, gestures are ignored (no current item to answer).
-  const flow = useRoundFlow(items, isDone, { readOnly })
+  const flow = useRoundFlow(items, isDone, { readOnly: tutor })
   const current = flow.lingering ? null : flow.current
   const [message, setMessage] = useState(null)
   const [drag, setDrag] = useState(null)
@@ -351,7 +361,7 @@ export function MouseStudentView({ task, state, onChange, readOnly = false, devi
 
   // Every rep done (core and bonus): the finish card. Play again clears the items on this
   // device; the task stays passed (a clear is never a submit).
-  if (!readOnly && flow.finished) {
+  if (!tutor && flow.finished) {
     return (
       <div className="act-panel" data-testid="mouse-activity">
         <RoundFinished
@@ -379,7 +389,7 @@ export function MouseStudentView({ task, state, onChange, readOnly = false, devi
   return (
     <div className="act-panel" data-testid="mouse-activity">
       <RoundProgress done={flow.doneCount} total={items.length} core={core} />
-      {!readOnly && inBonus && !flow.finished && <BonusBanner />}
+      {!tutor && inBonus && !flow.finished && <BonusBanner />}
       <p className="act-row" aria-live="polite">
         {isBonus && <span className="act-badge">Bonus</span>}
         <span className="act-prompt" data-testid="mouse-instruction">

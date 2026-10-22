@@ -628,17 +628,20 @@ function BinaryItem({ task, item, itemState, update, readOnly }) {
   )
 }
 
-export function BinaryStudentView({ task, state, onChange, readOnly = false }) {
+export function BinaryStudentView({ task, state, onChange, readOnly = false, teacher = false }) {
+  // A tutor (read-only view, or editing a student's answers) never lingers or advances: they
+  // follow the student's item or pick one in the tutor-only picker.
+  const tutor = readOnly || teacher
   const items = task?.items ?? []
   const core = coreCountOf(task, items.length)
   const isDone = (item) => gradeItem(task, item, itemStateOf(state, item, task)).correct
   // The round moves on by itself: a question ticks the moment it is right, shows its done moment,
   // then the next one appears. The student never picks a question. The tutor's read-only view
   // follows the student, or shows the question picked in the tutor-only picker.
-  const flow = useRoundFlow(items, isDone, { readOnly })
+  const flow = useRoundFlow(items, isDone, { readOnly: tutor })
   const [tutorPickId, setTutorPickId] = useState(null)
   const lastItem = items[items.length - 1]
-  const current = readOnly
+  const current = tutor
     ? (items.find((item) => item.id === tutorPickId) ??
       items.find((item) => !isDone(item)) ??
       lastItem)
@@ -647,7 +650,7 @@ export function BinaryStudentView({ task, state, onChange, readOnly = false }) {
 
   // Every rep done (core and bonus): the finish card. Play again clears the questions on this
   // device; the task stays passed (a clear is never a submit).
-  if (!readOnly && flow.finished) {
+  if (!tutor && flow.finished) {
     return (
       <div className="act-panel" data-testid="binary-activity">
         <RoundFinished total={items.length} onPlayAgain={() => onChange?.({ v: 1, items: {} })} />
@@ -680,7 +683,7 @@ export function BinaryStudentView({ task, state, onChange, readOnly = false }) {
   return (
     <div className="act-panel" data-testid="binary-activity">
       <RoundProgress done={flow.doneCount} total={items.length} core={core} />
-      {readOnly && (
+      {tutor && (
         <TutorItemPicker
           items={items}
           currentId={current.id}
@@ -688,7 +691,7 @@ export function BinaryStudentView({ task, state, onChange, readOnly = false }) {
           statusFor={statusFor}
         />
       )}
-      {!readOnly && inBonus && <BonusBanner />}
+      {!tutor && inBonus && <BonusBanner />}
       {isBonus && <span className="act-badge">Bonus</span>}
       <BinaryItem
         task={task}
@@ -700,12 +703,12 @@ export function BinaryStudentView({ task, state, onChange, readOnly = false }) {
 
       {/* Marked as you go: right is a tick straight away, and until then it is just "not yet". */}
       {result.correct && <ActivityCorrect />}
-      {!result.correct && touched && !readOnly && (
+      {!result.correct && touched && !tutor && (
         <p className="act-round__text" role="status">
           Not yet
         </p>
       )}
-      {!result.correct && touched && readOnly && result.hint && (
+      {!result.correct && touched && tutor && result.hint && (
         <p className="act-hint" role="status">
           💡 {result.hint}
         </p>

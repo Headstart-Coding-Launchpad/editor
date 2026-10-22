@@ -19,22 +19,31 @@ function itemStateOf(state, item) {
   return { answer: state?.items?.[item.id]?.answer ?? '' }
 }
 
-export function TemplateActivityStudentView({ task, state, onChange, readOnly = false }) {
+export function TemplateActivityStudentView({
+  task,
+  state,
+  onChange,
+  readOnly = false,
+  teacher = false,
+}) {
+  // A tutor (read-only view, or editing a student's answers) never lingers or advances: they
+  // follow the student's item or pick one in the tutor-only picker.
+  const tutor = readOnly || teacher
   const items = task?.items ?? []
   const isDone = (item) => gradeItem(task, item, itemStateOf(state, item)).correct
   // An activity task is one round: a single goal of a few reps that moves on by itself, with no
   // in-task navigation. useRoundFlow shows the first question that is not done, holds its tick
   // for a moment, then moves on. The tutor's read-only view picks any question to look at.
-  const flow = useRoundFlow(items, isDone, { readOnly })
+  const flow = useRoundFlow(items, isDone, { readOnly: tutor })
   const [tutorPickId, setTutorPickId] = useState(null)
   const lastItem = items[items.length - 1]
-  const current = readOnly
+  const current = tutor
     ? (items.find((item) => item.id === tutorPickId) ??
       items.find((item) => !isDone(item)) ??
       lastItem)
     : (flow.current ?? lastItem)
   if (!current) return <p>This task has no questions yet.</p>
-  if (!readOnly && flow.finished) {
+  if (!tutor && flow.finished) {
     // Play again clears the answers on this device; the task stays passed.
     return (
       <div className="act-panel" data-testid="template_activity-activity">
@@ -61,7 +70,7 @@ export function TemplateActivityStudentView({ task, state, onChange, readOnly = 
   return (
     <div className="act-panel" data-testid="template_activity-activity">
       <RoundProgress done={flow.doneCount} total={items.length} />
-      {readOnly && (
+      {tutor && (
         <TutorItemPicker
           items={items}
           currentId={current.id}

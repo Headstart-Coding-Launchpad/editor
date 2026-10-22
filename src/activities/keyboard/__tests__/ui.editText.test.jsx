@@ -49,7 +49,7 @@ describe('Keyboard UI: edit_text', () => {
       done: true,
     })
     expect(keyboard.grade(EDIT, state()).passed).toBe(true)
-    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(onSubmit).not.toHaveBeenCalled() // marked as you go: the host auto-submits
     expect(screen.getByText('Well done!')).toBeInTheDocument()
   })
 

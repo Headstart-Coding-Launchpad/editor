@@ -622,11 +622,9 @@ describe('StudentView module click-through', () => {
     // Activities are not code tasks: no sharing even when the task allows it.
     expect(screen.queryByRole('button', { name: /Share with class/ })).not.toBeInTheDocument()
     const answer = JSON.stringify({ v: 1, items: { a: { bits: '0101', carries: '' } } })
-    // Bit toggles are discrete changes: mirrored (debounced) even though nobody is watching.
-    await waitFor(() =>
-      expect(mocks.session.writeStudentAnswer).toHaveBeenCalledWith('student-1', answer)
-    )
-    await user.click(screen.getByRole('button', { name: 'Check my work' }))
+    // Marked as you go: the toggle that makes 5 passes the task by itself (no Check button), and
+    // the submit carries the answer.
+    expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
     await waitFor(() =>
       expect(mocks.session.writeStudentRun).toHaveBeenCalledWith('student-1', {
         answer,
@@ -673,7 +671,6 @@ describe('StudentView module click-through', () => {
     const { user, view } = renderLesson(lesson, { currentTaskId: 2 })
     await user.click(await screen.findByRole('switch', { name: 'Bits 1 column' }))
     expect(screen.queryByRole('button', { name: 'Run' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Check my work' }))
     await waitFor(() =>
       expect(mocks.session.writeStudentRun).toHaveBeenCalledWith(
         'student-1',

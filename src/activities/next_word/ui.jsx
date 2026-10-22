@@ -72,7 +72,17 @@ function NextWordBars({ info, label }) {
   )
 }
 
-export function NextWordStudentView({ task, state, onChange, onSubmit, readOnly = false }) {
+export function NextWordStudentView({
+  task,
+  state,
+  onChange,
+  onSubmit,
+  readOnly = false,
+  teacher = false,
+}) {
+  // A tutor (read-only view, or editing a student's answers) never lingers or advances: they
+  // follow the student's item or pick one in the tutor-only picker.
+  const tutor = readOnly || teacher
   const groupId = useId()
   const texts = textsOf(task)
   const items = task?.items ?? []
@@ -86,9 +96,9 @@ export function NextWordStudentView({ task, state, onChange, onSubmit, readOnly 
   // appears. The student never picks a prompt; the tutor's read-only view follows the student, or
   // shows the prompt picked in the tutor-only picker.
   const isDone = (item) => gradeItem(task, item, state).correct
-  const flow = useRoundFlow(items, isDone, { readOnly })
+  const flow = useRoundFlow(items, isDone, { readOnly: tutor })
   const lastItem = items[items.length - 1]
-  const current = readOnly
+  const current = tutor
     ? (items.find((item) => item.id === tutorPickId) ??
       items.find((item) => !isDone(item)) ??
       lastItem)
@@ -285,7 +295,7 @@ export function NextWordStudentView({ task, state, onChange, onSubmit, readOnly 
             3. Predict the next word
           </h3>
           <RoundProgress done={flow.doneCount} total={items.length} />
-          {readOnly && (
+          {tutor && (
             <TutorItemPicker
               items={items}
               currentId={current.id}
@@ -340,10 +350,11 @@ export function NextWordStudentView({ task, state, onChange, onSubmit, readOnly 
             </p>
           )}
           {promptInfo && <NextWordBars info={promptInfo} />}
-          {flow.finished && !readOnly ? (
-            <ActivityCorrect>All predictions done!</ActivityCorrect>
-          ) : (
-            result?.correct && <ActivityCorrect />
+          {result?.correct && <ActivityCorrect />}
+          {flow.finished && !tutor && items.length > 1 && (
+            <p className="act-result act-result--pass" role="status">
+              All predictions done!
+            </p>
           )}
           {hint && (
             <p className="act-hint" role="status">
