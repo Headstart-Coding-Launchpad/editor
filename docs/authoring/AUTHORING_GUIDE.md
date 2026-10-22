@@ -208,7 +208,12 @@ For full quiz detail and all answer check types see `docs/authoring/quiz-tasks.m
 
 An activity is a bounded exercise that can sit anywhere in a lesson, between code tasks of any
 module: no Run button, sandbox, sharing or carry-through. Progress is saved on the device, shown
-on the teacher's student card and marked when the student checks their answers.
+on the teacher's student card and marked as the student goes (the classifier, Next Word and Real
+or AI keep a Check or Reveal button where the exercise needs one).
+
+**Writing rule:** An activity task is one round: a single goal of 3-8 reps that moves on by itself, with no in-task navigation; if you want the class to look at one answer together, make it its own task. Items move on by themselves, so write the reps in the order you
+want them done; the student never picks an item. Keyboard, Binary and Mouse take an optional
+`coreItems` (the reps that pass the task; the rest are bonus reps).
 
 ```yaml
   - type: binary              # sets taskType: "activity", activityType: "binary" in JSON

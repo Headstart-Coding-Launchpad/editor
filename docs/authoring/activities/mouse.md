@@ -72,6 +72,7 @@ tasks:
 |---|:---:|---|
 | `type` | Yes | `mouse` in YAML (JSON: `taskType: activity` + `activityType: mouse`) |
 | `targets` | Yes | Things on the stage (see below). |
+| `coreItems` | No | How many instructions make the round, 1 to the number of `items`. The task passes when that many are done; later ones are **bonus** reps. Default: all items. |
 | `items` | Yes | Instructions, done one at a time in order. |
 | `touch` | No | What happens on a touch screen: `equivalent` (default: touch gestures count, hover items are skipped), `skip` (the same, without the hover warning), or `block` (a "needs a mouse" notice instead of the stage). |
 
@@ -119,7 +120,12 @@ a **Mac** or **Chromebook** badge for work done on one. (Not yet checked on real
 ## Marking and hints
 
 - Each instruction completes when the right gesture happens on the right target; the next one is
-  then highlighted. When all are done the task is marked automatically.
+  then highlighted. The task is marked as you go: there is no Check button. An activity task is one round: a single goal of 3-8 reps that moves on by itself, with no in-task navigation; if you want the class to look at one answer together, make it its own task.
+- The student sees a progress strip (`3 of 5 done`) and a short tick on each finished instruction
+  before the next appears; gestures during the tick are ignored. The task passes when `coreItems`
+  instructions are done (all by default). After that comes "Done! ⭐ Bonus round" with the rest
+  labelled Bonus, then "You did it! N done" with **Play again** (clears the items on that device;
+  never un-passes or logs a fail).
 - Doing the wrong gesture gives a hint ("That was a right click. Double-click the folder.");
   clicking the wrong target says which target to find.
 - Pressing Enter on a focused target does not count as a click — this activity practises the

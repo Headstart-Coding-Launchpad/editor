@@ -676,7 +676,10 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `keyboard/FallingWordsView.jsx` | `falling_words` round: frame loop over `fallingWords.js`, typed buffer, pause on hidden tab or lost focus, result written on each clear/miss and at time-up; read-only stats for the teacher |
 | `keyboard/OnScreenKeyboard.jsx` | UK on-screen keyboard: interactive fallback emitting virtual key events (one-shot Shift/Ctrl) or a non-interactive picture highlighting hinted keys |
 | `mouse/ui.jsx` | Mouse StudentView: stage of positioned `data-input-id` targets, Pointer Events recording (incl. touch drag via `elementsFromPoint`), `recognizeGestures`, no native context menu on the stage, hover dwell timer (skipped on touch), `state.device.touch` |
-| `ui/ItemNav.jsx` | Shared "Question n of m" item navigation with per-item done/wrong markers |
+| `ui/RoundProgress.jsx` | Non-interactive round progress for activity StudentViews: tick-dots and one "3 of 5 done" line (`role="progressbar"`, aria-live), plus `RoundFinished` ("You did it! N done" + Play again) and `BonusBanner`. An activity task is one round with no in-task navigation |
+| `ui/useRoundFlow.js` | Auto-advance for a round: the first item not done is shown; a finished item lingers `DONE_MOMENT_MS` (700 ms) with its tick, then the next appears. Tutor views opt out (`readOnly`) |
+| `ui/TutorItemPicker.jsx` | Tutor-only item picker for read-only / answer-editing views (students never see it) |
+| `round.js` | Pure round helpers: `coreCountOf` (task.coreItems), `roundText`, `roundSummaryText`, `validateCoreItems` |
 | `ui/choiceEntrance.jsx` | First-view answer entrance: `ChoiceEntranceProvider` (ActivityView wraps every activity in it, keyed by `entranceKey`) and `useChoiceEntrance()` → `entrance(i)` giving a choice `motion-rise-in motion-stagger` + `staggerStyle(i)` until the entrance has played; used by the multiple-choice, Match, fill-in-the-blank and confidence quizzes |
 | `ui/ActivityCorrect.jsx` | Shared "✓ Correct" result line (`role="status"`, custom text via children) and `SpinTick`, the ✓ that spins once when it appears; used by every activity StudentView |
 | `ui/ActivityDeviceBadge.jsx` | Teacher badge (card and modal) showing a touch-screen or on-screen-keyboard attempt |

@@ -127,7 +127,8 @@ tasks:
 | `type` | Yes | `keyboard` in YAML (JSON: `taskType: activity` + `activityType: keyboard`) |
 | `mode` | Yes | `type_text`, `find_key`, `symbols`, `shortcuts`, `edit_text`, `type_code` or `falling_words`. |
 | `layout` | No | `uk` (the only layout so far, and the default). |
-| `items` | Yes | One or more items, each with a unique `id`. Every mode except `falling_words`, which has `words` instead. |
+| `coreItems` | No | How many items make the round, 1 to the number of `items`. The task passes when that many are done; later items are **bonus** reps. Default: all items. Ignored (with a warning) for `falling_words`, which is one round with no item list. |
+| `items` | Yes | One or more items, played in order, each with a unique `id`. Every mode except `falling_words`, which has `words` instead. |
 | `requireShiftForCapitals` | No | `type_text`: a capital typed with Caps Lock doesn't count; the hint says to hold Shift. Can also be set per item. **Off when left out of the YAML**; the Builder turns it on for a new task, so write `true` when you want it. |
 | `minAccuracy` | No | `type_text` and `type_code`: fraction of characters that must be right, above 0 and at most 1. Default `1` (exact) for `type_text`, `0.9` for `type_code`. |
 | `targetWpm` | No | `type_text`: optional speed goal in words a minute. Accuracy is always checked; speed only when this is set. Scores are kept across lessons for matched students; see [Typing history](#typing-history-showhistory). |
@@ -285,8 +286,15 @@ passes on every machine. Prompts, hints and the keyboard picture use the student
 
 ## Marking and hints
 
-- Keyboard items finish themselves (a line typed, a key found, a shortcut used). When every item
-  has a result, the task is marked automatically; **Check my work** marks it early.
+- **One round, marked as you go.** An activity task is one round: a single goal of 3-8 reps that moves on by itself, with no in-task navigation; if you want the class to look at one answer together, make it its own task. Keyboard items finish themselves (a line typed,
+  a key found, a shortcut used) and tick straight away; the next item then appears by itself. There
+  is no Check button and no Previous / Next: the student sees a progress strip (`3 of 5 done`).
+  An item that finished but isn't right (a typed line with too many mistakes) shows its hint and
+  **Try again**.
+- **Core, then bonus.** The task passes when `coreItems` items are done (all by default). After
+  that the student sees "Done! ⭐ Bonus round" and the rest are labelled Bonus. When every item is
+  done they get "You did it! N done" with **Play again**, which clears the items on that device
+  and never un-passes the task or logs a fail.
 - Individual keystrokes are *continuous* changes: they only stream to the teacher while the
   teacher is watching that student. Finishing an item is *discrete* and updates the card within
   a moment. Raw keystrokes never leave the device; only the small per-item result is saved.
