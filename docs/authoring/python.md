@@ -718,6 +718,9 @@ type or a speed that isn't a positive number; it warns about a speed outside
 
 ## Stage (drawing beside the console)
 
+> New to the Stage? [stage.md](stage.md) is the guide: coordinates, every call, placing things,
+> common mistakes and how to design Stage tasks. This section is the full contract.
+
 A Python task can also draw. Code that imports the `stage` module gets a **Stage** pane: a fixed
 400 × 400 drawing that appears once the code draws (or from the start when the task has a
 `stageTarget`). `print()` still goes to the console. On a wide desktop the Stage sits beside the
@@ -991,7 +994,8 @@ What students get:
   once, then the latest value about every 200 ms for as long as the drag keeps moving (a quick
   program redraws about five times a second; a slow one as soon as its last preview finishes,
   since a preview never starts while the last one is still running). A preview is check-free: no
-  attempt, no checks, no save, and nothing is sent to the tutor. In Python, only programs that
+  attempt, no checks, no save. Its picture and output reach the tutor only while the tutor has
+  that student open (StudentModal), so the tutor's view redraws with the student's. In Python, only programs that
   draw on the Stage (`from stage import *` or `import stage`) re-run live; for anything else the
   student sees "Press Run to see it".
 - **Programs with `input()`.** A preview replays, in order, the answers the student gave on their
@@ -1043,7 +1047,9 @@ dragging the `9` in `hue(i * 9)` sweeps the colours). `outline=` colours get a s
 like any colour string.
 
 No new checks. **Tutor:** the tutor sees the edit when the drag ends, like any edit, and with
-`checkOnRelease` the attempt and result reach their card exactly as a Run's. The session report
+`checkOnRelease` the attempt and result reach their card exactly as a Run's. When a scrub's checks
+fail on a task the student had already passed, the card shows a "Scrub fails" chip and the modal
+says "Fails after scrub" (or "Passes after scrub"); the student's next Run clears it. The session report
 counts each student's scrubs on the task (`scrubs`; flips are `scrubBooleans`) and marks attempts made on a drag's release
 (`distinctAttempts[].source: scrub`, [session reports](session-reports.md)). In the Builder, the task's **Live scrubbing** setting
 turns it on and adds ranges.

@@ -278,6 +278,11 @@ Arcade Kit module code-task authoring reference: the single-file task model, ass
 
 **Load when:** authoring or editing an Arcade Kit module code task.
 
+### [authoring/stage.md](authoring/stage.md)
+The Stage guide for lesson writers and tutors: coordinates (top-left origin, y down, centre anchors), every `stage` call, placing things, colours, grids, common student mistakes, which check to use, and rules for designing Stage tasks (Make It Real).
+
+**Load when:** writing or planning a Python lesson that draws on the Stage, or explaining the Stage to a tutor.
+
 ### [authoring/turtle.md](authoring/turtle.md)
 Turtle module code-task authoring reference: the single-file task model, supported turtle commands, coordinate system, and check types, validation rules, and what is not supported.
 
