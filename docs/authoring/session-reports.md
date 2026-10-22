@@ -20,9 +20,8 @@ reads reports.
   lesson id and so its own reports; the source lesson's reports never include a fork's runs.
   Publishing (or republishing) a class copy, and deleting a lesson, deletes that lesson's reports
   and lesson feedback.
-- **Exported** to YAML only from the web app: the report modal after **End Session**, or Teacher
-  view → session menu → **Reports** → open a report, then **Export YAML** (`reportToYamlText`, via `TeacherReportModal.jsx`). There is no CLI command that reads or
-  exports whole reports; `sessions share-links` reads only the share links
+- **Exported** to YAML from the web app or the CLI. CLI: `node cli/cli.mjs lessons reports list <lessonId> [--since <ISO>]` (newest first: `startedAt`, `endedAt`, `studentCount`) and `lessons reports get <lessonId> <startedAt> --yaml` (the same anonymised YAML as the web export). Web app: the report modal after **End Session**, or Teacher
+  view → session menu → **Reports** → open a report, then **Export YAML** (`reportToYamlText`, via `TeacherReportModal.jsx`). `sessions share-links` reads only the share links
   ([Share links](#share-links)).
 - **Never regenerated.** A report is a snapshot written once (plus the optional teacher feedback
   added straight after). Older reports permanently lack fields added after they were written: use

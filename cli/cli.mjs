@@ -284,6 +284,34 @@ await yargs(hideBin(process.argv))
         })
       )
 
+      .command('reports', 'Session reports left by ended live sessions (anonymised)', (y) =>
+        y
+          .command(
+            'list <lessonId>',
+            'Every session report for a lesson, newest first: startedAt, endedAt, studentCount',
+            {
+              since: {
+                type: 'string',
+                describe: 'Only sessions started on or after this ISO date',
+              },
+            },
+            cmd(async ({ lessonId, since }) => {
+              const { listSessionReports } = await loadLessons()
+              print(await listSessionReports(lessonId, { since }))
+            })
+          )
+          .command(
+            'get <lessonId> <startedAt>',
+            'One session report as the YAML End Session exports (no student names)',
+            { yaml: { type: 'boolean', default: true, describe: 'YAML output (the only format)' } },
+            cmd(async ({ lessonId, startedAt }) => {
+              const { getSessionReportYaml } = await loadLessons()
+              process.stdout.write(await getSessionReportYaml(lessonId, String(startedAt)))
+            })
+          )
+          .demandCommand(1, 'Specify a subcommand: list | get')
+      )
+
       .command(
         'validate [file]',
         'Validate a lesson from JSON or YAML — file path or stdin',

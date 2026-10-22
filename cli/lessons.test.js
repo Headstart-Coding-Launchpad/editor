@@ -47,6 +47,7 @@ import {
   listLessons,
   publishYamlLesson,
   shareLinksFromReports,
+  summariseSessionReports,
   upsertLesson,
 } from './lessons.mjs'
 
@@ -421,5 +422,18 @@ describe('CLI sessions share-links', () => {
     expect(rows[0].links).toHaveLength(1)
     await expect(getSessionShareLinks({})).rejects.toThrow(/lesson id or --since/)
     await expect(getSessionShareLinks({ since: 'nope' })).rejects.toThrow(/Bad --since/)
+  })
+})
+
+describe('summariseSessionReports', () => {
+  it('lists newest first and filters by --since', () => {
+    const docs = [
+      { id: '1000', startedAt: 1000, endedAt: 2000, students: [{}, {}] },
+      { id: '5000', startedAt: 5000, endedAt: 6000, students: [{}] },
+    ]
+    expect(summariseSessionReports(docs).map((r) => r.startedAt)).toEqual([5000, 1000])
+    expect(summariseSessionReports(docs)[1].studentCount).toBe(2)
+    expect(summariseSessionReports(docs, { since: new Date(3000).toISOString() })).toHaveLength(1)
+    expect(() => summariseSessionReports(docs, { since: 'nope' })).toThrow(/Bad --since/)
   })
 })
