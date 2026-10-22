@@ -392,8 +392,12 @@ export async function runWithRuntime(ctx) {
       suggestion = evaluation.suggestion
       feedback.updateTargetedStageOffer(checkTask, evaluation, passed)
     }
-    if (!hasTests && checkTask?.check) feedback.applyCheckFeedback(passed, suggestion)
-    feedback.updateSupportStageForAttempt(status !== 'error' && (!checkTask?.check || passed))
+    if (!hasTests && checkTask?.check)
+      feedback.applyCheckFeedback(passed, suggestion, { scrub: isScrubRun })
+    // A failed scrub release is not a failed attempt, so it does not step the support offers.
+    if (!(isScrubRun && !passed)) {
+      feedback.updateSupportStageForAttempt(status !== 'error' && (!checkTask?.check || passed))
+    }
   }
 
   if (canPublishTeacherLive()) {
