@@ -231,6 +231,24 @@ describe('StudentCard', () => {
       expect(screen.queryByLabelText('Failed')).not.toBeInTheDocument()
     })
 
+    it('flags a scrub that breaks an already-passed task', () => {
+      render(
+        <StudentCard
+          {...mkProps(
+            { lesson: LESSON_WITH_CHECK },
+            {
+              checkPassed: true,
+              lastRunStatus: 'success',
+              lastScrubPassed: false,
+              lastScrubAt: 5,
+              lastRunAt: 5,
+            }
+          )}
+        />
+      )
+      expect(screen.getByTestId('scrub-fails')).toBeInTheDocument()
+    })
+
     it('lets a teacher override outrank the Error badge', () => {
       render(
         <StudentCard

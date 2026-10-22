@@ -1429,6 +1429,13 @@ describe('StudentModal header: four common actions, the rest in More', () => {
     expect(onRevokeBadge).toHaveBeenCalledWith('student-1', 'bug_hunter')
   })
 
+  it('shows what the checks said after the last scrub', () => {
+    render(
+      <StudentModal {...mkProps({}, { lastScrubPassed: false, lastScrubAt: 5, lastRunAt: 5 })} />
+    )
+    expect(screen.getByTestId('modal-scrub-result')).toHaveTextContent('Fails after scrub')
+  })
+
   it('opens the picker from "Other…" without awarding the suggested badge', async () => {
     const user = userEvent.setup()
     const onDecideBadge = vi.fn(async () => ({ committed: true }))

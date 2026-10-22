@@ -21,6 +21,7 @@ import { puzzleCardNote } from '../../shared/puzzle/puzzle.js'
 import { getModuleDefinition } from '../../modules/definitions'
 import { courseCardChip } from '../../modules/turtle/courseRun.js'
 import PresenceBadge from './PresenceBadge'
+import { scrubResultOf } from '../scrubResult'
 import OneTapAwardButton from './badges/OneTapAwardButton'
 import TipButton from './TipButton'
 import { formatTimeAgo } from '../../shared/timeAgo'
@@ -661,6 +662,15 @@ export default function StudentCard({
               {puzzleNote === 'Solved at par' && <span aria-hidden="true">⭐</span>}
               {puzzleNote}
             </span>
+          )}
+          {checkPassed && scrubResultOf(student) === false && (
+            <IconChip
+              icon="✕"
+              label="Scrub fails"
+              title="They passed earlier, but after their last scrub the check no longer passes"
+              style={s.checkBadgeFailed}
+              testId="scrub-fails"
+            />
           )}
           {checkFailed && (
             <IconChip

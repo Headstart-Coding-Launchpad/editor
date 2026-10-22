@@ -1557,7 +1557,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   async function writeStudentRun(
     anonymousId,
-    { code, files, output, answer, status, checkPassed, errorText }
+    { code, files, output, answer, status, checkPassed, errorText, scrubPassed }
   ) {
     const updates = {
       lastRunStatus: status,
@@ -1567,6 +1567,13 @@ export function useSession(lessonId, { enabled = true } = {}) {
       lastRunError: status === 'error' ? clipRunError(errorText) : null,
     }
     if (checkPassed !== undefined) updates.checkPassed = checkPassed
+    // What the checks said after the student's last scrub: checkPassed holds on once a task is
+    // solved, so this is how the tutor sees a scrub break it. lastScrubAt equals lastRunAt only
+    // while the scrub is the latest run (src/app/scrubResult.js), so a later Run retires it.
+    if (typeof scrubPassed === 'boolean') {
+      updates.lastScrubPassed = scrubPassed
+      updates.lastScrubAt = updates.lastRunAt
+    }
     if (code != null) updates.currentCode = code
     if (files != null) updates.currentFiles = encodeFileKeys(files)
     if (output != null) updates.currentOutput = output

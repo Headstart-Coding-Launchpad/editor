@@ -17,6 +17,7 @@ import {
   formatStageLabel,
   getTeacherLivePin,
 } from '../../shared/taskStages.js'
+import { scrubResultOf } from '../scrubResult'
 import PresenceBadge from './PresenceBadge'
 import ScratchWorkspace from '../../modules/scratch/ScratchWorkspace.jsx'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
@@ -756,6 +757,15 @@ export default function StudentModal({
             )}
             {nudged && <span style={s.overrideBadge}>✓ Nudged</span>}
             {student.checkPassed && !isSessionSandbox && <span style={s.checkBadge}>✅</span>}
+            {scrubResultOf(student) !== null && !isSessionSandbox && (
+              <span
+                style={s.overrideBadge}
+                title="What the checks said after the student's last scrub (cleared by their next Run)"
+                data-testid="modal-scrub-result"
+              >
+                {scrubResultOf(student) ? '✓ Passes after scrub' : '✕ Fails after scrub'}
+              </span>
+            )}
             {teacherAssisted && (
               <span
                 style={s.overrideBadge}

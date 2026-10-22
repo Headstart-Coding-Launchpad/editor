@@ -364,6 +364,14 @@ export async function runWithRuntime(ctx) {
     : runFailureBlocksCompletion || hasTests || isFreePlay
       ? false
       : evaluateCheckWithFeedback(checkTask, outputBuffer.raw, checkContext).passed
+  // A scrub's own verdict, even on a solved task (where `passed` holds on): the tutor's card
+  // and modal show it as "After scrub".
+  const isScrubRun = ctx.runOptions?.source === 'scrub'
+  const scrubPassed =
+    isScrubRun && !isFreePlay && !hasTests && checkTask?.check
+      ? !runFailureBlocksCompletion &&
+        evaluateCheck(checkTask.check, outputBuffer.raw, checkContext)
+      : null
   let suggestion = ''
   if (!alreadySolved && !isFreePlay) {
     // Feedback checks can diagnose code even when Python could not run (for
@@ -410,6 +418,7 @@ export async function runWithRuntime(ctx) {
       output: outputBuffer.raw,
       status,
       checkPassed: hasTests || isFreePlay ? undefined : passed,
+      ...(typeof scrubPassed === 'boolean' ? { scrubPassed } : {}),
       errorText: status === 'error' ? lastErrorLine(outputBuffer.raw) : undefined,
     })
     // Turtle's canvas is a run RESULT (like output), not an editing-tool state like

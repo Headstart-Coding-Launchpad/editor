@@ -1954,7 +1954,16 @@ export function useStudentCodeState({
     const taskIdAtRunTime = currentTaskIdRef.current
     mod.runtime.waitForPreviewText().then((text) => {
       let passed,
-        suggestion = ''
+        suggestion = '',
+        scrubPassed = null
+      if (scrubRun && alreadySolved && task?.check) {
+        const iframeDoc = iframeRef.current?.contentDocument ?? null
+        scrubPassed = evaluateCheckWithFeedback(
+          task,
+          text,
+          definition.checking.buildContext(currentFiles, { iframeDoc, ran: true })
+        ).passed
+      }
       if (!alreadySolved) {
         const iframeDoc = iframeRef.current?.contentDocument ?? null
         const evaluation = evaluateCheckWithFeedback(
@@ -1964,6 +1973,7 @@ export function useStudentCodeState({
         )
         passed = evaluation.passed
         suggestion = task?.check ? evaluation.suggestion : ''
+        if (scrubRun && task?.check) scrubPassed = passed
         updateTargetedStageOffer(task, evaluation, passed)
         if (task?.check) applyCheckFeedback(passed, suggestion)
         const supportAttempt = htmlSupportAttemptsRef.current.get(src)
@@ -2000,6 +2010,7 @@ export function useStudentCodeState({
             files: wire.toFilesMap(currentFiles),
             status: attemptNow?.hasError ? 'error' : 'success',
             checkPassed: passed,
+            ...(typeof scrubPassed === 'boolean' ? { scrubPassed } : {}),
             errorText: attemptNow?.errorMessage,
           })
           if (attemptNow) {
