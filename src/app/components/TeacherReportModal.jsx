@@ -249,8 +249,11 @@ function StudentTaskRow({ task }) {
             <div key={i} style={s.attemptItem}>
               <div style={s.attemptHeader}>
                 <span style={{ ...s.badge, ...attemptBadgeStyle(a) }}>
-                  {formatAttemptStatus(a)} {a.attemptNumber}
-                  {a.retries > 0 ? ` (retried ${a.retries}x)` : ''}
+                  {a.source === 'scrub' && a.passed === false
+                    ? 'Scrub check (not an attempt)'
+                    : `${formatAttemptStatus(a)} ${a.attemptNumber}${
+                        a.retries > 0 ? ` (retried ${a.retries}x)` : ''
+                      }`}
                 </span>
                 {a.suggestion && <span style={s.suggestion}>{a.suggestion}</span>}
               </div>

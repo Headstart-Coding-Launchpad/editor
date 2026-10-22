@@ -8,6 +8,8 @@
 // shows it per student per task, so authors can see whether Modify tasks are used. Counts only,
 // never code.
 
+import { isFailedScrubAttempt } from '../autoCheck.js'
+
 export const SCRUB_USE_KINDS = Object.freeze(['number', 'colour', 'boolean'])
 
 function count(value) {
@@ -38,4 +40,24 @@ export function scrubReportFields(raw) {
 export function summarizeScrubUse(perStudent) {
   const used = (perStudent ?? []).filter((task) => task?.scrubs > 0).length
   return used > 0 ? { scrubUsedCount: used } : {}
+}
+
+/**
+ * The per-student `scrubChecks` for one task: how many live-scrub releases failed their checks
+ * (attemptLog entries with `source: 'scrub'` that did not pass, each counting its retries).
+ * They are not attempts, so `attempts`, `retries` and the common failures leave them out; the
+ * entries stay in `distinctAttempts`. `{}` when there were none.
+ */
+export function scrubCheckFields(entries) {
+  let total = 0
+  for (const entry of entries ?? []) {
+    if (isFailedScrubAttempt(entry)) total += 1 + count(entry.retries)
+  }
+  return total > 0 ? { scrubChecks: total } : {}
+}
+
+/** The task summary's `scrubChecks`: failed scrub releases across students, or {} for none. */
+export function summarizeScrubChecks(perStudent) {
+  const total = (perStudent ?? []).reduce((sum, task) => sum + count(task?.scrubChecks), 0)
+  return total > 0 ? { scrubChecks: total } : {}
 }

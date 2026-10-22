@@ -1909,6 +1909,48 @@ describe('useSession', () => {
       )
     })
 
+    it('a failed scrub release neither bumps a Run attempt nor is bumped by one', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v1', passed: false })
+      })
+      firebaseMocks.update.mockClear()
+      firebaseMocks.set.mockClear()
+      // Same code released on a scrub: nothing new to log, no retry on the Run's entry.
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, {
+          submission: 'code v1',
+          passed: false,
+          source: 'scrub',
+        })
+      })
+      expect(firebaseMocks.update).not.toHaveBeenCalled()
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+      // New code released: its own entry marked source scrub.
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, {
+          submission: 'code v2',
+          passed: false,
+          source: 'scrub',
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({ source: 'scrub', passed: false })
+      )
+      firebaseMocks.update.mockClear()
+      firebaseMocks.set.mockClear()
+      // A real Run of that same code is a new entry, not a retry of the scrub release.
+      await act(async () => {
+        await result.current.logAttempt('student-abc', 1, { submission: 'code v2', passed: false })
+      })
+      expect(firebaseMocks.update).not.toHaveBeenCalled()
+      expect(firebaseMocks.set).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({ source: null, passed: false })
+      )
+    })
+
     it('logs no leave record once this tab has logged a pass', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {

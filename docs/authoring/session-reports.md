@@ -105,7 +105,7 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `activityType` | The activity id (`binary`, `keyboard`, `mouse`, …). | Activities only | 2026-09-28 |
 | `ratingScale` | The scale the confidence ratings in `distinctAttempts` were given on: `10`. A confidence entry without it is from before 2026-10-09 and was rated 1–5. | Confidence quizzes only | 2026-10-09 |
 | `completed` | Graded: passed, passed by a tutor's hand override, or auto-checked correct when the class moved on (`auto_passed`). Moving the class on past a graded code task the student never passed **no longer** makes it complete (quizzes and activities moved past still count as complete, and that includes Code Arrange, which is an activity) (since 2026-10-01; see [Overrides](#overrides)). Ungraded: responded at all. | Always | 2026-07-13 (changed 2026-10-01) |
-| `attempts` | Total submissions including identical resubmissions: Σ(1 + `retries`) over `distinctAttempts`. | Always | 2026-07-13 |
+| `attempts` | Total submissions including identical resubmissions: Σ(1 + `retries`) over `distinctAttempts`. A failed [live scrub](python.md#live-scrubbing-scrub) release (`source: scrub`, not passed) is not counted: see `scrubChecks`. | Always | 2026-07-13 (scrub releases left out 2026-10-22) |
 | `finalResult` | See [finalResult](#finalresult). | Always | 2026-07-13 (values changed 2026-07-22) |
 | `timeOnTaskMs` | From when the teacher (last) moved the class onto the task to the passing attempt / override / correct auto-check, or, if not completed, to the latest attempt. Null when there's no start time or no attempt/override. | Always (may be null) | 2026-07-14 |
 | `override` | `{ taskId, overriddenAt (ms), attemptNumber (attempts made before it), previousCheckState: failed \| unattempted, source?: teacher \| class_advance }`. Only when the student never passed. `source` is missing on records written before 2026-10-01. See [Overrides](#overrides). | Omitted when none | 2026-07-22 (`source` 2026-10-01) |
@@ -122,6 +122,7 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `slowMoUsed`, `slowMoRuns`, `slowMoSteps` | The student used slow-mo on this task: `slowMoUsed: true`, how many slow-mo runs they started (Slow-mo, or Step before a run) and the steps. [Scratch slow-mo](scratch.md#slow-mo): `slowMoSteps` counts presses of Step. [Python / Turtle slow-mo](python.md#slow-mo-slowmo): `slowMoRuns` counts recordings and `slowMoSteps` the steps viewed (each line shown going forward, by Step or while playing; a step viewed again after Step back counts again). Counts only, never code. Tasks with `slowMo.enabled`, live lessons only. | Omitted when the student never used it | 2026-10-14 |
 | `linesUsed`, `changesFromStarter` | A [puzzle](python.md#puzzle-rules-puzzle-and-the-max_lines-check) task (`puzzle`): the lines of code (not blank, not only a comment) in the student's passing run, and how many lines of code they changed, added or removed compared with the task's starter. Read from the passing attempt's code. | Omitted when the task has no `puzzle` or the student never passed | 2026-10-15 |
 | `scrubs`, `scrubNumbers`, `scrubColours`, `scrubBooleans` | The student changed values by [live scrubbing](python.md#live-scrubbing-scrub) on this task: `scrubs` in all, `scrubNumbers` numbers (a drag or the slider), `scrubColours` colours (the picker) and `scrubBooleans` True / False flips (a click; only when there were any, from 2026-10-20). Each finished scrub that changed the value counts once. Counts only, never code. Python, Turtle and HTML tasks with `scrub`, live lessons only. | Omitted when the student never scrubbed | 2026-10-14 |
+| `scrubChecks` | How many [live scrub](python.md#live-scrubbing-scrub) releases failed their checks (`scrub.checkOnRelease`): the `distinctAttempts` entries with `source: scrub` that did not pass, each counting its `retries`. These are explorations, not failed attempts, so they are not in `attempts`, `retries`, `commonFailures` or the badge metrics. A student who only ever failed scrub releases reads `not_attempted` with `scrubChecks` set. | Omitted when none | 2026-10-22 |
 | `tileMisses[]` | Code Arrange [tile feedback](lesson-schema.md#tile-feedback): each time the student dropped a tile into a blank where the task marks it known-wrong, oldest first: `{ slotId (the blank), tileId, at (ms) }`. Not attempts: they never count towards `attempts` or `distinctAttempts`. At most 100 per task. | Omitted when none | 2026-10-09 |
 | `tutorTileHighlights[]` | Each time the tutor highlighted a tile on this student's board as "look again" from StudentModal (code_arrange slot mode, Match, Fill in the Gaps drag mode), oldest first: `{ targetId (the blank: code_arrange slot id, Match prompt pair id, or Fill in the Gaps blank id), tileId (the tile in it then, or null for an empty blank), note (the tutor's note; omitted when none), at (ms) }`. Support, not grading: never attempts, never changes `completed` or `finalResult`. At most 50 per task. See [Tutor Tile Highlights](../agents/classroom-behaviours.md#tutor-tile-highlights-teachertilehighlights). | Omitted when none | 2026-10-09 |
 | `predictions` | A predict-mode [name-tag panel](python.md#name-tag-panel-showvariables) task (`showVariables.mode: predict`): `{ reveals, first, last, firstAllCorrect, lastAllCorrect }`. `first` / `last` are the first and latest revealed predictions, each `[{ name, value (what the student typed or picked, ≤ 200 characters: a True / False or choice button's text, e.g. `True`, `"red"`), correct }]` in `predict` order, then the **type predictions** (`showVariables.predictType`, 2026-10-16) in `predictType` order as `{ name, value (the picked type label: text, number, true/false, list), correct, kind: 'type' }` — so a `"5"` against `5` confusion shows directly; `reveals` counts the Runs that revealed predictions (a Run with unchanged predictions isn't counted again; at most 30). `firstAllCorrect` is the measure of predicting before running. Not attempts. | Omitted when the student never ran with a prediction typed | 2026-10-14 |
@@ -147,7 +148,7 @@ rating, a poll, a short answer with no `check`, an unknown activity).
 | `distinctAttempts[].suggestion` | The failure hint shown to the student, or null. |
 | `distinctAttempts[].submission` | The submitted code or answer. Code is a string; object-shaped work (files, Scratch workspaces, activity state) is an object, or a JSON string in reports read back from Firestore. |
 | `distinctAttempts[].placements` | Code Arrange only: the tiles on the board when Run was pressed, `{ <blank id>: <tile id> }` (a tile id is a blank's own id, i.e. that blank's correct tile, or a distractor's id). Lets you tell a wrong-blank guess (a right tile in another blank) from a wrong-content one (a distractor). A retry keeps the first entry's. Omitted on other tasks, indent-mode tasks, and attempts before 2026-10-09. |
-| `distinctAttempts[].source` | `scrub`: the attempt was made by the checks that run when a [live scrub](python.md#live-scrubbing-scrub) drag ends (`scrub.checkOnRelease`), not by pressing Run. A retry keeps the first entry's. Omitted on attempts from a Run (and on attempts before 2026-10-16). Count them out of `attempts` when you want "presses of Run". |
+| `distinctAttempts[].source` | `scrub`: the attempt was made by the checks that run when a [live scrub](python.md#live-scrubbing-scrub) drag ends (`scrub.checkOnRelease`), not by pressing Run. Omitted on attempts from a Run (and on attempts before 2026-10-16). A scrub release that did **not** pass is kept here (so nothing is lost) but is not an attempt: it is left out of `attempts`, `retries`, `commonFailures`, `avgAttempts`, `errorAttempts`, `uniqueFailedAttempts` and `finalResult` (from 2026-10-22), and counted in `scrubChecks` instead. A scrub release that passes is the pass and counts as usual. |
 
 The first five fields date from 2026-07-13; `placements` from 2026-10-09; `source` from 2026-10-16.
 
@@ -305,6 +306,7 @@ different shapes.
 | `inspectorUsedCount` | Students who used the HTML Inspector on this task (their `inspector`). | Omitted when none | 2026-10-14 |
 | `courseGoalReachedCount`, `courseCrashedCount` | Students who reached the goal on some run of this course task / who crashed at least once (their `course`). | Omitted when nobody ran the course | 2026-10-15 |
 | `slowMoUsedCount` | Students who used slow-mo (Scratch, Python or Turtle) on this task (their `slowMoUsed`). | Omitted when none | 2026-10-14 |
+| `scrubChecks` | Failed scrub releases on this task across students (the sum of their `scrubChecks`). | Omitted when none | 2026-10-22 |
 | `scrubUsedCount` | Students who scrubbed a value on this task (their `scrubs`). | Omitted when none | 2026-10-14 |
 | `predictionStudentCount` | Students with `predictions` on this task. | Omitted when nobody predicted | 2026-10-14 |
 | `predictionFirstAllCorrectCount` | Of those, students whose first revealed predictions were all right. | Omitted when nobody predicted | 2026-10-14 |
@@ -619,6 +621,51 @@ Show complete) is not an attempt.
 Side-quests per student per session are the `sideQuests[]` on each task in the session report
 (above). The Admin tab flattens them across a lesson's ended sessions; the download adds them as
 `sideQuests[]` beside `students[]`.
+
+## Reading predict and scrub data (for pipeline-ui)
+
+Fetch a report with the CLI (read-only; the YAML is anonymised, so there are no names):
+
+```
+node cli/cli.mjs lessons reports list <lessonId> [--since <ISO date>]
+node cli/cli.mjs lessons reports get <lessonId> <startedAt> --yaml
+```
+
+Paths below are relative to the report root. `students[].tasks[]` is one entry per student per
+task; `taskSummary[]` is one entry per task. Every field is omitted (not null or 0) when there is
+nothing to say, so test for presence.
+
+| YAML path | Type | Holds |
+|---|---|---|
+| `students[].tasks[].predictions` | object | Predict-mode name-tag panel task: `reveals` (int), `first` / `last` (lists of `{ name, value, correct, kind? }`; `kind: type` for a type prediction), `firstAllCorrect` / `lastAllCorrect` (bool). |
+| `students[].tasks[].runCountPredictions` | object | Run-count predict task (`runCounts: predict`): `reveals`, `first` / `last` (lists of `{ line, value, ran, correct }`), `firstAllCorrect`, `lastAllCorrect`. |
+| `taskSummary[].predictionStudentCount`, `.predictionFirstAllCorrectCount` | int | Students who predicted; of those, first prediction all right. |
+| `taskSummary[].predictionFirstByName` | list | `{ name, correct, total, kind? }` per predicted variable (first prediction). |
+| `taskSummary[].runCountStudentCount`, `.runCountFirstAllCorrectCount` | int | As above, for run counts. |
+| `taskSummary[].runCountFirstByLine` | list | `{ line, correct, total, offByOne }` per marked line. |
+| `students[].tasks[].scrubs`, `.scrubNumbers`, `.scrubColours`, `.scrubBooleans` | int | Values changed by scrubbing (`scrubBooleans` only when non-zero). |
+| `students[].tasks[].scrubChecks` | int | Failed scrub releases (not attempts). |
+| `students[].tasks[].distinctAttempts[].source` | string | `scrub` on an attempt made by a scrub release; absent on a Run. |
+| `taskSummary[].scrubUsedCount` | int | Students who scrubbed on the task. |
+| `taskSummary[].scrubChecks` | int | Failed scrub releases across students. |
+
+```yaml
+students:
+  - tasks:
+      - taskId: 3
+        attempts: 1
+        scrubs: 6
+        scrubChecks: 4
+        predictions:
+          reveals: 1
+          firstAllCorrect: false
+          lastAllCorrect: false
+          first: [{ name: total, value: '7', correct: false }]
+          last: [{ name: total, value: '7', correct: false }]
+        distinctAttempts:
+          - { attemptNumber: 1, passed: false, retries: 0, submission: '...' }
+          - { attemptNumber: 2, passed: false, retries: 3, source: scrub, submission: '...' }
+```
 
 ## Not in reports
 

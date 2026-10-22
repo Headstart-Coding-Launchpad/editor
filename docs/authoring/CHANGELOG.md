@@ -62,6 +62,17 @@ Entries written before 2026-09-29 are not tagged.
 - Affects: cli, session reports · Existing lessons: no changes needed ·
   Resolves: authoring-requests/2026-10-21-cli-list-and-download-a-lesson-s-session-reports.md
 
+- **Scrub releases that miss are no longer failed attempts.** When a student lets go of a live
+  scrub and `scrub.checkOnRelease` runs the checks, a release that does not pass is not counted
+  as an attempt, a retry or a failure anywhere: not in the report (`attempts`, `avgAttempts`,
+  `commonFailures`, `finalResult`, badge metrics), the tutor's "Failed N times in a row", or the
+  student's hint escalation and solo log. A release that passes is still the pass. New per-task
+  report field `scrubChecks` (and a task-summary total) counts the missed releases, and they stay
+  in `distinctAttempts` marked `source: scrub`. See [session-reports.md](session-reports.md),
+  which also gains "Reading predict and scrub data (for pipeline-ui)".
+- Affects: session reports, python, turtle and html tasks with `scrub` · Existing lessons: no
+  changes needed · Resolves: HSC Hub handoff #92 items 1 and 5
+
 ## 2026-10-21
 
 - **Share links for every student at End Session.** Ending a live session now makes one

@@ -83,6 +83,18 @@ describe('checks when a scrub ends (P6-20)', () => {
     })
   })
 
+  it('a scrub that fails the checks is not a failed attempt for the student', async () => {
+    mockModuleRun('python', (callbacks) => {
+      callbacks.onOutput('nope\n', 'stdout')
+      return { status: 'success' }
+    })
+    const h = renderStudentCodeState({ lesson: scrubLesson(DRAW), currentTaskId: 't1' })
+    await actAsync(() => h.result.current.handleRun({ source: 'scrub' }))
+    expect(h.result.current.checkFailCount).toBe(0)
+    await actAsync(() => h.result.current.handleRun())
+    expect(h.result.current.checkFailCount).toBe(1)
+  })
+
   it('a finished scrub runs the checks once, through handleRun', async () => {
     const run = mockModuleRun('python', (callbacks) => {
       callbacks.onOutput('hi\n', 'stdout')

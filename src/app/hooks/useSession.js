@@ -43,7 +43,7 @@ import {
   normaliseSessionArchive,
 } from '../../badges/sessionArchive'
 import { findShownResponse, normalizeShownText } from '../../shared/shownResponses'
-import { AUTO_CHECK_LEAVE, AUTO_CHECK_RESULTS, realAttemptEntries } from '../../shared/autoCheck'
+import { AUTO_CHECK_LEAVE, AUTO_CHECK_RESULTS, countedAttemptEntries } from '../../shared/autoCheck'
 import { liveInkPath } from '../liveInk/liveInkData'
 import { normalizePollDraft, pollChoiceIndex } from '../../shared/classPolls.js'
 import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liveInkWriter'
@@ -94,9 +94,9 @@ function encodeWorkspaceFiles(files) {
 // The attempts a student really ran or submitted: auto-check-on-leave records
 // (src/shared/autoCheck.js) are not attempts.
 function getAttemptEntries(session, anonymousId, taskId) {
-  return realAttemptEntries(Object.values(session?.attemptLog?.[anonymousId]?.[taskId] ?? {})).sort(
-    (a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0)
-  )
+  return countedAttemptEntries(
+    Object.values(session?.attemptLog?.[anonymousId]?.[taskId] ?? {})
+  ).sort((a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0))
 }
 
 function countAttemptRuns(entries) {
@@ -1667,7 +1667,13 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       return
     }
 
-    if (cached && cached.serialized === serialized) {
+    // A failed scrub release is not a retry of a Run's attempt (nothing new to log), and a Run or
+    // a pass is not a retry of a failed scrub release (it gets its own entry, so the release
+    // stays uncounted).
+    const scrubMiss = source === 'scrub' && !passed
+    const sameCode = cached && cached.serialized === serialized
+    if (sameCode && scrubMiss && !cached.scrubMiss) return
+    if (sameCode && (!cached.scrubMiss || scrubMiss)) {
       const nextRetries = cached.retries + 1
       const updates = { retries: nextRetries }
       if (passed) {
@@ -1712,6 +1718,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       attemptNumber,
       retries: 0,
       passed,
+      scrubMiss,
     }
   }
 
