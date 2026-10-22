@@ -100,6 +100,7 @@ import {
 import { hasExporter, loadExporters } from '../../shared/exportWork/exporters.js'
 import { exportableTasks } from '../../shared/exportWork/collect.js'
 import { shareUrl } from '../../shared/exportWork/shareLink.js'
+import { useTeacherPresence } from '../hooks/useTeacherPresence'
 import { createShareLink } from '../../shared/exportWork/shareService.js'
 import {
   SESSION_SHARE_TIMEOUT_MS,
@@ -122,6 +123,7 @@ export default function TeacherView({ lessonId }) {
   const {
     session,
     loading,
+    connected,
     createSession,
     restartSession,
     startSession,
@@ -202,6 +204,12 @@ export default function TeacherView({ lessonId }) {
     revokeBadge,
     setBadgeSettings,
   } = useSession(lessonId)
+  // This tab is on the open session, so a tab that crashes leaves it marked stale, not open.
+  useTeacherPresence(lessonId, {
+    open: !!session && session.state !== 'ended',
+    connected,
+    sessionKey: session?.createdAt ?? null,
+  })
   // Peer help: every request in the lesson, the review queue and the teacher's switches.
   const peerHelp = usePeerHelp({ lessonId, session, role: 'teacher' })
 

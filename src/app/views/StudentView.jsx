@@ -1,5 +1,6 @@
 import { applyCopyCodeOverrides } from '../../shared/copyCodeOverrides'
 import { TEACHER_PRESENTER_ID } from '../../shared/presenter.js'
+import { isStaleSession } from '../../shared/staleSessions.js'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useIsMobile } from '../../shared/useIsMobile'
 import { useSession } from '../hooks/useSession'
@@ -126,7 +127,7 @@ export default function StudentView({
 
   const useRealtimeSession = !soloMode || teacherPresentation
   const {
-    session,
+    session: liveSession,
     loading: sessionLoading,
     connected,
     serverTimeOffset,
@@ -205,6 +206,12 @@ export default function StudentView({
     enabled: useRealtimeSession,
     keepPresenter: teacherPresentation,
   })
+  // A session its tutor left without ending (crashed tab) is no session: students get the
+  // Join/Solo choice instead of waiting for a tutor who isn't coming (staleSessions.js).
+  const session = useMemo(
+    () => (isStaleSession(liveSession, Date.now(), { byAge: false }) ? null : liveSession),
+    [liveSession]
+  )
   const {
     identity,
     loaded: identityLoaded,

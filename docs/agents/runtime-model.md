@@ -26,6 +26,8 @@ The `exampleOpenLog` node was added with explicit user approval ("example opens"
       "state": "waiting | active | sandbox | ended",
       "currentTaskId": 1,
       "createdAt": 1234567890,
+      "teacherPresence": "{ [tabId]: true } | absent (each open tutor tab on a waiting/active session; removed by onDisconnect — useTeacherPresence.js)",
+      "teacherLeftAt": "number | absent (server time the last tutor tab dropped, set by onDisconnect). No tutor tab for 2 hours makes the session stale: students treat it as no session, and the Admin Open Sessions panel deletes it (also any open session over 12 hours old without these fields) — src/shared/staleSessions.js",
       "startedAt": "1234567890 | null",
       "currentTaskStartedAt": "1234567890 | null",
       "endedAt": "1234567890 | null",
