@@ -191,6 +191,7 @@ export default function TeacherView({ lessonId }) {
     setTeacherLiveReferenceForStudent,
     setTeacherLiveReferenceForClass,
     pushTeacherPaneCommand,
+    setCopyCodeOverride,
     pushClassPaneCommand,
     pushClassControlHighlight,
     clearClassControlHighlight,
@@ -1121,6 +1122,7 @@ export default function TeacherView({ lessonId }) {
             onAddHighlight={pushTeacherHighlight}
             onRemoveHighlight={removeTeacherHighlight}
             onPushTeacherPaneCommand={pushTeacherPaneCommand}
+            onSetCopyCodeOverride={setCopyCodeOverride}
             onPushTeacherControlHighlight={pushTeacherControlHighlight}
             onTeacherAnswerEdit={pushTeacherAnswerEdit}
             onPushTileHighlight={pushTeacherTileHighlight}

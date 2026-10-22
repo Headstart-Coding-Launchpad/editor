@@ -1397,6 +1397,18 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await set(ref(db, `sessions/${lessonId}/teacherClassPaneCommand`), null)
   }
 
+  // The tutor's own "Type this out" text for a task: for the whole class (scope 'class') or one
+  // student (their anonymousId). null clears it; '' hides the panel. See
+  // src/shared/copyCodeOverrides.js.
+  async function setCopyCodeOverride(scope, taskId, text) {
+    if (!scope || taskId == null) return
+    const base =
+      scope === 'class'
+        ? `sessions/${lessonId}/copyCodeOverrides`
+        : `sessions/${lessonId}/students/${scope}/copyCodeOverrides`
+    await set(ref(db, `${base}/${taskId}`), typeof text === 'string' ? text : null)
+  }
+
   // Control highlights (src/shared/controlHighlight.js): pulse one control (Run, the green flag,
   // a Costumes tab…) on one student's screen or the whole class's. { target, taskId, pushedAt }
   // in server time; each student's screen ends it on its own (used, or 20 s), so the node stays
@@ -2381,6 +2393,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     clearTeacherPaneCommand,
     pushClassPaneCommand,
     clearClassPaneCommand,
+    setCopyCodeOverride,
     pushTeacherControlHighlight,
     pushClassControlHighlight,
     clearClassControlHighlight,

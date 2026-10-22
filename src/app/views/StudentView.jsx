@@ -1,3 +1,4 @@
+import { applyCopyCodeOverrides } from '../../shared/copyCodeOverrides'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useIsMobile } from '../../shared/useIsMobile'
 import { useSession } from '../hooks/useSession'
@@ -213,9 +214,20 @@ export default function StudentView({
     ? { anonymousId: 'teacher-presenter', displayName: 'Teacher' }
     : identity
 
+  // A tutor's own "Type this out" text for the class or this student (copyCodeOverrides).
+  // Compared by value: the session snapshot hands back fresh objects on every update.
+  const classCopyCodeKey = JSON.stringify(session?.copyCodeOverrides ?? null)
+  const ownCopyCodeKey = JSON.stringify(
+    session?.students?.[effectiveIdentity?.anonymousId]?.copyCodeOverrides ?? null
+  )
   const lesson = useMemo(
-    () => prepareClassroomLesson(applyLessonOverride(baseLesson, session?.lessonOverrideTasks)),
-    [baseLesson, session?.lessonOverrideTasks]
+    () =>
+      applyCopyCodeOverrides(
+        prepareClassroomLesson(applyLessonOverride(baseLesson, session?.lessonOverrideTasks)),
+        JSON.parse(classCopyCodeKey),
+        JSON.parse(ownCopyCodeKey)
+      ),
+    [baseLesson, session?.lessonOverrideTasks, classCopyCodeKey, ownCopyCodeKey]
   )
   // Derive firstTaskId from the post-override lesson so solo-mode students start on a valid task.
   // If an explicit initialTaskId was provided (e.g. builder preview), honour it over the lesson's first task.

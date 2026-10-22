@@ -1429,6 +1429,27 @@ describe('StudentModal header: four common actions, the rest in More', () => {
     expect(onRevokeBadge).toHaveBeenCalledWith('student-1', 'bug_hunter')
   })
 
+  it('lets the tutor change the Type this out text for one student or the class', async () => {
+    const user = userEvent.setup()
+    const onSetCopyCodeOverride = vi.fn()
+    const lesson = { type: 'python', tasks: [{ id: 1, title: 'Task 1', copyCode: 'print(1)' }] }
+    render(<StudentModal {...mkProps({ lesson, onSetCopyCodeOverride })} />)
+    await user.click(screen.getByRole('button', { name: /^More/ }))
+    await user.click(screen.getByTestId('edit-copy-code'))
+    const box = screen.getByTestId('copy-code-edit-text')
+    expect(box).toHaveValue('print(1)')
+    await user.clear(box)
+    await user.type(box, 'print(2)')
+    await user.click(screen.getByTestId('copy-code-save-student'))
+    expect(onSetCopyCodeOverride).toHaveBeenCalledWith('student-1', 1, 'print(2)')
+
+    await user.click(screen.getByRole('button', { name: /^More/ }))
+    await user.click(screen.getByTestId('edit-copy-code'))
+    await user.click(screen.getByTestId('copy-code-save-class'))
+    expect(onSetCopyCodeOverride).toHaveBeenCalledWith('class', 1, 'print(1)')
+    expect(onSetCopyCodeOverride).toHaveBeenCalledWith('student-1', 1, null)
+  })
+
   it('shows what the checks said after the last scrub', () => {
     render(
       <StudentModal {...mkProps({}, { lastScrubPassed: false, lastScrubAt: 5, lastRunAt: 5 })} />

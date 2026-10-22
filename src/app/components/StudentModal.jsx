@@ -61,6 +61,8 @@ import {
 } from '../../shared/tutorTileHighlights.js'
 import ActivityDeviceBadge from '../../activities/ui/ActivityDeviceBadge.jsx'
 import BadgeAwardDialog from './badges/BadgeAwardDialog'
+import CopyCodeEditDialog from './CopyCodeEditDialog'
+import { effectiveCopyCode } from '../../shared/copyCodeOverrides'
 import { heldBadgeIds } from '../../badges/badgeDisplay'
 
 // Modes match AUTO_REVEAL_MODES (src/shared/taskStages.js); null turns it off.
@@ -115,6 +117,7 @@ export default function StudentModal({
   onRevealSupportStage,
   onSetTeacherLiveReference,
   onPushTeacherPaneCommand,
+  onSetCopyCodeOverride,
   onPushTeacherControlHighlight,
   onTeacherAnswerEdit,
   // Tutor tile highlights (useSession push/remove/clearTeacherTileHighlights).
@@ -173,6 +176,7 @@ export default function StudentModal({
   const [thumbsUpSent, setThumbsUpSent] = useState(false)
   const [markFailOpen, setMarkFailOpen] = useState(false)
   const [showBadgeDialog, setShowBadgeDialog] = useState(false)
+  const [showCopyCodeDialog, setShowCopyCodeDialog] = useState(false)
   const [showExportDialog, setShowExportDialog] = useState(false)
 
   // Teacher highlight: select a range in the mirrored view, tag it, send it
@@ -681,9 +685,11 @@ export default function StudentModal({
   const handleCloseRef = useLatestRef(() =>
     showExportDialog
       ? setShowExportDialog(false)
-      : showBadgeDialog
-        ? setShowBadgeDialog(false)
-        : handleClose()
+      : showCopyCodeDialog
+        ? setShowCopyCodeDialog(false)
+        : showBadgeDialog
+          ? setShowBadgeDialog(false)
+          : handleClose()
   )
   useEffect(() => {
     function onKey(e) {
@@ -1067,6 +1073,13 @@ export default function StudentModal({
                 !isQuiz
               )
               const hasTopic = !!(onSendToTopic && topics?.length > 0)
+              const hasCopyCodeEdit = !!(
+                onSetCopyCodeOverride &&
+                task &&
+                lessonModule?.supportsCopyCode === true &&
+                !isInformation &&
+                !isQuiz
+              )
               const hasVideoCall = !!onSendVideoCallLink
               // A teacher cannot build the snapshot themselves: currentCode is
               // only fresh while activeStudentView matches. So this asks the
@@ -1315,7 +1328,11 @@ export default function StudentModal({
                           📤 Share a copy with the class
                         </button>
                       )}
-                      {(hasEdit || hasTopic || hasVideoCall || hasFullscreen) && (
+                      {(hasEdit ||
+                        hasCopyCodeEdit ||
+                        hasTopic ||
+                        hasVideoCall ||
+                        hasFullscreen) && (
                         <div
                           style={
                             hasNudge || hasGoLiveForAll || hasShare
@@ -1335,6 +1352,19 @@ export default function StudentModal({
                           }}
                         >
                           ✏ {moduleDefinition?.meta.teacherEditCopy?.action}
+                        </button>
+                      )}
+                      {hasCopyCodeEdit && (
+                        <button
+                          style={sTo.toolBtn}
+                          onClick={() => {
+                            close()
+                            setShowCopyCodeDialog(true)
+                          }}
+                          title="Change the Type this out text for this student or the whole class"
+                          data-testid="edit-copy-code"
+                        >
+                          ⌨️ Edit Type this out
                         </button>
                       )}
                       {hasTopic && (
@@ -1702,6 +1732,35 @@ export default function StudentModal({
                 }
               : undefined
           }
+        />
+      )}
+
+      {showCopyCodeDialog && onSetCopyCodeOverride && task && (
+        <CopyCodeEditDialog
+          studentName={student.displayName}
+          taskTitle={task.title ?? 'This task'}
+          initialText={
+            effectiveCopyCode(
+              task,
+              session?.copyCodeOverrides,
+              session?.students?.[student.anonymousId]?.copyCodeOverrides
+            ) ?? ''
+          }
+          hasOwnOverride={
+            typeof session?.students?.[student.anonymousId]?.copyCodeOverrides?.[task.id] ===
+            'string'
+          }
+          onSave={(scope, text) => {
+            onSetCopyCodeOverride(scope === 'class' ? 'class' : student.anonymousId, task.id, text)
+            // A class text must also replace any version this student already has of their own.
+            if (scope === 'class') onSetCopyCodeOverride(student.anonymousId, task.id, null)
+            setShowCopyCodeDialog(false)
+          }}
+          onClearStudent={() => {
+            onSetCopyCodeOverride(student.anonymousId, task.id, null)
+            setShowCopyCodeDialog(false)
+          }}
+          onClose={() => setShowCopyCodeDialog(false)}
         />
       )}
 
