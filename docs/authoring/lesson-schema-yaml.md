@@ -245,7 +245,7 @@ carry-through). Write `type: <activity>` on the task; the converter turns it int
 The explicit `taskType: activity` + `activityType:` form still works. `node cli/cli.mjs lessons
 capabilities` lists every activity; each has an authoring page in
 [activities/](activities/) ([binary](activities/binary.md), [keyboard](activities/keyboard.md),
-[mouse](activities/mouse.md)). Quizzes keep `type: quiz` + `quizType`.
+[mouse](activities/mouse.md), [classifier](activities/classifier.md)). Quizzes keep `type: quiz` + `quizType`.
 
 ```yaml
 id: activity-shorthand

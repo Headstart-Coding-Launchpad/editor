@@ -3989,6 +3989,134 @@ label.te-backdrop-tag,
   font-family: var(--font-code);
 }
 
+/* Classifier: drawing pad, class rows, drawing thumbnails and the test result */
+.act-cls-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.act-cls-heading {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--colour-ink-strong);
+}
+
+.act-cls-class {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.act-cls-class__pick {
+  flex: 1 1 12em;
+  text-align: left;
+}
+
+.act-cls-class__pick[aria-pressed='true'] {
+  border-width: 3px;
+  font-weight: 700;
+}
+
+.act-cls-name {
+  min-height: 44px;
+  width: 10em;
+  font-size: 1rem;
+}
+
+.act-cls-pad {
+  position: relative;
+  width: min(100%, 320px);
+  aspect-ratio: 1 / 1;
+  background: var(--ui-surface);
+  border: 2px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius);
+  touch-action: none;
+  cursor: crosshair;
+  user-select: none;
+}
+
+.act-cls-pad--off {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.act-cls-pad svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  color: var(--colour-ink-strong);
+}
+
+.act-cls-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.act-cls-thumb {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  padding: 2px;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-sm);
+  color: var(--colour-ink-strong);
+  cursor: pointer;
+}
+
+.act-cls-thumb--test {
+  border: 2px dashed var(--colour-ink-strong);
+}
+
+.act-cls-thumb svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.act-cls-thumb__tag {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 3px;
+  background: var(--ui-surface-tint);
+  border-radius: 3px;
+}
+
+.act-cls-result {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--ui-surface-soft);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+
+.act-cls-result__big {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--colour-ink-strong);
+}
+
+.act-cls-list {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.act-cls-live-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* Keyboard */
 .act-practice {
   min-height: 96px;

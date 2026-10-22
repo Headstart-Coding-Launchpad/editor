@@ -17,6 +17,7 @@ import codeArrange from './code_arrange/definition.js'
 import unknown from './unknown/definition.js'
 import realOrAi from './real_or_ai/definition.js'
 import nextWord from './next_word/definition.js'
+import classifier from './classifier/definition.js'
 import { UNKNOWN_ACTIVITY_ID, getActivityId } from './resolve.js'
 
 const ACTIVITIES = [
@@ -32,6 +33,7 @@ const ACTIVITIES = [
   codeArrange,
   realOrAi,
   nextWord,
+  classifier,
   unknown,
 ]
 

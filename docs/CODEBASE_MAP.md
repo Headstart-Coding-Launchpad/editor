@@ -625,7 +625,7 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 
 | File | Role |
 |---|---|
-| `defineActivity.js` | Activity contract: validates a pure activity definition and fills defaults (storage in the `__activity_state__` aux file, live state on `currentAnswer`, report type fields) |
+| `defineActivity.js` | Activity contract: validates a pure activity definition and fills defaults (storage in the `__activity_state__` aux file, live state on `currentAnswer`, `serializeShared` = what leaves the device (defaults to `serialize`), report type fields) |
 | `resolve.js` | `getActivityId(task)`: maps stored tasks to activity ids without changing formats (`quiz` + `quizType` → `quiz_<type>`, `code_arrange`, `activity` + `activityType`); `LEGACY_QUIZ_TASK_TYPE`, `isLegacyQuizRecord(task)` (any stored quiz, known quizType or not) |
 | `registry.pure.js` | Node-safe activity registry (`getActivityDefinition(s)`, `getTaskActivity`, `ACTIVITY_IDS`, YAML shorthand lookup both ways (`activityIdForYamlType`, `yamlTypeForActivityTask`), `isHostedActivityTask` (ActivityHost tasks only), module-hosted activities (`getModuleHostedActivity`, `isModuleHostedActivityTask`, `getModuleHostedActivityDefinitions`), `isLegacyQuizTask`, `allowsStudentBroadcast`, Builder helpers `TASK_FORMATS`, `getTaskFormat`, `getQuizActivityDefinitions`, `getGalleryActivityDefinitions`); unknown `activityType` / `quizType` values resolve to the fallback |
 | `quiz/quizActivity.js` | Shared pure logic for the six quiz activities: `defineQuizActivity` (legacy shape, shared validation, `currentAnswer` formats, `{ taskType: 'quiz', quizType }` report fields), attempt submissions (`buildQuizSubmission`), feedback (`getQuizSuggestion`), item progress, report normalisers and per-item failure summaries, print tables |
@@ -686,6 +686,11 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `next_word/ngram.js` | Pure word-pair (bigram) model for Next Word: word normalising, counts, next-word odds, ties, seedable temperature sampling and text generation, size caps |
 | `next_word/definition.js` | Next Word activity definition wrapping `next_word.js`: default task, validation, state, change classification (clicks discrete, typing and slider continuous), grading, progress, card summary (chosen text + n/m right), print |
 | `next_word/ui.jsx` | Next Word StudentView: text picker (and paste box), word explorer with probability bars (numbers in words), predict-then-reveal items, Generate with temperature slider; the read-only tutor view shows the same |
+| `classifier/classifier.js` | Pure Classifier activity logic: drawing → 16x16 grid (`rasterize`, `encodeGrid`), in-house k-NN (`classify`, k=3), train/test/live state transitions, held-out split (every 4th drawing), accuracy and confusion counts in words, `sharedState` (the only form sent to Firebase: no drawings), grading with hints, authoring validation |
+| `classifier/definition.js` | Classifier activity definition wrapping `classifier.js`: default task, validation, full local `serialize` vs summary-only `serializeShared`, change classification, grading, per-class progress, card summary, report `classifierResults`, print |
+| `classifier/DrawPad.jsx` | Classifier drawing pieces shared by the student view and the Builder editor: `DrawPad` (square SVG pad drawn on with Pointer Events; the stroke in progress is local, finished strokes go to the parent) and `GridThumb` (a drawing grid as one small picture) |
+| `classifier/ClassifierBuilderEditor.jsx` | Classifier Builder editor: who names the classes, test set (kept back / my test drawings / live), numbers, and drawing teacher test drawings on a pad |
+| `classifier/ui.jsx` | Classifier StudentView: Pointer Events drawing pad (SVG), class rows, drawing gallery, Train / Test / live test, result in words; read-only tutor summary (counts, trained, result) |
 
 ---
 

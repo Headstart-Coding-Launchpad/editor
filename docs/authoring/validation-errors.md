@@ -306,6 +306,30 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … item …: "…" never has a word after it in the first text.` | The prompt's last word is missing from the first text, or only ends it. | Change the prompt, or add the pair to the first text. |
 | `Task … item …: answer "…" is not the most likely word after "…" in the first text (it is "…").` | `answer` is not a most-likely next word in the first text. | Use the word named in the message, or change the text or prompt. Words tied for most likely are all accepted. |
 
+### Classifier ([activities/classifier.md](activities/classifier.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: classifier mode … is not built yet. Use mode: drawing.` | `mode: sound` (the microphone version) is planned but not built. | Use `mode: drawing`. |
+| `Task …: classifier mode must be drawing.` | `mode` is missing or not `drawing` (webcam mode does not exist). | Set `mode: drawing`. |
+| `Task …: classifier testSet must be one of ….` | `testSet` is missing or not one of `held_out`, `teacher`, `live`. | Choose how the model is tested. |
+| `Task …: classifier classes must be a list of names.` | `classes` is not a list. | Write `classes: [cat, fish]`, or leave it out so students name their own. |
+| `Task …: each class name must be 1 to … characters.` | A class name is empty or too long. | Use short names (up to 16 characters). |
+| `Task …: class names must all be different.` | Two classes share a name (capitals ignored). | Rename one. |
+| `Task …: classifier needs … to … classes.` | There are fewer than 2 or more than 6 classes. | Give 2 to 6 classes. |
+| `Task …: minExamplesPerClass must be a whole number from 2 to ….` | `minExamplesPerClass` is not a whole number in range. | Use a whole number from 2 to 40. |
+| `Task …: testSet held_out needs minExamplesPerClass of at least … (every …th drawing is kept back for the test).` | With `held_out`, every 4th drawing is kept back, so a class needs at least 4. | Raise `minExamplesPerClass` to 4 or more, or use another `testSet`. |
+| `Task …: targetAccuracy must be a number above 0 and up to 1 (0.8 means 80%).` | `targetAccuracy` is not a fraction. | Write `0.8`, not `80`. |
+| `Task …: liveTestSize must be a whole number from … to ….` | `liveTestSize` is out of range. | Use 3 to 20. |
+| `Task …: testSet teacher needs classes (the test drawings use their names).` | `testSet: teacher` without `classes`. | List the `classes` the test drawings use. |
+| `Task …: testSet teacher needs testItems with 2 to … test drawings.` | `testItems` is missing or has fewer than 2 or more than 24 drawings. | Add 2 to 24 `testItems`. |
+| `Task … test drawing …: needs a label.` | A test drawing has no `label`. | Add the true class as `label`. |
+| `Task … test drawing …: label "…" is not one of the classes.` | The `label` is not in `classes`. | Spell it like the class. |
+| `Task … test drawing …: needs either strokes or grid (not both).` | A test drawing has neither `strokes` nor `grid`, or both. | Give exactly one. |
+| `Task … test drawing …: grid must be … rows of … characters (. empty, # ink, or digits 0-9).` | `grid` is not 16 rows of 16 characters. | Write 16 quoted strings of 16 characters from `.`, `#` and `0`-`9`. |
+| `Task … test drawing …: strokes must be a list of strokes, each a list of x, y numbers between 0 and 1 (x1, y1, x2, y2, ...).` | `strokes` is empty, has an odd number of values in a stroke, or a number outside 0 to 1. | Write each stroke as `[x1, y1, x2, y2, …]` with values from 0 to 1. |
+| `Task …: no test drawing for class "…". (warning)` | With `testSet: teacher`, a class has no test drawing, so it is never tested. | Add at least one `testItems` entry for it. |
+
 ## Code-arrange tasks
 
 | Message | Meaning | Fix |

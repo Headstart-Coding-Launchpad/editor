@@ -72,6 +72,23 @@ Entries written before 2026-09-29 are not tagged.
   [activities/next_word.md](activities/next_word.md).
 - Affects: next_word (new activity) · Existing lessons: no changes needed ·
   Resolves: authoring-requests/2026-10-21-next-word-predictor-activity-ai-level-1.md
+- **New activity: `classifier` (Train a Classifier, AI Level 1).** Students draw examples of each
+  class, press Train (instant, in-house k-nearest-neighbours, k = 3, on 16 x 16 greyscale grids),
+  then test the model on drawings it has not seen and read the accuracy ("7 of 9 right, 78%") and
+  a confusion table in words. Write `type: classifier` with `mode: drawing`, `testSet` (`held_out`:
+  every 4th drawing the student makes is kept back; `teacher`: your `testItems`, each a `label` plus
+  `strokes` (flat `x, y` lists, 0 to 1) or a 16 x 16 `grid`; `live`: the student draws new test
+  drawings, `liveTestSize`), optional `classes` (2 to 6; leave out and students name their own),
+  `minExamplesPerClass` (default 6; at least 4 with `held_out`) and `targetAccuracy` (default 0.8).
+  The task passes when the trained model reaches the target on the test and every class has enough
+  drawings. `mode: sound` is rejected as "not built yet"; there is no webcam mode. Drawings never
+  leave the student's device: only counts per class, trained, and the test result are synced,
+  and the report gets `classifierResults` (average accuracy and summed confusion counts).
+  `testItems` is sealed. New activity-contract hook for other authors of activities:
+  `serializeShared`. See [activities/classifier.md](activities/classifier.md).
+- Affects: classifier (new), activities host (`serializeShared`), session reports · Existing
+  lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-21-train-a-classifier-activity-ai-level-1.md
 
 ## 2026-10-21
 

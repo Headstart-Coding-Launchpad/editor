@@ -5,7 +5,8 @@ classroom. The plan
 and the Workspace-module-vs-Activity decision test are in
 [modular-activities-plan.md](modular-activities-plan.md); authoring pages are in
 `docs/authoring/activities/` ([binary](../authoring/activities/binary.md),
-[keyboard](../authoring/activities/keyboard.md), [mouse](../authoring/activities/mouse.md)).
+[keyboard](../authoring/activities/keyboard.md), [mouse](../authoring/activities/mouse.md),
+[classifier](../authoring/activities/classifier.md)).
 
 Status: Binary, Keyboard and Mouse run through the host (plan step 2.3a), and so do quizzes
 (steps 2.2 / 2.3b, see [Quizzes](#quizzes-legacy-activities)). The Builder authors every
@@ -18,7 +19,7 @@ workspace module** rather than by `ActivityHost` (step 4.9, see
 
 | Piece | File | Job |
 |---|---|---|
-| Pure definition | `src/activities/<id>/definition.js` | Contract from `defineActivity.js`: `initialState`, `solutionState`, `serialize` / `deserialize` (tolerant), `storage`, `classifyChange`, `completion`, `grade`, `isGraded`, `buildSubmission`, `getProgress`, `summarize`, `requires`, `touchFallback`, `teacherEditable`, `submitsAnswers`, `tileHighlights` (tutor "look again" tile highlights from StudentModal; see `src/shared/tutorTileHighlights.js`), `history` (typing history across lessons: `modes`, `results`, `shows`; see `src/shared/typingHistory.js`; the UI gets the pushed node as its `history` prop), `previewState`, `report` (`typeFields`, `normalizeSubmission`, `summaryFields`), `printHtml`, `validateTask`, `fields` (the task shape as data: `modeField`, task fields with `required` / `authored` / `values` / `modes` / `itemFields`; see `src/shared/fieldSpec.js`, listed by `lessons capabilities`). Node-safe (CLI, validation, reports, print). |
+| Pure definition | `src/activities/<id>/definition.js` | Contract from `defineActivity.js`: `initialState`, `solutionState`, `serialize` / `deserialize` (tolerant), `serializeShared` (optional: the form written to Firebase / `teacherLive` / the attempt log, default `serialize`; an activity holding private data keeps it out, see the classifier), `storage`, `classifyChange`, `completion`, `grade`, `isGraded`, `buildSubmission`, `getProgress`, `summarize`, `requires`, `touchFallback`, `teacherEditable`, `submitsAnswers`, `tileHighlights` (tutor "look again" tile highlights from StudentModal; see `src/shared/tutorTileHighlights.js`), `history` (typing history across lessons: `modes`, `results`, `shows`; see `src/shared/typingHistory.js`; the UI gets the pushed node as its `history` prop), `previewState`, `report` (`typeFields`, `normalizeSubmission`, `summaryFields`), `printHtml`, `validateTask`, `fields` (the task shape as data: `modeField`, task fields with `required` / `authored` / `values` / `modes` / `itemFields`; see `src/shared/fieldSpec.js`, listed by `lessons capabilities`). Node-safe (CLI, validation, reports, print). |
 | Pure registry | `src/activities/registry.pure.js` | `getTaskActivity(task)` (unknown `activityType` / `quizType` → `unknown` fallback), `isHostedActivityTask` (ActivityHost tasks), `getModuleHostedActivity` / `isModuleHostedActivityTask` (activities with `hostModules`), `isLegacyQuizTask`, `allowsStudentBroadcast`. |
 | UI | `src/activities/<id>/ui.jsx` | `{ StudentView, TeacherLiveView?, CardSummary?, ownsLayout?, BuilderEditor?, BuilderIcon?, builderHint?, builderConvert? }` (see [Builder](#builder)). Views are controlled: `state`, `onChange(nextOrUpdater)`, `onSubmit(state?)`, `readOnly`, `device`, `teacher`, `result` (`{ submitted, passed }` of the answer shown). |
 | UI registry | `src/activities/registry.js` | Merges definition + UI (`getTaskActivityUi`, `getModuleHostedActivityUi`). Never imported by the CLI. |
@@ -49,7 +50,10 @@ ActivityHost ── state ──> <Activity>.StudentView
 ```
 
 Nothing new is stored in Firebase: the serialised state (JSON) goes on
-`students/{id}/currentAnswer`, the same string field quiz answers use.
+`students/{id}/currentAnswer`, the same string field quiz answers use. The device's own copy (the
+aux file) uses `serialize`; everything that leaves the device uses `serializeShared`, which
+defaults to the same string. The classifier overrides it so its drawings never leave the device
+(counts, trained and the test result only).
 
 ## Write rules (enforced once, in `useActivityState`)
 

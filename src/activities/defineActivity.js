@@ -146,5 +146,9 @@ export function defineActivity(def) {
     fields: normaliseFields(id, def.fields),
     completion,
     deserialize,
+    // What is written to Firebase / teacherLive (default: the same as `serialize`, which is what
+    // the device keeps). An activity holding private data (the classifier's drawings) overrides
+    // it to send only a summary; `deserialize` must read both forms.
+    serializeShared: def.serializeShared ?? def.serialize ?? jsonSerialize,
   })
 }
