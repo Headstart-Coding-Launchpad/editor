@@ -132,6 +132,7 @@ describe('grading', () => {
     expect(gradeTask(task, { items: { a: { bits: '0101' } } })).toEqual({
       total: 2,
       correct: 1,
+      core: 2,
       done: false,
     })
     expect(gradeTask(task, { items: { a: { bits: '0101' }, b: { bits: '1001' } } }).done).toBe(true)

@@ -145,6 +145,7 @@ describe('grading', () => {
     expect(gradeKeyboardTask(task, { items: { a: { pressed: true } } })).toEqual({
       total: 2,
       correct: 1,
+      core: 2,
       done: false,
       hint: `Look for the Shift + ' key.`,
     })

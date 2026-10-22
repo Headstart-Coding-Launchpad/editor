@@ -242,6 +242,14 @@ export function KeyboardStudentView({
   if (!tutor && flow.finished) {
     return (
       <div className="act-panel" data-testid="keyboard-activity">
+        {/* The last item's "you went from 40 to 70" stays on the finish card. */}
+        {showsTypingHistory(task, current) && (
+          <TypingHistoryLine
+            modeHistory={typingHistoryForMode(history, mode)}
+            result={result}
+            finished
+          />
+        )}
         <RoundFinished total={items.length} onPlayAgain={playAgain} />
       </div>
     )
