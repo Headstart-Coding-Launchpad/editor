@@ -46,6 +46,7 @@ import ThumbsUpToast from '../components/ThumbsUpToast'
 import useClassCountdown from '../hooks/useClassCountdown'
 import ClassCountdownPill from '../components/ClassCountdownPill'
 import TimesUpBanner from '../components/TimesUpBanner'
+import TaskChangeFlash from '../components/TaskChangeFlash'
 import useVideoCallPrompt, { VIDEO_CALL_PROMPT_PHASES } from '../hooks/useVideoCallPrompt'
 import useBadgeCelebrations from '../hooks/useBadgeCelebrations'
 import BadgeCelebration from '../components/badges/BadgeCelebration'
@@ -1765,6 +1766,14 @@ export default function StudentView({
       {nudgeBannerVisible && <NudgeBanner onDismiss={dismissNudge} />}
       <ThumbsUpToast shownAt={thumbsUpAt} />
       <TimesUpBanner shownAt={timesUpAt} presentation={teacherPresentation} />
+      {/* Keyed on the class's task (currentTaskId), so browsing back never flashes. Live lesson
+          and the presentation window only: a solo student moved themselves. */}
+      <TaskChangeFlash
+        taskKey={cs.inPersonalSandbox ? null : currentTaskId}
+        number={currentIndex + 1}
+        title={flatTasks[currentIndex]?.title}
+        enabled={!previewMode && (teacherPresentation || phase === 'lesson')}
+      />
       {nudgeEnabled && <NudgePermissionPrompt />}
       {showTeacherEditConsent && (
         <div style={s.consentOverlay}>

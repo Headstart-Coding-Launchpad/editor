@@ -187,6 +187,14 @@ A teacher-set countdown the class can see, separate from the per-task `estimated
 - At zero (only for a deadline the screen watched counting down; a reload after zero shows the pill's "Time's up" but no banner): a non-blocking "⏰ Time's up!" banner pops in for 5 s (`TimesUpBanner`, `motion-pop-in`, larger on the presentation window) and, on the student's own screen only, the falling `timesUp` chime, silenced by the student's Sounds mute or the tutor's class-wide Sounds off. Nothing is locked or paused. Adding time arms it again.
 - It survives task changes (`setTaskId` doesn't touch it) and is cleared by Stop, `createSession` and `endSession`. Not shown in preview or solo mode.
 
+## Task Change Flash
+
+When the tutor moves the class to another task, every student screen and the presentation window flash a full-width title band ("Task 4 · Loops with lists", `TaskChangeFlash`) for about 1.6 s so the change is unmistakable whatever the task type.
+
+- Keyed on `currentTaskId` (the class's task), not `viewingTaskId`, so a student browsing back to an earlier task never triggers it. It needs a change from one real task to another: not first load, not a reload or reconnect restoring the same task, not the session arriving after mount.
+- Shown in a live lesson (`phase === 'lesson'`) and the presentation window; not in solo (the student moved themselves), the sandbox, Builder preview or the tutor's own dashboard and `StudentModal`.
+- Non-blocking (`pointer-events: none`, no focus change) and announced through a polite live region. Reduced motion: a fade, no slide. Uses no sound. The number is the task bar's `Task N of M` (`flatTasks` index + 1).
+
 ## Remote Reset
 
 - Teacher writes `remoteResetAction` and `remoteResetPushedAt` to one student node.
