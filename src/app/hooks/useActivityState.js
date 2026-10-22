@@ -377,10 +377,13 @@ export function useActivityState({
       def.classifyChange(prev, next, taskRef.current) === 'continuous' ? 'continuous' : 'discrete'
     sync(kind)
     // Activities whose UI submits final answers itself (quizzes) are never auto-submitted here.
+    // Only the change that takes the task from not passed to passed submits: bonus reps after
+    // passing, and a "Play again" that clears the items, never log another attempt.
     if (
       def.completion === 'auto' &&
       !def.submitsAnswers &&
       kind === 'discrete' &&
+      !def.grade(taskRef.current, prev).passed &&
       def.grade(taskRef.current, next).passed
     ) {
       submit(next)

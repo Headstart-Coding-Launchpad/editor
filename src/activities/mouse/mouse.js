@@ -3,6 +3,7 @@
 // with src/shared/input and stores, per item, which gesture completed it. Node-safe.
 
 import { TOUCH_EQUIVALENTS, gestureSatisfies } from '../../shared/input/index.js'
+import { coreCountOf, validateCoreItems } from '../round.js'
 
 export const MOUSE_ACTIONS = ['click', 'double_click', 'right_click', 'drag', 'scroll', 'hover']
 export const TARGET_SIZES = ['large', 'medium', 'small']
@@ -46,6 +47,10 @@ export function validateMouseTask(task, n) {
   }
   const items = Array.isArray(task?.items) ? task.items : []
   if (items.length === 0) errors.push(`${where}: mouse task needs at least one item.`)
+  else {
+    const coreError = validateCoreItems(task, where, items.length)
+    if (coreError) errors.push(coreError)
+  }
   const itemIds = new Set()
   items.forEach((item, i) => {
     const label = `${where} item ${i + 1}`
@@ -103,10 +108,13 @@ export function gradeMouseTask(task, state = {}, device = {}) {
   const items = activeMouseItems(task, device)
   const results = items.map((item) => gradeMouseItem(task, item, state.items?.[item.id]))
   const correct = results.filter((r) => r.correct).length
+  // The goal is the core items (all of them unless task.coreItems says fewer); the rest are bonus.
+  const core = coreCountOf(task, items.length)
   return {
     total: items.length,
     correct,
-    done: items.length > 0 && correct === items.length,
+    core,
+    done: items.length > 0 && correct >= core,
     hint: results.find((r) => !r.correct)?.hint ?? null,
   }
 }
