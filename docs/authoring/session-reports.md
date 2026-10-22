@@ -556,7 +556,11 @@ never archived, and is only visible through the exported report YAML.
 When the tutor ends a live session (End Session, or End & Go to Home), LaunchPad makes one
 read-only share link per student who has code work (Python, Scratch, Turtle, web page or any
 module with an Export work exporter), for the **last task in lesson order with work**: the live
-work on the current task, otherwise the latest submission. It is the same name-hidden snapshot
+work on the current task, otherwise the newer of the latest logged attempt and the student's
+latest Run on that task (`students/{id}/lastRuns`, kept for every task since 2026-10-22). Before
+then a task with no check (a Take it further) had no saved work, so the link fell back to the last
+checked task. A Python link has **Run**: the code runs in the viewer's browser, asking any
+`input()` in the output panel; nothing is saved. It is the same name-hidden snapshot
 as Export work's share link (`sharedWork/{id}`, 30 days, revocable). Nothing is sent anywhere.
 The report screen lists them under **Share links for parents** with Open, Copy, Revoke and
 **Copy all**; the Reports panel and Admin lesson panel show the same list.

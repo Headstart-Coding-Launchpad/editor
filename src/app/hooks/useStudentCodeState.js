@@ -189,6 +189,7 @@ export function useStudentCodeState({
   writeStudentArcadeDesign,
   writeStudentTurtleResult,
   writeStudentStageResult,
+  writeStudentTaskRun,
   writeStudentSpriteState,
   writeStudentCursor,
   writeStudentBlockDrag,
@@ -1914,6 +1915,7 @@ export function useStudentCodeState({
           writeStudentRun,
           writeStudentTurtleResult,
           writeStudentStageResult,
+          writeStudentTaskRun,
           logAttempt,
         },
         live: {

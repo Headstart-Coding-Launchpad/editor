@@ -1,9 +1,13 @@
 // Read-only share viewer (`/share/:id`) for a Python task: the code, its last output and, when
-// the code drew on the Python Stage, the drawing.
-import { useMemo } from 'react'
+// the code drew on the Python Stage, the drawing. **Run** runs the shared code here, in the
+// viewer's browser (Pyodide, nothing saved or sent), answering any input() in the output panel;
+// the run's output and drawing replace the saved ones (Ryan, 2026-10-22: "it doesn't run it").
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ShareCode, ShareOutput, shareStyles } from '../../shared/exportWork/ShareParts.jsx'
 import StagePane from '../../shared/stage/StagePane.jsx'
 import { readStageResult } from '../../shared/stage/sync.js'
+import OutputPanel from '../../app/components/OutputPanel'
+import { initPyodide, provideInput, runPython, stopPython } from './pyodide'
 
 // The share payload's `stageJson` (JSON text of compactStageForSync's shape), or null.
 function readShareStage(payload) {
@@ -16,7 +20,57 @@ function readShareStage(payload) {
 }
 
 export default function PythonShareView({ payload }) {
-  const stage = useMemo(() => readShareStage(payload), [payload])
+  const savedStage = useMemo(() => readShareStage(payload), [payload])
+  // null until the viewer presses Run; then this page's own run.
+  const [run, setRun] = useState(null)
+  const runningRef = useRef(false)
+
+  useEffect(
+    () => () => {
+      if (runningRef.current) stopPython()
+    },
+    []
+  )
+
+  async function handleRun() {
+    if (runningRef.current || typeof payload?.code !== 'string') return
+    runningRef.current = true
+    setRun({ status: 'loading', output: '', stage: null, prompt: null })
+    const append = (text) => setRun((r) => ({ ...r, output: r.output + text }))
+    try {
+      await initPyodide()
+      setRun((r) => ({ ...r, status: 'running' }))
+      const result = await runPython(payload.code, {
+        onOutput: (text) => append(text),
+        onInputRequired: (prompt, { stage } = {}) =>
+          setRun((r) => ({
+            ...r,
+            prompt: prompt ?? '',
+            stage: stage ? readStageResult(stage) : r.stage,
+          })),
+      })
+      setRun((r) => ({
+        ...r,
+        status: result?.status ?? 'error',
+        prompt: null,
+        stage: result?.stage ? readStageResult(result.stage) : r.stage,
+      }))
+    } catch {
+      setRun((r) => ({ ...r, status: 'error', prompt: null }))
+    } finally {
+      runningRef.current = false
+    }
+  }
+
+  function handleInput(value) {
+    // The prompt is already in the output; echo the answer, as the classroom does.
+    setRun((r) => ({ ...r, prompt: null, output: `${r.output}${value}\n` }))
+    provideInput(value)
+  }
+
+  const busy = run?.status === 'loading' || run?.status === 'running'
+  const stage = run ? run.stage : savedStage
+
   return (
     <div style={shareStyles.grid}>
       {stage && (
@@ -30,11 +84,48 @@ export default function PythonShareView({ payload }) {
         />
       )}
       <ShareCode code={payload?.code} language="python" />
-      <ShareOutput output={payload?.output} />
+      <div style={s.runRow}>
+        <button
+          type="button"
+          className="btn-primary"
+          style={s.runBtn}
+          onClick={handleRun}
+          disabled={busy || typeof payload?.code !== 'string'}
+        >
+          {run?.status === 'loading' ? 'Getting Python ready…' : '▶ Run'}
+        </button>
+        {busy && (
+          <button
+            type="button"
+            className="btn-ghost-outline"
+            style={s.runBtn}
+            onClick={() => stopPython()}
+          >
+            Stop
+          </button>
+        )}
+        <span style={s.note}>Runs here, in your browser. Nothing is saved.</span>
+      </div>
+      {run ? (
+        <OutputPanel
+          output={run.output}
+          runStatus={busy ? null : run.status}
+          running={busy}
+          inputPrompt={run.prompt}
+          onInputSubmit={handleInput}
+          collapsible={false}
+          defaultCollapsed={false}
+        />
+      ) : (
+        <ShareOutput output={payload?.output} />
+      )}
     </div>
   )
 }
 
 const s = {
   stage: { width: '100%', maxWidth: 420, aspectRatio: '1 / 1' },
+  runRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  runBtn: { minHeight: 44, padding: '0 18px' },
+  note: { fontSize: '0.85rem', color: 'var(--colour-text-muted, #6b7280)' },
 }

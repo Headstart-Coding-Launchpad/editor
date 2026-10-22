@@ -1768,6 +1768,20 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     )
   }
 
+  // The code of a student's latest Run on each task, checked or not (lastRuns/{taskId}): the
+  // End Session share link and the session report read it, since attempts are only logged for
+  // checked tasks until they pass (handoff #88 share links, #87 unchecked tasks).
+  async function writeStudentTaskRun(anonymousId, taskId, code) {
+    if (!anonymousId || taskId == null || typeof code !== 'string') return
+    await set(
+      ref(
+        db,
+        `sessions/${lessonId}/students/${anonymousId}/lastRuns/${encodeFileKey(String(taskId))}`
+      ),
+      { code, at: serverTimestamp() }
+    )
+  }
+
   async function writeStudentSpriteState(anonymousId, spriteState) {
     await set(
       ref(db, `sessions/${lessonId}/students/${anonymousId}/currentSpriteState`),
@@ -2429,6 +2443,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     writeStudentArcadeDesign,
     writeStudentTurtleResult,
     writeStudentStageResult,
+    writeStudentTaskRun,
     writeStudentSpriteState,
     writeStudentCursor,
     writeStudentBlockDrag,
