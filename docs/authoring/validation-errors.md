@@ -266,6 +266,27 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … item …: a drag needs a "to" target that is on the stage.` | A `drag` item has no `to`, or `to` isn't a target id. | Add `to:` with the id of the drop target. |
 | `Task … item …: touch screens can't hover, so this item is skipped on touch devices.` (warning) | Hover items are skipped for students on tablets when `touch` is `equivalent`. | Fine if other items cover the skill; set `touch: block` if hovering is essential. |
 
+### Real or AI ([activities/real_or_ai.md](activities/real_or_ai.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: tells needs at least two entries.` | `tells` is missing or has fewer than two clues. | List at least two clues the student can choose from. |
+| `Task …: tell … must be a non-empty string.` | An entry in `tells` is blank or not text. | Write each clue as text, like `too_smooth` or `Odd lighting`. |
+| `Task …: tell "…" is listed more than once.` | The same clue appears twice in `tells`. | Remove the repeat. |
+| `Task …: real_or_ai task needs at least one item.` | `items` is empty. | Add at least one pair. |
+| `Task … item …: needs an id.` | A pair has no `id`. | Give every pair a short unique id (`p1`, `p2`). |
+| `Task … item …: id "…" is used more than once.` | Two pairs share an `id`. | Make each id unique. |
+| `Task … item …: kind must be image or text.` | `kind` is something else. | Use `image` (default) or `text`. |
+| `Task … item …: a is required.` | The `a` side is empty. | Give an image path or URL, or the text for side A. |
+| `Task … item …: b is required.` | The `b` side is empty. | Give an image path or URL, or the text for side B. |
+| `Task … item …: answer must be a or b.` | `answer` is missing or not `a` / `b`. | Set `answer` to the side that is AI. |
+| `Task … item …: tell is required.` | The pair has no `tell`. | Set `tell` to the clue to look for (one of `tells`). |
+| `Task … item …: tell "…" is not in the task's tells list.` | `tell` is not one of the task's `tells`. | Use a clue from `tells`, or add it there. |
+| `Task … item …: reliable must be true or false.` | `reliable` is missing or not a boolean. | Set `reliable: true` or `reliable: false`. |
+| `Task … item …: reveal is required.` | The pair has no `reveal` text. | Write the explanation shown after the student reveals. |
+| `Task … item …: altA must be text.` | `altA` is not text. | Write the alt text as a string. |
+| `Task … item …: altB must be text.` | `altB` is not text. | Write the alt text as a string. |
+
 ## Code-arrange tasks
 
 | Message | Meaning | Fix |

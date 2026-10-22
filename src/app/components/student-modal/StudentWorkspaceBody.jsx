@@ -19,6 +19,7 @@ import { getRunCountWidgets } from '../../../shared/runCounts.js'
 import { taskHistoryMode, typingHistoryForMode } from '../../../shared/typingHistory'
 import TypingHistoryPanel from './TypingHistoryPanel'
 import StagePane from '../../../shared/stage/StagePane.jsx'
+import { resolveAssetsPath } from '../../../shared/assetPaths'
 import { readStageResult } from '../../../shared/stage/sync.js'
 
 function answerKey(value) {
@@ -268,6 +269,7 @@ export default function StudentWorkspaceBody({
         teacher
         readOnly={!answerEditing}
         lessonType={lesson?.type}
+        assetsPath={resolveAssetsPath(lesson?.assetsPath)}
         result={{ submitted: student.lastRunStatus === 'submitted', passed: student.checkPassed }}
         tileHighlights={tileHighlights}
         onTargetTap={onTileTargetTap}

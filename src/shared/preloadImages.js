@@ -57,6 +57,15 @@ export function collectTaskImageUrls(task, lesson) {
     addAsset(backdrop?.image)
   }
 
+  // Real or AI pairs shown as pictures.
+  if (task.activityType === 'real_or_ai') {
+    for (const item of Array.isArray(task.items) ? task.items : []) {
+      if (item?.kind === 'text') continue
+      addAsset(item?.a)
+      addAsset(item?.b)
+    }
+  }
+
   return [...urls]
 }
 
