@@ -679,6 +679,10 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `ui/ActivityDeviceBadge.jsx` | Teacher badge (card and modal) showing a touch-screen or on-screen-keyboard attempt |
 | `binary/binary.js` | Pure Binary activity logic for `make_number`, `to_binary`, `to_decimal`, `add`, `overflow`, `hex`, `ascii`, `pixels`: bit conversion, place values, carries, shared authoring validation, per-item grading with child-friendly hints, whole-task progress |
 | `_template/definition.js`, `_template/template_activity.js`, `_template/ui.jsx` | Activity scaffold copied by `npm run new:activity` (`scripts/new-activity.mjs`): a working "type the answer" activity with `TODO(new-activity)` markers, its tests (pure, UI, StudentView click-through that skips while unregistered) and `doc.md.tmpl`. Never registered; the registry, interface and validation-doc tests skip `_`-prefixed folders |
+| `next_word/next_word.js` | Pure Next Word activity logic: authoring validation (answer checked against the first text's model), the chosen text (task text or capped pasted text), per-item grading against the student's chosen text with ties and child-friendly hints, whole-task progress |
+| `next_word/ngram.js` | Pure word-pair (bigram) model for Next Word: word normalising, counts, next-word odds, ties, seedable temperature sampling and text generation, size caps |
+| `next_word/definition.js` | Next Word activity definition wrapping `next_word.js`: default task, validation, state, change classification (clicks discrete, typing and slider continuous), grading, progress, card summary (chosen text + n/m right), print |
+| `next_word/ui.jsx` | Next Word StudentView: text picker (and paste box), word explorer with probability bars (numbers in words), predict-then-reveal items, Generate with temperature slider; the read-only tutor view shows the same |
 
 ---
 

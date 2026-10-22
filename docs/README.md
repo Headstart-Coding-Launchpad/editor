@@ -308,6 +308,11 @@ Mouse activity reference: stage targets (positions, sizes), click / double-click
 
 **Load when:** authoring or editing a Mouse activity task.
 
+### [authoring/activities/next_word.md](authoring/activities/next_word.md)
+Next Word activity reference (AI Level 1): texts, pasted text, predict-then-reveal items, how words are counted, marking against the chosen text (ties), temperature, teacher tools and a complete validated example lesson.
+
+**Load when:** authoring or editing a Next Word activity task.
+
 ### [authoring/python-tasks.md](authoring/python-tasks.md)
 Python code task field reference: `starterCode`, `completeCode`, role-based `codeStages`, `carryCodeFrom`, `interactionMode`, and the `tests` array (automated `input()`-driven test cases). Includes a minimal full-lesson example.
 
