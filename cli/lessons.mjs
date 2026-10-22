@@ -17,6 +17,7 @@ import {
 } from '../src/shared/lessonBlocksCodec.js'
 import { lessonNeedsSealing } from '../src/shared/lessonSeal.js'
 import { buildSoloExport, SOLO_LOG_ROOT } from '../src/shared/soloLog.js'
+import { reportToYamlText } from '../src/shared/lessonReport.js'
 import { flattenTaskTree } from '../src/shared/taskUtils.js'
 import {
   crossLessonCarrySourceWarnings,
@@ -588,4 +589,38 @@ export async function getSessionShareLinks({ lessonId, session, since } = {}) {
     )
   ).flat()
   return shareLinksFromReports(reports)
+}
+
+// Session reports (#91): the same anonymised YAML End Session exports, readable without the browser.
+export function summariseSessionReports(docs, { since } = {}) {
+  const sinceMs = since != null ? Date.parse(since) : null
+  if (since != null && !Number.isFinite(sinceMs)) throw new Error(`Bad --since date '${since}'`)
+  return docs
+    .map((d) => ({
+      startedAt: d.startedAt ?? Number(d.sessionId ?? d.id) ?? null,
+      endedAt: d.endedAt ?? null,
+      studentCount: Array.isArray(d.students) ? d.students.length : 0,
+      sessionId: String(d.sessionId ?? d.id),
+    }))
+    .filter((r) => sinceMs == null || (typeof r.startedAt === 'number' && r.startedAt >= sinceMs))
+    .sort((a, b) => (b.startedAt ?? 0) - (a.startedAt ?? 0))
+}
+
+export async function listSessionReports(lessonId, { since } = {}) {
+  const snap = await db.collection('lessons').doc(lessonId).collection('sessionReports').get()
+  return summariseSessionReports(
+    snap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    { since }
+  )
+}
+
+export async function getSessionReportYaml(lessonId, startedAt) {
+  const col = db.collection('lessons').doc(lessonId).collection('sessionReports')
+  let snap = await col.doc(String(startedAt)).get()
+  if (!snap.exists && !/^\d+$/.test(String(startedAt))) {
+    const ms = Date.parse(startedAt)
+    if (Number.isFinite(ms)) snap = await col.doc(String(ms)).get()
+  }
+  if (!snap.exists) throw new Error(`No session report '${startedAt}' for lesson '${lessonId}'`)
+  return reportToYamlText({ id: snap.id, ...snap.data() })
 }
