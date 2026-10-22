@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  SCRUB_ALL_COLOURS,
   SCRUB_COMMON_COLOURS,
   SCRUB_SAFE_COLOUR_NAMES,
   SCRUB_SAFE_COLOURS,
@@ -220,6 +221,8 @@ function ColourPicker({ request, session, onPick, onCancel }) {
   const { view, literal } = request
   const [hexDraft, setHexDraft] = useState(literal.hex)
   const [hexError, setHexError] = useState(false)
+  const [showAll, setShowAll] = useState(false)
+  const [allFilter, setAllFilter] = useState('')
   const firstRef = useRef(null)
   useEffect(() => firstRef.current?.focus(), [])
   const current = useMemo(() => literal.hex?.toLowerCase(), [literal.hex])
@@ -280,6 +283,40 @@ function ColourPicker({ request, session, onPick, onCancel }) {
       <div style={s.swatchGrid} role="group" aria-labelledby="scrub-common-colours">
         {commonColours.map((choice, index) => swatch(choice, index + 1, null))}
       </div>
+      <button
+        type="button"
+        className="btn-ghost-outline"
+        style={s.cancelBtn}
+        aria-expanded={showAll}
+        aria-controls="scrub-all-colours"
+        onClick={() => setShowAll((open) => !open)}
+      >
+        {showAll ? 'Fewer colours' : `All colours (${SCRUB_ALL_COLOURS.length})`}
+      </button>
+      {showAll && (
+        <div style={s.column} id="scrub-all-colours">
+          <label style={s.hexLabel} htmlFor="scrub-all-filter">
+            Find a colour
+          </label>
+          <input
+            id="scrub-all-filter"
+            style={s.hexInput}
+            value={allFilter}
+            placeholder="blue, pink, grey…"
+            spellCheck={false}
+            onChange={(event) => setAllFilter(event.target.value)}
+          />
+          <div
+            style={s.allGrid}
+            role="group"
+            aria-label="All colours, darkest greys first, then round the colour wheel"
+          >
+            {SCRUB_ALL_COLOURS.filter((choice) =>
+              choice.name.includes(allFilter.trim().toLowerCase().replace(/\s+/g, ''))
+            ).map((choice, index) => swatch(choice, index + 1, null))}
+          </div>
+        </div>
+      )}
       {!namesOnly && (
         <form
           style={s.hexRow}
@@ -359,6 +396,14 @@ const s = {
   doneBtn: { minHeight: 44, padding: '0 18px', fontSize: 14 },
   cancelBtn: { minHeight: 44, fontSize: 14, borderRadius: 8 },
   swatchGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6 },
+  allGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: 6,
+    maxHeight: 260,
+    overflowY: 'auto',
+    paddingRight: 2,
+  },
   swatchBtn: {
     display: 'flex',
     alignItems: 'center',
