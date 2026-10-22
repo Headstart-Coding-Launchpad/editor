@@ -1428,4 +1428,13 @@ describe('StudentModal header: four common actions, the rest in More', () => {
     await user.click(screen.getByRole('button', { name: 'Undo' }))
     expect(onRevokeBadge).toHaveBeenCalledWith('student-1', 'bug_hunter')
   })
+
+  it('opens the picker from "Other…" without awarding the suggested badge', async () => {
+    const user = userEvent.setup()
+    const onDecideBadge = vi.fn(async () => ({ committed: true }))
+    render(<StudentModal {...mkProps({ onDecideBadge, badgeSuggestions: [SUGGESTION] })} />)
+    await user.click(screen.getByTestId('award-other-badge'))
+    expect(onDecideBadge).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: /Award badge/ })).toBeInTheDocument()
+  })
 })
