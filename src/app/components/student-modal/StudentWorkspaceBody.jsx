@@ -18,7 +18,7 @@ import { getPeekBand, panelRunForTask } from '../../../shared/variablesPanel/var
 import { getRunCountWidgets } from '../../../shared/runCounts.js'
 import { taskHistoryMode, typingHistoryForMode } from '../../../shared/typingHistory'
 import TypingHistoryPanel from './TypingHistoryPanel'
-import StagePane from '../../../shared/stage/StagePane.jsx'
+import CodeStageSplit from './CodeStageSplit'
 import { readStageResult } from '../../../shared/stage/sync.js'
 
 function answerKey(value) {
@@ -345,32 +345,26 @@ export default function StudentWorkspaceBody({
     return (
       <>
         {highlightComposer}
-        <div style={s.editorWrap}>
-          <CodeEditor
-            value={student.currentCode ?? ''}
-            language="python"
-            readOnly
-            remoteSelection={remoteSelection}
-            teacherHighlights={highlights}
-            lineHints={lineHints}
-            lockedLines={lockedLines}
-            peekBand={peekBandFor(student.currentCode ?? '')}
-            runCounts={runCountsFor(student.currentCode ?? '')}
-            variableLinks={variableLinks.editor}
-            onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
-            onHighlightDismiss={onDismissHighlight}
-            style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
-          />
-        </div>
-        {stageResult && (
-          <StagePane
-            compact
-            commands={stageResult.commands}
-            truncated={stageResult.truncated}
-            title="Student's stage"
-            style={s.stagePane}
-          />
-        )}
+        <CodeStageSplit
+          stageResult={stageResult}
+          editor={
+            <CodeEditor
+              value={student.currentCode ?? ''}
+              language="python"
+              readOnly
+              remoteSelection={remoteSelection}
+              teacherHighlights={highlights}
+              lineHints={lineHints}
+              lockedLines={lockedLines}
+              peekBand={peekBandFor(student.currentCode ?? '')}
+              runCounts={runCountsFor(student.currentCode ?? '')}
+              variableLinks={variableLinks.editor}
+              onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
+              onHighlightDismiss={onDismissHighlight}
+              style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
+            />
+          }
+        />
         {task?.interactionMode === 'submit' && !isSessionSandbox ? (
           <div style={s.submitNotice}>
             {student.lastRunStatus === 'submitted' ? 'Code submitted' : 'Waiting for submission'}
@@ -510,8 +504,6 @@ export default function StudentWorkspaceBody({
 
 const s = {
   variablesPanel: { flexShrink: 0, maxHeight: 260, marginTop: 8 },
-  // The Python Stage drawing, between the code and the console.
-  stagePane: { flexShrink: 0, height: 240, marginTop: 8 },
   // The unsubmitted draft above a quiz: dashed so it never reads as the submitted answer.
   draftStack: {
     display: 'flex',
