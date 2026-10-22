@@ -37,6 +37,15 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-22
+
+- **Read session reports from the CLI.** `lessons reports list <lessonId> [--since <ISO date>]`
+  lists a lesson's session reports, newest first (startedAt, endedAt, studentCount, sessionId), and
+  `lessons reports get <lessonId> <startedAt> --yaml` prints one report as the same anonymised YAML
+  End Session exports. Read-only. See [session-reports.md](session-reports.md).
+- Affects: cli, session reports · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-10-21-cli-list-and-download-a-lesson-s-session-reports.md
+
 ## 2026-10-21
 
 - **Share links for every student at End Session.** Ending a live session now makes one
