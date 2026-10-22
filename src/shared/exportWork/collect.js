@@ -6,7 +6,7 @@
 // Each module says how to read its own work through its exporter (the optional `exportWork`
 // UI hook; see ./exporters.js), so this file never compares lesson types.
 import { realAttemptEntries } from '../autoCheck.js'
-import { encodeFileKey } from '../fileKeys'
+import { encodeFileKey } from '../fileKeys.js'
 import { getEffectiveLessonForTask } from '../composedLesson.js'
 import { deriveTaskContext, flattenTasks } from '../taskUtils.js'
 
