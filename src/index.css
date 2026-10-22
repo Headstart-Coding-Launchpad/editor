@@ -4374,6 +4374,102 @@ label.te-backdrop-tag,
   }
 }
 
+/* Real or AI: a pair side by side, stacked on phones and narrow tablets. Picks and results are
+   always words and symbols as well as colour. */
+.act-rai__score {
+  font-weight: 700;
+  color: var(--colour-primary-dark);
+}
+
+.act-rai__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.act-rai__card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 10px;
+  border: 2px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface);
+}
+
+.act-rai__card--picked {
+  border-color: var(--colour-primary);
+  background: var(--ui-surface-tint);
+}
+
+.act-rai__card--ai {
+  border-style: dashed;
+}
+
+.act-rai__caption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.act-rai__image {
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface-tint);
+}
+
+.act-rai__text {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 4px solid var(--ui-border-strong);
+  font-size: 1.05rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.act-rai__pick[aria-pressed='true'],
+.act-rai__tell[aria-pressed='true'] {
+  border-color: var(--colour-primary-dark);
+  background: var(--colour-primary);
+  color: var(--colour-text-on-primary);
+}
+
+.act-rai__chosen,
+.act-rai__key {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.act-rai__reveal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 2px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface-tint);
+}
+
+.act-rai__reveal p {
+  margin: 0;
+}
+
+.act-rai__reveal:focus-visible {
+  outline: 3px solid var(--colour-primary);
+  outline-offset: 2px;
+}
+
+@media (max-width: 820px) {
+  .act-rai__pair {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ─── Live badges: the student's celebration card, class toasts, Coding moments ───
    See docs/architecture/live-badges-plan.md ("Student experience"). CSS only, no library.
    A small card drops down top-centre, just under the student top bar, flips in (rotateY) with

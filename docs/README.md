@@ -308,6 +308,11 @@ Mouse activity reference: stage targets (positions, sizes), click / double-click
 
 **Load when:** authoring or editing a Mouse activity task.
 
+### [authoring/activities/real_or_ai.md](authoring/activities/real_or_ai.md)
+Real or AI activity reference: task and item fields, marking and hints, teacher tools, and a complete validated example lesson.
+
+**Load when:** authoring or editing a Real or AI activity task.
+
 ### [authoring/python-tasks.md](authoring/python-tasks.md)
 Python code task field reference: `starterCode`, `completeCode`, role-based `codeStages`, `carryCodeFrom`, `interactionMode`, and the `tests` array (automated `input()`-driven test cases). Includes a minimal full-lesson example.
 

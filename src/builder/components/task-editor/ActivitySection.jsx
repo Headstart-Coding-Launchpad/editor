@@ -5,6 +5,7 @@ import TaskPreviewPanel from './TaskPreviewPanel'
 import ActivityPreview from '../../../activities/ActivityPreview.jsx'
 import { getTaskActivityUi } from '../../../activities/registry.js'
 import { UNKNOWN_ACTIVITY_ID } from '../../../activities/resolve.js'
+import { resolveAssetsPath } from '../../../shared/assetPaths'
 
 // Builder section for a `taskType: 'activity'` task: the gallery (to switch activity), the
 // description shown above the activity, the activity's own BuilderEditor, and a student preview
@@ -53,7 +54,11 @@ export default function ActivitySection({ task, lesson, onUpdate, onChooseActivi
 
       {known && (
         <TaskPreviewPanel task={task} draft={lesson.draft}>
-          <ActivityPreview task={task} lessonType={lesson.type} />
+          <ActivityPreview
+            task={task}
+            lessonType={lesson.type}
+            assetsPath={resolveAssetsPath(lesson.assetsPath)}
+          />
         </TaskPreviewPanel>
       )}
     </>

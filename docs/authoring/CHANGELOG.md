@@ -45,6 +45,18 @@ Entries written before 2026-09-29 are not tagged.
   End Session exports. Read-only. See [session-reports.md](session-reports.md).
 - Affects: cli, session reports · Existing lessons: no changes needed ·
   Resolves: authoring-requests/2026-10-21-cli-list-and-download-a-lesson-s-session-reports.md
+- **New activity: Real or AI** (`type: real_or_ai`). Each item is a pair, two pictures or two
+  texts side by side (stacked on phones and narrow tablets). The student picks the AI one, picks
+  the clue ("tell") from the task's `tells` list, and presses Reveal; the reveal says whether
+  the pick was right, whether the clue matches `tell`, whether that clue is `reliable`, and shows
+  `reveal`. A running score stays on screen; the task finishes itself on the last Reveal.
+  Task fields: `tells`, `items[]` with `id`, `kind` (`image` | `text`), `a`, `b`, `altA`, `altB`,
+  `answer` (`a` | `b`), `tell`, `reliable`, `reveal`. Picture paths work like Scratch costumes
+  (full URL, `/` path or relative to `assetsPath`). The tutor sees each pick and clue live,
+  before Reveal. `itemProgress` is pairs picked right; the task summary adds `itemResults[]`. See
+  [real_or_ai.md](activities/real_or_ai.md).
+- Affects: real_or_ai · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-21-real-or-ai-activity-ai-level-1.md
 
 ## 2026-10-21
 
