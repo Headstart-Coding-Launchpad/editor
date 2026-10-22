@@ -1,4 +1,5 @@
 ﻿import { useId, useState } from 'react'
+import NextWordBuilderEditor from './NextWordBuilderEditor.jsx'
 import ItemNav from '../ui/ItemNav.jsx'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
 import {
@@ -396,4 +397,5 @@ export function NextWordStudentView({ task, state, onChange, onSubmit, readOnly 
 // text comes from definition.summarize.
 export default {
   StudentView: NextWordStudentView,
+  BuilderEditor: NextWordBuilderEditor,
 }
