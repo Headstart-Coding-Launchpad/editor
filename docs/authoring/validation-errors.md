@@ -267,6 +267,70 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … item …: a drag needs a "to" target that is on the stage.` | A `drag` item has no `to`, or `to` isn't a target id. | Add `to:` with the id of the drop target. |
 | `Task … item …: touch screens can't hover, so this item is skipped on touch devices.` (warning) | Hover items are skipped for students on tablets when `touch` is `equivalent`. | Fine if other items cover the skill; set `touch: block` if hovering is essential. |
 
+### Real or AI ([activities/real_or_ai.md](activities/real_or_ai.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: tells needs at least two entries.` | `tells` is missing or has fewer than two clues. | List at least two clues the student can choose from. |
+| `Task …: tell … must be a non-empty string.` | An entry in `tells` is blank or not text. | Write each clue as text, like `too_smooth` or `Odd lighting`. |
+| `Task …: tell "…" is listed more than once.` | The same clue appears twice in `tells`. | Remove the repeat. |
+| `Task …: real_or_ai task needs at least one item.` | `items` is empty. | Add at least one pair. |
+| `Task … item …: needs an id.` | A pair has no `id`. | Give every pair a short unique id (`p1`, `p2`). |
+| `Task … item …: id "…" is used more than once.` | Two pairs share an `id`. | Make each id unique. |
+| `Task … item …: kind must be image or text.` | `kind` is something else. | Use `image` (default) or `text`. |
+| `Task … item …: a is required.` | The `a` side is empty. | Give an image path or URL, or the text for side A. |
+| `Task … item …: b is required.` | The `b` side is empty. | Give an image path or URL, or the text for side B. |
+| `Task … item …: answer must be a or b.` | `answer` is missing or not `a` / `b`. | Set `answer` to the side that is AI. |
+| `Task … item …: tell is required.` | The pair has no `tell`. | Set `tell` to the clue to look for (one of `tells`). |
+| `Task … item …: tell "…" is not in the task's tells list.` | `tell` is not one of the task's `tells`. | Use a clue from `tells`, or add it there. |
+| `Task … item …: reliable must be true or false.` | `reliable` is missing or not a boolean. | Set `reliable: true` or `reliable: false`. |
+| `Task … item …: reveal is required.` | The pair has no `reveal` text. | Write the explanation shown after the student reveals. |
+| `Task … item …: altA must be text.` | `altA` is not text. | Write the alt text as a string. |
+| `Task … item …: altB must be text.` | `altB` is not text. | Write the alt text as a string. |
+
+### Next Word ([activities/next_word.md](activities/next_word.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: next_word task needs at least one text in texts.` | `texts` is missing or empty. | Add at least one `{ title, body }` text. |
+| `Task … text …: title is required.` | A text has no `title`. | Give it a short title; it names the option the student picks. |
+| `Task … text …: body is required.` | A text has no `body`. | Add the text the model is built from. |
+| `Task … text …: body is longer than … characters.` | A `body` is over 4000 characters. | Shorten it, or split it into two texts. |
+| `Task … text …: body needs at least 2 words.` | A `body` has fewer than two words, so there are no word pairs. | Write a few sentences. |
+| `Task …: … must be true or false.` | `allowPaste` or `showTemperature` is not a YAML boolean. | Use `true` or `false`, unquoted. |
+| `Task …: next_word task needs at least one item.` | `items` is empty. | Add at least one predict-then-reveal item. |
+| `Task … item …: needs an id.` | An item has no `id`. | Give each item a short unique `id` (`a`, `b`). |
+| `Task … item …: id "…" is used more than once.` | Two items share an `id`. | Make each `id` unique. |
+| `Task … item …: prompt is required.` | An item has no `prompt`, or it has no words. | Add the words the student continues from. |
+| `Task … item …: answer is required.` | An item has no `answer`. | Add the expected next word. |
+| `Task … item …: answer must be one word.` | `answer` has more than one word. | Use the single most likely next word. |
+| `Task … item …: "…" never has a word after it in the first text.` | The prompt's last word is missing from the first text, or only ends it. | Change the prompt, or add the pair to the first text. |
+| `Task … item …: answer "…" is not the most likely word after "…" in the first text (it is "…").` | `answer` is not a most-likely next word in the first text. | Use the word named in the message, or change the text or prompt. Words tied for most likely are all accepted. |
+
+### Classifier ([activities/classifier.md](activities/classifier.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: classifier mode … is not built yet. Use mode: drawing.` | `mode: sound` (the microphone version) is planned but not built. | Use `mode: drawing`. |
+| `Task …: classifier mode must be drawing.` | `mode` is missing or not `drawing` (webcam mode does not exist). | Set `mode: drawing`. |
+| `Task …: classifier testSet must be one of ….` | `testSet` is missing or not one of `held_out`, `teacher`, `live`. | Choose how the model is tested. |
+| `Task …: classifier classes must be a list of names.` | `classes` is not a list. | Write `classes: [cat, fish]`, or leave it out so students name their own. |
+| `Task …: each class name must be 1 to … characters.` | A class name is empty or too long. | Use short names (up to 16 characters). |
+| `Task …: class names must all be different.` | Two classes share a name (capitals ignored). | Rename one. |
+| `Task …: classifier needs … to … classes.` | There are fewer than 2 or more than 6 classes. | Give 2 to 6 classes. |
+| `Task …: minExamplesPerClass must be a whole number from 2 to ….` | `minExamplesPerClass` is not a whole number in range. | Use a whole number from 2 to 40. |
+| `Task …: testSet held_out needs minExamplesPerClass of at least … (every …th drawing is kept back for the test).` | With `held_out`, every 4th drawing is kept back, so a class needs at least 4. | Raise `minExamplesPerClass` to 4 or more, or use another `testSet`. |
+| `Task …: targetAccuracy must be a number above 0 and up to 1 (0.8 means 80%).` | `targetAccuracy` is not a fraction. | Write `0.8`, not `80`. |
+| `Task …: liveTestSize must be a whole number from … to ….` | `liveTestSize` is out of range. | Use 3 to 20. |
+| `Task …: testSet teacher needs classes (the test drawings use their names).` | `testSet: teacher` without `classes`. | List the `classes` the test drawings use. |
+| `Task …: testSet teacher needs testItems with 2 to … test drawings.` | `testItems` is missing or has fewer than 2 or more than 24 drawings. | Add 2 to 24 `testItems`. |
+| `Task … test drawing …: needs a label.` | A test drawing has no `label`. | Add the true class as `label`. |
+| `Task … test drawing …: label "…" is not one of the classes.` | The `label` is not in `classes`. | Spell it like the class. |
+| `Task … test drawing …: needs either strokes or grid (not both).` | A test drawing has neither `strokes` nor `grid`, or both. | Give exactly one. |
+| `Task … test drawing …: grid must be … rows of … characters (. empty, # ink, or digits 0-9).` | `grid` is not 16 rows of 16 characters. | Write 16 quoted strings of 16 characters from `.`, `#` and `0`-`9`. |
+| `Task … test drawing …: strokes must be a list of strokes, each a list of x, y numbers between 0 and 1 (x1, y1, x2, y2, ...).` | `strokes` is empty, has an odd number of values in a stroke, or a number outside 0 to 1. | Write each stroke as `[x1, y1, x2, y2, …]` with values from 0 to 1. |
+| `Task …: no test drawing for class "…". (warning)` | With `testSet: teacher`, a class has no test drawing, so it is never tested. | Add at least one `testItems` entry for it. |
+
 ## Code-arrange tasks
 
 | Message | Meaning | Fix |

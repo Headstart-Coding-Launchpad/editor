@@ -76,7 +76,7 @@ function usePreviewActivity(task, definition, taskKey) {
   return { state, result, onChange, onSubmit, reset }
 }
 
-function PreviewBody({ task, definition, taskKey, lessonType }) {
+function PreviewBody({ task, definition, taskKey, lessonType, assetsPath }) {
   const preview = usePreviewActivity(task, definition, taskKey)
   const activity = {
     task,
@@ -109,6 +109,7 @@ function PreviewBody({ task, definition, taskKey, lessonType }) {
         task={task}
         activity={activity}
         lessonType={lessonType}
+        assetsPath={assetsPath}
         result={result ? { submitted: true, passed: result.passed } : null}
       />
       {result && (
@@ -130,7 +131,7 @@ function PreviewBody({ task, definition, taskKey, lessonType }) {
 }
 
 /** Plays `task` through ActivityHost with in-memory state. Renders nothing for other tasks. */
-export default function ActivityPreview({ task, lessonType = null }) {
+export default function ActivityPreview({ task, lessonType = null, assetsPath = '' }) {
   const definition = getTaskActivity(task)
   const taskKey = useMemo(() => JSON.stringify(task ?? null), [task])
   if (!definition) return null
@@ -142,6 +143,7 @@ export default function ActivityPreview({ task, lessonType = null }) {
       definition={definition}
       taskKey={taskKey}
       lessonType={lessonType}
+      assetsPath={assetsPath}
     />
   )
 }

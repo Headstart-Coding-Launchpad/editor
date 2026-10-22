@@ -6,6 +6,7 @@ import { ActivityView } from '../../../activities/ActivityHost.jsx'
 import { getTaskActivity, isHostedActivityTask } from '../../../activities/registry.pure.js'
 import { getModuleHostedActivityUi } from '../../../activities/registry.js'
 import { solutionOrInitialState } from '../../../activities/state.js'
+import { resolveAssetsPath } from '../../../shared/assetPaths'
 import {
   TEACHER_LIVE_REFERENCE_TYPES,
   teacherLiveReferenceDisplayState,
@@ -66,6 +67,7 @@ export default function TeacherEditorPanel({
         teacher
         readOnly
         lessonType={lesson?.type}
+        assetsPath={resolveAssetsPath(lesson?.assetsPath)}
         entranceKey={entranceKey}
       />
     )

@@ -351,6 +351,7 @@ Each activity's definition can add fields through `report.summaryFields(task, pe
 | `ratingDistribution` | Confidence quiz | See [Ungraded tasks](#ungraded-tasks). | 2026-07-22 |
 | `optionDistribution[]` | Poll quiz | See [Ungraded tasks](#ungraded-tasks). | 2026-10-01 |
 | `tileMisses[]` | Code Arrange | `{ slotId, tileId, count, studentCount }` per blank and dropped tile, most common first, from the students' `tileMisses`. Omitted when nobody dropped a known-wrong tile. | 2026-10-09 |
+| `itemResults[]` | Real or AI | `{ itemId, tell, reliable, revealed, rightPick, tellMatch }` per pair, counts of students (latest attempt each) who revealed it, picked the AI side, and named the author's clue. Omitted when nobody submitted. | 2026-10-22 |
 | `avgItemProgress` | Every `taskType: activity` (Binary, Keyboard, Mouse, …) | Mean of `correct / total` over students with `itemProgress`, 2 dp (0–1). Added by the report itself, not `summaryFields`. Omitted when nobody submitted. | 2026-09-28 |
 
 A new activity that adds summary fields documents them here (and in its own authoring page).

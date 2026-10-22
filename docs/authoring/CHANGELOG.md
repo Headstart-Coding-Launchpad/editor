@@ -61,6 +61,50 @@ Entries written before 2026-09-29 are not tagged.
   End Session exports. Read-only. See [session-reports.md](session-reports.md).
 - Affects: cli, session reports · Existing lessons: no changes needed ·
   Resolves: authoring-requests/2026-10-21-cli-list-and-download-a-lesson-s-session-reports.md
+- **New activity: Real or AI** (`type: real_or_ai`). Each item is a pair, two pictures or two
+  texts side by side (stacked on phones and narrow tablets). The student picks the AI one, picks
+  the clue ("tell") from the task's `tells` list, and presses Reveal; the reveal says whether
+  the pick was right, whether the clue matches `tell`, whether that clue is `reliable`, and shows
+  `reveal`. A running score stays on screen; the task finishes itself on the last Reveal.
+  Task fields: `tells`, `items[]` with `id`, `kind` (`image` | `text`), `a`, `b`, `altA`, `altB`,
+  `answer` (`a` | `b`), `tell`, `reliable`, `reveal`. Picture paths work like Scratch costumes
+  (full URL, `/` path or relative to `assetsPath`). The tutor sees each pick and clue live,
+  before Reveal. `itemProgress` is pairs picked right; the task summary adds `itemResults[]`. See
+  [real_or_ai.md](activities/real_or_ai.md).
+- Affects: real_or_ai · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-21-real-or-ai-activity-ai-level-1.md
+- **New activity: `next_word` (Next Word predictor, AI Level 1).** The student picks one of the
+  task's `texts` (or pastes their own when `allowPaste: true`, capped at 1200 characters); a
+  word-pair (bigram) model is built from it live in the browser (no API, no network). They type
+  or choose a word to see probability bars ("net: 3 of 7 times"), answer `items` by predicting
+  the next word after `prompt` and pressing Reveal, and use Generate with an optional
+  temperature slider (`showTemperature: true`) as unmarked free play. Words are lower-cased with
+  punctuation stripped from both ends. Each item is marked against the model built from the text
+  the **student chose**: any word tied for most likely is right; `answer` is validated against
+  the **first** text and is not used on other or pasted texts. Item progress goes to the tutor
+  card and session report; the tutor sees the chosen text, typed word, predictions (revealed or
+  not) and the generated text. New fields: `texts[].title`, `texts[].body`, `allowPaste`,
+  `showTemperature`, `items[].id|prompt|answer`. See
+  [activities/next_word.md](activities/next_word.md).
+- Affects: next_word (new activity) · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-10-21-next-word-predictor-activity-ai-level-1.md
+- **New activity: `classifier` (Train a Classifier, AI Level 1).** Students draw examples of each
+  class, press Train (instant, in-house k-nearest-neighbours, k = 3, on 16 x 16 greyscale grids),
+  then test the model on drawings it has not seen and read the accuracy ("7 of 9 right, 78%") and
+  a confusion table in words. Write `type: classifier` with `mode: drawing`, `testSet` (`held_out`:
+  every 4th drawing the student makes is kept back; `teacher`: your `testItems`, each a `label` plus
+  `strokes` (flat `x, y` lists, 0 to 1) or a 16 x 16 `grid`; `live`: the student draws new test
+  drawings, `liveTestSize`), optional `classes` (2 to 6; leave out and students name their own),
+  `minExamplesPerClass` (default 6; at least 4 with `held_out`) and `targetAccuracy` (default 0.8).
+  The task passes when the trained model reaches the target on the test and every class has enough
+  drawings. `mode: sound` is rejected as "not built yet"; there is no webcam mode. Drawings never
+  leave the student's device: only counts per class, trained, and the test result are synced,
+  and the report gets `classifierResults` (average accuracy and summed confusion counts).
+  `testItems` is sealed. New activity-contract hook for other authors of activities:
+  `serializeShared`. See [activities/classifier.md](activities/classifier.md).
+- Affects: classifier (new), activities host (`serializeShared`), session reports · Existing
+  lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-21-train-a-classifier-activity-ai-level-1.md
 
 - **Scrub releases that miss are no longer failed attempts.** When a student lets go of a live
   scrub and `scrub.checkOnRelease` runs the checks, a release that does not pass is not counted

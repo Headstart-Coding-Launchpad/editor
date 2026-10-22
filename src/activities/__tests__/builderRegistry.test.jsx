@@ -29,6 +29,9 @@ describe('registry helpers for the Builder (plan 2.4)', () => {
       'binary',
       'keyboard',
       'mouse',
+      'real_or_ai',
+      'next_word',
+      'classifier',
     ])
   })
 

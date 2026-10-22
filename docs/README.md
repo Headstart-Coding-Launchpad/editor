@@ -308,6 +308,21 @@ Mouse activity reference: stage targets (positions, sizes), click / double-click
 
 **Load when:** authoring or editing a Mouse activity task.
 
+### [authoring/activities/real_or_ai.md](authoring/activities/real_or_ai.md)
+Real or AI activity reference: task and item fields, marking and hints, teacher tools, and a complete validated example lesson.
+
+**Load when:** authoring or editing a Real or AI activity task.
+
+### [authoring/activities/next_word.md](authoring/activities/next_word.md)
+Next Word activity reference (AI Level 1): texts, pasted text, predict-then-reveal items, how words are counted, marking against the chosen text (ties), temperature, teacher tools and a complete validated example lesson.
+
+**Load when:** authoring or editing a Next Word activity task.
+
+### [authoring/activities/classifier.md](authoring/activities/classifier.md)
+Classifier activity reference (draw examples, train a k-nearest-neighbours model, test it on unseen drawings): task fields, the three test sets, authoring teacher test drawings, marking and hints, privacy (what is synced), teacher tools, and a complete validated example lesson.
+
+**Load when:** authoring or editing a Classifier activity task.
+
 ### [authoring/python-tasks.md](authoring/python-tasks.md)
 Python code task field reference: `starterCode`, `completeCode`, role-based `codeStages`, `carryCodeFrom`, `interactionMode`, and the `tests` array (automated `input()`-driven test cases). Includes a minimal full-lesson example.
 

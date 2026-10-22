@@ -26,6 +26,7 @@ import { useElementSize } from '../../shared/useElementSize'
 import { firstViewKey } from '../../shared/motion'
 import { useBadgeSignals } from '../../shared/badgeSignalsContext'
 import { loadLayoutTab, saveLayoutTab } from '../studentStorage'
+import { resolveAssetsPath } from '../../shared/assetPaths'
 import { NARROW_BREAKPOINT as SCRATCH_CODE_WIDE_WIDTH } from '../../modules/scratch/ScratchWorkspace'
 
 // Brief "your teacher changed your answer" note, shown when a teacher edits
@@ -666,6 +667,7 @@ export default function LessonTaskContent({
             broadcastAnswer={isForcedTeacherLive ? (displayAnswer ?? null) : undefined}
             reviewing={isViewingPrev}
             lessonType={lesson.type}
+            assetsPath={resolveAssetsPath(lesson.assetsPath)}
             entranceKey={taskEntranceKey}
             tileHighlights={cs.tileHighlights}
             onDismissTileHighlights={cs.dismissTileHighlights}

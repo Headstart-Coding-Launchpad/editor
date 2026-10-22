@@ -96,6 +96,9 @@ export function ActivityView({
   history = null,
   // { onTopicOpen, onTopicClose, openTopicId }: shows the header's Topic library chip.
   topicLibrary = null,
+  // The lesson's resolved assets base URL (resolveAssetsPath(lesson.assetsPath)), for activities
+  // that show lesson pictures by relative path (Real or AI).
+  assetsPath = '',
 }) {
   const ui = getTaskActivityUi(task)
   if (!ui || ui.id === UNKNOWN_ACTIVITY_ID || !ui.StudentView) {
@@ -125,6 +128,7 @@ export function ActivityView({
       tileHighlights={tileHighlights}
       onTargetTap={onTargetTap}
       history={history}
+      assetsPath={assetsPath}
     />
   )
   return (
@@ -209,6 +213,8 @@ export default function ActivityHost({
   // { onTopicOpen, onTopicClose, openTopicId } from the classroom, for the header's Topic
   // library chip (opens are reported to the tutor like the task explainer's).
   topicLibrary = null,
+  // The lesson's resolved assets base URL, passed to ActivityView.
+  assetsPath = '',
 }) {
   const capabilities = useInputCapabilities()
   const [keyboardOverride, setKeyboardOverride] = useState(false)
@@ -275,6 +281,7 @@ export default function ActivityHost({
       tileHighlights={shownTileHighlights}
       history={history}
       topicLibrary={topicLibrary}
+      assetsPath={assetsPath}
     />
   )
   // Quizzes have no device requirements and lay themselves out (see ActivityView).
