@@ -987,6 +987,15 @@ export function useStudentCodeState({
     // predict mode's Run lock.
     runChecks: (options) => handleRunRef.current?.(options),
     isRunLocked: () => !!predictRunLock,
+    // A preview redraw mirrored to a tutor who is watching this student (never otherwise: no
+    // per-edit writes unless activeStudentView matches).
+    publishPreview: ({ output, turtle, stage }) => {
+      const id = effectiveIdentity?.anonymousId
+      if (!id || teacherPresentation || activeStudentViewRef.current !== id) return
+      if (typeof output === 'string') writeStudentOutput(id, output)
+      if (turtle !== undefined) writeStudentTurtleResult(id, turtle)
+      if (stage !== undefined) writeStudentStageResult?.(id, stage)
+    },
     // Run on open (runOnOpen): a preview once the runtime is ready; never in free play.
     // (A runtime already warm from an earlier task never reports 'ready': it stays 'idle'.)
     runtimeReady:
