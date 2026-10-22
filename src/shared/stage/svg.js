@@ -65,9 +65,9 @@ function commandSvg(command) {
     case 'line':
       return `<line x1="${num(command.x1)}" y1="${num(command.y1)}" x2="${num(command.x2)}" y2="${num(command.y2)}" stroke="${esc(command.colour)}" stroke-width="${num(command.width || 2)}" stroke-linecap="round"${opacityAttr(command)}/>`
     case 'text':
-      return `<text${placement(command)} fill="${esc(command.colour)}" font-size="${num(command.size || 16)}" font-family="system-ui, sans-serif" text-anchor="middle" dominant-baseline="central"${opacityAttr(command)}>${esc(command.text)}</text>`
+      return `<text${placement(command)} fill="${esc(command.colour)}" font-size="${num(command.size || 16)}" font-family="system-ui, 'Noto Color Emoji', sans-serif" text-anchor="middle" dominant-baseline="central"${opacityAttr(command)}>${esc(command.text)}</text>`
     case 'stamp':
-      return `<text${placement(command)} font-size="${num(command.size || 32)}" text-anchor="middle" dominant-baseline="central"${opacityAttr(command)}>${esc(command.emoji)}</text>`
+      return `<text${placement(command)} font-size="${num(command.size || 32)}" font-family="'Noto Color Emoji', sans-serif" text-anchor="middle" dominant-baseline="central"${opacityAttr(command)}>${esc(command.emoji)}</text>`
     case 'grid': {
       const parts = []
       ;(command.cells ?? []).forEach((row, r) => {

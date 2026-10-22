@@ -47,10 +47,10 @@ describe('stageToSvg: shapes as drawn', () => {
       { type: 'stamp', emoji: '⭐', x: 100, y: 120, size: 32, angle: 90 },
     ])
     expect(svg).toContain(
-      '<text transform="translate(200 50)" fill="#000000" font-size="16" font-family="system-ui, sans-serif" text-anchor="middle" dominant-baseline="central" opacity="0.25">Hi</text>'
+      `<text transform="translate(200 50)" fill="#000000" font-size="16" font-family="system-ui, 'Noto Color Emoji', sans-serif" text-anchor="middle" dominant-baseline="central" opacity="0.25">Hi</text>`
     )
     expect(svg).toContain(
-      '<text transform="translate(100 120) rotate(90)" font-size="32" text-anchor="middle" dominant-baseline="central">⭐</text>'
+      `<text transform="translate(100 120) rotate(90)" font-size="32" font-family="'Noto Color Emoji', sans-serif" text-anchor="middle" dominant-baseline="central">⭐</text>`
     )
   })
 })

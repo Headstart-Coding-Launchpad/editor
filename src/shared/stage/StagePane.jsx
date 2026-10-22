@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { drawStage, sizeStageCanvas } from './canvas.js'
+import { STAGE_EMOJI_FONT, drawStage, sizeStageCanvas } from './canvas.js'
 import { compareStages, comparisonMatches } from './raster.js'
 import { describeComparison, describeStage } from './describe.js'
 
@@ -45,6 +45,33 @@ export default function StagePane({
     if (!canDiff) setDiffOn(false)
   }, [canDiff])
 
+  // Canvas text doesn't repaint when a web font arrives, so emoji drawn before Noto Color Emoji
+  // loaded would keep the system glyphs. Google Fonts splits Noto by unicode-range, so load the
+  // pieces for the characters actually drawn, then redraw (request #85).
+  const [fontVersion, setFontVersion] = useState(0)
+  const drawnText = useMemo(
+    () =>
+      [...list, ...(hasTarget ? target : [])]
+        .map((c) =>
+          c?.type === 'stamp' ? c.emoji : c?.type === 'text' ? String(c.text ?? '') : ''
+        )
+        .filter((t) => typeof t === 'string' && t)
+        .join(''),
+    [list, hasTarget, target]
+  )
+  useEffect(() => {
+    if (!drawnText) return undefined
+    let cancelled = false
+    Promise.resolve(document.fonts?.load(`32px '${STAGE_EMOJI_FONT}'`, drawnText))
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setFontVersion((v) => v + 1)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [drawnText])
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return undefined
@@ -63,7 +90,7 @@ export default function StagePane({
     const observer = new ResizeObserver(redraw)
     observer.observe(canvas)
     return () => observer.disconnect()
-  }, [list, target, showGhost, showDiff, comparison])
+  }, [list, target, showGhost, showDiff, comparison, fontVersion])
 
   return (
     <section style={{ ...s.pane, ...style }} aria-label={title} data-testid="stage-pane">
