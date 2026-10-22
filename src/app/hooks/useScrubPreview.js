@@ -48,6 +48,10 @@ export const TYPED_PREVIEW_DELAY_MS = 500
  * the preview on screen used (null when none), for the "Using your last answers" note; a Run
  * clears it (`clearScrubReplay`).
  *
+ * While a tutor watches this student (`publishPreview`, only when activeStudentView matches),
+ * each finished preview also updates their mirror's output and drawing, so a redraw on the
+ * student's screen is a redraw on the tutor's. The code itself still goes with the edit.
+ *
  * Checks on release (P6-20, the task's scrub.checkOnRelease, on by default):
  * `scrubCommitted()` (the editor's onScrubCommit, once a drag, slider step or colour pick ends as
  * an edit) runs the task's checks once through `runChecks({ source: 'scrub', inputAnswers })`,
@@ -79,6 +83,7 @@ export function useScrubPreview({
   setIframeSrc,
   runChecks = null,
   isRunLocked = null,
+  publishPreview = null,
   runtimeReady = false,
   freePlay = false,
 }) {
@@ -95,6 +100,7 @@ export function useScrubPreview({
     setIframeSrc,
     runChecks,
     isRunLocked,
+    publishPreview,
   }
   // The answers of the student's last Run, per task: `{ taskId, answers }`, or null.
   const runAnswersRef = useRef(null)
@@ -177,6 +183,12 @@ export function useScrubPreview({
     after.setOutput(output.display)
     if (definition.runResult?.turtle) after.setTurtleResult(result.turtle ?? null)
     if (definition.runResult?.stage) after.setStageResult(result.stage ?? null)
+    // A watching tutor's mirror redraws with it (the callback writes only while they watch).
+    after.publishPreview?.({
+      output: output.raw,
+      turtle: definition.runResult?.turtle ? (result.turtle ?? null) : undefined,
+      stage: definition.runResult?.stage ? (result.stage ?? null) : undefined,
+    })
   }
 
   // A task change drops any waiting preview, the replay note and a waiting check on release.

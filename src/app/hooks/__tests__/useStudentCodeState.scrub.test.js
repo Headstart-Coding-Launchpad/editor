@@ -6,6 +6,7 @@ import {
   ANON,
   actAsync,
   actSync,
+  makeSession,
   mockModuleRun,
   renderStudentCodeState,
 } from '../../../test/studentCodeStateHarness'
@@ -238,6 +239,32 @@ describe('typed edits redraw (Ryan, 2026-10-16)', () => {
     expect(run.mock.calls[0][0]).toContain('"blue"')
     expect(h.result.current.output).toContain('drawn')
     expect(h.writers.logAttempt).not.toHaveBeenCalled()
+  })
+
+  it('mirrors a preview redraw to a tutor who is watching, and only then', async () => {
+    mockModuleRun('python', (callbacks) => {
+      callbacks.onOutput('drawn\n', 'stdout')
+      return { status: 'success' }
+    })
+    const lesson = scrubLesson(DRAW)
+    const quiet = renderStudentCodeState({ lesson, currentTaskId: 't1' })
+    actSync(() => quiet.result.current.handleCodeChange(DRAW.replace('navy', 'red')))
+    await wait(700)
+    await act(async () => {})
+    expect(quiet.writers.writeStudentOutput).not.toHaveBeenCalled()
+
+    const watched = renderStudentCodeState({
+      lesson,
+      currentTaskId: 't1',
+      session: makeSession({ activeStudentView: ANON }),
+    })
+    actSync(() => watched.result.current.handleCodeChange(DRAW.replace('navy', 'blue')))
+    await wait(700)
+    await act(async () => {})
+    expect(watched.writers.writeStudentOutput).toHaveBeenCalledWith(
+      ANON,
+      expect.stringContaining('drawn')
+    )
   })
 
   it('keeps the last picture when the half-typed code errors', async () => {

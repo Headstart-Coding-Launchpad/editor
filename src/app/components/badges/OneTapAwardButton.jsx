@@ -124,6 +124,26 @@ export default function OneTapAwardButton({
         <span style={s.btnText}>{busy ? 'Awarding…' : `Award ${top.badge.title}`}</span>
       </button>
     )
+    if (!isCard && onOpenPicker) {
+      // The one-tap button awards at once, so give the teacher a way into the picker to choose
+      // a different badge without awarding the suggested one.
+      button = (
+        <>
+          {button}
+          <button
+            type="button"
+            className="btn-secondary"
+            style={s.headerBtn}
+            aria-label={`Choose a different badge for ${student.displayName}`}
+            title="Choose a different badge"
+            data-testid="award-other-badge"
+            onClick={onOpenPicker}
+          >
+            <span aria-hidden="true">🏅</span> Other…
+          </button>
+        </>
+      )
+    }
   } else if (!isCard && onOpenPicker) {
     button = (
       <button

@@ -987,6 +987,15 @@ export function useStudentCodeState({
     // predict mode's Run lock.
     runChecks: (options) => handleRunRef.current?.(options),
     isRunLocked: () => !!predictRunLock,
+    // A preview redraw mirrored to a tutor who is watching this student (never otherwise: no
+    // per-edit writes unless activeStudentView matches).
+    publishPreview: ({ output, turtle, stage }) => {
+      const id = effectiveIdentity?.anonymousId
+      if (!id || teacherPresentation || activeStudentViewRef.current !== id) return
+      if (typeof output === 'string') writeStudentOutput(id, output)
+      if (turtle !== undefined) writeStudentTurtleResult(id, turtle)
+      if (stage !== undefined) writeStudentStageResult?.(id, stage)
+    },
     // Run on open (runOnOpen): a preview once the runtime is ready; never in free play.
     // (A runtime already warm from an earlier task never reports 'ready': it stays 'idle'.)
     runtimeReady:
@@ -1954,7 +1963,16 @@ export function useStudentCodeState({
     const taskIdAtRunTime = currentTaskIdRef.current
     mod.runtime.waitForPreviewText().then((text) => {
       let passed,
-        suggestion = ''
+        suggestion = '',
+        scrubPassed = null
+      if (scrubRun && alreadySolved && task?.check) {
+        const iframeDoc = iframeRef.current?.contentDocument ?? null
+        scrubPassed = evaluateCheckWithFeedback(
+          task,
+          text,
+          definition.checking.buildContext(currentFiles, { iframeDoc, ran: true })
+        ).passed
+      }
       if (!alreadySolved) {
         const iframeDoc = iframeRef.current?.contentDocument ?? null
         const evaluation = evaluateCheckWithFeedback(
@@ -1964,6 +1982,7 @@ export function useStudentCodeState({
         )
         passed = evaluation.passed
         suggestion = task?.check ? evaluation.suggestion : ''
+        if (scrubRun && task?.check) scrubPassed = passed
         updateTargetedStageOffer(task, evaluation, passed)
         if (task?.check) applyCheckFeedback(passed, suggestion)
         const supportAttempt = htmlSupportAttemptsRef.current.get(src)
@@ -2000,6 +2019,7 @@ export function useStudentCodeState({
             files: wire.toFilesMap(currentFiles),
             status: attemptNow?.hasError ? 'error' : 'success',
             checkPassed: passed,
+            ...(typeof scrubPassed === 'boolean' ? { scrubPassed } : {}),
             errorText: attemptNow?.errorMessage,
           })
           if (attemptNow) {

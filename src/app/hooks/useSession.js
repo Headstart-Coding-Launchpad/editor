@@ -1397,6 +1397,18 @@ export function useSession(lessonId, { enabled = true } = {}) {
     await set(ref(db, `sessions/${lessonId}/teacherClassPaneCommand`), null)
   }
 
+  // The tutor's own "Type this out" text for a task: for the whole class (scope 'class') or one
+  // student (their anonymousId). null clears it; '' hides the panel. See
+  // src/shared/copyCodeOverrides.js.
+  async function setCopyCodeOverride(scope, taskId, text) {
+    if (!scope || taskId == null) return
+    const base =
+      scope === 'class'
+        ? `sessions/${lessonId}/copyCodeOverrides`
+        : `sessions/${lessonId}/students/${scope}/copyCodeOverrides`
+    await set(ref(db, `${base}/${taskId}`), typeof text === 'string' ? text : null)
+  }
+
   // Control highlights (src/shared/controlHighlight.js): pulse one control (Run, the green flag,
   // a Costumes tab…) on one student's screen or the whole class's. { target, taskId, pushedAt }
   // in server time; each student's screen ends it on its own (used, or 20 s), so the node stays
@@ -1557,7 +1569,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
 
   async function writeStudentRun(
     anonymousId,
-    { code, files, output, answer, status, checkPassed, errorText }
+    { code, files, output, answer, status, checkPassed, errorText, scrubPassed }
   ) {
     const updates = {
       lastRunStatus: status,
@@ -1567,6 +1579,13 @@ export function useSession(lessonId, { enabled = true } = {}) {
       lastRunError: status === 'error' ? clipRunError(errorText) : null,
     }
     if (checkPassed !== undefined) updates.checkPassed = checkPassed
+    // What the checks said after the student's last scrub: checkPassed holds on once a task is
+    // solved, so this is how the tutor sees a scrub break it. lastScrubAt equals lastRunAt only
+    // while the scrub is the latest run (src/app/scrubResult.js), so a later Run retires it.
+    if (typeof scrubPassed === 'boolean') {
+      updates.lastScrubPassed = scrubPassed
+      updates.lastScrubAt = updates.lastRunAt
+    }
     if (code != null) updates.currentCode = code
     if (files != null) updates.currentFiles = encodeFileKeys(files)
     if (output != null) updates.currentOutput = output
@@ -2374,6 +2393,7 @@ export function useSession(lessonId, { enabled = true } = {}) {
     clearTeacherPaneCommand,
     pushClassPaneCommand,
     clearClassPaneCommand,
+    setCopyCodeOverride,
     pushTeacherControlHighlight,
     pushClassControlHighlight,
     clearClassControlHighlight,
