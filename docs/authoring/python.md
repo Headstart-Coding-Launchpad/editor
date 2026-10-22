@@ -791,7 +791,7 @@ for i in range(40):                # a spinning rainbow tunnel
 | `polygon(sides, size, colour, x, y, …)` | a regular shape with 3–100 `sides`, `size` from its centre to each corner, one corner pointing straight up at `angle=0` |
 | `line(x1, y1, x2, y2, colour, width=2)` | a line between two points |
 | `text(words, colour, x, y, size=16)` | text centred on `(x, y)`. `words` may be any value (a number is drawn as text) |
-| `stamp(emoji, x, y, size=32)` | one emoji centred on `(x, y)` |
+| `stamp(emoji, x, y, size=32)` | one emoji centred on `(x, y)`, in Noto Color Emoji so it looks the same on every device (emoji inside `text()` too) |
 | `grid(rows, palette=None, cell=None, x, y)` | a 2D list as a pixel grid centred on `(x, y)` (see below) |
 | `grid(values, width=n, …)` | one long (flat) list as a pixel grid, `n` squares to a row (see below) |
 | `clear()` | wipes the stage back to white |

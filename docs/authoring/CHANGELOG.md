@@ -37,6 +37,17 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-22
+
+- **Stage emoji draw in Noto Color Emoji on every device.** `stamp()`, emoji inside `text()`,
+  `stageTarget` ghosts and lesson screenshots now use the same emoji font (Noto Color Emoji), so a
+  target picture or screenshot shows the emoji students see, whatever their device. Letters in
+  `text()` keep the system font. Nothing changes in checks: emoji are still compared by what they
+  are and where. See [python.md → Stage](python.md#stage-drawing-beside-the-console).
+- Affects: python (Stage) · Existing lessons: no changes needed (screenshots taken before today
+  show the device's emoji; retake any where it matters) ·
+  Resolves: authoring-requests/2026-10-21-stage-draw-emoji-with-noto-color-emoji-in-text-and-stamp.md
+
 ## 2026-10-21
 
 - **Share links for every student at End Session.** Ending a live session now makes one

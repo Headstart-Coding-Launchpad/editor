@@ -12,8 +12,13 @@ import {
   shapeCorners,
 } from './geometry.js'
 
-const EMOJI_FONT = '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif'
-const TEXT_FONT = 'system-ui, "Segoe UI", sans-serif'
+// Emoji draw in Noto Color Emoji (loaded by index.css) on every device, so a stamp or an emoji in
+// text() looks the same on Windows, Chromebooks, iPads and in lesson screenshots (request #85).
+// The system emoji fonts are only a fallback while it loads. In text(), letters keep the system
+// font and only the emoji fall through to Noto.
+export const STAGE_EMOJI_FONT = 'Noto Color Emoji'
+const EMOJI_FONT = '"Noto Color Emoji", "Segoe UI Emoji", "Apple Color Emoji", sans-serif'
+const TEXT_FONT = 'system-ui, "Segoe UI", "Noto Color Emoji", sans-serif'
 
 // Sizes a canvas's backing store to its displayed size (device pixels). True when it changed.
 export function sizeStageCanvas(canvas) {

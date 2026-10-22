@@ -63,7 +63,7 @@ rest are added as students grow. Every value can also be given by name (`colour=
 | `polygon` | `polygon(6, 60)` | `polygon(3, 60, "green", angle=180)` | a regular shape: 6 sides, 60 from centre to each corner, one corner pointing up |
 | `line` | `line(0, 0, 400, 400)` | `line(0, 200, 400, 200, "grey", width=4)` | a line between two points (the only call placed by its ends) |
 | `text` | `text("Hi")` | `text("Score: " + str(s), "navy", x=200, y=30, size=24)` | words centred on (x, y), size 16 by default; a number is drawn as text |
-| `stamp` | `stamp("🚀")` | `stamp("🚀", x=80, y=320, size=64)` | one emoji, size 32 by default |
+| `stamp` | `stamp("🚀")` | `stamp("🚀", x=80, y=320, size=64)` | one emoji, size 32 by default, in Noto Color Emoji on every device (emoji in `text()` too) |
 | `grid` | `grid(rows)` | `grid(rows, palette=["white", "red"], cell=20)` | a list of rows as squares (see 5) |
 | `grid` (flat) | `grid(pixels, width=8)` | `grid(pixels, width=8, cell=30, y=150)` | one long list, 8 squares to a row |
 | `background` | `background("skyblue")` | | fills the whole stage |
