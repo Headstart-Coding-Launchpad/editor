@@ -293,6 +293,7 @@ describe('deriveStudentLiveDisplay', () => {
       'displayCodeArrangeSlots',
       'displayCursor',
       'displayFiles',
+      'displayLayout',
       'displayOutput',
       'displayOutputCollapsed',
       'displayPythonSlowMo',
@@ -310,6 +311,7 @@ describe('deriveStudentLiveDisplay', () => {
       'isStudentPanelBroadcast',
       'isTeacherLiveActive',
       'isTeacherLiveViewer',
+      'showTutorLiveBanner',
     ])
     expect(display.displayAnswer).toBe(quizBroadcast.answer)
     const { displayAnswer: _answer, ...others } = display
@@ -401,5 +403,51 @@ describe('"Show to class (keep coding)" student broadcasts', () => {
       arcadeDesign: null,
     })
     expect(teacherLiveToSnapshot(null)).toBeNull()
+  })
+})
+
+describe('Go Live layout and banner', () => {
+  const base = {
+    teacherPresentation: false,
+    phase: 'lesson',
+    identityId: 's1',
+    currentTaskId: 1,
+    ...localWorkspace,
+  }
+
+  it('forces the tutor layout on a student locked onto the tutor', () => {
+    const d = deriveStudentLiveDisplay({
+      ...base,
+      teacherLive: { active: true, source: 'teacher', layout: 'code' },
+    })
+    expect(d.displayLayout).toBe('code')
+    expect(d.showTutorLiveBanner).toBe(true)
+  })
+
+  it('falls back to both for a missing or unknown layout', () => {
+    for (const layout of [undefined, 'sideways']) {
+      const d = deriveStudentLiveDisplay({
+        ...base,
+        teacherLive: { active: true, source: 'teacher', layout },
+      })
+      expect(d.displayLayout).toBe('both')
+    }
+  })
+
+  it('keeps students not live, student broadcasts and the presenter on both, with no banner', () => {
+    const notLive = deriveStudentLiveDisplay({ ...base, teacherLive: null })
+    const studentLive = deriveStudentLiveDisplay({
+      ...base,
+      teacherLive: { active: true, source: 'student', sourceStudentId: 's2', layout: 'code' },
+    })
+    const presenter = deriveStudentLiveDisplay({
+      ...base,
+      teacherPresentation: true,
+      teacherLive: { active: true, source: 'teacher', layout: 'code' },
+    })
+    for (const d of [notLive, studentLive, presenter]) {
+      expect(d.displayLayout).toBe('both')
+      expect(d.showTutorLiveBanner).toBe(false)
+    }
   })
 })

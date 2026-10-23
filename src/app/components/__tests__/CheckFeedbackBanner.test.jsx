@@ -314,3 +314,12 @@ describe('CheckFeedbackBanner hints and motion', () => {
     items.forEach((li) => expect(li).not.toHaveClass('motion-slide-in'))
   })
 })
+
+describe('CheckFeedbackBanner: a hint the tutor sent', () => {
+  it('reads as a note from the tutor, not a failed check', () => {
+    render(<CheckFeedbackBanner passed={false} suggestion="Count the sides." fromTutor />)
+    expect(screen.getByText('Hint from your tutor')).toBeInTheDocument()
+    expect(screen.getByText('💡')).toBeInTheDocument()
+    expect(screen.queryByText('!')).not.toBeInTheDocument()
+  })
+})

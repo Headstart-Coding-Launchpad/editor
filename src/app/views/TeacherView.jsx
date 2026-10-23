@@ -4,6 +4,7 @@ import { firestore } from '../../shared/firebase'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
 import { useSession } from '../hooks/useSession'
+import { defaultShowItView } from '../../shared/showIt'
 import { findTaskById, flattenTasks, filterTasksByMode } from '../../shared/taskUtils'
 import {
   applyLessonOverride,
@@ -66,6 +67,8 @@ import {
 } from '../../activities/registry.pure.js'
 import { useTopicLibrary } from '../../shared/topicLibrary'
 import { buildStudentLivePayload } from '../teacherLivePayload'
+import { buildDashboardLivePayload } from '../dashboardLivePayload'
+import TeacherGoLiveControl from './teacher/TeacherGoLiveControl'
 import { getModuleDefinition } from '../../modules/definitions'
 import { sandboxModuleLabel } from './teacher/sandboxModuleLabel'
 import PaneFocusDropdown from '../components/student-modal/PaneFocusDropdown'
@@ -151,6 +154,7 @@ export default function TeacherView({ lessonId }) {
     setAutoRevealStage,
     setActiveStudentView,
     setTeacherLive,
+    updateTeacherLive,
     renameStudent,
     removeStudent,
     pushResetToStudent,
@@ -171,6 +175,7 @@ export default function TeacherView({ lessonId }) {
     readSharedWorkspace,
     sendToTopic,
     sendMessageToStudent,
+    sendHintToStudent,
     updateVideoCallLink,
     sendVideoCallLink,
     broadcastVideoCallLink,
@@ -182,6 +187,9 @@ export default function TeacherView({ lessonId }) {
     closePoll,
     setPollShowResults,
     dismissPoll,
+    startShowIt,
+    stopShowIt,
+    setShowItView,
     requestTeacherEdit,
     pushTeacherLiveCode,
     commitTeacherEdit,
@@ -522,7 +530,12 @@ export default function TeacherView({ lessonId }) {
     }
     setPreviewTaskId(null)
     setCurrentTaskId(taskId)
-    await setTeacherLive(null)
+    // A Go Live from this dashboard follows the class to the new task; any other live ends.
+    if (session?.teacherLive?.active && session.teacherLive.publisher === 'dashboard') {
+      await updateTeacherLive(dashboardLivePayloadFor(taskId, session.teacherLive.layout))
+    } else {
+      await setTeacherLive(null)
+    }
     await setTaskId(taskId)
   }
 
@@ -697,6 +710,32 @@ export default function TeacherView({ lessonId }) {
     await clearLessonOverride()
   }
 
+  // The teacherLive payload for a dashboard Go Live on `taskId`: the editor's work when it is
+  // showing that task, else the task's starter (the editor loads it as soon as it is shown).
+  function dashboardLivePayloadFor(taskId, layout) {
+    const liveTask = findTaskById(lesson?.tasks, taskId)
+    const liveLesson = getEffectiveLessonForTask(lesson, taskId)
+    const definition = getModuleDefinition(liveLesson?.type)
+    let work = null
+    if (definition) {
+      const kind = sandboxWorkKind(definition)
+      if (!liveTask || liveTask.taskType === 'information' || isHostedActivityTask(liveTask)) {
+        const { workSlot } = definition
+        work = workSlot.stored(workSlot.empty()).work
+      } else if (taskId === displayTaskId && !isInSandbox) {
+        work = workByKind[kind]
+      } else {
+        work = taskStarterWork(definition, liveTask)
+      }
+    }
+    return buildDashboardLivePayload({ lesson, taskId, work, layout })
+  }
+
+  async function handleStartDashboardLive() {
+    await setActiveStudentView(null)
+    await setTeacherLive(dashboardLivePayloadFor(session?.currentTaskId ?? currentTaskId, 'both'))
+  }
+
   async function handleGoLiveForMe(studentId) {
     await setTeacherLive(null)
     await setActiveStudentView(studentId)
@@ -837,19 +876,68 @@ export default function TeacherView({ lessonId }) {
     ? { files: workByKind[editorKind], entryFile: task?.entryFile ?? 'index.html' }
     : workByKind[editorKind]
 
-  const onChange = !isInSandbox
-    ? undefined
-    : editorOnFilesChannel
+  // Dashboard Go Live is a demo: the editor is editable and edits go to workByKind only (never
+  // the sandbox draft or the lesson); the debounced effect below publishes them.
+  const dashboardLiveActive =
+    !!session?.teacherLive?.active &&
+    session.teacherLive.source === 'teacher' &&
+    session.teacherLive.publisher === 'dashboard'
+  const liveDemo = dashboardLiveActive && !isInSandbox
+
+  const onChange = liveDemo
+    ? editorOnFilesChannel
       ? (name, content) =>
-          setWorkByKind((prev) => {
-            const next = prev[editorKind].map((f) => (f.name === name ? { ...f, content } : f))
-            sandboxDraftRef.current[editorKind] = cloneFiles(next)
-            return { ...prev, [editorKind]: next }
-          })
-      : (value) => {
-          setKindWork({ [editorKind]: value })
-          sandboxDraftRef.current[editorKind] = cloneSandboxWork(editorDefinition, value)
-        }
+          setWorkByKind((prev) => ({
+            ...prev,
+            [editorKind]: prev[editorKind].map((f) => (f.name === name ? { ...f, content } : f)),
+          }))
+      : (value) => setKindWork({ [editorKind]: value })
+    : !isInSandbox
+      ? undefined
+      : editorOnFilesChannel
+        ? (name, content) =>
+            setWorkByKind((prev) => {
+              const next = prev[editorKind].map((f) => (f.name === name ? { ...f, content } : f))
+              sandboxDraftRef.current[editorKind] = cloneFiles(next)
+              return { ...prev, [editorKind]: next }
+            })
+        : (value) => {
+            setKindWork({ [editorKind]: value })
+            sandboxDraftRef.current[editorKind] = cloneSandboxWork(editorDefinition, value)
+          }
+
+  // While this dashboard is the Go Live publisher, keep the students' copy of the tutor's work
+  // current (debounced; the editor is read-only outside the sandbox, so this is not per-key).
+  const dashboardLiveLayout = session?.teacherLive?.layout
+  const dashboardLiveTaskId = session?.currentTaskId ?? currentTaskId
+  const dashboardLiveWork = JSON.stringify(workByKind[editorKind] ?? null)
+  // Stopping a live demo drops the demo edits: back to the displayed task's read-only starter.
+  const wasDashboardLiveRef = useRef(false)
+  useEffect(() => {
+    if (wasDashboardLiveRef.current && !dashboardLiveActive && !isInSandbox) {
+      loadCurrentTaskContent(previewTaskId ?? currentTaskId)
+    }
+    wasDashboardLiveRef.current = dashboardLiveActive
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dashboardLiveActive])
+  const dashboardLivePayloadRef = useRef(null)
+  dashboardLivePayloadRef.current = dashboardLiveActive
+    ? () => dashboardLivePayloadFor(dashboardLiveTaskId, dashboardLiveLayout)
+    : null
+  useEffect(() => {
+    if (!dashboardLiveActive || !lesson) return undefined
+    if (isInSandbox) {
+      // The sandbox has its own broadcast path; the dashboard Go Live ends when it starts.
+      setTeacherLive(null)
+      return undefined
+    }
+    const timer = setTimeout(() => {
+      const build = dashboardLivePayloadRef.current
+      if (build) updateTeacherLive(build())
+    }, 300)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dashboardLiveActive, dashboardLiveTaskId, dashboardLiveWork, displayTaskId, isInSandbox])
 
   if (lessonLoading) {
     return (
@@ -916,6 +1004,15 @@ export default function TeacherView({ lessonId }) {
                   pushClassControlHighlight(target, isInSandbox ? null : (currentTask?.id ?? null))
                 }
                 onClear={clearClassControlHighlight}
+              />
+            )}
+            {session && !isInSandbox && (
+              <TeacherGoLiveControl
+                teacherLive={session.teacherLive}
+                onStart={handleStartDashboardLive}
+                onStop={() => setTeacherLive(null)}
+                onLayoutChange={(layout) => updateTeacherLive({ layout })}
+                disabled={session.state !== 'active'}
               />
             )}
             <TeacherSessionControls
@@ -1094,6 +1191,7 @@ export default function TeacherView({ lessonId }) {
             teacherLiveReferenceVisibleToAll={session?.teacherLiveReferenceVisibleToAll}
             onToggleLiveReference={setTeacherLiveReferenceForClass}
             fillHeight={centreFillsHeight}
+            liveDemo={liveDemo}
             badgeWall={teacherBadgeWall}
             entranceKey={firstViewKey(lessonId, task?.id)}
           />
@@ -1137,6 +1235,7 @@ export default function TeacherView({ lessonId }) {
             onSendTopicToAll={handleSendTopicToAll}
             onSendToIndividual={handleSendToIndividual}
             onSendMessage={sendMessageToStudent}
+            onSendHint={sendHintToStudent}
             onRequestTeacherEdit={requestTeacherEdit}
             onPushTeacherLiveCode={pushTeacherLiveCode}
             onCommitTeacherEdit={commitTeacherEdit}
@@ -1165,6 +1264,12 @@ export default function TeacherView({ lessonId }) {
             onNudgeStudent={nudgeStudent}
             onThumbsUpStudent={sendThumbsUp}
             onShowResponse={showResponse}
+            onShowIt={(ids) => startShowIt(ids, defaultShowItView(currentTask))}
+            onStopShowIt={stopShowIt}
+            onSetShowItView={setShowItView}
+            showItDefaultView={defaultShowItView(
+              flatTasks.find((t) => String(t.id) === String(session?.showIt?.taskId))
+            )}
             onHideResponse={hideResponse}
             onSetShownResponseName={setShownResponseName}
             onNudgeAway={nudgeAwayStudents}

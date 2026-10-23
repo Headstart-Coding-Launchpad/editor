@@ -17,6 +17,8 @@ export default function CheckFeedbackBanner({
   onPreviewCompleteCode,
   onShowCompleteCode,
   onGoPersonalSandbox,
+  // The tutor's own "Send hint": a calm 💡 note from the tutor, not a failed check.
+  fromTutor = false,
 }) {
   const hint = String(suggestion ?? '').trim()
   const [dismissed, setDismissed] = useState(false)
@@ -35,8 +37,8 @@ export default function CheckFeedbackBanner({
   // once. Callers remount this per check (see above), which replays the one-shot class.
   return (
     <div
-      className={`check-feedback-popup ${passed ? 'motion-pop-in' : 'motion-wobble'}`}
-      style={{ ...s.banner, ...(passed ? s.pass : s.fail) }}
+      className={`check-feedback-popup ${passed || fromTutor ? 'motion-pop-in' : 'motion-wobble'}`}
+      style={{ ...s.banner, ...(passed ? s.pass : fromTutor ? s.tutor : s.fail) }}
       role="status"
     >
       <button
@@ -50,11 +52,15 @@ export default function CheckFeedbackBanner({
       <div style={s.row}>
         <span
           className={passed ? 'motion-spin-once' : undefined}
-          style={{ ...s.icon, background: passed ? '#166534' : '#92400e' }}
+          style={{
+            ...s.icon,
+            background: passed ? '#166534' : fromTutor ? '#1e40af' : '#92400e',
+          }}
         >
-          {passed ? '✓' : '!'}
+          {passed ? '✓' : fromTutor ? '💡' : '!'}
         </span>
         <div style={s.text}>
+          {fromTutor && !passed && <div style={s.tutorLabel}>Hint from your tutor</div>}
           {passed ? (
             <>
               <div>{successMessage}</div>
@@ -136,6 +142,16 @@ const s = {
     background: '#dcfce7',
     borderColor: '#bbf7d0',
     color: '#166534',
+  },
+  tutor: {
+    background: '#eff6ff',
+    borderColor: '#bfdbfe',
+    color: '#1e3a8a',
+  },
+  tutorLabel: {
+    fontSize: '0.8em',
+    fontWeight: 700,
+    marginBottom: 2,
   },
   fail: {
     background: '#fffbeb',

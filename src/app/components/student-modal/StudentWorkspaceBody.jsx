@@ -21,6 +21,7 @@ import TypingHistoryPanel from './TypingHistoryPanel'
 import CodeStageSplit from './CodeStageSplit'
 import { resolveAssetsPath } from '../../../shared/assetPaths'
 import { readStageResult } from '../../../shared/stage/sync.js'
+import StagePane from '../../../shared/stage/StagePane.jsx'
 
 function answerKey(value) {
   return typeof value === 'string' ? value : JSON.stringify(value ?? null)
@@ -104,6 +105,17 @@ export default function StudentWorkspaceBody({
   // saved entries (newest first), for a typing task's history line and "Typing history" list.
   typingHistory = null,
   typingEntries = null,
+  // Show it: the output rail starts open and shares the height with the code (the output is
+  // the point on the big screen).
+  outputOpen = false,
+  // false = display mode (Show it): the build only, with no marking of any kind: no hints,
+  // ticks, "Correct", pass/fail colours, check results, tutor highlights or tutor-only notes.
+  showMarks = true,
+  // Size the code to its content and give the rest of the height to the output (Show it).
+  fitCode = false,
+  // Show it, result first: the build's result only (Stage / Turtle drawing, HTML page, output
+  // text), big, with no code. Applies to the code, files and turtle mirrors.
+  resultOnly = false,
 }) {
   const [editableAnswer, pushEditableAnswer] = useTeacherEditableValue(
     student.currentAnswer ?? '',
@@ -121,7 +133,7 @@ export default function StudentWorkspaceBody({
   const lineHints = getMirrorLineHintSets(task, {
     mirror,
     file: activeFileObj?.name ?? null,
-    isSessionSandbox,
+    isSessionSandbox: isSessionSandbox || !showMarks,
   })
   // The task's locked lines on the mirrored code (display only, like the hints).
   const lockedLines = getMirrorLockSets(task, { mirror, isSessionSandbox })
@@ -261,7 +273,7 @@ export default function StudentWorkspaceBody({
       onEditAnswer?.({ answer: serialized, passed })
     }
     // What the student is typing but has not submitted (short answer, typed gaps), in full.
-    const draftText = isSessionSandbox ? null : readAnswerDraft(student, task?.id)
+    const draftText = isSessionSandbox || !showMarks ? null : readAnswerDraft(student, task?.id)
     const view = (
       <ActivityView
         task={task}
@@ -271,7 +283,8 @@ export default function StudentWorkspaceBody({
         lessonType={lesson?.type}
         assetsPath={resolveAssetsPath(lesson?.assetsPath)}
         result={{ submitted: student.lastRunStatus === 'submitted', passed: student.checkPassed }}
-        tileHighlights={tileHighlights}
+        presentation={!showMarks}
+        tileHighlights={showMarks ? tileHighlights : null}
         onTargetTap={onTileTargetTap}
         history={typingHistory}
         onChange={(update) => pushEdit(update, false)}
@@ -282,7 +295,7 @@ export default function StudentWorkspaceBody({
         }
       />
     )
-    const historyMode = isSessionSandbox ? null : taskHistoryMode(task)
+    const historyMode = isSessionSandbox || !showMarks ? null : taskHistoryMode(task)
     const historyPanel = historyMode ? (
       <TypingHistoryPanel
         modeHistory={typingHistoryForMode(typingHistory, historyMode)}
@@ -343,12 +356,42 @@ export default function StudentWorkspaceBody({
   // The Python Stage drawing of the student's last run (currentStageResult), if it drew.
   const stageResult = mirror === 'code' ? readStageResult(student.currentStageResult) : null
 
+  if (mirror === 'code' && resultOnly)
+    return (
+      <div style={s.resultStack} data-testid="show-it-result">
+        {stageResult && (
+          <StagePane
+            compact
+            commands={stageResult.commands}
+            truncated={stageResult.truncated}
+            title="Stage"
+            style={s.resultStage}
+          />
+        )}
+        {(!stageResult || student.currentOutput) && (
+          <OutputPanel
+            output={student.currentOutput ?? ''}
+            runStatus={student.lastRunStatus}
+            hideStatus
+            inputPrompt={student.currentInputPrompt ?? null}
+            inputReadOnly
+            mirroredInputValue={student.currentInput ?? ''}
+            collapsible={false}
+            defaultCollapsed={false}
+            fill={!stageResult}
+            large={!stageResult}
+          />
+        )}
+      </div>
+    )
+
   if (mirror === 'code')
     return (
       <>
         {highlightComposer}
         <CodeStageSplit
           stageResult={stageResult}
+          fitCode={fitCode}
           editor={
             <CodeEditor
               value={student.currentCode ?? ''}
@@ -363,7 +406,10 @@ export default function StudentWorkspaceBody({
               variableLinks={variableLinks.editor}
               onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
               onHighlightDismiss={onDismissHighlight}
-              style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
+              style={{
+                height: fitCode ? 'auto' : '100%',
+                ...(canHighlight ? s.editorHighlightMode : {}),
+              }}
             />
           }
         />
@@ -375,14 +421,17 @@ export default function StudentWorkspaceBody({
           <OutputPanel
             output={student.currentOutput ?? ''}
             runStatus={student.lastRunStatus}
-            hasCheck={!!task?.check && !isSessionSandbox}
-            checkPassed={student.checkPassed}
+            hasCheck={showMarks && !!task?.check && !isSessionSandbox}
+            checkPassed={showMarks && student.checkPassed}
+            hideStatus={!showMarks}
             inputPrompt={student.currentInputPrompt ?? null}
             inputReadOnly
             mirroredInputValue={student.currentInput ?? ''}
             // The teacher opened this modal to watch the student, so the
             // student's run output should appear without an extra click.
             openOnOutput
+            defaultCollapsed={!outputOpen}
+            fill={outputOpen}
           />
         )}
         {/* The student's name-tag panel (showVariables): their last run and predictions. */}
@@ -410,6 +459,8 @@ export default function StudentWorkspaceBody({
         cursorState={cursorState}
         blockDragState={blockDragState}
         isSessionSandbox={isSessionSandbox}
+        forcedPane={resultOnly && spriteState ? 'stage' : null}
+        forcedPaneToken={resultOnly && spriteState ? 1 : null}
       />
     )
   }
@@ -432,6 +483,7 @@ export default function StudentWorkspaceBody({
           onActivity={undefined}
           isInSandbox={false}
           activeStage={null}
+          resultOnly={resultOnly}
         />
         {/* Turtle's name-tag panel (showVariables); nothing for tasks without one. */}
         <TaskVariablesPanel
@@ -439,7 +491,7 @@ export default function StudentWorkspaceBody({
           synced={student.currentVariables ?? null}
           code={typeof moduleDisplayState === 'string' ? moduleDisplayState : ''}
           audience="tutor"
-          hidden={isSessionSandbox}
+          hidden={isSessionSandbox || resultOnly}
           style={s.variablesPanel}
         />
       </>
@@ -447,6 +499,13 @@ export default function StudentWorkspaceBody({
   }
 
   const inspectorConfig = mirror === 'files' ? getInspectorConfig(task) : null
+  if (mirror === 'files' && resultOnly)
+    return (
+      <div style={s.iframePane} data-testid="show-it-result">
+        <IframePreview src={iframeSrc} iframeRef={iframeRef} fill />
+      </div>
+    )
+
   if (mirror === 'files')
     return (
       <>
@@ -505,6 +564,8 @@ export default function StudentWorkspaceBody({
 }
 
 const s = {
+  resultStack: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8 },
+  resultStage: { flex: 1, minHeight: 0 },
   variablesPanel: { flexShrink: 0, maxHeight: 260, marginTop: 8 },
   // The unsubmitted draft above a quiz: dashed so it never reads as the submitted answer.
   draftStack: {

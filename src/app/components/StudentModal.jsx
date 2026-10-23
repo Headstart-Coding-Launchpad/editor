@@ -105,6 +105,7 @@ export default function StudentModal({
   onSendToTopic,
   onSendTopicToAll,
   onSendMessage,
+  onSendHint,
   onSendVideoCallLink,
   onRequestTeacherEdit,
   onPushTeacherLiveCode,
@@ -175,6 +176,7 @@ export default function StudentModal({
   const [nudged, setNudged] = useState(false)
   const [thumbsUpSent, setThumbsUpSent] = useState(false)
   const [markFailOpen, setMarkFailOpen] = useState(false)
+  const [showHintModal, setShowHintModal] = useState(false)
   const [showBadgeDialog, setShowBadgeDialog] = useState(false)
   const [showCopyCodeDialog, setShowCopyCodeDialog] = useState(false)
   const [showExportDialog, setShowExportDialog] = useState(false)
@@ -1052,6 +1054,17 @@ export default function StudentModal({
                 📺 Show to class
               </button>
             )}
+            {onSendHint && !isInformation && !isSessionSandbox && (
+              <button
+                className="btn-ghost"
+                style={{ fontSize: 13, padding: '5px 10px', minHeight: 44, whiteSpace: 'nowrap' }}
+                onClick={() => setShowHintModal(true)}
+                title="Put your own hint on this student's hint banner, without marking the task passed or failed"
+                data-testid="send-hint-button"
+              >
+                💡 Send hint
+              </button>
+            )}
             {onSendMessage && (
               <button
                 className="btn-ghost"
@@ -1786,6 +1799,16 @@ export default function StudentModal({
             onClose={() => setShowExportDialog(false)}
           />
         </React.Suspense>
+      )}
+
+      {onSendHint && (
+        <MessageCompose
+          variant="hint"
+          student={student}
+          onSendMessage={(id, text) => onSendHint(id, text, task?.id)}
+          isOpen={showHintModal}
+          onClose={() => setShowHintModal(false)}
+        />
       )}
 
       {/* Message compose modal */}

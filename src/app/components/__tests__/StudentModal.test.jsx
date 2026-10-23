@@ -1383,6 +1383,26 @@ describe('StudentModal header: four common actions, the rest in More', () => {
     at: 1000,
   }
 
+  it('Send hint opens a box and sends the text with the current task id', async () => {
+    const onSendHint = vi.fn()
+    render(<StudentModal {...mkProps({ onSendHint, onOverrideCheck: vi.fn() })} />)
+    fireEvent.click(screen.getByTestId('send-hint-button'))
+    const box = screen.getByPlaceholderText(/Look at line 3/)
+    fireEvent.change(box, { target: { value: '  Check the quotes  ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send hint' }))
+    expect(onSendHint).toHaveBeenCalledWith('student-1', 'Check the quotes', expect.anything())
+    expect(screen.queryByPlaceholderText(/Look at line 3/)).not.toBeInTheDocument()
+  })
+
+  it('Send hint does not mark the task failed', () => {
+    const onOverrideCheck = vi.fn()
+    render(<StudentModal {...mkProps({ onSendHint: vi.fn(), onOverrideCheck })} />)
+    fireEvent.click(screen.getByTestId('send-hint-button'))
+    fireEvent.change(screen.getByPlaceholderText(/Look at line 3/), { target: { value: 'hi' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send hint' }))
+    expect(onOverrideCheck).not.toHaveBeenCalled()
+  })
+
   it('shows Award badge, Thumbs up, Show to class and Help, and one More menu', () => {
     render(
       <StudentModal

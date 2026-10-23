@@ -17,12 +17,16 @@ export default function ScratchTeacherLiveView({
   cursorState,
   blockDragState,
   isSessionSandbox = false,
+  forcedPane = null,
+  forcedPaneToken = null,
 }) {
   return (
     <ScratchWorkspace
       task={task}
       readOnly={readOnly}
       forceCompact
+      forcedPane={forcedPane}
+      forcedPaneToken={forcedPaneToken}
       assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
       initialState={scratchState}
       externalState={scratchState}

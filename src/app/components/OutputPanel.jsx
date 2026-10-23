@@ -71,6 +71,10 @@ export default function OutputPanel({
   mirroredInputValue = '',
   checkPassed = false,
   hasCheck = false,
+  // Display mode (Show it): no "Ran OK" / "Error" status dot, which would mark the build.
+  hideStatus = false,
+  // Show it: the output is the point, so print it big.
+  large = false,
   running = false,
   openOnRun = true,
   openOnOutput = false,
@@ -178,14 +182,14 @@ export default function OutputPanel({
           style={{ display: 'flex', alignItems: 'center', gap: 8 }}
           onClick={(e) => e.stopPropagation()}
         >
-          <span style={{ ...s.statusDot, background: statusColour }} />
-          <span style={s.statusLabel}>{statusLabel}</span>
+          {!hideStatus && <span style={{ ...s.statusDot, background: statusColour }} />}
+          {!hideStatus && <span style={s.statusLabel}>{statusLabel}</span>}
           {rightActions && <div style={s.trailingActions}>{rightActions}</div>}
         </div>
       </div>
 
       {!contentCollapsed && (
-        <pre ref={preRef} style={s.pre}>
+        <pre ref={preRef} style={large ? { ...s.pre, ...s.preLarge } : s.pre}>
           {displayedOutput
             ? splitEmojiRuns(displayedOutput).map((run, index) =>
                 run.emoji ? (
@@ -233,6 +237,7 @@ export default function OutputPanel({
 }
 
 const s = {
+  preLarge: { fontSize: 'clamp(1.1rem, 2.4vw, 2rem)', lineHeight: 1.4 },
   panel: {
     display: 'flex',
     flexDirection: 'column',

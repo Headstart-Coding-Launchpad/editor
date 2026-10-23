@@ -43,6 +43,12 @@ export function teacherLiveReferenceDisplayState(payload, lessonType) {
   return wire.fromCode(payload.code || '{}') ?? {}
 }
 
+export const LIVE_LAYOUTS = ['both', 'explainer', 'code']
+
+export function normaliseLiveLayout(layout) {
+  return LIVE_LAYOUTS.includes(layout) ? layout : 'both'
+}
+
 export function deriveStudentLiveDisplay({
   teacherPresentation,
   phase,
@@ -106,6 +112,12 @@ export function deriveStudentLiveDisplay({
     ),
     isForcedTeacherLive,
     isLiveCopyBlocked,
+    // Which panes a student sees under the tutor's Go Live: 'both' | 'explainer' | 'code'.
+    // Always forced by the tutor; only a tutor broadcast carries one (a student broadcast and
+    // anything not live render 'both').
+    displayLayout: isTeacherLiveViewer ? normaliseLiveLayout(teacherLive.layout) : 'both',
+    // The "Tutor is live" banner shows for exactly the students locked onto the tutor.
+    showTutorLiveBanner: isTeacherLiveViewer,
     displayedTaskId: isForcedTeacherLive
       ? (teacherLive?.taskId ?? currentTaskId)
       : (viewingTaskId ?? currentTaskId),
@@ -163,4 +175,12 @@ export function teacherLiveToSnapshot(teacherLive) {
     ),
     arcadeDesign: teacherLive.arcadeDesign ?? null,
   }
+}
+
+/** "Task 3: Make it move" for the banner, from the visible flat task list. '' if unknown. */
+export function liveBannerTaskLabel(flatTasks, taskId) {
+  const index = (flatTasks ?? []).findIndex((t) => t.id === taskId)
+  if (index < 0) return ''
+  const title = flatTasks[index].title
+  return title ? `Task ${index + 1}: ${title}` : `Task ${index + 1}`
 }

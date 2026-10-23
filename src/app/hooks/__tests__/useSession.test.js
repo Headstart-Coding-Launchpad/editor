@@ -149,6 +149,7 @@ describe('useSession', () => {
         expect.objectContaining({
           'students/student-abc/studentHint': null,
           'students/student-abc/hintOffer': null,
+          'students/student-abc/teacherHint': null,
           'students/student-abc/lastRunError': null,
         })
       )
@@ -382,6 +383,89 @@ describe('useSession', () => {
       expect(firebaseMocks.update).toHaveBeenCalledWith(
         { path: 'sessions/lesson-1' },
         expect.objectContaining({ polls: null, activePollId: null })
+      )
+    })
+  })
+
+  describe('Show it', () => {
+    it('startShowIt writes at most three ids with the current task', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ currentTaskId: 4 })
+      await act(async () => {
+        await result.current.startShowIt(['a', 'b', 'b', 'c', 'd'])
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/showIt' },
+        { studentIds: ['a', 'b', 'c'], taskId: '4', startedAt: expect.any(Number) }
+      )
+    })
+
+    it('startShowIt stores the view the task opens in; setShowItView updates the choice', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ currentTaskId: 4, showIt: { studentIds: ['a'], taskId: '4', startedAt: 1 } })
+      await act(async () => {
+        await result.current.startShowIt(['a'], 'single')
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/showIt' },
+        { studentIds: ['a'], taskId: '4', startedAt: expect.any(Number), view: 'single', index: 0 }
+      )
+      await act(async () => {
+        await result.current.setShowItView('single', 2)
+        await result.current.setShowItView('grid', 1)
+        await result.current.setShowItView('side', 9)
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/showIt' },
+        { view: 'single', index: 2 }
+      )
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/showIt' },
+        { view: 'side', index: 2 }
+      )
+      expect(firebaseMocks.update).not.toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/showIt' },
+        expect.objectContaining({ view: 'grid' })
+      )
+    })
+
+    it('startShowIt with no ids writes nothing', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ currentTaskId: 4 })
+      await act(async () => {
+        await result.current.startShowIt([])
+      })
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+    })
+
+    it('stopShowIt clears it; setTaskId, createSession and endSession clear it too', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.stopShowIt()
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith({ path: 'sessions/lesson-1/showIt' }, null)
+      firebaseMocks.set.mockClear()
+      await act(async () => {
+        await result.current.createSession()
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ showIt: null })
+      )
+      await act(async () => {
+        await result.current.endSession()
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ showIt: null })
+      )
+      firebaseMocks.update.mockClear()
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ showIt: null })
       )
     })
   })
@@ -1102,6 +1186,31 @@ describe('useSession', () => {
     })
   })
 
+  describe('sendHintToStudent', () => {
+    it('writes teacherHint only, with no check-override fields', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ currentTaskId: 4, students: { 'student-abc': {} } })
+      await act(async () => {
+        await result.current.sendHintToStudent('student-abc', '  Look at line 3  ')
+      })
+      const [target, updates] = firebaseMocks.update.mock.calls.at(-1)
+      expect(target).toEqual({ path: 'sessions/lesson-1/students/student-abc' })
+      expect(updates).toEqual({
+        teacherHint: { text: 'Look at line 3', taskId: '4', at: expect.any(Number) },
+      })
+    })
+
+    it('ignores an empty hint', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ currentTaskId: 4 })
+      firebaseMocks.update.mockClear()
+      await act(async () => {
+        await result.current.sendHintToStudent('student-abc', '   ')
+      })
+      expect(firebaseMocks.update).not.toHaveBeenCalled()
+    })
+  })
+
   describe('recordClassAdvanceOverrides', () => {
     it('records overrides for students who have not passed the task being left', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
@@ -1488,6 +1597,7 @@ describe('useSession', () => {
         currentTaskStartedAt: expect.any(Number),
         explainerShowComplete: false,
         teacherClassPaneCommand: null,
+        showIt: null,
         'taskStartTimes/2': session.currentTaskStartedAt,
         // The report's taskTimeline entry (push key from the firebase mock).
         'taskTimeline/mockHighlightId': { taskId: 2, startedAt: session.currentTaskStartedAt },
@@ -1497,6 +1607,7 @@ describe('useSession', () => {
         lastRunStatus: null,
         lastRunError: null,
         studentHint: null,
+        teacherHint: null,
         hintOffer: null,
         currentOutput: '',
         currentCode: '',

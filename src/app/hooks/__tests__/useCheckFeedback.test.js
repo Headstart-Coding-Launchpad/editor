@@ -14,6 +14,36 @@ describe('useCheckFeedback', () => {
     })
   })
 
+  describe('teacherHint (Send hint)', () => {
+    const sent = { text: 'Check the quotes', taskId: 't1', at: 5 }
+
+    it('shows the tutor hint for this task without touching check state', () => {
+      const { result } = renderHook(() =>
+        useCheckFeedback({ myStudentData: { teacherHint: sent }, currentTaskId: 't1' })
+      )
+      expect(result.current.teacherHint).toEqual({ text: 'Check the quotes', at: 5 })
+      expect(result.current.checkAttempted).toBe(false)
+      expect(result.current.checkPassed).toBe(false)
+    })
+
+    it('ignores a hint left from another task', () => {
+      const { result } = renderHook(() =>
+        useCheckFeedback({ myStudentData: { teacherHint: sent }, currentTaskId: 't2' })
+      )
+      expect(result.current.teacherHint).toBeNull()
+    })
+
+    it('clears when a check result lands', () => {
+      const { result } = renderHook(() =>
+        useCheckFeedback({ myStudentData: { teacherHint: sent }, currentTaskId: 't1' })
+      )
+      act(() => {
+        result.current.applyCheckFeedback(false, 'Try again')
+      })
+      expect(result.current.teacherHint).toBeNull()
+    })
+  })
+
   describe('resetCheckFeedback', () => {
     it('clears all check state', () => {
       const { result } = renderHook(() => useCheckFeedback())

@@ -224,6 +224,27 @@
         "activePollId": {
           ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 64"
         },
+        // Show it (src/shared/showIt.js): { studentIds: [up to 3 ids], taskId, startedAt, view?, index? }.
+        // Teacher/admin write is inherited from $lessonId; students cannot write it.
+        "showIt": {
+          ".validate": "newData.hasChildren(['studentIds', 'taskId', 'startedAt'])",
+          "studentIds": {
+            "$index": {
+              ".validate": "$index.matches(/^[0-2]$/) && newData.isString() && newData.val().length > 0 && newData.val().length <= 128"
+            }
+          },
+          "taskId": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128"
+          },
+          "startedAt": { ".validate": "newData.isNumber()" },
+          "view": {
+            ".validate": "newData.isString() && (newData.val() == 'side' || newData.val() == 'single')"
+          },
+          "index": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2"
+          },
+          "$other": { ".validate": false }
+        },
         "shownResponses": {
           "$responseId": {
             ".validate": "newData.hasChildren(['taskId', 'anonymousId', 'text', 'showName', 'shownAt'])",

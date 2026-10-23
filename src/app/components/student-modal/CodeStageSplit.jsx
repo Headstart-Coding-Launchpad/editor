@@ -18,11 +18,13 @@ const TOGGLE_ROW = 40
  * the body is wide (the code keeps its full height), stacked when narrow. "Bigger picture"
  * gives the drawing more room either way. Without a drawing the code fills the space.
  */
-export default function CodeStageSplit({ editor, stageResult }) {
+export default function CodeStageSplit({ editor, stageResult, fitCode = false }) {
   const [ref, size] = useElementSize()
   const [big, setBig] = useState(false)
 
-  if (!stageResult) return <div style={s.editorOnly}>{editor}</div>
+  if (!stageResult) {
+    return <div style={fitCode ? { ...s.editorOnly, ...s.editorFit } : s.editorOnly}>{editor}</div>
+  }
 
   const sideBySide = size.width >= SIDE_BY_SIDE_MIN_WIDTH
   const scale = big ? 'big' : 'small'
@@ -71,6 +73,8 @@ export default function CodeStageSplit({ editor, stageResult }) {
 }
 
 const s = {
+  // Show it: the code takes the height of its lines (up to a share), the output the rest.
+  editorFit: { flex: '0 1 auto', maxHeight: '55%' },
   editorOnly: {
     flex: 1,
     minHeight: 0,

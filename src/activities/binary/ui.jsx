@@ -4,6 +4,7 @@ import TutorItemPicker from '../ui/TutorItemPicker.jsx'
 import { useRoundFlow } from '../ui/useRoundFlow.js'
 import { coreCountOf } from '../round.js'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
+import { usePresentation } from '../ui/presentation.js'
 import {
   ASCII_MAX_TEXT,
   DEFAULT_BITS,
@@ -632,6 +633,7 @@ export function BinaryStudentView({ task, state, onChange, readOnly = false, tea
   // A tutor (read-only view, or editing a student's answers) never lingers or advances: they
   // follow the student's item or pick one in the tutor-only picker.
   const tutor = readOnly || teacher
+  const presentation = usePresentation()
   const items = task?.items ?? []
   const core = coreCountOf(task, items.length)
   const isDone = (item) => gradeItem(task, item, itemStateOf(state, item, task)).correct
@@ -708,7 +710,7 @@ export function BinaryStudentView({ task, state, onChange, readOnly = false, tea
           Not yet
         </p>
       )}
-      {!result.correct && touched && tutor && result.hint && (
+      {!result.correct && touched && tutor && !presentation && result.hint && (
         <p className="act-hint" role="status">
           💡 {result.hint}
         </p>

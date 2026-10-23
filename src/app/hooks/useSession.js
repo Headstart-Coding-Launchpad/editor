@@ -42,13 +42,19 @@ import {
   archiveWorkFields,
   normaliseSessionArchive,
 } from '../../badges/sessionArchive'
+import {
+  SHOW_IT_MAX,
+  SHOW_IT_VIEWS,
+  clampShowItIndex,
+  normalizeShowItIds,
+} from '../../shared/showIt'
 import { findShownResponse, normalizeShownText } from '../../shared/shownResponses'
 import { AUTO_CHECK_LEAVE, AUTO_CHECK_RESULTS, countedAttemptEntries } from '../../shared/autoCheck'
 import { liveInkPath } from '../liveInk/liveInkData'
 import { normalizePollDraft, pollChoiceIndex } from '../../shared/classPolls.js'
 import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liveInkWriter'
 import { buildClassCountdown, extendClassCountdown } from '../../shared/classCountdown'
-import { clipRunError } from '../studentHints.js'
+import { clipRunError, HINT_TEXT_MAX } from '../studentHints.js'
 import { bumpSideQuestCount } from '../../shared/sideQuests.js'
 import { bumpExampleOpenCount, exampleOpenPath } from '../../shared/exampleOpens.js'
 import { draftLogUpdates } from '../../shared/answerDrafts.js'
@@ -207,6 +213,8 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       // Live class polls (src/shared/classPolls.js) belong to one session.
       polls: null,
       activePollId: null,
+      // Show it (src/shared/showIt.js) belongs to one session.
+      showIt: null,
       // Shown short answers (src/shared/shownResponses.js) belong to one session.
       shownResponses: null,
       // Live badges: decisions, the tutor's badge toggles and the students' signals are
@@ -322,6 +330,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       // the students' answers go with the students node.
       polls: null,
       activePollId: null,
+      showIt: null,
       shownResponses: null,
       // Peer help offers and switches; the rest of peer help is cleared below. The report
       // (built before this, in handleEndSession) already holds the peer help audit.
@@ -454,6 +463,37 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     await update(ref(db, `sessions/${lessonId}`), updates)
   }
 
+  // ─── Show it (src/shared/showIt.js) ───────────────────────────────────────
+  // Teacher-only: puts up to three students' current builds side by side on the presentation
+  // window and every student screen. Only the ids and the task are stored; the tiles read the
+  // students' own records.
+  async function startShowIt(studentIds, view) {
+    const ids = normalizeShowItIds(studentIds)
+    const taskId = session?.currentTaskId
+    if (ids.length === 0 || taskId == null) return
+    await set(ref(db, `sessions/${lessonId}/showIt`), {
+      studentIds: ids,
+      taskId: String(taskId),
+      startedAt: Date.now(),
+      // The view the tutor's task opens in (side by side or one at a time); omitted = default.
+      ...(SHOW_IT_VIEWS.includes(view) ? { view, index: 0 } : {}),
+    })
+  }
+
+  // The tutor's choice drives every screen: 'side' or 'single', and which build the single view
+  // shows (0-2).
+  async function setShowItView(view, index = 0) {
+    if (!SHOW_IT_VIEWS.includes(view) || !session?.showIt) return
+    await update(ref(db, `sessions/${lessonId}/showIt`), {
+      view,
+      index: clampShowItIndex(index, SHOW_IT_MAX),
+    })
+  }
+
+  async function stopShowIt() {
+    await set(ref(db, `sessions/${lessonId}/showIt`), null)
+  }
+
   // ─── Shown short answers (src/shared/shownResponses.js) ───────────────────
   // Teacher-only: puts a copy of one student's answer on the presentation window. Showing an
   // answer that was hidden reuses its entry (one per student per task).
@@ -507,6 +547,8 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       currentTaskStartedAt: now,
       explainerShowComplete: false,
       teacherClassPaneCommand: null,
+      // The builds on show were for the old task; the students' answers are cleared below.
+      showIt: null,
       [`taskStartTimes/${taskId}`]: now,
       ...(recordTimeline ? taskTimelineUpdate(taskId, now) : {}),
       // Keep each unsubmitted draft for the report before currentDraft is cleared below.
@@ -518,6 +560,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       updates[`students/${anonymousId}/lastRunStatus`] = null
       updates[`students/${anonymousId}/lastRunError`] = null
       updates[`students/${anonymousId}/studentHint`] = null
+      updates[`students/${anonymousId}/teacherHint`] = null
       updates[`students/${anonymousId}/hintOffer`] = null
       updates[`students/${anonymousId}/currentOutput`] = ''
       updates[`students/${anonymousId}/currentCode`] = ''
@@ -627,6 +670,16 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       if (record) updates[`overrideLog/${anonymousId}/${taskId}`] = record
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
+  }
+
+  // "Send hint": the tutor's own words on the student's hint banner for this task, without
+  // marking the task failed or touching check state (Mark Fail's hint rides on the fail flag).
+  async function sendHintToStudent(anonymousId, text, taskId = session?.currentTaskId) {
+    const hint = String(text ?? '').trim()
+    if (!hint || taskId == null) return
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      teacherHint: { text: hint.slice(0, HINT_TEXT_MAX), taskId: String(taskId), at: Date.now() },
+    })
   }
 
   async function recordClassAdvanceOverrides(
@@ -2367,6 +2420,9 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     setPollShowResults,
     dismissPoll,
     showResponse,
+    startShowIt,
+    setShowItView,
+    stopShowIt,
     hideResponse,
     setShownResponseName,
     setAutoRevealStage,
@@ -2383,6 +2439,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     pushRemoteRun,
     clearRemoteRun,
     overrideStudentCheck,
+    sendHintToStudent,
     recordClassAdvanceOverrides,
     dismissHelp,
     requestWorkspaceShare,

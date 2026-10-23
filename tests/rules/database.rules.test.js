@@ -362,6 +362,35 @@ describe('class countdown', () => {
   })
 })
 
+describe('Show it', () => {
+  const path = `sessions/${LESSON}/showIt`
+  const showIt = { studentIds: ['a', 'b', 'c'], taskId: 't1', startedAt: 1000 }
+
+  it('only lets teachers and admins start or clear it; everyone can read it', async () => {
+    await assertFails(ref(as.student, path).set(showIt))
+    await assertSucceeds(ref(as.teacher, path).set(showIt))
+    await assertSucceeds(ref(as.anonymous, path).get())
+    await assertSucceeds(ref(as.admin, path).set(null))
+  })
+
+  it('allows at most three ids, a task and a start time, and nothing else', async () => {
+    await assertFails(ref(as.teacher, path).set({ ...showIt, studentIds: ['a', 'b', 'c', 'd'] }))
+    await assertFails(ref(as.teacher, path).set({ ...showIt, studentIds: [''] }))
+    await assertFails(ref(as.teacher, path).set({ studentIds: ['a'], startedAt: 1 }))
+    await assertFails(ref(as.teacher, path).set({ ...showIt, names: ['Jamie'] }))
+    await assertSucceeds(ref(as.teacher, path).set({ ...showIt, studentIds: ['a'] }))
+  })
+
+  it('lets the tutor choose the view and the build shown, and nothing else', async () => {
+    await assertSucceeds(ref(as.teacher, path).set({ ...showIt, view: 'single', index: 2 }))
+    await assertSucceeds(ref(as.teacher, path).set({ ...showIt, view: 'side' }))
+    await assertFails(ref(as.teacher, path).set({ ...showIt, view: 'grid' }))
+    await assertFails(ref(as.teacher, path).set({ ...showIt, view: 'single', index: 3 }))
+    await assertFails(ref(as.teacher, path).set({ ...showIt, view: 'single', index: -1 }))
+    await assertFails(ref(as.student, path).update({ view: 'single' }))
+  })
+})
+
 describe('class roster session fields', () => {
   const matchPath = `sessions/${LESSON}/rosterMatches/${STUDENT_ID}`
   const match = { rosterId: 'r1', matchedAt: 1000, matchedBy: 'teacher-1' }

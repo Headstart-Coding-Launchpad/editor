@@ -71,6 +71,9 @@ export function defineActivity(def) {
   if (def.passMessage != null && (typeof def.passMessage !== 'string' || !def.passMessage.trim())) {
     fail(id, 'passMessage must be a non-empty string')
   }
+  if (def.showIt != null && !['side', 'single'].includes(def.showIt)) {
+    fail(id, "showIt must be 'side' or 'single'")
+  }
   const completion = def.completion ?? 'on_submit'
   if (!COMPLETION_MODES.includes(completion)) {
     fail(id, `completion must be one of ${COMPLETION_MODES.join(', ')}`)
@@ -103,6 +106,10 @@ export function defineActivity(def) {
     // What the student's pass banner says (default 'Correct!'). For an auto-completing activity
     // where passing means finishing, not being right ('Round done!').
     passMessage: null,
+    // How Show it opens this activity's builds: 'side' (default, up to three side by side) or
+    // 'single' (one at a time, full width; for a big view such as a space station). The tutor can
+    // switch either way (src/shared/showIt.js).
+    showIt: 'side',
     // Task fields that give the answer away, sealed at the Firestore boundary on top of the
     // shared list (check, feedbackChecks, tests, codeStages, complete*): src/shared/lessonSeal.js.
     sealedFields: [],
