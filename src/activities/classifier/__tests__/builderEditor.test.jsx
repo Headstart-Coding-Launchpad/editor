@@ -17,13 +17,17 @@ function drawOn(pad, points) {
 }
 
 describe('Classifier BuilderEditor', () => {
-  it('starts from a valid default task', () => {
+  it('starts from a valid default task: three emoji things, the round, the fool-it panel', () => {
     const { task } = renderBuilderEditor(ui.BuilderEditor, start())
     expect(errorsOf(task())).toEqual([])
-    expect(screen.getByLabelText('Class names')).toHaveValue('circle, square')
+    expect(screen.getByLabelText('Class names')).toHaveValue('🐱 cat, 🐟 fish, 🚀 rocket')
+    expect(task().minExamplesPerClass).toBe(3)
+    expect(task().testSet).toBeUndefined()
+    expect(task().panels).toEqual(['fool'])
+    expect(screen.getByLabelText('Drawings needed per thing')).toHaveValue(3)
   })
 
-  it('edits the class names', () => {
+  it('edits the names', () => {
     const { task } = renderBuilderEditor(ui.BuilderEditor, start())
     fireEvent.change(screen.getByLabelText('Class names'), {
       target: { value: 'cat, fish, rocket' },
@@ -35,51 +39,70 @@ describe('Classifier BuilderEditor', () => {
     expect(screen.getByLabelText('Class names')).toBeInTheDocument()
   })
 
-  it('lets students name their own classes', async () => {
+  it('lets students name their own things', async () => {
     const user = userEvent.setup()
     const { task } = renderBuilderEditor(ui.BuilderEditor, start())
     await user.click(screen.getByRole('radio', { name: /Students name their own/ }))
     expect(task().classes).toEqual([])
     expect(screen.queryByLabelText('Class names')).not.toBeInTheDocument()
     expect(errorsOf(task())).toEqual([])
-    await user.click(screen.getByRole('radio', { name: /I set the classes/ }))
-    expect(task().classes).toEqual(['circle', 'square'])
+    await user.click(screen.getByRole('radio', { name: /I set the things/ }))
+    expect(task().classes).toEqual(['🐱 cat', '🐟 fish', '🚀 rocket'])
   })
 
-  it('sets the numbers', () => {
+  it('switches the extra panels on and off', async () => {
+    const user = userEvent.setup()
     const { task } = renderBuilderEditor(ui.BuilderEditor, start())
-    fireEvent.change(screen.getByLabelText('Drawings needed per class'), {
-      target: { value: '10' },
+    const fool = screen.getByRole('checkbox', { name: 'Fool it and fix it' })
+    expect(fool).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'What it sees' })).not.toBeChecked()
+    await user.click(screen.getByRole('checkbox', { name: 'What it sees' }))
+    expect(task().panels).toEqual(['grid', 'fool'])
+    await user.click(screen.getByRole('checkbox', { name: 'How sure is it?' }))
+    expect(task().panels).toEqual(['grid', 'sure', 'fool'])
+    await user.click(screen.getByRole('checkbox', { name: 'Fool it and fix it' }))
+    expect(task().panels).toEqual(['grid', 'sure'])
+    expect(errorsOf(task())).toEqual([])
+  })
+
+  it('sets the numbers for the round', () => {
+    const { task } = renderBuilderEditor(ui.BuilderEditor, start())
+    fireEvent.change(screen.getByLabelText('Drawings needed per thing'), {
+      target: { value: '5' },
     })
-    fireEvent.change(screen.getByLabelText('Target accuracy (%)'), { target: { value: '90' } })
-    expect(task().minExamplesPerClass).toBe(10)
-    expect(task().targetAccuracy).toBe(0.9)
-    fireEvent.change(screen.getByLabelText('Target accuracy (%)'), { target: { value: '' } })
-    expect(task().targetAccuracy).toBeUndefined()
+    fireEvent.change(screen.getByLabelText('Right answers needed'), { target: { value: '8' } })
+    expect(task().minExamplesPerClass).toBe(5)
+    expect(task().liveTestSize).toBe(8)
+    expect(errorsOf(task())).toEqual([])
+    // Target accuracy belongs to the Test button versions only.
+    expect(screen.queryByLabelText('Target accuracy (%)')).not.toBeInTheDocument()
   })
 
   it('shows a validation message next to the fields', () => {
-    renderBuilderEditor(ui.BuilderEditor, { ...start(), minExamplesPerClass: 3 })
+    renderBuilderEditor(ui.BuilderEditor, {
+      ...start(),
+      testSet: 'held_out',
+      minExamplesPerClass: 3,
+    })
     expect(screen.getByRole('alert')).toHaveTextContent(
       /held_out needs minExamplesPerClass of at least 4/
     )
   })
 
-  it('switches to live testing and keeps held-out tasks valid', async () => {
+  it('switches to a kept-back test and back to the round', async () => {
     const user = userEvent.setup()
     const { task } = renderBuilderEditor(ui.BuilderEditor, start())
-    await user.click(screen.getByRole('radio', { name: /Live/ }))
-    expect(task().testSet).toBe('live')
-    fireEvent.change(screen.getByLabelText('Number of live test drawings'), {
-      target: { value: '8' },
-    })
-    expect(task().liveTestSize).toBe(8)
-    expect(errorsOf(task())).toEqual([])
-    fireEvent.change(screen.getByLabelText('Drawings needed per class'), { target: { value: '2' } })
     await user.click(screen.getByRole('radio', { name: /Kept back/ }))
     expect(task().testSet).toBe('held_out')
     expect(task().minExamplesPerClass).toBe(4)
     expect(task().liveTestSize).toBeUndefined()
+    expect(errorsOf(task())).toEqual([])
+    fireEvent.change(screen.getByLabelText('Target accuracy (%)'), { target: { value: '90' } })
+    expect(task().targetAccuracy).toBe(0.9)
+    fireEvent.change(screen.getByLabelText('Target accuracy (%)'), { target: { value: '' } })
+    expect(task().targetAccuracy).toBeUndefined()
+    await user.click(screen.getByRole('radio', { name: /The round/ }))
+    expect(task().testSet).toBe('live')
     expect(errorsOf(task())).toEqual([])
   })
 
@@ -96,22 +119,22 @@ describe('Classifier BuilderEditor', () => {
       [0.9, 0.5],
     ])
     await user.click(screen.getByRole('button', { name: '+ Add test drawing' }))
-    await user.selectOptions(screen.getByLabelText('Class of the new test drawing'), 'square')
+    await user.selectOptions(screen.getByLabelText('Class of the new test drawing'), '🐟 fish')
     drawOn(screen.getByTestId('classifier-pad'), [
       [0.2, 0.2],
       [0.8, 0.8],
     ])
     await user.click(screen.getByRole('button', { name: '+ Add test drawing' }))
     expect(task().testItems).toEqual([
-      { label: 'circle', strokes: [[0.1, 0.5, 0.9, 0.5]] },
-      { label: 'square', strokes: [[0.2, 0.2, 0.8, 0.8]] },
+      { label: '🐱 cat', strokes: [[0.1, 0.5, 0.9, 0.5]] },
+      { label: '🐟 fish', strokes: [[0.2, 0.2, 0.8, 0.8]] },
     ])
     expect(errorsOf(task())).toEqual([])
 
     await user.click(screen.getByRole('button', { name: 'Remove test drawing 1' }))
     expect(task().testItems).toHaveLength(1)
-    // Back to another test set drops the test drawings.
-    await user.click(screen.getByRole('radio', { name: /Live/ }))
+    // Back to the round drops the test drawings.
+    await user.click(screen.getByRole('radio', { name: /The round/ }))
     expect(task().testItems).toBeUndefined()
   })
 

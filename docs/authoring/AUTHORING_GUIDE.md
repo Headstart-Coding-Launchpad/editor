@@ -231,7 +231,7 @@ want them done; the student never picks an item. Keyboard, Binary and Mouse take
 | Binary (bits, conversions, addition, overflow, hex, ASCII, pixels) | `binary` | [activities/binary.md](activities/binary.md) |
 | Keyboard skills (typing, Shift capitals, UK symbols, shortcuts) | `keyboard` | [activities/keyboard.md](activities/keyboard.md) |
 | Mouse skills (click, double-click, right-click, drag, scroll, hover) | `mouse` | [activities/mouse.md](activities/mouse.md) |
-| Train a classifier (draw examples, train, test on unseen drawings, accuracy) | `classifier` | [activities/classifier.md](activities/classifier.md) |
+| Teach a classifier (draw a few things, it guesses live, then a round of fooling it) | `classifier` | [activities/classifier.md](activities/classifier.md) |
 
 - The explicit JSON form `taskType: activity` + `activityType: <id>` also works in YAML;
   `lessons get <id> --format yaml` and `lessons json-to-yaml` write the `type:` shorthand. Quizzes stay `type: quiz` + `quizType`.
