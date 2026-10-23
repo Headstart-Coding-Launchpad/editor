@@ -3,8 +3,10 @@
 // "which word came straight after this word".
 //
 // Words are normalised before counting (see normaliseWord): lower-case, with punctuation
-// stripped from both ends, so "Net." and "net" are the same word. Sentence ends do not break
-// the chain: the last word of one sentence counts as followed by the first word of the next.
+// stripped from both ends, so "Net." and "net" are the same word. A sentence end (. ! ?) is kept
+// as a token of its own, so the model can learn that a sentence may end after a word ("net" is
+// followed by "." 2 of 3 times). The end mark is then followed by the first word of the next
+// sentence in the text, which only matters when a generated text carries on past the end.
 
 // Longest text a student can paste. The pasted text is part of the activity state mirrored to
 // the teacher, so it is capped; it is written when the student presses "Use my text", never per
@@ -35,23 +37,75 @@ export function normaliseWord(value) {
     .replace(EDGE_PUNCTUATION, '')
 }
 
-// Text -> list of normalised words. Splits on spaces, line breaks, dashes and ellipses.
-export function tokenise(text) {
-  return String(text ?? '')
-    .split(/[\s–—…]+/u)
-    .map(normaliseWord)
-    .filter(Boolean)
+const END_MARKS = new Set(['.', '!', '?'])
+// The first . ! or ? in the punctuation at the end of a piece ("net.”" -> ".").
+const TRAILING_END = /([.!?])[^\p{L}\p{N}]*$/u
+
+// True for a sentence-end token (".", "!" or "?").
+export function isEndMark(token) {
+  return END_MARKS.has(token)
 }
 
-// The word a prompt ends on ("the ball goes into the" -> "the"), or ''.
+// True when a sentence (as stored, with its end mark stuck to the last word) has ended.
+export function endsSentence(sentence) {
+  return /[.!?]$/.test(String(sentence ?? '').trim())
+}
+
+// The text a student sees or hears for a token: words as they are, an end mark as "the end".
+export function spoken(token) {
+  return isEndMark(token) ? 'the end' : token
+}
+
+// Splits text into pieces on spaces, line breaks, dashes and ellipses.
+const pieces = (text) => String(text ?? '').split(/[\s–—…]+/u)
+
+// Text -> list of normalised words (no end marks). Used for counting words.
+export function tokenise(text) {
+  return pieces(text).map(normaliseWord).filter(Boolean)
+}
+
+// Text -> words with each sentence end kept as its own "." / "!" / "?" token (never first, never
+// twice in a row).
+export function tokeniseWithEnds(text) {
+  const tokens = []
+  for (const piece of pieces(text)) {
+    const word = normaliseWord(piece)
+    if (word) tokens.push(word)
+    const mark = piece.match(TRAILING_END)?.[1]
+    if (mark && tokens.length > 0 && !isEndMark(tokens[tokens.length - 1])) tokens.push(mark)
+  }
+  return tokens
+}
+
+// Tokens -> text, with end marks stuck to the word before them ("the cat sat .": "the cat sat.").
+export function joinTokens(tokens) {
+  return tokens.reduce(
+    (out, token) => (isEndMark(token) ? out + token : out ? `${out} ${token}` : token),
+    ''
+  )
+}
+
+// The sentence without its last token: "the cat sat." -> "the cat sat"; "the cat" -> "the".
+export function withoutLastToken(sentence) {
+  const text = String(sentence ?? '').trim()
+  if (endsSentence(text)) return text.replace(/[.!?]+$/, '')
+  const words = text.split(' ')
+  words.pop()
+  return words.join(' ')
+}
+
+// A word key for the model: end marks stay as they are, words are normalised.
+const keyOf = (word) => (isEndMark(word) ? word : normaliseWord(word))
+
+// The token a prompt ends on ("the ball goes into the" -> "the"; "the ball goes in." -> "."), or ''.
 export function lastWordOf(prompt) {
-  const tokens = tokenise(prompt)
+  const tokens = tokeniseWithEnds(prompt)
   return tokens[tokens.length - 1] ?? ''
 }
 
 // { tokens, successors: Map<word, Map<nextWord, count>> }
 export function buildModel(text) {
-  const tokens = tokenise(text)
+  const tokens = tokeniseWithEnds(text)
   const successors = new Map()
   for (let i = 0; i < tokens.length - 1; i++) {
     const word = tokens[i]
@@ -78,7 +132,7 @@ export function modelFor(text) {
 // What follows `word`: { word, total, options: [{ word, count, share }] }, most likely first,
 // ties in alphabetical order. `total` is 0 when the word is never followed by anything.
 export function nextOptions(model, word) {
-  const key = normaliseWord(word)
+  const key = keyOf(word)
   const counts = model?.successors?.get(key)
   if (!counts) return { word: key, total: 0, options: [] }
   let total = 0
@@ -101,11 +155,12 @@ export function describeCount(word, count, total) {
   return `${word}: ${count} of ${total} ${total === 1 ? 'time' : 'times'}`
 }
 
-// The words worth offering as starting points: those that have a word after them, most
-// frequent first.
+// The words worth offering as starting points: those that have a word after them (end marks
+// never start a sentence), most frequent first.
 export function startingWords(model, limit = 12) {
   const rows = []
   for (const [word, counts] of model?.successors ?? []) {
+    if (isEndMark(word)) continue
     let total = 0
     for (const count of counts.values()) total += count
     rows.push({ word, total })
@@ -145,7 +200,7 @@ export function pickOption(options, temperature, random = Math.random) {
 // Make text by walking the model. Starts at `start` (normalised) or, if that is empty or has
 // no words after it, at the text's first word with a word after it. When it reaches a word
 // with nothing after it, it jumps to a random word that has something after it.
-// Returns the words as a string.
+// Returns the words as a string (end marks stuck to the word before them).
 export function generateText(
   model,
   {
@@ -155,9 +210,9 @@ export function generateText(
     random = Math.random,
   } = {}
 ) {
-  const starters = [...(model?.successors?.keys() ?? [])].sort()
+  const starters = [...(model?.successors?.keys() ?? [])].filter((word) => !isEndMark(word)).sort()
   if (starters.length === 0) return ''
-  let word = normaliseWord(start)
+  let word = keyOf(start)
   if (!word) word = model.successors.has(model.firstWord) ? model.firstWord : starters[0]
   const out = [word]
   while (out.length < length) {
@@ -170,7 +225,7 @@ export function generateText(
     word = pickOption(options, temperature, random).word
     out.push(word)
   }
-  return out.join(' ')
+  return joinTokens(out)
 }
 
 // A friendly name for a temperature, shown beside the slider.

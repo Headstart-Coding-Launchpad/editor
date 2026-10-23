@@ -5,6 +5,8 @@ import {
   activeModel,
   applyStep,
   candidatesOf,
+  dotsOf,
+  gradeGuess,
   gradeTask,
   guessGoalOf,
   initialNextWordState,
@@ -13,12 +15,13 @@ import {
   sharedState,
   sillyLabel,
   solutionStateFor,
+  startWordOf,
   validateNextWordTask,
   voiceOf,
   voicesOf,
 } from '../next_word.js'
 import definition from '../definition.js'
-import { MAX_TEXT_CHARS } from '../ngram.js'
+import { MAX_TEXT_CHARS, buildModel } from '../ngram.js'
 
 // Pure logic tests for the Next Word activity. The shared contract (default task validates,
 // state round-trips, solution passes) is checked for every registered activity by
@@ -159,6 +162,93 @@ describe('the model and a step', () => {
     })
   })
 
+  it('marks a guess right when it is the likeliest word, whatever the model picked', () => {
+    const model = activeModel(WITH_VOICES, initialNextWordState(WITH_VOICES))
+    const info = candidatesOf(model, 'the cat sat on the') // cat 2, mat 1
+    expect(gradeGuess(info, 'cat', 'mat')).toEqual({
+      ok: true,
+      best: 'cat',
+      bestCount: 2,
+      total: 3,
+      pickedBest: false,
+    })
+    expect(gradeGuess(info, 'mat', 'cat')).toMatchObject({
+      ok: false,
+      best: 'cat',
+      pickedBest: true,
+    })
+    expect(gradeGuess(info, '', 'cat')).toBeNull()
+    expect(gradeGuess({ total: 0, options: [] }, 'cat', 'cat')).toBeNull()
+  })
+
+  it('counts every word tied for the most likely as right', () => {
+    const info = candidatesOf(buildModel('a x. a y. a y. a x.'), 'a') // x 2, y 2
+    expect(gradeGuess(info, 'y', 'x').ok).toBe(true)
+    expect(gradeGuess(info, 'x', 'x').ok).toBe(true)
+  })
+
+  it('stores the grade on the step and a right/wrong history for the dots', () => {
+    const base = { ...initialNextWordState(TASK), sentence: 'the' }
+    const grade = { ok: true, best: 'cat', bestCount: 2, total: 3, pickedBest: false }
+    const right = applyStep(base, 'mat', 'cat', grade)
+    expect(right).toMatchObject({
+      guesses: 1,
+      right: 1,
+      history: 'r',
+      last: {
+        guess: 'cat',
+        picked: 'mat',
+        ok: true,
+        best: 'cat',
+        bestCount: 2,
+        total: 3,
+        pickedBest: false,
+      },
+    })
+    const wrong = applyStep(right, 'sat', 'cat', { ...grade, ok: false, best: 'sat' })
+    expect(wrong).toMatchObject({ guesses: 2, right: 1, history: 'rw' })
+    expect(normalizeNextWordState(TASK, wrong).history).toBe('rw')
+    expect(normalizeNextWordState(TASK, { history: 'rxw!' }).history).toBe('rw')
+  })
+
+  it('draws the dots from the history, handing older states their rights first', () => {
+    const task = { ...TASK, guesses: 4 }
+    expect(dotsOf(task, { guesses: 3, right: 2, history: 'rwr' })).toEqual([
+      'right',
+      'wrong',
+      'right',
+      'todo',
+    ])
+    expect(dotsOf(task, { guesses: 2, right: 1 })).toEqual(['right', 'wrong', 'todo', 'todo'])
+    expect(dotsOf(task, { guesses: 9, right: 0, history: 'wwwwww' })).toEqual([
+      'wrong',
+      'wrong',
+      'wrong',
+      'wrong',
+    ])
+  })
+
+  it('ends a sentence with the end mark stuck to the last word, then starts a new one', () => {
+    const base = { ...initialNextWordState(TASK), sentence: 'the cat ran' }
+    const ended = applyStep(base, '.')
+    expect(ended.sentence).toBe('the cat ran.')
+    expect(
+      candidatesOf(activeModel(WITH_VOICES, initialNextWordState(WITH_VOICES)), ended.sentence)
+    ).toMatchObject({
+      total: 0,
+      options: [],
+    })
+    expect(applyStep(ended, 'the').sentence).toBe('the')
+  })
+
+  it('starts a sentence on a word that starts sentences in the text', () => {
+    const model = buildModel('The cat ran. A dog sat. The cat sat.')
+    const seen = new Set()
+    for (let i = 0; i < 20; i++) seen.add(startWordOf(model, () => i / 20))
+    expect([...seen].sort()).toEqual(['a', 'the'])
+    expect(startWordOf(buildModel('hello'))).toBeNull()
+  })
+
   it('does not count a step with no guess, and ignores a missing word', () => {
     const base = { ...initialNextWordState(TASK), sentence: 'the' }
     expect(applyStep(base, 'cat')).toMatchObject({ sentence: 'the cat', guesses: 0, last: null })
@@ -220,6 +310,11 @@ describe('state', () => {
     const shared = JSON.parse(definition.serializeShared(state))
     expect(shared).toMatchObject({ own: 'Secret words here', ownWords: 3, sentence: 'the cat' })
     expect(sharedState(state)).toEqual(shared)
+  })
+
+  it('shares the guess results and history too', () => {
+    const state = { ...initialNextWordState(TASK), guesses: 2, right: 1, history: 'rw' }
+    expect(JSON.parse(definition.serializeShared(state))).toMatchObject({ history: 'rw' })
   })
 
   it('keeps them in the device copy and reads both forms back', () => {

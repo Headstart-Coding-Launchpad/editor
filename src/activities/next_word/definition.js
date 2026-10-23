@@ -2,9 +2,10 @@
 // contract (src/activities/defineActivity.js; docs/architecture/activities.md).
 // Node-safe: no JSX, React or DOM imports (activityInterface.test.js checks).
 //
-// Privacy: the student's own sentences stay on the device. `serialize` (the device's saved copy)
-// and `serializeShared` (Firebase, the teacher card, the attempt log) both hold the student's own
-// sentences (capped), so the tutor can read them live, plus the model's sentence and guess counts.
+// Tutor visibility: the student's own sentences are shared with the tutor. `serialize` (the
+// device's saved copy) and `serializeShared` (Firebase, the teacher card, the attempt log) both
+// hold the student's own sentences (capped), so the tutor can read them live, plus the model's
+// sentence and the guess results.
 import { defineActivity } from '../defineActivity.js'
 import { roundSummaryText } from '../round.js'
 import {
@@ -38,7 +39,7 @@ export default defineActivity({
   category: 'computing',
   icon: '🔮',
   description:
-    'Write some sentences and press one big Next word button: a tiny AI picks the word that follows, and the student guesses what it will pick.',
+    'Write some sentences and press one big Next word button: a tiny AI picks the word that follows, and the student guesses which word is most likely.',
   yaml: { type: 'next_word' },
 
   // Text only: works on any device, with or without a physical keyboard.
@@ -50,7 +51,7 @@ export default defineActivity({
       {
         name: 'guesses',
         type: 'number',
-        description: `How many "Guess what it says next" rounds make the task (1 to ${MAX_GUESSES}, default ${DEFAULT_GUESSES}). It passes when that many guesses are made, right or wrong; more are bonus.`,
+        description: `How many "Guess what it says next" rounds make the task (1 to ${MAX_GUESSES}, default ${DEFAULT_GUESSES}). It passes when that many guesses are made, right or wrong (right means the likeliest word); more are bonus.`,
       },
       {
         name: 'panels',
@@ -109,9 +110,9 @@ export default defineActivity({
   // Nothing worth sealing: the texts are public and there are no hidden answers.
   sealedFields: [],
 
-  // The device's own copy: the student's sentences included.
+  // The device's own copy.
   serialize: (state) => JSON.stringify(state ?? null),
-  // What leaves the device: no sentences of the student's own.
+  // What leaves the device: the same, with the student's own word count added.
   serializeShared: (state) => JSON.stringify(sharedState(state)),
   // Reads either form (and the old v1 form).
   deserialize: (raw, task) => normalizeNextWordState(task, parse(raw)),
@@ -121,6 +122,9 @@ export default defineActivity({
 
   // Passes by itself when the core guesses are done; the rest is bonus.
   completion: 'auto',
+  // Shown instead of "Correct!" when the task passes (a wrong guess still counts, so the generic
+  // wording would mislead).
+  passMessage: 'Round done!',
 
   // Writing the sentences and moving the slider are continuous; a tap, a press, a voice switch
   // and Start again are discrete.

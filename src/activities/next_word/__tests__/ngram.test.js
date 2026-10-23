@@ -3,21 +3,28 @@ import { describe, expect, it } from 'vitest'
 import {
   buildModel,
   describeCount,
+  endsSentence,
   generateText,
+  isEndMark,
+  joinTokens,
   lastWordOf,
   modelFor,
   nextOptions,
   normaliseWord,
   pickOption,
   seededRandom,
+  spoken,
   startingWords,
   temperatureLabel,
   tokenise,
+  tokeniseWithEnds,
   topWords,
+  withoutLastToken,
 } from '../ngram.js'
 
 const CAT = 'The cat sat on the mat. The cat ran.'
-// the -> cat 2, mat 1; cat -> ran 1, sat 1 (a tie); sat -> on; on -> the; mat -> the
+// the -> cat 2, mat 1; cat -> ran 1, sat 1 (a tie); sat -> on; on -> the; mat -> '.'; ran -> '.';
+// '.' -> the
 
 describe('normalising words', () => {
   it('lower-cases and strips punctuation from both ends only', () => {
@@ -44,8 +51,40 @@ describe('normalising words', () => {
 
   it('finds the last word of a prompt', () => {
     expect(lastWordOf('the ball goes into the')).toBe('the')
-    expect(lastWordOf('Into the NET!')).toBe('net')
+    expect(lastWordOf('Into the NET')).toBe('net')
     expect(lastWordOf('')).toBe('')
+  })
+
+  it('treats a sentence end as the last token', () => {
+    expect(lastWordOf('Into the NET!')).toBe('!')
+    expect(lastWordOf('the cat sat.')).toBe('.')
+  })
+
+  it('keeps . ! ? as tokens of their own, never first and never twice in a row', () => {
+    expect(tokeniseWithEnds('Hi there! "Yes." ok...')).toEqual([
+      'hi',
+      'there',
+      '!',
+      'yes',
+      '.',
+      'ok',
+      '.',
+    ])
+    expect(tokeniseWithEnds('... Go home?!')).toEqual(['go', 'home', '?'])
+    expect(tokeniseWithEnds('a . . b')).toEqual(['a', '.', 'b'])
+    expect(tokenise('Hi there! Yes.')).toEqual(['hi', 'there', 'yes'])
+  })
+
+  it('knows end marks, finished sentences and how to say them', () => {
+    expect(isEndMark('.')).toBe(true)
+    expect(isEndMark('net')).toBe(false)
+    expect(endsSentence('the cat sat.')).toBe(true)
+    expect(endsSentence('the cat sat')).toBe(false)
+    expect(spoken('.')).toBe('the end')
+    expect(spoken('net')).toBe('net')
+    expect(joinTokens(['the', 'cat', '.', 'the', 'dog', '!'])).toBe('the cat. the dog!')
+    expect(withoutLastToken('the cat sat.')).toBe('the cat sat')
+    expect(withoutLastToken('the cat')).toBe('the')
   })
 })
 
@@ -69,12 +108,15 @@ describe('the word-pair model', () => {
 
   it('returns no options for an unknown word or the last word of the text', () => {
     expect(nextOptions(model, 'dog')).toEqual({ word: 'dog', total: 0, options: [] })
-    expect(nextOptions(model, 'ran').total).toBe(0)
+    expect(nextOptions(buildModel('a b'), 'b').total).toBe(0)
     expect(nextOptions(buildModel(''), 'the').total).toBe(0)
   })
 
-  it('lets a sentence end run into the next sentence', () => {
-    expect(nextOptions(buildModel('Go home. Stay'), 'home').options[0].word).toBe('stay')
+  it('lets a sentence end after a word, then carries on into the next sentence', () => {
+    const ended = buildModel('Go home. Stay')
+    expect(nextOptions(ended, 'home').options).toEqual([{ word: '.', count: 1, share: 1 }])
+    expect(nextOptions(ended, '.').options[0].word).toBe('stay')
+    expect(nextOptions(model, 'mat').options.map((o) => o.word)).toEqual(['.'])
   })
 
   it('handles words like constructor safely', () => {
@@ -99,7 +141,8 @@ describe('the word-pair model', () => {
 
   it('offers the most frequent words that have something after them as starting points', () => {
     expect(startingWords(model, 2)).toEqual(['the', 'cat'])
-    expect(startingWords(model)).not.toContain('ran')
+    expect(startingWords(buildModel('a b'))).not.toContain('b')
+    expect(startingWords(model)).not.toContain('.')
   })
 
   it('caches models by text', () => {
@@ -149,6 +192,10 @@ describe('sampling', () => {
 
   it('starts from the given word and follows the likeliest path at temperature 0', () => {
     expect(generateText(model, { start: 'The', temperature: 0, length: 3 })).toBe('the cat ran')
+  })
+
+  it('can end a sentence, with the mark stuck to the last word', () => {
+    expect(generateText(model, { start: 'cat', temperature: 0, length: 3 })).toBe('cat ran.')
   })
 
   it('starts from the first word when no start is given', () => {
