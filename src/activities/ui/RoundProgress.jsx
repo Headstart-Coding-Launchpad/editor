@@ -1,12 +1,13 @@
 import React from 'react'
 import { roundText } from '../round.js'
+import { usePresentation } from './presentation.js'
 
 // Non-interactive progress for an activity round: one tick-dot per rep (done or still to do,
 // bonus reps drawn as stars after the core) and one consistent line, "3 of 5 done". It replaces
 // the old Previous / numbered dots / Next bar: the student never picks an item, the round moves
 // on by itself. aria-live so a screen reader hears each rep land. Hidden for a single rep.
 export default function RoundProgress({ done, total, core = total }) {
-  if (!(total >= 2)) return null
+  if (usePresentation() || !(total >= 2)) return null
   const goal = Math.min(core, total)
   const text = roundText(done, total, goal)
   return (
@@ -56,6 +57,7 @@ export function RoundFinished({ total, onPlayAgain, readOnly = false, message })
 
 // The one-line moment shown once the core is met and bonus reps follow.
 export function BonusBanner() {
+  if (usePresentation()) return null
   return (
     <p className="act-result act-result--pass" role="status" data-testid="round-bonus">
       Done! ⭐ Bonus round

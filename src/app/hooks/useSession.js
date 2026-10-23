@@ -42,7 +42,12 @@ import {
   archiveWorkFields,
   normaliseSessionArchive,
 } from '../../badges/sessionArchive'
-import { normalizeShowItIds } from '../../shared/showIt'
+import {
+  SHOW_IT_MAX,
+  SHOW_IT_VIEWS,
+  clampShowItIndex,
+  normalizeShowItIds,
+} from '../../shared/showIt'
 import { findShownResponse, normalizeShownText } from '../../shared/shownResponses'
 import { AUTO_CHECK_LEAVE, AUTO_CHECK_RESULTS, countedAttemptEntries } from '../../shared/autoCheck'
 import { liveInkPath } from '../liveInk/liveInkData'
@@ -462,7 +467,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
   // Teacher-only: puts up to three students' current builds side by side on the presentation
   // window and every student screen. Only the ids and the task are stored; the tiles read the
   // students' own records.
-  async function startShowIt(studentIds) {
+  async function startShowIt(studentIds, view) {
     const ids = normalizeShowItIds(studentIds)
     const taskId = session?.currentTaskId
     if (ids.length === 0 || taskId == null) return
@@ -470,6 +475,18 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       studentIds: ids,
       taskId: String(taskId),
       startedAt: Date.now(),
+      // The view the tutor's task opens in (side by side or one at a time); omitted = default.
+      ...(SHOW_IT_VIEWS.includes(view) ? { view, index: 0 } : {}),
+    })
+  }
+
+  // The tutor's choice drives every screen: 'side' or 'single', and which build the single view
+  // shows (0-2).
+  async function setShowItView(view, index = 0) {
+    if (!SHOW_IT_VIEWS.includes(view) || !session?.showIt) return
+    await update(ref(db, `sessions/${lessonId}/showIt`), {
+      view,
+      index: clampShowItIndex(index, SHOW_IT_MAX),
     })
   }
 
@@ -2404,6 +2421,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     dismissPoll,
     showResponse,
     startShowIt,
+    setShowItView,
     stopShowIt,
     hideResponse,
     setShownResponseName,

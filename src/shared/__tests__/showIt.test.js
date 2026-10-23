@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   SHOW_IT_MAX,
+  clampShowItIndex,
+  defaultShowItView,
   getShowIt,
   getShowItBuilds,
   normalizeShowItIds,
@@ -21,6 +23,17 @@ describe('showIt helpers', () => {
       studentIds: ['a'],
       taskId: '4',
       startedAt: 9,
+      view: null,
+      index: 0,
+    })
+    expect(
+      getShowIt({ showIt: { studentIds: ['a'], taskId: 4, view: 'single', index: 2 } })
+    ).toMatchObject({ view: 'single', index: 2 })
+    expect(
+      getShowIt({ showIt: { studentIds: ['a'], taskId: 4, view: 'grid', index: -1 } })
+    ).toMatchObject({
+      view: null,
+      index: 0,
     })
   })
 
@@ -37,5 +50,19 @@ describe('showIt helpers', () => {
   it('explains why it is unavailable with no students', () => {
     expect(showItDisabledReason(0)).toMatch(/no students/i)
     expect(showItDisabledReason(2)).toBeNull()
+  })
+})
+
+describe('Show it view', () => {
+  it('opens one at a time only for an activity that says its view is big', () => {
+    expect(defaultShowItView({ id: 1, taskType: 'activity', activityType: 'binary' })).toBe('side')
+    expect(defaultShowItView({ id: 2 })).toBe('side')
+  })
+
+  it('keeps the index inside the builds that exist', () => {
+    expect(clampShowItIndex(5, 2)).toBe(1)
+    expect(clampShowItIndex(-1, 3)).toBe(0)
+    expect(clampShowItIndex(undefined, 3)).toBe(0)
+    expect(clampShowItIndex(1, 0)).toBe(0)
   })
 })

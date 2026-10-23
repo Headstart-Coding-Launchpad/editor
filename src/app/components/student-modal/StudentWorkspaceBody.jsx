@@ -107,6 +107,11 @@ export default function StudentWorkspaceBody({
   // Show it: the output rail starts open and shares the height with the code (the output is
   // the point on the big screen).
   outputOpen = false,
+  // false = display mode (Show it): the build only, with no marking of any kind: no hints,
+  // ticks, "Correct", pass/fail colours, check results, tutor highlights or tutor-only notes.
+  showMarks = true,
+  // Size the code to its content and give the rest of the height to the output (Show it).
+  fitCode = false,
 }) {
   const [editableAnswer, pushEditableAnswer] = useTeacherEditableValue(
     student.currentAnswer ?? '',
@@ -124,7 +129,7 @@ export default function StudentWorkspaceBody({
   const lineHints = getMirrorLineHintSets(task, {
     mirror,
     file: activeFileObj?.name ?? null,
-    isSessionSandbox,
+    isSessionSandbox: isSessionSandbox || !showMarks,
   })
   // The task's locked lines on the mirrored code (display only, like the hints).
   const lockedLines = getMirrorLockSets(task, { mirror, isSessionSandbox })
@@ -264,7 +269,7 @@ export default function StudentWorkspaceBody({
       onEditAnswer?.({ answer: serialized, passed })
     }
     // What the student is typing but has not submitted (short answer, typed gaps), in full.
-    const draftText = isSessionSandbox ? null : readAnswerDraft(student, task?.id)
+    const draftText = isSessionSandbox || !showMarks ? null : readAnswerDraft(student, task?.id)
     const view = (
       <ActivityView
         task={task}
@@ -274,7 +279,8 @@ export default function StudentWorkspaceBody({
         lessonType={lesson?.type}
         assetsPath={resolveAssetsPath(lesson?.assetsPath)}
         result={{ submitted: student.lastRunStatus === 'submitted', passed: student.checkPassed }}
-        tileHighlights={tileHighlights}
+        presentation={!showMarks}
+        tileHighlights={showMarks ? tileHighlights : null}
         onTargetTap={onTileTargetTap}
         history={typingHistory}
         onChange={(update) => pushEdit(update, false)}
@@ -285,7 +291,7 @@ export default function StudentWorkspaceBody({
         }
       />
     )
-    const historyMode = isSessionSandbox ? null : taskHistoryMode(task)
+    const historyMode = isSessionSandbox || !showMarks ? null : taskHistoryMode(task)
     const historyPanel = historyMode ? (
       <TypingHistoryPanel
         modeHistory={typingHistoryForMode(typingHistory, historyMode)}
@@ -352,6 +358,7 @@ export default function StudentWorkspaceBody({
         {highlightComposer}
         <CodeStageSplit
           stageResult={stageResult}
+          fitCode={fitCode}
           editor={
             <CodeEditor
               value={student.currentCode ?? ''}
@@ -366,7 +373,10 @@ export default function StudentWorkspaceBody({
               variableLinks={variableLinks.editor}
               onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
               onHighlightDismiss={onDismissHighlight}
-              style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
+              style={{
+                height: fitCode ? 'auto' : '100%',
+                ...(canHighlight ? s.editorHighlightMode : {}),
+              }}
             />
           }
         />
@@ -378,8 +388,9 @@ export default function StudentWorkspaceBody({
           <OutputPanel
             output={student.currentOutput ?? ''}
             runStatus={student.lastRunStatus}
-            hasCheck={!!task?.check && !isSessionSandbox}
-            checkPassed={student.checkPassed}
+            hasCheck={showMarks && !!task?.check && !isSessionSandbox}
+            checkPassed={showMarks && student.checkPassed}
+            hideStatus={!showMarks}
             inputPrompt={student.currentInputPrompt ?? null}
             inputReadOnly
             mirroredInputValue={student.currentInput ?? ''}

@@ -1,11 +1,12 @@
 import React from 'react'
+import { usePresentation } from './presentation.js'
 
 // Tutor-only item picker for read-only views (the student card modal, presentation, review).
 // Students never see it: their round moves on by itself (ui/RoundProgress.jsx). It lets a tutor
 // look at any item's state, e.g. what a student typed on item 2 after moving on. `statusFor(item)`
 // returns 'done', 'wrong' or null.
 export default function TutorItemPicker({ items, currentId, onSelect, statusFor, noun = 'Item' }) {
-  if (!items?.length || items.length < 2) return null
+  if (usePresentation() || !items?.length || items.length < 2) return null
   return (
     <nav className="act-round" aria-label={`${noun}s (tutor view)`} data-testid="tutor-item-picker">
       {items.map((item, index) => {

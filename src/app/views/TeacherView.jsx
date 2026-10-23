@@ -4,6 +4,7 @@ import { firestore } from '../../shared/firebase'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
 import { useSession } from '../hooks/useSession'
+import { defaultShowItView } from '../../shared/showIt'
 import { findTaskById, flattenTasks, filterTasksByMode } from '../../shared/taskUtils'
 import {
   applyLessonOverride,
@@ -188,6 +189,7 @@ export default function TeacherView({ lessonId }) {
     dismissPoll,
     startShowIt,
     stopShowIt,
+    setShowItView,
     requestTeacherEdit,
     pushTeacherLiveCode,
     commitTeacherEdit,
@@ -1262,8 +1264,12 @@ export default function TeacherView({ lessonId }) {
             onNudgeStudent={nudgeStudent}
             onThumbsUpStudent={sendThumbsUp}
             onShowResponse={showResponse}
-            onShowIt={startShowIt}
+            onShowIt={(ids) => startShowIt(ids, defaultShowItView(currentTask))}
             onStopShowIt={stopShowIt}
+            onSetShowItView={setShowItView}
+            showItDefaultView={defaultShowItView(
+              flatTasks.find((t) => String(t.id) === String(session?.showIt?.taskId))
+            )}
             onHideResponse={hideResponse}
             onSetShownResponseName={setShownResponseName}
             onNudgeAway={nudgeAwayStudents}

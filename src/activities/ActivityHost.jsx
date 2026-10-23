@@ -8,6 +8,7 @@ import { deserializeActivityState } from './state.js'
 import { effectiveCapabilities } from './device.js'
 import { ChoiceEntranceProvider } from './ui/choiceEntrance.jsx'
 import { useBoardTileHighlights } from '../app/hooks/useBoardTileHighlights.js'
+import { ActivityPresentationContext } from './ui/presentation.js'
 import { supportsTileHighlights } from '../shared/tutorTileHighlights.js'
 
 // ActivityHost renders a hosted activity task (taskType 'activity', or a legacy quiz) in the
@@ -99,6 +100,8 @@ export function ActivityView({
   // The lesson's resolved assets base URL (resolveAssetsPath(lesson.assetsPath)), for activities
   // that show lesson pictures by relative path (Real or AI).
   assetsPath = '',
+  // Display mode (Show it): nothing marks the build. See ui/presentation.js.
+  presentation = false,
 }) {
   const ui = getTaskActivityUi(task)
   if (!ui || ui.id === UNKNOWN_ACTIVITY_ID || !ui.StudentView) {
@@ -124,14 +127,15 @@ export function ActivityView({
       readOnly={readOnly}
       device={device}
       teacher={teacher}
-      result={result}
+      result={presentation ? null : result}
+      presentation={presentation}
       tileHighlights={tileHighlights}
       onTargetTap={onTargetTap}
       history={history}
       assetsPath={assetsPath}
     />
   )
-  return (
+  const body = (
     <ChoiceEntranceProvider entranceKey={entranceKey}>
       {ui.ownsLayout ? (
         view
@@ -144,6 +148,14 @@ export function ActivityView({
         </div>
       )}
     </ChoiceEntranceProvider>
+  )
+  if (!presentation) return body
+  return (
+    <ActivityPresentationContext.Provider value>
+      <div className="act-presentation" data-presentation="true">
+        {body}
+      </div>
+    </ActivityPresentationContext.Provider>
   )
 }
 

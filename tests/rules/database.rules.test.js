@@ -380,6 +380,15 @@ describe('Show it', () => {
     await assertFails(ref(as.teacher, path).set({ ...showIt, names: ['Jamie'] }))
     await assertSucceeds(ref(as.teacher, path).set({ ...showIt, studentIds: ['a'] }))
   })
+
+  it('lets the tutor choose the view and the build shown, and nothing else', async () => {
+    await assertSucceeds(ref(as.teacher, path).set({ ...showIt, view: 'single', index: 2 }))
+    await assertSucceeds(ref(as.teacher, path).set({ ...showIt, view: 'side' }))
+    await assertFails(ref(as.teacher, path).set({ ...showIt, view: 'grid' }))
+    await assertFails(ref(as.teacher, path).set({ ...showIt, view: 'single', index: 3 }))
+    await assertFails(ref(as.teacher, path).set({ ...showIt, view: 'single', index: -1 }))
+    await assertFails(ref(as.student, path).update({ view: 'single' }))
+  })
 })
 
 describe('class roster session fields', () => {

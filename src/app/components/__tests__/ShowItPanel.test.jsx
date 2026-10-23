@@ -1,6 +1,8 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
 import ShowItPanel from '../ShowItPanel'
+import { defaultShowItView } from '../../../shared/showIt'
 
 vi.mock('../../../shared/firebase', () => ({ db: {}, auth: {}, firestore: {} }))
 vi.mock('../../../shared/markdown', () => ({
@@ -70,7 +72,7 @@ describe('ShowItPanel', () => {
     expect(screen.queryByText(/Jamie/)).not.toBeInTheDocument()
   })
 
-  it('shows a realistic run record with its output open and the run status', async () => {
+  it('shows a realistic run record with its output open and no run status', async () => {
     const students = {
       s1: {
         displayName: 'Jamie Smith',
@@ -84,8 +86,9 @@ describe('ShowItPanel', () => {
     render(<ShowItPanel session={session(2, ['s1'], students)} lesson={LESSON} />)
     const panel = screen.getByTestId('output-panel')
     await waitFor(() => expect(panel.querySelector('pre').textContent).toContain('hello world'))
-    expect(screen.getByText('Ran OK')).toBeInTheDocument()
-    expect(screen.queryByText('Not run yet')).not.toBeInTheDocument()
+    // Display mode: no pass/fail status on a shown build.
+    expect(screen.queryByText('Ran OK')).not.toBeInTheDocument()
+    expect(screen.queryByText('Error')).not.toBeInTheDocument()
   })
 
   it('shows nothing when the shown task is not found', () => {
@@ -93,5 +96,125 @@ describe('ShowItPanel', () => {
       <ShowItPanel session={session(99, ['s1'], { s1: {} })} lesson={LESSON} />
     )
     expect(container).toBeEmptyDOMElement()
+  })
+
+  describe('marks hidden on shown builds', () => {
+    const MARKED = [
+      { bits: '1010', note: 'a wrong answer' },
+      { bits: '0101', note: 'the right answer' },
+    ]
+
+    it.each(MARKED)('an activity build with $note carries no hint, tick or Correct', ({ bits }) => {
+      const students = { s1: { currentAnswer: answer(bits) } }
+      const { container } = render(
+        <ShowItPanel session={session(1, ['s1'], students)} lesson={LESSON} />
+      )
+      expect(screen.getByTestId('binary-activity')).toBeInTheDocument()
+      expect(container.querySelector('.act-hint')).toBeNull()
+      expect(container.querySelector('.act-result')).toBeNull()
+      expect(container.querySelector('.act-correct-tick')).toBeNull()
+      expect(screen.queryByText(/Correct|Not yet|Bonus|too small|too big/i)).not.toBeInTheDocument()
+      expect(screen.queryByTestId('round-progress')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('tutor-item-picker')).not.toBeInTheDocument()
+    })
+
+    it('a code build with a failed check shows no status or check result', () => {
+      const lesson = {
+        type: 'python',
+        tasks: [{ id: 2, title: 'Say hello', check: { type: 'output_contains', value: 'x' } }],
+      }
+      const students = {
+        s1: {
+          currentCode: 'print(1)',
+          currentOutput: '1',
+          lastRunStatus: 'error',
+          checkPassed: false,
+        },
+      }
+      render(<ShowItPanel session={session(2, ['s1'], students)} lesson={lesson} />)
+      expect(screen.queryByText('Error')).not.toBeInTheDocument()
+      expect(screen.queryByText('Ran OK')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('one at a time', () => {
+    const students = {
+      s1: { currentAnswer: answer('0001') },
+      s2: { currentAnswer: answer('0010') },
+      s3: { currentAnswer: answer('0100') },
+    }
+    const withView = (extra) => ({
+      ...session(1, ['s1', 's2', 's3'], students),
+      showIt: { studentIds: ['s1', 's2', 's3'], taskId: '1', startedAt: 1, ...extra },
+    })
+
+    it('shows every build side by side by default for a small view', () => {
+      expect(defaultShowItView(BINARY)).toBe('side')
+      render(<ShowItPanel session={withView({})} lesson={LESSON} />)
+      expect(screen.getAllByTestId('show-it-tile')).toHaveLength(3)
+    })
+
+    it('shows only the chosen build, full width, when the tutor chose one at a time', () => {
+      render(<ShowItPanel session={withView({ view: 'single', index: 1 })} lesson={LESSON} />)
+      const tiles = screen.getAllByTestId('show-it-tile')
+      expect(tiles).toHaveLength(1)
+      expect(within(tiles[0]).getByRole('heading', { name: 'Build 2' })).toBeInTheDocument()
+      expect(
+        screen.getByTestId('show-it-panel').querySelector('[data-view="single"]')
+      ).not.toBeNull()
+    })
+
+    it('has no controls for students, and the tutor controls write the view and the build', () => {
+      const onSetView = vi.fn()
+      const { rerender } = render(
+        <ShowItPanel session={withView({ view: 'single', index: 1 })} lesson={LESSON} />
+      )
+      expect(screen.queryByRole('button', { name: 'Next build' })).not.toBeInTheDocument()
+      rerender(
+        <ShowItPanel
+          session={withView({ view: 'single', index: 1 })}
+          lesson={LESSON}
+          onSetView={onSetView}
+        />
+      )
+      expect(screen.getByText('Build 2 of 3')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Next build' }))
+      expect(onSetView).toHaveBeenLastCalledWith('single', 2)
+      fireEvent.click(screen.getByRole('button', { name: 'Previous build' }))
+      expect(onSetView).toHaveBeenLastCalledWith('single', 0)
+      fireEvent.click(screen.getByRole('button', { name: 'Side by side' }))
+      expect(onSetView).toHaveBeenLastCalledWith('side', 1)
+    })
+
+    it('disables the arrow at either end', () => {
+      render(
+        <ShowItPanel
+          session={withView({ view: 'single', index: 0 })}
+          lesson={LESSON}
+          onSetView={vi.fn()}
+        />
+      )
+      expect(screen.getByRole('button', { name: 'Previous build' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Next build' })).toBeEnabled()
+    })
+  })
+
+  describe('activity views fit the tile', () => {
+    it('renders every column of an 8-bit row, and the tile CSS lets the row shrink to fit', () => {
+      const wide = { ...BINARY, bits: 8, items: [{ id: 'a', target: 200 }] }
+      const students = { s1: { currentAnswer: answer('11001000') } }
+      render(
+        <ShowItPanel
+          session={session(1, ['s1'], students)}
+          lesson={{ type: 'python', tasks: [wide] }}
+        />
+      )
+      const row = screen.getByTestId('show-it-tile').querySelector('[data-bit-row="answer"]')
+      expect(within(row).getAllByRole('switch')).toHaveLength(8)
+      const css = readFileSync('src/index.css', 'utf8')
+      const rule = css.slice(css.indexOf('.show-it-tile .act-bits {'))
+      expect(rule.slice(0, rule.indexOf('}'))).toMatch(/minmax\(0, 1fr\)/)
+      expect(rule.slice(0, rule.indexOf('}'))).toMatch(/overflow-x: visible/)
+    })
   })
 })

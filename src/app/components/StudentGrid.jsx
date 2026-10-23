@@ -15,7 +15,8 @@ import CommonHintsStrip from './CommonHintsStrip'
 import ConfidenceSpreadStrip from './ConfidenceSpreadStrip'
 import { getTaskActivity } from '../../activities/registry.pure.js'
 import { confidenceSpreadEntries, tallyConfidenceSpread } from '../../shared/confidenceScale'
-import { SHOW_IT_MAX, getShowIt, showItDisabledReason } from '../../shared/showIt'
+import { SHOW_IT_MAX, clampShowItIndex, getShowIt, showItDisabledReason } from '../../shared/showIt'
+import { ShowItControls } from './ShowItPanel'
 import { summariseCommonHints } from '../studentHints.js'
 import { classActivities, summariseClassActivities } from '../studentActivity'
 
@@ -74,6 +75,10 @@ export default function StudentGrid({
   // Show it (src/shared/showIt.js): onShowIt(studentIds) / onStopShowIt(); both absent = off.
   onShowIt,
   onStopShowIt,
+  // (view, index) => writes the tutor's Show it view choice (side / single + which build).
+  onSetShowItView,
+  // The Show it task's default view when the tutor has not chosen: 'side' or 'single'.
+  showItDefaultView = 'side',
   onHideResponse,
   onSetShownResponseName,
   onNudgeAway,
@@ -586,6 +591,18 @@ export default function StudentGrid({
                 📺 Showing {showItNow.studentIds.length}{' '}
                 {showItNow.studentIds.length === 1 ? 'build' : 'builds'} to the class
               </span>
+              {onSetShowItView && showItNow.studentIds.length > 1 && (
+                <ShowItControls
+                  view={showItNow.view ?? showItDefaultView}
+                  index={clampShowItIndex(showItNow.index, showItNow.studentIds.length)}
+                  count={showItNow.studentIds.length}
+                  onSetView={(view, index) =>
+                    Promise.resolve(onSetShowItView(view, index)).catch((err) =>
+                      console.warn('Could not change the Show it view:', err)
+                    )
+                  }
+                />
+              )}
               <button
                 type="button"
                 className="btn-danger"

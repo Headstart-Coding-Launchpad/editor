@@ -210,6 +210,7 @@ export default function StudentView({
     pushClassPaneCommand,
     subscribeLiveInk,
     createLiveInkWriter,
+    setShowItView,
   } = useSession(useRealtimeSession ? lessonId : null, {
     enabled: useRealtimeSession,
     keepPresenter: teacherPresentation,
@@ -1927,7 +1928,12 @@ export default function StudentView({
           </div>
         </div>
       )}
-      <ShowItPanel session={session} lesson={lesson} presentation={teacherPresentation} />
+      <ShowItPanel
+        session={session}
+        lesson={lesson}
+        presentation={teacherPresentation}
+        onSetView={teacherPresentation ? setShowItView : null}
+      />
       {activePoll && (
         <ClassPollCard
           poll={activePoll}

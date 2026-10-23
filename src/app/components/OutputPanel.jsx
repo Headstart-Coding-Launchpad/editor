@@ -71,6 +71,8 @@ export default function OutputPanel({
   mirroredInputValue = '',
   checkPassed = false,
   hasCheck = false,
+  // Display mode (Show it): no "Ran OK" / "Error" status dot, which would mark the build.
+  hideStatus = false,
   running = false,
   openOnRun = true,
   openOnOutput = false,
@@ -178,8 +180,8 @@ export default function OutputPanel({
           style={{ display: 'flex', alignItems: 'center', gap: 8 }}
           onClick={(e) => e.stopPropagation()}
         >
-          <span style={{ ...s.statusDot, background: statusColour }} />
-          <span style={s.statusLabel}>{statusLabel}</span>
+          {!hideStatus && <span style={{ ...s.statusDot, background: statusColour }} />}
+          {!hideStatus && <span style={s.statusLabel}>{statusLabel}</span>}
           {rightActions && <div style={s.trailingActions}>{rightActions}</div>}
         </div>
       </div>

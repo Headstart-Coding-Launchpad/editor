@@ -400,6 +400,35 @@ describe('useSession', () => {
       )
     })
 
+    it('startShowIt stores the view the task opens in; setShowItView updates the choice', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ currentTaskId: 4, showIt: { studentIds: ['a'], taskId: '4', startedAt: 1 } })
+      await act(async () => {
+        await result.current.startShowIt(['a'], 'single')
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/showIt' },
+        { studentIds: ['a'], taskId: '4', startedAt: expect.any(Number), view: 'single', index: 0 }
+      )
+      await act(async () => {
+        await result.current.setShowItView('single', 2)
+        await result.current.setShowItView('grid', 1)
+        await result.current.setShowItView('side', 9)
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/showIt' },
+        { view: 'single', index: 2 }
+      )
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/showIt' },
+        { view: 'side', index: 2 }
+      )
+      expect(firebaseMocks.update).not.toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/showIt' },
+        expect.objectContaining({ view: 'grid' })
+      )
+    })
+
     it('startShowIt with no ids writes nothing', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       fireSession({ currentTaskId: 4 })

@@ -39,6 +39,15 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-23
 
+- **Show it shows builds unmarked, and one at a time (Lesson Gen #190 review).** Shown builds
+  carry no hints, ticks, "Correct", check results or pass/fail colours. The tutor can switch
+  between "Side by side" and "One at a time" (one build full width, ← → arrows), and every screen
+  follows. An activity definition can set `showIt: 'single'` so its builds open one at a time
+  (use it for a big view such as a space station); the default is `'side'`. An activity with its
+  own hint or verdict line should check `usePresentation()` (src/activities/ui/presentation.js).
+- Affects: all activities, python, turtle, html, scratch · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-10-23-show-it-the-tutor-puts-2-3-students-builds-on-the-big-screen.md
+
 - **Show it: the tutor puts up to three students' builds side by side (platform request R103,
   handoff #173).** Nothing to author: it works on any task with student work (every activity,
   and code tasks: Python with its Stage and output, Turtle, HTML, Scratch). Lesson guides can

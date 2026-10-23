@@ -2,14 +2,33 @@
 // presentation window and on every student screen, names hidden.
 //
 // RTDB shape (docs/agents/runtime-model.md):
-//   sessions/{lessonId}/showIt: { studentIds: [anonymousId, ...up to 3], taskId, startedAt }
+//   sessions/{lessonId}/showIt: { studentIds: [anonymousId, ...up to 3], taskId, startedAt,
+//                                 view?: 'side' | 'single', index?: 0-2 }
+// `view` is the tutor's choice and drives every screen: 'side' (all builds side by side) or
+// 'single' (one build, full size; `index` is which). Absent = the task's default, 'single' for
+// an activity whose definition says `showIt: 'single'` (a big view), otherwise 'side'.
 // or absent. The builds themselves are not copied: each tile reads the student's own
 // students/{id} record (currentAnswer / currentCode / currentOutput ...), so it follows the
 // build as it changes. setTaskId and createSession clear the node.
 //
 // Pure and Node-safe.
 
+import { getTaskActivity } from '../activities/registry.pure.js'
+
 export const SHOW_IT_MAX = 3
+export const SHOW_IT_VIEWS = ['side', 'single']
+
+// The view a task opens in when the tutor has not chosen one: 'single' for an activity whose
+// definition sets `showIt: 'single'` (its view is too large for a third of the screen).
+export function defaultShowItView(task) {
+  return getTaskActivity(task)?.showIt === 'single' ? 'single' : 'side'
+}
+
+// The index of the build shown in the single view, kept inside the builds that exist.
+export function clampShowItIndex(index, count) {
+  const n = Number.isInteger(index) ? index : 0
+  return Math.max(0, Math.min(n, Math.max(0, count - 1)))
+}
 
 // A short reason the Show it action is unavailable, or null when it can run.
 export function showItDisabledReason(studentCount) {
@@ -29,13 +48,20 @@ export function normalizeShowItIds(ids) {
   return out
 }
 
-// The node as shown: { studentIds, taskId, startedAt } or null when nothing is being shown.
+// The node as shown: { studentIds, taskId, startedAt, view, index } (view null when the tutor
+// has not chosen) or null when nothing is being shown.
 export function getShowIt(session) {
   const raw = session?.showIt
   if (!raw || typeof raw !== 'object') return null
   const studentIds = normalizeShowItIds(raw.studentIds)
   if (studentIds.length === 0 || raw.taskId == null || raw.taskId === '') return null
-  return { studentIds, taskId: String(raw.taskId), startedAt: raw.startedAt ?? null }
+  return {
+    studentIds,
+    taskId: String(raw.taskId),
+    startedAt: raw.startedAt ?? null,
+    view: SHOW_IT_VIEWS.includes(raw.view) ? raw.view : null,
+    index: Number.isInteger(raw.index) && raw.index >= 0 ? raw.index : 0,
+  }
 }
 
 // One tile per picked student, labelled "Build 1/2/3" by position. Students who have since
