@@ -104,6 +104,9 @@ export default function StudentWorkspaceBody({
   // saved entries (newest first), for a typing task's history line and "Typing history" list.
   typingHistory = null,
   typingEntries = null,
+  // Show it: the output rail starts open and shares the height with the code (the output is
+  // the point on the big screen).
+  outputOpen = false,
 }) {
   const [editableAnswer, pushEditableAnswer] = useTeacherEditableValue(
     student.currentAnswer ?? '',
@@ -383,6 +386,8 @@ export default function StudentWorkspaceBody({
             // The teacher opened this modal to watch the student, so the
             // student's run output should appear without an extra click.
             openOnOutput
+            defaultCollapsed={!outputOpen}
+            fill={outputOpen}
           />
         )}
         {/* The student's name-tag panel (showVariables): their last run and predictions. */}

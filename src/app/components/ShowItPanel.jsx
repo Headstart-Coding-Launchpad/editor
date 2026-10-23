@@ -82,6 +82,7 @@ function ShowItTile({ label, student, task, lesson, session }) {
             cursorState={null}
             blockDragState={null}
             iframeSrc={iframeSrc}
+            outputOpen
           />
         )}
       </div>

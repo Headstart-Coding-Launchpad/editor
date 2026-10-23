@@ -6623,6 +6623,7 @@ label.te-backdrop-tag,
   align-items: baseline;
   gap: 12px;
   flex-shrink: 0;
+  padding-top: 8px;
 }
 .show-it-panel__kicker {
   font-weight: 700;

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import ShowItPanel from '../ShowItPanel'
 
@@ -68,6 +68,24 @@ describe('ShowItPanel', () => {
     expect(screen.getByTestId('code-editor')).toHaveValue('print("hi")')
     expect(screen.getByRole('heading', { name: 'Build 1' })).toBeInTheDocument()
     expect(screen.queryByText(/Jamie/)).not.toBeInTheDocument()
+  })
+
+  it('shows a realistic run record with its output open and the run status', async () => {
+    const students = {
+      s1: {
+        displayName: 'Jamie Smith',
+        currentCode: 'print("hello world")',
+        currentOutput: 'hello world',
+        lastRunStatus: 'success',
+        lastRunAt: 1700000000000,
+        checkPassed: true,
+      },
+    }
+    render(<ShowItPanel session={session(2, ['s1'], students)} lesson={LESSON} />)
+    const panel = screen.getByTestId('output-panel')
+    await waitFor(() => expect(panel.querySelector('pre').textContent).toContain('hello world'))
+    expect(screen.getByText('Ran OK')).toBeInTheDocument()
+    expect(screen.queryByText('Not run yet')).not.toBeInTheDocument()
   })
 
   it('shows nothing when the shown task is not found', () => {
