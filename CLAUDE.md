@@ -25,6 +25,7 @@ This repo is LaunchPad Dev, one of several HSC agents. The shared map and brand 
 - When your outcome says the work is done, close the handoff in the same step (README rule 14). Never start work on a row whose latest outcome is "needs Ryan:".
 - Hand work to another agent directly (handoff.mjs add --from you --to them) when the owner is obvious; via the Hub only when it crosses agents or is unclear. Never relay through Ryan Hub.
 - Night routine: your start-up hook tells you to create two in-session crons (night work 00:37, morning line 07:33). Do it first, once per session. Nothing that needs Ryan runs at night.
+- When you finish a piece of work, post a short result summary in #launchpad-dev: what was done, where it is (branch, commit, live or not), screenshots when it's visible, and anything that needs Ryan (Ryan, 2026-10-23, #170).
 - Posts from scripts appear under the name "Ryan Hub"; Alfie (FlemTech Alpha) is Ryan's chief of staff, not a route to Ryan. Talk to Ryan yourself.
 
 ## Saving AI usage
