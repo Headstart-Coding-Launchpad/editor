@@ -4,6 +4,7 @@ import { getLessonModule } from '../../modules/registry'
 import { getModuleDefinition } from '../../modules/definitions'
 import { flattenTasks, deriveTaskContext } from '../../shared/taskUtils'
 import { getEffectiveLessonForTask } from '../../shared/composedLesson'
+import { readStageResult } from '../../shared/stage/sync.js'
 import { decodeFileKey } from '../../shared/fileKeys'
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
 import { readActivityAnswer } from '../../activities/state.js'
@@ -22,7 +23,15 @@ function moduleDisplayStateOf(module, raw) {
 
 // One build, read-only, rendered by the same body the tutor's student view uses. The student
 // record is stripped to the work itself: no name, no id, so nothing here can print either.
-function ShowItTile({ label, student, task, lesson, session, single = false }) {
+function ShowItTile({
+  label,
+  student,
+  task,
+  lesson,
+  session,
+  single = false,
+  canToggleCode = false,
+}) {
   const taskLesson = getEffectiveLessonForTask(lesson, task)
   const { moduleType, isQuiz, isInformation, isActivity, isSessionSandbox } = deriveTaskContext(
     taskLesson,
@@ -55,16 +64,54 @@ function ShowItTile({ label, student, task, lesson, session, single = false }) {
         )
       : null
 
+  // Result first: a code task shows what the program made, with the code behind a "Show code"
+  // toggle (the tutor's own choice on their screen, off by default). The result comes from the
+  // last Run's record: output, Stage / Turtle result, or the saved files.
+  const [showCode, setShowCode] = useState(false)
+  const resultFirst =
+    !isActivity &&
+    !isQuiz &&
+    task?.interactionMode !== 'submit' &&
+    (mirror === 'code' ||
+      mirror === 'files' ||
+      (mirror === 'view' && getModuleDefinition(moduleType)?.runResult?.turtle === true))
+  const hasRun =
+    mirror === 'code'
+      ? !!(
+          readStageResult(work.currentStageResult) ||
+          work.currentOutput ||
+          work.lastRunStatus ||
+          work.lastRunAt
+        )
+      : mirror === 'files'
+        ? !!iframeSrc
+        : !!(work.currentTurtleResult || work.lastRunStatus || work.lastRunAt)
+  const resultOnly = resultFirst && !showCode
+
   return (
     <section
       className={`show-it-tile${single ? ' show-it-tile--single' : ''}`}
       aria-label={label}
       data-testid="show-it-tile"
     >
-      <h3 className="show-it-tile__label">{label}</h3>
+      <header className="show-it-tile__head">
+        <h3 className="show-it-tile__label">{label}</h3>
+        {resultFirst && canToggleCode && (
+          <button
+            type="button"
+            className="btn-ghost-outline show-it-tile__code-toggle"
+            aria-pressed={showCode}
+            onClick={() => setShowCode((on) => !on)}
+          >
+            {showCode ? 'Hide code' : 'Show code'}
+          </button>
+        )}
+      </header>
       <div className="show-it-tile__body">
         {isInformation ? (
           <p className="show-it-tile__empty">Nothing to show on this task.</p>
+        ) : resultOnly && !hasRun ? (
+          <p className="show-it-tile__empty">{label} hasn&apos;t run their code yet.</p>
         ) : (
           <StudentWorkspaceBody
             lesson={taskLesson}
@@ -94,6 +141,7 @@ function ShowItTile({ label, student, task, lesson, session, single = false }) {
             outputOpen
             showMarks={false}
             fitCode
+            resultOnly={resultOnly}
           />
         )}
       </div>
@@ -199,6 +247,7 @@ export default function ShowItPanel({ session, lesson, presentation = false, onS
             lesson={lesson}
             session={session}
             single={single}
+            canToggleCode={presentation || !!onSetView}
           />
         ))}
       </div>

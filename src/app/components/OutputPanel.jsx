@@ -73,6 +73,8 @@ export default function OutputPanel({
   hasCheck = false,
   // Display mode (Show it): no "Ran OK" / "Error" status dot, which would mark the build.
   hideStatus = false,
+  // Show it: the output is the point, so print it big.
+  large = false,
   running = false,
   openOnRun = true,
   openOnOutput = false,
@@ -187,7 +189,7 @@ export default function OutputPanel({
       </div>
 
       {!contentCollapsed && (
-        <pre ref={preRef} style={s.pre}>
+        <pre ref={preRef} style={large ? { ...s.pre, ...s.preLarge } : s.pre}>
           {displayedOutput
             ? splitEmojiRuns(displayedOutput).map((run, index) =>
                 run.emoji ? (
@@ -235,6 +237,7 @@ export default function OutputPanel({
 }
 
 const s = {
+  preLarge: { fontSize: 'clamp(1.1rem, 2.4vw, 2rem)', lineHeight: 1.4 },
   panel: {
     display: 'flex',
     flexDirection: 'column',

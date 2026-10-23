@@ -36,6 +36,8 @@ export default function TeacherLiveView({
   // Run-count widgets on #@count lines (src/shared/runCounts.js getRunCountWidgets, read-only),
   // or null.
   runCounts = null,
+  // Show it, result first: just the drawing, big, no code.
+  resultOnly = false,
 }) {
   const canvasRef = useRef(null)
   const turtleResult = student?.currentTurtleResult ?? null
@@ -107,10 +109,13 @@ export default function TeacherLiveView({
     </div>
   )
 
+  if (resultOnly) return <div style={s.resultWrap}>{canvas}</div>
+
   return <SplitPane style={s.wrap} defaultSplit={50} left={editor} right={canvas} />
 }
 
 const s = {
+  resultWrap: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' },
   wrap: { flex: '1 1 auto', minHeight: 0, height: '100%' },
   editor: { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 },
   canvasWrap: {

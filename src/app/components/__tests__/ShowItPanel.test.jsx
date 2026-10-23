@@ -62,11 +62,13 @@ describe('ShowItPanel', () => {
     }
   })
 
-  it('shows a code task build read-only', () => {
+  it('shows a code task build read-only, with the code behind Show code', () => {
     const students = {
       s1: { displayName: 'Jamie Smith', currentCode: 'print("hi")', currentOutput: 'hi' },
     }
-    render(<ShowItPanel session={session(2, ['s1'], students)} lesson={LESSON} />)
+    render(<ShowItPanel session={session(2, ['s1'], students)} lesson={LESSON} presentation />)
+    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Show code' }))
     expect(screen.getByTestId('code-editor')).toHaveValue('print("hi")')
     expect(screen.getByRole('heading', { name: 'Build 1' })).toBeInTheDocument()
     expect(screen.queryByText(/Jamie/)).not.toBeInTheDocument()
@@ -84,6 +86,7 @@ describe('ShowItPanel', () => {
       },
     }
     render(<ShowItPanel session={session(2, ['s1'], students)} lesson={LESSON} />)
+    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
     const panel = screen.getByTestId('output-panel')
     await waitFor(() => expect(panel.querySelector('pre').textContent).toContain('hello world'))
     // Display mode: no pass/fail status on a shown build.
@@ -215,6 +218,90 @@ describe('ShowItPanel', () => {
       const rule = css.slice(css.indexOf('.show-it-tile .act-bits {'))
       expect(rule.slice(0, rule.indexOf('}'))).toMatch(/minmax\(0, 1fr\)/)
       expect(rule.slice(0, rule.indexOf('}'))).toMatch(/overflow-x: visible/)
+    })
+  })
+
+  describe('result first', () => {
+    const run = (type, task, student, props = {}) =>
+      render(
+        <ShowItPanel
+          session={session(2, ['s1'], { s1: student })}
+          lesson={{ type, tasks: [{ id: 2, title: 'Build', ...task }] }}
+          {...props}
+        />
+      )
+
+    it('Python shows the output, code hidden, and no toggle for students', async () => {
+      run(
+        'python',
+        {},
+        { currentCode: 'print(1)', currentOutput: 'one two', lastRunStatus: 'success' }
+      )
+      await waitFor(() => expect(screen.getByTestId('show-it-result')).toHaveTextContent('one two'))
+      expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /code/i })).not.toBeInTheDocument()
+    })
+
+    it('Python Stage shows the drawing big and no code until Show code', () => {
+      const stageResult = { commands: [{ type: 'circle', x: 0, y: 0, r: 5 }], truncated: false }
+      const { container } = run(
+        'python',
+        {},
+        { currentCode: 'draw()', currentStageResult: stageResult, lastRunStatus: 'success' },
+        { presentation: true }
+      )
+      expect(container.querySelector('canvas')).not.toBeNull()
+      expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Show code' }))
+      expect(screen.getByTestId('code-editor')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Hide code' }))
+      expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+    })
+
+    it('a build that has not run shows a friendly empty state', () => {
+      run('python', {}, { currentCode: 'print(1)' })
+      expect(screen.getByText("Build 1 hasn't run their code yet.")).toBeInTheDocument()
+    })
+
+    it('Turtle shows the drawing with no code editor until Show code', () => {
+      const { container } = run(
+        'turtle',
+        {},
+        {
+          currentCode: 'forward(50)',
+          currentTurtleResult: { commands: [], state: {} },
+          lastRunStatus: 'success',
+        },
+        { presentation: true }
+      )
+      expect(container.querySelector('canvas[role="img"]')).not.toBeNull()
+      expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Show code' }))
+      expect(container.querySelector('canvas[role="img"]')).not.toBeNull()
+    })
+
+    it('HTML shows the rendered page and no editor until Show code', () => {
+      const { container } = run(
+        'html',
+        { entryFile: 'index.html' },
+        { currentFiles: { 'index,html': '<h1>Hi</h1>' } },
+        { presentation: true }
+      )
+      expect(container.querySelector('iframe')).not.toBeNull()
+      expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Show code' }))
+      expect(screen.getByTestId('code-editor')).toBeInTheDocument()
+    })
+
+    it('an activity build has no code toggle', () => {
+      render(
+        <ShowItPanel
+          session={session(1, ['s1'], { s1: { currentAnswer: answer('0101') } })}
+          lesson={LESSON}
+          presentation
+        />
+      )
+      expect(screen.queryByRole('button', { name: 'Show code' })).not.toBeInTheDocument()
     })
   })
 })

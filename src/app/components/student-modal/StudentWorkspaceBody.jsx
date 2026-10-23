@@ -21,6 +21,7 @@ import TypingHistoryPanel from './TypingHistoryPanel'
 import CodeStageSplit from './CodeStageSplit'
 import { resolveAssetsPath } from '../../../shared/assetPaths'
 import { readStageResult } from '../../../shared/stage/sync.js'
+import StagePane from '../../../shared/stage/StagePane.jsx'
 
 function answerKey(value) {
   return typeof value === 'string' ? value : JSON.stringify(value ?? null)
@@ -112,6 +113,9 @@ export default function StudentWorkspaceBody({
   showMarks = true,
   // Size the code to its content and give the rest of the height to the output (Show it).
   fitCode = false,
+  // Show it, result first: the build's result only (Stage / Turtle drawing, HTML page, output
+  // text), big, with no code. Applies to the code, files and turtle mirrors.
+  resultOnly = false,
 }) {
   const [editableAnswer, pushEditableAnswer] = useTeacherEditableValue(
     student.currentAnswer ?? '',
@@ -352,6 +356,35 @@ export default function StudentWorkspaceBody({
   // The Python Stage drawing of the student's last run (currentStageResult), if it drew.
   const stageResult = mirror === 'code' ? readStageResult(student.currentStageResult) : null
 
+  if (mirror === 'code' && resultOnly)
+    return (
+      <div style={s.resultStack} data-testid="show-it-result">
+        {stageResult && (
+          <StagePane
+            compact
+            commands={stageResult.commands}
+            truncated={stageResult.truncated}
+            title="Stage"
+            style={s.resultStage}
+          />
+        )}
+        {(!stageResult || student.currentOutput) && (
+          <OutputPanel
+            output={student.currentOutput ?? ''}
+            runStatus={student.lastRunStatus}
+            hideStatus
+            inputPrompt={student.currentInputPrompt ?? null}
+            inputReadOnly
+            mirroredInputValue={student.currentInput ?? ''}
+            collapsible={false}
+            defaultCollapsed={false}
+            fill={!stageResult}
+            large={!stageResult}
+          />
+        )}
+      </div>
+    )
+
   if (mirror === 'code')
     return (
       <>
@@ -426,6 +459,8 @@ export default function StudentWorkspaceBody({
         cursorState={cursorState}
         blockDragState={blockDragState}
         isSessionSandbox={isSessionSandbox}
+        forcedPane={resultOnly && spriteState ? 'stage' : null}
+        forcedPaneToken={resultOnly && spriteState ? 1 : null}
       />
     )
   }
@@ -448,6 +483,7 @@ export default function StudentWorkspaceBody({
           onActivity={undefined}
           isInSandbox={false}
           activeStage={null}
+          resultOnly={resultOnly}
         />
         {/* Turtle's name-tag panel (showVariables); nothing for tasks without one. */}
         <TaskVariablesPanel
@@ -455,7 +491,7 @@ export default function StudentWorkspaceBody({
           synced={student.currentVariables ?? null}
           code={typeof moduleDisplayState === 'string' ? moduleDisplayState : ''}
           audience="tutor"
-          hidden={isSessionSandbox}
+          hidden={isSessionSandbox || resultOnly}
           style={s.variablesPanel}
         />
       </>
@@ -463,6 +499,13 @@ export default function StudentWorkspaceBody({
   }
 
   const inspectorConfig = mirror === 'files' ? getInspectorConfig(task) : null
+  if (mirror === 'files' && resultOnly)
+    return (
+      <div style={s.iframePane} data-testid="show-it-result">
+        <IframePreview src={iframeSrc} iframeRef={iframeRef} fill />
+      </div>
+    )
+
   if (mirror === 'files')
     return (
       <>
@@ -521,6 +564,8 @@ export default function StudentWorkspaceBody({
 }
 
 const s = {
+  resultStack: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8 },
+  resultStage: { flex: 1, minHeight: 0 },
   variablesPanel: { flexShrink: 0, maxHeight: 260, marginTop: 8 },
   // The unsubmitted draft above a quiz: dashed so it never reads as the submitted answer.
   draftStack: {

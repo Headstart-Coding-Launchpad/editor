@@ -6648,12 +6648,24 @@ label.te-backdrop-tag,
   border-radius: 10px;
   overflow: hidden;
 }
+.show-it-tile__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--ui-surface-neutral-sunk);
+  flex-shrink: 0;
+}
 .show-it-tile__label {
   margin: 0;
   padding: 6px 12px;
   font-size: 1rem;
-  background: var(--ui-surface-neutral-sunk);
-  flex-shrink: 0;
+}
+.show-it-tile__code-toggle {
+  margin-right: 8px;
+  min-height: 32px;
+  padding: 2px 10px;
+  font-size: 0.85rem;
 }
 .show-it-tile__body {
   flex: 1;
