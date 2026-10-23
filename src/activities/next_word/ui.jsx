@@ -1,56 +1,60 @@
-﻿import { useId, useState } from 'react'
+﻿import { useEffect, useId, useRef, useState } from 'react'
 import NextWordBuilderEditor from './NextWordBuilderEditor.jsx'
-import ActivityCorrect from '../ui/ActivityCorrect.jsx'
-import RoundProgress from '../ui/RoundProgress.jsx'
-import TutorItemPicker from '../ui/TutorItemPicker.jsx'
-import { useRoundFlow } from '../ui/useRoundFlow.js'
+import { SpinTick } from '../ui/ActivityCorrect.jsx'
+import RoundProgress, { BonusBanner } from '../ui/RoundProgress.jsx'
+import { prefersReducedMotion } from '../../shared/motion.js'
 import {
-  chosenText,
-  gradeItem,
+  OWN_VOICE,
+  activeModel,
+  applyStep,
+  candidatesOf,
+  gradeTask,
+  guessGoalOf,
   initialNextWordState,
-  itemStateOf,
-  optionsForPrompt,
-  textsOf,
+  normalizeNextWordState,
+  ownWordsOf,
+  panelsOf,
+  sillyLabel,
+  startWordOf,
+  voiceOf,
+  voicesOf,
 } from './next_word.js'
 import {
   DEFAULT_TEMPERATURE,
-  MAX_GENERATED_CHARS,
   MAX_PASTE_CHARS,
   MAX_TEMPERATURE,
   MIN_TEMPERATURE,
   describeCount,
-  generateText,
-  modelFor,
+  lastWordOf,
   nextOptions,
-  normaliseWord,
-  startingWords,
-  temperatureLabel,
-  tokenise,
+  pickOption,
 } from './ngram.js'
 
 // Next Word UI. Controlled view: ActivityHost passes `state`, `onChange(next | prev =>
-// next)`, `onSubmit()` (grades and reports; resolves to { passed }), `readOnly` (teacher views
-// and review) and `device`. Never write to Firebase or storage here: useActivityState owns
-// persistence and live sync. The model is rebuilt in the browser from the chosen text (cached
-// in ngram.js); nothing leaves the device.
+// next)`, `readOnly` (teacher views and review) and `teacher`. Never write to Firebase or
+// storage here: useActivityState owns persistence and live sync. The model is rebuilt in the
+// browser from the student's own sentences (or the chosen voice); nothing leaves the device but
+// the sentence it wrote and the guess counts (definition.serializeShared).
 
 const MAX_BARS = 8
+const SPIN_STEP_MS = 110
 
-// The probability bars for one word. Every row says the number in words, so the bar is only a
-// picture of it.
-function NextWordBars({ info, label }) {
-  if (!info) return null
+// The stats panel: which words followed the sentence's last word, with the numbers in words.
+function StatsPanel({ model, sentence }) {
+  const word = lastWordOf(sentence)
+  if (!model || !word) {
+    return <p className="act-nw-none">Press Start. Then you can see which words followed.</p>
+  }
+  const info = nextOptions(model, word)
   if (info.total === 0) {
-    return <p className="act-nw-none">In this text, no word comes after “{info.word}”.</p>
+    return <p className="act-nw-none">No word comes after “{word}” in what it learned.</p>
   }
   const shown = info.options.slice(0, MAX_BARS)
   const hidden = info.options.length - shown.length
   return (
-    <div>
-      <p className="act-nw-bars-title" style={{ fontWeight: 600 }}>
-        {label ?? `After “${info.word}”, the next word was:`}
-      </p>
-      <ul className="act-nw-bars" aria-label={`Words that come after ${info.word}`}>
+    <div data-testid="next_word-stats">
+      <p className="act-nw-bars-title">After “{info.word}”, these words came next:</p>
+      <ul className="act-nw-bars" aria-label={`Words that came after ${info.word}`}>
         {shown.map((option) => (
           <li key={option.word} className="act-nw-bar">
             <span className="act-nw-bar__label">
@@ -74,355 +78,308 @@ function NextWordBars({ info, label }) {
 
 export function NextWordStudentView({
   task,
-  state,
+  state: rawState,
   onChange,
-  onSubmit,
   readOnly = false,
-  teacher = false,
+  teacher,
 }) {
-  // A tutor (read-only view, or editing a student's answers) never lingers or advances: they
-  // follow the student's item or pick one in the tutor-only picker.
-  const tutor = readOnly || teacher
+  // A tutor (read-only view, or editing a student's answers) only watches.
+  const watching = readOnly || teacher === true
   const groupId = useId()
-  const texts = textsOf(task)
-  const items = task?.items ?? []
-  const text = chosenText(task, state)
-  const [tutorPickId, setTutorPickId] = useState(null)
-  const [pasteOpen, setPasteOpen] = useState(state?.source === 'paste')
-  const [draft, setDraft] = useState(state?.pasted ?? '')
-  const [checked, setChecked] = useState({})
-  const [notice, setNotice] = useState('')
-  // The round moves on by itself: the prediction you get right ticks, then the next prompt
-  // appears. The student never picks a prompt; the tutor's read-only view follows the student, or
-  // shows the prompt picked in the tutor-only picker.
-  const isDone = (item) => gradeItem(task, item, state).correct
-  const flow = useRoundFlow(items, isDone, { readOnly: tutor })
-  const lastItem = items[items.length - 1]
-  const current = tutor
-    ? (items.find((item) => item.id === tutorPickId) ??
-      items.find((item) => !isDone(item)) ??
-      lastItem)
-    : (flow.current ?? lastItem)
-  const model = text ? modelFor(text.body) : null
-  const probe = String(state?.probe ?? '')
-  const temperature = Number.isFinite(state?.temperature) ? state.temperature : DEFAULT_TEMPERATURE
+  const state = normalizeNextWordState(task, rawState ?? initialNextWordState(task))
+  const panels = panelsOf(task)
+  const voices = voicesOf(task)
+  const voice = voiceOf(task, state)
+  const goal = guessGoalOf(task)
+  const progress = gradeTask(task, state)
+  const model = activeModel(task, state)
+  const temperature = panels.includes('silly') ? state.temperature : DEFAULT_TEMPERATURE
+  const info = model && state.sentence ? candidatesOf(model, state.sentence) : null
+  const options = info?.options ?? []
+  const pending = options.some((option) => option.word === state.pending) ? state.pending : ''
+  const inCore = !progress.done
+  const needsGuess = inCore && options.length > 0
+
+  // The spin: the highlighted chip index while the wheel runs, and the word it landed on.
+  const [spinIndex, setSpinIndex] = useState(null)
+  const [landed, setLanded] = useState('')
+  const timersRef = useRef([])
+  const spinning = spinIndex != null
+  useEffect(
+    () => () => {
+      timersRef.current.forEach(clearTimeout)
+      timersRef.current = []
+    },
+    []
+  )
 
   function update(patch) {
-    if (readOnly) return
-    onChange?.((prev) => ({ ...(prev ?? initialNextWordState(task)), ...patch }))
+    if (watching) return
+    onChange?.((prev) => ({ ...normalizeNextWordState(task, prev), ...patch }))
   }
 
-  function updateItem(id, patch) {
-    if (readOnly) return
-    onChange?.((prev) => {
-      const base = prev ?? initialNextWordState(task)
-      return {
-        ...base,
-        items: { ...(base.items ?? {}), [id]: { ...itemStateOf(base, { id }), ...patch } },
-      }
-    })
+  function stopSpin() {
+    timersRef.current.forEach(clearTimeout)
+    timersRef.current = []
+    setSpinIndex(null)
   }
 
-  function chooseText(i) {
-    setPasteOpen(false)
-    setNotice('')
-    update({ source: 'text', index: i })
+  function land(word, guess) {
+    stopSpin()
+    setLanded(word)
+    onChange?.((prev) => applyStep(normalizeNextWordState(task, prev), word, guess))
   }
 
-  function usePasted() {
-    const cleaned = draft.trim().slice(0, MAX_PASTE_CHARS)
-    if (tokenise(cleaned).length < 2) {
-      setNotice('Paste at least two words first.')
+  function press() {
+    if (watching || spinning || !model) return
+    // Nothing to choose between yet (a new sentence, or the sentence hit a dead end): the
+    // first word is just given, with no guess.
+    if (options.length === 0) {
+      land(startWordOf(model), '')
       return
     }
-    setNotice('')
-    update({ source: 'paste', pasted: cleaned })
-  }
-
-  function handleGenerate() {
-    if (!model) {
-      setNotice('Pick a text first.')
+    if (needsGuess && !pending) return
+    const picked = pickOption(options, temperature).word
+    const target = options.findIndex((option) => option.word === picked)
+    if (prefersReducedMotion() || options.length < 2) {
+      land(picked, pending)
       return
     }
-    setNotice('')
-    let generated = generateText(model, { start: probe, temperature })
-    if (generated.length > MAX_GENERATED_CHARS) {
-      generated = generated.slice(0, MAX_GENERATED_CHARS).replace(/\s+\S*$/, '')
+    const steps = options.length * 2 + target
+    for (let k = 0; k <= steps; k++) {
+      timersRef.current.push(
+        setTimeout(
+          () => {
+            if (k === steps) land(picked, pending)
+            else setSpinIndex(k % options.length)
+          },
+          (k + 1) * SPIN_STEP_MS
+        )
+      )
     }
-    update({ generated })
+    setSpinIndex(0)
   }
 
-  function handleReveal() {
-    if (!current) return
-    const own = itemStateOf(state, current)
-    if (!text || tokenise(own.guess).length !== 1) {
-      setNotice(gradeItem(task, current, state).hint)
-      return
-    }
-    setNotice('')
-    updateItem(current.id, { revealed: true })
+  function chooseVoice(id) {
+    stopSpin()
+    setLanded('')
+    update({ voice: id, sentence: '', pending: '', last: null })
   }
 
-  async function handleCheck() {
-    const outcome = await onSubmit?.()
-    setChecked(Object.fromEntries(items.map((item) => [item.id, true])))
-    return outcome
+  function startAgain() {
+    stopSpin()
+    setLanded('')
+    update({ sentence: '', pending: '', last: null })
   }
 
-  const statusFor = (item) => {
-    const result = gradeItem(task, item, state)
-    if (result.correct) return 'done'
-    return itemStateOf(state, item).revealed ? 'wrong' : null
-  }
-
-  const probeInfo = model && normaliseWord(probe) ? nextOptions(model, probe) : null
-  const starters = model ? startingWords(model, 10) : []
-  const own = current ? itemStateOf(state, current) : null
-  const result = current ? gradeItem(task, current, state) : null
-  const promptInfo = current && own?.revealed ? optionsForPrompt(task, state, current.prompt) : null
-  const hint =
-    result && !result.correct && (own.revealed || checked[current.id]) ? result.hint : null
+  const last = state.last
+  const words = state.sentence.split(' ').filter(Boolean)
+  const ownWords = ownWordsOf(state)
+  const buttonLabel = options.length === 0 ? 'Start a sentence' : 'Next word'
+  const disabled = watching || spinning || !model || (needsGuess && !pending)
 
   return (
-    <div className="act-panel" data-testid="next_word-activity">
-      <section className="act-nw-section" aria-labelledby={`${groupId}-pick`}>
-        <h3 className="act-nw-heading" id={`${groupId}-pick`}>
-          1. Pick a text
-        </h3>
-        <div role="radiogroup" aria-labelledby={`${groupId}-pick`} className="act-nw-choices">
-          {texts.map((entry, i) => (
-            <label key={i} className="act-nw-choice">
-              <input
-                type="radio"
-                name={`${groupId}-text`}
-                checked={!pasteOpen && state?.source === 'text' && state?.index === i}
-                disabled={readOnly}
-                onChange={() => chooseText(i)}
-              />
-              {entry.title}
-            </label>
-          ))}
-          {task?.allowPaste === true && (
-            <label className="act-nw-choice">
-              <input
-                type="radio"
-                name={`${groupId}-text`}
-                checked={pasteOpen || state?.source === 'paste'}
-                disabled={readOnly}
-                onChange={() => setPasteOpen(true)}
-              />
-              Paste my own text
-            </label>
-          )}
-        </div>
-        {task?.allowPaste === true && (pasteOpen || state?.source === 'paste') && !readOnly && (
-          <div className="act-nw-paste">
-            <label htmlFor={`${groupId}-paste`} style={{ fontWeight: 600 }}>
-              Your text
-            </label>
-            <textarea
-              id={`${groupId}-paste`}
-              className="act-nw-textarea"
-              value={draft}
-              maxLength={MAX_PASTE_CHARS}
-              onChange={(event) => setDraft(event.target.value)}
-            />
-            <div className="act-row">
-              <button type="button" className="btn-primary act-btn" onClick={usePasted}>
-                Use my text
-              </button>
-              <span>
-                {draft.length} of {MAX_PASTE_CHARS} letters
-              </span>
-            </div>
-          </div>
-        )}
-        {text ? (
-          <p className="act-nw-text" data-testid="next_word-text">
-            <strong>{text.label}: </strong>
-            {text.body}
+    <div className="act-panel act-nw" data-testid="next_word-activity">
+      <div className="act-nw-top">
+        <RoundProgress done={progress.core} total={goal} core={goal} />
+        {progress.done && <BonusBanner />}
+        {progress.bonus > 0 && (
+          <p className="act-nw-bonus" data-testid="next_word-bonus">
+            +{progress.bonus} bonus {progress.bonus === 1 ? 'guess' : 'guesses'}
           </p>
-        ) : (
-          <p>Choose a text to build the word-pair model.</p>
         )}
-      </section>
+        {goal < 2 && !progress.done && <p>1 guess to do</p>}
+      </div>
 
-      <section className="act-nw-section" aria-labelledby={`${groupId}-explore`}>
-        <h3 className="act-nw-heading" id={`${groupId}-explore`}>
-          2. What usually comes next?
-        </h3>
-        <div className="act-row">
-          <label htmlFor={`${groupId}-probe`} style={{ fontWeight: 600 }}>
-            Type a word
-          </label>
-          <input
-            id={`${groupId}-probe`}
-            className="act-nw-input"
-            type="text"
-            autoComplete="off"
-            maxLength={40}
-            value={probe}
-            disabled={readOnly || !text}
-            onChange={(event) => update({ probe: event.target.value })}
-          />
-        </div>
-        {starters.length > 0 && (
-          <div className="act-row" role="group" aria-label="Or choose a word">
-            {starters.map((word) => (
+      {panels.includes('voices') && (
+        <section className="act-nw-section" aria-label="Voices">
+          <h3 className="act-nw-heading">Whose words should it learn?</h3>
+          <div className="act-nw-voices" role="group" aria-label="Voices">
+            {voices.map((entry) => (
               <button
-                key={word}
+                key={entry.id}
                 type="button"
-                className="act-nw-chip"
-                aria-pressed={normaliseWord(probe) === word}
-                disabled={readOnly}
-                onClick={() => update({ probe: word })}
+                className="act-nw-voice"
+                aria-pressed={entry.id === voice.id}
+                disabled={watching}
+                onClick={() => chooseVoice(entry.id)}
               >
-                {word}
+                <span className="act-nw-voice__emoji" aria-hidden="true">
+                  {entry.emoji}
+                </span>
+                {entry.label}
               </button>
             ))}
           </div>
-        )}
-        {probeInfo ? (
-          <NextWordBars info={probeInfo} />
-        ) : (
-          text && <p>Type a word, or choose one above, to see which word comes next.</p>
-        )}
-      </section>
+        </section>
+      )}
 
-      {current && (
-        <section className="act-nw-section" aria-labelledby={`${groupId}-predict`}>
-          <h3 className="act-nw-heading" id={`${groupId}-predict`}>
-            3. Predict the next word
-          </h3>
-          <RoundProgress done={flow.doneCount} total={items.length} />
-          {tutor && (
-            <TutorItemPicker
-              items={items}
-              currentId={current.id}
-              onSelect={(id) => {
-                setTutorPickId(id)
-                setNotice('')
-              }}
-              statusFor={statusFor}
-              noun="Prompt"
-            />
-          )}
-          <p className="act-prompt">{current.prompt} …</p>
-          <div className="act-row">
-            <label htmlFor={`${groupId}-guess`} style={{ fontWeight: 600 }}>
-              Your prediction
-            </label>
-            <input
-              id={`${groupId}-guess`}
-              className="act-nw-input"
-              type="text"
-              autoComplete="off"
-              maxLength={40}
-              value={own.guess}
-              disabled={readOnly || own.revealed}
-              onChange={(event) => {
-                setChecked((prev) => ({ ...prev, [current.id]: false }))
-                setNotice('')
-                updateItem(current.id, { guess: event.target.value })
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !readOnly && !own.revealed) handleReveal()
-              }}
-            />
-            {!readOnly && !own.revealed && (
-              <button type="button" className="btn-primary act-btn" onClick={handleReveal}>
-                Reveal
-              </button>
-            )}
-            {!readOnly && own.revealed && !result.correct && (
-              <button
-                type="button"
-                className="btn-ghost-outline act-btn"
-                onClick={() => updateItem(current.id, { revealed: false })}
-              >
-                Try again
-              </button>
-            )}
-          </div>
-          {readOnly && !own.revealed && (
-            <p>
-              {own.guess ? `Guessing: “${own.guess}” (not revealed yet)` : 'No prediction yet.'}
+      {voice.id === OWN_VOICE && (
+        <section className="act-nw-section">
+          {watching ? (
+            <p data-testid="next_word-own-count">
+              {ownWords === 0
+                ? 'No sentences written yet.'
+                : `Wrote ${ownWords} ${ownWords === 1 ? 'word' : 'words'} of their own (kept on their device).`}
             </p>
-          )}
-          {promptInfo && <NextWordBars info={promptInfo} />}
-          {result?.correct && <ActivityCorrect />}
-          {flow.finished && !tutor && items.length > 1 && (
-            <p className="act-result act-result--pass" role="status">
-              All predictions done!
-            </p>
-          )}
-          {hint && (
-            <p className="act-hint" role="status">
-              💡 {hint}
-            </p>
+          ) : (
+            <>
+              <label htmlFor={`${groupId}-own`} className="act-nw-heading">
+                Write some sentences for it to learn from
+              </label>
+              <textarea
+                id={`${groupId}-own`}
+                className="act-nw-textarea"
+                value={state.own}
+                maxLength={MAX_PASTE_CHARS}
+                placeholder="The cat sat on the mat. The cat saw the dog. The dog sat on the mat."
+                onChange={(event) => update({ own: event.target.value })}
+              />
+              <p className="act-nw-count">
+                {ownWords} {ownWords === 1 ? 'word' : 'words'} learned
+                {!model ? ' · write at least two words to start' : ''}
+              </p>
+            </>
           )}
         </section>
       )}
 
-      <section className="act-nw-section" aria-labelledby={`${groupId}-generate`}>
-        <h3 className="act-nw-heading" id={`${groupId}-generate`}>
-          4. Make some text
-        </h3>
-        {task?.showTemperature === true && (
+      <section className="act-nw-section" aria-label="The sentence">
+        <p className="act-nw-sentence" aria-live="polite" data-testid="next_word-sentence">
+          {words.length === 0 ? (
+            <span className="act-nw-placeholder">Your sentence will grow here.</span>
+          ) : (
+            words.map((word, i) => (
+              <span
+                key={i}
+                className={i === words.length - 1 ? 'act-nw-word act-nw-word--new' : 'act-nw-word'}
+              >
+                {word}{' '}
+              </span>
+            ))
+          )}
+        </p>
+
+        {options.length > 0 && (
+          <>
+            <p className="act-nw-ask">
+              {inCore
+                ? 'Guess what it says next: tap a word, then press the button.'
+                : 'Bonus: tap a guess if you like, then press the button.'}
+            </p>
+            <div
+              className="act-nw-chips"
+              role="group"
+              aria-label="Words it might pick, biggest is most likely"
+            >
+              {options.map((option, i) => (
+                <button
+                  key={option.word}
+                  type="button"
+                  className={[
+                    'act-nw-chip',
+                    'act-nw-chip--big',
+                    spinIndex === i ? 'act-nw-chip--spin' : '',
+                    !spinning && landed === option.word && last?.picked === option.word
+                      ? 'act-nw-chip--landed'
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  style={{ fontSize: `${(1 + option.share * 0.9).toFixed(2)}rem` }}
+                  aria-pressed={pending === option.word}
+                  aria-label={describeCount(option.word, option.count, info.total)}
+                  disabled={watching || spinning}
+                  onClick={() => update({ pending: pending === option.word ? '' : option.word })}
+                >
+                  {option.word}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {watching && pending && !last && (
+          <p data-testid="next_word-pending">Guessing: “{pending}” (not pressed yet)</p>
+        )}
+
+        {!watching && (
           <div className="act-row">
-            <label htmlFor={`${groupId}-temp`} style={{ fontWeight: 600 }}>
-              Temperature
-            </label>
+            <button
+              type="button"
+              className="btn-primary act-btn act-nw-big"
+              disabled={disabled}
+              onClick={press}
+            >
+              {spinning ? '…' : buttonLabel}
+            </button>
+            {words.length > 0 && (
+              <button
+                type="button"
+                className="btn-ghost-outline act-btn"
+                disabled={spinning}
+                onClick={startAgain}
+              >
+                Start again
+              </button>
+            )}
+          </div>
+        )}
+
+        {last && !spinning && (
+          <p
+            key={`${state.guesses}-${last.picked}`}
+            className={last.ok ? 'act-result act-result--pass' : 'act-hint'}
+            role="status"
+            data-testid="next_word-moment"
+          >
+            {last.ok ? <SpinTick /> : <span aria-hidden="true">✗</span>}{' '}
+            {last.ok
+              ? `You guessed it! It picked “${last.picked}”!`
+              : `Not this time. It picked “${last.picked}”, you guessed “${last.guess}”.`}
+          </p>
+        )}
+      </section>
+
+      {panels.includes('silly') && (
+        <section className="act-nw-section">
+          <label htmlFor={`${groupId}-silly`} className="act-nw-heading">
+            How silly should it be?
+          </label>
+          <div className="act-nw-silly">
+            <span aria-hidden="true">🧐 Sensible</span>
             <input
-              id={`${groupId}-temp`}
+              id={`${groupId}-silly`}
               className="act-nw-slider"
               type="range"
               min={MIN_TEMPERATURE}
               max={MAX_TEMPERATURE}
               step={0.1}
-              value={temperature}
-              disabled={readOnly}
-              aria-valuetext={`${temperature.toFixed(1)}, ${temperatureLabel(temperature)}`}
+              value={state.temperature}
+              disabled={watching}
+              aria-valuetext={sillyLabel(state.temperature)}
               onChange={(event) => update({ temperature: Number(event.target.value) })}
             />
-            <span>
-              {temperature.toFixed(1)} ({temperatureLabel(temperature)})
-            </span>
+            <span aria-hidden="true">Silly 🤪</span>
           </div>
-        )}
-        {!readOnly && (
-          <div className="act-row">
-            <button type="button" className="btn-primary act-btn" onClick={handleGenerate}>
-              Generate
-            </button>
-            {normaliseWord(probe) && <span>Starts with “{normaliseWord(probe)}”.</span>}
-          </div>
-        )}
-        <p className="act-nw-generated" aria-live="polite">
-          {state?.generated || 'Press Generate to make text from the word pairs.'}
-        </p>
-      </section>
-
-      {notice && (
-        <p className="act-hint" role="status">
-          💡 {notice}
-        </p>
+          <p data-testid="next_word-silly-label">{sillyLabel(state.temperature)}</p>
+        </section>
       )}
 
-      {!readOnly && (
-        <div className="act-row act-row--submit">
-          <button type="button" className="btn-primary act-btn" onClick={handleCheck}>
-            Check my work
-          </button>
-        </div>
+      {panels.includes('stats') && (
+        <section className="act-nw-section">
+          <h3 className="act-nw-heading">What it learned</h3>
+          <StatsPanel model={model} sentence={state.sentence} />
+        </section>
       )}
     </div>
   )
 }
 
-// Teacher surfaces fall back to this StudentView with readOnly (the tutor sees the chosen text,
-// the typed word, every prediction and its marks, and the generated text). The card summary
-// text comes from definition.summarize.
+// Teacher surfaces fall back to this StudentView with readOnly: the tutor sees the sentence so
+// far, the guess the student has tapped, the tick or cross, the slider and the voice, and how
+// many words of their own the student has written. The card summary comes from
+// definition.summarize.
 export default {
   StudentView: NextWordStudentView,
   BuilderEditor: NextWordBuilderEditor,
