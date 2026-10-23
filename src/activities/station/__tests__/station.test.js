@@ -337,7 +337,7 @@ describe('undo', () => {
 describe('nearestSpot', () => {
   it('snaps within the radius to an empty spot and null otherwise', () => {
     const spot = SPOTS[0]
-    const point = { x: spot.x + spot.w / 2 + 0.02, y: spot.y + spot.h / 2 }
+    const point = { x: spot.x + spot.w / 2 + 0.04, y: spot.y + spot.h / 2 }
     expect(nearestSpot({ placed: {} }, point)).toBe('spot-1')
     expect(nearestSpot({ placed: { 'spot-1': 'solar' } }, point)).toBe('spot-2')
     expect(nearestSpot({ placed: {} }, { x: 0.5, y: 0.95 })).toBeNull()

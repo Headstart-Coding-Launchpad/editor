@@ -56,7 +56,7 @@ function PartArt({ id }) {
       style={{ '--act-station-art': art.colour }}
       aria-hidden="true"
     >
-      {art.emoji}
+      {art.shape === 'helmet' ? <span className="act-station-visor" /> : art.emoji}
     </span>
   )
 }
@@ -73,6 +73,9 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
   const tray = trayParts(task, scene)
   const showTray = lesson === 3 || lesson === 4
   const crateIds = CRATE_IDS.filter((id) => scene.crates?.[id])
+  // The bay is only there while a crate is still waiting to be opened.
+  const showBay = crateIds.some((id) => scene.crates[id] !== 'open')
+  const showPads = showTray
 
   const sceneRef = useRef(null)
   const latest = useRef({})
@@ -281,6 +284,9 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
           style={{ '--act-station-hull': hullHex, '--act-station-lights': lightsHex }}
         >
           <div className="act-station__hull" aria-hidden="true" />
+          <span className="act-station-tube act-station-tube--left" aria-hidden="true" />
+          <span className="act-station-tube act-station-tube--right" aria-hidden="true" />
+          <span className="act-station-tube act-station-tube--dock" aria-hidden="true" />
           {SECTIONS.map((s) => {
             const lit = !!scene.power?.[s.id]
             return (
@@ -290,20 +296,25 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                 data-testid={`section-${s.id}`}
                 data-lit={lit ? 'true' : 'false'}
               >
-                <button
-                  type="button"
-                  className="act-station-power"
-                  aria-pressed={lit}
-                  aria-label={`${s.label} power`}
-                  disabled={!interactive}
-                  onClick={() => {
-                    const method = pressMethod()
-                    if (!lit) act({ type: 'power', section: s.id, method })
-                  }}
-                >
-                  <span aria-hidden="true">⏻</span> {s.label}
-                  <span className="act-station-power__state">{lit ? 'On' : 'Off'}</span>
-                </button>
+                <span className="act-station-power-wrap">
+                  <button
+                    type="button"
+                    className="act-station-power"
+                    aria-pressed={lit}
+                    aria-label={`${s.label} power`}
+                    disabled={!interactive}
+                    onClick={() => {
+                      const method = pressMethod()
+                      if (!lit) act({ type: 'power', section: s.id, method })
+                    }}
+                  >
+                    <span aria-hidden="true">⏻</span>
+                  </button>
+                  <span className="act-station-power__name" aria-hidden="true">
+                    {s.label}
+                    <span className="act-station-power__state">{lit ? 'On' : 'Off'}</span>
+                  </span>
+                </span>
               </div>
             )
           })}
@@ -347,7 +358,18 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                 </button>
               )
             }
-            if (!held) return null
+            if (!held) {
+              if (!showPads) return null
+              return (
+                <span
+                  key={spot.id}
+                  className="act-station-pad"
+                  style={style}
+                  data-testid={`pad-${spot.id}`}
+                  aria-hidden="true"
+                />
+              )
+            }
             return (
               <button
                 key={spot.id}
@@ -396,7 +418,7 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
           })}
         </div>
 
-        <div className="act-station__colours">
+        <div className={`act-station__colours${lesson === 1 ? '' : ' is-compact'}`}>
           {[
             ['hull', 'Hull colour', HULL_COLOURS],
             ['lights', 'Light colour', LIGHT_COLOURS],
@@ -425,7 +447,7 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
           ))}
         </div>
 
-        {crateIds.length > 0 && (
+        {showBay && (
           <div className="act-station__bay" data-testid="station-bay">
             <span className="act-station__bay-title">Delivery bay</span>
             {crateIds.map((id) => {
@@ -450,39 +472,11 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                   }}
                   onKeyDown={(e) => onCrateKeyDown(e, id)}
                 >
-                  <span aria-hidden="true">{open ? '📭' : '📦'}</span>
+                  <span className="act-station-box" aria-hidden="true" />
                   <span className="act-station-crate__label">{part?.label}</span>
                 </button>
               )
             })}
-          </div>
-        )}
-
-        {showTray && (
-          <div className="act-station__tray" data-testid="station-tray">
-            <span className="act-station__bay-title">Parts tray</span>
-            {tray.length === 0 && (
-              <span className="act-station__empty">
-                {lesson === 4 ? 'Order a part and it will appear here.' : 'All parts are in place.'}
-              </span>
-            )}
-            {tray.map((id) => (
-              <button
-                key={id}
-                type="button"
-                className={`act-station-tray-part${held?.partId === id ? ' is-held' : ''}`}
-                data-testid={`tray-${id}`}
-                data-tray-part={id}
-                aria-label={`${partById(id)?.label}. Drag onto the station, or click to pick up.`}
-                aria-pressed={held?.partId === id && held.mode === 'pick'}
-                disabled={!interactive}
-                onClick={(e) => onTrayPartClick(id, e)}
-                {...dragHandlers(id, null)}
-              >
-                <PartArt id={id} />
-                <span className="act-station-crate__label">{partById(id)?.label}</span>
-              </button>
-            ))}
           </div>
         )}
       </div>
@@ -583,6 +577,33 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                 )
               })}
             </ul>
+          </div>
+        )}
+        {showTray && (
+          <div className="act-station__tray" data-testid="station-tray">
+            <span className="act-station__bay-title">Parts tray</span>
+            {tray.length === 0 && (
+              <span className="act-station__empty">
+                {lesson === 4 ? 'Order a part and it will appear here.' : 'All parts are in place.'}
+              </span>
+            )}
+            {tray.map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={`act-station-tray-part${held?.partId === id ? ' is-held' : ''}`}
+                data-testid={`tray-${id}`}
+                data-tray-part={id}
+                aria-label={`${partById(id)?.label}. Drag onto the station, or click to pick up.`}
+                aria-pressed={held?.partId === id && held.mode === 'pick'}
+                disabled={!interactive}
+                onClick={(e) => onTrayPartClick(id, e)}
+                {...dragHandlers(id, null)}
+              >
+                <PartArt id={id} />
+                <span className="act-station-crate__label">{partById(id)?.label}</span>
+              </button>
+            ))}
           </div>
         )}
       </aside>

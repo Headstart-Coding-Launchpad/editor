@@ -1,4 +1,5 @@
-// Placeholder art for the Space station: an emoji and a colour per part. Swapping to Lesson Gen's
+// Placeholder art for the Space station: an emoji and a colour per part (the pilot is a CSS helmet
+// with a dark visor: no people or faces in the course art). Swapping to Lesson Gen's
 // PNG set later (one PNG per state, 128 px cells, a white glow PNG per part tinted in code)
 // changes only this file; station.js never reads it. Node-safe.
 
@@ -19,7 +20,7 @@ export const PART_ART = Object.freeze({
   'crate-2': { emoji: '📦', colour: '#b45309', shape: 'square' },
   'crate-3': { emoji: '📦', colour: '#b45309', shape: 'square' },
   'crew-robot': { emoji: '🤖', colour: '#94a3b8', shape: 'round' },
-  'crew-pilot': { emoji: '🧑‍🚀', colour: '#f8fafc', shape: 'round' },
+  'crew-pilot': { emoji: '', colour: '#cbd5e1', shape: 'helmet' },
   'crew-plant': { emoji: '🌱', colour: '#4ade80', shape: 'round' },
   solar: { emoji: '☀️', colour: '#fde047', shape: 'wide' },
   dome: { emoji: '🔮', colour: '#7dd3fc', shape: 'round' },

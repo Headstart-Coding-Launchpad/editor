@@ -23,26 +23,26 @@ function renderStation(t, options = {}) {
   })
 }
 
-// jsdom has no layout: give the scene a 1000 x 625 box at the page origin so pointer positions
-// map onto fractions of the scene. spot-1's centre is about (241, 197), spot-2's (345, 197).
+// jsdom has no layout: give the scene a 1000 x 500 box at the page origin so pointer positions
+// map onto fractions of the scene. spot-1's centre is (140, 180), spot-2's (260, 180).
 function sizeScene() {
   const el = screen.getByTestId('station-scene')
   el.getBoundingClientRect = () => ({
     left: 0,
     top: 0,
     right: 1000,
-    bottom: 625,
+    bottom: 500,
     width: 1000,
-    height: 625,
+    height: 500,
     x: 0,
     y: 0,
   })
   return el
 }
 
-const SPOT_1 = { clientX: 241, clientY: 197 }
-const SPOT_2 = { clientX: 345, clientY: 197 }
-const NOWHERE = { clientX: 500, clientY: 560 }
+const SPOT_1 = { clientX: 140, clientY: 180 }
+const SPOT_2 = { clientX: 260, clientY: 180 }
+const NOWHERE = { clientX: 500, clientY: 470 }
 
 function drag(el, to, from = { clientX: 20, clientY: 20 }) {
   fireEvent.pointerDown(el, { pointerId: 1, button: 0, ...from })
@@ -171,6 +171,13 @@ describe('Station UI - Lesson 2 (select, double-click, captain)', () => {
     expect(screen.getByTestId('crew-crew-pilot')).toBeInTheDocument()
   })
 
+  it('the delivery bay goes once every crate is open', () => {
+    renderStation(L2)
+    for (const id of ['crate-1', 'crate-2', 'crate-3'])
+      fireEvent.doubleClick(screen.getByTestId(`crate-${id}`))
+    expect(screen.queryByTestId('station-bay')).not.toBeInTheDocument()
+  })
+
   it('Enter on a selected crate opens it by keyboard but the goal stays open with a hint', () => {
     const { state } = renderStation(L2)
     const crate = screen.getByTestId('crate-crate-1')
@@ -266,6 +273,12 @@ describe('Station UI - Lesson 3 (drag and Ctrl+Z)', () => {
     fireEvent.click(screen.getByTestId('spot-spot-3'))
     expect(state().scene.placed['spot-3']).toBe('greenhouse')
     expect(state().done.place.method).toBe('pick_drop')
+    expect(screen.queryByTestId('spot-spot-1')).not.toBeInTheDocument()
+  })
+
+  it('empty docking pads are always on the hull in Lesson 3', () => {
+    renderStation(L3)
+    expect(screen.getByTestId('pad-spot-1')).toBeInTheDocument()
     expect(screen.queryByTestId('spot-spot-1')).not.toBeInTheDocument()
   })
 

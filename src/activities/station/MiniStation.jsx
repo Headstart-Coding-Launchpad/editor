@@ -3,10 +3,10 @@ import { SECTIONS, SPOTS, stationProgress } from './station.js'
 
 // A tiny picture of the station for the tutor's card: lit sections and filled spots as dots.
 const SECTION_BOXES = {
-  core: [54, 14, 52, 44],
-  left: [8, 14, 42, 60],
-  right: [110, 14, 42, 60],
-  dock: [54, 62, 52, 22],
+  core: [61, 8, 38, 46],
+  left: [13, 18, 42, 44],
+  right: [105, 18, 42, 44],
+  dock: [64, 60, 32, 14],
 }
 
 export function MiniStationPicture({ scene }) {
@@ -14,13 +14,20 @@ export function MiniStationPicture({ scene }) {
   return (
     <svg
       className="act-station-mini__svg"
-      viewBox="0 0 160 100"
+      viewBox="0 0 160 80"
       role="img"
       aria-label="The student's space station"
       data-testid="station-mini-picture"
     >
-      <rect x="0" y="0" width="160" height="100" rx="8" fill="#0f172a" />
-      <ellipse cx="80" cy="50" rx="74" ry="42" fill={COLOUR_HEX[scene?.hull] ?? COLOUR_HEX.blue} />
+      <rect x="0" y="0" width="160" height="80" rx="8" fill="#0f172a" />
+      <rect
+        x="3"
+        y="6"
+        width="154"
+        height="68"
+        rx="30"
+        fill={COLOUR_HEX[scene?.hull] ?? COLOUR_HEX.blue}
+      />
       {SECTIONS.map((s) => {
         const [x, y, w, h] = SECTION_BOXES[s.id]
         const lit = !!scene?.power?.[s.id]
@@ -47,7 +54,7 @@ export function MiniStationPicture({ scene }) {
             data-testid={`mini-spot-${spot.id}`}
             data-filled={filled ? 'true' : 'false'}
             cx={(spot.x + spot.w / 2) * 160}
-            cy={(spot.y + spot.h / 2) * 100}
+            cy={(spot.y + spot.h / 2) * 80}
             r="3.2"
             fill={filled ? '#ffffff' : 'none'}
             stroke="#ffffff"

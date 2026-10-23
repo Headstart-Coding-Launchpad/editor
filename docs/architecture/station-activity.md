@@ -23,8 +23,9 @@ not built yet. The model leaves room for them (parts carry a `state` object; goa
 ### The station layout (in code, not authored)
 
 - **Sections** (Lesson 1 power): `core`, `left`, `right`, `dock`. Each has a power button.
-- **Spots**: `spot-1` … `spot-10`, positions as 0–1 fractions of the station (the layout of
-  Lesson Gen's sample `parts.json`), each with `accepts` (part kinds).
+- **Spots**: `spot-1` … `spot-10`, centres as 0–1 fractions of the 2:1 station drawing (hull strips at
+  the far left and right, two pads on each side of both wings), each with `accepts` (part kinds).
+  Empty spots always show as dashed docking pads from Lesson 3 and light up while a part is held.
 - **Posts**: `post-1` … `post-4`, where crew stand once a crate is opened.
 - **Swatches**: 8 hull colours and 8 light colours (named, e.g. `blue`, `orange`).
 
@@ -32,7 +33,7 @@ not built yet. The model leaves room for them (parts carry a `state` object; goa
 
 `PARTS`: `{ id, label, kind: 'module' | 'crate' | 'crew', lesson, cells: [w, h], art }`.
 Phase 1: crates `crate-1`–`crate-3` (each holds one crew member: `crew-robot`, `crew-pilot`,
-`crew-plant`; the pilot wears a visor, no face); modules `solar`, `dome`, `greenhouse`,
+`crew-plant`; the pilot is a helmet with a dark visor, no face); modules `solar`, `dome`, `greenhouse`,
 `docking-arm` (Lesson 3 tray); catalogue parts `telescope`, `dish`, `flag` and extras
 `antenna`, `lab`, `rocket-pad`, ending with `space-slide` (the best part, at the very bottom).
 `art` is a placeholder (emoji + CSS shape) until Lesson Gen's art set lands (#109: PNG per

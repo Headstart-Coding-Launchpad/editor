@@ -16,36 +16,46 @@ export const SECTIONS = Object.freeze([
   { id: 'dock', label: 'Dock' },
 ])
 
-const SPOT_W = 0.0521
-const SPOT_H = 0.0834
+// The station is drawn in a 2:1 box (see .act-station__scene). Spots and posts are the centres of
+// their pads, as 0-1 fractions of that box, placed on the hull and the modules in the drawing:
+// hull strips at the far left and right (5 and 6), the wings (1-4, 7-10), crew posts in the core.
+export const SCENE_ASPECT = 2
+const SPOT_W = 0.062
+const SPOT_H = SPOT_W * SCENE_ASPECT
 const SPOT_ACCEPTS = Object.freeze(['module', 'crate', 'crew'])
-// Fractions (0-1) of the station picture, from Lesson Gen's art sample.
-const SPOT_POSITIONS = [
-  [0.2148, 0.2733],
-  [0.319, 0.2733],
-  [0.6315, 0.2733],
-  [0.7357, 0.2733],
-  [0.0755, 0.4505],
-  [0.8724, 0.4505],
-  [0.2148, 0.6235],
-  [0.319, 0.6235],
-  [0.6315, 0.6235],
-  [0.7357, 0.6235],
+const SPOT_CENTRES = [
+  [0.14, 0.36],
+  [0.26, 0.36],
+  [0.74, 0.36],
+  [0.86, 0.36],
+  [0.05, 0.5],
+  [0.95, 0.5],
+  [0.14, 0.64],
+  [0.26, 0.64],
+  [0.74, 0.64],
+  [0.86, 0.64],
 ]
 export const SPOTS = Object.freeze(
-  SPOT_POSITIONS.map(([x, y], i) =>
-    Object.freeze({ id: `spot-${i + 1}`, x, y, w: SPOT_W, h: SPOT_H, accepts: SPOT_ACCEPTS })
+  SPOT_CENTRES.map(([cx, cy], i) =>
+    Object.freeze({
+      id: `spot-${i + 1}`,
+      x: cx - SPOT_W / 2,
+      y: cy - SPOT_H / 2,
+      w: SPOT_W,
+      h: SPOT_H,
+      accepts: SPOT_ACCEPTS,
+    })
   )
 )
 // How far (as a fraction of the station's width) from a spot's centre a dropped part still snaps
 // into it. Spots are small, so this is much bigger than the spot itself.
-export const SPOT_SNAP_RADIUS = 0.07
+export const SPOT_SNAP_RADIUS = 0.09
 
 export const POSTS = Object.freeze([
-  { id: 'post-1', x: 0.42, y: 0.45 },
-  { id: 'post-2', x: 0.5, y: 0.45 },
-  { id: 'post-3', x: 0.58, y: 0.45 },
-  { id: 'post-4', x: 0.5, y: 0.56 },
+  { id: 'post-1', x: 0.44, y: 0.5 },
+  { id: 'post-2', x: 0.56, y: 0.5 },
+  { id: 'post-3', x: 0.44, y: 0.66 },
+  { id: 'post-4', x: 0.56, y: 0.66 },
 ])
 
 export const HULL_COLOURS = Object.freeze([
@@ -303,7 +313,11 @@ export function nearestSpot(scene, point, kind = 'module', radius = SPOT_SNAP_RA
   let bestDistance = radius
   for (const spot of SPOTS) {
     if (own(scene?.placed, spot.id) || !spot.accepts.includes(kind)) continue
-    const d = Math.hypot(point.x - (spot.x + spot.w / 2), point.y - (spot.y + spot.h / 2))
+    // y is a fraction of the height, which is half the width: scale it so distance is true to the eye.
+    const d = Math.hypot(
+      point.x - (spot.x + spot.w / 2),
+      (point.y - (spot.y + spot.h / 2)) / SCENE_ASPECT
+    )
     if (d <= bestDistance) {
       best = spot.id
       bestDistance = d
