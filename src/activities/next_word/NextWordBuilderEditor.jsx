@@ -1,36 +1,18 @@
-import React from 'react'
 import definition from './definition.js'
-import { MAX_TEXT_CHARS, describeCount, lastWordOf, modelFor, nextOptions } from './ngram.js'
-import {
-  Field,
-  InlineField,
-  RowListEditor,
-  ValidationMessages,
-  nextItemId,
-  useActivityValidation,
-} from '../ui/builderKit.jsx'
+import { MAX_TEXT_CHARS } from './ngram.js'
+import { DEFAULT_GUESSES, DEFAULT_TEXT_EMOJI, MAX_GUESSES, PANELS, panelsOf } from './next_word.js'
+import { Field, InlineField, ValidationMessages, useActivityValidation } from '../ui/builderKit.jsx'
 
-// Builder editor for Next Word tasks: the texts the student can pick (the first one is the
-// text every item `answer` is written for), the paste and temperature switches, and the
-// predict-then-reveal items. Each item shows the model's most likely next word(s) for its
-// prompt in the first text, so the author can set `answer` correctly. validateTask messages
-// show under the item they are about (task and text messages at the top).
+// Builder editor for Next Word tasks: how many guesses make the round, which extra parts show
+// (panels), and the texts the student can switch to as voices (only used with the voices panel).
+// validateTask messages show at the top.
 
 const CONTROL = { minHeight: 44 }
 
-// What the first text's model says follows the prompt's last word, in plain words.
-export function answerHint(task, prompt) {
-  const word = lastWordOf(prompt)
-  const body = task?.texts?.[0]?.body
-  if (!word) return 'Type a prompt to see the likeliest next word in the first text.'
-  if (typeof body !== 'string' || !body.trim()) return 'Add a body to the first text first.'
-  const { total, options } = nextOptions(modelFor(body), word)
-  if (total === 0) return `Nothing comes after “${word}” in the first text.`
-  const top = options.filter((option) => option.count === options[0].count)
-  const tied = top.length > 1 ? ' (tied: any of them is accepted)' : ''
-  return `Most likely after “${word}” in the first text: ${top
-    .map((option) => describeCount(option.word, option.count, total))
-    .join(' / ')}${tied}.`
+const PANEL_LABELS = {
+  stats: 'Stats: bars of which words followed the last word',
+  silly: 'Silly: a Sensible to Silly slider',
+  voices: 'Voices: switch between the texts below and My writing',
 }
 
 function TextRows({ texts, onChange }) {
@@ -38,7 +20,7 @@ function TextRows({ texts, onChange }) {
   const update = (index, patch) =>
     onChange(list.map((text, i) => (i === index ? { ...text, ...patch } : text)))
   return (
-    <Field label="Texts" hint="the student picks one; write each item's answer for the first text">
+    <Field label="Voices (texts)" hint="only used when the voices panel is on">
       <div className="te-act-rows">
         {list.map((text, index) => {
           const n = index + 1
@@ -57,12 +39,22 @@ function TextRows({ texts, onChange }) {
                     onChange={(e) => update(index, { title: e.target.value })}
                   />
                 </label>
+                <label className="te-act-inline">
+                  <span>Emoji</span>
+                  <input
+                    className="te-input"
+                    style={{ ...CONTROL, width: 72 }}
+                    value={text?.emoji ?? ''}
+                    placeholder={DEFAULT_TEXT_EMOJI}
+                    aria-label={`Text ${n} emoji`}
+                    onChange={(e) => update(index, { emoji: e.target.value })}
+                  />
+                </label>
                 <button
                   type="button"
                   className="te-remove-btn"
                   style={{ minWidth: 44, minHeight: 44 }}
                   onClick={() => onChange(list.filter((_, i) => i !== index))}
-                  disabled={list.length <= 1}
                   title="Remove text"
                   aria-label={`Remove text ${n}`}
                 >
@@ -115,62 +107,44 @@ function Switch({ label, checked, onChange }) {
 
 export default function NextWordBuilderEditor({ task, onUpdate }) {
   const validation = useActivityValidation(definition, task)
+  const panels = panelsOf(task)
+  const togglePanel = (panel, on) =>
+    onUpdate({
+      ...task,
+      panels: PANELS.filter((name) => (name === panel ? on : panels.includes(name))),
+    })
   return (
     <div className="te-act-editor" data-activity-editor="next_word">
       <ValidationMessages messages={validation.general} />
 
-      <TextRows texts={task.texts} onChange={(texts) => onUpdate({ ...task, texts })} />
-
-      <Field label="Options">
-        <Switch
-          label="Let students paste their own text (up to 1200 characters)"
-          checked={task.allowPaste === true}
-          onChange={(allowPaste) => onUpdate({ ...task, allowPaste })}
-        />
-        <Switch
-          label="Show the temperature slider"
-          checked={task.showTemperature === true}
-          onChange={(showTemperature) => onUpdate({ ...task, showTemperature })}
+      <Field label="Guesses" hint="the round: 'Guess what it says next' this many times">
+        <input
+          className="te-input"
+          style={{ ...CONTROL, width: 96 }}
+          type="number"
+          min={1}
+          max={MAX_GUESSES}
+          value={task.guesses ?? DEFAULT_GUESSES}
+          aria-label="Guesses"
+          onChange={(e) => {
+            const value = e.target.value === '' ? undefined : Number(e.target.value)
+            onUpdate({ ...task, guesses: value })
+          }}
         />
       </Field>
 
-      <RowListEditor
-        label="Items"
-        hint="predict the next word after the prompt, then reveal"
-        rows={task.items}
-        validation={validation}
-        onChange={(items) => onUpdate({ ...task, items })}
-        makeRow={(items) => ({ id: nextItemId(items), prompt: '', answer: '' })}
-        renderRow={(item, update, index) => {
-          const n = index + 1
-          return (
-            <>
-              <InlineField label="Prompt" wide>
-                <input
-                  className="te-input"
-                  style={CONTROL}
-                  value={item.prompt ?? ''}
-                  placeholder="the ball goes into the"
-                  aria-label={`Item ${n} prompt`}
-                  onChange={(e) => update({ prompt: e.target.value })}
-                />
-              </InlineField>
-              <InlineField label="Answer">
-                <input
-                  className="te-input"
-                  style={CONTROL}
-                  value={item.answer ?? ''}
-                  aria-label={`Item ${n} answer`}
-                  onChange={(e) => update({ answer: e.target.value })}
-                />
-              </InlineField>
-              <span className="te-act-note" data-testid={`next_word-hint-${n}`}>
-                {answerHint(task, item.prompt)}
-              </span>
-            </>
-          )
-        }}
-      />
+      <Field label="Parts to show" hint="keep it simple: only what this lesson needs">
+        {PANELS.map((panel) => (
+          <Switch
+            key={panel}
+            label={PANEL_LABELS[panel]}
+            checked={panels.includes(panel)}
+            onChange={(on) => togglePanel(panel, on)}
+          />
+        ))}
+      </Field>
+
+      <TextRows texts={task.texts} onChange={(texts) => onUpdate({ ...task, texts })} />
     </div>
   )
 }

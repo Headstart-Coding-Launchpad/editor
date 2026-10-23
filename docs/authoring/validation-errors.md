@@ -294,20 +294,15 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 
 | Message | Meaning | Fix |
 |---|---|---|
-| `Task …: next_word task needs at least one text in texts.` | `texts` is missing or empty. | Add at least one `{ title, body }` text. |
-| `Task … text …: title is required.` | A text has no `title`. | Give it a short title; it names the option the student picks. |
-| `Task … text …: body is required.` | A text has no `body`. | Add the text the model is built from. |
+| `Task …: texts must be a list.` | `texts` is not a list. | Write `texts` as a list of `{ title, body }` voices, or leave it out. |
+| `Task … text …: title is required.` | A text has no `title`. | Give it a short title; it names the voice card. |
+| `Task … text …: body is required.` | A text has no `body`. | Add the text the model learns from. |
 | `Task … text …: body is longer than … characters.` | A `body` is over 4000 characters. | Shorten it, or split it into two texts. |
 | `Task … text …: body needs at least 2 words.` | A `body` has fewer than two words, so there are no word pairs. | Write a few sentences. |
-| `Task …: … must be true or false.` | `allowPaste` or `showTemperature` is not a YAML boolean. | Use `true` or `false`, unquoted. |
-| `Task …: next_word task needs at least one item.` | `items` is empty. | Add at least one predict-then-reveal item. |
-| `Task … item …: needs an id.` | An item has no `id`. | Give each item a short unique `id` (`a`, `b`). |
-| `Task … item …: id "…" is used more than once.` | Two items share an `id`. | Make each `id` unique. |
-| `Task … item …: prompt is required.` | An item has no `prompt`, or it has no words. | Add the words the student continues from. |
-| `Task … item …: answer is required.` | An item has no `answer`. | Add the expected next word. |
-| `Task … item …: answer must be one word.` | `answer` has more than one word. | Use the single most likely next word. |
-| `Task … item …: "…" never has a word after it in the first text.` | The prompt's last word is missing from the first text, or only ends it. | Change the prompt, or add the pair to the first text. |
-| `Task … item …: answer "…" is not the most likely word after "…" in the first text (it is "…").` | `answer` is not a most-likely next word in the first text. | Use the word named in the message, or change the text or prompt. Words tied for most likely are all accepted. |
+| `Task … text …: emoji must be one short emoji.` | `emoji` is empty, not text, or too long. | Use a single emoji, or leave it out. |
+| `Task …: panels must be a list.` | `panels` is not a list. | Write `panels: [stats, silly]`. |
+| `Task …: panels has "…", which is not one of ….` | A `panels` value is not `stats`, `silly` or `voices`. | Use only the listed parts. |
+| `Task …: guesses must be a whole number from 1 to ….` | `guesses` is not a whole number in range. | Use a number such as `5`, or leave it out for the default. |
 
 ### Classifier ([activities/classifier.md](activities/classifier.md))
 
