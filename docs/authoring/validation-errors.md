@@ -215,7 +215,7 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | Message | Meaning | Fix |
 |---|---|---|
 | `Task …: keyboard mode must be one of ….` | `mode` is missing or unknown. | Use `type_text`, `find_key`, `symbols`, `shortcuts`, `edit_text`, `type_code` or `falling_words`. |
-| `…: coreItems must be a whole number from 1 to … (the number of items).` | Keyboard, Binary or Mouse: `coreItems` isn't a whole number between 1 and the number of items. | Set it to how many items make the core goal (the rest are Bonus), or remove it so every item is core. |
+| `…: coreItems must be a whole number from 1 to … (the number of items).` | Keyboard, Binary, Mouse or Real or AI: `coreItems` isn't a whole number between 1 and the number of items. | Set it to how many items make the core goal (the rest are Bonus), or remove it so every item is core. |
 | `…: coreItems is ignored for falling_words (it is one round, not a list of items).` | Warning. A falling-words round has no item list, so there is nothing to split into core and bonus. | Remove `coreItems` from the task. |
 | `Task …: keyboard layout "…" is not supported (use "uk").` | Only the UK layout exists so far. | Remove `layout` or set it to `uk`. |
 | `Task …: minAccuracy must be a number above 0 and at most 1.` | `minAccuracy` is a fraction, not a percentage. | Use e.g. `0.9` for 90%. |
@@ -273,9 +273,6 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 
 | Message | Meaning | Fix |
 |---|---|---|
-| `Task …: tells needs at least two entries.` | `tells` is missing or has fewer than two clues. | List at least two clues the student can choose from. |
-| `Task …: tell … must be a non-empty string.` | An entry in `tells` is blank or not text. | Write each clue as text, like `too_smooth` or `Odd lighting`. |
-| `Task …: tell "…" is listed more than once.` | The same clue appears twice in `tells`. | Remove the repeat. |
 | `Task …: real_or_ai task needs at least one item.` | `items` is empty. | Add at least one pair. |
 | `Task … item …: needs an id.` | A pair has no `id`. | Give every pair a short unique id (`p1`, `p2`). |
 | `Task … item …: id "…" is used more than once.` | Two pairs share an `id`. | Make each id unique. |
@@ -283,10 +280,9 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … item …: a is required.` | The `a` side is empty. | Give an image path or URL, or the text for side A. |
 | `Task … item …: b is required.` | The `b` side is empty. | Give an image path or URL, or the text for side B. |
 | `Task … item …: answer must be a or b.` | `answer` is missing or not `a` / `b`. | Set `answer` to the side that is AI. |
-| `Task … item …: tell is required.` | The pair has no `tell`. | Set `tell` to the clue to look for (one of `tells`). |
-| `Task … item …: tell "…" is not in the task's tells list.` | `tell` is not one of the task's `tells`. | Use a clue from `tells`, or add it there. |
-| `Task … item …: reliable must be true or false.` | `reliable` is missing or not a boolean. | Set `reliable: true` or `reliable: false`. |
-| `Task … item …: reveal is required.` | The pair has no `reveal` text. | Write the explanation shown after the student reveals. |
+| `Task … item …: tell must be text.` | `tell` is set but is not text. | Write the tell as text, like `too_smooth` or `Odd lighting`, or remove it. |
+| `Task … item …: reliable must be true or false.` | `reliable` is set but is not a boolean. | Set `reliable: true` or `reliable: false`, or remove it. |
+| `Task … item …: reveal must be text.` | `reveal` is set but is not text. | Write the extra note as a string, or remove it. |
 | `Task … item …: altA must be text.` | `altA` is not text. | Write the alt text as a string. |
 | `Task … item …: altB must be text.` | `altB` is not text. | Write the alt text as a string. |
 
