@@ -18,7 +18,16 @@ vi.mock('../../../shared/TopicLibraryView', () => ({
 }))
 
 vi.mock('../StudentModal', () => ({
-  default: ({ student, onClose, onPrev, onNext, hasPrev, hasNext, onSendVideoCallLink }) => (
+  default: ({
+    student,
+    onClose,
+    onPrev,
+    onNext,
+    hasPrev,
+    hasNext,
+    onSendVideoCallLink,
+    onSetCopyCodeOverride,
+  }) => (
     <div data-testid="student-modal">
       <span data-testid="modal-name">{student.displayName}</span>
       {hasPrev && <button onClick={onPrev}>Prev student</button>}
@@ -26,6 +35,11 @@ vi.mock('../StudentModal', () => ({
       {onSendVideoCallLink && (
         <button onClick={() => onSendVideoCallLink(student.anonymousId)}>
           Send video call link
+        </button>
+      )}
+      {onSetCopyCodeOverride && (
+        <button onClick={() => onSetCopyCodeOverride(student.anonymousId, 1, 'x')}>
+          Edit Type this out
         </button>
       )}
       <button onClick={onClose}>Close modal</button>
@@ -423,6 +437,15 @@ describe('StudentGrid', () => {
       await user.click(screen.getByRole('button', { name: 'Expand Alice' }))
       await user.click(screen.getByRole('button', { name: 'Send video call link' }))
       expect(onSendVideoCallLink).toHaveBeenCalledWith('s1')
+    })
+
+    it('threads onSetCopyCodeOverride through to the expanded StudentModal', async () => {
+      const user = userEvent.setup()
+      const onSetCopyCodeOverride = vi.fn()
+      render(<StudentGrid {...mkProps({ onSetCopyCodeOverride })} />)
+      await user.click(screen.getByRole('button', { name: 'Expand Alice' }))
+      await user.click(screen.getByRole('button', { name: 'Edit Type this out' }))
+      expect(onSetCopyCodeOverride).toHaveBeenCalledWith('s1', 1, 'x')
     })
   })
 
