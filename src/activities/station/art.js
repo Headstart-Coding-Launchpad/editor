@@ -65,3 +65,14 @@ export function artFor(partId, state) {
   const file = FILES[key]
   return file ? { src: url(`${file}.png`), glow: url(`${file}-glow.png`) } : null
 }
+
+// Sticker shapes for the crates, drawn in code (100 x 100 viewBox paths). The colour comes from
+// COLOUR_HEX; a sticker id is `<colour>-<shape>`, like red-star.
+export const STICKER_PATHS = Object.freeze({
+  star: 'M50 6 L61 38 L95 38 L67 58 L78 92 L50 71 L22 92 L33 58 L5 38 L39 38 Z',
+  circle: 'M50 8 A42 42 0 1 1 49.9 8 Z',
+  triangle: 'M50 8 L94 88 L6 88 Z',
+  square: 'M12 12 H88 V88 H12 Z',
+  heart:
+    'M50 90 L13 50 C0 33 12 10 32 12 C42 13 48 20 50 27 C52 20 58 13 68 12 C88 10 100 33 87 50 Z',
+})

@@ -345,6 +345,41 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … item …: goal "…" doesn't use a target.` | `choose_captain` or `undo` has a `target`. | Remove the `target`. |
 | `Task … item …: target "…" must be ….` | The target is not valid for the goal (a power section, `hull` or `lights`, a crate id, or a part id). | Use a target of the kind the message names. |
 | `Task … item …: target "…" is not in this lesson's catalogue.` | A `place_part` or `order_part` target is not in the task's catalogue. | Add it to `catalogue` or pick another part. |
+| `Task … item …: target "…" must be a crate id (crate-1, crate-2, crate-3, crate-4 or crate-5).` | An `open_crate` target is not one of the five crates. | Use `crate-1` to `crate-5`. |
+| `Task … item …: target "…" is not one of this task's crates.` | The task has a `crates` list and the target is not in it. | Add the crate to `crates` or pick one that is there. |
+| `Task … item …: order only applies to power_on, open_crate, place_part goals.` | `order` is on another goal. | Remove it, or use one of those goals. |
+| `Task … item …: order must be a list of at least 2 ids.` | `order` is not a list, or has fewer than 2 ids. | List 2 or more ids. |
+| `Task … item …: order lists the same id twice.` | An id repeats in `order`. | Make each id appear once. |
+| `Task … item …: order "…" must be ….` | An id in `order` is not valid for the goal (a power section, a crate in the task, or a part in the lesson's catalogue). | Use an id of the kind the message names. |
+| `Task … item …: order can't be used with a target or a card; list the ids in order instead.` | The goal has `order` and also `target` or `card`. | Remove `target` / `card`. |
+| `Task … item …: order "…" is not a crate the note lists.` | `onlyNoted` with `order` where an ordered crate is a decoy. | Order only crates whose sticker is on the note. |
+| `Task … item …: match only applies to pick_colour goals.` | `match` is on another goal. | Remove it. |
+| `Task … item …: match "…" must be one of the … colours: ….` | `match` is not a colour for that target (`hull` or `lights`). | Use a colour from the list in the message. |
+| `Task … item …: card only applies to order_part and place_part goals.` | `card` is on another goal. | Remove it. |
+| `Task … item …: card can't be used with a target; the part on the card is the target.` | A goal has both `card` and `target`. | Keep one. |
+| `Task … item …: card "…" must be a part id from the parts catalogue.` | `card` is not a station part. | Use a part id from the docs page. |
+| `Task … item …: card "…" is not in this lesson's catalogue.` | The card's part is not on offer this lesson. | Pick a part from this lesson's list. |
+| `Task … item …: onlyNoted only applies to open_crate goals.` | `onlyNoted` is on another goal. | Remove it. |
+| `Task … item …: onlyNoted must be true or false.` | `onlyNoted` is not a boolean. | Write `true`. |
+| `Task … item …: onlyNoted needs the task's note and crates (with stickers).` | `onlyNoted` with no `note` or no `crates`. | Add both to the task. |
+| `Task … item …: onlyNoted can't be used with a target; the note says which crates.` | `onlyNoted` with `target`. | Remove `target`. |
+| `Task … item …: count only applies to place_part, open_crate, undo goals.` | `count` is on another goal. | Remove it. |
+| `Task … item …: count must be a whole number from 2 to 9 (Ctrl+Z presses).` | An `undo` count out of range. | Use 2 to 9. |
+| `Task … item …: count must be a whole number from 2 to … (the crates in this task).` | An `open_crate` count is below 2 or more than the crates. | Use 2 up to the number of crates. |
+| `Task … item …: count can't be used with a target, order or onlyNoted.` | An `open_crate` count with another way of choosing crates. | Keep one. |
+| `Task … item …: count needs a target part, like "put exactly 3 solar panels".` | `place_part` with `count` and no `target`. | Set the `target` part. |
+| `Task … item …: count must be a whole number from 2 to … (the spots that take the ….).` | A `place_part` count is below 2 or more than the spots that take the part. | Use a count the spots allow. |
+| `Task … item …: count on place_part only works in lesson 3.` | `place_part` with `count` in lesson 4. | Move it to Lesson 3. |
+| `Task … item …: count can't be used with an order or a card.` | `place_part` count with `order` or `card`. | Keep one. |
+| `Task …: crates must be a list of 1 to 5 crates, each with an id.` | `crates` is not a list, is empty or has more than 5. | List 1 to 5 `{ id, sticker }` crates. |
+| `Task …: crates only applies to lesson 2.` / `Task …: note only applies to lesson 2.` | `crates` or `note` on another lesson. | Remove it. |
+| `Task … crate …: id must be one of crate-1, crate-2, crate-3, crate-4, crate-5.` | A crate's `id` is missing or unknown. | Use one of the five ids. |
+| `Task … crate …: id "…" is used more than once.` | Two crates share an id. | Make each id unique. |
+| `Task … crate …: sticker "…" must be a colour and a shape joined with a dash, ….` | A crate's `sticker` is not a known colour and shape. | Use the colours and shapes in the message, like `red-star`. |
+| `Task …: note must be a list of stickers.` | `note` is not a list or is empty. | List one or more stickers. |
+| `Task …: note needs crates with stickers to match it.` | `note` with no `crates` stickers. | Add `crates` with stickers. |
+| `Task …: note sticker "…" must be a colour and a shape joined with a dash, ….` | A note sticker is not valid. | Use a sticker like `green-triangle`. |
+| `Task …: note sticker "…" is not on any crate.` | The note lists a sticker no crate has. | Put it on a crate, or take it off the note. |
 
 ## Code-arrange tasks
 

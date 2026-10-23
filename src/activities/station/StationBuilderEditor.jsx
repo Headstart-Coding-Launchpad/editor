@@ -1,7 +1,6 @@
 import React from 'react'
 import definition from './definition.js'
 import {
-  CRATE_IDS,
   GOALS,
   GOAL_IDS,
   LESSON,
@@ -9,6 +8,7 @@ import {
   PHASE_1_LESSONS,
   SECTIONS,
   catalogueFor,
+  crateIdsFor,
   partById,
   promptFor,
 } from './station.js'
@@ -47,7 +47,8 @@ function targetOptions(task, goalId) {
   const kind = GOALS[goalId]?.target
   if (kind === 'section') return SECTIONS.map((s) => ({ value: s.id, label: s.label }))
   if (kind === 'colour') return COLOUR_OPTIONS
-  if (kind === 'crate') return CRATE_IDS.map((id) => ({ value: id, label: partById(id).label }))
+  if (kind === 'crate')
+    return crateIdsFor(task).map((id) => ({ value: id, label: partById(id).label }))
   if (kind === 'part') {
     const ids =
       goalId === 'place_part' || goalId === 'order_part'
@@ -172,7 +173,7 @@ export default function StationBuilderEditor({ task, onUpdate }) {
 
       <Field
         label="Core items (rest are bonus)"
-        hint="How many goals make the round. The task passes at this many; the rest are bonus. Blank means all."
+        hint="How many goals make the round. The FIRST this many goals are required; the rest are bonus. Blank means all."
       >
         <input
           className="te-input te-act-narrow"
@@ -188,7 +189,7 @@ export default function StationBuilderEditor({ task, onUpdate }) {
 
       <RowListEditor
         label="Goals"
-        hint="done in any order"
+        hint="done in any order. Build-job fields (order, match, card, onlyNoted, count, and the task's crates and note) are set in YAML; see docs/authoring/activities/station.md"
         rows={task.items}
         validation={validation}
         addLabel="+ Add goal"

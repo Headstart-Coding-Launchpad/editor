@@ -75,7 +75,53 @@ export default defineActivity({
               'A section id, hull or lights, a part id or a crate id, depending on the goal. Leave out for any.',
           },
           { name: 'prompt', type: 'string', authored: true },
+          {
+            name: 'order',
+            type: 'array',
+            description:
+              'power_on, open_crate, place_part: ids to do in this order (sections, crates or parts). A wrong next step just blinks.',
+          },
+          {
+            name: 'match',
+            type: 'string',
+            description:
+              'pick_colour: the colour that counts. The card shows it; other colours still recolour but do not count.',
+          },
+          {
+            name: 'card',
+            type: 'string',
+            description:
+              'order_part, place_part: a part id shown as a picture ("find the one in the picture") in place of a target.',
+          },
+          {
+            name: 'onlyNoted',
+            type: 'boolean',
+            description:
+              'open_crate: done when every crate the delivery note lists is open and no other is. Opening a decoy blinks and stays shut.',
+          },
+          {
+            name: 'count',
+            type: 'number',
+            description:
+              'place_part (lesson 3, with a target), open_crate, undo: done when exactly that many.',
+          },
         ],
+      },
+      {
+        name: 'crates',
+        type: 'array',
+        description:
+          'Lesson 2: which crates are in the delivery bay (up to 5) and the sticker on each: [{ id: crate-1, sticker: red-star }]. Defaults to crate-1 to crate-3 with no stickers.',
+        itemFields: [
+          { name: 'id', type: 'string', required: true },
+          { name: 'sticker', type: 'string' },
+        ],
+      },
+      {
+        name: 'note',
+        type: 'array',
+        description:
+          'Lesson 2: the stickers on the delivery note (for open_crate with onlyNoted), like [red-star, blue-circle].',
       },
       {
         name: 'catalogue',
@@ -87,7 +133,7 @@ export default defineActivity({
         name: 'coreItems',
         type: 'number',
         description:
-          'How many goals make the round (1 to the number of items). The rest are bonus. Defaults to all goals.',
+          'How many goals make the round (1 to the number of items): the FIRST this many goals are required, the rest are bonus. Defaults to all goals.',
       },
     ],
   },
@@ -162,9 +208,9 @@ export default defineActivity({
   },
 
   summarize: (task, state) => {
-    const { correct, total, core, done } = gradeStationTask(task, state)
+    const { counted, total, core, done } = gradeStationTask(task, state)
     return {
-      text: roundSummaryText(correct, total, core, 'goals'),
+      text: roundSummaryText(counted, total, core, 'goals'),
       tone: done ? 'success' : 'neutral',
     }
   },

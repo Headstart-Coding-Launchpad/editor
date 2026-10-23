@@ -39,6 +39,21 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-23
 
+- **Space station: build jobs (handoff #101, Lesson Gen review #181).** New fields on station goals
+  for the course's "Build jobs": `order: [...]` (do these in this order: `power_on` sections,
+  `open_crate` crates, `place_part` parts; a wrong next step just blinks), `match: <colour>` on
+  `pick_colour` (the card shows the colour; only that swatch counts), `card: <part>` on
+  `order_part` / `place_part` ("find the one in the picture"), `onlyNoted: true` on `open_crate`
+  (leave the decoys), and `count: n` on `place_part` (Lesson 3, with a `target`), `open_crate` and
+  `undo` ("exactly that many"). New task fields for Lesson 2: `crates: [{ id, sticker }]` (up to
+  five crates, `crate-4` holds `crew-robot-3`, `crate-5` is empty) and `note: [stickers]` (the
+  delivery note); stickers are `<colour>-<shape>`, like `red-star`. **Behaviour change:**
+  `coreItems` on a station task now means the FIRST this many goals are required (not any this
+  many); put the required goals first. A sort job ("fuel to the tank") is not built. Details and a
+  complete example lesson: [activities/station.md](activities/station.md).
+- Affects: station · Existing lessons: station tasks with `coreItems` must list their required
+  goals first · Resolves: none
+
 - **New activity: Space station (Phase 1, Mouse and Keyboard Lessons 1-4).** `type: station` with
   `lesson` (1 to 4), `items` of `{ id, goal, target?, prompt? }`, optional `catalogue` and
   `coreItems`. Goals: `power_on`, `pick_colour`, `select`, `open_crate`, `choose_captain`,

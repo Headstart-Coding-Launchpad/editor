@@ -89,7 +89,7 @@ describe('validateStationTask', () => {
     ],
     [
       task(2, [{ id: 'a', goal: 'open_crate', target: 'crate-9' }]),
-      'Task 2 item 1: target "crate-9" must be a crate id (crate-1, crate-2 or crate-3).',
+      'Task 2 item 1: target "crate-9" must be a crate id (crate-1, crate-2, crate-3, crate-4 or crate-5).',
     ],
     [
       task(3, [{ id: 'a', goal: 'place_part', target: 'nope' }]),

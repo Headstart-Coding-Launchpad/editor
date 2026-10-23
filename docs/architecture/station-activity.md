@@ -59,9 +59,11 @@ Phase 1: crates `crate-1`-`crate-3` (each holds one crew member: `crew-robot-1`,
 | `lesson` | yes | 1–4 in Phase 1. Sets the starting scene: everything from earlier lessons is already there in a default place (catch-up), and this lesson's setup is added (dark station / crates / tray / catalogue). |
 | `items` | yes | This week's goals, done in any order: `{ id, goal, target?, prompt? }`. |
 | `catalogue` | no | Part ids on offer: the Lesson 3 tray or the Lesson 4 catalogue. Defaults to the lesson's own list. |
-| `coreItems` | no | How many goals make the task pass (default all). The rest are bonus. |
+| `coreItems` | no | How many goals make the task pass (default all). The FIRST this many goals are the round (station-only rule: not any N); the rest are bonus. |
+| `crates` | no | Lesson 2: the crates in the bay (1-5 of `crate-1`..`crate-5`) as `{ id, sticker? }`. Default the first three, no stickers. |
+| `note` | no | Lesson 2: the delivery note, a list of stickers (`<colour>-<shape>`). |
 
-Goals (`goal`) and the method each one needs:
+Goal items also take the build-job fields below. Goals (`goal`) and the method each one needs:
 
 | Goal | Target | Done when | Method recorded / required |
 |---|---|---|---|
@@ -73,6 +75,38 @@ Goals (`goal`) and the method each one needs:
 | `place_part` | a part id, or none = any | the part sits on a spot | `drag` or `pick_drop` (click to pick up, click to drop: the trackpad fallback). Both count; the method is recorded. |
 | `undo` | none | a change is undone | `ctrl_z` / `cmd_z` only (the tutor's undo never counts) |
 | `order_part` | a part id, or none = any | the part is ordered from the catalogue | `click`; `scrolled: true` is recorded when the catalogue was scrolled first |
+
+### Build jobs (Hub #101, Lesson Gen LG-P8 "Build jobs")
+
+Optional goal fields that make each lesson a few short jobs. All of it is pure model
+(`station.js`); `ui.jsx` only draws the cards and blinks.
+
+- **First-N core.** `gradeStationTask` counts `coreDone` over the first `core` goals only and
+  `done = coreDone >= core`; `counted` (core done so far, then core + bonus done) feeds the progress
+  text, the card and the summary, and `flags` (one boolean per goal) feeds `RoundProgress`'s optional
+  `flags` prop. Other activities still count any N (`coreCountOf` is unchanged).
+- **`blockedBy(task, state, action)`** returns the goal that refuses an action, and
+  `stationAction` then returns the state unchanged (no undo entry, no mark). Refusals: an ordered
+  goal (`order`) not done yet refuses a step that is not `nextInOrder`; an `open_crate` goal with
+  `onlyNoted` refuses a crate whose sticker is not on the `note`, even once done. The UI calls the
+  same function to blink the goal's card and the thing pressed (`data-blink` 0/1 alternate so a
+  repeat restarts the animation; reduced motion swaps the shake for an outline flash).
+- **`match`** (`pick_colour`) and **`card`** (`order_part`, `place_part`; `goalPart(item)` is
+  `card || target`) only change `completes()`. Hints say "look at the card" and never the answer.
+- **Crates and stickers.** `CRATE_IDS` is five ids; `crateIdsFor(task)` is the task's bay
+  (default three). `crate-4` holds `crew-robot-3`, `crate-5` is empty. `stickerOf(task, crate)` and
+  `isNoted` read the task, so the saved scene is unchanged. Stickers are `<colour>-<shape>`
+  (`STICKERS`), drawn as SVG paths from `art.js` `STICKER_PATHS`. A carried scene whose crates come
+  from a bigger bay opens exactly the crates it has (catch-up).
+- **`count`.** `multiParts(task)` is the set of parts a `place_part` goal counts more than once:
+  the tray never runs out of them (`trayParts`), a `place` without `from` adds a copy, with `from`
+  moves one, and saved scenes keep duplicates only for those parts. `open_crate` counts the open
+  crates. `undo` counts `state.undos`, which only a ctrl_z / cmd_z press that really undoes
+  increments (the tutor's undo does not).
+- **Not built:** the "sort into the right place" job. Spots accept by part kind, so there is no
+  group to sort into without new art.
+- The Builder editor does not expose the build-job fields; they are YAML-only (it says so under
+  the goals list), though its crate target choices follow `crates`.
 
 ### State (`v: 1`, small)
 
@@ -91,6 +125,7 @@ Goals (`goal`) and the method each one needs:
   done: { [itemId]: { method, at, scrolled? } },
   selected: 'crate-1' | null,
   undo: [ /* up to 15 earlier scenes, device only */ ],
+  undos: 0,                                    // Ctrl/Cmd+Z presses that really undid something
   device: { touch },
 }
 ```
@@ -150,7 +185,10 @@ It reuses the tutor-mediated roster route of typing history and `carryCodeFromLe
 - **Ctrl+Z / Cmd+Z** while the station has focus undoes the last change.
 - **Catalogue**: a tall scrolling list (Lesson 4); click "Order" on a part to put it in the tray.
 - Goals list beside the station with ticks as they're done (the round progress helpers), and a
-  pass message when the core goals are done; they can keep building after.
+  pass message when the first `coreItems` goals are done; they can keep building after. A goal
+  with a build-job field has a target card under its line (order steps, the colour, the stickers on
+  the note, the part picture, or "Exactly n" with a counter); one click on a crate shows its
+  sticker large; a refused step blinks.
 - **Station upgraded!** When the core goals complete, the scene plays a short moment: lights sweep
   across the hull and the newest thing built (a placed part, the captain, an opened crate's crew)
   pops with a glow and sparkles. It plays on the change, not when a finished station is opened.
@@ -162,7 +200,7 @@ It reuses the tutor-mediated roster route of typing history and `carryCodeFromLe
 
 ## Tutor visibility
 
-- **Card:** a mini-station (`CardSummary`) and "3/5 goals".
+- **Card:** a mini-station (`CardSummary`) and "3/5 goals" (the first `coreItems` goals).
 - **Modal:** the full station read-only, live, with each goal's method ("opened by
   double-click").
 - **Help:** the tutor's **Undo last change** (Lessons 1–2 have no Ctrl+Z yet) and the usual

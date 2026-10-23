@@ -3,26 +3,31 @@ import { useEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
 import RoundProgress from '../ui/RoundProgress.jsx'
-import { COLOUR_HEX, SCENE_ART, SCENE_PX, artFor } from './art.js'
+import { COLOUR_HEX, SCENE_ART, SCENE_PX, STICKER_PATHS, artFor } from './art.js'
 import StationCardSummary from './MiniStation.jsx'
 import {
   CREW_IDS,
-  CRATE_IDS,
   HULL_COLOURS,
   LIGHT_COLOURS,
   PLACE_SPOTS,
   SECTIONS,
   spotById,
+  blockedBy,
   catalogueFor,
+  countProgress,
+  crateIdsFor,
   gradeStationItem,
   gradeStationTask,
   initialStationState,
   methodWords,
   nearestSpot,
+  nextInOrder,
   partById,
   promptFor,
   spotTakes,
   stationAction,
+  stickerOf,
+  stickerWords,
   trayParts,
 } from './station.js'
 
@@ -53,6 +58,9 @@ const CELL_W = SCENE_PX.cell / SCENE_PX.w
 const CELL_H = SCENE_PX.cell / SCENE_PX.h
 // How long the "Station upgraded!" moment plays on the scene.
 const UPGRADE_MS = 3200
+
+// How long a refused step blinks (a wrong order, a decoy crate).
+const BLINK_MS = 650
 
 const maskStyle = (src) => ({ WebkitMaskImage: `url(${src})`, maskImage: `url(${src})` })
 
@@ -112,10 +120,36 @@ const spotBox = (spot) => ({
   height: pct(spot.h),
 })
 
+// A sticker (a colour and a shape, drawn in code) on a crate or on the delivery note.
+function Sticker({ sticker, size = 40, className = '' }) {
+  const [colour, shape] = String(sticker ?? '').split('-')
+  const d = STICKER_PATHS[shape]
+  if (!d || !COLOUR_HEX[colour]) return null
+  return (
+    <svg
+      className={`act-station-sticker${className ? ` ${className}` : ''}`}
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
+      aria-hidden="true"
+      data-sticker={sticker}
+    >
+      <path
+        d={d}
+        fill={COLOUR_HEX[colour]}
+        stroke="#0f172a"
+        strokeWidth="6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 // The little picture beside a goal line: the part, crate or badge it is about.
 function goalIcon(item, task) {
   const catalogue = catalogueFor(task)
   const anyPart = task?.lesson === 2 ? 'crate-1' : (catalogue[0] ?? 'crate-1')
+  if (item?.card) return { glyph: '🔍' }
   switch (item?.goal) {
     case 'power_on':
       return { id: 'power', state: 'on' }
@@ -126,9 +160,9 @@ function goalIcon(item, task) {
     case 'select':
     case 'place_part':
     case 'order_part':
-      return { id: item.target || anyPart, state: 'closed' }
+      return { id: item.target || item.order?.[0] || anyPart, state: 'closed' }
     case 'pick_colour':
-      return { swatch: true }
+      return { swatch: true, colour: item.match }
     default:
       return { glyph: '↶' }
   }
@@ -136,7 +170,15 @@ function goalIcon(item, task) {
 
 function GoalIcon({ item, task }) {
   const icon = goalIcon(item, task)
-  if (icon.swatch) return <span className="act-station-goal__icon is-swatch" aria-hidden="true" />
+  if (icon.swatch) {
+    return (
+      <span
+        className="act-station-goal__icon is-swatch"
+        style={icon.colour ? { background: COLOUR_HEX[icon.colour] } : undefined}
+        aria-hidden="true"
+      />
+    )
+  }
   if (icon.glyph) {
     return (
       <span className="act-station-goal__icon is-glyph" aria-hidden="true">
@@ -151,6 +193,120 @@ function GoalIcon({ item, task }) {
   )
 }
 
+const titleCase = (word) => (word ? word[0].toUpperCase() + word.slice(1) : '')
+
+// The target card beside a goal line, big enough to read from across the room: the order to follow,
+// the colour to match, the stickers on the delivery note, the part in the picture, or how many.
+// Null for a goal with nothing to show.
+function GoalCard({ item, task, state, blink }) {
+  const scene = state.scene
+  const order = Array.isArray(item.order) && item.order.length ? item.order : null
+  const progress = countProgress(task, item, state)
+  const finished = !!state.done?.[item.id]
+  let body = null
+  let label = ''
+  if (order) {
+    const next = finished ? null : nextInOrder(item, scene)
+    const stepDone = (id) =>
+      item.goal === 'power_on'
+        ? !!scene.power?.[id]
+        : item.goal === 'open_crate'
+          ? scene.crates?.[id] === 'open'
+          : Object.values(scene.placed ?? {}).includes(id)
+    label = item.goal === 'place_part' ? 'Plan card: build in this order' : 'Do these in this order'
+    body = order.map((id, i) => (
+      <span
+        key={id}
+        className={`act-station-card__step${stepDone(id) ? ' is-done' : ''}${id === next ? ' is-next' : ''}`}
+        data-testid={`card-step-${item.id}-${id}`}
+      >
+        <span className="act-station-card__num">{i + 1}</span>
+        <span className="act-station-card__pic">
+          {item.goal === 'power_on' ? (
+            <PartImg id="power" state="on" />
+          ) : (
+            <PartImg id={id} state={item.goal === 'open_crate' ? 'closed' : undefined} />
+          )}
+          {item.goal === 'open_crate' && stickerOf(task, id) && (
+            <Sticker
+              sticker={stickerOf(task, id)}
+              size={26}
+              className="act-station-card__sticker"
+            />
+          )}
+        </span>
+        <span className="act-station-card__name">
+          {item.goal === 'power_on'
+            ? SECTIONS.find((sec) => sec.id === id)?.label
+            : partById(id)?.label}
+        </span>
+      </span>
+    ))
+  } else if (item.goal === 'pick_colour' && item.match) {
+    label = 'Match this colour'
+    body = (
+      <span className="act-station-card__step" data-testid={`card-colour-${item.id}`}>
+        <span
+          className="act-station-card__colour"
+          style={{ background: COLOUR_HEX[item.match] }}
+          aria-hidden="true"
+        />
+        <span className="act-station-card__name">{titleCase(item.match)}</span>
+      </span>
+    )
+  } else if (item.goal === 'open_crate' && item.onlyNoted === true) {
+    label = 'Delivery note: open only these'
+    body = (Array.isArray(task.note) ? task.note : []).map((sticker) => (
+      <span key={sticker} className="act-station-card__step" data-testid={`note-${sticker}`}>
+        <Sticker sticker={sticker} size={56} />
+        <span className="act-station-card__name">{stickerWords(sticker)}</span>
+      </span>
+    ))
+  } else if (item.card) {
+    label = 'Find this one'
+    body = (
+      <span className="act-station-card__step" data-testid={`card-part-${item.id}`}>
+        <span className="act-station-card__pic is-big">
+          <PartImg id={item.card} />
+        </span>
+      </span>
+    )
+  } else if (progress) {
+    label = `Exactly ${progress.need}`
+    body = (
+      <span className="act-station-card__step" data-testid={`card-count-${item.id}`}>
+        <span className="act-station-card__pic">
+          {item.goal === 'undo' ? (
+            <span className="act-station-card__glyph">↶</span>
+          ) : (
+            <PartImg
+              id={item.goal === 'open_crate' ? 'crate-1' : item.target}
+              state={item.goal === 'open_crate' ? 'closed' : undefined}
+            />
+          )}
+        </span>
+        <span className="act-station-card__times">×{progress.need}</span>
+        <span className="act-station-card__name" data-testid={`count-${item.id}`}>
+          {Math.min(progress.have, progress.need)} of {progress.need}
+        </span>
+      </span>
+    )
+  }
+  if (!body) return null
+  return (
+    <div
+      className="act-station-card"
+      data-testid={`card-${item.id}`}
+      data-blink={blink}
+      role="group"
+      aria-label={label}
+    >
+      <span className="act-station-card__label">{label}</span>
+      <span className="act-station-card__row">{body}</span>
+    </div>
+  )
+}
+
 export function StationStudentView({ task, state, onChange, readOnly = false, teacher = false }) {
   const live = state?.scene ? state : initialStationState(task)
   const scene = live.scene
@@ -162,7 +318,8 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
   const catalogue = lesson === 4 ? catalogueFor(task) : []
   const tray = trayParts(task, scene)
   const showTray = lesson === 3 || lesson === 4
-  const crateIds = CRATE_IDS.filter((id) => scene.crates?.[id])
+  const crateIds = crateIdsFor(task).filter((id) => scene.crates?.[id])
+  const selectedSticker = crateIds.includes(live.selected) ? stickerOf(task, live.selected) : null
   // The bay is only there while a crate is still waiting to be opened.
   const showBay = crateIds.some((id) => scene.crates[id] !== 'open')
   const showPads = showTray
@@ -183,6 +340,8 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
   const [hint, setHint] = useState(null)
   // The "Station upgraded!" moment: { spot } names the newest thing built, for the pop and sparkle.
   const [upgrade, setUpgrade] = useState(null)
+  // A step a goal refused: { ids, n }. The things named in `ids` blink for a moment.
+  const [blink, setBlink] = useState(null)
   const prevScene = useRef(live.scene)
   const newest = useRef(null)
   const wasDone = useRef(result.done)
@@ -209,6 +368,12 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
   }, [scene, result.done])
 
   useEffect(() => {
+    if (!blink) return undefined
+    const timer = setTimeout(() => setBlink(null), BLINK_MS)
+    return () => clearTimeout(timer)
+  }, [blink])
+
+  useEffect(() => {
     if (!upgrade) return undefined
     const timer = setTimeout(() => setUpgrade(null), UPGRADE_MS)
     return () => clearTimeout(timer)
@@ -222,9 +387,33 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
     return () => window.removeEventListener('pointermove', move)
   }, [held?.mode])
 
+  // Alternating 0 / 1 lets a repeated wrong step restart the blink animation.
+  const blinkOf = (id) => (blink?.ids.includes(id) ? blink.n % 2 : undefined)
+
+  // A step the goals refuse changes nothing: the card and the thing pressed blink, with a hint.
+  function refuse(blocker, action) {
+    const thing =
+      action.type === 'power'
+        ? `section-${action.section}`
+        : action.type === 'open'
+          ? `crate-${action.crate}`
+          : `tray-${action.part}`
+    setBlink((b) => ({ ids: [`card-${blocker.id}`, thing], n: (b?.n ?? 0) + 1 }))
+    setHint(
+      blocker.onlyNoted === true && action.type === 'open'
+        ? "That crate isn't on the note, so it stays shut. Try another."
+        : gradeStationItem(task, blocker, latest.current.state).hint
+    )
+  }
+
   function act(action) {
     if (!interactive) return
     const cur = latest.current.state
+    const blocker = blockedBy(task, cur, action)
+    if (blocker) {
+      refuse(blocker, action)
+      return
+    }
     const next = stationAction(cur, action, task)
     if (action.type !== 'select' || action.id) {
       if (doneCount(next) > doneCount(cur)) setHint(null)
@@ -328,7 +517,8 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
         }, 0)
         setHeld(null)
         const spot = dropSpotAt(e.clientX, e.clientY, partId)
-        if (spot) act({ type: 'place', part: partId, spot, method: 'drag' })
+        if (spot)
+          act({ type: 'place', part: partId, spot, method: 'drag', from: from ?? undefined })
       },
       onPointerCancel: () => {
         dragRef.current = null
@@ -492,6 +682,7 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                   style={spotBox(spot)}
                   data-testid={`section-${s.id}`}
                   data-lit={lit ? 'true' : 'false'}
+                  data-blink={blinkOf(`section-${s.id}`)}
                 >
                   {lit && <GlowImg id="power" state="on" className="act-station-power-halo" />}
                   <button
@@ -637,8 +828,9 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                   type="button"
                   className={`act-station-crate${open ? ' is-open' : ''}${live.selected === id ? ' is-selected' : ''}`}
                   data-testid={`crate-${id}`}
+                  data-blink={blinkOf(`crate-${id}`)}
                   aria-pressed={live.selected === id}
-                  aria-label={`${part?.label}, ${open ? 'open' : 'closed'}`}
+                  aria-label={`${part?.label}, ${open ? 'open' : 'closed'}${stickerOf(task, id) ? `, sticker ${stickerWords(stickerOf(task, id))}` : ''}`}
                   disabled={!interactive}
                   onClick={() => {
                     if (suppressClick.current) return
@@ -650,18 +842,40 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                   }}
                   onKeyDown={(e) => onCrateKeyDown(e, id)}
                 >
-                  <PartImg id={id} state={open ? 'open' : 'closed'} />
+                  <span className="act-station-crate__pic">
+                    <PartImg id={id} state={open ? 'open' : 'closed'} />
+                    {stickerOf(task, id) && (
+                      <Sticker
+                        sticker={stickerOf(task, id)}
+                        size={26}
+                        className="act-station-crate__sticker"
+                      />
+                    )}
+                  </span>
                   <span className="act-station-crate__label">{part?.label}</span>
                 </button>
               )
             })}
+            {selectedSticker && (
+              <span className="act-station-reader" data-testid="sticker-reader" role="status">
+                <Sticker sticker={selectedSticker} size={72} />
+                <span>
+                  {partById(live.selected)?.label} has a {stickerWords(selectedSticker)}
+                </span>
+              </span>
+            )}
           </div>
         )}
       </div>
 
       <aside className="act-station__side">
         <h3 className="act-station__heading">This week</h3>
-        <RoundProgress done={result.correct} total={result.total} core={core} />
+        <RoundProgress
+          done={result.counted}
+          total={result.total}
+          core={core}
+          flags={result.flags}
+        />
         <ol className="act-station__goals" data-testid="station-goals">
           {items.map((item, i) => {
             const r = result.itemResults[item.id]
@@ -675,7 +889,7 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                   {r?.correct ? '✓' : ''}
                 </span>
                 <GoalIcon item={item} task={task} />
-                <span>
+                <span className="act-station-goal__text">
                   {promptFor(item, lesson)}
                   {i >= core && <span className="act-station-goal__bonus"> ⭐ Bonus</span>}
                   {r?.correct && showMethods && r.method && (
@@ -686,6 +900,7 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                   )}
                   <span className="act-station-sr">{r?.correct ? ' (done)' : ' (to do)'}</span>
                 </span>
+                <GoalCard item={item} task={task} state={live} blink={blinkOf(`card-${item.id}`)} />
               </li>
             )
           })}
@@ -773,6 +988,7 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                 className={`act-station-tray-part${held?.partId === id ? ' is-held' : ''}`}
                 data-testid={`tray-${id}`}
                 data-tray-part={id}
+                data-blink={blinkOf(`tray-${id}`)}
                 aria-label={`${partById(id)?.label}. Drag onto the station, or click to pick up.`}
                 aria-pressed={held?.partId === id && held.mode === 'pick'}
                 disabled={!interactive}
