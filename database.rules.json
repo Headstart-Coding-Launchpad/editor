@@ -834,37 +834,6 @@
       }
     },
 
-    // Solo study log (src/shared/soloLog.js): what a real student did in a lesson on their own,
-    // outside any live session, so tutors can see who did a Solo Challenge and when. One node per
-    // lesson and student: { startedAt, lastAt, finishedAt, name, tasks: { taskId: { attempts, passed,
-    // firstTry, firstAt, passedAt } } }. Counts, times and the display name only, never code. Kept outside
-    // "sessions" because createSession clears those. Students write their own node only (auth.uid
-    // is the key); teachers/admins read and clear it.
-    "soloLog": {
-      ".read": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
-      "$lessonId": {
-        ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
-        "$anonymousId": {
-          ".write": "auth != null && auth.uid === $anonymousId",
-          "startedAt": { ".validate": "newData.isNumber()" },
-          "lastAt": { ".validate": "newData.isNumber()" },
-          "finishedAt": { ".validate": "newData.isNumber()" },
-          "name": { ".validate": "newData.isString() && newData.val().length <= 30" },
-          "tasks": {
-            "$taskId": {
-              "attempts": { ".validate": "newData.isNumber() && newData.val() >= 0" },
-              "passed": { ".validate": "newData.isBoolean()" },
-              "firstTry": { ".validate": "newData.isBoolean()" },
-              "firstAt": { ".validate": "newData.isNumber()" },
-              "passedAt": { ".validate": "newData.isNumber()" },
-              "$other": { ".validate": false }
-            }
-          },
-          "$other": { ".validate": false }
-        }
-      }
-    },
-
     // Teacher-sandbox archive for the session report: one entry per teacher
     // sandbox visit, with the tutor's pushes and each student's last sandbox
     // code. Kept outside "sessions" so it never streams to every client, and

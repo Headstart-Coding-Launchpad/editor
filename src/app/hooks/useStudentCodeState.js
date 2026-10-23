@@ -181,8 +181,6 @@ export function useStudentCodeState({
   writeStudentRun,
   writeStudentHintState,
   logAttempt: logSessionAttempt,
-  // (anonymousId, taskId, passed): a solo student's checked Run, for the solo log (soloLogService).
-  recordSoloAttempt,
   writeStudentAnswer,
   writeStudentDraft,
   writeStudentCode,
@@ -360,17 +358,6 @@ export function useStudentCodeState({
   const editorSelectionRef = useLatestRef(editorSelection)
   const editorActivityRef = useLatestRef(editorActivity)
   const inPersonalSandboxRef = useLatestRef(inPersonalSandbox)
-
-  // A checked Run by a real solo student goes to the solo log (src/shared/soloLog.js), keyed by the
-  // task on screen. Not the presentation window, a preview or the personal sandbox; best-effort.
-  function handleSoloCheckResult(passed) {
-    if (phaseRef.current !== 'solo' || teacherPresentation || previewMode) return
-    if (inPersonalSandboxRef.current) return
-    const anonymousId = identityRef.current?.anonymousId
-    const taskId = currentTaskIdRef.current
-    if (!anonymousId || taskId == null) return
-    recordSoloAttempt?.(anonymousId, taskId, passed === true)?.catch?.(() => {})
-  }
 
   // The name-tag panel (a task's showVariables): see useVariablesPanel.js.
   const variablesPanel = useVariablesPanel({
@@ -754,7 +741,7 @@ export function useStudentCodeState({
     resetRunFeedback,
     resetCheckFeedback,
     applyCheckFeedback,
-  } = useCheckFeedback({ myStudentData, onCheckResult: handleSoloCheckResult })
+  } = useCheckFeedback({ myStudentData })
 
   // Mirror the hint on this student's check-feedback banner (and any unopened "Want a hint?"
   // offer) onto their student node so the teacher's card, modal and common-hints strip can
