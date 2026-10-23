@@ -6518,6 +6518,22 @@ label.te-backdrop-tag,
   box-shadow: 0 0 0 4px var(--colour-primary);
 }
 
+/* Guess dots: a right guess is a green tick, a wrong one a plain filled dot (never a tick). */
+.act-round__dot.act-nw-dot--right {
+  background: var(--colour-success-bg);
+}
+
+.act-round__dot.act-nw-dot--wrong {
+  background: var(--ui-border-strong);
+  border-color: var(--ui-border-strong);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .act-nw-chip--landed {
+    transition: box-shadow 0.2s ease;
+  }
+}
+
 .act-nw-big {
   min-height: 64px;
   min-width: 12em;

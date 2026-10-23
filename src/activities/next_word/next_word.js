@@ -4,8 +4,11 @@
 //
 // The round: the student writes (or pastes) their own sentences, the model learns from them as
 // they go, and "Next word" adds one word to a sentence. The core is "Guess what it says next"
-// `guesses` times (default 5): tap the word you think it will pick, then press. A guess counts
-// whether it was right or wrong; the task passes when the core is done, then free play is bonus.
+// `guesses` times (default 5): tap the word you think is MOST LIKELY to come next, then press. A
+// guess is right when the tapped word is (one of) the likeliest by count; the word the model then
+// picks at random may differ, and still joins the sentence. A guess counts whether it was right
+// or wrong; the task passes when the core is done, then free play is bonus. A sentence ends when
+// the model picks ".", "!" or "?" (kept as tokens by ./ngram.js).
 import {
   DEFAULT_TEMPERATURE,
   MAX_GENERATED_CHARS,
@@ -13,6 +16,8 @@ import {
   MAX_TEMPERATURE,
   MAX_TEXT_CHARS,
   MIN_TEMPERATURE,
+  endsSentence,
+  isEndMark,
   lastWordOf,
   modelFor,
   nextOptions,
@@ -98,15 +103,23 @@ export function ownWordsOf(state) {
 // The words the model might pick after the sentence so far, most likely first (up to
 // MAX_CANDIDATES): { word, total, options: [{ word, count, share }] }.
 export function candidatesOf(model, sentence) {
+  // A finished sentence has nothing to guess: the next press starts a new one.
+  if (endsSentence(sentence)) return { word: '', total: 0, options: [] }
   const info = nextOptions(model, lastWordOf(sentence))
   return { ...info, options: info.options.slice(0, MAX_CANDIDATES) }
 }
 
-// The first word of a new sentence: one of the model's busiest words. null if there are none.
+// The first word of a new sentence: one of the busiest words that starts a sentence in the text
+// (the first word, or a word that follows a sentence end), else one of the busiest words overall.
+// null if there are none.
 export function startWordOf(model, random = Math.random) {
-  const starters = startingWords(model, MAX_CANDIDATES)
-  if (starters.length === 0) return null
-  return starters[Math.floor(random() * starters.length)]
+  const openers = new Set(nextOptions(model, '.').options.map((option) => option.word))
+  if (model?.firstWord) openers.add(model.firstWord)
+  const busiest = startingWords(model, MAX_CANDIDATES * 8)
+  const starters = busiest.filter((word) => openers.has(word)).slice(0, MAX_CANDIDATES)
+  const pool = starters.length > 0 ? starters : busiest.slice(0, MAX_CANDIDATES)
+  if (pool.length === 0) return null
+  return pool[Math.floor(random() * pool.length)]
 }
 
 // The sentence kept to MAX_GENERATED_CHARS by dropping words from the front.
@@ -128,6 +141,7 @@ export function initialNextWordState(task) {
     pending: '',
     guesses: 0,
     right: 0,
+    history: '',
     last: null,
     temperature: DEFAULT_TEMPERATURE,
   }
@@ -148,6 +162,10 @@ export function normalizeNextWordState(task, raw) {
           guess: String(raw.last.guess ?? '').slice(0, 40),
           picked: String(raw.last.picked ?? '').slice(0, 40),
           ok: raw.last.ok === true,
+          best: String(raw.last.best ?? raw.last.picked ?? '').slice(0, 40),
+          bestCount: count(raw.last.bestCount),
+          total: count(raw.last.total),
+          pickedBest: raw.last.pickedBest !== false,
         }
       : null
   return {
@@ -159,6 +177,10 @@ export function normalizeNextWordState(task, raw) {
     pending: typeof raw.pending === 'string' ? raw.pending.slice(0, 40) : '',
     guesses,
     right: Math.min(count(raw.right), guesses),
+    history:
+      typeof raw.history === 'string'
+        ? raw.history.replace(/[^rw]/g, '').slice(0, MAX_GUESSES)
+        : '',
     last: last && last.picked ? last : null,
     temperature: Number.isFinite(raw.temperature)
       ? Math.min(MAX_TEMPERATURE, Math.max(MIN_TEMPERATURE, raw.temperature))
@@ -166,30 +188,85 @@ export function normalizeNextWordState(task, raw) {
   }
 }
 
-// What leaves the device (Firebase, the teacher card, the attempt log): everything except the
-// student's own sentences, which stay on the device. The word count goes instead.
+// What leaves the device (Firebase, the teacher card, the attempt log): the whole state, the
+// student's own sentences included (the tutor sees all student work live), plus the word count.
 export function sharedState(state) {
   return { ...normalizeNextWordState({}, state), ownWords: ownWordsOf(state) }
 }
 
-// Adds the landed word to the state. `guess` is the word the student tapped ('' for none); a
-// guess is counted (right or wrong). A null `word` (nothing could be picked) changes nothing.
-export function applyStep(state, word, guess = '') {
+// How a guess scored against the odds the student was looking at: `info` is candidatesOf's
+// { total, options } for the step. Right when the tapped word is one of the likeliest (ties
+// count). Returns { ok, best, bestCount, total, pickedBest } or null when there was no guess or
+// nothing to compare. `best` is the guess itself when right, else the likeliest word.
+export function gradeGuess(info, guess, picked) {
+  const options = info?.options ?? []
+  if (!guess || options.length === 0) return null
+  const top = options[0].count
+  const tied = options.filter((option) => option.count === top).map((option) => option.word)
+  const ok = tied.includes(guess)
+  return {
+    ok,
+    best: ok ? guess : options[0].word,
+    bestCount: top,
+    total: info.total,
+    pickedBest: tied.includes(picked),
+  }
+}
+
+// Adds the landed word to the state. `guess` is the word the student tapped ('' for none) and
+// `grade` is gradeGuess's result for it; a guess is counted (right or wrong). An end mark joins
+// the word before it, and a word that follows a finished sentence starts a new one. A null `word`
+// (nothing could be picked) changes nothing.
+export function applyStep(state, word, guess = '', grade = null) {
   if (!word) return state
   const base = state ?? {}
-  const words = String(base.sentence ?? '')
-    .split(' ')
-    .filter(Boolean)
+  const before = String(base.sentence ?? '')
+  const words = endsSentence(before) ? [] : before.split(' ').filter(Boolean)
+  if (isEndMark(word)) {
+    if (words.length > 0) words[words.length - 1] += word
+  } else {
+    words.push(word)
+  }
   const guessed = typeof guess === 'string' && guess !== ''
-  const ok = guessed && guess === word
+  const ok = guessed && (grade ? grade.ok : guess === word)
+  const history = String(base.history ?? '')
   return {
     ...base,
-    sentence: clipSentence([...words, word]),
+    sentence: clipSentence(words),
     pending: '',
     guesses: guessed ? count(base.guesses) + 1 : count(base.guesses),
     right: ok ? count(base.right) + 1 : count(base.right),
-    last: guessed ? { guess, picked: word, ok } : null,
+    history: guessed ? `${history}${ok ? 'r' : 'w'}`.slice(0, MAX_GUESSES) : history,
+    last: guessed
+      ? {
+          guess,
+          picked: word,
+          ok,
+          best: grade?.best ?? word,
+          bestCount: grade?.bestCount ?? 0,
+          total: grade?.total ?? 0,
+          pickedBest: grade ? grade.pickedBest : ok,
+        }
+      : null,
   }
+}
+
+// One entry per core guess, for the progress dots: 'right', 'wrong' or 'todo'. The history
+// string is the truth; an older state without it hands its rights out first.
+export function dotsOf(task, state = {}) {
+  const { goal, core, right } = gradeTask(task, state)
+  const history = typeof state?.history === 'string' ? state.history : ''
+  let spare = Math.max(0, right - [...history.slice(0, core)].filter((c) => c === 'r').length)
+  return Array.from({ length: goal }, (_, i) => {
+    if (i >= core) return 'todo'
+    if (history[i] === 'r') return 'right'
+    if (history[i] === 'w') return 'wrong'
+    if (spare > 0) {
+      spare -= 1
+      return 'right'
+    }
+    return 'wrong'
+  })
 }
 
 // Whole-task progress: { goal, guesses, right, core, bonus, done }.
@@ -214,6 +291,7 @@ export function solutionStateFor(task) {
     sentence: 'the cat sat on the mat',
     guesses: goal,
     right: goal,
+    history: 'r'.repeat(goal),
   }
 }
 

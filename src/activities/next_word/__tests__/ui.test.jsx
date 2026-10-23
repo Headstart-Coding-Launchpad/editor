@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextWordStudentView } from '../ui.jsx'
 import definition from '../definition.js'
@@ -7,10 +7,11 @@ import { renderActivityUi } from '../../../test/activityUiHarness.jsx'
 // UI tests for the Next Word StudentView with local state (src/test/activityUiHarness.jsx).
 // Math.random is pinned to 0, so the sampled word is always the most likely one and the first
 // starting word is the busiest one. Reduced motion is switched on so a press lands at once (the
-// spin is timers; jsdom can't prove the look of it: check that in a real browser).
+// spin is timers; jsdom can't prove the look of it: check that in a real browser). Fake timers
+// run the 600ms hold on the landed chip: `settle()` lets it go.
 
 const SENTENCES = 'The cat sat on the mat. The cat ran.'
-// the -> cat 2, mat 1; cat -> sat 1, ran 1
+// the -> cat 2, mat 1; cat -> ran 1, sat 1; ran -> the end
 
 const TASK = {
   id: 1,
@@ -33,9 +34,15 @@ function renderView(options = {}) {
 const write = (text = SENTENCES) =>
   fireEvent.change(screen.getByLabelText(/Write some sentences/), { target: { value: text } })
 const press = (name) => fireEvent.click(screen.getByRole('button', { name }))
-const chip = (word) => screen.getByRole('button', { name: new RegExp(`^${word}:`) })
+// A chip while the guess is pending: just the word (no numbers).
+const chip = (word) => screen.getByRole('button', { name: word })
+// Lets the held landed chip go (fake timers).
+const settle = () => act(() => vi.advanceTimersByTime(700))
+// A saved state with the student's sentences already written and `sentence` started.
+const ready = (sentence) => ({ ...definition.initialState(TASK), own: SENTENCES, sentence })
 
 beforeEach(() => {
+  vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0)
   window.matchMedia = vi.fn(() => ({
     matches: true,
@@ -44,6 +51,7 @@ beforeEach(() => {
   }))
 })
 afterEach(() => {
+  vi.useRealTimers()
   vi.restoreAllMocks()
   delete window.matchMedia
 })
@@ -84,43 +92,118 @@ describe('Next Word UI: own sentences and the button', () => {
     fireEvent.click(chip('cat'))
     expect(state().pending).toBe('cat')
     press('Next word')
-    expect(state()).toMatchObject({ sentence: 'the cat', guesses: 1, right: 1, pending: '' })
+    expect(state()).toMatchObject({
+      sentence: 'the cat',
+      guesses: 1,
+      right: 1,
+      history: 'r',
+      pending: '',
+    })
     expect(screen.getByTestId('next_word-moment')).toHaveTextContent(
-      'You guessed it! It picked “cat”'
+      'Yes, “cat” was the likeliest!'
     )
   })
 
-  it('counts a wrong guess too, and says what it picked', () => {
+  it('marks the likeliest word right even when the random pick is another word', () => {
+    // Math.random 0.99 makes the model pick the rarer “mat”.
+    Math.random.mockReturnValue(0.99)
+    const { state } = renderView({ initialState: ready('the') })
+    fireEvent.click(chip('cat'))
+    press('Next word')
+    expect(state()).toMatchObject({ sentence: 'the mat', guesses: 1, right: 1 })
+    expect(screen.getByTestId('next_word-moment')).toHaveTextContent(
+      "Yes, “cat” was the likeliest! It picked “mat” this time — it doesn't always pick the likeliest."
+    )
+  })
+
+  it('counts a wrong guess too, and says which word was likelier', () => {
     const { state } = renderView()
     write()
     press('Start a sentence')
     fireEvent.click(chip('mat'))
     press('Next word')
-    expect(state()).toMatchObject({ guesses: 1, right: 0 })
+    expect(state()).toMatchObject({ guesses: 1, right: 0, history: 'w' })
     expect(screen.getByTestId('next_word-moment')).toHaveTextContent(
-      'Not this time. It picked “cat”, you guessed “mat”.'
+      '“cat” was likelier (2 of 3 times)'
     )
+    expect(screen.getByTestId('next_word-moment')).not.toHaveTextContent('this time')
   })
 
-  it('passes when the core is done, then bonus guesses are optional', () => {
+  it('does not give the answer away while a guess is pending', () => {
+    renderView({ initialState: ready('the') })
+    // One size, no counts, and no stats for the step being guessed.
+    expect(chip('cat').getAttribute('aria-label')).toBe('cat')
+    expect(chip('cat').style.fontSize).toBe(chip('mat').style.fontSize)
+    expect(screen.queryByTestId('next_word-stats')).not.toBeInTheDocument()
+    expect(screen.queryByText(/2 of 3 times/)).not.toBeInTheDocument()
+  })
+
+  it('reveals the odds for the step on the press, holds the landed chip, then moves on', () => {
+    renderView({ initialState: ready('the') })
+    fireEvent.click(chip('mat'))
+    press('Next word')
+    // The landed word (“cat”, the pick) stays on screen with the numbers, and the next press waits.
+    const landed = screen.getByRole('button', { name: /^cat: 2 of 3 times/ })
+    expect(landed.className).toContain('act-nw-chip--landed')
+    expect(screen.getByRole('button', { name: /^mat: 1 of 3 time/ })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+    expect(screen.getByTestId('next_word-stats')).toHaveTextContent('cat: 2 of 3 times')
+    expect(screen.getByRole('button', { name: 'Next word' })).toBeDisabled()
+    settle()
+    // Now the next step's chips replace it, plain again; the numbers shown are the last step's.
+    expect(chip('ran')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^cat/ })).not.toBeInTheDocument()
+    expect(screen.getByTestId('next_word-stats')).toHaveTextContent('Last guess: after “the”')
+  })
+
+  it('draws a plain dot, not a tick, for a wrong guess', () => {
+    renderView({ initialState: ready('the') })
+    fireEvent.click(chip('mat'))
+    press('Next word')
+    settle()
+    fireEvent.click(chip('ran'))
+    press('Next word')
+    settle()
+    const dots = [...screen.getByTestId('round-progress').querySelectorAll('[data-dot]')]
+    expect(dots.map((dot) => dot.getAttribute('data-dot'))).toEqual(['wrong', 'right'])
+    expect(dots[0].textContent).toBe('')
+    expect(dots[1].textContent).toBe('✓')
+    expect(screen.getByTestId('round-progress')).toHaveTextContent('2 of 2 done')
+  })
+
+  it('finishes the sentence when the model picks the end, then starts a new one', () => {
+    const { state } = renderView({ initialState: ready('the cat ran') })
+    fireEvent.click(screen.getByRole('button', { name: 'the end' }))
+    press('Next word')
+    expect(state().sentence).toBe('the cat ran.')
+    expect(state().guesses).toBe(1)
+    settle()
+    expect(screen.getByTestId('next_word-end')).toHaveTextContent('The end! 🎉')
+    press('New sentence')
+    expect(state().sentence).toBe('the')
+    expect(state().guesses).toBe(1)
+    expect(screen.queryByTestId('next_word-end')).not.toBeInTheDocument()
+  })
+
+  it('passes when the core is done, then shows the odds and makes guesses optional', () => {
     const { state } = renderView()
     write()
     press('Start a sentence')
-    for (let i = 0; i < 2; i++) {
-      // The most likely word is always picked, so guessing the first (biggest) chip is right.
-      const first = screen
-        .getAllByRole('button')
-        .find((button) => /: \d+ of \d+ times?$/.test(button.getAttribute('aria-label') ?? ''))
-      fireEvent.click(first)
-      press('Next word')
-    }
+    fireEvent.click(chip('cat'))
+    press('Next word')
+    settle()
+    fireEvent.click(chip('ran'))
+    press('Next word')
+    settle()
     expect(state().guesses).toBe(2)
     expect(definition.grade(TASK, state()).passed).toBe(true)
     expect(screen.getByTestId('round-bonus')).toBeInTheDocument()
-    const words = state().sentence.split(' ').length
-    // (the sentence may have hit a dead end, where the button says Start a sentence)
-    press(/^(Next word|Start a sentence)$/)
-    expect(state().sentence.split(' ').length).toBe(words + 1)
+    // Bonus: the odds show again (the only thing after “ran” is the end).
+    expect(screen.getByRole('button', { name: /^the end: 1 of 1 time/ })).toBeInTheDocument()
+    press('Next word')
+    expect(state().sentence).toBe('the cat ran.')
     expect(state().guesses).toBe(2)
   })
 
@@ -130,16 +213,22 @@ describe('Next Word UI: own sentences and the button', () => {
     press('Start a sentence')
     fireEvent.click(chip('cat'))
     press('Next word')
+    settle()
     press('Start again')
     expect(state()).toMatchObject({ sentence: '', guesses: 1, right: 1, last: null })
   })
 })
 
 describe('Next Word UI: panels', () => {
-  it('shows the stats for the last word by default, and nothing else extra', () => {
+  it('shows the stats for the guessed step by default, and nothing else extra', () => {
     renderView({ task: { ...TASK, panels: undefined } })
     write()
     press('Start a sentence')
+    // Not while the first guess is pending...
+    expect(screen.queryByTestId('next_word-stats')).not.toBeInTheDocument()
+    fireEvent.click(chip('cat'))
+    press('Next word')
+    // ...but once it is pressed, the numbers for that step are shown.
     expect(screen.getByTestId('next_word-stats')).toHaveTextContent('cat: 2 of 3 times')
     expect(screen.queryByLabelText('How silly should it be?')).not.toBeInTheDocument()
     expect(screen.queryByRole('group', { name: 'Voices' })).not.toBeInTheDocument()

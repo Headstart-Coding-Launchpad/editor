@@ -119,7 +119,7 @@ describe.skipIf(!getActivityDefinition('next_word'))('Next Word StudentView clic
     expect(screen.queryByRole('button', { name: 'Run' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Start a sentence' }))
-    await user.click(screen.getByRole('button', { name: /^cat:/ }))
+    await user.click(screen.getByRole('button', { name: 'cat' }))
     await user.click(screen.getByRole('button', { name: 'Next word' }))
     await waitFor(() =>
       expect(mocks.session.writeStudentRun).toHaveBeenCalledWith('student-1', {
@@ -128,9 +128,18 @@ describe.skipIf(!getActivityDefinition('next_word'))('Next Word StudentView clic
         checkPassed: true,
       })
     )
-    // What leaves the device carries the sentence and the counts, never the student's own text.
+    // What leaves the device carries the sentence, the guess results and the student's own text
+    // (the tutor sees all student work live).
     const answer = JSON.parse(mocks.session.writeStudentRun.mock.calls[0][1].answer)
-    expect(answer).toMatchObject({ v: 2, sentence: 'the cat', guesses: 1, right: 1, ownWords: 9 })
+    expect(answer).toMatchObject({
+      v: 2,
+      sentence: 'the cat',
+      guesses: 1,
+      right: 1,
+      history: 'r',
+      ownWords: 9,
+    })
+    expect(answer.own).toContain('The cat sat')
     expect(mocks.session.writeStudentCode).not.toHaveBeenCalled()
   })
 

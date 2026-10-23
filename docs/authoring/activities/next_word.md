@@ -6,19 +6,22 @@ model** learns from them live in the browser. The model is just counts of which 
 straight after which. Then:
 
 1. **One big Next word button.** The model picks a word and it joins the sentence. The words it
-   might pick show as 3-5 chips, sized by how likely they are. A short spin runs over them and
-   lands on the word it picked. **Start again** clears the sentence.
-2. **Guess what it says next (the round).** Before pressing, the student taps the chip they
-   think it will pick, then presses. They see a tick or a cross and a line like
-   `It picked "mat"!`. Every guess counts, right or wrong. The task passes after `guesses`
-   guesses (default 5); more guesses are bonus and free play. No Check button: it finishes by
-   itself.
+   might pick show as 3-5 chips. A short spin runs over them and lands on the word it picked;
+   the landed chip stays highlighted for a moment, and the word joins the sentence. A sentence
+   ends when it picks `.` (or `!` / `?`): "The end!", and the next press starts a new sentence.
+   **Start again** clears the sentence.
+2. **Guess the most likely word (the round).** Before pressing, the student taps the chip they
+   think is **most likely** to come next, then presses. They see a tick or a cross and a line
+   like `Yes, "net" was the likeliest!` or `"ball" was likelier (3 of 5 times)`. Every guess
+   counts, right or wrong. The task passes after `guesses` guesses (default 5); more guesses
+   are bonus and free play. No Check button: it finishes by itself.
 3. **Extra parts, switched on by the lesson** (`panels`): `stats`, `silly`, `voices`.
 
 There is no API and no network: the model runs in the browser. No Run button, personal sandbox,
 sharing or carry-through. Progress is saved on the device and mirrored to the teacher's student
 card. An activity task is one round: a single goal that moves on by itself, with no in-task
-navigation; the student sees `3 of 5 done`.
+navigation; the student sees `3 of 5 done`, with a green tick dot for each right guess and a
+plain dot for each wrong one.
 
 Write `type: next_word` on the task (the YAML shorthand for `taskType: activity` +
 `activityType: next_word`, which also works). In the Builder, choose the **Activity** format and
@@ -61,7 +64,7 @@ The lesson turns parts on so each screen stays simple.
 
 | Panel | What it adds |
 |---|---|
-| `stats` | For the sentence's last word, bars of which words followed it in what the model learned, each with the number in words ("cat: 2 of 3 times"). |
+| `stats` | Bars of which words followed a word in what the model learned, each with the number in words ("cat: 2 of 3 times"). During the core it shows the step the student just guessed (never the one they are guessing); in bonus play and to the tutor it shows the current step. |
 | `silly` | A **Sensible to Silly** slider. It is the temperature, named in words: low always takes the likeliest word, high lets rarer words come up. |
 | `voices` | Cards with an emoji to switch which text the model learned from: each of the lesson's `texts`, plus **My writing**. Switching clears the sentence. Without this panel the model only learns from the student's own sentences and `texts` are not used. |
 
@@ -79,8 +82,9 @@ ignored, and the task runs as the guessing round with the default panels. Add `p
 - Each word is **lower-cased** and has **punctuation stripped from both ends**, so `Net.`,
   `"net"` and `net` are the same word. Apostrophes and hyphens inside a word stay (`don't`,
   `well-known`); curly apostrophes become straight ones.
-- A **sentence end does not break the chain**: the last word of one sentence counts as followed
-  by the first word of the next.
+- A **sentence end** (`.`, `!` or `?` at the end of a word) is kept as a word of its own, so the
+  model can learn that a sentence may end after a word (`net` is followed by `.` 2 of 3 times).
+  The end mark is then followed by the first word of the next sentence.
 - The student's own sentences are capped at **1200 characters**. The model needs at least two
   words before the button works.
 
@@ -89,13 +93,21 @@ ignored, and the task runs as the guessing round with the default panels. Add `p
 - **Start a sentence** gives a first word (one of the busiest words the model knows). It is not
   a guess.
 - After that, the chips show the up-to-5 likeliest words after the sentence's last word. During
-  the core the button waits until the student has tapped a chip. The result line says whether
-  the guess matched the word it picked.
-- Guessing is about the **picked** word, not the likeliest one: with the slider turned to Silly
-  the model may pick a rarer word, and the guess is only right if it matches. The pick is made
-  from the chips shown (the top five).
-- If the sentence reaches a word nothing follows, the button reads **Start a sentence** again
-  and adds a new first word.
+  the core the button waits until the student has tapped a chip.
+- **While a guess is pending the answer is not shown**: the chips are all one size (in
+  alphabetical order, with no counts) and the stats panel shows the step before. Pressing the
+  button reveals the sizes and numbers for that step; the landed chip stays highlighted for
+  about 0.6 seconds before the next chips replace it. In bonus play, and to the tutor, sizes and
+  stats always show.
+- **Marking**: a guess is right when the tapped word is (one of) the most likely next words by
+  count, ties included. That is separate from the random pick: with the slider turned to Silly,
+  or just by chance, the model may pick a rarer word, which still joins the sentence. The line
+  then adds `It picked "goes" this time - it doesn't always pick the likeliest.` The pick is
+  made from the chips shown (the top five).
+- When the model picks `.`, `!` or `?` the sentence is finished ("The end! 🎉"); the button
+  reads **New sentence**, with no guess, and starts a fresh one. A sentence also stops at a word
+  nothing follows (the end of the text): the button reads **Start a sentence** and adds a new
+  first word.
 - After the core, a bonus banner shows and guesses are optional; the count of bonus guesses
   shows.
 - **Play** is free: there is no wrong answer, no hint and no Check button. The task passes by
@@ -114,9 +126,9 @@ The tutor sees, live and before anything is finished, what the student has:
 - **Student card:** `3/5 guessed · 2 right · 14 own words` (the own-words part shows when the
   student is on My writing), plus `+2 bonus` after the core. Item progress also goes to the
   session report.
-- **Student modal** (read-only, same view the student has): the sentence so far, the chip the
-  student has tapped but not pressed yet ("Guessing: ..."), the last tick or cross, the slider
-  and the voice, and how many words of their own the student has written. Taps, presses and
+- **Student modal** (read-only, same view the student has, always with the odds shown): the
+  sentence so far, the chip the student has tapped but not pressed yet ("Guessing: ..."), the
+  last tick or cross, the slider and the voice, and the student's own sentences. Taps, presses and
   voice switches appear straight away; typing and the slider stream while the tutor is watching
   that student.
 - **Stage → Start again** clears the student's choices; **Complete (show answers)** finishes the
@@ -127,8 +139,8 @@ The tutor sees, live and before anything is finished, what the student has:
 ### The tutor sees the student's own sentences
 
 Tutors see all student work live (the tutor visibility principle), so the student's own
-sentences (capped at 1200 characters) go to Firebase with the model's sentence, the guess counts,
-the voice and the slider. The tutor's view shows them read-only. Remind students not to write
+sentences (capped at 1200 characters) go to Firebase with the model's sentence, the guess counts
+and results (`history`: one `r`/`w` per guess), the voice and the slider. The tutor's view shows them read-only. Remind students not to write
 anything personal, as with any task.
 
 ## Accessibility and devices
@@ -138,7 +150,8 @@ keyboard). Every control is a real button, text box or slider, at least 44px hig
 button and the chips are bigger), fully keyboard operable, with visible focus. Every chip and
 bar carries its number in text ("cat: 2 of 3 times"); size and bars are only a picture of it.
 The slider is labelled and announces its value in words. With `prefers-reduced-motion` the spin
-is skipped (the word just lands), bars do not animate and the tick does not spin.
+is skipped (the word just lands, and the landed chip still shows briefly), bars do not animate and
+the tick does not spin.
 
 ## Validation
 
