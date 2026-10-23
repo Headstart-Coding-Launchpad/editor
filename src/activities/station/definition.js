@@ -48,6 +48,8 @@ export default defineActivity({
   // Marked as you go: the task passes the moment the core goals are done (no Check button).
   completion: 'auto',
   passMessage: 'Station upgraded!',
+  // A whole station is too small at a third of the screen: Show it opens one build at a time.
+  showIt: 'single',
   requires: { finePointer: true },
   touchFallback: 'block',
 
