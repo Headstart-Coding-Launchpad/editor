@@ -326,6 +326,26 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … test drawing …: strokes must be a list of strokes, each a list of x, y numbers between 0 and 1 (x1, y1, x2, y2, ...).` | `strokes` is empty, has an odd number of values in a stroke, or a number outside 0 to 1. | Write each stroke as `[x1, y1, x2, y2, …]` with values from 0 to 1. |
 | `Task …: no test drawing for class "…". (warning)` | With `testSet: teacher`, a class has no test drawing, so it is never tested. | Add at least one `testItems` entry for it. |
 
+### Space station ([activities/station.md](activities/station.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: lesson must be 1, 2, 3 or 4 (the station has only these lessons so far).` | `lesson` is missing or not 1 to 4 (Phase 1). | Set `lesson` to 1, 2, 3 or 4. |
+| `Task …: station task needs at least one item.` | `items` is empty. | Add at least one goal. |
+| `Task …: catalogue must be a list of part ids.` | `catalogue` is not a list. | Write it as a list of part ids. |
+| `Task …: catalogue only applies to lessons 3 and 4.` | `catalogue` is set on Lesson 1 or 2. | Remove it, or use lesson 3 or 4. |
+| `Task …: catalogue part "…" is not in the parts catalogue.` | An id in `catalogue` is not a station part. | Use a part id from the docs page. |
+| `Task …: catalogue part "…" is not available in lesson ….` | The part belongs to a different lesson (Lesson 3 modules, Lesson 4 catalogue parts). | Use a part from this lesson's list. |
+| `Task … item …: needs an id.` | An item has no `id`. | Give each item a short unique id. |
+| `Task … item …: id "…" is used more than once.` | Two items share an id. | Make each id unique. |
+| `Task … item …: prompt must be text.` | `prompt` is not text. | Write the prompt as a string, or leave it out. |
+| `Task … item …: goal must be one of ….` | `goal` is missing or not a station goal. | Use one of the goals listed. |
+| `Task … item …: goal "…" can't be done in lesson ….` | The goal belongs to other lessons (for example `undo` needs Lesson 3 or 4). | Move the item to a matching lesson or choose another goal. |
+| `Task … item …: goal "…" needs a target (hull or lights).` | `pick_colour` has no `target`. | Set `target` to `hull` or `lights`. |
+| `Task … item …: goal "…" doesn't use a target.` | `choose_captain` or `undo` has a `target`. | Remove the `target`. |
+| `Task … item …: target "…" must be ….` | The target is not valid for the goal (a power section, `hull` or `lights`, a crate id, or a part id). | Use a target of the kind the message names. |
+| `Task … item …: target "…" is not in this lesson's catalogue.` | A `place_part` or `order_part` target is not in the task's catalogue. | Add it to `catalogue` or pick another part. |
+
 ## Code-arrange tasks
 
 | Message | Meaning | Fix |
