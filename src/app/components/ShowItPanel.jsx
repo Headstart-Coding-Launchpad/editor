@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
+import { HtmlPlay, PythonPlay, TurtlePlay } from './ShowItPlay'
+import { hasTaskCourse } from '../../modules/turtle/course.js'
 import { getLessonModule } from '../../modules/registry'
 import { getModuleDefinition } from '../../modules/definitions'
 import { flattenTasks, deriveTaskContext } from '../../shared/taskUtils'
@@ -30,7 +32,11 @@ function ShowItTile({
   lesson,
   session,
   single = false,
-  canToggleCode = false,
+  canToggleCode = true,
+  canPlay = false,
+  playing = false,
+  onPlay = null,
+  onStop = null,
 }) {
   const taskLesson = getEffectiveLessonForTask(lesson, task)
   const { moduleType, isQuiz, isInformation, isActivity, isSessionSandbox } = deriveTaskContext(
@@ -88,6 +94,25 @@ function ShowItTile({
         : !!(work.currentTurtleResult || work.lastRunStatus || work.lastRunAt)
   const resultOnly = resultFirst && !showCode
 
+  // ▶ Play (presentation window only): runs or replays this build's stored work in an isolated
+  // runner (ShowItPlay.jsx). Nothing is written anywhere.
+  const turtleResult = work.currentTurtleResult
+  const playKind = !resultFirst
+    ? null
+    : mirror === 'code'
+      ? lessonModule?.runtime?.run && typeof work.currentCode === 'string' && work.currentCode
+        ? 'run'
+        : null
+      : mirror === 'files'
+        ? iframeSrc
+          ? 'page'
+          : null
+        : !hasTaskCourse(task) && turtleResult?.commands?.length
+          ? 'drawing'
+          : null
+  const showPlay = canPlay && !!playKind && hasRun
+  const isPlaying = showPlay && playing
+
   return (
     <section
       className={`show-it-tile${single ? ' show-it-tile--single' : ''}`}
@@ -96,6 +121,15 @@ function ShowItTile({
     >
       <header className="show-it-tile__head">
         <h3 className="show-it-tile__label">{label}</h3>
+        {showPlay && (
+          <button
+            type="button"
+            className="btn-primary show-it-tile__code-toggle"
+            onClick={isPlaying ? onStop : onPlay}
+          >
+            {isPlaying ? '■ Stop' : '▶ Play'}
+          </button>
+        )}
         {resultFirst && canToggleCode && (
           <button
             type="button"
@@ -107,8 +141,16 @@ function ShowItTile({
           </button>
         )}
       </header>
-      <div className="show-it-tile__body">
-        {isInformation ? (
+      <div className={`show-it-tile__body${isPlaying ? ' show-it-tile__body--playing' : ''}`}>
+        {isPlaying ? (
+          playKind === 'run' ? (
+            <PythonPlay code={work.currentCode} task={task} runtime={lessonModule.runtime} />
+          ) : playKind === 'page' ? (
+            <HtmlPlay src={iframeSrc} />
+          ) : (
+            <TurtlePlay result={turtleResult} />
+          )
+        ) : isInformation ? (
           <p className="show-it-tile__empty">Nothing to show on this task.</p>
         ) : resultOnly && !hasRun ? (
           <p className="show-it-tile__empty">{label} hasn&apos;t run their code yet.</p>
@@ -208,6 +250,8 @@ export function ShowItControls({ view, index, count, onSetView }) {
  * nothing is being shown.
  */
 export default function ShowItPanel({ session, lesson, presentation = false, onSetView = null }) {
+  // Only one tile plays at a time (the label of the one that does); local to this window.
+  const [playingLabel, setPlayingLabel] = useState(null)
   const showIt = getShowIt(session)
   if (!showIt) return null
   // Task ids are numbers or strings in lessons; showIt.taskId is stored as a string.
@@ -247,7 +291,11 @@ export default function ShowItPanel({ session, lesson, presentation = false, onS
             lesson={lesson}
             session={session}
             single={single}
-            canToggleCode={presentation || !!onSetView}
+            canToggleCode
+            canPlay={presentation}
+            playing={playingLabel === build.label}
+            onPlay={() => setPlayingLabel(build.label)}
+            onStop={() => setPlayingLabel(null)}
           />
         ))}
       </div>

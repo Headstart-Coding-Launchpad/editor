@@ -6679,6 +6679,10 @@ label.te-backdrop-tag,
 .show-it-panel__tiles--single {
   grid-template-columns: minmax(0, 1fr);
 }
+/* ▶ Play (presentation window): the playing tile takes clicks and typing (Python input()). */
+.show-it-tile__body--playing {
+  pointer-events: auto;
+}
 .show-it-controls {
   display: flex;
   flex-wrap: wrap;

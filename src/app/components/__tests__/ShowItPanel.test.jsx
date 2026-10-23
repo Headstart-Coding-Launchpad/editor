@@ -1,9 +1,32 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
 import ShowItPanel from '../ShowItPanel'
 import { defaultShowItView } from '../../../shared/showIt'
 
+const runPyMock = vi.hoisted(() => ({
+  run: vi.fn(async (code, task, cb) => {
+    cb.onOutput('hello')
+    return { status: 'success' }
+  }),
+  stop: vi.fn(),
+  init: vi.fn(async () => {}),
+}))
+vi.mock('../../../modules/python/pyodide', async (orig) => ({
+  ...(await orig()),
+  initPyodide: runPyMock.init,
+  runPython: vi.fn(async (code, o) => {
+    o.onOutput('hello')
+    return { status: 'success' }
+  }),
+  stopPython: runPyMock.stop,
+}))
+const fbWrites = vi.hoisted(() => ({ set: vi.fn(), update: vi.fn() }))
+vi.mock('firebase/database', async (orig) => ({
+  ...(await orig()),
+  set: fbWrites.set,
+  update: fbWrites.update,
+}))
 vi.mock('../../../shared/firebase', () => ({ db: {}, auth: {}, firestore: {} }))
 vi.mock('../../../shared/markdown', () => ({
   MarkdownRenderer: ({ content }) => <div>{content}</div>,
@@ -239,7 +262,25 @@ describe('ShowItPanel', () => {
       )
       await waitFor(() => expect(screen.getByTestId('show-it-result')).toHaveTextContent('one two'))
       expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /code/i })).not.toBeInTheDocument()
+    })
+
+    it('a student screen can press Show code to read a classmate build (read-only, no name)', () => {
+      run(
+        'python',
+        {},
+        {
+          displayName: 'Ada',
+          currentCode: 'print(1)',
+          currentOutput: 'one',
+          lastRunStatus: 'success',
+        }
+      )
+      expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Show code' }))
+      expect(screen.getByTestId('code-editor')).toHaveAttribute('readonly')
+      expect(screen.queryByText(/Ada/)).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Hide code' }))
+      expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
     })
 
     it('Python Stage shows the drawing big and no code until Show code', () => {
@@ -302,6 +343,102 @@ describe('ShowItPanel', () => {
         />
       )
       expect(screen.queryByRole('button', { name: 'Show code' })).not.toBeInTheDocument()
+    })
+
+    describe('▶ Play', () => {
+      const html = { currentFiles: { 'index,html': '<h1>Hi</h1>' } }
+      const TURTLE = {
+        currentCode: 'forward(5)',
+        currentTurtleResult: { commands: [{ type: 'forward', distance: 5 }], state: {} },
+      }
+
+      it('is only on the presentation window, never for students or the tutor', () => {
+        run('html', { entryFile: 'index.html' }, html)
+        expect(screen.queryByRole('button', { name: /Play/ })).not.toBeInTheDocument()
+        cleanup()
+        run('html', { entryFile: 'index.html' }, html, { onSetView: vi.fn() })
+        expect(screen.queryByRole('button', { name: /Play/ })).not.toBeInTheDocument()
+        cleanup()
+        run('html', { entryFile: 'index.html' }, html, { presentation: true })
+        expect(screen.getByRole('button', { name: '▶ Play' })).toBeInTheDocument()
+      })
+
+      it('HTML: Play makes a live iframe and Stop restores the picture', () => {
+        const { container } = run('html', { entryFile: 'index.html' }, html, { presentation: true })
+        expect(container.querySelector('.show-it-tile__body--playing')).toBeNull()
+        fireEvent.click(screen.getByRole('button', { name: '▶ Play' }))
+        expect(container.querySelector('.show-it-tile__body--playing iframe')).not.toBeNull()
+        expect(screen.getByTestId('show-it-play')).toBeInTheDocument()
+        fireEvent.click(screen.getByRole('button', { name: '■ Stop' }))
+        expect(screen.queryByTestId('show-it-play')).not.toBeInTheDocument()
+        expect(screen.getByTestId('show-it-result')).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: '▶ Play' })).toBeInTheDocument()
+      })
+
+      it('Python: Play runs the stored code locally and shows its output; Stop stops it', async () => {
+        runPyMock.stop.mockClear()
+        run(
+          'python',
+          {},
+          { currentCode: 'print("hello")', currentOutput: 'old', lastRunStatus: 'success' },
+          { presentation: true }
+        )
+        fireEvent.click(screen.getByRole('button', { name: '▶ Play' }))
+        await waitFor(() => expect(screen.getByTestId('show-it-play')).toHaveTextContent('hello'))
+        fireEvent.click(screen.getByRole('button', { name: '■ Stop' }))
+        expect(screen.queryByTestId('show-it-play')).not.toBeInTheDocument()
+        expect(runPyMock.stop).toHaveBeenCalled()
+        await waitFor(() => expect(screen.getByTestId('show-it-result')).toHaveTextContent('old'))
+      })
+
+      it('Turtle: Play shows the animated drawing and Stop restores the picture', () => {
+        run('turtle', {}, TURTLE, { presentation: true })
+        fireEvent.click(screen.getByRole('button', { name: '▶ Play' }))
+        expect(screen.getByTestId('show-it-play').querySelector('canvas')).not.toBeNull()
+        fireEvent.click(screen.getByRole('button', { name: '■ Stop' }))
+        expect(screen.queryByTestId('show-it-play')).not.toBeInTheDocument()
+      })
+
+      it('has no Play for a build that has not run, an activity, or Scratch', () => {
+        run('python', {}, { currentCode: 'print(1)' }, { presentation: true })
+        expect(screen.queryByRole('button', { name: /Play/ })).not.toBeInTheDocument()
+      })
+
+      it('plays one tile at a time', () => {
+        render(
+          <ShowItPanel
+            presentation
+            session={{
+              state: 'active',
+              currentTaskId: 2,
+              showIt: { studentIds: ['a', 'b'], taskId: '2', startedAt: 1 },
+              students: { a: TURTLE, b: TURTLE },
+            }}
+            lesson={{ type: 'turtle', tasks: [{ id: 2, title: 'Build' }] }}
+          />
+        )
+        const [first, second] = screen.getAllByRole('button', { name: '▶ Play' })
+        fireEvent.click(first)
+        expect(screen.getAllByTestId('show-it-play')).toHaveLength(1)
+        fireEvent.click(second)
+        expect(screen.getAllByTestId('show-it-play')).toHaveLength(1)
+        expect(screen.getAllByRole('button', { name: '■ Stop' })).toHaveLength(1)
+        expect(screen.getAllByRole('button', { name: '▶ Play' })).toHaveLength(1)
+      })
+
+      it('writes nothing to Firebase', async () => {
+        run(
+          'python',
+          {},
+          { currentCode: 'print(1)', currentOutput: 'x', lastRunStatus: 'success' },
+          { presentation: true }
+        )
+        fireEvent.click(screen.getByRole('button', { name: '▶ Play' }))
+        await waitFor(() => expect(screen.getByTestId('show-it-play')).toHaveTextContent('hello'))
+        fireEvent.click(screen.getByRole('button', { name: '■ Stop' }))
+        expect(fbWrites.set).not.toHaveBeenCalled()
+        expect(fbWrites.update).not.toHaveBeenCalled()
+      })
     })
   })
 })
