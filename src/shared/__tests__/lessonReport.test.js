@@ -6,6 +6,7 @@ import {
   attachTeacherFeedback,
   buildReportTaskNotes,
   buildSessionReport,
+  decodeSessionReportFromFirestore,
   encodeSessionReportForFirestore,
   reportToYamlText,
 } from '../lessonReport'
@@ -1125,7 +1126,48 @@ describe('encodeSessionReportForFirestore', () => {
     expect(encodeSessionReportForFirestore(null)).toBe(null)
     expect(encodeSessionReportForFirestore({ sessionId: 'x' })).toEqual({ sessionId: 'x' })
   })
+})
 
+describe('decodeSessionReportFromFirestore (#179)', () => {
+  it('turns stored JSON submissions back into maps, as End Session exports them', () => {
+    const table = { 1: { prompt: 'x = ?', value: '3', expected: '3', correct: true } }
+    const stored = encodeSessionReportForFirestore({
+      students: [
+        {
+          studentLabel: 'Student 1',
+          tasks: [
+            {
+              taskId: 1,
+              distinctAttempts: [
+                { attemptNumber: 1, submission: table },
+                { attemptNumber: 2, submission: 'print("hi")' },
+                { attemptNumber: 3, submission: '{not json' },
+              ],
+              autoCheck: { submission: [1, 2] },
+            },
+          ],
+        },
+      ],
+    })
+    const decoded = decodeSessionReportFromFirestore(stored)
+    const task = decoded.students[0].tasks[0]
+    expect(task.distinctAttempts.map((a) => a.submission)).toEqual([
+      table,
+      'print("hi")',
+      '{not json',
+    ])
+    expect(task.autoCheck.submission).toEqual([1, 2])
+    const parsed = yaml.load(reportToYamlText(decoded))
+    expect(parsed.students[0].tasks[0].distinctAttempts[0].submission).toEqual(table)
+  })
+
+  it('passes through reports with no students unchanged', () => {
+    expect(decodeSessionReportFromFirestore(null)).toBe(null)
+    expect(decodeSessionReportFromFirestore({ sessionId: 'x' })).toEqual({ sessionId: 'x' })
+  })
+})
+
+describe('encodeSessionReportForFirestore (teacher assisted)', () => {
   it('marks a pass reached through a teacher answer edit as teacher assisted', () => {
     const assistedSession = {
       ...session,

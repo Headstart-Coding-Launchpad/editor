@@ -166,6 +166,47 @@ export function encodeSessionReportForFirestore(report) {
   }
 }
 
+// Inverse of encodeSessionReportForFirestore, for readers that want the report as End Session
+// exported it (`lessons reports get`, #179): an object or array submission stored as a JSON
+// string is parsed back. Anything that isn't JSON (code) stays a string.
+function decodeSubmissionFromFirestore(submission) {
+  if (typeof submission !== 'string' || !/^\s*[[{]/.test(submission)) return submission
+  try {
+    const parsed = JSON.parse(submission)
+    if (parsed && typeof parsed === 'object') return parsed
+  } catch {}
+  return submission
+}
+
+export function decodeSessionReportFromFirestore(report) {
+  if (!Array.isArray(report?.students)) return report
+  return {
+    ...report,
+    students: report.students.map((student) => ({
+      ...student,
+      tasks: (student.tasks ?? []).map((task) => ({
+        ...task,
+        ...(Array.isArray(task.distinctAttempts)
+          ? {
+              distinctAttempts: task.distinctAttempts.map((attempt) => ({
+                ...attempt,
+                submission: decodeSubmissionFromFirestore(attempt.submission),
+              })),
+            }
+          : {}),
+        ...(task.autoCheck
+          ? {
+              autoCheck: {
+                ...task.autoCheck,
+                submission: decodeSubmissionFromFirestore(task.autoCheck.submission),
+              },
+            }
+          : {}),
+      })),
+    })),
+  }
+}
+
 function entryReportPassed(task, entry) {
   if (isNotApplicableTask(task)) return null
   return !!entry.passed
