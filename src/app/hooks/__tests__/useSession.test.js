@@ -387,6 +387,60 @@ describe('useSession', () => {
     })
   })
 
+  describe('Show it', () => {
+    it('startShowIt writes at most three ids with the current task', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ currentTaskId: 4 })
+      await act(async () => {
+        await result.current.startShowIt(['a', 'b', 'b', 'c', 'd'])
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/showIt' },
+        { studentIds: ['a', 'b', 'c'], taskId: '4', startedAt: expect.any(Number) }
+      )
+    })
+
+    it('startShowIt with no ids writes nothing', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ currentTaskId: 4 })
+      await act(async () => {
+        await result.current.startShowIt([])
+      })
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+    })
+
+    it('stopShowIt clears it; setTaskId, createSession and endSession clear it too', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.stopShowIt()
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith({ path: 'sessions/lesson-1/showIt' }, null)
+      firebaseMocks.set.mockClear()
+      await act(async () => {
+        await result.current.createSession()
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ showIt: null })
+      )
+      await act(async () => {
+        await result.current.endSession()
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ showIt: null })
+      )
+      firebaseMocks.update.mockClear()
+      await act(async () => {
+        await result.current.setTaskId(2)
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1' },
+        expect.objectContaining({ showIt: null })
+      )
+    })
+  })
+
   describe('Presentation annotations (liveInk)', () => {
     it('setTaskId clears liveInk/{lessonId} — annotations belong to the task they were drawn on', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
@@ -1514,6 +1568,7 @@ describe('useSession', () => {
         currentTaskStartedAt: expect.any(Number),
         explainerShowComplete: false,
         teacherClassPaneCommand: null,
+        showIt: null,
         'taskStartTimes/2': session.currentTaskStartedAt,
         // The report's taskTimeline entry (push key from the firebase mock).
         'taskTimeline/mockHighlightId': { taskId: 2, startedAt: session.currentTaskStartedAt },

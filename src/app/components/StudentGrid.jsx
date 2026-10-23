@@ -15,6 +15,7 @@ import CommonHintsStrip from './CommonHintsStrip'
 import ConfidenceSpreadStrip from './ConfidenceSpreadStrip'
 import { getTaskActivity } from '../../activities/registry.pure.js'
 import { confidenceSpreadEntries, tallyConfidenceSpread } from '../../shared/confidenceScale'
+import { SHOW_IT_MAX, getShowIt, showItDisabledReason } from '../../shared/showIt'
 import { summariseCommonHints } from '../studentHints.js'
 import { classActivities, summariseClassActivities } from '../studentActivity'
 
@@ -70,6 +71,9 @@ export default function StudentGrid({
   onNudgeStudent,
   onThumbsUpStudent,
   onShowResponse,
+  // Show it (src/shared/showIt.js): onShowIt(studentIds) / onStopShowIt(); both absent = off.
+  onShowIt,
+  onStopShowIt,
   onHideResponse,
   onSetShownResponseName,
   onNudgeAway,
@@ -130,6 +134,10 @@ export default function StudentGrid({
   const showNudgeItem = !!onNudgeAway && (sessionLive || awayCount > 0)
   const showSuggestionsItem = !!onOpenBadgeSuggestions && (sessionLive || suggestionCount > 0)
   const showSelectItem = !!onDecideBadge && students.length > 0
+  const showItMenuItem = !!onShowIt
+  const showItNow = getShowIt(session)
+  const showItReason = showItDisabledReason(students.length)
+  const overShowItMax = selectedStudents.length > SHOW_IT_MAX
   const showReferenceItem = topics?.length > 0
   const showRosterItem = !!onOpenRoster
   const unmatchedCount = rosterStatus?.unmatchedIds?.length ?? 0
@@ -137,7 +145,12 @@ export default function StudentGrid({
   // Held on a cross-lesson carry task until their earlier-lesson work is found.
   const carryWaitingIds = new Set(rosterStatus?.carryWaitingIds ?? [])
   const hasClassMenu =
-    showNudgeItem || showSuggestionsItem || showSelectItem || showReferenceItem || showRosterItem
+    showNudgeItem ||
+    showSuggestionsItem ||
+    showSelectItem ||
+    showItMenuItem ||
+    showReferenceItem ||
+    showRosterItem
   const classMenuAttention =
     (showNudgeItem && awayCount > 0) || (showSuggestionsItem && suggestionCount > 0)
 
@@ -393,6 +406,23 @@ export default function StudentGrid({
               {selectMode ? '☑ Done selecting' : '☑ Select'}
             </button>
           )}
+          {showItMenuItem && (
+            <button
+              type="button"
+              style={s.menuItem}
+              disabled={!!showItReason}
+              onClick={() => {
+                close()
+                setSelectMode(true)
+              }}
+              title={
+                showItReason ??
+                `Pick up to ${SHOW_IT_MAX} students to show their builds to the class`
+              }
+            >
+              📺 Show it{showItReason ? ` (${showItReason})` : ''}
+            </button>
+          )}
           {showRosterItem && (
             <button
               type="button"
@@ -550,6 +580,26 @@ export default function StudentGrid({
         </div>
       ) : (
         <>
+          {showItNow && onStopShowIt && (
+            <div style={s.selectBar} role="status" data-testid="show-it-active">
+              <span style={s.selectCount}>
+                📺 Showing {showItNow.studentIds.length}{' '}
+                {showItNow.studentIds.length === 1 ? 'build' : 'builds'} to the class
+              </span>
+              <button
+                type="button"
+                className="btn-danger"
+                style={s.selectBtn}
+                onClick={() =>
+                  Promise.resolve(onStopShowIt()).catch((err) =>
+                    console.warn('Could not stop Show it:', err)
+                  )
+                }
+              >
+                ■ Stop showing
+              </button>
+            </div>
+          )}
           {selectMode && (
             <div style={s.selectBar} role="toolbar" aria-label="Selected students">
               <span style={s.selectCount} aria-live="polite">
@@ -569,15 +619,37 @@ export default function StudentGrid({
               >
                 {selectedStudents.length === students.length ? 'Clear' : 'All'}
               </button>
-              <button
-                type="button"
-                className="btn-secondary"
-                style={s.selectBtn}
-                disabled={selectedStudents.length === 0}
-                onClick={() => setShowBadgeDialog(true)}
-              >
-                🏅 Award badge
-              </button>
+              {onDecideBadge && (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={s.selectBtn}
+                  disabled={selectedStudents.length === 0}
+                  onClick={() => setShowBadgeDialog(true)}
+                >
+                  🏅 Award badge
+                </button>
+              )}
+              {onShowIt && (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={s.selectBtn}
+                  disabled={selectedStudents.length === 0 || overShowItMax}
+                  title={
+                    overShowItMax
+                      ? `Pick up to ${SHOW_IT_MAX} students`
+                      : 'Show these builds side by side on the big screen and on every student screen, names hidden'
+                  }
+                  onClick={() => {
+                    Promise.resolve(onShowIt(selectedStudents.map((st) => st.anonymousId)))
+                      .catch((err) => console.warn('Could not start Show it:', err))
+                      .finally(exitSelectMode)
+                  }}
+                >
+                  {overShowItMax ? `📺 Show it (max ${SHOW_IT_MAX})` : '📺 Show it'}
+                </button>
+              )}
               <button
                 type="button"
                 className="btn-ghost-outline"

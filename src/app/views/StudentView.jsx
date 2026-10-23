@@ -65,6 +65,7 @@ import { listMyMoments } from '../../badges/celebration'
 import LoadingScreen from '../components/LoadingScreen'
 import SessionEndedScreen from '../components/SessionEndedScreen'
 import StudentStatusBanners from '../components/StudentStatusBanners'
+import ShowItPanel from '../components/ShowItPanel'
 import ClassPollCard from '../components/polls/ClassPollCard'
 import { PollTaskClassContext } from '../components/quiz/PollTaskClassContext'
 import { getActivePoll, getStudentPollChoice, tallyPoll } from '../../shared/classPolls'
@@ -1926,6 +1927,7 @@ export default function StudentView({
           </div>
         </div>
       )}
+      <ShowItPanel session={session} lesson={lesson} presentation={teacherPresentation} />
       {activePoll && (
         <ClassPollCard
           poll={activePoll}

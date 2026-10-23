@@ -186,6 +186,8 @@ export default function TeacherView({ lessonId }) {
     closePoll,
     setPollShowResults,
     dismissPoll,
+    startShowIt,
+    stopShowIt,
     requestTeacherEdit,
     pushTeacherLiveCode,
     commitTeacherEdit,
@@ -1260,6 +1262,8 @@ export default function TeacherView({ lessonId }) {
             onNudgeStudent={nudgeStudent}
             onThumbsUpStudent={sendThumbsUp}
             onShowResponse={showResponse}
+            onShowIt={startShowIt}
+            onStopShowIt={stopShowIt}
             onHideResponse={hideResponse}
             onSetShownResponseName={setShownResponseName}
             onNudgeAway={nudgeAwayStudents}

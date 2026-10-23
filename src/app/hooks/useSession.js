@@ -42,6 +42,7 @@ import {
   archiveWorkFields,
   normaliseSessionArchive,
 } from '../../badges/sessionArchive'
+import { normalizeShowItIds } from '../../shared/showIt'
 import { findShownResponse, normalizeShownText } from '../../shared/shownResponses'
 import { AUTO_CHECK_LEAVE, AUTO_CHECK_RESULTS, countedAttemptEntries } from '../../shared/autoCheck'
 import { liveInkPath } from '../liveInk/liveInkData'
@@ -207,6 +208,8 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       // Live class polls (src/shared/classPolls.js) belong to one session.
       polls: null,
       activePollId: null,
+      // Show it (src/shared/showIt.js) belongs to one session.
+      showIt: null,
       // Shown short answers (src/shared/shownResponses.js) belong to one session.
       shownResponses: null,
       // Live badges: decisions, the tutor's badge toggles and the students' signals are
@@ -322,6 +325,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       // the students' answers go with the students node.
       polls: null,
       activePollId: null,
+      showIt: null,
       shownResponses: null,
       // Peer help offers and switches; the rest of peer help is cleared below. The report
       // (built before this, in handleEndSession) already holds the peer help audit.
@@ -454,6 +458,25 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     await update(ref(db, `sessions/${lessonId}`), updates)
   }
 
+  // ─── Show it (src/shared/showIt.js) ───────────────────────────────────────
+  // Teacher-only: puts up to three students' current builds side by side on the presentation
+  // window and every student screen. Only the ids and the task are stored; the tiles read the
+  // students' own records.
+  async function startShowIt(studentIds) {
+    const ids = normalizeShowItIds(studentIds)
+    const taskId = session?.currentTaskId
+    if (ids.length === 0 || taskId == null) return
+    await set(ref(db, `sessions/${lessonId}/showIt`), {
+      studentIds: ids,
+      taskId: String(taskId),
+      startedAt: Date.now(),
+    })
+  }
+
+  async function stopShowIt() {
+    await set(ref(db, `sessions/${lessonId}/showIt`), null)
+  }
+
   // ─── Shown short answers (src/shared/shownResponses.js) ───────────────────
   // Teacher-only: puts a copy of one student's answer on the presentation window. Showing an
   // answer that was hidden reuses its entry (one per student per task).
@@ -507,6 +530,8 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       currentTaskStartedAt: now,
       explainerShowComplete: false,
       teacherClassPaneCommand: null,
+      // The builds on show were for the old task; the students' answers are cleared below.
+      showIt: null,
       [`taskStartTimes/${taskId}`]: now,
       ...(recordTimeline ? taskTimelineUpdate(taskId, now) : {}),
       // Keep each unsubmitted draft for the report before currentDraft is cleared below.
@@ -2378,6 +2403,8 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     setPollShowResults,
     dismissPoll,
     showResponse,
+    startShowIt,
+    stopShowIt,
     hideResponse,
     setShownResponseName,
     setAutoRevealStage,

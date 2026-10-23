@@ -39,6 +39,17 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-23
 
+- **Show it: the tutor puts up to three students' builds side by side (platform request R103,
+  handoff #173).** Nothing to author: it works on any task with student work (every activity,
+  and code tasks: Python with its Stage and output, Turtle, HTML, Scratch). Lesson guides can
+  rely on a "Show it" step: the tutor opens the class ⋯ menu > 📺 Show it, ticks up to 3 student
+  cards, and presses Show it; the presentation window and every student screen show the builds
+  as Build 1 / 2 / 3, names hidden, until the tutor presses Stop showing (or moves to another
+  task). It shows each build as the student's record stands: an activity's answer as it is
+  saved, a code task's code and output as of the student's last Run.
+- Affects: all activities, python, turtle, html, scratch · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-10-23-show-it-the-tutor-puts-2-3-students-builds-on-the-big-screen.md
+
 - **The three AI activities are redesigned fun-first (handoff #99).** Each is one round, marked
   as you go, with no Check button.
   - **Classifier:** the student teaches each thing (`classes`, which may start with an emoji, such
