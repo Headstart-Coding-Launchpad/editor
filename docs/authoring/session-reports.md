@@ -592,6 +592,10 @@ couldn't be made. Dates are ISO strings.
 
 ## Solo study log
 
+> **Not recorded (2026-10-23).** Ryan chose not to log solo study (handoff #130). No student
+> writes the log, so the command below and the Admin tab always return an empty log. The fields
+> are kept here for reference.
+
 Solo study (a Solo Challenge, or any lesson opened with `?solo=true` or `soloOnly`) has no live
 session, so it is not in a session report. It has its own log, read with the CLI or the Admin
 portal's **Solo & side-quests** tab:

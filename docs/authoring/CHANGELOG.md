@@ -37,6 +37,15 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-23
+
+- **Solo study is no longer logged.** Ryan chose not to log Solo Challenge activity (handoff #130),
+  so students no longer write `soloLog` and its database rule is gone. The rule was never deployed,
+  so nothing was ever stored. `lessons solo-log <id>` and the Admin **Solo & side-quests** tab still
+  run, but the solo log is always empty (the side-quest list is unchanged). Don't rely on the solo
+  log to see who did a Solo Challenge.
+- Affects: cli, solo · Existing lessons: no changes needed · Resolves: none
+
 ## 2026-10-22
 
 - **An activity task is one round: marked as you go, with core and bonus reps.** Keyboard, Binary
