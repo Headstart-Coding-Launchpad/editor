@@ -1,31 +1,31 @@
 # Next Word Activity
 
-A Next Word task is an **activity** that shows how a language model predicts the next word. The
-student picks a short text (or pastes their own), and the activity builds a **word-pair
-(bigram) model** from it, live in the browser. The model is just counts of which word came
-straight after which. The student can then:
+A Next Word task is an **activity** that shows how a language model writes: one likely word at a
+time. The student **writes their own sentences** (typing or pasting); a **word-pair (bigram)
+model** learns from them live in the browser. The model is just counts of which word came
+straight after which. Then:
 
-1. **See the odds.** Type or choose a word and see bars for the words that follow it, each with
-   the number in plain words ("net: 3 of 7 times").
-2. **Predict then reveal.** Each `items` question gives a prompt; the student types the next
-   word, presses **Reveal**, and sees the bars. It is marked right when the prediction is the
-   most likely next word.
-3. **Generate text** by sampling from the model, with an optional **temperature** slider
-   (low = always the likeliest word, high = more surprising words). This is free play and is
-   never marked.
+1. **One big Next word button.** The model picks a word and it joins the sentence. The words it
+   might pick show as 3-5 chips. A short spin runs over them and lands on the word it picked;
+   the landed chip stays highlighted for a moment, and the word joins the sentence. A sentence
+   ends when it picks `.` (or `!` / `?`): "The end!", and the next press starts a new sentence.
+   **Start again** clears the sentence.
+2. **Guess the most likely word (the round).** Before pressing, the student taps the chip they
+   think is **most likely** to come next, then presses. They see a tick or a cross and a line
+   like `Yes, "net" was the likeliest!` or `"ball" was likelier (3 of 5 times)`. Every guess
+   counts, right or wrong. The task passes after `guesses` guesses (default 5); more guesses
+   are bonus and free play. No Check button: it finishes by itself.
+3. **Extra parts, switched on by the lesson** (`panels`): `stats`, `silly`, `voices`.
 
-There is no API and no network: nothing leaves the device. No Run button, personal sandbox,
-sharing or carry-through. Progress is saved on the device, mirrored to the teacher's student
-card, and reported when the student presses **Check my work**. The task is one round: the
-prediction prompts move on by themselves (no Previous / Next or numbered buttons; the student
-sees `3 of 5 done`), and a prompt ticks once it is revealed and right. An activity task is one round: a single goal of 3-8 reps that moves on by itself, with no in-task navigation; if you want the class to look at one answer together, make it its own task.
+There is no API and no network: the model runs in the browser. No Run button, personal sandbox,
+sharing or carry-through. Progress is saved on the device and mirrored to the teacher's student
+card. An activity task is one round: a single goal that moves on by itself, with no in-task
+navigation; the student sees `3 of 5 done`, with a green tick dot for each right guess and a
+plain dot for each wrong one.
 
 Write `type: next_word` on the task (the YAML shorthand for `taskType: activity` +
 `activityType: next_word`, which also works). In the Builder, choose the **Activity** format and
-pick **Next Word**. The Builder editor edits the texts (add, remove, title, body with a
-character count out of 4000), the paste and temperature switches, and the items (id, prompt,
-answer). Under each item it shows the likeliest next word(s) for the prompt in the first text, so
-you can set `answer` correctly; validation shows beside the item it is about.
+pick **Next Word**: it edits the guesses count, ticks the panels, and edits the voices (texts).
 
 ## Complete example
 
@@ -35,23 +35,18 @@ type: python
 title: "Next Word example"
 description: A short lesson using the Next Word activity.
 tasks:
-  - title: Predict the next word
+  - title: Guess the next word
     type: next_word
-    description: Pick a text, look at the bars, then predict the next word.
+    description: Write some sentences, then guess which word it will pick next.
+    guesses: 5
+    panels: [stats, silly, voices]
     texts:
-      - title: Football commentary
+      - title: Football commentator
+        emoji: "⚽"
         body: "The ball goes into the net. The keeper looks at the net. The striker puts the ball in the net."
-      - title: Pets
-        body: "The cat sat on the mat. The cat ran to the dog. The dog sat on the mat."
-    allowPaste: true
-    showTemperature: true
-    items:
-      - id: a
-        prompt: the ball goes into the
-        answer: net
-      - id: b
-        prompt: the keeper looks at the
-        answer: net
+      - title: Pirate
+        emoji: "🏴‍☠️"
+        body: "Arr matey the sea is wild. The ship sails the sea. The pirate loves the sea."
 ```
 
 ## Task fields
@@ -59,18 +54,26 @@ tasks:
 | Field | Required | Notes |
 |---|:---:|---|
 | `type` | Yes | `next_word` in YAML (JSON: `taskType: activity` + `activityType: next_word`) |
-| `texts` | Yes | One or more texts the student can pick from. Each has a `title` and a `body` (2 to about 4000 characters). Write every item `answer` for the **first** text. |
-| `allowPaste` | No | `true` adds "Paste my own text". The pasted text is capped at 1200 characters. Default `false`. |
-| `showTemperature` | No | `true` shows the temperature slider beside **Generate**. Default `false`; **Generate** is always there. |
-| `items` | Yes | One or more predict-then-reveal questions. Each needs a unique `id`. |
+| `guesses` | No | A whole number from 1 to 20 (default 5). The round: this many "Guess what it says next" guesses make the task pass. Right or wrong both count. |
+| `panels` | No | A list of extra parts to show: `stats`, `silly`, `voices`. Missing means `[stats]`. `[]` shows none. Unknown values are errors. |
+| `texts` | No | Voices the student can switch to (only shown with the `voices` panel). Each has a `title`, a `body` (2 to about 4000 characters) and an optional `emoji` for its card. |
 
-## Item fields
+### Panels
 
-| Field | Required | Notes |
-|---|:---:|---|
-| `id` | Yes | Short unique id (`a`, `b`, ...). Keeps saved progress attached to the right question. |
-| `prompt` | Yes | Words that stop where the student predicts the next one. Only the **last word** of the prompt matters to the model (a word-pair model has no memory of earlier words). |
-| `answer` | Yes | One word: the most likely next word after the prompt's last word in the **first** text. Validated: if the first text says otherwise, the error names the real word. |
+The lesson turns parts on so each screen stays simple.
+
+| Panel | What it adds |
+|---|---|
+| `stats` | Bars of which words followed a word in what the model learned, each with the number in words ("cat: 2 of 3 times"). During the core it shows the step the student just guessed (never the one they are guessing); in bonus play and to the tutor it shows the current step. |
+| `silly` | A **Sensible to Silly** slider. It is the temperature, named in words: low always takes the likeliest word, high lets rarer words come up. |
+| `voices` | Cards with an emoji to switch which text the model learned from: each of the lesson's `texts`, plus **My writing**. Switching clears the sentence. Without this panel the model only learns from the student's own sentences and `texts` are not used. |
+
+## Removed fields
+
+The old predict-then-reveal `items` (and `answer`), the separate probability bars, `allowPaste`
+and `showTemperature` are gone. A lesson that still has them keeps validating: they are
+ignored, and the task runs as the guessing round with the default panels. Add `panels` and
+`guesses` to use the new parts.
 
 ## How words are counted
 
@@ -79,73 +82,76 @@ tasks:
 - Each word is **lower-cased** and has **punctuation stripped from both ends**, so `Net.`,
   `"net"` and `net` are the same word. Apostrophes and hyphens inside a word stay (`don't`,
   `well-known`); curly apostrophes become straight ones.
-- A **sentence end does not break the chain**: the last word of one sentence counts as followed
-  by the first word of the next ("...the net. The keeper..." counts `net` then `the`).
-- The same normalising is applied to the student's typed word, their prediction, a prompt's last
-  word and an item `answer`, so capitals and punctuation never make a right answer wrong.
+- A **sentence end** (`.`, `!` or `?` at the end of a word) is kept as a word of its own, so the
+  model can learn that a sentence may end after a word (`net` is followed by `.` 2 of 3 times).
+  The end mark is then followed by the first word of the next sentence.
+- The student's own sentences are capped at **1200 characters**. The model needs at least two
+  words before the button works.
 
-## Marking and hints
+## The round and marking
 
-- Each item is **self-marking**: the student types one word and presses **Reveal** (or Enter).
-  The bars appear and the item is marked. A wrong prediction gets a hint and a **Try again**
-  button (it never gives the word away; the bars on screen do that after Reveal).
-- The model comes from the text **the student chose**, not the text the author wrote `answer`
-  for. An item is right when the prediction is a most-likely next word in the chosen text's
-  model:
-  - On the **first** text this is the same as matching `answer` (validation guarantees
-    `answer` is a most-likely word of the first text).
-  - On another text, or a pasted one, the model decides: `answer` is ignored and the model's top
-    word is used.
-  - **Ties:** if several words are tied for most likely (for example `b` once and `c` once after
-    `a`), **any** of them is right. Validation accepts any tied word as `answer`.
-  - If **nothing follows** the prompt's last word in the chosen text (for instance a pasted text
-    that never says it, or it is the final word), the item cannot be right and the hint says to
-    pick another text.
-- An item counts only once **revealed**. A right prediction ticks, then the next prompt appears
-  by itself; a wrong one shows its hint and **Try again**. **Check my work** passes the task when
-  every item is right and shows the hint of the prompt the student is on. Tutors can open any
-  prompt from a tutor-only picker.
-- **Generate** and the temperature slider are free play: no check, no marks.
+- **Start a sentence** gives a first word (one of the busiest words the model knows). It is not
+  a guess.
+- After that, the chips show the up-to-5 likeliest words after the sentence's last word. During
+  the core the button waits until the student has tapped a chip.
+- **While a guess is pending the answer is not shown**: the chips are all one size (in
+  alphabetical order, with no counts) and the stats panel shows the step before. Pressing the
+  button reveals the sizes and numbers for that step; the landed chip stays highlighted for
+  about 0.6 seconds before the next chips replace it. In bonus play, and to the tutor, sizes and
+  stats always show.
+- **Marking**: a guess is right when the tapped word is (one of) the most likely next words by
+  count, ties included. That is separate from the random pick: with the slider turned to Silly,
+  or just by chance, the model may pick a rarer word, which still joins the sentence. The line
+  then adds `It picked "goes" this time - it doesn't always pick the likeliest.` The pick is
+  made from the chips shown (the top five).
+- When the model picks `.`, `!` or `?` the sentence is finished ("The end! 🎉"); the button
+  reads **New sentence**, with no guess, and starts a fresh one. A sentence also stops at a word
+  nothing follows (the end of the text): the button reads **Start a sentence** and adds a new
+  first word.
+- After the core, a bonus banner shows and guesses are optional; the count of bonus guesses
+  shows.
+- **Play** is free: there is no wrong answer, no hint and no Check button. The task passes by
+  itself when the core guesses are done.
 
 ### Temperature
 
-Generate starts at the typed word (or the text's first word) and picks each next word at random,
-weighted by the counts raised to `1/temperature`. At 0 (up to 0.05) it always takes the
-likeliest word; at 1 it follows the counts exactly; at 2 rarer words come up more. If it reaches
-a word with nothing after it, it jumps to a random word that has something after it. The result
-(up to 400 characters) is kept in the student's state so the tutor sees it.
+Each pick is random, weighted by the counts raised to `1/temperature`. At 0 (up to 0.05) it
+always takes the likeliest word; at 1 it follows the counts exactly; at 2 rarer words come up
+more.
 
 ## Teacher tools
 
-The tutor sees, live and before anything is finished, what the student is doing:
+The tutor sees, live and before anything is finished, what the student has:
 
-- **Student card:** `<chosen text title> · n/m right` (or `No text yet`, `Your own text`),
-  plus the usual progress. Item progress also goes to the session report ("2/3 items right").
-- **Student modal** (read-only, same view the student has): the chosen text, the word they typed
-  and its bars, every prediction (including a typed one **not yet revealed**), the marks and
-  hints, the temperature and the generated text. Choosing a text, revealing, trying again,
-  generating and a pasted text appear straight away; typing a word or prediction and moving the
-  slider stream while the tutor is watching that student.
-- **Edit answers** lets the tutor change the student's text, predictions and so on; an edit that
-  makes every item right is marked as passed (teacher assisted).
-- **Stage → Start again** clears the student's choices; **Complete (show answers)** picks the
-  first text and fills in each `answer`.
+- **Student card:** `3/5 guessed · 2 right · 14 own words` (the own-words part shows when the
+  student is on My writing), plus `+2 bonus` after the core. Item progress also goes to the
+  session report.
+- **Student modal** (read-only, same view the student has, always with the odds shown): the
+  sentence so far, the chip the student has tapped but not pressed yet ("Guessing: ..."), the
+  last tick or cross, the slider and the voice, and the student's own sentences. Taps, presses and
+  voice switches appear straight away; typing and the slider stream while the tutor is watching
+  that student.
+- **Stage → Start again** clears the student's choices; **Complete (show answers)** finishes the
+  round.
 - Go Live on an activity task is teacher-only: a student's work is never broadcast.
+- The tutor view cannot be edited (a student's own writing is theirs).
 
-### Pasted text
+### The tutor sees the student's own sentences
 
-The pasted text is held in the student's box and written to the student's state (and so to the
-tutor) when they press **Use my text**, never per keystroke. It is capped at **1200 characters**
-(`maxlength` on the box; anything longer is cut). It needs at least two words. The tutor
-therefore sees a pasted text once the student has used it, not while it is being typed.
+Tutors see all student work live (the tutor visibility principle), so the student's own
+sentences (capped at 1200 characters) go to Firebase with the model's sentence, the guess counts
+and results (`history`: one `r`/`w` per guess), the voice and the slider. The tutor's view shows them read-only. Remind students not to write
+anything personal, as with any task.
 
 ## Accessibility and devices
 
 Text only; works on any device with or without a physical keyboard (touch uses the device's own
-keyboard). Every control is a real button, radio, text box or slider at least 44px high, fully
-keyboard operable, with visible focus. Every bar carries its number in text ("net: 3 of 7 times
-(43%)"); the bar is only a picture of it. The temperature slider is labelled and announces its
-value in words. Bar growth is switched off with `prefers-reduced-motion`.
+keyboard). Every control is a real button, text box or slider, at least 44px high (the main
+button and the chips are bigger), fully keyboard operable, with visible focus. Every chip and
+bar carries its number in text ("cat: 2 of 3 times"); size and bars are only a picture of it.
+The slider is labelled and announces its value in words. With `prefers-reduced-motion` the spin
+is skipped (the word just lands, and the landed chip still shows briefly), bars do not animate and
+the tick does not spin.
 
 ## Validation
 

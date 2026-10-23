@@ -68,6 +68,9 @@ export function defineActivity(def) {
   for (const key of REQUIRED_FUNCTIONS) {
     if (typeof def[key] !== 'function') fail(id, `missing required function "${key}"`)
   }
+  if (def.passMessage != null && (typeof def.passMessage !== 'string' || !def.passMessage.trim())) {
+    fail(id, 'passMessage must be a non-empty string')
+  }
   const completion = def.completion ?? 'on_submit'
   if (!COMPLETION_MODES.includes(completion)) {
     fail(id, `completion must be one of ${COMPLETION_MODES.join(', ')}`)
@@ -97,6 +100,9 @@ export function defineActivity(def) {
     requires: {},
     touchFallback: 'equivalent',
     solutionState: null,
+    // What the student's pass banner says (default 'Correct!'). For an auto-completing activity
+    // where passing means finishing, not being right ('Round done!').
+    passMessage: null,
     // Task fields that give the answer away, sealed at the Firestore boundary on top of the
     // shared list (check, feedbackChecks, tests, codeStages, complete*): src/shared/lessonSeal.js.
     sealedFields: [],

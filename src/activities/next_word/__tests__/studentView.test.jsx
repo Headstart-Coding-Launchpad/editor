@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import StudentView from '../../../app/views/StudentView'
 import { getActivityDefinition } from '../../registry.pure.js'
 
@@ -77,24 +77,23 @@ const LESSON = {
   tasks: [
     {
       id: 1,
-      title: 'Answer the questions',
+      title: 'Guess the next word',
       taskType: 'activity',
       activityType: 'next_word',
-      texts: [
-        {
-          title: 'Football',
-          body: 'The ball goes into the net. The keeper looks at the net. The striker puts the ball in the net.',
-        },
-      ],
-      allowPaste: true,
-      showTemperature: true,
-      items: [{ id: 'a', prompt: 'the ball goes into the', answer: 'net' }],
+      guesses: 1,
+      panels: ['stats'],
     },
   ],
 }
 
 beforeEach(() => {
   localStorage.clear()
+  vi.spyOn(Math, 'random').mockReturnValue(0)
+  window.matchMedia = vi.fn(() => ({
+    matches: true,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }))
   mocks.session = makeSession(LESSON.id)
   mocks.identity = {
     identity: { anonymousId: 'student-1', displayName: 'Sam', lastSessionTimestamp: 456 },
@@ -105,16 +104,23 @@ beforeEach(() => {
   }
 })
 
+afterEach(() => {
+  vi.restoreAllMocks()
+  delete window.matchMedia
+})
+
 describe.skipIf(!getActivityDefinition('next_word'))('Next Word StudentView click-through', () => {
-  it('renders in the classroom, has no Run button and reports a passing Check', async () => {
+  it('renders in the classroom, has no Run or Check button and passes after the guesses', async () => {
     const user = userEvent.setup()
     render(<StudentView lessonId={LESSON.id} lesson={LESSON} />)
-    await user.click(await screen.findByRole('radio', { name: 'Football' }))
-    await user.type(screen.getByLabelText('Your prediction'), 'net')
+    fireEvent.change(await screen.findByLabelText(/Write some sentences/), {
+      target: { value: 'The cat sat on the mat. The cat ran.' },
+    })
     expect(screen.queryByRole('button', { name: 'Run' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Reveal' }))
-    expect(await screen.findByText('Correct')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Check my work' }))
+    expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Start a sentence' }))
+    await user.click(screen.getByRole('button', { name: 'cat' }))
+    await user.click(screen.getByRole('button', { name: 'Next word' }))
     await waitFor(() =>
       expect(mocks.session.writeStudentRun).toHaveBeenCalledWith('student-1', {
         answer: expect.any(String),
@@ -122,46 +128,40 @@ describe.skipIf(!getActivityDefinition('next_word'))('Next Word StudentView clic
         checkPassed: true,
       })
     )
+    // What leaves the device carries the sentence, the guess results and the student's own text
+    // (the tutor sees all student work live).
     const answer = JSON.parse(mocks.session.writeStudentRun.mock.calls[0][1].answer)
     expect(answer).toMatchObject({
-      v: 1,
-      source: 'text',
-      index: 0,
-      items: { a: { guess: 'net', revealed: true } },
+      v: 2,
+      sentence: 'the cat',
+      guesses: 1,
+      right: 1,
+      history: 'r',
+      ownWords: 9,
     })
+    expect(answer.own).toContain('The cat sat')
     expect(mocks.session.writeStudentCode).not.toHaveBeenCalled()
   })
 
-  it('reports a failing Check when the prediction was never revealed', async () => {
+  it('mirrors a tap (a deliberate click) to the teacher, with the own sentences', async () => {
     const user = userEvent.setup()
     render(<StudentView lessonId={LESSON.id} lesson={LESSON} />)
-    await user.click(await screen.findByRole('radio', { name: 'Football' }))
-    await user.type(screen.getByLabelText('Your prediction'), 'net')
-    await user.click(screen.getByRole('button', { name: 'Check my work' }))
-    await waitFor(() =>
-      expect(mocks.session.writeStudentRun).toHaveBeenCalledWith('student-1', {
-        answer: expect.any(String),
-        status: 'submitted',
-        checkPassed: false,
-      })
-    )
-  })
-
-  it('mirrors a chosen text (a deliberate click) to the teacher without being watched', async () => {
-    const user = userEvent.setup()
-    render(<StudentView lessonId={LESSON.id} lesson={LESSON} />)
-    await user.click(await screen.findByRole('radio', { name: 'Football' }))
+    fireEvent.change(await screen.findByLabelText(/Write some sentences/), {
+      target: { value: 'The cat sat on the mat. The cat ran.' },
+    })
+    await user.click(screen.getByRole('button', { name: 'Start a sentence' }))
     await waitFor(() => expect(mocks.session.writeStudentAnswer).toHaveBeenCalled())
     const [id, serialized] = mocks.session.writeStudentAnswer.mock.calls.at(-1)
     expect(id).toBe('student-1')
-    expect(JSON.parse(serialized)).toMatchObject({ source: 'text', index: 0 })
+    expect(JSON.parse(serialized)).toMatchObject({ sentence: 'the', ownWords: 9 })
+    expect(serialized).toContain('The cat sat')
   })
 
   it('does not mirror typing while the teacher is not watching', async () => {
-    const user = userEvent.setup()
     render(<StudentView lessonId={LESSON.id} lesson={LESSON} />)
-    // Typing the guess is continuous. (Nothing else has changed, so nothing is written.)
-    await user.type(await screen.findByLabelText('Your prediction'), 'net')
+    fireEvent.change(await screen.findByLabelText(/Write some sentences/), {
+      target: { value: 'The cat sat' },
+    })
     expect(mocks.session.writeStudentAnswer).not.toHaveBeenCalled()
   })
 })

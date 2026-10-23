@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 // How long an item shows its "done" tick before the round moves to the next one.
 export const DONE_MOMENT_MS = 700
@@ -10,7 +10,9 @@ export const DONE_MOMENT_MS = 700
 //
 //   items: the round's items in order;  isDone(item): live, from the item's current state.
 //   readOnly: tutor views never linger or advance (callers show every item instead).
-// Returns { current, lingering, finished, doneCount }. `current` is the item to show (the one
+// Returns { current, lingering, finished, doneCount, skip }. `skip` ends the done moment early
+// (an activity with something to read can pass momentMs: Infinity and offer a Next tap). `current`
+// is the item to show (the one
 // that just finished while lingering), null when finished.
 export function useRoundFlow(items, isDone, { readOnly = false, momentMs = DONE_MOMENT_MS } = {}) {
   const firstOpen = items.find((item) => !isDone(item)) ?? null
@@ -29,13 +31,19 @@ export function useRoundFlow(items, isDone, { readOnly = false, momentMs = DONE_
   }
 
   useEffect(() => {
-    if (lingerId == null) return undefined
+    // An infinite moment never times out: the student moves on with `skip` (a Next tap).
+    if (lingerId == null || !Number.isFinite(momentMs)) return undefined
     const timer = setTimeout(() => {
       setLingerId(null)
       setTrack(firstIdRef.current)
     }, momentMs)
     return () => clearTimeout(timer)
   }, [lingerId, momentMs])
+
+  const skip = useCallback(() => {
+    setLingerId(null)
+    setTrack(firstIdRef.current)
+  }, [])
 
   const lingerItem = lingerId != null ? items.find((item) => item.id === lingerId) : null
   const lingering = !!lingerItem
@@ -44,5 +52,6 @@ export function useRoundFlow(items, isDone, { readOnly = false, momentMs = DONE_
     lingering,
     finished: !lingering && firstOpen == null && items.length > 0,
     doneCount: items.filter(isDone).length,
+    skip,
   }
 }

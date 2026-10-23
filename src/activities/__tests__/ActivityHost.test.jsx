@@ -96,7 +96,7 @@ describe('ActivityHost', () => {
   })
 
   it('keeps a Check button only for activities that still submit by hand', () => {
-    // Binary is marked as you go; the classifier still has Check my work in its sticky row.
+    // Binary and the classifier are marked as you go.
     const activity = activityFor(BINARY, binary.initialState(BINARY))
     render(<ActivityHost task={BINARY} activity={activity} />)
     expect(screen.queryByRole('button', { name: 'Check my work' })).toBeNull()

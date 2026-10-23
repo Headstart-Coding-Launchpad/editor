@@ -3,21 +3,30 @@
 // Node-safe: no JSX, React or DOM imports (activityInterface.test.js checks).
 //
 // Privacy: the student's drawings are kept in the local state only. `serialize` (the device's
-// own saved copy) holds them; `serializeShared` (what goes to Firebase, the teacher card, the
-// attempt log and Go Live) holds counts, trained and the test result only.
+// own saved copy) holds them and the raw strokes; `serializeShared` (what goes to Firebase, the
+// teacher card, the attempt log and Go Live) holds counts, tries, rights, misses and the test
+// result, plus the pad now and the last 3 misses as 16 x 16 grids only (so the tutor can watch).
 import { defineActivity } from '../defineActivity.js'
+import { roundSummaryText } from '../round.js'
 import {
   accuracyOf,
   countsOf,
   gradeTask,
   initialClassifierState,
   itemResultsOf,
+  liveCountOf,
   normalizeClassifierState,
+  panelsOf,
   percent,
+  rightsOf,
   sharedState,
   solutionFor,
+  taskLiveTestSize,
+  taskMinExamples,
+  testSetOf,
   validateClassifierTask,
   validateClassifierWarnings,
+  DEFAULT_MIN_EXAMPLES,
   MIN_CLASSES,
   teacherTestItems,
 } from './classifier.js'
@@ -41,8 +50,12 @@ export default defineActivity({
   category: 'computing',
   icon: '🧠',
   description:
-    'Draw examples of each class, train a model, then test it on drawings it has not seen and see how accurate it is.',
+    'Teach the pad a few things by drawing them, watch it guess live, then try to fool it and teach it the ones it gets wrong.',
   yaml: { type: 'classifier' },
+  // Marked as you go: the task passes when the round's tries reach the core.
+  completion: 'auto',
+  // Shown instead of "Correct!" when the task passes (the pad can have got some wrong).
+  passMessage: 'Round done!',
 
   fields: {
     modeField: 'mode',
@@ -57,19 +70,30 @@ export default defineActivity({
       {
         name: 'testSet',
         type: 'string',
-        required: true,
         values: ['held_out', 'teacher', 'live'],
         description:
-          "What the model is tested on: the student's own kept-back drawings, the teacher's test drawings, or new drawings made during the test.",
+          "How it is tested. Default live: the round, where the student draws what the pad asks for and it guesses. Or held_out (the student's own kept-back drawings) or teacher (your test drawings), both with a Test button.",
       },
       {
         name: 'classes',
         type: 'array',
-        description: 'The class names (2 to 6). Empty or missing: the student names their own.',
+        description:
+          'The things to teach (2 to 6; 3 is a good number). A name may start with an emoji, like "🐱 cat". Empty or missing: the student names 2 to 4 of their own.',
       },
       { name: 'minExamplesPerClass', type: 'number' },
       { name: 'targetAccuracy', type: 'number' },
-      { name: 'liveTestSize', type: 'number' },
+      {
+        name: 'liveTestSize',
+        type: 'number',
+        description:
+          'Live round: how many tries make the round (3 to 20), counted whether the pad gets them right or wrong. Default 5.',
+      },
+      {
+        name: 'panels',
+        type: 'array',
+        description:
+          'Extra parts to show: grid (what it sees), sure (how sure is it), fool (fool it and fix it). Default [fool]. The pad, the teach step and the guess bars always show.',
+      },
       {
         name: 'testItems',
         type: 'array',
@@ -91,10 +115,10 @@ export default defineActivity({
     taskType: 'activity',
     activityType: 'classifier',
     mode: 'drawing',
-    classes: ['circle', 'square'],
-    minExamplesPerClass: 8,
-    testSet: 'held_out',
-    targetAccuracy: 0.8,
+    classes: ['🐱 cat', '🐟 fish', '🚀 rocket'],
+    minExamplesPerClass: DEFAULT_MIN_EXAMPLES,
+    liveTestSize: 5,
+    panels: ['fool'],
   }),
 
   validateTask: (task, { n } = {}) => ({
@@ -109,7 +133,8 @@ export default defineActivity({
 
   // The device's own copy: drawings included.
   serialize: (state) => JSON.stringify(state ?? null),
-  // What is written to Firebase: counts, trained and the test result. Never the drawings.
+  // What is written to Firebase: counts, tries, rights, misses, the result, the pad now and the
+  // last 3 misses as grids. Never the strokes or the taught drawings.
   serializeShared: (state) => JSON.stringify(sharedState(state)),
   // Reads either form.
   deserialize: (raw, task) => normalizeClassifierState(task, parse(raw)),
@@ -118,17 +143,23 @@ export default defineActivity({
   sealedFields: ['testItems'],
 
   // A drawing lives in the pad until the student adds it, so nothing changes per pointer
-  // move. Typing a class name is the only per-keystroke change; everything else (a drawing
-  // added or removed, Train, Test, a live test drawing) is discrete.
+  // move. Typing a class name and the pad's grid at each stroke end are the frequent changes
+  // (continuous); everything else (a drawing added or removed, Test, a try in the round) is
+  // discrete.
   classifyChange: (prev, next) => {
     const p = sharedState(prev)
     const q = sharedState(next)
-    const onlyNames =
-      !sameList(p.classes, q.classes) &&
+    const same =
       p.trained === q.trained &&
+      p.liveCount === q.liveCount &&
+      p.rights === q.rights &&
       JSON.stringify(p.result) === JSON.stringify(q.result) &&
+      JSON.stringify(p.recent) === JSON.stringify(q.recent) &&
       sum(p.counts) === sum(q.counts)
-    return onlyNames ? 'continuous' : 'discrete'
+    const onlyNames = !sameList(p.classes, q.classes) && same
+    const onlyPad =
+      sameList(p.classes, q.classes) && same && (p.pad !== q.pad || p.target !== q.target)
+    return onlyNames || onlyPad ? 'continuous' : 'discrete'
   },
 
   grade: (task, state) => {
@@ -140,27 +171,42 @@ export default defineActivity({
     }
   },
 
-  // Per class: has it enough drawings?
+  // Teaching: things with enough drawings. Then the round: tries towards the goal.
   getProgress: (task, state) => {
-    const { classesMet, classesTotal } = gradeTask(task, state)
-    return {
-      kind: 'items',
-      filled: classesMet,
-      total: Math.max(classesTotal, MIN_CLASSES),
-      correct: classesMet,
-    }
+    const { classesMet, classesTotal, live, core, tries } = gradeTask(task, state)
+    const things = Math.max(classesTotal, MIN_CLASSES)
+    const filled = classesMet + (live ? Math.min(tries, core) : 0)
+    return { kind: 'items', filled, total: things + (live ? core : 0), correct: filled }
   },
 
+  // The tutor's card: where the student is. Teaching: drawings per thing. Round: "5/5 tried ·
+  // 4 right" (+ bonus tries after the core). Kept-back / teacher tests: the percentage.
   summarize: (task, state) => {
     const graded = gradeTask(task, state)
-    const total = Object.values(countsOf(state)).reduce((sum, n) => sum + n, 0)
+    const counts = countsOf(state)
+    const total = Object.values(counts).reduce((sum, n) => sum + n, 0)
     if (total === 0) return { text: 'No drawings yet', tone: 'neutral' }
-    const status = state.result
-      ? `${percent(state.result)}% on test`
-      : state.trained
-        ? 'trained'
-        : 'not trained'
-    return { text: `${total} drawings, ${status}`, tone: graded.passed ? 'success' : 'neutral' }
+    const tone = graded.passed ? 'success' : 'neutral'
+    if (!graded.ready) {
+      const min = taskMinExamples(task)
+      const text = (state.classes ?? [])
+        .filter(Boolean)
+        .map((label) => `${label} ${Math.min(counts[label] ?? 0, min)}/${min}`)
+        .join(' · ')
+      return { text: `Teaching: ${text}`, tone }
+    }
+    if (testSetOf(task) !== 'live') {
+      return {
+        text: state.result ? `${percent(state.result)}% on test` : `${total} drawings, ready`,
+        tone,
+      }
+    }
+    const rights = rightsOf(state)
+    const core = taskLiveTestSize(task)
+    const tries = liveCountOf(state)
+    if (tries === 0) return { text: `Ready: 0/${core} tried`, tone }
+    const text = roundSummaryText(tries, Math.max(core, tries), core, 'tried')
+    return { text: `${text} · ${rights} right`, tone }
   },
 
   // The log keeps the shared form: counts, trained and the result, never the drawings.
@@ -188,7 +234,7 @@ export default defineActivity({
         if (accuracy == null) continue
         tested += 1
         sum += accuracy
-        if (accuracy + 1e-9 >= target) atTarget += 1
+        if (gradeTask(task, normalizeClassifierState(task, state)).passed) atTarget += 1
         for (const [actual, row] of Object.entries(result.confusion)) {
           confusion[actual] = confusion[actual] ?? {}
           for (const [pred, count] of Object.entries(row)) {
@@ -213,15 +259,15 @@ export default defineActivity({
       ? (task.classes ?? []).map((label) => esc(label)).join(', ')
       : 'the student names their own'
     const testText =
-      task.testSet === 'teacher'
+      testSetOf(task) === 'teacher'
         ? `${teacherTestItems(task).length} teacher test drawings`
-        : task.testSet === 'live'
-          ? 'new drawings made during the test'
+        : testSetOf(task) === 'live'
+          ? `a round: ${taskLiveTestSize(task)} tries at drawing something and seeing if the pad gets it`
           : "the student's own kept-back drawings"
     const target = Math.round(
       (typeof task.targetAccuracy === 'number' ? task.targetAccuracy : 0.8) * 100
     )
-    return `<ul><li>Classes: ${classes}</li><li>Drawings per class: at least ${esc(String(task.minExamplesPerClass ?? 6))}</li><li>Tested on: ${esc(testText)}</li><li>Target accuracy: ${target}%</li></ul>`
+    return `<ul><li>Classes: ${classes}</li><li>Drawings per class: at least ${esc(String(taskMinExamples(task)))}</li><li>Tested on: ${esc(testText)}</li>${testSetOf(task) === 'live' ? '' : `<li>Target accuracy: ${target}%</li>`}<li>Extra parts: ${esc(panelsOf(task).join(', ') || 'none')}</li></ul>`
   },
 
   // The teacher sees the work as it happens but cannot type into the student's model (the

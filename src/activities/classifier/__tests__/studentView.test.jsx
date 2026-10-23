@@ -8,7 +8,7 @@ import { getActivityDefinition } from '../../registry.pure.js'
 // hooks. Unit tests of a view can pass while the real classroom crashes; this catches that.
 // (Skipped inside src/activities/_template, which is never registered.)
 // Drives the real pad (pointer events) and buttons, and asserts what is written where: the
-// drawings stay in this browser's storage; Firebase only ever gets counts and the test result.
+// drawings stay in this browser's storage; Firebase only ever gets counts, rights and misses.
 
 const mocks = vi.hoisted(() => ({ session: null, identity: null }))
 
@@ -82,9 +82,8 @@ const LESSON = {
       activityType: 'classifier',
       mode: 'drawing',
       classes: ['circle', 'line'],
-      minExamplesPerClass: 4,
-      testSet: 'held_out',
-      targetAccuracy: 0.75,
+      minExamplesPerClass: 3,
+      liveTestSize: 3,
     },
   ],
 }
@@ -117,35 +116,55 @@ const circleStroke = (r) =>
 describe.skipIf(!getActivityDefinition('classifier'))(
   'Classifier StudentView click-through',
   () => {
-    it('collects, trains, tests and reports without sending any drawing to Firebase', async () => {
+    it('teaches, runs the round, marks as you go and sends no drawing to Firebase', async () => {
       render(<StudentView lessonId={LESSON.id} lesson={LESSON} />)
       const pad = await screen.findByTestId('classifier-pad')
       expect(screen.queryByRole('button', { name: 'Run' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /train/i })).not.toBeInTheDocument()
 
-      for (let i = 0; i < 4; i += 1) {
+      for (let i = 0; i < 3; i += 1) {
         drawStroke(pad, circleStroke(0.25 + i * 0.04))
         fireEvent.click(screen.getByRole('button', { name: 'Add this drawing to circle' }))
       }
-      fireEvent.click(screen.getByRole('button', { name: /Draw line/ }))
-      for (let i = 0; i < 4; i += 1) {
+      for (let i = 0; i < 3; i += 1) {
         drawStroke(pad, [
           [0.1, 0.5 + i * 0.02],
           [0.9, 0.5 - i * 0.02],
         ])
         fireEvent.click(screen.getByRole('button', { name: 'Add this drawing to line' }))
       }
-      fireEvent.click(screen.getByRole('button', { name: 'Train the model' }))
-      fireEvent.click(screen.getByRole('button', { name: 'Test the model' }))
-      expect(await screen.findByText('2 of 2 right, 100%')).toBeInTheDocument()
 
-      // Adding drawings, training and testing are discrete: the card is kept current (after the
-      // 300ms quiet period), without a drawing in any of it.
+      // The round: it suggests circle, line, circle. After Done the student says what they drew;
+      // each right answer shows its tick for a moment, then the round moves on by itself.
+      const shapes = [
+        ['circle', () => drawStroke(pad, circleStroke(0.3))],
+        [
+          'line',
+          () =>
+            drawStroke(pad, [
+              [0.1, 0.5],
+              [0.9, 0.5],
+            ]),
+        ],
+        ['circle', () => drawStroke(pad, circleStroke(0.35))],
+      ]
+      for (const [name, draw] of shapes) {
+        const done = await screen.findByRole('button', { name: 'Done' }, { timeout: 3000 })
+        draw()
+        fireEvent.click(done)
+        fireEvent.click(await screen.findByRole('button', { name: 'I drew ' + name }))
+      }
+      expect(await screen.findByText('3 of 3 done')).toBeInTheDocument()
+
+      // The latest card update has counts and misses, and no drawing (the final right answer goes with
+      // the submitted run below).
       await waitFor(() => {
         const sent = mocks.session.writeStudentAnswer.mock.calls
         expect(sent.length).toBeGreaterThan(0)
         expect(JSON.parse(sent[sent.length - 1][1])).toMatchObject({
-          counts: { circle: 4, line: 4 },
+          counts: { circle: 3, line: 3 },
           trained: true,
+          misses: 0,
         })
       })
       for (const [, answer] of mocks.session.writeStudentAnswer.mock.calls) {
@@ -153,28 +172,24 @@ describe.skipIf(!getActivityDefinition('classifier'))(
         expect(JSON.parse(answer).shared).toBe(true)
       }
 
-      fireEvent.click(screen.getByRole('button', { name: 'Check my work' }))
-
-      // The submitted answer is the shared summary: counts, trained and the result.
+      // Reaching the right answers marks the task, with no Check button.
+      expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
       await waitFor(() => expect(mocks.session.writeStudentRun).toHaveBeenCalled())
       const [id, run] = mocks.session.writeStudentRun.mock.calls[0]
       expect(id).toBe('student-1')
       expect(run.status).toBe('submitted')
       expect(run.checkPassed).toBe(true)
-      expect(JSON.parse(run.answer)).toEqual({
+      expect(JSON.parse(run.answer)).toMatchObject({
         v: 1,
         shared: true,
         classes: ['circle', 'line'],
-        counts: { circle: 4, line: 4 },
+        counts: { circle: 3, line: 3 },
         trained: true,
-        result: {
-          right: 2,
-          total: 2,
-          confusion: { circle: { circle: 1 }, line: { line: 1 } },
-        },
-        liveCount: 0,
-        tests: 1,
+        liveCount: 3,
+        rights: 3,
+        misses: 0,
       })
+      expect(run.answer).not.toMatch(/examples/)
 
       expect(mocks.session.writeStudentCode).not.toHaveBeenCalled()
 
@@ -183,6 +198,6 @@ describe.skipIf(!getActivityDefinition('classifier'))(
         .filter((key) => key.includes('___activity_state___'))
         .map((key) => localStorage.getItem(key))
       expect(saved.some((value) => value.includes('examples'))).toBe(true)
-    })
+    }, 20000)
   }
 )

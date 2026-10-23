@@ -1,38 +1,37 @@
 import { useEffect, useRef, useState } from 'react'
-import ActivityCorrect from '../ui/ActivityCorrect.jsx'
-import RoundProgress from '../ui/RoundProgress.jsx'
+import RoundProgress, { BonusBanner, RoundFinished } from '../ui/RoundProgress.jsx'
+import { SpinTick } from '../ui/ActivityCorrect.jsx'
 import TutorItemPicker from '../ui/TutorItemPicker.jsx'
+import { useRoundFlow } from '../ui/useRoundFlow.js'
+import { coreCountOf } from '../round.js'
 import RealOrAiBuilderEditor from './RealOrAiBuilderEditor.jsx'
 import { resolveAssetFileUrl } from '../../shared/assetPaths.js'
 import {
-  firstOpenIndex,
   gradeItem,
   gradeTask,
   kindOf,
-  revealLines,
+  revealInfo,
+  rightCount,
   sideLabel,
   SIDES,
-  tellLabel,
-  tellsOf,
+  tellNote,
 } from './real_or_ai.js'
 
 // Real or AI UI. Controlled view: ActivityHost passes `state`, `onChange(next | prev => next)`,
 // `readOnly` (teacher views and review), `teacher` (the tutor's view: shows the answer key and
-// the student's picks before they reveal) and `assetsPath` (the lesson's resolved asset base
-// for relative picture paths). The activity finishes itself when the last pair is revealed
-// (completion: 'auto'), so there is no Check button. Never write to Firebase or storage here:
-// useActivityState owns persistence and live sync.
+// the student's picks) and `assetsPath` (the lesson's resolved asset base for relative picture
+// paths). The activity marks itself (completion: 'auto'), so there is no Check button. Never
+// write to Firebase or storage here: useActivityState owns persistence and live sync.
 //
-// Every pick, clue and Reveal is a discrete change, so the tutor's card and student modal
-// follow the student's choices live, before the pair is revealed.
+// One tap on a side picks "the AI one" and reveals at once (tick or cross plus a word, and a
+// one-line note on the tell). The reveal then stays until the student taps Next: the note needs
+// reading time, so there is no timer. Every pick is a discrete change, so the
+// tutor's card and student modal follow the picks live.
 
 function itemStateOf(state, item) {
   const saved = state?.items?.[item.id] ?? {}
-  return {
-    pick: SIDES.includes(saved.pick) ? saved.pick : '',
-    tell: typeof saved.tell === 'string' ? saved.tell : '',
-    done: saved.done === true,
-  }
+  const pick = SIDES.includes(saved.pick) ? saved.pick : ''
+  return { pick, done: saved.done === true && !!pick }
 }
 
 // A picture's URL: full URLs, data/blob URLs and /-rooted paths as they are; other paths
@@ -42,7 +41,7 @@ function imageSrc(assetsPath, path) {
   return resolveAssetFileUrl(assetsPath, path) || String(path ?? '')
 }
 
-function PairSide({ item, side, assetsPath, itemState, locked, teacher, onPick, revealed }) {
+function PairSide({ item, side, assetsPath, itemState, locked, tutor, onPick, revealed }) {
   const text = item[side]
   const picked = itemState.pick === side
   const isAi = item.answer === side
@@ -51,34 +50,34 @@ function PairSide({ item, side, assetsPath, itemState, locked, teacher, onPick, 
     'act-rai__card',
     picked ? 'act-rai__card--picked' : '',
     revealed && isAi ? 'act-rai__card--ai' : '',
+    revealed && !isAi ? 'act-rai__card--real' : '',
   ]
     .filter(Boolean)
     .join(' ')
   return (
-    <figure className={cls} data-testid={`real_or_ai-side-${side}`}>
-      <figcaption className="act-rai__caption">
+    <button
+      type="button"
+      className={cls}
+      data-testid={`real_or_ai-side-${side}`}
+      aria-pressed={picked}
+      disabled={locked}
+      onClick={() => onPick(side)}
+    >
+      <span className="act-rai__caption">
         <span className="act-badge">{sideLabel(side)}</span>
         {revealed && <span className="act-rai__verdict">{isAi ? '🤖 Made by AI' : '📷 Real'}</span>}
-        {teacher && !revealed && isAi && <span className="act-rai__verdict">🔑 AI (key)</span>}
-      </figcaption>
+        {tutor && !revealed && isAi && <span className="act-rai__verdict">🔑 AI (key)</span>}
+        {picked && (
+          <span className="act-rai__chosen">👆 {tutor ? "Student's pick" : 'Your pick'}</span>
+        )}
+      </span>
       {kindOf(item) === 'image' ? (
         <img className="act-rai__image" src={imageSrc(assetsPath, text)} alt={alt} />
       ) : (
-        <blockquote className="act-rai__text">{text}</blockquote>
+        <span className="act-rai__text">{text}</span>
       )}
-      <button
-        type="button"
-        className="btn-ghost-outline act-btn act-rai__pick"
-        aria-pressed={picked}
-        disabled={locked}
-        onClick={() => onPick(side)}
-      >
-        Pick {sideLabel(side)} as the AI one
-      </button>
-      {picked && (
-        <span className="act-rai__chosen">✓ {teacher ? "Student's pick" : 'Your pick'}</span>
-      )}
-    </figure>
+      {!locked && <span className="act-rai__tap">Tap if this is the AI one</span>}
+    </button>
   )
 }
 
@@ -90,79 +89,100 @@ export function RealOrAiStudentView({
   teacher = false,
   assetsPath = '',
 }) {
+  // A tutor (read-only view, or editing a student's answers) never lingers or advances: they
+  // follow the student's pair or pick one in the tutor-only picker.
+  const tutor = readOnly || teacher
   const items = task?.items ?? []
-  const tells = tellsOf(task)
-  const [index, setIndex] = useState(() => firstOpenIndex(task, state))
-  const revealRef = useRef(null)
+  const core = coreCountOf(task, items.length)
+  const isDone = (item) => gradeItem(task, item, itemStateOf(state, item)).done
+  const flow = useRoundFlow(items, isDone, { readOnly: tutor, momentMs: Infinity })
+  const [tutorPickId, setTutorPickId] = useState(null)
+  const lastItem = items[items.length - 1]
+  const current = tutor
+    ? (items.find((item) => item.id === tutorPickId) ??
+      items.find((item) => !isDone(item)) ??
+      lastItem)
+    : (flow.current ?? lastItem)
+
+  const nextRef = useRef(null)
   const promptRef = useRef(null)
-  const focusReveal = useRef(false)
-  const focusPrompt = useRef(false)
-  const { done: doneCount, correct, total, finished } = gradeTask(task, state)
-
-  // Start again (Stage reset) clears every pair: go back to the first one.
-  const prevDone = useRef(doneCount)
+  const shownId = useRef(current?.id)
+  const wasLingering = useRef(false)
   useEffect(() => {
-    if (doneCount === 0 && prevDone.current > 0) setIndex(0)
-    prevDone.current = doneCount
-  }, [doneCount])
-
-  // The tutor's view follows the pair the student is on until the tutor picks another.
-  const [followed, setFollowed] = useState(true)
-  const shownIndex = teacher && followed ? firstOpenIndex(task, state) : index
-  const current = items[Math.min(shownIndex, items.length - 1)]
-
-  const itemState = current ? itemStateOf(state, current) : null
-  const revealed = !!current && gradeItem(task, current, itemState).done
-
-  useEffect(() => {
-    if (focusReveal.current && revealed) {
-      focusReveal.current = false
-      revealRef.current?.focus()
-    }
-    if (focusPrompt.current) {
-      focusPrompt.current = false
-      promptRef.current?.focus()
+    // Keyboard and screen-reader users land on Next after a tap, and on the question after it.
+    if (flow.lingering && !wasLingering.current) nextRef.current?.focus()
+    wasLingering.current = flow.lingering
+    if (current && shownId.current !== current.id) {
+      shownId.current = current.id
+      if (!tutor && !flow.finished) promptRef.current?.focus()
     }
   })
 
   if (!current) return <p>This task has no pairs yet.</p>
 
-  const locked = readOnly || revealed
+  const right = rightCount(task, state)
 
-  function update(patch) {
-    if (locked) return
-    onChange?.((prev) => ({
-      ...(prev ?? { v: 1 }),
-      items: { ...(prev?.items ?? {}), [current.id]: { ...itemStateOf(prev, current), ...patch } },
-    }))
+  // Every pair done (core and bonus): the finish card. Play again clears the pairs and the right
+  // count on this device, so replays never pad the score; the task stays passed (a clear is
+  // never a submit).
+  if (!tutor && flow.finished) {
+    const { correct, total } = gradeTask(task, state)
+    return (
+      <div className="act-panel act-rai" data-testid="real_or_ai-activity">
+        <p className="act-rai__score" role="status">
+          ⭐ {right} right
+        </p>
+        <RoundFinished
+          total={items.length}
+          message={`Round done! You spotted ${correct} of ${total}`}
+          onPlayAgain={() => onChange?.({ v: 1, right: 0, items: {} })}
+        />
+      </div>
+    )
   }
 
-  function select(i) {
-    setFollowed(false)
-    setIndex(i)
-  }
-
-  const lines = revealed ? revealLines(task, current, itemState) : null
-  const nextIndex = Math.min(items.length - 1, shownIndex + 1)
+  const itemState = itemStateOf(state, current)
+  const revealed = gradeItem(task, current, itemState).done
+  // A tutor editing a student's answers can still change a tapped pair; a student cannot.
+  const locked = readOnly || (revealed && !teacher)
+  const info = revealed ? revealInfo(task, current, itemState) : null
+  const isBonus = items.indexOf(current) >= core
+  const inBonus = flow.doneCount >= core && core < items.length
+  const lastToDo = items.every((item) => item.id === current.id || isDone(item))
   const statusFor = (item) => (itemStateOf(state, item).done ? 'done' : null)
+
+  function pick(side) {
+    if (locked || (!tutor && flow.lingering)) return
+    onChange?.((prev) => {
+      const before = itemStateOf(prev, current)
+      const wasRight = before.done && before.pick === current.answer
+      const base = rightCount(task, prev)
+      return {
+        ...(prev ?? { v: 1 }),
+        // Only ever goes up: no streak to lose.
+        right: base + (side === current.answer && !wasRight ? 1 : 0),
+        items: { ...(prev?.items ?? {}), [current.id]: { pick: side, done: true } },
+      }
+    })
+  }
 
   return (
     <div className="act-panel act-rai" data-testid="real_or_ai-activity">
       <p className="act-rai__score" role="status" aria-live="polite">
-        Score: {correct} right out of {doneCount} done ({total} {total === 1 ? 'pair' : 'pairs'})
+        ⭐ {right} right
       </p>
-      <RoundProgress done={doneCount} total={items.length} />
-      {/* Students never pick a pair: they move on with Next pair after reading the reveal. The
-          picker is for the tutor's view only. */}
-      {(teacher || readOnly) && (
+      <RoundProgress done={flow.doneCount} total={items.length} core={core} />
+      {tutor && (
         <TutorItemPicker
           items={items}
           currentId={current.id}
-          onSelect={(id) => select(items.findIndex((item) => item.id === id))}
+          onSelect={setTutorPickId}
           statusFor={statusFor}
           noun="Pair"
         />
       )}
+      {!tutor && inBonus && <BonusBanner />}
+      {isBonus && <span className="act-badge">Bonus</span>}
 
       <p className="act-prompt" ref={promptRef} tabIndex={-1}>
         {kindOf(current) === 'image'
@@ -178,108 +198,42 @@ export function RealOrAiStudentView({
             assetsPath={assetsPath}
             itemState={itemState}
             locked={locked}
-            teacher={teacher}
+            tutor={tutor}
             revealed={revealed}
-            onPick={(picked) => update({ pick: picked })}
+            onPick={pick}
           />
         ))}
       </div>
 
-      {(itemState.pick || teacher) && (
-        <div role="group" aria-labelledby="real_or_ai-tell-heading" className="act-rai__tells">
-          <p className="act-prompt" id="real_or_ai-tell-heading">
-            What gave it away?
-          </p>
-          <div className="act-row">
-            {tells.map((tell) => {
-              const on = itemState.tell === tell
-              const isKey = (teacher || revealed) && current.tell === tell
-              return (
-                <button
-                  key={tell}
-                  type="button"
-                  className="btn-ghost-outline act-btn act-rai__tell"
-                  aria-pressed={on}
-                  disabled={locked}
-                  onClick={() => update({ tell })}
-                >
-                  {on ? '✓ ' : ''}
-                  {tellLabel(tell)}
-                  {isKey ? (
-                    <span className="act-rai__key"> 🔑 {revealed ? 'clue' : 'key'}</span>
-                  ) : null}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {!locked && itemState.pick && itemState.tell && (
-        <div className="act-row act-row--submit">
-          <button
-            type="button"
-            className="btn-primary act-btn"
-            onClick={() => {
-              focusReveal.current = true
-              update({ done: true })
-            }}
-          >
-            Reveal
-          </button>
-        </div>
-      )}
-
       {teacher && !revealed && (
         <p className="act-hint" data-testid="real_or_ai-teacher-note">
-          {itemState.pick
-            ? `Student has picked ${sideLabel(itemState.pick)}${itemState.tell ? ` and the clue "${tellLabel(itemState.tell)}"` : ' and is choosing a clue'}. Not revealed yet.`
-            : 'Student has not picked yet.'}{' '}
-          Key: {sideLabel(current.answer)} is AI, clue "{tellLabel(current.tell)}",{' '}
-          {current.reliable ? 'reliable' : 'not reliable'}.
+          Student has not picked yet. Key: {sideLabel(current.answer)} is AI
+          {tellNote(current) ? `. ${tellNote(current)}` : '.'}
         </p>
       )}
 
-      {lines && (
-        <div
-          className="act-rai__reveal"
-          role="status"
-          tabIndex={-1}
-          ref={revealRef}
-          data-testid="real_or_ai-reveal"
-        >
-          <p>
-            <strong>{lines.correct ? '✓' : '✗'}</strong> {lines.pickLine}
+      {info && (
+        <div className="act-rai__reveal" role="status" data-testid="real_or_ai-reveal">
+          <p className="act-rai__verdict-line">
+            {info.correct ? <SpinTick /> : <strong>✗</strong>} <strong>{info.verdict}</strong>{' '}
+            {info.aiLine}
           </p>
-          <p>
-            <strong>{lines.tellMatches ? '✓' : '✗'}</strong> {lines.tellLine}
-          </p>
-          <p>
-            <strong>{current.reliable ? '✓' : '⚠'}</strong> {lines.reliableLine}
-          </p>
-          <p>{lines.reveal}</p>
+          {info.note && <p>{info.note}</p>}
+          {info.reveal && <p>{info.reveal}</p>}
         </div>
       )}
 
-      {revealed && shownIndex < items.length - 1 && !teacher && (
+      {!tutor && flow.lingering && (
         <div className="act-row">
           <button
             type="button"
-            className="btn-primary act-btn"
-            onClick={() => {
-              focusPrompt.current = true
-              select(nextIndex)
-            }}
+            className="btn-primary act-btn act-rai__next"
+            ref={nextRef}
+            onClick={flow.skip}
           >
-            Next pair →
+            {lastToDo ? 'Finish →' : 'Next →'}
           </button>
         </div>
-      )}
-
-      {finished && (
-        <ActivityCorrect>
-          All done! You spotted {correct} of {total}.
-        </ActivityCorrect>
       )}
     </div>
   )

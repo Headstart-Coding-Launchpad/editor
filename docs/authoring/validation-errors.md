@@ -215,7 +215,7 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | Message | Meaning | Fix |
 |---|---|---|
 | `Task …: keyboard mode must be one of ….` | `mode` is missing or unknown. | Use `type_text`, `find_key`, `symbols`, `shortcuts`, `edit_text`, `type_code` or `falling_words`. |
-| `…: coreItems must be a whole number from 1 to … (the number of items).` | Keyboard, Binary or Mouse: `coreItems` isn't a whole number between 1 and the number of items. | Set it to how many items make the core goal (the rest are Bonus), or remove it so every item is core. |
+| `…: coreItems must be a whole number from 1 to … (the number of items).` | Keyboard, Binary, Mouse or Real or AI: `coreItems` isn't a whole number between 1 and the number of items. | Set it to how many items make the core goal (the rest are Bonus), or remove it so every item is core. |
 | `…: coreItems is ignored for falling_words (it is one round, not a list of items).` | Warning. A falling-words round has no item list, so there is nothing to split into core and bonus. | Remove `coreItems` from the task. |
 | `Task …: keyboard layout "…" is not supported (use "uk").` | Only the UK layout exists so far. | Remove `layout` or set it to `uk`. |
 | `Task …: minAccuracy must be a number above 0 and at most 1.` | `minAccuracy` is a fraction, not a percentage. | Use e.g. `0.9` for 90%. |
@@ -273,9 +273,6 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 
 | Message | Meaning | Fix |
 |---|---|---|
-| `Task …: tells needs at least two entries.` | `tells` is missing or has fewer than two clues. | List at least two clues the student can choose from. |
-| `Task …: tell … must be a non-empty string.` | An entry in `tells` is blank or not text. | Write each clue as text, like `too_smooth` or `Odd lighting`. |
-| `Task …: tell "…" is listed more than once.` | The same clue appears twice in `tells`. | Remove the repeat. |
 | `Task …: real_or_ai task needs at least one item.` | `items` is empty. | Add at least one pair. |
 | `Task … item …: needs an id.` | A pair has no `id`. | Give every pair a short unique id (`p1`, `p2`). |
 | `Task … item …: id "…" is used more than once.` | Two pairs share an `id`. | Make each id unique. |
@@ -283,10 +280,9 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … item …: a is required.` | The `a` side is empty. | Give an image path or URL, or the text for side A. |
 | `Task … item …: b is required.` | The `b` side is empty. | Give an image path or URL, or the text for side B. |
 | `Task … item …: answer must be a or b.` | `answer` is missing or not `a` / `b`. | Set `answer` to the side that is AI. |
-| `Task … item …: tell is required.` | The pair has no `tell`. | Set `tell` to the clue to look for (one of `tells`). |
-| `Task … item …: tell "…" is not in the task's tells list.` | `tell` is not one of the task's `tells`. | Use a clue from `tells`, or add it there. |
-| `Task … item …: reliable must be true or false.` | `reliable` is missing or not a boolean. | Set `reliable: true` or `reliable: false`. |
-| `Task … item …: reveal is required.` | The pair has no `reveal` text. | Write the explanation shown after the student reveals. |
+| `Task … item …: tell must be text.` | `tell` is set but is not text. | Write the tell as text, like `too_smooth` or `Odd lighting`, or remove it. |
+| `Task … item …: reliable must be true or false.` | `reliable` is set but is not a boolean. | Set `reliable: true` or `reliable: false`, or remove it. |
+| `Task … item …: reveal must be text.` | `reveal` is set but is not text. | Write the extra note as a string, or remove it. |
 | `Task … item …: altA must be text.` | `altA` is not text. | Write the alt text as a string. |
 | `Task … item …: altB must be text.` | `altB` is not text. | Write the alt text as a string. |
 
@@ -294,20 +290,15 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 
 | Message | Meaning | Fix |
 |---|---|---|
-| `Task …: next_word task needs at least one text in texts.` | `texts` is missing or empty. | Add at least one `{ title, body }` text. |
-| `Task … text …: title is required.` | A text has no `title`. | Give it a short title; it names the option the student picks. |
-| `Task … text …: body is required.` | A text has no `body`. | Add the text the model is built from. |
+| `Task …: texts must be a list.` | `texts` is not a list. | Write `texts` as a list of `{ title, body }` voices, or leave it out. |
+| `Task … text …: title is required.` | A text has no `title`. | Give it a short title; it names the voice card. |
+| `Task … text …: body is required.` | A text has no `body`. | Add the text the model learns from. |
 | `Task … text …: body is longer than … characters.` | A `body` is over 4000 characters. | Shorten it, or split it into two texts. |
 | `Task … text …: body needs at least 2 words.` | A `body` has fewer than two words, so there are no word pairs. | Write a few sentences. |
-| `Task …: … must be true or false.` | `allowPaste` or `showTemperature` is not a YAML boolean. | Use `true` or `false`, unquoted. |
-| `Task …: next_word task needs at least one item.` | `items` is empty. | Add at least one predict-then-reveal item. |
-| `Task … item …: needs an id.` | An item has no `id`. | Give each item a short unique `id` (`a`, `b`). |
-| `Task … item …: id "…" is used more than once.` | Two items share an `id`. | Make each `id` unique. |
-| `Task … item …: prompt is required.` | An item has no `prompt`, or it has no words. | Add the words the student continues from. |
-| `Task … item …: answer is required.` | An item has no `answer`. | Add the expected next word. |
-| `Task … item …: answer must be one word.` | `answer` has more than one word. | Use the single most likely next word. |
-| `Task … item …: "…" never has a word after it in the first text.` | The prompt's last word is missing from the first text, or only ends it. | Change the prompt, or add the pair to the first text. |
-| `Task … item …: answer "…" is not the most likely word after "…" in the first text (it is "…").` | `answer` is not a most-likely next word in the first text. | Use the word named in the message, or change the text or prompt. Words tied for most likely are all accepted. |
+| `Task … text …: emoji must be one short emoji.` | `emoji` is empty, not text, or too long. | Use a single emoji, or leave it out. |
+| `Task …: panels must be a list.` | `panels` is not a list. | Write `panels: [stats, silly]`. |
+| `Task …: panels has "…", which is not one of ….` | A `panels` value is not `stats`, `silly` or `voices`. | Use only the listed parts. |
+| `Task …: guesses must be a whole number from 1 to ….` | `guesses` is not a whole number in range. | Use a number such as `5`, or leave it out for the default. |
 
 ### Classifier ([activities/classifier.md](activities/classifier.md))
 
@@ -315,7 +306,9 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 |---|---|---|
 | `Task …: classifier mode … is not built yet. Use mode: drawing.` | `mode: sound` (the microphone version) is planned but not built. | Use `mode: drawing`. |
 | `Task …: classifier mode must be drawing.` | `mode` is missing or not `drawing` (webcam mode does not exist). | Set `mode: drawing`. |
-| `Task …: classifier testSet must be one of ….` | `testSet` is missing or not one of `held_out`, `teacher`, `live`. | Choose how the model is tested. |
+| `Task …: classifier testSet must be one of ….` | `testSet` is there but is not one of `held_out`, `teacher`, `live`. (Leaving it out is fine: it means the live round.) | Fix it, or leave it out. |
+| `Task …: classifier panels must be a list (any of …).` | `panels` is not a list. | Write `panels: [grid, sure, fool]` (any of those). |
+| `Task …: classifier panels has an unknown value "…". Use ….` | A `panels` entry is not `grid`, `sure` or `fool`. | Use only those three, or leave `panels` out (default `[fool]`). |
 | `Task …: classifier classes must be a list of names.` | `classes` is not a list. | Write `classes: [cat, fish]`, or leave it out so students name their own. |
 | `Task …: each class name must be 1 to … characters.` | A class name is empty or too long. | Use short names (up to 16 characters). |
 | `Task …: class names must all be different.` | Two classes share a name (capitals ignored). | Rename one. |
@@ -323,7 +316,7 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: minExamplesPerClass must be a whole number from 2 to ….` | `minExamplesPerClass` is not a whole number in range. | Use a whole number from 2 to 40. |
 | `Task …: testSet held_out needs minExamplesPerClass of at least … (every …th drawing is kept back for the test).` | With `held_out`, every 4th drawing is kept back, so a class needs at least 4. | Raise `minExamplesPerClass` to 4 or more, or use another `testSet`. |
 | `Task …: targetAccuracy must be a number above 0 and up to 1 (0.8 means 80%).` | `targetAccuracy` is not a fraction. | Write `0.8`, not `80`. |
-| `Task …: liveTestSize must be a whole number from … to ….` | `liveTestSize` is out of range. | Use 3 to 20. |
+| `Task …: liveTestSize must be a whole number from … to ….` | `liveTestSize` (the right answers the round needs) is out of range. | Use 3 to 20. |
 | `Task …: testSet teacher needs classes (the test drawings use their names).` | `testSet: teacher` without `classes`. | List the `classes` the test drawings use. |
 | `Task …: testSet teacher needs testItems with 2 to … test drawings.` | `testItems` is missing or has fewer than 2 or more than 24 drawings. | Add 2 to 24 `testItems`. |
 | `Task … test drawing …: needs a label.` | A test drawing has no `label`. | Add the true class as `label`. |
