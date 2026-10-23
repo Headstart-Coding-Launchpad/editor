@@ -1,17 +1,27 @@
 // Pure logic for the Classifier activity: drawings turned into small greyscale grids, an
-// in-house k-nearest-neighbours classifier, held-out / teacher / live testing, accuracy and
-// confusion counts, task validation, state transitions, grading and hints.
+// in-house k-nearest-neighbours classifier that is ready as soon as every thing has its
+// drawings (no Train step), the live round (draw it, will it get it?), held-out / teacher
+// tests, mix-ups, task validation, state transitions, grading and hints.
 // Node-safe (no React, JSX or DOM) so the CLI, the Builder, reports and print share it.
 // See docs/authoring/activities/classifier.md.
 //
 // Privacy: the student's drawings (`examples`) live only in the local state. `sharedState`
-// strips them down to counts, whether the model is trained and the test result; that is the
-// only form ever written to Firebase (see definition.js `serializeShared`).
+// strips them down to counts, whether the model is ready, rights, misses and the result; that is
+// the only form ever written to Firebase (see definition.js `serializeShared`).
 
 export const CLASSIFIER_MODES = ['drawing']
 // Modes that are planned but not built yet (validation says so instead of "unknown mode").
 export const CLASSIFIER_MODES_NOT_BUILT = ['sound']
+// 'live' is the default: the round of "draw it, will it get it?". held_out and teacher are the
+// older tests (a Test button on kept-back or teacher drawings).
 export const TEST_SETS = ['held_out', 'teacher', 'live']
+// Extra parts a lesson can switch on (the pad, the teach step and the guess bars always show):
+// grid = what it sees, sure = how sure is it, fool = fool-it-and-fix-it.
+export const PANELS = ['grid', 'sure', 'fool']
+export const DEFAULT_PANELS = ['fool']
+// Tries in a round and mix-up drawings kept on the device.
+export const MAX_ATTEMPTS = 200
+export const MAX_MISSES_KEPT = 8
 
 // Side of the square grid a drawing is shrunk to. 16 x 16 = 256 numbers per drawing.
 export const GRID = 16
@@ -19,9 +29,11 @@ export const GRID = 16
 export const K = 3
 export const MIN_CLASSES = 2
 export const MAX_CLASSES = 6
+// Students who name their own things get 2 to 4.
+export const MAX_STUDENT_CLASSES = 4
 export const MAX_LABEL_LENGTH = 16
 export const MAX_EXAMPLES_PER_CLASS = 40
-export const DEFAULT_MIN_EXAMPLES = 6
+export const DEFAULT_MIN_EXAMPLES = 3
 export const DEFAULT_TARGET_ACCURACY = 0.8
 export const DEFAULT_LIVE_TEST_SIZE = 5
 export const MIN_LIVE_TEST_SIZE = 3
@@ -162,6 +174,46 @@ export function classify(examples, grid, k = K) {
   return best.label
 }
 
+// ── guessing ─────────────────────────────────────────────────────────────────
+
+// What the model says about one drawing: its answer (the vote winner, as `classify`) and a share
+// for every class (the share of the K nearest drawings that belong to it, 0 to 1). The shares
+// are the bars shown while the student draws.
+export function guessOf(examples, grid, classes, k = K) {
+  const labels = classes ?? []
+  const scores = Object.fromEntries(labels.map((label) => [label, 0]))
+  if (!examples.length || !isGridString(grid)) return { label: null, scores }
+  const vec = decodeGrid(grid)
+  const nearest = examples
+    .map((example) => ({ label: example.label, d: distance2(decodeGrid(example.grid), vec) }))
+    .sort((a, b) => a.d - b.d)
+    .slice(0, Math.min(k, examples.length))
+  for (const { label } of nearest) {
+    if (label in scores) scores[label] += 1 / nearest.length
+  }
+  return { label: classify(examples, grid, k), scores }
+}
+
+// ── things (a class may start with an emoji: "🐱 cat") ───────────────────────
+
+const LEADING_EMOJI =
+  /^(\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*)\s*/u
+
+// "🐱 cat" -> { emoji: '🐱', name: 'cat' }; "cat" -> { emoji: '', name: 'cat' }.
+export function splitLabel(label) {
+  const text = String(label ?? '').trim()
+  const match = text.match(LEADING_EMOJI)
+  return match
+    ? { emoji: match[1], name: text.slice(match[0].length).trim() }
+    : { emoji: '', name: text }
+}
+
+// What to show for a thing in a sentence or bar: its emoji when it has one, else its name.
+export function shortLabel(label) {
+  const { emoji, name } = splitLabel(label)
+  return emoji || name
+}
+
 // ── state ────────────────────────────────────────────────────────────────────
 
 export function cleanLabel(value) {
@@ -194,8 +246,21 @@ export function taskTarget(task) {
   return typeof task?.targetAccuracy === 'number' ? task.targetAccuracy : DEFAULT_TARGET_ACCURACY
 }
 
+// For the live round this is how many right answers make the round (the core).
 export function taskLiveTestSize(task) {
   return Number.isInteger(task?.liveTestSize) ? task.liveTestSize : DEFAULT_LIVE_TEST_SIZE
+}
+
+// testSet is optional: missing means the live round.
+export function testSetOf(task) {
+  return TEST_SETS.includes(task?.testSet) ? task.testSet : 'live'
+}
+
+// Which extra parts show (see PANELS). Missing means DEFAULT_PANELS; [] means none.
+export function panelsOf(task) {
+  return Array.isArray(task?.panels)
+    ? task.panels.filter((panel) => PANELS.includes(panel))
+    : DEFAULT_PANELS
 }
 
 function emptyExamples(classes) {
@@ -207,10 +272,13 @@ export function initialClassifierState(task) {
   return {
     v: 1,
     classes,
+    min: taskMinExamples(task),
     examples: emptyExamples(classes),
-    trained: false,
-    result: null,
+    // The round: [actual, predicted] for every drawing the student tried to fool it with.
     live: [],
+    // The drawings it got wrong ({ actual, predicted, grid, fixed? }), kept on the device only.
+    misses: [],
+    result: null,
     tests: 0,
   }
 }
@@ -232,6 +300,8 @@ function cleanResult(raw) {
   return { right, total, confusion }
 }
 
+const wholeNumber = (value) => (Number.isInteger(value) && value > 0 ? value : 0)
+
 // Tolerant load of either form (the full local state, or the shared summary a teacher reads).
 export function normalizeClassifierState(task, raw) {
   const base = initialClassifierState(task)
@@ -247,27 +317,40 @@ export function normalizeClassifierState(task, raw) {
   const next = {
     v: 1,
     classes,
-    trained: raw.trained === true,
+    min: base.min,
     result: cleanResult(raw.result),
     live: Array.isArray(raw.live)
       ? raw.live
           .filter((p) => Array.isArray(p) && typeof p[0] === 'string' && typeof p[1] === 'string')
-          .slice(0, 100)
+          .slice(0, MAX_ATTEMPTS)
           .map((p) => [p[0], p[1]])
       : [],
-    tests: Number.isInteger(raw.tests) && raw.tests > 0 ? raw.tests : 0,
+    tests: wholeNumber(raw.tests),
   }
   if (!isShared) {
     next.examples = examples
+    next.misses = (Array.isArray(raw.misses) ? raw.misses : [])
+      .filter(
+        (m) =>
+          m &&
+          typeof m.actual === 'string' &&
+          typeof m.predicted === 'string' &&
+          isGridString(m.grid)
+      )
+      .slice(-MAX_MISSES_KEPT)
+      .map((m) => ({
+        actual: m.actual,
+        predicted: m.predicted,
+        grid: m.grid,
+        ...(m.fixed ? { fixed: true } : {}),
+      }))
   } else {
     // Shared summary: no drawings (no `examples` key), just counts.
     next.shared = true
     next.counts = {}
-    for (const label of classes) {
-      const n = Number(raw.counts?.[label])
-      next.counts[label] = Number.isInteger(n) && n > 0 ? n : 0
-    }
-    if (Number.isInteger(raw.liveCount)) next.liveCount = raw.liveCount
+    for (const label of classes) next.counts[label] = wholeNumber(Number(raw.counts?.[label]))
+    next.liveCount = wholeNumber(raw.liveCount)
+    next.rights = wholeNumber(raw.rights)
   }
   return next
 }
@@ -283,34 +366,59 @@ export function countsOf(state) {
   return counts
 }
 
+// Every named thing has its minimum and there are at least two: the model is ready, with no
+// Train button (k-NN just uses every drawing).
+export function readyOf(state) {
+  const labels = (state?.classes ?? []).filter(Boolean)
+  if (labels.length < MIN_CLASSES) return false
+  const counts = countsOf(state)
+  const min = state?.min ?? DEFAULT_MIN_EXAMPLES
+  return labels.every((label) => (counts[label] ?? 0) >= min)
+}
+
+// Tries in the round (the drawings it was asked to guess).
 export function liveCountOf(state) {
   return Array.isArray(state?.live) && state.live.length
     ? state.live.length
     : (state?.liveCount ?? 0)
 }
 
-// The only form written to Firebase and the session report: no drawings.
+// Tries it got right.
+export function rightsOf(state) {
+  if (Array.isArray(state?.live) && state.live.length) {
+    return state.live.filter(([actual, predicted]) => actual === predicted).length
+  }
+  return state?.rights ?? 0
+}
+
+export function missesOf(state) {
+  return Math.max(0, liveCountOf(state) - rightsOf(state))
+}
+
+// The only form written to Firebase and the session report: no drawings, no strokes.
 export function sharedState(state) {
-  const counts = countsOf(state)
   return {
     v: 1,
     shared: true,
     classes: state?.classes ?? [],
-    counts,
-    trained: !!state?.trained,
+    counts: countsOf(state),
+    trained: readyOf(state),
     result: state?.result ?? null,
     liveCount: liveCountOf(state),
+    rights: rightsOf(state),
+    misses: missesOf(state),
     tests: state?.tests ?? 0,
   }
 }
 
 // ── state changes (each returns a new state) ─────────────────────────────────
 
-// Any change to the drawings means the model has to be trained and tested again.
+// A change to the drawings makes a kept-back / teacher test result out of date. The round's
+// tries stay: teaching it a miss is the point of the round.
 function stale(state) {
   // eslint-disable-next-line no-unused-vars
-  const { shared, counts, liveCount, ...rest } = state
-  return { ...rest, trained: false, result: null, live: [] }
+  const { shared, counts, liveCount, rights, ...rest } = state
+  return { ...rest, result: rest.live?.length ? rest.result : null }
 }
 
 export function addExample(state, label, grid) {
@@ -335,8 +443,27 @@ export function removeExample(state, label, index) {
   })
 }
 
+// Wipes the drawings and the round.
 export function clearExamples(state) {
-  return stale({ ...state, examples: emptyExamples(state.classes) })
+  return stale({
+    ...state,
+    examples: emptyExamples(state.classes),
+    live: [],
+    misses: [],
+    result: null,
+  })
+}
+
+// "Teach it this one": the drawing it got wrong becomes an example of what it really was.
+export function teachMiss(state, actual, grid) {
+  const next = addExample(state, actual, grid)
+  if (next === state) return state
+  return {
+    ...next,
+    misses: (next.misses ?? []).map((m) =>
+      m.actual === actual && m.grid === grid ? { ...m, fixed: true } : m
+    ),
+  }
 }
 
 // Student-named classes: only before that class has drawings.
@@ -350,10 +477,10 @@ export function setClassName(state, index, name) {
 }
 
 // The class rows start as two blanks, so adding pads to MIN_CLASSES before adding one more.
-export function addClass(state) {
+export function addClass(state, max = MAX_CLASSES) {
   const next = [...state.classes]
   while (next.length < MIN_CLASSES) next.push('')
-  if (next.length >= MAX_CLASSES) return state
+  if (next.length >= max) return state
   return { ...state, classes: [...next, ''] }
 }
 
@@ -366,12 +493,12 @@ export function removeClass(state, index) {
 }
 
 // Blank names are dropped and duplicates are made unique, so a half-typed class never reaches
-// training. Used by the UI before the first drawing.
+// the model. Used by the UI.
 export function namedClasses(state) {
   return cleanClasses(state.classes)
 }
 
-// ── train / test ─────────────────────────────────────────────────────────────
+// ── testing ──────────────────────────────────────────────────────────────────
 
 // Which positions in a class's list are kept back for the test (held_out only).
 export function heldOutIndexes(count) {
@@ -381,7 +508,7 @@ export function heldOutIndexes(count) {
 }
 
 export function isHeldOut(task, state, label, index) {
-  if (task?.testSet !== 'held_out') return false
+  if (testSetOf(task) !== 'held_out') return false
   return heldOutIndexes((state.examples?.[label] ?? []).length).includes(index)
 }
 
@@ -391,7 +518,7 @@ export function splitExamples(task, state) {
   const held = []
   for (const label of state.classes) {
     const list = state.examples?.[label] ?? []
-    const keep = task?.testSet === 'held_out' ? new Set(heldOutIndexes(list.length)) : new Set()
+    const keep = testSetOf(task) === 'held_out' ? new Set(heldOutIndexes(list.length)) : new Set()
     list.forEach((grid, i) => (keep.has(i) ? held : train).push({ label, grid }))
   }
   return { train, held }
@@ -438,55 +565,63 @@ export function tally(pairs) {
   return { right, total: pairs.length, confusion }
 }
 
-export function canTrain(state) {
-  const labels = state.classes.filter(Boolean)
-  if (labels.length < MIN_CLASSES) return false
-  return labels.every((label) => (state.examples?.[label] ?? []).length >= 2)
+// The mix-ups in a result, most common first: [{ actual, predicted, count }].
+export function mixupsOf(result) {
+  const out = []
+  for (const [actual, row] of Object.entries(result?.confusion ?? {})) {
+    for (const [predicted, count] of Object.entries(row)) {
+      if (predicted !== actual) out.push({ actual, predicted, count })
+    }
+  }
+  return out.sort((a, b) => b.count - a.count)
 }
 
-// Blank (unnamed) class rows are dropped when the model is trained.
-export function train(task, state) {
-  if (!canTrain(state)) return state
-  const classes = state.classes.filter(Boolean)
-  return { ...state, classes, trained: true, result: null, live: [] }
-}
-
-// What the model can be tested on right now: the number of test drawings waiting.
+// What a kept-back / teacher test can be tested on right now: the test drawings waiting.
 export function testSize(task, state) {
-  if (task?.testSet === 'teacher') return teacherTestItems(task).length
-  if (task?.testSet === 'held_out') return splitExamples(task, state).held.length
+  if (testSetOf(task) === 'teacher') return teacherTestItems(task).length
+  if (testSetOf(task) === 'held_out') return splitExamples(task, state).held.length
   return 0
 }
 
 export function canTest(task, state) {
-  return !!state.trained && task?.testSet !== 'live' && testSize(task, state) > 0
+  return readyOf(state) && testSetOf(task) !== 'live' && testSize(task, state) > 0
 }
 
 export function runTest(task, state) {
   if (!canTest(task, state)) return state
   const { train: trainSet, held } = splitExamples(task, state)
-  const testSet = task.testSet === 'teacher' ? teacherTestItems(task) : held
+  const testSet = testSetOf(task) === 'teacher' ? teacherTestItems(task) : held
   const pairs = testSet.map((item) => [item.label, classify(trainSet, item.grid)])
   return { ...state, result: tally(pairs), tests: (state.tests ?? 0) + 1 }
 }
 
-// Live testing: the student draws a new item and says what it really is; the model's guess is
-// recorded. The result appears once liveTestSize drawings have been tested.
+// One try in the round: the pad asked for `actual`, the student drew it, the model guesses.
+// Returns the new state and what the model said (null when it could not guess).
 export function recordLive(task, state, actual, grid) {
-  if (!state.trained || !state.classes.includes(actual) || !isGridString(grid)) {
+  if (!readyOf(state) || !state.classes.includes(actual) || !isGridString(grid)) {
     return { state, predicted: null }
   }
+  if ((state.live ?? []).length >= MAX_ATTEMPTS) return { state, predicted: null }
   const { train: trainSet } = splitExamples(task, state)
   const predicted = classify(trainSet, grid)
   const live = [...(state.live ?? []), [actual, predicted]]
-  const result = live.length >= taskLiveTestSize(task) ? tally(live) : null
+  const misses =
+    predicted === actual
+      ? (state.misses ?? [])
+      : [...(state.misses ?? []), { actual, predicted, grid }].slice(-MAX_MISSES_KEPT)
   return {
-    state: { ...state, live, result, tests: result ? (state.tests ?? 0) + 1 : state.tests },
+    state: { ...state, live, misses, result: tally(live), tests: live.length },
     predicted,
   }
 }
 
-// ── results in words ─────────────────────────────────────────────────────────
+// Which thing the round asks for next: each in turn.
+export function nextTarget(state) {
+  const labels = (state?.classes ?? []).filter(Boolean)
+  return labels.length ? labels[liveCountOf(state) % labels.length] : null
+}
+
+// ── results ──────────────────────────────────────────────────────────────────
 
 export function accuracyOf(result) {
   return result && result.total > 0 ? result.right / result.total : null
@@ -503,76 +638,57 @@ export function describeResult(result) {
   return `${result.right} of ${result.total} right, ${percent(result)}%`
 }
 
-// One entry per class that was tested: { label, total, right, mistakes: [{ label, count }], text }
-export function describeConfusion(result, classes) {
-  const rows = []
-  const labels = [...new Set([...(classes ?? []), ...Object.keys(result?.confusion ?? {})])]
-  for (const actual of labels) {
-    const row = result?.confusion?.[actual] ?? {}
-    const total = Object.values(row).reduce((sum, n) => sum + n, 0)
-    if (!total) continue
-    const right = row[actual] ?? 0
-    const mistakes = Object.entries(row)
-      .filter(([label]) => label !== actual)
-      .map(([label, count]) => ({ label, count }))
-    const wrongText = mistakes
-      .map((m) => `${m.count} ${m.count === 1 ? 'was' : 'were'} called ${m.label}`)
-      .join('; ')
-    rows.push({
-      label: actual,
-      total,
-      right,
-      mistakes,
-      text: `${actual}: ${right} of ${total} right${wrongText ? `. ${wrongText}.` : '.'}`,
-    })
-  }
-  return rows
-}
-
 // ── grading ──────────────────────────────────────────────────────────────────
 
-// Progress and verdict for a state. `classesMet` counts classes with enough drawings.
+// Progress and verdict for a state. `classesMet` counts classes with enough drawings. The live
+// round passes at liveTestSize right answers (bonus ones after that change nothing); a kept-back
+// or teacher test passes at targetAccuracy.
 export function gradeTask(task, state) {
   const classes = (state?.classes ?? []).filter(Boolean)
   const counts = countsOf(state)
   const min = taskMinExamples(task)
   const target = taskTarget(task)
+  const live = testSetOf(task) === 'live'
+  const core = taskLiveTestSize(task)
+  const rights = rightsOf(state)
   const classesMet = classes.filter((label) => (counts[label] ?? 0) >= min).length
   const accuracy = accuracyOf(state?.result)
   const enoughClasses =
     classes.length >= MIN_CLASSES &&
     (!task?.classes?.length || classes.length === cleanClasses(task.classes).length)
-  const accurate = accuracy != null && accuracy + 1e-9 >= target
-  const passed = enoughClasses && classesMet === classes.length && !!state?.trained && accurate
+  const ready = enoughClasses && classesMet === classes.length
+  const won = live ? rights >= core : accuracy != null && accuracy + 1e-9 >= target
+  const passed = ready && won
   let hint = null
   if (!passed) {
     if (!enoughClasses) {
-      hint = 'Name at least two things for the model to tell apart.'
+      hint = 'Name at least two things for the pad to tell apart.'
     } else {
       const short = classes.find((label) => (counts[label] ?? 0) < min)
       if (short) {
         hint = `Draw more ${short}: you have ${counts[short] ?? 0} and need ${min}.`
-      } else if (!state?.trained) {
-        hint = 'Press Train so the model can learn from your drawings.'
+      } else if (live) {
+        hint = `Draw what it asks for and press Done. It needs ${core} right: you have ${rights} so far. If it gets one wrong, teach it that one.`
       } else if (!state?.result) {
-        hint =
-          task?.testSet === 'live'
-            ? `Test the model on ${taskLiveTestSize(task)} new drawings it has not seen.`
-            : 'Press Test to see how the model does on drawings it has not seen.'
+        hint = 'Press Test to see how the model does on drawings it has not seen.'
       } else {
-        hint = `The model got ${percent(state.result)}% and needs ${Math.round(target * 100)}%. Try more drawings in different sizes and shapes, then train and test again.`
+        hint = `The model got ${percent(state.result)}% and needs ${Math.round(target * 100)}%. Try more drawings in different sizes and shapes, then test again.`
       }
     }
   }
   return {
     passed,
     hint,
+    ready,
     classesMet,
     classesTotal: classes.length,
     accuracy,
     target,
     counts,
     min,
+    live,
+    core,
+    rights,
   }
 }
 
@@ -591,7 +707,8 @@ export function solutionFor(task) {
     ? cleanClasses(task.classes)
     : ['class 1', 'class 2']
   const min = taskMinExamples(task)
-  const total = Math.max(2, Math.ceil(taskTarget(task) * 10))
+  const live = testSetOf(task) === 'live'
+  const total = live ? taskLiveTestSize(task) : Math.max(2, Math.ceil(taskTarget(task) * 10))
   return {
     v: 1,
     shared: true,
@@ -599,7 +716,9 @@ export function solutionFor(task) {
     counts: Object.fromEntries(classes.map((label) => [label, min])),
     trained: true,
     result: { right: total, total, confusion: { [classes[0]]: { [classes[0]]: total } } },
-    liveCount: 0,
+    liveCount: live ? total : 0,
+    rights: live ? total : 0,
+    misses: 0,
     tests: 1,
   }
 }
@@ -661,10 +780,12 @@ export function validateClassifierTask(task, n) {
     errors.push(`${where}: classifier mode must be drawing.`)
     return errors
   }
-  if (!TEST_SETS.includes(task?.testSet)) {
+  // testSet is optional (missing means the live round); a value that is there must be known.
+  if (task.testSet !== undefined && !TEST_SETS.includes(task.testSet)) {
     errors.push(`${where}: classifier testSet must be one of ${TEST_SETS.join(', ')}.`)
     return errors
   }
+  const testSet = testSetOf(task)
   let classes = []
   if (task.classes !== undefined) {
     const list = Array.isArray(task.classes) ? task.classes : null
@@ -689,7 +810,7 @@ export function validateClassifierTask(task, n) {
       )
     }
   }
-  if (task.testSet === 'held_out' && taskMinExamples(task) < HELD_OUT_EVERY) {
+  if (testSet === 'held_out' && taskMinExamples(task) < HELD_OUT_EVERY) {
     errors.push(
       `${where}: testSet held_out needs minExamplesPerClass of at least ${HELD_OUT_EVERY} (every ${HELD_OUT_EVERY}th drawing is kept back for the test).`
     )
@@ -707,7 +828,20 @@ export function validateClassifierTask(task, n) {
       `${where}: liveTestSize must be a whole number from ${MIN_LIVE_TEST_SIZE} to ${MAX_LIVE_TEST_SIZE}.`
     )
   }
-  if (task.testSet === 'teacher') {
+  if (task.panels !== undefined) {
+    if (!Array.isArray(task.panels)) {
+      errors.push(`${where}: classifier panels must be a list (any of ${PANELS.join(', ')}).`)
+    } else {
+      for (const panel of task.panels) {
+        if (!PANELS.includes(panel)) {
+          errors.push(
+            `${where}: classifier panels has an unknown value "${String(panel)}". Use ${PANELS.join(', ')}.`
+          )
+        }
+      }
+    }
+  }
+  if (testSet === 'teacher') {
     const items = task.testItems
     if (!classes.length) {
       errors.push(`${where}: testSet teacher needs classes (the test drawings use their names).`)

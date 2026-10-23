@@ -319,7 +319,7 @@ Next Word activity reference (AI Level 1): texts, pasted text, predict-then-reve
 **Load when:** authoring or editing a Next Word activity task.
 
 ### [authoring/activities/classifier.md](authoring/activities/classifier.md)
-Classifier activity reference (draw examples, train a k-nearest-neighbours model, test it on unseen drawings): task fields, the three test sets, authoring teacher test drawings, marking and hints, privacy (what is synced), teacher tools, and a complete validated example lesson.
+Classifier activity reference (teach a few things by drawing, a k-nearest-neighbours pad that guesses live, the fool-it round): task fields, `panels`, the round (core then bonus), the older Test button test sets, authoring teacher test drawings, marking and hints, privacy (what is synced), teacher tools, and a complete validated example lesson.
 
 **Load when:** authoring or editing a Classifier activity task.
 

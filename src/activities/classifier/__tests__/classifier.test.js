@@ -3,35 +3,43 @@ import { describe, expect, it } from 'vitest'
 import {
   GRID,
   K,
+  MAX_STUDENT_CLASSES,
   addClass,
   addExample,
   canTest,
-  canTrain,
   classify,
   clearExamples,
   countsOf,
   decodeGrid,
-  describeConfusion,
   describeResult,
   encodeGrid,
   gradeTask,
   gridFromRows,
+  guessOf,
   heldOutIndexes,
   initialClassifierState,
   isGridString,
+  mixupsOf,
+  nextTarget,
   normalizeClassifierState,
+  panelsOf,
   rasterize,
+  readyOf,
   recordLive,
   removeClass,
   removeExample,
+  rightsOf,
   runTest,
   setClassName,
   sharedState,
+  shortLabel,
   solutionFor,
   splitExamples,
+  splitLabel,
   tally,
+  teachMiss,
   teacherTestItems,
-  train,
+  testSetOf,
   validateClassifierTask,
   validateClassifierWarnings,
 } from '../classifier.js'
@@ -41,6 +49,7 @@ import definition from '../definition.js'
 // state round-trips, solution passes) is checked for every registered activity by
 // src/activities/__tests__/activityInterface.test.js.
 
+// The older kept-back test (a Test button on every 4th drawing).
 const TASK = {
   id: 1,
   taskType: 'activity',
@@ -50,6 +59,17 @@ const TASK = {
   minExamplesPerClass: 4,
   testSet: 'held_out',
   targetAccuracy: 0.75,
+}
+
+// The default: the live round (no testSet). 3 drawings of each thing, 3 right answers.
+const LIVE = {
+  id: 2,
+  taskType: 'activity',
+  activityType: 'classifier',
+  mode: 'drawing',
+  classes: ['circle', 'line'],
+  minExamplesPerClass: 3,
+  liveTestSize: 3,
 }
 
 const circle = (r = 0.3, dx = 0) => [
@@ -73,6 +93,15 @@ function withExamples(task = TASK, perClass = 8) {
     state = addExample(state, 'line', gridOf(line(i * 0.02 - 0.05)))
   }
   return state
+}
+
+// A ready live state with the given tries ([actual, predicted] pairs) already played.
+function played(pairs, task = LIVE) {
+  const state = withExamples(task, 3)
+  const misses = pairs
+    .filter(([actual, predicted]) => actual !== predicted)
+    .map(([actual, predicted]) => ({ actual, predicted, grid: gridOf(circle()) }))
+  return { ...state, live: pairs, misses, result: pairs.length ? tally(pairs) : null }
 }
 
 describe('rasterize / grids', () => {
@@ -166,36 +195,68 @@ describe('classify (k-nearest-neighbours)', () => {
   })
 })
 
+describe('things with emoji', () => {
+  it('splits a leading emoji from the name', () => {
+    expect(splitLabel('🐱 cat')).toEqual({ emoji: '🐱', name: 'cat' })
+    expect(splitLabel('cat')).toEqual({ emoji: '', name: 'cat' })
+    expect(splitLabel('👩‍🚀 astronaut').name).toBe('astronaut')
+    expect(splitLabel('👩‍🚀 astronaut').emoji).toBe('👩‍🚀')
+  })
+
+  it('shows the emoji when there is one, else the name', () => {
+    expect(shortLabel('🐱 cat')).toBe('🐱')
+    expect(shortLabel('cat')).toBe('cat')
+  })
+})
+
+describe('guessing', () => {
+  const examples = () => splitExamples(LIVE, withExamples(LIVE, 3)).train
+
+  it('says what it thinks and how much of the vote each thing has', () => {
+    const guess = guessOf(examples(), gridOf(circle(0.27)), ['circle', 'line'])
+    expect(guess.label).toBe('circle')
+    expect(guess.scores.circle).toBeGreaterThan(0.5)
+    expect(guess.scores.circle + guess.scores.line).toBeCloseTo(1)
+    expect(guessOf(examples(), gridOf(line(0.01)), ['circle', 'line']).label).toBe('line')
+  })
+
+  it('has no guess without drawings', () => {
+    expect(guessOf([], gridOf(circle()), ['circle'])).toEqual({
+      label: null,
+      scores: { circle: 0 },
+    })
+  })
+})
+
 describe('state changes', () => {
-  it('adds, counts and removes drawings, and a change makes the model stale', () => {
-    let state = withExamples(TASK, 3)
+  it('adds, counts and removes drawings', () => {
+    let state = withExamples(LIVE, 3)
     expect(countsOf(state)).toEqual({ circle: 3, line: 3 })
-    state = train(TASK, state)
-    expect(state.trained).toBe(true)
     state = removeExample(state, 'circle', 0)
     expect(countsOf(state).circle).toBe(2)
-    expect(state.trained).toBe(false)
-    expect(state.result).toBeNull()
   })
 
   it('ignores a drawing for an unknown class or a bad grid', () => {
-    const state = initialClassifierState(TASK)
+    const state = initialClassifierState(LIVE)
     expect(addExample(state, 'dog', gridOf(circle()))).toBe(state)
     expect(addExample(state, 'circle', 'abc')).toBe(state)
   })
 
   it('caps drawings per class', () => {
-    let state = initialClassifierState(TASK)
+    let state = initialClassifierState(LIVE)
     for (let i = 0; i < 45; i += 1) state = addExample(state, 'circle', gridOf(circle()))
     expect(countsOf(state).circle).toBe(40)
   })
 
-  it('clears every drawing', () => {
-    expect(countsOf(clearExamples(withExamples(TASK, 3)))).toEqual({ circle: 0, line: 0 })
+  it('clears every drawing and the round', () => {
+    const cleared = clearExamples(played([['circle', 'line']]))
+    expect(countsOf(cleared)).toEqual({ circle: 0, line: 0 })
+    expect(cleared.live).toEqual([])
+    expect(cleared.misses).toEqual([])
   })
 
-  it('lets the student name classes until they have drawings, and trims on the first drawing', () => {
-    const task = { ...TASK, classes: [] }
+  it('lets the student name things until they have drawings, and trims on the first drawing', () => {
+    const task = { ...LIVE, classes: [] }
     let state = initialClassifierState(task)
     state = setClassName(state, 0, 'cat ')
     state = setClassName(state, 1, 'fish')
@@ -207,18 +268,37 @@ describe('state changes', () => {
     expect(removeClass(state, 2).classes).toEqual(['cat', 'fish'])
   })
 
-  it('does not add a drawing under a duplicate class name', () => {
-    const task = { ...TASK, classes: [] }
-    let state = setClassName(setClassName(initialClassifierState(task), 0, 'cat'), 1, 'cat')
+  it('does not add a drawing under a duplicate name', () => {
+    const task = { ...LIVE, classes: [] }
+    const state = setClassName(setClassName(initialClassifierState(task), 0, 'cat'), 1, 'cat')
     expect(addExample(state, 'cat', gridOf(circle()))).toBe(state)
-    const dup = setClassName(setClassName(initialClassifierState(task), 0, 'cat'), 1, 'cat ')
-    expect(addExample(dup, 'cat ', gridOf(circle()))).toBe(dup)
   })
 
-  it('caps the class list at 6', () => {
-    let state = initialClassifierState({ ...TASK, classes: [] })
+  it('caps the class rows (6 in general, 4 when the student names them)', () => {
+    let state = initialClassifierState({ ...LIVE, classes: [] })
     for (let i = 0; i < 10; i += 1) state = addClass(state)
     expect(state.classes).toHaveLength(6)
+    let four = initialClassifierState({ ...LIVE, classes: [] })
+    for (let i = 0; i < 10; i += 1) four = addClass(four, MAX_STUDENT_CLASSES)
+    expect(four.classes).toHaveLength(4)
+  })
+})
+
+describe('ready (no Train step)', () => {
+  it('is ready once every named thing has its drawings', () => {
+    expect(readyOf(withExamples(LIVE, 2))).toBe(false)
+    expect(readyOf(withExamples(LIVE, 3))).toBe(true)
+  })
+
+  it('needs at least two named things and ignores blank rows', () => {
+    const task = { ...LIVE, classes: [] }
+    let state = setClassName(initialClassifierState(task), 0, 'a')
+    for (let i = 0; i < 3; i += 1) state = addExample(state, 'a', gridOf(circle(0.2 + i * 0.05)))
+    expect(readyOf(state)).toBe(false)
+    state = setClassName(state, 1, 'b')
+    for (let i = 0; i < 3; i += 1) state = addExample(state, 'b', gridOf(line(i * 0.02)))
+    expect(readyOf(state)).toBe(true)
+    expect(readyOf(addClass(state))).toBe(true)
   })
 })
 
@@ -238,29 +318,19 @@ describe('held-out split', () => {
     const teacher = splitExamples({ ...TASK, testSet: 'teacher' }, state)
     expect(teacher.held).toHaveLength(0)
     expect(teacher.train).toHaveLength(16)
+    expect(splitExamples(LIVE, withExamples(LIVE, 8)).held).toHaveLength(0)
   })
 })
 
-describe('train and test', () => {
-  it('needs two classes with 2 drawings each to train', () => {
-    expect(canTrain(withExamples(TASK, 1))).toBe(false)
-    expect(canTrain(withExamples(TASK, 2))).toBe(true)
-    const state = train(TASK, withExamples(TASK, 1))
-    expect(state.trained).toBe(false)
-  })
-
-  it('drops blank class rows when it trains', () => {
-    const task = { ...TASK, classes: [] }
-    let state = initialClassifierState(task)
-    state = setClassName(setClassName(state, 0, 'a'), 1, 'b')
-    state = addExample(addExample(state, 'a', gridOf(circle())), 'a', gridOf(circle(0.2)))
-    state = addExample(addExample(state, 'b', gridOf(line())), 'b', gridOf(line(0.1)))
-    state = addClass(state)
-    expect(train(task, state).classes).toEqual(['a', 'b'])
+describe('test sets', () => {
+  it('defaults to the live round', () => {
+    expect(testSetOf(LIVE)).toBe('live')
+    expect(testSetOf({ testSet: 'teacher' })).toBe('teacher')
+    expect(testSetOf({ testSet: 'nonsense' })).toBe('live')
   })
 
   it('tests on the kept-back drawings and reports counts', () => {
-    let state = train(TASK, withExamples(TASK, 8))
+    let state = withExamples(TASK, 8)
     expect(canTest(TASK, state)).toBe(true)
     state = runTest(TASK, state)
     expect(state.result.total).toBe(4)
@@ -269,9 +339,9 @@ describe('train and test', () => {
     expect(describeResult(state.result)).toBe('4 of 4 right, 100%')
   })
 
-  it('cannot test before training or with nothing kept back', () => {
-    expect(canTest(TASK, withExamples(TASK, 8))).toBe(false)
-    expect(canTest(TASK, train(TASK, withExamples(TASK, 3)))).toBe(false)
+  it('cannot test until it is ready, or in the live round', () => {
+    expect(canTest(TASK, withExamples(TASK, 3))).toBe(false)
+    expect(canTest(LIVE, withExamples(LIVE, 3))).toBe(false)
   })
 
   it('tests on the teacher drawings (strokes and grid)', () => {
@@ -285,127 +355,185 @@ describe('train and test', () => {
       ],
     }
     expect(teacherTestItems(task)).toHaveLength(3)
-    const state = runTest(task, train(task, withExamples(task, 4)))
+    const state = runTest(task, withExamples(task, 4))
     expect(state.result.total).toBe(3)
     expect(state.result.confusion.circle.circle).toBe(1)
     expect(state.result.confusion.line.line).toBeGreaterThanOrEqual(1)
   })
 
-  it('records live test drawings and shows a result once enough are done', () => {
-    const task = { ...TASK, testSet: 'live', liveTestSize: 3 }
-    let state = train(task, withExamples(task, 4))
-    let done = recordLive(task, state, 'circle', gridOf(circle(0.25)))
-    expect(done.predicted).toBe('circle')
-    expect(done.state.result).toBeNull()
-    state = done.state
-    state = recordLive(task, state, 'line', gridOf(line(0.03))).state
-    expect(state.result).toBeNull()
-    done = recordLive(task, state, 'line', gridOf(circle(0.3)))
-    expect(done.predicted).toBe('circle')
-    expect(done.state.result).toEqual({
-      right: 2,
-      total: 3,
-      confusion: { circle: { circle: 1 }, line: { line: 1, circle: 1 } },
-    })
+  it('changing the drawings makes a kept-back test result stale', () => {
+    const tested = runTest(TASK, withExamples(TASK, 8))
+    expect(removeExample(tested, 'circle', 0).result).toBeNull()
+  })
+})
+
+describe('the live round', () => {
+  it('asks for each thing in turn', () => {
+    const state = withExamples(LIVE, 3)
+    expect(nextTarget(state)).toBe('circle')
+    expect(nextTarget(played([['circle', 'circle']]))).toBe('line')
+    expect(
+      nextTarget(
+        played([
+          ['circle', 'circle'],
+          ['line', 'line'],
+        ])
+      )
+    ).toBe('circle')
   })
 
-  it('refuses a live drawing before training', () => {
-    const task = { ...TASK, testSet: 'live' }
-    const state = withExamples(task, 4)
-    expect(recordLive(task, state, 'circle', gridOf(circle())).predicted).toBeNull()
+  it('records a right guess', () => {
+    const done = recordLive(LIVE, withExamples(LIVE, 3), 'circle', gridOf(circle(0.27)))
+    expect(done.predicted).toBe('circle')
+    expect(done.state.live).toEqual([['circle', 'circle']])
+    expect(done.state.misses).toEqual([])
+    expect(done.state.result).toEqual({ right: 1, total: 1, confusion: { circle: { circle: 1 } } })
+    expect(rightsOf(done.state)).toBe(1)
   })
 
-  it('tallies a confusion table and says it in words', () => {
+  it('keeps a miss as a drawing to teach, on the device', () => {
+    const start = recordLive(LIVE, withExamples(LIVE, 3), 'circle', gridOf(circle(0.27))).state
+    const done = recordLive(LIVE, start, 'line', gridOf(circle(0.3)))
+    expect(done.predicted).toBe('circle')
+    expect(done.state.live).toEqual([
+      ['circle', 'circle'],
+      ['line', 'circle'],
+    ])
+    expect(done.state.misses).toHaveLength(1)
+    expect(done.state.misses[0]).toMatchObject({ actual: 'line', predicted: 'circle' })
+    expect(rightsOf(done.state)).toBe(1)
+    expect(mixupsOf(done.state.result)).toEqual([{ actual: 'line', predicted: 'circle', count: 1 }])
+  })
+
+  it('refuses a try before it is ready, for an unknown thing or with a bad grid', () => {
+    expect(recordLive(LIVE, withExamples(LIVE, 2), 'circle', gridOf(circle())).predicted).toBeNull()
+    expect(recordLive(LIVE, withExamples(LIVE, 3), 'dog', gridOf(circle())).predicted).toBeNull()
+    expect(recordLive(LIVE, withExamples(LIVE, 3), 'circle', 'abc').predicted).toBeNull()
+  })
+
+  it('teaches a miss: it becomes a drawing of what it really was, and the round is kept', () => {
+    const miss = recordLive(LIVE, withExamples(LIVE, 3), 'line', gridOf(circle(0.3))).state
+    const grid = miss.misses[0].grid
+    const taught = teachMiss(miss, 'line', grid)
+    expect(countsOf(taught).line).toBe(4)
+    expect(taught.misses[0].fixed).toBe(true)
+    expect(taught.live).toEqual(miss.live)
+    expect(taught.result).toEqual(miss.result)
+    expect(teachMiss(miss, 'dog', grid)).toBe(miss)
+  })
+
+  it('lists mix-ups, most common first', () => {
     const result = tally([
       ['cat', 'cat'],
-      ['cat', 'cat'],
       ['cat', 'fish'],
-      ['cat', 'rocket'],
-      ['fish', 'fish'],
+      ['fish', 'cat'],
+      ['fish', 'cat'],
     ])
-    expect(describeResult(result)).toBe('3 of 5 right, 60%')
-    const rows = describeConfusion(result, ['cat', 'fish', 'rocket'])
-    expect(rows.map((r) => r.text)).toEqual([
-      'cat: 2 of 4 right. 1 was called fish; 1 was called rocket.',
-      'fish: 1 of 1 right.',
+    expect(mixupsOf(result)).toEqual([
+      { actual: 'fish', predicted: 'cat', count: 2 },
+      { actual: 'cat', predicted: 'fish', count: 1 },
     ])
+    expect(describeResult(result)).toBe('1 of 4 right, 25%')
   })
 })
 
 describe('grading and hints', () => {
-  it('hints at the first thing missing, in order', () => {
-    const task = TASK
-    expect(gradeTask(task, initialClassifierState(task)).hint).toMatch(
-      /Draw more circle: you have 0 and need 4/
+  it('hints at the first thing missing, in order (live round)', () => {
+    expect(gradeTask(LIVE, initialClassifierState(LIVE)).hint).toBe(
+      'Draw more circle: you have 0 and need 3.'
     )
-    let state = withExamples(task, 4)
-    expect(gradeTask(task, state).hint).toMatch(/Press Train/)
-    state = train(task, state)
-    expect(gradeTask(task, state).hint).toMatch(/Press Test/)
-    const live = { ...task, testSet: 'live' }
-    expect(gradeTask(live, state).hint).toMatch(/Test the model on 5 new drawings/)
-    expect(
-      gradeTask(task, {
-        ...state,
-        result: tally([
-          ['circle', 'line'],
-          ['line', 'line'],
-        ]),
-      }).hint
-    ).toMatch(/got 50% and needs 75%/)
-  })
-
-  it('passes when trained, enough drawings and the target is reached', () => {
-    const state = runTest(TASK, train(TASK, withExamples(TASK, 8)))
-    const graded = gradeTask(TASK, state)
-    expect(graded.passed).toBe(true)
-    expect(graded.accuracy).toBe(1)
-    expect(graded.hint).toBeNull()
-  })
-
-  it('does not pass with too few drawings in a class even at 100%', () => {
-    const state = runTest(TASK, train(TASK, withExamples(TASK, 4)))
-    expect(state.result.total).toBe(2)
-    const short = removeExample(state, 'circle', 0)
-    expect(gradeTask(TASK, { ...short, trained: true, result: state.result }).passed).toBe(false)
-  })
-
-  it('needs at least two named classes when the student names them', () => {
-    const task = { ...TASK, classes: [] }
-    const graded = gradeTask(task, initialClassifierState(task))
-    expect(graded.passed).toBe(false)
-    expect(graded.hint).toMatch(/at least two things/)
-  })
-
-  it('reads counts from the shared summary', () => {
-    const shared = normalizeClassifierState(
-      TASK,
-      sharedState(runTest(TASK, train(TASK, withExamples(TASK, 8))))
+    expect(gradeTask(LIVE, withExamples(LIVE, 2)).hint).toBe(
+      'Draw more circle: you have 2 and need 3.'
     )
-    expect(shared.examples).toBeUndefined()
-    expect(countsOf(shared)).toEqual({ circle: 8, line: 8 })
-    expect(gradeTask(TASK, shared).passed).toBe(true)
+    expect(gradeTask(LIVE, withExamples(LIVE, 3)).hint).toMatch(
+      /Draw what it asks for and press Done\. It needs 3 right: you have 0 so far/
+    )
+    const free = { ...LIVE, classes: [] }
+    expect(gradeTask(free, initialClassifierState(free)).hint).toMatch(/Name at least two things/)
+  })
+
+  it('passes the live round at liveTestSize right answers, and bonus ones change nothing', () => {
+    const right = ['circle', 'circle']
+    const wrong = ['line', 'circle']
+    expect(gradeTask(LIVE, played([right, right, wrong])).passed).toBe(false)
+    expect(gradeTask(LIVE, played([right, right, wrong, right])).passed).toBe(true)
+    const bonus = gradeTask(LIVE, played([right, right, right, wrong, wrong]))
+    expect(bonus.passed).toBe(true)
+    expect(bonus.rights).toBe(3)
+  })
+
+  it('a live round with too few drawings in a thing does not pass', () => {
+    const state = { ...withExamples(LIVE, 2), live: Array(3).fill(['circle', 'circle']) }
+    expect(gradeTask(LIVE, state).passed).toBe(false)
+  })
+
+  it('kept-back test: hints, then passes at the target', () => {
+    expect(gradeTask(TASK, withExamples(TASK, 3)).hint).toBe(
+      'Draw more circle: you have 3 and need 4.'
+    )
+    expect(gradeTask(TASK, withExamples(TASK, 8)).hint).toMatch(/Press Test/)
+    const tested = runTest(TASK, withExamples(TASK, 8))
+    expect(gradeTask(TASK, tested).passed).toBe(true)
+    const bad = {
+      ...tested,
+      result: tally([
+        ['circle', 'line'],
+        ['line', 'line'],
+      ]),
+    }
+    expect(gradeTask(TASK, bad).hint).toMatch(/The model got 50% and needs 75%/)
+  })
+
+  it('needs at least two named things when the student names them', () => {
+    const free = { ...LIVE, classes: [] }
+    let state = setClassName(initialClassifierState(free), 0, 'a')
+    for (let i = 0; i < 3; i += 1) state = addExample(state, 'a', gridOf(circle(0.2 + i * 0.05)))
+    expect(gradeTask(free, state).passed).toBe(false)
+  })
+
+  it('reads counts and rights from the shared summary', () => {
+    const shared = normalizeClassifierState(LIVE, sharedState(played([['circle', 'circle']])))
+    expect(shared.shared).toBe(true)
+    expect(countsOf(shared)).toEqual({ circle: 3, line: 3 })
+    expect(rightsOf(shared)).toBe(1)
+    expect(readyOf(shared)).toBe(true)
+  })
+})
+
+describe('panels', () => {
+  it('defaults to the fool-it panel only', () => {
+    expect(panelsOf(LIVE)).toEqual(['fool'])
+    expect(panelsOf({ panels: ['grid', 'sure'] })).toEqual(['grid', 'sure'])
+    expect(panelsOf({ panels: [] })).toEqual([])
+    expect(panelsOf({ panels: ['grid', 'bias'] })).toEqual(['grid'])
   })
 })
 
 describe('privacy: what is shared', () => {
+  const miss = ['line', 'circle']
+  const right = ['circle', 'circle']
+
   it('never contains a drawing', () => {
-    const state = runTest(TASK, train(TASK, withExamples(TASK, 8)))
+    const state = played([right, miss])
     const shared = definition.serializeShared(state)
     expect(shared).not.toMatch(/examples/)
+    expect(shared).not.toMatch(/grid/)
     expect(shared).not.toMatch(/\d{40}/)
     expect(JSON.parse(shared)).toEqual({
       v: 1,
       shared: true,
       classes: ['circle', 'line'],
-      counts: { circle: 8, line: 8 },
+      counts: { circle: 3, line: 3 },
       trained: true,
       result: state.result,
-      liveCount: 0,
-      tests: 1,
+      liveCount: 2,
+      rights: 1,
+      misses: 1,
+      tests: 0,
     })
     // The device's own copy does keep them.
     expect(definition.serialize(state)).toMatch(/examples/)
+    expect(definition.serialize(state)).toMatch(/misses/)
   })
 
   it('stays small with the most classes and the longest names', () => {
@@ -417,92 +545,106 @@ describe('privacy: what is shared', () => {
       'efghijklmnopqrst',
       'fghijklmnopqrstu',
     ].map((n) => n.slice(0, 16))
-    const task = { ...TASK, classes: names, minExamplesPerClass: 4 }
+    const task = { ...LIVE, classes: names, minExamplesPerClass: 4 }
     const confusion = Object.fromEntries(
       names.map((a) => [a, Object.fromEntries(names.map((b) => [b, 99]))])
     )
     const state = {
       ...initialClassifierState(task),
-      trained: true,
       result: { right: 99, total: 3564, confusion },
     }
     expect(definition.serializeShared(state).length).toBeLessThan(2048)
   })
 
-  it('the shared form of a state with drawings reads back to the same counts', () => {
-    const state = train(TASK, withExamples(TASK, 5))
-    const back = definition.deserialize(definition.serializeShared(state), TASK)
-    expect(countsOf(back)).toEqual({ circle: 5, line: 5 })
-    expect(back.trained).toBe(true)
+  it('the shared form reads back to the same counts and rights', () => {
+    const back = definition.deserialize(definition.serializeShared(played([right, miss])), LIVE)
+    expect(countsOf(back)).toEqual({ circle: 3, line: 3 })
+    expect(rightsOf(back)).toBe(1)
+    expect(readyOf(back)).toBe(true)
   })
 
   it('a shared state turned back into work starts clean', () => {
-    const shared = definition.deserialize(definition.serializeShared(withExamples(TASK, 5)), TASK)
+    const shared = definition.deserialize(definition.serializeShared(withExamples(LIVE, 3)), LIVE)
     const next = addExample(shared, 'circle', gridOf(circle()))
     expect(next.shared).toBeUndefined()
     expect(next.counts).toBeUndefined()
     expect(countsOf(next)).toEqual({ circle: 1, line: 0 })
   })
+
+  it('keeps the drawings and misses in the device copy when it is loaded again', () => {
+    const state = played([right, miss])
+    const back = definition.deserialize(definition.serialize(state), LIVE)
+    expect(countsOf(back)).toEqual({ circle: 3, line: 3 })
+    expect(back.misses).toHaveLength(1)
+    expect(back.live).toEqual([right, miss])
+  })
 })
 
 describe('definition', () => {
-  const trained = train(TASK, withExamples(TASK, 8))
+  const right = ['circle', 'circle']
+  const wrong = ['line', 'circle']
 
-  it('classifies a class name typed as continuous and everything else as discrete', () => {
-    const task = { ...TASK, classes: [] }
+  it('classifies a name typed as continuous and everything else as discrete', () => {
+    const task = { ...LIVE, classes: [] }
     const named = setClassName(initialClassifierState(task), 0, 'c')
     expect(definition.classifyChange(initialClassifierState(task), named, task)).toBe('continuous')
     expect(
       definition.classifyChange(
-        initialClassifierState(TASK),
-        addExample(initialClassifierState(TASK), 'circle', gridOf(circle())),
-        TASK
+        initialClassifierState(LIVE),
+        addExample(initialClassifierState(LIVE), 'circle', gridOf(circle())),
+        LIVE
       )
     ).toBe('discrete')
-    expect(
-      definition.classifyChange(withExamples(TASK, 3), train(TASK, withExamples(TASK, 3)), TASK)
-    ).toBe('discrete')
+    expect(definition.classifyChange(withExamples(LIVE, 3), played([right]), LIVE)).toBe('discrete')
   })
 
-  it('summarises for the teacher card', () => {
-    expect(definition.summarize(TASK, initialClassifierState(TASK)).text).toBe('No drawings yet')
-    expect(definition.summarize(TASK, withExamples(TASK, 3)).text).toBe('6 drawings, not trained')
-    expect(definition.summarize(TASK, train(TASK, withExamples(TASK, 3))).text).toBe(
-      '6 drawings, trained'
-    )
-    const tested = runTest(TASK, trained)
-    expect(definition.summarize(TASK, tested)).toEqual({
-      text: '16 drawings, 100% on test',
+  it('summarises for the teacher card: where the student is', () => {
+    const text = (task, state) => definition.summarize(task, state).text
+    expect(text(LIVE, initialClassifierState(LIVE))).toBe('No drawings yet')
+    expect(text(LIVE, withExamples(LIVE, 2))).toBe('Teaching: circle 2/3 · line 2/3')
+    expect(text(LIVE, withExamples(LIVE, 3))).toBe('Ready: 0/3 right')
+    expect(text(LIVE, played([right, wrong, ['line', 'line']]))).toBe('2/3 right · 1 missed')
+    const bonus = definition.summarize(LIVE, played([right, right, right, right, wrong]))
+    expect(bonus).toEqual({ text: '3/3 right · +1 bonus · 1 missed', tone: 'success' })
+    expect(text(TASK, withExamples(TASK, 3))).toBe('Teaching: circle 3/4 · line 3/4')
+    expect(text(TASK, withExamples(TASK, 8))).toBe('16 drawings, ready')
+    expect(definition.summarize(TASK, runTest(TASK, withExamples(TASK, 8)))).toEqual({
+      text: '100% on test',
       tone: 'success',
     })
   })
 
-  it('reports progress per class', () => {
-    expect(definition.getProgress(TASK, withExamples(TASK, 4))).toEqual({
+  it('reports progress: things taught, then right answers', () => {
+    const progress = (task, state) => definition.getProgress(task, state)
+    expect(progress(LIVE, withExamples(LIVE, 2))).toEqual({
+      kind: 'items',
+      filled: 0,
+      total: 5,
+      correct: 0,
+    })
+    expect(progress(LIVE, withExamples(LIVE, 3))).toMatchObject({ filled: 2, total: 5 })
+    expect(progress(LIVE, played([right, right, wrong]))).toMatchObject({ filled: 4, total: 5 })
+    expect(progress(TASK, withExamples(TASK, 4))).toEqual({
       kind: 'items',
       filled: 2,
       total: 2,
       correct: 2,
     })
-    expect(definition.getProgress(TASK, withExamples(TASK, 3))).toEqual({
-      kind: 'items',
-      filled: 0,
-      total: 2,
-      correct: 0,
-    })
-    const grade = definition.grade(TASK, withExamples(TASK, 3))
+    const grade = definition.grade(LIVE, withExamples(LIVE, 2))
     expect(grade.passed).toBe(false)
     expect(grade.itemResults).toEqual({ circle: false, line: false })
   })
 
   it('logs the shared form as the submission', () => {
-    expect(definition.buildSubmission(TASK, trained).shared).toBe(true)
-    expect(JSON.stringify(definition.buildSubmission(TASK, trained))).not.toMatch(/examples/)
+    const sub = definition.buildSubmission(LIVE, played([right, wrong]))
+    expect(sub.shared).toBe(true)
+    expect(sub).toMatchObject({ rights: 1, misses: 1 })
+    expect(JSON.stringify(sub)).not.toMatch(/examples/)
   })
 
   it('adds up accuracy and confusion across students for the report', () => {
-    const tested = runTest(TASK, trained)
-    const wrong = {
+    const tested = runTest(TASK, withExamples(TASK, 8))
+    const bad = {
       ...tested,
       result: tally([
         ['circle', 'line'],
@@ -512,7 +654,7 @@ describe('definition', () => {
     const sub = (state) => ({ distinctAttempts: [{ submission: sharedState(state) }] })
     const fields = definition.report.summaryFields(TASK, [
       sub(tested),
-      sub(wrong),
+      sub(bad),
       { distinctAttempts: [] },
     ])
     expect(fields.classifierResults).toEqual({
@@ -527,21 +669,34 @@ describe('definition', () => {
     })
   })
 
+  it('counts a live round that reached its right answers as at target', () => {
+    const sub = (state) => ({ distinctAttempts: [{ submission: sharedState(state) }] })
+    const fields = definition.report.summaryFields(LIVE, [
+      sub(played([right, right, right, wrong])),
+      sub(played([right, wrong])),
+    ])
+    expect(fields.classifierResults.testedCount).toBe(2)
+    expect(fields.classifierResults.atTargetCount).toBe(1)
+  })
+
   it('seals the test drawings', () => {
     expect(definition.sealedFields).toContain('testItems')
   })
 
   it('has a solution that passes and an initial state that does not', () => {
-    expect(definition.grade(TASK, definition.solutionState(TASK)).passed).toBe(true)
-    expect(definition.grade(TASK, definition.initialState(TASK)).passed).toBe(false)
-    const free = { ...TASK, classes: [] }
+    for (const task of [LIVE, TASK]) {
+      expect(definition.grade(task, definition.solutionState(task)).passed).toBe(true)
+      expect(definition.grade(task, definition.initialState(task)).passed).toBe(false)
+    }
+    const free = { ...LIVE, classes: [] }
     expect(solutionFor(free).classes).toHaveLength(2)
   })
 
   it('prints the setup', () => {
-    const html = definition.printHtml(TASK, { esc: (v) => String(v) })
-    expect(html).toContain('circle, line')
-    expect(html).toContain('75%')
+    const live = definition.printHtml(LIVE, { esc: (v) => String(v) })
+    expect(live).toContain('circle, line')
+    expect(live).toContain('3 right answers')
+    expect(definition.printHtml(TASK, { esc: (v) => String(v) })).toContain('75%')
   })
 })
 
@@ -565,7 +720,8 @@ describe('validateClassifierTask', () => {
     expect(ok({ ...TASK, testSet: 'x' })[0]).toMatch(
       /testSet must be one of held_out, teacher, live/
     )
-    expect(ok({ ...TASK, testSet: undefined })[0]).toMatch(/testSet must be one of/)
+    // testSet is optional: missing means the live round.
+    expect(ok({ ...TASK, testSet: undefined })).toEqual([])
   })
 
   it('checks the classes', () => {
@@ -601,8 +757,24 @@ describe('validateClassifierTask', () => {
     expect(ok({ ...TASK, minExamplesPerClass: 3 })[0]).toMatch(
       /held_out needs minExamplesPerClass of at least 4/
     )
-    expect(ok({ ...TASK, minExamplesPerClass: undefined })).toEqual([])
+    // The default is 3, which is too few to keep one back.
+    expect(ok({ ...TASK, minExamplesPerClass: undefined })[0]).toMatch(/held_out needs/)
     expect(ok({ ...TASK, testSet: 'live', minExamplesPerClass: 3 })).toEqual([])
+    expect(ok({ ...TASK, testSet: undefined, minExamplesPerClass: 3 })).toEqual([])
+  })
+
+  it('checks the panels', () => {
+    expect(ok({ ...LIVE, panels: ['grid', 'sure', 'fool'] })).toEqual([])
+    expect(ok({ ...LIVE, panels: [] })).toEqual([])
+    expect(ok({ ...LIVE, panels: undefined })).toEqual([])
+    expect(ok({ ...LIVE, panels: ['grid', 'bias'] })).toEqual([
+      'Task 3: classifier panels has an unknown value "bias". Use grid, sure, fool.',
+    ])
+    expect(ok({ ...LIVE, panels: 'grid' })[0]).toMatch(/panels must be a list/)
+  })
+
+  it('accepts emoji in the class names', () => {
+    expect(ok({ ...LIVE, classes: ['🐱 cat', '🐟 fish', '🚀 rocket'] })).toEqual([])
   })
 
   describe('teacher test set', () => {

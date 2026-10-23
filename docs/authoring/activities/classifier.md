@@ -1,17 +1,19 @@
 # Classifier Activity
 
 A Classifier task is an **activity**: a bounded exercise that can sit anywhere in a lesson,
-between code tasks of any module. Students **draw examples** of each class, **train** a model
-(instant), then **test** it on drawings it has not seen and read its accuracy ("7 of 9 right,
-78%"). It teaches "a model learns from examples": more and better examples give a better model,
-and testing on new data is how you know. There is no Run button, no personal sandbox, no sharing
-and no carry-through. The task is marked when the student presses **Check my work**.
+between code tasks of any module. The student **teaches the pad a few things** by drawing them
+(for example 3 cats, 3 fish, 3 rockets), then watches it **guess live** as they draw, with a bar
+per thing. Then comes **the round**: the pad asks for a thing ("Draw a 🐟, will it get it?"), the
+student draws it and presses **Done**, and it is a tick or a miss. A miss can be taught in one tap
+("Teach it this one"). It teaches "a model learns from examples, so it only knows what it was
+shown". There is no Train button, no Run button, no personal sandbox, no sharing and no
+carry-through. The task is **marked as you go**: it passes the moment the round's goal is met
+(there is no Check my work button).
 
 Write `type: classifier` on the task (the YAML shorthand for `taskType: activity` +
 `activityType: classifier`, which also works). In the Builder, choose the **Activity** format and
-pick **Classifier**: the editor sets the classes, the test set and the numbers, and you can draw
-your own test drawings on a pad. The task's `title` and `description` / `explainer` show
-above the activity.
+pick **Classifier**: the editor sets the things, the test, the numbers and the extra panels. The
+task's `title` and `description` / `explainer` show above the activity.
 
 Only **drawing** mode is built. `mode: sound` is rejected by validation ("not built yet") and
 webcam mode does not exist.
@@ -19,54 +21,37 @@ webcam mode does not exist.
 ## Complete example
 
 ```yaml
-id: classifier-shapes
+id: classifier-first
 type: python
-title: Teach a Computer Shapes
-description: Train a classifier on your own drawings, then print a result in Python.
+title: Teach a Computer Doodles
+description: Teach the pad three doodles, then try to fool it.
 tasks:
-  - title: Circles and lines
+  - title: Teach it three doodles
     type: classifier
-    description: Draw lots of circles and lines, train the model, then test it.
+    description: Draw 3 of each thing. Then see if it can guess your doodles.
     mode: drawing
-    classes: [circle, line]
-    minExamplesPerClass: 8
-    testSet: teacher
-    targetAccuracy: 0.8
-    testItems:
-      - label: circle
-        strokes:
-          - [0.5, 0.2, 0.7, 0.3, 0.8, 0.5, 0.7, 0.7, 0.5, 0.8, 0.3, 0.7, 0.2, 0.5, 0.3, 0.3, 0.5, 0.2]
-      - label: circle
-        strokes:
-          - [0.5, 0.1, 0.8, 0.3, 0.9, 0.5, 0.8, 0.8, 0.5, 0.9, 0.2, 0.8, 0.1, 0.5, 0.2, 0.3, 0.5, 0.1]
-      - label: line
-        strokes:
-          - [0.1, 0.5, 0.9, 0.5]
-      - label: line
-        strokes:
-          - [0.2, 0.9, 0.8, 0.1]
-  - title: Name your own classes
+    classes: ["🐱 cat", "🐟 fish", "🚀 rocket"]
+    minExamplesPerClass: 3
+    liveTestSize: 5
+    panels: [fool]
+  - title: What does it see?
     type: classifier
-    description: Pick two things to tell apart, draw examples and test the model.
+    description: The same pad, now showing the grid it looks at and how sure it is.
     mode: drawing
-    minExamplesPerClass: 8
-    testSet: held_out
-    targetAccuracy: 0.75
-  - title: Test it live
+    classes: ["😀 smile", "☹️ frown"]
+    panels: [grid, sure, fool]
+  - title: Name your own
     type: classifier
+    description: Pick two to four things of your own to teach it.
     mode: drawing
-    classes: [smile, frown]
-    minExamplesPerClass: 6
-    testSet: live
-    liveTestSize: 6
-    targetAccuracy: 0.8
+    liveTestSize: 4
   - title: Print a result
     starterCode: |
-      print("My model scored 80%")
+      print("My pad learned 3 things")
     check:
       type: output
       operator: contains
-      value: "80%"
+      value: "3 things"
 ```
 
 ## Task fields
@@ -75,43 +60,69 @@ tasks:
 |---|:---:|---|
 | `type` | Yes | `classifier` in YAML (JSON: `taskType: activity` + `activityType: classifier`) |
 | `mode` | Yes | `drawing`. (`sound` is not built yet and fails validation; webcam is not planned.) |
-| `testSet` | Yes | What the model is tested on: `held_out`, `teacher` or `live` (see [Testing](#testing)). |
-| `classes` | No | The class names: 2 to 6 different names, each 1 to 16 characters. Leave it out (or `[]`) and the student names their own, 2 to 6. |
-| `minExamplesPerClass` | No | Drawings every class needs before the task can pass: a whole number from 2 to 40. Default `6`. With `held_out` it must be at least `4`. |
-| `targetAccuracy` | No | The share of the test the model must get right, above 0 and up to 1 (`0.8` is 80%). Default `0.8`. |
-| `liveTestSize` | No | `testSet: live` only: how many new drawings the student tests, 3 to 20. Default `5`. |
+| `classes` | No | The things to teach: 2 to 6 different names, each 1 to 16 characters; **3 is a good number**. A name may start with an emoji (`"🐱 cat"`), which is then shown big. Leave it out (or `[]`) and the student names **2 to 4** of their own. |
+| `minExamplesPerClass` | No | Drawings every thing needs before the pad is ready: a whole number from 2 to 40. Default `3`. With `testSet: held_out` it must be at least `4`. |
+| `testSet` | No | How it is tested. Default `live` (the round). Or `held_out` / `teacher`, the older Test button versions (see [Testing](#testing)). |
+| `liveTestSize` | No | The round's goal: how many **right answers** make the round and pass the task, 3 to 20. Default `5`. (The name is kept from the older version.) |
+| `panels` | No | Extra parts to show: any of `grid`, `sure`, `fool` (see [Panels](#panels-what-each-lesson-switches-on)). Default `[fool]`. `[]` shows none. Anything else is an error. |
+| `targetAccuracy` | No | `held_out` / `teacher` only: the share of the test it must get right, above 0 and up to 1 (`0.8` is 80%). Default `0.8`. Ignored by the round. |
 | `testItems` | `teacher` | `testSet: teacher` only: 2 to 24 test drawings (see below). |
 
 ## How it works for the student
 
-1. **Collect drawings.** The student picks a class and draws on a square pad with a mouse,
-   finger or pen, then presses **Add this drawing**. Drawings can be removed again from the
-   gallery. With no `classes`, the student names 2 to 6 classes first (a name is fixed once the
-   class has a drawing).
-2. **Train the model.** Instant. Needs at least 2 drawings in every class. Any change to the
-   drawings afterwards means training and testing again.
-3. **Test the model.** The model labels drawings it was not trained on, and the student sees
-   "7 of 9 right, 78%", the target, and a sentence per class ("cat: 3 of 4 right. 1 was called
-   fish."), which is the confusion table in words.
-4. **Check my work** hands it in. It passes when the model reached `targetAccuracy` on the test
-   and every class has at least `minExamplesPerClass` drawings.
+1. **Teach it.** The prompt names one thing at a time: "Draw 3 🐱". The student draws on a big
+   square pad with a mouse, finger or pen and presses **Add this drawing**. Tapping a drawing in
+   the gallery removes it. When a thing has its drawings the prompt moves on to the next. With no
+   `classes`, the student names 2 to 4 things first (a name is fixed once it has a drawing; they
+   can start a name with an emoji).
+2. **Ready, and it guesses live.** When every thing has `minExamplesPerClass` drawings the pad is
+   ready (no Train button: it just uses every drawing). From then on, each time a stroke ends the
+   pad shows a bar per thing (emoji and %) for what it thinks the drawing is.
+3. **The round.** The pad asks for a thing in turn: "Draw a 🐟, will it get it?". The student
+   draws it and presses **Done**. A right answer ticks and the round moves on by itself. A miss
+   shows what it said instead. With the `fool` panel, **Teach it this one** adds that drawing to
+   the thing it really was (and the pad keeps the miss as a mix-up picture); **Try another**
+   moves on. A strip shows "3 of 5 done".
+4. **Core, then bonus.** The core is `liveTestSize` right answers. Getting there **passes the
+   task** (once, marked as you go). Then the round carries on as a **bonus**: keep fooling it and
+   fixing it ("5 of 5 done · +2 bonus").
+5. **Results in pictures.** "It gets 4 of 5 right" as a meter, and (with `fool`) the misses as
+   thumbnails: "It thought your 🐱 was a 🐟". There is no confusion table in words.
 
 ### How the model works
 
 Each drawing is shrunk to a **16 x 16 greyscale grid** (256 numbers, 0 = empty to 1 = ink),
 after being moved and scaled to fill the grid, so where or how big it was drawn does not matter.
 The classifier is **k-nearest-neighbours with k = 3**: to label a new drawing it finds the 3
-training drawings whose grids are closest (straight-line distance), and takes a vote; a tie goes
-to the label whose drawings are closer. Nothing is downloaded and there is no machine-learning
-library: it runs in the browser in a few milliseconds.
+drawings whose grids are closest (straight-line distance), and takes a vote; a tie goes to the
+label whose drawings are closer. The bars show each thing's share of those 3 votes (so 0%, 33%,
+67% or 100%). Nothing is downloaded and there is no machine-learning library: it runs in the
+browser in a few milliseconds, which is why teaching it more drawings changes the next guess at
+once.
+
+## Panels: what each lesson switches on
+
+The pad, the teach step and the guess bars **always** show. `panels` adds more, so each lesson
+adds one new thing and the screen stays simple:
+
+| Panel | What it adds |
+|---|---|
+| `grid` | **What it sees**: the current drawing as the small grid the model looks at. |
+| `sure` | **How sure is it?**: a meter for its top guess. |
+| `fool` | **Fool it and fix it**: the **Teach it this one** button after a miss and the mix-up thumbnails ("It thought your 🐱 was a 🐟"). Without it a miss just clears itself after a moment. |
+
+A bias view (teach one kind only, then test the others) is not built.
 
 ## Testing
 
 | `testSet` | The model is tested on | Notes |
 |---|---|---|
-| `held_out` | The student's own drawings that were kept back | **Every 4th drawing in a class (the 4th, 8th, 12th, …) is kept back** and never used for training. They are marked "Test" in the gallery, and the pad says when the next one will be kept back. Needs `minExamplesPerClass` of at least 4. |
-| `teacher` | Test drawings you write in `testItems` | The same test for every student, so results compare. Needs `classes`. Every drawing is used for training. |
-| `live` | New drawings the student makes during the test | The student draws something new and says what it really is; the model's guess is recorded. The result appears after `liveTestSize` drawings (more can be added). |
+| `live` (default) | The round: drawings the student makes when the pad asks for a thing | Passes at `liveTestSize` right answers; `targetAccuracy` is ignored. |
+| `held_out` | The student's own drawings that were kept back | No round. **Every 4th drawing in a thing (the 4th, 8th, …) is kept back** and never used for the guesses; they are marked "Test" in the gallery. Once ready, a **Test it** button scores them. Passes at `targetAccuracy`. Needs `minExamplesPerClass` of at least 4. |
+| `teacher` | Test drawings you write in `testItems` | No round. The same test for every student. **Test it** scores them. Needs `classes`. Every drawing is used for the guesses. Passes at `targetAccuracy`. |
+
+`held_out` and `teacher` keep the plain behaviour (a free-play pad with the guess bars, then one
+Test button). The round is the main experience.
 
 ### Writing `testItems`
 
@@ -128,41 +139,41 @@ lesson document like other answer fields. Validation warns when a class has no t
 
 ## Marking and hints
 
-- The task passes when the model is **trained**, the latest test reached `targetAccuracy`, and
-  every class has at least `minExamplesPerClass` drawings. Check results appear in the usual
-  feedback banner and next to the button.
-- Hints name the first thing missing, in plain words and without giving anything away: "Draw
-  more cat: you have 3 and need 8.", "Press Train so the model can learn from your drawings.",
-  "Press Test to see how the model does on drawings it has not seen.", "The model got 60% and
-  needs 80%. Try more drawings in different sizes and shapes, then train and test again."
-- Progress per class (`itemProgress`) counts the classes that have enough drawings.
+- The round passes when every thing has at least `minExamplesPerClass` drawings and the student
+  has `liveTestSize` right answers. It is marked the moment that happens. `held_out` / `teacher`
+  pass when the Test result reaches `targetAccuracy`.
+- Hints name the first thing missing, in plain words: "Draw more cat: you have 2 and need 3.",
+  "Draw what it asks for and press Done. It needs 5 right: you have 2 so far. If it gets one
+  wrong, teach it that one."
+- Progress (`itemProgress`) counts the things that have enough drawings, then the right answers
+  towards the goal.
 
 ## Privacy: what is kept where
 
-- The drawings (and their grids) are saved **only on the student's device**, in the activity's
-  usual per-task localStorage file (`headstart_{lessonId}_{taskId}___activity_state___{id}`). They
-  are never written to Firebase, the attempt log, the session report or a Go Live broadcast.
-- What is sent (the activity's `serializeShared`, about 200 to 1,500 bytes): the class names, the
-  **number of drawings per class**, whether the model is **trained**, the latest **test result**
-  (right, total and the confusion counts: how many of each true class were labelled as which),
-  how many live test drawings are done, and how many times the student has tested. No images,
-  no thumbnails.
+- The drawings (and their grids), and the drawings it got wrong, are saved **only on the
+  student's device**, in the activity's usual per-task localStorage file
+  (`headstart_{lessonId}_{taskId}___activity_state___{id}`). They are never written to Firebase,
+  the attempt log, the session report or a Go Live broadcast.
+- What is sent (the activity's `serializeShared`, about 200 to 1,500 bytes): the thing names, the
+  **number of drawings per thing**, whether it is **ready** (`trained`), the **tries**, **rights**
+  and **misses**, and the result (right, total and the mix-up counts: how many of each true thing
+  were guessed as which). No images, no strokes, no thumbnails.
 - If the student's device storage is cleared, their drawings are gone and they start again.
 
 ## Teacher tools
 
-- **Student card:** `12 drawings, 78% on test` (or `not trained` / `trained` / `No drawings
-  yet`). Updates as drawings are added, and when the student trains or tests (not while drawing,
-  and not per stroke).
-- **Student modal:** per-class counts against the minimum (with a tick), whether the model is
-  trained, and the test result with a line per class. This is the live view of how each student
-  is doing before they hand anything in; the existing hint and nudge tools work on it as on any
-  other task. The drawings themselves are not visible, because they never leave the device.
-- **Session report:** per student the latest attempt (counts, trained, result), the usual
-  per-class item progress, and for the task a `classifierResults` summary: how many students
-  tested, how many reached the target, the average accuracy and the confusion counts added up
-  across the class (true class → labelled class → count). Read it to see which classes the
-  class's models mix up.
+- **Student card** (live, updated as drawings are added and after each try, not while drawing):
+  while teaching, `Teaching: 🐱 cat 2/3 · 🐟 fish 0/3`; in the round, `3/5 right · +1 bonus · 2
+  missed`; `No drawings yet` before anything.
+- **Student modal:** drawings per thing against the minimum (with a tick), then the round: rights,
+  misses, the "It gets 4 of 5 right" meter and the mix-ups as text ("Called 🐱 a 🐟: 2"). This is
+  the live view of how each student is doing before they pass; the existing hint and nudge tools
+  work on it as on any other task. The drawings themselves are not visible, because they never
+  leave the device.
+- **Session report:** per student the latest attempt (counts, rights, misses, result), the usual
+  per-thing item progress, and for the task a `classifierResults` summary: how many students
+  tried, how many reached the goal, the average accuracy and the mix-up counts added up across the
+  class (true thing → guessed thing → count). Read it to see which things the class's pads mix up.
 - **Stage → Start again** clears the student's drawings and results. **Complete (show answers)**
   fills in a finished summary (no drawings). There is no **Edit answers**: the drawings are on
   the student's device.
@@ -171,9 +182,9 @@ lesson document like other answer fields. Validation warns when a class has no t
 ## Devices
 
 Drawing works with a mouse, a finger or a pen (Pointer Events), so Chromebooks and tablets are
-fine. Drawing itself needs a pointer; everything else (choosing a class, adding, removing,
-training, testing, checking) is a normal button, at least 44 px, and works from the keyboard.
-Results are always written out, never shown by colour alone.
+fine. Drawing itself needs a pointer; everything else (adding, removing, Done, Teach it this one)
+is a normal button, at least 44 px, and works from the keyboard. Results are always written out,
+never shown by colour alone, and the bars do not animate with reduced motion on.
 
 ## Validation
 
