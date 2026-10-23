@@ -1327,6 +1327,7 @@ const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven
 const numberWord = (n) => NUMBER_WORDS[n] ?? String(n)
 
 // Where a placed part goes, in words, for each world.
+const THING = { station: 'part', zoo: 'animal', toyshop: 'toy' }
 const PLACE_WORDS = { station: 'on the station', zoo: 'in the zoo', toyshop: 'in the shop window' }
 
 export function promptFor(item, lesson, worldId = 'station') {
@@ -1354,13 +1355,15 @@ export function promptFor(item, lesson, worldId = 'station') {
       return 'Choose a captain.'
     case 'place_part':
       if (orderOf(item)) return 'Build in the order on the plan card.'
-      if (item.card) return 'Find the part in the picture and put it on the station.'
+      if (item.card) {
+        return `Find the ${THING[worldId]} in the picture and put it ${PLACE_WORDS[worldId]}.`
+      }
       if (item.count) {
         return `Put exactly ${numberWord(item.count)} ${plural(nameOf(t))} on the station.`
       }
       return t
         ? `Put the ${nameOf(t)} ${PLACE_WORDS[worldId]}.`
-        : `Put ${worldId === 'station' ? 'a part' : worldId === 'zoo' ? 'an animal' : 'a toy'} ${PLACE_WORDS[worldId]}.`
+        : `Put ${worldId === 'zoo' ? 'an' : 'a'} ${THING[worldId]} ${PLACE_WORDS[worldId]}.`
     case 'sort': {
       const home = WORLDS.zoo.enclosures.find((e) => e.kind === t)
       return home
@@ -1375,7 +1378,7 @@ export function promptFor(item, lesson, worldId = 'station') {
       if (item.count) return `Step back ${numberWord(item.count)} times with Ctrl+Z.`
       return 'Undo your last change.'
     case 'order_part':
-      if (item.card) return 'Find the part in the picture and order it.'
+      if (item.card) return `Find the ${THING[worldId]} in the picture and order it.`
       return t ? `Order the ${nameOf(t)}.` : 'Order a part.'
     default:
       return ''

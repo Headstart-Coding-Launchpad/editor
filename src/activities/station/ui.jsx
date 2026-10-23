@@ -690,6 +690,7 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
             ref={sceneRef}
             className={`act-station__scene${held ? ' is-holding' : ''}${upgrade ? ' is-upgraded' : ''}`}
             data-testid="station-scene"
+            data-world={worldId}
             data-upgraded={upgrade ? 'true' : 'false'}
             role="group"
             aria-label={
@@ -1095,7 +1096,15 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
             {hint}
           </p>
         )}
-        {result.done && <ActivityCorrect>Station upgraded!</ActivityCorrect>}
+        {result.done && (
+          <ActivityCorrect>
+            {worldId === 'zoo'
+              ? 'Zoo sorted!'
+              : worldId === 'toyshop'
+                ? 'Toy shop stocked!'
+                : 'Station upgraded!'}
+          </ActivityCorrect>
+        )}
         {result.done && interactive && !teacher && (
           <p className="act-station__keep">You can keep building if you like.</p>
         )}

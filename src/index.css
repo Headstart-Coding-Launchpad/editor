@@ -7038,6 +7038,16 @@ label.te-backdrop-tag,
   color: rgb(255 255 255 / 55%);
 }
 
+/* In the zoo and the toy shop the empty pads are light, so they read on snow, grass and glass. */
+.act-station__scene:not([data-world='station']) .act-station-pad {
+  background: rgb(255 255 255 / 22%);
+  border-color: rgb(15 23 42 / 55%);
+}
+
+.act-station__scene:not([data-world='station']) .act-station-pad::after {
+  color: rgb(15 23 42 / 55%);
+}
+
 /* While a part is held, the spots it fits light up. */
 .act-station-spot {
   pointer-events: auto;
