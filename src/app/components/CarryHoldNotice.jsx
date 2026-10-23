@@ -2,7 +2,23 @@
 // (carryCodeFromLesson / carryBlocksFromLesson) waits for the tutor to find the student's work
 // from an earlier lesson (src/shared/roster/crossLessonCarry.js). The workspace opens on its own
 // as soon as the tutor's client has written the student's carry status.
-export default function CarryHoldNotice({ sourceLabel = null }) {
+export default function CarryHoldNotice({ sourceLabel = null, slot = false }) {
+  if (slot) {
+    // An activity carry slot (src/activities/defineActivity.js `carrySlot`): generic wording.
+    return (
+      <div style={s.wrap} role="status" aria-live="polite" data-testid="carry-hold-notice">
+        <div style={s.card}>
+          <span style={s.icon} aria-hidden="true">
+            ⏳
+          </span>
+          <p style={s.title}>Fetching your saved work…</p>
+          <p style={s.text}>
+            Your tutor is finding what you built last time. It will open here in a moment.
+          </p>
+        </div>
+      </div>
+    )
+  }
   const source = sourceLabel ? `your ${sourceLabel} work` : 'your work from last lesson'
   return (
     <div style={s.wrap} role="status" aria-live="polite" data-testid="carry-hold-notice">

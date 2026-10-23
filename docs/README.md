@@ -117,6 +117,11 @@ High-level route, student phase, persistence, teacher-live, and Firebase ownersh
 
 **Load when:** changing classroom session behavior, student persistence, teacher live view, or Firebase ownership.
 
+### [architecture/station-activity.md](architecture/station-activity.md)
+Design of the Space station activity (Phase 1, Mouse and Keyboard Lessons 1-4): the layout and parts model, task fields, goals and the method each needs, state, helpers, the carry between lessons, interaction, and tutor visibility.
+
+**Load when:** building or changing the station activity, its carry slot or its tutor views.
+
 ### [architecture/scratch-block-icons-plan.md](architecture/scratch-block-icons-plan.md)
 Accepted implementation reference for the readable emoji/icon cues on Scratch blocks across Markdown, editor pickers, and Blockly labels.
 
@@ -322,6 +327,11 @@ Next Word activity reference (AI Level 1): texts, pasted text, predict-then-reve
 Classifier activity reference (teach a few things by drawing, a k-nearest-neighbours pad that guesses live, the fool-it round): task fields, `panels`, the round (core then bonus), the older Test button test sets, authoring teacher test drawings, marking and hints, privacy (what is synced), teacher tools, and a complete validated example lesson.
 
 **Load when:** authoring or editing a Classifier activity task.
+
+### [authoring/activities/station.md](authoring/activities/station.md)
+Space station activity reference: task and item fields, marking and hints, teacher tools, and a complete validated example lesson.
+
+**Load when:** authoring or editing a Space station activity task.
 
 ### [authoring/python-tasks.md](authoring/python-tasks.md)
 Python code task field reference: `starterCode`, `completeCode`, role-based `codeStages`, `carryCodeFrom`, `interactionMode`, and the `tests` array (automated `input()`-driven test cases). Includes a minimal full-lesson example.

@@ -707,6 +707,13 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `classifier/DrawPad.jsx` | Classifier drawing pieces shared by the student view and the Builder editor: `DrawPad` (square SVG pad drawn on with Pointer Events; the stroke in progress is local, finished strokes go to the parent) and `GridThumb` (a drawing grid as one small picture) |
 | `classifier/ClassifierBuilderEditor.jsx` | Classifier Builder editor: who names the things, the test (the round / kept back / my test drawings), numbers, the `panels` checkboxes, and drawing teacher test drawings on a pad |
 | `classifier/ui.jsx` | Classifier StudentView: thing cards with big emoji, teach prompt ("Draw 3 🐱"), Pointer Events pad, live guess bars, the round (Done, "What did you draw?" emoji buttons, tick or miss, Teach it this one, `RoundProgress`), pad left / guess panels right from 800px, optional grid / how-sure panels, results as a meter and mix-up thumbnails; read-only tutor summary (counts, tries, rights, mix-ups, the pad now and last misses as `GridThumb`s) |
+| `station/station.js` | Pure Space station model: layout (3 power sections, the 18 art spots with `spotTakes` fit/hang rules, crew posts, colours), parts catalogue, `sceneForLesson` / `applyCarried`, `stationAction` (undo stack, goals marked with the method used), validation, grading (first-N core) and progress, and the build jobs (order, match, card, decoy crates with stickers, counts: `blockedBy`, `crateIdsFor`, `multiParts`) |
+| `station/definition.js` | Space station activity definition wrapping `station.js`: default task, validation, state, change classification, grading, progress, card summary, print |
+| `station/art.js` | Space station art: the PNG paths under `public/station/phase-1/` (built from `BASE_URL`), part id to file and glow, colour hex values, sticker shape paths. The only place art paths live |
+| `public/station/phase-1/*.png`, `parts.json` | Lesson Gen's Phase 1 station art (#109): 128 px cells, one PNG per state, a white `-glow` mask per part, `backdrop`, `hull-lit/dark/glow`, `interior-lit/dark`; `parts.json` is the 18-spot layout the model's `SPOTS` copies |
+| `station/ui.jsx` | Space station StudentView (controlled by `ActivityHost`): the art scene (backdrop, interior, crew, hull and hull colour, spots, "Station upgraded!" moment), power, crates, drag/pick-drop onto pads, Ctrl/Cmd+Z, catalogue, goals; the tutor's "Undo last change" while editing answers |
+| `station/MiniStation.jsx` | Space station `CardSummary`: a tiny station picture and "3/5 goals" for the tutor's card |
+| `station/StationBuilderEditor.jsx` | Space station `BuilderEditor`: lesson picker, goals filtered by lesson with matching targets, optional catalogue parts |
 
 ---
 

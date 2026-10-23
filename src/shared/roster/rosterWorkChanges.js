@@ -5,7 +5,15 @@
 import { getModuleDefinition } from '../../modules/definitions.js'
 import { getEffectiveLessonForTask, isCodeTask } from '../composedLesson.js'
 import { flattenTasks } from '../taskUtils.js'
-import { extractRosterWork, makeRosterWorkId, resolveSourceIds } from './rosterModel.js'
+import { getTaskActivity, isHostedActivityTask } from '../../activities/registry.pure.js'
+import { deserializeActivityState, studentStateField } from '../../activities/state.js'
+import {
+  extractRosterWork,
+  hashText,
+  makeRosterSlotWorkId,
+  makeRosterWorkId,
+  resolveSourceIds,
+} from './rosterModel.js'
 
 function findTask(lesson, taskId) {
   return (
@@ -21,6 +29,55 @@ export function rosterWorkDefinition(lesson, task) {
   const type = getEffectiveLessonForTask(lesson, task)?.type
   const definition = getModuleDefinition(type)
   return definition?.capabilities?.rosterWork ? definition : null
+}
+
+// The roster work of an activity carry slot (`definition.carrySlot`) from a student's mirrored
+// state (`students/{id}/currentAnswer`): { kind: 'activity_slot', slotId, state }, or null when
+// there is nothing to save (no mirrored state yet, or `extract` returned null/undefined).
+export function extractActivitySlotWork(definition, task, raw) {
+  const slot = definition?.carrySlot
+  if (!slot || typeof raw !== 'string' || raw === '') return null
+  let state
+  try {
+    state = slot.extract(deserializeActivityState(definition, task, raw))
+  } catch {
+    return null
+  }
+  return state == null ? null : { kind: 'activity_slot', slotId: slot.id, state }
+}
+
+// The slot candidate for one matched student, or null: their mirrored state on the class's
+// current task when that task's activity has a `carrySlot`. Keyed per slot (not per task), so
+// the latest state in any lesson is the one that is saved (`slot__<slotId>`). Not in a sandbox.
+function slotCandidate({ session, lesson, lessonId, anonymousId, rosterId }) {
+  if (session.state !== 'active') return null
+  const student = session.students?.[anonymousId]
+  if (!student || student.inPersonalSandbox) return null
+  const task = findTask(lesson, session.currentTaskId)
+  if (!task || !isHostedActivityTask(task)) return null
+  const definition = getTaskActivity(task)
+  const slot = definition?.carrySlot
+  const workId = makeRosterSlotWorkId(slot?.id)
+  if (!workId) return null
+  const raw = student[studentStateField(definition)]
+  if (typeof raw !== 'string' || raw === '') return null
+  const { sourceLessonId, sourceTaskId } = resolveSourceIds(lesson, lessonId, task.id)
+  return {
+    key: `${anonymousId}:slot:${slot.id}`,
+    // The state's own text is the change marker; there is no timestamp, so `at` is 0 (nothing
+    // else competes for this key).
+    trigger: `${rosterId}:slot:${hashText(raw)}`,
+    anonymousId,
+    rosterId,
+    taskId: task.id,
+    origin: 'slot',
+    at: 0,
+    moduleType: 'activity',
+    workId,
+    sourceLessonId,
+    sourceTaskId,
+    extract: () => extractActivitySlotWork(definition, task, raw),
+  }
 }
 
 function latestAttempt(entries) {
@@ -112,6 +169,9 @@ export function collectRosterWorkCandidates({ session, lesson, lessonId, matches
         extract: candidate.extract,
       })
     }
+
+    const slot = slotCandidate({ session, lesson, lessonId, anonymousId, rosterId })
+    if (slot) result.push(slot)
   }
   return result
 }

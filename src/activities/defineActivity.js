@@ -55,6 +55,23 @@ function normaliseFields(id, fields) {
   return Object.freeze({ modeField, modes: Object.freeze(modes), task })
 }
 
+// `carrySlot` (optional) lets the tutor's client carry this activity's state between lessons for a
+// roster-matched student (docs/architecture/activities.md, "Carry slots"):
+//   { id: 'station',                    // lowercase identifier; names the roster work `slot__<id>`
+//     extract(state) → object | null,   // what is saved (null: nothing worth saving yet)
+//     apply(task, carried) → state }    // the full activity state for a task, from what was saved
+function normaliseCarrySlot(id, slot) {
+  if (slot == null) return null
+  if (typeof slot !== 'object') fail(id, 'carrySlot must be an object')
+  if (typeof slot.id !== 'string' || !/^[a-z][a-z0-9_]*$/.test(slot.id)) {
+    fail(id, 'carrySlot.id must be a lowercase identifier (letters, digits, underscores)')
+  }
+  for (const key of ['extract', 'apply']) {
+    if (typeof slot[key] !== 'function') fail(id, `carrySlot.${key} must be a function`)
+  }
+  return Object.freeze({ id: slot.id, extract: slot.extract, apply: slot.apply })
+}
+
 export function defineActivity(def) {
   if (!def || typeof def !== 'object') fail(undefined, 'definition must be an object')
   const { id } = def
@@ -157,6 +174,8 @@ export function defineActivity(def) {
     printHtml: null,
     ...def,
     fields: normaliseFields(id, def.fields),
+    // Carry between lessons (see normaliseCarrySlot): null, or { id, extract, apply }.
+    carrySlot: normaliseCarrySlot(id, def.carrySlot),
     completion,
     deserialize,
     // What is written to Firebase / teacherLive (default: the same as `serialize`, which is what

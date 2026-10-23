@@ -6,10 +6,13 @@ import { usePresentation } from './presentation.js'
 // bonus reps drawn as stars after the core) and one consistent line, "3 of 5 done". It replaces
 // the old Previous / numbered dots / Next bar: the student never picks an item, the round moves
 // on by itself. aria-live so a screen reader hears each rep land. Hidden for a single rep.
-export default function RoundProgress({ done, total, core = total }) {
+// `flags` (optional, one boolean per rep) says which reps are done when they need not be the first
+// `done` ones, like the Space station where the first N goals make the round.
+export default function RoundProgress({ done, total, core = total, flags }) {
   if (usePresentation() || !(total >= 2)) return null
   const goal = Math.min(core, total)
   const text = roundText(done, total, goal)
+  const isDone = (i) => (Array.isArray(flags) ? !!flags[i] : i < done)
   return (
     <div className="act-round" data-testid="round-progress">
       <div
@@ -25,9 +28,9 @@ export default function RoundProgress({ done, total, core = total }) {
           <span
             key={i}
             aria-hidden="true"
-            className={`act-round__dot${i < done ? ' act-round__dot--done' : ''}${i >= goal ? ' act-round__dot--bonus' : ''}`}
+            className={`act-round__dot${isDone(i) ? ' act-round__dot--done' : ''}${i >= goal ? ' act-round__dot--bonus' : ''}`}
           >
-            {i < done ? (i >= goal ? '★' : '✓') : ''}
+            {isDone(i) ? (i >= goal ? '★' : '✓') : ''}
           </span>
         ))}
       </div>

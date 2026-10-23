@@ -20,11 +20,19 @@
 // own HOLDS ("Waiting for your tutor to find your Lesson 11 work…"). Solo, the presentation
 // window, the Builder preview and "No class" sessions never hold: they use the starter.
 // No localStorage scanning (shared-device risk).
+//
+// Activity carry slots (an activity definition's `carrySlot`, docs/architecture/activities.md)
+// ride the same route: a hosted activity task whose activity has a `carrySlot` is a carry task
+// with kind 'activity_slot' and no source lesson/task. Its work is saved under the fixed roster
+// work id `slot__<slotId>` (latest wins, whichever lesson it came from); the inbox entry and
+// status are the same.
 
 import { getModuleDefinition, getModuleDefinitions } from '../../modules/definitions.js'
 import { getEffectiveLessonForTask, isCodeTask } from '../composedLesson.js'
+import { getTaskActivity, isHostedActivityTask } from '../../activities/registry.pure.js'
 import { flattenTasks } from '../taskUtils.js'
 import { isPlainObject } from '../textUtils.js'
+import { makeRosterSlotWorkId } from './rosterModel.js'
 
 export const CARRY_INBOX_ROOT = 'carryInbox'
 // The inbox payload is one JSON string. RTDB rules cap it at this many characters, well under
@@ -80,8 +88,11 @@ export function normaliseCarrySpec(value) {
 }
 
 // The task's cross-lesson carry, or null: { field, kind, moduleType, sourceLessonId,
-// sourceTaskId }. Composed lessons use the task's own module.
+// sourceTaskId }. Composed lessons use the task's own module. A hosted activity task whose
+// activity has a `carrySlot` carries too: { field: 'carrySlot', kind: 'activity_slot',
+// moduleType: 'activity', slotId, slotWorkId, sourceLessonId: null, sourceTaskId: null }.
 export function getCrossLessonCarry(lesson, task) {
+  if (task && isHostedActivityTask(task)) return getActivitySlotCarry(task)
   if (!task || !isCodeTask(task)) return null
   const definition = getModuleDefinition(getEffectiveLessonForTask(lesson, task)?.type)
   const field = crossLessonCarryField(definition)
@@ -93,6 +104,22 @@ export function getCrossLessonCarry(lesson, task) {
     moduleType: definition.type,
     sourceLessonId: spec.lesson,
     sourceTaskId: spec.task,
+  }
+}
+
+// The activity carry slot of a hosted activity task, as a carry, or null.
+export function getActivitySlotCarry(task) {
+  const slot = task && isHostedActivityTask(task) ? getTaskActivity(task)?.carrySlot : null
+  const slotWorkId = slot ? makeRosterSlotWorkId(slot.id) : null
+  if (!slotWorkId) return null
+  return {
+    field: 'carrySlot',
+    kind: 'activity_slot',
+    moduleType: 'activity',
+    slotId: slot.id,
+    slotWorkId,
+    sourceLessonId: null,
+    sourceTaskId: null,
   }
 }
 
@@ -108,7 +135,13 @@ export function listCrossLessonCarryTasks(lesson) {
 
 // The distinct source lesson ids the lesson's cross-lesson carries name (for a source check).
 export function crossLessonSourceIds(lesson) {
-  return [...new Set(listCrossLessonCarryTasks(lesson).map((carry) => carry.sourceLessonId))]
+  return [
+    ...new Set(
+      listCrossLessonCarryTasks(lesson)
+        .map((carry) => carry.sourceLessonId)
+        .filter(Boolean)
+    ),
+  ]
 }
 
 // Soft authoring warnings about each cross-lesson carry's source, given the source lessons that
@@ -174,6 +207,9 @@ function workContent(work) {
   if (work.kind === 'blocks' && isPlainObject(work.scratchState)) {
     return { scratchState: work.scratchState }
   }
+  if (work.kind === 'activity_slot' && typeof work.slotId === 'string' && work.state != null) {
+    return { slotId: work.slotId, state: work.state }
+  }
   return null
 }
 
@@ -199,7 +235,7 @@ export function buildCarryInboxEntry(work, { kind, sourceLessonId, sourceTaskId 
 }
 
 // The inbox entry's work as the student's selectors read it: { kind, code } |
-// { kind, files: [{ name, content }] } | { kind, scratchState }, or null when it is missing,
+// { kind, files: [{ name, content }] } | { kind, scratchState } | { kind, slotId, state }, or null when it is missing,
 // of another kind, or unreadable.
 export function readCarryInboxEntry(entry, kind) {
   if (!isPlainObject(entry) || typeof entry.payload !== 'string') return null
@@ -219,6 +255,9 @@ export function readCarryInboxEntry(entry, kind) {
   }
   if (entry.kind === 'blocks' && isPlainObject(content.scratchState)) {
     return { kind: 'blocks', scratchState: content.scratchState }
+  }
+  if (entry.kind === 'activity_slot' && typeof content.slotId === 'string' && 'state' in content) {
+    return { kind: 'activity_slot', slotId: content.slotId, state: content.state }
   }
   return null
 }

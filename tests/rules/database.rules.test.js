@@ -512,6 +512,17 @@ describe('cross-lesson carry', () => {
     await assertFails(ref(as.teacher, inboxPath()).set({ ...entry, extra: true }))
     await assertFails(ref(as.teacher, inboxPath()).set({ ...entry, payload: 'x'.repeat(1000001) }))
     await assertSucceeds(ref(as.teacher, inboxPath()).set({ ...entry, kind: 'blocks' }))
+    // An activity carry slot (src/activities/defineActivity.js `carrySlot`) rides the same inbox.
+    await assertSucceeds(
+      ref(as.teacher, inboxPath()).set({
+        kind: 'activity_slot',
+        payload: JSON.stringify({ slotId: 'station', state: { v: 1, scene: {} } }),
+        sourceLessonId: '',
+        sourceTaskId: '',
+        writtenAt: 1000,
+      })
+    )
+    await assertFails(ref(as.student, inboxPath()).set({ ...entry, kind: 'activity_slot' }))
   })
 })
 

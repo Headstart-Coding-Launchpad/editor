@@ -26,6 +26,7 @@ import {
   buildRosterWorkDoc,
   compareRosterEntries,
   makeRosterMatch,
+  makeRosterSlotWorkId,
   makeRosterWorkId,
   normaliseRosterName,
   readRosterWorkDoc,
@@ -147,7 +148,18 @@ export async function saveRosterWork(classId, rosterId, workId, work, meta) {
 // sourceTaskId, origin ('run' | 'submission' | 'leave'), hash and savedAt.
 // `sourceLessonId` / `sourceTaskId` are the stock ids (rosterModel's resolveSourceIds).
 export async function getSavedWork(classId, rosterId, sourceLessonId, sourceTaskId) {
-  const workId = makeRosterWorkId(sourceLessonId, sourceTaskId)
+  return getSavedWorkById(classId, rosterId, makeRosterWorkId(sourceLessonId, sourceTaskId))
+}
+
+// A matched student's saved activity carry slot (`slot__<slotId>`), or null:
+// { kind: 'activity_slot', slotId, state, ...meta }.
+export async function getSavedSlotWork(classId, rosterId, slotId) {
+  return getSavedWorkById(classId, rosterId, makeRosterSlotWorkId(slotId))
+}
+
+// A saved work document by its work id (see rosterModel's makeRosterWorkId /
+// makeRosterSlotWorkId), or null.
+export async function getSavedWorkById(classId, rosterId, workId) {
   if (!classId || !rosterId || !workId) return null
   const snap = await getDoc(workDoc(classId, rosterId, workId))
   if (!snap.exists()) return null

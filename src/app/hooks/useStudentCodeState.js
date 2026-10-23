@@ -69,6 +69,7 @@ import { useScrubPreview } from './useScrubPreview'
 import { useActivityState } from './useActivityState'
 import {
   getModuleHostedActivity,
+  getTaskActivity,
   isHostedActivityTask,
   isModuleHostedActivityTask,
 } from '../../activities/registry.pure.js'
@@ -817,6 +818,12 @@ export function useStudentCodeState({
   // ('found') or its starter. Solo, presentation and Builder preview never hold.
   function hasOwnTaskWork(taskId) {
     const anonymousId = effectiveIdentity?.anonymousId
+    // An activity carry slot: the activity's own saved state for the task (its aux file).
+    const activityTask = findTaskById(lesson?.tasks, taskId)
+    if (isHostedActivityTask(activityTask)) {
+      const file = getTaskActivity(activityTask)?.storage?.filename
+      return !!anonymousId && !!file && persistence.readSavedFile(anonymousId, taskId, file) != null
+    }
     const definition = workSlotDefinition(lesson?.type)
     if (!anonymousId || !definition) return false
     if (definition.storage.layout === 'perFile') {
@@ -1040,6 +1047,7 @@ export function useStudentCodeState({
     teacherAssistedTaskIdsRef,
     onTeacherAnswerApplied: setTeacherAnswerNoticeAt,
     livePayloadRef: activityLivePayloadRef,
+    crossLessonCarry,
   })
 
   const isAlreadySolved = () => checkPassedRef.current && !inPersonalSandboxRef.current

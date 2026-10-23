@@ -326,6 +326,79 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … test drawing …: strokes must be a list of strokes, each a list of x, y numbers between 0 and 1 (x1, y1, x2, y2, ...).` | `strokes` is empty, has an odd number of values in a stroke, or a number outside 0 to 1. | Write each stroke as `[x1, y1, x2, y2, …]` with values from 0 to 1. |
 | `Task …: no test drawing for class "…". (warning)` | With `testSet: teacher`, a class has no test drawing, so it is never tested. | Add at least one `testItems` entry for it. |
 
+### Space station ([activities/station.md](activities/station.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: lesson must be 1, 2, 3 or 4 (the station has only these lessons so far).` | `lesson` is missing or not 1 to 4 (Phase 1). | Set `lesson` to 1, 2, 3 or 4. |
+| `Task …: station task needs at least one item.` | `items` is empty. | Add at least one goal. |
+| `Task …: catalogue must be a list of part ids.` | `catalogue` is not a list. | Write it as a list of part ids. |
+| `Task …: catalogue only applies to lessons 3 and 4.` | `catalogue` is set on Lesson 1 or 2. | Remove it, or use lesson 3 or 4. |
+| `Task …: catalogue part "…" is not in the parts catalogue.` | An id in `catalogue` is not a station part. | Use a part id from the docs page. |
+| `Task …: catalogue part "…" is not available in lesson ….` | The part belongs to a different lesson (Lesson 3 modules, Lesson 4 catalogue parts). | Use a part from this lesson's list. |
+| `Task … item …: needs an id.` | An item has no `id`. | Give each item a short unique id. |
+| `Task … item …: id "…" is used more than once.` | Two items share an id. | Make each id unique. |
+| `Task … item …: prompt must be text.` | `prompt` is not text. | Write the prompt as a string, or leave it out. |
+| `Task … item …: goal must be one of ….` | `goal` is missing or not a station goal. | Use one of the goals listed. |
+| `Task … item …: goal "…" can't be done in lesson ….` | The goal belongs to other lessons (for example `undo` needs Lesson 3 or 4). | Move the item to a matching lesson or choose another goal. |
+| `Task … item …: goal "…" needs a target (hull or lights).` | `pick_colour` has no `target`. | Set `target` to `hull` or `lights`. |
+| `Task … item …: goal "…" doesn't use a target.` | `choose_captain` or `undo` has a `target`. | Remove the `target`. |
+| `Task … item …: target "…" must be ….` | The target is not valid for the goal (a power section, `hull` or `lights`, a crate id, or a part id). | Use a target of the kind the message names. |
+| `Task … item …: target "…" is not in this lesson's catalogue.` | A `place_part` or `order_part` target is not in the task's catalogue. | Add it to `catalogue` or pick another part. |
+| `Task … item …: target "…" must be a crate id (crate-1, crate-2, crate-3, crate-4 or crate-5).` | An `open_crate` target is not one of the five crates. | Use `crate-1` to `crate-5`. |
+| `Task … item …: target "…" is not one of this task's crates.` | The task has a `crates` list and the target is not in it. | Add the crate to `crates` or pick one that is there. |
+| `Task … item …: order only applies to power_on, open_crate, place_part goals.` | `order` is on another goal. | Remove it, or use one of those goals. |
+| `Task … item …: order must be a list of at least 2 ids.` | `order` is not a list, or has fewer than 2 ids. | List 2 or more ids. |
+| `Task … item …: order lists the same id twice.` | An id repeats in `order`. | Make each id appear once. |
+| `Task … item …: order "…" must be ….` | An id in `order` is not valid for the goal (a power section, a crate in the task, or a part in the lesson's catalogue). | Use an id of the kind the message names. |
+| `Task … item …: order can't be used with a target or a card; list the ids in order instead.` | The goal has `order` and also `target` or `card`. | Remove `target` / `card`. |
+| `Task … item …: order "…" is not a crate the note lists.` | `onlyNoted` with `order` where an ordered crate is a decoy. | Order only crates whose sticker is on the note. |
+| `Task … item …: match only applies to pick_colour goals.` | `match` is on another goal. | Remove it. |
+| `Task … item …: match "…" must be one of the … colours: ….` | `match` is not a colour for that target (`hull` or `lights`). | Use a colour from the list in the message. |
+| `Task … item …: card only applies to order_part and place_part goals.` | `card` is on another goal. | Remove it. |
+| `Task … item …: card can't be used with a target; the part on the card is the target.` | A goal has both `card` and `target`. | Keep one. |
+| `Task … item …: card "…" must be a part id from the parts catalogue.` | `card` is not a station part. | Use a part id from the docs page. |
+| `Task … item …: card "…" is not in this lesson's catalogue.` | The card's part is not on offer this lesson. | Pick a part from this lesson's list. |
+| `Task … item …: onlyNoted only applies to open_crate goals.` | `onlyNoted` is on another goal. | Remove it. |
+| `Task … item …: onlyNoted must be true or false.` | `onlyNoted` is not a boolean. | Write `true`. |
+| `Task … item …: onlyNoted needs the task's note and crates (with stickers).` | `onlyNoted` with no `note` or no `crates`. | Add both to the task. |
+| `Task … item …: onlyNoted can't be used with a target; the note says which crates.` | `onlyNoted` with `target`. | Remove `target`. |
+| `Task … item …: count only applies to place_part, open_crate, undo goals.` | `count` is on another goal. | Remove it. |
+| `Task … item …: count must be a whole number from 2 to 9 (Ctrl+Z presses).` | An `undo` count out of range. | Use 2 to 9. |
+| `Task … item …: count must be a whole number from 2 to … (the crates in this task).` | An `open_crate` count is below 2 or more than the crates. | Use 2 up to the number of crates. |
+| `Task … item …: count can't be used with a target, order or onlyNoted.` | An `open_crate` count with another way of choosing crates. | Keep one. |
+| `Task … item …: count needs a target part, like "put exactly 3 solar panels".` | `place_part` with `count` and no `target`. | Set the `target` part. |
+| `Task … item …: count must be a whole number from 2 to … (the spots that take the ….).` | A `place_part` count is below 2 or more than the spots that take the part. | Use a count the spots allow. |
+| `Task … item …: count on place_part only works in lesson 3.` | `place_part` with `count` in lesson 4. | Move it to Lesson 3. |
+| `Task … item …: count can't be used with an order or a card.` | `place_part` count with `order` or `card`. | Keep one. |
+| `Task … item …: pattern only applies to light_pattern goals.` | `pattern` is on another goal. | Remove it, or use `light_pattern`. |
+| `Task … item …: light_pattern needs a pattern, like { left: on, core: off, right: on }.` | A `light_pattern` goal has no `pattern`. | Add the pattern. |
+| `Task … item …: pattern left must be on or off.` (also core, right) | A section in `pattern` is missing or not on/off. | Give all three sections `on` or `off`. |
+| `Task … item …: pattern has "…", which is not a section (left, core, right).` | `pattern` names something that is not a power section. | Use only `left`, `core`, `right`. |
+| `Task … item …: pattern needs at least one section on.` | Every section is off. | Switch at least one on. |
+| `Task … item …: light_pattern can't be used with order, match, card or count.` | A `light_pattern` goal has fields of other goals. | Remove them. |
+| `Task … item …: match "…" is already used by an earlier hull goal.` (or lights) | Two `pick_colour` goals for the same target match the same colour, so the second could never be clicked. | Use a different colour. |
+| `Task … item …: undo_mistakes needs the task's mistakes list.` | An `undo_mistakes` goal with no `mistakes` on the task. | Add `mistakes`, or use `undo`. |
+| `Task …: mistakes must be a list of 1 to 4 drops, each with a part and a spot.` | `mistakes` is not a list, is empty or has more than 4. | List 1 to 4 `{ part, spot }`. |
+| `Task …: mistakes only applies to lesson 3.` | `mistakes` on another lesson. | Remove it. |
+| `Task …: mistakes needs an undo_mistakes goal to put them back.` | `mistakes` without a goal to undo them. | Add an `undo_mistakes` goal. |
+| `Task … mistake …: part must be a module or part id from the parts catalogue.` | The `part` is missing or not a module or part. | Use a tray part id. |
+| `Task … mistake …: part "…" is not in this lesson's catalogue.` | The part is not in the task's tray. | Pick a part from the catalogue. |
+| `Task … mistake …: part "…" is also asked for by a place_part goal; pick another part.` | A `place_part` goal asks for the part the robot already dropped, so it would count for free. | Choose a part no goal names. |
+| `Task … mistake …: part "…" is used more than once.` | Two mistakes use the same part. | Use each part once. |
+| `Task … mistake …: spot must be one of …` | The `spot` is missing or not a spot id. | Use a spot id from the message. |
+| `Task … mistake …: the … doesn't fit on spot "…".` | The part is too big, or the spot is under the hull and the part cannot hang. | Pick a spot that takes the part. |
+| `Task … mistake …: spot "…" is used more than once.` | Two mistakes use the same spot. | Use each spot once. |
+| `Task …: crates must be a list of 1 to 5 crates, each with an id.` | `crates` is not a list, is empty or has more than 5. | List 1 to 5 `{ id, sticker }` crates. |
+| `Task …: crates only applies to lesson 2.` / `Task …: note only applies to lesson 2.` | `crates` or `note` on another lesson. | Remove it. |
+| `Task … crate …: id must be one of crate-1, crate-2, crate-3, crate-4, crate-5.` | A crate's `id` is missing or unknown. | Use one of the five ids. |
+| `Task … crate …: id "…" is used more than once.` | Two crates share an id. | Make each id unique. |
+| `Task … crate …: sticker "…" must be a colour and a shape joined with a dash, ….` | A crate's `sticker` is not a known colour and shape. | Use the colours and shapes in the message, like `red-star`. |
+| `Task …: note must be a list of stickers.` | `note` is not a list or is empty. | List one or more stickers. |
+| `Task …: note needs crates with stickers to match it.` | `note` with no `crates` stickers. | Add `crates` with stickers. |
+| `Task …: note sticker "…" must be a colour and a shape joined with a dash, ….` | A note sticker is not valid. | Use a sticker like `green-triangle`. |
+| `Task …: note sticker "…" is not on any crate.` | The note lists a sticker no crate has. | Put it on a crate, or take it off the note. |
+
 ## Code-arrange tasks
 
 | Message | Meaning | Fix |

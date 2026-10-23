@@ -613,7 +613,7 @@
           "$taskId": {
             ".validate": "newData.hasChildren(['kind', 'payload'])",
             "kind": {
-              ".validate": "newData.isString() && (newData.val() === 'code' || newData.val() === 'files' || newData.val() === 'blocks')"
+              ".validate": "newData.isString() && (newData.val() === 'code' || newData.val() === 'files' || newData.val() === 'blocks' || newData.val() === 'activity_slot')"
             },
             "payload": {
               ".validate": "newData.isString() && newData.val().length <= 1000000"

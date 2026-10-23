@@ -59,6 +59,48 @@ Entries written before 2026-09-29 are not tagged.
 - Affects: all activities, python, turtle, html, scratch · Existing lessons: no changes needed ·
   Resolves: authoring-requests/2026-10-23-show-it-the-tutor-puts-2-3-students-builds-on-the-big-screen.md
 
+- **Space station: build jobs (handoff #101, Lesson Gen review #181).** New fields on station goals
+  for the course's "Build jobs": `order: [...]` (do these in this order: `power_on` sections,
+  `open_crate` crates, `place_part` parts; a wrong next step just blinks), `match: <colour>` on
+  `pick_colour` (the card shows the colour; only that swatch counts), `card: <part>` on
+  `order_part` / `place_part` ("find the one in the picture"), `onlyNoted: true` on `open_crate`
+  (leave the decoys), and `count: n` on `place_part` (Lesson 3, with a `target`), `open_crate` and
+  `undo` ("exactly that many"). New task fields for Lesson 2: `crates: [{ id, sticker }]` (up to
+  five crates, `crate-4` holds `crew-robot-3`, `crate-5` is empty) and `note: [stickers]` (the
+  delivery note); stickers are `<colour>-<shape>`, like `red-star`. **Behaviour change:**
+  `coreItems` on a station task now means the FIRST this many goals are required (not any this
+  many); put the required goals first. A sort job ("fuel to the tank") is not built. Details and a
+  complete example lesson: [activities/station.md](activities/station.md).
+- Affects: station · Existing lessons: station tasks with `coreItems` must list their required
+  goals first · Resolves: none
+
+- **Space station: more Lesson 1 jobs, the robot's drops and a closer tray (Lesson Gen review #190).**
+  Lesson 1: a task may now have more than one `power_on` goal with an `order` (a second start-up
+  card in a new order) and more than one `pick_colour` goal with `match` on the same target (a second
+  Mission Control colour); they run one after another (a goal counts once the earlier ones of its
+  kind are done) and the station switches off between power goals. Power buttons now switch off on a
+  second click (Lesson 1). New goal `light_pattern` with `pattern: { left: on, core: off, right: on }`
+  (done when the power buttons match the card). Lesson 3: new task field `mistakes: [{ part, spot }]`
+  (1 to 4 parts already on the station, "the clumsy robot's drops") and new goal `undo_mistakes`
+  (done when every one is taken back with Ctrl+Z / Cmd+Z); the drops are never saved as the child's
+  station. On Lessons 3 and 4 the Parts tray now sits directly under the station picture. A child
+  carried past Lesson 1 always has a fully powered station. Lessons authored before keep working;
+  see [activities/station.md](activities/station.md).
+- Affects: station · Existing lessons: no changes needed · Resolves: none
+
+- **New activity: Space station (Phase 1, Mouse and Keyboard Lessons 1-4).** `type: station` with
+  `lesson` (1 to 4), `items` of `{ id, goal, target?, prompt? }`, optional `catalogue` and
+  `coreItems`. Goals: `power_on`, `pick_colour`, `select`, `open_crate`, `choose_captain`,
+  `place_part`, `undo`, `order_part`. Each goal needs a particular method (a double-click opens a
+  crate; Ctrl+Z or Cmd+Z undoes; a drag or click-to-pick-up-and-drop places a part) and the tutor
+  sees which was used. Each child has one station that is carried between lessons; a missed
+  lesson's parts are added in default places. Mouse or trackpad only. Drawn with Lesson Gen's
+  station art: three power sections (`left`, `core`, `right`), crew `crew-robot-1`, `crew-robot-2`,
+  `crew-plant`, and a Lesson 4 catalogue of eight parts ending in `rainbow-ring`. Details:
+  [activities/station.md](activities/station.md).
+- Affects: station · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-22-station-activity-one-saved-space-station-each-child-builds-w.md
+
 - **The three AI activities are redesigned fun-first (handoff #99).** Each is one round, marked
   as you go, with no Check button.
   - **Classifier:** the student teaches each thing (`classes`, which may start with an emoji, such
