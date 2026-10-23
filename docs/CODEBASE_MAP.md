@@ -703,7 +703,9 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `station/station.js` | Pure Space station model: layout (sections, spots, posts, colours), parts catalogue, `sceneForLesson` / `applyCarried`, `stationAction` (undo stack, goals marked with the method used), validation, grading and progress |
 | `station/definition.js` | Space station activity definition wrapping `station.js`: default task, validation, state, change classification, grading, progress, card summary, print |
 | `station/art.js` | Placeholder art (emoji and colour per part); swap to PNGs here only |
-| `station/ui.jsx` | Space station StudentView (controlled by `ActivityHost`) |
+| `station/ui.jsx` | Space station StudentView (controlled by `ActivityHost`): the station scene, power, crates, drag/pick-drop onto pads, Ctrl/Cmd+Z, catalogue, goals; the tutor's "Undo last change" while editing answers |
+| `station/MiniStation.jsx` | Space station `CardSummary`: a tiny station picture and "3/5 goals" for the tutor's card |
+| `station/StationBuilderEditor.jsx` | Space station `BuilderEditor`: lesson picker, goals filtered by lesson with matching targets, optional catalogue parts |
 
 ---
 
