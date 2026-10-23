@@ -50,6 +50,7 @@ import useThumbsUp from '../hooks/useThumbsUp'
 import ThumbsUpToast from '../components/ThumbsUpToast'
 import useClassCountdown from '../hooks/useClassCountdown'
 import ClassCountdownPill from '../components/ClassCountdownPill'
+import ClassProgressStrip from '../components/ClassProgressStrip'
 import TimesUpBanner from '../components/TimesUpBanner'
 import TaskChangeFlash from '../components/TaskChangeFlash'
 import useVideoCallPrompt, { VIDEO_CALL_PROMPT_PHASES } from '../hooks/useVideoCallPrompt'
@@ -1117,6 +1118,7 @@ export default function StudentView({
     isStudentPanelBroadcast,
     isTeacherLiveActive,
     isForcedTeacherLive,
+    isTeacherLiveViewer,
     displayedTaskId,
     displayCode,
     displayArcadeDesign,
@@ -1474,8 +1476,10 @@ export default function StudentView({
     (phase === 'lesson' || phase === 'sandbox') && (teacherPresentation || identity?.anonymousId)
       ? getActivePoll(session)
       : null
+  // Go Live is on for this student (the tutor's live view is forced onto them).
+  const goLiveOn = !!isTeacherLiveViewer
   const activePollTally =
-    activePoll && (teacherPresentation || activePoll.showResults)
+    activePoll && (teacherPresentation || goLiveOn || activePoll.showResults)
       ? tallyPoll(session, activePoll.pollId)
       : null
   // Poll tasks in the lesson show the class split from the live session (PollQuiz).
@@ -1485,6 +1489,7 @@ export default function StudentView({
           session,
           anonymousId: teacherPresentation ? null : identity?.anonymousId,
           presentation: !!teacherPresentation,
+          live: goLiveOn,
         }
       : null
   const myPollChoice =
@@ -1617,7 +1622,11 @@ export default function StudentView({
     </div>
   ) : (
     <div style={s.topBarTaskControls}>
-      <ClassCountdownPill countdown={classCountdown} serverTimeOffset={serverTimeOffset} />
+      <ClassCountdownPill
+        countdown={classCountdown}
+        serverTimeOffset={serverTimeOffset}
+        variant={goLiveOn ? 'presentation' : 'student'}
+      />
       {!previewMode && <SoundsToggleButton soundsOff={!!session?.badgeSettings?.soundsOff} />}
       {(phase === 'lesson' || phase === 'sandbox') && (
         <CodingMomentsPill
@@ -1736,6 +1745,12 @@ export default function StudentView({
         right={topBarRight}
         singleRow
       />
+      {(teacherPresentation || goLiveOn) && (
+        <ClassProgressStrip
+          session={session}
+          task={flatTasks.find((t) => t.id === currentTaskId)}
+        />
+      )}
       {!teacherPresentation && (
         <TutorLiveBanner
           active={showTutorLiveBanner}
@@ -1773,7 +1788,7 @@ export default function StudentView({
       />
       {nudgeBannerVisible && <NudgeBanner onDismiss={dismissNudge} />}
       <ThumbsUpToast shownAt={thumbsUpAt} />
-      <TimesUpBanner shownAt={timesUpAt} presentation={teacherPresentation} />
+      <TimesUpBanner shownAt={timesUpAt} presentation={teacherPresentation || goLiveOn} />
       {/* Keyed on the class's task (currentTaskId), so browsing back never flashes. Live lesson
           and the presentation window only: a solo student moved themselves. */}
       <TaskChangeFlash
@@ -1917,6 +1932,7 @@ export default function StudentView({
           choice={myPollChoice}
           tally={activePollTally}
           presentation={teacherPresentation}
+          live={goLiveOn}
           onAnswer={
             teacherPresentation
               ? undefined

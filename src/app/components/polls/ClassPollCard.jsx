@@ -14,8 +14,16 @@ import PollResultBars from './PollResultBars'
  * - `tally`: tallyPoll(session, pollId), for results and the presentation's answer count
  * - `onAnswer(index)`: students only
  * - `presentation`: the projected, read-only variant
+ * - `live`: the tutor is live, so a student sees the bars like the presentation does (counts only)
  */
-export default function ClassPollCard({ poll, choice = null, tally, onAnswer, presentation }) {
+export default function ClassPollCard({
+  poll,
+  choice = null,
+  tally,
+  onAnswer,
+  presentation,
+  live = false,
+}) {
   const [minimised, setMinimised] = useState(false)
   // A new poll always arrives open, even if the last one was minimised.
   useEffect(() => setMinimised(false), [poll?.pollId])
@@ -25,7 +33,7 @@ export default function ClassPollCard({ poll, choice = null, tally, onAnswer, pr
   const resultsPublic = poll.showResults === true && !!tally
   // Students only see the split after voting (or once the poll has closed), so the bars never
   // sway their own choice.
-  const showResults = resultsPublic && (presentation || choice != null || !isOpen)
+  const showResults = resultsPublic && (presentation || live || choice != null || !isOpen)
   const chosenText = choice != null ? poll.options[choice] : null
 
   if (minimised && !presentation) {

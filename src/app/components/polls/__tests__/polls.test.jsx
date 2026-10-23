@@ -153,6 +153,24 @@ describe('ClassPollCard', () => {
     expect(screen.getByText(/1 · 100%/)).toBeInTheDocument()
   })
 
+  it('shows live-tutor students the bars before voting, when results are public', () => {
+    const session = sessionWith(
+      { ...openPoll, showResults: true },
+      { a: { pollResponses: { p1: { choice: 1, answeredAt: 2 } } }, b: {} }
+    )
+    const poll = getActivePoll(session)
+    const tally = tallyPoll(session, 'p1')
+    const { rerender } = render(<ClassPollCard poll={poll} choice={null} tally={tally} live />)
+    expect(screen.getByLabelText('Poll results')).toBeInTheDocument()
+    expect(screen.getAllByRole('radio')).toHaveLength(2)
+    // Private results stay private even while live.
+    const priv = sessionWith({ ...openPoll, showResults: false }, session.students)
+    rerender(
+      <ClassPollCard poll={getActivePoll(priv)} choice={null} tally={tallyPoll(priv, 'p1')} live />
+    )
+    expect(screen.queryByLabelText('Poll results')).not.toBeInTheDocument()
+  })
+
   it('shows the presentation the question and answer count, without buttons', () => {
     const session = sessionWith(openPoll, { a: {}, b: {} })
     render(

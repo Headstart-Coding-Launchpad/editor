@@ -51,11 +51,18 @@ export default function ShortAnswerQuiz({
     )
   }
 
+  // Go Live: students see the same wall above their own answer box (read-only).
+  const liveWall =
+    classView?.live && !classView.presentation && canShowResponses(task) ? (
+      <ShownResponsesWall responses={getShownResponses(classView.session, task.id)} />
+    ) : null
+
   const submittedAnswer = localAnswer || (typeof selectedAnswer === 'string' ? selectedAnswer : '')
 
   return (
     <div style={s.wrap}>
       {showQuestion && <QuestionPanel task={task} />}
+      {liveWall}
 
       <div style={sm.shortAnswerWrap}>
         <textarea

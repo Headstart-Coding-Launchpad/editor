@@ -155,6 +155,32 @@ describe('presentation window', () => {
     expect(screen.getByText(/will pick some answers/)).toBeInTheDocument()
   })
 
+  it('shows live students the wall above their own answer box, read-only', () => {
+    renderQuiz({ session, anonymousId: 'anon-a', presentation: false, live: true })
+    expect(screen.getByText('A maze game')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Type your answer here…')).toBeInTheDocument()
+    expect(screen.queryByText('Hidden one')).not.toBeInTheDocument()
+  })
+
+  it('never shows the wall to live students on a task without showResponses', () => {
+    renderQuiz(
+      { session, anonymousId: 'anon-a', presentation: false, live: true },
+      { showResponses: undefined }
+    )
+    expect(screen.queryByText('A maze game')).not.toBeInTheDocument()
+  })
+
+  it('shows no names on the wall when showName is off', () => {
+    const anon = {
+      ...session,
+      shownResponses: { r1: { taskId: 3, anonymousId: 'anon-a', text: 'Hi', showName: false } },
+    }
+    renderQuiz({ session: anon, anonymousId: 'anon-z', presentation: false, live: true })
+    expect(screen.getByText('Hi')).toBeInTheDocument()
+    expect(screen.queryByText(/anon-a/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^—/)).not.toBeInTheDocument()
+  })
+
   it('leaves students and tasks without showResponses unchanged', () => {
     const { unmount } = renderQuiz({ session, anonymousId: 'anon-a', presentation: false })
     expect(screen.getByPlaceholderText('Type your answer here…')).toBeInTheDocument()
