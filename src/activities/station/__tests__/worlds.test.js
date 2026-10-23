@@ -1,6 +1,9 @@
 // @vitest-environment node
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import definition from '../definition.js'
+import { PACK as ZOO_PACK } from '../worlds/zoo.js'
+import { PACK as TOY_PACK } from '../worlds/toyshop.js'
 import {
   WORLDS,
   applyCarried,
@@ -43,6 +46,26 @@ const centre = (spotId) => {
 }
 
 describe('world packs', () => {
+  // The pack data in worlds/*.js is copied from the art's parts.json: they must not drift apart.
+  it.each([
+    ['zoo', ZOO_PACK],
+    ['toyshop', TOY_PACK],
+  ])('%s matches public/station/%s/parts.json', (id, pack) => {
+    const json = JSON.parse(readFileSync(`public/station/${id}/parts.json`, 'utf8'))
+    expect(pack.spots).toEqual(
+      json.spots.map(({ id, x, y, w, h, cells, accepts }) => ({ id, x, y, w, h, cells, accepts }))
+    )
+    expect(pack.parts.map((p) => [p.file, p.kind, p.cells, p.canHang])).toEqual(
+      json.parts.map((p) => [p.file, p.kind, p.cells, p.canHang])
+    )
+    expect(pack.parts.map((p) => p.catalogueOrder)).toEqual(
+      json.parts.map((p) => p.catalogueOrder).map((o) => o ?? undefined)
+    )
+    expect((pack.enclosures ?? []).map((e) => [e.kind, e.box])).toEqual(
+      (json.enclosures ?? []).map((e) => [e.kind, e.box])
+    )
+  })
+
   it('reads the zoo: 4 enclosures, 9 animals, 12 spots that each take one enclosure kind', () => {
     expect(WORLDS.zoo.enclosures.map((e) => e.kind)).toEqual(['ice', 'grass', 'jungle', 'water'])
     expect(WORLDS.zoo.parts).toHaveLength(9)

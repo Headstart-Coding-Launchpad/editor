@@ -331,26 +331,32 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | Message | Meaning | Fix |
 |---|---|---|
 | `Task …: lesson must be 1, 2, 3 or 4 (the station has only these lessons so far).` | `lesson` is missing or not 1 to 4 (Phase 1). | Set `lesson` to 1, 2, 3 or 4. |
+| `Task …: world must be one of ….` | `world` is not `station`, `zoo` or `toyshop`. | Use one of the names the message lists, or leave `world` out for the station. |
+| `Task …: the … world is for lesson ….` | A zoo task has a `lesson` other than 3, or a toy shop task one other than 4. | Leave `lesson` out, or set it to the world's lesson (zoo 3, toy shop 4). |
 | `Task …: station task needs at least one item.` | `items` is empty. | Add at least one goal. |
 | `Task …: catalogue must be a list of part ids.` | `catalogue` is not a list. | Write it as a list of part ids. |
 | `Task …: catalogue only applies to lessons 3 and 4.` | `catalogue` is set on Lesson 1 or 2. | Remove it, or use lesson 3 or 4. |
 | `Task …: catalogue part "…" is not in the parts catalogue.` | An id in `catalogue` is not a station part. | Use a part id from the docs page. |
 | `Task …: catalogue part "…" is not available in lesson ….` | The part belongs to a different lesson (Lesson 3 modules, Lesson 4 catalogue parts). | Use a part from this lesson's list. |
+| `Task …: catalogue part "…" isn't in the … world.` | An id in `catalogue` is not one of the zoo's animals or the toy shop's toys (the world the task uses). | Use an animal or toy id from the docs page for that world. |
 | `Task … item …: needs an id.` | An item has no `id`. | Give each item a short unique id. |
 | `Task … item …: id "…" is used more than once.` | Two items share an id. | Make each id unique. |
 | `Task … item …: prompt must be text.` | `prompt` is not text. | Write the prompt as a string, or leave it out. |
 | `Task … item …: goal must be one of ….` | `goal` is missing or not a station goal. | Use one of the goals listed. |
 | `Task … item …: goal "…" can't be done in lesson ….` | The goal belongs to other lessons (for example `undo` needs Lesson 3 or 4). | Move the item to a matching lesson or choose another goal. |
+| `Task … item …: goal "…" isn't in the … world.` | The goal does not make sense in the task's world (for example `power_on` in the zoo, or `sort` in the toy shop). | Use a goal the docs page lists for that world, or change the task's `world`. |
 | `Task … item …: goal "…" needs a target (hull or lights).` | `pick_colour` has no `target`. | Set `target` to `hull` or `lights`. |
 | `Task … item …: goal "…" doesn't use a target.` | `choose_captain` or `undo` has a `target`. | Remove the `target`. |
 | `Task … item …: target "…" must be ….` | The target is not valid for the goal (a power section, `hull` or `lights`, a crate id, or a part id). | Use a target of the kind the message names. |
 | `Task … item …: target "…" is not in this lesson's catalogue.` | A `place_part` or `order_part` target is not in the task's catalogue. | Add it to `catalogue` or pick another part. |
+| `Task … item …: target "…" isn't in the … world.` | A part target is an id from a different world (a dome in the zoo, a lion in the station). | Use a part id from the task's own world. |
 | `Task … item …: target "…" must be a crate id (crate-1, crate-2, crate-3, crate-4 or crate-5).` | An `open_crate` target is not one of the five crates. | Use `crate-1` to `crate-5`. |
 | `Task … item …: target "…" is not one of this task's crates.` | The task has a `crates` list and the target is not in it. | Add the crate to `crates` or pick one that is there. |
 | `Task … item …: order only applies to power_on, open_crate, place_part goals.` | `order` is on another goal. | Remove it, or use one of those goals. |
 | `Task … item …: order must be a list of at least 2 ids.` | `order` is not a list, or has fewer than 2 ids. | List 2 or more ids. |
 | `Task … item …: order lists the same id twice.` | An id repeats in `order`. | Make each id appear once. |
 | `Task … item …: order "…" must be ….` | An id in `order` is not valid for the goal (a power section, a crate in the task, or a part in the lesson's catalogue). | Use an id of the kind the message names. |
+| `Task … item …: order "…" isn't in the … world.` | An id in a `place_part` `order` list is from a different world. | Use part ids from the task's own world. |
 | `Task … item …: order can't be used with a target or a card; list the ids in order instead.` | The goal has `order` and also `target` or `card`. | Remove `target` / `card`. |
 | `Task … item …: order "…" is not a crate the note lists.` | `onlyNoted` with `order` where an ordered crate is a decoy. | Order only crates whose sticker is on the note. |
 | `Task … item …: match only applies to pick_colour goals.` | `match` is on another goal. | Remove it. |
@@ -359,6 +365,7 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … item …: card can't be used with a target; the part on the card is the target.` | A goal has both `card` and `target`. | Keep one. |
 | `Task … item …: card "…" must be a part id from the parts catalogue.` | `card` is not a station part. | Use a part id from the docs page. |
 | `Task … item …: card "…" is not in this lesson's catalogue.` | The card's part is not on offer this lesson. | Pick a part from this lesson's list. |
+| `Task … item …: card "…" isn't in the … world.` | `card` is a part id from a different world. | Use a part id from the task's own world. |
 | `Task … item …: onlyNoted only applies to open_crate goals.` | `onlyNoted` is on another goal. | Remove it. |
 | `Task … item …: onlyNoted must be true or false.` | `onlyNoted` is not a boolean. | Write `true`. |
 | `Task … item …: onlyNoted needs the task's note and crates (with stickers).` | `onlyNoted` with no `note` or no `crates`. | Add both to the task. |
@@ -772,3 +779,6 @@ Python and Turtle tasks; see [python.md](python.md#screen-layout-layout).
 | `Task …: note sticker "…" must be ….` | A sticker on the delivery note is not one of the sticker names. | Use a sticker the message lists. |
 | `Task …: mistakes must be a list of 1 to … drops, each with a part and a spot.` | `mistakes` is empty, too long, or an entry is missing `part` or `spot`. | Give 1 to the maximum drops, each `{ part, spot }`. |
 | `Task … mistake …: spot must be one of ….` | A mistake's spot is not one of the station's spots. | Use a spot id the message lists. |
+| `Task … mistake …: part "…" isn't in the … world.` | A mistake's part is from a different world. | Use a part id from the task's own world. |
+| `Task … mistake …: the … is too big for spot "…".` | A zoo mistake puts an animal on a spot smaller than the animal (the polar bear needs a 2x2 spot). | Pick a spot the animal fits in, in another enclosure. |
+| `Task … mistake …: the … belongs on spot "…"; a keeper's mistake goes in the wrong enclosure.` | A zoo mistake puts the animal in its own enclosure, so it is not a mistake. | Pick a spot in a different enclosure (for example `grass-lion` on `ice-2`). |
