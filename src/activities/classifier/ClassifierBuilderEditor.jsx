@@ -199,7 +199,7 @@ export default function ClassifierBuilderEditor({ task, onUpdate }) {
           </InlineField>
         )}
         {testSet === 'live' && (
-          <InlineField label="Right answers needed">
+          <InlineField label="Tries in the round">
             <input
               className="te-input te-act-narrow"
               type="number"
@@ -207,7 +207,7 @@ export default function ClassifierBuilderEditor({ task, onUpdate }) {
               max="20"
               value={task.liveTestSize ?? ''}
               placeholder={String(DEFAULT_LIVE_TEST_SIZE)}
-              aria-label="Right answers needed"
+              aria-label="Tries in the round"
               onChange={(event) => set({ liveTestSize: readNumber(event.target.value) })}
             />
           </InlineField>

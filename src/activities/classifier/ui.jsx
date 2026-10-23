@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
-import RoundProgress, { BonusBanner } from '../ui/RoundProgress.jsx'
+import RoundProgress from '../ui/RoundProgress.jsx'
 import { DONE_MOMENT_MS } from '../ui/useRoundFlow.js'
 import { roundSummaryText } from '../round.js'
 import ClassifierBuilderEditor from './ClassifierBuilderEditor.jsx'
@@ -23,14 +23,18 @@ import {
   liveCountOf,
   mixupsOf,
   nextTarget,
+  padOf,
   panelsOf,
+  predictLive,
   rasterize,
+  recentMissesOf,
   recordLive,
   removeClass,
   removeExample,
   rightsOf,
   runTest,
   setClassName,
+  setPad,
   shortLabel,
   splitExamples,
   splitLabel,
@@ -48,12 +52,15 @@ import {
 // (never per pointer move).
 //
 // The flow: teach each thing a few drawings (no Train button), then the pad guesses live as each
-// stroke ends. In the default round the pad asks for a thing, the student draws it and presses
-// Done, and it is a tick or a miss; a miss can be taught in one tap. The task is marked as you
-// go (the host submits when the core is met), so there is no Check button.
+// stroke ends. In the default round the pad suggests a thing, the student draws anything (they
+// may try to fool it) and presses Done, then says what they drew with one tap on the things'
+// emoji (the suggested one is highlighted). The pad is right when its guess is what they drew;
+// a miss can be taught in one tap. Every try counts towards the core, right or wrong. The task
+// is marked as you go (the host submits when the core is met), so there is no Check button.
 //
 // The student's drawings are in `state.examples` on the device. A teacher's read-only view is
-// built from the shared summary, which has no drawings (counts, rights, misses, mix-ups only).
+// built from the shared summary: counts, tries, rights, misses, mix-ups, and the pad now and the
+// last misses as small 16 x 16 grids (never the strokes or the taught drawings).
 
 // A miss without the fool-it panel clears itself after this long; with it, the student taps.
 const MISS_MOMENT_MS = 1800
@@ -102,10 +109,10 @@ function GuessBars({ labels, scores, top }) {
   )
 }
 
-// "It gets 4 of 5 right" as a meter.
+// "It got 4 of 5 right" as a meter.
 function ResultMeter({ right, total }) {
   if (!(total > 0)) return null
-  const text = `It gets ${right} of ${total} right`
+  const text = `It got ${right} of ${total} right`
   return (
     <div className="act-cls-result" data-testid="classifier-result" role="status">
       <span className="act-cls-result__big">{text}</span>
@@ -129,8 +136,47 @@ function MixupList({ result }) {
   )
 }
 
-// The read-only (tutor) view: where the student is. Teaching: drawings per thing. Round: rights,
-// misses and mix-ups. The drawings themselves never leave the student's device.
+// The tutor's picture of the student's work: the pad as it is now and the last few misses, as
+// the 16 x 16 grids the pad looks at. The strokes and taught drawings never leave the device.
+function TutorWork({ state }) {
+  const pad = padOf(state)
+  const recent = recentMissesOf(state)
+  if (!pad && !recent.length) return null
+  return (
+    <div className="act-cls-section" data-testid="classifier-tutor-work">
+      {pad && (
+        <figure className="act-cls-mixup" data-testid="classifier-tutor-pad">
+          <div className="act-cls-thumb act-cls-thumb--big" style={{ cursor: 'default' }}>
+            <GridThumb grid={pad.grid} title="What is on the student's pad now" />
+          </div>
+          <figcaption>
+            On the pad now{pad.target ? ` (asked for ${shortLabel(pad.target)})` : ''}
+          </figcaption>
+        </figure>
+      )}
+      {recent.length > 0 && (
+        <div className="act-cls-mixups" data-testid="classifier-tutor-misses">
+          {recent.map((m, i) => (
+            <figure className="act-cls-mixup" key={`${i}-${m.grid.slice(0, 16)}`}>
+              <div className="act-cls-thumb" style={{ cursor: 'default' }}>
+                <GridThumb
+                  grid={m.grid}
+                  title={`Missed: they drew ${splitLabel(m.actual).name || m.actual}`}
+                />
+              </div>
+              <figcaption>
+                It said {shortLabel(m.predicted)}, they drew {shortLabel(m.actual)}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// The read-only (tutor) view: where the student is. Teaching: drawings per thing. Round: tries,
+// rights, misses and mix-ups, plus the pad now and the last misses as small grids.
 function TutorSummary({ task, state }) {
   const counts = countsOf(state)
   const min = taskMinExamples(task)
@@ -144,7 +190,7 @@ function TutorSummary({ task, state }) {
     <div className="act-cls-section" data-testid="classifier-summary">
       <p className="act-notice">
         The drawings stay on the student&apos;s device. You see how many they have of each thing,
-        and how the round is going.
+        how the round is going, and a small picture of their pad and of their last misses.
       </p>
       {labels.length === 0 ? (
         <p>The student has not named any things yet.</p>
@@ -163,8 +209,8 @@ function TutorSummary({ task, state }) {
         <>
           <p data-testid="classifier-round-summary">
             {tries === 0
-              ? `Ready: 0/${core} right`
-              : `${roundSummaryText(rights, Math.max(core, rights), core, 'right')} · ${Math.max(0, tries - rights)} missed`}
+              ? `Ready: 0/${core} tried`
+              : `${roundSummaryText(tries, Math.max(core, tries), core, 'tried')} · ${rights} right`}
           </p>
           {tries > 0 && <ResultMeter right={rights} total={tries} />}
           <MixupList result={state.result} />
@@ -181,6 +227,7 @@ function TutorSummary({ task, state }) {
           )}
         </>
       )}
+      <TutorWork state={state} />
       {graded.passed && <ActivityCorrect>Target reached</ActivityCorrect>}
     </div>
   )
@@ -190,6 +237,8 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
   const state = stateProp ?? initialClassifierState(task)
   const [strokes, setStrokes] = useState([])
   const [feedback, setFeedback] = useState(null)
+  // After Done, before the student says what they drew: { grid, predicted, suggested }.
+  const [pending, setPending] = useState(null)
   const panels = panelsOf(task)
   const testSet = testSetOf(task)
   const live = testSet === 'live'
@@ -232,8 +281,6 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
     return () => clearTimeout(timer)
   }, [feedback, feedbackWait])
 
-  if (readOnly) return <TutorSummary task={task} state={state} />
-
   // The thing being taught: the first named one that still needs drawings.
   const currentIndex = rows.findIndex((name) => cleanLabel(name) && (counts[name] ?? 0) < min)
   const currentLabel = currentIndex >= 0 ? rows[currentIndex] : ''
@@ -247,6 +294,23 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
   const update = (fn) => onChange?.((prev) => fn(prev ?? initialClassifierState(task)))
   const topScore = guess?.label ? (guess.scores[guess.label] ?? 0) : 0
 
+  // Share the pad with the tutor as its grid at each stroke end (not the strokes), with the thing
+  // it is for. Not while a try is being named or shown: that try is about to be recorded.
+  const padTarget = ready ? (live ? target : null) : canDraw ? currentLabel : null
+  const sharedPad = state.pad
+  useEffect(() => {
+    if (readOnly || !onChange || pending || feedback) return
+    if (
+      (sharedPad?.grid ?? null) === grid &&
+      (!grid || (sharedPad?.target ?? null) === padTarget)
+    ) {
+      return
+    }
+    onChange((prev) => setPad(prev ?? initialClassifierState(task), grid, padTarget))
+  }, [readOnly, onChange, pending, feedback, sharedPad, grid, padTarget, task])
+
+  if (readOnly) return <TutorSummary task={task} state={state} />
+
   function handleAdd() {
     if (!canDraw || !grid) return
     update((prev) => addExample(prev, currentLabel, grid))
@@ -254,22 +318,31 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
   }
 
   function handleDone() {
-    if (!grid || !target || feedback) return
-    const done = recordLive(task, state, target, grid)
-    if (done.predicted == null) return
-    update((prev) => recordLive(task, prev, target, grid).state)
+    if (!grid || !target || feedback || pending) return
+    const predicted = predictLive(task, state, grid)
+    if (predicted == null) return
+    setPending({ grid, predicted, suggested: target })
+  }
+
+  // The student says what they drew: the try is recorded and marked against that.
+  function handleChoose(drawn) {
+    if (!pending) return
+    const { grid: tryGrid, predicted, suggested } = pending
+    update((prev) => recordLive(task, prev, drawn, tryGrid).state)
+    setPending(null)
     setFeedback({
-      actual: target,
-      predicted: done.predicted,
-      right: done.predicted === target,
-      grid,
+      drawn,
+      predicted,
+      right: predicted === drawn,
+      grid: tryGrid,
+      suggested,
       taught: false,
     })
   }
 
   function handleTeach() {
     if (!feedback || feedback.taught) return
-    update((prev) => teachMiss(prev, feedback.actual, feedback.grid))
+    update((prev) => teachMiss(prev, feedback.drawn, feedback.grid))
     setFeedback({ ...feedback, taught: true })
   }
 
@@ -280,12 +353,13 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
 
   const padLabel = ready
     ? live
-      ? 'Drawing pad: draw what it asks for'
+      ? 'Drawing pad: draw anything, even to fool it'
       : 'Drawing pad: draw anything and watch it guess'
     : canDraw
       ? `Drawing pad for ${currentClean}`
       : 'Drawing pad (name your things first)'
-  const padOff = ready ? live && !!feedback : !canDraw
+  const padOff = ready ? live && (!!feedback || !!pending) : !canDraw
+  const finished = ready && live && tries >= core
 
   return (
     <div className="act-panel" data-testid="classifier-activity">
@@ -357,135 +431,195 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
         {duplicate && <p className="act-hint">Give each thing a different name.</p>}
       </section>
 
-      {/* The prompt: what to draw. */}
-      {!ready && (
-        <p className="act-cls-prompt" data-testid="classifier-prompt" aria-live="polite">
-          {canDraw
-            ? `Draw ${min - have} ${shortLabel(currentLabel)}`
-            : duplicate
-              ? 'Give each thing a different name'
-              : `Name ${MIN_CLASSES} things to start`}
-        </p>
-      )}
-      {ready && live && !feedback && target && (
-        <p className="act-cls-prompt" data-testid="classifier-prompt" aria-live="polite">
-          Draw a {shortLabel(target)} — will it get it?
-        </p>
-      )}
-      {ready && !live && (
-        <p className="act-cls-prompt" data-testid="classifier-prompt">
-          It is ready. Draw anything and watch it guess.
-        </p>
-      )}
-
-      {ready && live && <RoundProgress done={rights} total={Math.max(core, rights)} core={core} />}
-      {ready && live && rights >= core && <BonusBanner />}
-
-      <DrawPad strokes={strokes} onStrokes={setStrokes} disabled={padOff} label={padLabel} />
-
-      {/* The guess, live: one bar per thing. */}
-      {ready && <GuessBars labels={labels} scores={guess?.scores} top={guess?.label} />}
-      {ready && panels.includes('sure') && (
-        <div className="act-cls-sure" data-testid="classifier-sure">
-          <span>How sure is it?</span>
-          <Bar value={topScore} label="How sure is it" />
-          <span className="act-cls-bars__pct">
-            {guess?.label ? Math.round(topScore * 100) : 0}%
-          </span>
-        </div>
-      )}
-      {panels.includes('grid') && grid && (
-        <div className="act-cls-grid" data-testid="classifier-grid">
-          <span>What it sees</span>
-          <div className="act-cls-grid__pic">
-            <GridThumb grid={grid} title="What the model sees: your drawing as a small grid" />
-          </div>
-        </div>
-      )}
-
-      {/* Buttons. */}
-      {!feedback && (
-        <div className="act-row">
+      <div className={`act-cls-play${ready ? ' act-cls-play--ready' : ''}`}>
+        <div className="act-cls-play__main">
+          {/* The prompt: what to draw. */}
           {!ready && (
-            <button
-              type="button"
-              className="btn-primary act-btn"
-              disabled={!canDraw || strokes.length === 0}
-              onClick={handleAdd}
-            >
-              {canDraw ? `Add this drawing to ${shortLabel(currentLabel)}` : 'Add this drawing'}
-            </button>
-          )}
-          {ready && live && (
-            <button
-              type="button"
-              className="btn-primary act-btn"
-              disabled={strokes.length === 0}
-              onClick={handleDone}
-            >
-              Done
-            </button>
-          )}
-          {ready && !live && (
-            <button
-              type="button"
-              className="btn-primary act-btn"
-              disabled={!canTest(task, state)}
-              onClick={() => update((prev) => runTest(task, prev))}
-            >
-              Test it
-            </button>
-          )}
-          <button
-            type="button"
-            className="btn-ghost-outline act-btn"
-            disabled={strokes.length === 0}
-            onClick={() => setStrokes(strokes.slice(0, -1))}
-          >
-            Undo last line
-          </button>
-          <button
-            type="button"
-            className="btn-ghost-outline act-btn"
-            disabled={strokes.length === 0}
-            onClick={() => setStrokes([])}
-          >
-            Clear the pad
-          </button>
-        </div>
-      )}
-
-      {/* After Done: a tick or a miss. */}
-      {feedback && (
-        <div
-          className={`act-cls-feedback act-cls-feedback--${feedback.right ? 'right' : 'miss'}`}
-          role="status"
-          data-testid="classifier-feedback"
-        >
-          {feedback.right ? (
-            <p className="act-prompt">✓ It got it! It said {shortLabel(feedback.predicted)}</p>
-          ) : (
-            <p className="act-prompt">
-              ✗ Missed! It said {shortLabel(feedback.predicted)}, you drew{' '}
-              {shortLabel(feedback.actual)}
+            <p className="act-cls-prompt" data-testid="classifier-prompt" aria-live="polite">
+              {canDraw
+                ? `Draw ${min - have} ${shortLabel(currentLabel)}`
+                : duplicate
+                  ? 'Give each thing a different name'
+                  : `Name ${MIN_CLASSES} things to start`}
             </p>
           )}
-          {!feedback.right && panels.includes('fool') && (
-            <div className="act-row">
-              {feedback.taught ? (
-                <span>✓ Taught! It will remember this one.</span>
-              ) : (
-                <button type="button" className="btn-primary act-btn" onClick={handleTeach}>
-                  Teach it this one
-                </button>
-              )}
-              <button type="button" className="btn-ghost-outline act-btn" onClick={handleNext}>
-                Try another
+          {ready && live && !feedback && !pending && target && (
+            <p className="act-cls-prompt" data-testid="classifier-prompt" aria-live="polite">
+              Draw a {shortLabel(target)} — will it get it?
+            </p>
+          )}
+          {ready && live && pending && (
+            <p className="act-cls-prompt" data-testid="classifier-prompt" aria-live="polite">
+              What did you draw?
+            </p>
+          )}
+          {ready && !live && (
+            <p className="act-cls-prompt" data-testid="classifier-prompt">
+              It is ready. Draw anything and watch it guess.
+            </p>
+          )}
+
+          {ready && live && (
+            <RoundProgress done={tries} total={Math.max(core, tries)} core={core} />
+          )}
+          {finished && (
+            <p className="act-result act-result--pass" role="status" data-testid="round-bonus">
+              Round done! It got {rights} of {tries} right. Keep going for bonus tries.
+            </p>
+          )}
+
+          <DrawPad strokes={strokes} onStrokes={setStrokes} disabled={padOff} label={padLabel} />
+
+          {/* After Done: say what you drew (the suggested thing is picked out). */}
+          {pending && (
+            <div
+              className="act-cls-ask"
+              data-testid="classifier-ask"
+              role="group"
+              aria-label="What did you draw?"
+            >
+              <div className="act-cls-ask__choices">
+                {labels.map((label) => {
+                  const name = splitLabel(label).name || label
+                  const suggested = label === pending.suggested
+                  return (
+                    <button
+                      type="button"
+                      key={label}
+                      className={`act-cls-choice${suggested ? ' is-suggested' : ''}`}
+                      aria-label={`I drew ${name}`}
+                      data-suggested={suggested ? 'true' : undefined}
+                      autoFocus={suggested}
+                      onClick={() => handleChoose(label)}
+                    >
+                      <Big label={label} />
+                      <span>{name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <button
+                type="button"
+                className="btn-ghost-outline act-btn"
+                onClick={() => setPending(null)}
+              >
+                Back to the pad
               </button>
             </div>
           )}
+
+          {/* Buttons. */}
+          {!feedback && !pending && (
+            <div className="act-row">
+              {!ready && (
+                <button
+                  type="button"
+                  className="btn-primary act-btn"
+                  disabled={!canDraw || strokes.length === 0}
+                  onClick={handleAdd}
+                >
+                  {canDraw ? `Add this drawing to ${shortLabel(currentLabel)}` : 'Add this drawing'}
+                </button>
+              )}
+              {ready && live && (
+                <button
+                  type="button"
+                  className="btn-primary act-btn"
+                  disabled={strokes.length === 0}
+                  onClick={handleDone}
+                >
+                  Done
+                </button>
+              )}
+              {ready && !live && (
+                <button
+                  type="button"
+                  className="btn-primary act-btn"
+                  disabled={!canTest(task, state)}
+                  onClick={() => update((prev) => runTest(task, prev))}
+                >
+                  Test it
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-ghost-outline act-btn"
+                disabled={strokes.length === 0}
+                onClick={() => setStrokes(strokes.slice(0, -1))}
+              >
+                Undo last line
+              </button>
+              <button
+                type="button"
+                className="btn-ghost-outline act-btn"
+                disabled={strokes.length === 0}
+                onClick={() => setStrokes([])}
+              >
+                Clear the pad
+              </button>
+            </div>
+          )}
+
+          {/* After naming it: a tick, or the pad got it wrong. */}
+          {feedback && (
+            <div
+              className={`act-cls-feedback act-cls-feedback--${feedback.right ? 'right' : 'miss'}`}
+              role="status"
+              data-testid="classifier-feedback"
+            >
+              {feedback.right ? (
+                <p className="act-prompt">✓ It got it! It said {shortLabel(feedback.predicted)}</p>
+              ) : (
+                <p className="act-prompt">
+                  ✗ It got that one wrong. It said {shortLabel(feedback.predicted)}, you drew{' '}
+                  {shortLabel(feedback.drawn)}
+                </p>
+              )}
+              {!feedback.right && panels.includes('fool') && (
+                <div className="act-row">
+                  {feedback.taught ? (
+                    <span>✓ Taught! It will remember this one.</span>
+                  ) : (
+                    <button type="button" className="btn-primary act-btn" onClick={handleTeach}>
+                      Teach it this one
+                    </button>
+                  )}
+                  <button type="button" className="btn-ghost-outline act-btn" onClick={handleNext}>
+                    Try another
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      )}
+
+        {/* The guess, live: one bar per thing, and the optional parts. */}
+        {ready && (
+          <div className="act-cls-play__side">
+            <GuessBars labels={labels} scores={guess?.scores} top={guess?.label} />
+            {panels.includes('sure') && (
+              <div className="act-cls-sure" data-testid="classifier-sure">
+                <span>How sure is it?</span>
+                <Bar value={topScore} label="How sure is it" />
+                <span className="act-cls-bars__pct">
+                  {guess?.label ? Math.round(topScore * 100) : 0}%
+                </span>
+              </div>
+            )}
+            {panels.includes('grid') && grid && (
+              <div className="act-cls-grid" data-testid="classifier-grid">
+                <span>What it sees</span>
+                <div className="act-cls-grid__pic">
+                  <GridThumb
+                    grid={grid}
+                    title="What the model sees: your drawing as a small grid"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Teaching: this thing's drawings, tap one to remove it. */}
       {!ready && canDraw && list.length > 0 && (

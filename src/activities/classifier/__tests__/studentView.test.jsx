@@ -134,21 +134,25 @@ describe.skipIf(!getActivityDefinition('classifier'))(
         fireEvent.click(screen.getByRole('button', { name: 'Add this drawing to line' }))
       }
 
-      // The round: it asks for circle, line, circle. Each right answer shows its tick for a
-      // moment, then moves on by itself.
+      // The round: it suggests circle, line, circle. After Done the student says what they drew;
+      // each right answer shows its tick for a moment, then the round moves on by itself.
       const shapes = [
-        () => drawStroke(pad, circleStroke(0.3)),
-        () =>
-          drawStroke(pad, [
-            [0.1, 0.5],
-            [0.9, 0.5],
-          ]),
-        () => drawStroke(pad, circleStroke(0.35)),
+        ['circle', () => drawStroke(pad, circleStroke(0.3))],
+        [
+          'line',
+          () =>
+            drawStroke(pad, [
+              [0.1, 0.5],
+              [0.9, 0.5],
+            ]),
+        ],
+        ['circle', () => drawStroke(pad, circleStroke(0.35))],
       ]
-      for (const draw of shapes) {
+      for (const [name, draw] of shapes) {
         const done = await screen.findByRole('button', { name: 'Done' }, { timeout: 3000 })
         draw()
         fireEvent.click(done)
+        fireEvent.click(await screen.findByRole('button', { name: 'I drew ' + name }))
       }
       expect(await screen.findByText('3 of 3 done')).toBeInTheDocument()
 
