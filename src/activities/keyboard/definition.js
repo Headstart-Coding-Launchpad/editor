@@ -8,6 +8,7 @@ import {
   validateKeyboardTask,
   KEYBOARD_MODES,
 } from './keyboard.js'
+import { roundSummaryText } from '../round.js'
 import { EDIT_REQUIRE_KEYS, editSolution } from './editText.js'
 import {
   MAX_CODE_LENGTH,
@@ -116,6 +117,8 @@ export default defineActivity({
   description:
     'Practise typing, capital letters with Shift, symbols on a UK keyboard, shortcuts like Ctrl+C, typing real code, and a falling-words warm-up.',
   yaml: { type: 'keyboard' },
+  // Marked as you go: the task passes the moment the core items are done (no Check button).
+  completion: 'auto',
   requires: { physicalKeyboard: true },
   // Tablets without a keyboard get the built-in on-screen keyboard; items marked hardwareOnly
   // still need a real one, and so do edit_text, type_code and falling_words (the student view
@@ -127,6 +130,13 @@ export default defineActivity({
     task: [
       { name: 'mode', type: 'string', required: true, values: KEYBOARD_MODES },
       { name: 'layout', type: 'string', values: ['uk'], description: 'Defaults to uk.' },
+      {
+        name: 'coreItems',
+        type: 'number',
+        modes: ITEM_MODES,
+        description:
+          'How many items make the round (1 to the number of items). The task passes when that many are done; the rest are bonus reps. Defaults to all items.',
+      },
       {
         name: 'requireShiftForCapitals',
         type: 'boolean',
@@ -345,13 +355,22 @@ export default defineActivity({
   },
 
   getProgress: (task, state) => {
-    const { total, correct } = gradeKeyboardTask(task, state)
-    return { kind: 'items', filled: correct, total, correct }
+    const { total, correct, core } = gradeKeyboardTask(task, state)
+    // Counted against the core; reps after it are reported as bonus.
+    const counted = Math.min(correct, core)
+    return {
+      kind: 'items',
+      filled: counted,
+      total: core,
+      correct: counted,
+      bonus: Math.max(0, Math.min(correct, total) - core),
+    }
   },
 
   summarize: (task, state) => {
     if (task?.mode === 'falling_words') return summarizeFalling(state?.items?.[FALLING_ROUND_ID])
-    const { total, correct } = gradeKeyboardTask(task, state)
+    const { total, correct, core, done } = gradeKeyboardTask(task, state)
+    const doneText = roundSummaryText(correct, total, core)
     if (task?.mode === 'type_code') {
       // Averages over the blocks typed so far: "2/3 done · 94% · 71 cpm".
       const typed = keyboardItems(task)
@@ -363,8 +382,8 @@ export default defineActivity({
         ? ` · ${Math.round(average('accuracy') * 100)}% · ${Math.round(average('cpm'))} cpm`
         : ''
       return {
-        text: `${correct}/${total} done${stats}`,
-        tone: correct === total ? 'success' : 'neutral',
+        text: `${doneText}${stats}`,
+        tone: done ? 'success' : 'neutral',
       }
     }
     // edit_text: say how many finished lines were typed out again instead of edited.
@@ -376,8 +395,8 @@ export default defineActivity({
           }).length
         : 0
     return {
-      text: `${correct}/${total} done${retyped ? ` · ${retyped} retyped` : ''}`,
-      tone: correct === total ? 'success' : 'neutral',
+      text: `${doneText}${retyped ? ` · ${retyped} retyped` : ''}`,
+      tone: done ? 'success' : 'neutral',
     }
   },
 

@@ -98,7 +98,7 @@ describe('lessons capabilities', () => {
     const mouse = capabilities.activities.find((a) => a.id === 'mouse')
     expect(mouse.modes).toEqual([])
     expect(mouse).not.toHaveProperty('fieldsByMode')
-    expect(mouse.fields.map((f) => f.name)).toEqual(['touch', 'targets', 'items'])
+    expect(mouse.fields.map((f) => f.name)).toEqual(['coreItems', 'touch', 'targets', 'items'])
   })
 
   it("lists each module's own task fields, including its complete and carry fields", () => {

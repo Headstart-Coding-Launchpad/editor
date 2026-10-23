@@ -978,6 +978,82 @@ select {
   font-size: 2.6rem;
 }
 
+/* Task-change flash (TaskChangeFlash.jsx): a full-width title band under the 52px top bar when the
+   class moves to a new task. Slides in, holds ~1.2s, slides out; the 1600ms length mirrors
+   MOTION_MS.taskFlash. White on --colour-primary is about 8:1. Never takes a click or focus. */
+.task-change-flash-wrap {
+  position: fixed;
+  top: 52px;
+  left: 0;
+  right: 0;
+  /* Same layer as the 👍 and Time's up banners. */
+  z-index: 1245;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.task-change-flash {
+  padding: 14px 24px;
+  background: var(--colour-primary);
+  color: var(--colour-text-on-primary);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: clamp(1.25rem, 3.2vw, 2rem);
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  animation: task-change-flash 1600ms var(--motion-ease-glide) both;
+}
+
+.task-change-flash__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes task-change-flash {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  14% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  76% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+
+@keyframes task-change-flash-fade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  14%,
+  76% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-change-flash {
+    animation-name: task-change-flash-fade;
+  }
+}
+
 /* Teacher session actions and lesson-link popover */
 .teacher-session-controls {
   display: flex;
@@ -3893,37 +3969,53 @@ label.te-backdrop-tag,
   display: inline-block;
 }
 
-.act-item-nav {
+/* Round progress: non-interactive dots + "3 of 5 done" (ui/RoundProgress.jsx). */
+.act-round {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: 10px;
+}
+
+.act-round__dots {
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
-.act-item-dot {
-  min-width: 44px;
-  min-height: 44px;
+.act-round__dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
   border: 2px solid var(--ui-border-strong);
   background: var(--ui-surface);
-  font-weight: 600;
-  color: var(--colour-ink-strong);
-  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
-.act-item-dot[aria-current='step'] {
-  border-color: var(--colour-primary);
-  background: var(--ui-surface-tint);
-}
-
-.act-item-dot--done {
+.act-round__dot--done {
   border-color: var(--colour-success-edge);
   color: var(--colour-success-text);
 }
 
-.act-item-dot--wrong {
-  border-color: var(--colour-error-edge);
-  color: var(--colour-error-text);
+.act-round__dot--bonus {
+  border-style: dashed;
+}
+
+.act-round__text {
+  font-weight: 600;
+  color: var(--colour-ink-strong);
+}
+
+.act-round-finished {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 /* Binary */

@@ -1,5 +1,6 @@
 // Mouse activity definition (pure). Wraps ./mouse.js in the activity contract.
 import { defineActivity } from '../defineActivity.js'
+import { roundSummaryText } from '../round.js'
 import {
   describeMouseItem,
   gradeMouseTask,
@@ -21,12 +22,20 @@ export default defineActivity({
   description:
     'Practise clicking, double-clicking, right-clicking, dragging, scrolling and hovering (with touch-screen equivalents).',
   yaml: { type: 'mouse' },
+  // Marked as you go: the task passes the moment the core items are done (no Check button).
+  completion: 'auto',
   requires: { finePointer: true },
   touchFallback: 'equivalent',
 
   // Each item's `action` picks what the student does; there is no task-level mode.
   fields: {
     task: [
+      {
+        name: 'coreItems',
+        type: 'number',
+        description:
+          'How many items make the round (1 to the number of items). The task passes when that many are done; the rest are bonus reps. Defaults to all items.',
+      },
       {
         name: 'touch',
         type: 'string',
@@ -100,16 +109,24 @@ export default defineActivity({
   },
 
   getProgress: (task, state) => {
-    const { total, correct } = gradeMouseTask(task, state, deviceOf(state))
-    return { kind: 'items', filled: correct, total, correct }
+    const { total, correct, core } = gradeMouseTask(task, state, deviceOf(state))
+    // Counted against the core; reps after it are reported as bonus.
+    const counted = Math.min(correct, core)
+    return {
+      kind: 'items',
+      filled: counted,
+      total: core,
+      correct: counted,
+      bonus: Math.max(0, Math.min(correct, total) - core),
+    }
   },
 
   summarize: (task, state) => {
-    const { total, correct } = gradeMouseTask(task, state, deviceOf(state))
+    const { total, correct, core, done } = gradeMouseTask(task, state, deviceOf(state))
     const touch = state?.device?.touch ? ' (touch)' : ''
     return {
-      text: `${correct}/${total} done${touch}`,
-      tone: correct === total ? 'success' : 'neutral',
+      text: `${roundSummaryText(correct, total, core)}${touch}`,
+      tone: done ? 'success' : 'neutral',
     }
   },
 

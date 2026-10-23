@@ -39,14 +39,19 @@ afterEach(() => {
 })
 
 describe('Mouse UI', () => {
-  it('completes a click item and marks the task when everything is done', async () => {
+  it('completes a click item, shows the done moment, then the finish card (no Check button)', async () => {
     const task = taskWith([{ id: 'a', action: 'click', target: 'star' }])
     const { state, onSubmit } = renderMouse(task)
     expect(screen.getByTestId('mouse-instruction')).toHaveTextContent('Click the star')
+    expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
     fireEvent.click(target('star'), { detail: 1 })
     expect(state().items.a).toEqual({ via: 'click' })
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
-    expect(screen.getByTestId('mouse-instruction')).toHaveTextContent('All done')
+    expect(screen.getByTestId('mouse-instruction')).toHaveTextContent('Got it!')
+    await waitFor(() => expect(screen.getByTestId('round-finished')).toBeInTheDocument(), {
+      timeout: 3000,
+    })
+    // Marked as you go: the host auto-submits the passing change, the view never does.
+    expect(onSubmit).not.toHaveBeenCalled()
   })
 
   it('tells the student when they clicked the wrong target', () => {
@@ -198,5 +203,39 @@ describe('Mouse UI', () => {
     const { state } = renderMouse(task)
     fireEvent.pointerEnter(target('box'), { pointerType: 'mouse' })
     await waitFor(() => expect(state().items.a).toEqual({ via: 'hover' }), { timeout: 2000 })
+  })
+})
+
+describe('Mouse UI: core and bonus rounds', () => {
+  const items = [
+    { id: 'a', action: 'click', target: 'star' },
+    { id: 'b', action: 'click', target: 'box' },
+  ]
+
+  it('shows round progress, then a bonus moment once the core is done', async () => {
+    const task = taskWith(items, { coreItems: 1 })
+    const { state } = renderMouse(task)
+    expect(screen.getByText('0 of 1 done')).toBeInTheDocument()
+    fireEvent.click(target('star'), { detail: 1 })
+    expect(screen.getByText('Done! ⭐ Bonus round')).toBeInTheDocument()
+    expect(mouse.grade(task, state()).passed).toBe(true)
+    // Gestures during the done moment are ignored, then the bonus item appears, labelled Bonus.
+    await waitFor(
+      () => expect(screen.getByTestId('mouse-instruction')).toHaveTextContent('Click the box'),
+      {
+        timeout: 3000,
+      }
+    )
+    expect(screen.getByText('Bonus')).toBeInTheDocument()
+  })
+
+  it('Play again clears the items on this device without submitting', async () => {
+    const task = taskWith(items, { coreItems: 1 })
+    const { state, onSubmit } = renderMouse(task, { initialState: mouse.solutionState(task) })
+    expect(screen.getByText('You did it! 2 done')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Play again' }))
+    expect(state().items).toEqual({})
+    expect(screen.getByTestId('mouse-instruction')).toHaveTextContent('Click the star')
+    expect(onSubmit).not.toHaveBeenCalled()
   })
 })

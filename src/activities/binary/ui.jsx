@@ -1,5 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react'
-import ItemNav from '../ui/ItemNav.jsx'
+import React, { useState } from 'react'
+import RoundProgress, { BonusBanner, RoundFinished } from '../ui/RoundProgress.jsx'
+import TutorItemPicker from '../ui/TutorItemPicker.jsx'
+import { useRoundFlow } from '../ui/useRoundFlow.js'
+import { coreCountOf } from '../round.js'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
 import {
   ASCII_MAX_TEXT,
@@ -167,7 +170,7 @@ function BitRow({
   )
 }
 
-// A labelled text box for typed answers. Enter checks, like the to_decimal box.
+// A labelled text box for typed answers.
 function AnswerInput({ label, value, onValue, readOnly, onEnter, filter, maxLength, ...rest }) {
   return (
     <input
@@ -340,90 +343,16 @@ function PixelGrid({ rows, onToggle, readOnly, label }) {
   )
 }
 
-export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = false }) {
+// One question: its prompt, the controls for the mode, and the running decimal.
+function BinaryItem({ task, item, itemState, update, readOnly }) {
   const bits = task?.bits ?? DEFAULT_BITS
   const mode = task?.mode ?? 'make_number'
-  const items = task?.items ?? []
   const places = placeValues(bits)
   const showPlaceValues = task?.showPlaceValues !== false
   // make_number shows the running total (that is the exercise); to_binary hides it so the
   // student converts rather than searches. Authors can override with showDecimal.
   const showDecimal =
     typeof task?.showDecimal === 'boolean' ? task.showDecimal : mode === 'make_number'
-  const [index, setIndex] = useState(0)
-  // Results captured when Check was pressed: { [itemId]: { correct, hint, snapshot } }. A result
-  // only shows while the item and the student's entry still match its snapshot, so marks never
-  // grade work live and vanish when anything changes it (an edit, a teacher reset, Start again,
-  // or the author editing the answer).
-  const [results, setResults] = useState({})
-  // A teacher edit or reset changes answers from outside this view, often on a question the
-  // student isn't looking at. Show the first question that changed. Read-only: never calls
-  // onChange, which would replace the teacher's edit.
-  const seenStateRef = useRef(state)
-  useEffect(() => {
-    const previous = seenStateRef.current
-    seenStateRef.current = state
-    if (readOnly || previous === state) return
-    const same = (item) =>
-      JSON.stringify(itemStateOf(previous, item, task)) ===
-      JSON.stringify(itemStateOf(state, item, task))
-    const changed = items.findIndex((item) => !same(item))
-    if (changed >= 0) setIndex(changed)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state])
-  const current = items[Math.min(index, items.length - 1)]
-  if (!current) return <p>This binary task has no questions yet.</p>
-  const itemState = itemStateOf(state, current, task)
-  const snapshotOf = (item) => JSON.stringify([item, itemStateOf(state, item, task)])
-  const isUnanswered = (item) =>
-    JSON.stringify(itemStateOf(state, item, task)) === JSON.stringify(itemStateOf(null, item, task))
-  const checkedResult = (item) => {
-    const result = results[item.id]
-    return result && result.snapshot === snapshotOf(item) ? result : undefined
-  }
-  const liveResult = readOnly ? gradeItem(task, current, itemState) : checkedResult(current)
-
-  function update(patch) {
-    if (readOnly) return
-    onChange?.((prev) => ({
-      ...(prev ?? { v: 1 }),
-      items: {
-        ...(prev?.items ?? {}),
-        [current.id]: { ...itemStateOf(prev, current, task), ...patch },
-      },
-    }))
-  }
-
-  async function handleCheck() {
-    const outcome = await onSubmit?.()
-    const next = {}
-    for (const item of items) {
-      // Questions the student hasn't started stay unmarked; the one on screen is always marked.
-      if (item !== current && isUnanswered(item)) continue
-      next[item.id] = {
-        ...gradeItem(task, item, itemStateOf(state, item, task)),
-        snapshot: snapshotOf(item),
-      }
-    }
-    setResults(next)
-    if (!outcome?.passed) {
-      const firstOpen = items.findIndex(
-        (item) => !gradeItem(task, item, itemStateOf(state, item, task)).correct
-      )
-      if (firstOpen >= 0) setIndex(firstOpen)
-    }
-  }
-
-  const statusFor = (item) => {
-    const result = readOnly
-      ? isUnanswered(item)
-        ? null
-        : gradeItem(task, item, itemStateOf(state, item, task))
-      : checkedResult(item)
-    if (!result) return null
-    return result.correct ? 'done' : 'wrong'
-  }
-
   const value = fromBits(itemState.bits ?? '') ?? 0
   const codeFormat = task?.codeFormat ?? 'binary'
 
@@ -443,14 +372,14 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
         />
         <BitRow
           label=""
-          bits={String(current.a ?? '')}
+          bits={String(item.a ?? '')}
           places={places}
           showPlaceValues={showPlaceValues}
           testId="a"
         />
         <BitRow
           label="+"
-          bits={String(current.b ?? '')}
+          bits={String(item.b ?? '')}
           places={places}
           showPlaceValues={false}
           testId="b"
@@ -471,8 +400,8 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
   function renderHex() {
     return (
       <>
-        <HexValue item={current} bits={bits} showPlaceValues={showPlaceValues} />
-        {current.to === 'binary' ? (
+        <HexValue item={item} bits={bits} showPlaceValues={showPlaceValues} />
+        {item.to === 'binary' ? (
           <BitRow
             label="Binary"
             bits={itemState.bits}
@@ -486,18 +415,17 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
         ) : (
           <label className="act-row">
             <span style={{ fontWeight: 600, minWidth: 72 }}>
-              {current.to === 'hex' ? 'Hex' : 'Decimal'}
+              {item.to === 'hex' ? 'Hex' : 'Decimal'}
             </span>
             <AnswerInput
-              label={`Your answer in ${current.to === 'hex' ? 'hex' : 'decimal'}`}
+              label={`Your answer in ${item.to === 'hex' ? 'hex' : 'decimal'}`}
               value={itemState.answer}
               onValue={(answer) => update({ answer })}
               readOnly={readOnly}
-              onEnter={handleCheck}
-              filter={current.to === 'hex' ? /[^0-9a-fA-FxX]/g : /[^\d]/g}
-              maxLength={current.to === 'hex' ? 8 : 6}
-              inputMode={current.to === 'hex' ? 'text' : 'numeric'}
-              autoCapitalize={current.to === 'hex' ? 'characters' : undefined}
+              filter={item.to === 'hex' ? /[^0-9a-fA-FxX]/g : /[^\d]/g}
+              maxLength={item.to === 'hex' ? 8 : 6}
+              inputMode={item.to === 'hex' ? 'text' : 'numeric'}
+              autoCapitalize={item.to === 'hex' ? 'characters' : undefined}
             />
           </label>
         )}
@@ -506,8 +434,8 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
   }
 
   function renderAscii() {
-    const text = String(current.text ?? '')
-    if (current.direction === 'decode') {
+    const text = String(item.text ?? '')
+    if (item.direction === 'decode') {
       return (
         <>
           <div className="act-row" role="list" aria-label="Codes">
@@ -529,7 +457,6 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
               value={itemState.answer}
               onValue={(answer) => update({ answer })}
               readOnly={readOnly}
-              onEnter={handleCheck}
               filter={/[^\x20-\x7e]/g}
               maxLength={ASCII_MAX_TEXT + 4}
               style={{ width: '16em' }}
@@ -554,7 +481,6 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
               value={itemState.codes[i] ?? ''}
               onValue={(code) => update({ codes: replaceAt(itemState.codes, i, code) })}
               readOnly={readOnly}
-              onEnter={handleCheck}
               filter={codeFormat === 'decimal' ? /[^\d]/g : /[^01]/g}
               maxLength={codeFormat === 'decimal' ? 3 : 8}
               inputMode="numeric"
@@ -566,8 +492,8 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
   }
 
   function renderPixels() {
-    const rows = Array.isArray(current.rows) ? current.rows.map(String) : []
-    if (current.direction === 'encode') {
+    const rows = Array.isArray(item.rows) ? item.rows.map(String) : []
+    if (item.direction === 'encode') {
       return (
         <div className="act-row" style={{ alignItems: 'flex-start', gap: 16 }}>
           <PixelGrid rows={rows} label="Picture" />
@@ -579,7 +505,6 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
                 value={itemState.rows[r] ?? ''}
                 onValue={(bitsText) => update({ rows: replaceAt(itemState.rows, r, bitsText) })}
                 readOnly={readOnly}
-                onEnter={handleCheck}
                 filter={/[^01]/g}
                 maxLength={row.length}
                 inputMode="numeric"
@@ -629,8 +554,8 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
           <>
             <BitRow
               label="Binary"
-              bits={String(current.value ?? '')}
-              places={placeValues(String(current.value ?? '').length)}
+              bits={String(item.value ?? '')}
+              places={placeValues(String(item.value ?? '').length)}
               showPlaceValues={showPlaceValues}
               testId="value"
             />
@@ -645,9 +570,6 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
                 disabled={readOnly}
                 aria-label="Your answer in decimal"
                 onChange={(event) => update({ answer: event.target.value.replace(/[^\d]/g, '') })}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !readOnly) handleCheck()
-                }}
               />
             </label>
           </>
@@ -692,9 +614,8 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
   }
 
   return (
-    <div className="act-panel" data-testid="binary-activity">
-      <ItemNav items={items} currentIndex={index} onSelect={setIndex} statusFor={statusFor} />
-      <p className="act-prompt">{MODE_PROMPTS[mode]?.(current) ?? 'Binary'}</p>
+    <>
+      <p className="act-prompt">{MODE_PROMPTS[mode]?.(item) ?? 'Binary'}</p>
 
       {renderBody()}
 
@@ -703,20 +624,94 @@ export function BinaryStudentView({ task, state, onChange, onSubmit, readOnly = 
           Your bits make <strong data-testid="live-decimal">{value}</strong>
         </p>
       )}
+    </>
+  )
+}
 
-      {liveResult && !liveResult.correct && liveResult.hint && (
-        <p className="act-hint" role="status">
-          💡 {liveResult.hint}
+export function BinaryStudentView({ task, state, onChange, readOnly = false, teacher = false }) {
+  // A tutor (read-only view, or editing a student's answers) never lingers or advances: they
+  // follow the student's item or pick one in the tutor-only picker.
+  const tutor = readOnly || teacher
+  const items = task?.items ?? []
+  const core = coreCountOf(task, items.length)
+  const isDone = (item) => gradeItem(task, item, itemStateOf(state, item, task)).correct
+  // The round moves on by itself: a question ticks the moment it is right, shows its done moment,
+  // then the next one appears. The student never picks a question. The tutor's read-only view
+  // follows the student, or shows the question picked in the tutor-only picker.
+  const flow = useRoundFlow(items, isDone, { readOnly: tutor })
+  const [tutorPickId, setTutorPickId] = useState(null)
+  const lastItem = items[items.length - 1]
+  const current = tutor
+    ? (items.find((item) => item.id === tutorPickId) ??
+      items.find((item) => !isDone(item)) ??
+      lastItem)
+    : (flow.current ?? lastItem)
+  if (!current) return <p>This binary task has no questions yet.</p>
+
+  // Every rep done (core and bonus): the finish card. Play again clears the questions on this
+  // device; the task stays passed (a clear is never a submit).
+  if (!tutor && flow.finished) {
+    return (
+      <div className="act-panel" data-testid="binary-activity">
+        <RoundFinished total={items.length} onPlayAgain={() => onChange?.({ v: 1, items: {} })} />
+      </div>
+    )
+  }
+
+  const itemState = itemStateOf(state, current, task)
+  const result = gradeItem(task, current, itemState)
+  const touched = JSON.stringify(itemState) !== JSON.stringify(itemStateOf(null, current, task))
+  const isBonus = items.indexOf(current) >= core
+  const inBonus = flow.doneCount >= core && core < items.length
+  const statusFor = (item) => {
+    const own = itemStateOf(state, item, task)
+    if (JSON.stringify(own) === JSON.stringify(itemStateOf(null, item, task))) return null
+    return gradeItem(task, item, own).correct ? 'done' : 'wrong'
+  }
+
+  function update(patch) {
+    if (readOnly || flow.lingering) return
+    onChange?.((prev) => ({
+      ...(prev ?? { v: 1 }),
+      items: {
+        ...(prev?.items ?? {}),
+        [current.id]: { ...itemStateOf(prev, current, task), ...patch },
+      },
+    }))
+  }
+
+  return (
+    <div className="act-panel" data-testid="binary-activity">
+      <RoundProgress done={flow.doneCount} total={items.length} core={core} />
+      {tutor && (
+        <TutorItemPicker
+          items={items}
+          currentId={current.id}
+          onSelect={setTutorPickId}
+          statusFor={statusFor}
+        />
+      )}
+      {!tutor && inBonus && <BonusBanner />}
+      {isBonus && <span className="act-badge">Bonus</span>}
+      <BinaryItem
+        task={task}
+        item={current}
+        itemState={itemState}
+        update={update}
+        readOnly={readOnly || flow.lingering}
+      />
+
+      {/* Marked as you go: right is a tick straight away, and until then it is just "not yet". */}
+      {result.correct && <ActivityCorrect />}
+      {!result.correct && touched && !tutor && (
+        <p className="act-round__text" role="status">
+          Not yet
         </p>
       )}
-      {liveResult?.correct && <ActivityCorrect />}
-
-      {!readOnly && (
-        <div className="act-row act-row--submit">
-          <button type="button" className="btn-primary act-btn" onClick={handleCheck}>
-            Check my work
-          </button>
-        </div>
+      {!result.correct && touched && tutor && result.hint && (
+        <p className="act-hint" role="status">
+          💡 {result.hint}
+        </p>
       )}
     </div>
   )

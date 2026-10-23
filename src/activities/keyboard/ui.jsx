@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
 import KeyboardBuilderEditor from './KeyboardBuilderEditor.jsx'
-import ItemNav from '../ui/ItemNav.jsx'
+import RoundProgress, { BonusBanner, RoundFinished } from '../ui/RoundProgress.jsx'
+import TutorItemPicker from '../ui/TutorItemPicker.jsx'
+import { useRoundFlow } from '../ui/useRoundFlow.js'
+import { coreCountOf } from '../round.js'
 import ActivityCorrect, { SpinTick } from '../ui/ActivityCorrect.jsx'
 import OnScreenKeyboard, { codesForKey } from './OnScreenKeyboard.jsx'
 import TypeCodeBlock from './TypeCodeBlock.jsx'
@@ -154,6 +157,7 @@ export function KeyboardStudentView({
   onChange,
   onSubmit,
   readOnly = false,
+  teacher = false,
   device = {},
   // sessions/{lessonId}/typingHistory/{anonymousId} (src/shared/typingHistory.js) or null.
   history = null,
@@ -161,22 +165,39 @@ export function KeyboardStudentView({
   const mode = task?.mode ?? 'type_text'
   const layout = task?.layout ?? DEFAULT_LAYOUT
   const items = keyboardItems(task)
-  const [index, setIndex] = useState(() => {
-    const firstOpen = items.findIndex((item) => !isItemFinished(mode, state?.items?.[item.id]))
-    return firstOpen === -1 ? 0 : firstOpen
-  })
   const [misses, setMisses] = useState({})
   const [lastWrong, setLastWrong] = useState(null)
   const recorderRef = useRef(createInputRecorder())
   const startedAtRef = useRef(null)
   const lastComboRef = useRef({ combo: null, at: 0 })
   const practiceRef = useRef(null)
-  const current = items[Math.min(index, items.length - 1)]
-  const result = current ? (state?.items?.[current.id] ?? {}) : {}
-  const finished = isItemFinished(mode, result)
   // Keys are named as the student's keyboard names them: this device's platform while working,
   // the student's recorded one in the teacher's read-only view.
   const platform = readOnly ? state?.device?.platform : device.platform
+  // A tutor (read-only view, or editing a student's answers) never lingers or advances: they
+  // follow the student's item or pick one in the tutor-only picker.
+  const tutor = readOnly || teacher
+  // An item is done once finished and right. The round moves on by itself (useRoundFlow): the
+  // student never picks an item. The tutor's read-only view follows the student's item, or shows
+  // the one picked in the tutor-only picker.
+  const isDone = (item) => {
+    const itemResult = state?.items?.[item.id]
+    return (
+      isItemFinished(mode, itemResult) &&
+      gradeKeyboardItem(task, item, itemResult, { platform }).correct
+    )
+  }
+  const core = coreCountOf(task, items.length)
+  const flow = useRoundFlow(items, isDone, { readOnly: tutor })
+  const [tutorPickId, setTutorPickId] = useState(null)
+  const lastItem = items[items.length - 1]
+  const current = tutor
+    ? (items.find((item) => item.id === tutorPickId) ??
+      items.find((item) => !isDone(item)) ??
+      lastItem)
+    : (flow.current ?? lastItem)
+  const result = current ? (state?.items?.[current.id] ?? {}) : {}
+  const finished = isItemFinished(mode, result)
   const grade = current ? gradeKeyboardItem(task, current, result, { platform }) : null
   const virtualKeyboard = !!device.virtualKeyboard && !readOnly
   const currentId = current?.id
@@ -217,6 +238,22 @@ export function KeyboardStudentView({
       />
     )
   }
+  // Every rep done (core and bonus): the finish card. Play again clears the items on this device.
+  if (!tutor && flow.finished) {
+    return (
+      <div className="act-panel" data-testid="keyboard-activity">
+        {/* The last item's "you went from 40 to 70" stays on the finish card. */}
+        {showsTypingHistory(task, current) && (
+          <TypingHistoryLine
+            modeHistory={typingHistoryForMode(history, mode)}
+            result={result}
+            finished
+          />
+        )}
+        <RoundFinished total={items.length} onPlayAgain={playAgain} />
+      </div>
+    )
+  }
 
   // Updates the current item's result from the host's latest state (not this render's), so
   // fast typing never drops a key between renders. Returns the new result.
@@ -245,19 +282,20 @@ export function KeyboardStudentView({
     setLastWrong(description)
   }
 
-  function advanceAfter(nextItems) {
-    const openIndex = items.findIndex((item) => !isItemFinished(mode, nextItems[item.id]))
-    if (openIndex === -1) {
-      // Everything has a result: mark the task (logs the attempt and shows feedback).
-      onSubmit?.()
-    } else if (openIndex !== index) {
-      setIndex(openIndex)
-    }
-  }
-
+  // Marked as you go: finishing the core items passes the task (useActivityState auto-submits
+  // on that change), and the round flow moves on to the next item after its done moment.
   function finishItem(next) {
     setResult(next)
-    advanceAfter({ ...(state?.items ?? {}), [current.id]: next })
+  }
+
+  // Play again: clear every item on this device. The task stays passed (a clear is never a
+  // submit), so nothing is logged or un-passed.
+  function playAgain() {
+    recorderRef.current.reset()
+    startedAtRef.current = null
+    setLastWrong(null)
+    setMisses({})
+    onChange?.({ v: 1, ...(state?.device ? { device: state.device } : {}), items: {} })
   }
 
   // ─── Per-mode handling of one normalised keydown ──────────────────────────
@@ -268,8 +306,7 @@ export function KeyboardStudentView({
     if (startedAtRef.current == null) startedAtRef.current = event.t
     const recorded = recorderRef.current.events()
     const chars = typedCharacters(recorded)
-    let justFinished = false
-    const next = updateResult((prevResult) => {
+    updateResult((prevResult) => {
       if (prevResult.done) return prevResult
       const typed = String(prevResult.typed ?? '')
       let nextTyped = typed
@@ -278,7 +315,6 @@ export function KeyboardStudentView({
       else if (event.key === 'Enter') done = typed.length > 0
       else nextTyped = typed + event.key
       if (nextTyped.length >= text.length) done = true
-      justFinished = done
       const timeMs = event.t - startedAtRef.current
       const stats = typingStats(text, nextTyped, timeMs)
       return {
@@ -295,15 +331,13 @@ export function KeyboardStudentView({
         done,
       }
     })
-    if (justFinished) advanceAfter({ ...(state?.items ?? {}), [current.id]: next })
     return true
   }
 
   function handleTypeCode(event) {
     const target = normaliseCode(current.code, task.language)
     let handled = false
-    let justFinished = false
-    const next = updateResult((prevResult) => {
+    updateResult((prevResult) => {
       if (prevResult.done) return prevResult
       const typed = String(prevResult.typed ?? '')
       const applied = applyTypeCodeKey(typed, event, task.language)
@@ -313,7 +347,6 @@ export function KeyboardStudentView({
       const timeMs = event.t - startedAtRef.current
       const stats = typeCodeStats(target, applied.typed, timeMs)
       const done = applied.typed.length >= target.length
-      justFinished = done
       return {
         mode: 'type_code',
         typed: applied.typed,
@@ -327,7 +360,6 @@ export function KeyboardStudentView({
         done,
       }
     })
-    if (justFinished) advanceAfter({ ...(state?.items ?? {}), [current.id]: next })
     return handled
   }
 
@@ -345,8 +377,7 @@ export function KeyboardStudentView({
 
   function handleEditText(event) {
     let handled = false
-    let justFinished = false
-    const next = updateResult((prevResult) => {
+    updateResult((prevResult) => {
       if (prevResult.done) return prevResult
       const applied = applyEditKey(editModelOf(prevResult), event)
       if (!applied) return prevResult
@@ -354,7 +385,6 @@ export function KeyboardStudentView({
       const used = new Set(prevResult.used ?? [])
       if (applied.used) used.add(applied.used)
       const done = applied.model.text === String(current.target ?? '')
-      justFinished = done
       return {
         ...applied.model,
         used: [...used],
@@ -363,7 +393,6 @@ export function KeyboardStudentView({
         done,
       }
     })
-    if (justFinished) advanceAfter({ ...(state?.items ?? {}), [current.id]: next })
     return handled
   }
 
@@ -491,6 +520,8 @@ export function KeyboardStudentView({
     if (!isItemFinished(mode, itemResult)) return null
     return gradeKeyboardItem(task, item, itemResult, { platform }).correct ? 'done' : 'wrong'
   }
+  const isBonus = items.indexOf(current) >= core
+  const inBonus = flow.doneCount >= core && core < items.length
 
   const missCount = misses[current.id] ?? 0
   const showHint = !finished && missCount >= MISSES_BEFORE_HINT
@@ -501,20 +532,20 @@ export function KeyboardStudentView({
 
   return (
     <div className="act-panel" data-testid="keyboard-activity">
-      <ItemNav
-        items={items}
-        currentIndex={index}
-        onSelect={setIndex}
-        statusFor={statusFor}
-        noun={
-          mode === 'type_code'
-            ? 'Block'
-            : mode === 'type_text' || mode === 'edit_text'
-              ? 'Line'
-              : 'Step'
-        }
-      />
-      <p className="act-prompt">{MODE_PROMPTS[mode]?.(task, current, platform) ?? 'Keyboard'}</p>
+      <RoundProgress done={flow.doneCount} total={items.length} core={core} />
+      {tutor && (
+        <TutorItemPicker
+          items={items}
+          currentId={current.id}
+          onSelect={setTutorPickId}
+          statusFor={statusFor}
+        />
+      )}
+      {!tutor && inBonus && <BonusBanner />}
+      <p className="act-prompt">
+        {isBonus && <span className="act-badge">Bonus</span>}{' '}
+        {MODE_PROMPTS[mode]?.(task, current, platform) ?? 'Keyboard'}
+      </p>
 
       {showsTypingHistory(task, current) && (
         <TypingHistoryLine
@@ -699,15 +730,10 @@ export function KeyboardStudentView({
         />
       )}
 
-      {!readOnly && (
+      {!readOnly && finished && grade && !grade.correct && (
         <div className="act-row act-row--submit">
-          {finished && (
-            <button type="button" className="btn-ghost-outline act-btn" onClick={retry}>
-              Try again
-            </button>
-          )}
-          <button type="button" className="btn-primary act-btn" onClick={() => onSubmit?.()}>
-            Check my work
+          <button type="button" className="btn-ghost-outline act-btn" onClick={retry}>
+            Try again
           </button>
         </div>
       )}

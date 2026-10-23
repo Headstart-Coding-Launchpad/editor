@@ -6,6 +6,17 @@ import { renderActivityUi } from '../../../test/activityUiHarness.jsx'
 
 const base = { id: 1, taskType: 'activity', activityType: 'binary' }
 
+// The round moves on by itself, so a test that needs a later question starts with the earlier ones
+// already done (their solutions saved).
+function solved(task, ...ids) {
+  const start = binary.initialState(task)
+  const solution = binary.solutionState(task)
+  return {
+    ...start,
+    items: { ...start.items, ...Object.fromEntries(ids.map((id) => [id, solution.items[id]])) },
+  }
+}
+
 function renderBinary(task, options = {}) {
   return renderActivityUi(BinaryStudentView, {
     task,
@@ -29,12 +40,13 @@ describe('Binary UI: overflow', () => {
     await waitFor(() => expect(binary.grade(task, state()).passed).toBe(true))
   })
 
-  it('explains the lost carry when the student says no', async () => {
+  it('says only "Not yet" when the student says no, with no Check button', () => {
     renderBinary(task)
     fireEvent.click(screen.getByRole('switch', { name: 'Answer 2 column' }))
     fireEvent.click(screen.getByRole('button', { name: 'No' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Check my work' }))
-    expect(await screen.findByText(/so it was lost. That is an overflow./)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
+    expect(screen.getByText('Not yet')).toBeInTheDocument()
+    expect(screen.queryByText(/so it was lost/)).not.toBeInTheDocument()
   })
 })
 
@@ -57,8 +69,8 @@ describe('Binary UI: hex', () => {
     const input = screen.getByLabelText('Your answer in hex')
     fireEvent.change(input, { target: { value: '2f!' } })
     expect(state().items.a.answer).toBe('2f')
-    fireEvent.click(screen.getByRole('button', { name: /Next/ }))
-    expect(screen.getByTestId('hex-value')).toHaveTextContent('3C')
+    // Right as typed: it ticks, then the round moves on to the next question by itself.
+    expect(await screen.findByTestId('hex-value', {}, { timeout: 3000 })).toHaveTextContent('3C')
     const switches = screen.getAllByRole('switch')
     expect(switches).toHaveLength(8)
     fireEvent.click(switches[2])
@@ -66,10 +78,8 @@ describe('Binary UI: hex', () => {
     fireEvent.click(switches[4])
     fireEvent.click(switches[5])
     expect(state().items.b.bits).toBe('00111100')
-    fireEvent.click(screen.getByRole('button', { name: /Next/ }))
-    fireEvent.change(screen.getByLabelText('Your answer in decimal'), {
-      target: { value: '255' },
-    })
+    const decimal = await screen.findByLabelText('Your answer in decimal', {}, { timeout: 3000 })
+    fireEvent.change(decimal, { target: { value: '255' } })
     await waitFor(() => expect(binary.grade(task, state()).passed).toBe(true))
   })
 })
@@ -97,10 +107,9 @@ describe('Binary UI: ascii', () => {
   })
 
   it('shows the lookup table and decodes codes into text', () => {
-    const { state } = renderBinary(task)
+    const { state } = renderBinary(task, { initialState: solved(task, 'a') })
     expect(screen.getByText('ASCII table')).toBeInTheDocument()
     expect(screen.getAllByRole('listitem', { hidden: true }).length).toBeGreaterThanOrEqual(95)
-    fireEvent.click(screen.getByRole('button', { name: /Next/ }))
     expect(screen.getByText('01001111')).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Your decoded text'), { target: { value: 'OK' } })
     expect(state().items.b.answer).toBe('OK')
@@ -152,8 +161,7 @@ describe('Binary UI: pixels', () => {
   })
 
   it('shows a picture and takes typed rows in encode mode', () => {
-    const { state } = renderBinary(task)
-    fireEvent.click(screen.getByRole('button', { name: /Next/ }))
+    const { state } = renderBinary(task, { initialState: solved(task, 'a') })
     expect(screen.getByRole('img', { name: 'Row 1, column 1: filled' })).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'Row 1, column 3: empty' })).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Row 1 bits'), { target: { value: '1102' } })
@@ -161,8 +169,10 @@ describe('Binary UI: pixels', () => {
     expect(state().items.b.rows).toEqual(['110', '011'])
   })
 
-  it('is read-only for a teacher view', () => {
+  it('is read-only for a teacher view, which can pick any question', () => {
     renderBinary(task, { readOnly: true, initialState: binary.solutionState(task) })
+    // Everything is done, so the tutor starts on the last question (encode: no switches).
+    fireEvent.click(screen.getByRole('button', { name: 'Item 1, done' }))
     for (const cell of screen.getAllByRole('switch')) expect(cell).toBeDisabled()
     expect(
       screen.getAllByRole('switch').filter((c) => c.getAttribute('aria-checked') === 'true')

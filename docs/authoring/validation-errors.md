@@ -215,6 +215,8 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | Message | Meaning | Fix |
 |---|---|---|
 | `Task …: keyboard mode must be one of ….` | `mode` is missing or unknown. | Use `type_text`, `find_key`, `symbols`, `shortcuts`, `edit_text`, `type_code` or `falling_words`. |
+| `…: coreItems must be a whole number from 1 to … (the number of items).` | Keyboard, Binary or Mouse: `coreItems` isn't a whole number between 1 and the number of items. | Set it to how many items make the core goal (the rest are Bonus), or remove it so every item is core. |
+| `…: coreItems is ignored for falling_words (it is one round, not a list of items).` | Warning. A falling-words round has no item list, so there is nothing to split into core and bonus. | Remove `coreItems` from the task. |
 | `Task …: keyboard layout "…" is not supported (use "uk").` | Only the UK layout exists so far. | Remove `layout` or set it to `uk`. |
 | `Task …: minAccuracy must be a number above 0 and at most 1.` | `minAccuracy` is a fraction, not a percentage. | Use e.g. `0.9` for 90%. |
 | `Task …: targetWpm must be a positive number.` | `targetWpm` is zero, negative or not a number. | Use a positive number, or remove it to skip the speed goal. |

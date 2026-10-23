@@ -100,12 +100,12 @@ beforeEach(() => {
 describe.skipIf(!getActivityDefinition('template_activity'))(
   'Template Activity StudentView click-through',
   () => {
-    it('renders in the classroom, has no Run button and reports a passing Check', async () => {
+    it('renders in the classroom, has no Run or Check button and marks as you go', async () => {
       const user = userEvent.setup()
       render(<StudentView lessonId={LESSON.id} lesson={LESSON} />)
       await user.type(await screen.findByLabelText('Your answer'), '4')
       expect(screen.queryByRole('button', { name: 'Run' })).not.toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Check my work' }))
+      expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
       const answer = JSON.stringify({ v: 1, items: { a: { answer: '4' } } })
       await waitFor(() =>
         expect(mocks.session.writeStudentRun).toHaveBeenCalledWith('student-1', {

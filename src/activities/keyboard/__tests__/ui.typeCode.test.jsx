@@ -48,7 +48,7 @@ describe('Keyboard UI: type_code', () => {
     expect(state().items.a).toHaveProperty('cpm')
     expect(state().items.a).toHaveProperty('wpm')
     expect(state().items.a).toHaveProperty('timeMs')
-    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(onSubmit).not.toHaveBeenCalled() // marked as you go: the host auto-submits
     expect(screen.getByText('Well done!')).toBeInTheDocument()
   })
 

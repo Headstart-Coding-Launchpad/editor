@@ -120,6 +120,7 @@ the Builder preview.
 
 | Moment | Where | Motion |
 |---|---|---|
+| Task change flash | `TaskChangeFlash.jsx` (`.task-change-flash` in `index.css`, `MOTION_MS.taskFlash`), in `StudentView` | When the class moves to a new task (the session's `currentTaskId` changes), a full-width primary-colour band under the top bar reads "Task 4 · Title": slides down, holds ~1.2 s, slides away (1.6 s). Live lesson and the presentation window only; not first load, reload, `viewingTaskId` browsing, solo, preview or the tutor dashboard. `pointer-events: none`, no focus change; an always-mounted `aria-live="polite"` region says "Now on task 4: Title". Reduced motion: no slide, the band only fades. No sound |
 | Task slide | `TaskSlideTransition.jsx` (students via `LessonTaskContent`, presentation window, teacher explainer in `TeacherView`) | Direction-aware 120px slide over `--motion-slow` / glide; Back slides the other way |
 | Neighbour images | `usePreloadNeighbourImages` (`src/shared/preloadImages.js`) in `StudentView` and `TeacherView` | Not motion: the next and previous tasks' images load in the background, so they don't pop in after the slide |
 | Explainer arrives | `ExplainerPanel.jsx` (`entranceKey`) | `motion-drop-in` after the task slide lands, first view only; not on collapse/expand. Teacher view: the old explainer slides out, then the new one drops in |

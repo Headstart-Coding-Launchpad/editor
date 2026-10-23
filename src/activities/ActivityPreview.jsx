@@ -57,6 +57,7 @@ function usePreviewActivity(task, definition, taskKey) {
       definition.completion === 'auto' &&
       !definition.submitsAnswers &&
       discrete &&
+      !definition.grade(task, prev).passed &&
       definition.grade(task, next).passed
     ) {
       submit(next)

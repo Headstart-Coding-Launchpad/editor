@@ -18,6 +18,9 @@ export default defineActivity({
   icon: '🧩',
   description: 'Answer each question by typing a short answer.',
   yaml: { type: 'template_activity' },
+  // Marked as you go: the task passes when every question is right (no Check button). Use
+  // 'on_submit' only for an activity that needs a deliberate Submit.
+  completion: 'auto',
 
   // TODO(new-activity): device needs. `requires` lists physicalKeyboard / finePointer / hover;
   // `touchFallback` is 'equivalent' (touch works), 'virtual_keyboard' or 'block'.
@@ -79,7 +82,10 @@ export default defineActivity({
   // Per-keystroke / per-pointer-move changes MUST be 'continuous' (only synced while the teacher
   // watches this student). Button presses and finished items are 'discrete'.
   // TODO(new-activity): classify your own state changes.
-  classifyChange: (prev, next) => {
+  // A change that makes a question right is discrete even when it was typed: the round ticks it
+  // and the host auto-submits on the change that passes the task.
+  classifyChange: (prev, next, task) => {
+    if (gradeTask(task, prev).correct !== gradeTask(task, next).correct) return 'discrete'
     const ids = new Set([...Object.keys(prev?.items ?? {}), ...Object.keys(next?.items ?? {})])
     for (const id of ids) {
       if (prev?.items?.[id]?.answer !== next?.items?.[id]?.answer) return 'continuous'

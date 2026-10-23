@@ -326,6 +326,22 @@ export default function BinaryBuilderEditor({ task, onUpdate }) {
         </select>
       </Field>
 
+      <Field
+        label="Core items (rest are bonus)"
+        hint="How many make the round. The task passes at this many; later items are bonus reps. Blank means all."
+      >
+        <input
+          className="te-input te-act-narrow"
+          type="number"
+          min="1"
+          max={(task.items ?? []).length || undefined}
+          step="1"
+          value={task.coreItems ?? ''}
+          aria-label="Core items"
+          onChange={(e) => setOptional('coreItems', readNumber(e.target.value))}
+        />
+      </Field>
+
       {BIT_MODES.includes(mode) && (
         <Field label="Bits" hint={`${MIN_BITS} to ${MAX_BITS}`}>
           <input
