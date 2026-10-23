@@ -30,7 +30,9 @@ Key references:
    Principles): the tutor sees the student's work live, before Check, on the card and in
    StudentModal, and has an action to help (highlight, edit answers, hint). Plan for this up
    front, not as a follow-up.
-5. Ask the user about anything that changes scope (modes, grading rules, device policy) before
+5. Run the fun check in `docs/architecture/fun-first.md` on the design before building, and again on
+   the finished screen; note any fail and why it stays.
+6. Ask the user about anything that changes scope (modes, grading rules, device policy) before
    writing code. Create a `feature/<id>-activity` branch; set the request's status to `planned`.
 
 ## 2. Scaffold

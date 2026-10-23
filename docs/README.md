@@ -57,6 +57,11 @@ Plan for moving Firestore from the US (`nam5`) to Europe (Hub P24): where each F
 
 **Load when:** planning or carrying out the Firestore move, or changing where Firestore is opened.
 
+### [architecture/fun-first.md](architecture/fun-first.md)
+The fun-first design guide for student-facing features: 14 principles, anti-patterns, the 10-point pass/fail fun check, and the real-children test.
+
+**Load when:** designing or reviewing any student-facing feature, activity or module, and before shipping one.
+
 ### [architecture/lesson-type-modules.md](architecture/lesson-type-modules.md)
 Design intent and contract for `src/modules/<type>/` lesson modules, including student, builder, teacher-live, persistence, check editor, runtime, sandbox, and carry-through responsibilities.
 
