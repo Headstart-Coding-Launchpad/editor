@@ -32,7 +32,9 @@ Key references:
    Principles): the tutor sees the student's workspace live, before Run or submit, through
    `TeacherLiveView` and StudentModal, and can act on it (live edit, highlight, send code, hint).
    Plan for this up front, not as a follow-up.
-5. Ask the user about anything that changes scope before writing code: what the student builds,
+5. Run the fun check in `docs/architecture/fun-first.md` on the design before building, and again on
+   the finished screen; note any fail and why it stays.
+6. Ask the user about anything that changes scope before writing code: what the student builds,
    how it is checked (on change, on run, by the workspace), whether it runs code (a runtime),
    teacher live edit, playground, device needs. Create a `feature/<type>-module` branch; set the
    request's status to `planned`.

@@ -33,6 +33,10 @@ For a bug: what you did, what happened, what should have happened (a lesson id o
 snippet that reproduces it). For docs: the page and section, and what it should say.
 For tooling: the command or output wanted and what it replaces.
 
+## Fun moment
+
+What does the child do in the first few seconds, and what happens on screen? Check the idea against `docs/architecture/fun-first.md` (omit for bug, docs and tooling requests).
+
 ## Example task
 
 The YAML you wish you could write (omit for bug, docs and tooling requests unless it helps):
