@@ -3,8 +3,8 @@
 // Node-safe: no JSX, React or DOM imports (activityInterface.test.js checks).
 //
 // Privacy: the student's own sentences stay on the device. `serialize` (the device's saved copy)
-// holds them; `serializeShared` (Firebase, the teacher card, the attempt log) holds the sentence
-// the model wrote, the guess counts and how many words the student wrote, never the words.
+// and `serializeShared` (Firebase, the teacher card, the attempt log) both hold the student's own
+// sentences (capped), so the tutor can read them live, plus the model's sentence and guess counts.
 import { defineActivity } from '../defineActivity.js'
 import { roundSummaryText } from '../round.js'
 import {

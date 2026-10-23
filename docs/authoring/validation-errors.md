@@ -307,7 +307,7 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: classifier mode … is not built yet. Use mode: drawing.` | `mode: sound` (the microphone version) is planned but not built. | Use `mode: drawing`. |
 | `Task …: classifier mode must be drawing.` | `mode` is missing or not `drawing` (webcam mode does not exist). | Set `mode: drawing`. |
 | `Task …: classifier testSet must be one of ….` | `testSet` is there but is not one of `held_out`, `teacher`, `live`. (Leaving it out is fine: it means the live round.) | Fix it, or leave it out. |
-| `Task …: classifier panels must be a list (any of ….).` | `panels` is not a list. | Write `panels: [grid, sure, fool]` (any of those). |
+| `Task …: classifier panels must be a list (any of …).` | `panels` is not a list. | Write `panels: [grid, sure, fool]` (any of those). |
 | `Task …: classifier panels has an unknown value "…". Use ….` | A `panels` entry is not `grid`, `sure` or `fool`. | Use only those three, or leave `panels` out (default `[fool]`). |
 | `Task …: classifier classes must be a list of names.` | `classes` is not a list. | Write `classes: [cat, fish]`, or leave it out so students name their own. |
 | `Task …: each class name must be 1 to … characters.` | A class name is empty or too long. | Use short names (up to 16 characters). |

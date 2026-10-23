@@ -217,11 +217,18 @@ export function NextWordStudentView({
       {voice.id === OWN_VOICE && (
         <section className="act-nw-section">
           {watching ? (
-            <p data-testid="next_word-own-count">
-              {ownWords === 0
-                ? 'No sentences written yet.'
-                : `Wrote ${ownWords} ${ownWords === 1 ? 'word' : 'words'} of their own (kept on their device).`}
-            </p>
+            <>
+              <p data-testid="next_word-own-count">
+                {ownWords === 0
+                  ? 'No sentences written yet.'
+                  : `Wrote ${ownWords} ${ownWords === 1 ? 'word' : 'words'} of their own:`}
+              </p>
+              {state?.own ? (
+                <p className="act-nw-own-readonly" data-testid="next_word-own-text">
+                  {state.own}
+                </p>
+              ) : null}
+            </>
           ) : (
             <>
               <label htmlFor={`${groupId}-own`} className="act-nw-heading">

@@ -124,13 +124,12 @@ The tutor sees, live and before anything is finished, what the student has:
 - Go Live on an activity task is teacher-only: a student's work is never broadcast.
 - The tutor view cannot be edited (a student's own writing is theirs).
 
-### Privacy: the student's own sentences
+### The tutor sees the student's own sentences
 
-The student's own sentences stay **on their device**. What goes to Firebase, the tutor's card
-and the attempt log is the sentence the model wrote, the guess counts, the voice, the slider
-and the **number** of words the student wrote, never the words themselves. (The tutor can see
-the model's sentence and the counts; if a class needs to read the writing itself, the student
-can show it on their screen.)
+Tutors see all student work live (the tutor visibility principle), so the student's own
+sentences (capped at 1200 characters) go to Firebase with the model's sentence, the guess counts,
+the voice and the slider. The tutor's view shows them read-only. Remind students not to write
+anything personal, as with any task.
 
 ## Accessibility and devices
 

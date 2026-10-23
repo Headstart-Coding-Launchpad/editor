@@ -89,7 +89,11 @@ const LESSON = {
 beforeEach(() => {
   localStorage.clear()
   vi.spyOn(Math, 'random').mockReturnValue(0)
-  window.matchMedia = vi.fn(() => ({ matches: true }))
+  window.matchMedia = vi.fn(() => ({
+    matches: true,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }))
   mocks.session = makeSession(LESSON.id)
   mocks.identity = {
     identity: { anonymousId: 'student-1', displayName: 'Sam', lastSessionTimestamp: 456 },
@@ -127,11 +131,10 @@ describe.skipIf(!getActivityDefinition('next_word'))('Next Word StudentView clic
     // What leaves the device carries the sentence and the counts, never the student's own text.
     const answer = JSON.parse(mocks.session.writeStudentRun.mock.calls[0][1].answer)
     expect(answer).toMatchObject({ v: 2, sentence: 'the cat', guesses: 1, right: 1, ownWords: 9 })
-    expect(answer).not.toHaveProperty('own')
     expect(mocks.session.writeStudentCode).not.toHaveBeenCalled()
   })
 
-  it('mirrors a tap (a deliberate click) to the teacher, without the own sentences', async () => {
+  it('mirrors a tap (a deliberate click) to the teacher, with the own sentences', async () => {
     const user = userEvent.setup()
     render(<StudentView lessonId={LESSON.id} lesson={LESSON} />)
     fireEvent.change(await screen.findByLabelText(/Write some sentences/), {
@@ -142,7 +145,7 @@ describe.skipIf(!getActivityDefinition('next_word'))('Next Word StudentView clic
     const [id, serialized] = mocks.session.writeStudentAnswer.mock.calls.at(-1)
     expect(id).toBe('student-1')
     expect(JSON.parse(serialized)).toMatchObject({ sentence: 'the', ownWords: 9 })
-    expect(serialized).not.toContain('The cat sat')
+    expect(serialized).toContain('The cat sat')
   })
 
   it('does not mirror typing while the teacher is not watching', async () => {

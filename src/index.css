@@ -6355,6 +6355,12 @@ label.te-backdrop-tag,
   font-size: 1.6rem;
 }
 
+.act-nw-own-readonly {
+  white-space: pre-wrap;
+  max-height: 10rem;
+  overflow-y: auto;
+}
+
 .act-nw-textarea {
   width: 100%;
   min-height: 7em;

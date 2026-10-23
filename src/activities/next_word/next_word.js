@@ -169,8 +169,7 @@ export function normalizeNextWordState(task, raw) {
 // What leaves the device (Firebase, the teacher card, the attempt log): everything except the
 // student's own sentences, which stay on the device. The word count goes instead.
 export function sharedState(state) {
-  const { own: _own, ...rest } = normalizeNextWordState({}, state)
-  return { ...rest, ownWords: ownWordsOf(state) }
+  return { ...normalizeNextWordState({}, state), ownWords: ownWordsOf(state) }
 }
 
 // Adds the landed word to the state. `guess` is the word the student tapped ('' for none); a

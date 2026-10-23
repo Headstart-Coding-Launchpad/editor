@@ -37,7 +37,11 @@ const chip = (word) => screen.getByRole('button', { name: new RegExp(`^${word}:`
 
 beforeEach(() => {
   vi.spyOn(Math, 'random').mockReturnValue(0)
-  window.matchMedia = vi.fn(() => ({ matches: true }))
+  window.matchMedia = vi.fn(() => ({
+    matches: true,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }))
 })
 afterEach(() => {
   vi.restoreAllMocks()

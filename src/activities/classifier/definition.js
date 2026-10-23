@@ -52,6 +52,8 @@ export default defineActivity({
   description:
     'Teach the pad a few things by drawing them, watch it guess live, then try to fool it and teach it the ones it gets wrong.',
   yaml: { type: 'classifier' },
+  // Marked as you go: the task passes when the round's right answers reach the core.
+  completion: 'auto',
 
   fields: {
     modeField: 'mode',

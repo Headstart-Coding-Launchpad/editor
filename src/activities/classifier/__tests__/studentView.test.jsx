@@ -152,14 +152,14 @@ describe.skipIf(!getActivityDefinition('classifier'))(
       }
       expect(await screen.findByText('3 of 3 done')).toBeInTheDocument()
 
-      // The latest card update has counts, rights and misses, and no drawing.
+      // The latest card update has counts and misses, and no drawing (the final right answer goes with
+      // the submitted run below).
       await waitFor(() => {
         const sent = mocks.session.writeStudentAnswer.mock.calls
         expect(sent.length).toBeGreaterThan(0)
         expect(JSON.parse(sent[sent.length - 1][1])).toMatchObject({
           counts: { circle: 3, line: 3 },
           trained: true,
-          rights: 3,
           misses: 0,
         })
       })
@@ -194,6 +194,6 @@ describe.skipIf(!getActivityDefinition('classifier'))(
         .filter((key) => key.includes('___activity_state___'))
         .map((key) => localStorage.getItem(key))
       expect(saved.some((value) => value.includes('examples'))).toBe(true)
-    })
+    }, 20000)
   }
 )

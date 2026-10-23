@@ -215,12 +215,10 @@ describe('grading', () => {
 })
 
 describe('state', () => {
-  it('keeps the student own sentences out of the shared form, with a word count instead', () => {
+  it('shares the student own sentences with the tutor, with a word count', () => {
     const state = { ...initialNextWordState(TASK), own: 'Secret words here', sentence: 'the cat' }
     const shared = JSON.parse(definition.serializeShared(state))
-    expect(shared).not.toHaveProperty('own')
-    expect(JSON.stringify(shared)).not.toContain('Secret')
-    expect(shared).toMatchObject({ ownWords: 3, sentence: 'the cat' })
+    expect(shared).toMatchObject({ own: 'Secret words here', ownWords: 3, sentence: 'the cat' })
     expect(sharedState(state)).toEqual(shared)
   })
 
@@ -229,7 +227,7 @@ describe('state', () => {
     const local = definition.deserialize(definition.serialize(state), TASK)
     expect(local).toMatchObject({ own: 'Secret words here', ownWords: 3, guesses: 2 })
     const shared = definition.deserialize(definition.serializeShared(state), TASK)
-    expect(shared).toMatchObject({ own: '', ownWords: 3, guesses: 2 })
+    expect(shared).toMatchObject({ own: 'Secret words here', ownWords: 3, guesses: 2 })
   })
 
   it('reads an old v1 state, bad JSON and nothing as a blank state', () => {

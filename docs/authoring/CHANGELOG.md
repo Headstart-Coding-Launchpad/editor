@@ -39,6 +39,26 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-23
 
+- **The three AI activities are redesigned fun-first (handoff #99).** Each is one round, marked
+  as you go, with no Check button.
+  - **Classifier:** the student teaches each thing (`classes`, which may start with an emoji, such
+    as `"🐱 cat"`) `minExamplesPerClass` drawings (default now **3**, was 8); there is no Train
+    step. It then guesses live as they draw. `testSet` is optional and defaults to the new `live`
+    round: "Draw a 🐟, will it get it?", passing at `liveTestSize` right answers (default 5), with a
+    miss offering **Teach it this one**. New `panels` (`grid`, `sure`, `fool`; default `[fool]`)
+    choose the extra parts. `held_out` tasks now need an explicit `minExamplesPerClass` of 4 or
+    more. The bias view is not built.
+  - **Next Word:** students write their own sentences and press a big **Next word** button; the
+    round is `guesses` taps of "Guess what it says next" (default 5). New `panels` (`stats`,
+    `silly`, `voices`; default `[stats]`); `texts` (now optional, each with an optional `emoji`)
+    become voices. `items`, `allowPaste` and `showTemperature` are ignored.
+  - **Real or AI:** one tap per pair, an instant reveal with the tell as a note, a right count that
+    never resets, and `coreItems` (core then bonus pairs). The second "which tell?" question is gone:
+    `tells` is ignored, and each pair's `tell`, `reliable` and `reveal` are optional.
+- Affects: classifier, next_word, real_or_ai · Existing lessons: none use these yet; drafts should
+  drop `items` / `allowPaste` / `showTemperature` (Next Word) and `tells` (Real or AI), and set
+  `minExamplesPerClass` on `held_out` Classifier tasks · Resolves: none
+
 - **Solo study is no longer logged.** Ryan chose not to log Solo Challenge activity (handoff #130),
   so students no longer write `soloLog` and its database rule is gone. The rule was never deployed,
   so nothing was ever stored. `lessons solo-log <id>` and the Admin **Solo & side-quests** tab still
