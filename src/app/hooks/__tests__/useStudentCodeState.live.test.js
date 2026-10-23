@@ -489,6 +489,7 @@ describe('teacherLive payload (this student is the Go Live source)', () => {
       source: 'teacher',
       sourceStudentId: null,
       sourceStudentName: null,
+      publisher: 'presentation',
       lessonType: 'python',
       code: 'print("start")',
     }

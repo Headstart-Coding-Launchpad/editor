@@ -24,7 +24,12 @@ import {
   isSharingAllowed,
 } from '../../shared/taskUtils'
 import { PLAYGROUND_LESSON_TYPES, getTaskModuleType, isCodeTask } from '../../shared/composedLesson'
-import { deriveStudentLiveDisplay, teacherLiveToSnapshot } from '../studentLiveDisplay'
+import TutorLiveBanner from '../components/TutorLiveBanner'
+import {
+  deriveStudentLiveDisplay,
+  liveBannerTaskLabel,
+  teacherLiveToSnapshot,
+} from '../studentLiveDisplay'
 import {
   getTaskActivity,
   isHostedActivityTask,
@@ -983,8 +988,24 @@ export default function StudentView({
       await setTeacherLive(null)
       return
     }
-    await setTeacherLive(cs.currentTeacherLivePayload())
+    await setTeacherLive(cs.currentTeacherLivePayload({ layout: presenterLayout }))
   }
+
+  // The pop-up's layout is forced on students (teacherLive.layout). Publish changes while the
+  // pop-up is the publisher; a dashboard Go Live owns its own layout.
+  useEffect(() => {
+    const live = session?.teacherLive
+    if (!teacherPresentation || !live?.active) return
+    if (live.source !== 'teacher' || live.publisher === 'dashboard') return
+    if (live.layout === presenterLayout) return
+    updateTeacherLive({ layout: presenterLayout })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    teacherPresentation,
+    presenterLayout,
+    session?.teacherLive?.active,
+    session?.teacherLive?.layout,
+  ])
 
   const taskDisplayMode = previewMode
     ? null
@@ -1119,6 +1140,8 @@ export default function StudentView({
     displayAnswer,
     displayOutputCollapsed,
     isLiveCopyBlocked,
+    displayLayout,
+    showTutorLiveBanner,
   } = deriveStudentLiveDisplay({
     teacherPresentation,
     phase,
@@ -1714,6 +1737,12 @@ export default function StudentView({
         singleRow
       />
       {!teacherPresentation && (
+        <TutorLiveBanner
+          active={showTutorLiveBanner}
+          taskLabel={liveBannerTaskLabel(flatTasks, displayedTaskId)}
+        />
+      )}
+      {!teacherPresentation && (
         <TeacherMessageToast
           message={session?.students?.[identity?.anonymousId]?.teacherMessage}
           pushedAt={session?.students?.[identity?.anonymousId]?.teacherMessagePushedAt}
@@ -2160,7 +2189,7 @@ export default function StudentView({
               canOfferCompleteSolution={canOfferCompleteSolution}
               canOfferPersonalSandbox={canOfferPersonalSandbox}
               explainerShowsComplete={explainerShowsComplete}
-              presenterLayout={teacherPresentation ? presenterLayout : 'both'}
+              presenterLayout={teacherPresentation ? presenterLayout : displayLayout}
               onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
               onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
               openTopicId={phase === 'lesson' ? openTopicId : null}

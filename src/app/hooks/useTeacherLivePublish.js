@@ -79,7 +79,10 @@ export function useTeacherLivePublish({
   function canPublishTeacherLive() {
     const s = sessionRef.current
     if (!s?.teacherLive?.active) return false
-    if (teacherPresentation) return s?.teacherLive?.source !== 'student'
+    if (teacherPresentation) {
+      // A Go Live started from the tutor dashboard is the dashboard's to publish.
+      return s?.teacherLive?.source !== 'student' && s?.teacherLive?.publisher !== 'dashboard'
+    }
     if (s.teacherLive.sourceStudentId !== identityRef.current?.anonymousId) return false
     // Quiz and activity tasks are teacher-only broadcasts: a student's answers are never
     // pushed to the class, even if a broadcast of their earlier code task is still running.
@@ -126,6 +129,7 @@ export function useTeacherLivePublish({
     return {
       active: true,
       source: teacherPresentation ? 'teacher' : 'student',
+      ...(teacherPresentation ? { publisher: 'presentation' } : {}),
       sourceStudentId,
       sourceStudentName,
       taskId: currentTaskIdRef.current,
