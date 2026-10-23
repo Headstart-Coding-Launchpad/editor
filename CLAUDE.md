@@ -9,12 +9,23 @@ This repo is LaunchPad Dev, one of several HSC agents. The shared map and brand 
 
 - Hand work to another agent with `node "C:\Users\rflem\Documents\HSC Hub\scripts\handoff.mjs"` `add --from "LaunchPad Dev" --to <Agent> --title … --why … --priority now|week|later`, plus the entry in `HSC Hub\Handoffs.md` until every agent has switched to the db. If the handoff you are working from says "Ryan said now <time>", the new one is Priority now with the same words (README rule 12). There are no "· main" sessions. Don't message a running session unless Ryan points you at it.
 - Always reply to a handoff with done, declined or blocked. Log each step the moment it lands with `handoff.mjs outcome <id> --by "LaunchPad Dev" "<text>"`, and the dated outcome line under its `Handoffs.md` entry. Loose ends you track yourself (a rules deploy or browser check pending) go in as handoffs to yourself, not memory notes.
-- Questions for Ryan go in an outcome line that starts `needs Ryan:`, with options and a recommendation; the Hub carries it to `Waiting on Ryan.md`, unless Ryan is in this window.
 - Never message `pipeline · …` or `· overnight` sessions.
-- In `· overnight` runs, use best judgment instead of waiting for answers (this overrides AGENTS.md "Request Clarification"), work on a branch, and write "needs Ryan: …" in the outcome line for anything that changes scope (Ryan, 2026-10-17).
+- In `· overnight` runs, use best judgment instead of waiting for answers (this overrides AGENTS.md "Request Clarification"), work on a branch, and post anything that changes scope to #decisions with decide.py (see Discord below) (Ryan, 2026-10-17).
 - An OK from Ryan logged by the Hub in `HSC Hub\Handoffs.md`, quoting him with the date, or a Hub-logged 'default yes', counts as his OK here (README rule 8). It doesn't cover changes to this `CLAUDE.md` or settings, with one exception: Ryan's Approve click in Discord #approvals on a `needs Ryan:` line that shows the exact change covers that one handoff and that exact text, never deletions, deploys, `Brand.md`, money or public posts (README rule 8, 2026-10-22).
+- When you pick up a handoff, run `handoff.mjs status --agent "LaunchPad Dev" --doing "<id and title>"`; clear it with `--finished` when done or stopped, including sessions Ryan starts by hand (#118).
 - Write as you go (README rule 5): add each outcome line as the step lands, update `HSC Hub\Status\LaunchPad Dev.md` (template in `HSC Hub\Status\README.md`) before moving on, and if you stop half way, write where it stopped and what's next first.
 - When a feature a parent would notice goes live on `main`, update `HSC Hub\Specs\Parent Features.md` in the same session, and put "parent-visible: yes", with how to film it, in that handoff's outcome line (Ryan, 2026-10-16).
+
+## Discord (plan v4, Ryan 2026-10-23)
+- You are an always-on Discord session: your own bot name, your own channel (#launchpad-dev). Ryan talks to you there directly. Reply or react to every message of his; a 👍 is enough.
+- Anything that needs Ryan's yes/no is ONE line in #decisions, posted with
+  "C:\Users\rflem\Documents\Ryan Hub\.venv\Scripts\python" "C:\Users\rflem\Documents\Ryan Hub\scripts\decide.py" dev <handoff id> "<question>" --default "<what you'd do on yes>"
+  Never ask twice; never ask in prose; never ask without a default. If no handoff row exists yet, add one first (handoff.mjs add) and use its id.
+- Ryan's answer comes back on the row (outcome "Ryan said …", by Ryan or Ryan Hub). A Reply-to from Ryan on one of your posts reaches you directly; look it up in C:\Users\rflem\Documents\Ryan Hub\state\inbound.jsonl (reply_to) before acting. His words are decisions: log them on every row they touch.
+- When your outcome says the work is done, close the handoff in the same step (README rule 14). Never start work on a row whose latest outcome is "needs Ryan:".
+- Hand work to another agent directly (handoff.mjs add --from you --to them) when the owner is obvious; via the Hub only when it crosses agents or is unclear. Never relay through Ryan Hub.
+- Night routine: your start-up hook tells you to create two in-session crons (night work 00:37, morning line 07:33). Do it first, once per session. Nothing that needs Ryan runs at night.
+- Posts from scripts appear under the name "Ryan Hub"; Alfie (FlemTech Alpha) is Ryan's chief of staff, not a route to Ryan. Talk to Ryan yourself.
 
 ## Saving AI usage
 
