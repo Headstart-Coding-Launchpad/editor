@@ -27,10 +27,11 @@ const parseState = (raw) => {
   }
 }
 
-// What goes to Firebase and the teacher: everything except the device-only undo stack.
+// What goes to Firebase and the teacher: everything except the device-only undo stack, which is
+// cut to its last step so the tutor's "Undo last change" has something to put back.
 const sharedState = (state) => {
-  const { undo: _undo, ...rest } = state ?? {}
-  return rest
+  const { undo, ...rest } = state ?? {}
+  return { ...rest, undo: Array.isArray(undo) ? undo.slice(-1) : [] }
 }
 
 const initialState = (task) => initialStationState(task)
@@ -127,7 +128,7 @@ export default defineActivity({
   // UI state, not activity state.
   classifyChange: () => 'discrete',
 
-  // The undo stack is device only.
+  // The undo stack stays on the device except its last step (tutor undo).
   serializeShared: (state) => JSON.stringify(sharedState(state)),
 
   // The station is carried between lessons (host work: defineActivity does not read this yet).

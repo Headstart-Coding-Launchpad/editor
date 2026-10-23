@@ -82,7 +82,7 @@ Goals (`goal`) and the method each one needs:
 }
 ```
 
-`serializeShared` drops `undo` (device only). `classifyChange`: every station change is a
+`serializeShared` keeps only the last `undo` step (the rest is device only), so the tutor's Undo last change has one step to put back. `classifyChange`: every station change is a
 discrete step (a click, a drop); pointer moves during a drag are UI state, not activity state.
 
 ### Helpers

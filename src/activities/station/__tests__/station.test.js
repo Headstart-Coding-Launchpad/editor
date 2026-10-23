@@ -405,14 +405,14 @@ describe('definition', () => {
     expect(definition.grade(t, definition.solutionState(t)).passed).toBe(true)
   })
 
-  it('is automatic, discrete, mouse-only and drops undo from the shared state', () => {
+  it('is automatic, discrete, mouse-only and keeps only the last undo step in the shared state', () => {
     expect(definition.completion).toBe('auto')
     expect(definition.touchFallback).toBe('block')
     expect(definition.requires).toEqual({ finePointer: true })
     const s = run(t, [{ type: 'place', part: 'solar', spot: 'spot-1', method: 'drag' }])
     expect(definition.classifyChange(initialStationState(t), s, t)).toBe('discrete')
     const shared = JSON.parse(definition.serializeShared(s))
-    expect(shared.undo).toBeUndefined()
+    expect(shared.undo).toEqual([s.undo[s.undo.length - 1]])
     expect(shared.scene).toEqual(s.scene)
     expect(definition.serialize(s)).toContain('"undo"')
   })

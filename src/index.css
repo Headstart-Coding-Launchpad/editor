@@ -6602,3 +6602,487 @@ label.te-backdrop-tag,
   width: min(100%, 18em);
   min-height: 44px;
 }
+
+/* Space station activity (src/activities/station/ui.jsx). */
+.act-station {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 12px;
+  outline: none;
+}
+
+.act-station__main {
+  flex: 1 1 520px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.act-station__side {
+  flex: 1 1 260px;
+  max-width: 360px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.act-station__heading {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--colour-ink-strong);
+}
+
+.act-station-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.act-station__scene {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(1.5px 1.5px at 12% 18%, #fff, transparent 60%),
+    radial-gradient(1px 1px at 28% 82%, #fff, transparent 60%),
+    radial-gradient(1.5px 1.5px at 47% 9%, #fde68a, transparent 60%),
+    radial-gradient(1px 1px at 63% 90%, #fff, transparent 60%),
+    radial-gradient(1.5px 1.5px at 78% 14%, #fff, transparent 60%),
+    radial-gradient(1px 1px at 91% 72%, #bfdbfe, transparent 60%),
+    radial-gradient(1px 1px at 5% 58%, #fff, transparent 60%),
+    radial-gradient(1px 1px at 95% 30%, #fff, transparent 60%),
+    linear-gradient(160deg, #0b1020, #1a1340 60%, #0b1020);
+}
+
+.act-station__hull {
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  top: 6%;
+  bottom: 6%;
+  border-radius: 50% / 46%;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--act-station-hull) 85%, #fff),
+    var(--act-station-hull) 55%,
+    color-mix(in srgb, var(--act-station-hull) 70%, #000)
+  );
+  border: 3px solid color-mix(in srgb, var(--act-station-hull) 55%, #000);
+  box-shadow: inset 0 0 30px rgb(0 0 0 / 25%);
+  transition: background 0.3s ease;
+}
+
+.act-station-section {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  border-radius: 14px;
+  background: rgb(15 23 42 / 82%);
+  border: 2px solid rgb(255 255 255 / 25%);
+  transition:
+    background 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+.act-station-section--core {
+  left: 34%;
+  top: 8%;
+  width: 32%;
+  height: 62%;
+}
+
+.act-station-section--left {
+  left: 5%;
+  top: 8%;
+  width: 27%;
+  height: 80%;
+}
+
+.act-station-section--right {
+  left: 68%;
+  top: 8%;
+  width: 27%;
+  height: 80%;
+}
+
+.act-station-section--dock {
+  left: 34%;
+  top: 74%;
+  width: 32%;
+  height: 20%;
+  align-items: center;
+}
+
+.act-station-section.is-lit {
+  background: color-mix(in srgb, var(--act-station-lights) 38%, #1e293b);
+  border-color: var(--act-station-lights);
+  box-shadow:
+    0 0 28px 6px color-mix(in srgb, var(--act-station-lights) 70%, transparent),
+    inset 0 0 22px color-mix(in srgb, var(--act-station-lights) 55%, transparent);
+}
+
+.act-station-power {
+  align-self: flex-start;
+  margin-top: 6px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  background: #334155;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.act-station-section--dock .act-station-power {
+  align-self: center;
+  margin-top: 0;
+}
+
+.act-station-power[aria-pressed='true'] {
+  background: #fff;
+  color: #1e293b;
+}
+
+.act-station-power__state {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.act-station-power:focus-visible,
+.act-station-swatch:focus-visible,
+.act-station-part:focus-visible,
+.act-station-crew:focus-visible,
+.act-station-crate:focus-visible,
+.act-station-tray-part:focus-visible,
+.act-station-spot:focus-visible,
+.act-station__catalogue:focus-visible {
+  outline: 3px solid #fde047;
+  outline-offset: 2px;
+}
+
+.act-station-post {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px dotted rgb(255 255 255 / 35%);
+  pointer-events: none;
+}
+
+.act-station-art {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  min-width: 36px;
+  font-size: 1.5rem;
+  line-height: 1;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--act-station-art) 70%, #fff);
+  border: 2px solid var(--act-station-art);
+  pointer-events: none;
+}
+
+.act-station-art--round {
+  border-radius: 50%;
+}
+
+.act-station-art--wide {
+  border-radius: 10px 22px;
+}
+
+.act-station-part,
+.act-station-spot,
+.act-station-crew {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+
+.act-station-part.is-selected,
+.act-station-crate.is-selected {
+  outline: 4px solid #fff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 7px var(--colour-primary);
+  border-radius: 12px;
+}
+
+.act-station-part.is-moving {
+  opacity: 0.35;
+}
+
+.act-station-spot {
+  border: 3px dashed #fff;
+  border-radius: 12px;
+  cursor: pointer;
+  background: rgb(255 255 255 / 12%);
+}
+
+.act-station-spot.is-near {
+  background: rgb(253 224 71 / 45%);
+  border-color: #fde047;
+}
+
+.act-station-crew {
+  cursor: pointer;
+  animation: act-station-walk 0.9s ease-out;
+}
+
+.act-station-captain {
+  position: absolute;
+  top: -12px;
+  right: -8px;
+  font-size: 1.25rem;
+}
+
+.act-station-crew.is-captain .act-station-art {
+  border-color: #facc15;
+  box-shadow: 0 0 10px #facc15;
+}
+
+@keyframes act-station-walk {
+  from {
+    transform: translate(-50%, 120%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translate(-50%, -50%);
+    opacity: 1;
+  }
+}
+
+.act-station__colours {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.act-station-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.act-station-swatches__label {
+  min-width: 7.5em;
+  font-weight: 600;
+  color: var(--colour-ink-strong);
+}
+
+.act-station-swatch {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  background: var(--act-swatch);
+  box-shadow: 0 0 0 1px #6b7280;
+  cursor: pointer;
+}
+
+.act-station-swatch.is-on {
+  box-shadow:
+    0 0 0 3px var(--colour-primary),
+    0 0 0 5px #fff;
+}
+
+.act-station__bay,
+.act-station__tray {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface-tint);
+  border: 1px dashed var(--ui-border);
+}
+
+.act-station__bay-title {
+  font-weight: 700;
+  color: var(--colour-ink-strong);
+  margin-right: 6px;
+}
+
+.act-station__empty {
+  color: var(--colour-muted);
+}
+
+.act-station-crate,
+.act-station-tray-part {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 64px;
+  min-height: 64px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  border: 2px solid var(--ui-border);
+  background: var(--ui-surface);
+  font-size: 1.75rem;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.act-station-tray-part {
+  cursor: grab;
+}
+
+.act-station-tray-part .act-station-art {
+  width: 40px;
+  min-width: 40px;
+}
+
+.act-station-tray-part.is-held {
+  opacity: 0.4;
+}
+
+.act-station-crate.is-open {
+  opacity: 0.6;
+}
+
+.act-station-crate__label {
+  font-size: 0.75rem;
+  color: var(--colour-ink-strong);
+}
+
+.act-station__goals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.act-station-goal {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.act-station-goal__tick {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--ui-border);
+  text-align: center;
+  line-height: 20px;
+  font-weight: 700;
+}
+
+.act-station-goal.is-done .act-station-goal__tick {
+  background: var(--colour-success);
+  border-color: var(--colour-success-edge);
+  color: #fff;
+}
+
+.act-station-goal__method,
+.act-station-goal__bonus {
+  color: var(--colour-muted);
+  font-size: 0.9rem;
+}
+
+.act-station__keep {
+  color: var(--colour-muted);
+}
+
+.act-station__catalogue {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  height: 320px;
+  overflow-y: auto;
+  border: 2px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.act-station-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--ui-surface-tint);
+}
+
+.act-station-cat-row .act-station-art {
+  width: 40px;
+  min-width: 40px;
+  flex: none;
+}
+
+.act-station-cat-row__name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.act-station-ghost {
+  position: fixed;
+  z-index: 1000;
+  width: 48px;
+  transform: translate(-50%, -50%) scale(1.1);
+  pointer-events: none;
+  opacity: 0.9;
+  filter: drop-shadow(0 6px 8px rgb(0 0 0 / 40%));
+}
+
+.act-station-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.act-station-mini__svg {
+  width: 96px;
+  height: 60px;
+  border-radius: 6px;
+}
+
+.act-station-mini__text {
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .act-station-crew {
+    animation: none;
+  }
+
+  .act-station-section,
+  .act-station__hull {
+    transition: none;
+  }
+}
