@@ -17,7 +17,7 @@ import {
 } from '../src/shared/lessonBlocksCodec.js'
 import { lessonNeedsSealing } from '../src/shared/lessonSeal.js'
 import { buildSoloExport, SOLO_LOG_ROOT } from '../src/shared/soloLog.js'
-import { reportToYamlText } from '../src/shared/lessonReport.js'
+import { decodeSessionReportFromFirestore, reportToYamlText } from '../src/shared/lessonReport.js'
 import { flattenTaskTree } from '../src/shared/taskUtils.js'
 import {
   crossLessonCarrySourceWarnings,
@@ -624,5 +624,5 @@ export async function getSessionReportYaml(lessonId, startedAt) {
     if (Number.isFinite(ms)) snap = await col.doc(String(ms)).get()
   }
   if (!snap.exists) throw new Error(`No session report '${startedAt}' for lesson '${lessonId}'`)
-  return reportToYamlText({ id: snap.id, ...snap.data() })
+  return reportToYamlText(decodeSessionReportFromFirestore({ id: snap.id, ...snap.data() }))
 }
