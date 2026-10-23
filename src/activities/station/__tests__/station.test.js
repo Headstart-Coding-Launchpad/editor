@@ -9,7 +9,10 @@ import {
   gradeStationTask,
   initialStationState,
   nearestSpot,
+  partById,
   sceneForLesson,
+  spotById,
+  spotTakes,
   stationAction,
   stationProgress,
   trayParts,
@@ -82,7 +85,7 @@ describe('validateStationTask', () => {
     ],
     [
       { ...ok, items: [{ id: 'a', goal: 'power_on', target: 'roof' }] },
-      'Task 2 item 1: target "roof" must be a power section (core, left, right or dock).',
+      'Task 2 item 1: target "roof" must be a power section (left, core or right).',
     ],
     [
       task(2, [{ id: 'a', goal: 'open_crate', target: 'crate-9' }]),
@@ -112,7 +115,7 @@ describe('validateStationTask', () => {
 describe('sceneForLesson', () => {
   it('Lesson 1 is dark with default colours', () => {
     const s = sceneForLesson(1)
-    expect(Object.values(s.power)).toEqual([false, false, false, false])
+    expect(Object.values(s.power)).toEqual([false, false, false])
     expect([s.hull, s.lights]).toEqual(['blue', 'orange'])
     expect(s.crates).toEqual({})
   })
@@ -127,7 +130,7 @@ describe('sceneForLesson', () => {
     const s = sceneForLesson(3)
     expect(Object.values(s.crates)).toEqual(['open', 'open', 'open'])
     expect(Object.keys(s.crew)).toHaveLength(3)
-    expect(s.captain).toBe('crew-robot')
+    expect(s.captain).toBe('crew-robot-1')
     expect(s.placed).toEqual({})
   })
   it('Lesson 4 has the Lesson 3 modules in default places and nothing ordered', () => {
@@ -144,22 +147,22 @@ describe('applyCarried', () => {
       ...sceneForLesson(3),
       hull: 'red',
       lights: 'pink',
-      placed: { 'spot-5': 'dome' },
+      placed: { 'top-module-1': 'dome' },
     }
     const s = applyCarried(t3, { v: 1, scene: saved })
-    expect([s.hull, s.lights, s.placed]).toEqual(['red', 'pink', { 'spot-5': 'dome' }])
+    expect([s.hull, s.lights, s.placed]).toEqual(['red', 'pink', { 'top-module-1': 'dome' }])
   })
   it('catches up what earlier lessons unlock that the saved scene lacks', () => {
     const s = applyCarried(task(4, t3.items), { v: 1, scene: sceneForLesson(1) })
     expect(Object.values(s.power).every(Boolean)).toBe(true)
     expect(Object.values(s.crates)).toEqual(['open', 'open', 'open'])
-    expect(s.captain).toBe('crew-robot')
+    expect(s.captain).toBe('crew-robot-1')
     expect(Object.values(s.placed)).toContain('solar')
   })
   it('keeps a spot a saved part already holds when catching up', () => {
-    const saved = { ...sceneForLesson(3), placed: { 'spot-1': 'dome' } }
+    const saved = { ...sceneForLesson(3), placed: { 'top-module-1': 'dome' } }
     const s = applyCarried(task(4, t3.items), { scene: saved })
-    expect(s.placed['spot-1']).toBe('dome')
+    expect(s.placed['top-module-1']).toBe('dome')
     expect(Object.values(s.placed).filter((p) => p === 'solar')).toHaveLength(1)
   })
   it('is idempotent and starts from the lesson scene with nothing or junk saved', () => {
@@ -213,25 +216,25 @@ describe('stationAction', () => {
     const t = task(2, [{ id: 'o', goal: 'open_crate' }])
     let s = run(t, [{ type: 'open', crate: 'crate-1', method: 'keyboard' }])
     expect(s.scene.crates['crate-1']).toBe('open')
-    expect(s.scene.crew['crew-robot']).toBe('post-1')
+    expect(s.scene.crew['crew-robot-1']).toBe('crew-1')
     expect(s.done.o).toBeUndefined()
     expect(gradeStationTask(t, s).hint).toBe('Now try a double-click.')
     s = run(t, [{ type: 'open', crate: 'crate-2', method: 'double_click' }], s)
     expect(s.done.o.method).toBe('double_click')
-    expect(s.scene.crew['crew-pilot']).toBe('post-2')
+    expect(s.scene.crew['crew-robot-2']).toBe('crew-2')
     expect(stationAction(s, { type: 'open', crate: 'crate-2', method: 'double_click' }, t)).toBe(s)
   })
 
   it('choose_captain needs a crew member at a post', () => {
     const t = task(2, [{ id: 'c', goal: 'choose_captain' }])
-    let s = run(t, [{ type: 'captain', crew: 'crew-pilot', ...click }])
+    let s = run(t, [{ type: 'captain', crew: 'crew-robot-2', ...click }])
     expect(s.scene.captain).toBeNull()
     expect(gradeStationTask(t, s).hint).toBe('Open a crate first.')
     s = run(t, [
       { type: 'open', crate: 'crate-2', method: 'double_click' },
-      { type: 'captain', crew: 'crew-pilot', ...click },
+      { type: 'captain', crew: 'crew-robot-2', ...click },
     ])
-    expect(s.scene.captain).toBe('crew-pilot')
+    expect(s.scene.captain).toBe('crew-robot-2')
     expect(s.done.c.method).toBe('click')
   })
 
@@ -240,24 +243,26 @@ describe('stationAction', () => {
       { id: 'p', goal: 'place_part', target: 'solar' },
       { id: 'q', goal: 'place_part', target: 'dome' },
     ])
-    let s = run(t, [{ type: 'place', part: 'solar', spot: 'spot-1', method: 'drag' }])
-    expect(s.scene.placed).toEqual({ 'spot-1': 'solar' })
+    let s = run(t, [{ type: 'place', part: 'solar', spot: 'top-module-1', method: 'drag' }])
+    expect(s.scene.placed).toEqual({ 'top-module-1': 'solar' })
     expect(s.done.p.method).toBe('drag')
-    s = run(t, [{ type: 'place', part: 'dome', spot: 'spot-2', method: 'pick_drop' }], s)
+    s = run(t, [{ type: 'place', part: 'dome', spot: 'top-module-2', method: 'pick_drop' }], s)
     expect(s.done.q.method).toBe('pick_drop')
     expect(trayParts(t, s.scene)).toEqual(['greenhouse', 'docking-arm'])
-    const keyed = run(t, [{ type: 'place', part: 'dome', spot: 'spot-2', method: 'keyboard' }])
+    const keyed = run(t, [
+      { type: 'place', part: 'dome', spot: 'top-module-2', method: 'keyboard' },
+    ])
     expect(keyed.done.q).toBeUndefined()
   })
 
   it('place_part rejects a full spot, an unknown spot and a part that is not on offer', () => {
     const t = task(3, [{ id: 'p', goal: 'place_part' }])
-    const s = run(t, [{ type: 'place', part: 'solar', spot: 'spot-1', method: 'drag' }])
+    const s = run(t, [{ type: 'place', part: 'solar', spot: 'top-module-1', method: 'drag' }])
     for (const bad of [
-      { part: 'dome', spot: 'spot-1' },
-      { part: 'dome', spot: 'spot-99' },
-      { part: 'telescope', spot: 'spot-2' },
-      { part: 'crate-1', spot: 'spot-2' },
+      { part: 'dome', spot: 'top-module-1' },
+      { part: 'dome', spot: 'nowhere' },
+      { part: 'telescope', spot: 'top-part-1' },
+      { part: 'crate-1', spot: 'top-module-2' },
     ]) {
       expect(stationAction(s, { type: 'place', method: 'drag', ...bad }, t)).toBe(s)
     }
@@ -266,10 +271,10 @@ describe('stationAction', () => {
   it('placing a placed part moves it', () => {
     const t = task(3, [{ id: 'p', goal: 'place_part' }])
     const s = run(t, [
-      { type: 'place', part: 'solar', spot: 'spot-1', method: 'drag' },
-      { type: 'place', part: 'solar', spot: 'spot-4', method: 'drag' },
+      { type: 'place', part: 'solar', spot: 'top-module-1', method: 'drag' },
+      { type: 'place', part: 'solar', spot: 'bottom-module-1', method: 'drag' },
     ])
-    expect(s.scene.placed).toEqual({ 'spot-4': 'solar' })
+    expect(s.scene.placed).toEqual({ 'bottom-module-1': 'solar' })
   })
 
   it('order adds to the tray (with scrolled recorded), then place takes it out', () => {
@@ -277,17 +282,17 @@ describe('stationAction', () => {
       { id: 'o', goal: 'order_part', target: 'telescope' },
       { id: 'p', goal: 'place_part', target: 'telescope' },
     ])
-    let s = run(t, [{ type: 'order', part: 'space-slide', scrolled: true, ...click }])
-    expect(s.scene.ordered).toEqual(['space-slide'])
+    let s = run(t, [{ type: 'order', part: 'rainbow-ring', scrolled: true, ...click }])
+    expect(s.scene.ordered).toEqual(['rainbow-ring'])
     expect(s.done.o).toBeUndefined()
     s = run(t, [{ type: 'order', part: 'telescope', ...click }], s)
     expect(s.done.o).toMatchObject({ method: 'click', scrolled: false })
     expect(stationAction(s, { type: 'order', part: 'telescope', ...click }, t)).toBe(s)
     expect(stationAction(s, { type: 'order', part: 'solar', ...click }, t)).toBe(s)
-    s = run(t, [{ type: 'place', part: 'telescope', spot: 'spot-5', method: 'drag' }], s)
-    expect(s.scene.ordered).toEqual(['space-slide'])
+    s = run(t, [{ type: 'place', part: 'telescope', spot: 'top-part-1', method: 'drag' }], s)
+    expect(s.scene.ordered).toEqual(['rainbow-ring'])
     expect(s.done.p.method).toBe('drag')
-    expect(catalogueFor(t)).toHaveLength(7)
+    expect(catalogueFor(t)).toHaveLength(8)
   })
 
   it('ignores unknown actions', () => {
@@ -302,7 +307,8 @@ describe('undo', () => {
     { id: 'u', goal: 'undo' },
     { id: 'p', goal: 'place_part' },
   ])
-  const placed = () => run(t, [{ type: 'place', part: 'solar', spot: 'spot-1', method: 'drag' }])
+  const placed = () =>
+    run(t, [{ type: 'place', part: 'solar', spot: 'top-module-1', method: 'drag' }])
 
   it('puts the last change back and counts only by ctrl_z or cmd_z', () => {
     for (const method of ['ctrl_z', 'cmd_z']) {
@@ -335,12 +341,66 @@ describe('undo', () => {
 })
 
 describe('nearestSpot', () => {
-  it('snaps within the radius to an empty spot and null otherwise', () => {
-    const spot = SPOTS[0]
-    const point = { x: spot.x + spot.w / 2 + 0.04, y: spot.y + spot.h / 2 }
-    expect(nearestSpot({ placed: {} }, point)).toBe('spot-1')
-    expect(nearestSpot({ placed: { 'spot-1': 'solar' } }, point)).toBe('spot-2')
-    expect(nearestSpot({ placed: {} }, { x: 0.5, y: 0.95 })).toBeNull()
+  const topModule = SPOTS.find((x) => x.id === 'top-module-1')
+  const inside = { x: topModule.x + topModule.w / 2, y: topModule.y + topModule.h / 2 }
+  it('snaps inside or near an empty spot that takes the part, and null otherwise', () => {
+    expect(nearestSpot({ placed: {} }, inside)).toBe('top-module-1')
+    expect(nearestSpot({ placed: {} }, { x: inside.x, y: topModule.y - 0.03 })).toBe('top-module-1')
+    expect(nearestSpot({ placed: { 'top-module-1': 'solar' } }, inside)).not.toBe('top-module-1')
+    expect(nearestSpot({ placed: {} }, { x: 0.5, y: 0.97 })).toBeNull()
+  })
+  it('only offers spots the part fits: kind, size and hanging', () => {
+    const bottom = SPOTS.find((x) => x.id === 'bottom-module-1')
+    const under = { x: bottom.x + bottom.w / 2, y: bottom.y + bottom.h / 2 }
+    expect(nearestSpot({ placed: {} }, under, 'solar')).toBe('bottom-module-1')
+    expect(nearestSpot({ placed: {} }, under, 'dome')).not.toBe('bottom-module-1')
+    const end = SPOTS.find((x) => x.id === 'end-left')
+    const atEnd = { x: end.x + end.w / 2, y: end.y + end.h / 2 }
+    expect(nearestSpot({ placed: {} }, atEnd, 'docking-arm')).toBe('end-left')
+    expect(nearestSpot({ placed: {} }, atEnd, 'solar')).not.toBe('end-left')
+    expect(nearestSpot({ placed: {} }, atEnd, 'telescope')).not.toBe('end-left')
+  })
+})
+
+describe('the art layout', () => {
+  it('has the 18 spots of parts.json with the hanging and mirror rules', () => {
+    expect(SPOTS).toHaveLength(18)
+    const by = Object.fromEntries(SPOTS.map((x) => [x.id, x]))
+    expect(by['bottom-module-2']).toMatchObject({ flipY: true, onlyCanHang: true })
+    expect(by['end-left'].flipX).toBe(true)
+    expect(by['crew-3'].behindHull).toBe(true)
+    expect(SPOTS.filter((x) => x.accepts.includes('power'))).toHaveLength(3)
+  })
+  it('spotTakes: dome never hangs, the rainbow ring does, a fuel-sized part fits by cells', () => {
+    const by = Object.fromEntries(SPOTS.map((x) => [x.id, x]))
+    expect(spotTakes(by['bottom-module-1'], partById('dome'))).toBe(false)
+    expect(spotTakes(by['bottom-module-1'], partById('rainbow-ring'))).toBe(true)
+    expect(spotTakes(by['end-right'], partById('docking-arm'))).toBe(true)
+    expect(spotTakes(by['end-right'], partById('greenhouse'))).toBe(false)
+    expect(spotTakes(by['top-part-1'], partById('telescope'))).toBe(true)
+    expect(spotTakes(by['bottom-part-1'], partById('telescope'))).toBe(false)
+    expect(spotTakes(by['bottom-part-1'], partById('dish'))).toBe(true)
+  })
+  it('the Lesson 4 catalogue has 8 to 12 items with the prize last', () => {
+    const list = catalogueFor({ lesson: 4 })
+    expect(list.length).toBeGreaterThanOrEqual(8)
+    expect(list.length).toBeLessThanOrEqual(12)
+    expect(list[list.length - 1]).toBe('rainbow-ring')
+  })
+  it('applyCarried drops unknown spot, part and post ids from an older saved station', () => {
+    const old = {
+      ...sceneForLesson(3),
+      placed: { 'spot-3': 'dome', 'top-module-1': 'space-slide', 'top-module-2': 'greenhouse' },
+      crew: { 'crew-robot': 'post-1', 'crew-plant': 'crew-4' },
+      captain: 'crew-robot',
+    }
+    const s = applyCarried(task(4, [{ id: 'a', goal: 'undo' }]), { v: 1, scene: old })
+    expect(s.placed['top-module-2']).toBe('greenhouse')
+    expect(Object.keys(s.placed).every((id) => spotById(id))).toBe(true)
+    expect(Object.values(s.placed).every((id) => partById(id))).toBe(true)
+    expect(s.crew['crew-plant']).toBe('crew-4')
+    expect(Object.values(s.crew).every((id) => spotById(id))).toBe(true)
+    expect(partById(s.captain)).toBeTruthy()
   })
 })
 
@@ -361,7 +421,7 @@ describe('grading and progress', () => {
       { id: 'a', goal: 'pick_colour', target: 'hull' },
       'Click one of the colours for the hull.',
     ],
-    ['select', { id: 'a', goal: 'select' }, 'Click once on a part to pick it.'],
+    ['select', { id: 'a', goal: 'select' }, 'Click once on a crate to pick it.'],
     ['open_crate', { id: 'a', goal: 'open_crate' }, 'Double-click a crate to open it.'],
     ['choose_captain', { id: 'a', goal: 'choose_captain' }, 'Open a crate first.'],
     ['place_part', { id: 'a', goal: 'place_part' }, 'Drag a part onto an empty spot.'],
@@ -374,7 +434,7 @@ describe('grading and progress', () => {
 
   it('hints undo with the shortcut once there is a change to put back', () => {
     const tu = task(3, [{ id: 'u', goal: 'undo' }])
-    const s = run(tu, [{ type: 'place', part: 'solar', spot: 'spot-1', method: 'drag' }])
+    const s = run(tu, [{ type: 'place', part: 'solar', spot: 'top-module-1', method: 'drag' }])
     expect(gradeStationTask(tu, s).hint).toBe('Press Ctrl+Z (Cmd+Z on a Mac) to put it back.')
   })
 
@@ -409,7 +469,7 @@ describe('definition', () => {
     expect(definition.completion).toBe('auto')
     expect(definition.touchFallback).toBe('block')
     expect(definition.requires).toEqual({ finePointer: true })
-    const s = run(t, [{ type: 'place', part: 'solar', spot: 'spot-1', method: 'drag' }])
+    const s = run(t, [{ type: 'place', part: 'solar', spot: 'top-module-1', method: 'drag' }])
     expect(definition.classifyChange(initialStationState(t), s, t)).toBe('discrete')
     const shared = JSON.parse(definition.serializeShared(s))
     expect(shared.undo).toEqual([s.undo[s.undo.length - 1]])
@@ -419,8 +479,8 @@ describe('definition', () => {
 
   it('keeps state small (under 2 KB shared)', () => {
     let s = run(t, [
-      { type: 'place', part: 'solar', spot: 'spot-1', method: 'drag' },
-      { type: 'place', part: 'dome', spot: 'spot-2', method: 'drag' },
+      { type: 'place', part: 'solar', spot: 'top-module-1', method: 'drag' },
+      { type: 'place', part: 'dome', spot: 'top-module-2', method: 'drag' },
       { type: 'undo', method: 'ctrl_z' },
     ])
     s = { ...s, scene: sceneForLesson(4) }
@@ -431,16 +491,16 @@ describe('definition', () => {
   it('carrySlot extracts the scene and applies it over the lesson start', () => {
     const slot = definition.carrySlot
     expect(slot.id).toBe('station')
-    const s = run(t, [{ type: 'place', part: 'solar', spot: 'spot-1', method: 'drag' }])
+    const s = run(t, [{ type: 'place', part: 'solar', spot: 'top-module-1', method: 'drag' }])
     const carried = slot.extract(s)
     expect(carried).toEqual({ v: 1, scene: s.scene })
     const applied = slot.apply(task(4, [{ id: 'o', goal: 'order_part' }]), carried)
-    expect(applied.scene.placed['spot-1']).toBe('solar')
+    expect(applied.scene.placed['top-module-1']).toBe('solar')
     expect(applied.done).toEqual({})
   })
 
   it('reports each goal with its methods', () => {
-    const s = run(t, [{ type: 'place', part: 'solar', spot: 'spot-1', method: 'pick_drop' }])
+    const s = run(t, [{ type: 'place', part: 'solar', spot: 'top-module-1', method: 'pick_drop' }])
     const fields = definition.report.summaryFields(t, [
       { distinctAttempts: [{ submission: JSON.stringify(s) }] },
     ])

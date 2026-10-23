@@ -18,7 +18,7 @@ pick **Space station**.
 
 | Lesson | Skill | What happens on the station |
 |---|---|---|
-| 1 Power Up | click presses / chooses | The station is dark. Click power buttons to light each section; click a swatch for the hull and light colours. |
+| 1 Power Up | click presses / chooses | The station is dark. Click the three power buttons to light each section; click a swatch for the hull and light colours (swatches are in this lesson only). |
 | 2 Special Delivery | double-click opens, one click selects | Crates arrive. One click selects a crate; a double-click opens it and the crew inside walk to their posts. Click a crew member to make them captain. |
 | 3 Build It | drag moves; Ctrl+Z undoes | Drag modules from a tray onto empty spots; they snap in. Ctrl+Z (Cmd+Z on a Mac) puts the last change back. |
 | 4 The Catalogue | scroll moves through a long list | Scroll a long catalogue, click to order parts, then drag each into place. |
@@ -62,7 +62,7 @@ tasks:
 | `type` | Yes | `station` in YAML (JSON: `taskType: activity` + `activityType: station`) |
 | `lesson` | Yes | `1` to `4` (Phase 1). Sets the starting station: everything from earlier lessons is already there in default places (catch-up), then this lesson's setup is added (dark station, crates, tray, catalogue). |
 | `items` | Yes | This week's goals, done in any order (see below). |
-| `catalogue` | No | Part ids on offer: the Lesson 3 tray or the Lesson 4 catalogue. Lessons 1 and 2 have none. Default: the lesson's own list (Lesson 3: `solar`, `dome`, `greenhouse`, `docking-arm`; Lesson 4: `telescope`, `dish`, `flag`, `antenna`, `lab`, `rocket-pad`, `space-slide`, the best one last, at the very bottom). |
+| `catalogue` | No | Part ids on offer: the Lesson 3 tray or the Lesson 4 catalogue. Lessons 1 and 2 have none. Default: the lesson's own list (Lesson 3: `solar`, `dome`, `greenhouse`, `docking-arm`; Lesson 4: `telescope`, `dish`, `flag`, `antenna`, `beacon`, `satellite`, `cargo-pod`, `rainbow-ring`, the best one last, at the very bottom). |
 | `coreItems` | No | How many goals make the task pass, 1 to the number of `items`. The rest are **bonus**. Default: all goals. |
 
 ## Item fields
@@ -71,7 +71,7 @@ tasks:
 |---|:---:|---|
 | `id` | Yes | Short unique id (`power`, `hull`, …). |
 | `goal` | Yes | What the child does (table below). |
-| `target` | Depends | What the goal is about: a power section (`core`, `left`, `right`, `dock`), `hull` or `lights`, a part id or a crate id. Leave out for "any" (or all four sections for `power_on`). Required for `pick_colour`. |
+| `target` | Depends | What the goal is about: a power section (`left`, `core`, `right`), `hull` or `lights`, a part id or a crate id. Leave out for "any" (or all three sections for `power_on`). Required for `pick_colour`. |
 | `prompt` | No | The instruction shown. Default: a plain sentence made from the goal and target. |
 
 ## Goals and methods
@@ -81,9 +81,9 @@ the method ("opened by double-click").
 
 | Goal | Lessons | Target | Done when | Method that counts |
 |---|---|---|---|---|
-| `power_on` | 1 | a section id, or none = all four | that section (or all) is lit | `click`; Enter or Space on the focused button records `keyboard` and also counts |
+| `power_on` | 1 | a section id, or none = all three | that section (or all) is lit | `click`; Enter or Space on the focused button records `keyboard` and also counts |
 | `pick_colour` | 1 | `hull` or `lights` (required) | a swatch is chosen | `click` or `keyboard` |
-| `select` | 2, 3, 4 | a part id, or none = any | a part is selected by one click | `click` |
+| `select` | 2, 3, 4 | a part or crate id, or none = any | a crate (Lesson 2) or part is selected by one click. The default prompt in Lesson 2 is "Select a crate." | `click` |
 | `open_crate` | 2 | `crate-1`, `crate-2`, `crate-3`, or none = any | a crate is opened | **`double_click` only.** Enter opens the crate (keyboard access) but the goal stays open with the hint "Now try a double-click." |
 | `choose_captain` | 2 | none | a crew member is made captain | `click` |
 | `place_part` | 3, 4 | a part id, or none = any | the part sits on a spot | `drag`, or `pick_drop` (click to pick up, click to drop: the trackpad fallback). Both count. |
@@ -91,10 +91,20 @@ the method ("opened by double-click").
 | `order_part` | 4 | a part id, or none = any | the part is ordered from the catalogue | `click`; whether the child scrolled the list first is recorded too |
 
 Parts you can name as targets: crates `crate-1`, `crate-2`, `crate-3` (each holds a crew member:
-`crew-robot`, `crew-pilot`, `crew-plant`); Lesson 3 modules `solar`, `dome`, `greenhouse`,
-`docking-arm`; Lesson 4 catalogue parts `telescope`, `dish`, `flag`, `antenna`, `lab`,
-`rocket-pad`, `space-slide`. `place_part` and `order_part` targets must be in the task's
-catalogue.
+`crew-robot-1`, `crew-robot-2`, `crew-plant`; they stand in the portholes); Lesson 3 modules
+`solar`, `dome`, `greenhouse`, `docking-arm`; Lesson 4 catalogue parts `telescope`, `dish`, `flag`,
+`antenna`, `beacon`, `satellite`, `cargo-pod` and the module `rainbow-ring` (the prize, last in the
+list). `place_part` and `order_part` targets must be in the task's catalogue.
+
+Where parts fit (Lesson Gen's art, 18 spots): a 2x2 module goes on one of the four module spots (two
+on top, two hanging under the hull); the docking arm also fits the two end spots; small parts go on
+the part spots (two on top, two under, one on the top of the ring). Only parts that can hang
+(`solar`, `rainbow-ring`, `dish`, `antenna`, `beacon`, `satellite`, `cargo-pod`) go under the hull,
+drawn upside down; the dome, greenhouse, telescope and flag never do. Empty spots a part fits light
+up while the child holds it.
+
+Station saved before this art (older spot, post and part ids) is read gracefully: ids the station
+no longer has are dropped and the catch-up puts the lesson's parts back in default places.
 
 ## Marking and hints
 
@@ -104,6 +114,10 @@ catalogue.
 - A goal not done yet gets a short hint that never gives the answer away, for example "Now try a
   double-click." or "Drag a part onto an empty spot."
 - Every station change is a discrete step (a click, a drop). Dragging itself is not saved.
+- When the core goals complete, the station shows a short "Station upgraded!" moment: lights sweep
+  across the hull and the newest part pops and sparkles (a still glow when the child prefers
+  reduced motion). Each goal in the list has a small picture of the part, crate or badge it is
+  about.
 
 ## Teacher tools
 
@@ -118,7 +132,7 @@ catalogue.
 ## Devices
 
 The station needs a mouse or trackpad (`requires: finePointer`). Touch is blocked: "This needs a
-mouse or trackpad." Targets are at least 44 px.
+mouse or trackpad." The station picture is at least 560 px wide (it scrolls sideways on a narrower area) so every target is at least 44 px.
 
 ## Validation
 

@@ -172,7 +172,7 @@ export default defineActivity({
   printHtml: (task, { esc }) => {
     const rows = (task.items ?? []).map(
       (item) =>
-        `<li>${esc(promptFor(item))} <em>(${esc(GOALS[item.goal]?.methods.map(methodWords).join(' or ') ?? '')})</em></li>`
+        `<li>${esc(promptFor(item, task.lesson))} <em>(${esc(GOALS[item.goal]?.methods.map(methodWords).join(' or ') ?? '')})</em></li>`
     )
     return `<p>Lesson ${esc(task.lesson)}</p><ol>${rows.join('')}</ol>`
   },

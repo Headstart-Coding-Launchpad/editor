@@ -10,53 +10,58 @@ import { coreCountOf, validateCoreItems } from '../round.js'
 export const PHASE_1_LESSONS = [1, 2, 3, 4]
 
 export const SECTIONS = Object.freeze([
-  { id: 'core', label: 'Core' },
-  { id: 'left', label: 'Left wing' },
-  { id: 'right', label: 'Right wing' },
-  { id: 'dock', label: 'Dock' },
+  { id: 'left', label: 'Left wing', spot: 'power-1' },
+  { id: 'core', label: 'Core', spot: 'power-2' },
+  { id: 'right', label: 'Right wing', spot: 'power-3' },
 ])
 
-// The station is drawn in a 2:1 box (see .act-station__scene). Spots and posts are the centres of
-// their pads, as 0-1 fractions of that box, placed on the hull and the modules in the drawing:
-// hull strips at the far left and right (5 and 6), the wings (1-4, 7-10), crew posts in the core.
-export const SCENE_ASPECT = 2
-const SPOT_W = 0.062
-const SPOT_H = SPOT_W * SCENE_ASPECT
-const SPOT_ACCEPTS = Object.freeze(['module', 'crate', 'crew'])
-const SPOT_CENTRES = [
-  [0.14, 0.36],
-  [0.26, 0.36],
-  [0.74, 0.36],
-  [0.86, 0.36],
-  [0.05, 0.5],
-  [0.95, 0.5],
-  [0.14, 0.64],
-  [0.26, 0.64],
-  [0.74, 0.64],
-  [0.86, 0.64],
-]
-export const SPOTS = Object.freeze(
-  SPOT_CENTRES.map(([cx, cy], i) =>
-    Object.freeze({
-      id: `spot-${i + 1}`,
-      x: cx - SPOT_W / 2,
-      y: cy - SPOT_H / 2,
-      w: SPOT_W,
-      h: SPOT_H,
-      accepts: SPOT_ACCEPTS,
-    })
-  )
+// The station is Lesson Gen's 1600x1000 picture (public/station/phase-1, parts.json), so the scene
+// is 1.6:1. Spots are the 18 places on it, as 0-1 fractions of the picture: `cells` is the size in
+// 128 px cells, `accepts` the part kind, `flipY` / `onlyCanHang` mark spots that hang under the hull
+// (only parts with canHang, drawn upside down), `flipX` mirrors the left docking arm and
+// `behindHull` crew show through the portholes. Art paths live in art.js, never here.
+export const SCENE_ASPECT = 1.6
+export const SPOT_SNAP_RADIUS = 0.06
+const spot = (id, x, y, cells, accepts, extra = {}) =>
+  Object.freeze({
+    id,
+    x,
+    y,
+    w: cells[0] * 0.08,
+    h: cells[1] * 0.128,
+    cells: Object.freeze(cells),
+    accepts: Object.freeze([accepts]),
+    ...extra,
+  })
+export const SPOTS = Object.freeze([
+  spot('top-module-1', 0.1975, 0.117, [2, 2], 'module'),
+  spot('top-part-1', 0.3575, 0.245, [1, 1], 'part'),
+  spot('bottom-module-1', 0.2775, 0.621, [2, 2], 'module', { flipY: true, onlyCanHang: true }),
+  spot('bottom-part-1', 0.1975, 0.621, [1, 1], 'part', { flipY: true, onlyCanHang: true }),
+  spot('top-module-2', 0.5619, 0.117, [2, 2], 'module'),
+  spot('top-part-2', 0.7219, 0.245, [1, 1], 'part'),
+  spot('bottom-module-2', 0.6419, 0.621, [2, 2], 'module', { flipY: true, onlyCanHang: true }),
+  spot('bottom-part-2', 0.5619, 0.621, [1, 1], 'part', { flipY: true, onlyCanHang: true }),
+  spot('ring-top', 0.46, 0.167, [1, 1], 'part'),
+  spot('end-left', 0.0088, 0.433, [2, 1], 'module', { flipX: true }),
+  spot('end-right', 0.8313, 0.433, [2, 1], 'module'),
+  spot('crew-1', 0.2656, 0.427, [1, 1], 'crew', { behindHull: true }),
+  spot('crew-2', 0.3744, 0.427, [1, 1], 'crew', { behindHull: true }),
+  spot('crew-3', 0.5906, 0.427, [1, 1], 'crew', { behindHull: true }),
+  spot('crew-4', 0.6819, 0.427, [1, 1], 'crew', { behindHull: true }),
+  spot('power-1', 0.16, 0.433, [1, 1], 'power'),
+  spot('power-2', 0.46, 0.433, [1, 1], 'power'),
+  spot('power-3', 0.76, 0.433, [1, 1], 'power'),
+])
+const SPOT_BY_ID = Object.fromEntries(SPOTS.map((s) => [s.id, s]))
+export const spotById = (id) => SPOT_BY_ID[id] ?? null
+
+// Where crew stand once their crate is opened (the four portholes).
+export const POSTS = Object.freeze(SPOTS.filter((s) => s.accepts.includes('crew')))
+// The spots a student places modules and parts on.
+export const PLACE_SPOTS = Object.freeze(
+  SPOTS.filter((s) => s.accepts.includes('module') || s.accepts.includes('part'))
 )
-// How far (as a fraction of the station's width) from a spot's centre a dropped part still snaps
-// into it. Spots are small, so this is much bigger than the spot itself.
-export const SPOT_SNAP_RADIUS = 0.09
-
-export const POSTS = Object.freeze([
-  { id: 'post-1', x: 0.44, y: 0.5 },
-  { id: 'post-2', x: 0.56, y: 0.5 },
-  { id: 'post-3', x: 0.44, y: 0.66 },
-  { id: 'post-4', x: 0.56, y: 0.66 },
-])
 
 export const HULL_COLOURS = Object.freeze([
   'blue',
@@ -82,33 +87,47 @@ export const COLOUR_TARGETS = Object.freeze({ hull: HULL_COLOURS, lights: LIGHT_
 
 // --- Parts catalogue ---
 
-const part = (id, label, kind, lesson) => Object.freeze({ id, label, kind, lesson, cells: [1, 1] })
+// kind: 'crate' | 'crew' | 'module' | 'part'. cells = size in 128 px cells [w, h]; canHang = may
+// hang under the hull (drawn upside down). Sizes and canHang follow the art's parts.json.
+const part = (id, label, kind, lesson, cells = [1, 1], canHang = false) =>
+  Object.freeze({ id, label, kind, lesson, cells: Object.freeze(cells), canHang })
 export const PARTS = Object.freeze([
   part('crate-1', 'Crate 1', 'crate', 2),
   part('crate-2', 'Crate 2', 'crate', 2),
   part('crate-3', 'Crate 3', 'crate', 2),
-  part('crew-robot', 'Robot', 'crew', 2),
-  part('crew-pilot', 'Pilot', 'crew', 2),
+  part('crew-robot-1', 'Robot 1', 'crew', 2),
+  part('crew-robot-2', 'Robot 2', 'crew', 2),
+  part('crew-robot-3', 'Robot 3', 'crew', 2),
   part('crew-plant', 'Plant', 'crew', 2),
-  part('solar', 'Solar panel', 'module', 3),
-  part('dome', 'Dome', 'module', 3),
-  part('greenhouse', 'Greenhouse', 'module', 3),
-  part('docking-arm', 'Docking arm', 'module', 3),
-  part('telescope', 'Telescope', 'module', 4),
-  part('dish', 'Radio dish', 'module', 4),
-  part('flag', 'Flag', 'module', 4),
-  part('antenna', 'Antenna', 'module', 4),
-  part('lab', 'Lab', 'module', 4),
-  part('rocket-pad', 'Rocket pad', 'module', 4),
-  part('space-slide', 'Space slide', 'module', 4),
+  part('solar', 'Solar panel', 'module', 3, [2, 2], true),
+  part('dome', 'Dome', 'module', 3, [2, 2]),
+  part('greenhouse', 'Greenhouse', 'module', 3, [2, 2]),
+  part('docking-arm', 'Docking arm', 'module', 3, [2, 1]),
+  part('telescope', 'Telescope', 'part', 4),
+  part('dish', 'Radio dish', 'part', 4, [1, 1], true),
+  part('flag', 'Flag', 'part', 4),
+  part('antenna', 'Antenna', 'part', 4, [1, 1], true),
+  part('beacon', 'Beacon', 'part', 4, [1, 1], true),
+  part('satellite', 'Satellite', 'part', 4, [1, 1], true),
+  part('cargo-pod', 'Cargo pod', 'part', 4, [1, 1], true),
+  part('rainbow-ring', 'Rainbow ring', 'module', 4, [2, 2], true),
 ])
 const PART_BY_ID = Object.fromEntries(PARTS.map((p) => [p.id, p]))
 export const partById = (id) => PART_BY_ID[id] ?? null
+const isPlaceable = (p) => p?.kind === 'module' || p?.kind === 'part'
+
+// Can this part go in this spot? The kind must be accepted, the part must fit inside the spot's
+// cells, and a spot under the hull only takes parts that can hang.
+export function spotTakes(spot, part) {
+  if (!spot || !part || !spot.accepts.includes(part.kind)) return false
+  if (part.cells[0] > spot.cells[0] || part.cells[1] > spot.cells[1]) return false
+  return !spot.onlyCanHang || part.canHang === true
+}
 
 // Each crate holds one crew member.
 export const CRATE_CREW = Object.freeze({
-  'crate-1': 'crew-robot',
-  'crate-2': 'crew-pilot',
+  'crate-1': 'crew-robot-1',
+  'crate-2': 'crew-robot-2',
   'crate-3': 'crew-plant',
 })
 export const CRATE_IDS = Object.freeze(Object.keys(CRATE_CREW))
@@ -123,12 +142,26 @@ export const LESSON = Object.freeze({
   3: Object.freeze({
     title: 'Build It',
     catalogue: ['solar', 'dome', 'greenhouse', 'docking-arm'],
-    defaults: { solar: 'spot-1', dome: 'spot-3', greenhouse: 'spot-8', 'docking-arm': 'spot-6' },
+    defaults: {
+      dome: 'top-module-1',
+      greenhouse: 'top-module-2',
+      solar: 'bottom-module-1',
+      'docking-arm': 'end-left',
+    },
   }),
   4: Object.freeze({
     title: 'The Catalogue',
-    catalogue: ['telescope', 'dish', 'flag', 'antenna', 'lab', 'rocket-pad', 'space-slide'],
-    defaults: { telescope: 'spot-2', dish: 'spot-4', flag: 'spot-9' },
+    catalogue: [
+      'telescope',
+      'dish',
+      'flag',
+      'antenna',
+      'beacon',
+      'satellite',
+      'cargo-pod',
+      'rainbow-ring',
+    ],
+    defaults: { telescope: 'top-part-1', dish: 'bottom-part-1', flag: 'ring-top' },
   }),
 })
 
@@ -188,17 +221,25 @@ function emptyScene() {
   }
 }
 
-function freeSpot(scene, preferred, kind = 'module') {
-  const ok = (id) => {
-    const spot = SPOTS.find((s) => s.id === id)
-    return spot && spot.accepts.includes(kind) && !own(scene.placed, id)
-  }
+function freeSpot(scene, preferred, partId) {
+  const p = partById(partId)
+  const ok = (id) => spotTakes(spotById(id), p) && !own(scene.placed, id)
   if (preferred && ok(preferred)) return preferred
-  return SPOTS.find((s) => ok(s.id))?.id ?? null
+  return PLACE_SPOTS.find((s) => ok(s.id))?.id ?? null
 }
 
 function isPlaced(scene, partId) {
   return Object.values(scene?.placed ?? {}).includes(partId)
+}
+
+// Every crew member whose crate is open stands at a free post (a porthole).
+function seatCrew(scene) {
+  for (const [crate, crew] of Object.entries(CRATE_CREW)) {
+    if (scene.crates[crate] !== 'open' || own(scene.crew, crew)) continue
+    const taken = new Set(Object.values(scene.crew))
+    const post = POSTS.find((p) => !taken.has(p.id))
+    if (post) scene.crew[crew] = post.id
+  }
 }
 
 // Everything lesson `k` leaves behind it, added to a scene in a default place when missing.
@@ -207,18 +248,12 @@ function finishLesson(scene, k) {
     for (const s of SECTIONS) scene.power[s.id] = true
   } else if (k === 2) {
     for (const crate of CRATE_IDS) scene.crates[crate] = 'open'
-    for (const crew of CREW_IDS) {
-      if (!own(scene.crew, crew)) {
-        const taken = new Set(Object.values(scene.crew))
-        const post = POSTS.find((p) => !taken.has(p.id))
-        if (post) scene.crew[crew] = post.id
-      }
-    }
+    seatCrew(scene)
     if (!scene.captain) scene.captain = CREW_IDS[0]
   } else if (LESSON[k]?.defaults) {
     for (const [partId, spotId] of Object.entries(LESSON[k].defaults)) {
       if (isPlaced(scene, partId)) continue
-      const spot = freeSpot(scene, spotId)
+      const spot = freeSpot(scene, spotId, partId)
       if (spot) scene.placed[spot] = partId
     }
     scene.ordered = scene.ordered.filter((id) => !isPlaced(scene, id))
@@ -250,11 +285,12 @@ function sanitiseScene(raw) {
   if (HULL_COLOURS.includes(raw.hull)) scene.hull = raw.hull
   if (LIGHT_COLOURS.includes(raw.lights)) scene.lights = raw.lights
   for (const s of SECTIONS) scene.power[s.id] = raw.power?.[s.id] === true
-  const spotIds = new Set(SPOTS.map((s) => s.id))
+  // Unknown spot or part ids (an older saved station) and parts that no longer fit are dropped;
+  // the catch-up then puts the lesson's parts back in default places.
   const used = new Set()
-  for (const [spot, id] of Object.entries(raw.placed ?? {})) {
-    if (spotIds.has(spot) && partById(id)?.kind === 'module' && !used.has(id)) {
-      scene.placed[spot] = id
+  for (const [spotId, id] of Object.entries(raw.placed ?? {})) {
+    if (spotTakes(spotById(spotId), partById(id)) && !used.has(id)) {
+      scene.placed[spotId] = id
       used.add(id)
     }
   }
@@ -272,10 +308,11 @@ function sanitiseScene(raw) {
       posts.add(post)
     }
   }
+  seatCrew(scene)
   if (CREW_IDS.includes(raw.captain) && own(scene.crew, raw.captain)) scene.captain = raw.captain
   if (Array.isArray(raw.ordered)) {
     scene.ordered = raw.ordered.filter(
-      (id, i) => partById(id)?.kind === 'module' && raw.ordered.indexOf(id) === i && !used.has(id)
+      (id, i) => isPlaceable(partById(id)) && raw.ordered.indexOf(id) === i && !used.has(id)
     )
   }
   return scene
@@ -306,18 +343,20 @@ export function trayParts(task, scene) {
   return waiting.filter((id) => !isPlaced(scene, id))
 }
 
-// The empty spot that accepts `kind` nearest a dropped point (fractions 0-1), within the snap
-// radius; null when none, so the part goes back to the tray.
-export function nearestSpot(scene, point, kind = 'module', radius = SPOT_SNAP_RADIUS) {
+// The empty spot that takes `what` (a part id, or just a part kind) nearest a dropped point
+// (fractions 0-1): inside the spot, or within the snap radius of its edge. Null when none, so the
+// part goes back to the tray.
+export function nearestSpot(scene, point, what = 'module', radius = SPOT_SNAP_RADIUS) {
+  const p = partById(what)
   let best = null
   let bestDistance = radius
   for (const spot of SPOTS) {
-    if (own(scene?.placed, spot.id) || !spot.accepts.includes(kind)) continue
-    // y is a fraction of the height, which is half the width: scale it so distance is true to the eye.
-    const d = Math.hypot(
-      point.x - (spot.x + spot.w / 2),
-      (point.y - (spot.y + spot.h / 2)) / SCENE_ASPECT
-    )
+    if (own(scene?.placed, spot.id)) continue
+    if (p ? !spotTakes(spot, p) : !spot.accepts.includes(what)) continue
+    // y is a fraction of the height, which is 1/1.6 of the width: scale it so distance is true.
+    const dx = Math.max(spot.x - point.x, 0, point.x - (spot.x + spot.w))
+    const dy = Math.max(spot.y - point.y, 0, point.y - (spot.y + spot.h)) / SCENE_ASPECT
+    const d = Math.hypot(dx, dy)
     if (d <= bestDistance) {
       best = spot.id
       bestDistance = d
@@ -442,10 +481,8 @@ export function stationAction(state, action, task) {
     }
     case 'place': {
       const p = partById(action.part)
-      const spot = SPOTS.find((s) => s.id === action.spot)
-      if (!p || p.kind !== 'module' || !spot || !spot.accepts.includes(p.kind)) {
-        return state ?? base
-      }
+      const spot = spotById(action.spot)
+      if (!isPlaceable(p) || !spotTakes(spot, p)) return state ?? base
       if (own(scene.placed, spot.id)) return state ?? base
       const available = trayParts(task, scene).includes(p.id) || isPlaced(scene, p.id)
       if (!available) return state ?? base
@@ -460,7 +497,7 @@ export function stationAction(state, action, task) {
     }
     case 'order': {
       const p = partById(action.part)
-      if (!p || p.kind !== 'module' || !catalogueFor(task).includes(p.id)) return state ?? base
+      if (!isPlaceable(p) || !catalogueFor(task).includes(p.id)) return state ?? base
       if (scene.ordered.includes(p.id) || isPlaced(scene, p.id)) return state ?? base
       next = pushUndo(base, { ...clone(scene), ordered: [...scene.ordered, p.id] })
       break
@@ -479,7 +516,7 @@ export function stationAction(state, action, task) {
 // --- Validation ---
 
 const GOAL_TARGET_WORDS = {
-  section: 'a power section (core, left, right or dock)',
+  section: 'a power section (left, core or right)',
   colour: 'hull or lights',
   part: 'a part id from the parts catalogue',
   crate: 'a crate id (crate-1, crate-2 or crate-3)',
@@ -567,7 +604,7 @@ export function validateStationTask(task, n) {
 
 const nameOf = (id) => partById(id)?.label ?? id
 
-export function promptFor(item) {
+export function promptFor(item, lesson) {
   if (typeof item?.prompt === 'string' && item.prompt.trim()) return item.prompt
   const t = item?.target
   switch (item?.goal) {
@@ -578,7 +615,7 @@ export function promptFor(item) {
     case 'pick_colour':
       return `Pick a colour for the ${t === 'lights' ? 'lights' : 'hull'}.`
     case 'select':
-      return t ? `Select the ${nameOf(t)}.` : 'Select a part.'
+      return t ? `Select the ${nameOf(t)}.` : lesson === 2 ? 'Select a crate.' : 'Select a part.'
     case 'open_crate':
       return t ? `Open ${nameOf(t)}.` : 'Open a crate.'
     case 'choose_captain':
@@ -595,7 +632,7 @@ export function promptFor(item) {
 }
 
 // A short hint for a goal that is not done yet. Never gives the answer away.
-function hintFor(item, state) {
+function hintFor(item, state, lesson) {
   const scene = state?.scene ?? {}
   switch (item.goal) {
     case 'power_on':
@@ -603,7 +640,7 @@ function hintFor(item, state) {
     case 'pick_colour':
       return `Click one of the colours for the ${item.target === 'lights' ? 'lights' : 'hull'}.`
     case 'select':
-      return 'Click once on a part to pick it.'
+      return lesson === 2 ? 'Click once on a crate to pick it.' : 'Click once on a part to pick it.'
     case 'open_crate':
       return CRATE_IDS.some((id) => scene.crates?.[id] === 'open')
         ? 'Now try a double-click.'
@@ -628,7 +665,11 @@ function hintFor(item, state) {
 export function gradeStationItem(task, item, state) {
   const record = state?.done?.[item?.id]
   if (record) return { correct: true, hint: null, method: record.method }
-  return { correct: false, hint: item?.goal ? hintFor(item, state) : null, method: null }
+  return {
+    correct: false,
+    hint: item?.goal ? hintFor(item, state, task?.lesson) : null,
+    method: null,
+  }
 }
 
 // { total, correct, core, done, hint, itemResults: { [id]: { correct, hint, method } } }

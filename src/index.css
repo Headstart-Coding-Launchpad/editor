@@ -6603,7 +6603,8 @@ label.te-backdrop-tag,
   min-height: 44px;
 }
 
-/* Space station activity (src/activities/station/ui.jsx). */
+/* Space station activity (src/activities/station/ui.jsx). The scene is Lesson Gen's 1600x1000 art
+   (public/station/phase-1): layers stack backdrop, interior, crew, hull, hull colour, then buttons. */
 .act-station {
   display: flex;
   flex-wrap: wrap;
@@ -6647,214 +6648,80 @@ label.te-backdrop-tag,
   white-space: nowrap;
 }
 
+/* On a narrow screen the scene keeps a 560 px minimum (so every target is 44 px) and scrolls. */
+.act-station__scene-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 16px;
+}
+
 .act-station__scene {
   position: relative;
   width: 100%;
-  aspect-ratio: 2 / 1;
+  min-width: 560px;
+  aspect-ratio: 1600 / 1000;
   border-radius: 16px;
   overflow: hidden;
-  background:
-    radial-gradient(1.5px 1.5px at 12% 18%, #fff, transparent 60%),
-    radial-gradient(1px 1px at 28% 82%, #fff, transparent 60%),
-    radial-gradient(1.5px 1.5px at 47% 9%, #fde68a, transparent 60%),
-    radial-gradient(1px 1px at 63% 90%, #fff, transparent 60%),
-    radial-gradient(1.5px 1.5px at 78% 14%, #fff, transparent 60%),
-    radial-gradient(1px 1px at 91% 72%, #bfdbfe, transparent 60%),
-    radial-gradient(1px 1px at 5% 58%, #fff, transparent 60%),
-    radial-gradient(1px 1px at 95% 30%, #fff, transparent 60%),
-    linear-gradient(160deg, #0b1020, #1a1340 60%, #0b1020);
+  isolation: isolate;
+  container-type: inline-size;
+  background: #0b1020;
 }
 
-.act-station__hull {
+.act-station-layer {
   position: absolute;
-  left: 1.5%;
-  right: 1.5%;
-  top: 7%;
-  bottom: 7%;
-  border-radius: 22% / 50%;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--act-station-hull) 78%, #fff),
-    var(--act-station-hull) 50%,
-    color-mix(in srgb, var(--act-station-hull) 65%, #000)
-  );
-  border: 3px solid color-mix(in srgb, var(--act-station-hull) 50%, #000);
-  box-shadow:
-    inset 0 0 0 5px rgb(255 255 255 / 12%),
-    inset 0 -10px 24px rgb(0 0 0 / 22%),
-    0 6px 20px rgb(0 0 0 / 45%);
-  transition: background 0.3s ease;
-}
-
-/* Short connector tubes join the modules; they sit behind the modules. */
-.act-station-tube {
-  position: absolute;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--act-station-hull) 60%, #fff),
-    color-mix(in srgb, var(--act-station-hull) 70%, #000)
-  );
-  border: 2px solid color-mix(in srgb, var(--act-station-hull) 45%, #000);
-}
-
-.act-station-tube--left,
-.act-station-tube--right {
-  top: 43%;
-  height: 10%;
-  width: 6%;
-}
-
-.act-station-tube--left {
-  left: 31%;
-}
-
-.act-station-tube--right {
-  left: 63%;
-}
-
-.act-station-tube--dock {
-  left: 47%;
-  width: 6%;
-  top: 66%;
-  height: 12%;
-}
-
-/* A hull module. Unlit it is dark grey with small window dots; lit, the windows and outline glow. */
-.act-station-section {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #4b5567, #2d3443);
-  border: 3px solid #647084;
-  box-shadow: inset 0 0 14px rgb(0 0 0 / 35%);
-  transition:
-    background 0.35s ease,
-    box-shadow 0.35s ease,
-    border-color 0.35s ease;
-}
-
-.act-station-section::before {
-  content: '';
-  position: absolute;
-  left: 12%;
-  right: 12%;
-  top: 7px;
-  height: 9px;
-  background: radial-gradient(circle, #8b97ab 3px, transparent 3.5px) center / 20px 9px repeat-x;
-  opacity: 0.75;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
+  user-select: none;
 }
 
-.act-station-section--core {
-  left: 38%;
-  top: 11%;
-  width: 24%;
-  height: 62%;
-  align-items: flex-start;
-  padding-top: 24px;
+/* The lit pictures fade in over the dark ones as sections are powered (0, 1/3, 2/3, all). */
+.act-station-layer--lit {
+  opacity: var(--act-station-lit, 0);
+  transition: opacity 0.6s ease;
 }
 
-.act-station-section--left {
-  left: 8%;
-  top: 22%;
-  width: 24%;
-  height: 56%;
+.act-station-layer--hull {
+  filter: drop-shadow(0 0 1.4cqw color-mix(in srgb, var(--act-station-lights) 75%, transparent));
 }
 
-.act-station-section--right {
-  left: 68%;
-  top: 22%;
-  width: 24%;
-  height: 56%;
-}
-
-.act-station-section--dock {
-  left: 39%;
-  top: 77%;
-  width: 22%;
-  height: 15%;
-}
-
-.act-station-section--dock::before {
-  display: none;
-}
-
-.act-station-section--left::before,
-.act-station-section--right::before {
-  top: auto;
-  bottom: 7px;
-}
-
-.act-station-section.is-lit {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--act-station-lights) 30%, #2a3347),
-    color-mix(in srgb, var(--act-station-lights) 14%, #1a2132)
-  );
-  border-color: var(--act-station-lights);
-  box-shadow:
-    0 0 18px 2px color-mix(in srgb, var(--act-station-lights) 65%, transparent),
-    inset 0 0 18px color-mix(in srgb, var(--act-station-lights) 30%, transparent);
-}
-
-.act-station-section.is-lit::before {
-  background-image: radial-gradient(circle, var(--act-station-lights) 3px, transparent 3.5px);
-  opacity: 1;
-  filter: drop-shadow(0 0 4px var(--act-station-lights));
-}
-
-.act-station-power-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.act-station-power {
-  flex: none;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 3px solid #94a3b8;
-  background: #1e2533;
-  color: #cbd5e1;
-  font-size: 1.3rem;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+/* The hull colour: a flat colour through the hull-glow mask (white body panels only), multiplied so
+   the panel shading stays. */
+.act-station-hull-tint {
+  background: color-mix(in srgb, var(--act-station-hull) 78%, #fff);
+  mix-blend-mode: multiply;
+  opacity: calc(0.25 + 0.75 * var(--act-station-lit, 0));
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
   transition:
     background 0.3s ease,
-    box-shadow 0.3s ease;
+    opacity 0.6s ease;
 }
 
-.act-station-power:not(:disabled):hover {
-  border-color: #fff;
+.act-station-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
 }
 
-.act-station-power[aria-pressed='true'] {
-  background: var(--act-station-lights);
-  border-color: #fff;
-  color: #1e293b;
-  box-shadow: 0 0 12px var(--act-station-lights);
+.act-station-img.is-flip-y,
+.act-station-glow.is-flip-y {
+  transform: scaleY(-1);
 }
 
-.act-station-power__name {
-  display: flex;
-  flex-direction: column;
-  font-size: 0.8rem;
-  font-weight: 700;
-  line-height: 1.15;
-  color: #e2e8f0;
-  text-align: left;
+.act-station-img.is-flip-x,
+.act-station-glow.is-flip-x {
+  transform: scaleX(-1);
 }
 
-.act-station-power__state {
-  font-size: 0.68rem;
-  font-weight: 600;
-  opacity: 0.75;
+.act-station-img.is-flip-x.is-flip-y,
+.act-station-glow.is-flip-x.is-flip-y {
+  transform: scale(-1, -1);
 }
 
 .act-station-power:focus-visible,
@@ -6869,59 +6736,68 @@ label.te-backdrop-tag,
   outline-offset: 2px;
 }
 
-.act-station-post {
+/* A power button sits in its spot; its name and state are underneath. */
+.act-station-section {
   position: absolute;
-  width: 46px;
-  height: 46px;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  border: 2px dotted rgb(255 255 255 / 30%);
-  background: rgb(0 0 0 / 15%);
+}
+
+.act-station-power {
+  position: absolute;
+  inset: 0;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.act-station-power:hover:not(:disabled),
+.act-station-power:active:not(:disabled) {
+  transform: none;
+  filter: brightness(1.12);
+}
+
+.act-station-power-halo {
+  position: absolute;
+  inset: -14%;
+  background: var(--act-station-lights);
+  filter: blur(9px);
+  opacity: 0.5;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
   pointer-events: none;
 }
 
-.act-station-art {
-  position: relative;
-  display: inline-flex;
+.act-station-power__name {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  width: 100%;
-  aspect-ratio: 1;
-  min-width: 36px;
-  font-size: 1.5rem;
-  line-height: 1;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--act-station-art) 70%, #fff);
-  border: 2px solid var(--act-station-art);
+  padding: 1px 7px;
+  border-radius: 8px;
+  background: rgb(15 23 42 / 82%);
+  color: #f1f5f9;
+  font-size: clamp(0.62rem, 1.5cqw, 0.85rem);
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
   pointer-events: none;
 }
 
-.act-station-art--round {
-  border-radius: 50%;
+.act-station-power__state {
+  font-weight: 600;
+  opacity: 0.8;
 }
 
-.act-station-art--wide {
-  border-radius: 10px 22px;
-}
-
-/* A helmet with a dark visor and no face. */
-.act-station-art--helmet {
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #fff, #e2e8f0 70%);
-}
-
-.act-station-visor {
-  width: 64%;
-  height: 40%;
-  border-radius: 45%;
-  background: linear-gradient(160deg, #475569, #0f172a 70%);
-  box-shadow: inset 3px 3px 0 rgb(255 255 255 / 25%);
-}
-
+/* Placed parts and crew are buttons the size of their art. */
 .act-station-part,
 .act-station-crew {
   position: absolute;
-  transform: translate(-50%, -50%);
   min-width: 44px;
   min-height: 44px;
   padding: 0;
@@ -6931,50 +6807,73 @@ label.te-backdrop-tag,
   touch-action: none;
 }
 
-/* The global button hover/press transform would drop the centring translate. */
+.act-station-crew {
+  cursor: pointer;
+  animation: act-station-walk 0.9s ease-out;
+}
+
+/* The global button hover/press transform is not wanted on art. */
 .act-station-part:hover:not(:disabled),
 .act-station-part:active:not(:disabled),
 .act-station-crew:hover:not(:disabled),
 .act-station-crew:active:not(:disabled),
 .act-station-spot:hover:not(:disabled),
 .act-station-spot:active:not(:disabled) {
-  transform: translate(-50%, -50%);
+  transform: none;
 }
 
-/* A part sits on its docking pad. */
-.act-station-part::before {
-  content: '';
-  position: absolute;
-  inset: -5px;
-  z-index: -1;
-  border-radius: 50%;
-  background: rgb(15 23 42 / 55%);
-  border: 3px solid color-mix(in srgb, var(--act-station-lights) 70%, #fff);
-}
-
-.act-station-part.is-selected,
-.act-station-crate.is-selected {
-  outline: 4px solid #fff;
-  outline-offset: 2px;
-  box-shadow: 0 0 0 7px var(--colour-primary);
-  border-radius: 12px;
+.act-station-part:hover:not(:disabled) .act-station-img,
+.act-station-crew:hover:not(:disabled) .act-station-img {
+  filter: brightness(1.1);
 }
 
 .act-station-part.is-moving {
   opacity: 0.35;
 }
 
-/* Empty docking pads: a dashed ring with a faint plus, always there from Lesson 3. */
+/* The selection halo and the upgrade sparkle: the white glow PNG as a mask, tinted. */
+.act-station-glow {
+  position: absolute;
+  inset: -7%;
+  background: #fde047;
+  opacity: 0.95;
+  filter: blur(2px);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  pointer-events: none;
+}
+
+.act-station-part.is-selected .act-station-img {
+  filter: drop-shadow(0 0 3px #fff);
+}
+
+.act-station-crew.is-captain .act-station-img {
+  filter: drop-shadow(0 0 5px #facc15);
+}
+
+.act-station-captain {
+  position: absolute;
+  pointer-events: none;
+}
+
+.act-station-captain .act-station-img {
+  position: absolute;
+  right: -14%;
+  top: -16%;
+  width: 52%;
+  height: auto;
+}
+
+/* Empty docking pads: a dashed outline the size of the spot. Always there from Lesson 3. */
 .act-station-pad,
 .act-station-spot {
   position: absolute;
-  transform: translate(-50%, -50%);
   min-width: 44px;
-  aspect-ratio: 1;
+  min-height: 44px;
   padding: 0;
-  border-radius: 50%;
+  border-radius: 14px;
   border: 3px dashed rgb(255 255 255 / 85%);
-  background: rgb(15 23 42 / 40%);
+  background: rgb(15 23 42 / 38%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6984,18 +6883,18 @@ label.te-backdrop-tag,
 .act-station-pad::after,
 .act-station-spot::after {
   content: '+';
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
   line-height: 1;
-  color: rgb(255 255 255 / 50%);
+  color: rgb(255 255 255 / 55%);
 }
 
-/* While a part is held, every free pad lights up. */
+/* While a part is held, the spots it fits light up. */
 .act-station-spot {
   pointer-events: auto;
   cursor: pointer;
   border-color: #fde047;
-  background: rgb(253 224 71 / 30%);
+  background: rgb(253 224 71 / 28%);
   animation: act-station-pulse 1.1s ease-in-out infinite;
 }
 
@@ -7004,15 +6903,13 @@ label.te-backdrop-tag,
 }
 
 .act-station-spot.is-near {
-  background: rgb(253 224 71 / 70%);
+  background: rgb(253 224 71 / 65%);
   border-style: solid;
   box-shadow: 0 0 0 5px rgb(253 224 71 / 45%);
   animation: none;
-  transform: translate(-50%, -50%) scale(1.15);
 }
 
 .act-station-spot.is-near:hover:not(:disabled) {
-  transform: translate(-50%, -50%) scale(1.15);
   box-shadow: 0 0 0 5px rgb(253 224 71 / 45%);
 }
 
@@ -7022,32 +6919,123 @@ label.te-backdrop-tag,
   }
 }
 
-.act-station-crew {
-  cursor: pointer;
-  animation: act-station-walk 0.9s ease-out;
-}
-
-.act-station-captain {
-  position: absolute;
-  top: -12px;
-  right: -8px;
-  font-size: 1.25rem;
-}
-
-.act-station-crew.is-captain .act-station-art {
-  border-color: #facc15;
-  box-shadow: 0 0 10px #facc15;
-}
-
 @keyframes act-station-walk {
   from {
-    transform: translate(-50%, 120%);
+    transform: translateY(70%);
     opacity: 0;
   }
 
   to {
-    transform: translate(-50%, -50%);
+    transform: translateY(0);
     opacity: 1;
+  }
+}
+
+/* "Station upgraded!": lights sweep along the hull, the newest part pops and sparkles. */
+.act-station-sweep {
+  overflow: hidden;
+  mix-blend-mode: screen;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.act-station-sweep::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 55%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgb(255 255 255 / 95%) 45%,
+    var(--act-station-lights) 62%,
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: act-station-sweep 1.4s ease-in-out 2;
+}
+
+@keyframes act-station-sweep {
+  to {
+    transform: translateX(185%);
+  }
+}
+
+.act-station-part.is-newest {
+  z-index: 3;
+}
+
+.act-station-part.is-newest,
+.act-station-crew.is-newest {
+  animation: act-station-pop 0.8s ease-out 3;
+}
+
+.act-station-part.is-newest .act-station-glow,
+.act-station-crew.is-newest .act-station-glow {
+  animation: act-station-glow 0.8s ease-in-out 3;
+}
+
+@keyframes act-station-pop {
+  40% {
+    transform: scale(1.28);
+  }
+}
+
+@keyframes act-station-glow {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.act-station-sparks {
+  position: absolute;
+  inset: -22%;
+  pointer-events: none;
+}
+
+.act-station-sparks span {
+  position: absolute;
+  color: #fff7ae;
+  font-size: clamp(0.8rem, 2.4cqw, 1.5rem);
+  text-shadow: 0 0 6px #fde047;
+  animation: act-station-spark 1.1s ease-in-out infinite;
+}
+
+.act-station-sparks span:nth-child(1) {
+  left: 0;
+  top: 0;
+}
+
+.act-station-sparks span:nth-child(2) {
+  right: 0;
+  top: 8%;
+  animation-delay: 0.25s;
+}
+
+.act-station-sparks span:nth-child(3) {
+  left: 6%;
+  bottom: 0;
+  animation-delay: 0.5s;
+}
+
+.act-station-sparks span:nth-child(4) {
+  right: 4%;
+  bottom: 4%;
+  animation-delay: 0.75s;
+}
+
+@keyframes act-station-spark {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4) rotate(0deg);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.2) rotate(40deg);
   }
 }
 
@@ -7055,32 +7043,6 @@ label.te-backdrop-tag,
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.act-station__colours.is-compact {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 4px 20px;
-}
-
-.act-station__colours.is-compact .act-station-swatches {
-  gap: 4px;
-}
-
-.act-station__colours.is-compact .act-station-swatches__label {
-  min-width: 0;
-  margin-right: 4px;
-  font-size: 0.85rem;
-}
-
-.act-station__colours.is-compact .act-station-swatch {
-  flex: none;
-  padding: 0;
-  width: 28px;
-  height: 28px;
-  min-width: 0;
-  min-height: 0;
-  border-width: 2px;
 }
 
 .act-station-swatches {
@@ -7142,60 +7104,40 @@ label.te-backdrop-tag,
   align-items: center;
   justify-content: center;
   gap: 2px;
-  min-width: 64px;
-  min-height: 64px;
+  min-width: 72px;
+  min-height: 72px;
   padding: 4px 8px;
   border-radius: 12px;
   border: 2px solid var(--ui-border);
   background: var(--ui-surface);
-  font-size: 1.75rem;
   cursor: pointer;
   touch-action: none;
+}
+
+.act-station-crate .act-station-img,
+.act-station-tray-part .act-station-img {
+  width: 52px;
+  height: auto;
+}
+
+.act-station-tray-part .act-station-img {
+  max-height: 56px;
+  width: auto;
 }
 
 .act-station-tray-part {
   cursor: grab;
 }
 
-.act-station-tray-part .act-station-art {
-  width: 40px;
-  min-width: 40px;
-}
-
 .act-station-tray-part.is-held {
   opacity: 0.4;
 }
 
-/* A crate drawn in CSS: a closed box with a strap, or an open one with its lid tipped back. */
-.act-station-box {
-  position: relative;
-  width: 34px;
-  height: 24px;
-  margin-top: 12px;
-  border-radius: 3px;
-  background: linear-gradient(90deg, #b45309 40%, #fbbf24 40% 60%, #b45309 60%);
-  border: 2px solid #78350f;
-}
-
-.act-station-box::before {
-  content: '';
-  position: absolute;
-  left: -4px;
-  right: -4px;
-  top: -9px;
-  height: 9px;
-  border-radius: 3px;
-  background: #d97706;
-  border: 2px solid #78350f;
-  transform-origin: left bottom;
-}
-
-.act-station-crate.is-open .act-station-box {
-  background: #78350f;
-}
-
-.act-station-crate.is-open .act-station-box::before {
-  transform: translateY(-7px) rotate(-24deg);
+.act-station-crate.is-selected {
+  outline: 4px solid #fff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 7px var(--colour-primary);
+  border-radius: 12px;
 }
 
 .act-station-crate__label {
@@ -7215,7 +7157,7 @@ label.te-backdrop-tag,
 .act-station-goal {
   display: flex;
   gap: 8px;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .act-station-goal__tick {
@@ -7233,6 +7175,37 @@ label.te-backdrop-tag,
   background: var(--colour-success);
   border-color: var(--colour-success-edge);
   color: #fff;
+}
+
+/* A small picture of what the goal is about. */
+.act-station-goal__icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #0b1020;
+  padding: 2px;
+}
+
+.act-station-goal__icon .act-station-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.act-station-goal__icon.is-swatch {
+  background: conic-gradient(#ef4444, #facc15, #22c55e, #3b82f6, #a855f7, #ef4444);
+  border-radius: 50%;
+}
+
+.act-station-goal__icon.is-glyph {
+  background: var(--ui-surface-tint);
+  color: var(--colour-ink-strong);
+  font-size: 1.3rem;
+  font-weight: 700;
 }
 
 .act-station-goal__method,
@@ -7269,10 +7242,11 @@ label.te-backdrop-tag,
   background: var(--ui-surface-tint);
 }
 
-.act-station-cat-row .act-station-art {
-  width: 40px;
-  min-width: 40px;
+.act-station-cat-row .act-station-img {
   flex: none;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
 }
 
 .act-station-cat-row__name {
@@ -7283,11 +7257,15 @@ label.te-backdrop-tag,
 .act-station-ghost {
   position: fixed;
   z-index: 1000;
-  width: 48px;
+  width: 72px;
   transform: translate(-50%, -50%) scale(1.1);
   pointer-events: none;
   opacity: 0.9;
   filter: drop-shadow(0 6px 8px rgb(0 0 0 / 40%));
+}
+
+.act-station-ghost .act-station-img {
+  height: auto;
 }
 
 .act-station-mini {
@@ -7306,17 +7284,36 @@ label.te-backdrop-tag,
   font-weight: 700;
 }
 
+/* Reduced motion: nothing moves; the upgrade shows as a still glow on the newest part and a lit hull. */
 @media (prefers-reduced-motion: reduce) {
-  .act-station-crew {
+  .act-station-crew,
+  .act-station-spot,
+  .act-station-part.is-newest,
+  .act-station-crew.is-newest,
+  .act-station-part.is-newest .act-station-glow,
+  .act-station-crew.is-newest .act-station-glow,
+  .act-station-sparks span {
     animation: none;
   }
 
-  .act-station-section,
-  .act-station__hull {
+  .act-station-layer--lit,
+  .act-station-hull-tint {
     transition: none;
   }
 
-  .act-station-spot {
+  .act-station-sweep::before {
     animation: none;
+    width: 100%;
+    transform: none;
+    background: color-mix(in srgb, var(--act-station-lights) 40%, transparent);
+  }
+
+  .act-station-sparks span {
+    opacity: 1;
+    transform: none;
+  }
+
+  .act-station-crew.is-newest .act-station-img {
+    filter: drop-shadow(0 0 6px #fde047);
   }
 }

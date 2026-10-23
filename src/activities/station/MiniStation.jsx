@@ -1,60 +1,58 @@
 import { COLOUR_HEX } from './art.js'
-import { SECTIONS, SPOTS, stationProgress } from './station.js'
+import { PLACE_SPOTS, SECTIONS, SCENE_ASPECT, spotById, stationProgress } from './station.js'
 
-// A tiny picture of the station for the tutor's card: lit sections and filled spots as dots.
-const SECTION_BOXES = {
-  core: [61, 8, 38, 46],
-  left: [13, 18, 42, 44],
-  right: [105, 18, 42, 44],
-  dock: [64, 60, 32, 14],
-}
+// A tiny picture of the station for the tutor's card (160 x 100, the scene's 1.6:1): the hull in its
+// colour, a power light per section and a dot per spot, filled when a part is placed there.
+const W = 160
+const H = W / SCENE_ASPECT
+const HULL = { x: 0.156, y: 0.283, w: 0.6875, h: 0.433 }
 
 export function MiniStationPicture({ scene }) {
   const lights = COLOUR_HEX[scene?.lights] ?? COLOUR_HEX.orange
   return (
     <svg
       className="act-station-mini__svg"
-      viewBox="0 0 160 80"
+      viewBox={`0 0 ${W} ${H}`}
       role="img"
       aria-label="The student's space station"
       data-testid="station-mini-picture"
     >
-      <rect x="0" y="0" width="160" height="80" rx="8" fill="#0f172a" />
+      <rect x="0" y="0" width={W} height={H} rx="8" fill="#0f172a" />
       <rect
-        x="3"
-        y="6"
-        width="154"
-        height="68"
-        rx="30"
+        x={HULL.x * W}
+        y={HULL.y * H}
+        width={HULL.w * W}
+        height={HULL.h * H}
+        rx="16"
         fill={COLOUR_HEX[scene?.hull] ?? COLOUR_HEX.blue}
       />
       {SECTIONS.map((s) => {
-        const [x, y, w, h] = SECTION_BOXES[s.id]
+        const spot = spotById(s.spot)
         const lit = !!scene?.power?.[s.id]
         return (
-          <rect
+          <circle
             key={s.id}
             data-testid={`mini-section-${s.id}`}
             data-lit={lit ? 'true' : 'false'}
-            x={x}
-            y={y}
-            width={w}
-            height={h}
-            rx="6"
+            cx={(spot.x + spot.w / 2) * W}
+            cy={(spot.y + spot.h / 2) * H}
+            r="7"
             fill={lit ? lights : '#1e293b'}
-            opacity={lit ? 0.95 : 0.85}
+            stroke="#ffffff"
+            strokeOpacity="0.6"
+            strokeWidth="1"
           />
         )
       })}
-      {SPOTS.map((spot) => {
+      {PLACE_SPOTS.map((spot) => {
         const filled = Object.prototype.hasOwnProperty.call(scene?.placed ?? {}, spot.id)
         return (
           <circle
             key={spot.id}
             data-testid={`mini-spot-${spot.id}`}
             data-filled={filled ? 'true' : 'false'}
-            cx={(spot.x + spot.w / 2) * 160}
-            cy={(spot.y + spot.h / 2) * 80}
+            cx={(spot.x + spot.w / 2) * W}
+            cy={(spot.y + spot.h / 2) * H}
             r="3.2"
             fill={filled ? '#ffffff' : 'none'}
             stroke="#ffffff"

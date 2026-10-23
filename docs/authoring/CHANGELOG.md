@@ -45,7 +45,9 @@ Entries written before 2026-09-29 are not tagged.
   `place_part`, `undo`, `order_part`. Each goal needs a particular method (a double-click opens a
   crate; Ctrl+Z or Cmd+Z undoes; a drag or click-to-pick-up-and-drop places a part) and the tutor
   sees which was used. Each child has one station that is carried between lessons; a missed
-  lesson's parts are added in default places. Mouse or trackpad only. Details:
+  lesson's parts are added in default places. Mouse or trackpad only. Drawn with Lesson Gen's
+  station art: three power sections (`left`, `core`, `right`), crew `crew-robot-1`, `crew-robot-2`,
+  `crew-plant`, and a Lesson 4 catalogue of eight parts ending in `rainbow-ring`. Details:
   [activities/station.md](activities/station.md).
 - Affects: station · Existing lessons: no changes needed · Resolves:
   authoring-requests/2026-10-22-station-activity-one-saved-space-station-each-child-builds-w.md

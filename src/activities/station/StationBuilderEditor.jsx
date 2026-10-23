@@ -112,7 +112,7 @@ function ItemFields({ task, item, update, index }) {
         <input
           className="te-input"
           value={item.prompt ?? ''}
-          placeholder={promptFor({ ...item, prompt: undefined }) || 'Optional prompt'}
+          placeholder={promptFor({ ...item, prompt: undefined }, task.lesson) || 'Optional prompt'}
           aria-label={`Item ${n} prompt`}
           onChange={(e) => update({ prompt: e.target.value || undefined })}
         />
