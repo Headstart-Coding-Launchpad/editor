@@ -541,7 +541,7 @@ export default function LessonTaskContent({
     </div>
   ) : null
 
-  // The tutor's "Send hint" shows on this same banner, as a not-quite-yet hint, with no check
+  // The tutor's "Send hint" shows on this same banner, as a 💡 note from the tutor, with no check
   // result behind it (live lesson only: a teacher's forced live view shows their own screen).
   const sentHintText = cs.teacherHint?.text ?? ''
   const shouldShowFeedbackBanner =
@@ -567,6 +567,7 @@ export default function LessonTaskContent({
           : undefined
       }
       suggestion={sentHintText || displayCheckSuggestion}
+      fromTutor={!!sentHintText}
       onShowCodeStage={
         targetedOfferStage
           ? cs.handlePreviewTargetedStage
