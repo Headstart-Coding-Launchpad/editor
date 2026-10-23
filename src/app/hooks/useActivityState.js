@@ -43,6 +43,12 @@ function storageFileOf(definition) {
  *   state and supersedes a pending teacher edit, but never writes the debounced mirror;
  * - remoteResetAction 'starter' / 'complete' load initialState / solutionState;
  * - teacherAnswerEdit replaces the state and is marked teacher assisted, like quiz edits;
+ * - a task whose activity has a `carrySlot` is carried between lessons (see
+ *   src/shared/roster/crossLessonCarry.js): while `crossLessonCarry.state` is 'hold' (a live
+ *   student with no state of their own, waiting for the tutor) the host shows a hold notice
+ *   instead of the activity; on 'found' the carried work becomes the state via
+ *   `carrySlot.apply(task, carried)` and is saved as the student's own (so a reload never waits
+ *   again); on 'none' / 'starter' / 'missing' / solo it stays `initialState(task)`;
  * - the teacher's own Go Live broadcast publishes the serialised state as teacherLive.answer;
  * - `onDraft(text)` (an unsubmitted answer typed into a submit-to-reveal box: an open short
  *   answer, typed gaps) writes students/{id}/currentDraft in a live lesson only: after
@@ -75,6 +81,7 @@ export function useActivityState({
   teacherAssistedTaskIdsRef,
   onTeacherAnswerApplied,
   livePayloadRef,
+  crossLessonCarry = null,
 }) {
   const task = findTaskById(lesson?.tasks, currentTaskId)
   const hosted = isHostedActivityTask(task)
@@ -452,6 +459,34 @@ export function useActivityState({
     writeAnswer(def.serializeShared(next))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetPushedAt, !!myStudentData])
+
+  // Carry slot, found: the carried work becomes this task's state, once per task load, and only
+  // while the student has no saved state of their own for it (the hold guarantees that, but a
+  // reload racing the inbox read must never replace saved work). The commit saves it locally and
+  // the discrete sync mirrors it to the tutor like any student change.
+  const appliedCarryKeyRef = useRef(null)
+  useEffect(() => {
+    const slot = definition?.carrySlot
+    const carried = crossLessonCarry
+    if (!hosted || !slot || !carried || carried.state !== 'found') return
+    if (String(carried.taskId) !== String(currentTaskId)) return
+    const work = carried.work
+    if (work?.kind !== 'activity_slot' || work.slotId !== slot.id) return
+    if (appliedCarryKeyRef.current === key) return
+    appliedCarryKeyRef.current = key
+    const file = storageFileOf(definition)
+    if (file && actorId && persistence.readSavedFile(actorId, currentTaskId, file) != null) return
+    let next
+    try {
+      next = slot.apply(task, work.state)
+    } catch {
+      return
+    }
+    if (next == null) return
+    commit(next)
+    sync('discrete')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [crossLessonCarry?.state, crossLessonCarry?.taskId, crossLessonCarry?.work, key])
 
   // Teacher "Edit answers" from StudentModal: replace the state and mark it like a quiz edit.
   const appliedTeacherEditAtRef = useRef(null)

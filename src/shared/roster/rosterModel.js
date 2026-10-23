@@ -76,6 +76,15 @@ export function makeRosterWorkId(sourceLessonId, sourceTaskId) {
   return id
 }
 
+// Activity carry slots (an activity's `carrySlot`, docs/architecture/activities.md): one saved
+// state per student per slot, whichever lesson it came from (the latest wins), under the fixed
+// work id `slot__<slotId>`. Null when the slot id isn't a lowercase identifier.
+export const ROSTER_SLOT_WORK_PREFIX = 'slot__'
+export function makeRosterSlotWorkId(slotId) {
+  if (typeof slotId !== 'string' || !/^[a-z][a-z0-9_]*$/.test(slotId)) return null
+  return `${ROSTER_SLOT_WORK_PREFIX}${slotId}`
+}
+
 export function rosterEntryPath(classId, rosterId) {
   return `classes/${classId}/${ROSTER_SUBCOLLECTION}/${rosterId}`
 }
@@ -174,6 +183,7 @@ export function serialiseRosterWork(work) {
   if (!work) return ''
   if (work.kind === 'code') return work.code
   if (work.kind === 'files') return JSON.stringify(work.files)
+  if (work.kind === 'activity_slot') return JSON.stringify([work.slotId, work.state])
   return JSON.stringify(work.scratchState)
 }
 
@@ -240,7 +250,9 @@ export function buildRosterWorkDoc(
       ? { code: work.code }
       : work.kind === 'files'
         ? { files: work.files }
-        : { scratchState: JSON.stringify(work.scratchState) }
+        : work.kind === 'activity_slot'
+          ? { slotId: work.slotId, slotState: JSON.stringify(work.state) }
+          : { scratchState: JSON.stringify(work.scratchState) }
   const size = JSON.stringify(content).length
   if (size <= inlineMax) return { doc: { ...doc, ...content }, chunks: [] }
   const chunks = splitIntoChunks(JSON.stringify(content), chunkSize)
@@ -272,6 +284,12 @@ export function readRosterWorkDoc(doc, chunks = []) {
   }
   if (doc.kind === 'files' && Array.isArray(content.files)) {
     return { kind: 'files', files: content.files, ...meta }
+  }
+  if (doc.kind === 'activity_slot') {
+    const state = typeof content.slotState === 'string' ? parseJson(content.slotState) : null
+    return typeof content.slotId === 'string' && state != null
+      ? { kind: 'activity_slot', slotId: content.slotId, state, ...meta }
+      : null
   }
   if (doc.kind === 'blocks') {
     const state = typeof content.scratchState === 'string' ? parseJson(content.scratchState) : null

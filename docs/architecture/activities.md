@@ -252,6 +252,25 @@ Activities also get `itemProgress: { correct, total }` per student (from the lat
 via `getProgress`) and `avgItemProgress` (mean share of items right) in the task summary;
 `TeacherReportModal` shows "2/3 items right" and "…, 75% of items right".
 
+## Carry slots
+
+An activity can be carried between lessons for a roster-matched student (the station is the first user; `docs/architecture/station-activity.md`). It declares `carrySlot` on `defineActivity`:
+
+```js
+carrySlot: {
+  id: 'station',                    // lowercase identifier, names the roster work `slot__station`
+  extract: (state) => ({ v: 1, scene: state.scene }),   // what is saved (null: nothing to save yet)
+  apply: (task, carried) => fullState,                  // the state a task starts from
+}
+```
+
+It reuses the tutor-mediated roster route of `carryCodeFromLesson` (`src/shared/roster/crossLessonCarry.js`); students never read or write Firestore:
+
+- **Save.** `collectRosterWorkCandidates` (`rosterWorkChanges.js`) offers, for each matched student on the class's current slot task, `extract(deserialize(currentAnswer))` under the fixed work id `slot__<slotId>` (`makeRosterSlotWorkId`, not lesson/task keyed: the latest wins). `useRosterWorkSaver` debounces and hashes it like any roster work (kind `activity_slot`).
+- **Load.** A slot task is a carry (`getCrossLessonCarry`: `kind: 'activity_slot'`, no source lesson or task), so `collectCarryInboxRequests` / `useCarryInboxWriter` / `fillCarryInbox` read `slot__<slotId>` for each matched, joined student as soon as they are matched and write the inbox entry (`kind: 'activity_slot'`) and the status (`found` | `none`). The tutor's hold chip and "Use the starter" work unchanged.
+- **Student.** `useStudentCodeState` runs `useCrossLessonCarry` for the task (own state = the activity's aux file exists). A live student with none holds: `LessonTaskContent` shows `CarryHoldNotice` ("Fetching your saved work…") instead of the activity. On `found`, `useActivityState` sets the state to `carrySlot.apply(task, carried)` and saves it as their own (a reload never waits again). On `none` / `starter` / `missing` it stays `initialState(task)`. Solo, the presentation window, the Builder preview, sandboxes and "No class" sessions never wait.
+- Rules: `carryInbox` accepts `kind: 'activity_slot'`; sizes are capped as for code. No localStorage scan across lessons.
+
 ## Unknown activities
 
 A task whose `activityType` this bundle doesn't know resolves to the `unknown` definition: the

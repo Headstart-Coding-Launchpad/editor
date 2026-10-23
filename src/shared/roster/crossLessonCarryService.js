@@ -3,7 +3,7 @@
 // (teacher/admin only); a student only ever reads their own inbox entry.
 import { get, ref, remove, set, update } from 'firebase/database'
 import { db } from '../firebase'
-import { getSavedWork } from './rosterService'
+import { getSavedSlotWork, getSavedWork } from './rosterService'
 import {
   buildCarryInboxEntry,
   carryInboxPath,
@@ -16,11 +16,14 @@ import {
 // entry) and writes the inbox (when found) and then the status the student is waiting on.
 // Returns the status written.
 export async function fillCarryInbox(lessonId, classId, request, by = null) {
-  const { anonymousId, rosterId, taskId, kind, sourceLessonId, sourceTaskId } = request
+  const { anonymousId, rosterId, taskId, kind, sourceLessonId, sourceTaskId, slotId } = request
   const meta = { sourceLessonId, sourceTaskId, rosterId, by }
   let status
   try {
-    const work = await getSavedWork(classId, rosterId, sourceLessonId, sourceTaskId)
+    // An activity carry slot (kind 'activity_slot') is read from its fixed work id.
+    const work = slotId
+      ? await getSavedSlotWork(classId, rosterId, slotId)
+      : await getSavedWork(classId, rosterId, sourceLessonId, sourceTaskId)
     const built = buildCarryInboxEntry(work, { kind, sourceLessonId, sourceTaskId })
     if (built.entry) {
       // The payload first, so a student who sees 'found' can always read it.

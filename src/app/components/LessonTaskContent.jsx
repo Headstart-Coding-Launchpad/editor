@@ -665,7 +665,7 @@ export default function LessonTaskContent({
           badgeWall={badgeWall}
           entranceKey={taskEntranceKey}
         />
-      ) : !isSandbox && isActivityTask ? (
+      ) : !isSandbox && isActivityTask && !carryHold ? (
         <>
           <TeacherAnswerNotice at={isViewingPrev ? null : cs.teacherAnswerNoticeAt} />
           <ActivityHost
@@ -727,7 +727,10 @@ export default function LessonTaskContent({
           />
         </>
       ) : carryHold ? (
-        <CarryHoldNotice sourceLabel={cs.crossLessonCarry.sourceLabel} />
+        <CarryHoldNotice
+          sourceLabel={cs.crossLessonCarry.sourceLabel}
+          slot={cs.crossLessonCarry.carry?.kind === 'activity_slot'}
+        />
       ) : StudentWorkspace ? (
         <StudentWorkspace
           lesson={lesson}

@@ -223,6 +223,22 @@ describe('defineActivity', () => {
     expect(activity.report.typeFields()).toEqual({ taskType: 'activity', activityType: 'demo' })
   })
 
+  it('accepts an optional carrySlot and defaults it to none', () => {
+    expect(defineActivity(minimal).carrySlot).toBeNull()
+    const carrySlot = { id: 'station', extract: (s) => s, apply: (task, carried) => carried }
+    expect(defineActivity({ ...minimal, carrySlot }).carrySlot).toMatchObject({ id: 'station' })
+    expect(() => defineActivity({ ...minimal, carrySlot: 'x' })).toThrow(/carrySlot/)
+    expect(() => defineActivity({ ...minimal, carrySlot: { ...carrySlot, id: 'Bad' } })).toThrow(
+      /carrySlot\.id/
+    )
+    expect(() =>
+      defineActivity({ ...minimal, carrySlot: { ...carrySlot, extract: null } })
+    ).toThrow(/carrySlot\.extract/)
+    expect(() => defineActivity({ ...minimal, carrySlot: { id: 'a', extract: () => 1 } })).toThrow(
+      /carrySlot\.apply/
+    )
+  })
+
   it('accepts an optional passMessage and defaults it to none', () => {
     expect(defineActivity(minimal).passMessage).toBeNull()
     expect(defineActivity({ ...minimal, passMessage: 'Round done!' }).passMessage).toBe(
