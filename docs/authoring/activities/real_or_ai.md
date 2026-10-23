@@ -4,18 +4,17 @@ A Real or AI task is an **activity**: a bounded exercise that can sit anywhere i
 between code tasks of any module. There is no Run button, no personal sandbox, no sharing and no
 carry-through.
 
-Each item shows a **pair**: two pictures or two texts side by side (stacked on phones and
-narrow tablets). The student:
+Each item is a **pair**: two pictures or two texts side by side (stacked on phones and narrow
+tablets). Each side is one big button. The student **taps the one they think the AI made**, and
+the answer shows at once:
 
-1. picks which one is the AI one,
-2. picks the **clue** (the "tell") that gave it away, from the task's `tells` list,
-3. presses **Reveal**.
+- a tick or cross plus a word ("Right!" / "Not this time") and "B is the AI one",
+- a one-line note on the **tell**, written as a short sentence ("The tell: Hands. Don't rely on it
+  by itself."), from the pair's `tell` and `reliable` fields,
+- your optional extra `reveal` sentence.
 
-The pair then locks and the student sees whether the pick was right, whether their clue matches
-yours, whether that clue is **reliable** on its own, and your `reveal` text. A running score
-("Score: 2 right out of 3 done") stays at the top. The activity marks itself: revealing the last
-pair finishes the task, right or wrong, because the point is learning the clues. The score is
-reported separately.
+That is the whole pair: there is no second "which tell?" question and no Reveal button. A
+`⭐ 3 right` count at the top only ever goes up (no streaks to lose, and Play again keeps it).
 
 Write `type: real_or_ai` on the task (the YAML shorthand for `taskType: activity` +
 `activityType: real_or_ai`, which also works). The task's `title` and `description` /
@@ -31,8 +30,8 @@ description: A short lesson using the Real or AI activity.
 tasks:
   - title: Spot the AI
     type: real_or_ai
-    description: Pick the one the AI made, then say what gave it away.
-    tells: [hands, text_in_image, too_smooth, lighting, odd_detail, none_reliable]
+    description: Tap the one the AI made.
+    coreItems: 2
     items:
       - id: p1
         kind: image
@@ -41,9 +40,9 @@ tasks:
         altA: A girl holding a mug in a kitchen
         altB: A girl holding a mug in a kitchen
         answer: b
-        tell: hands
+        tell: odd hands
         reliable: false
-        reveal: "Hands used to give AI away, but newer models get them right, so don't rely on it."
+        reveal: "Newer models get hands right, so don't rely on it."
       - id: p2
         kind: text
         a: "I tried the soup and it was too salty, so Gran added a potato."
@@ -51,25 +50,34 @@ tasks:
         answer: b
         tell: too_smooth
         reliable: true
-        reveal: "AI text often sounds smooth and general, with no small real details."
+      - id: p3
+        kind: text
+        a: "The bus was late again, so I read the whole of my comic."
+        b: "Public transportation can sometimes be delayed, which allows time for leisure reading."
+        answer: b
+        tell: too_smooth
+        reliable: true
 ```
 
 ## Builder
 
-In the Builder, choose the **Activity** format and pick **Real or AI**. The editor has a
-**Clues** list (add, rename, remove; renaming a clue updates the pairs that use it) and a
-**Pairs** list (add, remove, move up / down). Each pair has Pictures / Texts, side A and B (image
-URL or path, or text), alt text for pictures, which side is AI, the clue (chosen from the Clues
-list), whether the clue is reliable, and the reveal text. Problems show under the pair they are
-about.
+In the Builder, choose the **Activity** format and pick **Real or AI**. The editor has a **Core
+pairs** field and a **Pairs** list (add, remove, move up / down). Each pair has Pictures / Texts,
+side A and B (image URL or path, or text), alt text for pictures, which side is AI, the tell,
+whether it is reliable (or "Not said"), and an optional extra note. Problems show under the pair
+they are about.
 
 ## Task fields
 
 | Field | Required | Notes |
 |---|:---:|---|
 | `type` | Yes | `real_or_ai` in YAML (JSON: `taskType: activity` + `activityType: real_or_ai`) |
-| `tells` | Yes | The clues the student chooses from; at least two, no repeats. Write ids like `too_smooth` (shown as "Too smooth") or plain text like `Odd lighting` (shown as written). Include a catch-all such as `none_reliable` if you want one. |
-| `items` | Yes | One or more pairs. Each needs a unique `id` (keeps saved progress attached to the right pair). |
+| `items` | Yes | One or more pairs, played in order. Each needs a unique `id` (keeps saved progress attached to the right pair). Aim for 3-8. |
+| `coreItems` | No | How many pairs make the round (1 to the number of pairs). The task passes at that many; the rest are bonus pairs. Defaults to all pairs. |
+
+`tells` (the old task-level list of clues) is no longer used. Old lessons that still have it, and
+pairs whose `tell` was one of its entries, keep validating and playing: the list is ignored and
+the pair's `tell` is shown as the note.
 
 ## Item fields
 
@@ -80,9 +88,9 @@ about.
 | `a`, `b` | Yes | The two sides. For `image`: an image path or URL. For `text`: the text to show (line breaks are kept; Markdown is not rendered). |
 | `altA`, `altB` | No | Alt text for the pictures, read by screen readers. Describe what is in the picture, never which one is AI. Defaults to "Picture A" / "Picture B". |
 | `answer` | Yes | `a` or `b`: which side is the AI one. |
-| `tell` | Yes | The clue to look for. Must be one of the task's `tells`. |
-| `reliable` | Yes | `true` if that clue can be trusted on its own, `false` if not (for example because newer AI gets it right). Shown in the reveal. |
-| `reveal` | Yes | The explanation shown after the student reveals the pair. |
+| `tell` | No | The clue to look for, shown after the tap: an id like `too_smooth` (shown as "Too smooth") or plain text like `Odd lighting`. Leave out for no note. |
+| `reliable` | No | `true` if the tell can be trusted on its own, `false` if not (for example because newer AI gets it right). Leave out to say nothing about it. |
+| `reveal` | No | One extra sentence shown under the tell note. |
 
 ### Pictures
 
@@ -93,42 +101,49 @@ pictures the same size and shape, so the pair is not given away by the crop.
 
 ## Marking
 
-- A pair is **right** when the student picked the AI side (`answer`). Whether their clue matches
-  `tell` is recorded separately: a student can be right with a different clue.
-- Picks and clues can be changed until **Reveal**. After Reveal the pair is locked (so the
-  reveal can't be gamed by trying again); the teacher's **Stage → Start again** resets it.
-- The task is complete when every pair has been revealed. Task score = pairs picked right.
-- **One round, no in-task navigation.** The student sees a progress strip (`3 of 5 done`) and moves
-  to the next pair with **Next pair →** after reading the reveal (it is not timed, so the
-  explanation can be read). There are no Previous / numbered buttons; tutors can open any pair
-  from a tutor-only picker. An activity task is one round: a single goal of 3-8 reps that moves on by itself, with no in-task navigation; if you want the class to look at one answer together, make it its own task.
+- A pair is **right** when the student tapped the AI side (`answer`). A tap marks it at once, right
+  or wrong, and locks the pair (so the answer can't be gamed by trying again); the teacher's
+  **Stage → Start again** resets it.
+- **One round, no in-task navigation.** The student sees a progress strip (`3 of 5 done`). After a
+  tap the answer and note stay up for about five seconds so they can be read, then the round moves
+  to the next pair by itself; **Next →** (or **Finish →** on the last pair) moves on sooner. There
+  are no Previous or numbered buttons; tutors can open any pair from a tutor-only picker. An
+  activity task is one round: a single goal of 3-8 reps that moves on by itself, with no in-task
+  navigation; if you want the class to look at one answer together, make it its own task.
+- The task is complete when the **core** pairs are done (all of them unless `coreItems` says
+  fewer), right or wrong, because the point is learning the tells. Pairs after the core are
+  **bonus**. When every pair is done there is a finish card with **Play again**, which clears the
+  pairs on that device and keeps the right count; the task stays passed.
+- The `⭐ N right` count only goes up. There are no streaks.
 
 ## Teacher tools
 
-- **Live, before Reveal.** Each pick and clue is mirrored to the teacher as it is chosen. The
-  student card shows e.g. `1/1 right so far, item 2: picked B, Too smooth` and, once finished,
-  `3/5 right`. The student modal opens on the pair the student is on, shows their pick and clue
-  with a note "Student has picked B and the clue ... Not revealed yet" and the answer key (which
-  side is AI, the clue, whether it is reliable), so you can step in before they reveal.
-- **Edit answers** in the modal lets the teacher change the student's picks (and reveal for
-  them); the edit is marked as teacher assisted.
+- **Live picks.** Each tap is mirrored to the teacher at once. The student card shows e.g.
+  `3/5 done · 2 right` (plus `· +1 bonus` after the core). The student modal opens on the pair the
+  student is on, shows their pick and the answer key (which side is AI, the tell, whether it is
+  reliable) before they tap, and any earlier pair from the tutor-only picker.
+- **Edit answers** in the modal lets the teacher change a student's picks; the edit is marked as
+  teacher assisted.
 - **Stage → Start again** clears the student's pairs; **Complete (show answers)** fills in the
   key.
 - Go Live on an activity task is teacher-only: a student's answers are never broadcast.
 
 ## Session report
 
-`itemProgress` is `{ correct, total }` = pairs picked right out of all pairs. The task summary
-adds `avgItemProgress` and `itemResults[]`: per pair, `itemId`, `tell`, `reliable`, `revealed`
-(students who revealed it), `rightPick` and `tellMatch` (counts). See
+`itemProgress` is `{ correct, total }` = pairs picked right out of the core pairs. The task
+summary adds `avgItemProgress` and `itemResults[]`: per pair, `itemId`, `tell`, `reliable`,
+`revealed` (students who played it) and `rightPick` (counts). See
 [session-reports.md](../session-reports.md#activity-summary-fields).
 
 ## Devices and accessibility
 
-- Works with mouse, touch and keyboard (all controls are real buttons, at least 44 px).
+- Works with mouse, touch and keyboard (each side is a real button, a large tap target).
 - Picks and results are never shown by colour alone: a picked side says "Your pick", the reveal
-  uses words and the symbols ✓ / ✗ / ⚠.
-- After Reveal, focus moves to the reveal so a screen reader or keyboard user lands on it.
+  uses words and the symbols ✓ / ✗.
+- After a tap, focus moves to **Next**; on the next pair it moves to the question, so a keyboard
+  or screen-reader user keeps their place.
+- Reduced motion is respected: the small press and reveal animations only run when the device
+  has not asked for less motion. The timing is the same either way.
 
 ## Validation
 
