@@ -18,6 +18,7 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 
 - Default expanded student view shows the last-run snapshot only; it does not stream.
 - Streaming starts only when the teacher clicks "Go Live".
+- **Go Live class view.** `isTeacherLiveViewer` (source `teacher`, not the presenter) is `goLiveOn` in `StudentView`. It adds `live: true` to `PollTaskClassContext` (`ShortAnswerQuiz` shows `ShownResponsesWall` above the student's own box when `canShowResponses`), passes `live` to `ClassPollCard` (bars with no vote needed, only when the tutor's `showResults` is on; counts only), uses `ClassCountdownPill variant="presentation"` and a large `TimesUpBanner`, and renders `ClassProgressStrip` (also on the presentation window). Names on the wall follow each entry's `showName` (default off unless the task sets `anonymiseResponses: false`); `anonymousId` is never rendered.
 - On "Go Live", fetch once first, then set `activeStudentView`.
 - While live, teacher sees the student's selected text/cursor.
 - Closing the modal by any route must clear `activeStudentView`: close button, outside click, Escape, or tab close.
