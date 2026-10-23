@@ -32,6 +32,7 @@ describe('registry helpers for the Builder (plan 2.4)', () => {
       'real_or_ai',
       'next_word',
       'classifier',
+      'station',
     ])
   })
 

@@ -1,3 +1,4 @@
+import StationBuilderEditor from './StationBuilderEditor.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
@@ -626,6 +627,9 @@ export { StationCardSummary }
 
 export default {
   StudentView: StationStudentView,
+  BuilderEditor: StationBuilderEditor,
+  BuilderIcon: () => <span aria-hidden="true">🚀</span>,
+  builderHint: 'Build a space station',
   CardSummary: StationCardSummary,
   ownsLayout: true,
 }

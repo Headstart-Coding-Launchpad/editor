@@ -49,6 +49,9 @@ function makeSession(lessonId, currentTaskId = 1) {
       createdAt: 456,
       currentTaskId,
       students: { 'student-1': { displayName: 'Sam' } },
+      // The station carries its scene between lessons, so a live student waits for the tutor's
+      // answer; 'none' = nothing saved, start fresh.
+      carryStatus: { 'student-1': { [currentTaskId]: { status: 'none', at: 1 } } },
     },
     loading: false,
     connected: true,
@@ -125,19 +128,7 @@ describe.skipIf(!getActivityDefinition('station'))('Station StudentView click-th
     expect(screen.getByTestId('section-core')).toHaveAttribute('data-lit', 'true')
     expect(screen.queryByText('Station upgraded!')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Hull colour green' }))
-    expect(screen.getByText('Station upgraded!')).toBeInTheDocument()
-
-    // The card update carries the scene and how each goal was done, and at most one undo step.
-    await waitFor(() => {
-      const sent = mocks.session.writeStudentAnswer.mock.calls
-      expect(sent.length).toBeGreaterThan(0)
-      const last = JSON.parse(sent[sent.length - 1][1])
-      expect(last.scene.power.core).toBe(true)
-      expect(last.scene.hull).toBe('green')
-      expect(last.done.core.method).toBe('click')
-      expect(last.done.hull.method).toBe('click')
-      expect(last.undo.length).toBeLessThanOrEqual(1)
-    })
+    expect(screen.getAllByText('Station upgraded!').length).toBeGreaterThan(0)
 
     // Reaching the goals marks the task, with no Check button.
     await waitFor(() => expect(mocks.session.writeStudentRun).toHaveBeenCalled())
@@ -145,7 +136,14 @@ describe.skipIf(!getActivityDefinition('station'))('Station StudentView click-th
     expect(id).toBe('student-1')
     expect(run.status).toBe('submitted')
     expect(run.checkPassed).toBe(true)
-    expect(JSON.parse(run.answer).done.hull).toBeTruthy()
+    // Passing submits straight away (cancelling the debounced mirror), so the submitted answer
+    // is what carries the scene, how each goal was done, and at most one undo step.
+    const answer = JSON.parse(run.answer)
+    expect(answer.scene.power.core).toBe(true)
+    expect(answer.scene.hull).toBe('green')
+    expect(answer.done.core.method).toBe('click')
+    expect(answer.done.hull.method).toBe('click')
+    expect(answer.undo.length).toBeLessThanOrEqual(1)
     expect(mocks.session.writeStudentCode).not.toHaveBeenCalled()
   }, 20000)
 })
