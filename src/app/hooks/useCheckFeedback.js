@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 
-export function useCheckFeedback({ myStudentData, onCheckResult } = {}) {
+export function useCheckFeedback({ myStudentData, currentTaskId, onCheckResult } = {}) {
   const [checkPassed, setCheckPassed] = useState(false)
   const [checkAttempted, setCheckAttempted] = useState(false)
   const [checkSuggestion, setCheckSuggestion] = useState('')
@@ -10,6 +10,9 @@ export function useCheckFeedback({ myStudentData, onCheckResult } = {}) {
   const [offeredStageIndex, setOfferedStageIndex] = useState(-1)
   const [completePreviewShown, setCompletePreviewShown] = useState(false)
   const [stagePromptAccepted, setStagePromptAccepted] = useState(false)
+  // The tutor's "Send hint" text for this task ({ text, at }), shown on the hint banner. It sets
+  // no check state: it clears when a check result lands, a run starts or the task changes.
+  const [teacherHint, setTeacherHint] = useState(null)
 
   const checkPassedRef = useRef(false)
   checkPassedRef.current = checkPassed
@@ -27,6 +30,7 @@ export function useCheckFeedback({ myStudentData, onCheckResult } = {}) {
     setRepeatedSuggestionCount(0)
     setTestResults(null)
     setStagePromptAccepted(false)
+    setTeacherHint(null)
   }
 
   function resetCheckFeedback() {
@@ -46,6 +50,7 @@ export function useCheckFeedback({ myStudentData, onCheckResult } = {}) {
     const scrubMiss = scrub && !passed
     if (!skipLog && !scrubMiss) onCheckResultRef.current?.(passed)
     const nextSuggestion = String(suggestion ?? '').trim()
+    setTeacherHint(null)
     setCheckPassed(passed)
     setCheckAttempted(true)
     setCheckSuggestion(nextSuggestion)
@@ -75,7 +80,17 @@ export function useCheckFeedback({ myStudentData, onCheckResult } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.checkOverridePushedAt])
 
+  const sentHint = myStudentData?.teacherHint
+  const sentHintAt = sentHint?.at ?? null
+  useEffect(() => {
+    const text = String(sentHint?.text ?? '').trim()
+    const onThisTask = currentTaskId == null || String(sentHint?.taskId) === String(currentTaskId)
+    setTeacherHint(text && onThisTask && sentHintAt ? { text, at: sentHintAt } : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sentHintAt, currentTaskId])
+
   return {
+    teacherHint,
     checkPassed,
     setCheckPassed,
     checkAttempted,

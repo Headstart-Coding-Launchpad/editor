@@ -1,6 +1,15 @@
 import React, { useState } from 'react'
 
-export default function MessageCompose({ student, onSendMessage, isOpen, onClose }) {
+// The tutor's text box to one student. Default: a pop-up message. `variant="hint"` is "Send hint":
+// the same box, but the text goes onto the student's hint banner (no pass/fail change).
+export default function MessageCompose({
+  student,
+  onSendMessage,
+  isOpen,
+  onClose,
+  variant = 'message',
+}) {
+  const isHint = variant === 'hint'
   const [text, setText] = useState('')
 
   function handleSend() {
@@ -25,7 +34,9 @@ export default function MessageCompose({ student, onSendMessage, isOpen, onClose
     >
       <div style={s.modal}>
         <div style={s.header}>
-          <span style={s.title}>Message {student.displayName}</span>
+          <span style={s.title}>
+            {isHint ? 'Send hint to' : 'Message'} {student.displayName}
+          </span>
           <button
             style={s.closeBtn}
             onClick={() => {
@@ -38,11 +49,17 @@ export default function MessageCompose({ student, onSendMessage, isOpen, onClose
         </div>
         <div style={s.body}>
           <p style={s.hint}>
-            A friendly pop-up will appear on {student.displayName}&apos;s screen.
+            {isHint
+              ? `Your hint will show on ${student.displayName}'s hint banner. Their task is not marked passed or failed.`
+              : `A friendly pop-up will appear on ${student.displayName}'s screen.`}
           </p>
           <textarea
             style={s.textarea}
-            placeholder='e.g. "Great work so far!" or "Try a different approach…"'
+            placeholder={
+              isHint
+                ? 'e.g. Look at line 3. What is missing at the end?'
+                : 'e.g. "Great work so far!" or "Try a different approach…"'
+            }
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={4}
@@ -70,7 +87,7 @@ export default function MessageCompose({ student, onSendMessage, isOpen, onClose
             onClick={handleSend}
             disabled={!text.trim()}
           >
-            Send
+            {isHint ? 'Send hint' : 'Send'}
           </button>
         </div>
       </div>

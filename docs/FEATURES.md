@@ -95,6 +95,7 @@ After the same hint appears twice in a row, solo students can optionally view th
 - Card status chips are single icons (✓ ✕ ⚠ 💬 ✋ 💤 📋 ⛶ 📤 💡 🪟 ✏️), with the words on hover
 - A run that crashed shows ⚠ Error (hover for the error line), separately from ✕ Failed (ran, but the check didn't pass); the grid header counts errored students on their own
 - See the hint each student is being shown: a 💬 chip on the card (hover for the hint, how many times in a row they've failed, and any "Want a hint?" offer they haven't opened; "Your hint" when it's your override), the same hint in a "Amy sees" panel at the top of the student's modal, and a "Common hints right now" list above the cards when two or more students are seeing the same hint (click to outline them). Live lesson tasks only; cleared when they pass or the task changes
+- **💡 Send hint** (StudentModal header): a small box; your text goes onto that student's hint banner for the current task, as the student sees any hint. It does not mark the task passed or failed and changes no check state (unlike Mark Fail). It shows on your card's 💬 chip and the "Your hint" panel, clears when their next check result lands, a run starts or the task changes. Information tasks and the session sandbox don't offer it
 
 ### Task Navigator
 - Task list with group collapse

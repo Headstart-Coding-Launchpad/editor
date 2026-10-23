@@ -541,6 +541,9 @@ export default function LessonTaskContent({
     </div>
   ) : null
 
+  // The tutor's "Send hint" shows on this same banner, as a not-quite-yet hint, with no check
+  // result behind it (live lesson only: a teacher's forced live view shows their own screen).
+  const sentHintText = cs.teacherHint?.text ?? ''
   const shouldShowFeedbackBanner =
     !cs.stagePromptAccepted &&
     !isSandbox &&
@@ -548,21 +551,22 @@ export default function LessonTaskContent({
     !isForcedTeacherLive &&
     (((task?.check || isAutoEvaluatedQuiz || (isActivityTask && !isQuizTask)) &&
       displayCheckAttempted) ||
-      cs.offeredSupportStageIndex != null)
+      cs.offeredSupportStageIndex != null ||
+      !!sentHintText)
   const feedbackBanner = shouldShowFeedbackBanner ? (
     <CheckFeedbackBanner
       // Remounts (resetting the popup's own auto-dismiss timer and any manual dismissal)
       // only when a genuinely new check/stage event happens, not on every unrelated
       // re-render of this component.
-      key={`${currentTaskId}-${displayCheckPassed}-${cs.checkFailCount}-${cs.offeredSupportStageIndex}`}
-      passed={cs.offeredSupportStageIndex != null ? false : displayCheckPassed}
+      key={`${currentTaskId}-${displayCheckPassed}-${cs.checkFailCount}-${cs.offeredSupportStageIndex}-${cs.teacherHint?.at ?? ''}`}
+      passed={cs.offeredSupportStageIndex != null || sentHintText ? false : displayCheckPassed}
       failureMessage={isQuizLike ? 'Not quite right, try again.' : undefined}
       successMessage={
         isActivityTask && !isQuizTask
           ? (getActivityDefinition(getActivityId(task))?.passMessage ?? undefined)
           : undefined
       }
-      suggestion={displayCheckSuggestion}
+      suggestion={sentHintText || displayCheckSuggestion}
       onShowCodeStage={
         targetedOfferStage
           ? cs.handlePreviewTargetedStage

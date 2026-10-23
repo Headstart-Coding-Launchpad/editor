@@ -149,6 +149,7 @@ describe('useSession', () => {
         expect.objectContaining({
           'students/student-abc/studentHint': null,
           'students/student-abc/hintOffer': null,
+          'students/student-abc/teacherHint': null,
           'students/student-abc/lastRunError': null,
         })
       )
@@ -1102,6 +1103,31 @@ describe('useSession', () => {
     })
   })
 
+  describe('sendHintToStudent', () => {
+    it('writes teacherHint only, with no check-override fields', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ currentTaskId: 4, students: { 'student-abc': {} } })
+      await act(async () => {
+        await result.current.sendHintToStudent('student-abc', '  Look at line 3  ')
+      })
+      const [target, updates] = firebaseMocks.update.mock.calls.at(-1)
+      expect(target).toEqual({ path: 'sessions/lesson-1/students/student-abc' })
+      expect(updates).toEqual({
+        teacherHint: { text: 'Look at line 3', taskId: '4', at: expect.any(Number) },
+      })
+    })
+
+    it('ignores an empty hint', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      fireSession({ currentTaskId: 4 })
+      firebaseMocks.update.mockClear()
+      await act(async () => {
+        await result.current.sendHintToStudent('student-abc', '   ')
+      })
+      expect(firebaseMocks.update).not.toHaveBeenCalled()
+    })
+  })
+
   describe('recordClassAdvanceOverrides', () => {
     it('records overrides for students who have not passed the task being left', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
@@ -1497,6 +1523,7 @@ describe('useSession', () => {
         lastRunStatus: null,
         lastRunError: null,
         studentHint: null,
+        teacherHint: null,
         hintOffer: null,
         currentOutput: '',
         currentCode: '',

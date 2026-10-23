@@ -721,6 +721,7 @@ export function useStudentCodeState({
   )
 
   const {
+    teacherHint,
     checkPassed,
     setCheckPassed,
     checkAttempted,
@@ -741,7 +742,7 @@ export function useStudentCodeState({
     resetRunFeedback,
     resetCheckFeedback,
     applyCheckFeedback,
-  } = useCheckFeedback({ myStudentData })
+  } = useCheckFeedback({ myStudentData, currentTaskId })
 
   // Mirror the hint on this student's check-feedback banner (and any unopened "Want a hint?"
   // offer) onto their student node so the teacher's card, modal and common-hints strip can
@@ -765,6 +766,7 @@ export function useStudentCodeState({
       checkSuggestion,
       checkFailCount,
       studentData: myStudentData,
+      teacherHint,
       targetedStageOffer,
       offeredSupportStageIndex,
     })
@@ -795,6 +797,7 @@ export function useStudentCodeState({
     targetedStageOffer,
     offeredSupportStageIndex,
     myStudentData?.checkOverridePushedAt,
+    teacherHint?.at,
   ])
 
   const sandboxModuleId = lesson?.lessonModule?.id ?? null
@@ -3370,6 +3373,7 @@ export function useStudentCodeState({
     scrubHeld: scrubAfterPass.held,
     scrubJustOpened: scrubAfterPass.justOpened,
     inputPrompt,
+    teacherHint,
     checkPassed,
     checkAttempted,
     checkSuggestion,

@@ -54,13 +54,22 @@ export function buildStudentHintState({
   checkSuggestion,
   checkFailCount,
   studentData,
+  teacherHint,
   targetedStageOffer,
   offeredSupportStageIndex,
 }) {
   if (taskId == null) return { studentHint: undefined, hintOffer: undefined }
   let studentHint
   if (checkAttempted && checkPassed) studentHint = null
-  else if (checkAttempted) {
+  else if (teacherHint?.text) {
+    // The tutor's "Send hint": their own words, so it counts as an override in the strip.
+    studentHint = {
+      text: clip(teacherHint.text, HINT_TEXT_MAX),
+      source: 'override',
+      failStreak: Number(checkFailCount) || 0,
+      taskId: String(taskId),
+    }
+  } else if (checkAttempted) {
     const text = clip(checkSuggestion, HINT_TEXT_MAX)
     const overrideHint = String(studentData?.checkOverrideHint ?? '').trim()
     const isOverride =

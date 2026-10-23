@@ -48,7 +48,7 @@ import { liveInkPath } from '../liveInk/liveInkData'
 import { normalizePollDraft, pollChoiceIndex } from '../../shared/classPolls.js'
 import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liveInkWriter'
 import { buildClassCountdown, extendClassCountdown } from '../../shared/classCountdown'
-import { clipRunError } from '../studentHints.js'
+import { clipRunError, HINT_TEXT_MAX } from '../studentHints.js'
 import { bumpSideQuestCount } from '../../shared/sideQuests.js'
 import { bumpExampleOpenCount, exampleOpenPath } from '../../shared/exampleOpens.js'
 import { draftLogUpdates } from '../../shared/answerDrafts.js'
@@ -518,6 +518,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       updates[`students/${anonymousId}/lastRunStatus`] = null
       updates[`students/${anonymousId}/lastRunError`] = null
       updates[`students/${anonymousId}/studentHint`] = null
+      updates[`students/${anonymousId}/teacherHint`] = null
       updates[`students/${anonymousId}/hintOffer`] = null
       updates[`students/${anonymousId}/currentOutput`] = ''
       updates[`students/${anonymousId}/currentCode`] = ''
@@ -627,6 +628,16 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       if (record) updates[`overrideLog/${anonymousId}/${taskId}`] = record
     }
     await update(ref(db, `sessions/${lessonId}`), updates)
+  }
+
+  // "Send hint": the tutor's own words on the student's hint banner for this task, without
+  // marking the task failed or touching check state (Mark Fail's hint rides on the fail flag).
+  async function sendHintToStudent(anonymousId, text, taskId = session?.currentTaskId) {
+    const hint = String(text ?? '').trim()
+    if (!hint || taskId == null) return
+    await update(ref(db, `sessions/${lessonId}/students/${anonymousId}`), {
+      teacherHint: { text: hint.slice(0, HINT_TEXT_MAX), taskId: String(taskId), at: Date.now() },
+    })
   }
 
   async function recordClassAdvanceOverrides(
@@ -2383,6 +2394,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     pushRemoteRun,
     clearRemoteRun,
     overrideStudentCheck,
+    sendHintToStudent,
     recordClassAdvanceOverrides,
     dismissHelp,
     requestWorkspaceShare,

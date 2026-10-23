@@ -174,6 +174,7 @@ export default function TeacherView({ lessonId }) {
     readSharedWorkspace,
     sendToTopic,
     sendMessageToStudent,
+    sendHintToStudent,
     updateVideoCallLink,
     sendVideoCallLink,
     broadcastVideoCallLink,
@@ -1230,6 +1231,7 @@ export default function TeacherView({ lessonId }) {
             onSendTopicToAll={handleSendTopicToAll}
             onSendToIndividual={handleSendToIndividual}
             onSendMessage={sendMessageToStudent}
+            onSendHint={sendHintToStudent}
             onRequestTeacherEdit={requestTeacherEdit}
             onPushTeacherLiveCode={pushTeacherLiveCode}
             onCommitTeacherEdit={commitTeacherEdit}

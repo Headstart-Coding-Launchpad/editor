@@ -41,6 +41,7 @@ export default function StudentGrid({
   onTogglePaused,
   onSendToIndividual,
   onSendMessage,
+  onSendHint,
   onSendVideoCallLink,
   onRequestTeacherEdit,
   onPushTeacherLiveCode,
@@ -715,6 +716,7 @@ export default function StudentGrid({
           onSendToTopic={onSendToTopic}
           onSendTopicToAll={onSendTopicToAll}
           onSendMessage={onSendMessage}
+          onSendHint={onSendHint}
           onSendVideoCallLink={onSendVideoCallLink}
           onRequestTeacherEdit={onRequestTeacherEdit}
           onPushTeacherLiveCode={onPushTeacherLiveCode}

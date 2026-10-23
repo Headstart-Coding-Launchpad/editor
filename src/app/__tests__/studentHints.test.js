@@ -46,6 +46,29 @@ describe('lastErrorLine', () => {
   })
 })
 
+describe('buildStudentHintState with a tutor Send hint', () => {
+  it("mirrors it as the tutor's own hint, with no check attempted", () => {
+    const state = build({
+      checkAttempted: false,
+      checkPassed: false,
+      checkSuggestion: '',
+      checkFailCount: 0,
+      teacherHint: { text: 'Look at line 3', at: 1 },
+    })
+    expect(state.studentHint).toEqual({
+      text: 'Look at line 3',
+      source: 'override',
+      failStreak: 0,
+      taskId: 't1',
+    })
+  })
+
+  it('is cleared once the student passes', () => {
+    const state = build({ checkPassed: true, teacherHint: { text: 'Look at line 3', at: 1 } })
+    expect(state.studentHint).toBeNull()
+  })
+})
+
 describe('buildStudentHintState', () => {
   it('publishes the failed-check hint with its fail streak', () => {
     expect(build()).toEqual({
