@@ -1,6 +1,6 @@
 # Station activity: one saved space station each child builds with mouse and keyboard skills (Mouse and Keyboard)
 
-- **Status:** planned (Phase 1 on feature/station-activity, Hub #101)
+- **Status:** planned
 - **Kind:** activity
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-10-22
 - **Lessons blocked:** none yet
@@ -35,4 +35,4 @@ Replaces candidates #93 and #94 (Desktop carry and share link), which no longer 
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Phase 1 (Lessons 1-4) in progress on `feature/station-activity` (Hub #101): activity `station`, docs `docs/authoring/activities/station.md`, design `docs/architecture/station-activity.md`.
