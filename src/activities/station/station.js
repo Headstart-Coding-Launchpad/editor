@@ -211,6 +211,21 @@ export const GOALS = Object.freeze({
     lessons: [3, 4],
   },
   undo: { label: 'Undo', target: 'none', methods: ['ctrl_z', 'cmd_z'], lessons: [3, 4] },
+  // YAML-only goals (the Builder editor does not offer them): they need extra task data.
+  light_pattern: {
+    label: 'Light pattern',
+    target: 'none',
+    methods: ['click', 'keyboard'],
+    lessons: [1],
+    yamlOnly: true,
+  },
+  undo_mistakes: {
+    label: "Undo the robot's drops",
+    target: 'none',
+    methods: ['ctrl_z', 'cmd_z'],
+    lessons: [3],
+    yamlOnly: true,
+  },
   order_part: { label: 'Order a part', target: 'part', methods: ['click'], lessons: [4] },
 })
 export const GOAL_IDS = Object.freeze(Object.keys(GOALS))
@@ -233,6 +248,21 @@ function emptyScene() {
     captain: null,
     ordered: [],
   }
+}
+
+// The spots holding the clumsy robot's preset drops (task `mistakes`). Only a Ctrl/Cmd+Z removes
+// them, and they are never saved as the child's real station (see stripMistakes).
+export const mistakesOf = (scene) => (Array.isArray(scene?.mistakes) ? scene.mistakes : [])
+
+// A scene without the clumsy robot's drops: what is carried to the next lesson.
+export function stripMistakes(scene) {
+  if (!scene) return scene
+  const { mistakes, ...rest } = scene
+  const flagged = Array.isArray(mistakes) ? mistakes : []
+  const placed = Object.fromEntries(
+    Object.entries(rest.placed ?? {}).filter(([id]) => !flagged.includes(id))
+  )
+  return { ...rest, placed }
 }
 
 function freeSpot(scene, preferred, partId) {
@@ -370,7 +400,10 @@ function sanitiseScene(raw, multi = new Set()) {
 export function applyCarried(task, carried) {
   const n = PHASE_1_LESSONS.includes(task?.lesson) ? task.lesson : 1
   const raw = carried && typeof carried === 'object' && 'scene' in carried ? carried.scene : carried
-  return completeScene(sanitiseScene(raw, multiParts(task)), n, task)
+  const scene = sanitiseScene(raw, multiParts(task))
+  // A child past Lesson 1 has a powered station (a light pattern was only a game).
+  if (n > 1) for (const s of SECTIONS) scene.power[s.id] = true
+  return completeScene(scene, n, task)
 }
 
 // --- Catalogue and tray ---
@@ -414,13 +447,34 @@ export function nearestSpot(scene, point, what = 'module', radius = SPOT_SNAP_RA
 
 // --- State and actions ---
 
+// The clumsy robot's drops (task `mistakes`, lesson 3): each is put on its spot in turn and every
+// step goes on the undo stack, so each Ctrl+Z puts one back. A drop is skipped when its spot is
+// taken or its part is already placed. Returns { scene, undo }.
+export function withMistakes(task, scene) {
+  const list = task?.lesson === 3 && Array.isArray(task?.mistakes) ? task.mistakes : []
+  const undo = []
+  let current = scene
+  for (const m of list) {
+    const p = partById(m?.part)
+    const spot = spotById(m?.spot)
+    if (!isPlaceable(p) || !spotTakes(spot, p)) continue
+    if (own(current.placed, spot.id) || isPlaced(current, p.id)) continue
+    undo.push(current)
+    current = clone(current)
+    current.placed[spot.id] = p.id
+    current.mistakes = [...mistakesOf(current), spot.id]
+  }
+  return { scene: current, undo }
+}
+
 export function initialStationState(task, scene = null) {
+  const start = withMistakes(task, scene ?? sceneForLesson(task?.lesson, task))
   return {
     v: 1,
-    scene: scene ?? sceneForLesson(task?.lesson, task),
+    scene: start.scene,
     done: {},
     selected: null,
-    undo: [],
+    undo: start.undo,
     undos: 0,
     device: { touch: false },
   }
@@ -428,6 +482,24 @@ export function initialStationState(task, scene = null) {
 
 const goalItems = (task) => (Array.isArray(task?.items) ? task.items : [])
 const orderOf = (item) => (Array.isArray(item?.order) && item.order.length ? item.order : null)
+// Goals that come one after another: a power order card or a light pattern (they share the power
+// buttons) and a Mission Control colour (same target). Each counts only once every earlier goal in
+// its series is done, so a second card can repeat the first one's job.
+function seriesOf(item) {
+  if (item?.goal === 'light_pattern' || (item?.goal === 'power_on' && orderOf(item))) return 'power'
+  if (item?.goal === 'pick_colour' && item.match) return `colour:${item.target}`
+  return null
+}
+export function isActive(task, done, item) {
+  const series = seriesOf(item)
+  if (!series) return true
+  for (const other of goalItems(task)) {
+    if (other === item) return true
+    if (seriesOf(other) === series && !own(done ?? {}, other.id)) return false
+  }
+  return true
+}
+
 // The part a goal is about: its target, or the part on its card ("find the one in the picture").
 export const goalPart = (item) => item?.card || item?.target || null
 
@@ -467,13 +539,17 @@ export function blockedBy(task, state, action) {
     if (item.onlyNoted === true && action.type === 'open' && !isNoted(task, action.crate)) {
       if (scene.crates?.[action.crate] === 'closed') return item
     }
-    if (own(done, item.id)) continue
+    if (item.goal === 'undo_mistakes' && action.type === 'place' && action.from) {
+      if (mistakesOf(scene).includes(action.from)) return item
+    }
+    if (own(done, item.id) || !isActive(task, done, item)) continue
     const order = orderOf(item)
     if (!order) continue
     const next = nextInOrder(item, scene)
     if (!next) continue
     if (item.goal === 'power_on' && action.type === 'power') {
       if (action.section === 'all') return item
+      if (action.on === false) continue
       if (order.includes(action.section) && action.section !== next && !scene.power[action.section])
         return item
     } else if (item.goal === 'open_crate' && action.type === 'open') {
@@ -499,10 +575,19 @@ function completes(item, action, state, task) {
   const order = orderOf(item)
   switch (item.goal) {
     case 'power_on':
-      if (action.type !== 'power') return null
+      if (action.type !== 'power' || action.on === false) return null
       if (order) return order.every((id) => scene.power[id]) ? mark : null
       if (target) return action.section === target || action.section === 'all' ? mark : null
       return SECTIONS.every((s) => scene.power[s.id]) ? mark : null
+    case 'light_pattern':
+      if (action.type !== 'power' || !item.pattern) return null
+      return SECTIONS.every((s) => !!scene.power[s.id] === patternOn(item.pattern[s.id]))
+        ? mark
+        : null
+    case 'undo_mistakes':
+      if (action.type !== 'undo' || !Array.isArray(task?.mistakes) || !task.mistakes.length)
+        return null
+      return mistakesOf(scene).length === 0 ? mark : null
     case 'pick_colour':
       if (action.type !== 'colour' || action.target !== target) return null
       return item.match && action.colour !== item.match ? null : mark
@@ -542,14 +627,33 @@ function completes(item, action, state, task) {
   }
 }
 
+// A pattern value counts as on for true or "on" (YAML may turn an unquoted on / off into a boolean).
+export const patternOn = (value) => value === true || value === 'on'
+export const patternIsValid = (value) =>
+  value === true || value === false || value === 'on' || value === 'off'
+
 function markGoals(state, task, action) {
   let done = state.done
-  for (const item of goalItems(task)) {
+  let reset = false
+  const items = goalItems(task)
+  for (const item of items) {
     if (!item?.id || own(done, item.id)) continue
+    // Whether a goal may count is decided before this action, so one press never finishes two.
+    if (!isActive(task, state.done, item)) continue
     const mark = completes(item, action, state, task)
-    if (mark) done = { ...done, [item.id]: mark }
+    if (!mark) continue
+    done = { ...done, [item.id]: mark }
+    // A power goal finished with another power goal still to come: the station switches off so
+    // the next one can be done from the start.
+    if (seriesOf(item) === 'power') {
+      const later = items.slice(items.indexOf(item) + 1)
+      if (later.some((o) => seriesOf(o) === 'power' && !own(done, o.id))) reset = true
+    }
   }
-  return done === state.done ? state : { ...state, done }
+  if (done === state.done) return state
+  if (!reset) return { ...state, done }
+  const power = Object.fromEntries(SECTIONS.map((s) => [s.id, false]))
+  return { ...state, done, scene: { ...state.scene, power } }
 }
 
 function pushUndo(state, scene) {
@@ -576,8 +680,13 @@ export function stationAction(state, action, task) {
     case 'power': {
       const ids = action.section === 'all' ? SECTIONS.map((s) => s.id) : [action.section]
       if (!ids.every((id) => SECTIONS.some((s) => s.id === id))) return state ?? base
+      const off = action.on === false
+      // Switching a section off is Lesson 1 only; after that the station stays powered.
+      if (off && (task?.lesson !== 1 || action.section === 'all' || !scene.power[ids[0]])) {
+        return state ?? base
+      }
       const power = { ...scene.power }
-      for (const id of ids) power[id] = true
+      for (const id of ids) power[id] = !off
       next = pushUndo(base, { ...clone(scene), power })
       break
     }
@@ -670,6 +779,7 @@ function targetIsValid(kind, target) {
 
 const STICKER_WORDS = `a colour and a shape joined with a dash, like red-star (colours: ${STICKER_COLOURS.join(', ')}; shapes: ${STICKER_SHAPES.join(', ')})`
 const MAX_UNDO_COUNT = 9
+const MAX_MISTAKES = 4
 const ORDER_GOALS = ['power_on', 'open_crate', 'place_part']
 const COUNT_GOALS = ['place_part', 'open_crate', 'undo']
 
@@ -718,6 +828,58 @@ function validateBay(task, where, lessonOk, errors) {
         }
       })
     }
+  }
+}
+
+// The clumsy robot's preset drops (task `mistakes`, lesson 3 only), each { part, spot }.
+function validateMistakes(task, where, lessonOk, errors) {
+  if (task?.mistakes == null) return
+  const list = task.mistakes
+  if (!Array.isArray(list) || list.length < 1 || list.length > MAX_MISTAKES) {
+    errors.push(
+      `${where}: mistakes must be a list of 1 to ${MAX_MISTAKES} drops, each with a part and a spot.`
+    )
+    return
+  }
+  if (lessonOk && task.lesson !== 3) {
+    errors.push(`${where}: mistakes only applies to lesson 3.`)
+    return
+  }
+  const catalogue = lessonOk ? catalogueFor(task) : []
+  const wanted = new Set(
+    goalItems(task)
+      .filter((i) => i?.goal === 'place_part')
+      .flatMap((i) => [i.target, i.card, ...(Array.isArray(i.order) ? i.order : [])])
+  )
+  const spots = new Set()
+  const parts = new Set()
+  list.forEach((m, j) => {
+    const label = `${where} mistake ${j + 1}`
+    const p = partById(m?.part)
+    const spot = spotById(m?.spot)
+    if (!p || !isPlaceable(p)) {
+      errors.push(`${label}: part must be a module or part id from the parts catalogue.`)
+    } else if (lessonOk && !catalogue.includes(p.id)) {
+      errors.push(`${label}: part "${p.id}" is not in this lesson's catalogue.`)
+    } else if (wanted.has(p.id)) {
+      errors.push(
+        `${label}: part "${p.id}" is also asked for by a place_part goal; pick another part.`
+      )
+    } else if (parts.has(p.id)) {
+      errors.push(`${label}: part "${p.id}" is used more than once.`)
+    }
+    if (p) parts.add(p.id)
+    if (!spot) {
+      errors.push(`${label}: spot must be one of ${PLACE_SPOTS.map((s) => s.id).join(', ')}.`)
+    } else if (p && isPlaceable(p) && !spotTakes(spot, p)) {
+      errors.push(`${label}: the ${nameOf(p.id)} doesn't fit on spot "${spot.id}".`)
+    } else if (spots.has(spot.id)) {
+      errors.push(`${label}: spot "${spot.id}" is used more than once.`)
+    }
+    if (spot) spots.add(spot.id)
+  })
+  if (!goalItems(task).some((i) => i?.goal === 'undo_mistakes')) {
+    errors.push(`${where}: mistakes needs an undo_mistakes goal to put them back.`)
   }
 }
 
@@ -793,6 +955,39 @@ function validateGoalFields(item, label, task, lesson, lessonOk, errors) {
     }
   }
 
+  if (item.pattern != null || item.goal === 'light_pattern') {
+    const pattern = item.pattern
+    if (item.goal !== 'light_pattern') {
+      add('pattern only applies to light_pattern goals.')
+    } else if (!pattern || typeof pattern !== 'object' || Array.isArray(pattern)) {
+      add('light_pattern needs a pattern, like { left: on, core: off, right: on }.')
+    } else {
+      for (const s of SECTIONS) {
+        if (!patternIsValid(pattern[s.id])) {
+          add(`pattern ${s.id} must be on or off.`)
+        }
+      }
+      const extra = Object.keys(pattern).filter((k) => !SECTIONS.some((s) => s.id === k))
+      if (extra.length)
+        add(`pattern has "${extra[0]}", which is not a section (left, core, right).`)
+      else if (SECTIONS.every((s) => !patternOn(pattern[s.id]))) {
+        add('pattern needs at least one section on.')
+      }
+    }
+    if (item.goal === 'light_pattern' && (item.order || item.match || item.card || item.count)) {
+      add("light_pattern can't be used with order, match, card or count.")
+    }
+  }
+
+  if (item.goal === 'pick_colour' && item.match != null && hasTarget) {
+    const first = goalItems(task).find(
+      (o) => o.goal === 'pick_colour' && o.target === item.target && o.match === item.match
+    )
+    if (first && first !== item) {
+      add(`match "${item.match}" is already used by an earlier ${item.target} goal.`)
+    }
+  }
+
   if (item.count != null) {
     const n = item.count
     const whole = Number.isInteger(n)
@@ -848,6 +1043,7 @@ export function validateStationTask(task, n) {
     }
   }
   validateBay(task, where, lessonOk, errors)
+  validateMistakes(task, where, lessonOk, errors)
   const items = Array.isArray(task?.items) ? task.items : []
   if (items.length === 0) errors.push(`${where}: station task needs at least one item.`)
   else {
@@ -872,6 +1068,9 @@ export function validateStationTask(task, n) {
     }
     if (lessonOk && !goal.lessons.includes(lesson)) {
       errors.push(`${label}: goal "${item.goal}" can't be done in lesson ${lesson}.`)
+    }
+    if (item.goal === 'undo_mistakes' && !(Array.isArray(task?.mistakes) && task.mistakes.length)) {
+      errors.push(`${label}: undo_mistakes needs the task's mistakes list.`)
     }
     const hasTarget = item.target != null && item.target !== ''
     if (goal.target === 'none') {
@@ -937,6 +1136,10 @@ export function promptFor(item, lesson) {
         return `Put exactly ${numberWord(item.count)} ${plural(nameOf(t))} on the station.`
       }
       return t ? `Put the ${nameOf(t)} on the station.` : 'Put a part on the station.'
+    case 'light_pattern':
+      return 'Make the lights on your station look like the pattern on the card.'
+    case 'undo_mistakes':
+      return 'The clumsy robot dropped some parts in the wrong place. Put them back with Ctrl+Z.'
     case 'undo':
       if (item.count) return `Step back ${numberWord(item.count)} times with Ctrl+Z.`
       return 'Undo your last change.'
@@ -984,6 +1187,10 @@ function hintFor(item, state, lesson, task) {
       if (item.card) return 'Look at the picture on the card, then drag that part onto the station.'
       if (progress && left > 0) return `Drag ${more(left, 'copy', 'copies')} onto the station.`
       return 'Drag a part onto an empty spot.'
+    case 'light_pattern':
+      return 'Look at the pattern card. Click a power button to switch it on, click it again to switch it off.'
+    case 'undo_mistakes':
+      return "Press Ctrl+Z (Cmd+Z on a Mac) to put the robot's drops back."
     case 'undo':
       if (!(state?.undo ?? []).length) return 'Change something first, then try to put it back.'
       if (progress && progress.have > 0 && left > 0) {

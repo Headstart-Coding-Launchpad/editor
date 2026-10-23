@@ -40,7 +40,8 @@ const COLOUR_OPTIONS = [
 ]
 
 // The goals that can be set in a lesson.
-const goalsForLesson = (lesson) => GOAL_IDS.filter((id) => GOALS[id].lessons.includes(lesson))
+const goalsForLesson = (lesson) =>
+  GOAL_IDS.filter((id) => GOALS[id].lessons.includes(lesson) && !GOALS[id].yamlOnly)
 
 // The targets a goal may point at in a task: [{ value, label }]. Empty when the goal has none.
 function targetOptions(task, goalId) {

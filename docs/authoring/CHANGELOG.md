@@ -54,6 +54,20 @@ Entries written before 2026-09-29 are not tagged.
 - Affects: station · Existing lessons: station tasks with `coreItems` must list their required
   goals first · Resolves: none
 
+- **Space station: more Lesson 1 jobs, the robot's drops and a closer tray (Lesson Gen review #190).**
+  Lesson 1: a task may now have more than one `power_on` goal with an `order` (a second start-up
+  card in a new order) and more than one `pick_colour` goal with `match` on the same target (a second
+  Mission Control colour); they run one after another (a goal counts once the earlier ones of its
+  kind are done) and the station switches off between power goals. Power buttons now switch off on a
+  second click (Lesson 1). New goal `light_pattern` with `pattern: { left: on, core: off, right: on }`
+  (done when the power buttons match the card). Lesson 3: new task field `mistakes: [{ part, spot }]`
+  (1 to 4 parts already on the station, "the clumsy robot's drops") and new goal `undo_mistakes`
+  (done when every one is taken back with Ctrl+Z / Cmd+Z); the drops are never saved as the child's
+  station. On Lessons 3 and 4 the Parts tray now sits directly under the station picture. A child
+  carried past Lesson 1 always has a fully powered station. Lessons authored before keep working;
+  see [activities/station.md](activities/station.md).
+- Affects: station · Existing lessons: no changes needed · Resolves: none
+
 - **New activity: Space station (Phase 1, Mouse and Keyboard Lessons 1-4).** `type: station` with
   `lesson` (1 to 4), `items` of `{ id, goal, target?, prompt? }`, optional `catalogue` and
   `coreItems`. Goals: `power_on`, `pick_colour`, `select`, `open_crate`, `choose_captain`,

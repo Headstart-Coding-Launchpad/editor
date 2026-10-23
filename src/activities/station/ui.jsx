@@ -19,7 +19,10 @@ import {
   gradeStationItem,
   gradeStationTask,
   initialStationState,
+  isActive,
   methodWords,
+  mistakesOf,
+  patternOn,
   nearestSpot,
   nextInOrder,
   partById,
@@ -48,6 +51,8 @@ const GOAL_ACTION = {
   choose_captain: 'captain',
   place_part: 'place',
   undo: 'undo',
+  undo_mistakes: 'undo',
+  light_pattern: 'power',
   order_part: 'order',
 }
 
@@ -152,6 +157,7 @@ function goalIcon(item, task) {
   if (item?.card) return { glyph: '🔍' }
   switch (item?.goal) {
     case 'power_on':
+    case 'light_pattern':
       return { id: 'power', state: 'on' }
     case 'open_crate':
       return { id: item.target || 'crate-1', state: 'open' }
@@ -205,14 +211,50 @@ function GoalCard({ item, task, state, blink }) {
   const finished = !!state.done?.[item.id]
   let body = null
   let label = ''
-  if (order) {
-    const next = finished ? null : nextInOrder(item, scene)
+  const active = isActive(task, state.done, item)
+  if (item.goal === 'light_pattern' && item.pattern) {
+    label = 'Make the lights look like this'
+    body = SECTIONS.map((sec) => {
+      const want = patternOn(item.pattern[sec.id])
+      return (
+        <span
+          key={sec.id}
+          className="act-station-card__step"
+          data-testid={`card-pattern-${item.id}-${sec.id}`}
+          data-on={want ? 'true' : 'false'}
+        >
+          <span className="act-station-card__pic">
+            <PartImg id="power" state={want ? 'on' : 'off'} />
+          </span>
+          <span className="act-station-card__name">
+            {sec.label}: {want ? 'On' : 'Off'}
+          </span>
+        </span>
+      )
+    })
+  } else if (item.goal === 'undo_mistakes') {
+    const total = Array.isArray(task.mistakes) ? task.mistakes.length : 0
+    const left = Math.min(mistakesOf(scene).length, total)
+    label = "The clumsy robot's drops"
+    body = (
+      <span className="act-station-card__step" data-testid={`card-mistakes-${item.id}`}>
+        <span className="act-station-card__pic">
+          <span className="act-station-card__glyph">↶</span>
+        </span>
+        <span className="act-station-card__name" data-testid={`mistakes-left-${item.id}`}>
+          {left === 0 ? 'All put back' : `${left} to put back`}
+        </span>
+      </span>
+    )
+  } else if (order) {
+    const next = finished || !active ? null : nextInOrder(item, scene)
     const stepDone = (id) =>
-      item.goal === 'power_on'
+      finished ||
+      (item.goal === 'power_on'
         ? !!scene.power?.[id]
         : item.goal === 'open_crate'
           ? scene.crates?.[id] === 'open'
-          : Object.values(scene.placed ?? {}).includes(id)
+          : Object.values(scene.placed ?? {}).includes(id))
     label = item.goal === 'place_part' ? 'Plan card: build in this order' : 'Do these in this order'
     body = order.map((id, i) => (
       <span
@@ -325,6 +367,7 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
   const showPads = showTray
   // Spots worth marking as empty pads: those a part from this lesson's list can go on.
   const padKinds = new Set(catalogueFor(task).map((id) => partById(id)?.kind))
+  const mistakeSpots = mistakesOf(scene)
   const litCount = SECTIONS.filter((s) => scene.power?.[s.id]).length
 
   const sceneRef = useRef(null)
@@ -397,7 +440,9 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
         ? `section-${action.section}`
         : action.type === 'open'
           ? `crate-${action.crate}`
-          : `tray-${action.part}`
+          : action.from
+            ? `part-${action.part}`
+            : `tray-${action.part}`
     setBlink((b) => ({ ids: [`card-${blocker.id}`, thing], n: (b?.n ?? 0) + 1 }))
     setHint(
       blocker.onlyNoted === true && action.type === 'open'
@@ -694,6 +739,8 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                     onClick={() => {
                       const method = pressMethod()
                       if (!lit) act({ type: 'power', section: s.id, method })
+                      else if (lesson === 1)
+                        act({ type: 'power', section: s.id, on: false, method })
                     }}
                   >
                     <PartImg id="power" state={lit ? 'on' : 'off'} />
@@ -717,13 +764,13 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                   <button
                     key={spot.id}
                     type="button"
-                    className={`act-station-part${live.selected === partId ? ' is-selected' : ''}${moving ? ' is-moving' : ''}${isNewest ? ' is-newest' : ''}`}
+                    className={`act-station-part${live.selected === partId ? ' is-selected' : ''}${mistakeSpots.includes(spot.id) ? ' is-mistake' : ''}${moving ? ' is-moving' : ''}${isNewest ? ' is-newest' : ''}`}
                     style={placement(spot, part)}
                     data-testid={`part-${partId}`}
                     data-part={partId}
                     data-spot={spot.id}
                     aria-pressed={live.selected === partId}
-                    aria-label={`${part?.label ?? partId}, on the station`}
+                    aria-label={`${part?.label ?? partId}, ${mistakeSpots.includes(spot.id) ? 'dropped by the clumsy robot' : 'on the station'}`}
                     disabled={!interactive}
                     onClick={() => {
                       if (suppressClick.current) return
@@ -784,6 +831,35 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
             })}
           </div>
         </div>
+
+        {showTray && (
+          <div className="act-station__tray" data-testid="station-tray">
+            <span className="act-station__bay-title">Parts tray</span>
+            {tray.length === 0 && (
+              <span className="act-station__empty">
+                {lesson === 4 ? 'Order a part and it will appear here.' : 'All parts are in place.'}
+              </span>
+            )}
+            {tray.map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={`act-station-tray-part${held?.partId === id ? ' is-held' : ''}`}
+                data-testid={`tray-${id}`}
+                data-tray-part={id}
+                data-blink={blinkOf(`tray-${id}`)}
+                aria-label={`${partById(id)?.label}. Drag onto the station, or click to pick up.`}
+                aria-pressed={held?.partId === id && held.mode === 'pick'}
+                disabled={!interactive}
+                onClick={(e) => onTrayPartClick(id, e)}
+                {...dragHandlers(id, null)}
+              >
+                <PartImg id={id} />
+                <span className="act-station-crate__label">{partById(id)?.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {lesson === 1 && (
           <div className="act-station__colours">
@@ -971,34 +1047,6 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                 )
               })}
             </ul>
-          </div>
-        )}
-        {showTray && (
-          <div className="act-station__tray" data-testid="station-tray">
-            <span className="act-station__bay-title">Parts tray</span>
-            {tray.length === 0 && (
-              <span className="act-station__empty">
-                {lesson === 4 ? 'Order a part and it will appear here.' : 'All parts are in place.'}
-              </span>
-            )}
-            {tray.map((id) => (
-              <button
-                key={id}
-                type="button"
-                className={`act-station-tray-part${held?.partId === id ? ' is-held' : ''}`}
-                data-testid={`tray-${id}`}
-                data-tray-part={id}
-                data-blink={blinkOf(`tray-${id}`)}
-                aria-label={`${partById(id)?.label}. Drag onto the station, or click to pick up.`}
-                aria-pressed={held?.partId === id && held.mode === 'pick'}
-                disabled={!interactive}
-                onClick={(e) => onTrayPartClick(id, e)}
-                {...dragHandlers(id, null)}
-              >
-                <PartImg id={id} />
-                <span className="act-station-crate__label">{partById(id)?.label}</span>
-              </button>
-            ))}
           </div>
         )}
       </aside>

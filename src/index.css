@@ -6831,6 +6831,27 @@ label.te-backdrop-tag,
   opacity: 0.35;
 }
 
+/* A drop by the clumsy robot (task mistakes): marked until Ctrl+Z puts it back. */
+.act-station-part.is-mistake .act-station-img {
+  filter: drop-shadow(0 0 4px #ef4444) drop-shadow(0 0 2px #ef4444);
+}
+
+.act-station-part.is-mistake::after {
+  content: '!';
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #fff;
+  font-weight: 800;
+  line-height: 22px;
+  text-align: center;
+  pointer-events: none;
+}
+
 /* The selection halo and the upgrade sparkle: the white glow PNG as a mask, tinted. */
 .act-station-glow {
   position: absolute;

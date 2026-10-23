@@ -62,6 +62,7 @@ Phase 1: crates `crate-1`-`crate-3` (each holds one crew member: `crew-robot-1`,
 | `coreItems` | no | How many goals make the task pass (default all). The FIRST this many goals are the round (station-only rule: not any N); the rest are bonus. |
 | `crates` | no | Lesson 2: the crates in the bay (1-5 of `crate-1`..`crate-5`) as `{ id, sticker? }`. Default the first three, no stickers. |
 | `note` | no | Lesson 2: the delivery note, a list of stickers (`<colour>-<shape>`). |
+| `mistakes` | no | Lesson 3: the clumsy robot's drops, `[{ part, spot }]` (max 4), preset and undone with Ctrl+Z (see Build jobs). |
 
 Goal items also take the build-job fields below. Goals (`goal`) and the method each one needs:
 
@@ -75,6 +76,8 @@ Goal items also take the build-job fields below. Goals (`goal`) and the method e
 | `place_part` | a part id, or none = any | the part sits on a spot | `drag` or `pick_drop` (click to pick up, click to drop: the trackpad fallback). Both count; the method is recorded. |
 | `undo` | none | a change is undone | `ctrl_z` / `cmd_z` only (the tutor's undo never counts) |
 | `order_part` | a part id, or none = any | the part is ordered from the catalogue | `click`; `scrolled: true` is recorded when the catalogue was scrolled first |
+| `light_pattern` | none (`pattern`) | the power buttons match the card | `click` / `keyboard` |
+| `undo_mistakes` | none | all preset `mistakes` taken back | `ctrl_z` / `cmd_z` only |
 
 ### Build jobs (Hub #101, Lesson Gen LG-P8 "Build jobs")
 
@@ -103,6 +106,28 @@ Optional goal fields that make each lesson a few short jobs. All of it is pure m
   moves one, and saved scenes keep duplicates only for those parts. `open_crate` counts the open
   crates. `undo` counts `state.undos`, which only a ctrl_z / cmd_z press that really undoes
   increments (the tutor's undo does not).
+- **Series (review #190).** `seriesOf(item)` groups goals that come one after another: `power`
+  (a `power_on` with `order`, and `light_pattern`, which share the power buttons) and
+  `colour:<target>` (a `pick_colour` with `match`). `isActive(task, done, item)` is true when every
+  earlier goal in the series is in `done`; `markGoals` and `blockedBy` only consider active goals,
+  judged on `done` before the action so one press never finishes two cards. When a `power` goal
+  finishes with another to come, `markGoals` sets all `scene.power` to false in the same step
+  (no extra undo entry). `power` actions take `on: false` (Lesson 1 only, one section, a lit one);
+  an off action never completes a goal. `light_pattern` (`pattern: {left, core, right}`, `on`/`off`
+  or booleans) is checked after any power action. Validation refuses the same `match` twice for one
+  target.
+- **Mistakes (review #190).** Task `mistakes: [{ part, spot }]` (Lesson 3, max 4). `withMistakes(task,
+  scene)` places each on a free spot (skipping a taken spot or an already-placed part), sets
+  `scene.mistakes` to their spot ids, and returns the earlier scenes as the undo stack, so each
+  Ctrl/Cmd+Z removes one (the child's own changes sit on top and go first). `initialStationState`
+  does this for the default scene and for a carried one (`carrySlot.apply` calls it with
+  `applyCarried(...)`). `undo_mistakes` is done by a ctrl_z / cmd_z press once `scene.mistakes` is
+  empty. `blockedBy` refuses a `place` with `from` on a mistake spot (the card blinks, nothing
+  changes). `carrySlot.extract` runs `stripMistakes`, which removes flagged spots from `placed` and
+  drops `mistakes`, so the drops are never carried. `sanitiseScene` ignores `mistakes`. A carried
+  scene past Lesson 1 gets all power on (`applyCarried`).
+- **Layout.** The Parts tray (Lessons 3 and 4) is in `.act-station__main` straight under the scene,
+  like Lesson 2's Delivery bay; the Lesson 4 catalogue stays in the side column.
 - **Not built:** the "sort into the right place" job. Spots accept by part kind, so there is no
   group to sort into without new art.
 - The Builder editor does not expose the build-job fields; they are YAML-only (it says so under

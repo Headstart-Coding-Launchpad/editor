@@ -14,6 +14,7 @@ import {
   promptFor,
   solvedDone,
   stationProgress,
+  stripMistakes,
   validateStationTask,
 } from './station.js'
 
@@ -105,6 +106,12 @@ export default defineActivity({
             description:
               'place_part (lesson 3, with a target), open_crate, undo: done when exactly that many.',
           },
+          {
+            name: 'pattern',
+            type: 'object',
+            description:
+              'light_pattern: which power sections must be on, like { left: on, core: off, right: on }. Done when the power buttons match the card.',
+          },
         ],
       },
       {
@@ -122,6 +129,16 @@ export default defineActivity({
         type: 'array',
         description:
           'Lesson 2: the stickers on the delivery note (for open_crate with onlyNoted), like [red-star, blue-circle].',
+      },
+      {
+        name: 'mistakes',
+        type: 'array',
+        description:
+          "Lesson 3: the clumsy robot's drops, parts already on the station at the start: [{ part: dome, spot: top-module-1 }]. Only Ctrl+Z removes them (needs an undo_mistakes goal). They are never saved as the child's station.",
+        itemFields: [
+          { name: 'part', type: 'string', required: true },
+          { name: 'spot', type: 'string', required: true },
+        ],
       },
       {
         name: 'catalogue',
@@ -180,8 +197,9 @@ export default defineActivity({
   // The station is carried between lessons (host work: defineActivity does not read this yet).
   carrySlot: {
     id: 'station',
-    extract: (state) => ({ v: 1, scene: state?.scene }),
-    apply: (task, carried) => ({ ...initialState(task), scene: applyCarried(task, carried) }),
+    // The clumsy robot's preset drops are not the child's station: they are dropped here.
+    extract: (state) => ({ v: 1, scene: stripMistakes(state?.scene) }),
+    apply: (task, carried) => initialStationState(task, applyCarried(task, carried)),
   },
 
   grade: (task, state) => {

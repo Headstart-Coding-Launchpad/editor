@@ -66,6 +66,7 @@ tasks:
 | `coreItems` | No | How many goals make the task pass, 1 to the number of `items`. **The first this many goals are required; the rest are bonus** (put the required goals first). Default: all goals. |
 | `crates` | No | Lesson 2 only. The crates in the delivery bay, 1 to 5, each `{ id, sticker? }` with `id` from `crate-1` to `crate-5`, in the order shown. Default: `crate-1` to `crate-3`, no stickers. `crate-4` holds `crew-robot-3`; `crate-5` is empty (a good decoy). |
 | `note` | No | Lesson 2 only. The delivery note: a list of stickers, each a colour and a shape like `red-star`. Used by `open_crate` with `onlyNoted`. Every note sticker must be on a crate. |
+| `mistakes` | No | Lesson 3 only. The clumsy robot's drops: 1 to 4 parts already on the station at the start, each `{ part, spot }` (`part` from the tray, `spot` one of the 18 spots that takes it). Needs an `undo_mistakes` goal. Only Ctrl+Z / Cmd+Z removes them, one drop per press, after the child's own changes. They are marked with a red `!`, and a drag of one blinks and changes nothing. They are **never saved as the child's station**: they are left out of what is carried to the next lesson. Do not name a mistake part in a `place_part` goal. |
 
 ## Item fields
 
@@ -80,6 +81,7 @@ tasks:
 | `card` | No | `order_part`, `place_part`. A part id shown as a picture ("find the one in the picture"); the part on the card is the target, so do not also set `target`. |
 | `onlyNoted` | No | `open_crate`. `true`: done when every crate the `note` lists is open and no other is. Opening a decoy blinks and it stays shut. |
 | `count` | No | `place_part` (lesson 3, needs a `target`), `open_crate`, `undo`. Done at exactly this many (2 or more). |
+| `pattern` | `light_pattern` | `{ left: on, core: off, right: on }`: which power sections must be on. Every section needs `on` or `off` (`true` / `false` also work) and at least one must be on. |
 
 ## Goals and methods
 
@@ -96,6 +98,8 @@ the method ("opened by double-click").
 | `place_part` | 3, 4 | a part id, or none = any | the part sits on a spot | `drag`, or `pick_drop` (click to pick up, click to drop: the trackpad fallback). Both count. |
 | `undo` | 3, 4 | none | a change is undone | `ctrl_z` or `cmd_z` only. The tutor's "Undo last change" never counts. |
 | `order_part` | 4 | a part id, or none = any | the part is ordered from the catalogue | `click`; whether the child scrolled the list first is recorded too |
+| `light_pattern` | 1 | none (uses `pattern`) | the three power buttons match the pattern card, after a press | `click` or `keyboard` |
+| `undo_mistakes` | 3 | none (uses the task's `mistakes`) | every preset mistake has been taken back | `ctrl_z` or `cmd_z` only |
 
 Parts you can name as targets: crates `crate-1` to `crate-5` (each holds a crew member: `crew-robot-1`,
 `crew-robot-2`, `crew-plant`, `crew-robot-3`; `crate-5` is empty; they stand in the portholes); Lesson 3 modules
@@ -127,6 +131,9 @@ a red outline; with reduced motion only the outline flashes), changes nothing, a
 | Pick the right one: picture | `order_part` or `place_part` with `card: dish` (no `target`) | A picture of the part, no name. Only that part counts. |
 | Leave the decoys | task `crates` with a `sticker` each, task `note: [red-star, green-triangle]`, and `open_crate` with `onlyNoted: true` | A sticker on every crate (larger in a reading panel when one click selects the crate) and a delivery note card. A decoy blinks and stays shut. |
 | Exactly that many | `place_part` with `target: solar` and `count: 3` (Lesson 3); `open_crate` with `count: 2`; `undo` with `count: 3` | "Exactly 3" with a counter ("1 of 3"). A counted part never runs out of the tray. `undo` counts only Ctrl+Z / Cmd+Z presses that really undo. |
+| Several of a kind (Lesson 1) | two `power_on` goals with an `order` (a second start-up card in a new order); two `pick_colour` goals with `match` on the same target (a second Mission Control colour) | One card at a time. A goal in a series counts only once every goal before it in the list is done; a later card waits (no frame on its next step). When a power goal finishes with another still to come, **all sections switch off** so it can be done from the start. Two `match` goals for the same target must be different colours. |
+| Light pattern (Lesson 1) | `light_pattern` with `pattern: { left: on, core: off, right: on }` | A card with three power buttons, each On or Off. Power buttons **toggle** in Lesson 1 (click again = off); the goal is done when they match. It joins the same series as the start-up cards, so put it after them and the station starts dark. |
+| Undo the robot's drops (Lesson 3) | task `mistakes: [{ part: greenhouse, spot: top-module-2 }]` and an `undo_mistakes` goal | The scene starts with those parts placed and marked. A card says how many are left to put back. Each Ctrl+Z (Cmd+Z) removes one; done when all are gone. |
 | Their own choice | the plain goals (`pick_colour` with no `match`, `place_part` with no `target`) | The usual goal line. |
 
 Stickers are a colour and a shape joined with a dash: colours `red`, `blue`, `green`, `yellow`,
@@ -135,6 +142,11 @@ Stickers are a colour and a shape joined with a dash: colours `red`, `blue`, `gr
 
 Notes:
 
+- A Lesson 1 round can be four jobs: the start-up card, a second start-up card in a new order, a
+  Mission Control colour and a light pattern.
+- On Lesson 3 and Lesson 4 the **Parts tray sits directly under the station picture** (so a child
+  never has to scroll to find it); the Lesson 4 catalogue stays in the side column, because scrolling
+  it is the skill being taught.
 - An ordered goal only refuses while it is not done. Things not in its `order` are never refused.
   `open_crate` with `onlyNoted` refuses a decoy even after the goal is done.
 - `count` on `place_part` copes with the same part more than once: drag from the tray each time;
@@ -154,17 +166,25 @@ tasks:
     type: station
     description: Your station is dark. Switch it on in the start-up order, then match the colour on the card.
     lesson: 1
-    coreItems: 2
+    coreItems: 4
     items:
       - id: order
         goal: power_on
         order: [left, core, right]
         prompt: Switch on the sections in the order on the start-up card.
+      - id: order2
+        goal: power_on
+        order: [right, core, left]
+        prompt: The station went dark! Switch it on again in the new order.
       - id: match
         goal: pick_colour
         target: hull
         match: red
         prompt: Mission Control shows a colour. Click the hull colour that matches it.
+      - id: pattern
+        goal: light_pattern
+        pattern: { left: on, core: off, right: on }
+        prompt: Make the lights look like the pattern card. Click a button again to switch it off.
       - id: lights
         goal: pick_colour
         target: lights
@@ -196,10 +216,16 @@ tasks:
         goal: choose_captain
   - title: "Lesson 3: Build It"
     type: station
-    description: Follow the plan card. Made a mistake? Ctrl+Z puts it back.
+    description: The clumsy robot dropped a part in the wrong place! Put it back with Ctrl+Z, then follow the plan card.
     lesson: 3
-    coreItems: 2
+    coreItems: 3
+    mistakes:
+      - part: docking-arm
+        spot: end-right
     items:
+      - id: robot
+        goal: undo_mistakes
+        prompt: The clumsy robot dropped a part. Press Ctrl+Z (Cmd+Z on a Mac) to put them back.
       - id: plan
         goal: place_part
         order: [dome, greenhouse]

@@ -371,6 +371,24 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … item …: count must be a whole number from 2 to … (the spots that take the ….).` | A `place_part` count is below 2 or more than the spots that take the part. | Use a count the spots allow. |
 | `Task … item …: count on place_part only works in lesson 3.` | `place_part` with `count` in lesson 4. | Move it to Lesson 3. |
 | `Task … item …: count can't be used with an order or a card.` | `place_part` count with `order` or `card`. | Keep one. |
+| `Task … item …: pattern only applies to light_pattern goals.` | `pattern` is on another goal. | Remove it, or use `light_pattern`. |
+| `Task … item …: light_pattern needs a pattern, like { left: on, core: off, right: on }.` | A `light_pattern` goal has no `pattern`. | Add the pattern. |
+| `Task … item …: pattern left must be on or off.` (also core, right) | A section in `pattern` is missing or not on/off. | Give all three sections `on` or `off`. |
+| `Task … item …: pattern has "…", which is not a section (left, core, right).` | `pattern` names something that is not a power section. | Use only `left`, `core`, `right`. |
+| `Task … item …: pattern needs at least one section on.` | Every section is off. | Switch at least one on. |
+| `Task … item …: light_pattern can't be used with order, match, card or count.` | A `light_pattern` goal has fields of other goals. | Remove them. |
+| `Task … item …: match "…" is already used by an earlier hull goal.` (or lights) | Two `pick_colour` goals for the same target match the same colour, so the second could never be clicked. | Use a different colour. |
+| `Task … item …: undo_mistakes needs the task's mistakes list.` | An `undo_mistakes` goal with no `mistakes` on the task. | Add `mistakes`, or use `undo`. |
+| `Task …: mistakes must be a list of 1 to 4 drops, each with a part and a spot.` | `mistakes` is not a list, is empty or has more than 4. | List 1 to 4 `{ part, spot }`. |
+| `Task …: mistakes only applies to lesson 3.` | `mistakes` on another lesson. | Remove it. |
+| `Task …: mistakes needs an undo_mistakes goal to put them back.` | `mistakes` without a goal to undo them. | Add an `undo_mistakes` goal. |
+| `Task … mistake …: part must be a module or part id from the parts catalogue.` | The `part` is missing or not a module or part. | Use a tray part id. |
+| `Task … mistake …: part "…" is not in this lesson's catalogue.` | The part is not in the task's tray. | Pick a part from the catalogue. |
+| `Task … mistake …: part "…" is also asked for by a place_part goal; pick another part.` | A `place_part` goal asks for the part the robot already dropped, so it would count for free. | Choose a part no goal names. |
+| `Task … mistake …: part "…" is used more than once.` | Two mistakes use the same part. | Use each part once. |
+| `Task … mistake …: spot must be one of …` | The `spot` is missing or not a spot id. | Use a spot id from the message. |
+| `Task … mistake …: the … doesn't fit on spot "…".` | The part is too big, or the spot is under the hull and the part cannot hang. | Pick a spot that takes the part. |
+| `Task … mistake …: spot "…" is used more than once.` | Two mistakes use the same spot. | Use each spot once. |
 | `Task …: crates must be a list of 1 to 5 crates, each with an id.` | `crates` is not a list, is empty or has more than 5. | List 1 to 5 `{ id, sticker }` crates. |
 | `Task …: crates only applies to lesson 2.` / `Task …: note only applies to lesson 2.` | `crates` or `note` on another lesson. | Remove it. |
 | `Task … crate …: id must be one of crate-1, crate-2, crate-3, crate-4, crate-5.` | A crate's `id` is missing or unknown. | Use one of the five ids. |
