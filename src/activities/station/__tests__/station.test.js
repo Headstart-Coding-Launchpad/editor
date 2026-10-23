@@ -493,7 +493,7 @@ describe('definition', () => {
     expect(slot.id).toBe('station')
     const s = run(t, [{ type: 'place', part: 'solar', spot: 'top-module-1', method: 'drag' }])
     const carried = slot.extract(s)
-    expect(carried).toEqual({ v: 1, scene: s.scene })
+    expect(carried).toEqual({ v: 2, worlds: { station: s.scene } })
     const applied = slot.apply(task(4, [{ id: 'o', goal: 'order_part' }]), carried)
     expect(applied.scene.placed['top-module-1']).toBe('solar')
     expect(applied.done).toEqual({})

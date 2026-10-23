@@ -3,15 +3,20 @@ import { useEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
 import RoundProgress from '../ui/RoundProgress.jsx'
-import { COLOUR_HEX, SCENE_ART, SCENE_PX, STICKER_PATHS, artFor } from './art.js'
+import { COLOUR_HEX, SCENE_ART, SCENE_PX, STICKER_PATHS, WORLD_ART, artFor } from './art.js'
 import StationCardSummary from './MiniStation.jsx'
 import {
   CREW_IDS,
   HULL_COLOURS,
   LIGHT_COLOURS,
-  PLACE_SPOTS,
   SECTIONS,
+  WORLDS,
+  dropTarget,
+  lessonOf,
+  placeSpotsOf,
+  sortProgress,
   spotById,
+  worldIdOf,
   blockedBy,
   catalogueFor,
   countProgress,
@@ -23,7 +28,6 @@ import {
   methodWords,
   mistakesOf,
   patternOn,
-  nearestSpot,
   nextInOrder,
   partById,
   promptFor,
@@ -54,6 +58,7 @@ const GOAL_ACTION = {
   undo_mistakes: 'undo',
   light_pattern: 'power',
   order_part: 'order',
+  sort: 'place',
 }
 
 const pct = (n) => `${(n * 100).toFixed(3)}%`
@@ -169,6 +174,8 @@ function goalIcon(item, task) {
       return { id: item.target || item.order?.[0] || anyPart, state: 'closed' }
     case 'pick_colour':
       return { swatch: true, colour: item.match }
+    case 'sort':
+      return { glyph: '🐾' }
     default:
       return { glyph: '↶' }
   }
@@ -232,10 +239,23 @@ function GoalCard({ item, task, state, blink }) {
         </span>
       )
     })
+  } else if (item.goal === 'sort') {
+    const sorted = sortProgress(task, item, state)
+    label = 'Every animal in its home'
+    body = (
+      <span className="act-station-card__step" data-testid={`card-sort-${item.id}`}>
+        <span className="act-station-card__pic">
+          <span className="act-station-card__glyph">🐾</span>
+        </span>
+        <span className="act-station-card__name" data-testid={`sorted-${item.id}`}>
+          {sorted.have} of {sorted.need} at home
+        </span>
+      </span>
+    )
   } else if (item.goal === 'undo_mistakes') {
     const total = Array.isArray(task.mistakes) ? task.mistakes.length : 0
     const left = Math.min(mistakesOf(scene).length, total)
-    label = "The clumsy robot's drops"
+    label = worldIdOf(task) === 'zoo' ? "The keeper's mistakes" : "The clumsy robot's drops"
     body = (
       <span className="act-station-card__step" data-testid={`card-mistakes-${item.id}`}>
         <span className="act-station-card__pic">
@@ -356,7 +376,12 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
   const items = Array.isArray(task?.items) ? task.items : []
   const interactive = !readOnly && !!onChange
   const showMethods = readOnly || teacher
-  const lesson = task?.lesson
+  const worldId = worldIdOf(task)
+  const isStation = worldId === 'station'
+  const world = WORLDS[worldId]
+  const worldArt = WORLD_ART[worldId] ?? null
+  const lesson = lessonOf(task)
+  const spotList = placeSpotsOf(worldId)
   const catalogue = lesson === 4 ? catalogueFor(task) : []
   const tray = trayParts(task, scene)
   const showTray = lesson === 3 || lesson === 4
@@ -496,7 +521,12 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
     if (!interactive || suppressClick.current) return
     const t = e.target
     if (held) {
-      if (!t.closest?.('[data-spot-target]') && !t.closest?.('[data-tray-part]')) setHeld(null)
+      if (!t.closest?.('[data-spot-target]') && !t.closest?.('[data-tray-part]')) {
+        // A part picked up by click and put down in the wrong enclosure blinks like a wrong drag.
+        const wrong = dropAt(e.clientX, e.clientY, held.partId)?.wrong
+        if (wrong && held.mode === 'pick') wrongHome(wrong, held.partId, held.from)
+        setHeld(null)
+      }
       return
     }
     if (live.selected && !t.closest?.('button, [data-keep-selection]')) {
@@ -504,14 +534,29 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
     }
   }
 
-  function dropSpotAt(clientX, clientY, partId) {
+  // Where a point on the screen would drop a part: { spot }, { wrong: kind } or null.
+  function dropAt(clientX, clientY, partId) {
     const rect = sceneRef.current?.getBoundingClientRect?.()
     if (!rect || !rect.width || !rect.height) return null
-    return nearestSpot(
+    return dropTarget(
+      task,
       scene,
       { x: (clientX - rect.left) / rect.width, y: (clientY - rect.top) / rect.height },
       partId
     )
+  }
+
+  // An animal dropped in an enclosure that is not its own: the enclosure blinks, the animal goes
+  // back where it came from, and nothing is saved except a count the tutor can see.
+  function wrongHome(kind, partId, from) {
+    setBlink((b) => ({
+      ids: [`enclosure-${kind}`, from ? `part-${partId}` : `tray-${partId}`],
+      n: (b?.n ?? 0) + 1,
+    }))
+    setHint(
+      `The ${partById(partId)?.label?.toLowerCase()} doesn't live there. Pick it up again and watch for the glow.`
+    )
+    if (interactive) onChange((prev) => stationAction(prev, { type: 'wrong', part: partId }, task))
   }
 
   // Pointer handlers for a part that can be dragged (a tray part or a placed one).
@@ -561,9 +606,16 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
           suppressClick.current = false
         }, 0)
         setHeld(null)
-        const spot = dropSpotAt(e.clientX, e.clientY, partId)
-        if (spot)
-          act({ type: 'place', part: partId, spot, method: 'drag', from: from ?? undefined })
+        const target = dropAt(e.clientX, e.clientY, partId)
+        if (target?.spot) {
+          act({
+            type: 'place',
+            part: partId,
+            spot: target.spot,
+            method: 'drag',
+            from: from ?? undefined,
+          })
+        } else if (target?.wrong) wrongHome(target.wrong, partId, from)
       },
       onPointerCancel: () => {
         dragRef.current = null
@@ -603,7 +655,7 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
 
   // The nearest empty spot to the dragged part, lit while the student drags.
   const nearest =
-    held?.mode === 'drag' && held.x != null ? dropSpotAt(held.x, held.y, held.partId) : null
+    held?.mode === 'drag' && held.x != null ? dropAt(held.x, held.y, held.partId)?.spot : null
 
   const lightsHex = COLOUR_HEX[scene.lights] ?? COLOUR_HEX.orange
   const hullHex = COLOUR_HEX[scene.hull] ?? COLOUR_HEX.blue
@@ -640,121 +692,170 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
             data-testid="station-scene"
             data-upgraded={upgrade ? 'true' : 'false'}
             role="group"
-            aria-label="Your space station"
+            aria-label={
+              isStation
+                ? 'Your space station'
+                : worldId === 'zoo'
+                  ? 'Your zoo'
+                  : 'The toy shop window'
+            }
             style={{
               '--act-station-hull': hullHex,
               '--act-station-lights': lightsHex,
               '--act-station-lit': litCount / SECTIONS.length,
             }}
           >
-            <img className="act-station-layer" src={SCENE_ART.backdrop} alt="" aria-hidden="true" />
-            <img
-              className="act-station-layer"
-              src={SCENE_ART.interior.dark}
-              alt=""
-              aria-hidden="true"
-            />
-            <img
-              className="act-station-layer act-station-layer--lit"
-              src={SCENE_ART.interior.lit}
-              alt=""
-              aria-hidden="true"
-            />
+            {isStation && (
+              <>
+                <img
+                  className="act-station-layer"
+                  src={SCENE_ART.backdrop}
+                  alt=""
+                  aria-hidden="true"
+                />
+                <img
+                  className="act-station-layer"
+                  src={SCENE_ART.interior.dark}
+                  alt=""
+                  aria-hidden="true"
+                />
+                <img
+                  className="act-station-layer act-station-layer--lit"
+                  src={SCENE_ART.interior.lit}
+                  alt=""
+                  aria-hidden="true"
+                />
 
-            {/* Crew show through the portholes: they sit behind the hull. */}
-            {CREW_IDS.filter((id) => scene.crew?.[id]).map((id) => {
-              const post = spotById(scene.crew[id])
-              if (!post) return null
-              const captain = scene.captain === id
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  className={`act-station-crew${captain ? ' is-captain' : ''}${upgrade?.spot === post.id ? ' is-newest' : ''}`}
-                  style={spotBox(post)}
-                  data-testid={`crew-${id}`}
-                  aria-label={
-                    captain
-                      ? `${partById(id)?.label}, the captain`
-                      : `Make ${partById(id)?.label} the captain`
-                  }
-                  aria-pressed={captain}
-                  disabled={!interactive}
-                  onClick={() => {
-                    if (!captain) act({ type: 'captain', crew: id, method: 'click' })
-                  }}
-                >
-                  {upgrade?.spot === post.id && <GlowImg id={id} />}
-                  <PartImg id={id} />
-                  {upgrade?.spot === post.id && <Sparks />}
-                </button>
-              )
-            })}
+                {/* Crew show through the portholes: they sit behind the hull. */}
+                {CREW_IDS.filter((id) => scene.crew?.[id]).map((id) => {
+                  const post = spotById(scene.crew[id])
+                  if (!post) return null
+                  const captain = scene.captain === id
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      className={`act-station-crew${captain ? ' is-captain' : ''}${upgrade?.spot === post.id ? ' is-newest' : ''}`}
+                      style={spotBox(post)}
+                      data-testid={`crew-${id}`}
+                      aria-label={
+                        captain
+                          ? `${partById(id)?.label}, the captain`
+                          : `Make ${partById(id)?.label} the captain`
+                      }
+                      aria-pressed={captain}
+                      disabled={!interactive}
+                      onClick={() => {
+                        if (!captain) act({ type: 'captain', crew: id, method: 'click' })
+                      }}
+                    >
+                      {upgrade?.spot === post.id && <GlowImg id={id} />}
+                      <PartImg id={id} />
+                      {upgrade?.spot === post.id && <Sparks />}
+                    </button>
+                  )
+                })}
 
-            <img
-              className="act-station-layer"
-              src={SCENE_ART.hull.dark}
-              alt=""
-              aria-hidden="true"
-            />
-            <img
-              className="act-station-layer act-station-layer--lit act-station-layer--hull"
-              src={SCENE_ART.hull.lit}
-              alt=""
-              aria-hidden="true"
-            />
-            <span
-              className="act-station-layer act-station-hull-tint"
-              style={maskStyle(SCENE_ART.hullGlow)}
-              aria-hidden="true"
-            />
-            {upgrade && (
-              <span
-                className="act-station-layer act-station-sweep"
-                data-testid="station-upgrade-fx"
-                style={maskStyle(SCENE_ART.hull.lit)}
-                aria-hidden="true"
-              />
+                <img
+                  className="act-station-layer"
+                  src={SCENE_ART.hull.dark}
+                  alt=""
+                  aria-hidden="true"
+                />
+                <img
+                  className="act-station-layer act-station-layer--lit act-station-layer--hull"
+                  src={SCENE_ART.hull.lit}
+                  alt=""
+                  aria-hidden="true"
+                />
+                <span
+                  className="act-station-layer act-station-hull-tint"
+                  style={maskStyle(SCENE_ART.hullGlow)}
+                  aria-hidden="true"
+                />
+                {upgrade && (
+                  <span
+                    className="act-station-layer act-station-sweep"
+                    data-testid="station-upgrade-fx"
+                    style={maskStyle(SCENE_ART.hull.lit)}
+                    aria-hidden="true"
+                  />
+                )}
+
+                {SECTIONS.map((s) => {
+                  const lit = !!scene.power?.[s.id]
+                  const spot = spotById(s.spot)
+                  return (
+                    <div
+                      key={s.id}
+                      className={`act-station-section${lit ? ' is-lit' : ''}`}
+                      style={spotBox(spot)}
+                      data-testid={`section-${s.id}`}
+                      data-lit={lit ? 'true' : 'false'}
+                      data-blink={blinkOf(`section-${s.id}`)}
+                    >
+                      {lit && <GlowImg id="power" state="on" className="act-station-power-halo" />}
+                      <button
+                        type="button"
+                        className="act-station-power"
+                        aria-pressed={lit}
+                        aria-label={`${s.label} power`}
+                        disabled={!interactive}
+                        onClick={() => {
+                          const method = pressMethod()
+                          if (!lit) act({ type: 'power', section: s.id, method })
+                          else if (lesson === 1)
+                            act({ type: 'power', section: s.id, on: false, method })
+                        }}
+                      >
+                        <PartImg id="power" state={lit ? 'on' : 'off'} />
+                      </button>
+                      <span className="act-station-power__name" aria-hidden="true">
+                        {s.label}
+                        <span className="act-station-power__state">{lit ? 'On' : 'Off'}</span>
+                      </span>
+                    </div>
+                  )
+                })}
+              </>
+            )}
+            {worldArt && (
+              <>
+                <img
+                  className="act-station-layer"
+                  src={worldArt.backdrop}
+                  alt=""
+                  aria-hidden="true"
+                />
+                {worldArt.base && (
+                  <img
+                    className="act-station-layer"
+                    src={worldArt.base}
+                    alt=""
+                    aria-hidden="true"
+                  />
+                )}
+                {/* While an animal is held, its own enclosure glows; a wrong drop blinks the one it hit. */}
+                {world.enclosures.map((e) => {
+                  const home = !!held && partById(held.partId)?.kind === e.kind
+                  const blinking = blinkOf(`enclosure-${e.kind}`)
+                  if (!home && blinking === undefined) return null
+                  return (
+                    <span
+                      key={e.kind}
+                      className={`act-station-layer act-station-enclosure${home ? ' is-home' : ''}`}
+                      style={maskStyle(worldArt.enclosureGlow(e.kind))}
+                      data-testid={`enclosure-${e.kind}`}
+                      data-blink={blinking}
+                      aria-hidden="true"
+                    />
+                  )
+                })}
+              </>
             )}
 
-            {SECTIONS.map((s) => {
-              const lit = !!scene.power?.[s.id]
-              const spot = spotById(s.spot)
-              return (
-                <div
-                  key={s.id}
-                  className={`act-station-section${lit ? ' is-lit' : ''}`}
-                  style={spotBox(spot)}
-                  data-testid={`section-${s.id}`}
-                  data-lit={lit ? 'true' : 'false'}
-                  data-blink={blinkOf(`section-${s.id}`)}
-                >
-                  {lit && <GlowImg id="power" state="on" className="act-station-power-halo" />}
-                  <button
-                    type="button"
-                    className="act-station-power"
-                    aria-pressed={lit}
-                    aria-label={`${s.label} power`}
-                    disabled={!interactive}
-                    onClick={() => {
-                      const method = pressMethod()
-                      if (!lit) act({ type: 'power', section: s.id, method })
-                      else if (lesson === 1)
-                        act({ type: 'power', section: s.id, on: false, method })
-                    }}
-                  >
-                    <PartImg id="power" state={lit ? 'on' : 'off'} />
-                  </button>
-                  <span className="act-station-power__name" aria-hidden="true">
-                    {s.label}
-                    <span className="act-station-power__state">{lit ? 'On' : 'Off'}</span>
-                  </span>
-                </div>
-              )
-            })}
-
             {/* Placed parts, and empty spots (dashed) while a part is being moved. */}
-            {PLACE_SPOTS.map((spot) => {
+            {spotList.map((spot) => {
               const partId = scene.placed?.[spot.id]
               if (partId) {
                 const part = partById(partId)
@@ -769,6 +870,7 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                     data-testid={`part-${partId}`}
                     data-part={partId}
                     data-spot={spot.id}
+                    data-blink={blinkOf(`part-${partId}`)}
                     aria-pressed={live.selected === partId}
                     aria-label={`${part?.label ?? partId}, ${mistakeSpots.includes(spot.id) ? 'dropped by the clumsy robot' : 'on the station'}`}
                     disabled={!interactive}
@@ -834,10 +936,16 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
 
         {showTray && (
           <div className="act-station__tray" data-testid="station-tray">
-            <span className="act-station__bay-title">Parts tray</span>
+            <span className="act-station__bay-title">
+              {worldId === 'zoo' ? 'Animals' : worldId === 'toyshop' ? 'Toys' : 'Parts tray'}
+            </span>
             {tray.length === 0 && (
               <span className="act-station__empty">
-                {lesson === 4 ? 'Order a part and it will appear here.' : 'All parts are in place.'}
+                {lesson === 4
+                  ? `Order ${worldId === 'toyshop' ? 'a toy' : 'a part'} and it will appear here.`
+                  : worldId === 'zoo'
+                    ? 'Every animal is in the zoo.'
+                    : 'All parts are in place.'}
               </span>
             )}
             {tray.map((id) => (
@@ -966,7 +1074,7 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                 </span>
                 <GoalIcon item={item} task={task} />
                 <span className="act-station-goal__text">
-                  {promptFor(item, lesson)}
+                  {promptFor(item, lesson, worldId)}
                   {i >= core && <span className="act-station-goal__bonus"> ⭐ Bonus</span>}
                   {r?.correct && showMethods && r.method && (
                     <span className="act-station-goal__method" data-testid={`method-${item.id}`}>
@@ -1008,11 +1116,13 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
 
         {catalogue.length > 0 && (
           <div className="act-station__catalogue-wrap">
-            <h3 className="act-station__heading">Parts catalogue</h3>
+            <h3 className="act-station__heading">
+              {worldId === 'toyshop' ? 'Toy catalogue' : 'Parts catalogue'}
+            </h3>
             <ul
               className="act-station__catalogue"
               data-testid="station-catalogue"
-              aria-label="Parts catalogue. Scroll to see every part."
+              aria-label={`${worldId === 'toyshop' ? 'Toy' : 'Parts'} catalogue. Scroll to see every ${worldId === 'toyshop' ? 'toy' : 'part'}.`}
               tabIndex={0}
               onScroll={() => {
                 scrolled.current = true

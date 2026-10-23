@@ -7,10 +7,14 @@ import {
   PARTS,
   PHASE_1_LESSONS,
   SECTIONS,
+  WORLDS,
+  WORLD_IDS,
   catalogueFor,
   crateIdsFor,
+  lessonOf,
   partById,
   promptFor,
+  worldIdOf,
 } from './station.js'
 import {
   ChoiceCards,
@@ -39,9 +43,20 @@ const COLOUR_OPTIONS = [
   { value: 'lights', label: 'Lights' },
 ]
 
-// The goals that can be set in a lesson.
-const goalsForLesson = (lesson) =>
-  GOAL_IDS.filter((id) => GOALS[id].lessons.includes(lesson) && !GOALS[id].yamlOnly)
+const WORLD_HINTS = {
+  station: 'Lessons 1 to 4: power, crates, modules and parts',
+  zoo: 'Lesson 3: drag animals into their enclosures',
+  toyshop: 'Lesson 4: scroll a catalogue of toys',
+}
+
+// The goals that can be set in a task: those for its lesson that make sense in its world.
+const goalsForTask = (task) =>
+  GOAL_IDS.filter(
+    (id) =>
+      GOALS[id].lessons.includes(lessonOf(task)) &&
+      (GOALS[id].worlds ?? ['station']).includes(worldIdOf(task)) &&
+      !GOALS[id].yamlOnly
+  )
 
 // The targets a goal may point at in a task: [{ value, label }]. Empty when the goal has none.
 function targetOptions(task, goalId) {
@@ -50,11 +65,14 @@ function targetOptions(task, goalId) {
   if (kind === 'colour') return COLOUR_OPTIONS
   if (kind === 'crate')
     return crateIdsFor(task).map((id) => ({ value: id, label: partById(id).label }))
+  if (kind === 'kind') return WORLDS.zoo.enclosures.map((e) => ({ value: e.kind, label: e.label }))
   if (kind === 'part') {
     const ids =
       goalId === 'place_part' || goalId === 'order_part'
         ? catalogueFor(task)
-        : PARTS.filter((p) => p.lesson <= (task.lesson ?? 1)).map((p) => p.id)
+        : worldIdOf(task) === 'station'
+          ? PARTS.filter((p) => p.lesson <= (task.lesson ?? 1)).map((p) => p.id)
+          : WORLDS[worldIdOf(task)].catalogue
     return ids.map((id) => ({ value: id, label: partById(id)?.label ?? id }))
   }
   return []
@@ -62,7 +80,7 @@ function targetOptions(task, goalId) {
 
 function ItemFields({ task, item, update, index }) {
   const n = index + 1
-  const goals = goalsForLesson(task.lesson)
+  const goals = goalsForTask(task)
   const options = targetOptions(task, item.goal)
   const kind = GOALS[item.goal]?.target
   const known = goals.includes(item.goal)
@@ -114,7 +132,10 @@ function ItemFields({ task, item, update, index }) {
         <input
           className="te-input"
           value={item.prompt ?? ''}
-          placeholder={promptFor({ ...item, prompt: undefined }, task.lesson) || 'Optional prompt'}
+          placeholder={
+            promptFor({ ...item, prompt: undefined }, lessonOf(task), worldIdOf(task)) ||
+            'Optional prompt'
+          }
           aria-label={`Item ${n} prompt`}
           onChange={(e) => update({ prompt: e.target.value || undefined })}
         />
@@ -126,7 +147,22 @@ function ItemFields({ task, item, update, index }) {
 export default function StationBuilderEditor({ task, onUpdate }) {
   const validation = useActivityValidation(definition, task)
   const lesson = task.lesson
-  const lessonCatalogue = LESSON[lesson]?.catalogue ?? []
+  const worldId = worldIdOf(task)
+  const lessonCatalogue =
+    worldId === 'station' ? (LESSON[lesson]?.catalogue ?? []) : WORLDS[worldId].catalogue
+
+  function setWorld(next) {
+    const patch = { ...task }
+    if (next === 'station') delete patch.world
+    else {
+      patch.world = next
+      patch.lesson = WORLDS[next].lessons[0]
+    }
+    // The own part list belongs to one world.
+    delete patch.catalogue
+    delete patch.mistakes
+    onUpdate(patch)
+  }
 
   function setLesson(next) {
     const patch = { ...task, lesson: next }
@@ -159,18 +195,36 @@ export default function StationBuilderEditor({ task, onUpdate }) {
     <div className="te-act-editor" data-activity-editor="station">
       <ValidationMessages messages={validation.general} />
 
-      <Field label="Lesson" hint="Earlier lessons are already built; this lesson is set up fresh.">
+      <Field label="World" hint="Where this week's build happens. Each world is saved separately.">
         <ChoiceCards
-          ariaLabel="Station lesson"
-          value={lesson}
-          options={PHASE_1_LESSONS.map((n) => ({
-            value: n,
-            label: `${n}. ${LESSON[n].title}`,
-            hint: LESSON_HINTS[n],
+          ariaLabel="Station world"
+          value={worldId}
+          options={WORLD_IDS.map((id) => ({
+            value: id,
+            label: WORLDS[id].label,
+            hint: WORLD_HINTS[id],
           }))}
-          onChange={setLesson}
+          onChange={setWorld}
         />
       </Field>
+
+      {worldId === 'station' && (
+        <Field
+          label="Lesson"
+          hint="Earlier lessons are already built; this lesson is set up fresh."
+        >
+          <ChoiceCards
+            ariaLabel="Station lesson"
+            value={lesson}
+            options={PHASE_1_LESSONS.map((n) => ({
+              value: n,
+              label: `${n}. ${LESSON[n].title}`,
+              hint: LESSON_HINTS[n],
+            }))}
+            onChange={setLesson}
+          />
+        </Field>
+      )}
 
       <Field
         label="Core items (rest are bonus)"
@@ -196,7 +250,7 @@ export default function StationBuilderEditor({ task, onUpdate }) {
         addLabel="+ Add goal"
         onChange={(items) => onUpdate({ ...task, items })}
         makeRow={(items) => {
-          const goal = goalsForLesson(lesson)[0] ?? 'power_on'
+          const goal = goalsForTask(task)[0] ?? 'power_on'
           return {
             id: nextItemId(items),
             goal,

@@ -1,0 +1,203 @@
+{
+  "cellPx": 128,
+  "size": [1600, 1000],
+  "layers": ["backdrop", "every spot"],
+  "rules": {
+    "fit": "A part goes in a spot whose accepts list has its kind and whose cells it fits inside (part w <= spot w and part h <= spot h).",
+    "catalogue": "List parts by catalogueOrder; the part with best true (the rainbow castle) is last, at the very bottom of the catalogue."
+  },
+  "backdrop": {
+    "file": "backdrop.png",
+    "bytes": 91868,
+    "window": {
+      "x": 310,
+      "y": 209,
+      "w": 980,
+      "h": 573
+    },
+    "shelfTop": 348,
+    "windowFloor": 734
+  },
+  "spots": [
+    {
+      "id": "shelf-1",
+      "x": 0.2256,
+      "y": 0.224,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["toy"]
+    },
+    {
+      "id": "shelf-2",
+      "x": 0.3194,
+      "y": 0.224,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["toy"]
+    },
+    {
+      "id": "shelf-3",
+      "x": 0.4131,
+      "y": 0.224,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["toy"]
+    },
+    {
+      "id": "shelf-4",
+      "x": 0.5069,
+      "y": 0.224,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["toy"]
+    },
+    {
+      "id": "shelf-5",
+      "x": 0.6006,
+      "y": 0.224,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["toy"]
+    },
+    {
+      "id": "shelf-6",
+      "x": 0.6944,
+      "y": 0.224,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["toy"]
+    },
+    {
+      "id": "floor-1",
+      "x": 0.2319,
+      "y": 0.61,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["toy"]
+    },
+    {
+      "id": "floor-2",
+      "x": 0.3306,
+      "y": 0.482,
+      "w": 0.16,
+      "h": 0.256,
+      "cells": [2, 2],
+      "accepts": ["toy"]
+    },
+    {
+      "id": "floor-3",
+      "x": 0.5094,
+      "y": 0.482,
+      "w": 0.16,
+      "h": 0.256,
+      "cells": [2, 2],
+      "accepts": ["toy"]
+    },
+    {
+      "id": "floor-4",
+      "x": 0.6881,
+      "y": 0.61,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["toy"]
+    }
+  ],
+  "parts": [
+    {
+      "file": "toy-teddy-bear.png",
+      "glow": "toy-teddy-bear-glow.png",
+      "kind": "toy",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 3719,
+      "catalogueOrder": 1,
+      "best": false
+    },
+    {
+      "file": "toy-robot.png",
+      "glow": "toy-robot-glow.png",
+      "kind": "toy",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 3959,
+      "catalogueOrder": 2,
+      "best": false
+    },
+    {
+      "file": "toy-kite.png",
+      "glow": "toy-kite-glow.png",
+      "kind": "toy",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 1998,
+      "catalogueOrder": 3,
+      "best": false
+    },
+    {
+      "file": "toy-yo-yo.png",
+      "glow": "toy-yo-yo-glow.png",
+      "kind": "toy",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 4162,
+      "catalogueOrder": 4,
+      "best": false
+    },
+    {
+      "file": "toy-car.png",
+      "glow": "toy-car-glow.png",
+      "kind": "toy",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 3558,
+      "catalogueOrder": 5,
+      "best": false
+    },
+    {
+      "file": "toy-spinning-top.png",
+      "glow": "toy-spinning-top-glow.png",
+      "kind": "toy",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 2663,
+      "catalogueOrder": 6,
+      "best": false
+    },
+    {
+      "file": "toy-rocket.png",
+      "glow": "toy-rocket-glow.png",
+      "kind": "toy",
+      "cells": [2, 2],
+      "state": null,
+      "canHang": false,
+      "bytes": 6493,
+      "catalogueOrder": 7,
+      "best": false
+    },
+    {
+      "file": "toy-rainbow-castle.png",
+      "glow": "toy-rainbow-castle-glow.png",
+      "kind": "toy",
+      "cells": [2, 2],
+      "state": null,
+      "canHang": false,
+      "bytes": 14979,
+      "catalogueOrder": 8,
+      "best": true
+    }
+  ]
+}

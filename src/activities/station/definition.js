@@ -7,15 +7,19 @@ import { roundSummaryText } from '../round.js'
 import {
   GOAL_IDS,
   GOALS,
+  WORLD_IDS,
   applyCarried,
+  carriedOthers,
+  carrySceneOf,
   gradeStationTask,
   initialStationState,
   methodWords,
   promptFor,
   solvedDone,
   stationProgress,
-  stripMistakes,
   validateStationTask,
+  worldIdOf,
+  lessonOf,
 } from './station.js'
 
 const parseState = (raw) => {
@@ -60,7 +64,14 @@ export default defineActivity({
         type: 'number',
         required: true,
         description:
-          '1 to 4 (Phase 1). Sets the starting station: earlier lessons are already built in default places, then this lesson is set up.',
+          '1 to 4 (Phase 1). Sets the starting station: earlier lessons are already built in default places, then this lesson is set up. Optional for the zoo (3) and the toy shop (4), which have one lesson each.',
+      },
+      {
+        name: 'world',
+        type: 'string',
+        values: WORLD_IDS,
+        description:
+          'Where this task builds: station (the default), zoo (Lesson 3: drag animals into their enclosures) or toyshop (Lesson 4: scroll a catalogue of toys). The build is saved for each world separately.',
       },
       {
         name: 'items',
@@ -75,7 +86,7 @@ export default defineActivity({
             name: 'target',
             type: 'string',
             description:
-              'A section id, hull or lights, a part id or a crate id, depending on the goal. Leave out for any.',
+              'A section id, hull or lights, a part id, a crate id or (sort) an enclosure kind, depending on the goal. Leave out for any.',
           },
           { name: 'prompt', type: 'string', authored: true },
           {
@@ -136,7 +147,7 @@ export default defineActivity({
         name: 'mistakes',
         type: 'array',
         description:
-          "Lesson 3: the clumsy robot's drops, parts already on the station at the start: [{ part: dome, spot: top-module-1 }]. Only Ctrl+Z removes them (needs an undo_mistakes goal). They are never saved as the child's station.",
+          "Lesson 3: the clumsy robot's drops, parts already on the station at the start: [{ part: dome, spot: top-module-1 }]. In the zoo the keeper puts an animal in the wrong enclosure: [{ part: grass-lion, spot: ice-2 }]. Only Ctrl+Z removes them (needs an undo_mistakes goal). They are never saved as the child's station.",
         itemFields: [
           { name: 'part', type: 'string', required: true },
           { name: 'spot', type: 'string', required: true },
@@ -146,7 +157,7 @@ export default defineActivity({
         name: 'catalogue',
         type: 'array',
         description:
-          'Part ids on offer: the Lesson 3 tray or the Lesson 4 catalogue. Defaults to the lesson list.',
+          'Part ids on offer: the Lesson 3 tray or the Lesson 4 catalogue (animal ids in the zoo, toy ids in the toy shop). Defaults to the lesson or world list.',
       },
       {
         name: 'coreItems',
@@ -200,8 +211,10 @@ export default defineActivity({
   carrySlot: {
     id: 'station',
     // The clumsy robot's preset drops are not the child's station: they are dropped here.
-    extract: (state) => ({ v: 1, scene: stripMistakes(state?.scene) }),
-    apply: (task, carried) => initialStationState(task, applyCarried(task, carried)),
+    // One scene per world ({ v: 2, worlds }); an older { v: 1, scene } is the station's.
+    extract: (state) => carrySceneOf(state),
+    apply: (task, carried) =>
+      initialStationState(task, applyCarried(task, carried), carriedOthers(task, carried)),
   },
 
   grade: (task, state) => {
@@ -238,9 +251,9 @@ export default defineActivity({
   printHtml: (task, { esc }) => {
     const rows = (task.items ?? []).map(
       (item) =>
-        `<li>${esc(promptFor(item, task.lesson))} <em>(${esc(GOALS[item.goal]?.methods.map(methodWords).join(' or ') ?? '')})</em></li>`
+        `<li>${esc(promptFor(item, task.lesson, worldIdOf(task)))} <em>(${esc(GOALS[item.goal]?.methods.map(methodWords).join(' or ') ?? '')})</em></li>`
     )
-    return `<p>Lesson ${esc(task.lesson)}</p><ol>${rows.join('')}</ol>`
+    return `<p>Lesson ${esc(lessonOf(task))}</p><ol>${rows.join('')}</ol>`
   },
 
   report: {

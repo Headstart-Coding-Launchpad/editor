@@ -1,0 +1,283 @@
+{
+  "cellPx": 128,
+  "size": [1600, 1000],
+  "layers": ["backdrop", "zoo-base", "every spot"],
+  "rules": {
+    "fit": "A part goes in a spot whose accepts list has its kind and whose cells it fits inside (part w <= spot w and part h <= spot h).",
+    "sort": "Every spot sits inside one enclosure and accepts only that enclosure's kind (ice, grass, jungle, water), so an animal dropped in the wrong enclosure is a wrong drop (Ctrl+Z undoes it).",
+    "enclosureGlow": "enclosure-<kind>-glow.png masks one enclosure, for highlighting where an animal belongs."
+  },
+  "backdrop": {
+    "file": "backdrop.png",
+    "bytes": 239350
+  },
+  "base": {
+    "file": "zoo-base.png",
+    "box": {
+      "x": 79,
+      "y": 30,
+      "w": 1441,
+      "h": 940
+    },
+    "bytes": 153661
+  },
+  "enclosures": [
+    {
+      "kind": "ice",
+      "box": {
+        "x": 106,
+        "y": 53,
+        "w": 677,
+        "h": 444
+      },
+      "inside": {
+        "x": 150,
+        "y": 97,
+        "w": 589,
+        "h": 304
+      },
+      "glow": "enclosure-ice-glow.png"
+    },
+    {
+      "kind": "grass",
+      "box": {
+        "x": 818,
+        "y": 31,
+        "w": 674,
+        "h": 469
+      },
+      "inside": {
+        "x": 862,
+        "y": 75,
+        "w": 586,
+        "h": 329
+      },
+      "glow": "enclosure-grass-glow.png"
+    },
+    {
+      "kind": "jungle",
+      "box": {
+        "x": 79,
+        "y": 522,
+        "w": 712,
+        "h": 447
+      },
+      "inside": {
+        "x": 123,
+        "y": 566,
+        "w": 624,
+        "h": 307
+      },
+      "glow": "enclosure-jungle-glow.png"
+    },
+    {
+      "kind": "water",
+      "box": {
+        "x": 812,
+        "y": 500,
+        "w": 707,
+        "h": 469
+      },
+      "inside": {
+        "x": 856,
+        "y": 544,
+        "w": 619,
+        "h": 329
+      },
+      "glow": "enclosure-water-glow.png"
+    }
+  ],
+  "spots": [
+    {
+      "id": "ice-1",
+      "x": 0.11,
+      "y": 0.139,
+      "w": 0.16,
+      "h": 0.256,
+      "cells": [2, 2],
+      "accepts": ["ice"]
+    },
+    {
+      "id": "ice-2",
+      "x": 0.2775,
+      "y": 0.267,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["ice"]
+    },
+    {
+      "id": "ice-3",
+      "x": 0.365,
+      "y": 0.267,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["ice"]
+    },
+    {
+      "id": "grass-1",
+      "x": 0.5544,
+      "y": 0.142,
+      "w": 0.16,
+      "h": 0.256,
+      "cells": [2, 2],
+      "accepts": ["grass"]
+    },
+    {
+      "id": "grass-2",
+      "x": 0.7219,
+      "y": 0.27,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["grass"]
+    },
+    {
+      "id": "grass-3",
+      "x": 0.8094,
+      "y": 0.27,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["grass"]
+    },
+    {
+      "id": "jungle-1",
+      "x": 0.1444,
+      "y": 0.739,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["jungle"]
+    },
+    {
+      "id": "jungle-2",
+      "x": 0.2319,
+      "y": 0.739,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["jungle"]
+    },
+    {
+      "id": "jungle-3",
+      "x": 0.3194,
+      "y": 0.739,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["jungle"]
+    },
+    {
+      "id": "water-1",
+      "x": 0.5606,
+      "y": 0.611,
+      "w": 0.16,
+      "h": 0.256,
+      "cells": [2, 2],
+      "accepts": ["water"]
+    },
+    {
+      "id": "water-2",
+      "x": 0.7281,
+      "y": 0.739,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["water"]
+    },
+    {
+      "id": "water-3",
+      "x": 0.8156,
+      "y": 0.739,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["water"]
+    }
+  ],
+  "parts": [
+    {
+      "file": "ice-penguin.png",
+      "glow": "ice-penguin-glow.png",
+      "kind": "ice",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 2962
+    },
+    {
+      "file": "ice-polar-bear.png",
+      "glow": "ice-polar-bear-glow.png",
+      "kind": "ice",
+      "cells": [2, 2],
+      "state": null,
+      "canHang": false,
+      "bytes": 7430
+    },
+    {
+      "file": "grass-lion.png",
+      "glow": "grass-lion-glow.png",
+      "kind": "grass",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 4153
+    },
+    {
+      "file": "grass-giraffe.png",
+      "glow": "grass-giraffe-glow.png",
+      "kind": "grass",
+      "cells": [2, 2],
+      "state": null,
+      "canHang": false,
+      "bytes": 6126
+    },
+    {
+      "file": "grass-zebra.png",
+      "glow": "grass-zebra-glow.png",
+      "kind": "grass",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 3563
+    },
+    {
+      "file": "jungle-monkey.png",
+      "glow": "jungle-monkey-glow.png",
+      "kind": "jungle",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 3899
+    },
+    {
+      "file": "jungle-parrot.png",
+      "glow": "jungle-parrot-glow.png",
+      "kind": "jungle",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 3652
+    },
+    {
+      "file": "water-duck.png",
+      "glow": "water-duck-glow.png",
+      "kind": "water",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 3006
+    },
+    {
+      "file": "water-hippo.png",
+      "glow": "water-hippo-glow.png",
+      "kind": "water",
+      "cells": [2, 2],
+      "state": null,
+      "canHang": false,
+      "bytes": 8225
+    }
+  ]
+}

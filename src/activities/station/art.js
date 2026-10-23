@@ -29,6 +29,22 @@ export const SCENE_ART = Object.freeze({
   hullGlow: url('hull-glow.png'),
 })
 
+// The zoo and toy shop packs (public/station/zoo, public/station/toyshop): same format as phase-1.
+const worldDir = (id) => `${BASE}station/${id}/`
+const ZOO_DIR = worldDir('zoo')
+const TOYSHOP_DIR = worldDir('toyshop')
+
+// The scene pictures of a world other than the station: the backdrop, the zoo's base layer of
+// empty enclosures and a white mask per enclosure (tinted in code to show where an animal lives).
+export const WORLD_ART = Object.freeze({
+  zoo: Object.freeze({
+    backdrop: `${ZOO_DIR}backdrop.png`,
+    base: `${ZOO_DIR}zoo-base.png`,
+    enclosureGlow: (kind) => `${ZOO_DIR}enclosure-${kind}-glow.png`,
+  }),
+  toyshop: Object.freeze({ backdrop: `${TOYSHOP_DIR}backdrop.png`, base: null }),
+})
+
 // Part id (station.js) -> art file name; a part with states maps each state to its own file.
 const FILES = {
   'power-on': 'power-button-on',
@@ -63,7 +79,14 @@ export function artFor(partId, state) {
       ? `power-${state === 'on' ? 'on' : 'off'}`
       : partId
   const file = FILES[key]
-  return file ? { src: url(`${file}.png`), glow: url(`${file}-glow.png`) } : null
+  if (file) return { src: url(`${file}.png`), glow: url(`${file}-glow.png`) }
+  // An animal (ice-penguin) or a toy (toy-kite): the file is named after the part id.
+  const dir = /^(ice|grass|jungle|water)-/.test(partId)
+    ? ZOO_DIR
+    : /^toy-/.test(partId)
+      ? TOYSHOP_DIR
+      : null
+  return dir ? { src: `${dir}${partId}.png`, glow: `${dir}${partId}-glow.png` } : null
 }
 
 // Sticker shapes for the crates, drawn in code (100 x 100 viewBox paths). The colour comes from

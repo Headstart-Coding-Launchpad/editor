@@ -7062,6 +7062,80 @@ label.te-backdrop-tag,
   box-shadow: 0 0 0 5px rgb(253 224 71 / 45%);
 }
 
+/* Zoo: the enclosure an animal belongs in glows while it is held, and a wrong drop blinks the
+   enclosure it hit red (the whole-scene mask is tinted, so no outline or shake here). */
+.act-station-enclosure {
+  background: #fde047;
+  opacity: 0;
+  mix-blend-mode: screen;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.act-station-enclosure.is-home {
+  animation: act-station-home 1.1s ease-in-out infinite;
+}
+
+.act-station .act-station-enclosure[data-blink] {
+  background: #ef4444;
+  mix-blend-mode: normal;
+  outline: none;
+  translate: none;
+}
+
+.act-station .act-station-enclosure[data-blink='0'] {
+  animation: act-station-wrong-a 0.65s ease-in-out;
+}
+
+.act-station .act-station-enclosure[data-blink='1'] {
+  animation: act-station-wrong-b 0.65s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .act-station-enclosure.is-home {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+@keyframes act-station-home {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes act-station-wrong-a {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  25%,
+  65% {
+    opacity: 0.75;
+  }
+  45% {
+    opacity: 0.2;
+  }
+}
+
+@keyframes act-station-wrong-b {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  25%,
+  65% {
+    opacity: 0.75;
+  }
+  45% {
+    opacity: 0.2;
+  }
+}
+
 @keyframes act-station-pulse {
   50% {
     box-shadow: 0 0 0 6px rgb(253 224 71 / 40%);

@@ -205,8 +205,8 @@ describe("Lesson 3: the clumsy robot's drops (mistakes)", () => {
     it("does not save the drops as the child's station", () => {
       const s = run(t, [{ type: 'place', part: 'dome', spot: 'top-module-1', method: 'drag' }])
       const carried = definition.carrySlot.extract(s)
-      expect(carried.scene.placed).toEqual({ 'top-module-1': 'dome' })
-      expect(carried.scene.mistakes).toBeUndefined()
+      expect(carried.worlds.station.placed).toEqual({ 'top-module-1': 'dome' })
+      expect(carried.worlds.station.mistakes).toBeUndefined()
       const next = applyCarried(task(3, [{ id: 'x', goal: 'undo' }]), carried)
       expect(Object.values(next.placed)).not.toContain('greenhouse')
       expect(Object.values(next.placed)).not.toContain('docking-arm')

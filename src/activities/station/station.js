@@ -4,6 +4,8 @@
 // Placeholder art lives in ./art.js so swapping it never touches this file.
 
 import { coreCountOf, validateCoreItems } from '../round.js'
+import toyshopWorld from './worlds/toyshop.js'
+import zooWorld from './worlds/zoo.js'
 
 // --- Layout (in code, not authored) ---
 
@@ -53,7 +55,9 @@ export const SPOTS = Object.freeze([
   spot('power-2', 0.46, 0.433, [1, 1], 'power'),
   spot('power-3', 0.76, 0.433, [1, 1], 'power'),
 ])
-const SPOT_BY_ID = Object.fromEntries(SPOTS.map((s) => [s.id, s]))
+const SPOT_BY_ID = Object.fromEntries(
+  [...SPOTS, ...zooWorld.spots, ...toyshopWorld.spots].map((s) => [s.id, s])
+)
 export const spotById = (id) => SPOT_BY_ID[id] ?? null
 
 // Where crew stand once their crate is opened (the four portholes).
@@ -114,9 +118,17 @@ export const PARTS = Object.freeze([
   part('cargo-pod', 'Cargo pod', 'part', 4, [1, 1], true),
   part('rainbow-ring', 'Rainbow ring', 'module', 4, [2, 2], true),
 ])
-const PART_BY_ID = Object.fromEntries(PARTS.map((p) => [p.id, p]))
+// Every world's parts are looked up by id (the ids are unique across worlds). PARTS is the station's.
+const PART_BY_ID = Object.fromEntries(
+  [...PARTS, ...zooWorld.parts, ...toyshopWorld.parts].map((p) => [p.id, p])
+)
 export const partById = (id) => PART_BY_ID[id] ?? null
-const isPlaceable = (p) => p?.kind === 'module' || p?.kind === 'part'
+// A part that goes on a spot: a module or part on the station, an animal in the zoo, a toy.
+const isPlaceable = (p) => !!p && p.kind !== 'crate' && p.kind !== 'crew'
+
+// Does the part fit inside the spot's cells (whatever kind the spot takes)?
+const fitsSpot = (spot, part) =>
+  !!spot && !!part && part.cells[0] <= spot.cells[0] && part.cells[1] <= spot.cells[1]
 
 // Can this part go in this spot? The kind must be accepted, the part must fit inside the spot's
 // cells, and a spot under the hull only takes parts that can hang.
@@ -179,6 +191,58 @@ export const LESSON = Object.freeze({
   }),
 })
 
+// --- Worlds ---
+
+// A world is a place to build: its spots, its parts and (zoo) its enclosures. The space station is
+// the original; the zoo (Lesson 3, drag) and the toy shop (Lesson 4, scroll) are packs of Lesson
+// Gen's art (public/station/<world>/parts.json, read by ./worlds/*.js). A task says which one with
+// `world`; without it the task is a station task, whatever its lesson.
+export const WORLD_IDS = Object.freeze(['station', 'zoo', 'toyshop'])
+const STATION_WORLD = Object.freeze({
+  id: 'station',
+  label: 'Space station',
+  lessons: PHASE_1_LESSONS,
+  spots: SPOTS,
+  parts: PARTS,
+  catalogue: Object.freeze([]),
+  enclosures: Object.freeze([]),
+  best: null,
+})
+export const WORLDS = Object.freeze({
+  station: STATION_WORLD,
+  zoo: zooWorld,
+  toyshop: toyshopWorld,
+})
+// How a world is named in a message ("isn't in the toy shop world").
+export const WORLD_WORDS = Object.freeze({ station: 'station', zoo: 'zoo', toyshop: 'toy shop' })
+
+// The world a task builds in: its own `world` when that is a known one, else the station.
+export const worldIdOf = (task) => (WORLDS[task?.world] ? task.world : 'station')
+export const worldOf = (task) => WORLDS[worldIdOf(task)]
+// The lesson a task is for: the station's `lesson`, or the zoo's / toy shop's own lesson.
+export const lessonOf = (task) =>
+  worldIdOf(task) === 'station' ? task?.lesson : worldOf(task).lessons[0]
+// The spots of a world, the part ids it has and the enclosure at a point (zoo; fractions 0-1).
+export const worldSpots = (worldId) => (WORLDS[worldId] ?? STATION_WORLD).spots
+// The spots a part can be placed on (the station also has power buttons and crew posts).
+export const placeSpotsOf = (worldId) =>
+  worldId === 'station' || !WORLDS[worldId] ? PLACE_SPOTS : WORLDS[worldId].spots
+export const inWorld = (task, partId) => {
+  const w = worldOf(task)
+  return w.parts.some((p) => p.id === partId)
+}
+export function enclosureAt(worldId, point) {
+  return (
+    (WORLDS[worldId] ?? STATION_WORLD).enclosures.find(
+      (e) =>
+        point.x >= e.box.x &&
+        point.x <= e.box.x + e.box.w &&
+        point.y >= e.box.y &&
+        point.y <= e.box.y + e.box.h
+    ) ?? null
+  )
+}
+
 // --- Goals ---
 
 export const METHODS = Object.freeze([
@@ -191,8 +255,9 @@ export const METHODS = Object.freeze([
   'cmd_z',
 ])
 
-// target: what `target` may be ('section', 'colour', 'part', 'crate', or 'none'); methods: the
-// methods that complete it; lessons: where it can be set.
+// target: what `target` may be ('section', 'colour', 'part', 'crate', 'kind' or 'none'); methods:
+// the methods that complete it; lessons: where it can be set; worlds: the worlds it makes sense in
+// (the station by default).
 export const GOALS = Object.freeze({
   power_on: { label: 'Power on', target: 'section', methods: ['click', 'keyboard'], lessons: [1] },
   pick_colour: {
@@ -201,7 +266,13 @@ export const GOALS = Object.freeze({
     methods: ['click', 'keyboard'],
     lessons: [1],
   },
-  select: { label: 'Select a part', target: 'part', methods: ['click'], lessons: [2, 3, 4] },
+  select: {
+    label: 'Select a part',
+    target: 'part',
+    methods: ['click'],
+    lessons: [2, 3, 4],
+    worlds: ['station', 'zoo', 'toyshop'],
+  },
   open_crate: { label: 'Open a crate', target: 'crate', methods: ['double_click'], lessons: [2] },
   choose_captain: { label: 'Choose a captain', target: 'none', methods: ['click'], lessons: [2] },
   place_part: {
@@ -209,8 +280,15 @@ export const GOALS = Object.freeze({
     target: 'part',
     methods: ['drag', 'pick_drop'],
     lessons: [3, 4],
+    worlds: ['station', 'zoo', 'toyshop'],
   },
-  undo: { label: 'Undo', target: 'none', methods: ['ctrl_z', 'cmd_z'], lessons: [3, 4] },
+  undo: {
+    label: 'Undo',
+    target: 'none',
+    methods: ['ctrl_z', 'cmd_z'],
+    lessons: [3, 4],
+    worlds: ['station', 'zoo', 'toyshop'],
+  },
   // YAML-only goals (the Builder editor does not offer them): they need extra task data.
   light_pattern: {
     label: 'Light pattern',
@@ -224,10 +302,26 @@ export const GOALS = Object.freeze({
     target: 'none',
     methods: ['ctrl_z', 'cmd_z'],
     lessons: [3],
+    worlds: ['station', 'zoo'],
     yamlOnly: true,
   },
-  order_part: { label: 'Order a part', target: 'part', methods: ['click'], lessons: [4] },
+  order_part: {
+    label: 'Order a part',
+    target: 'part',
+    methods: ['click'],
+    lessons: [4],
+    worlds: ['station', 'toyshop'],
+  },
+  // Zoo only: every animal in the tray is in an enclosure that takes its kind.
+  sort: {
+    label: 'Sort the animals',
+    target: 'kind',
+    methods: ['drag', 'pick_drop'],
+    lessons: [3],
+    worlds: ['zoo'],
+  },
 })
+const goalWorlds = (goal) => goal?.worlds ?? ['station']
 export const GOAL_IDS = Object.freeze(Object.keys(GOALS))
 
 export const UNDO_LIMIT = 15
@@ -351,11 +445,13 @@ function completeScene(scene, n, task) {
 // The default scene for lesson n: lessons 1..n-1 are done in default places, then lesson n's setup.
 // `task` (optional) says which crates the delivery bay has.
 export function sceneForLesson(n, task = null) {
+  // The zoo and the toy shop start empty: there is no earlier lesson to catch up on.
+  if (worldIdOf(task) !== 'station') return emptyScene()
   return completeScene(emptyScene(), PHASE_1_LESSONS.includes(n) ? n : 1, task)
 }
 
 // Keeps only well-formed saved data, so a bad or old saved scene can never break the station.
-function sanitiseScene(raw, multi = new Set()) {
+function sanitiseScene(raw, multi = new Set(), worldId = 'station') {
   const scene = emptyScene()
   if (!raw || typeof raw !== 'object') return scene
   if (HULL_COLOURS.includes(raw.hull)) scene.hull = raw.hull
@@ -364,8 +460,13 @@ function sanitiseScene(raw, multi = new Set()) {
   // Unknown spot or part ids (an older saved station) and parts that no longer fit are dropped;
   // the catch-up then puts the lesson's parts back in default places.
   const used = new Set()
+  const ownSpots = new Set(worldSpots(worldId).map((s) => s.id))
   for (const [spotId, id] of Object.entries(raw.placed ?? {})) {
-    if (spotTakes(spotById(spotId), partById(id)) && (!used.has(id) || multi.has(id))) {
+    if (
+      ownSpots.has(spotId) &&
+      spotTakes(spotById(spotId), partById(id)) &&
+      (!used.has(id) || multi.has(id))
+    ) {
       scene.placed[spotId] = id
       used.add(id)
     }
@@ -394,13 +495,41 @@ function sanitiseScene(raw, multi = new Set()) {
   return scene
 }
 
+// What is carried is one scene per world: { v: 2, worlds: { station: scene, zoo: scene } }. An
+// older save { v: 1, scene } (or a bare scene) is the station world's. Returns the saved scene for
+// `worldId` (or null) and the other worlds' scenes, which the state keeps so saving never loses them.
+function carriedScenes(carried) {
+  if (!carried || typeof carried !== 'object') return {}
+  if (carried.worlds && typeof carried.worlds === 'object') {
+    return Object.fromEntries(
+      Object.entries(carried.worlds).filter(([id, scene]) => WORLDS[id] && scene)
+    )
+  }
+  const old = 'scene' in carried ? carried.scene : carried
+  return old && typeof old === 'object' ? { station: old } : {}
+}
+export function carriedOthers(task, carried) {
+  const worldId = worldIdOf(task)
+  return Object.fromEntries(Object.entries(carriedScenes(carried)).filter(([id]) => id !== worldId))
+}
+// The slot saved for a state: its own world's scene (without the clumsy robot's drops) beside the
+// other worlds' scenes it was started with.
+export function carrySceneOf(state) {
+  const worldId = WORLDS[state?.world] ? state.world : 'station'
+  return {
+    v: 2,
+    worlds: { ...(state?.others ?? {}), [worldId]: stripMistakes(state?.scene) },
+  }
+}
+
 // The saved scene wins; anything earlier lessons unlock that it lacks is added in a default place
 // (catch-up after a missed lesson); this lesson's setup is added if missing. Pure and idempotent.
-// `carried` is { v: 1, scene } (or just the scene). Returns a scene.
+// `carried` is { v: 2, worlds } or the older { v: 1, scene } (or just a scene). Returns a scene.
 export function applyCarried(task, carried) {
+  const worldId = worldIdOf(task)
+  const scene = sanitiseScene(carriedScenes(carried)[worldId], multiParts(task), worldId)
+  if (worldId !== 'station') return scene
   const n = PHASE_1_LESSONS.includes(task?.lesson) ? task.lesson : 1
-  const raw = carried && typeof carried === 'object' && 'scene' in carried ? carried.scene : carried
-  const scene = sanitiseScene(raw, multiParts(task))
   // A child past Lesson 1 has a powered station (a light pattern was only a game).
   if (n > 1) for (const s of SECTIONS) scene.power[s.id] = true
   return completeScene(scene, n, task)
@@ -411,14 +540,16 @@ export function applyCarried(task, carried) {
 // The part ids on offer for a task (its own `catalogue`, else the lesson's list).
 export function catalogueFor(task) {
   if (Array.isArray(task?.catalogue) && task.catalogue.length) return task.catalogue
-  return LESSON[task?.lesson]?.catalogue ?? []
+  const world = worldOf(task)
+  return world.id === 'station' ? (LESSON[task?.lesson]?.catalogue ?? []) : world.catalogue
 }
 
 // Parts waiting to be placed: Lesson 3 shows the whole tray, Lesson 4 what was ordered.
 export function trayParts(task, scene) {
   let waiting = []
-  if (task?.lesson === 4) waiting = scene?.ordered ?? []
-  else if (task?.lesson === 3) waiting = catalogueFor(task)
+  const lesson = lessonOf(task)
+  if (lesson === 4) waiting = scene?.ordered ?? []
+  else if (lesson === 3) waiting = catalogueFor(task)
   const multi = multiParts(task)
   return waiting.filter((id) => multi.has(id) || !isPlaced(scene, id))
 }
@@ -426,11 +557,17 @@ export function trayParts(task, scene) {
 // The empty spot that takes `what` (a part id, or just a part kind) nearest a dropped point
 // (fractions 0-1): inside the spot, or within the snap radius of its edge. Null when none, so the
 // part goes back to the tray.
-export function nearestSpot(scene, point, what = 'module', radius = SPOT_SNAP_RADIUS) {
+export function nearestSpot(
+  scene,
+  point,
+  what = 'module',
+  radius = SPOT_SNAP_RADIUS,
+  worldId = 'station'
+) {
   const p = partById(what)
   let best = null
   let bestDistance = radius
-  for (const spot of SPOTS) {
+  for (const spot of worldSpots(worldId)) {
     if (own(scene?.placed, spot.id)) continue
     if (p ? !spotTakes(spot, p) : !spot.accepts.includes(what)) continue
     // y is a fraction of the height, which is 1/1.6 of the width: scale it so distance is true.
@@ -445,19 +582,32 @@ export function nearestSpot(scene, point, what = 'module', radius = SPOT_SNAP_RA
   return best
 }
 
+// Where a dropped part lands: { spot } (snaps there), { wrong: kind } (dropped in an enclosure that
+// is not its own, so it blinks and goes back) or null (dropped on nothing: back to the tray).
+export function dropTarget(task, scene, point, partId) {
+  const worldId = worldIdOf(task)
+  const p = partById(partId)
+  const enclosure = enclosureAt(worldId, point)
+  if (enclosure && p && enclosure.kind !== p.kind) return { wrong: enclosure.kind }
+  const spot = nearestSpot(scene, point, partId, SPOT_SNAP_RADIUS, worldId)
+  return spot ? { spot } : null
+}
+
 // --- State and actions ---
 
 // The clumsy robot's drops (task `mistakes`, lesson 3): each is put on its spot in turn and every
 // step goes on the undo stack, so each Ctrl+Z puts one back. A drop is skipped when its spot is
 // taken or its part is already placed. Returns { scene, undo }.
 export function withMistakes(task, scene) {
-  const list = task?.lesson === 3 && Array.isArray(task?.mistakes) ? task.mistakes : []
+  const list = lessonOf(task) === 3 && Array.isArray(task?.mistakes) ? task.mistakes : []
+  const zoo = worldIdOf(task) === 'zoo'
   const undo = []
   let current = scene
   for (const m of list) {
     const p = partById(m?.part)
     const spot = spotById(m?.spot)
-    if (!isPlaceable(p) || !spotTakes(spot, p)) continue
+    // The clumsy keeper puts an animal in the wrong enclosure, so a zoo drop only has to fit.
+    if (!isPlaceable(p) || !(zoo ? fitsSpot(spot, p) : spotTakes(spot, p))) continue
     if (own(current.placed, spot.id) || isPlaced(current, p.id)) continue
     undo.push(current)
     current = clone(current)
@@ -467,10 +617,14 @@ export function withMistakes(task, scene) {
   return { scene: current, undo }
 }
 
-export function initialStationState(task, scene = null) {
+export function initialStationState(task, scene = null, others = {}) {
   const start = withMistakes(task, scene ?? sceneForLesson(task?.lesson, task))
   return {
     v: 1,
+    world: worldIdOf(task),
+    // The other worlds' saved scenes, kept so the carried save holds one scene per world.
+    others,
+    wrongDrops: 0,
     scene: start.scene,
     done: {},
     selected: null,
@@ -514,6 +668,21 @@ export function countProgress(task, item, state) {
   }
   if (item.goal === 'undo') return { have: Math.min(state?.undos ?? 0, need), need }
   return null
+}
+
+// The animals a sort goal is about: those in the tray (the task's catalogue), only one kind when the
+// goal has a target.
+const sortAnimals = (task, item) =>
+  catalogueFor(task).filter((id) => !item?.target || partById(id)?.kind === item.target)
+// Is this animal on a spot that takes its kind?
+const isHome = (scene, id) =>
+  Object.entries(scene?.placed ?? {}).some(
+    ([spotId, partId]) => partId === id && spotTakes(spotById(spotId), partById(id))
+  )
+// How far a sort goal has got: { have, need } animals at home.
+export function sortProgress(task, item, state) {
+  const animals = sortAnimals(task, item)
+  return { have: animals.filter((id) => isHome(state?.scene, id)).length, need: animals.length }
 }
 
 // The next step of an ordered goal that is not done yet: the first id in `order` still to do.
@@ -615,6 +784,11 @@ function completes(item, action, state, task) {
       if (order) return order.every((id) => isPlaced(scene, id)) ? mark : null
       if (item.count) return placedCount(scene, target) === item.count ? mark : null
       return !goalPart(item) || action.part === goalPart(item) ? mark : null
+    case 'sort': {
+      if (action.type !== 'place') return null
+      const animals = sortAnimals(task, item)
+      return animals.length && animals.every((id) => isHome(scene, id)) ? mark : null
+    }
     case 'undo':
       if (action.type !== 'undo') return null
       return !item.count || (state.undos ?? 0) >= item.count ? mark : null
@@ -736,6 +910,13 @@ export function stationAction(state, action, task) {
       next = pushUndo(base, placed)
       break
     }
+    case 'wrong': {
+      // An animal dropped in an enclosure that is not its own: nothing moves, but the tutor can see
+      // how often it happens.
+      const p = partById(action.part)
+      if (!isPlaceable(p)) return state ?? base
+      return { ...base, wrongDrops: (base.wrongDrops ?? 0) + 1 }
+    }
     case 'order': {
       const p = partById(action.part)
       if (!isPlaceable(p) || !catalogueFor(task).includes(p.id)) return state ?? base
@@ -767,9 +948,11 @@ const GOAL_TARGET_WORDS = {
   colour: 'hull or lights',
   part: 'a part id from the parts catalogue',
   crate: 'a crate id (crate-1, crate-2, crate-3, crate-4 or crate-5)',
+  kind: 'an enclosure kind from the zoo (ice, grass, jungle or water), or leave it out for every animal',
 }
 
-function targetIsValid(kind, target) {
+function targetIsValid(kind, target, worldId = 'station') {
+  if (kind === 'kind') return WORLDS[worldId].enclosures.some((e) => e.kind === target)
   if (kind === 'section') return SECTIONS.some((s) => s.id === target)
   if (kind === 'colour') return target === 'hull' || target === 'lights'
   if (kind === 'crate') return CRATE_IDS.includes(target)
@@ -784,11 +967,12 @@ const ORDER_GOALS = ['power_on', 'open_crate', 'place_part']
 const COUNT_GOALS = ['place_part', 'open_crate', 'undo']
 
 // How many spots take a part (the most copies a count goal can ask for).
-const spotsFor = (partId) => SPOTS.filter((s) => spotTakes(s, partById(partId))).length
+const spotsFor = (partId, worldId = 'station') =>
+  worldSpots(worldId).filter((s) => spotTakes(s, partById(partId))).length
 
 // The task-level fields that belong to the delivery bay: crates and note (lesson 2 only).
 function validateBay(task, where, lessonOk, errors) {
-  const lesson = task?.lesson
+  const lesson = lessonOf(task)
   if (task?.crates != null) {
     if (!Array.isArray(task.crates) || task.crates.length < 1 || task.crates.length > 5) {
       errors.push(`${where}: crates must be a list of 1 to 5 crates, each with an id.`)
@@ -841,10 +1025,11 @@ function validateMistakes(task, where, lessonOk, errors) {
     )
     return
   }
-  if (lessonOk && task.lesson !== 3) {
+  if (lessonOk && lessonOf(task) !== 3) {
     errors.push(`${where}: mistakes only applies to lesson 3.`)
     return
   }
+  const zoo = worldIdOf(task) === 'zoo'
   const catalogue = lessonOk ? catalogueFor(task) : []
   const wanted = new Set(
     goalItems(task)
@@ -859,6 +1044,8 @@ function validateMistakes(task, where, lessonOk, errors) {
     const spot = spotById(m?.spot)
     if (!p || !isPlaceable(p)) {
       errors.push(`${label}: part must be a module or part id from the parts catalogue.`)
+    } else if (!inWorld(task, p.id)) {
+      errors.push(`${label}: part "${p.id}" isn't in the ${WORLD_WORDS[worldIdOf(task)]} world.`)
     } else if (lessonOk && !catalogue.includes(p.id)) {
       errors.push(`${label}: part "${p.id}" is not in this lesson's catalogue.`)
     } else if (wanted.has(p.id)) {
@@ -869,9 +1056,16 @@ function validateMistakes(task, where, lessonOk, errors) {
       errors.push(`${label}: part "${p.id}" is used more than once.`)
     }
     if (p) parts.add(p.id)
-    if (!spot) {
-      errors.push(`${label}: spot must be one of ${PLACE_SPOTS.map((s) => s.id).join(', ')}.`)
-    } else if (p && isPlaceable(p) && !spotTakes(spot, p)) {
+    const own = placeSpotsOf(worldIdOf(task))
+    if (!spot || !own.some((s) => s.id === spot.id)) {
+      errors.push(`${label}: spot must be one of ${own.map((s) => s.id).join(', ')}.`)
+    } else if (zoo && p && isPlaceable(p) && !fitsSpot(spot, p)) {
+      errors.push(`${label}: the ${nameOf(p.id)} is too big for spot "${spot.id}".`)
+    } else if (zoo && p && isPlaceable(p) && spotTakes(spot, p)) {
+      errors.push(
+        `${label}: the ${nameOf(p.id)} belongs on spot "${spot.id}"; a keeper's mistake goes in the wrong enclosure.`
+      )
+    } else if (!zoo && p && isPlaceable(p) && !spotTakes(spot, p)) {
       errors.push(`${label}: the ${nameOf(p.id)} doesn't fit on spot "${spot.id}".`)
     } else if (spots.has(spot.id)) {
       errors.push(`${label}: spot "${spot.id}" is used more than once.`)
@@ -887,7 +1081,8 @@ function validateMistakes(task, where, lessonOk, errors) {
 function validateGoalFields(item, label, task, lesson, lessonOk, errors) {
   const add = (message) => errors.push(`${label}: ${message}`)
   const crates = crateIdsFor(task)
-  const catalogue = lessonOk ? catalogueFor({ ...task, lesson }) : []
+  const catalogue = lessonOk ? catalogueFor(task) : []
+  const worldWords = WORLD_WORDS[worldIdOf(task)]
   const hasTarget = item.target != null && item.target !== ''
 
   if (item.order != null) {
@@ -912,7 +1107,9 @@ function validateGoalFields(item, label, task, lesson, lessonOk, errors) {
             : item.goal === 'open_crate'
               ? crates.includes(id)
               : catalogue.includes(id)
-        if (!ok) add(`order "${id}" must be ${idWords[item.goal]}.`)
+        if (item.goal === 'place_part' && partById(id) && !inWorld(task, id)) {
+          add(`order "${id}" isn't in the ${worldWords} world.`)
+        } else if (!ok) add(`order "${id}" must be ${idWords[item.goal]}.`)
         else if (item.onlyNoted === true && item.goal === 'open_crate' && !isNoted(task, id)) {
           add(`order "${id}" is not a crate the note lists.`)
         }
@@ -939,6 +1136,8 @@ function validateGoalFields(item, label, task, lesson, lessonOk, errors) {
       add("card can't be used with a target; the part on the card is the target.")
     } else if (!partById(item.card)) {
       add(`card "${item.card}" must be a part id from the parts catalogue.`)
+    } else if (!inWorld(task, item.card)) {
+      add(`card "${item.card}" isn't in the ${worldWords} world.`)
     } else if (lessonOk && !catalogue.includes(item.card)) {
       add(`card "${item.card}" is not in this lesson's catalogue.`)
     }
@@ -1007,9 +1206,12 @@ function validateGoalFields(item, label, task, lesson, lessonOk, errors) {
     } else {
       if (lessonOk && lesson !== 3) add('count on place_part only works in lesson 3.')
       if (!hasTarget) add('count needs a target part, like "put exactly 3 solar panels".')
-      else if (partById(item.target) && (!whole || n < 2 || n > spotsFor(item.target))) {
+      else if (
+        partById(item.target) &&
+        (!whole || n < 2 || n > spotsFor(item.target, worldIdOf(task)))
+      ) {
         add(
-          `count must be a whole number from 2 to ${spotsFor(item.target)} (the spots that take the ${nameOf(item.target)}).`
+          `count must be a whole number from 2 to ${spotsFor(item.target, worldIdOf(task))} (the spots that take the ${nameOf(item.target)}).`
         )
       }
       if (item.order || item.card) add("count can't be used with an order or a card.")
@@ -1020,12 +1222,20 @@ function validateGoalFields(item, label, task, lesson, lessonOk, errors) {
 export function validateStationTask(task, n) {
   const errors = []
   const where = `Task ${n}`
-  const lesson = task?.lesson
-  const lessonOk = PHASE_1_LESSONS.includes(lesson)
-  if (!lessonOk) {
+  if (task?.world != null && !WORLDS[task.world]) {
+    errors.push(`${where}: world must be one of ${WORLD_IDS.join(', ')}.`)
+  }
+  const worldId = worldIdOf(task)
+  const worldWords = WORLD_WORDS[worldId]
+  const lesson = lessonOf(task)
+  // The zoo and the toy shop have one lesson each, so `lesson` may be left out (and is only checked).
+  const lessonOk = worldId === 'station' ? PHASE_1_LESSONS.includes(lesson) : true
+  if (worldId === 'station' && !lessonOk) {
     errors.push(
       `${where}: lesson must be 1, 2, 3 or 4 (the station has only these lessons so far).`
     )
+  } else if (worldId !== 'station' && task?.lesson != null && task.lesson !== lesson) {
+    errors.push(`${where}: the ${worldWords} world is for lesson ${lesson}.`)
   }
   if (task?.catalogue != null) {
     if (!Array.isArray(task.catalogue)) {
@@ -1036,6 +1246,10 @@ export function validateStationTask(task, n) {
       task.catalogue.forEach((id) => {
         if (!partById(id)) {
           errors.push(`${where}: catalogue part "${id}" is not in the parts catalogue.`)
+        } else if (worldId !== 'station') {
+          if (!worldOf(task).catalogue.includes(id)) {
+            errors.push(`${where}: catalogue part "${id}" isn't in the ${worldWords} world.`)
+          }
         } else if (lessonOk && !LESSON[lesson].catalogue.includes(id)) {
           errors.push(`${where}: catalogue part "${id}" is not available in lesson ${lesson}.`)
         }
@@ -1066,6 +1280,10 @@ export function validateStationTask(task, n) {
       errors.push(`${label}: goal must be one of ${GOAL_IDS.join(', ')}.`)
       return
     }
+    if (!goalWorlds(goal).includes(worldId)) {
+      errors.push(`${label}: goal "${item.goal}" isn't in the ${worldWords} world.`)
+      return
+    }
     if (lessonOk && !goal.lessons.includes(lesson)) {
       errors.push(`${label}: goal "${item.goal}" can't be done in lesson ${lesson}.`)
     }
@@ -1079,12 +1297,14 @@ export function validateStationTask(task, n) {
       if (goal.target === 'colour') {
         errors.push(`${label}: goal "${item.goal}" needs a target (hull or lights).`)
       }
-    } else if (!targetIsValid(goal.target, item.target)) {
+    } else if (!targetIsValid(goal.target, item.target, worldId)) {
       errors.push(`${label}: target "${item.target}" must be ${GOAL_TARGET_WORDS[goal.target]}.`)
+    } else if (goal.target === 'part' && !inWorld(task, item.target)) {
+      errors.push(`${label}: target "${item.target}" isn't in the ${worldWords} world.`)
     } else if (
       (item.goal === 'place_part' || item.goal === 'order_part') &&
       lessonOk &&
-      !catalogueFor({ ...task, lesson }).includes(item.target)
+      !catalogueFor(task).includes(item.target)
     ) {
       errors.push(`${label}: target "${item.target}" is not in this lesson's catalogue.`)
     } else if (
@@ -1106,7 +1326,10 @@ const plural = (name) => (/(s|sh|ch|x)$/i.test(name) ? `${name}es` : `${name}s`)
 const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
 const numberWord = (n) => NUMBER_WORDS[n] ?? String(n)
 
-export function promptFor(item, lesson) {
+// Where a placed part goes, in words, for each world.
+const PLACE_WORDS = { station: 'on the station', zoo: 'in the zoo', toyshop: 'in the shop window' }
+
+export function promptFor(item, lesson, worldId = 'station') {
   if (typeof item?.prompt === 'string' && item.prompt.trim()) return item.prompt
   const t = item?.target
   switch (item?.goal) {
@@ -1135,7 +1358,15 @@ export function promptFor(item, lesson) {
       if (item.count) {
         return `Put exactly ${numberWord(item.count)} ${plural(nameOf(t))} on the station.`
       }
-      return t ? `Put the ${nameOf(t)} on the station.` : 'Put a part on the station.'
+      return t
+        ? `Put the ${nameOf(t)} ${PLACE_WORDS[worldId]}.`
+        : `Put ${worldId === 'station' ? 'a part' : worldId === 'zoo' ? 'an animal' : 'a toy'} ${PLACE_WORDS[worldId]}.`
+    case 'sort': {
+      const home = WORLDS.zoo.enclosures.find((e) => e.kind === t)
+      return home
+        ? `Take the ${home.label.toLowerCase()} animals to their home.`
+        : 'Drag each animal into the enclosure where it lives.'
+    }
     case 'light_pattern':
       return 'Make the lights on your station look like the pattern on the card.'
     case 'undo_mistakes':
@@ -1186,7 +1417,11 @@ function hintFor(item, state, lesson, task) {
       if (orderOf(item)) return 'Look at the plan card and drag the parts on in that order.'
       if (item.card) return 'Look at the picture on the card, then drag that part onto the station.'
       if (progress && left > 0) return `Drag ${more(left, 'copy', 'copies')} onto the station.`
+      if (worldIdOf(task) === 'zoo') return 'Drag an animal onto a spot in its home.'
+      if (worldIdOf(task) === 'toyshop') return 'Drag a toy onto an empty spot in the window.'
       return 'Drag a part onto an empty spot.'
+    case 'sort':
+      return 'Drag an animal toward its enclosure. The right home glows while you drag.'
     case 'light_pattern':
       return 'Look at the pattern card. Click a power button to switch it on, click it again to switch it off.'
     case 'undo_mistakes':
@@ -1211,7 +1446,7 @@ export function gradeStationItem(task, item, state) {
   if (record) return { correct: true, hint: null, method: record.method }
   return {
     correct: false,
-    hint: item?.goal ? hintFor(item, state, task?.lesson, task) : null,
+    hint: item?.goal ? hintFor(item, state, lessonOf(task), task) : null,
     method: null,
   }
 }
