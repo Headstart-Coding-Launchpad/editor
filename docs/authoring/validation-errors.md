@@ -767,3 +767,8 @@ Python and Turtle tasks; see [python.md](python.md#screen-layout-layout).
 | `… is missing an id` / `… id must be a topic slug` / `… duplicates id "…"` | A topic proposal's id is missing, malformed or repeated. | Use unique lowercase slugs. |
 | `… is missing a description` | A topic proposal has no description. | Add one. |
 | `… status must be proposed or deferred` | Invalid proposal `status`. | Use `proposed` or `deferred`. |
+| `Task … crate …: id must be one of ….` | A `crates` entry's id is not `crate-1` to `crate-5`. | Use `crate-1` to `crate-5`. |
+| `Task … crate …: sticker "…" must be ….` | A crate's sticker is not one of the sticker names. | Use a sticker the message lists (for example `red-star`). |
+| `Task …: note sticker "…" must be ….` | A sticker on the delivery note is not one of the sticker names. | Use a sticker the message lists. |
+| `Task …: mistakes must be a list of 1 to … drops, each with a part and a spot.` | `mistakes` is empty, too long, or an entry is missing `part` or `spot`. | Give 1 to the maximum drops, each `{ part, spot }`. |
+| `Task … mistake …: spot must be one of ….` | A mistake's spot is not one of the station's spots. | Use a spot id the message lists. |
