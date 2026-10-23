@@ -5,9 +5,11 @@
 // Node-safe (no React, JSX or DOM) so the CLI, the Builder, reports and print share it.
 // See docs/authoring/activities/classifier.md.
 //
-// Privacy: the student's drawings (`examples`) live only in the local state. `sharedState`
-// strips them down to counts, whether the model is ready, rights, misses and the result; that is
-// the only form ever written to Firebase (see definition.js `serializeShared`).
+// Privacy: the student's drawings (`examples`) and raw strokes live only in the local state.
+// `sharedState` strips them down to counts, whether the model is ready, tries, rights, misses
+// and the result, plus (so the tutor can see the work live) the pad as it is now and the last few
+// misses, each as its 16 x 16 grid only. That is the only form ever written to Firebase (see
+// definition.js `serializeShared`).
 
 export const CLASSIFIER_MODES = ['drawing']
 // Modes that are planned but not built yet (validation says so instead of "unknown mode").
@@ -25,8 +27,11 @@ export const MAX_MISSES_KEPT = 8
 
 // Side of the square grid a drawing is shrunk to. 16 x 16 = 256 numbers per drawing.
 export const GRID = 16
-// The classifier looks at the K closest drawings and takes a vote.
-export const K = 3
+// The classifier looks at the K closest drawings (fewer when there are fewer) and weights each by
+// how close it is, so the shares move smoothly instead of in thirds.
+export const K = 7
+// How many recent misses the tutor sees (as grids).
+export const MAX_SHARED_MISSES = 3
 export const MIN_CLASSES = 2
 export const MAX_CLASSES = 6
 // Students who name their own things get 2 to 4.
@@ -140,58 +145,75 @@ export function gridFromRows(rows) {
 
 // ── k-nearest-neighbours ─────────────────────────────────────────────────────
 
-function distance2(a, b) {
+function distance(a, b) {
   let sum = 0
   for (let i = 0; i < a.length; i += 1) {
     const d = a[i] - b[i]
     sum += d * d
   }
-  return sum
+  return Math.sqrt(sum)
 }
 
-// examples: [{ label, grid }] (grid = encoded text). Returns the label the K nearest examples
-// vote for (ties go to the label with the closest examples), or null with no examples.
-export function classify(examples, grid, k = K) {
-  if (!examples.length) return null
+// The k closest examples to a grid, nearest first: [{ label, d }].
+function nearestOf(examples, grid, k) {
   const vec = decodeGrid(grid)
-  const scored = examples
-    .map((example) => ({ label: example.label, d: distance2(decodeGrid(example.grid), vec) }))
+  return examples
+    .map((example) => ({ label: example.label, d: distance(decodeGrid(example.grid), vec) }))
     .sort((a, b) => a.d - b.d)
     .slice(0, Math.min(k, examples.length))
-  const votes = new Map()
-  for (const { label, d } of scored) {
-    const entry = votes.get(label) ?? { count: 0, d: 0 }
-    entry.count += 1
-    entry.d += d
-    votes.set(label, entry)
+}
+
+// Each near example counts 1 / (distance + 1), so a closer drawing counts for more. Returns a
+// Map of label -> { w (weight), d (closest distance) } for the labels among them.
+function weigh(nearest) {
+  const by = new Map()
+  for (const { label, d } of nearest) {
+    const entry = by.get(label) ?? { w: 0, d }
+    entry.w += 1 / (d + 1)
+    entry.d = Math.min(entry.d, d)
+    by.set(label, entry)
   }
+  return by
+}
+
+function topOf(by) {
   let best = null
-  for (const [label, entry] of votes) {
-    if (!best || entry.count > best.count || (entry.count === best.count && entry.d < best.d)) {
+  for (const [label, entry] of by) {
+    if (
+      !best ||
+      entry.w > best.w + 1e-12 ||
+      (Math.abs(entry.w - best.w) <= 1e-12 && entry.d < best.d)
+    ) {
       best = { label, ...entry }
     }
   }
-  return best.label
+  return best?.label ?? null
+}
+
+// examples: [{ label, grid }] (grid = encoded text). Returns the label with the most weight among
+// the K nearest examples (ties go to the label with the closest example), or null with none.
+export function classify(examples, grid, k = K) {
+  if (!examples.length) return null
+  return topOf(weigh(nearestOf(examples, grid, k)))
 }
 
 // ── guessing ─────────────────────────────────────────────────────────────────
 
-// What the model says about one drawing: its answer (the vote winner, as `classify`) and a share
-// for every class (the share of the K nearest drawings that belong to it, 0 to 1). The shares
-// are the bars shown while the student draws.
+// What the model says about one drawing: its answer (as `classify`) and a share for every class
+// (its part of the distance-weighted vote of the K nearest drawings, 0 to 1, adding up to 1). The
+// shares are the bars shown while the student draws; they change a little with every drawing
+// taught, not in thirds.
 export function guessOf(examples, grid, classes, k = K) {
   const labels = classes ?? []
   const scores = Object.fromEntries(labels.map((label) => [label, 0]))
   if (!examples.length || !isGridString(grid)) return { label: null, scores }
-  const vec = decodeGrid(grid)
-  const nearest = examples
-    .map((example) => ({ label: example.label, d: distance2(decodeGrid(example.grid), vec) }))
-    .sort((a, b) => a.d - b.d)
-    .slice(0, Math.min(k, examples.length))
-  for (const { label } of nearest) {
-    if (label in scores) scores[label] += 1 / nearest.length
+  const by = weigh(nearestOf(examples, grid, k))
+  let total = 0
+  for (const [label, entry] of by) if (label in scores) total += entry.w
+  if (total > 0) {
+    for (const [label, entry] of by) if (label in scores) scores[label] = entry.w / total
   }
-  return { label: classify(examples, grid, k), scores }
+  return { label: topOf(by), scores }
 }
 
 // ── things (a class may start with an emoji: "🐱 cat") ───────────────────────
@@ -246,7 +268,8 @@ export function taskTarget(task) {
   return typeof task?.targetAccuracy === 'number' ? task.targetAccuracy : DEFAULT_TARGET_ACCURACY
 }
 
-// For the live round this is how many right answers make the round (the core).
+// For the live round this is how many tries make the round (the core): a try is a drawing the
+// student pressed Done on and said what it was, whether the pad got it right or wrong.
 export function taskLiveTestSize(task) {
   return Number.isInteger(task?.liveTestSize) ? task.liveTestSize : DEFAULT_LIVE_TEST_SIZE
 }
@@ -274,10 +297,15 @@ export function initialClassifierState(task) {
     classes,
     min: taskMinExamples(task),
     examples: emptyExamples(classes),
-    // The round: [actual, predicted] for every drawing the student tried to fool it with.
+    // The round: [drawn, predicted] for every try. `drawn` is what the student said they drew
+    // (not what the pad suggested), `predicted` is what the pad said. Right = they match.
     live: [],
-    // The drawings it got wrong ({ actual, predicted, grid, fixed? }), kept on the device only.
+    // The tries the pad got wrong ({ actual (= drawn), predicted, grid, fixed? }), kept on the
+    // device only.
     misses: [],
+    // The drawing on the pad right now: { grid, target } (target = the thing the pad suggested or
+    // is teaching), or null. Shared with the tutor as a grid; the strokes never leave the device.
+    pad: null,
     result: null,
     tests: 0,
   }
@@ -300,6 +328,20 @@ function cleanResult(raw) {
   return { right, total, confusion }
 }
 
+// A grid for the wire: a run of 4 or more of the same digit becomes "digit*count|" (most of a
+// drawing is empty, so 256 characters shrink to well under half).
+export function packGrid(text) {
+  if (!isGridString(text)) return null
+  return text.replace(/(\d)\1{3,}/g, (run) => `${run[0]}*${run.length}|`)
+}
+
+// The grid text back from packGrid, or null when it is not a whole grid.
+export function unpackGrid(packed) {
+  if (typeof packed !== 'string') return null
+  const text = packed.replace(/(\d)\*(\d+)\|/g, (_, ch, n) => ch.repeat(Number(n)))
+  return isGridString(text) ? text : null
+}
+
 const wholeNumber = (value) => (Number.isInteger(value) && value > 0 ? value : 0)
 
 // Tolerant load of either form (the full local state, or the shared summary a teacher reads).
@@ -314,6 +356,8 @@ export function normalizeClassifierState(task, raw) {
     examples[label] = list.filter(isGridString).slice(0, MAX_EXAMPLES_PER_CLASS)
   }
   const isShared = raw.shared === true || (!raw.examples && !!raw.counts)
+  const padGrid = typeof raw.pad === 'string' ? unpackGrid(raw.pad) : raw.pad?.grid
+  const padTarget = typeof raw.pad === 'string' ? raw.target : raw.pad?.target
   const next = {
     v: 1,
     classes,
@@ -326,6 +370,9 @@ export function normalizeClassifierState(task, raw) {
           .map((p) => [p[0], p[1]])
       : [],
     tests: wholeNumber(raw.tests),
+    pad: isGridString(padGrid)
+      ? { grid: padGrid, target: typeof padTarget === 'string' ? padTarget : null }
+      : null,
   }
   if (!isShared) {
     next.examples = examples
@@ -351,6 +398,11 @@ export function normalizeClassifierState(task, raw) {
     for (const label of classes) next.counts[label] = wholeNumber(Number(raw.counts?.[label]))
     next.liveCount = wholeNumber(raw.liveCount)
     next.rights = wholeNumber(raw.rights)
+    // The last few misses as grids (what it said, what they drew), for the tutor.
+    next.recent = (Array.isArray(raw.recent) ? raw.recent : [])
+      .map((m) => ({ actual: m?.d, predicted: m?.s, grid: unpackGrid(m?.g) }))
+      .filter((m) => typeof m.actual === 'string' && typeof m.predicted === 'string' && m.grid)
+      .slice(-MAX_SHARED_MISSES)
   }
   return next
 }
@@ -376,14 +428,14 @@ export function readyOf(state) {
   return labels.every((label) => (counts[label] ?? 0) >= min)
 }
 
-// Tries in the round (the drawings it was asked to guess).
+// Tries in the round (drawings the student finished and named).
 export function liveCountOf(state) {
   return Array.isArray(state?.live) && state.live.length
     ? state.live.length
     : (state?.liveCount ?? 0)
 }
 
-// Tries it got right.
+// Tries the pad got right (its guess was what the student said they drew).
 export function rightsOf(state) {
   if (Array.isArray(state?.live) && state.live.length) {
     return state.live.filter(([actual, predicted]) => actual === predicted).length
@@ -395,9 +447,25 @@ export function missesOf(state) {
   return Math.max(0, liveCountOf(state) - rightsOf(state))
 }
 
-// The only form written to Firebase and the session report: no drawings, no strokes.
+// The drawing on the pad right now, or null.
+export function padOf(state) {
+  return state?.pad?.grid ? state.pad : null
+}
+
+// The last few misses as { actual (what they drew), predicted (what it said), grid }, from the
+// device's own list or the shared summary's.
+export function recentMissesOf(state) {
+  const list = Array.isArray(state?.misses) ? state.misses : (state?.recent ?? [])
+  return list.slice(-MAX_SHARED_MISSES)
+}
+
+// The only form written to Firebase and the session report: no strokes and none of the taught
+// drawings. It does carry the pad as it is now and the last few misses, each only as its 16 x 16
+// grid (packed), so the tutor can see the work live. It is trimmed to stay under
+// MAX_SHARED_CHARS: the oldest misses go first, then the pad.
 export function sharedState(state) {
-  return {
+  const pad = padOf(state)
+  const out = {
     v: 1,
     shared: true,
     classes: state?.classes ?? [],
@@ -408,7 +476,20 @@ export function sharedState(state) {
     rights: rightsOf(state),
     misses: missesOf(state),
     tests: state?.tests ?? 0,
+    pad: pad ? packGrid(pad.grid) : null,
+    target: pad?.target ?? null,
+    recent: recentMissesOf(state).map((m) => ({
+      g: packGrid(m.grid),
+      s: m.predicted,
+      d: m.actual,
+    })),
   }
+  while (out.recent.length && JSON.stringify(out).length > MAX_SHARED_CHARS) out.recent.shift()
+  if (JSON.stringify(out).length > MAX_SHARED_CHARS) {
+    out.pad = null
+    out.target = null
+  }
+  return out
 }
 
 // ── state changes (each returns a new state) ─────────────────────────────────
@@ -417,8 +498,17 @@ export function sharedState(state) {
 // tries stay: teaching it a miss is the point of the round.
 function stale(state) {
   // eslint-disable-next-line no-unused-vars
-  const { shared, counts, liveCount, rights, ...rest } = state
+  const { shared, counts, liveCount, rights, recent, ...rest } = state
   return { ...rest, result: rest.live?.length ? rest.result : null }
+}
+
+// The drawing on the pad now (null clears it). Same state back when nothing changed.
+export function setPad(state, grid, target = null) {
+  const next = isGridString(grid) ? { grid, target: target ?? null } : null
+  const now = state?.pad ?? null
+  if (!next && !now) return state
+  if (next && now && now.grid === next.grid && now.target === next.target) return state
+  return { ...state, pad: next }
 }
 
 export function addExample(state, label, grid) {
@@ -595,8 +685,16 @@ export function runTest(task, state) {
   return { ...state, result: tally(pairs), tests: (state.tests ?? 0) + 1 }
 }
 
-// One try in the round: the pad asked for `actual`, the student drew it, the model guesses.
-// Returns the new state and what the model said (null when it could not guess).
+// What the model would say about a drawing, or null when it is not ready / the grid is bad.
+export function predictLive(task, state, grid) {
+  if (!readyOf(state) || !isGridString(grid)) return null
+  return classify(splitExamples(task, state).train, grid)
+}
+
+// One try in the round: the student drew something, said what it was (`actual`), and the model
+// guesses. It is right when the guess is what they said they drew, and a miss when it is not
+// (the pad may have suggested another thing: they were free to try to fool it). Returns the new
+// state and what the model said (null when it could not guess).
 export function recordLive(task, state, actual, grid) {
   if (!readyOf(state) || !state.classes.includes(actual) || !isGridString(grid)) {
     return { state, predicted: null }
@@ -610,7 +708,7 @@ export function recordLive(task, state, actual, grid) {
       ? (state.misses ?? [])
       : [...(state.misses ?? []), { actual, predicted, grid }].slice(-MAX_MISSES_KEPT)
   return {
-    state: { ...state, live, misses, result: tally(live), tests: live.length },
+    state: { ...state, live, misses, result: tally(live), tests: live.length, pad: null },
     predicted,
   }
 }
@@ -641,8 +739,9 @@ export function describeResult(result) {
 // ── grading ──────────────────────────────────────────────────────────────────
 
 // Progress and verdict for a state. `classesMet` counts classes with enough drawings. The live
-// round passes at liveTestSize right answers (bonus ones after that change nothing); a kept-back
-// or teacher test passes at targetAccuracy.
+// round passes at liveTestSize tries, whether the pad got them right or wrong (the student's job
+// is to test it, not to make it win; bonus tries after that change nothing); a kept-back or
+// teacher test passes at targetAccuracy.
 export function gradeTask(task, state) {
   const classes = (state?.classes ?? []).filter(Boolean)
   const counts = countsOf(state)
@@ -651,13 +750,14 @@ export function gradeTask(task, state) {
   const live = testSetOf(task) === 'live'
   const core = taskLiveTestSize(task)
   const rights = rightsOf(state)
+  const tries = liveCountOf(state)
   const classesMet = classes.filter((label) => (counts[label] ?? 0) >= min).length
   const accuracy = accuracyOf(state?.result)
   const enoughClasses =
     classes.length >= MIN_CLASSES &&
     (!task?.classes?.length || classes.length === cleanClasses(task.classes).length)
   const ready = enoughClasses && classesMet === classes.length
-  const won = live ? rights >= core : accuracy != null && accuracy + 1e-9 >= target
+  const won = live ? tries >= core : accuracy != null && accuracy + 1e-9 >= target
   const passed = ready && won
   let hint = null
   if (!passed) {
@@ -668,7 +768,7 @@ export function gradeTask(task, state) {
       if (short) {
         hint = `Draw more ${short}: you have ${counts[short] ?? 0} and need ${min}.`
       } else if (live) {
-        hint = `Draw what it asks for and press Done. It needs ${core} right: you have ${rights} so far. If it gets one wrong, teach it that one.`
+        hint = `Draw something, press Done and tell it what you drew. It needs ${core} tries: you have ${tries} so far. Try to fool it, and teach it the ones it gets wrong.`
       } else if (!state?.result) {
         hint = 'Press Test to see how the model does on drawings it has not seen.'
       } else {
@@ -689,6 +789,7 @@ export function gradeTask(task, state) {
     live,
     core,
     rights,
+    tries,
   }
 }
 

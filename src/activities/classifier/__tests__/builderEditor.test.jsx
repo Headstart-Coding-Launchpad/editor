@@ -70,7 +70,7 @@ describe('Classifier BuilderEditor', () => {
     fireEvent.change(screen.getByLabelText('Drawings needed per thing'), {
       target: { value: '5' },
     })
-    fireEvent.change(screen.getByLabelText('Right answers needed'), { target: { value: '8' } })
+    fireEvent.change(screen.getByLabelText('Tries in the round'), { target: { value: '8' } })
     expect(task().minExamplesPerClass).toBe(5)
     expect(task().liveTestSize).toBe(8)
     expect(errorsOf(task())).toEqual([])

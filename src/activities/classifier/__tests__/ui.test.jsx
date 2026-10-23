@@ -8,6 +8,7 @@ import {
   initialClassifierState,
   rasterize,
   runTest,
+  setPad,
   tally,
 } from '../classifier.js'
 import { renderActivityUi } from '../../../test/activityUiHarness.jsx'
@@ -17,7 +18,7 @@ import { renderActivityUi } from '../../../test/activityUiHarness.jsx'
 // too. Here the pad's bounding box is 0 x 0, so clientX / clientY (0 to 1) are used as the
 // pad coordinates directly.
 
-// The default: the live round, 3 drawings of each thing, 3 right answers, fool-it panel only.
+// The default: the live round, 3 drawings of each thing, 3 tries, fool-it panel only.
 const TASK = {
   id: 1,
   taskType: 'activity',
@@ -81,6 +82,12 @@ const pad = () => screen.getByTestId('classifier-pad')
 const click = (name) => fireEvent.click(screen.getByRole('button', { name }))
 const prompt = () => screen.getByTestId('classifier-prompt')
 const drawCircle = () => drawOn(pad(), circle(0.3)[0])
+// Press Done, then say what was drawn (one tap on the thing).
+const finishAs = (name) => {
+  click('Done')
+  click(`I drew ${name}`)
+}
+const pct = (meter) => Number(meter.getAttribute('aria-valuenow'))
 
 afterEach(() => vi.useRealTimers())
 
@@ -216,31 +223,59 @@ describe('Classifier UI: student-named things', () => {
 })
 
 describe('Classifier UI: the round', () => {
-  it('guesses live as each stroke ends, one bar per thing', () => {
+  it('guesses live as each stroke ends, one bar per thing, moving smoothly', () => {
     renderView({ initialState: withDrawings() })
     const guess = screen.getByTestId('classifier-guess')
-    expect(within(guess).getByRole('meter', { name: 'circle' })).toHaveAttribute(
-      'aria-valuenow',
-      '0'
-    )
+    expect(pct(within(guess).getByRole('meter', { name: 'circle' }))).toBe(0)
     drawCircle()
-    expect(within(guess).getByRole('meter', { name: 'circle' })).toHaveAttribute(
-      'aria-valuenow',
-      '100'
-    )
-    expect(within(guess).getByRole('meter', { name: 'line' })).toHaveAttribute('aria-valuenow', '0')
+    const circleBar = pct(within(guess).getByRole('meter', { name: 'circle' }))
+    const lineBar = pct(within(guess).getByRole('meter', { name: 'line' }))
+    expect(circleBar).toBeGreaterThan(60)
+    expect(circleBar + lineBar).toBeGreaterThanOrEqual(99)
+    expect(lineBar).toBeLessThan(40)
   })
 
-  it('Done: a right answer ticks, counts and moves on by itself', () => {
+  it('shares the pad with the tutor at each stroke end, as a grid', () => {
+    const { state } = renderView({ initialState: withDrawings() })
+    expect(state().pad).toBeNull()
+    drawCircle()
+    expect(state().pad).toEqual({ grid: gridOf(circle(0.3)), target: 'circle' })
+    click('Clear the pad')
+    expect(state().pad).toBeNull()
+  })
+
+  it('Done asks what you drew, with the suggested thing picked out', () => {
+    const { state } = renderView({ initialState: withDrawings() })
+    drawCircle()
+    click('Done')
+    expect(prompt()).toHaveTextContent('What did you draw?')
+    const ask = screen.getByTestId('classifier-ask')
+    expect(within(ask).getByRole('button', { name: 'I drew circle' })).toHaveAttribute(
+      'data-suggested',
+      'true'
+    )
+    expect(within(ask).getByRole('button', { name: 'I drew line' })).not.toHaveAttribute(
+      'data-suggested'
+    )
+    expect(pad()).toHaveClass('act-cls-pad--off')
+    // Nothing is counted until they say.
+    expect(state().live).toEqual([])
+    click('Back to the pad')
+    expect(screen.queryByTestId('classifier-ask')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Done' })).toBeEnabled()
+  })
+
+  it('a right answer ticks, counts and moves on by itself', () => {
     vi.useFakeTimers()
     const { state } = renderView({ initialState: withDrawings() })
     expect(screen.getByText('0 of 3 done')).toBeInTheDocument()
     drawCircle()
-    click('Done')
+    finishAs('circle')
     expect(state().live).toEqual([['circle', 'circle']])
+    expect(state().pad).toBeNull()
     expect(screen.getByTestId('classifier-feedback')).toHaveTextContent('It got it! It said circle')
     expect(screen.getByText('1 of 3 done')).toBeInTheDocument()
-    expect(screen.getByText('It gets 1 of 1 right')).toBeInTheDocument()
+    expect(screen.getByText('It got 1 of 1 right')).toBeInTheDocument()
     expect(pad()).toHaveClass('act-cls-pad--off')
     act(() => vi.advanceTimersByTime(800))
     expect(screen.queryByTestId('classifier-feedback')).not.toBeInTheDocument()
@@ -248,19 +283,33 @@ describe('Classifier UI: the round', () => {
     expect(prompt()).toHaveTextContent('Draw a line — will it get it?')
   })
 
-  it('a miss offers one tap to teach it that drawing', () => {
+  it('a deliberate fool that the pad gets right counts as a right answer, not a miss', () => {
     const start = played([['circle', 'circle']])
     const { state } = renderView({ initialState: start })
-    // It asks for a line; draw a circle to fool it.
+    // It suggests a line; they draw a circle on purpose, and it still says circle.
     expect(prompt()).toHaveTextContent('Draw a line — will it get it?')
     drawCircle()
-    click('Done')
+    finishAs('circle')
+    expect(state().live).toEqual([
+      ['circle', 'circle'],
+      ['circle', 'circle'],
+    ])
+    expect(state().misses).toEqual([])
+    expect(screen.getByTestId('classifier-feedback')).toHaveTextContent('It got it!')
+  })
+
+  it('a miss offers one tap to teach it that drawing, filed under what they drew', () => {
+    const start = played([['circle', 'circle']])
+    const { state } = renderView({ initialState: start })
+    // They draw a circle that looks like nothing it knows: they say it was a line.
+    drawCircle()
+    finishAs('line')
     expect(state().live).toEqual([
       ['circle', 'circle'],
       ['line', 'circle'],
     ])
     expect(screen.getByTestId('classifier-feedback')).toHaveTextContent(
-      'Missed! It said circle, you drew line'
+      'It got that one wrong. It said circle, you drew line'
     )
     click('Teach it this one')
     expect(state().examples.line).toHaveLength(4)
@@ -276,7 +325,7 @@ describe('Classifier UI: the round', () => {
     const start = played([['circle', 'circle']])
     renderView({ initialState: start })
     drawCircle()
-    click('Done')
+    finishAs('line')
     act(() => vi.advanceTimersByTime(5000))
     expect(screen.getByTestId('classifier-feedback')).toBeInTheDocument()
   })
@@ -286,14 +335,14 @@ describe('Classifier UI: the round', () => {
     const task = { ...TASK, panels: [] }
     renderView({ task, initialState: played([['circle', 'circle']], task) })
     drawCircle()
-    click('Done')
+    finishAs('line')
     expect(screen.getByTestId('classifier-feedback')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Teach it this one' })).not.toBeInTheDocument()
     act(() => vi.advanceTimersByTime(2500))
     expect(screen.queryByTestId('classifier-feedback')).not.toBeInTheDocument()
   })
 
-  it('passes at the right answers and goes on as bonus', () => {
+  it('passes at the tries, right or wrong, and says how it did', () => {
     const start = played([
       ['circle', 'circle'],
       ['line', 'line'],
@@ -301,10 +350,12 @@ describe('Classifier UI: the round', () => {
     const { state } = renderView({ initialState: start })
     expect(definition.grade(TASK, state()).passed).toBe(false)
     drawCircle()
-    click('Done')
+    finishAs('line')
     expect(definition.grade(TASK, state()).passed).toBe(true)
     expect(screen.getByText('3 of 3 done')).toBeInTheDocument()
-    expect(screen.getByTestId('round-bonus')).toBeInTheDocument()
+    const banner = screen.getByTestId('round-bonus')
+    expect(banner).toHaveTextContent('Round done! It got 2 of 3 right')
+    expect(screen.queryByText(/You did it/)).not.toBeInTheDocument()
   })
 
   it('shows the results as pictures: a meter and the mix-ups as thumbnails', () => {
@@ -315,7 +366,7 @@ describe('Classifier UI: the round', () => {
         ['circle', 'circle'],
       ]),
     })
-    expect(screen.getByText('It gets 2 of 3 right')).toBeInTheDocument()
+    expect(screen.getByText('It got 2 of 3 right')).toBeInTheDocument()
     const mixups = screen.getByTestId('classifier-mixups')
     expect(within(mixups).getByText('It thought your line was a circle')).toBeInTheDocument()
     expect(within(mixups).getAllByRole('img')).toHaveLength(1)
@@ -338,9 +389,11 @@ describe('Classifier UI: the round', () => {
     expect(screen.queryByTestId('classifier-grid')).not.toBeInTheDocument()
     drawCircle()
     expect(screen.getByTestId('classifier-grid')).toBeInTheDocument()
-    expect(
-      within(screen.getByTestId('classifier-sure')).getByRole('meter', { name: 'How sure is it' })
-    ).toHaveAttribute('aria-valuenow', '100')
+    const sure = within(screen.getByTestId('classifier-sure')).getByRole('meter', {
+      name: 'How sure is it',
+    })
+    expect(pct(sure)).toBeGreaterThan(60)
+    expect(pct(sure)).toBeLessThan(100)
   })
 
   it('has a real button for every action (keyboard operable)', () => {
@@ -350,6 +403,15 @@ describe('Classifier UI: the round', () => {
       expect(button.tagName).toBe('BUTTON')
       expect(button).toHaveAttribute('type', 'button')
     }
+  })
+
+  it('keeps the prompt, pad and answer buttons together, with the panels beside them', () => {
+    renderView({ initialState: withDrawings() })
+    const main = pad().closest('.act-cls-play__main')
+    expect(main).not.toBeNull()
+    expect(main).toContainElement(prompt())
+    expect(main).toContainElement(screen.getByRole('button', { name: 'Done' }))
+    expect(screen.getByTestId('classifier-guess').closest('.act-cls-play__side')).not.toBeNull()
   })
 })
 
@@ -391,8 +453,10 @@ describe('Classifier UI: read-only (tutor) view', () => {
     renderView({ readOnly: true, initialState: shared(full) })
     expect(screen.getByText(/drawings stay on the student's device/)).toBeInTheDocument()
     expect(screen.getByText('circle: 3 of 3 drawings ✓')).toBeInTheDocument()
-    expect(screen.getByTestId('classifier-round-summary')).toHaveTextContent('3/3 right · 1 missed')
-    expect(screen.getByText('It gets 3 of 4 right')).toBeInTheDocument()
+    expect(screen.getByTestId('classifier-round-summary')).toHaveTextContent(
+      '3/3 tried · +1 bonus · 3 right'
+    )
+    expect(screen.getByText('It got 3 of 4 right')).toBeInTheDocument()
     expect(screen.getByText('Called line a circle: 1')).toBeInTheDocument()
     expect(screen.getByText('Target reached')).toBeInTheDocument()
     expect(screen.queryByTestId('classifier-pad')).not.toBeInTheDocument()
@@ -407,7 +471,31 @@ describe('Classifier UI: read-only (tutor) view', () => {
 
   it('shows ready before the first try', () => {
     renderView({ readOnly: true, initialState: shared(withDrawings(TASK, 3)) })
-    expect(screen.getByTestId('classifier-round-summary')).toHaveTextContent('Ready: 0/3 right')
+    expect(screen.getByTestId('classifier-round-summary')).toHaveTextContent('Ready: 0/3 tried')
+  })
+
+  it('shows the pad now and the last misses as grids, never the strokes', () => {
+    const full = setPad(
+      played([
+        ['circle', 'circle'],
+        ['line', 'circle'],
+      ]),
+      gridOf(circle(0.3)),
+      'line'
+    )
+    renderView({ readOnly: true, initialState: shared(full) })
+    const work = screen.getByTestId('classifier-tutor-work')
+    expect(within(screen.getByTestId('classifier-tutor-pad')).getByRole('img')).toBeInTheDocument()
+    expect(within(work).getByText('On the pad now (asked for line)')).toBeInTheDocument()
+    const misses = screen.getByTestId('classifier-tutor-misses')
+    expect(within(misses).getByText('It said circle, they drew line')).toBeInTheDocument()
+    expect(within(misses).getAllByRole('img')).toHaveLength(1)
+    expect(screen.queryByTestId('classifier-pad')).not.toBeInTheDocument()
+  })
+
+  it('shows no work picture when the pad is empty and there are no misses', () => {
+    renderView({ readOnly: true, initialState: shared(withDrawings(TASK, 3)) })
+    expect(screen.queryByTestId('classifier-tutor-work')).not.toBeInTheDocument()
   })
 
   it('shows a kept-back test result', () => {

@@ -3,8 +3,9 @@
 // Node-safe: no JSX, React or DOM imports (activityInterface.test.js checks).
 //
 // Privacy: the student's drawings are kept in the local state only. `serialize` (the device's
-// own saved copy) holds them; `serializeShared` (what goes to Firebase, the teacher card, the
-// attempt log and Go Live) holds counts, trained and the test result only.
+// own saved copy) holds them and the raw strokes; `serializeShared` (what goes to Firebase, the
+// teacher card, the attempt log and Go Live) holds counts, tries, rights, misses and the test
+// result, plus the pad now and the last 3 misses as 16 x 16 grids only (so the tutor can watch).
 import { defineActivity } from '../defineActivity.js'
 import { roundSummaryText } from '../round.js'
 import {
@@ -14,7 +15,6 @@ import {
   initialClassifierState,
   itemResultsOf,
   liveCountOf,
-  missesOf,
   normalizeClassifierState,
   panelsOf,
   percent,
@@ -52,8 +52,10 @@ export default defineActivity({
   description:
     'Teach the pad a few things by drawing them, watch it guess live, then try to fool it and teach it the ones it gets wrong.',
   yaml: { type: 'classifier' },
-  // Marked as you go: the task passes when the round's right answers reach the core.
+  // Marked as you go: the task passes when the round's tries reach the core.
   completion: 'auto',
+  // Shown instead of "Correct!" when the task passes (the pad can have got some wrong).
+  passMessage: 'Round done!',
 
   fields: {
     modeField: 'mode',
@@ -83,7 +85,8 @@ export default defineActivity({
       {
         name: 'liveTestSize',
         type: 'number',
-        description: 'Live round: how many right answers make the round (3 to 20). Default 5.',
+        description:
+          'Live round: how many tries make the round (3 to 20), counted whether the pad gets them right or wrong. Default 5.',
       },
       {
         name: 'panels',
@@ -130,7 +133,8 @@ export default defineActivity({
 
   // The device's own copy: drawings included.
   serialize: (state) => JSON.stringify(state ?? null),
-  // What is written to Firebase: counts, trained and the test result. Never the drawings.
+  // What is written to Firebase: counts, tries, rights, misses, the result, the pad now and the
+  // last 3 misses as grids. Never the strokes or the taught drawings.
   serializeShared: (state) => JSON.stringify(sharedState(state)),
   // Reads either form.
   deserialize: (raw, task) => normalizeClassifierState(task, parse(raw)),
@@ -139,18 +143,23 @@ export default defineActivity({
   sealedFields: ['testItems'],
 
   // A drawing lives in the pad until the student adds it, so nothing changes per pointer
-  // move. Typing a class name is the only per-keystroke change; everything else (a drawing
-  // added or removed, Test, a try in the round) is discrete.
+  // move. Typing a class name and the pad's grid at each stroke end are the frequent changes
+  // (continuous); everything else (a drawing added or removed, Test, a try in the round) is
+  // discrete.
   classifyChange: (prev, next) => {
     const p = sharedState(prev)
     const q = sharedState(next)
-    const onlyNames =
-      !sameList(p.classes, q.classes) &&
+    const same =
       p.trained === q.trained &&
       p.liveCount === q.liveCount &&
+      p.rights === q.rights &&
       JSON.stringify(p.result) === JSON.stringify(q.result) &&
+      JSON.stringify(p.recent) === JSON.stringify(q.recent) &&
       sum(p.counts) === sum(q.counts)
-    return onlyNames ? 'continuous' : 'discrete'
+    const onlyNames = !sameList(p.classes, q.classes) && same
+    const onlyPad =
+      sameList(p.classes, q.classes) && same && (p.pad !== q.pad || p.target !== q.target)
+    return onlyNames || onlyPad ? 'continuous' : 'discrete'
   },
 
   grade: (task, state) => {
@@ -162,16 +171,16 @@ export default defineActivity({
     }
   },
 
-  // Teaching: things with enough drawings. Then the round: right answers towards the goal.
+  // Teaching: things with enough drawings. Then the round: tries towards the goal.
   getProgress: (task, state) => {
-    const { classesMet, classesTotal, live, core, rights } = gradeTask(task, state)
+    const { classesMet, classesTotal, live, core, tries } = gradeTask(task, state)
     const things = Math.max(classesTotal, MIN_CLASSES)
-    const filled = classesMet + (live ? Math.min(rights, core) : 0)
+    const filled = classesMet + (live ? Math.min(tries, core) : 0)
     return { kind: 'items', filled, total: things + (live ? core : 0), correct: filled }
   },
 
-  // The tutor's card: where the student is. Teaching: drawings per thing. Round: "3/5 right ·
-  // +1 bonus · 2 missed". Kept-back / teacher tests: the percentage.
+  // The tutor's card: where the student is. Teaching: drawings per thing. Round: "5/5 tried ·
+  // 4 right" (+ bonus tries after the core). Kept-back / teacher tests: the percentage.
   summarize: (task, state) => {
     const graded = gradeTask(task, state)
     const counts = countsOf(state)
@@ -194,10 +203,10 @@ export default defineActivity({
     }
     const rights = rightsOf(state)
     const core = taskLiveTestSize(task)
-    const missed = missesOf(state)
-    if (liveCountOf(state) === 0) return { text: `Ready: 0/${core} right`, tone }
-    const text = roundSummaryText(rights, Math.max(core, rights), core, 'right')
-    return { text: missed ? `${text} · ${missed} missed` : text, tone }
+    const tries = liveCountOf(state)
+    if (tries === 0) return { text: `Ready: 0/${core} tried`, tone }
+    const text = roundSummaryText(tries, Math.max(core, tries), core, 'tried')
+    return { text: `${text} · ${rights} right`, tone }
   },
 
   // The log keeps the shared form: counts, trained and the result, never the drawings.
@@ -253,7 +262,7 @@ export default defineActivity({
       testSetOf(task) === 'teacher'
         ? `${teacherTestItems(task).length} teacher test drawings`
         : testSetOf(task) === 'live'
-          ? `a round: ${taskLiveTestSize(task)} right answers to drawings the pad asks for`
+          ? `a round: ${taskLiveTestSize(task)} tries at drawing something and seeing if the pad gets it`
           : "the student's own kept-back drawings"
     const target = Math.round(
       (typeof task.targetAccuracy === 'number' ? task.targetAccuracy : 0.8) * 100
