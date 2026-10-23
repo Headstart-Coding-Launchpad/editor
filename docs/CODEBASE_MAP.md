@@ -709,11 +709,14 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `classifier/ui.jsx` | Classifier StudentView: thing cards with big emoji, teach prompt ("Draw 3 🐱"), Pointer Events pad, live guess bars, the round (Done, "What did you draw?" emoji buttons, tick or miss, Teach it this one, `RoundProgress`), pad left / guess panels right from 800px, optional grid / how-sure panels, results as a meter and mix-up thumbnails; read-only tutor summary (counts, tries, rights, mix-ups, the pad now and last misses as `GridThumb`s) |
 | `station/station.js` | Pure Space station model: layout (3 power sections, the 18 art spots with `spotTakes` fit/hang rules, crew posts, colours), parts catalogue, `sceneForLesson` / `applyCarried`, `stationAction` (undo stack, goals marked with the method used), validation, grading (first-N core) and progress, and the build jobs (order, match, card, decoy crates with stickers, counts: `blockedBy`, `crateIdsFor`, `multiParts`) |
 | `station/definition.js` | Space station activity definition wrapping `station.js`: default task, validation, state, change classification, grading, progress, card summary, print |
-| `station/art.js` | Space station art: the PNG paths under `public/station/phase-1/` (built from `BASE_URL`), part id to file and glow, colour hex values, sticker shape paths. The only place art paths live |
+| `station/art.js` | Space station art: the PNG paths under `public/station/phase-1/` and the zoo and toy shop packs (`WORLD_ART`; built from `BASE_URL`), part id to file and glow, colour hex values, sticker shape paths. The only place art paths live |
 | `public/station/phase-1/*.png`, `parts.json` | Lesson Gen's Phase 1 station art (#109): 128 px cells, one PNG per state, a white `-glow` mask per part, `backdrop`, `hull-lit/dark/glow`, `interior-lit/dark`; `parts.json` is the 18-spot layout the model's `SPOTS` copies |
 | `station/ui.jsx` | Space station StudentView (controlled by `ActivityHost`): the art scene (backdrop, interior, crew, hull and hull colour, spots, "Station upgraded!" moment), power, crates, drag/pick-drop onto pads, Ctrl/Cmd+Z, catalogue, goals; the tutor's "Undo last change" while editing answers |
-| `station/MiniStation.jsx` | Space station `CardSummary`: a tiny station picture and "3/5 goals" for the tutor's card |
-| `station/StationBuilderEditor.jsx` | Space station `BuilderEditor`: lesson picker, goals filtered by lesson with matching targets, optional catalogue parts |
+| `station/MiniStation.jsx` | Space station `CardSummary`: a tiny picture of the task's world (station, zoo or toy shop) and "3/5 goals" for the tutor's card |
+| `station/worlds/pack.js` | Turns a world pack (Lesson Gen's `parts.json` layout, kept as plain data) into the model's world: frozen spots, parts with labels, catalogue order (best last), enclosures as 0-1 boxes |
+| `station/worlds/zoo.js`, `station/worlds/toyshop.js` | The zoo and toy shop world data (`PACK`, copied from `public/station/<world>/parts.json`; `worlds.test.js` checks they match) and the built world |
+| `public/station/zoo/*.png`, `public/station/toyshop/*.png`, `parts.json` | Lesson Gen's zoo and toy shop art (`backdrop`, the zoo's `zoo-base` and `enclosure-<kind>-glow` masks, one PNG and `-glow` per animal or toy) |
+| `station/StationBuilderEditor.jsx` | Space station `BuilderEditor`: world and lesson pickers, goals filtered by lesson with matching targets, optional catalogue parts |
 
 ---
 

@@ -1,7 +1,8 @@
 # Space Station Activity
 
 > **Phase 1 only.** The station covers Mouse and Keyboard Lessons 1 to 4 (power and colours,
-> double-click, drag and Ctrl+Z, a scrolling catalogue). Right-click menus, hover tags, text on
+> double-click, drag and Ctrl+Z, a scrolling catalogue), in three **worlds**: the space station,
+> the zoo and the toy shop (see [Worlds](#worlds)). Right-click menus, hover tags, text on
 > parts, copy and paste, and PNG / share link are not built yet; `lesson` must be 1, 2, 3 or 4.
 > Design: [station-activity.md](../../architecture/station-activity.md).
 
@@ -60,13 +61,14 @@ tasks:
 | Field | Required | Notes |
 |---|:---:|---|
 | `type` | Yes | `station` in YAML (JSON: `taskType: activity` + `activityType: station`) |
-| `lesson` | Yes | `1` to `4` (Phase 1). Sets the starting station: everything from earlier lessons is already there in default places (catch-up), then this lesson's setup is added (dark station, crates, tray, catalogue). |
+| `world` | No | `station` (the default), `zoo` or `toyshop`. A task is a station task unless it says otherwise, whatever its `lesson`. See [Worlds](#worlds). |
+| `lesson` | Yes (station) | `1` to `4` (Phase 1). In the zoo it is 3 and in the toy shop 4, so it may be left out there. Sets the starting station: everything from earlier lessons is already there in default places (catch-up), then this lesson's setup is added (dark station, crates, tray, catalogue). |
 | `items` | Yes | This week's goals, done in any order (see below). |
-| `catalogue` | No | Part ids on offer: the Lesson 3 tray or the Lesson 4 catalogue. Lessons 1 and 2 have none. Default: the lesson's own list (Lesson 3: `solar`, `dome`, `greenhouse`, `docking-arm`; Lesson 4: `telescope`, `dish`, `flag`, `antenna`, `beacon`, `satellite`, `cargo-pod`, `rainbow-ring`, the best one last, at the very bottom). |
+| `catalogue` | No | Part ids on offer: the Lesson 3 tray or the Lesson 4 catalogue (the zoo's animals, the toy shop's toys). Lessons 1 and 2 have none. Default: the lesson's own list (Lesson 3: `solar`, `dome`, `greenhouse`, `docking-arm`; Lesson 4: `telescope`, `dish`, `flag`, `antenna`, `beacon`, `satellite`, `cargo-pod`, `rainbow-ring`, the best one last, at the very bottom). |
 | `coreItems` | No | How many goals make the task pass, 1 to the number of `items`. **The first this many goals are required; the rest are bonus** (put the required goals first). Default: all goals. |
 | `crates` | No | Lesson 2 only. The crates in the delivery bay, 1 to 5, each `{ id, sticker? }` with `id` from `crate-1` to `crate-5`, in the order shown. Default: `crate-1` to `crate-3`, no stickers. `crate-4` holds `crew-robot-3`; `crate-5` is empty (a good decoy). |
 | `note` | No | Lesson 2 only. The delivery note: a list of stickers, each a colour and a shape like `red-star`. Used by `open_crate` with `onlyNoted`. Every note sticker must be on a crate. |
-| `mistakes` | No | Lesson 3 only. The clumsy robot's drops: 1 to 4 parts already on the station at the start, each `{ part, spot }` (`part` from the tray, `spot` one of the 18 spots that takes it). Needs an `undo_mistakes` goal. Only Ctrl+Z / Cmd+Z removes them, one drop per press, after the child's own changes. They are marked with a red `!`, and a drag of one blinks and changes nothing. They are **never saved as the child's station**: they are left out of what is carried to the next lesson. Do not name a mistake part in a `place_part` goal. |
+| `mistakes` | No | Lesson 3 only (the station or the zoo; in the zoo it is the keeper putting an animal in the wrong enclosure, see [Worlds](#worlds)). The clumsy robot's drops: 1 to 4 parts already on the station at the start, each `{ part, spot }` (`part` from the tray, `spot` one of the 18 spots that takes it). Needs an `undo_mistakes` goal. Only Ctrl+Z / Cmd+Z removes them, one drop per press, after the child's own changes. They are marked with a red `!`, and a drag of one blinks and changes nothing. They are **never saved as the child's station**: they are left out of what is carried to the next lesson. Do not name a mistake part in a `place_part` goal. |
 
 ## Item fields
 
@@ -74,7 +76,7 @@ tasks:
 |---|:---:|---|
 | `id` | Yes | Short unique id (`power`, `hull`, …). |
 | `goal` | Yes | What the child does (table below). |
-| `target` | Depends | What the goal is about: a power section (`left`, `core`, `right`), `hull` or `lights`, a part id or a crate id. Leave out for "any" (or all three sections for `power_on`). Required for `pick_colour`. |
+| `target` | Depends | What the goal is about: a power section (`left`, `core`, `right`), `hull` or `lights`, a part id or a crate id (an enclosure kind for `sort`). Leave out for "any" (or all three sections for `power_on`). Required for `pick_colour`. |
 | `prompt` | No | The instruction shown. Default: a plain sentence made from the goal and target. |
 | `order` | No | `power_on`, `open_crate`, `place_part`. A list of at least 2 ids to do in this order (sections, crates or parts). Shown as a numbered card. A wrong next step blinks and changes nothing. Not with `target`. |
 | `match` | No | `pick_colour`. The colour that counts, from the hull or light colours. Mission Control's card shows it. Other swatches still recolour but do not count. |
@@ -100,6 +102,7 @@ the method ("opened by double-click").
 | `order_part` | 4 | a part id, or none = any | the part is ordered from the catalogue | `click`; whether the child scrolled the list first is recorded too |
 | `light_pattern` | 1 | none (uses `pattern`) | the three power buttons match the pattern card, after a press | `click` or `keyboard` |
 | `undo_mistakes` | 3 | none (uses the task's `mistakes`) | every preset mistake has been taken back | `ctrl_z` or `cmd_z` only |
+| `sort` | 3 (zoo only) | an enclosure kind (`ice`, `grass`, `jungle`, `water`), or none = every animal | every animal in the tray (or of that kind) is in an enclosure that takes its kind | `drag` or `pick_drop` |
 
 Parts you can name as targets: crates `crate-1` to `crate-5` (each holds a crew member: `crew-robot-1`,
 `crew-robot-2`, `crew-plant`, `crew-robot-3`; `crate-5` is empty; they stand in the portholes); Lesson 3 modules
@@ -151,8 +154,8 @@ Notes:
   `open_crate` with `onlyNoted` refuses a decoy even after the goal is done.
 - `count` on `place_part` copes with the same part more than once: drag from the tray each time;
   dragging a placed copy moves it. Only Lesson 3 (the 2x2 `solar` has four spots).
-- **Sorting** ("fuel to the tank, plants to the greenhouse") is not built: the station's spots
-  accept by part kind, not by a custom group, so there is nothing to sort into yet.
+- **Sorting** ("fuel to the tank, plants to the greenhouse") is a zoo job (the `sort` goal, see
+  [Worlds](#worlds)); the station's own spots accept by part kind, not by a custom group.
 
 ### Example lesson using the build jobs
 
@@ -256,6 +259,135 @@ tasks:
         goal: place_part
         card: dish
         prompt: Put the part from the picture on your station.
+```
+
+## Worlds
+
+A task builds in one **world**. Each world is a place with its own spots and parts (Lesson Gen's
+art, in `public/station/<world>/`). Write `world: zoo` or `world: toyshop` on the task; leave it out
+for the space station. A task with no `world` is always a station task, even in lesson 3 or 4.
+
+| World | Lesson | What the child builds | Goals that work there |
+|---|---|---|---|
+| `station` | 1 to 4 | the space station (everything above) | all except `sort` |
+| `zoo` | 3 (drag) | a zoo with four enclosures; animals dragged from a tray | `place_part`, `select`, `undo`, `undo_mistakes`, `sort` |
+| `toyshop` | 4 (scroll) | a toy shop window; toys ordered from a long catalogue, then dragged into the window | `order_part`, `place_part`, `select`, `undo` |
+
+The build jobs that make sense carry over: `order`, `card` and `count` on `place_part`, `card` on
+`order_part`, `undo` with `count`, `mistakes` with `undo_mistakes` (zoo), and `coreItems`. The jobs
+about power, colours, crates, stickers and the delivery note are station only. Naming a goal, target,
+card, order id or catalogue part that is not in the task's world is an error (`Task 1 item 2: goal
+"power_on" isn't in the zoo world.`).
+
+### The zoo
+
+Four enclosures, each with its own kind, and twelve spots. Every spot sits inside one enclosure and
+takes only that enclosure's animals, so the animal must go in the right place.
+
+| Enclosure (`sort` target) | Animals | Spots |
+|---|---|---|
+| Ice and pool (`ice`) | `ice-penguin`, `ice-polar-bear` (2x2) | `ice-1` (2x2), `ice-2`, `ice-3` |
+| Grassland (`grass`) | `grass-lion`, `grass-zebra`, `grass-giraffe` (2x2) | `grass-1` (2x2), `grass-2`, `grass-3` |
+| Jungle (`jungle`) | `jungle-monkey`, `jungle-parrot` | `jungle-1`, `jungle-2`, `jungle-3` |
+| Pond (`water`) | `water-duck`, `water-hippo` (2x2) | `water-1` (2x2), `water-2`, `water-3` |
+
+- While a child holds an animal its own enclosure glows, so they can see where it belongs.
+- Dropping an animal in the wrong enclosure does not snap: the enclosure blinks red, the animal goes
+  back to where it came from and the hint says it does not live there. The tutor's card counts the
+  wrong drops ("2 wrong homes").
+- **`sort`**: done when every animal in the tray is in an enclosure that takes its kind. `target:
+  water` limits it to the pond's animals. `catalogue` picks the animals in the tray (default all
+  nine), so `catalogue: [ice-penguin, water-duck]` is a two-animal sort.
+- **`mistakes`** in the zoo is the clumsy keeper: `{ part: grass-lion, spot: ice-2 }` puts the lion
+  in the ice enclosure at the start. The spot must fit the animal but be in a different enclosure.
+  `undo_mistakes` takes them back with Ctrl+Z, as in the station. They are not saved.
+
+### The toy shop
+
+A shop window with a shelf of six small spots and a floor of two 2x2 spots and two small ones. The
+catalogue lists the toys in a fixed order and the best one, `toy-rainbow-castle`, is last, at the very
+bottom, so the child has to scroll to find it: `toy-teddy-bear`, `toy-robot`, `toy-kite`, `toy-yo-yo`,
+`toy-car`, `toy-spinning-top`, `toy-rocket` (2x2), `toy-rainbow-castle` (2x2). Toys fit any free spot
+big enough (the 2x2 toys only the two floor spots in the middle). It works like Lesson 4: `order_part`
+then `place_part`, with `card` for "find the one in the picture".
+
+### One saved scene per world
+
+Each world's build is saved separately: a child's station, zoo and toy shop all come back, and the
+Grand Opening can show them all. What is carried is `{ v: 2, worlds: { station: ..., zoo: ... } }` (an
+older save is the station's), kept in the same `station` slot. A task only loads its own world's
+scene; the other worlds' scenes ride along so they are never lost.
+
+### Example lesson with all three worlds
+
+```yaml
+id: station-three-worlds
+type: python
+title: Station, zoo and toy shop
+description: One task in each world, the station, the zoo and the toy shop.
+tasks:
+  - title: "Lesson 2: Special Delivery (station)"
+    type: station
+    description: Crates have arrived. A double-click opens one.
+    lesson: 2
+    items:
+      - id: open
+        goal: open_crate
+        prompt: Double-click a crate to open it.
+      - id: captain
+        goal: choose_captain
+  - title: "Lesson 3: Zoo Day (zoo)"
+    type: station
+    world: zoo
+    description: The keeper put the lion in the wrong enclosure. Put it back with Ctrl+Z, then drag each animal home.
+    coreItems: 2
+    mistakes:
+      - part: grass-lion
+        spot: ice-2
+    items:
+      - id: keeper
+        goal: undo_mistakes
+        prompt: The clumsy keeper put the lion in the wrong place. Press Ctrl+Z (Cmd+Z on a Mac) to put it back.
+      - id: sort
+        goal: sort
+        prompt: Drag each animal into the enclosure where it lives. The right home glows while you drag.
+      - id: giraffe
+        goal: place_part
+        target: grass-giraffe
+        prompt: Bonus - find the giraffe a spot in the grassland.
+  - title: "Lesson 3: Zoo Day, water animals (zoo)"
+    type: station
+    world: zoo
+    lesson: 3
+    description: Only the pond animals today.
+    catalogue: [water-duck, water-hippo, ice-penguin]
+    items:
+      - id: ponds
+        goal: sort
+        target: water
+        prompt: Take the pond animals home.
+      - id: order
+        goal: place_part
+        order: [ice-penguin, water-duck]
+        prompt: Follow the plan card, penguin first, then the duck.
+  - title: "Lesson 4: The Toy Shop (toyshop)"
+    type: station
+    world: toyshop
+    description: Scroll the catalogue. The best toy is at the very bottom!
+    coreItems: 2
+    items:
+      - id: find
+        goal: order_part
+        card: toy-rainbow-castle
+        prompt: The shopkeeper is holding up a toy. Find it in the catalogue and order it.
+      - id: place
+        goal: place_part
+        card: toy-rainbow-castle
+        prompt: Put the toy from the picture in the shop window.
+      - id: kite
+        goal: order_part
+        target: toy-kite
+        prompt: Bonus - order the kite too.
 ```
 
 ## Marking and hints

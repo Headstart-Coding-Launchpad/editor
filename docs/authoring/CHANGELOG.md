@@ -39,6 +39,21 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-23
 
+- **Station worlds: the zoo and the toy shop (Hub #195, Mouse and Keyboard).** A station task takes
+  a new `world` field: `station` (the default, so existing tasks are unchanged), `zoo` (Lesson 3's
+  drag: four enclosures, nine animals, twelve spots that each take only their enclosure's kind) or
+  `toyshop` (Lesson 4's scroll: eight toys in catalogue order, the rainbow castle last). `lesson` may
+  be left out in the zoo (3) and the toy shop (4). New goal `sort` (zoo only; optional `target` is an
+  enclosure kind: `ice`, `grass`, `jungle`, `water`): done when every animal in the tray sits in an
+  enclosure that takes it. A drop in the wrong enclosure blinks and goes back. `mistakes` also works
+  in the zoo (the keeper puts an animal in a wrong enclosure). `target`, `card`, `order` and
+  `catalogue` take the world's own animal and toy ids, and a goal, target or part from another
+  world is an error (`... isn't in the zoo world.`). Each world's build is saved separately (the
+  carried save is now `{ v: 2, worlds }`; old saves still load as the station). See
+  [activities/station.md](activities/station.md#worlds).
+- Affects: station · Existing lessons: no changes needed (a task with no `world` is a station task) ·
+  Resolves: authoring-requests/2026-10-22-station-activity-one-saved-space-station-each-child-builds-w.md
+
 - **Show it shows builds unmarked, and one at a time (Lesson Gen #190 review).** Shown builds
   carry no hints, ticks, "Correct", check results or pass/fail colours. The tutor can switch
   between "Side by side" and "One at a time" (one build full width, ← → arrows), and every screen

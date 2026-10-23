@@ -133,11 +133,56 @@ Optional goal fields that make each lesson a few short jobs. All of it is pure m
 - The Builder editor does not expose the build-job fields; they are YAML-only (it says so under
   the goals list), though its crate target choices follow `crates`.
 
+### Worlds (Hub #195, Ryan 2026-10-23: a different world each lesson)
+
+A world is a place to build. The model has three (`WORLDS` in `station.js`); a task picks one with
+`world` (`worldIdOf(task)`; no `world` = `station`, so every earlier task is unchanged, whatever its
+lesson). `lessonOf(task)` is the task's lesson for the station and the world's own for the others.
+
+| World | Lesson | Spots | Parts | Catalogue |
+|---|---|---|---|---|
+| `station` | 1-4 | the 18 spots above | the station PARTS | the lesson's list |
+| `zoo` | 3 | 12 (`ice-1..3`, `grass-1..3`, `jungle-1..3`, `water-1..3`), each accepts one enclosure kind | 9 animals, kinds `ice` / `grass` / `jungle` / `water` | every animal, tray (Lesson 3 style) |
+| `toyshop` | 4 | 10 (`shelf-1..6`, `floor-1..4`), all accept `toy` | 8 toys, kind `toy` | `catalogueOrder`, the best (`toy-rainbow-castle`) last |
+
+- **Data.** The art is Lesson Gen's pack in `public/station/<world>/` (a `parts.json` and the PNGs, as
+  phase-1). The zoo and toy shop layouts are copied into `worlds/zoo.js` and `worlds/toyshop.js` as
+  plain data (`PACK`) and built by `worlds/pack.js` (`worldFromPack`): spots, parts (id = file name,
+  label = the id without its kind prefix), the catalogue order and the zoo's enclosures as 0-1 boxes.
+  The CLI runs in Node, which cannot import JSON without an attribute, so the data is JS, and
+  `worlds.test.js` checks it still equals `parts.json`. Art paths stay in `art.js` (`WORLD_ART`; an
+  animal or toy's file is its id).
+- **One lookup.** Part and spot ids are unique across worlds, so `partById` / `spotById` look in all of
+  them; what changes by world is the list: `worldSpots`, `placeSpotsOf`, `catalogueFor`, `trayParts`,
+  `nearestSpot(…, worldId)`, `spotsFor`.
+- **The same actions and jobs.** `place` / `order` / `undo` / `select`, `order`, `card`, `count`,
+  `mistakes`, first-N core: all work from the generic rules (`spotTakes`: kind accepted, part fits
+  the cells). Goals carry `worlds` (default `['station']`); validation says
+  `Task N item M: goal "x" isn't in the zoo world.`, and the same for targets, cards, `order` ids, the
+  catalogue and mistake parts.
+- **`sort`** (zoo only; `target` is an enclosure kind or none): `completes` after a `place` when every
+  animal in `catalogueFor(task)` (of that kind, if targeted) is on a spot that takes its kind
+  (`sortProgress` gives `{ have, need }` for the card).
+- **Wrong homes.** A spot takes only its enclosure's kind, so a wrong `place` already changes nothing.
+  `dropTarget(task, scene, point, partId)` is the pure drop test the UI uses: `{ wrong: kind }` when
+  the point is inside an enclosure box of another kind (checked before the snap radius, so a part
+  near a border cannot snap into the neighbour), `{ spot }`, or null. The UI blinks that enclosure,
+  puts the animal back and sends `{ type: 'wrong', part }`, which only increments `state.wrongDrops`
+  (no undo entry; the tutor card shows "n wrong homes").
+- **Keeper mistakes.** Zoo `mistakes` only need the animal to fit the spot's cells (`fitsSpot`) and be
+  in the wrong enclosure (validated); they are preset, undone with Ctrl+Z and never saved, as in the
+  station.
+- **Glow.** The UI draws `enclosure-<kind>-glow.png` through a mask, tinted yellow and pulsing,
+  while an animal of that kind is held (drag or click-to-pick-up). A wrong drop tints it red once.
+
 ### State (`v: 1`, small)
 
 ```js
 {
   v: 1,
+  world: 'station' | 'zoo' | 'toyshop',
+  others: { zoo: scene, … },                   // the other worlds' carried scenes, kept for saving
+  wrongDrops: 0,                               // wrong-enclosure drops (zoo)
   scene: {
     hull: 'blue', lights: 'orange',
     power: { core: true, left: false, … },
@@ -160,7 +205,7 @@ discrete step (a click, a drop); pointer moves during a drag are UI state, not a
 
 ### Helpers
 
-`initialState(task)` = `{ scene: sceneForLesson(task.lesson), … }`.
+`initialState(task)` = `{ scene: sceneForLesson(task.lesson), world, … }` (the zoo and toy shop start with an empty scene).
 `sceneForLesson(n)`: the default scene after lessons `1…n-1` (all power on, default colours;
 crates open with crew at posts and the first crew captain; Lesson 3 modules on default spots
 (`dome` top-module-1, `greenhouse` top-module-2, `solar` bottom-module-1, `docking-arm` end-left);
@@ -180,7 +225,15 @@ It reuses the tutor-mediated roster route of typing history and `carryCodeFromLe
 (students never read or write Firestore):
 
 - **Activity contract:** an optional `carrySlot: { id: 'station', extract(state), apply(task,
-  carried) }` on `defineActivity`. `extract` keeps the scene only.
+  carried) }` on `defineActivity`. `extract` keeps the scenes only.
+- **One scene per world.** What is carried is `{ v: 2, worlds: { station: scene, zoo: scene, … } }`
+  (`carrySceneOf`). `extract(state)` writes the state's own world (without the keeper's or robot's
+  mistakes) beside `state.others`, the other worlds' scenes the state was started with; `apply(task,
+  carried)` loads the task's own world (`applyCarried`; a world with no scene starts empty, the
+  station catches up as before) and keeps the rest in `others` (`carriedOthers`). An older
+  `{ v: 1, scene }` or a bare scene is the station world's. The slot id stays `station`, and
+  `database.rules.json` only checks that an `activity_slot` payload is a string of at most 1 MB, so
+  no rules change is needed. The Grand Opening can read every world from the one save.
 - **Save (tutor's TeacherView):** for a matched student on a task whose activity has a
   `carrySlot`, the roster work saver saves `extract(state)` from their `currentAnswer` to
   `classes/{classId}/roster/{rosterId}/work/slot__station` (debounced as today). One slot per
