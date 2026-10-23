@@ -251,7 +251,8 @@ describe('Next Word UI: panels', () => {
     expect(state().voice).toBe('text:0')
     expect(screen.queryByLabelText(/Write some sentences/)).not.toBeInTheDocument()
     press('Start a sentence')
-    expect(state().sentence).toBe('the')
+    // The start word is one that begins a sentence in the text (picked at random).
+    expect(state().sentence).not.toBe('')
     press(/My writing/)
     expect(state()).toMatchObject({ voice: 'own', sentence: '' })
     expect(screen.getByLabelText(/Write some sentences/)).toBeInTheDocument()
