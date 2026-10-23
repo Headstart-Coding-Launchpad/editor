@@ -1,581 +1,416 @@
 {
- "cellPx": 128,
- "size": [
-  1600,
-  1000
- ],
- "layers": [
-  "backdrop",
-  "interior",
-  "crew spots (behindHull)",
-  "hull",
-  "every other spot"
- ],
- "rules": {
-  "fit": "A part goes in a spot whose accepts list has its kind and whose cells it fits inside (part w <= spot w and part h <= spot h).",
-  "hang": "A spot with onlyCanHang takes only parts with canHang true, drawn flipped (flipY).",
-  "flip": "flipY mirrors top to bottom, flipX mirrors left to right.",
-  "power": "Power off = hull-dark + interior-dark + power-button-off; power on = hull-lit + interior-lit + power-button-on."
- },
- "backdrop": {
-  "file": "backdrop.png",
-  "bytes": 35574
- },
- "interior": {
-  "states": {
-   "lit": "interior-lit.png",
-   "dark": "interior-dark.png"
-  }
- },
- "hull": {
-  "states": {
-   "lit": "hull-lit.png",
-   "dark": "hull-dark.png"
+  "cellPx": 128,
+  "size": [1600, 1000],
+  "layers": ["backdrop", "interior", "crew spots (behindHull)", "hull", "every other spot"],
+  "rules": {
+    "fit": "A part goes in a spot whose accepts list has its kind and whose cells it fits inside (part w <= spot w and part h <= spot h).",
+    "hang": "A spot with onlyCanHang takes only parts with canHang true, drawn flipped (flipY).",
+    "flip": "flipY mirrors top to bottom, flipX mirrors left to right.",
+    "power": "Power off = hull-dark + interior-dark + power-button-off; power on = hull-lit + interior-lit + power-button-on."
   },
-  "glow": "hull-glow.png",
-  "glowNote": "white body panels only, for the hull colour tint",
-  "box": {
-   "x": 250,
-   "y": 283,
-   "w": 1100,
-   "h": 433
+  "backdrop": {
+    "file": "backdrop.png",
+    "bytes": 35574
   },
-  "bytes": {
-   "lit": 46189,
-   "dark": 28357
-  }
- },
- "spots": [
-  {
-   "id": "top-module-1",
-   "x": 0.1975,
-   "y": 0.117,
-   "w": 0.16,
-   "h": 0.256,
-   "cells": [
-    2,
-    2
-   ],
-   "accepts": [
-    "module"
-   ]
+  "interior": {
+    "states": {
+      "lit": "interior-lit.png",
+      "dark": "interior-dark.png"
+    }
   },
-  {
-   "id": "top-part-1",
-   "x": 0.3575,
-   "y": 0.245,
-   "w": 0.08,
-   "h": 0.128,
-   "cells": [
-    1,
-    1
-   ],
-   "accepts": [
-    "part"
-   ]
+  "hull": {
+    "states": {
+      "lit": "hull-lit.png",
+      "dark": "hull-dark.png"
+    },
+    "glow": "hull-glow.png",
+    "glowNote": "white body panels only, for the hull colour tint",
+    "box": {
+      "x": 250,
+      "y": 283,
+      "w": 1100,
+      "h": 433
+    },
+    "bytes": {
+      "lit": 46189,
+      "dark": 28357
+    }
   },
-  {
-   "id": "bottom-module-1",
-   "x": 0.2775,
-   "y": 0.621,
-   "w": 0.16,
-   "h": 0.256,
-   "cells": [
-    2,
-    2
-   ],
-   "accepts": [
-    "module"
-   ],
-   "flipY": true,
-   "onlyCanHang": true
-  },
-  {
-   "id": "bottom-part-1",
-   "x": 0.1975,
-   "y": 0.621,
-   "w": 0.08,
-   "h": 0.128,
-   "cells": [
-    1,
-    1
-   ],
-   "accepts": [
-    "part"
-   ],
-   "flipY": true,
-   "onlyCanHang": true
-  },
-  {
-   "id": "top-module-2",
-   "x": 0.5619,
-   "y": 0.117,
-   "w": 0.16,
-   "h": 0.256,
-   "cells": [
-    2,
-    2
-   ],
-   "accepts": [
-    "module"
-   ]
-  },
-  {
-   "id": "top-part-2",
-   "x": 0.7219,
-   "y": 0.245,
-   "w": 0.08,
-   "h": 0.128,
-   "cells": [
-    1,
-    1
-   ],
-   "accepts": [
-    "part"
-   ]
-  },
-  {
-   "id": "bottom-module-2",
-   "x": 0.6419,
-   "y": 0.621,
-   "w": 0.16,
-   "h": 0.256,
-   "cells": [
-    2,
-    2
-   ],
-   "accepts": [
-    "module"
-   ],
-   "flipY": true,
-   "onlyCanHang": true
-  },
-  {
-   "id": "bottom-part-2",
-   "x": 0.5619,
-   "y": 0.621,
-   "w": 0.08,
-   "h": 0.128,
-   "cells": [
-    1,
-    1
-   ],
-   "accepts": [
-    "part"
-   ],
-   "flipY": true,
-   "onlyCanHang": true
-  },
-  {
-   "id": "ring-top",
-   "x": 0.46,
-   "y": 0.167,
-   "w": 0.08,
-   "h": 0.128,
-   "cells": [
-    1,
-    1
-   ],
-   "accepts": [
-    "part"
-   ]
-  },
-  {
-   "id": "end-left",
-   "x": 0.0088,
-   "y": 0.433,
-   "w": 0.16,
-   "h": 0.128,
-   "cells": [
-    2,
-    1
-   ],
-   "accepts": [
-    "module"
-   ],
-   "flipX": true
-  },
-  {
-   "id": "end-right",
-   "x": 0.8313,
-   "y": 0.433,
-   "w": 0.16,
-   "h": 0.128,
-   "cells": [
-    2,
-    1
-   ],
-   "accepts": [
-    "module"
-   ]
-  },
-  {
-   "id": "crew-1",
-   "x": 0.2656,
-   "y": 0.427,
-   "w": 0.08,
-   "h": 0.128,
-   "cells": [
-    1,
-    1
-   ],
-   "accepts": [
-    "crew"
-   ],
-   "behindHull": true
-  },
-  {
-   "id": "crew-2",
-   "x": 0.3744,
-   "y": 0.427,
-   "w": 0.08,
-   "h": 0.128,
-   "cells": [
-    1,
-    1
-   ],
-   "accepts": [
-    "crew"
-   ],
-   "behindHull": true
-  },
-  {
-   "id": "crew-3",
-   "x": 0.5906,
-   "y": 0.427,
-   "w": 0.08,
-   "h": 0.128,
-   "cells": [
-    1,
-    1
-   ],
-   "accepts": [
-    "crew"
-   ],
-   "behindHull": true
-  },
-  {
-   "id": "crew-4",
-   "x": 0.6819,
-   "y": 0.427,
-   "w": 0.08,
-   "h": 0.128,
-   "cells": [
-    1,
-    1
-   ],
-   "accepts": [
-    "crew"
-   ],
-   "behindHull": true
-  },
-  {
-   "id": "power-1",
-   "x": 0.16,
-   "y": 0.433,
-   "w": 0.08,
-   "h": 0.128,
-   "cells": [
-    1,
-    1
-   ],
-   "accepts": [
-    "power"
-   ]
-  },
-  {
-   "id": "power-2",
-   "x": 0.46,
-   "y": 0.433,
-   "w": 0.08,
-   "h": 0.128,
-   "cells": [
-    1,
-    1
-   ],
-   "accepts": [
-    "power"
-   ]
-  },
-  {
-   "id": "power-3",
-   "x": 0.76,
-   "y": 0.433,
-   "w": 0.08,
-   "h": 0.128,
-   "cells": [
-    1,
-    1
-   ],
-   "accepts": [
-    "power"
-   ]
-  }
- ],
- "parts": [
-  {
-   "file": "power-button-on.png",
-   "glow": "power-button-on-glow.png",
-   "kind": "power",
-   "cells": [
-    1,
-    1
-   ],
-   "state": "on",
-   "canHang": false,
-   "bytes": 3946
-  },
-  {
-   "file": "power-button-off.png",
-   "glow": "power-button-off-glow.png",
-   "kind": "power",
-   "cells": [
-    1,
-    1
-   ],
-   "state": "off",
-   "canHang": false,
-   "bytes": 3341
-  },
-  {
-   "file": "crate-1x1-closed.png",
-   "glow": "crate-1x1-closed-glow.png",
-   "kind": "crate",
-   "cells": [
-    1,
-    1
-   ],
-   "state": "closed",
-   "canHang": false,
-   "bytes": 4020
-  },
-  {
-   "file": "crate-1x1-open.png",
-   "glow": "crate-1x1-open-glow.png",
-   "kind": "crate",
-   "cells": [
-    1,
-    1
-   ],
-   "state": "open",
-   "canHang": false,
-   "bytes": 4588
-  },
-  {
-   "file": "crew-robot-1.png",
-   "glow": "crew-robot-1-glow.png",
-   "kind": "crew",
-   "cells": [
-    1,
-    1
-   ],
-   "state": null,
-   "canHang": false,
-   "bytes": 3873
-  },
-  {
-   "file": "crew-robot-2.png",
-   "glow": "crew-robot-2-glow.png",
-   "kind": "crew",
-   "cells": [
-    1,
-    1
-   ],
-   "state": null,
-   "canHang": false,
-   "bytes": 2590
-  },
-  {
-   "file": "crew-robot-3.png",
-   "glow": "crew-robot-3-glow.png",
-   "kind": "crew",
-   "cells": [
-    1,
-    1
-   ],
-   "state": null,
-   "canHang": false,
-   "bytes": 4450
-  },
-  {
-   "file": "crew-plant.png",
-   "glow": "crew-plant-glow.png",
-   "kind": "crew",
-   "cells": [
-    1,
-    1
-   ],
-   "state": null,
-   "canHang": false,
-   "bytes": 3774
-  },
-  {
-   "file": "captain-badge.png",
-   "glow": "captain-badge-glow.png",
-   "kind": "badge",
-   "cells": [
-    1,
-    1
-   ],
-   "state": null,
-   "canHang": false,
-   "bytes": 2663
-  },
-  {
-   "file": "module-solar-2x2.png",
-   "glow": "module-solar-2x2-glow.png",
-   "kind": "module",
-   "cells": [
-    2,
-    2
-   ],
-   "state": null,
-   "canHang": true,
-   "bytes": 9705
-  },
-  {
-   "file": "module-dome.png",
-   "glow": "module-dome-glow.png",
-   "kind": "module",
-   "cells": [
-    2,
-    2
-   ],
-   "state": null,
-   "canHang": false,
-   "bytes": 8027
-  },
-  {
-   "file": "module-greenhouse.png",
-   "glow": "module-greenhouse-glow.png",
-   "kind": "module",
-   "cells": [
-    2,
-    2
-   ],
-   "state": null,
-   "canHang": false,
-   "bytes": 15371
-  },
-  {
-   "file": "module-rainbow-ring.png",
-   "glow": "module-rainbow-ring-glow.png",
-   "kind": "module",
-   "cells": [
-    2,
-    2
-   ],
-   "state": null,
-   "canHang": true,
-   "bytes": 13976
-  },
-  {
-   "file": "module-docking-arm.png",
-   "glow": "module-docking-arm-glow.png",
-   "kind": "module",
-   "cells": [
-    2,
-    1
-   ],
-   "state": null,
-   "canHang": false,
-   "bytes": 4126
-  },
-  {
-   "file": "module-fuel-tank.png",
-   "glow": "module-fuel-tank-glow.png",
-   "kind": "module",
-   "cells": [
-    1,
-    2
-   ],
-   "state": null,
-   "canHang": false,
-   "bytes": 4088
-  },
-  {
-   "file": "part-telescope.png",
-   "glow": "part-telescope-glow.png",
-   "kind": "part",
-   "cells": [
-    1,
-    1
-   ],
-   "state": null,
-   "canHang": false,
-   "bytes": 3748
-  },
-  {
-   "file": "part-dish.png",
-   "glow": "part-dish-glow.png",
-   "kind": "part",
-   "cells": [
-    1,
-    1
-   ],
-   "state": null,
-   "canHang": true,
-   "bytes": 4060
-  },
-  {
-   "file": "part-flag.png",
-   "glow": "part-flag-glow.png",
-   "kind": "part",
-   "cells": [
-    1,
-    1
-   ],
-   "state": null,
-   "canHang": false,
-   "bytes": 2196
-  },
-  {
-   "file": "part-antenna.png",
-   "glow": "part-antenna-glow.png",
-   "kind": "part",
-   "cells": [
-    1,
-    1
-   ],
-   "state": null,
-   "canHang": true,
-   "bytes": 2072
-  },
-  {
-   "file": "part-beacon.png",
-   "glow": "part-beacon-glow.png",
-   "kind": "part",
-   "cells": [
-    1,
-    1
-   ],
-   "state": null,
-   "canHang": true,
-   "bytes": 4347
-  },
-  {
-   "file": "part-satellite.png",
-   "glow": "part-satellite-glow.png",
-   "kind": "part",
-   "cells": [
-    1,
-    1
-   ],
-   "state": null,
-   "canHang": true,
-   "bytes": 2189
-  },
-  {
-   "file": "part-cargo-pod.png",
-   "glow": "part-cargo-pod-glow.png",
-   "kind": "part",
-   "cells": [
-    1,
-    1
-   ],
-   "state": null,
-   "canHang": true,
-   "bytes": 3106
-  }
- ]
+  "spots": [
+    {
+      "id": "top-module-1",
+      "x": 0.1975,
+      "y": 0.117,
+      "w": 0.16,
+      "h": 0.256,
+      "cells": [2, 2],
+      "accepts": ["module"]
+    },
+    {
+      "id": "top-part-1",
+      "x": 0.3575,
+      "y": 0.245,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["part"]
+    },
+    {
+      "id": "bottom-module-1",
+      "x": 0.2775,
+      "y": 0.621,
+      "w": 0.16,
+      "h": 0.256,
+      "cells": [2, 2],
+      "accepts": ["module"],
+      "flipY": true,
+      "onlyCanHang": true
+    },
+    {
+      "id": "bottom-part-1",
+      "x": 0.1975,
+      "y": 0.621,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["part"],
+      "flipY": true,
+      "onlyCanHang": true
+    },
+    {
+      "id": "top-module-2",
+      "x": 0.5619,
+      "y": 0.117,
+      "w": 0.16,
+      "h": 0.256,
+      "cells": [2, 2],
+      "accepts": ["module"]
+    },
+    {
+      "id": "top-part-2",
+      "x": 0.7219,
+      "y": 0.245,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["part"]
+    },
+    {
+      "id": "bottom-module-2",
+      "x": 0.6419,
+      "y": 0.621,
+      "w": 0.16,
+      "h": 0.256,
+      "cells": [2, 2],
+      "accepts": ["module"],
+      "flipY": true,
+      "onlyCanHang": true
+    },
+    {
+      "id": "bottom-part-2",
+      "x": 0.5619,
+      "y": 0.621,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["part"],
+      "flipY": true,
+      "onlyCanHang": true
+    },
+    {
+      "id": "ring-top",
+      "x": 0.46,
+      "y": 0.167,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["part"]
+    },
+    {
+      "id": "end-left",
+      "x": 0.0088,
+      "y": 0.433,
+      "w": 0.16,
+      "h": 0.128,
+      "cells": [2, 1],
+      "accepts": ["module"],
+      "flipX": true
+    },
+    {
+      "id": "end-right",
+      "x": 0.8313,
+      "y": 0.433,
+      "w": 0.16,
+      "h": 0.128,
+      "cells": [2, 1],
+      "accepts": ["module"]
+    },
+    {
+      "id": "crew-1",
+      "x": 0.2656,
+      "y": 0.427,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["crew"],
+      "behindHull": true
+    },
+    {
+      "id": "crew-2",
+      "x": 0.3744,
+      "y": 0.427,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["crew"],
+      "behindHull": true
+    },
+    {
+      "id": "crew-3",
+      "x": 0.5906,
+      "y": 0.427,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["crew"],
+      "behindHull": true
+    },
+    {
+      "id": "crew-4",
+      "x": 0.6819,
+      "y": 0.427,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["crew"],
+      "behindHull": true
+    },
+    {
+      "id": "power-1",
+      "x": 0.16,
+      "y": 0.433,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["power"]
+    },
+    {
+      "id": "power-2",
+      "x": 0.46,
+      "y": 0.433,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["power"]
+    },
+    {
+      "id": "power-3",
+      "x": 0.76,
+      "y": 0.433,
+      "w": 0.08,
+      "h": 0.128,
+      "cells": [1, 1],
+      "accepts": ["power"]
+    }
+  ],
+  "parts": [
+    {
+      "file": "power-button-on.png",
+      "glow": "power-button-on-glow.png",
+      "kind": "power",
+      "cells": [1, 1],
+      "state": "on",
+      "canHang": false,
+      "bytes": 3946
+    },
+    {
+      "file": "power-button-off.png",
+      "glow": "power-button-off-glow.png",
+      "kind": "power",
+      "cells": [1, 1],
+      "state": "off",
+      "canHang": false,
+      "bytes": 3341
+    },
+    {
+      "file": "crate-1x1-closed.png",
+      "glow": "crate-1x1-closed-glow.png",
+      "kind": "crate",
+      "cells": [1, 1],
+      "state": "closed",
+      "canHang": false,
+      "bytes": 4020
+    },
+    {
+      "file": "crate-1x1-open.png",
+      "glow": "crate-1x1-open-glow.png",
+      "kind": "crate",
+      "cells": [1, 1],
+      "state": "open",
+      "canHang": false,
+      "bytes": 4588
+    },
+    {
+      "file": "crew-robot-1.png",
+      "glow": "crew-robot-1-glow.png",
+      "kind": "crew",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 3873
+    },
+    {
+      "file": "crew-robot-2.png",
+      "glow": "crew-robot-2-glow.png",
+      "kind": "crew",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 2590
+    },
+    {
+      "file": "crew-robot-3.png",
+      "glow": "crew-robot-3-glow.png",
+      "kind": "crew",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 4450
+    },
+    {
+      "file": "crew-plant.png",
+      "glow": "crew-plant-glow.png",
+      "kind": "crew",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 3774
+    },
+    {
+      "file": "captain-badge.png",
+      "glow": "captain-badge-glow.png",
+      "kind": "badge",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 2663
+    },
+    {
+      "file": "module-solar-2x2.png",
+      "glow": "module-solar-2x2-glow.png",
+      "kind": "module",
+      "cells": [2, 2],
+      "state": null,
+      "canHang": true,
+      "bytes": 9705
+    },
+    {
+      "file": "module-dome.png",
+      "glow": "module-dome-glow.png",
+      "kind": "module",
+      "cells": [2, 2],
+      "state": null,
+      "canHang": false,
+      "bytes": 8027
+    },
+    {
+      "file": "module-greenhouse.png",
+      "glow": "module-greenhouse-glow.png",
+      "kind": "module",
+      "cells": [2, 2],
+      "state": null,
+      "canHang": false,
+      "bytes": 15371
+    },
+    {
+      "file": "module-rainbow-ring.png",
+      "glow": "module-rainbow-ring-glow.png",
+      "kind": "module",
+      "cells": [2, 2],
+      "state": null,
+      "canHang": true,
+      "bytes": 13976
+    },
+    {
+      "file": "module-docking-arm.png",
+      "glow": "module-docking-arm-glow.png",
+      "kind": "module",
+      "cells": [2, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 4126
+    },
+    {
+      "file": "module-fuel-tank.png",
+      "glow": "module-fuel-tank-glow.png",
+      "kind": "module",
+      "cells": [1, 2],
+      "state": null,
+      "canHang": false,
+      "bytes": 4088
+    },
+    {
+      "file": "part-telescope.png",
+      "glow": "part-telescope-glow.png",
+      "kind": "part",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 3748
+    },
+    {
+      "file": "part-dish.png",
+      "glow": "part-dish-glow.png",
+      "kind": "part",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": true,
+      "bytes": 4060
+    },
+    {
+      "file": "part-flag.png",
+      "glow": "part-flag-glow.png",
+      "kind": "part",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": false,
+      "bytes": 2196
+    },
+    {
+      "file": "part-antenna.png",
+      "glow": "part-antenna-glow.png",
+      "kind": "part",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": true,
+      "bytes": 2072
+    },
+    {
+      "file": "part-beacon.png",
+      "glow": "part-beacon-glow.png",
+      "kind": "part",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": true,
+      "bytes": 4347
+    },
+    {
+      "file": "part-satellite.png",
+      "glow": "part-satellite-glow.png",
+      "kind": "part",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": true,
+      "bytes": 2189
+    },
+    {
+      "file": "part-cargo-pod.png",
+      "glow": "part-cargo-pod-glow.png",
+      "kind": "part",
+      "cells": [1, 1],
+      "state": null,
+      "canHang": true,
+      "bytes": 3106
+    }
+  ]
 }

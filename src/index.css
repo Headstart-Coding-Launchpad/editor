@@ -6684,6 +6684,52 @@ label.te-backdrop-tag,
   pointer-events: auto;
 }
 .show-it-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.show-it-controls button {
+  min-height: 36px;
+  padding: 4px 12px;
+  font-size: 0.9rem;
+}
+.show-it-controls__count {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+/* Activity views fit the tile: the bits row (8 columns of 44px+) shrinks to the tile's width
+   instead of scrolling (a tile takes no pointer input, so a scrollbar is unreachable). */
+.show-it-tile .act-bits {
+  grid-auto-columns: minmax(0, 1fr);
+  overflow-x: visible;
+  width: 100%;
+  gap: 4px;
+}
+.show-it-tile .act-bit {
+  min-width: 0;
+}
+.show-it-tile .act-row {
+  flex-wrap: wrap;
+}
+/* Display mode: whatever marking an activity draws, a shown build has none (the net under
+   ui/presentation.js; the shared pieces already render nothing). */
+.act-presentation .act-hint,
+.act-presentation .act-result,
+.act-presentation .act-correct-tick {
+  display: none;
+}
+.show-it-tile__empty {
+  margin: auto;
+  color: var(--colour-muted);
+}
+@media (max-width: 720px) {
+  .show-it-panel__tiles {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-y: auto;
+  }
+}
 
 /* Space station activity (src/activities/station/ui.jsx). The scene is Lesson Gen's 1600x1000 art
    (public/station/phase-1): layers stack backdrop, interior, crew, hull, hull colour, then buttons. */
@@ -7153,47 +7199,6 @@ label.te-backdrop-tag,
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
-}
-.show-it-controls button {
-  min-height: 36px;
-  padding: 4px 12px;
-  font-size: 0.9rem;
-}
-.show-it-controls__count {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-/* Activity views fit the tile: the bits row (8 columns of 44px+) shrinks to the tile's width
-   instead of scrolling (a tile takes no pointer input, so a scrollbar is unreachable). */
-.show-it-tile .act-bits {
-  grid-auto-columns: minmax(0, 1fr);
-  overflow-x: visible;
-  width: 100%;
-  gap: 4px;
-}
-.show-it-tile .act-bit {
-  min-width: 0;
-}
-.show-it-tile .act-row {
-  flex-wrap: wrap;
-}
-/* Display mode: whatever marking an activity draws, a shown build has none (the net under
-   ui/presentation.js; the shared pieces already render nothing). */
-.act-presentation .act-hint,
-.act-presentation .act-result,
-.act-presentation .act-correct-tick {
-  display: none;
-}
-.show-it-tile__empty {
-  margin: auto;
-  color: var(--colour-muted);
-}
-@media (max-width: 720px) {
-  .show-it-panel__tiles {
-    grid-template-columns: minmax(0, 1fr);
-    overflow-y: auto;
-
 }
 
 .act-station-swatches__label {
