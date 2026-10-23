@@ -29,6 +29,11 @@ describe('CheckFeedbackBanner', () => {
       expect(screen.getByText('Well done!')).toBeInTheDocument()
     })
 
+    it('falls back to Correct! when successMessage is undefined', () => {
+      render(<CheckFeedbackBanner passed={true} successMessage={undefined} />)
+      expect(screen.getByText('Correct!')).toBeInTheDocument()
+    })
+
     it('renders non-blocking nudge text on pass', () => {
       render(
         <CheckFeedbackBanner passed={true} suggestion="Nice work. Try a clearer variable name." />

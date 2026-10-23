@@ -8,6 +8,8 @@ import InformationTask from './InformationTask'
 import { SURFACE_KINDS, surfaceId } from '../liveInk/liveInkData'
 import LessonCompleteScreen from './LessonCompleteScreen'
 import { getModuleHostedActivityUi } from '../../activities/registry.js'
+import { getActivityDefinition } from '../../activities/registry.pure.js'
+import { getActivityId } from '../../activities/resolve.js'
 import ActivityHost from '../../activities/ActivityHost.jsx'
 import CheckFeedbackBanner from './CheckFeedbackBanner'
 import CarryHoldNotice from './CarryHoldNotice'
@@ -555,6 +557,11 @@ export default function LessonTaskContent({
       key={`${currentTaskId}-${displayCheckPassed}-${cs.checkFailCount}-${cs.offeredSupportStageIndex}`}
       passed={cs.offeredSupportStageIndex != null ? false : displayCheckPassed}
       failureMessage={isQuizLike ? 'Not quite right, try again.' : undefined}
+      successMessage={
+        isActivityTask && !isQuizTask
+          ? (getActivityDefinition(getActivityId(task))?.passMessage ?? undefined)
+          : undefined
+      }
       suggestion={displayCheckSuggestion}
       onShowCodeStage={
         targetedOfferStage
