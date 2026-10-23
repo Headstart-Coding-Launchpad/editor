@@ -871,29 +871,50 @@ export default function TeacherView({ lessonId }) {
     ? { files: workByKind[editorKind], entryFile: task?.entryFile ?? 'index.html' }
     : workByKind[editorKind]
 
-  const onChange = !isInSandbox
-    ? undefined
-    : editorOnFilesChannel
-      ? (name, content) =>
-          setWorkByKind((prev) => {
-            const next = prev[editorKind].map((f) => (f.name === name ? { ...f, content } : f))
-            sandboxDraftRef.current[editorKind] = cloneFiles(next)
-            return { ...prev, [editorKind]: next }
-          })
-      : (value) => {
-          setKindWork({ [editorKind]: value })
-          sandboxDraftRef.current[editorKind] = cloneSandboxWork(editorDefinition, value)
-        }
-
-  // While this dashboard is the Go Live publisher, keep the students' copy of the tutor's work
-  // current (debounced; the editor is read-only outside the sandbox, so this is not per-key).
+  // Dashboard Go Live is a demo: the editor is editable and edits go to workByKind only (never
+  // the sandbox draft or the lesson); the debounced effect below publishes them.
   const dashboardLiveActive =
     !!session?.teacherLive?.active &&
     session.teacherLive.source === 'teacher' &&
     session.teacherLive.publisher === 'dashboard'
+  const liveDemo = dashboardLiveActive && !isInSandbox
+
+  const onChange = liveDemo
+    ? editorOnFilesChannel
+      ? (name, content) =>
+          setWorkByKind((prev) => ({
+            ...prev,
+            [editorKind]: prev[editorKind].map((f) => (f.name === name ? { ...f, content } : f)),
+          }))
+      : (value) => setKindWork({ [editorKind]: value })
+    : !isInSandbox
+      ? undefined
+      : editorOnFilesChannel
+        ? (name, content) =>
+            setWorkByKind((prev) => {
+              const next = prev[editorKind].map((f) => (f.name === name ? { ...f, content } : f))
+              sandboxDraftRef.current[editorKind] = cloneFiles(next)
+              return { ...prev, [editorKind]: next }
+            })
+        : (value) => {
+            setKindWork({ [editorKind]: value })
+            sandboxDraftRef.current[editorKind] = cloneSandboxWork(editorDefinition, value)
+          }
+
+  // While this dashboard is the Go Live publisher, keep the students' copy of the tutor's work
+  // current (debounced; the editor is read-only outside the sandbox, so this is not per-key).
   const dashboardLiveLayout = session?.teacherLive?.layout
   const dashboardLiveTaskId = session?.currentTaskId ?? currentTaskId
   const dashboardLiveWork = JSON.stringify(workByKind[editorKind] ?? null)
+  // Stopping a live demo drops the demo edits: back to the displayed task's read-only starter.
+  const wasDashboardLiveRef = useRef(false)
+  useEffect(() => {
+    if (wasDashboardLiveRef.current && !dashboardLiveActive && !isInSandbox) {
+      loadCurrentTaskContent(previewTaskId ?? currentTaskId)
+    }
+    wasDashboardLiveRef.current = dashboardLiveActive
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dashboardLiveActive])
   const dashboardLivePayloadRef = useRef(null)
   dashboardLivePayloadRef.current = dashboardLiveActive
     ? () => dashboardLivePayloadFor(dashboardLiveTaskId, dashboardLiveLayout)
@@ -1165,6 +1186,7 @@ export default function TeacherView({ lessonId }) {
             teacherLiveReferenceVisibleToAll={session?.teacherLiveReferenceVisibleToAll}
             onToggleLiveReference={setTeacherLiveReferenceForClass}
             fillHeight={centreFillsHeight}
+            liveDemo={liveDemo}
             badgeWall={teacherBadgeWall}
             entranceKey={firstViewKey(lessonId, task?.id)}
           />

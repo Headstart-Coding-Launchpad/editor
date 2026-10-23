@@ -31,6 +31,8 @@ export default function TeacherEditorPanel({
   teacherLiveReferenceVisibleToAll,
   onToggleLiveReference,
   fillHeight = false,
+  // Dashboard Go Live: the tutor demos live, so the editor is editable and shows the live copy.
+  liveDemo = false,
   // The Badge Summary task's class wall (see InformationTask).
   badgeWall = null,
   // Names the task shown (`firstViewKey(lessonId, taskId)`) for its first-view entrances.
@@ -110,12 +112,13 @@ export default function TeacherEditorPanel({
     TEACHER_LIVE_REFERENCE_TYPES.includes(mod.type) &&
     !!teacherLiveReference?.active &&
     teacherLiveReference?.taskId === task?.id
-  const isLiveTab = !isInSandbox && teacherCodeTab === 'live'
+  const isLiveTab = !isInSandbox && !liveDemo && teacherCodeTab === 'live'
+  const shownTab = liveDemo ? 'starter' : teacherCodeTab
   const displayState = isLiveTab
     ? (teacherLiveReferenceDisplayState(teacherLiveReference, mod.type) ??
       mod.getDisplayState(task, activeTeacherStage, liveState, 'starter'))
-    : mod.getDisplayState(task, activeTeacherStage, liveState, teacherCodeTab)
-  const readOnly = !isInSandbox
+    : mod.getDisplayState(task, activeTeacherStage, liveState, shownTab)
+  const readOnly = !isInSandbox && !liveDemo
   const LiveView = mod.TeacherLiveView
   // Modules whose complete solution lives in the unified code stages answer false.
   const showCompleteTab = mod.lifecycle.teacherCompleteTab(task)
@@ -135,7 +138,7 @@ export default function TeacherEditorPanel({
 
   return (
     <div style={wrapStyle}>
-      {!isInSandbox && (
+      {!isInSandbox && !liveDemo && (
         <TeacherCodeTabs
           activeTab={teacherCodeTab}
           stages={taskCodeStages}
@@ -153,6 +156,11 @@ export default function TeacherEditorPanel({
           onToggleLiveReference={onToggleLiveReference}
         />
       )}
+      {liveDemo && (
+        <div style={styles.readOnlyNote} data-testid="teacher-panel-live-note">
+          🔴 Live: students see what you type. This doesn&apos;t change the lesson.
+        </div>
+      )}
       {readOnly && (
         // Explains the editor's pale red read-only border (HSC Audit, Visual Review 05).
         <div style={styles.readOnlyNote} data-testid="teacher-panel-readonly-note">
@@ -163,7 +171,7 @@ export default function TeacherEditorPanel({
         </div>
       )}
       <LiveView
-        key={`teacher-${displayTaskId}-${isInSandbox ? 'sandbox' : teacherCodeTab}`}
+        key={`teacher-${displayTaskId}-${isInSandbox ? 'sandbox' : liveDemo ? 'live-demo' : teacherCodeTab}`}
         task={task}
         lesson={lesson}
         displayState={displayState}
@@ -171,7 +179,7 @@ export default function TeacherEditorPanel({
         readOnly={readOnly}
         onChange={onChange}
         onActivity={onActivity}
-        isInSandbox={isInSandbox}
+        isInSandbox={isInSandbox || liveDemo}
         activeStage={activeTeacherStage}
       />
     </div>
