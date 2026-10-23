@@ -39,10 +39,12 @@ export default function RoundProgress({ done, total, core = total }) {
 
 // The finish card once every rep is done. Play again clears the reps on this device only (the
 // task stays passed), so it never un-passes or logs anything by itself.
-export function RoundFinished({ total, onPlayAgain, readOnly = false }) {
+// `message` replaces the default line for activities where finishing is not the same as being
+// right (they say what happened instead); the default suits the ones that mark correctness.
+export function RoundFinished({ total, onPlayAgain, readOnly = false, message }) {
   return (
     <div className="act-round-finished" role="status" data-testid="round-finished">
-      <p className="act-prompt">You did it! {total} done</p>
+      <p className="act-prompt">{message ?? `You did it! ${total} done`}</p>
       {!readOnly && onPlayAgain && (
         <button type="button" className="btn-primary act-btn" onClick={onPlayAgain}>
           Play again

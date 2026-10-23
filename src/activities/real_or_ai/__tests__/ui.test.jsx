@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { RealOrAiStudentView, READ_MOMENT_MS } from '../ui.jsx'
+import { RealOrAiStudentView } from '../ui.jsx'
 import definition from '../definition.js'
 import { renderActivityUi } from '../../../test/activityUiHarness.jsx'
 
@@ -102,7 +102,7 @@ describe('Real or AI UI', () => {
     )
   })
 
-  it('moves on with Next, and Play again keeps the right count', () => {
+  it('moves on with Next, and Play again starts the right count over', () => {
     const { state } = renderView()
     tap('b')
     click('Next →')
@@ -111,25 +111,32 @@ describe('Real or AI UI', () => {
     expect(state().right).toBe(1)
     click('Finish →')
     expect(screen.getByTestId('round-finished')).toBeInTheDocument()
-    expect(screen.getByText('You spotted 1 of 2 this time.')).toBeInTheDocument()
+    expect(screen.getByText('Round done! You spotted 1 of 2')).toBeInTheDocument()
+    expect(screen.queryByText(/You did it/)).not.toBeInTheDocument()
     expect(screen.getByText('⭐ 1 right')).toBeInTheDocument()
     click('Play again')
-    expect(state()).toEqual({ v: 1, right: 1, items: {} })
+    expect(state()).toEqual({ v: 1, right: 0, items: {} })
     expect(screen.getByText('Which picture was made by AI?')).toBeInTheDocument()
-    expect(screen.getByText('⭐ 1 right')).toBeInTheDocument()
+    expect(screen.getByText('⭐ 0 right')).toBeInTheDocument()
     tap('b')
-    expect(state().right).toBe(2)
+    expect(state().right).toBe(1)
   })
 
-  it('moves on by itself after the reading moment', () => {
+  it('says the round is done, not that the answers were right', () => {
+    expect(definition.passMessage).toBe('Round done!')
+  })
+
+  it('keeps the reveal up until Next is tapped, however long it takes', () => {
     vi.useFakeTimers()
     renderView()
     tap('b')
     expect(screen.getByTestId('real_or_ai-reveal')).toBeInTheDocument()
     act(() => {
-      vi.advanceTimersByTime(READ_MOMENT_MS + 50)
+      vi.advanceTimersByTime(10 * 60 * 1000)
     })
-    expect(screen.getByText('Which text was written by AI?')).toBeInTheDocument()
+    expect(screen.getByTestId('real_or_ai-reveal')).toBeInTheDocument()
+    expect(screen.getByText('Which picture was made by AI?')).toBeInTheDocument()
+    click('Next →')
     expect(screen.queryByTestId('real_or_ai-reveal')).not.toBeInTheDocument()
   })
 

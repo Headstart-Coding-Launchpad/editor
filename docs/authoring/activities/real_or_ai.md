@@ -14,7 +14,7 @@ the answer shows at once:
 - your optional extra `reveal` sentence.
 
 That is the whole pair: there is no second "which tell?" question and no Reveal button. A
-`⭐ 3 right` count at the top only ever goes up (no streaks to lose, and Play again keeps it).
+`⭐ 3 right` count at the top only ever goes up (no streaks to lose; Play again starts it over).
 
 Write `type: real_or_ai` on the task (the YAML shorthand for `taskType: activity` +
 `activityType: real_or_ai`, which also works). The task's `title` and `description` /
@@ -105,16 +105,18 @@ pictures the same size and shape, so the pair is not given away by the crop.
   or wrong, and locks the pair (so the answer can't be gamed by trying again); the teacher's
   **Stage → Start again** resets it.
 - **One round, no in-task navigation.** The student sees a progress strip (`3 of 5 done`). After a
-  tap the answer and note stay up for about five seconds so they can be read, then the round moves
-  to the next pair by itself; **Next →** (or **Finish →** on the last pair) moves on sooner. There
+  tap the answer and note stay up until the student taps **Next →** (or **Finish →** on the last
+  pair); nothing moves on by itself, so slow readers are never rushed. There
   are no Previous or numbered buttons; tutors can open any pair from a tutor-only picker. An
   activity task is one round: a single goal of 3-8 reps that moves on by itself, with no in-task
   navigation; if you want the class to look at one answer together, make it its own task.
 - The task is complete when the **core** pairs are done (all of them unless `coreItems` says
   fewer), right or wrong, because the point is learning the tells. Pairs after the core are
   **bonus**. When every pair is done there is a finish card with **Play again**, which clears the
-  pairs on that device and keeps the right count; the task stays passed.
-- The `⭐ N right` count only goes up. There are no streaks.
+  pairs and the `⭐` count on that device; the task stays passed. The finish card reads
+  `Round done! You spotted 2 of 3` (never "You did it!" at a low score), and the pass banner says
+  `Round done!` rather than `Correct!`.
+- The `⭐ N right` count only goes up within a round. There are no streaks, and replays start from 0.
 
 ## Teacher tools
 

@@ -223,6 +223,15 @@ describe('defineActivity', () => {
     expect(activity.report.typeFields()).toEqual({ taskType: 'activity', activityType: 'demo' })
   })
 
+  it('accepts an optional passMessage and defaults it to none', () => {
+    expect(defineActivity(minimal).passMessage).toBeNull()
+    expect(defineActivity({ ...minimal, passMessage: 'Round done!' }).passMessage).toBe(
+      'Round done!'
+    )
+    expect(() => defineActivity({ ...minimal, passMessage: '' })).toThrow(/passMessage/)
+    expect(() => defineActivity({ ...minimal, passMessage: 3 })).toThrow(/passMessage/)
+  })
+
   it('rejects malformed definitions', () => {
     expect(() => defineActivity({ ...minimal, id: 'Bad Id' })).toThrow(/lowercase identifier/)
     expect(() => defineActivity({ ...minimal, category: 'games' })).toThrow(/category/)

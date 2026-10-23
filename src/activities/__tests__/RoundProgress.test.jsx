@@ -48,6 +48,12 @@ describe('round moments', () => {
     expect(onPlayAgain).toHaveBeenCalledTimes(1)
   })
 
+  it('says a custom message instead of "You did it!" when given one', () => {
+    render(<RoundFinished total={3} message="Round done! You spotted 0 of 3" />)
+    expect(screen.getByText('Round done! You spotted 0 of 3')).toBeInTheDocument()
+    expect(screen.queryByText(/You did it/)).not.toBeInTheDocument()
+  })
+
   it('has no Play again for a read-only view', () => {
     render(<RoundFinished total={2} onPlayAgain={() => {}} readOnly />)
     expect(screen.queryByRole('button', { name: 'Play again' })).not.toBeInTheDocument()
@@ -73,10 +79,10 @@ describe('TutorItemPicker', () => {
 })
 
 // A tiny round: each button marks the shown item done.
-function Round({ readOnly = false }) {
+function Round({ readOnly = false, momentMs }) {
   const items = [{ id: 'a' }, { id: 'b' }, { id: 'c' }]
   const [done, setDone] = useState({})
-  const flow = useRoundFlow(items, (item) => !!done[item.id], { readOnly })
+  const flow = useRoundFlow(items, (item) => !!done[item.id], { readOnly, momentMs })
   return (
     <div>
       <p data-testid="shown">{flow.current ? flow.current.id : 'none'}</p>
@@ -115,6 +121,14 @@ describe('useRoundFlow (auto-advance)', () => {
     act(() => vi.advanceTimersByTime(100))
     expect(shown()).toBe('b')
     expect(screen.getByTestId('lingering')).toHaveTextContent('false')
+  })
+
+  it('with an infinite moment stays on the finished item until skipped', () => {
+    render(<Round momentMs={Infinity} />)
+    fireEvent.click(screen.getByText('finish'))
+    act(() => vi.advanceTimersByTime(60 * 1000))
+    expect(shown()).toBe('a')
+    expect(screen.getByTestId('lingering')).toHaveTextContent('true')
   })
 
   it('finishes after the last item, and Play again (clear) starts over without lingering', () => {

@@ -24,13 +24,9 @@ import {
 // write to Firebase or storage here: useActivityState owns persistence and live sync.
 //
 // One tap on a side picks "the AI one" and reveals at once (tick or cross plus a word, and a
-// one-line note on the tell). The round then moves to the next pair by itself after
-// READ_MOMENT_MS, or sooner when the student taps Next: the note needs reading time, so the
-// moment is much longer than the other activities' tick. Every pick is a discrete change, so the
+// one-line note on the tell). The reveal then stays until the student taps Next: the note needs
+// reading time, so there is no timer. Every pick is a discrete change, so the
 // tutor's card and student modal follow the picks live.
-
-// How long a revealed pair stays up before the round moves on without a tap.
-export const READ_MOMENT_MS = 5000
 
 function itemStateOf(state, item) {
   const saved = state?.items?.[item.id] ?? {}
@@ -99,7 +95,7 @@ export function RealOrAiStudentView({
   const items = task?.items ?? []
   const core = coreCountOf(task, items.length)
   const isDone = (item) => gradeItem(task, item, itemStateOf(state, item)).done
-  const flow = useRoundFlow(items, isDone, { readOnly: tutor, momentMs: READ_MOMENT_MS })
+  const flow = useRoundFlow(items, isDone, { readOnly: tutor, momentMs: Infinity })
   const [tutorPickId, setTutorPickId] = useState(null)
   const lastItem = items[items.length - 1]
   const current = tutor
@@ -126,8 +122,9 @@ export function RealOrAiStudentView({
 
   const right = rightCount(task, state)
 
-  // Every pair done (core and bonus): the finish card. Play again clears the pairs on this device
-  // (the right count stays); the task stays passed (a clear is never a submit).
+  // Every pair done (core and bonus): the finish card. Play again clears the pairs and the right
+  // count on this device, so replays never pad the score; the task stays passed (a clear is
+  // never a submit).
   if (!tutor && flow.finished) {
     const { correct, total } = gradeTask(task, state)
     return (
@@ -135,12 +132,10 @@ export function RealOrAiStudentView({
         <p className="act-rai__score" role="status">
           ⭐ {right} right
         </p>
-        <p className="act-prompt">
-          You spotted {correct} of {total} this time.
-        </p>
         <RoundFinished
           total={items.length}
-          onPlayAgain={() => onChange?.({ v: 1, right, items: {} })}
+          message={`Round done! You spotted ${correct} of ${total}`}
+          onPlayAgain={() => onChange?.({ v: 1, right: 0, items: {} })}
         />
       </div>
     )

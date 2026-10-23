@@ -121,7 +121,7 @@ export default defineActivity({
   }),
 
   // Per item: { pick: 'a' | 'b' | '', done: boolean }, plus `right`: right picks so far, which
-  // only goes up (kept by Play again). Small (about 30 bytes an item).
+  // only goes up within a round (Play again resets it). Small (about 30 bytes an item).
   initialState: (task) => ({
     v: 1,
     right: 0,
@@ -149,6 +149,8 @@ export default defineActivity({
   // Marked as you go: the task passes once the core pairs are done. Right and wrong picks both
   // count: the activity is about learning the tells, and the score is reported separately.
   completion: 'auto',
+  // Passing means the round is finished, not that the picks were right.
+  passMessage: 'Round done!',
 
   grade: (task, state) => {
     const results = (task.items ?? []).map((item) => ({
