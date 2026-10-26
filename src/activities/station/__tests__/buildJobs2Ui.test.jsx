@@ -1,5 +1,6 @@
 import { fireEvent, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { act } from 'react'
+import { describe, expect, it, vi } from 'vitest'
 import { StationStudentView } from '../ui.jsx'
 import station from '../definition.js'
 import { renderActivityUi } from '../../../test/activityUiHarness.jsx'
@@ -50,17 +51,58 @@ describe('Lesson 1 light pattern and a second start-up card', () => {
     expect(screen.getByTestId('card-step-a-left')).toHaveClass('is-next')
     expect(screen.getByTestId('card-step-b-right')).not.toHaveClass('is-next')
   })
-  it('plays through all three jobs', () => {
-    const { state } = renderStation(t)
-    for (const n of ['Left wing', 'Core', 'Right wing']) fireEvent.click(power(n))
-    expect(state().done.a).toBeTruthy()
-    expect(state().scene.power.left).toBe(false)
-    expect(screen.getByTestId('card-step-b-right')).toHaveClass('is-next')
-    for (const n of ['Right wing', 'Core', 'Left wing']) fireEvent.click(power(n))
-    expect(state().done.b).toBeTruthy()
-    for (const n of ['Left wing', 'Core', 'Right wing']) fireEvent.click(power(n))
-    fireEvent.click(power('Core'))
-    expect(state().done.p.method).toBe('click')
+  it('plays through all three jobs, holding each finished card before it switches off', () => {
+    vi.useFakeTimers()
+    try {
+      const { state } = renderStation(t)
+      const wait = () => act(() => void vi.advanceTimersByTime(2000))
+      for (const n of ['Left wing', 'Core', 'Right wing']) fireEvent.click(power(n))
+      expect(state().done.a).toBeTruthy()
+      // Held: still lit, a moment on the card, and the buttons wait.
+      expect(state().scene.power.left).toBe(true)
+      expect(power('Left wing')).toBeDisabled()
+      wait()
+      expect(state().scene.power.left).toBe(false)
+      expect(screen.getByTestId('card-step-b-right')).toHaveClass('is-next')
+      for (const n of ['Right wing', 'Core', 'Left wing']) fireEvent.click(power(n))
+      expect(state().done.b).toBeTruthy()
+      wait()
+      for (const n of ['Left wing', 'Core', 'Right wing']) fireEvent.click(power(n))
+      fireEvent.click(power('Core'))
+      expect(state().done.p.method).toBe('click')
+      expect(state().hold).toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
+describe('Lesson 1 make your own signal', () => {
+  const t = task(1, [
+    { id: 'p', goal: 'light_pattern', pattern: { left: 'on', core: 'off', right: 'on' } },
+    { id: 'f', goal: 'light_pattern', pattern: 'free' },
+  ])
+  it('sends only with a light on, then shows what was sent', () => {
+    vi.useFakeTimers()
+    try {
+      const { state } = renderStation(t)
+      fireEvent.click(power('Left wing'))
+      fireEvent.click(power('Right wing'))
+      expect(screen.getByTestId('sent-p')).toHaveTextContent('Signal sent')
+      expect(screen.getByTestId('send-f')).toBeDisabled()
+      act(() => void vi.advanceTimersByTime(2000))
+      expect(screen.getByText('Make your own signal')).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId('send-f'))
+      expect(state().done.f).toBeUndefined()
+      expect(screen.getByTestId('station-hint')).toHaveTextContent('at least one light')
+      fireEvent.click(power('Core'))
+      fireEvent.click(power('Right wing'))
+      fireEvent.click(screen.getByTestId('send-f'))
+      expect(state().done.f.pattern).toEqual({ left: false, core: true, right: true })
+      expect(screen.getByTestId('signal-f')).toHaveTextContent('Signal sent: core + right')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

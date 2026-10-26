@@ -7588,6 +7588,49 @@ label.te-backdrop-tag,
   align-items: flex-end;
 }
 
+.act-station-send {
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 2px solid var(--ui-border);
+  background: var(--ui-surface);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.act-station-send:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.act-station-card.is-sent {
+  border-style: solid;
+  border-color: var(--colour-success, #15803d);
+}
+
+.act-station-card__sent {
+  font-weight: 800;
+  color: var(--colour-success, #15803d);
+}
+
+@keyframes act-station-sent-pop {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .act-station-card__sent {
+    animation: act-station-sent-pop 0.25s ease-out;
+  }
+}
+
 .act-station-card__step {
   position: relative;
   display: inline-flex;

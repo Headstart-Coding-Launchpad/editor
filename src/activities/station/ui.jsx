@@ -28,6 +28,9 @@ import {
   methodWords,
   mistakesOf,
   patternOn,
+  isFreePattern,
+  signalWords,
+  HOLD_MS,
   nextInOrder,
   partById,
   promptFor,
@@ -211,7 +214,7 @@ const titleCase = (word) => (word ? word[0].toUpperCase() + word.slice(1) : '')
 // The target card beside a goal line, big enough to read from across the room: the order to follow,
 // the colour to match, the stickers on the delivery note, the part in the picture, or how many.
 // Null for a goal with nothing to show.
-function GoalCard({ item, task, state, blink }) {
+function GoalCard({ item, task, state, blink, onSend }) {
   const scene = state.scene
   const order = Array.isArray(item.order) && item.order.length ? item.order : null
   const progress = countProgress(task, item, state)
@@ -219,7 +222,34 @@ function GoalCard({ item, task, state, blink }) {
   let body = null
   let label = ''
   const active = isActive(task, state.done, item)
-  if (item.goal === 'light_pattern' && item.pattern) {
+  const mark = state.done?.[item.id]
+  if (isFreePattern(item)) {
+    label = 'Make your own signal'
+    body = (
+      <span className="act-station-card__step" data-testid={`card-free-${item.id}`}>
+        {mark ? (
+          <span className="act-station-card__name" data-testid={`signal-${item.id}`}>
+            Signal sent: {signalWords(mark.pattern)}
+          </span>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="act-station-send"
+              data-testid={`send-${item.id}`}
+              disabled={!onSend || !active}
+              onClick={onSend}
+            >
+              Send signal
+            </button>
+            <span className="act-station-card__name">
+              {active ? 'Switch lights on or off, then send' : 'Waits for the cards before it'}
+            </span>
+          </>
+        )}
+      </span>
+    )
+  } else if (item.goal === 'light_pattern' && item.pattern) {
     label = 'Make the lights look like this'
     body = SECTIONS.map((sec) => {
       const want = patternOn(item.pattern[sec.id])
@@ -355,9 +385,11 @@ function GoalCard({ item, task, state, blink }) {
     )
   }
   if (!body) return null
+  // The goal just finished while the next card waits: a short "sent" moment before switching off.
+  const sent = state.hold?.goalId === item.id
   return (
     <div
-      className="act-station-card"
+      className={`act-station-card${sent ? ' is-sent' : ''}`}
       data-testid={`card-${item.id}`}
       data-blink={blink}
       role="group"
@@ -365,6 +397,11 @@ function GoalCard({ item, task, state, blink }) {
     >
       <span className="act-station-card__label">{label}</span>
       <span className="act-station-card__row">{body}</span>
+      {sent && (
+        <span className="act-station-card__sent" role="status" data-testid={`sent-${item.id}`}>
+          {item.goal === 'light_pattern' ? 'Signal sent ✓' : 'Done ✓'}
+        </span>
+      )}
     </div>
   )
 }
@@ -375,6 +412,9 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
   const result = gradeStationTask(task, live)
   const items = Array.isArray(task?.items) ? task.items : []
   const interactive = !readOnly && !!onChange
+  // A finished power goal stays lit for a moment before the station switches off for the next card.
+  const holdAt = live.hold?.at ?? null
+  const holding = !!live.hold
   const showMethods = readOnly || teacher
   const worldId = worldIdOf(task)
   const isStation = worldId === 'station'
@@ -435,6 +475,21 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
     wasDone.current = result.done
   }, [scene, result.done])
 
+  // End the hold after HOLD_MS; a hold found on first load (a reload) ends at once.
+  const firstRun = useRef(true)
+  useEffect(() => {
+    const first = firstRun.current
+    firstRun.current = false
+    if (!interactive || holdAt == null) return undefined
+    const wait = first ? 0 : Math.max(0, HOLD_MS - (Date.now() - holdAt))
+    const timer = setTimeout(
+      () => onChange((prev) => stationAction(prev, { type: 'release' }, task)),
+      wait
+    )
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [holdAt, interactive])
+
   useEffect(() => {
     if (!blink) return undefined
     const timer = setTimeout(() => setBlink(null), BLINK_MS)
@@ -488,7 +543,11 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
     if (action.type !== 'select' || action.id) {
       if (doneCount(next) > doneCount(cur)) setHint(null)
       else {
-        const item = items.find((it) => !next.done?.[it.id] && GOAL_ACTION[it.goal] === action.type)
+        const item = items.find(
+          (it) =>
+            !next.done?.[it.id] &&
+            (GOAL_ACTION[it.goal] === action.type || (action.type === 'send' && isFreePattern(it)))
+        )
         setHint(item ? gradeStationItem(task, item, next).hint : null)
       }
     }
@@ -801,7 +860,7 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                         className="act-station-power"
                         aria-pressed={lit}
                         aria-label={`${s.label} power`}
-                        disabled={!interactive}
+                        disabled={!interactive || holding}
                         onClick={() => {
                           const method = pressMethod()
                           if (!lit) act({ type: 'power', section: s.id, method })
@@ -1085,7 +1144,17 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
                   )}
                   <span className="act-station-sr">{r?.correct ? ' (done)' : ' (to do)'}</span>
                 </span>
-                <GoalCard item={item} task={task} state={live} blink={blinkOf(`card-${item.id}`)} />
+                <GoalCard
+                  item={item}
+                  task={task}
+                  state={live}
+                  blink={blinkOf(`card-${item.id}`)}
+                  onSend={
+                    interactive && !holding
+                      ? () => act({ type: 'send', method: pressMethod() })
+                      : undefined
+                  }
+                />
               </li>
             )
           })}

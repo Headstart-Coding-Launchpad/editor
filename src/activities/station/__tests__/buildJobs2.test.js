@@ -7,6 +7,9 @@ import {
   gradeStationTask,
   initialStationState,
   isActive,
+  isFreePattern,
+  sentSignals,
+  HOLD_MS,
   mistakesOf,
   stationAction,
   validateStationTask,
@@ -28,6 +31,7 @@ const run = (t, actions, state = initialStationState(t)) =>
   actions.reduce((s, a) => stationAction(s, { at: 1, method: 'click', ...a }, t), state)
 const on = (section) => ({ type: 'power', section })
 const off = (section) => ({ type: 'power', section, on: false })
+const release = { type: 'release' }
 
 describe('Lesson 1: power buttons switch off again', () => {
   const t = task(1, [{ id: 'all', goal: 'power_on' }])
@@ -64,6 +68,11 @@ describe('Lesson 1: two power order goals', () => {
     let s = run(t, [on('left'), on('core'), on('right')])
     expect(s.done.a).toBeTruthy()
     expect(s.done.b).toBeUndefined()
+    // The finished card stays lit (held) until the release, then every section switches off.
+    expect(s.hold).toEqual({ goalId: 'a', at: 1 })
+    expect(s.scene.power).toEqual({ left: true, core: true, right: true })
+    s = run(t, [release], s)
+    expect(s.hold).toBeUndefined()
     expect(s.scene.power).toEqual({ left: false, core: false, right: false })
     expect(blockedBy(t, s, on('left'))).toBe(t.items[1])
     s = run(t, [on('right'), on('core'), on('left')], s)
@@ -97,13 +106,46 @@ describe('Lesson 1: light_pattern', () => {
     { id: 'p', goal: 'light_pattern', pattern },
   ])
   it('is done when the power buttons match the card, starting from a dark station', () => {
-    let s = run(t, [on('left'), on('core'), on('right')])
+    let s = run(t, [on('left'), on('core'), on('right'), release])
     expect(s.done.o).toBeTruthy()
     expect(s.scene.power).toEqual({ left: false, core: false, right: false })
     s = run(t, [on('left'), on('core')], s)
     expect(s.done.p).toBeUndefined()
     s = run(t, [off('core'), on('right')], s)
     expect(s.done.p.method).toBe('click')
+  })
+  it('holds the matched pattern lit before it switches off, ignoring power presses meanwhile', () => {
+    const two = task(1, [
+      { id: 'p1', goal: 'light_pattern', pattern },
+      { id: 'p2', goal: 'light_pattern', pattern: { left: 'off', core: 'on', right: 'off' } },
+    ])
+    let s = run(two, [on('left'), on('right')])
+    expect(s.done.p1).toBeTruthy()
+    expect(s.hold.goalId).toBe('p1')
+    expect(HOLD_MS).toBeGreaterThan(0)
+    expect(s.scene.power).toEqual({ left: true, core: false, right: true })
+    // A press in the hold changes nothing and does not count toward the next card.
+    expect(run(two, [off('left'), on('core')], s)).toBe(s)
+    expect(blockedBy(two, s, on('core'))).toBeNull()
+    s = run(two, [release], s)
+    expect(s.scene.power).toEqual({ left: false, core: false, right: false })
+    expect(s.done.p2).toBeUndefined()
+    // Releasing with no hold (a second release) changes nothing.
+    expect(run(two, [release], s)).toBe(s)
+    s = run(two, [on('core')], s)
+    expect(s.done.p2).toBeTruthy()
+    // The last goal stays lit and holds nothing.
+    expect(s.hold).toBeUndefined()
+    expect(s.scene.power).toEqual({ left: false, core: true, right: false })
+  })
+  it('survives a JSON round trip mid-hold (a reload applies the release)', () => {
+    const two = task(1, [
+      { id: 'p1', goal: 'light_pattern', pattern },
+      { id: 'p2', goal: 'light_pattern', pattern },
+    ])
+    const s = JSON.parse(JSON.stringify(run(two, [on('left'), on('right')])))
+    expect(s.hold).toBeTruthy()
+    expect(run(two, [release], s).scene.power).toEqual({ left: false, core: false, right: false })
   })
   it('does not count before the goals ahead of it are done', () => {
     expect(run(t, [on('left'), on('right')]).done.p).toBeUndefined()
@@ -118,7 +160,7 @@ describe('Lesson 1: light_pattern', () => {
     const bad = (items) => validateStationTask(task(1, items), 1)
     expect(bad([{ id: 'p', goal: 'light_pattern', pattern }])).toEqual([])
     expect(bad([{ id: 'p', goal: 'light_pattern' }])).toContain(
-      'Task 1 item 1: light_pattern needs a pattern, like { left: on, core: off, right: on }.'
+      'Task 1 item 1: light_pattern needs a pattern, like { left: on, core: off, right: on }, or pattern: free.'
     )
     expect(
       bad([{ id: 'p', goal: 'light_pattern', pattern: { left: 'on', core: 'off' } }])
@@ -147,6 +189,60 @@ describe('Lesson 1: light_pattern', () => {
       1
     )
     expect(errors).toContain('Task 1 item 2: match "red" is already used by an earlier hull goal.')
+  })
+})
+
+describe('Lesson 1: light_pattern free (make your own signal)', () => {
+  const send = { type: 'send' }
+  const t = task(1, [
+    { id: 'p', goal: 'light_pattern', pattern: { left: 'on', core: 'off', right: 'on' } },
+    { id: 'f', goal: 'light_pattern', pattern: 'free' },
+  ])
+  it('is done only by Send signal with at least one light on', () => {
+    expect(isFreePattern(t.items[1])).toBe(true)
+    let s = run(t, [on('left'), on('right'), release])
+    s = run(t, [on('core')], s)
+    expect(s.done.f).toBeUndefined()
+    s = run(t, [off('core'), off('left'), off('right'), send], s)
+    expect(s.done.f).toBeUndefined()
+    s = run(t, [on('left'), on('right'), send], s)
+    expect(s.done.f.method).toBe('click')
+    expect(s.done.f.pattern).toEqual({ left: true, core: false, right: true })
+    expect(sentSignals(t, s)).toEqual(['left + right'])
+    // The last goal stays lit.
+    expect(s.hold).toBeUndefined()
+    expect(s.scene.power.left).toBe(true)
+  })
+  it('waits for the cards ahead, and Send does nothing for a fixed pattern', () => {
+    expect(run(t, [on('left'), send]).done.f).toBeUndefined()
+    const fixed = task(1, [
+      { id: 'p', goal: 'light_pattern', pattern: { left: 'on', core: 'off', right: 'on' } },
+    ])
+    expect(run(fixed, [on('left'), send]).done.p).toBeUndefined()
+    expect(run(fixed, [on('left'), on('right')]).done.p).toBeTruthy()
+  })
+  it('holds a sent signal before the next card', () => {
+    const two = task(1, [
+      { id: 'f', goal: 'light_pattern', pattern: 'free' },
+      { id: 'p', goal: 'light_pattern', pattern: { left: 'on', core: 'on', right: 'on' } },
+    ])
+    const s = run(two, [on('core'), send])
+    expect(s.hold.goalId).toBe('f')
+    expect(s.done.f.pattern).toEqual({ left: false, core: true, right: false })
+    expect(run(two, [release], s).scene.power.core).toBe(false)
+  })
+  it('validates pattern: free', () => {
+    const bad = (items) => validateStationTask(task(1, items), 1)
+    expect(bad([{ id: 'f', goal: 'light_pattern', pattern: 'free' }])).toEqual([])
+    expect(bad([{ id: 'f', goal: 'light_pattern', pattern: 'sometimes' }])).toContain(
+      'Task 1 item 1: light_pattern needs a pattern, like { left: on, core: off, right: on }, or pattern: free.'
+    )
+    expect(bad([{ id: 'f', goal: 'power_on', pattern: 'free' }])).toContain(
+      'Task 1 item 1: pattern only applies to light_pattern goals.'
+    )
+    expect(bad([{ id: 'f', goal: 'light_pattern', pattern: 'free', count: 2 }])).toContain(
+      "Task 1 item 1: light_pattern can't be used with order, match, card or count."
+    )
   })
 })
 

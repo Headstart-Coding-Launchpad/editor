@@ -702,6 +702,7 @@ export function nextInOrder(item, scene) {
 export function blockedBy(task, state, action) {
   const scene = state?.scene
   if (!scene || !action) return null
+  if (state.hold && action.type === 'power') return null
   const done = state.done ?? {}
   for (const item of goalItems(task)) {
     if (!GOALS[item.goal]) continue
@@ -749,6 +750,14 @@ function completes(item, action, state, task) {
       if (target) return action.section === target || action.section === 'all' ? mark : null
       return SECTIONS.every((s) => scene.power[s.id]) ? mark : null
     case 'light_pattern':
+      if (isFreePattern(item)) {
+        // Only the Send signal button finishes it, with at least one light on.
+        if (action.type !== 'send' || !SECTIONS.some((s) => scene.power[s.id])) return null
+        return {
+          ...mark,
+          pattern: Object.fromEntries(SECTIONS.map((s) => [s.id, !!scene.power[s.id]])),
+        }
+      }
       if (action.type !== 'power' || !item.pattern) return null
       return SECTIONS.every((s) => !!scene.power[s.id] === patternOn(item.pattern[s.id]))
         ? mark
@@ -805,6 +814,21 @@ function completes(item, action, state, task) {
 export const patternOn = (value) => value === true || value === 'on'
 export const patternIsValid = (value) =>
   value === true || value === false || value === 'on' || value === 'off'
+// A light_pattern card with `pattern: free`: the child makes their own signal and presses Send.
+export const isFreePattern = (item) => item?.goal === 'light_pattern' && item.pattern === 'free'
+// How long a finished power goal stays lit before the station switches off for the next card.
+export const HOLD_MS = 1500
+// "left + right": the sections a sent signal had on (the done mark's `pattern`).
+export function signalWords(pattern) {
+  const on = SECTIONS.filter((s) => pattern?.[s.id]).map((s) => s.id)
+  return on.length ? on.join(' + ') : 'no lights'
+}
+// What each free-pattern goal was sent as: ['left + right', ...], in card order, for the tutor.
+export function sentSignals(task, state) {
+  return goalItems(task)
+    .filter((item) => isFreePattern(item) && state?.done?.[item.id]?.pattern)
+    .map((item) => signalWords(state.done[item.id].pattern))
+}
 
 function markGoals(state, task, action) {
   let done = state.done
@@ -817,8 +841,9 @@ function markGoals(state, task, action) {
     const mark = completes(item, action, state, task)
     if (!mark) continue
     done = { ...done, [item.id]: mark }
-    // A power goal finished with another power goal still to come: the station switches off so
-    // the next one can be done from the start.
+    // A power goal finished with another power goal still to come: the finished pattern stays lit
+    // for a moment (`hold`), then a `release` action switches the station off so the next one can
+    // be done from the start.
     if (seriesOf(item) === 'power') {
       const later = items.slice(items.indexOf(item) + 1)
       if (later.some((o) => seriesOf(o) === 'power' && !own(done, o.id))) reset = true
@@ -826,8 +851,15 @@ function markGoals(state, task, action) {
   }
   if (done === state.done) return state
   if (!reset) return { ...state, done }
+  const goalId = Object.keys(done).find((id) => !own(state.done, id))
+  return { ...state, done, hold: { goalId, at: action.at ?? Date.now() } }
+}
+
+// Switch every section off and end the hold. Not an undo step.
+function releaseHold(state) {
   const power = Object.fromEntries(SECTIONS.map((s) => [s.id, false]))
-  return { ...state, done, scene: { ...state.scene, power } }
+  const { hold: _hold, ...rest } = state
+  return { ...rest, scene: { ...state.scene, power } }
 }
 
 function pushUndo(state, scene) {
@@ -848,9 +880,17 @@ export function stationAction(state, action, task) {
       ? { ...state, undo: state.undo ?? [], done: state.done ?? {} }
       : initialStationState(task)
   const scene = base.scene
+  // The end of a hold (the UI sends it after HOLD_MS, or at once on a reload): switch off.
+  if (action?.type === 'release') return base.hold ? releaseHold(base) : (state ?? base)
+  // While a finished pattern is held, power presses are ignored (not counted toward the next card).
+  if (base.hold && action?.type === 'power') return state ?? base
   if (blockedBy(task, base, action)) return state ?? base
   let next
   switch (action?.type) {
+    case 'send':
+      // The Send signal button of a free light pattern: only goals can react to it.
+      next = base
+      break
     case 'power': {
       const ids = action.section === 'all' ? SECTIONS.map((s) => s.id) : [action.section]
       if (!ids.every((id) => SECTIONS.some((s) => s.id === id))) return state ?? base
@@ -1158,8 +1198,12 @@ function validateGoalFields(item, label, task, lesson, lessonOk, errors) {
     const pattern = item.pattern
     if (item.goal !== 'light_pattern') {
       add('pattern only applies to light_pattern goals.')
+    } else if (pattern === 'free') {
+      // The child makes their own signal: nothing to match.
     } else if (!pattern || typeof pattern !== 'object' || Array.isArray(pattern)) {
-      add('light_pattern needs a pattern, like { left: on, core: off, right: on }.')
+      add(
+        'light_pattern needs a pattern, like { left: on, core: off, right: on }, or pattern: free.'
+      )
     } else {
       for (const s of SECTIONS) {
         if (!patternIsValid(pattern[s.id])) {
@@ -1371,6 +1415,7 @@ export function promptFor(item, lesson, worldId = 'station') {
         : 'Drag each animal into the enclosure where it lives.'
     }
     case 'light_pattern':
+      if (isFreePattern(item)) return 'Make your own signal with the lights, then send it.'
       return 'Make the lights on your station look like the pattern on the card.'
     case 'undo_mistakes':
       return 'The clumsy robot dropped some parts in the wrong place. Put them back with Ctrl+Z.'
@@ -1426,6 +1471,11 @@ function hintFor(item, state, lesson, task) {
     case 'sort':
       return 'Drag an animal toward its enclosure. The right home glows while you drag.'
     case 'light_pattern':
+      if (isFreePattern(item)) {
+        return SECTIONS.some((s) => scene.power?.[s.id])
+          ? 'Happy with your signal? Press Send signal.'
+          : 'Switch at least one light on to make a signal, then press Send signal.'
+      }
       return 'Look at the pattern card. Click a power button to switch it on, click it again to switch it off.'
     case 'undo_mistakes':
       return "Press Ctrl+Z (Cmd+Z on a Mac) to put the robot's drops back."

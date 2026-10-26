@@ -4,6 +4,7 @@ import {
   SCENE_ASPECT,
   WORLDS,
   placeSpotsOf,
+  sentSignals,
   spotById,
   stationProgress,
   worldIdOf,
@@ -112,6 +113,12 @@ export default function StationCardSummary({ task, raw, state }) {
       <MiniStationPicture scene={s.scene} world={worldIdOf(task)} />
       <span className="act-station-mini__text">
         {Math.min(done, core)}/{core} goals
+        {sentSignals(task, s).length > 0 && (
+          <span data-testid="station-signals">
+            {' '}
+            · Sent signal: {sentSignals(task, s).join('; ')}
+          </span>
+        )}
         {s.wrongDrops > 0 && (
           <span data-testid="station-wrong-drops">
             {' '}

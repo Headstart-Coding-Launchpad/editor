@@ -18,6 +18,7 @@ import {
   solvedDone,
   stationProgress,
   validateStationTask,
+  signalWords,
   worldIdOf,
   lessonOf,
 } from './station.js'
@@ -123,7 +124,7 @@ export default defineActivity({
             name: 'pattern',
             type: 'object',
             description:
-              'light_pattern: which power sections must be on, like { left: on, core: off, right: on }. Done when the power buttons match the card.',
+              'light_pattern: which power sections must be on, like { left: on, core: off, right: on }. Done when the power buttons match the card. Or "free": the child makes their own signal and presses Send signal (at least one light on).',
           },
         ],
       },
@@ -271,6 +272,14 @@ export default defineActivity({
           goals[id].done += 1
           const method = record?.method ?? 'unknown'
           goals[id].methods[method] = (goals[id].methods[method] ?? 0) + 1
+          // A free light pattern: what each child sent, like "left + right".
+          if (record?.pattern) {
+            const sent = signalWords(record.pattern)
+            goals[id].signals = {
+              ...goals[id].signals,
+              [sent]: (goals[id].signals?.[sent] ?? 0) + 1,
+            }
+          }
         }
       }
       return { goals }
