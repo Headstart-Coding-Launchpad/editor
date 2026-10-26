@@ -1,0 +1,249 @@
+{
+  "size": 64,
+  "format": "raw RGB, row by row, 3 bytes a pixel",
+  "images": [
+    {
+      "name": "fox",
+      "words": "a red fox, face on",
+      "kind": "animal",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Red_fox_face_mammal_vulpes_vulpes.jpg",
+      "author": "U.S. Fish and Wildlife Service",
+      "licence": "Public domain"
+    },
+    {
+      "name": "tiger",
+      "words": "a tiger",
+      "kind": "animal",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Orange_bengal_tiger_at_Cougar_Mountain_Zoological_Park_headshot_2.jpg",
+      "author": "Dcoetzee",
+      "licence": "CC0"
+    },
+    {
+      "name": "parrot",
+      "words": "a scarlet macaw parrot",
+      "kind": "animal",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Parrot.red.macaw.1.arp.750pix.jpg",
+      "author": "Adrian Pingstone",
+      "licence": "Public domain"
+    },
+    {
+      "name": "frog",
+      "words": "a red-eyed tree frog on a leaf",
+      "kind": "animal",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Red_eyed_tree_frog_edit2.jpg",
+      "author": "Careyjamesbalboa (Carey James Balboa)",
+      "licence": "Public domain"
+    },
+    {
+      "name": "jellyfish",
+      "words": "a jellyfish in dark water",
+      "kind": "animal",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Jellyfish_from_Corpus_Christi.jpg",
+      "author": "Miguel Angel Omaña Rojas",
+      "licence": "CC0"
+    },
+    {
+      "name": "earth",
+      "words": "the Earth from space",
+      "kind": "space",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:The_Blue_Marble,_AS17-148-22727.jpg",
+      "author": "Harrison Schmitt / Apollo 17",
+      "licence": "Public domain"
+    },
+    {
+      "name": "moon",
+      "words": "the full Moon",
+      "kind": "space",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Full_moon.jpeg",
+      "author": "NASA/JPL/USGS",
+      "licence": "Public domain"
+    },
+    {
+      "name": "saturn",
+      "words": "Saturn and its rings",
+      "kind": "space",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Saturn_global_view_from_Cassini,_rings_open_Better_Colour.png",
+      "author": "NASA / JPL-Caltech / SSI / color composite by Gordan Ugarkovic",
+      "licence": "Public domain"
+    },
+    {
+      "name": "mars",
+      "words": "the planet Mars",
+      "kind": "space",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Mars_Hubble.jpg",
+      "author": "NASA and The Hubble Heritage Team (STScI/AURA)",
+      "licence": "Public domain"
+    },
+    {
+      "name": "rocket",
+      "words": "a Space Shuttle launching",
+      "kind": "vehicle",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Space_Shuttle_Columbia_launching.jpg",
+      "author": "NASA",
+      "licence": "Public domain"
+    },
+    {
+      "name": "car",
+      "words": "a red sports car",
+      "kind": "vehicle",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Red_sports_coupe_car.jpg",
+      "author": "Leon Brooks",
+      "licence": "Public domain"
+    },
+    {
+      "name": "eiffel_tower",
+      "words": "the Eiffel Tower",
+      "kind": "place",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Tour_Eiffel_Wikimedia_Commons.jpg",
+      "author": "Benh LIEU SONG",
+      "licence": "Public domain"
+    },
+    {
+      "name": "pyramids",
+      "words": "the pyramids of Giza",
+      "kind": "place",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Pyramids_in_Giza_-_Egypt.jpg",
+      "author": "Walkerssk",
+      "licence": "CC0"
+    },
+    {
+      "name": "pizza",
+      "words": "a pizza",
+      "kind": "food",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Pizza_14.jpg",
+      "author": "Kurt Kaiser",
+      "licence": "CC0"
+    },
+    {
+      "name": "strawberries",
+      "words": "two strawberries",
+      "kind": "food",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Strawberries_(Image_Number_D1194-1)_by_Kimberly_Lewers.jpg",
+      "author": "Kimberly Lewers",
+      "licence": "Public domain"
+    },
+    {
+      "name": "donut",
+      "words": "a chocolate donut with sprinkles",
+      "kind": "food",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Dunkin-Donuts-Chocolate-Sprinkled.jpg",
+      "author": "Evan-Amos",
+      "licence": "Public domain"
+    },
+    {
+      "name": "moon_surface",
+      "words": "the Moon's surface (a backdrop)",
+      "kind": "backdrop",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Apollo_17_Harrison_H._Schmitt_and_Tracy%27s_Rock_-_AS17-140-21493%2BAS17-140-21497_2025.jpg",
+      "author": "Eugene A. Cernan (NASA), photomontage by User:Grunpfnul; cropped to the right-hand side, no astronaut",
+      "licence": "Public domain"
+    },
+    {
+      "name": "mars_surface",
+      "words": "Mars's surface (a backdrop)",
+      "kind": "backdrop",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:NASA%E2%80%99s_Curiosity_Views_a_Sand-Capped_Butte_(PIA26730).png",
+      "author": "NASA/JPL-Caltech/MSSS",
+      "licence": "Public domain"
+    },
+    {
+      "name": "nebula",
+      "words": "a glowing nebula in space (a backdrop)",
+      "kind": "backdrop",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:A_New_View_of_the_Tarantula_Nebula.jpg",
+      "author": "NASA",
+      "licence": "Public domain"
+    },
+    {
+      "name": "beach",
+      "words": "a sandy beach and sky (a backdrop)",
+      "kind": "backdrop",
+      "crisp": false,
+      "source": "https://commons.wikimedia.org/wiki/File:Another_Day_At_The_Beach_(250445667).jpeg",
+      "author": "Willem V",
+      "licence": "CC0"
+    },
+    {
+      "name": "astronaut_green",
+      "words": "an astronaut on a flat green screen (#00ff00)",
+      "kind": "green screen",
+      "crisp": true,
+      "source": "Drawn for Headstart Coding (Image Lab build script)",
+      "author": "Headstart Coding",
+      "licence": "CC0"
+    },
+    {
+      "name": "pixel_fox",
+      "words": "a pixel-art fox face",
+      "kind": "pixel art",
+      "crisp": true,
+      "source": "Drawn for Headstart Coding (Image Lab build script)",
+      "author": "Headstart Coding",
+      "licence": "CC0"
+    },
+    {
+      "name": "alien",
+      "words": "a pixel-art green alien",
+      "kind": "pixel art",
+      "crisp": true,
+      "source": "Drawn for Headstart Coding (Image Lab build script)",
+      "author": "Headstart Coding",
+      "licence": "CC0"
+    },
+    {
+      "name": "spaceship",
+      "words": "a pixel-art spaceship",
+      "kind": "pixel art",
+      "crisp": true,
+      "source": "Drawn for Headstart Coding (Image Lab build script)",
+      "author": "Headstart Coding",
+      "licence": "CC0"
+    },
+    {
+      "name": "potion",
+      "words": "a pixel-art potion bottle",
+      "kind": "pixel art",
+      "crisp": true,
+      "source": "Drawn for Headstart Coding (Image Lab build script)",
+      "author": "Headstart Coding",
+      "licence": "CC0"
+    },
+    {
+      "name": "gem",
+      "words": "a pixel-art blue gem",
+      "kind": "pixel art",
+      "crisp": true,
+      "source": "Drawn for Headstart Coding (Image Lab build script)",
+      "author": "Headstart Coding",
+      "licence": "CC0"
+    },
+    {
+      "name": "sword",
+      "words": "a pixel-art sword",
+      "kind": "pixel art",
+      "crisp": true,
+      "source": "Drawn for Headstart Coding (Image Lab build script)",
+      "author": "Headstart Coding",
+      "licence": "CC0"
+    }
+  ]
+}

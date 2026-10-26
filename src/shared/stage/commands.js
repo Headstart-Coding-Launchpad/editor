@@ -472,8 +472,11 @@ function gridCell(fn, value, where, palette, colours, colourIndex) {
 function flatRows(fn, values, width, label) {
   const name = label ?? 'the list'
   if (width === undefined || width === null) {
+    // A square picture (load_image(), snapshot(): 32 × 32 is 1,024 items) suggests its own side.
+    const side = Math.sqrt(values.length)
+    const suggested = Number.isInteger(side) && side > 1 ? side : 8
     throw typeError(
-      `${fn}(): ${label ? `${label} is` : 'the values are'} one long list. Say how many squares fit in a row, like grid(${label ?? 'pixels'}, width=8)`
+      `${fn}(): ${label ? `${label} is` : 'the values are'} one long list. Say how many squares fit in a row, like grid(${label ?? 'pixels'}, width=${suggested})`
     )
   }
   if (typeof width !== 'number' || !Number.isFinite(width)) {

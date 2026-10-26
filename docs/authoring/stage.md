@@ -69,6 +69,10 @@ rest are added as students grow. Every value can also be given by name (`colour=
 | `background` | `background("skyblue")` | | fills the whole stage |
 | `clear` | `clear()` | | wipes the stage back to white |
 | `hue` | `hue(120)` | `hue(i * 9, light=70)` | draws nothing: gives back a colour round the colour wheel |
+| `rgb` | `rgb(255, 136, 0)` | `rgb(255 - red(c), 255 - green(c), 255 - blue(c))` | draws nothing: gives back a colour from red, green and blue (see 10) |
+| `red`, `green`, `blue` | `red("orange")` | `if green(c) > 200 and red(c) < 100:` | draws nothing: how much of that colour is in `c`, 0 to 255 (see 10) |
+| `load_image` | `load_image("fox")` | `load_image("fox", size=64)` | draws nothing: gives back a picture from the image library as a list (see 10) |
+| `snapshot` | `snapshot()` | `snapshot(size=16)` | draws nothing: gives back what the Stage shows as a list (see 10) |
 
 **Extras on every shape** (`circle`, `square`, `rect`, `polygon`):
 
@@ -93,6 +97,11 @@ A colour is text:
   `"light_gray"`, `"peach"` (a space or `grey` works too);
 - what `hue()` gives back: `hue(0)` red, `hue(60)` yellow, `hue(120)` green, `hue(240)` blue,
   wrapping every 360. `light=` below 50 is darker, above 50 paler.
+
+- what `rgb(r, g, b)` gives back: `rgb(255, 136, 0)` is `"#ff8800"`, orange (see 10);
+- an `(r, g, b)` tuple such as `(255, 136, 0)`, the way Pillow writes colours. Tuples aren't in
+  the pathway before Level 4, so lessons use `rgb()`; tuples are there so real Pillow-style code
+  works.
 
 `hue()` is the way into colour with loops: `circle(200 - i * 10, hue(i * 20))` in a `for` loop is
 a rainbow target.
@@ -218,6 +227,129 @@ fonts differ between devices.
 - In **Go Live**, the presenter's drawing shows on every screen.
 - The Stage has a screen-reader description of every shape in words ("a red square, size 80,
   turned 45°, in the middle").
+
+## 10. Image Lab: pictures are lists
+
+**The rule: a picture is a plain Python list of colours**, one long list read row by row, which
+`grid(pixels, width=32)` draws. There is no special image object, so the name-tag panel shows it,
+slow-mo steps through it, and every list lesson works on it.
+
+| Call | Gives back | Notes |
+|---|---|---|
+| `load_image("fox")` | 1,024 colours (32 × 32) | a picture from the image library, row by row |
+| `load_image("fox", size=64)` | 4,096 colours (64 × 64) | `size` can be `8`, `16`, `32` (the default) or `64` |
+| `snapshot()` | 1,024 colours (32 × 32) | what the Stage shows so far; `snapshot(size=16)` for another size (1 to 100) |
+| `rgb(r, g, b)` | `"#rrggbb"` | each number 0 to 255; numbers are rounded and kept within 0 to 255, so `rgb(red(c) + 80, …)` never errors |
+| `red(c)`, `green(c)`, `blue(c)` | 0 to 255 | `c` is any Stage colour: a name, a hex code, a pixel, or an `(r, g, b)` tuple |
+
+- **Draw a picture** with `grid(fox, width=32)` (the width is the `size` it was loaded at). The
+  pixel at row `r`, column `c` is `fox[r * 32 + c]`. Forgetting `width=` says "fox is one long
+  list. Say how many squares fit in a row, like grid(fox, width=32)".
+- **Every pixel is a lower-case hex code**, like `"#ff8800"`. So `fox[i] == "orange"` is never
+  true: compare with the hex code, or with numbers from `red()`, `green()` and `blue()`.
+- **Exact colours or numbers.** Pixel art and the green screen have a few exact colours, so
+  `if fox[i] == "#ff8800":` works (Level 1, `if` and `==`). Photos have hundreds of slightly
+  different colours, so filters on photos compare numbers (`if red(c) > 200:`; Level 2).
+- **`snapshot()` turns shapes into pixels**, so students can draw with shapes and then filter
+  them. It copies shapes, lines, backgrounds and grids exactly as drawn (each pixel is the colour
+  at the middle of its square); **text and emoji are left out**, because fonts differ between
+  devices.
+- **Save my picture.** Once the Stage shows a drawing, the student's Stage has a **Save my
+  picture** button that downloads it as a PNG (the same picture as the tutor's Export work).
+- **Slow-mo and the name-tag panel.** Slow-mo stops at 2,000 steps, and a loop over 1,024 pixels
+  takes 2,000 to 3,000. Slow-mo tasks should load a small picture: `load_image("pixel_fox",
+  size=8)` is 64 pixels. The name-tag panel shows the first 50 colours of a picture and says how
+  many more there are.
+- **Loading.** Each picture is a 12 KB file, fetched when the program first names it in quotes,
+  then kept until the page reloads. A name built while the program runs (from `input()`, say)
+  still works; it is fetched at that moment.
+
+### The image library
+
+| Name | Picture | | Name | Picture |
+|---|---|---|---|---|
+| `fox` | a red fox, face on (photo) | | `pizza` | a pizza (photo) |
+| `tiger` | a tiger (photo) | | `strawberries` | two strawberries (photo) |
+| `parrot` | a scarlet macaw (photo) | | `donut` | a chocolate donut with sprinkles (photo) |
+| `frog` | a red-eyed tree frog (photo) | | `moon_surface` | the Moon's surface (backdrop photo) |
+| `jellyfish` | a jellyfish in dark water (photo) | | `mars_surface` | Mars's surface (backdrop photo) |
+| `earth` | the Earth from space (photo) | | `nebula` | a glowing nebula (backdrop photo) |
+| `moon` | the full Moon (photo) | | `beach` | a sandy beach and sky (backdrop photo) |
+| `saturn` | Saturn and its rings (photo) | | `astronaut_green` | an astronaut on a flat green screen, `"#00ff00"` |
+| `mars` | the planet Mars (photo) | | `pixel_fox` | pixel art: a fox face, orange `"#ff8800"` |
+| `rocket` | a Space Shuttle launching (photo) | | `alien` | pixel art: a green alien |
+| `car` | a red sports car (photo) | | `spaceship` | pixel art: a spaceship |
+| `eiffel_tower` | the Eiffel Tower (photo) | | `potion` | pixel art: a potion bottle |
+| `pyramids` | the pyramids of Giza (photo) | | `gem` / `sword` | pixel art: a blue gem / a sword |
+
+Every picture is square, so a backdrop lines up pixel for pixel with the astronaut. The photos are
+public domain or CC0 (sources in [LICENSES.md](../LICENSES.md)); the pixel art and the astronaut
+were drawn for Headstart Coding. Names can be written in any case, with spaces (`"eiffel tower"`).
+A misspelt name says "there's no picture called 'foxx' — did you mean 'fox'?".
+
+### Examples
+
+Swap one colour (Level 1: the loop is given, the student writes the `if`):
+
+```python
+from stage import *
+fox = load_image("pixel_fox")
+for i in range(len(fox)):
+    if fox[i] == "#ff8800":   # given loop at Level 1; student writes the if
+        fox[i] = "purple"
+grid(fox, width=32)
+```
+
+The same task on the photo `fox` changes nothing, because no pixel of a photo is exactly
+`"#ff8800"`: give Level 1 colour swaps a pixel-art picture.
+
+Opposite colours (Level 2 arithmetic):
+
+```python
+from stage import *
+parrot = load_image("parrot")
+for i in range(len(parrot)):
+    c = parrot[i]
+    parrot[i] = rgb(255 - red(c), 255 - green(c), 255 - blue(c))
+grid(parrot, width=32)
+```
+
+Green screen (Level 2 `and`), "how films really do it":
+
+```python
+from stage import *
+astronaut = load_image("astronaut_green")
+moon = load_image("moon_surface")
+for i in range(len(astronaut)):
+    c = astronaut[i]
+    if green(c) > 200 and red(c) < 100:
+        astronaut[i] = moon[i]
+grid(astronaut, width=32)
+```
+
+With only `green(c) > 200` the white suit goes too (white has lots of green): a good mistake to
+plan the hint around.
+
+Draw, then filter:
+
+```python
+from stage import *
+background("navy")
+circle(120, "gold")
+pixels = snapshot()
+clear()
+for i in range(len(pixels)):
+    if pixels[i] == "#ffd700":       # gold
+        pixels[i] = rgb(255, 80, 0)
+grid(pixels, width=32)
+```
+
+### Checks for Image Lab tasks
+
+No new check types: `stage_matches_target` with a `stageTarget` that runs the finished filter (the
+target can call `load_image()` too), `stage_pixel` with `index` for one pixel, and variable checks
+on the list (`variable_array_contains` with `name: fox`, `value: purple`). A tolerance of 0.01
+suits exact filters; photos with rounding (greyscale, brightness) may need 0.02.
 
 ## See also
 

@@ -796,6 +796,10 @@ for i in range(40):                # a spinning rainbow tunnel
 | `grid(values, width=n, …)` | one long (flat) list as a pixel grid, `n` squares to a row (see below) |
 | `clear()` | wipes the stage back to white |
 | `hue(n, light=50)` | draws nothing: returns a colour round the colour wheel (see below) |
+| `rgb(r, g, b)` | draws nothing: returns the colour with that much red, green and blue (Image Lab, see below) |
+| `red(c)`, `green(c)`, `blue(c)` | draws nothing: returns how much red, green or blue is in colour `c`, 0–255 |
+| `load_image(name, size=32)` | draws nothing: returns a library picture as one long list of `'#rrggbb'`, row by row |
+| `snapshot(size=32)` | draws nothing: returns the drawing so far as one long list of `'#rrggbb'`, row by row |
 
 Only the first value is needed (the first two for `rect` and `polygon`, the four ends for
 `line`). Every value can also be given by name (`colour="red"`, `x=100`; `color=` works too).
@@ -824,6 +828,24 @@ is the opposite way to Turtle, where `left()` turns anticlockwise.
 numbers too). `light` (0–100) makes it darker (below 50; `0` is black) or paler (above 50; `100`
 is white). Because it is a string, `print(hue(30))` shows `#ff8000`, and `stage_colour_used`
 can check a `hue()` colour by its hex code.
+
+**Image Lab** (the guide: [stage.md → Image Lab](stage.md#10-image-lab-pictures-are-lists)). A
+picture is a plain list of colours that `grid(pixels, width=size)` draws.
+- `rgb(r, g, b)` returns `'#rrggbb'`; each number is rounded and kept within 0–255 (no error for
+  300 or -5), and `rgb((r, g, b))` works too. A value that isn't a number is a TypeError naming it.
+- `red(c)`, `green(c)`, `blue(c)` take any Stage colour (a name, `#rgb`, `#rrggbb`, a PICO-8
+  name) or an `(r, g, b)` tuple. See-through and unknown colours are a ValueError.
+- `load_image(name, size=32)`: `name` is one of the image library's names (any case; spaces or
+  dashes for underscores), `size` is 8, 16, 32 or 64. An unknown name says "there's no picture
+  called 'foxx' — did you mean 'fox'?" (or lists every name). Pictures are fetched before the run
+  when the program writes their names in quotes; a missing download is a RuntimeError.
+- `snapshot(size=32)`: `size` 1–100. Each pixel is the colour at the middle of its square, as
+  `stage_pixel` reads it; text and emoji are left out.
+- Wherever a drawing call takes a colour (a shape's colour or `outline=`, a grid cell, a palette
+  entry), an `(r, g, b)` tuple (or `(r, g, b, a)`, alpha ignored) works too. A grid's rows stay
+  rows: a tuple there is a colour only inside a row, or in a flat list drawn with `width=`.
+- The student's Stage pane has a **Save my picture** button (a PNG, as in Export work) once there
+  is a drawing.
 
 `WIDTH` and `HEIGHT` are both `400`.
 
@@ -1048,7 +1070,7 @@ minus sign belongs to the number (`-5` in `left(-5)`), but not in `a - 5`.
 
 Stage values get their natural range when the author gives none: `angle=` 0–360, `opacity=` 0–1
 (a whole `opacity=1` steps by 0.1), `light=` 0–100, and every number inside `hue(…)` 0–360 (so
-dragging the `9` in `hue(i * 9)` sweeps the colours). `outline=` colours get a swatch and picker
+dragging the `9` in `hue(i * 9)` sweeps the colours) and inside `rgb(…)` 0–255. `outline=` colours get a swatch and picker
 like any colour string.
 
 No new checks. **Tutor:** the tutor sees the edit when the drag ends, like any edit, and with

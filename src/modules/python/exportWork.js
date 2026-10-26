@@ -2,10 +2,7 @@
 // file, the Python Stage drawing (when the code drew one) as a PNG, and a share link showing the
 // code, its last output and the drawing. The drawing exists only for the task the student last
 // ran live (currentStageResult); older tasks export their code only.
-import { canvasToPngBytes, makeCanvas, svgToPngBytes } from '../../shared/exportWork/pictures.js'
-import { drawStage } from '../../shared/stage/canvas.js'
-import { STAGE_SIZE } from '../../shared/stage/commands.js'
-import { stageToSvg } from '../../shared/stage/svg.js'
+import { stagePngBytes } from '../../shared/stage/savePicture.js'
 import { compactStageForSync, readStageResult } from '../../shared/stage/sync.js'
 import ShareView from './ShareView.jsx'
 
@@ -15,19 +12,12 @@ function readCode(value) {
   return typeof value === 'string' && value.trim() ? value : null
 }
 
-/** The Stage drawing as PNG bytes (canvas, else via its SVG), or null when nothing was drawn. */
+/**
+ * The Stage drawing as PNG bytes (canvas, else via its SVG), or null when nothing was drawn. The
+ * student's "Save my picture" button makes the same PNG (src/shared/stage/savePicture.js).
+ */
 export async function renderStagePng(stage, size = PICTURE_SIZE) {
-  const commands = readStageResult(stage)?.commands ?? []
-  if (!commands.length) return null
-  const canvas = makeCanvas(size, size)
-  const ctx = canvas.getContext('2d')
-  if (ctx) {
-    drawStage(ctx, commands)
-    return canvasToPngBytes(canvas)
-  }
-  return svgToPngBytes(stageToSvg(commands), STAGE_SIZE, STAGE_SIZE, {
-    scale: size / STAGE_SIZE,
-  })
+  return stagePngBytes(readStageResult(stage)?.commands ?? [], size)
 }
 
 const pythonExporter = {

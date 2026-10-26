@@ -75,6 +75,7 @@ import { createTurtleRecorder } from '../turtle/recorder.js'
 import { VARIABLE_CAPTURE_PY } from './variableCapture.py.js'
 import { STAGE_INSTALL_PY, STAGE_MODULE_PY } from '../../shared/stage/stagePy.js'
 import { createStageRecorder, readStageCallPayload, stageHue } from '../../shared/stage/commands.js'
+import { createStagePictureBridge } from './stagePictureBridge.js'
 import { PYTHON_SLOW_MO_MAX_STEPS } from './slowMo/config.js'
 import { SETUP_ERROR_TEXT } from '../../shared/puzzle/setupCode.js'
 
@@ -676,6 +677,16 @@ globalThis.__hsStageHue = (argsJson) => {
   return error ? `${error.kind}|${error.message}` : `ok|${value}`
 }
 
+// Image Lab (./stagePictureBridge.js): load_image(), snapshot() and colour names for red(),
+// green() and blue(). Pictures a program names are fetched before it runs (prepare).
+const _stagePictures = createStagePictureBridge({
+  getCommands: () => _stageRecorder.commands,
+  base: import.meta.env?.BASE_URL ?? '/',
+})
+globalThis.__hsStageImage = (argsJson) => _stagePictures.image(argsJson)
+globalThis.__hsStageSnapshot = (argsJson) => _stagePictures.snapshot(argsJson)
+globalThis.__hsStageColour = (name, argsJson) => _stagePictures.colour(name, argsJson)
+
 // ─── Turtle bridge (see ../turtle/shim.js and ../turtle/recorder.js) ──────────
 // Single default turtle only. The recorder keeps the state, the drawing in code order (with the
 // motion between drawn items, for playback) and every call (for turtle_command_used checks).
@@ -830,6 +841,7 @@ self.onmessage = async ({ data }) => {
     // The first line number of the setup's statements (see the WRAPPER), or null without one.
     const setupFrom = setup.code ? String(data.code ?? '').split('\n').length + 2 : null
     _slowMo = record.on ? createSlowMoRecording() : null
+    await _stagePictures.prepare(`${data.code ?? ''}\n${setup.code ?? ''}`)
 
     const turtleResult = () => ({
       state: _turtle.state,
@@ -940,6 +952,7 @@ async function renderStage(code) {
   pyodide.globals.set('_hs_record_json', JSON.stringify({ on: false }))
   pyodide.globals.set('_hs_setup_json', '{}')
   _slowMo = null
+  await _stagePictures.prepare(code)
   try {
     await pyodide.runPythonAsync(WRAPPER)
     return { status: 'success', commands: _stageRecorder.commands, error: null }

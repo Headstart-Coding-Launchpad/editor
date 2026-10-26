@@ -316,13 +316,20 @@ describe('validateStageCall', () => {
     })
 
     it('asks for a width when a flat list has none, naming the list', () => {
-      expect(validateStageCall('grid', [[0, 1, 1, 0]], {}, { label: 'pixels' }).error).toEqual({
+      expect(validateStageCall('grid', [[0, 1, 1]], {}, { label: 'pixels' }).error).toEqual({
         kind: 'TypeError',
         message:
           'grid(): pixels is one long list. Say how many squares fit in a row, like grid(pixels, width=8)',
       })
       expect(validateStageCall('grid', [[0, 1]]).error.message).toBe(
         'grid(): the values are one long list. Say how many squares fit in a row, like grid(pixels, width=8)'
+      )
+    })
+
+    it('suggests the side of a square picture (Image Lab: load_image() gives 32 × 32)', () => {
+      const fox = Array.from({ length: 1024 }, () => '#ff8800')
+      expect(validateStageCall('grid', [fox], {}, { label: 'fox' }).error.message).toBe(
+        'grid(): fox is one long list. Say how many squares fit in a row, like grid(fox, width=32)'
       )
     })
 
