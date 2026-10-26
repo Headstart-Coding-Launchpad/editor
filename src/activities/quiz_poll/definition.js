@@ -6,6 +6,9 @@
 // presentation window shows it live, unless `showResults: false`; changed answers keep logging
 // (logAttempt `changeable`). The live class poll (src/shared/classPolls.js) is the teacher's
 // ad-hoc version of this.
+// `multiple: true` lets a student tick any number of options: the state is then a JSON array
+// string of the sorted ticked ids ('["a","c"]', '' for none), counted once per option.
+import { encodePollChoice, parsePollChoice } from '../../shared/classPolls.js'
 import { defineQuizActivity, printTable } from '../quiz/quizActivity.js'
 
 function optionIds(task) {
@@ -28,6 +31,13 @@ export default defineQuizActivity('poll', {
           { name: 'id', type: 'string', required: true },
           { name: 'text', type: 'string', required: true, authored: true },
         ],
+      },
+      {
+        name: 'multiple',
+        type: 'boolean',
+        authored: true,
+        description:
+          'Default false (pick one). true: "Pick all that apply" - students tick any number of options and the split shows how many picked each.',
       },
       {
         name: 'showResults',
@@ -56,12 +66,24 @@ export default defineQuizActivity('poll', {
   initialState: () => '',
   serialize: (state) => (typeof state === 'string' ? state : ''),
   // Only an id the task still offers is an answer (an option removed since is dropped).
-  deserialize: (raw, task) => (typeof raw === 'string' && optionIds(task).includes(raw) ? raw : ''),
+  deserialize: (raw, task) => {
+    if (task?.multiple === true) {
+      const offered = optionIds(task)
+      return encodePollChoice(parsePollChoice(raw).filter((id) => offered.includes(id)))
+    }
+    return typeof raw === 'string' && optionIds(task).includes(raw) ? raw : ''
+  },
 
   isGraded: () => false,
   grade: () => ({ passed: true, suggestion: '' }),
 
   summarize: (task, state) => {
+    if (task?.multiple === true) {
+      const text = parsePollChoice(state)
+        .map((id) => `${id} ${(task?.options ?? []).find((o) => o.id === id)?.text || ''}`.trim())
+        .join(', ')
+      return { text, tone: 'neutral' }
+    }
     const option = (task?.options ?? []).find((candidate) => candidate.id === state)
     return { text: `${state} ${option?.text || 'Selected option'}`, tone: 'neutral' }
   },
@@ -79,7 +101,8 @@ export default defineQuizActivity('poll', {
   report: {
     typeFields: () => ({ taskType: 'quiz', quizType: 'poll' }),
     normalizeSubmission: (task, submission) => (submission == null ? null : String(submission)),
-    // Each student's latest choice, counted per option in the task's option order.
+    // Each student's latest choice, counted per option in the task's option order (a
+    // multiple-answer student counts once for every option they ticked).
     summaryFields: (task, perStudent) => {
       const optionDistribution = (task?.options ?? []).map((option) => ({
         id: option.id,
@@ -88,8 +111,10 @@ export default defineQuizActivity('poll', {
       }))
       for (const t of perStudent) {
         const latest = t.distinctAttempts[t.distinctAttempts.length - 1]
-        const entry = optionDistribution.find((option) => option.id === latest?.submission)
-        if (entry) entry.count += 1
+        for (const id of new Set(parsePollChoice(latest?.submission))) {
+          const entry = optionDistribution.find((option) => option.id === id)
+          if (entry) entry.count += 1
+        }
       }
       return { optionDistribution }
     },

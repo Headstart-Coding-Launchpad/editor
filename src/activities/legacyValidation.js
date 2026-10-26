@@ -67,6 +67,8 @@ export function validateQuizTask(task, { n, errors, warnings = [] }) {
       errors.push(`Task ${n} is a poll but has a check (polls are never marked)`)
     if (task.showResults != null && typeof task.showResults !== 'boolean')
       errors.push(`Task ${n} is a poll but showResults is not true or false`)
+    if (task.multiple != null && typeof task.multiple !== 'boolean')
+      errors.push(`Task ${n} is a poll but multiple is not true or false`)
   } else if (quizType === 'short_answer') {
     if (
       task.check != null &&

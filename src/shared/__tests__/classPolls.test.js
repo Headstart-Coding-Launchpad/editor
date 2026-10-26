@@ -130,6 +130,27 @@ describe('tallyPollTask', () => {
     expect(tally.options.map((o) => o.count)).toEqual([1, 1])
   })
 
+  it('counts each ticked option once per student for a multiple-answer poll', () => {
+    const session = {
+      attemptLog: {
+        s1: {
+          4: {
+            x: { submission: '["a"]', loggedAt: 1 },
+            y: { submission: '["a","b"]', loggedAt: 5 },
+          },
+        },
+        s2: { 4: { x: { submission: '["b"]', loggedAt: 2 } } },
+        s3: { 4: { x: { submission: '', loggedAt: 3 } } },
+      },
+    }
+    const tally = tallyPollTask(session, { ...task, multiple: true })
+    expect(tally.respondedCount).toBe(2)
+    expect(tally.options.map((o) => o.count)).toEqual([1, 2])
+    const withSelf = tallyPollTask(session, task, { anonymousId: 's3', choice: '["a","b"]' })
+    expect(withSelf.respondedCount).toBe(3)
+    expect(withSelf.options.map((o) => o.count)).toEqual([2, 3])
+  })
+
   it("puts the viewer's current pick in before their own log arrives", () => {
     const session = { attemptLog: { s1: { 4: { x: { submission: 'a', loggedAt: 1 } } } } }
     const tally = tallyPollTask(session, task, { anonymousId: 's1', choice: 'b' })

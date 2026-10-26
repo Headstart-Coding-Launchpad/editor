@@ -7,6 +7,7 @@ import {
   formatConfidence,
   parseConfidenceRating,
 } from '../../shared/confidenceScale.js'
+import { parsePollChoice } from '../../shared/classPolls.js'
 import { getTaskActivity } from '../registry.pure.js'
 
 // Shared UI for the legacy quiz activities: each quiz_<type>/ui.jsx hosts the existing quiz
@@ -146,6 +147,25 @@ const hasAnswer = (raw) => raw != null && raw !== ''
 // student's lastRunStatus === 'submitted' and checkPassed.
 export function ChoiceCardSummary({ task, raw }) {
   if (!hasAnswer(raw)) return <NoAnswer />
+  if (task?.quizType === 'poll' && task.multiple === true) {
+    const ids = parsePollChoice(raw)
+    if (!ids.length) return <NoAnswer />
+    return (
+      <span style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+        {ids.map((id) => (
+          <span key={id} style={cardStyles.answerId} title={getQuizOptionText(task, id) || id}>
+            {id}
+          </span>
+        ))}
+        <span style={cardStyles.answerText}>
+          {ids
+            .map((id) => getQuizOptionText(task, id))
+            .filter(Boolean)
+            .join(', ')}
+        </span>
+      </span>
+    )
+  }
   const text = getQuizOptionText(task, raw)
   return (
     <>

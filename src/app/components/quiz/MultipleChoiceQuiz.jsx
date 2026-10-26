@@ -1,6 +1,7 @@
 import React from 'react'
 import { InlineMarkdown, MarkdownRenderer } from '../../../shared/markdown'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
+import { encodePollChoice, parsePollChoice } from '../../../shared/classPolls'
 import { useChoiceEntrance } from '../../../activities/ui/choiceEntrance.jsx'
 import {
   baseStyles as s,
@@ -24,8 +25,11 @@ export default function MultipleChoiceQuiz({
   showCorrectAnswer,
   // Extra content under the options (a poll's "you can change your vote" line).
   footer = null,
+  // Poll only: tick any number of options; selectedAnswer is then a JSON array string.
+  multiple = false,
 }) {
   const options = task?.options ?? []
+  const ticked = multiple ? parsePollChoice(selectedAnswer) : []
   const correctId = task?.check?.type === 'answer_equals' ? task.check.value : null
   const revealAnswers = showCorrectAnswer && submitted && disabled && correctId
   const locked = disabled || (submitted && checkPassed)
@@ -88,11 +92,11 @@ export default function MultipleChoiceQuiz({
         <div
           ref={optionsGridRef}
           style={s.options}
-          role="radiogroup"
+          role={multiple ? 'group' : 'radiogroup'}
           aria-label={task?.title ?? 'Quiz options'}
         >
           {displayedOptions.map((option, index) => {
-            const active = selectedAnswer === option.id
+            const active = multiple ? ticked.includes(option.id) : selectedAnswer === option.id
             const isCorrect = revealAnswers && option.id === correctId
             const isWrong = revealAnswers && active && option.id !== correctId
             // Decoration by position; a verdict only once the answer has been submitted.
@@ -112,7 +116,14 @@ export default function MultipleChoiceQuiz({
             const usesBlockMarkdown = hasFencedCodeBlock(optionText)
             const usesScratchMarkdown = isScratchMarkdown(optionText)
             const chooseOption = () => {
-              if (!locked) onSelectAnswer?.(option.id)
+              if (locked) return
+              if (multiple) {
+                onSelectAnswer?.(
+                  encodePollChoice(
+                    active ? ticked.filter((id) => id !== option.id) : [...ticked, option.id]
+                  )
+                )
+              } else onSelectAnswer?.(option.id)
             }
 
             const optionEntrance = entrance(index)
@@ -120,7 +131,7 @@ export default function MultipleChoiceQuiz({
             return (
               <div
                 key={option.id}
-                role="radio"
+                role={multiple ? 'checkbox' : 'radio'}
                 aria-checked={active}
                 aria-disabled={locked || undefined}
                 tabIndex={locked ? -1 : 0}
@@ -149,7 +160,7 @@ export default function MultipleChoiceQuiz({
                     color: '#fff',
                   }}
                 >
-                  {option.id}
+                  {multiple && active ? '\u2713' : option.id}
                 </span>
                 <div
                   className="quiz-option-text"

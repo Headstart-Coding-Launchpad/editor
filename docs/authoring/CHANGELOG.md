@@ -39,6 +39,15 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-26
 
+- **Poll: `multiple: true` for "pick all that apply".** A `quizType: poll` task can set
+  `multiple: true` (boolean, default false). Students tick any number of options (none to all) and
+  can untick; the class split shows how many students picked each option ("7 of 12 picked this"),
+  so the bars can add up to more than 100%. `optionDistribution` counts a student once for every
+  option they ticked. Stored answer and attempt `submission` is a JSON array string of the sorted
+  ids (`["a","c"]`; `""` for none). Single-choice polls are unchanged. See
+  [quiz-tasks.md → Poll](quiz-tasks.md#poll).
+- Affects: quiz_poll · Existing lessons: no changes needed · Resolves: none
+
 - **Image Lab: pictures on the Stage (Make It Real, LG-P9 §2).** The `stage` module has six new
   calls that draw nothing and give back values: `rgb(r, g, b)` (a `'#rrggbb'` colour; numbers are
   rounded and kept within 0–255), `red(c)`, `green(c)`, `blue(c)` (0–255, for any Stage colour),
