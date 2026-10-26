@@ -10,6 +10,7 @@ import {
   gradeTask,
   guessGoalOf,
   initialNextWordState,
+  nextWordBadgeResult,
   normalizeNextWordState,
   panelsOf,
   sharedState,
@@ -300,6 +301,47 @@ describe('grading', () => {
       filled: 2,
       total: 5,
       correct: 1,
+    })
+  })
+})
+
+describe('badge result', () => {
+  const own = { ...initialNextWordState(TASK), own: 'the cat sat on the mat' }
+
+  it('counts words the model added from the student own writing, across the task', () => {
+    let state = own
+    expect(state.generated).toBe(0)
+    state = applyStep(state, 'cat', 'cat')
+    state = applyStep(state, 'sat')
+    expect(state.generated).toBe(2)
+    expect(JSON.parse(definition.serializeShared(state)).generated).toBe(2)
+    expect(normalizeNextWordState(TASK, JSON.parse(definition.serialize(state))).generated).toBe(2)
+  })
+
+  it('does not count words made from the lesson texts, from too little writing, or a no-word step', () => {
+    const voice = { ...own, voice: 'text:0' }
+    expect(applyStep(voice, 'cat', 'cat').generated).toBe(0)
+    expect(applyStep({ ...own, own: 'hi' }, 'cat').generated).toBe(0)
+    expect(applyStep(own, '').generated).toBe(0)
+    // An old save has no counter.
+    expect(normalizeNextWordState(TASK, { v: 2, own: 'a b c' }).generated).toBe(0)
+  })
+
+  it('summarises the passing submission: numbers only', () => {
+    let state = own
+    for (const word of ['cat', 'sat', 'on', 'the', 'mat']) state = applyStep(state, word, word)
+    state = applyStep(state, 'x', 'y')
+    const result = definition.badgeResult(
+      TASK,
+      definition.deserialize(definition.serializeShared(state), TASK)
+    )
+    expect(result).toEqual({ core: 5, tries: 5, right: 5, ownWords: 6, generated: 6 })
+    expect(nextWordBadgeResult(TASK, initialNextWordState(TASK))).toEqual({
+      core: 5,
+      tries: 0,
+      right: 0,
+      ownWords: 0,
+      generated: 0,
     })
   })
 })

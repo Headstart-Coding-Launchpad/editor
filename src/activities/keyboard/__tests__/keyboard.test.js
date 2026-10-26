@@ -4,6 +4,7 @@ import {
   gradeKeyboardItem,
   gradeKeyboardTask,
   describeItem,
+  keyboardBadgeResult,
 } from '../keyboard.js'
 
 const typeText = {
@@ -150,5 +151,45 @@ describe('grading', () => {
       hint: `Look for the Shift + ' key.`,
     })
     expect(describeItem({ mode: 'shortcuts' }, { combo: 'cmd+shift+z' })).toBe('Ctrl + Shift + Z')
+  })
+})
+
+describe('keyboardBadgeResult', () => {
+  const two = {
+    mode: 'type_text',
+    items: [
+      { id: 'a', text: 'Hi' },
+      { id: 'b', text: 'Yo' },
+    ],
+  }
+  const typed = (text, accuracy, extra = {}) => ({ typed: text, accuracy, wpm: 20, ...extra })
+
+  it('reports the lowest accuracy over the core items done', () => {
+    const perfect = { items: { a: typed('Hi', 1), b: typed('Yo', 1) } }
+    expect(keyboardBadgeResult(two, perfect)).toEqual({
+      core: 2,
+      tries: 2,
+      accuracy: 1,
+      missed: 0,
+    })
+    const slip = { items: { a: typed('Hi', 1), b: typed('Yo', 0.5) } }
+    expect(keyboardBadgeResult(two, slip).accuracy).toBe(0.5)
+  })
+
+  it('counts only the core items, and not a half-finished round', () => {
+    const core1 = { ...two, coreItems: 1 }
+    const bonusSlip = { items: { a: typed('Hi', 1), b: typed('Yo', 0.5) } }
+    expect(keyboardBadgeResult(core1, bonusSlip)).toMatchObject({ core: 1, tries: 1, accuracy: 1 })
+    expect(keyboardBadgeResult(two, { items: { a: typed('Hi', 1) } })).toMatchObject({
+      core: 2,
+      tries: 1,
+    })
+  })
+
+  it('has no accuracy for modes without one, or for shown answers', () => {
+    const findKey = { mode: 'find_key', items: [{ id: 'a', key: 'Enter' }] }
+    expect(keyboardBadgeResult(findKey, { items: { a: { pressed: true } } }).accuracy).toBeNull()
+    const shown = { items: { a: typed('Hi', 1, { solution: true }), b: typed('Yo', 1) } }
+    expect(keyboardBadgeResult(two, shown).accuracy).toBeNull()
   })
 })

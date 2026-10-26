@@ -46,6 +46,15 @@ student per lesson.
 | 🗺️ Side Quester | `side_quester` | Marked at least `sideQuesterMinDone` [side-quests](AUTHORING_GUIDE.md#side-quests) Done in the session, on any tasks. Done is self-reported, so it is suggested only and the tutor decides | – |
 | 📖 Word Smith | `word_smith` | Right **first time** on every vocab task they have tried (a graded quiz tagged `Quiz: Vocabulary Check` or `Quiz: Vocabulary Match`, any quiz type), and at least `wordSmithMinTasks` of them (see [Vocab tasks](#vocab-tasks)) | – |
 | 🤩 Emoji Artist | `emoji_artist` | Ran Python or HTML code with an emoji they added in a string, or in HTML text or an attribute (comments, and emoji the task's code already had, don't count), in a task or a sandbox; typed, pasted or picked all count | – |
+| 🏗️ Station Builder | `station_builder` | TODO(new-badge): when it is suggested | – |
+| 🏋️ AI Trainer | `ai_trainer` | TODO(new-badge): when it is suggested | – |
+| 🖱️ Steady Hand | `steady_hand` | TODO(new-badge): when it is suggested | – |
+| 🔭 Prediction Pro | `prediction_pro` | TODO(new-badge): when it is suggested | – |
+| 💯 Perfect Round | `perfect_round` | TODO(new-badge): when it is suggested | – |
+| 🧐 Real Spotter | `real_spotter` | TODO(new-badge): when it is suggested | – |
+| 🎭 AI Fooler | `ai_fooler` | TODO(new-badge): when it is suggested | – |
+| 🔤 Keyboard Ace | `keyboard_ace` | TODO(new-badge): when it is suggested | – |
+| 📜 Storyteller | `storyteller` | TODO(new-badge): when it is suggested | – |
 | 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🧘 Focused Coder · 🧭 Project Explorer · 📈 Knowledge Builder · 🙋 Great Question · 🏹 Sharp Shooter · ✍️ Word Wizard · 🎨 Design Master · 🦸 Independent Coder · 🌡️ Honest Check-in · 🦁 Brave Coder · 🌱 Growing Coder · 🔁 Comeback Coder · 🎤 Show and Tell · 💬 Great Answer · 🧑‍🏫 Code Teacher · 🕵️ Teacher Trap · 🧹 Tidy Coder · 🔦 Edge Explorer · 🏁 Finisher · 🧷 Careful Checker | `problem_solver`, `experimenter`, `creative_coder`, `comedy_coder`, `focused_coder`, `project_explorer`, `knowledge_builder`, `great_question`, `sharp_shooter`, `word_wizard`, `design_master`, `independent_coder`, `honest_check_in`, `brave_coder`, `growing_coder`, `comeback_coder`, `show_and_tell`, `great_answer`, `code_teacher`, `teacher_trap`, `tidy_coder`, `edge_explorer`, `finisher`, `careful_checker` | Tutor-only: never suggested | – |
 
 "First in class" is decided per task, in the order the tasks were first passed. Each student

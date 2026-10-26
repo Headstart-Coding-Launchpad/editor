@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { evaluateBadgeRules } from '../evaluate.js'
-import { EXAMPLE_LESSON } from '../exampleLesson.js'
+import { ACTIVITY_EXAMPLE_LESSON, EXAMPLE_LESSON } from '../exampleLesson.js'
+import { buildBadgeLessonIndex } from '../lessonIndex.js'
 import { getPassGuard, isRealPass, computeFirstInClass } from '../rules.js'
 import {
   attemptEvent as attempt,
@@ -642,5 +643,82 @@ describe('Word Smith (firstTryOnEveryPatternTask)', () => {
     expect(
       evaluate('word_smith', t, { lesson, options: { badgeOptions: { wordSmithMinTasks: 4 } } })
     ).toEqual([])
+  })
+})
+
+describe('activity rules (firstInClassOnActivity, activityRoundPass)', () => {
+  const lesson = ACTIVITY_EXAMPLE_LESSON
+  const done = (taskId, at, result, extra = {}) =>
+    attempt({ taskId, passed: true, firstTry: true, at, result, ...extra })
+
+  it('indexes each task activity id, and none for a code task', () => {
+    const index = buildBadgeLessonIndex(lesson)
+    expect(index.get('c1').activityId).toBe('classifier')
+    expect(index.get('m1').activityId).toBe('mouse')
+    expect(index.get('w1').activityId).toBe('quiz_multiple_choice')
+    expect(index.get('t4').activityId).toBeNull()
+  })
+
+  it('first in class on an activity is one task per student, then the next task', () => {
+    const timelines = {
+      alex: [done('s1', 100), done('s2', 120)],
+      sam: [done('s1', 200), done('s2', 150)],
+    }
+    expect(pairs(evaluate('station_builder', timelines, { lesson }))).toEqual([
+      ['alex', 's1'],
+      ['sam', 's2'],
+    ])
+  })
+
+  it('a dismissal uses up the task, as it does for pattern badges', () => {
+    const timelines = { alex: [done('s1', 100)], sam: [done('s1', 200)] }
+    const decisions = { alex: { station_builder: { status: 'dismissed', decidedAt: 500 } } }
+    expect(evaluate('station_builder', timelines, { lesson, decisions })).toEqual([])
+  })
+
+  it('honours badgeHints.suppress and suggest', () => {
+    const withHint = (taskId, hints) => ({
+      ...lesson,
+      tasks: lesson.tasks.map((task) =>
+        task.id === taskId ? { ...task, badgeHints: hints } : task
+      ),
+    })
+    const suppressed = withHint('s1', { suppress: ['station_builder'] })
+    expect(
+      evaluate('station_builder', { alex: [done('s1', 100)] }, { lesson: suppressed })
+    ).toEqual([])
+    // suggest on a code task makes it a trigger task for a rule with no result test.
+    const suggested = withHint('t4', { suggest: ['station_builder'] })
+    expect(
+      pairs(evaluate('station_builder', { alex: [done('t4', 100)] }, { lesson: suggested }))
+    ).toEqual([['alex', 't4']])
+  })
+
+  it('ranks by the rule own time, not the pass time', () => {
+    const timelines = {
+      alex: [done('c1', 900, { core: 3, tries: 3, readyAt: 100 })],
+      sam: [done('c1', 300, { core: 3, tries: 3, readyAt: 200 })],
+    }
+    expect(pairs(evaluate('ai_trainer', timelines, { lesson }))).toEqual([['alex', 'c1']])
+  })
+
+  it('firstTryOnly needs the first attempt to be the pass', () => {
+    const perfect = { core: 3, tries: 3, right: 3 }
+    const timelines = {
+      alex: [
+        attempt({ taskId: 'r1', passed: false, firstTry: true, at: 10 }),
+        done('r1', 20, perfect, { firstTry: false }),
+      ],
+      sam: [done('r1', 90, perfect)],
+    }
+    expect(pairs(evaluate('real_spotter', timelines, { lesson }))).toEqual([['sam', 'r1']])
+  })
+
+  it('a pass with no result never qualifies; only the first passing attempt counts', () => {
+    const slip = { core: 3, tries: 3, misses: 1 }
+    const clean = { core: 3, tries: 3, misses: 0 }
+    expect(evaluate('steady_hand', { alex: [done('m1', 10)] }, { lesson })).toEqual([])
+    const later = { alex: [done('m1', 10, slip), done('m1', 20, clean, { firstTry: false })] }
+    expect(evaluate('steady_hand', later, { lesson })).toEqual([])
   })
 })

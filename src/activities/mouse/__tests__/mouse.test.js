@@ -5,6 +5,8 @@ import {
   gradeMouseTask,
   activeMouseItems,
   describeMouseItem,
+  missesOf,
+  mouseBadgeResult,
 } from '../mouse.js'
 
 const task = {
@@ -78,5 +80,25 @@ describe('grading', () => {
       correct: 2,
       done: false,
     })
+  })
+})
+
+describe('mouseBadgeResult', () => {
+  const done = {
+    v: 1,
+    items: { a: { via: 'double_click' }, b: { via: 'drag' }, c: { via: 'hover' } },
+  }
+
+  it('reports the round and the misses made', () => {
+    expect(mouseBadgeResult(task, { ...done, misses: 2 })).toEqual({ core: 3, tries: 3, misses: 2 })
+    expect(mouseBadgeResult(task, done)).toEqual({ core: 3, tries: 3, misses: 0 })
+  })
+
+  it('counts tries against the core only, and reads an old save as no misses', () => {
+    const core2 = { ...task, coreItems: 2 }
+    expect(mouseBadgeResult(core2, done)).toEqual({ core: 2, tries: 2, misses: 0 })
+    expect(missesOf({ v: 1, items: {} })).toBe(0)
+    expect(missesOf({ misses: -3 })).toBe(0)
+    expect(missesOf({ misses: 1.5 })).toBe(0)
   })
 })

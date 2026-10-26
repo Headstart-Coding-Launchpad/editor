@@ -45,6 +45,7 @@ import {
   teachMiss,
   testSetOf,
   testSize,
+  withReadyAt,
 } from './classifier.js'
 
 // Classifier UI. Controlled view: ActivityHost passes `state`, `onChange(next | prev =>
@@ -298,7 +299,8 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
   const target = ready && live ? nextTarget(state) : null
   const tries = liveCountOf(state)
   const rights = rightsOf(state)
-  const update = (fn) => onChange?.((prev) => fn(prev ?? initialClassifierState(task)))
+  // Every change also stamps when the pad first became ready (the AI Trainer badge).
+  const update = (fn) => onChange?.((prev) => withReadyAt(fn(prev ?? initialClassifierState(task))))
   const topScore = guess?.label ? (guess.scores[guess.label] ?? 0) : 0
 
   // Share the pad with the tutor as its grid at each stroke end (not the strokes), with the thing
@@ -313,7 +315,7 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
     ) {
       return
     }
-    onChange((prev) => setPad(prev ?? initialClassifierState(task), grid, padTarget))
+    onChange((prev) => withReadyAt(setPad(prev ?? initialClassifierState(task), grid, padTarget)))
   }, [readOnly, onChange, pending, feedback, sharedPad, grid, padTarget, task])
 
   if (readOnly) return <TutorSummary task={task} state={state} />

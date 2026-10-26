@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   gradeItem,
   gradeTask,
+  realOrAiBadgeResult,
   revealInfo,
   rightCount,
   solutionFor,
@@ -244,5 +245,38 @@ describe('grading', () => {
       { itemId: 'p2', tell: 'too_smooth', reliable: true, revealed: 2, rightPick: 1 },
     ])
     expect(definition.report.summaryFields(TASK, [])).toEqual({})
+  })
+})
+
+describe('realOrAiBadgeResult', () => {
+  const state = (picks) => ({
+    v: 1,
+    items: Object.fromEntries(picks.map(([id, pick]) => [id, tapped(pick)])),
+  })
+
+  it('counts the core pairs done and right', () => {
+    const all = state([
+      ['p1', 'b'],
+      ['p2', 'a'],
+      ['p3', 'b'],
+    ])
+    expect(realOrAiBadgeResult(TASK, all)).toEqual({ core: 3, tries: 3, right: 3 })
+    const oneWrong = state([
+      ['p1', 'a'],
+      ['p2', 'a'],
+      ['p3', 'b'],
+    ])
+    expect(definition.badgeResult(TASK, oneWrong)).toEqual({ core: 3, tries: 3, right: 2 })
+  })
+
+  it('leaves the bonus pairs out, and reads an empty state', () => {
+    const core2 = { ...TASK, coreItems: 2 }
+    const bonusWrong = state([
+      ['p1', 'b'],
+      ['p2', 'a'],
+      ['p3', 'a'],
+    ])
+    expect(realOrAiBadgeResult(core2, bonusWrong)).toEqual({ core: 2, tries: 2, right: 2 })
+    expect(realOrAiBadgeResult(TASK, undefined)).toEqual({ core: 3, tries: 0, right: 0 })
   })
 })

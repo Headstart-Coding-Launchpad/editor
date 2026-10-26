@@ -10,6 +10,7 @@ import { defineActivity } from '../defineActivity.js'
 import { roundSummaryText } from '../round.js'
 import {
   accuracyOf,
+  classifierBadgeResult,
   countsOf,
   givenCountOf,
   hasGiven,
@@ -240,6 +241,9 @@ export default defineActivity({
 
   // The log keeps the shared form: counts, trained and the result, never the drawings.
   buildSubmission: (task, state) => sharedState(state),
+
+  // Live badges: Perfect Round, AI Fooler, AI Trainer (src/badges/definitions).
+  badgeResult: (task, state) => classifierBadgeResult(task, state),
 
   report: {
     typeFields: () => ({ taskType: 'activity', activityType: 'classifier' }),

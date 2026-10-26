@@ -6,6 +6,7 @@ import {
   BADGE_IDS,
   getBadgeDefinition,
   getBadgeDefinitions,
+  getBadgesByActivity,
   getBadgesByPattern,
   getHintableBadges,
   getTutorOnlyBadges,
@@ -62,6 +63,11 @@ describe('badge registry', () => {
       'challenge_solver',
       'quiz_master',
       'code_arranger',
+      'station_builder',
+      'steady_hand',
+      'prediction_pro',
+      'real_spotter',
+      'keyboard_ace',
     ])
   })
 
@@ -76,7 +82,18 @@ describe('badge registry', () => {
       'code_detective',
       'challenge_solver',
       'code_arranger',
+      'station_builder',
+      'ai_trainer',
+      'steady_hand',
+      'prediction_pro',
+      'perfect_round',
+      'real_spotter',
+      'ai_fooler',
+      'keyboard_ace',
+      'storyteller',
     ])
+    expect(getBadgesByActivity().mouse).toEqual(['steady_hand'])
+    expect(getBadgesByActivity().classifier).toEqual(['ai_trainer', 'perfect_round', 'ai_fooler'])
     expect(getBadgeDefinition('code_arranger').rule.formats).toEqual(['code_arrange'])
   })
 

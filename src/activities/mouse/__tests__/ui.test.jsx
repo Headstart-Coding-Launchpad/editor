@@ -62,6 +62,27 @@ describe('Mouse UI', () => {
     expect(state().items.a).toEqual({})
   })
 
+  it('counts misses in the state: wrong target and wrong gesture, not the first click of a double-click', () => {
+    const task = taskWith([
+      { id: 'a', action: 'click', target: 'star' },
+      { id: 'b', action: 'double_click', target: 'star' },
+    ])
+    const { state } = renderMouse(task)
+    expect(state().misses).toBe(0)
+    fireEvent.click(target('box'), { detail: 1 })
+    expect(state().misses).toBe(1)
+    fireEvent.click(target('star'), { detail: 1 })
+    expect(state().items.a).toEqual({ via: 'click' })
+    expect(state().misses).toBe(1)
+  })
+
+  it('counts a wrong gesture on the right target as a miss', () => {
+    const task = taskWith([{ id: 'a', action: 'double_click', target: 'star' }])
+    const { state } = renderMouse(task)
+    fireEvent.contextMenu(target('star'))
+    expect(state().misses).toBe(1)
+  })
+
   it('treats the first click of a double-click as part of it', () => {
     const task = taskWith([{ id: 'a', action: 'double_click', target: 'star' }])
     const { state } = renderMouse(task)

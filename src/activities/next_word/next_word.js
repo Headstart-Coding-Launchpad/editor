@@ -137,6 +137,7 @@ export function initialNextWordState(task) {
     voice: voices[0].id,
     own: '',
     ownWords: 0,
+    generated: 0,
     sentence: '',
     pending: '',
     guesses: 0,
@@ -173,6 +174,7 @@ export function normalizeNextWordState(task, raw) {
     voice: typeof raw.voice === 'string' ? raw.voice : base.voice,
     own,
     ownWords: own ? tokenise(own).length : count(raw.ownWords),
+    generated: count(raw.generated),
     sentence: typeof raw.sentence === 'string' ? raw.sentence.slice(0, MAX_GENERATED_CHARS) : '',
     pending: typeof raw.pending === 'string' ? raw.pending.slice(0, 40) : '',
     guesses,
@@ -227,11 +229,16 @@ export function applyStep(state, word, guess = '', grade = null) {
   } else {
     words.push(word)
   }
+  // Words the model has added while it was learning from the student's own writing (at least two
+  // words, so it has pairs to pick from): the Storyteller badge. Counted over the whole task, so
+  // it survives Start again and a switch of voice.
+  const fromOwnWords = base.voice === OWN_VOICE && tokenise(String(base.own ?? '')).length >= 2
   const guessed = typeof guess === 'string' && guess !== ''
   const ok = guessed && (grade ? grade.ok : guess === word)
   const history = String(base.history ?? '')
   return {
     ...base,
+    generated: count(base.generated) + (fromOwnWords ? 1 : 0),
     sentence: clipSentence(words),
     pending: '',
     guesses: guessed ? count(base.guesses) + 1 : count(base.guesses),
@@ -280,6 +287,20 @@ export function gradeTask(task, state = {}) {
     core: Math.min(guesses, goal),
     bonus: Math.max(0, guesses - goal),
     done: guesses >= goal,
+  }
+}
+
+// Live badges (the activity's `badgeResult`), from the passing submission (the shared form): the
+// round's guesses and how many were right (both capped at the core), how many words the student
+// has written of their own, and how many words the model added from them.
+export function nextWordBadgeResult(task, state) {
+  const { goal, core, right } = gradeTask(task, state)
+  return {
+    core: goal,
+    tries: core,
+    right: Math.min(right, core),
+    ownWords: ownWordsOf(state),
+    generated: count(state?.generated),
   }
 }
 

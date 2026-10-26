@@ -4,6 +4,7 @@ import { DEFAULT_LAYOUT, getKeyForChar } from '../../shared/input/index.js'
 import {
   gradeKeyboardItem,
   gradeKeyboardTask,
+  keyboardBadgeResult,
   keyboardItems,
   validateKeyboardTask,
   KEYBOARD_MODES,
@@ -348,6 +349,9 @@ export default defineActivity({
       ).length
     return done(prev) === done(next) ? 'continuous' : 'discrete'
   },
+
+  // Live badges: Keyboard Ace reads the accuracy of the typing modes.
+  badgeResult: (task, state) => keyboardBadgeResult(task, state),
 
   grade: (task, state) => {
     const result = gradeKeyboardTask(task, state)

@@ -46,6 +46,15 @@ import carefulChecker from './definitions/careful_checker.js'
 import sideQuester from './definitions/side_quester.js'
 import wordSmith from './definitions/word_smith.js'
 import emojiArtist from './definitions/emoji_artist.js'
+import stationBuilder from './definitions/station_builder.js'
+import aiTrainer from './definitions/ai_trainer.js'
+import steadyHand from './definitions/steady_hand.js'
+import predictionPro from './definitions/prediction_pro.js'
+import perfectRound from './definitions/perfect_round.js'
+import realSpotter from './definitions/real_spotter.js'
+import aiFooler from './definitions/ai_fooler.js'
+import keyboardAce from './definitions/keyboard_ace.js'
+import storyteller from './definitions/storyteller.js'
 
 const BADGES = [
   bugHunter,
@@ -65,6 +74,15 @@ const BADGES = [
   sideQuester,
   wordSmith,
   emojiArtist,
+  stationBuilder,
+  aiTrainer,
+  steadyHand,
+  predictionPro,
+  perfectRound,
+  realSpotter,
+  aiFooler,
+  keyboardAce,
+  storyteller,
   problemSolver,
   experimenter,
   creativeCoder,

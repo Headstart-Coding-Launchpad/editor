@@ -8,6 +8,7 @@ import {
   addExample,
   canTest,
   classify,
+  classifierBadgeResult,
   clearExamples,
   countsOf,
   decodeGrid,
@@ -42,7 +43,9 @@ import {
   splitExamples,
   splitLabel,
   tally,
+  taughtOf,
   teachMiss,
+  withReadyAt,
   teacherTestItems,
   testSetOf,
   unpackGrid,
@@ -471,6 +474,65 @@ describe('the live round', () => {
     expect(teachMiss(miss, 'dog', grid)).toBe(miss)
   })
 
+  it('counts the misses taught, once each, and keeps the count through the shared form', () => {
+    const miss = recordLive(LIVE, withExamples(LIVE, 3), 'line', gridOf(circle(0.3))).state
+    const grid = miss.misses[0].grid
+    expect(taughtOf(miss)).toBe(0)
+    const taught = teachMiss(miss, 'line', grid)
+    expect(taughtOf(taught)).toBe(1)
+    expect(taught.taught).toBe(1)
+    // Teaching the same miss again adds nothing.
+    expect(taughtOf(teachMiss(taught, 'line', grid))).toBe(1)
+    const shared = JSON.parse(definition.serializeShared(taught))
+    expect(shared.taught).toBe(1)
+    expect(normalizeClassifierState(LIVE, shared).taught).toBe(1)
+    expect(taughtOf(clearExamples(taught))).toBe(0)
+    // An old save with fixed misses and no counter still counts them.
+    expect(taughtOf({ misses: [{ fixed: true }, { fixed: true }, {}] })).toBe(2)
+  })
+
+  it('stamps readyAt the first time the pad is ready, and keeps it', () => {
+    expect(withReadyAt(withExamples(LIVE, 2), 500).readyAt).toBeUndefined()
+    const ready = withReadyAt(withExamples(LIVE, 3), 500)
+    expect(ready.readyAt).toBe(500)
+    expect(withReadyAt(ready, 900)).toBe(ready)
+    expect(withReadyAt(clearExamples(ready), 900).readyAt).toBe(500)
+    const shared = JSON.parse(definition.serializeShared(ready))
+    expect(shared.readyAt).toBe(500)
+    expect(normalizeClassifierState(LIVE, shared).readyAt).toBe(500)
+    expect(normalizeClassifierState(LIVE, JSON.parse(definition.serialize(ready))).readyAt).toBe(
+      500
+    )
+    // Old saves have none.
+    expect(normalizeClassifierState(LIVE, { v: 1, examples: {} }).readyAt).toBeUndefined()
+  })
+
+  it('summarises the passing submission for the badges', () => {
+    const ready = withReadyAt(withExamples(LIVE, 3), 500)
+    const state = {
+      ...ready,
+      live: [
+        ['circle', 'circle'],
+        ['line', 'line'],
+        ['line', 'circle'],
+      ],
+      misses: [{ actual: 'line', predicted: 'circle', grid: gridOf(circle()), fixed: true }],
+      taught: 1,
+    }
+    const shared = definition.deserialize(definition.buildSubmission(LIVE, state), LIVE)
+    expect(definition.badgeResult(LIVE, shared)).toEqual({
+      core: 3,
+      tries: 3,
+      right: 2,
+      misses: 1,
+      taught: 1,
+      readyAt: 500,
+    })
+    // Not the live round: no core, so Perfect Round can't fire.
+    expect(classifierBadgeResult({ ...LIVE, testSet: 'held_out' }, state).core).toBe(0)
+    expect(classifierBadgeResult(LIVE, withExamples(LIVE, 3)).readyAt).toBeNull()
+  })
+
   it('lists mix-ups, most common first', () => {
     const result = tally([
       ['cat', 'cat'],
@@ -580,6 +642,7 @@ describe('privacy: what is shared', () => {
       liveCount: 2,
       rights: 1,
       misses: 1,
+      taught: 0,
       tests: 0,
       pad: null,
       target: null,

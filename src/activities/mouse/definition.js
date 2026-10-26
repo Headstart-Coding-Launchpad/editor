@@ -4,6 +4,7 @@ import { roundSummaryText } from '../round.js'
 import {
   describeMouseItem,
   gradeMouseTask,
+  mouseBadgeResult,
   validateMouseTask,
   MOUSE_ACTIONS,
   TARGET_SIZES,
@@ -94,6 +95,8 @@ export default defineActivity({
   initialState: (task) => ({
     v: 1,
     device: { touch: false },
+    // Gestures that were not the answer (see missesOf in ./mouse.js): the Steady Hand badge.
+    misses: 0,
     items: Object.fromEntries((task?.items ?? []).map((item) => [item.id, {}])),
   }),
 
@@ -107,6 +110,8 @@ export default defineActivity({
     const result = gradeMouseTask(task, state, deviceOf(state))
     return { passed: result.done, suggestion: result.hint }
   },
+
+  badgeResult: (task, state) => mouseBadgeResult(task, state, deviceOf(state)),
 
   getProgress: (task, state) => {
     const { total, correct, core } = gradeMouseTask(task, state, deviceOf(state))

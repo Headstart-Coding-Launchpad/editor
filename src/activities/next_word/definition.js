@@ -15,6 +15,7 @@ import {
   PANELS,
   gradeTask,
   initialNextWordState,
+  nextWordBadgeResult,
   normalizeNextWordState,
   ownWordsOf,
   sharedState,
@@ -119,6 +120,9 @@ export default defineActivity({
 
   // A student's own writing is theirs: the tutor watches, they do not edit it.
   teacherEditable: false,
+
+  // Live badges: Perfect Round and Storyteller (src/badges/definitions).
+  badgeResult: (task, state) => nextWordBadgeResult(task, state),
 
   // Passes by itself when the core guesses are done; the rest is bonus.
   completion: 'auto',

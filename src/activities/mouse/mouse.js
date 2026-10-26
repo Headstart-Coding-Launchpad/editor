@@ -104,6 +104,20 @@ export function gradeMouseItem(task, item, result = {}) {
   }
 }
 
+// A miss is a gesture the student made that was not the answer to the item on screen: the wrong
+// target, a drop on the wrong target, or the wrong kind of gesture on the right target (a click
+// when the item asked for a drag). Not misses: the first click of a double-click, resting the
+// pointer on a target while the item isn't a hover, and a gesture on empty stage. The count is
+// `state.misses` (the student view adds one per miss); it is read by the Steady Hand badge.
+export const missesOf = (state) =>
+  Number.isInteger(state?.misses) && state.misses > 0 ? state.misses : 0
+
+// Live badges (the activity's `badgeResult`): the round (core items) done, and the misses made.
+export function mouseBadgeResult(task, state = {}, device = {}) {
+  const { core, correct } = gradeMouseTask(task, state, device)
+  return { core, tries: Math.min(correct, core), misses: missesOf(state) }
+}
+
 export function gradeMouseTask(task, state = {}, device = {}) {
   const items = activeMouseItems(task, device)
   const results = items.map((item) => gradeMouseItem(task, item, state.items?.[item.id]))

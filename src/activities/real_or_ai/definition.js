@@ -6,6 +6,7 @@ import {
   gradeItem,
   gradeTask,
   ITEM_KINDS,
+  realOrAiBadgeResult,
   SIDES,
   solutionFor,
   summaryText,
@@ -151,6 +152,9 @@ export default defineActivity({
   completion: 'auto',
   // Passing means the round is finished, not that the picks were right.
   passMessage: 'Round done!',
+
+  // Live badges: Perfect Round and Real Spotter (src/badges/definitions).
+  badgeResult: (task, state) => realOrAiBadgeResult(task, state),
 
   grade: (task, state) => {
     const results = (task.items ?? []).map((item) => ({

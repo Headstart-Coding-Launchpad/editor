@@ -87,10 +87,13 @@ function badgeResultFor(task, entry) {
   try {
     const def = getTaskActivity(task)
     if (typeof def?.badgeResult !== 'function') return null
+    // A submission that is not JSON would deserialize to a blank state: no result instead.
+    JSON.parse(entry.submission)
     const result = def.badgeResult(task, def.deserialize(entry.submission, task))
     if (!result || typeof result !== 'object') return null
     const plain = Object.entries(result).filter(
-      ([, v]) => v === null || typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v))
+      ([, v]) =>
+        v === null || typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v))
     )
     return plain.length ? Object.fromEntries(plain) : null
   } catch {

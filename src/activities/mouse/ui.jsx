@@ -4,7 +4,7 @@ import { SpinTick } from '../ui/ActivityCorrect.jsx'
 import RoundProgress, { BonusBanner, RoundFinished } from '../ui/RoundProgress.jsx'
 import { useRoundFlow } from '../ui/useRoundFlow.js'
 import { coreCountOf } from '../round.js'
-import { activeMouseItems, describeMouseItem, gradeMouseItem } from './mouse.js'
+import { activeMouseItems, describeMouseItem, gradeMouseItem, missesOf } from './mouse.js'
 import {
   DEFAULT_GESTURE_OPTIONS,
   createInputRecorder,
@@ -119,6 +119,11 @@ export function MouseStudentView({
     }))
   }
 
+  // A gesture that was not the answer (docs/authoring/activities/mouse.md, "Misses").
+  function addMiss() {
+    onChange?.((prev) => ({ ...(prev ?? { v: 1, items: {} }), misses: missesOf(prev) + 1 }))
+  }
+
   function setItemResult(item, via) {
     onChange?.((prev) => ({
       ...(prev ?? { v: 1 }),
@@ -143,10 +148,12 @@ export function MouseStudentView({
       // Resting the pointer on a target is only an answer when the item asks for a hover.
       if (gesture.gesture === 'hover' && item.action !== 'hover') continue
       if (gesture.targetId !== item.target) {
-        if (gesture.targetId)
+        if (gesture.targetId) {
+          addMiss()
           setMessage(
             `That was the ${targetName(task, gesture.targetId)}. Find the ${targetName(task, item.target)}.`
           )
+        }
         continue
       }
       // The first click of a double-click (or tap of a double-tap) is not a mistake yet.
@@ -157,12 +164,17 @@ export function MouseStudentView({
         continue
       }
       if (item.action === 'drag' && gesture.gesture === 'drag' && gesture.toTargetId !== item.to) {
+        addMiss()
         setMessage(`Drop it on the ${targetName(task, item.to)}.`)
         continue
       }
       setMessage(null)
       setItemResult(item, gesture.gesture)
-      if (gestureSatisfies(item.action, gesture.gesture, { allowTouchEquivalent: allowTouch })) {
+      const satisfied = gestureSatisfies(item.action, gesture.gesture, {
+        allowTouchEquivalent: allowTouch,
+      })
+      if (!satisfied) addMiss()
+      if (satisfied) {
         if (gesture.gesture === 'drag' || gesture.gesture === 'long_press') {
           suppressClickUntilRef.current = Date.now() + POST_GESTURE_CLICK_MS
         }

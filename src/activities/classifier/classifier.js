@@ -403,6 +403,9 @@ export function normalizeClassifierState(task, raw) {
           .map((p) => [p[0], p[1]])
       : [],
     tests: wholeNumber(raw.tests),
+    // Live badges: when the pad first became ready, and how many misses were taught.
+    ...(Number.isFinite(raw.readyAt) && raw.readyAt > 0 ? { readyAt: raw.readyAt } : {}),
+    taught: wholeNumber(raw.taught),
     ...(base.given ? { given: base.given } : {}),
     pad: isGridString(padGrid)
       ? { grid: padGrid, target: typeof padTarget === 'string' ? padTarget : null }
@@ -425,6 +428,7 @@ export function normalizeClassifierState(task, raw) {
         grid: m.grid,
         ...(m.fixed ? { fixed: true } : {}),
       }))
+    next.taught = taughtOf(next)
   } else {
     // Shared summary: no drawings (no `examples` key), just counts.
     next.shared = true
@@ -497,6 +501,22 @@ export function rightsOf(state) {
   return state?.rights ?? 0
 }
 
+// How many of the pad's misses the student then taught it ("Teach it this one"). A counter, so it
+// survives the oldest misses being dropped from the kept list (MAX_MISSES_KEPT).
+export function taughtOf(state) {
+  const kept = Array.isArray(state?.misses) ? state.misses.filter((m) => m?.fixed).length : 0
+  return Math.max(wholeNumber(state?.taught), kept)
+}
+
+// Stamps `readyAt` (device clock, milliseconds) the first time the model is ready: when the last
+// thing reached its minimum drawings, or, when the task's given examples make it ready from the
+// start, the student's first change. Kept for good, even if drawings are removed later. Same
+// state back when there is nothing to stamp.
+export function withReadyAt(state, now = Date.now()) {
+  if (!state || state.readyAt || !readyOf(state)) return state
+  return { ...state, readyAt: now }
+}
+
 export function missesOf(state) {
   return Math.max(0, liveCountOf(state) - rightsOf(state))
 }
@@ -529,6 +549,8 @@ export function sharedState(state) {
     liveCount: liveCountOf(state),
     rights: rightsOf(state),
     misses: missesOf(state),
+    taught: taughtOf(state),
+    ...(state?.readyAt ? { readyAt: state.readyAt } : {}),
     tests: state?.tests ?? 0,
     pad: pad ? packGrid(pad.grid) : null,
     target: pad?.target ?? null,
@@ -594,6 +616,7 @@ export function clearExamples(state) {
     examples: emptyExamples(state.classes),
     live: [],
     misses: [],
+    taught: 0,
     result: null,
   })
 }
@@ -602,11 +625,13 @@ export function clearExamples(state) {
 export function teachMiss(state, actual, grid) {
   const next = addExample(state, actual, grid)
   if (next === state) return state
+  const fresh = (next.misses ?? []).some((m) => m.actual === actual && m.grid === grid && !m.fixed)
   return {
     ...next,
     misses: (next.misses ?? []).map((m) =>
       m.actual === actual && m.grid === grid ? { ...m, fixed: true } : m
     ),
+    taught: taughtOf(state) + (fresh ? 1 : 0),
   }
 }
 
@@ -851,6 +876,23 @@ export function gradeTask(task, state) {
     core,
     rights,
     tries,
+  }
+}
+
+// Live badges (the activity's `badgeResult`), read from the passing submission (the shared form):
+// the round (`core` is 0 unless the task is the live round), its tries, how many the pad got
+// right and wrong, how many misses were taught, and when the pad became ready (null if unknown).
+export function classifierBadgeResult(task, state) {
+  const live = testSetOf(task) === 'live'
+  const tries = liveCountOf(state)
+  const right = rightsOf(state)
+  return {
+    core: live ? taskLiveTestSize(task) : 0,
+    tries,
+    right,
+    misses: missesOf(state),
+    taught: taughtOf(state),
+    readyAt: Number.isFinite(state?.readyAt) && state.readyAt > 0 ? state.readyAt : null,
   }
 }
 

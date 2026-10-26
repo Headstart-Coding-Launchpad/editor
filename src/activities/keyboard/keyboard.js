@@ -313,3 +313,30 @@ export function gradeKeyboardTask(task, state = {}) {
     hint: firstWrong?.hint ?? null,
   }
 }
+
+// Live badges (the activity's `badgeResult`), for the Keyboard Ace badge: the core items done and,
+// for the typing modes (type_text, type_code, falling_words, whose results hold `accuracy`), the
+// lowest accuracy among them, as the 0 to 1 number the student sees as a percentage. `accuracy` is
+// null for the other modes (no measure) and for shown answers (`solution`). `missed` is the
+// falling words that reached the bottom (0 in the other modes). Speed is never read.
+export function keyboardBadgeResult(task, state = {}) {
+  const { core } = gradeKeyboardTask(task, state)
+  const options = { platform: state?.device?.platform }
+  const done = keyboardItems(task)
+    .map((item) => ({ item, result: state?.items?.[item.id] ?? {} }))
+    .filter(({ item, result }) => gradeKeyboardItem(task, item, result, options).correct)
+    .slice(0, core)
+  const measured = ['type_text', 'type_code', 'falling_words'].includes(task?.mode)
+  const accuracies = done.map(({ result }) => Number(result.accuracy))
+  const usable =
+    measured &&
+    done.length > 0 &&
+    done.every(({ result }) => !result.solution) &&
+    accuracies.every((value) => Number.isFinite(value))
+  return {
+    core,
+    tries: done.length,
+    accuracy: usable ? Math.min(...accuracies) : null,
+    missed: done.reduce((sum, { result }) => sum + (Number(result.missed) || 0), 0),
+  }
+}

@@ -109,6 +109,18 @@ export function gradeTask(task, state = {}) {
   }
 }
 
+// Live badges (the activity's `badgeResult`): the core pairs, how many of them are done and how
+// many were picked right. Bonus pairs don't count either way.
+export function realOrAiBadgeResult(task, state = {}) {
+  const items = (task?.items ?? []).slice(0, coreCountOf(task, (task?.items ?? []).length))
+  const results = items.map((item) => gradeItem(task, item, state?.items?.[item.id]))
+  return {
+    core: items.length,
+    tries: results.filter((r) => r.done).length,
+    right: results.filter((r) => r.correct).length,
+  }
+}
+
 // The right picks so far. Never goes down: `state.right` is kept across Play again, and a
 // tutor's edit can only raise it.
 export function rightCount(task, state) {
