@@ -1,0 +1,57 @@
+{
+  "id": "stage-charts-demo",
+  "type": "composed",
+  "title": "Charts on the Stage (demo)",
+  "description": "Demo of real matplotlib charts on the Python Stage. Not for publishing.",
+  "modules": [{ "id": "charts", "type": "python" }],
+  "tasks": [
+    {
+      "id": 1,
+      "title": "A bar chart from a dictionary",
+      "moduleType": "python",
+      "moduleId": "charts",
+      "explainer": "Real programmers draw charts with **matplotlib**. Your loop builds two lists from the dictionary, then `plt.bar` draws one bar for each planet. Finish the loop so it adds every size, then press Run.",
+      "codeStages": [
+        {
+          "role": "starter",
+          "label": "Starter",
+          "code": "import matplotlib.pyplot as plt\n\nplanets = {\"Mercury\": 4879, \"Venus\": 12104, \"Earth\": 12742, \"Mars\": 6779}\n\nnames = []\nsizes = []\nfor name, size in planets.items():\n    names.append(name)\n    # add the size to the sizes list here\n\nplt.bar(names, sizes, color=\"orange\")\nplt.title(\"How wide are the planets?\")\nplt.xlabel(\"Planet\")\nplt.ylabel(\"Width (km)\")\nplt.show()\n"
+        },
+        {
+          "role": "complete",
+          "label": "Complete",
+          "code": "import matplotlib.pyplot as plt\n\nplanets = {\"Mercury\": 4879, \"Venus\": 12104, \"Earth\": 12742, \"Mars\": 6779}\n\nnames = []\nsizes = []\nfor name, size in planets.items():\n    names.append(name)\n    sizes.append(size)\n\nplt.bar(names, sizes, color=\"orange\")\nplt.title(\"How wide are the planets?\")\nplt.xlabel(\"Planet\")\nplt.ylabel(\"Width (km)\")\nplt.show()\n"
+        }
+      ],
+      "check": [
+        { "type": "code_no_error" },
+        { "type": "code", "operator": "contains", "value": "sizes.append(" },
+        { "type": "variable_array_equals", "name": "sizes", "value": "[4879, 12104, 12742, 6779]" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "A line chart of the week",
+      "moduleType": "python",
+      "moduleId": "charts",
+      "explainer": "`plt.plot` joins the points with a line. Make the line go through every day's temperature, and give the chart a title.",
+      "codeStages": [
+        {
+          "role": "starter",
+          "label": "Starter",
+          "code": "import matplotlib.pyplot as plt\n\ndays = [\"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\"]\ntemps = [12, 15, 11, 17, 19]\n\nplt.plot(days, temps, marker=\"o\", color=\"crimson\")\nplt.ylabel(\"Temperature (°C)\")\nplt.show()\n"
+        },
+        {
+          "role": "complete",
+          "label": "Complete",
+          "code": "import matplotlib.pyplot as plt\n\ndays = [\"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\"]\ntemps = [12, 15, 11, 17, 19]\n\nplt.plot(days, temps, marker=\"o\", color=\"crimson\")\nplt.title(\"Our week of weather\")\nplt.ylabel(\"Temperature (°C)\")\nplt.show()\n"
+        }
+      ],
+      "check": [
+        { "type": "code_no_error" },
+        { "type": "code", "operator": "contains", "value": "plt.plot(" },
+        { "type": "code", "operator": "contains", "value": "plt.title(" }
+      ]
+    }
+  ]
+}

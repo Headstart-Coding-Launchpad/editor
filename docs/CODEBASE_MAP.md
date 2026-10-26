@@ -957,6 +957,10 @@ The drawing pane of a Python task (docs/authoring/python.md "Stage"). The engine
 | `canvas.js` | `drawStage(ctx, commands, { ghost, diff })`, `sizeStageCanvas` |
 | `svg.js` | `stageToSvg(commands)`: a standalone picture for export or a gallery |
 | `StagePane.jsx` | The pane: square canvas that scales to fit, Target (ghost) and Differences toggles (44 px), comparison summary, `compact` mode for the tutor card and StudentModal |
+| `charts.js` | Pure: real charts (matplotlib): `codeImportsMatplotlib`, the `image` command (`chartImageCommand`, `recordChartImage`: 400,000-character PNG and 20-chart caps), `chartImageRect` (fitted, centred), `chartImageSrc`, `CHART_PACKAGES`, the loading / offline messages |
+| `chartsPy.js` | Python glue the worker runs once after `loadPackage('matplotlib')` (`CHARTS_INSTALL_PY`: Agg backend, `plt.show()` → PNG → `__hsStageImage`), plus the per-run `CHARTS_RESET_PY` / `CHARTS_FLUSH_PY` (shows an unshown figure at the end) |
+| `chartsStatus.js` | The page's "matplotlib is loading" flag (`setChartsLoading`, `useChartsLoading`), set from the worker's `charts_loading` message; the output panel shows "Loading charts… (first time only)" |
+| `stageImages.js` | Decoded chart pictures for the canvas: `loadStageImages` (StagePane and Export work draw again once decoded), `stageImageFor`, `drawStageImage` (white, then the picture fitted) |
 
 ### Editor scrubbing (`src/shared/scrub/`)
 

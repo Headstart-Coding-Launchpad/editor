@@ -39,6 +39,16 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-26
 
+- **Real charts on the Stage with matplotlib (LG-P9 "Make it real" §8).** A Python program that
+  imports matplotlib (`import matplotlib.pyplot as plt`) gets the real library, loaded the first
+  time only ("Loading charts… (first time only)"), and `plt.show()` puts the chart on the Stage,
+  fitted to the square; no `import stage` needed. A chart drawn but never shown is shown when the
+  program ends; with several `show()`s the last one stays; Stage calls after `show()` draw on top.
+  The tutor's card, modal, Go Live and Export work show the same chart. Stage checks don't look
+  inside a chart: check chart tasks with `code` and `variable` checks. Subset, example and limits:
+  [stage.md → Charts](stage.md#10-charts-matplotlib).
+- Affects: python · Existing lessons: no changes needed · Resolves: none
+
 - **Scratch blocks keyed by a later sprite load when the first sprite has none (Hub #256).**
   `starterBlocks`, `completeBlocks` and `codeStages[].blocks` keyed only by later sprites (for
   example fixed props with no blocks listed first, the scripted sprite after them) used to load as
