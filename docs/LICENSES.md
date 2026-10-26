@@ -229,7 +229,7 @@ can be checked.
 | `pixel_fox` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
 | `alien` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
 | `spaceship` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
-| `potion` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
+| `robot` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
 | `gem` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
 | `sword` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
 

@@ -279,7 +279,7 @@ slow-mo steps through it, and every list lesson works on it.
 | `mars` | the planet Mars (photo) | | `pixel_fox` | pixel art: a fox face, orange `"#ff8800"` |
 | `rocket` | a Space Shuttle launching (photo) | | `alien` | pixel art: a green alien |
 | `car` | a red sports car (photo) | | `spaceship` | pixel art: a spaceship |
-| `eiffel_tower` | the Eiffel Tower (photo) | | `potion` | pixel art: a potion bottle |
+| `eiffel_tower` | the Eiffel Tower (photo) | | `robot` | pixel art: a robot |
 | `pyramids` | the pyramids of Giza (photo) | | `gem` / `sword` | pixel art: a blue gem / a sword |
 
 Every picture is square, so a backdrop lines up pixel for pixel with the astronaut. The photos are

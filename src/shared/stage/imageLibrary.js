@@ -45,7 +45,7 @@ export const IMAGE_LIBRARY = Object.freeze([
   entry('pixel_fox', 'a pixel-art fox face', 'pixel art', true),
   entry('alien', 'a pixel-art green alien', 'pixel art', true),
   entry('spaceship', 'a pixel-art spaceship', 'pixel art', true),
-  entry('potion', 'a pixel-art potion bottle', 'pixel art', true),
+  entry('robot', 'a pixel-art robot', 'pixel art', true),
   entry('gem', 'a pixel-art blue gem', 'pixel art', true),
   entry('sword', 'a pixel-art sword', 'pixel art', true),
 ])

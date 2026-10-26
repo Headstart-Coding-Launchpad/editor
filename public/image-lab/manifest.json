@@ -219,8 +219,8 @@
       "licence": "CC0"
     },
     {
-      "name": "potion",
-      "words": "a pixel-art potion bottle",
+      "name": "robot",
+      "words": "a pixel-art robot",
       "kind": "pixel art",
       "crisp": true,
       "source": "Drawn for Headstart Coding (Image Lab build script)",
