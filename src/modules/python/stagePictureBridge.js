@@ -15,6 +15,7 @@ import {
   readImageRequest,
   resizeImageBytes,
   rgbBytesToHex,
+  rgbBytesToNamedPixels,
 } from '../../shared/stage/imageLibrary.js'
 import { readStageCallPayload } from '../../shared/stage/commands.js'
 import { readSnapshotRequest, snapshotHex, stageColourValue } from '../../shared/stage/pictures.js'
@@ -115,6 +116,8 @@ export function createStagePictureBridge({
         return `RuntimeError|load_image(): the picture '${request.name}' couldn't be downloaded. Check the internet connection and press Run again`
       }
       const bytes = resizeImageBytes(picture, request.size, { crisp: request.image.crisp })
+      // Pixel art comes back as colour names ('orange'), photos as hex (imageLibrary.js).
+      if (request.image.crisp) return `names|${rgbBytesToNamedPixels(bytes)}`
       return `ok|${rgbBytesToHex(bytes)}`
     },
     colour(name, json) {

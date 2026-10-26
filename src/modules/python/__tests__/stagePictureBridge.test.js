@@ -2,7 +2,7 @@
 // The worker's Image Lab bridge: pictures fetched before a run, load_image() answering at once,
 // the synchronous fallback, snapshot() of the run so far and colour names.
 import { describe, expect, it, vi } from 'vitest'
-import { IMAGE_BYTES } from '../../../shared/stage/imageLibrary.js'
+import { IMAGE_BYTES, rgbBytesToNamedPixels } from '../../../shared/stage/imageLibrary.js'
 import { createStageRecorder } from '../../../shared/stage/commands.js'
 import { createStagePictureBridge } from '../stagePictureBridge.js'
 
@@ -34,6 +34,16 @@ describe('createStagePictureBridge', () => {
     // Fetched once for the worker's life.
     await bridge.prepare('fox = load_image("fox")')
     expect(fetchBytes).toHaveBeenCalledTimes(2)
+  })
+
+  it('gives pixel art back as colour names, and other colours as hex', async () => {
+    const fetchBytes = vi.fn(async () => solid([255, 165, 0]))
+    const bridge = createStagePictureBridge({ fetchBytes, fetchSync: () => null })
+    await bridge.prepare('fox = load_image("pixel_fox", size=8)')
+    expect(bridge.image(call(['pixel_fox'], { size: 8 }))).toBe(
+      `names|${Array(64).fill('orange').join(',')}`
+    )
+    expect(rgbBytesToNamedPixels(new Uint8Array([255, 165, 0, 1, 2, 3]))).toBe('orange,#010203')
   })
 
   it('fetches nothing for a program without load_image()', async () => {

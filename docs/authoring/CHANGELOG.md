@@ -46,8 +46,8 @@ Entries written before 2026-09-29 are not tagged.
   `'#rrggbb'`, row by row; `size` 8, 16, 32 or 64) and `snapshot(size=32)` (the drawing so far as
   the same kind of list; text and emoji left out). Draw either with `grid(pixels, width=32)`.
   `(r, g, b)` tuples now work wherever a drawing call takes a colour. Pixel art and the green
-  screen (`astronaut_green` on `#00ff00`) have exact colours for Level 1 `==` swaps; photos need
-  number comparisons. The student's Stage has a **Save my picture** PNG button. `grid()`'s "one
+  screen (`astronaut_green` on `"lime"`) give their pixels as colour names (`"orange"`), so Level
+  1 swaps read `fox[i] == "orange"`; photos give hex codes and need number comparisons. The student's Stage has a **Save my picture** PNG button. `grid()`'s "one
   long list" message suggests the picture's own width (`width=32`). Numbers in `rgb(…)` scrub
   0–255. No new checks: use `stage_matches_target` (targets can call `load_image()`),
   `stage_pixel` with `index`, and list variable checks. See

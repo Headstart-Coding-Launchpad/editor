@@ -224,6 +224,48 @@ export function resizeImageBytes(bytes, size, { crisp = false, from = IMAGE_STOR
 
 const HEX_PAIRS = Array.from({ length: 256 }, (_, n) => n.toString(16).padStart(2, '0'))
 
+// The colours the pixel art and the green screen are drawn in (#259 follow-up, Lesson Gen #261):
+// each is a CSS colour name, so load_image() hands those pictures to Python as names and a Level 1
+// colour swap reads `if fox[i] == "orange":`. Photos stay '#rrggbb'.
+export const PIXEL_ART_COLOURS = Object.freeze({
+  '000000': 'black',
+  ffffff: 'white',
+  808080: 'gray',
+  a9a9a9: 'darkgray',
+  d3d3d3: 'lightgray',
+  c0c0c0: 'silver',
+  696969: 'dimgray',
+  '2f4f4f': 'darkslategray',
+  ff0000: 'red',
+  ffa500: 'orange',
+  ffff00: 'yellow',
+  ffd700: 'gold',
+  daa520: 'goldenrod',
+  f0e68c: 'khaki',
+  '00ff00': 'lime',
+  '32cd32': 'limegreen',
+  '00bfff': 'deepskyblue',
+  '87ceeb': 'skyblue',
+  '4169e1': 'royalblue',
+  191970: 'midnightblue',
+  800080: 'purple',
+  d2691e: 'chocolate',
+  a0522d: 'sienna',
+})
+
+/**
+ * RGB bytes as the pixel list the bridge hands to Python for a `crisp` picture: one entry per
+ * pixel, a PIXEL_ART_COLOURS name where the colour is one, else 'rrggbb'; comma-separated.
+ */
+export function rgbBytesToNamedPixels(bytes) {
+  const out = []
+  for (let i = 0; i + 2 < bytes.length; i += 3) {
+    const hex = HEX_PAIRS[bytes[i]] + HEX_PAIRS[bytes[i + 1]] + HEX_PAIRS[bytes[i + 2]]
+    out.push(PIXEL_ART_COLOURS[hex] ?? `#${hex}`)
+  }
+  return out.join(',')
+}
+
 /** RGB bytes as one string of 'rrggbb' groups, the form the bridge hands to Python. */
 export function rgbBytesToHex(bytes) {
   let out = ''

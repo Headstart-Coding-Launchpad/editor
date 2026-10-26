@@ -3,6 +3,7 @@
 // size rules and the shrinking.
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { parseColour } from '../colours.js'
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_IMAGE_SIZE,
@@ -17,6 +18,8 @@ import {
   readImageRequest,
   resizeImageBytes,
   rgbBytesToHex,
+  rgbBytesToNamedPixels,
+  PIXEL_ART_COLOURS,
 } from '../imageLibrary.js'
 
 const FOLDER = join(process.cwd(), 'public', 'image-lab')
@@ -47,11 +50,21 @@ describe('the picture library', () => {
     expect(files.sort()).toEqual(IMAGE_NAMES.map((name) => `${name}.rgb`).sort())
   })
 
-  it('has the green screen in pure #00ff00 and the pixel fox in exactly #ff8800', () => {
+  it('has the green screen in pure #00ff00 and the pixel fox in exactly orange', () => {
     const corner = rgbBytesToHex(readFileSync(join(FOLDER, 'astronaut_green.rgb')).subarray(0, 3))
     expect(corner).toBe('00ff00')
-    const fox = rgbBytesToHex(readFileSync(join(FOLDER, 'pixel_fox.rgb')))
-    expect(fox).toContain('ff8800')
+    const fox = rgbBytesToNamedPixels(readFileSync(join(FOLDER, 'pixel_fox.rgb'))).split(',')
+    expect(fox).toContain('orange')
+  })
+
+  it('draws every crisp picture only in PIXEL_ART_COLOURS, each a CSS name for that colour', () => {
+    for (const image of IMAGE_LIBRARY.filter((entry) => entry.crisp)) {
+      const pixels = rgbBytesToNamedPixels(readFileSync(join(FOLDER, `${image.name}.rgb`)))
+      expect(pixels.split(',').filter((pixel) => pixel.startsWith('#'))).toEqual([])
+    }
+    for (const [hex, name] of Object.entries(PIXEL_ART_COLOURS)) {
+      expect(parseColour(name)).toBe(`#${hex}`)
+    }
   })
 
   it('finds names in any case, with spaces or dashes', () => {

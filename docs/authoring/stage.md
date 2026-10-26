@@ -245,11 +245,16 @@ slow-mo steps through it, and every list lesson works on it.
 - **Draw a picture** with `grid(fox, width=32)` (the width is the `size` it was loaded at). The
   pixel at row `r`, column `c` is `fox[r * 32 + c]`. Forgetting `width=` says "fox is one long
   list. Say how many squares fit in a row, like grid(fox, width=32)".
-- **Every pixel is a lower-case hex code**, like `"#ff8800"`. So `fox[i] == "orange"` is never
-  true: compare with the hex code, or with numbers from `red()`, `green()` and `blue()`.
-- **Exact colours or numbers.** Pixel art and the green screen have a few exact colours, so
-  `if fox[i] == "#ff8800":` works (Level 1, `if` and `==`). Photos have hundreds of slightly
-  different colours, so filters on photos compare numbers (`if red(c) > 200:`; Level 2).
+- **Pixel art gives colour names; photos give hex codes.** The pixel art and the green screen
+  are drawn in a few colour names, and `load_image()` gives those pixels back as the names
+  (`"orange"`, `"white"`, `"lime"`), so a Level 1 swap is `if fox[i] == "orange":` with no hex
+  codes. A photo has hundreds of slightly different colours, so its pixels are lower-case hex
+  codes (`"#d2691e"`), `fox[i] == "orange"` is never true, and filters on photos compare numbers
+  (`if red(c) > 200:`; Level 2). `red()`, `green()` and `blue()` read names and hex codes alike,
+  and `snapshot()` always gives hex codes.
+- **The pixel art's colour names:** black, white, gray, darkgray, lightgray, silver, dimgray,
+  darkslategray, red, orange, yellow, gold, goldenrod, khaki, lime, limegreen, deepskyblue,
+  skyblue, royalblue, midnightblue (the dark blue background), purple, chocolate, sienna.
 - **`snapshot()` turns shapes into pixels**, so students can draw with shapes and then filter
   them. It copies shapes, lines, backgrounds and grids exactly as drawn (each pixel is the colour
   at the middle of its square); **text and emoji are left out**, because fonts differ between
@@ -275,8 +280,8 @@ slow-mo steps through it, and every list lesson works on it.
 | `jellyfish` | a jellyfish in dark water (photo) | | `mars_surface` | Mars's surface (backdrop photo) |
 | `earth` | the Earth from space (photo) | | `nebula` | a glowing nebula (backdrop photo) |
 | `moon` | the full Moon (photo) | | `beach` | a sandy beach and sky (backdrop photo) |
-| `saturn` | Saturn and its rings (photo) | | `astronaut_green` | an astronaut on a flat green screen, `"#00ff00"` |
-| `mars` | the planet Mars (photo) | | `pixel_fox` | pixel art: a fox face, orange `"#ff8800"` |
+| `saturn` | Saturn and its rings (photo) | | `astronaut_green` | an astronaut on a flat green screen, `"lime"` (`#00ff00`) |
+| `mars` | the planet Mars (photo) | | `pixel_fox` | pixel art: a fox face, `"orange"` |
 | `rocket` | a Space Shuttle launching (photo) | | `alien` | pixel art: a green alien |
 | `car` | a red sports car (photo) | | `spaceship` | pixel art: a spaceship |
 | `eiffel_tower` | the Eiffel Tower (photo) | | `robot` | pixel art: a robot |
@@ -295,13 +300,13 @@ Swap one colour (Level 1: the loop is given, the student writes the `if`):
 from stage import *
 fox = load_image("pixel_fox")
 for i in range(len(fox)):
-    if fox[i] == "#ff8800":   # given loop at Level 1; student writes the if
+    if fox[i] == "orange":   # given loop at Level 1; student writes the if
         fox[i] = "purple"
 grid(fox, width=32)
 ```
 
-The same task on the photo `fox` changes nothing, because no pixel of a photo is exactly
-`"#ff8800"`: give Level 1 colour swaps a pixel-art picture.
+The same task on the photo `fox` changes nothing, because a photo's pixels are hex codes and
+none is exactly orange: give Level 1 colour swaps a pixel-art picture.
 
 Opposite colours (Level 2 arithmetic):
 

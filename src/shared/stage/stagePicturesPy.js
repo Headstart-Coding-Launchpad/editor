@@ -112,6 +112,8 @@ def blue(*args, **kwargs):
 # The worker's answer 'ok|rrggbb…' as a list of '#rrggbb'.
 def _hs_pixels(fn, answer):
     answer = str(answer or '')
+    if answer.startswith('names|'):
+        return answer[6:].split(',')
     if not answer.startswith('ok|'):
         _raise(answer or 'RuntimeError|' + fn + "() didn't work — press Run again")
     hexes = answer[3:]
