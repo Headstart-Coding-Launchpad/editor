@@ -12,6 +12,7 @@ const MIME = {
   png: 'image/png',
   zip: 'application/zip',
   sb3: 'application/x.scratch.sb3',
+  wav: 'audio/wav',
 }
 
 export function mimeForName(name) {

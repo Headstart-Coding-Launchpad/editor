@@ -52,7 +52,9 @@
  * `done` also always carries `stage: { commands }`: the Python Stage drawing (see
  * src/shared/stage/). The `stage` module is registered in sys.modules once, when Python loads
  * (STAGE_INSTALL_PY), never prepended to the student's code; each call records one command
- * through __hsStageCall. Empty when the code never draws.
+ * through __hsStageCall. Empty when the code never draws. Beat Maker's `beats` module
+ * (BEATS_INSTALL_PY, src/shared/beats/) records its play()/stop() in the same list, through
+ * __hsBeatsCall, as 'beat' / 'beat_stop' commands.
  *
  * `record` turns on slow-mo recording (src/modules/python/slowMo/): every line of the student's
  * file that runs becomes a step (see recording.js for the shape), and `done` carries the
@@ -74,7 +76,14 @@
 import { createTurtleRecorder } from '../turtle/recorder.js'
 import { VARIABLE_CAPTURE_PY } from './variableCapture.py.js'
 import { STAGE_INSTALL_PY, STAGE_MODULE_PY } from '../../shared/stage/stagePy.js'
-import { createStageRecorder, readStageCallPayload, stageHue } from '../../shared/stage/commands.js'
+import {
+  createStageRecorder,
+  MAX_STAGE_COMMANDS,
+  readStageCallPayload,
+  stageHue,
+} from '../../shared/stage/commands.js'
+import { BEATS_INSTALL_PY, BEATS_MODULE_PY } from '../../shared/beats/beatsPy.js'
+import { recordBeatCall } from '../../shared/beats/patterns.js'
 import { PYTHON_SLOW_MO_MAX_STEPS } from './slowMo/config.js'
 import { SETUP_ERROR_TEXT } from '../../shared/puzzle/setupCode.js'
 
@@ -218,7 +227,7 @@ _hs_rec_on = bool(_hs_rec_cfg.get('on'))
 _hs_hidden = (
     set(_hs_cfg.get('hide') or [])
     | set(_hs_rec_cfg.get('hide') or [])
-    | _hs_imported_names(_tree, ('turtle', 'stage'))
+    | _hs_imported_names(_tree, ('turtle', 'stage', 'beats'))
 )
 _hs_end_locals = {}
 _hs_panel = {'end': None, 'peek': None, 'peekLine': _hs_peek_line, 'peekReached': False}
@@ -676,6 +685,21 @@ globalThis.__hsStageHue = (argsJson) => {
   return error ? `${error.kind}|${error.message}` : `ok|${value}`
 }
 
+// One call of Beat Maker's `beats` module (../../shared/beats/): play() and stop() record a
+// Stage command (the step grid), so the beat travels with the run's drawing. '' or 'Kind|message'.
+globalThis.__hsBeatsCall = (name, argsJson) => {
+  let payload = null
+  try {
+    payload = JSON.parse(String(argsJson))
+  } catch {
+    return `ValueError|${String(name)}(): those values can't be played`
+  }
+  const { args, kwargs } = readStageCallPayload(payload)
+  return recordBeatCall(_stageRecorder, String(name), args, kwargs, {
+    maxCommands: MAX_STAGE_COMMANDS,
+  })
+}
+
 // ─── Turtle bridge (see ../turtle/shim.js and ../turtle/recorder.js) ──────────
 // Single default turtle only. The recorder keeps the state, the drawing in code order (with the
 // motion between drawn items, for playback) and every call (for turtle_command_used checks).
@@ -1069,4 +1093,7 @@ async function loadPyodide_() {
   // The Python Stage's `stage` module, registered once (see STAGE_INSTALL_PY).
   pyodide.globals.set('_hs_stage_src', STAGE_MODULE_PY)
   pyodide.runPython(STAGE_INSTALL_PY)
+  // Beat Maker's `beats` module, registered the same way (see BEATS_INSTALL_PY).
+  pyodide.globals.set('_hs_beats_src', BEATS_MODULE_PY)
+  pyodide.runPython(BEATS_INSTALL_PY)
 }
