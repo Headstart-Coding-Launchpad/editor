@@ -16,6 +16,8 @@
  *   isPythonRunning()          — true while a run is in progress
  */
 
+import { setChartsLoading } from '../../shared/stage/chartsStatus.js'
+
 // ─── Module state ─────────────────────────────────────────────────────────────
 
 let _worker = null
@@ -35,6 +37,9 @@ let _progressCallback = null
 let _stageRenderId = 0
 const _stageRenders = new Map()
 let _stageRenderChain = Promise.resolve()
+// The silent stage render's timeout, paused while the worker loads matplotlib (charts): the
+// download is not the program taking too long. { pause, resume } or null.
+let _stageRenderWatch = null
 
 // ─── Worker management ────────────────────────────────────────────────────────
 
@@ -46,6 +51,7 @@ function createAndInitWorker() {
     _loadResolve = null
   }
 
+  setChartsLoading(false)
   const w = new Worker(new URL('./pyodide.worker.js', import.meta.url), { type: 'module' })
   w.onmessage = handleWorkerMessage
   _loadingPromise = new Promise((res, rej) => {
@@ -60,6 +66,13 @@ function handleWorkerMessage({ data }) {
   switch (data.type) {
     case 'progress':
       _progressCallback?.(data.msg)
+      break
+
+    // matplotlib is loading (a program that imports it, src/shared/stage/charts.js).
+    case 'charts_loading':
+      setChartsLoading(data.active)
+      if (data.active) _stageRenderWatch?.pause()
+      else _stageRenderWatch?.resume()
       break
 
     case 'ready':
@@ -265,14 +278,22 @@ export async function renderStage(code, { timeoutMs = 8000 } = {}) {
     if (!_worker || _runsPending > 0) return null
     const id = ++_stageRenderId
     return new Promise((resolve) => {
-      const timer = setTimeout(() => {
-        if (!_stageRenders.has(id)) return
-        _stageRenders.delete(id)
-        resolve(null)
-        stopPython()
-      }, timeoutMs)
+      let timer = null
+      const arm = () => {
+        clearTimeout(timer)
+        timer = setTimeout(() => {
+          if (!_stageRenders.has(id)) return
+          _stageRenders.delete(id)
+          _stageRenderWatch = null
+          resolve(null)
+          stopPython()
+        }, timeoutMs)
+      }
+      arm()
+      _stageRenderWatch = { pause: () => clearTimeout(timer), resume: arm }
       _stageRenders.set(id, (result) => {
         clearTimeout(timer)
+        _stageRenderWatch = null
         resolve(result)
       })
       _worker.postMessage({ type: 'stage_render', id, code: String(code ?? '') })

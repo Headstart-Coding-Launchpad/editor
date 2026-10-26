@@ -16,6 +16,7 @@ This file lists all third-party open-source libraries used in this project, thei
 | BSD-2-Clause | dotenv                                                                                                                                       |
 | MPL-2.0      | Pyodide (CDN)                                                                                                                                |
 | CC0 / public domain | Image Lab pictures (`public/image-lab/`, see below) |
+| Matplotlib License (PSF-based) | matplotlib (Pyodide package from the CDN, loaded only when a program imports it), with its Pyodide dependencies (numpy, Pillow, fonttools, kiwisolver, …; BSD / MIT style) |
 
 ---
 
@@ -178,6 +179,18 @@ These libraries are loaded at runtime from a CDN and are not installed via npm.
 
 Homepage: https://pyodide.org/
 License text: https://github.com/pyodide/pyodide/blob/main/LICENSE
+
+### matplotlib (Pyodide package)
+
+| | |
+|---|---|
+| **Version** | as shipped with Pyodide 0.26.4 |
+| **License** | Matplotlib License (PSF-based, BSD-compatible); its bundled DejaVu fonts under the Bitstream Vera / DejaVu licence |
+| **Loaded from** | `https://cdn.jsdelivr.net/pyodide/v0.26.4/full/` with `pyodide.loadPackage`, only when a student's program imports matplotlib |
+| **Usage** | Real charts on the Python Stage (`src/shared/stage/charts.js`, `chartsPy.js`) |
+
+Homepage: https://matplotlib.org/
+License text: https://matplotlib.org/stable/project/license.html
 
 ---
 

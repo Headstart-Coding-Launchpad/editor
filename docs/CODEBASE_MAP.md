@@ -977,6 +977,10 @@ The `beats` Python module (docs/authoring/beats.md): drum patterns as strings, p
 | `beatSoundSettings.js` | Mute and volume per device (`headstart_beats_muted`, `headstart_beats_volume`), `useBeatSound`, `beatGain` (the volume cap) |
 | `beatsPy.js` | Python source of the `beats` module (`BEATS_MODULE_PY`, exports play and stop only) and its one-time `sys.modules` install (`BEATS_INSTALL_PY`) |
 | `BeatSequencer.jsx` | The grid: a row per drum, lit hits, faded repeats, step numbers from 0, playhead; controls `full` (Play/Stop, Sound, Volume, Save my beat), `play` (tutor modal, Show it) or `none` (tutor card) |
+| `charts.js` | Pure: real charts (matplotlib): `codeImportsMatplotlib`, the `image` command (`chartImageCommand`, `recordChartImage`: 400,000-character PNG and 20-chart caps), `chartImageRect` (fitted, centred), `chartImageSrc`, `CHART_PACKAGES`, the loading / offline messages |
+| `chartsPy.js` | Python glue the worker runs once after `loadPackage('matplotlib')` (`CHARTS_INSTALL_PY`: Agg backend, `plt.show()` → PNG → `__hsStageImage`), plus the per-run `CHARTS_RESET_PY` / `CHARTS_FLUSH_PY` (shows an unshown figure at the end) |
+| `chartsStatus.js` | The page's "matplotlib is loading" flag (`setChartsLoading`, `useChartsLoading`), set from the worker's `charts_loading` message; the output panel shows "Loading charts… (first time only)" |
+| `stageImages.js` | Decoded chart pictures for the canvas: `loadStageImages` (StagePane and Export work draw again once decoded), `stageImageFor`, `drawStageImage` (white, then the picture fitted) |
 
 ### Editor scrubbing (`src/shared/scrub/`)
 

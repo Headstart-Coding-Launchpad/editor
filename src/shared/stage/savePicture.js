@@ -9,6 +9,7 @@ import {
 import { slugifyTitle } from '../exportWork/naming.js'
 import { drawStage } from './canvas.js'
 import { STAGE_SIZE } from './commands.js'
+import { loadStageImages } from './stageImages.js'
 import { stageToSvg } from './svg.js'
 
 export const STAGE_PICTURE_SIZE = 800
@@ -20,6 +21,8 @@ export async function stagePngBytes(commands, size = STAGE_PICTURE_SIZE) {
   const canvas = makeCanvas(size, size)
   const ctx = canvas.getContext('2d')
   if (ctx) {
+    // A chart (plt.show()) is a PNG that has to decode before the canvas can draw it.
+    await loadStageImages(list)
     drawStage(ctx, list)
     return canvasToPngBytes(canvas)
   }

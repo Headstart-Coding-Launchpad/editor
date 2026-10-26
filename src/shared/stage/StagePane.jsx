@@ -4,6 +4,7 @@ import { compareStages, comparisonMatches } from './raster.js'
 import { describeComparison, describeStage } from './describe.js'
 import BeatSequencer from '../beats/BeatSequencer.jsx'
 import { isBeatCommand, readBeatSong } from '../beats/patterns.js'
+import { loadStageImages } from './stageImages.js'
 
 /**
  * The Python Stage pane (src/shared/stage/): the run's drawing on a square canvas that scales
@@ -99,6 +100,19 @@ export default function StagePane({
     }
   }, [drawnText])
 
+  // A chart (plt.show(), ./charts.js) is a PNG the browser decodes first: draw again once it has.
+  const [imageVersion, setImageVersion] = useState(0)
+  useEffect(() => {
+    if (!list.some((c) => c?.type === 'image')) return undefined
+    let cancelled = false
+    loadStageImages(list).then((loaded) => {
+      if (loaded && !cancelled) setImageVersion((v) => v + 1)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [list])
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return undefined
@@ -117,7 +131,7 @@ export default function StagePane({
     const observer = new ResizeObserver(redraw)
     observer.observe(canvas)
     return () => observer.disconnect()
-  }, [list, target, showGhost, showDiff, comparison, fontVersion, showCanvas])
+  }, [list, target, showGhost, showDiff, comparison, fontVersion, showCanvas, imageVersion])
 
   return (
     <section style={{ ...s.pane, ...style }} aria-label={title} data-testid="stage-pane">

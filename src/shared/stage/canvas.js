@@ -11,6 +11,7 @@ import {
   outlineWidthOf,
   shapeCorners,
 } from './geometry.js'
+import { drawStageImage } from './stageImages.js'
 
 // Emoji draw in Noto Color Emoji (loaded by index.css) on every device, so a stamp or an emoji in
 // text() looks the same on Windows, Chromebooks, iPads and in lesson screenshots (request #85).
@@ -83,6 +84,10 @@ function drawCommand(ctx, command) {
     case 'background':
       ctx.fillStyle = command.colour
       ctx.fillRect(0, 0, STAGE_SIZE, STAGE_SIZE)
+      break
+    // A chart (plt.show(), ./charts.js): covers the stage; drawn once its picture has decoded.
+    case 'image':
+      drawStageImage(ctx, command)
       break
     case 'line':
       ctx.save()
@@ -161,7 +166,8 @@ export function drawStage(ctx, commands, { ghost = null, ghostAlpha = 0.35, diff
     ctx.globalAlpha = ghostAlpha
     for (const command of ghost) {
       // The target's own background would wash out the whole drawing; its shapes are enough.
-      if (command?.type === 'background' || command?.type === 'clear') continue
+      if (command?.type === 'background' || command?.type === 'clear' || command?.type === 'image')
+        continue
       drawCommand(ctx, command)
     }
     ctx.globalAlpha = 1

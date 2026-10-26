@@ -4,7 +4,7 @@
 //   { commands: [command], count, truncated? }
 //
 // `count` is how many commands the run drew. Everything before the last full-stage command
-// (clear() or background()) is dropped, since it can't be seen; coordinates are rounded to 0.1;
+// (clear(), background() or a chart's image) is dropped, since it can't be seen; coordinates are rounded to 0.1;
 // and the list is capped (MAX_SYNCED_STAGE_COMMANDS, MAX_SYNCED_GRID_CELLS), keeping the newest
 // commands and setting `truncated` when some were left out.
 //
@@ -61,7 +61,9 @@ export function compactStageForSync(stage) {
   if (!Array.isArray(commands) || commands.length === 0) return null
   let start = 0
   commands.forEach((command, i) => {
-    if (command?.type === 'clear' || command?.type === 'background') start = i
+    // A chart (image) covers the whole stage too.
+    if (command?.type === 'clear' || command?.type === 'background' || command?.type === 'image')
+      start = i
   })
   // clear() itself draws nothing; keep a background() as the first command.
   if (commands[start]?.type === 'clear') start += 1

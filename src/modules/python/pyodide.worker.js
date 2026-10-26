@@ -22,6 +22,7 @@
  *                 { type: 'gpio_write',     pin: string, value: 0|1 }
  *                 { type: 'gpio_configure', pin: string, mode: number, pull: number|null }
  *                 { type: 'gpio_poll',      requestId: number }
+ *                 { type: 'charts_loading', active: boolean }
  *
  * GPIO messages carry MicroPython-style pin I/O for Electronics-module tasks:
  * the worker emits 'gpio_write'/'gpio_configure' as Python calls the GPIO API,
@@ -69,6 +70,12 @@
  * finally line), so the student's line numbers never move; formatPythonError turns an error
  * raised there into SETUP_ERROR_TEXT instead of its traceback.
  *
+ * Charts (src/shared/stage/charts.js): a program that imports matplotlib (its code or the task's
+ * setup) has it loaded first, once per worker (prepareCharts, between two 'charts_loading'
+ * messages), so a program that never imports it loads nothing extra. plt.show() puts each open
+ * figure on the Stage as an `image` command, and a figure left unshown is shown when the program
+ * ends (CHARTS_FLUSH_PY).
+ *
  * `stage_render` runs a task's stageTarget code silently (no output, `input()` answers '') and
  * replies with its stage commands only. The main thread never sends it while a run is going.
  */
@@ -87,6 +94,13 @@ import { recordBeatCall } from '../../shared/beats/patterns.js'
 import { createStagePictureBridge } from './stagePictureBridge.js'
 import { PYTHON_SLOW_MO_MAX_STEPS } from './slowMo/config.js'
 import { SETUP_ERROR_TEXT } from '../../shared/puzzle/setupCode.js'
+import {
+  CHART_PACKAGES,
+  CHARTS_LOAD_FAILED_MESSAGE,
+  codeImportsMatplotlib,
+  recordChartImage,
+} from '../../shared/stage/charts.js'
+import { CHARTS_FLUSH_PY, CHARTS_INSTALL_PY, CHARTS_RESET_PY } from '../../shared/stage/chartsPy.js'
 
 const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
 
@@ -109,6 +123,8 @@ let _turtle = createTurtleRecorder()
 let _stageRecorder = createStageRecorder()
 // A stage_render run: no output, and input() answers '' at once.
 let _silentRun = false
+// matplotlib is loaded and its plt.show() goes to the Stage (charts, see prepareCharts).
+let _chartsReady = false
 // The slow-mo recording of the current run (record), or null.
 let _slowMo = null
 // The most output characters a recording keeps, and how many line events (counting the ones
@@ -673,6 +689,11 @@ globalThis.__hsStageCall = (name, argsJson) => {
   return _stageRecorder.call(String(name), args, kwargs, { label })
 }
 
+// A chart from plt.show() (CHARTS_INSTALL_PY): base64 PNG, its pixel size and the chart in words.
+// '' when it went on the Stage, or 'Kind|message' for Python to raise.
+globalThis.__hsStageImage = (png, w, h, alt) =>
+  recordChartImage(_stageRecorder, String(png ?? ''), Number(w), Number(h), String(alt ?? ''))
+
 // hue(n, light=50): 'ok|#rrggbb', or 'Kind|message' for Python to raise. Draws nothing.
 globalThis.__hsStageHue = (argsJson) => {
   let payload = null
@@ -875,8 +896,35 @@ self.onmessage = async ({ data }) => {
       course: _turtle.course,
     })
 
+    // Charts: matplotlib loads before the program starts (first time only), so the download is
+    // never part of the run. Offline, the run ends with a plain message instead.
+    const usesCharts = codeImportsMatplotlib(data.code, setup.code)
+    if (!(await prepareCharts(usesCharts))) {
+      _slowMo = null
+      self.postMessage({
+        type: 'output',
+        text: `${CHARTS_LOAD_FAILED_MESSAGE}
+`,
+        kind: 'stderr',
+      })
+      self.postMessage({
+        type: 'done',
+        status: 'error',
+        variables: {},
+        variablesPanel: null,
+        lineCounts: null,
+        turtle: turtleResult(),
+        stage: { commands: [] },
+        slowMo: null,
+      })
+      return
+    }
+
     try {
+      if (usesCharts) pyodide.runPython(CHARTS_RESET_PY)
       await pyodide.runPythonAsync(WRAPPER)
+      // A chart drawn but never shown is shown now (CHARTS_INSTALL_PY).
+      if (usesCharts) pyodide.runPython(CHARTS_FLUSH_PY)
       flushBuffers()
       const slowMo = finishSlowMo('success')
       self.postMessage({
@@ -976,9 +1024,16 @@ async function renderStage(code) {
   pyodide.globals.set('_hs_record_json', JSON.stringify({ on: false }))
   pyodide.globals.set('_hs_setup_json', '{}')
   _slowMo = null
+  const usesCharts = codeImportsMatplotlib(code)
+  if (!(await prepareCharts(usesCharts))) {
+    _silentRun = false
+    return { status: 'error', commands: [], error: CHARTS_LOAD_FAILED_MESSAGE }
+  }
   await _stagePictures.prepare(code)
   try {
+    if (usesCharts) pyodide.runPython(CHARTS_RESET_PY)
     await pyodide.runPythonAsync(WRAPPER)
+    if (usesCharts) pyodide.runPython(CHARTS_FLUSH_PY)
     return { status: 'success', commands: _stageRecorder.commands, error: null }
   } catch (err) {
     const { text } = formatPythonError(String(err).replace(/^PythonError:\s*/, ''))
@@ -1094,6 +1149,30 @@ export function formatPythonError(traceback, { setupFrom = null } = {}) {
   return lineNum != null
     ? { text: `Line ${lineNum}: ${errorLine}`, line: lineNum }
     : { text: errorLine, line: null }
+}
+
+// Loads matplotlib (with numpy, pillow and its other dependencies) the first time a program
+// imports it, and installs the Stage's plt.show() (CHARTS_INSTALL_PY). The page shows "Loading
+// charts…" between the two 'charts_loading' messages, and pauses a stageTarget's timeout. True
+// when the program can run (it doesn't use charts, or they are ready); false when they couldn't
+// load (offline), and the next run tries again.
+async function prepareCharts(usesCharts) {
+  if (!usesCharts || _chartsReady) return true
+  self.postMessage({ type: 'charts_loading', active: true })
+  try {
+    await pyodide.loadPackage([...CHART_PACKAGES], {
+      messageCallback: () => {},
+      errorCallback: (message) => console.warn(`[charts] ${message}`),
+    })
+    pyodide.runPython(CHARTS_INSTALL_PY)
+    _chartsReady = true
+    return true
+  } catch (err) {
+    console.warn('[charts]', err)
+    return false
+  } finally {
+    self.postMessage({ type: 'charts_loading', active: false })
+  }
 }
 
 async function loadPyodide_() {

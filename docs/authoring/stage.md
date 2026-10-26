@@ -1,7 +1,7 @@
 # The Stage: a guide for lesson writers
 
 The Stage is the 400 × 400 drawing pane a Python task gets when its code imports the `stage`
-module. This guide puts everything about it in one place: how its coordinates work, every call,
+module (or matplotlib, for a chart: see [Charts](#11-charts-matplotlib)). This guide puts everything about it in one place: how its coordinates work, every call,
 how to place things, the mistakes students make, and how to design Stage tasks and checks. It is
 written for lesson writers (Lesson Gen's **Make It Real** lessons are built on it) and tutors.
 
@@ -350,6 +350,73 @@ No new check types: `stage_matches_target` with a `stageTarget` that runs the fi
 target can call `load_image()` too), `stage_pixel` with `index` for one pixel, and variable checks
 on the list (`variable_array_contains` with `name: fox`, `value: purple`). A tolerance of 0.01
 suits exact filters; photos with rounding (greyscale, brightness) may need 0.02.
+
+## 11. Charts (matplotlib)
+
+A Python task can draw a **real chart** with matplotlib, the library real programmers use. It is
+the same code that works outside LaunchPad (in IDLE, Thonny or a Jupyter notebook), so it is the
+Level 4 bridge: students build the lists with their own loop, then hand them to `plt.bar`. Nothing
+hides the loop.
+
+```python
+import matplotlib.pyplot as plt
+
+planets = {"Mercury": 4879, "Venus": 12104, "Earth": 12742, "Mars": 6779}
+
+names = []
+sizes = []
+for name, size in planets.items():
+    names.append(name)
+    sizes.append(size)
+
+plt.bar(names, sizes, color="orange")
+plt.title("How wide are the planets?")
+plt.xlabel("Planet")
+plt.ylabel("Width (km)")
+plt.show()
+```
+
+- **No `import stage` needed.** Importing matplotlib is enough; the chart appears on the Stage.
+- **First time only, it loads.** The first Run that imports matplotlib downloads it with its
+  helpers (numpy and others, roughly 10 MB, a few seconds on school Wi-Fi; the output says
+  "Loading charts… (first time only)"). After that it is ready until the page reloads or the
+  student presses Stop. Programs that never import matplotlib load nothing extra, so ordinary
+  Stage and console tasks are as fast as before. Offline, the run stops with "Charts couldn't
+  load. Check the computer is online, then press Run again."
+- **`plt.show()` puts the chart on the Stage**, fitted inside the square and never stretched (a
+  normal 4:3 chart has white bands above and below). Each `show()` replaces the picture, so with
+  several the last one stays (Slow-mo shows them one after another). Like real matplotlib, `show()`
+  then closes the figure, so the next `plt.bar` starts a fresh chart.
+- **Forgot `plt.show()`?** A chart that was drawn but never shown is shown when the program ends.
+  Still teach `plt.show()`: outside LaunchPad a script needs it.
+- **Mixing with the Stage**: a chart covers the whole Stage like `background()`. Stage calls made
+  *after* `plt.show()` draw on top of the chart; ones made before it are covered.
+- Labels are a little bigger than matplotlib's default (12 pt instead of 10) so they read on a
+  projector. Everything else is matplotlib's own default look.
+
+**Subset for lessons**: `plt.bar`, `plt.barh`, `plt.plot` (with `marker=`, `color=`, `label=`),
+`plt.scatter`, `plt.pie` (with `labels=`), `plt.hist`, `plt.title`, `plt.xlabel`, `plt.ylabel`,
+`plt.legend`, `plt.grid`, `plt.xticks(rotation=…)`, `plt.figure(figsize=…)`, `fig, ax =
+plt.subplots()` style calls, colour names and hex codes. Any other matplotlib call works as it
+does in real matplotlib. (Not yet clicked through in a browser: see the demo lesson
+`exports/stage-charts-demo.json`.)
+
+**Not supported:**
+
+- Interactive charts (zooming, hovering, animation). The chart is a still picture.
+- `plt.savefig("chart.png")` runs but saves nowhere a student can see. Use `plt.show()`.
+- Emoji in labels draw as blank boxes (matplotlib's font has none).
+- More than 20 `show()`s in one run stops with a message (a loop calling it over and over).
+- The `stage_*` checks don't look inside a chart: `stage_matches_target` and `stage_pixel` see a
+  chart as a white stage. Check chart tasks with `code` checks (`plt.bar`, `.append(`, a `for`
+  loop) and `variable` checks on the lists the loop built.
+- Don't name a function after a matplotlib call (`def bar():` then `plt.bar(...)`): the
+  classroom's runner treats both as the student's function and the call fails.
+
+**What the tutor sees:** the same chart on the student's card, in the student modal, in
+**Go Live** and in **Export work** (the Stage PNG). The screen-reader description says what the
+chart shows, from its title, labels and how many bars, lines, slices or sets of points it has
+("a chart titled 'How wide are the planets?' with 4 bars, across: Planet, up: Width (km)").
 
 ## See also
 
