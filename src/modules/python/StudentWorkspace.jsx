@@ -584,6 +584,7 @@ export default function StudentWorkspace({
       ghostDefault={stageTargetGhostOn(task)}
       ran={!!stageResult || !!slowMoView}
       truncated={stageResult?.truncated === true}
+      saveTitle={readOnly ? null : String(task?.title ?? '')}
       style={layout !== 'side' ? s.stageFill : stageBeside ? s.stageBeside : s.stageAbove}
     />
   )

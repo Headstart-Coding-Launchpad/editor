@@ -12,6 +12,10 @@ import { describeComparison, describeStage } from './describe.js'
  * - Differences (only once `ran`): highlights the cells that differ and says, in words, where
  *   and which colours (never colour alone).
  *
+ * `saveTitle` (the student's own workspace; the task's title, '' for none): a "Save my picture"
+ * button that downloads the drawing as '<title>-picture.png' (Image Lab;
+ * src/shared/stage/savePicture.js), once there is a drawing. null (the default) hides it.
+ *
  * `compact` (the tutor's card and StudentModal) drops the toolbar and the summary.
  * `commands` may be a prefix of a run's commands (a step-by-step player draws one at a time).
  */
@@ -24,6 +28,7 @@ export default function StagePane({
   compact = false,
   truncated = false,
   title = 'Stage',
+  saveTitle = null,
   style,
 }) {
   const canvasRef = useRef(null)
@@ -40,6 +45,17 @@ export default function StagePane({
   const showDiff = canDiff && diffOn
   const showGhost = hasTarget && ghostOn && !compact
   const description = useMemo(() => describeStage(list), [list])
+  const canSave = !compact && typeof saveTitle === 'string' && list.length > 0
+  const [saving, setSaving] = useState(false)
+  function savePicture() {
+    setSaving(true)
+    import('./savePicture.js')
+      .then(({ saveStagePicture, stagePictureFileName }) =>
+        saveStagePicture(list, stagePictureFileName(saveTitle))
+      )
+      .catch(() => {})
+      .finally(() => setSaving(false))
+  }
 
   useEffect(() => {
     if (!canDiff) setDiffOn(false)
@@ -97,18 +113,33 @@ export default function StagePane({
       {!compact && (
         <div style={s.toolbar} className="ui-tabs">
           <span style={s.title}>{title}</span>
-          {hasTarget && (
+          {(hasTarget || canSave) && (
             <div style={s.toggles}>
-              <button
-                type="button"
-                className="btn-ghost-outline"
-                style={{ ...s.toggle, ...(ghostOn ? s.toggleOn : null) }}
-                aria-pressed={ghostOn}
-                onClick={() => setGhostOn((on) => !on)}
-                title="Show the target faintly over your drawing"
-              >
-                Target
-              </button>
+              {canSave && (
+                <button
+                  type="button"
+                  className="btn-ghost-outline"
+                  style={s.toggle}
+                  onClick={savePicture}
+                  disabled={saving}
+                  title="Download your picture as a PNG file"
+                  data-testid="stage-save-picture"
+                >
+                  Save my picture
+                </button>
+              )}
+              {hasTarget && (
+                <button
+                  type="button"
+                  className="btn-ghost-outline"
+                  style={{ ...s.toggle, ...(ghostOn ? s.toggleOn : null) }}
+                  aria-pressed={ghostOn}
+                  onClick={() => setGhostOn((on) => !on)}
+                  title="Show the target faintly over your drawing"
+                >
+                  Target
+                </button>
+              )}
               {canDiff && (
                 <button
                   type="button"

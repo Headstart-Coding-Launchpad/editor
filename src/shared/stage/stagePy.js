@@ -19,9 +19,15 @@
  * src/modules/python/variableCapture.py.js). It also sends the student's name for the list
  * (`label`, found in the calling frame) so "pixels is one long list" can name it.
  *
+ * Image Lab's calls (rgb, red, green, blue, load_image, snapshot) and (r, g, b) tuples as
+ * colours are added at the end (./stagePicturesPy.js).
+ *
  * Exported as plain text; nothing here runs in Node.
  */
-export const STAGE_MODULE_PY = `
+import { STAGE_PICTURES_PY } from './stagePicturesPy.js'
+
+export const STAGE_MODULE_PY =
+  `
 import json as _json
 import sys as _sys
 try:
@@ -164,7 +170,7 @@ def hue(*args, **kwargs):
     if answer.startswith('ok|'):
         return answer[3:]
     _raise(answer)
-`
+` + STAGE_PICTURES_PY
 
 // Runs once per worker, after Pyodide loads, with `_hs_stage_src` set to STAGE_MODULE_PY.
 export const STAGE_INSTALL_PY = `
