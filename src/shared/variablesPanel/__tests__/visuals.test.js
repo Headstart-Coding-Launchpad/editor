@@ -75,6 +75,15 @@ describe('chooseVisual: lists', () => {
     expect(visual.notRead).toBe(78)
   })
 
+  it('stays small for an Image Lab picture (load_image(): 1,024 colours drawn with width=32)', () => {
+    // The capture reads at most 50 items of a list (VARIABLE_CAPTURE_LIMITS.maxItems).
+    const items = Array.from({ length: 50 }, () => str('#ff8800'))
+    const visual = chooseVisual({ t: 'list', len: 1024, items, g: 1, gw: 32 })
+    expect(visual.kind).toBe('wrapped')
+    expect(visual.items).toHaveLength(50)
+    expect(visual.notRead).toBe(974)
+  })
+
   it('is plain for an empty list, a set, a scalar, or with visuals off', () => {
     expect(chooseVisual(list([])).kind).toBe('plain')
     expect(chooseVisual({ t: 'set', len: 1, items: [str('red')] }).kind).toBe('plain')

@@ -102,6 +102,14 @@ describe('findScrubLiterals: python', () => {
       min: 0,
       max: 360,
     })
+    // Image Lab's rgb(): each number 0 to 255.
+    expect(
+      findScrubLiterals('fox[i] = rgb(255, 136, 0)', 'python').map((n) => n.range ?? null)
+    ).toEqual([
+      { min: 0, max: 255 },
+      { min: 0, max: 255 },
+      { min: 0, max: 255 },
+    ])
     // A whole-number opacity scrubs in tenths.
     const opacity = numbers[4]
     expect(numberStep(opacity)).toBe(0.1)

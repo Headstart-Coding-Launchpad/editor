@@ -198,13 +198,15 @@ const STAGE_KEYWORD_RANGES = {
 
 /**
  * A Python number literal with its Stage range (`range`) when it is the value of angle=,
- * opacity= or light=, or a number inside hue(); the literal as it was otherwise. A whole-number
+ * opacity= or light=, or a number inside hue() or rgb(); the literal as it was otherwise. A whole-number
  * opacity (0 or 1) scrubs in tenths.
  */
 function withStageRange(line, literal) {
   const keyword = line.slice(0, literal.from).match(/\b(angle|opacity|light)\s*=\s*$/)
   let range = keyword ? STAGE_KEYWORD_RANGES[keyword[1]] : null
   if (!range && enclosingCallName(line, literal.from) === 'hue') range = { min: 0, max: 360 }
+  // Image Lab's rgb(r, g, b): each number is 0 to 255.
+  if (!range && enclosingCallName(line, literal.from) === 'rgb') range = { min: 0, max: 255 }
   if (!range) return literal
   if (keyword?.[1] === 'opacity' && literal.decimals === 0) {
     return { ...literal, range, decimals: 1 }
