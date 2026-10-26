@@ -87,6 +87,7 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | Lesson assets via CLI | `docs/authoring/lesson-assets-cli.md` |
 | Lesson screenshots via CLI | `docs/authoring/lesson-screenshot-cli.md` |
 | Reading, adding, or archiving teacher feedback via CLI | `docs/authoring/feedback-cli.md` |
+| Tutor timing runs (admin preview stopwatch, `lessons timing` CLI) | `docs/authoring/timing-runs.md` |
 | Reading or reviewing session reports (field reference) | `docs/authoring/session-reports.md` |
 | Test strategy | `docs/TESTING.md` |
 | Licenses | `docs/LICENSES.md` |

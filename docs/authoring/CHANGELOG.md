@@ -39,6 +39,12 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-26
 
+- **Tutor timing run.** In the admin preview a tutor can press **Start timing run**, walk the
+  lesson, and **Finish** to save per-task seconds to `lessons/{lessonId}/timingRuns`. Read them
+  with `node cli/cli.mjs lessons timing <lessonId> [--latest] [--yaml]`. No lesson fields change.
+  See `docs/authoring/timing-runs.md`.
+  - Affects: cli, admin preview · Existing lessons: no changes needed · Resolves: none
+
 - **Image Lab: pictures on the Stage (Make It Real, LG-P9 §2).** The `stage` module has six new
   calls that draw nothing and give back values: `rgb(r, g, b)` (a `'#rrggbb'` colour; numbers are
   rounded and kept within 0–255), `red(c)`, `green(c)`, `blue(c)` (0–255, for any Stage colour),

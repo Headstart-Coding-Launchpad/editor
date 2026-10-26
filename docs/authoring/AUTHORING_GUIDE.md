@@ -630,6 +630,11 @@ node cli/cli.mjs lessons topics python-loops-draft --format yaml
 
 When preparing the final lesson, embed topic links in the student-facing prose where they should appear to learners. Recreation, from-memory, and independent tasks should normally include a learner-facing topic link in the prompt or hint; `topicLinks` metadata alone does not provide learner support.
 
+## Timing runs
+
+Tutors can time a lesson in the admin preview and the CLI reads the result:
+`node cli/cli.mjs lessons timing <lessonId> [--latest] [--yaml]`. See `docs/authoring/timing-runs.md`.
+
 ## Topic Library (YAML)
 
 Topics can also be authored and published in YAML:
