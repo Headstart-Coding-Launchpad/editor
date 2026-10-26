@@ -59,6 +59,24 @@ function scratchLesson(tasks) {
 const stage = (task, name) => task.stages.find((entry) => entry.stage === name)
 
 describe('lessons test-checks: Scratch mode', () => {
+  // #256: fixed sprites with no blocks listed first, the scripted sprite's blocks keyed by its id.
+  it('reads a stage keyed only by a later sprite when the first sprite has no blocks', () => {
+    const fishBlocks = (...stacks) => ({ fish: { blocks: { blocks: stacks } } })
+    const task = scratchTask({
+      sprites: [
+        { id: 'wave', name: 'Wave', studentEditable: false },
+        { id: 'fish', name: 'Fish' },
+      ],
+      starterBlocks: fishBlocks(stack('event_whenflagclicked', 'motion_turnright')),
+      completeBlocks: fishBlocks(stack('event_whenflagclicked', move(20))),
+      check: [{ type: 'block_used', opcode: 'motion_movesteps', spriteName: 'Fish' }],
+      feedbackChecks: [],
+    })
+    const result = testStageChecks(scratchLesson([task]))
+    expect(result.summary.failed).toBe(0)
+    expect(result.success).toBe(true)
+  })
+
   it('reports each check per stage, skipping run-time checks', () => {
     const result = testStageChecks(scratchLesson([scratchTask()]))
     expect(result.success).toBe(true)

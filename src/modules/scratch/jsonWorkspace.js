@@ -71,23 +71,33 @@ export function getScratchTaskSprites(task) {
   return task?.sprites?.length > 0 ? task.sprites : DEFAULT_SPRITES
 }
 
+// A stored blocks value is either keyed by sprite id (plus `__stage__` / `__meta__`) or one bare
+// workspace state, which belongs to the first sprite. It is keyed when any author sprite's id, or
+// the Stage or meta key, is a key: a first sprite with no blocks of its own is often left out of
+// the map, and must not make the other sprites' blocks read as the first sprite's (#256).
+export function isSpriteKeyedState(parsed, sprites) {
+  if (!parsed || typeof parsed !== 'object') return false
+  const has = (key) => Object.prototype.hasOwnProperty.call(parsed, key)
+  return has('__stage__') || has('__meta__') || sprites.some((sprite) => has(sprite.id))
+}
+
+// The value keyed by sprite id: a bare state (or anything that isn't a map) goes under the first
+// sprite. Not a copy.
+export function keyScratchSpriteStates(parsed, sprites) {
+  if (!parsed) return {}
+  if (isSpriteKeyedState(parsed, sprites)) return parsed
+  return sprites[0] ? { [sprites[0].id]: parsed } : {}
+}
+
 // A whole stored workspace state (keyed by sprite id, plus `__stage__`) → the
-// `spriteWorkspaces` array checkDispatch.js takes. A state not keyed by the first sprite's id
-// belongs to the first sprite, as ScratchWorkspace's loader treats it. Only author sprites are
+// `spriteWorkspaces` array checkDispatch.js takes. A bare state belongs to the first sprite, as
+// ScratchWorkspace's loader treats it (keyScratchSpriteStates). Only author sprites are
 // included (student-added sprites are never checkable); the Stage is added when the task has
 // stage code. `state` is null: sprite-state checks need a run, which this never does.
 export function buildJsonSpriteWorkspaces(task, rawState) {
   const sprites = getScratchTaskSprites(task)
   const parsed = parseScratchBlocksState(rawState)
-  let states = {}
-  if (parsed && typeof parsed === 'object') {
-    states =
-      sprites[0] && Object.prototype.hasOwnProperty.call(parsed, sprites[0].id)
-        ? parsed
-        : sprites[0]
-          ? { [sprites[0].id]: parsed }
-          : {}
-  }
+  const states = keyScratchSpriteStates(parsed, sprites)
   const result = sprites.map((sprite) => ({
     id: sprite.id,
     name: sprite.name,

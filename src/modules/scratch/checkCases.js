@@ -8,20 +8,24 @@
 import { normalizeChecks, normalizeFeedbackChecks } from '../checks.js'
 import { applyScratchBlockEdits } from './blockEdits.js'
 import { evaluateScratchStage, getScratchVerificationStages } from './checkVerification.js'
-import { getScratchTaskSprites, parseScratchBlocksState } from './jsonWorkspace.js'
+import {
+  getScratchTaskSprites,
+  isSpriteKeyedState,
+  parseScratchBlocksState,
+} from './jsonWorkspace.js'
 import { isScratchStillBuilding, scratchStatesHaveLooseBlock } from './stillBuilding.js'
 
 const PASS_FAIL = new Set(['pass', 'fail'])
 
-// A stored blocks value keyed by sprite id, as buildJsonSpriteWorkspaces reads it: a state not
-// keyed by the first sprite's id belongs to the first sprite. Returns a copy.
+// A stored blocks value keyed by sprite id, as buildJsonSpriteWorkspaces reads it: a bare state
+// belongs to the first sprite. Returns a copy.
 export function toScratchSpriteStates(task, raw) {
   const parsed = parseScratchBlocksState(raw)
   if (!parsed || typeof parsed !== 'object') return {}
   const sprites = getScratchTaskSprites(task)
   const first = sprites[0]?.id
   const keyed =
-    first && !Object.prototype.hasOwnProperty.call(parsed, first) && 'blocks' in parsed
+    first && !isSpriteKeyedState(parsed, sprites) && 'blocks' in parsed
       ? { [first]: parsed }
       : parsed
   return JSON.parse(JSON.stringify(keyed))

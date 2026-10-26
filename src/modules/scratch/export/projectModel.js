@@ -3,25 +3,16 @@
 // backdrops, variables, each sprite's blocks and where each sprite is. Shared by the .sb3, the
 // pictures and the share link (see ../exportWork.js). Browser bundle (uses the workspace's own
 // helpers), no DOM.
-import { getScratchTaskSprites, parseScratchBlocksState } from '../jsonWorkspace.js'
+import {
+  getScratchTaskSprites,
+  keyScratchSpriteStates,
+  parseScratchBlocksState,
+} from '../jsonWorkspace.js'
 import { getStartingBackdrop } from '../startingBackdrop.js'
 import { initSpriteStates, mergeAddedSpriteAssets } from '../ScratchWorkspace.jsx'
 
 export const STAGE_STATE_KEY = '__stage__'
 export const META_STATE_KEY = '__meta__'
-
-// A whole state keyed by sprite id; a bare single-sprite state belongs to the first sprite
-// (as ScratchWorkspace's loader treats it).
-function keyedStates(parsed, sprites) {
-  if (!parsed || typeof parsed !== 'object') return {}
-  const first = sprites[0]
-  if (!first) return {}
-  const keyed =
-    Object.prototype.hasOwnProperty.call(parsed, first.id) ||
-    Object.prototype.hasOwnProperty.call(parsed, STAGE_STATE_KEY) ||
-    Object.prototype.hasOwnProperty.call(parsed, META_STATE_KEY)
-  return keyed ? parsed : { [first.id]: parsed }
-}
 
 function variableName(entry) {
   return typeof entry === 'string' ? entry : entry?.name
@@ -40,7 +31,7 @@ export function resolveScratchProject(task, rawState, spriteState = null) {
     sprites = mergeAddedSpriteAssets(sprites, meta.addedCostumes, meta.addedSounds)
   }
   const backdrops = [...(task?.backdrops ?? []), ...(meta?.addedBackdrops ?? [])]
-  const states = keyedStates(parsed, getScratchTaskSprites(task))
+  const states = keyScratchSpriteStates(parsed, getScratchTaskSprites(task))
 
   const values = meta?.variableValues ?? {}
   const seen = new Set()

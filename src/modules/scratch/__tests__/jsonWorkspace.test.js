@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest'
 import {
   buildJsonSpriteWorkspaces,
   createJsonWorkspace,
+  keyScratchSpriteStates,
   parseScratchBlocksState,
 } from '../jsonWorkspace.js'
 import { evaluateScratchCheck, partialEvaluateScratchCheck } from '../checks.js'
@@ -170,6 +171,13 @@ describe('buildJsonSpriteWorkspaces', () => {
     expect(result[0].workspace.getAllBlocks(false).length).toBe(4)
   })
 
+  // #256: a first sprite with no blocks is left out of the map, so only a later sprite's id is a key.
+  it('reads a map keyed only by a later sprite as keyed, not as the first sprite blocks', () => {
+    const result = buildJsonSpriteWorkspaces({ sprites }, { s2: flagThenSay })
+    expect(result[0].workspace.getAllBlocks(false)).toEqual([])
+    expect(result[1].workspace.getAllBlocks(false).length).toBe(4)
+  })
+
   it('falls back to the default sprite and adds the Stage when stage code is on', () => {
     const result = buildJsonSpriteWorkspaces(
       { enableStageCode: true },
@@ -177,5 +185,29 @@ describe('buildJsonSpriteWorkspaces', () => {
     )
     expect(result.map((sprite) => sprite.id)).toEqual(['sprite1', '__stage__'])
     expect(result[1].workspace.getAllBlocks(false).length).toBe(4)
+  })
+})
+
+describe('keyScratchSpriteStates', () => {
+  const sprites = [
+    { id: 'wave', name: 'Wave' },
+    { id: 'fish', name: 'Fish' },
+  ]
+
+  it('keeps a map keyed by any author sprite, the Stage or meta', () => {
+    expect(keyScratchSpriteStates({ fish: flagThenSay }, sprites)).toEqual({ fish: flagThenSay })
+    expect(keyScratchSpriteStates({ __stage__: flagThenSay }, sprites)).toEqual({
+      __stage__: flagThenSay,
+    })
+    expect(keyScratchSpriteStates({ __meta__: {} }, sprites)).toEqual({ __meta__: {} })
+  })
+
+  it('puts a bare state under the first sprite', () => {
+    expect(keyScratchSpriteStates(flagThenSay, sprites)).toEqual({ wave: flagThenSay })
+  })
+
+  it('returns an empty map for nothing', () => {
+    expect(keyScratchSpriteStates(null, sprites)).toEqual({})
+    expect(keyScratchSpriteStates(flagThenSay, [])).toEqual({})
   })
 })

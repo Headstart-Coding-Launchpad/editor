@@ -70,6 +70,7 @@ import {
 import { CostumesTab, SoundsTab } from './CostumesSoundsPanel.jsx'
 import AddPickerPopover from './AddPickerPopover.jsx'
 import { getStartingBackdrop, getStartingBackdropName } from './startingBackdrop.js'
+import { keyScratchSpriteStates } from './jsonWorkspace.js'
 import { isScratchStillBuilding } from './stillBuilding.js'
 import { useScratchCategoryReveal } from './scratchHighlight.js'
 
@@ -378,12 +379,6 @@ const ROT_STYLES = [
   { val: 'left-right', icon: '↔', title: 'Flip left-right only' },
   { val: "don't rotate", icon: '↑', title: "Don't rotate" },
 ]
-
-function normaliseInitialStates(raw, sprites) {
-  if (!raw) return {}
-  if (sprites[0] && Object.prototype.hasOwnProperty.call(raw, sprites[0].id)) return raw
-  return sprites[0] ? { [sprites[0].id]: raw } : {}
-}
 
 function defaultSpriteState(sp) {
   return {
@@ -1074,10 +1069,10 @@ export default function ScratchWorkspace({
   // pending save — resolving during render would read storage before that flush.
   const resolveInitStates = () => {
     const raw = initialStates ?? initialState
-    return normaliseInitialStates(typeof raw === 'function' ? raw() : raw, sprites)
+    return keyScratchSpriteStates(typeof raw === 'function' ? raw() : raw, sprites)
   }
   const normExtStates =
-    externalStates ?? (externalState ? normaliseInitialStates(externalState, sprites) : null)
+    externalStates ?? (externalState ? keyScratchSpriteStates(externalState, sprites) : null)
 
   const blocksDivRefs = useRef({})
   const workspaceRefs = useRef({})
