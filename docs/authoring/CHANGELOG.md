@@ -55,6 +55,21 @@ Entries written before 2026-09-29 are not tagged.
 - Affects: python · Existing lessons: no changes needed · Resolves:
   authoring-requests/2026-10-22-image-lab-the-picture-model-on-the-stage-load-image-colour-h.md
 
+- **Beat Maker: the `beats` Python module (Make It Real §1).** `from beats import *` gives
+  `play(kick, snare, hat, clap, tempo=100)` and `stop()`. A pattern is a string, one character per
+  step: `x` a hit, `.` a rest, `X` a louder hit; a list of strings is joined into one pattern.
+  Patterns can also be given by name (`play(hat="x.x.", clap="..x.")`, or `play(**beat)` with a
+  dict). `tempo` is 40-240 (default 100); a step is a sixteenth note. A shorter pattern repeats
+  until the longest ends; several `play()` calls in one run play one after another as parts. The
+  Stage shows a step-sequencer grid (lit squares, a playhead, step numbers from 0) and the beat
+  plays once the program finishes, 4 times through, then stops. Students get Play/Stop, mute and a
+  capped volume (remembered per device) and **Save my beat** (a WAV); Export work adds the WAV
+  too. The tutor sees the grid on the card and in the modal (with a Play button); nothing plays on
+  the tutor's screen by itself. No new task fields or checks: use `variable_equals` and `code`
+  checks on the patterns, which work with the sound off. Guide: [beats.md](beats.md).
+- Affects: python · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-10-22-beat-maker-a-beats-library-and-step-sequencer-view-on-the-st.md
+
 - **Scratch blocks keyed by a later sprite load when the first sprite has none (Hub #256).**
   `starterBlocks`, `completeBlocks` and `codeStages[].blocks` keyed only by later sprites (for
   example fixed props with no blocks listed first, the scripted sprite after them) used to load as

@@ -1,9 +1,12 @@
 // "Export work" for Python tasks (see src/shared/exportWork/exporters.js): the code as a .py
 // file, the Python Stage drawing (when the code drew one) as a PNG, and a share link showing the
 // code, its last output and the drawing. The drawing exists only for the task the student last
-// ran live (currentStageResult); older tasks export their code only.
+// ran live (currentStageResult); older tasks export their code only. A run that played a beat
+// (Beat Maker, src/shared/beats/) also gets its beat as a WAV file, "Save my beat".
 import { stagePngBytes } from '../../shared/stage/savePicture.js'
 import { compactStageForSync, readStageResult } from '../../shared/stage/sync.js'
+import { isBeatCommand, readBeatSong } from '../../shared/beats/patterns.js'
+import { renderBeatWav } from '../../shared/beats/render.js'
 import ShareView from './ShareView.jsx'
 
 const PICTURE_SIZE = 800
@@ -17,7 +20,10 @@ function readCode(value) {
  * student's "Save my picture" button makes the same PNG (src/shared/stage/savePicture.js).
  */
 export async function renderStagePng(stage, size = PICTURE_SIZE) {
-  return stagePngBytes(readStageResult(stage)?.commands ?? [], size)
+  // Beat Maker's commands draw nothing on the canvas: a beat on its own is no picture.
+  const commands = readStageResult(stage)?.commands ?? []
+  if (!commands.some((command) => !isBeatCommand(command))) return null
+  return stagePngBytes(commands, size)
 }
 
 const pythonExporter = {
@@ -41,9 +47,17 @@ const pythonExporter = {
   async buildPictures(item, ctx) {
     // Code with no Stage drawing has no picture, and that needs no note.
     if (!item.work.stage) return { files: [], notes: [] }
+    const files = []
+    const notes = []
     const png = await renderStagePng(item.work.stage)
-    if (!png) return { files: [], notes: [] }
-    return { files: [{ name: `${ctx.stem}_stage.png`, data: png }], notes: [] }
+    if (png) files.push({ name: `${ctx.stem}_stage.png`, data: png })
+    const song = readBeatSong(readStageResult(item.work.stage)?.commands)
+    if (song) {
+      const wav = await renderBeatWav(song)
+      if (wav) files.push({ name: `${ctx.stem}_beat.wav`, data: wav })
+      else notes.push(`${item.task?.title || 'A task'}: this browser can't save the beat as sound.`)
+    }
+    return { files, notes }
   },
   sharePayload(item) {
     const stage = item.work.stage ? compactStageForSync(item.work.stage) : null

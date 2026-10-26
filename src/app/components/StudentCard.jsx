@@ -900,6 +900,7 @@ export default function StudentCard({
               commands={cardStage.commands}
               title="Stage drawing"
               style={s.cardStage}
+              beatControls="none"
             />
             <pre style={{ ...s.snippet, flex: 1, minWidth: 0 }}>
               {(student.currentOutput ?? '').split('\n').slice(0, 2).join('\n') || (

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { STAGE_EMOJI_FONT, drawStage, sizeStageCanvas } from './canvas.js'
 import { compareStages, comparisonMatches } from './raster.js'
 import { describeComparison, describeStage } from './describe.js'
+import BeatSequencer from '../beats/BeatSequencer.jsx'
+import { isBeatCommand, readBeatSong } from '../beats/patterns.js'
 
 /**
  * The Python Stage pane (src/shared/stage/): the run's drawing on a square canvas that scales
@@ -18,6 +20,10 @@ import { describeComparison, describeStage } from './describe.js'
  *
  * `compact` (the tutor's card and StudentModal) drops the toolbar and the summary.
  * `commands` may be a prefix of a run's commands (a step-by-step player draws one at a time).
+ *
+ * Beat Maker (src/shared/beats/): when the run called play(), its step grid shows here, in place
+ * of the canvas when nothing else was drawn. `beatAutoPlay` plays it at once (the student's own
+ * Run only); `beatControls` is 'full', 'play' or 'none' (default: 'play' when compact).
  */
 export default function StagePane({
   commands,
@@ -30,6 +36,8 @@ export default function StagePane({
   title = 'Stage',
   saveTitle = null,
   style,
+  beatAutoPlay = false,
+  beatControls,
 }) {
   const canvasRef = useRef(null)
   const [ghostOn, setGhostOn] = useState(ghostDefault)
@@ -45,7 +53,10 @@ export default function StagePane({
   const showDiff = canDiff && diffOn
   const showGhost = hasTarget && ghostOn && !compact
   const description = useMemo(() => describeStage(list), [list])
-  const canSave = !compact && typeof saveTitle === 'string' && list.length > 0
+  const beatSong = useMemo(() => readBeatSong(list), [list])
+  const drawsToo = useMemo(() => list.some((c) => !isBeatCommand(c)), [list])
+  const showCanvas = !beatSong || drawsToo || hasTarget
+  const canSave = !compact && typeof saveTitle === 'string' && drawsToo
   const [saving, setSaving] = useState(false)
   function savePicture() {
     setSaving(true)
@@ -106,7 +117,7 @@ export default function StagePane({
     const observer = new ResizeObserver(redraw)
     observer.observe(canvas)
     return () => observer.disconnect()
-  }, [list, target, showGhost, showDiff, comparison, fontVersion])
+  }, [list, target, showGhost, showDiff, comparison, fontVersion, showCanvas])
 
   return (
     <section style={{ ...s.pane, ...style }} aria-label={title} data-testid="stage-pane">
@@ -156,11 +167,21 @@ export default function StagePane({
           )}
         </div>
       )}
-      <div style={compact ? { ...s.fit, minHeight: 0 } : s.fit}>
-        <div style={s.square}>
-          <canvas ref={canvasRef} style={s.canvas} role="img" aria-label={description} />
+      {beatSong && (
+        <BeatSequencer
+          song={beatSong}
+          autoPlay={beatAutoPlay}
+          controls={beatControls ?? (compact ? 'play' : 'full')}
+          compact={compact}
+        />
+      )}
+      {showCanvas && (
+        <div style={compact ? { ...s.fit, minHeight: 0 } : s.fit}>
+          <div style={s.square}>
+            <canvas ref={canvasRef} style={s.canvas} role="img" aria-label={description} />
+          </div>
         </div>
-      </div>
+      )}
       {!compact && comparison && (diffOn || matches) && (
         <p style={{ ...s.summary, ...(matches ? s.summaryMatch : null) }} aria-live="polite">
           {describeComparison(comparison, { matches })}

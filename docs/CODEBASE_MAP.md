@@ -963,6 +963,21 @@ The drawing pane of a Python task (docs/authoring/python.md "Stage"). The engine
 | `pictures.js` | Pure: `stageColourValue` (colour names for `red()` / `green()` / `blue()`), `readSnapshotRequest`, `snapshotHex` / `snapshotColours` (`snapshot()` via `rasteriseStage`) |
 | `savePicture.js` | Browser: `stagePngBytes` (the drawing as a PNG, shared with Python's Export work), `stagePictureFileName`, `saveStagePicture` (download) |
 
+### Beat Maker (`src/shared/beats/`)
+
+The `beats` Python module (docs/authoring/beats.md): drum patterns as strings, played and shown as a step grid on the Stage. `play()` / `stop()` record `beat` / `beat_stop` commands in the run's Stage command list (the worker's `__hsBeatsCall`), so the beat travels wherever the Stage drawing goes (tutor card, StudentModal, Go Live, Show it, share links, Export work).
+
+| File | Role |
+|---|---|
+| `patterns.js` | Pure: `validateBeatCall` (play/stop args → command or plain-words TypeError / ValueError), `readPattern`, `readTempo`, `recordBeatCall` (appends to a Stage recorder; caps), `readBeatSong` (commands → `{ parts, autoPlay }`, reads Firebase-shaped rows), `stepHit`, `describeBeatSong`, `isBeatCommand`, limits (`BEAT_INSTRUMENTS`, tempo 40-240, 64 steps, 32 parts) |
+| `timing.js` | Pure: `stepSeconds`, `buildTimeline` (one event per step with its hits), `loopCountFor` (4 times, at least 8 s, at most 60 s), `eventAt`, `positionAt`, `songSeconds` |
+| `drums.js` | Web Audio drum kit made in code (kick, snare, closed hat, clap) on a live or offline context: `scheduleDrum`, `createDrumOutput` (volume gain + limiter) |
+| `player.js` | The live player: one beat at a time, `playBeat` / `stopBeat` / `setBeatGain`, `createBeatScheduler` (lookahead scheduling on the AudioContext clock; silent page-clock fallback), `installBeatAudioUnlock` |
+| `render.js` | `renderBeatWav` (OfflineAudioContext + Scratch export's `encodeWav`), `downloadWav` |
+| `beatSoundSettings.js` | Mute and volume per device (`headstart_beats_muted`, `headstart_beats_volume`), `useBeatSound`, `beatGain` (the volume cap) |
+| `beatsPy.js` | Python source of the `beats` module (`BEATS_MODULE_PY`, exports play and stop only) and its one-time `sys.modules` install (`BEATS_INSTALL_PY`) |
+| `BeatSequencer.jsx` | The grid: a row per drum, lit hits, faded repeats, step numbers from 0, playhead; controls `full` (Play/Stop, Sound, Volume, Save my beat), `play` (tutor modal, Show it) or `none` (tutor card) |
+
 ### Editor scrubbing (`src/shared/scrub/`)
 
 Live number and colour scrubbing in the shared code editor, for a task's `scrub` field (docs/authoring/python.md "Live scrubbing"). The editor half is a CodeMirror extension in its own compartment; the classroom half (preview runs, report count) is `useScrubPreview` / `useScrubLog`. Modules opt in with `capabilities.scrub` (python, turtle, html).

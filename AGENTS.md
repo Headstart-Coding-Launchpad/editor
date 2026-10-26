@@ -66,6 +66,7 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | Recent lesson-authoring contract changes | `docs/authoring/CHANGELOG.md` |
 | Authoring a Python lesson (task fields, checks, tests, examples) | `docs/authoring/python.md` |
 | Designing Python Stage tasks (coordinates, every call, placing things, which check) | `docs/authoring/stage.md` |
+| Beat Maker (`beats` module: drum patterns as strings, step grid, sound controls) | `docs/authoring/beats.md` |
 | Authoring a Turtle lesson (task fields, supported commands, checks) | `docs/authoring/turtle.md` |
 | Authoring an HTML lesson (task fields, element checks, examples) | `docs/authoring/html.md` |
 | Authoring a Scratch lesson (sprites, opcodes, checks, examples) | `docs/authoring/scratch.md` |
