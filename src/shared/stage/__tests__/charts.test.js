@@ -190,7 +190,7 @@ describe('the Python glue', () => {
   it('forces the Agg backend and replaces plt.show()', () => {
     expect(CHARTS_INSTALL_PY).toContain("matplotlib.use('Agg', force=True)")
     expect(CHARTS_INSTALL_PY).toContain('plt.show = show')
-    expect(CHARTS_INSTALL_PY).toContain('js.__hsStageImage(')
+    expect(CHARTS_INSTALL_PY).toContain('js.__hsStageChart(')
     expect(CHARTS_RESET_PY).toBe('_hs_charts_reset()')
     expect(CHARTS_FLUSH_PY).toBe('_hs_charts_flush()')
   })
@@ -199,8 +199,8 @@ describe('the Python glue', () => {
 describe('the worker bridge', () => {
   it('puts a chart on the Stage from Python, or answers with a problem to raise', async () => {
     await import('../../../modules/python/pyodide.worker.js')
-    expect(globalThis.__hsStageImage(PNG, 640, 480, 'a chart')).toBe('')
-    expect(globalThis.__hsStageImage('', 640, 480, '')).toMatch(/^RuntimeError\|/)
+    expect(globalThis.__hsStageChart(PNG, 640, 480, 'a chart')).toBe('')
+    expect(globalThis.__hsStageChart('', 640, 480, '')).toMatch(/^RuntimeError\|/)
   })
 })
 

@@ -691,7 +691,7 @@ globalThis.__hsStageCall = (name, argsJson) => {
 
 // A chart from plt.show() (CHARTS_INSTALL_PY): base64 PNG, its pixel size and the chart in words.
 // '' when it went on the Stage, or 'Kind|message' for Python to raise.
-globalThis.__hsStageImage = (png, w, h, alt) =>
+globalThis.__hsStageChart = (png, w, h, alt) =>
   recordChartImage(_stageRecorder, String(png ?? ''), Number(w), Number(h), String(alt ?? ''))
 
 // hue(n, light=50): 'ok|#rrggbb', or 'Kind|message' for Python to raise. Draws nothing.

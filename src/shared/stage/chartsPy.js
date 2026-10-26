@@ -5,7 +5,7 @@
  *
  * - forces the Agg backend (the worker has no page to draw a window on);
  * - replaces plt.show() (and Figure.show()) with one that saves every open figure as a PNG and
- *   hands it to the worker's `__hsStageImage(png, w, h, alt)`, then closes them, as real
+ *   hands it to the worker's `__hsStageChart(png, w, h, alt)`, then closes them, as real
  *   plt.show() does once its window is shut;
  * - hides matplotlib's "Glyph … missing from font" warning (an emoji in a label).
  *
@@ -90,7 +90,7 @@ def _hs_charts_install():
         while len(data) > chars_max and pixels > 250:
             pixels = int(pixels * 0.7)
             data, pw, ph = png_of(fig, pixels)
-        problem = str(js.__hsStageImage(data, pw, ph, alt_text(fig)) or '')
+        problem = str(js.__hsStageChart(data, pw, ph, alt_text(fig)) or '')
         if problem:
             raise_problem(problem)
 
