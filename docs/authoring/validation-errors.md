@@ -167,6 +167,7 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … is a confidence check with a scale field; confidence checks always use 1 to 10, so scale is ignored` (warning) | A confidence task sets `scale`. Every confidence check is 1 to 10. | Remove `scale`. |
 | `Task … is a poll but has a check (polls are never marked)` | A poll has a `check` or `answer:`. Polls have no right answer. | Remove `check` / `answer:`. Use `quizType: multiple_choice` for a marked question. |
 | `Task … is a poll but showResults is not true or false` | A poll's `showResults` is set to something other than `true` or `false`. | Use `showResults: false` to keep the class split private, or remove the field (default `true`). |
+| `Task … is a poll but multiple is not true or false` | A poll's `multiple` is set to something other than `true` or `false`. | Use `multiple: true` to let students pick more than one option, or remove the field (default `false`). |
 | `Task … is a short-answer quiz but showResponses is not teacher_picks` | `showResponses` has a value other than `teacher_picks`. | Use `showResponses: teacher_picks`, or remove the field to keep answers teacher-only. |
 | `Task … is a short-answer quiz with a check but has showResponses (only open answers with no check can be shown)` | A graded short answer (with a `check`) asks for its answers to be shown. Graded quizzes never broadcast a student's answer. | Remove `check` to make it an open discussion question, or remove `showResponses`. |
 | `Task … is a short-answer quiz but anonymiseResponses is not true or false` | `anonymiseResponses` is set to something other than `true` or `false`. | Use `anonymiseResponses: false` to show names by default, or remove the field (default `true`). |
@@ -327,9 +328,9 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … example …: …` | A pre-loaded `examples` item has the same problems as a test drawing: no `label`, a `label` that is not in `classes`, neither or both of `strokes`/`grid`, a bad `grid` or bad `strokes` (the messages read like the test drawing ones above). | Fix the item as for `testItems`. |
 | `Task …: examples must be a list of pre-loaded drawings.` | `examples` is not a list. | Write a list of `{ label, grid }` items. |
 | `Task …: examples need classes (each example uses a class name).` | `examples` with no `classes`. | List the `classes` the examples use. |
-| `Task …: examples can have at most 40 drawings.` | More than 40 pre-loaded examples. | Keep 40 or fewer. |
+| `Task …: examples can have at most … drawings.` | More than 40 pre-loaded examples. | Keep 40 or fewer. |
 | `Task …: no pre-loaded example for class "…". (warning)` | `examples` exists but a class has none, so the pad cannot guess it until the student draws it. | Add an example for it, or ignore if intended. |
-| `Task …: "…" has … or more pre-loaded examples, … Raise minExamplesPerClass. (warning)` | With `held_out`, a class is already full from given examples, so nothing is kept back for the test. | Raise `minExamplesPerClass`. |
+| `Task …: "…" has … or more pre-loaded examples, so the student never has to draw it and nothing is kept back for the test. Raise minExamplesPerClass.` (warning) | With `held_out`, a class is already full from given examples, so nothing is kept back for the test. | Raise `minExamplesPerClass`. |
 | `Task …: no test drawing for class "…". (warning)` | With `testSet: teacher`, a class has no test drawing, so it is never tested. | Add at least one `testItems` entry for it. |
 
 ### Space station ([activities/station.md](activities/station.md))
