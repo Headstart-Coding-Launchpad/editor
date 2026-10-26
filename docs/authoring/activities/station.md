@@ -83,7 +83,7 @@ tasks:
 | `card` | No | `order_part`, `place_part`. A part id shown as a picture ("find the one in the picture"); the part on the card is the target, so do not also set `target`. |
 | `onlyNoted` | No | `open_crate`. `true`: done when every crate the `note` lists is open and no other is. Opening a decoy blinks and it stays shut. |
 | `count` | No | `place_part` (lesson 3, needs a `target`), `open_crate`, `undo`. Done at exactly this many (2 or more). |
-| `pattern` | `light_pattern` | `{ left: on, core: off, right: on }`: which power sections must be on. Every section needs `on` or `off` (`true` / `false` also work) and at least one must be on. |
+| `pattern` | `light_pattern` | `{ left: on, core: off, right: on }`: which power sections must be on. Every section needs `on` or `off` (`true` / `false` also work) and at least one must be on. Or `free`: the child makes their own signal (see Several of a kind below). |
 
 ## Goals and methods
 
@@ -134,8 +134,9 @@ a red outline; with reduced motion only the outline flashes), changes nothing, a
 | Pick the right one: picture | `order_part` or `place_part` with `card: dish` (no `target`) | A picture of the part, no name. Only that part counts. |
 | Leave the decoys | task `crates` with a `sticker` each, task `note: [red-star, green-triangle]`, and `open_crate` with `onlyNoted: true` | A sticker on every crate (larger in a reading panel when one click selects the crate) and a delivery note card. A decoy blinks and stays shut. |
 | Exactly that many | `place_part` with `target: solar` and `count: 3` (Lesson 3); `open_crate` with `count: 2`; `undo` with `count: 3` | "Exactly 3" with a counter ("1 of 3"). A counted part never runs out of the tray. `undo` counts only Ctrl+Z / Cmd+Z presses that really undo. |
-| Several of a kind (Lesson 1) | two `power_on` goals with an `order` (a second start-up card in a new order); two `pick_colour` goals with `match` on the same target (a second Mission Control colour) | One card at a time. A goal in a series counts only once every goal before it in the list is done; a later card waits (no frame on its next step). When a power goal finishes with another still to come, **all sections switch off** so it can be done from the start. Two `match` goals for the same target must be different colours. |
+| Several of a kind (Lesson 1) | two `power_on` goals with an `order` (a second start-up card in a new order); two `pick_colour` goals with `match` on the same target (a second Mission Control colour) | One card at a time. A goal in a series counts only once every goal before it in the list is done; a later card waits (no frame on its next step). When a power goal finishes with another still to come, the finished pattern **stays lit for about 1.5 seconds** (the card shows "Signal sent ✓" or "Done ✓"; the power buttons wait and presses are ignored), then **all sections switch off** so the next card can be done from the start. A reload during that moment switches off at once. The last goal in a series stays lit. Two `match` goals for the same target must be different colours. |
 | Light pattern (Lesson 1) | `light_pattern` with `pattern: { left: on, core: off, right: on }` | A card with three power buttons, each On or Off. Power buttons **toggle** in Lesson 1 (click again = off); the goal is done when they match. It joins the same series as the start-up cards, so put it after them and the station starts dark. |
+| Make your own signal (Lesson 1) | `light_pattern` with `pattern: free` | The card says "Make your own signal" and has a **Send signal** button. The child switches any sections on or off and presses Send; only that button finishes the goal, and at least one light must be on (otherwise a gentle hint). The tutor sees what was sent ("Sent signal: left + right") on the card and in the report. It works inside the same series, so it can follow a fixed pattern card (the hold applies) or come first. |
 | Undo the robot's drops (Lesson 3) | task `mistakes: [{ part: greenhouse, spot: top-module-2 }]` and an `undo_mistakes` goal | The scene starts with those parts placed and marked. A card says how many are left to put back. Each Ctrl+Z (Cmd+Z) removes one; done when all are gone. |
 | Their own choice | the plain goals (`pick_colour` with no `match`, `place_part` with no `target`) | The usual goal line. |
 
@@ -188,6 +189,10 @@ tasks:
         goal: light_pattern
         pattern: { left: on, core: off, right: on }
         prompt: Make the lights look like the pattern card. Click a button again to switch it off.
+      - id: signal
+        goal: light_pattern
+        pattern: free
+        prompt: Make your own signal with the lights, then press Send signal.
       - id: lights
         goal: pick_colour
         target: lights

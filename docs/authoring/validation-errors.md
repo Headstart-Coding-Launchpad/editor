@@ -386,7 +386,7 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … item …: count on place_part only works in lesson 3.` | `place_part` with `count` in lesson 4. | Move it to Lesson 3. |
 | `Task … item …: count can't be used with an order or a card.` | `place_part` count with `order` or `card`. | Keep one. |
 | `Task … item …: pattern only applies to light_pattern goals.` | `pattern` is on another goal. | Remove it, or use `light_pattern`. |
-| `Task … item …: light_pattern needs a pattern, like { left: on, core: off, right: on }.` | A `light_pattern` goal has no `pattern`. | Add the pattern. |
+| `Task … item …: light_pattern needs a pattern, like { left: on, core: off, right: on }, or pattern: free.` | A `light_pattern` goal has no `pattern`, or it is not an object or `free`. | Add the pattern, or `pattern: free`. |
 | `Task … item …: pattern left must be on or off.` (also core, right) | A section in `pattern` is missing or not on/off. | Give all three sections `on` or `off`. |
 | `Task … item …: pattern has "…", which is not a section (left, core, right).` | `pattern` names something that is not a power section. | Use only `left`, `core`, `right`. |
 | `Task … item …: pattern needs at least one section on.` | Every section is off. | Switch at least one on. |

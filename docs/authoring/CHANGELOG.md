@@ -39,6 +39,17 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-26
 
+- **Station light patterns: hold the matched pattern, and `pattern: free`.** In a Station task
+  (Lesson 1) a finished power card (an ordered `power_on` or a `light_pattern`) with another power
+  card still to come now stays lit for about 1.5 seconds, with "Signal sent ✓" on the card, before
+  the station switches off for the next one (it used to switch off at once). New
+  `light_pattern` with `pattern: free`: the card says "Make your own signal", the child switches
+  any lights and presses **Send signal** (at least one on) to finish it; the tutor sees the sent
+  pattern ("Sent signal: left + right"). Fixes the first of two `light_pattern` cards vanishing
+  before the child saw it finished. See `activities/station.md`.
+  - Affects: station · Existing lessons: no changes needed (fixed `pattern` objects work as before,
+    now with the hold) · Resolves: none
+
 - **Nine activity live badges.** Rule-backed badges for the activity tasks, suggested to the tutor
   during a live session: 🔭 Prediction Pro (first right first time on a `Quiz: What Do You Expect
   the Code to Do` task), 🏗️ Station Builder (first to pass a Space station task), 💯 Perfect Round
