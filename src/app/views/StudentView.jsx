@@ -53,6 +53,7 @@ import ClassCountdownPill from '../components/ClassCountdownPill'
 import ClassProgressStrip from '../components/ClassProgressStrip'
 import TimesUpBanner from '../components/TimesUpBanner'
 import TaskChangeFlash from '../components/TaskChangeFlash'
+import TimingRunControl from '../components/TimingRunControl'
 import useVideoCallPrompt, { VIDEO_CALL_PROMPT_PHASES } from '../hooks/useVideoCallPrompt'
 import useBadgeCelebrations from '../hooks/useBadgeCelebrations'
 import BadgeCelebration from '../components/badges/BadgeCelebration'
@@ -1630,6 +1631,13 @@ export default function StudentView({
         variant={goLiveOn ? 'presentation' : 'student'}
       />
       {!previewMode && <SoundsToggleButton soundsOff={!!session?.badgeSettings?.soundsOff} />}
+      {previewMode && !lessonProp && lesson && (
+        <TimingRunControl
+          lessonId={lessonId}
+          lesson={lesson}
+          taskId={viewingTaskId ?? currentTaskId}
+        />
+      )}
       {(phase === 'lesson' || phase === 'sandbox') && (
         <CodingMomentsPill
           moments={badgeCelebrations.moments}

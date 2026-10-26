@@ -616,6 +616,41 @@ export async function listSessionReports(lessonId, { since } = {}) {
   )
 }
 
+// Tutor timing runs: what a tutor's own walk-through of a lesson took, per task (seconds, as
+// recorded; Lesson Gen converts tutor time to class estimates itself). Newest first.
+export function summariseTimingRuns(docs, { latest = false } = {}) {
+  const runs = docs
+    .map((d) => ({
+      runId: String(d.id ?? ''),
+      lessonId: d.lessonId ?? null,
+      lessonTitle: d.lessonTitle ?? '',
+      startedAt: d.startedAt ?? null,
+      finishedAt: d.finishedAt ?? null,
+      totalSeconds: d.totalSeconds ?? 0,
+      pausedSeconds: d.pausedSeconds ?? 0,
+      tutorEmail: d.tutorEmail ?? null,
+      appVersion: d.appVersion ?? null,
+      tasks: (Array.isArray(d.tasks) ? d.tasks : []).map((t) => ({
+        taskId: t.taskId,
+        title: t.title ?? '',
+        type: t.type ?? null,
+        estimatedMinutes: t.estimatedMinutes ?? null,
+        seconds: t.seconds ?? 0,
+        visits: t.visits ?? 0,
+      })),
+    }))
+    .sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0))
+  return latest ? runs.slice(0, 1) : runs
+}
+
+export async function listTimingRuns(lessonId, { latest = false } = {}) {
+  const snap = await db.collection('lessons').doc(lessonId).collection('timingRuns').get()
+  return summariseTimingRuns(
+    snap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    { latest }
+  )
+}
+
 export async function getSessionReportYaml(lessonId, startedAt) {
   const col = db.collection('lessons').doc(lessonId).collection('sessionReports')
   let snap = await col.doc(String(startedAt)).get()

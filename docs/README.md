@@ -268,6 +268,11 @@ Reading, adding and archiving teacher feedback (lesson and platform) with the CL
 
 **Load when:** acting on teacher feedback about a lesson.
 
+### [authoring/timing-runs.md](authoring/timing-runs.md)
+Tutor timing runs: the admin-preview stopwatch that records seconds per task, the saved `timingRuns` document shape, and `lessons timing` in the CLI.
+
+**Load when:** reading tutor timings to set `estimatedMinutes`, or changing the timing run.
+
 ### [authoring/session-reports.md](authoring/session-reports.md)
 Field reference for session report YAML: every top-level, per-student, per-task and task-summary field with its meaning, units, when it's present and the date it was added; how attempts, retries, overrides (including class-advance overrides) and support reveals are derived; and the two kinds of teacher feedback (`teacherFeedback`, `teacherRating`).
 

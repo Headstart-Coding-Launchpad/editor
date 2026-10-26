@@ -101,6 +101,15 @@ service cloud.firestore {
                        || request.auth.token.role == 'admin');
     }
 
+    // Tutor timing runs: one doc per Finish in the admin preview, written once.
+    // Teacher or admin can create and read; nobody edits or deletes from the client.
+    match /lessons/{lessonId}/timingRuns/{runId} {
+      allow read, create: if request.auth != null
+                          && (request.auth.token.role == 'admin'
+                              || request.auth.token.role == 'teacher');
+      allow update, delete: if false;
+    }
+
     // Lesson-type-wide shared assets and default sprites.
     // Public read so the builder can fetch them without auth.
     match /lessonTypeAssets/{lessonType} {

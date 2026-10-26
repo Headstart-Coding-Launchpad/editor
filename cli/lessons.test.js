@@ -48,6 +48,7 @@ import {
   publishYamlLesson,
   shareLinksFromReports,
   summariseSessionReports,
+  summariseTimingRuns,
   upsertLesson,
 } from './lessons.mjs'
 
@@ -435,5 +436,27 @@ describe('summariseSessionReports', () => {
     expect(summariseSessionReports(docs)[1].studentCount).toBe(2)
     expect(summariseSessionReports(docs, { since: new Date(3000).toISOString() })).toHaveLength(1)
     expect(() => summariseSessionReports(docs, { since: 'nope' })).toThrow(/Bad --since/)
+  })
+})
+
+describe('summariseTimingRuns', () => {
+  const docs = [
+    {
+      id: 'a',
+      finishedAt: 1000,
+      totalSeconds: 60,
+      tasks: [{ taskId: 't1', seconds: 60, visits: 1 }],
+    },
+    { id: 'b', finishedAt: 5000, totalSeconds: 90, lessonTitle: 'L', tasks: [] },
+  ]
+
+  it('lists newest first with per-task seconds', () => {
+    const runs = summariseTimingRuns(docs)
+    expect(runs.map((r) => r.runId)).toEqual(['b', 'a'])
+    expect(runs[1].tasks[0]).toMatchObject({ taskId: 't1', seconds: 60, visits: 1 })
+  })
+
+  it('returns only the newest run with latest', () => {
+    expect(summariseTimingRuns(docs, { latest: true }).map((r) => r.runId)).toEqual(['b'])
   })
 })
