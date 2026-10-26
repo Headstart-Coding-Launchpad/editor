@@ -1,5 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { useTypewriterOutput } from '../hooks/useTypewriterOutput'
+import { useChartsLoading } from '../../shared/stage/chartsStatus.js'
+import { CHARTS_LOADING_MESSAGE } from '../../shared/stage/charts.js'
 
 const CODE_FONT_STYLE = {
   fontFamily: "'JetBrains Mono', monospace",
@@ -36,13 +38,21 @@ export function splitEmojiRuns(text) {
 
 // The header's status: what the program is doing now. A program paused on input() is waiting
 // for the student, not "Not run". `mirror`: the tutor's read-only copy of a student's output.
-export function outputStatus({ runStatus, running, waitingForInput, mirror = false }) {
+// `loadingCharts`: the run is waiting for matplotlib to load (charts, src/shared/stage/charts.js).
+export function outputStatus({
+  runStatus,
+  running,
+  waitingForInput,
+  mirror = false,
+  loadingCharts = false,
+}) {
   if (waitingForInput) {
     return {
       colour: '#f59e0b',
       label: mirror ? 'Waiting for an answer' : 'Waiting for your answer',
     }
   }
+  if (running && loadingCharts) return { colour: '#60a5fa', label: CHARTS_LOADING_MESSAGE }
   if (running) return { colour: '#60a5fa', label: 'Running…' }
   if (runStatus === 'success') return { colour: '#22c55e', label: 'Ran OK' }
   if (runStatus === 'error') return { colour: '#ef4444', label: 'Error' }
@@ -50,7 +60,8 @@ export function outputStatus({ runStatus, running, waitingForInput, mirror = fal
 }
 
 // The grey line in an empty output: never "Run your code…" under a "Ran OK".
-export function outputPlaceholder({ runStatus, running, waitingForInput }) {
+export function outputPlaceholder({ runStatus, running, waitingForInput, loadingCharts = false }) {
+  if (running && loadingCharts && !waitingForInput) return CHARTS_LOADING_MESSAGE
   if (running || waitingForInput) return null
   if (runStatus === 'success') return "Your code ran. It didn't print anything."
   return 'Run your code to see output here.'
@@ -141,16 +152,20 @@ export default function OutputPanel({
     onInputChange?.(e.target.value)
   }
 
+  // This page's own Python is loading matplotlib (never shown on a tutor's mirror).
+  const loadingCharts = useChartsLoading() && running && !inputReadOnly
   const { colour: statusColour, label: statusLabel } = outputStatus({
     runStatus,
     running,
     waitingForInput: inputPrompt !== null,
     mirror: inputReadOnly,
+    loadingCharts,
   })
   const placeholder = outputPlaceholder({
     runStatus,
     running,
     waitingForInput: inputPrompt !== null,
+    loadingCharts,
   })
   const showCursor = running || (output && displayedOutput !== output)
   return (

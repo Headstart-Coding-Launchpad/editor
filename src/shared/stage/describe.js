@@ -138,6 +138,8 @@ export function describeCommand(command) {
       }
       return `a pixel grid of ${rows} row${rows === 1 ? '' : 's'} by ${cols} column${cols === 1 ? '' : 's'}${colours.length ? ` in ${listWords(colours)}` : ''}`
     }
+    case 'image':
+      return command.alt ? String(command.alt) : 'a chart'
     default:
       return ''
   }
@@ -160,6 +162,11 @@ export function describeStage(commands) {
     if (command?.type === 'background') {
       background = describeHex(command.colour)
       start = i + 1
+    }
+    // A chart covers everything before it, on white.
+    if (command?.type === 'image') {
+      background = 'white'
+      start = i
     }
   })
   const items = visible.slice(start).map(describeCommand).filter(Boolean)

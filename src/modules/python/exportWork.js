@@ -6,6 +6,7 @@ import { canvasToPngBytes, makeCanvas, svgToPngBytes } from '../../shared/export
 import { drawStage } from '../../shared/stage/canvas.js'
 import { STAGE_SIZE } from '../../shared/stage/commands.js'
 import { stageToSvg } from '../../shared/stage/svg.js'
+import { loadStageImages } from '../../shared/stage/stageImages.js'
 import { compactStageForSync, readStageResult } from '../../shared/stage/sync.js'
 import ShareView from './ShareView.jsx'
 
@@ -22,6 +23,8 @@ export async function renderStagePng(stage, size = PICTURE_SIZE) {
   const canvas = makeCanvas(size, size)
   const ctx = canvas.getContext('2d')
   if (ctx) {
+    // A chart (plt.show()) is a PNG that has to decode before the canvas can draw it.
+    await loadStageImages(commands)
     drawStage(ctx, commands)
     return canvasToPngBytes(canvas)
   }

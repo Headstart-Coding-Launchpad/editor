@@ -10,6 +10,7 @@ import {
   outlineWidthOf,
   shapeCorners,
 } from './geometry.js'
+import { chartImageRect, chartImageSrc, isChartImage } from './charts.js'
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`)
@@ -80,6 +81,12 @@ function commandSvg(command) {
         })
       })
       return parts.join('')
+    }
+    case 'image': {
+      // A chart (./charts.js): white over the stage, then the picture fitted inside.
+      if (!isChartImage(command)) return ''
+      const { x, y, w, h } = chartImageRect(command)
+      return `<rect width="${STAGE_SIZE}" height="${STAGE_SIZE}" fill="${STAGE_BACKGROUND}"/><image href="${esc(chartImageSrc(command))}" x="${num(x)}" y="${num(y)}" width="${num(w)}" height="${num(h)}" preserveAspectRatio="xMidYMid meet"/>`
     }
     default:
       return ''
