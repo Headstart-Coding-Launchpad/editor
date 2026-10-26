@@ -226,3 +226,4 @@ fonts differ between devices.
 - [python.md → Live scrubbing](python.md#live-scrubbing-scrub): drag-to-change values.
 - [turtle.md](turtle.md): the Turtle's centred, y-up world.
 - [arcade.md](arcade.md): Arcade Kit, which shares the PICO-8 colours.
+- [beats.md](beats.md): Beat Maker, drum patterns as strings, shown as a step grid on the Stage.

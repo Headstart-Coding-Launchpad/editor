@@ -956,7 +956,22 @@ The drawing pane of a Python task (docs/authoring/python.md "Stage"). The engine
 | `sync.js` | `compactStageForSync` (the `currentStageResult` / `teacherLive.stage` shape) and `readStageResult` (back from Firebase) |
 | `canvas.js` | `drawStage(ctx, commands, { ghost, diff })`, `sizeStageCanvas` |
 | `svg.js` | `stageToSvg(commands)`: a standalone picture for export or a gallery |
-| `StagePane.jsx` | The pane: square canvas that scales to fit, Target (ghost) and Differences toggles (44 px), comparison summary, `compact` mode for the tutor card and StudentModal |
+| `StagePane.jsx` | The pane: square canvas that scales to fit, Target (ghost) and Differences toggles (44 px), comparison summary, `compact` mode for the tutor card and StudentModal; shows Beat Maker's `BeatSequencer` when the run played a beat (in place of the canvas when nothing else was drawn; `beatAutoPlay`, `beatControls`) |
+
+### Beat Maker (`src/shared/beats/`)
+
+The `beats` Python module (docs/authoring/beats.md): drum patterns as strings, played and shown as a step grid on the Stage. `play()` / `stop()` record `beat` / `beat_stop` commands in the run's Stage command list (the worker's `__hsBeatsCall`), so the beat travels wherever the Stage drawing goes (tutor card, StudentModal, Go Live, Show it, share links, Export work).
+
+| File | Role |
+|---|---|
+| `patterns.js` | Pure: `validateBeatCall` (play/stop args → command or plain-words TypeError / ValueError), `readPattern`, `readTempo`, `recordBeatCall` (appends to a Stage recorder; caps), `readBeatSong` (commands → `{ parts, autoPlay }`, reads Firebase-shaped rows), `stepHit`, `describeBeatSong`, `isBeatCommand`, limits (`BEAT_INSTRUMENTS`, tempo 40-240, 64 steps, 32 parts) |
+| `timing.js` | Pure: `stepSeconds`, `buildTimeline` (one event per step with its hits), `loopCountFor` (4 times, at least 8 s, at most 60 s), `eventAt`, `positionAt`, `songSeconds` |
+| `drums.js` | Web Audio drum kit made in code (kick, snare, closed hat, clap) on a live or offline context: `scheduleDrum`, `createDrumOutput` (volume gain + limiter) |
+| `player.js` | The live player: one beat at a time, `playBeat` / `stopBeat` / `setBeatGain`, `createBeatScheduler` (lookahead scheduling on the AudioContext clock; silent page-clock fallback), `installBeatAudioUnlock` |
+| `render.js` | `renderBeatWav` (OfflineAudioContext + Scratch export's `encodeWav`), `downloadWav` |
+| `beatSoundSettings.js` | Mute and volume per device (`headstart_beats_muted`, `headstart_beats_volume`), `useBeatSound`, `beatGain` (the volume cap) |
+| `beatsPy.js` | Python source of the `beats` module (`BEATS_MODULE_PY`, exports play and stop only) and its one-time `sys.modules` install (`BEATS_INSTALL_PY`) |
+| `BeatSequencer.jsx` | The grid: a row per drum, lit hits, faded repeats, step numbers from 0, playhead; controls `full` (Play/Stop, Sound, Volume, Save my beat), `play` (tutor modal, Show it) or `none` (tutor card) |
 
 ### Editor scrubbing (`src/shared/scrub/`)
 

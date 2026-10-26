@@ -719,7 +719,9 @@ type or a speed that isn't a positive number; it warns about a speed outside
 ## Stage (drawing beside the console)
 
 > New to the Stage? [stage.md](stage.md) is the guide: coordinates, every call, placing things,
-> common mistakes and how to design Stage tasks. This section is the full contract.
+> common mistakes and how to design Stage tasks. This section is the full contract. Beat Maker
+> (`from beats import *`: drum patterns as strings, shown as a step grid on the Stage) has its own
+> guide and contract: [beats.md](beats.md).
 
 A Python task can also draw. Code that imports the `stage` module gets a **Stage** pane: a fixed
 400 × 400 drawing that appears once the code draws (or from the start when the task has a

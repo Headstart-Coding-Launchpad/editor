@@ -585,8 +585,9 @@ export default function StudentWorkspace({
       ran={!!stageResult || !!slowMoView}
       truncated={stageResult?.truncated === true}
       style={layout !== 'side' ? s.stageFill : stageBeside ? s.stageBeside : s.stageAbove}
-      // Beat Maker: the student's own Run plays its beat; Go Live and slow-mo only show it.
-      beatAutoPlay={!isForcedTeacherLive && !slowMoView && !!cs.stageResult}
+      // Beat Maker: the student's own Run plays its beat once the program has finished (not
+      // while input() waits); Go Live and slow-mo only show it.
+      beatAutoPlay={!isForcedTeacherLive && !slowMoView && !cs.running && !!cs.stageResult}
     />
   )
 

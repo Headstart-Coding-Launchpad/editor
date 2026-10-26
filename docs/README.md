@@ -293,6 +293,11 @@ The Stage guide for lesson writers and tutors: coordinates (top-left origin, y d
 
 **Load when:** writing or planning a Python lesson that draws on the Stage, or explaining the Stage to a tutor.
 
+### [authoring/beats.md](authoring/beats.md)
+Beat Maker, the `beats` Python module: `play()` / `stop()`, patterns as strings (x hit, . rest), tempo, how shorter patterns and several parts play, the step-sequencer grid on the Stage, mute / volume / Save my beat, the students' mistakes and their messages, which checks to use (sound-off safe), and what the tutor sees.
+
+**Load when:** writing or planning a Python lesson that plays beats, or explaining Beat Maker to a tutor.
+
 ### [authoring/turtle.md](authoring/turtle.md)
 Turtle module code-task authoring reference: the single-file task model, supported turtle commands, coordinate system, and check types, validation rules, and what is not supported.
 

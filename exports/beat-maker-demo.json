@@ -1,0 +1,69 @@
+{
+  "id": "beat-maker-demo",
+  "type": "composed",
+  "title": "Beat Maker demo",
+  "description": "Three short Beat Maker tasks: a pattern is a string. Not published; a demo for lesson writers.",
+  "draft": false,
+  "tasks": [
+    {
+      "id": 1,
+      "moduleType": "python",
+      "title": "Change one character",
+      "explainer": "Press **Run** to hear the beat and watch the grid. Each character is one step: `x` is a hit, `.` is a rest.\n\nAdd one more snare hit on **step 14** (count from 0). Change one character, then Run again.",
+      "starterCode": "from beats import *\n\nkick  = \"x...x...x...x...\"\nsnare = \"....x.......x...\"\nhat   = \"x.x.x.x.x.x.x.x.\"\n#> Change one . to an x\nplay(kick, snare, hat, tempo=100)\n",
+      "check": [
+        { "type": "code_no_error" },
+        {
+          "type": "variable_equals",
+          "name": "snare",
+          "value": "....x.......x.x.",
+          "hint": "Step 14 is the third character from the end. The snare should be \"....x.......x.x.\""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "moduleType": "python",
+      "title": "Speed it up",
+      "explainer": "The `tempo` is how many beats a minute. Make the beat faster: set `tempo` to **140** and Run.",
+      "starterCode": "from beats import *\n\nkick  = \"x...x...x...x...\"\nsnare = \"....x.......x...\"\nhat   = \"x.x.x.x.x.x.x.x.\"\ntempo = 100\nplay(kick, snare, hat, tempo=tempo)\n",
+      "check": [
+        { "type": "code_no_error" },
+        {
+          "type": "variable_equals",
+          "name": "tempo",
+          "value": 140,
+          "hint": "Change the 100 on the tempo line to 140."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "moduleType": "python",
+      "title": "Repeat a bar",
+      "explainer": "`\"x...\" * 4` repeats a pattern 4 times. Make `kick` with `*` so it is `\"x...x...x...x...\"`, then add a clap: `play(kick, clap=\"....x.......x...\")`.",
+      "starterCode": "from beats import *\n\n#> Use * to repeat \"x...\" four times\nkick = \"x...\"\nplay(kick)\n",
+      "check": [
+        { "type": "code_no_error" },
+        {
+          "type": "variable_equals",
+          "name": "kick",
+          "value": "x...x...x...x...",
+          "hint": "Try kick = \"x...\" * 4"
+        },
+        {
+          "type": "code",
+          "operator": "contains",
+          "value": "*",
+          "hint": "Use * to repeat the pattern instead of typing it out."
+        },
+        {
+          "type": "code",
+          "operator": "contains",
+          "value": "clap=",
+          "hint": "Add a clap by name: play(kick, clap=\"....x.......x...\")"
+        }
+      ]
+    }
+  ]
+}
