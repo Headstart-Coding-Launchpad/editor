@@ -4,7 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
-const saveStagePicture = vi.fn(async () => true)
+const { saveStagePicture } = vi.hoisted(() => ({ saveStagePicture: vi.fn(async () => true) }))
 vi.mock('../savePicture.js', () => ({
   saveStagePicture,
   stagePictureFileName: (title) => `${title || 'my'}-picture.png`,
