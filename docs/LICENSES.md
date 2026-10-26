@@ -15,6 +15,7 @@ This file lists all third-party open-source libraries used in this project, thei
 | BSD-3-Clause | highlight.js                                                                                                                                 |
 | BSD-2-Clause | dotenv                                                                                                                                       |
 | MPL-2.0      | Pyodide (CDN)                                                                                                                                |
+| CC0 / public domain | Image Lab pictures (`public/image-lab/`, see below) |
 
 ---
 
@@ -180,4 +181,45 @@ License text: https://github.com/pyodide/pyodide/blob/main/LICENSE
 
 ---
 
-*Last updated: July 2026*
+## Image Lab pictures (`public/image-lab/`)
+
+The Python Stage's picture library (`load_image()`, [stage.md](authoring/stage.md#10-image-lab-pictures-are-lists)).
+Every photo is public domain or CC0, from Wikimedia Commons (most of them NASA, U.S. government or
+author-released works), cropped and shrunk to 64 × 64. The pixel art and the green-screen
+astronaut were drawn for Headstart Coding and are released as CC0. `public/image-lab/manifest.json`
+holds the same list. No attribution is required for any of them; it is kept here so each source
+can be checked.
+
+| Picture | Author | Licence | Source |
+|---|---|---|---|
+| `fox` | U.S. Fish and Wildlife Service | Public domain | https://commons.wikimedia.org/wiki/File:Red_fox_face_mammal_vulpes_vulpes.jpg |
+| `tiger` | Dcoetzee | CC0 | https://commons.wikimedia.org/wiki/File:Orange_bengal_tiger_at_Cougar_Mountain_Zoological_Park_headshot_2.jpg |
+| `parrot` | Adrian Pingstone | Public domain | https://commons.wikimedia.org/wiki/File:Parrot.red.macaw.1.arp.750pix.jpg |
+| `frog` | Careyjamesbalboa (Carey James Balboa) | Public domain | https://commons.wikimedia.org/wiki/File:Red_eyed_tree_frog_edit2.jpg |
+| `jellyfish` | Miguel Angel Omaña Rojas | CC0 | https://commons.wikimedia.org/wiki/File:Jellyfish_from_Corpus_Christi.jpg |
+| `earth` | Harrison Schmitt / Apollo 17 | Public domain | https://commons.wikimedia.org/wiki/File:The_Blue_Marble,_AS17-148-22727.jpg |
+| `moon` | NASA/JPL/USGS | Public domain | https://commons.wikimedia.org/wiki/File:Full_moon.jpeg |
+| `saturn` | NASA / JPL-Caltech / SSI / color composite by Gordan Ugarkovic | Public domain | https://commons.wikimedia.org/wiki/File:Saturn_global_view_from_Cassini,_rings_open_Better_Colour.png |
+| `mars` | NASA and The Hubble Heritage Team (STScI/AURA) | Public domain | https://commons.wikimedia.org/wiki/File:Mars_Hubble.jpg |
+| `rocket` | NASA | Public domain | https://commons.wikimedia.org/wiki/File:Space_Shuttle_Columbia_launching.jpg |
+| `car` | Leon Brooks | Public domain | https://commons.wikimedia.org/wiki/File:Red_sports_coupe_car.jpg |
+| `eiffel_tower` | Benh LIEU SONG | Public domain | https://commons.wikimedia.org/wiki/File:Tour_Eiffel_Wikimedia_Commons.jpg |
+| `pyramids` | Walkerssk | CC0 | https://commons.wikimedia.org/wiki/File:Pyramids_in_Giza_-_Egypt.jpg |
+| `pizza` | Kurt Kaiser | CC0 | https://commons.wikimedia.org/wiki/File:Pizza_14.jpg |
+| `strawberries` | Kimberly Lewers | Public domain | https://commons.wikimedia.org/wiki/File:Strawberries_(Image_Number_D1194-1)_by_Kimberly_Lewers.jpg |
+| `donut` | Evan-Amos | Public domain | https://commons.wikimedia.org/wiki/File:Dunkin-Donuts-Chocolate-Sprinkled.jpg |
+| `moon_surface` | Eugene A. Cernan (NASA), photomontage by User:Grunpfnul; cropped to the right-hand side, no astronaut | Public domain | https://commons.wikimedia.org/wiki/File:Apollo_17_Harrison_H._Schmitt_and_Tracy%27s_Rock_-_AS17-140-21493%2BAS17-140-21497_2025.jpg |
+| `mars_surface` | NASA/JPL-Caltech/MSSS | Public domain | https://commons.wikimedia.org/wiki/File:NASA%E2%80%99s_Curiosity_Views_a_Sand-Capped_Butte_(PIA26730).png |
+| `nebula` | NASA | Public domain | https://commons.wikimedia.org/wiki/File:A_New_View_of_the_Tarantula_Nebula.jpg |
+| `beach` | Willem V | CC0 | https://commons.wikimedia.org/wiki/File:Another_Day_At_The_Beach_(250445667).jpeg |
+| `astronaut_green` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
+| `pixel_fox` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
+| `alien` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
+| `spaceship` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
+| `potion` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
+| `gem` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
+| `sword` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
+
+---
+
+*Last updated: October 2026*

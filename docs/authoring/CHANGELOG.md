@@ -39,6 +39,22 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-26
 
+- **Image Lab: pictures on the Stage (Make It Real, LG-P9 §2).** The `stage` module has six new
+  calls that draw nothing and give back values: `rgb(r, g, b)` (a `'#rrggbb'` colour; numbers are
+  rounded and kept within 0–255), `red(c)`, `green(c)`, `blue(c)` (0–255, for any Stage colour),
+  `load_image(name, size=32)` (a picture from the 27-picture image library as one long list of
+  `'#rrggbb'`, row by row; `size` 8, 16, 32 or 64) and `snapshot(size=32)` (the drawing so far as
+  the same kind of list; text and emoji left out). Draw either with `grid(pixels, width=32)`.
+  `(r, g, b)` tuples now work wherever a drawing call takes a colour. Pixel art and the green
+  screen (`astronaut_green` on `#00ff00`) have exact colours for Level 1 `==` swaps; photos need
+  number comparisons. The student's Stage has a **Save my picture** PNG button. `grid()`'s "one
+  long list" message suggests the picture's own width (`width=32`). Numbers in `rgb(…)` scrub
+  0–255. No new checks: use `stage_matches_target` (targets can call `load_image()`),
+  `stage_pixel` with `index`, and list variable checks. See
+  [stage.md → Image Lab](stage.md#10-image-lab-pictures-are-lists).
+- Affects: python · Existing lessons: no changes needed · Resolves:
+  authoring-requests/2026-10-22-image-lab-the-picture-model-on-the-stage-load-image-colour-h.md
+
 - **Scratch blocks keyed by a later sprite load when the first sprite has none (Hub #256).**
   `starterBlocks`, `completeBlocks` and `codeStages[].blocks` keyed only by later sprites (for
   example fixed props with no blocks listed first, the scripted sprite after them) used to load as
