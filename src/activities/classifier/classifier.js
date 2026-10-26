@@ -47,6 +47,8 @@ export const MAX_LIVE_TEST_SIZE = 20
 // test and never used for training.
 export const HELD_OUT_EVERY = 4
 export const MAX_TEST_ITEMS = 24
+// Pre-loaded (given) examples a lesson can write, in total across the things.
+export const MAX_GIVEN_EXAMPLES = 40
 // Serialised shared state must stay well under the ~2 KB currentAnswer budget.
 export const MAX_SHARED_CHARS = 1800
 
@@ -290,12 +292,43 @@ function emptyExamples(classes) {
   return Object.fromEntries(classes.map((label) => [label, []]))
 }
 
+// The lesson's pre-loaded examples as { label: [grid text] } for the lesson's own things, or null
+// when there are none. Derived from the task, never saved with the student's state, so a lesson
+// edit takes effect on reload.
+export function givenExamplesOf(task) {
+  if (!Array.isArray(task?.examples) || !task.examples.length) return null
+  const classes = cleanClasses(task.classes)
+  if (!classes.length) return null
+  const out = Object.fromEntries(classes.map((label) => [label, []]))
+  for (const item of itemsToGrids(task.examples).slice(0, MAX_GIVEN_EXAMPLES)) {
+    if (out[item.label]) out[item.label].push(item.grid)
+  }
+  return Object.values(out).some((list) => list.length) ? out : null
+}
+
+// A grid as 16 authored rows ('.' empty, '#' full ink, digits for shades), for saving in a lesson.
+export function gridToRows(text) {
+  if (!isGridString(text)) return null
+  const rows = []
+  for (let r = 0; r < GRID; r += 1) {
+    rows.push(
+      text
+        .slice(r * GRID, (r + 1) * GRID)
+        .replace(/0/g, '.')
+        .replace(/9/g, '#')
+    )
+  }
+  return rows
+}
+
 export function initialClassifierState(task) {
   const classes = cleanClasses(task?.classes)
+  const given = givenExamplesOf(task)
   return {
     v: 1,
     classes,
     min: taskMinExamples(task),
+    ...(given ? { given } : {}),
     examples: emptyExamples(classes),
     // The round: [drawn, predicted] for every try. `drawn` is what the student said they drew
     // (not what the pad suggested), `predicted` is what the pad said. Right = they match.
@@ -370,6 +403,7 @@ export function normalizeClassifierState(task, raw) {
           .map((p) => [p[0], p[1]])
       : [],
     tests: wholeNumber(raw.tests),
+    ...(base.given ? { given: base.given } : {}),
     pad: isGridString(padGrid)
       ? { grid: padGrid, target: typeof padTarget === 'string' ? padTarget : null }
       : null,
@@ -407,15 +441,35 @@ export function normalizeClassifierState(task, raw) {
   return next
 }
 
-// Drawings per class (from the drawings when the state has them, else the shared counts).
+// Drawings per class: the given ones plus the student's own (from the drawings when the state has
+// them, else the shared counts, which already add the two).
 export function countsOf(state) {
   const counts = {}
   for (const label of state?.classes ?? []) {
     counts[label] = state.examples?.[label]
-      ? state.examples[label].length
+      ? state.examples[label].length + givenCountOf(state, label)
       : Number(state.counts?.[label]) || 0
   }
   return counts
+}
+
+export function givenCountOf(state, label) {
+  return state?.given?.[label]?.length ?? 0
+}
+
+export function hasGiven(state) {
+  return Object.values(state?.given ?? {}).some((list) => list.length > 0)
+}
+
+// The student's own drawings per class (the total less the given ones).
+export function ownCountsOf(state) {
+  const counts = countsOf(state)
+  return Object.fromEntries(
+    (state?.classes ?? []).map((label) => [
+      label,
+      Math.max(0, (counts[label] ?? 0) - givenCountOf(state, label)),
+    ])
+  )
 }
 
 // Every named thing has its minimum and there are at least two: the model is ready, with no
@@ -602,11 +656,13 @@ export function isHeldOut(task, state, label, index) {
   return heldOutIndexes((state.examples?.[label] ?? []).length).includes(index)
 }
 
-// { train: [{ label, grid }], held: [{ label, grid }] }
+// { train: [{ label, grid }], held: [{ label, grid }] }. Given examples always train; only the
+// student's own drawings are ever kept back.
 export function splitExamples(task, state) {
   const train = []
   const held = []
   for (const label of state.classes) {
+    for (const grid of state.given?.[label] ?? []) train.push({ label, grid })
     const list = state.examples?.[label] ?? []
     const keep = testSetOf(task) === 'held_out' ? new Set(heldOutIndexes(list.length)) : new Set()
     list.forEach((grid, i) => (keep.has(i) ? held : train).push({ label, grid }))
@@ -616,7 +672,12 @@ export function splitExamples(task, state) {
 
 // The teacher's test drawings as { label, grid }.
 export function teacherTestItems(task) {
-  return (Array.isArray(task?.testItems) ? task.testItems : [])
+  return itemsToGrids(task?.testItems)
+}
+
+// Authored { label, grid | strokes } items as { label, grid } (bad ones are dropped).
+function itemsToGrids(list) {
+  return (Array.isArray(list) ? list : [])
     .map((item) => {
       if (Array.isArray(item?.grid)) {
         return { label: String(item.label), grid: gridFromRows(item.grid.map(String)) }
@@ -942,6 +1003,23 @@ export function validateClassifierTask(task, n) {
       }
     }
   }
+  if (task.examples !== undefined) {
+    const list = task.examples
+    if (!Array.isArray(list)) {
+      errors.push(`${where}: examples must be a list of pre-loaded drawings.`)
+    } else if (list.length > 0) {
+      if (!classes.length) {
+        errors.push(`${where}: examples need classes (each example uses a class name).`)
+      }
+      if (list.length > MAX_GIVEN_EXAMPLES) {
+        errors.push(`${where}: examples can have at most ${MAX_GIVEN_EXAMPLES} drawings.`)
+      } else {
+        list.forEach((item, i) =>
+          validateTestItem(item, `${where} example ${i + 1}`, errors, classes)
+        )
+      }
+    }
+  }
   if (testSet === 'teacher') {
     const items = task.testItems
     if (!classes.length) {
@@ -967,6 +1045,24 @@ export function validateClassifierWarnings(task, n) {
     for (const label of task.classes) {
       if (!used.has(label)) {
         warnings.push(`Task ${n}: no test drawing for class "${label}".`)
+      }
+    }
+  }
+  if (Array.isArray(task?.examples) && task.examples.length && task.classes?.length) {
+    const used = new Set(task.examples.map((item) => item?.label))
+    for (const label of task.classes) {
+      if (!used.has(label)) {
+        warnings.push(`Task ${n}: no pre-loaded example for class "${label}".`)
+      }
+    }
+    if (task.testSet === 'held_out') {
+      const need = taskMinExamples(task)
+      for (const label of task.classes) {
+        if (task.examples.filter((item) => item?.label === label).length >= need) {
+          warnings.push(
+            `Task ${n}: "${label}" has ${need} or more pre-loaded examples, so the student never has to draw it and nothing is kept back for the test. Raise minExamplesPerClass.`
+          )
+        }
       }
     }
   }

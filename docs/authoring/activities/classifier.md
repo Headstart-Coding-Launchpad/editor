@@ -68,6 +68,7 @@ tasks:
 | `liveTestSize` | No | The round's goal: how many **tries** make the round and pass the task, 3 to 20. Default `5`. A try is a drawing the student finished and named, counted whether the pad got it right or wrong (the student's job is to test it, not to make it win). The name is kept from the older version. |
 | `panels` | No | Extra parts to show: any of `grid`, `sure`, `fool` (see [Panels](#panels-what-each-lesson-switches-on)). Default `[fool]`. `[]` shows none. Anything else is an error. |
 | `targetAccuracy` | No | `held_out` / `teacher` only: the share of the test it must get right, above 0 and up to 1 (`0.8` is 80%). Default `0.8`. Ignored by the round. |
+| `examples` | No | Pre-loaded drawings the pad has already learned (see [Pre-loaded examples](#pre-loaded-examples)). Needs `classes`. Up to 40 in total. |
 | `testItems` | `teacher` | `testSet: teacher` only: 2 to 24 test drawings (see below). |
 
 ## How it works for the student
@@ -125,6 +126,49 @@ adds one new thing and the screen stays simple:
 | `fool` | **Fool it and fix it**: the **Teach it this one** button after a miss and the mix-up thumbnails ("It thought your 🐱 was a 🐟"). Without it a miss just clears itself after a moment. |
 
 A bias view (teach one kind only, then test the others) is not built.
+
+## Pre-loaded examples
+
+`examples` gives the pad drawings to learn **before the student draws anything**, so it guesses
+from the start (for example a first lesson where the pad is already shown to be wrong about
+something). Each item is `{ label, grid }` or `{ label, strokes }`, in the same format as
+`testItems` (below), and `label` must be one of `classes`. Up to 40 in total; prefer `grid`
+(about 260 bytes each; the Builder saves grids).
+
+```yaml
+- type: classifier
+  mode: drawing
+  classes: ["⭕ circle", "➖ line"]
+  minExamplesPerClass: 4
+  examples:
+    - label: "⭕ circle"
+      grid:
+        - "................"
+        # ... 16 rows of 16 characters in all
+    - label: "➖ line"
+      strokes: [[0.1, 0.5, 0.9, 0.5]]
+```
+
+How they behave:
+
+- **Given examples count** towards `minExamplesPerClass`. If every thing has enough given
+  examples the pad is ready (and guesses) at once, with no teaching step.
+- In the gallery they show a small **Given** tag. The student cannot remove them. They can add
+  their own on top (while a thing still needs drawings, and with **Teach it this one** in the
+  round); their own drawings are removable as usual. The cap of 40 drawings per thing
+  applies to the student's own drawings, with the given ones on top.
+- With `testSet: held_out` only the student's **own** drawings are ever kept back; given ones
+  always train. If a thing has `minExamplesPerClass` or more given examples the student never has
+  to draw it and nothing is kept back, so validation warns: raise `minExamplesPerClass`.
+- They are **not sealed**: they are public lesson content.
+- They are not saved in the student's state. They are read from the task on every load, so
+  editing `examples` in a lesson takes effect when students reload.
+- **Tutor:** the card and modal say how many are given and how many are the student's own
+  ("Teaching: 🐱 cat 3 given + 2 own"; the modal "🐱 cat: 5 of 3 drawings (3 given + 2 own)").
+  Shared counts (`counts`, Firebase) are given plus own.
+- **Builder:** the Classifier editor has a **Pre-loaded examples** section (always shown): pick a
+  class, draw on the pad and press **Add as example**; the drawing is saved as a grid. Each
+  example has a remove button.
 
 ## Testing
 
