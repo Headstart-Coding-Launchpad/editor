@@ -27,6 +27,7 @@ import {
 import { getRunCountWidgets } from '../../shared/runCounts.js'
 import StagePane from '../../shared/stage/StagePane.jsx'
 import { codeImportsStage, stageCommandsOf } from '../../shared/stage/commands.js'
+import { codeImportsMatplotlib } from '../../shared/stage/charts.js'
 import ResultPane from '../../shared/resultPane/ResultPane.jsx'
 import { getTaskLayout } from '../../shared/resultPane/resultPane.js'
 import { useResultPane, useRunFinishedToken } from '../../shared/resultPane/useResultPane.js'
@@ -263,7 +264,11 @@ export default function StudentWorkspace({
   const tagsAvailable =
     taskShowsVariables(task) && !isViewingPrev && !isTeacherEditing && !tagsAbove
   const pictureAvailable =
-    showStage || (!isViewingPrev && !isTeacherEditing && codeImportsStage(code))
+    showStage ||
+    (!isViewingPrev &&
+      !isTeacherEditing &&
+      // A chart program (matplotlib) draws on the Stage too.
+      (codeImportsStage(code) || codeImportsMatplotlib(code)))
   const resultPanes = shouldShowOutput
     ? [pictureAvailable && 'picture', tagsAvailable && 'tags', 'console'].filter(Boolean)
     : []
