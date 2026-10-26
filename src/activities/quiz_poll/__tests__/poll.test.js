@@ -51,6 +51,17 @@ describe('quiz_poll definition', () => {
     expect(buildQuizSubmission(POLL_TASK, 'b')).toBe('b')
   })
 
+  it('stores a multiple-answer choice as sorted JSON ids and drops unoffered ids', () => {
+    const multi = { ...POLL_TASK, multiple: true }
+    expect(activity.serialize('["a","c"]')).toBe('["a","c"]')
+    expect(activity.deserialize('["c","a","z"]', multi)).toBe('["a","c"]')
+    expect(activity.deserialize('["z"]', multi)).toBe('')
+    expect(activity.deserialize('b', multi)).toBe('["b"]')
+    expect(activity.deserialize('', multi)).toBe('')
+    expect(activity.deserialize('["a","c"]', POLL_TASK)).toBe('')
+    expect(activity.summarize(multi, '["a","c"]').text).toBe('a Games, c Music')
+  })
+
   it('summarises the choice for the teacher card', () => {
     expect(activity.summarize(POLL_TASK, 'b')).toEqual({ text: 'b Art', tone: 'neutral' })
   })
@@ -89,6 +100,13 @@ describe('quiz_poll validation', () => {
     expect(errorsFor(POLL_TASK)).toEqual([])
     expect(quizHasStarter(POLL_TASK)).toBe(true)
     expect(quizHasCheckValue(POLL_TASK)).toBe(true)
+  })
+
+  it('accepts multiple as a boolean only', () => {
+    expect(errorsFor({ ...POLL_TASK, multiple: true })).toEqual([])
+    expect(errorsFor({ ...POLL_TASK, multiple: 'yes' })).toContain(
+      'Task 1 is a poll but multiple is not true or false'
+    )
   })
 
   it.each([
@@ -149,6 +167,27 @@ describe('quiz_poll validation', () => {
 })
 
 describe('quiz_poll session report', () => {
+  it('counts a multiple-answer student once for every option they ticked', () => {
+    const task = { ...POLL_TASK, multiple: true }
+    const lesson = { id: 'poll-lesson', title: 'Poll lesson', tasks: [task] }
+    const attempt = (submission, attemptNumber) => ({
+      attemptNumber,
+      passed: true,
+      submission,
+      loggedAt: 1000 + attemptNumber,
+    })
+    const session = {
+      startedAt: 1,
+      students: { s1: {}, s2: {} },
+      attemptLog: {
+        s1: { 1: { x1: attempt('["a"]', 1), x2: attempt('["a","c"]', 2) } },
+        s2: { 1: { x1: attempt('["c"]', 1) } },
+      },
+    }
+    const summary = buildSessionReport({ session, lesson }).taskSummary[0]
+    expect(summary.optionDistribution.map((o) => o.count)).toEqual([1, 0, 2])
+  })
+
   it('reports responses (not passes) and the option distribution', () => {
     const lesson = { id: 'poll-lesson', title: 'Poll lesson', tasks: [POLL_TASK] }
     const attempt = (submission, attemptNumber) => ({

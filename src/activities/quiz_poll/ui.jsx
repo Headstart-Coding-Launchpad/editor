@@ -66,6 +66,14 @@ export function PollOptionsBuilder({ task, onUpdate, lessonType = null }) {
             + Add option
           </button>
         )}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 32 }}>
+          <input
+            type="checkbox"
+            checked={task.multiple === true}
+            onChange={(event) => onUpdate({ ...task, multiple: event.target.checked })}
+          />
+          Students can pick more than one
+        </label>
         <div
           style={{
             padding: '8px 12px',
@@ -78,7 +86,8 @@ export function PollOptionsBuilder({ task, onUpdate, lessonType = null }) {
           }}
         >
           No right answer: any choice completes the task. Students can change their choice, and
-          never see anyone else&apos;s. The session report counts each option.
+          never see anyone else&apos;s. The session report counts each option
+          {task.multiple === true ? ' (a student counts once for every option they tick).' : '.'}
         </div>
       </div>
     </Field>

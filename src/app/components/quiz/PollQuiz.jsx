@@ -1,6 +1,6 @@
 import React, { useContext } from 'react'
 import { InlineMarkdown } from '../../../shared/markdown'
-import { tallyPollTask } from '../../../shared/classPolls'
+import { parsePollChoice, tallyPollTask } from '../../../shared/classPolls'
 import PollResultBars from '../polls/PollResultBars'
 import { PollTaskClassContext } from './PollTaskClassContext'
 import MultipleChoiceQuiz from './MultipleChoiceQuiz'
@@ -15,36 +15,57 @@ import { normalizeQuizAnswerText } from './quizUtils'
 export default function PollQuiz(props) {
   const { task, selectedAnswer, disabled } = props
   const classView = useContext(PollTaskClassContext)
-  const chosen = task?.options?.find((option) => option.id === selectedAnswer)
+  const multiple = task?.multiple === true
+  const chosenList = multiple
+    ? (task?.options ?? []).filter((option) => parsePollChoice(selectedAnswer).includes(option.id))
+    : []
+  const chosen = multiple ? chosenList[0] : task?.options?.find((o) => o.id === selectedAnswer)
+  const hasChosen = multiple ? chosenList.length > 0 : !!chosen
   const showSplit =
-    !!classView && task?.showResults !== false && (classView.presentation || !!chosen)
+    !!classView && task?.showResults !== false && (classView.presentation || hasChosen)
   const tally = showSplit
     ? tallyPollTask(classView.session, task, {
         anonymousId: classView.anonymousId,
-        choice: chosen?.id ?? null,
+        choice: multiple ? (chosenList.length ? selectedAnswer : null) : (chosen?.id ?? null),
       })
     : null
+  const hint = multiple && !disabled ? <div style={hintStyle}>Pick all that apply.</div> : null
   const note =
-    chosen && !disabled ? (
+    hasChosen && !disabled ? (
       <div style={noteStyle} role="status">
-        You chose <InlineMarkdown content={normalizeQuizAnswerText(chosen.text)} />. You can change
-        your answer.
+        {multiple ? (
+          <>You picked {chosenList.length}. You can change your answers.</>
+        ) : (
+          <>
+            You chose <InlineMarkdown content={normalizeQuizAnswerText(chosen.text)} />. You can
+            change your answer.
+          </>
+        )}
       </div>
     ) : null
   const footer =
-    note || tally ? (
+    hint || note || tally ? (
       <>
+        {hint}
         {note}
         {tally && (
           <div style={splitStyle}>
             <div style={splitHeadingStyle}>
-              How the class voted · {tally.respondedCount} answered
+              {multiple ? 'What the class picked' : 'How the class voted'} · {tally.respondedCount}{' '}
+              answered
             </div>
             <PollResultBars
               options={tally.options}
               respondedCount={tally.respondedCount}
+              multiple={multiple}
               highlight={
-                classView.presentation ? null : chosen ? task.options.indexOf(chosen) : null
+                classView.presentation
+                  ? null
+                  : multiple
+                    ? chosenList.map((option) => task.options.indexOf(option))
+                    : chosen
+                      ? task.options.indexOf(chosen)
+                      : null
               }
               large={classView.presentation}
             />
@@ -55,6 +76,7 @@ export default function PollQuiz(props) {
   return (
     <MultipleChoiceQuiz
       {...props}
+      multiple={multiple}
       // Never locked by a "pass", never judged.
       checkPassed={false}
       showResult={false}
@@ -76,6 +98,14 @@ const splitHeadingStyle = {
   fontSize: '0.82rem',
   fontWeight: 700,
   color: 'var(--colour-primary-dark)',
+}
+
+const hintStyle = {
+  fontFamily: 'var(--font-body)',
+  fontSize: '0.88rem',
+  fontWeight: 700,
+  color: 'var(--colour-primary-dark)',
+  flexShrink: 0,
 }
 
 const noteStyle = {

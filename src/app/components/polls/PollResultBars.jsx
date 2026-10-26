@@ -5,12 +5,20 @@ import { pollPercent } from '../../../shared/classPolls'
 // votes. Used by the teacher's live tally, the students' results card, the presentation window
 // and the session report. `options` is [{ index, text, count }]; `highlight` marks the
 // viewer's own choice; `large` is the projected presentation size.
-export default function PollResultBars({ options, respondedCount, highlight = null, large }) {
+export default function PollResultBars({
+  options,
+  respondedCount,
+  highlight = null,
+  large,
+  multiple = false,
+}) {
   return (
     <ul className={`poll-bars${large ? ' poll-bars--large' : ''}`} aria-label="Poll results">
       {options.map((option) => {
         const percent = pollPercent(option.count, respondedCount)
-        const mine = highlight === option.index
+        const mine = Array.isArray(highlight)
+          ? highlight.includes(option.index)
+          : highlight === option.index
         return (
           <li key={option.index} className={`poll-bar${mine ? ' poll-bar--mine' : ''}`}>
             <div className="poll-bar__label">
@@ -19,7 +27,9 @@ export default function PollResultBars({ options, respondedCount, highlight = nu
                 {mine && <span className="poll-bar__you"> (your answer)</span>}
               </span>
               <span className="poll-bar__count">
-                {option.count} · {percent}%
+                {multiple
+                  ? `${option.count} of ${respondedCount} picked this`
+                  : `${option.count} · ${percent}%`}
               </span>
             </div>
             <div className="poll-bar__track" aria-hidden="true">

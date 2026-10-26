@@ -332,7 +332,7 @@ responded instead of completion: there is no `completedCount`, `completionRate`,
 | `respondedCount` | Students who responded at least once. | 2026-07-22 |
 | `ratingDistribution` | Confidence only: `{ 1: n, …, 10: n }` from each student's latest rating. Before 2026-10-09 the keys were 1–5. | 2026-07-22 (1–10 since 2026-10-09) |
 | `ratingScale` | Confidence only: `10`, the scale of `ratingDistribution`. Missing in reports before 2026-10-09, whose ratings are out of 5, so read a missing `ratingScale` as 5. | 2026-10-09 |
-| `optionDistribution[]` | Poll only: `{ id, text, count }` per option, in the task's option order, counting each student's latest choice (students can change their choice). | 2026-10-01 |
+| `optionDistribution[]` | Poll only: `{ id, text, count }` per option, in the task's option order, counting each student's latest choice (students can change their choice). With `multiple: true` a student counts once for every option they ticked, so counts can add up to more than `respondedCount`. | 2026-10-01 |
 | `shownResponses[]` | Open short answer with `showResponses: teacher_picks` only: each answer the teacher showed on the presentation window, in the order first shown, as `{ studentLabel, text, showName, shownAt, hiddenAt }`. `text` is the answer as it was when shown; `showName` is whether the name was on screen last; `hiddenAt` is `null` if it was still on screen at the end. Omitted when none were shown. | 2026-10-02 |
 | `avgTimeOnTaskMs` | As for graded tasks. | 2026-07-14 |
 | `commonFailures` | Always `[]`. | 2026-07-22 |

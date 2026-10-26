@@ -311,6 +311,26 @@ counts each option (`optionDistribution` in `taskSummary`, see
 | `options` | Yes | 2 to 6 options, shown in the order written (not shuffled). |
 | `options[].id` | Yes | Stable identifier, usually `a`, `b`, `c`. Reported in `distinctAttempts[].submission`. |
 | `options[].text` | Yes | Shown to students. Markdown supported. |
+| `multiple` | No | `true` makes it "Pick all that apply": students tick any number of options and can untick. The class split shows how many students picked each option ("7 of 12 picked this"), so the bars can add up to more than 100%. Default `false` (pick one). |
+| `showResults` | No | `false` keeps the class split teacher-only. Default `true`. |
+
+```yaml
+- type: quiz
+  quizType: poll
+  title: Favourite tools
+  explainer: Which of these have you used? Pick all that apply.
+  multiple: true
+  options:
+    - id: a
+      text: Scratch
+    - id: b
+      text: Python
+    - id: c
+      text: HTML
+```
+
+With `multiple: true` a student's answer (and each attempt's `submission` in the report) is a JSON
+array string of the sorted ids, e.g. `["a","c"]`; `""` means nothing ticked.
 
 No `check`, `answer:`, option `feedback` or task `feedback`: a poll is never marked (a `check`
 is a validation error). For a quick question the teacher thinks of during a live lesson, use the

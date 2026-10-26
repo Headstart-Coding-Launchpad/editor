@@ -116,8 +116,33 @@ export function pollPercent(count, respondedCount) {
  * The class's split on a poll task (`quizType: poll`) during a live session, from each
  * student's latest logged choice (`attemptLog/{id}/{taskId}`, auto-check entries skipped):
  * `{ respondedCount, options: [{ index, id, text, count }] }`. `self` ({ anonymousId, choice })
- * puts the viewer's current pick in straight away, before their own log arrives.
+ * puts the viewer's current pick in straight away, before their own log arrives. A
+ * multiple-answer poll's choice is a list of ids: each id counts once per student, so the counts
+ * can add up to more than respondedCount (students who ticked at least one option).
  */
+// A poll task's stored answer as a list of option ids. A single-choice poll stores the id
+// ('a'); a `multiple: true` poll stores a JSON array string ('["a","c"]'); '' is no answer.
+export function parsePollChoice(raw) {
+  if (Array.isArray(raw)) return raw.filter((id) => typeof id === 'string' && id)
+  if (typeof raw !== 'string' || !raw) return []
+  if (raw.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string' && id) : []
+    } catch {
+      return []
+    }
+  }
+  return [raw]
+}
+
+// The stored answer for a multiple-answer poll: the ids sorted, as a JSON array string
+// ('' when none is ticked).
+export function encodePollChoice(ids) {
+  const unique = [...new Set(parsePollChoice(ids))].sort()
+  return unique.length ? JSON.stringify(unique) : ''
+}
+
 export function tallyPollTask(session, task, self = null) {
   const options = (task?.options ?? []).map((option, index) => ({
     index,
@@ -137,10 +162,14 @@ export function tallyPollTask(session, task, self = null) {
   if (self?.anonymousId && self.choice) latest[self.anonymousId] = self.choice
   let respondedCount = 0
   for (const choice of Object.values(latest)) {
-    const option = options.find((candidate) => candidate.id === choice)
-    if (!option) continue
-    option.count += 1
-    respondedCount += 1
+    let counted = false
+    for (const id of new Set(parsePollChoice(choice))) {
+      const option = options.find((candidate) => candidate.id === id)
+      if (!option) continue
+      option.count += 1
+      counted = true
+    }
+    if (counted) respondedCount += 1
   }
   return { respondedCount, options }
 }
