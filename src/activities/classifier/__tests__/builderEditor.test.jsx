@@ -114,13 +114,13 @@ describe('Classifier BuilderEditor', () => {
     expect(task().testItems).toEqual([])
     expect(screen.getByRole('button', { name: '+ Add test drawing' })).toBeDisabled()
 
-    drawOn(screen.getByTestId('classifier-pad'), [
+    drawOn(screen.getByLabelText(/New test drawing pad/), [
       [0.1, 0.5],
       [0.9, 0.5],
     ])
     await user.click(screen.getByRole('button', { name: '+ Add test drawing' }))
     await user.selectOptions(screen.getByLabelText('Class of the new test drawing'), '🐟 fish')
-    drawOn(screen.getByTestId('classifier-pad'), [
+    drawOn(screen.getByLabelText(/New test drawing pad/), [
       [0.2, 0.2],
       [0.8, 0.8],
     ])
