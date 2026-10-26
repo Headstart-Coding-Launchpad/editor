@@ -7,7 +7,10 @@ import {
   HELD_OUT_EVERY,
   MAX_LABEL_LENGTH,
   PANELS,
+  encodeGrid,
+  gridToRows,
   panelsOf,
+  rasterize,
   strokesToFlat,
   teacherTestItems,
 } from './classifier.js'
@@ -76,8 +79,12 @@ export default function ClassifierBuilderEditor({ task, onUpdate }) {
   const [classText, setClassText] = useState(classes.join(', '))
   const [newLabel, setNewLabel] = useState('')
   const [strokes, setStrokes] = useState([])
+  const [exLabel, setExLabel] = useState('')
+  const [exStrokes, setExStrokes] = useState([])
   const set = (patch) => onUpdate({ ...task, ...patch })
   const items = Array.isArray(task.testItems) ? task.testItems : []
+  const examples = Array.isArray(task.examples) ? task.examples : []
+  const eLabel = exLabel && classes.includes(exLabel) ? exLabel : (classes[0] ?? '')
   const label = newLabel && classes.includes(newLabel) ? newLabel : (classes[0] ?? '')
 
   function togglePanel(panel, on) {
@@ -213,6 +220,81 @@ export default function ClassifierBuilderEditor({ task, onUpdate }) {
           </InlineField>
         )}
       </div>
+
+      <Field
+        label="Pre-loaded examples"
+        hint="Drawings the pad has already learned, so it guesses before the student draws. They count towards the drawings needed, students cannot delete them, and they add their own on top."
+      >
+        {!named && <p className="te-act-note">Set the class names first.</p>}
+        <div className="act-cls-gallery" aria-label="Pre-loaded examples">
+          {examples.map((item, index) => {
+            const grid = teacherTestItems({ testItems: [item] })[0]?.grid
+            const name = `Pre-loaded example ${index + 1}: ${item.label}`
+            return (
+              <div key={index} className="te-act-row">
+                <div className="act-cls-thumb" style={{ cursor: 'default' }}>
+                  {grid && <GridThumb grid={grid} title={name} />}
+                </div>
+                <span>{item.label}</span>
+                <button
+                  type="button"
+                  className="te-remove-btn"
+                  aria-label={`Remove pre-loaded example ${index + 1}`}
+                  title="Remove pre-loaded example"
+                  onClick={() => {
+                    const next = examples.filter((_, i) => i !== index)
+                    set({ examples: next.length ? next : undefined })
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            )
+          })}
+        </div>
+        {named && (
+          <div className="te-act-rows">
+            <InlineField label="Draw an example of">
+              <select
+                className="te-input"
+                value={eLabel}
+                aria-label="Class of the new example"
+                onChange={(event) => setExLabel(event.target.value)}
+              >
+                {classes.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </InlineField>
+            <DrawPad strokes={exStrokes} onStrokes={setExStrokes} label="New example pad" />
+            <div>
+              <button
+                type="button"
+                className="te-add-check-btn"
+                disabled={exStrokes.length === 0 || !eLabel}
+                onClick={() => {
+                  const rows = gridToRows(encodeGrid(rasterize(exStrokes)))
+                  if (!rows) return
+                  set({ examples: [...examples, { label: eLabel, grid: rows }] })
+                  setExStrokes([])
+                }}
+              >
+                + Add as example
+              </button>
+              <button
+                type="button"
+                className="te-add-check-btn"
+                disabled={exStrokes.length === 0}
+                onClick={() => setExStrokes([])}
+              >
+                Clear the pad
+              </button>
+            </div>
+          </div>
+        )}
+      </Field>
 
       {testSet === 'teacher' && (
         <Field

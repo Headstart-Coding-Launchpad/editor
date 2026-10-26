@@ -11,6 +11,9 @@ import { roundSummaryText } from '../round.js'
 import {
   accuracyOf,
   countsOf,
+  givenCountOf,
+  hasGiven,
+  ownCountsOf,
   gradeTask,
   initialClassifierState,
   itemResultsOf,
@@ -95,6 +98,18 @@ export default defineActivity({
           'Extra parts to show: grid (what it sees), sure (how sure is it), fool (fool it and fix it). Default [fool]. The pad, the teach step and the guess bars always show.',
       },
       {
+        name: 'examples',
+        type: 'array',
+        authored: true,
+        description:
+          'Pre-loaded drawings the pad has learned before the student draws anything (public, not sealed). Each is { label, grid | strokes }; label is one of the classes. They count towards minExamplesPerClass, the student cannot delete them and can add their own on top.',
+        itemFields: [
+          { name: 'label', type: 'string', required: true, authored: true },
+          { name: 'strokes', type: 'array', authored: true },
+          { name: 'grid', type: 'array', authored: true },
+        ],
+      },
+      {
         name: 'testItems',
         type: 'array',
         authored: true,
@@ -132,7 +147,13 @@ export default defineActivity({
   solutionState: (task) => normalizeClassifierState(task, solutionFor(task)),
 
   // The device's own copy: drawings included.
-  serialize: (state) => JSON.stringify(state ?? null),
+  // The given (pre-loaded) examples come from the task, so they are not saved.
+  serialize: (state) => {
+    if (!state || typeof state !== 'object') return JSON.stringify(state ?? null)
+    // eslint-disable-next-line no-unused-vars
+    const { given, ...own } = state
+    return JSON.stringify(own)
+  },
   // What is written to Firebase: counts, tries, rights, misses, the result, the pad now and the
   // last 3 misses as grids. Never the strokes or the taught drawings.
   serializeShared: (state) => JSON.stringify(sharedState(state)),
@@ -184,14 +205,21 @@ export default defineActivity({
   summarize: (task, state) => {
     const graded = gradeTask(task, state)
     const counts = countsOf(state)
+    const own = ownCountsOf(state)
+    const given = hasGiven(state)
     const total = Object.values(counts).reduce((sum, n) => sum + n, 0)
+    const ownTotal = Object.values(own).reduce((sum, n) => sum + n, 0)
     if (total === 0) return { text: 'No drawings yet', tone: 'neutral' }
     const tone = graded.passed ? 'success' : 'neutral'
     if (!graded.ready) {
       const min = taskMinExamples(task)
       const text = (state.classes ?? [])
         .filter(Boolean)
-        .map((label) => `${label} ${Math.min(counts[label] ?? 0, min)}/${min}`)
+        .map((label) =>
+          given
+            ? `${label} ${givenCountOf(state, label)} given + ${own[label] ?? 0} own`
+            : `${label} ${Math.min(counts[label] ?? 0, min)}/${min}`
+        )
         .join(' · ')
       return { text: `Teaching: ${text}`, tone }
     }
@@ -204,9 +232,10 @@ export default defineActivity({
     const rights = rightsOf(state)
     const core = taskLiveTestSize(task)
     const tries = liveCountOf(state)
-    if (tries === 0) return { text: `Ready: 0/${core} tried`, tone }
+    const ownNote = given ? ` · ${ownTotal} own drawings` : ''
+    if (tries === 0) return { text: `Ready: 0/${core} tried${ownNote}`, tone }
     const text = roundSummaryText(tries, Math.max(core, tries), core, 'tried')
-    return { text: `${text} · ${rights} right`, tone }
+    return { text: `${text} · ${rights} right${ownNote}`, tone }
   },
 
   // The log keeps the shared form: counts, trained and the result, never the drawings.

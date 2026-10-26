@@ -39,6 +39,14 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-26
 
+- **Classifier: pre-loaded `examples`.** A Classifier task can now carry `examples: [{ label, grid | strokes }]`
+  (same format as `testItems`, not sealed). The pad starts with these learned, so it guesses before the
+  student draws. They count towards `minExamplesPerClass`, cannot be removed by the student (who adds
+  their own on top), are never part of the `held_out` test, are not saved in student state, and show to
+  the tutor as "given + own". The Builder has a Pre-loaded examples section. See
+  [activities/classifier.md](activities/classifier.md#pre-loaded-examples).
+  - Affects: classifier · Existing lessons: no changes needed · Resolves: none
+
 - **Image Lab: pictures on the Stage (Make It Real, LG-P9 §2).** The `stage` module has six new
   calls that draw nothing and give back values: `rgb(r, g, b)` (a `'#rrggbb'` colour; numbers are
   rounded and kept within 0–255), `red(c)`, `green(c)`, `blue(c)` (0–255, for any Stage colour),

@@ -324,6 +324,12 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … test drawing …: needs either strokes or grid (not both).` | A test drawing has neither `strokes` nor `grid`, or both. | Give exactly one. |
 | `Task … test drawing …: grid must be … rows of … characters (. empty, # ink, or digits 0-9).` | `grid` is not 16 rows of 16 characters. | Write 16 quoted strings of 16 characters from `.`, `#` and `0`-`9`. |
 | `Task … test drawing …: strokes must be a list of strokes, each a list of x, y numbers between 0 and 1 (x1, y1, x2, y2, ...).` | `strokes` is empty, has an odd number of values in a stroke, or a number outside 0 to 1. | Write each stroke as `[x1, y1, x2, y2, …]` with values from 0 to 1. |
+| `Task … example …: …` | A pre-loaded `examples` item has the same problems as a test drawing: no `label`, a `label` that is not in `classes`, neither or both of `strokes`/`grid`, a bad `grid` or bad `strokes` (the messages read like the test drawing ones above). | Fix the item as for `testItems`. |
+| `Task …: examples must be a list of pre-loaded drawings.` | `examples` is not a list. | Write a list of `{ label, grid }` items. |
+| `Task …: examples need classes (each example uses a class name).` | `examples` with no `classes`. | List the `classes` the examples use. |
+| `Task …: examples can have at most 40 drawings.` | More than 40 pre-loaded examples. | Keep 40 or fewer. |
+| `Task …: no pre-loaded example for class "…". (warning)` | `examples` exists but a class has none, so the pad cannot guess it until the student draws it. | Add an example for it, or ignore if intended. |
+| `Task …: "…" has … or more pre-loaded examples, … Raise minExamplesPerClass. (warning)` | With `held_out`, a class is already full from given examples, so nothing is kept back for the test. | Raise `minExamplesPerClass`. |
 | `Task …: no test drawing for class "…". (warning)` | With `testSet: teacher`, a class has no test drawing, so it is never tested. | Add at least one `testItems` entry for it. |
 
 ### Space station ([activities/station.md](activities/station.md))

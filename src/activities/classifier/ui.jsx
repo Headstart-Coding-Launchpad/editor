@@ -14,6 +14,8 @@ import {
   canTest,
   cleanLabel,
   countsOf,
+  givenCountOf,
+  ownCountsOf,
   describeResult,
   encodeGrid,
   gradeTask,
@@ -179,6 +181,7 @@ function TutorWork({ state }) {
 // rights, misses and mix-ups, plus the pad now and the last misses as small grids.
 function TutorSummary({ task, state }) {
   const counts = countsOf(state)
+  const own = ownCountsOf(state)
   const min = taskMinExamples(task)
   const labels = state.classes.filter(Boolean)
   const graded = gradeTask(task, state)
@@ -199,6 +202,9 @@ function TutorSummary({ task, state }) {
           {labels.map((label) => (
             <li key={label}>
               {label}: {counts[label] ?? 0} of {min} drawings
+              {givenCountOf(state, label) > 0
+                ? ` (${givenCountOf(state, label)} given + ${own[label] ?? 0} own)`
+                : ''}
               {(counts[label] ?? 0) >= min ? ' ✓' : ''}
             </li>
           ))}
@@ -288,6 +294,7 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
   const canDraw = !ready && currentIndex >= 0 && !duplicate
   const have = counts[currentLabel] ?? 0
   const list = state.examples?.[currentLabel] ?? []
+  const givenList = state.given?.[currentLabel] ?? []
   const target = ready && live ? nextTarget(state) : null
   const tries = liveCountOf(state)
   const rights = rightsOf(state)
@@ -622,8 +629,17 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
       </div>
 
       {/* Teaching: this thing's drawings, tap one to remove it. */}
-      {!ready && canDraw && list.length > 0 && (
+      {!ready && canDraw && (list.length > 0 || givenList.length > 0) && (
         <div className="act-cls-gallery" aria-label={`Your ${currentClean} drawings`}>
+          {givenList.map((g, i) => {
+            const name = `Given drawing ${i + 1} of ${currentClean}`
+            return (
+              <div key={`given-${i}`} className="act-cls-thumb" style={{ cursor: 'default' }}>
+                <GridThumb grid={g} title={name} />
+                <span className="act-cls-thumb__tag">Given</span>
+              </div>
+            )
+          })}
           {list.map((g, i) => {
             const held = isHeldOut(task, state, currentLabel, i)
             const name = `Drawing ${i + 1} of ${currentClean}${held ? ', kept back for the test' : ''}`
