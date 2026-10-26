@@ -1,0 +1,2 @@
+# Image Lab pictures are raw RGB bytes (public/image-lab): never change their line endings.
+*.rgb binary
