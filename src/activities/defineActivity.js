@@ -154,6 +154,11 @@ export function defineActivity(def) {
     //     shows(task, item) → boolean (the student sees their history beside the item) }
     history: null,
     buildSubmission: (task, state) => state,
+    // Live badges (src/badges): null, or (task, state) → a small summary of a passing submission,
+    // read by the badge rules as the attempt event's `result`. `state` is what `deserialize`
+    // makes of the stored submission (buildSubmission's JSON). Pure; return plain numbers,
+    // booleans and null only (e.g. { core, tries, right, misses }), never text the student typed.
+    badgeResult: null,
     getProgress: () => null,
     summarize: () => null,
     teacherEditable: true,

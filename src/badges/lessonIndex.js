@@ -32,6 +32,8 @@ function hintList(task, key) {
  * @property {string|null} pattern the taskActivity pattern id (src/shared/taskActivity.js)
  * @property {string} format the Builder task format (getTaskFormat: 'code', 'code_arrange', …)
  * @property {string|null} moduleType the task's effective module type
+ * @property {string|null} activityId the task's activity id ('classifier', 'mouse', 'quiz_match', ...),
+ *   or null for a code task
  * @property {boolean} isCode a code or code_arrange task (not information, quiz or activity)
  * @property {boolean} isGradedQuiz
  * @property {string[]} suggest badgeHints.suggest
@@ -51,6 +53,7 @@ export function buildBadgeLessonIndex(lesson) {
     pattern: getTaskActivityPatternId(task),
     format: getTaskFormat(task),
     moduleType: getTaskModuleType(lesson, task),
+    activityId: getTaskActivity(task)?.id ?? null,
     isCode: isCodeTask(task),
     isGradedQuiz: isGradedQuizTask(task),
     suggest: hintList(task, 'suggest'),

@@ -44,7 +44,15 @@ export const TIMELINE_EVENT_TYPES = Object.freeze([
  * @property {boolean} [assisted] the teacher helped (attemptLog `teacherAssisted`).
  * @property {string|null} [submissionHash] a hash of the submitted code, so rules can tell
  *   different code apart (attemptLog only de-duplicates against the previous entry).
+ * @property {BadgeResult} [result] an activity task's own summary of the submission (the
+ *   activity's `badgeResult` hook), set only on a passing attempt of an activity that has one.
  * @property {number|null} at `passedAt` for a pass, otherwise `loggedAt`.
+ */
+
+/**
+ * What an activity's `badgeResult(task, state)` hook says about a submission: plain numbers,
+ * booleans and null only, e.g. `{ core, tries, right, misses }` (see docs/architecture/activities.md).
+ * @typedef {Record<string, number|boolean|null>} BadgeResult
  */
 
 /**
@@ -177,6 +185,7 @@ export function attemptEvent({
   error = false,
   assisted = false,
   submissionHash = null,
+  result = null,
   at = null,
 }) {
   return {
@@ -188,6 +197,7 @@ export function attemptEvent({
     error: typeof error === 'string' && error ? error : !!error,
     assisted: !!assisted,
     submissionHash: submissionHash ?? null,
+    ...(result && typeof result === 'object' && !Array.isArray(result) ? { result } : {}),
     at: time(at),
   }
 }

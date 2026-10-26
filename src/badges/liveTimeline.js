@@ -13,6 +13,7 @@ import { isAutoAttempt, isFailedScrubAttempt } from '../shared/autoCheck.js'
 import { decodeFileKey } from '../shared/fileKeys.js'
 import { filterTasksByMode, flattenTasks } from '../shared/taskUtils.js'
 import { getStageRole } from '../shared/taskStages.js'
+import { getTaskActivity } from '../activities/registry.pure.js'
 import {
   attemptEvent,
   autocompleteEvent,
@@ -77,6 +78,26 @@ export function buildTaskLookup(lesson) {
   return new Map(flattenTasks(lesson?.tasks ?? []).map((task) => [String(task.id), task]))
 }
 
+// An activity's own summary of a passing submission (its `badgeResult` hook, e.g. { core, tries,
+// right, misses }), or null: no hook, not a pass, a submission that doesn't parse, or a hook that
+// throws. The stored submission is the JSON text `buildSubmission` produced; only plain numbers,
+// booleans and null are kept, so nothing free-form (a typed sentence) reaches the timeline.
+function badgeResultFor(task, entry) {
+  if (!entry.passed || typeof entry.submission !== 'string' || !entry.submission) return null
+  try {
+    const def = getTaskActivity(task)
+    if (typeof def?.badgeResult !== 'function') return null
+    const result = def.badgeResult(task, def.deserialize(entry.submission, task))
+    if (!result || typeof result !== 'object') return null
+    const plain = Object.entries(result).filter(
+      ([, v]) => v === null || typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v))
+    )
+    return plain.length ? Object.fromEntries(plain) : null
+  } catch {
+    return null
+  }
+}
+
 // One task's attemptLog entries → attempt events. The first try is the earliest entry: the
 // stored `attemptNumber` restarts at 1 after a student reload (the de-dupe cache is per tab),
 // so it can't be trusted on its own. Auto-check-on-leave records (src/shared/autoCheck.js) are
@@ -96,6 +117,7 @@ function attemptEventsFor(task, logEntries) {
       error: entry.error ?? false,
       assisted: !!entry.teacherAssisted,
       submissionHash: hashSubmission(entry.submission),
+      result: badgeResultFor(task, entry),
       at: entry.passed ? (entry.passedAt ?? entry.loggedAt) : entry.loggedAt,
     })
   )

@@ -146,3 +146,14 @@ export function getBadgesByFormat() {
   }
   return map
 }
+
+/** Activity id → the badges whose rule triggers on it ('classifier' → 🕵️ AI Fooler). */
+export function getBadgesByActivity() {
+  const map = {}
+  for (const badge of BADGES) {
+    for (const activity of badge.rule?.activities ?? []) {
+      map[activity] = [...(map[activity] ?? []), badge.id]
+    }
+  }
+  return map
+}

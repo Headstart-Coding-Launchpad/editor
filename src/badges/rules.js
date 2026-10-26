@@ -589,3 +589,93 @@ export function quizGroupFirstTry({
     },
   })
 }
+
+// ── Activity badges ──────────────────────────────────────────────────────────
+// Rules for the activity tasks (taskType activity: classifier, next_word, mouse...). An activity
+// that wants one has a `badgeResult(task, state)` hook (src/activities/defineActivity.js); its
+// summary of the passing submission is the pass attempt's `result` (./liveTimeline.js). A task
+// is a trigger task when its activity id is one of `activityIds`, or its badgeHints.suggest names
+// the badge; badgeHints.suppress rules it out. An activity pass is auto-checked as you go, so
+// these rules read the pass attempt only (the log keeps no earlier tries).
+
+function activityTasks(index, badgeId, activityIds) {
+  return index.tasks.filter(
+    (info) =>
+      taskAllowsBadge(info, badgeId) &&
+      (info.suggest.includes(badgeId) ||
+        (info.activityId != null && activityIds.includes(info.activityId)))
+  )
+}
+
+// The attempt a rule judges on `info` for one student: their real pass (or, `firstTryOnly`, a
+// first attempt that was a real pass), when `qualifies(result)` accepts its `result`.
+function qualifyingPass(timeline, info, { firstTryOnly, qualifies }) {
+  const pass = firstTryOnly
+    ? getFirstTryRealPass(timeline, info.id)
+    : getRealPass(timeline, info.id)
+  if (!pass) return null
+  if (qualifies && !(pass.result && qualifies(pass.result))) return null
+  return pass
+}
+
+/**
+ * First in class on an activity: the first student in class to make a real pass on
+ * an activity task with one of `activityIds`. Same computation as firstInClassOnPattern.
+ * - `firstTryOnly`: only students whose first attempt at the task was that real pass;
+ * - `qualifies(result)`: the pass attempt's activity `result` must satisfy it (a pass with no
+ *   result never does);
+ * - `timeOf(result)`: the time to rank by instead of the pass time (the Classifier's `readyAt`);
+ *   a missing or invalid value falls back to the pass time.
+ */
+export function firstInClassOnActivity(
+  activityIds,
+  { firstTryOnly = false, qualifies = null, timeOf = null } = {}
+) {
+  const idList = asList(activityIds)
+  return Object.freeze({
+    kind: 'firstInClassOnActivity',
+    activities: Object.freeze(idList),
+    firstTryOnly,
+    hintable: true,
+    evaluate({ badgeId, timelines, index, decisions }) {
+      const tasks = activityTasks(index, badgeId, idList).map((info) => ({
+        info,
+        passes: entriesOf(timelines).flatMap(([studentId, timeline]) => {
+          const pass = qualifyingPass(timeline, info, { firstTryOnly, qualifies })
+          if (!pass) return []
+          const ranked = timeOf ? timeOf(pass.result) : null
+          return [{ studentId, at: Number.isFinite(ranked) ? ranked : pass.at }]
+        }),
+      }))
+      return computeFirstInClass({ tasks, badgeId, decisions }).map(({ studentId, info, at }) =>
+        candidate(studentId, info, { at })
+      )
+    },
+  })
+}
+
+/**
+ * A real pass on an activity task with one of `activityIds` whose activity `result` satisfies
+ * `qualifies(result)`, per student (the earliest). `values(result)` adds the reason's values.
+ */
+export function activityRoundPass(activityIds, { qualifies, values = () => ({}) } = {}) {
+  const idList = asList(activityIds)
+  return Object.freeze({
+    kind: 'activityRoundPass',
+    activities: Object.freeze(idList),
+    hintable: true,
+    evaluate({ badgeId, timelines, index }) {
+      const tasks = activityTasks(index, badgeId, idList)
+      return entriesOf(timelines).flatMap(([studentId, timeline]) => {
+        const found = tasks.flatMap((info) => {
+          const pass = qualifyingPass(timeline, info, { firstTryOnly: false, qualifies })
+          return pass ? [{ info, at: pass.at, order: info.order, result: pass.result }] : []
+        })
+        const first = earliest(found)
+        return first
+          ? [candidate(studentId, first.info, { at: first.at, values: values(first.result) })]
+          : []
+      })
+    },
+  })
+}
