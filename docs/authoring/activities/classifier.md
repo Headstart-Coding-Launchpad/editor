@@ -221,6 +221,11 @@ lesson document like other answer fields. Validation warns when a class has no t
   (`recent`: what it said and what they drew), each only as the small **16 x 16 grid** the model
   looks at (a packed text of 256 digits). These are low-resolution pictures, not the strokes.
   When the message would be too big the oldest misses go first, then the pad.
+- Two small numbers are sent for the live badges (🎭 AI Fooler, 🏋️ AI Trainer, 💯 Perfect Round):
+  `taught` (how many misses the student then taught it with "Teach it this one") and `readyAt`
+  (the student's device clock, in milliseconds, when the pad first became ready; kept for good,
+  and for given examples that make it ready from the start it is the student's first change).
+  Old saves have neither. The badges see the round as it was at the pass.
 - If the student's device storage is cleared, their drawings are gone and they start again.
 
 ## Teacher tools

@@ -143,6 +143,11 @@ sentences (capped at 1200 characters) go to Firebase with the model's sentence, 
 and results (`history`: one `r`/`w` per guess), the voice and the slider. The tutor's view shows them read-only. Remind students not to write
 anything personal, as with any task.
 
+For the 📜 Storyteller badge the state also counts `generated`: the words the model has added while
+learning from the student's own writing (at least two words of it; words made from the lesson's
+texts do not count). It carries on across Start again and voice switches, and is sent with the
+rest of the shared state. Old saves read as 0.
+
 ## Accessibility and devices
 
 Text only; works on any device with or without a physical keyboard (touch uses the device's own

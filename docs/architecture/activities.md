@@ -19,7 +19,7 @@ workspace module** rather than by `ActivityHost` (step 4.9, see
 
 | Piece | File | Job |
 |---|---|---|
-| Pure definition | `src/activities/<id>/definition.js` | Contract from `defineActivity.js`: `initialState`, `solutionState`, `serialize` / `deserialize` (tolerant), `serializeShared` (optional: the form written to Firebase / `teacherLive` / the attempt log, default `serialize`; an activity holding private data keeps it out, see the classifier), `storage`, `classifyChange`, `completion`, `showIt` (optional: `'side'` default or `'single'`, how Show it opens the activity's builds; use `'single'` for a big view; see `src/shared/showIt.js`), `passMessage` (optional: the student's pass banner text, default `Correct!`; set it on auto-completing activities where passing means finishing, not being right), `grade`, `isGraded`, `buildSubmission`, `getProgress`, `summarize`, `requires`, `touchFallback`, `teacherEditable`, `submitsAnswers`, `tileHighlights` (tutor "look again" tile highlights from StudentModal; see `src/shared/tutorTileHighlights.js`), `history` (typing history across lessons: `modes`, `results`, `shows`; see `src/shared/typingHistory.js`; the UI gets the pushed node as its `history` prop), `previewState`, `report` (`typeFields`, `normalizeSubmission`, `summaryFields`), `printHtml`, `validateTask`, `fields` (the task shape as data: `modeField`, task fields with `required` / `authored` / `values` / `modes` / `itemFields`; see `src/shared/fieldSpec.js`, listed by `lessons capabilities`). Node-safe (CLI, validation, reports, print). |
+| Pure definition | `src/activities/<id>/definition.js` | Contract from `defineActivity.js`: `initialState`, `solutionState`, `serialize` / `deserialize` (tolerant), `serializeShared` (optional: the form written to Firebase / `teacherLive` / the attempt log, default `serialize`; an activity holding private data keeps it out, see the classifier), `storage`, `classifyChange`, `completion`, `showIt` (optional: `'side'` default or `'single'`, how Show it opens the activity's builds; use `'single'` for a big view; see `src/shared/showIt.js`), `passMessage` (optional: the student's pass banner text, default `Correct!`; set it on auto-completing activities where passing means finishing, not being right), `grade`, `isGraded`, `buildSubmission`, `badgeResult` (optional: `(task, state) → { core, tries, right, misses, … }`, a pure summary of a passing submission for the live badge rules; plain numbers, booleans and null only, never text the student typed; `state` is `deserialize` of the stored submission; see `docs/authoring/badges.md` → Activity badges), `getProgress`, `summarize`, `requires`, `touchFallback`, `teacherEditable`, `submitsAnswers`, `tileHighlights` (tutor "look again" tile highlights from StudentModal; see `src/shared/tutorTileHighlights.js`), `history` (typing history across lessons: `modes`, `results`, `shows`; see `src/shared/typingHistory.js`; the UI gets the pushed node as its `history` prop), `previewState`, `report` (`typeFields`, `normalizeSubmission`, `summaryFields`), `printHtml`, `validateTask`, `fields` (the task shape as data: `modeField`, task fields with `required` / `authored` / `values` / `modes` / `itemFields`; see `src/shared/fieldSpec.js`, listed by `lessons capabilities`). Node-safe (CLI, validation, reports, print). |
 | Pure registry | `src/activities/registry.pure.js` | `getTaskActivity(task)` (unknown `activityType` / `quizType` → `unknown` fallback), `isHostedActivityTask` (ActivityHost tasks), `getModuleHostedActivity` / `isModuleHostedActivityTask` (activities with `hostModules`), `isLegacyQuizTask`, `allowsStudentBroadcast`. |
 | UI | `src/activities/<id>/ui.jsx` | `{ StudentView, TeacherLiveView?, CardSummary?, ownsLayout?, BuilderEditor?, BuilderIcon?, builderHint?, builderConvert? }` (see [Builder](#builder)). Views are controlled: `state`, `onChange(nextOrUpdater)`, `onSubmit(state?)`, `readOnly`, `device`, `teacher`, `result` (`{ submitted, passed }` of the answer shown). |
 | UI registry | `src/activities/registry.js` | Merges definition + UI (`getTaskActivityUi`, `getModuleHostedActivityUi`). Never imported by the CLI. |
@@ -241,6 +241,20 @@ Builder change:
 `taskType: 'activity'` + `activityType`, and exports known activities back to the shorthand
 (placed right after `title`). An unknown `activityType` keeps its explicit fields; quizzes keep
 `type: quiz`. A `type:` equal to the lesson type is still a code task.
+
+## Live badges
+
+An activity opts into badges with `badgeResult(task, state)` (default `null`). The live timeline
+(`src/badges/liveTimeline.js`) calls it for each passing `attemptLog` entry and stores the answer
+as the `attempt` event's `result`; the rules `firstInClassOnActivity` and `activityRoundPass`
+(`src/badges/rules.js`) read it. Activities are found by id through `buildBadgeLessonIndex`
+(`activityId`), never `lesson.type`. Because activities are marked as you go, the log holds the
+state at the pass: a badge can only use what was in the submission then. A new field for a badge
+goes in the activity state (loading an old save must still work, so read it as "absent = 0"),
+stays out of `serializeShared` if it is large, and gets a test with the activity's others. Today:
+Classifier (`core`, `tries`, `right`, `misses`, `taught`, `readyAt`), Next Word (`core`, `tries`,
+`right`, `ownWords`, `generated`), Real or AI (`core`, `tries`, `right`), Keyboard (`core`,
+`tries`, `accuracy`, `missed`), Mouse (`core`, `tries`, `misses`).
 
 ## Reports
 

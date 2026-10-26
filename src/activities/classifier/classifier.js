@@ -336,6 +336,8 @@ export function initialClassifierState(task) {
     // The tries the pad got wrong ({ actual (= drawn), predicted, grid, fixed? }), kept on the
     // device only.
     misses: [],
+    // How many of those misses the student then taught the pad (Live badges: AI Fooler).
+    taught: 0,
     // The drawing on the pad right now: { grid, target } (target = the thing the pad suggested or
     // is teaching), or null. Shared with the tutor as a grid; the strokes never leave the device.
     pad: null,

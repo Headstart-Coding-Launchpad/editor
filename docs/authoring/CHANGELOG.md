@@ -39,6 +39,20 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-26
 
+- **Nine activity live badges.** Rule-backed badges for the activity tasks, suggested to the tutor
+  during a live session: 🔭 Prediction Pro (first right first time on a `Quiz: What Do You Expect
+  the Code to Do` task), 🏗️ Station Builder (first to pass a Space station task), 💯 Perfect Round
+  (a Classifier live round, Next Word or Real or AI round with every core try right), 🧐 Real
+  Spotter (first to finish a Real or AI round all right on the first attempt), 🎭 AI Fooler
+  (a Classifier miss the student then taught), 🔤 Keyboard Ace (a typing-mode round at 100%
+  accuracy; speed is never counted), 🏋️ AI Trainer (first Classifier pad ready), 📜 Storyteller (Next
+  Word: own writing and a generated passage) and 🖱️ Steady Hand (a Mouse round with no misses).
+  🔭, 🏗️, 🧐, 🔤 and 🖱️ are auto-awardable. Activity tasks are found by activity, so no `taskActivity`
+  tag is needed; `badgeHints.suggest` / `suppress` work on all nine. New activity state they read:
+  Classifier `readyAt` and `taught`, Next Word `generated`, Mouse `misses` (old saves read as 0 /
+  absent). See [badges.md → Activity badges](badges.md#activity-badges).
+  - Affects: classifier, next_word, real_or_ai, keyboard, mouse, station, quiz_multiple_choice · Existing lessons: no changes needed · Resolves: none
+
 - **Poll: `multiple: true` for "pick all that apply".** A `quizType: poll` task can set
   `multiple: true` (boolean, default false). Students tick any number of options (none to all) and
   can untick; the class split shows how many students picked each option ("7 of 12 picked this"),

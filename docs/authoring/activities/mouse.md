@@ -128,6 +128,11 @@ a **Mac** or **Chromebook** badge for work done on one. (Not yet checked on real
   never un-passes or logs a fail).
 - Doing the wrong gesture gives a hint ("That was a right click. Double-click the folder.");
   clicking the wrong target says which target to find.
+- Misses are counted for the 🖱️ Steady Hand badge (`misses` in the state, starting at 0): a gesture
+  on the wrong target, a drop on the wrong target, or the wrong kind of gesture on the right
+  target. The first click of a double-click, a gesture on empty stage and resting on a target when
+  the item is not a hover are not misses. Nothing is shown to the student; the count only goes to
+  the badge (and the tutor sees it in the student's state). Old saves read as 0.
 - Pressing Enter on a focused target does not count as a click — this activity practises the
   mouse. The browser's own right-click menu is turned off on the stage.
 - Each completed instruction is a *discrete* change and updates the teacher's card within a

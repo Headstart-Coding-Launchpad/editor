@@ -46,15 +46,15 @@ student per lesson.
 | 🗺️ Side Quester | `side_quester` | Marked at least `sideQuesterMinDone` [side-quests](AUTHORING_GUIDE.md#side-quests) Done in the session, on any tasks. Done is self-reported, so it is suggested only and the tutor decides | – |
 | 📖 Word Smith | `word_smith` | Right **first time** on every vocab task they have tried (a graded quiz tagged `Quiz: Vocabulary Check` or `Quiz: Vocabulary Match`, any quiz type), and at least `wordSmithMinTasks` of them (see [Vocab tasks](#vocab-tasks)) | – |
 | 🤩 Emoji Artist | `emoji_artist` | Ran Python or HTML code with an emoji they added in a string, or in HTML text or an attribute (comments, and emoji the task's code already had, don't count), in a task or a sandbox; typed, pasted or picked all count | – |
-| 🏗️ Station Builder | `station_builder` | TODO(new-badge): when it is suggested | – |
-| 🏋️ AI Trainer | `ai_trainer` | TODO(new-badge): when it is suggested | – |
-| 🖱️ Steady Hand | `steady_hand` | TODO(new-badge): when it is suggested | – |
-| 🔭 Prediction Pro | `prediction_pro` | TODO(new-badge): when it is suggested | – |
-| 💯 Perfect Round | `perfect_round` | TODO(new-badge): when it is suggested | – |
-| 🧐 Real Spotter | `real_spotter` | TODO(new-badge): when it is suggested | – |
-| 🎭 AI Fooler | `ai_fooler` | TODO(new-badge): when it is suggested | – |
-| 🔤 Keyboard Ace | `keyboard_ace` | TODO(new-badge): when it is suggested | – |
-| 📜 Storyteller | `storyteller` | TODO(new-badge): when it is suggested | – |
+| 🏗️ Station Builder | `station_builder` | First in class to make a real pass on a Space station activity task (see [Activity badges](#activity-badges)) | ✅ |
+| 🏋️ AI Trainer | `ai_trainer` | First in class to get a Classifier pad ready (every thing has its drawings), among students who then made a real pass; ranked by when the pad became ready, not when the round ended | – |
+| 🖱️ Steady Hand | `steady_hand` | A real pass on a Mouse skills task with no misses (a miss is a gesture that was not the answer: wrong target, wrong drop, wrong kind of gesture) | ✅ |
+| 🔭 Prediction Pro | `prediction_pro` | First in class among students right **first time** on a `Quiz: What Do You Expect the Code to Do` task | ✅ |
+| 💯 Perfect Round | `perfect_round` | A real pass on a Classifier (live round), Next Word or Real or AI task where every try in the round was right; bonus tries are not counted | – |
+| 🧐 Real Spotter | `real_spotter` | First in class to finish a Real or AI round with every pair right, on the first attempt at the task | ✅ |
+| 🎭 AI Fooler | `ai_fooler` | A real pass on a Classifier task where the pad got a try wrong and the student then taught it that drawing (before the round ended) | – |
+| 🔤 Keyboard Ace | `keyboard_ace` | A real pass on a Keyboard skills task in a typing mode (type text, type code, falling words) with every item at 100% accuracy; speed is never counted | ✅ |
+| 📜 Storyteller | `storyteller` | A real pass on a Next Word task where the student wrote words of their own and the AI added at least 5 words from them | – |
 | 🧠 Problem Solver · 🧪 Experimenter · 💡 Creative Coder · 😂 Comedy Coder · 🧘 Focused Coder · 🧭 Project Explorer · 📈 Knowledge Builder · 🙋 Great Question · 🏹 Sharp Shooter · ✍️ Word Wizard · 🎨 Design Master · 🦸 Independent Coder · 🌡️ Honest Check-in · 🦁 Brave Coder · 🌱 Growing Coder · 🔁 Comeback Coder · 🎤 Show and Tell · 💬 Great Answer · 🧑‍🏫 Code Teacher · 🕵️ Teacher Trap · 🧹 Tidy Coder · 🔦 Edge Explorer · 🏁 Finisher · 🧷 Careful Checker | `problem_solver`, `experimenter`, `creative_coder`, `comedy_coder`, `focused_coder`, `project_explorer`, `knowledge_builder`, `great_question`, `sharp_shooter`, `word_wizard`, `design_master`, `independent_coder`, `honest_check_in`, `brave_coder`, `growing_coder`, `comeback_coder`, `show_and_tell`, `great_answer`, `code_teacher`, `teacher_trap`, `tidy_coder`, `edge_explorer`, `finisher`, `careful_checker` | Tutor-only: never suggested | – |
 
 "First in class" is decided per task, in the order the tasks were first passed. Each student
@@ -91,6 +91,35 @@ checks never count. The group is judged once the student has answered all of its
 once the class has moved past it; a question they never answered counts as not right. Only a
 student's first answer to each question counts.
 
+## Activity badges
+
+Activity tasks (`taskType: activity`: Classifier, Next Word, Real or AI, Keyboard, Mouse, Station)
+have no code to run, so their rules read the activity's own summary of the passing submission. An
+activity that wants a badge has a `badgeResult(task, state)` hook
+([activities.md](../architecture/activities.md)); the live timeline stores its answer on the pass
+attempt as a small `result` of plain numbers (never anything the student typed). The tasks are
+found by **activity**, not `taskActivity`, and a task can also be added with `badgeHints.suggest`.
+Activity rounds are marked as you go, so the log holds only the passing submission: a badge sees
+the round as it stood at the pass, and anything done after it (teaching the last miss, bonus tries)
+is not seen. `coreItems` / `liveTestSize` / `guesses` set the round; only the core counts.
+
+| Badge | Activity | Reads (from the pass) | Notes |
+|---|---|---|---|
+| 🏗️ Station Builder | Space station | the pass itself | first in class per task |
+| 💯 Perfect Round | Classifier (live round), Next Word, Real or AI | `tries`, `right`, `core`: every core try right | Classifier: the pad never missed. Next Word: every guess was the likeliest word. Not Mouse or Keyboard |
+| 🧐 Real Spotter | Real or AI | every core pair right, first attempt | first in class per task |
+| 🎭 AI Fooler | Classifier | `misses` and `taught` both above 0 | "Teach it this one" counts; the round must still be open when they teach |
+| 🔤 Keyboard Ace | Keyboard (type text, type code, falling words) | `accuracy` 1 (and `missed` 0) | not first in class; speed is never read; `find_key`, `symbols`, `shortcuts` and `edit_text` have no accuracy, so never trigger it |
+| 🏋️ AI Trainer | Classifier | `readyAt` | first in class, ranked by the device time the pad first became ready (with given examples that make it ready at once: the student's first change). Device clocks can differ by seconds, so a very close finish can go either way. Suggested at the pass, not when the pad became ready |
+| 📜 Storyteller | Next Word | `ownWords` above 0 and `generated` at least 5 | `generated` counts words the AI added from the student's own writing (not the lesson texts) |
+| 🖱️ Steady Hand | Mouse | `misses` is 0 | see below |
+
+**Mouse misses.** The Mouse view counts a miss for each gesture that was not the answer to the
+item on screen: a gesture on the wrong target, a drop on the wrong target, or the wrong kind of
+gesture on the right target (a click on a drag item, a right-click on a double-click item). Not
+misses: the first click of a double-click, resting on a target when the item is not a hover,
+a gesture on empty stage, and keyboard presses. Old saves have no count and read as 0.
+
 ## Pattern → badge
 
 The pattern comes from `taskActivity` (see [Task activity patterns](#task-activity-patterns)).
@@ -105,6 +134,8 @@ The pattern comes from `taskActivity` (see [Task activity patterns](#task-activi
 | Any checked code or Code Arrange task | 🔨 Persistence, 🔧 Code Fixer, 🚀 Ready to Code |
 | Graded quizzes in a group | 🎯 Quiz Master |
 | `Quiz: Vocabulary Check`, `Quiz: Vocabulary Match` | 📖 Word Smith |
+| `Quiz: What Do You Expect the Code to Do` | 🔭 Prediction Pro |
+| Activity tasks (by activity, not `taskActivity`) | see [Activity badges](#activity-badges) |
 
 Pattern badges need a `check` on the task: attempts are only recorded for checked tasks.
 
@@ -124,6 +155,8 @@ Pattern badges need a `check` on the task: attempts are only recorded for checke
 | 🤝 Helpful Coder | ✅ | ✅ | – | ✅ | ✅ | – | – | – | – |
 | 🗺️ Side Quester | ✅ | ✅ | – | ✅ | ❌ not yet | – | – | – | – |
 | 🤩 Emoji Artist | ✅ strings | ✅ strings | ❌ not yet | ✅ text and attributes | ❌ no code | – | – | ✅ strings | – |
+| 🔭 Prediction Pro | – | – | – | – | – | – | – | – | ✅ |
+| 🏗️ 🏋️ 🖱️ 💯 🧐 🎭 🔤 📜 Activity badges | – | – | – | – | – | – | – | – | [Activity tasks](#activity-badges) |
 
 "–" means the badge has no signal there. The live signals (console errors, topic opens, shortcuts,
 first edits, autocomplete, emoji runs) are recorded from each module's work area; see the plan's PR sequence for when each
@@ -187,8 +220,9 @@ Optional, on the lesson envelope. Leave it out to use the defaults.
 Optional, on any task: lists of badge ids.
 
 - `suggest`: treat a real pass on this task as the badge's trigger, for a task whose
-  `taskActivity` doesn't say so. Only the pattern badges (`bug_hunter`, `code_builder`,
-  `code_detective`, `challenge_solver`, `code_arranger`) can be suggested this way.
+  `taskActivity` doesn't say so. Only the pattern and activity badges (`bug_hunter`, `code_builder`,
+  `code_detective`, `challenge_solver`, `code_arranger`, `prediction_pro`, and the nine [activity
+  badges](#activity-badges)) can be suggested this way.
 - `suppress`: never suggest this badge from this task (for example `ready_to_code` on a task that
   opens with a long read, or `code_fixer` on a task that deliberately starts broken without being
   a Debug Code Task).
@@ -233,7 +267,7 @@ Unknown badge ids, other keys, and out-of-range options are validation errors
 ([validation-errors.md](validation-errors.md)).
 
 **In the Builder:** task editor → Authoring metadata → **Badge hints** (every task except
-information tasks). *Also suggest* offers the five pattern badges and *Never suggest* the
+information tasks). *Also suggest* offers the pattern and activity badges and *Never suggest* the
 rule-backed ones, so only valid ids can be picked; a badge is in one list at most, and clearing
 both lists removes `badgeHints`. A read-only line above them names the badges the task's
 `taskActivity` pattern (or, for an Arrange task, its format) already triggers. `badgeOptions` is YAML-only.
@@ -264,7 +298,8 @@ Rules read a per-student timeline of events, never Firebase directly
 session's `startedAt`), `autocomplete` and `peer_help` (built teacher-side from peer help: a
 helper's item the stuck classmate marked 👍 Useful or whose change they used; students can't
 read each other's peer help, so it is never a student signal), `side_quest_done` (a side-quest
-the student marked Done, from `sideQuestLog`; self-reported and never checked) and `emoji_run`.
+the student marked Done, from `sideQuestLog`; self-reported and never checked) and `emoji_run`. An `attempt` event of an activity task also carries an optional `result` from the
+activity's `badgeResult` hook (see [Activity badges](#activity-badges)).
 
 `emoji_run` is the student's first Run (or Run tests) of code with an emoji they added that the
 program would show (emoji already in the task's code stages, `copyCode` or the tutor's sandbox
