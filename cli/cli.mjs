@@ -284,6 +284,18 @@ await yargs(hideBin(process.argv))
         })
       )
 
+      .command(
+        'timing <lessonId>',
+        'Tutor timing runs (Start timing run in the admin preview), newest first, with seconds per task. Use --yaml for YAML',
+        {
+          latest: { type: 'boolean', default: false, describe: 'Only the newest run' },
+        },
+        cmd(async ({ lessonId, latest }) => {
+          const { listTimingRuns } = await loadLessons()
+          print(await listTimingRuns(lessonId, { latest }))
+        })
+      )
+
       .command('reports', 'Session reports left by ended live sessions (anonymised)', (y) =>
         y
           .command(

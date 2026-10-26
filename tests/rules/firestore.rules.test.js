@@ -61,6 +61,32 @@ describe('lesson feedback and session reports', () => {
   })
 })
 
+describe('tutor timing runs', () => {
+  const path = 'lessons/lesson-1/timingRuns/run-1'
+
+  it('lets teachers and admins create and read a run', async () => {
+    await assertSucceeds(doc(as.teacher, path).set({ totalSeconds: 60 }))
+    await assertSucceeds(doc(as.teacher, path).get())
+    await assertSucceeds(
+      doc(as.admin, 'lessons/lesson-1/timingRuns/run-2').set({ totalSeconds: 5 })
+    )
+  })
+
+  it('blocks students and signed-out users', async () => {
+    await assertFails(doc(as.anonymous, path).get())
+    await assertFails(doc(as.student, path).get())
+    await assertFails(doc(as.student, 'lessons/lesson-1/timingRuns/run-3').set({ totalSeconds: 1 }))
+  })
+
+  it('does not let anyone edit or delete a saved run', async () => {
+    await doc(as.admin, 'lessons/lesson-1/timingRuns/run-4').set({ totalSeconds: 1 })
+    await assertFails(
+      doc(as.admin, 'lessons/lesson-1/timingRuns/run-4').update({ totalSeconds: 2 })
+    )
+    await assertFails(doc(as.admin, 'lessons/lesson-1/timingRuns/run-4').delete())
+  })
+})
+
 describe('platform feedback', () => {
   it('lets teachers submit but only admins read', async () => {
     await assertSucceeds(doc(as.teacher, 'platformFeedback/f1').set({ text: 'idea' }))

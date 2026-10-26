@@ -231,3 +231,32 @@ export const ephemeralStorage = {
   saveDesktopState: (lessonId, taskId, anonymousId, desktop) =>
     ephemeralSet(studentTaskStorageKey(lessonId, taskId, anonymousId), { desktop }),
 }
+
+// In-progress tutor timing run (admin preview only), so a reload does not lose it.
+// Keyed by lesson (and tutor uid), not by student: a tutor has no anonymousId in preview.
+export const timingRunStorageKey = (lessonId, tutorUid) =>
+  `headstart_timingrun_${lessonId}_${tutorUid}`
+
+export function loadTimingRun(lessonId, tutorUid) {
+  try {
+    return safeParse(timingRunStorageKey(lessonId, tutorUid))
+  } catch {
+    return null
+  }
+}
+
+export function saveTimingRun(lessonId, tutorUid, state) {
+  try {
+    localStorage.setItem(timingRunStorageKey(lessonId, tutorUid), JSON.stringify(state))
+  } catch {
+    // storage full or blocked: the run just will not survive a reload
+  }
+}
+
+export function clearTimingRun(lessonId, tutorUid) {
+  try {
+    localStorage.removeItem(timingRunStorageKey(lessonId, tutorUid))
+  } catch {
+    // ignore
+  }
+}
