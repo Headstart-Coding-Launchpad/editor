@@ -37,6 +37,17 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-26
+
+- **Scratch blocks keyed by a later sprite load when the first sprite has none (Hub #256).**
+  `starterBlocks`, `completeBlocks` and `codeStages[].blocks` keyed only by later sprites (for
+  example fixed props with no blocks listed first, the scripted sprite after them) used to load as
+  the first sprite's blocks, so the classroom showed no starter and `lessons test-checks` failed
+  every stage. A blocks value now counts as keyed by sprite when any author sprite's id,
+  `__stage__` or `__meta__` is a key; a bare workspace state still belongs to the first sprite.
+- Affects: scratch, cli · Existing lessons: no changes needed; the lone when-green-flag block on
+  the first fixed sprite (the #256 workaround) can be removed · Resolves: none
+
 ## 2026-10-23
 
 - **Station worlds: the zoo and the toy shop (Hub #195, Mouse and Keyboard).** A station task takes
