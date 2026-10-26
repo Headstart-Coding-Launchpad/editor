@@ -27,6 +27,7 @@ def _hs_charts_install():
     matplotlib.use('Agg', force=True)
     import matplotlib.pyplot as plt
     import matplotlib.figure
+    import matplotlib.style
     from matplotlib.patches import Rectangle, Wedge
     import js
 
@@ -109,7 +110,8 @@ def _hs_charts_install():
 
     def reset():
         plt.close('all')
-        matplotlib.rcdefaults()
+        # The documented reset: matplotlib's own default look, leaving the backend alone.
+        matplotlib.style.use('default')
         # A little bigger than matplotlib's 10 so labels read on a projector.
         matplotlib.rcParams['font.size'] = 12
 
