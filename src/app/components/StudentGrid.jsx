@@ -12,6 +12,7 @@ import ShareRequestsBanner from './ShareRequestsBanner'
 import { useExtraClassToolsOn } from '../../shared/extraClassToolsSetting'
 import ClassActivityStrip from './ClassActivityStrip'
 import CommonHintsStrip from './CommonHintsStrip'
+import NeedsYouStrip from './NeedsYouStrip'
 import ConfidenceSpreadStrip from './ConfidenceSpreadStrip'
 import { getTaskActivity } from '../../activities/registry.pure.js'
 import { confidenceSpreadEntries, tallyConfidenceSpread } from '../../shared/confidenceScale'
@@ -676,6 +677,15 @@ export default function StudentGrid({
                 Done
               </button>
             </div>
+          )}
+          {session?.state === 'active' && (
+            <NeedsYouStrip
+              students={students}
+              taskId={session?.currentTaskId}
+              hasCheck={hasCheck}
+              names={studentNames}
+              onOpen={handleExpand}
+            />
           )}
           <ClassActivityStrip
             entries={activitySummary}

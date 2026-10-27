@@ -612,3 +612,33 @@ describe('StudentGrid joining students', () => {
     expect(screen.queryByRole('button', { name: /Pull in/ })).not.toBeInTheDocument()
   })
 })
+
+describe('StudentGrid needs-you strip', () => {
+  const helpStudents = [
+    ...STUDENTS,
+    { anonymousId: 's4', displayName: 'Dan', online: true, needsHelp: true },
+  ]
+
+  it('lists a help request, opens the student, and hides it on I am on it', async () => {
+    const props = mkProps({ students: helpStudents, lesson: LESSON_WITH_CHECK })
+    render(<StudentGrid {...props} />)
+    const strip = screen.getByTestId('needs-you')
+    expect(within(strip).getByText('Needs you (1)')).toBeInTheDocument()
+    const row = screen.getByTestId('needs-you-help-s4')
+    expect(row).toHaveTextContent('Asked for help')
+    fireEvent.click(within(row).getByTitle('Open Dan'))
+    expect(props.onGoLive).toHaveBeenCalledWith('s4')
+    fireEvent.click(within(row).getByRole('button', { name: /on it/ }))
+    expect(screen.queryByTestId('needs-you-help-s4')).not.toBeInTheDocument()
+    expect(screen.getByTestId('needs-you-finished')).toHaveTextContent('Alice')
+  })
+
+  it('is not shown outside a live session', () => {
+    render(
+      <StudentGrid
+        {...mkProps({ students: helpStudents, session: { state: 'sandbox', currentTaskId: 1 } })}
+      />
+    )
+    expect(screen.queryByTestId('needs-you')).not.toBeInTheDocument()
+  })
+})

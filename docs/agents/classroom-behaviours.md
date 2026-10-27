@@ -425,6 +425,15 @@ The tutor sees what a student is typing into a submit-to-reveal answer before th
 - **Teacher side.** `StudentCard` shows a dashed "✏️ Typing, not submitted:" line (two lines, readable without hover) under the answer; StudentModal (`StudentWorkspaceBody`) shows the whole draft under "Still typing, not submitted yet" above the quiz. Only a draft whose `taskId` is the task shown counts (`readAnswerDraft`).
 - **Never an attempt.** Drafts are not checked, logged, counted, shown on the presentation window (`showResponses`) or read by badges. Typed fill-blank gaps are also *continuous* activity changes now (`classifyChange(prev, next, task)`), so `currentAnswer` follows them only while watched; the unwatched tutor reads the draft line instead.
 
+## Needs You Strip
+
+In a live session (`active`, not the sandbox), `StudentGrid` shows `NeedsYouStrip` above the class strips (Hub #224, Ryan 25 Oct). It lists only the students who need the tutor, so the rest of the class stays quiet in the grid. The order is help first, then error loop, then stuck, and the longest wait first within each. Each row has an icon, a word, the name, why, and how long they've waited:
+- **✋ Help:** `needsHelp`.
+- **⚠ Error loop:** the latest run crashed with the same error line 3 runs in a row (`ERROR_LOOP_RUNS`).
+- **⏳ Stuck:** 3 failed checks in a row on the current task (`studentHint.failStreak`, `STUCK_FAILS`).
+
+Everyone who passed the current task's check is named on one "✓ Finished, ready for a stretch" line. Clicking a row or a name opens that student's modal. "I'm on it" hides the row until the student's state changes. Everything is computed on the tutor's screen from fields it already receives (`src/app/needsYou.js`). Nothing new is written to Firebase. So the error-run count and the wait times start when this screen first saw them, and a reload restarts them. Not in the session report.
+
 ## Class Confidence Spread
 
 On a confidence check (an activity whose definition has a `ratingScale`; today `quiz_confidence`, 1–10), `StudentGrid` shows `ConfidenceSpreadStrip` above the cards: one column per level (red to green) with how many students chose it and "N of M answered", from each student's mirrored `currentAnswer` (`tallyConfidenceSpread` in `src/shared/confidenceScale.js`; confidence answers are discrete, so always mirrored). Clicking a level outlines those students' cards through the grid's shared highlight (group `confidence:<level>`), like `CommonHintsStrip`; hover names them. Not shown in the session sandbox. Each card's pill reads "N/10".
