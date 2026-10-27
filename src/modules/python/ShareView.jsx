@@ -84,47 +84,52 @@ export default function PythonShareView({ payload }) {
         />
       )}
       <ShareCode code={payload?.code} language="python" />
-      <div style={s.runRow}>
-        <button
-          type="button"
-          className="btn-primary"
-          style={s.runBtn}
-          onClick={handleRun}
-          disabled={busy || typeof payload?.code !== 'string'}
-        >
-          {run?.status === 'loading' ? 'Getting Python ready…' : '▶ Run'}
-        </button>
-        {busy && (
+      {/* Run and its output share one grid cell, so the output opens right under the
+          button instead of dropping below the code, off-screen (#301). */}
+      <div style={s.runColumn}>
+        <div style={s.runRow}>
           <button
             type="button"
-            className="btn-ghost-outline"
+            className="btn-primary"
             style={s.runBtn}
-            onClick={() => stopPython()}
+            onClick={handleRun}
+            disabled={busy || typeof payload?.code !== 'string'}
           >
-            Stop
+            {run?.status === 'loading' ? 'Getting Python ready…' : '▶ Run'}
           </button>
+          {busy && (
+            <button
+              type="button"
+              className="btn-ghost-outline"
+              style={s.runBtn}
+              onClick={() => stopPython()}
+            >
+              Stop
+            </button>
+          )}
+          <span style={s.note}>Runs here, in your browser. Nothing is saved.</span>
+        </div>
+        {run ? (
+          <OutputPanel
+            output={run.output}
+            runStatus={busy ? null : run.status}
+            running={busy}
+            inputPrompt={run.prompt}
+            onInputSubmit={handleInput}
+            collapsible={false}
+            defaultCollapsed={false}
+          />
+        ) : (
+          <ShareOutput output={payload?.output} />
         )}
-        <span style={s.note}>Runs here, in your browser. Nothing is saved.</span>
       </div>
-      {run ? (
-        <OutputPanel
-          output={run.output}
-          runStatus={busy ? null : run.status}
-          running={busy}
-          inputPrompt={run.prompt}
-          onInputSubmit={handleInput}
-          collapsible={false}
-          defaultCollapsed={false}
-        />
-      ) : (
-        <ShareOutput output={payload?.output} />
-      )}
     </div>
   )
 }
 
 const s = {
   stage: { width: '100%', maxWidth: 420, aspectRatio: '1 / 1' },
+  runColumn: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 },
   runRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   runBtn: { minHeight: 44, padding: '0 18px' },
   note: { fontSize: '0.85rem', color: 'var(--colour-text-muted, #6b7280)' },
