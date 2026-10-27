@@ -52,6 +52,11 @@ Change-type map for finding adjacent code, docs, and tests that usually move tog
 
 **Load when:** starting feature work, changing runtime contracts, adding source files, or deciding which docs/tests a change should update.
 
+### [architecture/data-retention-plan.md](architecture/data-retention-plan.md)
+Proposal (Hub #303) for how long LaunchPad keeps session reports, class lists, share links and the old US database, and a daily retention sweep that starts as a dry run.
+
+**Load when:** deciding or building data retention or deletion.
+
 ### [architecture/firestore-europe-plan.md](architecture/firestore-europe-plan.md)
 Plan for moving Firestore from the US (`nam5`) to Europe (Hub P24): where each Firebase service sits now, options (new named database, recreate, new project), location, data copy, downtime, rollback and cost, with the decisions for Ryan.
 
