@@ -54,9 +54,6 @@ import { explainPythonError } from '../../shared/pythonErrors.js'
  * - onInputAnswer (optional): told each answer given to input() on this run (typed by the
  *   student, through handleInputSubmit, is recorded by the caller; replayed ones come here)
  */
-// The modules whose output panel shows ErrorHelp (Python errors in plain words).
-const PLAIN_ERROR_MODULES = new Set(['python', 'turtle'])
-
 let turtleRunCount = 0
 
 function newTurtleRunId() {
@@ -394,7 +391,7 @@ export async function runWithRuntime(ctx) {
             // The error help (ErrorHelp) explains this crash: no completion-check hint too.
             errorExplained:
               status === 'error' &&
-              PLAIN_ERROR_MODULES.has(definition?.type) &&
+              definition?.capabilities?.errorHelp === true &&
               explainPythonError(outputBuffer.raw) != null,
           })
         : null

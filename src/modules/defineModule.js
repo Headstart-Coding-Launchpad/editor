@@ -80,6 +80,9 @@ export const OPTIONAL_CAPABILITY_BOOLEANS = Object.freeze([
   'explainerBlockMenu', // the explainer editor offers the Scratch block-reference menu (scratch)
   'sideQuests', // a code task's `sideQuests` run in a throwaway workspace of this module once the
   // student passes it (src/shared/sideQuests.js; python, turtle, html)
+  'errorHelp', // a crashed run's error is Python's, explained in plain words under the output
+  // with a hint ladder, and that help replaces completion-check hints (src/shared/pythonErrors.js,
+  // ErrorHelp; python, turtle)
   'typingStats', // the student's keystrokes in the shared code editor feed the session report's
   // `typing` measures (useStudentTypingStats; python, turtle, html)
   'previewInspector', // a task's `inspector` field adds the HTML Inspector to the preview

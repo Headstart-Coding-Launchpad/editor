@@ -89,6 +89,8 @@ export default defineModule({
     run: 'runtime',
     // Authors hint at starter lines with `#> …` marker lines (src/shared/lineHints.js).
     lineHints: 'python',
+    // Python errors in plain words under the output (ErrorHelp, src/shared/pythonErrors.js).
+    errorHelp: true,
     // A classmate can help (src/shared/peerHelp.js).
     peerHelp: { anchors: 'lines', hints: 'python' },
     // A passed task's side-quests run in a throwaway Python workspace (src/shared/sideQuests.js).
