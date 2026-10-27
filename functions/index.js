@@ -6,7 +6,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https')
 initializeApp()
 
 // Same database id as the app (VITE_FIRESTORE_DATABASE_ID); see docs/architecture/firestore-europe-plan.md.
-const db = () => getFirestore(process.env.FIRESTORE_DATABASE_ID || '(default)')
+const db = () => getFirestore(process.env.FIRESTORE_DATABASE_ID || 'london')
 
 function requireAdmin(auth) {
   if (!auth || auth.token.role !== 'admin') {
