@@ -70,6 +70,11 @@
               }
             },
 
+            // Show it "not today" (#302): true, or absent. The student or a tutor sets it.
+            "showItOptOut": {
+              ".validate": "newData.isBoolean() && newData.val() === true"
+            },
+
             // The side-quest open on the student's screen (its index 0-2), or absent
             // (src/shared/sideQuests.js).
             "sideQuestOpen": {

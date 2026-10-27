@@ -134,13 +134,15 @@ function studentName(students, studentId) {
 }
 
 /**
- * The toast's text, after its 🎖️ icon: "Alex earned a badge: 🐛 Bug Hunter", or
- * "12 students earned a badge: ⌨️ Keyboard Wizard" for a bulk award.
+ * The toast's text, after its 🎖️ icon: "A coder earned a badge: 🐛 Bug Hunter", or
+ * "12 students earned a badge: ⌨️ Keyboard Wizard" for a bulk award. Never the child's name:
+ * the toast is on every classmate's screen and the class screen (#302, Ryan 2026-10-27). The
+ * child sees their own badge on their card; the tutor sees names in the grid.
  */
 export function classToastLabel(toast, badge) {
   const title = badge?.title ?? 'Badge'
   const named = badge?.emoji ? `${badge.emoji} ${title}` : title
   const count = toast.recipientIds.length
-  const who = count > 1 ? `${count} students` : (toast.names[0] ?? 'A coder')
+  const who = count > 1 ? `${count} students` : 'A coder'
   return `${who} earned a badge: ${named}`
 }

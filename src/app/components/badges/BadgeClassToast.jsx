@@ -9,7 +9,7 @@ import {
 const LEAVE_MS = 300
 
 /**
- * The silent class toast for a classmate's award, bottom-left: "🎖️ Alex earned a badge: 🐛 Bug
+ * The silent class toast for a classmate's award, bottom-left: "🎖️ A coder earned a badge: 🐛 Bug
  * Hunter", or one merged "🎖️ 12 students earned a badge: ⌨️ Keyboard Wizard" for a bulk award. It
  * slides in with a soft glow and the blurb is only in the hover title. The presentation window
  * shows it larger and for a little longer. Calls `onDone` when it has gone, so the next queued

@@ -64,15 +64,26 @@ export function getShowIt(session) {
   }
 }
 
+// "Not today" (#302, Ryan 2026-10-27): a child can say their build isn't shown to the class
+// this session. students/{id}/showItOptOut: true; the node goes with the session.
+export function isShowItOptedOut(student) {
+  return student?.showItOptOut === true
+}
+
+// The picked students who said "not today", for the tutor's Show it button.
+export function optedOutOf(students) {
+  return (Array.isArray(students) ? students : []).filter(isShowItOptedOut)
+}
+
 // One tile per picked student, labelled "Build 1/2/3" by position. Students who have since
-// left are dropped; only the student record is returned for rendering, never a name or id label.
+// left, or who said "not today" after being picked, are dropped; only the student record is returned for rendering, never a name or id label.
 export function getShowItBuilds(session) {
   const showIt = getShowIt(session)
   if (!showIt) return []
   const builds = []
   for (const id of showIt.studentIds) {
     const student = session?.students?.[id]
-    if (student && typeof student === 'object') {
+    if (student && typeof student === 'object' && !isShowItOptedOut(student)) {
       builds.push({ label: `Build ${builds.length + 1}`, student: { ...student, anonymousId: id } })
     }
   }

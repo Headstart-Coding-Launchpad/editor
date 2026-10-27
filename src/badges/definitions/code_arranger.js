@@ -1,5 +1,5 @@
 import { defineBadge } from '../defineBadge.js'
-import { firstInClassOnPattern } from '../rules.js'
+import { realPassOnPattern } from '../rules.js'
 import { attemptEvent as attempt, overrideEvent } from '../timeline.js'
 
 // Any Arrange task (taskType code_arrange), whatever its taskActivity pattern.
@@ -8,14 +8,13 @@ export default defineBadge({
   emoji: '🧩',
   title: 'Code Arranger',
   blurb: 'Put the code in the right order.',
-  ruleText:
-    'First in class among students whose first attempt at an Arrange task (code_arrange) was a real pass.',
-  rule: firstInClassOnPattern([], { formats: 'code_arrange', firstTryOnly: true }),
-  reasonText: ({ taskTitle }) => `First to arrange “${taskTitle}”, first try`,
+  ruleText: 'Made a real pass on the first attempt at an Arrange task (code_arrange).',
+  rule: realPassOnPattern([], { formats: 'code_arrange', firstTryOnly: true }),
+  reasonText: ({ taskTitle }) => `Arranged “${taskTitle}”, first try`,
   autoAwardable: true,
   examples: [
     {
-      name: 'a first-try pass beats an earlier second-try pass',
+      name: 'only a first-try pass earns it',
       timelines: {
         alex: [
           attempt({ taskId: 'a1', passed: false, at: 50 }),

@@ -66,9 +66,9 @@ describe('suggestion task labels', () => {
   })
 
   it('leaves the label out only when the reason already names it', () => {
-    expect(
-      showSuggestionTaskLabel({ ...task, reason: 'First to fix the bug in “Fix the loop”' })
-    ).toBe(false)
+    expect(showSuggestionTaskLabel({ ...task, reason: 'Fixed the bug in “Fix the loop”' })).toBe(
+      false
+    )
     expect(showSuggestionTaskLabel({ ...task, reason: 'Used Tab' })).toBe(true)
     // An unquoted word in the reason is not the task's name.
     expect(

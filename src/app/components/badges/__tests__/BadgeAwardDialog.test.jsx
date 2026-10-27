@@ -62,10 +62,10 @@ describe('BadgeAwardDialog', () => {
   it('shows the exact rule on hover', () => {
     renderDialog()
     const option = screen.getByTestId('badge-option-bug_hunter')
-    expect(option.getAttribute('title')).toContain('First in class to make a real pass')
+    expect(option.getAttribute('title')).toContain('Made a real pass on a Debug Code Task')
     fireEvent.mouseEnter(option)
     expect(screen.getByTestId('badge-rule-detail')).toHaveTextContent(
-      'First in class to make a real pass on a Debug Code Task'
+      'Made a real pass on a Debug Code Task'
     )
   })
 

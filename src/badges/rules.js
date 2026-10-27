@@ -200,21 +200,34 @@ export function firstInClassOnPattern(patterns, { firstTryOnly = false, formats 
 }
 
 /**
- * 🔓: a real pass on a task with one of `patterns`, per student (the earliest).
+ * 🔓 / 🐛 / 📋 / 🔍 / 🧩 / 🔭: a real pass on a task with one of `patterns` (or, `formats`, whose
+ * Builder task format is one of them, e.g. 'code_arrange'), per student (the earliest). Every
+ * student who does it earns the badge; there is no ranking.
  * `noSupportReveal`: no support stage (of any kind) was revealed on the task before the pass.
+ * `firstTryOnly`: only a first attempt that was that real pass counts.
  */
-export function realPassOnPattern(patterns, { noSupportReveal = false } = {}) {
+export function realPassOnPattern(
+  patterns,
+  { noSupportReveal = false, firstTryOnly = false, formats = [] } = {}
+) {
   const patternList = asList(patterns)
+  const formatList = asList(formats)
   return Object.freeze({
     kind: 'realPassOnPattern',
     patterns: Object.freeze(patternList),
+    formats: Object.freeze(formatList),
     noSupportReveal,
+    firstTryOnly,
     hintable: true,
     evaluate({ badgeId, timelines, index }) {
-      const tasks = index.tasks.filter((info) => taskTriggersBadge(info, badgeId, patternList))
+      const tasks = index.tasks.filter((info) =>
+        taskTriggersBadge(info, badgeId, patternList, formatList)
+      )
       return entriesOf(timelines).flatMap(([studentId, timeline]) => {
         const found = tasks.flatMap((info) => {
-          const pass = getRealPass(timeline, info.id)
+          const pass = firstTryOnly
+            ? getFirstTryRealPass(timeline, info.id)
+            : getRealPass(timeline, info.id)
           if (!pass) return []
           if (
             noSupportReveal &&
@@ -657,8 +670,12 @@ export function firstInClassOnActivity(
 /**
  * A real pass on an activity task with one of `activityIds` whose activity `result` satisfies
  * `qualifies(result)`, per student (the earliest). `values(result)` adds the reason's values.
+ * `firstTryOnly`: only a first attempt that was that real pass counts.
  */
-export function activityRoundPass(activityIds, { qualifies, values = () => ({}) } = {}) {
+export function activityRoundPass(
+  activityIds,
+  { qualifies, values = () => ({}), firstTryOnly = false } = {}
+) {
   const idList = asList(activityIds)
   return Object.freeze({
     kind: 'activityRoundPass',
@@ -668,7 +685,7 @@ export function activityRoundPass(activityIds, { qualifies, values = () => ({}) 
       const tasks = activityTasks(index, badgeId, idList)
       return entriesOf(timelines).flatMap(([studentId, timeline]) => {
         const found = tasks.flatMap((info) => {
-          const pass = qualifyingPass(timeline, info, { firstTryOnly: false, qualifies })
+          const pass = qualifyingPass(timeline, info, { firstTryOnly, qualifies })
           return pass ? [{ info, at: pass.at, order: info.order, result: pass.result }] : []
         })
         const first = earliest(found)

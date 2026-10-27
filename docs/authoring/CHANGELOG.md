@@ -39,6 +39,15 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-27
 
+- **Eight badges are no longer "first in class".** 🐛 Bug Hunter, Code Detective, Code Arranger,
+  Code Builder, Prediction Pro, AI Trainer, Real Spotter and Station Builder now go to **every**
+  student who meets the condition (once per lesson, on their earliest qualifying task), not just the
+  first (children's design rule: no badge for being first; #302, Ryan 2026-10-27). Their conditions
+  are unchanged. Class award pop-ups no longer name the child ("A coder earned a badge"). See
+  [badges.md](badges.md).
+  - Affects: badges, `badgeHints` · Existing lessons: no changes needed; drop any hint or lesson text
+    that says "be the first to…" for these badges.
+
 - **Python errors in plain words, and the error help wins over completion hints.** On Python and
   Turtle tasks, a crashed Run now shows a plain-words card under the output: what went wrong and the
   line. A child can then open a hint ladder one rung at a time: where to look, the idea, an example

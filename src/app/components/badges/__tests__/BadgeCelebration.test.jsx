@@ -90,7 +90,7 @@ describe('BadgeClassToast', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
 
-  it('shows "Name earned a badge: Badge" with the blurb only in the hover title, then finishes', () => {
+  it('shows "A coder earned a badge: Badge" (no names, #302) with the blurb only in the hover title, then finishes', () => {
     const onDone = vi.fn()
     render(
       <BadgeClassToast
@@ -100,7 +100,7 @@ describe('BadgeClassToast', () => {
       />
     )
     const toast = screen.getByRole('status')
-    expect(toast).toHaveTextContent(`Sam earned a badge: ${BUG_HUNTER.emoji} Bug Hunter`)
+    expect(toast).toHaveTextContent(`A coder earned a badge: ${BUG_HUNTER.emoji} Bug Hunter`)
     expect(toast.querySelector('.sv-badge-toast__icon')).toHaveTextContent('🎖️')
     expect(toast).not.toHaveTextContent(BUG_HUNTER.blurb)
     expect(toast).toHaveAttribute('title', BUG_HUNTER.blurb)
@@ -284,7 +284,7 @@ describe('an Admin-catalogue badge on a student screen', () => {
       />
     )
     const status = screen.getByRole('status')
-    expect(status).toHaveTextContent('Alex earned a badge: 🎺 Star Speaker')
+    expect(status).toHaveTextContent('A coder earned a badge: 🎺 Star Speaker')
     expect(status).toHaveAttribute('title', 'Presented well.')
   })
 })

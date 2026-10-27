@@ -5,7 +5,9 @@ import {
   defaultShowItView,
   getShowIt,
   getShowItBuilds,
+  isShowItOptedOut,
   normalizeShowItIds,
+  optedOutOf,
   showItDisabledReason,
 } from '../showIt.js'
 
@@ -64,5 +66,30 @@ describe('Show it view', () => {
     expect(clampShowItIndex(-1, 3)).toBe(0)
     expect(clampShowItIndex(undefined, 3)).toBe(0)
     expect(clampShowItIndex(1, 0)).toBe(0)
+  })
+})
+
+describe('Show it not today (#302)', () => {
+  it('reads the opt-out flag', () => {
+    expect(isShowItOptedOut({ showItOptOut: true })).toBe(true)
+    expect(isShowItOptedOut({ showItOptOut: false })).toBe(false)
+    expect(isShowItOptedOut(null)).toBe(false)
+  })
+
+  it('lists the picked students who said not today', () => {
+    const a = { anonymousId: 'a', showItOptOut: true }
+    const b = { anonymousId: 'b' }
+    expect(optedOutOf([a, b])).toEqual([a])
+    expect(optedOutOf(null)).toEqual([])
+  })
+
+  it('drops a build whose student opted out after being picked', () => {
+    const session = {
+      showIt: { studentIds: ['a', 'b'], taskId: 't1' },
+      students: { a: { currentCode: 'x', showItOptOut: true }, b: { currentCode: 'y' } },
+    }
+    const builds = getShowItBuilds(session)
+    expect(builds).toHaveLength(1)
+    expect(builds[0]).toMatchObject({ label: 'Build 1', student: { anonymousId: 'b' } })
   })
 })

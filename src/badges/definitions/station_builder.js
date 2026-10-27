@@ -1,5 +1,5 @@
 import { defineBadge } from '../defineBadge.js'
-import { firstInClassOnActivity } from '../rules.js'
+import { activityRoundPass } from '../rules.js'
 import { ACTIVITY_EXAMPLE_LESSON } from '../exampleLesson.js'
 import { attemptEvent as attempt } from '../timeline.js'
 
@@ -7,20 +7,23 @@ export default defineBadge({
   id: 'station_builder',
   emoji: '🏗️',
   title: 'Station Builder',
-  blurb: 'First to finish upgrading their space station.',
-  ruleText: 'First in class to make a real pass on a Space station activity task.',
-  rule: firstInClassOnActivity(['station']),
-  reasonText: ({ taskTitle }) => `First to finish “${taskTitle}”`,
+  blurb: 'Finished upgrading their space station.',
+  ruleText: 'Made a real pass on a Space station activity task.',
+  rule: activityRoundPass(['station']),
+  reasonText: ({ taskTitle }) => `Finished “${taskTitle}”`,
   autoAwardable: true,
   examples: [
     {
-      name: 'the earliest pass on a station task',
+      name: 'every pass on a station task earns it',
       lesson: ACTIVITY_EXAMPLE_LESSON,
       timelines: {
         alex: [attempt({ taskId: 's1', passed: true, firstTry: true, at: 90 })],
         sam: [attempt({ taskId: 's1', passed: true, firstTry: true, at: 40 })],
       },
-      expect: [['sam', 's1']],
+      expect: [
+        ['sam', 's1'],
+        ['alex', 's1'],
+      ],
     },
     {
       name: 'a pass on another activity does not count',
@@ -29,7 +32,7 @@ export default defineBadge({
       expect: [],
     },
     {
-      name: 'a pass the teacher helped with is not real, so the next student wins',
+      name: 'a pass the teacher helped with is not real',
       lesson: ACTIVITY_EXAMPLE_LESSON,
       timelines: {
         alex: [attempt({ taskId: 's1', passed: true, firstTry: true, assisted: true, at: 10 })],

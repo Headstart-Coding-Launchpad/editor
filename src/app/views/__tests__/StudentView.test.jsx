@@ -1093,7 +1093,7 @@ describe('StudentView', () => {
       rerender(<StudentView lessonId="python-1-1" />)
       expect(await screen.findByTestId('badge-celebration')).toHaveTextContent('Bug Hunter')
       const toast = await findBadgeToast()
-      expect(toast).toHaveTextContent('Sam earned a badge:')
+      expect(toast).toHaveTextContent('A coder earned a badge:')
       expect(toast).toHaveTextContent('Code Fixer')
     })
 
@@ -1107,7 +1107,7 @@ describe('StudentView', () => {
       )
       rerender(<StudentView lessonId="python-1-1" teacherPresentation />)
       const toast = await findBadgeToast()
-      expect(toast).toHaveTextContent('Me earned a badge:')
+      expect(toast).toHaveTextContent('A coder earned a badge:')
       expect(toast).toHaveTextContent('Bug Hunter')
       expect(toast.className).toContain('sv-badge-toast--presentation')
       expect(screen.queryByTestId('badge-celebration')).not.toBeInTheDocument()

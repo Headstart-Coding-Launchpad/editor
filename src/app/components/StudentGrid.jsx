@@ -16,7 +16,13 @@ import NeedsYouStrip from './NeedsYouStrip'
 import ConfidenceSpreadStrip from './ConfidenceSpreadStrip'
 import { getTaskActivity } from '../../activities/registry.pure.js'
 import { confidenceSpreadEntries, tallyConfidenceSpread } from '../../shared/confidenceScale'
-import { SHOW_IT_MAX, clampShowItIndex, getShowIt, showItDisabledReason } from '../../shared/showIt'
+import {
+  SHOW_IT_MAX,
+  clampShowItIndex,
+  getShowIt,
+  optedOutOf,
+  showItDisabledReason,
+} from '../../shared/showIt'
 import { ShowItControls } from './ShowItPanel'
 import { summariseCommonHints } from '../studentHints.js'
 import { classActivities, summariseClassActivities } from '../studentActivity'
@@ -144,6 +150,8 @@ export default function StudentGrid({
   const showItNow = getShowIt(session)
   const showItReason = showItDisabledReason(students.length)
   const overShowItMax = selectedStudents.length > SHOW_IT_MAX
+  // A picked child who said "not today" blocks Show it until they're unpicked (#302).
+  const showItOptedOut = optedOutOf(selectedStudents)
   const showReferenceItem = topics?.length > 0
   const showRosterItem = !!onOpenRoster
   const unmatchedCount = rosterStatus?.unmatchedIds?.length ?? 0
@@ -653,11 +661,15 @@ export default function StudentGrid({
                   type="button"
                   className="btn-secondary"
                   style={s.selectBtn}
-                  disabled={selectedStudents.length === 0 || overShowItMax}
+                  disabled={
+                    selectedStudents.length === 0 || overShowItMax || showItOptedOut.length > 0
+                  }
                   title={
                     overShowItMax
                       ? `Pick up to ${SHOW_IT_MAX} students`
-                      : 'Show these builds side by side on the big screen and on every student screen, names hidden'
+                      : showItOptedOut.length > 0
+                        ? `${showItOptedOut.map((st) => st.displayName ?? st.name).join(', ')} said not today (🙈): unpick them to show the others`
+                        : 'Show these builds side by side on the big screen and on every student screen, names hidden'
                   }
                   onClick={() => {
                     Promise.resolve(onShowIt(selectedStudents.map((st) => st.anonymousId)))
@@ -665,7 +677,11 @@ export default function StudentGrid({
                       .finally(exitSelectMode)
                   }}
                 >
-                  {overShowItMax ? `📺 Show it (max ${SHOW_IT_MAX})` : '📺 Show it'}
+                  {overShowItMax
+                    ? `📺 Show it (max ${SHOW_IT_MAX})`
+                    : showItOptedOut.length > 0
+                      ? '📺 Show it (🙈 not today)'
+                      : '📺 Show it'}
                 </button>
               )}
               <button

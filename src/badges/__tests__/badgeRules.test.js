@@ -26,7 +26,7 @@ const evaluate = (badgeId, timelines, { lesson = EXAMPLE_LESSON, decisions, opti
 const pairs = (suggestions) => suggestions.map((s) => [s.studentId, s.taskId])
 const pass = (taskId, at, extra = {}) => attempt({ taskId, passed: true, at, ...extra })
 
-// A lesson with three Debug Code Tasks, for first-in-class ordering.
+// A lesson with three Debug Code Tasks.
 const DEBUG_LESSON = {
   id: 'debug',
   type: 'python',
@@ -77,23 +77,23 @@ describe('real pass guards', () => {
   })
 })
 
-describe('first in class', () => {
+describe('per-student pattern badge (Bug Hunter)', () => {
   const timelines = {
     alex: [pass('d1', 100), pass('d2', 300)],
     sam: [pass('d1', 150), pass('d2', 200)],
     kit: [pass('d2', 400), pass('d3', 500)],
   }
 
-  it('picks each task’s earliest student, one task per student', () => {
-    // d1 → alex (100); d2's earliest is sam (200); d3 → kit.
+  it('every student who qualifies gets it, on their earliest task', () => {
+    // alex d1 (100); sam d2 (200, earlier than d1 at 150? no: d1 at 150); kit d2 (400).
     expect(pairs(evaluate('bug_hunter', timelines, { lesson: DEBUG_LESSON }))).toEqual([
       ['alex', 'd1'],
-      ['sam', 'd2'],
-      ['kit', 'd3'],
+      ['sam', 'd1'],
+      ['kit', 'd2'],
     ])
   })
 
-  it('skips a student already picked for an earlier task', () => {
+  it('one task per student, whoever else passed it', () => {
     const t = { alex: [pass('d1', 100), pass('d2', 110)], sam: [pass('d2', 200)] }
     expect(pairs(evaluate('bug_hunter', t, { lesson: DEBUG_LESSON }))).toEqual([
       ['alex', 'd1'],
@@ -109,26 +109,14 @@ describe('first in class', () => {
       decisions: structuredClone(decisions),
     })
     expect(pairs(first)).toEqual([
-      ['sam', 'd2'],
-      ['kit', 'd3'],
+      ['sam', 'd1'],
+      ['kit', 'd2'],
     ])
     expect(again).toEqual(first)
   })
 
-  it('a dismissal uses up the task', () => {
+  it('a dismissal only affects that student', () => {
     const decisions = { alex: { bug_hunter: { status: 'dismissed', decidedAt: 1000 } } }
-    // d1 is not handed to sam; d2 and d3 are unaffected.
-    expect(pairs(evaluate('bug_hunter', timelines, { lesson: DEBUG_LESSON, decisions }))).toEqual([
-      ['sam', 'd2'],
-      ['kit', 'd3'],
-    ])
-  })
-
-  it('skips a student decided before the task’s earliest pass', () => {
-    // A manual award at 50 happened before d1's first pass: alex can't hold d1.
-    const decisions = {
-      alex: { bug_hunter: { status: 'awarded', source: 'manual', decidedAt: 50 } },
-    }
     expect(pairs(evaluate('bug_hunter', timelines, { lesson: DEBUG_LESSON, decisions }))).toEqual([
       ['sam', 'd1'],
       ['kit', 'd2'],
@@ -150,7 +138,8 @@ describe('first in class', () => {
     const edited = { ...DEBUG_LESSON, tasks: DEBUG_LESSON.tasks.slice(1) }
     expect(pairs(evaluate('bug_hunter', timelines, { lesson: edited }))).toEqual([
       ['sam', 'd2'],
-      ['kit', 'd3'],
+      ['alex', 'd2'],
+      ['kit', 'd2'],
     ])
   })
 
@@ -173,7 +162,7 @@ describe('first in class', () => {
       studentId: 'alex',
       taskId: 't3',
       context: 'task',
-      reason: 'First to fix the bug in “Fix the loop”',
+      reason: 'Fixed the bug in “Fix the loop”',
     })
   })
 })
@@ -646,7 +635,7 @@ describe('Word Smith (firstTryOnEveryPatternTask)', () => {
   })
 })
 
-describe('activity rules (firstInClassOnActivity, activityRoundPass)', () => {
+describe('activity rules (activityRoundPass)', () => {
   const lesson = ACTIVITY_EXAMPLE_LESSON
   const done = (taskId, at, result, extra = {}) =>
     attempt({ taskId, passed: true, firstTry: true, at, result, ...extra })
@@ -659,7 +648,7 @@ describe('activity rules (firstInClassOnActivity, activityRoundPass)', () => {
     expect(index.get('t4').activityId).toBeNull()
   })
 
-  it('first in class on an activity is one task per student, then the next task', () => {
+  it('an activity badge is one task per student, the earliest, whoever else passed', () => {
     const timelines = {
       alex: [done('s1', 100), done('s2', 120)],
       sam: [done('s1', 200), done('s2', 150)],
@@ -670,10 +659,12 @@ describe('activity rules (firstInClassOnActivity, activityRoundPass)', () => {
     ])
   })
 
-  it('a dismissal uses up the task, as it does for pattern badges', () => {
+  it('a dismissal only affects that student', () => {
     const timelines = { alex: [done('s1', 100)], sam: [done('s1', 200)] }
     const decisions = { alex: { station_builder: { status: 'dismissed', decidedAt: 500 } } }
-    expect(evaluate('station_builder', timelines, { lesson, decisions })).toEqual([])
+    expect(pairs(evaluate('station_builder', timelines, { lesson, decisions }))).toEqual([
+      ['sam', 's1'],
+    ])
   })
 
   it('honours badgeHints.suppress and suggest', () => {
@@ -694,12 +685,15 @@ describe('activity rules (firstInClassOnActivity, activityRoundPass)', () => {
     ).toEqual([['alex', 't4']])
   })
 
-  it('ranks by the rule own time, not the pass time', () => {
+  it('does not rank: everyone whose pad got ready earns it', () => {
     const timelines = {
       alex: [done('c1', 900, { core: 3, tries: 3, readyAt: 100 })],
       sam: [done('c1', 300, { core: 3, tries: 3, readyAt: 200 })],
     }
-    expect(pairs(evaluate('ai_trainer', timelines, { lesson }))).toEqual([['alex', 'c1']])
+    expect(pairs(evaluate('ai_trainer', timelines, { lesson }))).toEqual([
+      ['sam', 'c1'],
+      ['alex', 'c1'],
+    ])
   })
 
   it('firstTryOnly needs the first attempt to be the pass', () => {

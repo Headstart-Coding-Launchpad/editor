@@ -86,7 +86,9 @@ describe('mergeClassToasts', () => {
     expect(queue).toHaveLength(1)
     expect(queue[0]).toMatchObject({ badgeId: 'code_fixer', names: ['Sam'] })
     const fixer = resolveBadge('code_fixer')
-    expect(classToastLabel(queue[0], fixer)).toBe(`Sam earned a badge: ${fixer.emoji} Code Fixer`)
+    expect(classToastLabel(queue[0], fixer)).toBe(
+      `A coder earned a badge: ${fixer.emoji} Code Fixer`
+    )
   })
 
   it('suppresses the toast when the tutor unticked announce', () => {

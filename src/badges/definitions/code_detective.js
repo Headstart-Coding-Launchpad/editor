@@ -1,5 +1,5 @@
 import { defineBadge } from '../defineBadge.js'
-import { firstInClassOnPattern } from '../rules.js'
+import { realPassOnPattern } from '../rules.js'
 import { attemptEvent as attempt } from '../timeline.js'
 
 export default defineBadge({
@@ -8,15 +8,15 @@ export default defineBadge({
   title: 'Code Detective',
   blurb: 'Spotted the error straight away.',
   ruleText:
-    'First in class among students whose first attempt was a real pass on a “Quiz: What Is the Error?” or “Quiz: Fix a Common Bug” task.',
-  rule: firstInClassOnPattern(['quiz_what_is_the_error', 'quiz_fix_a_common_bug'], {
+    'Made a real pass on the first attempt at a “Quiz: What Is the Error?” or “Quiz: Fix a Common Bug” task.',
+  rule: realPassOnPattern(['quiz_what_is_the_error', 'quiz_fix_a_common_bug'], {
     firstTryOnly: true,
   }),
-  reasonText: ({ taskTitle }) => `First to spot the error in “${taskTitle}”, first try`,
+  reasonText: ({ taskTitle }) => `Spotted the error in “${taskTitle}”, first try`,
   autoAwardable: true,
   examples: [
     {
-      name: 'a first-try pass beats an earlier second-try pass',
+      name: 'only a first-try pass earns it',
       timelines: {
         alex: [
           attempt({ taskId: 'q1', passed: false, firstTry: true, at: 50 }),

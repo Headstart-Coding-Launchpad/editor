@@ -48,6 +48,7 @@ import {
   SHOW_IT_VIEWS,
   clampShowItIndex,
   normalizeShowItIds,
+  isShowItOptedOut,
 } from '../../shared/showIt'
 import { findShownResponse, normalizeShownText } from '../../shared/shownResponses'
 import { AUTO_CHECK_LEAVE, AUTO_CHECK_RESULTS, countedAttemptEntries } from '../../shared/autoCheck'
@@ -469,7 +470,10 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
   // window and every student screen. Only the ids and the task are stored; the tiles read the
   // students' own records.
   async function startShowIt(studentIds, view) {
-    const ids = normalizeShowItIds(studentIds)
+    // A child who said "not today" is never put up, even if the grid let them through (#302).
+    const ids = normalizeShowItIds(studentIds).filter(
+      (id) => !isShowItOptedOut(session?.students?.[id])
+    )
     const taskId = session?.currentTaskId
     if (ids.length === 0 || taskId == null) return
     await set(ref(db, `sessions/${lessonId}/showIt`), {
@@ -493,6 +497,15 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
 
   async function stopShowIt() {
     await set(ref(db, `sessions/${lessonId}/showIt`), null)
+  }
+
+  // Student: "not today" for Show it, this session only (#302). The tutor sees it on the card.
+  async function setShowItOptOut(anonymousId, optedOut) {
+    if (!lessonId || !anonymousId) return
+    await set(
+      ref(db, `sessions/${lessonId}/students/${anonymousId}/showItOptOut`),
+      optedOut ? true : null
+    )
   }
 
   // ─── Shown short answers (src/shared/shownResponses.js) ───────────────────
@@ -2423,6 +2436,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     showResponse,
     startShowIt,
     setShowItView,
+    setShowItOptOut,
     stopShowIt,
     hideResponse,
     setShownResponseName,

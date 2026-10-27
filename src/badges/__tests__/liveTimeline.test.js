@@ -280,7 +280,7 @@ describe('buildLiveTimelines', () => {
   })
 })
 
-describe('first in class (🐛 Bug Hunter)', () => {
+describe('per-student pattern badge (🐛 Bug Hunter)', () => {
   const base = () =>
     makeSession({
       attemptLog: {
@@ -290,24 +290,27 @@ describe('first in class (🐛 Bug Hunter)', () => {
     })
   const bugHunter = (session) => pairs(suggest(session, { badgeIds: ['bug_hunter'] }))
 
-  it('suggests the earliest real pass', () => {
-    expect(bugHunter(base())).toEqual([['sam', 3]])
+  it('suggests every student with a real pass', () => {
+    expect(bugHunter(base())).toEqual([
+      ['sam', 3],
+      ['alex', 3],
+    ])
   })
 
-  it('stays put after an award: nobody else is suggested for that task', () => {
+  it('stays put after an award: the others are still suggested', () => {
     const session = {
       ...base(),
       badges: { sam: { bug_hunter: { status: 'awarded', decidedAt: 300 } } },
     }
-    expect(bugHunter(session)).toEqual([])
+    expect(bugHunter(session)).toEqual([['alex', 3]])
   })
 
-  it('a dismissal uses up the task', () => {
+  it('a dismissal only affects that student', () => {
     const session = {
       ...base(),
       badges: { sam: { bug_hunter: { status: 'dismissed', decidedAt: 300 } } },
     }
-    expect(bugHunter(session)).toEqual([])
+    expect(bugHunter(session)).toEqual([['alex', 3]])
   })
 
   it('is the same after a teacher reload (fresh objects)', () => {
@@ -316,7 +319,7 @@ describe('first in class (🐛 Bug Hunter)', () => {
       badges: { sam: { bug_hunter: { status: 'dismissed', decidedAt: 300 } } },
     }
     expect(suggest(structuredClone(session))).toEqual(suggest(session))
-    expect(bugHunter(structuredClone(base()))).toEqual([['sam', 3]])
+    expect(bugHunter(structuredClone(base()))).toEqual(bugHunter(base()))
   })
 
   it('excludes a removed student', () => {
@@ -361,7 +364,10 @@ describe('anti-gaming guards', () => {
     expect(codeBuilder(before)).toEqual([['sam', 2]])
     const after = twoPasses()
     after.students.alex.pasteLog = { 2: { count: 1, chars: 300, lastAt: 150, firstAt: 150 } }
-    expect(codeBuilder(after)).toEqual([['alex', 2]])
+    expect(codeBuilder(after)).toEqual([
+      ['alex', 2],
+      ['sam', 2],
+    ])
   })
 
   it('skips an overridden task and a teacher-assisted pass', () => {
@@ -381,7 +387,10 @@ describe('anti-gaming guards', () => {
     })
     expect(pairs(suggest(session, { badgeIds: ['bug_hunter'] }))).toEqual([['sam', 3]])
     session.supportRevealLog = { alex: { 3: { 1: { stageIndex: 1, revealedAt: 50 } } } }
-    expect(pairs(suggest(session, { badgeIds: ['bug_hunter'] }))).toEqual([['alex', 3]])
+    expect(pairs(suggest(session, { badgeIds: ['bug_hunter'] }))).toEqual([
+      ['alex', 3],
+      ['sam', 3],
+    ])
   })
 })
 

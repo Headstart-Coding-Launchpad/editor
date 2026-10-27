@@ -369,6 +369,16 @@ describe('Show it', () => {
   const path = `sessions/${LESSON}/showIt`
   const showIt = { studentIds: ['a', 'b', 'c'], taskId: 't1', startedAt: 1000 }
 
+  it('lets a student say not today for themselves only, as true (#302)', async () => {
+    const own = `sessions/${LESSON}/students/${STUDENT_ID}/showItOptOut`
+    const other = `sessions/${LESSON}/students/${OTHER_STUDENT_ID}/showItOptOut`
+    await assertSucceeds(ref(as.student, own).set(true))
+    await assertSucceeds(ref(as.student, own).set(null))
+    await assertFails(ref(as.student, own).set(false))
+    await assertFails(ref(as.student, own).set('yes'))
+    await assertFails(ref(as.student, other).set(true))
+  })
+
   it('only lets teachers and admins start or clear it; signed-in users can read it', async () => {
     await assertFails(ref(as.student, path).set(showIt))
     await assertSucceeds(ref(as.teacher, path).set(showIt))

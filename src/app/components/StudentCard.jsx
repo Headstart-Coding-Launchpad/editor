@@ -728,6 +728,14 @@ export default function StudentCard({
               showLabel
             />
           )}
+          {student.showItOptOut === true && (
+            <IconChip
+              icon="🙈"
+              label="Not today"
+              title="Said not today: Show it won't put their work on the big screen this session"
+              testId="card-show-it-opt-out"
+            />
+          )}
           {student.shareRequestedAt != null && (
             <IconChip
               icon="📤"

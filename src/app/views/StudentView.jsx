@@ -106,6 +106,7 @@ import { getModuleDefinition } from '../../modules/definitions'
 import { decodeSessionFiles } from '../../shared/workspaceData'
 import { BadgeSignalsContext } from '../../shared/badgeSignalsContext'
 import LiveInkProvider from '../liveInk/LiveInkProvider'
+import { isShowItOptedOut } from '../../shared/showIt'
 
 export default function StudentView({
   lessonId: lessonIdProp,
@@ -212,6 +213,7 @@ export default function StudentView({
     subscribeLiveInk,
     createLiveInkWriter,
     setShowItView,
+    setShowItOptOut,
   } = useSession(useRealtimeSession ? lessonId : null, {
     enabled: useRealtimeSession,
     keepPresenter: teacherPresentation,
@@ -1203,6 +1205,11 @@ export default function StudentView({
     !isForcedTeacherLive &&
     isSharingAllowed(task)
 
+  // Show it "not today" (#302): the child decides whether the tutor may put their build on the
+  // big screen this session. Live lessons only; the tutor sees 🙈 on the card.
+  const canOptOutOfShowIt = phase === 'lesson' && !!identity?.anonymousId && !teacherPresentation
+  const showItOptedOut = isShowItOptedOut(myStudentNode)
+
   // The gallery is available in a live lesson whether or not this particular
   // task allows sharing — shares outlive the task they came from.
   const canSeeSharedWork =
@@ -1668,6 +1675,26 @@ export default function StudentView({
         >
           {/* Says who it is waiting for: a bare "⏳ Waiting" left students guessing. */}
           {sharePending ? '⏳ Tutor checking…' : '📤 Share'}
+        </button>
+      )}
+      {canOptOutOfShowIt && (
+        <button
+          type="button"
+          className="btn-ghost"
+          style={s.needHelpBtn}
+          aria-pressed={showItOptedOut}
+          onClick={() =>
+            Promise.resolve(setShowItOptOut(identity.anonymousId, !showItOptedOut)).catch((err) =>
+              console.warn('[showIt] could not save not today', err)
+            )
+          }
+          title={
+            showItOptedOut
+              ? "Your tutor won't show your work on the big screen today. Tap to allow it again."
+              : "Tap if you don't want your work on the big screen today."
+          }
+        >
+          {showItOptedOut ? '🙈 Not today ✓' : '🙈 Not today'}
         </button>
       )}
       {canSeeSharedWork && (

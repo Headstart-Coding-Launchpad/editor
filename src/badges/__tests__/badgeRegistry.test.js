@@ -51,7 +51,7 @@ describe('badge registry', () => {
     expect(getBadgeDefinition('helpful_coder').tutorOnly).toBe(false)
   })
 
-  it('marks only the pattern and first-in-class badges as auto-awardable', () => {
+  it('marks only the pattern and activity-pass badges as auto-awardable', () => {
     expect(
       getBadgeDefinitions()
         .filter((badge) => badge.autoAwardable)

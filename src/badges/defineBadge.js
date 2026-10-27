@@ -7,9 +7,9 @@
 //     emoji: '🐛',                      // unique across all badges
 //     title: 'Bug Hunter',
 //     blurb: 'Found and fixed a bug.',  // student card and toast hover
-//     ruleText: 'First in class to …',  // the exact rule, shown when a tutor hovers the badge
-//     rule: firstInClassOnPattern('debug_code_task'),   // ./rules.js; omit for tutor-only
-//     reasonText: ({ taskTitle }) => `First to fix the bug in “${taskTitle}”`,
+//     ruleText: 'Made a real pass on …',  // the exact rule, shown when a tutor hovers the badge
+//     rule: realPassOnPattern('debug_code_task'),   // ./rules.js; omit for tutor-only
+//     reasonText: ({ taskTitle }) => `Fixed the bug in “${taskTitle}”`,
 //     autoAwardable: true,              // eligible for the tutor's auto-award toggle
 //     examples: [                       // run for every badge by one generic test
 //       { name, timelines, lesson?, decisions?, options?, expect: [['alex', 't3']] },

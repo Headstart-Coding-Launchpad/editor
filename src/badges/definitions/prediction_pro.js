@@ -1,5 +1,5 @@
 import { defineBadge } from '../defineBadge.js'
-import { firstInClassOnPattern } from '../rules.js'
+import { realPassOnPattern } from '../rules.js'
 import { ACTIVITY_EXAMPLE_LESSON } from '../exampleLesson.js'
 import { attemptEvent as attempt } from '../timeline.js'
 
@@ -9,13 +9,13 @@ export default defineBadge({
   title: 'Prediction Pro',
   blurb: 'Predicted exactly what the code would do, first go.',
   ruleText:
-    'First in class among students whose first attempt was a real pass on a “Quiz: What Do You Expect the Code to Do” task.',
-  rule: firstInClassOnPattern(['quiz_what_do_you_expect'], { firstTryOnly: true }),
-  reasonText: ({ taskTitle }) => `First to predict “${taskTitle}”, first try`,
+    'Made a real pass on the first attempt at a “Quiz: What Do You Expect the Code to Do” task.',
+  rule: realPassOnPattern(['quiz_what_do_you_expect'], { firstTryOnly: true }),
+  reasonText: ({ taskTitle }) => `Predicted “${taskTitle}”, first try`,
   autoAwardable: true,
   examples: [
     {
-      name: 'a first-try pass beats an earlier second-try pass',
+      name: 'only a first-try pass earns it',
       lesson: ACTIVITY_EXAMPLE_LESSON,
       timelines: {
         alex: [
