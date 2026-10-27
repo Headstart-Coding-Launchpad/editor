@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '../../shared/firebase'
 import { useAuth } from '../../auth/useAuth'
+import { safeRedirect } from '../../auth/safeRedirect'
 
 export default function LoginPage() {
   const [searchParams] = useSearchParams()
@@ -33,8 +34,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password)
-      const rawRedirect = searchParams.get('redirect') ?? '/'
-      const redirect = rawRedirect.startsWith('/') ? rawRedirect : '/'
+      const redirect = safeRedirect(searchParams.get('redirect'))
       if (user) {
         // User context is already populated (persistent session re-login). The same
         // user object reference won't trigger a state change in AuthContext, so the
