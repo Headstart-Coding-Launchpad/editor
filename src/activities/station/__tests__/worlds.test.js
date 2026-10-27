@@ -99,7 +99,7 @@ describe('the zoo: sort', () => {
     const s = initialStationState(t)
     expect(trayParts(t, s.scene)).toHaveLength(9)
     expect(s.scene.placed).toEqual({})
-    expect(sortProgress(t, t.items[0], s)).toEqual({ have: 0, need: 9 })
+    expect(sortProgress(t, t.items[0], s)).toEqual({ have: 0, need: 9, wrong: 0 })
   })
   it('a wrong-enclosure place does not snap', () => {
     const s = initialStationState(t)

@@ -45,6 +45,30 @@
   --motion-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ui-motion: var(--motion-fast) var(--motion-ease-out);
 
+  /* Design rules tokens (docs/UI_STYLE_GUIDE.md, Design Rules For Children). New work reaches for these; old
+     hand-typed values move over when a screen is next touched, not in a sweep. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --page-gutter: 16px;
+  --page-gutter-wide: 24px;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-student: 1.125rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --target-min: 44px;
+  --target-student: 56px;
+  --radius-button: 12px;
+  --radius-card: 16px;
+  --focus-ring: 0 0 0 3px var(--colour-primary);
+  /* A tile behind art drawn for a dark scene: a deep tint of the primary, never black. */
+  --ui-art-tile: #2a1758;
+
   /* Neutral ramp.
      These are the values already in use across the app, promoted to tokens
      rather than restyled: #e5e7eb alone appeared 213 times, #6b7280 140 times,
@@ -7362,6 +7386,33 @@ label.te-backdrop-tag,
   cursor: grab;
 }
 
+/* The tray never wraps (a child must not scroll to find the last animal): the tiles share the
+   row and shrink, down to the 44 px target minimum (design rules 8, zoo review 2026-10-25). */
+.act-station__tray {
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+
+.act-station__tray .act-station__bay-title {
+  align-self: center;
+}
+
+.act-station__tray .act-station-tray-part {
+  flex: 0 1 80px;
+  min-width: 44px;
+  padding: 4px 2px;
+}
+
+.act-station__tray .act-station-tray-part .act-station-img {
+  max-width: 100%;
+}
+
+.act-station__tray .act-station-crate__label {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
 .act-station-tray-part.is-held {
   opacity: 0.4;
 }
@@ -7419,8 +7470,15 @@ label.te-backdrop-tag,
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: #0b1020;
+  background: var(--ui-art-tile);
   padding: 2px;
+}
+
+[data-world-ui='zoo'] .act-station-goal__icon,
+[data-world-ui='zoo'] .act-station-card__pic,
+[data-world-ui='toyshop'] .act-station-goal__icon,
+[data-world-ui='toyshop'] .act-station-card__pic {
+  background: var(--ui-surface-tint);
 }
 
 .act-station-goal__icon .act-station-img {
@@ -7562,7 +7620,9 @@ label.te-backdrop-tag,
 }
 
 .act-station-card {
-  flex: 1 0 100%;
+  /* The basis leaves room for the left margin, so the card never touches the window edge. */
+  flex: 1 1 calc(100% - 32px);
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -7677,7 +7737,18 @@ label.te-backdrop-tag,
   height: 60px;
   padding: 3px;
   border-radius: 10px;
-  background: #0b1020;
+  background: var(--ui-art-tile);
+}
+
+/* A glyph (undo arrow, paw prints) is not art: a light tile, like the goal-line glyphs. */
+.act-station-card__pic:has(.act-station-card__glyph) {
+  background: var(--ui-surface-tint);
+}
+
+.act-station-card__note {
+  font-size: 0.9rem;
+  color: var(--colour-warning-text);
+  font-weight: 700;
 }
 
 .act-station-card__pic.is-big {
@@ -7692,7 +7763,7 @@ label.te-backdrop-tag,
 }
 
 .act-station-card__glyph {
-  color: #fff;
+  color: var(--colour-primary-dark);
   font-size: 2rem;
   font-weight: 800;
 }

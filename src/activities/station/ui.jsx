@@ -280,6 +280,11 @@ function GoalCard({ item, task, state, blink, onSend }) {
         <span className="act-station-card__name" data-testid={`sorted-${item.id}`}>
           {sorted.have} of {sorted.need} at home
         </span>
+        {sorted.wrong > 0 && (
+          <span className="act-station-card__note" data-testid={`sorted-wrong-${item.id}`}>
+            {sorted.wrong} in the wrong home
+          </span>
+        )}
       </span>
     )
   } else if (item.goal === 'undo_mistakes') {
@@ -724,6 +729,7 @@ export function StationStudentView({ task, state, onChange, readOnly = false, te
     <div
       className="act-station"
       data-testid="station-activity"
+      data-world-ui={worldId}
       tabIndex={-1}
       onKeyDown={onRootKeyDown}
       onClick={onRootClick}

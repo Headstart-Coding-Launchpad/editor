@@ -68,6 +68,36 @@ These hold the values the app was already typing by hand, so adopting them chang
 
 **Green and red are reserved for verdicts.** If an element is not reporting an outcome — pass/fail, online/offline, destructive — it must not use the success or error families. Decorative colour is fine, and should be drawn from anywhere but these two: multiple-choice quiz options are deliberately colour-coded by position, in blue, violet, cyan and pink, precisely so that a bright board can never be confused with a judged one. The palette they replaced took two of its four entries from the verdict families and used the same palette for the selected fill, which made a selected answer pixel-identical to a wrong one.
 
+## Design Rules For Children
+
+Agreed by Ryan on 25 Oct 2026 (Hub #214, #222). These rules are for anything a student sees, and for the tutor's live views. They are built from adult standards (WCAG 2.2, Apple and Android target sizes), scaled up, because research on children's UI is thin. Treat the numbers as house rules, not findings. When you touch a screen, move it towards these rules. Don't restyle whole areas in one sweep.
+
+Tokens for the rules live in `:root` in [src/index.css](../src/index.css) (the "Design rules tokens" block).
+
+| # | Rule | Token(s) |
+|---|---|---|
+| 1 | Spacing is a multiple of 4px, usually 8px. | `--space-1` … `--space-6` (4, 8, 12, 16, 24, 32) |
+| 2 | Page gutter is at least 16px on phones and 24px on desktop. No card ever touches the window edge. | `--page-gutter`, `--page-gutter-wide` |
+| 3 | Type scale: 0.875 / 1 / 1.25 / 1.5 / 2rem. Student body text is never below 1rem, and is 1.125rem for ages 7-9. | `--text-sm` … `--text-2xl`, `--text-student` |
+| 4 | Use the existing families (`--font-title`, `--font-body`, `--font-code`) at two weights, 400 and 700. Body line height is 1.5. | |
+| 5 | Contrast: text 4.5:1, large text and icons 3:1, the Show it big screen 7:1. Check dark-on-colour pairs as well as black on white. | |
+| 6 | Use colour tokens, never hex values: one primary, one accent, four status families and a neutral ramp. No black tiles: a tile behind art is a deep tint of the primary, and a tile behind a glyph is the light tint. | `--ui-art-tile`, `--ui-surface-tint` |
+| 7 | Status never relies on colour alone: always colour, an icon and a word. | status families |
+| 8 | Targets are at least 44×44px, 56px for main student actions at ages 7-9, with 8px between neighbours. A row of targets shrinks to fit before it wraps out of sight. | `--target-min`, `--target-student` |
+| 9 | One primary button per screen, radius 12px, a bold 1rem label, and visible pressed and focus states (3px ring). | `--radius-button`, `--focus-ring` |
+| 10 | Cards have a 16px radius, 16-24px padding, one shadow level and one border colour. No cards inside cards. | `--radius-card`, `--ui-shadow-soft` |
+| 11 | One icon set, sized on a 24px grid. Under-12s always get a word with the icon. | |
+| 12 | Art sits behind or beside the UI, never under controls. Controls sit on a solid tinted surface. | |
+| 13 | Motion is 150-250ms and eases out. Nothing loops on a working screen. Honour `prefers-reduced-motion` (see [motion-system.md](architecture/motion-system.md)). | `--motion-fast` |
+| 14 | Copy for ages 7-9 uses sentences under 12 words. Buttons start with a verb ("Run code"). Jargon gets a tooltip. | |
+| 15 | Confirm only destructive actions, in plain words, with the safe choice as the default. | |
+
+The first fixes under these rules were the Station zoo review (Hub #213, 25 Oct 2026):
+- The animal tray keeps one row at 1024px.
+- Goal cards keep clear of the window edge.
+- Glyph tiles are light, and art tiles are a deep purple, not black.
+- The sort card says how many animals are in the wrong home, so its count matches the tray.
+
 ## Typography
 
 - Use `var(--font-title)` only for product branding, major page titles, and compact panel headings.

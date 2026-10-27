@@ -682,7 +682,12 @@ const isHome = (scene, id) =>
 // How far a sort goal has got: { have, need } animals at home.
 export function sortProgress(task, item, state) {
   const animals = sortAnimals(task, item)
-  return { have: animals.filter((id) => isHome(state?.scene, id)).length, need: animals.length }
+  const scene = state?.scene
+  const have = animals.filter((id) => isHome(scene, id)).length
+  // Placed but not home: the keeper's mistake, which is not in the tray, so a child counting the
+  // tray finds one fewer than `need` (zoo review 2026-10-25).
+  const wrong = animals.filter((id) => !isHome(scene, id) && isPlaced(scene, id)).length
+  return { have, need: animals.length, wrong }
 }
 
 // The next step of an ordered goal that is not done yet: the first id in `order` still to do.

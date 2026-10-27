@@ -60,6 +60,26 @@ describe('Station UI - zoo world', () => {
     expect(screen.queryByTestId('section-left')).not.toBeInTheDocument()
   })
 
+  it('says how many are in the wrong home, so the count matches the tray', () => {
+    renderStation(
+      zoo(
+        [
+          { id: 'keeper', goal: 'undo_mistakes' },
+          { id: 'sort', goal: 'sort' },
+        ],
+        { mistakes: [{ part: 'grass-lion', spot: 'ice-2' }] }
+      )
+    )
+    expect(within(screen.getByTestId('station-tray')).getAllByRole('button')).toHaveLength(8)
+    expect(screen.getByTestId('sorted-sort')).toHaveTextContent('0 of 9 at home')
+    expect(screen.getByTestId('sorted-wrong-sort')).toHaveTextContent('1 in the wrong home')
+  })
+
+  it('shows no wrong-home line when nothing is misplaced', () => {
+    renderStation(t)
+    expect(screen.queryByTestId('sorted-wrong-sort')).not.toBeInTheDocument()
+  })
+
   it("lights the animal's own enclosure while it is held", () => {
     renderStation(t)
     sizeScene()
