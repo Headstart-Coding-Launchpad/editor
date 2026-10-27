@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react'
 import { useTypewriterOutput } from '../hooks/useTypewriterOutput'
 import { useChartsLoading } from '../../shared/stage/chartsStatus.js'
 import { CHARTS_LOADING_MESSAGE } from '../../shared/stage/charts.js'
+import ErrorHelp from './ErrorHelp'
 
 const CODE_FONT_STYLE = {
   fontFamily: "'JetBrains Mono', monospace",
@@ -94,6 +95,10 @@ export default function OutputPanel({
   defaultCollapsed = true,
   leadingActions = null,
   rightActions = null,
+  // The student's own panel: plain-words help under a crashed run (ErrorHelp, Hub #225), with
+  // their code to sharpen a few fixes. Off for mirrors, Show it and previews.
+  errorHelp = false,
+  code = '',
 }) {
   const [inputValue, setInputValue] = useState('')
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
@@ -246,6 +251,9 @@ export default function OutputPanel({
             </form>
           )}
         </pre>
+      )}
+      {!contentCollapsed && errorHelp && runStatus === 'error' && !running && (
+        <ErrorHelp key={output} output={output} code={code} />
       )}
     </div>
   )

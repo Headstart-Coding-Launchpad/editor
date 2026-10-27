@@ -551,6 +551,8 @@ export default function StudentWorkspace({
   const outputPanel = (
     <OutputPanel
       {...shownOutputProps}
+      errorHelp={!isForcedTeacherLive && !isTeacherEditing && !isViewingPrev && !slowMoView}
+      code={cs.code}
       fill
       collapsible={false}
       // With tabs, the collapse button sits at the end of the tab strip instead.

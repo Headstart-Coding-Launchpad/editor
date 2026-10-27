@@ -7,6 +7,7 @@ import { createThrottledMirrorWriter } from '../throttledMirrorWriter'
 import { appendStudentOutput, createStudentOutputBuffer } from './studentOutputBuffer'
 import { runErrorFor } from '../../badges/signals'
 import { lastErrorLine } from '../studentHints.js'
+import { explainPythonError } from '../../shared/pythonErrors.js'
 
 /**
  * Runs the student's code through a `capabilities.run === 'runtime'` module's runtime (Pyodide
@@ -53,6 +54,9 @@ import { lastErrorLine } from '../studentHints.js'
  * - onInputAnswer (optional): told each answer given to input() on this run (typed by the
  *   student, through handleInputSubmit, is recorded by the caller; replayed ones come here)
  */
+// The modules whose output panel shows ErrorHelp (Python errors in plain words).
+const PLAIN_ERROR_MODULES = new Set(['python', 'turtle'])
+
 let turtleRunCount = 0
 
 function newTurtleRunId() {
@@ -387,6 +391,11 @@ export async function runWithRuntime(ctx) {
               evaluateCheck(checkTask.check, outputBuffer.raw, checkContext),
             // An errored Run: no Stage hint (the error help shows instead).
             runErrored: status === 'error',
+            // The error help (ErrorHelp) explains this crash: no completion-check hint too.
+            errorExplained:
+              status === 'error' &&
+              PLAIN_ERROR_MODULES.has(definition?.type) &&
+              explainPythonError(outputBuffer.raw) != null,
           })
         : null
     if (evaluation) {

@@ -37,6 +37,21 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-27
+
+- **Python errors in plain words, and the error help wins over completion hints.** On Python and
+  Turtle tasks, a crashed Run now shows a plain-words card under the output: what went wrong and the
+  line. A child can then open a hint ladder one rung at a time: where to look, the idea, an example
+  with comments, and the fix last. The raw Python error stays in the output. It covers a missing
+  colon, `range 4` without brackets, unclosed brackets and quotes, indentation, `NameError` (using
+  Python's own "Did you mean"), common `TypeError`s, `int()` of words, divide by zero,
+  `IndexError`, `KeyError`, `AttributeError`, a missing module and recursion. When it explains the
+  error, **no completion-check hint is shown on that Run**: a check written for working code
+  ("is there a for loop?") no longer answers a syntax slip. Matched `feedbackChecks` still show
+  their hint. Session report review #229 found the `for i in range 4:` case.
+  - Affects: python, turtle · Existing lessons: no changes needed. A completion-check hint that was
+    meant for broken code should move to a `feedbackChecks` entry · Resolves: Hub #225
+
 ## 2026-10-26
 
 - **Station light patterns: hold the matched pattern, and `pattern: free`.** In a Station task

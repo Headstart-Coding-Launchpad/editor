@@ -415,6 +415,8 @@ export default function StudentWorkspace({
       // last step (the recorded run was checked like any Run).
       output={shownOutput}
       runStatus={holdResult ? null : cs.runStatus}
+      errorHelp={!readOnly && !holdResult}
+      code={cs.code}
       checkPassed={holdResult ? false : cs.checkPassed}
       hasCheck={holdResult ? false : !!task?.check}
       checkAttempted={holdResult ? false : cs.checkAttempted}

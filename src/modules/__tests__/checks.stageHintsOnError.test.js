@@ -41,4 +41,35 @@ describe('Stage hints on an errored Run', () => {
     expect(errored.suggestion).toBe('Put hello in quotes.')
     expect(errored.matchedFeedback.hint).toBe('Put hello in quotes.')
   })
+
+  it('the error help wins over completion hints when it explains the crash (#225)', () => {
+    const result = evaluateCheckWithFeedback({ check: completion }, '', context, {
+      completionPassed: false,
+      runErrored: true,
+      errorExplained: true,
+    })
+    expect(result.suggestion).toBe('')
+    expect(result.passed).toBe(false)
+  })
+
+  it('keeps a matched feedback check hint even when the error is explained', () => {
+    const task = {
+      check: completion,
+      feedbackChecks: [{ type: 'code_contains', value: 'hello', hint: 'Put hello in quotes.' }],
+    }
+    const result = evaluateCheckWithFeedback(task, '', context, {
+      completionPassed: false,
+      runErrored: true,
+      errorExplained: true,
+    })
+    expect(result.suggestion).toBe('Put hello in quotes.')
+  })
+
+  it('ignores errorExplained on a Run that did not error', () => {
+    const result = evaluateCheckWithFeedback({ check: completion }, '', context, {
+      completionPassed: false,
+      errorExplained: true,
+    })
+    expect(result.suggestion).toBe('Draw a circle.')
+  })
 })

@@ -316,7 +316,8 @@ Writing hints that reach learners:
 When a Python run ends in an error — a `SyntaxError` such as `def area(w, h) =return w * h`, or a runtime error such as `NameError` — the task **always fails**, whatever the checks say. The checks are still evaluated, though, so the learner still gets a targeted hint chosen by the same four rules above:
 
 - **`feedbackChecks` are evaluated as normal**, against the source as typed and against the error text in the output. A `code` regex feedback check that detects the slip (for example `matches_regex: '=\s*return'`) **does match**, and its hint wins over every completion-check hint (rule 2).
-- **If no feedback check matches**, the hint comes from the **first failed completion check that has a `hint`** (rule 3). On an errored run, each completion check type behaves like this:
+- **The error explained in plain words wins over completion-check hints (27 Oct 2026, Hub #225).** On Python and Turtle tasks the output panel explains common errors in plain words with a hint ladder: where to look, the idea, an example, and the fix last (`src/shared/pythonErrors.js`). These include a missing colon, `range 4` without brackets, brackets, quotes, indentation, `NameError` and common `TypeError`s. When it can explain the error, **no completion-check hint is shown**, so a child with `for i in range 4:` is no longer told "is there a for loop?". Matched `feedbackChecks` still show their hint.
+- **If no feedback check matches and the error has no plain-words help**, the hint comes from the **first failed completion check that has a `hint`** (rule 3). On an errored run, each completion check type behaves like this:
 
 | Completion check type | On an errored run | Can it supply the hint? |
 |---|---|---|

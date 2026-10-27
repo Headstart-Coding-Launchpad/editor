@@ -472,7 +472,7 @@ function buildCheckFeedbackResult(
   output,
   context = {},
   isCompletionCheckFailed = null,
-  { runErrored = false } = {}
+  { runErrored = false, errorExplained = false } = {}
 ) {
   // A Run that ended in an error has no picture to judge: hold back the hints of picture checks
   // (the Python Stage's) so the error help shows instead. See isPictureCheck.
@@ -497,9 +497,15 @@ function buildCheckFeedbackResult(
         : ''
       : matchedFeedbackHint
         ? String(matchedFeedbackHint.hint).trim()
-        : isCompletionCheckFailed
-          ? getFirstFailedCheckHintCustom(task?.check, isCompletionCheckFailed)
-          : getFirstFailedCheckHint(task?.check, output, context, { runErrored })
+        : // The error help wins over a completion check's content hint when the Run crashed
+          // with an error it explains (Hub #225, session report review #229: `range 4` got
+          // "is there a for loop?"). Feedback checks, which diagnose a specific mistake,
+          // still show.
+          errorExplained
+          ? ''
+          : isCompletionCheckFailed
+            ? getFirstFailedCheckHintCustom(task?.check, isCompletionCheckFailed)
+            : getFirstFailedCheckHint(task?.check, output, context, { runErrored })
 
   return {
     passed,
@@ -515,11 +521,14 @@ function buildCheckFeedbackResult(
 
 // `options.runErrored`: the Run ended in an error (runWithRuntime), so hints of picture checks
 // are held back; completion and hints of every other check behave as normal.
+// `options.errorExplained`: that error has plain-words help (src/shared/pythonErrors.js), so
+// no completion check's hint is offered as well; matched feedback checks still are.
 export function evaluateCheckWithFeedback(task, output, context = {}, options = {}) {
   const completionPassed = options.completionPassed ?? evaluateCheck(task?.check, output, context)
   const feedbackResults = evaluateFeedbackCheckResults(task, output, context, options)
   return buildCheckFeedbackResult(task, completionPassed, feedbackResults, output, context, null, {
     runErrored: options.runErrored === true,
+    errorExplained: options.runErrored === true && options.errorExplained === true,
   })
 }
 
