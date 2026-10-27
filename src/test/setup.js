@@ -1,4 +1,12 @@
-import { afterEach } from 'vitest'
+import { afterEach, vi } from 'vitest'
+
+// Session listeners wait for a Firebase sign-in (#288). Unit tests mock firebase/database
+// per file, so the stand-in is "already signed in": it attaches through that file's onValue.
+// onValueWhenSignedIn.test.js tests the real module.
+vi.mock('../shared/onValueWhenSignedIn.js', async () => {
+  const { onValue } = await import('firebase/database')
+  return { onValueWhenSignedIn: (dbRef, callback) => onValue(dbRef, callback) }
+})
 
 // Pure-logic test files opt into the faster Node environment with a
 // `// @vitest-environment node` docblock. Everything browser-only below is skipped for

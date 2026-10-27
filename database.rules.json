@@ -2,11 +2,11 @@
   "rules": {
     "sessions": {
       // Admins can list every session at once (Admin Portal Sessions panel).
-      // Per-lesson reads below remain publicly readable regardless of this rule.
+      // Per-lesson reads below need a sign-in (students sign in anonymously; #288).
       ".read": "auth != null && auth.token.role === 'admin'",
 
       "$lessonId": {
-        ".read": true,
+        ".read": "auth != null",
 
         // Teachers and admins can write any session-level field
         // (state, currentTaskId, teacherLive, sandboxCode, etc.)
@@ -594,7 +594,7 @@
 
         // Once approved, the class can read it. Only teachers/admins write.
         "approved": {
-          ".read": true
+          ".read": "auth != null"
         }
       }
     },
@@ -869,11 +869,11 @@
 
     // Presentation annotations (live pointer, fading ink, text highlights) from the teacher's
     // Presentation window. Kept outside "sessions" because the pointer moves at ~12Hz and every
-    // client streams the whole session node. Readable like a session (students are
-    // login-less); only teachers/admins write. Shapes mirror src/app/liveInk/liveInkData.js.
+    // client streams the whole session node. Readable like a session (signed in; students
+    // sign in anonymously); only teachers/admins write. Shapes mirror src/app/liveInk/liveInkData.js.
     "liveInk": {
       "$lessonId": {
-        ".read": true,
+        ".read": "auth != null",
         ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin')",
 
         // Either { c, dx, dy } (a character + em offset, over text) or { rx, ry } (box fractions).

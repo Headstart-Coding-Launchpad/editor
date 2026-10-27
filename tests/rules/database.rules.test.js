@@ -22,11 +22,13 @@ beforeEach(async () => {
 const ref = (ctx, path) => ctx.database().ref(path)
 
 describe('sessions', () => {
-  it('lets anyone read a single lesson session, including signed-out visitors', async () => {
+  it('lets signed-in students read a lesson session, but not signed-out visitors (#288)', async () => {
     await testEnv.withSecurityRulesDisabled((ctx) =>
       ref(ctx, `sessions/${LESSON}`).set({ state: 'active' })
     )
-    await assertSucceeds(ref(as.anonymous, `sessions/${LESSON}`).get())
+    await assertSucceeds(ref(as.student, `sessions/${LESSON}`).get())
+    await assertSucceeds(ref(as.teacher, `sessions/${LESSON}`).get())
+    await assertFails(ref(as.anonymous, `sessions/${LESSON}`).get())
   })
 
   it('only lets admins list every session', async () => {
@@ -339,7 +341,8 @@ describe('shared workspaces', () => {
     const path = `sharedWorkspacePayloads/${LESSON}/approved/share-1`
     await assertFails(ref(as.student, path).set({ code: 'x' }))
     await assertSucceeds(ref(as.teacher, path).set({ code: 'print(1)' }))
-    await assertSucceeds(ref(as.anonymous, path).get())
+    await assertSucceeds(ref(as.student, path).get())
+    await assertFails(ref(as.anonymous, path).get())
   })
 })
 
@@ -366,10 +369,11 @@ describe('Show it', () => {
   const path = `sessions/${LESSON}/showIt`
   const showIt = { studentIds: ['a', 'b', 'c'], taskId: 't1', startedAt: 1000 }
 
-  it('only lets teachers and admins start or clear it; everyone can read it', async () => {
+  it('only lets teachers and admins start or clear it; signed-in users can read it', async () => {
     await assertFails(ref(as.student, path).set(showIt))
     await assertSucceeds(ref(as.teacher, path).set(showIt))
-    await assertSucceeds(ref(as.anonymous, path).get())
+    await assertSucceeds(ref(as.student, path).get())
+    await assertFails(ref(as.anonymous, path).get())
     await assertSucceeds(ref(as.admin, path).set(null))
   })
 
@@ -669,9 +673,9 @@ describe('presentation annotations (liveInk)', () => {
   }
   const highlight = { surface: 'info:3', anchor: 'b0.p0', quote: 'print', occurrence: 1, t: 1 }
 
-  it('lets anyone read the annotations, including signed-out visitors', async () => {
+  it('lets signed-in students read the annotations, but not signed-out visitors (#288)', async () => {
     await testEnv.withSecurityRulesDisabled((ctx) => ref(ctx, `${root}/pointer`).set(pointer))
-    await assertSucceeds(ref(as.anonymous, root).get())
+    await assertFails(ref(as.anonymous, root).get())
     await assertSucceeds(ref(as.student, root).get())
   })
 

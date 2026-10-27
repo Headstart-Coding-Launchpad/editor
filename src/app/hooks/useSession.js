@@ -13,6 +13,7 @@ import {
   runTransaction,
 } from 'firebase/database'
 import { db } from '../../shared/firebase'
+import { onValueWhenSignedIn } from '../../shared/onValueWhenSignedIn.js'
 import { buildControlHighlightCommand } from '../../shared/controlHighlight.js'
 import { clearPeerHelpData } from './usePeerHelp'
 import { clearCarryInbox } from '../../shared/roster/crossLessonCarryService'
@@ -158,7 +159,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     const r = ref(db, `sessions/${lessonId}`)
     sessionRef.current = r
 
-    const unsub = onValue(r, (snap) => {
+    const unsub = onValueWhenSignedIn(r, (snap) => {
       // Only the presentation window itself sees its own student node (TEACHER_PRESENTER_ID).
       const value = snap.exists() ? snap.val() : null
       setSession(keepPresenter ? value : withoutPresenter(value))
@@ -1497,7 +1498,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
   // Separate subscription for LiveInkProvider; returns the unsubscribe function.
   function subscribeLiveInk(callback) {
     if (!lessonId) return () => {}
-    return onValue(ref(db, liveInkPath(lessonId)), (snap) =>
+    return onValueWhenSignedIn(ref(db, liveInkPath(lessonId)), (snap) =>
       callback(snap.exists() ? snap.val() : null)
     )
   }
@@ -1547,7 +1548,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
   // A dedicated listener on one joining marker; the phase logic ignores session changes
   // during name entry, so the student watches its own marker for a teacher admit here.
   function subscribeJoiningMarker(tempId, callback) {
-    return onValue(ref(db, `sessions/${lessonId}/joiningStudents/${tempId}`), (snap) =>
+    return onValueWhenSignedIn(ref(db, `sessions/${lessonId}/joiningStudents/${tempId}`), (snap) =>
       callback(snap.val())
     )
   }
