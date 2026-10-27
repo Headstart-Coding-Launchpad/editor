@@ -139,7 +139,7 @@ export default function NeedsYouStrip({ students, taskId, hasCheck, names, onOpe
 }
 
 const s = {
-  wrap: { display: 'flex', flexDirection: 'column', gap: 4, padding: '2px 2px 8px' },
+  wrap: { display: 'flex', flexDirection: 'column', gap: 4, padding: '2px 8px 8px' },
   title: { fontSize: 12, fontWeight: 700, color: 'var(--colour-ink-strong)' },
   row: {
     display: 'flex',
