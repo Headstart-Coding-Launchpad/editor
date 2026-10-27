@@ -1,6 +1,10 @@
 # Data retention plan (Hub #303)
 
-Status: **proposal for Ryan, 2026-10-27.** Nothing is deleted until he OKs it. Ryan asked for a
+Status: **approved as a dry run by Ryan, 2026-10-27 ("Sounds good").** Built as
+`retentionSweep` (`functions/retention.js`, `DELETE = false`): it only counts. Real deletes need
+his second OK after two weeks of counts in `retentionLog/{date}`. A read-only run on 27 Oct found
+nothing past its limit yet (159 reports, all from 9 Jul 2026 on, so the "before July" rule has
+nothing to act on); a year from now it would take 4 idle classes and 13 expired share links. Ryan asked for a
 time limit on what LaunchPad keeps (finding from #223 Child-safe defaults; `docs/agents/student-data.md`
 lists every field).
 

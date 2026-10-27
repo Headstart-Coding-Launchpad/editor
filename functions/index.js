@@ -128,3 +128,21 @@ exports.updateAccountPassword = onCall(
     await getAuth().updateUser(uid, { password })
   }
 )
+
+// Data retention (Hub #303): daily at 03:00 UK time. Dry run for now: it counts what is past
+// its limit and writes the counts to retentionLog/{date}; see functions/retention.js.
+const { onSchedule } = require('firebase-functions/v2/scheduler')
+const retention = require('./retention.js')
+
+exports.retentionSweep = onSchedule(
+  { schedule: '0 3 * * *', timeZone: 'Europe/London', region: 'europe-west1', serviceAccount: SA },
+  async () => {
+    const now = Date.now()
+    const counts = await retention.sweep(db(), now)
+    const day = new Date(now).toISOString().slice(0, 10)
+    await db()
+      .collection('retentionLog')
+      .doc(day)
+      .set({ at: FieldValue.serverTimestamp(), dryRun: !retention.DELETE, counts })
+  }
+)
