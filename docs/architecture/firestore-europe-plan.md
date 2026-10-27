@@ -1,9 +1,11 @@
 # Moving Firestore from the US to Europe (Hub P24)
 
-Status: **approved by Ryan 2026-10-18** ("Sounds good": option A, `europe-west2`, half term,
-delete the empty `new-db`). Nothing live has changed yet. The code reads the database id from an
-env var (still `(default)`), and the copy script and the [runbook](#runbook) below are ready. The
-live steps run in a day session with Ryan there.
+Status: **done 2026-10-27** with Ryan. The database is `london` (`europe-west2`), not `eu`: ids
+need 4 or more characters. 484 documents copied, every collection matched; the site, Functions and
+CLI use `london` (a40919d9). The backup export is in `gs://headstartcoding-repl-backups/2026-10-pre-eu`
+(a US bucket: a `nam5` database can't export to the `us-east1` Storage bucket). `new-db` is deleted.
+`(default)` is closed to the app and stays as the rollback until Ryan OKs deleting it (not before
+2026-11-26). Below, read `eu` as `london`.
 
 ## Why
 

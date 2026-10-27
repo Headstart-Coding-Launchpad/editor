@@ -4,6 +4,8 @@ Load this when a task touches Firebase, localStorage, routing, session state, id
 
 ## Firebase Data Model
 
+**Firestore database:** `london` (`europe-west2`) since 2026-10-27 (Hub P24). The app reads `VITE_FIRESTORE_DATABASE_ID`, the CLI and scripts `FIRESTORE_DATABASE_ID`, and Functions fall back to `london`. The old `(default)` (US, `nam5`) is closed to the app by `firestore.closed.rules` and kept as the rollback; see `docs/architecture/firestore-europe-plan.md`.
+
 Do not deviate from this shape. (The `videoCallLink`, `videoCallBroadcastAt` and `students.{id}.videoCallLinkPushedAt` fields below were added as explicitly user-authorized deviations for the lesson-join/video-call rework and the "Send to all" video-call broadcast — not ad hoc additions.)
 
 The top-level `liveInk/{lessonId}` node (Presentation annotations) was likewise added with explicit user approval; its shape is in "Presentation Annotations" below.
