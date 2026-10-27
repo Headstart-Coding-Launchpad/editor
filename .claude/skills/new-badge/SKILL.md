@@ -30,6 +30,25 @@ code volume or time on the platform. If the idea fails that test, say so and sto
 | can be recognised from data the platform already records | **Rule-backed registry badge** | `npm run new:badge -- <id> --emoji <e>`: see §3–4 |
 | needs data nothing records yet | **Rule-backed + a new signal** | §5 first (needs sign-off), then §3–4 |
 
+**Badge check (Ryan, 25 Oct 2026, Hub #226).** Answer these five before any code, and write the
+answers in the PR or handoff:
+
+1. **Who can earn it?** Anyone who does the behaviour. It is not a prize for the few.
+2. **Can a child who is struggling earn it?** Effort badges (tried again, fixed a bug, asked, came
+   back to it) must be within reach of every child.
+3. **Does it rank anyone?** No badge for speed, for being first or for doing the most. If the
+   answer is yes, don't ship it.
+4. **What does it say about a child who hasn't got it?** If it reads as "you failed", reword it or
+   drop it.
+5. **Is it a surprise?** Award badges after the work. A lesson never advertises a badge as the
+   prize for doing a task, because expected rewards undermine interest more than unexpected ones.
+
+Badges never gate progress and are never compulsory. Nothing on the class screen shows badge
+tallies, counts or a list of who has or hasn't got one. Show it stays the tutor's invite, with
+names hidden. After a term, check the badge counts per child: if a few children have none, change
+the badges, not the children. The evidence is in Ryan Hub `drafts/research-motivation.md`. It
+comes mostly from older students, so treat it as design guidance, not proof.
+
 Ask the user about anything that changes scope (tutor-only or rule-backed, auto-awardable,
 what exactly triggers it, which modules) before writing code. Create a `feature/<id>-badge` branch.
 
