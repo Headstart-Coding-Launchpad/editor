@@ -59,6 +59,7 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 | Product capabilities | `docs/FEATURES.md` |
 | Product principles (tutor visibility), project rules, stack, shared modules, CLI tool, admin | `docs/agents/project-rules.md` |
 | Firebase, localStorage, URLs, session states, identity | `docs/agents/runtime-model.md` |
+| Student data held, who reads it, child-safe defaults | `docs/agents/student-data.md` |
 | Classroom live-view, sandbox, Pyodide, carry-through behaviours | `docs/agents/classroom-behaviours.md` |
 | Animations, transitions, UI sounds (motion system) | `docs/architecture/motion-system.md` |
 | Git, PRs, review comments, testing, doc hygiene | `docs/agents/workflows.md` |

@@ -197,6 +197,11 @@ Live-view behaviour, teacher broadcast, sandbox mode, Pyodide execution lifecycl
 
 **Load when:** touching student/teacher interaction, live code sync, the sandbox, Pyodide, or carry-through between tasks.
 
+### [agents/student-data.md](agents/student-data.md)
+Every place LaunchPad keeps something about a student, who can read it and when it is deleted, what is never collected, and where the child-safe defaults (UK Children's Code) stand, with the open gaps.
+
+**Load when:** adding or changing a field about a student, anything that shows student names or work to others (big screen, share links, reports), or a data-protection question.
+
 ### [agents/workflows.md](agents/workflows.md)
 Git branching conventions, commit style, PR process, how to handle review comments, test expectations, worktree usage, and doc hygiene rules.
 
