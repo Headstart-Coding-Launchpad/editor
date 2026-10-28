@@ -1,12 +1,12 @@
 name: CI
 
-# Runs on pull requests and on every push to main. Branches merged locally and
-# pushed straight to main still get checked. A green run on main triggers the
-# Pages deploy (deploy.yml).
+# Runs on every branch push (sessions push branches so the full suite runs here,
+# not on a low-memory PC; Ryan 2026-10-28, #250). Pushing a branch never deploys:
+# only a green run on main triggers the Pages deploy (deploy.yml). Pull requests
+# come from branches in this repo, so their push run is the check.
 on:
-  pull_request:
   push:
-    branches: [main]
+    branches: ['**']
   workflow_dispatch:
 
 permissions:
@@ -116,3 +116,26 @@ jobs:
 
       - name: Test security rules
         run: npm run test:rules
+
+  # Playwright smoke: the landing page and the Builder load in a real browser
+  # (e2e/). Catches a blank page or a broken route that unit tests miss.
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke test
+        run: npx playwright test --reporter=line
+
+      - name: Upload Playwright report
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
