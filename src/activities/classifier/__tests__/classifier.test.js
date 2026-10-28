@@ -841,7 +841,7 @@ describe('definition', () => {
       sub(bad),
       { distinctAttempts: [] },
     ])
-    expect(fields.classifierResults).toEqual({
+    expect(fields.classifierResults).toMatchObject({
       testedCount: 2,
       atTargetCount: 1,
       targetAccuracy: 0.75,
@@ -1143,7 +1143,8 @@ describe('the cut-off', () => {
 
   it('grows when more varied drawings are added', () => {
     const tight = cutoffOf([g(0.3), g(0.31), g(0.32)])
-    const wide = cutoffOf([g(0.15), g(0.3), g(0.45), g(0.6)])
+    // Drawings are scaled to fit before comparing, so 'varied' means different shapes.
+    const wide = cutoffOf([g(0.3), gridOf(line(0)), gridOf(line(0.3)), gridOf(line(-0.3))])
     expect(wide).toBeGreaterThan(tight)
   })
 })

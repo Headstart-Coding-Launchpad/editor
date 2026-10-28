@@ -537,7 +537,8 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
             >
               <div className="act-cls-ask__choices">
                 {(single ? [...labels, NOT_THING] : labels).map((label) => {
-                  const name = single ? sayOf(label, state) : splitLabel(label).name || label
+                  const name =
+                    label === NOT_THING ? sayOf(label, state) : splitLabel(label).name || label
                   const suggested = label === pending.suggested
                   return (
                     <button
