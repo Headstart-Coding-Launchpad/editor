@@ -729,6 +729,11 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `learning_tree/ui.jsx` | Learning Tree StudentView: example form, the drawn tree (nested boxes), Try it results; read-only for the tutor |
 | `learning_tree/LearningTreeBuilderEditor.jsx` | Builder editor for Learning Tree: features, labels, max examples/depth, passAt and the test items |
 
+| `recommender/recommender.js` | Pure Recommender logic: seeded made-up raters, similarity, recommend (feed of 4), Why? text, bubble meter, validation, grading |
+| `recommender/definition.js` | Recommender activity definition wrapping `recommender.js`: default task, validation, state, change classification, grading, progress, card summary, print |
+| `recommender/ui.jsx` | Recommender StudentView: rating grid, Your feed, Why?, bubble meter (controlled by `ActivityHost`) |
+| `recommender/RecommenderBuilderEditor.jsx` | Builder editor for Recommender: items, minRated, Why? and bubble switches |
+
 ---
 
 ## Badges (`src/badges/`)

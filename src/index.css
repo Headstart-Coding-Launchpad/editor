@@ -8082,4 +8082,128 @@ label.te-backdrop-tag,
 }
 .act-lt-tone-5 {
   background: #fed7aa;
+/* Recommender: a grid of things to rate (thumbs up / down) and a short feed under it. Buttons are
+   at least 44px. State is always words and symbols as well as colour. No animation loop. */
+.act-rec__count {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--colour-primary-dark);
+}
+
+.act-rec__grid,
+.act-rec__feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.act-rec__grid {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+.act-rec__item,
+.act-rec__feed-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 2px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface);
+}
+
+.act-rec__item {
+  flex-direction: column;
+  text-align: center;
+}
+
+.act-rec__emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.act-rec__label {
+  font-weight: 600;
+}
+
+.act-rec__feed-item .act-rec__label {
+  flex: 1;
+}
+
+.act-rec__buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.act-rec__rate,
+.act-rec__why {
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.act-rec__rate {
+  border: 2px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface);
+  font-size: 1.3rem;
+}
+
+.act-rec__rate:disabled {
+  cursor: default;
+}
+
+.act-rec__rate--on {
+  border-color: var(--colour-primary);
+  background: var(--ui-surface-tint);
+}
+
+.act-rec__rate--off {
+  border-color: var(--ui-border-strong);
+  background: var(--ui-surface-tint);
+  opacity: 0.85;
+}
+
+.act-rec__rate:focus-visible,
+.act-rec__why:focus-visible {
+  outline: 3px solid var(--colour-primary);
+  outline-offset: 2px;
+}
+
+.act-rec__heading {
+  margin: 8px 0 0;
+}
+
+.act-rec__because {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface-tint);
+}
+
+.act-rec__bubble {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.act-rec__bubble-bar {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.act-rec__bubble-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--ui-border-strong);
+}
+
+.act-rec__bubble-dot--on {
+  background: var(--colour-primary);
+  border-color: var(--colour-primary);
 }

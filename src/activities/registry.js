@@ -19,6 +19,7 @@ import nextWordUi from './next_word/ui.jsx'
 import classifierUi from './classifier/ui.jsx'
 import stationUi from './station/ui.jsx'
 import learningTreeUi from './learning_tree/ui.jsx'
+import recommenderUi from './recommender/ui.jsx'
 
 export const ACTIVITY_UIS = Object.freeze({
   binary: binaryUi,
@@ -36,6 +37,7 @@ export const ACTIVITY_UIS = Object.freeze({
   classifier: classifierUi,
   station: stationUi,
   learning_tree: learningTreeUi,
+  recommender: recommenderUi,
 })
 
 const merged = new Map()

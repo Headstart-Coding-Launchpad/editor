@@ -1,0 +1,143 @@
+import definition from './definition.js'
+import { DEFAULT_MIN_RATED, GOALS, GOAL_LABELS } from './recommender.js'
+import {
+  Field,
+  InlineField,
+  RowListEditor,
+  ValidationMessages,
+  nextItemId,
+  readNumber,
+  useActivityValidation,
+} from '../ui/builderKit.jsx'
+
+// Builder editor for Recommender tasks: the items (emoji, label, group), the two switches
+// (Why? button, bubble meter) and how many the student must rate. validateTask messages show
+// under the item they are about. Controls are at least 44px.
+
+export default function RecommenderBuilderEditor({ task, onUpdate }) {
+  const validation = useActivityValidation(definition, task)
+  const items = task.items ?? []
+
+  function setFlag(key, value) {
+    onUpdate({ ...task, [key]: value })
+  }
+
+  return (
+    <div className="te-act-editor" data-activity-editor="recommender">
+      <ValidationMessages messages={validation.general} />
+
+      <Field
+        label="Rate at least"
+        hint={`How many items the student must rate before the task can pass. Blank means ${DEFAULT_MIN_RATED}.`}
+      >
+        <input
+          className="te-input te-act-narrow"
+          type="number"
+          min="1"
+          max={items.length || undefined}
+          step="1"
+          value={task.minRated ?? ''}
+          aria-label="Minimum rated"
+          onChange={(e) => {
+            const value = readNumber(e.target.value)
+            const { minRated: _drop, ...rest } = task
+            onUpdate(value == null ? rest : { ...rest, minRated: value })
+          }}
+        />
+      </Field>
+
+      <label className="te-act-inline">
+        <input
+          type="checkbox"
+          checked={task.showWhy !== false}
+          aria-label="Show Why? buttons"
+          onChange={(e) => setFlag('showWhy', e.target.checked)}
+        />
+        <span>Why? button on each recommendation</span>
+      </label>
+      <label className="te-act-inline">
+        <input
+          type="checkbox"
+          checked={task.bubble === true}
+          aria-label="Show the bubble meter"
+          onChange={(e) => setFlag('bubble', e.target.checked)}
+        />
+        <span>Bubble meter under the feed</span>
+      </label>
+
+      <Field
+        label="Feed goal switch"
+        hint="Tick none for the usual feed. Two or more give the student a switch: Keep me watching narrows the feed to their favourite kind, Something new mixes in kinds they have not rated."
+      >
+        <div className="te-act-inline-row" role="group" aria-label="Feed goals">
+          {GOALS.map((goal) => {
+            const list = Array.isArray(task.goals) ? task.goals : []
+            return (
+              <label key={goal} className="te-act-inline">
+                <input
+                  type="checkbox"
+                  checked={list.includes(goal)}
+                  aria-label={`Goal ${GOAL_LABELS[goal]}`}
+                  onChange={(e) => {
+                    const next = GOALS.filter((g) =>
+                      g === goal ? e.target.checked : list.includes(g)
+                    )
+                    const { goals: _drop, ...rest } = task
+                    onUpdate(next.length ? { ...rest, goals: next } : rest)
+                  }}
+                />
+                <span>{GOAL_LABELS[goal]}</span>
+              </label>
+            )
+          })}
+        </div>
+      </Field>
+
+      <RowListEditor
+        label="Items"
+        hint="12 to 20 things to rate, in 3 to 5 groups (kinds)"
+        rows={task.items}
+        validation={validation}
+        movable
+        min={1}
+        addLabel="+ Add item"
+        onChange={(next) => onUpdate({ ...task, items: next })}
+        makeRow={(rows) => ({
+          id: nextItemId(rows, 'i'),
+          emoji: '',
+          label: '',
+          group: rows[rows.length - 1]?.group ?? '',
+        })}
+        renderRow={(item, update, index) => (
+          <>
+            <InlineField label="Emoji">
+              <input
+                className="te-input te-act-tap-input te-act-narrow"
+                value={item.emoji ?? ''}
+                aria-label={`Item ${index + 1} emoji`}
+                onChange={(e) => update({ emoji: e.target.value })}
+              />
+            </InlineField>
+            <InlineField label="Label">
+              <input
+                className="te-input te-act-tap-input"
+                value={item.label ?? ''}
+                aria-label={`Item ${index + 1} label`}
+                onChange={(e) => update({ label: e.target.value })}
+              />
+            </InlineField>
+            <InlineField label="Group">
+              <input
+                className="te-input te-act-tap-input"
+                value={item.group ?? ''}
+                placeholder="e.g. sport"
+                aria-label={`Item ${index + 1} group`}
+                onChange={(e) => update({ group: e.target.value })}
+              />
+            </InlineField>
+          </>
+        )}
+      />
+    </div>
+  )
+}

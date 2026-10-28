@@ -430,6 +430,25 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: passAt must be a share above 0 and below 1 (0.8) or a whole number of test items.` | `passAt` is not a share between 0 and 1 or a whole number from 1 up to the number of test items. | Fix it, or leave it out (default 0.8). |
 | `Task …: the first label is the right answer for … of … test items, so an empty tree could pass. Make more test items use the other labels.` | Warning: an empty tree answers the first label every time, and that already reaches `passAt`. | Use the other labels for more test items, or raise `passAt`. |
 
+### Recommender ([activities/recommender.md](activities/recommender.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: recommender task needs at least one item.` | `items` is empty. | Add 12 to 20 items. |
+| `Task …: recommender task can have at most … items.` | More than 20 items. | Cut it down to 20 or fewer. |
+| `Task … item …: needs an id.` | An item has no `id`. | Give every item a short unique id (`football`). |
+| `Task … item …: id "…" is used more than once.` | Two items share an `id`. | Make each id unique. |
+| `Task … item …: emoji is required.` | An item has no `emoji`. | Add one emoji. |
+| `Task … item …: label is required.` | An item has no `label`. | Add the name to show under the emoji. |
+| `Task … item …: group is required.` | An item has no `group`. | Give the kind it belongs to (`sport`, `animals`). |
+| `Task …: raters must be preset.` | `raters` is something other than `preset`. | Use `preset` or remove it. |
+| `Task …: showWhy must be true or false.` | `showWhy` is not a boolean. | Write `showWhy: true` or `false`. |
+| `Task …: bubble must be true or false.` | `bubble` is not a boolean. | Write `bubble: true` or `false`. |
+| `Task …: goals must list 1 to 3 different goals from like, watching and new.` | `goals` is not a list of 1 to 3 different names from `like`, `watching`, `new`. | Write `goals: [like, watching, new]` (or fewer), or leave it out for the usual feed. |
+| `Task …: minRated must be a whole number from 1 to the number of items.` | `minRated` is not a whole number in range. | Use e.g. `6`, or remove it for the default. |
+| `Task …: recommender works best with … to … items.` (warning) | Fewer than 12 items, so the feed has little to choose from. | Add items up to 12 to 20. |
+| `Task …: recommender needs at least … different groups to show a bubble.` (warning) | Fewer than 3 different `group` values. | Use 3 to 5 groups. |
+
 ## Code-arrange tasks
 
 | Message | Meaning | Fix |

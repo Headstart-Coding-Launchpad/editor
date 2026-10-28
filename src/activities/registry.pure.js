@@ -20,6 +20,7 @@ import nextWord from './next_word/definition.js'
 import classifier from './classifier/definition.js'
 import station from './station/definition.js'
 import learningTree from './learning_tree/definition.js'
+import recommender from './recommender/definition.js'
 import { UNKNOWN_ACTIVITY_ID, getActivityId } from './resolve.js'
 
 const ACTIVITIES = [
@@ -38,6 +39,7 @@ const ACTIVITIES = [
   classifier,
   station,
   learningTree,
+  recommender,
   unknown,
 ]
 

@@ -59,6 +59,28 @@ Entries written before 2026-09-29 are not tagged.
   - Affects: learning_tree · Existing lessons: no changes needed · Resolves:
     authoring-requests/2026-10-23-learning-decision-tree-activity-ai-level-1.md
 
+- **Recommender: `goals`, a student switch for what the feed aims for.** New optional list on a
+  `recommender` task: `goals: [like, watching, new]` (1 to 3). The student switches between **What
+  I'll like** (the usual feed), **Keep me watching** (leans hard on their most-liked kind, so the
+  feed narrows into a bubble) and **Something new** (mixes in kinds they have not rated). The feed
+  and bubble meter recompute at once, and **Why?** names the goal ("Because you liked lots of sport,
+  and this feed wants you to keep watching"). The tutor card shows the goal, and the report adds
+  `goalCounts`. Passing is unchanged. Leave `goals` out for the old feed exactly. See
+  [activities/recommender.md](activities/recommender.md).
+  - Affects: recommender · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-10-28-recommender-feed-goal-switch-what-i-ll-like-keep-me-watching.md
+
+- **New activity: Recommender (`type: recommender`).** The student rates 12 to 20 `items`
+  (`{ id, emoji, label, group }`) with 👍 / 👎 and gets "Your feed" of 4 recommendations from a
+  made-up class of raters generated from the items. `showWhy: true` adds a **Why?** button on each
+  one ("Because Robo Rita and Sporty Sam, who liked what you liked, liked this"); `bubble: true`
+  adds a meter of how many groups the feed shows, so rating one kind visibly closes the bubble.
+  `minRated` (default 6) sets how many to rate; the task passes once that many are rated and a
+  Why? is opened. Warns under 12 items or under 3 groups. Report: `recommenderResults`. See
+  [activities/recommender.md](activities/recommender.md).
+- Affects: recommender · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-10-23-recommender-activity-ai-level-1.md
+
 ## 2026-10-27
 
 - **Eight badges are no longer "first in class".** 🐛 Bug Hunter, Code Detective, Code Arranger,
