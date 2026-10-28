@@ -3,12 +3,14 @@
 // share it. The ID3 maths is in ./tree.js.
 //
 // State (JSON, small): { v: 1, examples: [{ n: 'cat', f: '101', l: 0 }], tried: false, d: 2 }
+//   u = which features the tree may use, one 0/1 per feature (a string; only when the task has
+//   studentPicksFeatures; absent means none picked yet). The examples always keep every feature.
 //   d = the depth the student chose with the dial (only there once they changed it; see depthOf),
 //   n = the item's name (up to 16 chars), f = one 0/1 per feature (a string), l = label index,
 //   tried = the student pressed "Try it" on the current tree (adding or removing an example
 //   clears it, because the tree changed). The tree and the score are never stored: they are
 //   rebuilt from the examples and the lesson's test items.
-import { buildTree, scoreTree, treeDepth } from './tree.js'
+import { buildTree, informationGain, scoreTree, treeDepth } from './tree.js'
 
 export const DEFAULT_MAX_EXAMPLES = 20
 export const DEFAULT_MAX_DEPTH = 3
@@ -60,6 +62,29 @@ export function clampDepth(task, d) {
 export function depthOf(task, state) {
   if (!studentDepthOn(task) || !Number.isInteger(state?.d)) return maxDepthOf(task)
   return clampDepth(task, state.d)
+}
+
+// studentPicksFeatures: the most features the student may let the tree use (0 when the task does
+// not offer the choice, which means the tree uses every feature).
+export function picksOf(task) {
+  const n = task?.studentPicksFeatures
+  const count = featuresOf(task).length
+  return Number.isInteger(n) && n >= 1 && count >= 1 ? Math.min(n, count) : 0
+}
+
+// Which features the tree may use (indexes): all of them unless the student picks.
+export function allowedFeaturesOf(task, state) {
+  const count = featuresOf(task).length
+  const all = Array.from({ length: count }, (_, i) => i)
+  if (!picksOf(task)) return all
+  const u = typeof state?.u === 'string' ? state.u : ''
+  return all.filter((i) => u[i] === '1')
+}
+
+// The names of the features the tree may use.
+export function chosenFeaturesOf(task, state) {
+  const features = featuresOf(task)
+  return allowedFeaturesOf(task, state).map((i) => features[i])
 }
 
 // "has_fur" is shown as the question "has fur?".
@@ -125,6 +150,22 @@ export function normalizeState(task, raw) {
     .map((ex) => ({ n: String(ex.n ?? '').slice(0, MAX_NAME), f: ex.f, l: ex.l }))
   const out = { v: 1, examples, tried: raw.tried === true && examples.length > 0 }
   if (studentDepthOn(task) && Number.isInteger(raw.d)) out.d = clampDepth(task, raw.d)
+  const picks = picksOf(task)
+  if (
+    picks &&
+    typeof raw.u === 'string' &&
+    raw.u.length === featureCount &&
+    /^[01]*$/.test(raw.u)
+  ) {
+    let kept = 0
+    out.u = Array.from(raw.u, (c) => {
+      if (c === '1' && kept < picks) {
+        kept += 1
+        return '1'
+      }
+      return '0'
+    }).join('')
+  }
   return out
 }
 
@@ -142,7 +183,8 @@ export function treeOf(task, state) {
     rowsOf(state),
     featuresOf(task).length,
     labelsOf(task).length,
-    depthOf(task, state)
+    depthOf(task, state),
+    picksOf(task) ? allowedFeaturesOf(task, state) : null
   )
 }
 
@@ -173,6 +215,8 @@ export function hintFor(task, state) {
   const g = gradeTask(task, state)
   if (g.count === 0)
     return 'Add some examples first. Name an item, tick what is true, pick a label.'
+  if (picksOf(task) && allowedFeaturesOf(task, state).length === 0)
+    return `Pick up to ${picksOf(task)} features for the tree to use.`
   if (!g.tried) return 'Press Try it to see how your tree does on new things.'
   if (g.passed) return null
   const wrong = g.results.findIndex((r) => !r.right)
@@ -192,6 +236,7 @@ export function sharedState(task, state) {
     count: g.count,
     depth: g.depth,
     chosenDepth: depthOf(task, clean),
+    ...(picksOf(task) ? { chosenFeatures: chosenFeaturesOf(task, clean) } : {}),
     score: g.tried ? { correct: g.correct, total: g.total } : null,
   }
 }
@@ -261,6 +306,16 @@ export function validateLearningTreeTask(task, n) {
     errors.push(`${where}: studentDepth must be true or false.`)
   }
 
+  if (task?.studentPicksFeatures != null) {
+    const n = task.studentPicksFeatures
+    const most = Math.max(featureNames.length, 1)
+    if (!(Number.isInteger(n) && n >= 1 && n <= most)) {
+      errors.push(
+        `${where}: studentPicksFeatures must be a whole number from 1 to the number of features (${most}).`
+      )
+    }
+  }
+
   const items = task?.testItems
   if (!Array.isArray(items) || items.length < MIN_TEST_ITEMS || items.length > MAX_TEST_ITEMS) {
     errors.push(`${where}: testItems needs ${MIN_TEST_ITEMS} to ${MAX_TEST_ITEMS} items.`)
@@ -318,5 +373,19 @@ export function solutionFor(task) {
   const examples = testRowsOf(task)
     .slice(0, maxExamplesOf(task))
     .map((row) => ({ n: row.name.slice(0, MAX_NAME), f: row.f.join(''), l: row.l }))
-  return { v: 1, examples, tried: examples.length > 0 }
+  const state = { v: 1, examples, tried: examples.length > 0 }
+  const picks = picksOf(task)
+  if (picks) {
+    // The most useful features on the test items themselves.
+    const rows = testRowsOf(task)
+    const ranked = featuresOf(task)
+      .map((_, i) => ({ i, gain: informationGain(rows, i, labelsOf(task).length) }))
+      .sort((a, b) => b.gain - a.gain || a.i - b.i)
+      .slice(0, picks)
+      .map((r) => r.i)
+    state.u = featuresOf(task)
+      .map((_, i) => (ranked.includes(i) ? '1' : '0'))
+      .join('')
+  }
+  return state
 }

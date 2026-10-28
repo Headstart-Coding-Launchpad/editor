@@ -2,6 +2,8 @@ import { useState } from 'react'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
 import {
   MAX_NAME,
+  allowedFeaturesOf,
+  picksOf,
   clampDepth,
   depthOf,
   maxDepthOf,
@@ -111,6 +113,22 @@ export function LearningTreeStudentView({ task, state, onChange, readOnly = fals
     const d = clampDepth(task, next)
     if (d === depth) return
     change((prev) => ({ ...prev, d, tried: false }))
+    setPicked(null)
+  }
+
+  const picks = picksOf(task)
+  const allowed = allowedFeaturesOf(task, clean)
+
+  function toggleFeature(i) {
+    const on = allowed.includes(i)
+    if (!on && allowed.length >= picks) return
+    change((prev) => {
+      const u = features.map((_, j) => {
+        if (j === i) return on ? '0' : '1'
+        return (prev.u ?? '')[j] === '1' ? '1' : '0'
+      })
+      return { ...prev, u: u.join(''), tried: false }
+    })
     setPicked(null)
   }
 
@@ -224,6 +242,28 @@ export function LearningTreeStudentView({ task, state, onChange, readOnly = fals
           </ul>
         )}
       </section>
+
+      {picks > 0 && (
+        <div className="act-row" role="group" aria-label="Features the tree may use">
+          <span style={{ fontWeight: 600 }}>
+            Features the tree may use (up to {picks}):{' '}
+            <span data-testid="lt-feature-count">{allowed.length}</span>
+          </span>
+          {features.map((feature, i) => (
+            <button
+              key={feature}
+              type="button"
+              className="act-btn act-lt-toggle"
+              aria-pressed={allowed.includes(i)}
+              disabled={readOnly || (!allowed.includes(i) && allowed.length >= picks)}
+              onClick={() => toggleFeature(i)}
+            >
+              {allowed.includes(i) ? '✓ ' : ''}
+              {featureQuestion(feature)}
+            </button>
+          ))}
+        </div>
+      )}
 
       {studentDepthOn(task) && (
         <div className="act-row act-lt-dial" role="group" aria-label="How many questions deep">

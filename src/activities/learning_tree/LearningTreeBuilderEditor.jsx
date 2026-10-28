@@ -100,6 +100,15 @@ export default function LearningTreeBuilderEditor({ task, onUpdate }) {
       <NumberField
         task={task}
         onUpdate={onUpdate}
+        name="studentPicksFeatures"
+        label="Student picks features"
+        hint="Blank means the tree uses every feature. A number lets the student choose up to that many."
+        min="1"
+        max="6"
+      />
+      <NumberField
+        task={task}
+        onUpdate={onUpdate}
         name="passAt"
         label="Pass at"
         hint="A share (0.8) or a number of test items. Blank means 0.8 (4 of 5)."

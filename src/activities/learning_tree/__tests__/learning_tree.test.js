@@ -1,6 +1,9 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import {
+  allowedFeaturesOf,
+  chosenFeaturesOf,
+  picksOf,
   gradeTask,
   clampDepth,
   depthOf,
@@ -243,5 +246,46 @@ describe('student depth', () => {
     expect(flat.depth).toBeLessThanOrEqual(deep.depth)
     expect(sharedState(TASK, { ...GOOD, d: 1 }).chosenDepth).toBe(1)
     expect(sharedState(TASK, GOOD).chosenDepth).toBe(TASK.maxDepth)
+  })
+})
+
+describe('studentPicksFeatures', () => {
+  const PICK = { ...TASK, studentPicksFeatures: 1 }
+  it('validates the field', () => {
+    expect(validateLearningTreeTask(PICK, 1)).toEqual([])
+    expect(validateLearningTreeTask({ ...TASK, studentPicksFeatures: 0 }, 1)).toHaveLength(1)
+    expect(validateLearningTreeTask({ ...TASK, studentPicksFeatures: 9 }, 1)).toHaveLength(1)
+    expect(validateLearningTreeTask({ ...TASK, studentPicksFeatures: 'x' }, 1)).toHaveLength(1)
+  })
+  it('uses every feature when the field is absent', () => {
+    expect(picksOf(TASK)).toBe(0)
+    expect(allowedFeaturesOf(TASK, GOOD)).toEqual([0, 1, 2])
+    expect(sharedState(TASK, GOOD).chosenFeatures).toBeUndefined()
+    expect(normalizeState(TASK, { ...GOOD, u: '100' }).u).toBeUndefined()
+  })
+  it('grows from no features until the student picks', () => {
+    const none = gradeTask(PICK, normalizeState(PICK, GOOD))
+    expect(none.depth).toBe(0)
+    expect(hintFor(PICK, normalizeState(PICK, GOOD))).toMatch(/Pick up to 1/)
+  })
+  it('grows only from the picked features and keeps the examples whole', () => {
+    const state = normalizeState(PICK, { ...GOOD, u: '010' })
+    expect(chosenFeaturesOf(PICK, state)).toEqual(['can_fly'])
+    expect(state.examples.every((ex) => ex.f.length === 3)).toBe(true)
+    const g = gradeTask(PICK, state)
+    expect(g.depth).toBe(1)
+    expect(g.tree.feature).toBe(1)
+  })
+  it('keeps at most N picks and reports them', () => {
+    const state = normalizeState(PICK, { ...GOOD, u: '111' })
+    expect(state.u).toBe('100')
+    expect(sharedState(PICK, state).chosenFeatures).toEqual(['has_fur'])
+  })
+  it('a good pick passes and the solution state passes', () => {
+    const good = gradeTask(PICK, normalizeState(PICK, { ...GOOD, u: '100' }))
+    expect(good.passed).toBe(true)
+    const sol = definition.solutionState(PICK)
+    expect(sol.u).toHaveLength(3)
+    expect(definition.grade(PICK, sol).passed).toBe(true)
   })
 })

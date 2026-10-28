@@ -59,8 +59,11 @@ export function bestSplit(examples, available, labelCount) {
 }
 
 // Builds the tree. Stops at maxDepth questions deep, at a pure node, or when no question helps.
-export function buildTree(examples, featureCount, labelCount, maxDepth = 3) {
-  const all = Array.from({ length: featureCount }, (_, i) => i)
+// `allowed` (feature indexes) limits which features it may ask about; null means all of them.
+export function buildTree(examples, featureCount, labelCount, maxDepth = 3, allowed = null) {
+  const all = Array.from({ length: featureCount }, (_, i) => i).filter(
+    (i) => !Array.isArray(allowed) || allowed.includes(i)
+  )
   function grow(rows, available, depth, fallback) {
     const counts = countLabels(rows, labelCount)
     const label = majorityLabel(counts, fallback)

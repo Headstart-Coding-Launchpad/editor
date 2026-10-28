@@ -58,6 +58,7 @@ tasks:
 | `maxExamples` | No | The most examples a student can add: a whole number from 4 to 40. Default `20`. |
 | `maxDepth` | No | The most questions in a row the tree may ask: a whole number from 1 to 5. Default `3`. |
 | `studentDepth` | No | `true` (default) shows a small − / + dial, "How many questions deep", so the student can grow a shallower tree (1 up to `maxDepth`, which is also where it starts). `false` hides the dial. Must be true or false. |
+| `studentPicksFeatures` | No | A whole number from 1 to the number of `features`. The student ticks which features the tree may use (up to this many; the buttons are at least 44px) and the tree regrows from only those. They start with none ticked, so the tree is a single answer box until they pick. The examples still record every feature. Leave it out and the tree uses all of them (as before). |
 | `passAt` | No | How many test items the tree must sort right: a share above 0 and below 1 (`0.8`) or a whole number of items (`4`). Default `0.8`, rounded up (4 of 5). |
 
 ## Test item fields
@@ -81,6 +82,11 @@ tasks:
 3. **Try it on new things.** Runs the tree on the `testItems` and shows each as right or wrong
    with what the tree said, and "Your tree got 4 of 5 right". Adding or removing an example
    clears the result (the tree changed), so the student presses Try it again.
+
+With `studentPicksFeatures`, a **Features the tree may use (up to N)** row of toggles sits above the
+tree. Ticking or unticking one regrows the tree and clears the Try it result (press it again). Once N
+are ticked the others are greyed out until one is unticked. This is the "useless feature" moment: tick a feature that does
+not separate the labels and the tree gets test items wrong.
 
 ### How the tree is built
 
@@ -113,8 +119,11 @@ flies"), so some data gives a short tree. That is part of what the activity teac
   student's examples, their tree and the test results, read-only, live (every example is a
   discrete change, so it syncs as soon as it is added). `itemProgress` marks each test item
   right or wrong after Try it.
+- With `studentPicksFeatures`, the card adds `· uses has fur, can fly` and the shared state carries
+  `chosenFeatures`; the modal shows the same toggles, read-only. The session report adds
+  `featureUse` (how many students who tried the test used each feature) to `learningTreeResults`.
 - **Edit answers** lets the tutor add or remove examples for the student; the tree redraws.
-- **Stage → Start again** clears the examples. **Complete (show answers)** fills in the lesson's test items as examples, so the tree works; the
+- **Stage → Start again** clears the examples. **Complete (show answers)** fills in the lesson's test items as examples, so the tree works (with `studentPicksFeatures` it also ticks the most useful features); the
   student's own examples are replaced.
 - The session report keeps, per student, the examples, the tree's depth and the test score, and
   shows for the class how many tried the test, how many passed and the average examples, depth

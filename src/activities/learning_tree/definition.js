@@ -18,6 +18,8 @@ import {
   normalizeState,
   depthOf,
   maxDepthOf,
+  chosenFeaturesOf,
+  picksOf,
   sharedState,
   solutionFor,
   validateLearningTreeTask,
@@ -97,6 +99,12 @@ export default defineActivity({
           'Let the student set how many questions deep the tree goes, up to maxDepth. Default true; false hides the dial.',
       },
       {
+        name: 'studentPicksFeatures',
+        type: 'number',
+        description:
+          'Let the student choose which features the tree may use, up to this many (1 to the number of features). The examples still record every feature. Leave out for the tree to use all of them.',
+      },
+      {
         name: 'passAt',
         type: 'number',
         description:
@@ -166,7 +174,10 @@ export default defineActivity({
     if (g.count === 0) return { text: 'No examples yet', tone: 'neutral' }
     const chosen = depthOf(task, normalizeState(task, state))
     const cap = chosen < maxDepthOf(task) ? ` (set to ${chosen})` : ''
-    const base = `${g.count} example${g.count === 1 ? '' : 's'} · depth ${g.depth}${cap}`
+    const used = picksOf(task)
+      ? ` · uses ${chosenFeaturesOf(task, normalizeState(task, state)).join(', ').replace(/_/g, ' ') || 'no features'}`
+      : ''
+    const base = `${g.count} example${g.count === 1 ? '' : 's'} · depth ${g.depth}${cap}${used}`
     if (!g.tried) return { text: `${base} · not tried yet`, tone: 'neutral' }
     return {
       text: `${base} · test ${g.correct}/${g.total}`,
@@ -192,12 +203,18 @@ export default defineActivity({
       let depth = 0
       let correct = 0
       let total = 0
+      const featureUse = {}
       for (const t of perStudent ?? []) {
         const latest = t.distinctAttempts?.[t.distinctAttempts.length - 1]?.submission
         const state = normalizeState(task, typeof latest === 'object' ? latest : parse(latest))
         const g = gradeTask(task, state)
         if (!g.tried) continue
         tried += 1
+        if (picksOf(task)) {
+          for (const name of chosenFeaturesOf(task, state)) {
+            featureUse[name] = (featureUse[name] ?? 0) + 1
+          }
+        }
         if (g.passed) passed += 1
         examples += g.count
         depth += g.depth
@@ -212,6 +229,7 @@ export default defineActivity({
           avgExamples: avg(examples),
           avgDepth: avg(depth),
           avgScore: total ? Number((correct / total).toFixed(2)) : null,
+          ...(picksOf(task) ? { featureUse } : {}),
         },
       }
     },
