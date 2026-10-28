@@ -4004,6 +4004,12 @@ label.te-backdrop-tag,
   z-index: 1;
 }
 
+/* The game agent's map fills its stage, so its result sits just under the map, not on top of it. */
+.act-ga .act-layout__result--overlay {
+  position: static;
+  margin-top: 8px;
+}
+
 .act-layout__action {
   display: flex;
   flex-direction: column;
