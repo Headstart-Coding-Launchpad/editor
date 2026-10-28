@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_REWARDS,
   agentAfter,
+  closestKnown,
   countSituations,
   describeSituation,
   stateKey,
@@ -440,5 +441,35 @@ describe('senses, coins and the mystery map', () => {
     })
     expect(shared.rewards).toBeDefined()
     expect(shared.trained).toBe(0)
+  })
+})
+
+describe('a new map (senses that carry over)', () => {
+  const rewards = { treasure: 10, step: -1, wall: -5, pit: -10, coin: 3 }
+  const train = envOf({ map: ['#######', '#R.C..#', '#.#X#T#', '#######'] })
+  const mystery = envOf({ map: ['######', '#..T.#', '#.##.#', '#R...#', '######'] })
+  const onNewMap = (senses) =>
+    greedyRun(mystery, rewards, agentAfter(train, rewards, 100, senses), { unseen: true })
+
+  it('walls and the treasure compass find the way first time', () => {
+    expect(onNewMap(['walls', 'treasure_direction'])).toMatchObject({
+      reached: true,
+      moves: 'UURR',
+    })
+  })
+
+  it('a robot that only knows its square number gets lost', () => {
+    expect(onNewMap(['position']).reached).toBe(false)
+  })
+
+  it('the compass alone is not enough here', () => {
+    expect(onNewMap(['treasure_direction']).reached).toBe(false)
+  })
+
+  it('uses the closest situation it knows', () => {
+    const agent = agentAfter(train, rewards, 100, ['walls', 'treasure_direction'])
+    const known = [...agent.q.keys()][0]
+    expect(closestKnown(agent, known)).toBe(known)
+    expect(closestKnown(newAgent(train, ['walls']), 'w0000')).toBe(null)
   })
 })

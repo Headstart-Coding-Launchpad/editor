@@ -416,8 +416,9 @@ export function agentAfter(env, rewards, trained, senses = ['position']) {
 }
 
 // Run the learned moves once from R with no exploring. `moves` is the route as U/R/D/L letters.
-// With `unseen` (a map nobody trained on) a situation the robot never met gets a fixed
-// made-up move instead of "up", and the run stops after MAX_TEST_MOVES.
+// With `unseen` (a map nobody trained on) the robot meets situations it never saw. It then does
+// what it learned for the closest situation it does know (closestKnown), and it doesn't walk into
+// the same wall twice from the same square. The run stops after MAX_TEST_MOVES.
 export function greedyRun(env, rewards, agent, { unseen = false } = {}) {
   let s = env.start
   let score = 0
@@ -425,11 +426,16 @@ export function greedyRun(env, rewards, agent, { unseen = false } = {}) {
   let moves = ''
   const cells = [s]
   const taken = new Set()
+  const bumped = new Set()
   const cap = unseen ? Math.min(env.cap, MAX_TEST_MOVES) : env.cap
   for (let steps = 0; steps < cap; steps++) {
     const key = stateKey(env, s, agent.senses ?? ['position'], taken)
-    const a = unseen && !agent.q.has(key) ? guessMove(key, steps) : bestAction(agent, key)
+    // A square number means nothing on another map, so it never matches what it learned there.
+    const a = unseen
+      ? testMove(agent, key.replace(/(^|\|)p(\d+)/, '$1n$2'), s, bumped, steps)
+      : bestAction(agent, key)
     const out = stepWorld(env, rewards, s, a, taken)
+    if (out.bumped) bumped.add(`${s}:${a}`)
     moves += ACTIONS[a].letter
     score += out.reward
     s = out.s
@@ -440,6 +446,51 @@ export function greedyRun(env, rewards, agent, { unseen = false } = {}) {
     }
   }
   return { moves, cells, score, steps: moves.length, reached }
+}
+
+// Compass points next to each other count as half alike ("up and right" is a bit like "right").
+const COMPASS_RING = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+function partLikeness(a, b) {
+  if (a === b) return 1
+  if (a[0] !== b[0] || (a[0] !== 't' && a[0] !== 'c')) return 0
+  const i = COMPASS_RING.indexOf(a.slice(1))
+  const j = COMPASS_RING.indexOf(b.slice(1))
+  if (i < 0 || j < 0) return 0
+  const gap = Math.min((i - j + 8) % 8, (j - i + 8) % 8)
+  return gap === 1 ? 0.5 : 0
+}
+
+// The known situation most like `key` (one the robot has an opinion about), or null. Ties go to
+// the one it met most often.
+export function closestKnown(agent, key) {
+  const parts = key.split('|')
+  let best = null
+  let bestScore = 0
+  let bestVisits = -1
+  for (const known of agent.q.keys()) {
+    if (bestMoveOfKey(agent, known) < 0) continue
+    const other = known.split('|')
+    let score = 0
+    for (let i = 0; i < parts.length; i++) score += partLikeness(parts[i], other[i] ?? '')
+    const visits = agent.visits.get(known) ?? 0
+    if (score > bestScore || (score === bestScore && score > 0 && visits > bestVisits)) {
+      best = known
+      bestScore = score
+      bestVisits = visits
+    }
+  }
+  return best
+}
+
+// A move on a new map: the learned move for this situation (or the closest known one), best first,
+// skipping moves that already hit a wall from this square.
+function testMove(agent, key, s, bumped, steps) {
+  const source = bestMoveOfKey(agent, key) >= 0 ? key : closestKnown(agent, key)
+  const row = source ? agent.q.get(source) : null
+  // Knowing nothing like it, the robot just guesses (and can walk into the same wall again).
+  if (!row) return guessMove(key, steps)
+  const order = [0, 1, 2, 3].sort((x, y) => row[y] - row[x] || x - y)
+  return order.find((a) => !bumped.has(`${s}:${a}`)) ?? order[0]
 }
 
 // A repeatable made-up move for a situation the robot has never seen.

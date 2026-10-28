@@ -92,8 +92,12 @@ situations to learn** (the number of different situations the chosen senses can 
 ## The mystery map
 
 When `testMaps` is set, **Go on a new map** appears. It runs the trained robot once on one of the
-sealed maps (they take turns), with no exploring and no training. A situation the robot never met
-gets a fixed made-up move, and the run stops after 120 moves. The task passes (no Check button) when
+sealed maps (they take turns), with no exploring and no training. In a situation the robot never met, it
+does what it learned for the closest situation it knows (a compass point next door counts as half
+alike), and it won't walk into the same wall twice from one square. Knowing nothing like it, it
+guesses. A square number (`position`) means nothing on another map, so a robot that only knows its
+square gets lost, while `walls` plus `treasure_direction` usually finds the way first time. The run
+stops after 120 moves. The task passes (no Check button) when
 that run reaches the treasure; **Go!** on the training map no longer decides the pass. Without
 `testMaps` the old rule applies (a Go! reaches the treasure).
 
