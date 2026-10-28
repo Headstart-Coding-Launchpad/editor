@@ -729,6 +729,8 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `learning_tree/learning_tree.js` | Pure Learning Tree activity logic: task validation, state normalising, the tree and test grading, hints, shared state |
 | `learning_tree/definition.js` | Learning Tree activity definition wrapping `learning_tree.js`: default task, state, grading, progress, tutor card summary, session-report fields, print |
 | `learning_tree/ui.jsx` | Learning Tree StudentView: example form, the drawn tree (nested boxes), Try it results; read-only for the tutor |
+| `learning_tree/DeckView.jsx` | Learning Tree deck mode: sort a ready-made deck into bins (drag, or tap then tap a bin), renamable bins, 20 Questions with the lit path, read-only tutor board |
+| `learning_tree/TreeDiagram.jsx` | The tree drawing shared by the plain and deck views: question and leaf boxes, connector lines, the lit path |
 | `learning_tree/LearningTreeBuilderEditor.jsx` | Builder editor for Learning Tree: features, labels, max examples/depth, passAt and the test items |
 
 | `recommender/recommender.js` | Pure Recommender logic: seeded made-up raters, similarity, recommend (feed of 4), Why? text, bubble meter, validation, grading |

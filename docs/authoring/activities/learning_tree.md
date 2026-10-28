@@ -58,6 +58,9 @@ tasks:
 | `maxExamples` | No | The most examples a student can add: a whole number from 4 to 40. Default `20`. |
 | `maxDepth` | No | The most questions in a row the tree may ask: a whole number from 1 to 5. Default `3`. |
 | `studentDepth` | No | `true` (default) shows a small − / + dial, "How many questions deep", so the student can grow a shallower tree (1 up to `maxDepth`, which is also where it starts). `false` hides the dial. Must be true or false. |
+| `deck` | No | A ready-made deck of 4 to 16 cards, each `{ name, emoji, yes }` (`yes` lists the card's true features). The student sorts the cards into the bins and the tree grows from them; no add form. See [Deck mode](#deck-mode-deck). |
+| `studentLabels` | No | With `deck`: `true` lets the student rename the bins, and passing then counts the 20 Questions rounds they mark ✓. Default `false`. |
+| `twentyQuestions` | No | With `deck`: `true` adds **Play 20 Questions**: the tree asks about each test item one question at a time and guesses its bin. Default `false`. |
 | `studentPicksFeatures` | No | A whole number from 1 to the number of `features`. The student ticks which features the tree may use (up to this many; the buttons are at least 44px) and the tree regrows from only those. They start with none ticked, so the tree is a single answer box until they pick. The examples still record every feature. Leave it out and the tree uses all of them (as before). |
 | `passAt` | No | How many test items the tree must sort right: a share above 0 and below 1 (`0.8`) or a whole number of items (`4`). Default `0.8`, rounded up (4 of 5). |
 
