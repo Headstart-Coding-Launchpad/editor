@@ -723,6 +723,10 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `station/worlds/zoo.js`, `station/worlds/toyshop.js` | The zoo and toy shop world data (`PACK`, copied from `public/station/<world>/parts.json`; `worlds.test.js` checks they match) and the built world |
 | `public/station/zoo/*.png`, `public/station/toyshop/*.png`, `parts.json` | Lesson Gen's zoo and toy shop art (`backdrop`, the zoo's `zoo-base` and `enclosure-<kind>-glow` masks, one PNG and `-glow` per animal or toy) |
 | `station/StationBuilderEditor.jsx` | Space station `BuilderEditor`: world and lesson pickers, goals filtered by lesson with matching targets, optional catalogue parts |
+| `recommender/recommender.js` | Pure Recommender logic: seeded made-up raters, similarity, recommend (feed of 4), Why? text, bubble meter, validation, grading |
+| `recommender/definition.js` | Recommender activity definition wrapping `recommender.js`: default task, validation, state, change classification, grading, progress, card summary, print |
+| `recommender/ui.jsx` | Recommender StudentView: rating grid, Your feed, Why?, bubble meter (controlled by `ActivityHost`) |
+| `recommender/RecommenderBuilderEditor.jsx` | Builder editor for Recommender: items, minRated, Why? and bubble switches |
 
 ---
 

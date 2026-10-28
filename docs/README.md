@@ -358,6 +358,11 @@ Space station activity reference: task and item fields, marking and hints, teach
 
 **Load when:** authoring or editing a Space station activity task.
 
+### [authoring/activities/recommender.md](authoring/activities/recommender.md)
+Recommender activity reference: rating items to get a feed, Why? and the filter-bubble meter, marking, teacher tools, report fields, and a complete validated example lesson.
+
+**Load when:** authoring or editing a Recommender activity task.
+
 ### [authoring/python-tasks.md](authoring/python-tasks.md)
 Python code task field reference: `starterCode`, `completeCode`, role-based `codeStages`, `carryCodeFrom`, `interactionMode`, and the `tests` array (automated `input()`-driven test cases). Includes a minimal full-lesson example.
 

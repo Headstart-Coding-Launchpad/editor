@@ -37,6 +37,19 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-28
+
+- **New activity: Recommender (`type: recommender`).** The student rates 12 to 20 `items`
+  (`{ id, emoji, label, group }`) with 👍 / 👎 and gets "Your feed" of 4 recommendations from a
+  made-up class of raters generated from the items. `showWhy: true` adds a **Why?** button on each
+  one ("Because Robo Rita and Sporty Sam, who liked what you liked, liked this"); `bubble: true`
+  adds a meter of how many groups the feed shows, so rating one kind visibly closes the bubble.
+  `minRated` (default 6) sets how many to rate; the task passes once that many are rated and a
+  Why? is opened. Warns under 12 items or under 3 groups. Report: `recommenderResults`. See
+  [activities/recommender.md](activities/recommender.md).
+- Affects: recommender · Existing lessons: no changes needed ·
+  Resolves: authoring-requests/2026-10-23-recommender-activity-ai-level-1.md
+
 ## 2026-10-27
 
 - **Python errors in plain words, and the error help wins over completion hints.** On Python and

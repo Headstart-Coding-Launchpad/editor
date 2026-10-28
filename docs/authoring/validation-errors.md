@@ -413,6 +413,24 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: note sticker "…" must be a colour and a shape joined with a dash, ….` | A note sticker is not valid. | Use a sticker like `green-triangle`. |
 | `Task …: note sticker "…" is not on any crate.` | The note lists a sticker no crate has. | Put it on a crate, or take it off the note. |
 
+### Recommender ([activities/recommender.md](activities/recommender.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: recommender task needs at least one item.` | `items` is empty. | Add 12 to 20 items. |
+| `Task …: recommender task can have at most 20 items.` | More than 20 items. | Cut it down to 20 or fewer. |
+| `Task … item …: needs an id.` | An item has no `id`. | Give every item a short unique id (`football`). |
+| `Task … item …: id "…" is used more than once.` | Two items share an `id`. | Make each id unique. |
+| `Task … item …: emoji is required.` | An item has no `emoji`. | Add one emoji. |
+| `Task … item …: label is required.` | An item has no `label`. | Add the name to show under the emoji. |
+| `Task … item …: group is required.` | An item has no `group`. | Give the kind it belongs to (`sport`, `animals`). |
+| `Task …: raters must be preset.` | `raters` is something other than `preset`. | Use `preset` or remove it. |
+| `Task …: showWhy must be true or false.` | `showWhy` is not a boolean. | Write `showWhy: true` or `false`. |
+| `Task …: bubble must be true or false.` | `bubble` is not a boolean. | Write `bubble: true` or `false`. |
+| `Task …: minRated must be a whole number from 1 to the number of items.` | `minRated` is not a whole number in range. | Use e.g. `6`, or remove it for the default. |
+| `Task …: recommender works best with 12 to 20 items.` (warning) | Fewer than 12 items, so the feed has little to choose from. | Add items up to 12 to 20. |
+| `Task …: recommender needs at least 3 different groups to show a bubble.` (warning) | Fewer than 3 different `group` values. | Use 3 to 5 groups. |
+
 ## Code-arrange tasks
 
 | Message | Meaning | Fix |
