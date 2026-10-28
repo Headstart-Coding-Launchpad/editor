@@ -116,6 +116,14 @@ describe('copy-bot screen', () => {
     expect(state().courses).toHaveLength(1)
     expect(state().tests).toBe(1)
     expect(screen.getByTestId('ga-test-result')).toBeInTheDocument()
+    expect(screen.getByTestId('ga-test-result')).toHaveTextContent(/New courses beaten: \d of 5/)
+    if (state().courses[0].reached) {
+      expect(screen.getByTestId('ga-like-you')).toHaveTextContent('It drove like you!')
+    }
+    // the network sits in the right-hand column, not in the stage, and the tip holds no result
+    expect(screen.getByTestId('ga-network').closest('.act-layout__side')).not.toBeNull()
+    expect(screen.getByTestId('ga-network').closest('.act-layout__stage')).toBeNull()
+    expect(document.querySelector('.act-tip')?.textContent ?? '').not.toMatch(/found the treasure/)
     expect(screen.getByTestId('ga-course-label')).toHaveTextContent('New course')
     expect(definition.summarize(TASK, state()).text).toMatch(/^copy-bot · \d+ moves · course 1:/)
     // driving again goes back to the practice course and asks for a fresh Train

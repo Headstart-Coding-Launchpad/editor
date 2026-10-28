@@ -34,6 +34,17 @@ const task = (extra = {}) => ({
   ...extra,
 })
 
+describe('coursesBeaten', () => {
+  it('counts each beaten course once, out of at least 5', async () => {
+    const { coursesBeaten } = await import('../game_agent.js')
+    const c = (n, reached) => ({ n, score: 1, reached })
+    expect(coursesBeaten({ courses: [] }).text).toBe('New courses beaten: 0 of 5')
+    expect(coursesBeaten({ courses: [c(1, true), c(1, true), c(2, false)] }).text).toBe(
+      'New courses beaten: 1 of 5'
+    )
+  })
+})
+
 describe('generateCourse', () => {
   it('makes 200 seeds of solvable courses with no dead-end trap near the way', () => {
     let fallbacks = 0
@@ -187,7 +198,9 @@ describe('state, grading and the card', () => {
     const won = withCourseResult(withCourseResult(trained, run(true, 8)), run(false, -9))
     const shared = JSON.parse(definition.serializeShared(won))
     expect(normalizeGameAgentState(t, shared).courses).toHaveLength(2)
-    expect(summaryOf(t, won).text).toBe('course 1: 8 pts · course 2: lost · 50 tries')
+    expect(summaryOf(t, won).text).toBe(
+      'course 1: 8 pts · course 2: lost · 1 of 5 beaten · 50 tries'
+    )
   })
 
   it('starts the sequence again when the rewards change (the robot forgot everything)', () => {

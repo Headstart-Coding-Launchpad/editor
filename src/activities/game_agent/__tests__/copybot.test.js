@@ -187,9 +187,9 @@ describe('state, grading, the card and the answer', () => {
       'copy-bot · 12 moves · not trained yet'
     )
     const won = withCourseResult(withCourseResult(trained, run(false, -9)), run(true, 8))
-    expect(summaryOf(t, won).text).toBe('copy-bot · 12 moves · course 2: 8 pts')
+    expect(summaryOf(t, won).text).toBe('copy-bot · 12 moves · course 2: 8 pts · 1 of 5 beaten')
     const lost = withCourseResult(trained, run(false, -9))
-    expect(summaryOf(t, lost).text).toBe('copy-bot · 12 moves · course 1: lost')
+    expect(summaryOf(t, lost).text).toBe('copy-bot · 12 moves · course 1: lost · 0 of 5 beaten')
   })
 
   it('has an answer that drives three courses and tries one new one', () => {

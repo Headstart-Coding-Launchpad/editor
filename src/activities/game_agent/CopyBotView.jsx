@@ -4,6 +4,7 @@ import {
   ACTIONS,
   MAX_DRIVES,
   MAX_DRIVE_MOVES,
+  coursesBeaten,
   hasNetworkPanel,
   normalizeGameAgentState,
   withCourseResult,
@@ -345,11 +346,15 @@ export default function CopyBotView({
       <div className="act-result--good" data-testid="ga-test-result">
         <span aria-hidden="true">💎</span> It found the treasure on a new course (course{' '}
         {lastCourse.n})! Score {lastCourse.score}
+        <br />
+        <span data-testid="ga-like-you">It drove like you!</span> {coursesBeaten(state).text}.
       </div>
     ) : (
       <div className="act-result--bad" data-testid="ga-test-result">
         <span aria-hidden="true">😵</span> It got lost on a new course (course {lastCourse.n}).
         Score {lastCourse.score}
+        <br />
+        {coursesBeaten(state).text}.
       </div>
     )
   }
@@ -360,11 +365,11 @@ export default function CopyBotView({
     else if (moved === 0) tip = 'Drive the robot to the treasure with the arrow keys or the arrows.'
     else if (now?.done && !watched) {
       tip = now.reached
-        ? 'You found the treasure! Press Next course to drive another, or Train.'
-        : 'Oops, a pit. The robot will copy that too. Press Next course to try again.'
+        ? 'Press Next course to drive another, or Train.'
+        : 'The robot will copy that pit too. Press Next course to try again.'
     } else if (state.trained === 0 || fresh) tip = 'Drive two or three courses, then press Train.'
     else if (lastCourse && !lastCourse.reached && watched) {
-      tip = 'It copied your driving and got lost. Drive more courses, then train it again.'
+      tip = 'Drive more courses, then train it again.'
     } else if (!watched) tip = 'Press Watch it drive to see it on a course it has never seen.'
   }
 
@@ -480,13 +485,19 @@ export default function CopyBotView({
       </div>
       {pad}
       {status}
-      {hasNetworkPanel(task) && <NetworkPanel names={names} net={getNet()} acts={acts} />}
     </>
   )
 
+  const controls = hasNetworkPanel(task) ? (
+    <section className="act-ga-card" aria-label="The robot's brain">
+      <h3 className="act-ga-card__title">The robot's brain</h3>
+      <NetworkPanel names={names} net={getNet()} acts={acts} />
+    </section>
+  ) : null
+
   return (
     <div className="act-panel act-ga" data-testid="game_agent-activity">
-      <ActivityLayout stage={stage} result={result} action={action} tip={tip} />
+      <ActivityLayout stage={stage} result={result} action={action} tip={tip} controls={controls} />
     </div>
   )
 }

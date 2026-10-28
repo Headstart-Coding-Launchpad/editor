@@ -743,6 +743,14 @@ const numOrNull = (n) => (typeof n === 'number' && Number.isFinite(n) ? n : null
 
 // The score on each random course tried: [{ n, score, reached }], the last MAX_COURSE_LOG.
 export const MAX_COURSE_LOG = 20
+// The race on new courses: how many the class is aiming to beat.
+export const RACE_COURSES = 5
+// "New courses beaten: 2 of 5" (the first number counts each course once).
+export function coursesBeaten(state) {
+  const beaten = new Set((state?.courses ?? []).filter((c) => c.reached).map((c) => c.n)).size
+  const of = Math.max(RACE_COURSES, new Set((state?.courses ?? []).map((c) => c.n)).size)
+  return { beaten, of, text: `New courses beaten: ${beaten} of ${of}` }
+}
 function normalizeCourses(raw) {
   if (!Array.isArray(raw)) return []
   return raw
@@ -933,8 +941,11 @@ export function summaryOf(task, state) {
     const last = s.courses[s.courses.length - 1]
     const ran = last ? ` · course ${last.n}: ${last.reached ? `${last.score} pts` : 'lost'}` : ''
     const before = s.trained === 0 ? ' · not trained yet' : ''
+    const beaten = s.courses.length
+      ? ` · ${coursesBeaten(s).beaten} of ${coursesBeaten(s).of} beaten`
+      : ''
     return {
-      text: `copy-bot · ${moves} moves${before}${ran}`,
+      text: `copy-bot · ${moves} moves${before}${ran}${beaten}`,
       tone: g.passed ? 'success' : 'neutral',
     }
   }
@@ -945,7 +956,7 @@ export function summaryOf(task, state) {
       .slice(-4)
       .map((c) => `course ${c.n}: ${c.reached ? `${c.score} pts` : 'lost'}`)
     return {
-      text: `${shown.join(' · ')} · ${s.trained} tries`,
+      text: `${shown.join(' · ')} · ${coursesBeaten(s).beaten} of ${coursesBeaten(s).of} beaten · ${s.trained} tries`,
       tone: g.passed ? 'success' : 'neutral',
     }
   }
