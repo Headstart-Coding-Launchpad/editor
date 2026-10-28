@@ -70,7 +70,8 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
   const [allLesson, setAllLesson] = useState([])
   const [loadingPlatform, setLoadingPlatform] = useState(true)
   const [loadingLesson, setLoadingLesson] = useState(true)
-  const [loadError, setLoadError] = useState(null)
+  const [platformError, setPlatformError] = useState(null)
+  const [lessonError, setLessonError] = useState(null)
   const [actionError, setActionError] = useState(null)
 
   useEffect(() => {
@@ -81,11 +82,11 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
         setPlatform(
           snap.docs.filter((d) => !d.data().archived).map((d) => ({ id: d.id, ...d.data() }))
         )
-        setLoadError(null)
+        setPlatformError(null)
         setLoadingPlatform(false)
       },
       (err) => {
-        setLoadError(`Could not load platform feedback: ${err.message}`)
+        setPlatformError(`Could not load platform feedback: ${err.message}`)
         setLoadingPlatform(false)
       }
     )
@@ -105,11 +106,11 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
           }))
         items.sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
         setAllLesson(items)
-        setLoadError(null)
+        setLessonError(null)
         setLoadingLesson(false)
       },
       (err) => {
-        setLoadError(`Could not load lesson feedback: ${err.message}`)
+        setLessonError(`Could not load lesson feedback: ${err.message}`)
         setLoadingLesson(false)
       }
     )
@@ -174,7 +175,8 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
         </button>
       </div>
 
-      {loadError && <p style={s.error}>{loadError}</p>}
+      {platformError && <p style={s.error}>{platformError}</p>}
+      {lessonError && <p style={s.error}>{lessonError}</p>}
       {actionError && <p style={s.error}>{actionError}</p>}
 
       {loading ? (

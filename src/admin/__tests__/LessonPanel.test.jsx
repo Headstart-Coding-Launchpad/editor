@@ -459,7 +459,13 @@ describe('LessonPanel', () => {
 
   it('shows an error and not a resolved state when resolving feedback fails', async () => {
     const user = userEvent.setup()
-    updateDoc.mockRejectedValueOnce(new Error('write denied'))
+    // Other updateDoc calls (the legacy-level migration on load) must still succeed; only the
+    // feedback write fails.
+    updateDoc.mockImplementation((ref) =>
+      ref?.__subcollection === 'feedback'
+        ? Promise.reject(new Error('write denied'))
+        : Promise.resolve()
+    )
     render(<LessonPanel />)
     fireAll({
       lessons: [PYTHON_LESSON],
