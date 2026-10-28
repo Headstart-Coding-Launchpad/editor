@@ -153,6 +153,56 @@ describe('StudentGrid', () => {
       ).not.toBeInTheDocument()
     })
 
+    // #242: the header counts follow the same rules as the cards' chips, so a tutor override
+    // shows up in both places.
+    it('counts a tutor override as passed even when the run failed the check', () => {
+      const students = [
+        {
+          ...STUDENTS[1],
+          lastRunStatus: 'success',
+          checkPassed: false,
+          checkOverridePushedAt: 1700000000000,
+          checkOverridePassed: true,
+        },
+      ]
+      render(<StudentGrid {...mkProps({ lesson: LESSON_WITH_CHECK, students })} />)
+      expect(screen.getByTitle('Students who passed the completion check')).toHaveTextContent('1')
+      expect(
+        screen.queryByTitle('Students who failed the completion check')
+      ).not.toBeInTheDocument()
+    })
+
+    it('counts a tutor override to failed as failed even when the run passed the check', () => {
+      const students = [
+        {
+          ...STUDENTS[0],
+          checkPassed: true,
+          checkOverridePushedAt: 1700000000000,
+          checkOverridePassed: false,
+        },
+      ]
+      render(<StudentGrid {...mkProps({ lesson: LESSON_WITH_CHECK, students })} />)
+      expect(screen.getByTitle('Students who failed the completion check')).toHaveTextContent('1')
+      expect(
+        screen.queryByTitle('Students who passed the completion check')
+      ).not.toBeInTheDocument()
+    })
+
+    it('does not count a crashed run as errored once a tutor override is in place', () => {
+      const students = [
+        {
+          ...STUDENTS[1],
+          checkOverridePushedAt: 1700000000000,
+          checkOverridePassed: true,
+        },
+      ]
+      render(<StudentGrid {...mkProps({ lesson: LESSON_WITH_CHECK, students })} />)
+      expect(screen.getByTitle('Students who passed the completion check')).toHaveTextContent('1')
+      expect(
+        screen.queryByTitle('Students whose latest run crashed with an error')
+      ).not.toBeInTheDocument()
+    })
+
     it('counts a run that finished but failed the check as failed', () => {
       const students = STUDENTS.map((st) =>
         st.anonymousId === 's2' ? { ...st, lastRunStatus: 'success' } : st

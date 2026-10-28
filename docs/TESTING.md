@@ -137,18 +137,25 @@ Both suites iterate the module registry (`getLessonModules()`), so registering a
 
 ### Layer 3 — E2E Tests (Playwright)
 
-**What:** Critical user journeys tested against the running Vite dev server. These flows are chosen because they are self-contained (no Firebase emulator required).
+**What exists today:** `e2e/` has three spec files and 20 cases. They only check that pages load. They do not drive a full lesson.
 
-**Flows to cover:**
+| File | Cases | What it checks |
+|---|---|---|
+| `e2e/smoke.spec.js` | 2 | The landing page shows the lesson-code form. The login page shows the sign-in form. |
+| `e2e/lesson-builder.spec.js` | 11 | The Builder loads, shows the type chooser, offers the restore prompt, and opens for Python, Web and Scratch. |
+| `e2e/solo-student.spec.js` | 7 | The landing page loads, a lesson code navigates, the solo Python editor shows, and the task counter moves. |
+
+**In CI:** only `e2e/smoke.spec.js` runs. The `smoke` job in `.github/workflows/ci.yml` runs `npx playwright test e2e/smoke.spec.js` in Chromium with a dummy Firebase config. The other two specs are not run by any workflow, and their own comment says they predate the current app, so expect them to need repair before use.
+
+**Flows still to cover (a to-do list, none of these exist yet):**
 
 | Flow | Why critical |
 |---|---|
-| **Solo student — Python lesson** | Navigate to a lesson, run Python code with output, verify check pass/fail banner; verifies Pyodide loading, check evaluation, and localStorage persistence end-to-end |
-| **Solo student — HTML lesson** | Open HTML lesson, edit files, run preview, verify iframe renders; verifies the virtual filesystem and Blob URL pipeline |
-| **Lesson builder — create and export** | Open builder, choose lesson type, add a task, write starter code, add a check, run validation, download JSON; verifies the builder's full create→validate→export lifecycle |
-| **Lesson builder — auto-save restore** | Create a lesson, reload page, verify restore prompt appears and restores correctly |
+| **Solo student — Python lesson** | Run Python code with output, verify the check pass/fail banner; verifies Pyodide loading, check evaluation, and localStorage persistence end-to-end |
+| **Solo student — HTML lesson** | Edit files, run preview, verify the iframe renders; verifies the virtual filesystem and Blob URL pipeline |
+| **Lesson builder — create and export** | Choose lesson type, add a task, write starter code, add a check, run validation, download JSON |
 
-**Firebase-dependent flows (deferred — require Firebase emulator):**
+**Firebase-dependent flows (deferred, need the Firebase emulator):**
 - Live session full cycle (teacher + student)
 - Remote reset
 - `activeStudentView` streaming
@@ -156,7 +163,22 @@ Both suites iterate the module registry (`getLessonModules()`), so registering a
 
 **Placement:** `e2e/` directory at project root
 
-**Config:** `playwright.config.js` — `baseURL: 'http://localhost:5173/editor/'`, screenshots on failure, 1 retry, Chromium only for CI, all browsers locally.
+**Config:** `playwright.config.js` — `baseURL: 'http://localhost:5173/editor/'`, screenshots on failure, 1 retry locally and 2 in CI (`retries: process.env.CI ? 2 : 1`), Chromium only, one worker in CI.
+
+---
+
+### Activity click-through tests
+
+Activities are tested in jsdom with the real `StudentView`, not in Playwright. The helpers live in `src/test/`:
+
+- `activityUiHarness.jsx` exports `renderActivityUi`, which renders an activity's view inside the host.
+- `activityBuilderHarness.jsx` exports `renderBuilderEditor`, for an activity's Builder editor.
+- `studentCodeStateHarness.js` holds the shared student identity, localStorage key helpers and fake session writers used by the student-code-state tests.
+- `src/test/fixtures/` holds lesson fixtures (`studentCodeStateLessons.js`, `legacyActivityTasks.js`).
+
+The pattern is in `src/activities/next_word/__tests__/studentView.test.jsx`. Render the real `StudentView` for a lesson with one activity task. Mock only the Firebase-backed hooks. Drive the real controls with `userEvent`. Assert the text the child sees and the session writes. Every new activity gets one (the `new-activity` scaffold includes a template).
+
+`src/modules/__tests__/authoringDocExamples.test.js` validates every lesson example in `docs/authoring/`, so a broken example in the authoring docs fails the suite.
 
 ---
 
@@ -305,4 +327,4 @@ test files; if a file fails under Node, leave it on jsdom.
 
 ---
 
-*Last updated: September 2026: CI now runs the production build, and a Node ESM import test guards the CLI's import graph.*
+*Last updated: October 2026: Playwright section rewritten to match `e2e/` and CI; activity click-through tests added.*

@@ -70,6 +70,9 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
   const [allLesson, setAllLesson] = useState([])
   const [loadingPlatform, setLoadingPlatform] = useState(true)
   const [loadingLesson, setLoadingLesson] = useState(true)
+  const [platformError, setPlatformError] = useState(null)
+  const [lessonError, setLessonError] = useState(null)
+  const [actionError, setActionError] = useState(null)
 
   useEffect(() => {
     const q = query(collection(firestore, 'platformFeedback'), orderBy('submittedAt', 'desc'))
@@ -79,9 +82,13 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
         setPlatform(
           snap.docs.filter((d) => !d.data().archived).map((d) => ({ id: d.id, ...d.data() }))
         )
+        setPlatformError(null)
         setLoadingPlatform(false)
       },
-      () => setLoadingPlatform(false)
+      (err) => {
+        setPlatformError(`Could not load platform feedback: ${err.message}`)
+        setLoadingPlatform(false)
+      }
     )
   }, [])
 
@@ -99,21 +106,36 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
           }))
         items.sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
         setAllLesson(items)
+        setLessonError(null)
         setLoadingLesson(false)
       },
-      () => setLoadingLesson(false)
+      (err) => {
+        setLessonError(`Could not load lesson feedback: ${err.message}`)
+        setLoadingLesson(false)
+      }
     )
   }, [])
 
+  async function archive(ref) {
+    setActionError(null)
+    try {
+      await updateDoc(ref, { archived: true })
+    } catch (err) {
+      setActionError(`Could not archive the feedback: ${err.message}`)
+    }
+  }
+
   function handleDeletePlatform(id) {
-    if (!window.confirm('Archive this feedback? This cannot be undone.')) return
-    updateDoc(doc(firestore, 'platformFeedback', id), { archived: true })
+    if (!window.confirm('Archive this feedback? It will be hidden from this list but not deleted.'))
+      return
+    return archive(doc(firestore, 'platformFeedback', id))
   }
 
   function handleDeleteLesson(item) {
     if (!item.lessonId) return
-    if (!window.confirm('Archive this feedback? This cannot be undone.')) return
-    updateDoc(doc(firestore, 'lessons', item.lessonId, 'feedback', item.id), { archived: true })
+    if (!window.confirm('Archive this feedback? It will be hidden from this list but not deleted.'))
+      return
+    return archive(doc(firestore, 'lessons', item.lessonId, 'feedback', item.id))
   }
 
   const lessonItems = allLesson.filter((item) => !item.taskId)
@@ -153,6 +175,10 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
         </button>
       </div>
 
+      {platformError && <p style={s.error}>{platformError}</p>}
+      {lessonError && <p style={s.error}>{lessonError}</p>}
+      {actionError && <p style={s.error}>{actionError}</p>}
+
       {loading ? (
         <p style={s.empty}>Loading…</p>
       ) : items.length === 0 ? (
@@ -183,6 +209,12 @@ const s = {
     fontWeight: 700,
     fontSize: '1.1rem',
     color: 'var(--colour-text)',
+    margin: 0,
+  },
+  error: {
+    fontFamily: 'var(--font-body)',
+    color: '#dc2626',
+    fontSize: '0.9rem',
     margin: 0,
   },
   empty: {

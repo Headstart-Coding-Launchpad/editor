@@ -97,6 +97,8 @@ beforeEach(() => {
   }
 })
 
+// The template is scaffolding for npm run new:activity / new:module and is not registered, so
+// this click-through skips here on purpose; a copied activity's test asserts registration.
 describe.skipIf(!getActivityDefinition('template_activity'))(
   'Template Activity StudentView click-through',
   () => {

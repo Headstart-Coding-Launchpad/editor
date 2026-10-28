@@ -34,6 +34,13 @@ Key references:
    the finished screen; note any fail and why it stays.
 6. Ask the user about anything that changes scope (modes, grading rules, device policy) before
    writing code. Create a `feature/<id>-activity` branch; set the request's status to `planned`.
+6. **Sketch gate** (CLAUDE.md "Child-facing screens", #314). Fill the one-screen design brief
+   (template in `HSC Hub\Research\LaunchPad Dev workflow proposal.md` §4: who, the wow, the one
+   main action, at most 5 visible controls, what's hidden, result slot, tutor view, 1366x768 fit).
+   A design subagent returns a wireframe of the whole screen with its control count; Ryan OKs it
+   before any code. A new mode on an existing activity sketches the whole screen, folding older
+   extras rather than adding a row.
+7. Write the request's Fun moment as a behaviour test that fails before the build.
 
 ## 2. Scaffold
 
@@ -112,6 +119,9 @@ student solo and live lesson; pointer, drag, keyboard, touch/tablet (and the on-
 if used); teacher card summary + device badge, student modal view, **Edit answers**,
 Stage → Start again / Complete (show answers); teacher Presentation View broadcast; Builder
 preview; a composed lesson with the activity between two code tasks.
+
+Then a **cold review**: an agent that hasn't seen the work reviews the screenshots against the
+brief (control count, fold at 1366x768, plain words) before anything goes to Ryan.
 
 ## 7. Close the loop
 

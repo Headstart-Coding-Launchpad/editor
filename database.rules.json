@@ -20,10 +20,16 @@
         // input's 30 characters; only teachers/admins can write admit ("Pull in").
         "joiningStudents": {
           "$tempId": {
-            ".write": "auth != null",
+            ".write": "auth != null && (auth.token.role === 'teacher' || auth.token.role === 'admin' || !data.exists() || data.child('uid').val() === auth.uid)",
             ".validate": "newData.hasChild('joinedAt')",
             "joinedAt": {
               ".validate": "newData.isNumber()"
+            },
+            // The signed-in uid of the student who made the marker. Only that uid (or a
+            // teacher/admin) can change or remove it; a marker with no uid (older clients)
+            // is changeable by teachers/admins only.
+            "uid": {
+              ".validate": "newData.isString() && (newData.val() === auth.uid || auth.token.role === 'teacher' || auth.token.role === 'admin')"
             },
             "typedName": {
               ".validate": "newData.isString() && newData.val().length <= 30"
@@ -51,6 +57,25 @@
         "students": {
           "$anonymousId": {
             ".write": "auth != null && (auth.uid === $anonymousId || auth.token.role === 'teacher' || auth.token.role === 'admin')",
+
+            // Size caps on the strings a student writes here (other shapes pass; no $other yet).
+            // Names stop at the name input's 30 characters; teachers/admins can rename past it.
+            "displayName": {
+              ".validate": "!newData.isString() || newData.val().length <= 30 || auth.token.role === 'teacher' || auth.token.role === 'admin'"
+            },
+            "currentCode": { ".validate": "!newData.isString() || newData.val().length <= 100000" },
+            "currentOutput": {
+              ".validate": "!newData.isString() || newData.val().length <= 100000"
+            },
+            "currentAnswer": {
+              ".validate": "!newData.isString() || newData.val().length <= 100000"
+            },
+            "currentDraft": {
+              "text": { ".validate": "!newData.isString() || newData.val().length <= 100000" }
+            },
+            "currentFiles": {
+              "$file": { ".validate": "!newData.isString() || newData.val().length <= 200000" }
+            },
 
             // Live class poll answers ({ choice: option index 0-5, answeredAt }). A student
             // may only answer (or change an answer to) a poll that exists and is open;

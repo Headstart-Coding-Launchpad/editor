@@ -65,6 +65,8 @@ exports.setUserRole = onCall(
       throw new HttpsError('invalid-argument', 'uid and a valid role are required.')
     }
     await getAuth().setCustomUserClaims(uid, { role })
+    // Stop the old claim: sessions made with it can't refresh past their current token.
+    await getAuth().revokeRefreshTokens(uid)
     await db().collection('users').doc(uid).update({ role })
   }
 )
@@ -80,6 +82,7 @@ exports.disableAccount = onCall(
       throw new HttpsError('invalid-argument', 'Cannot disable your own account.')
     }
     await getAuth().updateUser(uid, { disabled: true })
+    await getAuth().revokeRefreshTokens(uid)
     await db().collection('users').doc(uid).update({ disabled: true })
   }
 )

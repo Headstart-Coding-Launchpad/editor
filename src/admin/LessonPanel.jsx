@@ -4,6 +4,7 @@ import {
   collectionGroup,
   deleteDoc,
   doc,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -214,6 +215,10 @@ function makeLessonFamilyGroups(lessons) {
   return [...families, ...orphanFamilies]
 }
 
+// The report collection grows forever, so the Admin reads only the newest reports (newest first)
+// instead of every document on every open.
+export const REPORT_LIMIT = 300
+
 export default function LessonPanel({ view = 'lessons' }) {
   const user = useAuth()?.user
   const [lessons, setLessons] = useState([])
@@ -227,6 +232,9 @@ export default function LessonPanel({ view = 'lessons' }) {
   const [reportsLoading, setReportsLoading] = useState(true)
   const [feedbackLoading, setFeedbackLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [reportsError, setReportsError] = useState(null)
+  const [feedbackError, setFeedbackError] = useState(null)
+  const [resolveError, setResolveError] = useState(null)
   const [shareOpenId, setShareOpenId] = useState(null)
   const [copiedLink, setCopiedLink] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
@@ -281,7 +289,11 @@ export default function LessonPanel({ view = 'lessons' }) {
   }, [])
 
   useEffect(() => {
-    const q = query(collectionGroup(firestore, 'sessionReports'), orderBy('startedAt', 'desc'))
+    const q = query(
+      collectionGroup(firestore, 'sessionReports'),
+      orderBy('startedAt', 'desc'),
+      limit(REPORT_LIMIT)
+    )
     return onSnapshot(
       q,
       (snap) => {
@@ -292,9 +304,13 @@ export default function LessonPanel({ view = 'lessons' }) {
             ...d.data(),
           }))
         )
+        setReportsError(null)
         setReportsLoading(false)
       },
-      () => setReportsLoading(false)
+      (err) => {
+        setReportsError(err.message)
+        setReportsLoading(false)
+      }
     )
   }, [])
 
@@ -310,9 +326,13 @@ export default function LessonPanel({ view = 'lessons' }) {
         }))
         items.sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
         setFeedback(items)
+        setFeedbackError(null)
         setFeedbackLoading(false)
       },
-      () => setFeedbackLoading(false)
+      (err) => {
+        setFeedbackError(err.message)
+        setFeedbackLoading(false)
+      }
     )
   }, [])
 
@@ -457,10 +477,15 @@ export default function LessonPanel({ view = 'lessons' }) {
 
   async function handleResolveFeedback(item) {
     if (!item.lessonId) return
-    await updateDoc(doc(firestore, 'lessons', item.lessonId, 'feedback', item.id), {
-      archived: true,
-      resolvedAt: Date.now(),
-    })
+    setResolveError(null)
+    try {
+      await updateDoc(doc(firestore, 'lessons', item.lessonId, 'feedback', item.id), {
+        archived: true,
+        resolvedAt: Date.now(),
+      })
+    } catch (err) {
+      setResolveError(`Could not mark the feedback resolved: ${err.message}`)
+    }
   }
 
   const visibleLessons = useMemo(
@@ -513,6 +538,14 @@ export default function LessonPanel({ view = 'lessons' }) {
 
       {loading && <p style={s.muted}>Loading lessons...</p>}
       {error && <p style={s.error}>Could not load lessons: {error}</p>}
+      {reportsError && <p style={s.error}>Could not load session reports: {reportsError}</p>}
+      {feedbackError && <p style={s.error}>Could not load feedback: {feedbackError}</p>}
+      {resolveError && <p style={s.error}>{resolveError}</p>}
+      {reports.length >= REPORT_LIMIT && (
+        <p style={s.muted}>
+          Showing only the newest {REPORT_LIMIT} session reports; older ones are not listed.
+        </p>
+      )}
       {!loading && !error && visibleLessons.length === 0 && (
         <p style={s.muted}>No lessons found. Run the migration script to populate Firestore.</p>
       )}

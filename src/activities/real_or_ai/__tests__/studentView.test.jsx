@@ -109,29 +109,28 @@ beforeEach(() => {
   }
 })
 
-describe.skipIf(!getActivityDefinition('real_or_ai'))(
-  'Real or AI StudentView click-through',
-  () => {
-    it('renders in the classroom and finishes on the tap that completes the round', async () => {
-      const user = userEvent.setup()
-      render(<StudentView lessonId={LESSON.id} lesson={LESSON} />)
-      await user.click(await screen.findByTestId('real_or_ai-side-b'))
-      expect(screen.queryByRole('button', { name: 'Run' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Reveal' })).not.toBeInTheDocument()
-      await waitFor(() => expect(mocks.session.writeStudentRun).toHaveBeenCalled())
-      const [studentId, run] = mocks.session.writeStudentRun.mock.calls[0]
-      expect(studentId).toBe('student-1')
-      expect(run).toMatchObject({ status: 'submitted', checkPassed: true })
-      expect(JSON.parse(run.answer)).toEqual({
-        v: 1,
-        right: 1,
-        items: { p1: { pick: 'b', done: true } },
-      })
-      expect(screen.getByTestId('real_or_ai-reveal')).toHaveTextContent(
-        /Right!\s*B is the AI one\./
-      )
-      expect(mocks.session.writeStudentCode).not.toHaveBeenCalled()
+describe('Real or AI StudentView click-through', () => {
+  it('is registered', () => {
+    expect(getActivityDefinition('real_or_ai')).toBeDefined()
+  })
+
+  it('renders in the classroom and finishes on the tap that completes the round', async () => {
+    const user = userEvent.setup()
+    render(<StudentView lessonId={LESSON.id} lesson={LESSON} />)
+    await user.click(await screen.findByTestId('real_or_ai-side-b'))
+    expect(screen.queryByRole('button', { name: 'Run' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reveal' })).not.toBeInTheDocument()
+    await waitFor(() => expect(mocks.session.writeStudentRun).toHaveBeenCalled())
+    const [studentId, run] = mocks.session.writeStudentRun.mock.calls[0]
+    expect(studentId).toBe('student-1')
+    expect(run).toMatchObject({ status: 'submitted', checkPassed: true })
+    expect(JSON.parse(run.answer)).toEqual({
+      v: 1,
+      right: 1,
+      items: { p1: { pick: 'b', done: true } },
     })
-  }
-)
+    expect(screen.getByTestId('real_or_ai-reveal')).toHaveTextContent(/Right!\s*B is the AI one\./)
+    expect(mocks.session.writeStudentCode).not.toHaveBeenCalled()
+  })
+})

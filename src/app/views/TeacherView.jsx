@@ -129,7 +129,7 @@ export default function TeacherView({ lessonId }) {
     session,
     loading,
     connected,
-    createSession,
+    createSessionIfAbsent,
     restartSession,
     startSession,
     endSession,
@@ -402,7 +402,7 @@ export default function TeacherView({ lessonId }) {
   // Create session only if none exists — don't auto-restart an ended session
   useEffect(() => {
     if (loading || !lesson) return
-    if (!session) createSession()
+    if (!session) createSessionIfAbsent()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, lesson])
 

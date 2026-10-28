@@ -447,3 +447,18 @@ Supported Markdown features in the shared renderer: callout syntax, fenced code 
 Schema reference for the topic library: Firestore structure, all field definitions, YAML authoring format, and how topics are linked from Markdown via `[[wiki-links]]`.
 
 **Load when:** writing or editing topics, or when working on anything that reads from `topicLibrary` in Firestore.
+
+---
+
+## Archive (`docs/archive/`)
+
+Historical plans. They are kept for context only. Do not load them for current behaviour.
+
+### [archive/Platform Asks - v2.md](archive/Platform%20Asks%20-%20v2.md)
+A second list of platform asks. Historical plan, superseded by the root `Platform Asks.md` and `archive/Platform Tasks.md`.
+
+### [archive/Platform Tasks.md](archive/Platform%20Tasks.md)
+Implementation plan for the platform asks, from July 2026. Historical plan, superseded by the shipped features in `FEATURES.md`.
+
+### [archive/Shared Workspaces - Implementation Plan.md](archive/Shared%20Workspaces%20-%20Implementation%20Plan.md)
+Plan for student-initiated workspace sharing with teacher approval, from September 2026. Historical plan, superseded by the shipped feature (see `FEATURES.md` and `agents/runtime-model.md`).

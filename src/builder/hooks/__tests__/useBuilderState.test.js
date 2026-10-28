@@ -1,6 +1,12 @@
 import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { useBuilderState } from '../useBuilderState'
+import { validateLesson } from '../../lessonUtils'
+
+vi.mock('../../lessonUtils', async (importOriginal) => {
+  const actual = await importOriginal()
+  return { ...actual, validateLesson: vi.fn(actual.validateLesson) }
+})
 
 function makeScratchLesson(overrides = {}) {
   return {
@@ -266,5 +272,20 @@ describe('useBuilderState grouped task titles', () => {
 
     expect(currentLesson.tasks[0].title).toBe('New Group')
     expect(currentLesson.tasks[0].subtasks[0].title).toBe('')
+  })
+})
+
+describe('useBuilderState validation', () => {
+  it('validates once for repeated renders of the same lesson object', () => {
+    const lesson = makeScratchLesson()
+    const onUpdate = vi.fn()
+    validateLesson.mockClear()
+
+    const { rerender } = renderHook(({ lesson }) => useBuilderState({ lesson, onUpdate }), {
+      initialProps: { lesson },
+    })
+    rerender({ lesson })
+
+    expect(validateLesson).toHaveBeenCalledTimes(1)
   })
 })

@@ -4,6 +4,7 @@ import { resolveAssetsPath } from '../../shared/assetPaths'
 import { decodeSessionFiles } from '../../shared/workspaceData'
 import { getLessonModule } from '../../modules/registry'
 import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
+import { deriveStudentCheckStatus } from './studentCheckStatus'
 import { exampleOpenCount } from '../../shared/exampleOpens'
 import {
   currentTypingScore,
@@ -320,30 +321,23 @@ export default function StudentCard({
   // marking rather than task.check.
   // Sandbox runs aren't scored against the task the session was on, so there is no
   // pass/fail to show (a stale result from before the sandbox would read as "failed").
-  const hasCheck =
-    !isNeverMarked &&
-    !isSessionSandbox &&
-    (currentTask?.check != null || (activitySubmitted && student.checkPassed != null))
-  const checkAttempted = student.lastRunStatus != null
-  const hasActiveOverride = !!student.checkOverridePushedAt
+  // The rules live in studentCheckStatus.js, shared with the grid header's counts.
+  const checkStatus = deriveStudentCheckStatus({
+    student,
+    currentTask,
+    isNeverMarked,
+    isSessionSandbox,
+    activitySubmitted,
+  })
+  const { hasCheck, checkAttempted, hasActiveOverride } = checkStatus
   const supportRevealCount = Object.keys(
     session?.supportRevealLog?.[student.anonymousId]?.[currentTask?.id] ?? {}
   ).length
   // "See example" fences opened in this task's explainer (src/shared/exampleOpens.js).
   const examplesOpened = exampleOpenCount(session, student.anonymousId, currentTask?.id)
-  const checkPassed =
-    hasCheck &&
-    (hasActiveOverride ? student.checkOverridePassed === true : student.checkPassed === true)
   // A run that crashed is "Error", not "Failed": the check never got a fair go. The teacher's
-  // own override outranks both.
-  const runErrored =
-    !isSessionSandbox && !hasActiveOverride && !checkPassed && student.lastRunStatus === 'error'
-  const checkFailed =
-    hasCheck &&
-    !runErrored &&
-    (hasActiveOverride
-      ? student.checkOverridePassed === false
-      : checkAttempted && student.checkPassed !== true)
+  // own override outranks both (studentCheckStatus.js).
+  const { passed: checkPassed, errored: runErrored, failed: checkFailed } = checkStatus
   // Puzzle rules (task `puzzle`, src/shared/puzzle/): "Solved at par" / "Over line limit".
   const puzzleNote = isSessionSandbox
     ? null

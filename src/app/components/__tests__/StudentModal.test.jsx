@@ -64,7 +64,9 @@ vi.mock('../ExplainerPanel', () => ({
 
 vi.mock('../../../shared/firebase', () => ({ db: {}, auth: {}, firestore: {} }))
 vi.mock('../../../shared/TopicLibraryView', () => ({
-  TopicLibraryDialog: () => <div data-testid="topic-library-dialog" />,
+  TopicLibraryDialog: ({ topicType }) => (
+    <div data-testid="topic-library-dialog" data-topic-type={topicType} />
+  ),
 }))
 vi.mock('../../../shared/markdown', () => ({
   MarkdownRenderer: ({ content }) => <div>{content}</div>,
@@ -294,6 +296,24 @@ describe('StudentModal', () => {
     await user.click(screen.getByRole('button', { name: /Edit Code/i }))
 
     expect(onRequestTeacherEdit).toHaveBeenCalledWith('student-1')
+  })
+
+  it("passes a composed lesson's per-task module type to the topic library", async () => {
+    const user = userEvent.setup()
+    const lesson = {
+      type: 'composed',
+      tasks: [{ id: 1, moduleType: 'python', title: 'Python task' }],
+    }
+    render(
+      <StudentModal
+        {...mkProps({ lesson, topics: [{ id: 't1', title: 'Loops' }], onSendToTopic: vi.fn() })}
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: /^More/ }))
+    await user.click(screen.getByRole('button', { name: /Send Topic/ }))
+
+    expect(screen.getByTestId('topic-library-dialog')).toHaveAttribute('data-topic-type', 'python')
   })
 
   it('renders the student display name', () => {

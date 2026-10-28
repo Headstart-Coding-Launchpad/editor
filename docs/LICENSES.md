@@ -26,7 +26,6 @@ This file lists all third-party open-source libraries used in this project, thei
 
 | Package | Version | License |
 |---|---|---|
-| `codemirror` | 6.0.2 | MIT |
 | `@codemirror/autocomplete` | 6.20.2 | MIT |
 | `@codemirror/commands` | 6.10.3 | MIT |
 | `@codemirror/lang-css` | 6.3.1 | MIT |
@@ -36,6 +35,7 @@ This file lists all third-party open-source libraries used in this project, thei
 | `@codemirror/language` | 6.12.3 | MIT |
 | `@codemirror/state` | 6.6.0 | MIT |
 | `@codemirror/view` | 6.43.0 | MIT |
+| `@lezer/highlight` | 1.2.3 | MIT |
 
 Homepage: https://codemirror.net/
 License text: https://github.com/codemirror/codemirror/blob/main/LICENSE
@@ -94,6 +94,10 @@ License text: https://github.com/google/blockly/blob/master/LICENSE
 | `react-markdown` | 9.1.0 | MIT |
 | `rehype-highlight` | 7.0.2 | MIT |
 | `remark-breaks` | 4.0.0 | MIT |
+| `remark-parse` | 11.0.0 | MIT |
+| `remark-rehype` | 11.1.2 | MIT |
+| `unified` | 11.0.5 | MIT |
+| `highlight.js` | 11.11.1 | BSD-3-Clause |
 
 react-markdown: https://github.com/remarkjs/react-markdown
 rehype-highlight: https://github.com/rehypejs/rehype-highlight
